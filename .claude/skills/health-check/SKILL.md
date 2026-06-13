@@ -114,7 +114,7 @@ persistent team.
    **/land**. Never batch unrelated findings into one tree. The ONE definition of green
    the fix must hit, from the repo root:
 
-   ```
+   ```bash
    cargo fmt --check
    cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
    cargo test --workspace --features grimdark_turfwar/dynamic_linking

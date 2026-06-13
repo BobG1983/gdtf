@@ -41,7 +41,7 @@ git -C /tmp/gtw-hook-fixture checkout -q -b feature/gtw-999-fixture
 Environment for every case: `CLAUDE_PROJECT_DIR=/tmp/gtw-hook-fixture`.
 A valid `.gate-pass` (used in cases c, d, e) is:
 
-```
+```text
 TICKET=GTW-999
 BRANCH=feature/gtw-999-fixture
 HEAD=<current HEAD sha>
@@ -63,7 +63,7 @@ python3 available in env: `Python 3.14.3` (the detector requires python3).
 
 Raw transcript:
 
-```
+```text
 === (a) git commit on develop -> BLOCK ===
 expected=2 actual=2 -> PASS
 stderr: commit blocked: use a feature branch (git flow feature start ...)

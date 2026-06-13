@@ -92,24 +92,6 @@ live in `.claude/rules/verification.md`.
    yourself between /gate and /land** — a commit moves HEAD and invalidates the gate
    fingerprint, so /land would rightly refuse.
 
-## Re-grounding cheat sheet (ported docs may still read Godot)
-
-docs/ is being ported from the Godot original; a stale claim may name an engine
-concept that no longer exists. When you hit one, re-ground to the Bevy equivalent
-*and verify it against the gdtf source* before writing it down:
-
-| Stale (Godot) claim | Re-ground to (Bevy / gdtf) |
-| --- | --- |
-| node / scene `.tscn`, `_ready()` | entity + components; scene plugin `OnEnter(AppState::X)` |
-| `_process(delta)` / signals | a system in a schedule; events / `EventReader` |
-| `class_name Foo` (GDScript) | a `struct`/`component`/`Resource` in a `crates/*` module |
-| `res://...` resource path | a Bevy asset handle / `crates/<crate>` module path |
-| autoload singleton | a `Resource` inserted on the `App` |
-| `Vector2i` grid coords | `glam::IVec2` |
-
-If neither the source nor the documented design intent pins the Bevy specific, write
-**TBD (Bevy):** — never invent a system name, schedule, or component to fill the gap.
-
 ## Notes on Gaps
 
 - Keep docs-sync diffs to `docs/` (plus the occasional `CLAUDE.md` tombstone). Code

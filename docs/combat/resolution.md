@@ -6,7 +6,7 @@ How a single attack resolves, end to end. The model is a **ballistic simulation*
 
 ## Pipeline
 
-```
+```text
 aim → dispersion cone → ONE 3D shot vector → coarse march (60×60×8 voxel DDA)
    → first thing the round fails to clear: (ganger | cover | floor/roof slab | ground)
      — or a clean miss off the grid
@@ -30,7 +30,7 @@ The maximum angular deviation. Driven by:
 
 All factors are **multiplicative** (`cone_angle`):
 
-```
+```text
 θ_cone = base_spread × stability × aim × firemode × recoil
   stability : cone-mult curve over the 0–100 stability score (steadier < 1)
   aim       : Aim Mode ×0.6   · hip-fired = 1
@@ -44,7 +44,7 @@ Multiplicative bracing tightens **proportionally** — a bipod helps a heavy, sl
 
 A deviation sampled (seeded RNG) from within the cone, **biased toward the center** by a power-law radius (a **hard edge** — a shot never exceeds `θ_cone`):
 
-```
+```text
 θ_shot = θ_cone × rand^p        (rand ∈ [0,1))
 φ      = rand × 2π              (uniform direction)
 p      = concentration, rising with accuracy = Shooting × weapon.accuracy
@@ -97,7 +97,7 @@ On a hit, the per-hit formula resolves weapon (`damage` / `punch` / `shred`) aga
 
 **Every hit rolls severity** (`roll_severity`) — the old `damage > Toughness` hard gate is gone. The score is gated by **penetrating damage**, so a weak hit can't reach the severe buckets (no 1-dmg amputations):
 
-```
+```text
 R_eff          = max(R_min, R − L × Luck_defender)      (defender's Luck caps the bad tail)
 severity_score = j × pen_damage − k × Toughness + part_mod + weapon.fatal_bias
                  + I × Luck_shooter + roll(0..R_eff)    (one-sided random — only pushes up)
@@ -114,7 +114,7 @@ Penetrating damage drives the score, **Toughness mitigates**, the **struck part*
 
 **Not yet built** — designed as follows. Close combat is an **opposed roll**, and the **margin scales the blow as a *multiplier*** (never a flat add):
 
-```
+```text
 atk = Fight_attacker × roll        (roll ∈ [1−v, 1+v], variance v = tunable)
 def = Fight_defender × roll
 connect if atk > def
@@ -128,7 +128,7 @@ A connecting hit's damage is **multiplied** by `damage_mult`, then runs the norm
 
 **Not yet built** — designed as follows. Reactions are **intrinsic to the TU economy** — there is no separate overwatch action. Unspent TU funds reaction shots: when an enemy acts within a ganger's LOS (and the watcher can afford a shot), a **probabilistic opposed check** decides whether the watcher interrupts:
 
-```
+```text
 score        = Reactions × (TU_left / TU_max)
 P(interrupt) = score_watcher / (score_watcher + score_mover)
 max interrupts this enemy turn = cap(Reactions)        (tunable)

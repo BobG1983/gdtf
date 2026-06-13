@@ -61,6 +61,7 @@ What each armor **resists** (strong), is **penetrated by** (weak), and the one d
 
 Heptagon of the 7 types. An arrow **X → Y** means *X is strong vs Y* (X's weapon penetrates Y's armor; X's armor resists Y's weapon).
 
+```text
                         ╭──────────────────────╮
                         │  0   Plated / Shock   │
                         ╰──────────────────────╯
@@ -74,6 +75,7 @@ Heptagon of the 7 types. An arrow **X → Y** means *X is strong vs Y* (X's weap
         ╭──────────────────────╮      ╭──────────────────────╮
         │  4  Hazard / Plasma   │      │  3   Void / Kinetic   │
         ╰──────────────────────╯      ╰──────────────────────╯
+```
 
 **The rule (rotationally symmetric):** type `i` is **strong vs** `i−1, i−2, i−4`; **weak vs** `i+1, i+2, i+4`; **neutral vs** itself. Equivalently, the tournament is three one-way rings (each node has exactly one out-edge per ring):
 

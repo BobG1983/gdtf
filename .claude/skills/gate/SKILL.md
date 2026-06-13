@@ -30,7 +30,7 @@ that canon is part of the contract ALONGSIDE the ticket.
 2. **Run the suite — green is mandatory at gate time.** The one definition of green,
    from the repo root (`$CLAUDE_PROJECT_DIR`):
 
-   ```
+   ```bash
    cargo fmt --check
    cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
    cargo test --workspace --features grimdark_turfwar/dynamic_linking
@@ -54,7 +54,7 @@ that canon is part of the contract ALONGSIDE the ticket.
    against, not a draft to negotiate with.
 4. **Gather the diff.** Capture, including untracked files:
 
-   ```
+   ```bash
    git status
    git diff develop...HEAD
    git ls-files -o --exclude-standard      # untracked, so the gate sees new files
@@ -91,7 +91,7 @@ that canon is part of the contract ALONGSIDE the ticket.
    never stage it). With multiple tickets, the single `TICKET=` line lists them all,
    comma-separated (e.g. `TICKET=GTW-2,GTW-3`):
 
-   ```
+   ```bash
    { printf 'TICKET=%s\n' "GTW-N"        # comma-separated for a multi-ticket set
      printf 'BRANCH=%s\n' "$(git branch --show-current)"
      printf 'HEAD=%s\n' "$(git rev-parse HEAD)"

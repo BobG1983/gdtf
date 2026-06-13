@@ -31,7 +31,7 @@ Single-ticket is the common path.
    (comma-separated for a set), and its `FINGERPRINT=` line must equal a fresh
    recomputation of /gate's exact command:
 
-   ```
+   ```bash
    { git rev-parse HEAD; git status --porcelain; git diff HEAD; git ls-files -o --exclude-standard -z | LC_ALL=C sort -z | xargs -0 -r shasum -a 256; } | shasum -a 256 | cut -d' ' -f1
    ```
 
@@ -41,7 +41,7 @@ Single-ticket is the common path.
 2. **Suite green NOW.** Run the one definition of green from the repo root
    (`$CLAUDE_PROJECT_DIR`), exact commands:
 
-   ```
+   ```bash
    cargo fmt --check
    cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
    cargo test --workspace --features grimdark_turfwar/dynamic_linking

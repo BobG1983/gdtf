@@ -62,6 +62,7 @@ duplicate the prose; cross-link.
 ## 3. Enforce structure (every note)
 
 Each note carries, in this order:
+
 1. **YAML frontmatter** (see templates) — at minimum `title`, `kind`, `status`,
    `date`, `pillars` (the pillar numbers it serves).
 2. **A one-line crisp statement** — the claim in a single bolded sentence.
@@ -93,6 +94,7 @@ headings, dense prose, no changelog noise). Canon is read often.
 
 A quick capture **writes the doc immediately** and ends there — then OFFER the
 follow-up. For a committed canon change, hand off:
+
 - **/gate → /land** — branch off `develop` (`feature/gtw-N-<slug>`), gate the
   docs diff through the read-only `design-gate` review, land as `Docs: <summary>
   (GTW-N)`. Needs a `GTW-N` ticket in project **GDTF** (discover the owning team

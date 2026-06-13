@@ -1,0 +1,11 @@
+{
+  // Rule config lives in .markdownlint.json (merged automatically).
+  // This file only sets which files the project lint sweeps and what it skips.
+  "globs": ["**/*.md"],
+  "ignores": [
+    "target/**",
+    "node_modules/**",
+    // Auto-generated, gitignored agent memory — not part of the committed docs.
+    ".claude/agent-memory/**"
+  ]
+}

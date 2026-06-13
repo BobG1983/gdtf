@@ -52,7 +52,7 @@ contract wins.
    "The summary says so" is never evidence. Cite `file:line` for everything.
 3. **Run the green suite yourself** — the one definition of green, from the repo root:
 
-   ```
+   ```bash
    cargo fmt --check
    cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
    cargo test --workspace --features grimdark_turfwar/dynamic_linking

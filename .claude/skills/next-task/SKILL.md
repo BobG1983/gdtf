@@ -98,7 +98,7 @@ Richer in-engine automation is **TBD (Bevy harness)**.
 The ONE definition of green is the full suite, run from the repo root — green
 is ALL three passing:
 
-```
+```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
 cargo test --workspace --features grimdark_turfwar/dynamic_linking

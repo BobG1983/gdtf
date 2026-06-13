@@ -13,7 +13,7 @@ observed GREEN in THIS session, after the final edit, and you saw it pass.
 
 Run from the repo root; green = ALL THREE pass:
 
-```
+```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
 cargo test --workspace --features grimdark_turfwar/dynamic_linking
@@ -34,7 +34,7 @@ never report a remembered or assumed result.
 
 Release artifacts and CI use the STATIC suite (no `dynamic_linking` feature):
 
-```
+```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace

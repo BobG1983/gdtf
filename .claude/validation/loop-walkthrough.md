@@ -55,7 +55,7 @@ Scripted by `.claude/rules/verification.md` (the definition of done) and
 `.claude/rules/bevy-traps.md` (ECS gotchas). The **one definition of green**,
 run from the repo root, is all three passing:
 
-```
+```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
 cargo test --workspace --features grimdark_turfwar/dynamic_linking
@@ -116,7 +116,7 @@ range), report the range, then **delete** `.claude/.gate-pass`.
 `/gate` writes `.claude/.gate-pass` with TICKET / BRANCH / HEAD / FINGERPRINT
 lines. The fingerprint is computed by:
 
-```
+```bash
 { git rev-parse HEAD; git status --porcelain; git diff HEAD; \
   git ls-files -o --exclude-standard -z | LC_ALL=C sort -z \
     | xargs -0 -r shasum -a 256; } | shasum -a 256 | cut -d' ' -f1
