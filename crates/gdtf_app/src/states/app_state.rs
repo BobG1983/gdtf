@@ -6,7 +6,6 @@ pub(crate) enum AppState {
     Init,
     Load,
     Intro,
-    MainMenu,
-    Playing,
+    Running,
     Teardown,
 }

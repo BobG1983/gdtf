@@ -32,6 +32,16 @@ session, so the next session pays the toll once.
    `.write(AppExit::Success)`; `EventWriter<AppExit>` does NOT resolve (E0425).
    The targeted/observer `Event` API is a separate concept now — confirm the
    split via the 0.18 migration guide / the `bevy-expert` agent. [burned GTW-2]
+5. A `#[derive(SubStates)]` type registers with `app.add_sub_state::<S>()`, NOT
+   `app.init_state::<S>()`. `init_state` **compiles** on a SubStates type (the
+   derive also impls `States`/`FreelyMutableState`) but registers it as an
+   independent TOP-LEVEL state that activates from startup, ignoring its
+   `#[source(...)]` parent — so every sub-state runs un-nested from frame 0 and
+   the machine is scrambled (no compile error, no panic). Symptom: child-state
+   `OnEnter` logs fire before the parent is ever entered. Also ORDER matters:
+   `add_sub_state::<Child>()` must run AFTER the parent state is registered, so a
+   parent scene-plugin must `add_*state` for its own state BEFORE `add_plugins`
+   pulls in child plugins that register their sub-states.
 
 ## wgpu / cargo
 

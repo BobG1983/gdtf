@@ -15,7 +15,6 @@ fn add_plugins(app: &mut App) -> &mut App {
     app.add_plugins(InitScenePlugin)
         .add_plugins(LoadScenePlugin)
         .add_plugins(IntroScenePlugin)
-        .add_plugins(MainMenuScenePlugin)
-        .add_plugins(PlayingScenePlugin)
+        .add_plugins(RunningScenePlugin)
         .add_plugins(TeardownScenePlugin)
 }

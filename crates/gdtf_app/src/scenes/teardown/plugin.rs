@@ -14,7 +14,7 @@ impl Plugin for TeardownScenePlugin {
     }
 }
 
-fn add_systems(app: &mut App) -> &mut App {
+fn add_systems(app: &mut App) {
     app.add_systems(OnEnter(AppState::Teardown), print_on_enter)
         .add_systems(
             FixedUpdate,
@@ -25,5 +25,5 @@ fn add_systems(app: &mut App) -> &mut App {
             FixedUpdate,
             move_on.run_if(in_state(AppState::Teardown).and(resource_exists::<TeardownComplete>)),
         )
-        .add_systems(OnExit(AppState::Teardown), (print_on_exit, cleanup))
+        .add_systems(OnExit(AppState::Teardown), (print_on_exit, cleanup));
 }

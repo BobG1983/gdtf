@@ -1,3 +1,11 @@
+//! Scene flow for the GDTF app.
+//!
+//! This module owns ONLY scene transitions and per-scene setup/teardown: the
+//! `AppState` (and sub-state) machine wiring via `OnEnter` / `OnExit`, tracking
+//! when a scene is complete, and moving on to the next state. Everything else —
+//! gameplay, the combat sim, presentation, UI — lives in other crates/modules.
+//! A scene here just enters, does its setup, hands off, and tears down.
+
 mod plugin;
 pub(crate) use plugin::ScenesPlugin;
 
@@ -10,11 +18,8 @@ pub(in crate::scenes) use intro::IntroScenePlugin;
 mod load;
 pub(in crate::scenes) use load::LoadScenePlugin;
 
-mod main_menu;
-pub(in crate::scenes) use main_menu::MainMenuScenePlugin;
-
-mod playing;
-pub(in crate::scenes) use playing::PlayingScenePlugin;
+mod running;
+pub(in crate::scenes) use running::RunningScenePlugin;
 
 mod teardown;
 pub(in crate::scenes) use teardown::TeardownScenePlugin;
