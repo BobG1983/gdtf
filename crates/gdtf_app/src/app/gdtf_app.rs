@@ -13,12 +13,18 @@ impl GdtfApp {
     pub fn new() -> Self {
         let app = Self(App::new());
 
-        app.add_states().add_plugins()
+        app.add_bevy_plugins().add_states().add_plugins()
     }
 
     /// Run the GDTF application.
     pub fn run(mut self) {
         self.0.run();
+    }
+
+    #[must_use]
+    fn add_bevy_plugins(mut self) -> Self {
+        self.0.add_plugins(DefaultPlugins);
+        self
     }
 
     #[must_use]
