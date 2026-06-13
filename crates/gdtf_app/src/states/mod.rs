@@ -1,14 +1,14 @@
 mod app_state;
-pub(crate) use app_state::AppState;
+crate::support_use!(app_state::AppState;);
 
 mod running_state;
-pub(crate) use running_state::RunningState;
+crate::support_use!(running_state::RunningState;);
 
 mod game_state;
-pub(crate) use game_state::GameState;
+crate::support_use!(game_state::GameState;);
 
 mod battlescape_state;
-pub(crate) use battlescape_state::BattleScapeState;
+crate::support_use!(battlescape_state::BattleScapeState;);
 
 mod aftermath_state;
-pub(crate) use aftermath_state::AfterMathState;
+crate::support_use!(aftermath_state::AfterMathState;);

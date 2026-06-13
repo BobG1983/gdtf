@@ -7,7 +7,7 @@
 //! A scene here just enters, does its setup, hands off, and tears down.
 
 mod plugin;
-pub(crate) use plugin::ScenesPlugin;
+crate::support_use!(plugin::ScenesPlugin;);
 
 mod init;
 pub(in crate::scenes) use init::InitScenePlugin;

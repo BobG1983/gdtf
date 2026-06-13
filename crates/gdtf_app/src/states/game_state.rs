@@ -2,11 +2,17 @@ use bevy::prelude::*;
 
 use crate::states::RunningState;
 
-#[derive(SubStates, Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
-#[source(RunningState = RunningState::Game)]
-pub(crate) enum GameState {
-    #[default]
-    Setup, // Pre-Game - Selecting Gang, Setting up the Hive, etc.
-    HiveScape,   // Strategic Layer
-    BattleScape, // Tactical Layer
+crate::support_item! {
+    /// Sub-state of [`RunningState::Game`]: which game layer is active.
+    #[derive(SubStates, Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+    #[source(RunningState = RunningState::Game)]
+    enum GameState {
+        /// Pre-game: selecting gang, setting up the hive, etc.
+        #[default]
+        Setup,
+        /// Strategic (hive) layer.
+        HiveScape,
+        /// Tactical (battle) layer.
+        BattleScape,
+    }
 }

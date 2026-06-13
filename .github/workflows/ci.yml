@@ -1,0 +1,77 @@
+name: CI
+
+# Runs the STATIC release/CI green suite (see .claude/rules/verification.md):
+# fmt --check, clippy -D warnings, test, and a release build — all WITHOUT the
+# `dynamic_linking` feature, which is a dev-iteration speedup only and is never
+# used for release artifacts.
+on:
+  push:
+    branches: [develop]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Fail the build on any rustc/clippy warning, belt-and-suspenders with -D below.
+  RUSTFLAGS: -D warnings
+
+jobs:
+  green:
+    name: Static green suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Bevy needs ALSA (audio) and udev (input/device enumeration) headers to
+      # build on Linux. These are the system libs Bevy's own CI installs; without
+      # them `bevy_audio` / device backends fail to compile/link.
+      - name: Install Bevy Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libasound2-dev libudev-dev
+
+      # The repo PINS its toolchain via rust-toolchain.toml (nightly): the
+      # workspace uses nursery clippy lints (use_self, missing_const_for_fn, ...)
+      # and rustfmt.toml sets unstable fmt options — both are nightly-only, so a
+      # STABLE toolchain cannot run this repo's fmt/clippy green suite. We install
+      # the toolchain the repo file pins (with rustfmt + clippy) so CI mirrors the
+      # local dev/gate suite exactly. See report / GTW-129 for the stable conflict.
+      - name: Install Rust toolchain (pinned by rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          # Keep in sync with rust-toolchain.toml's [toolchain].channel.
+          toolchain: nightly
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry, git, and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: cargo fmt --check
+        run: cargo fmt --all --check
+
+      - name: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # `cargo test --workspace` builds gdtf_test_utils (a workspace member and a
+      # dev-dependency), which enables gdtf_app's `test-support` feature, so the
+      # real state machine is compiled and asserted on. No extra feature flag is
+      # needed here.
+      - name: cargo test --workspace
+        run: cargo test --workspace
+
+      - name: cargo build -p grimdark_turfwar --release
+        run: cargo build -p grimdark_turfwar --release

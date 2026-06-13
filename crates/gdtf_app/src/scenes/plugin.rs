@@ -2,8 +2,10 @@ use bevy::prelude::*;
 
 use crate::scenes::*;
 
-/// Plugin for registering scenes in the GDTF app.
-pub(crate) struct ScenesPlugin;
+crate::support_item! {
+    /// Plugin for registering scenes in the GDTF app.
+    struct ScenesPlugin;
+}
 
 impl Plugin for ScenesPlugin {
     fn build(&self, app: &mut App) {

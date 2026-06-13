@@ -57,13 +57,22 @@ behavioral ticket MUST add tests on the real code path.
    fake, stub, or shadow the unit under test to make a test pass; stub only
    true externals. Sim logic (`gdtf_battle_sim`) is render-free and
    unit-testable with injected seeded RNG. A test of a copy is not a test.
-3. View / scene / presenter work additionally requires in-engine evidence:
-   RUN the app (`cargo run -p grimdark_turfwar --features dynamic_linking`) or a
-   headless Bevy integration test, and observe the behavior (the app can capture its own
-   screenshot). Reading the code is not verification. Richer input/scene
-   automation is **TBD (Bevy harness)** until one exists.
+3. Scene / state / app BEHAVIORAL logic (transitions, `OnEnter`/`OnExit`
+   wiring, system effects on the `World`) REQUIRES a headless integration test
+   built with `gdtf_test_utils::GdtfTestAppBuilder`: construct the app, drive
+   it with `app.update()` (or `gdtf_test_utils::advance_until`), and assert on
+   `State<…>` / the `World`. The harness exists — reading the code, or "I ran
+   it and it looked right", is not verification for state-machine or system
+   logic. Reserve in-engine evidence — RUN the app
+   (`cargo run -p grimdark_turfwar --features dynamic_linking`) and observe
+   (the app can capture its own screenshot) — for genuinely unautomatable
+   checks: actual RENDERING / visual correctness, real input, font / layout.
+   Those, and only those, are still **TBD (Bevy harness)** for richer
+   automation.
 4. Report failures VERBATIM — paste the failing assert / compiler / clippy
    output. Never summarize a failure away or present partial success as
    success.
 5. `/gate` is the gatekeeper: it runs this suite plus the `design-gate` audit.
-   No gate-pass, no commit.
+   No gate-pass, no commit. `/gate` step 4a is unchanged and unweakened — and
+   note that, per rule 3, any scene / state / app clause now OWES a headless
+   `GdtfTestAppBuilder` test as part of being covered, not just a screenshot.

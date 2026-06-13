@@ -2545,6 +2545,7 @@ name = "gdtf_app"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "gdtf_test_utils",
 ]
 
 [[package]]
@@ -2554,6 +2555,14 @@ version = "0.1.0"
 [[package]]
 name = "gdtf_battle_sim"
 version = "0.1.0"
+
+[[package]]
+name = "gdtf_test_utils"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "gdtf_app",
+]
 
 [[package]]
 name = "gethostname"
