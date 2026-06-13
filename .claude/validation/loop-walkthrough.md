@@ -57,9 +57,11 @@ run from the repo root, is all three passing:
 
 ```
 cargo fmt --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
+cargo test --workspace --features grimdark_turfwar/dynamic_linking
 ```
+
+(`cargo dclippy` / `cargo dtest` / `cargo drun` in `.cargo/config.toml` are the shorthand.)
 
 Because the workspace `Cargo.toml` denies clippy all/pedantic/correctness plus
 unwrap/expect/panic/todo/unimplemented and missing_docs, **fmt-clean and
@@ -82,7 +84,7 @@ sub-agent (`.claude/agents/design-gate.md`). Sequence:
    `git ls-files -o --exclude-standard`. (Untracked content is part of the change.)
 5. Spawn **design-gate** per need; pass it the ticket id, contract, touched
    `docs/` paths, the diff, and the verbatim instruction to verify every clause
-   FIRST-HAND (read code, run `cargo run -p grimdark_turfwar` or a headless
+   FIRST-HAND (read code, run `cargo run -p grimdark_turfwar --features dynamic_linking` or a headless
    Bevy integration test) — trusting nothing the implementer claimed. The
    sub-agent reports back; it does not spawn further sub-agents.
 6. Relay the per-clause PASS / VIOLATION verdict; a VIOLATION is never
@@ -171,6 +173,6 @@ each:
   guarantee.
 - **Runtime evidence is lighter, by design.** There is no Godot MCP /
   `play_scene` / `simulate_input`. Runtime checks RUN the app
-  (`cargo run -p grimdark_turfwar`) or a headless Bevy integration test that
+  (`cargo run -p grimdark_turfwar --features dynamic_linking`) or a headless Bevy integration test that
   drives systems and asserts on world state; richer in-engine input automation
   is **TBD (Bevy harness)** until one exists.

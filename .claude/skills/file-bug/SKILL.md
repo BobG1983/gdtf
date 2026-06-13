@@ -24,6 +24,7 @@ specified — is a defect even if it compiles and the suite is green
 presenter/sim divergence all qualify.
 
 Hard rules (non-negotiable):
+
 - **Never fix-then-file.** The bug ticket exists BEFORE the first line of fix
   code. A post-hoc ticket is a fig leaf, not a record — the lineage's history
   of invisible quiet fixes is why this order is mandatory.
@@ -32,9 +33,10 @@ Hard rules (non-negotiable):
   unattributable multi-ticket trees accumulated in the lineage.
 
 ## 1. Investigate the root cause FIRST
+
 - Reproduce or pin down the broken behavior. No fixing yet. Reproduce via a
   failing assertion against `gdtf_battle_sim`, or by running the app
-  (`cargo run -p grimdark_turfwar`) and observing the live behavior.
+  (`cargo run -p grimdark_turfwar --features dynamic_linking`) and observing the live behavior.
 - Find the exact mechanism: cite **file:line** evidence for the defect (e.g.
   `crates/gdtf_battle_sim/src/<module>.rs:NN`).
 - Find the ticket that shipped the behavior: `git log -S'<token>'` /
@@ -47,9 +49,11 @@ Hard rules (non-negotiable):
   `docs/architecture.md`, the relevant ADR under `docs/decisions/`).
 
 ## 2. File the Linear bug
+
 Via the **project-manager** sub-agent (Agent tool), create the bug in project
 **GDTF** (the PM discovers the owning team via the Linear MCP — do not hardcode
 a team name), with these four sections:
+
 - **Shipped claim vs actual** — what GTW-N claimed Done, what the code does.
 - **Root cause** — the file:line mechanism from step 1.
 - **Fix contract** — clause-numbered (C1, C2, …): exactly what the fix changes
@@ -59,6 +63,7 @@ a team name), with these four sections:
   tests — NOT `res://test`).
 
 ## 3. THEN branch
+
 Require a clean tree on `develop` (`git status --porcelain` empty,
 `git branch --show-current` is `develop`); refuse otherwise: finish or stash
 first. Then `git flow feature start gtw-N-slug` using the NEW bug ticket's
@@ -68,6 +73,7 @@ project-manager sub-agent move the bug to **In Progress** per
 `.claude/rules/linear-discipline.md`.
 
 ## 4. Implement
+
 Write the regression test FIRST and watch it **fail for the root-cause
 reason** — a Rust `#[cfg(test)] mod tests` unit test or an integration test
 under `crates/<crate>/tests/`, driving the same systems/components/resources
@@ -80,9 +86,11 @@ is ALL three passing:
 
 ```
 cargo fmt --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
+cargo test --workspace --features grimdark_turfwar/dynamic_linking
 ```
+
+(`cargo dclippy` / `cargo dtest` / `cargo drun` in `.cargo/config.toml` are the shorthand.)
 
 The workspace denies clippy all/pedantic/correctness plus
 unwrap/expect/panic/todo/unimplemented and missing_docs, so being fmt-clean and
@@ -95,6 +103,7 @@ require in-engine evidence: run the app and observe the corrected behavior, or
 a headless Bevy integration test — richer automation is **TBD (Bevy harness)**.
 
 ## 5. Gate, then land
+
 Run **/gate** — its `design-gate` sub-agent verifies the fix against the bug's
 fix contract first-hand, and the `pre-commit-gate.sh` hook blocks any commit
 without a matching gate-pass; on pass, run **/land**. Board states move only as
@@ -102,6 +111,7 @@ they become true — never ahead of the code
 (`.claude/rules/linear-discipline.md`).
 
 ## Worked example
+
 1. The sim resolves a hit only along the X axis even though GTW-207 claimed
    arbitrary-vector resolution. Reproduce with a failing assert in
    `gdtf_battle_sim` for a 45° vector. No fixing yet.

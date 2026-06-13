@@ -22,6 +22,7 @@ orchestrating workflow / main session invokes the sub-agents named below
 per-need and relays their findings to the user — there is no persistent team.
 
 ## 1. Pick the ticket
+
 - No argument: invoke the **project-manager** sub-agent (Agent tool) and ask
   for the ONE next ticket in priority order from Linear, project **GDTF** —
   full description, labels, and dependencies. The PM discovers the owning
@@ -36,7 +37,9 @@ per-need and relays their findings to the user — there is no persistent team.
   split). Do not start it, and do not "just do part of it".
 
 ## 2. Verify a clean start — refuse otherwise
+
 Run `git status --porcelain` and `git branch --show-current`. Require BOTH:
+
 - working tree clean (no modified, staged, or untracked source files), AND
 - current branch is `develop`.
 
@@ -46,14 +49,17 @@ exactly how multi-ticket monster trees happened in the lineage. See
 `.claude/rules/git-workflow.md`.
 
 ## 3. Branch
+
 `git flow feature start gtw-N-slug` (lowercase ticket id + short kebab slug,
 e.g. `gtw-164-next-task-skill`) → `feature/gtw-N-slug` off `develop`.
 
 ## 4. Move the ticket
+
 Via the project-manager sub-agent: move GTW-N to **In Progress**. The board
 must mirror reality at every moment — see `.claude/rules/linear-discipline.md`.
 
 ## 5. Restate the ticket as a contract — BEFORE any code
+
 In the conversation, restate the ticket as a **clause-numbered contract**
 (C1, C2, …): every acceptance criterion, constraint, and design-doc reference
 as its own numbered clause. This is the anti-narrowing device — /gate checks
@@ -64,6 +70,7 @@ ADRs, architecture). If a clause is ambiguous, ask the user NOW, not
 mid-implementation. Never trade a clause away for "easy/fast over right".
 
 ## 6. Audit "Done" dependencies
+
 For every ticket this one depends on that is marked Done: audit the claim
 against the actual code per `.claude/rules/design-fidelity.md` before building
 on it (you may delegate the audit to the **design-gate** sub-agent via the
@@ -72,6 +79,7 @@ dependency is not actually done, stop, tell the user, and file it with
 **/file-bug** if broken behavior shipped.
 
 ## 7. Implement
+
 Build to the contract. Tests must exercise the **real code path** — the same
 systems, components, and resources the app runs, never a reimplementation of
 the logic inside the test. New combat/sim logic belongs in the render-free
@@ -83,18 +91,20 @@ tests under `crates/<crate>/tests/` — NOT `res://test`, NOT GUT.
 Follow `.claude/rules/verification.md` and `.claude/rules/bevy-traps.md` (ECS
 gotchas: system ordering / schedule placement, `OnEnter`/`OnExit` AppState
 transitions, Query filter conflicts, asset-load timing). For runtime evidence,
-RUN the app: `cargo run -p grimdark_turfwar`, or a headless Bevy integration
-test that drives systems and asserts on world state. Richer in-engine
-automation is **TBD (Bevy harness)**.
+RUN the app: `cargo run -p grimdark_turfwar --features dynamic_linking`, or a
+headless Bevy integration test that drives systems and asserts on world state.
+Richer in-engine automation is **TBD (Bevy harness)**.
 
 The ONE definition of green is the full suite, run from the repo root — green
 is ALL three passing:
 
 ```
 cargo fmt --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
+cargo test --workspace --features grimdark_turfwar/dynamic_linking
 ```
+
+(`cargo dclippy` / `cargo dtest` / `cargo drun` in `.cargo/config.toml` are the shorthand.)
 
 The workspace denies clippy all/pedantic/correctness plus
 unwrap/expect/panic/todo/unimplemented and missing_docs, so being fmt-clean and
@@ -103,6 +113,7 @@ lint-clean ARE part of "done". The repo has zero tests today, so
 MUST add tests on the real code path.
 
 ### Descoping is illegal without the user
+
 You may NOT narrow a clause because the specified design is harder or slower —
 that is the lineage's #1 failure mode (`.claude/rules/design-fidelity.md`).
 Catching yourself writing "for now", "simplified version", "basic
@@ -112,6 +123,7 @@ TICKET is updated FIRST → then code. Partial delivery is not delivery; a
 ticket lands only when EVERY clause is implemented.
 
 ## 8. Finish
+
 Run **/gate**. Its `design-gate` sub-agent audits the diff against your
 clause-numbered contract and `docs/` — a change that passes the green suite
 but deviates from spec FAILS the gate. Only a passing /gate makes the ticket
@@ -120,6 +132,7 @@ eligible for **/land** and for In Review / Done on the board. The
 develop/main branch, or on a red suite. Never claim completion without it.
 
 ## Worked example (no argument)
+
 1. PM returns the next ticket: **GTW-207** "battle-sim: resolve a hit along an
    arbitrary attack vector" (no `LARGE` label → workable).
 2. `git status --porcelain` empty, on `develop` → proceed.

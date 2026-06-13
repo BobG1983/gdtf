@@ -83,8 +83,8 @@ live in `.claude/rules/verification.md`.
 7. **Gate, then land — /land owns the commit.** Run **/gate**. The one definition of
    green (run from repo root, all must pass):
    - `cargo fmt --check`
-   - `cargo clippy --workspace --all-targets --all-features -- -D warnings`
-   - `cargo test --workspace`
+   - `cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings`
+   - `cargo test --workspace --features grimdark_turfwar/dynamic_linking`
 
    On PASS, run **/land** immediately: /land stages the edited docs **explicitly by
    name** (never `-A` or `.`), commits as `Docs: <summary> (GTW-N)` with a wrapped
@@ -110,12 +110,7 @@ concept that no longer exists. When you hit one, re-ground to the Bevy equivalen
 If neither the source nor the documented design intent pins the Bevy specific, write
 **TBD (Bevy):** — never invent a system name, schedule, or component to fill the gap.
 
-## Notes on green and gaps
+## Notes on Gaps
 
-- gdtf currently has zero tests, so `cargo test` passes trivially — that alone is
-  **not** "red". A pure docs-sync that touches no code is allowed to land without
-  adding tests; but if you discover a doc claim that is DRIFTED because the code is
-  *wrong*, that is a code bug — file a `GTW-N` ticket and fix it on its own behavioral
-  branch (which must add a test on the real code path), not inside the docs-sync diff.
 - Keep docs-sync diffs to `docs/` (plus the occasional `CLAUDE.md` tombstone). Code
   changes do not belong in a `Docs:` commit.

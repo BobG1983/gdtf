@@ -6,7 +6,7 @@ NOT transcripts of real ticket runs — they exist to prove the kit is internall
 consistent and obeys the gdtf adaptation spec (Rust + Bevy 0.18, Linear project
 GDTF with `GTW-` tickets, the Workflow orchestration model, and the one
 definition of green: `cargo fmt --check` + `cargo clippy … -D warnings` +
-`cargo test --workspace`).
+`cargo test --workspace`, dynamic-linked via `grimdark_turfwar/dynamic_linking`).
 
 ## Docs
 

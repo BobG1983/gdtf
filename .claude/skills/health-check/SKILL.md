@@ -113,10 +113,13 @@ persistent team.
    **/next-task** → `git flow feature start gtw-N-<slug>` → implement → **/gate** →
    **/land**. Never batch unrelated findings into one tree. The ONE definition of green
    the fix must hit, from the repo root:
+
    ```
    cargo fmt --check
-   cargo clippy --workspace --all-targets --all-features -- -D warnings
-   cargo test --workspace
+   cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
+   cargo test --workspace --features grimdark_turfwar/dynamic_linking
    ```
+
+   (`cargo dclippy` / `cargo dtest` / `cargo drun` in `.cargo/config.toml` are the shorthand.)
 7. **Report.** Per lens: candidates swept / refuted / confirmed / tickets filed (with
    GTW-N ids), plus anything deliberately left alone (designed-dormant surface) and why.
