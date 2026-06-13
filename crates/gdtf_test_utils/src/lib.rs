@@ -1,4 +1,14 @@
-//! Headless test harness for the GDTF Bevy app.
+//! Headless test harnesses for the GDTF Bevy app.
+//!
+//! Two type-state builders are provided:
+//!
+//! - [`GdtfTestAppBuilder`] — a `MinimalPlugins` app wired with the real GDTF
+//!   state machine, for state-machine / system-effect tests (no renderer, no
+//!   asset stack, no UI layout).
+//! - [`GdtfUiTestAppBuilder`] — a `DefaultPlugins` app in the official
+//!   `no_renderer.rs` headless configuration (no GPU, no window), for tests that
+//!   need real `bevy_ui` **layout geometry** ([`bevy::ui::ComputedNode`]) or a
+//!   live [`bevy::asset::AssetServer`]. See [`ui`](crate::GdtfUiTestAppBuilder).
 //!
 //! [`GdtfTestAppBuilder`] is a **type-state** builder over [`bevy::app::App`]:
 //! it wires the real GDTF state machine (via
@@ -48,6 +58,9 @@ use core::marker::PhantomData;
 
 use bevy::{MinimalPlugins, app::App, state::state::NextState, time::TimeUpdateStrategy};
 use gdtf_app::test_support::{self, AppState};
+
+mod ui;
+pub use ui::{GdtfUiTestAppBuilder, NoCamera, WithCamera};
 
 /// Type-state marker: the builder has **not** yet been given an initial
 /// [`AppState`]. In this phase the transition methods
