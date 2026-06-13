@@ -6,5 +6,11 @@ edition = "2024"
 [dependencies]
 gdtf_app = { path = "../../crates/gdtf_app" }
 
+[features]
+# Bevy dynamic linking for fast dev builds; chains through to gdtf_app -> bevy.
+# Enable for non-release builds (e.g. `cargo run --features dynamic_linking`);
+# leave off for `--release` so it never ships in release artifacts.
+dynamic_linking = ["gdtf_app/dynamic_linking"]
+
 [lints]
 workspace = true

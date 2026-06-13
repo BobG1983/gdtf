@@ -1,52 +1,14 @@
 [alias]
-# breaker-game (dynamic linking for fast iteration)
-dev = "run -p breaker --features bevy/dynamic_linking"
-dbuild = "build -p breaker --features bevy/dynamic_linking"
-dtest = "test -p breaker --features bevy/dynamic_linking"
-dcheck = "check -p breaker --features bevy/dynamic_linking"
-dclippy = "clippy -p breaker --all-targets --features bevy/dynamic_linking"
+# Dynamic linking for fast, non-release iteration.
+# `dynamic_linking` is opt-in and must NEVER be enabled for release builds.
 
-# rantzsoft_spatial2d (dynamic linking to avoid workspace artifact conflicts)
-spatial2dtest = "test -p rantzsoft_spatial2d --features bevy/dynamic_linking"
-spatial2dclippy = "clippy -p rantzsoft_spatial2d --all-targets --features bevy/dynamic_linking"
-spatial2dcheck = "check -p rantzsoft_spatial2d --features bevy/dynamic_linking"
+# Run / build the game with dynamic linking.
+drun = "run -p grimdark_turfwar --features dynamic_linking"
+dbuild = "build -p grimdark_turfwar --features dynamic_linking"
 
-# rantzsoft_physics2d (dynamic linking to avoid workspace artifact conflicts)
-physics2dtest = "test -p rantzsoft_physics2d --features bevy/dynamic_linking"
-physics2dclippy = "clippy -p rantzsoft_physics2d --all-targets --features bevy/dynamic_linking"
-physics2dcheck = "check -p rantzsoft_physics2d --features bevy/dynamic_linking"
-
-# rantzsoft_defaults (dynamic linking to avoid workspace artifact conflicts)
-defaultstest = "test -p rantzsoft_defaults --features bevy/dynamic_linking,hot-reload"
-defaultsclippy = "clippy -p rantzsoft_defaults --all-targets --features bevy/dynamic_linking,hot-reload"
-defaultscheck = "check -p rantzsoft_defaults --features bevy/dynamic_linking,hot-reload"
-
-# rantzsoft_stateflow (dynamic linking to avoid workspace artifact conflicts)
-stateflowtest = "test -p rantzsoft_stateflow --features bevy/dynamic_linking"
-stateflowclippy = "clippy -p rantzsoft_stateflow --all-targets --features bevy/dynamic_linking"
-stateflowcheck = "check -p rantzsoft_stateflow --features bevy/dynamic_linking"
-
-# rantzsoft_dmg (dynamic linking to avoid workspace artifact conflicts)
-dmgtest = "test -p rantzsoft_dmg --features bevy/dynamic_linking"
-dmgclippy = "clippy -p rantzsoft_dmg --all-targets --features bevy/dynamic_linking"
-dmgcheck = "check -p rantzsoft_dmg --features bevy/dynamic_linking"
-
-# scenario runner (dev — ONLY for debugging bugs in the runner itself)
-dscenario = "run -p breaker_scenario_runner"
-dstest = "test -p breaker_scenario_runner"
-dsclippy = "clippy -p breaker_scenario_runner --all-targets"
-dscheck = "check -p breaker_scenario_runner"
-
-# workspace-wide (dynamic linking + hot-reload for all crates)
-all-dtest = "test --workspace --features bevy/dynamic_linking,hot-reload"
-all-dclippy = "clippy --workspace --all-targets --features bevy/dynamic_linking,hot-reload"
-
-# scenario runner (release — ALWAYS use this for scenario validation)
-# Usage:
-#   cargo scenario -- --all              All scenarios, parallel (default 32 jobs)
-#   cargo scenario -- --all -p 4         All scenarios, 4 parallel jobs
-#   cargo scenario -- --all -p all       All scenarios, unlimited parallelism
-#   cargo scenario -- --all --serial     All scenarios, in-process sequential
-#   cargo scenario -- --all --loop 10    All scenarios 10 times
-#   cargo scenario -- -s aegis_chaos     Single scenario, in-process
-scenario = "run --release -p breaker_scenario_runner"
+# Workspace-wide dev checks with dynamic linking. bevy is a single shared
+# dependency, so enabling the feature anywhere makes every bevy-linked crate
+# use the shared dylib — these cover all crates (incl. libs).
+dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking"
+dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking"
+dtest = "test --workspace --features grimdark_turfwar/dynamic_linking"
