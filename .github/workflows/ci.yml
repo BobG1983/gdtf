@@ -27,13 +27,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Bevy needs ALSA (audio) and udev (input/device enumeration) headers to
-      # build on Linux. These are the system libs Bevy's own CI installs; without
-      # them `bevy_audio` / device backends fail to compile/link.
+      # Build-time system deps for Bevy's Linux backends — needed to COMPILE, not
+      # to open a display. CI never opens a window (MinimalPlugins tests + a
+      # build-only release step), but the crates must still build: bevy_audio
+      # needs ALSA (libasound2-dev); input/device enumeration needs udev
+      # (libudev-dev); bevy_winit pulls wayland-sys, whose build script probes
+      # pkg-config for wayland-client at build time (libwayland-dev provides
+      # wayland-client.pc) plus xkbcommon (libxkbcommon-dev). This is Bevy's own
+      # canonical Linux CI dep set — without libwayland-dev the wayland-sys build
+      # script panics (pkg-config can't find wayland-client). See GTW-132.
       - name: Install Bevy Linux system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y libasound2-dev libudev-dev
+          sudo apt-get install --no-install-recommends -y \
+            libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
       # The repo PINS its toolchain via rust-toolchain.toml (nightly): the
       # workspace uses nursery clippy lints (use_self, missing_const_for_fn, ...)
