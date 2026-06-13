@@ -4,7 +4,7 @@ use crate::{
     scenes::running::game::battlescape::aftermath::{
         GameBattleScapeAfterMathAnimateInScenePlugin,
         GameBattleScapeAfterMathAnimateOutScenePlugin,
-        GameBattleScapeAfterMathDisplayAfterScenePlugin, systems::*,
+        GameBattleScapeAfterMathDisplayAftermathScenePlugin, systems::*,
     },
     states::{AfterMathState, BattleScapeState},
 };
@@ -26,7 +26,7 @@ fn add_systems(app: &mut App) {
 
 fn add_plugins(app: &mut App) {
     app.add_plugins(GameBattleScapeAfterMathAnimateInScenePlugin)
-        .add_plugins(GameBattleScapeAfterMathDisplayAfterScenePlugin)
+        .add_plugins(GameBattleScapeAfterMathDisplayAftermathScenePlugin)
         .add_plugins(GameBattleScapeAfterMathAnimateOutScenePlugin);
 }
 
