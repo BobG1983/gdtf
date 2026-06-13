@@ -43,7 +43,14 @@ that canon is part of the contract ALONGSIDE the ticket.
    immediately; fix the suite before anything else.
    - Note: gdtf has few or zero tests today, so `cargo test` may pass trivially. That
      is NOT a free pass — a behavioral ticket whose clauses add no test on the real
-     code path is a contract VIOLATION (see step 7), not a green light.
+     code path is a contract VIOLATION (see step 4a + step 7), not a green light.
+   Steps 4a–4c add three BLOCKING structural checks (insufficient tests, unwired
+   systems/plugins, oversized files) that fail the gate like a clause violation and
+   route through the same step-7 repair loop. These are JUDGMENT checks scoped to the
+   diff — they live HERE and in the design-gate reviewers, NOT the pre-commit hook,
+   which stays a deterministic branch/gate-pass/suite backstop and makes no design call.
+   So they bind only when `/gate` is actually run: skipping `/gate` leaves no backstop
+   for them (the hook can't read a ticket contract).
 3. **Restate the contract as clause-numbered** (C1, C2, …): one clause per
    requirement / acceptance criterion, faithful to the ticket's wording and to any
    `docs/` canon it invokes — do not soften, merge, or drop clauses. When MULTIPLE
@@ -62,18 +69,98 @@ that canon is part of the contract ALONGSIDE the ticket.
 
    (Use `git diff develop...HEAD` when commits exist on the branch; otherwise
    `git diff HEAD`. Untracked files are part of the change and must be reviewed.)
+4a. **Blocking check — insufficient tests (real-path coverage).** Make `verification.md`
+   Rule 2 a hard gate: EVERY behavioral clause — new or changed logic, in ANY crate —
+   MUST map to a test on the REAL code path that ASSERTS on the change, not a fixture
+   echo. The grep below is only a cheap candidate-finder for ONE crate; absence of hits
+   is NOT clearance — enumerate every behavioral clause across all crates and confirm a
+   real-path, assertion-bearing test per clause by reading it. The bar differs by crate
+   (`verification.md` Rules 2–3): a sim clause (`crates/gdtf_battle_sim`) needs a unit
+   test with injected seeded RNG; a presenter/scene/view clause needs a headless Bevy
+   integration test OR observed in-engine evidence from
+   `cargo run -p grimdark_turfwar --features dynamic_linking`. Candidate-finder:
+
+   ```bash
+   # sim fns added/changed in the diff (skip doc/comment lines), then any #[test] for them
+   git diff develop...HEAD -- crates/gdtf_battle_sim | grep -nE '^\+[^/]*\b(pub|pub\(crate\)|fn) ' | grep -v '^\+ *//'
+   grep -rn '#\[test\]' crates/gdtf_battle_sim
+   ```
+
+   A behavioral clause with no real-path, assertion-bearing test = **VIOLATION**. A test
+   that calls the unit with no assertion, asserts on its own setup, or would still pass
+   with the clause reverted is ITSELF a violation — the pin-discrimination check (*would
+   this test fail if the clause were violated?*) is MANDATORY, not optional. A pure
+   refactor, a rename, a visibility-only change (`pub(crate)`→`pub`), a signature move, or
+   a docs-only clause adds no behavior and is exempt — but ONLY when the ticket says so.
+   A trivially green `cargo test` does NOT clear this check.
+4b. **Blocking check — unwired systems/plugins (the dead-code footgun).** A Bevy system
+   fn, `*Plugin`, resource, message/event, reflected type, or state that is AUTHORED but
+   never registered never RUNS — the Bevy analogue of dead code, silently narrowing a
+   clause to an unreachable system. Use the FULL `health-check` step-2 wiring set (it is
+   broader than a name-grep): a system fn must reach the App via a scene `plugin.rs`
+   `add_systems(OnEnter/OnExit/Update/FixedUpdate, …)`, that `*ScenePlugin` via
+   `scenes/plugin.rs` `add_plugins(…)`, and `ScenesPlugin` via `app/gdtf_app.rs`. Also
+   check `init_resource`/`insert_resource`, `add_message`/`add_event`, `register_type`,
+   `init_state`, run-condition closures (`run_if`/`in_state`/`resource_exists`), label/
+   asset strings, and a `Plugin::build()` in ANY crate that may register (incl.
+   `gdtf_battle_*`). Mechanism (per new symbol):
+
+   ```bash
+   grep -rnE 'add_systems|add_plugins|init_resource|insert_resource|add_message|add_event|register_type|init_state|run_if|in_state|resource_exists|fn build' crates/*/src
+   ```
+
+   A grep MISS is NOT an auto-fail: indirect registration (a `SystemSet`, a helper taking
+   the schedule, a sub-plugin's `build()`) can wire it — confirm by READING the
+   registration path before condemning, or you false-fail live code. Rule: a clause
+   CLAIMING a system/plugin/state runs that is genuinely unwired = **VIOLATION**. An
+   unwired scaffold the ticket does NOT claim live is FINE when `docs/` specifies the
+   scene as built-ahead/dormant — but the exemption must CITE the `docs/` line
+   (`health-check` step-4 KEEP rule, `design-fidelity.md`). Remember a resource needs an
+   OnEnter/OnExit pair + a `run_if`/`Option<Res<…>>` guard (`bevy-traps.md` #1).
+4c. **Blocking check — oversized files (count + cohesion).** List every `.rs` SOURCE the
+   diff touches or adds — tracked AND untracked, dropping deleted paths — and `wc -l`
+   each existing one (exclude generated/asset files; today's tree tops out at 47 lines,
+   so this has wide headroom). PROPOSED threshold (an editorial call, not user-given —
+   see open questions): **warn > 300 lines, BLOCK > 400 lines.** A line count alone
+   cannot tell a cohesive large file from a bloated one, so an over-cap file is a
+   **VIOLATION only when the reviewer also confirms it mixes unrelated responsibilities**
+   — split it along the small-focused-systems idiom (`CLAUDE.md` Conventions,
+   `bevy-traps.md`). A legitimately-large cohesive file (a data table, an exhaustive match)
+   passes when the ticket sanctions it. A warn-band file is reported, not failed.
+   Mechanism:
+
+   ```bash
+   { git diff develop...HEAD --name-only -- '*.rs'; git ls-files -o --exclude-standard -- '*.rs'; } \
+     | sort -u | while read -r f; do [ -f "$f" ] && wc -l "$f"; done   # >400 blocks, >300 warns
+   ```
+
 5. **Verify the diff first-hand via the design-gate workflow.** This is a workflow
-   orchestration step, not a standing team: the orchestrating session spawns a
-   per-need **design-gate** sub-agent and passes it the ticket id(s), the numbered
-   contract, the `docs/` canon paths it touches, the diff, and this instruction
-   verbatim: "Verify every clause FIRST-HAND — read the code and run what you must
-   (including `cargo run -p grimdark_turfwar --features dynamic_linking` or a headless
+   orchestration step, not a standing team. **Default: a 3-lens adversarial fan-out** —
+   in a SINGLE message the orchestrating session spawns THREE parallel read-only
+   **design-gate** sub-agents (the same fan-out shape `health-check` step 2 uses), each
+   briefed to one lens so the lenses cannot all share one blind spot and each MUST cite
+   lens-specific evidence:
+   - **Fidelity lens** — every clause vs. the contract's exact words + `docs/` canon;
+     hunt quiet narrowing and hedge markers (`design-fidelity.md`).
+   - **Tests lens** — check 4a: every behavioral clause has a real-path, assertion-bearing,
+     pin-discriminating test (`verification.md` Rules 2–3).
+   - **Structure/Bevy lens** — checks 4b + 4c and the `bevy-traps.md` ECS traps
+     (unwired wiring chain, file size+cohesion, ambiguous ordering, OnEnter-without-OnExit
+     resources, `EventWriter` vs `MessageWriter`).
+   **Lightweight option:** when a single pass is enough, spawn ONE design-gate sub-agent
+   carrying all three lenses (it already encodes 4a–4c). Either way pass the ticket id(s),
+   the numbered contract (including 4a–4c), the touched `docs/` paths, the diff, and this
+   instruction verbatim: "Verify every clause FIRST-HAND — read the code and run what you
+   must (including `cargo run -p grimdark_turfwar --features dynamic_linking` or a headless
    Bevy integration test for runtime behavior); do not trust the implementer's claims or
-   this summary." When MULTIPLE tickets were named, the design-gate audits the ONE
-   combined diff against the combined contract (every clause of every named ticket) in a
-   single pass. The
-   sub-agent reports back to the spawning session; it does not spawn further
-   sub-agents.
+   this summary; also enforce the test-sufficiency, unwired-systems, and file-size checks
+   (4a–4c) and run the green suite yourself." When MULTIPLE tickets were named, the
+   reviewers audit the ONE combined diff against the combined contract (every clause of
+   every named ticket) in a single pass. Reviewers are READ-ONLY and report back to the
+   spawning session; they do not spawn further sub-agents. **Merge ANY-NON-COMPLIANT-
+   BLOCKS:** one NON-COMPLIANT (or one dead/empty reviewer — uncertainty never favors the
+   implementer) fails the whole gate. In the relay (step 6) name WHICH lens failed and
+   why, so a reviewer that died is distinguishable from a real violation.
 6. **Relay the verdict** to the user: per-clause PASS / VIOLATION with the sub-agent's
    evidence. Do not editorialize a VIOLATION into a pass.
 7. **On violations, repair the CODE.** Fix each violated clause in the implementation

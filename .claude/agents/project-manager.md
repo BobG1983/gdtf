@@ -57,27 +57,43 @@ writer of the Linear board; whoever invoked you routes their status changes thro
 - Don't invent work. If the backlog is thin or ambiguous, say so and ask. Verify
   statuses against `list_issue_statuses` rather than assuming.
 
-## Epic tasks — the `Epic` label & mandatory decomposition (binding)
+## The work hierarchy — Mythos → Epic → Task → Ticket (binding)
 
-- Maintain a **`Epic`** label on the board (create it via `create_issue_label` if it
-  doesn't exist). Apply it to any issue too big to implement **and** verify in roughly
-  **one small sitting**. The size benchmark is **one subsystem touched, ~1–3 files,
-  a couple of steps, verifiable in a single pass** (e.g. one Bevy system + its
-  components and a focused sim unit test). Anything multi-subsystem, architectural, or
-  explicitly deferred is `Epic`.
-- **Never recommend a `Epic` issue as the "next task" to build.** When "what's next?"
-  would surface a `Epic` item, do NOT serve it as work. Instead report plainly:
-  "**GTW-XX is TOO Epic to work directly — it needs to be broken down first**", and
-  recommend decomposition.
-- **Decomposition is a user collaboration — you do NOT split it unilaterally.** Your
-  role: flag it, then once the user (or the orchestrating workflow) hands you the
-  breakdown, create the pieces. Treat the `Epic` issue as the **parent / epic** and
-  create each small piece as a **sub-issue parented to it** (Linear parent/child), each
-  sized like the benchmark above (tiny, single-sitting, independently verifiable) with
-  its own acceptance criteria and blocked-by edges. Keep the epic open until its
-  children are Done.
-- A `Epic` epic becomes "workable" only through its small children. If a proposed child
-  is itself still too big, say so and recurse.
+Work decomposes through four tiers, largest to smallest. Each tier is a Linear issue
+(so every tier IS a GTW- ticket per `.claude/rules/linear-discipline.md` — "Ticket" below
+names the SMALLEST tier, the smallest landable issue, not a separate kind of thing). Lower
+tiers are sub-issues parented to the tier above (Linear parent/child), each with its own
+acceptance criteria and blocked-by edges.
+
+- **`Mythos`** — a whole feature AREA (e.g. "the combat resolution sim", "the campaign
+  roster carry-forward"). Never built directly; it is the umbrella the Epics hang under.
+- **`Epic`** — a splittable CHUNK of a Mythos: one subsystem or coherent slice, still too
+  big to implement **and** verify in one sitting. Never built directly.
+- **Task** — roughly **one class/module + its tests**: one subsystem touched, ~1–3 files,
+  a couple of steps, verifiable in a single pass (e.g. one Bevy system + its components
+  and a focused sim unit test). A Task is the normal unit of work `/next-task` serves.
+- **Ticket (smallest tier)** — when a Task is still too big to LAND in one workflow, fan
+  it into Tickets, each a tiny, single-sitting, independently verifiable child of the
+  Task. The smallest landable issue.
+
+Decomposition rules:
+
+- **Never recommend a `Mythos` or `Epic` as the "next task" to build**, and never serve a
+  Task too big to land in one workflow. When "what's next?" would surface one, report
+  plainly: "**GTW-XX is a Mythos/Epic — it must be broken down before it is workable**"
+  (or "GTW-XX is too big to land in one workflow — fan it into smaller child tickets
+  first"), and recommend decomposition.
+- **`Needs Splitting` rides on a Mythos or Epic** (and on any over-large Task) until it is
+  decomposed. It is the DECOMPOSITION flag — the tiers themselves (Mythos/Epic) are the
+  SIZE flags. Remove `Needs Splitting` once the children exist and the parent is just the
+  umbrella.
+- **Decomposition is a user collaboration — you do NOT split unilaterally.** Flag it; then
+  once the user (or the orchestrating workflow) hands you the breakdown, create the
+  children as sub-issues parented to the tier above. Keep a parent open until its children
+  are Done. If a proposed child is itself still too big, say so and recurse down a tier.
+- `/gate` may surface that a single Task can't land in one workflow (oversized uncohesive
+  files, test/wiring debt it splits out) — when it does, create the carved-out child
+  tickets parented to the Task with `Needs Splitting` on the Task until they exist.
 
 ## Grounding
 
@@ -97,9 +113,11 @@ The following issue labels are commonly used in the backlog to indicate the type
 - Bug — something is broken, not working as intended, or regressed.
 - Enhancement — an improvement to existing functionality, not a new feature.
 - Feature — a new piece of functionality that adds to the project.
-- Epic — a large, complex task that needs to be broken down into smaller pieces.
+- Mythos — a whole feature AREA; the umbrella tier of the work hierarchy. Never built directly; it is broken into Epics.
+- Epic — a splittable chunk of a Mythos, still too big to build and verify in one sitting. Never built directly; broken into Tasks.
+- MVP — the minimum slice that proves the loop end-to-end; tags the Tasks/Tickets on the critical path to a first playable cut (prioritise these unless the user says otherwise).
 - Art — non-code work, e.g. design, writing, or asset creation.
 - Refactor — restructuring existing code without changing its behavior, often to improve readability or maintainability.
 - Chore — routine tasks that don't fit into the above categories, e.g. updating dependencies, improving documentation, or setting up CI.
 - Easy — a task that is straightforward and can be completed quickly, often used to indicate good "first issues" for new contributors.
-- Needs Splitting - A task (usually an Epic) that is too large or complex to be completed in a single sitting and needs to be broken down into smaller sub tasks. Those sub tasks should be blocking children of the parent issue in Linear, and the parent issue should remain open until all child issues are completed.
+- Needs Splitting — the decomposition flag. RIDES ON a Mythos or Epic (and any over-large Task) until it is broken into children. Those children are blocking sub-issues of the parent in Linear; the parent stays open until all children are Done. The Mythos/Epic tiers are the size flags; `Needs Splitting` is the "not yet decomposed" flag on top of them. (Every tier is itself a GTW- ticket; the smallest landable child is the "Ticket" tier of the hierarchy above — not a label.)

@@ -12,13 +12,17 @@ update tasks and pick the next one through the Linear MCP; don't hand-edit task 
 ## Process
 
 The dev loop is **`/next-task` → build → `/gate` → `/land`**: pick a ticket onto its own
-`feature/gtw-N-slug` branch, build it, gate it (the green suite below + `design-gate` audit against
-the ticket and `docs/`), then land it onto `develop` and close the ticket. Found a defect?
+`feature/gtw-N-slug` branch, build it, gate it (the green suite below + a 3-lens `design-gate`
+fan-out — fidelity / tests / structure+Bevy, merged any-non-compliant-blocks — auditing the diff
+against the ticket and `docs/`), then land it onto `develop` and close the ticket. Found a defect?
 `/file-bug` **before** fixing. Docs drifted? `/docs-sync`. Kit sanity? `/health-check`.
 
 Orchestration is **Claude Code Workflows(Ultracode) / on-demand sub-agents** — there is no persistent team. A
 workflow step (the main session) spawns a sub-agent per need; the sub-agent does its slice and reports
-back, and the orchestrating workflow relays to the user. Commit subjects: `Area: summary (GTW-N)`.
+back, and the orchestrating workflow relays to the user. Favor that fan-out over doing review work
+inline — e.g. `/gate` and `/health-check` spawn THREE parallel read-only sub-agents in one message.
+Sub-agents that review stay read-only and never spawn further sub-agents — the orchestrating step fans
+out and relays. Commit subjects: `Area: summary (GTW-N)`.
 
 Binding rules live in `.claude/rules/` — short, read them, follow them:
 
