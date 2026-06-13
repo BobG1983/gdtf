@@ -1,3 +1,7 @@
 # Machine-local gate bookkeeping and agent memory — never committed.
 .gate-pass
 agent-memory/
+
+# Per-developer overrides (personal model / effortLevel) — committed config is
+# settings.json; this file layers on top and stays out of version control.
+settings.local.json
