@@ -1,0 +1,54 @@
+# Battlescape (TBS Combat)
+
+The tactical layer. **Square grid** — locked. Cover, blast radii, building footprints, destructible terrain, and the entire genre's (and the player's) muscle memory assume square tiles. There is no upside to hex combat.
+
+Grid topology is sim-side and engine-agnostic: a cell is `glam::IVec2` and a position is the pair `(cell, level)`. The square grid is the **rule model** (in `gdtf_battle_sim`); how it's *drawn* is a separate presenter concern (below).
+
+## Presentation — settled
+
+The intended look is **isometric projection** (UFO:EU-style dimetric), **fixed camera — pan + zoom only, no rotation**. Isometric is a *rendering* choice; the grid topology is unchanged (still square). Rotation is deliberately excluded to keep art at **1× per unit/prop** — a rotatable view would demand 4–8× the sprites, which fights the minimize-art-cost strategy; the original X-COM was fixed iso for exactly this reason.
+
+**TBD (Bevy):** the concrete render setup — camera type (orthographic dimetric camera vs. 2D iso), the cell→screen projection, pan/zoom-only camera controller, and window/render config (design resolution, nearest-neighbor texture filtering for crisp pixels, app-wide UI theme). These belong to `gdtf_battle_presenter` and the `gdtf_app` window/render plugins, not the sim, and are configured in the Bevy `App` (no `project.godot`).
+
+## Arena size
+
+The ceiling and reference numbers come from *UFO: Enemy Unknown* (source: UFOpaedia, Battlescape Map Generation):
+
+| Map type | Size |
+| ---------- | ------ |
+| Hard maximum | **60×60×8** |
+| Typical | 50×50×8 |
+| Base Assault | 60×60×8 |
+| Smallest (small/medium scout crash) | 40×40×4 |
+| Standard maps | up to 8 elevations |
+| Tunnel War maps | 2 elevations, always 60-tile areas |
+
+**Decisions:**
+
+- **60×60 is the hard max** — battle-tested and correct.
+- **Cap the *common* mission at 40–50.** 60×60 is exactly where the last-enemy hunt becomes the infamous slog; reserve it for set-pieces (base defense, the big turf showdown). Pacing is part of whether generated situations stay fun.
+- **8 Z-levels** — the full 60×60×8 battle-space. Verticality is load-bearing for situations (rooftop overwatch, roof campers) and is **not** deferred: the model is **level-true end to end**. The coarse occupancy/surface grids carry all **8 storeys** (a `MAX_LEVELS` constant on the sim's coarse-occupancy type; maps may author right up to the 8-level ceiling), position everywhere is the pair `(cell, level)`, and gangers change storeys **only over authored stair/ladder links** (a situation's `vertical_links`, validated and poured into the movement graph). The view slices **X-COM-style** — every layer above the active view level is hard-hidden (presenter sets those entities to `Visibility::Hidden`, no dimming). **TBD (Bevy):** map authoring format — situations are Bevy assets (a custom asset type loaded via the asset server / a `bevy_reflect` scene), not Godot `.tres` resources; the greybox fixtures (a multi-storey city with door gaps, roof stairs, interior floors, and a tower; a small two-storey proof — platform, stair, roofed room with a rooftop enemy) are content to re-author as gdtf assets. Taller maps are content authoring, not engineering.
+
+## Core mechanics (v0)
+
+- **Time Units (TU):** every action (step, turn, snap / aimed / auto shot, kneel) costs TUs from a per-turn pool; unspent TUs fund reaction fire. Economy + stat derivations in [stats.md](stats.md).
+- **Cover:** a physical object with a height plus its own armor stats & HP; it stops any round not flying strictly above its height band and can be shot and destroyed. Full model: [resolution.md](resolution.md).
+- **Line of sight (LOS):** determines what a ganger can see and target — probed over the same coarse geometry the shot flies through. The squad's fog-of-war built on it (Visible / Explored / Unseen, asymmetric sight, rendered-only planning): [visibility.md](visibility.md).
+- **Accuracy:** a **dispersion cone** (not a to-hit %) — width from weapon spread × stability × aim mode × fire-mode × recoil; **Shooting** × weapon accuracy sets how tightly shots cluster inside it; shots are real projectiles that travel and hit the first thing in their path (incl. cover and other gangers). Full model: [resolution.md](resolution.md).
+- **Damage:** applied on a hit; modified by the weapon/armor matchup (see [matchup.md](matchup.md)).
+- **Death & downing:** the HP + Wounds two-track model ([stats.md](stats.md)) decides when a ganger goes out. **Death happens in battle**; downed survivors carry Wound markers that roll on the Injury table afterward (see [wounds-and-roster.md](wounds-and-roster.md)).
+
+## Ganger stats
+
+Designed — see [stats.md](stats.md): 7 direct attributes feeding computed combat stats (Time Units, Shooting, Fight, Reactions, HP, Wounds, Morale, Bottle). Stats exist to make the wound table *bite* — a wound that drops an attribute must be felt.
+
+## Deferred
+
+- Destructible terrain, fall damage, blast radii (square grid is chosen partly to support these later), etc. (Z-levels / verticality is **in scope** — see Arena size above.)
+- Suppression and other advanced combat effects — **TBD (design)**, sequence after the core loop is proven.
+
+Note: reaction fire is **not** deferred — it's intrinsic to the Time Units economy (designed, not yet built). Morale/**Bottle** is designed (see [stats.md](stats.md) and [wounds-and-roster.md](wounds-and-roster.md)).
+
+## Resolution model — settled
+
+The full attack pipeline (dispersion accuracy, projectile travel, physical/destructible cover, probabilistic hit-location, damage, wounds, opposed-Fight melee, intrinsic reaction fire, bleed-out) is designed — see [resolution.md](resolution.md). Remaining open work is numeric **tuning** (TU costs per action, accuracy/kickback values, clearance band edges, body-part weights, severity distribution, reaction cap, bleed rate), tracked there.

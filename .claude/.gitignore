@@ -1,0 +1,3 @@
+# Machine-local gate bookkeeping and agent memory — never committed.
+.gate-pass
+agent-memory/
