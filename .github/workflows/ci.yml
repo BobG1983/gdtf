@@ -16,6 +16,9 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # Incremental compilation is useless on fresh CI runners and only bloats the
+  # cache; disable it so the Swatinem cache below stays small and fast.
+  CARGO_INCREMENTAL: 0
   # Fail the build on any rustc/clippy warning, belt-and-suspenders with -D below.
   RUSTFLAGS: -D warnings
 
@@ -55,17 +58,20 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
 
-      - name: Cache cargo registry, git, and target
-        uses: actions/cache@v4
+      # Cache Rust build artifacts. Swatinem/rust-cache is purpose-built for Rust:
+      # it caches ~/.cargo + dependency artifacts (pruning local crates so the
+      # cache stays small + fast), re-saves every run, and keys on the lockfile +
+      # rustc version — unlike a hand-rolled actions/cache over target/, which only
+      # saves on a key miss and bloats past the 10 GB cap with a Bevy-sized target.
+      # NOTE: the FIRST (cold) run still compiles all of Bevy + wgpu in both dev
+      # and release profiles (~15–30 min) — caching speeds the WARM runs. Follow-up
+      # (not done here): the toolchain is unpinned `nightly` (rust-toolchain.toml +
+      # dtolnay@master), so it can move between runs and invalidate the rustc-keyed
+      # cache; pinning nightly to a date would stabilize it (touches local dev too).
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          cache-on-failure: true
 
       - name: cargo fmt --check
         run: cargo fmt --all --check
