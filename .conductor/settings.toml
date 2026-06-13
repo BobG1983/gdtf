@@ -1,0 +1,23 @@
+#:schema https://conductor.build/schemas/settings.repo.schema.json
+
+# Shared Conductor configuration for the gdtf Cargo workspace.
+# Each Conductor workspace is its own git worktree with its own ./target dir,
+# so builds and game instances are isolated per workspace.
+
+[scripts]
+# Prime the workspace: download all crate dependencies up front so the first
+# build/run is fast and offline-safe. Non-destructive and worktree-local.
+setup = "cargo fetch"
+
+# Launch the game (the only binary in the workspace). It's a native Bevy
+# desktop app with no network port, so CONDUCTOR_PORT does not apply.
+# Run is a non-release build, so enable Bevy dynamic linking for fast rebuilds.
+run = "cargo run -p grimdark_turfwar --features dynamic_linking"
+
+# Reclaim the per-workspace target/ dir (can be multiple GB) before the
+# worktree is archived. Only touches build artifacts, never source.
+archive = "cargo clean"
+
+# Each workspace builds and windows independently with no shared fixed port,
+# database, or stack, so multiple workspaces can run side by side.
+run_mode = "concurrent"

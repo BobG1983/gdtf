@@ -1,2 +1,4 @@
 /target
-.conductor/
+# Ignore Conductor's per-workspace state, but share the committed repo config.
+.conductor/*
+!.conductor/settings.toml
