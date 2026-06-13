@@ -1,0 +1,10 @@
+[package]
+name = "grimdark_turfwar"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gdtf_app = { path = "../../crates/gdtf_app" }
+
+[lints]
+workspace = true
