@@ -1,3 +1,4 @@
 mod plugin;
 mod systems;
-pub(crate) use plugin::TeardownScenePlugin;
+pub(in crate::scenes) use plugin::TeardownScenePlugin;
+mod resources;

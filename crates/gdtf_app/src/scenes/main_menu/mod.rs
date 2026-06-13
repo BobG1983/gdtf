@@ -1,3 +1,4 @@
 mod plugin;
 mod systems;
-pub(crate) use plugin::MainMenuScenePlugin;
+pub(in crate::scenes) use plugin::MainMenuScenePlugin;
+mod resources;

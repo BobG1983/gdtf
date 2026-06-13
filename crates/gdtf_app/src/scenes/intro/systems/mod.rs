@@ -1,2 +1,11 @@
 mod print_state;
-pub(crate) use print_state::{print_on_enter, print_on_exit};
+pub(in crate::scenes::intro) use print_state::{print_on_enter, print_on_exit};
+
+mod cleanup;
+pub(in crate::scenes::intro) use cleanup::cleanup;
+
+mod track_intro;
+pub(in crate::scenes::intro) use track_intro::intro_complete;
+
+mod move_on;
+pub(in crate::scenes::intro) use move_on::move_on;

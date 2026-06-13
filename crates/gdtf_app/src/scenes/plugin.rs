@@ -1,9 +1,6 @@
 use bevy::prelude::*;
 
-use crate::scenes::{
-    init::InitScenePlugin, intro::IntroScenePlugin, load::LoadScenePlugin,
-    main_menu::MainMenuScenePlugin, playing::PlayingScenePlugin, teardown::TeardownScenePlugin,
-};
+use crate::scenes::*;
 
 /// Plugin for registering scenes in the GDTF app.
 pub(crate) struct ScenesPlugin;

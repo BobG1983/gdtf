@@ -1,3 +1,4 @@
 mod plugin;
 mod systems;
-pub(crate) use plugin::LoadScenePlugin;
+pub(in crate::scenes) use plugin::LoadScenePlugin;
+mod resources;

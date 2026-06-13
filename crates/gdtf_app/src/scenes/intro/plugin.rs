@@ -1,12 +1,11 @@
 use bevy::prelude::*;
 
 use crate::{
-    scenes::intro::systems::{print_on_enter, print_on_exit},
+    scenes::intro::{resources::IntroComplete, systems::*},
     states::AppState,
 };
 
-// Intro scene plugin for the GDTF app.
-pub(crate) struct IntroScenePlugin;
+pub(in crate::scenes) struct IntroScenePlugin;
 
 impl Plugin for IntroScenePlugin {
     fn build(&self, app: &mut App) {
@@ -16,5 +15,14 @@ impl Plugin for IntroScenePlugin {
 
 fn add_systems(app: &mut App) -> &mut App {
     app.add_systems(OnEnter(AppState::Intro), print_on_enter)
-        .add_systems(OnExit(AppState::Intro), print_on_exit)
+        .add_systems(
+            FixedUpdate,
+            intro_complete
+                .run_if(in_state(AppState::Intro).and(not(resource_exists::<IntroComplete>))),
+        )
+        .add_systems(
+            FixedUpdate,
+            move_on.run_if(in_state(AppState::Intro).and(resource_exists::<IntroComplete>)),
+        )
+        .add_systems(OnExit(AppState::Intro), (print_on_exit, cleanup))
 }
