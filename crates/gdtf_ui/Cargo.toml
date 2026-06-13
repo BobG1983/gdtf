@@ -1,0 +1,15 @@
+[package]
+name = "gdtf_ui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Bevy only. This crate MUST NOT depend on gdtf_app / gdtf_battle_sim /
+# gdtf_battle_presenter: gdtf_app depends on gdtf_ui, so any reverse edge would
+# make the workspace dependency graph cyclic (and fail the build). No ron/serde
+# here either — asset/config deps arrive with GTW-117; the skeleton stays
+# bevy-only.
+bevy = "0.18.1"
+
+[lints]
+workspace = true

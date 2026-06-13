@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy = "0.18.1"
+gdtf_ui = { path = "../gdtf_ui" }
 
 [dev-dependencies]
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo

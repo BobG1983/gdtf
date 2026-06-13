@@ -12,6 +12,7 @@ use bevy::{
     app::App,
     state::app::{AppExtStates, StatesPlugin},
 };
+pub use gdtf_ui::UiPlugin;
 
 pub use crate::{
     scenes::ScenesPlugin,
@@ -30,6 +31,10 @@ pub use crate::{
 ///    `SubStates` type must be registered after its `#[source(...)]` parent (see
 ///    `.claude/rules/bevy-traps.md` rule 5).
 /// 4. [`ScenesPlugin`], which adds every scene plugin.
+/// 5. [`UiPlugin`], the UI registration seam — added here to keep this headless
+///    path a faithful mirror of [`crate::GdtfApp`], which also adds it. A
+///    harness test can then assert `is_plugin_added::<UiPlugin>()` and prove the
+///    real registration path wires the UI, not merely that `gdtf_ui` compiles.
 ///
 /// This intentionally does **not** add `MinimalPlugins`; the headless app
 /// builder composes those around `register_headless`. `init_state` /
@@ -43,4 +48,5 @@ pub fn register_headless(app: &mut App) {
     app.add_sub_state::<BattleScapeState>();
     app.add_sub_state::<AfterMathState>();
     app.add_plugins(ScenesPlugin);
+    app.add_plugins(UiPlugin);
 }

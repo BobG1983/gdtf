@@ -1,6 +1,7 @@
 //! Core wiring and app logic for GDTF.
 
 use bevy::prelude::*;
+use gdtf_ui::UiPlugin;
 
 use crate::{scenes::ScenesPlugin, states::AppState};
 
@@ -30,6 +31,7 @@ impl GdtfApp {
     #[must_use]
     fn add_plugins(mut self) -> Self {
         self.0.add_plugins(ScenesPlugin);
+        self.0.add_plugins(UiPlugin);
         self
     }
 

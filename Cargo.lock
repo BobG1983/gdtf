@@ -2546,6 +2546,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_test_utils",
+ "gdtf_ui",
 ]
 
 [[package]]
@@ -2562,6 +2563,13 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_app",
+]
+
+[[package]]
+name = "gdtf_ui"
+version = "0.1.0"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
