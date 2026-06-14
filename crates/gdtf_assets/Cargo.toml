@@ -1,0 +1,27 @@
+[package]
+name = "gdtf_assets"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Leaf crate: depends on bevy + the data deps ONLY. It must NOT depend on
+# gdtf_app / gdtf_ui / gdtf_battle_* so that both gdtf_app (GTW-56, the Load
+# state) and the content crate (GTW-42) can consume the generic RON loader
+# without forming a dependency cycle.
+bevy = "0.18.1"
+# Reused from the workspace's single dependency home (added by GTW-117). `ron`
+# parses the loose `.ron` bytes; `serde` (derive) is the trait the generic
+# payload `T` deserializes through. NOT re-added here — sourced via workspace.
+ron = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+# The loader test drives a real `AssetServer` through the headless UI/asset
+# harness (DefaultPlugins, backends:None), which also points `AssetPlugin` at
+# the workspace-root `assets/` dir — the same source root the running app uses.
+# No cycle: gdtf_test_utils -> gdtf_app -> gdtf_ui, and none depend on
+# gdtf_assets, so this dev-only edge is acyclic.
+gdtf_test_utils = { path = "../gdtf_test_utils" }
+
+[lints]
+workspace = true

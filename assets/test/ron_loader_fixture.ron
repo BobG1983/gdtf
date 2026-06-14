@@ -1,0 +1,8 @@
+// Test fixture for the generic RON AssetLoader (GTW-136). Deserializes into the
+// `LoaderFixture` test type in crates/gdtf_assets/tests/ron_loader.rs. Kept
+// under assets/test/ so it resolves against the SAME source root (repo-root
+// assets/) the running app and the GdtfUiTestAppBuilder harness both use.
+(
+    label: "grimdark",
+    count: 7,
+)

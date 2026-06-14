@@ -2550,6 +2550,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gdtf_assets"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "gdtf_test_utils",
+ "ron",
+ "serde",
+]
+
+[[package]]
 name = "gdtf_battle_presenter"
 version = "0.1.0"
 

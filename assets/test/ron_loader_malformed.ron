@@ -1,0 +1,8 @@
+// Deliberately malformed fixture for the generic RON AssetLoader (GTW-136):
+// `count` is a string where the `LoaderFixture` test type expects a u32, so
+// ron::de::from_bytes fails to deserialize. The loader must surface this as a
+// typed RonLoadError -> LoadState::Failed, never a panic.
+(
+    label: "broken",
+    count: "not-a-number",
+)
