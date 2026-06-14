@@ -29,11 +29,21 @@
 //! consequences are deferred to GTW-35). Cover reuses the GTW-153 armor newtypes,
 //! and band thresholds come from [`tuning::CombatTuning`] via [`cover::band_for`].
 //! See `docs/combat/resolution.md` §3 and `docs/architecture.md`.
+//!
+//! E1.5 ([`surface`]) adds the [`surface::SurfaceGrid`] resource — the persistent
+//! store of floor/roof slab existence ([`surface::SlabState`] per [`metric::CellLevel`])
+//! and per-[`metric::Cell`] ground damage ([`surface::GroundDamage`]), mutated **in
+//! place** so it survives every occupancy rebuild. A destroyed slab stays destroyed
+//! ([`surface::SurfaceGrid::destroy_slab`] is terminal) and ground damage only
+//! accrues ([`surface::SurfaceGrid::accrue_ground_damage`] is monotonic). This is a
+//! SEPARATE resource from the coarse occupancy (E1.6 / GTW-156). See
+//! `docs/architecture.md`'s "persistent surface grid" + the surface/ground-hit verbs.
 
 pub mod armor;
 pub mod cover;
 pub mod ganger;
 pub mod metric;
+pub mod surface;
 pub mod tuning;
 
 pub use armor::{
@@ -48,6 +58,7 @@ pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
 };
 pub use metric::{BattlePx, CELL_PITCH_PX, Cell, CellLevel, Level, MAX_LEVELS, Z_LEVEL_HEIGHT};
+pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
     BandEdgePx, BodyPartWeight, BodyPartWeights, CombatTuning, DefenderLuckSpreadCap,
     PenDamageScale, ProjectileBandEdges, RandomSpread, RandomSpreadMin, SeverityScaling,
