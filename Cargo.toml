@@ -12,6 +12,15 @@ resolver = "3"
 [workspace.dependencies]
 ron = "0.12.1"
 serde = { version = "1.0.228", features = ["derive"] }
+# `rand` is the sim's seeded-RNG dependency (first consumed by the RNG harness,
+# GTW-159), tracked at the latest major (0.10). gdtf_battle_sim takes bevy with
+# `default-features = false`, so its OWN bevy pulls no rand; the full-feature bevy
+# in the app crates does pull bevy_math's transitive rand (0.9.x), so the lock
+# carries two rand majors. They never interoperate (we share no rand types with
+# bevy), so the split is harmless; bevy's 0.9 moves only when bevy itself does.
+# The sim uses `bevy::math` vector types (bevy's re-exported glam) directly —
+# there is NO direct `glam` dep; glam resolves transitively via bevy_math.
+rand = "0.10"
 
 [workspace.lints.rust]
 missing_docs           = "deny"

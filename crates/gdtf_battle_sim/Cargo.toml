@@ -4,6 +4,27 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# Headless Bevy: this crate is the render-free authoritative sim, so it opts OUT
+# of bevy's default `2d`/`3d`/`ui` feature set (which pulls bevy_render / wgpu /
+# bevy_winit / bevy_window / bevy_asset). `default-features = false` keeps only
+# the always-on, non-optional internals — bevy_ecs (the `Resource` derive) and
+# bevy_app (MinimalPlugins) — and `std` builds them against std (not no_std).
+# Verify the render-free invariant holds: `cargo tree -p gdtf_battle_sim -e
+# no-dev -i bevy_render` and `-i bevy_winit` must BOTH return nothing.
+# MinimalPlugins is the test harness here; DefaultPlugins never enters this crate.
+bevy = { version = "0.18.1", default-features = false, features = ["std"] }
+# Vector metric types (IVec2/IVec3/Vec3) come from `bevy::math` (bevy re-exports
+# glam), so there is NO direct `glam` dep — using bevy's re-export guarantees a
+# single, unified math type and removes a redundant workspace dependency.
+# Seeded RNG for the deterministic shot pipeline. Wired now as the E1 foundation
+# dep; first consumed by the RNG harness (GTW-159, blocked-by this ticket).
+rand = { workspace = true }
+# Serde derives for the data-driven CombatTuning (RON-deserializable).
+serde = { workspace = true }
+
+[dev-dependencies]
+# Test-only: the CombatTuning RON round-trip exercises the real serde path.
+ron = { workspace = true }
 
 [lints]
 workspace = true

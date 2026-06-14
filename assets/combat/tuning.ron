@@ -1,0 +1,24 @@
+// GDTF combat tuning — data-driven balance coefficients (resolution.md §"Coefficients
+// live in the combat-tuning data"). Every value here is TUNABLE: the equation forms
+// live in code, these numbers are balance data. Defaults carry the doc values
+// (battle-space.md line 27 band edges, resolution.md §4 body-part weights, §6 severity).
+// Each leaf newtype is #[serde(transparent)], so it is written as a bare scalar.
+(
+    projectile_band_edges: ( low_mid: 66.7, mid_high: 133.3 ),
+    severity_scaling: (
+        pen_damage_scale: 1.0,
+        toughness_mitigation: 1.0,
+        shooter_luck_scale: 1.0,
+        defender_luck_spread_cap: 1.0,
+        random_spread: 10.0,
+        random_spread_min: 1.0,
+    ),
+    body_part_weights: (
+        head: 6,
+        torso: 40,
+        left_arm: 15,
+        right_arm: 15,
+        left_leg: 12,
+        right_leg: 12,
+    ),
+)
