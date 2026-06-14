@@ -5,6 +5,14 @@ members = [
 ]
 resolver = "3"
 
+# Single dependency home for shared, pinned third-party crates. Crates consume
+# these with `pkg = { workspace = true }` so versions stay aligned across the
+# workspace. `ron` + `serde` arrive here for the data-driven theme (GTW-117);
+# later asset/config tickets (e.g. GTW-136) reuse these — they do NOT re-add.
+[workspace.dependencies]
+ron = "0.12.1"
+serde = { version = "1.0.228", features = ["derive"] }
+
 [workspace.lints.rust]
 missing_docs           = "deny"
 unsafe_code            = "deny"

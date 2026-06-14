@@ -7,6 +7,12 @@
 //! Today it is a compile-and-wire skeleton: [`UiPlugin`] registers cleanly into
 //! the app but installs nothing yet. Later tickets attach the UI systems,
 //! resources, and assets to [`UiPlugin::build`].
+//!
+//! The data-driven [`theme`] module defines the on-disk theme schema, the runtime
+//! [`GdtfTheme`](theme::GdtfTheme) resource, and the pure spec-to-resource
+//! resolution; population of that resource lands with later tickets.
+
+pub mod theme;
 
 use bevy::prelude::*;
 
