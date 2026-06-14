@@ -35,19 +35,23 @@ Binding rules live in `.claude/rules/` — short, read them, follow them:
 
 ## The one definition of green
 
-Run from the repo root; green = **all** pass:
+Run from the repo root; green = **all** pass (these are the `.cargo/config.toml` aliases):
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-cargo test --workspace --features grimdark_turfwar/dynamic_linking
+cargo dclippy -- -D warnings
+cargo dtest
+cargo dbuild
 ```
 
-`cargo dclippy` / `cargo dtest` / `cargo drun` (aliases in `.cargo/config.toml`) are the shorthand
-for these. Dynamic linking keeps the dev/gate loop fast; `--all-features` is not used — it forces a
-second full bevy build for no lint gain. CI green is **static** (no `dynamic_linking`): fmt/clippy/test
-only — the release-binary build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging,
-not a CI gate. See [`verification.md`](.claude/rules/verification.md).
+`dclippy` / `dtest` / `dbuild` expand to the full `--workspace --all-targets --features
+grimdark_turfwar/dynamic_linking` forms; `dbuild` (`build -p grimdark_turfwar --features
+dynamic_linking`) builds+links the actual binary, which `clippy`/`test` never do — so it's the only
+step that catches an `unreachable_pub`/link error in the `grimdark_turfwar` binary. Dynamic linking
+keeps the dev/gate loop fast; `--all-features` is not used — it forces a second full bevy build for no
+lint gain. CI green is **static** (no `dynamic_linking`): fmt/clippy/test only — the release-binary
+build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a CI gate. See
+[`verification.md`](.claude/rules/verification.md).
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus
 `unwrap`/`expect`/`panic`/`todo`/`unimplemented` and `missing_docs`, so **lint-clean and fmt-clean

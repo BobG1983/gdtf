@@ -153,6 +153,19 @@ impl GdtfUiTestAppBuilder<NoCamera> {
                     ..default()
                 })
                 .disable::<WinitPlugin>()
+                // Headless-test noise suppression (GTW-139): LogPlugin sets a
+                // PROCESS-GLOBAL tracing subscriber (so the 2nd+ test app errors,
+                // and it's the subscriber that prints every other bevy ERROR/WARN);
+                // disabling it across the DefaultPlugins harnesses leaves no global
+                // subscriber, silencing the otherwise-harmless headless logs
+                // (incl. the `backends: None` RenderApp-absent ClearColor extract
+                // ERROR). TerminalCtrlCHandler / Gizmo / Audio each probe a missing
+                // window/RenderApp/device and are unused by a UI-layout test.
+                // (`.disable` is a PluginGroupBuilder method, so it follows `.set`.)
+                .disable::<bevy::log::LogPlugin>()
+                .disable::<bevy::app::TerminalCtrlCHandlerPlugin>()
+                .disable::<bevy::gizmos::GizmoPlugin>()
+                .disable::<bevy::audio::AudioPlugin>()
                 .set(WindowPlugin {
                     primary_window: None,
                     exit_condition: ExitCondition::DontExit,

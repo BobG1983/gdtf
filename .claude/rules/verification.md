@@ -11,18 +11,28 @@ observed GREEN in THIS session, after the final edit, and you saw it pass.
 
 ## The ONE definition of green (dev / gate — dynamic-linked, fast)
 
-Run from the repo root; green = ALL THREE pass:
+Run from the repo root; green = ALL FOUR pass:
 
 ```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
 cargo test --workspace --features grimdark_turfwar/dynamic_linking
+cargo build -p grimdark_turfwar --features dynamic_linking
 ```
 
-`cargo dclippy` / `cargo dtest` / `cargo drun` (aliases in `.cargo/config.toml`)
-are the shorthand for these. Dynamic linking via
+`cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` (aliases in
+`.cargo/config.toml`) are the shorthand for these. Dynamic linking via
 `grimdark_turfwar/dynamic_linking` keeps the dev/gate loop fast; `--all-features`
 is NOT used — it forces a second full bevy build and adds no lint value.
+
+The binary build (`cargo dbuild`) is NOT redundant with the others: `check` /
+`clippy` never LINK and `test` only links TEST binaries, so neither builds the
+actual `grimdark_turfwar` binary; and `--workspace` compiles `gdtf_app` WITH
+`test-support` (feature unification via `gdtf_test_utils`), masking an
+`unreachable_pub` that only fires when the binary is built WITHOUT it. Building
+the binary is the only step that catches that class — and link errors. Do NOT
+use `cargo drun` in the gate: it launches the GUI, which a gate cannot drive.
+[added GTW-145]
 
 The workspace denies clippy all/pedantic/correctness plus
 unwrap/expect/panic/todo/unimplemented and missing_docs, so being fmt-clean and

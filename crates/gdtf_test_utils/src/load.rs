@@ -102,6 +102,16 @@ impl GdtfLoadTestAppBuilder {
                     ..default()
                 })
                 .disable::<WinitPlugin>()
+                // Headless-test noise suppression (GTW-139): see GdtfUiTestAppBuilder
+                // — disabling LogPlugin leaves no global tracing subscriber, so the
+                // headless ERROR/WARN noise (incl. the deliberate failure-path asset
+                // errors this harness exercises) does not print; the other three
+                // plugins probe a missing window/RenderApp/audio device unused here.
+                // (`.disable` is a PluginGroupBuilder method, so it follows `.set`.)
+                .disable::<bevy::log::LogPlugin>()
+                .disable::<bevy::app::TerminalCtrlCHandlerPlugin>()
+                .disable::<bevy::gizmos::GizmoPlugin>()
+                .disable::<bevy::audio::AudioPlugin>()
                 .set(WindowPlugin {
                     primary_window: None,
                     exit_condition: ExitCondition::DontExit,

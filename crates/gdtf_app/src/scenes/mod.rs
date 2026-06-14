@@ -20,6 +20,9 @@ pub(in crate::scenes) use load::LoadScenePlugin;
 
 mod running;
 pub(in crate::scenes) use running::RunningScenePlugin;
+// Test-support-only re-export (see menu/mod.rs); gated so the binary build is
+// warning-clean. (GTW-145)
+#[cfg(feature = "test-support")]
 crate::support_use! {
     running::{BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton};
 }

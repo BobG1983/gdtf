@@ -55,10 +55,13 @@ pub use crate::{
 pub fn register_headless(app: &mut App) {
     app.add_plugins(StatesPlugin);
     app.init_state::<AppState>();
-    app.add_sub_state::<RunningState>();
-    app.add_sub_state::<GameState>();
-    app.add_sub_state::<BattleScapeState>();
-    app.add_sub_state::<AfterMathState>();
+    // The sub-states (RunningState/GameState/BattleScapeState/AfterMathState) are
+    // registered by ScenesPlugin's scene plugins, in parent-before-child order
+    // (each scene plugin `add_*state`s before its `add_plugins` pulls in child
+    // plugins — bevy-traps rule 5). Registering them here too is redundant and
+    // logs `WARN bevy_state::app: Sub state X is already initialized` once each —
+    // `add_sub_state` is idempotent-but-warns (it no-ops on the second call but
+    // emits the warning). So we rely solely on ScenesPlugin. (GTW-139)
     app.add_plugins(InputPlugin);
     app.add_plugins(ScenesPlugin);
     app.add_plugins(UiPlugin);

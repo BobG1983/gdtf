@@ -128,7 +128,7 @@ fi
 # Green (CLAUDE.md): fmt --check, clippy -D warnings, then cargo test --workspace.
 # All three must pass; run from the repo root. Zero Rust tests passing is NOT
 # red (cargo test exits 0), so there is no empty-suite-is-red check here.
-SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings && cargo test --workspace --features grimdark_turfwar/dynamic_linking}"
+SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings && cargo test --workspace --features grimdark_turfwar/dynamic_linking && cargo build -p grimdark_turfwar --features dynamic_linking}"
 SUITE_OUTPUT="$(cd "$REPO_DIR" && bash -c "$SUITE_CMD" 2>&1)"
 SUITE_STATUS=$?
 if [ "$SUITE_STATUS" -ne 0 ]; then

@@ -5,6 +5,9 @@ mod resources;
 
 mod menu;
 pub(in crate::scenes::running) use menu::MenuScenePlugin;
+// Test-support-only re-export (see menu/mod.rs); gated so the binary build is
+// warning-clean. (GTW-145)
+#[cfg(feature = "test-support")]
 crate::support_use! {
     menu::{BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton};
 }
