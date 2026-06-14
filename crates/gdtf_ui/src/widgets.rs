@@ -2,7 +2,7 @@
 //!
 //! This module owns the two spawn helpers the menu / HUD work builds its UI
 //! from — [`spawn_panel`] and [`spawn_button`] — plus the [`DisabledButton`]
-//! marker and the [`dim_disabled_buttons`] system that dims it.
+//! marker and the [`paint_disabled_buttons`] system that paints it.
 //!
 //! ## The Themed seam (no captured colors)
 //!
@@ -18,10 +18,10 @@
 //!
 //! ## Disabled buttons
 //!
-//! A [`DisabledButton`] is dimmed by [`dim_disabled_buttons`] (a theme-derived
-//! reduction of the panel fill, re-applied after
-//! [`apply_theme`](crate::themed::apply_theme)) and is skipped entirely by the
-//! interaction layer (which filters `Without<DisabledButton>`). It stays
+//! A [`DisabledButton`] is painted by [`paint_disabled_buttons`] with the
+//! theme's explicit [`DisabledBg`](crate::theme::DisabledBg) fill (re-applied
+//! after [`apply_theme`](crate::themed::apply_theme)) and is skipped entirely by
+//! the interaction layer (which filters `Without<DisabledButton>`). It stays
 //! [`Themed`](crate::themed::Themed), so the base-look pass still reaches it.
 
 use bevy::{
@@ -31,51 +31,23 @@ use bevy::{
 };
 
 use crate::{
-    theme::{GdtfTheme, PanelBg},
+    theme::GdtfTheme,
     themed::{ThemeRole, Themed},
 };
 
 /// Marker tagging a button that is currently disabled.
 ///
-/// A disabled button is **dimmed** ([`dim_disabled_buttons`] writes a
-/// theme-derived, lowered-opacity fill over its base) and is **skipped** by the
-/// interaction layer (the interaction system queries `Without<DisabledButton>`,
-/// so a disabled button never hover/press-swaps). It remains
-/// [`Themed`](crate::themed::Themed): the central base-look pass still re-paints
-/// it, and the dim is composed on top of that fresh base.
+/// A disabled button is **painted** ([`paint_disabled_buttons`] writes the
+/// theme's explicit [`DisabledBg`](crate::theme::DisabledBg) fill over its base)
+/// and is **skipped** by the interaction layer (the interaction system queries
+/// `Without<DisabledButton>`, so a disabled button never hover/press-swaps). It
+/// remains [`Themed`](crate::themed::Themed): the central base-look pass still
+/// re-paints it, and the disabled fill is composed on top of that fresh base.
 ///
 /// A unit marker — it carries no data; presence alone is the signal
 /// (no-bare-types rule).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct DisabledButton;
-
-/// The opacity a disabled widget's theme-derived fill is multiplied down to.
-///
-/// A named newtype over the alpha scale factor rather than a bare `f32`
-/// (no-bare-types rule): [`dim_disabled_buttons`] takes the live theme's
-/// [`PanelBg`](crate::theme::PanelBg) and multiplies its alpha by this factor,
-/// so the dim tracks the *current* theme fill instead of being a hardcoded
-/// gray. [`DimFactor::DISABLED`] is the single value used for disabled buttons.
-#[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct DimFactor(f32);
-
-impl DimFactor {
-    /// The opacity factor a [`DisabledButton`]'s fill is dimmed to: 40% of the
-    /// theme panel fill's alpha. Lifted enough to read as "present but inert".
-    pub const DISABLED: Self = Self(0.4);
-}
-
-/// Derives the dimmed fill of a disabled widget from the live panel fill.
-///
-/// Takes the theme's [`PanelBg`](crate::theme::PanelBg) and scales its alpha by
-/// `factor`, leaving the RGB untouched — so the dim is a theme-derived variant
-/// of the *current* fill, never a hardcoded color. Returning a fresh
-/// [`Color`](bevy::prelude::Color) keeps the transformation pure and testable.
-#[must_use]
-pub fn dimmed_fill(panel_bg: PanelBg, factor: DimFactor) -> Color {
-    let base = panel_bg.to_srgba();
-    Color::srgba(base.red, base.green, base.blue, base.alpha * *factor)
-}
 
 /// Spawns a theme-seam panel and returns its [`Entity`].
 ///
@@ -193,19 +165,21 @@ fn panel_bundle(theme: &GdtfTheme) -> impl Bundle {
     )
 }
 
-/// Dims every [`DisabledButton`] by writing a theme-derived, lowered-opacity
-/// fill over its [`BackgroundColor`](bevy::ui::BackgroundColor).
+/// Paints every [`DisabledButton`] with the theme's explicit
+/// [`DisabledBg`](crate::theme::DisabledBg) fill, writing it over the button's
+/// [`BackgroundColor`](bevy::ui::BackgroundColor).
 ///
 /// Runs **after** [`apply_theme`](crate::themed::apply_theme) (the
 /// [`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme) set) so it
 /// composes on top of the freshest base fill (bevy-traps rule 3); a hot-reload
-/// therefore re-derives the dim from the new palette. The fill is
-/// [`dimmed_fill`] of the live [`PanelBg`](crate::theme::PanelBg) — never a
-/// hardcoded gray.
+/// therefore re-paints the disabled fill from the new palette. The fill is the
+/// live theme's data-driven [`DisabledBg`](crate::theme::DisabledBg) — a muted
+/// color so a disabled control reads as inert, not a computed alpha-dim of the
+/// near-black panel (which was nearly invisible).
 ///
 /// Takes the theme as `Option<Res<GdtfTheme>>` so it is inert (rather than
 /// panicking) before the resource is populated (bevy-traps rule 1).
-pub fn dim_disabled_buttons(
+pub fn paint_disabled_buttons(
     theme: Option<Res<GdtfTheme>>,
     mut disabled: Query<&mut BackgroundColor, With<DisabledButton>>,
 ) {
@@ -213,9 +187,9 @@ pub fn dim_disabled_buttons(
         return;
     };
 
-    let dim = dimmed_fill(theme.panel_bg, DimFactor::DISABLED);
+    let fill = *theme.disabled_bg;
     for mut background in &mut disabled {
-        background.0 = dim;
+        background.0 = fill;
     }
 }
 
@@ -254,7 +228,8 @@ mod tests {
              font_size_pt: 18.0, \
              font_key: \"fonts/test.ttf\", \
              hover_bg: ({hr}, {hg}, {hb}, {ha}), \
-             press_bg: ({sr}, {sg}, {sb}, {sa}))",
+             press_bg: ({sr}, {sg}, {sb}, {sa}), \
+             disabled_bg: (0.16, 0.16, 0.18, 0.55))",
             pr = panel[0],
             pg = panel[1],
             pb = panel[2],
@@ -405,11 +380,10 @@ mod tests {
         Ok(())
     }
 
-    /// A `DisabledButton`'s background is the theme-derived dim (lowered-alpha
-    /// panel fill) after `dim_disabled_buttons` runs, and it stays `Themed` —
-    /// AC#5.
+    /// A `DisabledButton`'s background is the theme's explicit `disabled_bg`
+    /// fill after `paint_disabled_buttons` runs, and it stays `Themed` — AC#5.
     #[test]
-    fn disabled_button_is_dimmed_from_theme() -> Result<(), ron::error::SpannedError> {
+    fn disabled_button_is_painted_from_theme() -> Result<(), ron::error::SpannedError> {
         let mut app = App::new();
         let theme_res = theme(
             [0.08, 0.08, 0.10, 1.0],
@@ -419,7 +393,7 @@ mod tests {
         app.insert_resource(theme_res.clone());
         app.add_systems(
             Update,
-            (apply_theme, dim_disabled_buttons)
+            (apply_theme, paint_disabled_buttons)
                 .chain()
                 .run_if(resource_exists::<GdtfTheme>),
         );
@@ -438,11 +412,11 @@ mod tests {
         app.update();
 
         let world = app.world();
-        let expected = dimmed_fill(theme_res.panel_bg, DimFactor::DISABLED);
+        let expected = *theme_res.disabled_bg;
         assert_eq!(
             world.get::<BackgroundColor>(button).map(|c| c.0),
             Some(expected),
-            "disabled button must be the theme-derived dim",
+            "disabled button must be the theme's explicit disabled_bg fill",
         );
         assert!(
             world.get::<Themed>(button).is_some(),

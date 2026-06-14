@@ -151,7 +151,8 @@ mod tests {
              font_size_pt: 18.0, \
              font_key: \"fonts/test.ttf\", \
              hover_bg: ({hr}, {hg}, {hb}, 1.0), \
-             press_bg: ({pr}, {pg}, {pb}, 1.0))",
+             press_bg: ({pr}, {pg}, {pb}, 1.0), \
+             disabled_bg: (0.16, 0.16, 0.18, 0.55))",
             tr = text[0],
             tg = text[1],
             tb = text[2],

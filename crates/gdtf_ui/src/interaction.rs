@@ -205,7 +205,8 @@ mod tests {
              font_size_pt: 18.0, \
              font_key: \"fonts/test.ttf\", \
              hover_bg: ({hr}, {hg}, {hb}, {ha}), \
-             press_bg: ({sr}, {sg}, {sb}, {sa}))",
+             press_bg: ({sr}, {sg}, {sb}, {sa}), \
+             disabled_bg: (0.16, 0.16, 0.18, 0.55))",
             pr = panel[0],
             pg = panel[1],
             pb = panel[2],

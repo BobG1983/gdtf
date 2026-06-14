@@ -31,7 +31,7 @@
 //!
 //! The [`widgets`] module owns the reusable spawn helpers
 //! ([`spawn_panel`](widgets::spawn_panel) / [`spawn_button`](widgets::spawn_button)),
-//! the [`DisabledButton`](widgets::DisabledButton) marker, and the disabled-dim
+//! the [`DisabledButton`](widgets::DisabledButton) marker, and the disabled-paint
 //! pass; the [`interaction`] module owns the theme-derived hover/press feedback
 //! system. Both compose *on top of* [`apply_theme`](themed::apply_theme)'s base
 //! look, ordered after it.
@@ -48,10 +48,7 @@ use gdtf_assets::RonAsset;
 pub use interaction::{sync_hover_to_focus, theme_interaction};
 pub use retheme::redrive_theme_on_asset_event;
 pub use themed::any_themed_added;
-pub use widgets::{
-    ButtonLabel, DimFactor, DisabledButton, dim_disabled_buttons, dimmed_fill, spawn_button,
-    spawn_panel,
-};
+pub use widgets::{ButtonLabel, DisabledButton, paint_disabled_buttons, spawn_button, spawn_panel};
 
 use crate::{
     focus_nav::FocusNavPlugin,
@@ -83,7 +80,7 @@ type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 /// ([`redrive_theme_on_asset_event`](retheme::redrive_theme_on_asset_event)), the
 /// GTW-118 widget interaction layer
 /// ([`theme_interaction`](interaction::theme_interaction) +
-/// [`dim_disabled_buttons`](widgets::dim_disabled_buttons)), and the GTW-141
+/// [`paint_disabled_buttons`](widgets::paint_disabled_buttons)), and the GTW-141
 /// mouse hover→focus bridge ([`sync_hover_to_focus`](interaction::sync_hover_to_focus)).
 pub struct UiPlugin;
 
@@ -117,8 +114,8 @@ impl Plugin for UiPlugin {
     ///
     /// The GTW-118 interaction layer —
     /// [`theme_interaction`](interaction::theme_interaction) (hover/press swap)
-    /// and [`dim_disabled_buttons`](widgets::dim_disabled_buttons) (disabled
-    /// dim) — runs in [`Update`] `.after(`[`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme)`)`
+    /// and [`paint_disabled_buttons`](widgets::paint_disabled_buttons) (disabled
+    /// fill) — runs in [`Update`] `.after(`[`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme)`)`
     /// so each composes on top of the freshest base look (bevy-traps rule 3);
     /// both guard the theme internally (`Option<Res<GdtfTheme>>`), so they too
     /// are inert before the resource is populated (bevy-traps rule 1).
@@ -164,7 +161,11 @@ impl Plugin for UiPlugin {
                     resource_exists::<GdtfTheme>
                         .and(resource_changed::<GdtfTheme>.or(any_themed_added)),
                 ),
-                (theme_interaction, dim_disabled_buttons, sync_hover_to_focus)
+                (
+                    theme_interaction,
+                    paint_disabled_buttons,
+                    sync_hover_to_focus,
+                )
                     .after(UiSystems::ApplyTheme),
             ),
         );

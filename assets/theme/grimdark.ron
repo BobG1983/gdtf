@@ -1,26 +1,18 @@
 // GDTF grimdark UI theme — data-driven (ADR 0003).
-//
-// Ported faithfully from the Godot source theme (ui/theme/main_theme.tres):
-// colors, border, content margins, font size, and the loose font key below
-// match the original exactly. Colors are non-premultiplied sRGB quads
-// (r, g, b, a), each channel in 0.0..=1.0. Resolved into the runtime GdtfTheme
-// by GdtfThemeSpec::resolve (see crates/gdtf_ui/src/theme.rs).
-//
-// hover_bg / press_bg are PORT-INTRODUCED: the Godot theme had no hover/press
-// state colors. They are slightly-lifted variants of panel_bg — hover lighter
-// than press, both visibly distinct from the base fill.
+
 (
     text:             (0.84, 0.80, 0.73, 1.0),
     panel_bg:         (0.08, 0.08, 0.10, 0.96),
     border_color:     (0.20, 0.20, 0.24, 1.0),
-    border_width_px:  1.0,
-    corner_radius_px: 2.0,
-    margin_left_px:   8.0,
-    margin_right_px:  8.0,
+    border_width_px:  2.0,
+    corner_radius_px: 5.0,
+    margin_left_px:   12.0,
+    margin_right_px:  12.0,
     margin_top_px:    6.0,
     margin_bottom_px: 6.0,
     font_size_pt:     18.0,
     font_key:         "fonts/Alegreya-Variable.ttf",
-    hover_bg:         (0.16, 0.16, 0.19, 0.96),
+    hover_bg:         (0.80, 0.16, 0.19, 0.96),
     press_bg:         (0.12, 0.12, 0.15, 0.96),
+    disabled_bg:      (0.16, 0.16, 0.18, 0.55),
 )
