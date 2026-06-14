@@ -8,7 +8,7 @@
 //! [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) is the deliberate exception that
 //! *persists* past the exit, because every later scene reads it.
 
-use bevy::prelude::*;
+use bevy::{asset::LoadedFolder, prelude::*};
 use gdtf_assets::RonAsset;
 use gdtf_ui::theme::GdtfThemeSpec;
 
@@ -20,26 +20,29 @@ use gdtf_ui::theme::GdtfThemeSpec;
 #[derive(Deref, Clone, Debug)]
 pub(in crate::scenes::load) struct ThemeHandle(pub Handle<RonAsset<GdtfThemeSpec>>);
 
-/// Typed handle to the in-flight theme font asset
-/// (`fonts/Alegreya-Variable.ttf`).
+/// Typed handle to the in-flight **fonts folder** load (`fonts/`).
 ///
-/// A named newtype over the bevy [`Handle`] for the same reason as
-/// [`ThemeHandle`].
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule).
+/// As of GTW-149 the `Load` scene preloads ALL fonts up front by loading the
+/// `fonts` folder rather than a single font: holding this handle keeps a strong
+/// reference to every font in the folder so any font a theme (or a hot-reloaded
+/// theme) selects is already resident and `asset_server.load(key)` returns the
+/// loaded handle idempotently.
 #[derive(Deref, Clone, Debug)]
-pub(in crate::scenes::load) struct FontHandle(pub Handle<Font>);
+pub(in crate::scenes::load) struct FontFolderHandle(pub Handle<LoadedFolder>);
 
 /// The Load-scoped handles to the assets the [`AppState::Load`](crate::states::AppState::Load)
 /// kick-off started loading.
 ///
-/// Holds the typed [`ThemeHandle`] and [`FontHandle`] the poll/resolve system
-/// reads each frame to check load progress. Inserted `OnEnter(Load)` and removed
-/// `OnExit(Load)` (it has no meaning outside `Load`).
+/// Holds the typed [`ThemeHandle`] and [`FontFolderHandle`] the poll/resolve
+/// system reads each frame to check load progress. Inserted `OnEnter(Load)` and
+/// removed `OnExit(Load)` (it has no meaning outside `Load`).
 #[derive(Resource, Clone, Debug)]
 pub(in crate::scenes::load) struct LoadHandles {
     /// The theme RON asset being loaded.
     pub theme: ThemeHandle,
-    /// The theme font asset being loaded.
-    pub font:  FontHandle,
+    /// The fonts folder being preloaded (all fonts up front).
+    pub fonts: FontFolderHandle,
 }
 
 /// The loose-asset path of a load that reached

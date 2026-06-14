@@ -17,6 +17,7 @@ use bevy::{
     ecs::entity::Entity,
     input_focus::{InputFocus, directional_navigation::DirectionalNavigationMap},
     math::CompassOctant,
+    prelude::ChildOf,
     state::state::State,
     ui::widget::Button,
 };
@@ -25,7 +26,11 @@ use gdtf_app::test_support::{
     RunningState,
 };
 use gdtf_test_utils::GdtfTestAppBuilder;
-use gdtf_ui::{DisabledButton, theme::default_theme, themed::Themed};
+use gdtf_ui::{
+    DisabledButton,
+    theme::default_theme,
+    themed::{ThemeRole, Themed},
+};
 
 /// Builds a headless app started toward [`AppState::Running`], seeds a
 /// [`GdtfTheme`] (the menu reads it on entry), and runs one update so the menu
@@ -127,11 +132,13 @@ fn all_four_markers_present_with_correct_disabled_state() {
 }
 
 /// Every menu entity (title + four buttons) carries both [`Themed`] and
-/// [`DespawnOnExit(RunningState::Menu)`] — AC#4.
+/// [`DespawnOnExit(RunningState::Menu)`], with the correct [`ThemeRole`]: the
+/// title is [`ThemeRole::Title`] and each button root is [`ThemeRole::Button`]
+/// (GTW-149).
 ///
 /// Pin: if a menu entity were spawned without the Themed marker (so a re-theme
-/// wouldn't restyle it) or without the state-scoped despawn marker (so it would
-/// leak across the transition), the corresponding assert fails.
+/// wouldn't restyle it), without the right role, or without the state-scoped
+/// despawn marker (so it would leak across the transition), an assert fails.
 #[test]
 fn every_menu_entity_is_themed_and_state_scoped() {
     let mut app = menu_app();
@@ -143,17 +150,18 @@ fn every_menu_entity_is_themed_and_state_scoped() {
     let quit = single_with::<QuitButton>(&mut app);
 
     let world = app.world();
-    for (label, entity) in [
-        ("title", title),
-        ("battlescape", battlescape),
-        ("options", options),
-        ("hivescape", hivescape),
-        ("quit", quit),
+    for (label, entity, role) in [
+        ("title", title, ThemeRole::Title),
+        ("battlescape", battlescape, ThemeRole::Button),
+        ("options", options, ThemeRole::Button),
+        ("hivescape", hivescape, ThemeRole::Button),
+        ("quit", quit, ThemeRole::Button),
     ] {
         let entity = entity.unwrap_or(Entity::PLACEHOLDER);
-        assert!(
-            world.get::<Themed>(entity).is_some(),
-            "{label} must carry the Themed marker",
+        assert_eq!(
+            world.get::<Themed>(entity).map(|t| **t),
+            Some(role),
+            "{label} must carry Themed({role:?})",
         );
         assert!(
             world
@@ -162,6 +170,77 @@ fn every_menu_entity_is_themed_and_state_scoped() {
             "{label} must carry DespawnOnExit(RunningState::Menu)",
         );
     }
+}
+
+/// The menu tree matches the GTW-149 layout: a `Themed(Background)` root holds the
+/// title as a DIRECT child and a `Themed(Panel)` box as another child; the four
+/// buttons are children of the panel box (NOT of the root).
+///
+/// Pin: if the title were re-parented under the panel, if the panel box marker
+/// were dropped, or if the buttons were parented to the root instead of the panel,
+/// the corresponding `ChildOf` / role assert fails.
+#[test]
+fn menu_tree_is_background_root_with_title_and_panel_box() {
+    let mut app = menu_app();
+
+    let title = single_with::<MenuTitle>(&mut app).unwrap_or(Entity::PLACEHOLDER);
+    let battlescape = single_with::<BattlescapeButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
+    let options = single_with::<OptionsButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
+    let hivescape = single_with::<HiveScapeButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
+    let quit = single_with::<QuitButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
+
+    let world = app.world();
+
+    // The title's parent is the root, and the root is Themed(Background).
+    let root = world
+        .get::<ChildOf>(title)
+        .map_or(Entity::PLACEHOLDER, bevy::prelude::ChildOf::parent);
+    assert_eq!(
+        world.get::<Themed>(root).map(|t| **t),
+        Some(ThemeRole::Background),
+        "the title's parent (the menu root) must be Themed(Background)",
+    );
+
+    // Each button's parent is the panel box, and that box is Themed(Panel).
+    let panel = world
+        .get::<ChildOf>(battlescape)
+        .map_or(Entity::PLACEHOLDER, bevy::prelude::ChildOf::parent);
+    assert_eq!(
+        world.get::<Themed>(panel).map(|t| **t),
+        Some(ThemeRole::Panel),
+        "the battlescape button's parent (the panel box) must be Themed(Panel)",
+    );
+    for (label, button) in [
+        ("battlescape", battlescape),
+        ("options", options),
+        ("hivescape", hivescape),
+        ("quit", quit),
+    ] {
+        assert_eq!(
+            world
+                .get::<ChildOf>(button)
+                .map(bevy::prelude::ChildOf::parent),
+            Some(panel),
+            "{label} must be a child of the panel box",
+        );
+    }
+
+    // The panel box itself is a child of the root (a sibling of the title).
+    assert_eq!(
+        world
+            .get::<ChildOf>(panel)
+            .map(bevy::prelude::ChildOf::parent),
+        Some(root),
+        "the panel box must be a child of the menu root",
+    );
+    // And the title is NOT inside the panel — it floats on the backdrop.
+    assert_ne!(
+        world
+            .get::<ChildOf>(title)
+            .map(bevy::prelude::ChildOf::parent),
+        Some(panel),
+        "the title must NOT be a child of the panel box (it floats on the backdrop)",
+    );
 }
 
 /// Initial focus is the Battlescape button — AC#5.

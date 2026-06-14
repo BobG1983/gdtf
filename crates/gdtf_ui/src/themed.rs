@@ -2,53 +2,53 @@
 //! system that paints theme-derived visuals onto themed entities.
 //!
 //! An entity opts into centralized theming by carrying a [`Themed`] component,
-//! whose [`ThemeRole`] declares *what kind* of widget it is (a text node, or a
-//! panel/button node). On every run [`apply_theme`] reads the **current**
-//! [`GdtfTheme`](crate::theme::GdtfTheme) resource and writes that entity's
-//! base look from it:
+//! whose [`ThemeRole`] declares *what kind* of widget it is. On every run
+//! [`apply_theme`] reads the **current** [`GdtfTheme`](crate::theme::GdtfTheme)
+//! resource and writes that entity's base look from the matching **sub-theme**
+//! (GTW-149):
 //!
-//! - [`ThemeRole::Text`] → text color, font face, and font size
-//!   ([`TextColor`](bevy::text::TextColor) + [`TextFont`](bevy::text::TextFont)).
-//! - [`ThemeRole::Title`] → the same theme-derived text color and font face as
-//!   [`ThemeRole::Text`], but a font size scaled up from the theme size by
-//!   [`TitleScale::TITLE`] (a heading is theme-text, only larger).
-//! - [`ThemeRole::Panel`] → panel background, border color, border width, corner
-//!   radius, and content margins
-//!   ([`BackgroundColor`](bevy::ui::BackgroundColor) +
-//!   [`BorderColor`](bevy::ui::BorderColor) + the [`Node`](bevy::ui::Node)'s
-//!   `border`, `border_radius`, and `padding` fields). Panels and buttons share
-//!   this role — a button is a panel that also reacts to interaction.
+//! - [`ThemeRole::Background`] (a [`Node`](bevy::ui::Node)): the full-screen
+//!   backdrop fill from `background.color` — no border/radius/padding.
+//! - [`ThemeRole::Panel`] (a [`Node`](bevy::ui::Node)): fill, border color, border
+//!   width, corner radius, and content padding from `panel.*` (a box around UI).
+//! - [`ThemeRole::Button`] (a [`Node`](bevy::ui::Node)): fill, border color,
+//!   border width, corner radius, and content padding from `button.*` (the button
+//!   box).
+//! - [`ThemeRole::ButtonText`] (a [`Text`](bevy::prelude::Text)): text color, font
+//!   face, and font size from the **button** sub-theme.
+//! - [`ThemeRole::Title`] (a [`Text`](bevy::prelude::Text)): text color, font face,
+//!   and font size from the **title** sub-theme.
+//! - [`ThemeRole::Text`] (a [`Text`](bevy::prelude::Text)): text color, font face,
+//!   and font size from the **text** sub-theme.
+//!
+//! Each text role draws its own `font_size_pt` from its sub-theme — there is no
+//! scale-the-body-size title fudge anymore; the title simply has its own size.
 //!
 //! ## Live read, never a spawn snapshot
 //!
 //! [`apply_theme`] resolves its values from the [`GdtfTheme`] resource *every
 //! run*, not at spawn time. Re-running it after the resource is mutated re-paints
 //! every [`Themed`] entity with the new palette — that is the seam the live
-//! hot-reload (GTW-137/138) hangs on. This module owns the marker and the
-//! application; it does **not** define the theme schema/resource (that is
-//! GTW-117), spawn any widget (GTW-118), or contain the file-watcher / reload
-//! trigger (GTW-137/138).
+//! hot-reload hangs on.
 //!
 //! ## Boundary with interaction state
 //!
 //! [`apply_theme`] sets only the **base** look. Per-widget interaction feedback
-//! (hover / press background swaps, GTW-118) composes *on top* of this base in a
-//! later system, ordered after [`UiSystems::ApplyTheme`]; it is intentionally not
-//! part of this system.
+//! (hover / press background swaps) composes *on top* of this base in a later
+//! system, ordered after [`UiSystems::ApplyTheme`]; it is intentionally not part
+//! of this system.
 //!
 //! ## Cadence and absence guard
 //!
 //! [`apply_theme`] is **change-driven** (GTW-144): [`UiPlugin`](crate::UiPlugin)
 //! registers it to run only when the [`GdtfTheme`](crate::theme::GdtfTheme)
-//! resource *changed* (the `Load` insert or the GTW-137 re-derive — repainting
-//! every [`Themed`] entity, i.e. the retheme) **or** when a new [`Themed`] entity
-//! was added this frame (so a freshly-spawned widget still gets its base look).
-//! It does **not** run on steady-state frames, so it never re-overwrites — and so
-//! never clobbers — the GTW-118 hover/press feedback (which composes on top and
-//! only updates on `Changed<Interaction>`). The `resource_exists::<GdtfTheme>`
-//! part of that run condition also keeps it inert before `AppState::Load`
-//! populates the resource (per the project's state-scoped-resource convention,
-//! bevy-traps rule 1) — it never panics on an absent theme.
+//! resource *changed* (the `Load` insert or the re-derive — repainting every
+//! [`Themed`] entity, i.e. the retheme) **or** when a new [`Themed`] entity was
+//! added this frame (so a freshly-spawned widget still gets its base look). It
+//! does **not** run on steady-state frames, so it never clobbers the GTW-118
+//! hover/press feedback. The `resource_exists::<GdtfTheme>` part of that run
+//! condition also keeps it inert before `AppState::Load` populates the resource
+//! (bevy-traps rule 1) — it never panics on an absent theme.
 
 use bevy::{
     prelude::*,
@@ -56,48 +56,36 @@ use bevy::{
     ui::{BackgroundColor, BorderColor as UiBorderColor, BorderRadius, Node, UiRect, Val},
 };
 
-use crate::theme::GdtfTheme;
+use crate::theme::{ContentMargin, GdtfTheme};
 
-/// The kind of themed widget an entity is, which selects *which* theme-derived
-/// visuals [`apply_theme`] writes onto it.
+/// The kind of themed widget an entity is, which selects *which* sub-theme
+/// [`apply_theme`] paints onto it.
 ///
 /// A named role rather than a bare boolean or marker pair: the set of widget
 /// kinds the theme knows how to paint is a closed vocabulary, and a closed
-/// vocabulary is an enum. Panels and buttons share [`Panel`](ThemeRole::Panel) —
-/// a button is a panel that additionally reacts to interaction (GTW-118), and
-/// interaction feedback composes on top of the base panel look this role drives.
+/// vocabulary is an enum.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ThemeRole {
-    /// A text node: [`apply_theme`] sets its foreground color, font face, and
-    /// font size from the theme.
-    Text,
-    /// A heading / title text node: like [`Text`](ThemeRole::Text) (same
-    /// theme-derived color and font face), but [`apply_theme`] writes a font
-    /// size scaled up from the theme's base size by [`TitleScale::TITLE`]. This
-    /// keeps a title styled **only** from the theme (so a re-theme re-paints it)
-    /// while still rendering larger than the body/button text — the size is a
-    /// theme-derived multiple, never a hardcoded literal.
-    Title,
-    /// A panel or button node: [`apply_theme`] sets its background fill, border
-    /// color, border width, corner radius, and content margins from the theme.
+    /// The full-screen backdrop [`Node`](bevy::ui::Node): [`apply_theme`] sets its
+    /// background fill from the **background** sub-theme (no border/radius/padding).
+    Background,
+    /// A panel-box [`Node`](bevy::ui::Node): [`apply_theme`] sets its fill, border
+    /// color, border width, corner radius, and content padding from the **panel**
+    /// sub-theme.
     Panel,
-}
-
-/// Multiplier applied to the theme's base font size to size a
-/// [`ThemeRole::Title`] heading.
-///
-/// A named newtype over the scale factor rather than a bare `f32`
-/// (no-bare-types rule): a title's size is the theme font size *times this
-/// factor*, so the heading tracks the live theme — re-theming to a new base
-/// size re-scales the title — instead of carrying a frozen, hardcoded size.
-/// [`TitleScale::TITLE`] is the single value used for menu/heading titles.
-#[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct TitleScale(f32);
-
-impl TitleScale {
-    /// The heading scale: a title renders at 2× the theme's base text size,
-    /// large enough to read as the page heading above the button column.
-    pub const TITLE: Self = Self(2.0);
+    /// A button-box [`Node`](bevy::ui::Node): [`apply_theme`] sets its fill, border
+    /// color, border width, corner radius, and content padding from the **button**
+    /// sub-theme. Interaction feedback (GTW-118) composes hover/press on top.
+    Button,
+    /// A button caption [`Text`](bevy::prelude::Text): [`apply_theme`] sets its
+    /// color, font face, and size from the **button** sub-theme.
+    ButtonText,
+    /// A heading / title [`Text`](bevy::prelude::Text): [`apply_theme`] sets its
+    /// color, font face, and size from the **title** sub-theme.
+    Title,
+    /// A body-text [`Text`](bevy::prelude::Text): [`apply_theme`] sets its color,
+    /// font face, and size from the **text** sub-theme.
+    Text,
 }
 
 /// Marker opting an entity into centralized theming, tagged with its
@@ -115,7 +103,7 @@ pub struct Themed(pub ThemeRole);
 ///
 /// [`ApplyTheme`](UiSystems::ApplyTheme) names where [`apply_theme`] runs so
 /// later systems can order deterministically relative to it (bevy-traps rule 3) —
-/// in particular the GTW-137 retheme trigger, and any interaction-feedback system
+/// in particular the retheme trigger, and any interaction-feedback system
 /// (GTW-118) that must compose its hover/press swap *after* the base look is laid
 /// down.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -125,21 +113,8 @@ pub enum UiSystems {
 }
 
 /// Paints the base, theme-derived look onto every [`Themed`] entity from the
-/// **current** [`GdtfTheme`] resource.
-///
-/// For each themed entity, the visuals written depend on its [`ThemeRole`]:
-///
-/// - [`ThemeRole::Text`]: a [`TextColor`](bevy::text::TextColor) and a
-///   [`TextFont`](bevy::text::TextFont) carrying the theme font handle and size.
-/// - [`ThemeRole::Title`]: the same color and font handle as `Text`, but the
-///   [`TextFont`](bevy::text::TextFont)'s `font_size` is the theme size scaled by
-///   [`TitleScale::TITLE`] — a theme-derived larger heading size, not a literal.
-/// - [`ThemeRole::Panel`]: a [`BackgroundColor`](bevy::ui::BackgroundColor),
-///   a [`BorderColor`](bevy::ui::BorderColor), and a [`Node`](bevy::ui::Node)
-///   whose `border` is the theme border width, whose `border_radius` is the theme
-///   corner radius, and whose `padding` is the theme content margins (the rest of
-///   the existing `Node`'s layout is preserved). In Bevy 0.18 the corner radius
-///   lives in [`Node::border_radius`](bevy::ui::Node), not a standalone component.
+/// **current** [`GdtfTheme`] resource, by [`ThemeRole`] (see the module docs for
+/// the role→sub-theme mapping).
 ///
 /// Components are written through [`Commands`], so the look is applied whether or
 /// not the entity already carried the target component — apply-or-insert, robust
@@ -163,47 +138,66 @@ pub fn apply_theme(
     for (entity, marker, node) in &themed {
         painted += 1;
         match **marker {
-            ThemeRole::Text => {
+            ThemeRole::Background => {
+                // The backdrop only fills — no border / radius / padding.
+                commands
+                    .entity(entity)
+                    .insert(BackgroundColor(*theme.background.color));
+            }
+            ThemeRole::Panel => {
+                let themed_node = box_node(
+                    node,
+                    *theme.panel.border_width_px,
+                    *theme.panel.corner_radius_px,
+                    theme.panel.margin,
+                );
                 commands.entity(entity).insert((
-                    UiTextColor(*theme.text),
+                    BackgroundColor(*theme.panel.color),
+                    UiBorderColor::all(*theme.panel.border_color),
+                    themed_node,
+                ));
+            }
+            ThemeRole::Button => {
+                let themed_node = box_node(
+                    node,
+                    *theme.button.border_width_px,
+                    *theme.button.corner_radius_px,
+                    theme.button.margin,
+                );
+                commands.entity(entity).insert((
+                    BackgroundColor(*theme.button.color),
+                    UiBorderColor::all(*theme.button.border_color),
+                    themed_node,
+                ));
+            }
+            ThemeRole::ButtonText => {
+                commands.entity(entity).insert((
+                    UiTextColor(*theme.button.text_color),
                     TextFont {
-                        font: theme.font.clone(),
-                        font_size: *theme.font_size_pt,
+                        font: theme.button.font.clone(),
+                        font_size: *theme.button.font_size_pt,
                         ..default()
                     },
                 ));
             }
             ThemeRole::Title => {
-                // A title is theme-text scaled up: same color and font face, but
-                // the size is the theme base size times the title scale, so it is
-                // still fully theme-derived (a re-theme re-scales it) and larger
-                // than the body text — satisfying both "larger" and "theme-only".
                 commands.entity(entity).insert((
-                    UiTextColor(*theme.text),
+                    UiTextColor(*theme.title.text_color),
                     TextFont {
-                        font: theme.font.clone(),
-                        font_size: *theme.font_size_pt * *TitleScale::TITLE,
+                        font: theme.title.font.clone(),
+                        font_size: *theme.title.font_size_pt,
                         ..default()
                     },
                 ));
             }
-            ThemeRole::Panel => {
-                // Preserve any existing layout on the node, overriding only the
-                // theme-owned border width, corner radius, and content margins.
-                let mut themed_node = node.cloned().unwrap_or_default();
-                themed_node.border = UiRect::all(Val::Px(*theme.border_width_px));
-                themed_node.border_radius = BorderRadius::all(Val::Px(*theme.corner_radius_px));
-                themed_node.padding = UiRect::px(
-                    *theme.content_margin.l,
-                    *theme.content_margin.r,
-                    *theme.content_margin.t,
-                    *theme.content_margin.b,
-                );
-
+            ThemeRole::Text => {
                 commands.entity(entity).insert((
-                    BackgroundColor(*theme.panel_bg),
-                    UiBorderColor::all(*theme.border_color),
-                    themed_node,
+                    UiTextColor(*theme.text.text_color),
+                    TextFont {
+                        font: theme.text.font.clone(),
+                        font_size: *theme.text.font_size_pt,
+                        ..default()
+                    },
                 ));
             }
         }
@@ -214,6 +208,23 @@ pub fn apply_theme(
     if painted > 0 {
         info!("apply_theme: repainted {painted} Themed entities from the current GdtfTheme");
     }
+}
+
+/// Builds a themed box [`Node`](bevy::ui::Node): the existing node's layout
+/// preserved, with only the theme-owned border width, corner radius, and content
+/// padding overridden.
+///
+/// Shared by the [`ThemeRole::Panel`] and [`ThemeRole::Button`] arms — both paint
+/// a box, differing only in which sub-theme's scalars feed in. In Bevy 0.18 the
+/// corner radius lives in [`Node::border_radius`](bevy::ui::Node), the border
+/// width in [`Node::border`](bevy::ui::Node), and the padding in
+/// [`Node::padding`](bevy::ui::Node) — not standalone components.
+fn box_node(node: Option<&Node>, border_px: f32, radius_px: f32, margin: ContentMargin) -> Node {
+    let mut themed_node = node.cloned().unwrap_or_default();
+    themed_node.border = UiRect::all(Val::Px(border_px));
+    themed_node.border_radius = BorderRadius::all(Val::Px(radius_px));
+    themed_node.padding = UiRect::px(*margin.l, *margin.r, *margin.t, *margin.b);
+    themed_node
 }
 
 /// Run condition: at least one [`Themed`] entity was **added** this frame.
@@ -246,50 +257,39 @@ mod tests {
     use super::*;
     use crate::theme::{GdtfTheme, GdtfThemeSpec};
 
-    /// Builds a [`GdtfTheme`] with the given salient colors / scalars through the
-    /// real production path — deserialize a spec, then [`GdtfThemeSpec::resolve`]
-    /// it with a defaulted font handle (no `AssetServer` needed). The theme
-    /// newtypes have private fields, so this both respects that encapsulation and
-    /// exercises the genuine resolution the runtime uses. Content margins are
-    /// fixed (left/right 8, top/bottom 6) since the role-paint test pins them.
-    /// Returns the `ron` error so callers surface a malformed literal via `?`
-    /// rather than a denied `unwrap`/`panic`.
+    /// Builds a [`GdtfTheme`] from the shipped-shape nested RON with caller-chosen
+    /// salient values, through the real production path (deserialize a spec, then
+    /// [`GdtfThemeSpec::resolve`] with a defaulted-font resolver). The theme
+    /// newtypes have private fields, so this respects encapsulation while
+    /// exercising the genuine resolution. Returns the `ron` error so a malformed
+    /// literal surfaces via `?` rather than a denied `unwrap`/`panic`.
     fn theme(
-        text: [f32; 3],
-        panel: [f32; 3],
+        button_color: [f32; 3],
         border: [f32; 3],
         border_w: f32,
         radius: f32,
-        font_size: f32,
+        button_font_size: f32,
     ) -> Result<GdtfTheme, ron::error::SpannedError> {
-        // `Srgba4` is `#[serde(transparent)]` over `[f32; 4]`, which RON encodes
-        // as a tuple `(r, g, b, a)` — mirror the shipped `grimdark.ron` shape.
+        let [pr, pg, pb] = button_color;
+        let [br, bg, bb] = border;
         let ron = format!(
             "(\
-             text: ({tr}, {tg}, {tb}, 1.0), \
-             panel_bg: ({pr}, {pg}, {pb}, 1.0), \
-             border_color: ({br}, {bg}, {bb}, 1.0), \
-             border_width_px: {border_w}, \
-             corner_radius_px: {radius}, \
-             margin_left_px: 8.0, margin_right_px: 8.0, \
-             margin_top_px: 6.0, margin_bottom_px: 6.0, \
-             font_size_pt: {font_size}, \
-             font_key: \"fonts/test.ttf\", \
-             hover_bg: ({pr}, {pg}, {pb}, 1.0), \
-             press_bg: ({pr}, {pg}, {pb}, 1.0), \
-             disabled_bg: (0.16, 0.16, 0.18, 0.55))",
-            tr = text[0],
-            tg = text[1],
-            tb = text[2],
-            pr = panel[0],
-            pg = panel[1],
-            pb = panel[2],
-            br = border[0],
-            bg = border[1],
-            bb = border[2],
+             default_font: \"fonts/test.ttf\", \
+             background: ( color: (0.05, 0.05, 0.06, 1.0) ), \
+             panel: ( color: (0.16, 0.16, 0.18, 0.55), border_color: (0.20, 0.20, 0.24, 1.0), \
+                      border_width_px: 3.0, corner_radius_px: 7.0, \
+                      margin: (left: 9.0, right: 9.0, top: 4.0, bottom: 4.0) ), \
+             button: ( color: ({pr}, {pg}, {pb}, 1.0), disabled: (0.08, 0.08, 0.10, 0.55), \
+                       hover: (0.80, 0.16, 0.19, 0.96), pressed: (0.10, 0.10, 0.12, 0.96), \
+                       text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: {button_font_size}, \
+                       border_color: ({br}, {bg}, {bb}, 1.0), \
+                       border_width_px: {border_w}, corner_radius_px: {radius}, \
+                       margin: (left: 8.0, right: 8.0, top: 6.0, bottom: 6.0) ), \
+             title: ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 36.0 ), \
+             text:  ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0 ))",
         );
         let spec: GdtfThemeSpec = ron::from_str(&ron)?;
-        Ok(spec.resolve(Handle::<Font>::default()))
+        Ok(spec.resolve(|_| Handle::<Font>::default()))
     }
 
     /// A minimal app with `apply_theme` registered under the real run condition,
@@ -300,9 +300,9 @@ mod tests {
         app
     }
 
-    /// `apply_theme` writes the theme's text color, font handle, and font size
-    /// onto a `Themed(Text)` entity, and its panel bg / border color / border
-    /// width / corner radius / content margins onto a `Themed(Panel)` entity.
+    /// `apply_theme` writes the button text color / font / size onto a
+    /// `Themed(ButtonText)` entity, and the button fill / border color / border
+    /// width / corner radius / content padding onto a `Themed(Button)` entity.
     ///
     /// Pin-discriminating: reverting any field's mapping (or dropping a written
     /// component) fails the corresponding assert.
@@ -311,21 +311,20 @@ mod tests {
     -> Result<(), ron::error::SpannedError> {
         let mut app = app_with_apply_theme();
         app.insert_resource(theme(
-            [0.84, 0.80, 0.73],
-            [0.08, 0.08, 0.10],
+            [0.12, 0.12, 0.15],
             [0.20, 0.20, 0.24],
-            1.0,
             2.0,
+            5.0,
             18.0,
         )?);
 
         let text = app
             .world_mut()
-            .spawn((Themed(ThemeRole::Text), Text::new("x")))
+            .spawn((Themed(ThemeRole::ButtonText), Text::new("x")))
             .id();
-        let panel = app
+        let button = app
             .world_mut()
-            .spawn((Themed(ThemeRole::Panel), Node::default()))
+            .spawn((Themed(ThemeRole::Button), Node::default()))
             .id();
 
         app.update();
@@ -335,73 +334,127 @@ mod tests {
         assert_eq!(
             world.get::<UiTextColor>(text).map(|c| c.0),
             Some(Color::srgb(0.84, 0.80, 0.73)),
-            "text entity should get the theme text color",
+            "button-text entity should get the button text color",
         );
         assert_eq!(
             world.get::<TextFont>(text).map(|f| f.font.clone()),
             Some(Handle::<Font>::default()),
-            "text entity should get the theme font handle",
+            "button-text entity should get the button font handle",
         );
         assert!(
             world
                 .get::<TextFont>(text)
                 .is_some_and(|f| (f.font_size - 18.0).abs() < f32::EPSILON),
-            "text entity font size should be the theme size",
+            "button-text entity font size should be the button size",
         );
 
         assert_eq!(
-            world.get::<BackgroundColor>(panel).map(|c| c.0),
-            Some(Color::srgb(0.08, 0.08, 0.10)),
-            "panel entity should get the theme panel bg",
+            world.get::<BackgroundColor>(button).map(|c| c.0),
+            Some(Color::srgb(0.12, 0.12, 0.15)),
+            "button entity should get the button fill",
         );
         assert_eq!(
-            world.get::<UiBorderColor>(panel).map(|b| b.top),
+            world.get::<UiBorderColor>(button).map(|b| b.top),
             Some(Color::srgb(0.20, 0.20, 0.24)),
-            "panel entity should get the theme border color on every edge",
+            "button entity should get the button border color on every edge",
         );
         assert_eq!(
-            world.get::<Node>(panel).map(|n| n.border.left),
-            Some(Val::Px(1.0)),
-            "border width",
-        );
-        assert_eq!(
-            world.get::<Node>(panel).map(|n| n.padding.left),
-            Some(Val::Px(8.0)),
-            "left content margin",
-        );
-        assert_eq!(
-            world.get::<Node>(panel).map(|n| n.padding.top),
-            Some(Val::Px(6.0)),
-            "top content margin",
-        );
-        assert_eq!(
-            world.get::<Node>(panel).map(|n| n.border_radius.top_left),
+            world.get::<Node>(button).map(|n| n.border.left),
             Some(Val::Px(2.0)),
+            "button border width",
+        );
+        assert_eq!(
+            world.get::<Node>(button).map(|n| n.padding.left),
+            Some(Val::Px(8.0)),
+            "left content padding",
+        );
+        assert_eq!(
+            world.get::<Node>(button).map(|n| n.padding.top),
+            Some(Val::Px(6.0)),
+            "top content padding",
+        );
+        assert_eq!(
+            world.get::<Node>(button).map(|n| n.border_radius.top_left),
+            Some(Val::Px(5.0)),
             "corner radius",
         );
 
         Ok(())
     }
 
-    /// `apply_theme` paints a `Themed(Title)` node with the theme text color and
-    /// font handle, but at a font size that is the theme base size scaled by
-    /// [`TitleScale::TITLE`] — larger than a `Themed(Text)` node, and still
-    /// entirely theme-derived (GTW-121 title-size resolution).
-    ///
-    /// Pin-discriminating: if the Title arm wrote the unscaled `font_size_pt`
-    /// (clobbering the larger heading) or a hardcoded size, the size assert fails;
-    /// if it stopped sourcing color/font from the theme, those asserts fail.
+    /// `apply_theme` paints a `Themed(Background)` node with only the backdrop
+    /// fill (no border / radius / padding), and a `Themed(Panel)` node with the
+    /// panel sub-theme's box visuals.
     #[test]
-    fn apply_theme_scales_title_font_size_from_the_theme() -> Result<(), ron::error::SpannedError> {
+    fn apply_theme_paints_background_and_panel() -> Result<(), ron::error::SpannedError> {
         let mut app = app_with_apply_theme();
         app.insert_resource(theme(
-            [0.84, 0.80, 0.73],
-            [0.08, 0.08, 0.10],
+            [0.12, 0.12, 0.15],
             [0.20, 0.20, 0.24],
-            1.0,
             2.0,
+            5.0,
             18.0,
         )?);
+
+        let background = app
+            .world_mut()
+            .spawn((Themed(ThemeRole::Background), Node::default()))
+            .id();
+        let panel = app
+            .world_mut()
+            .spawn((Themed(ThemeRole::Panel), Node::default()))
+            .id();
+
+        app.update();
+
+        let world = app.world();
+        // Background gets the backdrop fill and NO border (default 0 width).
+        assert_eq!(
+            world.get::<BackgroundColor>(background).map(|c| c.0),
+            Some(Color::srgb(0.05, 0.05, 0.06)),
+            "background entity should get the backdrop fill",
+        );
+        // The Background arm writes only BackgroundColor — it leaves the spawned
+        // node's border at the default (Px(0.0)), never the panel/button themed
+        // border width (which would be Px(3.0)/Px(2.0)).
+        assert_eq!(
+            world.get::<Node>(background).map(|n| n.border.left),
+            Some(Val::Px(0.0)),
+            "background node must keep its default border, not get a themed border width",
+        );
+
+        // Panel gets the panel sub-theme box (border 3.0, radius 7.0, padding 9.0).
+        assert_eq!(
+            world.get::<BackgroundColor>(panel).map(|c| c.0),
+            Some(Color::srgba(0.16, 0.16, 0.18, 0.55)),
+            "panel entity should get the panel fill",
+        );
+        assert_eq!(
+            world.get::<Node>(panel).map(|n| n.border.left),
+            Some(Val::Px(3.0)),
+            "panel border width from the panel sub-theme",
+        );
+        assert_eq!(
+            world.get::<Node>(panel).map(|n| n.padding.left),
+            Some(Val::Px(9.0)),
+            "panel padding from the panel sub-theme",
+        );
+
+        Ok(())
+    }
+
+    /// `apply_theme` paints a `Themed(Title)` node with the title sub-theme's
+    /// color, font handle, and its **own** `font_size_pt` (36) — distinct from the
+    /// button/body size, and no longer a scaled body size.
+    ///
+    /// Pin-discriminating: if the Title arm used the button/body size, or a
+    /// hardcoded scale, the size assert fails; if it stopped sourcing color/font
+    /// from the title sub-theme, those asserts fail.
+    #[test]
+    fn apply_theme_uses_title_sub_theme_font_size() -> Result<(), ron::error::SpannedError> {
+        let mut app = app_with_apply_theme();
+        let theme_res = theme([0.12, 0.12, 0.15], [0.20, 0.20, 0.24], 2.0, 5.0, 18.0)?;
+        app.insert_resource(theme_res.clone());
 
         let title = app
             .world_mut()
@@ -411,27 +464,26 @@ mod tests {
         app.update();
 
         let world = app.world();
-        // Same color + font face as the body text role.
         assert_eq!(
             world.get::<UiTextColor>(title).map(|c| c.0),
             Some(Color::srgb(0.84, 0.80, 0.73)),
-            "title must use the theme text color",
+            "title must use the title text color",
         );
         assert_eq!(
             world.get::<TextFont>(title).map(|f| f.font.clone()),
             Some(Handle::<Font>::default()),
-            "title must use the theme font handle",
+            "title must use the title font handle",
         );
-        // But a scaled-up size: base 18.0 * TitleScale::TITLE.
-        let expected = 18.0 * *TitleScale::TITLE;
+        // The title sub-theme size is 36.0 — its own value, not 18 * a scale —
+        // and strictly larger than the resolved text sub-theme's body size (18).
+        let title_size = world.get::<TextFont>(title).map(|f| f.font_size);
         assert!(
-            world
-                .get::<TextFont>(title)
-                .is_some_and(|f| (f.font_size - expected).abs() < f32::EPSILON),
-            "title font size must be the theme base size scaled by TitleScale::TITLE",
+            title_size.is_some_and(|s| (s - 36.0).abs() < f32::EPSILON),
+            "title font size must be the title sub-theme's own font_size_pt (36)",
         );
+        let body_size = *theme_res.text.font_size_pt;
         assert!(
-            expected > 18.0,
+            title_size.is_some_and(|s| s > body_size),
             "title must be strictly larger than the body/button text size",
         );
 
@@ -450,31 +502,28 @@ mod tests {
     -> Result<(), ron::error::SpannedError> {
         let mut app = app_with_apply_theme();
         app.insert_resource(theme(
-            [0.84, 0.80, 0.73],
-            [0.08, 0.08, 0.10],
+            [0.12, 0.12, 0.15],
             [0.20, 0.20, 0.24],
-            1.0,
             2.0,
+            5.0,
             18.0,
         )?);
 
         let text = app
             .world_mut()
-            .spawn((Themed(ThemeRole::Text), Text::new("x")))
+            .spawn((Themed(ThemeRole::ButtonText), Text::new("x")))
             .id();
-        let panel = app
+        let button = app
             .world_mut()
-            .spawn((Themed(ThemeRole::Panel), Node::default()))
+            .spawn((Themed(ThemeRole::Button), Node::default()))
             .id();
 
         app.update();
 
-        // Swap to a deliberately different palette and scalars.
-        let new_text = Color::srgb(0.10, 0.90, 0.20);
-        let new_panel = Color::srgb(0.50, 0.10, 0.30);
+        // Swap to a deliberately different button palette and scalars.
+        let new_button = Color::srgb(0.50, 0.10, 0.30);
         let new_border = Color::srgb(0.99, 0.40, 0.00);
         app.insert_resource(theme(
-            [0.10, 0.90, 0.20],
             [0.50, 0.10, 0.30],
             [0.99, 0.40, 0.00],
             4.0,
@@ -485,34 +534,29 @@ mod tests {
         app.update();
 
         let world = app.world();
-        assert_eq!(
-            world.get::<UiTextColor>(text).map(|c| c.0),
-            Some(new_text),
-            "text color must reflect the NEW theme after re-run",
-        );
         assert!(
             world
                 .get::<TextFont>(text)
                 .is_some_and(|f| (f.font_size - 30.0).abs() < f32::EPSILON),
-            "font size must reflect the NEW theme after re-run",
+            "button-text size must reflect the NEW theme after re-run",
         );
         assert_eq!(
-            world.get::<BackgroundColor>(panel).map(|c| c.0),
-            Some(new_panel),
-            "panel bg must reflect the NEW theme after re-run",
+            world.get::<BackgroundColor>(button).map(|c| c.0),
+            Some(new_button),
+            "button fill must reflect the NEW theme after re-run",
         );
         assert_eq!(
-            world.get::<UiBorderColor>(panel).map(|b| b.top),
+            world.get::<UiBorderColor>(button).map(|b| b.top),
             Some(new_border),
             "border color must reflect the NEW theme after re-run",
         );
         assert_eq!(
-            world.get::<Node>(panel).map(|n| n.border.left),
+            world.get::<Node>(button).map(|n| n.border.left),
             Some(Val::Px(4.0)),
             "border width must reflect the NEW theme after re-run",
         );
         assert_eq!(
-            world.get::<Node>(panel).map(|n| n.border_radius.top_left),
+            world.get::<Node>(button).map(|n| n.border_radius.top_left),
             Some(Val::Px(9.0)),
             "corner radius must reflect the NEW theme after re-run",
         );

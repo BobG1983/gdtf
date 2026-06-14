@@ -1,6 +1,9 @@
 //! `Update` (in `AppState::Load`): poll the loads, then resolve or fall back.
 
-use bevy::{asset::LoadState, prelude::*};
+use bevy::{
+    asset::{LoadState, RecursiveDependencyLoadState},
+    prelude::*,
+};
 use gdtf_assets::RonAsset;
 use gdtf_ui::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec, default_theme};
 
@@ -11,14 +14,18 @@ use crate::scenes::load::resources::{FailedAssetPath, LoadFailed, LoadHandles};
 /// Each frame, while [`LoadHandles`] exists and no [`GdtfTheme`] has been
 /// inserted yet:
 ///
-/// - If the theme RON **or** the font reached [`LoadState::Failed`], records the
-///   failed path in a typed [`LoadFailed`] resource, `warn!`s naming it, and
-///   inserts the const-fallback [`default_theme`] — the ADR-0003 sanctioned
-///   error-path safety-net — so the app never hangs and never leaves `Load`
-///   themeless.
-/// - Else if the theme RON is [`LoadState::Loaded`], reads the deserialized
-///   [`GdtfThemeSpec`] out of `Assets<RonAsset<GdtfThemeSpec>>` and resolves it
-///   with the loaded font handle into a [`GdtfTheme`], then inserts it.
+/// - If the theme RON reached [`LoadState::Failed`] **or** the fonts folder
+///   reached [`RecursiveDependencyLoadState::Failed`], records the failed path in
+///   a typed [`LoadFailed`] resource, `warn!`s naming it, and inserts the
+///   const-fallback [`default_theme`] — the ADR-0003 sanctioned error-path
+///   safety-net — so the app never hangs and never leaves `Load` themeless.
+/// - Else once the theme RON is [`LoadState::Loaded`] **and** the fonts folder's
+///   [`RecursiveDependencyLoadState`] is `Loaded` (recursive, so every font in
+///   the folder is loaded — GTW-149), reads the deserialized [`GdtfThemeSpec`]
+///   out of `Assets<RonAsset<GdtfThemeSpec>>` and resolves it with the font
+///   resolver `|key| asset_server.load::<Font>(key)` into a [`GdtfTheme`], then
+///   inserts it. `load` is idempotent — each font key returns its
+///   already-preloaded handle.
 /// - Else (still loading) it does nothing and runs again next frame.
 ///
 /// On **both** the success and the failure paths it also inserts the persistent
@@ -48,7 +55,8 @@ pub(in crate::scenes::load) fn poll_and_resolve(
     };
 
     let theme_state = asset_server.load_state(&*handles.theme);
-    let font_state = asset_server.load_state(&*handles.font);
+    // Recursive (not direct) — gate on every font IN the folder being loaded.
+    let fonts_state = asset_server.recursive_dependency_load_state(&*handles.fonts);
 
     // Failure path: a failed required asset must not hang the app. Record the
     // failed path, warn, and fall back to the const default theme. The active
@@ -62,23 +70,28 @@ pub(in crate::scenes::load) fn poll_and_resolve(
         );
         return;
     }
-    if font_state.is_failed() {
+    if matches!(fonts_state, RecursiveDependencyLoadState::Failed(_)) {
         fall_back(
             &mut commands,
-            FailedAssetPath(String::from("fonts/Alegreya-Variable.ttf")),
+            FailedAssetPath(String::from("fonts")),
             &handles,
         );
         return;
     }
 
-    // Success path: the theme RON is loaded — resolve it with the font handle.
-    if matches!(theme_state, LoadState::Loaded) {
+    // Success path: the theme RON is loaded AND every font in the folder is
+    // loaded — resolve the spec, loading each font key idempotently.
+    if matches!(theme_state, LoadState::Loaded)
+        && matches!(fonts_state, RecursiveDependencyLoadState::Loaded)
+    {
         let Some(spec) = theme_assets.get(&*handles.theme) else {
             // Loaded-but-not-yet-in-collection is a transient one-frame state;
             // try again next frame rather than failing.
             return;
         };
-        let theme: GdtfTheme = (**spec).clone().resolve((*handles.font).clone());
+        let theme: GdtfTheme = (**spec)
+            .clone()
+            .resolve(|key| asset_server.load::<Font>(key.to_owned()));
         commands.insert_resource(theme);
         // The persistent handle the GTW-137 retheme system filters against and
         // GTW-138's watcher keeps loaded; survives OnExit(Load) like GdtfTheme.

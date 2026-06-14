@@ -143,15 +143,17 @@ fn bad_theme_root() -> PathBuf {
 }
 
 /// Tier (b) good path: with a real `AssetServer` rooted at the workspace
-/// `assets/`, entering `Load` loads and resolves `theme/grimdark.ron` into a
-/// [`GdtfTheme`] that carries the shipped values and a **real** (non-default)
-/// font handle, and the machine leaves `Load` for `Intro`.
+/// `assets/`, entering `Load` loads and resolves `theme/grimdark.ron` (and
+/// preloads the fonts folder) into a [`GdtfTheme`] whose text-bearing sub-themes
+/// carry **real** (non-default) font handles, and the machine leaves `Load` for
+/// `Intro`.
 ///
 /// Pin: this fails if the kick-off path/loader regresses (the theme never
-/// resolves, so the budget runs out), if `resolve` is fed the wrong values, or
-/// if the loaded font handle is not threaded into the theme (the handle would be
-/// the default). It exercises the whole async load -> resolve -> insert ->
-/// transition chain against real assets (AC1, AC2, AC4).
+/// resolves, so the budget runs out), or if the loaded font handles are not
+/// threaded into the theme (they would be the default). It exercises the whole
+/// async load -> resolve -> insert -> transition chain against real assets.
+/// Value-agnostic per the de-brittle principle (GTW-148): it asserts the
+/// resolution mechanism, not the tunable shipped colors.
 #[test]
 fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
     let mut app = GdtfLoadTestAppBuilder::new()
@@ -171,26 +173,24 @@ fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
     );
 
     if let Some(theme) = app.world().get_resource::<GdtfTheme>() {
-        // The shipped grimdark text color (ported from main_theme.tres).
-        let text = theme.text.to_srgba();
-        assert!(
-            (text.red - 0.84).abs() < f32::EPSILON
-                && (text.green - 0.80).abs() < f32::EPSILON
-                && (text.blue - 0.73).abs() < f32::EPSILON,
-            "good path must resolve the SHIPPED grimdark values, got text {text:?}",
-        );
         assert_eq!(
-            &**theme.font_key, "fonts/Alegreya-Variable.ttf",
-            "good path must carry the shipped font key",
+            &**theme.default_font, "fonts/Alegreya-Variable.ttf",
+            "good path must carry the shipped default_font key",
         );
-        // The font was loaded for real, so its handle is NOT the default handle
-        // (which is what the const-fallback path would carry) — proves the loaded
-        // font handle was threaded into resolve (AC2).
-        assert_ne!(
-            theme.font,
-            Handle::<Font>::default(),
-            "good path must thread the real loaded font handle into the theme, not the default",
-        );
+        // The fonts were loaded for real, so each text-bearing sub-theme's handle
+        // is NOT the default handle (what the const-fallback path would carry) —
+        // proving the loaded font handles were threaded into resolve.
+        for (label, font) in [
+            ("button", theme.button.font.clone()),
+            ("title", theme.title.font.clone()),
+            ("text", theme.text.font.clone()),
+        ] {
+            assert_ne!(
+                font,
+                Handle::<Font>::default(),
+                "good path must thread the real loaded {label} font handle into the theme",
+            );
+        }
     }
 
     // And the machine leaves Load for Intro now that a theme is present.
@@ -204,6 +204,52 @@ fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
         "with a resolved GdtfTheme, Load must transition to Intro; last AppState was {:?}",
         app_state(&app),
     );
+}
+
+/// Tier (b) multi-font: the fonts folder preload resolves DISTINCT font handles —
+/// the title sub-theme's overriding `Cinzel-Variable.ttf` is loaded distinct from
+/// the button / text sub-themes' default `Alegreya-Variable.ttf` (GTW-149).
+///
+/// Pin: this fails if the per-sub-theme font override is dropped (all three would
+/// share the default handle), or if the folder preload regresses so only the
+/// default font is resident. The harness roots at the workspace `assets/`, which
+/// ships both fonts.
+#[test]
+fn real_asset_multi_font_load_resolves_distinct_title_font() {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+
+    let resolved = advance_until(
+        &mut app,
+        |app| app.world().get_resource::<GdtfTheme>().is_some(),
+        LOAD_BUDGET,
+    );
+    assert!(
+        resolved,
+        "the multi-font theme load should resolve a GdtfTheme within {LOAD_BUDGET} updates; \
+         last observed AppState was {:?}",
+        app_state(&app),
+    );
+
+    if let Some(theme) = app.world().get_resource::<GdtfTheme>() {
+        // Title overrides its font; button + text fall to the default_font. The
+        // overriding font handle must differ from the default one — proving the
+        // Cinzel override loaded distinct from Alegreya across the folder preload.
+        assert_ne!(
+            theme.title.font, theme.button.font,
+            "title's overriding font must resolve to a DISTINCT handle from the default font",
+        );
+        assert_eq!(
+            theme.button.font, theme.text.font,
+            "button + text both use the default_font, so they share one handle",
+        );
+        assert_ne!(
+            theme.title.font,
+            Handle::<Font>::default(),
+            "the override font must be a real loaded handle, not the default",
+        );
+    }
 }
 
 /// Tier (b) failure path: with the asset root pointed at a malformed

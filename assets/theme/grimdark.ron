@@ -1,18 +1,27 @@
-// GDTF grimdark UI theme — data-driven (ADR 0003).
+// GDTF grimdark UI theme — data-driven (ADR 0003), nested per-widget sub-themes (GTW-149).
+// `implicit_some` lets a present per-sub-theme font override be written as a bare
+// `font: "path"` rather than `font: Some("path")`; an absent field is still None.
+#![enable(implicit_some)]
 
 (
-    text:             (0.84, 0.80, 0.73, 1.0),
-    panel_bg:         (0.08, 0.08, 0.10, 0.96),
-    border_color:     (0.20, 0.20, 0.24, 1.0),
-    border_width_px:  2.0,
-    corner_radius_px: 5.0,
-    margin_left_px:   12.0,
-    margin_right_px:  12.0,
-    margin_top_px:    6.0,
-    margin_bottom_px: 6.0,
-    font_size_pt:     18.0,
-    font_key:         "fonts/Alegreya-Variable.ttf",
-    hover_bg:         (0.80, 0.16, 0.19, 0.96),
-    press_bg:         (0.12, 0.12, 0.15, 0.96),
-    disabled_bg:      (0.16, 0.16, 0.18, 0.55),
+    default_font: "fonts/Alegreya-Variable.ttf",
+    background: ( color: (0.05, 0.05, 0.06, 1.0) ),
+    panel: (
+        color: (0.12, 0.12, 0.15, 0.55),
+        border_color: (0.20, 0.20, 0.24, 1.0),
+        border_width_px: 2.0, corner_radius_px: 5.0,
+        margin: (left: 12.0, right: 12.0, top: 6.0, bottom: 6.0),
+    ),
+    button: (
+        color: (0.16, 0.16, 0.18, 0.96),
+        disabled: (0.08, 0.08, 0.10, 0.55),
+        hover: (0.80, 0.16, 0.19, 0.96),
+        pressed: (0.10, 0.10, 0.12, 0.96),
+        text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0,
+        border_color: (0.20, 0.20, 0.24, 1.0),
+        border_width_px: 2.0, corner_radius_px: 5.0,
+        margin: (left: 12.0, right: 12.0, top: 6.0, bottom: 6.0),
+    ),
+    title: ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 36.0, font: "fonts/Cinzel-Variable.ttf" ),
+    text:  ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0 ),
 )

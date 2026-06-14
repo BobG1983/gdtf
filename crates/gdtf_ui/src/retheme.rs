@@ -26,7 +26,10 @@
 //! wiring (the `AssetPlugin` watch source) is GTW-138 and is *not* part of this
 //! module.
 
-use bevy::{asset::AssetEvent, prelude::*};
+use bevy::{
+    asset::{AssetEvent, AssetServer},
+    prelude::*,
+};
 use gdtf_assets::RonAsset;
 
 use crate::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec};
@@ -46,9 +49,11 @@ use crate::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec};
 /// 1. reads the updated [`RonAsset`]`<`[`GdtfThemeSpec`]`>` out of the
 ///    `Assets` collection (the in-memory value the watcher just refreshed),
 /// 2. clones the [`GdtfThemeSpec`] and resolves it the **same** way the `Load`
-///    scene does ([`GdtfThemeSpec::resolve`]), **keeping** the font
-///    [`Handle`](bevy::asset::Handle) carried by the current [`GdtfTheme`] (a
-///    theme RON edit does not reload the font), and
+///    scene does ([`GdtfThemeSpec::resolve`] with an
+///    `|key| asset_server.load::<Font>(key)` resolver), so a hot-edit that
+///    switches a sub-theme's font (the override / `default_font` keys) re-loads
+///    the new font — `load` is idempotent and returns the already-loaded handle
+///    for an unchanged key, and
 /// 3. overwrites the [`GdtfTheme`] resource in place through [`ResMut`].
 ///
 /// Overwriting via [`ResMut`] marks [`GdtfTheme`] changed, which is the signal the
@@ -62,6 +67,7 @@ use crate::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec};
 /// [`Option`]al borrows, returning early if either is missing (bevy-traps rule 1).
 pub fn redrive_theme_on_asset_event(
     mut events: MessageReader<AssetEvent<RonAsset<GdtfThemeSpec>>>,
+    asset_server: Res<AssetServer>,
     active: Option<Res<ActiveThemeHandle>>,
     theme_assets: Option<Res<Assets<RonAsset<GdtfThemeSpec>>>>,
     theme: Option<ResMut<GdtfTheme>>,
@@ -102,13 +108,15 @@ pub fn redrive_theme_on_asset_event(
         return;
     };
 
-    // Re-derive the SAME way the Load scene does, keeping the already-loaded font
-    // handle — a theme RON edit changes colors/scalars, not the font asset.
-    let font = theme.font.clone();
-    *theme = (**updated).clone().resolve(font);
+    // Re-derive the SAME way the Load scene does, resolving fonts through the
+    // asset server — `load` is idempotent (already-loaded keys return their
+    // existing handle), and a hot-edit that switches a font key re-loads it.
+    *theme = (**updated)
+        .clone()
+        .resolve(|key| asset_server.load::<Font>(key.to_owned()));
     info!(
-        "theme hot-reload: re-derived GdtfTheme (panel_bg {:?}, hover_bg {:?}, press_bg {:?})",
-        *theme.panel_bg, *theme.hover_bg, *theme.press_bg,
+        "theme hot-reload: re-derived GdtfTheme (panel {:?}, button.hover {:?}, button.pressed {:?})",
+        *theme.panel.color, *theme.button.hover, *theme.button.pressed,
     );
 }
 
@@ -130,38 +138,34 @@ mod tests {
         themed::{ThemeRole, Themed},
     };
 
-    /// Builds a [`GdtfThemeSpec`] from caller-chosen text + panel colors (hover /
-    /// press track the panel), mirroring the shipped `grimdark.ron` shape.
-    /// Returns the `ron` error so a malformed literal surfaces via `?` rather than
-    /// a denied `unwrap`/`panic`.
+    /// Builds a nested [`GdtfThemeSpec`] from caller-chosen body-text + panel
+    /// colors plus a button hover color (the button resting fill tracks the panel
+    /// color so the existing `Themed(Panel)` repaint asserts still read it),
+    /// mirroring the shipped `grimdark.ron` shape. Returns the `ron` error so a
+    /// malformed literal surfaces via `?` rather than a denied `unwrap`/`panic`.
     fn spec(
         text: [f32; 3],
         panel: [f32; 3],
         hover: [f32; 3],
     ) -> Result<GdtfThemeSpec, ron::error::SpannedError> {
+        let [tr, tg, tb] = text;
+        let [pr, pg, pb] = panel;
+        let [hr, hg, hb] = hover;
         let ron = format!(
             "(\
-             text: ({tr}, {tg}, {tb}, 1.0), \
-             panel_bg: ({pr}, {pg}, {pb}, 1.0), \
-             border_color: (0.20, 0.20, 0.24, 1.0), \
-             border_width_px: 1.0, \
-             corner_radius_px: 2.0, \
-             margin_left_px: 8.0, margin_right_px: 8.0, \
-             margin_top_px: 6.0, margin_bottom_px: 6.0, \
-             font_size_pt: 18.0, \
-             font_key: \"fonts/test.ttf\", \
-             hover_bg: ({hr}, {hg}, {hb}, 1.0), \
-             press_bg: ({pr}, {pg}, {pb}, 1.0), \
-             disabled_bg: (0.16, 0.16, 0.18, 0.55))",
-            tr = text[0],
-            tg = text[1],
-            tb = text[2],
-            pr = panel[0],
-            pg = panel[1],
-            pb = panel[2],
-            hr = hover[0],
-            hg = hover[1],
-            hb = hover[2],
+             default_font: \"fonts/test.ttf\", \
+             background: ( color: (0.05, 0.05, 0.06, 1.0) ), \
+             panel: ( color: ({pr}, {pg}, {pb}, 1.0), border_color: (0.20, 0.20, 0.24, 1.0), \
+                      border_width_px: 1.0, corner_radius_px: 2.0, \
+                      margin: (left: 8.0, right: 8.0, top: 6.0, bottom: 6.0) ), \
+             button: ( color: ({pr}, {pg}, {pb}, 1.0), disabled: (0.16, 0.16, 0.18, 0.55), \
+                       hover: ({hr}, {hg}, {hb}, 1.0), pressed: ({pr}, {pg}, {pb}, 1.0), \
+                       text_color: ({tr}, {tg}, {tb}, 1.0), font_size_pt: 18.0, \
+                       border_color: (0.20, 0.20, 0.24, 1.0), \
+                       border_width_px: 1.0, corner_radius_px: 2.0, \
+                       margin: (left: 8.0, right: 8.0, top: 6.0, bottom: 6.0) ), \
+             title: ( text_color: ({tr}, {tg}, {tb}, 1.0), font_size_pt: 36.0 ), \
+             text:  ( text_color: ({tr}, {tg}, {tb}, 1.0), font_size_pt: 18.0 ))",
         );
         ron::from_str(&ron)
     }
@@ -229,7 +233,7 @@ mod tests {
         );
         app.world_mut().insert_resource(
             spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?
-                .resolve(Handle::<Font>::default()),
+                .resolve(|_| Handle::<Font>::default()),
         );
         app.world_mut()
             .insert_resource(ActiveThemeHandle(handle.clone()));
@@ -261,9 +265,11 @@ mod tests {
         let world = app.world();
         // (a) GdtfTheme re-derived to the NEW values.
         assert_eq!(
-            world.get_resource::<GdtfTheme>().map(|t| *t.text),
+            world
+                .get_resource::<GdtfTheme>()
+                .map(|t| *t.text.text_color),
             Some(new_text),
-            "GdtfTheme.text must be re-derived to the NEW palette",
+            "GdtfTheme.text.text_color must be re-derived to the NEW palette",
         );
         // (b) the spawned Themed text + panel repainted to the NEW theme.
         assert_eq!(
@@ -300,7 +306,7 @@ mod tests {
         );
         app.world_mut().insert_resource(
             spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?
-                .resolve(Handle::<Font>::default()),
+                .resolve(|_| Handle::<Font>::default()),
         );
         app.world_mut().insert_resource(ActiveThemeHandle(active));
 
@@ -320,26 +326,32 @@ mod tests {
         Ok(())
     }
 
-    /// The re-derive keeps the existing resolved font handle (a theme RON edit
-    /// changes colors/scalars, not the font asset) — AC2.
+    /// The re-derive re-resolves fonts through the `AssetServer` — `load` is
+    /// idempotent, so a sub-theme's resolved font handle after the re-derive equals
+    /// the handle the server hands back for that key (and is NOT the default handle,
+    /// proving fonts were threaded through resolution, not reset) — GTW-149.
     ///
-    /// Pin-discriminating: if the re-derive resolved with a default font handle
-    /// it would clobber the real one and this assert fails.
+    /// Pin-discriminating: if the re-derive resolved with a default-font closure it
+    /// would carry the default handle and the `assert_ne!` fails; if it stopped
+    /// re-resolving fonts at all the key→handle equality fails.
     #[test]
-    fn rederive_keeps_the_existing_font_handle() -> Result<(), ron::error::SpannedError> {
+    fn rederive_reresolves_fonts_through_the_asset_server() -> Result<(), ron::error::SpannedError>
+    {
         let mut app = app();
 
         let handle = add_theme_asset(
             &mut app,
             spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?,
         );
-        // A distinctive, non-default font handle to prove it survives the re-derive.
-        let font: Handle<Font> = app
-            .world_mut()
-            .resource_mut::<Assets<Font>>()
-            .reserve_handle();
+        // The handle the server yields for the spec's default_font key — `load` is
+        // idempotent, so this is the SAME handle the re-derive will resolve to.
+        let expected: Handle<Font> = app
+            .world()
+            .resource::<AssetServer>()
+            .load::<Font>("fonts/test.ttf");
         app.world_mut().insert_resource(
-            spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?.resolve(font.clone()),
+            spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?
+                .resolve(|_| Handle::<Font>::default()),
         );
         app.world_mut()
             .insert_resource(ActiveThemeHandle(handle.clone()));
@@ -357,9 +369,16 @@ mod tests {
         assert_eq!(
             app.world()
                 .get_resource::<GdtfTheme>()
-                .map(|t| t.font.clone()),
-            Some(font),
-            "the re-derive must keep the existing resolved font handle, not reset it",
+                .map(|t| t.button.font.clone()),
+            Some(expected),
+            "the re-derive must resolve the button font to the server's handle for its key",
+        );
+        assert_ne!(
+            app.world()
+                .get_resource::<GdtfTheme>()
+                .map(|t| t.button.font.clone()),
+            Some(Handle::<Font>::default()),
+            "the re-resolved font must not be the default handle",
         );
 
         Ok(())
@@ -381,14 +400,14 @@ mod tests {
         let mut app = app();
 
         let theme = spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?
-            .resolve(Handle::<Font>::default());
-        let hover_bg = *theme.hover_bg;
-        let panel_bg = *theme.panel_bg;
+            .resolve(|_| Handle::<Font>::default());
+        let hover_bg = *theme.button.hover;
+        let panel_bg = *theme.button.color;
         app.world_mut().insert_resource(theme);
 
         let button = app
             .world_mut()
-            .spawn((Themed(ThemeRole::Panel), Button, Node::default()))
+            .spawn((Themed(ThemeRole::Button), Button, Node::default()))
             .id();
 
         // Frame 1: apply_theme paints the base look (Added<Themed> + theme-changed).
@@ -434,7 +453,7 @@ mod tests {
         let mut app = app();
         app.world_mut().insert_resource(
             spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?
-                .resolve(Handle::<Font>::default()),
+                .resolve(|_| Handle::<Font>::default()),
         );
 
         // Settle the theme: a first update marks GdtfTheme no-longer-changed.
@@ -468,7 +487,7 @@ mod tests {
         let mut app = app();
         app.world_mut().insert_resource(
             spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?
-                .resolve(Handle::<Font>::default()),
+                .resolve(|_| Handle::<Font>::default()),
         );
 
         let panel = app
@@ -484,7 +503,7 @@ mod tests {
         let new_panel = Color::srgb(0.50, 0.10, 0.30);
         app.world_mut().insert_resource(
             spec([0.10, 0.90, 0.20], [0.50, 0.10, 0.30], [0.70, 0.10, 0.40])?
-                .resolve(Handle::<Font>::default()),
+                .resolve(|_| Handle::<Font>::default()),
         );
         app.update();
 

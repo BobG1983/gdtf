@@ -4,14 +4,14 @@
 //! composes **on top of** the base look painted by
 //! [`apply_theme`](crate::themed::apply_theme): for every button whose
 //! [`Interaction`](bevy::ui::Interaction) changed this frame it writes the
-//! state-appropriate fill from the *current*
+//! state-appropriate fill from the **button** sub-theme of the *current*
 //! [`GdtfTheme`](crate::theme::GdtfTheme) —
 //! [`None`](bevy::ui::Interaction::None) → the resting
-//! [`PanelBg`](crate::theme::PanelBg),
+//! [`ButtonColor`](crate::theme::ButtonColor),
 //! [`Hovered`](bevy::ui::Interaction::Hovered) →
-//! [`HoverBg`](crate::theme::HoverBg),
+//! [`HoverColor`](crate::theme::HoverColor),
 //! [`Pressed`](bevy::ui::Interaction::Pressed) →
-//! [`PressBg`](crate::theme::PressBg).
+//! [`PressedColor`](crate::theme::PressedColor).
 //!
 //! ## Live theme read (never a spawn snapshot)
 //!
@@ -80,16 +80,16 @@ type InteractionVisuals = (
 /// [`GdtfTheme`](crate::theme::GdtfTheme):
 ///
 /// - [`Interaction::None`](bevy::ui::Interaction::None) → the resting
-///   [`PanelBg`](crate::theme::PanelBg) base.
+///   [`ButtonColor`](crate::theme::ButtonColor) base.
 /// - [`Interaction::Hovered`](bevy::ui::Interaction::Hovered) →
-///   [`HoverBg`](crate::theme::HoverBg).
+///   [`HoverColor`](crate::theme::HoverColor).
 /// - [`Interaction::Pressed`](bevy::ui::Interaction::Pressed) →
-///   [`PressBg`](crate::theme::PressBg).
+///   [`PressedColor`](crate::theme::PressedColor).
 ///
-/// All three fills are sourced from the RON-driven theme — there are no
-/// hardcoded hover/press literals. The theme is read live each run (never
-/// snapshotted at spawn), so re-running after a palette change re-derives the
-/// fill; the border is re-affirmed from the theme's single
+/// All three fills are sourced from the button sub-theme of the RON-driven theme
+/// — there are no hardcoded hover/press literals. The theme is read live each run
+/// (never snapshotted at spawn), so re-running after a palette change re-derives
+/// the fill; the border is re-affirmed from the button sub-theme's
 /// [`BorderColor`](crate::theme::BorderColor).
 ///
 /// Registered by [`UiPlugin`](crate::UiPlugin) in [`Update`] ordered
@@ -106,12 +106,12 @@ pub fn theme_interaction(
 
     for (interaction, mut background, mut border) in &mut buttons {
         let fill = match interaction {
-            Interaction::None => *theme.panel_bg,
-            Interaction::Hovered => *theme.hover_bg,
-            Interaction::Pressed => *theme.press_bg,
+            Interaction::None => *theme.button.color,
+            Interaction::Hovered => *theme.button.hover,
+            Interaction::Pressed => *theme.button.pressed,
         };
         background.0 = fill;
-        *border = UiBorderColor::all(*theme.border_color);
+        *border = UiBorderColor::all(*theme.button.border_color);
     }
 }
 
@@ -183,45 +183,37 @@ mod tests {
         widgets::{ButtonLabel, DisabledButton, spawn_button},
     };
 
-    /// Builds a [`GdtfTheme`] with caller-chosen panel / hover / press colors
-    /// through the real resolution path (deserialize a spec, then
-    /// [`GdtfThemeSpec::resolve`]) with a defaulted font handle. Returns the
+    /// Builds a [`GdtfTheme`] with caller-chosen button resting / hover / pressed
+    /// colors through the real resolution path (deserialize the nested spec, then
+    /// [`GdtfThemeSpec::resolve`]) with a defaulted-font resolver. Returns the
     /// `ron` error so a malformed literal surfaces via `?` rather than a denied
     /// `unwrap`/`panic`.
     fn theme(
-        panel: [f32; 4],
+        button_color: [f32; 4],
         hover: [f32; 4],
-        press: [f32; 4],
+        pressed: [f32; 4],
     ) -> Result<GdtfTheme, ron::error::SpannedError> {
+        let [pr, pg, pb, pa] = button_color;
+        let [hr, hg, hb, ha] = hover;
+        let [sr, sg, sb, sa] = pressed;
         let ron = format!(
             "(\
-             text: (0.84, 0.80, 0.73, 1.0), \
-             panel_bg: ({pr}, {pg}, {pb}, {pa}), \
-             border_color: (0.20, 0.20, 0.24, 1.0), \
-             border_width_px: 1.0, \
-             corner_radius_px: 2.0, \
-             margin_left_px: 8.0, margin_right_px: 8.0, \
-             margin_top_px: 6.0, margin_bottom_px: 6.0, \
-             font_size_pt: 18.0, \
-             font_key: \"fonts/test.ttf\", \
-             hover_bg: ({hr}, {hg}, {hb}, {ha}), \
-             press_bg: ({sr}, {sg}, {sb}, {sa}), \
-             disabled_bg: (0.16, 0.16, 0.18, 0.55))",
-            pr = panel[0],
-            pg = panel[1],
-            pb = panel[2],
-            pa = panel[3],
-            hr = hover[0],
-            hg = hover[1],
-            hb = hover[2],
-            ha = hover[3],
-            sr = press[0],
-            sg = press[1],
-            sb = press[2],
-            sa = press[3],
+             default_font: \"fonts/test.ttf\", \
+             background: ( color: (0.05, 0.05, 0.06, 1.0) ), \
+             panel: ( color: (0.16, 0.16, 0.18, 0.55), border_color: (0.20, 0.20, 0.24, 1.0), \
+                      border_width_px: 2.0, corner_radius_px: 5.0, \
+                      margin: (left: 12.0, right: 12.0, top: 6.0, bottom: 6.0) ), \
+             button: ( color: ({pr}, {pg}, {pb}, {pa}), disabled: (0.08, 0.08, 0.10, 0.55), \
+                       hover: ({hr}, {hg}, {hb}, {ha}), pressed: ({sr}, {sg}, {sb}, {sa}), \
+                       text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0, \
+                       border_color: (0.20, 0.20, 0.24, 1.0), \
+                       border_width_px: 2.0, corner_radius_px: 5.0, \
+                       margin: (left: 8.0, right: 8.0, top: 6.0, bottom: 6.0) ), \
+             title: ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 36.0 ), \
+             text:  ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0 ))",
         );
         let spec: GdtfThemeSpec = ron::from_str(&ron)?;
-        Ok(spec.resolve(Handle::<Font>::default()))
+        Ok(spec.resolve(|_| Handle::<Font>::default()))
     }
 
     /// Builds a minimal app with the real production schedule: `apply_theme`
@@ -274,7 +266,7 @@ mod tests {
         app.update();
         assert_eq!(
             app.world().get::<BackgroundColor>(button).map(|c| c.0),
-            Some(*theme_res.hover_bg),
+            Some(*theme_res.button.hover),
             "hovered button must show HoverBg",
         );
 
@@ -282,7 +274,7 @@ mod tests {
         app.update();
         assert_eq!(
             app.world().get::<BackgroundColor>(button).map(|c| c.0),
-            Some(*theme_res.press_bg),
+            Some(*theme_res.button.pressed),
             "pressed button must show PressBg",
         );
 
@@ -290,7 +282,7 @@ mod tests {
         app.update();
         assert_eq!(
             app.world().get::<BackgroundColor>(button).map(|c| c.0),
-            Some(*theme_res.panel_bg),
+            Some(*theme_res.button.color),
             "released button must return to the resting PanelBg",
         );
 
@@ -336,7 +328,7 @@ mod tests {
         );
         assert_ne!(
             app.world().get::<BackgroundColor>(button).map(|c| c.0),
-            Some(*theme_res.hover_bg),
+            Some(*theme_res.button.hover),
             "disabled button must never show HoverBg",
         );
 
@@ -381,7 +373,7 @@ mod tests {
         app.update();
         assert_eq!(
             app.world().get::<BackgroundColor>(button).map(|c| c.0),
-            Some(*new.panel_bg),
+            Some(*new.button.color),
             "resting button must reflect the NEW base after hot-reload",
         );
 
@@ -390,12 +382,12 @@ mod tests {
         app.update();
         assert_eq!(
             app.world().get::<BackgroundColor>(button).map(|c| c.0),
-            Some(*new.hover_bg),
+            Some(*new.button.hover),
             "hovered button must reflect the NEW HoverBg after hot-reload",
         );
         assert_ne!(
             app.world().get::<BackgroundColor>(button).map(|c| c.0),
-            Some(*old.hover_bg),
+            Some(*old.button.hover),
             "hovered button must NOT show the stale OLD HoverBg",
         );
 

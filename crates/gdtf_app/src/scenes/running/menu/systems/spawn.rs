@@ -1,14 +1,26 @@
-//! Spawns the main-menu scene on `OnEnter(RunningState::Menu)` (GTW-121).
+//! Spawns the main-menu scene on `OnEnter(RunningState::Menu)` (GTW-121, nested
+//! theme rewire GTW-149).
 //!
-//! Builds the Godot-faithful menu: a full-screen, centered vertical column
-//! (built via [`gdtf_ui::spawn_panel`]) holding, top-to-bottom, the title, then
-//! the Battlescape / Options / `HiveScape` (disabled) / Quit buttons (each built
-//! via [`gdtf_ui::spawn_button`]). Every entity carries the
-//! [`Themed`](gdtf_ui::themed::Themed) marker (so GTW-137's live re-theme
-//! restyles them) and [`DespawnOnExit(RunningState::Menu)`](bevy::prelude::DespawnOnExit)
-//! (so the whole tree is torn down on leave). Battlescape grabs initial focus,
-//! and the enabled buttons are wired into a non-wrapping vertical navigation
-//! chain.
+//! Builds the menu tree as a full-screen, centered backdrop holding the title
+//! floating above a panel box that wraps the four buttons:
+//!
+//! - **Root** — a full-screen [`Themed(Background)`](gdtf_ui::themed::ThemeRole)
+//!   [`Node`](bevy::ui::Node) (the backdrop fill), a centered flex column.
+//! - **Title** — a [`Themed(Title)`](gdtf_ui::themed::ThemeRole) text, a *direct*
+//!   child of the root, so it floats on the backdrop (NOT inside the panel).
+//! - **Panel box** — [`gdtf_ui::spawn_panel`] ([`Themed(Panel)`](gdtf_ui::themed::ThemeRole)),
+//!   a flex column with `align_items: Stretch` so its button children are equal
+//!   width; it wraps ONLY the four buttons.
+//! - **Buttons** — Battlescape / Options / `HiveScape` (disabled) / Quit, each
+//!   built via [`gdtf_ui::spawn_button`] (a [`Themed(Button)`](gdtf_ui::themed::ThemeRole)
+//!   box with a [`Themed(ButtonText)`](gdtf_ui::themed::ThemeRole) caption child),
+//!   children of the panel box.
+//!
+//! Every entity carries the [`Themed`](gdtf_ui::themed::Themed) marker (so the
+//! live re-theme restyles them) and
+//! [`DespawnOnExit(RunningState::Menu)`](bevy::prelude::DespawnOnExit) (so the
+//! whole tree is torn down on leave). Battlescape grabs initial focus, and the
+//! enabled buttons are wired into a non-wrapping vertical navigation chain.
 //!
 //! Button *actions* (what happens when a button is activated) are GTW-122; this
 //! system only constructs the scene, its markers, the initial focus, and the
@@ -50,19 +62,27 @@ impl ColumnGapPx {
 /// Builds the full main-menu scene when [`RunningState::Menu`] is entered.
 ///
 /// Reads the live [`GdtfTheme`] as `Option<Res<GdtfTheme>>` and no-ops if it is
-/// absent (bevy-traps rule 1) — in the running app the theme is present
-/// post-GTW-143. With the theme present it:
+/// absent (bevy-traps rule 1) — in the running app the theme is present by `Menu`.
+/// With the theme present it:
 ///
-/// 1. Spawns the centered, full-screen flex column via [`spawn_panel`] and lays
-///    out its layout fields (the theme owns palette/border/radius/padding;
-///    `apply_theme` preserves these layout fields on re-run).
-/// 2. Spawns the title and the four buttons via [`spawn_button`], each tagged
-///    [`Themed`], [`DespawnOnExit(RunningState::Menu)`](DespawnOnExit), and its
-///    role marker; `HiveScape` additionally carries [`DisabledButton`].
-/// 3. Orders them under the column top→bottom: Title, Battlescape, Options,
-///    `HiveScape`, Quit (`HiveScape` directly above Quit).
-/// 4. Sets initial focus to Battlescape via [`set_initial_focus`].
-/// 5. Wires the **enabled** buttons (Battlescape ↔ Options ↔ Quit) into a
+/// 1. Spawns the centered, full-screen backdrop root: a
+///    [`Themed(Background)`](ThemeRole::Background) [`Node`] (the backdrop fill),
+///    a centered flex column with an inter-child gap.
+/// 2. Spawns the title as a *direct* child of the root — a
+///    [`Themed(Title)`](ThemeRole::Title) heading floating on the backdrop, not
+///    inside the panel.
+/// 3. Spawns the panel box via [`spawn_panel`] (a [`Themed(Panel)`](ThemeRole::Panel)
+///    box), a child of the root, laid out as a flex column with
+///    `align_items: Stretch` so its button children are equal width; it wraps
+///    only the four buttons.
+/// 4. Spawns the four buttons via [`spawn_button`] (each
+///    [`Themed(Button)`](ThemeRole::Button) with a
+///    [`Themed(ButtonText)`](ThemeRole::ButtonText) caption child), children of
+///    the panel box in order Battlescape, Options, `HiveScape`, Quit; `HiveScape`
+///    additionally carries [`DisabledButton`]. Each button is full width so the
+///    panel's `Stretch` makes them equal width.
+/// 5. Sets initial focus to Battlescape via [`set_initial_focus`].
+/// 6. Wires the **enabled** buttons (Battlescape ↔ Options ↔ Quit) into a
 ///    non-wrapping vertical nav chain via
 ///    [`DirectionalNavigationMap::add_edges`]; the disabled `HiveScape` is omitted
 ///    from the chain (0.18.1 has no built-in skip).
@@ -77,25 +97,27 @@ pub(in crate::scenes::running::menu) fn spawn_menu(
         return;
     };
 
-    // The centered, full-screen flex column. `spawn_panel` paints the theme look;
-    // we add the layout (full size, column, centered, inter-child gap). These
-    // layout fields survive `apply_theme`, which only overrides the theme-owned
-    // border / radius / padding while cloning the rest of the node.
-    let column = spawn_panel(&mut commands, &theme);
-    commands.entity(column).insert((
-        DespawnOnExit(RunningState::Menu),
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            row_gap: Val::Px(*ColumnGapPx::MENU),
-            ..default()
-        },
-    ));
+    // ROOT: the centered, full-screen backdrop. `Themed(Background)` paints the
+    // backdrop fill; the layout (full size, centered column, inter-child gap)
+    // survives `apply_theme`, which writes only BackgroundColor for this role.
+    let root = commands
+        .spawn((
+            Themed(ThemeRole::Background),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                row_gap: Val::Px(*ColumnGapPx::MENU),
+                ..default()
+            },
+            DespawnOnExit(RunningState::Menu),
+        ))
+        .id();
 
-    // Title — a larger, theme-derived heading (ThemeRole::Title), not a button.
+    // TITLE — a theme-derived heading (ThemeRole::Title), a DIRECT child of the
+    // root so it floats on the backdrop above the panel.
     let title = commands
         .spawn((
             Themed(ThemeRole::Title),
@@ -106,8 +128,25 @@ pub(in crate::scenes::running::menu) fn spawn_menu(
         ))
         .id();
 
+    // PANEL BOX — `spawn_panel` paints the panel look; we add a column layout with
+    // `align_items: Stretch` so the button children are equal width = the panel's
+    // content width, and a gap. It is sized to content (no width/height set), and
+    // wraps ONLY the four buttons. The layout fields survive `apply_theme` (it
+    // overrides only the theme-owned border / radius / padding for the Panel role).
+    let panel = spawn_panel(&mut commands, &theme);
+    commands.entity(panel).insert((
+        DespawnOnExit(RunningState::Menu),
+        Node {
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Stretch,
+            row_gap: Val::Px(*ColumnGapPx::MENU),
+            ..default()
+        },
+    ));
+
     // The four buttons, each themed + state-scoped via the per-button marker
-    // bundle passed to `spawn_button`.
+    // bundle passed to `spawn_button`. Width 100% so the panel's Stretch makes
+    // them equal width (= the panel content width).
     let battlescape = spawn_button(
         &mut commands,
         &theme,
@@ -138,10 +177,20 @@ pub(in crate::scenes::running::menu) fn spawn_menu(
         (QuitButton, DespawnOnExit(RunningState::Menu)),
     );
 
-    // Parent everything under the column in visual order, top→bottom.
+    // Each button stretches to the panel content width (equal-width buttons).
+    for button in [battlescape, options, hivescape, quit] {
+        commands.entity(button).insert(Node {
+            width: Val::Percent(100.0),
+            ..default()
+        });
+    }
+
+    // Order under root: [title, panel-box]; order under panel-box: the four
+    // buttons top→bottom (Battlescape, Options, HiveScape, Quit).
+    commands.entity(root).add_children(&[title, panel]);
     commands
-        .entity(column)
-        .add_children(&[title, battlescape, options, hivescape, quit]);
+        .entity(panel)
+        .add_children(&[battlescape, options, hivescape, quit]);
 
     // Battlescape grabs initial focus (Godot `%BattlescapeButton.grab_focus()`).
     set_initial_focus(&mut commands, battlescape);
