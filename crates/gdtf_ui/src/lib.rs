@@ -36,7 +36,7 @@ pub mod themed;
 pub mod widgets;
 
 use bevy::prelude::*;
-pub use interaction::theme_interaction;
+pub use interaction::{sync_hover_to_focus, theme_interaction};
 pub use widgets::{
     ButtonLabel, DimFactor, DisabledButton, dim_disabled_buttons, dimmed_fill, spawn_button,
     spawn_panel,
@@ -57,9 +57,10 @@ use crate::{
 ///
 /// It currently installs the focus-navigation layer
 /// ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)), the central theming pass
-/// ([`apply_theme`](themed::apply_theme)), and the GTW-118 widget interaction
+/// ([`apply_theme`](themed::apply_theme)), the GTW-118 widget interaction
 /// layer ([`theme_interaction`](interaction::theme_interaction) +
-/// [`dim_disabled_buttons`](widgets::dim_disabled_buttons)).
+/// [`dim_disabled_buttons`](widgets::dim_disabled_buttons)), and the GTW-141
+/// mouse hover→focus bridge ([`sync_hover_to_focus`](interaction::sync_hover_to_focus)).
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -80,9 +81,21 @@ impl Plugin for UiPlugin {
     /// dim) — runs in [`Update`] `.after(`[`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme)`)`
     /// so each composes on top of the freshest base look (bevy-traps rule 3);
     /// both guard the theme internally (`Option<Res<GdtfTheme>>`), so they too
-    /// are inert before the resource is populated (bevy-traps rule 1). Later
-    /// tickets hang further UI systems/resources here; the layer stays bevy-only
-    /// (no ecosystem crate).
+    /// are inert before the resource is populated (bevy-traps rule 1).
+    ///
+    /// The GTW-141 mouse hover→focus bridge
+    /// ([`sync_hover_to_focus`](interaction::sync_hover_to_focus)) runs in the
+    /// **same** `.after(UiSystems::ApplyTheme)` band: it reads the
+    /// [`Interaction`](bevy::ui::Interaction) that `bevy_ui`'s built-in
+    /// `ui_focus_system` already wrote from the mouse in `PreUpdate` and moves
+    /// [`InputFocus`](bevy::input_focus::InputFocus) onto the hovered button, so
+    /// pointer hover and keyboard / gamepad navigation share one focus cursor.
+    /// No extra picking plugin is added — `ui_focus_system` (in `DefaultPlugins`)
+    /// already drives [`Interaction`](bevy::ui::Interaction), so real clicks
+    /// reach GTW-122's mouse action layer with no new wiring (bevy-traps).
+    ///
+    /// Later tickets hang further UI systems/resources here; the layer stays
+    /// bevy-only (no ecosystem crate).
     fn build(&self, app: &mut App) {
         app.add_plugins(FocusNavPlugin).add_systems(
             Update,
@@ -90,7 +103,8 @@ impl Plugin for UiPlugin {
                 apply_theme
                     .in_set(UiSystems::ApplyTheme)
                     .run_if(resource_exists::<GdtfTheme>),
-                (theme_interaction, dim_disabled_buttons).after(UiSystems::ApplyTheme),
+                (theme_interaction, dim_disabled_buttons, sync_hover_to_focus)
+                    .after(UiSystems::ApplyTheme),
             ),
         );
     }

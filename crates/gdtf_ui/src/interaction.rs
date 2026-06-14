@@ -27,8 +27,24 @@
 //! populated (bevy-traps rule 1). [`DisabledButton`](crate::widgets::DisabledButton)
 //! widgets are excluded with `Without<DisabledButton>`, so a disabled button
 //! never hover/press-swaps.
+//!
+//! ## Mouse hover follows focus
+//!
+//! [`sync_hover_to_focus`] is the second system in this band (GTW-141): it moves
+//! the [`InputFocus`](bevy::input_focus::InputFocus) resource onto whatever
+//! enabled button the mouse is hovering, so pointer hover and keyboard / gamepad
+//! navigation share one focus cursor. It composes with GTW-119's directional
+//! navigation — both write `InputFocus`, neither fights the other, because each
+//! is driven by a distinct change/event signal (this one by
+//! `Changed<Interaction>`, that one by a [`NavigateRequest`](crate::focus_nav::NavigateRequest)).
+//!
+//! It does **not** write [`Interaction`](bevy::ui::Interaction) itself: that is
+//! set by `bevy_ui`'s built-in `ui_focus_system` from raw mouse input in
+//! `PreUpdate` (see bevy-traps), so by the time this `Update` system reads
+//! `Changed<Interaction>` the cursor's hit for the frame is already resolved.
 
 use bevy::{
+    input_focus::InputFocus,
     prelude::*,
     ui::{BackgroundColor, BorderColor as UiBorderColor, Interaction, widget::Button},
 };
@@ -99,12 +115,69 @@ pub fn theme_interaction(
     }
 }
 
+/// Query filter selecting the buttons [`sync_hover_to_focus`] reacts to: enabled
+/// buttons whose [`Interaction`](bevy::ui::Interaction) changed this frame.
+///
+/// A named alias so the system signature stays legible (clippy's
+/// `type_complexity`) and the exclusion is explicit: `Without<DisabledButton>`
+/// is what keeps a disabled button from ever stealing focus on hover (AC#2), and
+/// `Changed<Interaction>` limits the work to the frame the hover transition
+/// lands rather than re-asserting focus every frame a button stays hovered.
+type HoverableButton = (Changed<Interaction>, With<Button>, Without<DisabledButton>);
+
+/// Moves input focus onto whatever enabled button the mouse is hovering.
+///
+/// For every [`Button`](bevy::ui::Button) whose
+/// [`Interaction`](bevy::ui::Interaction) became
+/// [`Hovered`](bevy::ui::Interaction::Hovered) this frame — and which is **not** a
+/// [`DisabledButton`](crate::widgets::DisabledButton) — it points the
+/// [`InputFocus`](bevy::input_focus::InputFocus) resource at that entity. The
+/// effect is "focus follows the mouse": a pointer hover lands the same focus a
+/// keyboard / gamepad navigation would, so the two input modes stay on one
+/// shared cursor and a subsequent `Enter` / gamepad-South activates the button
+/// the mouse last touched.
+///
+/// The [`Interaction`](bevy::ui::Interaction) it reads is written upstream by
+/// `bevy_ui`'s built-in `ui_focus_system` (in `PreUpdate`, from raw mouse input)
+/// — this system adds **no** click or hover detection of its own; it only
+/// bridges the already-resolved hover onto [`InputFocus`](bevy::input_focus::InputFocus).
+///
+/// It composes with GTW-119's directional navigation: both update
+/// [`InputFocus`](bevy::input_focus::InputFocus), but they do not fight — this
+/// one only fires on a `Changed<Interaction>` hover transition and that one only
+/// on a [`NavigateRequest`](crate::focus_nav::NavigateRequest), so each writes
+/// only in response to its own distinct signal.
+///
+/// Registered by [`UiPlugin`](crate::UiPlugin) in [`Update`] ordered
+/// `.after(`[`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme)`)`
+/// — the same band as [`theme_interaction`] (bevy-traps rule 3).
+/// [`InputFocus`](bevy::input_focus::InputFocus) is initialized by the
+/// `InputDispatchPlugin` that [`UiPlugin`](crate::UiPlugin) installs via the
+/// focus-nav layer, so it is always present and the `ResMut` never panics
+/// (bevy-traps rule 1).
+pub fn sync_hover_to_focus(
+    mut focus: ResMut<InputFocus>,
+    buttons: Query<(Entity, &Interaction), HoverableButton>,
+) {
+    for (entity, interaction) in &buttons {
+        if *interaction == Interaction::Hovered {
+            focus.set(entity);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use bevy::ui::{BackgroundColor, Interaction, widget::Button};
+    use bevy::{
+        MinimalPlugins,
+        input::InputPlugin,
+        input_focus::InputFocus,
+        ui::{BackgroundColor, Interaction, widget::Button},
+    };
 
     use super::*;
     use crate::{
+        UiPlugin,
         theme::{GdtfTheme, GdtfThemeSpec},
         themed::{UiSystems, apply_theme},
         widgets::{ButtonLabel, DisabledButton, spawn_button},
@@ -343,6 +416,67 @@ mod tests {
         assert!(
             app.world().get_resource::<GdtfTheme>().is_none(),
             "test precondition: GdtfTheme must be absent for this guard check",
+        );
+    }
+
+    /// Hovering an enabled button moves [`InputFocus`] onto it, so mouse hover
+    /// and keyboard / gamepad navigation share one focus cursor — AC#2.
+    ///
+    /// Drives the full [`UiPlugin`] wiring headlessly (`MinimalPlugins` +
+    /// `UiPlugin`): `UiPlugin` installs the focus-nav layer (initializing
+    /// [`InputFocus`]) and registers [`sync_hover_to_focus`] in the
+    /// `.after(UiSystems::ApplyTheme)` band. Setting [`Interaction::Hovered`] is
+    /// the swap `ui_focus_system` would otherwise drive from a real cursor (that
+    /// path needs a window and is local-only in-engine evidence, GTW-123).
+    ///
+    /// Pin-discriminating: dropping the `focus.set` call, or the
+    /// `== Interaction::Hovered` guard, leaves focus empty and this assert fails.
+    ///
+    /// `InputPlugin` is added because `UiPlugin`'s focus-nav layer pulls in
+    /// `InputDispatchPlugin`, whose dispatch systems require the input message
+    /// buffers `InputPlugin` registers — `MinimalPlugins` alone panics
+    /// "Message not initialized" (bevy-traps rule 1 / the headless-input
+    /// prerequisite).
+    #[test]
+    fn hover_moves_input_focus_to_button() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(InputPlugin)
+            .add_plugins(UiPlugin);
+
+        let button = app.world_mut().spawn((Button, Interaction::Hovered)).id();
+
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<InputFocus>().get(),
+            Some(button),
+            "hovering an enabled button must move InputFocus onto it",
+        );
+    }
+
+    /// Hovering a [`DisabledButton`] does **not** move [`InputFocus`]: a disabled
+    /// button never steals focus — AC#2.
+    ///
+    /// Pin-discriminating: dropping the `Without<DisabledButton>` filter on
+    /// [`sync_hover_to_focus`] would let the hover land focus and this assert
+    /// (focus stays empty) would fail.
+    #[test]
+    fn hover_does_not_focus_disabled_button() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(InputPlugin)
+            .add_plugins(UiPlugin);
+
+        app.world_mut()
+            .spawn((Button, Interaction::Hovered, DisabledButton));
+
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<InputFocus>().get(),
+            None,
+            "a hovered disabled button must NOT move InputFocus",
         );
     }
 }

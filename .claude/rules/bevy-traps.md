@@ -42,6 +42,24 @@ session, so the next session pays the toll once.
    `add_sub_state::<Child>()` must run AFTER the parent state is registered, so a
    parent scene-plugin must `add_*state` for its own state BEFORE `add_plugins`
    pulls in child plugins that register their sub-states.
+6. `bevy_ui::Interaction` (None/Hovered/Pressed) is driven by `bevy_ui`'s
+   built-in `ui_focus_system` (registered by `bevy_ui::UiPlugin`, in
+   `DefaultPlugins`, in `PreUpdate` / `UiSystems::Focus`, `.after(InputSystems)`),
+   which reads `ButtonInput<MouseButton>` + the cursor directly and writes
+   `Interaction` for every node that has it. It is **NOT** written by
+   `UiPickingPlugin` — that is a separate `#[cfg(feature = "bevy_picking")]`
+   pipeline that drives `bevy_picking::PickingInteraction` + `Pointer<E>`
+   observers, an independent concept. So under `DefaultPlugins`, real mouse
+   hover/click ALREADY sets `Interaction::Hovered`/`Pressed` on every `Button`
+   (which `#[require]`s `Interaction`): you need NO `UiPickingPlugin`, NO
+   `Pickable`, NO `IsDefaultUiCamera` for `Interaction` to work — only a
+   `Camera2d`/`Camera` rendering to a window (a windowed `RenderTarget`), which
+   the GTW-120 UI camera already is. Consequence: click-to-activate is end-to-end
+   for free (`ui_focus_system` sets `Pressed` → GTW-122's `mouse_button_actions`
+   reads `Changed<Interaction>==Pressed`); a `Changed<Interaction>` system in
+   `Update` sees the same frame's values since `ui_focus_system` ran in the
+   earlier `PreUpdate`. Hover→focus, by contrast, has NO built-in bridge — that
+   is what GTW-141's `sync_hover_to_focus` adds. [verified GTW-141]
 
 ## wgpu / cargo
 
