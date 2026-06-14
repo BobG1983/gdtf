@@ -8,6 +8,12 @@
 //! that auto-advances again, turns the test red rather than letting the walk
 //! silently take a wrong path.
 //!
+//! Since GTW-143, `Load` no longer advances on a frame-1 shortcut — it leaves
+//! only once a `GdtfTheme` is present (resolved from assets in the real app).
+//! The `MinimalPlugins` walk has no `AssetServer`, so [`walk_app_with_theme`]
+//! seeds the theme before the walk; the deep transition graph below is otherwise
+//! unchanged.
+//!
 //! The verified sequence (read off the per-scene `move_on` systems):
 //! `Init → Load → Intro → Running` at the top level; under `Running`,
 //! `Menu → Options → Game`; under `Game`, `Setup → HiveScape → BattleScape`;
@@ -17,14 +23,32 @@
 //! all the way out to `RunningState::Quit`, which advances `AppState` to
 //! `Teardown`.
 
-use bevy::state::state::State;
+use bevy::{app::App, state::state::State};
 use gdtf_app::test_support::{AfterMathState, AppState, BattleScapeState, GameState, RunningState};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
+use gdtf_ui::theme::default_theme;
 
 /// A budget large enough for the whole deep walk (each leaf scene spends a
 /// couple of `FixedUpdate` ticks plus its state-transition propagation), but
 /// still bounded so a machine that never terminates fails instead of hanging.
 const WALK_BUDGET: u32 = 64;
+
+/// Builds the default-start headless walk app and seeds the [`GdtfTheme`] the
+/// `Load` scene now requires (GTW-143).
+///
+/// `Load` no longer advances on a frame-1 shortcut: it leaves only once a
+/// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) is present, which the running app
+/// resolves from the loose theme RON via the `AssetServer`. The `MinimalPlugins`
+/// walk app has **no** `AssetServer`, so this pre-inserts the theme (standing in
+/// for the resolved load) so the walk can traverse `Load` and exercise the deep
+/// transition graph this file is about. The theme is the deliberate
+/// state-scoped-resource exception that persists, so seeding it before the walk
+/// is faithful to how the real app carries it forward.
+fn walk_app_with_theme() -> App {
+    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    app.world_mut().insert_resource(default_theme());
+    app
+}
 
 /// Reads the current [`AppState`]. `AppState` is `Clone` but not `Copy`, so this
 /// clones the resting value out of the `State<AppState>` resource.
@@ -55,7 +79,7 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
 /// because it never satisfies the predicate within the budget.
 #[test]
 fn full_walk_reaches_teardown() {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = walk_app_with_theme();
 
     let reached = advance_until(
         &mut app,
@@ -145,7 +169,7 @@ fn game_hosts_setup() {
 /// `RunningState::Quit` would never be observed and the assertion fails.
 #[test]
 fn deep_pop_to_quit() {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = walk_app_with_theme();
 
     // Prove the walk descends all the way into the deepest aftermath phase.
     let reached_aftermath_out = advance_until(

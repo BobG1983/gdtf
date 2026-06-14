@@ -59,6 +59,8 @@ use core::marker::PhantomData;
 use bevy::{MinimalPlugins, app::App, state::state::NextState, time::TimeUpdateStrategy};
 use gdtf_app::test_support::{self, AppState};
 
+mod load;
+pub use load::GdtfLoadTestAppBuilder;
 mod ui;
 pub use ui::{GdtfUiTestAppBuilder, NoCamera, WithCamera};
 

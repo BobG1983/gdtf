@@ -61,3 +61,26 @@ pub fn register_headless(app: &mut App) {
     app.add_plugins(ScenesPlugin);
     app.add_plugins(UiPlugin);
 }
+
+/// Registers the GDTF state stack and scene/UI plugins onto an app that **already
+/// has `DefaultPlugins`** (i.e. the official `no_renderer.rs` headless set), so
+/// the real `Load` orchestration runs against a live `AssetServer`.
+///
+/// Unlike [`register_headless`], this does **not** add `StatesPlugin` or
+/// `InputPlugin`: `DefaultPlugins` already includes both, and a Bevy plugin may
+/// only be added once (a duplicate add panics). It mirrors exactly what
+/// [`crate::GdtfApp`] does on top of `DefaultPlugins`:
+///
+/// 1. [`AppState`] as the top-level state ([`init_state`](AppExtStates::init_state)).
+/// 2. [`ScenesPlugin`], whose scene plugins register their own sub-states in
+///    parent-before-child order (idempotent in Bevy 0.18).
+/// 3. [`UiPlugin`], the UI registration seam.
+///
+/// This is the seam the GTW-134 real-asset harness builds on to drive the `Load`
+/// scene with a real `AssetServer` (`bevy-traps.md` rule 1: the kick-off needs
+/// an `AssetServer`, which `MinimalPlugins` lacks).
+pub fn register_scenes_with_default_plugins(app: &mut App) {
+    app.init_state::<AppState>();
+    app.add_plugins(ScenesPlugin);
+    app.add_plugins(UiPlugin);
+}
