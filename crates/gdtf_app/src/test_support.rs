@@ -16,7 +16,9 @@ use bevy::{
 pub use gdtf_ui::UiPlugin;
 
 pub use crate::{
-    scenes::ScenesPlugin,
+    scenes::{
+        BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton, ScenesPlugin,
+    },
     states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };
 

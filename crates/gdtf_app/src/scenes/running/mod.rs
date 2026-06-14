@@ -5,6 +5,9 @@ mod resources;
 
 mod menu;
 pub(in crate::scenes::running) use menu::MenuScenePlugin;
+crate::support_use! {
+    menu::{BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton};
+}
 
 mod game;
 pub(in crate::scenes::running) use game::GameScenePlugin;

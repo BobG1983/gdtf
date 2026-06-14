@@ -14,16 +14,27 @@
 //! seeds the theme before the walk; the deep transition graph below is otherwise
 //! unchanged.
 //!
-//! The verified sequence (read off the per-scene `move_on` systems):
+//! Since GTW-121, `RunningState::Menu` no longer auto-advances either — the menu
+//! now spawns a real screen and waits for player action (the button transitions
+//! are GTW-122). The `MinimalPlugins` walk has no input, so the helper
+//! [`drive_past_menu`] stands in for the player by queuing the `Menu → Options`
+//! transition once the walk is resting on `Menu`, after which the rest of the
+//! chain (`Options → Game → …`) still auto-advances through its scaffolds.
+//!
+//! The verified sequence (read off the per-scene `move_on` systems, with the
+//! menu step now player-driven):
 //! `Init → Load → Intro → Running` at the top level; under `Running`,
-//! `Menu → Options → Game`; under `Game`, `Setup → HiveScape → BattleScape`;
+//! `Menu →(player)→ Options → Game`; under `Game`, `Setup → HiveScape → BattleScape`;
 //! under `BattleScape`,
 //! `Generation → AnimateIn → BattleRunning → AnimateOut → AfterMath`; under
 //! `AfterMath`, `AnimateIn → DisplayAftermath → AnimateOut`, whose terminal pops
 //! all the way out to `RunningState::Quit`, which advances `AppState` to
 //! `Teardown`.
 
-use bevy::{app::App, state::state::State};
+use bevy::{
+    app::App,
+    state::state::{NextState, State},
+};
 use gdtf_app::test_support::{AfterMathState, AppState, BattleScapeState, GameState, RunningState};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -70,6 +81,28 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
         .map(|state| *state.get())
 }
 
+/// Stands in for the player at the menu: advances the walk until
+/// [`RunningState::Menu`] is reached, then queues the `Menu → Options`
+/// transition (the menu no longer auto-advances since GTW-121).
+///
+/// Returns whether `Menu` was reached and the transition queued within budget.
+/// After this returns `true`, one more `update()` (driven by the caller's
+/// `advance_until`) applies the queued `NextState` and the rest of the chain
+/// continues through its scaffolds.
+fn drive_past_menu(app: &mut App) -> bool {
+    let reached_menu = advance_until(
+        app,
+        |app| running_state(app) == Some(RunningState::Menu),
+        WALK_BUDGET,
+    );
+    if reached_menu {
+        app.world_mut()
+            .resource_mut::<NextState<RunningState>>()
+            .set(RunningState::Options);
+    }
+    reached_menu
+}
+
 /// (a) From the default start, the machine reaches [`AppState::Teardown`]
 /// within the bounded budget.
 ///
@@ -80,6 +113,15 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
 #[test]
 fn full_walk_reaches_teardown() {
     let mut app = walk_app_with_theme();
+
+    // The menu no longer auto-advances (GTW-121); stand in for the player to keep
+    // the walk moving past it.
+    assert!(
+        drive_past_menu(&mut app),
+        "the walk should reach RunningState::Menu within {WALK_BUDGET} updates; last observed \
+         RunningState was {:?}",
+        running_state(&app),
+    );
 
     let reached = advance_until(
         &mut app,
@@ -137,6 +179,14 @@ fn game_hosts_setup() {
         .starting_in(AppState::Running)
         .build();
 
+    // The menu no longer auto-advances (GTW-121); stand in for the player.
+    assert!(
+        drive_past_menu(&mut app),
+        "the walk should reach RunningState::Menu within {WALK_BUDGET} updates; last observed \
+         RunningState was {:?}",
+        running_state(&app),
+    );
+
     let reached = advance_until(
         &mut app,
         |app| running_state(app) == Some(RunningState::Game),
@@ -144,8 +194,8 @@ fn game_hosts_setup() {
     );
     assert!(
         reached,
-        "the Menu → Options → Game chain should reach RunningState::Game within {WALK_BUDGET} \
-         updates; last observed RunningState was {:?}",
+        "the Menu →(player)→ Options → Game chain should reach RunningState::Game within \
+         {WALK_BUDGET} updates; last observed RunningState was {:?}",
         running_state(&app),
     );
 
@@ -170,6 +220,14 @@ fn game_hosts_setup() {
 #[test]
 fn deep_pop_to_quit() {
     let mut app = walk_app_with_theme();
+
+    // The menu no longer auto-advances (GTW-121); stand in for the player.
+    assert!(
+        drive_past_menu(&mut app),
+        "the walk should reach RunningState::Menu within {WALK_BUDGET} updates; last observed \
+         RunningState was {:?}",
+        running_state(&app),
+    );
 
     // Prove the walk descends all the way into the deepest aftermath phase.
     let reached_aftermath_out = advance_until(

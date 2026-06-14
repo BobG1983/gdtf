@@ -20,6 +20,9 @@ pub(in crate::scenes) use load::LoadScenePlugin;
 
 mod running;
 pub(in crate::scenes) use running::RunningScenePlugin;
+crate::support_use! {
+    running::{BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton};
+}
 
 mod teardown;
 pub(in crate::scenes) use teardown::TeardownScenePlugin;

@@ -9,6 +9,9 @@
 //!
 //! - [`ThemeRole::Text`] → text color, font face, and font size
 //!   ([`TextColor`](bevy::text::TextColor) + [`TextFont`](bevy::text::TextFont)).
+//! - [`ThemeRole::Title`] → the same theme-derived text color and font face as
+//!   [`ThemeRole::Text`], but a font size scaled up from the theme size by
+//!   [`TitleScale::TITLE`] (a heading is theme-text, only larger).
 //! - [`ThemeRole::Panel`] → panel background, border color, border width, corner
 //!   radius, and content margins
 //!   ([`BackgroundColor`](bevy::ui::BackgroundColor) +
@@ -61,9 +64,33 @@ pub enum ThemeRole {
     /// A text node: [`apply_theme`] sets its foreground color, font face, and
     /// font size from the theme.
     Text,
+    /// A heading / title text node: like [`Text`](ThemeRole::Text) (same
+    /// theme-derived color and font face), but [`apply_theme`] writes a font
+    /// size scaled up from the theme's base size by [`TitleScale::TITLE`]. This
+    /// keeps a title styled **only** from the theme (so a re-theme re-paints it)
+    /// while still rendering larger than the body/button text — the size is a
+    /// theme-derived multiple, never a hardcoded literal.
+    Title,
     /// A panel or button node: [`apply_theme`] sets its background fill, border
     /// color, border width, corner radius, and content margins from the theme.
     Panel,
+}
+
+/// Multiplier applied to the theme's base font size to size a
+/// [`ThemeRole::Title`] heading.
+///
+/// A named newtype over the scale factor rather than a bare `f32`
+/// (no-bare-types rule): a title's size is the theme font size *times this
+/// factor*, so the heading tracks the live theme — re-theming to a new base
+/// size re-scales the title — instead of carrying a frozen, hardcoded size.
+/// [`TitleScale::TITLE`] is the single value used for menu/heading titles.
+#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+pub struct TitleScale(f32);
+
+impl TitleScale {
+    /// The heading scale: a title renders at 2× the theme's base text size,
+    /// large enough to read as the page heading above the button column.
+    pub const TITLE: Self = Self(2.0);
 }
 
 /// Marker opting an entity into centralized theming, tagged with its
@@ -97,6 +124,9 @@ pub enum UiSystems {
 ///
 /// - [`ThemeRole::Text`]: a [`TextColor`](bevy::text::TextColor) and a
 ///   [`TextFont`](bevy::text::TextFont) carrying the theme font handle and size.
+/// - [`ThemeRole::Title`]: the same color and font handle as `Text`, but the
+///   [`TextFont`](bevy::text::TextFont)'s `font_size` is the theme size scaled by
+///   [`TitleScale::TITLE`] — a theme-derived larger heading size, not a literal.
 /// - [`ThemeRole::Panel`]: a [`BackgroundColor`](bevy::ui::BackgroundColor),
 ///   a [`BorderColor`](bevy::ui::BorderColor), and a [`Node`](bevy::ui::Node)
 ///   whose `border` is the theme border width, whose `border_radius` is the theme
@@ -127,6 +157,20 @@ pub fn apply_theme(
                     TextFont {
                         font: theme.font.clone(),
                         font_size: *theme.font_size_pt,
+                        ..default()
+                    },
+                ));
+            }
+            ThemeRole::Title => {
+                // A title is theme-text scaled up: same color and font face, but
+                // the size is the theme base size times the title scale, so it is
+                // still fully theme-derived (a re-theme re-scales it) and larger
+                // than the body text — satisfying both "larger" and "theme-only".
+                commands.entity(entity).insert((
+                    UiTextColor(*theme.text),
+                    TextFont {
+                        font: theme.font.clone(),
+                        font_size: *theme.font_size_pt * *TitleScale::TITLE,
                         ..default()
                     },
                 ));
@@ -299,6 +343,61 @@ mod tests {
             world.get::<Node>(panel).map(|n| n.border_radius.top_left),
             Some(Val::Px(2.0)),
             "corner radius",
+        );
+
+        Ok(())
+    }
+
+    /// `apply_theme` paints a `Themed(Title)` node with the theme text color and
+    /// font handle, but at a font size that is the theme base size scaled by
+    /// [`TitleScale::TITLE`] — larger than a `Themed(Text)` node, and still
+    /// entirely theme-derived (GTW-121 title-size resolution).
+    ///
+    /// Pin-discriminating: if the Title arm wrote the unscaled `font_size_pt`
+    /// (clobbering the larger heading) or a hardcoded size, the size assert fails;
+    /// if it stopped sourcing color/font from the theme, those asserts fail.
+    #[test]
+    fn apply_theme_scales_title_font_size_from_the_theme() -> Result<(), ron::error::SpannedError> {
+        let mut app = app_with_apply_theme();
+        app.insert_resource(theme(
+            [0.84, 0.80, 0.73],
+            [0.08, 0.08, 0.10],
+            [0.20, 0.20, 0.24],
+            1.0,
+            2.0,
+            18.0,
+        )?);
+
+        let title = app
+            .world_mut()
+            .spawn((Themed(ThemeRole::Title), Text::new("GRIMDARK TURFWAR")))
+            .id();
+
+        app.update();
+
+        let world = app.world();
+        // Same color + font face as the body text role.
+        assert_eq!(
+            world.get::<UiTextColor>(title).map(|c| c.0),
+            Some(Color::srgb(0.84, 0.80, 0.73)),
+            "title must use the theme text color",
+        );
+        assert_eq!(
+            world.get::<TextFont>(title).map(|f| f.font.clone()),
+            Some(Handle::<Font>::default()),
+            "title must use the theme font handle",
+        );
+        // But a scaled-up size: base 18.0 * TitleScale::TITLE.
+        let expected = 18.0 * *TitleScale::TITLE;
+        assert!(
+            world
+                .get::<TextFont>(title)
+                .is_some_and(|f| (f.font_size - expected).abs() < f32::EPSILON),
+            "title font size must be the theme base size scaled by TitleScale::TITLE",
+        );
+        assert!(
+            expected > 18.0,
+            "title must be strictly larger than the body/button text size",
         );
 
         Ok(())
