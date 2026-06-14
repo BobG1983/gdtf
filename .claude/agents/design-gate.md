@@ -108,6 +108,36 @@ contract wins.
   deleted paths. **> 400 lines is a VIOLATION only when you also confirm the file mixes
   unrelated responsibilities** (split along the small-focused-systems idiom); a cohesive
   large file the ticket sanctions passes. 301–400 = a warning you note, not a fail.
+- **Bare domain types (`.claude/rules/no-bare-types.md` — every domain value is a named
+  newtype):** a struct field, fn parameter/return, or `Component`/`Resource`/`Event` payload
+  that is a bare primitive (`u32`/`f32`/`bool`/`usize`/`String`) or a bare `glam`/std type
+  (`IVec2`/`IVec3`/`Vec3`/`Duration`) carrying domain meaning is a VIOLATION — **including a
+  LEAF field inside a named grouping struct.** Wrapping only the outer group is NOT enough:
+  `struct BandEdges { low_mid: f32 }` is a violation even though `BandEdges` is named — the
+  leaf must be a newtype too (`low_mid: BandEdgePx`). Distinct concepts get distinct newtypes
+  (`Hp`/`Tu` are both `u32`, never interchangeable). The only bare types that pass are a
+  newtype's OWN inner field and framework plumbing you cannot wrap (Bevy system params,
+  trait-impl signatures, indices into a collection you own).
+- **Newtype hygiene (match the house style — e.g. `crates/gdtf_ui/src/theme.rs`):** a
+  newtype's inner field MUST be private — `pub struct X(Inner);`, NOT `pub struct X(pub
+  Inner)` — and its `Deref` MUST be DERIVED (`#[derive(Deref)]`, Bevy's re-exported macro),
+  NOT a hand-written `impl Deref`. A `pub` inner field, or a manual `Deref`/`DerefMut` impl
+  where the derive would serve, is a VIOLATION.
+- **Brittle tests on tunable data (binding):** a test that asserts an EXACT MAGNITUDE of a
+  value that is TUNABLE BY DEFINITION — combat-tuning coefficients / band edges / body-part
+  weights (`docs/combat/`), or theme-style data — is a brittle-test VIOLATION, **even when it
+  uses a test-local fixture literal rather than the shipped default.** Asserting
+  `parsed.some_tunable == 12.5` locks a number meant to be tuned and mostly just re-tests
+  serde. Require a non-brittle form instead: parse-OK of the SHIPPED data file into the type
+  (real path, no value pins), round-trip IDENTITY (`deserialize(serialize(x)) == x`), or a
+  consistency invariant. EXEMPTION: coordinate-system CONSTANTS a ticket explicitly requires
+  pinned (e.g. the battle-space metric constants 180/170/8) ARE required to be pinned — that
+  is the system definition, not balance tuning.
+- **Redundant dependencies:** a direct dependency on a crate the framework already re-exports
+  for this crate's build config is a VIOLATION — e.g. a direct `glam` dep when the project's
+  Bevy (even `default-features = false`) re-exports the same types as `bevy::math`. Use the
+  re-export and drop the dead `workspace.dependencies` entry. Confirm the re-export exists for
+  the config before condemning, but a confirmed redundant dep is a fail.
 - **Regressions in neighboring behavior:** when the diff touches shared code, grep the
   callers and confirm neighboring tests still exist and still pass — a green new test
   doesn't excuse a broken old path.

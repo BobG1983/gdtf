@@ -92,7 +92,13 @@ that canon is part of the contract ALONGSIDE the ticket.
    this test fail if the clause were violated?*) is MANDATORY, not optional. A pure
    refactor, a rename, a visibility-only change (`pub(crate)`→`pub`), a signature move, or
    a docs-only clause adds no behavior and is exempt — but ONLY when the ticket says so.
-   A trivially green `cargo test` does NOT clear this check.
+   A trivially green `cargo test` does NOT clear this check. **Brittle tunable-data tests:** a
+   test asserting an EXACT MAGNITUDE of a value tunable by definition (combat-tuning coefficients /
+   band edges / body-part weights in `docs/combat/`, or theme-style data) is a VIOLATION even with
+   a test-local fixture literal — it locks a number meant to be tuned and mostly re-tests serde;
+   require parse-OK of the SHIPPED data file, round-trip IDENTITY, or a consistency invariant
+   instead. Coordinate-system CONSTANTS a ticket requires pinned (e.g. the battle-space metric
+   180/170/8) are exempt — system definition, not balance tuning.
 4b. **Blocking check — unwired systems/plugins (the dead-code footgun).** A Bevy system
    fn, `*Plugin`, resource, message/event, reflected type, or state that is AUTHORED but
    never registered never RUNS — the Bevy analogue of dead code, silently narrowing a
@@ -143,9 +149,13 @@ that canon is part of the contract ALONGSIDE the ticket.
    - **Fidelity lens** — every clause vs. the contract's exact words + `docs/` canon;
      hunt quiet narrowing and hedge markers (`design-fidelity.md`).
    - **Tests lens** — check 4a: every behavioral clause has a real-path, assertion-bearing,
-     pin-discriminating test (`verification.md` Rules 2–3).
-   - **Structure/Bevy lens** — checks 4b + 4c and the `bevy-traps.md` ECS traps
-     (unwired wiring chain, file size+cohesion, ambiguous ordering, OnEnter-without-OnExit
+     pin-discriminating test (`verification.md` Rules 2–3), and NO brittle exact-magnitude
+     assertion on tunable data (the 4a brittle-tunable-data rule).
+   - **Structure/Bevy lens** — checks 4b + 4c, the `no-bare-types.md` rules (every domain value a
+     named newtype INCLUDING leaf fields inside a grouping struct; newtype inner field PRIVATE and
+     `Deref` DERIVED — not hand-impl'd — per `crates/gdtf_ui/src/theme.rs`; no direct dep on a
+     crate the framework re-exports, e.g. `glam` vs `bevy::math`), and the `bevy-traps.md` ECS
+     traps (unwired wiring chain, file size+cohesion, ambiguous ordering, OnEnter-without-OnExit
      resources, `EventWriter` vs `MessageWriter`).
    **Lightweight option:** when a single pass is enough, spawn ONE design-gate sub-agent
    carrying all three lenses (it already encodes 4a–4c). Either way pass the ticket id(s),
