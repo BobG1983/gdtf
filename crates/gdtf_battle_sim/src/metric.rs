@@ -51,6 +51,14 @@ pub const MAX_LEVELS: u8 = 8;
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Cell(IVec2);
 
+impl Cell {
+    /// Build a cell from its ground-plane `x`/`y` grid coordinates (cell units).
+    #[must_use]
+    pub const fn new(x: i32, y: i32) -> Self {
+        Self(IVec2::new(x, y))
+    }
+}
+
 /// A 0-based storey index — which floor of the coarse grid, valid `0..`[`MAX_LEVELS`].
 ///
 /// Distinct from a raw coordinate axis: it indexes storeys, and its world lift
@@ -59,6 +67,14 @@ pub struct Cell(IVec2);
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Level(u8);
 
+impl Level {
+    /// Build a storey index. Callers are expected to keep it in `0..`[`MAX_LEVELS`].
+    #[must_use]
+    pub const fn new(storey: u8) -> Self {
+        Self(storey)
+    }
+}
+
 /// The canonical 3D grid key: `(cell.x, cell.y, level)`.
 ///
 /// The single (cell, storey) identity used to key the coarse occupancy and the
@@ -66,6 +82,20 @@ pub struct Level(u8);
 /// which is what distinguishes it from [`BattlePx`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CellLevel(IVec3);
+
+impl CellLevel {
+    /// Build a `(cell, level)` key from a ground-plane [`Cell`] and a storey
+    /// [`Level`].
+    ///
+    /// Composes the two typed coordinates into the canonical `IVec3` key
+    /// (`x`/`y` from the cell, `z` = the storey index) — the one constructor for
+    /// the grid identity, keeping the inner `IVec3` private so callers can never
+    /// hand-build a `z` that is a px height instead of a storey.
+    #[must_use]
+    pub fn new(cell: Cell, level: Level) -> Self {
+        Self(IVec3::new(cell.x, cell.y, i32::from(*level)))
+    }
+}
 
 /// A world-space position in battle-space px — the unified px metric.
 ///
