@@ -20,8 +20,18 @@
 //! battle-local [`armor::WornArmor`] component seeded by value from it — the sim's
 //! only mutable armor surface during a battle. See
 //! `docs/combat/weapons-and-armor.md` and `docs/architecture.md`.
+//!
+//! E1.4 ([`cover`]) adds the [`cover::CoverLedger`] resource — the single
+//! authoritative store of cover structural HP, ONE unified map keyed
+//! `(cell, level)` for BOTH walls and props, lazily seeded to `max_hp` on first
+//! access. [`cover::CoverLedger::deplete_cover`] spends HP and emits a
+//! [`cover::CoverEvent::Destroyed`] marker at zero (the occupancy/prop
+//! consequences are deferred to GTW-35). Cover reuses the GTW-153 armor newtypes,
+//! and band thresholds come from [`tuning::CombatTuning`] via [`cover::band_for`].
+//! See `docs/combat/resolution.md` §3 and `docs/architecture.md`.
 
 pub mod armor;
+pub mod cover;
 pub mod ganger;
 pub mod metric;
 pub mod tuning;
@@ -29,6 +39,10 @@ pub mod tuning;
 pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BodyPart, SourceArmor,
     WornArmor,
+};
+pub use cover::{
+    BandHeightPx, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,
+    band_for,
 };
 pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
