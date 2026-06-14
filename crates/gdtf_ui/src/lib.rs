@@ -4,17 +4,25 @@
 //! (those live in `gdtf_battle_sim`) and deliberately depends on **bevy only**,
 //! so `gdtf_app` can depend on it without forming a dependency cycle.
 //!
-//! Today it is a compile-and-wire skeleton: [`UiPlugin`] registers cleanly into
-//! the app but installs nothing yet. Later tickets attach the UI systems,
-//! resources, and assets to [`UiPlugin::build`].
+//! [`UiPlugin`] is the single registration seam: today it installs the
+//! [`focus_nav`] sub-plugin ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)) and
+//! nothing else. Later tickets attach further UI systems, resources, and assets
+//! to [`UiPlugin::build`].
+//!
+//! The [`focus_nav`] module wires Bevy's `input_focus` framework and bridges
+//! keyboard + gamepad input onto directional focus navigation; see its docs for
+//! the activation-message decision.
 //!
 //! The data-driven [`theme`] module defines the on-disk theme schema, the runtime
 //! [`GdtfTheme`](theme::GdtfTheme) resource, and the pure spec-to-resource
 //! resolution; population of that resource lands with later tickets.
 
+pub mod focus_nav;
 pub mod theme;
 
 use bevy::prelude::*;
+
+use crate::focus_nav::FocusNavPlugin;
 
 /// The GDTF UI plugin — the single registration seam for the hand-rolled UI.
 ///
@@ -23,13 +31,14 @@ use bevy::prelude::*;
 /// observers. Keeping the seam in place from the start means downstream wiring
 /// changes touch only [`build`](UiPlugin::build), never the app's plugin list.
 ///
-/// [`build`](UiPlugin::build) is intentionally empty for now: the skeleton
-/// proves the registration path end-to-end (see the `gdtf_app` headless harness
-/// test asserting `is_plugin_added::<UiPlugin>()`) before any UI systems exist.
+/// It currently installs the focus-navigation layer
+/// ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)) and nothing else.
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
-    /// Empty build seam. Later tickets add the UI systems/resources here; for
-    /// now installing nothing keeps the skeleton bevy-only and side-effect-free.
-    fn build(&self, _app: &mut App) {}
+    /// Adds the focus-navigation sub-plugin. Later tickets hang further UI
+    /// systems/resources here; the layer stays bevy-only (no ecosystem crate).
+    fn build(&self, app: &mut App) {
+        app.add_plugins(FocusNavPlugin);
+    }
 }

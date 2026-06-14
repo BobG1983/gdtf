@@ -10,6 +10,7 @@
 
 use bevy::{
     app::App,
+    input::InputPlugin,
     state::app::{AppExtStates, StatesPlugin},
 };
 pub use gdtf_ui::UiPlugin;
@@ -31,7 +32,16 @@ pub use crate::{
 ///    `SubStates` type must be registered after its `#[source(...)]` parent (see
 ///    `.claude/rules/bevy-traps.md` rule 5).
 /// 4. [`ScenesPlugin`], which adds every scene plugin.
-/// 5. [`UiPlugin`], the UI registration seam — added here to keep this headless
+/// 5. [`InputPlugin`] — the render-free Bevy input layer. `MinimalPlugins`
+///    omits it, but [`UiPlugin`] now installs `bevy::input_focus`'s
+///    `InputDispatchPlugin`, whose `dispatch_focused_input` systems read the
+///    keyboard/gamepad message buffers; without `InputPlugin` registering those
+///    buffers (`Messages<KeyboardInput>` etc.) those systems panic on the first
+///    `update()`. `InputPlugin` registers exactly those buffers and the
+///    `ButtonInput<KeyCode>` resource the focus-nav bridge reads, and is
+///    headless-safe (no window/render). `DefaultPlugins` already includes it, so
+///    [`crate::GdtfApp`] needs no change.
+/// 6. [`UiPlugin`], the UI registration seam — added here to keep this headless
 ///    path a faithful mirror of [`crate::GdtfApp`], which also adds it. A
 ///    harness test can then assert `is_plugin_added::<UiPlugin>()` and prove the
 ///    real registration path wires the UI, not merely that `gdtf_ui` compiles.
@@ -47,6 +57,7 @@ pub fn register_headless(app: &mut App) {
     app.add_sub_state::<GameState>();
     app.add_sub_state::<BattleScapeState>();
     app.add_sub_state::<AfterMathState>();
+    app.add_plugins(InputPlugin);
     app.add_plugins(ScenesPlugin);
     app.add_plugins(UiPlugin);
 }
