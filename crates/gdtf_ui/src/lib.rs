@@ -16,13 +16,23 @@
 //! The data-driven [`theme`] module defines the on-disk theme schema, the runtime
 //! [`GdtfTheme`](theme::GdtfTheme) resource, and the pure spec-to-resource
 //! resolution; population of that resource lands with later tickets.
+//!
+//! The [`themed`] module owns the [`Themed`](themed::Themed) marker and the
+//! central [`apply_theme`](themed::apply_theme) system — the hot-reload seam that
+//! paints theme-derived visuals onto themed entities from the live
+//! [`GdtfTheme`](theme::GdtfTheme).
 
 pub mod focus_nav;
 pub mod theme;
+pub mod themed;
 
 use bevy::prelude::*;
 
-use crate::focus_nav::FocusNavPlugin;
+use crate::{
+    focus_nav::FocusNavPlugin,
+    theme::GdtfTheme,
+    themed::{UiSystems, apply_theme},
+};
 
 /// The GDTF UI plugin — the single registration seam for the hand-rolled UI.
 ///
@@ -32,13 +42,27 @@ use crate::focus_nav::FocusNavPlugin;
 /// changes touch only [`build`](UiPlugin::build), never the app's plugin list.
 ///
 /// It currently installs the focus-navigation layer
-/// ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)) and nothing else.
+/// ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)) and the central theming pass
+/// ([`apply_theme`](themed::apply_theme)).
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
-    /// Adds the focus-navigation sub-plugin. Later tickets hang further UI
-    /// systems/resources here; the layer stays bevy-only (no ecosystem crate).
+    /// Adds the focus-navigation sub-plugin and the central theming system.
+    ///
+    /// [`apply_theme`](themed::apply_theme) runs in [`Update`] inside the named
+    /// [`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme) set, gated by
+    /// `.run_if(resource_exists::<GdtfTheme>)` so it is inert until the theme is
+    /// populated (pre-`Load`) and never panics on its absence (bevy-traps rule
+    /// 1). The named set is the deterministic ordering anchor the later retheme
+    /// trigger (GTW-137) and interaction-feedback systems (GTW-118) order against
+    /// (bevy-traps rule 3). Later tickets hang further UI systems/resources here;
+    /// the layer stays bevy-only (no ecosystem crate).
     fn build(&self, app: &mut App) {
-        app.add_plugins(FocusNavPlugin);
+        app.add_plugins(FocusNavPlugin).add_systems(
+            Update,
+            apply_theme
+                .in_set(UiSystems::ApplyTheme)
+                .run_if(resource_exists::<GdtfTheme>),
+        );
     }
 }
