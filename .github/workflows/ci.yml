@@ -1,9 +1,10 @@
 name: CI
 
-# Runs the STATIC release/CI green suite (see .claude/rules/verification.md):
-# fmt --check, clippy -D warnings, test, and a release build — all WITHOUT the
-# `dynamic_linking` feature, which is a dev-iteration speedup only and is never
-# used for release artifacts.
+# Runs the STATIC CI green gate (see .claude/rules/verification.md): fmt --check,
+# clippy -D warnings, and test — all WITHOUT the `dynamic_linking` feature, which
+# is a dev-iteration speedup only and is never used for release artifacts. The
+# static release-binary build (`cargo build -p grimdark_turfwar --release`) is NOT
+# run here: it is deferred to the (much-later) packaging process. See GTW-140.
 on:
   push:
     branches: [develop]
@@ -31,8 +32,8 @@ jobs:
         uses: actions/checkout@v4
 
       # Build-time system deps for Bevy's Linux backends — needed to COMPILE, not
-      # to open a display. CI never opens a window (MinimalPlugins tests + a
-      # build-only release step), but the crates must still build: bevy_audio
+      # to open a display. CI never opens a window (MinimalPlugins tests only), but
+      # the crates must still build: bevy_audio
       # needs ALSA (libasound2-dev); input/device enumeration needs udev
       # (libudev-dev); bevy_winit pulls wayland-sys, whose build script probes
       # pkg-config for wayland-client at build time (libwayland-dev provides
@@ -63,8 +64,8 @@ jobs:
       # cache stays small + fast), re-saves every run, and keys on the lockfile +
       # rustc version — unlike a hand-rolled actions/cache over target/, which only
       # saves on a key miss and bloats past the 10 GB cap with a Bevy-sized target.
-      # NOTE: the FIRST (cold) run still compiles all of Bevy + wgpu in both dev
-      # and release profiles (~15–30 min) — caching speeds the WARM runs. Follow-up
+      # NOTE: the FIRST (cold) run still compiles all of Bevy + wgpu in the dev
+      # profile (~15–30 min) — caching speeds the WARM runs. Follow-up
       # (not done here): the toolchain is unpinned `nightly` (rust-toolchain.toml +
       # dtolnay@master), so it can move between runs and invalidate the rustc-keyed
       # cache; pinning nightly to a date would stabilize it (touches local dev too).
@@ -85,6 +86,3 @@ jobs:
       # needed here.
       - name: cargo test --workspace
         run: cargo test --workspace
-
-      - name: cargo build -p grimdark_turfwar --release
-        run: cargo build -p grimdark_turfwar --release

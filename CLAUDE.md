@@ -45,8 +45,9 @@ cargo test --workspace --features grimdark_turfwar/dynamic_linking
 
 `cargo dclippy` / `cargo dtest` / `cargo drun` (aliases in `.cargo/config.toml`) are the shorthand
 for these. Dynamic linking keeps the dev/gate loop fast; `--all-features` is not used — it forces a
-second full bevy build for no lint gain. Release/CI green is **static** (no `dynamic_linking`) — see
-[`verification.md`](.claude/rules/verification.md).
+second full bevy build for no lint gain. CI green is **static** (no `dynamic_linking`): fmt/clippy/test
+only — the release-binary build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging,
+not a CI gate. See [`verification.md`](.claude/rules/verification.md).
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus
 `unwrap`/`expect`/`panic`/`todo`/`unimplemented` and `missing_docs`, so **lint-clean and fmt-clean

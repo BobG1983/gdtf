@@ -30,20 +30,26 @@ lint-clean IS part of "done", not a separate nicety. (nextest is an optional
 faster swap for the test step; default to `cargo test`.) Run it yourself —
 never report a remembered or assumed result.
 
-## The RELEASE / CI green (static — no dynamic_linking)
+## The CI green (static — no dynamic_linking)
 
-Release artifacts and CI use the STATIC suite (no `dynamic_linking` feature):
+CI uses the STATIC suite (no `dynamic_linking` feature):
 
 ```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo build -p grimdark_turfwar --release
 ```
 
-`dynamic_linking` is a dev-iteration speedup ONLY — it is NEVER used for release
-artifacts. The dev/gate green above is the fast, dynamic-linked loop; this static
-suite is what gates a release build.
+`dynamic_linking` is a dev-iteration speedup ONLY — it is NEVER used for static
+builds. The dev/gate green above is the fast, dynamic-linked loop; this static
+suite is the CI gate.
+
+The static **release-binary** build (`cargo build -p grimdark_turfwar --release`)
+is NOT a CI gate. It is DEFERRED to the packaging process — a much-later,
+packaging-time check — because building Bevy + wgpu in release on top of the
+dev/test target exhausts the CI runner's disk ("No space left on device"). When
+release artifacts are packaged, that build runs there (still static — release
+NEVER uses `dynamic_linking`). See GTW-140.
 
 NOTE: gdtf currently has ZERO tests, so `cargo test` passes trivially today.
 That is NOT red — do not invent a "nothing ran = red" rule. But every
