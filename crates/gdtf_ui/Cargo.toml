@@ -8,6 +8,11 @@ edition = "2024"
 # gdtf_battle_presenter: gdtf_app depends on gdtf_ui, so any reverse edge would
 # make the workspace dependency graph cyclic (and fail the build).
 bevy = "0.18.1"
+# The loose-file RON asset loader (GTW-136). GTW-137's live-retheme system reads
+# `AssetEvent<RonAsset<GdtfThemeSpec>>` and re-derives the theme from the
+# in-memory `RonAsset`, so `gdtf_ui` names `RonAsset` directly. `gdtf_assets` is
+# a leaf (bevy-only), so this edge introduces no dependency cycle.
+gdtf_assets = { path = "../gdtf_assets" }
 # Data-driven theme deps (GTW-117): `ron` parses the on-disk theme, `serde`
 # (derive) drives deserialization of the `GdtfThemeSpec`. Sourced from the
 # workspace's single dependency home so versions stay pinned and aligned.

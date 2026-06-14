@@ -22,6 +22,13 @@
 //! paints theme-derived visuals onto themed entities from the live
 //! [`GdtfTheme`](theme::GdtfTheme).
 //!
+//! The [`retheme`] module owns the live-reapply logic
+//! ([`redrive_theme_on_asset_event`](retheme::redrive_theme_on_asset_event)): on
+//! an [`AssetEvent`](bevy::asset::AssetEvent)`::Modified` for the active theme
+//! asset it re-derives [`GdtfTheme`](theme::GdtfTheme) in place, and the
+//! change-driven [`apply_theme`](themed::apply_theme) repaints every
+//! [`Themed`](themed::Themed) entity the same frame — no restart (GTW-137).
+//!
 //! The [`widgets`] module owns the reusable spawn helpers
 //! ([`spawn_panel`](widgets::spawn_panel) / [`spawn_button`](widgets::spawn_button)),
 //! the [`DisabledButton`](widgets::DisabledButton) marker, and the disabled-dim
@@ -31,12 +38,16 @@
 
 pub mod focus_nav;
 pub mod interaction;
+pub mod retheme;
 pub mod theme;
 pub mod themed;
 pub mod widgets;
 
 use bevy::prelude::*;
+use gdtf_assets::RonAsset;
 pub use interaction::{sync_hover_to_focus, theme_interaction};
+pub use retheme::redrive_theme_on_asset_event;
+pub use themed::any_themed_added;
 pub use widgets::{
     ButtonLabel, DimFactor, DisabledButton, dim_disabled_buttons, dimmed_fill, spawn_button,
     spawn_panel,
@@ -44,9 +55,20 @@ pub use widgets::{
 
 use crate::{
     focus_nav::FocusNavPlugin,
-    theme::GdtfTheme,
+    theme::{GdtfTheme, GdtfThemeSpec},
     themed::{UiSystems, apply_theme},
 };
+
+/// The message buffer the GTW-137 retheme system reads: asset events for the
+/// theme `RonAsset`.
+///
+/// Named here so the [`UiPlugin`] run condition can gate the retheme system on its
+/// existence — the buffer is only registered when `AssetPlugin` (and the GTW-136
+/// `init_ron_asset::<GdtfThemeSpec>()`) is present, so gating on it keeps the
+/// system inert under a `MinimalPlugins` harness with no asset support (where its
+/// `MessageReader` would otherwise fail param validation), without weakening the
+/// production path (bevy-traps rule 1).
+type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 
 /// The GDTF UI plugin — the single registration seam for the hand-rolled UI.
 ///
@@ -57,8 +79,10 @@ use crate::{
 ///
 /// It currently installs the focus-navigation layer
 /// ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)), the central theming pass
-/// ([`apply_theme`](themed::apply_theme)), the GTW-118 widget interaction
-/// layer ([`theme_interaction`](interaction::theme_interaction) +
+/// ([`apply_theme`](themed::apply_theme)), the GTW-137 live-retheme trigger
+/// ([`redrive_theme_on_asset_event`](retheme::redrive_theme_on_asset_event)), the
+/// GTW-118 widget interaction layer
+/// ([`theme_interaction`](interaction::theme_interaction) +
 /// [`dim_disabled_buttons`](widgets::dim_disabled_buttons)), and the GTW-141
 /// mouse hover→focus bridge ([`sync_hover_to_focus`](interaction::sync_hover_to_focus)).
 pub struct UiPlugin;
@@ -68,12 +92,28 @@ impl Plugin for UiPlugin {
     /// theme-derived widget interaction layer.
     ///
     /// [`apply_theme`](themed::apply_theme) runs in [`Update`] inside the named
-    /// [`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme) set, gated by
-    /// `.run_if(resource_exists::<GdtfTheme>)` so it is inert until the theme is
-    /// populated (pre-`Load`) and never panics on its absence (bevy-traps rule
-    /// 1). The named set is the deterministic ordering anchor the later retheme
-    /// trigger (GTW-137) and the interaction-feedback systems (GTW-118) order
-    /// against (bevy-traps rule 3).
+    /// [`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme) set. It is
+    /// **change-driven** (GTW-144): gated by
+    /// `resource_exists::<GdtfTheme>().and(resource_changed::<GdtfTheme>.or(`[`any_themed_added`](themed::any_themed_added)`))`,
+    /// so it runs only when the theme changed (the `Load` insert, or the GTW-137
+    /// re-derive — repainting ALL [`Themed`](themed::Themed) entities = the
+    /// retheme) or a new [`Themed`](themed::Themed) entity appeared (so a
+    /// freshly-spawned widget still gets its base look), and **never** on a
+    /// steady-state frame — where re-running every frame would clobber the GTW-118
+    /// hover/press feedback. The `resource_exists` arm also keeps it inert and
+    /// panic-free before the theme is populated (bevy-traps rule 1). The named set
+    /// is the deterministic ordering anchor (bevy-traps rule 3).
+    ///
+    /// The GTW-137 live-retheme trigger
+    /// ([`redrive_theme_on_asset_event`](retheme::redrive_theme_on_asset_event))
+    /// runs in [`Update`] `.before(`[`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme)`)`
+    /// so a re-derived theme repaints the same frame (bevy-traps rule 3). It
+    /// reads the [`AssetEvent`](bevy::asset::AssetEvent) **message** stream
+    /// (bevy-traps rule 4) and is gated on both `GdtfTheme` and the theme
+    /// asset-event message buffer existing — the buffer is registered only with
+    /// `AssetPlugin` + the GTW-136 loader, so the guard keeps its `MessageReader`
+    /// from failing param validation under an asset-less `MinimalPlugins` harness
+    /// (bevy-traps rule 1).
     ///
     /// The GTW-118 interaction layer —
     /// [`theme_interaction`](interaction::theme_interaction) (hover/press swap)
@@ -100,9 +140,30 @@ impl Plugin for UiPlugin {
         app.add_plugins(FocusNavPlugin).add_systems(
             Update,
             (
-                apply_theme
-                    .in_set(UiSystems::ApplyTheme)
-                    .run_if(resource_exists::<GdtfTheme>),
+                // GTW-137: on a theme-asset `AssetEvent::Modified` for the active
+                // handle, re-derive and overwrite `GdtfTheme`. Ordered BEFORE the
+                // ApplyTheme set so the resulting theme-changed marks repaint the
+                // same frame (bevy-traps rule 3). Gated on `GdtfTheme` existing AND
+                // the asset-event message buffer existing: the latter is only
+                // registered with `AssetPlugin` + `init_ron_asset`, so this keeps
+                // the system's `MessageReader` from failing param validation under
+                // a `MinimalPlugins` harness with no asset support (bevy-traps rule
+                // 1).
+                redrive_theme_on_asset_event
+                    .before(UiSystems::ApplyTheme)
+                    .run_if(
+                        resource_exists::<GdtfTheme>.and(resource_exists::<ThemeAssetMessages>),
+                    ),
+                // GTW-144: `apply_theme` is CHANGE-DRIVEN — it runs only when the
+                // theme changed (the Load insert OR a GTW-137 re-derive: repaints
+                // ALL Themed = the retheme) OR a new `Themed` entity appeared (so
+                // freshly-spawned widgets still get their base look). On steady
+                // frames it does not run, so it never clobbers the GTW-118
+                // hover/press feedback that only updates on `Changed<Interaction>`.
+                apply_theme.in_set(UiSystems::ApplyTheme).run_if(
+                    resource_exists::<GdtfTheme>
+                        .and(resource_changed::<GdtfTheme>.or(any_themed_added)),
+                ),
                 (theme_interaction, dim_disabled_buttons, sync_hover_to_focus)
                     .after(UiSystems::ApplyTheme),
             ),

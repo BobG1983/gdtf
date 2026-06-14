@@ -20,6 +20,7 @@
 //! deferred to packaging. Here we define the shapes and the resolution only.
 
 use bevy::prelude::*;
+use gdtf_assets::RonAsset;
 use serde::Deserialize;
 
 /// Background fill of a themed panel.
@@ -289,6 +290,27 @@ pub struct GdtfTheme {
     /// Pressed-state panel background (port-introduced — see [`PressBg`]).
     pub press_bg:         PressBg,
 }
+
+/// The handle to the **active** theme RON asset (`theme/grimdark.ron`), held as a
+/// persistent resource so the live-retheme layer can react to its changes.
+///
+/// A named [`Deref`] newtype over the `RonAsset<GdtfThemeSpec>` handle rather than
+/// a bare `Handle` (no-bare-types rule): the name says "the theme asset currently
+/// driving [`GdtfTheme`]". The retheme system
+/// ([`redrive_theme_on_asset_event`](crate::retheme::redrive_theme_on_asset_event))
+/// filters incoming [`AssetEvent`](bevy::asset::AssetEvent) ids against this
+/// handle's id, ignoring events for any other asset.
+///
+/// Inserted alongside [`GdtfTheme`] during `AppState::Load` (GTW-137, on **both**
+/// the success and the const-fallback paths — the handle is valid even when the
+/// load failed, so a later file-watcher reload (GTW-138) can recover) and, like
+/// [`GdtfTheme`], it **persists** past `OnExit(Load)`. Holding the handle keeps a
+/// **strong** reference to the asset so it stays loaded for that future watcher.
+///
+/// It is **not** inserted at startup; readers guard for its absence per the
+/// state-scoped-resource convention (bevy-traps rule 1).
+#[derive(Resource, Deref, Clone, Debug)]
+pub struct ActiveThemeHandle(pub Handle<RonAsset<GdtfThemeSpec>>);
 
 #[cfg(test)]
 mod tests {

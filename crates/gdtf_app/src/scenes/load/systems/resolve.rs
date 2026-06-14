@@ -2,7 +2,7 @@
 
 use bevy::{asset::LoadState, prelude::*};
 use gdtf_assets::RonAsset;
-use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec, default_theme};
+use gdtf_ui::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec, default_theme};
 
 use crate::scenes::load::resources::{FailedAssetPath, LoadFailed, LoadHandles};
 
@@ -20,6 +20,14 @@ use crate::scenes::load::resources::{FailedAssetPath, LoadFailed, LoadHandles};
 ///   [`GdtfThemeSpec`] out of `Assets<RonAsset<GdtfThemeSpec>>` and resolves it
 ///   with the loaded font handle into a [`GdtfTheme`], then inserts it.
 /// - Else (still loading) it does nothing and runs again next frame.
+///
+/// On **both** the success and the failure paths it also inserts the persistent
+/// [`ActiveThemeHandle`] (the theme RON handle from [`LoadHandles`]) alongside the
+/// [`GdtfTheme`] — the handle is valid even when the load failed, so GTW-138's
+/// later file-watcher reload can recover, and the GTW-137 live-retheme system
+/// filters incoming asset events against it. Holding it keeps a strong reference
+/// so the asset stays loaded for that watcher. Like [`GdtfTheme`], it persists
+/// past `OnExit(Load)` (it is **not** removed in `cleanup`).
 ///
 /// Guarded entirely by `run_if(resource_exists::<LoadHandles>)` plus the
 /// `not(resource_exists::<GdtfTheme>)` gate in the plugin wiring, and takes
@@ -43,11 +51,14 @@ pub(in crate::scenes::load) fn poll_and_resolve(
     let font_state = asset_server.load_state(&*handles.font);
 
     // Failure path: a failed required asset must not hang the app. Record the
-    // failed path, warn, and fall back to the const default theme.
+    // failed path, warn, and fall back to the const default theme. The active
+    // theme handle is inserted even here — it is valid despite the failed load,
+    // so a later file-watcher reload (GTW-138) can recover from it.
     if theme_state.is_failed() {
         fall_back(
             &mut commands,
             FailedAssetPath(String::from("theme/grimdark.ron")),
+            &handles,
         );
         return;
     }
@@ -55,6 +66,7 @@ pub(in crate::scenes::load) fn poll_and_resolve(
         fall_back(
             &mut commands,
             FailedAssetPath(String::from("fonts/Alegreya-Variable.ttf")),
+            &handles,
         );
         return;
     }
@@ -68,18 +80,24 @@ pub(in crate::scenes::load) fn poll_and_resolve(
         };
         let theme: GdtfTheme = (**spec).clone().resolve((*handles.font).clone());
         commands.insert_resource(theme);
+        // The persistent handle the GTW-137 retheme system filters against and
+        // GTW-138's watcher keeps loaded; survives OnExit(Load) like GdtfTheme.
+        commands.insert_resource(ActiveThemeHandle((*handles.theme).clone()));
     }
 }
 
 /// Records the failed asset path, warns naming it, and inserts the const-fallback
-/// [`GdtfTheme`].
+/// [`GdtfTheme`] plus the persistent [`ActiveThemeHandle`].
 ///
-/// Shared by both failure branches so the warn-and-fallback is written once.
-fn fall_back(commands: &mut Commands, path: FailedAssetPath) {
+/// Shared by both failure branches so the warn-and-fallback is written once. The
+/// [`ActiveThemeHandle`] is inserted on this path too: the handle is valid even
+/// though the load failed, so GTW-138's file-watcher reload can recover from it.
+fn fall_back(commands: &mut Commands, path: FailedAssetPath, handles: &LoadHandles) {
     warn!(
         "GDTF Load: asset `{}` failed to load; falling back to the const default theme",
         &*path,
     );
     commands.insert_resource(LoadFailed(path));
     commands.insert_resource(default_theme());
+    commands.insert_resource(ActiveThemeHandle((*handles.theme).clone()));
 }

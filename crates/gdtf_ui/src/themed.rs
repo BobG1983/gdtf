@@ -36,12 +36,19 @@
 //! later system, ordered after [`UiSystems::ApplyTheme`]; it is intentionally not
 //! part of this system.
 //!
-//! ## Absence guard
+//! ## Cadence and absence guard
 //!
-//! [`apply_theme`] is registered with `.run_if(resource_exists::<GdtfTheme>)`, so
-//! before `AppState::Load` populates the resource (per the project's
-//! state-scoped-resource convention, bevy-traps rule 1) the system simply does
-//! not run — it never panics on an absent theme.
+//! [`apply_theme`] is **change-driven** (GTW-144): [`UiPlugin`](crate::UiPlugin)
+//! registers it to run only when the [`GdtfTheme`](crate::theme::GdtfTheme)
+//! resource *changed* (the `Load` insert or the GTW-137 re-derive — repainting
+//! every [`Themed`] entity, i.e. the retheme) **or** when a new [`Themed`] entity
+//! was added this frame (so a freshly-spawned widget still gets its base look).
+//! It does **not** run on steady-state frames, so it never re-overwrites — and so
+//! never clobbers — the GTW-118 hover/press feedback (which composes on top and
+//! only updates on `Changed<Interaction>`). The `resource_exists::<GdtfTheme>`
+//! part of that run condition also keeps it inert before `AppState::Load`
+//! populates the resource (per the project's state-scoped-resource convention,
+//! bevy-traps rule 1) — it never panics on an absent theme.
 
 use bevy::{
     prelude::*,
@@ -141,9 +148,12 @@ pub enum UiSystems {
 /// spawn.
 ///
 /// Registered by [`UiPlugin`](crate::UiPlugin) in [`Update`] under
-/// [`UiSystems::ApplyTheme`] with `.run_if(resource_exists::<GdtfTheme>)`: before
-/// the theme is populated (pre-`Load`) the system does not run, so an absent
-/// resource never panics (bevy-traps rule 1).
+/// [`UiSystems::ApplyTheme`], **change-driven** (GTW-144): it runs only when the
+/// theme changed or a new [`Themed`] entity appeared, never on steady-state
+/// frames (so it never clobbers interaction feedback), and the
+/// `resource_exists::<GdtfTheme>` guard keeps it inert and panic-free before the
+/// theme is populated (pre-`Load`, bevy-traps rule 1). See
+/// [`UiPlugin::build`](crate::UiPlugin) for the exact run condition.
 pub fn apply_theme(
     mut commands: Commands,
     theme: Res<GdtfTheme>,
@@ -196,6 +206,22 @@ pub fn apply_theme(
             }
         }
     }
+}
+
+/// Run condition: at least one [`Themed`] entity was **added** this frame.
+///
+/// Used by [`UiPlugin`](crate::UiPlugin) to keep [`apply_theme`] change-driven
+/// (GTW-144): the system repaints either when the theme changed **or** when a
+/// freshly-spawned [`Themed`] widget needs its base look — but **not** on
+/// steady-state frames, where re-running every frame would clobber the GTW-118
+/// hover/press feedback that only updates on `Changed<Interaction>`.
+///
+/// `Added<Themed>` matches an entity only on the frames after its `Themed`
+/// component was inserted, so this returns `true` exactly when a new widget needs
+/// its first paint, and `false` once it has settled.
+#[must_use]
+pub fn any_themed_added(added: Query<(), Added<Themed>>) -> bool {
+    !added.is_empty()
 }
 
 #[cfg(test)]

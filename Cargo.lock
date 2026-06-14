@@ -2581,6 +2581,7 @@ name = "gdtf_ui"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "gdtf_assets",
  "ron",
  "serde",
 ]
