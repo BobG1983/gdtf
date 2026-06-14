@@ -159,7 +159,9 @@ pub fn apply_theme(
     theme: Res<GdtfTheme>,
     themed: Query<(Entity, &Themed, Option<&Node>)>,
 ) {
+    let mut painted = 0usize;
     for (entity, marker, node) in &themed {
+        painted += 1;
         match **marker {
             ThemeRole::Text => {
                 commands.entity(entity).insert((
@@ -205,6 +207,12 @@ pub fn apply_theme(
                 ));
             }
         }
+    }
+    // GTW-146 hot-reload instrumentation: this system is change-driven, so a line
+    // here after a save confirms the re-derived theme was actually reapplied to
+    // the live widgets (the final step of the reload chain).
+    if painted > 0 {
+        info!("apply_theme: repainted {painted} Themed entities from the current GdtfTheme");
     }
 }
 

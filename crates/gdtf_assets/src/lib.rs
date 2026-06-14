@@ -199,6 +199,14 @@ where
             .map_err(|err| RonLoadError::Read(ReadError(err)))?;
         let value = ron::de::from_bytes::<T>(&bytes)
             .map_err(|err| RonLoadError::Deserialize(RonDeError(err)))?;
+        // GTW-146 hot-reload instrumentation: this `load` re-runs every time the
+        // asset file-watcher detects an on-disk change, so a SECOND line here
+        // after a save is the proof the watcher fired and the spec was rebuilt.
+        bevy::log::info!(
+            "RonAsset<{}> loaded/parsed ({} bytes)",
+            T::short_type_path(),
+            bytes.len(),
+        );
         Ok(RonAsset(value))
     }
 

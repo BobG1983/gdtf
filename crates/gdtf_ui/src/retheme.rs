@@ -77,10 +77,17 @@ pub fn redrive_theme_on_asset_event(
 
     // Act once per frame even if several Modified events arrive: a single
     // re-derive from the latest in-memory value covers them all. Only re-derive
-    // when at least one Modified event targets the active theme handle.
-    let modified = events
-        .read()
-        .any(|event| matches!(event, AssetEvent::Modified { id } if *id == active_id));
+    // when at least one Modified event targets the active theme handle. GTW-146
+    // hot-reload instrumentation: log EVERY incoming theme-asset event so a live
+    // edit can be traced — no line here after a save means no `AssetEvent` reached
+    // us at all (e.g. an atomic-rename save the OS watcher silently drops).
+    let mut modified = false;
+    for event in events.read() {
+        info!("theme hot-reload: received {event:?} (active id {active_id:?})");
+        if matches!(event, AssetEvent::Modified { id } if *id == active_id) {
+            modified = true;
+        }
+    }
     if !modified {
         return;
     }
@@ -88,6 +95,10 @@ pub fn redrive_theme_on_asset_event(
     let Some(updated) = theme_assets.get(&**active) else {
         // The asset was modified but is not currently in the collection (e.g. a
         // transient reload state); leave the existing theme until it settles.
+        warn!(
+            "theme hot-reload: Modified received but the asset is not yet in the \
+             collection; retrying next frame",
+        );
         return;
     };
 
@@ -95,6 +106,10 @@ pub fn redrive_theme_on_asset_event(
     // handle — a theme RON edit changes colors/scalars, not the font asset.
     let font = theme.font.clone();
     *theme = (**updated).clone().resolve(font);
+    info!(
+        "theme hot-reload: re-derived GdtfTheme (panel_bg {:?}, hover_bg {:?}, press_bg {:?})",
+        *theme.panel_bg, *theme.hover_bg, *theme.press_bg,
+    );
 }
 
 #[cfg(test)]

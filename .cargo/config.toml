@@ -3,8 +3,8 @@
 # `dynamic_linking` is opt-in and must NEVER be enabled for release builds.
 
 # Run / build the game with dynamic linking.
-drun = "run -p grimdark_turfwar --features dynamic_linking"
-dbuild = "build -p grimdark_turfwar --features dynamic_linking"
+drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher"
+dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher"
 
 # Workspace-wide dev checks with dynamic linking. bevy is a single shared
 # dependency, so enabling the feature anywhere makes every bevy-linked crate
