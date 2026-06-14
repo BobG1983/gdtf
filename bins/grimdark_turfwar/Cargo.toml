@@ -11,6 +11,10 @@ gdtf_app = { path = "../../crates/gdtf_app" }
 # Enable for non-release builds (e.g. `cargo run --features dynamic_linking`);
 # leave off for `--release` so it never ships in release artifacts.
 dynamic_linking = ["gdtf_app/dynamic_linking"]
+# DEV / LOCAL-only asset hot-reload; chains through to gdtf_app -> bevy/file_watcher.
+# Enable locally (e.g. `cargo run --features dynamic_linking,file_watcher`) to make
+# editing a loose asset on disk live-reload it; never enabled for release/CI.
+file_watcher = ["gdtf_app/file_watcher"]
 
 [lints]
 workspace = true

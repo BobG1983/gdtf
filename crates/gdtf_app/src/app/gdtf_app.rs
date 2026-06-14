@@ -42,6 +42,13 @@ impl GdtfApp {
 
     #[must_use]
     fn add_bevy_plugins(mut self) -> Self {
+        // This default `AssetPlugin` construction is intentionally byte-identical
+        // regardless of features: with `watch_for_changes_override: None` (the
+        // default), Bevy starts its asset file watcher iff its internal `watch`
+        // cfg is set. The dev-only `file_watcher` feature (gdtf_app ->
+        // bevy/file_watcher) sets that cfg transitively, turning this source root
+        // into a hot-reload watcher with NO code change here. See the
+        // `file_watcher` feature comment in this crate's Cargo.toml.
         self.0.add_plugins(DefaultPlugins.set(AssetPlugin {
             file_path: WORKSPACE_ASSETS_ROOT.to_owned(),
             ..default()
