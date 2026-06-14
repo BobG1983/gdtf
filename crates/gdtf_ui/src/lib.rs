@@ -21,12 +21,26 @@
 //! central [`apply_theme`](themed::apply_theme) system — the hot-reload seam that
 //! paints theme-derived visuals onto themed entities from the live
 //! [`GdtfTheme`](theme::GdtfTheme).
+//!
+//! The [`widgets`] module owns the reusable spawn helpers
+//! ([`spawn_panel`](widgets::spawn_panel) / [`spawn_button`](widgets::spawn_button)),
+//! the [`DisabledButton`](widgets::DisabledButton) marker, and the disabled-dim
+//! pass; the [`interaction`] module owns the theme-derived hover/press feedback
+//! system. Both compose *on top of* [`apply_theme`](themed::apply_theme)'s base
+//! look, ordered after it.
 
 pub mod focus_nav;
+pub mod interaction;
 pub mod theme;
 pub mod themed;
+pub mod widgets;
 
 use bevy::prelude::*;
+pub use interaction::theme_interaction;
+pub use widgets::{
+    ButtonLabel, DimFactor, DisabledButton, dim_disabled_buttons, dimmed_fill, spawn_button,
+    spawn_panel,
+};
 
 use crate::{
     focus_nav::FocusNavPlugin,
@@ -42,27 +56,42 @@ use crate::{
 /// changes touch only [`build`](UiPlugin::build), never the app's plugin list.
 ///
 /// It currently installs the focus-navigation layer
-/// ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)) and the central theming pass
-/// ([`apply_theme`](themed::apply_theme)).
+/// ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)), the central theming pass
+/// ([`apply_theme`](themed::apply_theme)), and the GTW-118 widget interaction
+/// layer ([`theme_interaction`](interaction::theme_interaction) +
+/// [`dim_disabled_buttons`](widgets::dim_disabled_buttons)).
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
-    /// Adds the focus-navigation sub-plugin and the central theming system.
+    /// Adds the focus-navigation sub-plugin, the central theming system, and the
+    /// theme-derived widget interaction layer.
     ///
     /// [`apply_theme`](themed::apply_theme) runs in [`Update`] inside the named
     /// [`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme) set, gated by
     /// `.run_if(resource_exists::<GdtfTheme>)` so it is inert until the theme is
     /// populated (pre-`Load`) and never panics on its absence (bevy-traps rule
     /// 1). The named set is the deterministic ordering anchor the later retheme
-    /// trigger (GTW-137) and interaction-feedback systems (GTW-118) order against
-    /// (bevy-traps rule 3). Later tickets hang further UI systems/resources here;
-    /// the layer stays bevy-only (no ecosystem crate).
+    /// trigger (GTW-137) and the interaction-feedback systems (GTW-118) order
+    /// against (bevy-traps rule 3).
+    ///
+    /// The GTW-118 interaction layer —
+    /// [`theme_interaction`](interaction::theme_interaction) (hover/press swap)
+    /// and [`dim_disabled_buttons`](widgets::dim_disabled_buttons) (disabled
+    /// dim) — runs in [`Update`] `.after(`[`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme)`)`
+    /// so each composes on top of the freshest base look (bevy-traps rule 3);
+    /// both guard the theme internally (`Option<Res<GdtfTheme>>`), so they too
+    /// are inert before the resource is populated (bevy-traps rule 1). Later
+    /// tickets hang further UI systems/resources here; the layer stays bevy-only
+    /// (no ecosystem crate).
     fn build(&self, app: &mut App) {
         app.add_plugins(FocusNavPlugin).add_systems(
             Update,
-            apply_theme
-                .in_set(UiSystems::ApplyTheme)
-                .run_if(resource_exists::<GdtfTheme>),
+            (
+                apply_theme
+                    .in_set(UiSystems::ApplyTheme)
+                    .run_if(resource_exists::<GdtfTheme>),
+                (theme_interaction, dim_disabled_buttons).after(UiSystems::ApplyTheme),
+            ),
         );
     }
 }
