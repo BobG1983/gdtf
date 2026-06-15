@@ -9,6 +9,10 @@ bevy = { workspace = true }
 # `init_ron_asset::<GdtfThemeSpec>()` and loads `theme/grimdark.ron` through it.
 gdtf_assets = { path = "../gdtf_assets" }
 gdtf_ui = { path = "../gdtf_ui" }
+# The E10 sim-wiring edge (GTW-203): opens the compile-time boundary so later E10
+# slices can name `gdtf_battle_sim` types. Unused here by design — this slice only
+# lands the edge; E10.3/E10.4/E10.5 consume it.
+gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 
 [dev-dependencies]
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo
