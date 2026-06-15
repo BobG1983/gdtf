@@ -1,0 +1,485 @@
+//! GTW-207 (E10.5): `BattleSimPlugin` drives the render-free authoritative sim
+//! into the running app — on entry to `BattleScapeState::Generation` it seeds the
+//! battle `SimRng`, builds the battle from the authored `Situation` via the
+//! authoritative `setup_battle`, gates Generation's state advance on REAL setup
+//! success, and cleans the battle-lifetime resources only when the battle ends.
+//!
+//! All tests are headless `MinimalPlugins` (via [`GdtfTestAppBuilder`]) — they
+//! BYPASS the `Load` scene, so each injects the persistent `Load` resources it
+//! relies on (a `GdtfTheme` + `CombatTuning` to pass the Load gate, and where the
+//! test exercises a specific battlefield, a `LoadedSituation` fixture). They are
+//! *pin-discriminating*: each assertion re-encodes one acceptance criterion so a
+//! regression turns the test red.
+
+use bevy::state::state::State;
+use gdtf_app::test_support::{BattleScapeState, GameState, LoadedSituation, RunningState};
+use gdtf_battle_sim::{
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
+        SourceArmor, WornArmor,
+    },
+    cover::CoverLedger,
+    ganger::{
+        Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Shooting, Stance, StanceKind,
+        Toughness, Tu, Wounds,
+    },
+    metric::{Cell, CellLevel, Level},
+    occupancy::OccupancyGrid,
+    rng::{BattleSeed, SimRng},
+    situation::{GangerSpawn, Situation},
+    surface::SurfaceGrid,
+    tuning::CombatTuning,
+    vertical::{LinkKind, VerticalLink, VerticalLinkGraph},
+};
+use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
+use gdtf_ui::theme::default_theme;
+
+/// A budget large enough to drive the deep walk down into the battlescape (each
+/// leaf scene spends a couple of `FixedUpdate` ticks plus its transition
+/// propagation), but bounded so a machine that never reaches the predicate fails
+/// instead of hanging.
+const BUDGET: u32 = 96;
+
+/// Build a `(cell, level)` key from raw coordinates.
+fn key(x: i32, y: i32, level: u8) -> CellLevel {
+    CellLevel::new(Cell::new(x, y), Level::new(level))
+}
+
+/// An arbitrary roster armor record (distinct per-part magnitudes, NOT shipped
+/// tuning) so a fixture ganger carries a faithful `SourceArmor`.
+const fn arbitrary_armor(base: i32) -> SourceArmor {
+    SourceArmor::uniform(ArmorPiece::new(
+        ArmorFloor::new(base),
+        ArmorProtection::new(base + 1),
+        ArmorIntegrity::new(base + 2),
+        ArmorHardness::new(base + 3),
+        ArmorType::DEFAULT,
+    ))
+}
+
+/// Build an authored ganger at `at` with arbitrary-but-valid component values.
+fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
+    GangerSpawn {
+        at,
+        faction: Faction::new(faction),
+        facing: Facing::new(Direction::East),
+        stance: Stance::new(StanceKind::Crouching),
+        aiming: Aiming::new(true),
+        hp: Hp::new(40),
+        wounds: Wounds::new(3),
+        tu: Tu::new(60),
+        life_state: LifeState::Alive,
+        shooting: Shooting::new(f32::from(faction) + 2.0),
+        toughness: Toughness::new(f32::from(faction) + 3.0),
+        luck: Luck::new(f32::from(faction) + 1.0),
+        armor: arbitrary_armor(i32::from(faction) + 1),
+    }
+}
+
+/// A valid two-ganger fixture situation (no cover / slabs / links needed — a
+/// link-free situation validates trivially).
+fn two_ganger_situation() -> Situation {
+    Situation {
+        gangers: vec![ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)],
+        ..Situation::new()
+    }
+}
+
+/// A situation with a DANGLING vertical link (an endpoint at a `(cell, level)` no
+/// authored tile occupies) — `setup_battle` returns `Err(DanglingCell)` and inserts
+/// no resource (the `setup_aborts_on_invalid_vertical_link` precedent).
+fn dangling_link_situation() -> Situation {
+    let present = key(4, 4, 0);
+    let missing = key(4, 4, 1); // never authored — the link dangles off it
+    Situation {
+        gangers: vec![ganger_at(key(0, 0, 0), 0)],
+        slabs: vec![present], // only `present` authored; `missing` dangles
+        vertical_links: vec![VerticalLink::new(present, missing, LinkKind::stair())],
+        ..Situation::new()
+    }
+}
+
+/// Reads the current [`BattleScapeState`] if it is active.
+fn battlescape_state(app: &bevy::app::App) -> Option<BattleScapeState> {
+    app.world()
+        .get_resource::<State<BattleScapeState>>()
+        .map(|state| *state.get())
+}
+
+/// Reads the current [`RunningState`] if it is active.
+fn running_state(app: &bevy::app::App) -> Option<RunningState> {
+    app.world()
+        .get_resource::<State<RunningState>>()
+        .map(|state| *state.get())
+}
+
+/// Stands in for the player at the menu (it no longer auto-advances, GTW-121):
+/// advances until [`RunningState::Menu`] rests, then queues `Menu → Options`.
+fn drive_past_menu(app: &mut bevy::app::App) -> bool {
+    let reached = advance_until(
+        app,
+        |app| running_state(app) == Some(RunningState::Menu),
+        BUDGET,
+    );
+    if reached {
+        app.world_mut()
+            .resource_mut::<bevy::state::state::NextState<RunningState>>()
+            .set(RunningState::Options);
+    }
+    reached
+}
+
+/// Builds the headless walk app, injecting the persistent `Load` resources the
+/// machine needs to traverse `Load` (no `AssetServer` under `MinimalPlugins`), plus
+/// an optional `LoadedSituation` fixture for the Generation setup to consume.
+fn walk_app(situation: Option<Situation>) -> bevy::app::App {
+    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    app.world_mut().insert_resource(default_theme());
+    app.world_mut().insert_resource(CombatTuning::default());
+    if let Some(situation) = situation {
+        app.world_mut().insert_resource(LoadedSituation(situation));
+    }
+    app
+}
+
+/// Drives the app from the default start down to `BattleScapeState::Generation`.
+/// Returns whether Generation was reached within budget.
+fn drive_to_generation(app: &mut bevy::app::App) -> bool {
+    if !drive_past_menu(app) {
+        return false;
+    }
+    advance_until(
+        app,
+        |app| battlescape_state(app) == Some(BattleScapeState::Generation),
+        BUDGET,
+    )
+}
+
+/// AC1 — `BattleSimPlugin` adds `OccupancyMaintenancePlugin`: building the
+/// battlescape plugin tree registers the `CoverDestroyed` message buffer (added
+/// exactly once — no double-add panic), proving the reused maintenance layer is
+/// wired and live.
+#[test]
+fn occupancy_maintenance_plugin_is_wired() {
+    // Build the app (no need to drive — the plugin tree, and thus its message
+    // registration, exists from construction).
+    let app = walk_app(None);
+
+    assert!(
+        app.world()
+            .get_resource::<bevy::ecs::message::Messages<gdtf_battle_sim::occupancy_sync::CoverDestroyed>>()
+            .is_some(),
+        "BattleSimPlugin must register the CoverDestroyed message buffer via \
+         OccupancyMaintenancePlugin",
+    );
+}
+
+/// AC2 — entering Generation seeds the battle `SimRng`, and the seed is threaded
+/// through `SimRng::from_seed`. The determinism relation (never a pinned magnitude):
+/// two `SimRng`s from this slice's same default seed draw EQUAL first `next_u64`s,
+/// and a DIFFERENT seed draws a different first value.
+#[test]
+fn entering_generation_seeds_sim_rng() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_generation(&mut app),
+        "the walk should reach BattleScapeState::Generation within {BUDGET} updates; last \
+         observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    assert!(
+        app.world().get_resource::<SimRng>().is_some(),
+        "entering Generation must insert a SimRng (the battle-lifetime RNG)",
+    );
+
+    // Determinism relation: the inserted SimRng's stream must match a SimRng built
+    // from the SAME default seed (0) the plugin uses, and differ from a different
+    // seed — proving the seed is threaded through SimRng::from_seed, not faked.
+    let inserted_first = app
+        .world_mut()
+        .get_resource_mut::<SimRng>()
+        .map(|mut rng| rng.next_u64());
+    let mut same_seed = SimRng::from_seed(BattleSeed::new(0));
+    let mut diff_seed = SimRng::from_seed(BattleSeed::new(1));
+    assert_eq!(
+        inserted_first,
+        Some(same_seed.next_u64()),
+        "the inserted SimRng must draw the same first value as the slice's default seed",
+    );
+    assert_ne!(
+        same_seed.next_u64(),
+        diff_seed.next_u64(),
+        "a different BattleSeed must yield a different draw — the seed is genuinely threaded",
+    );
+}
+
+/// AC3 — `setup_battle` runs on the real `Commands` path: its four resources land
+/// in the world, and the authored ganger count equals the spawned `WornArmor`
+/// entity count — proving the real setup ran, not a stub.
+#[test]
+fn setup_battle_lands_resources_and_spawns_gangers() {
+    let situation = two_ganger_situation();
+    let authored_gangers = situation.gangers.len();
+    let mut app = walk_app(Some(situation));
+    assert!(
+        drive_to_generation(&mut app),
+        "the walk should reach Generation within {BUDGET} updates",
+    );
+
+    // All four setup_battle resources are present.
+    assert!(
+        app.world().get_resource::<CoverLedger>().is_some(),
+        "setup_battle must insert a CoverLedger",
+    );
+    assert!(
+        app.world().get_resource::<SurfaceGrid>().is_some(),
+        "setup_battle must insert a SurfaceGrid",
+    );
+    assert!(
+        app.world().get_resource::<OccupancyGrid>().is_some(),
+        "setup_battle must insert an OccupancyGrid",
+    );
+    assert!(
+        app.world().get_resource::<VerticalLinkGraph>().is_some(),
+        "setup_battle must insert a VerticalLinkGraph",
+    );
+
+    // The spawned ganger count equals the authored count (the WornArmor-count
+    // precedent): exactly the fixture's gangers were spawned on the real path.
+    let world = app.world_mut();
+    let mut query = world.query::<&WornArmor>();
+    assert_eq!(
+        query.iter(world).count(),
+        authored_gangers,
+        "the spawned WornArmor ganger count must equal the authored ganger count",
+    );
+}
+
+/// AC4 — Generation completion is GATED on real setup success: the state advances
+/// to `AnimateIn`, and on the first update where the setup witness exists the gate
+/// can fire — completion never precedes setup (the `OnEnter` setup inserts the
+/// `OccupancyGrid` the gate keys off). Ordering relation, not a frame count.
+#[test]
+fn generation_completion_is_gated_on_setup() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_generation(&mut app),
+        "the walk should reach Generation within {BUDGET} updates",
+    );
+
+    // Once Generation is reached the OnEnter setup has run, so the witness exists;
+    // the gate (and thus move_on) then advances strictly after setup. Advancing
+    // must reach AnimateIn, and the setup witness must already be present (it was
+    // inserted by the same OnEnter that the gate polls).
+    assert!(
+        app.world().get_resource::<OccupancyGrid>().is_some(),
+        "the OnEnter setup must have inserted the OccupancyGrid before completion gates",
+    );
+
+    let reached_animate_in = advance_until(
+        &mut app,
+        |app| battlescape_state(app) == Some(BattleScapeState::AnimateIn),
+        BUDGET,
+    );
+    assert!(
+        reached_animate_in,
+        "with setup succeeded, Generation must advance to AnimateIn within {BUDGET} updates; last \
+         observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+}
+
+/// AC5 — a FAILED setup does NOT gate Generation complete (no panic, no silent
+/// advance): a dangling vertical link makes `setup_battle` return `Err`; the plugin
+/// logs it (no panic) and inserts NO resource, so the gate never fires, the state
+/// stays in Generation, and no setup resource was inserted.
+#[test]
+fn failed_setup_does_not_advance_generation() {
+    let mut app = walk_app(Some(dangling_link_situation()));
+    assert!(
+        drive_to_generation(&mut app),
+        "the walk should reach Generation within {BUDGET} updates",
+    );
+
+    // The marker must never appear (setup_battle aborted before inserting any
+    // resource, so the gate's witness is absent).
+    let advanced = advance_until(
+        &mut app,
+        |app| battlescape_state(app) != Some(BattleScapeState::Generation),
+        BUDGET,
+    );
+    assert!(
+        !advanced,
+        "a failed setup must NOT advance past Generation; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert_eq!(
+        battlescape_state(&app),
+        Some(BattleScapeState::Generation),
+        "the machine must remain in Generation when setup failed",
+    );
+
+    // No setup resource was inserted (validation aborts before any insert).
+    assert!(
+        app.world().get_resource::<CoverLedger>().is_none(),
+        "a failed setup must insert no CoverLedger (it aborts before any resource insert)",
+    );
+    assert!(
+        app.world().get_resource::<OccupancyGrid>().is_none(),
+        "a failed setup must insert no OccupancyGrid",
+    );
+}
+
+/// AC6 — the battle-lifetime resources SURVIVE past Generation and are cleaned
+/// ONLY on leaving the battle (`GameState::BattleScape`), while `CombatTuning`
+/// (E10.4's persistent Load resource) is never touched.
+#[test]
+fn battle_resources_survive_battle_and_clean_on_exit() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_generation(&mut app),
+        "the walk should reach Generation within {BUDGET} updates",
+    );
+
+    // (a) Advance PAST Generation (into AnimateIn / BattleRunning) and assert the
+    //     battle-lifetime resources all still exist — proving they survive past the
+    //     Generation sub-state for the E10.6 acts — AND CombatTuning persists.
+    let past_generation = advance_until(
+        &mut app,
+        |app| {
+            matches!(
+                battlescape_state(app),
+                Some(BattleScapeState::AnimateIn | BattleScapeState::BattleRunning)
+            )
+        },
+        BUDGET,
+    );
+    assert!(
+        past_generation,
+        "the walk should advance past Generation into AnimateIn/BattleRunning within {BUDGET} \
+         updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert!(
+        app.world().get_resource::<SimRng>().is_some(),
+        "SimRng must survive past Generation (battle-lifetime)",
+    );
+    assert!(
+        app.world().get_resource::<CoverLedger>().is_some(),
+        "CoverLedger must survive past Generation",
+    );
+    assert!(
+        app.world().get_resource::<SurfaceGrid>().is_some(),
+        "SurfaceGrid must survive past Generation",
+    );
+    assert!(
+        app.world().get_resource::<OccupancyGrid>().is_some(),
+        "OccupancyGrid must survive past Generation",
+    );
+    assert!(
+        app.world().get_resource::<VerticalLinkGraph>().is_some(),
+        "VerticalLinkGraph must survive past Generation",
+    );
+    assert!(
+        app.world().get_resource::<CombatTuning>().is_some(),
+        "CombatTuning (E10.4's persistent Load resource) must still be present",
+    );
+
+    // (b) Advance until the machine has LEFT GameState::BattleScape, then assert the
+    //     battle-lifetime resources are gone (cleaned at the battle boundary) while
+    //     CombatTuning STILL persists (untouched by this plugin).
+    let left_battlescape = advance_until(
+        &mut app,
+        |app| {
+            app.world()
+                .get_resource::<State<GameState>>()
+                .is_none_or(|state| *state.get() != GameState::BattleScape)
+        },
+        BUDGET,
+    );
+    assert!(
+        left_battlescape,
+        "the walk should leave GameState::BattleScape within {BUDGET} updates",
+    );
+    assert!(
+        app.world().get_resource::<SimRng>().is_none(),
+        "SimRng must be cleaned on leaving the battle",
+    );
+    assert!(
+        app.world().get_resource::<CoverLedger>().is_none(),
+        "CoverLedger must be cleaned on leaving the battle",
+    );
+    assert!(
+        app.world().get_resource::<SurfaceGrid>().is_none(),
+        "SurfaceGrid must be cleaned on leaving the battle",
+    );
+    assert!(
+        app.world().get_resource::<OccupancyGrid>().is_none(),
+        "OccupancyGrid must be cleaned on leaving the battle",
+    );
+    assert!(
+        app.world().get_resource::<VerticalLinkGraph>().is_none(),
+        "VerticalLinkGraph must be cleaned on leaving the battle",
+    );
+    assert!(
+        app.world().get_resource::<CombatTuning>().is_some(),
+        "CombatTuning must NOT be removed by this plugin (it is the persistent Load resource)",
+    );
+}
+
+/// AC8 — the absent-`Situation` fallback keeps the deep walk green: with NO
+/// `LoadedSituation` present, `setup_battle(&Situation::default())` returns Ok with
+/// zero gangers, the four sim resources are inserted (empty grids), the gate fires,
+/// and Generation ADVANCES (it does not hang). The landed `state_walk` deep walk
+/// (which inserts no Situation) covers the reach-Teardown half; this asserts the
+/// absent-Situation setup half.
+#[test]
+fn absent_situation_falls_back_to_default_and_advances() {
+    // No LoadedSituation injected — the MinimalPlugins default-start path.
+    let mut app = walk_app(None);
+    assert!(
+        drive_to_generation(&mut app),
+        "the walk should reach Generation within {BUDGET} updates even with no Situation",
+    );
+
+    // The Default (empty) situation still builds: the four sim resources are inserted.
+    assert!(
+        app.world().get_resource::<CoverLedger>().is_some(),
+        "the empty Default situation must still insert a CoverLedger",
+    );
+    assert!(
+        app.world().get_resource::<SurfaceGrid>().is_some(),
+        "the empty Default situation must still insert a SurfaceGrid",
+    );
+    assert!(
+        app.world().get_resource::<OccupancyGrid>().is_some(),
+        "the empty Default situation must still insert an OccupancyGrid",
+    );
+    assert!(
+        app.world().get_resource::<VerticalLinkGraph>().is_some(),
+        "the empty Default situation must still insert a VerticalLinkGraph",
+    );
+
+    // No gangers spawned (empty battlefield).
+    let world = app.world_mut();
+    let mut query = world.query::<&WornArmor>();
+    assert_eq!(
+        query.iter(world).count(),
+        0,
+        "the empty Default situation spawns zero gangers",
+    );
+
+    // And Generation still ADVANCES (the gate fired on the empty setup's resources).
+    let reached_animate_in = advance_until(
+        &mut app,
+        |app| battlescape_state(app) == Some(BattleScapeState::AnimateIn),
+        BUDGET,
+    );
+    assert!(
+        reached_animate_in,
+        "the absent-Situation Default path must still advance Generation to AnimateIn; last \
+         observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+}

@@ -128,6 +128,15 @@
 //!   message and calls the ALREADY-LANDED verb ([`fire`] / [`posture`] / [`downed_acts`])
 //!   once per message — every dispatch system `.in_set(occupancy_sync::SimSystems::Simulate)`
 //!   in `Update`. No act logic is reimplemented; no `*Resolved`, no movement act (later).
+//! - [`battle`] — the E10.5 sim-owned battle-lifecycle integration: the public
+//!   [`battle::BattleSimPlugin`] (adding it wires the WHOLE sim runtime — it bundles
+//!   [`occupancy_sync::OccupancyMaintenancePlugin`] + [`acts::SimActsPlugin`]) and the
+//!   three `#[derive(Message)]` lifecycle types the app drives it with
+//!   ([`battle::SetupBattleRequested`] carrying an owned [`situation::Situation`] +
+//!   [`rng::BattleSeed`], [`battle::TeardownBattleRequested`], and the
+//!   [`battle::BattleReady`] setup-complete signal). The app SENDS the triggers
+//!   (naming its own states, app-side) and the sim ACTS on them, naming NO `gdtf_app`
+//!   type — the one-way model/view boundary expressed as messages.
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
@@ -137,6 +146,7 @@ pub mod aim;
 pub mod apply_hit;
 pub mod armor;
 pub mod armor_wear;
+pub mod battle;
 pub mod bleed;
 pub mod central_axis;
 pub mod clearance;
@@ -175,6 +185,10 @@ pub use armor::{
     SourceArmor, WornArmor,
 };
 pub use armor_wear::{ArmorBroken, wear_armor};
+pub use battle::{
+    BattleReady, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested,
+    setup_battle_on_request, teardown_battle_on_request,
+};
 pub use bleed::{Bleeding, tick_bleed};
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
 pub use clearance::{Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant};
