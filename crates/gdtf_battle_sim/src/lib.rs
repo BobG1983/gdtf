@@ -32,9 +32,10 @@
 //!   dispersion-cone WIDTH off a shooter's ganger state ([`aim::Shooter`] bundle)
 //!   and the MODEL [`cover::CoverLedger`] (peeked at the E4.2 faced cell, never
 //!   rebuilt). They WRAP the landed E2 [`stability`] / [`cone`] pipeline verbatim;
-//!   the weapon-intrinsic [`stability::WeaponStability`] contribution is a
-//!   caller-supplied input pending a `Weapon`-field ticket. Angular / dimensionless,
-//!   zero pixels.
+//!   the weapon's stability contribution is its [`weapon::Stable`] tag (sourced off
+//!   the [`weapon::Weapon`] by `cone_for`, an explicit param to `stability_for`),
+//!   which engages the §1a brace UNCONDITIONALLY — there is no weapon-points term.
+//!   Angular / dimensionless, zero pixels.
 //! - [`posture`] — the E4.1 posture / orientation verbs over the landed ganger
 //!   components: [`posture::set_aiming`] (a pure aim-flag setter — charges NO TU; the
 //!   aim cost is the fire-time ×1.5 premium, resolution.md §1a), [`posture::set_stance`]
@@ -186,9 +187,7 @@ pub use severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod,
 pub use situation::{
     BattleSetup, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers, setup_battle,
 };
-pub use stability::{
-    ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, WeaponStability, stability,
-};
+pub use stability::{ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, stability};
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tu::{can_spend_tu, reset_tu, spend_tu};
 pub use tuning::{
@@ -207,6 +206,6 @@ pub use vertical::{
 };
 pub use weapon::{
     Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback, MagazineSize,
-    ModeConeMult, ModeShots, ModeTuPercent, Weapon, WeaponDamage, WeaponDamageProfile, WeaponPunch,
-    WeaponShred,
+    ModeConeMult, ModeShots, ModeTuPercent, Stable, Weapon, WeaponDamage, WeaponDamageProfile,
+    WeaponHandling, WeaponPunch, WeaponShred,
 };

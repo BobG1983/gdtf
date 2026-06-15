@@ -26,18 +26,17 @@
 //! output is the abstract stability multiplier or the angular [`ConeAngle`], never
 //! a pixel.
 //!
-//! ## The weapon-intrinsic-stability gap
+//! ## Weapon stability — the `stable` tag
 //!
-//! The §1a stability score includes a **weapon-intrinsic** contribution
-//! ([`WeaponStability`], resolution.md §1a: "weapon intrinsic + stance + …"). The
-//! [`crate::weapon::Weapon`] data record has **no** intrinsic-stability field today
-//! (its fields are `base_spread` / `accuracy` / `kickback` / `fatal_bias` /
-//! `damage` / `punch` / `shred` / `damage_type` / `magazine_size` / `fire_mode`).
-//! So both composers take the [`WeaponStability`] contribution as an **explicit
-//! caller-supplied input** — they do NOT add a field to the `Weapon` struct (a
-//! separately-filed ticket) and do NOT fabricate or default the value. Once the
-//! `Weapon`-field ticket lands, the caller will read it off the weapon instead of
-//! passing it here; the composer signatures need not change.
+//! A weapon's contribution to the §1a stability score is the boolean
+//! [`crate::weapon::Stable`] tag (the user-corrected model: weapons carry **no**
+//! intrinsic stability *points*). A `stable` weapon engages the brace contribution
+//! UNCONDITIONALLY (regardless of faced cover or stance). [`cone_for`] sources the
+//! tag off the [`crate::weapon::Weapon`] it already receives and threads it to
+//! [`stability_for`]; [`stability_for`] (which receives no `Weapon`) takes the
+//! [`crate::weapon::Stable`] tag as an explicit param and passes it to
+//! [`crate::stability::stability`]. There is no longer a caller-supplied
+//! weapon-points value — the gap the E4.3 slice noted is now closed by the tag.
 
 use crate::{
     cone::{ConeAngle, PriorShots, aim_cone_mult, cone_angle},
@@ -45,9 +44,9 @@ use crate::{
     faced_cell::faced_cell,
     ganger::{Aiming, Facing, Position, Stance},
     metric::CellLevel,
-    stability::{ConeMult, EmplacementStability, RecoilGrowth, WeaponStability, stability},
+    stability::{ConeMult, EmplacementStability, RecoilGrowth, stability},
     tuning::CombatTuning,
-    weapon::{FireModeSpec, Weapon},
+    weapon::{FireModeSpec, Stable, Weapon},
 };
 
 /// The shooter read-state both composers reason over — the ganger components a
@@ -84,25 +83,24 @@ pub struct Shooter<'a> {
 /// no cover is faced — the ledger is read via
 /// [`CoverLedger::peek`](crate::cover::CoverLedger::peek), never rebuilt), and
 /// calls the landed [`stability`] verbatim with that cover, the shooter's
-/// [`Stance`], the caller-supplied `weapon_intrinsic` contribution, and the
-/// emplacement seam ([`EmplacementStability::none`] — no emplacement entities
-/// exist yet). Returns the `(cone_mult, recoil_growth)` pair the §1a cone chain
-/// reads.
+/// [`Stance`], the weapon's `stable` tag, and the emplacement seam
+/// ([`EmplacementStability::none`] — no emplacement entities exist yet). Returns
+/// the `(cone_mult, recoil_growth)` pair the §1a cone chain reads.
 ///
 /// This **wraps** [`stability`], re-deriving none of the §1a math: the brace gate
-/// engages exactly when the faced cover's [`crate::cover::HeightBand`] satisfies
-/// the per-stance gate, already inside `stability`. Angular / dimensionless —
-/// **zero pixels**.
+/// engages when the faced cover's [`crate::cover::HeightBand`] satisfies the
+/// per-stance gate OR the weapon is `stable`, already inside `stability`. Angular /
+/// dimensionless — **zero pixels**.
 ///
-/// `weapon_intrinsic` is the weapon's §1a intrinsic-stability contribution, a
-/// **caller-supplied** input: the [`Weapon`] record carries no such field today,
-/// so the caller passes it explicitly pending the `Weapon`-field ticket (see the
-/// module docs). Every coefficient and both curves come from `tuning`'s
+/// `stable` is the weapon's [`Stable`] tag — a stable weapon braces
+/// unconditionally. This composer receives no [`Weapon`] (only the shooter's
+/// ganger state), so the tag is an explicit param; [`cone_for`] sources it off the
+/// weapon it holds. Every coefficient and both curves come from `tuning`'s
 /// `cone_stability` sub-field; nothing tunable is hardcoded.
 #[must_use]
 pub fn stability_for(
     shooter: &Shooter,
-    weapon_intrinsic: WeaponStability,
+    stable: Stable,
     cover: &CoverLedger,
     tuning: &CombatTuning,
 ) -> (ConeMult, RecoilGrowth) {
@@ -110,12 +108,13 @@ pub fn stability_for(
     // its own storey; the cell whose cover the §1a brace gate reads.
     let (cell, level) = faced_cell(shooter.position, shooter.facing);
     // Peek the model ledger for the faced cover (read-only, never rebuilt — the
-    // change-driven contract). `None` ⇒ no cover faced ⇒ the brace is withheld.
+    // change-driven contract). `None` ⇒ no cover faced ⇒ the brace is withheld
+    // (unless the weapon is `stable`, which braces unconditionally inside `stability`).
     let faced = cover.peek(&CellLevel::new(cell, level));
     // Wrap the landed verb verbatim — no emplacements exist yet, so pass the
     // identity emplacement seam.
     stability(
-        weapon_intrinsic,
+        stable,
         *shooter.stance,
         faced,
         EmplacementStability::none(),
@@ -143,12 +142,12 @@ pub fn stability_for(
 /// Returns the named [`ConeAngle`] (radians — angular, **zero pixels**); every
 /// factor magnitude comes from weapon / fire-mode / tuning data, none hardcoded.
 ///
-/// `weapon_intrinsic` is the §1a weapon-intrinsic stability contribution, a
-/// **caller-supplied** input (the [`Weapon`] record carries no such field today —
-/// see the module docs / [`stability_for`]). `mode` is the selected fire mode's
-/// [`FireModeSpec`] (its [`crate::weapon::ModeConeMult`] is the firemode term);
-/// `prior_shots` is the count of rounds already fired this action (zero on the
-/// first round → the recoil term is the identity ×1).
+/// The weapon's §1a stability contribution is its [`Stable`] tag, sourced off the
+/// `weapon` here and threaded to [`stability_for`] (a stable weapon braces
+/// unconditionally) — there is no weapon-points value any more. `mode` is the
+/// selected fire mode's [`FireModeSpec`] (its [`crate::weapon::ModeConeMult`] is
+/// the firemode term); `prior_shots` is the count of rounds already fired this
+/// action (zero on the first round → the recoil term is the identity ×1).
 ///
 /// [`BaseSpread`]: crate::weapon::BaseSpread
 /// [`Kickback`]: crate::weapon::Kickback
@@ -157,14 +156,14 @@ pub fn stability_for(
 pub fn cone_for(
     shooter: &Shooter,
     weapon: &Weapon,
-    weapon_intrinsic: WeaponStability,
     mode: &FireModeSpec,
     prior_shots: PriorShots,
     cover: &CoverLedger,
     tuning: &CombatTuning,
 ) -> ConeAngle {
-    // Step 1 — the stability read (faced cell + model cover, inside stability_for).
-    let (cone_mult, recoil_growth) = stability_for(shooter, weapon_intrinsic, cover, tuning);
+    // Step 1 — the stability read (faced cell + model cover, inside stability_for);
+    // the weapon's `stable` tag is its only stability contribution.
+    let (cone_mult, recoil_growth) = stability_for(shooter, weapon.stable, cover, tuning);
     // Step 2 — the aim term off the shooter's Aiming flag (read from tuning).
     let aim = aim_cone_mult(*shooter.aiming, &tuning.cone_stability);
     // Step 3 — fold the five §1a factors into θ_cone via the landed cone_angle.
@@ -189,8 +188,8 @@ mod tests {
         metric::{Cell, Level},
         weapon::{
             Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Kickback, MagazineSize,
-            ModeConeMult, ModeShots, ModeTuPercent, WeaponDamage, WeaponDamageProfile, WeaponPunch,
-            WeaponShred,
+            ModeConeMult, ModeShots, ModeTuPercent, Stable, WeaponDamage, WeaponDamageProfile,
+            WeaponHandling, WeaponPunch, WeaponShred,
         },
     };
 
@@ -237,10 +236,10 @@ mod tests {
         )
     }
 
-    /// An arbitrary single-mode weapon — NOT shipped magnitudes (there are no
-    /// shipped weapons yet); only its `base_spread` / `kickback` / `fire_mode`
-    /// flow through the composers.
-    fn weapon(base: f32, kick: f32) -> Weapon {
+    /// An arbitrary single-mode weapon with the given `stable` tag — NOT shipped
+    /// magnitudes (there are no shipped weapons yet); only its `base_spread` /
+    /// `kickback` / `fire_mode` / `stable` flow through the composers.
+    fn weapon_tagged(base: f32, kick: f32, stable: bool) -> Weapon {
         Weapon::new(
             BaseSpread::new(base),
             Accuracy::new(1.0),
@@ -252,15 +251,24 @@ mod tests {
                 WeaponShred::new(1),
                 DamageType::Kinetic,
             ),
-            MagazineSize::new(10),
-            FireMode::Single {
-                single: FireModeSpec::new(
-                    ModeConeMult::new(1.0),
-                    ModeTuPercent::new(0.5),
-                    ModeShots::new(1),
-                ),
-            },
+            WeaponHandling::new(
+                MagazineSize::new(10),
+                FireMode::Single {
+                    single: FireModeSpec::new(
+                        ModeConeMult::new(1.0),
+                        ModeTuPercent::new(0.5),
+                        ModeShots::new(1),
+                    ),
+                },
+                Stable::new(stable),
+            ),
         )
+    }
+
+    /// An arbitrary NON-stable single-mode weapon — the default for tests that do
+    /// not exercise the `stable` tag.
+    fn weapon(base: f32, kick: f32) -> Weapon {
+        weapon_tagged(base, kick, false)
     }
 
     /// Insert `entry` into a fresh ledger at the cell `shooter` faces, so the
@@ -273,29 +281,29 @@ mod tests {
     }
 
     /// AC1 — `stability_for` returns the SAME `(ConeMult, RecoilGrowth)` as a
-    /// direct [`stability`] call with the same `(weapon_intrinsic, stance, faced
-    /// cover, emplacement, tuning)`: bit-equality proving it WRAPS (does not
-    /// re-derive) the landed verb. A `CoverEntry` is inserted at the faced cell so
-    /// the direct call's `faced` argument is exactly what the composer peeks.
+    /// direct [`stability`] call with the same `(stable, stance, faced cover,
+    /// emplacement, tuning)`: bit-equality proving it WRAPS (does not re-derive) the
+    /// landed verb. A `CoverEntry` is inserted at the faced cell so the direct
+    /// call's `faced` argument is exactly what the composer peeks.
     #[test]
     fn stability_for_bit_equals_a_direct_stability_call() {
         let tuning = CombatTuning::default();
         let state = ShooterState::new(20, 20, 2, StanceKind::Standing, false, Direction::East);
         let shooter = state.as_shooter();
-        let intrinsic = WeaponStability::new(0.0);
+        let stable = Stable::new(false);
 
         // Cover at the faced cell so the composer's peek returns Some(entry).
         let entry = cover_entry(HeightBand::High);
         let ledger = ledger_with_faced_cover(&shooter, entry);
 
         let (via_composer_cone, via_composer_recoil) =
-            stability_for(&shooter, intrinsic, &ledger, &tuning);
+            stability_for(&shooter, stable, &ledger, &tuning);
 
         // The direct call with the EXACT same inputs the composer fed the verb.
         let (cell, level) = faced_cell(shooter.position, shooter.facing);
         let faced = ledger.peek(&CellLevel::new(cell, level));
         let (direct_cone, direct_recoil) = stability(
-            intrinsic,
+            stable,
             *shooter.stance,
             faced,
             EmplacementStability::none(),
@@ -324,15 +332,15 @@ mod tests {
         let tuning = CombatTuning::default();
         let state = ShooterState::new(15, 15, 1, StanceKind::Standing, false, Direction::South);
         let shooter = state.as_shooter();
-        let intrinsic = WeaponStability::new(0.0);
+        let stable = Stable::new(false);
 
         // Braced: a HIGH wall at the faced cell satisfies the standing gate.
         let braced_ledger = ledger_with_faced_cover(&shooter, cover_entry(HeightBand::High));
-        let (braced_cone, _) = stability_for(&shooter, intrinsic, &braced_ledger, &tuning);
+        let (braced_cone, _) = stability_for(&shooter, stable, &braced_ledger, &tuning);
 
         // Unbraced: an empty ledger — no cover at the faced cell.
         let empty = CoverLedger::new();
-        let (empty_cone, _) = stability_for(&shooter, intrinsic, &empty, &tuning);
+        let (empty_cone, _) = stability_for(&shooter, stable, &empty, &tuning);
 
         assert!(
             *braced_cone < *empty_cone,
@@ -353,7 +361,6 @@ mod tests {
         let tuning = CombatTuning::default();
         let state = ShooterState::new(8, 8, 0, StanceKind::Crouching, true, Direction::West);
         let shooter = state.as_shooter();
-        let intrinsic = WeaponStability::new(0.0);
         let wpn = weapon(0.2, 0.1);
         let mode = wpn.fire_mode.single();
         let prior = PriorShots::new(2);
@@ -362,10 +369,11 @@ mod tests {
         // stability term reflects a real faced lookup, not just an empty path.
         let ledger = ledger_with_faced_cover(&shooter, cover_entry(HeightBand::Mid));
 
-        let via_composer = cone_for(&shooter, &wpn, intrinsic, &mode, prior, &ledger, &tuning);
+        let via_composer = cone_for(&shooter, &wpn, &mode, prior, &ledger, &tuning);
 
         // Hand-compose: the same stability_for pair + the same aim term + cone_angle.
-        let (cone_mult, recoil_growth) = stability_for(&shooter, intrinsic, &ledger, &tuning);
+        // The weapon's `stable` tag is its only stability contribution.
+        let (cone_mult, recoil_growth) = stability_for(&shooter, wpn.stable, &ledger, &tuning);
         let aim = aim_cone_mult(*shooter.aiming, &tuning.cone_stability);
         let hand = cone_angle(
             wpn.base_spread,
@@ -394,7 +402,6 @@ mod tests {
         let wpn = weapon(0.2, 0.1);
         let mode = wpn.fire_mode.single();
         let prior = PriorShots::first();
-        let intrinsic = WeaponStability::new(0.0);
 
         // Same posture / position / facing — only the aim flag differs.
         let aimed_state =
@@ -406,8 +413,8 @@ mod tests {
         // Same (empty) cover for both — the only difference is aim.
         let ledger = CoverLedger::new();
 
-        let aimed_cone = cone_for(&aimed, &wpn, intrinsic, &mode, prior, &ledger, &tuning);
-        let hip_cone = cone_for(&hip, &wpn, intrinsic, &mode, prior, &ledger, &tuning);
+        let aimed_cone = cone_for(&aimed, &wpn, &mode, prior, &ledger, &tuning);
+        let hip_cone = cone_for(&hip, &wpn, &mode, prior, &ledger, &tuning);
 
         assert!(
             *aimed_cone < *hip_cone,
@@ -426,7 +433,6 @@ mod tests {
         let tuning = CombatTuning::default();
         let state = ShooterState::new(5, 5, 0, StanceKind::Standing, false, Direction::East);
         let shooter = state.as_shooter();
-        let intrinsic = WeaponStability::new(0.0);
         let wpn = weapon(0.2, 0.15); // positive kickback so recoil widens
         let mode = wpn.fire_mode.single();
         let ledger = CoverLedger::new();
@@ -436,7 +442,6 @@ mod tests {
             let theta = cone_for(
                 &shooter,
                 &wpn,
-                intrinsic,
                 &mode,
                 PriorShots::new(shots),
                 &ledger,
@@ -481,21 +486,12 @@ mod tests {
             position: &position,
             facing:   &facing,
         };
-        let intrinsic = WeaponStability::new(0.0);
         let wpn = weapon(0.2, 0.1);
         let mode = wpn.fire_mode.single();
         let ledger = CoverLedger::new();
 
-        let (cone_mult, recoil_growth) = pub_stab(&shooter, intrinsic, &ledger, &tuning);
-        let theta = pub_cone_for(
-            &shooter,
-            &wpn,
-            intrinsic,
-            &mode,
-            PriorShots::first(),
-            &ledger,
-            &tuning,
-        );
+        let (cone_mult, recoil_growth) = pub_stab(&shooter, wpn.stable, &ledger, &tuning);
+        let theta = pub_cone_for(&shooter, &wpn, &mode, PriorShots::first(), &ledger, &tuning);
 
         // Angular / dimensionless outputs, all finite — no pixel anywhere.
         assert!(
@@ -507,5 +503,67 @@ mod tests {
             "recoil_growth is dimensionless, finite"
         );
         assert!((*theta).is_finite(), "θ_cone is an angle (radians), finite");
+    }
+
+    /// AC5 (GTW-199) — a STABLE weapon yields a strictly steadier `stability_for`
+    /// (lower `ConeMult`) and a strictly narrower `cone_for` than a non-stable one
+    /// when BOTH face an EMPTY cell (the stable tag engages the brace
+    /// unconditionally; the non-stable weapon gets no brace) — and the two are EQUAL
+    /// when both face cover that suits the stance (the brace already engaged for
+    /// both). Two weapons differ ONLY in the `stable` tag. Relations only.
+    #[test]
+    fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
+        let tuning = CombatTuning::default();
+        // Standing's brace gate is HIGH (resolution.md §1a).
+        let state = ShooterState::new(7, 7, 0, StanceKind::Standing, false, Direction::East);
+        let shooter = state.as_shooter();
+        let stable_wpn = weapon_tagged(0.2, 0.1, true);
+        let plain_wpn = weapon_tagged(0.2, 0.1, false);
+        let mode = stable_wpn.fire_mode.single();
+        let prior = PriorShots::first();
+
+        // ---- Facing an EMPTY cell: stable braces, non-stable does not. ----
+        let empty = CoverLedger::new();
+
+        let (stable_cone_mult, _) = stability_for(&shooter, stable_wpn.stable, &empty, &tuning);
+        let (plain_cone_mult, _) = stability_for(&shooter, plain_wpn.stable, &empty, &tuning);
+        assert!(
+            *stable_cone_mult < *plain_cone_mult,
+            "facing an empty cell, a stable weapon must be strictly steadier (lower \
+             cone_mult): stable {} vs plain {}",
+            *stable_cone_mult,
+            *plain_cone_mult,
+        );
+
+        let stable_theta = cone_for(&shooter, &stable_wpn, &mode, prior, &empty, &tuning);
+        let plain_theta = cone_for(&shooter, &plain_wpn, &mode, prior, &empty, &tuning);
+        assert!(
+            *stable_theta < *plain_theta,
+            "facing an empty cell, a stable weapon must have a strictly narrower cone: \
+             stable {} vs plain {}",
+            *stable_theta,
+            *plain_theta,
+        );
+
+        // ---- Facing cover that SUITS the stance (HIGH wall): both brace, EQUAL. ----
+        let under_cover = ledger_with_faced_cover(&shooter, cover_entry(HeightBand::High));
+
+        let (stable_braced_mult, _) =
+            stability_for(&shooter, stable_wpn.stable, &under_cover, &tuning);
+        let (plain_braced_mult, _) =
+            stability_for(&shooter, plain_wpn.stable, &under_cover, &tuning);
+        assert_eq!(
+            (*stable_braced_mult).to_bits(),
+            (*plain_braced_mult).to_bits(),
+            "under suitable cover both brace — stable adds nothing, so cone_mult is equal",
+        );
+
+        let stable_under = cone_for(&shooter, &stable_wpn, &mode, prior, &under_cover, &tuning);
+        let plain_under = cone_for(&shooter, &plain_wpn, &mode, prior, &under_cover, &tuning);
+        assert_eq!(
+            (*stable_under).to_bits(),
+            (*plain_under).to_bits(),
+            "under suitable cover both brace — stable and non-stable cones are equal",
+        );
     }
 }

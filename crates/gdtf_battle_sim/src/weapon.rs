@@ -244,6 +244,32 @@ impl MagazineSize {
     }
 }
 
+/// A weapon's **`stable` tag** — whether the weapon is braced-by-design
+/// (bipod-mounted / a heavy, inherently-steady piece). A `stable` weapon engages
+/// the §1a brace / cover-stability bonus **unconditionally** — the brace
+/// contribution applies regardless of the faced cell's cover height or the
+/// ganger's stance (it bypasses the normal §1a brace min-height gate, so a stable
+/// weapon is as steady as a properly-braced one even facing an empty/unsuitable
+/// cell). This is the model the user corrected to: weapons carry **no** intrinsic
+/// stability *points* — only this boolean tag.
+///
+/// A weapon NUMBER (a boolean flag, lives on the weapon, not in tuning). A named
+/// newtype (no-bare-types: a `bool` carrying domain meaning is wrapped). Private
+/// inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON `true` /
+/// `false`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
+pub struct Stable(bool);
+
+impl Stable {
+    /// Build a `stable` tag from its boolean value (`true` = braced-by-design,
+    /// unconditional brace).
+    #[must_use]
+    pub const fn new(stable: bool) -> Self {
+        Self(stable)
+    }
+}
+
 /// A per-mode **cone multiplier** — the selector term of `θ_cone` (the `firemode`
 /// factor, resolution.md §1a): single ≈ 1, full-auto ≥ 1 (inherently sloppier).
 /// A multiplier on the cone's angular size for that fire mode.
@@ -420,14 +446,49 @@ impl WeaponDamageProfile {
     }
 }
 
+/// A weapon's **handling** numbers, bundled for construction — its
+/// [`MagazineSize`], authored [`FireMode`] selector, and [`Stable`] tag.
+///
+/// A named **constructor-input** grouping (the [`WeaponDamageProfile`] /
+/// [`FireModeSpec`] precedent: related data travels as one named record, not a
+/// loose tuple), so adding the [`Stable`] tag does not push [`Weapon::new`] past
+/// clippy's argument-count gate. These three land on [`Weapon`] as its FLAT
+/// `magazine_size` / `fire_mode` / `stable` fields — this struct is only the way
+/// they are handed in, never where they live.
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+pub struct WeaponHandling {
+    /// The round capacity before a reload.
+    pub magazine_size: MagazineSize,
+    /// The authored fire-mode selector and its per-mode numbers.
+    pub fire_mode:     FireMode,
+    /// The `stable` tag — `true` engages the brace bonus unconditionally.
+    pub stable:        Stable,
+}
+
+impl WeaponHandling {
+    /// Build a handling bundle from a weapon's magazine size, fire-mode selector,
+    /// and `stable` tag.
+    #[must_use]
+    pub const fn new(magazine_size: MagazineSize, fire_mode: FireMode, stable: Stable) -> Self {
+        Self {
+            magazine_size,
+            fire_mode,
+            stable,
+        }
+    }
+}
+
 /// A plain data record (no Bevy `Component` here — wiring a weapon onto a ganger
 /// is a later slice; this is the data substrate). Holds the five §1/§6 weapon
 /// numbers (`base_spread`, `accuracy`, `kickback`, `fatal_bias`, `magazine_size`),
 /// the E3.1 per-hit damage numbers ([`WeaponDamage`] / [`WeaponPunch`] /
 /// [`WeaponShred`], `weapons-and-armor.md` §"Weapon stats"), the [`DamageType`] the
-/// weapon emits (the matchup-wheel key, matchup.md §"The 7 types"), and the
-/// authored [`FireMode`] selector. Every numeric field is a weapon-number newtype;
-/// **no tuning coefficient lives here** (those are [`crate::tuning::CombatTuning`]).
+/// weapon emits (the matchup-wheel key, matchup.md §"The 7 types"), the
+/// authored [`FireMode`] selector, and the [`Stable`] tag (whether the weapon
+/// engages the §1a brace bonus unconditionally). Every numeric field is a
+/// weapon-number newtype; **no tuning coefficient lives here** (those are
+/// [`crate::tuning::CombatTuning`]), and there is **no** weapon-intrinsic
+/// stability *points* term — weapon stability is the boolean [`Stable`] tag.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct Weapon {
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
@@ -450,13 +511,19 @@ pub struct Weapon {
     pub magazine_size: MagazineSize,
     /// The authored fire-mode selector and its per-mode numbers.
     pub fire_mode:     FireMode,
+    /// The `stable` tag — `true` engages the §1a brace bonus unconditionally
+    /// (regardless of faced cover / stance); `false` is a normal weapon (braces
+    /// only when the faced cover suits the stance).
+    pub stable:        Stable,
 }
 
 impl Weapon {
     /// Build a weapon from its §1/§6 numbers, its [`WeaponDamageProfile`] (the three
-    /// per-hit damage numbers plus the emitted [`DamageType`]), and its [`FireMode`]
-    /// selector. The profile is spread onto the flat `damage` / `punch` / `shred` /
-    /// `damage_type` fields.
+    /// per-hit damage numbers plus the emitted [`DamageType`]), and its
+    /// [`WeaponHandling`] bundle (magazine size + [`FireMode`] selector + the
+    /// [`Stable`] tag). Both bundles are spread onto the flat fields — `damage` /
+    /// `punch` / `shred` / `damage_type` from the profile, `magazine_size` /
+    /// `fire_mode` / `stable` from the handling.
     #[must_use]
     pub const fn new(
         base_spread: BaseSpread,
@@ -464,8 +531,7 @@ impl Weapon {
         kickback: Kickback,
         fatal_bias: FatalBias,
         damage: WeaponDamageProfile,
-        magazine_size: MagazineSize,
-        fire_mode: FireMode,
+        handling: WeaponHandling,
     ) -> Self {
         Self {
             base_spread,
@@ -476,8 +542,9 @@ impl Weapon {
             punch: damage.punch,
             shred: damage.shred,
             damage_type: damage.damage_type,
-            magazine_size,
-            fire_mode,
+            magazine_size: handling.magazine_size,
+            fire_mode: handling.fire_mode,
+            stable: handling.stable,
         }
     }
 }
@@ -513,6 +580,18 @@ mod tests {
         )
     }
 
+    /// Build an arbitrary handling bundle (magazine + single-mode selector +
+    /// `stable` tag) from raw literals — NOT shipped magnitudes.
+    fn handling(mag: u16, stable: bool) -> WeaponHandling {
+        WeaponHandling::new(
+            MagazineSize::new(mag),
+            FireMode::Single {
+                single: spec(1.0, 0.5, 1),
+            },
+            Stable::new(stable),
+        )
+    }
+
     /// C1 — a `Weapon` constructs and each weapon-number leaf derefs to its inner
     /// value. Built from **arbitrary** literals (never pinned magnitudes), so this
     /// pins the Deref *mechanism and target type*, not any balance value.
@@ -524,10 +603,7 @@ mod tests {
             Kickback::new(0.4),
             FatalBias::new(7.0),
             profile(12, 5, 3, DamageType::Kinetic),
-            MagazineSize::new(30),
-            FireMode::Single {
-                single: spec(1.0, 0.5, 1),
-            },
+            handling(30, false),
         );
 
         // Each f32 weapon number: deref reaches the inner f32 (bit-exact arbitrary
@@ -552,10 +628,7 @@ mod tests {
             Kickback::new(0.2),
             FatalBias::new(4.0),
             profile(18, 7, 2, DamageType::Plasma),
-            MagazineSize::new(12),
-            FireMode::Single {
-                single: spec(1.0, 0.5, 1),
-            },
+            handling(12, false),
         );
 
         // Each i32 damage number derefs to its inner value (distinct arbitrary
@@ -575,12 +648,60 @@ mod tests {
             Kickback::new(0.2),
             FatalBias::new(4.0),
             profile(1, 1, 1, DamageType::Rend),
-            MagazineSize::new(1),
-            FireMode::Single {
-                single: spec(1.0, 0.5, 1),
-            },
+            handling(1, false),
         );
         assert_eq!(weapon.damage_type, DamageType::Rend);
+    }
+
+    /// AC1 (GTW-199) — a `Weapon` carries the `Stable` tag and reads it back; the
+    /// newtype derefs to its inner `bool`. A stable and a non-stable weapon are
+    /// built so a field swap (or a default) would be caught — mechanism, not a
+    /// pinned balance value.
+    #[test]
+    fn weapon_carries_stable_tag_round_trip() {
+        let stable_weapon = Weapon::new(
+            BaseSpread::new(0.1),
+            Accuracy::new(1.0),
+            Kickback::new(0.2),
+            FatalBias::new(4.0),
+            profile(1, 1, 1, DamageType::Kinetic),
+            handling(1, true),
+        );
+        let plain_weapon = Weapon::new(
+            BaseSpread::new(0.1),
+            Accuracy::new(1.0),
+            Kickback::new(0.2),
+            FatalBias::new(4.0),
+            profile(1, 1, 1, DamageType::Kinetic),
+            handling(1, false),
+        );
+        // The tag round-trips through the newtype's Deref to the inner bool.
+        assert!(*stable_weapon.stable);
+        assert!(!*plain_weapon.stable);
+        assert_eq!(stable_weapon.stable, Stable::new(true));
+        assert_eq!(plain_weapon.stable, Stable::new(false));
+    }
+
+    /// AC1 (GTW-199) — the `Stable` tag deserializes from a bare RON boolean
+    /// (`#[serde(transparent)]`): a `true` fragment parses to a stable tag, a
+    /// `false` fragment to a non-stable one (value read back, not a pinned score).
+    #[test]
+    fn stable_parses_from_bare_ron_bool() {
+        let yes = ron::from_str::<Stable>("true");
+        let no = ron::from_str::<Stable>("false");
+        assert!(
+            yes.is_ok(),
+            "Stable must parse from a bare RON `true`: {yes:?}"
+        );
+        assert!(
+            no.is_ok(),
+            "Stable must parse from a bare RON `false`: {no:?}"
+        );
+        let (Ok(yes), Ok(no)) = (yes, no) else {
+            return;
+        };
+        assert!(*yes);
+        assert!(!*no);
     }
 
     /// AC2 (one half) — `DamageType` has exactly 7 variants, in wheel-node order.
@@ -685,6 +806,7 @@ mod tests {
                 burst:     (cone_mult: 1.3, tu_percent: 0.8, shots: 3),
                 full_auto: (cone_mult: 1.7, tu_percent: 1.0, shots: 10),
             ),
+            stable: false,
         )";
         let parsed = ron::from_str::<Weapon>(ron);
         assert!(

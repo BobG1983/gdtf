@@ -1,22 +1,29 @@
 //! The §1a **stability layer** — a continuous 0–100 stability score and its
 //! two-curve read (`docs/combat/resolution.md` §1a + "What's pure math vs sim"
-//! line 148: `stability(weapon_intrinsic, stance, brace, emplacement, …) →
-//! (cone_mult, recoil_growth)`).
+//! line 148: `stability(stance, brace, emplacement, …) → (cone_mult,
+//! recoil_growth)`).
 //!
 //! Stability is a **continuous score derived from the situation**, not a binary
-//! state (resolution.md §1a). [`stability`] sums four contributions — the
-//! **weapon-intrinsic** contribution ([`WeaponStability`], a weapon-side input);
-//! the **per-stance** contribution (prone 40 / kneel 25 / stand 10, read off
+//! state (resolution.md §1a). [`stability`] sums three contributions — the
+//! **per-stance** contribution (prone 40 / kneel 25 / stand 10, read off
 //! [`crate::tuning::StanceStability`]); the **automatic brace** contribution
-//! (+30, [`crate::tuning::BraceContribution`]), applied EXACTLY when the faced
-//! cell's [`crate::cover::CoverEntry::height_band`] satisfies the per-stance brace
+//! (+30, [`crate::tuning::BraceContribution`]), applied when the faced cell's
+//! [`crate::cover::CoverEntry::height_band`] satisfies the per-stance brace
 //! min-height gate ([`crate::tuning::BraceMinHeight`]: prone↔LOW+, kneel↔MID+,
-//! stand↔HIGH); and the **emplacement** seam ([`EmplacementStability`] — no
-//! entities yet, a zero/identity term carried so the signature is complete) —
-//! then **clamps/normalises** the sum into the `0..=100` domain
-//! ([`StabilityScore`]) and reads **both** [`crate::tuning::StabilityCurves`] at
-//! that score: the cone-mult curve ([`ConeMult`], steadier → narrower, < 1) and
-//! the recoil-growth curve ([`RecoilGrowth`], steadier → climbs strictly less).
+//! stand↔HIGH) **OR** the weapon carries the [`crate::weapon::Stable`] tag (a
+//! stable weapon engages the brace UNCONDITIONALLY — bipod-mounted /
+//! braced-by-design — regardless of faced cover or stance); and the
+//! **emplacement** seam ([`EmplacementStability`] — no entities yet, a
+//! zero/identity term carried so the signature is complete) — then
+//! **clamps/normalises** the sum into the `0..=100` domain ([`StabilityScore`])
+//! and reads **both** [`crate::tuning::StabilityCurves`] at that score: the
+//! cone-mult curve ([`ConeMult`], steadier → narrower, < 1) and the
+//! recoil-growth curve ([`RecoilGrowth`], steadier → climbs strictly less).
+//!
+//! There is **no** weapon-intrinsic stability *points* term: a weapon's only
+//! contribution to the score is the boolean [`crate::weapon::Stable`] tag, which
+//! engages the brace contribution unconditionally (the user-corrected model —
+//! weapons carry no intrinsic stability points).
 //!
 //! The curve *form* (a clamped, piecewise-linear read over the authored sample
 //! points) lives here in code; every *coefficient* — the contributions, the
@@ -37,27 +44,8 @@ use crate::{
     cover::{CoverEntry, HeightBand},
     ganger::{Stance, StanceKind},
     tuning::{ConeStabilityTuning, StabilityCurve, StanceContribution},
+    weapon::Stable,
 };
-
-/// The **weapon-intrinsic stability contribution** — the points a weapon's own
-/// mechanics add to the 0–100 stability score (resolution.md §1a: "weapon
-/// intrinsic + stance + …"). A heavy, well-balanced gun is steadier in the hands
-/// than a light, snappy one before posture or bracing is considered.
-///
-/// A weapon-side INPUT to [`stability`] (a contribution, not a tuning
-/// coefficient — it rides with the weapon), distinct from the per-stance and
-/// brace contributions even though all four are summed into the same score.
-/// Private inner + derived [`Deref`] (the crate's newtype house style).
-#[derive(Deref, Debug, Clone, Copy, PartialEq)]
-pub struct WeaponStability(f32);
-
-impl WeaponStability {
-    /// Build a weapon-intrinsic stability contribution from its point magnitude.
-    #[must_use]
-    pub const fn new(points: f32) -> Self {
-        Self(points)
-    }
-}
 
 /// The **emplacement stability contribution** — the points a fixed emplacement
 /// (bipod / tripod / mounted position) adds to the score (resolution.md §1a:
@@ -216,16 +204,24 @@ const fn stance_contribution(
     }
 }
 
-/// Whether the **automatic brace** engages for `stance` against the `faced` cell —
-/// `true` EXACTLY when there is cover in the faced cell **and** its
+/// Whether the **automatic brace** engages for `stance` against the `faced` cell
+/// with a weapon carrying the `stable` tag — `true` when **the weapon is `stable`**
+/// (a stable weapon braces UNCONDITIONALLY, regardless of faced cover or stance —
+/// bipod-mounted / braced-by-design) **OR** there is cover in the faced cell whose
 /// [`HeightBand`], read **directly** off the [`CoverEntry`], reaches the stance's
-/// minimum brace band from tuning (resolution.md §1a brace gate). No cover faced
-/// (`None`) never braces; [`crate::cover::band_for`] is not consulted.
-const fn brace_engages(
+/// minimum brace band from tuning (resolution.md §1a brace gate). A non-stable
+/// weapon facing no cover (`None`) never braces; [`crate::cover::band_for`] is not
+/// consulted.
+fn brace_engages(
+    stable: Stable,
     stance: StanceKind,
     faced: Option<&CoverEntry>,
     tuning: &ConeStabilityTuning,
 ) -> bool {
+    if *stable {
+        // A stable weapon engages the brace unconditionally — no cover / stance gate.
+        return true;
+    }
     let Some(entry) = faced else {
         return false;
     };
@@ -284,27 +280,28 @@ fn read_curve(curve: &StabilityCurve, score: StabilityScore) -> CurveOutput {
 
 /// Compute the §1a stability score and its two-curve read for a shooter facing a
 /// (possibly empty) cover cell (resolution.md §1a; "What's pure math vs sim" line
-/// 148: `stability(weapon_intrinsic, stance, brace, emplacement, …) → (cone_mult,
-/// recoil_growth)`).
+/// 148: `stability(stance, brace, emplacement, …) → (cone_mult, recoil_growth)`).
 ///
-/// Sums the four contributions — the `weapon_intrinsic` points, the per-stance
-/// contribution, the automatic brace contribution (applied EXACTLY when `faced`'s
-/// cover [`HeightBand`] satisfies `stance`'s min-height gate), and the
-/// `emplacement` seam — then
-/// **clamps/normalises** the sum into the `0..=100` [`StabilityScore`] domain and
-/// reads **both** tuning curves at that score, returning the named
-/// `(cone_mult, recoil_growth)` pair. A steadier situation yields a higher score,
-/// hence a smaller [`ConeMult`] (narrower cone) and a smaller [`RecoilGrowth`]
-/// (less climb).
+/// Sums the three contributions — the per-stance contribution, the automatic
+/// brace contribution (applied when `faced`'s cover [`HeightBand`] satisfies
+/// `stance`'s min-height gate **OR** the weapon is `stable`), and the
+/// `emplacement` seam — then **clamps/normalises** the sum into the `0..=100`
+/// [`StabilityScore`] domain and reads **both** tuning curves at that score,
+/// returning the named `(cone_mult, recoil_growth)` pair. A steadier situation
+/// yields a higher score, hence a smaller [`ConeMult`] (narrower cone) and a
+/// smaller [`RecoilGrowth`] (less climb). There is **no** weapon-intrinsic
+/// stability *points* term — a weapon's only contribution is the boolean `stable`
+/// tag, which engages the brace unconditionally.
 ///
-/// `faced` is the [`CoverEntry`] of the cell the shooter faces (the brace gate
-/// reads its `height_band` directly), or `None` when no cover is faced — in which
-/// case the brace contribution is withheld. Every coefficient and both curves come
-/// from `tuning`; nothing tunable is hardcoded. Angular / dimensionless — zero
-/// pixels.
+/// `stable` is the weapon's [`crate::weapon::Stable`] tag: a stable weapon braces
+/// regardless of faced cover or stance. `faced` is the [`CoverEntry`] of the cell
+/// the shooter faces (the brace gate reads its `height_band` directly), or `None`
+/// when no cover is faced — in which case the brace contribution is withheld for a
+/// non-stable weapon. Every coefficient and both curves come from `tuning`;
+/// nothing tunable is hardcoded. Angular / dimensionless — zero pixels.
 #[must_use]
 pub fn stability(
-    weapon_intrinsic: WeaponStability,
+    stable: Stable,
     stance: Stance,
     faced: Option<&CoverEntry>,
     emplacement: EmplacementStability,
@@ -312,14 +309,14 @@ pub fn stability(
 ) -> (ConeMult, RecoilGrowth) {
     let posture = *stance;
 
-    // Sum the four §1a contributions: weapon intrinsic + per-stance + brace (only
-    // when the faced cover satisfies the per-stance gate) + the emplacement seam.
-    let brace = if brace_engages(posture, faced, tuning) {
+    // Sum the three §1a contributions: per-stance + brace (when the faced cover
+    // satisfies the per-stance gate OR the weapon is stable) + the emplacement seam.
+    let brace = if brace_engages(stable, posture, faced, tuning) {
         *tuning.brace_contribution
     } else {
         0.0
     };
-    let raw = *weapon_intrinsic + *stance_contribution(posture, tuning) + brace + *emplacement;
+    let raw = *stance_contribution(posture, tuning) + brace + *emplacement;
 
     // Normalise/clamp into the 0..=100 score domain BEFORE the curve read, then
     // read BOTH curves at that one score, wrapping each axis-agnostic CurveOutput
@@ -350,7 +347,7 @@ mod tests {
         )
     }
 
-    /// C1 — `stability(...)` returns BOTH named outputs computed from the four
+    /// C1 — `stability(...)` returns BOTH named outputs computed from the three
     /// contributions, normalised over 100, read off the two tuning curves. A
     /// relation, not a magnitude: a fully steady situation (prone + braced on a
     /// HIGH wall) must produce a finite `cone_mult` and `recoil_growth`, and (with
@@ -363,15 +360,15 @@ mod tests {
 
         // Steadiest: prone, braced on a HIGH wall (satisfies the prone gate, LOW+).
         let (steady_cone, steady_recoil) = stability(
-            WeaponStability::new(0.0),
+            Stable::new(false),
             Stance::new(StanceKind::Prone),
             Some(&wall),
             EmplacementStability::none(),
             &tuning,
         );
-        // Shakiest: standing, no cover faced (no brace), no weapon/emplacement help.
+        // Shakiest: standing, no cover faced (no brace), no emplacement help.
         let (shaky_cone, shaky_recoil) = stability(
-            WeaponStability::new(0.0),
+            Stable::new(false),
             Stance::new(StanceKind::Standing),
             None,
             EmplacementStability::none(),
@@ -416,14 +413,14 @@ mod tests {
             let sat = faced_cover(satisfying);
             let fail = faced_cover(failing);
             let (braced, _) = stability(
-                WeaponStability::new(0.0),
+                Stable::new(false),
                 Stance::new(kind),
                 Some(&sat),
                 EmplacementStability::none(),
                 &tuning,
             );
             let (unbraced, _) = stability(
-                WeaponStability::new(0.0),
+                Stable::new(false),
                 Stance::new(kind),
                 Some(&fail),
                 EmplacementStability::none(),
@@ -438,14 +435,14 @@ mod tests {
         // Prone's gate is LOW+, so a LOW wall satisfies it; no cover faced does not.
         let low = faced_cover(HeightBand::Low);
         let (prone_braced, _) = stability(
-            WeaponStability::new(0.0),
+            Stable::new(false),
             Stance::new(StanceKind::Prone),
             Some(&low),
             EmplacementStability::none(),
             &tuning,
         );
         let (prone_unbraced, _) = stability(
-            WeaponStability::new(0.0),
+            Stable::new(false),
             Stance::new(StanceKind::Prone),
             None,
             EmplacementStability::none(),
@@ -466,7 +463,7 @@ mod tests {
         let tuning = ConeStabilityTuning::default();
         let cone = |kind| {
             stability(
-                WeaponStability::new(0.0),
+                Stable::new(false),
                 Stance::new(kind),
                 None,
                 EmplacementStability::none(),
@@ -492,14 +489,14 @@ mod tests {
         let wall = faced_cover(HeightBand::High);
 
         let (_, braced_prone) = stability(
-            WeaponStability::new(0.0),
+            Stable::new(false),
             Stance::new(StanceKind::Prone),
             Some(&wall),
             EmplacementStability::none(),
             &tuning,
         );
         let (_, standing_unbraced) = stability(
-            WeaponStability::new(0.0),
+            Stable::new(false),
             Stance::new(StanceKind::Standing),
             None,
             EmplacementStability::none(),
@@ -513,35 +510,36 @@ mod tests {
 
     /// C5 — the score is clamped/normalised to 0–100 BEFORE the curve read: a
     /// degenerate over-100 contribution sum does not read off the curve's end or
-    /// panic. A maximal contribution sum (huge weapon + emplacement + prone + brace)
-    /// must produce the SAME outputs as a sum that exactly reaches 100, proving the
-    /// clamp (and never a panic / NaN).
+    /// panic. Two wildly over-100 sums whose RAW totals differ (different stance /
+    /// brace) must still produce the SAME outputs, proving both clamp to the score
+    /// ceiling (and never a panic / NaN). The over-100 sum is driven by the
+    /// emplacement seam — there is no weapon-points term any more.
     #[test]
     fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
         let tuning = ConeStabilityTuning::default();
         let wall = faced_cover(HeightBand::High);
 
-        // A wildly over-100 raw sum.
+        // A wildly over-100 raw sum: prone + braced + a huge emplacement term.
         let (over_cone, over_recoil) = stability(
-            WeaponStability::new(10_000.0),
+            Stable::new(false),
             Stance::new(StanceKind::Prone),
             Some(&wall),
             EmplacementStability::new(10_000.0),
             &tuning,
         );
-        // A sum that lands exactly at the score ceiling (100) via the weapon term
-        // alone (prone + brace withheld here: standing, no cover).
+        // A DIFFERENT over-100 raw sum (standing, no brace) — also driven over the
+        // ceiling by a huge emplacement term, so it too clamps to 100.
         let (ceil_cone, ceil_recoil) = stability(
-            WeaponStability::new(StabilityScore::MAX),
+            Stable::new(false),
             Stance::new(StanceKind::Standing),
             None,
-            EmplacementStability::none(),
+            EmplacementStability::new(10_000.0),
             &tuning,
         );
 
         assert!((*over_cone).is_finite() && (*over_recoil).is_finite());
         // Both clamp to the score ceiling, so the curve reads are identical — the
-        // over-100 sum did not run off the curve's end.
+        // over-100 sums did not run off the curve's end.
         assert_eq!((*over_cone).to_bits(), (*ceil_cone).to_bits());
         assert_eq!((*over_recoil).to_bits(), (*ceil_recoil).to_bits());
 
@@ -602,7 +600,6 @@ mod tests {
     fn output_newtypes_deref_to_inner() {
         assert_eq!((*ConeMult::new(0.7)).to_bits(), 0.7_f32.to_bits());
         assert_eq!((*RecoilGrowth::new(0.3)).to_bits(), 0.3_f32.to_bits());
-        assert_eq!((*WeaponStability::new(5.0)).to_bits(), 5.0_f32.to_bits());
         assert_eq!(
             (*EmplacementStability::new(8.0)).to_bits(),
             8.0_f32.to_bits()
@@ -611,6 +608,101 @@ mod tests {
         assert_eq!(
             (*StabilityScore::clamped(50.0)).to_bits(),
             50.0_f32.to_bits()
+        );
+    }
+
+    /// AC2 (GTW-199) — `brace_engages` is `true` for a STABLE weapon facing a cell
+    /// that does NOT suit the stance (an empty cell, and cover one rank below the
+    /// gate), and `false` for a NON-stable weapon in the same situation. A relation
+    /// over the gate, never a pinned score. The stable tag bypasses the §1a cover /
+    /// stance gate entirely.
+    #[test]
+    fn stable_weapon_braces_unconditionally_non_stable_does_not() {
+        let tuning = ConeStabilityTuning::default();
+        // Standing's gate is HIGH (resolution.md §1a), so a MID wall does NOT suit
+        // it — and an empty cell never suits any stance.
+        let unsuitable = faced_cover(HeightBand::Mid);
+        let stance = StanceKind::Standing;
+
+        // Empty cell (no faced cover): stable braces, non-stable does not.
+        assert!(
+            brace_engages(Stable::new(true), stance, None, &tuning),
+            "a stable weapon must brace even facing an EMPTY cell",
+        );
+        assert!(
+            !brace_engages(Stable::new(false), stance, None, &tuning),
+            "a non-stable weapon must NOT brace facing an empty cell",
+        );
+
+        // Cover present but its band does NOT suit the stance: same relation.
+        assert!(
+            brace_engages(Stable::new(true), stance, Some(&unsuitable), &tuning),
+            "a stable weapon must brace even facing cover that does not suit the stance",
+        );
+        assert!(
+            !brace_engages(Stable::new(false), stance, Some(&unsuitable), &tuning),
+            "a non-stable weapon must NOT brace facing cover that does not suit the stance",
+        );
+    }
+
+    /// AC3 (GTW-199) — the stability score composes from stance + brace(+stable) +
+    /// emplacement, with NO weapon-points term: the ONLY difference between a stable
+    /// and a non-stable weapon is whether the brace engages. Facing an EMPTY cell
+    /// (so the non-stable weapon gets no brace), a stable weapon is strictly
+    /// steadier (lower `cone_mult`) — the difference traces entirely to the brace.
+    /// When BOTH face cover that suits the stance (the brace already engaged for
+    /// both), stable and non-stable are EQUAL (the tag adds nothing beyond the
+    /// brace). Relations only, no pinned magnitudes.
+    #[test]
+    fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
+        let tuning = ConeStabilityTuning::default();
+        let stance = Stance::new(StanceKind::Standing);
+
+        // Empty cell: only the stable weapon braces.
+        let (stable_empty, _) = stability(
+            Stable::new(true),
+            stance,
+            None,
+            EmplacementStability::none(),
+            &tuning,
+        );
+        let (plain_empty, _) = stability(
+            Stable::new(false),
+            stance,
+            None,
+            EmplacementStability::none(),
+            &tuning,
+        );
+        assert!(
+            *stable_empty < *plain_empty,
+            "facing an empty cell, a stable weapon braces while a non-stable one does \
+             not — so it must be strictly steadier (lower cone_mult): {} vs {}",
+            *stable_empty,
+            *plain_empty,
+        );
+
+        // Cover that suits the stance (standing's gate is HIGH): both braces engage,
+        // so stable adds nothing beyond it — the two are EQUAL.
+        let wall = faced_cover(HeightBand::High);
+        let (stable_braced, _) = stability(
+            Stable::new(true),
+            stance,
+            Some(&wall),
+            EmplacementStability::none(),
+            &tuning,
+        );
+        let (plain_braced, _) = stability(
+            Stable::new(false),
+            stance,
+            Some(&wall),
+            EmplacementStability::none(),
+            &tuning,
+        );
+        assert_eq!(
+            (*stable_braced).to_bits(),
+            (*plain_braced).to_bits(),
+            "facing suitable cover, the brace already engages for both — stable adds \
+             nothing, so the scores are equal",
         );
     }
 }

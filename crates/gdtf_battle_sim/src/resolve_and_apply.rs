@@ -329,8 +329,8 @@ mod tests {
         tuning::RecoilClimb,
         weapon::{
             Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
-            MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, WeaponDamage,
-            WeaponDamageProfile, WeaponPunch, WeaponShred,
+            MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, Stable, WeaponDamage,
+            WeaponDamageProfile, WeaponHandling, WeaponPunch, WeaponShred,
         },
     };
 
@@ -369,8 +369,11 @@ mod tests {
                 WeaponShred::new(shred),
                 damage_type,
             ),
-            MagazineSize::new(10),
-            FireMode::Single { single: spec },
+            WeaponHandling::new(
+                MagazineSize::new(10),
+                FireMode::Single { single: spec },
+                Stable::new(false),
+            ),
         )
     }
 
