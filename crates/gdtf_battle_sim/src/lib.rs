@@ -102,6 +102,22 @@
 //! (E1.10). The [`situation::Situation`] type SUPERSEDES the GTW-156 placeholder
 //! (renamed to [`occupancy::OccupancyInput`]). See `docs/architecture.md`'s setup
 //! systems.
+//!
+//! E2.1 ([`weapon`] + the [`tuning::ConeStabilityTuning`] extension) lays the §1
+//! cone/stability/recoil/aim **data substrate** the rest of E2 reads — types +
+//! serde only, no math. [`weapon::Weapon`] carries the per-weapon NUMBERS
+//! (`base_spread`, `accuracy`, `kickback`, `fatal_bias` [carried, consumed by E3],
+//! `magazine_size`) and a [`weapon::FireMode`] selector (single / single+burst /
+//! single+burst+full-auto, each mode a [`weapon::FireModeSpec`] of cone-mult / TU%
+//! / shots); [`tuning::ConeStabilityTuning`] carries the universal COEFFICIENTS
+//! (the stance + auto-brace stability contributions, the per-stance brace
+//! min-height gate, the two stability curves, the aim-mode cone mult + TU premium,
+//! the recoil-climb coefficient, the concentration-p coefficients, and the de-pxed
+//! muzzle/aim geometry — [`tuning::AimHeightFrac`], [`tuning::MuzzleForwardOffset`]
+//! [a cell-fraction], and the per-stance muzzle + silhouette-top level-fractions).
+//! Weapon numbers live on the weapon; coefficients live in tuning
+//! (`docs/combat/resolution.md` §1 + §"Coefficients live in the combat-tuning
+//! data"; `docs/combat/battle-space.md` §"Stance / cover / muzzle / aim heights").
 
 pub mod armor;
 pub mod cover;
@@ -114,6 +130,7 @@ pub mod situation;
 pub mod surface;
 pub mod tuning;
 pub mod vertical;
+pub mod weapon;
 
 pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BodyPart, SourceArmor,
@@ -141,13 +158,21 @@ pub use situation::{
 };
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
-    BandEdge, BodyPartWeight, BodyPartWeights, CombatTuning, DefenderLuckSpreadCap, PenDamageScale,
-    ProjectileBandEdges, RandomSpread, RandomSpreadMin, SeverityScaling, ShooterLuckScale,
+    AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BodyPartWeight, BodyPartWeights,
+    BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff, ConcentrationCoeffs,
+    ConeStabilityTuning, DefenderLuckSpreadCap, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights,
+    PenDamageScale, ProjectileBandEdges, RandomSpread, RandomSpreadMin, RecoilClimb,
+    SeverityScaling, ShooterLuckScale, SilhouetteTop, SilhouetteTops, StabilityCurve,
+    StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StanceContribution, StanceStability,
     ToughnessMitigation,
 };
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
     build_vertical_link_graph,
+};
+pub use weapon::{
+    Accuracy, BaseSpread, FatalBias, FireMode, FireModeSpec, Kickback, MagazineSize, ModeConeMult,
+    ModeShots, ModeTuPercent, Weapon,
 };
 
 #[cfg(test)]

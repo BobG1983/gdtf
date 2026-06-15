@@ -36,6 +36,7 @@ use bevy::{
     platform::collections::HashMap,
     prelude::{Deref, Resource},
 };
+use serde::Deserialize;
 
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -72,7 +73,7 @@ impl CoverHp {
 /// use — not a bare index. The level-fraction → band classification lives in
 /// [`band_for`], which reads the tunable [`BandEdge`] level-fraction edges; this
 /// enum never carries a fraction itself.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum HeightBand {
     /// The lowest clearance band — a round clears it by flying MID or HIGH.
     Low,

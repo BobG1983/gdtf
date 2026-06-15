@@ -21,9 +21,9 @@ Everything vertical is authored as a **level-fraction** (a dimensionless fractio
 
 | Datum | Expressed as | Home |
 | ------- | -------------- | ------ |
-| Ganger silhouette tops (prone / kneel / stand) | a **band** — prone Low · kneel Mid · stand High — or its band-top level-fraction | coarse-occupancy height, from ganger data `height_by_stance` |
+| Ganger silhouette tops (prone / kneel / stand) | a **band** — prone Low · kneel Mid · stand High — or its band-top level-fraction | tuning (universal per-stance level-fractions — there is no per-ganger size model) |
 | Cover heights (per-prop) | a **band** — Low / Mid / High | object data (cover is already band-based — see §"Cover is a physical object" in [resolution.md](resolution.md)) |
-| Muzzle height by stance (prone / kneel / stand) | a tunable **level-fraction** per stance | ganger data `shot_z_by_stance` |
+| Muzzle height by stance (prone / kneel / stand) | a tunable **level-fraction** per stance | tuning (universal per-stance `muzzle_heights` — there is no per-ganger size model) |
 | Clearance band edges (LOW→MID, MID→HIGH) | tunable **level-fractions** (defaults ≈ ⅓ and ⅔ of a level) | tuning `projectile_band_edges` |
 | Aim height | the target's silhouette-top **level-fraction** (a cover cell → its band midpoint) | tuning |
 

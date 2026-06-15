@@ -37,4 +37,78 @@
         left_leg:  15,  // left leg
         right_leg: 15,  // right leg
     ),
+    // Cone / stability / recoil / aim coefficients (resolution.md §1) — the data the
+    // dispersion-cone math reads. WEAPON numbers (base_spread / accuracy / kickback /
+    // fatal_bias / magazine_size; per-mode cone-mult / TU% / shots) live on the WEAPON
+    // data, never here; everything below is a universal tuning COEFFICIENT.
+    cone_stability: (
+        // How many points each stance adds to the 0..100 stability score (steadier =
+        // more = a narrower cone via the cone-mult curve). resolution.md §1a.
+        stance_stability: (
+            prone: 40.0,  // prone — steadiest
+            kneel: 25.0,  // kneeling — middle
+            stand: 10.0,  // standing — least steady
+        ),
+        // Points added when the faced cell's cover suits the stance (automatic brace).
+        brace_contribution: 30.0,  // +30 to the stability score when braced (resolution.md §1a)
+        // The minimum faced-cover band each stance needs for its brace to engage:
+        // prone braces on LOW+, kneeling on MID+, standing on HIGH (resolution.md §1a).
+        brace_min_height: (
+            prone: Low,   // prone braces on LOW cover or taller
+            kneel: Mid,   // kneeling braces on MID cover or taller
+            stand: High,  // standing braces only on HIGH cover
+        ),
+        // The two curves read off the single 0..100 stability score (resolution.md §1a):
+        // cone_mult (steadier -> smaller multiplier -> narrower cone) and recoil_growth
+        // (steadier -> less muzzle climb). Authored as ordered (score, output) sample
+        // points; the interpolation FORM lives in code. Shape is tunable.
+        stability_curves: (
+            cone_mult: [
+                ( score: 0.0,   output: 1.0 ),   // shaky -> full-width cone
+                ( score: 100.0, output: 0.5 ),   // rock-steady -> half-width cone
+            ],
+            recoil_growth: [
+                ( score: 0.0,   output: 1.0 ),    // shaky -> full recoil climb
+                ( score: 100.0, output: 0.25 ),   // rock-steady -> little climb
+            ],
+        ),
+        // Aim Mode (a separate axis from the selector): aiming narrows the cone and
+        // costs more TU; hip-firing is the ×1 baseline (resolution.md §1a).
+        aim_mode: (
+            cone_mult:  0.6,   // aimed shots multiply the cone by 0.6 (hip-fired = 1)
+            tu_premium: 1.5,   // aimed shots cost ×1.5 TU
+        ),
+        // Recoil climb: round i's central axis tilts up by prior_shots × recoil_climb ×
+        // recoil_growth radians (resolution.md §1a). This is the per-prior-shot rate.
+        recoil_climb: 0.01,  // radians of upward tilt per prior shot, before the curve damps it
+        // The concentration exponent p = concentration_p(Shooting, weapon.accuracy) of the
+        // in-cone draw (resolution.md §1b): higher -> shots cluster nearer dead-center.
+        concentration: (
+            base:  1.0,   // p at zero accuracy (≈1 scatters evenly to the cone edge)
+            scale: 1.0,   // how fast p rises with Shooting × weapon.accuracy
+        ),
+        // Aim point z = the target's silhouette-top level-fraction × this fraction
+        // (resolution.md §1; battle-space.md). Dimensionless level-fraction, NO pixel.
+        aim_height_frac: 1.0,  // fraction of the target's silhouette-top height aimed at
+        // The barrel offset, de-pxed: a fraction of ONE CELL forward along the facing
+        // (clamped so it never leaves the cell). battle-space.md §"Sub-cell precision".
+        muzzle_forward_offset: 0.3,  // cell-fraction forward offset of the muzzle along the facing
+        // Per-stance muzzle height (the de-pxed shot_z_by_stance): a LEVEL-FRACTION of the
+        // shot's launch z, authored to land in design-sensible clearance bands — prone fires
+        // LOW (can't clear even LOW cover), kneeling MID, standing HIGH (battle-space.md).
+        // Universal tuning, NOT per-ganger data (there is no per-ganger size model).
+        muzzle_heights: (
+            prone: 0.15,  // prone muzzle — low (lands in the LOW band)
+            kneel: 0.45,  // kneeling muzzle — mid (lands in the MID band)
+            stand: 0.8,   // standing muzzle — high (lands in the HIGH band)
+        ),
+        // Per-stance silhouette top (the aim-point source): a LEVEL-FRACTION of the
+        // ganger's silhouette top per stance. MOVED here from ganger data this ticket —
+        // universal tuning, NOT per-ganger data (battle-space.md datum table).
+        silhouette_tops: (
+            prone: 0.3,   // prone silhouette top — lowest profile
+            kneel: 0.6,   // kneeling silhouette top — compressed
+            stand: 0.95,  // standing silhouette top — full height
+        ),
+    ),
 )
