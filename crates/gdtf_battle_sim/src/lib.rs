@@ -42,6 +42,16 @@
 //!   and [`posture::set_facing`] (charges [`tuning::TurnTu`] on a real turn). Each
 //!   costed verb is a no-op — no charge — when the value is unchanged. Pure math, no
 //!   `World` access.
+//! - [`magazine`] — the E4.4 ammo state + the shared firing guard: the
+//!   [`magazine::Magazine`] current-rounds Component (clamped to
+//!   [`weapon::MagazineSize`] at construction, saturating
+//!   [`magazine::Magazine::spend_round`], the [`magazine::clamp_burst`] burst
+//!   primitive), the shared [`magazine::mode_tu_cost`] per-shot TU charge
+//!   ([`ganger::TuMax`]-derived × [`weapon::ModeTuPercent`] × the aim premium when
+//!   aiming — resolution.md §1 / §1a), and the
+//!   [`magazine::can_fire`] guard set (over a [`magazine::FireActor`] bundle): alive +
+//!   affords the mode TU + ≥1 round + [`magazine::in_bounds`] — NO LOS input (fog is
+//!   presenter player policy). The reload act + `reload_tu` refill are OUT of E4.
 //! - [`ganger`] — per-field ganger battle-state components (including the
 //!   [`ganger::Stabilized`] bleed-out flag, owned here from E3.7); [`armor`] —
 //!   armor stats + the battle-local [`armor::WornArmor`]; [`armor_wear`] —
@@ -108,6 +118,7 @@ pub mod downed_acts;
 pub mod faced_cell;
 pub mod ganger;
 pub mod hit_location;
+pub mod magazine;
 pub mod march;
 pub mod matchup;
 pub mod metric;
@@ -153,6 +164,7 @@ pub use ganger::{
     Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
 };
 pub use hit_location::roll_body_part;
+pub use magazine::{FireActor, Magazine, can_fire, clamp_burst, in_bounds, mode_tu_cost};
 pub use march::{MarchKind, MarchResult, march_vector};
 pub use matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier};
 pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
