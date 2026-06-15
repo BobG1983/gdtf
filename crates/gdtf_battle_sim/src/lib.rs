@@ -17,11 +17,17 @@
 //!   [`metric::cell_center`] / [`metric::pos_to_cell`]).
 //! - [`tuning`] — the [`tuning::CombatTuning`] resource: every balance
 //!   coefficient, serde-loaded from `assets/combat/tuning.ron`.
-//! - [`ganger`] — per-field ganger battle-state components; [`armor`] — armor
-//!   stats + the battle-local [`armor::WornArmor`]; [`armor_wear`] — persisting a
-//!   hit's [`resolve_hit::IntegrityWear`] onto the worn copy
+//! - [`ganger`] — per-field ganger battle-state components (including the
+//!   [`ganger::Stabilized`] bleed-out flag, owned here from E3.7); [`armor`] —
+//!   armor stats + the battle-local [`armor::WornArmor`]; [`armor_wear`] —
+//!   persisting a hit's [`resolve_hit::IntegrityWear`] onto the worn copy
 //!   ([`armor_wear::wear_armor`]) + the [`armor_wear::ArmorBroken`] message on the
 //!   protecting→broken crossing.
+//! - [`bleed`] — the §9 bleed-out clock: [`bleed::tick_bleed`] drains a flat
+//!   tuning [`tuning::BleedRate`] of [`ganger::Wounds`] per round from each
+//!   un-stabilized [`ganger::LifeState::Downed`] ganger, emits the
+//!   [`bleed::Bleeding`] message, and runs the once-only terminal gate to
+//!   [`ganger::LifeState::Dead`] on depletion.
 //! - Terrain & space: [`cover`] (the [`cover::CoverLedger`] + [`cover::HeightBand`]
 //!   banding), [`surface`] (persistent floor/roof-slab + ground grid),
 //!   [`occupancy`] + [`occupancy_sync`] (the coarse 3D occupancy grid and its
@@ -52,6 +58,7 @@
 pub mod apply_hit;
 pub mod armor;
 pub mod armor_wear;
+pub mod bleed;
 pub mod central_axis;
 pub mod clearance;
 pub mod cone;
@@ -81,6 +88,7 @@ pub use armor::{
     SourceArmor, WornArmor,
 };
 pub use armor_wear::{ArmorBroken, wear_armor};
+pub use bleed::{Bleeding, tick_bleed};
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
 pub use clearance::{Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant};
 pub use cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor};
@@ -89,8 +97,8 @@ pub use cover::{
     band_for,
 };
 pub use ganger::{
-    Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance,
-    StanceKind, Toughness, Tu, Wounds,
+    Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
+    Stance, StanceKind, Toughness, Tu, Wounds,
 };
 pub use hit_location::roll_body_part;
 pub use march::{MarchKind, MarchResult, march_vector};
@@ -117,13 +125,14 @@ pub use stability::{
 };
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
-    AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BodyPartWeight, BodyPartWeights,
-    BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff, ConcentrationCoeffs,
-    ConeStabilityTuning, DefenderLuckScale, MatchupMultipliers, MuzzleForwardOffset, MuzzleHeight,
-    MuzzleHeights, PenDamageScale, ProjectileBandEdges, RandomSpread, RecoilClimb, SeverityEdge,
-    SeverityEdges, SeverityScaling, ShooterLuckScale, SilhouetteTop, SilhouetteTops,
-    StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StanceContribution,
-    StanceStability, ToughnessMitigation, WoundCost, WoundCosts,
+    AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
+    BodyPartWeights, BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff,
+    ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, MatchupMultipliers,
+    MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale, ProjectileBandEdges,
+    RandomSpread, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
+    SilhouetteTop, SilhouetteTops, StabilityCurve, StabilityCurveCoord, StabilityCurvePoint,
+    StabilityCurves, StanceContribution, StanceStability, ToughnessMitigation, WoundCost,
+    WoundCosts,
 };
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,

@@ -43,6 +43,13 @@
         major:    2,  // Major wound — benched until healed (starting point: 2)
         critical: 3,  // Critical wound — maims AND pushes toward death faster (starting point: 3)
     ),
+    // Bleed-out clock (resolution.md §9; wounds-and-roster.md §"Downed → death …"): the flat
+    // number of Wounds (the life pool) each un-stabilized DOWNED ganger loses every full round
+    // it stays down (tick_bleed) — the stack count = turns down = total Wounds lost, a clock you
+    // can read. Wounds hitting 0 = Dead via the same terminal gate. A STARTING POINT (tunable);
+    // the TU economy it sits inside (when the tick fires, execute/stabilize TU costs) is E4.
+    bleed_rate: 1,  // Wounds drained per round each un-stabilized Downed ganger stays down
+
     // Hit-location weights — the RELATIVE odds each body part is the one struck on a hit
     // (resolution.md §4 `roll_body_part`). Larger = struck more often; they need not sum to
     // any total — only the ratios between them matter.

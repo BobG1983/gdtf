@@ -371,6 +371,41 @@ pub enum LifeState {
     Dead,
 }
 
+/// Whether a [`LifeState::Downed`] ganger has been **stabilized** — its bleed-out
+/// clock halted.
+///
+/// The downed-ganger "stabilized, skip the bleed clock" flag
+/// (`docs/combat/resolution.md` §9; `docs/combat/wounds-and-roster.md`
+/// §"Downed → death … state machine"): an 8-adjacent ally's stabilize action
+/// **sets** this `true`, after which the per-round bleed-out drain
+/// ([`crate::bleed::tick_bleed`]) skips the ganger — no new *Bleeding Out* stacks,
+/// the Wounds already drained stay drained, and the ganger **remains Downed**
+/// (alive, out for the rest of the mission).
+///
+/// This slice (E3.7) is the flag's single **home**: [`tick_bleed`](crate::bleed::tick_bleed)
+/// must **read** it to skip stabilized gangers, so it is defined here, not deferred
+/// to the E3.8 stabilize action (which only **sets** this already-defined flag). A
+/// distinct component so the bleed-out path can query `Option<&Stabilized>` alone.
+/// Defaults to `false` (a freshly-downed ganger is **not** stabilized — the clock
+/// runs until an ally dresses the wound; a structural spawn default, not a balance
+/// value). Private inner + derived [`Deref`], house style.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Stabilized(bool);
+
+impl Stabilized {
+    /// Build a stabilized flag — `true` once an ally has dressed the downed
+    /// ganger's wound (the clock halts), `false` while it still bleeds.
+    ///
+    /// The public constructor (private inner + constructor, the crate's newtype
+    /// house style) so the E3.8 `stabilize_downed` action can set the flag, and the
+    /// E3.7 bleed tests can spawn a stabilized ganger, without reaching the private
+    /// field.
+    #[must_use]
+    pub const fn new(stabilized: bool) -> Self {
+        Self(stabilized)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bevy::ecs::world::World;
@@ -447,6 +482,11 @@ mod tests {
     #[test]
     fn life_state_inserts_and_queries_independently() {
         assert_independent(LifeState::Downed);
+    }
+
+    #[test]
+    fn stabilized_inserts_and_queries_independently() {
+        assert_independent(Stabilized(true));
     }
 
     #[test]
@@ -557,6 +597,9 @@ mod tests {
         assert_eq!(Wounds::default(), Wounds(0));
         assert_eq!(Tu::default(), Tu(0));
         assert_eq!(LifeState::default(), LifeState::Alive);
+        // A freshly-downed ganger is NOT stabilized — the bleed clock runs until an
+        // ally dresses the wound (a structural spawn default, not a tuning value).
+        assert_eq!(Stabilized::default(), Stabilized(false));
         // The GTW-182 attribute stats default to 0.0 (a structural "no value yet"
         // spawn floor, not a tuning magnitude — real values are per-ganger data).
         assert_eq!(Shooting::default(), Shooting(0.0));
@@ -576,6 +619,8 @@ mod tests {
         assert_eq!(*Hp(123), 123u16);
         assert_eq!(*Wounds(9), 9u8);
         assert_eq!(*Tu(80), 80u8);
+        // Stabilized derefs to its inner bool (arbitrary value, mechanism not value).
+        assert!(*Stabilized(true));
         // The GTW-182 attribute stats deref to their inner f32 (an f32 compare, so
         // an epsilon tolerance, not a bit-exact compare on a derived value).
         assert!((*Shooting(3.0) - 3.0).abs() < f32::EPSILON);

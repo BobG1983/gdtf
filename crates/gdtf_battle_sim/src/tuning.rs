@@ -267,6 +267,49 @@ impl WoundCost {
     }
 }
 
+/// The **bleed-out rate** — the flat number of [`crate::ganger::Wounds`] a single
+/// un-stabilized [`crate::ganger::LifeState::Downed`] ganger loses **each round**
+/// it stays down (`docs/combat/resolution.md` §9; `docs/combat/wounds-and-roster.md`
+/// §"Downed → death … state machine").
+///
+/// The bleed-out clock's per-round drain: once per full round
+/// [`crate::bleed::tick_bleed`] subtracts this from every un-stabilized Downed
+/// ganger's [`crate::ganger::Wounds`] life pool, and the stack count (turns down)
+/// = total Wounds lost — a clock you can read. A small `u8` count, matching
+/// [`crate::ganger::Wounds`]'s inner type so it subtracts directly from the life
+/// pool (`saturating_sub`, never underflowing). The default `1` is a **starting
+/// point**, tunable balance data — tests assert only the relation to this value
+/// (the per-tick drop equals it), never the magnitude. The TU/clock economy the
+/// drain sits inside (when the tick fires, the execute/stabilize TU costs) is E4.
+/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner +
+/// derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct BleedRate(u8);
+
+impl BleedRate {
+    /// Build a bleed-out rate from its per-round Wounds drain (a starting point,
+    /// TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house
+    /// style) while letting the bleed-out tests and any programmatic tuning edit
+    /// build a rate without a bare `u8` escaping; shipped values come from the
+    /// `.ron` via the derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(rate: u8) -> Self {
+        Self(rate)
+    }
+}
+
+impl Default for BleedRate {
+    fn default() -> Self {
+        // A flat 1 Wound drained per Downed round — a STARTING POINT (tunable
+        // balance data; the TU/clock economy it sits inside is E4), asserted only by
+        // its relation to the drain, never as a pinned magnitude.
+        Self(1)
+    }
+}
+
 /// The per-tier **Wounds-budget costs** — how many [`crate::ganger::Wounds`] each
 /// non-structural severity tier spends (`docs/combat/wounds-and-roster.md`
 /// §"Severity tiers": Minor 1 / Major 2 / Critical 3).
@@ -859,6 +902,9 @@ pub struct CombatTuning {
     /// The per-tier Wounds-budget costs (E3.6) — Minor / Major / Critical spend
     /// (None = 0 and Fatal = empty are structural, not authored here).
     pub wound_costs:           WoundCosts,
+    /// The §9 bleed-out rate (E3.7) — the flat Wounds an un-stabilized Downed
+    /// ganger loses each round `tick_bleed` runs.
+    pub bleed_rate:            BleedRate,
     /// The §4 body-part hit-location weights.
     pub body_part_weights:     BodyPartWeights,
     /// The §1 cone / stability / recoil / aim coefficients (E2.1) — the data
@@ -896,6 +942,9 @@ mod tests {
         assert_eq!((*SeverityEdge(8.5)).to_bits(), 8.5_f32.to_bits());
         // The u16 newtype: deref reaches the inner u16 (arbitrary value).
         assert_eq!(*BodyPartWeight(3), 3u16);
+        // The u8 bleed-out rate: deref reaches the inner u8 (arbitrary value, the
+        // mechanism not the shipped magnitude).
+        assert_eq!(*BleedRate(4), 4u8);
     }
 
     /// C3 — every E2.1 cone/stability/recoil/aim extension leaf wraps the right
@@ -1021,6 +1070,16 @@ mod tests {
         assert!(
             *edges.e2 < *edges.e3,
             "shipped severity edge e2 must be < e3"
+        );
+
+        // GTW-189 AC7 — the E3.7 bleed-out leaf (`bleed_rate`) deserializes from the
+        // real shipped file. Value-agnostic: it asserts only the structural invariant
+        // a bleed clock must hold (a positive drain, so the clock actually ticks down
+        // and a Downed ganger eventually dies), never a magnitude — the rate is
+        // tunable balance data.
+        assert!(
+            *tuning.bleed_rate > 0,
+            "shipped bleed_rate must be > 0 so the bleed-out clock actually drains",
         );
     }
 }
