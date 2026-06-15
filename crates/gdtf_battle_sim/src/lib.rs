@@ -60,6 +60,12 @@
 //!   the penetration-gated score → [`severity::Severity`] bucket in the
 //!   floor-extend form (the defender's Luck extends the roll's floor down). Pure
 //!   seeded-RNG math; the per-tier Wounds application is a later E3 slice.
+//! - [`resolve_and_apply`] — the E3.9 capstone integrator
+//!   ([`resolve_and_apply::resolve_and_apply`]): folds one [`resolve_coarse::ShotOutcome`]
+//!   through matchup → [`resolve_hit`] → [`severity`] → [`apply_hit`] into ONE act
+//!   and returns a FROZEN [`resolve_and_apply::HitReport`] for the presenter's FX
+//!   (corpse-skip before any draw; every draw via the injected [`rng::SimRng`]; no
+//!   pixel). Charging TU / looping the burst (`fire()`) is E4.
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
@@ -80,6 +86,7 @@ pub mod matchup;
 pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
+pub mod resolve_and_apply;
 pub mod resolve_coarse;
 pub mod resolve_hit;
 pub mod rng;
@@ -126,6 +133,7 @@ pub use occupancy_sync::{
     CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
     sync_moved_gangers,
 };
+pub use resolve_and_apply::{AppliedDamage, HitReport, TargetGanger, resolve_and_apply};
 pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
 pub use resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit};
 pub use rng::{BattleSeed, SimRng};
