@@ -69,7 +69,7 @@ session, so the next session pays the toll once.
 
 - Stay clippy-clean under the deny-by-default workspace lints
   (all/pedantic/correctness). No `unwrap`/`expect`/`panic!`/`todo!`/
-  `unimplemented!` in shipped code — propagate `Result`/`Option` or handle
+  `unimplemented!` in shipped code — never propagate `Result`/`Option` just handle
   it. Document every `pub` item (`missing_docs` is denied).
 
 Invite growth: when a Bevy/Rust/wgpu/cargo trap burns a session, append it
