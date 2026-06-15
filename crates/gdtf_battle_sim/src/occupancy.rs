@@ -39,6 +39,7 @@ use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::{Deref, Entity, Resource},
 };
+use serde::Deserialize;
 
 use crate::{
     cover::HeightBand,
@@ -75,7 +76,7 @@ pub const GRID_HEIGHT: usize = 60;
 ///   in this slot — **blocking** while it stands, but excluded once the cell is in
 ///   the [`destroyed_cover`](OccupancyGrid::destroyed_cover) set
 ///   (`docs/combat/combat.md`: cover "can be shot and destroyed").
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum TerrainKind {
     /// Empty space — no fixed terrain here; **non-blocking**.
     #[default]

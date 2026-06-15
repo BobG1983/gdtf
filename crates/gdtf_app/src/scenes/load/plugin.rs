@@ -1,5 +1,6 @@
 use bevy::{asset::AssetServer, prelude::*};
 use gdtf_assets::RonAssetAppExt;
+use gdtf_battle_sim::situation::Situation;
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
 use crate::{
@@ -21,8 +22,13 @@ impl Plugin for LoadScenePlugin {
         // exists and the loader registers; in the `MinimalPlugins` state-machine
         // harness it is absent and `kick_off_loads` already no-ops, so skipping
         // the registration there is correct (bevy-traps rule 1).
+        //
+        // GTW-205 (E10.3): the authored `Situation` loads through the SAME generic
+        // RON loader, so register `Assets<RonAsset<Situation>>` + its loader behind
+        // the same `asset_server.is_some()` guard as the theme.
         if app.world().get_resource::<AssetServer>().is_some() {
             app.init_ron_asset::<GdtfThemeSpec>();
+            app.init_ron_asset::<Situation>();
         }
         add_systems(app);
     }

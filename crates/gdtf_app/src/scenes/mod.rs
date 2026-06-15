@@ -17,6 +17,14 @@ pub(in crate::scenes) use intro::IntroScenePlugin;
 
 mod load;
 pub(in crate::scenes) use load::LoadScenePlugin;
+// The resolved authored battlefield resource (GTW-205 / E10.3), re-exported here
+// ONLY for the test-support surface so the AC7 real-asset harness can name it
+// (`test_support` re-exports `crate::scenes::LoadedSituation`). In the binary
+// build it stays `pub(crate)` at its definition and is reached directly within the
+// crate (E10.5), so this re-export is test-support-gated to keep the binary
+// `unused`-clean — mirroring the button-marker re-export below.
+#[cfg(feature = "test-support")]
+crate::support_use!(load::LoadedSituation;);
 
 mod running;
 pub(in crate::scenes) use running::RunningScenePlugin;

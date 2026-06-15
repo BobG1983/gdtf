@@ -18,6 +18,7 @@ use bevy::{
     math::{IVec2, IVec3, Vec3},
     prelude::Deref,
 };
+use serde::Deserialize;
 
 /// Number of storeys in the coarse grid — valid [`Level`] values are
 /// `0..MAX_LEVELS`.
@@ -33,7 +34,12 @@ pub const MAX_LEVELS: u8 = 8;
 /// axis (one cell = 1.0 sim unit). Wraps `IVec2` (not a sim point) so a cell can
 /// never be passed where a sim-unit position ([`SimPos`]) is meant. Negative
 /// components bucket correctly because [`pos_to_cell`] floors, never rounds.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// Deserializes through an `(x, y)` authoring shape ([`CellDef`]) that routes the
+/// pair through [`Cell::new`] — so authored RON writes `(x: .., y: ..)` rather
+/// than reaching the inner glam `IVec2` directly.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(from = "CellDef")]
 pub struct Cell(IVec2);
 
 impl Cell {
@@ -44,12 +50,36 @@ impl Cell {
     }
 }
 
+/// The authored RON shape a [`Cell`] deserializes from — its `x`/`y` grid
+/// coordinates as a named pair, routed through [`Cell::new`] (never the raw
+/// `IVec2`).
+///
+/// A serde intermediate (`#[serde(from = "CellDef")]` on [`Cell`]) so an authored
+/// situation writes a cell as `(x: 5, y: 6)` and the value flows through the typed
+/// constructor — keeping the inner `IVec2` private and the no-bare-types contract
+/// intact.
+#[derive(Deserialize)]
+pub struct CellDef {
+    /// The cell's ground-plane `x` grid coordinate (cell units).
+    x: i32,
+    /// The cell's ground-plane `y` grid coordinate (cell units).
+    y: i32,
+}
+
+impl From<CellDef> for Cell {
+    fn from(def: CellDef) -> Self {
+        Self::new(def.x, def.y)
+    }
+}
+
 /// A 0-based storey index — which floor of the coarse grid, valid `0..`[`MAX_LEVELS`].
 ///
 /// Distinct from a raw coordinate axis: it indexes storeys (each one level = 1.0
 /// sim unit on z). Wraps `u8` so a storey can never be confused with a cell
-/// coordinate.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// coordinate. `#[serde(transparent)]` lets an authored RON storey index parse as
+/// a bare integer (the tuning-leaf precedent).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize)]
+#[serde(transparent)]
 pub struct Level(u8);
 
 impl Level {
@@ -65,7 +95,16 @@ impl Level {
 /// The single (cell, storey) identity used to key the coarse occupancy and the
 /// cover ledger. Wraps `IVec3` — its `z` is a *storey index*, NOT a continuous
 /// height, which is what distinguishes it from [`SimPos`].
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// Deserializes through a `(cell, level)` authoring shape ([`CellLevelDef`]) that
+/// routes the pair through [`CellLevel::new`] — so authored RON names the typed
+/// [`Cell`] + [`Level`] and the storey-index `z` is always *constructed*, never a
+/// free continuous height an author could write into the raw `IVec3`. This is the
+/// invariant `#[serde(from = "CellLevelDef")]` protects (unlike [`SimPos`], which
+/// is deliberately NOT `Deserialize` — its continuous `z` must never be authorable
+/// as a storey).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(from = "CellLevelDef")]
 pub struct CellLevel(IVec3);
 
 impl CellLevel {
@@ -79,6 +118,29 @@ impl CellLevel {
     #[must_use]
     pub fn new(cell: Cell, level: Level) -> Self {
         Self(IVec3::new(cell.x, cell.y, i32::from(*level)))
+    }
+}
+
+/// The authored RON shape a [`CellLevel`] deserializes from — a typed [`Cell`]
+/// plus a typed [`Level`], routed through [`CellLevel::new`].
+///
+/// A serde intermediate (`#[serde(from = "CellLevelDef")]` on [`CellLevel`]) so an
+/// authored situation names the `(cell, level)` pair and the value flows through
+/// the typed constructor. This is the AC2 guarantee: the storey-index `z` is
+/// always *constructed* from a [`Level`], never authored as a raw continuous
+/// height in the inner `IVec3` — so the no-bare-types / storey-not-height
+/// invariant survives deserialization.
+#[derive(Deserialize)]
+pub struct CellLevelDef {
+    /// The ground-plane cell of the key.
+    cell:  Cell,
+    /// The storey index of the key.
+    level: Level,
+}
+
+impl From<CellLevelDef> for CellLevel {
+    fn from(def: CellLevelDef) -> Self {
+        Self::new(def.cell, def.level)
     }
 }
 
@@ -255,5 +317,34 @@ mod tests {
         let (_, high_in_storey) = pos_to_cell(SimPos::new(0.5, 0.5, 2.99));
         assert_eq!(low_in_storey, Level::new(2));
         assert_eq!(high_in_storey, Level::new(2));
+    }
+
+    /// GTW-205 AC2 — a `CellLevel` authored in RON as a `(cell, level)` pair
+    /// deserializes to a value bit-equal to the result of
+    /// `CellLevel::new(Cell::new(x, y), Level::new(l))` for the same authored
+    /// `x, y, l` — proving the storey-index `z` came through the typed constructor
+    /// (the AC2 invariant), not a raw continuous height. Equality to the
+    /// constructor result, not a pinned coordinate scheme.
+    #[test]
+    fn cell_level_deserializes_through_its_typed_constructor() {
+        // Authored shape: a typed Cell pair + a bare storey Level.
+        let authored = "(cell: (x: 7, y: 8), level: 3)";
+        let parsed = ron::from_str::<CellLevel>(authored);
+        assert!(parsed.is_ok(), "CellLevel RON must parse: {parsed:?}");
+        let Ok(key) = parsed else {
+            return;
+        };
+        // Equal to the value the typed constructor produces for the same coords —
+        // the storey index flowed through Level → CellLevel::new, never a free z.
+        assert_eq!(
+            key,
+            CellLevel::new(Cell::new(7, 8), Level::new(3)),
+            "deserialized CellLevel must equal the typed-constructor result",
+        );
+        // And the inner key's z is exactly the constructed storey index (3), via
+        // the public Deref accessors — never a continuous height.
+        assert_eq!(key.x, 7);
+        assert_eq!(key.y, 8);
+        assert_eq!(key.z, 3);
     }
 }

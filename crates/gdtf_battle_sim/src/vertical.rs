@@ -32,6 +32,7 @@ use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::{Deref, Resource},
 };
+use serde::Deserialize;
 
 use crate::{
     metric::{CellLevel, MAX_LEVELS},
@@ -46,7 +47,9 @@ use crate::{
 /// reverse direction — not a bare boolean). `true` means one-way (forward only);
 /// `false` (the default) means bidirectional (climbed both up and down). Private
 /// inner + derived [`Deref`] (house style, matching `Aiming`/`Destroyed`).
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// `#[serde(transparent)]` lets an authored directionality parse as a bare boolean.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct OneWay(bool);
 
 impl OneWay {
@@ -85,8 +88,9 @@ impl OneWay {
 /// a link is **bidirectional** (a stair/ladder is climbed both up and down); a
 /// one-way link (e.g. a drop a ganger can descend but not climb back) is
 /// traversable only from its lower-listed endpoint to its higher-listed one (the
-/// authored `(from → to)` direction).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// authored `(from → to)` direction). Derives [`Deserialize`] so an authored
+/// situation names its links' kinds (`Stair`/`Ladder`) and one-way flags.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum LinkKind {
     /// A staircase between storeys.
     Stair {
@@ -137,8 +141,9 @@ impl LinkKind {
 /// [`CellLevel`] pair: [`from`](VerticalLink::from) is the authored departure
 /// `(cell, level)`, [`to`](VerticalLink::to) the authored arrival. For a
 /// bidirectional kind the link is traversable both ways; for a
-/// [`one-way`](LinkKind::is_one_way) kind only `from → to`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// [`one-way`](LinkKind::is_one_way) kind only `from → to`. Derives
+/// [`Deserialize`] so an authored situation names each link's two endpoints + kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub struct VerticalLink {
     /// The authored departure endpoint — `(cell, level_from)`.
     pub from: CellLevel,

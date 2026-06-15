@@ -53,7 +53,9 @@ use crate::{
 /// non-negative pool that depletes to zero (it never tracks below zero — at zero
 /// the cover is destroyed). Private inner + derived [`Deref`] (house style); a
 /// magnitude is per-object data (TBD tuning), not pinned here.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// `#[serde(transparent)]` lets an authored cover-HP parse as a bare integer.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
 pub struct CoverHp(u32);
 
 impl CoverHp {

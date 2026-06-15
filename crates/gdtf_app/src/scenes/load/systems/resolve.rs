@@ -5,9 +5,10 @@ use bevy::{
     prelude::*,
 };
 use gdtf_assets::RonAsset;
+use gdtf_battle_sim::situation::Situation;
 use gdtf_ui::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec, default_theme};
 
-use crate::scenes::load::resources::{FailedAssetPath, LoadFailed, LoadHandles};
+use crate::scenes::load::resources::{FailedAssetPath, LoadFailed, LoadHandles, LoadedSituation};
 
 /// Polls the in-flight loads and, once resolvable, inserts the [`GdtfTheme`].
 ///
@@ -36,6 +37,18 @@ use crate::scenes::load::resources::{FailedAssetPath, LoadFailed, LoadHandles};
 /// so the asset stays loaded for that watcher. Like [`GdtfTheme`], it persists
 /// past `OnExit(Load)` (it is **not** removed in `cleanup`).
 ///
+/// GTW-205 (E10.3): on the success path it ALSO resolves the authored
+/// [`Situation`] into a persistent [`LoadedSituation`] — the source the Generation
+/// slice (E10.5) reads. Once the situation RON reaches [`LoadState::Loaded`] it is
+/// read out of `Assets<RonAsset<Situation>>` (the same transient-one-frame
+/// `Assets::get` retry the theme path uses) and inserted as a [`LoadedSituation`]
+/// that, like [`GdtfTheme`], persists past `OnExit(Load)`. This is deliberately
+/// **non-blocking** to the theme: the situation resolution NEVER gates or alters
+/// the existing theme-only Load→Intro transition. A situation that has not (yet)
+/// reached `Loaded` simply leaves `LoadedSituation` un-inserted this pass and the
+/// theme still resolves — so a slow/failed situation can never strand the machine
+/// in `Load`.
+///
 /// Guarded entirely by `run_if(resource_exists::<LoadHandles>)` plus the
 /// `not(resource_exists::<GdtfTheme>)` gate in the plugin wiring, and takes
 /// `Res<AssetServer>`/`Res<Assets<_>>`/`Res<LoadHandles>` — all of which are
@@ -46,10 +59,11 @@ pub(in crate::scenes::load) fn poll_and_resolve(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
     theme_assets: Option<Res<Assets<RonAsset<GdtfThemeSpec>>>>,
+    situation_assets: Option<Res<Assets<RonAsset<Situation>>>>,
     handles: Option<Res<LoadHandles>>,
 ) {
-    let (Some(asset_server), Some(theme_assets), Some(handles)) =
-        (asset_server, theme_assets, handles)
+    let (Some(asset_server), Some(theme_assets), Some(situation_assets), Some(handles)) =
+        (asset_server, theme_assets, situation_assets, handles)
     else {
         return;
     };
@@ -84,6 +98,27 @@ pub(in crate::scenes::load) fn poll_and_resolve(
     if matches!(theme_state, LoadState::Loaded)
         && matches!(fonts_state, RecursiveDependencyLoadState::Loaded)
     {
+        // GTW-205 (E10.3): resolve the authored situation into the persistent
+        // LoadedSituation FIRST, on the same success pass. Once it has reached
+        // Loaded, read it out of its collection with the same transient-one-frame
+        // retry the theme uses (loaded-but-not-yet-in-collection → return, retry
+        // next frame). This is NON-BLOCKING to the theme: a situation that has not
+        // yet reached Loaded just leaves LoadedSituation un-inserted this pass — so
+        // it can never gate or alter the theme-only Load→Intro transition.
+        if matches!(
+            asset_server.load_state(&*handles.situation),
+            LoadState::Loaded
+        ) {
+            let Some(situation) = situation_assets.get(&*handles.situation) else {
+                // Loaded-but-not-yet-in-collection — retry next frame (the theme is
+                // not inserted yet, so the run-condition keeps this system alive).
+                return;
+            };
+            // Persist the resolved battlefield for the Generation consumer (E10.5);
+            // like GdtfTheme it survives OnExit(Load) (not removed in cleanup).
+            commands.insert_resource(LoadedSituation((**situation).clone()));
+        }
+
         let Some(spec) = theme_assets.get(&*handles.theme) else {
             // Loaded-but-not-yet-in-collection is a transient one-frame state;
             // try again next frame rather than failing.

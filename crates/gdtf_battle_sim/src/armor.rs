@@ -45,8 +45,10 @@ use serde::Deserialize;
 /// Formula step 2 clamps the resolved damage up to this: `dmg = max(floor, …)`.
 /// An `i32` to share the signed arithmetic of the formula (it is compared and
 /// `max`'d against the subtraction result). Private inner + derived [`Deref`]
-/// (house style); a magnitude is TBD tuning.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// (house style); a magnitude is TBD tuning. `#[serde(transparent)]` lets an
+/// authored floor parse as a bare integer.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
 pub struct ArmorFloor(i32);
 
 impl ArmorFloor {
@@ -64,7 +66,9 @@ impl ArmorFloor {
 /// it (`damage − max(0, protection − effPen)`), and step 3 wears the armor by
 /// `min(protection, damage)`. An `i32` for the signed `protection − effPen`
 /// subtraction. Private inner + derived [`Deref`]; a magnitude is TBD tuning.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// `#[serde(transparent)]` lets an authored protection parse as a bare integer.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
 pub struct ArmorProtection(i32);
 
 impl ArmorProtection {
@@ -84,7 +88,9 @@ impl ArmorProtection {
 /// derives [`DerefMut`] (the house rule: `DerefMut` only where the inner value is
 /// mutated through the newtype) and must track **below zero**, which is why the
 /// inner type is a *signed* `i32`. A magnitude is TBD tuning.
-#[derive(Deref, DerefMut, Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// `#[serde(transparent)]` lets an authored integrity parse as a bare integer.
+#[derive(Deref, DerefMut, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
 pub struct ArmorIntegrity(i32);
 
 impl ArmorIntegrity {
@@ -103,8 +109,10 @@ impl ArmorIntegrity {
 /// Per the doc, **hardness does not degrade** — shred attacks durability, not
 /// hardness — so this newtype is intentionally *immutable* through the worn copy
 /// (no [`DerefMut`]). An `i32` for the signed `punch − hardness` subtraction;
-/// a magnitude is TBD tuning.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// a magnitude is TBD tuning. `#[serde(transparent)]` lets an authored hardness
+/// parse as a bare integer.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
 pub struct ArmorHardness(i32);
 
 impl ArmorHardness {
@@ -233,8 +241,9 @@ impl ArmorType {
 /// [`ArmorType`]. This is the shared shape used both in the read-only roster
 /// [`SourceArmor`] record and in the battle-local [`WornArmor`] copy; battle wear
 /// mutates only the worn copy's [`ArmorIntegrity`] (the type and the other stats
-/// are immutable through the worn copy).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// are immutable through the worn copy). Derives [`Deserialize`] so an authored
+/// situation's roster armor names each piece by its five typed stats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub struct ArmorPiece {
     /// Minimum damage a landing hit deals through this piece.
     pub floor:      ArmorFloor,
@@ -278,10 +287,56 @@ impl ArmorPiece {
 /// to seed an owned [`WornArmor`] copy ([`WornArmor::seed_from`]). It is plain
 /// data (not a [`Component`]); the battle-local copy is the component the sim
 /// places on ganger entities.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// Deserializes through a per-body-part authoring shape ([`SourceArmorDef`]) that
+/// routes the six named pieces through [`SourceArmor::new`] — so an authored
+/// situation names each location (`head`, `torso`, …) on its own line rather than
+/// writing a bare positional array, keeping the inner `pieces` array private and
+/// the per-line-comment authoring convention readable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(from = "SourceArmorDef")]
 pub struct SourceArmor {
     /// The six per-location armor pieces, indexed by [`BodyPart::index`].
     pieces: [ArmorPiece; 6],
+}
+
+/// The authored RON shape a [`SourceArmor`] deserializes from — the six
+/// per-location [`ArmorPiece`]s as named fields, routed through
+/// [`SourceArmor::new`] in [`BodyPart::ALL`] order.
+///
+/// A serde intermediate (`#[serde(from = "SourceArmorDef")]` on [`SourceArmor`]) so
+/// an authored situation writes each body location's armor on its own
+/// self-describing, comment-annotated line (`head: (..)`, `torso: (..)`, …) rather
+/// than a bare positional 6-array — and the value still flows through the typed
+/// constructor, keeping the inner `pieces` array private (no-bare-types).
+#[derive(Deserialize)]
+pub struct SourceArmorDef {
+    /// The Head piece.
+    head:      ArmorPiece,
+    /// The Torso piece.
+    torso:     ArmorPiece,
+    /// The Left-Arm piece.
+    left_arm:  ArmorPiece,
+    /// The Right-Arm piece.
+    right_arm: ArmorPiece,
+    /// The Left-Leg piece.
+    left_leg:  ArmorPiece,
+    /// The Right-Leg piece.
+    right_leg: ArmorPiece,
+}
+
+impl From<SourceArmorDef> for SourceArmor {
+    fn from(def: SourceArmorDef) -> Self {
+        // BodyPart::ALL order: Head, Torso, L-Arm, R-Arm, L-Leg, R-Leg.
+        Self::new([
+            def.head,
+            def.torso,
+            def.left_arm,
+            def.right_arm,
+            def.left_leg,
+            def.right_leg,
+        ])
+    }
 }
 
 impl SourceArmor {

@@ -37,7 +37,8 @@
 //! [`VerticalLinkGraph`](crate::vertical::VerticalLinkGraph) (E1.10), returning [`InvalidVerticalLink`] if an authored
 //! link is bad (the no-panic contract).
 
-use bevy::{platform::collections::HashSet, prelude::Commands};
+use bevy::{platform::collections::HashSet, prelude::Commands, reflect::TypePath};
+use serde::Deserialize;
 
 use crate::{
     armor::{ArmorHardness, ArmorProtection, SourceArmor, WornArmor},
@@ -68,7 +69,11 @@ use crate::{
 /// [`Luck`]) carry `f32` magnitudes (no total order), so the authored ganger is
 /// `PartialEq` only. `(cell, level)`-keyed de-duplication ([`has_stacked_gangers`])
 /// hashes [`at`](GangerSpawn::at), never the whole struct.
-#[derive(Debug, Clone, Copy, PartialEq)]
+///
+/// Derives [`Deserialize`] so an authored situation `.ron` names each ganger's
+/// placement + every component VALUE + roster armor (the value graph all flows
+/// through the landed newtype/enum serde derives — render-free, pixel-free).
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct GangerSpawn {
     /// The `(cell, level)` the ganger spawns at — its [`Position`].
     pub at:         CellLevel,
@@ -110,7 +115,10 @@ pub struct GangerSpawn {
 /// [`OccupancyGrid`] terrain (its [`TerrainKind`]). Walls and scatter differ only
 /// in which [`Situation`] list they live in ([`walls`](Situation::walls) vs
 /// [`scatter`](Situation::scatter)) — the cover model treats them identically.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// Derives [`Deserialize`] so an authored situation `.ron` names each piece's
+/// `(cell, level)` + terrain kind + cover-HP + height band + armor stats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub struct CoverSpawn {
     /// The `(cell, level)` this cover occupies.
     pub at:               CellLevel,
@@ -169,9 +177,21 @@ impl CoverSpawn {
 /// This is the ONE situation type: it supersedes the GTW-156 placeholder (now
 /// [`crate::occupancy::OccupancyInput`], the grid construction input) and GTW-160's
 /// `vertical_links` extension (moved here). [`setup_battle`] reads it to build the
-/// battle in the ECS world. The in-test fixture stands in for the eventual `.ron`
-/// asset loader (GTW-15 / GTW-43) — no asset format is defined here.
-#[derive(Debug, Clone, Default)]
+/// battle in the ECS world.
+///
+/// Derives [`Deserialize`] (GTW-205 / E10.3) so an authored battlefield ships as a
+/// loose `.ron` file loaded through the [`RonAsset<T>`](gdtf_assets::RonAsset)
+/// loader — render-free and pixel-free, the whole value graph routed through the
+/// landed newtype/enum serde derives. `#[serde(default)]` on each list lets an
+/// authored file omit a section it does not use (an empty battlefield deserializes
+/// from `()`), matching the [`Default`] empty situation. The in-test fixture is a
+/// test helper; the shipped `.ron` source is the real input.
+///
+/// Derives [`TypePath`] (render-free reflection metadata, no rendering) because the
+/// [`RonAsset<Situation>`](gdtf_assets::RonAsset) the loader wraps it in requires
+/// its payload to be [`TypePath`] — the same bound the theme spec satisfies.
+#[derive(Debug, Clone, Default, Deserialize, TypePath)]
+#[serde(default)]
 pub struct Situation {
     /// The authored gangers, each a [`GangerSpawn`] (placement + component values +
     /// roster armor).
@@ -892,5 +912,212 @@ mod tests {
             !has_stacked_gangers(&clean),
             "distinct ganger cells do not stack",
         );
+    }
+
+    // --- GTW-205 / E10.3: the Situation value graph is serde-deserializable, and
+    // the SHIPPED authored file parses + drives the real setup path. The tests are
+    // value-AGNOSTIC on tunables — they assert structural relations (counts,
+    // distinct factions, Ok), never a pinned hp/tu/armor magnitude (those are
+    // authored data, not pinned by the test).
+
+    /// The shipped authored situation file, read at compile time via the same
+    /// `include_str!` pattern `tuning.rs` uses for the shipped `tuning.ron` — the
+    /// REAL on-disk path (`assets/situations/skirmish.ron`), so a regression in the
+    /// authored file turns these tests red.
+    const SHIPPED_SITUATION_RON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/situations/skirmish.ron"
+    ));
+
+    /// GTW-205 AC1 — an inline RON `Situation` containing ≥1 ganger, ≥1 wall, ≥1
+    /// scatter piece, ≥1 slab, and ≥1 vertical link deserializes to `Ok`, and the
+    /// resulting value's list lengths equal the authored counts. Count-equality, not
+    /// a tunable magnitude — proving the whole spawn-struct value graph is
+    /// serde-deserializable through the landed newtype/enum derives.
+    #[test]
+    fn situation_deserializes_from_inline_ron_with_each_section() {
+        // A minimal-but-complete authored situation: one of every section. The
+        // single vertical link's endpoints are authored slabs on different storeys
+        // (non-dangling, cross-storey), so the value is setup-able.
+        let authored = "(
+            gangers: [(
+                at: (cell: (x: 0, y: 0), level: 0),
+                faction: 0, facing: North, stance: Standing, aiming: false,
+                hp: 10, wounds: 2, tu: 30, life_state: Alive,
+                shooting: 1.0, toughness: 1.0, luck: 0.0,
+                armor: (
+                    head:      (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
+                    torso:     (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
+                    left_arm:  (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
+                    right_arm: (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
+                    left_leg:  (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
+                    right_leg: (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
+                ),
+            )],
+            walls: [(
+                at: (cell: (x: 1, y: 1), level: 0), terrain: Wall, cover_hp: 50,
+                height_band: High, armor_protection: 4, armor_hardness: 2,
+            )],
+            scatter: [(
+                at: (cell: (x: 2, y: 2), level: 0), terrain: Cover, cover_hp: 10,
+                height_band: Low, armor_protection: 1, armor_hardness: 0,
+            )],
+            slabs: [
+                (cell: (x: 3, y: 3), level: 0),
+                (cell: (x: 3, y: 3), level: 1),
+            ],
+            vertical_links: [(
+                from: (cell: (x: 3, y: 3), level: 0),
+                to: (cell: (x: 3, y: 3), level: 1),
+                kind: Stair(one_way: false),
+            )],
+        )";
+
+        let parsed = ron::de::from_str::<Situation>(authored);
+        assert!(
+            parsed.is_ok(),
+            "inline Situation RON must parse: {parsed:?}"
+        );
+        let Ok(situation) = parsed else {
+            return;
+        };
+        // Count-equality with the authored sections — never a magnitude.
+        assert_eq!(situation.gangers.len(), 1, "one authored ganger");
+        assert_eq!(situation.walls.len(), 1, "one authored wall");
+        assert_eq!(situation.scatter.len(), 1, "one authored scatter piece");
+        assert_eq!(situation.slabs.len(), 2, "two authored slabs");
+        assert_eq!(
+            situation.vertical_links.len(),
+            1,
+            "one authored vertical link",
+        );
+    }
+
+    /// Parse the shipped `assets/situations/skirmish.ron` into a `Situation`, once,
+    /// for the AC3/AC4 tests — or assert-fail and return `None` (keeping the tests
+    /// free of `unwrap`/`expect`/`panic`, all denied in tests too).
+    fn shipped_situation() -> Option<Situation> {
+        let parsed = ron::de::from_str::<Situation>(SHIPPED_SITUATION_RON);
+        assert!(
+            parsed.is_ok(),
+            "shipped assets/situations/skirmish.ron must deserialize into Situation: {parsed:?}",
+        );
+        parsed.ok()
+    }
+
+    /// GTW-205 AC3 — the shipped situation file parses back into a `Situation`
+    /// (value-agnostic round-trip). Asserts only STRUCTURAL relations: gangers
+    /// non-empty, ≥2 distinct factions present, ≥1 wall, ≥1 scatter, ≥1 slab, ≥1
+    /// vertical link — NEVER a specific hp/tu/armor magnitude (authored data, not
+    /// pinned by the test).
+    #[test]
+    fn shipped_situation_ron_deserializes_with_required_structure() {
+        let Some(situation) = shipped_situation() else {
+            return;
+        };
+
+        assert!(
+            !situation.gangers.is_empty(),
+            "the shipped file must author at least one ganger",
+        );
+        // ≥2 distinct factions present (two gangs face off).
+        let distinct_factions: HashSet<_> = situation.gangers.iter().map(|g| g.faction).collect();
+        assert!(
+            distinct_factions.len() >= 2,
+            "the shipped file must author at least two distinct factions, found {}",
+            distinct_factions.len(),
+        );
+        assert!(
+            !situation.walls.is_empty(),
+            "the shipped file must author at least one wall",
+        );
+        assert!(
+            !situation.scatter.is_empty(),
+            "the shipped file must author at least one scatter piece",
+        );
+        assert!(
+            !situation.slabs.is_empty(),
+            "the shipped file must author at least one slab",
+        );
+        assert!(
+            !situation.vertical_links.is_empty(),
+            "the shipped file must author at least one vertical link",
+        );
+    }
+
+    /// GTW-205 AC4 — the shipped file's vertical links validate (non-dangling /
+    /// cross-storey), proving it is a setup-able situation. Deserialize the shipped
+    /// file, run `setup_battle` on a `MinimalPlugins` app via the existing
+    /// `run_setup` harness, and assert it returns `Ok(BattleSetup)` with
+    /// `ganger_count()` equal to the authored ganger count AND exactly that many
+    /// `WornArmor`-carrying entities in the world. Count-equality + Ok — proving the
+    /// links are non-dangling/cross-storey and the file drives the real setup path.
+    #[test]
+    fn shipped_situation_ron_drives_the_real_setup_path() {
+        let Some(situation) = shipped_situation() else {
+            return;
+        };
+        let authored_ganger_count = situation.gangers.len();
+
+        let Some((mut app, setup)) = run_setup(situation) else {
+            return;
+        };
+
+        assert_eq!(
+            setup.ganger_count(),
+            authored_ganger_count,
+            "setup must spawn exactly the authored ganger count from the shipped file",
+        );
+        // Exactly that many entities carry the seeded worn armor — proving the file
+        // poured through the real spawn path (and that the vertical links validated,
+        // since setup aborts before spawning on a bad link).
+        let world: &mut World = app.world_mut();
+        let mut query = world.query::<&WornArmor>();
+        assert_eq!(
+            query.iter(world).count(),
+            authored_ganger_count,
+            "the world must hold exactly the authored ganger count of WornArmor entities",
+        );
+    }
+
+    /// GTW-205 AC5 — every value-bearing field in the authored `.ron` carries a
+    /// per-line explanatory comment (the tuning `.ron` convention). Reads the shipped
+    /// file text and asserts that every line carrying an authored LEAF value (a
+    /// scalar/variant field or a list element) also carries a `//` annotation. This
+    /// guards the canon-comment convention without pinning any value.
+    #[test]
+    fn shipped_situation_ron_is_per_line_commented() {
+        for raw in SHIPPED_SITUATION_RON.lines() {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            // A full-line comment (header / section banner) is fine as-is.
+            if trimmed.starts_with("//") {
+                continue;
+            }
+            // Split off any trailing comment; the code portion is what precedes `//`.
+            let code = trimmed.split("//").next().unwrap_or("").trim();
+            if code.is_empty() {
+                continue;
+            }
+            // A line that only OPENS or CLOSES a block (its code ends with a bare
+            // bracket, e.g. `gangers: [`, `armor: (`, `(`, `),`, `],`) is structural:
+            // the section-comment banner above it documents the block, so it needs no
+            // per-line annotation. Every other code line carries an authored LEAF
+            // value and MUST be annotated.
+            let opens_block = code.ends_with('(') || code.ends_with('[') || code.ends_with('{');
+            let closes_block = code
+                .chars()
+                .all(|c| matches!(c, '(' | ')' | '[' | ']' | '{' | '}' | ','));
+            if opens_block || closes_block {
+                continue;
+            }
+            // A value-bearing leaf line: it MUST carry a `//` annotation somewhere.
+            assert!(
+                trimmed.contains("//"),
+                "every value-bearing line must carry a `//` comment; bare line: {trimmed:?}",
+            );
+        }
     }
 }

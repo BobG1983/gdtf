@@ -17,7 +17,8 @@ pub use gdtf_ui::UiPlugin;
 
 pub use crate::{
     scenes::{
-        BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton, ScenesPlugin,
+        BattlescapeButton, HiveScapeButton, LoadedSituation, MenuTitle, OptionsButton, QuitButton,
+        ScenesPlugin,
     },
     states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };

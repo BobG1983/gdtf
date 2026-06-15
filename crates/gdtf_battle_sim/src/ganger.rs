@@ -23,6 +23,7 @@ use bevy::{
     math::Vec3,
     prelude::{Component, Deref},
 };
+use serde::Deserialize;
 
 use crate::metric::CellLevel;
 
@@ -56,7 +57,7 @@ impl Position {
 /// drives the per-facing barrel offset and the faced cell tested for the bracing
 /// bonus (resolution.md §1). Eight discrete directions, not a continuous angle —
 /// the coarse model reasons in grid steps.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum Direction {
     /// Toward −Y.
     #[default]
@@ -112,8 +113,10 @@ impl Direction {
 ///
 /// A distinct component so a turn/LOS system can query `&Facing` alone. Defaults
 /// to [`Direction::North`] (a structural spawn default — the canonical "facing up
-/// the grid" orientation, not a balance value).
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// the grid" orientation, not a balance value). `#[serde(transparent)]` lets an
+/// authored facing parse as the bare [`Direction`] variant.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Facing(Direction);
 
 impl Facing {
@@ -134,7 +137,7 @@ impl Facing {
 /// (resolution.md §1: "prone 40 / kneel 25 / stand 10"; §4 stance reshapes the
 /// bands). `Crouching` is the doc's "kneel" posture. Named domain kinds, not a
 /// bare integer.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum StanceKind {
     /// Upright — full stability gate, full silhouette (the doc's "stand").
     #[default]
@@ -149,8 +152,10 @@ pub enum StanceKind {
 ///
 /// A distinct component so a stability / clearance system can query `&Stance`
 /// alone. Defaults to [`StanceKind::Standing`] (the structural spawn posture, not
-/// a tunable).
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// a tunable). `#[serde(transparent)]` lets an authored stance parse as the bare
+/// [`StanceKind`] variant.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Stance(StanceKind);
 
 impl Stance {
@@ -170,7 +175,9 @@ impl Stance {
 /// (×0.6) at a TU premium, hip-fired does not. A distinct component so a shot /
 /// HUD system can query `&Aiming` alone. Defaults to `false` (hip-fired — a fresh
 /// ganger is not aiming; a structural default, not a balance value).
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// `#[serde(transparent)]` lets an authored aim-mode parse as a bare boolean.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Aiming(bool);
 
 impl Aiming {
@@ -191,7 +198,9 @@ impl Aiming {
 /// targeting and the friendly-fire path (resolution.md §2: "any other actor in
 /// the path — including your own gang"). A distinct component so a targeting
 /// system can query `&Faction` alone. Defaults to gang `0`.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// `#[serde(transparent)]` lets an authored gang index parse as a bare integer.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Faction(u8);
 
 impl Faction {
@@ -210,8 +219,10 @@ impl Faction {
 /// HP is the knock-down pool: damage depletes it and `HP ≤ 0` **downs** the
 /// ganger (never kills directly — that is [`Wounds`]). A `u16` count
 /// (stats.md "raw in-battle damage pool"). A distinct component so a damage
-/// system can query `&mut Hp` alone. Defaults to `0`.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// system can query `&mut Hp` alone. Defaults to `0`. `#[serde(transparent)]`
+/// lets an authored HP pool parse as a bare integer.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Hp(u16);
 
 impl Hp {
@@ -231,7 +242,9 @@ impl Hp {
 /// by injury severity, and emptying it is death — even at full [`Hp`]
 /// (wounds-and-roster.md). A `u8` count (the pool is tiny). A distinct component
 /// so the wound / bleed-out path can query `&mut Wounds` alone. Defaults to `0`.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// `#[serde(transparent)]` lets an authored Wounds pool parse as a bare integer.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Wounds(u8);
 
 impl Wounds {
@@ -250,8 +263,10 @@ impl Wounds {
 /// Every action (step, turn, shot, kneel) spends from this pool, and leftover TU
 /// fuels reaction fire on the enemy turn (combat.md / stats.md TU economy). A
 /// `u8` budget. A distinct component so the action-economy system can query
-/// `&mut Tu` alone. Defaults to `0`.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// `&mut Tu` alone. Defaults to `0`. `#[serde(transparent)]` lets an authored TU
+/// budget parse as a bare integer.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Tu(u8);
 
 impl Tu {
@@ -308,7 +323,9 @@ impl TuMax {
 /// **zero pixels**. Private inner + derived [`Deref`]. The roster-side derivation
 /// from attributes is campaign scope; this slice carries the value. A distinct
 /// component so a shot system can query `&Shooting` alone. Defaults to `0.0`.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+/// `#[serde(transparent)]` lets an authored Shooting stat parse as a bare scalar.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Shooting(f32);
 
 impl Shooting {
@@ -335,8 +352,10 @@ impl Shooting {
 /// [`crate::tuning::ToughnessMitigation`] (the `k` coefficient that scales it). A
 /// domain stat value (no-bare-types), dimensionless — **zero pixels**, a private
 /// inner with a derived [`Deref`]. A distinct component so the severity path (E3.4)
-/// can query `&Toughness` alone. Defaults to `0.0`.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+/// can query `&Toughness` alone. Defaults to `0.0`. `#[serde(transparent)]` lets
+/// an authored Toughness stat parse as a bare scalar.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Toughness(f32);
 
 impl Toughness {
@@ -364,7 +383,9 @@ impl Toughness {
 /// [`crate::tuning::DefenderLuckScale`]. A domain stat value (no-bare-types),
 /// dimensionless — **zero pixels**. Private inner + derived [`Deref`]. A distinct
 /// component so the severity path can query `&Luck` alone. Defaults to `0.0`.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+/// `#[serde(transparent)]` lets an authored Luck stat parse as a bare scalar.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[serde(transparent)]
 pub struct Luck(f32);
 
 impl Luck {
@@ -387,7 +408,7 @@ impl Luck {
 /// occupancy updates in E1.7 (a corpse / downed body frees or holds its cell
 /// differently). A standalone named enum component (wounds-and-roster.md state
 /// machine). Defaults to [`Alive`](LifeState::Alive).
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum LifeState {
     /// Up and fighting — full agency.
     #[default]

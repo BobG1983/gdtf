@@ -10,6 +10,7 @@
 
 use bevy::{asset::LoadedFolder, prelude::*};
 use gdtf_assets::RonAsset;
+use gdtf_battle_sim::situation::Situation;
 use gdtf_ui::theme::GdtfThemeSpec;
 
 /// Typed handle to the in-flight theme RON asset (`theme/grimdark.ron`).
@@ -31,18 +32,50 @@ pub(in crate::scenes::load) struct ThemeHandle(pub Handle<RonAsset<GdtfThemeSpec
 #[derive(Deref, Clone, Debug)]
 pub(in crate::scenes::load) struct FontFolderHandle(pub Handle<LoadedFolder>);
 
+/// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
+///
+/// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
+/// for asset plumbing: a bare `Handle<RonAsset<Situation>>` carries no domain
+/// meaning, this name says "the authored battlefield being loaded" (GTW-205 /
+/// E10.3). The poll/resolve system reads it to check the load's progress, then
+/// resolves it into the persistent [`LoadedSituation`].
+#[derive(Deref, Clone, Debug)]
+pub(in crate::scenes::load) struct SituationHandle(pub Handle<RonAsset<Situation>>);
+
 /// The Load-scoped handles to the assets the [`AppState::Load`](crate::states::AppState::Load)
 /// kick-off started loading.
 ///
-/// Holds the typed [`ThemeHandle`] and [`FontFolderHandle`] the poll/resolve
-/// system reads each frame to check load progress. Inserted `OnEnter(Load)` and
-/// removed `OnExit(Load)` (it has no meaning outside `Load`).
+/// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], and [`SituationHandle`]
+/// the poll/resolve system reads each frame to check load progress. Inserted
+/// `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning outside `Load`).
 #[derive(Resource, Clone, Debug)]
 pub(in crate::scenes::load) struct LoadHandles {
     /// The theme RON asset being loaded.
-    pub theme: ThemeHandle,
+    pub theme:     ThemeHandle,
     /// The fonts folder being preloaded (all fonts up front).
-    pub fonts: FontFolderHandle,
+    pub fonts:     FontFolderHandle,
+    /// The authored situation RON asset being loaded (GTW-205 / E10.3).
+    pub situation: SituationHandle,
+}
+
+crate::support_item! {
+    /// The resolved authored battlefield — the persistent [`Situation`] resource the
+    /// later Generation slice (E10.5) reads on `BattleScapeState::Generation`.
+    ///
+    /// A named newtype over [`Situation`] (no-bare-types) that [`Deref`]s to it, so a
+    /// consumer reads the situation's fields straight through. The poll/resolve system
+    /// inserts it once the loaded `RonAsset<Situation>` resolves, and — like
+    /// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) and
+    /// [`ActiveThemeHandle`](gdtf_ui::theme::ActiveThemeHandle) — it is the deliberate
+    /// exception that **persists** past `OnExit(Load)` (it is **not** removed in
+    /// `cleanup`), so the authored battlefield outlives `Load` for the Generation
+    /// consumer (bevy-traps rule 1: a state-scoped-exception resource).
+    ///
+    /// Declared through [`crate::support_item!`] so it is `pub` under `test-support`
+    /// (the AC7 real-asset harness names it) and `pub(crate)` in the binary build
+    /// (E10.5 consumes it in-crate) — keeping the binary `unreachable_pub`-clean.
+    #[derive(Resource, Deref, Clone, Debug)]
+    struct LoadedSituation(pub Situation);
 }
 
 /// The loose-asset path of a load that reached

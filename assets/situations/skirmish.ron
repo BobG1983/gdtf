@@ -1,0 +1,106 @@
+// GDTF authored situation — "skirmish": a small, valid battlefield the setup pours
+// into the battle ECS (GTW-205 / E10.3). This is AUTHORED CONTENT (a generated /
+// hand-built battlefield), not balance tuning: gangers, cover, slabs, and the
+// stair/ladder vertical links that are the only way a ganger changes storey. It
+// loads as a loose `.ron` through the RonAsset<Situation> loader, exactly like the
+// theme. Render-free, pixel-free: positions are (cell, level) keys (x/y cells, a
+// storey index), never pixels. Each line says what it authors — edit freely.
+(
+    // The authored gangers — two gangs (faction 0 and faction 1) facing off. Each
+    // carries its full battle-state component VALUES + a six-piece roster armor
+    // record (seeded into the battle-local WornArmor at setup). Magnitudes here are
+    // per-ganger DATA (a generated roster), not pinned tuning.
+    gangers: [
+        // --- Gang 0: a standing rifleman on the ground floor, facing east. ---
+        (
+            at:         (cell: (x: 5, y: 6), level: 0),  // (cell, level) it spawns at — its Position
+            faction:    0,            // gang identity — gang 0 (one of the two sides)
+            facing:     East,         // which of the 8 grid directions it faces
+            stance:     Standing,     // posture — upright (full silhouette, full stability gate)
+            aiming:     false,        // aim-mode flag — hip-firing, not aimed
+            hp:         40,           // hit-points pool — the knock-down pool
+            wounds:     3,            // Wounds (life) pool — emptying it is death
+            tu:         60,           // Time-Unit budget — the per-turn action pool
+            life_state: Alive,        // terminal life state — up and fighting
+            shooting:   4.0,          // Shooting stat — ranged-to-hit skill (feeds shot concentration)
+            toughness:  3.0,          // Toughness — defender's severity-roll mitigation
+            luck:       1.0,          // Luck — directional fortune shaping the severity roll's tail
+            // Roster armor, one named piece per body location. Each piece:
+            // (floor, protection, integrity, hardness, armor_type). Magnitudes are
+            // per-piece DATA, not tuning.
+            armor:      (
+                head:      (floor: 1, protection: 6, integrity: 20, hardness: 3, armor_type: Flak),  // Head piece
+                torso:     (floor: 1, protection: 8, integrity: 30, hardness: 3, armor_type: Flak),  // Torso piece
+                left_arm:  (floor: 0, protection: 4, integrity: 15, hardness: 2, armor_type: Flak),  // Left-arm piece
+                right_arm: (floor: 0, protection: 4, integrity: 15, hardness: 2, armor_type: Flak),  // Right-arm piece
+                left_leg:  (floor: 0, protection: 5, integrity: 18, hardness: 2, armor_type: Flak),  // Left-leg piece
+                right_leg: (floor: 0, protection: 5, integrity: 18, hardness: 2, armor_type: Flak),  // Right-leg piece
+            ),
+        ),
+        // --- Gang 1: a crouching defender across the floor, facing west. ---
+        (
+            at:         (cell: (x: 12, y: 9), level: 0),  // (cell, level) it spawns at
+            faction:    1,            // gang identity — gang 1 (the opposing side)
+            facing:     West,         // faces back toward gang 0
+            stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)
+            aiming:     true,         // aim-mode flag — aimed shot (narrows the cone at a TU premium)
+            hp:         36,           // hit-points pool
+            wounds:     3,            // Wounds (life) pool
+            tu:         58,           // Time-Unit budget
+            life_state: Alive,        // terminal life state — up and fighting
+            shooting:   5.0,          // Shooting stat
+            toughness:  4.0,          // Toughness
+            luck:       2.0,          // Luck
+            armor:      (
+                head:      (floor: 1, protection: 7, integrity: 22, hardness: 4, armor_type: Plated),  // Head piece
+                torso:     (floor: 1, protection: 9, integrity: 32, hardness: 4, armor_type: Plated),  // Torso piece
+                left_arm:  (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Left-arm piece
+                right_arm: (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Right-arm piece
+                left_leg:  (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Left-leg piece
+                right_leg: (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Right-leg piece
+            ),
+        ),
+    ],
+    // The authored walls — solid fixed geometry on the ground floor. Each is a
+    // CoverSpawn: (cell, level), terrain kind, structural HP, height band, and the
+    // cover's own armor stats (same armor model as a ganger).
+    walls: [
+        (
+            at:               (cell: (x: 8, y: 7), level: 0),  // the wall's (cell, level)
+            terrain:          Wall,   // terrain kind — a wall (solid, blocking)
+            cover_hp:         120,    // structural HP — how much it soaks before it is destroyed
+            height_band:      High,   // clearance band — a tall wall (nothing flies strictly higher in-storey)
+            armor_protection: 8,      // the wall's damage-reduction stat
+            armor_hardness:   4,      // the penetration the wall shrugs off
+        ),
+    ],
+    // The authored scatter / props — the SAME schema as a wall, just lighter cover.
+    scatter: [
+        (
+            at:               (cell: (x: 9, y: 8), level: 0),  // the prop's (cell, level)
+            terrain:          Cover,  // terrain kind — a piece of cover (blocking while it stands)
+            cover_hp:         30,     // structural HP — a flimsier prop
+            height_band:      Low,    // clearance band — low cover (a round clears it by flying MID or HIGH)
+            armor_protection: 2,      // the prop's damage-reduction stat
+            armor_hardness:   1,      // the penetration the prop shrugs off
+        ),
+    ],
+    // The authored floor / roof slabs — the (cell, level)s that carry a present slab.
+    // Two stacked slabs at the same cell on adjacent storeys give the vertical link
+    // below two non-dangling endpoints to connect (it is the only way to change storey).
+    slabs: [
+        (cell: (x: 2, y: 2), level: 0),  // ground-floor slab — the stair's lower endpoint
+        (cell: (x: 2, y: 2), level: 1),  // first-floor slab — the stair's upper endpoint
+    ],
+    // The authored stair / ladder vertical links — the ONLY way a ganger changes
+    // storey. Each: two (cell, level) endpoints + a kind. Both endpoints below are
+    // authored slabs (non-dangling) on DIFFERENT storeys (cross-storey), so the link
+    // validates and the file drives the real setup path.
+    vertical_links: [
+        (
+            from: (cell: (x: 2, y: 2), level: 0),       // departure endpoint — the ground-floor slab
+            to:   (cell: (x: 2, y: 2), level: 1),       // arrival endpoint — the first-floor slab
+            kind: Stair(one_way: false),                 // a normal, bidirectional staircase
+        ),
+    ],
+)
