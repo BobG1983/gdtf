@@ -27,6 +27,14 @@
 //!   [`metric::Level`]) one unit step along the facing (same storey). The cell whose
 //!   cover the §1a brace gate (E4.3) reads; composes only the [`metric`] sim-unit
 //!   conversions — render-free, no `World`, zero pixels.
+//! - [`aim`] — the E4.3 §1a composers [`aim::stability_for`] / [`aim::cone_for`]:
+//!   the shared HUD + `fire()` methods that compose the stability read and
+//!   dispersion-cone WIDTH off a shooter's ganger state ([`aim::Shooter`] bundle)
+//!   and the MODEL [`cover::CoverLedger`] (peeked at the E4.2 faced cell, never
+//!   rebuilt). They WRAP the landed E2 [`stability`] / [`cone`] pipeline verbatim;
+//!   the weapon-intrinsic [`stability::WeaponStability`] contribution is a
+//!   caller-supplied input pending a `Weapon`-field ticket. Angular / dimensionless,
+//!   zero pixels.
 //! - [`posture`] — the E4.1 posture / orientation verbs over the landed ganger
 //!   components: [`posture::set_aiming`] (a pure aim-flag setter — charges NO TU; the
 //!   aim cost is the fire-time ×1.5 premium, resolution.md §1a), [`posture::set_stance`]
@@ -87,6 +95,7 @@
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
 
+pub mod aim;
 pub mod apply_hit;
 pub mod armor;
 pub mod armor_wear;
@@ -119,6 +128,7 @@ pub mod tuning;
 pub mod vertical;
 pub mod weapon;
 
+pub use aim::{Shooter, cone_for, stability_for};
 pub use apply_hit::{GangerHitTarget, apply_hit};
 pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
