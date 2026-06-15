@@ -132,6 +132,23 @@
 //! dimensionless — zero pixels. See `docs/combat/resolution.md` §1a + "What's pure
 //! math vs sim" line 148, and `docs/combat/battle-space.md` §"Banding".
 //!
+//! E2.3 ([`cone`]) builds the §1a **cone-size** calculation on the E2.1/E2.2
+//! substrate: [`cone::cone_angle`] returns the named [`cone::ConeAngle`] (radians)
+//! as the PRODUCT of the five multiplicative factors `base_spread × stability ×
+//! aim × firemode × recoil` (resolution.md §1a; "What's pure math vs sim" line
+//! 147). `stability` is the E2.2 [`stability::ConeMult`] (steadier < 1); `aim` is
+//! the Aim-Mode multiplier ([`tuning::AimConeMult`], ×0.6 aimed / 1 hip-fired)
+//! selected from [`tuning::AimMode`] by the ganger's [`ganger::Aiming`] flag via
+//! [`cone::aim_cone_mult`]; `firemode` is the per-mode [`weapon::ModeConeMult`]
+//! read off the weapon's [`weapon::FireMode`]; and `recoil = 1 +
+//! `[`cone::PriorShots`]` × kickback` (the first round → ×1) via
+//! [`cone::recoil_factor`], with `kickback` from the weapon. This is the cone
+//! WIDTH only (the §1b in-cone sample is E2.5). Because the factors multiply,
+//! bracing tightens PROPORTIONALLY — a steadier stability shrinks a sloppy weapon
+//! by more absolute angle than a tight one. Angular / dimensionless — zero pixels;
+//! no cone-factor magnitude is hardcoded (every term reads from weapon / tuning
+//! data). See `docs/combat/resolution.md` §1a.
+//!
 //! E2.8 ([`hit_location`]) builds the §4 **weighted hit-location roll**:
 //! [`hit_location::roll_body_part`] picks one of the six [`armor::BodyPart`]s by a
 //! weighted draw over the EXISTING tuning [`tuning::BodyPartWeights`] (consumed,
@@ -145,6 +162,7 @@
 //! distribution-test discipline (ORDERING, never magnitudes).
 
 pub mod armor;
+pub mod cone;
 pub mod cover;
 pub mod ganger;
 pub mod hit_location;
@@ -163,6 +181,7 @@ pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BodyPart, SourceArmor,
     WornArmor,
 };
+pub use cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor};
 pub use cover::{
     BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,
     band_for,

@@ -239,6 +239,24 @@ pub struct StabilityCurveCoord(f32);
 #[serde(transparent)]
 pub struct AimConeMult(f32);
 
+impl AimConeMult {
+    /// Build an aim-mode cone multiplier from its magnitude (a dimensionless
+    /// angular scale).
+    #[must_use]
+    pub const fn new(mult: f32) -> Self {
+        Self(mult)
+    }
+
+    /// The **hip-fired** aim multiplier — the identity `1.0` (resolution.md §1a:
+    /// "hip-fired = 1"). The `aim` term when the shooter is not aiming, so it
+    /// leaves `θ_cone` unchanged. Not a tunable magnitude — the multiplicative
+    /// identity, so a hip-fired shot is exactly the un-narrowed cone.
+    #[must_use]
+    pub const fn hip_fired() -> Self {
+        Self(1.0)
+    }
+}
+
 /// The **aim-mode TU premium** — the multiplier on a shot's TU cost when aiming
 /// (resolution.md §1a: "the tradeoff is TU (×1.5 shot cost)"). The cost lever
 /// against the ×0.6 cone narrowing.
