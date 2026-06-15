@@ -52,12 +52,27 @@
 //! [`occupancy::OccupancyGrid::is_blocked`]. This is the occupancy grid's OWN
 //! exclusion set, distinct from [`cover::CoverLedger`] (GTW-157 syncs them). See
 //! `docs/architecture.md`'s "coarse occupancy" + `battle-space.md`.
+//!
+//! E1.7 ([`occupancy_sync`]) adds the **change-driven** maintenance layer for the
+//! [`occupancy::OccupancyGrid`]: three focused Bevy systems that edit the grid IN
+//! PLACE (never a per-shot rebuild — `docs/architecture.md`'s "change-driven grid
+//! maintenance", the GTW-6 / GTW-12 ruling). [`occupancy_sync::sync_moved_gangers`]
+//! reacts to `Changed<`[`ganger::Position`]`>` (tracking the prior slot in a
+//! [`occupancy_sync::PrevSlot`] component) to clear the OLD slot and mark the NEW;
+//! [`occupancy_sync::sync_dead_gangers`] reacts to `Changed<`[`ganger::LifeState`]`>`
+//! to free a downed / dead ganger's slot; [`occupancy_sync::sync_destroyed_cover`]
+//! reads the buffered [`occupancy_sync::CoverDestroyed`] **message** (Bevy 0.18
+//! messages, not the observer `Event` API) into the grid's destroyed-cover set.
+//! [`occupancy_sync::OccupancyMaintenancePlugin`] is the registration unit (the
+//! three chained systems + the message buffer); the app adds it when the sim is
+//! wired into the runtime (E1.8 / E5), which is out of scope here.
 
 pub mod armor;
 pub mod cover;
 pub mod ganger;
 pub mod metric;
 pub mod occupancy;
+pub mod occupancy_sync;
 pub mod surface;
 pub mod tuning;
 
@@ -76,6 +91,10 @@ pub use metric::{BattlePx, CELL_PITCH_PX, Cell, CellLevel, Level, MAX_LEVELS, Z_
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancySlot, OccupantPlacement,
     Situation, TerrainKind, TerrainPlacement,
+};
+pub use occupancy_sync::{
+    CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
+    sync_moved_gangers,
 };
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{

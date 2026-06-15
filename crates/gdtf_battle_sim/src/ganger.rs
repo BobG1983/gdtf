@@ -33,6 +33,19 @@ use crate::metric::CellLevel;
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Position(CellLevel);
 
+impl Position {
+    /// Build a ganger position from the `(cell, level)` key it occupies.
+    ///
+    /// The one public constructor for the position component (private inner +
+    /// constructor, the crate's newtype house style) — the move verbs and the
+    /// occupancy-maintenance systems (E1.7) build a `Position` through this rather
+    /// than reaching the private field.
+    #[must_use]
+    pub const fn new(at: CellLevel) -> Self {
+        Self(at)
+    }
+}
+
 /// One of the eight grid facings a ganger can turn to face.
 ///
 /// The square grid's 8-way compass (cardinals + diagonals): a ganger turns in
