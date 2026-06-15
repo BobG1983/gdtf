@@ -17,6 +17,11 @@
 //!   [`metric::cell_center`] / [`metric::pos_to_cell`]).
 //! - [`tuning`] — the [`tuning::CombatTuning`] resource: every balance
 //!   coefficient, serde-loaded from `assets/combat/tuning.ron`.
+//! - [`tu`] — the TU-economy primitives the E4 acts spend through:
+//!   [`tu::can_spend_tu`] / [`tu::spend_tu`] (saturating) / [`tu::reset_tu`] over a
+//!   ganger's [`ganger::Tu`] (current pool) and [`ganger::TuMax`] (round-start max —
+//!   the denominator of GTW-38's `TU_left / TU_max` reaction ratio). Pure math, no
+//!   `World` access; the COST magnitudes are tuning sourced by later E4 slices.
 //! - [`ganger`] — per-field ganger battle-state components (including the
 //!   [`ganger::Stabilized`] bleed-out flag, owned here from E3.7); [`armor`] —
 //!   armor stats + the battle-local [`armor::WornArmor`]; [`armor_wear`] —
@@ -95,6 +100,7 @@ pub mod severity;
 pub mod situation;
 pub mod stability;
 pub mod surface;
+pub mod tu;
 pub mod tuning;
 pub mod vertical;
 pub mod weapon;
@@ -119,7 +125,7 @@ pub use downed_acts::{
 };
 pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
-    Stance, StanceKind, Toughness, Tu, Wounds,
+    Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
 };
 pub use hit_location::roll_body_part;
 pub use march::{MarchKind, MarchResult, march_vector};
@@ -146,6 +152,7 @@ pub use stability::{
     ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, WeaponStability, stability,
 };
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
+pub use tu::{can_spend_tu, reset_tu, spend_tu};
 pub use tuning::{
     AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
     BodyPartWeights, BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff,

@@ -265,6 +265,34 @@ impl Tu {
     }
 }
 
+/// A ganger's **TU maximum** — the round-start Time-Unit budget the pool resets to.
+///
+/// The per-ganger ceiling that [`Tu`] is restored to at the start of each round
+/// ([`crate::tu::reset_tu`]) — the round-start maximum, and the **denominator** of
+/// GTW-38's reaction `TU_left / TU_max` ratio (resolution.md §8: `score = Reactions ×
+/// (TU_left / TU_max)`). E4 only **defines** this max here; the reaction check that
+/// reads the ratio is GTW-38.
+///
+/// A **distinct** component from [`Tu`] per no-bare-types rule 3 — same inner `u8`,
+/// but a different concept (the ceiling, not the current pool), so the two are never
+/// interchangeable. Private inner + derived [`Deref`], house style. A distinct
+/// component so the action-economy / reaction path can query `&TuMax` alone. Defaults
+/// to `0` (mirrors [`Tu`]'s structural spawn default — a fresh ganger carries no
+/// budget until the situation setup authors one; not a tunable magnitude).
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct TuMax(u8);
+
+impl TuMax {
+    /// Build a TU-maximum budget from its count.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build a
+    /// `TuMax` from an authored round-start budget without reaching the private field.
+    #[must_use]
+    pub const fn new(tu_max: u8) -> Self {
+        Self(tu_max)
+    }
+}
+
 /// A ganger's **Shooting** computed combat stat — the ranged-to-hit skill term.
 ///
 /// The skill input to the §1b concentration exponent
@@ -480,6 +508,11 @@ mod tests {
     }
 
     #[test]
+    fn tu_max_inserts_and_queries_independently() {
+        assert_independent(TuMax(60));
+    }
+
+    #[test]
     fn life_state_inserts_and_queries_independently() {
         assert_independent(LifeState::Downed);
     }
@@ -596,6 +629,9 @@ mod tests {
         assert_eq!(Hp::default(), Hp(0));
         assert_eq!(Wounds::default(), Wounds(0));
         assert_eq!(Tu::default(), Tu(0));
+        // TuMax mirrors Tu's structural spawn default — a fresh ganger carries no
+        // round-start budget until the situation setup authors one (not a tunable).
+        assert_eq!(TuMax::default(), TuMax(0));
         assert_eq!(LifeState::default(), LifeState::Alive);
         // A freshly-downed ganger is NOT stabilized — the bleed clock runs until an
         // ally dresses the wound (a structural spawn default, not a tuning value).
@@ -619,6 +655,8 @@ mod tests {
         assert_eq!(*Hp(123), 123u16);
         assert_eq!(*Wounds(9), 9u8);
         assert_eq!(*Tu(80), 80u8);
+        // TuMax derefs to its inner u8 — the GTW-38 reaction ratio denominator.
+        assert_eq!(*TuMax(120), 120u8);
         // Stabilized derefs to its inner bool (arbitrary value, mechanism not value).
         assert!(*Stabilized(true));
         // The GTW-182 attribute stats deref to their inner f32 (an f32 compare, so
