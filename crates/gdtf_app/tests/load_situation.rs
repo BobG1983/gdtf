@@ -21,6 +21,7 @@
 
 use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
+use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
@@ -59,9 +60,10 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
         "with no AssetServer the kick-off must no-op and the machine rests in Load, not panic",
     );
 
-    // Stand in for the theme resolve completing (no AssetServer under
-    // MinimalPlugins), driving the real theme-only transition.
+    // Stand in for the theme + tuning resolves completing (no AssetServer under
+    // MinimalPlugins), driving the real transition (GTW-206 AC5: both required).
     app.world_mut().insert_resource(default_theme());
+    app.world_mut().insert_resource(CombatTuning::default());
 
     let reached_intro = advance_until(
         &mut app,
@@ -70,8 +72,8 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     );
     assert!(
         reached_intro,
-        "with a GdtfTheme present, Load must advance to Intro within {LOAD_BUDGET} updates; \
-         last observed AppState was {:?}",
+        "with a GdtfTheme + CombatTuning present, Load must advance to Intro within {LOAD_BUDGET} \
+         updates; last observed AppState was {:?}",
         app_state(&app),
     );
 

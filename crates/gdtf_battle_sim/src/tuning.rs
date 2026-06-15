@@ -12,7 +12,10 @@
 //! no-bare-types rule: each carries a derived [`Deref`] to its inner value and
 //! `#[serde(transparent)]` so it round-trips as a bare RON scalar.
 
-use bevy::prelude::{Deref, Resource};
+use bevy::{
+    prelude::{Deref, Resource},
+    reflect::TypePath,
+};
 use serde::Deserialize;
 
 use crate::{cover::HeightBand, matchup::MatchupMultiplier};
@@ -1055,7 +1058,12 @@ impl Default for MatchupMultipliers {
 /// extension ([`ConeStabilityTuning`]); more sub-fields land as the systems do.
 /// Defaults carry the doc values, but they are **tunable** — a data file
 /// overrides any of them.
-#[derive(Debug, Clone, PartialEq, Default, Resource, Deserialize)]
+///
+/// Derives [`TypePath`] (render-free reflection metadata, no rendering) because
+/// the GTW-206 (E10.4) `Load` scene loads it through the
+/// [`RonAsset<T>`](gdtf_assets::RonAsset) loader, whose payload bound requires
+/// `T: TypePath` — the same bound the theme spec and authored situation satisfy.
+#[derive(Debug, Clone, PartialEq, Default, Resource, Deserialize, TypePath)]
 pub struct CombatTuning {
     /// Projectile clearance band edges (the LOW/MID/HIGH thresholds).
     pub projectile_band_edges: ProjectileBandEdges,

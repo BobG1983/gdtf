@@ -23,6 +23,7 @@ use std::path::PathBuf;
 
 use bevy::{asset::Handle, state::state::State, text::Font};
 use gdtf_app::test_support::AppState;
+use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
@@ -62,14 +63,15 @@ fn entering_load_without_asset_server_does_not_panic() {
     );
 }
 
-/// Tier (a): once a [`GdtfTheme`] is present in `Load`, the machine transitions
-/// `Load -> Intro`, and the theme **persists** past `OnExit(Load)`.
+/// Tier (a): once a [`GdtfTheme`] (and the GTW-206 [`CombatTuning`]) are present
+/// in `Load`, the machine transitions `Load -> Intro`, and the theme **persists**
+/// past `OnExit(Load)`.
 ///
-/// Injecting the resolved theme stands in for the async load completing (which
-/// has no `AssetServer` under `MinimalPlugins`); it drives the real
-/// `transition_to_intro` and `cleanup` systems. Pin: this fails if the
-/// transition stops firing on theme-present (AC4), or if `cleanup` ever removed
-/// the `GdtfTheme` instead of persisting it (AC5).
+/// Injecting the resolved theme + tuning stands in for the async loads completing
+/// (which have no `AssetServer` under `MinimalPlugins`); it drives the real
+/// `transition_to_intro` and `cleanup` systems. Pin: this fails if the transition
+/// stops firing on theme+tuning-present (AC4 / GTW-206 AC5), or if `cleanup` ever
+/// removed the `GdtfTheme` instead of persisting it (AC5).
 #[test]
 fn theme_present_transitions_to_intro_and_persists() {
     let mut app = GdtfTestAppBuilder::new()
@@ -84,8 +86,10 @@ fn theme_present_transitions_to_intro_and_persists() {
         "precondition: rest in Load"
     );
 
-    // Stand in for the async resolve completing: insert the runtime theme.
+    // Stand in for the async resolves completing: insert the runtime theme + the
+    // GTW-206 tuning (both required before Load transitions, GTW-206 AC5).
     app.world_mut().insert_resource(default_theme());
+    app.world_mut().insert_resource(CombatTuning::default());
 
     let reached_intro = advance_until(
         &mut app,

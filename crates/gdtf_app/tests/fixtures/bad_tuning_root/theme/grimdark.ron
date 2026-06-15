@@ -1,0 +1,50 @@
+// GDTF grimdark UI theme — data-driven (ADR 0003), nested per-widget sub-themes (GTW-149).
+// Colors are RGBA with each channel 0.0–1.0; the 4th channel is ALPHA (1.0 = opaque,
+// 0.0 = fully transparent). Lengths are px; font sizes are pt. Hot-swappable: the UI
+// re-reads this file live. `implicit_some` lets a present font override be written as a
+// bare `font: "path"` (an absent `font` field falls back to `default_font`).
+#![enable(implicit_some)]
+(
+    default_font: "fonts/Alegreya-Variable.ttf",  // font any sub-theme uses unless it sets its own `font`
+
+    // Full-screen backdrop behind everything.
+    background: (
+        color: (0.05, 0.05, 0.06, 1.0),  // backdrop fill — near-black, opaque
+    ),
+
+    // A panel: the framed box that surrounds a group of widgets (e.g. the menu button column).
+    panel: (
+        color:            (0.12, 0.12, 0.15, 0.55),  // panel fill — alpha 0.55 = semi-transparent over the backdrop
+        border_color:     (0.20, 0.20, 0.24, 1.0),   // panel border line color
+        border_width_px:  2.0,   // border thickness (px)
+        corner_radius_px: 5.0,   // rounded-corner radius (px)
+        margin: ( left: 12.0, right: 12.0, top: 6.0, bottom: 6.0 ),  // padding between the panel edge and its content (px)
+    ),
+
+    // Buttons. The four colors are the interaction states the button cycles through.
+    button: (
+        color:    (0.16, 0.16, 0.18, 0.96),  // idle / normal fill
+        disabled: (0.08, 0.08, 0.10, 0.55),  // fill when non-interactive (greyed out, e.g. HiveScape)
+        hover:    (0.80, 0.16, 0.19, 0.96),  // fill when hovered or keyboard/gamepad-focused (grimdark red)
+        pressed:  (0.10, 0.10, 0.12, 0.96),  // fill while held down / being activated
+        text_color:       (0.84, 0.80, 0.73, 1.0),  // label text color (bone / parchment)
+        font_size_pt:     18.0,  // label size (pt)
+        border_color:     (0.20, 0.20, 0.24, 1.0),  // button border line color
+        border_width_px:  2.0,   // button border thickness (px)
+        corner_radius_px: 5.0,   // button rounded-corner radius (px)
+        margin: ( left: 12.0, right: 12.0, top: 6.0, bottom: 6.0 ),  // padding inside each button, around its label (px)
+    ),
+
+    // The floating screen title (e.g. the main-menu header), drawn on the backdrop.
+    title: (
+        text_color:   (0.84, 0.80, 0.73, 1.0),  // title color
+        font_size_pt: 36.0,  // title size (pt) — large
+        font: "fonts/Cinzel-Variable.ttf",  // title-only font override (a display face); other widgets use default_font
+    ),
+
+    // Generic body / label text not covered by a more specific sub-theme above.
+    text: (
+        text_color:   (0.84, 0.80, 0.73, 1.0),  // body text color
+        font_size_pt: 18.0,  // body text size (pt)
+    ),
+)

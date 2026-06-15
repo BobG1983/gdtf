@@ -10,7 +10,7 @@
 
 use bevy::{asset::LoadedFolder, prelude::*};
 use gdtf_assets::RonAsset;
-use gdtf_battle_sim::situation::Situation;
+use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning};
 use gdtf_ui::theme::GdtfThemeSpec;
 
 /// Typed handle to the in-flight theme RON asset (`theme/grimdark.ron`).
@@ -42,12 +42,23 @@ pub(in crate::scenes::load) struct FontFolderHandle(pub Handle<LoadedFolder>);
 #[derive(Deref, Clone, Debug)]
 pub(in crate::scenes::load) struct SituationHandle(pub Handle<RonAsset<Situation>>);
 
+/// Typed handle to the in-flight combat-tuning RON asset (`combat/tuning.ron`).
+///
+/// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
+/// for asset plumbing: a bare `Handle<RonAsset<CombatTuning>>` carries no domain
+/// meaning, this name says "the shipped combat tuning being loaded" (GTW-206 /
+/// E10.4). The poll/resolve system reads it to check the load's progress, then
+/// inserts the deserialized [`CombatTuning`] as the persistent runtime resource.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::scenes::load) struct TuningHandle(pub Handle<RonAsset<CombatTuning>>);
+
 /// The Load-scoped handles to the assets the [`AppState::Load`](crate::states::AppState::Load)
 /// kick-off started loading.
 ///
-/// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], and [`SituationHandle`]
-/// the poll/resolve system reads each frame to check load progress. Inserted
-/// `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning outside `Load`).
+/// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], [`SituationHandle`], and
+/// [`TuningHandle`] the poll/resolve system reads each frame to check load
+/// progress. Inserted `OnEnter(Load)` and removed `OnExit(Load)` (it has no
+/// meaning outside `Load`).
 #[derive(Resource, Clone, Debug)]
 pub(in crate::scenes::load) struct LoadHandles {
     /// The theme RON asset being loaded.
@@ -56,6 +67,8 @@ pub(in crate::scenes::load) struct LoadHandles {
     pub fonts:     FontFolderHandle,
     /// The authored situation RON asset being loaded (GTW-205 / E10.3).
     pub situation: SituationHandle,
+    /// The shipped combat-tuning RON asset being loaded (GTW-206 / E10.4).
+    pub tuning:    TuningHandle,
 }
 
 crate::support_item! {

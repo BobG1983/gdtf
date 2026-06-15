@@ -2,13 +2,34 @@
 
 use bevy::{
     asset::{LoadState, RecursiveDependencyLoadState},
+    ecs::system::SystemParam,
     prelude::*,
 };
 use gdtf_assets::RonAsset;
-use gdtf_battle_sim::situation::Situation;
+use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning};
 use gdtf_ui::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec, default_theme};
 
 use crate::scenes::load::resources::{FailedAssetPath, LoadFailed, LoadHandles, LoadedSituation};
+
+/// The three loaded RON asset collections [`poll_and_resolve`] reads, bundled into
+/// one [`SystemParam`] so the system's parameter list stays under clippy's
+/// argument-count gate (the [`BattleGridsParam`](gdtf_battle_sim) grouping
+/// precedent — a transparent bundle of existing world-state resources, not a
+/// wrapped domain scalar).
+///
+/// Each is `Option<Res<…>>` because a `MinimalPlugins` headless app has no
+/// `AssetServer` (and so no `Assets<…>` collections); the system early-returns
+/// when any is absent, so it never panics on a missing collection (bevy-traps
+/// rule 1).
+#[derive(SystemParam)]
+pub(in crate::scenes::load) struct LoadAssetCollections<'w> {
+    /// The loaded theme-spec RON collection (`theme/grimdark.ron`).
+    theme:     Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
+    /// The loaded authored-situation RON collection (`situations/skirmish.ron`).
+    situation: Option<Res<'w, Assets<RonAsset<Situation>>>>,
+    /// The loaded combat-tuning RON collection (`combat/tuning.ron`, GTW-206).
+    tuning:    Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
+}
 
 /// Polls the in-flight loads and, once resolvable, inserts the [`GdtfTheme`].
 ///
@@ -49,24 +70,67 @@ use crate::scenes::load::resources::{FailedAssetPath, LoadFailed, LoadHandles, L
 /// theme still resolves — so a slow/failed situation can never strand the machine
 /// in `Load`.
 ///
-/// Guarded entirely by `run_if(resource_exists::<LoadHandles>)` plus the
-/// `not(resource_exists::<GdtfTheme>)` gate in the plugin wiring, and takes
-/// `Res<AssetServer>`/`Res<Assets<_>>`/`Res<LoadHandles>` — all of which are
-/// present whenever those run-conditions hold, so it never panics on a missing
-/// resource (bevy-traps rule 1). The early-`return`s on the run-condition
-/// resources are belt-and-braces against a one-frame race.
+/// GTW-206 (E10.4): it ALSO resolves the shipped [`CombatTuning`] into a persistent
+/// [`CombatTuning`] resource — the balance store the sim marches with. The tuning
+/// branch runs on its OWN `CombatTuning`-absence guard ([`resolve_tuning`]), so it
+/// neither starves nor is starved by the theme branch: a slow tuning never blocks
+/// the theme and a slow theme never blocks the tuning. Unlike the theme it has no
+/// `resolve()` step (`CombatTuning` IS both the `Deserialize` payload and the
+/// `Resource`), so the loaded payload is inserted directly. On the failure path it
+/// `warn!`s naming `combat/tuning.ron` and inserts [`CombatTuning::default`], so
+/// `Load` always exits with a tuning present. BOTH a `GdtfTheme` and a
+/// `CombatTuning` must be present before the plugin's transition leaves `Load`
+/// (see the plugin wiring); this branch makes the tuning the second required
+/// resource.
+///
+/// Guarded by `run_if(resource_exists::<LoadHandles>)` plus the
+/// `not(resource_exists::<GdtfTheme>).or(not(resource_exists::<CombatTuning>))`
+/// gate in the plugin wiring (run while EITHER required resource is still
+/// missing), and takes `Res<AssetServer>`/`Res<Assets<_>>`/`Res<LoadHandles>` —
+/// all of which are present whenever those run-conditions hold, so it never panics
+/// on a missing resource (bevy-traps rule 1). The early-`return`s on the
+/// run-condition resources are belt-and-braces against a one-frame race. The theme
+/// branch is internally re-gated on `not(resource_exists::<GdtfTheme>)` so once the
+/// theme resolves only the still-missing tuning is polled (and vice-versa).
 pub(in crate::scenes::load) fn poll_and_resolve(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
-    theme_assets: Option<Res<Assets<RonAsset<GdtfThemeSpec>>>>,
-    situation_assets: Option<Res<Assets<RonAsset<Situation>>>>,
+    collections: LoadAssetCollections,
+    theme_present: Option<Res<GdtfTheme>>,
+    tuning_present: Option<Res<CombatTuning>>,
     handles: Option<Res<LoadHandles>>,
 ) {
-    let (Some(asset_server), Some(theme_assets), Some(situation_assets), Some(handles)) =
-        (asset_server, theme_assets, situation_assets, handles)
+    let (
+        Some(asset_server),
+        Some(theme_assets),
+        Some(situation_assets),
+        Some(tuning_assets),
+        Some(handles),
+    ) = (
+        asset_server,
+        collections.theme,
+        collections.situation,
+        collections.tuning,
+        handles,
+    )
     else {
         return;
     };
+
+    // GTW-206 (E10.4): resolve the shipped combat tuning on its OWN absence guard,
+    // independently of the theme branch below — so a slow theme never blocks the
+    // tuning and a slow tuning never blocks the theme. Done FIRST so it always gets
+    // a poll even once the theme has resolved (the system keeps running while
+    // EITHER required resource is missing).
+    if tuning_present.is_none() {
+        resolve_tuning(&mut commands, &asset_server, &tuning_assets, &handles);
+    }
+
+    // Once a GdtfTheme exists, the theme branch is done — only the tuning above
+    // still needs polling. Skip the theme/situation work to avoid re-resolving it.
+    if theme_present.is_some() {
+        return;
+    }
 
     let theme_state = asset_server.load_state(&*handles.theme);
     // Recursive (not direct) — gate on every font IN the folder being loaded.
@@ -148,4 +212,55 @@ fn fall_back(commands: &mut Commands, path: FailedAssetPath, handles: &LoadHandl
     commands.insert_resource(LoadFailed(path));
     commands.insert_resource(default_theme());
     commands.insert_resource(ActiveThemeHandle((*handles.theme).clone()));
+}
+
+/// GTW-206 (E10.4): resolves the shipped [`CombatTuning`] RON into the persistent
+/// runtime [`CombatTuning`] resource, mirroring the theme path's poll/resolve +
+/// warn/fallback shape but for a payload that needs NO `resolve()` step
+/// (`CombatTuning` is BOTH the `Deserialize` payload AND the `Resource`).
+///
+/// Called only while no [`CombatTuning`] resource exists yet (the caller's
+/// own-absence guard), independently of the theme branch:
+///
+/// - If the tuning RON reached [`LoadState::Failed`], `warn!`s naming
+///   `combat/tuning.ron` and inserts [`CombatTuning::default`] — the ADR-0003
+///   sanctioned error-path safety-net — so `Load` always exits with a tuning
+///   present and never hangs on a bad tuning file.
+/// - Else once the tuning RON is [`LoadState::Loaded`], reads the deserialized
+///   [`CombatTuning`] out of `Assets<RonAsset<CombatTuning>>` (the same
+///   transient-one-frame `Assets::get` retry the theme path uses) and inserts the
+///   inner payload directly as the persistent resource. Like
+///   [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) it survives `OnExit(Load)` (it is
+///   **not** removed in `cleanup`), because `BattleScape` reads it.
+/// - Else (still loading) it does nothing and is polled again next frame.
+fn resolve_tuning(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    tuning_assets: &Assets<RonAsset<CombatTuning>>,
+    handles: &LoadHandles,
+) {
+    let tuning_state = asset_server.load_state(&*handles.tuning);
+
+    // Failure path: a bad tuning must not hang the app. Warn naming the path and
+    // fall back to the const-default tuning so Load always exits with one present.
+    if tuning_state.is_failed() {
+        warn!(
+            "GDTF Load: asset `combat/tuning.ron` failed to load; falling back to the const \
+             default combat tuning",
+        );
+        commands.insert_resource(CombatTuning::default());
+        return;
+    }
+
+    // Success path: once the tuning RON is loaded, read the deserialized payload
+    // out of its collection (transient-one-frame retry like the theme) and insert
+    // it directly — CombatTuning is both the payload and the runtime resource.
+    if matches!(tuning_state, LoadState::Loaded) {
+        let Some(tuning) = tuning_assets.get(&*handles.tuning) else {
+            // Loaded-but-not-yet-in-collection — retry next frame (the system stays
+            // alive while CombatTuning is still absent).
+            return;
+        };
+        commands.insert_resource((**tuning).clone());
+    }
 }

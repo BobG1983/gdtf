@@ -36,6 +36,7 @@ use bevy::{
     state::state::{NextState, State},
 };
 use gdtf_app::test_support::{AfterMathState, AppState, BattleScapeState, GameState, RunningState};
+use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -44,20 +45,22 @@ use gdtf_ui::theme::default_theme;
 /// still bounded so a machine that never terminates fails instead of hanging.
 const WALK_BUDGET: u32 = 64;
 
-/// Builds the default-start headless walk app and seeds the [`GdtfTheme`] the
-/// `Load` scene now requires (GTW-143).
+/// Builds the default-start headless walk app and seeds the [`GdtfTheme`] and
+/// [`CombatTuning`] the `Load` scene now requires (GTW-143 / GTW-206).
 ///
-/// `Load` no longer advances on a frame-1 shortcut: it leaves only once a
-/// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) is present, which the running app
-/// resolves from the loose theme RON via the `AssetServer`. The `MinimalPlugins`
-/// walk app has **no** `AssetServer`, so this pre-inserts the theme (standing in
-/// for the resolved load) so the walk can traverse `Load` and exercise the deep
-/// transition graph this file is about. The theme is the deliberate
-/// state-scoped-resource exception that persists, so seeding it before the walk
-/// is faithful to how the real app carries it forward.
+/// `Load` no longer advances on a frame-1 shortcut: it leaves only once BOTH a
+/// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) and a [`CombatTuning`] are present,
+/// which the running app resolves from the loose theme/tuning RON via the
+/// `AssetServer` (GTW-206 / E10.4 AC5 added the tuning as the second required
+/// resource). The `MinimalPlugins` walk app has **no** `AssetServer`, so this
+/// pre-inserts both (standing in for the resolved loads) so the walk can traverse
+/// `Load` and exercise the deep transition graph this file is about. Both are the
+/// deliberate state-scoped-resource exceptions that persist, so seeding them
+/// before the walk is faithful to how the real app carries them forward.
 fn walk_app_with_theme() -> App {
     let mut app = GdtfTestAppBuilder::new().default_start().build();
     app.world_mut().insert_resource(default_theme());
+    app.world_mut().insert_resource(CombatTuning::default());
     app
 }
 
