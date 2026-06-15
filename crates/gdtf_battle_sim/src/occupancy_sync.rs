@@ -1,8 +1,8 @@
 //! Change-driven occupancy maintenance — the E1.7 sync slice (GTW-157).
 //!
 //! GTW-156 ([`crate::occupancy`]) shipped the [`OccupancyGrid`] resource with a
-//! `build_from_situation` constructor that pours a whole situation into a fresh
-//! grid. That constructor is the **setup-time** pour, NOT the per-frame
+//! `build_from_occupancy_input` constructor that pours an occupancy input into a
+//! fresh grid. That constructor is the **setup-time** pour, NOT the per-frame
 //! maintenance path: per `docs/architecture.md`'s "change-driven grid
 //! maintenance" thesis (and the GTW-6 / GTW-12 architectural ruling), the live
 //! battle keeps the grid current by reacting to the **changes** — a ganger moved,
@@ -28,7 +28,7 @@
 //!
 //! **Change detection / the message reader is the ONLY trigger.** There is no
 //! polling, no per-shot full-grid scan, and NOTHING here calls
-//! [`OccupancyGrid::build_from_situation`] — a rebuild-per-shot is the exact
+//! [`OccupancyGrid::build_from_occupancy_input`] — a rebuild-per-shot is the exact
 //! anti-pattern this slice exists to replace.
 //!
 //! [`OccupancyMaintenancePlugin`] is the wiring unit: it registers the
@@ -275,8 +275,8 @@ mod tests {
     /// start slot via the first-run `Changed` semantics), then mutates `Position`
     /// to a new cell and ticks again. Asserts the start slot is now empty and the
     /// new slot holds the entity — the in-place clear-old + mark-new of C3. The
-    /// grid is only ever maintained via the systems; `build_from_situation` is
-    /// never called.
+    /// grid is only ever maintained via the systems; `build_from_occupancy_input`
+    /// is never called.
     #[test]
     fn moved_ganger_clears_old_slot_and_marks_new() {
         let mut app = headless_app();

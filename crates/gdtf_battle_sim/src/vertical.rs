@@ -9,15 +9,15 @@
 //! This is the E1.10 vertical-link slice. It supplies three things:
 //!
 //! 1. The authored shape — a [`VerticalLink`] (two `(cell, level)` endpoints +
-//!    a [`LinkKind`]), and the [`Situation::vertical_links`] field that extends
-//!    the GTW-156 [`Situation`](crate::occupancy::Situation) with the authored
-//!    list.
+//!    a [`LinkKind`]). The authored list lives on the canonical
+//!    [`Situation::vertical_links`](crate::situation::Situation::vertical_links)
+//!    (GTW-158 moved it there from the GTW-156 placeholder).
 //! 2. **Setup-time validation** — [`build_vertical_link_graph`] checks every
 //!    authored link against three rules and returns a TYPED
 //!    [`InvalidVerticalLink`] error (NEVER a panic): each endpoint's level is in
-//!    `0..`[`MAX_LEVELS`]; neither endpoint cell is DANGLING (it must appear in
-//!    the situation's terrain placements — the cell-existence source); and the
-//!    two endpoints are on DIFFERENT storeys.
+//!    `0..`[`MAX_LEVELS`]; neither endpoint cell is DANGLING (it must appear among
+//!    the situation's authored cells — walls, scatter, or slabs, the
+//!    cell-existence source); and the two endpoints are on DIFFERENT storeys.
 //! 3. The lookup index — a [`VerticalLinkGraph`] Bevy [`Resource`] built from the
 //!    VALIDATED links, answering [`links_from`](VerticalLinkGraph::links_from):
 //!    the links departing a given `(cell, level)`. A link is indexed in BOTH
@@ -35,7 +35,7 @@ use bevy::{
 
 use crate::{
     metric::{CellLevel, MAX_LEVELS},
-    occupancy::Situation,
+    situation::Situation,
 };
 
 /// Whether a [`VerticalLink`]'s kind is **one-way** — traversable only in the
@@ -173,8 +173,9 @@ pub enum InvalidVerticalLink {
         /// The rejected link.
         link: VerticalLink,
     },
-    /// An endpoint cell does NOT appear in the situation's terrain placements —
-    /// the link dangles off a `(cell, level)` that no authored tile occupies.
+    /// An endpoint cell does NOT appear among the situation's authored cells
+    /// (walls, scatter, or slabs) — the link dangles off a `(cell, level)` that no
+    /// authored tile occupies.
     DanglingCell {
         /// The rejected link.
         link: VerticalLink,
@@ -250,9 +251,10 @@ impl VerticalLinkGraph {
 ///
 /// 1. **Level in range** — both `from.z` and `to.z` are in `0..`[`MAX_LEVELS`];
 ///    out of range → [`InvalidVerticalLink::LevelOutOfRange`].
-/// 2. **No dangling endpoint** — each endpoint's `(cell, level)` must appear in
-///    `situation.terrain` (the GTW-156 placements are the cell-existence source);
-///    a missing endpoint → [`InvalidVerticalLink::DanglingCell`].
+/// 2. **No dangling endpoint** — each endpoint's `(cell, level)` must appear among
+///    the situation's authored cells ([`Situation::authored_cells`](crate::situation::Situation::authored_cells):
+///    walls, scatter, or slabs — the cell-existence source); a missing endpoint →
+///    [`InvalidVerticalLink::DanglingCell`].
 /// 3. **Different storeys** — `from.z != to.z`; a same-level link →
 ///    [`InvalidVerticalLink::SameLevel`].
 ///
@@ -267,9 +269,9 @@ impl VerticalLinkGraph {
 pub fn build_vertical_link_graph(
     situation: &Situation,
 ) -> Result<VerticalLinkGraph, InvalidVerticalLink> {
-    // The cell-existence source: the set of (cell, level) the situation's terrain
-    // placements occupy (GTW-156 Situation.terrain), used for the dangling check.
-    let authored: HashSet<CellLevel> = situation.terrain.iter().map(|p| p.at).collect();
+    // The cell-existence source: every (cell, level) the situation authors via a
+    // wall, scatter prop, or slab, used for the dangling check.
+    let authored: HashSet<CellLevel> = situation.authored_cells().collect();
 
     let mut graph = VerticalLinkGraph::default();
 
@@ -314,7 +316,7 @@ mod tests {
     use super::*;
     use crate::{
         metric::{Cell, Level},
-        occupancy::{TerrainKind, TerrainPlacement},
+        situation::Situation,
     };
 
     /// Build a `(cell, level)` key from raw coordinates.
@@ -322,16 +324,15 @@ mod tests {
         CellLevel::new(Cell::new(x, y), Level::new(level))
     }
 
-    /// A situation whose terrain occupies every `(cell, level)` in `cells` — the
-    /// cell-existence source for the dangling check — plus the given links.
+    /// A situation whose **slabs** occupy every `(cell, level)` in `cells` — a
+    /// cell-existence source for the dangling check — plus the given links. Slabs
+    /// are the lightest authored-cell carrier (just a `CellLevel`), so they isolate
+    /// the vertical-link rules under test from wall / scatter authoring.
     fn situation_with(cells: &[CellLevel], links: Vec<VerticalLink>) -> Situation {
         Situation {
-            terrain:        cells
-                .iter()
-                .map(|&at| TerrainPlacement::new(at, TerrainKind::Open))
-                .collect(),
-            occupants:      Vec::new(),
+            slabs: cells.to_vec(),
             vertical_links: links,
+            ..Situation::new()
         }
     }
 
@@ -432,12 +433,12 @@ mod tests {
         );
     }
 
-    /// C7(c) — a dangling-cell link (an endpoint cell NOT in the situation's
-    /// terrain) returns `Err(DanglingCell)`.
+    /// C7(c) — a dangling-cell link (an endpoint cell NOT among the situation's
+    /// authored cells) returns `Err(DanglingCell)`.
     #[test]
     fn dangling_endpoint_cell_is_rejected() {
         let present = key(4, 4, 0);
-        let missing = key(4, 4, 1); // never authored in terrain
+        let missing = key(4, 4, 1); // never authored
         let link = VerticalLink::new(present, missing, LinkKind::stair());
         // Only `present` is authored — `missing` dangles.
         let situation = situation_with(&[present], vec![link]);
@@ -446,7 +447,7 @@ mod tests {
         assert_eq!(
             result.err(),
             Some(InvalidVerticalLink::DanglingCell { link }),
-            "an endpoint cell absent from terrain must be rejected as dangling",
+            "an endpoint cell absent from authored cells must be rejected as dangling",
         );
     }
 

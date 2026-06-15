@@ -16,11 +16,13 @@
 //! construction, no stale-sync seam", and "a destroyed-cover set keeps smashed
 //! walls/props from resurrecting on the rebuild". This module supplies both halves:
 //!
-//! 1. [`OccupancyGrid::build_from_situation`] pours a [`Situation`]'s terrain and
-//!    occupant placements into a fresh grid — the per-shot rebuild's constructor.
-//!    The full situation→entities setup orchestration is GTW-158 (E1.8); the
-//!    [`Situation`] shape here is the **grid-relevant slice only** (terrain
-//!    placements + occupant placements carrying [`Entity`] handles).
+//! 1. [`OccupancyGrid::build_from_occupancy_input`] pours an [`OccupancyInput`]'s
+//!    terrain and occupant placements into a fresh grid — the grid's constructor.
+//!    The full situation→entities setup orchestration is GTW-158 (E1.8), which owns
+//!    the canonical authored [`crate::situation::Situation`]; the [`OccupancyInput`]
+//!    shape here is the **grid-relevant slice only** (terrain placements + occupant
+//!    placements carrying [`Entity`] handles) that the setup derives from the
+//!    spawned ganger entities and the authored walls/scatter.
 //! 2. [`OccupancyGrid::destroyed_cover`] is an **append-only** exclusion set: a cell
 //!    marked via [`OccupancyGrid::mark_cover_destroyed`] can never resurrect, and it
 //!    is excluded from the blocking query [`OccupancyGrid::is_blocked`] (a destroyed
@@ -118,12 +120,12 @@ pub struct OccupancySlot {
     pub occupant: Option<Entity>,
 }
 
-/// A terrain placement in a [`Situation`] — a `(cell, level)` slot and the
+/// A terrain placement in an [`OccupancyInput`] — a `(cell, level)` slot and the
 /// [`TerrainKind`] authored there.
 ///
 /// The grid-relevant slice of a situation's static geometry (walls / cover poured
 /// into the grid). A named struct rather than a bare `(CellLevel, TerrainKind)`
-/// tuple so the situation's input shape is self-describing. The full situation
+/// tuple so the grid's input shape is self-describing. The full situation
 /// authoring/orchestration is GTW-158.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TerrainPlacement {
@@ -141,8 +143,8 @@ impl TerrainPlacement {
     }
 }
 
-/// An occupant placement in a [`Situation`] — a `(cell, level)` slot and the Bevy
-/// [`Entity`] standing there.
+/// An occupant placement in an [`OccupancyInput`] — a `(cell, level)` slot and the
+/// Bevy [`Entity`] standing there.
 ///
 /// The grid-relevant slice of a situation's live occupants (gangers poured into the
 /// grid). Carries an [`Entity`] handle, **never a numeric id** (GTW-10 / GTW-12). A
@@ -166,34 +168,28 @@ impl OccupantPlacement {
     }
 }
 
-/// The grid-relevant slice of a battle **situation** — the terrain and occupant
-/// placements [`OccupancyGrid::build_from_situation`] pours into a fresh grid.
+/// The grid-relevant **construction input** for the coarse occupancy grid — the
+/// terrain and occupant placements [`OccupancyGrid::build_from_occupancy_input`]
+/// pours into a fresh grid.
 ///
-/// This is the INPUT shape E1.6 defines: the situation's static-terrain placements
-/// ([`TerrainPlacement`]) and its live-occupant placements ([`OccupantPlacement`],
-/// each carrying an [`Entity`] handle), plus (E1.10 / GTW-160) the authored
-/// stair/ladder [`vertical_links`](Situation::vertical_links). It is deliberately
-/// the **grid-relevant slice only** — the full situation (gangers' full state,
-/// scatter, upper-floor slabs) and the setup orchestration that spawns entities are
-/// GTW-158 (E1.8), NOT built here (`docs/architecture.md`: the situation is
-/// "gangers, walls, scatter, upper-floor slabs, and stair/ladder vertical links").
+/// This is the INPUT shape E1.6 defines (renamed from the GTW-156 placeholder
+/// `Situation` by GTW-158, which makes the authored [`crate::situation::Situation`]
+/// the one canonical situation type): the static-terrain placements
+/// ([`TerrainPlacement`]) and the live-occupant placements ([`OccupantPlacement`],
+/// each carrying an [`Entity`] handle). It is deliberately the **grid-relevant
+/// slice only** — the GTW-158 setup (E1.8) derives an `OccupancyInput` from the
+/// canonical situation (terrain from the authored walls / scatter, occupants from
+/// the SPAWNED ganger entities) and pours it through here.
 #[derive(Debug, Clone, Default)]
-pub struct Situation {
-    /// The static-terrain placements (walls / cover) to pour into the grid. Also
-    /// the **cell-existence source** for vertical-link validation (E1.10): a link
-    /// endpoint must appear here or it is rejected as dangling.
-    pub terrain:        Vec<TerrainPlacement>,
+pub struct OccupancyInput {
+    /// The static-terrain placements (walls / cover) to pour into the grid.
+    pub terrain:   Vec<TerrainPlacement>,
     /// The live-occupant placements (entities) to pour into the grid.
-    pub occupants:      Vec<OccupantPlacement>,
-    /// The authored stair/ladder vertical links (E1.10 / GTW-160) — validated and
-    /// poured into the [`crate::vertical::VerticalLinkGraph`] by
-    /// [`crate::vertical::build_vertical_link_graph`]. The only way a ganger
-    /// changes storey (`docs/combat/combat.md`).
-    pub vertical_links: Vec<crate::vertical::VerticalLink>,
+    pub occupants: Vec<OccupantPlacement>,
 }
 
-impl Situation {
-    /// Build an empty situation (no terrain, no occupants).
+impl OccupancyInput {
+    /// Build an empty occupancy input (no terrain, no occupants).
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -241,9 +237,9 @@ impl DestroyedCover {
 /// A Bevy [`Resource`] (one grid per battle). It holds [`SLOT_COUNT`]
 /// ([`GRID_WIDTH`] × [`GRID_HEIGHT`] × [`MAX_LEVELS`] = 60 × 60 × 8) flat
 /// [`OccupancySlot`]s — a slot per `(cell, level)` — addressed by
-/// `x + y·WIDTH + level·WIDTH·HEIGHT`. Per `docs/architecture.md` the grid is
-/// "rebuilt **fresh per shot** from the situation's static terrain plus live ganger
-/// state", so [`build_from_situation`](OccupancyGrid::build_from_situation) is the
+/// `x + y·WIDTH + level·WIDTH·HEIGHT`. Per `docs/architecture.md` the grid is built
+/// "from the situation's static terrain plus live ganger state", so
+/// [`build_from_occupancy_input`](OccupancyGrid::build_from_occupancy_input) is the
 /// canonical constructor.
 ///
 /// [`destroyed_cover`](OccupancyGrid::destroyed_cover) is the grid's own
@@ -283,10 +279,10 @@ impl OccupancyGrid {
         Self::default()
     }
 
-    /// Build a fresh grid from a [`Situation`], pouring its terrain and occupant
-    /// placements into the slots — the per-shot rebuild's constructor
-    /// (`docs/architecture.md`: "rebuilt **fresh per shot** from the situation's
-    /// static terrain plus live ganger state").
+    /// Build a fresh grid from an [`OccupancyInput`], pouring its terrain and
+    /// occupant placements into the slots — the grid's constructor
+    /// (`docs/architecture.md`: built "from the situation's static terrain plus live
+    /// ganger state").
     ///
     /// Starts from an empty grid (all [`TerrainKind::Open`], no occupants), then sets
     /// each [`TerrainPlacement`]'s slot terrain and each [`OccupantPlacement`]'s slot
@@ -295,12 +291,12 @@ impl OccupancyGrid {
     /// [`destroyed_cover`](OccupancyGrid::destroyed_cover) set starts empty; carrying
     /// destroyed cover across a rebuild is the caller's append (E1.7 / GTW-157).
     #[must_use]
-    pub fn build_from_situation(situation: &Situation) -> Self {
+    pub fn build_from_occupancy_input(input: &OccupancyInput) -> Self {
         let mut grid = Self::new();
-        for placement in &situation.terrain {
+        for placement in &input.terrain {
             grid.set_terrain(placement.at, placement.terrain);
         }
-        for placement in &situation.occupants {
+        for placement in &input.occupants {
             grid.set_occupant(placement.at, Some(placement.occupant));
         }
         grid
@@ -332,8 +328,9 @@ impl OccupancyGrid {
     /// Set the static-terrain marker at `key`. An out-of-range `key` is a graceful
     /// no-op (the bounds-check rule — no panic).
     ///
-    /// Used by [`build_from_situation`](OccupancyGrid::build_from_situation) to pour
-    /// the situation's authored walls / cover into the grid.
+    /// Used by
+    /// [`build_from_occupancy_input`](OccupancyGrid::build_from_occupancy_input) to
+    /// pour the situation's authored walls / cover into the grid.
     pub fn set_terrain(&mut self, key: CellLevel, terrain: TerrainKind) {
         if let Some(slot) = Self::slot_index(&key).and_then(|i| self.slots.get_mut(i)) {
             slot.terrain = terrain;
@@ -343,8 +340,9 @@ impl OccupancyGrid {
     /// Set the occupant at `key` (a Bevy [`Entity`] handle, never a numeric id), or
     /// clear it with `None`. An out-of-range `key` is a graceful no-op.
     ///
-    /// Used by [`build_from_situation`](OccupancyGrid::build_from_situation) to pour
-    /// the situation's live occupants into the grid.
+    /// Used by
+    /// [`build_from_occupancy_input`](OccupancyGrid::build_from_occupancy_input) to
+    /// pour the situation's live occupants into the grid.
     pub fn set_occupant(&mut self, key: CellLevel, occupant: Option<Entity>) {
         if let Some(slot) = Self::slot_index(&key).and_then(|i| self.slots.get_mut(i)) {
             slot.occupant = occupant;
@@ -438,17 +436,17 @@ mod tests {
         i32::try_from(extent).unwrap_or(i32::MAX)
     }
 
-    /// C8(a) — `build_from_situation` from a HAND-BUILT situation (entities spawned
-    /// in a real Bevy `World`, terrain placed) populates terrain + occupant slots
-    /// correctly, asserted CELL-BY-CELL.
+    /// C8(a) — `build_from_occupancy_input` from a HAND-BUILT input (entities
+    /// spawned in a real Bevy `World`, terrain placed) populates terrain + occupant
+    /// slots correctly, asserted CELL-BY-CELL.
     ///
-    /// Spawns two real entities, hand-builds a `Situation` with a wall, a cover, and
-    /// those two occupants at distinct `(cell, level)`s, builds the grid, then walks
-    /// every authored slot and asserts BOTH its terrain marker and its occupant
-    /// handle, plus that an untouched slot is `Open` / empty. The occupant is the
-    /// spawned `Entity` handle, never a numeric id (GTW-10 / GTW-12).
+    /// Spawns two real entities, hand-builds an `OccupancyInput` with a wall, a
+    /// cover, and those two occupants at distinct `(cell, level)`s, builds the grid,
+    /// then walks every authored slot and asserts BOTH its terrain marker and its
+    /// occupant handle, plus that an untouched slot is `Open` / empty. The occupant
+    /// is the spawned `Entity` handle, never a numeric id (GTW-10 / GTW-12).
     #[test]
-    fn build_from_situation_populates_terrain_and_occupant_cell_by_cell() {
+    fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
         // Real entities from a real World (the C8(a) requirement).
         let mut world = World::new();
         let alice = world.spawn_empty().id();
@@ -460,19 +458,18 @@ mod tests {
         let bob_at = key(7, 8, 2);
         let empty_at = key(10, 10, 0);
 
-        let situation = Situation {
-            terrain:        vec![
+        let input = OccupancyInput {
+            terrain:   vec![
                 TerrainPlacement::new(wall_at, TerrainKind::Wall),
                 TerrainPlacement::new(cover_at, TerrainKind::Cover),
             ],
-            occupants:      vec![
+            occupants: vec![
                 OccupantPlacement::new(alice_at, alice),
                 OccupantPlacement::new(bob_at, bob),
             ],
-            vertical_links: Vec::new(),
         };
 
-        let grid = OccupancyGrid::build_from_situation(&situation);
+        let grid = OccupancyGrid::build_from_occupancy_input(&input);
 
         // Terrain, cell by cell.
         assert_eq!(
@@ -520,15 +517,14 @@ mod tests {
     /// the exclusion is per-cell, not global.
     #[test]
     fn destroyed_cover_is_excluded_from_blocking() {
-        let situation = Situation {
-            terrain:        vec![
+        let input = OccupancyInput {
+            terrain:   vec![
                 TerrainPlacement::new(key(2, 2, 0), TerrainKind::Cover),
                 TerrainPlacement::new(key(9, 9, 0), TerrainKind::Cover),
             ],
-            occupants:      Vec::new(),
-            vertical_links: Vec::new(),
+            occupants: Vec::new(),
         };
-        let mut grid = OccupancyGrid::build_from_situation(&situation);
+        let mut grid = OccupancyGrid::build_from_occupancy_input(&input);
 
         let smashed = key(2, 2, 0);
         let intact = key(9, 9, 0);
@@ -556,12 +552,11 @@ mod tests {
     /// marker (independent of destruction).
     #[test]
     fn wall_blocks_open_does_not() {
-        let situation = Situation {
-            terrain:        vec![TerrainPlacement::new(key(4, 4, 0), TerrainKind::Wall)],
-            occupants:      Vec::new(),
-            vertical_links: Vec::new(),
+        let input = OccupancyInput {
+            terrain:   vec![TerrainPlacement::new(key(4, 4, 0), TerrainKind::Wall)],
+            occupants: Vec::new(),
         };
-        let grid = OccupancyGrid::build_from_situation(&situation);
+        let grid = OccupancyGrid::build_from_occupancy_input(&input);
 
         assert!(grid.is_blocked(&key(4, 4, 0)), "a wall must block");
         assert!(
@@ -598,7 +593,7 @@ mod tests {
 
         // A fresh build does NOT carry the set forward (occupancy is rebuilt fresh;
         // carrying destroyed cover across a rebuild is the caller's append — E1.7).
-        let rebuilt = OccupancyGrid::build_from_situation(&Situation::new());
+        let rebuilt = OccupancyGrid::build_from_occupancy_input(&OccupancyInput::new());
         assert!(
             rebuilt.destroyed_cover().is_empty(),
             "a rebuild starts with an empty destroyed-cover set",
@@ -666,15 +661,14 @@ mod tests {
         let second = world.spawn_empty().id();
         let at = key(3, 3, 0);
 
-        let situation = Situation {
-            terrain:        Vec::new(),
-            occupants:      vec![
+        let input = OccupancyInput {
+            terrain:   Vec::new(),
+            occupants: vec![
                 OccupantPlacement::new(at, first),
                 OccupantPlacement::new(at, second),
             ],
-            vertical_links: Vec::new(),
         };
-        let grid = OccupancyGrid::build_from_situation(&situation);
+        let grid = OccupancyGrid::build_from_occupancy_input(&input);
         assert_eq!(
             grid.occupant(&at),
             Some(second),

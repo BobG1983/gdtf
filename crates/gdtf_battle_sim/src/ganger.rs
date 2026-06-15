@@ -82,6 +82,18 @@ pub enum Direction {
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Facing(Direction);
 
+impl Facing {
+    /// Build a facing from the [`Direction`] the ganger faces.
+    ///
+    /// The public constructor (private inner + constructor, the crate's newtype
+    /// house style) so the situation→entities setup (E1.8 / GTW-158) can build a
+    /// `Facing` from an authored direction without reaching the private field.
+    #[must_use]
+    pub const fn new(direction: Direction) -> Self {
+        Self(direction)
+    }
+}
+
 /// The three postures a ganger can hold.
 ///
 /// Posture reshapes the stability score and the clearance silhouette
@@ -107,6 +119,17 @@ pub enum StanceKind {
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Stance(StanceKind);
 
+impl Stance {
+    /// Build a stance from the [`StanceKind`] posture the ganger holds.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build
+    /// a `Stance` from an authored posture without reaching the private field.
+    #[must_use]
+    pub const fn new(posture: StanceKind) -> Self {
+        Self(posture)
+    }
+}
+
 /// Whether a ganger is **aiming** (aimed shot) rather than hip-firing.
 ///
 /// The Aim-Mode axis from resolution.md §1a: aiming narrows the dispersion cone
@@ -115,6 +138,17 @@ pub struct Stance(StanceKind);
 /// ganger is not aiming; a structural default, not a balance value).
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Aiming(bool);
+
+impl Aiming {
+    /// Build an aim-mode flag — `true` for aimed fire, `false` for hip-fired.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build
+    /// an `Aiming` from an authored value without reaching the private field.
+    #[must_use]
+    pub const fn new(aiming: bool) -> Self {
+        Self(aiming)
+    }
+}
 
 /// A gang (faction) identity — which side a ganger fights for.
 ///
@@ -126,6 +160,17 @@ pub struct Aiming(bool);
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Faction(u8);
 
+impl Faction {
+    /// Build a faction (gang) identity from its small gang index.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build
+    /// a `Faction` from an authored gang index without reaching the private field.
+    #[must_use]
+    pub const fn new(gang: u8) -> Self {
+        Self(gang)
+    }
+}
+
 /// A ganger's hit points — the in-battle raw-damage knock-down pool.
 ///
 /// HP is the knock-down pool: damage depletes it and `HP ≤ 0` **downs** the
@@ -134,6 +179,17 @@ pub struct Faction(u8);
 /// system can query `&mut Hp` alone. Defaults to `0`.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Hp(u16);
+
+impl Hp {
+    /// Build a hit-points pool from its count.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build
+    /// an `Hp` from an authored count without reaching the private field.
+    #[must_use]
+    pub const fn new(hp: u16) -> Self {
+        Self(hp)
+    }
+}
 
 /// A ganger's Wounds — the small **life** pool; `Wounds ≤ 0` → Dead.
 ///
@@ -144,6 +200,17 @@ pub struct Hp(u16);
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Wounds(u8);
 
+impl Wounds {
+    /// Build a Wounds (life) pool from its count.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build
+    /// a `Wounds` from an authored count without reaching the private field.
+    #[must_use]
+    pub const fn new(wounds: u8) -> Self {
+        Self(wounds)
+    }
+}
+
 /// A ganger's Time Units — the per-turn action budget; unspent TU funds reactions.
 ///
 /// Every action (step, turn, shot, kneel) spends from this pool, and leftover TU
@@ -152,6 +219,17 @@ pub struct Wounds(u8);
 /// `&mut Tu` alone. Defaults to `0`.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Tu(u8);
+
+impl Tu {
+    /// Build a Time-Unit budget from its count.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build
+    /// a `Tu` from an authored budget without reaching the private field.
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
 
 /// A ganger's terminal life state — the two-pool outcome machine.
 ///

@@ -45,12 +45,11 @@
 //! [`occupancy::OccupancySlot`] carries a [`occupancy::TerrainKind`] static-terrain
 //! marker (wall / cover, blocking vs not) and an occupant
 //! `Option<`[`bevy::prelude::Entity`]`>` (a Bevy `Entity` handle, NEVER a numeric id —
-//! GTW-10 / GTW-12). [`occupancy::OccupancyGrid::build_from_situation`] pours a
-//! grid-relevant [`occupancy::Situation`] (terrain + occupant placements) into a
-//! fresh grid (the per-shot rebuild), and the append-only
-//! [`occupancy::DestroyedCover`] set excludes smashed cover from
-//! [`occupancy::OccupancyGrid::is_blocked`]. This is the occupancy grid's OWN
-//! exclusion set, distinct from [`cover::CoverLedger`] (GTW-157 syncs them). See
+//! GTW-10 / GTW-12). [`occupancy::OccupancyGrid::build_from_occupancy_input`] pours a
+//! grid-relevant [`occupancy::OccupancyInput`] (terrain + occupant placements) into a
+//! fresh grid, and the append-only [`occupancy::DestroyedCover`] set excludes smashed
+//! cover from [`occupancy::OccupancyGrid::is_blocked`]. This is the occupancy grid's
+//! OWN exclusion set, distinct from [`cover::CoverLedger`] (GTW-157 syncs them). See
 //! `docs/architecture.md`'s "coarse occupancy" + `battle-space.md`.
 //!
 //! E1.7 ([`occupancy_sync`]) adds the **change-driven** maintenance layer for the
@@ -78,16 +77,30 @@
 //!
 //! E1.10 ([`vertical`]) adds the [`vertical::VerticalLinkGraph`] resource — the
 //! validated index of authored stair / ladder [`vertical::VerticalLink`]s, the
-//! ONLY way a ganger changes storey (`docs/combat/combat.md`). It extends the
-//! GTW-156 [`occupancy::Situation`] with [`occupancy::Situation::vertical_links`],
-//! and [`vertical::build_vertical_link_graph`] validates each authored link at
-//! setup (level in `0..`[`metric::MAX_LEVELS`]; no dangling endpoint cell; the two
-//! endpoints on different storeys) — returning a typed
-//! [`vertical::InvalidVerticalLink`], NEVER a panic — before indexing each valid
-//! link by departure `(cell, level)` (both directions unless
-//! [`one-way`](vertical::LinkKind::is_one_way)). Graph + validation ONLY: no
+//! ONLY way a ganger changes storey (`docs/combat/combat.md`). The authored list
+//! lives on the canonical [`situation::Situation::vertical_links`], and
+//! [`vertical::build_vertical_link_graph`] validates each authored link at setup
+//! (level in `0..`[`metric::MAX_LEVELS`]; no dangling endpoint cell — checked
+//! against [`situation::Situation::authored_cells`]; the two endpoints on different
+//! storeys) — returning a typed [`vertical::InvalidVerticalLink`], NEVER a panic —
+//! before indexing each valid link by departure `(cell, level)` (both directions
+//! unless [`one-way`](vertical::LinkKind::is_one_way)). Graph + validation ONLY: no
 //! traversal / pathfinding / movement cost (GTW-12). See `docs/architecture.md`'s
 //! "vertical-link graph".
+//!
+//! E1.8 ([`situation`]) defines the **canonical authored** [`situation::Situation`]
+//! — the full battlefield (gangers, walls, scatter, slabs, vertical links) — and
+//! [`situation::setup_battle`], which reads it and builds the battle in the ECS
+//! world: it `spawn`s each ganger with ALL the E1.2 components plus the E1.3
+//! [`armor::WornArmor`] (seeded from the ganger's [`armor::SourceArmor`]), keeping
+//! the returned Bevy [`bevy::prelude::Entity`] handle (NEVER a numeric id — GTW-10 /
+//! GTW-12); seeds the [`cover::CoverLedger`] (E1.4) from walls + scatter, the
+//! [`surface::SurfaceGrid`] (E1.5) from the slabs, and the
+//! [`occupancy::OccupancyGrid`] (E1.6) from the authored terrain + the SPAWNED
+//! occupant entities; and validates + inserts the [`vertical::VerticalLinkGraph`]
+//! (E1.10). The [`situation::Situation`] type SUPERSEDES the GTW-156 placeholder
+//! (renamed to [`occupancy::OccupancyInput`]). See `docs/architecture.md`'s setup
+//! systems.
 
 pub mod armor;
 pub mod cover;
@@ -96,6 +109,7 @@ pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
 pub mod rng;
+pub mod situation;
 pub mod surface;
 pub mod tuning;
 pub mod vertical;
@@ -113,14 +127,17 @@ pub use ganger::{
 };
 pub use metric::{BattlePx, CELL_PITCH_PX, Cell, CellLevel, Level, MAX_LEVELS, Z_LEVEL_HEIGHT};
 pub use occupancy::{
-    DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancySlot, OccupantPlacement,
-    Situation, TerrainKind, TerrainPlacement,
+    DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
+    OccupantPlacement, TerrainKind, TerrainPlacement,
 };
 pub use occupancy_sync::{
     CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
     sync_moved_gangers,
 };
 pub use rng::{BattleSeed, SimRng};
+pub use situation::{
+    BattleSetup, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers, setup_battle,
+};
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
     BandEdgePx, BodyPartWeight, BodyPartWeights, CombatTuning, DefenderLuckSpreadCap,
