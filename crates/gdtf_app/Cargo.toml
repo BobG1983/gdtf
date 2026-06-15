@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = "0.18.1"
+bevy = { workspace = true }
 # The loose-file RON asset loader (GTW-136): `Load` registers
 # `init_ron_asset::<GdtfThemeSpec>()` and loads `theme/grimdark.ron` through it.
 gdtf_assets = { path = "../gdtf_assets" }

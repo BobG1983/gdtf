@@ -1,24 +1,38 @@
 // GDTF combat tuning — data-driven balance coefficients (resolution.md §"Coefficients
-// live in the combat-tuning data"). Every value here is TUNABLE: the equation forms
-// live in code, these numbers are balance data. Defaults carry the doc values
-// (battle-space.md line 27 band edges, resolution.md §4 body-part weights, §6 severity).
-// Each leaf newtype is #[serde(transparent)], so it is written as a bare scalar.
+// live in the combat-tuning data"). Every value here is TUNABLE and hot-swappable: the
+// equation FORMS live in code, these numbers are balance data. Each leaf is a
+// `#[serde(transparent)]` newtype, so it is written as a bare scalar. Each line says what
+// it tunes — edit freely; the sim reads its tuning from this data, never from constants.
 (
-    projectile_band_edges: ( low_mid: 66.7, mid_high: 133.3 ),
-    severity_scaling: (
-        pen_damage_scale: 1.0,
-        toughness_mitigation: 1.0,
-        shooter_luck_scale: 1.0,
-        defender_luck_spread_cap: 1.0,
-        random_spread: 10.0,
-        random_spread_min: 1.0,
+    // Projectile clearance bands — heights in battle-space px ABOVE the crossed cell's
+    // floor. As the shot marches, each cell it crosses is banded LOW / MID / HIGH by the
+    // round's height against these two edges, and the round only sails over an occupant
+    // whose band is strictly lower (resolution.md §2). Decoupled from the storey height.
+    projectile_band_edges: (
+        low_mid:  66.7,   // below this px = LOW, at/above = MID  (the LOW→MID edge)
+        mid_high: 133.3,  // below this px = MID, at/above = HIGH (the MID→HIGH edge)
     ),
+    // Wound-severity score scalars (resolution.md §6). The score is roughly
+    //   j·pen_damage − k·Toughness + part_mod + fatal_bias + I·Luck_shooter + roll(0..R_eff),
+    //   R_eff = max(R_min, R − L·Luck_defender).
+    // Bigger pushes → worse wounds more often; the score is bucketed into None/Minor/…/Fatal.
+    severity_scaling: (
+        pen_damage_scale:         1.0,   // j — how hard PENETRATING damage pushes severity up
+        toughness_mitigation:     1.0,   // k — how much the defender's Toughness subtracts
+        shooter_luck_scale:       1.0,   // I — how much the shooter's Luck adds (nastier wounds)
+        defender_luck_spread_cap: 1.0,   // L — how much the defender's Luck shrinks the random spread
+        random_spread:            10.0,  // R — width of the one-sided random roll before Luck trims it
+        random_spread_min:        1.0,   // R_min — floor on the trimmed spread (Luck can never erase it)
+    ),
+    // Hit-location weights — the RELATIVE odds each body part is the one struck on a hit
+    // (resolution.md §4 `roll_body_part`). Larger = struck more often; they need not sum to
+    // any total — only the ratios between them matter.
     body_part_weights: (
-        head: 6,
-        torso: 40,
-        left_arm: 15,
-        right_arm: 15,
-        left_leg: 12,
-        right_leg: 12,
+        head:      6,   // head  — rare, but where the worst wounds land
+        torso:     40,  // torso — the bulk of hits
+        left_arm:  12,  // left arm
+        right_arm: 12,  // right arm
+        left_leg:  15,  // left leg
+        right_leg: 15,  // right leg
     ),
 )
