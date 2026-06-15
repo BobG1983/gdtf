@@ -33,6 +33,11 @@
 //! - [`matchup`] — the 7-type weapon×armor Paley-tournament lookup
 //!   ([`matchup::matchup`] over [`weapon::DamageType`] / [`armor::ArmorType`]) and
 //!   the punch-&-shred [`matchup::MatchupMultiplier`] it yields from tuning.
+//! - [`resolve_hit`] — the per-hit damage/penetration formula
+//!   ([`resolve_hit::resolve_hit`]) that resolves weapon damage stats vs one
+//!   [`armor::ArmorPiece`] under a [`matchup::Matchup`] into a frozen
+//!   [`resolve_hit::HitResult`] (penetrating / HP-loss / integrity-wear). Pure
+//!   math — application of HP / Wounds / armor wear is a later E3 slice.
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
@@ -50,6 +55,7 @@ pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
 pub mod resolve_coarse;
+pub mod resolve_hit;
 pub mod rng;
 pub mod sample_cone;
 pub mod situation;
@@ -87,6 +93,7 @@ pub use occupancy_sync::{
     sync_moved_gangers,
 };
 pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
+pub use resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit};
 pub use rng::{BattleSeed, SimRng};
 pub use sample_cone::{ConcentrationP, ShotDir, concentration_p, sample_cone_vector};
 pub use situation::{
