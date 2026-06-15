@@ -32,23 +32,28 @@
 //! Because the bundled dispatch / occupancy systems read the battle-lifetime resources
 //! `unconditionally` (a Bevy `Res<T>` whose resource is absent fails param validation —
 //! `bevy-traps.md` #1), and those resources exist only DURING a battle, the plugin
-//! gates the whole `Simulate` band on the setup-inserted [`OccupancyGrid`] witness so
+//! gates the whole `Simulate` band on the purpose-built [`BattleInProgress`] witness so
 //! the bundled runtime stays inert (and panic-free) outside a live battle; the setup /
 //! teardown lifecycle systems run unconditionally `around` the band (setup creates the
-//! witness, teardown removes it) — see [`BattleSimPlugin`].
+//! witness, teardown removes it) — see [`BattleSimPlugin`]. [`BattleInProgress`] is an
+//! explicit, intentional "a battle is active" tag — it replaced the incidental
+//! [`OccupancyGrid`]-as-gate proxy (GTW-212), but spans the exact same battle-active
+//! window ([`OccupancyGrid`] remains a [`setup_battle`] resource, just no longer the
+//! gate witness), so the gated span — and behavior — is unchanged.
 //!
 //! The setup system drains [`SetupBattleRequested`] and per message inserts a
 //! [`SimRng`] seeded from the message's [`BattleSeed`] and runs [`setup_battle`],
-//! emitting [`BattleReady`] only on success (`Err` is `error!`-logged with NO
-//! [`BattleReady`] — fail-closed, no `unwrap`/`expect`/`panic`). The teardown system
-//! drains [`TeardownBattleRequested`] and removes the five battle-lifetime resources
-//! ([`SimRng`] + the four [`setup_battle`]-inserted grids); it NEVER touches
-//! [`CombatTuning`](crate::tuning::CombatTuning) — that is E10.4's persistent `Load`
-//! resource. Render-free: no renderer, window, presenter, or pixel.
+//! emitting [`BattleReady`] (and inserting the [`BattleInProgress`] gate witness) only
+//! on success (`Err` is `error!`-logged with NO [`BattleReady`] / NO witness —
+//! fail-closed, no `unwrap`/`expect`/`panic`). The teardown system drains
+//! [`TeardownBattleRequested`] and removes the battle-lifetime resources ([`SimRng`] +
+//! the four [`setup_battle`]-inserted grids + the [`BattleInProgress`] witness); it
+//! NEVER touches [`CombatTuning`](crate::tuning::CombatTuning) — that is E10.4's
+//! persistent `Load` resource. Render-free: no renderer, window, presenter, or pixel.
 
 use bevy::prelude::{
-    App, Commands, IntoScheduleConfigs, Message, MessageReader, MessageWriter, Plugin, Update,
-    error, resource_exists,
+    App, Commands, IntoScheduleConfigs, Message, MessageReader, MessageWriter, Plugin, Resource,
+    Update, error, resource_exists,
 };
 
 use crate::{
@@ -109,6 +114,27 @@ pub struct TeardownBattleRequested;
 #[derive(Message, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct BattleReady;
 
+/// The **battle-active** witness — present exactly while a battle is in progress, the
+/// gate the [`SimSystems::Simulate`] band's bundled runtime keys off (GTW-212).
+///
+/// A zero-sized [`Resource`] marker (a unit struct): it carries NO domain value, so the
+/// no-bare-types rule — which wraps *values* in named newtypes — does not apply; the
+/// tag's identity IS the signal. The setup system inserts it on a successful
+/// [`setup_battle`] (the same `Ok` path that emits [`BattleReady`], NEVER on `Err`) and
+/// the teardown system removes it on [`TeardownBattleRequested`], so it spans the exact
+/// battle-active window.
+///
+/// It is the EXPLICIT replacement for the incidental "gate on
+/// [`resource_exists`]`::<`[`OccupancyGrid`]`>`" proxy E10.5 used: keying the
+/// [`SimSystems::Simulate`] `run_if` on a purpose-built "in progress" tag decouples the
+/// gate's INTENT from any one battle resource. [`OccupancyGrid`] is still a
+/// [`setup_battle`] resource (inserted on setup, removed on teardown) — it is simply no
+/// longer the gate witness. Because the tag is inserted/removed at the same points
+/// [`OccupancyGrid`] effectively was, the gated span — and the runtime's behavior — is
+/// unchanged; only the witness is now intentional.
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BattleInProgress;
+
 /// **Setup** the battle on [`SetupBattleRequested`] — seed the [`SimRng`] and run
 /// [`setup_battle`], signalling [`BattleReady`] on success (E10.5).
 ///
@@ -118,11 +144,13 @@ pub struct BattleReady;
 ///    (via [`SimRng::from_seed`] — the deterministic stream the acts draw from).
 /// 2. Calls [`setup_battle`] on the REAL [`Commands`] path. On `Ok` the four sim
 ///    resources ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
-///    [`VerticalLinkGraph`]) and the spawned ganger entities land in the world and a
-///    [`BattleReady`] is written; on `Err` the typed
-///    [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) is surfaced via
-///    [`error!`] and NO [`BattleReady`] is written — the app never advances on a bad
-///    battle. NO `unwrap`/`expect`/`panic`.
+///    [`VerticalLinkGraph`]) and the spawned ganger entities land in the world, the
+///    [`BattleInProgress`] witness is inserted (the battle-active tag the
+///    [`SimSystems::Simulate`] band gates on), and a [`BattleReady`] is written; on
+///    `Err` the typed [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) is
+///    surfaced via [`error!`] and NEITHER [`BattleInProgress`] NOR [`BattleReady`] is
+///    written — the app never advances on a bad battle, and the gate never opens. NO
+///    `unwrap`/`expect`/`panic`.
 ///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
 /// PERSISTENT `Load` resource, present throughout the battle for the acts to read.
@@ -140,6 +168,10 @@ pub fn setup_battle_on_request(
         //    write NO BattleReady, so the app's gate never fires (fail-closed).
         match setup_battle(&request.situation, &mut commands) {
             Ok(_setup) => {
+                // The battle is live: insert the gate witness (alongside the four
+                // setup_battle grids + the seeded SimRng) so the Simulate band's bundled
+                // runtime turns on, then signal BattleReady. Both happen ONLY on Ok.
+                commands.insert_resource(BattleInProgress);
                 ready.write(BattleReady);
             }
             Err(invalid) => {
@@ -152,15 +184,18 @@ pub fn setup_battle_on_request(
     }
 }
 
-/// **Teardown** the battle on [`TeardownBattleRequested`] — remove the five
-/// battle-lifetime resources (E10.5).
+/// **Teardown** the battle on [`TeardownBattleRequested`] — remove the
+/// battle-lifetime resources, including the [`BattleInProgress`] gate witness (E10.5
+/// / GTW-212).
 ///
 /// Drains [`MessageReader<TeardownBattleRequested>`] and, when triggered, removes
-/// [`SimRng`] and the four [`setup_battle`]-inserted resources ([`CoverLedger`] /
-/// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`]). These resources are
-/// BATTLE-lifetime: the app sends this trigger only at the battle boundary (its
-/// `OnExit(GameState::BattleScape)`), so they survive the whole battle for the E10.6
-/// acts before being cleaned (`bevy-traps.md` #1 at the correct state level).
+/// [`SimRng`], the four [`setup_battle`]-inserted resources ([`CoverLedger`] /
+/// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`]), and the
+/// [`BattleInProgress`] witness (closing the [`SimSystems::Simulate`] gate so the
+/// bundled runtime goes inert again). These resources are BATTLE-lifetime: the app
+/// sends this trigger only at the battle boundary (its `OnExit(GameState::BattleScape)`),
+/// so they survive the whole battle for the E10.6 acts before being cleaned
+/// (`bevy-traps.md` #1 at the correct state level).
 ///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is deliberately NOT removed: it is
 /// E10.4's persistent `Load` resource, untouched by this plugin. A
@@ -182,6 +217,9 @@ pub fn teardown_battle_on_request(
         commands.remove_resource::<SurfaceGrid>();
         commands.remove_resource::<OccupancyGrid>();
         commands.remove_resource::<VerticalLinkGraph>();
+        // Close the gate witness alongside the battle-lifetime resources, so the
+        // Simulate band goes inert (and panic-free) after the battle ends (GTW-212).
+        commands.remove_resource::<BattleInProgress>();
     }
 }
 
@@ -211,10 +249,14 @@ pub fn teardown_battle_on_request(
 /// unconditionally — a Bevy `Res<T>` whose resource is absent fails param validation
 /// (`bevy-traps.md` #1). Those resources exist only between a setup and a teardown, so
 /// `BattleSimPlugin` gates the whole `Simulate` band on
-/// [`resource_exists`]`::<`[`OccupancyGrid`]`>` (the setup-inserted witness) — a
-/// `run_if` skips a set's member systems entirely (no param validation) when false, so
-/// the bundled runtime stays inert (and panic-free) before the first battle and after
-/// teardown. The lifecycle systems are deliberately NOT in that gated band: the setup
+/// [`resource_exists`]`::<`[`BattleInProgress`]`>` (the setup-inserted "a battle is
+/// active" witness — GTW-212's purpose-built tag, replacing the incidental
+/// [`OccupancyGrid`]-as-gate proxy) — a `run_if` skips a set's member systems entirely
+/// (no param validation) when false, so the bundled runtime stays inert (and
+/// panic-free) before the first battle and after teardown. The setup inserts
+/// [`BattleInProgress`] on the same `Ok` path that inserts [`OccupancyGrid`] and the
+/// teardown removes it alongside, so the gated span is identical — only the witness is
+/// explicit. The lifecycle systems are deliberately NOT in that gated band: the setup
 /// system must run to CREATE the witness (it would otherwise dead-gate itself), and the
 /// teardown system must run AFTER the band to remove the witness — so both run
 /// unconditionally, ordered around the band.
@@ -233,11 +275,13 @@ impl Plugin for BattleSimPlugin {
             .add_message::<TeardownBattleRequested>()
             .add_message::<BattleReady>()
             // Gate the whole Simulate band (the bundled dispatch + occupancy systems)
-            // on the setup-inserted OccupancyGrid witness, so the bundled runtime is
-            // inert + panic-free outside a live battle (bevy-traps.md #1).
+            // on the setup-inserted BattleInProgress witness — the purpose-built
+            // "a battle is active" tag (GTW-212), replacing the incidental OccupancyGrid
+            // proxy — so the bundled runtime is inert + panic-free outside a live battle
+            // (bevy-traps.md #1; conditions still accumulate across configure_sets #5).
             .configure_sets(
                 Update,
-                SimSystems::Simulate.run_if(resource_exists::<OccupancyGrid>),
+                SimSystems::Simulate.run_if(resource_exists::<BattleInProgress>),
             )
             // The lifecycle drivers run UNCONDITIONALLY (outside the gated band): setup
             // before the band (it creates the witness), teardown after (it removes it).
@@ -274,6 +318,7 @@ mod tests {
         situation::GangerSpawn,
         tuning::CombatTuning,
         vertical::{InvalidVerticalLink, LinkKind, VerticalLink},
+        weapon::{FireModeSpec, ModeConeMult, ModeShots, ModeTuPercent},
     };
 
     /// An arbitrary (NOT shipped tuning) seed for a test battle's RNG stream.
@@ -605,6 +650,147 @@ mod tests {
         assert!(
             app.world().get_resource::<CombatTuning>().is_some(),
             "teardown must NOT remove CombatTuning (E10.4's persistent Load resource)",
+        );
+    }
+
+    // === GTW-212 AC1 — BattleInProgress is a public marker Resource with the correct
+    // lifecycle: ABSENT before setup, PRESENT after a successful setup, ABSENT after
+    // teardown, and ABSENT after a FAILED setup (no BattleReady → no witness). ===
+
+    #[test]
+    fn battle_in_progress_tracks_the_battle_active_window() {
+        let mut app = headless_app();
+
+        // ABSENT before any setup.
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_none(),
+            "BattleInProgress must be absent before any setup",
+        );
+
+        // PRESENT after a successful setup (the small fixture that emits BattleReady).
+        app.world_mut().write_message(SetupBattleRequested::new(
+            two_ganger_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+        assert_eq!(
+            drain_battle_ready(&mut app),
+            1,
+            "the fixture setup must succeed (one BattleReady)",
+        );
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_some(),
+            "a successful setup must insert the BattleInProgress witness",
+        );
+
+        // ABSENT after a teardown.
+        app.world_mut().write_message(TeardownBattleRequested);
+        app.update();
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_none(),
+            "teardown must remove the BattleInProgress witness",
+        );
+    }
+
+    #[test]
+    fn failed_setup_inserts_no_battle_in_progress() {
+        let (situation, _link) = dangling_link_situation();
+        let mut app = headless_app();
+        app.world_mut()
+            .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+        app.update();
+
+        // A failed setup emits no BattleReady (fail-closed) and inserts no witness.
+        assert_eq!(
+            drain_battle_ready(&mut app),
+            0,
+            "a failed setup must emit NO BattleReady",
+        );
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_none(),
+            "a FAILED setup must NOT insert BattleInProgress (the Ok-only witness)",
+        );
+    }
+
+    // === GTW-212 AC2 — the Simulate band is gated on BattleInProgress, not
+    // OccupancyGrid: the bundled runtime does NOT panic pre-battle / post-teardown (a
+    // missing non-Option Res would panic), runs only while the witness is present, and
+    // the gate's run_if references BattleInProgress (not OccupancyGrid). ===
+
+    #[test]
+    fn bundled_runtime_is_inert_pre_battle_and_post_teardown() {
+        let mut app = headless_app();
+
+        // Pre-battle: no witness, so the gated band is skipped — updating must not panic
+        // even though the bundled in-set systems take non-Option battle-lifetime Res.
+        for _ in 0..3 {
+            app.update();
+        }
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_none(),
+            "no setup means no BattleInProgress, so the Simulate band is skipped",
+        );
+
+        // Set the battle up — the witness now exists, so the band is live (and an
+        // emitted FireRequested is consumed without panic).
+        app.world_mut().write_message(SetupBattleRequested::new(
+            two_ganger_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_some(),
+            "a successful setup turns the gate on",
+        );
+        // An arbitrary actor entity + a valid single-shot mode spec — the gated
+        // dispatch must consume the message without panic (the unarmed actor simply
+        // fails the fire guard; the point is the LIVE band runs and stays panic-free).
+        let actor = app.world_mut().spawn_empty().id();
+        let mode = FireModeSpec::new(
+            ModeConeMult::new(1.0),
+            ModeTuPercent::new(0.2),
+            ModeShots::new(1),
+        );
+        app.world_mut().write_message(FireRequested::new(
+            actor,
+            mode,
+            Cell::new(7, 8),
+            Level::new(0),
+        ));
+        app.update();
+
+        // Tear it down — the witness is gone, the band is skipped again, and further
+        // updates do not panic.
+        app.world_mut().write_message(TeardownBattleRequested);
+        app.update();
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_none(),
+            "teardown removes the witness, re-closing the gate",
+        );
+        for _ in 0..3 {
+            app.update();
+        }
+    }
+
+    /// AC2 structure check — the gate's `run_if` references the `BattleInProgress`
+    /// witness and NOT `OccupancyGrid`. A source-scan over THIS module's text proves the
+    /// witness swap landed in the `configure_sets` call (the externally invisible wiring
+    /// the AC2 grep check asks for), keyed on the literal `run_if(resource_exists::<…>)`
+    /// fragments so a regression back to the `OccupancyGrid` proxy turns this red.
+    #[test]
+    fn simulate_gate_run_if_references_battle_in_progress_not_occupancy_grid() {
+        let source = include_str!("battle.rs");
+        // The witness fragment is assembled so this assertion is not its own self-match.
+        let witness = concat!("BattleIn", "Progress");
+        let stale = concat!("Occupancy", "Grid");
+        let gate_on = |ty: &str| format!("run_if(resource_exists::<{ty}>)");
+        assert!(
+            source.contains(&gate_on(witness)),
+            "the Simulate band's run_if must gate on the BattleInProgress witness",
+        );
+        assert!(
+            !source.contains(&gate_on(stale)),
+            "the Simulate band must NOT gate on the incidental OccupancyGrid proxy any more",
         );
     }
 

@@ -32,6 +32,7 @@ use gdtf_battle_sim::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
         SourceArmor,
     },
+    battle::BattleInProgress,
     cover::HeightBand,
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Shooting, Stance, StanceKind,
@@ -258,10 +259,15 @@ fn fire_requested_in_battle_running_drives_the_sim() {
     );
 
     // The battle was poured into the world by the real Generation setup — the witness the
-    // bundled dispatch band gates on is present.
+    // bundled dispatch band gates on (GTW-212's BattleInProgress, no longer OccupancyGrid)
+    // is present, and the OccupancyGrid the march reads is too.
+    assert!(
+        app.world().get_resource::<BattleInProgress>().is_some(),
+        "a battle must be set up in BattleRunning (BattleInProgress witness present)",
+    );
     assert!(
         app.world().get_resource::<OccupancyGrid>().is_some(),
-        "a battle must be set up in BattleRunning (OccupancyGrid witness present)",
+        "the OccupancyGrid the band-free march reads must be present in BattleRunning",
     );
 
     // Query the two SETUP-SPAWNED gangers (never hand-spawned): the shooter (faction 0)

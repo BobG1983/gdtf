@@ -18,6 +18,7 @@ use gdtf_battle_sim::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
         SourceArmor, WornArmor,
     },
+    battle::BattleInProgress,
     cover::CoverLedger,
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Shooting, Stance, StanceKind,
@@ -258,8 +259,9 @@ fn setup_battle_lands_resources_and_spawns_gangers() {
 
 /// AC4 — Generation completion is GATED on real setup success: the state advances
 /// to `AnimateIn`, and on the first update where the setup witness exists the gate
-/// can fire — completion never precedes setup (the `OnEnter` setup inserts the
-/// `OccupancyGrid` the gate keys off). Ordering relation, not a frame count.
+/// can fire — completion never precedes setup (the successful setup inserts the
+/// `BattleInProgress` witness, GTW-212's explicit battle-active tag). Ordering
+/// relation, not a frame count.
 #[test]
 fn generation_completion_is_gated_on_setup() {
     let mut app = walk_app(Some(two_ganger_situation()));
@@ -268,13 +270,14 @@ fn generation_completion_is_gated_on_setup() {
         "the walk should reach Generation within {BUDGET} updates",
     );
 
-    // Once Generation is reached the OnEnter setup has run, so the witness exists;
-    // the gate (and thus move_on) then advances strictly after setup. Advancing
-    // must reach AnimateIn, and the setup witness must already be present (it was
-    // inserted by the same OnEnter that the gate polls).
+    // Once Generation is reached the setup has succeeded, so the battle-active witness
+    // exists; the gate (and thus move_on) then advances strictly after setup. Advancing
+    // must reach AnimateIn, and the BattleInProgress witness must already be present (it
+    // was inserted on the same successful-setup Ok path that signals BattleReady — the
+    // sim-side band keys off it, GTW-212).
     assert!(
-        app.world().get_resource::<OccupancyGrid>().is_some(),
-        "the OnEnter setup must have inserted the OccupancyGrid before completion gates",
+        app.world().get_resource::<BattleInProgress>().is_some(),
+        "a successful setup must have inserted the BattleInProgress witness before completion gates",
     );
 
     let reached_animate_in = advance_until(

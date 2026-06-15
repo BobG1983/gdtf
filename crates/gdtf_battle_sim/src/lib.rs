@@ -134,9 +134,12 @@
 //!   three `#[derive(Message)]` lifecycle types the app drives it with
 //!   ([`battle::SetupBattleRequested`] carrying an owned [`situation::Situation`] +
 //!   [`rng::BattleSeed`], [`battle::TeardownBattleRequested`], and the
-//!   [`battle::BattleReady`] setup-complete signal). The app SENDS the triggers
-//!   (naming its own states, app-side) and the sim ACTS on them, naming NO `gdtf_app`
-//!   type — the one-way model/view boundary expressed as messages.
+//!   [`battle::BattleReady`] setup-complete signal). It also owns the
+//!   [`battle::BattleInProgress`] marker resource (GTW-212): the explicit "a battle is
+//!   active" witness the bundled `Simulate` band gates on — inserted on a successful
+//!   setup, removed on teardown. The app SENDS the triggers (naming its own states,
+//!   app-side) and the sim ACTS on them, naming NO `gdtf_app` type — the one-way
+//!   model/view boundary expressed as messages.
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
@@ -186,7 +189,7 @@ pub use armor::{
 };
 pub use armor_wear::{ArmorBroken, wear_armor};
 pub use battle::{
-    BattleReady, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested,
+    BattleInProgress, BattleReady, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested,
     setup_battle_on_request, teardown_battle_on_request,
 };
 pub use bleed::{Bleeding, tick_bleed};
