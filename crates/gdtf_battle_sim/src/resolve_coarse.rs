@@ -2,7 +2,7 @@
 //! [`ShotOutcome`] result.
 //!
 //! This composes the whole §1-§4 coarse pipeline into ONE call
-//! (`docs/combat/resolution.md` line 158; `docs/architecture.md` line 41):
+//! (`docs/combat/resolution.md` line 158):
 //! `resolve_coarse` derives the muzzle (E2.4 [`muzzle_position`]) → the
 //! climb-tilted central axis (E2.4 [`climb_aim_dir`] off the muzzle→aim axis from
 //! [`target_aim_point`]) → the in-cone sample (E2.5 [`sample_cone_vector`], with
@@ -13,15 +13,18 @@
 //! ganger outcome, the crossed-cell [`HeightBand`], the muzzle [`SimPos`], and the
 //! sampled trajectory unit-direction.
 //!
-//! **The change-driven contract (`docs/architecture.md` line 53, the GTW-6 /
-//! GTW-12 ruling).** `resolve_coarse` TAKES the already-maintained
+//! **The change-driven contract (the GTW-6 / GTW-12 ruling; the headless,
+//! change-driven sim↔app seam recorded in ADR-0001,
+//! `docs/decisions/0001-rust-bevy-rewrite.md`).** `resolve_coarse` TAKES the
+//! already-maintained
 //! [`OccupancyGrid`] / [`SurfaceGrid`] / [`CoverLedger`] as parameters and
 //! **never rebuilds them per shot** — it only ever reads them (and the march
 //! reads the occupant silhouette band off [`OccupancyGrid::occupant_band`],
 //! published by the change-driven sync). There is no per-shot rebuild path in the
 //! signature.
 //!
-//! **The carries-resolved-VALUES exception (`docs/architecture.md` line 51).**
+//! **The carries-resolved-VALUES exception (the model/view id-not-value boundary;
+//! ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).**
 //! [`ShotOutcome`] is the deliberate exception to the id-not-value boundary: it
 //! carries the struck model object itself (the ganger [`Entity`] / the
 //! [`CoverEntry`] / the surface cell) so ids ride along for the presenter's
@@ -57,15 +60,15 @@ use crate::{
 };
 
 /// What the resolved shot **struck** — the coarse outcome kind plus the struck
-/// model object itself (`docs/combat/resolution.md` line 158;
-/// `docs/architecture.md` line 51).
+/// model object itself (`docs/combat/resolution.md` line 158).
 ///
 /// A named domain enum (no-bare-types: the shot verdict is a domain value, not a
 /// bare tag) carrying the struck object where there is one — the ganger's
 /// [`Entity`] handle (NEVER a numeric id — GTW-10 / GTW-12), the [`CoverEntry`]
 /// read from the [`CoverLedger`], or the surface `(cell, level)` for a slab /
-/// ground strike. This is the deliberate carries-resolved-VALUES exception
-/// (`docs/architecture.md` line 51): the struck id rides along for the
+/// ground strike. This is the deliberate carries-resolved-VALUES exception to the
+/// model/view id-not-value boundary (ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`): the struck id rides along for the
 /// presenter's logging / FX.
 ///
 /// Mirrors the march's [`MarchKind`] but resolves the bare `Slab` / `Ground` /
@@ -93,13 +96,13 @@ pub enum ShotKind {
 }
 
 /// The resolved outcome of one coarse shot — the entire E2 pipeline's verdict
-/// (`docs/combat/resolution.md` line 158; `docs/architecture.md` lines 41 + 51).
+/// (`docs/combat/resolution.md` line 158).
 ///
 /// Every field is a named domain value (no-bare-types), and every position is in
 /// **sim units** — a cubic-voxel [`SimPos`] / a unit-[`Vec3`](bevy::math::Vec3)
-/// direction, **never a screen coordinate** (`docs/architecture.md` line 51:
-/// "positions in the outcome are battle-space units, never screen coords"; zero
-/// pixels). The
+/// direction, **never a screen coordinate**: positions in the outcome are
+/// battle-space units, never screen coords (the render-free authoritative model's
+/// units; ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`; zero pixels). The
 /// [`body_part`](ShotOutcome::body_part) is `Some` **only** for a
 /// [`ShotKind::Ganger`] outcome (the §4 part roll runs only when the march stops
 /// on a ganger).
@@ -135,8 +138,9 @@ pub struct ShotOutcome {
 /// apart from the world state ([`OccupancyGrid`] / [`SurfaceGrid`] / [`CoverLedger`]),
 /// the config ([`CombatTuning`]), and the entropy ([`SimRng`]) — those stay their
 /// own [`resolve_coarse`] parameters because they are NOT part of the shot
-/// description (the §"change-driven contract" boundary; `docs/architecture.md`
-/// line 53). Every field is a named domain value (no-bare-types): no bare primitive
+/// description (the §"change-driven contract" boundary; the change-driven sim↔app
+/// seam recorded in ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`). Every
+/// field is a named domain value (no-bare-types): no bare primitive
 /// or `glam` leaf, each reusing the existing E1/E2 newtype.
 ///
 /// The flight params arrive **already composed** (the ticket's "composed inputs"):
@@ -196,7 +200,7 @@ fn split_cell_level(at: CellLevel) -> (Cell, Level) {
 }
 
 /// Resolve **one coarse shot** end to end and return its [`ShotOutcome`]
-/// (`docs/combat/resolution.md` line 158; `docs/architecture.md` line 41).
+/// (`docs/combat/resolution.md` line 158).
 ///
 /// The pipeline, in order:
 ///

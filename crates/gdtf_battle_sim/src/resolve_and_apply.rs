@@ -3,11 +3,12 @@
 //! returns a FROZEN per-hit report.
 //!
 //! This is the last E3 slice (`docs/combat/resolution.md` §5 / §6 / §"What's pure
-//! math vs sim"; `docs/combat/weapons-and-armor.md` §"Per-hit resolution";
-//! `docs/architecture.md` line 73: "applies the result as ONE act (armor →
-//! severity → application, with corpse-skip draw discipline), returning the frozen
-//! per-round reports"). It **composes the already-built E3 verbs** — it rebuilds
-//! none of them:
+//! math vs sim"; `docs/combat/weapons-and-armor.md` §"Per-hit resolution"). It
+//! applies the result as ONE model-side act (armor → severity → application, with
+//! corpse-skip draw discipline) and returns the frozen per-round reports — the
+//! authoritative-model role this crate plays in the model/view split (ADR-0001,
+//! `docs/decisions/0001-rust-bevy-rewrite.md`). It **composes the already-built E3
+//! verbs** — it rebuilds none of them:
 //!
 //! 1. **Kind gate** — only a [`ShotKind::Ganger`] outcome can wound. A
 //!    [`ShotKind::Cover`] / [`ShotKind::Slab`] / [`ShotKind::Ground`] /
@@ -120,7 +121,8 @@ pub struct AppliedDamage {
 }
 
 /// The **frozen per-hit report** [`resolve_and_apply`] returns — the entire E3.9
-/// fold's verdict (`docs/architecture.md` line 73: "the frozen per-round reports").
+/// fold's verdict (the frozen per-round report the authoritative model hands the
+/// view; ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).
 ///
 /// A `Copy` value object of named domain types (no bare primitive, **no pixel** —
 /// it carries only damage / wound math, never a screen coordinate). The presenter
@@ -204,8 +206,8 @@ fn struck_piece(
 }
 
 /// Fold **one [`ShotOutcome`]** through damage → severity → application into ONE
-/// frozen [`HitReport`] — the E3.9 capstone integrator (`docs/architecture.md`
-/// line 73; `docs/combat/resolution.md` §5 / §6).
+/// frozen [`HitReport`] — the E3.9 capstone integrator (`docs/combat/resolution.md`
+/// §5 / §6).
 ///
 /// Composes the already-built E3 verbs (E3.2 [`matchup`] → E3.3 [`resolve_hit`] →
 /// E3.4 [`roll_severity`] → E3.6 [`apply_hit`]); it rebuilds none of them. The

@@ -142,7 +142,8 @@
 //!   model/view boundary expressed as messages.
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
-//! `docs/architecture.md` — the model/view split this crate sits inside.
+//! ADR-0001 (`docs/decisions/0001-rust-bevy-rewrite.md`) — the model/view split
+//! this crate sits inside as the authoritative, render-free model.
 
 pub mod acts;
 pub mod aim;

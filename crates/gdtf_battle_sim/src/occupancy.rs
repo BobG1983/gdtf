@@ -1,7 +1,8 @@
 //! Coarse 3D occupancy grid: the model's `(cell, level)` collision/query surface —
 //! the static terrain plus the live occupant of every slot of the 60×60×8 coarse
-//! grid (`docs/combat/battle-space.md`: "the 60×60×8 coarse grid";
-//! `docs/architecture.md`: "the **coarse occupancy** (a 3D grid, e.g. 60×60×8)").
+//! grid (`docs/combat/battle-space.md`: "the 60×60×8 coarse grid"). It is the
+//! **coarse occupancy** the authoritative model owns (ADR-0001,
+//! `docs/decisions/0001-rust-bevy-rewrite.md`).
 //!
 //! This is the E1.6 occupancy-grid slice. The grid is what the collision/query
 //! surface movement (GTW-12) and the LOS/cover queries read: each `(cell, level)`
@@ -11,10 +12,9 @@
 //! a Bevy [`Entity`] handle, **never a numeric id** — the GTW-10 / GTW-12
 //! architectural constraint that ids never cross as raw integers into the grid.
 //!
-//! Per `docs/architecture.md` the occupancy is "rebuilt **fresh per shot** from the
-//! situation's static terrain plus live ganger state: always correct by
-//! construction, no stale-sync seam", and "a destroyed-cover set keeps smashed
-//! walls/props from resurrecting on the rebuild". This module supplies both halves:
+//! The occupancy is built **from the situation's static terrain plus live ganger
+//! state**: always correct by construction, with a destroyed-cover set that keeps
+//! smashed walls/props from resurrecting. This module supplies both halves:
 //!
 //! 1. [`OccupancyGrid::build_from_occupancy_input`] pours an [`OccupancyInput`]'s
 //!    terrain and occupant placements into a fresh grid — the grid's constructor.
@@ -235,14 +235,15 @@ impl DestroyedCover {
 }
 
 /// The coarse 3D occupancy grid — the model's `(cell, level)` collision/query
-/// surface that movement (GTW-12) and the LOS/cover queries read
-/// (`docs/architecture.md`'s "coarse occupancy").
+/// surface that movement (GTW-12) and the LOS/cover queries read (the coarse
+/// occupancy the authoritative model owns; ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`).
 ///
 /// A Bevy [`Resource`] (one grid per battle). It holds [`SLOT_COUNT`]
 /// ([`GRID_WIDTH`] × [`GRID_HEIGHT`] × [`MAX_LEVELS`] = 60 × 60 × 8) flat
 /// [`OccupancySlot`]s — a slot per `(cell, level)` — addressed by
-/// `x + y·WIDTH + level·WIDTH·HEIGHT`. Per `docs/architecture.md` the grid is built
-/// "from the situation's static terrain plus live ganger state", so
+/// `x + y·WIDTH + level·WIDTH·HEIGHT`. The grid is built from the situation's
+/// static terrain plus live ganger state, so
 /// [`build_from_occupancy_input`](OccupancyGrid::build_from_occupancy_input) is the
 /// canonical constructor.
 ///
@@ -298,9 +299,8 @@ impl OccupancyGrid {
     }
 
     /// Build a fresh grid from an [`OccupancyInput`], pouring its terrain and
-    /// occupant placements into the slots — the grid's constructor
-    /// (`docs/architecture.md`: built "from the situation's static terrain plus live
-    /// ganger state").
+    /// occupant placements into the slots — the grid's constructor, built from the
+    /// situation's static terrain plus live ganger state.
     ///
     /// Starts from an empty grid (all [`TerrainKind::Open`], no occupants), then sets
     /// each [`TerrainPlacement`]'s slot terrain and each [`OccupantPlacement`]'s slot
@@ -411,9 +411,8 @@ impl OccupancyGrid {
 
     /// Mark the cover at `cell_level` **destroyed**, inserting it into the
     /// append-only [`destroyed_cover`](OccupancyGrid::destroyed_cover) set — a cell
-    /// in that set can never resurrect (C4; `docs/architecture.md`: "a
-    /// destroyed-cover set keeps smashed walls/props from resurrecting on the
-    /// rebuild").
+    /// in that set can never resurrect (C4): a destroyed-cover set keeps smashed
+    /// walls/props from resurrecting.
     ///
     /// **Append-only:** this only ever inserts — there is no API on the grid that
     /// removes a cell from the set, so a destroyed cover cell stays excluded for the
@@ -439,9 +438,8 @@ impl OccupancyGrid {
     /// A destroyed cover cell does **NOT** block: a `(cell, level)` in
     /// [`destroyed_cover`](OccupancyGrid::destroyed_cover) returns `false` even if its
     /// terrain marker is [`TerrainKind::Cover`] (or [`TerrainKind::Wall`]) — the
-    /// smashed piece no longer obstructs (`docs/architecture.md`: smashed
-    /// walls/props do not resurrect; `docs/combat/combat.md`: cover "can be shot and
-    /// destroyed"). An out-of-range `cell_level` reads [`TerrainKind::Open`] and so
+    /// smashed piece no longer obstructs (smashed walls/props do not resurrect;
+    /// `docs/combat/combat.md`: cover "can be shot and destroyed"). An out-of-range `cell_level` reads [`TerrainKind::Open`] and so
     /// returns `false` (graceful — no panic).
     #[must_use]
     pub fn is_blocked(&self, cell_level: &CellLevel) -> bool {

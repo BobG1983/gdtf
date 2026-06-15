@@ -3,8 +3,9 @@
 //! GTW-156 ([`crate::occupancy`]) shipped the [`OccupancyGrid`] resource with a
 //! `build_from_occupancy_input` constructor that pours an occupancy input into a
 //! fresh grid. That constructor is the **setup-time** pour, NOT the per-frame
-//! maintenance path: per `docs/architecture.md`'s "change-driven grid
-//! maintenance" thesis (and the GTW-6 / GTW-12 architectural ruling), the live
+//! maintenance path: per the **change-driven grid maintenance** thesis (the
+//! GTW-6 / GTW-12 architectural ruling; the change-driven sim↔app seam recorded in
+//! ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`), the live
 //! battle keeps the grid current by reacting to the **changes** — a ganger moved,
 //! a ganger went down, a piece of cover was smashed — and editing the grid IN
 //! PLACE, never by re-running a full-grid rebuild per shot.
@@ -84,8 +85,10 @@ impl PrevSlot {
 /// A piece of cover was **destroyed** at a `(cell, level)` — the buffered message
 /// [`sync_destroyed_cover`] folds into the grid's destroyed-cover set.
 ///
-/// Per `docs/architecture.md` the sim's destroyed-cover signal is
-/// `CoverDestroyed { cell, level }`; the GTW-154 [`crate::cover::CoverEvent::Destroyed`]
+/// The sim's destroyed-cover signal is `CoverDestroyed { cell, level }` (a
+/// model-authoritative fact the view mirrors; ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`); the GTW-154
+/// [`crate::cover::CoverEvent::Destroyed`]
 /// depletion result is what becomes this message (a deplete→message bridge is a
 /// later slice — this slice consumes the message). Carries a [`CellLevel`]
 /// (no-bare-types; never a numeric id). It is a **buffered message**, NOT the

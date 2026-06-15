@@ -1,9 +1,9 @@
 //! The canonical authored **situation** and the setup that pours it into the
-//! battle ECS — the E1.8 situation→entities slice (`docs/architecture.md`: "Setup
-//! systems build the scene from the situation (floor, walls, scatter, gangers)";
-//! the situation is "gangers, walls, scatter, upper-floor slabs, and stair/ladder
-//! vertical links — every placement an optional storey, position always the pair
-//! (cell, level)").
+//! battle ECS — the E1.8 situation→entities slice. The setup systems here build the
+//! scene from the situation (floor, walls, scatter, gangers); the situation is
+//! gangers, walls, scatter, upper-floor slabs, and stair/ladder vertical links —
+//! every placement an optional storey, position always the pair (cell, level). This
+//! module is the in-crate **setup-on-entry source of truth** for that construction.
 //!
 //! [`Situation`] is the **one canonical** authored battlefield value — it
 //! supersedes the GTW-156 placeholder (renamed to
@@ -25,7 +25,7 @@
 //!   placeholder): the authored stair / ladder links (E1.10).
 //!
 //! [`setup_battle`] reads a [`Situation`] and builds the battle in the ECS world
-//! (`docs/architecture.md`'s setup systems). It is **render-free** and driven from
+//! (the setup systems described above). It is **render-free** and driven from
 //! a headless `MinimalPlugins` app (it takes only [`Commands`] — no renderer, no
 //! asset server). For each ganger it `commands.spawn(...)`s ALL the per-field
 //! components plus the seeded [`WornArmor`], capturing the returned Bevy [`Entity`](bevy::prelude::Entity)
@@ -171,8 +171,9 @@ impl CoverSpawn {
 }
 
 /// The canonical authored **situation** — the full generated / authored
-/// battlefield the battle is built from (`docs/architecture.md`: "gangers, walls,
-/// scatter, upper-floor slabs, and stair/ladder vertical links").
+/// battlefield the battle is built from: gangers, walls, scatter, upper-floor
+/// slabs, and stair/ladder vertical links (this [`crate::situation`] module is the
+/// setup-on-entry source of truth).
 ///
 /// This is the ONE situation type: it supersedes the GTW-156 placeholder (now
 /// [`crate::occupancy::OccupancyInput`], the grid construction input) and GTW-160's
@@ -255,8 +256,9 @@ impl BattleSetup {
     }
 }
 
-/// Build the battle in the ECS world from a [`Situation`] — the E1.8 setup
-/// (`docs/architecture.md`: "Setup systems build the scene from the situation").
+/// Build the battle in the ECS world from a [`Situation`] — the E1.8 setup: the
+/// setup system that builds the scene from the situation (see the
+/// [`crate::situation`] module doc, the setup-on-entry source of truth).
 ///
 /// Steps, in order:
 ///

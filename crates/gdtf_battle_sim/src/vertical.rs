@@ -2,9 +2,10 @@
 //! storeys — the *only* way a ganger changes storey
 //! (`docs/combat/combat.md`: "gangers change storeys **only over authored
 //! stair/ladder links** (a situation's `vertical_links`, validated and poured
-//! into the movement graph)"; `docs/architecture.md`: the situation carries
-//! "stair/ladder vertical links — every placement an optional storey, position
-//! always the pair (cell, level)").
+//! into the movement graph)"). The authored situation carries these stair/ladder
+//! vertical links — every placement an optional storey, position always the pair
+//! (cell, level) — as documented on the [`crate::situation`] module (the
+//! setup-on-entry source of truth).
 //!
 //! This is the E1.10 vertical-link slice. It supplies three things:
 //!

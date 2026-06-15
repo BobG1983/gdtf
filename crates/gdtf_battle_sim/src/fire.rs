@@ -151,7 +151,8 @@ pub type TargetQuery<'world, 'state> = Query<
 /// into one named ref-struct so [`fire`] stays under clippy's argument-count gate.
 ///
 /// The three grids [`resolve_coarse`] reads (never rebuilds — the change-driven
-/// contract, `docs/architecture.md` line 53): the coarse [`OccupancyGrid`], the
+/// contract; the change-driven sim↔app seam recorded in ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`): the coarse [`OccupancyGrid`], the
 /// persistent [`SurfaceGrid`], and the model [`CoverLedger`]. Grouping the cohesive
 /// world-state refs into one value (the [`ShotInputs`] / [`TargetGanger`] bundle
 /// precedent) keeps [`fire`]'s parameter list under the 8-arg gate. The struct is a
@@ -426,7 +427,9 @@ fn resolve_round(
 }
 
 /// Run the whole firing act and return its **frozen volley** — the E4.5 capstone
-/// integrator (`docs/combat/resolution.md` §1 / §1a; `docs/architecture.md`).
+/// integrator (`docs/combat/resolution.md` §1 / §1a; the authoritative-model role
+/// this crate plays in the model/view split, ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`).
 ///
 /// A proper query-based Bevy function — **NO `&mut World`** (AC1): the SHOOTER
 /// query ([`ShooterQuery`], `With<Weapon>`) carries the shooter's ganger state plus

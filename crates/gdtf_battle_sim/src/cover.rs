@@ -8,7 +8,8 @@
 //! not a second armor model). "The HP lives on the model's cover ledger (one
 //! ledger for walls *and* props, keyed (cell, level)): `apply_cover_hit` spends
 //! it, and depletion emits a cover-destroyed event carrying (cell, level)"
-//! (resolution.md §3; `docs/architecture.md`'s model-authoritative-facts table).
+//! (resolution.md §3) — a model-authoritative fact the view mirrors (ADR-0001,
+//! `docs/decisions/0001-rust-bevy-rewrite.md`).
 //!
 //! Three deliberate design points carried from the docs and this ticket:
 //!
@@ -18,8 +19,8 @@
 //!    same map and are both retrievable.
 //! 2. **Lazy seeding.** `current_hp` is seeded to `max_hp` on **first access**, not
 //!    pre-populated for every cell of the grid. Querying an absent entry returns a
-//!    freshly seeded entry with `current_hp == max_hp`
-//!    (`docs/architecture.md`: "lazily seeded from each piece's max HP").
+//!    freshly seeded entry with `current_hp == max_hp` (lazily seeded from each
+//!    piece's max HP).
 //! 3. **Marker-only depletion.** [`CoverLedger::deplete_cover`] spends HP and, when
 //!    `current_hp` reaches zero, sets [`Destroyed`] and returns a
 //!    [`CoverEvent::Destroyed`] carrying the [`CellLevel`]. The destroyed-cover
@@ -160,9 +161,10 @@ impl CoverEntry {
 /// A named domain enum (not a bare `Option`/`bool`): either the hit only
 /// **damaged** the cover, or it **destroyed** it, in which case the variant carries
 /// the [`CellLevel`] for the presenter's reactions (`docs/combat/resolution.md`
-/// §3: "depletion emits a cover-destroyed event carrying (cell, level)";
-/// `docs/architecture.md`'s `CoverDestroyed { cell, level }`). This slice emits the
-/// marker only — acting on it (occupancy + prop removal) is GTW-35.
+/// §3: "depletion emits a cover-destroyed event carrying (cell, level)"; the
+/// model's `CoverDestroyed { cell, level }` signal, a model-authoritative fact the
+/// view mirrors — ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`). This slice
+/// emits the marker only — acting on it (occupancy + prop removal) is GTW-35.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CoverEvent {
     /// The cover took damage but still stands (`current_hp > 0`).
@@ -174,8 +176,9 @@ pub enum CoverEvent {
 
 /// The cover-HP ledger — the sim's **single authoritative writer** of cover-HP
 /// state, one unified map for BOTH walls and scatter/props, keyed
-/// [`CellLevel`] → [`CoverEntry`] (`docs/combat/resolution.md` §3;
-/// `docs/architecture.md`'s model-authoritative-facts table).
+/// [`CellLevel`] → [`CoverEntry`] (`docs/combat/resolution.md` §3; a
+/// model-authoritative fact in the model/view split — ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`).
 ///
 /// A Bevy [`Resource`] (NOT a component — there is one ledger per battle, not one
 /// per cover entity), so the whole sim reads and spends cover HP through this one

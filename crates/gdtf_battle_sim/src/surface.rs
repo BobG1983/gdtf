@@ -1,8 +1,9 @@
 //! Persistent surface grid: the model's authoritative store of floor/roof **slab**
 //! existence and per-cell **ground** damage — battle *state* carried across every
-//! occupancy rebuild (`docs/architecture.md`: "the **persistent surface grid** —
-//! floor/roof slabs + ground records are battle *state*, carried across every
-//! rebuild, so a destroyed slab stays destroyed and ground damage accrues").
+//! occupancy rebuild. The **persistent surface grid**: floor/roof slabs + ground
+//! records are battle *state*, carried across every rebuild, so a destroyed slab
+//! stays destroyed and ground damage accrues (a model-authoritative store in the
+//! model/view split — ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).
 //!
 //! This is the E1.5 surface-grid slice. It is a **separate** resource from the
 //! coarse occupancy (E1.6 / GTW-156, not built yet): the surface grid carries slab
@@ -16,14 +17,14 @@
 //! 1. **A destroyed slab stays destroyed.** [`SlabState`] is `Present` / `Destroyed`
 //!    / `Absent`; [`SurfaceGrid::destroy_slab`] sets `Destroyed` and there is **no
 //!    API that reverts it** — [`SurfaceGrid::set_slab`] refuses to overwrite a
-//!    `Destroyed` entry (`docs/architecture.md`: "a destroyed slab stays destroyed";
-//!    "slab destroyed at zero"). Destruction is permanent by construction.
+//!    `Destroyed` entry (a destroyed slab stays destroyed; slab destroyed at zero).
+//!    Destruction is permanent by construction.
 //! 2. **Ground is damaged, never destroyed, and damage only accrues.**
 //!    [`GroundDamage`] is a `u32` accumulator; [`SurfaceGrid::accrue_ground_damage`]
 //!    is **additive (saturating)** so the total is monotonically non-decreasing —
 //!    there is no API that lowers it, and the guarded [`SurfaceGrid::set_ground_damage`]
-//!    rejects any value below the current total (`docs/architecture.md`: "the
-//!    ground-hit verb (damaged, never destroyed)").
+//!    rejects any value below the current total (the ground-hit verb: damaged,
+//!    never destroyed).
 //!
 //! The slab key is the E1.1 [`CellLevel`] (the `(cell, level)` of the slab between
 //! storeys); the ground key is the E1.1 [`Cell`] (the ground plane has no storey).
@@ -47,8 +48,8 @@ use crate::metric::{Cell, CellLevel};
 /// - [`Present`](SlabState::Present): an intact slab — it stops a round crossing the
 ///   z-boundary (`docs/combat/resolution.md`: "an intact slab stops the round").
 /// - [`Destroyed`](SlabState::Destroyed): a slab that existed and was smashed at zero
-///   HP — **permanent**, it can never revert to `Present` or `Absent`
-///   (`docs/architecture.md`: "a destroyed slab stays destroyed").
+///   HP — **permanent**, it can never revert to `Present` or `Absent` (a destroyed
+///   slab stays destroyed).
 /// - [`Absent`](SlabState::Absent): no slab was ever authored here (open air between
 ///   storeys) — the default read for an untouched key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -76,8 +77,8 @@ impl SlabState {
 ///
 /// A named newtype over `u32` (no-bare-types: a ground-damage total is a domain
 /// value distinct from any HP pool or cover-damage amount — rule 3). The ground is
-/// **damaged, never destroyed** (`docs/architecture.md`: "the ground-hit verb
-/// (damaged, never destroyed)"), so this only ever grows: [`SurfaceGrid`] exposes no
+/// **damaged, never destroyed** (the ground-hit verb: damaged, never destroyed),
+/// so this only ever grows: [`SurfaceGrid`] exposes no
 /// API that lowers it. Private inner + derived [`Deref`] (house style). A magnitude
 /// is per-hit gameplay data, not pinned here.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -101,8 +102,9 @@ impl GroundDamage {
 
 /// The persistent surface grid — the sim's **single authoritative store** of
 /// floor/roof slab existence and per-cell ground damage, carried across every
-/// occupancy rebuild (`docs/architecture.md`'s "persistent surface grid" + the
-/// model-authoritative-facts table's "Surfaces / ground" row).
+/// occupancy rebuild (the persistent surface grid — a model-authoritative store of
+/// the "Surfaces / ground" facts in the model/view split; ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`).
 ///
 /// A Bevy [`Resource`] (one grid per battle), **mutated in place** — never rebuilt.
 /// It is deliberately a **separate** resource from the coarse occupancy (E1.6 /
@@ -150,8 +152,8 @@ impl SurfaceGrid {
     ///
     /// **Permanence guard:** if the slab at `key` is already
     /// [`SlabState::Destroyed`], this is a **no-op** — a destroyed slab can never be
-    /// reverted to `Present` or `Absent` (`docs/architecture.md`: "a destroyed slab
-    /// stays destroyed"). The only way a slab becomes `Destroyed` is
+    /// reverted to `Present` or `Absent` (a destroyed slab stays destroyed). The only
+    /// way a slab becomes `Destroyed` is
     /// [`destroy_slab`](SurfaceGrid::destroy_slab); this method exists for authoring
     /// the *pre-destruction* state and must not be a back door around permanence.
     pub fn set_slab(&mut self, key: CellLevel, state: SlabState) {
@@ -163,8 +165,7 @@ impl SurfaceGrid {
     }
 
     /// Destroy the slab at `key` — set it [`SlabState::Destroyed`], **idempotently
-    /// and permanently** (`docs/architecture.md`: "slab destroyed at zero"; "a
-    /// destroyed slab stays destroyed").
+    /// and permanently** (slab destroyed at zero; a destroyed slab stays destroyed).
     ///
     /// This is the surface-hit verb's outcome (a slab spent to zero HP). It is the
     /// ONLY way an entry becomes `Destroyed`, and the state is terminal: once set,
@@ -185,8 +186,7 @@ impl SurfaceGrid {
     }
 
     /// Accrue `amount` more ground damage at `cell`, returning the new total — the
-    /// ground-hit verb (`docs/architecture.md`: "the ground-hit verb (damaged,
-    /// never destroyed)").
+    /// ground-hit verb (damaged, never destroyed).
     ///
     /// **Monotonic by construction:** the new total is the old total plus `amount`
     /// (saturating at `u32::MAX`), so it can only ever grow. There is no API to lower

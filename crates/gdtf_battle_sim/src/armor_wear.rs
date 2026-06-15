@@ -8,7 +8,8 @@
 //! protecting for the rest of the battle (later hits on that location resolve as
 //! bare flesh — the [`WornArmor::protects`] gate). The worn copy is battle-local
 //! (E1.3): wearing it **never** touches the roster [`crate::armor::SourceArmor`]
-//! (`docs/architecture.md`'s model/view separation).
+//! (the model/view separation; ADR-0001,
+//! `docs/decisions/0001-rust-bevy-rewrite.md`).
 //!
 //! When a piece crosses from protecting (`integrity > 0`) to broken
 //! (`integrity ≤ 0`) — **exactly once**, on that single crossing — an
@@ -90,7 +91,8 @@ impl ArmorBroken {
 /// rule in the pure function and the message-buffer write at the system boundary.
 ///
 /// Battle-local: this only ever mutates the passed [`WornArmor`] copy, never the
-/// roster [`crate::armor::SourceArmor`] it was seeded from (`docs/architecture.md`).
+/// roster [`crate::armor::SourceArmor`] it was seeded from (the model/view
+/// separation; ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).
 #[must_use]
 pub fn wear_armor(
     worn: &mut WornArmor,

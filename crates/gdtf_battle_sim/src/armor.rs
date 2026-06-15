@@ -19,7 +19,8 @@
 //! and tested here. Per `weapons-and-armor.md`, **hardness does not degrade** —
 //! only [`ArmorIntegrity`] wears, so it is the worn copy's single mutable field.
 //!
-//! The model/view split (`docs/architecture.md`): the [`SourceArmor`] record is
+//! The model/view split (ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`): the
+//! [`SourceArmor`] record is
 //! the roster representation and is **never** mutated during a battle; a battle
 //! starts by seeding an owned [`WornArmor`] copy **by value** from it, and only
 //! that copy wears. Seeding by value means a worn-copy mutation can never leak
@@ -282,8 +283,9 @@ impl ArmorPiece {
 /// [`BodyPart`], `weapons-and-armor.md` §"Per-hit resolution").
 ///
 /// This is the roster source of truth: the per-location [`ArmorPiece`]s a ganger
-/// carries into a battle. Per `docs/architecture.md`'s battle-local / roster
-/// separation, this record is **never** mutated during a battle — it is read once
+/// carries into a battle. Per the battle-local / roster separation (ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`), this record is **never** mutated
+/// during a battle — it is read once
 /// to seed an owned [`WornArmor`] copy ([`WornArmor::seed_from`]). It is plain
 /// data (not a [`Component`]); the battle-local copy is the component the sim
 /// places on ganger entities.
@@ -363,8 +365,9 @@ impl SourceArmor {
 }
 
 /// The **battle-local** worn-armor copy for one ganger — the sim's only mutable
-/// armor surface during a battle (`docs/architecture.md`: "the battle-local
-/// **worn armor** … seeded at construction, that mid-battle wear mutates").
+/// armor surface during a battle: the battle-local **worn armor**, seeded at
+/// construction, that mid-battle wear mutates (the model/view battle-local /
+/// roster separation; ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).
 ///
 /// A Bevy [`Component`] keyed by [`BodyPart`] across the six parts: per-hit wear
 /// degrades the struck location's [`ArmorIntegrity`] in place
@@ -387,8 +390,8 @@ impl WornArmor {
     /// the sim mutates during the battle. Because [`ArmorPiece`] is `Copy` and the
     /// pieces are taken by value out of the source, no reference to the roster
     /// record survives — a later [`wear_integrity`](WornArmor::wear_integrity) on
-    /// this copy can never reach the source (`docs/architecture.md`: "The roster
-    /// data is never touched").
+    /// this copy can never reach the source (the roster data is never touched;
+    /// ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).
     #[must_use]
     pub const fn seed_from(source: &SourceArmor) -> Self {
         Self {
