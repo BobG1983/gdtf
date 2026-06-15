@@ -14,4 +14,4 @@ presenter (`gdtf_battle_presenter`) mirrors this; it never owns the rules.
 - [weapons-and-armor.md](weapons-and-armor.md) — weapon & armor stats, the per-hit damage/penetration formula, and how the matchup wheel hooks in.
 - [wounds-and-roster.md](wounds-and-roster.md) — the wound table and roster persistence (the heart of the generator).
 
-See also: [../pillars/index.md](../pillars/index.md) · [../glossary.md](../glossary.md) · [../litmus-tests.md](../litmus-tests.md) · [../architecture.md](../architecture.md).
+See also: [../pillars/index.md](../pillars/index.md) · [../glossary.md](../glossary.md) · [../litmus-tests.md](../litmus-tests.md) · [../decisions/0001-rust-bevy-rewrite.md](../decisions/0001-rust-bevy-rewrite.md) (the model/view split).

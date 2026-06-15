@@ -30,7 +30,7 @@ new ADRs here from the 0000 template.
 5. **Factual, not aspirational.** Record the decision that was actually made and
    the reasons that actually drove it. ADRs are evidence, not marketing.
 6. **Link, don't duplicate.** Point at the canon (`docs/pillars/`,
-   `docs/combat/`, `docs/architecture.md`) and the Linear ticket rather than
+   `docs/combat/`, `docs/glossary.md`) and the Linear ticket rather than
    restating them; the ADR captures the *decision*, the canon captures the design.
 
 ## The log

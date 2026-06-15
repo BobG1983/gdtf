@@ -6,7 +6,7 @@ fight  →  consequences on survivors  →  carry the scarred roster forward  �
 
 If that's fun, we have a game and the rest is layers. If it isn't, no amount of geoscape saves it.
 
-> **Engine note.** This scope is engine-agnostic design; GDTF implements it in Rust + Bevy (ECS), with the authoritative combat sim in `gdtf_battle_sim` and the view in `gdtf_battle_presenter` (see [architecture.md](../architecture.md)). The original prototype proved several of these systems; GDTF re-implements them, so "shipped" status resets — items below note the *design intent* and where the Bevy implementation stands.
+> **Engine note.** This scope is engine-agnostic design; GDTF implements it in Rust + Bevy (ECS), with the authoritative combat sim in `gdtf_battle_sim` and the view in `gdtf_battle_presenter` (see the model/view split in [ADR 0001](../decisions/0001-rust-bevy-rewrite.md)). The original prototype proved several of these systems; GDTF re-implements them, so "shipped" status resets — items below note the *design intent* and where the Bevy implementation stands.
 
 ## v0 scope
 
@@ -19,7 +19,7 @@ If that's fun, we have a game and the rest is layers. If it isn't, no amount of 
   - applies **XP / advancement** — **not yet built**,
   - **persists the roster** — **not yet built** (battle wear is battle-scoped; cross-battle carry of the scarred roster is open work).
 
-  The screen itself is a **placeholder** (outcome word + Continue back to the menu) and maps to the `MainMenu` / `Teardown` `AppState` transition.
+  The screen itself is a **placeholder** (outcome word + Continue back to the menu) and maps to the transition from the aftermath back out to the main-menu screen (`RunningState::Menu`, under `AppState::Running`) on the way to `AppState::Teardown`.
 - **Two or three missions back-to-back** to prove the loop closes — the scarred roster from mission 1 walks into mission 2. **Not yet built** — the post-action screen returns to the menu; nothing carries.
 
 ## The bar

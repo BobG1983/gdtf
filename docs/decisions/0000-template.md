@@ -18,7 +18,7 @@ Date and the Linear ticket (`GTW-N`) that drove the decision, if any.
 ## Context
 
 The forces at play: the problem, the constraints, the design canon
-(`docs/pillars/`, `docs/combat/`, `docs/architecture.md`) and any tickets that
+(`docs/pillars/`, `docs/combat/`, `docs/glossary.md`) and any tickets that
 bear on it. State the situation factually — enough that a future reader
 understands *why a decision was even needed*, without already knowing the
 outcome.

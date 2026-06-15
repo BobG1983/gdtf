@@ -1,6 +1,6 @@
 # Visibility — squad fog-of-war
 
-What the player's side can see, remember, and act on. **Three states per (cell, level)**, computed model-side (`gdtf_battle_sim`) from the **squad-combined point of view** — one fog for the player side, the union of every ganger's eyes, not per-ganger overlays. The presenter presents it; it never owns it ([../architecture.md](../architecture.md)).
+What the player's side can see, remember, and act on. **Three states per (cell, level)**, computed model-side (`gdtf_battle_sim`) from the **squad-combined point of view** — one fog for the player side, the union of every ganger's eyes, not per-ganger overlays. The presenter presents it; it never owns it (the model/view split is in [ADR 0001](../decisions/0001-rust-bevy-rewrite.md)).
 
 ## The three states
 

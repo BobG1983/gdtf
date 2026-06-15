@@ -25,6 +25,6 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 
 ## Engineering
 
-- [architecture.md](architecture.md) — the model / view split: the render-free authoritative sim (`gdtf_battle_sim`), the mirroring battle presenter (`gdtf_battle_presenter`), id-carrying events, and the fire-flow division of labor.
+- [decisions/0001-rust-bevy-rewrite.md](decisions/0001-rust-bevy-rewrite.md) — the model / view split: the render-free authoritative sim (`gdtf_battle_sim`), the mirroring battle presenter (`gdtf_battle_presenter`), and the message-driven sim↔app boundary (recorded in the ADR's Decision / Consequences).
 - [testing.md](testing.md) — the Rust test suite: how to run it, suite layout, conventions (injected seeded RNG, render-free model tests), and what it pins vs. what it deliberately doesn't.
 - [decisions/](decisions/index.md) — architecture decision records (ADRs): the why behind the structural and engine choices.
