@@ -296,6 +296,16 @@ impl RecoilClimb {
 #[serde(transparent)]
 pub struct ConcentrationCoeff(f32);
 
+impl ConcentrationCoeff {
+    /// Build a concentration-p coefficient from its magnitude (a scalar of the
+    /// data-driven `p` curve — a `base` exponent or a per-accuracy `scale`; TBD
+    /// tuning).
+    #[must_use]
+    pub const fn new(coeff: f32) -> Self {
+        Self(coeff)
+    }
+}
+
 /// The **aim-height fraction** — the dimensionless level-fraction of the target's
 /// silhouette-top height used as the aim-point z (resolution.md §1; battle-space.md
 /// §"Stance / cover / muzzle / aim heights": "the target's silhouette-top

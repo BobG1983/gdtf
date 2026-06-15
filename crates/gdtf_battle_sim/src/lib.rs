@@ -170,6 +170,22 @@
 //! §"Stance / cover / muzzle / aim heights" and §"Sub-cell precision on the ground
 //! plane".
 //!
+//! E2.5 ([`sample_cone`]) builds the §1b **in-cone vector sample** on the
+//! E2.1/E2.3/E2.4 substrate: [`sample_cone::sample_cone_vector`] samples
+//! `(θ_shot, φ)` as ONE 3D unit-direction newtype [`sample_cone::ShotDir`] about
+//! the E2.4 [`central_axis::AimDir`] central axis — `θ_shot = θ_cone × rand^p` (a
+//! HARD EDGE: a shot NEVER exceeds `θ_cone`), `φ = rand × 2π` (uniform azimuth) —
+//! so lateral AND vertical scatter arrive in one draw pair; a zero cone returns the
+//! axis EXACTLY (dead-center). [`sample_cone::concentration_p`] maps
+//! `Shooting × weapon.accuracy` through the E2.1 [`tuning::ConcentrationCoeffs`]
+//! into the named power-law exponent [`sample_cone::ConcentrationP`], rising with
+//! accuracy ([`sample_cone::Shooting`] is the live `docs/combat/stats.md` stat;
+//! [`weapon::Accuracy`] may exceed 1.0). The two levers are independent — `θ_cone`
+//! sets the max width, `p` how tightly shots cluster near center. Every draw bottoms
+//! out in the injected `&mut impl rand::Rng` ([`rng::SimRng`] handle) — no
+//! global/thread RNG. See `docs/combat/resolution.md` §1b (lines 43-53) + "What's
+//! pure math vs sim" line 150, and `docs/testing.md`'s same-seed-same-stream.
+//!
 //! E2.8 ([`hit_location`]) builds the §4 **weighted hit-location roll**:
 //! [`hit_location::roll_body_part`] picks one of the six [`armor::BodyPart`]s by a
 //! weighted draw over the EXISTING tuning [`tuning::BodyPartWeights`] (consumed,
@@ -192,6 +208,7 @@ pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
 pub mod rng;
+pub mod sample_cone;
 pub mod situation;
 pub mod stability;
 pub mod surface;
@@ -223,6 +240,7 @@ pub use occupancy_sync::{
     sync_moved_gangers,
 };
 pub use rng::{BattleSeed, SimRng};
+pub use sample_cone::{ConcentrationP, Shooting, ShotDir, concentration_p, sample_cone_vector};
 pub use situation::{
     BattleSetup, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers, setup_battle,
 };
