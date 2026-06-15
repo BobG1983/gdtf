@@ -31,8 +31,8 @@ per-need and relays their findings to the user — there is no persistent team.
 - Argument `GTW-N` given: ask the project-manager sub-agent for that exact
   ticket instead. The argument overrides priority order, **not** the rest of
   this procedure.
-- **A `LARGE`-labelled ticket is never workable.** If the pick carries
-  `LARGE`, stop and return it to the user for decomposition into sub-issues
+- **A `needs splitting`-labelled ticket is never workable.** If the pick carries
+  `needs-splitting`, stop and return it to the user for decomposition into sub-issues
   (the project-manager sub-agent creates the children once the user agrees the
   split). Do not start it, and do not "just do part of it".
 
@@ -134,7 +134,7 @@ develop/main branch, or on a red suite. Never claim completion without it.
 ## Worked example (no argument)
 
 1. PM returns the next ticket: **GTW-207** "battle-sim: resolve a hit along an
-   arbitrary attack vector" (no `LARGE` label → workable).
+   arbitrary attack vector" (no `needs splitting` label → workable).
 2. `git status --porcelain` empty, on `develop` → proceed.
 3. `git flow feature start gtw-207-attack-vector-resolution` →
    `feature/gtw-207-attack-vector-resolution`.
