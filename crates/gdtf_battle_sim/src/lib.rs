@@ -22,6 +22,13 @@
 //!   ganger's [`ganger::Tu`] (current pool) and [`ganger::TuMax`] (round-start max —
 //!   the denominator of GTW-38's `TU_left / TU_max` reaction ratio). Pure math, no
 //!   `World` access; the COST magnitudes are tuning sourced by later E4 slices.
+//! - [`posture`] — the E4.1 posture / orientation verbs over the landed ganger
+//!   components: [`posture::set_aiming`] (a pure aim-flag setter — charges NO TU; the
+//!   aim cost is the fire-time ×1.5 premium, resolution.md §1a), [`posture::set_stance`]
+//!   (charges [`tuning::StanceChangeTu`] via [`tu::spend_tu`] on a real posture change),
+//!   and [`posture::set_facing`] (charges [`tuning::TurnTu`] on a real turn). Each
+//!   costed verb is a no-op — no charge — when the value is unchanged. Pure math, no
+//!   `World` access.
 //! - [`ganger`] — per-field ganger battle-state components (including the
 //!   [`ganger::Stabilized`] bleed-out flag, owned here from E3.7); [`armor`] —
 //!   armor stats + the battle-local [`armor::WornArmor`]; [`armor_wear`] —
@@ -91,6 +98,7 @@ pub mod matchup;
 pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
+pub mod posture;
 pub mod resolve_and_apply;
 pub mod resolve_coarse;
 pub mod resolve_hit;
@@ -139,6 +147,7 @@ pub use occupancy_sync::{
     CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
     sync_moved_gangers,
 };
+pub use posture::{set_aiming, set_facing, set_stance};
 pub use resolve_and_apply::{AppliedDamage, HitReport, TargetGanger, resolve_and_apply};
 pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
 pub use resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit};
@@ -160,8 +169,8 @@ pub use tuning::{
     MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale, ProjectileBandEdges,
     RandomSpread, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
     SilhouetteTop, SilhouetteTops, StabilityCurve, StabilityCurveCoord, StabilityCurvePoint,
-    StabilityCurves, StabilizeTu, StanceContribution, StanceStability, ToughnessMitigation,
-    WoundCost, WoundCosts,
+    StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution, StanceStability,
+    ToughnessMitigation, TurnTu, WoundCost, WoundCosts,
 };
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,

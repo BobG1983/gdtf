@@ -391,6 +391,86 @@ impl Default for ExecuteTu {
     }
 }
 
+/// The **stance-change TU cost** — the flat number of Time Units a ganger spends to
+/// change posture (`docs/combat/combat.md` L34 lists "kneel" among the actions that
+/// "cost TUs"; `docs/combat/resolution.md` §"What's tunable" names "stance-change TU").
+///
+/// The flat cost charged by the E4.1 [`crate::posture::set_stance`] verb — spent via
+/// [`crate::tu::spend_tu`] **only when the stance actually changes** (re-asserting the
+/// posture a ganger already holds is a no-op, no charge). A small `u8` count, matching
+/// [`crate::ganger::Tu`]'s inner type so the economy subtracts it directly. The default
+/// is a **starting point**, tunable balance data — tests assert only the relation to
+/// this value (the drop equals it), never the magnitude. `#[serde(transparent)]` lets
+/// it parse a bare RON scalar; private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct StanceChangeTu(u8);
+
+impl StanceChangeTu {
+    /// Build a stance-change TU cost from its flat Time-Unit magnitude (a starting
+    /// point, TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style)
+    /// while letting the `posture` tests and any programmatic tuning edit build a cost
+    /// without a bare `u8` escaping; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for StanceChangeTu {
+    fn default() -> Self {
+        // A flat 8 TU to change stance — a STARTING POINT (tunable balance data).
+        // `set_stance` spends it only when the posture actually changes; value-agnostic
+        // tests only, never a pinned magnitude.
+        Self(8)
+    }
+}
+
+/// The **turn TU cost** — the flat number of Time Units a ganger spends to turn in
+/// place to a new facing (`docs/combat/combat.md` L34 affirmatively lists "turn" among
+/// the actions that "cost TUs").
+///
+/// The flat cost charged by the E4.1 [`crate::posture::set_facing`] verb — spent via
+/// [`crate::tu::spend_tu`] **only when the facing actually changes** (re-asserting the
+/// direction a ganger already faces is a no-op, no charge). The docs do not fix the
+/// *magnitude* (resolution.md §"What's tunable" omitted a turn-TU entry before this
+/// slice — now added on docs-sync); the grounded choice is this value-agnostic tuning
+/// leaf, mirroring the [`StanceChangeTu`] precedent — turning is **not** a free toggle.
+/// A small `u8` count, matching [`crate::ganger::Tu`]'s inner type so the economy
+/// subtracts it directly. The default is a **starting point**, tunable balance data —
+/// tests assert only the relation to this value, never the magnitude.
+/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner + derived
+/// [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct TurnTu(u8);
+
+impl TurnTu {
+    /// Build a turn TU cost from its flat Time-Unit magnitude (a starting point, TBD
+    /// tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style)
+    /// while letting the `posture` tests and any programmatic tuning edit build a cost
+    /// without a bare `u8` escaping; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for TurnTu {
+    fn default() -> Self {
+        // A flat 4 TU to turn in place — a STARTING POINT (tunable balance data), the
+        // docs leave the magnitude unspecified. `set_facing` spends it only when the
+        // facing actually changes; value-agnostic tests only, never a pinned magnitude.
+        Self(4)
+    }
+}
+
 /// The per-tier **Wounds-budget costs** — how many [`crate::ganger::Wounds`] each
 /// non-structural severity tier spends (`docs/combat/wounds-and-roster.md`
 /// §"Severity tiers": Minor 1 / Major 2 / Critical 3).
@@ -994,6 +1074,14 @@ pub struct CombatTuning {
     /// to finish a Downed ganger outright (`execute_downed` READS this; the TU
     /// economy that debits it is E4).
     pub execute_tu:            ExecuteTu,
+    /// The stance-change TU cost (E4.1) — the flat Time Units `set_stance` spends
+    /// via [`crate::tu::spend_tu`] when a ganger's posture actually changes
+    /// (combat.md L34 "kneel" costs TUs; resolution.md §"What's tunable").
+    pub stance_change_tu:      StanceChangeTu,
+    /// The turn TU cost (E4.1) — the flat Time Units `set_facing` spends via
+    /// [`crate::tu::spend_tu`] when a ganger's facing actually changes (combat.md
+    /// L34 "turn" costs TUs; magnitude is tunable, mirroring `stance_change_tu`).
+    pub turn_tu:               TurnTu,
     /// The §4 body-part hit-location weights.
     pub body_part_weights:     BodyPartWeights,
     /// The §1 cone / stability / recoil / aim coefficients (E2.1) — the data
@@ -1188,5 +1276,50 @@ mod tests {
             tuning.execute_tu, reparsed.execute_tu,
             "shipped execute_tu must be present and parse deterministically",
         );
+
+        // GTW-194 AC6 — the E4.1 posture TU leaves (`stance_change_tu` / `turn_tu`)
+        // deserialize from the real shipped file. `CombatTuning` has no
+        // `#[serde(default)]`, so a missing leaf would fail the parse above; this
+        // asserts the two leaves are PRESENT and parse deterministically to the same
+        // value across two parses. Value-agnostic — never a magnitude, since these are
+        // tunable balance data (the only relation that matters is that the leaves exist
+        // and parse). The per-toggle vs per-fire distinction is in `posture.rs`.
+        assert_eq!(
+            tuning.stance_change_tu, reparsed.stance_change_tu,
+            "shipped stance_change_tu must be present and parse deterministically",
+        );
+        assert_eq!(
+            tuning.turn_tu, reparsed.turn_tu,
+            "shipped turn_tu must be present and parse deterministically",
+        );
+    }
+
+    /// GTW-194 AC6 — `StanceChangeTu` and `TurnTu` each deserialize from a
+    /// hand-written bare-scalar RON fragment (`#[serde(transparent)]`) and read back
+    /// through their derived [`Deref`]. Value-agnostic: arbitrary literals (never the
+    /// shipped/default magnitudes) prove only that the leaves parse into their newtypes
+    /// and the inner `u8` is reachable — the costs themselves are tunable balance data.
+    #[test]
+    fn posture_tu_leaves_parse_from_bare_scalar_ron() {
+        let stance = ron::from_str::<StanceChangeTu>("7");
+        assert_eq!(
+            stance,
+            Ok(StanceChangeTu(7)),
+            "StanceChangeTu must parse from a bare RON scalar: {stance:?}",
+        );
+        // Read the parsed value back through the derived Deref (arbitrary magnitude).
+        if let Ok(parsed) = stance {
+            assert_eq!(*parsed, 7u8, "StanceChangeTu derefs to its inner u8");
+        }
+
+        let turn = ron::from_str::<TurnTu>("3");
+        assert_eq!(
+            turn,
+            Ok(TurnTu(3)),
+            "TurnTu must parse from a bare RON scalar: {turn:?}",
+        );
+        if let Ok(parsed) = turn {
+            assert_eq!(*parsed, 3u8, "TurnTu derefs to its inner u8");
+        }
     }
 }

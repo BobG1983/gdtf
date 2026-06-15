@@ -58,6 +58,15 @@
     stabilize_tu: 4,  // TU an adjacent ally spends to stabilize a Downed ganger (read-only; debit is E4)
     execute_tu:   6,  // TU an adjacent enemy spends to execute a Downed ganger (read-only; debit is E4)
 
+    // Posture / orientation TU costs (combat.md L34: "kneel" + "turn" cost TUs; resolution.md
+    // §"What's tunable"): the flat Time Units the E4.1 posture verbs spend. `set_stance` charges
+    // stance_change_tu and `set_facing` charges turn_tu — but ONLY when the stance/facing actually
+    // changes (re-asserting the value a ganger already holds is a no-op, no charge). Toggling the
+    // AIM flag (`set_aiming`) is NOT here: the aim cost is the fire-time ×1.5 premium (aim_mode.tu_premium),
+    // not a per-toggle charge. STARTING POINTS (tunable); the turn-TU magnitude is doc-unspecified.
+    stance_change_tu: 8,  // TU a ganger spends to change posture (stand/kneel/prone), charged on a real change
+    turn_tu:          4,  // TU a ganger spends to turn in place to a new facing, charged on a real change
+
     // Hit-location weights — the RELATIVE odds each body part is the one struck on a hit
     // (resolution.md §4 `roll_body_part`). Larger = struck more often; they need not sum to
     // any total — only the ratios between them matter.
