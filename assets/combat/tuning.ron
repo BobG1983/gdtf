@@ -111,4 +111,15 @@
             stand: 0.95,  // standing silhouette top — full height
         ),
     ),
+    // 7-type matchup multipliers (matchup.md §"Modifier never auto-win"). The wheel
+    // result (favorable / neutral / resisted) multiplies weapon PUNCH and SHRED only —
+    // never damage / floor / protection / integrity / hardness (resolution.md §5). A
+    // multiplier so it's scale-independent: always felt, never an auto-win. The resisted
+    // penalty (−66%) is deliberately DOUBLE the favorable bonus (+33%) — avoid bad
+    // matchups, don't just chase good ones. Magnitudes are tunable (ordering is fixed).
+    matchup_multipliers: (
+        favorable: 1.33,  // weapon type beats armor type — punch & shred ×1.33 (+33%)
+        neutral:   1.0,   // same wheel node / mirror — punch & shred unchanged (×1)
+        resisted:  0.34,  // weapon type loses to armor type — punch & shred ×0.34 (−66%)
+    ),
 )

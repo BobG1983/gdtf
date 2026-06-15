@@ -30,6 +30,9 @@
 //!   recoil-climb axis) → [`sample_cone`] (the in-cone shot vector) → [`clearance`] +
 //!   [`march`] (the 3-axis voxel-DDA travel) → [`hit_location`] (the part roll) →
 //!   a [`resolve_coarse::ShotOutcome`].
+//! - [`matchup`] — the 7-type weapon×armor Paley-tournament lookup
+//!   ([`matchup::matchup`] over [`weapon::DamageType`] / [`armor::ArmorType`]) and
+//!   the punch-&-shred [`matchup::MatchupMultiplier`] it yields from tuning.
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
@@ -42,6 +45,7 @@ pub mod cover;
 pub mod ganger;
 pub mod hit_location;
 pub mod march;
+pub mod matchup;
 pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
@@ -72,6 +76,7 @@ pub use ganger::{
 };
 pub use hit_location::roll_body_part;
 pub use march::{MarchKind, MarchResult, march_vector};
+pub use matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier};
 pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
@@ -94,11 +99,11 @@ pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
     AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BodyPartWeight, BodyPartWeights,
     BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff, ConcentrationCoeffs,
-    ConeStabilityTuning, DefenderLuckSpreadCap, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights,
-    PenDamageScale, ProjectileBandEdges, RandomSpread, RandomSpreadMin, RecoilClimb,
-    SeverityScaling, ShooterLuckScale, SilhouetteTop, SilhouetteTops, StabilityCurve,
-    StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StanceContribution, StanceStability,
-    ToughnessMitigation,
+    ConeStabilityTuning, DefenderLuckSpreadCap, MatchupMultipliers, MuzzleForwardOffset,
+    MuzzleHeight, MuzzleHeights, PenDamageScale, ProjectileBandEdges, RandomSpread,
+    RandomSpreadMin, RecoilClimb, SeverityScaling, ShooterLuckScale, SilhouetteTop, SilhouetteTops,
+    StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StanceContribution,
+    StanceStability, ToughnessMitigation,
 };
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
