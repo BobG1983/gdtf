@@ -50,6 +50,14 @@
     // the TU economy it sits inside (when the tick fires, execute/stabilize TU costs) is E4.
     bleed_rate: 1,  // Wounds drained per round each un-stabilized Downed ganger stays down
 
+    // Downed-act TU costs (resolution.md §9): the flat Time Units the two from-Downed
+    // verbs cost. `stabilize_downed` (an 8-adjacent ALIVE ally) halts the bleed clock;
+    // `execute_downed` (an 8-adjacent ALIVE enemy) finishes a Downed ganger outright.
+    // STARTING POINTS (tunable). NOTE: this slice only READS these costs to wire the
+    // leaf — the TU economy that DEBITS a Tu pool / checks can-afford is E4, not here.
+    stabilize_tu: 4,  // TU an adjacent ally spends to stabilize a Downed ganger (read-only; debit is E4)
+    execute_tu:   6,  // TU an adjacent enemy spends to execute a Downed ganger (read-only; debit is E4)
+
     // Hit-location weights — the RELATIVE odds each body part is the one struck on a hit
     // (resolution.md §4 `roll_body_part`). Larger = struck more often; they need not sum to
     // any total — only the ratios between them matter.

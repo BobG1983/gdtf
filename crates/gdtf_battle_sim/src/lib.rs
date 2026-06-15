@@ -28,6 +28,15 @@
 //!   un-stabilized [`ganger::LifeState::Downed`] ganger, emits the
 //!   [`bleed::Bleeding`] message, and runs the once-only terminal gate to
 //!   [`ganger::LifeState::Dead`] on depletion.
+//! - [`downed_acts`] — the §9 from-Downed verbs + their shared faction-aware
+//!   predicates: [`downed_acts::can_stabilize`] / [`downed_acts::stabilize_downed`]
+//!   (an 8-adjacent ALIVE ally halts the bleed clock by setting [`ganger::Stabilized`],
+//!   the ganger staying Downed) and [`downed_acts::can_execute`] /
+//!   [`downed_acts::execute_downed`] (an 8-adjacent ALIVE enemy finishes a Downed
+//!   ganger outright → [`ganger::LifeState::Dead`]), over the same-level Moore-8
+//!   [`downed_acts::is_8_adjacent`] reach. Each act is a no-op exactly when its
+//!   predicate is false (button ⇔ act share one guard); the flat TU costs
+//!   ([`tuning::StabilizeTu`] / [`tuning::ExecuteTu`]) are READ, not debited (E4).
 //! - Terrain & space: [`cover`] (the [`cover::CoverLedger`] + [`cover::HeightBand`]
 //!   banding), [`surface`] (persistent floor/roof-slab + ground grid),
 //!   [`occupancy`] + [`occupancy_sync`] (the coarse 3D occupancy grid and its
@@ -63,6 +72,7 @@ pub mod central_axis;
 pub mod clearance;
 pub mod cone;
 pub mod cover;
+pub mod downed_acts;
 pub mod ganger;
 pub mod hit_location;
 pub mod march;
@@ -96,6 +106,10 @@ pub use cover::{
     BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,
     band_for,
 };
+pub use downed_acts::{
+    Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
+    stabilize_downed,
+};
 pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
     Stance, StanceKind, Toughness, Tu, Wounds,
@@ -127,12 +141,12 @@ pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
     AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
     BodyPartWeights, BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff,
-    ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, MatchupMultipliers,
+    ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu, MatchupMultipliers,
     MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale, ProjectileBandEdges,
     RandomSpread, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
     SilhouetteTop, SilhouetteTops, StabilityCurve, StabilityCurveCoord, StabilityCurvePoint,
-    StabilityCurves, StanceContribution, StanceStability, ToughnessMitigation, WoundCost,
-    WoundCosts,
+    StabilityCurves, StabilizeTu, StanceContribution, StanceStability, ToughnessMitigation,
+    WoundCost, WoundCosts,
 };
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,

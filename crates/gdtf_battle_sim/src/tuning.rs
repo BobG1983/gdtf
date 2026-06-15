@@ -310,6 +310,87 @@ impl Default for BleedRate {
     }
 }
 
+/// The **stabilize TU cost** — the flat number of Time Units an 8-adjacent ALIVE
+/// ally spends to dress a [`crate::ganger::LifeState::Downed`] ganger's wound and
+/// halt its bleed-out clock (`docs/combat/resolution.md` §9: `stabilize_downed`
+/// "pays the flat `stabilize_tu`"; `docs/combat/wounds-and-roster.md`
+/// §"Downed → death … state machine").
+///
+/// The flat cost of the E3.8 [`crate::downed_acts::stabilize_downed`] verb. **This
+/// slice only READS the cost** to wire the leaf — the TU economy (debiting a
+/// [`crate::ganger::Tu`] pool, the can-afford check) is **E4**, so nothing here
+/// spends or validates against a TU budget. A small `u8` count, matching
+/// [`crate::ganger::Tu`]'s inner type so the E4 economy can subtract it directly.
+/// The default is a **starting point**, tunable balance data — tests are
+/// value-agnostic. `#[serde(transparent)]` lets it parse a bare RON scalar; private
+/// inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct StabilizeTu(u8);
+
+impl StabilizeTu {
+    /// Build a stabilize TU cost from its flat Time-Unit magnitude (a starting
+    /// point, TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style)
+    /// while letting the `downed_acts` tests and any programmatic tuning edit build a
+    /// cost without a bare `u8` escaping; shipped values come from the `.ron` via the
+    /// derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for StabilizeTu {
+    fn default() -> Self {
+        // A flat 4 TU to stabilize an adjacent ally — a STARTING POINT (tunable
+        // balance data). This slice only READS the cost; the TU economy that debits
+        // it is E4. Value-agnostic tests only, never a pinned magnitude.
+        Self(4)
+    }
+}
+
+/// The **execute TU cost** — the flat number of Time Units an 8-adjacent ALIVE
+/// enemy spends to finish a [`crate::ganger::LifeState::Downed`] ganger outright
+/// (`docs/combat/resolution.md` §9: `execute_downed` "pays the flat `execute_tu`";
+/// `docs/combat/wounds-and-roster.md` §"Downed → death … state machine").
+///
+/// The flat cost of the E3.8 [`crate::downed_acts::execute_downed`] verb. **This
+/// slice only READS the cost** to wire the leaf — the TU economy (debiting a
+/// [`crate::ganger::Tu`] pool, the can-afford check) is **E4**, so nothing here
+/// spends or validates against a TU budget. A small `u8` count, matching
+/// [`crate::ganger::Tu`]'s inner type so the E4 economy can subtract it directly.
+/// The default is a **starting point**, tunable balance data — tests are
+/// value-agnostic. `#[serde(transparent)]` lets it parse a bare RON scalar; private
+/// inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct ExecuteTu(u8);
+
+impl ExecuteTu {
+    /// Build an execute TU cost from its flat Time-Unit magnitude (a starting
+    /// point, TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style)
+    /// while letting the `downed_acts` tests and any programmatic tuning edit build a
+    /// cost without a bare `u8` escaping; shipped values come from the `.ron` via the
+    /// derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for ExecuteTu {
+    fn default() -> Self {
+        // A flat 6 TU to execute an adjacent enemy — a STARTING POINT (tunable
+        // balance data), a touch dearer than stabilizing. This slice only READS the
+        // cost; the TU economy that debits it is E4. Value-agnostic tests only.
+        Self(6)
+    }
+}
+
 /// The per-tier **Wounds-budget costs** — how many [`crate::ganger::Wounds`] each
 /// non-structural severity tier spends (`docs/combat/wounds-and-roster.md`
 /// §"Severity tiers": Minor 1 / Major 2 / Critical 3).
@@ -905,6 +986,14 @@ pub struct CombatTuning {
     /// The §9 bleed-out rate (E3.7) — the flat Wounds an un-stabilized Downed
     /// ganger loses each round `tick_bleed` runs.
     pub bleed_rate:            BleedRate,
+    /// The §9 stabilize TU cost (E3.8) — the flat Time Units an adjacent ally
+    /// spends to halt a Downed ganger's bleed clock (`stabilize_downed` READS this;
+    /// the TU economy that debits it is E4).
+    pub stabilize_tu:          StabilizeTu,
+    /// The §9 execute TU cost (E3.8) — the flat Time Units an adjacent enemy spends
+    /// to finish a Downed ganger outright (`execute_downed` READS this; the TU
+    /// economy that debits it is E4).
+    pub execute_tu:            ExecuteTu,
     /// The §4 body-part hit-location weights.
     pub body_part_weights:     BodyPartWeights,
     /// The §1 cone / stability / recoil / aim coefficients (E2.1) — the data
@@ -1080,6 +1169,24 @@ mod tests {
         assert!(
             *tuning.bleed_rate > 0,
             "shipped bleed_rate must be > 0 so the bleed-out clock actually drains",
+        );
+
+        // GTW-190 AC7 — the E3.8 from-Downed TU leaves (`stabilize_tu` / `execute_tu`)
+        // deserialize from the real shipped file. `CombatTuning` has no
+        // `#[serde(default)]`, so a missing leaf would fail the parse above; this
+        // re-parse asserts the two leaves are PRESENT and parse deterministically to
+        // the same value. Value-agnostic — never a magnitude, since these are tunable
+        // balance data this slice only READS (the TU economy that debits them is E4).
+        let Ok(reparsed) = ron::from_str::<CombatTuning>(SHIPPED_TUNING_RON) else {
+            return;
+        };
+        assert_eq!(
+            tuning.stabilize_tu, reparsed.stabilize_tu,
+            "shipped stabilize_tu must be present and parse deterministically",
+        );
+        assert_eq!(
+            tuning.execute_tu, reparsed.execute_tu,
+            "shipped execute_tu must be present and parse deterministically",
         );
     }
 }
