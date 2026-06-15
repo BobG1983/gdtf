@@ -38,6 +38,10 @@
 //!   [`armor::ArmorPiece`] under a [`matchup::Matchup`] into a frozen
 //!   [`resolve_hit::HitResult`] (penetrating / HP-loss / integrity-wear). Pure
 //!   math — application of HP / Wounds / armor wear is a later E3 slice.
+//! - [`severity`] — the §6 wound-severity roll ([`severity::roll_severity`]):
+//!   the penetration-gated score → [`severity::Severity`] bucket in the
+//!   floor-extend form (the defender's Luck extends the roll's floor down). Pure
+//!   seeded-RNG math; the per-tier Wounds application is a later E3 slice.
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
@@ -58,6 +62,7 @@ pub mod resolve_coarse;
 pub mod resolve_hit;
 pub mod rng;
 pub mod sample_cone;
+pub mod severity;
 pub mod situation;
 pub mod stability;
 pub mod surface;
@@ -96,6 +101,7 @@ pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
 pub use resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit};
 pub use rng::{BattleSeed, SimRng};
 pub use sample_cone::{ConcentrationP, ShotDir, concentration_p, sample_cone_vector};
+pub use severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod, roll_severity};
 pub use situation::{
     BattleSetup, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers, setup_battle,
 };
@@ -106,9 +112,9 @@ pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
     AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BodyPartWeight, BodyPartWeights,
     BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff, ConcentrationCoeffs,
-    ConeStabilityTuning, DefenderLuckSpreadCap, MatchupMultipliers, MuzzleForwardOffset,
-    MuzzleHeight, MuzzleHeights, PenDamageScale, ProjectileBandEdges, RandomSpread,
-    RandomSpreadMin, RecoilClimb, SeverityScaling, ShooterLuckScale, SilhouetteTop, SilhouetteTops,
+    ConeStabilityTuning, DefenderLuckScale, MatchupMultipliers, MuzzleForwardOffset, MuzzleHeight,
+    MuzzleHeights, PenDamageScale, ProjectileBandEdges, RandomSpread, RecoilClimb, SeverityEdge,
+    SeverityEdges, SeverityScaling, ShooterLuckScale, SilhouetteTop, SilhouetteTops,
     StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StanceContribution,
     StanceStability, ToughnessMitigation,
 };

@@ -17,7 +17,7 @@ Raw, slowly-changing potential. They improve through **use** — the Xenonauts m
 | **Reflexes** | reaction speed, twitchiness |
 | **Cool** | nerves under fire, literally "how good are you at keeping your cool" |
 | **Grit** | resilience, ability to keep going in the face of pain or terrible odds |
-| **Luck** | directional fortune — a shooter's Luck makes the wounds they deal nastier; a target's Luck caps the bad tail of a hit's severity roll. Feeds the severity roll only, never the computed stats below |
+| **Luck** | directional fortune — a shooter's Luck makes the wounds they deal nastier; a target's Luck extends the low end of a hit's severity roll downward — a chance to shrug it off (the worst case / ceiling is unchanged). Feeds the severity roll only, never the computed stats below |
 
 ## Computed combat stats (derived)
 

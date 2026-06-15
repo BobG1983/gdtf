@@ -14,17 +14,25 @@
         low_mid:  0.33,   // below this fraction of a level = LOW, at/above = MID  (LOW→MID edge)
         mid_high: 0.67,   // below this fraction of a level = MID, at/above = HIGH (MID→HIGH edge)
     ),
-    // Wound-severity score scalars (resolution.md §6). The score is roughly
-    //   j·pen_damage − k·Toughness + part_mod + fatal_bias + I·Luck_shooter + roll(0..R_eff),
-    //   R_eff = max(R_min, R − L·Luck_defender).
-    // Bigger pushes → worse wounds more often; the score is bucketed into None/Minor/…/Fatal.
+    // Wound-severity score scalars (resolution.md §6), floor-extend form. The score is roughly
+    //   j·pen_damage − k·Toughness + part_mod + fatal_bias + I·Luck_shooter + roll(−L·Luck_defender .. R).
+    // The defender's Luck extends the roll's FLOOR down (a shrug-off chance); the ceiling stays R,
+    // so a genuinely bad roll is always still possible (no R_eff/R_min). Bigger pushes → worse
+    // wounds more often; the score is bucketed by the edges below into None/Minor/Major/Critical/Fatal.
     severity_scaling: (
-        pen_damage_scale:         1.0,   // j — how hard PENETRATING damage pushes severity up
-        toughness_mitigation:     1.0,   // k — how much the defender's Toughness subtracts
-        shooter_luck_scale:       1.0,   // I — how much the shooter's Luck adds (nastier wounds)
-        defender_luck_spread_cap: 1.0,   // L — how much the defender's Luck shrinks the random spread
-        random_spread:            10.0,  // R — width of the one-sided random roll before Luck trims it
-        random_spread_min:        1.0,   // R_min — floor on the trimmed spread (Luck can never erase it)
+        pen_damage_scale:     1.0,   // j — how hard PENETRATING damage pushes severity up
+        toughness_mitigation: 1.0,   // k — how much the defender's Toughness subtracts
+        shooter_luck_scale:   1.0,   // I — how much the shooter's Luck adds (nastier wounds)
+        defender_luck_scale:  1.0,   // L — how far the defender's Luck extends the roll's floor below 0
+        random_spread:        10.0,  // R — the fixed ceiling (upper bound) of the random roll
+        // The ascending bucket edges on the score: < e0 graze (None), then Minor/Major/Critical,
+        // and ≥ e3 is Fatal. Must climb e0 < e1 < e2 < e3 for the buckets to be monotone.
+        edges: (
+            e0: 1.0,    // None→Minor  — below this is a graze (HP loss only, no Wound)
+            e1: 5.0,    // Minor→Major — at/above e1 the wound costs 2 Wounds
+            e2: 10.0,   // Major→Critical
+            e3: 15.0,   // Critical→Fatal — at/above e3 the hit empties the Wounds pool (death)
+        ),
     ),
     // Hit-location weights — the RELATIVE odds each body part is the one struck on a hit
     // (resolution.md §4 `roll_body_part`). Larger = struck more often; they need not sum to

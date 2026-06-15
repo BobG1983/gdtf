@@ -328,11 +328,12 @@ impl Toughness {
 ///
 /// One of the eight core direct attributes (`docs/combat/stats.md`): a shooter's
 /// Luck makes the wounds they deal nastier (adds to the severity score), a target's
-/// Luck caps the bad tail of a hit's severity roll (shrinks the random spread). It
-/// "feeds the severity roll only, never the computed stats below". Both gangers'
-/// Luck stats are read in the severity roll (E3.4 / E3.9): the shooter's via the
-/// tuning [`crate::tuning::ShooterLuckScale`], the defender's via the
-/// [`crate::tuning::DefenderLuckSpreadCap`]. A domain stat value (no-bare-types),
+/// Luck extends the low end of a hit's severity roll downward — a chance to shrug it
+/// off (the floor moves, the ceiling is unchanged). It "feeds the severity roll only,
+/// never the computed stats below". Both gangers' Luck stats are read in the severity
+/// roll (E3.4 / E3.9): the shooter's via the tuning
+/// [`crate::tuning::ShooterLuckScale`], the defender's via the
+/// [`crate::tuning::DefenderLuckScale`]. A domain stat value (no-bare-types),
 /// dimensionless — **zero pixels**. Private inner + derived [`Deref`]. A distinct
 /// component so the severity path can query `&Luck` alone. Defaults to `0.0`.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
