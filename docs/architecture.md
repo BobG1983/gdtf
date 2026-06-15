@@ -22,9 +22,9 @@ The model crate carries **no `bevy` dependency on its gameplay types** — it st
 The logical battle is a plain Rust value (the Godot `BattleManager` `RefCounted`), built from a **situation** (the generated/authored battlefield: gangers, walls, scatter, upper-floor slabs, and stair/ladder vertical links — every placement an optional storey, position always the pair (cell, level)). It owns:
 
 - one **ganger state** per ganger, keyed by an **integer id** = the ganger's index in the situation list. The state carries (cell, level), facing, stance, aiming, faction, the HP / Wounds / TU pools, life state, the wounds taken — and the battle-local **worn armor** (per-part copies of the roster armor, seeded at construction, that mid-battle wear mutates). The roster data is never touched.
-- the **coarse occupancy** (a 3D grid, e.g. 60×60×8) — rebuilt **fresh per shot** from the situation's static terrain plus live ganger state: always correct by construction, no stale-sync seam. A destroyed-cover set keeps smashed walls/props from resurrecting on the rebuild.
+- the **coarse occupancy** (a 3D grid, e.g. 60×60×8) — **poured once at setup** from the situation's static terrain plus initial ganger state, then **maintained in place by change-driven sync** (moved / downed gangers, destroyed cover) — never rebuilt per shot (the GTW-6 / GTW-12 ruling). A destroyed-cover set keeps smashed walls/props from resurrecting.
 - the **cover-HP ledger** — ONE ledger for walls *and* scatter props, keyed (cell, level), lazily seeded from each piece's max HP. Spending it destroys through one writer that feeds the destroyed-cover set, emits a `CoverDestroyed { cell, level }` event exactly once, and recomputes squad visibility.
-- the **persistent surface grid** — floor/roof slabs + ground records are battle *state*, carried across every rebuild, so a destroyed slab stays destroyed and ground damage accrues.
+- the **persistent surface grid** — floor/roof slabs + ground records are battle *state*, mutated in place, so a destroyed slab stays destroyed and ground damage accrues.
 
 Position uses `glam::IVec2` for the cell and a small integer for the level (Bevy re-exports `glam`); battle-space vectors are `glam::Vec3`. None of these touch screen/iso coordinates — that projection is the presenter's job.
 
@@ -50,7 +50,7 @@ In Godot these were signals; in Bevy they are **`Event`s written by the sim and 
 
 The one deliberate exception: a **`ShotOutcome` carries the resolved values themselves** (the struck ganger state / object / surface), because the consumer must *act* on exactly what the sim resolved, not re-resolve an ambiguous id. Ids ride along for logging only. Positions in the outcome are battle-space units, never screen coords.
 
-Beside the manager sit the pure pieces: the combat math (static, deterministic, every coefficient from a tuning config value), the 3D DDA march, the part-roll verdict, the setup-time and per-shot occupancy pours (taking per-call arguments only), the vertical-link graph, and the data types (`GangerState`, `ShotOutcome`, `HitResult`, `Wound`, `Matchup`, …).
+Beside the manager sit the pure pieces: the combat math (static, deterministic, every coefficient from a tuning config value), the 3D DDA march, the part-roll verdict, the setup-time occupancy pour and its change-driven in-place maintenance (taking per-call arguments only), the vertical-link graph, and the data types (`GangerState`, `ShotOutcome`, `HitResult`, `Wound`, `Matchup`, …).
 
 ## The view — `crates/gdtf_battle_presenter`
 
