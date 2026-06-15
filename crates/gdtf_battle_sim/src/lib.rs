@@ -213,6 +213,29 @@
 //! [`tuning::ProjectileBandEdges`] (no hardcoded fraction). See
 //! `docs/combat/resolution.md` §2 + "What's pure math vs sim" (`band_for`), and
 //! `docs/combat/battle-space.md` §"Banding".
+//!
+//! E2.7 ([`march`]) builds the §2 projectile travel: [`march::march_vector`] — a
+//! **true 3-axis voxel DDA** (Amanatides–Woo) that flies one 3D shot ray (a
+//! [`metric::SimPos`] muzzle + a unit-[`bevy::math::Vec3`] direction) through the
+//! 60×60×8 grid in sim units and reports the first thing the round fails to clear as
+//! a named [`march::MarchResult`] (`kind`: [`march::MarchKind`] `Ganger` / `Cover` /
+//! `Slab` / `Ground` / `Miss`, the `(cell, level)`, the crossed-cell [`cover::HeightBand`],
+//! and the [`metric::SimPos`] impact point). Per occupied cell it crosses it bands the
+//! round (E2.6 [`clearance::round_band_for_cell`] + [`clearance::round_clears_occupant`])
+//! against a ganger occupant ([`occupancy::OccupancyGrid::occupant`] + its silhouette
+//! band from [`occupancy::OccupancyGrid::occupant_band`]) OR standing cover
+//! ([`cover::CoverEntry`] from [`cover::CoverLedger`], destroyed cover excluded via
+//! [`occupancy::OccupancyGrid::is_blocked`] / [`occupancy::OccupancyGrid::is_cover_destroyed`]) —
+//! strictly-higher sails over, equal-or-lower impacts; **any** actor impacts,
+//! **including the shooter's own gang** (true friendly fire), by band alone. A
+//! z-boundary crossing tests the floor/roof [`surface::SurfaceGrid`] slab (one slab,
+//! both faces — [`surface::SlabState::Present`] stops it; `Destroyed`/`Absent` passes).
+//! Exits: top = sky `Miss`, bottom = `Ground`, lateral = `Miss`. There is **NO target
+//! stop** (the round flies past the aim cell into whatever is behind), and the **only**
+//! exception is that the shooter's own cell never blocks its own shot. Degenerate
+//! marches are graceful (a `Miss`, no panic). See `docs/combat/resolution.md` §2 + §3
+//! and `docs/combat/battle-space.md` §"The shot is one 3D Vec3, ray-marched by voxel
+//! DDA".
 
 pub mod armor;
 pub mod central_axis;
@@ -221,6 +244,7 @@ pub mod cone;
 pub mod cover;
 pub mod ganger;
 pub mod hit_location;
+pub mod march;
 pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
@@ -248,6 +272,7 @@ pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
 };
 pub use hit_location::roll_body_part;
+pub use march::{MarchKind, MarchResult, march_vector};
 pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,

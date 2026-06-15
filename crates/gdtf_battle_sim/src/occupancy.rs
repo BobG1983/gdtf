@@ -36,11 +36,14 @@
 //! a cell outside the grid is a no-op / "not blocked", never a panic.
 
 use bevy::{
-    platform::collections::HashSet,
+    platform::collections::{HashMap, HashSet},
     prelude::{Deref, Entity, Resource},
 };
 
-use crate::metric::{CellLevel, MAX_LEVELS};
+use crate::{
+    cover::HeightBand,
+    metric::{CellLevel, MAX_LEVELS},
+};
 
 /// The coarse grid's width in cells on the x ground axis — 60.
 ///
@@ -258,15 +261,29 @@ pub struct OccupancyGrid {
     /// [`mark_cover_destroyed`](OccupancyGrid::mark_cover_destroyed). The occupancy
     /// grid's OWN set, distinct from [`crate::cover::CoverLedger`] (C4).
     destroyed_cover: DestroyedCover,
+    /// The per-`(cell, level)` **silhouette band** of the occupant standing there
+    /// (a ganger's stance band — prone Low / kneel Mid / stand High), or absent when
+    /// the slot has no occupant or no band has been published yet.
+    ///
+    /// The march bands the round vs the occupant by reading this directly off the
+    /// grid (`docs/combat/resolution.md` §2: "the round's continuous z vs the
+    /// occupant's band-top"): a ganger's stance lives on its components, so the
+    /// change-driven maintenance publishes the derived band here when it marks the
+    /// occupant, and the band-free march reads it back. A lazily-populated side map
+    /// (like [`destroyed_cover`](OccupancyGrid::destroyed_cover)) so it is fully
+    /// backward compatible with a grid built without occupant bands (the band reads
+    /// `None`).
+    occupant_bands:  HashMap<CellLevel, HeightBand>,
 }
 
 impl Default for OccupancyGrid {
     /// An empty grid: every slot [`OccupancySlot::default`] ([`TerrainKind::Open`],
-    /// no occupant) and no destroyed cover.
+    /// no occupant), no destroyed cover, and no published occupant bands.
     fn default() -> Self {
         Self {
             slots:           vec![OccupancySlot::default(); SLOT_COUNT].into_boxed_slice(),
             destroyed_cover: DestroyedCover::new(),
+            occupant_bands:  HashMap::default(),
         }
     }
 }
@@ -362,6 +379,33 @@ impl OccupancyGrid {
     #[must_use]
     pub fn occupant(&self, key: &CellLevel) -> Option<Entity> {
         self.slot(key).and_then(|s| s.occupant)
+    }
+
+    /// The **silhouette band** of the occupant at `key` (its stance band), or `None`
+    /// if no band has been published there — the band the march compares the round
+    /// against when it crosses a ganger-occupied cell (`docs/combat/resolution.md`
+    /// §2). A read-only peek; an out-of-range `key` simply has no entry, so it reads
+    /// `None` (graceful — no panic).
+    #[must_use]
+    pub fn occupant_band(&self, key: &CellLevel) -> Option<HeightBand> {
+        self.occupant_bands.get(key).copied()
+    }
+
+    /// Publish (or clear with `None`) the occupant's silhouette band at `key` — the
+    /// write the change-driven maintenance makes when it marks/moves an occupant, so
+    /// the band-free [`crate::march::march_vector`] can read the occupant's band back
+    /// off the grid (`docs/combat/resolution.md` §2). Keyed by `(cell, level)` like
+    /// the destroyed-cover set, so it never touches the flat slot buffer and stays
+    /// backward compatible with a grid built without occupant bands.
+    pub fn set_occupant_band(&mut self, key: CellLevel, band: Option<HeightBand>) {
+        match band {
+            Some(band) => {
+                self.occupant_bands.insert(key, band);
+            }
+            None => {
+                self.occupant_bands.remove(&key);
+            }
+        }
     }
 
     /// Mark the cover at `cell_level` **destroyed**, inserting it into the
