@@ -112,6 +112,13 @@
 //!   and returns a FROZEN [`resolve_and_apply::HitReport`] for the presenter's FX
 //!   (corpse-skip before any draw; every draw via the injected [`rng::SimRng`]; no
 //!   pixel). Charging TU / looping the burst (`fire()`) is E4.
+//! - [`fire`] — the E4.5 capstone firing act ([`fire::fire`]): a query-based Bevy
+//!   function (NO `&mut World`) over two disjoint queries ([`fire::ShooterQuery`] and
+//!   [`fire::TargetQuery`]) that validates ([`magazine::can_fire`]) → charges TU once
+//!   ([`tu::spend_tu`]) → clamps the burst to ammo ([`magazine::clamp_burst`]) →
+//!   per-round composes the cone ([`aim::cone_for`]), [`resolve_coarse::resolve_coarse`],
+//!   and [`resolve_and_apply::resolve_and_apply`] into a frozen `Vec<HitReport>`
+//!   volley. Every draw via the injected [`rng::SimRng`]; no LOS/fog; no pixel.
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
@@ -127,6 +134,7 @@ pub mod cone;
 pub mod cover;
 pub mod downed_acts;
 pub mod faced_cell;
+pub mod fire;
 pub mod ganger;
 pub mod hit_location;
 pub mod magazine;
@@ -170,6 +178,7 @@ pub use downed_acts::{
     stabilize_downed,
 };
 pub use faced_cell::faced_cell;
+pub use fire::{BattleGrids, ShooterQuery, TargetQuery, fire};
 pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
     Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
