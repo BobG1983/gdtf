@@ -75,6 +75,19 @@ pub struct RandomSpreadMin(f32);
 #[serde(transparent)]
 pub struct BodyPartWeight(u16);
 
+impl BodyPartWeight {
+    /// Build a body-part pick weight from its relative magnitude (TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u16` private (house
+    /// style) while letting callers (e.g. the `roll_body_part` roll's tests, or
+    /// any code assembling a [`BodyPartWeights`] outside this module) build a
+    /// weight without a bare `u16` escaping.
+    #[must_use]
+    pub const fn new(weight: u16) -> Self {
+        Self(weight)
+    }
+}
+
 /// The projectile clearance band edges, as **level-fractions** within one
 /// level's height.
 ///

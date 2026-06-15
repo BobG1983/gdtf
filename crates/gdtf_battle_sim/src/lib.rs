@@ -131,10 +131,23 @@
 //! coefficient and both curves come from [`tuning::ConeStabilityTuning`]; angular /
 //! dimensionless — zero pixels. See `docs/combat/resolution.md` §1a + "What's pure
 //! math vs sim" line 148, and `docs/combat/battle-space.md` §"Banding".
+//!
+//! E2.8 ([`hit_location`]) builds the §4 **weighted hit-location roll**:
+//! [`hit_location::roll_body_part`] picks one of the six [`armor::BodyPart`]s by a
+//! weighted draw over the EXISTING tuning [`tuning::BodyPartWeights`] (consumed,
+//! not added) — no per-part geometry, the coarse march's band clearance already
+//! decided *which* ganger and this chance roll decides *where* (the retired
+//! on-silhouette / exposure model). The single draw comes from the injected
+//! `&mut impl rand::Rng` (the [`rng::SimRng`] handle) so it is deterministic and
+//! seed-replayable; an all-six-zero weights total falls back to
+//! [`armor::BodyPart::Torso`] without panicking. See `docs/combat/resolution.md`
+//! §4 + "What's pure math vs sim" line 152, and `docs/testing.md`'s seeded
+//! distribution-test discipline (ORDERING, never magnitudes).
 
 pub mod armor;
 pub mod cover;
 pub mod ganger;
+pub mod hit_location;
 pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
@@ -157,6 +170,7 @@ pub use cover::{
 pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
 };
+pub use hit_location::roll_body_part;
 pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
