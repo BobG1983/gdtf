@@ -119,10 +119,20 @@
 //!   per-round composes the cone ([`aim::cone_for`]), [`resolve_coarse::resolve_coarse`],
 //!   and [`resolve_and_apply::resolve_and_apply`] into a frozen `Vec<HitReport>`
 //!   volley. Every draw via the injected [`rng::SimRng`]; no LOS/fog; no pixel.
+//! - [`acts`] — the E10.2 message-driven INPUT CONTRACT + per-act dispatch + the public
+//!   [`acts::SimActsPlugin`]: six `#[derive(Message)]` `*Requested` types
+//!   ([`acts::FireRequested`] / [`acts::SetAimingRequested`] / [`acts::SetStanceRequested`]
+//!   / [`acts::SetFacingRequested`] / [`acts::StabilizeDownedRequested`] /
+//!   [`acts::ExecuteDownedRequested`]) carrying [`Entity`](bevy::prelude::Entity) actor
+//!   ref(s) + owned payload, and one dispatch system per act that drains the buffered
+//!   message and calls the ALREADY-LANDED verb ([`fire`] / [`posture`] / [`downed_acts`])
+//!   once per message — every dispatch system `.in_set(occupancy_sync::SimSystems::Simulate)`
+//!   in `Update`. No act logic is reimplemented; no `*Resolved`, no movement act (later).
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
 
+pub mod acts;
 pub mod aim;
 pub mod apply_hit;
 pub mod armor;
