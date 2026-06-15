@@ -197,9 +197,26 @@
 //! [`armor::BodyPart::Torso`] without panicking. See `docs/combat/resolution.md`
 //! §4 + "What's pure math vs sim" line 152, and `docs/testing.md`'s seeded
 //! distribution-test discipline (ORDERING, never magnitudes).
+//!
+//! E2.6 ([`clearance`]) consumes the landed E1 [`cover::band_for`] as the march's
+//! **per-crossing clearance test**: [`clearance::round_band_for_cell`] derives the
+//! round's within-level [`cover::BandFraction`] at a crossed cell (`fraction =
+//! pos.z − k`, `k` the storey [`metric::pos_to_cell`] floors the [`metric::SimPos`]
+//! into — sim units, zero pixels) and classifies it via `band_for`
+//! (classification REUSED, never reimplemented); a below-floor / degenerate `z`
+//! classifies [`cover::HeightBand::Low`] without panic. [`clearance::round_clears_occupant`]
+//! is the named predicate — the round's band **strictly above** the occupant's ⇒
+//! [`clearance::Clearance::Clears`] (sails over), **equal-or-lower** ⇒
+//! [`clearance::Clearance::Impacts`] — reproducing prone-can't-clear-LOW by band
+//! alone (a LOW round vs a LOW occupant is equal ⇒ impacts) with NO exemption list,
+//! so E2.7's march and E3 share ONE clearance truth. Band edges come solely from
+//! [`tuning::ProjectileBandEdges`] (no hardcoded fraction). See
+//! `docs/combat/resolution.md` §2 + "What's pure math vs sim" (`band_for`), and
+//! `docs/combat/battle-space.md` §"Banding".
 
 pub mod armor;
 pub mod central_axis;
+pub mod clearance;
 pub mod cone;
 pub mod cover;
 pub mod ganger;
@@ -221,6 +238,7 @@ pub use armor::{
     WornArmor,
 };
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
+pub use clearance::{Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant};
 pub use cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor};
 pub use cover::{
     BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,

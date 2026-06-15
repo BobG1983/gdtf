@@ -29,6 +29,16 @@ use crate::cover::HeightBand;
 #[serde(transparent)]
 pub struct BandEdge(f32);
 
+impl BandEdge {
+    /// Build a band-edge level-fraction from its magnitude (a fraction of one
+    /// level's height) — for tests and programmatic tuning edits; shipped values
+    /// come from the `.ron` via the derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(edge: f32) -> Self {
+        Self(edge)
+    }
+}
+
 /// `j` — the penetrating-damage scale: how hard pen damage pushes severity up
 /// (resolution.md §6 severity score).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
