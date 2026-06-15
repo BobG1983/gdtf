@@ -49,6 +49,7 @@
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! `docs/architecture.md` — the model/view split this crate sits inside.
 
+pub mod apply_hit;
 pub mod armor;
 pub mod armor_wear;
 pub mod central_axis;
@@ -74,6 +75,7 @@ pub mod tuning;
 pub mod vertical;
 pub mod weapon;
 
+pub use apply_hit::{GangerHitTarget, apply_hit};
 pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
     SourceArmor, WornArmor,
@@ -121,7 +123,7 @@ pub use tuning::{
     MuzzleHeights, PenDamageScale, ProjectileBandEdges, RandomSpread, RecoilClimb, SeverityEdge,
     SeverityEdges, SeverityScaling, ShooterLuckScale, SilhouetteTop, SilhouetteTops,
     StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StanceContribution,
-    StanceStability, ToughnessMitigation,
+    StanceStability, ToughnessMitigation, WoundCost, WoundCosts,
 };
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,

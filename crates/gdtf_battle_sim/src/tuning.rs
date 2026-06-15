@@ -235,6 +235,73 @@ impl Default for SeverityScaling {
     }
 }
 
+/// The Wounds-budget cost of one severity tier — how many [`crate::ganger::Wounds`]
+/// a wound at that tier spends from the defender's life pool
+/// (`docs/combat/wounds-and-roster.md` §"Severity tiers": Minor 1 / Major 2 /
+/// Critical 3).
+///
+/// One newtype shared by the three per-tier fields of [`WoundCosts`]: each tier's
+/// cost is the same *kind* of value (a Wounds-budget spend), distinguished by its
+/// field. A small `u8` count, matching [`crate::ganger::Wounds`]'s inner type so
+/// the cost subtracts directly from the life pool. `None` costs `0` and `Fatal`
+/// **empties** the pool — those two are **structural**, not tuning, so only the
+/// three middle tiers are authored here. The `1/2/3` split is a **starting point**
+/// (wounds-and-roster.md: "could be 1/2/4, 1/3/5, … TBD (tuning)") — tunable
+/// balance data, never pinned by a value test (tests assert only the ordering
+/// Minor < Major < Critical). `#[serde(transparent)]` lets it parse a bare RON
+/// scalar; private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct WoundCost(u8);
+
+impl WoundCost {
+    /// Build a per-tier Wounds-budget cost from its count (TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house
+    /// style) while letting callers (e.g. the `wound_cost` helper's tests, or any
+    /// code assembling a [`WoundCosts`] outside this module) build a cost without a
+    /// bare `u8` escaping.
+    #[must_use]
+    pub const fn new(cost: u8) -> Self {
+        Self(cost)
+    }
+}
+
+/// The per-tier **Wounds-budget costs** — how many [`crate::ganger::Wounds`] each
+/// non-structural severity tier spends (`docs/combat/wounds-and-roster.md`
+/// §"Severity tiers": Minor 1 / Major 2 / Critical 3).
+///
+/// Only the three middle tiers are authored: [`crate::severity::Severity::None`]
+/// costs `0` and [`crate::severity::Severity::Fatal`] **empties** the pool — both
+/// **structural** mechanisms (`apply_hit` branches them directly), not tuning, so
+/// they are deliberately absent here. The `1/2/3` split is a **starting point**
+/// (wounds-and-roster.md: "could be 1/2/4, 1/3/5, … TBD (tuning)"); the magnitudes
+/// are tunable balance data, asserted only by the ordering relation
+/// (`minor < major < critical`), never by value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub struct WoundCosts {
+    /// The Minor-tier Wounds cost (doc starting point: 1).
+    pub minor:    WoundCost,
+    /// The Major-tier Wounds cost (doc starting point: 2).
+    pub major:    WoundCost,
+    /// The Critical-tier Wounds cost (doc starting point: 3).
+    pub critical: WoundCost,
+}
+
+impl Default for WoundCosts {
+    fn default() -> Self {
+        // The Minor 1 / Major 2 / Critical 3 starting split from
+        // docs/combat/wounds-and-roster.md §"Severity tiers" — a STARTING POINT
+        // ("could be 1/2/4, 1/3/5, … TBD (tuning)"), so tunable balance data
+        // asserted only by ordering (minor < major < critical), never by value.
+        Self {
+            minor:    WoundCost(1),
+            major:    WoundCost(2),
+            critical: WoundCost(3),
+        }
+    }
+}
+
 /// The body-part hit-location weights — the relative weight of each of the six
 /// parts in the §4 `roll_body_part` weighted roll.
 ///
@@ -789,6 +856,9 @@ pub struct CombatTuning {
     pub projectile_band_edges: ProjectileBandEdges,
     /// The resolution.md §6 wound-severity scaling scalars.
     pub severity_scaling:      SeverityScaling,
+    /// The per-tier Wounds-budget costs (E3.6) — Minor / Major / Critical spend
+    /// (None = 0 and Fatal = empty are structural, not authored here).
+    pub wound_costs:           WoundCosts,
     /// The §4 body-part hit-location weights.
     pub body_part_weights:     BodyPartWeights,
     /// The §1 cone / stability / recoil / aim coefficients (E2.1) — the data

@@ -34,6 +34,15 @@
             e3: 15.0,   // Critical→Fatal — at/above e3 the hit empties the Wounds pool (death)
         ),
     ),
+    // Per-tier Wounds-budget cost (wounds-and-roster.md §"Severity tiers"): how many
+    // Wounds (the life pool) each wound spends. The 1/2/3 split is a STARTING POINT
+    // ("could be 1/2/4, 1/3/5, …" — tunable). None costs 0 and Fatal EMPTIES the pool —
+    // those two are STRUCTURAL (apply_hit branches them), so they are NOT listed here.
+    wound_costs: (
+        minor:    1,  // Minor wound — flesh wound, cheapest spend (starting point: 1)
+        major:    2,  // Major wound — benched until healed (starting point: 2)
+        critical: 3,  // Critical wound — maims AND pushes toward death faster (starting point: 3)
+    ),
     // Hit-location weights — the RELATIVE odds each body part is the one struck on a hit
     // (resolution.md §4 `roll_body_part`). Larger = struck more often; they need not sum to
     // any total — only the ratios between them matter.
