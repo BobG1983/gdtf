@@ -1,7 +1,7 @@
 //! The §1a **cone-size** calculation — `cone_angle(...) → θ_cone`
 //! (`docs/combat/resolution.md` §1a + "What's pure math vs sim" line 147:
-//! `cone_angle(base_spread, firemode, prior_shots, kickback, stability, aim) →`
-//! `θ_cone`).
+//! `cone_angle(base_spread, firemode, prior_shots, kickback, recoil_growth,`
+//! `stability, aim) → θ_cone`).
 //!
 //! Cone size is "how wide the spread *can* be" (resolution.md §1a) — the cone
 //! WIDTH only; the in-cone sample (where inside the cone the shot lands) is the
@@ -15,8 +15,14 @@
 //!   stability   : the cone-mult curve output (steadier < 1; [`crate::stability::ConeMult`])
 //!   aim         : Aim-Mode ×0.6 aimed · 1 hip-fired ([`crate::tuning::AimConeMult`])
 //!   firemode    : the per-mode selector term (single ≈ 1, full-auto ≥ 1; [`crate::weapon::ModeConeMult`])
-//!   recoil      : 1 + prior_shots × kickback   (first shot has 0 prior → ×1)
+//!   recoil      : 1 + prior_shots × kickback × recoil_growth   (first shot has 0 prior → ×1)
 //! ```
+//!
+//! `recoil_growth` (the steadier-shooter damper; [`crate::stability::RecoilGrowth`],
+//! stability's second curve output) damps the recoil cone-WIDENING the same way it
+//! damps the recoil *climb* (resolution.md §1a): a braced/prone shooter not only
+//! climbs strictly less but widens strictly less per prior shot. The first round
+//! (zero prior shots) is still the identity ×1 regardless of `recoil_growth`.
 //!
 //! Because the factors multiply, bracing tightens **proportionally**
 //! (resolution.md §1a): a steadier `stability` multiplier shrinks a sloppy
@@ -37,16 +43,17 @@ use bevy::prelude::Deref;
 
 use crate::{
     ganger::Aiming,
-    stability::ConeMult,
+    stability::{ConeMult, RecoilGrowth},
     tuning::{AimConeMult, ConeStabilityTuning},
     weapon::{BaseSpread, Kickback, ModeConeMult},
 };
 
 /// The number of rounds **already fired** this shot action before the round being
 /// sized — the `prior_shots` term of the recoil factor `recoil = 1 + prior_shots ×
-/// kickback` (resolution.md §1a: "each round in a burst adds the weapon's kickback,
-/// widening the cone for the *next* round"). The **first** round of an action has
-/// zero prior shots (→ recoil ×1); recoil resets at the end of each shot action.
+/// kickback × recoil_growth` (resolution.md §1a: "each round in a burst adds the
+/// weapon's kickback, widening the cone for the *next* round"). The **first** round
+/// of an action has zero prior shots (→ recoil ×1); recoil resets at the end of each
+/// shot action.
 ///
 /// A domain count (the burst index, not a bare `u16`), distinct from
 /// [`crate::weapon::ModeShots`] (a mode's total round count) per no-bare-types
@@ -70,14 +77,17 @@ impl PriorShots {
     }
 }
 
-/// The **recoil factor** of `θ_cone` — the `recoil = 1 + prior_shots × kickback`
-/// term (resolution.md §1a). Each prior round in a burst adds the weapon's
-/// [`Kickback`], widening the cone for the next round; the first round (zero prior
-/// shots) is the identity ×1.
+/// The **recoil factor** of `θ_cone` — the `recoil = 1 + prior_shots × kickback ×
+/// recoil_growth` term (resolution.md §1a). Each prior round in a burst adds the
+/// weapon's [`Kickback`], widening the cone for the next round, but stability's
+/// [`RecoilGrowth`] (steadier → less) damps that widening — symmetric with how it
+/// damps the recoil climb. The first round (zero prior shots) is the identity ×1
+/// regardless of `recoil_growth`.
 ///
 /// One of the five multiplicative cone factors, computed by [`recoil_factor`] from
-/// the burst's [`PriorShots`] and the weapon's [`Kickback`]. A dimensionless
-/// angular multiplier — no pixel. Private inner + derived [`Deref`].
+/// the burst's [`PriorShots`], the weapon's [`Kickback`], and stability's
+/// [`RecoilGrowth`]. A dimensionless angular multiplier — no pixel. Private inner +
+/// derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub struct RecoilFactor(f32);
 
@@ -110,20 +120,29 @@ impl ConeAngle {
     }
 }
 
-/// The **recoil factor** for a burst round — `recoil = 1 + prior_shots × kickback`
-/// (resolution.md §1a). The first round (zero prior shots) yields the identity ×1;
-/// each additional prior round adds the weapon's [`Kickback`], so a positive
-/// kickback widens the cone monotonically across a burst.
+/// The **recoil factor** for a burst round — `recoil = 1 + prior_shots × kickback ×
+/// recoil_growth` (resolution.md §1a). The first round (zero prior shots) yields the
+/// identity ×1; each additional prior round adds the weapon's [`Kickback`] scaled by
+/// stability's [`RecoilGrowth`], so a positive kickback widens the cone monotonically
+/// across a burst while a steadier shooter (smaller `recoil_growth`) widens strictly
+/// less per prior shot.
 ///
-/// `prior_shots` and `kickback` are domain newtypes; the arithmetic is the doc
-/// form, with `kickback` read from the weapon (no magnitude hardcoded). Returns
-/// the named [`RecoilFactor`] (no-bare-types).
+/// `prior_shots`, `kickback`, and `recoil_growth` are domain newtypes; the arithmetic
+/// is the doc form, with `kickback` read from the weapon and `recoil_growth` the E2.2
+/// stability output (no magnitude hardcoded). Returns the named [`RecoilFactor`]
+/// (no-bare-types).
 #[must_use]
-pub fn recoil_factor(prior_shots: PriorShots, kickback: Kickback) -> RecoilFactor {
-    // `recoil = 1 + prior_shots × kickback`; cast the count to the angular f32
-    // domain for the multiply. `f32::from` (u16 → f32) is lossless and cannot wrap.
+pub fn recoil_factor(
+    prior_shots: PriorShots,
+    kickback: Kickback,
+    recoil_growth: RecoilGrowth,
+) -> RecoilFactor {
+    // `recoil = 1 + prior_shots × kickback × recoil_growth`; cast the count to the
+    // angular f32 domain for the multiply. `f32::from` (u16 → f32) is lossless and
+    // cannot wrap. The product is added to 1.0, so zero prior shots → identity ×1
+    // regardless of `recoil_growth`.
     let prior = f32::from(*prior_shots);
-    RecoilFactor::new(prior.mul_add(*kickback, 1.0))
+    RecoilFactor::new((prior * *kickback).mul_add(*recoil_growth, 1.0))
 }
 
 /// The **aim** cone factor for a shooter — the Aim-Mode multiplier selected by the
@@ -145,8 +164,8 @@ pub fn aim_cone_mult(aiming: Aiming, tuning: &ConeStabilityTuning) -> AimConeMul
 
 /// Compute the §1a cone size **`θ_cone`** as the product of its five multiplicative
 /// factors (resolution.md §1a; "What's pure math vs sim" line 147:
-/// `cone_angle(base_spread, firemode, prior_shots, kickback, stability, aim) →`
-/// `θ_cone`):
+/// `cone_angle(base_spread, firemode, prior_shots, kickback, recoil_growth,`
+/// `stability, aim) → θ_cone`):
 ///
 /// ```text
 /// θ_cone = base_spread × stability × aim × firemode × recoil
@@ -156,10 +175,13 @@ pub fn aim_cone_mult(aiming: Aiming, tuning: &ConeStabilityTuning) -> AimConeMul
 /// - `firemode` — the per-mode selector term ([`ModeConeMult`], single ≈ 1,
 ///   full-auto ≥ 1), read by the caller off the weapon's
 ///   [`crate::weapon::FireMode`] data.
-/// - `prior_shots` / `kickback` — fold into the `recoil = 1 + prior_shots ×
-///   kickback` factor ([`recoil_factor`]); the first round (zero prior shots)
-///   makes recoil the identity ×1.
+/// - `prior_shots` / `kickback` / `recoil_growth` — fold into the `recoil = 1 +
+///   prior_shots × kickback × recoil_growth` factor ([`recoil_factor`]); the first
+///   round (zero prior shots) makes recoil the identity ×1, and a steadier
+///   `recoil_growth` widens strictly less per prior shot.
 /// - `stability` — the E2.2 cone-mult curve output ([`ConeMult`], steadier < 1).
+/// - `recoil_growth` — the E2.2 recoil-growth curve output ([`RecoilGrowth`],
+///   steadier < 1), damping the recoil widening symmetric with the climb.
 /// - `aim` — the Aim-Mode multiplier ([`AimConeMult`]; ×0.6 aimed / 1 hip-fired,
 ///   from [`aim_cone_mult`]).
 ///
@@ -173,10 +195,11 @@ pub fn cone_angle(
     firemode: ModeConeMult,
     prior_shots: PriorShots,
     kickback: Kickback,
+    recoil_growth: RecoilGrowth,
     stability: ConeMult,
     aim: AimConeMult,
 ) -> ConeAngle {
-    let recoil = recoil_factor(prior_shots, kickback);
+    let recoil = recoil_factor(prior_shots, kickback, recoil_growth);
     // θ_cone = base_spread × stability × aim × firemode × recoil — all multiplicative.
     let theta = *base_spread * *stability * *aim * *firemode * *recoil;
     ConeAngle::new(theta)
@@ -203,22 +226,24 @@ mod tests {
         let firemode = ModeConeMult::new(1.5);
         let prior = PriorShots::new(2);
         let kick = Kickback::new(0.10);
+        let growth = RecoilGrowth::new(0.5);
         let stab = cone_mult(0.7);
         let aim = AimConeMult::new(0.6);
 
-        let theta = cone_angle(base, firemode, prior, kick, stab, aim);
+        let theta = cone_angle(base, firemode, prior, kick, growth, stab, aim);
 
-        // recoil = 1 + 2 × 0.10 = 1.2; product = 0.20 × 0.7 × 0.6 × 1.5 × 1.2.
-        let recoil = 2.0_f32.mul_add(0.10, 1.0);
+        // recoil = 1 + 2 × 0.10 × 0.5 = 1.1; product = 0.20 × 0.7 × 0.6 × 1.5 × 1.1.
+        let recoil = (2.0_f32 * 0.10).mul_add(0.5, 1.0);
         let expected = 0.20_f32 * 0.7 * 0.6 * 1.5 * recoil;
         assert_eq!((*theta).to_bits(), expected.to_bits());
     }
 
     /// C2 (AC #2) — the first shot (zero prior shots) makes the recoil term the
-    /// identity ×1: the `prior_shots = 0` cone equals the same call with the recoil
-    /// term forced to identity (a zero-kickback weapon, where recoil is ×1
-    /// regardless of prior shots). Asserts the recoil factor itself is exactly 1.0
-    /// for the first shot, and the two cones match.
+    /// identity ×1 REGARDLESS of `recoil_growth`: the `prior_shots = 0` cone equals
+    /// the same call with the recoil term forced to identity (a zero-kickback weapon,
+    /// where recoil is ×1 regardless of prior shots). Asserts the first-shot recoil
+    /// factor is exactly 1.0 for a steady AND a shaky `recoil_growth`, and the cones
+    /// match.
     #[test]
     fn first_shot_recoil_term_is_identity() {
         let base = BaseSpread::new(0.18);
@@ -226,15 +251,21 @@ mod tests {
         let kick = Kickback::new(0.25);
         let stab = cone_mult(0.8);
         let aim = AimConeMult::new(0.6);
+        let growth = RecoilGrowth::new(0.7);
 
-        // The first-shot recoil factor is exactly the identity ×1.
+        // The first-shot recoil factor is exactly the identity ×1 regardless of
+        // `recoil_growth` (zero prior shots zeroes the whole growth-scaled term).
         assert_eq!(
-            (*recoil_factor(PriorShots::first(), kick)).to_bits(),
+            (*recoil_factor(PriorShots::first(), kick, RecoilGrowth::new(0.1))).to_bits(),
+            1.0_f32.to_bits(),
+        );
+        assert_eq!(
+            (*recoil_factor(PriorShots::first(), kick, RecoilGrowth::new(1.9))).to_bits(),
             1.0_f32.to_bits(),
         );
 
         // First-shot cone (prior = 0) with a positive-kickback weapon …
-        let first = cone_angle(base, firemode, PriorShots::first(), kick, stab, aim);
+        let first = cone_angle(base, firemode, PriorShots::first(), kick, growth, stab, aim);
         // … equals the same call with recoil forced to identity (kickback = 0, so
         // recoil = 1 for any prior-shot count).
         let no_recoil = cone_angle(
@@ -242,6 +273,7 @@ mod tests {
             firemode,
             PriorShots::new(5),
             Kickback::new(0.0),
+            growth,
             stab,
             aim,
         );
@@ -249,20 +281,30 @@ mod tests {
     }
 
     /// C3 (AC #3) — each additional prior shot widens the cone monotonically for a
-    /// positive-kickback weapon (`recoil = 1 + prior_shots × kickback`). Over an
-    /// increasing prior-shot count, `θ_cone` is strictly non-decreasing (strictly
-    /// increasing here, since kickback > 0). Relation, not magnitude.
+    /// positive-kickback weapon with positive growth (`recoil = 1 + prior_shots ×
+    /// kickback × recoil_growth`). Over an increasing prior-shot count, `θ_cone` is
+    /// strictly non-decreasing (strictly increasing here, since kickback > 0 and
+    /// growth > 0). Relation, not magnitude.
     #[test]
     fn each_prior_shot_widens_the_cone_monotonically() {
         let base = BaseSpread::new(0.15);
         let firemode = ModeConeMult::new(1.0);
         let kick = Kickback::new(0.12); // positive kickback
+        let growth = RecoilGrowth::new(0.8); // positive growth → widening not damped to nil
         let stab = cone_mult(0.9);
         let aim = AimConeMult::new(1.0);
 
         let mut prev = f32::NEG_INFINITY;
         for shots in 0u16..6 {
-            let theta = cone_angle(base, firemode, PriorShots::new(shots), kick, stab, aim);
+            let theta = cone_angle(
+                base,
+                firemode,
+                PriorShots::new(shots),
+                kick,
+                growth,
+                stab,
+                aim,
+            );
             assert!(
                 *theta >= prev,
                 "θ_cone must be non-decreasing across prior shots: {} after {prev} at {shots} shots",
@@ -279,6 +321,37 @@ mod tests {
         }
     }
 
+    /// C3b (AC #3a, GTW-175) — stability damps the recoil **widening**: a steadier
+    /// `recoil_growth` (smaller coefficient) yields a STRICTLY SMALLER `θ_cone` than a
+    /// shakier one (larger coefficient) for the same positive `prior_shots` /
+    /// `kickback`, all else equal — symmetric with how it damps the climb. Asserted by
+    /// RELATION (steadier < shakier), no pinned magnitude. The first shot is exempt
+    /// (its identity ×1 is the C2 test).
+    #[test]
+    fn steadier_recoil_growth_widens_strictly_less() {
+        let base = BaseSpread::new(0.2);
+        let firemode = ModeConeMult::new(1.0);
+        let prior = PriorShots::new(3); // positive prior shots — recoil term is live
+        let kick = Kickback::new(0.15); // positive kickback
+        let stab = cone_mult(0.8);
+        let aim = AimConeMult::new(1.0);
+
+        // A steadier shooter (smaller growth) vs a shakier one (larger growth).
+        let steady = RecoilGrowth::new(0.3);
+        let shaky = RecoilGrowth::new(0.9);
+
+        let steady_cone = cone_angle(base, firemode, prior, kick, steady, stab, aim);
+        let shaky_cone = cone_angle(base, firemode, prior, kick, shaky, stab, aim);
+
+        assert!(
+            *steady_cone < *shaky_cone,
+            "a steadier recoil_growth must widen strictly less for the same prior \
+             shots/kickback: steady {} vs shaky {}",
+            *steady_cone,
+            *shaky_cone,
+        );
+    }
+
     /// C4 (AC #4) — aimed fire (`Aiming(true)`) yields a strictly NARROWER `θ_cone`
     /// than hip-fire (`Aiming(false)`), all else equal — the ×0.6 narrowing applied
     /// via [`aim_cone_mult`] reading tuning. Asserted by RELATION (aimed < hip),
@@ -290,6 +363,7 @@ mod tests {
         let firemode = ModeConeMult::new(1.0);
         let prior = PriorShots::first();
         let kick = Kickback::new(0.1);
+        let growth = RecoilGrowth::new(0.5);
         let stab = cone_mult(0.8);
 
         let aimed_mult = aim_cone_mult(Aiming::new(true), &tuning);
@@ -298,8 +372,8 @@ mod tests {
         // Hip-fired is the identity ×1; aiming reads the (sub-1) tuning narrowing.
         assert_eq!((*hip_mult).to_bits(), 1.0_f32.to_bits());
 
-        let aimed = cone_angle(base, firemode, prior, kick, stab, aimed_mult);
-        let hip = cone_angle(base, firemode, prior, kick, stab, hip_mult);
+        let aimed = cone_angle(base, firemode, prior, kick, growth, stab, aimed_mult);
+        let hip = cone_angle(base, firemode, prior, kick, growth, stab, hip_mult);
         assert!(
             *aimed < *hip,
             "aimed fire must be strictly narrower than hip-fire: aimed {} vs hip {}",
@@ -317,6 +391,7 @@ mod tests {
         let base = BaseSpread::new(0.2);
         let prior = PriorShots::first();
         let kick = Kickback::new(0.1);
+        let growth = RecoilGrowth::new(0.5);
         let stab = cone_mult(0.8);
         let aim = AimConeMult::new(1.0);
 
@@ -324,8 +399,8 @@ mod tests {
         let single_term = ModeConeMult::new(1.0);
         let full_auto_term = ModeConeMult::new(1.6);
 
-        let single = cone_angle(base, single_term, prior, kick, stab, aim);
-        let full_auto = cone_angle(base, full_auto_term, prior, kick, stab, aim);
+        let single = cone_angle(base, single_term, prior, kick, growth, stab, aim);
+        let full_auto = cone_angle(base, full_auto_term, prior, kick, growth, stab, aim);
         assert!(
             *full_auto >= *single,
             "full-auto must be at-or-wider than single: full-auto {} vs single {}",
@@ -344,6 +419,7 @@ mod tests {
         let firemode = ModeConeMult::new(1.0);
         let prior = PriorShots::first();
         let kick = Kickback::new(0.1);
+        let growth = RecoilGrowth::new(0.5);
         let aim = AimConeMult::new(1.0);
 
         // A sloppy stability (larger mult) vs a steadier one (smaller mult).
@@ -354,7 +430,7 @@ mod tests {
         let big = BaseSpread::new(0.40);
         let tight = BaseSpread::new(0.05);
 
-        let theta = |base, stab| *cone_angle(base, firemode, prior, kick, stab, aim);
+        let theta = |base, stab| *cone_angle(base, firemode, prior, kick, growth, stab, aim);
 
         let big_drop = theta(big, sloppy_stab) - theta(big, steady_stab);
         let tight_drop = theta(tight, sloppy_stab) - theta(tight, steady_stab);
@@ -396,6 +472,7 @@ mod tests {
             firemode_term,
             PriorShots::first(),
             Kickback::new(0.1),
+            RecoilGrowth::new(0.5),
             cone_mult(0.8),
             aimed,
         );

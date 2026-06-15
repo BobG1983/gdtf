@@ -24,7 +24,7 @@ The maximum angular deviation. Driven by:
 
 - the **weapon's base spread**.
 - **Stability** — a **continuous score** *derived from the situation*, not a binary state: weapon intrinsic + stance (prone 40 / kneel 25 / stand 10) + automatic **brace** (+30 when the faced cell's cover height suits the stance: prone on LOW+, kneeling on MID+, standing on HIGH) + an emplacement seam (no entities yet). Normalised over 100 and fed through a tuning **curve** → the cone multiplier (steadier → **narrower**). The same score's second curve output damps recoil *climb* (below).
-- **Recoil (kickback)** — each round in a burst adds the weapon's kickback, **widening** the cone for the *next* round; resets at the end of each shot action (the next action starts fresh). Recoil also walks the **muzzle up**: round *i*'s central axis tilts upward by `prior_shots × recoil_climb × recoil_growth` radians before sampling — `recoil_growth` is stability's second curve output, so a braced/prone shooter climbs strictly less. (Whether stability also damps the *widening* is an open call; today it does not.)
+- **Recoil (kickback)** — each round in a burst adds the weapon's kickback, **widening** the cone for the *next* round; resets at the end of each shot action (the next action starts fresh). Recoil also walks the **muzzle up**: round *i*'s central axis tilts upward by `prior_shots × recoil_climb × recoil_growth` radians before sampling — `recoil_growth` is stability's second curve output, so a braced/prone shooter climbs strictly less. **Stability damps the widening too:** the same `recoil_growth` scales the cone-widening term (`recoil = 1 + prior_shots × kickback × recoil_growth`), so a braced/prone shooter not only climbs strictly less but **widens strictly less** per prior shot — symmetric with the climb. (Resolved 2026-06-15; previously this widening was undamped.)
 - **Aim Mode** — aimed **narrows** (×0.6), hip-fired = 1; the tradeoff is TU (×1.5 shot cost). A separate axis from the selector.
 - **Fire mode** — the selector term: single ≈ 1, full-auto ≥ 1 (inherently sloppier); selector is **single / single+burst / single+burst+full-auto**, authored per weapon (a `FireMode`).
 
@@ -35,7 +35,7 @@ All factors are **multiplicative** (`cone_angle`):
   stability : cone-mult curve over the 0–100 stability score (steadier < 1)
   aim       : Aim Mode ×0.6   · hip-fired = 1
   firemode  : single ≈ 1      · full-auto ≥ 1
-  recoil    : 1 + prior_shots × kickback   (first shot has 0 prior → ×1)
+  recoil    : 1 + prior_shots × kickback × recoil_growth   (first shot has 0 prior → ×1; steadier recoil_growth widens less)
 ```
 
 Multiplicative bracing tightens **proportionally** — a bipod helps a heavy, sloppy weapon far more in absolute degrees than it helps a tack-driver, so setting up the big gun is a real payoff. **Scaling recoil** multiplies the weapon's own spread: a sloppy weapon sprays on auto (you must aim/single-fire it) while a tight weapon stays usable on auto (it keeps your options open).
@@ -144,7 +144,7 @@ The terminal gates are **live** (`apply_hit`): `Wounds ≤ 0` → **Dead** (trum
 
 The combat-math layer (`gdtf_battle_sim` — render-free; deterministic, seed-replayable, unit-testable; tuning via a combat-tuning data structure) owns:
 
-- cone size: `cone_angle(base_spread, firemode, prior_shots, kickback, stability, aim) → θ_cone`
+- cone size: `cone_angle(base_spread, firemode, prior_shots, kickback, recoil_growth, stability, aim) → θ_cone`
 - stability: `stability(weapon_intrinsic, stance, brace, emplacement, …) → (cone_mult, recoil_growth)` — two curve reads off one 0–100 score
 - muzzle & aim axis: `muzzle_position` (cell center + per-facing forward offset in cell-fractions, per-stance muzzle z as a level-fraction) · `target_aim_point` (target silhouette-top level-fraction × `aim_height_frac`; a cover cell's band midpoint) · `climb_aim_dir` (recoil climb tilts the axis up)
 - in-cone vector: `sample_cone_vector(aim_dir, θ_cone, p, rng) → ONE 3D unit direction` — `p = concentration_p(Shooting, weapon.accuracy)`, concentration toward dead-center rising with it

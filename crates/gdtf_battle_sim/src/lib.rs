@@ -141,8 +141,10 @@
 //! selected from [`tuning::AimMode`] by the ganger's [`ganger::Aiming`] flag via
 //! [`cone::aim_cone_mult`]; `firemode` is the per-mode [`weapon::ModeConeMult`]
 //! read off the weapon's [`weapon::FireMode`]; and `recoil = 1 +
-//! `[`cone::PriorShots`]` × kickback` (the first round → ×1) via
-//! [`cone::recoil_factor`], with `kickback` from the weapon. This is the cone
+//! `[`cone::PriorShots`]` × kickback × recoil_growth` (the first round → ×1) via
+//! [`cone::recoil_factor`], with `kickback` from the weapon and `recoil_growth` the
+//! E2.2 [`stability::RecoilGrowth`] (steadier → widens strictly less, symmetric with
+//! the climb). This is the cone
 //! WIDTH only (the §1b in-cone sample is E2.5). Because the factors multiply,
 //! bracing tightens PROPORTIONALLY — a steadier stability shrinks a sloppy weapon
 //! by more absolute angle than a tight one. Angular / dimensionless — zero pixels;

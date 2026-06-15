@@ -61,7 +61,7 @@ impl Accuracy {
 }
 
 /// A weapon's **kickback** — the per-round recoil it adds, the `kickback` term of
-/// the recoil factor `recoil = 1 + prior_shots × kickback` (resolution.md §1a):
+/// the recoil factor `recoil = 1 + prior_shots × kickback × recoil_growth` (resolution.md §1a):
 /// each round in a burst widens the cone for the next. A sloppy weapon sprays on
 /// auto; a tight one stays usable (resolution.md §1a "Scaling recoil").
 ///
