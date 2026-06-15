@@ -21,9 +21,9 @@ use gdtf_battle_sim::{
     Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BattleSeed,
     BattleSetup, BodyPart, Cell, CellLevel, CombatTuning, ConcentrationP, ConeAngle, CoverEntry,
     CoverHp, CoverLedger, Direction, Facing, Faction, GangerSpawn, HeightBand, Hp, Level,
-    LifeState, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, ShotInputs,
-    ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stance, StanceKind, SurfaceGrid, Tu,
-    Wounds, resolve_coarse, setup_battle,
+    LifeState, Luck, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting,
+    ShotInputs, ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stance, StanceKind,
+    SurfaceGrid, Toughness, Tu, Wounds, resolve_coarse, setup_battle,
 };
 
 /// A `(cell, level)` key from raw coordinates.
@@ -55,6 +55,11 @@ fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         wounds: Wounds::new(3),
         tu: Tu::new(60),
         life_state: LifeState::Alive,
+        // The E3.0 attribute stats (GTW-182) — arbitrary magnitudes; this test does
+        // not read them, but `GangerSpawn` now carries them.
+        shooting: Shooting::new(f32::from(faction) + 2.0),
+        toughness: Toughness::new(f32::from(faction) + 3.0),
+        luck: Luck::new(f32::from(faction) + 1.0),
         armor: arbitrary_armor(i32::from(faction) + 1),
     }
 }

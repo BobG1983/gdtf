@@ -67,7 +67,8 @@ pub use cover::{
     band_for,
 };
 pub use ganger::{
-    Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
+    Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance,
+    StanceKind, Toughness, Tu, Wounds,
 };
 pub use hit_location::roll_body_part;
 pub use march::{MarchKind, MarchResult, march_vector};
@@ -82,7 +83,7 @@ pub use occupancy_sync::{
 };
 pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
 pub use rng::{BattleSeed, SimRng};
-pub use sample_cone::{ConcentrationP, Shooting, ShotDir, concentration_p, sample_cone_vector};
+pub use sample_cone::{ConcentrationP, ShotDir, concentration_p, sample_cone_vector};
 pub use situation::{
     BattleSetup, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers, setup_battle,
 };

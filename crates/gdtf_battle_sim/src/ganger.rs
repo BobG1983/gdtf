@@ -265,6 +265,91 @@ impl Tu {
     }
 }
 
+/// A ganger's **Shooting** computed combat stat — the ranged-to-hit skill term.
+///
+/// The skill input to the §1b concentration exponent
+/// `p = concentration_p(Shooting, weapon.accuracy)` (`docs/combat/stats.md`:
+/// Shooting is "live today", derived `fn(Aim, Reflexes, Cool)`, and "feeds shot
+/// concentration, `p = Shooting × weapon accuracy`"). Higher Shooting raises `p`,
+/// clustering the in-cone draw toward dead-center.
+///
+/// Promoted from the E2.5 `sample_cone::Shooting` param-newtype to a queryable
+/// ganger Component so a shot system can read the shooter's Shooting off the
+/// entity (the source E4 cone composition + [`crate::sample_cone::concentration_p`]
+/// both read this ONE type). A domain stat value (no-bare-types), dimensionless —
+/// **zero pixels**. Private inner + derived [`Deref`]. The roster-side derivation
+/// from attributes is campaign scope; this slice carries the value. A distinct
+/// component so a shot system can query `&Shooting` alone. Defaults to `0.0`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Shooting(f32);
+
+impl Shooting {
+    /// Build a Shooting value from its magnitude (dimensionless; higher = steadier
+    /// aim → a larger concentration `p`).
+    ///
+    /// The public constructor (house style) so [`crate::sample_cone::concentration_p`]
+    /// and the E1.8 / GTW-158 setup can build a `Shooting` without reaching the
+    /// private field.
+    #[must_use]
+    pub const fn new(shooting: f32) -> Self {
+        Self(shooting)
+    }
+}
+
+/// A ganger's **Toughness** direct attribute — resistance to taking damage / being
+/// wounded.
+///
+/// One of the eight core direct attributes (`docs/combat/stats.md`: "resistance to
+/// taking damage / being wounded / Diseases / poisons"). In the severity roll it is
+/// the defender's mitigation term — `−toughness_scale·Toughness` pushes the wound
+/// score down (`docs/combat/wounds-and-roster.md` §"Rolling an injury"). This is the
+/// per-ganger STAT carried on the entity, **distinct** from the tuning scalar
+/// [`crate::tuning::ToughnessMitigation`] (the `k` coefficient that scales it). A
+/// domain stat value (no-bare-types), dimensionless — **zero pixels**, a private
+/// inner with a derived [`Deref`]. A distinct component so the severity path (E3.4)
+/// can query `&Toughness` alone. Defaults to `0.0`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Toughness(f32);
+
+impl Toughness {
+    /// Build a Toughness value from its magnitude (dimensionless; higher = harder to
+    /// wound — a larger mitigation of the severity score).
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build a
+    /// `Toughness` from an authored value without reaching the private field.
+    #[must_use]
+    pub const fn new(toughness: f32) -> Self {
+        Self(toughness)
+    }
+}
+
+/// A ganger's **Luck** direct attribute — directional fortune, shaping the severity
+/// roll's one-sided random tail.
+///
+/// One of the eight core direct attributes (`docs/combat/stats.md`): a shooter's
+/// Luck makes the wounds they deal nastier (adds to the severity score), a target's
+/// Luck caps the bad tail of a hit's severity roll (shrinks the random spread). It
+/// "feeds the severity roll only, never the computed stats below". Both gangers'
+/// Luck stats are read in the severity roll (E3.4 / E3.9): the shooter's via the
+/// tuning [`crate::tuning::ShooterLuckScale`], the defender's via the
+/// [`crate::tuning::DefenderLuckSpreadCap`]. A domain stat value (no-bare-types),
+/// dimensionless — **zero pixels**. Private inner + derived [`Deref`]. A distinct
+/// component so the severity path can query `&Luck` alone. Defaults to `0.0`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Luck(f32);
+
+impl Luck {
+    /// Build a Luck value from its magnitude (dimensionless; directional fortune —
+    /// the shooter's adds to the severity score, the defender's shrinks its spread).
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup can build a
+    /// `Luck` from an authored value without reaching the private field.
+    #[must_use]
+    pub const fn new(luck: f32) -> Self {
+        Self(luck)
+    }
+}
+
 /// A ganger's terminal life state — the two-pool outcome machine.
 ///
 /// The combat/death system owns this (it is a state component, not a stat):
@@ -294,7 +379,7 @@ mod tests {
 
     // --- C14(a): per-field decomposition — each component spawns + queries
     // INDEPENDENTLY, with NO sibling component on the entity. Each test spawns an
-    // entity carrying exactly one of the nine components and asserts a query for
+    // entity carrying exactly one of the ganger components and asserts a query for
     // *only* that component finds it. This is the architectural proof that the
     // state is decomposed per field: a single-component query compiles and works
     // with no other component present. Using a bare `World` (no plugins) keeps it
@@ -363,8 +448,79 @@ mod tests {
         assert_independent(LifeState::Downed);
     }
 
+    #[test]
+    fn shooting_inserts_and_queries_independently() {
+        assert_independent(Shooting(3.5));
+    }
+
+    #[test]
+    fn toughness_inserts_and_queries_independently() {
+        assert_independent(Toughness(4.0));
+    }
+
+    #[test]
+    fn luck_inserts_and_queries_independently() {
+        assert_independent(Luck(2.5));
+    }
+
+    // --- GTW-182 AC #1: a ganger constructed carrying Shooting/Toughness/Luck reads
+    // each attribute stat back through its derived Deref. The three are the attribute
+    // substrate the E3 severity roll (shooter Shooting, defender Toughness, both
+    // Luck) reads off the entity — magnitudes arbitrary (per-ganger data, not pinned).
+
+    /// A ganger carrying all three GTW-182 attribute stats reads each back via the
+    /// newtype's derived `Deref`, proving construct-and-read-back (AC #1). Distinct
+    /// arbitrary magnitudes so the readback is provably per-field, not a default.
+    #[test]
+    fn attribute_stats_construct_and_read_back_via_deref() {
+        let shooting = Shooting::new(2.5);
+        let toughness = Toughness::new(4.0);
+        let luck = Luck::new(1.5);
+        assert!(
+            (*shooting - 2.5).abs() < f32::EPSILON,
+            "Shooting derefs to inner"
+        );
+        assert!(
+            (*toughness - 4.0).abs() < f32::EPSILON,
+            "Toughness derefs to inner",
+        );
+        assert!((*luck - 1.5).abs() < f32::EPSILON, "Luck derefs to inner");
+    }
+
+    /// GTW-182 AC #3: the three attribute stats are queryable off the entity. Spawn a
+    /// "shooter" and a "defender" entity each carrying all three, then a `Query`/
+    /// `World` access reads the shooter's Shooting/Luck and the defender's
+    /// Toughness/Luck — exactly the read shape the severity roll (E3.4 / E3.9)
+    /// performs. A bare `World` keeps it a true headless white-box test of the real
+    /// ECS path.
+    #[test]
+    fn shooter_and_defender_attribute_stats_are_queryable() {
+        let mut world = World::new();
+        let shooter = world.spawn((Shooting(3.0), Toughness(2.0), Luck(1.0))).id();
+        let defender = world.spawn((Shooting(1.0), Toughness(5.0), Luck(4.0))).id();
+
+        // The severity-roll read shape: a tuple query over the three attribute stats.
+        let mut q = world.query::<(&Shooting, &Toughness, &Luck)>();
+
+        // The shooter contributes its Shooting (skill) + Luck (nastier wounds).
+        let shooter_stats = q.get(&world, shooter);
+        assert_eq!(
+            shooter_stats,
+            Ok((&Shooting(3.0), &Toughness(2.0), &Luck(1.0))),
+            "the shooter's attribute stats are queryable off the entity",
+        );
+
+        // The defender contributes its Toughness (mitigation) + Luck (spread cap).
+        let defender_stats = q.get(&world, defender);
+        assert_eq!(
+            defender_stats,
+            Ok((&Shooting(1.0), &Toughness(5.0), &Luck(4.0))),
+            "the defender's attribute stats are queryable off the entity",
+        );
+    }
+
     /// A multi-component disjoint-query proof: spawn an entity with TWO of the
-    /// nine, then query each ALONE and assert each retrieves its own value — a
+    /// components, then query each ALONE and assert each retrieves its own value — a
     /// single-field query never needs (or sees) its sibling, which is the whole
     /// point of the decomposition (C2 / C14a). A bare `World` query of `&Hp` and
     /// a separate `&Tu` over the same entity proves the fields are addressable in
@@ -400,6 +556,11 @@ mod tests {
         assert_eq!(Wounds::default(), Wounds(0));
         assert_eq!(Tu::default(), Tu(0));
         assert_eq!(LifeState::default(), LifeState::Alive);
+        // The GTW-182 attribute stats default to 0.0 (a structural "no value yet"
+        // spawn floor, not a tuning magnitude — real values are per-ganger data).
+        assert_eq!(Shooting::default(), Shooting(0.0));
+        assert_eq!(Toughness::default(), Toughness(0.0));
+        assert_eq!(Luck::default(), Luck(0.0));
     }
 
     /// The newtypes' derived [`Deref`] reaches their inner value (C12 mandates a
@@ -414,6 +575,11 @@ mod tests {
         assert_eq!(*Hp(123), 123u16);
         assert_eq!(*Wounds(9), 9u8);
         assert_eq!(*Tu(80), 80u8);
+        // The GTW-182 attribute stats deref to their inner f32 (an f32 compare, so
+        // an epsilon tolerance, not a bit-exact compare on a derived value).
+        assert!((*Shooting(3.0) - 3.0).abs() < f32::EPSILON);
+        assert!((*Toughness(4.5) - 4.5).abs() < f32::EPSILON);
+        assert!((*Luck(2.0) - 2.0).abs() < f32::EPSILON);
         // Position derefs to CellLevel (C3); compare the whole inner key.
         let key = CellLevel::new(Cell::new(1, 2), Level::new(3));
         assert_eq!(*Position(key), key);

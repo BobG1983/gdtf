@@ -12,7 +12,9 @@
 //!
 //! - **gangers** ([`GangerSpawn`]): each a `(cell, level)` plus the E1.2 component
 //!   VALUES ([`Faction`] / [`Facing`] / [`Stance`] / [`Aiming`] / [`Hp`] /
-//!   [`Wounds`] / [`Tu`] / [`LifeState`]) and a read-only [`SourceArmor`] record
+//!   [`Wounds`] / [`Tu`] / [`LifeState`]), the E3.0 attribute stats
+//!   ([`Shooting`](crate::ganger::Shooting) / [`Toughness`](crate::ganger::Toughness)
+//!   / [`Luck`](crate::ganger::Luck)), and a read-only [`SourceArmor`] record
 //!   (`armor_by_part`) to seed the battle-local [`WornArmor`] (E1.3).
 //! - **walls** + **scatter/props** ([`CoverSpawn`], the same schema for both): each
 //!   a `(cell, level)`, a [`TerrainKind`], the cover's max [`CoverHp`], its
@@ -40,7 +42,10 @@ use bevy::{platform::collections::HashSet, prelude::Commands};
 use crate::{
     armor::{ArmorHardness, ArmorProtection, SourceArmor, WornArmor},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    ganger::{Aiming, Facing, Faction, Hp, LifeState, Position, Stance, Tu, Wounds},
+    ganger::{
+        Aiming, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance, Toughness, Tu,
+        Wounds,
+    },
     metric::CellLevel,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind, TerrainPlacement},
     surface::{SlabState, SurfaceGrid},
@@ -48,15 +53,22 @@ use crate::{
 };
 
 /// One authored ganger placement — its `(cell, level)` plus every E1.2 component
-/// VALUE and the read-only roster armor to seed its battle-local [`WornArmor`].
+/// VALUE, the E3.0 attribute stats, and the read-only roster armor to seed its
+/// battle-local [`WornArmor`].
 ///
 /// A named struct (not a bare tuple) so the authored ganger shape is
 /// self-describing. The component fields are the E1.2 newtypes carried **by value**
-/// ([`setup_battle`] spawns an entity with each as a component); `armor` is the
-/// E1.3 read-only [`SourceArmor`] record ([`WornArmor::seed_from`] copies it onto
-/// the spawned entity). The grid key [`at`](GangerSpawn::at) becomes the spawned
-/// ganger's [`Position`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// ([`setup_battle`] spawns an entity with each as a component) plus the E3.0 / GTW-182
+/// attribute stats ([`Shooting`] / [`Toughness`] / [`Luck`], the substrate the
+/// severity roll reads); `armor` is the E1.3 read-only [`SourceArmor`] record
+/// ([`WornArmor::seed_from`] copies it onto the spawned entity). The grid key
+/// [`at`](GangerSpawn::at) becomes the spawned ganger's [`Position`].
+///
+/// Not `Eq` / `Hash`: the E3.0 attribute stats ([`Shooting`] / [`Toughness`] /
+/// [`Luck`]) carry `f32` magnitudes (no total order), so the authored ganger is
+/// `PartialEq` only. `(cell, level)`-keyed de-duplication ([`has_stacked_gangers`])
+/// hashes [`at`](GangerSpawn::at), never the whole struct.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GangerSpawn {
     /// The `(cell, level)` the ganger spawns at — its [`Position`].
     pub at:         CellLevel,
@@ -76,6 +88,15 @@ pub struct GangerSpawn {
     pub tu:         Tu,
     /// The ganger's terminal life state.
     pub life_state: LifeState,
+    /// The ganger's **Shooting** combat stat — the ranged-to-hit skill term the
+    /// §1b concentration exponent reads (E3.0 / GTW-182).
+    pub shooting:   Shooting,
+    /// The ganger's **Toughness** attribute — the defender's severity-roll
+    /// mitigation (E3.0 / GTW-182).
+    pub toughness:  Toughness,
+    /// The ganger's **Luck** attribute — directional fortune shaping the severity
+    /// roll's one-sided tail (E3.0 / GTW-182).
+    pub luck:       Luck,
     /// The ganger's read-only roster armor (`armor_by_part`) — copied into a
     /// battle-local [`WornArmor`] at setup, never mutated.
     pub armor:      SourceArmor,
@@ -222,10 +243,13 @@ impl BattleSetup {
 /// 1. **Spawn each ganger** — for every [`GangerSpawn`], `commands.spawn(...)` the
 ///    full per-field component set ([`Position`] from `at`, plus [`Faction`] /
 ///    [`Facing`] / [`Stance`] / [`Aiming`] / [`Hp`] / [`Wounds`] / [`Tu`] /
-///    [`LifeState`]) PLUS the battle-local [`WornArmor`] seeded by value from the
-///    ganger's roster [`SourceArmor`] ([`WornArmor::seed_from`]). The returned Bevy
-///    [`Entity`](bevy::prelude::Entity) handle is captured into the [`OccupantPlacement`] list — NEVER a
-///    numeric id (GTW-10 / GTW-12).
+///    [`LifeState`]), the E3.0 / GTW-182 attribute stats
+///    ([`Shooting`](crate::ganger::Shooting) / [`Toughness`](crate::ganger::Toughness)
+///    / [`Luck`](crate::ganger::Luck)) the severity roll reads, PLUS the battle-local
+///    [`WornArmor`] seeded by value from the ganger's roster [`SourceArmor`]
+///    ([`WornArmor::seed_from`]). The returned Bevy [`Entity`](bevy::prelude::Entity)
+///    handle is captured into the [`OccupantPlacement`] list — NEVER a numeric id
+///    (GTW-10 / GTW-12).
 /// 2. **Seed the [`CoverLedger`]** — insert a [`CoverEntry`] for every wall and
 ///    scatter piece (the one unified ledger).
 /// 3. **Seed the [`SurfaceGrid`]** — set [`SlabState::Present`] at every authored
@@ -273,6 +297,9 @@ pub fn setup_battle(
                 ganger.wounds,
                 ganger.tu,
                 ganger.life_state,
+                ganger.shooting,
+                ganger.toughness,
+                ganger.luck,
                 WornArmor::seed_from(&ganger.armor),
             ))
             .id();
@@ -378,6 +405,11 @@ mod tests {
             wounds: Wounds::new(3),
             tu: Tu::new(60),
             life_state: LifeState::Alive,
+            // The E3.0 attribute stats — distinct arbitrary magnitudes per faction so
+            // a per-field readback is provable (NOT shipped tuning; per-ganger data).
+            shooting: Shooting::new(f32::from(faction) + 2.0),
+            toughness: Toughness::new(f32::from(faction) + 3.0),
+            luck: Luck::new(f32::from(faction) + 1.0),
             armor: arbitrary_armor(i32::from(faction) + 1),
         }
     }
@@ -472,7 +504,8 @@ mod tests {
 
         let world: &mut World = app.world_mut();
         // A query naming EVERY required component — only an entity carrying all of
-        // them matches, so a count of 2 proves both gangers have the full set.
+        // them matches, so a count of 2 proves both gangers have the full set
+        // (E1.2 state + E3.0 attribute stats + WornArmor).
         let mut all = world.query::<(
             &Position,
             &Faction,
@@ -483,12 +516,15 @@ mod tests {
             &Wounds,
             &Tu,
             &LifeState,
+            &Shooting,
+            &Toughness,
+            &Luck,
             &WornArmor,
         )>();
         assert_eq!(
             all.iter(world).count(),
             2,
-            "both gangers must carry the full E1.2 component set + WornArmor",
+            "both gangers must carry the full E1.2 set + E3.0 attribute stats + WornArmor",
         );
     }
 
@@ -543,6 +579,43 @@ mod tests {
 
         // The two are distinct Entity handles.
         assert_ne!(alice, bob, "the two gangers are distinct entities");
+    }
+
+    /// GTW-182 AC #2 + AC #3 — `setup_battle` seeds the E3.0 attribute stats
+    /// (`Shooting`/`Toughness`/`Luck`) onto each spawned ganger from the authored
+    /// `GangerSpawn`, and they are queryable off the entity by its spawned `Entity`
+    /// handle (the read shape the severity roll uses). Reads BOTH gangers — a shooter
+    /// (faction 0) and a defender (faction 1) — proving the per-ganger seed, not a
+    /// shared default. Magnitudes match the fixture (`faction + {2,3,1}`), per-ganger
+    /// data, not pinned tuning.
+    #[test]
+    fn setup_seeds_attribute_stats_onto_each_ganger() {
+        let (situation, ..) = minimal_fixture();
+        let Some((mut app, setup)) = run_setup(situation) else {
+            return;
+        };
+
+        let alice: Entity = setup.occupants[0].occupant;
+        let bob: Entity = setup.occupants[1].occupant;
+        let world: &mut World = app.world_mut();
+        // The severity-roll read shape: a tuple query over the three attribute stats.
+        let mut q = world.query::<(&Shooting, &Toughness, &Luck)>();
+
+        // Alice — faction 0 → Shooting 2.0 / Toughness 3.0 / Luck 1.0 (the fixture).
+        let alice_stats = q.get(world, alice);
+        assert_eq!(
+            alice_stats,
+            Ok((&Shooting::new(2.0), &Toughness::new(3.0), &Luck::new(1.0))),
+            "alice carries her authored Shooting/Toughness/Luck",
+        );
+
+        // Bob — faction 1 → Shooting 3.0 / Toughness 4.0 / Luck 2.0 (distinct seed).
+        let bob_stats = q.get(world, bob);
+        assert_eq!(
+            bob_stats,
+            Ok((&Shooting::new(3.0), &Toughness::new(4.0), &Luck::new(2.0))),
+            "bob carries his authored Shooting/Toughness/Luck",
+        );
     }
 
     /// C8(d) — the worn armor on a spawned ganger equals the fixture's roster armor,

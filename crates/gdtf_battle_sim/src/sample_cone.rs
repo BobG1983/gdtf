@@ -31,28 +31,10 @@
 use bevy::math::Vec3;
 use rand::{Rng, RngExt};
 
-use crate::{central_axis::AimDir, cone::ConeAngle, tuning::ConcentrationCoeffs, weapon::Accuracy};
-
-/// A ganger's **Shooting** computed combat stat — the skill term of the
-/// concentration exponent `p = concentration_p(Shooting, weapon.accuracy)`
-/// (`docs/combat/stats.md`: Shooting is "live today", `fn(Aim, Reflexes, Cool)`,
-/// and "feeds shot concentration, `p = Shooting × weapon accuracy`").
-///
-/// A domain stat value (not a bare `f32` — no-bare-types), dimensionless: higher
-/// Shooting raises `p`, clustering the in-cone draw toward dead-center. The
-/// roster-side derivation from attributes is campaign scope; this slice consumes a
-/// Shooting value. Private inner + derived [`Deref`](bevy::prelude::Deref).
-#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq)]
-pub struct Shooting(f32);
-
-impl Shooting {
-    /// Build a Shooting value from its magnitude (dimensionless; higher = steadier
-    /// aim → larger concentration `p`).
-    #[must_use]
-    pub const fn new(shooting: f32) -> Self {
-        Self(shooting)
-    }
-}
+use crate::{
+    central_axis::AimDir, cone::ConeAngle, ganger::Shooting, tuning::ConcentrationCoeffs,
+    weapon::Accuracy,
+};
 
 /// The **concentration exponent `p`** of the §1b power-law radius `rand^p`
 /// (resolution.md §1b). `p ≈ 1` scatters the in-cone draw evenly out to the cone
