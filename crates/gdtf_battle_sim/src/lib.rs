@@ -118,6 +118,19 @@
 //! Weapon numbers live on the weapon; coefficients live in tuning
 //! (`docs/combat/resolution.md` §1 + §"Coefficients live in the combat-tuning
 //! data"; `docs/combat/battle-space.md` §"Stance / cover / muzzle / aim heights").
+//!
+//! E2.2 ([`stability`]) builds the §1a **stability layer** on the E2.1 substrate:
+//! [`stability::stability`] sums the weapon-intrinsic, per-stance, automatic-brace,
+//! and emplacement contributions into one **continuous 0–100 score**
+//! (clamped/normalised over 100), then reads BOTH [`tuning::StabilityCurves`] at that
+//! score, returning the named [`stability::ConeMult`] (steadier → narrower) and
+//! [`stability::RecoilGrowth`] (steadier → climbs strictly less) pair. The auto-brace
+//! is granted EXACTLY when the faced cell's [`cover::CoverEntry::height_band`] (read
+//! directly off the entry — NOT via [`cover::band_for`]) satisfies the per-stance
+//! [`tuning::BraceMinHeight`] gate (prone↔LOW+, kneel↔MID+, stand↔HIGH). Every
+//! coefficient and both curves come from [`tuning::ConeStabilityTuning`]; angular /
+//! dimensionless — zero pixels. See `docs/combat/resolution.md` §1a + "What's pure
+//! math vs sim" line 148, and `docs/combat/battle-space.md` §"Banding".
 
 pub mod armor;
 pub mod cover;
@@ -127,6 +140,7 @@ pub mod occupancy;
 pub mod occupancy_sync;
 pub mod rng;
 pub mod situation;
+pub mod stability;
 pub mod surface;
 pub mod tuning;
 pub mod vertical;
@@ -155,6 +169,9 @@ pub use occupancy_sync::{
 pub use rng::{BattleSeed, SimRng};
 pub use situation::{
     BattleSetup, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers, setup_battle,
+};
+pub use stability::{
+    ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, WeaponStability, stability,
 };
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
