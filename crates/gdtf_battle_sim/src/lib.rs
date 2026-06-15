@@ -149,6 +149,27 @@
 //! no cone-factor magnitude is hardcoded (every term reads from weapon / tuning
 //! data). See `docs/combat/resolution.md` §1a.
 //!
+//! E2.4 ([`central_axis`]) builds the §1 **central-axis geometry** in sim units /
+//! level-fractions on the E2.1/E2.2 substrate (and extends [`ganger::Direction`]
+//! with [`ganger::Direction::forward_step`], each facing's ground-plane unit step).
+//! [`central_axis::muzzle_position`] returns a [`metric::SimPos`] at the shooter's
+//! [`metric::cell_center`] plus the per-facing forward offset
+//! ([`tuning::MuzzleForwardOffset`] cell-fraction along the facing's `forward_step`,
+//! CLAMPED within the shooter's cell), with `z = level + the per-stance muzzle
+//! level-fraction` ([`tuning::MuzzleHeights`]). [`central_axis::target_aim_point`]
+//! returns the target's `cell_center` with `z` derived from
+//! [`tuning::ProjectileBandEdges`]: a ganger target pins its stance silhouette-top
+//! band-top fraction times [`tuning::AimHeightFrac`], a cover-occupied cell pins the
+//! cover [`cover::HeightBand`]'s midpoint level-fraction (both from the band edges,
+//! never a literal). [`central_axis::climb_aim_dir`] tilts the unit muzzle→aim axis
+//! UP (`+z`) by `prior_shots × recoil_climb × recoil_growth` radians (zero prior
+//! shots → the untilted axis exactly), returning the unit-direction newtype
+//! [`central_axis::AimDir`]. All vertical/sub-cell datums are
+//! level-fractions/cell-fractions — zero pixels. See `docs/combat/resolution.md` §1
+//! and "What's pure math vs sim" line 149, plus `docs/combat/battle-space.md`
+//! §"Stance / cover / muzzle / aim heights" and §"Sub-cell precision on the ground
+//! plane".
+//!
 //! E2.8 ([`hit_location`]) builds the §4 **weighted hit-location roll**:
 //! [`hit_location::roll_body_part`] picks one of the six [`armor::BodyPart`]s by a
 //! weighted draw over the EXISTING tuning [`tuning::BodyPartWeights`] (consumed,
@@ -162,6 +183,7 @@
 //! distribution-test discipline (ORDERING, never magnitudes).
 
 pub mod armor;
+pub mod central_axis;
 pub mod cone;
 pub mod cover;
 pub mod ganger;
@@ -181,6 +203,7 @@ pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BodyPart, SourceArmor,
     WornArmor,
 };
+pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
 pub use cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor};
 pub use cover::{
     BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,

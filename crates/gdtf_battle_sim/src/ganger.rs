@@ -19,7 +19,10 @@
 //! tunable balance magnitudes. See `docs/combat/combat.md`, `resolution.md`,
 //! `wounds-and-roster.md`, and `stats.md`.
 
-use bevy::prelude::{Component, Deref};
+use bevy::{
+    math::Vec3,
+    prelude::{Component, Deref},
+};
 
 use crate::metric::CellLevel;
 
@@ -72,6 +75,37 @@ pub enum Direction {
     West,
     /// Toward −X, −Y.
     NorthWest,
+}
+
+impl Direction {
+    /// This direction's **ground-plane unit step** in sim units — a normalised
+    /// `Vec3` pointing the way the facing looks, with `z = 0` (the step lies in the
+    /// ground plane; "up" is the separate `+z` axis, `Vec3::Z`).
+    ///
+    /// The components match the variant's documented orientation (the square grid's
+    /// screen-free convention): North is −Y, East is +X, and each diagonal combines
+    /// the two cardinals at equal magnitude. Every step is **unit length** — the
+    /// cardinals are `±1` on one axis, the diagonals are `±1/√2` on each of two axes
+    /// (so a diagonal is a unit vector, not a longer `(±1, ±1)`), making the per-facing
+    /// forward offset a true sim-unit displacement (`docs/combat/battle-space.md`
+    /// §"Sub-cell precision on the ground plane"). No pixel, no screen-coordinate
+    /// convention — these are cubic-voxel sim units.
+    #[must_use]
+    pub fn forward_step(self) -> Vec3 {
+        // The diagonal component: a unit vector's per-axis magnitude on the two
+        // axes a diagonal spans (so √(d² + d²) = 1). Derived, not a pixel literal.
+        let d = core::f32::consts::FRAC_1_SQRT_2;
+        match self {
+            Self::North => Vec3::new(0.0, -1.0, 0.0),
+            Self::NorthEast => Vec3::new(d, -d, 0.0),
+            Self::East => Vec3::new(1.0, 0.0, 0.0),
+            Self::SouthEast => Vec3::new(d, d, 0.0),
+            Self::South => Vec3::new(0.0, 1.0, 0.0),
+            Self::SouthWest => Vec3::new(-d, d, 0.0),
+            Self::West => Vec3::new(-1.0, 0.0, 0.0),
+            Self::NorthWest => Vec3::new(-d, -d, 0.0),
+        }
+    }
 }
 
 /// A ganger's facing — which of the eight grid [`Direction`]s it currently faces.
@@ -383,5 +417,90 @@ mod tests {
         // Position derefs to CellLevel (C3); compare the whole inner key.
         let key = CellLevel::new(Cell::new(1, 2), Level::new(3));
         assert_eq!(*Position(key), key);
+    }
+
+    // --- GTW-168 AC #1: Direction::forward_step() — each of the 8 variants maps to
+    // a documented ground-plane unit step in sim units, sign + axis matching the
+    // named direction, and every step normalised (length 1 within f32 tolerance).
+    // No pixel, no screen-coordinate convention.
+
+    /// A loose f32 tolerance for the unit-length / component checks — the diagonal
+    /// `1/√2` components are not exactly representable, so an exact compare is wrong.
+    const STEP_TOL: f32 = 1.0e-6;
+
+    #[test]
+    fn forward_step_signs_and_axes_match_each_direction() {
+        // The diagonal per-axis magnitude (positive); a diagonal spans two axes at
+        // equal magnitude, the cardinals one axis at magnitude 1.
+        let d = core::f32::consts::FRAC_1_SQRT_2;
+
+        // (direction, expected x, expected y) — z is always 0 (ground plane).
+        let cases = [
+            (Direction::North, 0.0, -1.0),
+            (Direction::NorthEast, d, -d),
+            (Direction::East, 1.0, 0.0),
+            (Direction::SouthEast, d, d),
+            (Direction::South, 0.0, 1.0),
+            (Direction::SouthWest, -d, d),
+            (Direction::West, -1.0, 0.0),
+            (Direction::NorthWest, -d, -d),
+        ];
+
+        for (dir, ex, ey) in cases {
+            let step = dir.forward_step();
+            assert!(
+                (step.x - ex).abs() < STEP_TOL,
+                "{dir:?}: x {} should match {ex}",
+                step.x,
+            );
+            assert!(
+                (step.y - ey).abs() < STEP_TOL,
+                "{dir:?}: y {} should match {ey}",
+                step.y,
+            );
+            // The step lies in the ground plane — z is exactly zero ("up" is the
+            // separate +z axis).
+            assert_eq!(step.z.to_bits(), 0.0_f32.to_bits(), "{dir:?}: z must be 0");
+        }
+    }
+
+    #[test]
+    fn forward_step_is_unit_length_for_every_direction() {
+        for dir in [
+            Direction::North,
+            Direction::NorthEast,
+            Direction::East,
+            Direction::SouthEast,
+            Direction::South,
+            Direction::SouthWest,
+            Direction::West,
+            Direction::NorthWest,
+        ] {
+            let len = dir.forward_step().length();
+            assert!(
+                (len - 1.0).abs() < STEP_TOL,
+                "{dir:?}: forward_step must be unit length, got {len}",
+            );
+        }
+    }
+
+    #[test]
+    fn forward_step_diagonals_have_equal_axis_magnitude() {
+        // A diagonal's two non-zero axes share one magnitude (so it points exactly
+        // 45° between its two cardinals), distinguishing it from a longer (±1, ±1).
+        for dir in [
+            Direction::NorthEast,
+            Direction::SouthEast,
+            Direction::SouthWest,
+            Direction::NorthWest,
+        ] {
+            let step = dir.forward_step();
+            assert!(
+                (step.x.abs() - step.y.abs()).abs() < STEP_TOL,
+                "{dir:?}: diagonal axes must share magnitude: {} vs {}",
+                step.x.abs(),
+                step.y.abs(),
+            );
+        }
     }
 }

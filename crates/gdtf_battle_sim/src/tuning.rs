@@ -276,6 +276,15 @@ pub struct AimTuPremium(f32);
 #[serde(transparent)]
 pub struct RecoilClimb(f32);
 
+impl RecoilClimb {
+    /// Build a recoil-climb coefficient from its magnitude (the per-prior-shot
+    /// upward axis tilt in radians; TBD tuning).
+    #[must_use]
+    pub const fn new(climb: f32) -> Self {
+        Self(climb)
+    }
+}
+
 /// A **concentration-p coefficient** — a scalar of the data-driven
 /// `p = concentration_p(Shooting, weapon.accuracy)` mapping (resolution.md §1b:
 /// the in-cone power-law exponent rising with accuracy). One newtype shared by the
@@ -298,6 +307,15 @@ pub struct ConcentrationCoeff(f32);
 #[serde(transparent)]
 pub struct AimHeightFrac(f32);
 
+impl AimHeightFrac {
+    /// Build an aim-height fraction from its magnitude (a dimensionless
+    /// level-fraction of the target's silhouette-top height; TBD tuning).
+    #[must_use]
+    pub const fn new(frac: f32) -> Self {
+        Self(frac)
+    }
+}
+
 /// The **muzzle forward offset** — the de-pxed barrel offset, expressed as a
 /// **cell-fraction** along the shooter's facing (battle-space.md §"Sub-cell
 /// precision on the ground plane": "a fraction of a cell along the facing's
@@ -308,6 +326,15 @@ pub struct AimHeightFrac(f32);
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct MuzzleForwardOffset(f32);
+
+impl MuzzleForwardOffset {
+    /// Build a muzzle forward offset from its magnitude (a cell-fraction along the
+    /// shooter's facing; TBD tuning).
+    #[must_use]
+    pub const fn new(offset: f32) -> Self {
+        Self(offset)
+    }
+}
 
 /// A **per-stance muzzle height** — the de-pxed `shot_z_by_stance`, a tunable
 /// **level-fraction** of the shot's launch z for one stance (battle-space.md
@@ -336,6 +363,15 @@ pub struct MuzzleHeight(f32);
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct SilhouetteTop(f32);
+
+impl SilhouetteTop {
+    /// Build a silhouette-top from its magnitude (a dimensionless level-fraction of a
+    /// ganger's silhouette-top height for one stance; TBD tuning).
+    #[must_use]
+    pub const fn new(top: f32) -> Self {
+        Self(top)
+    }
+}
 
 /// The per-stance **stability contributions** — the points each stance adds to the
 /// 0–100 stability score (resolution.md §1a: prone 40 / kneel 25 / stand 10).
