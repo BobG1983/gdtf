@@ -41,7 +41,7 @@
 
 use bevy::prelude::{
     App, Changed, Commands, Component, Entity, IntoScheduleConfigs, Message, MessageReader, Plugin,
-    Query, ResMut, Update,
+    Query, ResMut, SystemSet, Update,
 };
 
 use crate::{
@@ -198,6 +198,24 @@ pub fn sync_destroyed_cover(
     }
 }
 
+/// The sim's public system-ordering anchor — the band every sim-mutation system runs in.
+///
+/// [`Simulate`](SimSystems::Simulate) names the `Update`-schedule band that holds the
+/// authoritative sim's world mutations, so the wiring around it can be expressed against
+/// a stable, public name instead of reaching into individual system identifiers
+/// (`bevy-traps.md` #3 — explicit ordering via named sets). It is the SOLE owner of this
+/// anchor: later E10 slices register their per-act dispatch systems `.in_set(SimSystems::Simulate)`,
+/// and a downstream reader/presenter can order `.after(SimSystems::Simulate)` for reliable
+/// `Changed<T>` observation — all without naming concrete sim systems. The derive set
+/// mirrors the landed `gdtf_ui` precedent (`UiSystems` / `FocusNavSystems`) so it is a
+/// hashable, copyable `SystemSet` reachable from downstream crates.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SimSystems {
+    /// The band containing the authoritative sim's world-mutation systems — today the
+    /// change-driven occupancy-maintenance chain, tomorrow the per-act dispatch systems.
+    Simulate,
+}
+
 /// Wires the three change-driven occupancy-maintenance systems and the
 /// [`CoverDestroyed`] message buffer into a Bevy [`App`].
 ///
@@ -213,6 +231,14 @@ pub fn sync_destroyed_cover(
 ///   moves settle each entity's slot first, deaths then free a settled slot, and
 ///   cover folds into the independent destroyed-cover set last.
 ///
+/// The chain is nested under the public [`SimSystems::Simulate`] set: the plugin
+/// [`configure_sets`](App::configure_sets) that set on [`Update`] ONCE, before its
+/// [`add_systems`](App::add_systems) (`bevy-traps.md` #5 — `configure_sets` precedes
+/// `.in_set`), and applies `.in_set(SimSystems::Simulate)` to the chain while RETAINING
+/// `.chain()` (`.in_set` composes with `.chain()`). This is purely additive: same three
+/// systems, same `Update` schedule, same deterministic chain order, now reachable as a
+/// named ordering band by downstream slices.
+///
 /// The production app adds this plugin when the sim is wired into the runtime
 /// (E1.8 / E5) — that app-wiring is **out of scope** for GTW-157, so this plugin
 /// is the registration the headless tests exercise (it is NOT unwired dead code).
@@ -221,10 +247,14 @@ pub struct OccupancyMaintenancePlugin;
 
 impl Plugin for OccupancyMaintenancePlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<CoverDestroyed>().add_systems(
-            Update,
-            (sync_moved_gangers, sync_dead_gangers, sync_destroyed_cover).chain(),
-        );
+        app.add_message::<CoverDestroyed>()
+            .configure_sets(Update, SimSystems::Simulate)
+            .add_systems(
+                Update,
+                (sync_moved_gangers, sync_dead_gangers, sync_destroyed_cover)
+                    .chain()
+                    .in_set(SimSystems::Simulate),
+            );
     }
 }
 
@@ -469,5 +499,61 @@ mod tests {
     fn prev_slot_round_trips() {
         let slot = key(4, 5, 6);
         assert_eq!(PrevSlot::new(slot).slot(), slot);
+    }
+
+    /// AC1 — [`SimSystems::Simulate`] is a public, hashable ordering set with the
+    /// required derives. Referencing the variant from the (in-crate, but
+    /// `pub`-reachable) test path and asserting equality/clone proves the variant is
+    /// public and that `Clone`/`Copy`/`PartialEq`/`Eq` are present; `cargo dbuild`
+    /// linking the binary confirms it is reachable downstream with no `unreachable_pub`.
+    #[test]
+    fn sim_systems_simulate_is_public_and_derives() {
+        let set = SimSystems::Simulate;
+        assert_eq!(
+            set,
+            SimSystems::Simulate,
+            "the set compares equal to itself"
+        );
+        // `Copy` (a use after `set` was already read) and `Clone` both hold.
+        assert_eq!(set, set.clone(), "the set clones to an equal value");
+    }
+
+    /// AC2/AC3 — after [`OccupancyMaintenancePlugin`] nests its chain under
+    /// [`SimSystems::Simulate`], the move-sync still fires through the set: a ganger
+    /// that moves clears its OLD slot and marks its NEW one within one `app.update()`,
+    /// proving set membership did not break execution (membership has no observable
+    /// beyond ordering + execution, so the behavioral assertion stands in for it).
+    #[test]
+    fn move_sync_fires_through_the_simulate_set() {
+        let mut app = headless_app();
+        let start = key(8, 8, 0);
+        let dest = key(10, 12, 2);
+
+        let ganger = app
+            .world_mut()
+            .spawn((Position::new(start), LifeState::Alive))
+            .id();
+        app.update();
+        assert_eq!(
+            grid_occupant(&app, start),
+            Some(ganger),
+            "initial placement marks the start slot through SimSystems::Simulate",
+        );
+
+        if let Some(mut pos) = app.world_mut().get_mut::<Position>(ganger) {
+            *pos = Position::new(dest);
+        }
+        app.update();
+
+        assert_eq!(
+            grid_occupant(&app, start),
+            None,
+            "the OLD slot is cleared running inside SimSystems::Simulate",
+        );
+        assert_eq!(
+            grid_occupant(&app, dest),
+            Some(ganger),
+            "the NEW slot is marked running inside SimSystems::Simulate",
+        );
     }
 }
