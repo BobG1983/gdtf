@@ -41,9 +41,6 @@ that canon is part of the contract ALONGSIDE the ticket.
    all/pedantic/correctness plus unwrap/expect/panic/todo/unimplemented and
    missing_docs, so fmt-clean and lint-clean ARE part of green. Red → the gate FAILS
    immediately; fix the suite before anything else.
-   - Note: gdtf has few or zero tests today, so `cargo test` may pass trivially. That
-     is NOT a free pass — a behavioral ticket whose clauses add no test on the real
-     code path is a contract VIOLATION (see step 4a + step 7), not a green light.
    Steps 4a–4c add three BLOCKING structural checks (insufficient tests, unwired
    systems/plugins, oversized files) that fail the gate like a clause violation and
    route through the same step-7 repair loop. These are JUDGMENT checks scoped to the
