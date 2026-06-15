@@ -127,6 +127,63 @@ pub struct ShotOutcome {
     pub trajectory: ShotDir,
 }
 
+/// The **per-shot description** [`resolve_coarse`] resolves — the shooter state,
+/// the target the shot is aimed at, and the already-composed flight parameters for
+/// this one round.
+///
+/// This is the GTW-179 bundle: the inputs that DESCRIBE the shot itself, grouped
+/// apart from the world state ([`OccupancyGrid`] / [`SurfaceGrid`] / [`CoverLedger`]),
+/// the config ([`CombatTuning`]), and the entropy ([`SimRng`]) — those stay their
+/// own [`resolve_coarse`] parameters because they are NOT part of the shot
+/// description (the §"change-driven contract" boundary; `docs/architecture.md`
+/// line 53). Every field is a named domain value (no-bare-types): no bare primitive
+/// or `glam` leaf, each reusing the existing E1/E2 newtype.
+///
+/// The flight params arrive **already composed** (the ticket's "composed inputs"):
+/// [`cone`](ShotInputs::cone) is the E2.3 [`ConeAngle`] (`θ_cone`, the cone WIDTH
+/// already folded down from its five §1a factors — including the weapon's per-mode
+/// [`ModeConeMult`](crate::weapon::ModeConeMult) term), and [`p`](ShotInputs::p) is
+/// the E2.5 [`ConcentrationP`].
+/// [`resolve_coarse`] composes nothing further from them — it consumes the
+/// finished width + concentration the upstream §1 layer produced.
+///
+/// A plain `pub` struct of named-type fields (the bundle is a transparent argument
+/// record, not itself a wrapped domain scalar); the fields are `Copy`, so it is
+/// taken by `&ShotInputs`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ShotInputs {
+    /// The shooter's grid [`Position`] — the muzzle origin cell (E2.4).
+    pub shooter_position: Position,
+    /// The shooter's [`Facing`] — picks the per-facing forward muzzle offset (E2.4).
+    pub shooter_facing:   Facing,
+    /// The shooter's [`Stance`] — picks the per-stance muzzle level-fraction (E2.4).
+    pub shooter_stance:   Stance,
+    /// The target's grid [`Position`] — the aim cell (E2.4).
+    pub target_position:  Position,
+    /// The target's [`Stance`] — picks the silhouette-top aim level-fraction (E2.4).
+    pub target_stance:    Stance,
+    /// The [`HeightBand`] of any cover occupying the **target** cell (so a
+    /// deliberately shot crate aims at its own band midpoint), or `None` for a bare
+    /// ganger target.
+    pub cover_band:       Option<HeightBand>,
+    /// The composed cone WIDTH `θ_cone` ([`ConeAngle`], from E2.3) — already folded
+    /// from its §1a factors (the weapon's
+    /// [`ModeConeMult`](crate::weapon::ModeConeMult) fire-mode term among them); the
+    /// in-cone sample is drawn within it (E2.5).
+    pub cone:             ConeAngle,
+    /// The composed concentration exponent `p` ([`ConcentrationP`], from E2.5) —
+    /// how tightly the sample biases toward the cone's dead center.
+    pub p:                ConcentrationP,
+    /// The number of rounds already fired this action ([`PriorShots`]) — drives the
+    /// recoil-climb tilt (zero on the first round → the untilted axis).
+    pub prior_shots:      PriorShots,
+    /// The weapon's per-shot recoil [`RecoilClimb`] coefficient — the climb-tilt term.
+    pub recoil_climb:     RecoilClimb,
+    /// The stability-curve [`RecoilGrowth`] damper — damps the climb tilt for a
+    /// steadier shooter.
+    pub recoil_growth:    RecoilGrowth,
+}
+
 /// Decompose a march `at` [`CellLevel`] into the [`Cell`] + [`Level`] the
 /// [`ShotOutcome`] carries.
 ///
@@ -163,11 +220,16 @@ fn split_cell_level(at: CellLevel) -> (Cell, Level) {
 ///    picks the struck [`BodyPart`] from `tuning.body_part_weights` (E2.8), again
 ///    via the injected [`SimRng`]. A non-ganger outcome carries `None`.
 ///
-/// `cone` (`θ_cone`) and `p` are the composed inputs the ticket specifies (the
-/// E2.3 cone width and E2.5 concentration, fed in); `prior_shots` / `recoil_climb`
-/// / `recoil_growth` drive the recoil-climb tilt. `cover_band` is the
-/// [`HeightBand`] of any cover occupying the **target** cell (so a deliberately
-/// shot crate aims at its own band midpoint), or `None` for a bare ganger target.
+/// The per-shot description — the shooter / target geometry and the composed
+/// flight params — arrives bundled in [`ShotInputs`] (GTW-179): `shot.cone`
+/// (`θ_cone`) and `shot.p` are the composed inputs the ticket specifies (the E2.3
+/// cone width and E2.5 concentration, fed in); `shot.prior_shots` /
+/// `shot.recoil_climb` / `shot.recoil_growth` drive the recoil-climb tilt;
+/// `shot.cover_band` is the [`HeightBand`] of any cover occupying the **target**
+/// cell (so a deliberately shot crate aims at its own band midpoint), or `None` for
+/// a bare ganger target. The grids, the [`CombatTuning`], and the [`SimRng`] stay
+/// their own parameters — they are world state + config + entropy, NOT part of the
+/// shot description.
 ///
 /// **Mutates nothing** but the injected [`SimRng`]'s draw cursor: no damage /
 /// severity (E3) and no TU / ammo bookkeeping (E4) — the target's `Hp` / `Wounds`
@@ -176,25 +238,8 @@ fn split_cell_level(at: CellLevel) -> (Cell, Level) {
 /// [`BattleSeed`] → same [`ShotOutcome`] for identical inputs (the seeded-replay
 /// property).
 #[must_use]
-#[expect(
-    clippy::too_many_arguments,
-    reason = "resolve_coarse is the composed pipeline entry point: the shooter/target geometry, the \
-              already-composed cone width + concentration, the recoil-climb terms, the three \
-              change-driven grids, the tuning, and the injected RNG are each a distinct, named \
-              pipeline input the ticket specifies — bundling them would only hide the contract"
-)]
 pub fn resolve_coarse(
-    shooter_position: Position,
-    shooter_facing: Facing,
-    shooter_stance: Stance,
-    target_position: Position,
-    target_stance: Stance,
-    cover_band: Option<HeightBand>,
-    cone: ConeAngle,
-    p: ConcentrationP,
-    prior_shots: PriorShots,
-    recoil_climb: RecoilClimb,
-    recoil_growth: RecoilGrowth,
+    shot: &ShotInputs,
     occupancy: &OccupancyGrid,
     surface: &SurfaceGrid,
     cover: &CoverLedger,
@@ -202,20 +247,36 @@ pub fn resolve_coarse(
     rng: &mut SimRng,
 ) -> ShotOutcome {
     // 1. The 3D muzzle point (E2.4).
-    let muzzle = muzzle_position(shooter_position, shooter_facing, shooter_stance, tuning);
+    let muzzle = muzzle_position(
+        shot.shooter_position,
+        shot.shooter_facing,
+        shot.shooter_stance,
+        tuning,
+    );
 
     // 2. The climb-tilted central axis: the aim point (E2.4), then the recoil-climb
     //    tilt off the muzzle→aim axis (zero prior shots → the untilted axis exactly).
-    let aim_point = target_aim_point(target_position, target_stance, cover_band, tuning);
-    let aim_dir = climb_aim_dir(muzzle, aim_point, prior_shots, recoil_climb, recoil_growth);
+    let aim_point = target_aim_point(
+        shot.target_position,
+        shot.target_stance,
+        shot.cover_band,
+        tuning,
+    );
+    let aim_dir = climb_aim_dir(
+        muzzle,
+        aim_point,
+        shot.prior_shots,
+        shot.recoil_climb,
+        shot.recoil_growth,
+    );
 
     // 3. The in-cone sample — ONE 3D unit trajectory about that axis (E2.5), drawn
     //    from the injected SimRng with the composed θ_cone + p.
-    let trajectory = sample_cone_vector(aim_dir, cone, p, rng.rng());
+    let trajectory = sample_cone_vector(aim_dir, shot.cone, shot.p, rng.rng());
 
     // 4. March the trajectory through the passed grids (E2.7) — read, never rebuilt.
     //    The shooter's own cell never blocks its own shot.
-    let shooter_cell = *shooter_position;
+    let shooter_cell = *shot.shooter_position;
     let march = march_vector(
         muzzle,
         trajectory.vec(),

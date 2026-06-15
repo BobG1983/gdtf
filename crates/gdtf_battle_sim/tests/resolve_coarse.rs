@@ -21,9 +21,9 @@ use gdtf_battle_sim::{
     Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BattleSeed,
     BattleSetup, BodyPart, Cell, CellLevel, CombatTuning, ConcentrationP, ConeAngle, CoverEntry,
     CoverHp, CoverLedger, Direction, Facing, Faction, GangerSpawn, HeightBand, Hp, Level,
-    LifeState, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, ShotKind,
-    ShotOutcome, SimRng, Situation, SourceArmor, Stance, StanceKind, SurfaceGrid, Tu, Wounds,
-    resolve_coarse, setup_battle,
+    LifeState, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, ShotInputs,
+    ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stance, StanceKind, SurfaceGrid, Tu,
+    Wounds, resolve_coarse, setup_battle,
 };
 
 /// A `(cell, level)` key from raw coordinates.
@@ -99,6 +99,32 @@ const fn no_recoil() -> (PriorShots, RecoilClimb, RecoilGrowth) {
     )
 }
 
+/// Bundle the per-shot description into a [`ShotInputs`] (GTW-179): a standing East
+/// shooter at `shooter_at` firing at a standing target at `target_at`, with the
+/// given `cover_band` / cone width and zero recoil (the first shot). This is the
+/// GTW-172 call surface, rewrapped — the geometry is identical.
+const fn standing_shot(
+    shooter_at: CellLevel,
+    target_at: CellLevel,
+    cover_band: Option<HeightBand>,
+    cone: ConeAngle,
+) -> ShotInputs {
+    let (prior_shots, recoil_climb, recoil_growth) = no_recoil();
+    ShotInputs {
+        shooter_position: Position::new(shooter_at),
+        shooter_facing: Facing::new(Direction::East),
+        shooter_stance: Stance::new(StanceKind::Standing),
+        target_position: Position::new(target_at),
+        target_stance: Stance::new(StanceKind::Standing),
+        cover_band,
+        cone,
+        p: some_p(),
+        prior_shots,
+        recoil_climb,
+        recoil_growth,
+    }
+}
+
 // --- AC #2 — the real path yields a Ganger outcome whose Entity is the target. ---
 
 /// `resolve_coarse` over a `setup_battle` situation (the real path) yields a
@@ -129,7 +155,6 @@ fn resolve_coarse_yields_ganger_outcome_on_real_path() {
 
     let tuning = CombatTuning::default();
     let mut rng = SimRng::from_seed(BattleSeed::new(0xA_11CE));
-    let (prior, climb, growth) = no_recoil();
 
     let Some(occupancy) = world.get_resource::<OccupancyGrid>() else {
         return;
@@ -141,24 +166,8 @@ fn resolve_coarse_yields_ganger_outcome_on_real_path() {
         return;
     };
 
-    let outcome = resolve_coarse(
-        Position::new(shooter_at),
-        Facing::new(Direction::East),
-        Stance::new(StanceKind::Standing),
-        Position::new(target_at),
-        Stance::new(StanceKind::Standing),
-        None,
-        zero_cone(),
-        some_p(),
-        prior,
-        climb,
-        growth,
-        occupancy,
-        surface,
-        cover,
-        &tuning,
-        &mut rng,
-    );
+    let shot = standing_shot(shooter_at, target_at, None, zero_cone());
+    let outcome = resolve_coarse(&shot, occupancy, surface, cover, &tuning, &mut rng);
 
     assert_eq!(
         outcome.kind,
@@ -193,26 +202,9 @@ fn clearing_shot_returns_miss_carrying_trajectory() {
     let surface = SurfaceGrid::new();
     let cover = CoverLedger::new();
     let mut rng = SimRng::from_seed(BattleSeed::new(7));
-    let (prior, climb, growth) = no_recoil();
 
-    let outcome = resolve_coarse(
-        Position::new(key(2, 2, 0)),
-        Facing::new(Direction::East),
-        Stance::new(StanceKind::Standing),
-        Position::new(key(5, 2, 0)),
-        Stance::new(StanceKind::Standing),
-        None,
-        zero_cone(),
-        some_p(),
-        prior,
-        climb,
-        growth,
-        &occupancy,
-        &surface,
-        &cover,
-        &tuning,
-        &mut rng,
-    );
+    let shot = standing_shot(key(2, 2, 0), key(5, 2, 0), None, zero_cone());
+    let outcome = resolve_coarse(&shot, &occupancy, &surface, &cover, &tuning, &mut rng);
 
     assert_eq!(
         outcome.kind,
@@ -250,27 +242,15 @@ fn shot_into_cover_returns_cover_entry() {
     cover.insert(cover_cell, entry);
 
     let mut rng = SimRng::from_seed(BattleSeed::new(99));
-    let (prior, climb, growth) = no_recoil();
 
     // Aim at the cover cell's own band midpoint (a deliberately-shot crate).
-    let outcome = resolve_coarse(
-        Position::new(key(2, 2, 0)),
-        Facing::new(Direction::East),
-        Stance::new(StanceKind::Standing),
-        Position::new(cover_cell),
-        Stance::new(StanceKind::Standing),
+    let shot = standing_shot(
+        key(2, 2, 0),
+        cover_cell,
         Some(HeightBand::High),
         zero_cone(),
-        some_p(),
-        prior,
-        climb,
-        growth,
-        &occupancy,
-        &surface,
-        &cover,
-        &tuning,
-        &mut rng,
     );
+    let outcome = resolve_coarse(&shot, &occupancy, &surface, &cover, &tuning, &mut rng);
 
     assert_eq!(
         outcome.kind,
@@ -292,27 +272,24 @@ fn downward_shot_off_bottom_returns_ground() {
     let surface = SurfaceGrid::new();
     let cover = CoverLedger::new();
     let mut rng = SimRng::from_seed(BattleSeed::new(13));
-    let (prior, climb, growth) = no_recoil();
+    let (prior_shots, recoil_climb, recoil_growth) = no_recoil();
 
     // Target directly below the shooter so the muzzle→aim axis points down (-z).
-    let outcome = resolve_coarse(
-        Position::new(key(4, 4, 1)),
-        Facing::new(Direction::North),
-        Stance::new(StanceKind::Standing),
-        Position::new(key(4, 4, 0)),
-        Stance::new(StanceKind::Standing),
-        None,
-        zero_cone(),
-        some_p(),
-        prior,
-        climb,
-        growth,
-        &occupancy,
-        &surface,
-        &cover,
-        &tuning,
-        &mut rng,
-    );
+    // North-facing (not the East helper) to keep this geometry identical to GTW-172.
+    let shot = ShotInputs {
+        shooter_position: Position::new(key(4, 4, 1)),
+        shooter_facing: Facing::new(Direction::North),
+        shooter_stance: Stance::new(StanceKind::Standing),
+        target_position: Position::new(key(4, 4, 0)),
+        target_stance: Stance::new(StanceKind::Standing),
+        cover_band: None,
+        cone: zero_cone(),
+        p: some_p(),
+        prior_shots,
+        recoil_climb,
+        recoil_growth,
+    };
+    let outcome = resolve_coarse(&shot, &occupancy, &surface, &cover, &tuning, &mut rng);
 
     assert!(
         matches!(outcome.kind, ShotKind::Ground(_)),
@@ -342,30 +319,13 @@ fn same_seed_yields_same_outcome() {
     occupancy.set_occupant_band(target, Some(HeightBand::High));
     let surface = SurfaceGrid::new();
     let cover = CoverLedger::new();
-    let (prior, climb, growth) = no_recoil();
 
+    // A non-zero cone so the sample genuinely draws (radius + azimuth) and the part
+    // roll draws too — both must reproduce under the same seed.
+    let shot = standing_shot(key(2, 2, 0), target, None, ConeAngle::new(0.05));
     let run = |seed: u64| -> ShotOutcome {
         let mut rng = SimRng::from_seed(BattleSeed::new(seed));
-        resolve_coarse(
-            Position::new(key(2, 2, 0)),
-            Facing::new(Direction::East),
-            Stance::new(StanceKind::Standing),
-            Position::new(target),
-            Stance::new(StanceKind::Standing),
-            None,
-            // A non-zero cone so the sample genuinely draws (radius + azimuth) and
-            // the part roll draws too — both must reproduce under the same seed.
-            ConeAngle::new(0.05),
-            some_p(),
-            prior,
-            climb,
-            growth,
-            &occupancy,
-            &surface,
-            &cover,
-            &tuning,
-            &mut rng,
-        )
+        resolve_coarse(&shot, &occupancy, &surface, &cover, &tuning, &mut rng)
     };
 
     let a = run(0xC0_FFEE);
@@ -433,7 +393,6 @@ fn resolve_coarse_mutates_no_combat_state() {
     // about a real hit) and the trajectory is a sim-space unit vector (zero px).
     let tuning = CombatTuning::default();
     let mut rng = SimRng::from_seed(BattleSeed::new(0xBEEF));
-    let (prior, climb, growth) = no_recoil();
     {
         let world: &World = app.world();
         let (Some(occupancy), Some(surface), Some(cover)) = (
@@ -443,24 +402,8 @@ fn resolve_coarse_mutates_no_combat_state() {
         ) else {
             return;
         };
-        let outcome = resolve_coarse(
-            Position::new(shooter_at),
-            Facing::new(Direction::East),
-            Stance::new(StanceKind::Standing),
-            Position::new(target_at),
-            Stance::new(StanceKind::Standing),
-            None,
-            zero_cone(),
-            some_p(),
-            prior,
-            climb,
-            growth,
-            occupancy,
-            surface,
-            cover,
-            &tuning,
-            &mut rng,
-        );
+        let shot = standing_shot(shooter_at, target_at, None, zero_cone());
+        let outcome = resolve_coarse(&shot, occupancy, surface, cover, &tuning, &mut rng);
         assert_eq!(
             outcome.kind,
             ShotKind::Ganger(target_entity),
@@ -522,27 +465,10 @@ fn resolve_coarse_reads_the_passed_grid() {
     // Grid B: empty (no occupant).
     let grid_empty = OccupancyGrid::new();
 
-    let (prior, climb, growth) = no_recoil();
+    let shot = standing_shot(key(2, 2, 0), target, None, zero_cone());
     let run = |grid: &OccupancyGrid| -> ShotOutcome {
         let mut rng = SimRng::from_seed(BattleSeed::new(1));
-        resolve_coarse(
-            Position::new(key(2, 2, 0)),
-            Facing::new(Direction::East),
-            Stance::new(StanceKind::Standing),
-            Position::new(target),
-            Stance::new(StanceKind::Standing),
-            None,
-            zero_cone(),
-            some_p(),
-            prior,
-            climb,
-            growth,
-            grid,
-            &surface,
-            &cover,
-            &tuning,
-            &mut rng,
-        )
+        resolve_coarse(&shot, grid, &surface, &cover, &tuning, &mut rng)
     };
 
     let with_occupant = run(&grid_with_occupant);

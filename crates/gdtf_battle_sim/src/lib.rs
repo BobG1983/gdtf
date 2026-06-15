@@ -252,7 +252,10 @@
 //! ganger [`bevy::prelude::Entity`] / the [`cover::CoverEntry`] / the surface
 //! [`metric::CellLevel`]), the `(Cell, Level)`, the [`armor::BodyPart`] for a ganger
 //! outcome ONLY, the crossed-cell [`cover::HeightBand`], the muzzle [`metric::SimPos`],
-//! and the sampled trajectory unit-[`sample_cone::ShotDir`]. It **takes** the
+//! and the sampled trajectory unit-[`sample_cone::ShotDir`]. The per-shot
+//! description — the shooter / target geometry and the composed `θ_cone` + `p` +
+//! recoil terms — arrives bundled in [`resolve_coarse::ShotInputs`] (GTW-179), kept
+//! distinct from the world state / config / entropy parameters. It **takes** the
 //! change-driven [`occupancy::OccupancyGrid`] / [`surface::SurfaceGrid`] /
 //! [`cover::CoverLedger`] as parameters and **never rebuilds them per shot** (the
 //! GTW-6 / GTW-12 ruling); it applies NO damage / severity (E3) and NO TU / ammo
@@ -308,7 +311,7 @@ pub use occupancy_sync::{
     CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
     sync_moved_gangers,
 };
-pub use resolve_coarse::{ShotKind, ShotOutcome, resolve_coarse};
+pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
 pub use rng::{BattleSeed, SimRng};
 pub use sample_cone::{ConcentrationP, Shooting, ShotDir, concentration_p, sample_cone_vector};
 pub use situation::{
