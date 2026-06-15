@@ -962,7 +962,8 @@ impl Default for SilhouetteTops {
 /// coefficient, the concentration-p coefficients, and the de-pxed muzzle/aim
 /// geometry (the aim-height fraction, the cell-fraction forward offset, and the
 /// per-stance muzzle + silhouette-top level-fractions). All **tuning
-/// COEFFICIENTS** — weapon numbers live on [`crate::weapon::Weapon`].
+/// COEFFICIENTS** — weapon numbers live as the per-stat [`crate::weapon`] components
+/// on the armed entity, not here.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct ConeStabilityTuning {
     /// Per-stance stability contributions (prone 40 / kneel 25 / stand 10).

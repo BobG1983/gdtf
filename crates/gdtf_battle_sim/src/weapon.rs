@@ -29,8 +29,19 @@
 //! mirroring node `i` of the other. This is the DATA substrate only — the per-hit
 //! formula and the matchup lookup (the wheel itself) are later E3 slices; nothing
 //! here computes a hit or a matchup.
+//!
+//! ## GTW-200 — a weapon is ECS components, not a data struct
+//!
+//! The user-corrected model: a weapon is **not** one packed data struct — each
+//! sub-value is its own `#[derive(Component)]` newtype that lives as a sibling
+//! component on the (ganger) entity, and [`Weapon`] is a unit MARKER component
+//! (no data). The stats are then queryable directly, so the combat act
+//! (E4.5 `fire()`) is a proper query-based Bevy system with NO `&mut World`
+//! indirection. [`WeaponBundle`] spawns an armed entity carrying the full set;
+//! the §1/§6 readers take a transient [`WeaponStats`] borrow-view (refs assembled
+//! from the components at the call site — NOT a stored component).
 
-use bevy::prelude::Deref;
+use bevy::prelude::{Bundle, Component, Deref};
 use serde::Deserialize;
 
 /// A weapon's **base spread** — the intrinsic angular dispersion before the
@@ -39,8 +50,10 @@ use serde::Deserialize;
 /// sim's angular unit (radians; the cone math is angle-only, no pixel).
 ///
 /// A weapon NUMBER (lives on the weapon, not in tuning). Private inner + derived
-/// [`Deref`]; `#[serde(transparent)]` parses a bare RON scalar.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+/// [`Deref`]; `#[serde(transparent)]` parses a bare RON scalar. A
+/// `#[derive(Component)]` so it lives as a sibling component on the armed entity
+/// (GTW-200).
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct BaseSpread(f32);
 
@@ -59,8 +72,9 @@ impl BaseSpread {
 ///
 /// A weapon NUMBER (not a tuning coefficient). It sets how *likely* a shot stays
 /// near center — independent of how *wide* the cone can throw (the two levers of
-/// §1b). Private inner + derived [`Deref`]; `#[serde(transparent)]`.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+/// §1b). Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
+/// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct Accuracy(f32);
 
@@ -77,8 +91,9 @@ impl Accuracy {
 /// each round in a burst widens the cone for the next. A sloppy weapon sprays on
 /// auto; a tight one stays usable (resolution.md §1a "Scaling recoil").
 ///
-/// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+/// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
+/// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct Kickback(f32);
 
@@ -95,8 +110,9 @@ impl Kickback {
 /// the table toward nastier buckets. **Carried here, consumed by E3** (severity,
 /// resolution.md §6) — authored on the weapon but unused in this data slice.
 ///
-/// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+/// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
+/// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct FatalBias(f32);
 
@@ -117,8 +133,9 @@ impl FatalBias {
 /// formula, which subtracts and clamps these against the `i32` armor stats
 /// ([`crate::armor`]) — the same honest-signed reasoning the armor side uses.
 /// Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON
-/// scalar. A magnitude is TBD tuning (no shipped weapons yet).
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// scalar. A magnitude is TBD tuning (no shipped weapons yet). A
+/// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct WeaponDamage(i32);
 
@@ -138,8 +155,9 @@ impl WeaponDamage {
 ///
 /// A weapon NUMBER. An `i32` for the signed `punch − hardness` subtraction against
 /// the `i32` armor hardness ([`crate::armor::ArmorHardness`]). Private inner +
-/// derived [`Deref`]; `#[serde(transparent)]`. A magnitude is TBD tuning.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// derived [`Deref`]; `#[serde(transparent)]`. A magnitude is TBD tuning. A
+/// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct WeaponPunch(i32);
 
@@ -158,9 +176,10 @@ impl WeaponPunch {
 /// shred`); the matchup wheel multiplies it (a later E3 slice).
 ///
 /// A weapon NUMBER. An `i32` to share the signed integrity arithmetic of the armor
-/// side ([`crate::armor::ArmorIntegrity`], which tracks below zero). Private inner
-/// + derived [`Deref`]; `#[serde(transparent)]`. A magnitude is TBD tuning.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// side ([`crate::armor::ArmorIntegrity`], which tracks below zero). Private inner,
+/// a derived [`Deref`], and `#[serde(transparent)]`; a magnitude is TBD tuning. A
+/// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct WeaponShred(i32);
 
@@ -189,8 +208,9 @@ impl WeaponShred {
 /// A named domain enum, not a bare `u8` (no-bare-types). The matchup lookup itself
 /// — which node penetrates which — is a later E3 slice; this only fixes the
 /// vocabulary and its node order. `Deserialize` so a weapon's authored RON names
-/// its type by variant.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// its type by variant. A `#[derive(Component)]` (GTW-200) — a sibling component
+/// on the armed entity.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum DamageType {
     /// Wheel node 0 — arc / EMP (mirror of [`crate::armor::ArmorType::Plated`]).
     Shock,
@@ -231,8 +251,10 @@ impl DamageType {
 /// the firing act in a later slice.
 ///
 /// A weapon NUMBER, a small non-negative count (`u16`). Private inner + derived
-/// [`Deref`]; `#[serde(transparent)]`.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+/// [`Deref`]; `#[serde(transparent)]`. A `#[derive(Component)]` (GTW-200) — a
+/// sibling component on the armed entity (the capacity; the live ammo count is the
+/// separate [`crate::magazine::Magazine`] battle-state component).
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct MagazineSize(u16);
 
@@ -256,8 +278,9 @@ impl MagazineSize {
 /// A weapon NUMBER (a boolean flag, lives on the weapon, not in tuning). A named
 /// newtype (no-bare-types: a `bool` carrying domain meaning is wrapped). Private
 /// inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON `true` /
-/// `false`.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `false`. A `#[derive(Component)]` (GTW-200) — a sibling component on the armed
+/// entity.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct Stable(bool);
 
@@ -363,8 +386,10 @@ impl FireModeSpec {
 /// only fires single shots, one that adds a burst, and one that adds full-auto on
 /// top. Every variant carries the [`FireModeSpec`] for *each* mode it offers (so
 /// `single` is present in all three), keeping the per-mode numbers on the
-/// selector itself.
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+/// selector itself. A `#[derive(Component)]` (GTW-200) — the selector lives as a
+/// sibling component on the armed entity (its per-mode [`FireModeSpec`] sub-values
+/// ride inside it, not as separate components).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Deserialize)]
 pub enum FireMode {
     /// Single-shot only.
     Single {
@@ -402,95 +427,71 @@ impl FireMode {
     }
 }
 
-/// A weapon's data — the per-weapon NUMBERS the §1 cone/concentration math and the
-/// §6 severity score read, plus its [`FireMode`] selector.
+/// The **`Weapon` MARKER** — a unit `#[derive(Component)]` tag (no data) marking an
+/// entity as armed (GTW-200's user-corrected model).
 ///
-/// What a weapon does on a hit, bundled for construction — its three per-hit
-/// damage numbers ([`WeaponDamage`] / [`WeaponPunch`] / [`WeaponShred`],
-/// `weapons-and-armor.md` §"Weapon stats") and the [`DamageType`] it emits
-/// (matchup.md §"The 7 types").
+/// The weapon's stats are **not** packed inside this — each is its own sibling
+/// `#[derive(Component)]` newtype on the same entity (`BaseSpread`, `Accuracy`,
+/// `Kickback`, `FatalBias`, `WeaponDamage`, `WeaponPunch`, `WeaponShred`,
+/// `DamageType`, `MagazineSize`, `FireMode`, `Stable`), spawned together via
+/// [`WeaponBundle`]. Because the stats are direct components, the combat act
+/// (E4.5 `fire()`) is a proper query-based Bevy system with NO `&mut World`
+/// indirection: it queries the individual stat components off the ganger entity (or
+/// assembles a transient [`WeaponStats`] borrow-view from them). There is **no**
+/// `Weapon::new` and no packed data struct any more — the stats live as components.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Weapon;
+
+/// A transient **borrow-view** of a weapon's stats — refs assembled at the call
+/// site from the individual weapon components, the read-shape the §1/§6 readers
+/// take in place of the old `&Weapon` data struct (GTW-200).
 ///
-/// A named **constructor-input** grouping (the [`FireModeSpec`] precedent: related
-/// data travels as one named record, not a loose tuple), so [`Weapon::new`] does
-/// not sprawl past clippy's argument-count gate. These four land on [`Weapon`] as
-/// its FLAT `damage` / `punch` / `shred` / `damage_type` fields — this struct is
-/// only the way they are handed in, never where they live.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
-pub struct WeaponDamageProfile {
-    /// The base damage a hit deals before armor.
-    pub damage:      WeaponDamage,
-    /// The armor protection a hit ignores — penetration.
-    pub punch:       WeaponPunch,
-    /// The extra integrity damage a hit deals to armor durability.
-    pub shred:       WeaponShred,
+/// This is **NOT** a stored `Component` — it is a short-lived bundle of borrows a
+/// caller (a Bevy system, or the E4.5 `fire()` act) builds from a queried entity's
+/// weapon stat components, exactly as [`crate::aim::Shooter`] /
+/// [`crate::resolve_and_apply::TargetGanger`] do for ganger state. Grouping the
+/// refs keeps [`crate::resolve_and_apply::resolve_and_apply`] and
+/// [`crate::aim::cone_for`] under clippy's argument-count gate while letting the
+/// weapon be plain ECS components. Every field is a borrowed weapon-number newtype
+/// (no bare primitive); the view itself is a transparent borrow record, never a
+/// wrapped domain scalar.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeaponStats<'a> {
+    /// The intrinsic angular spread before situational multipliers (`base_spread`).
+    pub base_spread: &'a BaseSpread,
+    /// The concentration weapon term (`accuracy`; may exceed 1.0).
+    pub accuracy:    &'a Accuracy,
+    /// The per-round recoil added in a burst (`kickback`).
+    pub kickback:    &'a Kickback,
+    /// The severity-score addend, consumed by E3 (`fatal_bias`).
+    pub fatal_bias:  &'a FatalBias,
+    /// The base damage a hit deals before armor (`damage`).
+    pub damage:      &'a WeaponDamage,
+    /// The armor protection a hit ignores — penetration (`punch`).
+    pub punch:       &'a WeaponPunch,
+    /// The extra integrity damage a hit deals to armor durability (`shred`).
+    pub shred:       &'a WeaponShred,
     /// The damage type the weapon emits — its matchup-wheel node.
-    pub damage_type: DamageType,
+    pub damage_type: &'a DamageType,
+    /// The `stable` tag — `true` engages the §1a brace bonus unconditionally
+    /// (regardless of faced cover / stance); `false` is a normal weapon (braces
+    /// only when the faced cover suits the stance).
+    pub stable:      &'a Stable,
 }
 
-impl WeaponDamageProfile {
-    /// Build a damage profile from the three per-hit numbers and the emitted
-    /// [`DamageType`] (the numbers are all TBD tuning).
-    #[must_use]
-    pub const fn new(
-        damage: WeaponDamage,
-        punch: WeaponPunch,
-        shred: WeaponShred,
-        damage_type: DamageType,
-    ) -> Self {
-        Self {
-            damage,
-            punch,
-            shred,
-            damage_type,
-        }
-    }
-}
-
-/// A weapon's **handling** numbers, bundled for construction — its
-/// [`MagazineSize`], authored [`FireMode`] selector, and [`Stable`] tag.
+/// The **spawn bundle for an armed entity** — the [`Weapon`] marker plus the full
+/// set of weapon stat components, inserted together (GTW-200).
 ///
-/// A named **constructor-input** grouping (the [`WeaponDamageProfile`] /
-/// [`FireModeSpec`] precedent: related data travels as one named record, not a
-/// loose tuple), so adding the [`Stable`] tag does not push [`Weapon::new`] past
-/// clippy's argument-count gate. These three land on [`Weapon`] as its FLAT
-/// `magazine_size` / `fire_mode` / `stable` fields — this struct is only the way
-/// they are handed in, never where they live.
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
-pub struct WeaponHandling {
-    /// The round capacity before a reload.
-    pub magazine_size: MagazineSize,
-    /// The authored fire-mode selector and its per-mode numbers.
-    pub fire_mode:     FireMode,
-    /// The `stable` tag — `true` engages the brace bonus unconditionally.
-    pub stable:        Stable,
-}
-
-impl WeaponHandling {
-    /// Build a handling bundle from a weapon's magazine size, fire-mode selector,
-    /// and `stable` tag.
-    #[must_use]
-    pub const fn new(magazine_size: MagazineSize, fire_mode: FireMode, stable: Stable) -> Self {
-        Self {
-            magazine_size,
-            fire_mode,
-            stable,
-        }
-    }
-}
-
-/// A plain data record (no Bevy `Component` here — wiring a weapon onto a ganger
-/// is a later slice; this is the data substrate). Holds the five §1/§6 weapon
-/// numbers (`base_spread`, `accuracy`, `kickback`, `fatal_bias`, `magazine_size`),
-/// the E3.1 per-hit damage numbers ([`WeaponDamage`] / [`WeaponPunch`] /
-/// [`WeaponShred`], `weapons-and-armor.md` §"Weapon stats"), the [`DamageType`] the
-/// weapon emits (the matchup-wheel key, matchup.md §"The 7 types"), the
-/// authored [`FireMode`] selector, and the [`Stable`] tag (whether the weapon
-/// engages the §1a brace bonus unconditionally). Every numeric field is a
-/// weapon-number newtype; **no tuning coefficient lives here** (those are
-/// [`crate::tuning::CombatTuning`]), and there is **no** weapon-intrinsic
-/// stability *points* term — weapon stability is the boolean [`Stable`] tag.
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
-pub struct Weapon {
+/// A Bevy [`Bundle`] so spawning an armed (ganger) entity carries the marker and
+/// every stat component in one `commands.spawn(...)` / `entity.insert(...)` call.
+/// The current ammo count is **not** here — that is the separate
+/// [`crate::magazine::Magazine`] battle-state component (this bundle carries the
+/// [`MagazineSize`] capacity only). Every field is a weapon-number newtype or the
+/// marker (no bare primitive); build one with [`WeaponBundle::new`].
+#[derive(Bundle, Debug, Clone, Copy, PartialEq)]
+pub struct WeaponBundle {
+    /// The [`Weapon`] marker tagging the entity as armed.
+    pub marker:        Weapon,
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
     pub base_spread:   BaseSpread,
     /// The concentration weapon term (`accuracy`; may exceed 1.0).
@@ -511,29 +512,100 @@ pub struct Weapon {
     pub magazine_size: MagazineSize,
     /// The authored fire-mode selector and its per-mode numbers.
     pub fire_mode:     FireMode,
-    /// The `stable` tag — `true` engages the §1a brace bonus unconditionally
-    /// (regardless of faced cover / stance); `false` is a normal weapon (braces
-    /// only when the faced cover suits the stance).
+    /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
     pub stable:        Stable,
 }
 
-impl Weapon {
-    /// Build a weapon from its §1/§6 numbers, its [`WeaponDamageProfile`] (the three
-    /// per-hit damage numbers plus the emitted [`DamageType`]), and its
-    /// [`WeaponHandling`] bundle (magazine size + [`FireMode`] selector + the
-    /// [`Stable`] tag). Both bundles are spread onto the flat fields — `damage` /
-    /// `punch` / `shred` / `damage_type` from the profile, `magazine_size` /
-    /// `fire_mode` / `stable` from the handling.
+/// A weapon's **damage block** for spawning — the three per-hit damage numbers plus
+/// the emitted [`DamageType`] (`weapons-and-armor.md` §"Weapon stats" / matchup.md
+/// §"The 7 types"), handed to [`WeaponBundle::new`] as one cohesive value.
+///
+/// An owned ctor-input grouping (the [`FireModeSpec`] precedent: related data
+/// travels as one named record, not a loose tuple) so [`WeaponBundle::new`] stays
+/// under clippy's argument-count gate. Distinct from the borrow-view
+/// [`WeaponStats`]: this owns its four newtypes (spawn-side input), the view borrows
+/// the live components (read-side). Every field is a weapon-number newtype.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DamageProfile {
+    /// The base damage a hit deals before armor.
+    pub damage:      WeaponDamage,
+    /// The armor protection a hit ignores — penetration.
+    pub punch:       WeaponPunch,
+    /// The extra integrity damage a hit deals to armor durability.
+    pub shred:       WeaponShred,
+    /// The damage type the weapon emits — its matchup-wheel node.
+    pub damage_type: DamageType,
+}
+
+impl DamageProfile {
+    /// Build a damage block from the three per-hit numbers and the emitted
+    /// [`DamageType`] (all magnitudes TBD tuning).
+    #[must_use]
+    pub const fn new(
+        damage: WeaponDamage,
+        punch: WeaponPunch,
+        shred: WeaponShred,
+        damage_type: DamageType,
+    ) -> Self {
+        Self {
+            damage,
+            punch,
+            shred,
+            damage_type,
+        }
+    }
+}
+
+/// A weapon's **handling block** for spawning — its [`MagazineSize`] capacity,
+/// authored [`FireMode`] selector, and [`Stable`] tag, handed to
+/// [`WeaponBundle::new`] as one cohesive value.
+///
+/// An owned ctor-input grouping (the [`DamageProfile`] / [`FireModeSpec`]
+/// precedent) so [`WeaponBundle::new`] stays under clippy's argument-count gate.
+/// Every field is a weapon-number newtype / the [`FireMode`] selector.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HandlingProfile {
+    /// The round capacity before a reload.
+    pub magazine_size: MagazineSize,
+    /// The authored fire-mode selector and its per-mode numbers.
+    pub fire_mode:     FireMode,
+    /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
+    pub stable:        Stable,
+}
+
+impl HandlingProfile {
+    /// Build a handling block from a weapon's magazine capacity, fire-mode selector,
+    /// and `stable` tag.
+    #[must_use]
+    pub const fn new(magazine_size: MagazineSize, fire_mode: FireMode, stable: Stable) -> Self {
+        Self {
+            magazine_size,
+            fire_mode,
+            stable,
+        }
+    }
+}
+
+impl WeaponBundle {
+    /// Build an armed-entity bundle from a weapon's full stat set — the [`Weapon`]
+    /// marker is supplied automatically; the stats are handed in as the §1/§6
+    /// cone/severity numbers, a [`DamageProfile`], and a [`HandlingProfile`].
+    ///
+    /// Takes the cohesive groups (the [`DamageProfile`] / [`HandlingProfile`]
+    /// precedent) rather than eleven loose params, keeping the ctor under clippy's
+    /// argument-count gate while every stat lands as its own component on the
+    /// spawned entity.
     #[must_use]
     pub const fn new(
         base_spread: BaseSpread,
         accuracy: Accuracy,
         kickback: Kickback,
         fatal_bias: FatalBias,
-        damage: WeaponDamageProfile,
-        handling: WeaponHandling,
+        damage: DamageProfile,
+        handling: HandlingProfile,
     ) -> Self {
         Self {
+            marker: Weapon,
             base_spread,
             accuracy,
             kickback,
@@ -547,10 +619,31 @@ impl Weapon {
             stable: handling.stable,
         }
     }
+
+    /// Assemble a transient [`WeaponStats`] borrow-view over this bundle's stat
+    /// components — the read-shape the §1/§6 readers take. A convenience for callers
+    /// holding a whole bundle; a query-based system assembles a [`WeaponStats`] from
+    /// its individually-queried components instead.
+    #[must_use]
+    pub const fn stats(&self) -> WeaponStats<'_> {
+        WeaponStats {
+            base_spread: &self.base_spread,
+            accuracy:    &self.accuracy,
+            kickback:    &self.kickback,
+            fatal_bias:  &self.fatal_bias,
+            damage:      &self.damage,
+            punch:       &self.punch,
+            shred:       &self.shred,
+            damage_type: &self.damage_type,
+            stable:      &self.stable,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use bevy::prelude::World;
+
     use super::*;
 
     /// Build an arbitrary fire-mode spec from raw literals — NOT shipped
@@ -564,15 +657,10 @@ mod tests {
         )
     }
 
-    /// Build an arbitrary damage profile from raw literals — NOT shipped
-    /// magnitudes. Pins the damage-leaf mechanism only.
-    fn profile(
-        damage: i32,
-        punch: i32,
-        shred: i32,
-        damage_type: DamageType,
-    ) -> WeaponDamageProfile {
-        WeaponDamageProfile::new(
+    /// Build an arbitrary damage block from raw literals — NOT shipped magnitudes.
+    /// Pins the damage-leaf mechanism only.
+    fn profile(damage: i32, punch: i32, shred: i32, damage_type: DamageType) -> DamageProfile {
+        DamageProfile::new(
             WeaponDamage::new(damage),
             WeaponPunch::new(punch),
             WeaponShred::new(shred),
@@ -580,10 +668,10 @@ mod tests {
         )
     }
 
-    /// Build an arbitrary handling bundle (magazine + single-mode selector +
+    /// Build an arbitrary handling block (magazine + single-mode selector +
     /// `stable` tag) from raw literals — NOT shipped magnitudes.
-    fn handling(mag: u16, stable: bool) -> WeaponHandling {
-        WeaponHandling::new(
+    fn handling(mag: u16, stable: bool) -> HandlingProfile {
+        HandlingProfile::new(
             MagazineSize::new(mag),
             FireMode::Single {
                 single: spec(1.0, 0.5, 1),
@@ -592,16 +680,141 @@ mod tests {
         )
     }
 
-    /// C1 — a `Weapon` constructs and each weapon-number leaf derefs to its inner
-    /// value. Built from **arbitrary** literals (never pinned magnitudes), so this
-    /// pins the Deref *mechanism and target type*, not any balance value.
+    /// Build an arbitrary armed-entity bundle from the four §1/§6 cone/severity
+    /// numbers plus a [`DamageProfile`] / [`HandlingProfile`] — NOT shipped
+    /// magnitudes. The construction path every weapon test fixture migrates to;
+    /// takes the cohesive groups so the helper stays under the argument-count gate.
+    fn weapon_bundle(
+        base: f32,
+        accuracy: f32,
+        kick: f32,
+        bias: f32,
+        damage: DamageProfile,
+        handling: HandlingProfile,
+    ) -> WeaponBundle {
+        WeaponBundle::new(
+            BaseSpread::new(base),
+            Accuracy::new(accuracy),
+            Kickback::new(kick),
+            FatalBias::new(bias),
+            damage,
+            handling,
+        )
+    }
+
+    /// AC1 — `Weapon` is a **unit MARKER** (no data fields): it constructs from the
+    /// unit value, is `Copy`, and compares by value. A struct with a field could not
+    /// be built this way.
+    #[test]
+    fn weapon_is_a_unit_marker() {
+        let marker = Weapon;
+        let copied = marker; // Copy, not a move
+        assert_eq!(marker, copied, "the Weapon marker is a Copy unit type");
+        // A unit marker carries no data — two independently-built values are equal.
+        let another = Weapon;
+        assert_eq!(marker, another, "the marker is a fieldless unit type");
+    }
+
+    /// AC1 — each weapon sub-value derives `Component`: insert each onto a fresh
+    /// `World` entity and query it back. If any newtype lacked the `Component`
+    /// derive this would not compile, so the test IS the proof the derive is present
+    /// (and the values round-trip through the ECS).
+    #[test]
+    fn each_sub_value_is_a_component() {
+        let mut world = World::new();
+        let entity = world
+            .spawn((
+                Weapon,
+                BaseSpread::new(0.25),
+                Accuracy::new(1.3),
+                Kickback::new(0.4),
+                FatalBias::new(7.0),
+                WeaponDamage::new(12),
+                WeaponPunch::new(5),
+                WeaponShred::new(3),
+                DamageType::Kinetic,
+                MagazineSize::new(30),
+                FireMode::Single {
+                    single: spec(1.0, 0.5, 1),
+                },
+                Stable::new(true),
+            ))
+            .id();
+
+        // Every component queries back off the entity (mechanism, not magnitude;
+        // distinct arbitrary literals so a mix-up would surface).
+        assert!(
+            world.get::<Weapon>(entity).is_some(),
+            "the marker is present"
+        );
+        let Some(base) = world.get::<BaseSpread>(entity) else {
+            return;
+        };
+        assert_eq!((**base).to_bits(), 0.25_f32.to_bits());
+        let Some(damage) = world.get::<WeaponDamage>(entity) else {
+            return;
+        };
+        assert_eq!(**damage, 12i32);
+        let Some(damage_type) = world.get::<DamageType>(entity) else {
+            return;
+        };
+        assert_eq!(*damage_type, DamageType::Kinetic);
+        let Some(stable) = world.get::<Stable>(entity) else {
+            return;
+        };
+        assert!(**stable, "the stable tag round-trips through the ECS");
+    }
+
+    /// AC2 — a `WeaponBundle` spawns an entity carrying the full weapon component
+    /// set + the `Weapon` marker; every component (and the marker) queries back off
+    /// the spawned entity. Built from arbitrary literals (mechanism, not magnitude).
+    #[test]
+    fn weapon_bundle_spawns_an_armed_entity() {
+        let mut world = World::new();
+        let bundle = weapon_bundle(
+            0.25,
+            1.3,
+            0.4,
+            7.0,
+            profile(12, 5, 3, DamageType::Kinetic),
+            handling(30, false),
+        );
+        let entity = world.spawn(bundle).id();
+
+        // The marker + all eleven stat components are present.
+        assert!(
+            world.get::<Weapon>(entity).is_some(),
+            "the bundle carries the Weapon marker",
+        );
+        assert!(world.get::<BaseSpread>(entity).is_some(), "base_spread");
+        assert!(world.get::<Accuracy>(entity).is_some(), "accuracy");
+        assert!(world.get::<Kickback>(entity).is_some(), "kickback");
+        assert!(world.get::<FatalBias>(entity).is_some(), "fatal_bias");
+        assert!(world.get::<WeaponDamage>(entity).is_some(), "damage");
+        assert!(world.get::<WeaponPunch>(entity).is_some(), "punch");
+        assert!(world.get::<WeaponShred>(entity).is_some(), "shred");
+        assert!(world.get::<DamageType>(entity).is_some(), "damage_type");
+        assert!(world.get::<MagazineSize>(entity).is_some(), "magazine_size");
+        assert!(world.get::<FireMode>(entity).is_some(), "fire_mode");
+        assert!(world.get::<Stable>(entity).is_some(), "stable");
+
+        // A spot value round-trips off the spawned entity (distinct literals).
+        let Some(damage) = world.get::<WeaponDamage>(entity) else {
+            return;
+        };
+        assert_eq!(**damage, 12i32);
+    }
+
+    /// AC1 — each weapon-number leaf derefs to its inner value (the no-bare-types
+    /// mechanism), read directly off the component newtypes. Built from
+    /// **arbitrary** literals (never pinned magnitudes).
     #[test]
     fn weapon_leaves_deref_to_inner() {
-        let weapon = Weapon::new(
-            BaseSpread::new(0.25),
-            Accuracy::new(1.3),
-            Kickback::new(0.4),
-            FatalBias::new(7.0),
+        let bundle = weapon_bundle(
+            0.25,
+            1.3,
+            0.4,
+            7.0,
             profile(12, 5, 3, DamageType::Kinetic),
             handling(30, false),
         );
@@ -609,77 +822,107 @@ mod tests {
         // Each f32 weapon number: deref reaches the inner f32 (bit-exact arbitrary
         // value — exactly representable literals, so this is an integer equality,
         // no float_cmp lint).
-        assert_eq!((*weapon.base_spread).to_bits(), 0.25_f32.to_bits());
-        assert_eq!((*weapon.accuracy).to_bits(), 1.3_f32.to_bits());
-        assert_eq!((*weapon.kickback).to_bits(), 0.4_f32.to_bits());
-        assert_eq!((*weapon.fatal_bias).to_bits(), 7.0_f32.to_bits());
+        assert_eq!((*bundle.base_spread).to_bits(), 0.25_f32.to_bits());
+        assert_eq!((*bundle.accuracy).to_bits(), 1.3_f32.to_bits());
+        assert_eq!((*bundle.kickback).to_bits(), 0.4_f32.to_bits());
+        assert_eq!((*bundle.fatal_bias).to_bits(), 7.0_f32.to_bits());
         // The u16 weapon number: deref reaches the inner u16.
-        assert_eq!(*weapon.magazine_size, 30u16);
+        assert_eq!(*bundle.magazine_size, 30u16);
     }
 
-    /// AC1 — `Weapon` carries `damage` / `punch` / `shred`, each a distinct newtype
-    /// that derefs to its inner `i32`. Built from **arbitrary** literals (no pinned
+    /// AC1 — the `damage` / `punch` / `shred` components are distinct newtypes that
+    /// deref to their inner `i32`. Built from **arbitrary** literals (no pinned
     /// magnitude); reads each leaf back through `Deref`.
     #[test]
     fn weapon_damage_leaves_deref_to_inner() {
-        let weapon = Weapon::new(
-            BaseSpread::new(0.1),
-            Accuracy::new(1.0),
-            Kickback::new(0.2),
-            FatalBias::new(4.0),
+        let bundle = weapon_bundle(
+            0.1,
+            1.0,
+            0.2,
+            4.0,
             profile(18, 7, 2, DamageType::Plasma),
             handling(12, false),
         );
 
         // Each i32 damage number derefs to its inner value (distinct arbitrary
         // literals so a field swap would be caught — mechanism, not magnitude).
-        assert_eq!(*weapon.damage, 18i32);
-        assert_eq!(*weapon.punch, 7i32);
-        assert_eq!(*weapon.shred, 2i32);
+        assert_eq!(*bundle.damage, 18i32);
+        assert_eq!(*bundle.punch, 7i32);
+        assert_eq!(*bundle.shred, 2i32);
     }
 
-    /// AC3 — a `Weapon` carries a `DamageType` and reads it back (mechanism, not
+    /// AC3 — the `DamageType` component round-trips off the bundle (mechanism, not
     /// magnitude). Pairs with `armor_piece_carries_armor_type` in `armor.rs`.
     #[test]
     fn weapon_carries_damage_type_round_trip() {
-        let weapon = Weapon::new(
-            BaseSpread::new(0.1),
-            Accuracy::new(1.0),
-            Kickback::new(0.2),
-            FatalBias::new(4.0),
+        let bundle = weapon_bundle(
+            0.1,
+            1.0,
+            0.2,
+            4.0,
             profile(1, 1, 1, DamageType::Rend),
             handling(1, false),
         );
-        assert_eq!(weapon.damage_type, DamageType::Rend);
+        assert_eq!(bundle.damage_type, DamageType::Rend);
     }
 
-    /// AC1 (GTW-199) — a `Weapon` carries the `Stable` tag and reads it back; the
-    /// newtype derefs to its inner `bool`. A stable and a non-stable weapon are
-    /// built so a field swap (or a default) would be caught — mechanism, not a
-    /// pinned balance value.
+    /// AC1 (GTW-199) — the `Stable` component round-trips and derefs to its inner
+    /// `bool`. A stable and a non-stable bundle are built so a field swap (or a
+    /// default) would be caught — mechanism, not a pinned balance value.
     #[test]
     fn weapon_carries_stable_tag_round_trip() {
-        let stable_weapon = Weapon::new(
-            BaseSpread::new(0.1),
-            Accuracy::new(1.0),
-            Kickback::new(0.2),
-            FatalBias::new(4.0),
+        let stable_bundle = weapon_bundle(
+            0.1,
+            1.0,
+            0.2,
+            4.0,
             profile(1, 1, 1, DamageType::Kinetic),
             handling(1, true),
         );
-        let plain_weapon = Weapon::new(
-            BaseSpread::new(0.1),
-            Accuracy::new(1.0),
-            Kickback::new(0.2),
-            FatalBias::new(4.0),
+        let plain_bundle = weapon_bundle(
+            0.1,
+            1.0,
+            0.2,
+            4.0,
             profile(1, 1, 1, DamageType::Kinetic),
             handling(1, false),
         );
         // The tag round-trips through the newtype's Deref to the inner bool.
-        assert!(*stable_weapon.stable);
-        assert!(!*plain_weapon.stable);
-        assert_eq!(stable_weapon.stable, Stable::new(true));
-        assert_eq!(plain_weapon.stable, Stable::new(false));
+        assert!(*stable_bundle.stable);
+        assert!(!*plain_bundle.stable);
+        assert_eq!(stable_bundle.stable, Stable::new(true));
+        assert_eq!(plain_bundle.stable, Stable::new(false));
+    }
+
+    /// AC3 — a [`WeaponStats`] borrow-view assembled off a bundle reads the same
+    /// stats as the bundle's components: the read-shape the §1/§6 readers take is
+    /// faithful to the stored components. (`WeaponBundle::stats` is the convenience
+    /// assembler; a query-based system builds the view from its queried components.)
+    #[test]
+    fn weapon_stats_view_borrows_the_components() {
+        let bundle = weapon_bundle(
+            0.2,
+            1.1,
+            0.3,
+            5.0,
+            profile(14, 6, 4, DamageType::Blast),
+            handling(24, true),
+        );
+        let stats = bundle.stats();
+        // Both sides deref to the same inner value: the view borrows the components.
+        assert_eq!(
+            (**stats.base_spread).to_bits(),
+            (*bundle.base_spread).to_bits()
+        );
+        assert_eq!(**stats.damage, *bundle.damage);
+        assert_eq!(**stats.punch, *bundle.punch);
+        assert_eq!(**stats.shred, *bundle.shred);
+        assert_eq!(*stats.damage_type, bundle.damage_type);
+        assert_eq!(
+            (**stats.fatal_bias).to_bits(),
+            (*bundle.fatal_bias).to_bits()
+        );
+        assert!(**stats.stable);
     }
 
     /// AC1 (GTW-199) — the `Stable` tag deserializes from a bare RON boolean
@@ -702,6 +945,26 @@ mod tests {
         };
         assert!(*yes);
         assert!(!*no);
+    }
+
+    /// C5 — each weapon-number leaf still round-trips as a bare RON scalar
+    /// (`#[serde(transparent)]`) even now it is a `Component`: parse a bare fragment
+    /// for each transparent leaf (value-agnostic — only that it parses into the
+    /// type).
+    #[test]
+    fn weapon_leaves_parse_from_bare_ron_scalars() {
+        assert!(ron::from_str::<BaseSpread>("0.2").is_ok(), "base_spread");
+        assert!(ron::from_str::<Accuracy>("1.1").is_ok(), "accuracy");
+        assert!(ron::from_str::<Kickback>("0.3").is_ok(), "kickback");
+        assert!(ron::from_str::<FatalBias>("5.0").is_ok(), "fatal_bias");
+        assert!(ron::from_str::<WeaponDamage>("14").is_ok(), "damage");
+        assert!(ron::from_str::<WeaponPunch>("6").is_ok(), "punch");
+        assert!(ron::from_str::<WeaponShred>("4").is_ok(), "shred");
+        assert!(ron::from_str::<MagazineSize>("24").is_ok(), "magazine_size");
+        assert!(
+            ron::from_str::<DamageType>("Kinetic").is_ok(),
+            "damage_type"
+        );
     }
 
     /// AC2 (one half) — `DamageType` has exactly 7 variants, in wheel-node order.
@@ -783,35 +1046,22 @@ mod tests {
         assert_eq!(*full.single().shots, 1u16);
     }
 
-    /// C5 — every weapon-number leaf round-trips as a bare RON scalar
-    /// (`#[serde(transparent)]`). Parses a hand-written RON fragment for a
-    /// `Weapon` and asserts structural success (value-agnostic — only that it
-    /// parses into the type).
+    /// C5 — the [`FireMode`] selector (the one composite serde leaf, now also a
+    /// `Component`) round-trips from authored RON with bare-scalar per-mode fields:
+    /// parses a hand-written `SingleBurstFullAuto` fragment and asserts structural
+    /// success (value-agnostic — only that it parses into the type). The flat-leaf
+    /// transparent round-trips are in `weapon_leaves_parse_from_bare_ron_scalars`.
     #[test]
-    fn weapon_parses_from_ron_with_bare_scalar_leaves() {
-        // Bare scalars for each leaf (transparent newtypes) and a selector with
-        // bare-scalar per-mode fields — arbitrary literals.
-        let ron = r"(
-            base_spread: 0.2,
-            accuracy: 1.1,
-            kickback: 0.3,
-            fatal_bias: 5.0,
-            damage: 14,
-            punch: 6,
-            shred: 4,
-            damage_type: Kinetic,
-            magazine_size: 24,
-            fire_mode: SingleBurstFullAuto(
-                single:    (cone_mult: 1.0, tu_percent: 0.5, shots: 1),
-                burst:     (cone_mult: 1.3, tu_percent: 0.8, shots: 3),
-                full_auto: (cone_mult: 1.7, tu_percent: 1.0, shots: 10),
-            ),
-            stable: false,
+    fn fire_mode_parses_from_ron_with_bare_scalar_per_mode_fields() {
+        let ron = r"SingleBurstFullAuto(
+            single:    (cone_mult: 1.0, tu_percent: 0.5, shots: 1),
+            burst:     (cone_mult: 1.3, tu_percent: 0.8, shots: 3),
+            full_auto: (cone_mult: 1.7, tu_percent: 1.0, shots: 10),
         )";
-        let parsed = ron::from_str::<Weapon>(ron);
+        let parsed = ron::from_str::<FireMode>(ron);
         assert!(
             parsed.is_ok(),
-            "a Weapon must deserialize from bare-scalar RON leaves: {parsed:?}",
+            "a FireMode selector must deserialize from bare-scalar per-mode RON: {parsed:?}",
         );
     }
 }

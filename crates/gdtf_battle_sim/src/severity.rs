@@ -137,7 +137,7 @@ pub const fn part_severity_mod(part: BodyPart) -> PartSeverityMod {
 /// struct (resolution.md §6).
 ///
 /// Groups the score's logical input set so [`roll_severity`] stays under clippy's
-/// argument-count gate (the same precedent as `ShotInputs` / `WeaponDamageProfile`
+/// argument-count gate (the same precedent as `ShotInputs` / `DamageProfile`
 /// — the tuning `&SeverityScaling` and the entropy `&mut SimRng` stay their own
 /// params). Every field is a named domain type sourced off the resolved hit and
 /// the two gangers' entity components — none is a bare literal.

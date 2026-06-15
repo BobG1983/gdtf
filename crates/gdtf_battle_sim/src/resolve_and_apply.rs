@@ -65,7 +65,7 @@ use crate::{
     rng::SimRng,
     severity::{Severity, SeverityInputs, part_severity_mod, roll_severity},
     tuning::CombatTuning,
-    weapon::Weapon,
+    weapon::WeaponStats,
 };
 
 /// The **bundle of one target ganger's battle state** [`resolve_and_apply`] folds a
@@ -148,8 +148,11 @@ pub struct HitReport {
 impl HitReport {
     /// Build a **no-effect** report for `kind` — no part struck and no damage
     /// applied (the non-ganger, corpse-skip, and defensive-no-part folds).
+    ///
+    /// `pub` so the E4.5 `fire()` act (GTW-198) can fold a non-ganger / corpse-skip
+    /// round to a no-effect report cross-module without re-deriving the shape.
     #[must_use]
-    const fn no_effect(kind: ShotKind) -> Self {
+    pub const fn no_effect(kind: ShotKind) -> Self {
         Self {
             kind,
             part: None,
@@ -185,10 +188,14 @@ const BARE_FLESH: ArmorPiece = ArmorPiece::new(
 /// [`BARE_FLESH`] piece under [`Matchup::Neutral`] — there is no armor type to match
 /// against, so no wheel advantage, and the zeroed soak means the hit lands as full
 /// weapon damage (`weapons-and-armor.md` §"Per-hit resolution").
-fn struck_piece(worn: &WornArmor, part: BodyPart, weapon: &Weapon) -> (ArmorPiece, Matchup) {
+fn struck_piece(
+    worn: &WornArmor,
+    part: BodyPart,
+    weapon: WeaponStats<'_>,
+) -> (ArmorPiece, Matchup) {
     if worn.protects(part) {
         let piece = worn.at(part);
-        let resolved = matchup(weapon.damage_type, piece.armor_type);
+        let resolved = matchup(*weapon.damage_type, piece.armor_type);
         (piece, resolved)
     } else {
         // Bare flesh: no protection / hardness, no armor type to match → Neutral.
@@ -229,7 +236,7 @@ fn struck_piece(worn: &WornArmor, part: BodyPart, weapon: &Weapon) -> (ArmorPiec
 #[must_use]
 pub fn resolve_and_apply(
     outcome: &ShotOutcome,
-    weapon: &Weapon,
+    weapon: WeaponStats<'_>,
     shooter_luck: Luck,
     target: TargetGanger<'_>,
     target_entity: Entity,
@@ -260,9 +267,9 @@ pub fn resolve_and_apply(
 
     // (5) The per-hit damage formula (E3.3) — pure, mutates nothing.
     let hit = resolve_hit(
-        weapon.damage,
-        weapon.punch,
-        weapon.shred,
+        *weapon.damage,
+        *weapon.punch,
+        *weapon.shred,
         &piece,
         resolved_matchup,
         tuning,
@@ -275,7 +282,7 @@ pub fn resolve_and_apply(
         hit.penetrating,
         target.toughness,
         part_severity_mod(part),
-        weapon.fatal_bias,
+        *weapon.fatal_bias,
         shooter_luck,
         target.luck,
     );
@@ -328,9 +335,9 @@ mod tests {
         stability::RecoilGrowth,
         tuning::RecoilClimb,
         weapon::{
-            Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
-            MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, Stable, WeaponDamage,
-            WeaponDamageProfile, WeaponHandling, WeaponPunch, WeaponShred,
+            Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
+            HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeShots, ModeTuPercent,
+            Stable, WeaponBundle, WeaponDamage, WeaponPunch, WeaponShred,
         },
     };
 
@@ -349,27 +356,29 @@ mod tests {
         World::new().spawn_empty().id()
     }
 
-    /// A weapon built from arbitrary (NOT shipped-tuning) magnitudes — only the
-    /// per-hit damage stats and the damage type matter to these tests; the §1
-    /// cone/recoil numbers and the fire mode are present but irrelevant here.
-    fn a_weapon(damage: i32, punch: i32, shred: i32, damage_type: DamageType) -> Weapon {
+    /// An armed-entity bundle built from arbitrary (NOT shipped-tuning) magnitudes
+    /// — only the per-hit damage stats and the damage type matter to these tests;
+    /// the §1 cone/recoil numbers and the fire mode are present but irrelevant here.
+    /// Returns the owned [`WeaponBundle`]; the call site assembles the
+    /// [`WeaponStats`] read-view via [`WeaponBundle::stats`].
+    fn a_weapon(damage: i32, punch: i32, shred: i32, damage_type: DamageType) -> WeaponBundle {
         let spec = FireModeSpec::new(
             ModeConeMult::new(1.0),
             ModeTuPercent::new(1.0),
             ModeShots::new(1),
         );
-        Weapon::new(
+        WeaponBundle::new(
             BaseSpread::new(0.1),
             Accuracy::new(1.0),
             Kickback::new(0.0),
             FatalBias::new(0.0),
-            WeaponDamageProfile::new(
+            DamageProfile::new(
                 WeaponDamage::new(damage),
                 WeaponPunch::new(punch),
                 WeaponShred::new(shred),
                 damage_type,
             ),
-            WeaponHandling::new(
+            HandlingProfile::new(
                 MagazineSize::new(10),
                 FireMode::Single { single: spec },
                 Stable::new(false),
@@ -471,7 +480,7 @@ mod tests {
         let mut rng_a = rng();
         let report = resolve_and_apply(
             &outcome,
-            &weapon,
+            weapon.stats(),
             shooter_luck,
             TargetGanger {
                 hp: &mut hp_a,
@@ -585,7 +594,7 @@ mod tests {
         let mut rng_used = rng();
         let report = resolve_and_apply(
             &outcome,
-            &weapon,
+            weapon.stats(),
             Luck::new(5.0),
             TargetGanger {
                 hp:        &mut hp,
@@ -653,7 +662,7 @@ mod tests {
 
         let report = resolve_and_apply(
             &ganger_outcome(entity, part),
-            &weapon,
+            weapon.stats(),
             Luck::new(0.0),
             TargetGanger {
                 hp:        &mut hp,
@@ -702,7 +711,7 @@ mod tests {
         );
         let report2 = resolve_and_apply(
             &ganger_outcome(entity, part),
-            &weapon,
+            weapon.stats(),
             Luck::new(0.0),
             TargetGanger {
                 hp:        &mut hp2,
@@ -772,7 +781,7 @@ mod tests {
             let mut rng_used = rng();
             let report = resolve_and_apply(
                 &non_ganger_outcome(kind),
-                &weapon,
+                weapon.stats(),
                 Luck::new(3.0),
                 TargetGanger {
                     hp:        &mut hp,
@@ -839,7 +848,7 @@ mod tests {
                 .map(|&part| {
                     resolve_and_apply(
                         &ganger_outcome(entity, part),
-                        &weapon,
+                        weapon.stats(),
                         Luck::new(1.0),
                         TargetGanger {
                             hp:        &mut hp,
@@ -912,14 +921,14 @@ mod tests {
 
         // Pick a damage type/armor type pairing and confirm the report names the
         // wheel's verdict — then a clearly Resisted pairing names Resisted.
-        let resolve = |weapon: Weapon, armor_type: ArmorType| {
+        let resolve = |weapon: WeaponBundle, armor_type: ArmorType| {
             let mut hp = Hp::new(50);
             let mut wounds = Wounds::new(9);
             let mut life = LifeState::Alive;
             let mut worn = worn_suit(1, 10, 40, 1, armor_type);
             resolve_and_apply(
                 &ganger_outcome(entity, part),
-                &weapon,
+                weapon.stats(),
                 Luck::new(0.0),
                 TargetGanger {
                     hp:        &mut hp,

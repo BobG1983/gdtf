@@ -32,10 +32,11 @@
 //!   dispersion-cone WIDTH off a shooter's ganger state ([`aim::Shooter`] bundle)
 //!   and the MODEL [`cover::CoverLedger`] (peeked at the E4.2 faced cell, never
 //!   rebuilt). They WRAP the landed E2 [`stability`] / [`cone`] pipeline verbatim;
-//!   the weapon's stability contribution is its [`weapon::Stable`] tag (sourced off
-//!   the [`weapon::Weapon`] by `cone_for`, an explicit param to `stability_for`),
-//!   which engages the §1a brace UNCONDITIONALLY — there is no weapon-points term.
-//!   Angular / dimensionless, zero pixels.
+//!   the weapon's stability contribution is its [`weapon::Stable`] tag (`cone_for`
+//!   takes the weapon stats as a [`weapon::WeaponStats`] borrow-view and threads the
+//!   tag, an explicit param, to `stability_for`), which engages the §1a brace
+//!   UNCONDITIONALLY — there is no weapon-points term. Angular / dimensionless,
+//!   zero pixels.
 //! - [`posture`] — the E4.1 posture / orientation verbs over the landed ganger
 //!   components: [`posture::set_aiming`] (a pure aim-flag setter — charges NO TU; the
 //!   aim cost is the fire-time ×1.5 premium, resolution.md §1a), [`posture::set_stance`]
@@ -79,8 +80,17 @@
 //!   change-driven in-place maintenance), [`vertical`] (the stair/ladder link graph).
 //! - [`situation`] — the authored [`situation::Situation`] + [`situation::setup_battle`].
 //! - [`rng`] — the model-owned seeded [`rng::SimRng`] (the single draw point).
+//! - [`weapon`] — the weapon as ECS components (GTW-200): a unit [`weapon::Weapon`]
+//!   MARKER plus one `#[derive(Component)]` newtype per stat
+//!   ([`weapon::BaseSpread`] / [`weapon::Accuracy`] / [`weapon::Kickback`] /
+//!   [`weapon::FatalBias`] / [`weapon::WeaponDamage`] / [`weapon::WeaponPunch`] /
+//!   [`weapon::WeaponShred`] / [`weapon::DamageType`] / [`weapon::MagazineSize`] /
+//!   [`weapon::FireMode`] / [`weapon::Stable`]) living as sibling components on the
+//!   armed entity, spawned via the [`weapon::WeaponBundle`]. The §1/§6 readers take
+//!   a transient [`weapon::WeaponStats`] borrow-view (refs assembled from the
+//!   components — not a stored component); there is no packed `Weapon` data struct.
 //! - The shot pipeline ([`resolve_coarse::resolve_coarse`] composes it): [`weapon`]
-//!   data → [`stability`] → [`cone`] (cone width) → [`central_axis`] (muzzle / aim /
+//!   stats → [`stability`] → [`cone`] (cone width) → [`central_axis`] (muzzle / aim /
 //!   recoil-climb axis) → [`sample_cone`] (the in-cone shot vector) → [`clearance`] +
 //!   [`march`] (the 3-axis voxel-DDA travel) → [`hit_location`] (the part roll) →
 //!   a [`resolve_coarse::ShotOutcome`].
@@ -205,7 +215,7 @@ pub use vertical::{
     build_vertical_link_graph,
 };
 pub use weapon::{
-    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback, MagazineSize,
-    ModeConeMult, ModeShots, ModeTuPercent, Stable, Weapon, WeaponDamage, WeaponDamageProfile,
-    WeaponHandling, WeaponPunch, WeaponShred,
+    Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
+    HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, Stable,
+    Weapon, WeaponBundle, WeaponDamage, WeaponPunch, WeaponShred, WeaponStats,
 };
