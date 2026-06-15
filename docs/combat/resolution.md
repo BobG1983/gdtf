@@ -98,9 +98,11 @@ On a hit, the per-hit formula resolves weapon (`damage` / `punch` / `shred`) aga
 **Every hit rolls severity** (`roll_severity`) — the old `damage > Toughness` hard gate is gone. The score is gated by **penetrating damage**, so a weak hit can't reach the severe buckets (no 1-dmg amputations):
 
 ```text
-R_eff          = max(R_min, R − L × Luck_defender)      (defender's Luck caps the bad tail)
 severity_score = j × pen_damage − k × Toughness + part_mod + weapon.fatal_bias
-                 + I × Luck_shooter + roll(0..R_eff)    (one-sided random — only pushes up)
+                 + I × Luck_shooter + roll(−L × Luck_defender .. R)
+   (defender's Luck extends the roll's FLOOR down — a chance to shrug the hit off —
+    while the ceiling stays R, so a genuinely bad roll is always still possible;
+    variance grows with the defender's Luck. The shooter's Luck still pushes up.)
    < e0 → None       (a graze — HP loss only, no wound)
    < e1 → Minor      (costs 1 Wound)
    < e2 → Major      (2)
@@ -108,7 +110,7 @@ severity_score = j × pen_damage − k × Toughness + part_mod + weapon.fatal_bi
    ≥ e3 → Fatal      (empties the pool — death in battle)
 ```
 
-Penetrating damage drives the score, **Toughness mitigates**, the **struck part** pushes it (head +12 / torso +5 / arms −2 / legs 0 — severity is **location-dependent** now, *and* the location's column still picks the entry in the Injury table), and the weapon's **Fatal-bias** stacks the table. **Luck is directional fortune**: the shooter's Luck adds to the score (nastier wounds), the defender's shrinks the random spread. `j`, `k`, `I`, `L`, `R`, `R_min`, and the bucket edges `e0..e3` are tuning values (combat tuning; the per-part mods currently sit as a placeholder code const). See [stats.md](stats.md) and [wounds-and-roster.md](wounds-and-roster.md).
+Penetrating damage drives the score, **Toughness mitigates**, the **struck part** pushes it (head +12 / torso +5 / arms −2 / legs 0 — severity is **location-dependent** now, *and* the location's column still picks the entry in the Injury table), and the weapon's **Fatal-bias** stacks the table. **Luck is directional fortune**: the shooter's Luck adds to the score (nastier wounds), while the defender's Luck **extends the roll's floor downward** — a chance to shrug the hit off entirely (it can pull a would-be Major down to Minor or None) — *without* ever capping the worst roll, so a lucky defender usually takes lighter wounds but can still, occasionally, eat a bad one. `j`, `k`, `I`, `L`, `R`, and the bucket edges `e0..e3` are tuning values (combat tuning; the per-part mods currently sit as a placeholder code const). See [stats.md](stats.md) and [wounds-and-roster.md](wounds-and-roster.md).
 
 ## 7. Melee — opposed Fight
 
