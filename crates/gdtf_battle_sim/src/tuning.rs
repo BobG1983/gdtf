@@ -175,7 +175,7 @@ impl Default for SeverityScaling {
 /// parts in the §4 `roll_body_part` weighted roll.
 ///
 /// Head is rare, torso the bulk (resolution.md §4: Head 6 / Torso 40 / each Arm
-/// 15 / each Leg 12). Each field is a [`BodyPartWeight`]; the magnitudes are
+/// 12 / each Leg 15). Each field is a [`BodyPartWeight`]; the magnitudes are
 /// tunable balance data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct BodyPartWeights {
@@ -183,13 +183,13 @@ pub struct BodyPartWeights {
     pub head:      BodyPartWeight,
     /// Torso weight — the bulk of hits (doc default 40).
     pub torso:     BodyPartWeight,
-    /// Left-arm weight (doc default 15).
+    /// Left-arm weight (doc default 12).
     pub left_arm:  BodyPartWeight,
-    /// Right-arm weight (doc default 15).
+    /// Right-arm weight (doc default 12).
     pub right_arm: BodyPartWeight,
-    /// Left-leg weight (doc default 12).
+    /// Left-leg weight (doc default 15).
     pub left_leg:  BodyPartWeight,
-    /// Right-leg weight (doc default 12).
+    /// Right-leg weight (doc default 15).
     pub right_leg: BodyPartWeight,
 }
 
@@ -199,10 +199,10 @@ impl Default for BodyPartWeights {
         Self {
             head:      BodyPartWeight(6),
             torso:     BodyPartWeight(40),
-            left_arm:  BodyPartWeight(15),
-            right_arm: BodyPartWeight(15),
-            left_leg:  BodyPartWeight(12),
-            right_leg: BodyPartWeight(12),
+            left_arm:  BodyPartWeight(12),
+            right_arm: BodyPartWeight(12),
+            left_leg:  BodyPartWeight(15),
+            right_leg: BodyPartWeight(15),
         }
     }
 }

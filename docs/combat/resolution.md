@@ -68,7 +68,7 @@ Cover has a **height** and its **own armor stats + HP** — it uses the same arm
 
 ## 4. Hit location — weighted part roll
 
-When the march stops a round on a **ganger** (§2), a **weighted roll** picks **where on them** — one of six body parts: **Head · Torso · L-Arm · R-Arm · L-Leg · R-Leg** (`roll_body_part` over the tuning `body_part_weights`; defaults Head 6 / Torso 40 / each Arm 15 / each Leg 12 — head rare, torso the bulk). **No per-part geometry**: the coarse model decides *which* ganger by height clearance and *where* on them by chance. There is no separate "did it stay on the silhouette" test — the march's band clearance is the answer.
+When the march stops a round on a **ganger** (§2), a **weighted roll** picks **where on them** — one of six body parts: **Head · Torso · L-Arm · R-Arm · L-Leg · R-Leg** (`roll_body_part` over the tuning `body_part_weights`; defaults Head 6 / Torso 40 / each Arm 12 / each Leg 15 — head rare, torso the bulk). **No per-part geometry**: the coarse model decides *which* ganger by height clearance and *where* on them by chance. There is no separate "did it stay on the silhouette" test — the march's band clearance is the answer.
 
 > **RETIRED — both prior models.** The **probabilistic exposure roll** below (on-silhouette classification + exposure-area weights) was first superseded by a **collision-driven** model (ray-vs-per-part colliders — the part struck IS the part hit), and that collider model was itself **retired** by the coarse pipeline. The exposure text below is kept only as the prior design rationale.
 
