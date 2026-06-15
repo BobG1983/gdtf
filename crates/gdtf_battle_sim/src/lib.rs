@@ -22,6 +22,11 @@
 //!   ganger's [`ganger::Tu`] (current pool) and [`ganger::TuMax`] (round-start max —
 //!   the denominator of GTW-38's `TU_left / TU_max` reaction ratio). Pure math, no
 //!   `World` access; the COST magnitudes are tuning sourced by later E4 slices.
+//! - [`faced_cell`] — the E4.2 geometry helper [`faced_cell::faced_cell`]: shooter
+//!   [`ganger::Position`] + [`ganger::Facing`] → the faced ([`metric::Cell`],
+//!   [`metric::Level`]) one unit step along the facing (same storey). The cell whose
+//!   cover the §1a brace gate (E4.3) reads; composes only the [`metric`] sim-unit
+//!   conversions — render-free, no `World`, zero pixels.
 //! - [`posture`] — the E4.1 posture / orientation verbs over the landed ganger
 //!   components: [`posture::set_aiming`] (a pure aim-flag setter — charges NO TU; the
 //!   aim cost is the fire-time ×1.5 premium, resolution.md §1a), [`posture::set_stance`]
@@ -91,6 +96,7 @@ pub mod clearance;
 pub mod cone;
 pub mod cover;
 pub mod downed_acts;
+pub mod faced_cell;
 pub mod ganger;
 pub mod hit_location;
 pub mod march;
@@ -131,6 +137,7 @@ pub use downed_acts::{
     Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
     stabilize_downed,
 };
+pub use faced_cell::faced_cell;
 pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
     Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
