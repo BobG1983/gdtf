@@ -236,6 +236,29 @@
 //! marches are graceful (a `Miss`, no panic). See `docs/combat/resolution.md` §2 + §3
 //! and `docs/combat/battle-space.md` §"The shot is one 3D Vec3, ray-marched by voxel
 //! DDA".
+//!
+//! E2.9 ([`resolve_coarse`]) composes the **whole coarse pipeline** into ONE entry
+//! point: [`resolve_coarse::resolve_coarse`] derives muzzle (E2.4
+//! [`central_axis::muzzle_position`]) → the climb-tilted central axis (E2.4
+//! [`central_axis::climb_aim_dir`] off the muzzle→[`central_axis::target_aim_point`]
+//! axis) → the in-cone sample (E2.5 [`sample_cone::sample_cone_vector`], with the
+//! composed `θ_cone` [E2.3] + `p` [E2.5] fed in) → the march (E2.7
+//! [`march::march_vector`]) → and, ONLY when the round stops on a ganger, the §4 part
+//! roll (E2.8 [`hit_location::roll_body_part`]). It returns a
+//! [`resolve_coarse::ShotOutcome`] — the [`resolve_coarse::ShotKind`] (`Ganger` /
+//! `Cover` / `Slab` / `Ground` / `Miss`) carrying the struck model object itself (the
+//! ganger [`bevy::prelude::Entity`] / the [`cover::CoverEntry`] / the surface
+//! [`metric::CellLevel`]), the `(Cell, Level)`, the [`armor::BodyPart`] for a ganger
+//! outcome ONLY, the crossed-cell [`cover::HeightBand`], the muzzle [`metric::SimPos`],
+//! and the sampled trajectory unit-[`sample_cone::ShotDir`]. It **takes** the
+//! change-driven [`occupancy::OccupancyGrid`] / [`surface::SurfaceGrid`] /
+//! [`cover::CoverLedger`] as parameters and **never rebuilds them per shot** (the
+//! GTW-6 / GTW-12 ruling); it applies NO damage / severity (E3) and NO TU / ammo
+//! bookkeeping (E4), stopping at the resolved outcome + part; and every draw comes
+//! from the injected [`rng::SimRng`], so the same [`rng::BattleSeed`] reproduces the
+//! same [`resolve_coarse::ShotOutcome`]. It is the carries-resolved-VALUES exception
+//! (`docs/architecture.md` line 51), all positions in sim units — zero pixels. See
+//! `docs/combat/resolution.md` line 158 and `docs/architecture.md` lines 41 + 51.
 
 pub mod armor;
 pub mod central_axis;
@@ -248,6 +271,7 @@ pub mod march;
 pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
+pub mod resolve_coarse;
 pub mod rng;
 pub mod sample_cone;
 pub mod situation;
@@ -282,6 +306,7 @@ pub use occupancy_sync::{
     CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
     sync_moved_gangers,
 };
+pub use resolve_coarse::{ShotKind, ShotOutcome, resolve_coarse};
 pub use rng::{BattleSeed, SimRng};
 pub use sample_cone::{ConcentrationP, Shooting, ShotDir, concentration_p, sample_cone_vector};
 pub use situation::{
