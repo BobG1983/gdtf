@@ -60,6 +60,32 @@ session, so the next session pays the toll once.
    `Update` sees the same frame's values since `ui_focus_system` ran in the
    earlier `PreUpdate`. Hover→focus, by contrast, has NO built-in bridge — that
    is what GTW-141's `sync_hover_to_focus` adds. [verified GTW-141]
+7. A REGISTERED system, or a helper FUNCTION, whose signature takes `&mut World`
+   / `&World` (exclusive World access) is a design RED FLAG whenever the work is
+   expressible with the normal SystemParams — and it almost always is. Reach for
+   the param, not the World: SPAWNING is `Commands::spawn` (NEVER `world.spawn`
+   inside a system); component / resource MUTATION is `Query` / `ResMut`;
+   buffered MESSAGES are `MessageReader` / `MessageWriter` (trap #4); resource
+   ADD/REMOVE is `commands.insert_resource` / `commands.remove_resource`.
+   Exclusive `&mut World` serializes the schedule (it can run with nothing else)
+   and throws away Bevy's change-detection and parallelism, so it is RESERVED for
+   the rare operation that genuinely cannot be expressed with params — and when
+   you do take it, it MUST carry a doc-comment justifying why a normal
+   system/param can't do the job. CARVE-OUT (these are NOT violations): (a)
+   `app.world_mut()` / `app.world()` in a TEST BODY — not inside a registered
+   system or a helper fn — to do setup, assertion, or message-write IS the
+   accepted headless-test idiom (`gdtf_test_utils` drives the app exactly this
+   way); (b) `SystemState` / `World::new()` in a pure-sim UNIT test with NO `App`,
+   exercising a system in isolation, is acceptable where an app harness is
+   genuinely inapplicable. The PRECEDENT to match lives in the sim's landed acts:
+   `fire()` runs a whole firing volley over two disjoint `Query`s (GTW-198 killed
+   its `&mut World`), `acts.rs`'s per-act dispatch systems drain a `MessageReader`
+   and fetch actor/target via queries, and `BattleSimPlugin` wires the runtime
+   with `Commands` (`insert_resource` / `remove_resource`) — query / Commands /
+   message-based throughout, never `&mut World`. The `design-gate` (its
+   structure + Bevy lens) ENFORCES this: a registered system or helper fn taking
+   exclusive World access without a doc-comment justification FAILS the gate. [codified
+   GTW-213, generalizing the GTW-198 / GTW-208 build direction]
 
 ## wgpu / cargo
 
