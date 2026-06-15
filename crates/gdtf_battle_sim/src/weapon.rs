@@ -17,6 +17,18 @@
 //! behavior. Every numeric leaf is a named newtype (no-bare-types: a private inner
 //! value, a derived [`Deref`], and `#[serde(transparent)]` so it round-trips as a
 //! bare RON scalar), matching the [`crate::tuning`] house style.
+//!
+//! ## E3.1 — damage stats + the damage-type vocabulary
+//!
+//! The E3.1 slice adds the three per-hit damage NUMBERS the
+//! `docs/combat/weapons-and-armor.md` §"Weapon stats" / §"Per-hit resolution"
+//! formula reads — [`WeaponDamage`], [`WeaponPunch`], [`WeaponShred`] — plus the
+//! [`DamageType`] a weapon emits. [`DamageType`] is one half of the dual
+//! vocabulary of `docs/combat/matchup.md` §"The 7 types": its seven variants name
+//! the same seven wheel nodes as [`crate::armor::ArmorType`], node `i` of one
+//! mirroring node `i` of the other. This is the DATA substrate only — the per-hit
+//! formula and the matchup lookup (the wheel itself) are later E3 slices; nothing
+//! here computes a hit or a matchup.
 
 use bevy::prelude::Deref;
 use serde::Deserialize;
@@ -94,6 +106,122 @@ impl FatalBias {
     pub const fn new(fatal_bias: f32) -> Self {
         Self(fatal_bias)
     }
+}
+
+/// A weapon's **base damage** — the damage a hit deals before armor
+/// (`weapons-and-armor.md` §"Weapon stats": "damage — base damage of a hit"). The
+/// `damage` term of the per-hit formula step 2 (`dmg = max(floor, damage −
+/// max(0, protection − effPen))`).
+///
+/// A weapon NUMBER. An `i32` to share the signed arithmetic of the per-hit
+/// formula, which subtracts and clamps these against the `i32` armor stats
+/// ([`crate::armor`]) — the same honest-signed reasoning the armor side uses.
+/// Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON
+/// scalar. A magnitude is TBD tuning (no shipped weapons yet).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
+pub struct WeaponDamage(i32);
+
+impl WeaponDamage {
+    /// Build a base-damage value from its magnitude (TBD tuning).
+    #[must_use]
+    pub const fn new(damage: i32) -> Self {
+        Self(damage)
+    }
+}
+
+/// A weapon's **punch** — the armor protection a hit ignores, i.e. penetration
+/// (`weapons-and-armor.md` §"Weapon stats": "punch — armor protection it ignores
+/// (penetration)"). The `punch` term of the per-hit formula step 1
+/// (`effPen = max(0, punch − hardness)`); the matchup wheel multiplies it (a later
+/// E3 slice).
+///
+/// A weapon NUMBER. An `i32` for the signed `punch − hardness` subtraction against
+/// the `i32` armor hardness ([`crate::armor::ArmorHardness`]). Private inner +
+/// derived [`Deref`]; `#[serde(transparent)]`. A magnitude is TBD tuning.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
+pub struct WeaponPunch(i32);
+
+impl WeaponPunch {
+    /// Build a punch (penetration) value from its magnitude (TBD tuning).
+    #[must_use]
+    pub const fn new(punch: i32) -> Self {
+        Self(punch)
+    }
+}
+
+/// A weapon's **shred** — the extra **integrity** damage a hit deals on top of the
+/// normal soak/penetration wear (`weapons-and-armor.md` §"Weapon stats": "shred —
+/// extra integrity damage per hit … attacks armor durability"). The `shred` term
+/// of the per-hit formula step 3 (`integrity −= min(protection, damage) + effPen +
+/// shred`); the matchup wheel multiplies it (a later E3 slice).
+///
+/// A weapon NUMBER. An `i32` to share the signed integrity arithmetic of the armor
+/// side ([`crate::armor::ArmorIntegrity`], which tracks below zero). Private inner
+/// + derived [`Deref`]; `#[serde(transparent)]`. A magnitude is TBD tuning.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
+pub struct WeaponShred(i32);
+
+impl WeaponShred {
+    /// Build a shred (extra-integrity-damage) value from its magnitude (TBD
+    /// tuning).
+    #[must_use]
+    pub const fn new(shred: i32) -> Self {
+        Self(shred)
+    }
+}
+
+/// The **damage type** a weapon emits — one of the seven shared wheel nodes
+/// (`docs/combat/matchup.md` §"The 7 types", Table 1).
+///
+/// This is the weapon/damage half of the **dual vocabulary**: each variant names
+/// the same wheel node `#` as the mirror [`crate::armor::ArmorType`] variant (node
+/// `i` of one mirrors node `i` of the other), so one tournament wheel drives both
+/// sides (matchup.md §"The 7 types": "same wheel node `#`, two names"). The order
+/// here pins the node index — variant `i` is wheel node `i`:
+///
+/// ```text
+/// 0 Shock · 1 Blast · 2 Chem · 3 Kinetic · 4 Plasma · 5 Rend · 6 Las
+/// ```
+///
+/// A named domain enum, not a bare `u8` (no-bare-types). The matchup lookup itself
+/// — which node penetrates which — is a later E3 slice; this only fixes the
+/// vocabulary and its node order. `Deserialize` so a weapon's authored RON names
+/// its type by variant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+pub enum DamageType {
+    /// Wheel node 0 — arc / EMP (mirror of [`crate::armor::ArmorType::Plated`]).
+    Shock,
+    /// Wheel node 1 — explosives / concussion (mirror of [`ArmorType::Refractive`](crate::armor::ArmorType::Refractive)).
+    Blast,
+    /// Wheel node 2 — toxin / acid / gas (mirror of [`ArmorType::Flak`](crate::armor::ArmorType::Flak)).
+    Chem,
+    /// Wheel node 3 — slugs / autoguns / shrapnel (mirror of [`ArmorType::Void`](crate::armor::ArmorType::Void)).
+    Kinetic,
+    /// Wheel node 4 — superheated (mirror of [`ArmorType::Hazard`](crate::armor::ArmorType::Hazard)).
+    Plasma,
+    /// Wheel node 5 — chain / power edges (mirror of [`ArmorType::Reinforced`](crate::armor::ArmorType::Reinforced)).
+    Rend,
+    /// Wheel node 6 — beams (mirror of [`ArmorType::Ceramic`](crate::armor::ArmorType::Ceramic)).
+    Las,
+}
+
+impl DamageType {
+    /// The seven damage types in **wheel-node order** (`docs/combat/matchup.md`
+    /// Table 1) — index `i` is wheel node `i`, the mirror of
+    /// [`crate::armor::ArmorType::ALL`]`[i]`. The exhaustive sweep the
+    /// variant-count and dual-vocabulary-parity tests iterate.
+    pub const ALL: [Self; 7] = [
+        Self::Shock,
+        Self::Blast,
+        Self::Chem,
+        Self::Kinetic,
+        Self::Plasma,
+        Self::Rend,
+        Self::Las,
+    ];
 }
 
 /// A weapon's **magazine size** — how many rounds it holds before a reload
@@ -251,12 +379,55 @@ impl FireMode {
 /// A weapon's data — the per-weapon NUMBERS the §1 cone/concentration math and the
 /// §6 severity score read, plus its [`FireMode`] selector.
 ///
+/// What a weapon does on a hit, bundled for construction — its three per-hit
+/// damage numbers ([`WeaponDamage`] / [`WeaponPunch`] / [`WeaponShred`],
+/// `weapons-and-armor.md` §"Weapon stats") and the [`DamageType`] it emits
+/// (matchup.md §"The 7 types").
+///
+/// A named **constructor-input** grouping (the [`FireModeSpec`] precedent: related
+/// data travels as one named record, not a loose tuple), so [`Weapon::new`] does
+/// not sprawl past clippy's argument-count gate. These four land on [`Weapon`] as
+/// its FLAT `damage` / `punch` / `shred` / `damage_type` fields — this struct is
+/// only the way they are handed in, never where they live.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+pub struct WeaponDamageProfile {
+    /// The base damage a hit deals before armor.
+    pub damage:      WeaponDamage,
+    /// The armor protection a hit ignores — penetration.
+    pub punch:       WeaponPunch,
+    /// The extra integrity damage a hit deals to armor durability.
+    pub shred:       WeaponShred,
+    /// The damage type the weapon emits — its matchup-wheel node.
+    pub damage_type: DamageType,
+}
+
+impl WeaponDamageProfile {
+    /// Build a damage profile from the three per-hit numbers and the emitted
+    /// [`DamageType`] (the numbers are all TBD tuning).
+    #[must_use]
+    pub const fn new(
+        damage: WeaponDamage,
+        punch: WeaponPunch,
+        shred: WeaponShred,
+        damage_type: DamageType,
+    ) -> Self {
+        Self {
+            damage,
+            punch,
+            shred,
+            damage_type,
+        }
+    }
+}
+
 /// A plain data record (no Bevy `Component` here — wiring a weapon onto a ganger
-/// is a later slice; this is the data substrate). Holds the five weapon numbers
-/// (`base_spread`, `accuracy`, `kickback`, `fatal_bias`, `magazine_size`) named in
-/// resolution.md §1/§6 plus the authored [`FireMode`] selector. Every numeric
-/// field is a weapon-number newtype; **no tuning coefficient lives here** (those
-/// are [`crate::tuning::CombatTuning`]).
+/// is a later slice; this is the data substrate). Holds the five §1/§6 weapon
+/// numbers (`base_spread`, `accuracy`, `kickback`, `fatal_bias`, `magazine_size`),
+/// the E3.1 per-hit damage numbers ([`WeaponDamage`] / [`WeaponPunch`] /
+/// [`WeaponShred`], `weapons-and-armor.md` §"Weapon stats"), the [`DamageType`] the
+/// weapon emits (the matchup-wheel key, matchup.md §"The 7 types"), and the
+/// authored [`FireMode`] selector. Every numeric field is a weapon-number newtype;
+/// **no tuning coefficient lives here** (those are [`crate::tuning::CombatTuning`]).
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct Weapon {
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
@@ -267,6 +438,14 @@ pub struct Weapon {
     pub kickback:      Kickback,
     /// The severity-score addend, consumed by E3 (`fatal_bias`).
     pub fatal_bias:    FatalBias,
+    /// The base damage a hit deals before armor (`damage`).
+    pub damage:        WeaponDamage,
+    /// The armor protection a hit ignores — penetration (`punch`).
+    pub punch:         WeaponPunch,
+    /// The extra integrity damage a hit deals to armor durability (`shred`).
+    pub shred:         WeaponShred,
+    /// The damage type the weapon emits — its matchup-wheel node.
+    pub damage_type:   DamageType,
     /// The round capacity before a reload (`magazine_size`).
     pub magazine_size: MagazineSize,
     /// The authored fire-mode selector and its per-mode numbers.
@@ -274,13 +453,17 @@ pub struct Weapon {
 }
 
 impl Weapon {
-    /// Build a weapon from its five numbers and its [`FireMode`] selector.
+    /// Build a weapon from its §1/§6 numbers, its [`WeaponDamageProfile`] (the three
+    /// per-hit damage numbers plus the emitted [`DamageType`]), and its [`FireMode`]
+    /// selector. The profile is spread onto the flat `damage` / `punch` / `shred` /
+    /// `damage_type` fields.
     #[must_use]
     pub const fn new(
         base_spread: BaseSpread,
         accuracy: Accuracy,
         kickback: Kickback,
         fatal_bias: FatalBias,
+        damage: WeaponDamageProfile,
         magazine_size: MagazineSize,
         fire_mode: FireMode,
     ) -> Self {
@@ -289,6 +472,10 @@ impl Weapon {
             accuracy,
             kickback,
             fatal_bias,
+            damage: damage.damage,
+            punch: damage.punch,
+            shred: damage.shred,
+            damage_type: damage.damage_type,
             magazine_size,
             fire_mode,
         }
@@ -310,6 +497,22 @@ mod tests {
         )
     }
 
+    /// Build an arbitrary damage profile from raw literals — NOT shipped
+    /// magnitudes. Pins the damage-leaf mechanism only.
+    fn profile(
+        damage: i32,
+        punch: i32,
+        shred: i32,
+        damage_type: DamageType,
+    ) -> WeaponDamageProfile {
+        WeaponDamageProfile::new(
+            WeaponDamage::new(damage),
+            WeaponPunch::new(punch),
+            WeaponShred::new(shred),
+            damage_type,
+        )
+    }
+
     /// C1 — a `Weapon` constructs and each weapon-number leaf derefs to its inner
     /// value. Built from **arbitrary** literals (never pinned magnitudes), so this
     /// pins the Deref *mechanism and target type*, not any balance value.
@@ -320,6 +523,7 @@ mod tests {
             Accuracy::new(1.3),
             Kickback::new(0.4),
             FatalBias::new(7.0),
+            profile(12, 5, 3, DamageType::Kinetic),
             MagazineSize::new(30),
             FireMode::Single {
                 single: spec(1.0, 0.5, 1),
@@ -335,6 +539,69 @@ mod tests {
         assert_eq!((*weapon.fatal_bias).to_bits(), 7.0_f32.to_bits());
         // The u16 weapon number: deref reaches the inner u16.
         assert_eq!(*weapon.magazine_size, 30u16);
+    }
+
+    /// AC1 — `Weapon` carries `damage` / `punch` / `shred`, each a distinct newtype
+    /// that derefs to its inner `i32`. Built from **arbitrary** literals (no pinned
+    /// magnitude); reads each leaf back through `Deref`.
+    #[test]
+    fn weapon_damage_leaves_deref_to_inner() {
+        let weapon = Weapon::new(
+            BaseSpread::new(0.1),
+            Accuracy::new(1.0),
+            Kickback::new(0.2),
+            FatalBias::new(4.0),
+            profile(18, 7, 2, DamageType::Plasma),
+            MagazineSize::new(12),
+            FireMode::Single {
+                single: spec(1.0, 0.5, 1),
+            },
+        );
+
+        // Each i32 damage number derefs to its inner value (distinct arbitrary
+        // literals so a field swap would be caught — mechanism, not magnitude).
+        assert_eq!(*weapon.damage, 18i32);
+        assert_eq!(*weapon.punch, 7i32);
+        assert_eq!(*weapon.shred, 2i32);
+    }
+
+    /// AC3 — a `Weapon` carries a `DamageType` and reads it back (mechanism, not
+    /// magnitude). Pairs with `armor_piece_carries_armor_type` in `armor.rs`.
+    #[test]
+    fn weapon_carries_damage_type_round_trip() {
+        let weapon = Weapon::new(
+            BaseSpread::new(0.1),
+            Accuracy::new(1.0),
+            Kickback::new(0.2),
+            FatalBias::new(4.0),
+            profile(1, 1, 1, DamageType::Rend),
+            MagazineSize::new(1),
+            FireMode::Single {
+                single: spec(1.0, 0.5, 1),
+            },
+        );
+        assert_eq!(weapon.damage_type, DamageType::Rend);
+    }
+
+    /// AC2 (one half) — `DamageType` has exactly 7 variants, in wheel-node order.
+    /// The mirror-parity half lives in `armor.rs` (it needs both enums).
+    #[test]
+    fn damage_type_has_seven_variants() {
+        assert_eq!(DamageType::ALL.len(), 7);
+        // Node order is pinned (matchup.md Table 1) — the parity test in armor.rs
+        // relies on it.
+        assert_eq!(
+            DamageType::ALL,
+            [
+                DamageType::Shock,
+                DamageType::Blast,
+                DamageType::Chem,
+                DamageType::Kinetic,
+                DamageType::Plasma,
+                DamageType::Rend,
+                DamageType::Las,
+            ]
+        );
     }
 
     /// C2 — each [`FireMode`] selector variant constructs and its per-mode fields
@@ -408,6 +675,10 @@ mod tests {
             accuracy: 1.1,
             kickback: 0.3,
             fatal_bias: 5.0,
+            damage: 14,
+            punch: 6,
+            shred: 4,
+            damage_type: Kinetic,
             magazine_size: 24,
             fire_mode: SingleBurstFullAuto(
                 single:    (cone_mult: 1.0, tu_percent: 0.5, shots: 1),

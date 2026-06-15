@@ -18,12 +18,12 @@ use bevy::{
     prelude::{Commands, Entity, MinimalPlugins, World},
 };
 use gdtf_battle_sim::{
-    Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BattleSeed,
-    BattleSetup, BodyPart, Cell, CellLevel, CombatTuning, ConcentrationP, ConeAngle, CoverEntry,
-    CoverHp, CoverLedger, Direction, Facing, Faction, GangerSpawn, HeightBand, Hp, Level,
-    LifeState, Luck, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting,
-    ShotInputs, ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stance, StanceKind,
-    SurfaceGrid, Toughness, Tu, Wounds, resolve_coarse, setup_battle,
+    Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
+    BattleSeed, BattleSetup, BodyPart, Cell, CellLevel, CombatTuning, ConcentrationP, ConeAngle,
+    CoverEntry, CoverHp, CoverLedger, Direction, Facing, Faction, GangerSpawn, HeightBand, Hp,
+    Level, LifeState, Luck, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth,
+    Shooting, ShotInputs, ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stance,
+    StanceKind, SurfaceGrid, Toughness, Tu, Wounds, resolve_coarse, setup_battle,
 };
 
 /// A `(cell, level)` key from raw coordinates.
@@ -39,6 +39,7 @@ const fn arbitrary_armor(base: i32) -> SourceArmor {
         ArmorProtection::new(base + 1),
         ArmorIntegrity::new(base + 2),
         ArmorHardness::new(base + 3),
+        ArmorType::DEFAULT,
     ))
 }
 

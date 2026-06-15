@@ -56,8 +56,8 @@ pub mod vertical;
 pub mod weapon;
 
 pub use armor::{
-    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BodyPart, SourceArmor,
-    WornArmor,
+    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
+    SourceArmor, WornArmor,
 };
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
 pub use clearance::{Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant};
@@ -105,6 +105,7 @@ pub use vertical::{
     build_vertical_link_graph,
 };
 pub use weapon::{
-    Accuracy, BaseSpread, FatalBias, FireMode, FireModeSpec, Kickback, MagazineSize, ModeConeMult,
-    ModeShots, ModeTuPercent, Weapon,
+    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback, MagazineSize,
+    ModeConeMult, ModeShots, ModeTuPercent, Weapon, WeaponDamage, WeaponDamageProfile, WeaponPunch,
+    WeaponShred,
 };

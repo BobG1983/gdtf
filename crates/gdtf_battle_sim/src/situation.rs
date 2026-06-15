@@ -368,7 +368,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        armor::{ArmorFloor, ArmorIntegrity, ArmorPiece, BodyPart},
+        armor::{ArmorFloor, ArmorIntegrity, ArmorPiece, ArmorType, BodyPart},
         cover::{Destroyed, HeightBand},
         ganger::{Direction, StanceKind},
         metric::{Cell, Level},
@@ -388,6 +388,7 @@ mod tests {
             ArmorProtection::new(base + 1),
             ArmorIntegrity::new(base + 2),
             ArmorHardness::new(base + 3),
+            ArmorType::DEFAULT,
         ))
     }
 

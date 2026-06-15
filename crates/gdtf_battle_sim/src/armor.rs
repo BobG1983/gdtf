@@ -25,8 +25,19 @@
 //! that copy wears. Seeding by value means a worn-copy mutation can never leak
 //! back to the roster source. The full situation→entities setup that places these
 //! components on ganger entities is E1.8 (GTW-158), not this slice.
+//!
+//! ## E3.1 — the armor-type vocabulary
+//!
+//! The E3.1 slice adds [`ArmorType`] (the armor half of the dual vocabulary of
+//! `docs/combat/matchup.md` §"The 7 types") and gives every [`ArmorPiece`] an
+//! `armor_type` so a struck piece carries its wheel node. [`ArmorType`]'s seven
+//! variants name the same seven wheel nodes as [`crate::weapon::DamageType`], node
+//! `i` of one mirroring node `i` of the other — one tournament wheel drives both
+//! sides. This is the DATA substrate only; the matchup lookup (the wheel itself)
+//! is a later E3 slice, not here.
 
 use bevy::prelude::{Component, Deref, DerefMut};
+use serde::Deserialize;
 
 /// The minimum damage a landing hit deals through this armor — "a vest still
 /// bruises" (`weapons-and-armor.md` §"Armor stats": `floor`).
@@ -155,13 +166,74 @@ impl BodyPart {
     }
 }
 
-/// The four armor stats bundled for a **single** body location.
+/// The **armor type** a piece is — one of the seven shared wheel nodes
+/// (`docs/combat/matchup.md` §"The 7 types", Table 1).
+///
+/// This is the armor half of the **dual vocabulary**: each variant names the same
+/// wheel node `#` as the mirror [`crate::weapon::DamageType`] variant (node `i` of
+/// one mirrors node `i` of the other), so one tournament wheel drives both sides
+/// (matchup.md §"The 7 types": "same wheel node `#`, two names"). The order here
+/// pins the node index — variant `i` is wheel node `i`:
+///
+/// ```text
+/// 0 Plated · 1 Refractive · 2 Flak · 3 Void · 4 Hazard · 5 Reinforced · 6 Ceramic
+/// ```
+///
+/// A named domain enum, not a bare `u8` (no-bare-types). The matchup lookup itself
+/// — which armor node resists which weapon node — is a later E3 slice; this only
+/// fixes the vocabulary and its node order. `Deserialize` so an armor piece's
+/// authored data names its type by variant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+pub enum ArmorType {
+    /// Wheel node 0 — mirror of [`DamageType::Shock`](crate::weapon::DamageType::Shock).
+    Plated,
+    /// Wheel node 1 — mirror of [`DamageType::Blast`](crate::weapon::DamageType::Blast).
+    Refractive,
+    /// Wheel node 2 — mirror of [`DamageType::Chem`](crate::weapon::DamageType::Chem).
+    Flak,
+    /// Wheel node 3 — mirror of [`DamageType::Kinetic`](crate::weapon::DamageType::Kinetic).
+    Void,
+    /// Wheel node 4 — mirror of [`DamageType::Plasma`](crate::weapon::DamageType::Plasma).
+    Hazard,
+    /// Wheel node 5 — mirror of [`DamageType::Rend`](crate::weapon::DamageType::Rend).
+    Reinforced,
+    /// Wheel node 6 — mirror of [`DamageType::Las`](crate::weapon::DamageType::Las).
+    Ceramic,
+}
+
+impl ArmorType {
+    /// The seven armor types in **wheel-node order** (`docs/combat/matchup.md`
+    /// Table 1) — index `i` is wheel node `i`, the mirror of
+    /// [`crate::weapon::DamageType::ALL`]`[i]`. The exhaustive sweep the
+    /// variant-count and dual-vocabulary-parity tests iterate.
+    pub const ALL: [Self; 7] = [
+        Self::Plated,
+        Self::Refractive,
+        Self::Flak,
+        Self::Void,
+        Self::Hazard,
+        Self::Reinforced,
+        Self::Ceramic,
+    ];
+
+    /// The default armor type when a source does not specify one
+    /// (`docs/combat/matchup.md` §"The 7 types"). Node 0 — [`Plated`](ArmorType::Plated)
+    /// — is the canonical first wheel node; seed sites with no authored type
+    /// (e.g. cover, or a roster source predating per-piece types) fall back to it
+    /// rather than carry an absent value. A neutral, explicit default, not a
+    /// gameplay claim — the magnitudes and per-piece authoring are TBD.
+    pub const DEFAULT: Self = Self::Plated;
+}
+
+/// The four armor stats bundled for a **single** body location, plus the piece's
+/// [`ArmorType`] (its matchup-wheel node).
 ///
 /// One piece of armor protecting one [`BodyPart`]: its [`ArmorFloor`],
-/// [`ArmorProtection`], [`ArmorIntegrity`], and [`ArmorHardness`]. This is the
-/// shared shape used both in the read-only roster [`SourceArmor`] record and in
-/// the battle-local [`WornArmor`] copy; battle wear mutates only the worn copy's
-/// [`ArmorIntegrity`].
+/// [`ArmorProtection`], [`ArmorIntegrity`], [`ArmorHardness`], and its
+/// [`ArmorType`]. This is the shared shape used both in the read-only roster
+/// [`SourceArmor`] record and in the battle-local [`WornArmor`] copy; battle wear
+/// mutates only the worn copy's [`ArmorIntegrity`] (the type and the other stats
+/// are immutable through the worn copy).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ArmorPiece {
     /// Minimum damage a landing hit deals through this piece.
@@ -172,22 +244,26 @@ pub struct ArmorPiece {
     pub integrity:  ArmorIntegrity,
     /// Punch this piece ignores (does not degrade).
     pub hardness:   ArmorHardness,
+    /// The piece's matchup-wheel node (its [`ArmorType`]).
+    pub armor_type: ArmorType,
 }
 
 impl ArmorPiece {
-    /// Build an armor piece from its four stats.
+    /// Build an armor piece from its four stats and its [`ArmorType`].
     #[must_use]
     pub const fn new(
         floor: ArmorFloor,
         protection: ArmorProtection,
         integrity: ArmorIntegrity,
         hardness: ArmorHardness,
+        armor_type: ArmorType,
     ) -> Self {
         Self {
             floor,
             protection,
             integrity,
             hardness,
+            armor_type,
         }
     }
 }
@@ -299,12 +375,13 @@ mod tests {
     /// never a magnitude (magnitudes are TBD tuning).
     fn arbitrary_source() -> SourceArmor {
         let pieces = [
-            // Head
+            // Head — distinct ArmorType per slot proves the type copies per piece.
             ArmorPiece::new(
                 ArmorFloor::new(1),
                 ArmorProtection::new(11),
                 ArmorIntegrity::new(21),
                 ArmorHardness::new(31),
+                ArmorType::Plated,
             ),
             // Torso
             ArmorPiece::new(
@@ -312,6 +389,7 @@ mod tests {
                 ArmorProtection::new(12),
                 ArmorIntegrity::new(22),
                 ArmorHardness::new(32),
+                ArmorType::Refractive,
             ),
             // L-Arm
             ArmorPiece::new(
@@ -319,6 +397,7 @@ mod tests {
                 ArmorProtection::new(13),
                 ArmorIntegrity::new(23),
                 ArmorHardness::new(33),
+                ArmorType::Flak,
             ),
             // R-Arm
             ArmorPiece::new(
@@ -326,6 +405,7 @@ mod tests {
                 ArmorProtection::new(14),
                 ArmorIntegrity::new(24),
                 ArmorHardness::new(34),
+                ArmorType::Void,
             ),
             // L-Leg
             ArmorPiece::new(
@@ -333,6 +413,7 @@ mod tests {
                 ArmorProtection::new(15),
                 ArmorIntegrity::new(25),
                 ArmorHardness::new(35),
+                ArmorType::Hazard,
             ),
             // R-Leg
             ArmorPiece::new(
@@ -340,6 +421,7 @@ mod tests {
                 ArmorProtection::new(16),
                 ArmorIntegrity::new(26),
                 ArmorHardness::new(36),
+                ArmorType::Reinforced,
             ),
         ];
         SourceArmor::new(pieces)
@@ -367,6 +449,10 @@ mod tests {
                 "integrity mismatch at {part:?}"
             );
             assert_eq!(cpy.hardness, src.hardness, "hardness mismatch at {part:?}");
+            assert_eq!(
+                cpy.armor_type, src.armor_type,
+                "armor_type mismatch at {part:?}"
+            );
             // And the whole piece is equal.
             assert_eq!(cpy, src, "piece mismatch at {part:?}");
         }
@@ -421,6 +507,7 @@ mod tests {
             ArmorProtection::new(0),
             ArmorIntegrity::new(3),
             ArmorHardness::new(0),
+            ArmorType::DEFAULT,
         ));
         let mut worn = WornArmor::seed_from(&source);
 
@@ -456,5 +543,73 @@ mod tests {
         let mut integrity = ArmorIntegrity::new(4);
         *integrity -= 1;
         assert_eq!(*integrity, 3i32);
+    }
+
+    /// AC2 — `ArmorType` has exactly 7 variants, in wheel-node order
+    /// (`docs/combat/matchup.md` Table 1).
+    #[test]
+    fn armor_type_has_seven_variants() {
+        assert_eq!(ArmorType::ALL.len(), 7);
+        assert_eq!(
+            ArmorType::ALL,
+            [
+                ArmorType::Plated,
+                ArmorType::Refractive,
+                ArmorType::Flak,
+                ArmorType::Void,
+                ArmorType::Hazard,
+                ArmorType::Reinforced,
+                ArmorType::Ceramic,
+            ]
+        );
+    }
+
+    /// AC2 (dual-vocabulary parity) — both wheels are length 7 and node `i` of
+    /// [`ArmorType::ALL`] mirrors node `i` of [`crate::weapon::DamageType::ALL`]
+    /// (matchup.md §"The 7 types": "same wheel node `#`, two names"). This is the
+    /// cross-enum half AC2 requires; it lives here because it imports both enums.
+    #[test]
+    fn dual_vocabulary_nodes_parity() {
+        use crate::weapon::DamageType;
+
+        // Same node count — neither vocabulary can drift from the shared wheel.
+        assert_eq!(ArmorType::ALL.len(), DamageType::ALL.len());
+        assert_eq!(ArmorType::ALL.len(), 7);
+
+        // matchup.md Table 1: node # ↦ (Armor, Weapon/Damage). Node `i` of each
+        // `ALL` array must be exactly this mirror pair.
+        let expected_mirror = [
+            (ArmorType::Plated, DamageType::Shock),
+            (ArmorType::Refractive, DamageType::Blast),
+            (ArmorType::Flak, DamageType::Chem),
+            (ArmorType::Void, DamageType::Kinetic),
+            (ArmorType::Hazard, DamageType::Plasma),
+            (ArmorType::Reinforced, DamageType::Rend),
+            (ArmorType::Ceramic, DamageType::Las),
+        ];
+        for (i, (armor, damage)) in expected_mirror.into_iter().enumerate() {
+            assert_eq!(ArmorType::ALL[i], armor, "armor node {i} drifted");
+            assert_eq!(DamageType::ALL[i], damage, "damage node {i} drifted");
+        }
+    }
+
+    /// AC3 — an `ArmorPiece` carries an `ArmorType` and reads it back (mechanism,
+    /// not magnitude). Pairs with `weapon_carries_damage_type_round_trip` in
+    /// `weapon.rs`.
+    #[test]
+    fn armor_piece_carries_armor_type() {
+        let piece = ArmorPiece::new(
+            ArmorFloor::new(1),
+            ArmorProtection::new(2),
+            ArmorIntegrity::new(3),
+            ArmorHardness::new(4),
+            ArmorType::Ceramic,
+        );
+        assert_eq!(piece.armor_type, ArmorType::Ceramic);
+
+        // And it survives the seed copy onto a worn piece (the field is part of the
+        // copied record, like the four stats).
+        let worn = WornArmor::seed_from(&SourceArmor::uniform(piece));
+        assert_eq!(worn.at(BodyPart::Torso).armor_type, ArmorType::Ceramic);
     }
 }
