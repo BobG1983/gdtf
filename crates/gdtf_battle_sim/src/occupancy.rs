@@ -171,17 +171,25 @@ impl OccupantPlacement {
 ///
 /// This is the INPUT shape E1.6 defines: the situation's static-terrain placements
 /// ([`TerrainPlacement`]) and its live-occupant placements ([`OccupantPlacement`],
-/// each carrying an [`Entity`] handle). It is deliberately the **grid-relevant slice
-/// only** — the full situation (gangers' full state, scatter, upper-floor slabs,
-/// vertical links) and the setup orchestration that spawns entities are GTW-158
-/// (E1.8), NOT built here (`docs/architecture.md`: the situation is "gangers, walls,
-/// scatter, upper-floor slabs, and stair/ladder vertical links").
+/// each carrying an [`Entity`] handle), plus (E1.10 / GTW-160) the authored
+/// stair/ladder [`vertical_links`](Situation::vertical_links). It is deliberately
+/// the **grid-relevant slice only** — the full situation (gangers' full state,
+/// scatter, upper-floor slabs) and the setup orchestration that spawns entities are
+/// GTW-158 (E1.8), NOT built here (`docs/architecture.md`: the situation is
+/// "gangers, walls, scatter, upper-floor slabs, and stair/ladder vertical links").
 #[derive(Debug, Clone, Default)]
 pub struct Situation {
-    /// The static-terrain placements (walls / cover) to pour into the grid.
-    pub terrain:   Vec<TerrainPlacement>,
+    /// The static-terrain placements (walls / cover) to pour into the grid. Also
+    /// the **cell-existence source** for vertical-link validation (E1.10): a link
+    /// endpoint must appear here or it is rejected as dangling.
+    pub terrain:        Vec<TerrainPlacement>,
     /// The live-occupant placements (entities) to pour into the grid.
-    pub occupants: Vec<OccupantPlacement>,
+    pub occupants:      Vec<OccupantPlacement>,
+    /// The authored stair/ladder vertical links (E1.10 / GTW-160) — validated and
+    /// poured into the [`crate::vertical::VerticalLinkGraph`] by
+    /// [`crate::vertical::build_vertical_link_graph`]. The only way a ganger
+    /// changes storey (`docs/combat/combat.md`).
+    pub vertical_links: Vec<crate::vertical::VerticalLink>,
 }
 
 impl Situation {
@@ -453,14 +461,15 @@ mod tests {
         let empty_at = key(10, 10, 0);
 
         let situation = Situation {
-            terrain:   vec![
+            terrain:        vec![
                 TerrainPlacement::new(wall_at, TerrainKind::Wall),
                 TerrainPlacement::new(cover_at, TerrainKind::Cover),
             ],
-            occupants: vec![
+            occupants:      vec![
                 OccupantPlacement::new(alice_at, alice),
                 OccupantPlacement::new(bob_at, bob),
             ],
+            vertical_links: Vec::new(),
         };
 
         let grid = OccupancyGrid::build_from_situation(&situation);
@@ -512,11 +521,12 @@ mod tests {
     #[test]
     fn destroyed_cover_is_excluded_from_blocking() {
         let situation = Situation {
-            terrain:   vec![
+            terrain:        vec![
                 TerrainPlacement::new(key(2, 2, 0), TerrainKind::Cover),
                 TerrainPlacement::new(key(9, 9, 0), TerrainKind::Cover),
             ],
-            occupants: Vec::new(),
+            occupants:      Vec::new(),
+            vertical_links: Vec::new(),
         };
         let mut grid = OccupancyGrid::build_from_situation(&situation);
 
@@ -547,8 +557,9 @@ mod tests {
     #[test]
     fn wall_blocks_open_does_not() {
         let situation = Situation {
-            terrain:   vec![TerrainPlacement::new(key(4, 4, 0), TerrainKind::Wall)],
-            occupants: Vec::new(),
+            terrain:        vec![TerrainPlacement::new(key(4, 4, 0), TerrainKind::Wall)],
+            occupants:      Vec::new(),
+            vertical_links: Vec::new(),
         };
         let grid = OccupancyGrid::build_from_situation(&situation);
 
@@ -656,11 +667,12 @@ mod tests {
         let at = key(3, 3, 0);
 
         let situation = Situation {
-            terrain:   Vec::new(),
-            occupants: vec![
+            terrain:        Vec::new(),
+            occupants:      vec![
                 OccupantPlacement::new(at, first),
                 OccupantPlacement::new(at, second),
             ],
+            vertical_links: Vec::new(),
         };
         let grid = OccupancyGrid::build_from_situation(&situation);
         assert_eq!(

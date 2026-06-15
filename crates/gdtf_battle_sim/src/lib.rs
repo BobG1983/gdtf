@@ -75,6 +75,19 @@
 //! global/thread RNG anywhere in the sim — `docs/combat/resolution.md`'s "every
 //! draw comes from the model-owned seeded RNG, injected once at setup", pinned
 //! by `docs/testing.md`'s same-seed-same-stream property (and a source scan).
+//!
+//! E1.10 ([`vertical`]) adds the [`vertical::VerticalLinkGraph`] resource — the
+//! validated index of authored stair / ladder [`vertical::VerticalLink`]s, the
+//! ONLY way a ganger changes storey (`docs/combat/combat.md`). It extends the
+//! GTW-156 [`occupancy::Situation`] with [`occupancy::Situation::vertical_links`],
+//! and [`vertical::build_vertical_link_graph`] validates each authored link at
+//! setup (level in `0..`[`metric::MAX_LEVELS`]; no dangling endpoint cell; the two
+//! endpoints on different storeys) — returning a typed
+//! [`vertical::InvalidVerticalLink`], NEVER a panic — before indexing each valid
+//! link by departure `(cell, level)` (both directions unless
+//! [`one-way`](vertical::LinkKind::is_one_way)). Graph + validation ONLY: no
+//! traversal / pathfinding / movement cost (GTW-12). See `docs/architecture.md`'s
+//! "vertical-link graph".
 
 pub mod armor;
 pub mod cover;
@@ -85,6 +98,7 @@ pub mod occupancy_sync;
 pub mod rng;
 pub mod surface;
 pub mod tuning;
+pub mod vertical;
 
 pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, BodyPart, SourceArmor,
@@ -112,4 +126,8 @@ pub use tuning::{
     BandEdgePx, BodyPartWeight, BodyPartWeights, CombatTuning, DefenderLuckSpreadCap,
     PenDamageScale, ProjectileBandEdges, RandomSpread, RandomSpreadMin, SeverityScaling,
     ShooterLuckScale, ToughnessMitigation,
+};
+pub use vertical::{
+    InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
+    build_vertical_link_graph,
 };
