@@ -66,6 +66,15 @@
 //! [`occupancy_sync::OccupancyMaintenancePlugin`] is the registration unit (the
 //! three chained systems + the message buffer); the app adds it when the sim is
 //! wired into the runtime (E1.8 / E5), which is out of scope here.
+//!
+//! E1.9 ([`rng`]) adds the [`rng::SimRng`] resource — the model's single,
+//! deterministic draw point. It wraps a private seeded `StdRng` (constructed
+//! from a [`rng::BattleSeed`] via `seed_from_u64`, so the concrete RNG type
+//! never escapes), and exposes a thin draw surface plus an `&mut impl rand::Rng`
+//! handle for the `fn(.., rng: &mut impl Rng)` combat-math shape. There is NO
+//! global/thread RNG anywhere in the sim — `docs/combat/resolution.md`'s "every
+//! draw comes from the model-owned seeded RNG, injected once at setup", pinned
+//! by `docs/testing.md`'s same-seed-same-stream property (and a source scan).
 
 pub mod armor;
 pub mod cover;
@@ -73,6 +82,7 @@ pub mod ganger;
 pub mod metric;
 pub mod occupancy;
 pub mod occupancy_sync;
+pub mod rng;
 pub mod surface;
 pub mod tuning;
 
@@ -96,6 +106,7 @@ pub use occupancy_sync::{
     CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
     sync_moved_gangers,
 };
+pub use rng::{BattleSeed, SimRng};
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
     BandEdgePx, BodyPartWeight, BodyPartWeights, CombatTuning, DefenderLuckSpreadCap,
