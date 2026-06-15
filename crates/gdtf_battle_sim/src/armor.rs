@@ -347,6 +347,19 @@ impl WornArmor {
         self.pieces[part.index()]
     }
 
+    /// Whether the worn piece at `part` still protects — its
+    /// [`ArmorIntegrity`] is **strictly above zero**
+    /// (`weapons-and-armor.md` §"Per-hit resolution" step 3: "useless at `≤ 0`").
+    ///
+    /// A piece worn to `integrity ≤ 0` stops protecting for the rest of the
+    /// battle: later hits on that location resolve as **bare flesh** (the doc's
+    /// "later hits on that location resolve as bare flesh"). This is the gate the
+    /// per-hit resolver reads to decide whether the struck location still soaks.
+    #[must_use]
+    pub fn protects(&self, part: BodyPart) -> bool {
+        *self.at(part).integrity > 0
+    }
+
     /// Degrade the worn integrity at `part` by `wear`, mutating **only** this
     /// battle-local copy (`weapons-and-armor.md` §"Per-hit resolution" step 3:
     /// `integrity −= …`).
@@ -519,6 +532,48 @@ mod tests {
         );
         // The source is, again, untouched.
         assert_eq!(source.at(BodyPart::Head).integrity, ArmorIntegrity::new(3));
+    }
+
+    /// [`WornArmor::protects`] tracks the "useless at `≤ 0`" gate: a piece with
+    /// positive integrity protects, and once worn to `≤ 0` it stops protecting
+    /// (later hits resolve as bare flesh — `weapons-and-armor.md` step 3). Wears a
+    /// piece from positive, through exactly zero, to negative and asserts the
+    /// predicate flips at the crossing and stays false thereafter.
+    #[test]
+    fn protects_is_false_at_or_below_zero() {
+        let source = SourceArmor::uniform(ArmorPiece::new(
+            ArmorFloor::new(0),
+            ArmorProtection::new(0),
+            ArmorIntegrity::new(2),
+            ArmorHardness::new(0),
+            ArmorType::DEFAULT,
+        ));
+        let mut worn = WornArmor::seed_from(&source);
+
+        // Positive integrity ⇒ still protecting.
+        assert!(
+            worn.protects(BodyPart::Torso),
+            "a piece with integrity > 0 must protect",
+        );
+
+        // Wear exactly TO zero — the boundary itself is unprotected (≤ 0, not < 0).
+        worn.wear_integrity(BodyPart::Torso, ArmorIntegrity::new(2));
+        assert_eq!(*worn.at(BodyPart::Torso).integrity, 0);
+        assert!(
+            !worn.protects(BodyPart::Torso),
+            "a piece worn to exactly 0 must stop protecting (≤ 0 gate)",
+        );
+
+        // Wear further below zero — still unprotected.
+        worn.wear_integrity(BodyPart::Torso, ArmorIntegrity::new(5));
+        assert!(
+            *worn.at(BodyPart::Torso).integrity < 0,
+            "integrity must fall below zero",
+        );
+        assert!(
+            !worn.protects(BodyPart::Torso),
+            "a piece worn below zero must stay unprotected (bare flesh)",
+        );
     }
 
     /// The six [`BodyPart`] variants index distinctly across `0..6` — the keying

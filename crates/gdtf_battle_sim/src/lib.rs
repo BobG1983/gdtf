@@ -18,7 +18,10 @@
 //! - [`tuning`] — the [`tuning::CombatTuning`] resource: every balance
 //!   coefficient, serde-loaded from `assets/combat/tuning.ron`.
 //! - [`ganger`] — per-field ganger battle-state components; [`armor`] — armor
-//!   stats + the battle-local [`armor::WornArmor`].
+//!   stats + the battle-local [`armor::WornArmor`]; [`armor_wear`] — persisting a
+//!   hit's [`resolve_hit::IntegrityWear`] onto the worn copy
+//!   ([`armor_wear::wear_armor`]) + the [`armor_wear::ArmorBroken`] message on the
+//!   protecting→broken crossing.
 //! - Terrain & space: [`cover`] (the [`cover::CoverLedger`] + [`cover::HeightBand`]
 //!   banding), [`surface`] (persistent floor/roof-slab + ground grid),
 //!   [`occupancy`] + [`occupancy_sync`] (the coarse 3D occupancy grid and its
@@ -47,6 +50,7 @@
 //! `docs/architecture.md` — the model/view split this crate sits inside.
 
 pub mod armor;
+pub mod armor_wear;
 pub mod central_axis;
 pub mod clearance;
 pub mod cone;
@@ -74,6 +78,7 @@ pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
     SourceArmor, WornArmor,
 };
+pub use armor_wear::{ArmorBroken, wear_armor};
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
 pub use clearance::{Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant};
 pub use cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor};
