@@ -5,8 +5,8 @@
 //! change ("Coefficients live in the combat-tuning data", resolution.md §"What's
 //! pure math vs sim"). [`CombatTuning`] is a Bevy [`Resource`] that
 //! deserializes from a `.ron` file, and **no numeric tuning literal lives
-//! anywhere outside this module** — the three coordinate-system constants in
-//! [`crate::metric`] are the only other named numbers.
+//! anywhere outside this module** — the [`crate::metric::MAX_LEVELS`]
+//! coordinate-system constant is the only other named number.
 //!
 //! Every numeric leaf is a named newtype (no bare `f32`/`u16` field), per the
 //! no-bare-types rule: each carries a derived [`Deref`] to its inner value and
@@ -15,15 +15,17 @@
 use bevy::prelude::{Deref, Resource};
 use serde::Deserialize;
 
-/// A projectile clearance band edge, in battle-space px above the crossed cell's
-/// floor.
+/// A projectile clearance band edge, as a **level-fraction** — a dimensionless
+/// fraction of one level's height (`z ∈ [0,1)` within a storey).
 ///
 /// One newtype shared by **both** band edges of [`ProjectileBandEdges`]: the two
-/// edges are the same *kind* of value (a px clearance threshold), distinguished
-/// by their field. `#[serde(transparent)]` lets it parse a bare RON scalar.
+/// edges are the same *kind* of value (a level-fraction clearance threshold),
+/// distinguished by their field. Because they are fractions of a storey they
+/// re-scale with the cubic voxel and carry no pixel (`docs/combat/battle-space.md`
+/// §"Banding"). `#[serde(transparent)]` lets it parse a bare RON scalar.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct BandEdgePx(f32);
+pub struct BandEdge(f32);
 
 /// `j` — the penetrating-damage scale: how hard pen damage pushes severity up
 /// (resolution.md §6 severity score).
@@ -71,29 +73,31 @@ pub struct RandomSpreadMin(f32);
 #[serde(transparent)]
 pub struct BodyPartWeight(u16);
 
-/// The projectile clearance band edges, in battle-space px above the crossed
-/// cell's floor.
+/// The projectile clearance band edges, as **level-fractions** within one
+/// level's height.
 ///
-/// The march bands each crossed cell LOW / MID / HIGH by the round's height and
-/// compares it to the occupant's band (resolution.md §2). These authored
-/// absolutes are **decoupled from the storey** — they kept their px through the
-/// 200 → 170 storey retune so what projectiles clear didn't shift
-/// (battle-space.md line 27/32). `low_mid` is the LOW→MID edge, `mid_high` the
-/// MID→HIGH edge.
+/// The march bands each crossed cell LOW / MID / HIGH by the round's continuous
+/// `z` within the crossed level and compares it to the occupant's band
+/// (resolution.md §2). The edges are dimensionless fractions of a storey
+/// (defaults ≈ ⅓ and ⅔ of a level), so they re-scale with the cubic voxel and
+/// carry no pixel (`docs/combat/battle-space.md` §"Banding"). `low_mid` is the
+/// LOW→MID edge, `mid_high` the MID→HIGH edge.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProjectileBandEdges {
-    /// The LOW→MID clearance edge (px above the cell floor). Doc default 66.7.
-    pub low_mid:  BandEdgePx,
-    /// The MID→HIGH clearance edge (px above the cell floor). Doc default 133.3.
-    pub mid_high: BandEdgePx,
+    /// The LOW→MID clearance edge (level-fraction). Default ≈ ⅓ of a level.
+    pub low_mid:  BandEdge,
+    /// The MID→HIGH clearance edge (level-fraction). Default ≈ ⅔ of a level.
+    pub mid_high: BandEdge,
 }
 
 impl Default for ProjectileBandEdges {
     fn default() -> Self {
-        // Authored absolutes from docs/combat/battle-space.md line 27.
+        // Tunable level-fraction defaults (≈ ⅓ and ⅔ of a level) from
+        // docs/combat/battle-space.md §"Banding". These are balance data, not a
+        // coordinate-system fact — value-agnostic tests only.
         Self {
-            low_mid:  BandEdgePx(66.7),
-            mid_high: BandEdgePx(133.3),
+            low_mid:  BandEdge(0.33),
+            mid_high: BandEdge(0.67),
         }
     }
 }
@@ -214,7 +218,7 @@ mod tests {
     fn tuning_newtypes_wrap_inner_and_deref() {
         // Each f32 newtype: deref reaches the inner f32 (bit-exact arbitrary
         // value, not the default).
-        assert_eq!((*BandEdgePx(5.0)).to_bits(), 5.0_f32.to_bits());
+        assert_eq!((*BandEdge(5.0)).to_bits(), 5.0_f32.to_bits());
         assert_eq!((*PenDamageScale(2.5)).to_bits(), 2.5_f32.to_bits());
         assert_eq!((*ToughnessMitigation(3.5)).to_bits(), 3.5_f32.to_bits());
         assert_eq!((*ShooterLuckScale(4.5)).to_bits(), 4.5_f32.to_bits());

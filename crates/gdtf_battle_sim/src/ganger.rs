@@ -7,8 +7,8 @@
 //! here (the GTW-6 architectural ruling); a system that only cares about `Hp`
 //! queries `&Hp` alone, never a god-struct.
 //!
-//! Every value carries its meaning in its type (no-bare-types): a px-free grid
-//! key is wrapped in [`Position`], a turn count in [`Tu`], and so on. The
+//! Every value carries its meaning in its type (no-bare-types): a cubic-voxel
+//! grid key is wrapped in [`Position`], a turn count in [`Tu`], and so on. The
 //! newtypes use the E1.1 house style — a **private** inner field plus a derived
 //! [`Deref`] (never a hand-written `impl Deref`) — and the inner direction /
 //! stance / life kinds are **named domain enums**, not bare primitives.

@@ -7,8 +7,9 @@
 //! The presenter (`gdtf_battle_presenter`) mirrors this state; combat rules
 //! never live in the view.
 //!
-//! E1.1 lays the foundation: the [`metric`] battle-space px coordinate system
-//! (newtypes + the three named constants) and the [`tuning`] combat-tuning
+//! E1.1 lays the foundation: the [`metric`] cubic-voxel battle-space coordinate
+//! system (newtypes + [`metric::MAX_LEVELS`] + the [`metric::cell_center`] /
+//! [`metric::pos_to_cell`] conversions) and the [`tuning`] combat-tuning
 //! resource. See `docs/combat/battle-space.md` and `docs/combat/resolution.md`.
 //!
 //! E1.2 ([`ganger`]) decomposes ganger battle state into nine **separate**
@@ -119,13 +120,13 @@ pub use armor::{
     WornArmor,
 };
 pub use cover::{
-    BandHeightPx, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,
+    BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,
     band_for,
 };
 pub use ganger::{
     Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
 };
-pub use metric::{BattlePx, CELL_PITCH_PX, Cell, CellLevel, Level, MAX_LEVELS, Z_LEVEL_HEIGHT};
+pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
     OccupantPlacement, TerrainKind, TerrainPlacement,
@@ -140,11 +141,88 @@ pub use situation::{
 };
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tuning::{
-    BandEdgePx, BodyPartWeight, BodyPartWeights, CombatTuning, DefenderLuckSpreadCap,
-    PenDamageScale, ProjectileBandEdges, RandomSpread, RandomSpreadMin, SeverityScaling,
-    ShooterLuckScale, ToughnessMitigation,
+    BandEdge, BodyPartWeight, BodyPartWeights, CombatTuning, DefenderLuckSpreadCap, PenDamageScale,
+    ProjectileBandEdges, RandomSpread, RandomSpreadMin, SeverityScaling, ShooterLuckScale,
+    ToughnessMitigation,
 };
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
     build_vertical_link_graph,
 };
+
+#[cfg(test)]
+mod pixel_scan_tests {
+    //! GTW-174 AC #1: a source scan confirming **zero residual pixel concept** in
+    //! the sim crate. The metric is cubic-voxel sim units; the presenter owns all
+    //! sim→view scaling, so no pixel token may appear anywhere in `src/`.
+
+    use std::{fs, path::Path};
+
+    /// Recursively collect every `.rs` file under `dir` into `out`.
+    fn collect_rs(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+        let Ok(read) = fs::read_dir(dir) else {
+            return;
+        };
+        for entry in read.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                collect_rs(&path, out);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                out.push(path);
+            }
+        }
+    }
+
+    /// No pixel concept survives anywhere in the sim source: not the two-letter
+    /// pixel token, not the deleted coordinate constants, not the retired position
+    /// newtype. Scans every `src/**/*.rs` (this file included) as text with
+    /// comments stripped, so an honest doc-comment is never a false hit and a real
+    /// re-introduction in code is caught.
+    #[test]
+    fn sim_source_has_no_pixel_concept() {
+        // Forbidden strings built from FRAGMENTS so the literal token never appears
+        // in this file's *code* (the scan would otherwise self-match — see the
+        // engineer memory on source-scan self-match).
+        let two_letter = ["p", "x"].concat();
+        let deleted_pitch = ["CELL", "PITCH", &two_letter.to_uppercase()].join("_");
+        let deleted_height = ["Z", "LEVEL", "HEIGHT"].join("_");
+        let retired_pos = ["Battle", &two_letter[..1].to_uppercase(), &two_letter[1..]].concat();
+        let forbidden = [
+            two_letter.as_str(),
+            deleted_pitch.as_str(),
+            deleted_height.as_str(),
+            retired_pos.as_str(),
+        ];
+
+        let manifest = env!("CARGO_MANIFEST_DIR");
+        let src_root = Path::new(manifest).join("src");
+        let mut files = Vec::new();
+        collect_rs(&src_root, &mut files);
+        assert!(!files.is_empty(), "scan must find source files under src/");
+
+        let mut hits = Vec::new();
+        for file in &files {
+            let Ok(body) = fs::read_to_string(file) else {
+                continue;
+            };
+            for (lineno, raw) in body.lines().enumerate() {
+                // Strip the line from its first comment marker so a doc/inline
+                // comment mentioning the concept is not a hit — only code counts.
+                let marker = ["/", "/"].concat();
+                let code = raw.split(&marker).next().unwrap_or(raw);
+                let lower = code.to_ascii_lowercase();
+                for token in &forbidden {
+                    if lower.contains(&token.to_ascii_lowercase()) {
+                        hits.push(format!("{}:{} :: {token}", file.display(), lineno + 1));
+                    }
+                }
+            }
+        }
+
+        assert!(
+            hits.is_empty(),
+            "residual pixel concept in gdtf_battle_sim source (must be zero):\n{}",
+            hits.join("\n"),
+        );
+    }
+}

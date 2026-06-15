@@ -4,13 +4,15 @@
 // `#[serde(transparent)]` newtype, so it is written as a bare scalar. Each line says what
 // it tunes — edit freely; the sim reads its tuning from this data, never from constants.
 (
-    // Projectile clearance bands — heights in battle-space px ABOVE the crossed cell's
-    // floor. As the shot marches, each cell it crosses is banded LOW / MID / HIGH by the
-    // round's height against these two edges, and the round only sails over an occupant
-    // whose band is strictly lower (resolution.md §2). Decoupled from the storey height.
+    // Projectile clearance bands — LEVEL-FRACTIONS (dimensionless, a fraction of one
+    // level's height; z in [0,1) within a storey) ABOVE the crossed cell's level floor.
+    // As the shot marches, each cell it crosses is banded LOW / MID / HIGH by the round's
+    // within-level fraction against these two edges, and the round only sails over an
+    // occupant whose band is strictly lower (resolution.md §2). Fractions of a level, so
+    // they re-scale with the cubic voxel and carry NO pixel (battle-space.md §"Banding").
     projectile_band_edges: (
-        low_mid:  66.7,   // below this px = LOW, at/above = MID  (the LOW→MID edge)
-        mid_high: 133.3,  // below this px = MID, at/above = HIGH (the MID→HIGH edge)
+        low_mid:  0.33,   // below this fraction of a level = LOW, at/above = MID  (LOW→MID edge)
+        mid_high: 0.67,   // below this fraction of a level = MID, at/above = HIGH (MID→HIGH edge)
     ),
     // Wound-severity score scalars (resolution.md §6). The score is roughly
     //   j·pen_damage − k·Toughness + part_mod + fatal_bias + I·Luck_shooter + roll(0..R_eff),

@@ -27,9 +27,10 @@
 //!    the marker ONLY and does not act on it.
 //!
 //! Height-band thresholds are **never** hardcoded here: [`band_for`] classifies a
-//! px height into a [`HeightBand`] by reading the E1.1 [`BandEdgePx`] edges off
-//! [`CombatTuning`] (`docs/combat/battle-space.md`: band edges 66.7 / 133.3, the
-//! authored absolutes, are tuning data — decoupled from the storey).
+//! within-level fraction into a [`HeightBand`] by reading the E1.1 [`BandEdge`]
+//! level-fraction edges off [`CombatTuning`] (`docs/combat/battle-space.md`
+//! §"Banding": the band edges are tunable level-fractions ≈ ⅓ and ⅔ of a level,
+//! dimensionless and decoupled from any pixel).
 
 use bevy::{
     platform::collections::HashMap,
@@ -68,9 +69,9 @@ impl CoverHp {
 /// band (LOW / MID / HIGH)").
 ///
 /// A named domain enum (the §2/§3 LOW/MID/HIGH banding), introduced here at first
-/// use — not a bare index. The px → band classification lives in [`band_for`],
-/// which reads the tunable [`BandEdgePx`] edges; this enum never carries a px
-/// number itself.
+/// use — not a bare index. The level-fraction → band classification lives in
+/// [`band_for`], which reads the tunable [`BandEdge`] level-fraction edges; this
+/// enum never carries a fraction itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HeightBand {
     /// The lowest clearance band — a round clears it by flying MID or HIGH.
@@ -266,9 +267,10 @@ impl CoverLedger {
     /// `tuning` threads the combat-tuning resource through the system-facing
     /// signature (the spec'd `(cell_level, damage, tuning)` shape): the depletion
     /// arithmetic itself is data-free, but the band each `(cell, level)` occupies
-    /// is classified from `tuning`'s [`BandEdgePx`] edges via [`band_for`], so any
-    /// seeding that derives a band from a px height reads it from the SAME tuning —
-    /// no band number is ever hardcoded here.
+    /// is classified from `tuning`'s [`BandEdge`] level-fraction edges via
+    /// [`band_for`], so any seeding that derives a band from a within-level
+    /// fraction reads it from the SAME tuning — no band number is ever hardcoded
+    /// here.
     pub fn deplete_cover(
         &mut self,
         cell_level: CellLevel,
@@ -281,7 +283,7 @@ impl CoverLedger {
         // this also makes `tuning` a meaningfully-used parameter (no unused-param
         // warning) rather than a dropped one.
         let mut entry = self.entry_seeded(cell_level, prototype);
-        entry.height_band = band_for(BandHeightPx::from_band(entry.height_band, tuning), tuning);
+        entry.height_band = band_for(BandFraction::from_band(entry.height_band, tuning), tuning);
 
         let remaining = entry.current_hp.saturating_sub(damage);
         entry.current_hp = remaining;
@@ -326,38 +328,44 @@ impl CoverDamage {
     }
 }
 
-/// A px height above the crossed cell's floor — the input to band classification
-/// (`docs/combat/battle-space.md`: the continuous z-axis px datums fed into the
-/// band assignment).
+/// A **within-level fraction** — a height above the crossed cell's level floor,
+/// expressed as a dimensionless fraction of one level's height (`z ∈ [0,1)`
+/// within a storey). The input to band classification
+/// (`docs/combat/battle-space.md` §"Banding": the continuous level-fraction
+/// datums fed into the band assignment).
 ///
-/// A named newtype over `f32` (no-bare-types): a px clearance height is a domain
-/// value, distinct from a [`BandEdgePx`] *threshold* it is compared against. Used
-/// only as the [`band_for`] input. Private inner + derived [`Deref`].
+/// A named newtype over `f32` (no-bare-types): a within-level clearance fraction
+/// is a domain value, distinct from a [`BandEdge`] *threshold* it is compared
+/// against. Used only as the [`band_for`] input. Private inner + derived
+/// [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
-pub struct BandHeightPx(f32);
+pub struct BandFraction(f32);
 
-impl BandHeightPx {
-    /// Build a px clearance height from its magnitude (battle-space px).
+impl BandFraction {
+    /// Build a within-level clearance fraction from its magnitude (a fraction of
+    /// one level's height).
     #[must_use]
-    pub const fn new(px: f32) -> Self {
-        Self(px)
+    pub const fn new(fraction: f32) -> Self {
+        Self(fraction)
     }
 
-    /// A representative px height for an already-classified [`HeightBand`], read
-    /// from `tuning`'s edges — never a hardcoded band number (C6).
+    /// A representative within-level fraction for an already-classified
+    /// [`HeightBand`], read from `tuning`'s edges — never a hardcoded band number
+    /// (C6).
     ///
     /// Used by [`CoverLedger::deplete_cover`] to round-trip a stored band through
     /// the tuning edges so the band can never drift from the current tuning: LOW
     /// maps below the LOW→MID edge, MID between the two edges, HIGH at or above the
-    /// MID→HIGH edge. The exact px is immaterial — only that it lands back in the
-    /// same band under [`band_for`] — so it is derived purely from `tuning`'s
-    /// authored edges, with no literal px.
+    /// MID→HIGH edge. The exact fraction is immaterial — only that it lands back in
+    /// the same band under [`band_for`] — so it is derived purely from `tuning`'s
+    /// authored edges, with no literal magnitude beyond an arbitrary sub-edge nudge.
     #[must_use]
     pub fn from_band(band: HeightBand, tuning: &CombatTuning) -> Self {
         let edges = &tuning.projectile_band_edges;
         match band {
-            // Strictly below the LOW→MID edge → LOW.
-            HeightBand::Low => Self(*edges.low_mid - 1.0),
+            // Strictly below the LOW→MID edge → LOW (half the edge stays below it
+            // for any positive edge, with no literal threshold of our own).
+            HeightBand::Low => Self(*edges.low_mid * 0.5),
             // At-or-above LOW→MID, strictly below MID→HIGH → MID.
             HeightBand::Mid => Self(*edges.low_mid),
             // At-or-above the MID→HIGH edge → HIGH.
@@ -366,22 +374,22 @@ impl BandHeightPx {
     }
 }
 
-/// Classify a px clearance height into a [`HeightBand`] using the tunable
-/// [`BandEdgePx`] edges off [`CombatTuning`] — **no hardcoded band numbers** (C6,
-/// `docs/combat/battle-space.md` line 27/32; `docs/combat/resolution.md` §2's
-/// `band_for`).
+/// Classify a within-level clearance fraction into a [`HeightBand`] using the
+/// tunable [`BandEdge`] level-fraction edges off [`CombatTuning`] — **no hardcoded
+/// band numbers** (C6, `docs/combat/battle-space.md` §"Banding";
+/// `docs/combat/resolution.md` §2's `band_for`).
 ///
-/// A height **strictly below** the LOW→MID edge is [`HeightBand::Low`]; at-or-above
-/// it but **strictly below** the MID→HIGH edge is [`HeightBand::Mid`]; at-or-above
-/// the MID→HIGH edge is [`HeightBand::High`]. The two edges are read from
-/// `tuning.projectile_band_edges` (the authored absolutes 66.7 / 133.3, decoupled
-/// from the storey) — this function never names a px number itself.
+/// A fraction **strictly below** the LOW→MID edge is [`HeightBand::Low`];
+/// at-or-above it but **strictly below** the MID→HIGH edge is [`HeightBand::Mid`];
+/// at-or-above the MID→HIGH edge is [`HeightBand::High`]. The two edges are read
+/// from `tuning.projectile_band_edges` (the tunable level-fractions ≈ ⅓ and ⅔ of a
+/// level) — this function never names a magnitude itself.
 #[must_use]
-pub fn band_for(height: BandHeightPx, tuning: &CombatTuning) -> HeightBand {
+pub fn band_for(fraction: BandFraction, tuning: &CombatTuning) -> HeightBand {
     let edges = &tuning.projectile_band_edges;
-    if *height < *edges.low_mid {
+    if *fraction < *edges.low_mid {
         HeightBand::Low
-    } else if *height < *edges.mid_high {
+    } else if *fraction < *edges.mid_high {
         HeightBand::Mid
     } else {
         HeightBand::High
@@ -568,23 +576,25 @@ mod tests {
         );
     }
 
-    /// [`band_for`] classifies px heights using ONLY the tuning edges — no
-    /// hardcoded band numbers (C6). Drives a height below, between, and above the
-    /// tuning's two edges and asserts LOW / MID / HIGH, deriving the probe heights
-    /// from the edges themselves (so a tuning edit moves the boundaries with it).
+    /// [`band_for`] classifies within-level fractions using ONLY the tuning edges
+    /// — no hardcoded band numbers (C6). Drives a fraction below, between, and
+    /// above the tuning's two edges and asserts LOW / MID / HIGH, deriving the
+    /// probe fractions from the edges themselves (so a tuning edit moves the
+    /// boundaries with it).
     #[test]
     fn band_for_reads_tuning_edges() {
         let tuning = CombatTuning::default();
         let edges = &tuning.projectile_band_edges;
 
-        // Strictly below the LOW→MID edge → LOW.
-        let low = band_for(BandHeightPx::new(*edges.low_mid - 1.0), &tuning);
+        // Strictly below the LOW→MID edge → LOW (half the edge is below it for any
+        // positive edge, deriving the probe from the edge, not a literal).
+        let low = band_for(BandFraction::new(*edges.low_mid * 0.5), &tuning);
         assert_eq!(low, HeightBand::Low);
         // At-or-above LOW→MID but below MID→HIGH → MID.
-        let mid = band_for(BandHeightPx::new(*edges.low_mid), &tuning);
+        let mid = band_for(BandFraction::new(*edges.low_mid), &tuning);
         assert_eq!(mid, HeightBand::Mid);
         // At-or-above the MID→HIGH edge → HIGH.
-        let high = band_for(BandHeightPx::new(*edges.mid_high), &tuning);
+        let high = band_for(BandFraction::new(*edges.mid_high), &tuning);
         assert_eq!(high, HeightBand::High);
     }
 
@@ -595,8 +605,12 @@ mod tests {
     fn band_round_trips_through_tuning() {
         let tuning = CombatTuning::default();
         for band in [HeightBand::Low, HeightBand::Mid, HeightBand::High] {
-            let px = BandHeightPx::from_band(band, &tuning);
-            assert_eq!(band_for(px, &tuning), band, "{band:?} must round-trip");
+            let fraction = BandFraction::from_band(band, &tuning);
+            assert_eq!(
+                band_for(fraction, &tuning),
+                band,
+                "{band:?} must round-trip"
+            );
         }
     }
 
@@ -608,6 +622,6 @@ mod tests {
         assert_eq!(*CoverDamage::new(4), 4u32);
         assert!(!*Destroyed::new(false));
         assert!(*Destroyed::new(true));
-        assert_eq!((*BandHeightPx::new(5.0)).to_bits(), 5.0_f32.to_bits());
+        assert_eq!((*BandFraction::new(5.0)).to_bits(), 5.0_f32.to_bits());
     }
 }

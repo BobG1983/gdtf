@@ -39,7 +39,7 @@ use bevy::prelude::{Component, Deref, DerefMut};
 pub struct ArmorFloor(i32);
 
 impl ArmorFloor {
-    /// Build an armor floor from its px-damage magnitude (TBD tuning).
+    /// Build an armor floor from its flat-damage-reduction magnitude (TBD tuning).
     #[must_use]
     pub const fn new(floor: i32) -> Self {
         Self(floor)
