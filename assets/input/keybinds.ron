@@ -1,0 +1,20 @@
+// GDTF battle keybind table — the FIRST keybind file in the repo (GTW-48 S8 /
+// GTW-225). Maps each bound battle ACT to a named key (a `BoundKey` variant that
+// resolves to a Bevy KeyCode). Edit freely — every binding is data, hot-swappable
+// through the same RonAsset<T> loader the theme / tiles / tuning use; nothing about
+// the key choices is hardcoded in Rust. The keyboard systems read the resolved
+// KeyCode off the loaded Keybinds resource, never a literal.
+//
+// `select_clear` / `level_up` / `level_down` are consumed THIS slice (GTW-225);
+// `stance_cycle` / `aim_toggle` / `facing_cycle` / `fire_mode_cycle` are declared
+// here and consumed by the keyboard act surface (GTW-222b) over the shared intent
+// seam — so the act keys live in ONE authoritative table from the start.
+(
+    select_clear:    KeyEscape,    // clear the current ganger selection
+    level_up:        KeyPageUp,    // raise the active storey by one level (clamped to the top)
+    level_down:      KeyPageDown,  // lower the active storey by one level (floored at 0)
+    stance_cycle:    KeyC,         // step the selected ganger's stance (Standing->Crouching->Prone->wrap) [222b]
+    aim_toggle:      KeyF,         // toggle the selected ganger's aim mode [222b]
+    facing_cycle:    KeyR,         // step the selected ganger's facing (N->NE->...->NW->wrap) [222b]
+    fire_mode_cycle: KeyQ,         // step the selected ganger's fire mode [222b]
+)

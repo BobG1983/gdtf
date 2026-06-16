@@ -28,17 +28,45 @@
 //! ([`CELL_PX`] / [`cell_to_world`]) lives in the presenter, and the world->cell
 //! inverse added here reuses it (it never recomputes the px scale).
 //!
-//! # Scope (GTW-221 / GTW-48 S7)
+//! # Scope (GTW-221 / GTW-48 S7 + GTW-225 / S8 selection substrate)
 //!
-//! This slice touches NOTHING in the sim's authoritative state: it emits NO act
-//! message (`FireRequested` / `Set*Requested` are S8 / GTW-222), re-registers NO
-//! sim plugin or lifecycle message (E10 owns all setup/teardown), and adds NO
-//! selection / targeting / HUD logic. It only READS sim types + the presenter's
-//! interface and WRITES the [`HoveredCell`] resource + one highlight sprite.
+//! GTW-221 (S7) added cursor->cell picking + the hover-highlight sprite, touching
+//! NOTHING in the sim's authoritative state.
+//!
+//! GTW-225 (S8) adds the SELECTION substrate the act surfaces ride: the
+//! [`SelectedShooter`](selection::SelectedShooter) resource set by left-clicking an
+//! occupied cell (faction-agnostic — own-ganger-only is deferred to GTW-226), the
+//! [`SelectionHighlight`](selection::SelectionHighlight) sprite, level up/down
+//! cycling of the presenter's [`ActiveLevel`], the FIRST data-driven keybind
+//! [`Keybinds`](keybinds::Keybinds) table, and the shared ACT-INTENT data seam
+//! ([`PendingActIntent`](intent::PendingActIntent) + the ONE
+//! [`dispatch_act_intents`](intent::dispatch_act_intents) drain) that BOTH the 222b
+//! keyboard systems AND the 222c `gdtf_app` buttons write. This slice still emits NO
+//! sim act message (`FireRequested` / `Set*Requested` are 222b) and re-registers NO
+//! sim plugin or lifecycle message (E10 owns all setup/teardown): it only READS sim
+//! types + the presenter's interface and WRITES input-layer state (the hovered cell,
+//! the selection, the active level, the intent queue) + its two highlight sprites.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*, window::PrimaryWindow};
+use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, WorldCamera, cell_to_world};
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, GRID_HEIGHT, GRID_WIDTH, Level};
+use gdtf_battle_sim::{
+    BattleInProgress, Cell, CellLevel, GRID_HEIGHT, GRID_WIDTH, Level, OccupancyGrid,
+};
+
+pub mod cycle;
+pub mod intent;
+pub mod keybinds;
+pub mod keyboard;
+pub mod selection;
+
+pub use cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
+pub use intent::{ActIntent, LevelStep, PendingActIntent, dispatch_act_intents, step_level};
+pub use keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds};
+pub use keyboard::{level_keys, select_clear_key};
+pub use selection::{
+    SelectedShooter, SelectionHighlight, select_on_click, update_selection_highlight,
+};
 
 /// The cell the OS cursor currently hovers, on the presenter's active level.
 ///
@@ -80,27 +108,44 @@ pub struct HoverHighlight;
 /// the tile beneath.
 const HIGHLIGHT_TINT: Color = Color::srgba(1.0, 0.95, 0.6, 0.35);
 
-/// The input plugin: cursor->cell picking + the hover-highlight sprite.
+/// The input plugin: cursor->cell picking + hover-highlight (S7), ganger selection,
+/// level cycling, the data-driven keybinds, and the shared act-intent seam (S8).
 ///
 /// Added by `gdtf_app`'s `GameBattleScapeScenePlugin` BESIDE
 /// `BattlePresenterPlugin::default()`, so its `build` runs when the scene plugins
-/// register. On `build` it inserts the [`GdtfBattleInputActive`] marker, initialises
-/// the [`HoveredCell`] resource (so a reader never hits a missing resource), and
-/// registers [`pick_hovered_cell`] + [`update_hover_highlight`] in [`Update`],
-/// both gated `run_if(resource_exists::<BattleInProgress>)` (the sim's live-battle
-/// witness — the same gate the S4-S6 draw systems use) so the cursor is inert
-/// pre-battle.
+/// register. On `build` it:
 ///
-/// Ordering vs the sim's `SimSystems::Simulate` band is NOT load-bearing — picking
-/// reads only the camera + window (no sim-component state mutated that frame) — so
-/// no `.after` is required; the battle gate IS. The highlight runs
-/// `.after(pick_hovered_cell)` so it observes the SAME update's [`HoveredCell`].
+/// - inserts the [`GdtfBattleInputActive`] marker and initialises the [`HoveredCell`]
+///   (S7), [`SelectedShooter`], and [`PendingActIntent`] resources (so a reader never
+///   hits a missing resource);
+/// - registers the S7 picking + hover-highlight systems
+///   ([`pick_hovered_cell`] / [`update_hover_highlight`]);
+/// - registers the S8 selection ([`select_on_click`] / [`update_selection_highlight`]),
+///   the keyboard press surface ([`level_keys`] / [`select_clear_key`]), and the ONE
+///   intent drain ([`dispatch_act_intents`]); and
+/// - loads the data-driven keybind table ([`load_keybinds`] / [`resolve_keybinds`])
+///   via the GTW-136 [`RonAsset<T>`](gdtf_assets::RonAsset) path, gated on an
+///   [`AssetServer`] so a `MinimalPlugins` headless app no-ops (the presenter's
+///   `tile_roles` load precedent, `bevy-traps.md` #1).
+///
+/// All live-battle systems are gated `run_if(resource_exists::<BattleInProgress>)`
+/// (the sim's live-battle witness — the same gate the S4-S6 draw systems use) so the
+/// input layer is inert pre-battle (AC11).
+///
+/// Ordering (`bevy-traps.md` #3): the hover highlight runs `.after(pick_hovered_cell)`
+/// and the selection highlight `.after(select_on_click)` so each observes the SAME
+/// update's resolved cell/selection. The intent drain ([`dispatch_act_intents`]) runs
+/// `.after` the intent WRITERS (the keyboard press systems) so it drains the same
+/// update's pushes — and the 222c `gdtf_app` buttons that push the same seam run in
+/// `Update` upstream of it.
 pub struct GdtfBattleInputPlugin;
 
 impl Plugin for GdtfBattleInputPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(GdtfBattleInputActive)
             .init_resource::<HoveredCell>()
+            .init_resource::<SelectedShooter>()
+            .init_resource::<PendingActIntent>()
             .add_systems(
                 Update,
                 (
@@ -108,7 +153,63 @@ impl Plugin for GdtfBattleInputPlugin {
                     update_hover_highlight.after(pick_hovered_cell),
                 )
                     .run_if(resource_exists::<BattleInProgress>),
+            )
+            // S8 selection + its highlight (the S7 recipe applied to the selection).
+            // BOTH read `Res<OccupancyGrid>` (the occupant source), so — like the
+            // presenter draws — they gate on it existing IN ADDITION to the battle
+            // witness: a focused harness can be `BattleInProgress` without the sim's
+            // `OccupancyGrid` present, and a `Res<T>` of an absent resource fails param
+            // validation (`bevy-traps.md` #1). `select_on_click` also reads
+            // `Res<ButtonInput<MouseButton>>`, which `MinimalPlugins` does NOT insert
+            // (no `InputPlugin`), so it gates on that buffer too.
+            .add_systems(
+                Update,
+                select_on_click.run_if(
+                    resource_exists::<BattleInProgress>
+                        .and(resource_exists::<OccupancyGrid>)
+                        .and(resource_exists::<ButtonInput<MouseButton>>),
+                ),
+            )
+            .add_systems(
+                Update,
+                update_selection_highlight.after(select_on_click).run_if(
+                    resource_exists::<BattleInProgress>.and(resource_exists::<OccupancyGrid>),
+                ),
+            )
+            // S8 keyboard press surface: reads the loaded `Keybinds` (so it is gated on
+            // that resource existing too) and pushes intents.
+            .add_systems(
+                Update,
+                (level_keys, select_clear_key)
+                    .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<Keybinds>)),
+            )
+            // The ONE intent drain — after the keyboard writers so it sees this update's
+            // pushes; the 222c button writers (in `gdtf_app`'s `Update`) also feed it.
+            .add_systems(
+                Update,
+                dispatch_act_intents
+                    .after(level_keys)
+                    .after(select_clear_key)
+                    .run_if(resource_exists::<BattleInProgress>),
             );
+
+        // The data-driven keybind table loads the GTW-136 RON way. `init_ron_asset`
+        // PANICS at registration without an `AssetServer` (no `Assets<T>` machinery),
+        // so it — and the load/resolve chain — is gated on the asset stack being
+        // present (the presenter's `tile_roles` precedent, `bevy-traps.md` #1). Under
+        // `DefaultPlugins` (the app + the `AssetServer` harness) it runs for real;
+        // under `MinimalPlugins` it is skipped entirely (no load, no panic) and a test
+        // inserts `Keybinds` directly.
+        if app.world().get_resource::<AssetServer>().is_some() {
+            app.init_ron_asset::<Keybinds>()
+                .add_systems(Startup, load_keybinds)
+                .add_systems(
+                    Update,
+                    resolve_keybinds.run_if(
+                        resource_exists::<KeybindsHandle>.and(not(resource_exists::<Keybinds>)),
+                    ),
+                );
+        }
     }
 }
 

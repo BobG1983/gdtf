@@ -6,6 +6,13 @@ edition = "2024"
 [dependencies]
 # The camera / window / sprite / system params the picking + highlight systems use.
 bevy = { workspace = true }
+# The GTW-136 loose-RON loader: the data-driven keybind table (`assets/input/keybinds.ron`,
+# the first keybind file in the repo) loads through the same generic `RonAsset<T>` path
+# the theme / tiles / tuning use — `init_ron_asset::<Keybinds>()` + the load/resolve chain.
+gdtf_assets = { path = "../gdtf_assets" }
+# The authored keybind leaves deserialize from RON; `serde::Deserialize` is the bound the
+# RON loader requires of the `Keybinds` payload + the `BoundKey` key vocabulary.
+serde = { workspace = true }
 # The input -> presenter edge: this crate is the HEAD of the GTW-48
 # `input -> presenter -> sim` chain. It reads the presenter's landed
 # camera/px/level interface — `WorldCamera` + `WORLD_RENDER_LAYER` (S2), `CELL_PX`
@@ -27,6 +34,9 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 # what the test body names to build the synthetic camera + window and assert on the
 # resolved `HoveredCell` / the highlight sprite.
 bevy = { workspace = true }
+# The S8 keybind test parses the shipped `keybinds.ron` the same way the loader does
+# (`ron::from_str`) to prove the schema + the file agree and every act resolves.
+ron = { workspace = true }
 # AC1: the "plugin build ran inside the REAL scene stack" test reuses the
 # `GdtfLoadTestAppBuilder` to descend to `GameState::BattleScape` and assert the
 # input plugin's `GdtfBattleInputActive` marker is present. Adding `gdtf_test_utils`
