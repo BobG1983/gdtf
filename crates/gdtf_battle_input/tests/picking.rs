@@ -1,22 +1,28 @@
-//! GTW-221 (GTW-48 S7): headless integration tests for the cursor->cell picking +
-//! the hover-highlight sprite.
+//! GTW-221 (GTW-48 S7) + GTW-251: headless integration tests for the cursor->cell
+//! picking and the message-driven hover-highlight EMIT.
 //!
-//! - AC1 proves `GdtfBattleInputPlugin`'s `build` runs inside the REAL scene stack:
-//!   the `GdtfTestAppBuilder` (`MinimalPlugins` + the real `ScenesPlugin` state
-//!   machine) descends to `GameState::BattleScape` and the plugin's
+//! - AC1 (build-ran) proves `GdtfBattleInputPlugin`'s `build` runs inside the REAL
+//!   scene stack: the `GdtfTestAppBuilder` (`MinimalPlugins` + the real `ScenesPlugin`
+//!   state machine) descends to `GameState::BattleScape` and the plugin's
 //!   `GdtfBattleInputActive` marker is present — the exact `presenter_foundation.rs`
 //!   build-ran pattern. It also names the boundary types
 //!   (`HoveredCell` / the presenter's `WorldCamera` / `CELL_PX` / `cell_to_world` /
 //!   `ActiveLevel` / `gdtf_battle_sim::{Cell, Level, CellLevel}`) so the chain is
 //!   compile-proven reachable.
 //!
-//! - AC2-AC4 drive the picking + highlight systems in a focused headless app: a
+//! - The picking tests drive `pick_hovered_cell` in a focused headless app: a
 //!   `WorldCamera` is SYNTHESIZED at a known transform with a deterministic
 //!   orthographic projection (no render pipeline — `Camera.computed` is set in the
 //!   test body, mirroring bevy's own `viewport_to_world` unit test), a `Window` +
 //!   `PrimaryWindow` is spawned with a known cursor, `ActiveLevel` + the
 //!   `BattleInProgress` gate are inserted, then `app.update()` runs the real
-//!   systems and the test asserts on `HoveredCell` + the one highlight sprite.
+//!   systems and the test asserts on `HoveredCell`.
+//!
+//! - GTW-251 AC1 (picker emits a request matching `HoveredCell`): a probe drains the
+//!   presenter-owned `HighlightRequest` buffer AFTER `emit_highlight_request` and
+//!   asserts the emitted request equals the resolved `HoveredCell` (`Some(cell)` when
+//!   hovered, `None` when off-grid). The DRAWING moved to the presenter (GTW-251), so
+//!   the old input-side draw test migrated there (`tests/highlight_draw.rs`).
 //!
 //! Every `app.world_mut()` / cursor / camera mutation is in a TEST BODY — the
 //! accepted headless idiom (`bevy-traps.md` #7 carve-out (a)). No function here
@@ -26,19 +32,20 @@ use bevy::{
     app::App,
     camera::{
         Camera, ComputedCameraValues, OrthographicProjection, Projection, RenderTargetInfo,
-        primitives::Frustum, visibility::RenderLayers,
+        primitives::Frustum,
     },
-    math::{Vec2, Vec3},
+    math::Vec2,
     prelude::*,
     transform::components::GlobalTransform,
     window::{PrimaryWindow, Window, WindowResolution},
 };
 use gdtf_app::test_support::{AppState, GameState, RunningState};
 use gdtf_battle_input::{
-    GdtfBattleInputActive, GdtfBattleInputPlugin, HoverHighlight, HoveredCell, world_to_cell,
+    GdtfBattleInputActive, GdtfBattleInputPlugin, HoveredCell, emit_highlight_request,
+    world_to_cell,
 };
-use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, WorldCamera, cell_to_world};
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, tuning::CombatTuning};
+use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera};
+use gdtf_battle_sim::{BattleInProgress, CellLevel, Level, tuning::CombatTuning};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -210,26 +217,6 @@ fn hovered(app: &App) -> Option<CellLevel> {
     app.world().get_resource::<HoveredCell>().and_then(|h| **h)
 }
 
-/// The single hover-highlight sprite's translation + visibility, if it exists.
-fn highlight_state(app: &mut App) -> Option<(Vec3, Visibility)> {
-    let mut q = app
-        .world_mut()
-        .query_filtered::<(&Transform, &Visibility), With<HoverHighlight>>();
-    let mut iter = q.iter(app.world());
-    let first = iter.next().map(|(t, v)| (t.translation, *v));
-    // Exactly one (or zero) highlight entity is the invariant; the caller asserts the
-    // count separately, but a second match here would be a bug, so collapse to first.
-    first
-}
-
-/// Counts the hover-highlight sprites in the world.
-fn highlight_count(app: &mut App) -> usize {
-    let mut q = app
-        .world_mut()
-        .query_filtered::<Entity, With<HoverHighlight>>();
-    q.iter(app.world()).count()
-}
-
 /// The camera's world unprojection of `cursor` — what the picking system computes
 /// internally. The test re-derives the expected cell from this with the documented
 /// inverse, so it never hardcodes the world math.
@@ -345,99 +332,79 @@ fn picking_fails_closed_to_none() {
     }
 }
 
-/// AC4 — exactly ONE hover-highlight sprite is drawn at `cell_to_world(hovered)`,
-/// FOLLOWS `HoveredCell` across two distinct in-grid cursor positions with no
-/// duplicate accumulation, and is hidden when `HoveredCell` becomes `None`. The
-/// highlight is sized to one cell and on the world render layer.
-#[test]
-fn highlight_follows_the_hovered_cell_and_hides_on_none() {
-    let level = Level::new(0);
-    let mut app = picking_app(level);
+// ---------------------------------------------------------------------------------
+// GTW-251 AC1 — the picker EMITS a `HighlightRequest` matching `HoveredCell`.
+// ---------------------------------------------------------------------------------
 
-    // First in-grid cursor (shifted right + down — see the AC2 test for the
-    // screen->world sign reasoning).
-    let cursor_a = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
-    set_cursor(&mut app, Some(cursor_a));
-    app.update();
-    let cell_a = hovered(&app);
-    assert!(cell_a.is_some(), "cursor A must resolve to an in-grid cell");
-    let Some(cell_a) = cell_a else { return };
-    assert_eq!(
-        highlight_count(&mut app),
-        1,
-        "exactly one highlight sprite exists after the first hover",
-    );
-    let state_a = highlight_state(&mut app);
-    assert_eq!(
-        state_a,
-        Some((
-            cell_to_world(Cell::new(cell_a.x, cell_a.y), level),
-            Visibility::Visible,
-        )),
-        "the highlight must be visible at cell_to_world(hovered A)",
-    );
+/// The `HighlightRequest`s the probe drained this run (test-only framework plumbing —
+/// a `Vec` collector so the assert reads exactly what `emit_highlight_request` wrote).
+#[derive(Resource, Default)]
+struct HighlightProbe(Vec<HighlightRequest>);
 
-    // A DIFFERENT in-grid cursor — the highlight must move, not duplicate.
-    let cursor_b = TARGET_SIZE * 0.5 + Vec2::new(200.0, 160.0);
-    set_cursor(&mut app, Some(cursor_b));
-    app.update();
-    let cell_b = hovered(&app);
-    assert!(cell_b.is_some(), "cursor B must resolve to an in-grid cell");
-    let Some(cell_b) = cell_b else { return };
-    assert_ne!(
-        cell_b, cell_a,
-        "cursor B must land on a different cell than A"
-    );
-    assert_eq!(
-        highlight_count(&mut app),
-        1,
-        "still exactly one highlight sprite after the second hover (no duplicate)",
-    );
-    let state_b = highlight_state(&mut app);
-    assert_eq!(
-        state_b,
-        Some((
-            cell_to_world(Cell::new(cell_b.x, cell_b.y), level),
-            Visibility::Visible,
-        )),
-        "the highlight must have MOVED to cell_to_world(hovered B)",
-    );
-
-    // The render-layer + sizing recipe: the one highlight draws on the world layer at
-    // one-cell size.
-    assert!(
-        highlight_on_world_layer_at_cell_size(&mut app),
-        "the highlight must be CELL_PX-sized on the WORLD_RENDER_LAYER",
-    );
-
-    // Off-grid cursor => HoveredCell None => the highlight hides (still one entity).
-    let cursor_off = TARGET_SIZE * 0.5 - Vec2::new(64.0, 0.0);
-    set_cursor(&mut app, Some(cursor_off));
-    app.update();
-    assert_eq!(
-        hovered(&app),
-        None,
-        "the off-grid cursor must clear HoveredCell to None",
-    );
-    assert_eq!(
-        highlight_count(&mut app),
-        1,
-        "the highlight entity persists (hidden, not duplicated) when nothing is hovered",
-    );
-    assert_eq!(
-        highlight_state(&mut app).map(|(_, v)| v),
-        Some(Visibility::Hidden),
-        "the highlight must be hidden when HoveredCell is None",
+/// Adds a probe that drains `Messages<HighlightRequest>` AFTER `emit_highlight_request`
+/// so it collects every request the emitter wrote this update (its own `MessageReader`
+/// cursor, independent of the presenter's `draw_highlight_on_request` reader).
+fn add_highlight_probe(app: &mut App) {
+    app.insert_resource(HighlightProbe::default());
+    app.add_systems(
+        Update,
+        (|mut r: MessageReader<HighlightRequest>, mut p: ResMut<HighlightProbe>| {
+            p.0.extend(r.read().copied());
+        })
+        .after(emit_highlight_request),
     );
 }
 
-/// Whether the one highlight sprite is `CELL_PX`-sized and on the world render layer.
-fn highlight_on_world_layer_at_cell_size(app: &mut App) -> bool {
-    let mut q = app
-        .world_mut()
-        .query_filtered::<(&Sprite, &RenderLayers), With<HoverHighlight>>();
-    let world_layer = RenderLayers::layer(WORLD_RENDER_LAYER);
-    q.iter(app.world()).all(|(sprite, layers)| {
-        sprite.custom_size == Some(Vec2::splat(CELL_PX)) && layers.intersects(&world_layer)
-    })
+/// The requests the probe collected on the latest update (cleared each update because
+/// the probe `extend`s — the test reads them right after the relevant `update()`).
+fn requests(app: &App) -> Vec<HighlightRequest> {
+    app.world()
+        .get_resource::<HighlightProbe>()
+        .map(|p| p.0.clone())
+        .unwrap_or_default()
+}
+
+/// GTW-251 AC1 — the picker emits a `HighlightRequest` matching `HoveredCell`: when an
+/// in-grid cursor resolves a known cell the emitted request is `Some(that cell)`; when
+/// the cursor goes off-grid the emitted request is `None`. The DRAWING is the
+/// presenter's (`tests/highlight_draw.rs`); here we pin the input EMIT.
+#[test]
+fn picker_emits_highlight_request_matching_hovered_cell() {
+    let level = Level::new(0);
+    let mut app = picking_app(level);
+    add_highlight_probe(&mut app);
+
+    // An in-grid cursor (shifted right + down — see the AC2 picking test for the
+    // screen->world sign reasoning).
+    let cursor = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
+    set_cursor(&mut app, Some(cursor));
+    app.update();
+
+    let cell = hovered(&app);
+    assert!(cell.is_some(), "the in-grid cursor must resolve a cell");
+    // The emitted request this update must equal HoveredCell exactly.
+    assert_eq!(
+        requests(&app),
+        vec![HighlightRequest(cell)],
+        "the picker must emit exactly one HighlightRequest equal to Some(HoveredCell)",
+    );
+
+    // Now move the cursor off-grid: HoveredCell becomes None and the emitted request
+    // must follow it to None.
+    let cursor_off = TARGET_SIZE * 0.5 - Vec2::new(64.0, 0.0);
+    set_cursor(&mut app, Some(cursor_off));
+    // Reset the probe so we read only THIS update's emit.
+    app.world_mut().resource_mut::<HighlightProbe>().0.clear();
+    app.update();
+
+    assert_eq!(
+        hovered(&app),
+        None,
+        "the off-grid cursor clears HoveredCell"
+    );
+    assert_eq!(
+        requests(&app),
+        vec![HighlightRequest(None)],
+        "the picker must emit HighlightRequest(None) when nothing is hovered",
+    );
 }

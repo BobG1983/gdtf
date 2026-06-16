@@ -11,16 +11,29 @@
 //!    [`ActiveLevel`] — the INVERSE of the presenter's forward
 //!    [`cell_to_world`] projection — and stores the result in the
 //!    [`HoveredCell`] resource, and
-//! 4. snaps ONE hover-highlight sprite onto that cell (hidden when nothing is
-//!    hovered).
+//! 4. EMITS a presenter-owned [`HighlightRequest`] reflecting that hovered cell
+//!    (the presenter LISTENS and draws the reticle — GTW-251).
+//!
+//! # The hover-highlight is message-driven (GTW-251)
+//!
+//! As of GTW-251 this crate no longer DRAWS the hover-highlight. The sprite +
+//! drawing moved to the presenter (`gdtf_battle_presenter::highlight`); input now
+//! EMITS the presenter-defined [`HighlightRequest`] message after the picker resolves
+//! [`HoveredCell`], and the presenter's `draw_highlight_on_request` system moves/shows/
+//! hides the one reticle sprite from it. The behavior is identical (the highlight
+//! still follows the hovered cell) — this is a refactor onto the message-driven I/O
+//! boundary, and the seam the gamepad cursor (GTW-259) builds on. The presenter, as
+//! the CONSUMER, defines the request type, so the crate edge stays one-way
+//! (`input → presenter`, never a cycle): input names a presenter-defined message; the
+//! presenter never names input.
 //!
 //! # The one-way dependency chain (ADR-0001)
 //!
 //! The dependency edge runs strictly
 //! `gdtf_battle_input -> gdtf_battle_presenter -> gdtf_battle_sim` — a CHAIN,
 //! never a cycle. This crate reads the presenter's camera/px/level interface
-//! ([`WorldCamera`] + [`WORLD_RENDER_LAYER`], [`CELL_PX`] + [`cell_to_world`],
-//! [`ActiveLevel`]) and the sim's presentation-agnostic metric ([`Cell`] /
+//! ([`WorldCamera`] + [`WORLD_RENDER_LAYER`](gdtf_battle_presenter::WORLD_RENDER_LAYER),
+//! [`CELL_PX`] + [`cell_to_world`], [`ActiveLevel`]) and the sim's presentation-agnostic metric ([`Cell`] /
 //! [`Level`] / [`CellLevel`]); the presenter reads only the sim; the sim reads
 //! NEITHER. The top-down sprite presenter is the swappable VIEW an iso renderer
 //! (GTW-49 / GTW-10) later replaces WITHOUT touching this input crate, because
@@ -47,9 +60,9 @@
 //! types + the presenter's interface and WRITES input-layer state (the hovered cell,
 //! the selection, the active level, the intent queue) + its two highlight sprites.
 
-use bevy::{camera::visibility::RenderLayers, prelude::*, window::PrimaryWindow};
+use bevy::{prelude::*, window::PrimaryWindow};
 use gdtf_assets::RonAssetAppExt;
-use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, WorldCamera, cell_to_world};
+use gdtf_battle_presenter::{ActiveLevel, CELL_PX, HighlightRequest, WorldCamera};
 use gdtf_battle_sim::{
     BattleInProgress, Cell, CellLevel, GRID_HEIGHT, GRID_WIDTH, Level, OccupancyGrid,
     PlayerFaction,
@@ -87,7 +100,8 @@ pub use selection::{
 /// directly. [`None`] means "nothing hovered" — the cursor is off-window, the
 /// camera unprojection failed, there is no (single) world camera, or the cursor
 /// fell outside the 60×60 grid. The picking system ([`pick_hovered_cell`]) writes
-/// it every update; the highlight system ([`update_hover_highlight`]) reads it.
+/// it every update; the highlight emitter ([`emit_highlight_request`]) reads it and
+/// writes the matching [`HighlightRequest`] for the presenter to draw (GTW-251).
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct HoveredCell(pub Option<CellLevel>);
 
@@ -99,26 +113,6 @@ pub struct HoveredCell(pub Option<CellLevel>);
 /// exempt from the no-bare-types rule.
 #[derive(Resource)]
 pub struct GdtfBattleInputActive;
-
-/// Marker for the single hover-highlight [`Sprite`].
-///
-/// Plumbing around the framework sprite (the no-bare-types framework carve-out, the
-/// same justification the presenter's `WorldCamera` / `TerrainSprite` markers use):
-/// the highlight system queries `With<HoverHighlight>` to find and MOVE the one
-/// existing highlight rather than spawning a duplicate each update.
-#[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct HoverHighlight;
-
-/// The translucent tint of the hover-highlight sprite.
-///
-/// Framework plumbing — a literal [`Color`] handed straight to a [`Sprite`], not a
-/// domain quantity (the `CELL_PX`-class const carve-out). A solid-color reticle is
-/// the engineer's-choice highlight visual this slice sanctions: there is no
-/// `SheetRole::Ui` / reticle role in the landed atlas (only Terrain / Characters /
-/// Effects), so a tinted solid `Sprite` is the renderer-agnostic option. A faint
-/// warm-white at low alpha so it reads as a highlight OVER the cell without hiding
-/// the tile beneath.
-const HIGHLIGHT_TINT: Color = Color::srgba(1.0, 0.95, 0.6, 0.35);
 
 /// Input system-ordering anchor — the named `Update`-schedule band every battle input
 /// system runs in, configured `.before(`[`SimSystems::Simulate`]`)`.
@@ -158,8 +152,11 @@ pub enum InputSystems {
 ///   resources (so a reader never hits a missing resource), and registers the five
 ///   `*Requested` message buffers the drain emits (the four landed acts + GTW-238's
 ///   [`MoveRequested`](gdtf_battle_sim::acts::MoveRequested));
-/// - registers the S7 picking + hover-highlight systems
-///   ([`pick_hovered_cell`] / [`update_hover_highlight`]);
+/// - registers the S7 cursor picker ([`pick_hovered_cell`]) + the GTW-251 highlight
+///   EMITTER ([`emit_highlight_request`]) that writes a presenter-owned
+///   [`HighlightRequest`] reflecting the picked [`HoveredCell`] (the presenter draws
+///   it), and registers the [`HighlightRequest`] buffer so the emitter's
+///   [`MessageWriter`] validates headlessly (`bevy-traps.md` #4);
 /// - registers the GTW-238 unified left-click decision ([`left_click_act`]) + the
 ///   right-click turn-to-face surface ([`right_click_turn_to_face`]) — replacing the
 ///   GTW-225/227 `select_on_click` + `fire_on_click` race — the GTW-255 battle-start
@@ -182,7 +179,7 @@ pub enum InputSystems {
 /// gates on [`PlayerFaction`] (the battle-scoped friend/foe witness) + the occupancy /
 /// mouse / tuning it reads.
 ///
-/// Ordering (`bevy-traps.md` #3): the hover highlight runs `.after(pick_hovered_cell)`
+/// Ordering (`bevy-traps.md` #3): the highlight emitter runs `.after(pick_hovered_cell)`
 /// and the selection highlight `.after(left_click_act)` so each observes the SAME
 /// update's resolved cell/selection. [`left_click_act`] / [`right_click_turn_to_face`]
 /// run `.before(pick_hovered_cell)` (the cell resolved last update) and
@@ -225,11 +222,18 @@ impl Plugin for GdtfBattleInputPlugin {
             .add_message::<SetStanceRequested>()
             .add_message::<SetAimingRequested>()
             .add_message::<SetFacingRequested>()
+            // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
+            // emitter's `MessageWriter<HighlightRequest>` passes param validation even
+            // headlessly (a `MessageWriter<M>` needs its `Messages<M>` buffer,
+            // `bevy-traps.md` #4). `add_message` is IDEMPOTENT, so this coexists with the
+            // presenter's `TopDownRendererPlugin` also adding the same buffer (the reader
+            // side) — the `*Requested` precedent above.
+            .add_message::<HighlightRequest>()
             .add_systems(
                 Update,
                 (
                     pick_hovered_cell,
-                    update_hover_highlight.after(pick_hovered_cell),
+                    emit_highlight_request.after(pick_hovered_cell),
                 )
                     .in_set(InputSystems::Gather)
                     .run_if(resource_exists::<BattleInProgress>),
@@ -483,74 +487,38 @@ const fn floor_to_cell_coord(scaled: f32) -> i32 {
     coord
 }
 
-/// Maintains exactly ONE hover-highlight sprite that snaps to [`HoveredCell`].
+/// EMITS a presenter-owned [`HighlightRequest`] reflecting the picked [`HoveredCell`].
 ///
-/// Spawns the single [`HoverHighlight`] sprite the first time it is needed; on every
-/// later update it MOVES that one sprite's [`Transform`] to
-/// [`cell_to_world`]`(hovered cell, hovered level)` and shows it when [`HoveredCell`]
-/// is [`Some`], or HIDES it ([`Visibility::Hidden`]) when [`None`] — so no duplicate
-/// highlight sprites accumulate. The sprite is sized to exactly one cell
-/// (`custom_size: Some(Vec2::splat(CELL_PX))`, the S3/S4 sizing recipe) and drawn on
-/// [`RenderLayers::layer`]`(`[`WORLD_RENDER_LAYER`]`)` so it composites with the
-/// battlefield, not the GTW-120 UI camera.
+/// The INPUT half of the GTW-251 message-driven hover-highlight: instead of DRAWING the
+/// reticle (the old `update_hover_highlight`, now the presenter's
+/// [`draw_highlight_on_request`](gdtf_battle_presenter::draw_highlight_on_request)), it
+/// writes one [`HighlightRequest`]`(`[`*hovered`](HoveredCell)`)` every update it runs —
+/// [`Some(cell)`](Some) when a cell is hovered, [`None`] when nothing is. The presenter
+/// LISTENS for that message and moves/shows/hides the one reticle sprite, so the drawn
+/// highlight ALWAYS matches [`HoveredCell`].
 ///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the spawn, a
-/// `Query<(&mut Transform, &mut Visibility), With<HoverHighlight>>` for the move +
-/// show/hide. Runs `.after(pick_hovered_cell)` so it reads the same update's
-/// [`HoveredCell`].
-pub fn update_hover_highlight(
-    mut commands: Commands,
+/// Emitting EVERY update (not only on `Changed<HoveredCell>`) keeps the contract simple
+/// and the highlight in lockstep: the presenter's draw acts on the latest request, so a
+/// per-frame re-emit of the unchanged cell is a no-op move; and a once-only-on-change
+/// emit could miss the first draw if the picker resolved the cell before the presenter's
+/// reader was ready. Both are correct per the contract; the per-frame emit is the most
+/// robust.
+///
+/// Param-only (`bevy-traps.md` #7): a [`Res<HoveredCell>`](HoveredCell) read + a
+/// [`MessageWriter<HighlightRequest>`](bevy::ecs::message::MessageWriter) write, no
+/// `&mut World`. Runs `.after(pick_hovered_cell)` so it emits the SAME update's resolved
+/// [`HoveredCell`], under the same `BattleInProgress` gate so it is inert pre-battle.
+pub fn emit_highlight_request(
     hovered: Res<HoveredCell>,
-    mut highlights: Query<(&mut Transform, &mut Visibility), With<HoverHighlight>>,
+    mut requests: MessageWriter<HighlightRequest>,
 ) {
-    // The world position + visibility the one highlight should take this update.
-    let target = (**hovered)
-        .map(|cell| cell_to_world(Cell::new(cell.x, cell.y), Level::new(level_index(cell))));
-
-    match highlights.single_mut() {
-        Ok((mut transform, mut visibility)) => match target {
-            Some(world) => {
-                transform.translation = world;
-                *visibility = Visibility::Visible;
-            }
-            None => *visibility = Visibility::Hidden,
-        },
-        // No highlight yet: spawn the single sprite the first time a cell is hovered.
-        // (When nothing is hovered there is nothing to spawn — it stays absent until
-        // the first hover, which is equivalent to "hidden".)
-        Err(_) => {
-            if let Some(world) = target {
-                commands.spawn((
-                    HoverHighlight,
-                    Sprite {
-                        color: HIGHLIGHT_TINT,
-                        custom_size: Some(Vec2::splat(CELL_PX)),
-                        ..default()
-                    },
-                    Transform::from_translation(world),
-                    // Explicitly Visible (not the `Inherited` default) so the reticle
-                    // shows from the first frame it is hovered, independent of any
-                    // parent visibility.
-                    Visibility::Visible,
-                    RenderLayers::layer(WORLD_RENDER_LAYER),
-                ));
-            }
-        }
-    }
-}
-
-/// The storey index of a [`CellLevel`]'s `z`, narrowed to the [`Level`]'s `u8`.
-///
-/// A [`CellLevel`] `Deref`s to an `IVec3` whose `z` is a storey index built from a
-/// [`Level`] (always `0..`[`gdtf_battle_sim::MAX_LEVELS`], well within `u8`). The
-/// clamped [`u8::try_from`] is the no-`unwrap` narrow — a (impossible) out-of-range
-/// `z` saturates to [`u8::MAX`] rather than panicking.
-fn level_index(cell: CellLevel) -> u8 {
-    u8::try_from(cell.z).unwrap_or(u8::MAX)
+    requests.write(HighlightRequest(**hovered));
 }
 
 #[cfg(test)]
 mod tests {
+    use gdtf_battle_presenter::cell_to_world;
+
     use super::*;
 
     /// AC2 — the world->cell inverse is the documented floored inverse of
@@ -608,14 +576,6 @@ mod tests {
             None,
             "a world point below row 59 must be None",
         );
-    }
-
-    /// `level_index` narrows a `CellLevel`'s storey z back to the `u8` the `Level`
-    /// carries, so the highlight redraws on the hovered level.
-    #[test]
-    fn level_index_recovers_the_storey() {
-        let key = CellLevel::new(Cell::new(2, 2), Level::new(3));
-        assert_eq!(level_index(key), 3, "level_index must recover the storey z");
     }
 
     /// A marker pushed into the shared order log by the band probes — distinguishes the

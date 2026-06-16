@@ -44,6 +44,7 @@ use gdtf_battle_sim::{
 
 pub mod fx;
 pub mod ganger;
+pub mod highlight;
 pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
@@ -58,6 +59,7 @@ pub use ganger::{
     move_ganger_sprites, reframe_ganger_sprites, resolve_character_roles, spawn_ganger_sprites,
     update_ganger_life_state,
 };
+pub use highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request};
 pub use terrain::{
     ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles, TileRolesHandle,
     draw_static_battlefield, load_tile_roles, resolve_tile_roles, swap_destroyed_cover,
@@ -297,6 +299,11 @@ impl Plugin for TopDownRendererPlugin {
         // GTW-249: the battle-start frame-on-units + the bounds clamp (extracted for the
         // same `too_many_lines` reason).
         register_camera_framing_systems(app);
+
+        // GTW-251: the message-driven hover-highlight DRAW. The input crate (the CONSUMER's
+        // upstream writer) EMITS `HighlightRequest`; this presenter (which DEFINES it, the
+        // one-way `input -> presenter -> sim` edge) LISTENS and draws.
+        register_highlight_systems(app);
     }
 }
 
@@ -386,6 +393,37 @@ fn register_fx_flash_systems(app: &mut App) {
             .run_if(render_gate.and(resource_exists::<Messages<CoverDestroyed>>)),
     )
     .add_systems(Update, expire_flashes.in_set(PresenterSystems::Draw));
+}
+
+/// Registers the GTW-251 message-driven hover-highlight draw into the already-defined
+/// [`PresenterSystems::Draw`] band.
+///
+/// The presenter DEFINES the [`HighlightRequest`] message (the consumer owns its input
+/// API, mirroring how the sim defines the `*Requested` messages input writes) and
+/// registers its buffer here via [`App::add_message`] (Bevy 0.18 — buffered events are
+/// messages, `bevy-traps.md` #4). The buffer registration is UNCONDITIONAL (not behind
+/// the asset gate): a [`MessageReader<HighlightRequest>`](bevy::ecs::message::MessageReader)
+/// panics param validation without its `Messages<HighlightRequest>` buffer (`bevy-traps.md`
+/// #4), and `add_message` is IDEMPOTENT — the input crate also registers the same buffer
+/// so its `MessageWriter` validates headlessly, and the two coexist (the `*Requested`
+/// precedent).
+///
+/// [`draw_highlight_on_request`] joins the SAME `PresenterSystems::Draw` band (defined
+/// once, ordered `.after(SimSystems::Simulate)`), gated `run_if(resource_exists::<BattleInProgress>)`
+/// — the sim's live-battle witness, the same gate the other draw systems use, so the
+/// highlight is inert pre-battle (`bevy-traps.md` #1). It needs NO render resource (it
+/// draws a solid-tint sprite, not an atlas tile) and its `Messages<HighlightRequest>`
+/// buffer is guaranteed present by the `add_message` above, so the battle gate alone is
+/// sufficient. The MIGRATED highlight sprite (the `HoverHighlight` marker + its lazy spawn)
+/// now lives in `highlight.rs`; its lifecycle matches the old input-side one (lazily
+/// spawned, despawned with the battle world).
+fn register_highlight_systems(app: &mut App) {
+    app.add_message::<HighlightRequest>().add_systems(
+        Update,
+        draw_highlight_on_request
+            .in_set(PresenterSystems::Draw)
+            .run_if(resource_exists::<BattleInProgress>),
+    );
 }
 
 /// The isometric renderer plugin — a no-op stub for the whole of GTW-48.
