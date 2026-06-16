@@ -172,6 +172,7 @@ pub mod cover;
 pub mod downed_acts;
 pub mod faced_cell;
 pub mod fire;
+pub mod firing_arc;
 pub mod ganger;
 pub mod hit_location;
 pub mod magazine;

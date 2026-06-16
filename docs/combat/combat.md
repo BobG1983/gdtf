@@ -34,6 +34,7 @@ The ceiling and reference numbers come from *UFO: Enemy Unknown* (source: UFOpae
 ## Core mechanics (v0)
 
 - **Time Units (TU):** every action (step, turn, snap / aimed / auto shot, kneel) costs TUs from a per-turn pool; unspent TUs fund reaction fire. Economy + stat derivations in [stats.md](stats.md).
+- **Firing arc:** a shooter fires directly only at a target inside its **facing arc** (a tunable cone, default ~120° = ±60°); a target outside the arc fires **only when the shooter can afford BOTH the turn-into-arc AND the shot** (it turns to face, then fires) — else the shot is **rejected** (no TU spent, no turn, no shot). Full model: [resolution.md](resolution.md) §1.
 - **Cover:** a physical object with a height plus its own armor stats & HP; it stops any round not flying strictly above its height band and can be shot and destroyed. Full model: [resolution.md](resolution.md).
 - **Line of sight (LOS):** determines what a ganger can see and target — probed over the same coarse geometry the shot flies through. The squad's fog-of-war built on it (Visible / Explored / Unseen, asymmetric sight, rendered-only planning): [visibility.md](visibility.md).
 - **Accuracy:** a **dispersion cone** (not a to-hit %) — width from weapon spread × stability × aim mode × fire-mode × recoil; **Shooting** × weapon accuracy sets how tightly shots cluster inside it; shots are real projectiles that travel and hit the first thing in their path (incl. cover and other gangers). Full model: [resolution.md](resolution.md).

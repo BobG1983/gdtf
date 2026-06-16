@@ -1156,6 +1156,49 @@ impl Default for MatchupMultipliers {
     }
 }
 
+/// The **firing arc** — the full angular width (in **degrees**) of the facing cone a
+/// shooter may fire within before it must turn to face the target (GTW-242).
+///
+/// A shot whose target lies within `±firing_arc / 2` of the shooter's facing fires
+/// directly; a target outside that arc requires the shooter to first turn to face it
+/// (paying the turn TU) AND afford the shot — else the shot is rejected
+/// (`docs/combat/resolution.md` §1 / the targeting section). A GLOBAL arc (one width for
+/// every weapon this slice; a per-weapon arc — pistol wide / rifle narrow — is a flagged
+/// future refinement). The arc is a **continuous angle**, tested against the true angle
+/// between the facing unit vector and the actor→target ground vector — NOT 8-way snapping.
+///
+/// A distinct domain concept ⇒ its own newtype (no-bare-types rule 3): a wrapped angle in
+/// degrees, never a bare `f32`. Private inner + derived [`Deref`]; `#[serde(transparent)]`
+/// lets it parse a bare RON scalar (the tuning-leaf precedent). The default is `120.0`
+/// (USER DECISION 2026-06-16: "probably something like 120 degree arc") — **tunable**
+/// balance data; tests assert only the relation to this value, never the magnitude.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct FiringArc(f32);
+
+impl FiringArc {
+    /// Build a firing arc from its full angular width in **degrees** (tunable balance
+    /// data).
+    ///
+    /// The constructor for the newtype — keeps the inner `f32` private (house style)
+    /// while letting tests and any programmatic tuning edit build an arc without a bare
+    /// `f32` escaping; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`].
+    #[must_use]
+    pub const fn new(degrees: f32) -> Self {
+        Self(degrees)
+    }
+}
+
+impl Default for FiringArc {
+    fn default() -> Self {
+        // 120° full width (±60° off the facing) — USER DECISION 2026-06-16: "probably
+        // something like 120 degree arc". Tunable balance data; value-agnostic tests
+        // only, never a pinned magnitude.
+        Self(120.0)
+    }
+}
+
 /// The combat tuning resource — every balance coefficient the sim marches with.
 ///
 /// A Bevy [`Resource`] deserializable from a `.ron` file (the tuning store is a
@@ -1213,6 +1256,12 @@ pub struct CombatTuning {
     /// The 7-type matchup multipliers (E3.2) — the favorable / neutral / resisted
     /// punch-&-shred scalars.
     pub matchup_multipliers:   MatchupMultipliers,
+    /// The firing arc (GTW-242) — the full angular width (degrees) of the facing cone a
+    /// shooter may fire within before it must turn to face the target. A target outside
+    /// `±firing_arc / 2` requires the shooter to turn-into-arc AND afford the shot, else
+    /// the shot is rejected. GLOBAL (one arc for all weapons this slice); magnitude is
+    /// tunable (default 120°), mirroring the other tuning leaves.
+    pub firing_arc:            FiringArc,
 }
 
 #[cfg(test)]
@@ -1245,6 +1294,9 @@ mod tests {
         // The u8 bleed-out rate: deref reaches the inner u8 (arbitrary value, the
         // mechanism not the shipped magnitude).
         assert_eq!(*BleedRate(4), 4u8);
+        // GTW-242 — the firing-arc f32 newtype: deref reaches the inner degrees (bit-exact
+        // arbitrary value, never the 120° default — the Deref mechanism, not a magnitude).
+        assert_eq!((*FiringArc::new(75.0)).to_bits(), 75.0_f32.to_bits());
     }
 
     /// C3 — every E2.1 cone/stability/recoil/aim extension leaf wraps the right
@@ -1441,6 +1493,21 @@ mod tests {
             tuning.move_costs.cost(TerrainKind::Wall),
             tuning.move_costs.wall,
             "cost(Wall) must map to the wall field",
+        );
+
+        // GTW-242 — the firing-arc leaf (`firing_arc`) deserializes from the real shipped
+        // file. `CombatTuning` has no `#[serde(default)]`, so a missing leaf would fail the
+        // parse above; this asserts it is PRESENT and parses deterministically across two
+        // parses, and that it is a positive angle (so the arc is a real cone, not a
+        // degenerate zero). Value-agnostic — never the exact magnitude, since the arc width
+        // is tunable balance data (only the relation "a real positive cone" is pinned).
+        assert_eq!(
+            tuning.firing_arc, reparsed.firing_arc,
+            "shipped firing_arc must be present and parse deterministically",
+        );
+        assert!(
+            *tuning.firing_arc > 0.0,
+            "shipped firing_arc must be a positive cone width (a real facing arc)",
         );
     }
 

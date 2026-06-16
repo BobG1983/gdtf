@@ -179,4 +179,12 @@
         neutral:   1.0,   // same wheel node / mirror — punch & shred unchanged (×1)
         resisted:  0.34,  // weapon type loses to armor type — punch & shred ×0.34 (−66%)
     ),
+    // Firing arc (GTW-242): the FULL angular width (DEGREES) of the facing cone a shooter
+    // may fire within. A target within ±firing_arc/2 of the facing fires directly; a target
+    // OUTSIDE the arc requires the shooter to first turn to face it (paying turn_tu per 45°
+    // step) AND afford the shot — else the shot is REJECTED (no spend, no turn, no shot).
+    // Continuous-angle test (NOT 8-way snapping). GLOBAL — one arc for every weapon this
+    // slice (a per-weapon arc, pistol wide / rifle narrow, is a flagged future refinement).
+    // STARTING POINT (tunable): 120° = ±60° off the facing.
+    firing_arc: 120.0,  // full firing-cone width in degrees (target must be within ±60° to fire without turning)
 )
