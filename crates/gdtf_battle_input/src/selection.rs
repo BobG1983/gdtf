@@ -53,7 +53,7 @@ use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
 use gdtf_battle_sim::{
     Cell, CellLevel, Direction, Faction, Level, OccupancyGrid, PlayerFaction, Position,
-    acts::{MoveRequested, SetFacingRequested},
+    acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
 
@@ -151,12 +151,150 @@ pub struct LeftClickReads<'w> {
     player:    Res<'w, PlayerFaction>,
 }
 
+/// The single resolved outcome of one left-click edge — the ONE source of truth the
+/// mouse ([`left_click_act`]) AND the gamepad ([`gamepad_click_act`](crate::gamepad::gamepad_click_act))
+/// both decide and apply (GTW-259).
+///
+/// A domain enum (no-bare-types: a resolved control decision is a named value, not a bare
+/// discriminant) carrying exactly the payload each branch of the FIRE → SELECT → MOVE →
+/// CLEAR precedence chain (GTW-238) needs. [`decide_left_click`] computes it from
+/// READ-ONLY inputs (so the same decision is reusable by any press surface), and
+/// [`apply_left_click`] commits it to the [`SelectedShooter`] / [`PendingActIntent`]
+/// state. Splitting decide-from-apply keeps the precedence in ONE place: duplicating it
+/// per input device is the defect this refactor prevents.
+#[derive(Debug, Clone, PartialEq)]
+pub enum LeftClickOutcome {
+    /// FIRE the carried request — clause 1 won (a fire mode, an ENEMY occupant, a
+    /// player-faction selection, and the shared `can_fire` guard passed). Pushed as an
+    /// [`ActIntent::Fire`]; the selection is unchanged.
+    Fire(FireRequested),
+    /// SELECT the carried entity — clause 2 won (the hovered cell holds one of YOUR
+    /// gangers). Sets [`SelectedShooter::new`]; no act emitted.
+    Select(Entity),
+    /// MOVE the carried request — clause 3 won (a player-faction selection over an empty,
+    /// in-bounds, unblocked cell). Pushed as an [`ActIntent::Move`]; the selection is
+    /// unchanged.
+    Move(MoveRequested),
+    /// CLEAR the selection — clause 4 (none of the above, or nothing hovered). Sets
+    /// [`SelectedShooter::cleared`].
+    Clear,
+}
+
+/// Resolves ONE left-click edge through the FIRE → SELECT → MOVE → CLEAR precedence chain
+/// (GTW-238) into a [`LeftClickOutcome`] — the SHARED decision (GTW-259) the mouse and the
+/// gamepad both use.
+///
+/// READ-ONLY: it reads the hovered cell, the occupancy, the fire mode / tuning, the player
+/// faction, the current selection, and the faction / firing components off the queries, and
+/// returns the resolved outcome WITHOUT touching any state — so [`left_click_act`] (mouse)
+/// and [`gamepad_click_act`](crate::gamepad::gamepad_click_act) (South button) both call it
+/// and feed the result to [`apply_left_click`], guaranteeing one precedence implementation.
+///
+/// 1. **FIRE** — a fire mode is selected, the hovered cell holds an ENEMY occupant
+///    (a [`Faction`] `!=` [`PlayerFaction`]), the current selection is a player-faction
+///    ganger, and the shared [`can_fire`](gdtf_battle_sim::can_fire) guard passes
+///    ([`try_fire_request`]) → [`LeftClickOutcome::Fire`].
+/// 2. **SELECT** — the hovered cell holds one of YOUR gangers
+///    ([`Faction`] `==` [`PlayerFaction`]) → [`LeftClickOutcome::Select`].
+/// 3. **MOVE** — there is a player-faction selection AND the hovered cell is empty
+///    (`occupant == None`), in-bounds (a [`Some`] [`HoveredCell`] is always in-grid), and
+///    unblocked (`!is_blocked`) → [`LeftClickOutcome::Move`].
+/// 4. **CLEAR** — none of the above (or nothing hovered) → [`LeftClickOutcome::Clear`].
+///
+/// FALL-THROUGH (the user-confirmed precedence): a fire mode over an EMPTY / your-own /
+/// non-enemy cell FAILS clause 1 (no enemy occupant) and falls through to clause 3 (MOVE) —
+/// the fire mode does NOT lock out move.
+///
+/// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
+/// `Query<&Faction>` / `Query<ShooterFireData>` + the current [`SelectedShooter`], no
+/// `&mut World`. It does NOT read the mouse button (the caller gates on its own press edge),
+/// so the gamepad surface reuses it without a `ButtonInput<MouseButton>`.
+#[must_use]
+pub fn decide_left_click(
+    reads: &LeftClickReads,
+    factions: &Query<&Faction>,
+    shooters: &Query<ShooterFireData>,
+    selected: &SelectedShooter,
+) -> LeftClickOutcome {
+    // Nothing hovered -> no cell to act on -> CLEAR (clause 4, the no-hover case).
+    let Some(target) = **reads.hovered else {
+        return LeftClickOutcome::Clear;
+    };
+    let player = **reads.player;
+    // The occupant at the hovered cell (None when empty), and its faction (None when the
+    // occupant carries no `Faction` component — fail-closed, treated as not-yours).
+    let occupant = reads.occupancy.occupant(&target);
+    let occupant_faction = occupant.and_then(|e| factions.get(e).ok().copied());
+    // Whether the CURRENT selection is a player-faction ganger (gates FIRE + MOVE).
+    let selection_is_player = (**selected)
+        .and_then(|e| factions.get(e).ok().copied())
+        .is_some_and(|f| f == player);
+
+    // 1. FIRE — a fire mode + an ENEMY occupant + a player-faction selection + can_fire.
+    if let (Some(shooter), Some(enemy_faction)) = (**selected, occupant_faction)
+        && selection_is_player
+        && enemy_faction != player
+        && let Some(request) =
+            try_fire_request(shooter, target, &reads.fire_mode, &reads.tuning, shooters)
+    {
+        return LeftClickOutcome::Fire(request); // FIRE wins this edge.
+    }
+
+    // 2. SELECT — the hovered cell holds one of YOUR gangers.
+    if let (Some(entity), Some(faction)) = (occupant, occupant_faction)
+        && faction == player
+    {
+        return LeftClickOutcome::Select(entity); // SELECT wins — no act emitted.
+    }
+
+    // 3. MOVE — a player-faction selection + an empty, in-bounds, unblocked hovered cell.
+    if let Some(actor) = **selected
+        && selection_is_player
+        && occupant.is_none()
+        && !reads.occupancy.is_blocked(&target)
+    {
+        return LeftClickOutcome::Move(MoveRequested::new(actor, target)); // MOVE wins.
+    }
+
+    // 4. CLEAR — none of the above.
+    LeftClickOutcome::Clear
+}
+
+/// Commits a [`decide_left_click`] [`LeftClickOutcome`] to the input-layer state — the
+/// SHARED apply step (GTW-259) the mouse and gamepad both run.
+///
+/// FIRE / MOVE push the carried act onto [`PendingActIntent`] (the ONE
+/// [`dispatch_act_intents`](crate::dispatch_act_intents) drain emits it); SELECT sets
+/// [`SelectedShooter::new`]; CLEAR sets [`SelectedShooter::cleared`]. The selection writes
+/// go through [`set_selection`] (change-detection hygiene). FIRE / MOVE do NOT touch the
+/// selection (they are mutually exclusive with SELECT / CLEAR — the precedence is decided in
+/// [`decide_left_click`]).
+///
+/// Param-only (`bevy-traps.md` #7): the [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`]
+/// writes, no `&mut World`.
+pub fn apply_left_click(
+    outcome: LeftClickOutcome,
+    selected: &mut ResMut<SelectedShooter>,
+    pending: &mut ResMut<PendingActIntent>,
+) {
+    match outcome {
+        LeftClickOutcome::Fire(request) => pending.push(ActIntent::Fire(request)),
+        LeftClickOutcome::Select(entity) => {
+            set_selection(selected, SelectedShooter::new(entity));
+        }
+        LeftClickOutcome::Move(request) => pending.push(ActIntent::Move(request)),
+        LeftClickOutcome::Clear => set_selection(selected, SelectedShooter::cleared()),
+    }
+}
+
 /// Resolves ONE Left-press edge through the FIRE → SELECT → MOVE → CLEAR precedence
 /// chain (GTW-238), gated to the player's own faction.
 ///
-/// On a `ButtonInput<MouseButton>` `just_pressed(Left)`, reads the hovered cell (the
-/// cell resolved last update — see the ordering note below) and resolves EXACTLY ONE
-/// action, first match wins, early-return:
+/// On a `ButtonInput<MouseButton>` `just_pressed(Left)`, [`decide_left_click`] resolves the
+/// SHARED outcome (the cell resolved last update — see the ordering note below) and
+/// [`apply_left_click`] commits it. The decision is the SAME one
+/// [`gamepad_click_act`](crate::gamepad::gamepad_click_act) (the South button) uses — ONE
+/// precedence implementation, two press surfaces (GTW-259). The precedence:
 ///
 /// 1. **FIRE** — a fire mode is selected, the hovered cell holds an ENEMY occupant
 ///    (a [`Faction`] `!=` [`PlayerFaction`]), the current selection is a player-faction
@@ -192,70 +330,61 @@ pub fn left_click_act(
     if !reads.mouse.just_pressed(MouseButton::Left) {
         return;
     }
-    // Nothing hovered -> no cell to act on -> CLEAR (clause 4, the no-hover case).
-    let Some(target) = **reads.hovered else {
-        set_selection(&mut selected, SelectedShooter::cleared());
-        return;
-    };
-    let player = **reads.player;
-    // The occupant at the hovered cell (None when empty), and its faction (None when the
-    // occupant carries no `Faction` component — fail-closed, treated as not-yours).
-    let occupant = reads.occupancy.occupant(&target);
-    let occupant_faction = occupant.and_then(|e| factions.get(e).ok().copied());
-    // Whether the CURRENT selection is a player-faction ganger (gates FIRE + MOVE).
-    let selection_is_player = (**selected)
-        .and_then(|e| factions.get(e).ok().copied())
-        .is_some_and(|f| f == player);
+    let outcome = decide_left_click(&reads, &factions, &shooters, &selected);
+    apply_left_click(outcome, &mut selected, &mut pending);
+}
 
-    // 1. FIRE — a fire mode + an ENEMY occupant + a player-faction selection + can_fire.
-    if let (Some(shooter), Some(enemy_faction)) = (**selected, occupant_faction)
-        && selection_is_player
-        && enemy_faction != player
-        && let Some(request) =
-            try_fire_request(shooter, target, &reads.fire_mode, &reads.tuning, &shooters)
-    {
-        pending.push(ActIntent::Fire(request));
-        return; // FIRE wins this edge — no select change, no move.
-    }
-
-    // 2. SELECT — the hovered cell holds one of YOUR gangers.
-    if let (Some(entity), Some(faction)) = (occupant, occupant_faction)
-        && faction == player
-    {
-        set_selection(&mut selected, SelectedShooter::new(entity));
-        return; // SELECT wins — no act emitted.
-    }
-
-    // 3. MOVE — a player-faction selection + an empty, in-bounds, unblocked hovered cell.
-    if let Some(actor) = **selected
-        && selection_is_player
-        && occupant.is_none()
-        && !reads.occupancy.is_blocked(&target)
-    {
-        pending.push(ActIntent::Move(MoveRequested::new(actor, target)));
-        return; // MOVE wins.
-    }
-
-    // 4. CLEAR — none of the above.
-    set_selection(&mut selected, SelectedShooter::cleared());
+/// Resolves the turn-to-face decision (GTW-238) into an optional [`SetFacingRequested`] —
+/// the SHARED turn decision (GTW-259) the mouse ([`right_click_turn_to_face`]) and the
+/// gamepad ([`gamepad_turn`](crate::gamepad::gamepad_turn), the East button) both use.
+///
+/// READ-ONLY: given the player-faction [`SelectedShooter`] (already faction-gated by the
+/// caller), the [`HoveredCell`](crate::HoveredCell), and the actor [`Position`] query, it
+/// reads the actor's cell, computes the target [`Direction`](gdtf_battle_sim::Direction)
+/// toward the hovered cell via
+/// [`Direction::from_cells`](gdtf_battle_sim::Direction::from_cells), and returns
+/// [`Some`]`(`[`SetFacingRequested::new`]`)` — or [`None`] (no turn) when: there is no
+/// selection; nothing is hovered; the actor has no [`Position`] (fail-closed via the query
+/// lookup); or the hovered cell is the actor's OWN cell (`from_cells` returns [`None`] — no
+/// direction toward yourself).
+///
+/// The per-45deg-step turn TU cost is the SIM's facing dispatch (GTW-235), NOT here. The
+/// `selected` faction GATE (player-only) stays at each call site (the mouse / gamepad
+/// system) so this helper is purely the geometric decision both surfaces share.
+///
+/// Param-only (`bevy-traps.md` #7): reads via the passed-in [`SelectedShooter`] +
+/// [`HoveredCell`] + read-only `Query<&Position>`, no `&mut World`.
+#[must_use]
+pub fn decide_turn(
+    selected: &SelectedShooter,
+    hovered: &HoveredCell,
+    positions: &Query<&Position>,
+) -> Option<SetFacingRequested> {
+    let actor = (**selected)?;
+    // Nothing hovered -> no target cell.
+    let target = (**hovered)?;
+    // The actor's grid cell (fail-closed if it has no Position component).
+    let position = positions.get(actor).ok()?;
+    let actor_cell = Cell::new(position.x, position.y);
+    let hovered_cell = Cell::new(target.x, target.y);
+    // Hovering the actor's OWN cell yields no direction -> no-op (None).
+    let facing = Direction::from_cells(actor_cell, hovered_cell)?;
+    Some(SetFacingRequested::new(actor, facing))
 }
 
 /// Turns the player-faction [`SelectedShooter`] to face the [`HoveredCell`] on a Right
 /// press (GTW-238), pushing an [`ActIntent::Turn`].
 ///
 /// On a `ButtonInput<MouseButton>` `just_pressed(Right)` with a player-faction
-/// [`SelectedShooter`]: reads the actor's [`Position`] cell and the
-/// [`HoveredCell`](crate::HoveredCell), computes the target
-/// [`Direction`](gdtf_battle_sim::Direction) via
-/// [`Direction::from_cells`](gdtf_battle_sim::Direction::from_cells) (actor's cell → the
-/// hovered cell), and pushes [`ActIntent::Turn`]`(`[`SetFacingRequested`]`)`. The
-/// per-45deg-step turn TU cost is the SIM's facing dispatch (GTW-235), NOT here — this
-/// surface only emits the request.
+/// [`SelectedShooter`], it applies the SHARED [`decide_turn`] decision (the SAME one
+/// [`gamepad_turn`](crate::gamepad::gamepad_turn) uses, GTW-259) and pushes the resulting
+/// [`ActIntent::Turn`]`(`[`SetFacingRequested`]`)`. The per-45deg-step turn TU cost is the
+/// SIM's facing dispatch (GTW-235), NOT here — this surface only emits the request.
 ///
 /// Writes NO intent when: the button is not just-pressed; there is no selection; the
-/// selection is NOT a player-faction ganger (gating, AC6); nothing is hovered; the actor
-/// has no [`Position`] (fail-closed via the query lookup); or the hovered cell is the
-/// actor's OWN cell (`from_cells` returns [`None`] — no direction toward yourself).
+/// selection is NOT a player-faction ganger (the faction gate stays here, AC6); or
+/// [`decide_turn`] returns [`None`] (nothing hovered, no actor [`Position`], or the hovered
+/// cell is the actor's OWN cell).
 /// Param-only (`bevy-traps.md` #7): all reads via `Res` / `Query`, the intent push via
 /// [`ResMut<PendingActIntent>`]; no `&mut World`. Runs `.before(pick_hovered_cell)` (the
 /// cell resolved last update) and `.before(dispatch_act_intents)` (the drain).
@@ -272,32 +401,30 @@ pub fn right_click_turn_to_face(
     if !mouse.just_pressed(MouseButton::Right) {
         return;
     }
-    // No selection -> nothing to turn (AC6).
-    let Some(actor) = **selected else {
-        return;
-    };
     // Gating: only a PLAYER-faction selection turns (a forced enemy emits nothing, AC6).
-    let Ok(faction) = factions.get(actor) else {
-        return;
-    };
-    if *faction != **player {
+    if !selection_is_player(*selected, &factions, *player) {
         return;
     }
-    // Nothing hovered -> no target cell.
-    let Some(target) = **hovered else {
-        return;
-    };
-    // The actor's grid cell (fail-closed if it has no Position component).
-    let Ok(position) = positions.get(actor) else {
-        return;
-    };
-    let actor_cell = Cell::new(position.x, position.y);
-    let hovered_cell = Cell::new(target.x, target.y);
-    // Hovering the actor's OWN cell yields no direction -> no-op (no intent).
-    let Some(facing) = Direction::from_cells(actor_cell, hovered_cell) else {
-        return;
-    };
-    pending.push(ActIntent::Turn(SetFacingRequested::new(actor, facing)));
+    if let Some(request) = decide_turn(&selected, &hovered, &positions) {
+        pending.push(ActIntent::Turn(request));
+    }
+}
+
+/// Whether the current [`SelectedShooter`] is one of the player's own gangers (its
+/// [`Faction`] equals [`PlayerFaction`]).
+///
+/// The player-faction gate the turn surfaces apply before [`decide_turn`] (a forced
+/// enemy selection emits nothing, AC6). Read-only — looks the selection up in the
+/// `Query<&Faction>` and compares to the player faction; `false` when nothing is selected
+/// or the selection carries no [`Faction`].
+fn selection_is_player(
+    selected: SelectedShooter,
+    factions: &Query<&Faction>,
+    player: PlayerFaction,
+) -> bool {
+    (*selected)
+        .and_then(|actor| factions.get(actor).ok().copied())
+        .is_some_and(|faction| faction == *player)
 }
 
 /// Writes `next` into `selected` only on a real change (change-detection hygiene), so a

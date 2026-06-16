@@ -474,6 +474,26 @@ pub fn pan_velocity(dir: Vec2, speed: PanSpeed) -> Vec2 {
     clamped * *speed
 }
 
+/// The gamepad software cursor's SCREEN position, emitted by the input crate for the
+/// presenter's edge-pan (GTW-259).
+///
+/// The presenter-owned input API for the gamepad edge-pan: a buffered [`Message`] (Bevy
+/// 0.18 — buffered events are messages, `bevy-traps.md` #4) carrying the gamepad cursor's
+/// SCREEN position (logical px, window origin TOP-LEFT, y-down — the same frame as the OS
+/// cursor [`mouse_edge_dir`] reads). The INPUT crate WRITES this every update the gamepad
+/// is the active pointer (after moving its software cursor);
+/// [`pan_camera_on_gamepad_cursor_edge`] READS it and edge-pans the camera, REUSING the
+/// SAME [`mouse_edge_dir`] / [`pan_velocity`] helpers the OS-cursor edge-pan uses.
+///
+/// Mirrors the [`HighlightRequest`](crate::HighlightRequest) seam: the presenter, as the
+/// CONSUMER, DEFINES this message (its input API), so the crate edge stays one-way
+/// (`input → presenter`, never a cycle) — input can name a presenter-defined message, the
+/// presenter never names input. The inner [`Vec2`] is framework-math plumbing (a raw screen
+/// position — the GTW-249/250/251 carve-out for screen / direction coords), not a wrapped
+/// domain scalar.
+#[derive(Message, Debug, Clone, Copy, PartialEq)]
+pub struct GamepadCursorMoved(pub Vec2);
+
 /// `Update` (battle-gated): pan the [`WorldCamera`] each frame from the three navigation
 /// sources, BEFORE the [`clamp_camera_to_bounds`] clamp so the camera can never pan off the
 /// battlefield.
@@ -522,6 +542,54 @@ pub fn pan_camera(
         dir += stick_pan_dir(gamepad.right_stick(), STICK_DEADZONE);
     }
 
+    let velocity = pan_velocity(dir, PAN_SPEED);
+    if velocity == Vec2::ZERO {
+        return;
+    }
+    let delta = velocity * time.delta_secs();
+    for mut transform in &mut cameras {
+        transform.translation.x += delta.x;
+        transform.translation.y += delta.y;
+    }
+}
+
+/// `Update` (battle-gated): pan the [`WorldCamera`] when the GAMEPAD software cursor reaches
+/// a screen edge (GTW-259), BEFORE [`clamp_camera_to_bounds`] so it can never pan off the
+/// battlefield.
+///
+/// Drains the [`MessageReader<GamepadCursorMoved>`] (the input crate writes the gamepad
+/// cursor's screen position every update the gamepad is the active pointer) and acts on the
+/// LATEST position this update (the freshest cursor read), REUSING the GTW-250 mouse-edge
+/// helpers: [`mouse_edge_dir`]`(pos, window.size(), `[`EDGE_BAND_PX`]`)` for the edge
+/// direction (with the screen-y → camera-y flip), [`pan_velocity`]`(dir, `[`PAN_SPEED`]`)`
+/// for the per-second velocity, scaled by `time.delta_secs()`, added to the camera
+/// `Transform.translation.xy` (z is kept — ground plane only). When NO message arrives this
+/// update (the gamepad is not the active pointer, or the cursor is not near an edge) the
+/// camera is left untouched (no pan). In `Mouse` mode the OS-cursor edge-pan in
+/// [`pan_camera`] already covers the cursor, so this never double-pans.
+///
+/// Reads the primary [`Window`] (the size for the edge band — no window → no pan), the
+/// [`MessageReader<GamepadCursorMoved>`], `Res<Time>` (`delta_secs()`), and the
+/// [`WorldCamera`] `Transform`. Param-only (`Res` / `Query` / `MessageReader`), no
+/// `&mut World` (`bevy-traps.md` #7); the battle gate (`bevy-traps.md` #1) and the
+/// `.before(clamp_camera_to_bounds)` ordering (`bevy-traps.md` #3 — the clamp stays the last
+/// writer) are applied at registration. It emits NO sim message — pan is presenter-only.
+pub fn pan_camera_on_gamepad_cursor_edge(
+    mut cursor_moves: MessageReader<GamepadCursorMoved>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    time: Res<Time>,
+    mut cameras: Query<&mut Transform, With<WorldCamera>>,
+) {
+    // Act on only the LATEST gamepad cursor position this update — earlier reads are stale.
+    // No message => the gamepad is not the active pointer (or no edge) => no pan.
+    let Some(GamepadCursorMoved(cursor)) = cursor_moves.read().last().copied() else {
+        return;
+    };
+    let Some(window) = windows.iter().next() else {
+        return;
+    };
+
+    let dir = mouse_edge_dir(cursor, window.size(), EDGE_BAND_PX);
     let velocity = pan_velocity(dir, PAN_SPEED);
     if velocity == Vec2::ZERO {
         return;

@@ -60,9 +60,15 @@
 //! types + the presenter's interface and WRITES input-layer state (the hovered cell,
 //! the selection, the active level, the intent queue) + its two highlight sprites.
 
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{
+    ecs::message::Messages,
+    prelude::*,
+    window::{CursorMoved, PrimaryWindow},
+};
 use gdtf_assets::RonAssetAppExt;
-use gdtf_battle_presenter::{ActiveLevel, CELL_PX, HighlightRequest, WorldCamera};
+use gdtf_battle_presenter::{
+    ActiveLevel, CELL_PX, GamepadCursorMoved, HighlightRequest, WorldCamera,
+};
 use gdtf_battle_sim::{
     BattleInProgress, Cell, CellLevel, GRID_HEIGHT, GRID_WIDTH, Level, OccupancyGrid,
     PlayerFaction,
@@ -76,6 +82,7 @@ use gdtf_battle_sim::{
 pub mod cycle;
 pub mod fire_mode;
 pub mod fire_surface;
+pub mod gamepad;
 pub mod intent;
 pub mod keybinds;
 pub mod keyboard;
@@ -83,14 +90,20 @@ pub mod selection;
 
 pub use cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
 pub use fire_mode::{SelectedFireMode, next_fire_mode, sync_fire_mode_on_select};
+pub use gamepad::{
+    ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, CursorSpeed, CursorStickDeadzone,
+    GamepadCursor, emit_gamepad_cursor_move, gamepad_click_act, gamepad_turn,
+    mouse_reclaims_pointer, move_cursor, move_gamepad_cursor,
+};
 pub use intent::{
     ActIntent, ActWriters, LevelStep, PendingActIntent, dispatch_act_intents, step_level,
 };
 pub use keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds};
 pub use keyboard::{fire_mode_cycle_key, level_keys, posture_keys, select_clear_key};
 pub use selection::{
-    LeftClickReads, SelectedShooter, SelectionHighlight, auto_select_first_player_ganger,
-    left_click_act, right_click_turn_to_face, update_selection_highlight,
+    LeftClickOutcome, LeftClickReads, SelectedShooter, SelectionHighlight, apply_left_click,
+    auto_select_first_player_ganger, decide_left_click, decide_turn, left_click_act,
+    right_click_turn_to_face, update_selection_highlight,
 };
 
 /// The cell the OS cursor currently hovers, on the presenter's active level.
@@ -208,6 +221,11 @@ impl Plugin for GdtfBattleInputPlugin {
             .init_resource::<SelectedShooter>()
             .init_resource::<SelectedFireMode>()
             .init_resource::<PendingActIntent>()
+            // GTW-259 — the gamepad software cursor + the last-moved-wins pointer arbiter.
+            // `GamepadCursor` inits to its window-centre default; `ActivePointer` to `Mouse`
+            // (the landed mouse-only behavior until the stick moves).
+            .init_resource::<gamepad::GamepadCursor>()
+            .init_resource::<gamepad::ActivePointer>()
             // The seam EMITS these `*Requested` messages — register the five buffers
             // the ONE `dispatch_act_intents` drain writes into (the four landed acts +
             // GTW-238's `MoveRequested`) so its `MessageWriter`s pass param validation
@@ -229,6 +247,13 @@ impl Plugin for GdtfBattleInputPlugin {
             // presenter's `TopDownRendererPlugin` also adding the same buffer (the reader
             // side) — the `*Requested` precedent above.
             .add_message::<HighlightRequest>()
+            // GTW-259 — register the presenter-defined `GamepadCursorMoved` buffer so the
+            // gamepad-cursor emitter's `MessageWriter<GamepadCursorMoved>` passes param
+            // validation even headlessly (a `MessageWriter<M>` needs its `Messages<M>`
+            // buffer, `bevy-traps.md` #4). `add_message` is IDEMPOTENT, so this coexists
+            // with the presenter's `TopDownRendererPlugin` also adding the same buffer (the
+            // reader side) — the `HighlightRequest` precedent (input→presenter, no cycle).
+            .add_message::<GamepadCursorMoved>()
             .add_systems(
                 Update,
                 (
@@ -337,8 +362,20 @@ impl Plugin for GdtfBattleInputPlugin {
                     .after(fire_mode_cycle_key)
                     .after(left_click_act)
                     .after(right_click_turn_to_face)
+                    // GTW-259 — also after the gamepad act writers so the drain sees a
+                    // South / East push the same update.
+                    .after(gamepad_click_act)
+                    .after(gamepad_turn)
                     .run_if(resource_exists::<BattleInProgress>),
             );
+
+        // GTW-259 — the gamepad software cursor + act surfaces + edge-pan emitter. Extracted
+        // into a helper to keep `build` under the `too_many_lines` lint (the presenter's
+        // `register_*` extraction precedent). System-ordering edges by fn reference
+        // (`.before(pick_hovered_cell)`, the drain's `.after(gamepad_click_act)` /
+        // `.after(gamepad_turn)`) compose across `add_systems` calls, so this helper's
+        // systems still order correctly against the chain above.
+        register_gamepad_systems(app);
 
         // The data-driven keybind table loads the GTW-136 RON way. `init_ron_asset`
         // PANICS at registration without an `AssetServer` (no `Assets<T>` machinery),
@@ -360,27 +397,98 @@ impl Plugin for GdtfBattleInputPlugin {
     }
 }
 
-/// Writes [`HoveredCell`] from the OS cursor every update.
+/// Registers the GTW-259 gamepad systems into [`InputSystems::Gather`]: the software-cursor
+/// drive + the pointer arbitration, the South / East act surfaces, and the edge-pan emitter.
+///
+/// Extracted from [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep it under the
+/// `too_many_lines` lint (the presenter's `register_*` extraction precedent). Every system is
+/// battle-gated (`bevy-traps.md` #1) and `InputSystems::Gather`-banded:
+///
+/// - [`move_gamepad_cursor`] steers the [`GamepadCursor`](gamepad::GamepadCursor) by the LEFT
+///   stick and claims [`ActivePointer::Gamepad`](gamepad::ActivePointer::Gamepad) past the
+///   deadzone; ordered `.before(pick_hovered_cell)` (`bevy-traps.md` #3) so the generalized
+///   picker projects THIS update's cursor when the gamepad is active.
+/// - [`mouse_reclaims_pointer`] flips back to
+///   [`ActivePointer::Mouse`](gamepad::ActivePointer::Mouse) on a [`CursorMoved`] message
+///   (last-moved-wins); additionally gated on its `Messages<CursorMoved>` buffer existing so
+///   its [`MessageReader`](bevy::ecs::message::MessageReader) validates under `MinimalPlugins`
+///   (no `InputPlugin`, `bevy-traps.md` #4).
+/// - [`gamepad_click_act`] (South) + [`gamepad_turn`] (East) reuse the SHARED
+///   [`decide_left_click`](selection::decide_left_click) /
+///   [`decide_turn`](selection::decide_turn) the mouse uses (ONE precedence) and the SAME
+///   [`PendingActIntent`] seam (no new [`ActIntent`] variant). They carry the SAME gate as
+///   [`left_click_act`](selection::left_click_act) (`gamepad_click_act` takes the
+///   [`LeftClickReads`](selection::LeftClickReads) bundle), ordered `.before(pick_hovered_cell)`
+///   (the cell resolved last update) and `.before(dispatch_act_intents)` (the drain).
+/// - [`emit_gamepad_cursor_move`] writes [`GamepadCursorMoved`] for the presenter's edge-pan
+///   when the gamepad is the active pointer.
+fn register_gamepad_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        move_gamepad_cursor
+            .in_set(InputSystems::Gather)
+            .before(pick_hovered_cell)
+            .run_if(resource_exists::<BattleInProgress>),
+    )
+    .add_systems(
+        Update,
+        mouse_reclaims_pointer.in_set(InputSystems::Gather).run_if(
+            resource_exists::<BattleInProgress>.and(resource_exists::<Messages<CursorMoved>>),
+        ),
+    )
+    .add_systems(
+        Update,
+        (gamepad_click_act, gamepad_turn)
+            .in_set(InputSystems::Gather)
+            .before(pick_hovered_cell)
+            .before(dispatch_act_intents)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and(resource_exists::<OccupancyGrid>)
+                    .and(resource_exists::<ButtonInput<MouseButton>>)
+                    .and(resource_exists::<CombatTuning>)
+                    .and(resource_exists::<PlayerFaction>),
+            ),
+    )
+    .add_systems(
+        Update,
+        emit_gamepad_cursor_move
+            .in_set(InputSystems::Gather)
+            .run_if(resource_exists::<BattleInProgress>),
+    );
+}
+
+/// Writes [`HoveredCell`] from the ACTIVE pointer's cursor every update (GTW-259).
 ///
 /// Reads the single [`WorldCamera`] (its [`Camera`] + [`GlobalTransform`]), the
-/// primary window's cursor ([`Window::cursor_position`]), and the presenter's
-/// [`ActiveLevel`]; unprojects the cursor with
-/// [`Camera::viewport_to_world_2d`]; floors the world point into a [`Cell`] via
-/// [`world_to_cell`]; and writes `HoveredCell(Some(..))` only when the cell is in
-/// `0..60` on both axes — otherwise `HoveredCell(None)`.
+/// presenter's [`ActiveLevel`], the last-moved-wins [`ActivePointer`](gamepad::ActivePointer),
+/// the primary window (for the OS cursor in [`Mouse`](gamepad::ActivePointer::Mouse) mode),
+/// and the [`GamepadCursor`](gamepad::GamepadCursor) (for
+/// [`Gamepad`](gamepad::ActivePointer::Gamepad) mode); CHOOSES the active cursor
+/// ([`active_cursor`]); unprojects it with [`Camera::viewport_to_world_2d`]; floors the
+/// world point into a [`Cell`] via [`world_to_cell`]; and writes `HoveredCell(Some(..))` only
+/// when the cell is in `0..60` on both axes — otherwise `HoveredCell(None)`.
 ///
-/// Fail-closed (writes `HoveredCell(None)`, NEVER panics) when: there is not
-/// EXACTLY one world camera; there is no cursor (it is off-window);
-/// `viewport_to_world_2d` returns [`Err`]; or the computed cell is OUTSIDE the
-/// grid. The [`Result`] / [`Option`] are handled explicitly with `let else`
-/// (`bevy-traps.md` #7 — param-only, no `&mut World`).
+/// The GTW-251 [`emit_highlight_request`] then makes the hover-highlight follow whichever
+/// cursor is active — so steering the gamepad stick moves the highlighted cell with NO
+/// separate reticle (GTW-259).
+///
+/// Fail-closed (writes `HoveredCell(None)`, NEVER panics) when: there is not EXACTLY one
+/// world camera; there is no active cursor (the OS cursor is off-window in `Mouse` mode);
+/// `viewport_to_world_2d` returns [`Err`]; or the computed cell is OUTSIDE the grid. The
+/// [`Result`] / [`Option`] are handled explicitly with `let else` (`bevy-traps.md` #7 —
+/// param-only, no `&mut World`). Ordered `.after(move_gamepad_cursor)` (which writes the
+/// gamepad cursor + the active pointer) so it reads this update's resolved pointer.
 pub fn pick_hovered_cell(
     cameras: Query<(&Camera, &GlobalTransform), With<WorldCamera>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     active_level: Res<ActiveLevel>,
+    active: Res<gamepad::ActivePointer>,
+    gamepad_cursor: Res<gamepad::GamepadCursor>,
     mut hovered: ResMut<HoveredCell>,
 ) {
-    let resolved = resolve_hovered_cell(&cameras, &windows, **active_level);
+    let resolved =
+        resolve_hovered_cell(&cameras, &windows, **active_level, *active, *gamepad_cursor);
     // Write every update; change-detection avoids a no-op rewrite spuriously
     // tripping `Changed<HoveredCell>` only when the value actually differs.
     if **hovered != resolved {
@@ -388,16 +496,40 @@ pub fn pick_hovered_cell(
     }
 }
 
-/// Resolves the hovered cell from the camera + window queries, fail-closed.
+/// The screen cursor the ACTIVE pointer projects: the OS cursor in
+/// [`Mouse`](gamepad::ActivePointer::Mouse) mode (or [`None`] when it is off-window), the
+/// [`GamepadCursor`](gamepad::GamepadCursor) in [`Gamepad`](gamepad::ActivePointer::Gamepad)
+/// mode (GTW-259).
+///
+/// The last-moved-wins arbitration: whichever device moved last
+/// ([`ActivePointer`](gamepad::ActivePointer)) decides which cursor the picker unprojects.
+/// The gamepad cursor is always present (an `init_resource`-d [`Resource`] kept inside the
+/// window), so `Gamepad` mode always yields a cursor; the OS cursor is [`None`] off-window.
+fn active_cursor(
+    window: &Window,
+    active: gamepad::ActivePointer,
+    gamepad_cursor: gamepad::GamepadCursor,
+) -> Option<Vec2> {
+    match active {
+        gamepad::ActivePointer::Mouse => window.cursor_position(),
+        gamepad::ActivePointer::Gamepad => Some(*gamepad_cursor),
+    }
+}
+
+/// Resolves the hovered cell from the camera + the ACTIVE pointer's cursor, fail-closed.
 ///
 /// Factored out of [`pick_hovered_cell`] so the resolution logic is a pure
 /// `Option`-returning helper (param-only — it borrows the system's queries, never
-/// `&mut World`). Returns [`None`] for every fail-closed case so the caller simply
-/// stores it.
+/// `&mut World`). Reads the [`ActivePointer`](gamepad::ActivePointer) to choose the cursor
+/// ([`active_cursor`]): the OS cursor in `Mouse` mode, the
+/// [`GamepadCursor`](gamepad::GamepadCursor) in `Gamepad` mode (GTW-259). Returns [`None`]
+/// for every fail-closed case so the caller simply stores it.
 fn resolve_hovered_cell(
     cameras: &Query<(&Camera, &GlobalTransform), With<WorldCamera>>,
     windows: &Query<&Window, With<PrimaryWindow>>,
     level: Level,
+    active: gamepad::ActivePointer,
+    gamepad_cursor: gamepad::GamepadCursor,
 ) -> Option<CellLevel> {
     // Exactly one world camera, else fail-closed.
     let Ok((camera, cam_transform)) = cameras.single() else {
@@ -407,8 +539,9 @@ fn resolve_hovered_cell(
     let Ok(window) = windows.single() else {
         return None;
     };
-    // The cursor is on-window, else fail-closed.
-    let cursor = window.cursor_position()?;
+    // The active pointer's cursor (OS cursor in Mouse mode, gamepad cursor in Gamepad mode),
+    // else fail-closed (the OS cursor is off-window).
+    let cursor = active_cursor(window, active, gamepad_cursor)?;
     // The cursor unprojects into the world, else fail-closed.
     let Ok(world) = camera.viewport_to_world_2d(cam_transform, cursor) else {
         return None;
