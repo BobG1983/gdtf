@@ -56,6 +56,7 @@ use gdtf_battle_sim::{
     acts::{
         FireRequested, MoveRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
     },
+    occupancy_sync::SimSystems,
     tuning::CombatTuning,
 };
 
@@ -119,6 +120,32 @@ pub struct HoverHighlight;
 /// the tile beneath.
 const HIGHLIGHT_TINT: Color = Color::srgba(1.0, 0.95, 0.6, 0.35);
 
+/// Input system-ordering anchor — the named `Update`-schedule band every battle input
+/// system runs in, configured `.before(`[`SimSystems::Simulate`]`)`.
+///
+/// Mirrors the sim's [`SimSystems::Simulate`] and the presenter's `PresenterSystems::Draw`
+/// anchors (the proven cross-crate ordering pattern): the band is defined ONCE via
+/// [`configure_sets`](App::configure_sets), then `.in_set` on each member system
+/// (`bevy-traps.md` #5 — `configure_sets` precedes `.in_set`). Putting the whole input
+/// band `.before(SimSystems::Simulate)` realizes the documented one-way
+/// `input -> sim -> presenter` loop (ADR-0001) inside a single `Update`: a click's
+/// `*Requested` message is EMITTED before the sim consumes it the SAME frame, removing the
+/// input/sim ordering ambiguity (`bevy-traps.md` #3 — no flaky one-frame lag). The set
+/// membership is purely additive — every intra-band `.before`/`.after` edge and `run_if`
+/// gate is unchanged, and those inner edges all live WITHIN this set, so they compose with
+/// the cross-band edge. The ordering edge is independent of the sim band's `run_if` gate
+/// (an edge is not a run condition), so it is correct whether or not a battle is live.
+///
+/// A framework `SystemSet` label, not a domain value (the no-bare-types framework carve-out,
+/// the same justification [`SimSystems`] / `PresenterSystems` use) — `pub` so the app and
+/// tests can name it for ordering and probing.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InputSystems {
+    /// The band holding every battle input system — ordered before the sim's world
+    /// mutations so a `*Requested` message is emitted the same update the sim runs.
+    Gather,
+}
+
 /// The input plugin: cursor->cell picking + hover-highlight (S7), ganger selection,
 /// level cycling, the data-driven keybinds, and the shared act-intent seam (S8).
 ///
@@ -164,7 +191,19 @@ pub struct GdtfBattleInputPlugin;
 
 impl Plugin for GdtfBattleInputPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(GdtfBattleInputActive)
+        // GTW-245 — anchor the whole input band BEFORE the sim band, realizing the
+        // one-way `input -> sim -> presenter` loop (ADR-0001) inside one `Update`.
+        // Defined ONCE here, before `add_systems` (`bevy-traps.md` #5 — `configure_sets`
+        // precedes `.in_set`); each input system below carries `.in_set(InputSystems::Gather)`.
+        // `configure_sets` ACCUMULATES across plugins (`bevy-traps.md` #5), so this edge
+        // composes with `OccupancyMaintenancePlugin`'s `configure_sets(Update,
+        // SimSystems::Simulate)` and the presenter's `PresenterSystems::Draw.after(...)` —
+        // resolving the three sets to input -> sim -> presenter. The edge is independent
+        // of the sim band's `run_if` gate (an edge is not a run condition), so it holds
+        // whether or not a battle is live. `SimSystems` is path-qualified from
+        // `gdtf_battle_sim` (the anchor's sole owner) exactly as the presenter references it.
+        app.configure_sets(Update, InputSystems::Gather.before(SimSystems::Simulate))
+            .insert_resource(GdtfBattleInputActive)
             .init_resource::<HoveredCell>()
             .init_resource::<SelectedShooter>()
             .init_resource::<SelectedFireMode>()
@@ -189,6 +228,7 @@ impl Plugin for GdtfBattleInputPlugin {
                     pick_hovered_cell,
                     update_hover_highlight.after(pick_hovered_cell),
                 )
+                    .in_set(InputSystems::Gather)
                     .run_if(resource_exists::<BattleInProgress>),
             )
             // GTW-238 — the ONE disambiguated left-click decision (FIRE -> SELECT ->
@@ -212,6 +252,7 @@ impl Plugin for GdtfBattleInputPlugin {
             .add_systems(
                 Update,
                 (left_click_act, right_click_turn_to_face)
+                    .in_set(InputSystems::Gather)
                     .before(pick_hovered_cell)
                     .before(dispatch_act_intents)
                     .run_if(
@@ -224,9 +265,12 @@ impl Plugin for GdtfBattleInputPlugin {
             )
             .add_systems(
                 Update,
-                update_selection_highlight.after(left_click_act).run_if(
-                    resource_exists::<BattleInProgress>.and(resource_exists::<OccupancyGrid>),
-                ),
+                update_selection_highlight
+                    .in_set(InputSystems::Gather)
+                    .after(left_click_act)
+                    .run_if(
+                        resource_exists::<BattleInProgress>.and(resource_exists::<OccupancyGrid>),
+                    ),
             )
             // 222b: on a fresh selection, default `SelectedFireMode` to the picked
             // weapon's `FireMode::single()` (AC1). Runs after `left_click_act` so it
@@ -234,6 +278,7 @@ impl Plugin for GdtfBattleInputPlugin {
             .add_systems(
                 Update,
                 sync_fire_mode_on_select
+                    .in_set(InputSystems::Gather)
                     .after(left_click_act)
                     .run_if(resource_exists::<BattleInProgress>),
             )
@@ -249,6 +294,7 @@ impl Plugin for GdtfBattleInputPlugin {
                     posture_keys,
                     fire_mode_cycle_key,
                 )
+                    .in_set(InputSystems::Gather)
                     .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<Keybinds>)),
             )
             // The ONE intent drain — after EVERY intent writer (the keyboard keys +
@@ -258,6 +304,7 @@ impl Plugin for GdtfBattleInputPlugin {
             .add_systems(
                 Update,
                 dispatch_act_intents
+                    .in_set(InputSystems::Gather)
                     .after(level_keys)
                     .after(select_clear_key)
                     .after(posture_keys)
@@ -547,5 +594,88 @@ mod tests {
     fn level_index_recovers_the_storey() {
         let key = CellLevel::new(Cell::new(2, 2), Level::new(3));
         assert_eq!(level_index(key), 3, "level_index must recover the storey z");
+    }
+
+    /// A marker pushed into the shared order log by the band probes — distinguishes the
+    /// input band from the sim band so the test can read their relative run order.
+    ///
+    /// Test-only; the framework plumbing carve-out — a tiny enum the probe systems push
+    /// to record which band ran.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum ProbeBand {
+        /// Pushed by the probe in [`InputSystems::Gather`].
+        Input,
+        /// Pushed by the probe in [`SimSystems::Simulate`].
+        Sim,
+    }
+
+    /// The shared order-recording resource AC2's two probe systems append to.
+    ///
+    /// A `Vec` log (test-only framework plumbing) recording the order the input-band and
+    /// sim-band probes ran within one `Update`, so the assert can read input-before-sim.
+    #[derive(bevy::prelude::Resource, Default)]
+    struct OrderLog(Vec<ProbeBand>);
+
+    /// Probe in the input band: records that [`InputSystems::Gather`] ran.
+    fn probe_input(mut log: bevy::prelude::ResMut<OrderLog>) {
+        log.0.push(ProbeBand::Input);
+    }
+
+    /// Probe in the sim band: records that [`SimSystems::Simulate`] ran.
+    fn probe_sim(mut log: bevy::prelude::ResMut<OrderLog>) {
+        log.0.push(ProbeBand::Sim);
+    }
+
+    /// AC2 — the input band runs BEFORE the sim band within one `Update` (the
+    /// behavioral order pin).
+    ///
+    /// Builds a headless `MinimalPlugins` app, adds the real [`GdtfBattleInputPlugin`]
+    /// (which `configure_sets(Update, InputSystems::Gather.before(SimSystems::Simulate))`),
+    /// and registers two test-owned probes against a shared [`OrderLog`]: one
+    /// `.in_set(InputSystems::Gather)` and one `.in_set(SimSystems::Simulate)`. The test
+    /// owns the sim set's existence via its own `configure_sets(Update,
+    /// SimSystems::Simulate)` (the contract's sanctioned "configure it itself" option) so
+    /// no resource-requiring sim system is dragged in. After ONE `app.update()`, the log
+    /// shows the input marker BEFORE the sim marker.
+    ///
+    /// Pin-discriminating: remove the plugin's
+    /// `InputSystems::Gather.before(SimSystems::Simulate)` configure and the two bands
+    /// become unordered (`bevy-traps.md` #3), so this exact order is no longer
+    /// guaranteed and the assert can fail. Driven from the test body (`bevy-traps.md` #7
+    /// carve-out).
+    #[test]
+    fn input_band_runs_before_sim_band() {
+        use bevy::prelude::{App, IntoScheduleConfigs, MinimalPlugins, Update};
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(GdtfBattleInputPlugin)
+            .init_resource::<OrderLog>()
+            // The test owns the sim set's existence (the sanctioned alternative to adding
+            // `OccupancyMaintenancePlugin`, whose member systems would need battle-scoped
+            // resources). `configure_sets` accumulates (`bevy-traps.md` #5), so this
+            // composes with the plugin's `InputSystems::Gather.before(SimSystems::Simulate)`.
+            .configure_sets(Update, SimSystems::Simulate)
+            .add_systems(Update, probe_input.in_set(InputSystems::Gather))
+            .add_systems(Update, probe_sim.in_set(SimSystems::Simulate));
+
+        app.update();
+
+        let log = &app.world().resource::<OrderLog>().0;
+        let input_at = log.iter().position(|b| *b == ProbeBand::Input);
+        let sim_at = log.iter().position(|b| *b == ProbeBand::Sim);
+        let (Some(input_at), Some(sim_at)) = (input_at, sim_at) else {
+            assert_eq!(
+                (input_at.is_some(), sim_at.is_some()),
+                (true, true),
+                "both band probes must have run once in the single update",
+            );
+            return;
+        };
+        assert!(
+            input_at < sim_at,
+            "the input band must run BEFORE the sim band within one Update \
+             (log: {log:?})",
+        );
     }
 }
