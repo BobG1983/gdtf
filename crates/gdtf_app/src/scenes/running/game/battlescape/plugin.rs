@@ -4,7 +4,8 @@ use crate::{
     scenes::running::game::battlescape::{
         GameBattleScapeActionBarScenePlugin, GameBattleScapeAfterMathScenePlugin,
         GameBattleScapeAnimateInScenePlugin, GameBattleScapeAnimateOutScenePlugin,
-        GameBattleScapeBattleRunningScenePlugin, GameBattleScapeGenerationScenePlugin, systems::*,
+        GameBattleScapeBattleRunningScenePlugin, GameBattleScapeGenerationScenePlugin,
+        GameBattleScapeStatusPanelScenePlugin, systems::*,
     },
     states::{BattleScapeState, GameState},
 };
@@ -63,7 +64,16 @@ fn add_plugins(app: &mut App) {
         // keys are PARALLEL surfaces over the ONE drain. It deps `gdtf_ui` (the spawn
         // helpers) + `gdtf_battle_input` (the intent seam), both already on the app's
         // edge; the chain stays acyclic.
-        .add_plugins(GameBattleScapeActionBarScenePlugin);
+        .add_plugins(GameBattleScapeActionBarScenePlugin)
+        // The GTW-252 status HUD panel: a themed `gdtf_ui` panel on the GTW-120 UI
+        // camera showing the selected player ganger's vitals. Like the action-bar it
+        // spawns/despawns on the `BattleScapeState::BattleRunning` boundary; its repaint
+        // system reads `Res<SelectedShooter>` (the input crate's selection seam) + the
+        // sim's on-entity vital components and is gated on the `BattleInProgress`
+        // witness. UI/view only — no sim/input change, no act. It deps `gdtf_ui` (the
+        // spawn helpers) + `gdtf_battle_input` (the selection seam), both already on the
+        // app's edge; the chain stays acyclic.
+        .add_plugins(GameBattleScapeStatusPanelScenePlugin);
 }
 
 fn add_states(app: &mut App) {

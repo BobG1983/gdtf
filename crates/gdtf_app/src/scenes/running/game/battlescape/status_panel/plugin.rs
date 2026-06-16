@@ -1,0 +1,48 @@
+//! The status-panel scene-plugin (GTW-252).
+//!
+//! Registers the battle-scoped status HUD panel in the battlescape neighborhood,
+//! beside the action-bar + presenter + input plugins. The panel shows the selected
+//! player ganger's vitals — UI/view only (no sim/input change, no new act).
+//!
+//! - **Lifecycle** (mirrors the sibling action-bar) — `spawn_status_panel`
+//!   `OnEnter(BattleScapeState::BattleRunning)`, `despawn_status_panel`
+//!   `OnExit(BattleScapeState::BattleRunning)`, so the panel exists only during the
+//!   live tactical layer (NOT the whole `GameState::BattleScape`, which spans the
+//!   `Generation → AnimateIn → BattleRunning → AnimateOut → AfterMath` walk).
+//! - **Update** — `update_status_panel` runs in `Update` gated
+//!   `run_if(resource_exists::<BattleInProgress>)`, the SAME live-battle witness the
+//!   action-bar / input / presenter gate on (`bevy-traps.md` #1), so it is inert when
+//!   no battle is live. It reads `Res<SelectedShooter>` (the input crate's selection
+//!   seam) and repaints the lines from the selected ganger's vital components.
+//!
+//! The panel reads only DATA — the `Res<SelectedShooter>` selection and the on-entity
+//! sim vital components — never a reverse edge into the sim/input or a cross-crate fn
+//! (ADR-0001). It is a pure view; it owns no combat rule.
+
+use bevy::prelude::*;
+use gdtf_battle_sim::BattleInProgress;
+
+use crate::{
+    scenes::running::game::battlescape::status_panel::systems::{
+        despawn_status_panel, spawn_status_panel, update_status_panel,
+    },
+    states::BattleScapeState,
+};
+
+/// The status-panel scene-plugin — spawns/despawns the panel on the `BattleRunning`
+/// boundary and runs its repaint system gated on the live-battle witness.
+pub(in crate::scenes::running::game::battlescape) struct GameBattleScapeStatusPanelScenePlugin;
+
+impl Plugin for GameBattleScapeStatusPanelScenePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(OnEnter(BattleScapeState::BattleRunning), spawn_status_panel)
+            .add_systems(
+                OnExit(BattleScapeState::BattleRunning),
+                despawn_status_panel,
+            )
+            .add_systems(
+                Update,
+                update_status_panel.run_if(resource_exists::<BattleInProgress>),
+            );
+    }
+}

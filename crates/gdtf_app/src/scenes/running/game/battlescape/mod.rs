@@ -35,3 +35,14 @@ crate::support_use! {
         LevelUpButton, ReloadButton, StanceCycleButton,
     };
 }
+
+mod status_panel;
+pub(in crate::scenes::running::game::battlescape) use status_panel::GameBattleScapeStatusPanelScenePlugin;
+// Test-support-only re-export of the status-panel's per-line text markers (GTW-252),
+// gated so the binary build is `unused`/`unreachable_pub`-clean (the action-bar
+// per-act-marker precedent). The AC tests name these through `crate::test_support` to
+// assert each line's `Text` content.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    status_panel::{HpText, IdentityText, LifeText, StanceText, TuText};
+}
