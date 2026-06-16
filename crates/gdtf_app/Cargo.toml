@@ -17,6 +17,12 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 # `gdtf_battle_presenter::BattlePresenterPlugin`. The presenter is the VIEW that
 # mirrors the sim; this edge wires it into the app's battlescape scene.
 gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
+# The GTW-48 S7 input edge (GTW-221): `GameBattleScapeScenePlugin` adds
+# `gdtf_battle_input::GdtfBattleInputPlugin` beside the presenter. It is the HEAD
+# of the `input -> presenter -> sim` chain (it deps the presenter + the sim, the
+# sim deps neither); this new `gdtf_app -> gdtf_battle_input` edge does NOT create
+# a cycle (the input crate does not depend on `gdtf_app`).
+gdtf_battle_input = { path = "../gdtf_battle_input" }
 
 [dev-dependencies]
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo

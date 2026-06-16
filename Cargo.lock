@@ -2576,6 +2576,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_assets",
+ "gdtf_battle_input",
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_test_utils",
@@ -2590,6 +2591,18 @@ dependencies = [
  "gdtf_test_utils",
  "ron",
  "serde",
+]
+
+[[package]]
+name = "gdtf_battle_input"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "gdtf_app",
+ "gdtf_battle_presenter",
+ "gdtf_battle_sim",
+ "gdtf_test_utils",
+ "gdtf_ui",
 ]
 
 [[package]]

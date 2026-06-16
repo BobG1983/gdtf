@@ -1,0 +1,48 @@
+[package]
+name = "gdtf_battle_input"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# The camera / window / sprite / system params the picking + highlight systems use.
+bevy = { workspace = true }
+# The input -> presenter edge: this crate is the HEAD of the GTW-48
+# `input -> presenter -> sim` chain. It reads the presenter's landed
+# camera/px/level interface — `WorldCamera` + `WORLD_RENDER_LAYER` (S2), `CELL_PX`
+# + `cell_to_world` (S3), `ActiveLevel` (S4) — to unproject the OS cursor into a
+# sim cell and draw one hover-highlight sprite. One-way: input reads the
+# presenter, never the reverse (ADR-0001).
+gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
+# The input -> sim edge: this crate reads the sim's presentation-agnostic metric
+# (`Cell` / `Level` / `CellLevel`) — the `HoveredCell` inner + the world->cell
+# inverse's output — and the `BattleInProgress` witness it gates its systems on.
+# It reads sim TYPES only; it emits NO act and registers NO sim plugin (that is
+# S8 / GTW-222). The sim depends on NEITHER the presenter nor this crate, so the
+# chain is acyclic.
+gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+
+[dev-dependencies]
+# The AC2-AC4 picking/highlight tests synthesize a `WorldCamera` + a cursor in a
+# `DefaultPlugins`/`no_renderer` app and drive `App::update()`. `bevy` itself is
+# what the test body names to build the synthetic camera + window and assert on the
+# resolved `HoveredCell` / the highlight sprite.
+bevy = { workspace = true }
+# AC1: the "plugin build ran inside the REAL scene stack" test reuses the
+# `GdtfLoadTestAppBuilder` to descend to `GameState::BattleScape` and assert the
+# input plugin's `GdtfBattleInputActive` marker is present. Adding `gdtf_test_utils`
+# + `gdtf_app` (test-support) as DEV-deps forms a cycle (input dev ->
+# gdtf_test_utils/gdtf_app -> input normal) that Cargo permits because dev-deps are
+# outside the normal build graph — the exact precedent `gdtf_battle_presenter`
+# already uses for its GTW-217 AssetServer test.
+gdtf_test_utils = { path = "../gdtf_test_utils" }
+# Naming `gdtf_app::test_support::{AppState, GameState, ...}` to drive the harness
+# to the battlescape; `test-support` exposes that module. Dev-only edge (same
+# permitted dev cycle).
+gdtf_app = { path = "../gdtf_app", features = ["test-support"] }
+# AC1 seeds the persistent `Load` resources a `MinimalPlugins` app cannot resolve
+# from assets so the state walk can descend to `BattleScape`: `default_theme()`
+# (gdtf_ui). `CombatTuning` comes from the already-present `gdtf_battle_sim`.
+gdtf_ui = { path = "../gdtf_ui" }
+
+[lints]
+workspace = true

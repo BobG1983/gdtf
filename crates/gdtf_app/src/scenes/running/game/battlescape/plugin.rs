@@ -48,7 +48,14 @@ fn add_plugins(app: &mut App) {
         // `build` runs here when the scene plugins register; the default mode
         // builds the TopDown renderer (GTW-217 renamed it from CP437; it loads the
         // sprite atlases but draws no sprite yet — that is S4/S5/S6).
-        .add_plugins(gdtf_battle_presenter::BattlePresenterPlugin::default());
+        .add_plugins(gdtf_battle_presenter::BattlePresenterPlugin::default())
+        // The GTW-48 S7 input seam (GTW-221): the HEAD of the
+        // `input -> presenter -> sim` chain. Its `build` runs here beside the
+        // presenter; its picking + hover-highlight systems run in `Update` gated
+        // on the sim's `BattleInProgress` witness, so the cursor is inert until a
+        // live battle. It reads the presenter's `WorldCamera` + px/level interface
+        // and writes `HoveredCell` + one highlight sprite; it emits NO act (S8).
+        .add_plugins(gdtf_battle_input::GdtfBattleInputPlugin);
 }
 
 fn add_states(app: &mut App) {
