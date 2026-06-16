@@ -403,3 +403,358 @@ fn explicit_end_marker_advances_to_animate_out() {
         battlescape_state(&app),
     );
 }
+
+// === GTW-239 — end BattleRunning on the sim's outcome signal (BattleWon OR BattleLost). ===
+//
+// These exercise the LIVE app-side `end_battle_on_outcome` system (Update,
+// `.after(SimSystems::Simulate)`, presence-gated). They drive the real walk to
+// `BattleRunning` (so the sim's `BattleSimPlugin` is added and the `BattleWon`/`BattleLost`
+// buffers exist app-side for free), then either write the sim outcome message directly into
+// the world buffer (AC1–AC4, the `bevy-traps.md` #7 carve-out (a) test-body message-write) or
+// drive the REAL GTW-237 `check_outcome` census by setting ganger `LifeState`s (AC5).
+
+/// Whether [`State<BattleScapeState>`] has reached or passed `AnimateOut` (it is no longer in
+/// `BattleRunning`). `AnimateOut` is the immediate successor of `BattleRunning`; on a slow
+/// machine an `advance_until` predicate keyed purely on `AnimateOut` could miss it if the state
+/// kept advancing, so the win/loss end tests below assert `AnimateOut` directly after a bounded
+/// drive rather than rely on equality alone.
+fn left_battle_running(app: &bevy::app::App) -> bool {
+    battlescape_state(app) != Some(BattleScapeState::BattleRunning)
+}
+
+/// Set the [`LifeState`] of every spawned ganger whose [`Faction`] is `faction` to `to`, via a
+/// `world_mut()` query in the TEST BODY (`bevy-traps.md` #7 carve-out (a) — NOT a registered
+/// system or a helper taking `&mut World`). The accepted way to drive a faction out of the
+/// fight so the REAL `check_outcome` census emits an outcome, without re-running the damage
+/// pipeline. Mirrors the sim's in-test `set_faction_life_state`.
+fn down_faction(app: &mut bevy::app::App, faction: u8, to: LifeState) {
+    let target = Faction::new(faction);
+    let world = app.world_mut();
+    let mut query = world.query::<(&Faction, &mut LifeState)>();
+    for (&fac, mut life) in query.iter_mut(world) {
+        if fac == target {
+            *life = to;
+        }
+    }
+}
+
+/// AC1 — a `BattleWon` written DURING `BattleRunning` ends the battle → `AnimateOut`.
+///
+/// Drives into `BattleRunning` (GTW-236 persistence applied), writes ONE
+/// `gdtf_battle_sim::BattleWon` into the world's buffer (the sanctioned test-body
+/// message-write), then advances: `end_battle_on_outcome` reads the outcome and inserts
+/// `BattleRunningComplete`, and the marker-gated `move_on` advances `BattleRunning → AnimateOut`.
+/// Pin-discriminating: with `end_battle_on_outcome` unwired the marker is never inserted, so the
+/// machine would persist (GTW-236) and this fails.
+#[test]
+fn battle_won_in_battle_running_ends_the_battle_to_animate_out() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_battle_running(&mut app),
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    // Write one sim outcome signal into the app-side buffer (registered by the already-added
+    // BattleSimPlugin), standing in for the census' emit.
+    app.world_mut().write_message(gdtf_battle_sim::BattleWon);
+
+    // `end_battle_on_outcome` (Update) inserts the marker; observe it WHILE still in
+    // BattleRunning — `cleanup` (OnExit(BattleRunning), reused as-is, out of scope) removes the
+    // per-run marker the instant the state leaves BattleRunning, so the marker and `AnimateOut`
+    // are observable at adjacent points, not the same instant. Catching the insert before the
+    // exit proves `end_battle_on_outcome` fired; the follow-on drive proves the chain advances.
+    let marker_inserted = advance_until(
+        &mut app,
+        |app| {
+            app.world()
+                .get_resource::<BattleRunningComplete>()
+                .is_some()
+        },
+        BUDGET,
+    );
+    assert!(
+        marker_inserted,
+        "end_battle_on_outcome must insert the BattleRunningComplete marker on BattleWon within \
+         {BUDGET} updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    let reached_animate_out = advance_until(&mut app, left_battle_running, BUDGET);
+    assert!(
+        reached_animate_out,
+        "a BattleWon in BattleRunning must end the battle (end_battle_on_outcome inserts the \
+         marker, move_on advances) within {BUDGET} updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert_eq!(
+        battlescape_state(&app),
+        Some(BattleScapeState::AnimateOut),
+        "a BattleWon must advance BattleRunning → AnimateOut (the same chain as the explicit end)",
+    );
+}
+
+/// AC2 — a `BattleLost` written DURING `BattleRunning` ALSO ends the battle → `AnimateOut`.
+///
+/// Identical to AC1 but writes `gdtf_battle_sim::BattleLost`, proving LOSS ends the fight via
+/// the SAME chain, not just victory. Pin-discriminating: a system that only handled the `won`
+/// reader would leave this red (no marker inserted, `BattleRunning` persists).
+#[test]
+fn battle_lost_in_battle_running_also_ends_the_battle_to_animate_out() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_battle_running(&mut app),
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    app.world_mut().write_message(gdtf_battle_sim::BattleLost);
+
+    // Observe the marker insert while still in BattleRunning (see AC1 for why the marker and
+    // AnimateOut are observable at adjacent points, not the same instant — `cleanup` removes the
+    // per-run marker on exit).
+    let marker_inserted = advance_until(
+        &mut app,
+        |app| {
+            app.world()
+                .get_resource::<BattleRunningComplete>()
+                .is_some()
+        },
+        BUDGET,
+    );
+    assert!(
+        marker_inserted,
+        "end_battle_on_outcome must insert the BattleRunningComplete marker on BattleLost within \
+         {BUDGET} updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    let reached_animate_out = advance_until(&mut app, left_battle_running, BUDGET);
+    assert!(
+        reached_animate_out,
+        "a BattleLost in BattleRunning must ALSO end the battle within {BUDGET} updates; last \
+         observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert_eq!(
+        battlescape_state(&app),
+        Some(BattleScapeState::AnimateOut),
+        "a BattleLost must end the battle via the SAME BattleRunning → AnimateOut chain as a win",
+    );
+}
+
+/// AC3 — with NO outcome signal, `BattleRunning` PERSISTS (the new system is inert).
+///
+/// Drives into `BattleRunning`, writes NEITHER outcome message, advances several updates, and
+/// asserts `BattleRunningComplete` is ABSENT and the state is STILL `BattleRunning` — proving
+/// the now-WIRED `end_battle_on_outcome` adds no spurious exit (re-asserts GTW-236 persistence
+/// with the new system registered-but-quiescent). This differs from the GTW-236 persistence
+/// test only in intent: that one proves no budget auto-exit; THIS one proves the GTW-239 system,
+/// once in the schedule, stays quiet without an outcome.
+#[test]
+fn battle_running_persists_with_outcome_system_wired_but_quiescent() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_battle_running(&mut app),
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    for iteration in 0..PERSIST_UPDATES {
+        app.update();
+        assert!(
+            app.world()
+                .get_resource::<BattleRunningComplete>()
+                .is_none(),
+            "with NO outcome signal, end_battle_on_outcome must insert NO BattleRunningComplete \
+             marker; failed on update {iteration} of {PERSIST_UPDATES}",
+        );
+        assert_eq!(
+            battlescape_state(&app),
+            Some(BattleScapeState::BattleRunning),
+            "BattleRunning must PERSIST with end_battle_on_outcome wired-but-quiescent (no \
+             outcome); failed on update {iteration} of {PERSIST_UPDATES}",
+        );
+    }
+}
+
+/// AC4 (win) — a `BattleWon` written EVERY update across several updates does NOT double-fire.
+///
+/// A census re-declares the outcome each tick; the `not(resource_exists::<BattleRunningComplete>)`
+/// gate + idempotent insert must keep the marker to ONE insert and advance the machine out of
+/// `BattleRunning` EXACTLY once (it must not bounce). Asserts the state reaches `AnimateOut` and
+/// the marker is present. Pin-discriminating: removing the `not(resource_exists)` gate would
+/// re-run the insert each frame (still harmless for a unit marker, but the gate is the spec) —
+/// the stronger guard is that the machine never re-enters `BattleRunning` after leaving.
+#[test]
+fn repeated_battle_won_does_not_double_fire() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_battle_running(&mut app),
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    // Write a BattleWon EVERY update, and stop once the machine has left BattleRunning. Track
+    // that it leaves exactly once (never bounces back into BattleRunning afterwards) and that the
+    // marker is present while still in BattleRunning (it is `cleanup`-removed on exit, so it is
+    // only observable before the transition — see AC1).
+    let mut left_once = false;
+    let mut marker_seen_in_running = false;
+    for _ in 0..BUDGET {
+        app.world_mut().write_message(gdtf_battle_sim::BattleWon);
+        app.update();
+        if !left_battle_running(&app)
+            && app
+                .world()
+                .get_resource::<BattleRunningComplete>()
+                .is_some()
+        {
+            marker_seen_in_running = true;
+        }
+        if left_battle_running(&app) {
+            left_once = true;
+            // Once it has left, it must NEVER be back in BattleRunning on a later tick.
+            assert_ne!(
+                battlescape_state(&app),
+                Some(BattleScapeState::BattleRunning),
+                "the machine must not bounce back into BattleRunning after a repeated BattleWon",
+            );
+        }
+    }
+    assert!(
+        left_once,
+        "a repeated BattleWon must advance the machine out of BattleRunning within {BUDGET} \
+         updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert!(
+        marker_seen_in_running,
+        "the BattleRunningComplete marker must have been inserted (observed present in \
+         BattleRunning) under a repeated BattleWon",
+    );
+}
+
+/// AC4 (loss) — a `BattleLost` written EVERY update across several updates does NOT double-fire.
+///
+/// The loss twin of [`repeated_battle_won_does_not_double_fire`]: proves the gate + idempotent
+/// insert keep the loss stream to one advance out of `BattleRunning`.
+#[test]
+fn repeated_battle_lost_does_not_double_fire() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_battle_running(&mut app),
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    let mut left_once = false;
+    let mut marker_seen_in_running = false;
+    for _ in 0..BUDGET {
+        app.world_mut().write_message(gdtf_battle_sim::BattleLost);
+        app.update();
+        if !left_battle_running(&app)
+            && app
+                .world()
+                .get_resource::<BattleRunningComplete>()
+                .is_some()
+        {
+            marker_seen_in_running = true;
+        }
+        if left_battle_running(&app) {
+            left_once = true;
+            assert_ne!(
+                battlescape_state(&app),
+                Some(BattleScapeState::BattleRunning),
+                "the machine must not bounce back into BattleRunning after a repeated BattleLost",
+            );
+        }
+    }
+    assert!(
+        left_once,
+        "a repeated BattleLost must advance the machine out of BattleRunning within {BUDGET} \
+         updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert!(
+        marker_seen_in_running,
+        "the BattleRunningComplete marker must have been inserted (observed present in \
+         BattleRunning) under a repeated BattleLost",
+    );
+}
+
+/// AC5(a) — FULL census → outcome → app ends the battle (WIN).
+///
+/// The end-to-end integration over the REAL GTW-237 `check_outcome` census (no hand-written
+/// message): drives into `BattleRunning` with the two-ganger fixture (player faction defaults to
+/// gang 0; the enemy is gang 1), then sets the ENEMY gang (faction 1) `Dead` while the player
+/// gang (faction 0) stays `Alive`. The sim's `check_outcome` (in the gated `Simulate` band) then
+/// emits `BattleWon`, the app's `end_battle_on_outcome` reads it `.after(Simulate)` the SAME
+/// update and inserts the marker, and `move_on` advances out of `BattleRunning`. Asserts
+/// `AnimateOut`. This is the strongest evidence: the sim-signal → app-lifecycle path for a WIN.
+#[test]
+fn census_win_ends_the_battle_to_animate_out() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_battle_running(&mut app),
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    // Drive the REAL census: every ENEMY (faction 1, non-player) is out of the fight, the
+    // player (faction 0) still stands → check_outcome emits BattleWon.
+    down_faction(&mut app, TARGET_FACTION, LifeState::Dead);
+
+    let reached_animate_out = advance_until(&mut app, left_battle_running, BUDGET);
+    assert!(
+        reached_animate_out,
+        "the real census win (all enemies Dead, player Alive) must end the battle within {BUDGET} \
+         updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert_eq!(
+        battlescape_state(&app),
+        Some(BattleScapeState::AnimateOut),
+        "a census-emitted BattleWon must advance BattleRunning → AnimateOut end-to-end",
+    );
+}
+
+/// AC5(b) — FULL census → outcome → app ends the battle (LOSS).
+///
+/// The loss twin of [`census_win_ends_the_battle_to_animate_out`]: sets every PLAYER ganger
+/// (faction 0) out of the fight so the sim's `check_outcome` emits `BattleLost`, and asserts the
+/// app likewise reaches `AnimateOut` via the same chain. Proves the end-to-end
+/// sim-signal → app-lifecycle path for a LOSS.
+#[test]
+fn census_loss_ends_the_battle_to_animate_out() {
+    let mut app = walk_app(Some(two_ganger_situation()));
+    assert!(
+        drive_to_battle_running(&mut app),
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    // Drive the REAL census: every PLAYER ganger (faction 0, the default player_faction) is out
+    // of the fight → check_outcome emits BattleLost (enemy liveness is irrelevant to a loss).
+    down_faction(&mut app, SHOOTER_FACTION, LifeState::Dead);
+
+    let reached_animate_out = advance_until(&mut app, left_battle_running, BUDGET);
+    assert!(
+        reached_animate_out,
+        "the real census loss (all player gangers Dead) must end the battle within {BUDGET} \
+         updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert_eq!(
+        battlescape_state(&app),
+        Some(BattleScapeState::AnimateOut),
+        "a census-emitted BattleLost must advance BattleRunning → AnimateOut end-to-end",
+    );
+}
