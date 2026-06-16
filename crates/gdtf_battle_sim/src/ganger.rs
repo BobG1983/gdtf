@@ -25,7 +25,7 @@ use bevy::{
 };
 use serde::Deserialize;
 
-use crate::metric::CellLevel;
+use crate::metric::{Cell, CellLevel};
 
 /// A ganger's grid position — the `(cell, level)` key it occupies.
 ///
@@ -105,6 +105,131 @@ impl Direction {
             Self::SouthWest => Vec3::new(-d, d, 0.0),
             Self::West => Vec3::new(-1.0, 0.0, 0.0),
             Self::NorthWest => Vec3::new(-d, -d, 0.0),
+        }
+    }
+
+    /// This direction's **ordinal** on the 8-way ring — `North = 0`, advancing
+    /// clockwise through the compass to `NorthWest = 7`.
+    ///
+    /// The shared ring index the turn helpers ([`steps_to`](Self::steps_to),
+    /// [`rotated_toward`](Self::rotated_toward)) reason in: a clockwise step is `+1`
+    /// (mod 8), the short-way distance is computed from the ordinal gap. A loop
+    /// index into the fixed eight-variant ring (the no-bare-types carve-out for an
+    /// index into a collection you own), never a domain quantity stored on a
+    /// component.
+    const fn ordinal(self) -> u8 {
+        match self {
+            Self::North => 0,
+            Self::NorthEast => 1,
+            Self::East => 2,
+            Self::SouthEast => 3,
+            Self::South => 4,
+            Self::SouthWest => 5,
+            Self::West => 6,
+            Self::NorthWest => 7,
+        }
+    }
+
+    /// The [`Direction`] at ring ordinal `ord` (taken mod 8) — the inverse of
+    /// [`ordinal`](Self::ordinal).
+    ///
+    /// Total: any `u8` maps to one of the eight variants by wrapping the ordinal
+    /// into `0..8`, so the clockwise/counter-clockwise stepping in
+    /// [`rotated_toward`](Self::rotated_toward) can never index out of the ring.
+    const fn from_ordinal(ord: u8) -> Self {
+        match ord % 8 {
+            0 => Self::North,
+            1 => Self::NorthEast,
+            2 => Self::East,
+            3 => Self::SouthEast,
+            4 => Self::South,
+            5 => Self::SouthWest,
+            6 => Self::West,
+            // 7 (and, after the mod, nothing else) is the only remaining ordinal.
+            _ => Self::NorthWest,
+        }
+    }
+
+    /// The **short-way** count of 45deg steps from this facing to `other` —
+    /// `min(d, 8 - d)` where `d` is the ordinal gap. Range `0..=4`.
+    ///
+    /// `0` iff the two facings are equal, exactly `4` for an opposite facing
+    /// (`North`↔`South`), and symmetric (`a.steps_to(b) == b.steps_to(a)`). This is
+    /// the number of whole 45deg steps the [`crate::posture::set_facing`] verb must
+    /// turn (and pay one [`crate::tuning::TurnTu`] for) to reach `other`. Returns a
+    /// bare `u8` step *count* — a loop index / per-step multiplier into the
+    /// `TurnTu` leaf (the no-bare-types carve-out for "indices into a collection you
+    /// own"), NOT a domain quantity, and never stored on a component. Pure, total,
+    /// no panic.
+    #[must_use]
+    pub const fn steps_to(self, other: Self) -> u8 {
+        // The unsigned ordinal gap (both are in 0..8, so this never underflows).
+        let d = self.ordinal().abs_diff(other.ordinal());
+        // The short way around the ring of eight: never more than half (= 4).
+        if d <= 8 - d { d } else { 8 - d }
+    }
+
+    /// The 8-way compass [`Direction`] pointing from cell `from` toward cell `to`,
+    /// or `None` when the two cells coincide.
+    ///
+    /// Reads the sign of the `(to - from)` delta on each ground axis (`signum` of
+    /// `dx` / `dy`): `dx == 0 && dy == 0` → `None` (no direction toward yourself);
+    /// otherwise the sign pair picks one of the eight (e.g. `dx > 0, dy == 0` →
+    /// `East`; `dx == 0, dy < 0` → `North` — smaller `y` is North, the `forward_step`
+    /// −Y convention; `dx > 0, dy < 0` → `NorthEast`; `dx < 0, dy > 0` → `SouthWest`).
+    /// The z axis is irrelevant to a ground facing, so a [`Cell`] (x/y only) is the
+    /// input. Pure function of two cells, total, no panic.
+    #[must_use]
+    pub fn from_cells(from: Cell, to: Cell) -> Option<Self> {
+        // signum collapses each axis delta to exactly -1 / 0 / +1 — the 8-way sign pair
+        // (recall the −Y convention: smaller y is North). The full sign table is matched
+        // on those three literals, so every pair is covered without ordered guards.
+        let sx = (to.x - from.x).signum();
+        let sy = (to.y - from.y).signum();
+        let dir = match (sx, sy) {
+            (0, 0) => return None, // coincident cells — no direction toward yourself
+            (0, -1) => Self::North,
+            (1, -1) => Self::NorthEast,
+            (1, 0) => Self::East,
+            (1, 1) => Self::SouthEast,
+            (0, 1) => Self::South,
+            (-1, 1) => Self::SouthWest,
+            (-1, 0) => Self::West,
+            // The last sign pair: (-1, -1).
+            _ => Self::NorthWest,
+        };
+        Some(dir)
+    }
+
+    /// The facing reached after advancing up to `steps` 45deg steps the **short
+    /// way** from this facing toward `target`, clamped so it never **overshoots**
+    /// `target`.
+    ///
+    /// Short way: with `cw = (ord(target) + 8 - ord(self)) % 8` (clockwise gap) and
+    /// `ccw = (ord(self) + 8 - ord(target)) % 8` (counter-clockwise gap), rotate
+    /// clockwise (`+1` per step) when `cw <= ccw`, else counter-clockwise (`-1`), for
+    /// `n = min(steps, min(cw, ccw))` steps. The opposite-facing tie (`cw == ccw ==
+    /// 4`) breaks **clockwise**. So `d.rotated_toward(d, _)` and
+    /// `d.rotated_toward(t, 0)` return `d` (`self`), and any `steps >=
+    /// self.steps_to(target)` returns `target` (the clamp). This is what lets a
+    /// PARTIAL turn land on an intermediate facing when the TU pool runs out before
+    /// the full rotation. Pure, total, no panic.
+    #[must_use]
+    pub const fn rotated_toward(self, target: Self, steps: u8) -> Self {
+        let from = self.ordinal();
+        let to = target.ordinal();
+        // The two ways around the ring (both in 0..8). cw + ccw == 8 unless equal.
+        let cw = (to + 8 - from) % 8;
+        let ccw = (from + 8 - to) % 8;
+        // The short way's length; the tie (cw == ccw == 4) prefers clockwise.
+        let short = if cw <= ccw { cw } else { ccw };
+        // Clamp the requested steps so the turn never overshoots `target`.
+        let n = if steps < short { steps } else { short };
+        if cw <= ccw {
+            Self::from_ordinal(from + n) // clockwise: +1 per step (mod 8 in from_ordinal)
+        } else {
+            // counter-clockwise: -1 per step, kept non-negative by adding a full ring.
+            Self::from_ordinal(from + 8 - n)
         }
     }
 }
@@ -772,6 +897,161 @@ mod tests {
                 step.x.abs(),
                 step.y.abs(),
             );
+        }
+    }
+
+    // --- GTW-235: the 8-way ring helpers. The fixed clockwise ring (the same
+    // order the variants are declared in): North, NE, E, SE, S, SW, W, NW.
+    const RING: [Direction; 8] = [
+        Direction::North,
+        Direction::NorthEast,
+        Direction::East,
+        Direction::SouthEast,
+        Direction::South,
+        Direction::SouthWest,
+        Direction::West,
+        Direction::NorthWest,
+    ];
+
+    // GTW-235 AC1 — steps_to is the short-way 45deg count: for every ordered pair
+    // a.steps_to(b) == min(d, 8-d) with d = |ord(a)-ord(b)|; 0 iff a == b; symmetric;
+    // exactly 4 for every opposite pair; never exceeds 4.
+
+    #[test]
+    fn steps_to_is_the_short_way_45deg_count_for_every_pair() {
+        for (ia, &a) in RING.iter().enumerate() {
+            for (ib, &b) in RING.iter().enumerate() {
+                // The ordinal gap, computed independently of the helper (the spec form).
+                let ia = u8::try_from(ia).unwrap_or(0);
+                let ib = u8::try_from(ib).unwrap_or(0);
+                let d = ia.abs_diff(ib);
+                let expected = d.min(8 - d);
+
+                let got = a.steps_to(b);
+                assert_eq!(got, expected, "{a:?}.steps_to({b:?}) must be min(d, 8-d)");
+                // 0 iff equal.
+                assert_eq!(got == 0, a == b, "{a:?}.steps_to({b:?}) is 0 iff equal");
+                // Symmetric.
+                assert_eq!(got, b.steps_to(a), "steps_to must be symmetric");
+                // Never exceeds 4 (half the ring).
+                assert!(got <= 4, "{a:?}.steps_to({b:?}) = {got} must not exceed 4");
+            }
+        }
+
+        // Every opposite pair is exactly 4 (the four diameters of the ring).
+        let opposites = [
+            (Direction::North, Direction::South),
+            (Direction::NorthEast, Direction::SouthWest),
+            (Direction::East, Direction::West),
+            (Direction::SouthEast, Direction::NorthWest),
+        ];
+        for (a, b) in opposites {
+            assert_eq!(a.steps_to(b), 4, "{a:?} and {b:?} are opposite (4 steps)");
+        }
+    }
+
+    // GTW-235 AC2 — from_cells gives the compass dir toward the target. Smaller y is
+    // North (the forward_step −Y convention); coincident cells give None.
+
+    #[test]
+    fn from_cells_points_the_8_way_compass_toward_the_target() {
+        let origin = Cell::new(5, 5);
+        // The full 8-way table around (5,5): a neighbour in each compass direction.
+        let cases = [
+            (Cell::new(8, 5), Direction::East),      // dx>0, dy==0
+            (Cell::new(5, 2), Direction::North),     // dx==0, dy<0 (smaller y is North)
+            (Cell::new(8, 2), Direction::NorthEast), // dx>0, dy<0
+            (Cell::new(2, 8), Direction::SouthWest), // dx<0, dy>0
+            (Cell::new(2, 5), Direction::West),      // dx<0, dy==0
+            (Cell::new(5, 8), Direction::South),     // dx==0, dy>0
+            (Cell::new(8, 8), Direction::SouthEast), // dx>0, dy>0
+            (Cell::new(2, 2), Direction::NorthWest), // dx<0, dy<0
+        ];
+        for (to, expected) in cases {
+            assert_eq!(
+                Direction::from_cells(origin, to),
+                Some(expected),
+                "from_cells({origin:?}, {to:?}) must point {expected:?}",
+            );
+        }
+
+        // Coincident cells: no direction toward yourself.
+        assert_eq!(
+            Direction::from_cells(origin, origin),
+            None,
+            "from_cells of coincident cells must be None",
+        );
+        // Distance does not matter, only the sign pair (a far East cell is still East).
+        assert_eq!(
+            Direction::from_cells(Cell::new(0, 0), Cell::new(40, 0)),
+            Some(Direction::East),
+            "from_cells reads only the per-axis sign, not the magnitude",
+        );
+    }
+
+    // GTW-235 AC3 — rotated_toward advances the short way, clamps (no overshoot), breaks
+    // the opposite-facing tie clockwise, and is consistent with steps_to.
+
+    #[test]
+    fn rotated_toward_advances_the_short_way_clamped_with_clockwise_tie() {
+        // Clockwise short way (North -> East is +2 clockwise).
+        assert_eq!(
+            Direction::North.rotated_toward(Direction::East, 1),
+            Direction::NorthEast,
+            "one step North toward East is NorthEast",
+        );
+        assert_eq!(
+            Direction::North.rotated_toward(Direction::East, 2),
+            Direction::East,
+            "two steps North toward East reach East",
+        );
+        // Clamp: more steps than needed never overshoots the target.
+        assert_eq!(
+            Direction::North.rotated_toward(Direction::East, 9),
+            Direction::East,
+            "rotated_toward clamps — it never overshoots the target",
+        );
+
+        // Opposite facing (North <-> South, cw == ccw == 4): the tie breaks CLOCKWISE.
+        assert_eq!(
+            Direction::North.rotated_toward(Direction::South, 1),
+            Direction::NorthEast,
+            "the opposite-facing tie breaks clockwise (one step is NorthEast)",
+        );
+        assert_eq!(
+            Direction::North.rotated_toward(Direction::South, 2),
+            Direction::East,
+            "two clockwise steps from North toward South reach East",
+        );
+        assert_eq!(
+            Direction::North.rotated_toward(Direction::South, 4),
+            Direction::South,
+            "four steps from North reach the opposite South",
+        );
+
+        // Counter-clockwise short way (North -> West is -2 counter-clockwise).
+        assert_eq!(
+            Direction::North.rotated_toward(Direction::West, 1),
+            Direction::NorthWest,
+            "one step North toward West (the short way) is NorthWest",
+        );
+
+        // Identity: rotating toward self, or zero steps, stays put — for ALL facings.
+        for &d in &RING {
+            assert_eq!(d.rotated_toward(d, 3), d, "{d:?} toward itself stays put");
+            for &t in &RING {
+                assert_eq!(
+                    d.rotated_toward(t, 0),
+                    d,
+                    "{d:?}.rotated_toward({t:?}, 0) must stay put",
+                );
+                // Consistency: rotating the full short-way count reaches the target.
+                assert_eq!(
+                    d.rotated_toward(t, d.steps_to(t)),
+                    t,
+                    "{d:?}.rotated_toward({t:?}, steps_to) must reach {t:?}",
+                );
+            }
         }
     }
 }

@@ -1025,10 +1025,13 @@ mod tests {
             .world_mut()
             .spawn((Facing::new(Direction::North), Tu::new(50)))
             .id();
-        let cost = app
+        // The per-step turn cost off the shipped tuning, scaled by the short-way step
+        // count (North -> East is a 2-step turn) — the expected fully-affordable charge.
+        let per_step = app
             .world()
             .get_resource::<CombatTuning>()
             .map(|t| *t.turn_tu);
+        let expected_drop = per_step.map(|c| Direction::North.steps_to(Direction::East) * c);
         let tu_before = app.world().get::<Tu>(actor).map(|t| **t);
 
         app.world_mut()
@@ -1047,8 +1050,8 @@ mod tests {
         );
         assert_eq!(
             tu_before.zip(tu_after).map(|(b, a)| b - a),
-            cost,
-            "the Tu drop must equal exactly the turn_tu tuning leaf",
+            expected_drop,
+            "the Tu drop must equal exactly (short-way steps) * the per-step turn_tu leaf",
         );
     }
 

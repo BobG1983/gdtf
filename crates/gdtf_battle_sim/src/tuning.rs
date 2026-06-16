@@ -432,28 +432,27 @@ impl Default for StanceChangeTu {
     }
 }
 
-/// The **turn TU cost** — the flat number of Time Units a ganger spends to turn in
-/// place to a new facing (`docs/combat/combat.md` L34 affirmatively lists "turn" among
-/// the actions that "cost TUs").
+/// The **turn TU cost** — the number of Time Units a ganger spends **per 45deg step**
+/// when turning in place toward a new facing (`docs/combat/combat.md` L34 affirmatively
+/// lists "turn" among the actions that "cost TUs").
 ///
-/// The flat cost charged by the E4.1 [`crate::posture::set_facing`] verb — spent via
-/// [`crate::tu::spend_tu`] **only when the facing actually changes** (re-asserting the
-/// direction a ganger already faces is a no-op, no charge). The docs do not fix the
-/// *magnitude* (resolution.md §"What's tunable" omitted a turn-TU entry before this
-/// slice — now added on docs-sync); the grounded choice is this value-agnostic tuning
-/// leaf, mirroring the [`StanceChangeTu`] precedent — turning is **not** a free toggle.
-/// A small `u8` count, matching [`crate::ganger::Tu`]'s inner type so the economy
-/// subtracts it directly. The default is a **starting point**, tunable balance data —
-/// tests assert only the relation to this value, never the magnitude.
-/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner + derived
-/// [`Deref`].
+/// The per-step cost charged by the E4.1 [`crate::posture::set_facing`] verb — spent via
+/// [`crate::tu::spend_tu`] once for each whole 45deg step it can afford (PARTIAL turn: it
+/// lands partway when the pool runs out, and re-asserting the facing a ganger already
+/// holds is a no-op, no charge). The docs do not fix the *magnitude* (resolution.md
+/// §"What's tunable" lists turn TU as tunable); the chosen value is `1` per step (USER
+/// DECISION 2026-06-16: "turn costs 1 TU per facing change"). A small `u8` count, matching
+/// [`crate::ganger::Tu`]'s inner type so the economy subtracts it directly. The default is
+/// tunable balance data — tests assert only the relation to this value, never the
+/// magnitude. `#[serde(transparent)]` lets it parse a bare RON scalar; private inner +
+/// derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct TurnTu(u8);
 
 impl TurnTu {
-    /// Build a turn TU cost from its flat Time-Unit magnitude (a starting point, TBD
-    /// tuning).
+    /// Build a turn TU cost from its per-45deg-step Time-Unit magnitude (tunable balance
+    /// data).
     ///
     /// The constructor for the newtype — keeps the inner `u8` private (house style)
     /// while letting the `posture` tests and any programmatic tuning edit build a cost
@@ -467,10 +466,10 @@ impl TurnTu {
 
 impl Default for TurnTu {
     fn default() -> Self {
-        // A flat 4 TU to turn in place — a STARTING POINT (tunable balance data), the
-        // docs leave the magnitude unspecified. `set_facing` spends it only when the
-        // facing actually changes; value-agnostic tests only, never a pinned magnitude.
-        Self(4)
+        // 1 TU per 45deg step (USER DECISION 2026-06-16: "turn costs 1 TU per facing
+        // change") — tunable balance data. `set_facing` spends it once per afforded step
+        // (partial turn); value-agnostic tests only, never a pinned magnitude.
+        Self(1)
     }
 }
 
@@ -569,7 +568,7 @@ impl MoveCosts {
 impl Default for MoveCosts {
     fn default() -> Self {
         // Value-agnostic STARTING POINTS (tunable balance data), mirroring the
-        // TurnTu=4 / StanceChangeTu=8 pattern — the user gave a facing cost but NOT
+        // TurnTu / StanceChangeTu pattern — the user gave a per-step facing cost but NOT
         // per-terrain move costs, so these are flagged tunables, never balance numbers.
         // Open is the cheapest baseline; Cover (reachable only when destroyed) is dearer;
         // Wall is a placeholder (a wall is never a legal destination). Tests assert only
