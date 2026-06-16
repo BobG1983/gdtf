@@ -2632,6 +2632,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gdtf_hivescape_input"
+version = "0.1.0"
+
+[[package]]
+name = "gdtf_hivescape_presenter"
+version = "0.1.0"
+
+[[package]]
+name = "gdtf_hivescape_sim"
+version = "0.1.0"
+
+[[package]]
 name = "gdtf_test_utils"
 version = "0.1.0"
 dependencies = [

@@ -1,4 +1,14 @@
-pub fn add(left: u64, right: u64) -> u64 {
+//! Placeholder crate for the future **hivescape** input layer.
+//!
+//! Scaffold only — carries no real logic yet. Exists so the workspace member is
+//! present and lint-clean; real input wiring lands under its own ticket.
+
+/// Placeholder sum helper kept only so the scaffold crate has an item to compile.
+///
+/// Carries no domain meaning — it is replaced when the hivescape input layer gets
+/// real logic.
+#[must_use]
+pub const fn add(left: u64, right: u64) -> u64 {
     left + right
 }
 
