@@ -1,0 +1,13 @@
+// GDTF transient-FX tile-role table — DATA-DRIVEN atlas indices for the GTW-48
+// top-down FX-flash draw (S6 / GTW-220). Maps each one-shot FX to a TileIndex into
+// assets/tiles/alt_tileset_effects.png (the role-separated 16x8 = 128-tile effects
+// sheet; index = row*16 + col, 0-based row-major). Edit freely — every field is a
+// tunable index, hot-swappable through the same RonAsset<T> loader the theme /
+// situation / tuning / tile-roles use; nothing about the index choices is hardcoded
+// in Rust. Indices eyeballed against the shipped alt_tileset_effects.png grid (the
+// burst / spark / hit layout) and may be re-tuned per FX as the sheet reads better.
+(
+    bleed:           0,    // Bleeding -> a blood/hit drop (row 0 col 0, a teardrop/blood-drop) — the §9 bleed-out flash
+    armor_break:     3,    // ArmorBroken -> a spark/break burst (row 0 col 3, a starburst/spark) — the worn-piece-shattered flash
+    cover_destroyed: 112,  // CoverDestroyed -> a debris/rubble burst (row 7 col 0, a scatter cluster) — the §3 cover-smashed flash
+)

@@ -35,17 +35,23 @@
 //! the [`swap_destroyed_cover`] reaction (both gated on the sim's `BattleInProgress`).
 //! It draws NO gangers (S5), NO FX (S6), and reads NO input (S7/S8).
 
-use bevy::prelude::*;
+use bevy::{ecs::message::Messages, prelude::*};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
-    BattleInProgress, CoverLedger, OccupancyGrid, SurfaceGrid, occupancy_sync::SimSystems,
+    ArmorBroken, BattleInProgress, Bleeding, CoverDestroyed, CoverLedger, OccupancyGrid,
+    SurfaceGrid, occupancy_sync::SimSystems,
 };
 
+pub mod fx;
 pub mod ganger;
 pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
 
+pub use fx::{
+    EffectRoles, EffectRolesHandle, FlashTtl, FxFlash, expire_flashes, load_effect_roles,
+    read_armor_broken, read_bleeding, read_cover_destroyed, resolve_effect_roles,
+};
 pub use ganger::{
     CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites,
     apply_active_level_filter, despawn_removed_ganger_sprites, facing_frame, load_character_roles,
@@ -179,7 +185,12 @@ impl Plugin for TopDownRendererPlugin {
         if app.world().get_resource::<AssetServer>().is_some() {
             app.init_ron_asset::<TileRoles>()
                 .init_ron_asset::<CharacterRoles>()
-                .add_systems(Startup, (load_tile_roles, load_character_roles))
+                // GTW-220 (S6): the FX-flash effect-role table loads the same RON way.
+                .init_ron_asset::<EffectRoles>()
+                .add_systems(
+                    Startup,
+                    (load_tile_roles, load_character_roles, load_effect_roles),
+                )
                 .add_systems(
                     Update,
                     resolve_tile_roles.run_if(
@@ -191,6 +202,13 @@ impl Plugin for TopDownRendererPlugin {
                     resolve_character_roles.run_if(
                         resource_exists::<CharacterRolesHandle>
                             .and(not(resource_exists::<CharacterRoles>)),
+                    ),
+                )
+                .add_systems(
+                    Update,
+                    resolve_effect_roles.run_if(
+                        resource_exists::<EffectRolesHandle>
+                            .and(not(resource_exists::<EffectRoles>)),
                     ),
                 );
         }
@@ -265,7 +283,65 @@ impl Plugin for TopDownRendererPlugin {
                 .in_set(PresenterSystems::Draw)
                 .run_if(resource_exists::<BattleInProgress>),
         );
+
+        // GTW-220 (S6): the transient FX-flash readers + the one-shot expiry clock join the
+        // SAME `PresenterSystems::Draw` band (extracted to keep `build` under the
+        // `too_many_lines` lint).
+        register_fx_flash_systems(app);
     }
+}
+
+/// Registers the GTW-220 (S6) transient FX-flash readers + the one-shot expiry clock into the
+/// already-defined [`PresenterSystems::Draw`] band.
+///
+/// Each reader drains a [`MessageReader`] over one sim FX message
+/// ([`Bleeding`](gdtf_battle_sim::Bleeding) / [`ArmorBroken`](gdtf_battle_sim::ArmorBroken) /
+/// [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed)) the sim already emits, looks up the
+/// cell via `Query<&Position>` (read-only, NO sim plumbing added), and `Commands::spawn`s a
+/// short-lived effects sprite.
+///
+/// Each reader's gate is `resource_exists::<BattleInProgress>` AND every render resource it
+/// reads — the [`EffectRoles`] data table + [`TopDownAtlases`] — AND its own `Messages<M>`
+/// buffer existing. The render-resource guards make a `MinimalPlugins` headless app with no
+/// [`AssetServer`] (those resources absent) simply NOT draw rather than failing param
+/// validation (`bevy-traps.md` #1; the ticket's "a no-resource state must NOT panic the
+/// draw"). The `Messages<M>` guard is the matching mandatory gate for the [`MessageReader<M>`]
+/// param itself: a [`MessageReader<M>`] panics param validation when its `Messages<M>` buffer
+/// is absent (the sim's `BattleSimPlugin` registers all three buffers during a real battle,
+/// but a focused headless harness may insert `BattleInProgress` + the render tables WITHOUT a
+/// given FX buffer), so each reader is independently gated on the one buffer it drains.
+///
+/// `expire_flashes` is the one-shot despawn clock: it needs only `Res<Time>` + the [`FxFlash`]
+/// query (no render resource, no message buffer) and is inert with no flashes (the query is
+/// empty), so it is registered unguarded by `BattleInProgress` — a flash spawned during a
+/// battle still expires after the battle ends.
+fn register_fx_flash_systems(app: &mut App) {
+    let render_gate = resource_exists::<BattleInProgress>
+        .and(resource_exists::<EffectRoles>)
+        .and(resource_exists::<TopDownAtlases>);
+    app.add_systems(
+        Update,
+        read_bleeding.in_set(PresenterSystems::Draw).run_if(
+            render_gate
+                .clone()
+                .and(resource_exists::<Messages<Bleeding>>),
+        ),
+    )
+    .add_systems(
+        Update,
+        read_armor_broken.in_set(PresenterSystems::Draw).run_if(
+            render_gate
+                .clone()
+                .and(resource_exists::<Messages<ArmorBroken>>),
+        ),
+    )
+    .add_systems(
+        Update,
+        read_cover_destroyed
+            .in_set(PresenterSystems::Draw)
+            .run_if(render_gate.and(resource_exists::<Messages<CoverDestroyed>>)),
+    )
+    .add_systems(Update, expire_flashes.in_set(PresenterSystems::Draw));
 }
 
 /// The isometric renderer plugin — a no-op stub for the whole of GTW-48.
