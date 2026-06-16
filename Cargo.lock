@@ -2576,6 +2576,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_assets",
+ "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_test_utils",
  "gdtf_ui",
@@ -2594,6 +2595,10 @@ dependencies = [
 [[package]]
 name = "gdtf_battle_presenter"
 version = "0.1.0"
+dependencies = [
+ "bevy",
+ "gdtf_battle_sim",
+]
 
 [[package]]
 name = "gdtf_battle_sim"

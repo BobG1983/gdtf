@@ -4,6 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bevy = { workspace = true }
+# The presenter -> sim edge: the presenter is a pure VIEW that mirrors the
+# authoritative render-free sim (one-way: presenter reads the sim, never the
+# reverse). Opened here so later GTW-48 slices (S4/S5/S6) can name sim
+# resource/component types by name; unused by name in S1 by design — this slice
+# only lands the edge, mirroring the GTW-203 `gdtf_app -> gdtf_battle_sim`
+# "land the edge now, consume later" precedent.
+gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 
 [lints]
 workspace = true

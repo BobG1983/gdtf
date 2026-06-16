@@ -13,6 +13,10 @@ gdtf_ui = { path = "../gdtf_ui" }
 # slices can name `gdtf_battle_sim` types. Unused here by design — this slice only
 # lands the edge; E10.3/E10.4/E10.5 consume it.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+# The GTW-48 presenter edge (GTW-215): `GameBattleScapeScenePlugin` adds
+# `gdtf_battle_presenter::BattlePresenterPlugin`. The presenter is the VIEW that
+# mirrors the sim; this edge wires it into the app's battlescape scene.
+gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 
 [dev-dependencies]
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo
