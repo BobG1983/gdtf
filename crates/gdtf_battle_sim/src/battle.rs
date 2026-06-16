@@ -52,13 +52,14 @@
 //! persistent `Load` resource. Render-free: no renderer, window, presenter, or pixel.
 
 use bevy::prelude::{
-    App, Commands, IntoScheduleConfigs, Message, MessageReader, MessageWriter, Plugin, Resource,
-    Update, error, resource_exists,
+    App, Commands, Deref, IntoScheduleConfigs, Message, MessageReader, MessageWriter, Plugin,
+    Resource, Update, error, resource_exists,
 };
 
 use crate::{
     acts::SimActsPlugin,
     cover::CoverLedger,
+    ganger::Faction,
     occupancy::OccupancyGrid,
     occupancy_sync::{OccupancyMaintenancePlugin, SimSystems},
     rng::{BattleSeed, SimRng},
@@ -135,6 +136,42 @@ pub struct BattleReady;
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BattleInProgress;
 
+/// The **player faction** — which gang the human player controls; every other
+/// [`Faction`] is the enemy.
+///
+/// A named newtype [`Resource`] over the [`Faction`] gang index (no-bare-types:
+/// it carries a domain value — which gang the player runs — so it is a real named
+/// newtype over [`Faction`], NOT the bare [`Faction`] and NOT a zero-sized marker
+/// like [`BattleInProgress`]). The derived [`Deref`] reads the inner [`Faction`]
+/// back (never a hand-written `impl Deref`).
+///
+/// It is the single source of truth the later manual-play slices read: control-gating
+/// lets the player act only on this gang's gangers, and the victory census polls every
+/// gang that is NOT this one. Seeded data-driven from
+/// [`Situation::player_faction`](crate::situation::Situation) on setup.
+///
+/// **Lifetime tracks [`BattleInProgress`]:** the setup system inserts it on the same
+/// successful-setup `Ok` path that inserts [`BattleInProgress`] (NEVER on `Err` —
+/// fail-closed) and the teardown system removes it alongside, so it is present for
+/// exactly the battle-active window. Any later `Res<PlayerFaction>` reader must
+/// therefore be gated on [`resource_exists`]`::<`[`BattleInProgress`]`>` (the identical
+/// window) or take `Option<Res<_>>`, or it panics when the resource is absent
+/// (`bevy-traps.md` #1).
+#[derive(Resource, Deref, Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct PlayerFaction(Faction);
+
+impl PlayerFaction {
+    /// Build the player-faction resource from the gang the player controls.
+    ///
+    /// The public constructor (house style) so the setup can build a `PlayerFaction`
+    /// from an authored [`Situation::player_faction`](crate::situation::Situation)
+    /// without reaching the private field.
+    #[must_use]
+    pub const fn new(faction: Faction) -> Self {
+        Self(faction)
+    }
+}
+
 /// **Setup** the battle on [`SetupBattleRequested`] — seed the [`SimRng`] and run
 /// [`setup_battle`], signalling [`BattleReady`] on success (E10.5).
 ///
@@ -146,11 +183,13 @@ pub struct BattleInProgress;
 ///    resources ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
 ///    [`VerticalLinkGraph`]) and the spawned ganger entities land in the world, the
 ///    [`BattleInProgress`] witness is inserted (the battle-active tag the
-///    [`SimSystems::Simulate`] band gates on), and a [`BattleReady`] is written; on
-///    `Err` the typed [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) is
-///    surfaced via [`error!`] and NEITHER [`BattleInProgress`] NOR [`BattleReady`] is
-///    written — the app never advances on a bad battle, and the gate never opens. NO
-///    `unwrap`/`expect`/`panic`.
+///    [`SimSystems::Simulate`] band gates on), the [`PlayerFaction`] is inserted seeded
+///    from [`Situation::player_faction`](crate::situation::Situation) (its lifetime
+///    tracking [`BattleInProgress`]), and a [`BattleReady`] is written; on `Err` the
+///    typed [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) is surfaced
+///    via [`error!`] and NEITHER [`BattleInProgress`] / [`PlayerFaction`] NOR
+///    [`BattleReady`] is written — the app never advances on a bad battle, and the gate
+///    never opens. NO `unwrap`/`expect`/`panic`.
 ///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
 /// PERSISTENT `Load` resource, present throughout the battle for the acts to read.
@@ -170,8 +209,11 @@ pub fn setup_battle_on_request(
             Ok(_setup) => {
                 // The battle is live: insert the gate witness (alongside the four
                 // setup_battle grids + the seeded SimRng) so the Simulate band's bundled
-                // runtime turns on, then signal BattleReady. Both happen ONLY on Ok.
+                // runtime turns on, seed the PlayerFaction from the situation (its lifetime
+                // tracks BattleInProgress — same Ok path, removed together on teardown),
+                // then signal BattleReady. All happen ONLY on Ok.
                 commands.insert_resource(BattleInProgress);
+                commands.insert_resource(PlayerFaction::new(request.situation.player_faction));
                 ready.write(BattleReady);
             }
             Err(invalid) => {
@@ -190,9 +232,11 @@ pub fn setup_battle_on_request(
 ///
 /// Drains [`MessageReader<TeardownBattleRequested>`] and, when triggered, removes
 /// [`SimRng`], the four [`setup_battle`]-inserted resources ([`CoverLedger`] /
-/// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`]), and the
+/// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`]), the
 /// [`BattleInProgress`] witness (closing the [`SimSystems::Simulate`] gate so the
-/// bundled runtime goes inert again). These resources are BATTLE-lifetime: the app
+/// bundled runtime goes inert again), and the [`PlayerFaction`] (its lifetime tracks
+/// [`BattleInProgress`], so it is removed in the same teardown). These resources are
+/// BATTLE-lifetime: the app
 /// sends this trigger only at the battle boundary (its `OnExit(GameState::BattleScape)`),
 /// so they survive the whole battle for the E10.6 acts before being cleaned
 /// (`bevy-traps.md` #1 at the correct state level).
@@ -220,6 +264,9 @@ pub fn teardown_battle_on_request(
         // Close the gate witness alongside the battle-lifetime resources, so the
         // Simulate band goes inert (and panic-free) after the battle ends (GTW-212).
         commands.remove_resource::<BattleInProgress>();
+        // Remove the PlayerFaction alongside, so its lifetime stays identical to
+        // BattleInProgress (the later Res<PlayerFaction> readers gate on that window).
+        commands.remove_resource::<PlayerFaction>();
     }
 }
 
@@ -361,11 +408,23 @@ mod tests {
     }
 
     /// A valid two-ganger fixture situation (no cover / slabs / links — link-free
-    /// validates trivially).
+    /// validates trivially). Omits `player_faction`, so the struct-level
+    /// `#[serde(default)]` / [`Default`] supplies [`Faction::default`] = `Faction(0)`
+    /// (the AC2 default-seed precondition).
     fn two_ganger_situation() -> Situation {
         Situation {
             gangers: vec![ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)],
             ..Situation::new()
+        }
+    }
+
+    /// The two-ganger fixture with `player_faction` AUTHORED to gang 1 (overriding the
+    /// `Faction(0)` default) — the AC3 fixture proving the seed reads
+    /// `situation.player_faction`, not a hardcoded gang 0.
+    fn two_ganger_situation_player_faction_one() -> Situation {
+        Situation {
+            player_faction: Faction::new(1),
+            ..two_ganger_situation()
         }
     }
 
@@ -486,11 +545,57 @@ mod tests {
             app.world().get_resource::<VerticalLinkGraph>().is_some(),
             "the setup must insert a VerticalLinkGraph",
         );
+        // GTW-226 AC2 — PlayerFaction is inserted on the SAME Ok path as
+        // BattleInProgress (both present together) and, because the fixture omits
+        // player_faction, defaults to gang 0.
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_some(),
+            "the setup must insert BattleInProgress on the Ok path",
+        );
+        let player = app.world().get_resource::<PlayerFaction>().copied();
+        assert_eq!(
+            player,
+            Some(PlayerFaction::new(Faction::new(0))),
+            "the setup must insert PlayerFaction seeded from the situation (default gang 0)",
+        );
         // A BattleReady was emitted on success.
         assert_eq!(
             drain_battle_ready(&mut app),
             1,
             "a successful setup must emit exactly one BattleReady",
+        );
+    }
+
+    // === GTW-226 AC1 — PlayerFaction is a public newtype Resource over Faction with
+    // new() + a derived Deref reading the inner Faction back. ===
+
+    #[test]
+    fn player_faction_constructs_and_derefs_to_its_inner_faction() {
+        let player = PlayerFaction::new(Faction::new(2));
+        assert_eq!(
+            *player,
+            Faction::new(2),
+            "PlayerFaction::new(Faction(2)) must Deref back to Faction(2)",
+        );
+    }
+
+    // === GTW-226 AC3 — an authored player_faction:1 overrides the Faction(0) default,
+    // proving the seed reads situation.player_faction, not a hardcoded 0. ===
+
+    #[test]
+    fn authored_player_faction_overrides_the_default_seed() {
+        let mut app = headless_app();
+        app.world_mut().write_message(SetupBattleRequested::new(
+            two_ganger_situation_player_faction_one(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+
+        let player = app.world().get_resource::<PlayerFaction>().copied();
+        assert_eq!(
+            player,
+            Some(PlayerFaction::new(Faction::new(1))),
+            "an authored player_faction:1 must seed PlayerFaction(Faction(1)), not the default 0",
         );
     }
 
@@ -621,6 +726,12 @@ mod tests {
             app.world().get_resource::<OccupancyGrid>().is_some(),
             "precondition: setup inserted the OccupancyGrid",
         );
+        // GTW-226 AC5 precondition — setup inserted PlayerFaction (present, like
+        // BattleInProgress) so the teardown removal is observable.
+        assert!(
+            app.world().get_resource::<PlayerFaction>().is_some(),
+            "precondition: setup inserted the PlayerFaction",
+        );
 
         // Now tear it down.
         app.world_mut().write_message(TeardownBattleRequested);
@@ -645,6 +756,17 @@ mod tests {
         assert!(
             app.world().get_resource::<VerticalLinkGraph>().is_none(),
             "teardown must remove the VerticalLinkGraph",
+        );
+        // GTW-226 AC5 — teardown removes PlayerFaction; and BattleInProgress is also
+        // absent in the same test, proving the identical battle-active lifetime.
+        assert!(
+            app.world().get_resource::<PlayerFaction>().is_none(),
+            "teardown must remove the PlayerFaction",
+        );
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_none(),
+            "teardown must remove the BattleInProgress witness (identical lifetime to \
+             PlayerFaction)",
         );
         // The persistent Load resource is untouched.
         assert!(
@@ -709,6 +831,12 @@ mod tests {
         assert!(
             app.world().get_resource::<BattleInProgress>().is_none(),
             "a FAILED setup must NOT insert BattleInProgress (the Ok-only witness)",
+        );
+        // GTW-226 AC4 — fail-closed: PlayerFaction rides the same Ok-only path, so a
+        // failed setup inserts no PlayerFaction (mirrors the BattleInProgress absence).
+        assert!(
+            app.world().get_resource::<PlayerFaction>().is_none(),
+            "a FAILED setup must NOT insert PlayerFaction (the Ok-only seed)",
         );
     }
 

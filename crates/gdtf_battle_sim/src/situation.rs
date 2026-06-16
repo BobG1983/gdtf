@@ -207,6 +207,15 @@ pub struct Situation {
     /// from the GTW-156 placeholder. The only way a ganger changes storey
     /// (`docs/combat/combat.md`).
     pub vertical_links: Vec<VerticalLink>,
+    /// The gang the human player controls — every other [`Faction`] is the enemy.
+    /// Seeds the [`PlayerFaction`](crate::PlayerFaction) battle-lifetime resource the
+    /// later control-gating + victory-census slices read. The struct-level
+    /// `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)` for any
+    /// authored file that omits the field, so every existing situation `.ron` stays
+    /// valid (gang `0` is the player by convention, matching `skirmish.ron`); an
+    /// authored `player_faction: 1` parses as the bare gang index
+    /// ([`Faction`] is `#[serde(transparent)]`).
+    pub player_faction: Faction,
 }
 
 impl Situation {
@@ -1044,6 +1053,22 @@ mod tests {
         assert!(
             !situation.vertical_links.is_empty(),
             "the shipped file must author at least one vertical link",
+        );
+    }
+
+    /// GTW-226 AC6 — the shipped `skirmish.ron` omits `player_faction`, so the
+    /// struct-level `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)`
+    /// (gang 0 = the player, by convention). Documents the data-driven serde seam: no
+    /// `.ron` edit is needed for this slice, and the omitted field defaults cleanly.
+    #[test]
+    fn shipped_situation_player_faction_defaults_to_gang_zero() {
+        let Some(situation) = shipped_situation() else {
+            return;
+        };
+        assert_eq!(
+            situation.player_faction,
+            Faction::new(0),
+            "the shipped file omits player_faction, so it defaults to gang 0 (the player)",
         );
     }
 

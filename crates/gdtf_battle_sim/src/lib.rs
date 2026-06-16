@@ -190,8 +190,8 @@ pub use armor::{
 };
 pub use armor_wear::{ArmorBroken, wear_armor};
 pub use battle::{
-    BattleInProgress, BattleReady, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested,
-    setup_battle_on_request, teardown_battle_on_request,
+    BattleInProgress, BattleReady, BattleSimPlugin, PlayerFaction, SetupBattleRequested,
+    TeardownBattleRequested, setup_battle_on_request, teardown_battle_on_request,
 };
 pub use bleed::{Bleeding, tick_bleed};
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
