@@ -76,8 +76,8 @@ pub use intent::{
 pub use keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds};
 pub use keyboard::{fire_mode_cycle_key, level_keys, posture_keys, select_clear_key};
 pub use selection::{
-    LeftClickReads, SelectedShooter, SelectionHighlight, left_click_act, right_click_turn_to_face,
-    update_selection_highlight,
+    LeftClickReads, SelectedShooter, SelectionHighlight, auto_select_first_player_ganger,
+    left_click_act, right_click_turn_to_face, update_selection_highlight,
 };
 
 /// The cell the OS cursor currently hovers, on the presenter's active level.
@@ -162,7 +162,10 @@ pub enum InputSystems {
 ///   ([`pick_hovered_cell`] / [`update_hover_highlight`]);
 /// - registers the GTW-238 unified left-click decision ([`left_click_act`]) + the
 ///   right-click turn-to-face surface ([`right_click_turn_to_face`]) — replacing the
-///   GTW-225/227 `select_on_click` + `fire_on_click` race — plus the selection
+///   GTW-225/227 `select_on_click` + `fire_on_click` race — the GTW-255 battle-start
+///   auto-select ([`auto_select_first_player_ganger`], `.before(left_click_act)`, which
+///   sets the INITIAL [`SelectedShooter`] once when the battle opens with nothing
+///   selected), plus the selection
 ///   highlight ([`update_selection_highlight`]), the 222b fire-mode default-on-select
 ///   ([`sync_fire_mode_on_select`]), the keyboard press surface (S8 [`level_keys`] /
 ///   [`select_clear_key`] + 222b [`posture_keys`] / [`fire_mode_cycle_key`]), and the
@@ -230,6 +233,25 @@ impl Plugin for GdtfBattleInputPlugin {
                 )
                     .in_set(InputSystems::Gather)
                     .run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-255 — set the INITIAL selection once: when the battle is live with a
+            // player faction and NOTHING is selected yet, auto-select the deterministic
+            // player-faction ganger (lowest `(level, y, x)` cell). Gated to a live battle
+            // WITH the player faction it reads (a `Res<T>` of an absent resource fails
+            // param validation, `bevy-traps.md` #1; both are battle-scoped). Ordered
+            // `.before(left_click_act)` in the SAME band as the click selection writer so
+            // the same update's `sync_fire_mode_on_select` + `update_selection_highlight`
+            // (both `.after(left_click_act)`) react to the new selection exactly as for a
+            // click. It only FILLS an empty selection, so it never fights a player click
+            // (which writes the selection later the same update / on a later one).
+            .add_systems(
+                Update,
+                auto_select_first_player_ganger
+                    .in_set(InputSystems::Gather)
+                    .before(left_click_act)
+                    .run_if(
+                        resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>),
+                    ),
             )
             // GTW-238 — the ONE disambiguated left-click decision (FIRE -> SELECT ->
             // MOVE -> CLEAR) + the right-click turn-to-face surface, REPLACING the

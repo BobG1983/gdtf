@@ -62,6 +62,27 @@ use crate::{
     fire_surface::{ShooterFireData, try_fire_request},
 };
 
+/// The total-ordering key a player-faction ganger sorts by for the deterministic
+/// auto-select (GTW-255): `(level, y, x)` of its [`Position`] cell.
+///
+/// A `(i32, i32, i32)` tuple — the framework carve-out for an ordering key over the
+/// already-typed [`Position`] coordinates (a sort key is plumbing, not a fresh domain
+/// scalar). Ordered `(z = storey level, then y = row, then x = column)` so the
+/// comparison is a TOTAL order over distinct cells, reproducible across runs for the
+/// same situation (unlike the allocation-order [`Entity`] id). See
+/// [`auto_select_first_player_ganger`].
+type CellOrderKey = (i32, i32, i32);
+
+/// The `(level, y, x)` total-ordering key of a ganger's [`Position`] cell.
+///
+/// Reads the cell coordinates through [`Position`]'s [`Deref`] to its
+/// [`CellLevel`]/`IVec3` (`z` = storey level, `y` = row, `x` = column) and orders
+/// them level-major so two gangers on the same storey break ties by row then column —
+/// the deterministic ordering [`auto_select_first_player_ganger`] picks the minimum of.
+fn cell_order_key(position: &Position) -> CellOrderKey {
+    (position.z, position.y, position.x)
+}
+
 /// The currently SELECTED shooter — the ganger a left-click picked, or `None`.
 ///
 /// A named newtype over `Option<Entity>` (no-bare-types: the selection is a domain
@@ -285,6 +306,66 @@ pub fn right_click_turn_to_face(
 fn set_selection(selected: &mut ResMut<SelectedShooter>, next: SelectedShooter) {
     if **selected != next {
         **selected = next;
+    }
+}
+
+/// Sets the INITIAL [`SelectedShooter`] to the deterministic player-faction ganger when
+/// the battle becomes live with nothing selected yet (GTW-255).
+///
+/// Fixes the "battle opens with no unit selected" play-test bug: at setup
+/// [`SelectedShooter`] is `init_resource`-d to [`None`], so the player would otherwise
+/// have to hunt-and-click before any control works. This system fills that EMPTY
+/// selection ONCE with one of the player's own gangers, so the highlight + fire-mode
+/// default are live the moment the battle opens — exactly as for a click selection.
+///
+/// Behaviour:
+///
+/// - **No-op unless the selection is empty.** It only acts when `**selected == None`;
+///   it NEVER overrides a selection the player (or any other system) already made — it
+///   sets the INITIAL selection once.
+/// - **Deterministic ganger.** Among the gangers whose [`Faction`] `==`
+///   [`PlayerFaction`], it selects the one with the lowest [`Position`] cell by the
+///   `(level, y, x)` total ordering ([`cell_order_key`]) — reproducible across runs for
+///   the same situation, NOT the allocation-order [`Entity`] id. (FLAGGED alternative:
+///   authored / spawn order, were a stable spawn-index component present — there is
+///   none today, so the cell ordering is the stable choice.)
+/// - **Never an enemy.** It reads `Res<`[`PlayerFaction`]`>` and only considers gangers
+///   whose own [`Faction`] equals it; an enemy-faction ganger is never auto-selected. No
+///   player-faction ganger present → the selection stays [`None`].
+///
+/// OUT OF SCOPE (flagged, not built this slice): re-selecting when the selected ganger
+/// dies / downs or the turn advances — this sets the INITIAL selection only.
+///
+/// Param-only (`bevy-traps.md` #7): a read-only `Query<(`[`Entity`]`, &`[`Faction`]`,
+/// &`[`Position`]`)>` + `Res<`[`PlayerFaction`]`>` + the [`ResMut<SelectedShooter>`]
+/// write — no `&mut World`. Gated
+/// `run_if(resource_exists::<`[`BattleInProgress`](gdtf_battle_sim::BattleInProgress)`>`
+/// `.and` `resource_exists::<`[`PlayerFaction`]`>)` (`bevy-traps.md` #1), placed in
+/// [`InputSystems::Gather`](crate::InputSystems::Gather) ordered
+/// `.before(`[`left_click_act`]`)` alongside the other selection writers, so the same
+/// update's `sync_fire_mode_on_select` (`fire_mode.rs`) +
+/// [`update_selection_highlight`] react to the new selection exactly as for a click.
+pub fn auto_select_first_player_ganger(
+    gangers: Query<(Entity, &Faction, &Position)>,
+    player: Res<PlayerFaction>,
+    mut selected: ResMut<SelectedShooter>,
+) {
+    // Only ever FILL an empty selection — never override an existing one (the INITIAL
+    // selection is set once).
+    if selected.is_some() {
+        return;
+    }
+    let player_faction = **player;
+    // The deterministic player-faction ganger: the lowest `Position` cell by the
+    // `(level, y, x)` total ordering. `min_by_key` returns `None` when the player has
+    // no gangers, leaving the selection empty (never an enemy).
+    let pick = gangers
+        .iter()
+        .filter(|(_, faction, _)| **faction == player_faction)
+        .min_by_key(|(_, _, position)| cell_order_key(position))
+        .map(|(entity, ..)| entity);
+    if let Some(entity) = pick {
+        set_selection(&mut selected, SelectedShooter::new(entity));
     }
 }
 
