@@ -2598,8 +2598,11 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_app",
+ "gdtf_assets",
  "gdtf_battle_sim",
  "gdtf_test_utils",
+ "ron",
+ "serde",
 ]
 
 [[package]]

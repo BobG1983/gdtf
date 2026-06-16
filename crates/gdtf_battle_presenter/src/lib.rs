@@ -24,12 +24,31 @@
 //! projection, and the role-keyed [`TopDownAtlases`] resource loaded ONCE from the
 //! three render sheets (terrain / characters / effects) by [`TopDownRendererPlugin`].
 //! It still spawns NO sprite and draws NOTHING — that is S4/S5/S6.
+//!
+//! GTW-218 (the S4 slice) adds the first VISUAL draw in [`mod@terrain`]: the static
+//! battlefield drawn as 16x16 terrain sprites from the three sim-owned static-map
+//! resources for the presenter-owned [`ActiveLevel`], choosing each tile via the
+//! DATA-DRIVEN [`TileRoles`] table (`assets/tiles/tile_roles.ron`). The
+//! [`TopDownRendererPlugin`] loads + resolves that table, inserts the [`ActiveLevel`]
+//! default, defines the [`PresenterSystems::Draw`] set after
+//! `SimSystems::Simulate`, and registers the one-shot [`draw_static_battlefield`] +
+//! the [`swap_destroyed_cover`] reaction (both gated on the sim's `BattleInProgress`).
+//! It draws NO gangers (S5), NO FX (S6), and reads NO input (S7/S8).
 
 use bevy::prelude::*;
+use gdtf_assets::RonAssetAppExt;
+use gdtf_battle_sim::{
+    BattleInProgress, CoverLedger, OccupancyGrid, SurfaceGrid, occupancy_sync::SimSystems,
+};
 
+pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
 
+pub use terrain::{
+    ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles, TileRolesHandle,
+    draw_static_battlefield, load_tile_roles, resolve_tile_roles, swap_destroyed_cover,
+};
 pub use topdown::{
     CELL_PX, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world, load_topdown_atlases,
 };
@@ -118,14 +137,77 @@ pub struct TopDownRendererActive;
 /// load is a no-op rather than a param-validation failure. Under `DefaultPlugins`
 /// (the app and the AC4 load harness) `SpritePlugin`'s `TextureAtlasPlugin` provides
 /// it, so the load runs for real.
+///
+/// GTW-218 (S4) adds the static terrain draw here: it registers the
+/// [`RonAsset<TileRoles>`](gdtf_assets::RonAsset) loader + the
+/// [`load_tile_roles`] / [`resolve_tile_roles`] load chain (BOTH gated on an
+/// [`AssetServer`] so a `MinimalPlugins` app no-ops rather than panicking on the asset
+/// registration), inserts the [`ActiveLevel`] default (level 0), defines the
+/// [`PresenterSystems::Draw`] set `.after(SimSystems::Simulate)`, and registers the
+/// one-shot [`draw_static_battlefield`] + the [`swap_destroyed_cover`] reaction in that
+/// set, both gated `run_if(resource_exists::<BattleInProgress>)` (the sim's
+/// battle-in-progress witness, so the draw runs only DURING a live battle).
 pub struct TopDownRendererPlugin;
 
 impl Plugin for TopDownRendererPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(TopDownRendererActive).add_systems(
-            Startup,
-            load_topdown_atlases.run_if(resource_exists::<Assets<bevy::image::TextureAtlasLayout>>),
-        );
+        app.insert_resource(TopDownRendererActive)
+            .init_resource::<ActiveLevel>()
+            .add_systems(
+                Startup,
+                load_topdown_atlases
+                    .run_if(resource_exists::<Assets<bevy::image::TextureAtlasLayout>>),
+            );
+
+        // The RON-asset registration (`init_ron_asset` / `init_asset`) PANICS at
+        // registration without an `AssetServer` (no `Assets<T>` machinery), so it — and
+        // the load/resolve chain that reads it — is gated on the asset stack being
+        // present. Under `DefaultPlugins` (the app + the AssetServer harness) this runs
+        // for real; under `MinimalPlugins` it is skipped entirely (no draw, no panic).
+        if app.world().get_resource::<AssetServer>().is_some() {
+            app.init_ron_asset::<TileRoles>()
+                .add_systems(Startup, load_tile_roles)
+                .add_systems(
+                    Update,
+                    resolve_tile_roles.run_if(
+                        resource_exists::<TileRolesHandle>.and(not(resource_exists::<TileRoles>)),
+                    ),
+                );
+        }
+
+        // The shared presenter draw band (S5's ganger draw joins this set). Defined
+        // ONCE via `configure_sets` (`bevy-traps.md` #5), ordered after the sim's
+        // world mutations (`bevy-traps.md` #3) so a draw observes a settled sim state.
+        //
+        // Both draw systems are gated `run_if(resource_exists::<BattleInProgress>)` (the
+        // contract's battle gate) AND on the resources they READ existing: a battle can
+        // be `BattleInProgress` while the renderer's `TileRoles` / `TopDownAtlases` are
+        // absent (a `MinimalPlugins` headless app with no `AssetServer` never loads
+        // them), so without those extra guards the systems would fail param validation
+        // when the resource is missing — the exact panic `bevy-traps.md` #1 (and the
+        // ticket's "a no-resource state must NOT panic the draw") demands we gate. The
+        // draw scans the three sim grids + the two render resources; the swap reaction
+        // needs only `TileRoles` (and the always-present `ActiveLevel`).
+        app.configure_sets(Update, PresenterSystems::Draw.after(SimSystems::Simulate))
+            .add_systems(
+                Update,
+                draw_static_battlefield
+                    .in_set(PresenterSystems::Draw)
+                    .run_if(
+                        resource_exists::<BattleInProgress>
+                            .and(resource_exists::<TileRoles>)
+                            .and(resource_exists::<TopDownAtlases>)
+                            .and(resource_exists::<OccupancyGrid>)
+                            .and(resource_exists::<CoverLedger>)
+                            .and(resource_exists::<SurfaceGrid>),
+                    ),
+            )
+            .add_systems(
+                Update,
+                swap_destroyed_cover
+                    .in_set(PresenterSystems::Draw)
+                    .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<TileRoles>)),
+            );
     }
 }
 

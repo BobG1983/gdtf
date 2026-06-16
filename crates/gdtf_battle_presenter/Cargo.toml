@@ -12,6 +12,13 @@ bevy = { workspace = true }
 # only lands the edge, mirroring the GTW-203 `gdtf_app -> gdtf_battle_sim`
 # "land the edge now, consume later" precedent.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+# GTW-218 (S4): the DATA-DRIVEN tile-role table (`assets/tiles/tile_roles.ron`)
+# loads through the generic `RonAsset<T>` loader, the same mechanism the theme /
+# situation / tuning use.
+gdtf_assets = { path = "../gdtf_assets" }
+# GTW-218 (S4): `TileIndex` / `TileRoles` derive `Deserialize` so the authored
+# `tile_roles.ron` parses through the loader.
+serde = { workspace = true }
 
 [dev-dependencies]
 # The AC4 atlas-load test needs a live `AssetServer` rooted at the workspace
@@ -27,6 +34,9 @@ gdtf_test_utils = { path = "../gdtf_test_utils" }
 gdtf_app = { path = "../gdtf_app", features = ["test-support"] }
 # Naming `Assets<TextureAtlasLayout>` and driving `App::update()` in the test body.
 bevy = { workspace = true }
+# GTW-218 (S4): the AC1 round-trip test deserializes the SHIPPED `tile_roles.ron`
+# bytes via `ron::de::from_str` (test-only — the runtime path uses the loader).
+ron = { workspace = true }
 
 [lints]
 workspace = true
