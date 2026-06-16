@@ -13,5 +13,20 @@ bevy = { workspace = true }
 # "land the edge now, consume later" precedent.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 
+[dev-dependencies]
+# The AC4 atlas-load test needs a live `AssetServer` rooted at the workspace
+# `assets/` dir — `GdtfLoadTestAppBuilder` (DefaultPlugins/`no_renderer`). The plain
+# `MinimalPlugins` harness has no `AssetServer`. Dev-only edge: this pulls
+# `gdtf_test_utils -> gdtf_app -> gdtf_battle_presenter`, a cycle Cargo permits
+# because dev-dependencies are outside the normal build graph (the same dev cycle
+# `gdtf_app` already uses).
+gdtf_test_utils = { path = "../gdtf_test_utils" }
+# The AC4 test names `gdtf_app::test_support::AppState` to drive the load harness;
+# `test-support` exposes that module. Dev-only edge (same permitted dev cycle as
+# above: `gdtf_app` depends on this crate in the normal graph).
+gdtf_app = { path = "../gdtf_app", features = ["test-support"] }
+# Naming `Assets<TextureAtlasLayout>` and driving `App::update()` in the test body.
+bevy = { workspace = true }
+
 [lints]
 workspace = true

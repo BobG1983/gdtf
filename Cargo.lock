@@ -2597,7 +2597,9 @@ name = "gdtf_battle_presenter"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "gdtf_app",
  "gdtf_battle_sim",
+ "gdtf_test_utils",
 ]
 
 [[package]]

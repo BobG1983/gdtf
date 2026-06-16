@@ -13,7 +13,7 @@
 //!
 //! `BattlePresenterPlugin` is added by `GameBattleScapeScenePlugin`'s `build`, which
 //! runs when the scene plugins register (not on state-enter), so its
-//! [`Cp437RendererActive`](gdtf_battle_presenter::Cp437RendererActive) marker is
+//! [`TopDownRendererActive`](gdtf_battle_presenter::TopDownRendererActive) marker is
 //! present once the app has descended to `BattleScape` — the test-observable proof
 //! the build ran inside the real stack.
 //!
@@ -24,7 +24,7 @@
 //! and stops at `BattleScape`.
 
 use gdtf_app::test_support::{AppState, GameState, RunningState};
-use gdtf_battle_presenter::Cp437RendererActive;
+use gdtf_battle_presenter::TopDownRendererActive;
 use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -93,12 +93,12 @@ fn drive_to_battlescape(app: &mut bevy::app::App) -> bool {
     )
 }
 
-/// AC3 — `GameBattleScapeScenePlugin` adds `BattlePresenterPlugin`, and its `build`
+/// AC1 — `GameBattleScapeScenePlugin` adds `BattlePresenterPlugin`, and its `build`
 /// actually runs inside the real scene stack. Driving the real state machine into
 /// [`GameState::BattleScape`] leaves the
-/// [`Cp437RendererActive`](gdtf_battle_presenter::Cp437RendererActive) marker present
-/// in the world — proof the default (Cp437) presenter's `build` ran inside the real
-/// scene stack, not in an isolated test app.
+/// [`TopDownRendererActive`](gdtf_battle_presenter::TopDownRendererActive) marker
+/// present in the world — proof the default (`TopDown`) presenter's `build` ran
+/// inside the real scene stack, not in an isolated test app.
 #[test]
 fn battlescape_scene_runs_the_presenter_plugin_build() {
     let mut app = presenter_app();
@@ -114,8 +114,10 @@ fn battlescape_scene_runs_the_presenter_plugin_build() {
         "the walk must rest inside GameState::BattleScape",
     );
     assert!(
-        app.world().get_resource::<Cp437RendererActive>().is_some(),
-        "BattlePresenterPlugin (default Cp437) build must have run inside the real scene stack — \
-         the Cp437RendererActive marker is present once BattleScape is active",
+        app.world()
+            .get_resource::<TopDownRendererActive>()
+            .is_some(),
+        "BattlePresenterPlugin (default TopDown) build must have run inside the real scene stack — \
+         the TopDownRendererActive marker is present once BattleScape is active",
     );
 }

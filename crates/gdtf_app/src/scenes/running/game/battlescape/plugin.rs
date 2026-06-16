@@ -46,7 +46,8 @@ fn add_plugins(app: &mut App) {
         .add_plugins(GameBattleScapeAfterMathScenePlugin)
         // The GTW-48 presenter seam (GTW-215): the VIEW that mirrors the sim. Its
         // `build` runs here when the scene plugins register; the default mode
-        // builds the (empty this slice) CP437 renderer.
+        // builds the TopDown renderer (GTW-217 renamed it from CP437; it loads the
+        // sprite atlases but draws no sprite yet — that is S4/S5/S6).
         .add_plugins(gdtf_battle_presenter::BattlePresenterPlugin::default());
 }
 
