@@ -67,6 +67,20 @@
     stance_change_tu: 8,  // TU a ganger spends to change posture (stand/kneel/prone), charged on a real change
     turn_tu:          4,  // TU a ganger spends to turn in place to a new facing, charged on a real change
 
+    // Per-terrain move cost (combat.md L34: "step" costs TUs): the flat Time Units a ganger
+    // spends to step ONTO a destination cell — TERRAIN-DETERMINED (the floor tile crossed
+    // determines the cost), looked up by the destination cell's TerrainKind (move_ganger reads
+    // grid.terrain(dest) then this table). Coarse per-TerrainKind (Open/Cover/Wall), NOT
+    // per-floor-TYPE — richer per-floor-type costs need a richer sim terrain model (a follow-up).
+    // The cost is applied FLAT regardless of step direction (a diagonal-costs-more differential is
+    // deferred). STARTING POINTS (tunable, flagged — the user gave a facing cost but NOT per-terrain
+    // move costs); the verb gates affordability + charges the looked-up cost.
+    move_costs: (
+        open:  4,  // step onto Open floor — the cheapest baseline (a wall/standing-cover cell blocks, never a dest)
+        cover: 6,  // step onto a Cover cell — dearer; reachable only once the cover is DESTROYED (then it no longer blocks)
+        wall:  8,  // step onto a Wall — placeholder; a wall always blocks, so this is never charged (dead under the gate)
+    ),
+
     // Hit-location weights — the RELATIVE odds each body part is the one struck on a hit
     // (resolution.md §4 `roll_body_part`). Larger = struck more often; they need not sum to
     // any total — only the ratios between them matter.

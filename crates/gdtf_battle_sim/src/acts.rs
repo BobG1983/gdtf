@@ -15,7 +15,7 @@
 //!
 //! ## The `*Requested` types (the input contract)
 //!
-//! Six [`#[derive(Message)]`](bevy::prelude::Message) buffered messages — mirroring
+//! Seven [`#[derive(Message)]`](bevy::prelude::Message) buffered messages — mirroring
 //! [`crate::bleed::Bleeding`] / [`crate::occupancy_sync::CoverDestroyed`], the buffered
 //! `Message` API, NOT the observer `Event` API (`bevy-traps.md` #4). Each carries the
 //! act's [`Entity`] actor ref(s) plus the act's OWNED payload. A `Message` cannot hold a
@@ -27,16 +27,18 @@
 //! These carry [`Entity`] actor refs (matching the landed `fire(shooter: Entity)` and
 //! the downed verbs' actor/target entities) — NOT presenter-facing integer ids. A
 //! `*Resolved` integer-id boundary is a LATER epic; E10 relies on component
-//! change-detection for the view, so this slice ships no `*Resolved` types and no
-//! movement act (`MoveRequested` — no movement verb exists yet).
+//! change-detection for the view, so this slice ships no `*Resolved` types. The
+//! [`MoveRequested`] movement act (the seventh, added in GTW-234) carries the OWNED
+//! [`CellLevel`] destination and runs the landed [`move_ganger`] verb — the move's TU
+//! cost is the destination cell's terrain movement cost.
 //!
 //! ## [`SimActsPlugin`] (the registration unit)
 //!
 //! This slice CREATES the public [`SimActsPlugin`] (E10.0 lands only the
 //! [`SimSystems::Simulate`] [`SystemSet`](bevy::prelude::SystemSet) enum + its
 //! `configure_sets`; it builds no plugin). In `build()` the plugin
-//! [`add_message`](bevy::app::App::add_message)s all six types exactly once each
-//! (`bevy-traps.md` #5) and adds the six dispatch systems `.in_set(SimSystems::Simulate)`
+//! [`add_message`](bevy::app::App::add_message)s all seven types exactly once each
+//! (`bevy-traps.md` #5) and adds the seven dispatch systems `.in_set(SimSystems::Simulate)`
 //! in [`Update`](bevy::prelude::Update) — consuming E10.0's set (it imports and uses it,
 //! never redefines it, and never calls `configure_sets`, which is E10.0's). So the
 //! dispatch systems compose deterministically with the
@@ -62,7 +64,8 @@ use crate::{
     ganger::{
         Aiming, Direction, Facing, Faction, LifeState, Position, Stabilized, Stance, StanceKind, Tu,
     },
-    metric::{Cell, Level},
+    metric::{Cell, CellLevel, Level},
+    move_acts::move_ganger,
     occupancy::OccupancyGrid,
     occupancy_sync::SimSystems,
     posture::{set_aiming, set_facing, set_stance},
@@ -240,6 +243,32 @@ impl ExecuteDownedRequested {
     #[must_use]
     pub const fn new(actor: Entity, target: Entity) -> Self {
         Self { actor, target }
+    }
+}
+
+/// A **move** act was requested — step `actor` one cell to `dest`.
+///
+/// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), carrying the
+/// [`Entity`] actor ref plus the destination [`CellLevel`] (the `(cell, level)` to step
+/// to). The payload is OWNED and `Copy` ([`CellLevel`] is `Copy`), so the type has **no
+/// lifetime parameter** — mirroring [`SetFacingRequested`] / [`SetStanceRequested`]. The
+/// actor is a Bevy [`Entity`] handle — framework plumbing, the only bare type the
+/// no-bare-types rule permits in a payload; `dest` is the landed [`CellLevel`] newtype.
+/// [`dispatch_move`] drains this and runs the landed [`move_ganger`] verb once per
+/// message, whose TU cost is the DESTINATION cell's terrain movement cost.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MoveRequested {
+    /// The acting ganger to step.
+    pub actor: Entity,
+    /// The destination `(cell, level)` to step the actor to (one cell, no pathfinding).
+    pub dest:  CellLevel,
+}
+
+impl MoveRequested {
+    /// Build a move request for `actor` to step to `dest`.
+    #[must_use]
+    pub const fn new(actor: Entity, dest: CellLevel) -> Self {
+        Self { actor, dest }
     }
 }
 
@@ -500,21 +529,61 @@ pub fn dispatch_execute_downed(
     }
 }
 
-/// The **sim-acts registration unit** — registers the six `*Requested` message buffers
-/// and adds the six per-act dispatch systems, every one `.in_set(SimSystems::Simulate)`
-/// in [`Update`] (E10.2 / GTW-204).
+/// **Dispatch** buffered [`MoveRequested`] messages — drain each and run the landed
+/// [`move_ganger`] verb once per message (E4 / GTW-234).
+///
+/// Queries the actor's `(&mut `[`Position`]`, &mut `[`Tu`]`, &`[`LifeState`]`)`, reads
+/// the [`OccupancyGrid`] (for the gates AND the destination-terrain cost lookup) and the
+/// [`CombatTuning`] resource (for the [`MoveCosts`](crate::tuning::MoveCosts) table), and
+/// calls [`move_ganger`] — whose gates (liveness / in-bounds / not-blocked / unoccupied /
+/// affordable) hold end-to-end, charging the DESTINATION terrain's move cost. REUSES the
+/// landed verb verbatim. A message for an actor missing any queried component is skipped
+/// (fail-closed, no panic — the `dispatch_set_*` precedent).
+///
+/// This dispatch ONLY READS the grid (`Res<OccupancyGrid>`) for the gates + the terrain
+/// cost; it never writes it. The grid's slot maintenance is the landed
+/// [`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers) reacting to the
+/// `Changed<`[`Position`]`>` this verb produces — both sit in the
+/// [`SimSystems::Simulate`] set and compose with no ambiguity (`dispatch_move`'s `&mut
+/// Position` writes, `sync_moved_gangers`'s `&Position` reads it next).
+pub fn dispatch_move(
+    mut requests: MessageReader<MoveRequested>,
+    mut actors: Query<(&'static mut Position, &'static mut Tu, &'static LifeState)>,
+    grid: Res<OccupancyGrid>,
+    tuning: Res<CombatTuning>,
+) {
+    for request in requests.read() {
+        let Ok((mut position, mut tu, &life)) = actors.get_mut(request.actor) else {
+            continue;
+        };
+        let _outcome = move_ganger(
+            &mut position,
+            &mut tu,
+            life,
+            request.dest,
+            &grid,
+            &tuning.move_costs,
+        );
+    }
+}
+
+/// The **sim-acts registration unit** — registers the seven `*Requested` message buffers
+/// and adds the seven per-act dispatch systems, every one `.in_set(SimSystems::Simulate)`
+/// in [`Update`] (E10.2 / GTW-204; the seventh — [`MoveRequested`] / [`dispatch_move`] —
+/// added in GTW-234).
 ///
 /// This slice CREATES this plugin — E10.0 lands only the [`SimSystems::Simulate`]
 /// [`SystemSet`](bevy::prelude::SystemSet) enum and its `configure_sets`; it builds no
 /// plugin. In `build()` the plugin:
 ///
 /// - [`add_message`](App::add_message)s [`FireRequested`], [`SetAimingRequested`],
-///   [`SetStanceRequested`], [`SetFacingRequested`], [`StabilizeDownedRequested`], and
-///   [`ExecuteDownedRequested`] — exactly once each (`bevy-traps.md` #5; an unregistered
-///   message buffer fails a [`MessageReader`]'s param validation, the
+///   [`SetStanceRequested`], [`SetFacingRequested`], [`StabilizeDownedRequested`],
+///   [`ExecuteDownedRequested`], and [`MoveRequested`] — exactly once each
+///   (`bevy-traps.md` #5; an unregistered message buffer fails a [`MessageReader`]'s
+///   param validation, the
 ///   [`OccupancyMaintenancePlugin`](crate::occupancy_sync::OccupancyMaintenancePlugin)
 ///   precedent); and
-/// - adds the six dispatch systems to [`Update`] `.in_set(SimSystems::Simulate)`,
+/// - adds the seven dispatch systems to [`Update`] `.in_set(SimSystems::Simulate)`,
 ///   composing deterministically with the occupancy-maintenance systems already in that
 ///   set (`bevy-traps.md` #3).
 ///
@@ -534,6 +603,7 @@ impl Plugin for SimActsPlugin {
             .add_message::<SetFacingRequested>()
             .add_message::<StabilizeDownedRequested>()
             .add_message::<ExecuteDownedRequested>()
+            .add_message::<MoveRequested>()
             .add_systems(
                 Update,
                 (
@@ -543,6 +613,7 @@ impl Plugin for SimActsPlugin {
                     dispatch_set_facing,
                     dispatch_stabilize_downed,
                     dispatch_execute_downed,
+                    dispatch_move,
                 )
                     .in_set(SimSystems::Simulate),
             );
@@ -724,6 +795,17 @@ mod tests {
         let ex = ExecuteDownedRequested::new(shooter, target);
         assert_eq!(ex.actor, shooter);
         assert_eq!(ex.target, target);
+
+        // MoveRequested carries the actor Entity + an OWNED CellLevel destination (no
+        // borrow → no lifetime parameter; that this compiles as `MoveRequested` without
+        // `<'_>` is the no-lifetime proof).
+        let dest = CellLevel::new(Cell::new(7, 3), Level::new(0));
+        let mv = MoveRequested::new(shooter, dest);
+        assert_eq!(mv.actor, shooter, "MoveRequested carries the actor Entity");
+        assert_eq!(
+            mv.dest, dest,
+            "MoveRequested carries the OWNED CellLevel dest"
+        );
     }
 
     // === AC2 — SimActsPlugin registers each `*Requested` buffer (a MessageReader passes
@@ -773,6 +855,10 @@ mod tests {
                     for _ in r.read() {}
                     p.0 += 1;
                 },
+                |mut r: MessageReader<MoveRequested>, mut p: ResMut<Probed>| {
+                    for _ in r.read() {}
+                    p.0 += 1;
+                },
             ),
         );
 
@@ -781,8 +867,8 @@ mod tests {
         let ran = app.world().get_resource::<Probed>().map(|p| p.0);
         assert_eq!(
             ran,
-            Some(6),
-            "every `MessageReader<*Requested>` must pass param-validation — all six \
+            Some(7),
+            "every `MessageReader<*Requested>` must pass param-validation — all seven \
              buffers are registered by `SimActsPlugin`",
         );
     }
@@ -1121,6 +1207,16 @@ mod tests {
             .id();
         let downed_actor = spawn_downed_actor(app.world_mut(), 20, 20, 1);
         let downed_target = spawn_downed_target(app.world_mut(), 21, 20, 1);
+        // A move-capable actor (Position/Tu/LifeState) so dispatch_move has a subject it
+        // WOULD mutate (Position + Tu) if it ran spuriously.
+        let move_actor = app
+            .world_mut()
+            .spawn((
+                Position::new(CellLevel::new(Cell::new(30, 30), Level::new(0))),
+                Tu::new(80),
+                LifeState::Alive,
+            ))
+            .id();
 
         // Snapshot every relevant component before any update.
         let snap = |app: &App| {
@@ -1136,6 +1232,12 @@ mod tests {
                 app.world().get::<Stabilized>(downed_target).copied(),
                 app.world().get::<LifeState>(downed_target).copied(),
                 app.world().get::<LifeState>(downed_actor).copied(),
+                // The move actor's Position + Tu, nested so the outer tuple stays within
+                // the 12-element PartialEq/Debug tuple-arity ceiling.
+                (
+                    app.world().get::<Position>(move_actor).copied(),
+                    app.world().get::<Tu>(move_actor).copied(),
+                ),
             )
         };
         let before = snap(&app);
@@ -1242,6 +1344,117 @@ mod tests {
             slot_after, None,
             "the occupancy slot the dispatched kill vacated must be freed by the \
              co-scheduled occupancy system",
+        );
+    }
+
+    // === GTW-234 AC3 (dispatch path) — a VALID MoveRequested dispatch moves the actor
+    // to the dest AND drops its Tu by EXACTLY the destination terrain's looked-up move
+    // cost (a relation to the tuning leaf, never a pinned magnitude). ===
+
+    /// Spawn a move-capable actor ([`Position`] / [`Tu`] / [`LifeState::Alive`]) at
+    /// `(x, y, 0)`.
+    fn spawn_move_actor(world: &mut World, x: i32, y: i32, tu: u8) -> Entity {
+        world
+            .spawn((
+                Position::new(CellLevel::new(Cell::new(x, y), Level::new(0))),
+                Tu::new(tu),
+                LifeState::Alive,
+            ))
+            .id()
+    }
+
+    #[test]
+    fn move_dispatch_steps_the_actor_and_spends_the_dest_terrain_cost() {
+        let mut app = headless_app();
+        let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
+        let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); // Open, empty, in-bounds
+
+        // The looked-up cost the dispatch will charge — read off the SAME resources the
+        // dispatch reads (the dest's terrain × the move_costs table), a relation never a
+        // pinned magnitude.
+        let expected_cost = app.world().get_resource::<CombatTuning>().and_then(|t| {
+            app.world()
+                .get_resource::<OccupancyGrid>()
+                .map(|g| *t.move_costs.cost(g.terrain(&dest)))
+        });
+        let tu_before = app.world().get::<Tu>(actor).map(|t| **t);
+
+        app.world_mut()
+            .write_message(MoveRequested::new(actor, dest));
+        app.update();
+
+        assert_eq!(
+            app.world().get::<Position>(actor).copied(),
+            Some(Position::new(dest)),
+            "move dispatch must step the actor to the requested destination",
+        );
+        let tu_after = app.world().get::<Tu>(actor).map(|t| **t);
+        assert!(
+            matches!((tu_before, tu_after), (Some(b), Some(a)) if a < b),
+            "a real move must strictly decrease Tu",
+        );
+        assert_eq!(
+            tu_before.zip(tu_after).map(|(b, a)| b - a),
+            expected_cost,
+            "the Tu drop must equal exactly the destination terrain's looked-up move cost",
+        );
+    }
+
+    // === GTW-234 AC7 — the move dispatch co-schedules with sync_moved_gangers in
+    // SimSystems::Simulate: after a successful move + one update under the co-scheduled
+    // harness, sync_moved_gangers sets the dest slot occupant and frees the source slot.
+    // The combined schedule builds + runs with no ambiguity/access panic. ===
+
+    #[test]
+    fn move_dispatch_and_occupancy_co_schedule_fills_dest_and_frees_source() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        // BOTH plugins tag into SimSystems::Simulate; OccupancyMaintenancePlugin owns the
+        // set's configure_sets, SimActsPlugin only `.in_set`s into it.
+        app.add_plugins(OccupancyMaintenancePlugin);
+        app.add_plugins(SimActsPlugin);
+        insert_sim_resources(&mut app);
+
+        let source = CellLevel::new(Cell::new(10, 10), Level::new(0));
+        let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); // Open, empty, in-bounds
+        let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
+
+        // First update: sync_moved_gangers reacts to the actor's Changed<Position>
+        // (initial placement), marking the source slot. The combined schedule builds +
+        // runs with no ambiguity/access panic (AC7's co-schedule check).
+        app.update();
+        let source_occupied = app
+            .world()
+            .get_resource::<OccupancyGrid>()
+            .and_then(|g| g.occupant(&source));
+        assert_eq!(
+            source_occupied,
+            Some(actor),
+            "after initial sync the actor occupies its source slot",
+        );
+
+        // Now MOVE — dispatch_move writes Position=dest this update; sync_moved_gangers
+        // reacts to the Changed<Position> next update, marking the dest and freeing source.
+        app.world_mut()
+            .write_message(MoveRequested::new(actor, dest));
+        app.update(); // dispatch_move writes Position=dest this update
+        app.update(); // sync_moved_gangers reacts to Changed<Position> next update
+
+        assert_eq!(
+            app.world().get::<Position>(actor).copied(),
+            Some(Position::new(dest)),
+            "the dispatched move wrote Position=dest",
+        );
+        let grid = app.world().get_resource::<OccupancyGrid>();
+        assert_eq!(
+            grid.and_then(|g| g.occupant(&dest)),
+            Some(actor),
+            "sync_moved_gangers (co-scheduled) sets the dest slot occupant",
+        );
+        assert_eq!(
+            grid.and_then(|g| g.occupant(&source)),
+            None,
+            "sync_moved_gangers (co-scheduled) frees the source slot",
         );
     }
 }

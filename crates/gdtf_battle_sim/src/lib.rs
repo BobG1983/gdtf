@@ -44,6 +44,14 @@
 //!   and [`posture::set_facing`] (charges [`tuning::TurnTu`] on a real turn). Each
 //!   costed verb is a no-op — no charge — when the value is unchanged. Pure math, no
 //!   `World` access.
+//! - [`move_acts`] — the GTW-234 movement verb [`move_acts::move_ganger`]: steps a ganger
+//!   one cell to a destination `(cell, level)`, charging a TERRAIN-DETERMINED TU cost (the
+//!   destination cell's [`occupancy::TerrainKind`] movement cost from the per-terrain
+//!   [`tuning::MoveCosts`] table, NOT a flat constant). Gated by liveness + in-bounds +
+//!   not-blocked + unoccupied + affordable; any gate failure is a TOTAL no-op (returns
+//!   [`move_acts::MoveOutcome::Blocked`]). It writes ONLY [`ganger::Position`] — the grid
+//!   slot maintenance is the landed [`occupancy_sync::sync_moved_gangers`]
+//!   `Changed<Position>` reactor. Pure math, no `World` access.
 //! - [`magazine`] — the E4.4 ammo state + the shared firing guard: the
 //!   [`magazine::Magazine`] current-rounds Component (clamped to
 //!   [`weapon::MagazineSize`] at construction, saturating
@@ -165,6 +173,7 @@ pub mod magazine;
 pub mod march;
 pub mod matchup;
 pub mod metric;
+pub mod move_acts;
 pub mod occupancy;
 pub mod occupancy_sync;
 pub mod posture;
@@ -216,6 +225,7 @@ pub use magazine::{FireActor, Magazine, can_fire, clamp_burst, in_bounds, mode_t
 pub use march::{MarchKind, MarchResult, march_vector};
 pub use matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier};
 pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
+pub use move_acts::{MoveOutcome, move_ganger};
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
     OccupantPlacement, TerrainKind, TerrainPlacement,
@@ -241,11 +251,11 @@ pub use tuning::{
     AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
     BodyPartWeights, BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff,
     ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu, MatchupMultipliers,
-    MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale, ProjectileBandEdges,
-    RandomSpread, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
-    SilhouetteTop, SilhouetteTops, StabilityCurve, StabilityCurveCoord, StabilityCurvePoint,
-    StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution, StanceStability,
-    ToughnessMitigation, TurnTu, WoundCost, WoundCosts,
+    MoveCost, MoveCosts, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale,
+    ProjectileBandEdges, RandomSpread, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling,
+    ShooterLuckScale, SilhouetteTop, SilhouetteTops, StabilityCurve, StabilityCurveCoord,
+    StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution,
+    StanceStability, ToughnessMitigation, TurnTu, WoundCost, WoundCosts,
 };
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
