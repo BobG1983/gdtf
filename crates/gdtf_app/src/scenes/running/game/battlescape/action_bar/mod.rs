@@ -15,7 +15,7 @@ pub(in crate::scenes::running::game::battlescape) use plugin::GameBattleScapeAct
 #[cfg(feature = "test-support")]
 crate::support_use! {
     components::{
-        AimToggleButton, EndTurnButton, FireModeSelectButton, LevelDownButton, LevelUpButton,
-        ReloadButton, StanceCycleButton,
+        AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton, LevelDownButton,
+        LevelUpButton, ReloadButton, StanceCycleButton,
     };
 }

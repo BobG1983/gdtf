@@ -40,7 +40,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{
     AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton,
-    FireModeSelectButton, LevelDownButton, LevelUpButton, ReloadButton, RunningState,
+    FireModeSelectButton, FleeButton, LevelDownButton, LevelUpButton, ReloadButton, RunningState,
     StanceCycleButton,
 };
 use gdtf_battle_input::{
@@ -48,8 +48,8 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
-    Aiming, Direction, Facing, FireMode, FireModeSpec, Level, ModeConeMult, ModeShots,
-    ModeTuPercent, Stance, StanceKind,
+    Aiming, BattleInProgress, Direction, Facing, FireMode, FireModeSpec, Level, ModeConeMult,
+    ModeShots, ModeTuPercent, Stance, StanceKind,
     acts::{SetAimingRequested, SetStanceRequested},
     tuning::CombatTuning,
 };
@@ -666,4 +666,199 @@ fn buttons_are_ui_nodes_not_world_render_layer_sprites() {
             "an action button must NOT be on the WORLD_RENDER_LAYER — it routes to the UI camera",
         );
     }
+}
+
+// =================================================================================
+// GTW-240 — the ENABLED Flee-battle button ends the persisting battle.
+// =================================================================================
+
+/// The caption of `button`'s `Text` child, if present (the `spawn_button` widget puts the
+/// label on a `Text` child of the button root, not on the root itself).
+fn button_label(app: &App, button: Entity) -> Option<String> {
+    let children = app.world().get::<Children>(button)?;
+    children
+        .iter()
+        .find_map(|child| app.world().get::<Text>(child).map(|text| text.0.clone()))
+}
+
+// ---------------------------------------------------------------------------------
+// AC1 — the bar spawns exactly one ENABLED FleeButton (no DisabledButton) in BattleRunning,
+// interactive, labelled "Flee battle".
+// ---------------------------------------------------------------------------------
+
+/// AC1 — in the live battle exactly one `FleeButton` is spawned; it carries `Button` +
+/// `Interaction` (interactive), is ENABLED (NO `DisabledButton`, unlike the deferred
+/// reload / end-turn buttons), and is labelled `"Flee battle"`.
+#[test]
+fn flee_button_spawns_enabled_in_battle() {
+    let mut app = battle_running_app();
+
+    let Some(flee) = require_button::<FleeButton>(&mut app) else {
+        return;
+    };
+    assert!(
+        app.world().get::<Button>(flee).is_some(),
+        "the flee button must carry Button",
+    );
+    assert!(
+        app.world().get::<Interaction>(flee).is_some(),
+        "the flee button must carry Interaction (interactive)",
+    );
+    assert!(
+        app.world().get::<DisabledButton>(flee).is_none(),
+        "the flee button must be ENABLED — it must NOT carry DisabledButton",
+    );
+    assert_eq!(
+        button_label(&app, flee).as_deref(),
+        Some("Flee battle"),
+        "the flee button must be labelled \"Flee battle\"",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC2 — a FleeButton press inserts BattleRunningComplete and the battle ends (the state
+// advances to AnimateOut). This is the load-bearing AC.
+// ---------------------------------------------------------------------------------
+
+/// AC2 — pressing the flee button inserts the `BattleRunningComplete` end-signal marker and
+/// the marker-gated `move_on` advances the machine out of `BattleRunning` to `AnimateOut`
+/// (the explicit end requirement 5(b)).
+#[test]
+fn flee_button_press_ends_battle() {
+    let mut app = battle_running_app();
+    assert_eq!(
+        battlescape_state(&app),
+        Some(BattleScapeState::BattleRunning),
+        "the harness must start in BattleRunning",
+    );
+
+    let Some(flee) = require_button::<FleeButton>(&mut app) else {
+        return;
+    };
+    press_button(&mut app, flee);
+
+    // Let `flee_button_pressed` insert the marker (Update) and `move_on` run (FixedUpdate),
+    // then walk until the state leaves BattleRunning.
+    let left_battle_running = advance_until(
+        &mut app,
+        |app| battlescape_state(app) != Some(BattleScapeState::BattleRunning),
+        BUDGET,
+    );
+    assert!(
+        left_battle_running,
+        "a flee press must advance the machine out of BattleRunning within {BUDGET} updates; \
+         last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    assert_eq!(
+        battlescape_state(&app),
+        Some(BattleScapeState::AnimateOut),
+        "a flee press must end the battle by advancing BattleRunning -> AnimateOut",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC3 — a flee press is inert without BattleInProgress (the run_if gate holds).
+// ---------------------------------------------------------------------------------
+
+/// AC3 — with the `BattleInProgress` live-battle witness removed, a synthesized flee press
+/// neither inserts `BattleRunningComplete` nor advances the state out of `BattleRunning` —
+/// the `run_if(resource_exists::<BattleInProgress>)` gate holds (`bevy-traps.md` #1). The
+/// REAL flee button entity is pressed (proving the system gate, not merely spawn timing).
+#[test]
+fn flee_button_inert_without_battle_in_progress() {
+    let mut app = battle_running_app();
+    let Some(flee) = require_button::<FleeButton>(&mut app) else {
+        return;
+    };
+
+    // Remove the live-battle witness so the flee system's gate excludes it.
+    app.world_mut().remove_resource::<BattleInProgress>();
+
+    press_button(&mut app, flee);
+    // Several updates to prove no late insertion.
+    for _ in 0..3 {
+        app.update();
+    }
+
+    assert!(
+        app.world()
+            .get_resource::<BattleRunningComplete>()
+            .is_none(),
+        "a flee press with no BattleInProgress must NOT insert BattleRunningComplete",
+    );
+    assert_eq!(
+        battlescape_state(&app),
+        Some(BattleScapeState::BattleRunning),
+        "a flee press with no BattleInProgress must NOT advance the state out of BattleRunning",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC4 — FleeButton despawns OnExit(BattleRunning) with the bar.
+// ---------------------------------------------------------------------------------
+
+/// AC4 — after fleeing and leaving `BattleRunning`, the `FleeButton` is gone: it tore down
+/// with the `ActionBarRoot` recursive despawn (`despawn_action_bar`), so it is battle-scoped
+/// like every other action-bar button.
+#[test]
+fn flee_button_despawns_on_exit_battle_running() {
+    let mut app = battle_running_app();
+    let Some(flee) = require_button::<FleeButton>(&mut app) else {
+        return;
+    };
+    press_button(&mut app, flee);
+
+    let left_battle_running = advance_until(
+        &mut app,
+        |app| battlescape_state(app) != Some(BattleScapeState::BattleRunning),
+        BUDGET,
+    );
+    assert!(
+        left_battle_running,
+        "a flee press must advance the machine out of BattleRunning within {BUDGET} updates",
+    );
+    assert!(
+        single_with::<FleeButton>(&mut app).is_none(),
+        "the flee button must be despawned once the battle leaves BattleRunning (with the bar)",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC5 — regression: the deferred buttons stay disabled, flee stays enabled, and the
+// sim-act buttons are unchanged. The `deferred_buttons_are_disabled_and_emit_nothing`
+// test above covers the deferred/sim-act contract; this pins the enabled/disabled split
+// now that FleeButton has been added (it did not perturb the bar contract).
+// ---------------------------------------------------------------------------------
+
+/// AC5 — adding the flee button did NOT re-enable the deferred buttons: `ReloadButton` and
+/// `EndTurnButton` still carry `DisabledButton`, while the new `FleeButton` is ENABLED
+/// (carries NO `DisabledButton`). The full deferred-emit-nothing + sim-act regression is
+/// `deferred_buttons_are_disabled_and_emit_nothing`.
+#[test]
+fn deferred_buttons_stay_disabled_after_flee_added() {
+    let mut app = battle_running_app();
+
+    let Some(reload) = require_button::<ReloadButton>(&mut app) else {
+        return;
+    };
+    let Some(end_turn) = require_button::<EndTurnButton>(&mut app) else {
+        return;
+    };
+    let Some(flee) = require_button::<FleeButton>(&mut app) else {
+        return;
+    };
+
+    assert!(
+        app.world().get::<DisabledButton>(reload).is_some(),
+        "the reload button must STAY DisabledButton after FleeButton was added",
+    );
+    assert!(
+        app.world().get::<DisabledButton>(end_turn).is_some(),
+        "the end-turn button must STAY DisabledButton after FleeButton was added",
+    );
+    assert!(
+        app.world().get::<DisabledButton>(flee).is_none(),
+        "the flee button is ENABLED — it must NOT carry DisabledButton",
+    );
 }

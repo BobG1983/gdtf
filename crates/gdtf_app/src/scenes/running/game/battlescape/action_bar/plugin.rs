@@ -30,7 +30,7 @@ use gdtf_battle_sim::BattleInProgress;
 
 use crate::{
     scenes::running::game::battlescape::action_bar::systems::{
-        action_bar_button_intents, despawn_action_bar, spawn_action_bar,
+        action_bar_button_intents, despawn_action_bar, flee_button_pressed, spawn_action_bar,
     },
     states::BattleScapeState,
 };
@@ -53,6 +53,16 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                     // queued AFTER the drain ran and only take effect a frame late.
                     .before(dispatch_act_intents)
                     .run_if(resource_exists::<BattleInProgress>),
+            )
+            // The flee button (GTW-240): an ENABLED app/lifecycle button whose press ends the
+            // persisting battle. Gated on the SAME live-battle witness so a press is inert
+            // outside a live battle (AC3). It needs NO `.before(dispatch_act_intents)` ordering
+            // — it writes the `BattleRunningComplete` lifecycle marker directly (via the typed
+            // `insert_battle_running_complete` door), never the intent seam — so it is ordered
+            // independently.
+            .add_systems(
+                Update,
+                flee_button_pressed.run_if(resource_exists::<BattleInProgress>),
             );
     }
 }

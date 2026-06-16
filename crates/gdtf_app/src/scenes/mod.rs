@@ -47,8 +47,8 @@ crate::support_use! {
 #[cfg(feature = "test-support")]
 crate::support_use! {
     running::{
-        AimToggleButton, EndTurnButton, FireModeSelectButton, LevelDownButton, LevelUpButton,
-        ReloadButton, StanceCycleButton,
+        AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton, LevelDownButton,
+        LevelUpButton, ReloadButton, StanceCycleButton,
     };
 }
 

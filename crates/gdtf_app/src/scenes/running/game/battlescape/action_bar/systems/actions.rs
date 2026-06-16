@@ -54,14 +54,24 @@ use crate::scenes::running::game::battlescape::action_bar::components::{
 /// `Without<DisabledButton>` skips the DEFERRED reload / end-turn buttons (AC5), and
 /// `Changed<Interaction>` limits each query to the frame a press lands. The menu
 /// `PressedButton<M>` precedent.
-type PressedButton<M> = (Changed<Interaction>, With<M>, Without<DisabledButton>);
+///
+/// `pub(in ...action_bar)` so the sibling `flee` system (GTW-240) reuses the SAME
+/// press-read filter rather than re-deriving it — flee is `PressedButton<FleeButton>`
+/// (the `Without<DisabledButton>` filter INCLUDES the enabled flee button).
+pub(in crate::scenes::running::game::battlescape::action_bar) type PressedButton<M> =
+    (Changed<Interaction>, With<M>, Without<DisabledButton>);
 
 /// Whether an [`Interaction`] is a fresh press to act on.
 ///
 /// Centralizes the "an activation happened" test so each per-marker query reads it
 /// identically (the menu `is_press` precedent). Only [`Interaction::Pressed`] counts.
 /// Takes [`Interaction`] by value (a one-byte `Copy` enum).
-const fn is_press(interaction: Interaction) -> bool {
+///
+/// `pub(in ...action_bar)` so the sibling `flee` system (GTW-240) reuses the SAME
+/// fresh-press test rather than re-deriving it.
+pub(in crate::scenes::running::game::battlescape::action_bar) const fn is_press(
+    interaction: Interaction,
+) -> bool {
     matches!(interaction, Interaction::Pressed)
 }
 

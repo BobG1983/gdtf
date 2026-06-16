@@ -22,7 +22,7 @@ crate::support_use!(battlescape::BattleRunningComplete;);
 #[cfg(feature = "test-support")]
 crate::support_use! {
     battlescape::{
-        AimToggleButton, EndTurnButton, FireModeSelectButton, LevelDownButton, LevelUpButton,
-        ReloadButton, StanceCycleButton,
+        AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton, LevelDownButton,
+        LevelUpButton, ReloadButton, StanceCycleButton,
     };
 }

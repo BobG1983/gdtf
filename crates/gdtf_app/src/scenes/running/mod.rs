@@ -25,8 +25,8 @@ crate::support_use!(game::BattleRunningComplete;);
 #[cfg(feature = "test-support")]
 crate::support_use! {
     game::{
-        AimToggleButton, EndTurnButton, FireModeSelectButton, LevelDownButton, LevelUpButton,
-        ReloadButton, StanceCycleButton,
+        AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton, LevelDownButton,
+        LevelUpButton, ReloadButton, StanceCycleButton,
     };
 }
 

@@ -117,6 +117,29 @@ crate::support_item! {
     struct EndTurnButton;
 }
 
+crate::support_item! {
+    /// Marks the **flee-battle** action button — an ENABLED APP/LIFECYCLE button, NOT a
+    /// sim act. A press runs the dedicated `flee_button_pressed` handler, which inserts the
+    /// `BattleRunningComplete` end-signal marker (via the
+    /// [`insert_battle_running_complete`](crate::scenes::running::game::battlescape::battle_running::insert_battle_running_complete)
+    /// door), so the existing marker-gated `move_on` advances
+    /// `BattleRunning → AnimateOut → AfterMath` — the player's explicit "I'm leaving" out
+    /// (requirement 5(b)).
+    ///
+    /// Unlike the five sim-act buttons, flee is NOT routed through the
+    /// [`PendingActIntent`](gdtf_battle_input::PendingActIntent) /
+    /// [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) sim seam: that seam
+    /// carries only sim `*Requested` acts against the `SelectedShooter`, and flee is not a
+    /// sim verb (no actor, no TU, no `*Requested`). Unlike the DEFERRED [`ReloadButton`] /
+    /// [`EndTurnButton`], flee is ENABLED — it carries NO
+    /// [`DisabledButton`](gdtf_ui::DisabledButton), so it is interactive and its handler's
+    /// `Without<DisabledButton>` press filter INCLUDES it.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct FleeButton;
+}
+
 /// Marks the **root** node of the action-bar tree (the [`spawn_panel`](gdtf_ui::spawn_panel)
 /// box holding the buttons), so the `OnExit(BattleRunning)` despawn finds and recursively
 /// tears down the whole bar by this one marker rather than tracking each child entity.

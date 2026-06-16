@@ -22,8 +22,8 @@ use bevy::{prelude::*, ui::Val};
 use gdtf_ui::{ButtonLabel, DisabledButton, spawn_button, spawn_panel, theme::GdtfTheme};
 
 use crate::scenes::running::game::battlescape::action_bar::components::{
-    ActionBarRoot, AimToggleButton, EndTurnButton, FireModeSelectButton, LevelDownButton,
-    LevelUpButton, ReloadButton, StanceCycleButton,
+    ActionBarRoot, AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton,
+    LevelDownButton, LevelUpButton, ReloadButton, StanceCycleButton,
 };
 
 /// Horizontal gap between the action-bar's buttons, in logical pixels.
@@ -54,7 +54,10 @@ impl BarGapPx {
 ///    action systems' per-marker queries stay disjoint (the GTW-122 precedent).
 /// 3. Spawns the two DEFERRED buttons (reload, end-turn) as [`DisabledButton`] (their
 ///    sim acts do not exist yet — they emit no intent; see the marker docs).
-/// 4. Parents every button under the bar root.
+/// 4. Spawns the ENABLED [`FleeButton`] (GTW-240) — an app/lifecycle button (NO
+///    `DisabledButton`) whose press ends the persisting battle via the dedicated
+///    `flee_button_pressed` handler, not the sim intent seam (flee is not a sim act).
+/// 5. Parents every button under the bar root.
 ///
 /// The buttons render on the GTW-120 UI camera (a `bevy_ui` tree, no `RenderLayers`),
 /// and are `Themed(Button)` for free (`spawn_button` attaches the marker). Param-only
@@ -136,9 +139,19 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         (EndTurnButton, DisabledButton),
     );
 
+    // The flee button — an ENABLED app/lifecycle button (NO DisabledButton, unlike the two
+    // deferred buttons above). Its press ends the persisting battle via the dedicated
+    // `flee_button_pressed` handler (GTW-240), NOT the sim intent seam (flee is not a sim act).
+    let flee = spawn_button(
+        &mut commands,
+        &theme,
+        ButtonLabel::new("Flee battle"),
+        FleeButton,
+    );
+
     // Parent every button under the bar root, left-to-right.
     commands.entity(root).add_children(&[
-        stance, aim, fire_mode, level_up, level_down, reload, end_turn,
+        stance, aim, fire_mode, level_up, level_down, reload, end_turn, flee,
     ]);
 }
 
