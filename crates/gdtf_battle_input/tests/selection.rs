@@ -1,14 +1,16 @@
 //! GTW-225 (GTW-48 S8): headless integration tests for ganger selection, the
-//! selection highlight, level cycling, and the shared act-intent seam.
+//! selection highlight, level cycling, and the shared act-intent seam — updated for the
+//! GTW-238 PlayerFaction-gated unified left-click decision (`left_click_act` replaces
+//! `select_on_click`).
 //!
 //! - AC1 proves `GdtfBattleInputPlugin` `init_resource`s `SelectedShooter` (present +
 //!   `None` after one update) and the `PendingActIntent` queue.
-//! - AC3/AC4 drive the REAL `select_on_click` system: a synthesized
-//!   `ButtonInput<MouseButton>` press + a `HoveredCell` + an `OccupancyGrid` occupant
-//!   selects that occupant (faction-agnostic — both factions select), and an empty
-//!   cell clears to `None`.
-//! - AC5 drives `update_selection_highlight`: the one `SelectionHighlight` sprite
-//!   snaps to `cell_to_world(selected cell)` visible, and hides on clear.
+//! - drives the REAL `left_click_act` system: a synthesized `ButtonInput<MouseButton>`
+//!   press + a `HoveredCell` + an `OccupancyGrid` PLAYER-faction occupant selects that
+//!   occupant; an empty cell clears to `None`. GTW-238 gates SELECT to the player
+//!   faction (an enemy occupant is NOT selected — covered in `control.rs`).
+//! - drives `update_selection_highlight`: the one `SelectionHighlight` sprite snaps to
+//!   `cell_to_world(selected cell)` visible, and hides on clear.
 //! - AC6/AC9 drive level cycling THROUGH the seam: pushing a level-up intent +
 //!   update mutates `ActiveLevel`, saturating at `MAX_LEVELS - 1` and flooring at 0.
 //! - AC6 (keyboard real path) drives the REAL `level_keys` / `select_clear_key`
@@ -27,7 +29,14 @@ use gdtf_battle_input::{
     SelectionHighlight,
 };
 use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, MAX_LEVELS, OccupancyGrid};
+use gdtf_battle_sim::{
+    BattleInProgress, Cell, CellLevel, Faction, Level, MAX_LEVELS, OccupancyGrid, PlayerFaction,
+};
+
+/// The faction the player controls in these tests (matches `PlayerFaction`).
+const PLAYER_FACTION: Faction = Faction::new(0);
+/// An ENEMY faction (distinct from [`PLAYER_FACTION`]).
+const ENEMY_FACTION: Faction = Faction::new(1);
 
 /// Mints a valid throwaway [`Entity`] id without a panic (`Entity` has no public
 /// numeric constructor in 0.18.1; spawning into a scratch world yields a real id).
@@ -37,17 +46,35 @@ fn mint_entity() -> Entity {
 
 /// Builds a focused headless selection app: `MinimalPlugins` + the
 /// `GdtfBattleInputPlugin`, the presenter-owned `ActiveLevel`, the `BattleInProgress`
-/// gate, and an empty `OccupancyGrid`. (The keybind table is asset-loaded, so under
-/// `MinimalPlugins` no `Keybinds` resolves — the keyboard systems simply do not run;
-/// the level/seam tests push intents directly.)
+/// gate, an empty `OccupancyGrid`, `CombatTuning`, an empty `ButtonInput<MouseButton>`,
+/// and the `PlayerFaction` the GTW-238 click decision gates on. (The keybind table is
+/// asset-loaded, so under `MinimalPlugins` no `Keybinds` resolves — the keyboard systems
+/// simply do not run; the level/seam tests push intents directly.)
 fn selection_app(active_level: Level) -> App {
+    use gdtf_battle_sim::tuning::CombatTuning;
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin);
     app.world_mut().insert_resource(ActiveLevel(active_level));
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
+    app.world_mut().insert_resource(CombatTuning::default());
+    app.world_mut()
+        .insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    app.world_mut()
+        .insert_resource(ButtonInput::<MouseButton>::default());
     app
+}
+
+/// Spawns a PLAYER-faction occupant at `cell` (so the GTW-238 SELECT branch picks it)
+/// and returns its entity. Without a real `Faction` matching `PlayerFaction` the unified
+/// left-click decision would not select it.
+fn place_player_ganger(app: &mut App, cell: CellLevel) -> Entity {
+    let ganger = app.world_mut().spawn(PLAYER_FACTION).id();
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(cell, Some(ganger));
+    ganger
 }
 
 /// Builds a selection app that ALSO has the keyboard press surface live: the
@@ -168,19 +195,16 @@ fn plugin_init_resources_the_selection_substrate() {
 // AC3/AC4 — left-click selects the occupant; empty clears; faction-agnostic.
 // ---------------------------------------------------------------------------------
 
-/// AC3 — a left-click on an OCCUPIED hovered cell selects that occupant, driving the
-/// REAL `select_on_click` system.
+/// A left-click on a PLAYER-faction-OCCUPIED hovered cell selects that occupant, driving
+/// the REAL GTW-238 `left_click_act` SELECT branch.
 #[test]
 fn left_click_on_occupied_cell_selects_the_occupant() {
     let level = Level::new(0);
     let mut app = selection_app(level);
 
-    // Place an occupant at a known cell and hover it.
-    let ganger = mint_entity();
+    // Place a player-faction occupant at a known cell and hover it.
     let cell = CellLevel::new(Cell::new(5, 7), level);
-    app.world_mut()
-        .resource_mut::<OccupancyGrid>()
-        .set_occupant(cell, Some(ganger));
+    let ganger = place_player_ganger(&mut app, cell);
     set_hovered(&mut app, Some(cell));
 
     press_left(&mut app);
@@ -189,17 +213,22 @@ fn left_click_on_occupied_cell_selects_the_occupant() {
     assert_eq!(
         selected(&app),
         Some(ganger),
-        "a left-click on an occupied hovered cell must select its occupant",
+        "a left-click on a player-faction occupied hovered cell must select its occupant",
     );
 }
 
-/// AC3 — a left-click on an EMPTY hovered cell clears the selection to `None`.
+/// A left-click on an EMPTY hovered cell with a NON-player-faction selection clears the
+/// selection to `None` (GTW-238 CLEAR branch — the selection is not a player ganger, so
+/// neither FIRE nor MOVE applies and the chain falls through to CLEAR). The
+/// player-selection + empty-cell → MOVE case is covered in `control.rs` (AC2).
 #[test]
 fn left_click_on_empty_cell_clears_the_selection() {
     let level = Level::new(0);
     let mut app = selection_app(level);
 
-    // Pre-seed a selection, then click an empty (unoccupied) hovered cell.
+    // Pre-seed a NON-player selection (a bare entity with no Faction), then click an
+    // empty (unoccupied) hovered cell. The selection is not a player ganger, so MOVE
+    // does not apply and the chain clears.
     let ganger = mint_entity();
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
@@ -211,30 +240,53 @@ fn left_click_on_empty_cell_clears_the_selection() {
     assert_eq!(
         selected(&app),
         None,
-        "a left-click on an empty hovered cell must clear the selection",
+        "a left-click on an empty cell with a non-player selection must clear",
     );
 }
 
-/// AC4 — selection is FACTION-AGNOSTIC: an occupant placed on EITHER faction selects
-/// identically (the system reads no `Faction`; the grid holds only the entity). Two
-/// distinct entities standing in as "faction A" / "faction B" gangers both select.
+/// GTW-238 — selection is FACTION-GATED: a PLAYER-faction occupant selects, but an
+/// ENEMY-faction occupant does NOT become a player-own selection (the FIRE/MOVE/CLEAR
+/// chain handles it, never SELECT). Drives the REAL `left_click_act` for each.
 #[test]
-fn selection_is_faction_agnostic() {
+fn selection_is_player_faction_gated() {
     let level = Level::new(0);
-    for cell_xy in [(2, 2), (40, 40)] {
+
+    // A player-faction occupant selects.
+    {
         let mut app = selection_app(level);
-        let ganger = mint_entity();
-        let cell = CellLevel::new(Cell::new(cell_xy.0, cell_xy.1), level);
-        app.world_mut()
-            .resource_mut::<OccupancyGrid>()
-            .set_occupant(cell, Some(ganger));
+        let cell = CellLevel::new(Cell::new(2, 2), level);
+        let ganger = place_player_ganger(&mut app, cell);
         set_hovered(&mut app, Some(cell));
         press_left(&mut app);
         app.update();
         assert_eq!(
             selected(&app),
             Some(ganger),
-            "any occupant must be selectable regardless of faction (cell {cell_xy:?})",
+            "a player-faction occupant must be selectable",
+        );
+    }
+
+    // An enemy-faction occupant is NOT selected (no fire mode forces fire; with no prior
+    // selection the chain falls through to CLEAR — never selects the enemy as own).
+    {
+        let mut app = selection_app(level);
+        let enemy = app.world_mut().spawn(ENEMY_FACTION).id();
+        let cell = CellLevel::new(Cell::new(40, 40), level);
+        app.world_mut()
+            .resource_mut::<OccupancyGrid>()
+            .set_occupant(cell, Some(enemy));
+        set_hovered(&mut app, Some(cell));
+        press_left(&mut app);
+        app.update();
+        assert_ne!(
+            selected(&app),
+            Some(enemy),
+            "an enemy-faction occupant must never become a player-own selection",
+        );
+        assert_eq!(
+            selected(&app),
+            None,
+            "an enemy occupant with no fire mode + no prior selection clears",
         );
     }
 }
@@ -243,19 +295,17 @@ fn selection_is_faction_agnostic() {
 // AC5 — the selection highlight snaps to the selected cell + hides on clear.
 // ---------------------------------------------------------------------------------
 
-/// AC5 — exactly ONE `SelectionHighlight` sprite is drawn at `cell_to_world(selected
-/// cell)`, visible, on the world render layer at one-cell size; clearing the
-/// selection hides it (still one entity).
+/// Exactly ONE `SelectionHighlight` sprite is drawn at `cell_to_world(selected cell)`,
+/// visible, on the world render layer at one-cell size; clearing the selection (via the
+/// `SelectionClear` seam — a player selection no longer clears on an empty-cell click,
+/// it MOVEs) hides it (still one entity).
 #[test]
 fn selection_highlight_snaps_to_cell_and_hides_on_clear() {
     let level = Level::new(0);
     let mut app = selection_app(level);
 
-    let ganger = mint_entity();
     let cell = Cell::new(8, 3);
-    app.world_mut()
-        .resource_mut::<OccupancyGrid>()
-        .set_occupant(CellLevel::new(cell, level), Some(ganger));
+    let ganger = place_player_ganger(&mut app, CellLevel::new(cell, level));
     set_hovered(&mut app, Some(CellLevel::new(cell, level)));
     press_left(&mut app);
     app.update();
@@ -263,7 +313,7 @@ fn selection_highlight_snaps_to_cell_and_hides_on_clear() {
     assert_eq!(
         selected(&app),
         Some(ganger),
-        "the occupant must be selected before checking the highlight",
+        "the player-faction occupant must be selected before checking the highlight",
     );
     assert_eq!(
         highlight_count(&mut app),
@@ -280,12 +330,20 @@ fn selection_highlight_snaps_to_cell_and_hides_on_clear() {
         "the selection highlight must be CELL_PX-sized on the WORLD_RENDER_LAYER",
     );
 
-    // Clear the selection (empty-cell click) and confirm the highlight hides.
-    set_hovered(&mut app, Some(CellLevel::new(Cell::new(0, 0), level)));
+    // Clear the selection through the seam and confirm the highlight hides. (A
+    // player-faction selection + an empty-cell click MOVEs under GTW-238, so the clear
+    // is driven by the SelectionClear intent, not an empty click.) The drain clears the
+    // selection in `dispatch_act_intents`, which is unordered vs the highlight system, so
+    // a SECOND update lets the highlight observe the cleared selection.
     clear_mouse(&mut app);
-    press_left(&mut app);
+    push_intent(&mut app, ActIntent::SelectionClear);
     app.update();
-    assert_eq!(selected(&app), None, "the click cleared the selection");
+    assert_eq!(
+        selected(&app),
+        None,
+        "the SelectionClear intent cleared the selection"
+    );
+    app.update();
     assert_eq!(
         highlight_count(&mut app),
         1,
@@ -535,7 +593,7 @@ fn inert_without_battle_in_progress() {
     assert_eq!(
         selected(&app),
         None,
-        "no selection must happen pre-battle (select_on_click did not run)",
+        "no selection must happen pre-battle (left_click_act did not run)",
     );
     assert_eq!(
         highlight_count(&mut app),

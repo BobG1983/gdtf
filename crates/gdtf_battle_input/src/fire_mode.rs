@@ -108,7 +108,7 @@ pub fn next_fire_mode(current: FireModeSpec, selector: &FireMode) -> FireModeSpe
 /// On a CHANGE of [`SelectedShooter`] to an armed ganger, RESET [`SelectedFireMode`]
 /// to that weapon's [`FireMode::single`] (GTW-227 / 222b AC1).
 ///
-/// Runs `.after(select_on_click)` so it observes the SAME update's selection. When
+/// Runs `.after(left_click_act)` so it observes the SAME update's selection. When
 /// the [`SelectedShooter`] resource changed this update (a fresh selection), it looks
 /// up the selected entity's [`FireMode`] selector and sets [`SelectedFireMode`] to its
 /// [`FireMode::single`] — the base mode present on every variant, the documented

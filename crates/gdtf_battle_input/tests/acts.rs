@@ -39,15 +39,22 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing,
+    Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
     FireMode, FireModeSpec, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeShots,
-    ModeTuPercent, OccupancyGrid, SimRng, Stance, StanceKind, SurfaceGrid, Tu, TuMax,
+    ModeTuPercent, OccupancyGrid, PlayerFaction, SimRng, Stance, StanceKind, SurfaceGrid, Tu,
+    TuMax,
     acts::{
         AimRequest, FireRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
         SimActsPlugin,
     },
     tuning::CombatTuning,
 };
+
+/// The faction the player controls in these tests (matches `PlayerFaction`).
+const PLAYER_FACTION: Faction = Faction::new(0);
+/// An ENEMY faction (distinct from [`PLAYER_FACTION`]) — a non-player target the FIRE
+/// branch of the unified left-click decision (GTW-238) fires on.
+const ENEMY_FACTION: Faction = Faction::new(1);
 
 /// The synthetic window/camera render-target size (physical px), large enough that
 /// distinct cursor offsets land on distinct in-grid cells (the GTW-221 `picking.rs`
@@ -137,6 +144,9 @@ fn acts_app() -> App {
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-238: the unified left-click decision gates on (and reads) PlayerFaction.
+    app.world_mut()
+        .insert_resource(PlayerFaction::new(PLAYER_FACTION));
     // The sim resources `SimActsPlugin`'s dispatch systems read (so they pass param
     // validation). The grids are empty defaults + a seeded RNG; an unarmed shooter
     // (no `Weapon` marker) makes `fire()` a no-op, so they never affect the asserted
@@ -171,9 +181,10 @@ fn acts_app() -> App {
     app
 }
 
-/// Spawns an armed, alive, loaded, affordable ganger with the given fire-mode selector,
-/// stance, and facing, and returns its entity. Carries exactly the components the act
-/// systems query: `Stance`/`Facing`/`Aiming`/`FireMode` (cycle + selection) and
+/// Spawns an armed, alive, loaded, affordable PLAYER-faction ganger with the given
+/// fire-mode selector, stance, and facing, and returns its entity. Carries exactly the
+/// components the act systems query: `Faction` (GTW-238 SELECT/FIRE gating),
+/// `Stance`/`Facing`/`Aiming`/`FireMode` (cycle + selection) and
 /// `LifeState`/`Tu`/`TuMax`/`Magazine` (the `FireActor` `can_fire` reads).
 fn spawn_ganger(
     app: &mut App,
@@ -184,6 +195,7 @@ fn spawn_ganger(
     let size = MagazineSize::new(30);
     app.world_mut()
         .spawn((
+            PLAYER_FACTION,
             Stance::new(stance),
             Facing::new(facing),
             Aiming::new(false),
@@ -194,6 +206,18 @@ fn spawn_ganger(
             Magazine::new(10, size),
         ))
         .id()
+}
+
+/// Places an ENEMY-faction occupant in the occupancy grid at `cell` (so the FIRE branch
+/// of the unified left-click decision sees a non-player target there), returning its
+/// entity. The enemy carries only a `Faction` — the fire path reads the SHOOTER's firing
+/// components, never the target's.
+fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
+    let enemy = app.world_mut().spawn(ENEMY_FACTION).id();
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(cell, Some(enemy));
+    enemy
 }
 
 /// Sets the primary window cursor to the given window-centre offset and resolves it via
@@ -218,7 +242,7 @@ fn set_cursor(app: &mut App, position: Option<Vec2>) {
     }
 }
 
-/// Selects `ganger` over the REAL cursor -> `HoveredCell` -> `select_on_click` chain:
+/// Selects `ganger` over the REAL cursor -> `HoveredCell` -> `left_click_act` chain:
 /// places the cursor over the shooter cell, places `ganger` there in the occupancy grid,
 /// then a fresh left-click + `update()` selects it. The cursor stays over the shooter
 /// cell (so the value is stable). Returns the resolved shooter cell.
@@ -434,9 +458,9 @@ fn fire_mode_cycle_walks_only_offered_modes() {
 // expected fields, when can_fire passes.
 // ---------------------------------------------------------------------------------
 
-/// AC3 — a left-click on a target cell emits EXACTLY one `FireRequested { shooter =
-/// *SelectedShooter, mode = *SelectedFireMode, target from HoveredCell }`, driven over
-/// the REAL cursor -> `HoveredCell` -> `fire_on_click` chain.
+/// AC3 — a left-click on an ENEMY target cell emits EXACTLY one `FireRequested { shooter
+/// = *SelectedShooter, mode = *SelectedFireMode, target from HoveredCell }`, driven over
+/// the REAL cursor -> `HoveredCell` -> `left_click_act` FIRE-branch chain.
 #[test]
 fn left_click_emits_one_fire_requested() {
     let mut app = acts_app();
@@ -452,6 +476,8 @@ fn left_click_emits_one_fire_requested() {
     let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
     let target_cell = Cell::new(target.x, target.y);
     let target_level = Level::new(0);
+    // GTW-238 FIRE requires an ENEMY occupant at the target — place one there.
+    place_enemy(&mut app, target);
 
     press_left(&mut app);
     app.update();
@@ -500,7 +526,8 @@ fn can_fire_failure_blocks_fire_requested() {
             Direction::North,
         );
         select_ganger(&mut app, ganger);
-        hover_at(&mut app, TARGET_CURSOR_OFFSET);
+        let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
+        place_enemy(&mut app, target);
         app.world_mut().entity_mut(ganger).insert(LifeState::Downed);
         press_left(&mut app);
         app.update();
@@ -521,7 +548,8 @@ fn can_fire_failure_blocks_fire_requested() {
             Direction::North,
         );
         select_ganger(&mut app, ganger);
-        hover_at(&mut app, TARGET_CURSOR_OFFSET);
+        let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
+        place_enemy(&mut app, target);
         app.world_mut()
             .entity_mut(ganger)
             .insert(Magazine::new(0, MagazineSize::new(30)));
@@ -544,7 +572,8 @@ fn can_fire_failure_blocks_fire_requested() {
             Direction::North,
         );
         select_ganger(&mut app, ganger);
-        hover_at(&mut app, TARGET_CURSOR_OFFSET);
+        let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
+        place_enemy(&mut app, target);
         // The selected mode is single() (set on selection). Compute its exact charge and
         // set TU one below it via the SHARED mode_tu_cost source.
         let charge = gdtf_battle_sim::mode_tu_cost(

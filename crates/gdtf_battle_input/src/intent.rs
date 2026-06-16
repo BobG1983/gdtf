@@ -34,7 +34,10 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, Facing, FireMode, Level, MAX_LEVELS, Stance, StanceKind,
-    acts::{AimRequest, FireRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested},
+    acts::{
+        AimRequest, FireRequested, MoveRequested, SetAimingRequested, SetFacingRequested,
+        SetStanceRequested,
+    },
 };
 
 use crate::{SelectedFireMode, SelectedShooter, cycle, fire_mode::next_fire_mode};
@@ -81,6 +84,19 @@ pub enum ActIntent {
     /// left-click FIRE surface runs the shared `can_fire` guard at the WRITE site and
     /// only pushes this when it passes, so the drain emits the payload unconditionally.
     Fire(FireRequested),
+    /// MOVE the carried request — drained 1:1 to a [`MoveRequested`] (GTW-238). The
+    /// unified left-click surface pushes this when the MOVE branch wins (a player-faction
+    /// selection + an empty, in-bounds, unblocked hovered cell); the drain emits the
+    /// payload verbatim onto the move writer (the destination's terrain TU cost is the
+    /// sim's [`move_ganger`](gdtf_battle_sim::move_ganger), not this layer's).
+    Move(MoveRequested),
+    /// TURN the carried request — drained 1:1 to a [`SetFacingRequested`] (GTW-238). The
+    /// right-click turn-to-face surface pushes this with the
+    /// [`Direction`](gdtf_battle_sim::Direction) computed from the actor's cell toward
+    /// the hovered cell; the drain emits it onto the SAME facing writer the
+    /// [`FacingCycle`](Self::FacingCycle) intent uses (the per-45deg-step turn TU cost is
+    /// the sim's facing dispatch, not this layer's).
+    Turn(SetFacingRequested),
 }
 
 /// The shared intent QUEUE — the buffered seam both input surfaces write.
@@ -122,24 +138,30 @@ impl PendingActIntent {
     }
 }
 
-/// The four `*Requested` act [`MessageWriter`]s [`dispatch_act_intents`] emits onto,
+/// The five `*Requested` act [`MessageWriter`]s [`dispatch_act_intents`] emits onto,
 /// grouped into ONE [`SystemParam`] so the drain's parameter list stays under
 /// clippy's argument-count gate (the sim's `BattleGridsParam` precedent).
 ///
-/// Grouping the four cohesive emission writers into one param keeps
+/// Grouping the cohesive emission writers into one param keeps
 /// [`dispatch_act_intents`] at six parameters; the drain arms call
 /// `acts.fire.write(..)` / `acts.stance.write(..)` etc. A transparent system-param
-/// bundle of framework [`MessageWriter`]s — not itself a wrapped domain scalar.
+/// bundle of framework [`MessageWriter`]s — not itself a wrapped domain scalar. The
+/// [`SetFacingRequested`] writer ([`facing`](Self::facing)) is REUSED by BOTH the
+/// keyboard [`ActIntent::FacingCycle`] arm and the right-click
+/// [`ActIntent::Turn`] arm (one set-facing message type, one sim dispatch).
 #[derive(SystemParam)]
 pub struct ActWriters<'w> {
     /// The FIRE-act writer — the left-click FIRE surface's drained message.
-    fire:   MessageWriter<'w, FireRequested>,
+    fire:     MessageWriter<'w, FireRequested>,
+    /// The MOVE-act writer — the left-click MOVE branch's drained message (GTW-238).
+    movement: MessageWriter<'w, MoveRequested>,
     /// The set-stance writer — the stance-cycle key's drained message.
-    stance: MessageWriter<'w, SetStanceRequested>,
+    stance:   MessageWriter<'w, SetStanceRequested>,
     /// The set-aiming writer — the aim-toggle key's drained message.
-    aiming: MessageWriter<'w, SetAimingRequested>,
-    /// The set-facing writer — the facing-cycle key's drained message.
-    facing: MessageWriter<'w, SetFacingRequested>,
+    aiming:   MessageWriter<'w, SetAimingRequested>,
+    /// The set-facing writer — the facing-cycle key's AND the right-click turn-to-face
+    /// surface's drained message (GTW-238 reuses it for [`ActIntent::Turn`]).
+    facing:   MessageWriter<'w, SetFacingRequested>,
 }
 
 /// **Dispatch** the queued [`ActIntent`]s — the ONE drain system over the shared seam.
@@ -168,6 +190,11 @@ pub struct ActWriters<'w> {
 ///   message (the chosen mode rides the next [`ActIntent::Fire`]).
 /// - [`ActIntent::Fire`] emits the carried [`FireRequested`] verbatim — the `can_fire`
 ///   guard already ran at the WRITE site.
+/// - [`ActIntent::Move`] emits the carried [`MoveRequested`] verbatim onto the move
+///   writer (GTW-238) — the destination's terrain TU cost is the sim's `move_ganger`.
+/// - [`ActIntent::Turn`] emits the carried [`SetFacingRequested`] verbatim onto the SAME
+///   facing writer the [`FacingCycle`](ActIntent::FacingCycle) arm uses (GTW-238) — the
+///   per-45deg-step turn TU cost is the sim's facing dispatch.
 ///
 /// With NO [`SelectedShooter`] the cycle intents are no-ops (nothing to act on); a
 /// cycle intent for a selected entity that lacks the relevant component is skipped
@@ -236,6 +263,12 @@ pub fn dispatch_act_intents(
             }
             ActIntent::Fire(request) => {
                 acts.fire.write(request);
+            }
+            ActIntent::Move(request) => {
+                acts.movement.write(request);
+            }
+            ActIntent::Turn(request) => {
+                acts.facing.write(request);
             }
         }
     }
