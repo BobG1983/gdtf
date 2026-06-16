@@ -17,7 +17,6 @@ env:
 
 jobs:
   green:
-    name: Static green suite
     runs-on: ubuntu-latest
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -45,5 +44,5 @@ jobs:
         with:
           cache-on-failure: true
 
-      - name: cargo test --workspace
+      - name: Run tests
         run: cargo test --workspace

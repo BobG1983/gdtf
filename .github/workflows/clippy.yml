@@ -16,7 +16,6 @@ env:
 
 jobs:
   green:
-    name: Check linting
     runs-on: ubuntu-latest
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -44,5 +43,5 @@ jobs:
         with:
           cache-on-failure: true
 
-      - name: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Run Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings

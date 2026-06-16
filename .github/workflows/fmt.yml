@@ -26,7 +26,6 @@ env:
 
 jobs:
   green:
-    name: Formatting
     runs-on: ubuntu-latest
     steps:
       - name: Free Disk Space (Ubuntu)
