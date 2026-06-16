@@ -159,6 +159,7 @@ mod tests {
                       border_width_px: 1.0, corner_radius_px: 2.0, \
                       margin: (left: 8.0, right: 8.0, top: 6.0, bottom: 6.0) ), \
              button: ( color: ({pr}, {pg}, {pb}, 1.0), disabled: (0.16, 0.16, 0.18, 0.55), \
+                       active: (0.45, 0.62, 0.30, 0.96), \
                        hover: ({hr}, {hg}, {hb}, 1.0), pressed: ({pr}, {pg}, {pb}, 1.0), \
                        text_color: ({tr}, {tg}, {tb}, 1.0), font_size_pt: 18.0, \
                        border_color: (0.20, 0.20, 0.24, 1.0), \

@@ -280,6 +280,7 @@ mod tests {
                       border_width_px: 3.0, corner_radius_px: 7.0, \
                       margin: (left: 9.0, right: 9.0, top: 4.0, bottom: 4.0) ), \
              button: ( color: ({pr}, {pg}, {pb}, 1.0), disabled: (0.08, 0.08, 0.10, 0.55), \
+                       active: (0.45, 0.62, 0.30, 0.96), \
                        hover: (0.80, 0.16, 0.19, 0.96), pressed: (0.10, 0.10, 0.12, 0.96), \
                        text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: {button_font_size}, \
                        border_color: ({br}, {bg}, {bb}, 1.0), \

@@ -60,6 +60,16 @@ pub struct ButtonColor(Color);
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
 pub struct DisabledColor(Color);
 
+/// The flat background fill of an **active / toggled-on** button (GTW-253).
+///
+/// The look an [`ActiveButton`](crate::widgets::ActiveButton) shows while its
+/// toggle is ON — e.g. the Aim button while the selected ganger is aiming. A
+/// distinct, data-driven value, NOT the [`PressedColor`] (which is momentary
+/// click-feedback, a different meaning) nor the [`DisabledColor`]: an active
+/// button reads as a persistently-engaged state, so it earns its own color.
+#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+pub struct ActiveColor(Color);
+
 /// The button fill shown while a themed button is hovered.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
 pub struct HoverColor(Color);
@@ -240,6 +250,8 @@ pub struct ButtonThemeSpec {
     pub color:            Srgba4,
     /// Disabled button fill color.
     pub disabled:         Srgba4,
+    /// Active / toggled-on button fill color (GTW-253).
+    pub active:           Srgba4,
     /// Hovered button fill color.
     pub hover:            Srgba4,
     /// Pressed button fill color.
@@ -267,6 +279,7 @@ impl ButtonThemeSpec {
         ButtonTheme {
             color: ButtonColor(self.color.into_color()),
             disabled: DisabledColor(self.disabled.into_color()),
+            active: ActiveColor(self.active.into_color()),
             hover: HoverColor(self.hover.into_color()),
             pressed: PressedColor(self.pressed.into_color()),
             text_color: TextColor(self.text_color.into_color()),
@@ -288,6 +301,8 @@ pub struct ButtonTheme {
     pub color:            ButtonColor,
     /// Disabled button fill color.
     pub disabled:         DisabledColor,
+    /// Active / toggled-on button fill color (GTW-253).
+    pub active:           ActiveColor,
     /// Hovered button fill color.
     pub hover:            HoverColor,
     /// Pressed button fill color.
@@ -512,6 +527,7 @@ fn const_fallback_theme() -> GdtfTheme {
         button:       ButtonTheme {
             color: ButtonColor(Color::srgba(0.12, 0.12, 0.15, 0.96)),
             disabled: DisabledColor(Color::srgba(0.08, 0.08, 0.10, 0.55)),
+            active: ActiveColor(Color::srgba(0.45, 0.62, 0.30, 0.96)),
             hover: HoverColor(Color::srgba(0.80, 0.16, 0.19, 0.96)),
             pressed: PressedColor(Color::srgba(0.10, 0.10, 0.12, 0.96)),
             text_color: TextColor(Color::srgba(0.84, 0.80, 0.73, 1.0)),
@@ -648,6 +664,7 @@ mod tests {
             button:       ButtonThemeSpec {
                 color:            Srgba4([0.30, 0.31, 0.32, 0.33]),
                 disabled:         Srgba4([0.40, 0.41, 0.42, 0.43]),
+                active:           Srgba4([0.44, 0.45, 0.46, 0.47]),
                 hover:            Srgba4([0.50, 0.51, 0.52, 0.53]),
                 pressed:          Srgba4([0.60, 0.61, 0.62, 0.63]),
                 text_color:       Srgba4([0.70, 0.71, 0.72, 0.73]),
@@ -745,6 +762,11 @@ mod tests {
             *theme.button.disabled,
             Color::srgba(0.40, 0.41, 0.42, 0.43),
             "button.disabled"
+        );
+        assert_eq!(
+            *theme.button.active,
+            Color::srgba(0.44, 0.45, 0.46, 0.47),
+            "button.active"
         );
         assert_eq!(
             *theme.button.hover,
@@ -858,6 +880,7 @@ mod tests {
             button:       ButtonThemeSpec {
                 color:            Srgba4([0.0, 0.0, 0.0, 1.0]),
                 disabled:         Srgba4([0.0, 0.0, 0.0, 1.0]),
+                active:           Srgba4([0.0, 0.0, 0.0, 1.0]),
                 hover:            Srgba4([0.0, 0.0, 0.0, 1.0]),
                 pressed:          Srgba4([0.0, 0.0, 0.0, 1.0]),
                 text_color:       Srgba4([0.0, 0.0, 0.0, 1.0]),

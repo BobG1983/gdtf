@@ -31,10 +31,12 @@
 //!
 //! The [`widgets`] module owns the reusable spawn helpers
 //! ([`spawn_panel`](widgets::spawn_panel) / [`spawn_button`](widgets::spawn_button)),
-//! the [`DisabledButton`](widgets::DisabledButton) marker, and the disabled-paint
-//! pass; the [`interaction`] module owns the theme-derived hover/press feedback
-//! system. Both compose *on top of* [`apply_theme`](themed::apply_theme)'s base
-//! look, ordered after it.
+//! the [`DisabledButton`](widgets::DisabledButton) / [`ActiveButton`](widgets::ActiveButton)
+//! markers, and their paint passes
+//! ([`paint_disabled_buttons`](widgets::paint_disabled_buttons) /
+//! [`paint_active_buttons`](widgets::paint_active_buttons)); the [`interaction`]
+//! module owns the theme-derived hover/press feedback system. All compose *on top
+//! of* [`apply_theme`](themed::apply_theme)'s base look, ordered after it.
 
 pub mod focus_nav;
 pub mod interaction;
@@ -48,7 +50,10 @@ use gdtf_assets::RonAsset;
 pub use interaction::{sync_hover_to_focus, theme_interaction};
 pub use retheme::redrive_theme_on_asset_event;
 pub use themed::any_themed_added;
-pub use widgets::{ButtonLabel, DisabledButton, paint_disabled_buttons, spawn_button, spawn_panel};
+pub use widgets::{
+    ActiveButton, ButtonLabel, DisabledButton, paint_active_buttons, paint_disabled_buttons,
+    spawn_button, spawn_panel,
+};
 
 use crate::{
     focus_nav::FocusNavPlugin,
@@ -113,11 +118,13 @@ impl Plugin for UiPlugin {
     /// (bevy-traps rule 1).
     ///
     /// The GTW-118 interaction layer —
-    /// [`theme_interaction`](interaction::theme_interaction) (hover/press swap)
-    /// and [`paint_disabled_buttons`](widgets::paint_disabled_buttons) (disabled
-    /// fill) — runs in [`Update`] `.after(`[`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme)`)`
+    /// [`theme_interaction`](interaction::theme_interaction) (hover/press swap),
+    /// [`paint_disabled_buttons`](widgets::paint_disabled_buttons) (disabled
+    /// fill), and the GTW-253
+    /// [`paint_active_buttons`](widgets::paint_active_buttons) (active / toggled-on
+    /// fill, skipping disabled buttons) — runs in [`Update`] `.after(`[`UiSystems::ApplyTheme`](themed::UiSystems::ApplyTheme)`)`
     /// so each composes on top of the freshest base look (bevy-traps rule 3);
-    /// both guard the theme internally (`Option<Res<GdtfTheme>>`), so they too
+    /// all guard the theme internally (`Option<Res<GdtfTheme>>`), so they too
     /// are inert before the resource is populated (bevy-traps rule 1).
     ///
     /// The GTW-141 mouse hover→focus bridge
@@ -161,9 +168,16 @@ impl Plugin for UiPlugin {
                     resource_exists::<GdtfTheme>
                         .and(resource_changed::<GdtfTheme>.or(any_themed_added)),
                 ),
+                // GTW-118 disabled paint, GTW-253 active paint, and the hover/press
+                // swap all compose ON TOP of the base look, ordered after the ApplyTheme
+                // set (bevy-traps rule 3). `paint_active_buttons` overrides an active
+                // (toggled-on) button's fill with the theme's `active` color; it skips
+                // `DisabledButton` (`Without<DisabledButton>`), so disabled+active
+                // resolves to disabled.
                 (
                     theme_interaction,
                     paint_disabled_buttons,
+                    paint_active_buttons,
                     sync_hover_to_focus,
                 )
                     .after(UiSystems::ApplyTheme),

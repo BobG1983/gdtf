@@ -29,6 +29,18 @@
 //! skipped entirely by the interaction layer (which filters
 //! `Without<DisabledButton>`). It stays [`Themed`](crate::themed::Themed), so the
 //! base-look pass still reaches it.
+//!
+//! ## Active (toggled-on) buttons
+//!
+//! An [`ActiveButton`] is painted by [`paint_active_buttons`] with the button
+//! sub-theme's explicit [`ActiveColor`](crate::theme::ActiveColor) fill (re-applied
+//! after [`apply_theme`](crate::themed::apply_theme)), so a button whose toggle is
+//! ON reads as persistently engaged. UNLIKE [`DisabledButton`] it is **purely
+//! visual** — it is NOT in any `Without<…>` interaction filter, so an active button
+//! is still clickable (you click it to toggle OFF). When a button is BOTH
+//! [`DisabledButton`] and [`ActiveButton`], DISABLED wins:
+//! [`paint_active_buttons`] filters `Without<DisabledButton>`, so a disabled+active
+//! button keeps the disabled fill.
 
 use bevy::{
     prelude::*,
@@ -54,6 +66,27 @@ use crate::{
 /// (no-bare-types rule).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct DisabledButton;
+
+/// Marker tagging a button whose toggle is currently **ON** / active (GTW-253).
+///
+/// An active button is **painted** ([`paint_active_buttons`] writes the button
+/// sub-theme's explicit [`ActiveColor`](crate::theme::ActiveColor) fill over its
+/// base), so a toggled-on control reads as persistently engaged (e.g. the Aim
+/// button while the selected ganger is aiming). It remains
+/// [`Themed`](crate::themed::Themed): the central base-look pass still re-paints it,
+/// and the active fill is composed on top of that fresh base.
+///
+/// UNLIKE [`DisabledButton`], an active button is **purely visual** — it is NOT
+/// added to any `Without<…>` interaction filter, so it stays fully interactive (you
+/// click an active toggle to turn it OFF). When a button is BOTH [`DisabledButton`]
+/// and [`ActiveButton`], DISABLED wins: [`paint_active_buttons`] skips disabled
+/// buttons (`Without<DisabledButton>`), so a disabled+active button keeps the
+/// disabled fill.
+///
+/// A unit marker — it carries no data; presence alone is the signal
+/// (no-bare-types rule).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct ActiveButton;
 
 /// Spawns a theme-seam panel box and returns its [`Entity`].
 ///
@@ -223,6 +256,40 @@ pub fn paint_disabled_buttons(
     }
 }
 
+/// Paints every **active** ([`ActiveButton`]) but NOT-disabled button with the
+/// button sub-theme's explicit [`ActiveColor`](crate::theme::ActiveColor) fill,
+/// writing it over the button's [`BackgroundColor`](bevy::ui::BackgroundColor).
+///
+/// Runs **after** [`apply_theme`](crate::themed::apply_theme) (the
+/// [`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme) set) so it
+/// composes on top of the freshest base fill (bevy-traps rule 3); a hot-reload
+/// therefore re-paints the active fill from the new palette. The fill is the live
+/// theme's data-driven [`ActiveColor`](crate::theme::ActiveColor), distinct from
+/// the resting / hover / pressed / disabled fills.
+///
+/// **Disabled beats active:** the query filters `Without<DisabledButton>`, so a
+/// button that is BOTH [`DisabledButton`] and [`ActiveButton`] is skipped here and
+/// keeps the disabled fill that [`paint_disabled_buttons`] wrote. This system is
+/// purely a *paint* — it touches no [`Interaction`](bevy::ui::Interaction) and adds
+/// no `Without<ActiveButton>` filter anywhere, so an active button stays fully
+/// interactive (clickable to toggle off).
+///
+/// Takes the theme as `Option<Res<GdtfTheme>>` so it is inert (rather than
+/// panicking) before the resource is populated (bevy-traps rule 1).
+pub fn paint_active_buttons(
+    theme: Option<Res<GdtfTheme>>,
+    mut active: Query<&mut BackgroundColor, (With<ActiveButton>, Without<DisabledButton>)>,
+) {
+    let Some(theme) = theme else {
+        return;
+    };
+
+    let fill = *theme.button.active;
+    for mut background in &mut active {
+        background.0 = fill;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bevy::{
@@ -256,6 +323,7 @@ mod tests {
                       border_width_px: 2.0, corner_radius_px: 5.0, \
                       margin: (left: 12.0, right: 12.0, top: 6.0, bottom: 6.0) ), \
              button: ( color: ({pr}, {pg}, {pb}, {pa}), disabled: ({dr}, {dg}, {db}, {da}), \
+                       active: (0.45, 0.62, 0.30, 0.96), \
                        hover: (0.80, 0.16, 0.19, 0.96), pressed: (0.10, 0.10, 0.12, 0.96), \
                        text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0, \
                        border_color: (0.20, 0.20, 0.24, 1.0), \
@@ -425,6 +493,166 @@ mod tests {
         assert!(
             world.get::<Themed>(button).is_some(),
             "disabled button must remain Themed so apply_theme still reaches it",
+        );
+
+        Ok(())
+    }
+
+    /// AC1 — an `ActiveButton` ends up with the button sub-theme's explicit `active`
+    /// fill after the paint pass, while the SAME button WITHOUT `ActiveButton` keeps
+    /// the resting `color` base.
+    ///
+    /// Pin-discriminating (compares against the theme's own value, never a hardcoded
+    /// magnitude — the active color is tunable data): if `paint_active_buttons`
+    /// failed to apply the active color, the active assert would still see the base
+    /// `color` and fail; if it painted the plain button too, the plain assert would
+    /// fail. The two fills are distinct in the test theme.
+    #[test]
+    fn active_button_is_painted_from_theme() -> Result<(), ron::error::SpannedError> {
+        let mut app = App::new();
+        let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
+        app.insert_resource(theme_res.clone());
+        app.add_systems(
+            Update,
+            (apply_theme, paint_active_buttons)
+                .chain()
+                .run_if(resource_exists::<GdtfTheme>),
+        );
+
+        let (active, plain) = {
+            let mut commands = app.world_mut().commands();
+            let active = spawn_button(
+                &mut commands,
+                &theme_res,
+                ButtonLabel::new("Aim"),
+                ActiveButton,
+            );
+            let plain = spawn_button(&mut commands, &theme_res, ButtonLabel::new("Aim"), ());
+            (active, plain)
+        };
+        app.world_mut().flush();
+
+        app.update();
+
+        let world = app.world();
+        // The active fill and the resting base are distinct, so the asserts discriminate.
+        assert_ne!(
+            *theme_res.button.active, *theme_res.button.color,
+            "test precondition: the active and resting fills must differ",
+        );
+        assert_eq!(
+            world.get::<BackgroundColor>(active).map(|c| c.0),
+            Some(*theme_res.button.active),
+            "an ActiveButton must be the button sub-theme's explicit active fill",
+        );
+        assert_eq!(
+            world.get::<BackgroundColor>(plain).map(|c| c.0),
+            Some(*theme_res.button.color),
+            "a button WITHOUT ActiveButton must keep the resting base color",
+        );
+        assert!(
+            world.get::<Themed>(active).is_some(),
+            "an active button must remain Themed so apply_theme still reaches it",
+        );
+
+        Ok(())
+    }
+
+    /// AC2 — `ActiveButton` is purely visual: it is NOT excluded from the interaction
+    /// path. The GTW-118 `theme_interaction` query filters `Without<DisabledButton>`
+    /// but NOT `Without<ActiveButton>`, so an active button still hover/press-swaps.
+    ///
+    /// Pin-discriminating: if a `Without<ActiveButton>` filter were ever added to the
+    /// interaction path, a pressed active button would NOT swap to the pressed fill
+    /// and this assert would fail.
+    #[test]
+    fn active_button_is_not_excluded_from_interaction() -> Result<(), ron::error::SpannedError> {
+        use bevy::ui::Interaction;
+
+        use crate::{interaction::theme_interaction, themed::UiSystems};
+
+        let mut app = App::new();
+        let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
+        app.insert_resource(theme_res.clone());
+        // The real production band: apply_theme (its set) before theme_interaction.
+        app.add_systems(
+            Update,
+            (
+                apply_theme.in_set(UiSystems::ApplyTheme),
+                theme_interaction.after(UiSystems::ApplyTheme),
+            )
+                .run_if(resource_exists::<GdtfTheme>),
+        );
+
+        let button = {
+            let mut commands = app.world_mut().commands();
+            spawn_button(
+                &mut commands,
+                &theme_res,
+                ButtonLabel::new("Aim"),
+                ActiveButton,
+            )
+        };
+        app.world_mut().flush();
+
+        // Press the active button — the swap a real pointer would drive.
+        if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(button) {
+            *interaction = Interaction::Pressed;
+        }
+        app.update();
+
+        assert_eq!(
+            app.world().get::<BackgroundColor>(button).map(|c| c.0),
+            Some(*theme_res.button.pressed),
+            "an ActiveButton must still register its press (the interaction path does \
+             not exclude ActiveButton)",
+        );
+
+        Ok(())
+    }
+
+    /// AC3 — disabled beats active: a button that is BOTH `DisabledButton` and
+    /// `ActiveButton` shows the DISABLED fill, because `paint_active_buttons` skips
+    /// disabled buttons (`Without<DisabledButton>`).
+    ///
+    /// Pin-discriminating: if `paint_active_buttons` dropped its
+    /// `Without<DisabledButton>` filter, the active fill would win and this assert
+    /// (expecting the disabled fill) would fail.
+    #[test]
+    fn disabled_beats_active() -> Result<(), ron::error::SpannedError> {
+        let mut app = App::new();
+        let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
+        app.insert_resource(theme_res.clone());
+        // The real production band: apply_theme, then both paint passes.
+        app.add_systems(
+            Update,
+            (apply_theme, paint_disabled_buttons, paint_active_buttons)
+                .chain()
+                .run_if(resource_exists::<GdtfTheme>),
+        );
+
+        let button = {
+            let mut commands = app.world_mut().commands();
+            spawn_button(
+                &mut commands,
+                &theme_res,
+                ButtonLabel::new("Aim"),
+                (DisabledButton, ActiveButton),
+            )
+        };
+        app.world_mut().flush();
+
+        app.update();
+
+        assert_ne!(
+            *theme_res.button.disabled, *theme_res.button.active,
+            "test precondition: the disabled and active fills must differ",
+        );
+        assert_eq!(
+            app.world().get::<BackgroundColor>(button).map(|c| c.0),
+            Some(*theme_res.button.disabled),
+            "a disabled+active button must show the DISABLED fill (active paint skips \
+             disabled)",
         );
 
         Ok(())

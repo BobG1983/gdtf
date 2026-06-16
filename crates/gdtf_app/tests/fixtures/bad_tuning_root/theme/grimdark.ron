@@ -25,6 +25,7 @@
     button: (
         color:    (0.16, 0.16, 0.18, 0.96),  // idle / normal fill
         disabled: (0.08, 0.08, 0.10, 0.55),  // fill when non-interactive (greyed out, e.g. HiveScape)
+        active:   (0.45, 0.62, 0.30, 0.96),  // fill when a toggle is ON (e.g. Aim engaged) — a muted military green, distinct from hover/pressed
         hover:    (0.80, 0.16, 0.19, 0.96),  // fill when hovered or keyboard/gamepad-focused (grimdark red)
         pressed:  (0.10, 0.10, 0.12, 0.96),  // fill while held down / being activated
         text_color:       (0.84, 0.80, 0.73, 1.0),  // label text color (bone / parchment)

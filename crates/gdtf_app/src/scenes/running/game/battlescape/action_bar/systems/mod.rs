@@ -8,3 +8,6 @@ pub(in crate::scenes::running::game::battlescape::action_bar) use actions::actio
 
 mod flee;
 pub(in crate::scenes::running::game::battlescape::action_bar) use flee::flee_button_pressed;
+
+mod aim_active;
+pub(in crate::scenes::running::game::battlescape::action_bar) use aim_active::sync_aim_button_active;
