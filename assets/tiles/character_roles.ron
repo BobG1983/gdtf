@@ -1,0 +1,21 @@
+// GDTF character tile-role table — DATA-DRIVEN per-faction base actor indices for the
+// GTW-48 top-down ganger draw (S5 / GTW-219). Maps each faction (gang) to the BASE
+// TileIndex of its 4-frame actor in assets/tiles/alt_tileset_characters.png (16x18 =
+// 288 tiles; index = row*16 + col, 0-based row-major). Each actor is a contiguous run
+// of 4 cells (one 16-wide row = 4 actors); the drawn index is `base + facing_frame`,
+// where facing_frame is the 0..=3 column offset from the 8->4 facing map (col+0 LEFT/W,
+// col+1 DOWN/S, col+2 UP/N, col+3 RIGHT/E). Edit freely — every field is a tunable
+// index, hot-swappable through the same RonAsset<T> loader the theme / situation /
+// tuning / tile_roles use; nothing about the index choices is hardcoded in Rust.
+// Indices eyeballed against /tmp/chars_8dir_preview.png's labelled actors and confirmed
+// visibly distinct before locking (faction 0 = "green_helmet", faction 1 = "blue_shirt").
+(
+    // Faction 0's (gang 0's) base actor tile — the "green_helmet" actor, top row cols
+    // 0..=3 (base 0): a green-helmeted brown-clad figure. Its 4 frames are 0 (LEFT/W),
+    // 1 (DOWN/S), 2 (UP/N), 3 (RIGHT/E).
+    faction_0: 0,
+    // Faction 1's (gang 1's) base actor tile — the "blue_shirt" actor, top row cols
+    // 4..=7 (base 4): a blue-shirted figure, visibly distinct from faction 0. Its 4
+    // frames are 4 (LEFT/W), 5 (DOWN/S), 6 (UP/N), 7 (RIGHT/E).
+    faction_1: 4,
+)

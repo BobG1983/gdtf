@@ -41,10 +41,17 @@ use gdtf_battle_sim::{
     BattleInProgress, CoverLedger, OccupancyGrid, SurfaceGrid, occupancy_sync::SimSystems,
 };
 
+pub mod ganger;
 pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
 
+pub use ganger::{
+    CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites,
+    apply_active_level_filter, despawn_removed_ganger_sprites, facing_frame, load_character_roles,
+    move_ganger_sprites, reframe_ganger_sprites, resolve_character_roles, spawn_ganger_sprites,
+    update_ganger_life_state,
+};
 pub use terrain::{
     ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles, TileRolesHandle,
     draw_static_battlefield, load_tile_roles, resolve_tile_roles, swap_destroyed_cover,
@@ -153,6 +160,10 @@ impl Plugin for TopDownRendererPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(TopDownRendererActive)
             .init_resource::<ActiveLevel>()
+            // The S5 ganger-sprite map (sim Entity -> presenter Entity), present for the
+            // whole battle span so the spawn / move / reframe / death / removal systems
+            // share one mapping.
+            .init_resource::<GangerSprites>()
             .add_systems(
                 Startup,
                 load_topdown_atlases
@@ -164,13 +175,22 @@ impl Plugin for TopDownRendererPlugin {
         // the load/resolve chain that reads it — is gated on the asset stack being
         // present. Under `DefaultPlugins` (the app + the AssetServer harness) this runs
         // for real; under `MinimalPlugins` it is skipped entirely (no draw, no panic).
+        // BOTH the S4 terrain role table and the S5 character role table load this way.
         if app.world().get_resource::<AssetServer>().is_some() {
             app.init_ron_asset::<TileRoles>()
-                .add_systems(Startup, load_tile_roles)
+                .init_ron_asset::<CharacterRoles>()
+                .add_systems(Startup, (load_tile_roles, load_character_roles))
                 .add_systems(
                     Update,
                     resolve_tile_roles.run_if(
                         resource_exists::<TileRolesHandle>.and(not(resource_exists::<TileRoles>)),
+                    ),
+                )
+                .add_systems(
+                    Update,
+                    resolve_character_roles.run_if(
+                        resource_exists::<CharacterRolesHandle>
+                            .and(not(resource_exists::<CharacterRoles>)),
                     ),
                 );
         }
@@ -208,6 +228,43 @@ impl Plugin for TopDownRendererPlugin {
                     .in_set(PresenterSystems::Draw)
                     .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<TileRoles>)),
             );
+
+        // GTW-219 (S5): the ganger-draw change-detection systems join the SAME
+        // `PresenterSystems::Draw` band (defined once above, ordered after the sim's
+        // mutations). Each is gated `run_if(resource_exists::<BattleInProgress>)` AND on
+        // every render resource it reads — `CharacterRoles` (the data table) and
+        // `TopDownAtlases` — so a `MinimalPlugins` headless app with no `AssetServer`
+        // (those resources absent) simply does not draw rather than failing param
+        // validation (`bevy-traps.md` #1; the ticket's "a no-resource state must NOT
+        // panic the draw"). `ActiveLevel` + `GangerSprites` are `init_resource`-d on
+        // build, so they are always present. `move_ganger_sprites` runs
+        // `.after(spawn_ganger_sprites)` so a same-update spawn is already mapped when
+        // the move runs (the idempotent-via-the-map move path).
+        let gate = resource_exists::<BattleInProgress>
+            .and(resource_exists::<CharacterRoles>)
+            .and(resource_exists::<TopDownAtlases>);
+        app.add_systems(
+            Update,
+            (
+                spawn_ganger_sprites,
+                move_ganger_sprites.after(spawn_ganger_sprites),
+                reframe_ganger_sprites,
+                update_ganger_life_state,
+                apply_active_level_filter,
+            )
+                .in_set(PresenterSystems::Draw)
+                .run_if(gate),
+        )
+        // The removal-detection despawn needs NO render resource (it only despawns
+        // mapped sprites + drops map entries), so it is gated on the battle witness
+        // alone — it must still run when the table / atlas happen to be absent so a
+        // removed ganger never leaves an orphan sprite.
+        .add_systems(
+            Update,
+            despawn_removed_ganger_sprites
+                .in_set(PresenterSystems::Draw)
+                .run_if(resource_exists::<BattleInProgress>),
+        );
     }
 }
 
