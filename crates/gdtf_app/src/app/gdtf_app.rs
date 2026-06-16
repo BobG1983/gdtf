@@ -60,6 +60,7 @@ impl GdtfApp {
     fn add_plugins(mut self) -> Self {
         self.0.add_plugins(ScenesPlugin);
         self.0.add_plugins(UiPlugin);
+        add_dev_affordances(&mut self.0);
         self
     }
 
@@ -74,4 +75,24 @@ impl Default for GdtfApp {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Wires DEV-ONLY affordances that must never reach a release artifact.
+///
+/// Gated on `cfg!(debug_assertions)` so a release build does not even compile the
+/// auto-enter-battle affordance in (`crate::app::auto_battle`). The affordance is
+/// *additionally* inert by default at runtime — it activates only when
+/// `GDTF_AUTOBATTLE` is set truthy
+/// ([`auto_battle_enabled`](crate::app::auto_battle::auto_battle_enabled)) — so a
+/// normal `cargo run` (debug) still reaches the menu and stops. The `cfg` keeps the
+/// release binary clean; the env gate keeps the dev launch inert until opted into.
+///
+/// Takes `&mut App` (the ordinary Bevy app-builder handle, like
+/// [`App::add_plugins`]); this is NOT a registered system or a `&mut World` helper,
+/// so `bevy-traps.md` #7 does not apply.
+fn add_dev_affordances(app: &mut App) {
+    #[cfg(debug_assertions)]
+    app.add_plugins(crate::app::auto_battle::AutoBattlePlugin::from_env());
+    #[cfg(not(debug_assertions))]
+    let _ = app;
 }

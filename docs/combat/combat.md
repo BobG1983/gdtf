@@ -6,9 +6,11 @@ Grid topology is sim-side and engine-agnostic: a cell is `glam::IVec2` and a pos
 
 ## Presentation — settled
 
-The intended look is **isometric projection** (UFO:EU-style dimetric), **fixed camera — pan + zoom only, no rotation**. Isometric is a *rendering* choice; the grid topology is unchanged (still square). Rotation is deliberately excluded to keep art at **1× per unit/prop** — a rotatable view would demand 4–8× the sprites, which fights the minimize-art-cost strategy; the original X-COM was fixed iso for exactly this reason.
+The intended *eventual* look is **isometric projection** (UFO:EU-style dimetric), **fixed camera — pan + zoom only, no rotation**. Isometric is a *rendering* choice; the grid topology is unchanged (still square). Rotation is deliberately excluded to keep art at **1× per unit/prop** — a rotatable view would demand 4–8× the sprites, which fights the minimize-art-cost strategy; the original X-COM was fixed iso for exactly this reason.
 
-**TBD (Bevy):** the concrete render setup — camera type (orthographic dimetric camera vs. 2D iso), the cell→screen projection, pan/zoom-only camera controller, and window/render config (design resolution, nearest-neighbor texture filtering for crisp pixels, app-wide UI theme). These belong to `gdtf_battle_presenter` and the `gdtf_app` window/render plugins, not the sim, and are configured in the Bevy `App` (no `project.godot`).
+**The shipped GTW-48 first pass is a top-down 16×16 SPRITE renderer**, not iso. `gdtf_battle_presenter` draws the battle on a dedicated world camera (`WorldCamera`, beneath the UI camera) from the role-separated `alt_tileset_terrain` / `alt_tileset_characters` / `alt_tileset_effects` sheets (one `TextureAtlasLayout` per sheet), via a single `CELL_PX` (= 16.0) cell↔world bridge (`cell_to_world(cell, level)` / `world_to_cell`) and a per-level draw-z. The sim's 8 facings collapse to the sheet's 4 sprite frames through the pure `facing_frame` map (N/NE/NW→UP, E→RIGHT, SE/S/SW→DOWN, W→LEFT). The renderer is chosen by the `BattlePresenterMode` enum; the **isometric renderer is the deferred alternate behind that enum (GTW-49 / GTW-10)**.
+
+**TBD (Bevy):** the *iso* render setup — camera type (orthographic dimetric camera vs. 2D iso), the iso cell→screen projection, and any iso-specific camera controller — is pinned when the deferred iso renderer is built (GTW-49 / GTW-10). The top-down camera, projection, and window/render config (design resolution, nearest-neighbor texture filtering, the app-wide UI theme) are landed in `gdtf_battle_presenter` + the `gdtf_app` window/render plugins, configured in the Bevy `App` (no `project.godot`).
 
 ## Arena size
 

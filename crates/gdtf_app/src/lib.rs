@@ -8,11 +8,15 @@
 /// on, an external crate must be able to *name* them through
 /// [`test_support`], so their definitions widen to `pub`. Wrapping each
 /// definition in this macro keeps the visibility flip in one place and lets
-/// `unreachable_pub` stay satisfied in both configurations.
+/// `unreachable_pub` stay satisfied in both configurations. It wraps `enum` /
+/// `struct` item definitions and free / inherent `fn` items (the GTW-223
+/// auto-battle affordance widens its `auto_battle_enabled` gate + its `from_env`
+/// constructor this way).
 #[cfg(feature = "test-support")]
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => { $(#[$meta])* pub enum $($rest)* };
     ($(#[$meta:meta])* struct $($rest:tt)*) => { $(#[$meta])* pub struct $($rest)* };
+    ($(#[$meta:meta])* fn $($rest:tt)*) => { $(#[$meta])* pub fn $($rest)* };
 }
 
 /// Declares an item with `pub` visibility when the `test-support` feature is
@@ -22,6 +26,7 @@ macro_rules! support_item {
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => { $(#[$meta])* pub(crate) enum $($rest)* };
     ($(#[$meta:meta])* struct $($rest:tt)*) => { $(#[$meta])* pub(crate) struct $($rest)* };
+    ($(#[$meta:meta])* fn $($rest:tt)*) => { $(#[$meta])* pub(crate) fn $($rest)* };
 }
 
 /// Re-exports a path with `pub` visibility when the `test-support` feature is

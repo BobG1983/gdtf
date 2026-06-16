@@ -96,9 +96,20 @@ This is a clean-room engine rebuild, **not** a port of GDScript:
 
 The model/view boundary the deleted `docs/architecture.md` used to describe is
 landed (epic E10) as a **headless, message-driven seam** — no renderer, no
-window, no camera, no presenter visuals are part of it (`gdtf_battle_presenter`
-remains a stub; the CP437 renderer and the `gdtf_battle_input` crate are a
-later, separate epic, not E10 work). The shape:
+window, no camera, no presenter visuals are part of *it*. The render side is a
+separate landed epic (GTW-48): `gdtf_battle_presenter` is **no longer a stub and
+there is no CP437 renderer** — it is the shipped **top-down 16×16 sprite
+presenter** (drawn from the role-separated `alt_tileset_terrain` /
+`alt_tileset_characters` / `alt_tileset_effects` sheets, one `TextureAtlasLayout`
+each, behind the `BattlePresenterMode` enum, with the isometric renderer deferred
+behind that same enum — GTW-49 / GTW-10). Alongside it the `gdtf_battle_input`
+crate is the head of a one-way `gdtf_battle_input → gdtf_battle_presenter →
+gdtf_battle_sim` chain (the sim depends on neither; the presenter depends only on
+the sim), and the `gdtf_app` action-bar is a parallel button surface over the
+same act-intent seam (`PendingActIntent`, drained by one `dispatch_act_intents`).
+That render/input stack is GTW-48 work, NOT E10 — and it READS the running E10
+battle, adding zero sim plumbing. The E10 seam below is unchanged by it. The
+shape:
 
 - **`gdtf_battle_sim::BattleSimPlugin`** is the SIM-owned registration unit:
   adding this one plugin wires the whole render-free combat runtime into a Bevy

@@ -27,8 +27,11 @@ use gdtf_ui::theme::{GdtfTheme, default_theme};
 
 /// Bounded budget for the Load orchestration plus its state-transition
 /// propagation — bounded so a machine that never resolves fails instead of
-/// hanging.
-const LOAD_BUDGET: u32 = 32;
+/// hanging. Sized generously: the situation/theme/tuning loads now share the
+/// `AssetServer` with the presenter's startup tile-sheet + role-table loads (the
+/// full scene stack is registered in this harness), so the async resolve can
+/// need many headless `update()` polls under contention — 32 proved flaky.
+const LOAD_BUDGET: u32 = 512;
 
 /// Reads the current [`AppState`].
 fn app_state(app: &bevy::app::App) -> AppState {
