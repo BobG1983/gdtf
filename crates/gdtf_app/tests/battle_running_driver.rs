@@ -1,19 +1,17 @@
-//! GTW-208 (E10.6): the `BattleRunning` REAL completion gate + the drive proof.
+//! GTW-236 (lifecycle): the battlescape PERSISTS in `BattleRunning` + the drive proof.
 //!
-//! `BattleRunning` no longer races to `AnimateOut` on the first `FixedUpdate` tick:
-//! a finite, deterministic per-run turn budget (`BattleRunTurnBudget`) is inserted
-//! `OnEnter(BattleRunning)`, decremented saturatingly once per `FixedUpdate` tick, and
-//! `BattleRunningComplete` is inserted exactly once the budget reaches zero — only then
-//! does the existing `move_on` advance to `AnimateOut`. These tests are headless
-//! `MinimalPlugins` (via [`GdtfTestAppBuilder`]); they bypass the `Load` scene, so each
-//! injects the persistent `Load` resources (`GdtfTheme` + `CombatTuning`) the machine
-//! needs to traverse `Load`. They are *pin-discriminating*: each assertion re-encodes one
-//! acceptance criterion so a regression turns the test red.
-//!
-//! The budget resource and the marker are `gdtf_app`-internal (`pub(in …)`), so these
-//! tests observe completion *through* the state machine — the `BattleScapeState`
-//! transition and the absence of an early advance — rather than by naming the private
-//! resources directly, which is the externally observable contract anyway.
+//! `BattleRunning` no longer auto-walks back out: the placeholder 3-tick turn-budget
+//! gate (`BattleRunTurnBudget` + its decrement/track systems) is GONE. The battle now
+//! RESTS in `BattleScapeState::BattleRunning` indefinitely and leaves ONLY once the
+//! explicit end-signal marker `BattleRunningComplete` is inserted — only then does the
+//! existing `move_on` advance to `AnimateOut`. The victory census / flee button (sibling
+//! slices) are what insert it in the running game; these tests insert it through the
+//! `test_support` surface to stand in for that. They are headless `MinimalPlugins` (via
+//! [`GdtfTestAppBuilder`]); they bypass the `Load` scene, so each injects the persistent
+//! `Load` resources (`GdtfTheme` + `CombatTuning`) the machine needs to traverse `Load`.
+//! They are *pin-discriminating*: each assertion re-encodes one acceptance criterion so a
+//! regression turns the test red — a re-added auto-exit turns the persistence assertions
+//! red.
 //!
 //! The drive proof (AC1) sets the battle up via the REAL message-driven path: it inserts
 //! a [`LoadedSituation`] BEFORE driving, the app's `OnEnter(Generation)` sends
@@ -25,7 +23,9 @@
 //! used throughout (every sibling `gdtf_app` integration test does the same).
 
 use bevy::{ecs::entity::Entity, state::state::State};
-use gdtf_app::test_support::{BattleScapeState, GameState, LoadedSituation, RunningState};
+use gdtf_app::test_support::{
+    BattleRunningComplete, BattleScapeState, LoadedSituation, RunningState,
+};
 use gdtf_battle_sim::{
     acts::FireRequested,
     armor::{
@@ -340,37 +340,56 @@ fn fire_requested_in_battle_running_drives_the_sim() {
     );
 }
 
-/// AC2 — completion is NOT immediate: on the first update where `BattleRunning` is active,
-/// the machine has NOT advanced to `AnimateOut` (the old immediate-insert race would have
-/// flipped it on the entry tick).
+/// The persistence stress count — N ≫ 3 (the deleted placeholder budget was 3 ticks),
+/// so a re-added auto-exit (which fired within ~3 `FixedUpdate` ticks) would advance OFF
+/// `BattleRunning` well within this loop and turn the persistence assertion red.
+const PERSIST_UPDATES: u32 = 32;
+
+/// AC1/AC2 — PERSISTENCE: with no end-signal marker inserted, `BattleRunning` PERSISTS
+/// across N ≫ 3 (`PERSIST_UPDATES`) updates — it never reaches `AnimateOut`/`AfterMath`.
+///
+/// This is the core GTW-236 change: the placeholder 3-tick turn-budget auto-exit is gone, so
+/// no budget/timer/tick system inserts `BattleRunningComplete` on its own. A regression that
+/// re-adds an auto-insert would trip `move_on` (advancing to `AnimateOut`) within ~3 ticks,
+/// failing the per-iteration assert.
 #[test]
-fn completion_is_not_immediate_on_entry() {
+fn battle_running_persists_without_an_end_signal() {
     let mut app = walk_app(Some(two_ganger_situation()));
     assert!(
         drive_to_battle_running(&mut app),
-        "the walk should reach BattleRunning within {BUDGET} updates",
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
     );
 
-    // On the very update BattleRunning is first active, the budget gate has not fired:
-    // the state is still BattleRunning, not AnimateOut (directly refuting the old
-    // unconditional entry-tick insert).
-    assert_eq!(
-        battlescape_state(&app),
-        Some(BattleScapeState::BattleRunning),
-        "BattleRunning must not advance to AnimateOut on the entry tick — the completion gate is \
-         finite, not immediate",
-    );
+    // Across many updates with NO explicit marker, the machine stays put in BattleRunning.
+    for iteration in 0..PERSIST_UPDATES {
+        app.update();
+        assert_eq!(
+            battlescape_state(&app),
+            Some(BattleScapeState::BattleRunning),
+            "BattleRunning must PERSIST with no BattleRunningComplete inserted (GTW-236) — it must \
+             not auto-advance to AnimateOut; failed on update {iteration} of {PERSIST_UPDATES}",
+        );
+    }
 }
 
-/// AC3 — the completion condition is real, finite, and DOES fire: once the turn budget is
-/// spent, the machine advances `BattleRunning → AnimateOut` within a bound ≤ `WALK_BUDGET`.
+/// AC3 — the explicit end still works: while resting in `BattleRunning`, inserting
+/// `BattleRunningComplete` (through the `test_support` surface, standing in for the
+/// not-yet-wired victory/flee end condition) then `update()`-ing advances `BattleScapeState`
+/// to `AnimateOut` — proving the marker-gated `move_on` registration survived the rework.
 #[test]
-fn completion_fires_and_advances_to_animate_out() {
+fn explicit_end_marker_advances_to_animate_out() {
     let mut app = walk_app(Some(two_ganger_situation()));
     assert!(
         drive_to_battle_running(&mut app),
-        "the walk should reach BattleRunning within {BUDGET} updates",
+        "the walk should reach BattleRunning within {BUDGET} updates; last observed \
+         BattleScapeState was {:?}",
+        battlescape_state(&app),
     );
+
+    // Insert the explicit end-signal marker (the seam victory/flee will drive).
+    app.world_mut().insert_resource(BattleRunningComplete);
 
     let reached_animate_out = advance_until(
         &mut app,
@@ -379,120 +398,8 @@ fn completion_fires_and_advances_to_animate_out() {
     );
     assert!(
         reached_animate_out,
-        "the spent turn budget must mark BattleRunning complete and advance to AnimateOut within \
-         {BUDGET} updates; last observed BattleScapeState was {:?}",
+        "an explicit BattleRunningComplete insert must trip move_on and advance BattleRunning → \
+         AnimateOut within {BUDGET} updates; last observed BattleScapeState was {:?}",
         battlescape_state(&app),
-    );
-}
-
-/// AC4 — determinism of completion: the number of updates from `BattleRunning`-active to
-/// `AnimateOut` is identical across two fresh `GdtfTestAppBuilder` runs (`FixedTimesteps(1)`)
-/// with the same setup (a relation, not a pinned literal).
-#[test]
-fn completion_is_deterministic_across_runs() {
-    // Count the updates from the first BattleRunning-active update to the first AnimateOut.
-    let updates_to_animate_out = || {
-        let mut app = walk_app(Some(two_ganger_situation()));
-        if !drive_to_battle_running(&mut app) {
-            return None;
-        }
-        let mut count = 0_u32;
-        for _ in 0..BUDGET {
-            app.update();
-            count += 1;
-            if battlescape_state(&app) == Some(BattleScapeState::AnimateOut) {
-                return Some(count);
-            }
-        }
-        None
-    };
-
-    let first = updates_to_animate_out();
-    let second = updates_to_animate_out();
-    assert!(
-        first.is_some(),
-        "the run-to-completion must reach AnimateOut within {BUDGET} updates",
-    );
-    assert_eq!(
-        first, second,
-        "the update count from BattleRunning-active to AnimateOut must be identical across two \
-         fresh deterministic runs (got {first:?} vs {second:?})",
-    );
-}
-
-/// AC5 — the full headless walk still descends past `BattleRunning` on an EMPTY battle: with
-/// NO `LoadedSituation`, the `Situation::default()` setup runs, the budget gate resolves, and
-/// the machine leaves `GameState::BattleScape` within `WALK_BUDGET`. This is the
-/// `state_walk.rs` deep-walk half re-encoded here so this slice's gate is proven not to hang
-/// the unseeded walk (the landed `state_walk` suite covers reach-Teardown).
-#[test]
-fn empty_battle_walk_descends_past_battle_running() {
-    // No LoadedSituation — the MinimalPlugins default-start path the deep walk uses.
-    let mut app = walk_app(None);
-    assert!(
-        drive_to_battle_running(&mut app),
-        "the empty-battle walk should reach BattleRunning within {BUDGET} updates",
-    );
-
-    let left_battlescape = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<State<GameState>>()
-                .is_none_or(|state| *state.get() != GameState::BattleScape)
-        },
-        BUDGET,
-    );
-    assert!(
-        left_battlescape,
-        "the budget gate must resolve for the EMPTY battle and let the walk leave \
-         GameState::BattleScape within {BUDGET} updates; last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
-}
-
-/// AC6 — the marker and budget are cleaned on exit (no leak across re-entry): after the
-/// machine has driven through `BattleRunning` to completion and left `GameState::BattleScape`,
-/// the battle-scape state machine is torn down (no `State<BattleScapeState>` resource) — the
-/// `OnExit(BattleRunning)` cleanup removed the per-run resources, so a future re-entry starts
-/// fresh.
-///
-/// The budget / marker are `gdtf_app`-internal, so this observes the cleanup through the
-/// state machine: completion advanced the machine OUT of `BattleRunning` (and ultimately out
-/// of `BattleScape`), which only happens if the gate fired and the `OnExit` cleanup ran. A
-/// leaked `BattleRunningComplete` (never removed) would not block this walk, but a budget that
-/// failed to clear / re-insert is covered by AC4's determinism (a second run reaches
-/// completion in the same tick count, which requires a fresh budget on entry).
-#[test]
-fn battle_scape_tears_down_after_completion() {
-    let mut app = walk_app(Some(two_ganger_situation()));
-    assert!(
-        drive_to_battle_running(&mut app),
-        "the walk should reach BattleRunning within {BUDGET} updates",
-    );
-
-    let left_battlescape = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<State<GameState>>()
-                .is_none_or(|state| *state.get() != GameState::BattleScape)
-        },
-        BUDGET,
-    );
-    assert!(
-        left_battlescape,
-        "completion must advance the machine out of GameState::BattleScape within {BUDGET} updates",
-    );
-    // Leaving GameState::BattleScape tears down its BattleScapeState sub-state machine; the
-    // OnExit(BattleRunning) cleanup ran on the way out (the only path here), removing the
-    // per-run budget + marker so a re-entry would start fresh (AC4 proves the fresh-budget
-    // re-run reaches completion identically).
-    assert!(
-        app.world()
-            .get_resource::<State<BattleScapeState>>()
-            .is_none()
-            || battlescape_state(&app) != Some(BattleScapeState::BattleRunning),
-        "after completion the machine must be out of BattleRunning (the OnExit cleanup ran)",
     );
 }

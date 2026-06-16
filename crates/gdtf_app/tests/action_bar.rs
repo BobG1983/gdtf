@@ -39,8 +39,9 @@ use bevy::{
     ui::{Interaction, Node, widget::Button},
 };
 use gdtf_app::test_support::{
-    AimToggleButton, AppState, BattleScapeState, EndTurnButton, FireModeSelectButton,
-    LevelDownButton, LevelUpButton, ReloadButton, RunningState, StanceCycleButton,
+    AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton,
+    FireModeSelectButton, LevelDownButton, LevelUpButton, ReloadButton, RunningState,
+    StanceCycleButton,
 };
 use gdtf_battle_input::{
     ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter, next_stance,
@@ -310,8 +311,11 @@ fn action_bar_spawns_in_battle_and_despawns_outside() {
         );
     }
 
-    // Leave BattleRunning: the empty battle runs to completion and the machine advances
-    // out of BattleRunning, where OnExit despawns the bar.
+    // Leave BattleRunning: the battlescape now PERSISTS (GTW-236, the placeholder budget
+    // auto-exit is gone), so the test inserts the explicit `BattleRunningComplete`
+    // end-signal marker (standing in for the not-yet-wired victory/flee) to trip `move_on`
+    // and advance the machine out of BattleRunning, where `OnExit` despawns the bar.
+    app.world_mut().insert_resource(BattleRunningComplete);
     let left_battle_running = advance_until(
         &mut app,
         |app| battlescape_state(app) != Some(BattleScapeState::BattleRunning),
@@ -319,8 +323,8 @@ fn action_bar_spawns_in_battle_and_despawns_outside() {
     );
     assert!(
         left_battle_running,
-        "the empty-battle budget gate must advance the machine out of BattleRunning within \
-         {BUDGET} updates",
+        "an explicit BattleRunningComplete insert must advance the machine out of BattleRunning \
+         within {BUDGET} updates",
     );
     assert!(
         single_with::<StanceCycleButton>(&mut app).is_none(),

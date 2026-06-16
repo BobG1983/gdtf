@@ -11,6 +11,11 @@ pub(in crate::scenes::running::game::battlescape) use animate_in::GameBattleScap
 
 mod battle_running;
 pub(in crate::scenes::running::game::battlescape) use battle_running::GameBattleScapeBattleRunningScenePlugin;
+// Test-support-only re-export of the explicit end-signal marker (GTW-236), gated so the
+// binary build stays `unused`/`unreachable_pub`-clean (the action-bar marker re-export chain
+// precedent). Carries `BattleRunningComplete` up toward `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use!(battle_running::BattleRunningComplete;);
 
 mod animate_out;
 pub(in crate::scenes::running::game::battlescape) use animate_out::GameBattleScapeAnimateOutScenePlugin;

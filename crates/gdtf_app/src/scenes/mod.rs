@@ -28,6 +28,13 @@ crate::support_use!(load::LoadedSituation;);
 
 mod running;
 pub(in crate::scenes) use running::RunningScenePlugin;
+// Test-support-only re-export of the explicit end-signal marker (GTW-236), gated so the
+// binary build stays `unused`/`unreachable_pub`-clean. The reworked `state_walk` /
+// `battle_running_driver` tests name it through `crate::test_support` to insert it (standing
+// in for the not-yet-wired victory/flee end condition). The final hop before
+// `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use!(running::BattleRunningComplete;);
 // Test-support-only re-export (see menu/mod.rs); gated so the binary build is
 // warning-clean. (GTW-145)
 #[cfg(feature = "test-support")]

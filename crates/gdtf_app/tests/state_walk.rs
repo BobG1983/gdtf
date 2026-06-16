@@ -21,12 +21,21 @@
 //! transition once the walk is resting on `Menu`, after which the rest of the
 //! chain (`Options → Game → …`) still auto-advances through its scaffolds.
 //!
+//! Since GTW-236, the battlescape PERSISTS in `BattleScapeState::BattleRunning`:
+//! the placeholder 3-tick turn-budget auto-exit is gone, so the default deep walk
+//! now RESTS at `BattleRunning` and only leaves once the explicit
+//! `BattleRunningComplete` end-signal marker is inserted (the victory census / flee
+//! button — not yet wired — are what insert it in the running game). These tests
+//! stand in for that by inserting the marker through the `test_support` surface to
+//! drive the chain past `BattleRunning`.
+//!
 //! The verified sequence (read off the per-scene `move_on` systems, with the
-//! menu step now player-driven):
+//! menu step now player-driven and the battlescape now persistence-gated):
 //! `Init → Load → Intro → Running` at the top level; under `Running`,
 //! `Menu →(player)→ Options → Game`; under `Game`, `Setup → HiveScape → BattleScape`;
 //! under `BattleScape`,
-//! `Generation → AnimateIn → BattleRunning → AnimateOut → AfterMath`; under
+//! `Generation → AnimateIn → BattleRunning →(rests; explicit BattleRunningComplete)→
+//! AnimateOut → AfterMath`; under
 //! `AfterMath`, `AnimateIn → DisplayAftermath → AnimateOut`, whose terminal pops
 //! all the way out to `RunningState::Quit`, which advances `AppState` to
 //! `Teardown`.
@@ -35,7 +44,9 @@ use bevy::{
     app::App,
     state::state::{NextState, State},
 };
-use gdtf_app::test_support::{AfterMathState, AppState, BattleScapeState, GameState, RunningState};
+use gdtf_app::test_support::{
+    AfterMathState, AppState, BattleRunningComplete, BattleScapeState, GameState, RunningState,
+};
 use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -84,6 +95,13 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
         .map(|state| *state.get())
 }
 
+/// Reads the current [`BattleScapeState`] if [`GameState::BattleScape`] is active.
+fn battlescape_state(app: &bevy::app::App) -> Option<BattleScapeState> {
+    app.world()
+        .get_resource::<State<BattleScapeState>>()
+        .map(|state| *state.get())
+}
+
 /// Stands in for the player at the menu: advances the walk until
 /// [`RunningState::Menu`] is reached, then queues the `Menu → Options`
 /// transition (the menu no longer auto-advances since GTW-121).
@@ -106,13 +124,18 @@ fn drive_past_menu(app: &mut App) -> bool {
     reached_menu
 }
 
-/// (a) From the default start, the machine reaches [`AppState::Teardown`]
-/// within the bounded budget.
+/// (a) From the default start, the deep walk RESTS at
+/// [`BattleScapeState::BattleRunning`] (it does NOT reach [`AppState::Teardown`] on
+/// the walk alone, GTW-236) and reaches `Teardown` ONLY after an explicit
+/// [`BattleRunningComplete`] insert stands in for the not-yet-wired victory/flee end
+/// condition.
 ///
-/// Pin: this fails if any top-level transition target regresses (so the walk
-/// stalls before `Teardown`) or if the deep terminal stops popping back out to
-/// `Teardown`. A machine that wraps/loops instead of terminating also fails,
-/// because it never satisfies the predicate within the budget.
+/// Pin: this fails if any top-level transition target regresses (so the walk stalls
+/// before `BattleRunning`); it ALSO fails if the placeholder auto-exit ever returns
+/// (the walk would reach `Teardown` on its own, before the explicit insert, and the
+/// rest-at-`BattleRunning` assertion would catch the early advance). After the
+/// insert, a regression in the deep terminal popping back out to `Teardown` keeps
+/// the predicate unmet within budget.
 #[test]
 fn full_walk_reaches_teardown() {
     let mut app = walk_app_with_theme();
@@ -126,6 +149,41 @@ fn full_walk_reaches_teardown() {
         running_state(&app),
     );
 
+    // The default walk now RESTS at BattleRunning (persistence, GTW-236).
+    let reached_battle_running = advance_until(
+        &mut app,
+        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
+        WALK_BUDGET,
+    );
+    assert!(
+        reached_battle_running,
+        "the walk should descend to BattleScapeState::BattleRunning within {WALK_BUDGET} updates; \
+         last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    // With no end-signal marker, the machine must NOT auto-advance off BattleRunning:
+    // the 3-tick auto-exit is gone, so the battle persists across the whole budget.
+    for _ in 0..WALK_BUDGET {
+        app.update();
+        assert_eq!(
+            battlescape_state(&app),
+            Some(BattleScapeState::BattleRunning),
+            "BattleRunning must PERSIST with no BattleRunningComplete inserted (GTW-236); the \
+             placeholder turn-budget auto-exit must not advance it",
+        );
+        assert_ne!(
+            app_state(&app),
+            AppState::Teardown,
+            "the walk must NOT reach Teardown on its own — it rests at BattleRunning until an \
+             explicit end signal",
+        );
+    }
+
+    // Insert the explicit end-signal marker (standing in for victory/flee), then the
+    // marker-gated `move_on` advances BattleRunning → AnimateOut → … and the deep
+    // terminal ultimately pops out to Teardown.
+    app.world_mut().insert_resource(BattleRunningComplete);
     let reached = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Teardown,
@@ -134,8 +192,8 @@ fn full_walk_reaches_teardown() {
 
     assert!(
         reached,
-        "full walk from the default start should reach AppState::Teardown within {WALK_BUDGET} \
-         updates; last observed AppState was {:?}",
+        "an explicit BattleRunningComplete insert should advance the walk to AppState::Teardown \
+         within {WALK_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 }
@@ -231,6 +289,22 @@ fn deep_pop_to_quit() {
          RunningState was {:?}",
         running_state(&app),
     );
+
+    // The battlescape now persists in BattleRunning (GTW-236) — drive down to it,
+    // then insert the explicit end-signal marker (standing in for victory/flee) so
+    // the marker-gated `move_on` advances the chain past BattleRunning.
+    let reached_battle_running = advance_until(
+        &mut app,
+        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
+        WALK_BUDGET,
+    );
+    assert!(
+        reached_battle_running,
+        "the walk should descend to BattleScapeState::BattleRunning within {WALK_BUDGET} updates; \
+         last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    app.world_mut().insert_resource(BattleRunningComplete);
 
     // Prove the walk descends all the way into the deepest aftermath phase.
     let reached_aftermath_out = advance_until(

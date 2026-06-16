@@ -12,7 +12,9 @@
 //! regression turns the test red.
 
 use bevy::state::state::State;
-use gdtf_app::test_support::{BattleScapeState, GameState, LoadedSituation, RunningState};
+use gdtf_app::test_support::{
+    BattleRunningComplete, BattleScapeState, GameState, LoadedSituation, RunningState,
+};
 use gdtf_battle_sim::{
     armor::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
@@ -392,6 +394,12 @@ fn battle_resources_survive_battle_and_clean_on_exit() {
     // (b) Advance until the machine has LEFT GameState::BattleScape, then assert the
     //     battle-lifetime resources are gone (cleaned at the battle boundary) while
     //     CombatTuning STILL persists (untouched by this plugin).
+    //
+    //     The battlescape now PERSISTS in BattleRunning (GTW-236, the placeholder budget
+    //     auto-exit is gone), so insert the explicit `BattleRunningComplete` end-signal
+    //     marker (standing in for the not-yet-wired victory/flee). Once the machine reaches
+    //     BattleRunning the marker trips `move_on` and the chain advances out of the scape.
+    app.world_mut().insert_resource(BattleRunningComplete);
     let left_battlescape = advance_until(
         &mut app,
         |app| {

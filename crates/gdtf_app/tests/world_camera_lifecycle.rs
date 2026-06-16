@@ -28,7 +28,7 @@ use bevy::{
     ecs::{entity::Entity, prelude::With},
     state::state::State,
 };
-use gdtf_app::test_support::{BattleScapeState, GameState, RunningState};
+use gdtf_app::test_support::{BattleRunningComplete, BattleScapeState, GameState, RunningState};
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -123,8 +123,13 @@ fn world_camera_spawns_in_battlescape_and_despawns_on_exit() {
         "exactly one WorldCamera-marked Camera2d must exist while GameState::BattleScape is active",
     );
 
-    // Drive out of GameState::BattleScape (the battle runs to completion and the machine
-    // leaves the scape), firing OnExit(GameState::BattleScape) and the despawn.
+    // Drive out of GameState::BattleScape: the battlescape now PERSISTS in BattleRunning
+    // (GTW-236, the placeholder budget auto-exit is gone), so insert the explicit
+    // `BattleRunningComplete` end-signal marker (standing in for the not-yet-wired
+    // victory/flee). Once the machine reaches BattleRunning the marker trips `move_on`,
+    // and the chain advances out of the scape, firing OnExit(GameState::BattleScape) and
+    // the despawn.
+    app.world_mut().insert_resource(BattleRunningComplete);
     let left_battlescape = advance_until(
         &mut app,
         |app| game_state(app).is_none_or(|state| state != GameState::BattleScape),
