@@ -13,8 +13,17 @@
 //! (S4/S5/S6), reads no sim type by name yet, and touches no input (S7/S8). It
 //! adds ZERO sim lifecycle plumbing (all landed in E10) — it only compiles, links,
 //! and adds the (empty) plugin so later slices have a wired seam.
+//!
+//! GTW-216 (the S2 slice) adds the SHARED world-camera lifecycle in
+//! [`mod@world_camera`]: the [`WorldCamera`]-marked `Camera2d` spawned/despawned on the
+//! `GameState::BattleScape` boundary, rendering beneath the GTW-120 UI camera on its own
+//! [`WORLD_RENDER_LAYER`]. It adds no glyph draw, atlas, or sim read.
 
 use bevy::prelude::*;
+
+pub mod world_camera;
+
+pub use world_camera::{WORLD_RENDER_LAYER, WorldCamera, despawn_world_camera, spawn_world_camera};
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
 ///
