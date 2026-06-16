@@ -20,7 +20,9 @@
 //! and `CLAUDE.md`) puts `WorldCamera` in the presenter so the input crate can depend
 //! on it.
 
-use bevy::{camera::visibility::RenderLayers, prelude::*, window::PrimaryWindow};
+use bevy::{
+    camera::visibility::RenderLayers, input::gamepad::Gamepad, prelude::*, window::PrimaryWindow,
+};
 use gdtf_battle_sim::{Cell, Faction, GRID_HEIGHT, GRID_WIDTH, Level, PlayerFaction, Position};
 
 use crate::cell_to_world;
@@ -296,6 +298,241 @@ pub fn clamp_camera_to_bounds(
     }
 }
 
+// ---------------------------------------------------------------------------------
+// GTW-250: pan navigation — mouse-edge + keyboard (WASD/arrows) + gamepad right stick.
+// ---------------------------------------------------------------------------------
+
+/// The pan speed of the [`WorldCamera`], in world units per second.
+///
+/// A VIEW tunable (how fast the camera glides under player navigation), not combat or
+/// theme tuning — so it lives as a presenter-level const here with a doc-comment, NOT in
+/// a `.ron` data file (the contract's view-config ruling). A newtype with a private inner
+/// `f32` + derived [`Deref`](std::ops::Deref) (the house style for a domain value,
+/// `no-bare-types.md`): the
+/// speed is a domain quantity (world-units/sec), never a bare `f32`.
+///
+/// FOLLOW-UP (flagged per the contract): if the user later wants pan speed authored / hot-
+/// swappable, promote this to a presenter view-config `.ron` resource — it is deliberately
+/// a const for the first cut.
+#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+pub struct PanSpeed(f32);
+
+impl PanSpeed {
+    /// Construct a [`PanSpeed`] from world-units-per-second.
+    #[must_use]
+    pub const fn new(units_per_second: f32) -> Self {
+        Self(units_per_second)
+    }
+}
+
+/// The mouse-edge band thickness, in logical screen pixels.
+///
+/// The cursor is "at an edge" (and pans the camera that way) when it sits within this many
+/// logical pixels of a window edge. A VIEW tunable, so a presenter const with a doc-comment
+/// (not `.ron`), and a newtype over a private `f32` ([`Deref`](std::ops::Deref)) per
+/// `no-bare-types.md`.
+#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+pub struct EdgeBandPx(f32);
+
+impl EdgeBandPx {
+    /// Construct an [`EdgeBandPx`] from a logical-pixel band thickness.
+    #[must_use]
+    pub const fn new(pixels: f32) -> Self {
+        Self(pixels)
+    }
+}
+
+/// The gamepad-stick deadzone: a stick magnitude at or below this contributes no pan.
+///
+/// A unitless `[0, 1]` analog-stick magnitude threshold below which the right stick is
+/// treated as centred (no drift). A VIEW tunable (a presenter const, not `.ron`) and a
+/// newtype over a private `f32` ([`Deref`](std::ops::Deref)) per `no-bare-types.md`.
+#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+pub struct StickDeadzone(f32);
+
+impl StickDeadzone {
+    /// Construct a [`StickDeadzone`] from a unitless `[0, 1]` magnitude threshold.
+    #[must_use]
+    pub const fn new(magnitude: f32) -> Self {
+        Self(magnitude)
+    }
+}
+
+/// The shipping pan speed: world units the camera glides per second under navigation.
+///
+/// A view const (see [`PanSpeed`]). Chosen so the whole 60-cell battlefield can be crossed
+/// in a couple of seconds at the 16-px cell pitch ([`CELL_PX`](crate::CELL_PX)); FLAGGED for
+/// data-driving later.
+pub const PAN_SPEED: PanSpeed = PanSpeed::new(600.0);
+
+/// The shipping mouse-edge band: cursor within this many logical pixels of a window edge
+/// pans the camera that way (see [`EdgeBandPx`]).
+pub const EDGE_BAND_PX: EdgeBandPx = EdgeBandPx::new(24.0);
+
+/// The shipping gamepad right-stick deadzone (see [`StickDeadzone`]): a stick magnitude at
+/// or below this is ignored so a resting stick never drifts the camera.
+pub const STICK_DEADZONE: StickDeadzone = StickDeadzone::new(0.15);
+
+/// The camera-space pan direction implied by the mouse cursor's position within the edge
+/// bands of a `size`-pixel window, with the screen-y → camera-y flip baked in.
+///
+/// GTW-250 AC1. The window's origin is TOP-LEFT and screen-y grows DOWNWARD (Bevy's
+/// `cursor_position`), while the camera's `+Y` is UP — so a cursor near the TOP edge
+/// (`cursor.y < edge`) pans the camera UP (`+Y`) and a cursor near the BOTTOM edge
+/// (`cursor.y > size.y - edge`) pans it DOWN (`-Y`); the x axis needs no flip (cursor left →
+/// `-X`, right → `+X`). A cursor in NO band (the centre region) → [`Vec2::ZERO`]. The result
+/// is a small integer-ish combination of unit axes (`-1`/`0`/`+1` per axis); the caller
+/// normalises the summed multi-source direction so a corner is not faster than an edge.
+///
+/// Pure / total — no `App`, no `World` (unit-tested AC1). `Vec2` is framework-math plumbing
+/// (the GTW-249 carve-out for raw screen / direction coords), not a domain newtype.
+#[must_use]
+pub fn mouse_edge_dir(cursor: Vec2, size: Vec2, edge: EdgeBandPx) -> Vec2 {
+    let band = *edge;
+    let mut dir = Vec2::ZERO;
+    if cursor.x < band {
+        dir.x -= 1.0;
+    } else if cursor.x > size.x - band {
+        dir.x += 1.0;
+    }
+    // Screen-y → camera-y FLIP: top band (small screen y) pans the camera UP (+Y); bottom
+    // band (large screen y) pans it DOWN (-Y).
+    if cursor.y < band {
+        dir.y += 1.0;
+    } else if cursor.y > size.y - band {
+        dir.y -= 1.0;
+    }
+    dir
+}
+
+/// The camera-space pan direction implied by the WASD / arrow pan keys.
+///
+/// GTW-250 AC2. `up` (W / ↑) → `+Y`, `down` (S / ↓) → `-Y`, `left` (A / ←) → `-X`,
+/// `right` (D / →) → `+X`; opposite keys CANCEL (W+S → no y, A+D → no x). The result is a
+/// `-1`/`0`/`+1` combination per axis; the caller normalises the summed direction so a
+/// diagonal (W+D) is not faster than a cardinal (W).
+///
+/// Pure / total — no `App`, no `World` (unit-tested AC2). `Vec2` is framework-math plumbing.
+///
+/// The four `bool` params are the contract's specified signature
+/// (`keyboard_pan_dir(up, down, left, right: bool) -> Vec2`) — the four independent pan-key
+/// pressed-states, each a genuine input the system fills from `ButtonInput<KeyCode>` (WASD +
+/// arrow aliases). The localized `#[expect]` (the file's `cast_precision_loss` precedent)
+/// keeps that exact, documented signature rather than narrowing it; the pedantic
+/// `fn_params_excessive_bools` gate is the only thing it suppresses.
+#[expect(
+    clippy::fn_params_excessive_bools,
+    reason = "the four pan-key pressed states are the contract's specified keyboard_pan_dir \
+              signature (up/down/left/right); they are independent inputs, not a flag soup"
+)]
+#[must_use]
+pub fn keyboard_pan_dir(up: bool, down: bool, left: bool, right: bool) -> Vec2 {
+    let x = f32::from(right) - f32::from(left);
+    let y = f32::from(up) - f32::from(down);
+    Vec2::new(x, y)
+}
+
+/// The camera-space pan direction implied by the gamepad RIGHT stick, after the deadzone.
+///
+/// GTW-250 AC3. A stick magnitude at or below `deadzone` → [`Vec2::ZERO`] (a resting stick
+/// never drifts the camera); past the deadzone the stick passes through unchanged, with its
+/// analog magnitude preserved (so a slight push pans slowly, a full push fast). Bevy's
+/// `right_stick()` already reports stick-UP as `+Y`, matching the camera `+Y`-up convention,
+/// so no flip is applied.
+///
+/// Pure / total — no `App`, no `World` (unit-tested AC3). `Vec2` is framework-math plumbing.
+#[must_use]
+pub fn stick_pan_dir(stick: Vec2, deadzone: StickDeadzone) -> Vec2 {
+    if stick.length() <= *deadzone {
+        return Vec2::ZERO;
+    }
+    stick
+}
+
+/// The per-second pan VELOCITY for a (summed, multi-source) `dir` at `speed`.
+///
+/// GTW-250 AC4. A [`Vec2::ZERO`] direction → zero velocity (no input → no drift). The
+/// combined direction is NORMALISED when its length exceeds 1 so a diagonal keyboard combo
+/// (length `√2`) is not faster than a cardinal one — the documented choice: keyboard / mouse
+/// edges contribute unit axes and must not let diagonals out-run cardinals, while an analog
+/// stick (magnitude < 1) keeps its sub-unit magnitude so a gentle push pans gently. The
+/// result is `world-units/sec`; the caller multiplies by `delta_secs()` to get this frame's
+/// translation delta.
+///
+/// Pure / total — no `App`, no `World` (unit-tested AC4). `Vec2` is framework-math plumbing.
+#[must_use]
+pub fn pan_velocity(dir: Vec2, speed: PanSpeed) -> Vec2 {
+    let length = dir.length();
+    if length == 0.0 {
+        return Vec2::ZERO;
+    }
+    // Clamp the combined direction to at most unit length: a length > 1 (a diagonal of
+    // unit-axis sources) is normalised so diagonals are not faster than cardinals; a length
+    // <= 1 (a single axis, or a sub-unit analog stick) passes through so analog magnitude
+    // still scales speed.
+    let clamped = if length > 1.0 { dir / length } else { dir };
+    clamped * *speed
+}
+
+/// `Update` (battle-gated): pan the [`WorldCamera`] each frame from the three navigation
+/// sources, BEFORE the [`clamp_camera_to_bounds`] clamp so the camera can never pan off the
+/// battlefield.
+///
+/// GTW-250: sums the camera-space pan directions from the mouse at a screen edge
+/// ([`mouse_edge_dir`]), the keyboard ([`keyboard_pan_dir`] — WASD + arrows), and the gamepad
+/// RIGHT stick ([`stick_pan_dir`]), turns the summed direction into a per-second velocity via
+/// [`pan_velocity`] (which normalises so diagonals are not faster than cardinals), scales by
+/// `time.delta_secs()`, and adds the result to the camera `Transform.translation.xy` (z is
+/// kept — top-down ground plane only, no zoom / multi-level). It emits NO sim message — the
+/// camera is the VIEW, so pan navigation is presenter-only.
+///
+/// Reads the three input sources via params: `Res<ButtonInput<KeyCode>>` (keyboard),
+/// `Query<&Window, With<PrimaryWindow>>` (the cursor + window size for the mouse edge — the
+/// cursor is `None` when off the window, contributing nothing that frame), and `Query<&Gamepad>`
+/// (the gamepad is an ENTITY-component in Bevy 0.18, NOT the pre-0.15 `Res<Axis<GamepadAxis>>`).
+/// Movement scales by `Res<Time>`'s `delta_secs()`. Param-only (`Res` / `Query`), no `&mut World`
+/// (`bevy-traps.md` #7); the battle gate (`bevy-traps.md` #1) and the `.before(clamp)` ordering
+/// (`bevy-traps.md` #3) are applied at registration.
+pub fn pan_camera(
+    keys: Res<ButtonInput<KeyCode>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    gamepads: Query<&Gamepad>,
+    time: Res<Time>,
+    mut cameras: Query<&mut Transform, With<WorldCamera>>,
+) {
+    let mut dir = Vec2::ZERO;
+
+    // Keyboard: WASD + arrow aliases.
+    dir += keyboard_pan_dir(
+        keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp),
+        keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown),
+        keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft),
+        keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight),
+    );
+
+    // Mouse edge: only when the cursor is over the primary window.
+    if let Some(window) = windows.iter().next()
+        && let Some(cursor) = window.cursor_position()
+    {
+        dir += mouse_edge_dir(cursor, window.size(), EDGE_BAND_PX);
+    }
+
+    // Gamepad RIGHT stick (the first connected pad), past the deadzone.
+    if let Some(gamepad) = gamepads.iter().next() {
+        dir += stick_pan_dir(gamepad.right_stick(), STICK_DEADZONE);
+    }
+
+    let velocity = pan_velocity(dir, PAN_SPEED);
+    if velocity == Vec2::ZERO {
+        return;
+    }
+    let delta = velocity * time.delta_secs();
+    for mut transform in &mut cameras {
+        transform.translation.x += delta.x;
+        transform.translation.y += delta.y;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -396,6 +633,180 @@ mod tests {
         assert_eq!(
             centred, midpoint,
             "when the map is narrower than the viewport, the camera centres on the midpoint",
+        );
+    }
+
+    // -----------------------------------------------------------------------------
+    // GTW-250 — pan-navigation pure helpers (AC1–AC4).
+    // -----------------------------------------------------------------------------
+
+    /// A test window size for the mouse-edge helper.
+    const SIZE: Vec2 = Vec2::new(800.0, 600.0);
+    /// A test mouse-edge band.
+    const EDGE: EdgeBandPx = EdgeBandPx::new(20.0);
+
+    /// AC1 — `mouse_edge_dir` maps each edge band to a camera direction WITH the
+    /// screen-y → camera-y flip: top → `+Y`, bottom → `-Y`, left → `-X`, right → `+X`, a
+    /// corner → a diagonal, and the centre → `ZERO`. Relations, not pinned magnitudes.
+    #[test]
+    fn mouse_edge_dir_maps_each_edge_with_the_y_flip() {
+        // TOP band (small screen y) pans the camera UP (+Y) — the explicit flip.
+        let top = mouse_edge_dir(Vec2::new(SIZE.x * 0.5, 5.0), SIZE, EDGE);
+        assert!(
+            top.y > 0.0,
+            "cursor near the TOP must pan the camera UP (+Y)"
+        );
+        assert_eq!(
+            top.x.to_bits(),
+            0.0_f32.to_bits(),
+            "a centred-x top has no x pan"
+        );
+
+        // BOTTOM band (large screen y) pans the camera DOWN (-Y).
+        let bottom = mouse_edge_dir(Vec2::new(SIZE.x * 0.5, SIZE.y - 5.0), SIZE, EDGE);
+        assert!(
+            bottom.y < 0.0,
+            "cursor near the BOTTOM must pan the camera DOWN (-Y)"
+        );
+
+        // LEFT band → -X.
+        let left = mouse_edge_dir(Vec2::new(5.0, SIZE.y * 0.5), SIZE, EDGE);
+        assert!(left.x < 0.0, "cursor near the LEFT must pan -X");
+        assert_eq!(
+            left.y.to_bits(),
+            0.0_f32.to_bits(),
+            "a centred-y left has no y pan"
+        );
+
+        // RIGHT band → +X.
+        let right = mouse_edge_dir(Vec2::new(SIZE.x - 5.0, SIZE.y * 0.5), SIZE, EDGE);
+        assert!(right.x > 0.0, "cursor near the RIGHT must pan +X");
+
+        // CORNER (top-right) → a diagonal: +X and +Y.
+        let corner = mouse_edge_dir(Vec2::new(SIZE.x - 5.0, 5.0), SIZE, EDGE);
+        assert!(
+            corner.x > 0.0 && corner.y > 0.0,
+            "the top-right corner must pan diagonally (+X, +Y)"
+        );
+
+        // CENTRE (no band) → ZERO.
+        assert_eq!(
+            mouse_edge_dir(SIZE * 0.5, SIZE, EDGE),
+            Vec2::ZERO,
+            "a cursor in the centre (no edge band) contributes no pan",
+        );
+    }
+
+    /// AC2 — `keyboard_pan_dir` maps W/A/S/D to camera axes, opposite keys cancel, and
+    /// (via the system) arrows alias WASD. W → `+Y`, S → `-Y`, A → `-X`, D → `+X`,
+    /// W+D → up-right, W+S → `ZERO`.
+    #[test]
+    fn keyboard_pan_dir_combines_keys_and_cancels_opposites() {
+        // Single keys (W / S / A / D).
+        assert_eq!(
+            keyboard_pan_dir(true, false, false, false),
+            Vec2::new(0.0, 1.0),
+            "W → +Y",
+        );
+        assert_eq!(
+            keyboard_pan_dir(false, true, false, false),
+            Vec2::new(0.0, -1.0),
+            "S → -Y",
+        );
+        assert_eq!(
+            keyboard_pan_dir(false, false, true, false),
+            Vec2::new(-1.0, 0.0),
+            "A → -X",
+        );
+        assert_eq!(
+            keyboard_pan_dir(false, false, false, true),
+            Vec2::new(1.0, 0.0),
+            "D → +X",
+        );
+
+        // Combination: W+D → up-right.
+        assert_eq!(
+            keyboard_pan_dir(true, false, false, true),
+            Vec2::new(1.0, 1.0),
+            "W+D → up-right (+X, +Y)",
+        );
+
+        // Opposite keys cancel.
+        assert_eq!(
+            keyboard_pan_dir(true, true, false, false),
+            Vec2::ZERO,
+            "W+S cancel → ZERO",
+        );
+        assert_eq!(
+            keyboard_pan_dir(false, false, true, true),
+            Vec2::ZERO,
+            "A+D cancel → ZERO",
+        );
+    }
+
+    /// AC3 — `stick_pan_dir` zeroes a sub-deadzone stick and passes a clearly-past stick
+    /// through with the camera-y orientation preserved (stick up → +Y).
+    #[test]
+    fn stick_pan_dir_respects_the_deadzone() {
+        let deadzone = StickDeadzone::new(0.15);
+
+        // A tiny resting drift below the deadzone → ZERO.
+        assert_eq!(
+            stick_pan_dir(Vec2::new(0.05, -0.05), deadzone),
+            Vec2::ZERO,
+            "a sub-deadzone stick contributes no pan",
+        );
+
+        // A clear push past the deadzone passes through, magnitude preserved, stick-up = +Y.
+        let pushed = Vec2::new(0.0, 0.8);
+        assert_eq!(
+            stick_pan_dir(pushed, deadzone),
+            pushed,
+            "a clearly-past stick passes through unchanged (stick up → camera +Y)",
+        );
+        assert!(
+            stick_pan_dir(Vec2::new(0.0, 0.8), deadzone).y > 0.0,
+            "stick UP must map to camera +Y",
+        );
+    }
+
+    /// AC4 — `pan_velocity` scales a unit direction by speed, returns ZERO for no input,
+    /// and the diagonal-not-faster rule holds for the keyboard combination (a normalised
+    /// diagonal is no faster than a cardinal).
+    #[test]
+    fn pan_velocity_scales_and_diagonal_is_not_faster() {
+        let speed = PanSpeed::new(100.0);
+
+        // ZERO direction → ZERO velocity.
+        assert_eq!(
+            pan_velocity(Vec2::ZERO, speed),
+            Vec2::ZERO,
+            "no input → no velocity (no drift)",
+        );
+
+        // A unit cardinal → speed-scaled.
+        let cardinal = pan_velocity(Vec2::new(0.0, 1.0), speed);
+        assert_eq!(
+            cardinal,
+            Vec2::new(0.0, 100.0),
+            "a unit direction scales to exactly `speed` world-units/sec",
+        );
+
+        // Diagonal-not-faster: the (normalised) diagonal speed equals the cardinal speed.
+        let diagonal = pan_velocity(Vec2::new(1.0, 1.0), speed);
+        let diag_speed = diagonal.length();
+        let card_speed = cardinal.length();
+        assert!(
+            (diag_speed - card_speed).abs() < 1e-3,
+            "a diagonal keyboard combo must not be faster than a cardinal (got diag {diag_speed}, \
+             cardinal {card_speed})",
+        );
+
+        // A sub-unit analog magnitude scales speed DOWN (a gentle stick push pans gently).
+        let gentle = pan_velocity(Vec2::new(0.0, 0.5), speed);
+        assert!(
+            gentle.length() < card_speed,
+            "a sub-unit analog stick magnitude keeps its sub-unit scale (pans slower)",
         );
     }
 }
