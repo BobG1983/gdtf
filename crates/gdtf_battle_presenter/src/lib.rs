@@ -39,7 +39,7 @@ use bevy::{ecs::message::Messages, prelude::*};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CoverDestroyed, CoverLedger, OccupancyGrid,
-    SurfaceGrid, occupancy_sync::SimSystems,
+    PlayerFaction, SurfaceGrid, occupancy_sync::SimSystems,
 };
 
 pub mod fx;
@@ -65,7 +65,10 @@ pub use terrain::{
 pub use topdown::{
     CELL_PX, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world, load_topdown_atlases,
 };
-pub use world_camera::{WORLD_RENDER_LAYER, WorldCamera, despawn_world_camera, spawn_world_camera};
+pub use world_camera::{
+    WORLD_RENDER_LAYER, WorldCamera, camera_focus, clamp_camera, clamp_camera_to_bounds,
+    despawn_world_camera, frame_camera_on_units, spawn_world_camera,
+};
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
 ///
@@ -288,7 +291,40 @@ impl Plugin for TopDownRendererPlugin {
         // SAME `PresenterSystems::Draw` band (extracted to keep `build` under the
         // `too_many_lines` lint).
         register_fx_flash_systems(app);
+
+        // GTW-249: the battle-start frame-on-units + the bounds clamp (extracted for the
+        // same `too_many_lines` reason).
+        register_camera_framing_systems(app);
     }
+}
+
+/// Registers the GTW-249 camera-positioning systems: the one-shot
+/// [`frame_camera_on_units`] (centre the [`WorldCamera`] on the player gangers at battle
+/// start) and the every-frame [`clamp_camera_to_bounds`] (keep the viewport inside the
+/// battlefield extent).
+///
+/// Both are battle-scoped (`bevy-traps.md` #1): gated
+/// `run_if(resource_exists::<BattleInProgress>` AND `resource_exists::<PlayerFaction>)` —
+/// `PlayerFaction` is the sim's player-gang witness the framing reads, inserted/removed on
+/// the same `BattleInProgress` window, so neither system runs (and neither panics on a
+/// missing `Res`) outside a live battle.
+///
+/// The clamp is ordered `.chain()`-after the framing so it is the LAST writer of the camera
+/// position each frame; the sibling pan-nav slice (GTW-250) MUST insert its movement
+/// BEFORE this clamp (order the future pan system `.before(clamp_camera_to_bounds)`) so the
+/// clamp stays the final word and the camera can never be moved beyond the battlefield.
+/// They run in plain `Update` (camera positioning needs no `PresenterSystems::Draw`
+/// membership — it touches no atlas / sprite, only the camera `Transform`).
+fn register_camera_framing_systems(app: &mut App) {
+    let battle_gate = resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>);
+    app.add_systems(
+        Update,
+        (
+            frame_camera_on_units,
+            clamp_camera_to_bounds.after(frame_camera_on_units),
+        )
+            .run_if(battle_gate),
+    );
 }
 
 /// Registers the GTW-220 (S6) transient FX-flash readers + the one-shot expiry clock into the
