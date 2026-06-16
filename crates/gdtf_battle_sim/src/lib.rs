@@ -147,7 +147,12 @@
 //!   active" witness the bundled `Simulate` band gates on — inserted on a successful
 //!   setup, removed on teardown. The app SENDS the triggers (naming its own states,
 //!   app-side) and the sim ACTS on them, naming NO `gdtf_app` type — the one-way
-//!   model/view boundary expressed as messages.
+//!   model/view boundary expressed as messages. It also owns the GTW-237 roster-grounded
+//!   outcome census: the [`battle::BattleRoster`] resource (the factions fielded at setup,
+//!   captured/removed alongside [`battle::BattleInProgress`]) and the
+//!   [`battle::check_outcome`] `Simulate`-band system, which emits the
+//!   [`battle::BattleWon`] / [`battle::BattleLost`] signal messages (a sim SIGNAL only —
+//!   the app-side consumer that ends the battle is GTW-239).
 //!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! ADR-0001 (`docs/decisions/0001-rust-bevy-rewrite.md`) — the model/view split
@@ -199,8 +204,9 @@ pub use armor::{
 };
 pub use armor_wear::{ArmorBroken, wear_armor};
 pub use battle::{
-    BattleInProgress, BattleReady, BattleSimPlugin, PlayerFaction, SetupBattleRequested,
-    TeardownBattleRequested, setup_battle_on_request, teardown_battle_on_request,
+    BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleSimPlugin, BattleWon,
+    PlayerFaction, SetupBattleRequested, TeardownBattleRequested, check_outcome,
+    setup_battle_on_request, teardown_battle_on_request,
 };
 pub use bleed::{Bleeding, tick_bleed};
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};

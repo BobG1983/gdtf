@@ -51,15 +51,18 @@
 //! NEVER touches [`CombatTuning`](crate::tuning::CombatTuning) — that is E10.4's
 //! persistent `Load` resource. Render-free: no renderer, window, presenter, or pixel.
 
-use bevy::prelude::{
-    App, Commands, Deref, IntoScheduleConfigs, Message, MessageReader, MessageWriter, Plugin,
-    Resource, Update, error, resource_exists,
+use bevy::{
+    platform::collections::HashSet,
+    prelude::{
+        App, Commands, Deref, IntoScheduleConfigs, Local, Message, MessageReader, MessageWriter,
+        Plugin, Query, Res, Resource, Update, error, resource_exists,
+    },
 };
 
 use crate::{
     acts::SimActsPlugin,
     cover::CoverLedger,
-    ganger::Faction,
+    ganger::{Faction, LifeState},
     occupancy::OccupancyGrid,
     occupancy_sync::{OccupancyMaintenancePlugin, SimSystems},
     rng::{BattleSeed, SimRng},
@@ -114,6 +117,37 @@ pub struct TeardownBattleRequested;
 /// or absent signal. A unit-payload struct — the signal's identity IS the message.
 #[derive(Message, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct BattleReady;
+
+/// The **battle-won** signal — every enemy gang fielded at setup is out of the fight
+/// (all `Dead`/`Downed`) while a player ganger still stands (GTW-237). The win condition
+/// is design canon — see the "Battle outcome (win / loss)" beat in `docs/combat/combat.md`.
+///
+/// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) the
+/// [`check_outcome`] census writes the first time the win condition holds (then latches,
+/// so it fires at most once per battle). A zero-field unit struct — its identity IS the
+/// signal, so (like [`BattleReady`]/[`BattleInProgress`]) the no-bare-types rule, which
+/// wraps domain *values*, does not apply. This is a SIM SIGNAL only: the sim OWNS the
+/// buffer; it does NOT drive any `gdtf_app` state, despawn anything, end the battle, or
+/// touch the presenter — the app-side consumer that ends the battle is GTW-239.
+#[derive(Message, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct BattleWon;
+
+/// The **battle-lost** signal — every player ganger fielded at setup is out of the fight
+/// (all `Dead`/`Downed`), so the player gang is wiped (GTW-237). The loss condition (and
+/// the mutual-wipe = loss resolution below) is design canon — see the "Battle outcome
+/// (win / loss)" beat in `docs/combat/combat.md`.
+///
+/// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) the
+/// [`check_outcome`] census writes the first time the loss condition holds (then latches,
+/// so it fires at most once per battle). A zero-field unit struct — its identity IS the
+/// signal, so (like [`BattleReady`]/[`BattleInProgress`]) the no-bare-types rule, which
+/// wraps domain *values*, does not apply. This is a SIM SIGNAL only: the sim OWNS the
+/// buffer; it does NOT drive any `gdtf_app` state, despawn anything, end the battle, or
+/// touch the presenter — the app-side consumer that ends the battle is GTW-239. A mutual
+/// wipe (last enemy and last player fall together) resolves HERE, not as a win:
+/// [`check_outcome`]'s win arm requires a surviving player, so a mutual wipe is a LOSS.
+#[derive(Message, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct BattleLost;
 
 /// The **battle-active** witness — present exactly while a battle is in progress, the
 /// gate the [`SimSystems::Simulate`] band's bundled runtime keys off (GTW-212).
@@ -172,6 +206,68 @@ impl PlayerFaction {
     }
 }
 
+/// The **battle roster** — the set of [`Faction`]s that fielded ≥1 ganger at setup
+/// (GTW-237).
+///
+/// A named newtype [`Resource`] (no-bare-types: it carries a domain value — which gangs
+/// took the field — so it wraps the fielded-factions set in a real named type, NOT a bare
+/// [`HashSet`]). The collection it owns is a [`HashSet`]`<`[`Faction`]`>` ([`Faction`] is
+/// [`Copy`]/[`Eq`]/[`Hash`]). Private inner; the small accessors the census needs read it
+/// back (never a hand-written `impl Deref`, because the census asks roster QUESTIONS, not
+/// for the raw set).
+///
+/// It is the source of the "are there enemy gangers?" / "was the player fielded?"
+/// EXISTENCE facts the [`check_outcome`] census splits on — grounded in the gangs FIELDED
+/// at setup, NOT in a per-frame entity scan. The earlier victory-only design fired on
+/// "≥1 non-player entity is in the query this frame", which couples the win to dead
+/// gangers PERSISTING as entities (true today — the sim has no despawn-on-death — but it
+/// would silently break if despawn is ever added). Grounding existence in the roster makes
+/// the win/loss robust regardless of whether dead gangers are ever despawned: the live
+/// [`LifeState`] scan answers only "is any of them still up?".
+///
+/// **Lifetime tracks [`BattleInProgress`]:** captured on the same successful-setup `Ok`
+/// path that inserts [`BattleInProgress`] + [`PlayerFaction`] (NEVER on `Err` —
+/// fail-closed) and removed alongside on teardown, so it is present for exactly the
+/// battle-active window. The [`SimSystems::Simulate`]-band census therefore reads its
+/// `Res<BattleRoster>` panic-free (the band is gated on
+/// [`resource_exists`]`::<`[`BattleInProgress`]`>` — the identical window;
+/// `bevy-traps.md` #1).
+///
+/// A faction SET, not per-faction counts — sufficient for the binary win/loss existence
+/// checks. If a later procgen-roster slice (GTW-243) needs counts, it can enrich.
+///
+/// Grounding existence in the fielded roster (not a live scan) is part of the battle-outcome
+/// canon — see the "Battle outcome (win / loss)" beat in `docs/combat/combat.md`.
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct BattleRoster(HashSet<Faction>);
+
+impl BattleRoster {
+    /// Build the battle roster from the [`Faction`]s that fielded a ganger.
+    ///
+    /// The public constructor (house style) so the setup can build a `BattleRoster` from
+    /// the situation's gangers (each [`GangerSpawn::faction`](crate::situation::GangerSpawn))
+    /// without reaching the private field.
+    #[must_use]
+    pub fn new(factions: impl IntoIterator<Item = Faction>) -> Self {
+        Self(factions.into_iter().collect())
+    }
+
+    /// Whether the `player` gang was fielded at setup — the players-fielded existence
+    /// fact the loss census splits on.
+    #[must_use]
+    pub fn has_player(&self, player: Faction) -> bool {
+        self.0.contains(&player)
+    }
+
+    /// Whether ≥1 fielded faction is NOT the `player` gang — the enemies-fielded existence
+    /// fact the win census splits on. An empty enemy roster (player-only / no fielded
+    /// faction) is `false`, so the census never wins on a degenerate roster.
+    #[must_use]
+    pub fn has_enemy_of(&self, player: Faction) -> bool {
+        self.0.iter().any(|&faction| faction != player)
+    }
+}
+
 /// **Setup** the battle on [`SetupBattleRequested`] — seed the [`SimRng`] and run
 /// [`setup_battle`], signalling [`BattleReady`] on success (E10.5).
 ///
@@ -184,12 +280,13 @@ impl PlayerFaction {
 ///    [`VerticalLinkGraph`]) and the spawned ganger entities land in the world, the
 ///    [`BattleInProgress`] witness is inserted (the battle-active tag the
 ///    [`SimSystems::Simulate`] band gates on), the [`PlayerFaction`] is inserted seeded
-///    from [`Situation::player_faction`](crate::situation::Situation) (its lifetime
-///    tracking [`BattleInProgress`]), and a [`BattleReady`] is written; on `Err` the
-///    typed [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) is surfaced
-///    via [`error!`] and NEITHER [`BattleInProgress`] / [`PlayerFaction`] NOR
-///    [`BattleReady`] is written — the app never advances on a bad battle, and the gate
-///    never opens. NO `unwrap`/`expect`/`panic`.
+///    from [`Situation::player_faction`](crate::situation::Situation), the
+///    [`BattleRoster`] is captured from the situation's fielded gangers' factions (both
+///    sharing [`BattleInProgress`]'s lifetime), and a [`BattleReady`] is written; on `Err`
+///    the typed [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) is surfaced
+///    via [`error!`] and NEITHER [`BattleInProgress`] / [`PlayerFaction`] /
+///    [`BattleRoster`] NOR [`BattleReady`] is written — the app never advances on a bad
+///    battle, and the gate never opens. NO `unwrap`/`expect`/`panic`.
 ///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
 /// PERSISTENT `Load` resource, present throughout the battle for the acts to read.
@@ -209,11 +306,19 @@ pub fn setup_battle_on_request(
             Ok(_setup) => {
                 // The battle is live: insert the gate witness (alongside the four
                 // setup_battle grids + the seeded SimRng) so the Simulate band's bundled
-                // runtime turns on, seed the PlayerFaction from the situation (its lifetime
-                // tracks BattleInProgress — same Ok path, removed together on teardown),
+                // runtime turns on, seed the PlayerFaction from the situation, capture the
+                // BattleRoster from the fielded gangers' factions (both share the
+                // BattleInProgress lifetime — same Ok path, removed together on teardown),
                 // then signal BattleReady. All happen ONLY on Ok.
                 commands.insert_resource(BattleInProgress);
                 commands.insert_resource(PlayerFaction::new(request.situation.player_faction));
+                commands.insert_resource(BattleRoster::new(
+                    request
+                        .situation
+                        .gangers
+                        .iter()
+                        .map(|ganger| ganger.faction),
+                ));
                 ready.write(BattleReady);
             }
             Err(invalid) => {
@@ -234,9 +339,9 @@ pub fn setup_battle_on_request(
 /// [`SimRng`], the four [`setup_battle`]-inserted resources ([`CoverLedger`] /
 /// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`]), the
 /// [`BattleInProgress`] witness (closing the [`SimSystems::Simulate`] gate so the
-/// bundled runtime goes inert again), and the [`PlayerFaction`] (its lifetime tracks
-/// [`BattleInProgress`], so it is removed in the same teardown). These resources are
-/// BATTLE-lifetime: the app
+/// bundled runtime goes inert again), the [`PlayerFaction`], and the [`BattleRoster`]
+/// (both lifetimes track [`BattleInProgress`], so they are removed in the same teardown).
+/// These resources are BATTLE-lifetime: the app
 /// sends this trigger only at the battle boundary (its `OnExit(GameState::BattleScape)`),
 /// so they survive the whole battle for the E10.6 acts before being cleaned
 /// (`bevy-traps.md` #1 at the correct state level).
@@ -267,6 +372,86 @@ pub fn teardown_battle_on_request(
         // Remove the PlayerFaction alongside, so its lifetime stays identical to
         // BattleInProgress (the later Res<PlayerFaction> readers gate on that window).
         commands.remove_resource::<PlayerFaction>();
+        // Remove the BattleRoster alongside, so its lifetime stays identical to
+        // BattleInProgress (the Simulate-band census reads it within that window).
+        commands.remove_resource::<BattleRoster>();
+    }
+}
+
+/// **Check the battle outcome** — emit [`BattleWon`] when every fielded enemy ganger is
+/// out of the fight (a player still up), and [`BattleLost`] when every player ganger is
+/// out (GTW-237).
+///
+/// The win/loss conditions, the "out of the fight" = `Downed`/`Dead` rule, the mutual-wipe
+/// = loss resolution, and the roster-grounded (not scan-grounded) existence test are
+/// design canon — see the "Battle outcome (win / loss)" beat in `docs/combat/combat.md`
+/// and the "out of the fight" glossary entry. This system is that canon's sim signal.
+///
+/// The sim's roster-grounded outcome census. A query/resource/local system (NO `&mut
+/// World` — `bevy-traps.md` #7). It runs `.in_set(`[`SimSystems::Simulate`]`)`, the band
+/// gated on [`resource_exists`]`::<`[`BattleInProgress`]`>`, so it is INERT outside a live
+/// battle and its [`Res<PlayerFaction>`] + [`Res<BattleRoster>`] reads (both
+/// battle-lifetime) are panic-free (`bevy-traps.md` #1).
+///
+/// Two sources, kept separate by design:
+///
+/// - **Existence** comes from the [`BattleRoster`] (the gangs fielded at setup), NOT a
+///   per-frame entity scan: `enemies_fielded = roster.has_enemy_of(*player)`,
+///   `players_fielded = roster.has_player(*player)`. This is the bug-2 fix — the win is
+///   robust regardless of whether dead gangers are ever despawned.
+/// - **Liveness** comes from the live [`Query`]`<(&`[`Faction`]`, &`[`LifeState`]`)>`: a
+///   ganger is "up" iff [`LifeState::Alive`] ([`LifeState::Downed`] AND [`LifeState::Dead`]
+///   both count OUT, per the incapacitated semantics). `any_enemy_up` =
+///   ∃ a non-player Alive ganger; `any_player_up` = ∃ a player Alive ganger.
+///
+/// Emits [`BattleWon`] iff `enemies_fielded && !any_enemy_up && any_player_up` and not
+/// already emitted (then latches its [`Local<bool>`]); emits [`BattleLost`] iff
+/// `players_fielded && !any_player_up` and not already emitted (then latches). The two
+/// [`Local<bool>`] latches keep each outcome to at most ONE emit per battle (no per-frame
+/// spam). Requiring a surviving player for the WIN makes the two outcomes mutually
+/// exclusive — a MUTUAL WIPE (last enemy and last player fall together) resolves to
+/// [`BattleLost`], not [`BattleWon`]. Player gangers are never inspected for the win; enemy
+/// gangers never for the loss.
+pub fn check_outcome(
+    mut won: MessageWriter<BattleWon>,
+    mut lost: MessageWriter<BattleLost>,
+    gangers: Query<(&Faction, &LifeState)>,
+    player: Res<PlayerFaction>,
+    roster: Res<BattleRoster>,
+    mut won_emitted: Local<bool>,
+    mut lost_emitted: Local<bool>,
+) {
+    let player = **player;
+
+    // Existence from the ROSTER (the gangs fielded at setup), not the live scan.
+    let enemies_fielded = roster.has_enemy_of(player);
+    let players_fielded = roster.has_player(player);
+
+    // Liveness from the live scan: "up" iff Alive (Downed AND Dead both count OUT).
+    let mut any_enemy_up = false;
+    let mut any_player_up = false;
+    for (&faction, &life) in &gangers {
+        if life != LifeState::Alive {
+            continue;
+        }
+        if faction == player {
+            any_player_up = true;
+        } else {
+            any_enemy_up = true;
+        }
+    }
+
+    // WIN: every fielded enemy is out AND a player still stands (so a mutual wipe is a
+    // LOSS, not a win) — at most once per battle.
+    if enemies_fielded && !any_enemy_up && any_player_up && !*won_emitted {
+        won.write(BattleWon);
+        *won_emitted = true;
+    }
+    // LOSS: every player ganger is out — at most once per battle. Enemy liveness is
+    // irrelevant: the player losing is a loss whether or not enemies remain.
+    if players_fielded && !any_player_up && !*lost_emitted {
+        lost.write(BattleLost);
+        *lost_emitted = true;
     }
 }
 
@@ -281,9 +466,13 @@ pub fn teardown_battle_on_request(
 ///   six `*Requested` buffers + their per-act dispatch systems) — so the app adds
 ///   only THIS plugin to get the full sim runtime;
 /// - [`add_message`](App::add_message)s the three lifecycle types
-///   ([`SetupBattleRequested`] / [`TeardownBattleRequested`] / [`BattleReady`])
-///   exactly once each (`bevy-traps.md` #5 — an unregistered buffer fails a
-///   [`MessageReader`]'s param validation); and
+///   ([`SetupBattleRequested`] / [`TeardownBattleRequested`] / [`BattleReady`]) plus the
+///   two GTW-237 outcome witnesses ([`BattleWon`] / [`BattleLost`]) exactly once each
+///   (`bevy-traps.md` #5 — an unregistered buffer fails a [`MessageReader`]'s param
+///   validation);
+/// - adds the roster-grounded [`check_outcome`] census `.in_set(`[`SimSystems::Simulate`]`)`
+///   — so it rides the same [`BattleInProgress`] gate as the bundled runtime (inert and
+///   panic-free outside a live battle); and
 /// - adds [`setup_battle_on_request`] + [`teardown_battle_on_request`] to [`Update`],
 ///   ordered around the [`SimSystems::Simulate`] band (setup `.before`, teardown
 ///   `.after`), so the battle-lifetime resources are created before the bundled
@@ -321,6 +510,10 @@ impl Plugin for BattleSimPlugin {
             .add_message::<SetupBattleRequested>()
             .add_message::<TeardownBattleRequested>()
             .add_message::<BattleReady>()
+            // The roster-grounded outcome witnesses the Simulate-band census emits (GTW-237;
+            // bevy-traps.md #5 — an unregistered buffer fails a MessageReader's validation).
+            .add_message::<BattleWon>()
+            .add_message::<BattleLost>()
             // Gate the whole Simulate band (the bundled dispatch + occupancy systems)
             // on the setup-inserted BattleInProgress witness — the purpose-built
             // "a battle is active" tag (GTW-212), replacing the incidental OccupancyGrid
@@ -330,6 +523,11 @@ impl Plugin for BattleSimPlugin {
                 Update,
                 SimSystems::Simulate.run_if(resource_exists::<BattleInProgress>),
             )
+            // The roster-grounded outcome census joins the gated Simulate band, so it is
+            // INERT (and its Res<PlayerFaction>/Res<BattleRoster> reads panic-free) outside
+            // a live battle — same window as BattleInProgress (GTW-237). No configure_sets
+            // (the set is owned upstream by OccupancyMaintenancePlugin).
+            .add_systems(Update, check_outcome.in_set(SimSystems::Simulate))
             // The lifecycle drivers run UNCONDITIONALLY (outside the gated band): setup
             // before the band (it creates the witness), teardown after (it removes it).
             .add_systems(
@@ -470,6 +668,80 @@ mod tests {
             .resource_mut::<Messages<BattleReady>>()
             .drain()
             .count()
+    }
+
+    /// Drain the `BattleWon` buffer and return how many were emitted since the last drain
+    /// — the win-census probe (mirrors `drain_battle_ready`).
+    fn drain_battle_won(app: &mut App) -> usize {
+        app.world_mut()
+            .resource_mut::<Messages<BattleWon>>()
+            .drain()
+            .count()
+    }
+
+    /// Drain the `BattleLost` buffer and return how many were emitted since the last drain
+    /// — the loss-census probe (mirrors `drain_battle_ready`).
+    fn drain_battle_lost(app: &mut App) -> usize {
+        app.world_mut()
+            .resource_mut::<Messages<BattleLost>>()
+            .drain()
+            .count()
+    }
+
+    /// A three-ganger fixture: one player ganger (`faction 0`) + two enemy gangers
+    /// (`faction 1`) — the AC1/AC2/AC4/AC6(b) win-side fixture (`PlayerFaction(0)` from the
+    /// `player_faction` default). Link-free, so `setup_battle` validates trivially.
+    fn one_player_two_enemy_situation() -> Situation {
+        Situation {
+            gangers: vec![
+                ganger_at(key(5, 6, 0), 0),
+                ganger_at(key(7, 8, 0), 1),
+                ganger_at(key(9, 10, 0), 1),
+            ],
+            ..Situation::new()
+        }
+    }
+
+    /// A player-only fixture: every ganger is `faction 0` — the AC6(a) degenerate /
+    /// empty-enemy-roster fixture (`has_enemy_of` is false, so the census never wins).
+    fn player_only_situation() -> Situation {
+        Situation {
+            gangers: vec![ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 0)],
+            ..Situation::new()
+        }
+    }
+
+    /// Set the [`LifeState`] of every ganger whose [`Faction`] is `faction` to `to`, via a
+    /// `world_mut()` query in the test body (bevy-traps #7's headless-test carve-out — NOT
+    /// a registered system / helper taking `&mut World`). The accepted way to drive a
+    /// ganger out of the fight without re-running the damage pipeline.
+    fn set_faction_life_state(app: &mut App, faction: u8, to: LifeState) {
+        let target = Faction::new(faction);
+        let world = app.world_mut();
+        let mut query = world.query::<(&Faction, &mut LifeState)>();
+        for (&fac, mut life) in query.iter_mut(world) {
+            if fac == target {
+                *life = to;
+            }
+        }
+    }
+
+    /// Set exactly ONE `Alive` ganger of `faction` to `to` (the first the query yields),
+    /// leaving the rest untouched — the AC2 "only one enemy down, the other still Alive"
+    /// driver. Returns whether a ganger was found and set (so the caller can assert the
+    /// fixture is sound). Only flips an `Alive` ganger so repeated calls down DISTINCT
+    /// gangers (never re-touch one already set).
+    fn set_one_faction_ganger_life_state(app: &mut App, faction: u8, to: LifeState) -> bool {
+        let target = Faction::new(faction);
+        let world = app.world_mut();
+        let mut query = world.query::<(&Faction, &mut LifeState)>();
+        for (&fac, mut life) in query.iter_mut(world) {
+            if fac == target && *life == LifeState::Alive {
+                *life = to;
+                return true;
+            }
+        }
+        false
     }
 
     // === AC1 — BattleSimPlugin bundles the runtime + registers the three lifecycle
@@ -974,6 +1246,336 @@ mod tests {
             Some(ready),
             Some(BattleReady),
             "BattleReady is a unit signal",
+        );
+    }
+
+    // === GTW-237 — the roster-grounded WIN/LOSS outcome census (check_outcome). The
+    // fixtures go through the REAL setup (SetupBattleRequested seeds PlayerFaction +
+    // BattleRoster) and drive LifeState via a world_mut() query (bevy-traps #7 carve-out).
+    // ===
+
+    /// AC1 — all enemies down + a live player → exactly ONE `BattleWon`, zero `BattleLost`.
+    #[test]
+    fn all_enemies_down_with_live_player_emits_one_battle_won_and_no_loss() {
+        let mut app = headless_app();
+        app.world_mut().write_message(SetupBattleRequested::new(
+            one_player_two_enemy_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+        // Drain the setup-frame census output (no outcome yet — all gangers Alive).
+        let _ = drain_battle_won(&mut app);
+        let _ = drain_battle_lost(&mut app);
+
+        // One enemy Dead, the other Downed (both count OUT); the faction-0 player stays
+        // Alive. The setter only flips Alive gangers, so the two calls down DISTINCT enemies.
+        assert!(
+            set_one_faction_ganger_life_state(&mut app, 1, LifeState::Dead),
+            "precondition: a first enemy ganger to set Dead",
+        );
+        assert!(
+            set_one_faction_ganger_life_state(&mut app, 1, LifeState::Downed),
+            "precondition: a second (still-Alive) enemy ganger to set Downed",
+        );
+        app.update();
+
+        assert_eq!(
+            drain_battle_won(&mut app),
+            1,
+            "all enemies out (Dead + Downed) with a live player must emit exactly one BattleWon",
+        );
+        assert_eq!(
+            drain_battle_lost(&mut app),
+            0,
+            "a player still standing must emit NO BattleLost",
+        );
+    }
+
+    /// AC2 — any enemy still `Alive` → NO `BattleWon`.
+    #[test]
+    fn any_enemy_alive_emits_no_battle_won() {
+        let mut app = headless_app();
+        app.world_mut().write_message(SetupBattleRequested::new(
+            one_player_two_enemy_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+        let _ = drain_battle_won(&mut app);
+
+        // Only ONE enemy Dead; the other faction-1 ganger stays Alive.
+        assert!(
+            set_one_faction_ganger_life_state(&mut app, 1, LifeState::Dead),
+            "precondition: the fixture fielded ≥1 enemy ganger to set Dead",
+        );
+        app.update();
+
+        assert_eq!(
+            drain_battle_won(&mut app),
+            0,
+            "with an enemy still Alive the census must NOT win",
+        );
+    }
+
+    /// AC3 — all players down → exactly ONE `BattleLost`, enemies still Alive → no
+    /// `BattleWon`.
+    #[test]
+    fn all_players_down_emits_one_battle_lost_and_no_win() {
+        let mut app = headless_app();
+        app.world_mut().write_message(SetupBattleRequested::new(
+            two_ganger_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+        let _ = drain_battle_won(&mut app);
+        let _ = drain_battle_lost(&mut app);
+
+        // The single player ganger (faction 0) goes Dead; the faction-1 enemy stays Alive.
+        set_faction_life_state(&mut app, 0, LifeState::Dead);
+        app.update();
+
+        assert_eq!(
+            drain_battle_lost(&mut app),
+            1,
+            "all players out must emit exactly one BattleLost",
+        );
+        assert_eq!(
+            drain_battle_won(&mut app),
+            0,
+            "an enemy still Alive (and the player wiped) must emit NO BattleWon",
+        );
+    }
+
+    /// AC4 — at-most-once per outcome (no per-frame spam): the win latch and the loss
+    /// latch each suppress every emit after the first.
+    #[test]
+    fn outcomes_emit_at_most_once_per_battle() {
+        // Win latch: the AC1 all-enemies-down fixture.
+        let mut win_app = headless_app();
+        win_app.world_mut().write_message(SetupBattleRequested::new(
+            one_player_two_enemy_situation(),
+            BattleSeed::new(SEED),
+        ));
+        win_app.update();
+        let _ = drain_battle_won(&mut win_app);
+
+        set_faction_life_state(&mut win_app, 1, LifeState::Dead);
+        win_app.update();
+        assert_eq!(
+            drain_battle_won(&mut win_app),
+            1,
+            "the first all-enemies-down frame emits exactly one BattleWon",
+        );
+        // Several more frames WITHOUT draining: the latch suppresses every further emit.
+        for _ in 0..3 {
+            win_app.update();
+        }
+        assert_eq!(
+            drain_battle_won(&mut win_app),
+            0,
+            "the win latch must suppress all further BattleWon (no per-frame spam)",
+        );
+
+        // Loss latch: the AC3 all-players-down fixture.
+        let mut loss_app = headless_app();
+        loss_app
+            .world_mut()
+            .write_message(SetupBattleRequested::new(
+                two_ganger_situation(),
+                BattleSeed::new(SEED),
+            ));
+        loss_app.update();
+        let _ = drain_battle_lost(&mut loss_app);
+
+        set_faction_life_state(&mut loss_app, 0, LifeState::Dead);
+        loss_app.update();
+        assert_eq!(
+            drain_battle_lost(&mut loss_app),
+            1,
+            "the first all-players-down frame emits exactly one BattleLost",
+        );
+        for _ in 0..3 {
+            loss_app.update();
+        }
+        assert_eq!(
+            drain_battle_lost(&mut loss_app),
+            0,
+            "the loss latch must suppress all further BattleLost (no per-frame spam)",
+        );
+    }
+
+    /// AC5 — inert outside a live battle: no setup means no `BattleInProgress` /
+    /// `PlayerFaction` / `BattleRoster`, so the Simulate-gated census never runs and both
+    /// buffers drain to 0.
+    #[test]
+    fn census_is_inert_without_a_live_battle() {
+        let mut app = headless_app();
+        // No SetupBattleRequested — the battle-lifetime resources are all absent.
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_none(),
+            "precondition: no setup means no BattleInProgress",
+        );
+        assert!(
+            app.world().get_resource::<BattleRoster>().is_none(),
+            "precondition: no setup means no BattleRoster",
+        );
+        assert!(
+            app.world().get_resource::<PlayerFaction>().is_none(),
+            "precondition: no setup means no PlayerFaction",
+        );
+
+        for _ in 0..3 {
+            app.update();
+        }
+        assert_eq!(
+            drain_battle_won(&mut app),
+            0,
+            "the Simulate gate keeps check_outcome from running, so NO BattleWon",
+        );
+        assert_eq!(
+            drain_battle_lost(&mut app),
+            0,
+            "the Simulate gate keeps check_outcome from running, so NO BattleLost",
+        );
+    }
+
+    /// AC6(a) — roster-grounded, NOT scan-grounded: a player-only situation (empty enemy
+    /// roster) never wins, even though every fielded ganger could be "all non-player down"
+    /// under the old scan (there are no enemies to be down).
+    #[test]
+    fn empty_enemy_roster_never_wins() {
+        let mut app = headless_app();
+        app.world_mut().write_message(SetupBattleRequested::new(
+            player_only_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+
+        // has_enemy_of(player) is false for a player-only roster — no false win.
+        assert_eq!(
+            drain_battle_won(&mut app),
+            0,
+            "a player-only (empty enemy) roster must never emit BattleWon (has_enemy_of false)",
+        );
+        // And no loss either: the player gang is fully Alive.
+        assert_eq!(
+            drain_battle_lost(&mut app),
+            0,
+            "a fully-Alive player gang must not emit BattleLost",
+        );
+    }
+
+    /// AC6(b) — the converse: with enemies fielded and all of them down (corpses persist as
+    /// entities, the sim has no despawn-on-death), the win STILL fires — existence comes
+    /// from the roster, so the win is robust regardless of despawn. (Shares the AC1 setup;
+    /// asserts the roster, not the scan, is what grounds the win.)
+    #[test]
+    fn wiped_out_enemy_gang_still_wins_from_the_roster() {
+        let mut app = headless_app();
+        app.world_mut().write_message(SetupBattleRequested::new(
+            one_player_two_enemy_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+        let _ = drain_battle_won(&mut app);
+
+        // The enemy roster IS fielded (the win cannot come from an empty roster) ...
+        let roster = app.world().get_resource::<BattleRoster>().cloned();
+        assert_eq!(
+            roster,
+            Some(BattleRoster::new([Faction::new(0), Faction::new(1)])),
+            "the roster records both fielded factions",
+        );
+        // ... and the enemy corpses persist as entities after they go down.
+        set_faction_life_state(&mut app, 1, LifeState::Dead);
+        let world = app.world_mut();
+        let mut enemy_corpses = world.query::<(&Faction, &LifeState)>();
+        let dead_enemies = enemy_corpses
+            .iter(world)
+            .filter(|&(&fac, &life)| fac == Faction::new(1) && life == LifeState::Dead)
+            .count();
+        assert_eq!(
+            dead_enemies, 2,
+            "both enemy gangers persist as Dead entities (no despawn)"
+        );
+
+        app.update();
+        assert_eq!(
+            drain_battle_won(&mut app),
+            1,
+            "with enemies fielded and all down, the roster-grounded win still fires",
+        );
+    }
+
+    /// AC7 — `BattleRoster` lifetime tracks `BattleInProgress`: present after a successful
+    /// setup (its set == the situation's distinct factions), absent after teardown
+    /// (alongside `BattleInProgress` / `PlayerFaction`).
+    #[test]
+    fn battle_roster_lifetime_tracks_battle_in_progress() {
+        let mut app = headless_app();
+
+        // ABSENT before any setup.
+        assert!(
+            app.world().get_resource::<BattleRoster>().is_none(),
+            "BattleRoster must be absent before any setup",
+        );
+
+        // PRESENT after a successful setup — the set equals the distinct ganger factions.
+        app.world_mut().write_message(SetupBattleRequested::new(
+            one_player_two_enemy_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+        let roster = app.world().get_resource::<BattleRoster>().cloned();
+        assert_eq!(
+            roster,
+            Some(BattleRoster::new([Faction::new(0), Faction::new(1)])),
+            "setup must capture a BattleRoster of the situation's distinct ganger factions",
+        );
+
+        // ABSENT after a teardown — alongside BattleInProgress + PlayerFaction.
+        app.world_mut().write_message(TeardownBattleRequested);
+        app.update();
+        assert!(
+            app.world().get_resource::<BattleRoster>().is_none(),
+            "teardown must remove the BattleRoster (lifetime identical to BattleInProgress)",
+        );
+        assert!(
+            app.world().get_resource::<BattleInProgress>().is_none(),
+            "teardown must remove BattleInProgress (the shared-lifetime witness)",
+        );
+        assert!(
+            app.world().get_resource::<PlayerFaction>().is_none(),
+            "teardown must remove PlayerFaction (the shared-lifetime resource)",
+        );
+    }
+
+    /// AC8 — mutual wipe → `BattleLost`, not `BattleWon` (the flagged mutual-exclusion
+    /// rule): enemies AND players all set OUT in the same update emit one loss, zero wins.
+    #[test]
+    fn mutual_wipe_resolves_to_battle_lost_not_won() {
+        let mut app = headless_app();
+        app.world_mut().write_message(SetupBattleRequested::new(
+            one_player_two_enemy_situation(),
+            BattleSeed::new(SEED),
+        ));
+        app.update();
+        let _ = drain_battle_won(&mut app);
+        let _ = drain_battle_lost(&mut app);
+
+        // Everyone falls in the SAME frame: the player gang Dead, the enemy gang Downed.
+        set_faction_life_state(&mut app, 0, LifeState::Dead);
+        set_faction_life_state(&mut app, 1, LifeState::Downed);
+        app.update();
+
+        assert_eq!(
+            drain_battle_lost(&mut app),
+            1,
+            "a mutual wipe must emit exactly one BattleLost",
+        );
+        assert_eq!(
+            drain_battle_won(&mut app),
+            0,
+            "a mutual wipe must emit NO BattleWon (the win requires a surviving player)",
         );
     }
 }

@@ -4,8 +4,9 @@ Necromunda vocabulary is the house style. **Code identifiers must follow it** â€
 
 | Term | Meaning |
 | ------ | --------- |
-| **Gang** | A faction / the player's roster as a unit. |
+| **Gang** | A faction / the player's roster as a unit. One gang is the **player faction** (the gang the human controls); every other fielded gang is an **enemy**. |
 | **Ganger** | An individual combatant. *Not* "unit" or "soldier". Named, persistent, mortal. |
+| **Out of the fight** | A ganger who is `Downed` or `Dead` â€” incapacitated, no longer counting toward keeping their gang in the battle (see [combat/wounds-and-roster.md](combat/wounds-and-roster.md) for the two-pool downing/death model). A gang is defeated when all its gangers are out of the fight; the player wins / loses on this (see the battle-outcome beat in [combat/combat.md](combat/combat.md)). |
 | **Turf** | A controlled region on the geoscape. |
 | **Grudge** | Recorded enmity between gangs/fighters with memory. |
 | **Bottle** | A gang voluntarily routing/withdrawing from a fight (Necromunda morale). |
