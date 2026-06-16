@@ -52,18 +52,26 @@ use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, WorldCamera, cell_to_world};
 use gdtf_battle_sim::{
     BattleInProgress, Cell, CellLevel, GRID_HEIGHT, GRID_WIDTH, Level, OccupancyGrid,
+    acts::{FireRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested},
+    tuning::CombatTuning,
 };
 
 pub mod cycle;
+pub mod fire_mode;
+pub mod fire_surface;
 pub mod intent;
 pub mod keybinds;
 pub mod keyboard;
 pub mod selection;
 
 pub use cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
-pub use intent::{ActIntent, LevelStep, PendingActIntent, dispatch_act_intents, step_level};
+pub use fire_mode::{SelectedFireMode, next_fire_mode, sync_fire_mode_on_select};
+pub use fire_surface::fire_on_click;
+pub use intent::{
+    ActIntent, ActWriters, LevelStep, PendingActIntent, dispatch_act_intents, step_level,
+};
 pub use keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds};
-pub use keyboard::{level_keys, select_clear_key};
+pub use keyboard::{fire_mode_cycle_key, level_keys, posture_keys, select_clear_key};
 pub use selection::{
     SelectedShooter, SelectionHighlight, select_on_click, update_selection_highlight,
 };
@@ -116,13 +124,17 @@ const HIGHLIGHT_TINT: Color = Color::srgba(1.0, 0.95, 0.6, 0.35);
 /// register. On `build` it:
 ///
 /// - inserts the [`GdtfBattleInputActive`] marker and initialises the [`HoveredCell`]
-///   (S7), [`SelectedShooter`], and [`PendingActIntent`] resources (so a reader never
-///   hits a missing resource);
+///   (S7), [`SelectedShooter`], [`SelectedFireMode`] (222b), and [`PendingActIntent`]
+///   resources (so a reader never hits a missing resource), and registers the four
+///   `*Requested` message buffers the drain emits (222b);
 /// - registers the S7 picking + hover-highlight systems
 ///   ([`pick_hovered_cell`] / [`update_hover_highlight`]);
 /// - registers the S8 selection ([`select_on_click`] / [`update_selection_highlight`]),
-///   the keyboard press surface ([`level_keys`] / [`select_clear_key`]), and the ONE
-///   intent drain ([`dispatch_act_intents`]); and
+///   the 222b fire-mode default-on-select ([`sync_fire_mode_on_select`]), the keyboard
+///   press surface (S8 [`level_keys`] / [`select_clear_key`] + 222b [`posture_keys`] /
+///   [`fire_mode_cycle_key`]), the 222b left-click FIRE surface ([`fire_on_click`]),
+///   and the ONE intent drain ([`dispatch_act_intents`]) that emits the act
+///   `*Requested` for every queued act-bearing intent; and
 /// - loads the data-driven keybind table ([`load_keybinds`] / [`resolve_keybinds`])
 ///   via the GTW-136 [`RonAsset<T>`](gdtf_assets::RonAsset) path, gated on an
 ///   [`AssetServer`] so a `MinimalPlugins` headless app no-ops (the presenter's
@@ -145,7 +157,20 @@ impl Plugin for GdtfBattleInputPlugin {
         app.insert_resource(GdtfBattleInputActive)
             .init_resource::<HoveredCell>()
             .init_resource::<SelectedShooter>()
+            .init_resource::<SelectedFireMode>()
             .init_resource::<PendingActIntent>()
+            // The seam EMITS these `*Requested` messages — register the four buffers
+            // the ONE `dispatch_act_intents` drain writes into so its `MessageWriter`s
+            // pass param validation whether or not the sim's `SimActsPlugin` (the
+            // READER side) is present (`bevy-traps.md` #4 — a `MessageWriter<M>` needs
+            // its `Messages<M>` buffer). `add_message` is IDEMPOTENT (it no-ops if the
+            // buffer already exists), so this coexists with E10's `BattleSimPlugin`
+            // also adding them via `SimActsPlugin` — this slice still adds NO dispatch
+            // SYSTEM (it emits only; the sim consumes).
+            .add_message::<FireRequested>()
+            .add_message::<SetStanceRequested>()
+            .add_message::<SetAimingRequested>()
+            .add_message::<SetFacingRequested>()
             .add_systems(
                 Update,
                 (
@@ -162,9 +187,16 @@ impl Plugin for GdtfBattleInputPlugin {
             // validation (`bevy-traps.md` #1). `select_on_click` also reads
             // `Res<ButtonInput<MouseButton>>`, which `MinimalPlugins` does NOT insert
             // (no `InputPlugin`), so it gates on that buffer too.
+            //
+            // Ordered `.before(pick_hovered_cell)` (`bevy-traps.md` #3): `select_on_click`
+            // (and `fire_on_click`) read the `HoveredCell` BEFORE this update's
+            // `pick_hovered_cell` rewrites it — i.e. they act on the cell resolved last
+            // update. For a click the cursor is effectively stationary across one frame,
+            // so the one-frame read is exact; and it makes the consume->resolve order
+            // DETERMINISTIC (no flaky pick-vs-consumer race).
             .add_systems(
                 Update,
-                select_on_click.run_if(
+                select_on_click.before(pick_hovered_cell).run_if(
                     resource_exists::<BattleInProgress>
                         .and(resource_exists::<OccupancyGrid>)
                         .and(resource_exists::<ButtonInput<MouseButton>>),
@@ -176,20 +208,63 @@ impl Plugin for GdtfBattleInputPlugin {
                     resource_exists::<BattleInProgress>.and(resource_exists::<OccupancyGrid>),
                 ),
             )
-            // S8 keyboard press surface: reads the loaded `Keybinds` (so it is gated on
-            // that resource existing too) and pushes intents.
+            // 222b: on a fresh selection, default `SelectedFireMode` to the picked
+            // weapon's `FireMode::single()` (AC1). Runs after `select_on_click` so it
+            // observes the same update's selection.
             .add_systems(
                 Update,
-                (level_keys, select_clear_key)
+                sync_fire_mode_on_select
+                    .after(select_on_click)
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            // S8 + 222b keyboard press surface: reads the loaded `Keybinds` (so it is
+            // gated on that resource existing too) and pushes intents. The act-bearing
+            // keys (`posture_keys` / `fire_mode_cycle_key`, 222b) push the same seam
+            // 222a's no-act keys (`level_keys` / `select_clear_key`) do.
+            .add_systems(
+                Update,
+                (
+                    level_keys,
+                    select_clear_key,
+                    posture_keys,
+                    fire_mode_cycle_key,
+                )
                     .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<Keybinds>)),
             )
-            // The ONE intent drain — after the keyboard writers so it sees this update's
-            // pushes; the 222c button writers (in `gdtf_app`'s `Update`) also feed it.
+            // 222b FIRE surface: a left-click on a target cell, guarded by the shared
+            // `can_fire` set, pushes an `ActIntent::Fire` carrying the `FireRequested`
+            // payload. Reads `ButtonInput<MouseButton>` (MinimalPlugins lacks it w/o
+            // `InputPlugin`) + `CombatTuning` (the sim tuning the guard reads), so it
+            // gates on both existing in addition to the battle witness (`bevy-traps.md`
+            // #1). Runs `.before(select_on_click)` AND `.before(pick_hovered_cell)`
+            // (`bevy-traps.md` #3): a left-click FIRES with the EXISTING selection at the
+            // cell resolved last update, THEN `select_on_click` updates the selection for
+            // the next click — so the click that SELECTS a ganger never also fires (the
+            // selection is still the prior one when `fire_on_click` reads it), and both
+            // read the `HoveredCell` before this update's `pick_hovered_cell` rewrites it
+            // (deterministic, no pick-vs-consumer race).
+            .add_systems(
+                Update,
+                fire_on_click
+                    .before(select_on_click)
+                    .before(pick_hovered_cell)
+                    .run_if(
+                        resource_exists::<BattleInProgress>
+                            .and(resource_exists::<ButtonInput<MouseButton>>)
+                            .and(resource_exists::<CombatTuning>),
+                    ),
+            )
+            // The ONE intent drain — after EVERY intent writer (the keyboard keys +
+            // the fire-click surface) so it sees this update's pushes; the 222c button
+            // writers (in `gdtf_app`'s `Update`) also feed it.
             .add_systems(
                 Update,
                 dispatch_act_intents
                     .after(level_keys)
                     .after(select_clear_key)
+                    .after(posture_keys)
+                    .after(fire_mode_cycle_key)
+                    .after(fire_on_click)
                     .run_if(resource_exists::<BattleInProgress>),
             );
 
