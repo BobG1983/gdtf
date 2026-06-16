@@ -2,9 +2,9 @@ use bevy::prelude::*;
 
 use crate::{
     scenes::running::game::battlescape::{
-        GameBattleScapeAfterMathScenePlugin, GameBattleScapeAnimateInScenePlugin,
-        GameBattleScapeAnimateOutScenePlugin, GameBattleScapeBattleRunningScenePlugin,
-        GameBattleScapeGenerationScenePlugin, systems::*,
+        GameBattleScapeActionBarScenePlugin, GameBattleScapeAfterMathScenePlugin,
+        GameBattleScapeAnimateInScenePlugin, GameBattleScapeAnimateOutScenePlugin,
+        GameBattleScapeBattleRunningScenePlugin, GameBattleScapeGenerationScenePlugin, systems::*,
     },
     states::{BattleScapeState, GameState},
 };
@@ -55,7 +55,15 @@ fn add_plugins(app: &mut App) {
         // on the sim's `BattleInProgress` witness, so the cursor is inert until a
         // live battle. It reads the presenter's `WorldCamera` + px/level interface
         // and writes `HoveredCell` + one highlight sprite; it emits NO act (S8).
-        .add_plugins(gdtf_battle_input::GdtfBattleInputPlugin);
+        .add_plugins(gdtf_battle_input::GdtfBattleInputPlugin)
+        // The GTW-48 S9 / 222c action-bar (GTW-228): a themed `gdtf_ui` button surface
+        // on the GTW-120 UI camera. It spawns/despawns on the `BattleScapeState::
+        // BattleRunning` boundary and its button-action system writes the SAME 222a
+        // `PendingActIntent` seam the input crate's keyboard surface writes — buttons +
+        // keys are PARALLEL surfaces over the ONE drain. It deps `gdtf_ui` (the spawn
+        // helpers) + `gdtf_battle_input` (the intent seam), both already on the app's
+        // edge; the chain stays acyclic.
+        .add_plugins(GameBattleScapeActionBarScenePlugin);
 }
 
 fn add_states(app: &mut App) {

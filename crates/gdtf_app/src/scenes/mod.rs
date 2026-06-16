@@ -34,6 +34,16 @@ pub(in crate::scenes) use running::RunningScenePlugin;
 crate::support_use! {
     running::{BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton};
 }
+// Test-support-only re-export of the action-bar's per-act button markers (GTW-228),
+// gated so the binary build is `unused`/`unreachable_pub`-clean (the menu-marker
+// re-export chain precedent). The final hop before `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    running::{
+        AimToggleButton, EndTurnButton, FireModeSelectButton, LevelDownButton, LevelUpButton,
+        ReloadButton, StanceCycleButton,
+    };
+}
 
 mod teardown;
 pub(in crate::scenes) use teardown::TeardownScenePlugin;

@@ -17,3 +17,16 @@ pub(in crate::scenes::running::game::battlescape) use animate_out::GameBattleSca
 
 mod aftermath;
 pub(in crate::scenes::running::game::battlescape) use aftermath::GameBattleScapeAfterMathScenePlugin;
+
+mod action_bar;
+pub(in crate::scenes::running::game::battlescape) use action_bar::GameBattleScapeActionBarScenePlugin;
+// Test-support-only re-export of the action-bar's per-act button markers (GTW-228),
+// gated so the binary build is `unused`/`unreachable_pub`-clean (the menu-marker
+// precedent). The AC tests name these through `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    action_bar::{
+        AimToggleButton, EndTurnButton, FireModeSelectButton, LevelDownButton, LevelUpButton,
+        ReloadButton, StanceCycleButton,
+    };
+}
