@@ -37,5 +37,5 @@ pub use marker::{WORLD_RENDER_LAYER, WorldCamera, despawn_world_camera, spawn_wo
 pub use pan::{
     EDGE_BAND_PX, EdgeBandPx, GamepadCursorMoved, PAN_SPEED, PanSpeed, STICK_DEADZONE,
     StickDeadzone, keyboard_pan_dir, mouse_edge_dir, pan_camera, pan_camera_on_gamepad_cursor_edge,
-    pan_velocity, stick_pan_dir,
+    pan_velocity, stick_pan_dir, viewport_edge_dir,
 };

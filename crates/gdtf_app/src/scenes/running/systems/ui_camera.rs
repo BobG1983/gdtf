@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{camera::ClearColorConfig, prelude::*};
 
 /// Marker for the persistent UI [`Camera2d`] owned by the app shell.
 ///
@@ -32,6 +32,23 @@ struct UiCamera;
 /// This camera is also distinct from the GTW-134 UI test harness camera
 /// (`GdtfUiTestAppBuilder::with_ui_camera`): that one is spawned by the test
 /// builder itself, never via this system, so the two are not coupled.
+///
+/// # Clear (GTW-271)
+///
+/// The UI camera's [`Camera::clear_color`] is [`ClearColorConfig::None`]: it renders at the
+/// default `Camera.order` `0`, ABOVE the GTW-216 world camera (order `-1`), which already
+/// cleared the whole surface to the margin bg and blitted the map into its viewport sub-rect.
+/// `None` makes the UI camera composite its panels OVER that result WITHOUT clearing, so the
+/// map stays visible in the central rect and the panels render in the margins — the GTW-271
+/// confined-map recipe. (The default `ClearColorConfig::Default` would clear the surface to
+/// the `ClearColor` resource, wiping the map the world camera just drew.)
 pub(in crate::scenes::running) fn spawn_ui_camera(mut commands: Commands) {
-    commands.spawn((Camera2d, UiCamera));
+    commands.spawn((
+        Camera2d,
+        UiCamera,
+        Camera {
+            clear_color: ClearColorConfig::None,
+            ..default()
+        },
+    ));
 }

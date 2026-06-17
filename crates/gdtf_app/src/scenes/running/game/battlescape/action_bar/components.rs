@@ -204,12 +204,14 @@ crate::support_item! {
 /// box holding the buttons), so the `OnExit(BattleRunning)` despawn finds and recursively
 /// tears down the whole bar by this one marker rather than tracking each child entity.
 ///
-/// Internal-only (the spawn/despawn systems are the only readers), so — unlike the per-act
-/// markers — it is NOT widened through `support_item!`/the test-support chain; it stays
-/// crate-internal and `unreachable_pub`-clean. A unit marker: presence on an entity is the
-/// whole signal (no-bare-types rule).
+/// Widened to `pub(in …battlescape)` (GTW-271) so the sibling battlescape-level
+/// `set_world_viewport` system can MEASURE the bar root's [`ComputedNode`](bevy::ui::ComputedNode)
+/// height to inset the world-map viewport's BOTTOM margin. It is NOT widened through
+/// `support_item!`/the test-support chain — it stays inside the battlescape neighborhood and
+/// `unreachable_pub`-clean. A unit marker: presence on an entity is the whole signal
+/// (no-bare-types rule).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub(in crate::scenes::running::game::battlescape::action_bar) struct ActionBarRoot;
+pub(in crate::scenes::running::game::battlescape) struct ActionBarRoot;
 
 crate::support_item! {
     /// Marks the **root** of the vertical Stance sub-panel (GTW-267) — the

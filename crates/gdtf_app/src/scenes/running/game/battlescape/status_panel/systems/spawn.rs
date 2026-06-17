@@ -95,12 +95,12 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_status_panel(
             row_gap: Val::Px(*LineGapPx::PANEL),
             ..default()
         },
-        // GTW-262 — an `Interaction` on the panel's ROOT so `bevy_ui`'s `ui_focus_system`
-        // marks the WHOLE panel area `Hovered` (not just its text lines) under the cursor;
-        // the presenter's `pan_camera` reads `&Interaction` and suppresses the camera pan
-        // while the pointer is over the panel (`bevy-traps.md` #6).
-        Interaction::default(),
     ));
+    // GTW-271 — the GTW-262 `Interaction::default()` on the panel ROOT is REMOVED: it made
+    // `bevy_ui`'s `ui_focus_system` mark the whole panel area `Hovered` (the "green bar"
+    // hover-paint), and the camera pan no longer needs it to be suppressed over the panel —
+    // the presenter's edge-pan now gates on the cursor being INSIDE the world-map VIEWPORT
+    // rect (the panel sits in the margin, outside that rect), so it never pans beneath it.
 
     // One themed body-text line per vital, each with its per-line marker. The text is the
     // empty state until the update system repaints it from the selection. GTW-254 adds the

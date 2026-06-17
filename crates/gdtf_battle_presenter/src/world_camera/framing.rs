@@ -120,11 +120,23 @@ fn battlefield_world_bounds() -> (Vec2, Vec2) {
 /// The half-extent (world units) of the camera's visible viewport.
 ///
 /// Prefers the orthographic projection's computed `area` (Bevy's `camera_system` keeps it
-/// in world units, already folding in window size + scale), falling back to the primary
-/// window's size scaled by the projection `scale` when that area is still its uninitialised
-/// `default_2d` unit rect (no `camera_system` has run yet — e.g. the very first frame /
-/// a headless app). Returns [`None`] when the camera is not orthographic.
-fn viewport_half_extent(projection: &Projection, window: Option<&Window>) -> Option<Vec2> {
+/// in world units, already folding in window size + scale AND the sub-rect [`Camera::viewport`]
+/// once one is set — so the STEADY-STATE path already reflects the GTW-271 map viewport),
+/// falling back to the viewport / window size scaled by the projection `scale` when that area
+/// is still its uninitialised `default_2d` unit rect (no `camera_system` has run yet — e.g. the
+/// very first frame / a headless app). Returns [`None`] when the camera is not orthographic.
+///
+/// GTW-271 AC6: the pre-`camera_system` fallback is now VIEWPORT-AWARE — when a sub-rect
+/// [`Camera::viewport`] is set (the app confines the map to a central region), the fallback
+/// derives the half-extent from the VIEWPORT's logical size (the viewport physical size divided
+/// by the window scale factor), NOT the full window size. The old full-window fallback
+/// over-estimated the visible half-extent once the map is a sub-rect, so the bounds clamp let
+/// the map drift. With no viewport set yet it keeps the full-window fallback.
+fn viewport_half_extent(
+    camera: &Camera,
+    projection: &Projection,
+    window: Option<&Window>,
+) -> Option<Vec2> {
     let Projection::Orthographic(ortho) = projection else {
         return None;
     };
@@ -133,9 +145,16 @@ fn viewport_half_extent(projection: &Projection, window: Option<&Window>) -> Opt
         return Some(area_half);
     }
     // The projection `area` has not been computed yet; derive the half-extent from the
-    // window size (the contract's "primary Window for the viewport size") and the scale.
+    // VISIBLE region (the contract's "primary Window for the viewport size") and the scale.
     let window = window?;
-    Some(window.size() * 0.5 * ortho.scale)
+    // GTW-271: prefer the sub-rect viewport's LOGICAL size when one is set, so the fallback
+    // matches the confined map region; `to_logical` is None until `camera_system` runs, so
+    // convert via the window's `scale_factor` (physical viewport px → logical px).
+    let logical_size = match &camera.viewport {
+        Some(viewport) => viewport.physical_size.as_vec2() / window.scale_factor(),
+        None => window.size(),
+    };
+    Some(logical_size * 0.5 * ortho.scale)
 }
 
 /// `Update` (battle-gated): frame the [`WorldCamera`] on the player gangers' centroid ONCE
@@ -186,24 +205,24 @@ pub fn frame_camera_on_units(
 ///
 /// GTW-249 AC4: whatever moves the camera (the one-shot framing above; the future pan-nav
 /// slice GTW-250 — order this `.after` both so it is the last writer), this pulls the
-/// translation back inside via [`clamp_camera`]. It reads the camera [`Transform`] + its
-/// [`Projection`] (the orthographic visible half-extent) + the primary [`Window`] (the
-/// viewport-size fallback before `camera_system` first computes the projection area) + the
-/// battlefield world bounds ([`battlefield_world_bounds`], from the grid extent via
-/// [`cell_to_world`] — never a hardcoded literal), and writes back the clamped `xy` (z is
-/// kept). With a not-yet-orthographic / zero-size viewport it leaves the camera unchanged
-/// rather than snapping it.
+/// translation back inside via [`clamp_camera`]. It reads the camera [`Camera`] (the GTW-271
+/// sub-rect [`Camera::viewport`]) + its [`Transform`] + its [`Projection`] (the orthographic
+/// visible half-extent) + the primary [`Window`] (the viewport-size fallback before
+/// `camera_system` first computes the projection area) + the battlefield world bounds
+/// ([`battlefield_world_bounds`], from the grid extent via [`cell_to_world`] — never a
+/// hardcoded literal), and writes back the clamped `xy` (z is kept). With a not-yet-orthographic
+/// / zero-size viewport it leaves the camera unchanged rather than snapping it.
 ///
 /// Param-only (`Query` / `Res`), no `&mut World` (`bevy-traps.md` #7); battle-scoped gating
 /// is applied at registration (`bevy-traps.md` #1).
 pub fn clamp_camera_to_bounds(
-    mut cameras: Query<(&mut Transform, &Projection), With<WorldCamera>>,
+    mut cameras: Query<(&Camera, &mut Transform, &Projection), With<WorldCamera>>,
     windows: Query<&Window, With<PrimaryWindow>>,
 ) {
     let window = windows.iter().next();
     let (world_min, world_max) = battlefield_world_bounds();
-    for (mut transform, projection) in &mut cameras {
-        let Some(half_viewport) = viewport_half_extent(projection, window) else {
+    for (camera, mut transform, projection) in &mut cameras {
+        let Some(half_viewport) = viewport_half_extent(camera, projection, window) else {
             continue;
         };
         let current = Vec2::new(transform.translation.x, transform.translation.y);

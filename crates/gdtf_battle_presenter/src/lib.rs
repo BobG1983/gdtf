@@ -71,5 +71,5 @@ pub use world_camera::{
     StickDeadzone, WORLD_RENDER_LAYER, WorldCamera, camera_focus, clamp_camera,
     clamp_camera_to_bounds, despawn_world_camera, frame_camera_on_units, keyboard_pan_dir,
     mouse_edge_dir, pan_camera, pan_camera_on_gamepad_cursor_edge, pan_velocity,
-    spawn_world_camera, stick_pan_dir,
+    spawn_world_camera, stick_pan_dir, viewport_edge_dir,
 };

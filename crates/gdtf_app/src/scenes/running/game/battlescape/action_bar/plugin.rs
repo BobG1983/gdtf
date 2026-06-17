@@ -104,12 +104,21 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
             )
             // GTW-265: the Mode 3-toggle sub-panel. `mode_button_pressed` sets
             // `SelectedFireMode` directly to a pressed toggle's read-back spec;
-            // `sync_mode_buttons_active` marks the live mode `ActiveButton`. Both read their
+            // `sync_mode_buttons_active` marks the live mode `ActiveButton`. They read their
             // own disjoint mode markers, so they do not conflict with the stance/level
             // `action_bar_button_intents`. Same live-battle gate.
+            //
+            // `sync_mode_buttons_active` is ordered `.after(mode_button_pressed)`
+            // (`bevy-traps.md` #3): the sync READS `SelectedFireMode` that the press WRITES, so
+            // the active mark must move the SAME update the press lands — without the explicit
+            // ordering the two ran in a nondeterministic (executor-chosen) order and the active
+            // mark lagged a press by a frame whenever the sync happened to run first (a latent
+            // GTW-271-exposed ambiguity: adding any `Update` system can flip the executor's
+            // choice). The chain expresses the real read-after-write dependency.
             .add_systems(
                 Update,
                 (mode_button_pressed, sync_mode_buttons_active)
+                    .chain()
                     .run_if(resource_exists::<BattleInProgress>),
             )
             // `rebuild_mode_buttons` despawns + respawns the Mode toggles on a selection

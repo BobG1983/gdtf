@@ -1,7 +1,10 @@
 //! The world-camera marker, its render-layer / order consts, and the spawn/despawn
 //! lifecycle systems.
 
-use bevy::{camera::visibility::RenderLayers, prelude::*};
+use bevy::{
+    camera::{ClearColorConfig, visibility::RenderLayers},
+    prelude::*,
+};
 
 /// The non-zero render layer the world camera renders.
 ///
@@ -19,6 +22,19 @@ pub const WORLD_RENDER_LAYER: usize = 1;
 /// Negative so the world camera renders BENEATH the GTW-120 UI camera, which is a plain
 /// `Camera2d` at the default order `0`.
 const WORLD_CAMERA_ORDER: isize = -1;
+
+/// The background color the world camera clears the whole render surface to (GTW-271).
+///
+/// Framework plumbing — a bare [`Color`] written into the world camera's
+/// [`Camera::clear_color`] (a knob on a framework component, the same carve-out as
+/// [`WORLD_CAMERA_ORDER`] / [`WORLD_CAMERA_SCALE`]). The world camera renders FIRST (order
+/// [`WORLD_CAMERA_ORDER`] `= -1`) and `LoadOp::Clear` clears the ENTIRE surface (it is NOT
+/// scissored to the viewport sub-rect), so this color fills the MARGINS around the map
+/// sub-rect; the map then blits scissored into the [`Camera::viewport`] region the app sets
+/// (GTW-271 AC1), and the UI camera composites OVER without clearing (its
+/// [`ClearColorConfig::None`] in the app's `spawn_ui_camera`). A dark grimdark slate so the
+/// margins read as inert frame, not battlefield.
+const MARGIN_BG: Color = Color::srgb(0.06, 0.06, 0.08);
 
 /// The world camera's orthographic projection `scale` (GTW-263 — battle zoom).
 ///
@@ -47,7 +63,9 @@ pub struct WorldCamera;
 /// Registered by the app on `OnEnter(GameState::BattleScape)` (the presenter cannot name
 /// `GameState`). It spawns a `Camera2d` carrying the [`WorldCamera`] marker, a
 /// [`Camera`] at [`WORLD_CAMERA_ORDER`] (`-1`, below the UI camera's default `0` so it
-/// renders first / beneath), [`RenderLayers::layer`]`(`[`WORLD_RENDER_LAYER`]`)` so
+/// renders first / beneath) whose [`Camera::clear_color`] is the GTW-271 margin bg
+/// ([`ClearColorConfig::Custom`]`(MARGIN_BG)` — fills the margins around the map sub-rect),
+/// [`RenderLayers::layer`]`(`[`WORLD_RENDER_LAYER`]`)` so
 /// it renders its own non-zero layer and does not intersect the UI camera's layer 0, and
 /// a [`Projection::Orthographic`] at [`WORLD_CAMERA_SCALE`] (`0.5` — 2x zoom, GTW-263)
 /// OVERRIDING the `default_2d` `scale = 1.0` that `Camera2d` would otherwise
@@ -61,6 +79,12 @@ pub fn spawn_world_camera(mut commands: Commands) {
         WorldCamera,
         Camera {
             order: WORLD_CAMERA_ORDER,
+            // GTW-271 — clear the WHOLE surface to the margin bg (LoadOp::Clear is not
+            // scissored to the viewport), so the area OUTSIDE the world-map viewport sub-rect
+            // (the app sets that rect in AC1) renders a defined color rather than garbage; the
+            // map blits scissored into the sub-rect and the UI camera composites over (its
+            // `ClearColorConfig::None` in `spawn_ui_camera`).
+            clear_color: ClearColorConfig::Custom(MARGIN_BG),
             ..default()
         },
         RenderLayers::layer(WORLD_RENDER_LAYER),

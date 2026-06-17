@@ -6,6 +6,10 @@ mod components;
 mod plugin;
 mod systems;
 
+// GTW-271 — the bar ROOT marker, re-exported to the battlescape neighborhood so the
+// `set_world_viewport` system can measure its `ComputedNode` height for the world-map's BOTTOM
+// margin inset (no test-support gating — it stays inside the neighborhood).
+pub(in crate::scenes::running::game::battlescape) use components::ActionBarRoot;
 pub(in crate::scenes::running::game::battlescape) use plugin::GameBattleScapeActionBarScenePlugin;
 
 // Test-support-only re-export of the per-act button markers (the GTW-145 convention,

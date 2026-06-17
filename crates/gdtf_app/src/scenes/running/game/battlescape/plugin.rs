@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use gdtf_battle_sim::BattleInProgress;
 
 use crate::{
     scenes::running::game::battlescape::{
@@ -36,6 +37,19 @@ fn add_systems(app: &mut App) {
         .add_systems(
             OnExit(GameState::BattleScape),
             gdtf_battle_presenter::despawn_world_camera,
+        )
+        // GTW-271: confine the world render to a central viewport sub-rect. The app owns the
+        // UI layout, so it MEASURES the panel roots' `ComputedNode` sizes and writes the
+        // presenter's `WorldCamera` viewport (the panels live in the margins around the map).
+        // Gated on the `BattleInProgress` live-battle witness — the SAME witness the
+        // action-bar / status-panel / input gate on (`bevy-traps.md` #1) — so it runs only
+        // when the camera + panels exist. The idempotent every-frame write subsumes AC7's
+        // resize + battle-start recompute (it runs every live frame). The presenter's
+        // pan/clamp READ the viewport rect, so this writer needs no explicit ordering against
+        // them (a one-frame settle is harmless for a camera rect).
+        .add_systems(
+            Update,
+            set_world_viewport.run_if(resource_exists::<BattleInProgress>),
         );
 }
 

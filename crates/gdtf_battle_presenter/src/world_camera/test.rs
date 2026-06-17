@@ -1,14 +1,14 @@
 //! Unit tests for the world camera: render-layer isolation, framing geometry, the
-//! pan-navigation pure helpers, the GTW-263 zoom, and the GTW-262 pointer-over-UI gate.
+//! pan-navigation pure helpers, the GTW-263 zoom, and the GTW-271 viewport-aware edge gate.
 
-use bevy::{camera::visibility::RenderLayers, prelude::*, ui::Interaction};
+use bevy::{camera::visibility::RenderLayers, prelude::*};
 
 use super::{
     framing::{camera_focus, clamp_camera},
     marker::{WORLD_RENDER_LAYER, WorldCamera, spawn_world_camera},
     pan::{
         EdgeBandPx, PanSpeed, StickDeadzone, keyboard_pan_dir, mouse_edge_dir, pan_camera,
-        pan_velocity, stick_pan_dir,
+        pan_velocity, stick_pan_dir, viewport_edge_dir,
     },
 };
 
@@ -321,13 +321,79 @@ fn world_camera_spawns_at_half_orthographic_scale() {
 }
 
 // -----------------------------------------------------------------------------
-// GTW-262 — pan suppressed while the pointer is over a UI menu area.
+// GTW-271 — edge-pan keys off the MAP VIEWPORT rect, not the window.
 // -----------------------------------------------------------------------------
 
-/// Builds an app with `pan_camera` registered, a `WorldCamera` parked at the origin, an
-/// empty primary window, and a pressed `KeyW` (so the keyboard source alone WOULD pan the
-/// camera up). The test toggles whether a UI node is `Hovered` to drive the gate.
-fn pan_gate_app() -> App {
+/// A test map-viewport rect: a 600x400 central region inset 100px from the left and 50px
+/// from the top of an 800x600 window (the status panel on the left, a minimal top inset).
+const VIEWPORT: Rect = Rect {
+    min: Vec2::new(100.0, 50.0),
+    max: Vec2::new(700.0, 450.0),
+};
+
+/// GTW-271 AC4 — `viewport_edge_dir` pans ONLY when the cursor is INSIDE the map viewport
+/// rect AND within the edge band; a cursor OUTSIDE the rect (in a UI margin / over a panel)
+/// → `Vec2::ZERO` (no pan). Inside-near-an-edge it reproduces the window-edge logic measured
+/// from the VIEWPORT edges (with the screen-y → camera-y flip).
+///
+/// Pin-discriminating: it proves a cursor in the LEFT MARGIN (left of the viewport min, where
+/// the status panel sits) does NOT pan even though it is near the WINDOW's left edge — the
+/// behaviour the old window-relative `mouse_edge_dir` got wrong (it would have panned -X under
+/// the panel). And a cursor just INSIDE the viewport's left edge DOES pan -X. Pure, no `App`.
+#[test]
+fn viewport_edge_dir_pans_only_inside_the_map_rect() {
+    // A cursor in the LEFT MARGIN (x < viewport.min.x — over the status panel): no pan, even
+    // though it is hard against the WINDOW's left edge.
+    let in_margin = viewport_edge_dir(Vec2::new(10.0, 250.0), VIEWPORT, EDGE);
+    assert_eq!(
+        in_margin,
+        Vec2::ZERO,
+        "a cursor in the left margin (outside the map viewport) must NOT pan",
+    );
+
+    // A cursor BELOW the viewport (y > viewport.max.y — over the action-bar margin): no pan.
+    let below = viewport_edge_dir(Vec2::new(400.0, 580.0), VIEWPORT, EDGE);
+    assert_eq!(
+        below,
+        Vec2::ZERO,
+        "a cursor below the map viewport (over the action-bar margin) must NOT pan",
+    );
+
+    // A cursor just INSIDE the viewport's LEFT edge (within the band of viewport.min.x) → -X.
+    let near_left = viewport_edge_dir(Vec2::new(VIEWPORT.min.x + 5.0, 250.0), VIEWPORT, EDGE);
+    assert!(
+        near_left.x < 0.0,
+        "a cursor just inside the viewport's left edge must pan -X (got {near_left:?})",
+    );
+
+    // A cursor just INSIDE the viewport's TOP edge → +Y (the screen-y → camera-y flip,
+    // measured from the VIEWPORT top, not the window top).
+    let near_top = viewport_edge_dir(Vec2::new(400.0, VIEWPORT.min.y + 5.0), VIEWPORT, EDGE);
+    assert!(
+        near_top.y > 0.0,
+        "a cursor just inside the viewport's top edge must pan UP (+Y) (got {near_top:?})",
+    );
+
+    // A cursor in the CENTRE of the viewport (no edge band) → ZERO.
+    let centre = viewport_edge_dir(VIEWPORT.min + VIEWPORT.size() * 0.5, VIEWPORT, EDGE);
+    assert_eq!(
+        centre,
+        Vec2::ZERO,
+        "a cursor in the centre of the map viewport contributes no pan",
+    );
+}
+
+/// GTW-271 — `pan_camera`'s KEYBOARD source is NOT cursor-bound: it pans regardless of where
+/// the cursor is (the GTW-262 `Interaction`-over-UI early-return that wrongly froze the
+/// keyboard pan is GONE). This pins the refactor-preserved half of the pan system through the
+/// real registered system, with the camera now carrying a `Camera` component (the AC4 query
+/// reads `&Camera` for `logical_viewport_rect`).
+///
+/// Pin-discriminating: W is pressed and the keyboard pan must move the camera +Y across an
+/// update — if the removed `pointer_over_ui` gate were still suppressing all sources, or if
+/// the keyboard branch regressed, the camera would not move.
+#[test]
+fn pan_camera_keyboard_pans_regardless_of_cursor() {
     use std::time::Duration;
 
     use bevy::{
@@ -337,66 +403,44 @@ fn pan_gate_app() -> App {
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
-    // Give `Res<Time>.delta_secs()` a controlled non-zero value each update so a non-gated
-    // pan actually moves the camera (the virtual clock would otherwise report 0 on the
-    // first update). The virtual clock clamps each step to 250ms, ample for a measurable
-    // pan at PAN_SPEED.
+    // A controlled non-zero per-update delta so the pan is measurable (the virtual clock
+    // reports 0 on the first update and clamps each step to 250ms — ample at PAN_SPEED).
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
         100,
     )));
-    // The keyboard source; press W so a non-gated pan would move the camera +Y.
     let mut keys = ButtonInput::<KeyCode>::default();
     keys.press(KeyCode::KeyW);
     app.insert_resource(keys);
     app.add_systems(Update, pan_camera);
 
-    app.world_mut()
-        .spawn((WorldCamera, Transform::from_translation(Vec3::ZERO)));
+    // The camera carries a `Camera` component (the AC4 query reads `&Camera`); headlessly
+    // `logical_viewport_rect()` is `None`, so the mouse-edge source contributes nothing and
+    // only the (cursor-independent) keyboard source drives the pan.
+    app.world_mut().spawn((
+        WorldCamera,
+        Camera::default(),
+        Transform::from_translation(Vec3::ZERO),
+    ));
     app.world_mut().spawn((Window::default(), PrimaryWindow));
-    app
-}
 
-/// The `WorldCamera`'s current y translation.
-fn camera_y(app: &mut App) -> f32 {
-    let mut q = app
-        .world_mut()
-        .query_filtered::<&Transform, With<WorldCamera>>();
-    q.iter(app.world()).next().map_or(0.0, |t| t.translation.y)
-}
-
-/// GTW-262 — `pan_camera` pans normally when NO UI node is hovered, but EARLY-RETURNS
-/// (no camera move) when ANY node carrying an `Interaction` is `Hovered` — covering the
-/// whole panel area, not just buttons.
-///
-/// Pin-discriminating: it first proves the keyboard pan DOES move the camera (so the gate
-/// is what suppresses it, not a dead input), then proves a hovered UI node freezes it.
-/// Without the `pointer_over_ui` early-return the camera would keep panning under the menu.
-#[test]
-fn pan_is_suppressed_while_pointer_is_over_ui() {
-    // Phase 1 — no UI hovered: the keyboard pan moves the camera up (+Y). The virtual clock
-    // reports a zero delta on the very first update (no prior instant), so warm it up once
-    // (W stays pressed — no InputPlugin clears it under MinimalPlugins) before measuring.
-    let mut app = pan_gate_app();
+    // Warm up once (the first-update zero delta), then measure the keyboard pan.
     app.update();
-    let before_pan = camera_y(&mut app);
+    let before = {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Transform, With<WorldCamera>>();
+        q.iter(app.world()).next().map_or(0.0, |t| t.translation.y)
+    };
     app.update();
-    let after_pan = camera_y(&mut app);
+    let after = {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Transform, With<WorldCamera>>();
+        q.iter(app.world()).next().map_or(0.0, |t| t.translation.y)
+    };
     assert!(
-        after_pan > before_pan,
-        "with W pressed and no UI hovered, the camera must pan up (+Y): {before_pan} -> \
-         {after_pan}",
-    );
-
-    // Phase 2 — a UI node is Hovered (an action-bar / status-panel ROOT carrying an
-    // Interaction): the pan must be suppressed, so the camera does not move further.
-    app.world_mut()
-        .spawn((Node::default(), Interaction::Hovered));
-    let before = camera_y(&mut app);
-    app.update();
-    let after = camera_y(&mut app);
-    assert_eq!(
-        after.to_bits(),
-        before.to_bits(),
-        "while a UI node is Hovered the camera must not pan (got {before} -> {after})",
+        after > before,
+        "with W pressed the keyboard pan must move the camera up (+Y) regardless of the \
+         cursor: {before} -> {after}",
     );
 }

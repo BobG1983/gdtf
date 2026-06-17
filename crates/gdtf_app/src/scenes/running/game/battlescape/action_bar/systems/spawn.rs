@@ -118,12 +118,12 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
             column_gap: Val::Px(*BarGapPx::BAR),
             ..default()
         },
-        // GTW-262 — an `Interaction` on the bar's ROOT so `bevy_ui`'s `ui_focus_system`
-        // marks the WHOLE bar area `Hovered` (not just its buttons) under the cursor; the
-        // presenter's `pan_camera` reads `&Interaction` and suppresses the camera pan while
-        // the pointer is over the bar (`bevy-traps.md` #6).
-        Interaction::default(),
     ));
+    // GTW-271 — the GTW-262 `Interaction::default()` on the bar ROOT is REMOVED: it made
+    // `bevy_ui`'s `ui_focus_system` mark the whole bar area `Hovered` (the "green bar"
+    // hover-paint), and the camera pan no longer needs it to be suppressed over the bar —
+    // the presenter's edge-pan now gates on the cursor being INSIDE the world-map VIEWPORT
+    // rect (the bar sits in the margin, outside that rect), so it never pans beneath the bar.
 
     // STANCE sub-panel (GTW-267): a vertical `spawn_panel` column holding the three
     // mutually-exclusive stance toggles in a sensible height order (Stand, Kneel, Prone).

@@ -1,8 +1,15 @@
 //! GTW-250 pan navigation (mouse-edge + keyboard + gamepad right stick) and the GTW-259
 //! gamepad-cursor edge-pan: the view tunables, the pure direction/velocity helpers, the
 //! presenter-defined cursor message, and the two pan systems.
+//!
+//! GTW-271 reworked the mouse / gamepad-cursor edge-pan to key off the MAP VIEWPORT rect
+//! ([`Camera::logical_viewport_rect`]) rather than the whole window: the cursor only edge-pans
+//! when it sits INSIDE the world camera's viewport sub-rect, so a cursor in a UI margin (over a
+//! panel) never pans the map. That viewport-inside gate REPLACED the GTW-262
+//! `Interaction`-over-UI suppression (which caused the "green bar" and over-suppressed
+//! keyboard / stick panning), so this file no longer reads `bevy_ui::Interaction`.
 
-use bevy::{input::gamepad::Gamepad, prelude::*, ui::Interaction, window::PrimaryWindow};
+use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 
 use super::marker::WorldCamera;
 
@@ -109,6 +116,33 @@ pub fn mouse_edge_dir(cursor: Vec2, size: Vec2, edge: EdgeBandPx) -> Vec2 {
     dir
 }
 
+/// The camera-space pan direction implied by the cursor's position relative to the MAP
+/// VIEWPORT rect — the GTW-271 viewport-aware edge gate.
+///
+/// GTW-271 AC4. The world map is rendered into a central sub-rectangle of the window (the
+/// status-panel / action-bar / hover-panel margins surround it), so edge-pan must key off the
+/// MAP viewport rect ([`Camera::logical_viewport_rect`], window-space LOGICAL px, directly
+/// comparable to [`Window::cursor_position`]), NOT the whole window. A cursor OUTSIDE the
+/// viewport rect (in a margin / over UI) → [`Vec2::ZERO`] (NO pan) — the viewport-inside gate
+/// that REPLACED the GTW-262 `Interaction`-over-UI suppression. A cursor INSIDE the rect is
+/// re-expressed VIEWPORT-RELATIVE (`cursor - viewport.min`) and fed through [`mouse_edge_dir`]
+/// against the viewport SIZE (`viewport.size()`), so the same screen-y → camera-y flip and
+/// edge-band logic apply, just measured from the viewport edges rather than the window edges.
+///
+/// Pure / total — no `App`, no `World` (unit-tested AC4). `Vec2` / [`Rect`] are framework-math
+/// plumbing (the GTW-249 carve-out for raw screen / direction coords), not domain newtypes.
+#[must_use]
+pub fn viewport_edge_dir(cursor: Vec2, viewport: Rect, edge: EdgeBandPx) -> Vec2 {
+    // OUTSIDE the map viewport (a UI margin / over a panel) → no pan. `Rect::contains` is
+    // inclusive of the min edge and exclusive of the max — the cursor must be inside the map.
+    if !viewport.contains(cursor) {
+        return Vec2::ZERO;
+    }
+    // INSIDE: re-express the cursor relative to the viewport origin and band against the
+    // viewport size, reusing the GTW-250 window-edge helper unchanged.
+    mouse_edge_dir(cursor - viewport.min, viewport.size(), edge)
+}
+
 /// The camera-space pan direction implied by the WASD / arrow pan keys.
 ///
 /// GTW-250 AC2. `up` (W / ↑) → `+Y`, `down` (S / ↓) → `-Y`, `left` (A / ←) → `-X`,
@@ -198,27 +232,6 @@ pub fn pan_velocity(dir: Vec2, speed: PanSpeed) -> Vec2 {
 #[derive(Message, Debug, Clone, Copy, PartialEq)]
 pub struct GamepadCursorMoved(pub Vec2);
 
-/// Whether the pointer is currently OVER a UI menu area (GTW-262), so the pan systems
-/// suppress that frame's camera move.
-///
-/// Reads `bevy_ui`'s [`Interaction`](bevy::ui::Interaction): `bevy_ui`'s built-in
-/// `ui_focus_system` writes [`Interaction::Hovered`](bevy::ui::Interaction::Hovered) /
-/// [`Interaction::Pressed`](bevy::ui::Interaction::Pressed) onto EVERY node carrying an
-/// [`Interaction`](bevy::ui::Interaction) under the cursor — not just buttons
-/// (`bevy-traps.md` #6). The `gdtf_app` action-bar / status-panel ROOT panels carry an
-/// [`Interaction`](bevy::ui::Interaction) for exactly this purpose, so a cursor anywhere
-/// over a panel's AREA (not only its buttons) reads `Hovered` here and the camera does not
-/// pan beneath the menu. `true` when ANY interactive node is hovered or pressed.
-///
-/// Pure over the query (no `App`, no `World`); [`Interaction`](bevy::ui::Interaction) is a
-/// `bevy_ui` primitive, so the presenter reads it without depending on `gdtf_ui` /
-/// `gdtf_app` (the one-way crate edge holds).
-fn pointer_over_ui(interactions: &Query<&Interaction>) -> bool {
-    interactions
-        .iter()
-        .any(|interaction| matches!(interaction, Interaction::Hovered | Interaction::Pressed))
-}
-
 /// `Update` (battle-gated): pan the [`WorldCamera`] each frame from the three navigation
 /// sources, BEFORE the [`clamp_camera_to_bounds`](super::clamp_camera_to_bounds) clamp so
 /// the camera can never pan off the battlefield.
@@ -231,35 +244,34 @@ fn pointer_over_ui(interactions: &Query<&Interaction>) -> bool {
 /// kept — top-down ground plane only, no zoom / multi-level). It emits NO sim message — the
 /// camera is the VIEW, so pan navigation is presenter-only.
 ///
-/// GTW-262: it FIRST early-returns when the pointer is over any UI menu area
-/// ([`pointer_over_ui`]) — so dragging the cursor onto the action-bar / status-panel does
-/// not pan the battlefield underneath the menu (the cursor-over-UI gate the
-/// `WorldClickSuppressed` seam never covered, since that gated CLICKS not PAN).
+/// GTW-271: the MOUSE-EDGE source now keys off the MAP VIEWPORT rect, not the window. The
+/// world map renders into a central sub-rect (the UI panels sit in the surrounding margins),
+/// so the mouse edge-pans only when the cursor is INSIDE the viewport rect and within the edge
+/// band ([`viewport_edge_dir`] reading [`Camera::logical_viewport_rect`]); a cursor in a margin
+/// / over a panel contributes nothing. That viewport-inside gate REPLACED the GTW-262
+/// `Interaction`-over-UI early-return (which caused the "green bar" and also wrongly suppressed
+/// the keyboard / stick pan when the cursor merely rested on a panel). The keyboard + gamepad
+/// stick are NOT cursor-bound, so they are unaffected by the cursor's position.
 ///
 /// Reads the input sources via params: `Res<ButtonInput<KeyCode>>` (keyboard),
-/// `Query<&Window, With<PrimaryWindow>>` (the cursor + window size for the mouse edge — the
-/// cursor is `None` when off the window, contributing nothing that frame), `Query<&Gamepad>`
-/// (the gamepad is an ENTITY-component in Bevy 0.18, NOT the pre-0.15 `Res<Axis<GamepadAxis>>`),
-/// and `Query<&Interaction>` (the GTW-262 pointer-over-UI gate). Movement scales by
-/// `Res<Time>`'s `delta_secs()`. Param-only (`Res` / `Query`), no `&mut World`
-/// (`bevy-traps.md` #7); the battle gate (`bevy-traps.md` #1) and the `.before(clamp)` ordering
-/// (`bevy-traps.md` #3) are applied at registration.
+/// `Query<&Window, With<PrimaryWindow>>` (the cursor for the mouse edge — the cursor is `None`
+/// when off the window, contributing nothing that frame), `Query<&Gamepad>` (the gamepad is an
+/// ENTITY-component in Bevy 0.18, NOT the pre-0.15 `Res<Axis<GamepadAxis>>`), and the
+/// [`WorldCamera`]'s `&Camera` (its [`Camera::logical_viewport_rect`] — the map sub-rect the
+/// mouse edge bands against) alongside its `&mut Transform`. Movement scales by `Res<Time>`'s
+/// `delta_secs()`. Param-only (`Res` / `Query`), no `&mut World` (`bevy-traps.md` #7); the
+/// battle gate (`bevy-traps.md` #1) and the `.before(clamp)` ordering (`bevy-traps.md` #3) are
+/// applied at registration.
 pub fn pan_camera(
     keys: Res<ButtonInput<KeyCode>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     gamepads: Query<&Gamepad>,
-    interactions: Query<&Interaction>,
     time: Res<Time>,
-    mut cameras: Query<&mut Transform, With<WorldCamera>>,
+    mut cameras: Query<(&Camera, &mut Transform), With<WorldCamera>>,
 ) {
-    // GTW-262 — never pan the battlefield while the pointer is over a UI menu area.
-    if pointer_over_ui(&interactions) {
-        return;
-    }
-
     let mut dir = Vec2::ZERO;
 
-    // Keyboard: WASD + arrow aliases.
+    // Keyboard: WASD + arrow aliases. Not cursor-bound — always contributes.
     dir += keyboard_pan_dir(
         keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp),
         keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown),
@@ -267,24 +279,27 @@ pub fn pan_camera(
         keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight),
     );
 
-    // Mouse edge: only when the cursor is over the primary window.
-    if let Some(window) = windows.iter().next()
-        && let Some(cursor) = window.cursor_position()
-    {
-        dir += mouse_edge_dir(cursor, window.size(), EDGE_BAND_PX);
-    }
-
-    // Gamepad RIGHT stick (the first connected pad), past the deadzone.
+    // Gamepad RIGHT stick (the first connected pad), past the deadzone. Not cursor-bound.
     if let Some(gamepad) = gamepads.iter().next() {
         dir += stick_pan_dir(gamepad.right_stick(), STICK_DEADZONE);
     }
 
-    let velocity = pan_velocity(dir, PAN_SPEED);
-    if velocity == Vec2::ZERO {
-        return;
-    }
-    let delta = velocity * time.delta_secs();
-    for mut transform in &mut cameras {
+    let cursor = windows
+        .iter()
+        .next()
+        .and_then(bevy::window::Window::cursor_position);
+    for (camera, mut transform) in &mut cameras {
+        let mut total = dir;
+        // Mouse edge: only when the cursor is inside THIS camera's map viewport rect and near
+        // an edge (a cursor in a margin / over UI contributes nothing — GTW-271 AC4).
+        if let (Some(cursor), Some(viewport)) = (cursor, camera.logical_viewport_rect()) {
+            total += viewport_edge_dir(cursor, viewport, EDGE_BAND_PX);
+        }
+        let velocity = pan_velocity(total, PAN_SPEED);
+        if velocity == Vec2::ZERO {
+            continue;
+        }
+        let delta = velocity * time.delta_secs();
         transform.translation.x += delta.x;
         transform.translation.y += delta.y;
     }
@@ -296,53 +311,49 @@ pub fn pan_camera(
 ///
 /// Drains the [`MessageReader<GamepadCursorMoved>`] (the input crate writes the gamepad
 /// cursor's screen position every update the gamepad is the active pointer) and acts on the
-/// LATEST position this update (the freshest cursor read), REUSING the GTW-250 mouse-edge
-/// helpers: [`mouse_edge_dir`]`(pos, window.size(), `[`EDGE_BAND_PX`]`)` for the edge
-/// direction (with the screen-y → camera-y flip), [`pan_velocity`]`(dir, `[`PAN_SPEED`]`)`
-/// for the per-second velocity, scaled by `time.delta_secs()`, added to the camera
-/// `Transform.translation.xy` (z is kept — ground plane only). When NO message arrives this
-/// update (the gamepad is not the active pointer, or the cursor is not near an edge) the
-/// camera is left untouched (no pan). In `Mouse` mode the OS-cursor edge-pan in
-/// [`pan_camera`] already covers the cursor, so this never double-pans.
+/// LATEST position this update (the freshest cursor read), REUSING the GTW-271 viewport-edge
+/// helper: [`viewport_edge_dir`]`(pos, `[`Camera::logical_viewport_rect`]`, `[`EDGE_BAND_PX`]`)`
+/// for the edge direction (with the screen-y → camera-y flip), [`pan_velocity`]`(dir,
+/// `[`PAN_SPEED`]`)` for the per-second velocity, scaled by `time.delta_secs()`, added to the
+/// camera `Transform.translation.xy` (z is kept — ground plane only). When NO message arrives
+/// this update (the gamepad is not the active pointer, or the cursor is not near an edge) the
+/// camera is left untouched (no pan). In `Mouse` mode the OS-cursor edge-pan in [`pan_camera`]
+/// already covers the cursor, so this never double-pans.
 ///
-/// GTW-262: it FIRST early-returns when the gamepad software cursor is over any UI menu
-/// area ([`pointer_over_ui`]) — so an edge-pan never drags the battlefield beneath a panel.
+/// GTW-271: like the mouse edge it now keys off the MAP VIEWPORT rect — a gamepad cursor in a
+/// margin / over a panel is OUTSIDE the viewport rect and contributes nothing, so an edge-pan
+/// never drags the battlefield beneath a panel. That viewport-inside gate REPLACED the GTW-262
+/// `Interaction`-over-UI early-return.
 ///
-/// Reads the primary [`Window`] (the size for the edge band — no window → no pan), the
-/// [`MessageReader<GamepadCursorMoved>`], `Res<Time>` (`delta_secs()`), `Query<&Interaction>`
-/// (the GTW-262 pointer-over-UI gate), and the [`WorldCamera`] `Transform`. Param-only
-/// (`Res` / `Query` / `MessageReader`), no `&mut World` (`bevy-traps.md` #7); the battle
-/// gate (`bevy-traps.md` #1) and the `.before(clamp_camera_to_bounds)` ordering
-/// (`bevy-traps.md` #3 — the clamp stays the last writer) are applied at registration. It
-/// emits NO sim message — pan is presenter-only.
+/// Reads the [`MessageReader<GamepadCursorMoved>`], `Res<Time>` (`delta_secs()`), and the
+/// [`WorldCamera`]'s `&Camera` (its [`Camera::logical_viewport_rect`] — the map sub-rect the
+/// edge bands against) alongside its `&mut Transform`. Param-only (`Res` / `Query` /
+/// `MessageReader`), no `&mut World` (`bevy-traps.md` #7); the battle gate (`bevy-traps.md` #1)
+/// and the `.before(clamp_camera_to_bounds)` ordering (`bevy-traps.md` #3 — the clamp stays the
+/// last writer) are applied at registration. It emits NO sim message — pan is presenter-only.
 pub fn pan_camera_on_gamepad_cursor_edge(
     mut cursor_moves: MessageReader<GamepadCursorMoved>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    interactions: Query<&Interaction>,
     time: Res<Time>,
-    mut cameras: Query<&mut Transform, With<WorldCamera>>,
+    mut cameras: Query<(&Camera, &mut Transform), With<WorldCamera>>,
 ) {
-    // GTW-262 — never pan the battlefield while the gamepad cursor is over a UI menu area.
-    if pointer_over_ui(&interactions) {
-        return;
-    }
-
     // Act on only the LATEST gamepad cursor position this update — earlier reads are stale.
     // No message => the gamepad is not the active pointer (or no edge) => no pan.
     let Some(GamepadCursorMoved(cursor)) = cursor_moves.read().last().copied() else {
         return;
     };
-    let Some(window) = windows.iter().next() else {
-        return;
-    };
 
-    let dir = mouse_edge_dir(cursor, window.size(), EDGE_BAND_PX);
-    let velocity = pan_velocity(dir, PAN_SPEED);
-    if velocity == Vec2::ZERO {
-        return;
-    }
-    let delta = velocity * time.delta_secs();
-    for mut transform in &mut cameras {
+    for (camera, mut transform) in &mut cameras {
+        // The gamepad cursor edge-pans only when it is inside THIS camera's map viewport rect
+        // and near an edge (a cursor in a margin / over UI contributes nothing — GTW-271 AC4).
+        let Some(viewport) = camera.logical_viewport_rect() else {
+            continue;
+        };
+        let dir = viewport_edge_dir(cursor, viewport, EDGE_BAND_PX);
+        let velocity = pan_velocity(dir, PAN_SPEED);
+        if velocity == Vec2::ZERO {
+            continue;
+        }
+        let delta = velocity * time.delta_secs();
         transform.translation.x += delta.x;
         transform.translation.y += delta.y;
     }
