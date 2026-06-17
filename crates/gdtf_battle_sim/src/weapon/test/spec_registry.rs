@@ -1,0 +1,126 @@
+//! Relocated tests for the `WeaponSpec` authoring struct + the `WeaponRegistry`
+//! (GTW-201; moved VERBATIM — was the `=== GTW-257 ===` block of the flat module).
+
+use super::support::*;
+
+/// A shipped weapon `.ron`, read at compile time via the same `include_str!`
+/// pattern `tuning.rs` / `situation.rs` use — the REAL on-disk authored file
+/// (`assets/weapons/autogun.weapon.ron`), so a regression in the authored file
+/// turns this red.
+const SHIPPED_AUTOGUN_RON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/weapons/autogun.weapon.ron"
+));
+
+/// GTW-257 AC1 — the shipped `assets/weapons/autogun.weapon.ron` parses into a
+/// `WeaponSpec`, and `into_bundle(name)` yields a `WeaponBundle` carrying that
+/// `WeaponName` + a `FireMode` list whose modes carry their `ModeKind`.
+/// Value-agnostic on the tunable cone/TU/damage magnitudes (the authored numbers
+/// are DATA, not pinned by the test): it asserts the NAME landed and the
+/// fire-mode offers at least one mode whose `single()` is `Single`-kind, never a
+/// magnitude.
+#[test]
+fn shipped_weapon_spec_parses_and_converts_to_a_bundle() {
+    let parsed = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON);
+    assert!(
+        parsed.is_ok(),
+        "the shipped assets/weapons/autogun.weapon.ron must parse into a WeaponSpec: {parsed:?}",
+    );
+    let Ok(spec) = parsed else {
+        return;
+    };
+
+    // The file does NOT author a name — the name is the FILE KEY, supplied here
+    // (the loader supplies the filename stem). into_bundle carries it through.
+    let key = WeaponName::new("autogun".to_owned());
+    let bundle = spec.into_bundle(key);
+    assert_eq!(
+        &*bundle.name, "autogun",
+        "into_bundle must carry the supplied WeaponName (the file key) onto the bundle",
+    );
+    // The Weapon marker is added by into_bundle (it is NOT authored in the file).
+    assert_eq!(bundle.marker, Weapon, "into_bundle adds the Weapon marker");
+    // The selector offers at least one mode, and single() is the Single-kind one
+    // (mechanism, not a value) — the authored list round-tripped.
+    assert!(
+        !bundle.fire_mode.is_empty(),
+        "the authored fire-mode must offer at least one mode",
+    );
+    let single = bundle.fire_mode.single();
+    assert_eq!(
+        single.kind,
+        ModeKind::Single,
+        "the shipped autogun's single() mode is Single-kind",
+    );
+}
+
+/// GTW-257 AC1 — a `WeaponSpec` round-trips from inline RON (no shipped magnitudes)
+/// and `into_bundle` groups the damage / handling blocks faithfully: a spot value
+/// read back off the bundle equals the authored one. Arbitrary literals
+/// (mechanism, not a balance pin), proving the authoring shape and the conversion.
+#[test]
+fn weapon_spec_round_trips_and_into_bundle_groups_faithfully() {
+    let authored = r"(
+        base_spread: 0.2, accuracy: 1.1, kickback: 0.3, fatal_bias: 5.0,
+        damage: 14, punch: 6, shred: 4, damage_type: Kinetic,
+        magazine_size: 24,
+        fire_mode: [
+            ( kind: Single, cone_mult: 1.0, tu_percent: 0.5, shots: 1),
+            ( kind: Burst,  cone_mult: 1.3, tu_percent: 0.8, shots: 3),
+        ],
+        stable: false,
+    )";
+    let parsed = ron::de::from_str::<WeaponSpec>(authored);
+    assert!(
+        parsed.is_ok(),
+        "inline WeaponSpec RON must parse: {parsed:?}"
+    );
+    let Ok(spec) = parsed else {
+        return;
+    };
+
+    let bundle = spec.into_bundle(WeaponName::new("test-gun".to_owned()));
+    // Spot values flowed through the DamageProfile / HandlingProfile grouping
+    // (distinct arbitrary literals so a field swap would surface).
+    assert_eq!(*bundle.damage, 14i32, "damage flows through DamageProfile");
+    assert_eq!(*bundle.punch, 6i32, "punch flows through DamageProfile");
+    assert_eq!(*bundle.shred, 4i32, "shred flows through DamageProfile");
+    assert_eq!(bundle.damage_type, DamageType::Kinetic);
+    assert_eq!(
+        *bundle.magazine_size, 24u16,
+        "magazine_size flows through HandlingProfile",
+    );
+    assert!(!*bundle.stable, "stable flows through HandlingProfile");
+    // The two authored modes survived the parse + grouping, in order.
+    let kinds: Vec<ModeKind> = bundle.fire_mode.iter().map(|spec| spec.kind).collect();
+    assert_eq!(kinds, vec![ModeKind::Single, ModeKind::Burst]);
+}
+
+/// GTW-257 — a `WeaponRegistry` keys specs by `WeaponName` and resolves a lookup:
+/// a present key returns the spec, an absent key returns `None`. Built directly
+/// from `WeaponRegistry::new` (no `AssetServer` — the sim-unit shape AC2/AC3 use).
+#[test]
+fn weapon_registry_keys_and_resolves_by_name() {
+    let Ok(spec) = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON) else {
+        return;
+    };
+    let autogun = WeaponName::new("autogun".to_owned());
+    let registry = WeaponRegistry::new([(autogun.clone(), spec)]);
+
+    assert_eq!(
+        registry.len(),
+        1,
+        "the registry holds the one inserted weapon"
+    );
+    assert!(!registry.is_empty(), "a one-weapon registry is non-empty");
+    assert!(
+        registry.spec(&autogun).is_some(),
+        "a present key resolves to its spec",
+    );
+    assert!(
+        registry
+            .spec(&WeaponName::new("missing".to_owned()))
+            .is_none(),
+        "an absent key resolves to None (the setup-time WeaponNotFound trigger)",
+    );
+}

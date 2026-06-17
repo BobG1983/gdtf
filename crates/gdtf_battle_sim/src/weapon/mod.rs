@@ -1,0 +1,66 @@
+//! Weapon-side data — the per-weapon and per-fire-mode NUMBERS the §1
+//! cone/stability/recoil/aim math reads (`docs/combat/resolution.md` §1(a)+(b),
+//! §"Coefficients live in the combat-tuning data": "Weapon-side numbers
+//! (`base_spread`, `accuracy`, `kickback`, `fatal_bias`, `magazine_size`; per-mode
+//! cone mult / TU% / shots) live on the weapon / fire-mode data").
+//!
+//! This is the home conflict's other side: *coefficients* live in [`crate::tuning`],
+//! but a *weapon's own numbers* live here on [`Weapon`] / [`FireMode`]. The cone
+//! equation `θ_cone = base_spread × stability × aim × firemode × recoil`
+//! (resolution.md §1a) reads a weapon's `base_spread` and per-round `kickback`
+//! from [`Weapon`] and its selector term from a [`FireMode`]; the in-cone draw
+//! `p = concentration_p(Shooting, weapon.accuracy)` (§1b) reads `accuracy`; and
+//! the §6 severity score reads `fatal_bias` (carried here, consumed by E3 — not
+//! used in this slice).
+//!
+//! This is the E2.1 **data/types/serde** slice: types + serde only, no math or
+//! behavior. Every numeric leaf is a named newtype (no-bare-types: a private inner
+//! value, a derived [`Deref`](bevy::prelude::Deref), and `#[serde(transparent)]` so
+//! it round-trips as a bare RON scalar), matching the [`crate::tuning`] house style.
+//!
+//! ## E3.1 — damage stats + the damage-type vocabulary
+//!
+//! The E3.1 slice adds the three per-hit damage NUMBERS the
+//! `docs/combat/weapons-and-armor.md` §"Weapon stats" / §"Per-hit resolution"
+//! formula reads — [`WeaponDamage`], [`WeaponPunch`], [`WeaponShred`] — plus the
+//! [`DamageType`] a weapon emits. [`DamageType`] is one half of the dual
+//! vocabulary of `docs/combat/matchup.md` §"The 7 types": its seven variants name
+//! the same seven wheel nodes as [`crate::armor::ArmorType`], node `i` of one
+//! mirroring node `i` of the other. This is the DATA substrate only — the per-hit
+//! formula and the matchup lookup (the wheel itself) are later E3 slices; nothing
+//! here computes a hit or a matchup.
+//!
+//! ## GTW-200 — a weapon is ECS components, not a data struct
+//!
+//! The user-corrected model: a weapon is **not** one packed data struct — each
+//! sub-value is its own `#[derive(Component)]` newtype that lives as a sibling
+//! component on the (ganger) entity, and [`Weapon`] is a unit MARKER component
+//! (no data). The stats are then queryable directly, so the combat act
+//! (E4.5 `fire()`) is a proper query-based Bevy system with NO `&mut World`
+//! indirection. [`WeaponBundle`] spawns an armed entity carrying the full set;
+//! the §1/§6 readers take a transient [`WeaponStats`] borrow-view (refs assembled
+//! from the components at the call site — NOT a stored component).
+//!
+//! GTW-201 code-health: this concern is a dir-module split by responsibility —
+//! the per-stat components ([`components`]), the fire-mode model ([`fire_mode`]),
+//! the spawn bundle + borrow-view ([`bundle`]), the authoring spec ([`spec`]), and
+//! the registry ([`registry`]). This `mod.rs` is wiring-only; every public path is
+//! preserved via the re-exports below.
+
+mod bundle;
+mod components;
+mod fire_mode;
+mod registry;
+mod spec;
+
+#[cfg(test)]
+mod test;
+
+pub use bundle::{DamageProfile, HandlingProfile, WeaponBundle, WeaponStats};
+pub use components::{
+    Accuracy, BaseSpread, DamageType, FatalBias, Kickback, MagazineSize, Stable, Weapon,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+};
+pub use fire_mode::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent};
+pub use registry::WeaponRegistry;
+pub use spec::WeaponSpec;
