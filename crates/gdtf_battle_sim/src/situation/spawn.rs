@@ -1,0 +1,229 @@
+//! The authored value graph: [`GangerSpawn`], [`CoverSpawn`], and the canonical
+//! [`Situation`] — the serde-deserializable battlefield the setup is built from.
+
+use bevy::reflect::TypePath;
+use serde::Deserialize;
+
+use crate::{
+    armor::{ArmorHardness, ArmorProtection, SourceArmor},
+    cover::{CoverEntry, CoverHp, HeightBand},
+    ganger::{
+        Aiming, Facing, Faction, Hp, LifeState, Luck, Shooting, Stance, Toughness, Tu, Wounds,
+    },
+    metric::CellLevel,
+    occupancy::TerrainKind,
+    vertical::VerticalLink,
+    weapon::WeaponName,
+};
+
+/// One authored ganger placement — its `(cell, level)` plus every E1.2 component
+/// VALUE, the E3.0 attribute stats, and the read-only roster armor to seed its
+/// battle-local [`WornArmor`](crate::armor::WornArmor).
+///
+/// A named struct (not a bare tuple) so the authored ganger shape is
+/// self-describing. The component fields are the E1.2 newtypes carried **by value**
+/// ([`setup_battle`](crate::situation::setup_battle) spawns an entity with each as a
+/// component) plus the E3.0 / GTW-182 attribute stats ([`Shooting`] / [`Toughness`] /
+/// [`Luck`], the substrate the severity roll reads); `armor` is the E1.3 read-only
+/// [`SourceArmor`] record ([`WornArmor::seed_from`](crate::armor::WornArmor::seed_from)
+/// copies it onto the spawned entity). The grid key [`at`](GangerSpawn::at) becomes the
+/// spawned ganger's [`Position`](crate::ganger::Position).
+///
+/// Not `Eq` / `Hash`: the E3.0 attribute stats ([`Shooting`] / [`Toughness`] /
+/// [`Luck`]) carry `f32` magnitudes (no total order), so the authored ganger is
+/// `PartialEq` only. `(cell, level)`-keyed de-duplication
+/// ([`has_stacked_gangers`](crate::situation::has_stacked_gangers)) hashes
+/// [`at`](GangerSpawn::at), never the whole struct.
+///
+/// Not `Copy` (GTW-257): the [`weapon`](GangerSpawn::weapon) key is a
+/// [`WeaponName`] over a [`String`] (owned, not `Copy`), so the authored ganger is
+/// `Clone` only. The [`setup_battle`](crate::situation::setup_battle) spawn loop
+/// borrows each ganger, so dropping `Copy` costs nothing on the real path.
+///
+/// Derives [`Deserialize`] so an authored situation `.ron` names each ganger's
+/// placement + every component VALUE + roster armor + its [`weapon`](GangerSpawn::weapon)
+/// key (the value graph all flows through the landed newtype/enum serde derives —
+/// render-free, pixel-free).
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct GangerSpawn {
+    /// The `(cell, level)` the ganger spawns at — its [`Position`](crate::ganger::Position).
+    pub at:         CellLevel,
+    /// The ganger's gang (faction) identity.
+    pub faction:    Faction,
+    /// The ganger's facing.
+    pub facing:     Facing,
+    /// The ganger's stance (posture).
+    pub stance:     Stance,
+    /// The ganger's aim-mode flag.
+    pub aiming:     Aiming,
+    /// The ganger's hit-points pool.
+    pub hp:         Hp,
+    /// The ganger's Wounds (life) pool.
+    pub wounds:     Wounds,
+    /// The ganger's Time-Unit budget.
+    pub tu:         Tu,
+    /// The ganger's terminal life state.
+    pub life_state: LifeState,
+    /// The ganger's **Shooting** combat stat — the ranged-to-hit skill term the
+    /// §1b concentration exponent reads (E3.0 / GTW-182).
+    pub shooting:   Shooting,
+    /// The ganger's **Toughness** attribute — the defender's severity-roll
+    /// mitigation (E3.0 / GTW-182).
+    pub toughness:  Toughness,
+    /// The ganger's **Luck** attribute — directional fortune shaping the severity
+    /// roll's one-sided tail (E3.0 / GTW-182).
+    pub luck:       Luck,
+    /// The ganger's read-only roster armor (`armor_by_part`) — copied into a
+    /// battle-local [`WornArmor`](crate::armor::WornArmor) at setup, never mutated.
+    pub armor:      SourceArmor,
+    /// The ganger's **weapon KEY** — the filename stem of an `assets/weapons/*.ron`
+    /// (e.g. `"autogun"`), resolved against the
+    /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle) into the
+    /// [`WeaponBundle`](crate::weapon::WeaponBundle) inserted onto the
+    /// spawned entity (GTW-257). REQUIRED — every authored ganger is armed; an
+    /// unarmed `Option<WeaponName>` case is a deliberate FUTURE option (the
+    /// [[weapons-armor-data-driven]] model arms every ganger for now). A key absent
+    /// from the registry is a handled
+    /// [`BattleSetupError::WeaponNotFound`](crate::situation::BattleSetupError::WeaponNotFound)
+    /// error (no panic).
+    pub weapon:     WeaponName,
+}
+
+/// One authored piece of cover — a wall *or* a scatter prop, the SAME schema for
+/// both (`docs/combat/resolution.md` §3: "one ledger for walls *and* props").
+///
+/// A named struct carrying the authored cover facts
+/// [`setup_battle`](crate::situation::setup_battle) pours into both the
+/// [`CoverLedger`](crate::cover::CoverLedger) (its max [`CoverHp`] / [`HeightBand`] /
+/// armor) and the [`OccupancyGrid`](crate::occupancy::OccupancyGrid) terrain (its
+/// [`TerrainKind`]). Walls and scatter differ only in which [`Situation`] list they
+/// live in ([`walls`](Situation::walls) vs [`scatter`](Situation::scatter)) — the
+/// cover model treats them identically.
+///
+/// Derives [`Deserialize`] so an authored situation `.ron` names each piece's
+/// `(cell, level)` + terrain kind + cover-HP + height band + armor stats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+pub struct CoverSpawn {
+    /// The `(cell, level)` this cover occupies.
+    pub at:               CellLevel,
+    /// The terrain kind this cover marks in the occupancy grid (wall / cover).
+    pub terrain:          TerrainKind,
+    /// The cover's full (max) structural HP — seeds the ledger entry's
+    /// `current_hp == max_hp`.
+    pub cover_hp:         CoverHp,
+    /// The clearance band this cover occupies (LOW / MID / HIGH).
+    pub height_band:      HeightBand,
+    /// The cover's damage-reduction stat (same armor model as a ganger).
+    pub armor_protection: ArmorProtection,
+    /// The penetration this cover shrugs off (same armor model as a ganger).
+    pub armor_hardness:   ArmorHardness,
+}
+
+impl CoverSpawn {
+    /// Build an authored cover piece from its `(cell, level)`, terrain kind, max
+    /// HP, height band, and armor stats.
+    #[must_use]
+    pub const fn new(
+        at: CellLevel,
+        terrain: TerrainKind,
+        cover_hp: CoverHp,
+        height_band: HeightBand,
+        armor_protection: ArmorProtection,
+        armor_hardness: ArmorHardness,
+    ) -> Self {
+        Self {
+            at,
+            terrain,
+            cover_hp,
+            height_band,
+            armor_protection,
+            armor_hardness,
+        }
+    }
+
+    /// The ledger [`CoverEntry`] this authored piece seeds — `current_hp == max_hp`,
+    /// not destroyed, with this piece's band and armor stats.
+    #[must_use]
+    pub const fn cover_entry(&self) -> CoverEntry {
+        CoverEntry::seeded(
+            self.cover_hp,
+            self.height_band,
+            self.armor_protection,
+            self.armor_hardness,
+        )
+    }
+}
+
+/// The canonical authored **situation** — the full generated / authored
+/// battlefield the battle is built from: gangers, walls, scatter, upper-floor
+/// slabs, and stair/ladder vertical links (this [`crate::situation`] module is the
+/// setup-on-entry source of truth).
+///
+/// This is the ONE situation type: it supersedes the GTW-156 placeholder (now
+/// [`crate::occupancy::OccupancyInput`], the grid construction input) and GTW-160's
+/// `vertical_links` extension (moved here). [`setup_battle`](crate::situation::setup_battle)
+/// reads it to build the battle in the ECS world.
+///
+/// Derives [`Deserialize`] (GTW-205 / E10.3) so an authored battlefield ships as a
+/// loose `.ron` file loaded through the [`RonAsset<T>`](gdtf_assets::RonAsset)
+/// loader — render-free and pixel-free, the whole value graph routed through the
+/// landed newtype/enum serde derives. `#[serde(default)]` on each list lets an
+/// authored file omit a section it does not use (an empty battlefield deserializes
+/// from `()`), matching the [`Default`] empty situation. The in-test fixture is a
+/// test helper; the shipped `.ron` source is the real input.
+///
+/// Derives [`TypePath`] (render-free reflection metadata, no rendering) because the
+/// [`RonAsset<Situation>`](gdtf_assets::RonAsset) the loader wraps it in requires
+/// its payload to be [`TypePath`] — the same bound the theme spec satisfies.
+#[derive(Debug, Clone, Default, Deserialize, TypePath)]
+#[serde(default)]
+pub struct Situation {
+    /// The authored gangers, each a [`GangerSpawn`] (placement + component values +
+    /// roster armor).
+    pub gangers:        Vec<GangerSpawn>,
+    /// The authored walls (each a [`CoverSpawn`]).
+    pub walls:          Vec<CoverSpawn>,
+    /// The authored scatter / props (each a [`CoverSpawn`], same schema as a wall).
+    pub scatter:        Vec<CoverSpawn>,
+    /// The `(cell, level)`s that carry a present floor / roof slab.
+    pub slabs:          Vec<CellLevel>,
+    /// The authored stair / ladder vertical links (E1.10 / GTW-160), moved here
+    /// from the GTW-156 placeholder. The only way a ganger changes storey
+    /// (`docs/combat/combat.md`).
+    pub vertical_links: Vec<VerticalLink>,
+    /// The gang the human player controls — every other [`Faction`] is the enemy.
+    /// Seeds the [`PlayerFaction`](crate::PlayerFaction) battle-lifetime resource the
+    /// later control-gating + victory-census slices read. The struct-level
+    /// `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)` for any
+    /// authored file that omits the field, so every existing situation `.ron` stays
+    /// valid (gang `0` is the player by convention, matching `skirmish.ron`); an
+    /// authored `player_faction: 1` parses as the bare gang index
+    /// ([`Faction`] is `#[serde(transparent)]`).
+    pub player_faction: Faction,
+}
+
+impl Situation {
+    /// Build an empty situation (no gangers, cover, slabs, or links).
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Every `(cell, level)` this situation **authors** a tile at — the union of
+    /// its wall, scatter, and slab cells.
+    ///
+    /// This is the **cell-existence source** for vertical-link validation
+    /// ([`build_vertical_link_graph`](crate::vertical::build_vertical_link_graph)):
+    /// a link endpoint that does not appear here
+    /// dangles off a `(cell, level)` no authored tile occupies. Gangers are NOT
+    /// included — a ganger standing somewhere does not author a tile a link can
+    /// attach to (`docs/combat/combat.md`: links attach to authored geometry).
+    pub fn authored_cells(&self) -> impl Iterator<Item = CellLevel> + '_ {
+        self.walls
+            .iter()
+            .map(|c| c.at)
+            .chain(self.scatter.iter().map(|c| c.at))
+            .chain(self.slabs.iter().copied())
+    }
+}
