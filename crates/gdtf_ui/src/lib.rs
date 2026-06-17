@@ -36,7 +36,11 @@
 //! ([`paint_disabled_buttons`](widgets::paint_disabled_buttons) /
 //! [`paint_active_buttons`](widgets::paint_active_buttons)); the [`interaction`]
 //! module owns the theme-derived hover/press feedback system. All compose *on top
-//! of* [`apply_theme`](themed::apply_theme)'s base look, ordered after it.
+//! of* [`apply_theme`](themed::apply_theme)'s base look, ordered after it. It also
+//! owns the GTW-276 generic HUD widgets — [`ProgressBar`](widgets::spawn_progress_bar),
+//! [`Pips`](widgets::spawn_pips), [`Switch`](widgets::Switch), and
+//! [`SegmentedControl`](widgets::SegmentedControl) — the color-parameterized,
+//! mutate-in-place building blocks the status / hover panels and the action bar reuse.
 //!
 //! The [`UiPlugin`] registration seam itself lives in the private `plugin`
 //! submodule and is re-exported here unchanged.
@@ -55,6 +59,11 @@ pub use plugin::UiPlugin;
 pub use retheme::redrive_theme_on_asset_event;
 pub use themed::any_themed_added;
 pub use widgets::{
-    ActiveButton, ButtonLabel, DisabledButton, paint_active_buttons, paint_disabled_buttons,
-    spawn_button, spawn_panel,
+    ActiveButton, ActiveSegment, ButtonLabel, DisabledButton, FillFraction, FilledPips,
+    Orientation, Pip, PipsRow, ProgressBarFill, ProgressBarTrack, Segment, SegmentColors,
+    SegmentIndex, SegmentLabel, SegmentSelected, SegmentText, SegmentedControl, Switch,
+    SwitchColors, SwitchKnob, SwitchOrientation, SwitchState, ToggleFlipped, drive_switches,
+    paint_active_buttons, paint_disabled_buttons, repaint_segments, select_segment_on_press,
+    set_pips, set_progress_bar, spawn_button, spawn_panel, spawn_pips, spawn_progress_bar,
+    spawn_segmented_control, spawn_switch,
 };

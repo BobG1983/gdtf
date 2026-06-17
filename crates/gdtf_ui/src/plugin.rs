@@ -9,7 +9,10 @@ use crate::{
     retheme::redrive_theme_on_asset_event,
     theme::{GdtfTheme, GdtfThemeSpec},
     themed::{UiSystems, any_themed_added, apply_theme},
-    widgets::{paint_active_buttons, paint_disabled_buttons},
+    widgets::{
+        SegmentSelected, ToggleFlipped, drive_switches, paint_active_buttons,
+        paint_disabled_buttons, repaint_segments, select_segment_on_press,
+    },
 };
 
 /// The message buffer the GTW-137 retheme system reads: asset events for the
@@ -101,9 +104,36 @@ impl Plugin for UiPlugin {
     /// already drives [`Interaction`](bevy::ui::Interaction), so real clicks
     /// reach GTW-122's mouse action layer with no new wiring (bevy-traps).
     ///
+    /// The GTW-276 generic HUD-widget drivers run in [`Update`], independent of the
+    /// theming band (they carry their own colors, not the `GdtfTheme`):
+    /// [`drive_switches`](crate::widgets::drive_switches) flips a clicked
+    /// [`Switch`](crate::widgets::Switch) and writes a
+    /// [`ToggleFlipped`](crate::widgets::ToggleFlipped) message;
+    /// [`select_segment_on_press`](crate::widgets::select_segment_on_press) sets a
+    /// pressed [`SegmentedControl`](crate::widgets::SegmentedControl)'s active index
+    /// and writes a [`SegmentSelected`](crate::widgets::SegmentSelected) message, and
+    /// [`repaint_segments`](crate::widgets::repaint_segments) runs
+    /// `.after(select_segment_on_press)` so it repaints ALL segments the SAME frame
+    /// the active index changed (bevy-traps rule 3). Both message buffers are
+    /// registered here so a downstream listener can read them.
+    ///
     /// Later tickets hang further UI systems/resources here; the layer stays
     /// bevy-only (no ecosystem crate).
     fn build(&self, app: &mut App) {
+        app.add_message::<ToggleFlipped>()
+            .add_message::<SegmentSelected>()
+            .add_systems(
+                Update,
+                (
+                    // GTW-276 widget drivers. `repaint_segments` runs after the press
+                    // handler so the de-selected segment returns to base the SAME frame
+                    // the active index changes (active-driven, never hover — the
+                    // GTW-280/284 lesson; bevy-traps rule 3).
+                    drive_switches,
+                    select_segment_on_press,
+                    repaint_segments.after(select_segment_on_press),
+                ),
+            );
         app.add_plugins(FocusNavPlugin).add_systems(
             Update,
             (

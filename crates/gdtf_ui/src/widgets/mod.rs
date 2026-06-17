@@ -35,13 +35,54 @@
 //! [`DisabledButton`] and [`ActiveButton`], DISABLED wins:
 //! [`paint_active_buttons`] filters `Without<DisabledButton>`, so a disabled+active
 //! button keeps the disabled fill.
+//!
+//! ## Generic HUD widgets (GTW-276)
+//!
+//! Four generic, color-parameterized HUD widgets the status panel, hover panel, and
+//! action bar build on. Each is pure VIEW and updates by MUTATING its existing
+//! entities — never despawn/respawn on a value change:
+//!
+//! - [`ProgressBar`](spawn_progress_bar): a track + fill; [`set_progress_bar`]
+//!   mutates the fill width to a [`FillFraction`] (the TU / HP bars).
+//! - [`Pips`](spawn_pips): a row of N circle nodes; [`set_pips`] re-colors them by an
+//!   M-of-N split ([`FilledPips`]) (the Wounds pips).
+//! - [`Switch`](spawn_switch): a knob in a rounded track; clicking flips it and emits
+//!   a [`ToggleFlipped`] message carrying the switch's identity (the Aim toggle).
+//! - [`SegmentedControl`](spawn_segmented_control): N labeled segments, one active;
+//!   selecting one repaints ALL segments the same frame and emits a
+//!   [`SegmentSelected`] message (the Fire-Mode / stance controls).
+//!
+//! [`Switch`] and [`SegmentedControl`] each have a driver system registered by
+//! [`UiPlugin`](crate::UiPlugin); the bar and pips have no per-frame system (they are
+//! updated by the caller through their `set_*` helpers).
 
 mod builders;
 mod markers;
+mod orientation;
 mod paint;
+mod pips;
+mod progress_bar;
+mod segmented_control;
+mod switch;
 #[cfg(test)]
 mod test;
+#[cfg(test)]
+mod test_hud;
 
 pub use builders::{spawn_button, spawn_panel};
 pub use markers::{ActiveButton, ButtonLabel, DisabledButton};
+pub use orientation::Orientation;
 pub use paint::{paint_active_buttons, paint_disabled_buttons};
+pub use pips::{FilledPips, Pip, PipsRow, set_pips, spawn_pips};
+pub use progress_bar::{
+    FillFraction, ProgressBarFill, ProgressBarTrack, set_progress_bar, spawn_progress_bar,
+};
+pub use segmented_control::{
+    ActiveSegment, Segment, SegmentColors, SegmentIndex, SegmentLabel, SegmentSelected,
+    SegmentText, SegmentedControl, repaint_segments, select_segment_on_press,
+    spawn_segmented_control,
+};
+pub use switch::{
+    Switch, SwitchColors, SwitchKnob, SwitchOrientation, SwitchState, ToggleFlipped,
+    drive_switches, spawn_switch,
+};

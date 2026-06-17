@@ -1,0 +1,137 @@
+//! The [`Pips`] widget: a row of N small circle nodes, M-of-N filled.
+//!
+//! Pips show a small discrete count (the Wounds row in the status-panel mockup) as
+//! a row of rounded nodes: the first `M` carry the **remaining** (filled) color, the
+//! rest the **lost** (empty) color. The two colors are pure UI plumbing
+//! ([`bevy::Color`]) — Wounds default yellow filled / panel-bg empty, but the widget
+//! takes any pair.
+//!
+//! Per [[ui-mutate-not-respawn]] an update MUTATES each existing pip's
+//! [`BackgroundColor`](bevy::ui::BackgroundColor) by the M-of-N split —
+//! [`set_pips`] never despawns or respawns a pip on a value change, so the pip entity
+//! ids are stable across updates.
+
+use bevy::{
+    prelude::*,
+    ui::{BackgroundColor, BorderRadius, Node, Val},
+};
+
+/// How many pips of a [`Pips`] row are FILLED (carry the remaining color).
+///
+/// A widget-level count, NOT a game-domain value: a caller passes the inner value of
+/// a domain newtype (e.g. wounds taken) in. Wrapped so the count flows through one
+/// type; the M-of-N split saturates against the spawned pip total, so an out-of-range
+/// `filled` simply fills all (or none of) the pips.
+#[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
+pub struct FilledPips(usize);
+
+impl FilledPips {
+    /// Wraps a filled-pip count.
+    #[must_use]
+    pub const fn new(filled: usize) -> Self {
+        Self(filled)
+    }
+}
+
+/// Marker on the ROW root of a [`Pips`] widget.
+///
+/// The row is a horizontal flex container; each pip is a child marked [`Pip`]. The
+/// caller attaches its own identity marker alongside this so it can later find the
+/// row to update.
+///
+/// A unit marker — presence alone is the signal (no-bare-types rule).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct PipsRow;
+
+/// Marker on one circular pip node (a child of a [`PipsRow`]).
+///
+/// [`set_pips`] mutates each pip's [`BackgroundColor`](bevy::ui::BackgroundColor) to
+/// the remaining or lost color by its index within the row.
+///
+/// A unit marker — presence alone is the signal (no-bare-types rule).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct Pip;
+
+/// Spawns a [`Pips`] row of `total` circular pips (the first `filled` in the
+/// `remaining` color, the rest in `lost`) and returns the ROW [`Entity`].
+///
+/// `remaining` is the filled-pip color (Wounds default yellow) and `lost` the
+/// empty-pip color (Wounds default panel-bg), both override-able. `marker` is any
+/// [`Bundle`] the caller wants on the row root — typically its own identity marker so
+/// it can find the row to update later.
+///
+/// The pip entities are spawned ONCE here; [`set_pips`] only re-colors them
+/// ([[ui-mutate-not-respawn]]). The children are spawned left-to-right, so child
+/// order matches pip index.
+pub fn spawn_pips(
+    commands: &mut Commands,
+    total: usize,
+    filled: FilledPips,
+    remaining: Color,
+    lost: Color,
+    marker: impl Bundle,
+) -> Entity {
+    commands
+        .spawn((
+            PipsRow,
+            Node {
+                column_gap: Val::Px(PIP_GAP_PX),
+                ..default()
+            },
+            marker,
+        ))
+        .with_children(|row| {
+            for index in 0..total {
+                let color = if index < *filled { remaining } else { lost };
+                row.spawn((
+                    Pip,
+                    Node {
+                        width: Val::Px(PIP_DIAMETER_PX),
+                        height: Val::Px(PIP_DIAMETER_PX),
+                        // A fully rounded square is a circle.
+                        border_radius: BorderRadius::all(Val::Percent(50.0)),
+                        ..default()
+                    },
+                    BackgroundColor(color),
+                ));
+            }
+        })
+        .id()
+}
+
+/// Re-colors the pips of the [`Pips`] row rooted at `row` to the new M-of-N split by
+/// MUTATING each existing pip's [`BackgroundColor`](bevy::ui::BackgroundColor) —
+/// never respawning ([[ui-mutate-not-respawn]]).
+///
+/// Walks the row's [`Children`] in order: pips before index `filled` get `remaining`,
+/// the rest `lost`. Returns the number of pips re-colored (`0` if `row` is not a pips
+/// widget / has no pip children), so a caller can detect a stale id.
+///
+/// Param-only (a `&Children` read query + a `&mut BackgroundColor` write query) — no
+/// `&mut World` (bevy-traps rule 7).
+pub fn set_pips(
+    row: Entity,
+    filled: FilledPips,
+    remaining: Color,
+    lost: Color,
+    children: &Query<&Children>,
+    pips: &mut Query<&mut BackgroundColor, With<Pip>>,
+) -> usize {
+    let Ok(kids) = children.get(row) else {
+        return 0;
+    };
+    let mut recolored = 0usize;
+    for (index, child) in kids.iter().enumerate() {
+        if let Ok(mut background) = pips.get_mut(child) {
+            background.0 = if index < *filled { remaining } else { lost };
+            recolored += 1;
+        }
+    }
+    recolored
+}
+
+/// The diameter of one pip, in logical pixels.
+const PIP_DIAMETER_PX: f32 = 12.0;
+
+/// The horizontal gap between adjacent pips, in logical pixels.
+const PIP_GAP_PX: f32 = 4.0;
