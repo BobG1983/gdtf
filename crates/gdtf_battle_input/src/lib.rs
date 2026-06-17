@@ -89,7 +89,7 @@ pub mod keyboard;
 pub mod selection;
 
 pub use cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
-pub use fire_mode::{SelectedFireMode, next_fire_mode, sync_fire_mode_on_select};
+pub use fire_mode::{SelectedFireMode, sync_fire_mode_on_select};
 pub use gamepad::{
     ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, CursorSpeed, CursorStickDeadzone,
     GamepadCursor, emit_gamepad_cursor_move, gamepad_click_act, gamepad_turn,
@@ -99,11 +99,11 @@ pub use intent::{
     ActIntent, ActWriters, LevelStep, PendingActIntent, dispatch_act_intents, step_level,
 };
 pub use keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds};
-pub use keyboard::{fire_mode_cycle_key, level_keys, posture_keys, select_clear_key};
+pub use keyboard::{level_keys, posture_keys, select_clear_key};
 pub use selection::{
-    LeftClickOutcome, LeftClickReads, SelectedShooter, SelectionHighlight, apply_left_click,
-    auto_select_first_player_ganger, decide_left_click, decide_turn, left_click_act,
-    right_click_turn_to_face, update_selection_highlight,
+    LeftClickOutcome, LeftClickReads, SelectedShooter, SelectionHighlight, TurnReads,
+    WorldClickSuppressed, apply_left_click, auto_select_first_player_ganger, decide_left_click,
+    decide_turn, left_click_act, right_click_turn_to_face, update_selection_highlight,
 };
 
 /// The cell the OS cursor currently hovers, on the presenter's active level.
@@ -178,7 +178,7 @@ pub enum InputSystems {
 ///   selected), plus the selection
 ///   highlight ([`update_selection_highlight`]), the 222b fire-mode default-on-select
 ///   ([`sync_fire_mode_on_select`]), the keyboard press surface (S8 [`level_keys`] /
-///   [`select_clear_key`] + 222b [`posture_keys`] / [`fire_mode_cycle_key`]), and the
+///   [`select_clear_key`] + 222b [`posture_keys`]), and the
 ///   ONE intent drain ([`dispatch_act_intents`]) that emits the act `*Requested` for
 ///   every queued act-bearing intent; and
 /// - loads the data-driven keybind table ([`load_keybinds`] / [`resolve_keybinds`])
@@ -221,6 +221,11 @@ impl Plugin for GdtfBattleInputPlugin {
             .init_resource::<SelectedShooter>()
             .init_resource::<SelectedFireMode>()
             .init_resource::<PendingActIntent>()
+            // GTW-254 — the cross-crate click-through guard (`false` by default). `gdtf_app`
+            // sets it `true` while the fire-mode popup picker is open, so a click on the
+            // picker / its scrim does not also act on the world cell behind the modal
+            // (clause 6b). Owned here so the dependency edge stays `gdtf_app -> input`.
+            .init_resource::<WorldClickSuppressed>()
             // GTW-259 — the gamepad software cursor + the last-moved-wins pointer arbiter.
             // `GamepadCursor` inits to its window-centre default; `ActivePointer` to `Mouse`
             // (the landed mouse-only behavior until the stick moves).
@@ -335,16 +340,12 @@ impl Plugin for GdtfBattleInputPlugin {
             )
             // S8 + 222b keyboard press surface: reads the loaded `Keybinds` (so it is
             // gated on that resource existing too) and pushes intents. The act-bearing
-            // keys (`posture_keys` / `fire_mode_cycle_key`, 222b) push the same seam
-            // 222a's no-act keys (`level_keys` / `select_clear_key`) do.
+            // keys (`posture_keys`, 222b) push the same seam 222a's no-act keys
+            // (`level_keys` / `select_clear_key`) do. (The blind fire-mode-cycle key was
+            // REMOVED in GTW-254 — the `gdtf_app` popup picker replaced it.)
             .add_systems(
                 Update,
-                (
-                    level_keys,
-                    select_clear_key,
-                    posture_keys,
-                    fire_mode_cycle_key,
-                )
+                (level_keys, select_clear_key, posture_keys)
                     .in_set(InputSystems::Gather)
                     .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<Keybinds>)),
             )
@@ -359,7 +360,6 @@ impl Plugin for GdtfBattleInputPlugin {
                     .after(level_keys)
                     .after(select_clear_key)
                     .after(posture_keys)
-                    .after(fire_mode_cycle_key)
                     .after(left_click_act)
                     .after(right_click_turn_to_face)
                     // GTW-259 — also after the gamepad act writers so the drain sees a

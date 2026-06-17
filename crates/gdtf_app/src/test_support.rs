@@ -19,9 +19,10 @@ pub use crate::{
     app::auto_battle::{AutoBattleActive, AutoBattlePlugin, auto_battle_enabled},
     scenes::{
         AimToggleButton, BattleRunningComplete, BattlescapeButton, EndTurnButton,
-        FireModeSelectButton, FleeButton, HiveScapeButton, HpText, IdentityText, LevelDownButton,
-        LevelUpButton, LifeText, LoadedSituation, MenuTitle, OptionsButton, QuitButton,
-        ReloadButton, ScenesPlugin, StanceCycleButton, StanceText, TuText,
+        FireModePickerButton, FireModePickerEntry, FireModePickerRoot, FireModePickerScrim,
+        FleeButton, HiveScapeButton, HpText, IdentityText, LevelDownButton, LevelUpButton,
+        LifeText, LoadedSituation, MenuTitle, OptionsButton, QuitButton, ReloadButton,
+        ScenesPlugin, StanceCycleButton, StanceText, TuText, WeaponNameText,
     },
     states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };

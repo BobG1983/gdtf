@@ -45,13 +45,14 @@
 
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::GamepadCursorMoved;
-use gdtf_battle_sim::{Faction, PlayerFaction, Position};
+use gdtf_battle_sim::{Faction, Position};
 
 use crate::{
-    ActIntent, HoveredCell, PendingActIntent,
+    ActIntent, PendingActIntent,
     fire_surface::ShooterFireData,
     selection::{
-        LeftClickReads, SelectedShooter, apply_left_click, decide_left_click, decide_turn,
+        LeftClickReads, SelectedShooter, TurnReads, apply_left_click, decide_left_click,
+        decide_turn,
     },
 };
 
@@ -271,6 +272,11 @@ pub fn gamepad_click_act(
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
 ) {
+    // A `gdtf_app` modal (the GTW-254 picker) is capturing the pointer (clause 6b) — the
+    // South press belongs to the modal, not the world.
+    if *reads.suppressed() {
+        return;
+    }
     let Some(gamepad) = gamepads.iter().next() else {
         return;
     };
@@ -304,13 +310,15 @@ pub fn gamepad_click_act(
 /// shared decision (exercised via the mouse path) + in-engine QA cover it (the module note).
 pub fn gamepad_turn(
     gamepads: Query<&Gamepad>,
-    hovered: Res<HoveredCell>,
-    player: Res<PlayerFaction>,
-    selected: Res<SelectedShooter>,
+    reads: TurnReads,
     factions: Query<&Faction>,
     positions: Query<&Position>,
     mut pending: ResMut<PendingActIntent>,
 ) {
+    // A `gdtf_app` modal (the GTW-254 picker) is capturing the pointer (clause 6b).
+    if **reads.suppressed {
+        return;
+    }
     let Some(gamepad) = gamepads.iter().next() else {
         return;
     };
@@ -318,13 +326,13 @@ pub fn gamepad_turn(
         return;
     }
     // Gating: only a PLAYER-faction selection turns (a forced enemy emits nothing).
-    let selection_player = (**selected)
+    let selection_player = (**reads.selected)
         .and_then(|actor| factions.get(actor).ok().copied())
-        .is_some_and(|faction| faction == **player);
+        .is_some_and(|faction| faction == **reads.player);
     if !selection_player {
         return;
     }
-    if let Some(request) = decide_turn(&selected, &hovered, &positions) {
+    if let Some(request) = decide_turn(&reads.selected, &reads.hovered, &positions) {
         pending.push(ActIntent::Turn(request));
     }
 }

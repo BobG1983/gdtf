@@ -5,10 +5,10 @@
 //!
 //! - AC1 drives the REAL selection path (synth left-click on an armed occupant) and
 //!   asserts `SelectedFireMode` defaults to that weapon's `FireMode::single()`.
-//! - AC2 synthesizes the bound fire-mode-cycle key and asserts `SelectedFireMode`
-//!   advances ONLY among the weapon's offered modes (a one-mode `[Single]` stays; a
-//!   two-mode `[Single, Burst]` toggles; a three-mode `[Single, Burst, Full]` walks +
-//!   wraps).
+//! - (GTW-254) The blind fire-mode cycle was REMOVED — the `gdtf_app` popup picker
+//!   replaced it, so the old AC2 key-walk test is gone (the picker's behavior is covered
+//!   by the `gdtf_app` `action_bar.rs` integration tests). `sync_fire_mode_on_select`
+//!   (AC1) is still the picker's default-on-select dependency.
 //! - AC3 synthesizes a left-click on an in-bounds target for an alive / loaded /
 //!   affordable shooter and asserts EXACTLY one `FireRequested` with the expected
 //!   shooter / mode / target fields is emitted (a probe `MessageReader`).
@@ -70,13 +70,12 @@ const TARGET_SIZE: Vec2 = Vec2::new(1280.0, 720.0);
 /// (not parsed from the editable shipped `.ron`).
 const fn test_keybinds() -> Keybinds {
     Keybinds {
-        select_clear:    BoundKey::KeyEscape,
-        level_up:        BoundKey::KeyPageUp,
-        level_down:      BoundKey::KeyPageDown,
-        stance_cycle:    BoundKey::KeyC,
-        aim_toggle:      BoundKey::KeyF,
-        facing_cycle:    BoundKey::KeyR,
-        fire_mode_cycle: BoundKey::KeyQ,
+        select_clear: BoundKey::KeyEscape,
+        level_up:     BoundKey::KeyPageUp,
+        level_down:   BoundKey::KeyPageDown,
+        stance_cycle: BoundKey::KeyC,
+        aim_toggle:   BoundKey::KeyF,
+        facing_cycle: BoundKey::KeyR,
     }
 }
 
@@ -267,15 +266,6 @@ fn press_key(app: &mut App, key: KeyCode) {
         .press(key);
 }
 
-/// Releases `key` + clears the keyboard edges so a later `press(key)` is a fresh
-/// just-pressed (a held key never re-fires `just_pressed` — `clear()` alone leaves it
-/// held).
-fn release_key(app: &mut App, key: KeyCode) {
-    let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
-    keys.release(key);
-    keys.clear();
-}
-
 /// Presses (just-pressed edge) the left mouse button.
 fn press_left(app: &mut App) {
     app.world_mut()
@@ -379,84 +369,13 @@ fn selecting_armed_ganger_defaults_fire_mode_to_single() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC2 — fire-mode cycle advances ONLY among the selected weapon's offered modes.
+// (GTW-254) The blind fire-mode cycle was REMOVED — the `gdtf_app` popup picker
+// replaced it. Its old key-walk test (`fire_mode_cycle_walks_only_offered_modes`) is
+// gone; the picker's open -> list-offered-modes -> select-sets-`SelectedFireMode`
+// behavior is covered by the `gdtf_app` `action_bar.rs` integration tests on the real
+// picker. AC1 (default-to-`single()` on select) above still covers
+// `sync_fire_mode_on_select`, which the picker also relies on.
 // ---------------------------------------------------------------------------------
-
-/// AC2 — a three-mode `[Single, Burst, Full]` weapon walks `single` -> `burst` ->
-/// `full` -> (wrap) `single` across repeated fire-mode-cycle keypresses; a one-mode
-/// `[Single]` weapon stays on `single`; a two-mode `[Single, Burst]` weapon toggles
-/// `single` <-> `burst` — all via the REAL key path.
-#[test]
-fn fire_mode_cycle_walks_only_offered_modes() {
-    let binds = test_keybinds();
-
-    // [Single, Burst, Full]: single -> burst -> full -> single.
-    {
-        let mut app = acts_app();
-        // Build the three modes locally so we can assert against them (the specs are
-        // `Copy` again). The kind discriminates each mode.
-        let single = spec(ModeKind::Single, 0.2, 1);
-        let burst = spec(ModeKind::Burst, 0.4, 3);
-        let full = spec(ModeKind::Full, 0.7, 6);
-        let selector = FireMode::new(vec![single, burst, full]);
-        let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
-        select_ganger(&mut app, ganger);
-        assert_eq!(fire_mode(&app), Some(single), "starts on single");
-
-        let cycle = binds.fire_mode_cycle();
-        for expected in [burst, full, single, burst] {
-            press_key(&mut app, cycle);
-            app.update();
-            release_key(&mut app, cycle);
-            assert_eq!(
-                fire_mode(&app),
-                Some(expected),
-                "fire-mode cycle must walk single->burst->full->single",
-            );
-        }
-    }
-
-    // [Single]: stays on single no matter how many times the cycle key is pressed.
-    {
-        let mut app = acts_app();
-        let single = spec(ModeKind::Single, 0.2, 1);
-        let selector = FireMode::new(vec![single]);
-        let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
-        select_ganger(&mut app, ganger);
-        let cycle = binds.fire_mode_cycle();
-        for _ in 0..4 {
-            press_key(&mut app, cycle);
-            app.update();
-            release_key(&mut app, cycle);
-            assert_eq!(
-                fire_mode(&app),
-                Some(single),
-                "a one-mode weapon must stay on single",
-            );
-        }
-    }
-
-    // [Single, Burst]: toggles single <-> burst.
-    {
-        let mut app = acts_app();
-        let single = spec(ModeKind::Single, 0.2, 1);
-        let burst = spec(ModeKind::Burst, 0.4, 3);
-        let selector = FireMode::new(vec![single, burst]);
-        let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
-        select_ganger(&mut app, ganger);
-        let cycle = binds.fire_mode_cycle();
-        for expected in [burst, single, burst] {
-            press_key(&mut app, cycle);
-            app.update();
-            release_key(&mut app, cycle);
-            assert_eq!(
-                fire_mode(&app),
-                Some(expected),
-                "a two-mode weapon must toggle single<->burst",
-            );
-        }
-    }
-}
 
 // ---------------------------------------------------------------------------------
 // AC3 — a left-click on an in-bounds target emits exactly one FireRequested with the
@@ -775,9 +694,8 @@ fn facing_key_emits_next_of_cycle_and_matches_direct_intent() {
 // AC6 — with NO SelectedShooter, every act key/click is a no-op (zero messages).
 // ---------------------------------------------------------------------------------
 
-/// AC6 — with the selection cleared, driving ALL act keys (stance / aim / facing /
-/// fire-mode cycle) + a left-click emits ZERO messages of every `*Requested` type and
-/// does not panic.
+/// AC6 — with the selection cleared, driving ALL act keys (stance / aim / facing) + a
+/// left-click emits ZERO messages of every `*Requested` type and does not panic.
 #[test]
 fn no_selection_makes_every_act_a_no_op() {
     let mut app = acts_app();
@@ -806,7 +724,6 @@ fn no_selection_makes_every_act_a_no_op() {
     press_key(&mut app, binds.stance_cycle());
     press_key(&mut app, binds.aim_toggle());
     press_key(&mut app, binds.facing_cycle());
-    press_key(&mut app, binds.fire_mode_cycle());
     press_left(&mut app);
     app.update();
 

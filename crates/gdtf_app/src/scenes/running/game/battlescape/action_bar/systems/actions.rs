@@ -43,7 +43,7 @@ use gdtf_battle_input::{ActIntent, PendingActIntent};
 use gdtf_ui::DisabledButton;
 
 use crate::scenes::running::game::battlescape::action_bar::components::{
-    AimToggleButton, FireModeSelectButton, LevelDownButton, LevelUpButton, StanceCycleButton,
+    AimToggleButton, LevelDownButton, LevelUpButton, StanceCycleButton,
 };
 
 /// Query filter selecting the ENABLED button carrying marker `M` whose
@@ -84,25 +84,25 @@ pub(in crate::scenes::running::game::battlescape::action_bar) const fn is_press(
 ///
 /// - [`StanceCycleButton`] → [`ActIntent::StanceCycle`]
 /// - [`AimToggleButton`] → [`ActIntent::AimToggle`]
-/// - [`FireModeSelectButton`] → [`ActIntent::FireModeCycle`]
 /// - [`LevelUpButton`] → [`ActIntent::LevelUp`]
 /// - [`LevelDownButton`] → [`ActIntent::LevelDown`]
 ///
-/// The five per-marker queries are disjoint (each filtered to one role marker and
-/// `Without<DisabledButton>`), so they never conflict; the DEFERRED reload / end-turn
-/// buttons carry [`DisabledButton`] and so match NONE of these queries — they push no
-/// intent (AC5). The buttons write NO `*Requested` directly — the ONE
-/// [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) drain interprets
+/// The fire-mode-PICKER opener is NOT handled here (GTW-254) — it opens the popup picker
+/// modal via the dedicated `fire_mode_picker` systems, NOT the intent seam (the picker
+/// sets the fire mode directly). The four per-marker queries are disjoint (each filtered
+/// to one role marker and `Without<DisabledButton>`), so they never conflict; the
+/// DEFERRED reload / end-turn buttons carry [`DisabledButton`] and so match NONE of these
+/// queries — they push no intent (AC5). The buttons write NO `*Requested` directly — the
+/// ONE [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) drain interprets
 /// each pushed intent (against the `SelectedShooter`), exactly as for a key press, so a
 /// press with no selection is a no-op in the drain (AC6).
 ///
-/// Param-only (`bevy-traps.md` #7): five read-only `Query<&Interaction, …>`s + the
+/// Param-only (`bevy-traps.md` #7): four read-only `Query<&Interaction, …>`s + the
 /// `ResMut<PendingActIntent>` write — no `&mut World`.
 pub(in crate::scenes::running::game::battlescape) fn action_bar_button_intents(
     mut pending: ResMut<PendingActIntent>,
     stance: Query<&Interaction, PressedButton<StanceCycleButton>>,
     aim: Query<&Interaction, PressedButton<AimToggleButton>>,
-    fire_mode: Query<&Interaction, PressedButton<FireModeSelectButton>>,
     level_up: Query<&Interaction, PressedButton<LevelUpButton>>,
     level_down: Query<&Interaction, PressedButton<LevelDownButton>>,
 ) {
@@ -111,9 +111,6 @@ pub(in crate::scenes::running::game::battlescape) fn action_bar_button_intents(
     }
     if aim.iter().copied().any(is_press) {
         pending.push(ActIntent::AimToggle);
-    }
-    if fire_mode.iter().copied().any(is_press) {
-        pending.push(ActIntent::FireModeCycle);
     }
     if level_up.iter().copied().any(is_press) {
         pending.push(ActIntent::LevelUp);

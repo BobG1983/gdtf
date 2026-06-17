@@ -31,8 +31,9 @@ pub(in crate::scenes::running::game::battlescape) use action_bar::GameBattleScap
 #[cfg(feature = "test-support")]
 crate::support_use! {
     action_bar::{
-        AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton, LevelDownButton,
-        LevelUpButton, ReloadButton, StanceCycleButton,
+        AimToggleButton, EndTurnButton, FireModePickerButton, FireModePickerEntry,
+        FireModePickerRoot, FireModePickerScrim, FleeButton, LevelDownButton, LevelUpButton,
+        ReloadButton, StanceCycleButton,
     };
 }
 
@@ -44,5 +45,5 @@ pub(in crate::scenes::running::game::battlescape) use status_panel::GameBattleSc
 // assert each line's `Text` content.
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    status_panel::{HpText, IdentityText, LifeText, StanceText, TuText};
+    status_panel::{HpText, IdentityText, LifeText, StanceText, TuText, WeaponNameText};
 }

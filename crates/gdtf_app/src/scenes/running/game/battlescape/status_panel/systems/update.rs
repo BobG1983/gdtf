@@ -29,11 +29,14 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{Faction, Hp, LifeState, Position, Stance, Tu, TuMax, Wounds};
+use gdtf_battle_sim::{Faction, Hp, LifeState, Position, Stance, Tu, TuMax, WeaponName, Wounds};
 
 use crate::scenes::running::game::battlescape::status_panel::{
-    components::{HpText, IdentityText, LifeText, StanceText, TuText},
-    systems::labels::{NO_SELECTION, hp_label, identity_label, life_label, stance_label, tu_label},
+    components::{HpText, IdentityText, LifeText, StanceText, TuText, WeaponNameText},
+    systems::labels::{
+        NO_SELECTION, hp_label, identity_label, life_label, stance_label, tu_label,
+        weapon_name_label,
+    },
 };
 
 /// The selected ganger's vital components, read in ONE query tuple.
@@ -60,6 +63,10 @@ pub(in crate::scenes::running::game::battlescape::status_panel) struct Vitals {
     faction:  &'static Faction,
     /// The ganger's terminal life state.
     life:     &'static LifeState,
+    /// The ganger's carried weapon name, if armed (GTW-254 — read defensively as an
+    /// [`Option`] so an unarmed selection still resolves, rather than the whole `.get`
+    /// failing closed and blanking every OTHER vital line).
+    weapon:   Option<&'static WeaponName>,
 }
 
 /// One per-line `&mut Text` writer query, parameterised by the line marker `M`.
@@ -82,6 +89,7 @@ type LineParamSet<'w, 's> = ParamSet<
         LineWriter<'w, 's, TuText>,
         LineWriter<'w, 's, HpText>,
         LineWriter<'w, 's, LifeText>,
+        LineWriter<'w, 's, WeaponNameText>,
     ),
 >;
 
@@ -131,6 +139,7 @@ pub(in crate::scenes::running::game::battlescape) fn update_status_panel(
             tu:       tu_label(*v.tu, *v.tu_max),
             hp:       hp_label(*v.hp, *v.wounds),
             life:     life_label(*v.life),
+            weapon:   weapon_name_label(v.weapon),
         });
 
     // Borrow each line query in turn (ParamSet: one at a time) and write its text — the
@@ -149,6 +158,10 @@ pub(in crate::scenes::running::game::battlescape) fn update_status_panel(
         writers.lines.p4(),
         rendered.as_ref().map(|r| r.life.as_str()),
     );
+    write_line(
+        writers.lines.p5(),
+        rendered.as_ref().map(|r| r.weapon.as_str()),
+    );
 }
 
 /// The five rendered vitals strings for the selected ganger.
@@ -166,6 +179,8 @@ struct RenderedLines {
     hp:       String,
     /// The life-state line.
     life:     String,
+    /// The weapon-name line (GTW-254).
+    weapon:   String,
 }
 
 /// Writes `value` (or the [`NO_SELECTION`] empty state when `value` is [`None`]) into

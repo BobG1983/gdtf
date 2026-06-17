@@ -18,7 +18,7 @@
 use bevy::{prelude::*, state::state::State};
 use gdtf_app::test_support::{
     AimToggleButton, AutoBattleActive, AutoBattlePlugin, BattleScapeState, EndTurnButton,
-    FireModeSelectButton, LevelDownButton, LevelUpButton, ReloadButton, RunningState,
+    FireModePickerButton, LevelDownButton, LevelUpButton, ReloadButton, RunningState,
     StanceCycleButton, auto_battle_enabled,
 };
 // (no `GameState` import — the e2e test reads BattleScapeState directly.)
@@ -278,8 +278,8 @@ fn full_stack_composes_to_battle_running() {
     );
 }
 
-/// The number of action-bar buttons spawned in `BattleRunning`: the 5 existing-act
-/// buttons (stance, aim, fire-mode-select, level-up, level-down) plus the 2 deferred
+/// The number of action-bar buttons spawned in `BattleRunning`: the 5 control buttons
+/// (stance, aim, the fire-mode-picker opener, level-up, level-down) plus the 2 deferred
 /// buttons (reload, end-turn).
 const EXPECTED_ACTION_BAR_BUTTONS: usize = 7;
 
@@ -288,7 +288,7 @@ const EXPECTED_ACTION_BAR_BUTTONS: usize = 7;
 fn count_action_bar_buttons(app: &mut App) -> usize {
     count_marker::<StanceCycleButton>(app)
         + count_marker::<AimToggleButton>(app)
-        + count_marker::<FireModeSelectButton>(app)
+        + count_marker::<FireModePickerButton>(app)
         + count_marker::<LevelUpButton>(app)
         + count_marker::<LevelDownButton>(app)
         + count_marker::<ReloadButton>(app)

@@ -2,9 +2,9 @@
 //!
 //! [`spawn_action_bar`] runs `OnEnter(BattleScapeState::BattleRunning)` and builds a
 //! themed [`gdtf_ui`] node tree on the GTW-120 UI camera: a [`spawn_panel`] box
-//! anchored to the bottom of the screen holding one [`spawn_button`] per EXISTING act
-//! (stance-cycle, aim-toggle, fire-mode-select, level-up, level-down), each carrying
-//! its own per-act marker, plus the two DEFERRED buttons (reload, end-turn) rendered
+//! anchored to the bottom of the screen holding one [`spawn_button`] per control
+//! (stance-cycle, aim-toggle, the fire-mode-picker opener, level-up, level-down), each
+//! carrying its own marker, plus the two DEFERRED buttons (reload, end-turn) rendered
 //! as [`DisabledButton`] (their acts do not exist yet — see the marker docs).
 //!
 //! [`despawn_action_bar`] runs `OnExit(BattleScapeState::BattleRunning)` and
@@ -21,9 +21,12 @@
 use bevy::{prelude::*, ui::Val};
 use gdtf_ui::{ButtonLabel, DisabledButton, spawn_button, spawn_panel, theme::GdtfTheme};
 
-use crate::scenes::running::game::battlescape::action_bar::components::{
-    ActionBarRoot, AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton,
-    LevelDownButton, LevelUpButton, ReloadButton, StanceCycleButton,
+use crate::scenes::running::game::battlescape::action_bar::{
+    components::{
+        ActionBarRoot, AimToggleButton, EndTurnButton, FireModePickerButton, FleeButton,
+        LevelDownButton, LevelUpButton, ReloadButton, StanceCycleButton,
+    },
+    systems::fire_mode_picker,
 };
 
 /// Horizontal gap between the action-bar's buttons, in logical pixels.
@@ -49,8 +52,8 @@ impl BarGapPx {
 /// 1. Spawns the bar root via [`spawn_panel`] (a `Themed(Panel)` box), tagged
 ///    [`ActionBarRoot`], laid out as a horizontal flex row anchored to the bottom-centre
 ///    of the screen with an inter-button gap.
-/// 2. Spawns one [`spawn_button`] per EXISTING act — stance-cycle, aim-toggle,
-///    fire-mode-select, level-up, level-down — each carrying its per-act marker so the
+/// 2. Spawns one [`spawn_button`] per control — stance-cycle, aim-toggle, the
+///    fire-mode-picker opener, level-up, level-down — each carrying its own marker so the
 ///    action systems' per-marker queries stay disjoint (the GTW-122 precedent).
 /// 3. Spawns the two DEFERRED buttons (reload, end-turn) as [`DisabledButton`] (their
 ///    sim acts do not exist yet — they emit no intent; see the marker docs).
@@ -105,11 +108,15 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         ButtonLabel::new("Aim"),
         AimToggleButton,
     );
+    // The fire-mode PICKER opener (GTW-254): its caption shows the active mode and a
+    // press opens the popup picker. The caption is repainted from the live
+    // `SelectedFireMode` by `sync_fire_mode_picker_caption`; this initial caption is the
+    // neutral no-selection state.
     let fire_mode = spawn_button(
         &mut commands,
         &theme,
-        ButtonLabel::new("Fire Mode"),
-        FireModeSelectButton,
+        ButtonLabel::new(fire_mode_picker::NO_MODE_CAPTION),
+        FireModePickerButton,
     );
     let level_up = spawn_button(
         &mut commands,

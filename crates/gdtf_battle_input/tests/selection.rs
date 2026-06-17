@@ -97,13 +97,12 @@ fn keyboard_app(active_level: Level) -> App {
 /// `.ron`) so the keyboard tests do not depend on the editable file's chosen keys.
 const fn test_keybinds() -> Keybinds {
     Keybinds {
-        select_clear:    BoundKey::KeyEscape,
-        level_up:        BoundKey::KeyPageUp,
-        level_down:      BoundKey::KeyPageDown,
-        stance_cycle:    BoundKey::KeyC,
-        aim_toggle:      BoundKey::KeyF,
-        facing_cycle:    BoundKey::KeyR,
-        fire_mode_cycle: BoundKey::KeyQ,
+        select_clear: BoundKey::KeyEscape,
+        level_up:     BoundKey::KeyPageUp,
+        level_down:   BoundKey::KeyPageDown,
+        stance_cycle: BoundKey::KeyC,
+        aim_toggle:   BoundKey::KeyF,
+        facing_cycle: BoundKey::KeyR,
     }
 }
 

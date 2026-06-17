@@ -31,13 +31,16 @@
 //! (ADR-0001).
 
 use bevy::prelude::*;
-use gdtf_battle_input::dispatch_act_intents;
+use gdtf_battle_input::{dispatch_act_intents, left_click_act, right_click_turn_to_face};
 use gdtf_battle_sim::BattleInProgress;
+use gdtf_ui::themed::UiSystems;
 
 use crate::{
     scenes::running::game::battlescape::action_bar::systems::{
-        action_bar_button_intents, despawn_action_bar, flee_button_pressed, spawn_action_bar,
-        sync_aim_button_active,
+        action_bar_button_intents, despawn_action_bar, despawn_fire_mode_picker,
+        dismiss_fire_mode_picker_on_scrim, flee_button_pressed, select_fire_mode_entry,
+        spawn_action_bar, sync_aim_button_active, sync_fire_mode_picker_caption,
+        sync_world_click_suppression, toggle_fire_mode_picker,
     },
     states::BattleScapeState,
 };
@@ -82,6 +85,44 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
             .add_systems(
                 Update,
                 sync_aim_button_active.run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-254: the fire-mode popup picker — opener-press toggle, entry-select,
+            // scrim-dismiss, the opener-caption sync (the active-mode display), and the
+            // cross-crate world-click suppression. All gated on the SAME live-battle
+            // witness so they are inert outside a live battle. The picker systems read
+            // their own disjoint markers (opener / entry / scrim), so they do not conflict
+            // with `action_bar_button_intents` (which reads only the cycle/level markers).
+            //
+            // Ordered `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3): the picker's
+            // entry / panel children are `Themed`, and `gdtf_ui::apply_theme` (change-driven)
+            // INSERTs their look the frame after they spawn — the SAME frame a press may
+            // CLOSE the picker. Running the despawners after `apply_theme` keeps its inserts
+            // ahead of the despawn in the command-apply order, so a close never races a
+            // theme-insert onto an about-to-die entity (the despawned-entity command error).
+            .add_systems(
+                Update,
+                (
+                    toggle_fire_mode_picker,
+                    select_fire_mode_entry,
+                    dismiss_fire_mode_picker_on_scrim,
+                    sync_fire_mode_picker_caption,
+                )
+                    .after(UiSystems::ApplyTheme)
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            .add_systems(
+                Update,
+                sync_world_click_suppression
+                    .before(left_click_act)
+                    .before(right_click_turn_to_face)
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            // The picker is spawned at runtime (not in `spawn_action_bar`), so a picker
+            // left open when the battle ends needs its own `OnExit` cleanup (the
+            // action-bar / status-panel battle-scoped cleanup precedent).
+            .add_systems(
+                OnExit(BattleScapeState::BattleRunning),
+                despawn_fire_mode_picker,
             );
     }
 }

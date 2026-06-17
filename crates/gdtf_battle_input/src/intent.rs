@@ -23,9 +23,9 @@
 //! is fixed from the start; 222b (GTW-227) FILLS their drain arms — emitting the
 //! matching `gdtf_battle_sim::acts::*Requested` for the [`SelectedShooter`], reading
 //! the actor's CURRENT [`Stance`](gdtf_battle_sim::Stance) /
-//! [`Facing`](gdtf_battle_sim::Facing) / [`Aiming`](gdtf_battle_sim::Aiming) /
-//! [`FireMode`](gdtf_battle_sim::FireMode) off a query and stepping the authored
-//! [`crate::cycle`] order — and adds the [`ActIntent::Fire`] variant the left-click
+//! [`Facing`](gdtf_battle_sim::Facing) / [`Aiming`](gdtf_battle_sim::Aiming) off a
+//! query and stepping the authored [`crate::cycle`] order — and adds the
+//! [`ActIntent::Fire`] variant the left-click
 //! FIRE surface writes (its `can_fire` guard runs at the WRITE site, so the drain
 //! just emits the carried [`FireRequested`](gdtf_battle_sim::acts::FireRequested)
 //! payload).
@@ -33,14 +33,14 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
-    Aiming, Facing, FireMode, Level, MAX_LEVELS, Stance, StanceKind,
+    Aiming, Facing, Level, MAX_LEVELS, Stance, StanceKind,
     acts::{
         AimRequest, FireRequested, MoveRequested, SetAimingRequested, SetFacingRequested,
         SetStanceRequested,
     },
 };
 
-use crate::{SelectedFireMode, SelectedShooter, cycle, fire_mode::next_fire_mode};
+use crate::{SelectedShooter, cycle};
 
 /// One queued battle intent — the act a press (key OR button) asked for.
 ///
@@ -50,8 +50,9 @@ use crate::{SelectedFireMode, SelectedShooter, cycle, fire_mode::next_fire_mode}
 /// ([`SelectionClear`](Self::SelectionClear) / [`LevelUp`](Self::LevelUp) /
 /// [`LevelDown`](Self::LevelDown)) are 222a's; the act-bearing variants
 /// ([`StanceCycle`](Self::StanceCycle) / [`AimToggle`](Self::AimToggle) /
-/// [`FacingCycle`](Self::FacingCycle) / [`FireModeCycle`](Self::FireModeCycle)) +
-/// the [`Fire`](Self::Fire) variant are filled / added by 222b (GTW-227).
+/// [`FacingCycle`](Self::FacingCycle)) + the [`Fire`](Self::Fire) variant are filled
+/// / added by 222b (GTW-227). (The fire-mode `FireModeCycle` blind-cycle variant was
+/// REMOVED in GTW-254 — the popup picker sets [`SelectedFireMode`] directly.)
 ///
 /// Only [`PartialEq`] (no `Eq` / `Hash`): [`Fire`](Self::Fire) carries an owned
 /// [`FireRequested`] whose [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) has `f32`
@@ -78,10 +79,6 @@ pub enum ActIntent {
     /// Step the [`SelectedShooter`]'s facing through the authored cycle — drained to
     /// [`SetFacingRequested`] (GTW-227).
     FacingCycle,
-    /// Step the [`SelectedFireMode`] through the selected weapon's offered modes
-    /// (GTW-227) — mutates [`SelectedFireMode`] in the drain (no sim message; the
-    /// chosen mode rides the next [`Fire`](Self::Fire)).
-    FireModeCycle,
     /// FIRE the carried request — drained 1:1 to a [`FireRequested`] (GTW-227). The
     /// left-click FIRE surface runs the shared `can_fire` guard at the WRITE site and
     /// only pushes this when it passes, so the drain emits the payload unconditionally.
@@ -178,8 +175,8 @@ pub struct ActWriters<'w> {
 ///
 /// The act-bearing intents (GTW-227) emit the matching
 /// `gdtf_battle_sim::acts::*Requested` for the [`SelectedShooter`], reading the
-/// actor's CURRENT [`Stance`] / [`Facing`] / [`Aiming`] / [`FireMode`] off the
-/// `actors` query and stepping the authored [`crate::cycle`] order:
+/// actor's CURRENT [`Stance`] / [`Facing`] / [`Aiming`] off the `actors` query and
+/// stepping the authored [`crate::cycle`] order:
 ///
 /// - [`ActIntent::StanceCycle`] emits [`SetStanceRequested`] for the
 ///   next-of-cycle [`StanceKind`] ([`cycle::next_stance`]).
@@ -187,9 +184,6 @@ pub struct ActWriters<'w> {
 ///   current [`Aiming`] flag.
 /// - [`ActIntent::FacingCycle`] emits [`SetFacingRequested`] for the next-of-cycle
 ///   [`Direction`](gdtf_battle_sim::Direction) ([`cycle::next_facing`]).
-/// - [`ActIntent::FireModeCycle`] advances [`SelectedFireMode`] among the selected
-///   weapon's offered modes ([`next_fire_mode`]) — input-layer state only, no sim
-///   message (the chosen mode rides the next [`ActIntent::Fire`]).
 /// - [`ActIntent::Fire`] emits the carried [`FireRequested`] verbatim — the `can_fire`
 ///   guard already ran at the WRITE site.
 /// - [`ActIntent::Move`] emits the carried [`MoveRequested`] verbatim onto the move
@@ -201,16 +195,15 @@ pub struct ActWriters<'w> {
 /// With NO [`SelectedShooter`] the cycle intents are no-ops (nothing to act on); a
 /// cycle intent for a selected entity that lacks the relevant component is skipped
 /// (fail-closed, no panic) via the query lookup. Param-only (`bevy-traps.md` #7):
-/// [`ResMut`] over the queue + input-layer state, a read-only `actors` [`Query`], and
-/// the [`ActWriters`] message-writer bundle (`bevy-traps.md` #4 — buffered messages).
-/// Registered `.after` the intent WRITERS (`bevy-traps.md` #3) so it drains the same
-/// update's pushes.
+/// [`ResMut`] over the queue + the presenter [`ActiveLevel`], a read-only `actors`
+/// [`Query`], and the [`ActWriters`] message-writer bundle (`bevy-traps.md` #4 —
+/// buffered messages). Registered `.after` the intent WRITERS (`bevy-traps.md` #3) so
+/// it drains the same update's pushes.
 pub fn dispatch_act_intents(
     mut pending: ResMut<PendingActIntent>,
     mut selected: ResMut<SelectedShooter>,
     mut active_level: ResMut<ActiveLevel>,
-    mut fire_mode: ResMut<SelectedFireMode>,
-    actors: Query<(&Stance, &Facing, &Aiming, &FireMode)>,
+    actors: Query<(&Stance, &Facing, &Aiming)>,
     mut acts: ActWriters,
 ) {
     for intent in pending.drain() {
@@ -242,7 +235,7 @@ pub fn dispatch_act_intents(
             }
             ActIntent::AimToggle => {
                 let Some(actor) = **selected else { continue };
-                let Ok((_, _, aiming, _)) = actors.get(actor) else {
+                let Ok((_, _, aiming)) = actors.get(actor) else {
                     continue;
                 };
                 acts.aiming
@@ -255,15 +248,6 @@ pub fn dispatch_act_intents(
                 };
                 let next = cycle::next_facing(**facing);
                 acts.facing.write(SetFacingRequested::new(actor, next));
-            }
-            ActIntent::FireModeCycle => {
-                let Some(actor) = **selected else { continue };
-                let Ok((_, _, _, mode)) = actors.get(actor) else {
-                    continue;
-                };
-                // `FireModeSpec`/`SelectedFireMode` are `Copy` again (GTW-260) — read
-                // the current mode by copy without moving it out of the `ResMut`.
-                *fire_mode = SelectedFireMode::new(next_fire_mode(**fire_mode, mode));
             }
             ActIntent::Fire(request) => {
                 acts.fire.write(request);

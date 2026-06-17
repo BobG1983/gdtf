@@ -9,12 +9,12 @@
 //! [`dispatch_act_intents`](crate::dispatch_act_intents) drain acts on it.
 //!
 //! 222b (GTW-227) adds the act-bearing keys — stance-cycle / aim-toggle / facing-cycle
-//! / fire-mode-cycle ([`posture_keys`] / [`fire_mode_cycle_key`]) — reading the bound
-//! [`KeyCode`] off the SAME [`Keybinds`] table and pushing the act-bearing
-//! [`ActIntent`] variants ([`ActIntent::StanceCycle`] / [`ActIntent::AimToggle`] /
-//! [`ActIntent::FacingCycle`] / [`ActIntent::FireModeCycle`]) onto the SAME seam the
-//! 222c buttons write. These act keys only push WHEN a [`SelectedShooter`] is set —
-//! with no selection they write NO intent (AC6).
+//! ([`posture_keys`]) — reading the bound [`KeyCode`] off the SAME [`Keybinds`] table
+//! and pushing the act-bearing [`ActIntent`] variants ([`ActIntent::StanceCycle`] /
+//! [`ActIntent::AimToggle`] / [`ActIntent::FacingCycle`]) onto the SAME seam the 222c
+//! buttons write. These act keys only push WHEN a [`SelectedShooter`] is set — with no
+//! selection they write NO intent (AC6). (The blind fire-mode-cycle key was REMOVED in
+//! GTW-254 — fire-mode selection is now the `gdtf_app` popup picker.)
 //!
 //! Gated `run_if(resource_exists::<Keybinds>)` by the plugin (in addition to the
 //! battle gate): the table is asset-loaded, so a `MinimalPlugins` headless app with no
@@ -93,29 +93,5 @@ pub fn posture_keys(
     }
     if keys.just_pressed(binds.facing_cycle()) {
         pending.push(ActIntent::FacingCycle);
-    }
-}
-
-/// Reads the fire-mode-cycle key and PUSHES [`ActIntent::FireModeCycle`] for the
-/// [`SelectedShooter`] (GTW-227 / 222b).
-///
-/// On a `just_pressed` of the [`Keybinds::fire_mode_cycle`] key — and ONLY while a
-/// [`SelectedShooter`] is set — pushes [`ActIntent::FireModeCycle`] onto the
-/// [`PendingActIntent`] queue. The drain advances
-/// [`SelectedFireMode`](crate::SelectedFireMode) among the selected weapon's offered
-/// modes (input-layer state only; the chosen mode rides the next fire). With no
-/// selection it writes NO intent (AC6). No `KeyCode` literal: the bound code is read
-/// off the loaded [`Keybinds`] resource. Param-only (`bevy-traps.md` #7).
-pub fn fire_mode_cycle_key(
-    keys: Res<ButtonInput<KeyCode>>,
-    binds: Res<Keybinds>,
-    selected: Res<SelectedShooter>,
-    mut pending: ResMut<PendingActIntent>,
-) {
-    if selected.is_none() {
-        return;
-    }
-    if keys.just_pressed(binds.fire_mode_cycle()) {
-        pending.push(ActIntent::FireModeCycle);
     }
 }

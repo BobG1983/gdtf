@@ -22,8 +22,9 @@ crate::support_use!(battlescape::BattleRunningComplete;);
 #[cfg(feature = "test-support")]
 crate::support_use! {
     battlescape::{
-        AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton, LevelDownButton,
-        LevelUpButton, ReloadButton, StanceCycleButton,
+        AimToggleButton, EndTurnButton, FireModePickerButton, FireModePickerEntry,
+        FireModePickerRoot, FireModePickerScrim, FleeButton, LevelDownButton, LevelUpButton,
+        ReloadButton, StanceCycleButton,
     };
 }
 // Test-support-only re-export of the status-panel's per-line text markers (GTW-252),
@@ -32,5 +33,5 @@ crate::support_use! {
 // `crate::test_support`.
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    battlescape::{HpText, IdentityText, LifeText, StanceText, TuText};
+    battlescape::{HpText, IdentityText, LifeText, StanceText, TuText, WeaponNameText};
 }

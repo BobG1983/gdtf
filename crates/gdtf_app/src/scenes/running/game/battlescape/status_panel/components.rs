@@ -90,3 +90,16 @@ crate::support_item! {
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct LifeText;
 }
+
+crate::support_item! {
+    /// Marks the **weapon-name** vitals line (GTW-254) — the selected ganger's
+    /// [`WeaponName`](gdtf_battle_sim::WeaponName), the human-facing identity of the
+    /// weapon it carries (e.g. "autogun"). This is the FIRST reader of `WeaponName`
+    /// (GTW-256 placed it on the armed entity unread). An UNARMED selection (no
+    /// `WeaponName` component) shows a `—` fallback; no selection shows the shared
+    /// no-selection empty state.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct WeaponNameText;
+}

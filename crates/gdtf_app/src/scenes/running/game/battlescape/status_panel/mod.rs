@@ -19,5 +19,5 @@ pub(in crate::scenes::running::game::battlescape) use plugin::GameBattleScapeSta
 // NOT re-exported.
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    components::{HpText, IdentityText, LifeText, StanceText, TuText};
+    components::{HpText, IdentityText, LifeText, StanceText, TuText, WeaponNameText};
 }

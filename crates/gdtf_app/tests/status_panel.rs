@@ -21,12 +21,12 @@
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::widget::Button};
 use gdtf_app::test_support::{
     AppState, BattleRunningComplete, BattleScapeState, HpText, IdentityText, LifeText,
-    RunningState, StanceText, TuText,
+    RunningState, StanceText, TuText, WeaponNameText,
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Cell, CellLevel, Faction, Hp, Level, LifeState, Position, Stance, StanceKind, Tu, TuMax,
-    Wounds, tuning::CombatTuning, weapon::WeaponRegistry,
+    WeaponName, Wounds, tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -442,5 +442,51 @@ fn empty_selection_shows_empty_state_and_no_stale_data() {
     assert!(
         stance.contains("No ganger selected"),
         "after clearing, the line must revert to the empty state (no stale data): {stance}",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-254 AC1 — the weapon-name line shows the selected ganger's WeaponName.
+// ---------------------------------------------------------------------------------
+
+/// GTW-254 AC1 — selecting an ARMED ganger renders its real `WeaponName` on the
+/// `WeaponNameText` line (the rendered string comes from the component, not a fixture);
+/// with no selection the line shows the no-selection empty state.
+#[test]
+fn weapon_name_line_shows_the_selected_weapon() {
+    let mut app = battle_running_app();
+
+    // No selection -> the empty state on the weapon line (AC4 parity).
+    app.update();
+    assert!(
+        line_text::<WeaponNameText>(&mut app)
+            .unwrap_or_default()
+            .contains("No ganger selected"),
+        "an unselected weapon line must show the empty state",
+    );
+
+    // Spawn an ARMED ganger carrying a real WeaponName, select it, render it.
+    let ganger = app
+        .world_mut()
+        .spawn((
+            Position::new(CellLevel::new(Cell::new(4, 4), Level::new(0))),
+            Faction::new(0),
+            Stance::new(StanceKind::Standing),
+            Tu::new(10),
+            TuMax::new(10),
+            Hp::new(10),
+            Wounds::new(0),
+            LifeState::Alive,
+            WeaponName::new("autogun".to_owned()),
+        ))
+        .id();
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+    app.update();
+
+    let weapon = line_text::<WeaponNameText>(&mut app).unwrap_or_default();
+    assert!(
+        weapon.contains("autogun"),
+        "the weapon line must show the selected ganger's WeaponName: {weapon}",
     );
 }

@@ -4,9 +4,9 @@
 //! a themed [`gdtf_ui`] panel on the GTW-120 UI camera: a [`spawn_panel`] box
 //! ([`StatusPanelRoot`]) anchored TOP-LEFT, holding one themed body-text
 //! [`Text`](bevy::prelude::Text) child per vitals line (identity, stance, TU, HP,
-//! life-state), each carrying its per-line ZST marker so [`update_status_panel`] can
-//! target that line's `Text`. The text starts at the no-selection empty state and is
-//! repainted by the update system every battle frame.
+//! life-state, and the GTW-254 weapon name), each carrying its per-line ZST marker so
+//! [`update_status_panel`] can target that line's `Text`. The text starts at the
+//! no-selection empty state and is repainted by the update system every battle frame.
 //!
 //! [`despawn_status_panel`] runs `OnExit(BattleScapeState::BattleRunning)` and
 //! recursively despawns the whole panel by its [`StatusPanelRoot`] marker, so the
@@ -31,7 +31,9 @@ use gdtf_ui::{
 };
 
 use crate::scenes::running::game::battlescape::status_panel::{
-    components::{HpText, IdentityText, LifeText, StanceText, StatusPanelRoot, TuText},
+    components::{
+        HpText, IdentityText, LifeText, StanceText, StatusPanelRoot, TuText, WeaponNameText,
+    },
     systems::labels::NO_SELECTION,
 };
 
@@ -96,16 +98,18 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_status_panel(
     ));
 
     // One themed body-text line per vital, each with its per-line marker. The text is the
-    // empty state until the update system repaints it from the selection.
+    // empty state until the update system repaints it from the selection. GTW-254 adds the
+    // weapon-name line (the FIRST reader of `WeaponName`) after the existing five.
     let identity = spawn_line(&mut commands, &theme, IdentityText);
     let stance = spawn_line(&mut commands, &theme, StanceText);
     let tu = spawn_line(&mut commands, &theme, TuText);
     let hp = spawn_line(&mut commands, &theme, HpText);
     let life = spawn_line(&mut commands, &theme, LifeText);
+    let weapon = spawn_line(&mut commands, &theme, WeaponNameText);
 
     commands
         .entity(root)
-        .add_children(&[identity, stance, tu, hp, life]);
+        .add_children(&[identity, stance, tu, hp, life, weapon]);
 }
 
 /// Spawns one themed body-text vitals line carrying its per-line `marker`, and

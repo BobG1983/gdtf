@@ -102,19 +102,17 @@ impl BoundKey {
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Deserialize, TypePath)]
 pub struct Keybinds {
     /// Clear the current [`SelectedShooter`](crate::SelectedShooter) selection.
-    pub select_clear:    BoundKey,
+    pub select_clear: BoundKey,
     /// Raise the presenter's [`ActiveLevel`](gdtf_battle_presenter::ActiveLevel) by one storey.
-    pub level_up:        BoundKey,
+    pub level_up:     BoundKey,
     /// Lower the presenter's [`ActiveLevel`](gdtf_battle_presenter::ActiveLevel) by one storey.
-    pub level_down:      BoundKey,
+    pub level_down:   BoundKey,
     /// Step the selected ganger's stance through the cyclic order (consumed in 222b).
-    pub stance_cycle:    BoundKey,
+    pub stance_cycle: BoundKey,
     /// Toggle the selected ganger's aim mode (consumed in 222b).
-    pub aim_toggle:      BoundKey,
+    pub aim_toggle:   BoundKey,
     /// Step the selected ganger's facing through the cyclic order (consumed in 222b).
-    pub facing_cycle:    BoundKey,
-    /// Step the selected ganger's fire mode through the cyclic order (consumed in 222b).
-    pub fire_mode_cycle: BoundKey,
+    pub facing_cycle: BoundKey,
 }
 
 impl Keybinds {
@@ -152,12 +150,6 @@ impl Keybinds {
     #[must_use]
     pub const fn facing_cycle(&self) -> KeyCode {
         self.facing_cycle.key_code()
-    }
-
-    /// The [`KeyCode`] bound to fire-mode-cycle (consumed in 222b).
-    #[must_use]
-    pub const fn fire_mode_cycle(&self) -> KeyCode {
-        self.fire_mode_cycle.key_code()
     }
 }
 
@@ -224,15 +216,17 @@ mod tests {
     /// `ron::from_str` path the loader uses, and every declared act name resolves
     /// to a `KeyCode`. Parsing the embedded file contents proves the schema +
     /// the file agree (a malformed or incomplete file would fail here): serde
-    /// rejects a missing field, so a successful parse proves all seven bound acts
+    /// rejects a missing field, so a successful parse proves all six bound acts
     /// are present and each resolves through [`BoundKey::key_code`].
     ///
-    /// It does NOT pin the seven authored `KeyCode` MAGNITUDES — `keybinds.ron` is
+    /// It does NOT pin the six authored `KeyCode` MAGNITUDES — `keybinds.ron` is
     /// editable, hot-swappable tuning data ("edit freely — every binding is data"),
     /// so locking the file's chosen keys would be a brittle test on editable data
     /// (the metric-constant exemption does not apply to keybinds). The non-brittle
-    /// INVARIANT we do assert is that the seven bound keys are mutually distinct —
-    /// no two acts share a key, whatever the author binds them to.
+    /// INVARIANT we do assert is that the six bound keys are mutually distinct —
+    /// no two acts share a key, whatever the author binds them to. (The
+    /// `fire_mode_cycle` binding was REMOVED in GTW-254 — the popup picker replaced
+    /// the blind cycle.)
     #[test]
     fn shipped_keybinds_ron_deserializes_and_every_act_resolves() {
         // The exact bytes the loose `assets/input/keybinds.ron` ships, parsed the
@@ -246,7 +240,7 @@ mod tests {
         );
         let Ok(binds) = parsed else { return };
 
-        // Non-brittle invariant: the seven bound keys are mutually distinct (no two
+        // Non-brittle invariant: the six bound keys are mutually distinct (no two
         // acts collide on the same key), independent of which keys the author chose.
         let bound = [
             binds.select_clear(),
@@ -255,7 +249,6 @@ mod tests {
             binds.stance_cycle(),
             binds.aim_toggle(),
             binds.facing_cycle(),
-            binds.fire_mode_cycle(),
         ];
         for (i, lhs) in bound.iter().enumerate() {
             for rhs in &bound[i + 1..] {

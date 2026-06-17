@@ -25,8 +25,9 @@ crate::support_use!(game::BattleRunningComplete;);
 #[cfg(feature = "test-support")]
 crate::support_use! {
     game::{
-        AimToggleButton, EndTurnButton, FireModeSelectButton, FleeButton, LevelDownButton,
-        LevelUpButton, ReloadButton, StanceCycleButton,
+        AimToggleButton, EndTurnButton, FireModePickerButton, FireModePickerEntry,
+        FireModePickerRoot, FireModePickerScrim, FleeButton, LevelDownButton, LevelUpButton,
+        ReloadButton, StanceCycleButton,
     };
 }
 // Test-support-only re-export of the status-panel's per-line text markers (GTW-252),
@@ -34,7 +35,7 @@ crate::support_use! {
 // toward `crate::test_support`.
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    game::{HpText, IdentityText, LifeText, StanceText, TuText};
+    game::{HpText, IdentityText, LifeText, StanceText, TuText, WeaponNameText};
 }
 
 mod options;

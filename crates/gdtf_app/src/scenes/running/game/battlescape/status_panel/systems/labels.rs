@@ -8,7 +8,9 @@
 //! layer. The vocabulary (Standing / Crouching / Prone, Alive / Downed / Dead)
 //! matches the sim's named domain enums.
 
-use gdtf_battle_sim::{Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, TuMax, Wounds};
+use gdtf_battle_sim::{
+    Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, TuMax, WeaponName, Wounds,
+};
 
 /// The line shown when there is no selection — a clear empty state (AC4).
 ///
@@ -16,6 +18,13 @@ use gdtf_battle_sim::{Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, 
 /// write it without re-allocating a literal per line per frame.
 pub(in crate::scenes::running::game::battlescape::status_panel) const NO_SELECTION: &str =
     "No ganger selected";
+
+/// The weapon-name fallback shown when the SELECTED ganger carries no weapon (no
+/// [`WeaponName`] component) — an em-dash so an unarmed selection reads as having no
+/// weapon, distinct from the no-selection empty state (GTW-254).
+///
+/// A `const` so the unarmed copy lives in one place (the `NO_SELECTION` precedent).
+pub(in crate::scenes::running::game::battlescape::status_panel) const UNARMED: &str = "—";
 
 /// The **identity** line: the ganger's cell `(x, y, level)` and its faction (gang)
 /// index.
@@ -99,14 +108,32 @@ pub(in crate::scenes::running::game::battlescape::status_panel) fn life_label(
     format!("State: {word}")
 }
 
+/// The **weapon-name** line (GTW-254): the ganger's carried weapon by its
+/// [`WeaponName`] (e.g. "Weapon: autogun"), or the [`UNARMED`] em-dash fallback when
+/// the selection carries no weapon.
+///
+/// [`WeaponName`] [`Deref`](std::ops::Deref)s to its inner `&str`. Taken as an
+/// `Option<&WeaponName>` (defensive — gangers are armed today, but a selection without
+/// the component must not panic): [`Some`] renders the name, [`None`] renders the
+/// unarmed fallback. By reference because [`WeaponName`] owns a `String` (not `Copy`).
+#[must_use]
+pub(in crate::scenes::running::game::battlescape::status_panel) fn weapon_name_label(
+    weapon: Option<&WeaponName>,
+) -> String {
+    let name = weapon.map_or(UNARMED, |w| w);
+    format!("Weapon: {name}")
+}
+
 #[cfg(test)]
 mod tests {
     use gdtf_battle_sim::{
         Cell, CellLevel, Faction, Hp, Level, LifeState, Position, Stance, StanceKind, Tu, TuMax,
-        Wounds,
+        WeaponName, Wounds,
     };
 
-    use super::{hp_label, identity_label, life_label, stance_label, tu_label};
+    use super::{
+        UNARMED, hp_label, identity_label, life_label, stance_label, tu_label, weapon_name_label,
+    };
 
     /// The identity line names the ganger's cell coordinates, storey, and faction —
     /// each component's value appears, so swapping x↔y or faction would be visible.
@@ -180,5 +207,28 @@ mod tests {
         assert!(life_label(LifeState::Alive).contains("Alive"));
         assert!(life_label(LifeState::Downed).contains("Downed"));
         assert!(life_label(LifeState::Dead).contains("Dead"));
+    }
+
+    /// AC1 — an ARMED ganger's weapon line names its `WeaponName` (the rendered string
+    /// comes from the real component, not a fixture); a different name would surface here.
+    #[test]
+    fn weapon_name_label_names_an_armed_weapon() {
+        let weapon = WeaponName::new("autogun".to_owned());
+        let label = weapon_name_label(Some(&weapon));
+        assert!(
+            label.contains("autogun"),
+            "the weapon line must name the carried weapon: {label}",
+        );
+    }
+
+    /// AC1 — an UNARMED selection (no `WeaponName`) renders the unarmed fallback, NOT a
+    /// fabricated name and NOT a panic.
+    #[test]
+    fn weapon_name_label_falls_back_when_unarmed() {
+        let label = weapon_name_label(None);
+        assert!(
+            label.contains(UNARMED),
+            "an unarmed selection must show the unarmed fallback: {label}",
+        );
     }
 }

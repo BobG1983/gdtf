@@ -16,8 +16,11 @@
 //! - AC3 — a stance / aim button press writes the SAME `*Requested` the equivalent
 //!   222a intent does, byte-for-byte (the `acts.rs` AC5 parity idiom); the level
 //!   buttons mutate `ActiveLevel` like the level intent.
-//! - AC4 — the fire-mode-select button advances `SelectedFireMode` only among the
-//!   selected weapon's offered modes, reusing 222b's cycle helper.
+//! - GTW-254 — the fire-mode PICKER replaces the removed blind cycle: the opener
+//!   caption tracks `SelectedFireMode`; pressing the opener spawns a picker listing
+//!   exactly the selected weapon's offered modes; clicking an entry sets
+//!   `SelectedFireMode` to that read-back spec and closes; a scrim click dismisses with
+//!   no change.
 //! - AC5 — the DEFERRED reload / end-turn buttons carry `DisabledButton` and emit NO
 //!   intent under a synthesized press.
 //! - AC6 — with NO `SelectedShooter`, an act-button press is a no-op (no message, no
@@ -40,8 +43,8 @@ use bevy::{
 };
 use gdtf_app::test_support::{
     AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton,
-    FireModeSelectButton, FleeButton, LevelDownButton, LevelUpButton, ReloadButton, RunningState,
-    StanceCycleButton,
+    FireModePickerButton, FireModePickerEntry, FireModePickerRoot, FireModePickerScrim, FleeButton,
+    LevelDownButton, LevelUpButton, ReloadButton, RunningState, StanceCycleButton,
 };
 use gdtf_battle_input::{
     ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter, next_stance,
@@ -63,9 +66,9 @@ use gdtf_ui::{DisabledButton, theme::default_theme};
 /// `battle_running_driver.rs` budget).
 const BUDGET: u32 = 96;
 
-/// The number of EXISTING-act buttons the bar spawns (stance, aim, fire-mode-select,
-/// level-up, level-down). The two DEFERRED buttons (reload, end-turn) are counted
-/// separately where relevant.
+/// The number of control buttons the bar spawns (stance, aim, the fire-mode-picker
+/// opener, level-up, level-down). The two DEFERRED buttons (reload, end-turn) are
+/// counted separately where relevant.
 const EXISTING_ACT_BUTTONS: usize = 5;
 
 // ---------------------------------------------------------------------------------
@@ -296,7 +299,7 @@ fn action_bar_spawns_in_battle_and_despawns_outside() {
     let buttons = [
         require_button::<StanceCycleButton>(&mut app),
         require_button::<AimToggleButton>(&mut app),
-        require_button::<FireModeSelectButton>(&mut app),
+        require_button::<FireModePickerButton>(&mut app),
         require_button::<LevelUpButton>(&mut app),
         require_button::<LevelDownButton>(&mut app),
     ];
@@ -478,75 +481,207 @@ fn level_buttons_step_active_level_like_the_intent() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC4 — the fire-mode-select button advances SelectedFireMode only among the selected
-// weapon's offered modes, reusing 222b's cycle helper.
+// GTW-254 picker helpers — open the picker, read its entries, press an entry / scrim.
 // ---------------------------------------------------------------------------------
 
-/// AC4 — a one-mode `[Single]`-armed shooter's fire-mode button press never reaches
-/// `burst` (stays on `single`); a three-mode `[Single, Burst, Full]`-armed shooter's
-/// repeated presses advance single -> burst -> `full` and wrap — asserted against the
-/// authored cyclic order (the 222b `next_fire_mode` helper drives the drain, not an
-/// inlined literal).
+/// Whether a fire-mode picker is currently OPEN (a `FireModePickerRoot` exists).
+fn picker_is_open(app: &mut App) -> bool {
+    single_with::<FireModePickerRoot>(app).is_some()
+}
+
+/// The picker's entry `(entity, mode)` pairs — one per offered mode, read off the spawned
+/// `FireModePickerEntry` markers (which carry the read-back `FireModeSpec`).
+fn picker_entries(app: &mut App) -> Vec<(Entity, FireModeSpec)> {
+    let mut q = app.world_mut().query::<(Entity, &FireModePickerEntry)>();
+    q.iter(app.world()).map(|(e, entry)| (e, entry.0)).collect()
+}
+
+/// Reads the opener (`FireModePickerButton`) caption string — its single `Text` child.
+fn opener_caption(app: &mut App) -> Option<String> {
+    let opener = single_with::<FireModePickerButton>(app)?;
+    let child = app
+        .world()
+        .get::<Children>(opener)
+        .and_then(|c| c.iter().next())?;
+    app.world()
+        .get::<Text>(child)
+        .map(|t| t.as_str().to_owned())
+}
+
+/// Arms+selects a ganger with `selector`, settles the default-on-select, then presses the
+/// opener once and updates — leaving the picker OPEN (when armed). Returns the app.
+fn open_picker_with(selector: FireMode) -> App {
+    let mut app = battle_running_app();
+    arm_and_select(&mut app, selector, StanceKind::Standing, Direction::North);
+    // Settle the selection default + the caption sync (so the opener is enabled).
+    app.update();
+    let Some(opener) = single_with::<FireModePickerButton>(&mut app) else {
+        return app;
+    };
+    press_button(&mut app, opener);
+    app.update();
+    app
+}
+
+// ---------------------------------------------------------------------------------
+// AC2 — the opener caption tracks SelectedFireMode (the active-mode display, D2).
+// ---------------------------------------------------------------------------------
+
+/// AC2 — on selecting an armed ganger the `FireModePickerButton` caption reflects the
+/// weapon's `single()` mode label; after the picker sets a different mode the caption
+/// updates. Discriminating: a caption wired to a fixed string (not `SelectedFireMode`)
+/// would not change here.
 #[test]
-fn fire_mode_button_walks_only_offered_modes() {
-    // The specs are `Copy` again (GTW-260) — the kind discriminates each mode.
+fn opener_caption_tracks_selected_fire_mode() {
     let single = spec(ModeKind::Single, 0.2, 1);
     let burst = spec(ModeKind::Burst, 0.4, 3);
-    let full = spec(ModeKind::Full, 0.7, 6);
-    let sbf = FireMode::new(vec![single, burst, full]);
+    let sbf = FireMode::new(vec![single, burst]);
 
-    // [Single, Burst, Full]: each single button-press steps ONE mode of the offered
-    // list, wrapping full -> single — each step exercised in a fresh battle so the
-    // press is the single post-arm press the harness drives cleanly (the AC3 working
-    // recipe; the walk + wrap are the real 222b `next_fire_mode` drain).
-    assert_eq!(
-        press_fire_mode_from(sbf.clone(), single),
-        Some(burst),
-        "single must step to burst",
-    );
-    assert_eq!(
-        press_fire_mode_from(sbf.clone(), burst),
-        Some(full),
-        "burst must step to full",
-    );
-    assert_eq!(
-        press_fire_mode_from(sbf, full),
-        Some(single),
-        "full must wrap back to single",
+    let mut app = battle_running_app();
+    arm_and_select(&mut app, sbf, StanceKind::Standing, Direction::North);
+    // Settle the default-on-select (single) + the caption sync.
+    app.update();
+    let initial = opener_caption(&mut app).unwrap_or_default();
+    assert!(
+        initial.contains(&single.kind.to_string()),
+        "the opener caption must show the default single() mode label: {initial}",
     );
 
-    // [Single]: a one-mode shooter's button press never reaches burst — it stays on
-    // single (no other mode is offered / invented).
-    let single_only = FireMode::new(vec![single]);
-    assert_eq!(
-        press_fire_mode_from(single_only, single),
-        Some(single),
-        "a one-mode weapon's fire-mode button stays on single",
+    // The picker sets burst directly; the caption must then show burst.
+    app.world_mut()
+        .insert_resource(SelectedFireMode::new(burst));
+    app.update();
+    let after = opener_caption(&mut app).unwrap_or_default();
+    assert!(
+        after.contains(&burst.kind.to_string()),
+        "the opener caption must update to the newly-set mode label: {after}",
+    );
+    assert_ne!(
+        initial, after,
+        "setting a different mode must change the caption"
     );
 }
 
-/// Builds a fresh battle, arms+selects a ganger with `selector`, sets the starting fire
-/// mode to `start`, presses the fire-mode button ONCE (the AC3 single-press recipe), and
-/// returns the resulting `SelectedFireMode` spec.
-///
-/// The starting mode is set AFTER the real selection-default has settled (one update, so
-/// `sync_fire_mode_on_select`'s reset-to-single fires and the `SelectedShooter` change
-/// flag clears), so the single press then steps the REAL 222b cycle from `start` without
-/// the default-on-select clobbering it.
-fn press_fire_mode_from(selector: FireMode, start: FireModeSpec) -> Option<FireModeSpec> {
-    let mut app = battle_running_app();
-    arm_and_select(&mut app, selector, StanceKind::Standing, Direction::North);
-    // Settle the selection default + clear the SelectedShooter change flag.
+// ---------------------------------------------------------------------------------
+// AC3 — the picker opens, lists exactly the offered modes, keyed to the weapon.
+// ---------------------------------------------------------------------------------
+
+/// AC3 — pressing the opener spawns a `FireModePickerRoot` with one entry per the
+/// selected weapon's offered mode (count + kinds match the weapon's `FireMode` Vec). A
+/// 3-mode weapon shows three entries; a 1-mode weapon shows one.
+#[test]
+fn picker_opens_and_lists_exactly_the_offered_modes() {
+    let single = spec(ModeKind::Single, 0.2, 1);
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+    let full = spec(ModeKind::Full, 0.7, 6);
+
+    // 3-mode weapon -> three entries with matching kinds.
+    let mut app = open_picker_with(FireMode::new(vec![single, burst, full]));
+    assert!(
+        picker_is_open(&mut app),
+        "the opener press must open the picker"
+    );
+    let entries = picker_entries(&mut app);
+    assert_eq!(
+        entries.len(),
+        3,
+        "a 3-mode weapon lists exactly three entries"
+    );
+    let kinds: Vec<ModeKind> = entries.iter().map(|(_, m)| m.kind).collect();
+    assert!(
+        kinds.contains(&ModeKind::Single)
+            && kinds.contains(&ModeKind::Burst)
+            && kinds.contains(&ModeKind::Full),
+        "the entries' kinds must match the weapon's offered modes: {kinds:?}",
+    );
+
+    // 1-mode weapon -> exactly one entry.
+    let mut app = open_picker_with(FireMode::new(vec![single]));
+    assert!(
+        picker_is_open(&mut app),
+        "the opener press must open the picker"
+    );
+    assert_eq!(
+        picker_entries(&mut app).len(),
+        1,
+        "a one-mode weapon lists exactly one entry",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC4 — selecting an entry sets SelectedFireMode + closes the picker.
+// ---------------------------------------------------------------------------------
+
+/// AC4 — clicking the `Burst` entry (real `Interaction::Pressed`) sets `SelectedFireMode`
+/// to that weapon's burst spec (read-back identity, not a fabricated value) and despawns
+/// the picker.
+#[test]
+fn selecting_an_entry_sets_fire_mode_and_closes() {
+    let single = spec(ModeKind::Single, 0.2, 1);
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+    let full = spec(ModeKind::Full, 0.7, 6);
+    let mut app = open_picker_with(FireMode::new(vec![single, burst, full]));
+
+    // Find the burst entry and press it via the real Interaction path.
+    let burst_entry = picker_entries(&mut app)
+        .into_iter()
+        .find(|(_, m)| m.kind == ModeKind::Burst)
+        .map(|(e, _)| e);
+    assert!(
+        burst_entry.is_some(),
+        "a burst entry must exist in the picker"
+    );
+    let Some(entry) = burst_entry else { return };
+    press_button(&mut app, entry);
     app.update();
-    // Pin the starting rung (after the default-on-select has run).
+
+    assert_eq!(
+        selected_mode(&app),
+        Some(burst),
+        "clicking the burst entry must set SelectedFireMode to the weapon's burst spec",
+    );
+    assert!(
+        !picker_is_open(&mut app),
+        "selecting a mode must close the picker",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC5 — clicking the scrim dismisses the picker WITHOUT changing the mode.
+// ---------------------------------------------------------------------------------
+
+/// AC5 — with a mode selected, opening the picker and pressing the scrim despawns the
+/// picker and leaves `SelectedFireMode` UNCHANGED (no fabricated change on dismiss).
+#[test]
+fn scrim_click_dismisses_without_change() {
+    let single = spec(ModeKind::Single, 0.2, 1);
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+    let mut app = open_picker_with(FireMode::new(vec![single, burst]));
+
+    // Pin a known selected mode (burst) before dismissing.
     app.world_mut()
-        .insert_resource(SelectedFireMode::new(start));
-    let button = single_with::<FireModeSelectButton>(&mut app);
-    assert!(button.is_some(), "the fire-mode button must be spawned");
-    let button = button?;
-    press_button(&mut app, button);
+        .insert_resource(SelectedFireMode::new(burst));
     app.update();
-    selected_mode(&app)
+    assert!(
+        picker_is_open(&mut app),
+        "the picker is open before the scrim click"
+    );
+
+    let scrim = single_with::<FireModePickerScrim>(&mut app);
+    assert!(scrim.is_some(), "the picker must have a scrim");
+    let Some(scrim) = scrim else { return };
+    press_button(&mut app, scrim);
+    app.update();
+
+    assert!(
+        !picker_is_open(&mut app),
+        "a scrim click must dismiss the picker",
+    );
+    assert_eq!(
+        selected_mode(&app),
+        Some(burst),
+        "a scrim dismiss must leave SelectedFireMode unchanged",
+    );
 }
 
 // ---------------------------------------------------------------------------------
@@ -647,7 +782,7 @@ fn buttons_are_ui_nodes_not_world_render_layer_sprites() {
     let buttons = [
         require_button::<StanceCycleButton>(&mut app),
         require_button::<AimToggleButton>(&mut app),
-        require_button::<FireModeSelectButton>(&mut app),
+        require_button::<FireModePickerButton>(&mut app),
         require_button::<LevelUpButton>(&mut app),
         require_button::<LevelDownButton>(&mut app),
     ];

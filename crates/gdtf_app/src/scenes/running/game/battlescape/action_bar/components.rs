@@ -18,10 +18,12 @@
 //!
 //! ## Existing-act buttons vs DEFERRED buttons
 //!
-//! The five EXISTING-act markers ([`StanceCycleButton`] / [`AimToggleButton`] /
-//! [`FireModeSelectButton`] / [`LevelUpButton`] / [`LevelDownButton`]) each route a
-//! press to the matching [`ActIntent`](gdtf_battle_input::ActIntent) on the shared
-//! 222a seam. There is deliberately NO `FireButton`: a button press carries no
+//! The four cycle/level markers ([`StanceCycleButton`] / [`AimToggleButton`] /
+//! [`LevelUpButton`] / [`LevelDownButton`]) each route a press to the matching
+//! [`ActIntent`](gdtf_battle_input::ActIntent) on the shared 222a seam; the
+//! [`FireModePickerButton`] (GTW-254) instead OPENS the popup fire-mode picker modal
+//! (no intent — the picker sets the fire mode directly). There is deliberately NO
+//! `FireButton`: a button press carries no
 //! `HoveredCell` target, so FIRE stays the left-click-on-target surface (landed in
 //! 222b); explicit-target fire is GTW-11. The DEFERRED acts (reload, end-turn) have
 //! NO sim act yet, so they are rendered as `DisabledButton` ([`ReloadButton`] /
@@ -55,17 +57,19 @@ crate::support_item! {
 }
 
 crate::support_item! {
-    /// Marks the **fire-mode-select** action button — a press pushes
-    /// [`ActIntent::FireModeCycle`](gdtf_battle_input::ActIntent::FireModeCycle), the same
-    /// intent the fire-mode-cycle KEY pushes. The drain advances
-    /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) among the selected
-    /// weapon's offered modes (no sim message; the chosen mode rides the next fire). This
-    /// is a fire-mode SELECT (no target needed), distinct from a FIRE button (which is
-    /// deliberately absent — FIRE is the left-click-on-target surface).
+    /// Marks the **fire-mode-picker** opener button (GTW-254) — a press OPENS (or
+    /// toggles closed) the popup fire-mode picker modal, REPLACING the removed blind
+    /// fire-mode-cycle button. It pushes NO [`ActIntent`](gdtf_battle_input::ActIntent):
+    /// the picker SETS [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly
+    /// to the chosen mode. Its CAPTION reflects the live `SelectedFireMode` mode (e.g.
+    /// `Mode: burst`), updated by `sync_fire_mode_picker_caption`; with no armed
+    /// selection it is a disabled neutral caption (the deferred-button precedent). This
+    /// is a fire-mode picker opener (no target needed), distinct from a FIRE button
+    /// (which is deliberately absent — FIRE is the left-click-on-target surface).
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct FireModeSelectButton;
+    struct FireModePickerButton;
 }
 
 crate::support_item! {
@@ -150,3 +154,50 @@ crate::support_item! {
 /// whole signal (no-bare-types rule).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(in crate::scenes::running::game::battlescape::action_bar) struct ActionBarRoot;
+
+crate::support_item! {
+    /// Marks the **root** of the open fire-mode picker modal (GTW-254). The EXISTENCE
+    /// of this entity IS the picker's "open" state (no sub-state — bevy-traps #5): the
+    /// opener-press system spawns it, and the select / scrim-click / re-open systems
+    /// despawn it (recursively, so its scrim + entry-button children go with it). It is
+    /// mounted under the UI-camera root as a LATER-spawned full-screen sibling so it
+    /// renders ABOVE the action bar + status panel (clause 4a).
+    ///
+    /// Widened through `support_item!` so the integration tests can assert the picker's
+    /// existence (open) / absence (closed) via `crate::test_support`.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct FireModePickerRoot;
+}
+
+crate::support_item! {
+    /// Marks the picker's full-screen transparent **scrim** button (GTW-254) — the
+    /// click-outside catcher behind the picker panel. A press on it dismisses the picker
+    /// with NO change to [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode)
+    /// (clause B3 / AC5). It is a [`Button`](bevy::ui::Button) (so `bevy_ui`'s
+    /// `ui_focus_system` drives its [`Interaction`](bevy::ui::Interaction)) with a fully
+    /// transparent fill, sized to the whole viewport and z-ordered below the panel.
+    ///
+    /// Widened through `support_item!` so a test can synthesize a scrim press (AC5).
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct FireModePickerScrim;
+}
+
+crate::support_item! {
+    /// Marks one fire-mode **entry** button in the open picker (GTW-254), carrying the
+    /// exact [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) it sets — the read-back from
+    /// the selected weapon's [`FireMode`](gdtf_battle_sim::FireMode) selector, NEVER a
+    /// fabricated spec (clause B3). A press SETS
+    /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) to this carried spec and
+    /// closes the picker.
+    ///
+    /// Carries a domain value (the chosen fire-mode spec), so — unlike the unit markers —
+    /// this is a tuple-struct component, not a ZST. `FireModeSpec` is `Copy` (GTW-260),
+    /// so the marker is `Copy`. Widened through `support_item!` so a test can find an
+    /// entry by its carried mode and synthesize its press (AC3 / AC4).
+    #[derive(Component, Clone, Copy, PartialEq, Debug)]
+    struct FireModePickerEntry(pub gdtf_battle_sim::FireModeSpec);
+}

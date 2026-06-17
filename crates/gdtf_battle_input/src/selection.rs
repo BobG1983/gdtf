@@ -83,6 +83,25 @@ fn cell_order_key(position: &Position) -> CellOrderKey {
     (position.z, position.y, position.x)
 }
 
+/// Whether a `gdtf_app`-owned modal (the GTW-254 fire-mode popup picker) is currently
+/// capturing the pointer, so the WORLD click surfaces must NOT also act on this press.
+///
+/// A named bool newtype (no-bare-types: a suppression flag is a domain value;
+/// [`Resource`] is the framework carve-out) [`Deref`]ing to its inner `bool`. This is
+/// the INPUT-owned half of the cross-crate click-through seam (GTW-254 clause 6b): the
+/// world click decision ([`left_click_act`] / [`right_click_turn_to_face`] and the
+/// gamepad [`gamepad_click_act`](crate::gamepad::gamepad_click_act) /
+/// [`gamepad_turn`](crate::gamepad::gamepad_turn)) READS it and is inert while it is
+/// `true`, so a click on a picker button (or its scrim) does not ALSO move/fire the
+/// ganger behind the modal. The flag is SET by `gdtf_app` while the picker is open and
+/// CLEARED when it closes — `gdtf_app` depends on `gdtf_battle_input`, so the flag is
+/// OWNED here and only written across the legal `gdtf_app -> gdtf_battle_input` edge
+/// (never a reverse `input`-reads-`gdtf_app` edge — the ADR-0001 / GTW-251 constraint).
+/// `init_resource`-d by [`GdtfBattleInputPlugin`](crate::GdtfBattleInputPlugin) to the
+/// not-suppressed default (`false`), so a world click is live whenever no modal is open.
+#[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct WorldClickSuppressed(pub bool);
+
 /// The currently SELECTED shooter — the ganger a left-click picked, or `None`.
 ///
 /// A named newtype over `Option<Entity>` (no-bare-types: the selection is a domain
@@ -131,24 +150,41 @@ const SELECTION_TINT: Color = Color::srgba(0.4, 0.85, 1.0, 0.5);
 /// so the system's parameter list stays under clippy's argument-count gate (the sim's
 /// `BattleGridsParam` / the seam's `ActWriters` precedent).
 ///
-/// Grouping the six cohesive `Res<…>` reads into one param keeps [`left_click_act`] at
+/// Grouping the seven cohesive `Res<…>` reads into one param keeps [`left_click_act`] at
 /// five parameters; the body reads `reads.mouse` / `reads.player` etc. A transparent
 /// system-param bundle of framework resources + landed newtypes — not itself a wrapped
 /// domain scalar.
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct LeftClickReads<'w> {
     /// The mouse button state — the Left press edge gates the whole decision.
-    mouse:     Res<'w, ButtonInput<MouseButton>>,
+    mouse:      Res<'w, ButtonInput<MouseButton>>,
     /// The cell the cursor hovers (the click target), resolved last update.
-    hovered:   Res<'w, HoveredCell>,
+    hovered:    Res<'w, HoveredCell>,
     /// The coarse occupancy grid — the occupant + `is_blocked` reads.
-    occupancy: Res<'w, OccupancyGrid>,
+    occupancy:  Res<'w, OccupancyGrid>,
     /// The selected fire mode — the FIRE branch's mode + the `can_fire` cone-mult.
-    fire_mode: Res<'w, SelectedFireMode>,
+    fire_mode:  Res<'w, SelectedFireMode>,
     /// The combat tuning the shared `can_fire` guard reads.
-    tuning:    Res<'w, CombatTuning>,
+    tuning:     Res<'w, CombatTuning>,
     /// The player's own faction — the friend/foe gate for every branch.
-    player:    Res<'w, PlayerFaction>,
+    player:     Res<'w, PlayerFaction>,
+    /// Whether a `gdtf_app` modal (the GTW-254 picker) is capturing the pointer — when
+    /// `true` the whole decision is inert (the click belongs to the modal, not the world).
+    suppressed: Res<'w, WorldClickSuppressed>,
+}
+
+impl LeftClickReads<'_> {
+    /// Whether a `gdtf_app` modal is currently capturing the pointer (GTW-254 clause 6b).
+    ///
+    /// The press surface that consumes a [`LeftClickReads`] bundle but is NOT
+    /// [`left_click_act`] — the gamepad's
+    /// [`gamepad_click_act`](crate::gamepad::gamepad_click_act) — reads the suppression flag
+    /// through this accessor (the bundle's fields are private), and is inert while it is
+    /// `true`. Returns by value (a one-byte `Copy` newtype).
+    #[must_use]
+    pub fn suppressed(&self) -> WorldClickSuppressed {
+        *self.suppressed
+    }
 }
 
 /// The single resolved outcome of one left-click edge — the ONE source of truth the
@@ -313,6 +349,11 @@ pub fn apply_left_click(
 /// FIRE edge emits no [`MoveRequested`] and does not touch [`SelectedShooter`]; a SELECT
 /// edge emits no act message.
 ///
+/// SUPPRESSED while a `gdtf_app` modal captures the pointer
+/// ([`WorldClickSuppressed`](crate::WorldClickSuppressed), GTW-254 clause 6b): the whole
+/// decision is inert so a click on the fire-mode picker (or its scrim) does NOT also act on
+/// the world cell behind it.
+///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + a read-only
 /// `Query<&Faction>` (occupant + selection faction) + a read-only `Query<ShooterFireData>`
 /// (the FIRE branch's `can_fire` reads), the [`ResMut<SelectedShooter>`] / the
@@ -326,6 +367,11 @@ pub fn left_click_act(
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
 ) {
+    // A `gdtf_app` modal (the GTW-254 picker) is capturing the pointer — the click
+    // belongs to the modal, not the world (clause 6b). Inert until it closes.
+    if **reads.suppressed {
+        return;
+    }
     // Only act on the press edge; a held button does not re-resolve.
     if !reads.mouse.just_pressed(MouseButton::Left) {
         return;
@@ -372,6 +418,29 @@ pub fn decide_turn(
     Some(SetFacingRequested::new(actor, facing))
 }
 
+/// The read-only resources the turn-to-face surfaces consult, grouped into ONE
+/// [`SystemParam`] so each surface's parameter list stays under clippy's argument-count
+/// gate (the [`LeftClickReads`] / sim `BattleGridsParam` precedent).
+///
+/// Grouping the cohesive `Res<…>` reads (the hovered cell, the player faction, the current
+/// selection, and the GTW-254 [`WorldClickSuppressed`] flag) into one param keeps
+/// [`right_click_turn_to_face`] (mouse) and [`gamepad_turn`](crate::gamepad::gamepad_turn)
+/// (East) at five parameters each. A transparent system-param bundle of framework resources
+/// and landed newtypes — not itself a wrapped domain scalar — REUSED by BOTH turn surfaces
+/// so they read the SAME inputs identically (GTW-259's shared-decision direction).
+#[derive(bevy::ecs::system::SystemParam)]
+pub struct TurnReads<'w> {
+    /// The cell the cursor / software cursor hovers — the turn target.
+    pub hovered:    Res<'w, HoveredCell>,
+    /// The player's own faction — the turn surfaces act only on a player-faction selection.
+    pub player:     Res<'w, PlayerFaction>,
+    /// The current selection — the actor that turns.
+    pub selected:   Res<'w, SelectedShooter>,
+    /// Whether a `gdtf_app` modal (the GTW-254 picker) is capturing the pointer — when
+    /// `true` the turn is inert (the press belongs to the modal, not the world, clause 6b).
+    pub suppressed: Res<'w, WorldClickSuppressed>,
+}
+
 /// Turns the player-faction [`SelectedShooter`] to face the [`HoveredCell`] on a Right
 /// press (GTW-238), pushing an [`ActIntent::Turn`].
 ///
@@ -381,31 +450,34 @@ pub fn decide_turn(
 /// [`ActIntent::Turn`]`(`[`SetFacingRequested`]`)`. The per-45deg-step turn TU cost is the
 /// SIM's facing dispatch (GTW-235), NOT here — this surface only emits the request.
 ///
-/// Writes NO intent when: the button is not just-pressed; there is no selection; the
-/// selection is NOT a player-faction ganger (the faction gate stays here, AC6); or
-/// [`decide_turn`] returns [`None`] (nothing hovered, no actor [`Position`], or the hovered
-/// cell is the actor's OWN cell).
+/// Writes NO intent when: a `gdtf_app` modal is capturing the pointer
+/// ([`WorldClickSuppressed`], GTW-254 clause 6b); the button is not just-pressed; there is
+/// no selection; the selection is NOT a player-faction ganger (the faction gate stays here,
+/// AC6); or [`decide_turn`] returns [`None`] (nothing hovered, no actor [`Position`], or the
+/// hovered cell is the actor's OWN cell).
 /// Param-only (`bevy-traps.md` #7): all reads via `Res` / `Query`, the intent push via
 /// [`ResMut<PendingActIntent>`]; no `&mut World`. Runs `.before(pick_hovered_cell)` (the
 /// cell resolved last update) and `.before(dispatch_act_intents)` (the drain).
 pub fn right_click_turn_to_face(
     mouse: Res<ButtonInput<MouseButton>>,
-    hovered: Res<HoveredCell>,
-    player: Res<PlayerFaction>,
-    selected: Res<SelectedShooter>,
+    reads: TurnReads,
     factions: Query<&Faction>,
     positions: Query<&Position>,
     mut pending: ResMut<PendingActIntent>,
 ) {
+    // A `gdtf_app` modal (the GTW-254 picker) is capturing the pointer (clause 6b).
+    if **reads.suppressed {
+        return;
+    }
     // Only act on the press edge; a held button does not re-turn.
     if !mouse.just_pressed(MouseButton::Right) {
         return;
     }
     // Gating: only a PLAYER-faction selection turns (a forced enemy emits nothing, AC6).
-    if !selection_is_player(*selected, &factions, *player) {
+    if !selection_is_player(*reads.selected, &factions, *reads.player) {
         return;
     }
-    if let Some(request) = decide_turn(&selected, &hovered, &positions) {
+    if let Some(request) = decide_turn(&reads.selected, &reads.hovered, &positions) {
         pending.push(ActIntent::Turn(request));
     }
 }
