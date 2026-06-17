@@ -37,6 +37,32 @@ type InteractionVisuals = (
     &'static mut UiBorderColor,
 );
 
+/// The SINGLE source of truth for the button-state → fill mapping (GTW-280, AC2).
+///
+/// Maps a button's current [`Interaction`](bevy::ui::Interaction) to the matching
+/// fill [`Color`](bevy::prelude::Color) from the button sub-theme of the live
+/// [`GdtfTheme`](crate::theme::GdtfTheme):
+///
+/// - [`Interaction::None`](bevy::ui::Interaction::None) → the resting
+///   [`ButtonColor`](crate::theme::ButtonColor).
+/// - [`Interaction::Hovered`](bevy::ui::Interaction::Hovered) →
+///   [`HoverColor`](crate::theme::HoverColor).
+/// - [`Interaction::Pressed`](bevy::ui::Interaction::Pressed) →
+///   [`PressedColor`](crate::theme::PressedColor).
+///
+/// Both [`theme_interaction`] (the hover/press feedback) and
+/// [`repaint_deactivated_buttons`](crate::interaction::repaint_deactivated_buttons)
+/// (the GTW-280 deactivation repaint) resolve a button's fill through this one
+/// helper, so the two systems can never drift apart — there is no duplicated
+/// `match` to keep in sync.
+pub(crate) fn interaction_fill(theme: &GdtfTheme, interaction: Interaction) -> Color {
+    match interaction {
+        Interaction::None => *theme.button.color,
+        Interaction::Hovered => *theme.button.hover,
+        Interaction::Pressed => *theme.button.pressed,
+    }
+}
+
 /// Lays theme-derived hover/press feedback on top of the base button look.
 ///
 /// Queries every [`Button`](bevy::ui::Button) whose
@@ -82,12 +108,7 @@ pub fn theme_interaction(
     };
 
     for (interaction, mut background, mut border) in &mut buttons {
-        let fill = match interaction {
-            Interaction::None => *theme.button.color,
-            Interaction::Hovered => *theme.button.hover,
-            Interaction::Pressed => *theme.button.pressed,
-        };
-        background.0 = fill;
+        background.0 = interaction_fill(&theme, *interaction);
         *border = UiBorderColor::all(*theme.button.border_color);
     }
 }

@@ -50,7 +50,7 @@ pub mod widgets;
 
 mod plugin;
 
-pub use interaction::{sync_hover_to_focus, theme_interaction};
+pub use interaction::{repaint_deactivated_buttons, sync_hover_to_focus, theme_interaction};
 pub use plugin::UiPlugin;
 pub use retheme::redrive_theme_on_asset_event;
 pub use themed::any_themed_added;

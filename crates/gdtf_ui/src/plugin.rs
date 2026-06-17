@@ -5,7 +5,7 @@ use gdtf_assets::RonAsset;
 
 use crate::{
     focus_nav::FocusNavPlugin,
-    interaction::{sync_hover_to_focus, theme_interaction},
+    interaction::{repaint_deactivated_buttons, sync_hover_to_focus, theme_interaction},
     retheme::redrive_theme_on_asset_event,
     theme::{GdtfTheme, GdtfThemeSpec},
     themed::{UiSystems, any_themed_added, apply_theme},
@@ -79,6 +79,17 @@ impl Plugin for UiPlugin {
     /// all guard the theme internally (`Option<Res<GdtfTheme>>`), so they too
     /// are inert before the resource is populated (bevy-traps rule 1).
     ///
+    /// The GTW-280 deactivation repaint
+    /// ([`repaint_deactivated_buttons`](crate::interaction::repaint_deactivated_buttons))
+    /// runs in the **same** `.after(UiSystems::ApplyTheme)` band: it reads
+    /// [`RemovedComponents`](bevy::prelude::RemovedComponents)`<`[`ActiveButton`](crate::widgets::ActiveButton)`>`
+    /// and repaints a button the frame it loses `ActiveButton` from its current
+    /// [`Interaction`](bevy::ui::Interaction), so a just-de-selected toggle (whose
+    /// `Interaction` is unchanged) does not keep a stale active fill until hovered.
+    /// Its write set (`Without<ActiveButton>`) is disjoint from
+    /// [`paint_active_buttons`](crate::widgets::paint_active_buttons)'s
+    /// (`With<ActiveButton>`), so there is no write conflict between them.
+    ///
     /// The GTW-141 mouse hover→focus bridge
     /// ([`sync_hover_to_focus`](crate::interaction::sync_hover_to_focus)) runs in the
     /// **same** `.after(UiSystems::ApplyTheme)` band: it reads the
@@ -134,10 +145,23 @@ impl Plugin for UiPlugin {
                 // active-wins deterministically), `paint_active_buttons` is ALSO ordered
                 // `.after(theme_interaction)` — the active fill is the last writer, never a
                 // flickering race (bevy-traps rule 3).
+                // GTW-280 — deactivation repaint: `repaint_deactivated_buttons`
+                // reads `RemovedComponents<ActiveButton>` and repaints a button the
+                // frame it loses `ActiveButton` from its CURRENT `Interaction`, so a
+                // just-de-selected toggle (sibling became active, this button's
+                // `Interaction` unchanged) does not keep its stale active fill until
+                // hovered. Its write set is DISJOINT from `paint_active_buttons`: it
+                // is `Without<ActiveButton>` and the active paint is
+                // `With<ActiveButton>`, so the two never write the same button's
+                // `BackgroundColor` — no ordering conflict between them. It runs in
+                // the same `.after(UiSystems::ApplyTheme)` band so it composes on the
+                // freshest base look (bevy-traps rule 3) and guards the theme as
+                // `Option<Res<GdtfTheme>>` (bevy-traps rule 1).
                 (
                     theme_interaction,
                     paint_disabled_buttons,
                     paint_active_buttons.after(theme_interaction),
+                    repaint_deactivated_buttons,
                     sync_hover_to_focus,
                 )
                     .after(UiSystems::ApplyTheme),

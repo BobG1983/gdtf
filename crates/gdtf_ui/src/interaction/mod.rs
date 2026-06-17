@@ -42,11 +42,26 @@
 //! set by `bevy_ui`'s built-in `ui_focus_system` from raw mouse input in
 //! `PreUpdate` (see bevy-traps), so by the time this `Update` system reads
 //! `Changed<Interaction>` the cursor's hit for the frame is already resolved.
+//!
+//! ## Deactivation repaint (GTW-280)
+//!
+//! [`repaint_deactivated_buttons`] closes the gap left by the two systems above:
+//! a button that LOSES [`ActiveButton`](crate::widgets::ActiveButton) (a sibling
+//! toggle becomes active) is no longer painted by
+//! [`paint_active_buttons`](crate::widgets::paint_active_buttons), yet its
+//! `Interaction` is unchanged, so [`theme_interaction`] (`Changed<Interaction>`)
+//! never fires for it. It would keep its stale active fill until hovered. Reading
+//! [`RemovedComponents`](bevy::prelude::RemovedComponents)`<ActiveButton>`, this
+//! system repaints each just-de-selected toggle from its CURRENT `Interaction`
+//! via the shared [`interaction_fill`](theme::interaction_fill) helper the SAME
+//! frame the marker is removed.
 
 mod focus;
+mod repaint;
 #[cfg(test)]
 mod test;
 mod theme;
 
 pub use focus::sync_hover_to_focus;
+pub use repaint::repaint_deactivated_buttons;
 pub use theme::theme_interaction;

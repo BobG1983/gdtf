@@ -381,3 +381,79 @@ fn disabled_beats_active() -> Result<(), ron::error::SpannedError> {
 
     Ok(())
 }
+
+/// GTW-280, AC5 (mirror) — a just-de-selected toggle is repainted to its resting
+/// fill the SAME frame it loses `ActiveButton`, driven by the REAL [`UiPlugin`]
+/// path (`MinimalPlugins` + `InputPlugin` + `UiPlugin`) so the new
+/// `repaint_deactivated_buttons` system runs in its production ordering.
+///
+/// Mirrors the interaction-side test from the widgets/paint angle: this is the
+/// generic `gdtf_ui` defect the Mode and Stance toggle panels hit — switching the
+/// active toggle must repaint the previously-selected one without waiting for a
+/// hover. The button's `Interaction` is left `Interaction::None` throughout, so
+/// `theme_interaction` (`Changed<Interaction>`) cannot account for the repaint —
+/// only `repaint_deactivated_buttons` can.
+///
+/// Pin-discriminating: remove `repaint_deactivated_buttons` from [`UiPlugin`] and
+/// the de-selected button stays stuck on the active fill, failing the assert.
+#[test]
+fn deselected_toggle_drops_active_fill_without_hover() -> Result<(), ron::error::SpannedError> {
+    use bevy::{MinimalPlugins, input::InputPlugin};
+
+    use crate::UiPlugin;
+
+    let mut app = App::new();
+    let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(InputPlugin)
+        .add_plugins(UiPlugin);
+    app.insert_resource(theme_res.clone());
+
+    let button = {
+        let mut commands = app.world_mut().commands();
+        spawn_button(
+            &mut commands,
+            &theme_res,
+            ButtonLabel::new("Single"),
+            ActiveButton,
+        )
+    };
+    app.world_mut().flush();
+
+    // Settle the spawn over two updates: the first lets apply_theme paint the base
+    // (change-driven on the NEW Themed entity), the second lets `Added<Themed>`
+    // clear so apply_theme will NOT re-run on the DECIDING frame below — otherwise
+    // it would re-paint the button to its resting base for free and the test would
+    // stop discriminating the fix. paint_active_buttons keeps the active fill across
+    // both settles.
+    app.update();
+    app.update();
+    assert_ne!(
+        *theme_res.button.active, *theme_res.button.color,
+        "test precondition: the active and resting fills must differ",
+    );
+    assert_eq!(
+        app.world().get::<BackgroundColor>(button).map(|c| c.0),
+        Some(*theme_res.button.active),
+        "precondition: the toggle starts painted the active fill",
+    );
+
+    // De-select WITHOUT touching Interaction (it stays None).
+    app.world_mut().entity_mut(button).remove::<ActiveButton>();
+    assert_eq!(
+        app.world().get::<Interaction>(button).copied(),
+        Some(Interaction::None),
+        "precondition: the de-selected toggle's Interaction stays None",
+    );
+
+    app.update();
+
+    assert_eq!(
+        app.world().get::<BackgroundColor>(button).map(|c| c.0),
+        Some(*theme_res.button.color),
+        "a de-selected toggle must drop the active fill back to RESTING the same \
+         frame, with no hover (repaint_deactivated_buttons)",
+    );
+
+    Ok(())
+}
