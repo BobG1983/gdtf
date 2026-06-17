@@ -348,6 +348,57 @@ fn clicking_an_enemy_is_a_no_op_on_the_player_selection() {
     );
 }
 
+/// GTW-288 — with a PLAYER ganger selected, a left-click with NO hovered cell (the
+/// over-UI / margin / off-map case the GTW-286 viewport gate produces by resolving
+/// `HoveredCell` to `None`) is a NO-OP: `SelectedShooter` stays that player ganger across
+/// the update, with NO transient `None`. This is the regression GTW-286 introduced (every
+/// bottom action-bar click cleared the selection, flickering the status panel and breaking
+/// Mode/Stance) and GTW-288 fixes — the no-hover branch now returns `NoOp`, not `Clear`.
+///
+/// Pin-discriminating: reverting the no-hover branch to `Clear` wipes the selection to
+/// `None`, failing the unchanged-selection assertion — RED. With the GTW-288 `NoOp` the
+/// no-hover click leaves the selection untouched. Distinct from the empty-IN-GRID-cell case
+/// (`left_click_on_empty_cell_clears_the_selection`), where `HoveredCell` is `Some` and the
+/// chain genuinely CLEARs.
+#[test]
+fn clicking_with_no_hovered_cell_is_a_no_op_on_the_player_selection() {
+    let level = Level::new(0);
+    let mut app = selection_app(level);
+
+    // A PLAYER-faction ganger, pre-selected (so the no-hover branch has a selection to
+    // potentially clobber). Its occupancy cell is not the click target — there IS no target.
+    let own_cell = CellLevel::new(Cell::new(3, 3), level);
+    let player_ganger = place_player_ganger(&mut app, own_cell);
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(player_ganger));
+
+    // The GTW-286 over-UI / margin / off-map case: no hovered cell at all.
+    set_hovered(&mut app, None);
+
+    // Precondition: the player ganger is selected before the click.
+    assert_eq!(
+        selected(&app),
+        Some(player_ganger),
+        "precondition: the player ganger is selected before the no-hover click",
+    );
+
+    press_left(&mut app);
+    app.update();
+
+    // The no-hover click is a NO-OP: the selection is UNCHANGED (no clear, no transient None).
+    assert_eq!(
+        selected(&app),
+        Some(player_ganger),
+        "a left-click with NO hovered cell (over UI / margin / off map) must NOT clear the \
+         player's selection (GTW-288 NoOp) — reverting it to Clear wipes the selection",
+    );
+    assert_ne!(
+        selected(&app),
+        None,
+        "the no-hover click must produce NO transient None — no 'No ganger selected' flash",
+    );
+}
+
 // ---------------------------------------------------------------------------------
 // AC5 — the selection highlight snaps to the selected cell + hides on clear.
 // ---------------------------------------------------------------------------------

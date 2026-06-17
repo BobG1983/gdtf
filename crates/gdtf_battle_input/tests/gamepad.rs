@@ -230,7 +230,9 @@ fn decide_left_click_matches_the_contract_precedence() {
         assert_eq!(request.dest, dest, "MOVE dest = the hovered cell");
     }
 
-    // --- CLEAR: nothing hovered, no selection. ---
+    // --- NO-OP: nothing hovered (GTW-288). The GTW-286 viewport gate resolves an over-UI /
+    //     margin / off-map click to no HoveredCell, and a no-hover click must NOT clear the
+    //     selection — it is a NoOp (the gamepad shares the same `decide_left_click`). ---
     {
         let mut app = decision_app();
         app.world_mut().insert_resource(SelectedShooter::cleared());
@@ -238,8 +240,29 @@ fn decide_left_click_matches_the_contract_precedence() {
 
         assert_eq!(
             decide(&mut app),
+            LeftClickOutcome::NoOp,
+            "nothing hovered must be a NO-OP, not CLEAR (GTW-288, the GTW-286 over-UI case)",
+        );
+    }
+
+    // --- CLEAR: a valid in-grid hovered cell with a NON-player / stale selection where none
+    //     of FIRE/SELECT/MOVE/NO-OP applies (GTW-288 keeps CLEAR for the genuine Some-cell
+    //     case). A bare entity selection is not player-faction, so MOVE does not apply. ---
+    {
+        let mut app = decision_app();
+        let stale = app.world_mut().spawn_empty().id();
+        app.world_mut().insert_resource(SelectedShooter::new(stale));
+        // An EMPTY in-grid cell with a non-player (bare-entity) selection: FIRE needs an enemy
+        // occupant (none), SELECT needs a player occupant (none), MOVE needs a player-faction
+        // selection (the bare `stale` is not), NO-OP needs an enemy occupant (none) -> CLEAR.
+        let cell = CellLevel::new(Cell::new(6, 6), LEVEL);
+        app.world_mut().insert_resource(HoveredCell(Some(cell)));
+
+        assert_eq!(
+            decide(&mut app),
             LeftClickOutcome::Clear,
-            "nothing hovered with no selection must CLEAR",
+            "an in-grid Some cell with a non-player/stale selection (no FIRE/SELECT/MOVE/NO-OP) \
+             must still CLEAR (GTW-288 preserves the genuine clear case)",
         );
     }
 

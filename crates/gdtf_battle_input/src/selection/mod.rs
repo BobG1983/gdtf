@@ -30,9 +30,12 @@
 //! ([`pick_hovered_cell`](crate::pick_hovered_cell)) now resolves to [`None`] for any cursor
 //! OUTSIDE the map viewport rect (a margin / a UI panel) — the GTW-286 viewport gate in
 //! `resolve_hovered_cell`. So a click over a UI button never reaches a cell: nothing hovered →
-//! the chain CLEARs (or, with a player selection, simply does nothing this edge). The GTW-271
-//! camera-pan gate had been pan-path only; GTW-286 adds the SAME gate to the click/pick path so
-//! one chokepoint covers move-on-UI AND the reticle-under-panels, for mouse and gamepad alike.
+//! the decision is [`LeftClickOutcome::NoOp`] (GTW-288), which leaves the selection UNTOUCHED.
+//! It does NOT clear: clearing on every bottom-UI click flickered the status panel and broke
+//! Mode/Stance (which need the selection to resolve the weapon). CLEAR is reserved for a valid
+//! in-grid cell (see below). The GTW-271 camera-pan gate had been pan-path only; GTW-286 adds
+//! the SAME gate to the click/pick path so one chokepoint covers move-on-UI AND the
+//! reticle-under-panels, for mouse and gamepad alike.
 //!
 //! # Clicking an enemy is a no-op on your selection (GTW-287)
 //!

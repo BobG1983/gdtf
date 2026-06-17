@@ -59,12 +59,17 @@ pub enum LeftClickOutcome {
     /// MOVE the carried request — clause 3 won (a player-faction selection over an empty,
     /// in-bounds, unblocked cell). Pushed as an [`ActIntent::Move`]; the selection is unchanged.
     Move(MoveRequested),
-    /// NO-OP — clause 3.5 (GTW-287): the clicked cell holds an ENEMY you cannot FIRE on. Does
-    /// NOTHING — leaves [`SelectedShooter`] untouched (no clear, no transient `None`). Enemies
-    /// are inspected via the GTW-274 hover panel, never selected or cleared as your shooter.
+    /// NO-OP — does NOTHING, leaving [`SelectedShooter`] untouched (no clear, no transient
+    /// `None`). Two cases reach it: clause 3.5 (GTW-287), the clicked cell holds an ENEMY you
+    /// cannot FIRE on (enemies are inspected via the GTW-274 hover panel, never selected or
+    /// cleared as your shooter); and the no-hover case (GTW-288), a click with no map cell
+    /// (cursor over the UI / a margin / off the map, the GTW-286 viewport gate) — which must
+    /// not clear the selection, lest it flicker the status panel and break Mode/Stance.
     NoOp,
-    /// CLEAR the selection — clause 4 (none of the above, or nothing hovered). Sets
-    /// [`SelectedShooter::cleared`].
+    /// CLEAR the selection — clause 4: a valid in-grid hovered cell ([`HoveredCell`] is
+    /// [`Some`]) where none of FIRE / SELECT / MOVE / NO-OP applied (an empty / blocked cell
+    /// with a non-player or stale selection). Sets [`SelectedShooter::cleared`]. The no-hover
+    /// case is NOT here — that is the NO-OP above (GTW-288).
     Clear,
 }
 
@@ -85,9 +90,15 @@ pub enum LeftClickOutcome {
 /// 3. **MOVE** — there is a player-faction selection AND the hovered cell is empty
 ///    (`occupant == None`), in-bounds (a [`Some`] [`HoveredCell`] is always in-grid), and
 ///    unblocked (`!is_blocked`) → [`LeftClickOutcome::Move`].
-/// 4. **CLEAR** — none of the above (or nothing hovered) → [`LeftClickOutcome::Clear`]. The
-///    genuine "nothing to act on" cases (an empty / blocked cell with a non-player or stale
-///    selection) still clear.
+/// 4. **CLEAR** — a valid in-grid hovered cell (a [`Some`] [`HoveredCell`]) where none of the
+///    above applied → [`LeftClickOutcome::Clear`]. The genuine "nothing to act on" cases (an
+///    empty / blocked cell with a non-player or stale selection) still clear.
+///
+/// A NO-HOVER click is NOT clause 4: when the [`HoveredCell`] is [`None`] — a click with no map
+/// cell (cursor over the bottom UI / a margin / off the map, which the GTW-286 viewport gate
+/// resolves to no cell) — [`decide_left_click`] returns [`LeftClickOutcome::NoOp`] up front
+/// (GTW-288), NOT [`LeftClickOutcome::Clear`]. Clearing on every over-UI click flickered the
+/// status panel and broke Mode/Stance (which need the selection to resolve the weapon).
 ///
 /// Between MOVE (clause 3) and CLEAR (clause 4) sits the GTW-287 **NO-OP** rung: when the
 /// hovered cell holds an ENEMY occupant ([`Faction`] `!=` [`PlayerFaction`]) you could not FIRE
@@ -112,9 +123,12 @@ pub fn decide_left_click(
     shooters: &Query<ShooterFireData>,
     selected: &SelectedShooter,
 ) -> LeftClickOutcome {
-    // Nothing hovered -> no cell to act on -> CLEAR (clause 4, the no-hover case).
+    // Nothing hovered -> no cell to act on -> NO-OP (GTW-288): the GTW-286 viewport gate
+    // resolves a click over the bottom UI / a margin / off the map to no HoveredCell, and
+    // such a click must leave the selection UNTOUCHED (NOT clear it — that flickered the
+    // status panel and broke Mode/Stance, which need the selection to resolve the weapon).
     let Some(target) = **reads.hovered else {
-        return LeftClickOutcome::Clear;
+        return LeftClickOutcome::NoOp;
     };
     let player = **reads.player;
     // The occupant at the hovered cell (None when empty), and its faction (None when the
