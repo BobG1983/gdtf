@@ -190,8 +190,8 @@ mod tests {
         metric::{Cell, Level},
         weapon::{
             Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, HandlingProfile,
-            Kickback, MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, Stable, WeaponBundle,
-            WeaponDamage, WeaponPunch, WeaponShred,
+            Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Stable,
+            WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
         },
     };
 
@@ -245,6 +245,7 @@ mod tests {
     /// [`WeaponStats`] read-view via [`WeaponBundle::stats`].
     fn weapon_tagged(base: f32, kick: f32, stable: bool) -> WeaponBundle {
         WeaponBundle::new(
+            WeaponName::new("test-weapon".to_owned()),
             BaseSpread::new(base),
             Accuracy::new(1.0),
             Kickback::new(kick),
@@ -259,6 +260,7 @@ mod tests {
                 MagazineSize::new(10),
                 FireMode::Single {
                     single: FireModeSpec::new(
+                        ModeName::new("single".to_owned()),
                         ModeConeMult::new(1.0),
                         ModeTuPercent::new(0.5),
                         ModeShots::new(1),

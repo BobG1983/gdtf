@@ -32,8 +32,8 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
-    LifeState, Magazine, MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, OccupancyGrid,
-    PlayerFaction, Position, Tu, TuMax,
+    LifeState, Magazine, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent,
+    OccupancyGrid, PlayerFaction, Position, Tu, TuMax,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
@@ -71,9 +71,11 @@ fn control_app() -> App {
     app
 }
 
-/// A fire-mode spec with a marker `tu_percent` (arbitrary, not pinned tuning).
-const fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
+/// A fire-mode spec with a marker `tu_percent` (arbitrary, not pinned tuning). Not a
+/// `const fn` — it owns a [`ModeName`] ([`String`]).
+fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
     FireModeSpec::new(
+        ModeName::new(String::from("single")),
         ModeConeMult::new(1.0),
         ModeTuPercent::new(tu_percent),
         ModeShots::new(shots),
@@ -170,7 +172,8 @@ fn add_probes(app: &mut App) {
         Update,
         (
             |mut r: MessageReader<FireRequested>, mut p: ResMut<FireProbe>| {
-                p.0.extend(r.read().copied());
+                // `FireRequested` is no longer `Copy` (it owns a `FireModeSpec`) — clone.
+                p.0.extend(r.read().cloned());
             },
             |mut r: MessageReader<MoveRequested>, mut p: ResMut<MoveProbe>| {
                 p.0.extend(r.read().copied());

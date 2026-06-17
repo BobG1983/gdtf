@@ -90,10 +90,12 @@
 //! - [`rng`] — the model-owned seeded [`rng::SimRng`] (the single draw point).
 //! - [`weapon`] — the weapon as ECS components (GTW-200): a unit [`weapon::Weapon`]
 //!   MARKER plus one `#[derive(Component)]` newtype per stat
-//!   ([`weapon::BaseSpread`] / [`weapon::Accuracy`] / [`weapon::Kickback`] /
-//!   [`weapon::FatalBias`] / [`weapon::WeaponDamage`] / [`weapon::WeaponPunch`] /
-//!   [`weapon::WeaponShred`] / [`weapon::DamageType`] / [`weapon::MagazineSize`] /
-//!   [`weapon::FireMode`] / [`weapon::Stable`]) living as sibling components on the
+//!   ([`weapon::WeaponName`] / [`weapon::BaseSpread`] / [`weapon::Accuracy`] /
+//!   [`weapon::Kickback`] / [`weapon::FatalBias`] / [`weapon::WeaponDamage`] /
+//!   [`weapon::WeaponPunch`] / [`weapon::WeaponShred`] / [`weapon::DamageType`] /
+//!   [`weapon::MagazineSize`] / [`weapon::FireMode`] / [`weapon::Stable`], with each
+//!   [`weapon::FireMode`] spec carrying its [`weapon::ModeName`]) living as sibling
+//!   components on the
 //!   armed entity, spawned via the [`weapon::WeaponBundle`]. The §1/§6 readers take
 //!   a transient [`weapon::WeaponStats`] borrow-view (refs assembled from the
 //!   components — not a stored component); there is no packed `Weapon` data struct.
@@ -270,6 +272,6 @@ pub use vertical::{
 };
 pub use weapon::{
     Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, Stable,
-    Weapon, WeaponBundle, WeaponDamage, WeaponPunch, WeaponShred, WeaponStats,
+    HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent,
+    Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponStats,
 };

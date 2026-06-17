@@ -338,8 +338,9 @@ mod tests {
         tuning::RecoilClimb,
         weapon::{
             Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-            HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeShots, ModeTuPercent,
-            Stable, WeaponBundle, WeaponDamage, WeaponPunch, WeaponShred,
+            HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots,
+            ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+            WeaponShred,
         },
     };
 
@@ -365,11 +366,13 @@ mod tests {
     /// [`WeaponStats`] read-view via [`WeaponBundle::stats`].
     fn a_weapon(damage: i32, punch: i32, shred: i32, damage_type: DamageType) -> WeaponBundle {
         let spec = FireModeSpec::new(
+            ModeName::new("single".to_owned()),
             ModeConeMult::new(1.0),
             ModeTuPercent::new(1.0),
             ModeShots::new(1),
         );
         WeaponBundle::new(
+            WeaponName::new("test-weapon".to_owned()),
             BaseSpread::new(0.1),
             Accuracy::new(1.0),
             Kickback::new(0.0),
@@ -950,7 +953,7 @@ mod tests {
         // and resisted by the rest. Favorable vs Refractive, Resisted vs Void(3's
         // own mirror is Neutral, so use Plated node 0 → resisted).
         let weapon = a_weapon(12, 10, 6, DamageType::Kinetic);
-        let fav = resolve(weapon, ArmorType::Refractive);
+        let fav = resolve(weapon.clone(), ArmorType::Refractive);
         let res = resolve(weapon, ArmorType::Plated);
 
         assert!(

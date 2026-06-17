@@ -87,7 +87,9 @@ pub(crate) fn try_fire_request(
 
     Some(FireRequested::new(
         shooter,
-        **fire_mode,
+        // `FireModeSpec` is no longer `Copy` (it owns a `ModeName`) — clone the
+        // selected mode into the owned `FireRequested` payload.
+        (**fire_mode).clone(),
         target_cell,
         target_level,
     ))

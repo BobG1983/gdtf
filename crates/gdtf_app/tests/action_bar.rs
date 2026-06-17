@@ -49,7 +49,7 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Direction, Facing, FireMode, FireModeSpec, Level, ModeConeMult,
-    ModeShots, ModeTuPercent, Stance, StanceKind,
+    ModeName, ModeShots, ModeTuPercent, Stance, StanceKind,
     acts::{SetAimingRequested, SetStanceRequested},
     tuning::CombatTuning,
 };
@@ -171,8 +171,9 @@ fn press_button(app: &mut App, button: Entity) {
 
 /// One fire-mode spec with a marker `tu_percent` so the rungs are distinct authored
 /// values (magnitudes arbitrary, not pinned tuning — the `acts.rs` precedent).
-const fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
+fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
     FireModeSpec::new(
+        ModeName::new(String::from("mode")),
         ModeConeMult::new(1.0),
         ModeTuPercent::new(tu_percent),
         ModeShots::new(shots),
@@ -180,7 +181,7 @@ const fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
 }
 
 /// A `SingleBurstFullAuto` selector with three distinct rungs.
-const fn sbf_selector() -> FireMode {
+fn sbf_selector() -> FireMode {
     FireMode::SingleBurstFullAuto {
         single:    spec(0.2, 1),
         burst:     spec(0.4, 3),
@@ -270,7 +271,9 @@ fn active_level(app: &App) -> Option<u8> {
 
 /// The current `SelectedFireMode` spec, if present.
 fn selected_mode(app: &App) -> Option<FireModeSpec> {
-    app.world().get_resource::<SelectedFireMode>().map(|m| **m)
+    app.world()
+        .get_resource::<SelectedFireMode>()
+        .map(|m| (**m).clone())
 }
 
 // ---------------------------------------------------------------------------------
@@ -485,10 +488,12 @@ fn fire_mode_button_walks_only_offered_modes() {
     let single = spec(0.2, 1);
     let burst = spec(0.4, 3);
     let full_auto = spec(0.7, 6);
+    // The specs are no longer `Copy` (each owns a `ModeName`), so the locals are cloned
+    // wherever they are reused — the walk behavior is unchanged.
     let sbf = FireMode::SingleBurstFullAuto {
-        single,
-        burst,
-        full_auto,
+        single:    single.clone(),
+        burst:     burst.clone(),
+        full_auto: full_auto.clone(),
     };
 
     // SingleBurstFullAuto: each single button-press steps ONE rung of the offered ladder,
@@ -496,26 +501,28 @@ fn fire_mode_button_walks_only_offered_modes() {
     // the single post-arm press the harness drives cleanly (the AC3 working recipe; the
     // ladder + wrap are the real 222b `next_fire_mode` drain).
     assert_eq!(
-        press_fire_mode_from(sbf, single),
-        Some(burst),
+        press_fire_mode_from(sbf.clone(), single.clone()),
+        Some(burst.clone()),
         "single must step to burst",
     );
     assert_eq!(
-        press_fire_mode_from(sbf, burst),
-        Some(full_auto),
+        press_fire_mode_from(sbf.clone(), burst),
+        Some(full_auto.clone()),
         "burst must step to full_auto",
     );
     assert_eq!(
         press_fire_mode_from(sbf, full_auto),
-        Some(single),
+        Some(single.clone()),
         "full_auto must wrap back to single",
     );
 
     // Single: a Single-armed shooter's button press never reaches burst — it stays on
     // single (no other mode is offered / invented).
-    let single_only = FireMode::Single { single };
+    let single_only = FireMode::Single {
+        single: single.clone(),
+    };
     assert_eq!(
-        press_fire_mode_from(single_only, single),
+        press_fire_mode_from(single_only, single.clone()),
         Some(single),
         "a Single weapon's fire-mode button stays on single",
     );

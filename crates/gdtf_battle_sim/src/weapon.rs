@@ -42,7 +42,7 @@
 //! from the components at the call site — NOT a stored component).
 
 use bevy::prelude::{Bundle, Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A weapon's **base spread** — the intrinsic angular dispersion before the
 /// situational multipliers, the `base_spread` term of `θ_cone` (resolution.md
@@ -293,13 +293,35 @@ impl Stable {
     }
 }
 
+/// A weapon's **name** — its human-facing identity (e.g. an authored weapon's
+/// display name). Carried on the armed entity for the weapon display / picker
+/// (GTW-254) and the loader (GTW-257); the §1/§6 cone/severity math NEVER reads it,
+/// so it is deliberately absent from the [`WeaponStats`] borrow-view.
+///
+/// A weapon-identity newtype over [`String`] (no-bare-types: a name is a domain
+/// value, distinct from every other `String` newtype — `WeaponName` ≠ [`ModeName`]).
+/// Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON
+/// string. A `#[derive(Component)]` (GTW-200) — its OWN sibling component on the
+/// armed entity, NOT packed into the [`Weapon`] unit marker.
+#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct WeaponName(String);
+
+impl WeaponName {
+    /// Build a weapon name from its display string.
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self(name)
+    }
+}
+
 /// A per-mode **cone multiplier** — the selector term of `θ_cone` (the `firemode`
 /// factor, resolution.md §1a): single ≈ 1, full-auto ≥ 1 (inherently sloppier).
 /// A multiplier on the cone's angular size for that fire mode.
 ///
 /// A weapon NUMBER (per-mode, on the [`FireMode`]). Private inner + derived
 /// [`Deref`]; `#[serde(transparent)]`.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ModeConeMult(f32);
 
@@ -318,7 +340,7 @@ impl ModeConeMult {
 ///
 /// A weapon NUMBER (per-mode). Private inner + derived [`Deref`];
 /// `#[serde(transparent)]`.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ModeTuPercent(f32);
 
@@ -338,7 +360,7 @@ impl ModeTuPercent {
 ///
 /// A weapon NUMBER (per-mode), a small non-negative count (`u16`). Private inner
 /// + derived [`Deref`]; `#[serde(transparent)]`.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ModeShots(u16);
 
@@ -350,13 +372,40 @@ impl ModeShots {
     }
 }
 
-/// One fire mode's per-mode numbers — its cone multiplier, TU%, and shot count.
+/// A per-fire-mode **name** — the human-facing identity of one fire mode (e.g.
+/// `"single"` / `"burst"` / `"full-auto"`, or an authored mode label). Each mode
+/// carries its own name where its per-mode numbers already live (on the
+/// [`FireModeSpec`]); the fire-mode display / picker (GTW-254) reads it. The §1/§6
+/// math never reads it.
 ///
-/// The selector term carrier of `θ_cone` (resolution.md §1a) plus the mode's TU
-/// cost and round count. A named struct (not a bare tuple) so each per-mode
-/// number keeps its [`FireMode`] meaning; every field is a weapon NUMBER newtype.
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+/// A per-mode-name newtype over [`String`] (no-bare-types: a distinct concept from
+/// [`WeaponName`] even though both wrap `String`). Private inner + derived
+/// [`Deref`]; `#[serde(transparent)]` parses a bare RON string.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ModeName(String);
+
+impl ModeName {
+    /// Build a fire-mode name from its label string.
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self(name)
+    }
+}
+
+/// One fire mode's per-mode numbers — its name, cone multiplier, TU%, and shot count.
+///
+/// The selector term carrier of `θ_cone` (resolution.md §1a) plus the mode's name,
+/// TU cost, and round count. A named struct (not a bare tuple) so each per-mode
+/// number keeps its [`FireMode`] meaning; every field is a weapon NUMBER newtype or
+/// the per-mode [`ModeName`].
+///
+/// **Not `Copy`** — it owns a [`ModeName`] ([`String`]), so it is `Clone`. Callers
+/// that previously copied a spec now clone or borrow it (the name is owned data).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FireModeSpec {
+    /// The human-facing name of this fire mode.
+    pub name:       ModeName,
     /// The selector cone multiplier for this mode (single ≈ 1, full-auto ≥ 1).
     pub cone_mult:  ModeConeMult,
     /// The fraction of the TU pool a shot in this mode costs.
@@ -366,10 +415,16 @@ pub struct FireModeSpec {
 }
 
 impl FireModeSpec {
-    /// Build one fire mode's spec from its three per-mode numbers.
+    /// Build one fire mode's spec from its name and its three per-mode numbers.
     #[must_use]
-    pub const fn new(cone_mult: ModeConeMult, tu_percent: ModeTuPercent, shots: ModeShots) -> Self {
+    pub const fn new(
+        name: ModeName,
+        cone_mult: ModeConeMult,
+        tu_percent: ModeTuPercent,
+        shots: ModeShots,
+    ) -> Self {
         Self {
+            name,
             cone_mult,
             tu_percent,
             shots,
@@ -389,7 +444,10 @@ impl FireModeSpec {
 /// selector itself. A `#[derive(Component)]` (GTW-200) — the selector lives as a
 /// sibling component on the armed entity (its per-mode [`FireModeSpec`] sub-values
 /// ride inside it, not as separate components).
-#[derive(Component, Debug, Clone, Copy, PartialEq, Deserialize)]
+///
+/// **Not `Copy`** — each variant holds [`FireModeSpec`]s, which now own a
+/// [`ModeName`] ([`String`]); the selector is `Clone`.
+#[derive(Component, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FireMode {
     /// Single-shot only.
     Single {
@@ -416,13 +474,15 @@ pub enum FireMode {
 
 impl FireMode {
     /// The single-shot spec — present on every selector variant (single is the
-    /// base mode of all three).
+    /// base mode of all three). Returns an OWNED clone (the spec is no longer
+    /// `Copy` — it owns a [`ModeName`]); not a `const fn` because cloning is not a
+    /// const operation.
     #[must_use]
-    pub const fn single(&self) -> FireModeSpec {
-        match *self {
+    pub fn single(&self) -> FireModeSpec {
+        match self {
             Self::Single { single }
             | Self::SingleBurst { single, .. }
-            | Self::SingleBurstFullAuto { single, .. } => single,
+            | Self::SingleBurstFullAuto { single, .. } => single.clone(),
         }
     }
 }
@@ -486,12 +546,18 @@ pub struct WeaponStats<'a> {
 /// every stat component in one `commands.spawn(...)` / `entity.insert(...)` call.
 /// The current ammo count is **not** here — that is the separate
 /// [`crate::magazine::Magazine`] battle-state component (this bundle carries the
-/// [`MagazineSize`] capacity only). Every field is a weapon-number newtype or the
-/// marker (no bare primitive); build one with [`WeaponBundle::new`].
-#[derive(Bundle, Debug, Clone, Copy, PartialEq)]
+/// [`MagazineSize`] capacity only). Every field is a weapon-number newtype, the
+/// [`WeaponName`], or the marker (no bare primitive); build one with
+/// [`WeaponBundle::new`].
+///
+/// **Not `Copy`** — it carries a [`WeaponName`] and a [`FireMode`], both of which
+/// own a [`String`]; the bundle is `Clone`.
+#[derive(Bundle, Debug, Clone, PartialEq)]
 pub struct WeaponBundle {
     /// The [`Weapon`] marker tagging the entity as armed.
     pub marker:        Weapon,
+    /// The weapon's human-facing name (its own sibling component).
+    pub name:          WeaponName,
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
     pub base_spread:   BaseSpread,
     /// The concentration weapon term (`accuracy`; may exceed 1.0).
@@ -563,7 +629,10 @@ impl DamageProfile {
 /// An owned ctor-input grouping (the [`DamageProfile`] / [`FireModeSpec`]
 /// precedent) so [`WeaponBundle::new`] stays under clippy's argument-count gate.
 /// Every field is a weapon-number newtype / the [`FireMode`] selector.
-#[derive(Debug, Clone, Copy, PartialEq)]
+///
+/// **Not `Copy`** — it owns a [`FireMode`] (whose specs own a [`ModeName`]); it is
+/// `Clone`.
+#[derive(Debug, Clone, PartialEq)]
 pub struct HandlingProfile {
     /// The round capacity before a reload.
     pub magazine_size: MagazineSize,
@@ -588,15 +657,17 @@ impl HandlingProfile {
 
 impl WeaponBundle {
     /// Build an armed-entity bundle from a weapon's full stat set — the [`Weapon`]
-    /// marker is supplied automatically; the stats are handed in as the §1/§6
-    /// cone/severity numbers, a [`DamageProfile`], and a [`HandlingProfile`].
+    /// marker is supplied automatically; the stats are handed in as the weapon's
+    /// [`WeaponName`], the §1/§6 cone/severity numbers, a [`DamageProfile`], and a
+    /// [`HandlingProfile`].
     ///
     /// Takes the cohesive groups (the [`DamageProfile`] / [`HandlingProfile`]
-    /// precedent) rather than eleven loose params, keeping the ctor under clippy's
+    /// precedent) rather than a dozen loose params, keeping the ctor under clippy's
     /// argument-count gate while every stat lands as its own component on the
     /// spawned entity.
     #[must_use]
-    pub const fn new(
+    pub fn new(
+        name: WeaponName,
         base_spread: BaseSpread,
         accuracy: Accuracy,
         kickback: Kickback,
@@ -606,6 +677,7 @@ impl WeaponBundle {
     ) -> Self {
         Self {
             marker: Weapon,
+            name,
             base_spread,
             accuracy,
             kickback,
@@ -648,9 +720,17 @@ mod tests {
 
     /// Build an arbitrary fire-mode spec from raw literals — NOT shipped
     /// magnitudes (there are no shipped weapons yet; these only exercise the type
-    /// surface).
+    /// surface). The mode name is a fixed arbitrary label (the per-mode name is
+    /// exercised explicitly in [`fire_mode_carries_mode_name`]).
     fn spec(cone: f32, tu: f32, shots: u16) -> FireModeSpec {
+        named_spec("single", cone, tu, shots)
+    }
+
+    /// Build a fire-mode spec with an explicit per-mode `name` — for the
+    /// [`ModeName`] round-trip tests (the name string is the thing under test).
+    fn named_spec(name: &str, cone: f32, tu: f32, shots: u16) -> FireModeSpec {
         FireModeSpec::new(
+            ModeName::new(name.to_owned()),
             ModeConeMult::new(cone),
             ModeTuPercent::new(tu),
             ModeShots::new(shots),
@@ -693,6 +773,7 @@ mod tests {
         handling: HandlingProfile,
     ) -> WeaponBundle {
         WeaponBundle::new(
+            WeaponName::new("test-weapon".to_owned()),
             BaseSpread::new(base),
             Accuracy::new(accuracy),
             Kickback::new(kick),
@@ -725,6 +806,7 @@ mod tests {
         let entity = world
             .spawn((
                 Weapon,
+                WeaponName::new("autogun".to_owned()),
                 BaseSpread::new(0.25),
                 Accuracy::new(1.3),
                 Kickback::new(0.4),
@@ -746,6 +828,13 @@ mod tests {
         assert!(
             world.get::<Weapon>(entity).is_some(),
             "the marker is present"
+        );
+        let Some(name) = world.get::<WeaponName>(entity) else {
+            return;
+        };
+        assert_eq!(
+            &**name, "autogun",
+            "the weapon name round-trips through the ECS"
         );
         let Some(base) = world.get::<BaseSpread>(entity) else {
             return;
@@ -781,10 +870,14 @@ mod tests {
         );
         let entity = world.spawn(bundle).id();
 
-        // The marker + all eleven stat components are present.
+        // The marker + the name + all eleven stat components are present.
         assert!(
             world.get::<Weapon>(entity).is_some(),
             "the bundle carries the Weapon marker",
+        );
+        assert!(
+            world.get::<WeaponName>(entity).is_some(),
+            "the bundle carries the WeaponName",
         );
         assert!(world.get::<BaseSpread>(entity).is_some(), "base_spread");
         assert!(world.get::<Accuracy>(entity).is_some(), "accuracy");
@@ -1014,7 +1107,9 @@ mod tests {
             burst:  spec(1.2, 0.8, 3),
         };
         assert!(matches!(single_burst, FireMode::SingleBurst { .. }));
-        let FireMode::SingleBurst { single, burst } = single_burst else {
+        // Destructure by reference so `single_burst` stays usable for `single()` below
+        // (the specs are no longer `Copy`).
+        let FireMode::SingleBurst { single, burst } = &single_burst else {
             return;
         };
         assert_eq!(*single.shots, 1u16);
@@ -1035,7 +1130,7 @@ mod tests {
             single: full_single,
             burst: full_burst,
             full_auto,
-        } = full
+        } = &full
         else {
             return;
         };
@@ -1046,22 +1141,98 @@ mod tests {
         assert_eq!(*full.single().shots, 1u16);
     }
 
-    /// C5 — the [`FireMode`] selector (the one composite serde leaf, now also a
-    /// `Component`) round-trips from authored RON with bare-scalar per-mode fields:
-    /// parses a hand-written `SingleBurstFullAuto` fragment and asserts structural
-    /// success (value-agnostic — only that it parses into the type). The flat-leaf
-    /// transparent round-trips are in `weapon_leaves_parse_from_bare_ron_scalars`.
+    /// AC2 / C5 — the [`FireMode`] selector round-trips from authored RON where EACH
+    /// rung's spec carries a `name` (a [`ModeName`]) alongside its `tu_percent` and the
+    /// other per-mode bare scalars: parses a hand-written `SingleBurstFullAuto`
+    /// fragment and asserts the per-mode NAME strings (the thing under test), NOT the
+    /// tunable cone/TU magnitudes (brittle-test rule).
     #[test]
     fn fire_mode_parses_from_ron_with_bare_scalar_per_mode_fields() {
-        let ron = r"SingleBurstFullAuto(
-            single:    (cone_mult: 1.0, tu_percent: 0.5, shots: 1),
-            burst:     (cone_mult: 1.3, tu_percent: 0.8, shots: 3),
-            full_auto: (cone_mult: 1.7, tu_percent: 1.0, shots: 10),
-        )";
+        let ron = r#"SingleBurstFullAuto(
+            single:    (name: "single",    cone_mult: 1.0, tu_percent: 0.5, shots: 1),
+            burst:     (name: "burst",     cone_mult: 1.3, tu_percent: 0.8, shots: 3),
+            full_auto: (name: "full-auto", cone_mult: 1.7, tu_percent: 1.0, shots: 10),
+        )"#;
         let parsed = ron::from_str::<FireMode>(ron);
         assert!(
             parsed.is_ok(),
-            "a FireMode selector must deserialize from bare-scalar per-mode RON: {parsed:?}",
+            "a FireMode selector must deserialize from per-mode RON carrying a name: {parsed:?}",
+        );
+        let Ok(FireMode::SingleBurstFullAuto {
+            single,
+            burst,
+            full_auto,
+        }) = parsed
+        else {
+            return;
+        };
+        // The authored per-mode NAME strings round-trip onto each rung's ModeName.
+        assert_eq!(&*single.name, "single");
+        assert_eq!(&*burst.name, "burst");
+        assert_eq!(&*full_auto.name, "full-auto");
+    }
+
+    /// AC2 — a [`FireModeSpec`] round-trips through serialize → deserialize unchanged
+    /// (`deserialize(serialize(x)) == x`): the per-mode name and numbers survive a
+    /// RON serialize and re-parse. Value-equality of the whole spec, exercising the
+    /// serde mechanism (not a pinned tunable).
+    #[test]
+    fn fire_mode_spec_ron_round_trip_is_identity() {
+        let spec = named_spec("burst", 1.3, 0.8, 3);
+        let Ok(serialized) = ron::to_string(&spec) else {
+            return;
+        };
+        let parsed = ron::from_str::<FireModeSpec>(&serialized);
+        assert_eq!(
+            parsed.ok(),
+            Some(spec),
+            "deserialize(serialize(spec)) must equal the original FireModeSpec",
+        );
+    }
+
+    /// AC1 — a [`WeaponName`] is a documented `#[derive(Component, Deref,
+    /// Deserialize)]` newtype over `String`: it is a [`WeaponBundle`] field (read back
+    /// off a constructed bundle) and parses from a bare RON string
+    /// (`#[serde(transparent)]`).
+    #[test]
+    fn weapon_name_is_a_bundle_field_and_parses_from_ron() {
+        let bundle = WeaponBundle::new(
+            WeaponName::new("boltgun".to_owned()),
+            BaseSpread::new(0.2),
+            Accuracy::new(1.0),
+            Kickback::new(0.1),
+            FatalBias::new(3.0),
+            profile(10, 4, 2, DamageType::Kinetic),
+            handling(20, false),
+        );
+        // The name is a bundle field, read back through its Deref to the inner String.
+        assert_eq!(
+            &*bundle.name, "boltgun",
+            "WeaponName is a WeaponBundle field"
+        );
+        // And it deserializes from a bare RON string.
+        let Ok(parsed) = ron::from_str::<WeaponName>(r#""boltgun""#) else {
+            return;
+        };
+        assert_eq!(
+            &*parsed, "boltgun",
+            "WeaponName must parse from a bare RON string"
+        );
+    }
+
+    /// AC2 — a [`ModeName`] rides on each [`FireModeSpec`] (read back via the spec's
+    /// `name` field) and parses from a bare RON string (`#[serde(transparent)]`),
+    /// distinct from a [`WeaponName`] (no-bare-types: distinct concepts).
+    #[test]
+    fn mode_name_rides_on_fire_mode_spec_and_parses_from_ron() {
+        let spec = named_spec("full-auto", 1.7, 1.0, 10);
+        assert_eq!(&*spec.name, "full-auto", "ModeName is a FireModeSpec field");
+        let Ok(parsed) = ron::from_str::<ModeName>(r#""full-auto""#) else {
+            return;
+        };
+        assert_eq!(
+            &*parsed, "full-auto",
+            "ModeName must parse from a bare RON string"
         );
     }
 }

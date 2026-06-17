@@ -246,12 +246,13 @@ pub fn can_fire(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::weapon::{ModeConeMult, ModeTuPercent};
+    use crate::weapon::{ModeConeMult, ModeName, ModeTuPercent};
 
     /// A fire-mode spec with an arbitrary (non-pinned) TU% — the per-mode magnitude
     /// is tuning, so tests never assert it; they assert RELATIONS over it.
     fn mode(tu_percent: f32, shots: u16) -> FireModeSpec {
         FireModeSpec::new(
+            ModeName::new("single".to_owned()),
             ModeConeMult::new(1.0),
             ModeTuPercent::new(tu_percent),
             ModeShots::new(shots),

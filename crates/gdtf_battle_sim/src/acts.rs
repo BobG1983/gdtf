@@ -19,7 +19,8 @@
 //! [`crate::bleed::Bleeding`] / [`crate::occupancy_sync::CoverDestroyed`], the buffered
 //! `Message` API, NOT the observer `Event` API (`bevy-traps.md` #4). Each carries the
 //! act's [`Entity`] actor ref(s) plus the act's OWNED payload. A `Message` cannot hold a
-//! borrow, so [`FireRequested`] carries an OWNED [`FireModeSpec`] (it is `Copy`) plus the
+//! borrow, so [`FireRequested`] carries an OWNED [`FireModeSpec`] (it owns a
+//! [`ModeName`](crate::weapon::ModeName), so it is `Clone`, not `Copy`) plus the
 //! target [`Cell`] / [`Level`] — the type has **no lifetime parameter**; the
 //! [`dispatch_fire`] system reconstructs the borrow-based [`FireOrder`] `{ mode:
 //! &owned_spec, target_cell, target_level }` from the owned payload at the call site.
@@ -102,13 +103,14 @@ impl AimRequest {
 /// `shooter`.
 ///
 /// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), carrying the
-/// [`Entity`] shooter ref plus the act's OWNED payload: a [`FireModeSpec`] (it is `Copy`,
-/// so it is owned by value — a `Message` cannot hold a borrow) plus the target [`Cell`] /
-/// [`Level`]. The type has **no lifetime parameter**; [`dispatch_fire`] reconstructs the
-/// borrow-based [`FireOrder`] `{ mode: &mode, target_cell, target_level }` from this owned
-/// payload. The shooter is a Bevy [`Entity`] handle — framework plumbing, the only bare
-/// type the no-bare-types rule permits in a payload.
-#[derive(Message, Debug, Clone, Copy, PartialEq)]
+/// [`Entity`] shooter ref plus the act's OWNED payload: a [`FireModeSpec`] (owned by value
+/// — a `Message` cannot hold a borrow; it owns a [`ModeName`](crate::weapon::ModeName), so
+/// it is `Clone`, not `Copy`) plus the target [`Cell`] / [`Level`]. The type has **no
+/// lifetime parameter**; [`dispatch_fire`] reconstructs the borrow-based [`FireOrder`] `{
+/// mode: &mode, target_cell, target_level }` from this owned payload. The shooter is a Bevy
+/// [`Entity`] handle — framework plumbing, the only bare type the no-bare-types rule permits
+/// in a payload.
+#[derive(Message, Debug, Clone, PartialEq)]
 pub struct FireRequested {
     /// The firing entity (armed shooter).
     pub shooter:      Entity,
@@ -795,8 +797,8 @@ mod tests {
         rng::BattleSeed,
         weapon::{
             Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, HandlingProfile,
-            Kickback, MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, Stable, WeaponBundle,
-            WeaponDamage, WeaponPunch, WeaponShred,
+            Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Stable,
+            WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
         },
     };
 
@@ -827,6 +829,7 @@ mod tests {
     /// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers.
     fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
         FireModeSpec::new(
+            ModeName::new("single".to_owned()),
             ModeConeMult::new(1.0),
             ModeTuPercent::new(tu_percent),
             ModeShots::new(shots),
@@ -857,6 +860,7 @@ mod tests {
     ) -> Entity {
         let mag_size = MagazineSize::new(30);
         let bundle = WeaponBundle::new(
+            WeaponName::new("test-weapon".to_owned()),
             BaseSpread::new(0.05),
             Accuracy::new(2.0),
             Kickback::new(0.2),
@@ -925,7 +929,7 @@ mod tests {
         // FireRequested carries the shooter Entity + an OWNED FireModeSpec + Cell/Level
         // (no borrow → no lifetime parameter; that this compiles as `FireRequested`
         // without `<'_>` is the proof).
-        let f = FireRequested::new(shooter, mode, Cell::new(8, 5), Level::new(0));
+        let f = FireRequested::new(shooter, mode.clone(), Cell::new(8, 5), Level::new(0));
         assert_eq!(
             f.shooter, shooter,
             "FireRequested carries the shooter Entity"
@@ -1698,7 +1702,7 @@ mod tests {
 
         // A shooter aiming at a LOW-HP in-line target so the volley downs/kills it.
         let mode = single_mode(0.2, 1);
-        let shooter = spawn_shooter(app.world_mut(), 2, 5, mode, true);
+        let shooter = spawn_shooter(app.world_mut(), 2, 5, mode.clone(), true);
         // Deliberately fragile target (1 HP, 1 Wound, paper armor) so the shot finishes
         // it — a relation (it dies), never a pinned damage number.
         let target = app

@@ -40,9 +40,9 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
-    FireMode, FireModeSpec, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeShots,
-    ModeTuPercent, OccupancyGrid, PlayerFaction, SimRng, Stance, StanceKind, SurfaceGrid, Tu,
-    TuMax,
+    FireMode, FireModeSpec, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeName,
+    ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, SimRng, Stance, StanceKind,
+    SurfaceGrid, Tu, TuMax,
     acts::{
         AimRequest, FireRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
         SimActsPlugin,
@@ -80,9 +80,11 @@ const fn test_keybinds() -> Keybinds {
 }
 
 /// One fire-mode spec with a marker `tu_percent` so the rungs are distinct authored
-/// values (magnitudes arbitrary, not pinned tuning).
-const fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
+/// values (magnitudes arbitrary, not pinned tuning). Not a `const fn` — it owns a
+/// [`ModeName`] ([`String`]).
+fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
     FireModeSpec::new(
+        ModeName::new(String::from("mode")),
         ModeConeMult::new(1.0),
         ModeTuPercent::new(tu_percent),
         ModeShots::new(shots),
@@ -90,7 +92,7 @@ const fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
 }
 
 /// A `SingleBurstFullAuto` selector with three distinct rungs.
-const fn sbf_selector() -> FireMode {
+fn sbf_selector() -> FireMode {
     FireMode::SingleBurstFullAuto {
         single:    spec(0.2, 1),
         burst:     spec(0.4, 3),
@@ -289,7 +291,9 @@ fn clear_mouse(app: &mut App) {
 
 /// The current `SelectedFireMode`.
 fn fire_mode(app: &App) -> Option<FireModeSpec> {
-    app.world().get_resource::<SelectedFireMode>().map(|m| **m)
+    app.world()
+        .get_resource::<SelectedFireMode>()
+        .map(|m| (**m).clone())
 }
 
 // ---------------------------------------------------------------------------------
@@ -323,7 +327,8 @@ fn add_probes(app: &mut App) {
         Update,
         (
             |mut r: MessageReader<FireRequested>, mut p: ResMut<FireProbe>| {
-                p.0.extend(r.read().copied());
+                // `FireRequested` is no longer `Copy` (it owns a `FireModeSpec`) — clone.
+                p.0.extend(r.read().cloned());
             },
             |mut r: MessageReader<SetStanceRequested>, mut p: ResMut<StanceProbe>| {
                 p.0.extend(r.read().copied());
@@ -358,7 +363,12 @@ fn fires(app: &App) -> Vec<FireRequested> {
 fn selecting_armed_ganger_defaults_fire_mode_to_single() {
     let mut app = acts_app();
     let selector = sbf_selector();
-    let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
+    let ganger = spawn_ganger(
+        &mut app,
+        selector.clone(),
+        StanceKind::Standing,
+        Direction::North,
+    );
 
     select_ganger(&mut app, ganger);
 
@@ -389,17 +399,19 @@ fn fire_mode_cycle_walks_only_offered_modes() {
         let single = spec(0.2, 1);
         let burst = spec(0.4, 3);
         let full_auto = spec(0.7, 6);
+        // Clone the rungs into the selector so the locals stay owned for the assertions
+        // below (the specs are no longer `Copy`).
         let selector = FireMode::SingleBurstFullAuto {
-            single,
-            burst,
-            full_auto,
+            single:    single.clone(),
+            burst:     burst.clone(),
+            full_auto: full_auto.clone(),
         };
         let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
         select_ganger(&mut app, ganger);
-        assert_eq!(fire_mode(&app), Some(single), "starts on single");
+        assert_eq!(fire_mode(&app), Some(single.clone()), "starts on single");
 
         let cycle = binds.fire_mode_cycle();
-        for expected in [burst, full_auto, single, burst] {
+        for expected in [burst.clone(), full_auto, single, burst] {
             press_key(&mut app, cycle);
             app.update();
             release_key(&mut app, cycle);
@@ -415,7 +427,9 @@ fn fire_mode_cycle_walks_only_offered_modes() {
     {
         let mut app = acts_app();
         let single = spec(0.2, 1);
-        let selector = FireMode::Single { single };
+        let selector = FireMode::Single {
+            single: single.clone(),
+        };
         let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
         select_ganger(&mut app, ganger);
         let cycle = binds.fire_mode_cycle();
@@ -425,7 +439,7 @@ fn fire_mode_cycle_walks_only_offered_modes() {
             release_key(&mut app, cycle);
             assert_eq!(
                 fire_mode(&app),
-                Some(single),
+                Some(single.clone()),
                 "a Single weapon must stay on single",
             );
         }
@@ -436,11 +450,14 @@ fn fire_mode_cycle_walks_only_offered_modes() {
         let mut app = acts_app();
         let single = spec(0.2, 1);
         let burst = spec(0.4, 3);
-        let selector = FireMode::SingleBurst { single, burst };
+        let selector = FireMode::SingleBurst {
+            single: single.clone(),
+            burst:  burst.clone(),
+        };
         let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
         select_ganger(&mut app, ganger);
         let cycle = binds.fire_mode_cycle();
-        for expected in [burst, single, burst] {
+        for expected in [burst.clone(), single, burst] {
             press_key(&mut app, cycle);
             app.update();
             release_key(&mut app, cycle);
@@ -466,7 +483,12 @@ fn left_click_emits_one_fire_requested() {
     let mut app = acts_app();
     add_probes(&mut app);
     let selector = sbf_selector();
-    let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
+    let ganger = spawn_ganger(
+        &mut app,
+        selector.clone(),
+        StanceKind::Standing,
+        Direction::North,
+    );
 
     // Select the shooter (cursor over its own cell), then move the cursor to a distinct
     // in-grid target cell. The cursor stays put across the fire `update()`, so
@@ -488,7 +510,7 @@ fn left_click_emits_one_fire_requested() {
         1,
         "exactly one FireRequested must be emitted by a left-click on an in-bounds target",
     );
-    let msg = emitted[0];
+    let msg = &emitted[0];
     assert_eq!(msg.shooter, ganger, "shooter = *SelectedShooter");
     assert_eq!(msg.mode, selector.single(), "mode = *SelectedFireMode");
     assert_eq!(msg.target_cell, target_cell, "target cell from HoveredCell");
@@ -628,8 +650,9 @@ fn can_fire_failure_blocks_fire_requested() {
 // ---------------------------------------------------------------------------------
 
 /// The two ways to drive one posture act — a synthesized KEY press, or a direct
-/// `ActIntent` push (the 222c-button surrogate over the SAME seam).
-#[derive(Clone, Copy)]
+/// `ActIntent` push (the 222c-button surrogate over the SAME seam). Not `Copy`:
+/// [`Drive::Intent`] holds an `ActIntent`, which is no longer `Copy`.
+#[derive(Clone)]
 enum Drive {
     /// Synthesize a just-pressed of `key`.
     Key(KeyCode),

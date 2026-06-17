@@ -45,8 +45,8 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeShots, ModeTuPercent, Stable,
-        WeaponBundle, WeaponDamage, WeaponPunch, WeaponShred,
+        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent,
+        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -123,8 +123,9 @@ fn two_ganger_situation() -> Situation {
 
 /// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers — the
 /// `acts.rs` fire-test precedent.
-const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
+fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
     FireModeSpec::new(
+        ModeName::new(String::from("single")),
         ModeConeMult::new(1.0),
         ModeTuPercent::new(tu_percent),
         ModeShots::new(shots),
@@ -141,6 +142,7 @@ fn shooter_weapon_kit(mode: FireModeSpec) -> impl bevy::prelude::Bundle {
     let mag_size = MagazineSize::new(30);
     (
         WeaponBundle::new(
+            WeaponName::new(String::from("test-weapon")),
             BaseSpread::new(0.05),
             Accuracy::new(2.0),
             Kickback::new(0.2),
@@ -297,7 +299,7 @@ fn fire_requested_in_battle_running_drives_the_sim() {
     let mode = single_mode(0.2, 1);
     app.world_mut()
         .entity_mut(shooter)
-        .insert(shooter_weapon_kit(mode));
+        .insert(shooter_weapon_kit(mode.clone()));
 
     // PUBLISH the target's occupant band in the live grid — the band-free march reads it
     // to band the round vs the occupant (a `Ganger` hit needs both occupant + band, and

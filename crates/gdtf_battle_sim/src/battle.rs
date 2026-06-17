@@ -563,7 +563,7 @@ mod tests {
         situation::GangerSpawn,
         tuning::CombatTuning,
         vertical::{InvalidVerticalLink, LinkKind, VerticalLink},
-        weapon::{FireModeSpec, ModeConeMult, ModeShots, ModeTuPercent},
+        weapon::{FireModeSpec, ModeConeMult, ModeName, ModeShots, ModeTuPercent},
     };
 
     /// An arbitrary (NOT shipped tuning) seed for a test battle's RNG stream.
@@ -1147,6 +1147,7 @@ mod tests {
         // fails the fire guard; the point is the LIVE band runs and stays panic-free).
         let actor = app.world_mut().spawn_empty().id();
         let mode = FireModeSpec::new(
+            ModeName::new("single".to_owned()),
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.2),
             ModeShots::new(1),
