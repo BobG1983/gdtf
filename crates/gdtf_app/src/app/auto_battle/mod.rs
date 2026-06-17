@@ -11,14 +11,17 @@ mod plugin;
 // either way.
 crate::support_use!(plugin::AutoBattlePlugin;);
 
-// `AutoBattleActive` + `auto_battle_enabled` are consumed ONLY through the
-// `test_support` re-export (the AC1 tests), which is itself `#[cfg(test-support)]`. The
+// `AutoBattleActive` + `auto_battle_enabled` + `seed_load_fallbacks` are consumed ONLY
+// through the `test` submodule (the AC1 / A1 tests), which is itself `#[cfg(test)]`. The
 // binary never names them, so re-exporting them in a non-`test-support` build would be
 // an unused `pub(crate) use` (caught by `cargo dbuild`, which builds the binary WITHOUT
 // `test-support`). Gate the re-export to the same feature, `pub` because the
-// `test_support` re-export needs it.
+// `test_support` re-export needs it. (`seed_load_fallbacks` is the A1 GTW play-test
+// wave-3 fix: the empty-situation-seed-only-without-AssetServer test drives it directly
+// as a `Startup` system, the real registered path minus the unrelated `drive_past_menu`
+// that needs the `RunningState` sub-state machinery.)
 #[cfg(feature = "test-support")]
-pub use plugin::{AutoBattleActive, auto_battle_enabled};
+pub use plugin::{AutoBattleActive, auto_battle_enabled, seed_load_fallbacks};
 
 #[cfg(test)]
 mod test;

@@ -16,7 +16,9 @@ use bevy::{
 pub use gdtf_ui::UiPlugin;
 
 pub use crate::{
-    app::auto_battle::{AutoBattleActive, AutoBattlePlugin, auto_battle_enabled},
+    app::auto_battle::{
+        AutoBattleActive, AutoBattlePlugin, auto_battle_enabled, seed_load_fallbacks,
+    },
     scenes::{
         AimToggleButton, BattleRunningComplete, BattlescapeButton, EndTurnButton, FleeButton,
         HiveScapeButton, HpText, IdentityText, LevelDownButton, LevelUpButton, LifeText,

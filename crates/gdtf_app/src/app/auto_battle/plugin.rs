@@ -182,26 +182,52 @@ impl Plugin for AutoBattlePlugin {
     }
 }
 
-/// Seeds the persistent `Load` resources the auto-battle drive needs so the state
-/// machine can traverse `Load` even without a resolved asset stack.
-///
-/// Inserts [`default_theme`] + [`CombatTuning::default`] + a default
-/// [`LoadedSituation`] + an empty [`WeaponRegistry`]. Under the real GUI launch the
-/// `Load` scene later `insert_resource`-overwrites all four with the shipped assets
-/// (the real `situations/skirmish.ron` battlefield + theme + tuning +
-/// `assets/weapons/*.ron` registry), so these are a fallback, not the QA
-/// battlefield. Runs once in `Startup` (before the first `Update`, hence before
-/// `Load` resolves), so the seed is in place no matter how the assets resolve — and
-/// the GTW-257 Load→Intro gate (which now requires a [`WeaponRegistry`]) is satisfied
-/// even if the weapons folder fails to resolve. The default `LoadedSituation` is the
-/// EMPTY situation (zero gangers), so the fallback registry needs no weapons.
-fn seed_load_fallbacks(mut commands: Commands) {
-    commands.insert_resource(default_theme());
-    commands.insert_resource(CombatTuning::default());
-    commands.insert_resource(LoadedSituation(
-        gdtf_battle_sim::situation::Situation::default(),
-    ));
-    commands.insert_resource(WeaponRegistry::default());
+crate::support_item! {
+    /// Seeds the persistent `Load` resources the auto-battle drive needs so the state
+    /// machine can traverse `Load` even without a resolved asset stack.
+    ///
+    /// Inserts [`default_theme`] + [`CombatTuning::default`] + an empty [`WeaponRegistry`]
+    /// unconditionally, and a default (EMPTY) [`LoadedSituation`] **only when no
+    /// [`AssetServer`] is present** (a headless / asset-less build). Under the real GUI
+    /// launch the `Load` scene later `insert_resource`-overwrites the theme / tuning /
+    /// registry with the shipped assets (the real `situations/skirmish.ron` battlefield +
+    /// theme + tuning + `assets/weapons/*.ron` registry), so those are a fallback, not the
+    /// QA battlefield. Runs once in `Startup` (before the first `Update`, hence before
+    /// `Load` resolves), so the seed is in place no matter how the assets resolve — and
+    /// the GTW-257 Load→Intro gate (which now requires a [`WeaponRegistry`]) is satisfied
+    /// even if the weapons folder fails to resolve.
+    ///
+    /// **A1 (GTW play-test wave 3).** The default [`LoadedSituation`] is the EMPTY
+    /// situation (zero gangers). Post-GTW-261 a present [`LoadedSituation`] SATISFIES the
+    /// Load→Intro gate, so seeding the empty one UNCONDITIONALLY let it win the race against
+    /// the real `situations/skirmish.ron` load under `DefaultPlugins` — the auto-battle
+    /// dropped into an empty battlefield. Gating the empty seed on the [`AssetServer`] being
+    /// ABSENT means: with an asset stack present (the real GUI launch) the seed does NOT
+    /// insert a [`LoadedSituation`], so the GTW-261 gate WAITS for the real skirmish to load;
+    /// without one (a headless asset-less drive) the empty fallback still keeps the machine
+    /// traversing `Load`. The fallback registry needs no weapons because the EMPTY situation
+    /// fields no gangers.
+    ///
+    /// Param-only (`bevy-traps.md` #7): [`Commands`] + an `Option<Res<AssetServer>>` probe
+    /// (`Option` so it is panic-free whether or not the asset stack is wired) — no
+    /// `&mut World`.
+    ///
+    /// Widened to `pub` under `test-support` (the A1 test drives it directly as a `Startup`
+    /// system — the real registered path minus the unrelated `drive_past_menu` that needs
+    /// the `RunningState` sub-state machinery), `pub(crate)` otherwise, keeping the binary
+    /// `unreachable_pub`-clean.
+    fn seed_load_fallbacks(asset_server: Option<Res<AssetServer>>, mut commands: Commands) {
+        commands.insert_resource(default_theme());
+        commands.insert_resource(CombatTuning::default());
+        commands.insert_resource(WeaponRegistry::default());
+        // A1 — only seed the empty fallback situation when there is NO AssetServer; with
+        // one present the real `situations/skirmish.ron` must win the GTW-261 Load gate.
+        if asset_server.is_none() {
+            commands.insert_resource(LoadedSituation(
+                gdtf_battle_sim::situation::Situation::default(),
+            ));
+        }
+    }
 }
 
 /// Drives the ONE non-automatic transition into the battle: `Menu → Game`.
