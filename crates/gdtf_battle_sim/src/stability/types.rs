@@ -1,0 +1,123 @@
+//! The §1a stability layer's **named values** — the emplacement-contribution
+//! input, the normalised [`StabilityScore`], the two distinct curve outputs
+//! ([`ConeMult`] / [`RecoilGrowth`]), and the axis-agnostic [`CurveOutput`] the
+//! curve read returns before it is given an axis meaning.
+
+use bevy::prelude::Deref;
+
+/// The **emplacement stability contribution** — the points a fixed emplacement
+/// (bipod / tripod / mounted position) adds to the score (resolution.md §1a:
+/// "+ an emplacement seam (no entities yet)").
+///
+/// The emplacement system is unbuilt, so callers pass [`EmplacementStability::none`]
+/// (the zero/identity term) today; the seam exists so the
+/// [`crate::stability::stability`] signature is complete and the term lands
+/// without a later signature change. An INPUT to [`crate::stability::stability`],
+/// distinct from the other three contributions. Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct EmplacementStability(f32);
+
+impl EmplacementStability {
+    /// Build an emplacement stability contribution from its point magnitude.
+    #[must_use]
+    pub const fn new(points: f32) -> Self {
+        Self(points)
+    }
+
+    /// The identity emplacement contribution — **zero** points, the value every
+    /// caller passes today (no emplacement entities exist yet).
+    #[must_use]
+    pub const fn none() -> Self {
+        Self(0.0)
+    }
+}
+
+/// The **normalised stability score** — the single 0–100 value the two curves
+/// read off (resolution.md §1a: "Normalised over 100"). Built by
+/// [`crate::stability::stability`] from the summed contributions, **clamped**
+/// into `0..=100` so a degenerate over-100 sum can never read off the end of a
+/// curve.
+///
+/// A domain value (the abstract steadiness of the shot, dimensionless — no
+/// pixel), distinct from the contributions that feed it. Private inner + derived
+/// [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct StabilityScore(f32);
+
+impl StabilityScore {
+    /// The bottom of the stability domain — a fully shaky shot.
+    const MIN: f32 = 0.0;
+    /// The top of the stability domain — a fully steady shot ("normalised over
+    /// 100", resolution.md §1a). This is the domain ceiling of the *score axis*,
+    /// not a tunable balance magnitude.
+    pub(super) const MAX: f32 = 100.0;
+
+    /// Build a stability score by **clamping** a raw contribution sum into the
+    /// `0..=100` domain (resolution.md §1a normalisation) — so an over-100 sum
+    /// saturates at 100 and a negative sum at 0, and the curve read can never run
+    /// off either end.
+    #[must_use]
+    pub const fn clamped(raw: f32) -> Self {
+        Self(raw.clamp(Self::MIN, Self::MAX))
+    }
+}
+
+/// The **cone multiplier** — the `stability` term of `θ_cone` read off the
+/// cone-mult curve (resolution.md §1a: "fed through a tuning curve → the cone
+/// multiplier (steadier → narrower)"). A steadier score yields a smaller
+/// multiplier, narrowing the dispersion cone.
+///
+/// One of the two distinct named outputs of [`crate::stability::stability`]
+/// (never interchangeable with [`RecoilGrowth`], per no-bare-types rule 3). A
+/// dimensionless angular multiplier — no pixel. Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct ConeMult(f32);
+
+impl ConeMult {
+    /// Build a cone multiplier from its magnitude (a dimensionless angular scale).
+    #[must_use]
+    pub const fn new(mult: f32) -> Self {
+        Self(mult)
+    }
+}
+
+/// The **recoil-growth coefficient** — the score's SECOND curve output, read off
+/// the recoil-growth curve (resolution.md §1a: round *i*'s axis tilts up by
+/// `prior_shots × recoil_climb × recoil_growth`, so "a braced/prone shooter
+/// climbs strictly less"). A steadier score yields a smaller coefficient, damping
+/// how fast the muzzle walks up during a burst.
+///
+/// The other distinct named output of [`crate::stability::stability`] (never
+/// interchangeable with [`ConeMult`]). A dimensionless climb damper — no pixel.
+/// Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct RecoilGrowth(f32);
+
+impl RecoilGrowth {
+    /// Build a recoil-growth coefficient from its magnitude (a dimensionless climb
+    /// damper).
+    #[must_use]
+    pub const fn new(coeff: f32) -> Self {
+        Self(coeff)
+    }
+}
+
+/// A raw **stability-curve output** — the value read off a
+/// [`crate::tuning::StabilityCurve`] at a given [`StabilityScore`], before it is
+/// given its axis-specific meaning.
+///
+/// Curve-axis-agnostic on purpose: [`crate::stability::stability`]'s curve read
+/// interpolates a curve and returns this, then each caller wraps it into the
+/// named output for that axis — a [`ConeMult`] off the cone-mult curve, a
+/// [`RecoilGrowth`] off the recoil-growth curve. So the interpolation boundary
+/// states "a curve output" in the type (`no-bare-types` rule 1) without
+/// prejudging which curve produced it. Internal to this layer — private inner +
+/// derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub(super) struct CurveOutput(pub(super) f32);
+
+impl CurveOutput {
+    /// The **identity** curve output — `1.0`, no scaling. Returned for a degenerate
+    /// (empty) curve so the read stays panic-free.
+    pub(super) const IDENTITY: Self = Self(1.0);
+}
