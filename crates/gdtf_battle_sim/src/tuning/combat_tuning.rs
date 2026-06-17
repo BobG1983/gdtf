@@ -1,0 +1,82 @@
+//! The top-level [`CombatTuning`] resource — every balance coefficient the sim
+//! marches with, composed from the per-domain sub-tuning structs.
+
+use bevy::{prelude::Resource, reflect::TypePath};
+use serde::Deserialize;
+
+use crate::tuning::{
+    band::ProjectileBandEdges,
+    body_part::BodyPartWeights,
+    cone_groups::ConeStabilityTuning,
+    economy::{MoveCosts, StanceChangeTu, TurnTu},
+    firing_arc::FiringArc,
+    matchup::MatchupMultipliers,
+    severity::SeverityScaling,
+    wounds::{BleedRate, ExecuteTu, StabilizeTu, WoundCosts},
+};
+
+/// The combat tuning resource — every balance coefficient the sim marches with.
+///
+/// A Bevy [`Resource`] deserializable from a `.ron` file (the tuning store is a
+/// serde-loaded resource, resolution.md §"Coefficients live in the
+/// combat-tuning data"). Holds the clearance band edges, the §6 severity
+/// scaling, the body-part weights, and the E2.1 §1 cone/stability/recoil/aim
+/// extension ([`ConeStabilityTuning`]); more sub-fields land as the systems do.
+/// Defaults carry the doc values, but they are **tunable** — a data file
+/// overrides any of them.
+///
+/// Derives [`TypePath`] (render-free reflection metadata, no rendering) because
+/// the GTW-206 (E10.4) `Load` scene loads it through the
+/// [`RonAsset<T>`](gdtf_assets::RonAsset) loader, whose payload bound requires
+/// `T: TypePath` — the same bound the theme spec and authored situation satisfy.
+#[derive(Debug, Clone, PartialEq, Default, Resource, Deserialize, TypePath)]
+pub struct CombatTuning {
+    /// Projectile clearance band edges (the LOW/MID/HIGH thresholds).
+    pub projectile_band_edges: ProjectileBandEdges,
+    /// The resolution.md §6 wound-severity scaling scalars.
+    pub severity_scaling:      SeverityScaling,
+    /// The per-tier Wounds-budget costs (E3.6) — Minor / Major / Critical spend
+    /// (None = 0 and Fatal = empty are structural, not authored here).
+    pub wound_costs:           WoundCosts,
+    /// The §9 bleed-out rate (E3.7) — the flat Wounds an un-stabilized Downed
+    /// ganger loses each round `tick_bleed` runs.
+    pub bleed_rate:            BleedRate,
+    /// The §9 stabilize TU cost (E3.8) — the flat Time Units an adjacent ally
+    /// spends to halt a Downed ganger's bleed clock (`stabilize_downed` READS this;
+    /// the TU economy that debits it is E4).
+    pub stabilize_tu:          StabilizeTu,
+    /// The §9 execute TU cost (E3.8) — the flat Time Units an adjacent enemy spends
+    /// to finish a Downed ganger outright (`execute_downed` READS this; the TU
+    /// economy that debits it is E4).
+    pub execute_tu:            ExecuteTu,
+    /// The stance-change TU cost (E4.1) — the flat Time Units `set_stance` spends
+    /// via [`crate::tu::spend_tu`] when a ganger's posture actually changes
+    /// (combat.md L34 "kneel" costs TUs; resolution.md §"What's tunable").
+    pub stance_change_tu:      StanceChangeTu,
+    /// The turn TU cost (E4.1) — the flat Time Units `set_facing` spends via
+    /// [`crate::tu::spend_tu`] when a ganger's facing actually changes (combat.md
+    /// L34 "turn" costs TUs; magnitude is tunable, mirroring `stance_change_tu`).
+    pub turn_tu:               TurnTu,
+    /// The per-terrain move-cost table (E4 movement) — the flat Time Units
+    /// [`crate::move_acts::move_ganger`] spends via [`crate::tu::spend_tu`] to step onto
+    /// a destination cell, keyed by that cell's
+    /// [`TerrainKind`](crate::occupancy::TerrainKind) (the floor tile crossed determines
+    /// the cost; combat.md L34 "step" costs TUs). Terrain-determined, NOT a
+    /// flat per-cell constant; magnitudes are tunable starting points (flagged), mirroring
+    /// `stance_change_tu` / `turn_tu`.
+    pub move_costs:            MoveCosts,
+    /// The §4 body-part hit-location weights.
+    pub body_part_weights:     BodyPartWeights,
+    /// The §1 cone / stability / recoil / aim coefficients (E2.1) — the data
+    /// substrate for the rest of E2.
+    pub cone_stability:        ConeStabilityTuning,
+    /// The 7-type matchup multipliers (E3.2) — the favorable / neutral / resisted
+    /// punch-&-shred scalars.
+    pub matchup_multipliers:   MatchupMultipliers,
+    /// The firing arc (GTW-242) — the full angular width (degrees) of the facing cone a
+    /// shooter may fire within before it must turn to face the target. A target outside
+    /// `±firing_arc / 2` requires the shooter to turn-into-arc AND afford the shot, else
+    /// the shot is rejected. GLOBAL (one arc for all weapons this slice); magnitude is
+    /// tunable (default 120°), mirroring the other tuning leaves.
+    pub firing_arc:            FiringArc,
+}
