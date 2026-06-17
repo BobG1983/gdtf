@@ -85,6 +85,17 @@ fn active_cursor(
 /// `&mut World`). Reads the [`ActivePointer`] to choose the cursor ([`active_cursor`]): the OS
 /// cursor in `Mouse` mode, the [`GamepadCursor`] in `Gamepad` mode (GTW-259). Returns [`None`]
 /// for every fail-closed case so the caller simply stores it.
+///
+/// GTW-286 — the cursor is GATED to the map viewport BEFORE unprojection: if it is outside the
+/// [`Camera::logical_viewport_rect`] (a margin / a UI panel), or there is no viewport rect at
+/// all, the helper returns [`None`] (no hovered cell). Without this gate
+/// [`Camera::viewport_to_world_2d`] linearly EXTRAPOLATES a cursor outside the viewport into a
+/// valid in-grid world point, so a click over the action-bar margin would floor to an in-grid
+/// cell and emit a MOVE/select/fire through the UI; the hover reticle keys off the SAME
+/// `HoveredCell`, so the one gate also suppresses the reticle under panels. Mirrors the GTW-271
+/// pan-path gate (`pan.rs`), and is fail-closed the same way (no rect → `None`). The cursor and
+/// the rect are BOTH logical px (the gamepad software cursor flows through here too, also
+/// logical), so the containment test is consistent.
 fn resolve_hovered_cell(
     cameras: &Query<(&Camera, &GlobalTransform), With<gdtf_battle_presenter::WorldCamera>>,
     windows: &Query<&Window, With<PrimaryWindow>>,
@@ -103,6 +114,15 @@ fn resolve_hovered_cell(
     // The active pointer's cursor (OS cursor in Mouse mode, gamepad cursor in Gamepad mode),
     // else fail-closed (the OS cursor is off-window).
     let cursor = active_cursor(window, active, gamepad_cursor)?;
+    // GTW-286 — gate to the map viewport: a cursor over a margin / UI panel (outside the
+    // viewport rect), or no rect at all, yields no hovered cell (fail-closed, matching the
+    // GTW-271 pan path). This single chokepoint stops move/select/fire AND the reticle from
+    // reaching through the UI, and covers the gamepad software cursor too (both are logical px).
+    // `logical_viewport_rect()` is `None` (e.g. headless before `camera_system`) -> fail-closed.
+    let viewport = camera.logical_viewport_rect()?;
+    if !viewport.contains(cursor) {
+        return None;
+    }
     // The cursor unprojects into the world, else fail-closed.
     let Ok(world) = camera.viewport_to_world_2d(cam_transform, cursor) else {
         return None;

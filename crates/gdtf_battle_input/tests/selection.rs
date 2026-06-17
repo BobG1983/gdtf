@@ -266,8 +266,10 @@ fn selection_is_player_faction_gated() {
         );
     }
 
-    // An enemy-faction occupant is NOT selected (no fire mode forces fire; with no prior
-    // selection the chain falls through to CLEAR — never selects the enemy as own).
+    // An enemy-faction occupant is NOT selected (FIRE can't fire on it, SELECT rejects the
+    // enemy faction). With NO prior selection the end-state stays `None`: clause 3.5 (GTW-287)
+    // returns NoOp on the enemy click, leaving the (already-empty) selection untouched — never
+    // selecting the enemy as own.
     {
         let mut app = selection_app(level);
         let enemy = app.world_mut().spawn(ENEMY_FACTION).id();
@@ -286,9 +288,64 @@ fn selection_is_player_faction_gated() {
         assert_eq!(
             selected(&app),
             None,
-            "an enemy occupant with no fire mode + no prior selection clears",
+            "an enemy occupant with no prior selection stays None (the NoOp leaves the empty \
+             selection untouched — behaviorally identical to the old CLEAR end-state)",
         );
     }
+}
+
+/// GTW-287 (Bug C) — with a PLAYER ganger selected, clicking an ENEMY-occupied cell you
+/// cannot FIRE on is a NO-OP: `SelectedShooter` stays that player ganger across the update,
+/// with NO transient `None` (no "No ganger selected" flash, no auto-select revert). Drives
+/// the REAL `left_click_act` over `selection_app`.
+///
+/// Pin-discriminating: before GTW-287 the chain fell FIRE(fail) -> SELECT(fail, enemy
+/// faction) -> MOVE(fail, occupied) -> CLEAR, wiping the selection to `None`. With the
+/// GTW-287 clause 3.5 the enemy click returns `NoOp` and leaves the selection untouched.
+/// The selected ganger carries NO firing components, so FIRE fails closed (an enemy you
+/// can't fire on) — the case the contract targets.
+#[test]
+fn clicking_an_enemy_is_a_no_op_on_the_player_selection() {
+    let level = Level::new(0);
+    let mut app = selection_app(level);
+
+    // A PLAYER-faction ganger, pre-selected (it carries no firing components, so FIRE fails
+    // closed). Its occupancy cell is its own; it is NOT the click target.
+    let own_cell = CellLevel::new(Cell::new(3, 3), level);
+    let player_ganger = place_player_ganger(&mut app, own_cell);
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(player_ganger));
+
+    // An ENEMY occupant at the cell the player clicks.
+    let enemy = app.world_mut().spawn(ENEMY_FACTION).id();
+    let enemy_cell = CellLevel::new(Cell::new(40, 40), level);
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(enemy_cell, Some(enemy));
+    set_hovered(&mut app, Some(enemy_cell));
+
+    // Precondition: the player ganger is selected before the click.
+    assert_eq!(
+        selected(&app),
+        Some(player_ganger),
+        "precondition: the player ganger is selected before clicking the enemy",
+    );
+
+    press_left(&mut app);
+    app.update();
+
+    // The enemy click is a NO-OP: the selection is UNCHANGED (no clear, no transient None).
+    assert_eq!(
+        selected(&app),
+        Some(player_ganger),
+        "clicking an enemy you can't fire on must NOT clear the player's selection (GTW-287 \
+         NoOp) — the enemy is inspected via the hover panel, never selected/cleared",
+    );
+    assert_ne!(
+        selected(&app),
+        None,
+        "the enemy click must produce NO transient None — no 'No ganger selected' flash",
+    );
 }
 
 // ---------------------------------------------------------------------------------

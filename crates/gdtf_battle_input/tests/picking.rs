@@ -32,9 +32,10 @@ use bevy::{
     app::App,
     camera::{
         Camera, ComputedCameraValues, OrthographicProjection, Projection, RenderTargetInfo,
-        primitives::Frustum,
+        Viewport, primitives::Frustum,
     },
-    math::Vec2,
+    input::ButtonInput,
+    math::{URect, UVec2, Vec2},
     prelude::*,
     transform::components::GlobalTransform,
     window::{PrimaryWindow, Window, WindowResolution},
@@ -46,7 +47,8 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera};
 use gdtf_battle_sim::{
-    BattleInProgress, CellLevel, Level, OccupancyGrid, TerrainKind, tuning::CombatTuning,
+    BattleInProgress, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, TerrainKind,
+    acts::MoveRequested, tuning::CombatTuning,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -425,5 +427,187 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
         requests(&app),
         vec![HighlightRequest(None)],
         "the picker must emit HighlightRequest(None) when nothing is hovered",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-286 (Bug D) — the world-click/pick path is GATED to the map viewport rect: a
+// cursor over a margin / UI panel resolves `HoveredCell` to None, so no move/select/
+// fire/reticle reaches through the UI even though `viewport_to_world_2d` would happily
+// EXTRAPOLATE it into a valid in-grid cell.
+// ---------------------------------------------------------------------------------
+
+/// The faction the player controls in these tests (matches the seeded `PlayerFaction`).
+const PLAYER_FACTION: Faction = Faction::new(0);
+
+/// A central viewport SUB-RECT of the synthetic target: inset 320px left/right and
+/// 180px top/bottom, so a cursor in the BOTTOM margin (below `max.y`) lies OUTSIDE it.
+/// Physical px == logical px here (the synthetic camera's `scale_factor` is `1.0`).
+const VIEWPORT_RECT: URect = URect {
+    min: UVec2::new(320, 180),
+    max: UVec2::new(960, 540),
+};
+
+/// Sets the world camera's `viewport` to a sub-rect, so `logical_viewport_rect()` reports
+/// that rect (not the full target) — the map sub-rect the GTW-286 gate confines clicks to.
+fn set_world_viewport(app: &mut App, rect: URect) {
+    let mut cameras = app
+        .world_mut()
+        .query_filtered::<&mut Camera, With<WorldCamera>>();
+    for mut camera in cameras.iter_mut(app.world_mut()) {
+        camera.viewport = Some(Viewport {
+            physical_position: rect.min,
+            physical_size: rect.size(),
+            ..Viewport::default()
+        });
+    }
+}
+
+/// Builds a picking app wired for the full MOVE path: a viewport sub-rect, the
+/// `OccupancyGrid` / `CombatTuning` / `PlayerFaction` / `ButtonInput<MouseButton>` the
+/// `left_click_act` run condition needs, plus a pre-selected PLAYER-faction ganger (with
+/// NO firing components, so FIRE fails closed and a click on an empty cell is a MOVE) and a
+/// `MoveProbe` draining `Messages<MoveRequested>` after `left_click_act`.
+fn move_path_app(active_level: Level) -> App {
+    let mut app = picking_app(active_level);
+    set_world_viewport(&mut app, VIEWPORT_RECT);
+    app.world_mut().insert_resource(OccupancyGrid::default());
+    app.world_mut().insert_resource(CombatTuning::default());
+    app.world_mut()
+        .insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    app.world_mut()
+        .insert_resource(ButtonInput::<MouseButton>::default());
+
+    // A player-faction ganger with no firing components: FIRE fails closed (no
+    // `ShooterFireData`), so a click on an empty in-bounds cell is a MOVE. Pre-select it.
+    let ganger = app.world_mut().spawn(PLAYER_FACTION).id();
+    app.world_mut()
+        .insert_resource(gdtf_battle_input::SelectedShooter::new(ganger));
+
+    app.insert_resource(MoveProbe::default());
+    app.add_systems(
+        Update,
+        (|mut r: MessageReader<MoveRequested>, mut p: ResMut<MoveProbe>| {
+            p.0.extend(r.read().copied());
+        })
+        // After the drain so the probe sees the SAME update's emitted `MoveRequested`.
+        .after(gdtf_battle_input::dispatch_act_intents),
+    );
+    app
+}
+
+/// The `MoveRequested` messages the probe drained (test-only framework plumbing).
+#[derive(Resource, Default)]
+struct MoveProbe(Vec<MoveRequested>);
+
+/// The move requests the probe collected so far.
+fn move_requests(app: &App) -> Vec<MoveRequested> {
+    app.world()
+        .get_resource::<MoveProbe>()
+        .map(|p| p.0.clone())
+        .unwrap_or_default()
+}
+
+/// Presses (just-pressed edge) the left mouse button.
+fn press_left(app: &mut App) {
+    if let Some(mut mouse) = app
+        .world_mut()
+        .get_resource_mut::<ButtonInput<MouseButton>>()
+    {
+        mouse.press(MouseButton::Left);
+    }
+}
+
+/// GTW-286 INSIDE — a cursor INSIDE the viewport sub-rect over a valid in-grid cell
+/// resolves `HoveredCell` to that cell AND a left-click there emits a `MoveRequested`.
+/// (Guards against over-suppression: the gate must NOT reject an in-viewport cursor.)
+#[test]
+fn click_inside_the_viewport_resolves_a_cell_and_moves() {
+    let level = Level::new(0);
+    let mut app = move_path_app(level);
+
+    // A cursor INSIDE the viewport sub-rect, offset down+right of its centre so it lands
+    // on a non-origin in-grid cell (screen-y down -> world-y down -> positive cell row;
+    // screen-x right -> positive cell column).
+    let viewport_centre = VIEWPORT_RECT.center().as_vec2();
+    let cursor = viewport_centre + Vec2::new(20.0, 16.0);
+
+    // Update 1: the picker resolves `HoveredCell` from the in-viewport cursor.
+    set_cursor(&mut app, Some(cursor));
+    app.update();
+
+    // The chosen cursor lands on an in-grid cell (independent of the gate's outcome).
+    let world = unproject(&mut app, cursor);
+    let Some(world) = world else {
+        unreachable!("the synthetic camera must unproject the in-viewport cursor");
+    };
+    let expected = world_to_cell(world, level);
+    assert!(
+        expected.is_some(),
+        "the chosen in-viewport cursor must land inside the grid (world {world:?})",
+    );
+    assert_eq!(
+        hovered(&app),
+        expected,
+        "an INSIDE-viewport cursor must resolve HoveredCell to its cell (gate must not over-suppress)",
+    );
+
+    // Update 2: press Left -> `left_click_act` (which reads last update's HoveredCell)
+    // decides MOVE (player selection + empty in-bounds cell) and the drain emits it.
+    press_left(&mut app);
+    app.update();
+    assert_eq!(
+        move_requests(&app).len(),
+        1,
+        "an INSIDE-viewport left-click on an empty cell must emit exactly one MoveRequested",
+    );
+}
+
+/// GTW-286 MARGIN — a cursor in the BOTTOM margin (below the viewport's `max.y`) at a
+/// screen position whose EXTRAPOLATED world point still floors to an in-grid 0..60 cell
+/// (proving the OLD ungated code would have moved) resolves `HoveredCell` to None AND a
+/// left-click there emits NO `MoveRequested`. Pin-discriminating: RED before the gate
+/// (the extrapolated cell is in-grid -> a MOVE), GREEN after.
+#[test]
+fn click_in_the_bottom_margin_resolves_none_and_does_not_move() {
+    let level = Level::new(0);
+    let mut app = move_path_app(level);
+
+    // A cursor in the BOTTOM margin: same column as the viewport centre, but BELOW
+    // `max.y` (in the action-bar margin). It is just past the bottom edge, so
+    // `viewport_to_world_2d` extrapolates only slightly past the bottom row -> still an
+    // in-grid cell (what the OLD code would have moved on).
+    let centre_x = VIEWPORT_RECT.center().as_vec2().x;
+    let margin_y = VIEWPORT_RECT.max.y as f32 + 4.0;
+    let cursor = Vec2::new(centre_x, margin_y);
+
+    // Prove the OLD code's premise: the EXTRAPOLATED world point of this margin cursor
+    // still floors to an in-grid cell (so the gate, not off-grid, is what suppresses it).
+    let world = unproject(&mut app, cursor);
+    let Some(world) = world else {
+        unreachable!("the synthetic camera must unproject the margin cursor");
+    };
+    assert!(
+        world_to_cell(world, level).is_some(),
+        "the margin cursor's extrapolated world point must floor to an IN-GRID cell \
+         (world {world:?}) — otherwise the test would pass for the wrong reason",
+    );
+
+    // Update 1: the picker must GATE the margin cursor (outside the viewport rect) to None.
+    set_cursor(&mut app, Some(cursor));
+    app.update();
+    assert_eq!(
+        hovered(&app),
+        None,
+        "a cursor in the bottom margin (outside the viewport rect) must resolve HoveredCell to \
+         None — even though its extrapolated cell is in-grid (GTW-286 gate)",
+    );
+
+    // Update 2: a Left press now finds nothing hovered -> no MOVE through the UI margin.
+    press_left(&mut app);
+    app.update();
+    assert!(
+        move_requests(&app).is_empty(),
+        "a left-click in the bottom margin must emit NO MoveRequested (no move through the UI)",
     );
 }

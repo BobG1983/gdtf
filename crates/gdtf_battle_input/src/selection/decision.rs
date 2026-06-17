@@ -59,6 +59,10 @@ pub enum LeftClickOutcome {
     /// MOVE the carried request — clause 3 won (a player-faction selection over an empty,
     /// in-bounds, unblocked cell). Pushed as an [`ActIntent::Move`]; the selection is unchanged.
     Move(MoveRequested),
+    /// NO-OP — clause 3.5 (GTW-287): the clicked cell holds an ENEMY you cannot FIRE on. Does
+    /// NOTHING — leaves [`SelectedShooter`] untouched (no clear, no transient `None`). Enemies
+    /// are inspected via the GTW-274 hover panel, never selected or cleared as your shooter.
+    NoOp,
     /// CLEAR the selection — clause 4 (none of the above, or nothing hovered). Sets
     /// [`SelectedShooter::cleared`].
     Clear,
@@ -81,11 +85,21 @@ pub enum LeftClickOutcome {
 /// 3. **MOVE** — there is a player-faction selection AND the hovered cell is empty
 ///    (`occupant == None`), in-bounds (a [`Some`] [`HoveredCell`] is always in-grid), and
 ///    unblocked (`!is_blocked`) → [`LeftClickOutcome::Move`].
-/// 4. **CLEAR** — none of the above (or nothing hovered) → [`LeftClickOutcome::Clear`].
+/// 4. **CLEAR** — none of the above (or nothing hovered) → [`LeftClickOutcome::Clear`]. The
+///    genuine "nothing to act on" cases (an empty / blocked cell with a non-player or stale
+///    selection) still clear.
+///
+/// Between MOVE (clause 3) and CLEAR (clause 4) sits the GTW-287 **NO-OP** rung: when the
+/// hovered cell holds an ENEMY occupant ([`Faction`] `!=` [`PlayerFaction`]) you could not FIRE
+/// on, [`decide_left_click`] returns [`LeftClickOutcome::NoOp`] instead of falling through to
+/// CLEAR. Clicking an enemy you can't fire on leaves your current player selection UNTOUCHED
+/// (enemies are inspected via the GTW-274 hover panel, not selected/cleared as your shooter) —
+/// no clear, no transient `None`, no "No ganger selected" flash, no auto-select revert.
 ///
 /// FALL-THROUGH (the user-confirmed precedence): a fire mode over an EMPTY / your-own /
 /// non-enemy cell FAILS clause 1 (no enemy occupant) and falls through to clause 3 (MOVE) — the
-/// fire mode does NOT lock out move.
+/// fire mode does NOT lock out move. An ENEMY-occupied cell you cannot fire on does NOT fall
+/// through to CLEAR (it would wipe the selection); it is the GTW-287 NO-OP rung above.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` / `Query<ShooterFireData>` + the current [`SelectedShooter`], no
@@ -138,6 +152,14 @@ pub fn decide_left_click(
         return LeftClickOutcome::Move(MoveRequested::new(actor, target)); // MOVE wins.
     }
 
+    // 3.5. NO-OP (GTW-287) — the cell holds an ENEMY you couldn't FIRE on. Clicking an enemy you
+    // can't fire on must NOT clear the player's selection (the "No ganger selected" flash bug):
+    // it is a no-op, the enemy is inspected via the GTW-274 hover panel. Reached only after FIRE
+    // failed above, so this is the can't-fire-on-this-enemy case.
+    if occupant_faction.is_some_and(|faction| faction != player) {
+        return LeftClickOutcome::NoOp; // enemy click -> leave the selection untouched.
+    }
+
     // 4. CLEAR — none of the above.
     LeftClickOutcome::Clear
 }
@@ -148,7 +170,9 @@ pub fn decide_left_click(
 /// FIRE / MOVE push the carried act onto [`PendingActIntent`] (the ONE
 /// [`dispatch_act_intents`](crate::dispatch_act_intents) drain emits it); SELECT sets
 /// [`SelectedShooter::new`]; CLEAR sets [`SelectedShooter::cleared`]. The selection writes go
-/// through `set_selection` (change-detection hygiene). FIRE / MOVE do NOT touch the selection.
+/// through `set_selection` (change-detection hygiene). FIRE / MOVE / NO-OP do NOT touch the
+/// selection — and [`LeftClickOutcome::NoOp`] (GTW-287, the enemy-click case) does NOTHING at
+/// all: no push, no `set_selection`, so the player's selection is left exactly as it was.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`ResMut<SelectedShooter>`] /
 /// [`ResMut<PendingActIntent>`] writes, no `&mut World`.
@@ -163,6 +187,8 @@ pub fn apply_left_click(
             set_selection(selected, SelectedShooter::new(entity));
         }
         LeftClickOutcome::Move(request) => pending.push(ActIntent::Move(request)),
+        // GTW-287 — an enemy-click no-op: do nothing, leave the selection untouched.
+        LeftClickOutcome::NoOp => {}
         LeftClickOutcome::Clear => set_selection(selected, SelectedShooter::cleared()),
     }
 }

@@ -22,8 +22,26 @@
 //! two devices. Both click surfaces read [`Res<PlayerFaction>`](gdtf_battle_sim::PlayerFaction).
 //! (The GTW-254 `WorldClickSuppressed` modal click-through guard was REMOVED in GTW-265 once
 //! the fire-mode popup picker — the only modal — was replaced by an always-visible 3-toggle
-//! sub-panel; the GTW-262 pointer-over-UI camera gate now subsumes "don't world-click through a
-//! panel".)
+//! sub-panel.)
+//!
+//! # Don't act through the UI (GTW-286)
+//!
+//! Every click branch keys off [`HoveredCell`](crate::HoveredCell), which the picker
+//! ([`pick_hovered_cell`](crate::pick_hovered_cell)) now resolves to [`None`] for any cursor
+//! OUTSIDE the map viewport rect (a margin / a UI panel) — the GTW-286 viewport gate in
+//! `resolve_hovered_cell`. So a click over a UI button never reaches a cell: nothing hovered →
+//! the chain CLEARs (or, with a player selection, simply does nothing this edge). The GTW-271
+//! camera-pan gate had been pan-path only; GTW-286 adds the SAME gate to the click/pick path so
+//! one chokepoint covers move-on-UI AND the reticle-under-panels, for mouse and gamepad alike.
+//!
+//! # Clicking an enemy is a no-op on your selection (GTW-287)
+//!
+//! When you have a player ganger selected and click an ENEMY-occupied cell you can't FIRE on,
+//! the decision is [`LeftClickOutcome::NoOp`] — it leaves [`SelectedShooter`] untouched (no
+//! clear, no transient `None`, no "No ganger selected" flash, no auto-select revert). Enemies
+//! are inspected via the GTW-274 hover panel, never selected/cleared as your shooter. CLEAR
+//! still fires for the genuine "nothing to act on" cases (an empty / blocked cell with a
+//! non-player or stale selection).
 
 mod auto_select;
 mod decision;

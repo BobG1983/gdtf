@@ -29,12 +29,19 @@ use crate::{
 ///    ([`Faction`] `==` [`PlayerFaction`]) → set [`SelectedShooter::new`]; no act emitted.
 /// 3. **MOVE** — there is a player-faction selection AND the hovered cell is empty, in-bounds,
 ///    and unblocked → push [`ActIntent::Move`] to the hovered destination.
-/// 4. **CLEAR** — none of the above → [`SelectedShooter::cleared`].
+/// 4. **CLEAR** — none of the above → [`SelectedShooter::cleared`] (still fires for an empty /
+///    blocked cell with a non-player or stale selection).
+///
+/// Between MOVE (clause 3) and CLEAR (clause 4) sits the GTW-287 NO-OP rung: an enemy-occupied
+/// click that does not FIRE does NOTHING — it NEVER clears the player's selection (enemies are
+/// inspected via the GTW-274 hover panel) — so no transient `None`, no "No ganger selected"
+/// flash.
 ///
 /// FALL-THROUGH (the user-confirmed precedence): a fire mode over an EMPTY / your-own /
 /// non-enemy cell FAILS clause 1 and falls through to clause 3 (MOVE). The branches are MUTUALLY
 /// EXCLUSIVE: a FIRE edge emits no [`MoveRequested`](gdtf_battle_sim::acts::MoveRequested) and
-/// does not touch [`SelectedShooter`]; a SELECT edge emits no act message.
+/// does not touch [`SelectedShooter`]; a SELECT edge emits no act message; an enemy-click NO-OP
+/// (GTW-287) touches nothing.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` + `Query<ShooterFireData>`, the [`ResMut<SelectedShooter>`] /
