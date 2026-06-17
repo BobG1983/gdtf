@@ -18,8 +18,8 @@
 use bevy::{prelude::*, state::state::State};
 use gdtf_app::test_support::{
     AimToggleButton, AutoBattleActive, AutoBattlePlugin, BattleScapeState, EndTurnButton,
-    FireModePickerButton, LevelDownButton, LevelUpButton, LoadedSituation, ReloadButton,
-    RunningState, StanceCycleButton, auto_battle_enabled,
+    LevelDownButton, LevelUpButton, LoadedSituation, ReloadButton, RunningState,
+    StanceKneelingButton, StanceProneButton, StanceStandingButton, auto_battle_enabled,
 };
 // (no `GameState` import — the e2e test reads BattleScapeState directly.)
 use gdtf_battle_input::HoveredCell;
@@ -263,8 +263,8 @@ fn full_stack_composes_to_battle_running() {
          is wired into the real stack)",
     );
 
-    // The action-bar buttons are present — the 5 existing-act + 2 deferred buttons
-    // spawned OnEnter(BattleRunning).
+    // The action-bar buttons are present — the 3 stance toggles + aim + 2 level + 2
+    // deferred buttons spawned OnEnter(BattleRunning) (the Mode toggles build on selection).
     assert_eq!(
         count_action_bar_buttons(&mut app),
         EXPECTED_ACTION_BAR_BUTTONS,
@@ -284,17 +284,20 @@ fn full_stack_composes_to_battle_running() {
     );
 }
 
-/// The number of action-bar buttons spawned in `BattleRunning`: the 5 control buttons
-/// (stance, aim, the fire-mode-picker opener, level-up, level-down) plus the 2 deferred
-/// buttons (reload, end-turn).
-const EXPECTED_ACTION_BAR_BUTTONS: usize = 7;
+/// The number of STABLE action-bar buttons spawned in `BattleRunning` at
+/// `OnEnter(BattleRunning)`: the 3 stance toggles (Stand / Kneel / Prone), the aim toggle,
+/// and the 2 level buttons (the 4 control buttons), plus the 2 deferred buttons (reload,
+/// end-turn). The Mode sub-panel's per-mode toggles are built on a selection (none at
+/// spawn, when the e2e has no `SelectedShooter`), so they are not counted here.
+const EXPECTED_ACTION_BAR_BUTTONS: usize = 8;
 
-/// Counts the action-bar buttons present by summing each marker. Re-encodes the bar's
-/// composition so a regression that drops a button turns the e2e test red.
+/// Counts the stable action-bar buttons present by summing each marker. Re-encodes the
+/// bar's composition so a regression that drops a button turns the e2e test red.
 fn count_action_bar_buttons(app: &mut App) -> usize {
-    count_marker::<StanceCycleButton>(app)
+    count_marker::<StanceStandingButton>(app)
+        + count_marker::<StanceKneelingButton>(app)
+        + count_marker::<StanceProneButton>(app)
         + count_marker::<AimToggleButton>(app)
-        + count_marker::<FireModePickerButton>(app)
         + count_marker::<LevelUpButton>(app)
         + count_marker::<LevelDownButton>(app)
         + count_marker::<ReloadButton>(app)

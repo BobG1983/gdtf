@@ -18,12 +18,20 @@
 //!
 //! ## Existing-act buttons vs DEFERRED buttons
 //!
-//! The four cycle/level markers ([`StanceCycleButton`] / [`AimToggleButton`] /
-//! [`LevelUpButton`] / [`LevelDownButton`]) each route a press to the matching
-//! [`ActIntent`](gdtf_battle_input::ActIntent) on the shared 222a seam; the
-//! [`FireModePickerButton`] (GTW-254) instead OPENS the popup fire-mode picker modal
-//! (no intent — the picker sets the fire mode directly). There is deliberately NO
-//! `FireButton`: a button press carries no
+//! The level markers ([`LevelUpButton`] / [`LevelDownButton`]) and the
+//! [`AimToggleButton`] each route a press to the matching
+//! [`ActIntent`](gdtf_battle_input::ActIntent) on the shared 222a seam. The three
+//! STANCE toggle markers ([`StanceStandingButton`] / [`StanceKneelingButton`] /
+//! [`StanceProneButton`], GTW-267) and the three MODE toggle markers
+//! ([`ModeSingleButton`] / [`ModeBurstButton`] / [`ModeFullButton`], GTW-265) are the
+//! mutually-exclusive 3-toggle sub-panels that REPLACED the blind
+//! `StanceCycleButton` cycle and the GTW-254 fire-mode popup picker respectively: each
+//! pressed toggle DIRECT-sets its option (a stance press pushes a direct
+//! [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance); a mode press sets
+//! [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) to the read-back spec), and
+//! the currently-held option is shown via the `gdtf_ui`
+//! [`ActiveButton`](gdtf_ui::ActiveButton) paint marker (the GTW-253 hook, made sticky
+//! by GTW-266). There is deliberately NO `FireButton`: a button press carries no
 //! `HoveredCell` target, so FIRE stays the left-click-on-target surface (landed in
 //! 222b); explicit-target fire is GTW-11. The DEFERRED acts (reload, end-turn) have
 //! NO sim act yet, so they are rendered as `DisabledButton` ([`ReloadButton`] /
@@ -33,15 +41,40 @@
 use bevy::prelude::*;
 
 crate::support_item! {
-    /// Marks the **stance-cycle** action button — a press pushes
-    /// [`ActIntent::StanceCycle`](gdtf_battle_input::ActIntent::StanceCycle), the same
-    /// intent the stance-cycle KEY pushes (parallel surfaces over one seam). The drain
-    /// emits a [`SetStanceRequested`](gdtf_battle_sim::acts::SetStanceRequested) for the
-    /// `SelectedShooter`.
+    /// Marks the **Stand** stance-toggle button (GTW-267) — a press pushes a direct
+    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Standing`](gdtf_battle_sim::StanceKind::Standing)`)`,
+    /// setting the [`SelectedShooter`](gdtf_battle_input::SelectedShooter)'s posture
+    /// directly to standing (NOT a blind cycle). One of the three mutually-exclusive
+    /// stance toggles; `sync_stance_buttons_active` marks the one matching the selected
+    /// ganger's current [`Stance`](gdtf_battle_sim::Stance) with
+    /// [`ActiveButton`](gdtf_ui::ActiveButton).
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct StanceCycleButton;
+    struct StanceStandingButton;
+}
+
+crate::support_item! {
+    /// Marks the **Kneel** stance-toggle button (GTW-267) — a press pushes a direct
+    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Crouching`](gdtf_battle_sim::StanceKind::Crouching)`)`,
+    /// setting the [`SelectedShooter`](gdtf_battle_input::SelectedShooter)'s posture
+    /// directly to kneeling (the doc's "kneel" = [`StanceKind::Crouching`](gdtf_battle_sim::StanceKind::Crouching)).
+    /// One of the three mutually-exclusive stance toggles.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct StanceKneelingButton;
+}
+
+crate::support_item! {
+    /// Marks the **Prone** stance-toggle button (GTW-267) — a press pushes a direct
+    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Prone`](gdtf_battle_sim::StanceKind::Prone)`)`,
+    /// setting the [`SelectedShooter`](gdtf_battle_input::SelectedShooter)'s posture
+    /// directly to prone. One of the three mutually-exclusive stance toggles.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct StanceProneButton;
 }
 
 crate::support_item! {
@@ -57,19 +90,42 @@ crate::support_item! {
 }
 
 crate::support_item! {
-    /// Marks the **fire-mode-picker** opener button (GTW-254) — a press OPENS (or
-    /// toggles closed) the popup fire-mode picker modal, REPLACING the removed blind
-    /// fire-mode-cycle button. It pushes NO [`ActIntent`](gdtf_battle_input::ActIntent):
-    /// the picker SETS [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly
-    /// to the chosen mode. Its CAPTION reflects the live `SelectedFireMode` mode (e.g.
-    /// `Mode: burst`), updated by `sync_fire_mode_picker_caption`; with no armed
-    /// selection it is a disabled neutral caption (the deferred-button precedent). This
-    /// is a fire-mode picker opener (no target needed), distinct from a FIRE button
-    /// (which is deliberately absent — FIRE is the left-click-on-target surface).
+    /// Marks the **Single** fire-mode toggle button (GTW-265) — a press sets
+    /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly to the selected
+    /// weapon's [`ModeKind::Single`](gdtf_battle_sim::ModeKind::Single) spec (read back off
+    /// the weapon's [`FireMode`](gdtf_battle_sim::FireMode) selector, never fabricated).
+    /// One of the (up to three) mutually-exclusive mode toggles in the Mode sub-panel,
+    /// REPLACING the GTW-254 popup picker; spawned ONLY when the selected weapon offers
+    /// this mode. `sync_mode_buttons_active` marks the live mode with
+    /// [`ActiveButton`](gdtf_ui::ActiveButton).
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct FireModePickerButton;
+    struct ModeSingleButton;
+}
+
+crate::support_item! {
+    /// Marks the **Burst** fire-mode toggle button (GTW-265) — a press sets
+    /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly to the selected
+    /// weapon's [`ModeKind::Burst`](gdtf_battle_sim::ModeKind::Burst) spec (read back off
+    /// the weapon's selector). One of the mutually-exclusive mode toggles, spawned ONLY
+    /// when the selected weapon offers Burst.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ModeBurstButton;
+}
+
+crate::support_item! {
+    /// Marks the **Full-auto** fire-mode toggle button (GTW-265) — a press sets
+    /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly to the selected
+    /// weapon's [`ModeKind::Full`](gdtf_battle_sim::ModeKind::Full) spec (read back off
+    /// the weapon's selector). One of the mutually-exclusive mode toggles, spawned ONLY
+    /// when the selected weapon offers Full.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ModeFullButton;
 }
 
 crate::support_item! {
@@ -156,48 +212,33 @@ crate::support_item! {
 pub(in crate::scenes::running::game::battlescape::action_bar) struct ActionBarRoot;
 
 crate::support_item! {
-    /// Marks the **root** of the open fire-mode picker modal (GTW-254). The EXISTENCE
-    /// of this entity IS the picker's "open" state (no sub-state — bevy-traps #5): the
-    /// opener-press system spawns it, and the select / scrim-click / re-open systems
-    /// despawn it (recursively, so its scrim + entry-button children go with it). It is
-    /// mounted under the UI-camera root as a LATER-spawned full-screen sibling so it
-    /// renders ABOVE the action bar + status panel (clause 4a).
+    /// Marks the **root** of the vertical Stance sub-panel (GTW-267) — the
+    /// [`spawn_panel`](gdtf_ui::spawn_panel) column holding the three stance toggles
+    /// ([`StanceStandingButton`] / [`StanceKneelingButton`] / [`StanceProneButton`]). A
+    /// stable always-visible sub-panel inside the action bar; spawned with the bar in
+    /// `spawn_action_bar` and torn down with it via the [`ActionBarRoot`] recursive
+    /// despawn (it is parented under the bar root).
     ///
-    /// Widened through `support_item!` so the integration tests can assert the picker's
-    /// existence (open) / absence (closed) via `crate::test_support`.
-    ///
-    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct FireModePickerRoot;
-}
-
-crate::support_item! {
-    /// Marks the picker's full-screen transparent **scrim** button (GTW-254) — the
-    /// click-outside catcher behind the picker panel. A press on it dismisses the picker
-    /// with NO change to [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode)
-    /// (clause B3 / AC5). It is a [`Button`](bevy::ui::Button) (so `bevy_ui`'s
-    /// `ui_focus_system` drives its [`Interaction`](bevy::ui::Interaction)) with a fully
-    /// transparent fill, sized to the whole viewport and z-ordered below the panel.
-    ///
-    /// Widened through `support_item!` so a test can synthesize a scrim press (AC5).
+    /// Widened through `support_item!` so the integration tests can find the panel.
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct FireModePickerScrim;
+    struct StancePanelRoot;
 }
 
 crate::support_item! {
-    /// Marks one fire-mode **entry** button in the open picker (GTW-254), carrying the
-    /// exact [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) it sets — the read-back from
-    /// the selected weapon's [`FireMode`](gdtf_battle_sim::FireMode) selector, NEVER a
-    /// fabricated spec (clause B3). A press SETS
-    /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) to this carried spec and
-    /// closes the picker.
+    /// Marks the **root** of the vertical Mode sub-panel (GTW-265) — the
+    /// [`spawn_panel`](gdtf_ui::spawn_panel) column whose CHILDREN are the per-mode
+    /// toggle buttons ([`ModeSingleButton`] / [`ModeBurstButton`] / [`ModeFullButton`]).
+    /// The buttons are (re)built to exactly the modes the SELECTED weapon offers whenever
+    /// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) changes
+    /// (`rebuild_mode_buttons`), so a Single+Burst weapon shows exactly two toggles (no
+    /// Full). The panel itself is stable (spawned with the bar, torn down with it); only
+    /// its toggle children are rebuilt.
     ///
-    /// Carries a domain value (the chosen fire-mode spec), so — unlike the unit markers —
-    /// this is a tuple-struct component, not a ZST. `FireModeSpec` is `Copy` (GTW-260),
-    /// so the marker is `Copy`. Widened through `support_item!` so a test can find an
-    /// entry by its carried mode and synthesize its press (AC3 / AC4).
-    #[derive(Component, Clone, Copy, PartialEq, Debug)]
-    struct FireModePickerEntry(pub gdtf_battle_sim::FireModeSpec);
+    /// Widened through `support_item!` so the integration tests can find the panel.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ModePanelRoot;
 }

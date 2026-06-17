@@ -12,8 +12,10 @@ pub(in crate::scenes::running::game::battlescape::action_bar) use flee::flee_but
 mod aim_active;
 pub(in crate::scenes::running::game::battlescape::action_bar) use aim_active::sync_aim_button_active;
 
-pub(in crate::scenes::running::game::battlescape::action_bar) mod fire_mode_picker;
-pub(in crate::scenes::running::game::battlescape::action_bar) use fire_mode_picker::{
-    despawn_fire_mode_picker, dismiss_fire_mode_picker_on_scrim, select_fire_mode_entry,
-    sync_fire_mode_picker_caption, sync_world_click_suppression, toggle_fire_mode_picker,
+mod stance_active;
+pub(in crate::scenes::running::game::battlescape::action_bar) use stance_active::sync_stance_buttons_active;
+
+pub(in crate::scenes::running::game::battlescape::action_bar) mod mode_panel;
+pub(in crate::scenes::running::game::battlescape::action_bar) use mode_panel::{
+    mode_button_pressed, rebuild_mode_buttons, sync_mode_buttons_active,
 };

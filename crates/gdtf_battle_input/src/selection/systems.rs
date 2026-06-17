@@ -36,10 +36,6 @@ use crate::{
 /// EXCLUSIVE: a FIRE edge emits no [`MoveRequested`](gdtf_battle_sim::acts::MoveRequested) and
 /// does not touch [`SelectedShooter`]; a SELECT edge emits no act message.
 ///
-/// SUPPRESSED while a `gdtf_app` modal captures the pointer
-/// ([`WorldClickSuppressed`](crate::WorldClickSuppressed), GTW-254 clause 6b): the whole
-/// decision is inert.
-///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` + `Query<ShooterFireData>`, the [`ResMut<SelectedShooter>`] /
 /// [`ResMut<PendingActIntent>`] writes — no `&mut World`. Runs `.before(pick_hovered_cell)`
@@ -52,11 +48,6 @@ pub fn left_click_act(
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
 ) {
-    // A `gdtf_app` modal (the GTW-254 picker) is capturing the pointer — the click belongs to
-    // the modal, not the world (clause 6b). Inert until it closes.
-    if *reads.suppressed() {
-        return;
-    }
     // Only act on the press edge; a held button does not re-resolve.
     if !reads.mouse.just_pressed(MouseButton::Left) {
         return;
@@ -74,10 +65,9 @@ pub fn left_click_act(
 /// [`ActIntent::Turn`]`(`[`SetFacingRequested`](gdtf_battle_sim::acts::SetFacingRequested)`)`.
 /// The per-45deg-step turn TU cost is the SIM's facing dispatch (GTW-235), NOT here.
 ///
-/// Writes NO intent when: a `gdtf_app` modal is capturing the pointer
-/// ([`WorldClickSuppressed`](crate::WorldClickSuppressed), GTW-254 clause 6b); the button is not
-/// just-pressed; there is no selection; the selection is NOT a player-faction ganger (the
-/// faction gate stays here, AC6); or [`decide_turn`] returns [`None`].
+/// Writes NO intent when: the button is not just-pressed; there is no selection; the selection
+/// is NOT a player-faction ganger (the faction gate stays here, AC6); or [`decide_turn`] returns
+/// [`None`].
 ///
 /// Param-only (`bevy-traps.md` #7): all reads via `Res` / `Query`, the intent push via
 /// [`ResMut<PendingActIntent>`]; no `&mut World`. Runs `.before(pick_hovered_cell)` (the cell
@@ -89,10 +79,6 @@ pub fn right_click_turn_to_face(
     positions: Query<&Position>,
     mut pending: ResMut<PendingActIntent>,
 ) {
-    // A `gdtf_app` modal (the GTW-254 picker) is capturing the pointer (clause 6b).
-    if **reads.suppressed {
-        return;
-    }
     // Only act on the press edge; a held button does not re-turn.
     if !mouse.just_pressed(MouseButton::Right) {
         return;

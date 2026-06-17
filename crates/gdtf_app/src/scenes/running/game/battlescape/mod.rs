@@ -31,9 +31,9 @@ pub(in crate::scenes::running::game::battlescape) use action_bar::GameBattleScap
 #[cfg(feature = "test-support")]
 crate::support_use! {
     action_bar::{
-        AimToggleButton, EndTurnButton, FireModePickerButton, FireModePickerEntry,
-        FireModePickerRoot, FireModePickerScrim, FleeButton, LevelDownButton, LevelUpButton,
-        ReloadButton, StanceCycleButton,
+        AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
+        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton, ReloadButton,
+        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
     };
 }
 

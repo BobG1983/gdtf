@@ -20,6 +20,16 @@
 //!   `AimToggleButton`, so the Aim button visibly shows ON/OFF. It is VISUAL-ONLY — it
 //!   does NOT change how the aim toggle works (the existing `AimToggle` intent path is
 //!   untouched).
+//! - **Stance 3-toggle visual** (GTW-267) — `sync_stance_buttons_active` mirrors the
+//!   selected ganger's `Stance` onto the `ActiveButton` paint marker across the three
+//!   stance toggles (Stand / Kneel / Prone), mutually exclusive, under the same gate. The
+//!   toggles' presses route DIRECT `ActIntent::SetStance` via `action_bar_button_intents`.
+//! - **Mode 3-toggle sub-panel** (GTW-265) — `rebuild_mode_buttons` (re)builds the Mode
+//!   sub-panel's per-mode toggles to the selected weapon's offered modes on a selection
+//!   change (`.after(UiSystems::ApplyTheme)`, the despawned-entity guard);
+//!   `mode_button_pressed` sets `SelectedFireMode` directly to a pressed toggle's read-back
+//!   spec; `sync_mode_buttons_active` marks the live mode `ActiveButton`. This REPLACED the
+//!   GTW-254 popup picker (no modal, no scrim, no world click-through).
 //!
 //! The bar WRITES the shared 222a [`PendingActIntent`](gdtf_battle_input::PendingActIntent)
 //! seam that `gdtf_battle_input`'s keyboard surface also writes (parallel surfaces, one
@@ -31,16 +41,15 @@
 //! (ADR-0001).
 
 use bevy::prelude::*;
-use gdtf_battle_input::{dispatch_act_intents, left_click_act, right_click_turn_to_face};
+use gdtf_battle_input::dispatch_act_intents;
 use gdtf_battle_sim::BattleInProgress;
 use gdtf_ui::themed::UiSystems;
 
 use crate::{
     scenes::running::game::battlescape::action_bar::systems::{
-        action_bar_button_intents, despawn_action_bar, despawn_fire_mode_picker,
-        dismiss_fire_mode_picker_on_scrim, flee_button_pressed, select_fire_mode_entry,
-        spawn_action_bar, sync_aim_button_active, sync_fire_mode_picker_caption,
-        sync_world_click_suppression, toggle_fire_mode_picker,
+        action_bar_button_intents, despawn_action_bar, flee_button_pressed, mode_button_pressed,
+        rebuild_mode_buttons, spawn_action_bar, sync_aim_button_active, sync_mode_buttons_active,
+        sync_stance_buttons_active,
     },
     states::BattleScapeState,
 };
@@ -86,43 +95,35 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                 Update,
                 sync_aim_button_active.run_if(resource_exists::<BattleInProgress>),
             )
-            // GTW-254: the fire-mode popup picker — opener-press toggle, entry-select,
-            // scrim-dismiss, the opener-caption sync (the active-mode display), and the
-            // cross-crate world-click suppression. All gated on the SAME live-battle
-            // witness so they are inert outside a live battle. The picker systems read
-            // their own disjoint markers (opener / entry / scrim), so they do not conflict
-            // with `action_bar_button_intents` (which reads only the cycle/level markers).
-            //
-            // Ordered `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3): the picker's
-            // entry / panel children are `Themed`, and `gdtf_ui::apply_theme` (change-driven)
-            // INSERTs their look the frame after they spawn — the SAME frame a press may
-            // CLOSE the picker. Running the despawners after `apply_theme` keeps its inserts
-            // ahead of the despawn in the command-apply order, so a close never races a
-            // theme-insert onto an about-to-die entity (the despawned-entity command error).
+            // GTW-267: the Stance 3-toggle active-mark sync, mirroring the selected
+            // ganger's `Stance` onto the three stance toggles (mutually exclusive). Same
+            // live-battle gate; VISUAL-ONLY (the press path is `action_bar_button_intents`).
             .add_systems(
                 Update,
-                (
-                    toggle_fire_mode_picker,
-                    select_fire_mode_entry,
-                    dismiss_fire_mode_picker_on_scrim,
-                    sync_fire_mode_picker_caption,
-                )
+                sync_stance_buttons_active.run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-265: the Mode 3-toggle sub-panel. `mode_button_pressed` sets
+            // `SelectedFireMode` directly to a pressed toggle's read-back spec;
+            // `sync_mode_buttons_active` marks the live mode `ActiveButton`. Both read their
+            // own disjoint mode markers, so they do not conflict with the stance/level
+            // `action_bar_button_intents`. Same live-battle gate.
+            .add_systems(
+                Update,
+                (mode_button_pressed, sync_mode_buttons_active)
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            // `rebuild_mode_buttons` despawns + respawns the Mode toggles on a selection
+            // change, ordered `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3): the
+            // spawned toggles are `Themed`, and `gdtf_ui::apply_theme` (change-driven)
+            // INSERTs their look the frame after they spawn — running the rebuild after
+            // `apply_theme` keeps its inserts ahead of the next rebuild's despawn in the
+            // command-apply order, so a re-selection never races a theme-insert onto an
+            // about-to-die toggle (the GTW-254 despawned-entity lesson).
+            .add_systems(
+                Update,
+                rebuild_mode_buttons
                     .after(UiSystems::ApplyTheme)
                     .run_if(resource_exists::<BattleInProgress>),
-            )
-            .add_systems(
-                Update,
-                sync_world_click_suppression
-                    .before(left_click_act)
-                    .before(right_click_turn_to_face)
-                    .run_if(resource_exists::<BattleInProgress>),
-            )
-            // The picker is spawned at runtime (not in `spawn_action_bar`), so a picker
-            // left open when the battle ends needs its own `OnExit` cleanup (the
-            // action-bar / status-panel battle-scoped cleanup precedent).
-            .add_systems(
-                OnExit(BattleScapeState::BattleRunning),
-                despawn_fire_mode_picker,
             );
     }
 }

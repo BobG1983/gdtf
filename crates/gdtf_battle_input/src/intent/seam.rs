@@ -22,11 +22,12 @@ use crate::{
 /// single [`dispatch_act_intents`] drain interprets them. The no-act variants
 /// ([`SelectionClear`](Self::SelectionClear) / [`LevelUp`](Self::LevelUp) /
 /// [`LevelDown`](Self::LevelDown)) are 222a's; the act-bearing variants
-/// ([`StanceCycle`](Self::StanceCycle) / [`AimToggle`](Self::AimToggle) /
-/// [`FacingCycle`](Self::FacingCycle)) + the [`Fire`](Self::Fire) variant are filled
-/// / added by 222b (GTW-227). (The fire-mode `FireModeCycle` blind-cycle variant was
-/// REMOVED in GTW-254 — the popup picker sets
-/// [`SelectedFireMode`](crate::SelectedFireMode) directly.)
+/// ([`StanceCycle`](Self::StanceCycle) / [`SetStance`](Self::SetStance) /
+/// [`AimToggle`](Self::AimToggle) / [`FacingCycle`](Self::FacingCycle)) + the
+/// [`Fire`](Self::Fire) variant are filled / added by 222b (GTW-227). (The fire-mode
+/// `FireModeCycle` blind-cycle variant was REMOVED in GTW-254; the GTW-265 action-bar
+/// then replaced the popup picker with a 3-toggle Mode sub-panel that sets
+/// [`SelectedFireMode`](crate::SelectedFireMode) directly — no intent variant.)
 ///
 /// Only [`PartialEq`] (no `Eq` / `Hash`): [`Fire`](Self::Fire) carries an owned
 /// [`FireRequested`] whose [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) has `f32`
@@ -45,8 +46,16 @@ pub enum ActIntent {
     /// Lower the presenter's [`ActiveLevel`] by one storey (floored at 0).
     LevelDown,
     /// Step the [`SelectedShooter`]'s stance through the authored cycle — drained to
-    /// [`SetStanceRequested`] (GTW-227).
+    /// [`SetStanceRequested`] (GTW-227). The KEYBOARD stance-cycle key still pushes this
+    /// (a blind step through the [`crate::cycle`] order); the GTW-267 action-bar replaced
+    /// its BLIND-cycle BUTTON with three direct-set toggles that push
+    /// [`SetStance`](Self::SetStance) instead.
     StanceCycle,
+    /// Set the [`SelectedShooter`]'s stance DIRECTLY to the carried [`StanceKind`] —
+    /// drained to [`SetStanceRequested`] for that exact posture (GTW-267). The action-bar
+    /// Stance 3-toggle sub-panel pushes this (Stand / Kneel / Prone each set their
+    /// posture directly, NOT a cycle step). With no selection it is a no-op in the drain.
+    SetStance(StanceKind),
     /// Toggle the [`SelectedShooter`]'s aim mode — drained to [`SetAimingRequested`]
     /// (GTW-227).
     AimToggle,
@@ -154,6 +163,8 @@ pub struct ActWriters<'w> {
 ///
 /// - [`ActIntent::StanceCycle`] emits [`SetStanceRequested`] for the
 ///   next-of-cycle [`StanceKind`] ([`cycle::next_stance`]).
+/// - [`ActIntent::SetStance`] emits [`SetStanceRequested`] for the CARRIED
+///   [`StanceKind`] directly (GTW-267 — the action-bar 3-toggle stance set).
 /// - [`ActIntent::AimToggle`] emits [`SetAimingRequested`] toggling the actor's
 ///   current [`Aiming`] flag.
 /// - [`ActIntent::FacingCycle`] emits [`SetFacingRequested`] for the next-of-cycle
@@ -206,6 +217,13 @@ pub fn dispatch_act_intents(
                 };
                 let next: StanceKind = cycle::next_stance(**stance);
                 acts.stance.write(SetStanceRequested::new(actor, next));
+            }
+            ActIntent::SetStance(kind) => {
+                // Direct set (GTW-267): emit the carried posture for the selection. No
+                // need to read the current stance — the action-bar toggle named the exact
+                // target posture. With no selection there is nothing to act on.
+                let Some(actor) = **selected else { continue };
+                acts.stance.write(SetStanceRequested::new(actor, kind));
             }
             ActIntent::AimToggle => {
                 let Some(actor) = **selected else { continue };

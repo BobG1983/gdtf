@@ -1,6 +1,8 @@
-//! GTW-228 (GTW-48 S9 / 222c): headless integration tests for the themed UI
-//! action-bar — the `gdtf_app`-side button surface over the SAME 222a act-intent seam
-//! the keyboard surface writes.
+//! GTW-228 / GTW-265 / GTW-267 (GTW-48 S9 / 222c): headless integration tests for the
+//! themed UI action-bar — the `gdtf_app`-side button surface over the SAME 222a
+//! act-intent seam the keyboard surface writes, plus the GTW-267 Stance and GTW-265 Mode
+//! 3-toggle sub-panels that REPLACED the blind stance cycle and the fire-mode popup
+//! picker.
 //!
 //! The bar lives in `gdtf_app`'s battlescape and is driven here through the REAL
 //! stack: a `GdtfTestAppBuilder` headless walk to `BattleScapeState::BattleRunning`
@@ -13,14 +15,15 @@
 //!
 //! - AC1 — the bar spawns N markered, interactive `Button`s in the live battle and is
 //!   despawned outside it.
-//! - AC3 — a stance / aim button press writes the SAME `*Requested` the equivalent
-//!   222a intent does, byte-for-byte (the `acts.rs` AC5 parity idiom); the level
-//!   buttons mutate `ActiveLevel` like the level intent.
-//! - GTW-254 — the fire-mode PICKER replaces the removed blind cycle: the opener
-//!   caption tracks `SelectedFireMode`; pressing the opener spawns a picker listing
-//!   exactly the selected weapon's offered modes; clicking an entry sets
-//!   `SelectedFireMode` to that read-back spec and closes; a scrim click dismisses with
-//!   no change.
+//! - AC3 — an aim button press writes the SAME `*Requested` the equivalent 222a intent
+//!   does, byte-for-byte (the `acts.rs` AC5 parity idiom); the level buttons mutate
+//!   `ActiveLevel` like the level intent.
+//! - GTW-267 — the Stance sub-panel: selecting a ganger marks its current stance toggle
+//!   `ActiveButton`; pressing Prone direct-sets stance Prone (a `SetStanceRequested`) and
+//!   the active mark moves; the three are mutually exclusive.
+//! - GTW-265 — the Mode sub-panel: a Single+Burst weapon spawns exactly two mode toggles
+//!   (no Full); selecting a ganger marks its active mode toggle `ActiveButton`; clicking
+//!   Burst sets `SelectedFireMode` to that weapon's burst spec and the active mark moves.
 //! - AC5 — the DEFERRED reload / end-turn buttons carry `DisabledButton` and emit NO
 //!   intent under a synthesized press.
 //! - AC6 — with NO `SelectedShooter`, an act-button press is a no-op (no message, no
@@ -31,8 +34,8 @@
 //! Every `app.world_mut()` mutation is in a TEST BODY — the accepted headless idiom
 //! (`bevy-traps.md` #7 carve-out (a)). No function here takes `&mut World`/`&World`.
 //! Reaching a live battle + driving the GUI itself is the post-gate QA carve-out
-//! (AC9, inEngineEvidence); these synthesized-`Interaction` parity tests are the
-//! strong evidence.
+//! (in-engine evidence); these synthesized-`Interaction` parity tests are the strong
+//! evidence.
 
 use bevy::{
     camera::visibility::RenderLayers,
@@ -42,13 +45,11 @@ use bevy::{
     ui::{Interaction, Node, widget::Button},
 };
 use gdtf_app::test_support::{
-    AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton,
-    FireModePickerButton, FireModePickerEntry, FireModePickerRoot, FireModePickerScrim, FleeButton,
-    LevelDownButton, LevelUpButton, ReloadButton, RunningState, StanceCycleButton,
+    AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton, FleeButton,
+    LevelDownButton, LevelUpButton, ModeBurstButton, ModeFullButton, ModeSingleButton,
+    ReloadButton, RunningState, StanceKneelingButton, StanceProneButton, StanceStandingButton,
 };
-use gdtf_battle_input::{
-    ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter, next_stance,
-};
+use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Direction, Facing, FireMode, FireModeSpec, Level, ModeConeMult,
@@ -58,7 +59,7 @@ use gdtf_battle_sim::{
     weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::{DisabledButton, theme::default_theme};
+use gdtf_ui::{ActiveButton, DisabledButton, theme::default_theme};
 
 /// A budget large enough to drive the deep walk into the battlescape (each leaf scene
 /// spends a couple of `FixedUpdate` ticks plus transition propagation), bounded so a
@@ -66,10 +67,11 @@ use gdtf_ui::{DisabledButton, theme::default_theme};
 /// `battle_running_driver.rs` budget).
 const BUDGET: u32 = 96;
 
-/// The number of control buttons the bar spawns (stance, aim, the fire-mode-picker
-/// opener, level-up, level-down). The two DEFERRED buttons (reload, end-turn) are
-/// counted separately where relevant.
-const EXISTING_ACT_BUTTONS: usize = 5;
+/// The number of STABLE control buttons the bar spawns at `OnEnter(BattleRunning)`: the
+/// three stance toggles (Stand / Kneel / Prone), the aim toggle, and the two level
+/// buttons. The Mode sub-panel's per-mode toggles are built on selection (none at spawn),
+/// and the two DEFERRED buttons (reload, end-turn) are counted separately where relevant.
+const STABLE_CONTROL_BUTTONS: usize = 6;
 
 // ---------------------------------------------------------------------------------
 // Harness — drive the real stack to BattleRunning, where the bar is live.
@@ -154,6 +156,17 @@ fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
     }
 }
 
+/// Counts the entities carrying marker `M`.
+fn count_with<M: Component>(app: &mut App) -> usize {
+    let mut q = app.world_mut().query_filtered::<Entity, With<M>>();
+    q.iter(app.world()).count()
+}
+
+/// Whether the entity carrying marker `M` (if exactly one) has `ActiveButton`.
+fn marker_is_active<M: Component>(app: &mut App) -> bool {
+    single_with::<M>(app).is_some_and(|e| app.world().get::<ActiveButton>(e).is_some())
+}
+
 /// Asserts exactly one button carrying marker `M` exists and returns it, so callers can
 /// `let Some(b) = require_button::<M>(..) else { return };` without a denied
 /// `assert!(false)` guard (the `assert!(cond); let else { return }` idiom).
@@ -176,7 +189,7 @@ fn press_button(app: &mut App, button: Entity) {
     }
 }
 
-/// One fire-mode spec of an explicit [`ModeKind`] — the kind is what the cycle
+/// One fire-mode spec of an explicit [`ModeKind`] — the kind is what a toggle / the cycle
 /// identifies a mode by (magnitudes arbitrary, not pinned tuning — the `acts.rs`
 /// precedent).
 const fn spec(kind: ModeKind, tu_percent: f32, shots: u16) -> FireModeSpec {
@@ -246,12 +259,12 @@ fn aims(app: &App) -> Vec<SetAimingRequested> {
         .unwrap_or_default()
 }
 
-/// Spawns a ganger carrying exactly the components the act systems read
+/// Spawns a ganger carrying exactly the components the act / panel systems read
 /// (`Stance`/`Facing`/`Aiming`/`FireMode`) and SELECTS it via the `SelectedShooter`
-/// resource — the selection the act drain reads. Returns its entity. (The act surface
-/// only reads `*SelectedShooter`, so setting the resource directly is the faithful,
-/// minimal selection for these button tests; the cursor-click selection path is covered
-/// in `gdtf_battle_input`'s `acts.rs`.)
+/// resource — the selection the act drain + the sub-panels read. Returns its entity. (The
+/// act surface only reads `*SelectedShooter`, so setting the resource directly is the
+/// faithful, minimal selection for these button tests; the cursor-click selection path is
+/// covered in `gdtf_battle_input`'s `acts.rs`.)
 fn arm_and_select(
     app: &mut App,
     selector: FireMode,
@@ -288,25 +301,27 @@ fn selected_mode(app: &App) -> Option<FireModeSpec> {
 // ---------------------------------------------------------------------------------
 
 /// AC1 — in the live battle the action-bar has spawned one interactive `Button` per
-/// EXISTING act (each carrying `Button` + `Interaction` + its action marker), and once
-/// the battle leaves `BattleRunning` the buttons are despawned.
+/// STABLE control (three stance toggles, aim, and the two level buttons), each carrying
+/// `Button` + `Interaction`, and once the battle leaves `BattleRunning` they are
+/// despawned.
 #[test]
 fn action_bar_spawns_in_battle_and_despawns_outside() {
     let mut app = battle_running_app();
 
-    // Each existing-act marker resolves to exactly one entity carrying Button +
+    // Each stable-control marker resolves to exactly one entity carrying Button +
     // Interaction (interactive).
     let buttons = [
-        require_button::<StanceCycleButton>(&mut app),
+        require_button::<StanceStandingButton>(&mut app),
+        require_button::<StanceKneelingButton>(&mut app),
+        require_button::<StanceProneButton>(&mut app),
         require_button::<AimToggleButton>(&mut app),
-        require_button::<FireModePickerButton>(&mut app),
         require_button::<LevelUpButton>(&mut app),
         require_button::<LevelDownButton>(&mut app),
     ];
     let present = buttons.iter().filter(|b| b.is_some()).count();
     assert_eq!(
-        present, EXISTING_ACT_BUTTONS,
-        "the bar spawns exactly one button per existing act",
+        present, STABLE_CONTROL_BUTTONS,
+        "the bar spawns exactly one button per stable control",
     );
     for found in buttons {
         let Some(button) = found else { return };
@@ -336,7 +351,7 @@ fn action_bar_spawns_in_battle_and_despawns_outside() {
          within {BUDGET} updates",
     );
     assert!(
-        single_with::<StanceCycleButton>(&mut app).is_none(),
+        single_with::<StanceStandingButton>(&mut app).is_none(),
         "the action bar must be despawned once the battle leaves BattleRunning",
     );
 }
@@ -345,62 +360,6 @@ fn action_bar_spawns_in_battle_and_despawns_outside() {
 // AC3 — a button press writes the SAME *Requested the equivalent intent does,
 // byte-for-byte (over the REAL 222a drain).
 // ---------------------------------------------------------------------------------
-
-/// AC3 — pressing the stance button emits one `SetStanceRequested` for `*SelectedShooter`
-/// with the next-of-cycle stance, byte-for-byte EQUAL to the message the direct
-/// `StanceCycle` intent (the key surrogate) produces over the SAME seam.
-#[test]
-fn stance_button_emits_next_of_cycle_and_matches_direct_intent() {
-    // Via the BUTTON press.
-    let mut app = battle_running_app();
-    add_probes(&mut app);
-    let ganger = arm_and_select(
-        &mut app,
-        sbf_selector(),
-        StanceKind::Standing,
-        Direction::North,
-    );
-    let Some(button) = require_button::<StanceCycleButton>(&mut app) else {
-        return;
-    };
-    press_button(&mut app, button);
-    app.update();
-
-    let via_button = stances(&app);
-    assert_eq!(
-        via_button.len(),
-        1,
-        "one SetStanceRequested via the stance button"
-    );
-    assert_eq!(via_button[0].actor, ganger, "actor = *SelectedShooter");
-    assert_eq!(
-        via_button[0].stance,
-        next_stance(StanceKind::Standing),
-        "the next-of-cycle stance",
-    );
-
-    // Via the direct intent (the key surrogate) over the SAME seam.
-    let mut app2 = battle_running_app();
-    add_probes(&mut app2);
-    let _ganger2 = arm_and_select(
-        &mut app2,
-        sbf_selector(),
-        StanceKind::Standing,
-        Direction::North,
-    );
-    app2.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::StanceCycle);
-    app2.update();
-    let via_intent = stances(&app2);
-    assert_eq!(via_intent.len(), 1, "one SetStanceRequested via the intent");
-
-    assert_eq!(
-        via_button[0], via_intent[0],
-        "the button and the intent (key) surface must produce byte-for-byte equal \
-         SetStanceRequested",
-    );
-}
 
 /// AC3 — pressing the aim button emits one `SetAimingRequested` toggling the actor's aim,
 /// byte-for-byte EQUAL to the direct `AimToggle` intent's message.
@@ -480,207 +439,246 @@ fn level_buttons_step_active_level_like_the_intent() {
     );
 }
 
-// ---------------------------------------------------------------------------------
-// GTW-254 picker helpers — open the picker, read its entries, press an entry / scrim.
-// ---------------------------------------------------------------------------------
+// =================================================================================
+// GTW-267 — the Stance 3-toggle sub-panel (replaces the blind cycle).
+// =================================================================================
 
-/// Whether a fire-mode picker is currently OPEN (a `FireModePickerRoot` exists).
-fn picker_is_open(app: &mut App) -> bool {
-    single_with::<FireModePickerRoot>(app).is_some()
-}
-
-/// The picker's entry `(entity, mode)` pairs — one per offered mode, read off the spawned
-/// `FireModePickerEntry` markers (which carry the read-back `FireModeSpec`).
-fn picker_entries(app: &mut App) -> Vec<(Entity, FireModeSpec)> {
-    let mut q = app.world_mut().query::<(Entity, &FireModePickerEntry)>();
-    q.iter(app.world()).map(|(e, entry)| (e, entry.0)).collect()
-}
-
-/// Reads the opener (`FireModePickerButton`) caption string — its single `Text` child.
-fn opener_caption(app: &mut App) -> Option<String> {
-    let opener = single_with::<FireModePickerButton>(app)?;
-    let child = app
-        .world()
-        .get::<Children>(opener)
-        .and_then(|c| c.iter().next())?;
-    app.world()
-        .get::<Text>(child)
-        .map(|t| t.as_str().to_owned())
-}
-
-/// Arms+selects a ganger with `selector`, settles the default-on-select, then presses the
-/// opener once and updates — leaving the picker OPEN (when armed). Returns the app.
-fn open_picker_with(selector: FireMode) -> App {
+/// GTW-267 — selecting an armed ganger marks ITS current stance toggle `ActiveButton`
+/// and ONLY that one (mutually exclusive); a fresh selection in another stance moves the
+/// mark. Discriminating: a panel with no sync (the old blind cycle) would mark none.
+#[test]
+fn stance_panel_marks_current_stance_active() {
     let mut app = battle_running_app();
-    arm_and_select(&mut app, selector, StanceKind::Standing, Direction::North);
-    // Settle the selection default + the caption sync (so the opener is enabled).
+    // Select a KNEELING ganger.
+    arm_and_select(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Crouching,
+        Direction::North,
+    );
     app.update();
-    let Some(opener) = single_with::<FireModePickerButton>(&mut app) else {
-        return app;
+
+    assert!(
+        marker_is_active::<StanceKneelingButton>(&mut app),
+        "the selected ganger's current stance (kneel) toggle must be ActiveButton",
+    );
+    assert!(
+        !marker_is_active::<StanceStandingButton>(&mut app)
+            && !marker_is_active::<StanceProneButton>(&mut app),
+        "the other two stance toggles must NOT be active (mutually exclusive)",
+    );
+
+    // Selecting a PRONE ganger moves the active mark to Prone.
+    arm_and_select(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Prone,
+        Direction::North,
+    );
+    app.update();
+    assert!(
+        marker_is_active::<StanceProneButton>(&mut app),
+        "selecting a prone ganger must move the active mark to the Prone toggle",
+    );
+    assert!(
+        !marker_is_active::<StanceStandingButton>(&mut app)
+            && !marker_is_active::<StanceKneelingButton>(&mut app),
+        "the active stance mark must be exclusive after the re-selection",
+    );
+}
+
+/// GTW-267 — pressing the Prone toggle DIRECT-sets the actor's stance to Prone (one
+/// `SetStanceRequested` for `*SelectedShooter` with `StanceKind::Prone`, byte-for-byte
+/// EQUAL to the direct `SetStance(Prone)` intent), regardless of the current stance — NOT
+/// a blind cycle step.
+#[test]
+fn prone_toggle_sets_stance_prone_directly() {
+    let mut app = battle_running_app();
+    add_probes(&mut app);
+    let ganger = arm_and_select(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    let Some(prone) = require_button::<StanceProneButton>(&mut app) else {
+        return;
     };
-    press_button(&mut app, opener);
+    press_button(&mut app, prone);
     app.update();
-    app
+
+    let via_button = stances(&app);
+    assert_eq!(
+        via_button.len(),
+        1,
+        "one SetStanceRequested via the Prone toggle",
+    );
+    assert_eq!(via_button[0].actor, ganger, "actor = *SelectedShooter");
+    assert_eq!(
+        via_button[0].stance,
+        StanceKind::Prone,
+        "the Prone toggle DIRECT-sets the prone posture (not a cycle step)",
+    );
+
+    // Byte-for-byte equal to the direct SetStance(Prone) intent over the SAME seam.
+    let mut app2 = battle_running_app();
+    add_probes(&mut app2);
+    let _ganger2 = arm_and_select(
+        &mut app2,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    app2.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::SetStance(StanceKind::Prone));
+    app2.update();
+    let via_intent = stances(&app2);
+    assert_eq!(via_intent.len(), 1, "one SetStanceRequested via the intent");
+    assert_eq!(
+        via_button[0], via_intent[0],
+        "the Prone toggle and the direct SetStance intent must produce byte-for-byte equal \
+         SetStanceRequested",
+    );
 }
 
-// ---------------------------------------------------------------------------------
-// AC2 — the opener caption tracks SelectedFireMode (the active-mode display, D2).
-// ---------------------------------------------------------------------------------
+// =================================================================================
+// GTW-265 — the Mode 3-toggle sub-panel (replaces the popup picker).
+// =================================================================================
 
-/// AC2 — on selecting an armed ganger the `FireModePickerButton` caption reflects the
-/// weapon's `single()` mode label; after the picker sets a different mode the caption
-/// updates. Discriminating: a caption wired to a fixed string (not `SelectedFireMode`)
-/// would not change here.
+/// GTW-265 — a Single+Burst weapon spawns exactly TWO mode toggles (a Single + a Burst,
+/// NO Full); the active mark sits on the live mode (`single()` default on selection).
 #[test]
-fn opener_caption_tracks_selected_fire_mode() {
+fn mode_panel_spawns_only_offered_modes_and_marks_active() {
     let single = spec(ModeKind::Single, 0.2, 1);
     let burst = spec(ModeKind::Burst, 0.4, 3);
-    let sbf = FireMode::new(vec![single, burst]);
+    let mut app = battle_running_app();
+    arm_and_select(
+        &mut app,
+        FireMode::new(vec![single, burst]),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    // Settle the selection default + the rebuild (.after ApplyTheme) + the active sync.
+    app.update();
+    app.update();
+
+    assert_eq!(
+        count_with::<ModeSingleButton>(&mut app),
+        1,
+        "a Single+Burst weapon spawns exactly one Single mode toggle",
+    );
+    assert_eq!(
+        count_with::<ModeBurstButton>(&mut app),
+        1,
+        "a Single+Burst weapon spawns exactly one Burst mode toggle",
+    );
+    assert_eq!(
+        count_with::<ModeFullButton>(&mut app),
+        0,
+        "a Single+Burst weapon spawns NO Full mode toggle (the mode it does not offer)",
+    );
+
+    // The default-on-select mode is single(), so the Single toggle is the active one.
+    assert!(
+        marker_is_active::<ModeSingleButton>(&mut app),
+        "the active mode toggle must be the live SelectedFireMode (single() default)",
+    );
+    assert!(
+        !marker_is_active::<ModeBurstButton>(&mut app),
+        "the non-active mode toggle must NOT be marked active",
+    );
+}
+
+/// GTW-265 — clicking the Burst toggle sets `SelectedFireMode` to that weapon's burst
+/// spec (read-back identity, never fabricated) and the active mark moves Single -> Burst.
+#[test]
+fn clicking_burst_toggle_sets_mode_and_moves_active_mark() {
+    let single = spec(ModeKind::Single, 0.2, 1);
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+    let full = spec(ModeKind::Full, 0.7, 6);
+    let mut app = battle_running_app();
+    arm_and_select(
+        &mut app,
+        FireMode::new(vec![single, burst, full]),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    // Settle default-on-select + the toggle rebuild + the active sync.
+    app.update();
+    app.update();
+
+    // Pre-condition: Single is the active mode by default.
+    assert_eq!(
+        selected_mode(&app),
+        Some(single),
+        "the default-on-select mode must be single()",
+    );
+
+    let Some(burst_toggle) = require_button::<ModeBurstButton>(&mut app) else {
+        return;
+    };
+    press_button(&mut app, burst_toggle);
+    app.update();
+
+    assert_eq!(
+        selected_mode(&app),
+        Some(burst),
+        "clicking the Burst toggle sets SelectedFireMode to the weapon's burst spec \
+         (read-back, not fabricated)",
+    );
+    assert!(
+        marker_is_active::<ModeBurstButton>(&mut app),
+        "the active mark must move to the Burst toggle",
+    );
+    assert!(
+        !marker_is_active::<ModeSingleButton>(&mut app),
+        "the Single toggle must no longer be active after Burst is chosen",
+    );
+}
+
+/// GTW-265 — the mode toggles are (re)built when the selected weapon changes: a
+/// 3-mode weapon shows three toggles, then re-selecting a 1-mode weapon shows exactly one.
+#[test]
+fn mode_toggles_rebuild_on_selection_change() {
+    let single = spec(ModeKind::Single, 0.2, 1);
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+    let full = spec(ModeKind::Full, 0.7, 6);
 
     let mut app = battle_running_app();
-    arm_and_select(&mut app, sbf, StanceKind::Standing, Direction::North);
-    // Settle the default-on-select (single) + the caption sync.
+    arm_and_select(
+        &mut app,
+        FireMode::new(vec![single, burst, full]),
+        StanceKind::Standing,
+        Direction::North,
+    );
     app.update();
-    let initial = opener_caption(&mut app).unwrap_or_default();
-    assert!(
-        initial.contains(&single.kind.to_string()),
-        "the opener caption must show the default single() mode label: {initial}",
-    );
-
-    // The picker sets burst directly; the caption must then show burst.
-    app.world_mut()
-        .insert_resource(SelectedFireMode::new(burst));
     app.update();
-    let after = opener_caption(&mut app).unwrap_or_default();
-    assert!(
-        after.contains(&burst.kind.to_string()),
-        "the opener caption must update to the newly-set mode label: {after}",
-    );
-    assert_ne!(
-        initial, after,
-        "setting a different mode must change the caption"
-    );
-}
+    let three = count_with::<ModeSingleButton>(&mut app)
+        + count_with::<ModeBurstButton>(&mut app)
+        + count_with::<ModeFullButton>(&mut app);
+    assert_eq!(three, 3, "a 3-mode weapon shows three mode toggles");
 
-// ---------------------------------------------------------------------------------
-// AC3 — the picker opens, lists exactly the offered modes, keyed to the weapon.
-// ---------------------------------------------------------------------------------
-
-/// AC3 — pressing the opener spawns a `FireModePickerRoot` with one entry per the
-/// selected weapon's offered mode (count + kinds match the weapon's `FireMode` Vec). A
-/// 3-mode weapon shows three entries; a 1-mode weapon shows one.
-#[test]
-fn picker_opens_and_lists_exactly_the_offered_modes() {
-    let single = spec(ModeKind::Single, 0.2, 1);
-    let burst = spec(ModeKind::Burst, 0.4, 3);
-    let full = spec(ModeKind::Full, 0.7, 6);
-
-    // 3-mode weapon -> three entries with matching kinds.
-    let mut app = open_picker_with(FireMode::new(vec![single, burst, full]));
-    assert!(
-        picker_is_open(&mut app),
-        "the opener press must open the picker"
+    // Re-select a 1-mode (Single-only) weapon: the toggles rebuild to exactly one.
+    arm_and_select(
+        &mut app,
+        FireMode::new(vec![single]),
+        StanceKind::Standing,
+        Direction::North,
     );
-    let entries = picker_entries(&mut app);
+    app.update();
+    app.update();
+    let one = count_with::<ModeSingleButton>(&mut app)
+        + count_with::<ModeBurstButton>(&mut app)
+        + count_with::<ModeFullButton>(&mut app);
     assert_eq!(
-        entries.len(),
-        3,
-        "a 3-mode weapon lists exactly three entries"
-    );
-    let kinds: Vec<ModeKind> = entries.iter().map(|(_, m)| m.kind).collect();
-    assert!(
-        kinds.contains(&ModeKind::Single)
-            && kinds.contains(&ModeKind::Burst)
-            && kinds.contains(&ModeKind::Full),
-        "the entries' kinds must match the weapon's offered modes: {kinds:?}",
-    );
-
-    // 1-mode weapon -> exactly one entry.
-    let mut app = open_picker_with(FireMode::new(vec![single]));
-    assert!(
-        picker_is_open(&mut app),
-        "the opener press must open the picker"
+        one, 1,
+        "re-selecting a 1-mode weapon rebuilds to exactly one toggle"
     );
     assert_eq!(
-        picker_entries(&mut app).len(),
-        1,
-        "a one-mode weapon lists exactly one entry",
-    );
-}
-
-// ---------------------------------------------------------------------------------
-// AC4 — selecting an entry sets SelectedFireMode + closes the picker.
-// ---------------------------------------------------------------------------------
-
-/// AC4 — clicking the `Burst` entry (real `Interaction::Pressed`) sets `SelectedFireMode`
-/// to that weapon's burst spec (read-back identity, not a fabricated value) and despawns
-/// the picker.
-#[test]
-fn selecting_an_entry_sets_fire_mode_and_closes() {
-    let single = spec(ModeKind::Single, 0.2, 1);
-    let burst = spec(ModeKind::Burst, 0.4, 3);
-    let full = spec(ModeKind::Full, 0.7, 6);
-    let mut app = open_picker_with(FireMode::new(vec![single, burst, full]));
-
-    // Find the burst entry and press it via the real Interaction path.
-    let burst_entry = picker_entries(&mut app)
-        .into_iter()
-        .find(|(_, m)| m.kind == ModeKind::Burst)
-        .map(|(e, _)| e);
-    assert!(
-        burst_entry.is_some(),
-        "a burst entry must exist in the picker"
-    );
-    let Some(entry) = burst_entry else { return };
-    press_button(&mut app, entry);
-    app.update();
-
-    assert_eq!(
-        selected_mode(&app),
-        Some(burst),
-        "clicking the burst entry must set SelectedFireMode to the weapon's burst spec",
-    );
-    assert!(
-        !picker_is_open(&mut app),
-        "selecting a mode must close the picker",
-    );
-}
-
-// ---------------------------------------------------------------------------------
-// AC5 — clicking the scrim dismisses the picker WITHOUT changing the mode.
-// ---------------------------------------------------------------------------------
-
-/// AC5 — with a mode selected, opening the picker and pressing the scrim despawns the
-/// picker and leaves `SelectedFireMode` UNCHANGED (no fabricated change on dismiss).
-#[test]
-fn scrim_click_dismisses_without_change() {
-    let single = spec(ModeKind::Single, 0.2, 1);
-    let burst = spec(ModeKind::Burst, 0.4, 3);
-    let mut app = open_picker_with(FireMode::new(vec![single, burst]));
-
-    // Pin a known selected mode (burst) before dismissing.
-    app.world_mut()
-        .insert_resource(SelectedFireMode::new(burst));
-    app.update();
-    assert!(
-        picker_is_open(&mut app),
-        "the picker is open before the scrim click"
-    );
-
-    let scrim = single_with::<FireModePickerScrim>(&mut app);
-    assert!(scrim.is_some(), "the picker must have a scrim");
-    let Some(scrim) = scrim else { return };
-    press_button(&mut app, scrim);
-    app.update();
-
-    assert!(
-        !picker_is_open(&mut app),
-        "a scrim click must dismiss the picker",
-    );
-    assert_eq!(
-        selected_mode(&app),
-        Some(burst),
-        "a scrim dismiss must leave SelectedFireMode unchanged",
+        count_with::<ModeBurstButton>(&mut app),
+        0,
+        "the stale Burst toggle from the previous weapon must be gone",
     );
 }
 
@@ -742,9 +740,11 @@ fn no_selection_makes_act_buttons_a_no_op() {
     add_probes(&mut app);
     app.world_mut().insert_resource(SelectedShooter::cleared());
 
-    // Press the stance + aim buttons (the *Requested-emitting acts) with no selection.
+    // Press the stance toggles + aim button (the *Requested-emitting acts) with no
+    // selection.
     let act_buttons = [
-        single_with::<StanceCycleButton>(&mut app),
+        single_with::<StanceStandingButton>(&mut app),
+        single_with::<StanceProneButton>(&mut app),
         single_with::<AimToggleButton>(&mut app),
     ];
     for button in act_buttons.into_iter().flatten() {
@@ -780,9 +780,8 @@ fn buttons_are_ui_nodes_not_world_render_layer_sprites() {
     let world_layer = RenderLayers::layer(WORLD_RENDER_LAYER);
 
     let buttons = [
-        require_button::<StanceCycleButton>(&mut app),
+        require_button::<StanceStandingButton>(&mut app),
         require_button::<AimToggleButton>(&mut app),
-        require_button::<FireModePickerButton>(&mut app),
         require_button::<LevelUpButton>(&mut app),
         require_button::<LevelDownButton>(&mut app),
     ];
@@ -964,15 +963,12 @@ fn flee_button_despawns_on_exit_battle_running() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC5 — regression: the deferred buttons stay disabled, flee stays enabled, and the
-// sim-act buttons are unchanged. The `deferred_buttons_are_disabled_and_emit_nothing`
-// test above covers the deferred/sim-act contract; this pins the enabled/disabled split
-// now that FleeButton has been added (it did not perturb the bar contract).
+// AC5 — regression: the deferred buttons stay disabled, flee stays enabled.
 // ---------------------------------------------------------------------------------
 
 /// AC5 — adding the flee button did NOT re-enable the deferred buttons: `ReloadButton` and
-/// `EndTurnButton` still carry `DisabledButton`, while the new `FleeButton` is ENABLED
-/// (carries NO `DisabledButton`). The full deferred-emit-nothing + sim-act regression is
+/// `EndTurnButton` still carry `DisabledButton`, while the `FleeButton` is ENABLED
+/// (carries NO `DisabledButton`). The full deferred-emit-nothing regression is
 /// `deferred_buttons_are_disabled_and_emit_nothing`.
 #[test]
 fn deferred_buttons_stay_disabled_after_flee_added() {

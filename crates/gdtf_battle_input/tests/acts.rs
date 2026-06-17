@@ -591,9 +591,10 @@ fn drive_one_act(drive: Drive) -> (App, Entity) {
     (app, ganger)
 }
 
-/// AC5 — the stance key emits one `SetStanceRequested` for `*SelectedShooter` with the
-/// next-of-cycle stance, byte-for-byte EQUAL to the message the direct `StanceCycle`
-/// intent (the 222c-button surrogate) produces over the SAME seam.
+/// AC5 — the stance-cycle KEY emits one `SetStanceRequested` for `*SelectedShooter` with
+/// the next-of-cycle stance, byte-for-byte EQUAL to the message the direct `StanceCycle`
+/// intent produces over the SAME seam. (The keyboard keeps the blind cycle; the GTW-267
+/// action-bar replaced its BLIND-cycle button with direct-set `SetStance` toggles.)
 #[test]
 fn stance_key_emits_next_of_cycle_and_matches_direct_intent() {
     let key = test_keybinds().stance_cycle();

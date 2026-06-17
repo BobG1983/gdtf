@@ -108,11 +108,6 @@ pub fn gamepad_click_act(
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
 ) {
-    // A `gdtf_app` modal (the GTW-254 picker) is capturing the pointer (clause 6b) — the South
-    // press belongs to the modal, not the world.
-    if *reads.suppressed() {
-        return;
-    }
     let Some(gamepad) = gamepads.iter().next() else {
         return;
     };
@@ -148,10 +143,6 @@ pub fn gamepad_turn(
     positions: Query<&Position>,
     mut pending: ResMut<PendingActIntent>,
 ) {
-    // A `gdtf_app` modal (the GTW-254 picker) is capturing the pointer (clause 6b).
-    if **reads.suppressed {
-        return;
-    }
     let Some(gamepad) = gamepads.iter().next() else {
         return;
     };

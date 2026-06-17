@@ -1,23 +1,7 @@
-//! Selection state (GTW-225 / GTW-227 / GTW-254): the [`SelectedShooter`] resource, the
-//! [`WorldClickSuppressed`] click-through guard, and the [`SelectionHighlight`] sprite marker.
+//! Selection state (GTW-225 / GTW-227): the [`SelectedShooter`] resource and the
+//! [`SelectionHighlight`] sprite marker.
 
 use bevy::prelude::*;
-
-/// Whether a `gdtf_app`-owned modal (the GTW-254 fire-mode popup picker) is currently
-/// capturing the pointer, so the WORLD click surfaces must NOT also act on this press.
-///
-/// A named bool newtype (no-bare-types: a suppression flag is a domain value; [`Resource`] is
-/// the framework carve-out) [`Deref`]ing to its inner `bool`. The INPUT-owned half of the
-/// cross-crate click-through seam (GTW-254 clause 6b): the world click decision READS it and
-/// is inert while it is `true`, so a click on a picker button (or its scrim) does not ALSO
-/// move/fire the ganger behind the modal. SET by `gdtf_app` while the picker is open and
-/// CLEARED when it closes — `gdtf_app` depends on `gdtf_battle_input`, so the flag is OWNED
-/// here and only written across the legal `gdtf_app -> gdtf_battle_input` edge (never a reverse
-/// edge — the ADR-0001 / GTW-251 constraint). `init_resource`-d by
-/// [`GdtfBattleInputPlugin`](crate::GdtfBattleInputPlugin) to the not-suppressed default
-/// (`false`).
-#[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct WorldClickSuppressed(pub bool);
 
 /// The currently SELECTED shooter — the ganger a left-click picked, or `None`.
 ///

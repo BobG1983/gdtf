@@ -57,7 +57,7 @@ pub use picking::{HoveredCell, emit_highlight_request, pick_hovered_cell, world_
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
 pub use selection::{
     LeftClickOutcome, LeftClickReads, SelectedShooter, SelectionHighlight, TurnReads,
-    WorldClickSuppressed, apply_left_click, auto_select_first_player_ganger, decide_left_click,
-    decide_turn, left_click_act, right_click_turn_to_face, update_selection_highlight,
+    apply_left_click, auto_select_first_player_ganger, decide_left_click, decide_turn,
+    left_click_act, right_click_turn_to_face, update_selection_highlight,
 };
 pub use sets::InputSystems;

@@ -26,8 +26,8 @@ use crate::{
     keyboard::{level_keys, posture_keys, select_clear_key},
     picking::{HoveredCell, emit_highlight_request, pick_hovered_cell},
     selection::{
-        SelectedShooter, WorldClickSuppressed, auto_select_first_player_ganger, left_click_act,
-        right_click_turn_to_face, update_selection_highlight,
+        SelectedShooter, auto_select_first_player_ganger, left_click_act, right_click_turn_to_face,
+        update_selection_highlight,
     },
 };
 
@@ -93,11 +93,6 @@ impl Plugin for GdtfBattleInputPlugin {
             .init_resource::<SelectedShooter>()
             .init_resource::<SelectedFireMode>()
             .init_resource::<PendingActIntent>()
-            // GTW-254 — the cross-crate click-through guard (`false` by default). `gdtf_app`
-            // sets it `true` while the fire-mode popup picker is open, so a click on the
-            // picker / its scrim does not also act on the world cell behind the modal
-            // (clause 6b). Owned here so the dependency edge stays `gdtf_app -> input`.
-            .init_resource::<WorldClickSuppressed>()
             // GTW-259 — the gamepad software cursor + the last-moved-wins pointer arbiter.
             // `GamepadCursor` inits to its window-centre default; `ActivePointer` to `Mouse`.
             .init_resource::<GamepadCursor>()

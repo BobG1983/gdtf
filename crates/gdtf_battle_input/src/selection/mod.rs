@@ -19,9 +19,11 @@
 //! mouse ([`left_click_act`] / [`right_click_turn_to_face`]) and the gamepad
 //! ([`gamepad_click_act`](crate::gamepad::gamepad_click_act) /
 //! [`gamepad_turn`](crate::gamepad::gamepad_turn)) both call — ONE precedence implementation,
-//! two devices. Both click surfaces read [`Res<PlayerFaction>`](gdtf_battle_sim::PlayerFaction)
-//! and are inert while a `gdtf_app` modal captures the pointer ([`WorldClickSuppressed`],
-//! GTW-254 clause 6b).
+//! two devices. Both click surfaces read [`Res<PlayerFaction>`](gdtf_battle_sim::PlayerFaction).
+//! (The GTW-254 `WorldClickSuppressed` modal click-through guard was REMOVED in GTW-265 once
+//! the fire-mode popup picker — the only modal — was replaced by an always-visible 3-toggle
+//! sub-panel; the GTW-262 pointer-over-UI camera gate now subsumes "don't world-click through a
+//! panel".)
 
 mod auto_select;
 mod decision;
@@ -34,5 +36,5 @@ pub use decision::{
     LeftClickOutcome, LeftClickReads, TurnReads, apply_left_click, decide_left_click, decide_turn,
 };
 pub use highlight::update_selection_highlight;
-pub use resources::{SelectedShooter, SelectionHighlight, WorldClickSuppressed};
+pub use resources::{SelectedShooter, SelectionHighlight};
 pub use systems::{left_click_act, right_click_turn_to_face};

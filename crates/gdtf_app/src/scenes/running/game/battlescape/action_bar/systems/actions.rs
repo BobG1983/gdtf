@@ -40,10 +40,12 @@
 
 use bevy::{prelude::*, ui::Interaction};
 use gdtf_battle_input::{ActIntent, PendingActIntent};
+use gdtf_battle_sim::StanceKind;
 use gdtf_ui::DisabledButton;
 
 use crate::scenes::running::game::battlescape::action_bar::components::{
-    AimToggleButton, LevelDownButton, LevelUpButton, StanceCycleButton,
+    AimToggleButton, LevelDownButton, LevelUpButton, StanceKneelingButton, StanceProneButton,
+    StanceStandingButton,
 };
 
 /// Query filter selecting the ENABLED button carrying marker `M` whose
@@ -80,34 +82,47 @@ pub(in crate::scenes::running::game::battlescape::action_bar) const fn is_press(
 ///
 /// For each enabled act button whose [`Interaction`] changed to
 /// [`Pressed`](Interaction::Pressed) this frame, [`push`](PendingActIntent::push)es the
-/// SAME [`ActIntent`] the equivalent KEY pushes:
+/// matching [`ActIntent`]:
 ///
-/// - [`StanceCycleButton`] → [`ActIntent::StanceCycle`]
+/// - [`StanceStandingButton`] → [`ActIntent::SetStance`]`(`[`StanceKind::Standing`]`)`
+/// - [`StanceKneelingButton`] → [`ActIntent::SetStance`]`(`[`StanceKind::Crouching`]`)`
+/// - [`StanceProneButton`] → [`ActIntent::SetStance`]`(`[`StanceKind::Prone`]`)`
 /// - [`AimToggleButton`] → [`ActIntent::AimToggle`]
 /// - [`LevelUpButton`] → [`ActIntent::LevelUp`]
 /// - [`LevelDownButton`] → [`ActIntent::LevelDown`]
 ///
-/// The fire-mode-PICKER opener is NOT handled here (GTW-254) — it opens the popup picker
-/// modal via the dedicated `fire_mode_picker` systems, NOT the intent seam (the picker
-/// sets the fire mode directly). The four per-marker queries are disjoint (each filtered
-/// to one role marker and `Without<DisabledButton>`), so they never conflict; the
-/// DEFERRED reload / end-turn buttons carry [`DisabledButton`] and so match NONE of these
-/// queries — they push no intent (AC5). The buttons write NO `*Requested` directly — the
-/// ONE [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) drain interprets
-/// each pushed intent (against the `SelectedShooter`), exactly as for a key press, so a
-/// press with no selection is a no-op in the drain (AC6).
+/// The three STANCE toggles push a DIRECT [`ActIntent::SetStance`] for their named
+/// posture (GTW-267 — replacing the blind `StanceCycle` BUTTON; the keyboard
+/// stance-cycle key still pushes the cycling [`ActIntent::StanceCycle`]). The MODE
+/// toggles are NOT handled here (GTW-265) — they set
+/// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly via the dedicated
+/// `mode_panel` systems, NOT the intent seam. The per-marker queries are disjoint (each
+/// filtered to one role marker and `Without<DisabledButton>`), so they never conflict;
+/// the DEFERRED reload / end-turn buttons carry [`DisabledButton`] and so match NONE of
+/// these queries — they push no intent (AC5). The buttons write NO `*Requested` directly
+/// — the ONE [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) drain
+/// interprets each pushed intent (against the `SelectedShooter`), exactly as for a key
+/// press, so a press with no selection is a no-op in the drain (AC6).
 ///
-/// Param-only (`bevy-traps.md` #7): four read-only `Query<&Interaction, …>`s + the
+/// Param-only (`bevy-traps.md` #7): six read-only `Query<&Interaction, …>`s + the
 /// `ResMut<PendingActIntent>` write — no `&mut World`.
 pub(in crate::scenes::running::game::battlescape) fn action_bar_button_intents(
     mut pending: ResMut<PendingActIntent>,
-    stance: Query<&Interaction, PressedButton<StanceCycleButton>>,
+    stand: Query<&Interaction, PressedButton<StanceStandingButton>>,
+    kneel: Query<&Interaction, PressedButton<StanceKneelingButton>>,
+    prone: Query<&Interaction, PressedButton<StanceProneButton>>,
     aim: Query<&Interaction, PressedButton<AimToggleButton>>,
     level_up: Query<&Interaction, PressedButton<LevelUpButton>>,
     level_down: Query<&Interaction, PressedButton<LevelDownButton>>,
 ) {
-    if stance.iter().copied().any(is_press) {
-        pending.push(ActIntent::StanceCycle);
+    if stand.iter().copied().any(is_press) {
+        pending.push(ActIntent::SetStance(StanceKind::Standing));
+    }
+    if kneel.iter().copied().any(is_press) {
+        pending.push(ActIntent::SetStance(StanceKind::Crouching));
+    }
+    if prone.iter().copied().any(is_press) {
+        pending.push(ActIntent::SetStance(StanceKind::Prone));
     }
     if aim.iter().copied().any(is_press) {
         pending.push(ActIntent::AimToggle);

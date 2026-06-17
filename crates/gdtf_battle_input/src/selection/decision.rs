@@ -12,14 +12,14 @@ use gdtf_battle_sim::{
 use crate::{
     ActIntent, HoveredCell, PendingActIntent, SelectedFireMode,
     fire_surface::{ShooterFireData, try_fire_request},
-    selection::resources::{SelectedShooter, WorldClickSuppressed, set_selection},
+    selection::resources::{SelectedShooter, set_selection},
 };
 
 /// The read-only resources [`decide_left_click`] consults, grouped into ONE [`SystemParam`]
 /// so a consuming system's parameter list stays under clippy's argument-count gate (the sim's
 /// `BattleGridsParam` / the seam's `ActWriters` precedent).
 ///
-/// Grouping the seven cohesive `Res<…>` reads into one param keeps
+/// Grouping the six cohesive `Res<…>` reads into one param keeps
 /// [`left_click_act`](crate::left_click_act) at five parameters. A transparent system-param
 /// bundle of framework resources + landed newtypes — not itself a wrapped domain scalar.
 #[derive(bevy::ecs::system::SystemParam)]
@@ -36,23 +36,6 @@ pub struct LeftClickReads<'w> {
     tuning:           Res<'w, CombatTuning>,
     /// The player's own faction — the friend/foe gate for every branch.
     player:           Res<'w, PlayerFaction>,
-    /// Whether a `gdtf_app` modal (the GTW-254 picker) is capturing the pointer — when `true`
-    /// the whole decision is inert (the click belongs to the modal, not the world).
-    suppressed:       Res<'w, WorldClickSuppressed>,
-}
-
-impl LeftClickReads<'_> {
-    /// Whether a `gdtf_app` modal is currently capturing the pointer (GTW-254 clause 6b).
-    ///
-    /// The press surface that consumes a [`LeftClickReads`] bundle but is NOT
-    /// [`left_click_act`](crate::left_click_act) — the gamepad's
-    /// [`gamepad_click_act`](crate::gamepad::gamepad_click_act) — reads the suppression flag
-    /// through this accessor (the bundle's fields are private), and is inert while it is
-    /// `true`. Returns by value (a one-byte `Copy` newtype).
-    #[must_use]
-    pub fn suppressed(&self) -> WorldClickSuppressed {
-        *self.suppressed
-    }
 }
 
 /// The single resolved outcome of one left-click edge — the ONE source of truth the mouse
@@ -187,22 +170,19 @@ pub fn apply_left_click(
 /// The read-only resources the turn-to-face surfaces consult, grouped into ONE [`SystemParam`]
 /// so each surface's parameter list stays under clippy's argument-count gate.
 ///
-/// Grouping the cohesive `Res<…>` reads (the hovered cell, the player faction, the current
-/// selection, and the GTW-254 [`WorldClickSuppressed`] flag) into one param keeps
+/// Grouping the cohesive `Res<…>` reads (the hovered cell, the player faction, and the current
+/// selection) into one param keeps
 /// [`right_click_turn_to_face`](crate::right_click_turn_to_face) (mouse) and
-/// [`gamepad_turn`](crate::gamepad::gamepad_turn) (East) at five parameters each. A transparent
+/// [`gamepad_turn`](crate::gamepad::gamepad_turn) (East) at four parameters each. A transparent
 /// system-param bundle REUSED by BOTH turn surfaces so they read the SAME inputs identically.
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct TurnReads<'w> {
     /// The cell the cursor / software cursor hovers — the turn target.
-    pub hovered:    Res<'w, HoveredCell>,
+    pub hovered:  Res<'w, HoveredCell>,
     /// The player's own faction — the turn surfaces act only on a player-faction selection.
-    pub player:     Res<'w, PlayerFaction>,
+    pub player:   Res<'w, PlayerFaction>,
     /// The current selection — the actor that turns.
-    pub selected:   Res<'w, SelectedShooter>,
-    /// Whether a `gdtf_app` modal (the GTW-254 picker) is capturing the pointer — when `true`
-    /// the turn is inert (the press belongs to the modal, not the world, clause 6b).
-    pub suppressed: Res<'w, WorldClickSuppressed>,
+    pub selected: Res<'w, SelectedShooter>,
 }
 
 /// Resolves the turn-to-face decision (GTW-238) into an optional [`SetFacingRequested`] — the
