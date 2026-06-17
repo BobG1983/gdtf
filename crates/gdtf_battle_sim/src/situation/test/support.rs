@@ -17,8 +17,8 @@ pub(super) use crate::{
     },
     cover::{CoverHp, CoverLedger, Destroyed, HeightBand},
     ganger::{
-        Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance,
-        StanceKind, Toughness, Tu, TuMax, Wounds,
+        Aiming, Direction, Facing, Faction, GangerName, Hp, LifeState, Luck, Position, Shooting,
+        Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, TerrainKind},
@@ -147,6 +147,9 @@ pub(super) fn arbitrary_armor(base: i32) -> SourceArmor {
 pub(super) fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
     GangerSpawn {
         at,
+        // A distinct authored name per faction so a spawn test can prove the
+        // `GangerName` component lands on the entity (GTW-285).
+        name: GangerName::new(format!("Ganger {faction}")),
         faction: Faction::new(faction),
         facing: Facing::new(Direction::East),
         stance: Stance::new(StanceKind::Crouching),

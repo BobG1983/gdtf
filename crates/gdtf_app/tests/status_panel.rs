@@ -25,8 +25,8 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, Hp, Level, LifeState, Position, Stance, StanceKind, Tu, TuMax,
-    WeaponName, Wounds, tuning::CombatTuning, weapon::WeaponRegistry,
+    Cell, CellLevel, Faction, GangerName, Hp, Level, LifeState, Position, Stance, StanceKind, Tu,
+    TuMax, WeaponName, Wounds, tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -133,6 +133,8 @@ struct GangerSetup {
     cell:    Cell,
     /// The ganger's storey level.
     level:   Level,
+    /// The ganger's display name (GTW-285 — the identity line renders this).
+    name:    GangerName,
     /// The ganger's faction (gang) index.
     faction: Faction,
     /// The ganger's stance posture.
@@ -159,6 +161,7 @@ fn spawn_and_select(app: &mut App, setup: GangerSetup) -> Entity {
         .world_mut()
         .spawn((
             Position::new(CellLevel::new(setup.cell, setup.level)),
+            setup.name,
             setup.faction,
             Stance::new(setup.stance),
             setup.tu,
@@ -243,6 +246,7 @@ fn lines_reflect_the_selected_ganger() {
         GangerSetup {
             cell:    Cell::new(5, 6),
             level:   Level::new(2),
+            name:    GangerName::new("Vex Harker".to_owned()),
             faction: Faction::new(1),
             stance:  StanceKind::Crouching,
             tu:      Tu::new(7),
@@ -256,16 +260,16 @@ fn lines_reflect_the_selected_ganger() {
 
     let identity = line_text::<IdentityText>(&mut app).unwrap_or_default();
     assert!(
-        identity.contains('5'),
-        "identity shows the cell x: {identity}"
-    );
-    assert!(
-        identity.contains('6'),
-        "identity shows the cell y: {identity}"
+        identity.contains("Vex Harker"),
+        "identity shows the ganger's name (GTW-285): {identity}",
     );
     assert!(
         identity.contains("Gang 1"),
         "identity shows the faction: {identity}",
+    );
+    assert!(
+        !identity.contains("Cell"),
+        "identity no longer shows the cell location (GTW-285): {identity}",
     );
 
     let stance = line_text::<StanceText>(&mut app).unwrap_or_default();
@@ -296,6 +300,7 @@ fn lines_do_not_cross_wire_components() {
         GangerSetup {
             cell:    Cell::new(1, 2),
             level:   Level::new(0),
+            name:    GangerName::new("Alex Mercer".to_owned()),
             faction: Faction::new(0),
             stance:  StanceKind::Prone,
             tu:      Tu::new(4),
@@ -336,6 +341,7 @@ fn lines_update_when_the_ganger_changes() {
         GangerSetup {
             cell:    Cell::new(3, 3),
             level:   Level::new(0),
+            name:    GangerName::new("Alex Mercer".to_owned()),
             faction: Faction::new(0),
             stance:  StanceKind::Standing,
             tu:      Tu::new(10),
@@ -419,6 +425,7 @@ fn empty_selection_shows_empty_state_and_no_stale_data() {
         GangerSetup {
             cell:    Cell::new(8, 8),
             level:   Level::new(0),
+            name:    GangerName::new("Vex Harker".to_owned()),
             faction: Faction::new(1),
             stance:  StanceKind::Crouching,
             tu:      Tu::new(5),
@@ -468,6 +475,7 @@ fn panel_reflects_the_auto_selected_ganger() {
     // vital components the panel reads. SelectedShooter is left EMPTY so auto-select fills it.
     app.world_mut().spawn((
         Position::new(CellLevel::new(Cell::new(2, 3), Level::new(0))),
+        GangerName::new("Alex Mercer".to_owned()),
         Faction::new(0),
         Stance::new(StanceKind::Crouching),
         Tu::new(6),
@@ -494,8 +502,8 @@ fn panel_reflects_the_auto_selected_ganger() {
 
     let identity = line_text::<IdentityText>(&mut app).unwrap_or_default();
     assert!(
-        identity.contains('2') && identity.contains('3'),
-        "the panel must render the auto-selected ganger's cell: {identity}",
+        identity.contains("Alex Mercer"),
+        "the panel must render the auto-selected ganger's name (GTW-285): {identity}",
     );
     let tu = line_text::<TuText>(&mut app).unwrap_or_default();
     assert!(

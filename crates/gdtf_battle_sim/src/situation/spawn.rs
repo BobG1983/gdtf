@@ -8,8 +8,8 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection, SourceArmor},
     cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{
-        Aiming, Facing, Faction, Hp, LifeState, Luck, Shooting, Stance, Toughness, Tu, TuMax,
-        Wounds,
+        Aiming, Facing, Faction, GangerName, Hp, LifeState, Luck, Shooting, Stance, Toughness, Tu,
+        TuMax, Wounds,
     },
     metric::CellLevel,
     occupancy::TerrainKind,
@@ -36,9 +36,10 @@ use crate::{
 /// ([`has_stacked_gangers`](crate::situation::has_stacked_gangers)) hashes
 /// [`at`](GangerSpawn::at), never the whole struct.
 ///
-/// Not `Copy` (GTW-257): the [`weapon`](GangerSpawn::weapon) key is a
-/// [`WeaponName`] over a [`String`] (owned, not `Copy`), so the authored ganger is
-/// `Clone` only. The [`setup_battle`](crate::situation::setup_battle) spawn loop
+/// Not `Copy` (GTW-257 / GTW-285): the [`weapon`](GangerSpawn::weapon) key is a
+/// [`WeaponName`] over a [`String`] and the [`name`](GangerSpawn::name) is a
+/// [`GangerName`] over a [`String`] (both owned, not `Copy`), so the authored ganger
+/// is `Clone` only. The [`setup_battle`](crate::situation::setup_battle) spawn loop
 /// borrows each ganger, so dropping `Copy` costs nothing on the real path.
 ///
 /// Derives [`Deserialize`] so an authored situation `.ron` names each ganger's
@@ -49,6 +50,12 @@ use crate::{
 pub struct GangerSpawn {
     /// The `(cell, level)` the ganger spawns at — its [`Position`](crate::ganger::Position).
     pub at:         CellLevel,
+    /// The ganger's **name** — its human-facing display identity (GTW-285).
+    /// [`setup_battle`](crate::situation::setup_battle) spawns it as a [`GangerName`]
+    /// component beside the rest of the per-field set; the status panel's identity line
+    /// renders it (replacing the placeholder cell location). Authored per ganger in the
+    /// situation `.ron` as a bare string ([`GangerName`] is `#[serde(transparent)]`).
+    pub name:       GangerName,
     /// The ganger's gang (faction) identity.
     pub faction:    Faction,
     /// The ganger's facing.

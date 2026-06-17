@@ -14,6 +14,7 @@
         // --- Gang 0: a standing rifleman on the ground floor, facing east. ---
         (
             at:         (cell: (x: 5, y: 6), level: 0),  // (cell, level) it spawns at — its Position
+            name:       "Alex Mercer",  // display name — the status panel's identity line shows this
             faction:    0,            // gang identity — gang 0 (one of the two sides)
             facing:     East,         // which of the 8 grid directions it faces
             stance:     Standing,     // posture — upright (full silhouette, full stability gate)
@@ -42,6 +43,7 @@
         // --- Gang 1: a crouching defender across the floor, facing west. ---
         (
             at:         (cell: (x: 12, y: 9), level: 0),  // (cell, level) it spawns at
+            name:       "Vex Harker",  // display name — the status panel's identity line shows this
             faction:    1,            // gang identity — gang 1 (the opposing side)
             facing:     West,         // faces back toward gang 0
             stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)

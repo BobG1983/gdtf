@@ -21,12 +21,12 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection,
     ArmorType, BaseSpread, BattleSeed, BattleSetup, BodyPart, Cell, CellLevel, CombatTuning,
     ConcentrationP, ConeAngle, CoverEntry, CoverHp, CoverLedger, DamageType, Direction, Facing,
-    Faction, FatalBias, FireMode, FireModeSpec, GangerSpawn, HeightBand, Hp, Kickback, Level,
-    LifeState, Luck, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind, ShotOutcome,
-    SimRng, Situation, SourceArmor, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, Wounds,
-    resolve_coarse, setup_battle,
+    Faction, FatalBias, FireMode, FireModeSpec, GangerName, GangerSpawn, HeightBand, Hp, Kickback,
+    Level, LifeState, Luck, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind,
+    ShotOutcome, SimRng, Situation, SourceArmor, Stable, Stance, StanceKind, SurfaceGrid,
+    Toughness, Tu, TuMax, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+    WeaponSpec, Wounds, resolve_coarse, setup_battle,
 };
 
 /// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
@@ -80,6 +80,7 @@ const fn arbitrary_armor(base: i32) -> SourceArmor {
 fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
     GangerSpawn {
         at,
+        name: GangerName::new(format!("Ganger {faction}")),
         faction: Faction::new(faction),
         facing: Facing::new(Direction::East),
         stance: Stance::new(StanceKind::Standing),

@@ -35,8 +35,8 @@ use gdtf_battle_sim::{
     battle::BattleInProgress,
     cover::HeightBand,
     ganger::{
-        Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Shooting, Stance, StanceKind,
-        Toughness, Tu, TuMax, Wounds,
+        Aiming, Direction, Facing, Faction, GangerName, Hp, LifeState, Luck, Shooting, Stance,
+        StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     magazine::Magazine,
     metric::{Cell, CellLevel, Level},
@@ -122,6 +122,7 @@ const fn arbitrary_armor(base: i32) -> SourceArmor {
 fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
     GangerSpawn {
         at,
+        name: GangerName::new(format!("Ganger {faction}")),
         faction: Faction::new(faction),
         facing: Facing::new(Direction::East),
         stance: Stance::new(StanceKind::Standing),

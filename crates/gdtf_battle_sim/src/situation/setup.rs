@@ -46,6 +46,7 @@ impl BattleSetup {
 ///
 /// 1. **Spawn each ganger** — for every [`GangerSpawn`](crate::situation::GangerSpawn),
 ///    `commands.spawn(...)` the full per-field component set ([`Position`] from `at`,
+///    the [`GangerName`](crate::ganger::GangerName) identity,
 ///    plus [`Faction`](crate::ganger::Faction) / [`Facing`](crate::ganger::Facing) /
 ///    [`Stance`](crate::ganger::Stance) / [`Aiming`](crate::ganger::Aiming) /
 ///    [`Hp`](crate::ganger::Hp) / [`Wounds`](crate::ganger::Wounds) /
@@ -131,6 +132,7 @@ pub fn setup_battle(
         let entity = commands
             .spawn((
                 Position::new(ganger.at),
+                ganger.name.clone(),
                 ganger.faction,
                 ganger.facing,
                 ganger.stance,

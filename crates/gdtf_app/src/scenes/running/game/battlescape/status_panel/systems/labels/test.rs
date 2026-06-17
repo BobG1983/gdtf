@@ -2,36 +2,50 @@
 //! `labels` test module, GTW-201).
 
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, Hp, Level, LifeState, Position, Stance, StanceKind, Tu, TuMax,
-    WeaponName, Wounds,
+    Faction, GangerName, Hp, LifeState, Stance, StanceKind, Tu, TuMax, WeaponName, Wounds,
 };
 
 use super::format::{
-    UNARMED, hp_label, identity_label, life_label, stance_label, tu_label, weapon_name_label,
+    NAMELESS, UNARMED, hp_label, identity_label, life_label, stance_label, tu_label,
+    weapon_name_label,
 };
 
-/// The identity line names the ganger's cell coordinates, storey, and faction —
-/// each component's value appears, so swapping x↔y or faction would be visible.
+/// GTW-285 — the identity line names the selected ganger's `GangerName` (NOT its cell)
+/// plus its faction. Discriminating: the rendered name comes from the real component,
+/// and the line carries NO cell coordinate, so reverting to the cell-location label
+/// would fail both halves here.
 #[test]
-fn identity_label_names_cell_and_faction() {
-    let position = Position::new(CellLevel::new(Cell::new(5, 6), Level::new(2)));
+fn identity_label_names_the_ganger_and_faction() {
+    let name = GangerName::new("Alex Mercer".to_owned());
     let faction = Faction::new(1);
-    let label = identity_label(&position, faction);
+    let label = identity_label(Some(&name), faction);
     assert!(
-        label.contains('5'),
-        "identity must show the cell x: {label}"
-    );
-    assert!(
-        label.contains('6'),
-        "identity must show the cell y: {label}"
-    );
-    assert!(
-        label.contains('2'),
-        "identity must show the storey level: {label}",
+        label.contains("Alex Mercer"),
+        "identity must show the ganger's name: {label}",
     );
     assert!(
         label.contains("Gang 1"),
         "identity must show the faction index: {label}",
+    );
+    // The cell location is GONE — the identity is the NAME now (the revert guard).
+    assert!(
+        !label.contains("Cell"),
+        "identity must NOT show the cell location anymore: {label}",
+    );
+}
+
+/// GTW-285 — a nameless selection (no `GangerName`) renders the `NAMELESS` fallback,
+/// NOT a fabricated name and NOT a panic; the faction is still shown.
+#[test]
+fn identity_label_falls_back_when_nameless() {
+    let label = identity_label(None, Faction::new(0));
+    assert!(
+        label.contains(NAMELESS),
+        "a nameless selection must show the nameless fallback: {label}",
+    );
+    assert!(
+        label.contains("Gang 0"),
+        "the faction is still shown for a nameless ganger: {label}",
     );
 }
 

@@ -227,8 +227,8 @@ pub use downed_acts::{
 pub use faced_cell::faced_cell;
 pub use fire::{BattleGrids, ShooterQuery, TargetQuery, fire};
 pub use ganger::{
-    Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
-    Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
+    Aiming, Direction, Facing, Faction, GangerName, Hp, LifeState, Luck, Position, Shooting,
+    Stabilized, Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
 };
 pub use hit_location::roll_body_part;
 pub use magazine::{FireActor, Magazine, can_fire, clamp_burst, in_bounds, mode_tu_cost};

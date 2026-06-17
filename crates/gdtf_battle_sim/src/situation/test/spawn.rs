@@ -39,6 +39,7 @@ fn each_spawned_ganger_has_all_required_components() {
     // (E1.2 state + E3.0 attribute stats + WornArmor).
     let mut all = world.query::<(
         &Position,
+        &GangerName,
         &Faction,
         &Facing,
         &Stance,
@@ -56,7 +57,8 @@ fn each_spawned_ganger_has_all_required_components() {
     assert_eq!(
         all.iter(world).count(),
         2,
-        "both gangers must carry the full E1.2 set (incl. TuMax) + E3.0 attribute stats + WornArmor",
+        "both gangers must carry the full E1.2 set (incl. TuMax + GangerName) + E3.0 attribute \
+         stats + WornArmor",
     );
 }
 
@@ -111,6 +113,40 @@ fn spawned_position_and_faction_match_the_fixture() {
 
     // The two are distinct Entity handles.
     assert_ne!(alice, bob, "the two gangers are distinct entities");
+}
+
+/// GTW-285 — `setup_battle` seeds each authored `GangerSpawn.name` onto the spawned
+/// ganger as a queryable `GangerName` component, looked up by the spawned `Entity`
+/// handle (never a numeric id). Reads BOTH gangers — distinct authored names ("Ganger 0"
+/// / "Ganger 1") prove the per-ganger seed, not a shared default. Pin-discriminating:
+/// dropping the `name` spawn in `setup_battle` leaves no `GangerName` and this fails.
+#[test]
+fn setup_seeds_ganger_name_onto_each_ganger() {
+    let (situation, ..) = minimal_fixture();
+    let Some((mut app, setup)) = run_setup(situation) else {
+        return;
+    };
+
+    let alice: Entity = setup.occupants[0].occupant;
+    let bob: Entity = setup.occupants[1].occupant;
+    let world: &mut World = app.world_mut();
+    let mut q = world.query::<&GangerName>();
+
+    // Alice — faction 0 → the fixture's "Ganger 0" name.
+    let alice_name = q.get(world, alice);
+    assert_eq!(
+        alice_name.map(|n| (**n).clone()).ok(),
+        Some("Ganger 0".to_owned()),
+        "alice carries her authored GangerName",
+    );
+
+    // Bob — faction 1 → the fixture's "Ganger 1" name (a distinct per-ganger seed).
+    let bob_name = q.get(world, bob);
+    assert_eq!(
+        bob_name.map(|n| (**n).clone()).ok(),
+        Some("Ganger 1".to_owned()),
+        "bob carries his authored GangerName",
+    );
 }
 
 /// GTW-182 AC #2 + AC #3 — `setup_battle` seeds the E3.0 attribute stats

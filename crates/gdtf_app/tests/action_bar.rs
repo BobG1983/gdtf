@@ -58,8 +58,9 @@ use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
     Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
     BattleInProgress, Cell, CellLevel, Direction, Facing, Faction, FireMode, FireModeSpec,
-    GangerSpawn, Hp, Level, LifeState, Luck, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    Shooting, Situation, SourceArmor, Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
+    GangerName, GangerSpawn, Hp, Level, LifeState, Luck, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, Shooting, Situation, SourceArmor, Stance, StanceKind, Toughness, Tu, TuMax,
+    Wounds,
     acts::{SetAimingRequested, SetStanceRequested},
     tuning::CombatTuning,
     weapon::{
@@ -1143,6 +1144,7 @@ fn armed_player_situation() -> Situation {
     Situation {
         gangers: vec![GangerSpawn {
             at:         CellLevel::new(Cell::new(2, 5), Level::new(0)),
+            name:       GangerName::new("Alex Mercer".to_owned()),
             faction:    Faction::new(PLAYER_FACTION),
             facing:     Facing::new(Direction::East),
             stance:     Stance::new(StanceKind::Standing),

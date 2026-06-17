@@ -1,9 +1,40 @@
 //! The ganger's numeric pools & stats — the [`Hp`]/[`Wounds`] life pools, the
-//! [`Tu`]/[`TuMax`] action economy, and the [`Shooting`]/[`Toughness`]/[`Luck`]
-//! combat attributes.
+//! [`Tu`]/[`TuMax`] action economy, the [`Shooting`]/[`Toughness`]/[`Luck`]
+//! combat attributes, and the ganger's [`GangerName`] identity.
 
 use bevy::prelude::{Component, Deref};
 use serde::Deserialize;
+
+/// A ganger's **name** — its human-facing identity (e.g. "Alex Mercer").
+///
+/// The ganger's display identity: the status panel's identity line renders this
+/// (GTW-285) in place of the placeholder cell location, so a selected ganger reads
+/// by NAME, not by where it stands. Carried on the spawned entity as its own
+/// queryable Component, never folded into another field. The combat sim's §1/§6
+/// math NEVER reads it — a name is presentation identity, not a balance magnitude.
+///
+/// A name newtype over [`String`] (no-bare-types: a name is a domain value, not a
+/// bare `String`), the [`WeaponName`](crate::weapon::WeaponName) precedent. Private
+/// inner + derived [`Deref`] (house style — never a hand-written `impl Deref`).
+/// `#[serde(transparent)]` lets an authored situation `.ron`'s `name` parse as a
+/// bare string, so it deserializes as part of
+/// [`GangerSpawn`](crate::situation::GangerSpawn) (the [`TuMax`] / [`WeaponName`]
+/// serde-transparent shape). A `#[derive(Component)]` so the status panel can query
+/// `&GangerName` off the selected entity.
+#[derive(Deref, Component, Debug, Clone, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
+pub struct GangerName(String);
+
+impl GangerName {
+    /// Build a ganger name from its display string.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup and tests can
+    /// build a `GangerName` without reaching the private field.
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self(name)
+    }
+}
 
 /// A ganger's hit points — the in-battle raw-damage knock-down pool.
 ///

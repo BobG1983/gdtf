@@ -964,8 +964,8 @@ use gdtf_battle_sim::{
         SourceArmor,
     },
     ganger::{
-        Aiming, Direction, Facing, Hp, LifeState, Luck, Shooting, Stance, StanceKind, Toughness,
-        Tu, TuMax, Wounds,
+        Aiming, Direction, Facing, GangerName, Hp, LifeState, Luck, Shooting, Stance, StanceKind,
+        Toughness, Tu, TuMax, Wounds,
     },
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
@@ -1030,6 +1030,7 @@ const fn real_flow_armor(base: i32) -> SourceArmor {
 fn real_flow_ganger(at: CellLevel, faction: u8) -> GangerSpawn {
     GangerSpawn {
         at,
+        name: GangerName::new(format!("Ganger {faction}")),
         faction: Faction::new(faction),
         facing: Facing::new(Direction::East),
         stance: Stance::new(StanceKind::Crouching),

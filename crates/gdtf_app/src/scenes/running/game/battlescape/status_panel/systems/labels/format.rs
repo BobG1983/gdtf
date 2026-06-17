@@ -9,7 +9,7 @@
 //! matches the sim's named domain enums.
 
 use gdtf_battle_sim::{
-    Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, TuMax, WeaponName, Wounds,
+    Faction, GangerName, Hp, LifeState, Stance, StanceKind, Tu, TuMax, WeaponName, Wounds,
 };
 
 /// The line shown when there is no selection — a clear empty state (AC4).
@@ -26,24 +26,31 @@ pub(in crate::scenes::running::game::battlescape::status_panel) const NO_SELECTI
 /// A `const` so the unarmed copy lives in one place (the `NO_SELECTION` precedent).
 pub(in crate::scenes::running::game::battlescape::status_panel) const UNARMED: &str = "—";
 
-/// The **identity** line: the ganger's cell `(x, y, level)` and its faction (gang)
-/// index.
+/// The name fallback shown when the SELECTED ganger carries no name (no
+/// [`GangerName`] component) — a placeholder so a nameless selection reads as
+/// unnamed without a panic, distinct from the no-selection empty state (GTW-285).
 ///
-/// There is NO ganger-name component today, so the cell + faction stand in for an
-/// identity (a real `GangerName` newtype is flagged future work). [`Position`]
-/// derefs to the `(cell, level)` key — `x`/`y` are the ground-plane cell, `z` is
-/// the storey index. [`Faction`] derefs to its small gang index. `Position` (a
-/// 12-byte `IVec3`) is taken by reference; the 1-byte [`Faction`] is taken by value
-/// (clippy `trivially_copy_pass_by_ref` — every component here is `Copy`).
+/// A `const` so the no-name copy lives in one place (the [`UNARMED`] precedent).
+pub(in crate::scenes::running::game::battlescape::status_panel) const NAMELESS: &str = "???";
+
+/// The **identity** line: the ganger's [`GangerName`] and its faction (gang) index.
+///
+/// The selected ganger's NAME stands as its identity (GTW-285 — replacing the
+/// placeholder cell location, per the user's "remove the cell location, show
+/// names"). Taken as an `Option<&GangerName>` (defensive — gangers are named today,
+/// but a selection without the component must not panic): [`Some`] renders the name,
+/// [`None`] renders the [`NAMELESS`] fallback. [`GangerName`]
+/// [`Deref`](std::ops::Deref)s to its inner `&str`; by reference because it owns a
+/// `String` (not `Copy`). [`Faction`] derefs to its small gang index, taken by value
+/// (clippy `trivially_copy_pass_by_ref` — a 1-byte `Copy` newtype). The faction text
+/// is kept as-is for now (the mockup's faction sigil/coloring is GTW-278 layout).
 #[must_use]
 pub(in crate::scenes::running::game::battlescape::status_panel) fn identity_label(
-    position: &Position,
+    name: Option<&GangerName>,
     faction: Faction,
 ) -> String {
-    format!(
-        "Cell ({}, {}, lvl {})  Gang {}",
-        position.x, position.y, position.z, *faction,
-    )
+    let name = name.map_or(NAMELESS, |n| n);
+    format!("{name}  Gang {}", *faction)
 }
 
 /// The **stance** line: the ganger's posture by its [`StanceKind`] name.

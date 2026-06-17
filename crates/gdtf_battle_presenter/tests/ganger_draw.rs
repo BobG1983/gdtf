@@ -164,9 +164,10 @@ fn character_roles(app: &App) -> Option<CharacterRoles> {
 /// component values (a standing, hip-firing, alive rifleman). Routed through the real
 /// `GangerSpawn` so the setup path spawns the same component set the draw reads.
 fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
-    use gdtf_battle_sim::{Hp, Luck, Shooting, Toughness, Tu, TuMax, Wounds};
+    use gdtf_battle_sim::{GangerName, Hp, Luck, Shooting, Toughness, Tu, TuMax, Wounds};
     GangerSpawn {
         at,
+        name: GangerName::new(format!("Ganger {faction}")),
         faction: Faction::new(faction),
         facing: Facing::new(facing),
         stance: Stance::new(StanceKind::Standing),

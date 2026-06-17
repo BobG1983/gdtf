@@ -29,7 +29,7 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{Faction, Hp, LifeState, Position, Stance, Tu, TuMax, WeaponName, Wounds};
+use gdtf_battle_sim::{Faction, GangerName, Hp, LifeState, Stance, Tu, TuMax, WeaponName, Wounds};
 
 use crate::scenes::running::game::battlescape::status_panel::{
     components::{HpText, IdentityText, LifeText, StanceText, TuText, WeaponNameText},
@@ -48,25 +48,27 @@ use crate::scenes::running::game::battlescape::status_panel::{
 #[derive(QueryData)]
 pub(in crate::scenes::running::game::battlescape::status_panel) struct Vitals {
     /// The ganger's stance posture.
-    stance:   &'static Stance,
+    stance:  &'static Stance,
     /// The ganger's current TU pool.
-    tu:       &'static Tu,
+    tu:      &'static Tu,
     /// The ganger's round-start TU ceiling.
-    tu_max:   &'static TuMax,
+    tu_max:  &'static TuMax,
     /// The ganger's current HP pool.
-    hp:       &'static Hp,
+    hp:      &'static Hp,
     /// The ganger's Wounds (life) pool.
-    wounds:   &'static Wounds,
-    /// The ganger's `(cell, level)` position.
-    position: &'static Position,
+    wounds:  &'static Wounds,
+    /// The ganger's name, if named (GTW-285 — read defensively as an [`Option`] so a
+    /// nameless selection still resolves, rather than the whole `.get` failing closed
+    /// and blanking every OTHER vital line). The identity line renders it.
+    name:    Option<&'static GangerName>,
     /// The ganger's faction (gang) identity.
-    faction:  &'static Faction,
+    faction: &'static Faction,
     /// The ganger's terminal life state.
-    life:     &'static LifeState,
+    life:    &'static LifeState,
     /// The ganger's carried weapon name, if armed (GTW-254 — read defensively as an
     /// [`Option`] so an unarmed selection still resolves, rather than the whole `.get`
     /// failing closed and blanking every OTHER vital line).
-    weapon:   Option<&'static WeaponName>,
+    weapon:  Option<&'static WeaponName>,
 }
 
 /// One per-line `&mut Text` writer query, parameterised by the line marker `M`.
@@ -130,11 +132,11 @@ pub(in crate::scenes::running::game::battlescape) fn update_status_panel(
     // closed (None) for both "nothing selected" and "selected entity lacks the vital
     // components" — either way every line shows the empty state, never stale data. The
     // small `Copy` newtypes are passed by value to the helpers (clippy
-    // `trivially_copy_pass_by_ref`); the 12-byte `Position` by reference.
+    // `trivially_copy_pass_by_ref`); the owned `GangerName` / `WeaponName` by reference.
     let rendered = (**selected)
         .and_then(|entity| vitals.get(entity).ok())
         .map(|v| RenderedLines {
-            identity: identity_label(v.position, *v.faction),
+            identity: identity_label(v.name, *v.faction),
             stance:   stance_label(*v.stance),
             tu:       tu_label(*v.tu, *v.tu_max),
             hp:       hp_label(*v.hp, *v.wounds),
