@@ -95,6 +95,11 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_status_panel(
             row_gap: Val::Px(*LineGapPx::PANEL),
             ..default()
         },
+        // GTW-262 — an `Interaction` on the panel's ROOT so `bevy_ui`'s `ui_focus_system`
+        // marks the WHOLE panel area `Hovered` (not just its text lines) under the cursor;
+        // the presenter's `pan_camera` reads `&Interaction` and suppresses the camera pan
+        // while the pointer is over the panel (`bevy-traps.md` #6).
+        Interaction::default(),
     ));
 
     // One themed body-text line per vital, each with its per-line marker. The text is the

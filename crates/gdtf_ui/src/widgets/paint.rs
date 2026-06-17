@@ -46,9 +46,14 @@ pub fn paint_disabled_buttons(
 /// **Disabled beats active:** the query filters `Without<DisabledButton>`, so a
 /// button that is BOTH [`DisabledButton`] and [`ActiveButton`] is skipped here and
 /// keeps the disabled fill that [`paint_disabled_buttons`] wrote. This system is
-/// purely a *paint* — it touches no [`Interaction`](bevy::ui::Interaction) and adds
-/// no `Without<ActiveButton>` filter anywhere, so an active button stays fully
-/// interactive (clickable to toggle off).
+/// purely a *paint* — it touches no [`Interaction`](bevy::ui::Interaction), so an active
+/// button stays fully interactive (clickable to toggle off).
+///
+/// **Active is STICKY (GTW-266):** the interaction-feedback system
+/// [`theme_interaction`](crate::interaction::theme_interaction) EXCLUDES `ActiveButton`
+/// (`Without<ActiveButton>`) and this paint is ordered `.after(theme_interaction)`, so an
+/// active button's `BackgroundColor` comes ONLY from here — a hover/press swap never
+/// clobbers the active fill (no flicker).
 ///
 /// Takes the theme as `Option<Res<GdtfTheme>>` so it is inert (rather than
 /// panicking) before the resource is populated (bevy-traps rule 1).

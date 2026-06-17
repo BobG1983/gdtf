@@ -92,6 +92,11 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
             column_gap: Val::Px(*BarGapPx::BAR),
             ..default()
         },
+        // GTW-262 — an `Interaction` on the bar's ROOT so `bevy_ui`'s `ui_focus_system`
+        // marks the WHOLE bar area `Hovered` (not just its buttons) under the cursor; the
+        // presenter's `pan_camera` reads `&Interaction` and suppresses the camera pan while
+        // the pointer is over the bar (`bevy-traps.md` #6).
+        Interaction::default(),
     ));
 
     // One button per EXISTING act, each with its per-act marker. Captions are short act

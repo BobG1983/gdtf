@@ -39,7 +39,7 @@ use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera, cell_to_
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
     LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, Tu, TuMax, acts::SetFacingRequested,
+    OccupancyGrid, PlayerFaction, Position, TerrainKind, Tu, TuMax, acts::SetFacingRequested,
     tuning::CombatTuning,
 };
 
@@ -459,6 +459,9 @@ struct HighlightProbe(Vec<HighlightRequest>);
 #[test]
 fn highlight_follows_the_gamepad_cursor() {
     let mut app = picking_app();
+    // GTW-268 — the emit now gates on the `OccupancyGrid`; `picking_app` does not seed one,
+    // so insert an empty grid here and (below) mark the resolved cell blocking.
+    app.world_mut().insert_resource(OccupancyGrid::default());
     app.insert_resource(HighlightProbe::default());
     app.add_systems(
         Update,
@@ -481,6 +484,19 @@ fn highlight_follows_the_gamepad_cursor() {
         cell.is_some(),
         "the gamepad cursor must resolve an in-grid cell"
     );
+    let Some(resolved) = cell else { return };
+
+    // GTW-268 — the emit now highlights ONLY occupied / blocking cells. Make the gamepad's
+    // resolved cell blocking (an object) so the highlight follows it; then drop the
+    // bare-floor probe reads and re-run so the probe captures the post-gate emit.
+    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
+        grid.set_terrain(resolved, TerrainKind::Cover);
+    }
+    if let Some(mut probe) = app.world_mut().get_resource_mut::<HighlightProbe>() {
+        probe.0.clear();
+    }
+    app.update();
+
     let emitted = app
         .world()
         .get_resource::<HighlightProbe>()

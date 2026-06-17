@@ -45,7 +45,9 @@ use gdtf_battle_input::{
     world_to_cell,
 };
 use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera};
-use gdtf_battle_sim::{BattleInProgress, CellLevel, Level, tuning::CombatTuning};
+use gdtf_battle_sim::{
+    BattleInProgress, CellLevel, Level, OccupancyGrid, TerrainKind, tuning::CombatTuning,
+};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -364,14 +366,17 @@ fn requests(app: &App) -> Vec<HighlightRequest> {
         .unwrap_or_default()
 }
 
-/// GTW-251 AC1 — the picker emits a `HighlightRequest` matching `HoveredCell`: when an
-/// in-grid cursor resolves a known cell the emitted request is `Some(that cell)`; when
-/// the cursor goes off-grid the emitted request is `None`. The DRAWING is the
-/// presenter's (`tests/highlight_draw.rs`); here we pin the input EMIT.
+/// GTW-251 AC1 + GTW-268 — the picker emits a `HighlightRequest` matching `HoveredCell`,
+/// GATED on occupancy: an in-grid cursor over a BLOCKING (or occupied) cell emits
+/// `Some(that cell)`; over BARE FLOOR it emits `None` (GTW-268: gangers + objects only);
+/// off-grid it emits `None`. The DRAWING is the presenter's (`tests/highlight_draw.rs`);
+/// here we pin the input EMIT.
 #[test]
 fn picker_emits_highlight_request_matching_hovered_cell() {
     let level = Level::new(0);
     let mut app = picking_app(level);
+    // GTW-268 — the emit now gates on the `OccupancyGrid`; seed one (empty) for this harness.
+    app.world_mut().insert_resource(OccupancyGrid::default());
     add_highlight_probe(&mut app);
 
     // An in-grid cursor (shifted right + down — see the AC2 picking test for the
@@ -382,11 +387,25 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
 
     let cell = hovered(&app);
     assert!(cell.is_some(), "the in-grid cursor must resolve a cell");
-    // The emitted request this update must equal HoveredCell exactly.
+    let Some(resolved) = cell else { return };
+
+    // GTW-268 — over BARE FLOOR the emit is gated to None even though a cell is hovered.
+    assert_eq!(
+        requests(&app),
+        vec![HighlightRequest(None)],
+        "a bare-floor in-grid cell must emit HighlightRequest(None) (GTW-268)",
+    );
+
+    // Mark the hovered cell BLOCKING (an object): the emit now carries Some(that cell).
+    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
+        grid.set_terrain(resolved, TerrainKind::Cover);
+    }
+    app.world_mut().resource_mut::<HighlightProbe>().0.clear();
+    app.update();
     assert_eq!(
         requests(&app),
         vec![HighlightRequest(cell)],
-        "the picker must emit exactly one HighlightRequest equal to Some(HoveredCell)",
+        "over a blocking cell the picker must emit exactly one HighlightRequest = Some(cell)",
     );
 
     // Now move the cursor off-grid: HoveredCell becomes None and the emitted request

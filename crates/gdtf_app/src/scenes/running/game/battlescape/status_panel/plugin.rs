@@ -13,13 +13,18 @@
 //!   `run_if(resource_exists::<BattleInProgress>)`, the SAME live-battle witness the
 //!   action-bar / input / presenter gate on (`bevy-traps.md` #1), so it is inert when
 //!   no battle is live. It reads `Res<SelectedShooter>` (the input crate's selection
-//!   seam) and repaints the lines from the selected ganger's vital components.
+//!   seam) and repaints the lines from the selected ganger's vital components. It is
+//!   ordered `.after(InputSystems::Gather)` (GTW-264) so it observes the SAME update's
+//!   `auto_select_first_player_ganger` write to `SelectedShooter` — otherwise it read the
+//!   selection before auto-select filled it and painted the empty state every frame
+//!   (`bevy-traps.md` #3).
 //!
 //! The panel reads only DATA — the `Res<SelectedShooter>` selection and the on-entity
 //! sim vital components — never a reverse edge into the sim/input or a cross-crate fn
 //! (ADR-0001). It is a pure view; it owns no combat rule.
 
 use bevy::prelude::*;
+use gdtf_battle_input::InputSystems;
 use gdtf_battle_sim::BattleInProgress;
 
 use crate::{
@@ -42,7 +47,14 @@ impl Plugin for GameBattleScapeStatusPanelScenePlugin {
             )
             .add_systems(
                 Update,
-                update_status_panel.run_if(resource_exists::<BattleInProgress>),
+                update_status_panel
+                    // GTW-264 — run AFTER the input crate's `InputSystems::Gather` band, where
+                    // the GTW-255 `auto_select_first_player_ganger` writes the initial
+                    // `SelectedShooter`. Without this ordering the panel read `SelectedShooter`
+                    // BEFORE auto-select filled it and painted the empty "no ganger selected"
+                    // state every frame (`bevy-traps.md` #3).
+                    .after(InputSystems::Gather)
+                    .run_if(resource_exists::<BattleInProgress>),
             );
     }
 }

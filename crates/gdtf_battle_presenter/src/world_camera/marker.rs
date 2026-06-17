@@ -20,6 +20,18 @@ pub const WORLD_RENDER_LAYER: usize = 1;
 /// `Camera2d` at the default order `0`.
 const WORLD_CAMERA_ORDER: isize = -1;
 
+/// The world camera's orthographic projection `scale` (GTW-263 — battle zoom).
+///
+/// Framework plumbing — the bare `f32` written into
+/// [`OrthographicProjection::scale`], a knob on a framework component (not a domain
+/// value), so it is a documented const here (the same carve-out as [`WORLD_CAMERA_ORDER`]
+/// / [`WORLD_RENDER_LAYER`]). `0.5` HALVES the visible world half-extent (the framing
+/// reads `window * 0.5 * scale`), so the battlefield is drawn at TWICE the on-screen size
+/// versus the `default_2d` `scale = 1.0` — the play-test "too zoomed out" fix. The GTW-249
+/// `frame_camera_on_units` writes only the camera TRANSLATION, never the projection, so
+/// this scale persists across framing / pan.
+const WORLD_CAMERA_SCALE: f32 = 0.5;
+
 /// Marker for the single SHARED world [`Camera2d`] owned by `BattlePresenterPlugin`.
 ///
 /// This is plumbing around the framework camera (the `Camera2d` itself is exempt from
@@ -35,8 +47,11 @@ pub struct WorldCamera;
 /// Registered by the app on `OnEnter(GameState::BattleScape)` (the presenter cannot name
 /// `GameState`). It spawns a `Camera2d` carrying the [`WorldCamera`] marker, a
 /// [`Camera`] at [`WORLD_CAMERA_ORDER`] (`-1`, below the UI camera's default `0` so it
-/// renders first / beneath), and [`RenderLayers::layer`]`(`[`WORLD_RENDER_LAYER`]`)` so
-/// it renders its own non-zero layer and does not intersect the UI camera's layer 0.
+/// renders first / beneath), [`RenderLayers::layer`]`(`[`WORLD_RENDER_LAYER`]`)` so
+/// it renders its own non-zero layer and does not intersect the UI camera's layer 0, and
+/// a [`Projection::Orthographic`] at [`WORLD_CAMERA_SCALE`] (`0.5` — 2x zoom, GTW-263)
+/// OVERRIDING the `default_2d` `scale = 1.0` that `Camera2d` would otherwise
+/// `#[require]`.
 ///
 /// Param-only (`Commands`): spawning is `Commands::spawn`, never `&mut World`
 /// (`bevy-traps.md` #7).
@@ -49,6 +64,15 @@ pub fn spawn_world_camera(mut commands: Commands) {
             ..default()
         },
         RenderLayers::layer(WORLD_RENDER_LAYER),
+        // GTW-263 — zoom the battle in 2x. `Camera2d` `#[require]`s a default-2d
+        // orthographic projection at `scale = 1.0`; spawn the projection explicitly with
+        // `scale = 0.5` so the visible half-extent halves (the framing reads `window * 0.5
+        // * scale`), drawing the battlefield at twice the on-screen size. The rest of the
+        // projection keeps the `default_2d` values (near plane, scaling mode, etc.).
+        Projection::Orthographic(OrthographicProjection {
+            scale: WORLD_CAMERA_SCALE,
+            ..OrthographicProjection::default_2d()
+        }),
     ));
 }
 

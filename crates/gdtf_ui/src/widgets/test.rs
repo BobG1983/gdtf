@@ -270,28 +270,35 @@ fn active_button_is_painted_from_theme() -> Result<(), ron::error::SpannedError>
     Ok(())
 }
 
-/// AC2 — `ActiveButton` is purely visual: it is NOT excluded from the interaction
-/// path. The GTW-118 `theme_interaction` query filters `Without<DisabledButton>`
-/// but NOT `Without<ActiveButton>`, so an active button still hover/press-swaps.
+/// AC2 (GTW-266 — active is STICKY) — an `ActiveButton` keeps its ACTIVE fill even when
+/// `Interaction::Pressed` (or `Hovered`): `theme_interaction` now EXCLUDES `ActiveButton`
+/// (`Without<ActiveButton>`), so a toggled-on button never takes a hover/press swap, and
+/// `paint_active_buttons` (ordered after) is the only writer of its color. This is the
+/// fixed UX behind the user's "Aim button flickers when active + hovered" complaint and is
+/// required by the Mode/Stance toggle panels.
 ///
-/// Pin-discriminating: if a `Without<ActiveButton>` filter were ever added to the
-/// interaction path, a pressed active button would NOT swap to the pressed fill
-/// and this assert would fail.
+/// Pin-discriminating: the active fill and the pressed fill are distinct in the test theme,
+/// so if `theme_interaction` ever stopped excluding `ActiveButton`, a pressed active button
+/// would swap to the PRESSED fill and this assert would fail. (This replaces the
+/// pre-GTW-266 assert that an active button SHOULD hover/press-swap — that behavior was the
+/// flicker bug.)
 #[test]
-fn active_button_is_not_excluded_from_interaction() -> Result<(), ron::error::SpannedError> {
+fn active_button_stays_active_when_pressed() -> Result<(), ron::error::SpannedError> {
     use bevy::ui::Interaction;
 
-    use crate::{interaction::theme_interaction, themed::UiSystems};
+    use crate::{interaction::theme_interaction, themed::UiSystems, widgets::paint_active_buttons};
 
     let mut app = App::new();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
     app.insert_resource(theme_res.clone());
-    // The real production band: apply_theme (its set) before theme_interaction.
+    // The real production band: apply_theme (its set), then theme_interaction, then
+    // paint_active_buttons (ordered .after(theme_interaction) — the GTW-266 last writer).
     app.add_systems(
         Update,
         (
             apply_theme.in_set(UiSystems::ApplyTheme),
             theme_interaction.after(UiSystems::ApplyTheme),
+            paint_active_buttons.after(theme_interaction),
         )
             .run_if(resource_exists::<GdtfTheme>),
     );
@@ -307,17 +314,22 @@ fn active_button_is_not_excluded_from_interaction() -> Result<(), ron::error::Sp
     };
     app.world_mut().flush();
 
-    // Press the active button — the swap a real pointer would drive.
+    // Press the active button — a hover/press swap a real pointer would drive.
     if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(button) {
         *interaction = Interaction::Pressed;
     }
     app.update();
 
+    // Test precondition: the active and pressed fills differ, so the assert discriminates.
+    assert_ne!(
+        *theme_res.button.active, *theme_res.button.pressed,
+        "test precondition: the active and pressed fills must differ",
+    );
     assert_eq!(
         app.world().get::<BackgroundColor>(button).map(|c| c.0),
-        Some(*theme_res.button.pressed),
-        "an ActiveButton must still register its press (the interaction path does \
-         not exclude ActiveButton)",
+        Some(*theme_res.button.active),
+        "an ActiveButton must keep its ACTIVE fill when pressed (active is STICKY — the \
+         interaction path EXCLUDES ActiveButton)",
     );
 
     Ok(())

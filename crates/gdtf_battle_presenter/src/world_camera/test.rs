@@ -1,14 +1,14 @@
-//! Unit tests for the world camera: render-layer isolation, framing geometry, and the
-//! pan-navigation pure helpers.
+//! Unit tests for the world camera: render-layer isolation, framing geometry, the
+//! pan-navigation pure helpers, the GTW-263 zoom, and the GTW-262 pointer-over-UI gate.
 
-use bevy::{camera::visibility::RenderLayers, prelude::*};
+use bevy::{camera::visibility::RenderLayers, prelude::*, ui::Interaction};
 
 use super::{
     framing::{camera_focus, clamp_camera},
-    marker::WORLD_RENDER_LAYER,
+    marker::{WORLD_RENDER_LAYER, WorldCamera, spawn_world_camera},
     pan::{
-        EdgeBandPx, PanSpeed, StickDeadzone, keyboard_pan_dir, mouse_edge_dir, pan_velocity,
-        stick_pan_dir,
+        EdgeBandPx, PanSpeed, StickDeadzone, keyboard_pan_dir, mouse_edge_dir, pan_camera,
+        pan_velocity, stick_pan_dir,
     },
 };
 
@@ -282,5 +282,121 @@ fn pan_velocity_scales_and_diagonal_is_not_faster() {
     assert!(
         gentle.length() < card_speed,
         "a sub-unit analog stick magnitude keeps its sub-unit scale (pans slower)",
+    );
+}
+
+// -----------------------------------------------------------------------------
+// GTW-263 — battle zoom: the world camera spawns at orthographic scale 0.5 (2x).
+// -----------------------------------------------------------------------------
+
+/// GTW-263 — `spawn_world_camera` spawns the `WorldCamera` with an orthographic
+/// projection at `scale = 0.5` (a 2x zoom-in), OVERRIDING the `Camera2d` default of `1.0`.
+///
+/// Pin-discriminating: if the explicit projection were dropped, the `#[require]`d
+/// `default_2d` projection (`scale = 1.0`) would be on the entity instead and the assert
+/// would fail. Halving the scale halves the visible half-extent (`window * 0.5 * scale`),
+/// so the battlefield draws at twice the size — the play-test "too zoomed out" fix.
+#[test]
+fn world_camera_spawns_at_half_orthographic_scale() {
+    let mut app = App::new();
+    app.add_systems(Startup, spawn_world_camera);
+    app.update();
+
+    let mut cameras = app
+        .world_mut()
+        .query_filtered::<&Projection, With<WorldCamera>>();
+    let scale = cameras.iter(app.world()).next().and_then(|projection| {
+        if let Projection::Orthographic(ortho) = projection {
+            Some(ortho.scale)
+        } else {
+            None
+        }
+    });
+    assert_eq!(
+        scale.map(f32::to_bits),
+        Some(0.5_f32.to_bits()),
+        "the world camera must spawn one orthographic projection at scale 0.5 (2x zoom), \
+         not the default_2d 1.0",
+    );
+}
+
+// -----------------------------------------------------------------------------
+// GTW-262 — pan suppressed while the pointer is over a UI menu area.
+// -----------------------------------------------------------------------------
+
+/// Builds an app with `pan_camera` registered, a `WorldCamera` parked at the origin, an
+/// empty primary window, and a pressed `KeyW` (so the keyboard source alone WOULD pan the
+/// camera up). The test toggles whether a UI node is `Hovered` to drive the gate.
+fn pan_gate_app() -> App {
+    use std::time::Duration;
+
+    use bevy::{
+        time::TimeUpdateStrategy,
+        window::{PrimaryWindow, Window},
+    };
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    // Give `Res<Time>.delta_secs()` a controlled non-zero value each update so a non-gated
+    // pan actually moves the camera (the virtual clock would otherwise report 0 on the
+    // first update). The virtual clock clamps each step to 250ms, ample for a measurable
+    // pan at PAN_SPEED.
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+        100,
+    )));
+    // The keyboard source; press W so a non-gated pan would move the camera +Y.
+    let mut keys = ButtonInput::<KeyCode>::default();
+    keys.press(KeyCode::KeyW);
+    app.insert_resource(keys);
+    app.add_systems(Update, pan_camera);
+
+    app.world_mut()
+        .spawn((WorldCamera, Transform::from_translation(Vec3::ZERO)));
+    app.world_mut().spawn((Window::default(), PrimaryWindow));
+    app
+}
+
+/// The `WorldCamera`'s current y translation.
+fn camera_y(app: &mut App) -> f32 {
+    let mut q = app
+        .world_mut()
+        .query_filtered::<&Transform, With<WorldCamera>>();
+    q.iter(app.world()).next().map_or(0.0, |t| t.translation.y)
+}
+
+/// GTW-262 — `pan_camera` pans normally when NO UI node is hovered, but EARLY-RETURNS
+/// (no camera move) when ANY node carrying an `Interaction` is `Hovered` — covering the
+/// whole panel area, not just buttons.
+///
+/// Pin-discriminating: it first proves the keyboard pan DOES move the camera (so the gate
+/// is what suppresses it, not a dead input), then proves a hovered UI node freezes it.
+/// Without the `pointer_over_ui` early-return the camera would keep panning under the menu.
+#[test]
+fn pan_is_suppressed_while_pointer_is_over_ui() {
+    // Phase 1 — no UI hovered: the keyboard pan moves the camera up (+Y). The virtual clock
+    // reports a zero delta on the very first update (no prior instant), so warm it up once
+    // (W stays pressed — no InputPlugin clears it under MinimalPlugins) before measuring.
+    let mut app = pan_gate_app();
+    app.update();
+    let before_pan = camera_y(&mut app);
+    app.update();
+    let after_pan = camera_y(&mut app);
+    assert!(
+        after_pan > before_pan,
+        "with W pressed and no UI hovered, the camera must pan up (+Y): {before_pan} -> \
+         {after_pan}",
+    );
+
+    // Phase 2 — a UI node is Hovered (an action-bar / status-panel ROOT carrying an
+    // Interaction): the pan must be suppressed, so the camera does not move further.
+    app.world_mut()
+        .spawn((Node::default(), Interaction::Hovered));
+    let before = camera_y(&mut app);
+    app.update();
+    let after = camera_y(&mut app);
+    assert_eq!(
+        after.to_bits(),
+        before.to_bits(),
+        "while a UI node is Hovered the camera must not pan (got {before} -> {after})",
     );
 }

@@ -29,7 +29,7 @@ use gdtf_battle_input::{GdtfBattleInputPlugin, HoveredCell, world_to_cell};
 use gdtf_battle_presenter::{
     ActiveLevel, HoverHighlight, TopDownRendererPlugin, WorldCamera, cell_to_world,
 };
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level};
+use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, OccupancyGrid, TerrainKind};
 
 /// The synthetic window/camera render-target size (physical px), large enough that a
 /// cursor near its centre unprojects to an in-grid cell.
@@ -67,6 +67,10 @@ fn e2e_app(active_level: Level) -> App {
     // level under test so the picker bands on it.
     app.world_mut().insert_resource(ActiveLevel(active_level));
     app.world_mut().insert_resource(BattleInProgress);
+    // GTW-268 — the highlight emit now gates on the `OccupancyGrid`: only an occupied or
+    // blocking cell highlights. Insert an empty grid (all `Open`, no occupants); a test
+    // marks the hovered cell blocking to land the highlight.
+    app.world_mut().insert_resource(OccupancyGrid::new());
 
     app.world_mut().spawn((
         Camera2d,
@@ -131,15 +135,24 @@ fn end_to_end_highlight_lands_at_the_hovered_cell() {
     // sign reasoning).
     let cursor = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
     set_cursor(&mut app, Some(cursor));
-    // Frame 1: picker resolves HoveredCell + emits; the draw reads the same frame's
-    // message (presenter band runs after the input band). A second update settles any
-    // ordering across the input/presenter bands deterministically.
-    app.update();
+    // Frame 1: the picker resolves HoveredCell. (GTW-268 — the emit now gates on the grid,
+    // and the cell is still bare floor here, so nothing highlights yet.)
     app.update();
 
     let cell = hovered(&app);
     assert!(cell.is_some(), "the in-grid cursor must resolve a cell");
     let Some(cell) = cell else { return };
+
+    // GTW-268 — mark the hovered cell BLOCKING (Cover) so it is an "object" that highlights;
+    // bare floor would emit `None`. This is the gate the play-test fix added.
+    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
+        grid.set_terrain(cell, TerrainKind::Cover);
+    }
+    // Frame 2/3: the picker re-resolves the same cell + emits (now it passes the occupancy
+    // gate); the draw reads the message (presenter band runs after the input band). Two
+    // updates settle any ordering across the input/presenter bands deterministically.
+    app.update();
+    app.update();
 
     // The highlight is Visible at EXACTLY cell_to_world(hovered) — the same observable
     // result the old input-side draw produced.
@@ -200,5 +213,75 @@ fn end_to_end_highlight_lands_at_the_hovered_cell() {
         highlight_state(&mut app).map(|(_, v)| v),
         Some(Visibility::Hidden),
         "the highlight must hide when the cursor leaves the grid",
+    );
+}
+
+/// GTW-268 — gangers + objects highlight, NEVER bare floor. With the cursor parked on ONE
+/// in-grid cell: while that cell is bare floor (`Open`, no occupant) the highlight is HIDDEN
+/// (the emit gates the request to `None`); marking the SAME cell occupied (a ganger) — or
+/// blocking (an object / cover) — makes the highlight Visible at exactly that cell.
+///
+/// Pin-discriminating: this would FAIL on pre-GTW-268 code (which highlighted bare floor
+/// unconditionally — the bare-floor phase would already be Visible). The occupancy state is
+/// the ONLY thing changed between the two phases, so the visibility flip can only come from
+/// the occupancy gate.
+#[test]
+fn highlight_only_on_occupied_or_blocking_cells() {
+    let level = Level::new(0);
+    let mut app = e2e_app(level);
+
+    // Park the cursor on a stable in-grid cell (the same projection the parity test uses).
+    let cursor = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
+    set_cursor(&mut app, Some(cursor));
+    app.update();
+
+    let cell = hovered(&app);
+    assert!(cell.is_some(), "the in-grid cursor must resolve a cell");
+    let Some(cell) = cell else { return };
+
+    // PHASE 1 — bare floor (`Open`, no occupant): the emit gates to `None`, so the lazily-
+    // spawned highlight sprite is never created (the draw only spawns on the first `Some`).
+    // The highlight is therefore NOT visible.
+    app.update();
+    app.update();
+    assert_ne!(
+        highlight_state(&mut app).map(|(_, v)| v),
+        Some(Visibility::Visible),
+        "a bare-floor cell must NOT highlight (GTW-268: gangers + objects only)",
+    );
+    assert_eq!(
+        highlight_count(&mut app),
+        0,
+        "no highlight sprite is spawned while only bare floor is hovered",
+    );
+
+    // PHASE 2a — an OCCUPANT (a ganger) on the cell: the highlight appears at that cell.
+    let ganger = app.world_mut().spawn_empty().id();
+    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
+        grid.set_occupant(cell, Some(ganger));
+    }
+    app.update();
+    app.update();
+    assert_eq!(
+        highlight_state(&mut app),
+        Some((
+            cell_to_world(Cell::new(cell.x, cell.y), level),
+            Visibility::Visible,
+        )),
+        "a cell holding a ganger (occupant) MUST highlight at that cell",
+    );
+
+    // PHASE 2b — clear the occupant but make the cell BLOCKING (an object / cover): still
+    // highlights, proving the OR-branch of the gate (occupant OR is_blocked).
+    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
+        grid.set_occupant(cell, None);
+        grid.set_terrain(cell, TerrainKind::Cover);
+    }
+    app.update();
+    app.update();
+    assert_eq!(
+        highlight_state(&mut app).map(|(_, v)| v),
+        Some(Visibility::Visible),
+        "a blocking object / cover cell MUST highlight (GTW-268 OR-branch)",
     );
 }

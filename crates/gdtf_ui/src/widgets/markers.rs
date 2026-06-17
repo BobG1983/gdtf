@@ -25,12 +25,18 @@ pub struct DisabledButton;
 /// [`Themed`](crate::themed::Themed): the central base-look pass still re-paints it,
 /// and the active fill is composed on top of that fresh base.
 ///
-/// UNLIKE [`DisabledButton`], an active button is **purely visual** — it is NOT
-/// added to any `Without<…>` interaction filter, so it stays fully interactive (you
-/// click an active toggle to turn it OFF). When a button is BOTH [`DisabledButton`]
-/// and [`ActiveButton`], DISABLED wins: [`paint_active_buttons`](super::paint_active_buttons)
-/// skips disabled buttons (`Without<DisabledButton>`), so a disabled+active button keeps the
-/// disabled fill.
+/// An active button stays fully INTERACTIVE — you click an active toggle to turn it OFF
+/// (its `Interaction` is still driven, and the GTW-122 mouse-action layer still reads its
+/// presses). What changed in GTW-266 is purely its PAINT: active is now **sticky** over
+/// hover/press feedback. The interaction-feedback system
+/// ([`theme_interaction`](crate::interaction::theme_interaction)) EXCLUDES `ActiveButton`
+/// (`Without<ActiveButton>`), so an active button's color comes ONLY from
+/// [`paint_active_buttons`](super::paint_active_buttons) — no hover/press swap clobbers the
+/// active fill (that one-frame flicker was the user's GTW-266 complaint, and the toggle
+/// panels in the Mode/Stance build need the current selection to read as steadily engaged).
+/// When a button is BOTH [`DisabledButton`] and [`ActiveButton`], DISABLED wins:
+/// [`paint_active_buttons`](super::paint_active_buttons) skips disabled buttons
+/// (`Without<DisabledButton>`), so a disabled+active button keeps the disabled fill.
 ///
 /// A unit marker — it carries no data; presence alone is the signal
 /// (no-bare-types rule).

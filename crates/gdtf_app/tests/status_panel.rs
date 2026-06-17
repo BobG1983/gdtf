@@ -446,6 +446,65 @@ fn empty_selection_shows_empty_state_and_no_stale_data() {
 }
 
 // ---------------------------------------------------------------------------------
+// GTW-264 — the panel reflects the AUTO-SELECTED ganger (ordering vs auto-select).
+// ---------------------------------------------------------------------------------
+
+/// GTW-264 — with a PLAYER-faction ganger present and NOTHING selected, ONE `update()`
+/// renders the panel from the GTW-255 auto-selected ganger, NOT the "No ganger selected"
+/// empty state. This proves `update_status_panel` is ordered `.after(InputSystems::Gather)`
+/// (where `auto_select_first_player_ganger` writes the initial `SelectedShooter`): without
+/// that ordering the panel read the selection BEFORE auto-select filled it and painted the
+/// empty state every frame (the play-test bug).
+///
+/// The harness battle has `BattleInProgress` + `PlayerFaction` (= 0, from `setup_battle`)
+/// and `SelectedShooter` starts empty (the AC4 test's precondition), so auto-select's gate
+/// is satisfied; the ganger is faction 0 so auto-select picks it. Same-update observability
+/// is the whole point — a single `update()` must already show the ganger.
+#[test]
+fn panel_reflects_the_auto_selected_ganger() {
+    let mut app = battle_running_app();
+
+    // A PLAYER-faction (0) ganger with a Position (auto-select reasons off Position) and the
+    // vital components the panel reads. SelectedShooter is left EMPTY so auto-select fills it.
+    app.world_mut().spawn((
+        Position::new(CellLevel::new(Cell::new(2, 3), Level::new(0))),
+        Faction::new(0),
+        Stance::new(StanceKind::Crouching),
+        Tu::new(6),
+        TuMax::new(8),
+        Hp::new(9),
+        Wounds::new(2),
+        LifeState::Alive,
+    ));
+
+    // ONE update: auto-select (InputSystems::Gather) fills SelectedShooter, THEN
+    // update_status_panel (.after Gather) renders it — same frame.
+    app.update();
+
+    let stance = line_text::<StanceText>(&mut app).unwrap_or_default();
+    assert!(
+        !stance.contains("No ganger selected"),
+        "after one update the panel must reflect the auto-selected ganger, not the empty \
+         state (GTW-264 ordering): {stance}",
+    );
+    assert!(
+        stance.contains("Crouching"),
+        "the panel must render the auto-selected ganger's stance: {stance}",
+    );
+
+    let identity = line_text::<IdentityText>(&mut app).unwrap_or_default();
+    assert!(
+        identity.contains('2') && identity.contains('3'),
+        "the panel must render the auto-selected ganger's cell: {identity}",
+    );
+    let tu = line_text::<TuText>(&mut app).unwrap_or_default();
+    assert!(
+        tu.contains("6/8"),
+        "the panel must render the auto-selected ganger's TU pair: {tu}",
+    );
+}
+
+// ---------------------------------------------------------------------------------
 // GTW-254 AC1 — the weapon-name line shows the selected ganger's WeaponName.
 // ---------------------------------------------------------------------------------
 

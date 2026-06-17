@@ -13,7 +13,7 @@ use crate::{
     UiPlugin,
     theme::{GdtfTheme, GdtfThemeSpec},
     themed::{UiSystems, apply_theme},
-    widgets::{ButtonLabel, DisabledButton, spawn_button},
+    widgets::{ActiveButton, ButtonLabel, DisabledButton, spawn_button},
 };
 
 /// Builds a [`GdtfTheme`] with caller-chosen button resting / hover / pressed
@@ -164,6 +164,56 @@ fn disabled_button_is_skipped_by_interaction() -> Result<(), ron::error::Spanned
         app.world().get::<BackgroundColor>(button).map(|c| c.0),
         Some(*theme_res.button.hover),
         "disabled button must never show HoverBg",
+    );
+
+    Ok(())
+}
+
+/// GTW-266 — `theme_interaction` SKIPS an `ActiveButton`: simulating Hovered (the swap a
+/// real pointer would drive) leaves its background at the `apply_theme` base, never
+/// `HoverBg`. Active is STICKY — the interaction feedback never overrides a toggled-on
+/// button (its color comes solely from `paint_active_buttons`), so the Aim/Mode/Stance
+/// toggle does not flicker hover-vs-active.
+///
+/// Pin-discriminating: dropping the `Without<ActiveButton>` filter from `theme_interaction`
+/// would let the hover swap fire and this assert would see `HoverBg`.
+#[test]
+fn active_button_is_skipped_by_interaction() -> Result<(), ron::error::SpannedError> {
+    let panel = [0.08, 0.08, 0.10, 1.0];
+    let hover = [0.20, 0.20, 0.24, 1.0];
+    let press = [0.04, 0.04, 0.06, 1.0];
+    let theme_res = theme(panel, hover, press)?;
+
+    let mut app = app_with_interaction();
+    app.insert_resource(theme_res.clone());
+
+    let button = {
+        let mut commands = app.world_mut().commands();
+        spawn_button(
+            &mut commands,
+            &theme_res,
+            ButtonLabel::new("Aim"),
+            ActiveButton,
+        )
+    };
+    app.world_mut().flush();
+    // Establish the base look first (apply_theme paints the resting base).
+    app.update();
+    let base = app.world().get::<BackgroundColor>(button).map(|c| c.0);
+
+    set_interaction(&mut app, button, Interaction::Hovered);
+    app.update();
+
+    assert_eq!(
+        app.world().get::<BackgroundColor>(button).map(|c| c.0),
+        base,
+        "an active button's background must be unchanged by a Hovered interaction \
+         (theme_interaction skips ActiveButton)",
+    );
+    assert_ne!(
+        app.world().get::<BackgroundColor>(button).map(|c| c.0),
+        Some(*theme_res.button.hover),
+        "an active button must never show HoverBg (active is sticky)",
     );
 
     Ok(())

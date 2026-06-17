@@ -126,10 +126,18 @@ impl Plugin for UiPlugin {
                 // (toggled-on) button's fill with the theme's `active` color; it skips
                 // `DisabledButton` (`Without<DisabledButton>`), so disabled+active
                 // resolves to disabled.
+                //
+                // GTW-266 — active is STICKY: `theme_interaction` now EXCLUDES
+                // `ActiveButton` (`Without<ActiveButton>`), so the two no longer write the
+                // same active button's `BackgroundColor` the same frame. As belt-and-braces
+                // (and so a future widget that drops that exclusion still resolves
+                // active-wins deterministically), `paint_active_buttons` is ALSO ordered
+                // `.after(theme_interaction)` — the active fill is the last writer, never a
+                // flickering race (bevy-traps rule 3).
                 (
                     theme_interaction,
                     paint_disabled_buttons,
-                    paint_active_buttons,
+                    paint_active_buttons.after(theme_interaction),
                     sync_hover_to_focus,
                 )
                     .after(UiSystems::ApplyTheme),
