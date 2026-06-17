@@ -18,13 +18,13 @@
 use bevy::{prelude::*, state::state::State};
 use gdtf_app::test_support::{
     AimToggleButton, AutoBattleActive, AutoBattlePlugin, BattleScapeState, EndTurnButton,
-    FireModePickerButton, LevelDownButton, LevelUpButton, ReloadButton, RunningState,
-    StanceCycleButton, auto_battle_enabled,
+    FireModePickerButton, LevelDownButton, LevelUpButton, LoadedSituation, ReloadButton,
+    RunningState, StanceCycleButton, auto_battle_enabled,
 };
 // (no `GameState` import — the e2e test reads BattleScapeState directly.)
 use gdtf_battle_input::HoveredCell;
 use gdtf_battle_presenter::WorldCamera;
-use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -48,17 +48,23 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
         .map(|state| *state.get())
 }
 
-/// Seeds the persistent `Load` resources a headless walk lacks (no `AssetServer`),
-/// so the machine can traverse `Load` to the menu — `default_theme()` + `CombatTuning`.
-/// This mirrors what the real `Load` scene resolves from assets and what the affordance
-/// itself seeds on `Startup`; injecting it in BOTH the gate-OFF and gate-ON apps keeps
-/// the affordance plugin the ONLY difference between them.
+/// Seeds the four persistent `Load` resources a headless walk lacks (no
+/// `AssetServer`), so the machine can traverse `Load` to the menu: a `default_theme`,
+/// a `CombatTuning`, a `WeaponRegistry`, and a `LoadedSituation`. This mirrors what
+/// the real `Load` scene resolves from assets and what the affordance itself seeds on
+/// `Startup`; injecting them in BOTH the gate-OFF and gate-ON apps keeps the
+/// affordance plugin the ONLY difference between them.
 fn seed_load(app: &mut App) {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-257: the Load→Intro gate now also requires a WeaponRegistry; the default
-    // LoadedSituation is empty (zero gangers), so an empty registry clears the gate.
+    // GTW-257: the Load→Intro gate now also requires a WeaponRegistry; the empty default
+    // LoadedSituation has zero gangers, so an empty registry clears the gate.
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-261: the Load→Intro gate now also requires a LoadedSituation (the empty-battle-
+    // race fix). The headless walk has no AssetServer to resolve one, so seed the empty
+    // default beside the other three — symmetric with theme/tuning/weapons.
+    app.world_mut()
+        .insert_resource(LoadedSituation(Situation::default()));
 }
 
 // ---------------------------------------------------------------------------------

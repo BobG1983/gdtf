@@ -171,7 +171,13 @@ fn drive_past_menu(app: &mut bevy::app::App) -> bool {
 
 /// Builds the headless walk app, injecting the persistent `Load` resources the
 /// machine needs to traverse `Load` (no `AssetServer` under `MinimalPlugins`), plus
-/// an optional `LoadedSituation` fixture for the Generation setup to consume.
+/// a `LoadedSituation` for the Generation setup to consume.
+///
+/// GTW-261 made the situation a gate-blocking `Load` resource, so a `LoadedSituation`
+/// is ALWAYS seeded (symmetric with the theme/tuning/weapons seeds): the passed
+/// `situation` fixture when `Some`, else the empty `Situation::default()`. The empty
+/// default exercises the zero-ganger battle-build path the way the absent
+/// `request_battle_setup` fallback used to.
 fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     let mut app = GdtfTestAppBuilder::new().default_start().build();
     app.world_mut().insert_resource(default_theme());
@@ -180,9 +186,10 @@ fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     // resolves from assets/weapons/, injected here for the MinimalPlugins deep-walk
     // (no AssetServer) so the Generation setup arms each ganger from it.
     app.world_mut().insert_resource(weapon_registry());
-    if let Some(situation) = situation {
-        app.world_mut().insert_resource(LoadedSituation(situation));
-    }
+    // GTW-261: the Load→Intro gate now requires a LoadedSituation; seed the fixture
+    // when given, else the empty default so the walk still traverses Load.
+    app.world_mut()
+        .insert_resource(LoadedSituation(situation.unwrap_or_default()));
     app
 }
 
@@ -480,19 +487,21 @@ fn battle_resources_survive_battle_and_clean_on_exit() {
     );
 }
 
-/// AC8 — the absent-`Situation` fallback keeps the deep walk green: with NO
-/// `LoadedSituation` present, `setup_battle(&Situation::default())` returns Ok with
-/// zero gangers, the four sim resources are inserted (empty grids), the gate fires,
-/// and Generation ADVANCES (it does not hang). The landed `state_walk` deep walk
-/// (which inserts no Situation) covers the reach-Teardown half; this asserts the
-/// absent-Situation setup half.
+/// AC8 — the empty-`Situation` build keeps the deep walk green: with an EMPTY
+/// `LoadedSituation` (the `Situation::default()` the GTW-261 gate now requires the
+/// walk to seed), `setup_battle(&Situation::default())` returns Ok with zero gangers,
+/// the four sim resources are inserted (empty grids), the gate fires, and Generation
+/// ADVANCES (it does not hang). The landed `state_walk` deep walk covers the
+/// reach-Teardown half; this asserts the empty-situation setup half (the same
+/// zero-ganger build the `request_battle_setup` belt-and-suspenders fallback yields).
 #[test]
-fn absent_situation_falls_back_to_default_and_advances() {
-    // No LoadedSituation injected — the MinimalPlugins default-start path.
+fn empty_situation_builds_and_advances() {
+    // The empty default LoadedSituation — the MinimalPlugins default-start path now
+    // seeds it (GTW-261), exercising the zero-ganger battle build.
     let mut app = walk_app(None);
     assert!(
         drive_to_generation(&mut app),
-        "the walk should reach Generation within {BUDGET} updates even with no Situation",
+        "the walk should reach Generation within {BUDGET} updates with the empty default situation",
     );
 
     // The Default (empty) situation still builds: the four sim resources are inserted.

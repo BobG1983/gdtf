@@ -45,9 +45,10 @@ use bevy::{
     state::state::{NextState, State},
 };
 use gdtf_app::test_support::{
-    AfterMathState, AppState, BattleRunningComplete, BattleScapeState, GameState, RunningState,
+    AfterMathState, AppState, BattleRunningComplete, BattleScapeState, GameState, LoadedSituation,
+    RunningState,
 };
-use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -56,18 +57,20 @@ use gdtf_ui::theme::default_theme;
 /// still bounded so a machine that never terminates fails instead of hanging.
 const WALK_BUDGET: u32 = 64;
 
-/// Builds the default-start headless walk app and seeds the [`GdtfTheme`] and
-/// [`CombatTuning`] the `Load` scene now requires (GTW-143 / GTW-206).
+/// Builds the default-start headless walk app and seeds the four resources the
+/// `Load` scene now requires (GTW-143 / GTW-206 / GTW-257 / GTW-261).
 ///
-/// `Load` no longer advances on a frame-1 shortcut: it leaves only once BOTH a
-/// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) and a [`CombatTuning`] are present,
-/// which the running app resolves from the loose theme/tuning RON via the
-/// `AssetServer` (GTW-206 / E10.4 AC5 added the tuning as the second required
-/// resource). The `MinimalPlugins` walk app has **no** `AssetServer`, so this
-/// pre-inserts both (standing in for the resolved loads) so the walk can traverse
-/// `Load` and exercise the deep transition graph this file is about. Both are the
-/// deliberate state-scoped-resource exceptions that persist, so seeding them
-/// before the walk is faithful to how the real app carries them forward.
+/// `Load` no longer advances on a frame-1 shortcut: it leaves only once a
+/// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme), a [`CombatTuning`], a
+/// [`WeaponRegistry`], AND a [`LoadedSituation`] are all present, which the running
+/// app resolves from the loose theme/tuning/weapons/situation RON via the
+/// `AssetServer` (GTW-206 added the tuning, GTW-257 the registry, GTW-261 the
+/// situation as required gate resources). The `MinimalPlugins` walk app has **no**
+/// `AssetServer`, so this pre-inserts all four (standing in for the resolved loads)
+/// so the walk can traverse `Load` and exercise the deep transition graph this file
+/// is about. All four are the deliberate state-scoped-resource exceptions that
+/// persist, so seeding them before the walk is faithful to how the real app carries
+/// them forward.
 fn walk_app_with_theme() -> App {
     let mut app = GdtfTestAppBuilder::new().default_start().build();
     app.world_mut().insert_resource(default_theme());
@@ -75,6 +78,11 @@ fn walk_app_with_theme() -> App {
     // GTW-257: the Load→Intro gate also requires a WeaponRegistry (the deep walk uses
     // the empty-default situation, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-261: the Load→Intro gate now also requires a LoadedSituation (the
+    // empty-battle-race fix). The headless walk has no AssetServer to resolve one, so
+    // seed the empty default beside the other three — symmetric with theme/tuning/weapons.
+    app.world_mut()
+        .insert_resource(LoadedSituation(Situation::default()));
     app
 }
 

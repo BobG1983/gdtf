@@ -40,6 +40,26 @@ pub(in crate::scenes::load) struct LoadAssetCollections<'w> {
     weapon_specs: Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
 }
 
+/// The four persistent resources [`poll_and_resolve`] resolves, each as an
+/// `Option<Res<…>>` presence-probe, bundled into one [`SystemParam`] so the
+/// system's parameter list stays under clippy's argument-count gate (the
+/// [`LoadAssetCollections`] grouping precedent — a transparent bundle of existing
+/// world-state resources, not a wrapped domain scalar).
+///
+/// Each branch resolves on its OWN resource's absence (so none starves another,
+/// bevy-traps rule 3); the bundle exposes that per-branch "already present?" probe.
+#[derive(SystemParam)]
+pub(in crate::scenes::load) struct ResolvedResources<'w> {
+    /// Whether the resolved [`GdtfTheme`] is already inserted.
+    theme:     Option<Res<'w, GdtfTheme>>,
+    /// Whether the resolved [`CombatTuning`] is already inserted (GTW-206).
+    tuning:    Option<Res<'w, CombatTuning>>,
+    /// Whether the resolved [`WeaponRegistry`] is already inserted (GTW-257).
+    weapons:   Option<Res<'w, WeaponRegistry>>,
+    /// Whether the resolved [`LoadedSituation`] is already inserted (GTW-261).
+    situation: Option<Res<'w, LoadedSituation>>,
+}
+
 /// Polls the in-flight loads and, once resolvable, inserts the [`GdtfTheme`].
 ///
 /// Each frame, while [`LoadHandles`] exists and no [`GdtfTheme`] has been
@@ -67,17 +87,17 @@ pub(in crate::scenes::load) struct LoadAssetCollections<'w> {
 /// so the asset stays loaded for that watcher. Like [`GdtfTheme`], it persists
 /// past `OnExit(Load)` (it is **not** removed in `cleanup`).
 ///
-/// GTW-205 (E10.3): on the success path it ALSO resolves the authored
-/// [`Situation`] into a persistent [`LoadedSituation`] — the source the Generation
-/// slice (E10.5) reads. Once the situation RON reaches [`LoadState::Loaded`] it is
-/// read out of `Assets<RonAsset<Situation>>` (the same transient-one-frame
-/// `Assets::get` retry the theme path uses) and inserted as a [`LoadedSituation`]
-/// that, like [`GdtfTheme`], persists past `OnExit(Load)`. This is deliberately
-/// **non-blocking** to the theme: the situation resolution NEVER gates or alters
-/// the existing theme-only Load→Intro transition. A situation that has not (yet)
-/// reached `Loaded` simply leaves `LoadedSituation` un-inserted this pass and the
-/// theme still resolves — so a slow/failed situation can never strand the machine
-/// in `Load`.
+/// GTW-205 (E10.3) / GTW-261: it ALSO resolves the authored [`Situation`] into a
+/// persistent [`LoadedSituation`] — the source the Generation slice (E10.5) reads.
+/// As of GTW-261 the situation is a **gate-blocking** resource (the
+/// [empty-battle-race fix](resolve_situation)): the Load→Intro transition now
+/// requires a `LoadedSituation` too, so a battle never starts before its real
+/// situation loads. The situation branch runs on its OWN `LoadedSituation`-absence
+/// guard ([`resolve_situation`]), exactly like the tuning and weapons branches, so a
+/// slow theme never blocks the situation and vice-versa. On the failure path it
+/// `warn!`s and inserts an empty [`Situation::default`], preserving the no-strand
+/// guarantee (a slow/failed situation still always lets `Load` exit), while a
+/// success resolves the real authored battlefield.
 ///
 /// GTW-206 (E10.4): it ALSO resolves the shipped [`CombatTuning`] into a persistent
 /// [`CombatTuning`] resource — the balance store the sim marches with. The tuning
@@ -87,29 +107,35 @@ pub(in crate::scenes::load) struct LoadAssetCollections<'w> {
 /// `resolve()` step (`CombatTuning` IS both the `Deserialize` payload and the
 /// `Resource`), so the loaded payload is inserted directly. On the failure path it
 /// `warn!`s naming `combat/tuning.ron` and inserts [`CombatTuning::default`], so
-/// `Load` always exits with a tuning present. BOTH a `GdtfTheme` and a
-/// `CombatTuning` must be present before the plugin's transition leaves `Load`
-/// (see the plugin wiring); this branch makes the tuning the second required
-/// resource.
+/// `Load` always exits with a tuning present. A `GdtfTheme`, a `CombatTuning`, a
+/// `WeaponRegistry`, AND a `LoadedSituation` must ALL be present before the plugin's
+/// transition leaves `Load` (see the plugin wiring); this branch makes the tuning
+/// one of those four required resources.
 ///
 /// Guarded by `run_if(resource_exists::<LoadHandles>)` plus the
-/// `not(resource_exists::<GdtfTheme>).or(not(resource_exists::<CombatTuning>))`
-/// gate in the plugin wiring (run while EITHER required resource is still
+/// `not(resource_exists::<GdtfTheme>).or(not(resource_exists::<CombatTuning>))
+/// .or(not(resource_exists::<WeaponRegistry>)).or(not(resource_exists::<LoadedSituation>))`
+/// gate in the plugin wiring (run while ANY of the four required resources is still
 /// missing), and takes `Res<AssetServer>`/`Res<Assets<_>>`/`Res<LoadHandles>` —
 /// all of which are present whenever those run-conditions hold, so it never panics
 /// on a missing resource (bevy-traps rule 1). The early-`return`s on the
-/// run-condition resources are belt-and-braces against a one-frame race. The theme
-/// branch is internally re-gated on `not(resource_exists::<GdtfTheme>)` so once the
-/// theme resolves only the still-missing tuning is polled (and vice-versa).
+/// run-condition resources are belt-and-braces against a one-frame race. Each branch
+/// is internally re-gated on its OWN resource's absence (via the
+/// [`ResolvedResources`] presence-probes) so once one resolves only the still-missing
+/// ones keep being polled.
 pub(in crate::scenes::load) fn poll_and_resolve(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
     collections: LoadAssetCollections,
-    theme_present: Option<Res<GdtfTheme>>,
-    tuning_present: Option<Res<CombatTuning>>,
-    weapons_present: Option<Res<WeaponRegistry>>,
+    resolved: ResolvedResources,
     handles: Option<Res<LoadHandles>>,
 ) {
+    let (theme_present, tuning_present, weapons_present, situation_present) = (
+        resolved.theme.is_some(),
+        resolved.tuning.is_some(),
+        resolved.weapons.is_some(),
+        resolved.situation.is_some(),
+    );
     let (
         Some(asset_server),
         Some(theme_assets),
@@ -136,14 +162,14 @@ pub(in crate::scenes::load) fn poll_and_resolve(
     // tuning and a slow tuning never blocks the theme. Done FIRST so it always gets
     // a poll even once the theme has resolved (the system keeps running while
     // ANY required resource is missing).
-    if tuning_present.is_none() {
+    if !tuning_present {
         resolve_tuning(&mut commands, &asset_server, &tuning_assets, &handles);
     }
 
     // GTW-257: resolve the weapons folder into the name-keyed WeaponRegistry on its
     // OWN absence guard, independently of the theme/tuning branches — so a slow
     // weapons folder never blocks them and vice-versa (the tuning-branch precedent).
-    if weapons_present.is_none() {
+    if !weapons_present {
         resolve_weapons(
             &mut commands,
             &asset_server,
@@ -153,9 +179,19 @@ pub(in crate::scenes::load) fn poll_and_resolve(
         );
     }
 
-    // Once a GdtfTheme exists, the theme branch is done — only the tuning above
-    // still needs polling. Skip the theme/situation work to avoid re-resolving it.
-    if theme_present.is_some() {
+    // GTW-261: resolve the authored situation into the persistent LoadedSituation on
+    // its OWN absence guard, independently of the theme/tuning/weapons branches — so a
+    // slow theme never blocks the situation and vice-versa (the tuning-branch
+    // precedent). This is the empty-battle-race fix: the situation is now a
+    // gate-blocking resource (see the plugin wiring), resolved here on success and
+    // falling back to an empty default on failure (so Load never strands).
+    if !situation_present {
+        resolve_situation(&mut commands, &asset_server, &situation_assets, &handles);
+    }
+
+    // Once a GdtfTheme exists, the theme branch is done — only the branches above
+    // still need polling. Skip the theme work to avoid re-resolving it.
+    if theme_present {
         return;
     }
 
@@ -189,27 +225,6 @@ pub(in crate::scenes::load) fn poll_and_resolve(
     if matches!(theme_state, LoadState::Loaded)
         && matches!(fonts_state, RecursiveDependencyLoadState::Loaded)
     {
-        // GTW-205 (E10.3): resolve the authored situation into the persistent
-        // LoadedSituation FIRST, on the same success pass. Once it has reached
-        // Loaded, read it out of its collection with the same transient-one-frame
-        // retry the theme uses (loaded-but-not-yet-in-collection → return, retry
-        // next frame). This is NON-BLOCKING to the theme: a situation that has not
-        // yet reached Loaded just leaves LoadedSituation un-inserted this pass — so
-        // it can never gate or alter the theme-only Load→Intro transition.
-        if matches!(
-            asset_server.load_state(&*handles.situation),
-            LoadState::Loaded
-        ) {
-            let Some(situation) = situation_assets.get(&*handles.situation) else {
-                // Loaded-but-not-yet-in-collection — retry next frame (the theme is
-                // not inserted yet, so the run-condition keeps this system alive).
-                return;
-            };
-            // Persist the resolved battlefield for the Generation consumer (E10.5);
-            // like GdtfTheme it survives OnExit(Load) (not removed in cleanup).
-            commands.insert_resource(LoadedSituation((**situation).clone()));
-        }
-
         let Some(spec) = theme_assets.get(&*handles.theme) else {
             // Loaded-but-not-yet-in-collection is a transient one-frame state;
             // try again next frame rather than failing.
@@ -289,6 +304,71 @@ fn resolve_tuning(
             return;
         };
         commands.insert_resource((**tuning).clone());
+    }
+}
+
+/// GTW-205 / GTW-261: resolves the authored [`Situation`] RON into the persistent
+/// [`LoadedSituation`] resource, mirroring the [`resolve_tuning`] poll/resolve +
+/// warn/fallback shape.
+///
+/// As of GTW-261 the situation is a **gate-blocking** resource (the empty-battle-race
+/// fix): the Load→Intro transition now requires a `LoadedSituation` (see the plugin
+/// wiring), so a battle never starts before its real situation loads. This resolve
+/// makes the situation exactly symmetric with the tuning and weapons branches — it
+/// gates entry AND falls back to an empty default on failure, so a slow/failed
+/// situation still always lets `Load` exit (the no-strand guarantee GTW-205 wanted,
+/// preserved via the failure fallback rather than via non-blocking resolution).
+///
+/// Called only while no [`LoadedSituation`] resource exists yet (the caller's
+/// own-absence guard), independently of the theme / tuning / weapons branches:
+///
+/// - If the situation RON reached [`LoadState::Failed`], `warn!`s naming
+///   `situations/skirmish.ron` and inserts an empty [`Situation::default`] — the
+///   ADR-0003 sanctioned error-path safety-net — so `Load` always exits with a
+///   situation present and never hangs on a bad situation file. CRITICAL: the empty
+///   default is inserted ONLY on a genuine `Failed`, NEVER while the situation is
+///   still loading — inserting it early would clear the gate before the real
+///   battlefield resolves, re-introducing the empty-battle bug.
+/// - Else once the situation RON is [`LoadState::Loaded`], reads the deserialized
+///   [`Situation`] out of `Assets<RonAsset<Situation>>` (the same transient-one-frame
+///   `Assets::get` retry the theme path uses) and inserts the inner payload as the
+///   persistent [`LoadedSituation`]. Like
+///   [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) it survives `OnExit(Load)` (it is
+///   **not** removed in `cleanup`), because the Generation slice (E10.5) reads it.
+/// - Else (still loading) it does nothing and is polled again next frame.
+fn resolve_situation(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    situation_assets: &Assets<RonAsset<Situation>>,
+    handles: &LoadHandles,
+) {
+    let situation_state = asset_server.load_state(&*handles.situation);
+
+    // Failure path: a bad/missing situation must not hang the app. Warn naming the
+    // path and fall back to the empty default situation so Load always exits with one
+    // present (a Failed → empty default; the battle then has zero gangers rather than
+    // stranding the machine). Only on a genuine Failed — never while still loading.
+    if situation_state.is_failed() {
+        warn!(
+            "GDTF Load: asset `situations/skirmish.ron` failed to load; falling back to the empty \
+             default situation (the battle will have no gangers)",
+        );
+        commands.insert_resource(LoadedSituation(Situation::default()));
+        return;
+    }
+
+    // Success path: once the situation RON is loaded, read the deserialized payload
+    // out of its collection (transient-one-frame retry like the theme) and insert it
+    // as the persistent LoadedSituation.
+    if matches!(situation_state, LoadState::Loaded) {
+        let Some(situation) = situation_assets.get(&*handles.situation) else {
+            // Loaded-but-not-yet-in-collection — retry next frame (the system stays
+            // alive while LoadedSituation is still absent).
+            return;
+        };
+        // Persist the resolved battlefield for the Generation consumer (E10.5);
+        // like GdtfTheme it survives OnExit(Load) (not removed in cleanup).
+        commands.insert_resource(LoadedSituation((**situation).clone()));
     }
 }
 

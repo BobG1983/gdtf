@@ -28,9 +28,11 @@ use bevy::{
     ecs::{entity::Entity, prelude::With},
     state::state::State,
 };
-use gdtf_app::test_support::{BattleRunningComplete, BattleScapeState, GameState, RunningState};
+use gdtf_app::test_support::{
+    BattleRunningComplete, BattleScapeState, GameState, LoadedSituation, RunningState,
+};
 use gdtf_battle_presenter::WorldCamera;
-use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -69,10 +71,9 @@ fn running_state(app: &bevy::app::App) -> Option<RunningState> {
 }
 
 /// Builds the headless walk app, injecting the persistent `Load` resources the machine
-/// needs to traverse `Load` (no `AssetServer` under `MinimalPlugins`). No
-/// `LoadedSituation` — the empty-battle default-start path the deep walk uses
-/// (the camera lifecycle reads no sim state, so an empty battle suffices). Mirrors
-/// `battle_running_driver.rs::walk_app`.
+/// needs to traverse `Load` (no `AssetServer` under `MinimalPlugins`). The
+/// `LoadedSituation` seeded here is the empty default — the camera lifecycle reads no
+/// sim state, so an empty battle suffices. Mirrors `battle_running_driver.rs::walk_app`.
 fn walk_app() -> bevy::app::App {
     let mut app = GdtfTestAppBuilder::new().default_start().build();
     app.world_mut().insert_resource(default_theme());
@@ -80,6 +81,10 @@ fn walk_app() -> bevy::app::App {
     // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
     // situation here, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-261: the Load->Intro gate now also requires a LoadedSituation (the
+    // empty-battle-race fix); seed the empty default beside the other three.
+    app.world_mut()
+        .insert_resource(LoadedSituation(Situation::default()));
     app
 }
 

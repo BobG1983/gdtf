@@ -8,7 +8,10 @@ use gdtf_battle_sim::{
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
 use crate::{
-    scenes::load::{resources::LoadHandles, systems::*},
+    scenes::load::{
+        resources::{LoadHandles, LoadedSituation},
+        systems::*,
+    },
     states::AppState,
 };
 
@@ -65,31 +68,37 @@ fn add_systems(app: &mut App) {
     .add_systems(
         Update,
         (
-            // poll/resolve runs until a GdtfTheme, a CombatTuning, AND a
-            // WeaponRegistry are all inserted (success path resolves the loaded
-            // spec/payload/folder; failure path inserts the const default). It runs
-            // while ANY required resource is still missing — the theme branch, the
-            // GTW-206 tuning branch, and the GTW-257 weapons branch each re-gate
-            // internally on their own resource's absence, so none starves another
-            // (bevy-traps rule 3). Ordered BEFORE the transition so all three are
-            // present when the transition checks for them.
+            // poll/resolve runs until a GdtfTheme, a CombatTuning, a WeaponRegistry,
+            // AND a LoadedSituation are all inserted (success path resolves the loaded
+            // spec/payload/folder/situation; failure path inserts the const default).
+            // It runs while ANY required resource is still missing — the theme branch,
+            // the GTW-206 tuning branch, the GTW-257 weapons branch, and the GTW-261
+            // situation branch each re-gate internally on their own resource's absence,
+            // so none starves another (bevy-traps rule 3). Ordered BEFORE the transition
+            // so all four are present when the transition checks for them.
             poll_and_resolve.run_if(
                 in_state(AppState::Load)
                     .and(resource_exists::<LoadHandles>)
                     .and(
                         not(resource_exists::<GdtfTheme>)
                             .or(not(resource_exists::<CombatTuning>))
-                            .or(not(resource_exists::<WeaponRegistry>)),
+                            .or(not(resource_exists::<WeaponRegistry>))
+                            .or(not(resource_exists::<LoadedSituation>)),
                     ),
             ),
-            // Once a GdtfTheme, a CombatTuning, AND a WeaponRegistry all exist, leave
-            // Load for Intro (GTW-206 / E10.4 AC5: theme + tuning required; GTW-257:
-            // the WeaponRegistry too, so a battle never starts before weapons load).
+            // Once a GdtfTheme, a CombatTuning, a WeaponRegistry, AND a LoadedSituation
+            // all exist, leave Load for Intro (GTW-206 / E10.4 AC5: theme + tuning
+            // required; GTW-257: the WeaponRegistry too; GTW-261: the LoadedSituation
+            // too, so a battle never starts before its real situation loads — the
+            // empty-battle race fix). On a failed situation the resolve falls back to
+            // an empty LoadedSituation, so a slow/failed situation still never strands
+            // Load (the no-strand guarantee preserved via the failure fallback).
             transition_to_intro.run_if(
                 in_state(AppState::Load)
                     .and(resource_exists::<GdtfTheme>)
                     .and(resource_exists::<CombatTuning>)
-                    .and(resource_exists::<WeaponRegistry>),
+                    .and(resource_exists::<WeaponRegistry>)
+                    .and(resource_exists::<LoadedSituation>),
             ),
         )
             .chain(),

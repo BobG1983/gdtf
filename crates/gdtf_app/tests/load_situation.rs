@@ -9,8 +9,9 @@
 //! - **Tier (a)** — `MinimalPlugins` via [`GdtfTestAppBuilder`]: there is no
 //!   `AssetServer`, so the situation loader registration + kick-off must no-op
 //!   without panicking (the `asset_server.is_some()` guard, bevy-traps rule 1).
-//!   Injecting a `GdtfTheme` drives the real theme-only transition; the app
-//!   advances past `Load` and NO `LoadedSituation` is resolved (nothing to load).
+//!   GTW-261 made the situation a gate-blocking resource, so a headless walk seeds
+//!   `LoadedSituation` itself (beside theme/tuning/weapons) to clear the gate; the
+//!   app then advances past `Load` without ever resolving one from disk.
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   `GdtfLoadTestAppBuilder`: a real `AssetServer` pointed at the workspace
 //!   `assets/`. The good path resolves `situations/skirmish.ron` into a
@@ -19,9 +20,11 @@
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance
 //! criterion so a regression turns the test red.
 
+use std::path::PathBuf;
+
 use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
-use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
@@ -38,11 +41,12 @@ fn app_state(app: &bevy::app::App) -> AppState {
     app.world().resource::<State<AppState>>().get().clone()
 }
 
-/// AC6 — tier (a): under `MinimalPlugins` there is no `AssetServer`, so entering
-/// `Load` must not panic — the situation-loader registration and the kick-off
-/// both guard on a missing server and no-op. The machine still advances past
-/// `Load` (once a theme is injected to drive the theme-only transition), proving
-/// the guard holds and nothing requires the `AssetServer`.
+/// AC6 / GTW-261 — tier (a): under `MinimalPlugins` there is no `AssetServer`, so
+/// entering `Load` must not panic — the situation-loader registration and the kick-off
+/// both guard on a missing server and no-op. GTW-261 made the situation a
+/// gate-blocking resource, so the headless caller seeds `LoadedSituation` itself
+/// (beside theme/tuning/weapons) to clear the gate; the machine then advances past
+/// `Load` without the `AssetServer` ever resolving one from disk.
 ///
 /// Pin: if the `init_ron_asset::<Situation>()` registration or the
 /// `asset_server.load::<RonAsset<Situation>>(..)` kick-off ever ran without the
@@ -63,12 +67,16 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
         "with no AssetServer the kick-off must no-op and the machine rests in Load, not panic",
     );
 
-    // Stand in for the theme + tuning + weapons resolves completing (no AssetServer
-    // under MinimalPlugins), driving the real transition (GTW-206 AC5: theme + tuning
-    // required; GTW-257: the WeaponRegistry too).
+    // Stand in for the theme + tuning + weapons + situation resolves completing (no
+    // AssetServer under MinimalPlugins), driving the real gated transition (GTW-206:
+    // theme + tuning required; GTW-257: the WeaponRegistry; GTW-261: the
+    // LoadedSituation, the empty-battle-race fix — the headless walk seeds the empty
+    // default itself, symmetric with the other three).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(LoadedSituation(Situation::default()));
 
     let reached_intro = advance_until(
         &mut app,
@@ -77,16 +85,17 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     );
     assert!(
         reached_intro,
-        "with a GdtfTheme + CombatTuning present, Load must advance to Intro within {LOAD_BUDGET} \
-         updates; last observed AppState was {:?}",
+        "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation present, Load must \
+         advance to Intro within {LOAD_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 
-    // No AssetServer means nothing loads, so no LoadedSituation is ever resolved —
-    // proving the headless guard short-circuits the whole situation load chain.
+    // The LoadedSituation present at Intro is the SEEDED one — with no AssetServer the
+    // situation load chain never resolved one from disk (the headless guard
+    // short-circuits the whole load chain; the seed alone cleared the gate).
     assert!(
-        app.world().get_resource::<LoadedSituation>().is_none(),
-        "with no AssetServer the situation load chain must no-op — no LoadedSituation resolved",
+        app.world().get_resource::<LoadedSituation>().is_some(),
+        "the seeded LoadedSituation must be the one that cleared the gate (no AssetServer resolve)",
     );
 }
 
@@ -133,9 +142,9 @@ fn real_asset_resolves_persistent_loaded_situation() {
         );
     }
 
-    // Drive past Load (gated solely on GdtfTheme — the situation does not gate it),
-    // then assert the LoadedSituation SURVIVES OnExit(Load): it is the persistent
-    // exception the Generation consumer reads.
+    // Drive past Load (now gated on the situation too — GTW-261), then assert the
+    // LoadedSituation SURVIVES OnExit(Load): it is the persistent exception the
+    // Generation consumer reads.
     let left_load = advance_until(
         &mut app,
         |app| app_state(app) != AppState::Load,
@@ -152,17 +161,18 @@ fn real_asset_resolves_persistent_loaded_situation() {
     );
 }
 
-/// AC7 (companion) — the situation does NOT add a transition gate: the Load→Intro
-/// transition stays gated SOLELY on `GdtfTheme`. With a real `AssetServer`, the
-/// machine reaches `Intro` (a theme is present) AND a `GdtfTheme` exists,
-/// confirming the theme-only transition still fires alongside the situation
-/// resolution on the same poll path.
+/// AC2 / GTW-261 — the Load→Intro transition GATES on the situation: with a real
+/// `AssetServer`, the machine reaches `Intro` only once a `GdtfTheme` AND a
+/// `LoadedSituation` are both present, and the situation present at Intro is the REAL
+/// shipped skirmish (non-empty gangers) — proving Load WAITED for the real situation
+/// rather than racing to the empty default (the empty-battle-race fix). This reverses
+/// the pre-GTW-261 "theme-only / situation-non-blocking" behavior on purpose.
 ///
-/// Pin: this fails if the situation resolution were ever made a transition gate
-/// (e.g. blocking `transition_to_intro` until `LoadedSituation` exists), which
-/// would risk stranding the machine in `Load` on a slow/failed situation.
+/// Pin: this fails if the situation were dropped from the transition gate (then Load
+/// could reach Intro with an empty/absent situation — the original bug), or if the
+/// real situation never resolved (the gate would never clear within the budget).
 #[test]
-fn real_asset_transition_stays_theme_only() {
+fn real_asset_gate_waits_for_the_real_situation() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
@@ -174,11 +184,147 @@ fn real_asset_transition_stays_theme_only() {
     );
     assert!(
         reached_intro,
-        "with a real AssetServer, Load must reach Intro on theme-present; last AppState was {:?}",
+        "with a real AssetServer, Load must reach Intro once theme + situation resolve; last \
+         AppState was {:?}",
         app_state(&app),
     );
     assert!(
         app.world().get_resource::<GdtfTheme>().is_some(),
-        "the theme-only transition fired — a GdtfTheme is present",
+        "the gated transition fired — a GdtfTheme is present",
+    );
+    // The situation present when Load cleared is the REAL shipped skirmish (non-empty),
+    // NOT the empty default — proving Load waited for the real situation (AC2).
+    let loaded = app.world().get_resource::<LoadedSituation>();
+    assert!(
+        loaded.is_some(),
+        "a LoadedSituation must be present at Intro (the gate waited for it)",
+    );
+    if let Some(loaded) = loaded {
+        assert!(
+            !loaded.gangers.is_empty(),
+            "the situation that cleared the gate must be the real (non-empty) skirmish, not the \
+             empty default — Load waited for the real situation",
+        );
+    }
+}
+
+/// AC1 / GTW-261 — the gate REQUIRES the situation (the regression test). With a
+/// `GdtfTheme` + `CombatTuning` + `WeaponRegistry` present but `LoadedSituation`
+/// deliberately ABSENT (and no `AssetServer` to resolve one), the machine must STAY
+/// in `Load`; once a `LoadedSituation` is inserted it advances past `Load`.
+///
+/// Pin-discriminating: this fails on the pre-GTW-261 gate (which omitted the
+/// situation), where the machine would advance to Intro with no situation present —
+/// the exact path that produced the empty-battle bug. Mirrors the GTW-257
+/// `load_does_not_leave_without_a_weapon_registry` shape for the situation.
+#[test]
+fn load_does_not_leave_without_a_situation() {
+    let mut app = GdtfTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+
+    // Theme + tuning + weapons present, but the LoadedSituation deliberately withheld.
+    app.world_mut().insert_resource(default_theme());
+    app.world_mut().insert_resource(CombatTuning::default());
+    app.world_mut().insert_resource(WeaponRegistry::default());
+
+    let left_load = advance_until(
+        &mut app,
+        |app| app_state(app) != AppState::Load,
+        LOAD_BUDGET,
+    );
+    assert!(
+        !left_load,
+        "Load must NOT leave while the LoadedSituation is absent; it left to {:?}",
+        app_state(&app),
+    );
+    assert_eq!(
+        app_state(&app),
+        AppState::Load,
+        "with no LoadedSituation present, the machine stays in Load (a battle never starts \
+         situation-less — the empty-battle-race fix)",
+    );
+
+    // Insert the situation: now ALL four gate resources are present, so Load advances.
+    app.world_mut()
+        .insert_resource(LoadedSituation(Situation::default()));
+    let reached_intro = advance_until(
+        &mut app,
+        |app| app_state(app) == AppState::Intro,
+        LOAD_BUDGET,
+    );
+    assert!(
+        reached_intro,
+        "once a LoadedSituation is inserted, Load must advance to Intro within {LOAD_BUDGET} \
+         updates; last observed AppState was {:?}",
+        app_state(&app),
+    );
+}
+
+/// The fixtures root whose `situations/skirmish.ron` is deliberately malformed
+/// (`tests/fixtures/bad_situation_root`), while its `theme` / `combat` / `weapons` /
+/// `fonts` dirs symlink the real `assets/` — so ONLY the situation branch reaches
+/// [`Failed`](bevy::asset::LoadState::Failed) and the empty-default fallback runs.
+fn bad_situation_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join("bad_situation_root")
+}
+
+/// AC3 / GTW-261 — a FAILED situation falls back to the empty default and `Load`
+/// still advances (no strand). With a real `AssetServer` rooted at a fixtures dir
+/// whose `situations/skirmish.ron` is malformed (but valid theme/tuning/weapons/fonts,
+/// so ONLY the situation branch fails), the situation load reaches `Failed`. The app
+/// must NOT hang — the resolve `warn!`s, falls back to an empty `Situation::default()`
+/// `LoadedSituation`, and `Load` still transitions to `Intro` within the bounded
+/// budget (the no-strand guarantee preserved via the failure fallback).
+///
+/// Pin: this fails if a failed situation hangs the machine (the gate never clears
+/// because no fallback is inserted), or if the failure path resolved a non-empty
+/// situation. The empty default has zero gangers, distinguishing it from the good
+/// path (which loads the shipped non-empty skirmish).
+#[test]
+fn real_asset_failed_situation_falls_back_and_does_not_strand() {
+    let mut app = GdtfLoadTestAppBuilder::with_asset_root(bad_situation_root())
+        .starting_in(AppState::Load)
+        .build();
+
+    // The failed situation must still produce a LoadedSituation (the empty default)
+    // within the bounded budget — proving the app never hangs on a failed situation.
+    let recovered = advance_until(
+        &mut app,
+        |app| app.world().get_resource::<LoadedSituation>().is_some(),
+        LOAD_BUDGET,
+    );
+    assert!(
+        recovered,
+        "a failed situation load must fall back to an empty default LoadedSituation within \
+         {LOAD_BUDGET} updates (never hang); last observed AppState was {:?}",
+        app_state(&app),
+    );
+
+    // The fallback is the EMPTY default (zero gangers) — distinguishing the failure
+    // path from the good path that loads the shipped non-empty skirmish.
+    if let Some(loaded) = app.world().get_resource::<LoadedSituation>() {
+        assert!(
+            loaded.gangers.is_empty(),
+            "the failure path must insert exactly the empty default situation (zero gangers)",
+        );
+    }
+
+    // The machine still leaves Load for Intro — a failed situation does not strand it
+    // (the valid theme/tuning/weapons resolve and the empty-default situation clears
+    // the situation gate, so all four gate resources are satisfied).
+    let reached_intro = advance_until(
+        &mut app,
+        |app| app_state(app) == AppState::Intro,
+        LOAD_BUDGET,
+    );
+    assert!(
+        reached_intro,
+        "even on a failed situation, Load must transition to Intro with the empty-default \
+         situation; last AppState was {:?}",
+        app_state(&app),
     );
 }

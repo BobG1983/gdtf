@@ -1,0 +1,13 @@
+// GTW-261 failure-path fixture: deliberately MALFORMED situation RON.
+//
+// This file exists ONLY to drive the situation load to LoadState::Failed in
+// `load_situation.rs`'s AC3 failure-path test, so the resolve falls back to an
+// empty Situation::default() and Load still advances (the no-strand guarantee
+// preserved via the failure fallback). The sibling theme/combat/weapons/fonts
+// dirs symlink the real assets/, so ONLY the situation branch fails.
+//
+// The content below is not a valid `Situation` RON document (unbalanced braces,
+// bogus fields), so `RonAssetLoader<Situation>` cannot deserialize it and the
+// load reaches Failed.
+Situation(
+    this_is_not = a valid situation document {{{
