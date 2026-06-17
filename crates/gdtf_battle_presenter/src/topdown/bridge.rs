@@ -1,45 +1,5 @@
-//! Top-down renderer plumbing: the px/coordinate bridge the 16×16 top-down sprite
-//! renderer is built on.
-//!
-//! This module owns the presenter-side projection OF the sim's presentation-agnostic
-//! cubic-voxel metric (`docs/combat/battle-space.md`): the sim reasons in cells +
-//! levels, and turning those into on-screen world units is the presenter's job
-//! (ADR-0001 — the presenter owns ALL sim→view projection; the sim never reads the
-//! presenter). It defines [`CELL_PX`], the [`cell_to_world`] projection, the
-//! role-keyed atlas [`TopDownAtlases`] resource, and the system
-//! ([`load_topdown_atlases`]) that builds that resource ONCE from the three render
-//! sheets (terrain / characters / effects).
-//!
-//! It spawns NO sprite and draws NOTHING — terrain is S4, characters S5, FX S6. It
-//! only produces the loaded atlas resource, the [`CELL_PX`] scalar, the
-//! [`cell_to_world`] projection, and the documented sprite-sizing recipe those later
-//! slices call.
-//!
-//! # Sprite-construction recipe (for S4/S5/S6)
-//!
-//! Every cell sprite is sized to exactly one cell so a 16px source tile fills a
-//! 16-world-unit cell regardless of camera scale:
-//!
-//! ```ignore
-//! use bevy::prelude::*;
-//! use bevy::image::TextureAtlas;
-//! use gdtf_battle_presenter::topdown::{CELL_PX, SheetRole, TopDownAtlases};
-//!
-//! fn draw_one(mut commands: Commands, atlases: Res<TopDownAtlases>) {
-//!     let Some(role) = atlases.role(SheetRole::Terrain) else { return };
-//!     let mut sprite = Sprite::from_atlas_image(
-//!         role.image.clone(),
-//!         TextureAtlas { layout: role.layout.clone(), index: 0 },
-//!     );
-//!     sprite.custom_size = Some(Vec2::splat(CELL_PX));
-//!     commands.spawn(sprite);
-//! }
-//! ```
-//!
-//! Equivalently, the explicit `Sprite { image, texture_atlas: Some(TextureAtlas {
-//! layout, index }), custom_size: Some(Vec2::splat(CELL_PX)), .. }` form. Any
-//! tile-INDEX value a later slice introduces must be a NAMED newtype over its
-//! primitive (no-bare-types); S3 itself stores no per-glyph index.
+//! The px/coordinate bridge definitions: [`CELL_PX`], the [`cell_to_world`] projection,
+//! the role-keyed atlas resource, and the atlas-load system.
 
 use bevy::{image::TextureAtlasLayout, platform::collections::HashMap, prelude::*};
 use gdtf_battle_sim::{Cell, Level};
@@ -83,7 +43,7 @@ pub fn cell_to_world(cell: Cell, level: Level) -> Vec3 {
 /// Monotonic in the storey index so higher storeys draw in front: `*level` (read
 /// through [`Level`]'s `Deref<Target = u8>`) scaled by [`Z_PER_LEVEL`]. Kept private
 /// — callers use [`cell_to_world`].
-fn z_for(level: Level) -> f32 {
+pub(super) fn z_for(level: Level) -> f32 {
     f32::from(*level) * Z_PER_LEVEL
 }
 
@@ -205,65 +165,4 @@ pub fn load_topdown_atlases(
     }
 
     commands.insert_resource(TopDownAtlases { sheets });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// AC2 — `CELL_PX` is exactly 16.0, the single source of truth for cell size.
-    #[test]
-    fn cell_px_is_sixteen() {
-        assert_eq!(
-            CELL_PX.to_bits(),
-            16.0_f32.to_bits(),
-            "CELL_PX must be exactly 16.0 (one 16px source tile per cell)",
-        );
-    }
-
-    /// AC3 — `cell_to_world` puts row 0 at the top (Bevy +Y up) and grows `x` with
-    /// `cell.x` by exactly `CELL_PX`; `z` is the per-level draw-z.
-    #[test]
-    fn cell_to_world_projects_row_zero_to_the_top() {
-        let l0 = Level::new(0);
-
-        // Origin maps to x == 0.
-        assert_eq!(
-            cell_to_world(Cell::new(0, 0), l0).x.to_bits(),
-            0.0_f32.to_bits(),
-            "cell (0,0) must project to world x == 0",
-        );
-
-        // Greater cell.y goes DOWN the grid => smaller (more negative) world y,
-        // so row 0 sits ABOVE row 1.
-        assert!(
-            cell_to_world(Cell::new(0, 0), l0).y >= cell_to_world(Cell::new(0, 1), l0).y,
-            "row 0 must be at least as near the top (greater y) as row 1",
-        );
-
-        // x grows by exactly CELL_PX per column; y is -CELL_PX per row.
-        let p = cell_to_world(Cell::new(1, 2), l0);
-        assert_eq!(
-            p.x.to_bits(),
-            (1.0 * CELL_PX).to_bits(),
-            "cell.x == 1 must project to x == 1 * CELL_PX",
-        );
-        assert_eq!(
-            p.y.to_bits(),
-            (-2.0 * CELL_PX).to_bits(),
-            "cell.y == 2 must project to y == -2 * CELL_PX",
-        );
-
-        // z is the per-level draw-z for L0.
-        assert_eq!(p.z.to_bits(), z_for(l0).to_bits(), "z must equal z_for(L0)");
-    }
-
-    /// `z_for` is monotonic in the storey index so higher storeys draw in front.
-    #[test]
-    fn z_for_is_monotonic_in_storey() {
-        assert!(
-            z_for(Level::new(1)) > z_for(Level::new(0)),
-            "a higher storey must draw at a greater z",
-        );
-    }
 }

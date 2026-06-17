@@ -1,0 +1,397 @@
+//! The presenter mode selector and the renderer plugins, with the top-down renderer's
+//! full system wiring.
+
+use bevy::{ecs::message::Messages, prelude::*};
+use gdtf_assets::RonAssetAppExt;
+use gdtf_battle_sim::{
+    ArmorBroken, BattleInProgress, Bleeding, CoverDestroyed, CoverLedger, OccupancyGrid,
+    PlayerFaction, SurfaceGrid, occupancy_sync::SimSystems,
+};
+
+use crate::{
+    ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle,
+    GamepadCursorMoved, GangerSprites, HighlightRequest, PresenterSystems, TileRoles,
+    TileRolesHandle, TopDownAtlases, apply_active_level_filter, clamp_camera_to_bounds,
+    despawn_removed_ganger_sprites, draw_highlight_on_request, draw_static_battlefield,
+    expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles,
+    load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
+    pan_camera_on_gamepad_cursor_edge, read_armor_broken, read_bleeding, read_cover_destroyed,
+    reframe_ganger_sprites, resolve_character_roles, resolve_effect_roles, resolve_tile_roles,
+    spawn_ganger_sprites, swap_destroyed_cover, update_ganger_life_state,
+};
+
+/// Which battle renderer the [`BattlePresenterPlugin`] builds.
+///
+/// A domain value (the named presentation mode), so it is a real type rather than
+/// a bare primitive. Exhaustive: exactly the two variants the design supports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BattlePresenterMode {
+    /// The top-down 16×16 sprite renderer — the shipping presenter.
+    TopDown,
+    /// The isometric renderer — an intentional stub for the whole of GTW-48 (the
+    /// real iso renderer is GTW-49 / GTW-10).
+    Iso,
+}
+
+/// The battle presenter seam: selects and builds one battle renderer per its
+/// [`BattlePresenterMode`].
+///
+/// Added by `GameBattleScapeScenePlugin` so its `build` runs when the scene plugins
+/// register. On `build` it adds the renderer plugin chosen by [`Self::mode`]:
+/// [`TopDownRendererPlugin`] for [`BattlePresenterMode::TopDown`], the
+/// [`IsoRendererPlugin`] stub for [`BattlePresenterMode::Iso`].
+pub struct BattlePresenterPlugin {
+    /// The renderer this plugin builds.
+    mode: BattlePresenterMode,
+}
+
+impl BattlePresenterPlugin {
+    /// Construct a presenter that builds the renderer for `mode`.
+    #[must_use]
+    pub const fn new(mode: BattlePresenterMode) -> Self {
+        Self { mode }
+    }
+
+    /// The [`BattlePresenterMode`] this plugin builds.
+    #[must_use]
+    pub const fn mode(&self) -> BattlePresenterMode {
+        self.mode
+    }
+}
+
+impl Default for BattlePresenterPlugin {
+    /// The shipping default: the top-down renderer.
+    fn default() -> Self {
+        Self::new(BattlePresenterMode::TopDown)
+    }
+}
+
+impl Plugin for BattlePresenterPlugin {
+    fn build(&self, app: &mut App) {
+        match self.mode {
+            BattlePresenterMode::TopDown => {
+                app.add_plugins(TopDownRendererPlugin);
+            }
+            BattlePresenterMode::Iso => {
+                app.add_plugins(IsoRendererPlugin);
+            }
+        }
+    }
+}
+
+/// Marker resource the [`TopDownRendererPlugin`] inserts on `build`.
+///
+/// Its presence in the world is the test-observable proof that the top-down renderer
+/// plugin's `build` actually ran (the default-mode and integration tests assert it
+/// present, the iso-mode test asserts it absent). A framework type (`Resource`), so
+/// it is exempt from the no-bare-types rule.
+#[derive(Resource)]
+pub struct TopDownRendererActive;
+
+/// The real top-down 16×16 sprite battle renderer plugin.
+///
+/// On `build` it inserts the [`TopDownRendererActive`] marker and schedules
+/// [`load_topdown_atlases`] in [`Startup`] so the role-keyed [`TopDownAtlases`]
+/// resource is built ONCE and present before the S4/S5/S6 draw systems run. It still
+/// spawns NO sprite this slice — later GTW-48 slices add the draw systems (S4/S5/S6)
+/// behind it. Kept as the top-down-specific home so the future iso swap replaces only
+/// this renderer plugin, never shared draw logic.
+///
+/// The atlas-load system is gated on [`Assets<TextureAtlasLayout>`] existing so the
+/// plugin still builds under `MinimalPlugins` (the renamed S1 unit tests add no
+/// asset stack): without the sprite/asset plugins that collection is absent and the
+/// load is a no-op rather than a param-validation failure. Under `DefaultPlugins`
+/// (the app and the AC4 load harness) `SpritePlugin`'s `TextureAtlasPlugin` provides
+/// it, so the load runs for real.
+///
+/// GTW-218 (S4) adds the static terrain draw here: it registers the
+/// [`RonAsset<TileRoles>`](gdtf_assets::RonAsset) loader + the
+/// [`load_tile_roles`] / [`resolve_tile_roles`] load chain (BOTH gated on an
+/// [`AssetServer`] so a `MinimalPlugins` app no-ops rather than panicking on the asset
+/// registration), inserts the [`ActiveLevel`] default (level 0), defines the
+/// [`PresenterSystems::Draw`] set `.after(SimSystems::Simulate)`, and registers the
+/// one-shot [`draw_static_battlefield`] + the [`swap_destroyed_cover`] reaction in that
+/// set, both gated `run_if(resource_exists::<BattleInProgress>)` (the sim's
+/// battle-in-progress witness, so the draw runs only DURING a live battle).
+pub struct TopDownRendererPlugin;
+
+impl Plugin for TopDownRendererPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(TopDownRendererActive)
+            .init_resource::<ActiveLevel>()
+            // The S5 ganger-sprite map (sim Entity -> presenter Entity), present for the
+            // whole battle span so the spawn / move / reframe / death / removal systems
+            // share one mapping.
+            .init_resource::<GangerSprites>()
+            .add_systems(
+                Startup,
+                load_topdown_atlases
+                    .run_if(resource_exists::<Assets<bevy::image::TextureAtlasLayout>>),
+            );
+
+        // The RON-asset registration (`init_ron_asset` / `init_asset`) PANICS at
+        // registration without an `AssetServer` (no `Assets<T>` machinery), so it — and
+        // the load/resolve chain that reads it — is gated on the asset stack being
+        // present. Under `DefaultPlugins` (the app + the AssetServer harness) this runs
+        // for real; under `MinimalPlugins` it is skipped entirely (no draw, no panic).
+        // BOTH the S4 terrain role table and the S5 character role table load this way.
+        if app.world().get_resource::<AssetServer>().is_some() {
+            app.init_ron_asset::<TileRoles>()
+                .init_ron_asset::<CharacterRoles>()
+                // GTW-220 (S6): the FX-flash effect-role table loads the same RON way.
+                .init_ron_asset::<EffectRoles>()
+                .add_systems(
+                    Startup,
+                    (load_tile_roles, load_character_roles, load_effect_roles),
+                )
+                .add_systems(
+                    Update,
+                    resolve_tile_roles.run_if(
+                        resource_exists::<TileRolesHandle>.and(not(resource_exists::<TileRoles>)),
+                    ),
+                )
+                .add_systems(
+                    Update,
+                    resolve_character_roles.run_if(
+                        resource_exists::<CharacterRolesHandle>
+                            .and(not(resource_exists::<CharacterRoles>)),
+                    ),
+                )
+                .add_systems(
+                    Update,
+                    resolve_effect_roles.run_if(
+                        resource_exists::<EffectRolesHandle>
+                            .and(not(resource_exists::<EffectRoles>)),
+                    ),
+                );
+        }
+
+        // The shared presenter draw band (S5's ganger draw joins this set). Defined
+        // ONCE via `configure_sets` (`bevy-traps.md` #5), ordered after the sim's
+        // world mutations (`bevy-traps.md` #3) so a draw observes a settled sim state.
+        //
+        // Both draw systems are gated `run_if(resource_exists::<BattleInProgress>)` (the
+        // contract's battle gate) AND on the resources they READ existing: a battle can
+        // be `BattleInProgress` while the renderer's `TileRoles` / `TopDownAtlases` are
+        // absent (a `MinimalPlugins` headless app with no `AssetServer` never loads
+        // them), so without those extra guards the systems would fail param validation
+        // when the resource is missing — the exact panic `bevy-traps.md` #1 (and the
+        // ticket's "a no-resource state must NOT panic the draw") demands we gate. The
+        // draw scans the three sim grids + the two render resources; the swap reaction
+        // needs only `TileRoles` (and the always-present `ActiveLevel`).
+        app.configure_sets(Update, PresenterSystems::Draw.after(SimSystems::Simulate))
+            .add_systems(
+                Update,
+                draw_static_battlefield
+                    .in_set(PresenterSystems::Draw)
+                    .run_if(
+                        resource_exists::<BattleInProgress>
+                            .and(resource_exists::<TileRoles>)
+                            .and(resource_exists::<TopDownAtlases>)
+                            .and(resource_exists::<OccupancyGrid>)
+                            .and(resource_exists::<CoverLedger>)
+                            .and(resource_exists::<SurfaceGrid>),
+                    ),
+            )
+            .add_systems(
+                Update,
+                swap_destroyed_cover
+                    .in_set(PresenterSystems::Draw)
+                    .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<TileRoles>)),
+            );
+
+        // GTW-219 (S5): the ganger-draw change-detection systems join the SAME
+        // `PresenterSystems::Draw` band (defined once above, ordered after the sim's
+        // mutations). Each is gated `run_if(resource_exists::<BattleInProgress>)` AND on
+        // every render resource it reads — `CharacterRoles` (the data table) and
+        // `TopDownAtlases` — so a `MinimalPlugins` headless app with no `AssetServer`
+        // (those resources absent) simply does not draw rather than failing param
+        // validation (`bevy-traps.md` #1; the ticket's "a no-resource state must NOT
+        // panic the draw"). `ActiveLevel` + `GangerSprites` are `init_resource`-d on
+        // build, so they are always present. `move_ganger_sprites` runs
+        // `.after(spawn_ganger_sprites)` so a same-update spawn is already mapped when
+        // the move runs (the idempotent-via-the-map move path).
+        let gate = resource_exists::<BattleInProgress>
+            .and(resource_exists::<CharacterRoles>)
+            .and(resource_exists::<TopDownAtlases>);
+        app.add_systems(
+            Update,
+            (
+                spawn_ganger_sprites,
+                move_ganger_sprites.after(spawn_ganger_sprites),
+                reframe_ganger_sprites,
+                update_ganger_life_state,
+                apply_active_level_filter,
+            )
+                .in_set(PresenterSystems::Draw)
+                .run_if(gate),
+        )
+        // The removal-detection despawn needs NO render resource (it only despawns
+        // mapped sprites + drops map entries), so it is gated on the battle witness
+        // alone — it must still run when the table / atlas happen to be absent so a
+        // removed ganger never leaves an orphan sprite.
+        .add_systems(
+            Update,
+            despawn_removed_ganger_sprites
+                .in_set(PresenterSystems::Draw)
+                .run_if(resource_exists::<BattleInProgress>),
+        );
+
+        // GTW-220 (S6): the transient FX-flash readers + the one-shot expiry clock join the
+        // SAME `PresenterSystems::Draw` band (extracted to keep `build` under the
+        // `too_many_lines` lint).
+        register_fx_flash_systems(app);
+
+        // GTW-249: the battle-start frame-on-units + the bounds clamp (extracted for the
+        // same `too_many_lines` reason).
+        register_camera_framing_systems(app);
+
+        // GTW-251: the message-driven hover-highlight DRAW. The input crate (the CONSUMER's
+        // upstream writer) EMITS `HighlightRequest`; this presenter (which DEFINES it, the
+        // one-way `input -> presenter -> sim` edge) LISTENS and draws.
+        register_highlight_systems(app);
+    }
+}
+
+/// Registers the GTW-249 camera-positioning systems plus the GTW-250 pan navigation and the
+/// GTW-259 gamepad-cursor edge-pan: the one-shot [`frame_camera_on_units`] (centre the
+/// [`WorldCamera`](crate::WorldCamera) on the player gangers at battle start), the every-frame
+/// [`pan_camera`] (move the camera under mouse-edge / keyboard / gamepad-right-stick
+/// navigation), the every-frame [`pan_camera_on_gamepad_cursor_edge`] (pan when the GTW-259
+/// gamepad software cursor reaches a screen edge), and the every-frame [`clamp_camera_to_bounds`]
+/// (keep the viewport inside the battlefield extent).
+///
+/// All are battle-scoped (`bevy-traps.md` #1): gated
+/// `run_if(resource_exists::<BattleInProgress>` AND `resource_exists::<PlayerFaction>)` —
+/// `PlayerFaction` is the sim's player-gang witness the framing reads, inserted/removed on
+/// the same `BattleInProgress` window, so none run (and none panic on a missing `Res`)
+/// outside a live battle. The SAME gate keeps the pans and the clamp in the same scheduled
+/// band, so the clamp stays the last writer.
+///
+/// The clamp is ordered `.after` the framing and BOTH pans
+/// (`pan_camera.before(clamp_camera_to_bounds)`,
+/// `pan_camera_on_gamepad_cursor_edge.before(clamp_camera_to_bounds)`), so it is the LAST
+/// writer of the camera position each frame: whatever a pan adds to the translation, the
+/// clamp pulls back inside the battlefield bounds — the camera can never be panned off the
+/// map (GTW-250 / GTW-259). The pans are view-only: they move the presenter-owned camera
+/// `Transform` and emit NO sim message. They run in plain `Update` (camera positioning needs
+/// no `PresenterSystems::Draw` membership — it touches no atlas / sprite, only the camera
+/// `Transform`).
+///
+/// The GTW-259 [`GamepadCursorMoved`] message buffer is registered here via
+/// [`App::add_message`]: a [`MessageReader<GamepadCursorMoved>`](bevy::ecs::message::MessageReader)
+/// panics param validation without its `Messages<GamepadCursorMoved>` buffer
+/// (`bevy-traps.md` #4), and `add_message` is IDEMPOTENT — the input crate also registers the
+/// same buffer so its `MessageWriter` validates headlessly, and the two coexist (the
+/// [`HighlightRequest`] precedent: the presenter DEFINES the message; input WRITES it,
+/// input→presenter, no cycle).
+fn register_camera_framing_systems(app: &mut App) {
+    let battle_gate = resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>);
+    app.add_message::<GamepadCursorMoved>().add_systems(
+        Update,
+        (
+            frame_camera_on_units,
+            pan_camera,
+            pan_camera_on_gamepad_cursor_edge,
+            clamp_camera_to_bounds
+                .after(frame_camera_on_units)
+                .after(pan_camera)
+                .after(pan_camera_on_gamepad_cursor_edge),
+        )
+            .run_if(battle_gate),
+    );
+}
+
+/// Registers the GTW-220 (S6) transient FX-flash readers + the one-shot expiry clock into the
+/// already-defined [`PresenterSystems::Draw`] band.
+///
+/// Each reader drains a [`MessageReader`] over one sim FX message
+/// ([`Bleeding`](gdtf_battle_sim::Bleeding) / [`ArmorBroken`](gdtf_battle_sim::ArmorBroken) /
+/// [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed)) the sim already emits, looks up the
+/// cell via `Query<&Position>` (read-only, NO sim plumbing added), and `Commands::spawn`s a
+/// short-lived effects sprite.
+///
+/// Each reader's gate is `resource_exists::<BattleInProgress>` AND every render resource it
+/// reads — the [`EffectRoles`] data table + [`TopDownAtlases`] — AND its own `Messages<M>`
+/// buffer existing. The render-resource guards make a `MinimalPlugins` headless app with no
+/// [`AssetServer`] (those resources absent) simply NOT draw rather than failing param
+/// validation (`bevy-traps.md` #1; the ticket's "a no-resource state must NOT panic the
+/// draw"). The `Messages<M>` guard is the matching mandatory gate for the [`MessageReader<M>`]
+/// param itself: a [`MessageReader<M>`] panics param validation when its `Messages<M>` buffer
+/// is absent (the sim's `BattleSimPlugin` registers all three buffers during a real battle,
+/// but a focused headless harness may insert `BattleInProgress` + the render tables WITHOUT a
+/// given FX buffer), so each reader is independently gated on the one buffer it drains.
+///
+/// `expire_flashes` is the one-shot despawn clock: it needs only `Res<Time>` + the [`FxFlash`](crate::FxFlash)
+/// query (no render resource, no message buffer) and is inert with no flashes (the query is
+/// empty), so it is registered unguarded by `BattleInProgress` — a flash spawned during a
+/// battle still expires after the battle ends.
+fn register_fx_flash_systems(app: &mut App) {
+    let render_gate = resource_exists::<BattleInProgress>
+        .and(resource_exists::<EffectRoles>)
+        .and(resource_exists::<TopDownAtlases>);
+    app.add_systems(
+        Update,
+        read_bleeding.in_set(PresenterSystems::Draw).run_if(
+            render_gate
+                .clone()
+                .and(resource_exists::<Messages<Bleeding>>),
+        ),
+    )
+    .add_systems(
+        Update,
+        read_armor_broken.in_set(PresenterSystems::Draw).run_if(
+            render_gate
+                .clone()
+                .and(resource_exists::<Messages<ArmorBroken>>),
+        ),
+    )
+    .add_systems(
+        Update,
+        read_cover_destroyed
+            .in_set(PresenterSystems::Draw)
+            .run_if(render_gate.and(resource_exists::<Messages<CoverDestroyed>>)),
+    )
+    .add_systems(Update, expire_flashes.in_set(PresenterSystems::Draw));
+}
+
+/// Registers the GTW-251 message-driven hover-highlight draw into the already-defined
+/// [`PresenterSystems::Draw`] band.
+///
+/// The presenter DEFINES the [`HighlightRequest`] message (the consumer owns its input
+/// API, mirroring how the sim defines the `*Requested` messages input writes) and
+/// registers its buffer here via [`App::add_message`] (Bevy 0.18 — buffered events are
+/// messages, `bevy-traps.md` #4). The buffer registration is UNCONDITIONAL (not behind
+/// the asset gate): a [`MessageReader<HighlightRequest>`](bevy::ecs::message::MessageReader)
+/// panics param validation without its `Messages<HighlightRequest>` buffer (`bevy-traps.md`
+/// #4), and `add_message` is IDEMPOTENT — the input crate also registers the same buffer
+/// so its `MessageWriter` validates headlessly, and the two coexist (the `*Requested`
+/// precedent).
+///
+/// [`draw_highlight_on_request`] joins the SAME `PresenterSystems::Draw` band (defined
+/// once, ordered `.after(SimSystems::Simulate)`), gated `run_if(resource_exists::<BattleInProgress>)`
+/// — the sim's live-battle witness, the same gate the other draw systems use, so the
+/// highlight is inert pre-battle (`bevy-traps.md` #1). It needs NO render resource (it
+/// draws a solid-tint sprite, not an atlas tile) and its `Messages<HighlightRequest>`
+/// buffer is guaranteed present by the `add_message` above, so the battle gate alone is
+/// sufficient. The MIGRATED highlight sprite (the `HoverHighlight` marker + its lazy spawn)
+/// now lives in `highlight.rs`; its lifecycle matches the old input-side one (lazily
+/// spawned, despawned with the battle world).
+fn register_highlight_systems(app: &mut App) {
+    app.add_message::<HighlightRequest>().add_systems(
+        Update,
+        draw_highlight_on_request
+            .in_set(PresenterSystems::Draw)
+            .run_if(resource_exists::<BattleInProgress>),
+    );
+}
+
+/// The isometric renderer plugin — a no-op stub for the whole of GTW-48.
+///
+/// Selected by [`BattlePresenterMode::Iso`]. It stays empty for the whole epic; the
+/// real iso renderer is GTW-49 / GTW-10.
+pub struct IsoRendererPlugin;
+
+impl Plugin for IsoRendererPlugin {
+    fn build(&self, _app: &mut App) {}
+}
