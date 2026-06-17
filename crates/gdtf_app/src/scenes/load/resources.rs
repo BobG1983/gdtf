@@ -32,6 +32,21 @@ pub(in crate::scenes::load) struct ThemeHandle(pub Handle<RonAsset<GdtfThemeSpec
 #[derive(Deref, Clone, Debug)]
 pub(in crate::scenes::load) struct FontFolderHandle(pub Handle<LoadedFolder>);
 
+/// Typed handle to the in-flight **weapons folder** load (`weapons/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
+/// mirroring [`FontFolderHandle`] (GTW-257). The `Load` scene preloads the whole
+/// `assets/weapons/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
+/// poll/resolve system gates on its recursive load state, then builds the
+/// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) from the loaded
+/// `RonAsset<WeaponSpec>` files (keyed by filename stem). Holding this handle keeps
+/// a strong reference to every weapon asset while the registry is built; the
+/// registry then holds the specs BY VALUE, so they survive the handle being dropped
+/// on `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::scenes::load) struct WeaponsFolderHandle(pub Handle<LoadedFolder>);
+
 /// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
@@ -69,6 +84,8 @@ pub(in crate::scenes::load) struct LoadHandles {
     pub situation: SituationHandle,
     /// The shipped combat-tuning RON asset being loaded (GTW-206 / E10.4).
     pub tuning:    TuningHandle,
+    /// The weapons folder being preloaded (all weapon `.ron`s up front, GTW-257).
+    pub weapons:   WeaponsFolderHandle,
 }
 
 crate::support_item! {

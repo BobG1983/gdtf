@@ -40,7 +40,7 @@
 //! gates on is removed the moment it leaves the menu, so it nudges exactly once.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::tuning::CombatTuning;
+use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_ui::theme::default_theme;
 
 use crate::{scenes::LoadedSituation, states::RunningState};
@@ -186,18 +186,22 @@ impl Plugin for AutoBattlePlugin {
 /// machine can traverse `Load` even without a resolved asset stack.
 ///
 /// Inserts [`default_theme`] + [`CombatTuning::default`] + a default
-/// [`LoadedSituation`]. Under the real GUI launch the `Load` scene later
-/// `insert_resource`-overwrites all three with the shipped assets (the real
-/// `situations/skirmish.ron` battlefield + theme + tuning), so these are a
-/// fallback, not the QA battlefield. Runs once in `Startup` (before the first
-/// `Update`, hence before `Load` resolves), so the seed is in place no matter how
-/// the assets resolve.
+/// [`LoadedSituation`] + an empty [`WeaponRegistry`]. Under the real GUI launch the
+/// `Load` scene later `insert_resource`-overwrites all four with the shipped assets
+/// (the real `situations/skirmish.ron` battlefield + theme + tuning +
+/// `assets/weapons/*.ron` registry), so these are a fallback, not the QA
+/// battlefield. Runs once in `Startup` (before the first `Update`, hence before
+/// `Load` resolves), so the seed is in place no matter how the assets resolve — and
+/// the GTW-257 Load→Intro gate (which now requires a [`WeaponRegistry`]) is satisfied
+/// even if the weapons folder fails to resolve. The default `LoadedSituation` is the
+/// EMPTY situation (zero gangers), so the fallback registry needs no weapons.
 fn seed_load_fallbacks(mut commands: Commands) {
     commands.insert_resource(default_theme());
     commands.insert_resource(CombatTuning::default());
     commands.insert_resource(LoadedSituation(
         gdtf_battle_sim::situation::Situation::default(),
     ));
+    commands.insert_resource(WeaponRegistry::default());
 }
 
 /// Drives the ONE non-automatic transition into the battle: `Menu → Game`.

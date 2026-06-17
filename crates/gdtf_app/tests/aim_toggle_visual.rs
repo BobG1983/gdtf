@@ -24,7 +24,9 @@
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AimToggleButton, AppState, BattleScapeState, RunningState};
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{Aiming, Cell, CellLevel, Faction, Level, Position, tuning::CombatTuning};
+use gdtf_battle_sim::{
+    Aiming, Cell, CellLevel, Faction, Level, Position, tuning::CombatTuning, weapon::WeaponRegistry,
+};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{ActiveButton, theme::default_theme};
 
@@ -63,6 +65,9 @@ fn walk_app() -> App {
         .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
+    // situation here, so an empty registry clears the gate).
+    app.world_mut().insert_resource(WeaponRegistry::default());
     app
 }
 

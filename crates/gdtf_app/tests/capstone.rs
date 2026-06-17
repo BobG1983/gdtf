@@ -24,7 +24,7 @@ use gdtf_app::test_support::{
 // (no `GameState` import — the e2e test reads BattleScapeState directly.)
 use gdtf_battle_input::HoveredCell;
 use gdtf_battle_presenter::WorldCamera;
-use gdtf_battle_sim::tuning::CombatTuning;
+use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -56,6 +56,9 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
 fn seed_load(app: &mut App) {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-257: the Load→Intro gate now also requires a WeaponRegistry; the default
+    // LoadedSituation is empty (zero gangers), so an empty registry clears the gate.
+    app.world_mut().insert_resource(WeaponRegistry::default());
 }
 
 // ---------------------------------------------------------------------------------

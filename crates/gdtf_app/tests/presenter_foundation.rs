@@ -25,7 +25,7 @@
 
 use gdtf_app::test_support::{AppState, GameState, RunningState};
 use gdtf_battle_presenter::TopDownRendererActive;
-use gdtf_battle_sim::tuning::CombatTuning;
+use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -61,6 +61,9 @@ fn presenter_app() -> bevy::app::App {
         .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-257: the Load→Intro gate also requires a WeaponRegistry (no LoadedSituation
+    // here, so the empty-default setup needs no weapons — an empty registry clears it).
+    app.world_mut().insert_resource(WeaponRegistry::default());
     app
 }
 

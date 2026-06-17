@@ -1,0 +1,46 @@
+// GDTF authored weapon — "autogun" (the weapon KEY = WeaponName = the filename stem
+// minus the `.weapon` infix; this file is `autogun.weapon.ron`, key "autogun").
+// A common kinetic slug-thrower: cheap, sprays on full-auto, modest punch. This is
+// AUTHORED CONTENT (a per-weapon stat block), folder-loaded as a loose `.weapon.ron`
+// through the RonAsset<WeaponSpec> loader (GTW-257) and resolved at battle setup
+// into the WeaponBundle inserted onto every ganger that references this key. The
+// dedicated `.weapon.ron` extension makes the folder load unambiguous among GDTF's
+// many `.ron` loaders. The file does NOT author a `name` field — the name is
+// supplied from the key ("autogun"). Render-free, pixel-free: every number is a
+// weapon stat the §1 cone / §6 severity math reads. Magnitudes are TUNING DATA
+// (edit freely); they are NOT pinned by tests. Each line says what it authors.
+(
+    base_spread:   0.30,      // intrinsic angular dispersion (radians) before situational mults — a wide-throwing slug-thrower
+    accuracy:      0.90,      // concentration weapon term — slightly below 1.0 (clusters loosely toward center)
+    kickback:      0.12,      // per-round recoil added in a burst — climbs noticeably on auto
+    fatal_bias:    1.0,       // severity-score addend (consumed by E3) — modest wounding push
+    damage:        12,        // base damage of a hit before armor
+    punch:         4,         // armor protection a hit ignores (penetration)
+    shred:         2,         // extra integrity damage per hit (attacks armor durability)
+    damage_type:   Kinetic,   // the matchup-wheel node this weapon emits (node 3 — slugs / autoguns)
+    magazine_size: 30,        // rounds before a reload
+    // The fire-mode selector — single / single+burst / single+burst+full-auto.
+    // Each rung carries its own per-mode numbers: a name, a cone multiplier, the
+    // fraction of the TU pool a shot costs, and the round count per shot action.
+    fire_mode: SingleBurstFullAuto(
+        single: (
+            name:       "single",  // human-facing mode label
+            cone_mult:  1.0,       // selector cone multiplier — single is the baseline (≈ 1)
+            tu_percent: 0.30,      // TU% — a single shot costs 30% of the TU pool
+            shots:      1,         // rounds fired per shot action
+        ),
+        burst: (
+            name:       "burst",   // human-facing mode label
+            cone_mult:  1.3,       // selector cone multiplier — a burst throws wider
+            tu_percent: 0.45,      // TU% — a burst costs 45% of the TU pool
+            shots:      3,         // rounds fired per shot action
+        ),
+        full_auto: (
+            name:       "full-auto", // human-facing mode label
+            cone_mult:  1.7,         // selector cone multiplier — full-auto is the sloppiest
+            tu_percent: 0.60,        // TU% — full-auto costs 60% of the TU pool
+            shots:      8,           // rounds fired per shot action
+        ),
+    ),
+    stable: false,            // `stable` tag — NOT braced-by-design (normal recoil/brace gating)
+)

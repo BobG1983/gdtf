@@ -69,6 +69,7 @@ use crate::{
     situation::{Situation, setup_battle},
     surface::SurfaceGrid,
     vertical::VerticalLinkGraph,
+    weapon::WeaponRegistry,
 };
 
 /// A **setup-battle** trigger — build the battle from `situation`, seeding the
@@ -275,34 +276,55 @@ impl BattleRoster {
 ///
 /// 1. Inserts the battle-lifetime [`SimRng`] seeded from the message's [`BattleSeed`]
 ///    (via [`SimRng::from_seed`] — the deterministic stream the acts draw from).
-/// 2. Calls [`setup_battle`] on the REAL [`Commands`] path. On `Ok` the four sim
+/// 2. Calls [`setup_battle`] on the REAL [`Commands`] path, resolving each ganger's
+///    weapon key against the [`WeaponRegistry`] (GTW-257). On `Ok` the four sim
 ///    resources ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
-///    [`VerticalLinkGraph`]) and the spawned ganger entities land in the world, the
+///    [`VerticalLinkGraph`]) and the spawned ganger entities (each armed with its
+///    resolved [`WeaponBundle`](crate::weapon::WeaponBundle)) land in the world, the
 ///    [`BattleInProgress`] witness is inserted (the battle-active tag the
 ///    [`SimSystems::Simulate`] band gates on), the [`PlayerFaction`] is inserted seeded
 ///    from [`Situation::player_faction`](crate::situation::Situation), the
 ///    [`BattleRoster`] is captured from the situation's fielded gangers' factions (both
 ///    sharing [`BattleInProgress`]'s lifetime), and a [`BattleReady`] is written; on `Err`
-///    the typed [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) is surfaced
-///    via [`error!`] and NEITHER [`BattleInProgress`] / [`PlayerFaction`] /
-///    [`BattleRoster`] NOR [`BattleReady`] is written — the app never advances on a bad
-///    battle, and the gate never opens. NO `unwrap`/`expect`/`panic`.
+///    the typed [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid
+///    vertical link OR an unresolved weapon key) is surfaced via [`error!`] and NEITHER
+///    [`BattleInProgress`] / [`PlayerFaction`] / [`BattleRoster`] NOR [`BattleReady`] is
+///    written — the app never advances on a bad battle, and the gate never opens. NO
+///    `unwrap`/`expect`/`panic`.
 ///
-/// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
-/// PERSISTENT `Load` resource, present throughout the battle for the acts to read.
+/// The [`WeaponRegistry`] is read as `Option<Res<_>>` (PERSISTENT `Load` state like
+/// [`CombatTuning`](crate::tuning::CombatTuning)); a setup requested before it loads
+/// fails closed (logged, no [`BattleReady`]). [`CombatTuning`](crate::tuning::CombatTuning)
+/// is NOT inserted here: it is E10.4's PERSISTENT `Load` resource, present throughout the
+/// battle for the acts to read.
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,
     mut ready: MessageWriter<BattleReady>,
+    weapons: Option<Res<WeaponRegistry>>,
     mut commands: Commands,
 ) {
     for request in requests.read() {
+        // The weapon registry is E10.4-style PERSISTENT `Load` state, present before
+        // any battle in the real app. This system runs UNGATED (before the
+        // BattleInProgress-gated Simulate band), so it takes `Option<Res<_>>` to stay
+        // panic-free if a setup is somehow requested before the registry loaded
+        // (bevy-traps #1): a missing registry fails closed — no setup, no BattleReady.
+        let Some(weapons) = weapons.as_deref() else {
+            error!(
+                "battle setup requested but no WeaponRegistry is loaded; no BattleReady will be \
+                 signalled (the weapons folder must load before a battle starts)"
+            );
+            continue;
+        };
+
         // 1. Seed the battle-lifetime RNG from the trigger's seed.
         commands.insert_resource(SimRng::from_seed(request.seed));
 
         // 2. Pour the situation into the world via the authoritative setup. A bad
-        //    vertical link returns the typed error — log it (NEVER panic / unwrap) and
-        //    write NO BattleReady, so the app's gate never fires (fail-closed).
-        match setup_battle(&request.situation, &mut commands) {
+        //    vertical link OR a missing weapon key returns the typed error — log it
+        //    (NEVER panic / unwrap) and write NO BattleReady, so the app's gate never
+        //    fires (fail-closed).
+        match setup_battle(&request.situation, weapons, &mut commands) {
             Ok(_setup) => {
                 // The battle is live: insert the gate witness (alongside the four
                 // setup_battle grids + the seeded SimRng) so the Simulate band's bundled
@@ -321,10 +343,10 @@ pub fn setup_battle_on_request(
                 ));
                 ready.write(BattleReady);
             }
-            Err(invalid) => {
+            Err(error) => {
                 error!(
-                    "battle setup failed on an invalid vertical link: {invalid:?}; no BattleReady \
-                     will be signalled"
+                    "battle setup failed: {error:?} (an invalid vertical link or an unresolved \
+                     weapon key); no BattleReady will be signalled"
                 );
             }
         }
@@ -560,14 +582,57 @@ mod tests {
         },
         metric::{Cell, CellLevel, Level},
         occupancy_sync::CoverDestroyed,
-        situation::GangerSpawn,
+        situation::{BattleSetupError, GangerSpawn},
         tuning::CombatTuning,
         vertical::{InvalidVerticalLink, LinkKind, VerticalLink},
-        weapon::{FireModeSpec, ModeConeMult, ModeName, ModeShots, ModeTuPercent},
+        weapon::{
+            Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
+            MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Stable, WeaponDamage,
+            WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        },
     };
 
     /// An arbitrary (NOT shipped tuning) seed for a test battle's RNG stream.
     const SEED: u64 = 0x5A1C_AC75;
+
+    /// The weapon KEY every fixture ganger references — present in the registry the
+    /// `headless_app` inserts (so a setup arms each ganger; GTW-257).
+    const TEST_WEAPON_KEY: &str = "test-weapon";
+
+    /// An arbitrary [`WeaponSpec`] (NOT shipped magnitudes — mechanism only) for the
+    /// one [`TEST_WEAPON_KEY`] the fixture gangers reference.
+    fn arbitrary_weapon_spec() -> WeaponSpec {
+        WeaponSpec {
+            base_spread:   BaseSpread::new(0.25),
+            accuracy:      Accuracy::new(1.0),
+            kickback:      Kickback::new(0.4),
+            fatal_bias:    FatalBias::new(7.0),
+            damage:        WeaponDamage::new(12),
+            punch:         WeaponPunch::new(5),
+            shred:         WeaponShred::new(3),
+            damage_type:   DamageType::Kinetic,
+            magazine_size: MagazineSize::new(30),
+            fire_mode:     FireMode::Single {
+                single: FireModeSpec::new(
+                    ModeName::new("single".to_owned()),
+                    ModeConeMult::new(1.0),
+                    ModeTuPercent::new(0.5),
+                    ModeShots::new(1),
+                ),
+            },
+            stable:        Stable::new(false),
+        }
+    }
+
+    /// The test [`WeaponRegistry`] — the one [`TEST_WEAPON_KEY`] weapon the fixture
+    /// gangers reference, standing in for the app's `Load`-built registry (always
+    /// present before a battle in the real app).
+    fn weapon_registry() -> WeaponRegistry {
+        WeaponRegistry::new([(
+            WeaponName::new(TEST_WEAPON_KEY.to_owned()),
+            arbitrary_weapon_spec(),
+        )])
+    }
 
     /// Build a `(cell, level)` key from raw coordinates.
     fn key(x: i32, y: i32, level: u8) -> CellLevel {
@@ -602,6 +667,8 @@ mod tests {
             toughness: Toughness::new(f32::from(faction) + 3.0),
             luck: Luck::new(f32::from(faction) + 1.0),
             armor: arbitrary_armor(i32::from(faction) + 1),
+            // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
+            weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
         }
     }
 
@@ -652,11 +719,17 @@ mod tests {
     /// dispatch systems, which read `CombatTuning` — so it must be present (the
     /// `acts.rs::insert_sim_resources` precedent). It is deliberately NOT one of the
     /// battle-lifetime resources the teardown removes.
+    ///
+    /// Inserts the test [`WeaponRegistry`] too (GTW-257): like `CombatTuning` it is
+    /// PERSISTENT `Load` state present before a battle, and `setup_battle_on_request`
+    /// reads it to arm each ganger. The fixture gangers reference [`TEST_WEAPON_KEY`],
+    /// which it holds, so a setup succeeds.
     fn headless_app() -> App {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.add_plugins(BattleSimPlugin);
         app.insert_resource(CombatTuning::default());
+        app.insert_resource(weapon_registry());
         app
     }
 
@@ -962,16 +1035,20 @@ mod tests {
         use bevy::ecs::system::RunSystemOnce as _;
 
         let (situation, link) = dangling_link_situation();
+        let registry = weapon_registry();
         let mut world = World::new();
-        let result = world
-            .run_system_once(move |mut commands: Commands| setup_battle(&situation, &mut commands));
+        let result = world.run_system_once(move |mut commands: Commands| {
+            setup_battle(&situation, &registry, &mut commands)
+        });
         assert!(result.is_ok(), "the one-shot system must run");
         let Ok(setup_result) = result else {
             return;
         };
         assert_eq!(
             setup_result.err(),
-            Some(InvalidVerticalLink::DanglingCell { link }),
+            Some(BattleSetupError::InvalidLink(
+                InvalidVerticalLink::DanglingCell { link },
+            )),
             "the dangling-link fixture must abort setup with the typed DanglingCell error",
         );
     }

@@ -14,8 +14,11 @@
 //!   VALUES ([`Faction`] / [`Facing`] / [`Stance`] / [`Aiming`] / [`Hp`] /
 //!   [`Wounds`] / [`Tu`] / [`LifeState`]), the E3.0 attribute stats
 //!   ([`Shooting`](crate::ganger::Shooting) / [`Toughness`](crate::ganger::Toughness)
-//!   / [`Luck`](crate::ganger::Luck)), and a read-only [`SourceArmor`] record
-//!   (`armor_by_part`) to seed the battle-local [`WornArmor`] (E1.3).
+//!   / [`Luck`](crate::ganger::Luck)), a read-only [`SourceArmor`] record
+//!   (`armor_by_part`) to seed the battle-local [`WornArmor`] (E1.3), and a
+//!   [`weapon`](GangerSpawn::weapon) KEY resolved against the
+//!   [`WeaponRegistry`](crate::weapon::WeaponRegistry) into the spawned
+//!   [`WeaponBundle`](crate::weapon::WeaponBundle) (GTW-257).
 //! - **walls** + **scatter/props** ([`CoverSpawn`], the same schema for both): each
 //!   a `(cell, level)`, a [`TerrainKind`], the cover's max [`CoverHp`], its
 //!   [`HeightBand`], and its armor stats ([`ArmorProtection`] / [`ArmorHardness`]).
@@ -51,6 +54,7 @@ use crate::{
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind, TerrainPlacement},
     surface::{SlabState, SurfaceGrid},
     vertical::{InvalidVerticalLink, VerticalLink, build_vertical_link_graph},
+    weapon::{WeaponName, WeaponRegistry},
 };
 
 /// One authored ganger placement — its `(cell, level)` plus every E1.2 component
@@ -70,10 +74,16 @@ use crate::{
 /// `PartialEq` only. `(cell, level)`-keyed de-duplication ([`has_stacked_gangers`])
 /// hashes [`at`](GangerSpawn::at), never the whole struct.
 ///
+/// Not `Copy` (GTW-257): the [`weapon`](GangerSpawn::weapon) key is a
+/// [`WeaponName`] over a [`String`] (owned, not `Copy`), so the authored ganger is
+/// `Clone` only. The [`setup_battle`] spawn loop borrows each ganger, so dropping
+/// `Copy` costs nothing on the real path.
+///
 /// Derives [`Deserialize`] so an authored situation `.ron` names each ganger's
-/// placement + every component VALUE + roster armor (the value graph all flows
-/// through the landed newtype/enum serde derives — render-free, pixel-free).
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+/// placement + every component VALUE + roster armor + its [`weapon`](GangerSpawn::weapon)
+/// key (the value graph all flows through the landed newtype/enum serde derives —
+/// render-free, pixel-free).
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct GangerSpawn {
     /// The `(cell, level)` the ganger spawns at — its [`Position`].
     pub at:         CellLevel,
@@ -105,6 +115,15 @@ pub struct GangerSpawn {
     /// The ganger's read-only roster armor (`armor_by_part`) — copied into a
     /// battle-local [`WornArmor`] at setup, never mutated.
     pub armor:      SourceArmor,
+    /// The ganger's **weapon KEY** — the filename stem of an `assets/weapons/*.ron`
+    /// (e.g. `"autogun"`), resolved against the [`WeaponRegistry`] at [`setup_battle`]
+    /// into the [`WeaponBundle`](crate::weapon::WeaponBundle) inserted onto the
+    /// spawned entity (GTW-257). REQUIRED — every authored ganger is armed; an
+    /// unarmed `Option<WeaponName>` case is a deliberate FUTURE option (the
+    /// [[weapons-armor-data-driven]] model arms every ganger for now). A key absent
+    /// from the registry is a handled [`BattleSetupError::WeaponNotFound`] error
+    /// (no panic).
+    pub weapon:     WeaponName,
 }
 
 /// One authored piece of cover — a wall *or* a scatter prop, the SAME schema for
@@ -265,6 +284,40 @@ impl BattleSetup {
     }
 }
 
+/// The typed ways [`setup_battle`] can fail — the no-panic setup-abort contract
+/// (GTW-257).
+///
+/// A named domain enum (no-bare-types: a setup failure is a domain value, not a
+/// bare string / `()`), returned in the `Err` arm of [`setup_battle`]'s [`Result`].
+/// It subsumes the prior `Err(InvalidVerticalLink)` (now the
+/// [`InvalidLink`](BattleSetupError::InvalidLink) variant) and adds the GTW-257
+/// [`WeaponNotFound`](BattleSetupError::WeaponNotFound) variant for a
+/// [`GangerSpawn::weapon`] key that no loaded weapon file supplies. The caller
+/// ([`setup_battle_on_request`](crate::battle::setup_battle_on_request)) matches on
+/// it and fails closed (logs, no [`BattleReady`](crate::battle::BattleReady)) — it
+/// NEVER panics / unwraps.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BattleSetupError {
+    /// An authored vertical link failed validation (level out of range, dangling
+    /// endpoint, or same-storey) — the prior `Err(InvalidVerticalLink)`, now wrapped.
+    InvalidLink(InvalidVerticalLink),
+    /// A ganger's [`weapon`](GangerSpawn::weapon) key was not in the
+    /// [`WeaponRegistry`] — no `assets/weapons/*.ron` with that filename stem loaded.
+    WeaponNotFound {
+        /// The unresolved weapon key (the missing file's stem).
+        weapon: WeaponName,
+    },
+}
+
+impl From<InvalidVerticalLink> for BattleSetupError {
+    /// Lift a vertical-link validation failure into a setup error — so
+    /// [`setup_battle`] can `?`-propagate [`build_vertical_link_graph`]'s error
+    /// straight into its own [`BattleSetupError`] result.
+    fn from(invalid: InvalidVerticalLink) -> Self {
+        Self::InvalidLink(invalid)
+    }
+}
+
 /// Build the battle in the ECS world from a [`Situation`] — the E1.8 setup: the
 /// setup system that builds the scene from the situation (see the
 /// [`crate::situation`] module doc, the setup-on-entry source of truth).
@@ -276,7 +329,11 @@ impl BattleSetup {
 ///    [`Facing`] / [`Stance`] / [`Aiming`] / [`Hp`] / [`Wounds`] / [`Tu`] /
 ///    [`LifeState`]), the E3.0 / GTW-182 attribute stats
 ///    ([`Shooting`](crate::ganger::Shooting) / [`Toughness`](crate::ganger::Toughness)
-///    / [`Luck`](crate::ganger::Luck)) the severity roll reads, PLUS the battle-local
+///    / [`Luck`](crate::ganger::Luck)) the severity roll reads, the
+///    [`WeaponBundle`](crate::weapon::WeaponBundle) resolved from the ganger's
+///    [`weapon`](GangerSpawn::weapon) key against the [`WeaponRegistry`] (GTW-257 —
+///    the [`Weapon`](crate::weapon::Weapon) marker + every weapon stat component),
+///    PLUS the battle-local
 ///    [`WornArmor`] seeded by value from the ganger's roster [`SourceArmor`]
 ///    ([`WornArmor::seed_from`]). The returned Bevy [`Entity`](bevy::prelude::Entity)
 ///    handle is captured into the [`OccupantPlacement`] list — NEVER a numeric id
@@ -297,26 +354,54 @@ impl BattleSetup {
 /// All four resources ([`CoverLedger`], [`SurfaceGrid`], [`OccupancyGrid`],
 /// [`VerticalLinkGraph`](crate::vertical::VerticalLinkGraph)) are inserted via [`Commands`]. The function is
 /// render-free and headless-driven (it touches no renderer / asset server), so a
-/// `MinimalPlugins` test can run it directly.
+/// `MinimalPlugins` test can run it directly. It reads a [`WeaponRegistry`] by
+/// reference (GTW-257) to resolve each ganger's [`weapon`](GangerSpawn::weapon) key.
 ///
 /// # Errors
 ///
-/// Returns [`InvalidVerticalLink`] if any authored vertical link fails validation
-/// (level out of range, dangling endpoint, or same-storey) — see
-/// [`build_vertical_link_graph`].
+/// Returns a [`BattleSetupError`]:
+/// - [`BattleSetupError::InvalidLink`] if any authored vertical link fails
+///   validation (level out of range, dangling endpoint, or same-storey) — see
+///   [`build_vertical_link_graph`];
+/// - [`BattleSetupError::WeaponNotFound`] if any ganger's
+///   [`weapon`](GangerSpawn::weapon) key is absent from `weapons` (no loaded
+///   `assets/weapons/*.ron` with that stem).
+///
+/// Both are validated BEFORE any entity is spawned or any resource inserted, so a
+/// failure leaves no partial, unspawnable world behind (the GTW-205 abort-first
+/// invariant, extended to the weapon resolution).
 pub fn setup_battle(
     situation: &Situation,
+    weapons: &WeaponRegistry,
     commands: &mut Commands,
-) -> Result<BattleSetup, InvalidVerticalLink> {
+) -> Result<BattleSetup, BattleSetupError> {
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
     // setup before any entity is spawned or any resource inserted (no partial,
     // unspawnable world left behind on a validation failure).
     let vertical_graph = build_vertical_link_graph(situation)?;
 
-    // 1. Spawn each ganger with its full component set + seeded worn armor, keeping
-    //    the returned Entity handle (never a numeric id — GTW-10 / GTW-12).
-    let mut occupants = Vec::with_capacity(situation.gangers.len());
+    // Resolve every ganger's weapon key against the registry up front — BEFORE the
+    // spawn loop — so a missing key aborts setup with WeaponNotFound (no panic) with
+    // no partial world spawned (the abort-first invariant). The resolved bundles are
+    // cloned by value (the registry's specs are Clone) and consumed by the spawn loop.
+    let mut weapon_bundles = Vec::with_capacity(situation.gangers.len());
     for ganger in &situation.gangers {
+        let Some(spec) = weapons.spec(&ganger.weapon) else {
+            return Err(BattleSetupError::WeaponNotFound {
+                weapon: ganger.weapon.clone(),
+            });
+        };
+        weapon_bundles.push(spec.clone().into_bundle(ganger.weapon.clone()));
+    }
+
+    // 1. Spawn each ganger with its full component set + seeded worn armor + the
+    //    resolved WeaponBundle, keeping the returned Entity handle (never a numeric id
+    //    — GTW-10 / GTW-12). The weapon bundle is inserted in a SECOND `insert` call
+    //    (the spawn tuple is already at its component-arity limit, and a Bundle inserts
+    //    its whole component set in one call), mirroring the WornArmor seed-from at the
+    //    spawn tuple.
+    let mut occupants = Vec::with_capacity(situation.gangers.len());
+    for (ganger, weapon_bundle) in situation.gangers.iter().zip(weapon_bundles) {
         let entity = commands
             .spawn((
                 Position::new(ganger.at),
@@ -333,6 +418,7 @@ pub fn setup_battle(
                 ganger.luck,
                 WornArmor::seed_from(&ganger.armor),
             ))
+            .insert(weapon_bundle)
             .id();
         occupants.push(OccupantPlacement::new(ganger.at, entity));
     }
@@ -404,11 +490,111 @@ mod tests {
         ganger::{Direction, StanceKind},
         metric::{Cell, Level},
         vertical::{LinkKind, VerticalLinkGraph},
+        weapon::{
+            Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
+            MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Stable, Weapon,
+            WeaponDamage, WeaponPunch, WeaponShred, WeaponSpec,
+        },
     };
+
+    /// The weapon KEY every test ganger references — present in [`test_registry`].
+    const TEST_WEAPON_KEY: &str = "test-weapon";
 
     /// Build a `(cell, level)` key from raw coordinates.
     fn key(x: i32, y: i32, level: u8) -> CellLevel {
         CellLevel::new(Cell::new(x, y), Level::new(level))
+    }
+
+    /// An arbitrary [`WeaponSpec`] (NOT shipped magnitudes — mechanism only) carrying
+    /// a single-shot [`FireMode`] whose rung has a [`ModeName`], so a resolved bundle
+    /// proves the [`Weapon`] marker + [`FireMode`] (with [`ModeName`]) landed.
+    fn arbitrary_weapon_spec() -> WeaponSpec {
+        WeaponSpec {
+            base_spread:   BaseSpread::new(0.25),
+            accuracy:      Accuracy::new(1.3),
+            kickback:      Kickback::new(0.4),
+            fatal_bias:    FatalBias::new(7.0),
+            damage:        WeaponDamage::new(12),
+            punch:         WeaponPunch::new(5),
+            shred:         WeaponShred::new(3),
+            damage_type:   DamageType::Kinetic,
+            magazine_size: MagazineSize::new(30),
+            fire_mode:     FireMode::Single {
+                single: FireModeSpec::new(
+                    ModeName::new("single".to_owned()),
+                    ModeConeMult::new(1.0),
+                    ModeTuPercent::new(0.5),
+                    ModeShots::new(1),
+                ),
+            },
+            stable:        Stable::new(false),
+        }
+    }
+
+    /// A registry holding the one [`TEST_WEAPON_KEY`] weapon — the test-built registry
+    /// the setup resolves each ganger's `weapon` key against (no `AssetServer`).
+    fn test_registry() -> WeaponRegistry {
+        WeaponRegistry::new([(
+            WeaponName::new(TEST_WEAPON_KEY.to_owned()),
+            arbitrary_weapon_spec(),
+        )])
+    }
+
+    /// The two shipped weapon `.ron` files, read at compile time via the same
+    /// `include_str!` pattern the shipped situation uses — the REAL on-disk authored
+    /// weapons (keyed by their filename stems), so an AC5 regression in either file
+    /// turns the shipped-setup test red.
+    const SHIPPED_AUTOGUN_RON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/weapons/autogun.weapon.ron"
+    ));
+    const SHIPPED_LASGUN_RON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/weapons/lasgun.weapon.ron"
+    ));
+
+    /// Build a registry from the shipped weapon files, keyed by their filename stems —
+    /// the real-asset registry the shipped `skirmish.ron` setup resolves against (AC5).
+    /// Returns `None` (assert-fail) if either file fails to parse (no panic in tests).
+    fn shipped_registry() -> Option<WeaponRegistry> {
+        let autogun = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON);
+        let lasgun = ron::de::from_str::<WeaponSpec>(SHIPPED_LASGUN_RON);
+        assert!(
+            autogun.is_ok() && lasgun.is_ok(),
+            "both shipped weapon files must parse: autogun={autogun:?} lasgun={lasgun:?}",
+        );
+        let (Ok(autogun), Ok(lasgun)) = (autogun, lasgun) else {
+            return None;
+        };
+        Some(WeaponRegistry::new([
+            (WeaponName::new("autogun".to_owned()), autogun),
+            (WeaponName::new("lasgun".to_owned()), lasgun),
+        ]))
+    }
+
+    /// Run [`setup_battle`] on a fresh `MinimalPlugins` app against the GIVEN registry
+    /// (the [`run_setup`] variant for the shipped-weapons AC5 path), returning the app +
+    /// [`BattleSetup`] on success, else assert-failing and returning `None`.
+    fn run_setup_with(
+        situation: Situation,
+        registry: WeaponRegistry,
+    ) -> Option<(App, BattleSetup)> {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let outcome = app
+            .world_mut()
+            .run_system_once(move |mut commands: Commands| {
+                setup_battle(&situation, &registry, &mut commands)
+            });
+        assert!(outcome.is_ok(), "the one-shot setup system must run");
+        let setup = outcome.ok().and_then(Result::ok);
+        assert!(
+            setup.is_some(),
+            "setup_battle must succeed on a valid situation + registry",
+        );
+        let setup = setup?;
+        app.world_mut().flush();
+        Some((app, setup))
     }
 
     /// An arbitrary roster armor record — distinct per-part magnitudes (NOT shipped
@@ -443,6 +629,8 @@ mod tests {
             toughness: Toughness::new(f32::from(faction) + 3.0),
             luck: Luck::new(f32::from(faction) + 1.0),
             armor: arbitrary_armor(i32::from(faction) + 1),
+            // Every test ganger references the one TEST_WEAPON_KEY in test_registry.
+            weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
         }
     }
 
@@ -486,10 +674,14 @@ mod tests {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
 
-        // Run setup as a one-shot system reading the fixture, capturing its result.
+        // Run setup as a one-shot system reading the fixture against the test registry,
+        // capturing its result.
+        let registry = test_registry();
         let outcome = app
             .world_mut()
-            .run_system_once(move |mut commands: Commands| setup_battle(&situation, &mut commands));
+            .run_system_once(move |mut commands: Commands| {
+                setup_battle(&situation, &registry, &mut commands)
+            });
 
         // The one-shot system itself must run (Ok), and the inner setup must succeed.
         assert!(outcome.is_ok(), "the one-shot setup system must run");
@@ -840,18 +1032,24 @@ mod tests {
 
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        let registry = test_registry();
         let result = app
             .world_mut()
-            .run_system_once(move |mut commands: Commands| setup_battle(&situation, &mut commands));
+            .run_system_once(move |mut commands: Commands| {
+                setup_battle(&situation, &registry, &mut commands)
+            });
 
-        // The one-shot system ran; the inner setup returned the typed error.
+        // The one-shot system ran; the inner setup returned the typed error (now wrapped
+        // in BattleSetupError::InvalidLink — GTW-257).
         assert!(result.is_ok(), "the one-shot system must run");
         let Ok(setup_result) = result else {
             return;
         };
         assert_eq!(
             setup_result.err(),
-            Some(InvalidVerticalLink::DanglingCell { link }),
+            Some(BattleSetupError::InvalidLink(
+                InvalidVerticalLink::DanglingCell { link },
+            )),
             "an invalid vertical link must abort setup with the typed error",
         );
 
@@ -867,6 +1065,91 @@ mod tests {
         assert!(
             world.get_resource::<CoverLedger>().is_none(),
             "a validation abort must insert no resources",
+        );
+    }
+
+    /// GTW-257 AC2 — `setup_battle` ARMS each ganger from the registry: every spawned
+    /// ganger entity carries the [`Weapon`] marker + its [`WeaponName`] (= the authored
+    /// key) + the [`FireMode`] selector. Mirrors the worn-armor assertion (the
+    /// `each_spawned_ganger_has_all_required_components` precedent), proving the resolved
+    /// [`WeaponBundle`] landed on the real spawn path.
+    #[test]
+    fn setup_arms_each_ganger_from_the_registry() {
+        let (situation, ..) = minimal_fixture();
+        let Some((mut app, setup)) = run_setup(situation) else {
+            return;
+        };
+
+        let world: &mut World = app.world_mut();
+        // A query naming the weapon marker + the name + the fire-mode selector — only an
+        // armed entity matches, so a count of 2 proves BOTH gangers were armed.
+        let mut armed = world.query::<(&Weapon, &WeaponName, &FireMode)>();
+        assert_eq!(
+            armed.iter(world).count(),
+            2,
+            "both gangers must carry the Weapon marker + WeaponName + FireMode (armed from the \
+             registry)",
+        );
+
+        // The first ganger's WeaponName is the authored key, looked up by its spawned
+        // Entity handle (never a numeric id).
+        let alice: Entity = setup.occupants[0].occupant;
+        let mut name_q = world.query::<&WeaponName>();
+        let alice_name = name_q.get(world, alice);
+        assert_eq!(
+            alice_name.map(|n| (**n).clone()).ok(),
+            Some(TEST_WEAPON_KEY.to_owned()),
+            "the armed ganger's WeaponName equals the authored weapon key",
+        );
+    }
+
+    /// GTW-257 AC3 — a `weapon` key ABSENT from the registry makes `setup_battle` return
+    /// `Err(BattleSetupError::WeaponNotFound)` and spawn NOTHING (resolution runs before
+    /// the spawn loop) — the no-panic handled-error contract. The dangling-link abort
+    /// precedent, for the weapon resolution.
+    #[test]
+    fn setup_errors_on_a_missing_weapon_key() {
+        // A ganger whose weapon key is not the one the registry holds.
+        let mut ganger = ganger_at(key(0, 0, 0), 0);
+        ganger.weapon = WeaponName::new("no-such-weapon".to_owned());
+        let situation = Situation {
+            gangers: vec![ganger],
+            ..Situation::new()
+        };
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let registry = test_registry();
+        let result = app
+            .world_mut()
+            .run_system_once(move |mut commands: Commands| {
+                setup_battle(&situation, &registry, &mut commands)
+            });
+
+        assert!(result.is_ok(), "the one-shot system must run");
+        let Ok(setup_result) = result else {
+            return;
+        };
+        assert_eq!(
+            setup_result.err(),
+            Some(BattleSetupError::WeaponNotFound {
+                weapon: WeaponName::new("no-such-weapon".to_owned()),
+            }),
+            "a missing weapon key must abort setup with WeaponNotFound (no panic)",
+        );
+
+        // Nothing was spawned (resolution aborted before the spawn loop).
+        app.world_mut().flush();
+        let world = app.world_mut();
+        let mut q = world.query::<&WornArmor>();
+        assert_eq!(
+            q.iter(world).count(),
+            0,
+            "a weapon-resolution abort must spawn no gangers",
+        );
+        assert!(
+            world.get_resource::<CoverLedger>().is_none(),
+            "a weapon-resolution abort must insert no resources",
         );
     }
 
@@ -964,6 +1247,7 @@ mod tests {
                     left_leg:  (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
                     right_leg: (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
                 ),
+                weapon: \"autogun\",
             )],
             walls: [(
                 at: (cell: (x: 1, y: 1), level: 0), terrain: Wall, cover_hp: 50,
@@ -1072,21 +1356,26 @@ mod tests {
         );
     }
 
-    /// GTW-205 AC4 — the shipped file's vertical links validate (non-dangling /
-    /// cross-storey), proving it is a setup-able situation. Deserialize the shipped
-    /// file, run `setup_battle` on a `MinimalPlugins` app via the existing
-    /// `run_setup` harness, and assert it returns `Ok(BattleSetup)` with
-    /// `ganger_count()` equal to the authored ganger count AND exactly that many
-    /// `WornArmor`-carrying entities in the world. Count-equality + Ok — proving the
-    /// links are non-dangling/cross-storey and the file drives the real setup path.
+    /// GTW-205 AC4 / GTW-257 AC5 — the shipped file's vertical links validate AND every
+    /// authored ganger's weapon key resolves against the SHIPPED weapons registry,
+    /// proving it is a setup-able, fully-armed situation. Deserialize the shipped file,
+    /// run `setup_battle` on a `MinimalPlugins` app against the shipped-weapons registry,
+    /// and assert it returns `Ok(BattleSetup)` with `ganger_count()` equal to the
+    /// authored ganger count AND exactly that many `WornArmor`-carrying entities AND
+    /// exactly that many ARMED (`Weapon`-marked) entities. Count-equality + Ok — proving
+    /// the links validate, the file drives the real setup path, and each ganger ends up
+    /// armed from the shipped weapon files (the GTW-257 AC5 sim-side proof).
     #[test]
     fn shipped_situation_ron_drives_the_real_setup_path() {
         let Some(situation) = shipped_situation() else {
             return;
         };
+        let Some(registry) = shipped_registry() else {
+            return;
+        };
         let authored_ganger_count = situation.gangers.len();
 
-        let Some((mut app, setup)) = run_setup(situation) else {
+        let Some((mut app, setup)) = run_setup_with(situation, registry) else {
             return;
         };
 
@@ -1099,12 +1388,41 @@ mod tests {
         // poured through the real spawn path (and that the vertical links validated,
         // since setup aborts before spawning on a bad link).
         let world: &mut World = app.world_mut();
-        let mut query = world.query::<&WornArmor>();
+        let mut armor_query = world.query::<&WornArmor>();
         assert_eq!(
-            query.iter(world).count(),
+            armor_query.iter(world).count(),
             authored_ganger_count,
             "the world must hold exactly the authored ganger count of WornArmor entities",
         );
+        // GTW-257 AC5 — and exactly that many ARMED entities: each shipped ganger
+        // resolved its weapon key and carries the Weapon marker.
+        let mut armed_query = world.query::<&Weapon>();
+        assert_eq!(
+            armed_query.iter(world).count(),
+            authored_ganger_count,
+            "each shipped ganger must end up armed (the Weapon marker landed via the registry)",
+        );
+    }
+
+    /// GTW-257 AC5 (companion) — every shipped ganger's authored `weapon` key is a valid
+    /// stem present in the shipped-weapons registry. A pure-data check (no spawn): proves
+    /// the `skirmish.ron` ↔ `assets/weapons/*.ron` references are consistent, so the
+    /// setup never hits `WeaponNotFound`.
+    #[test]
+    fn every_shipped_ganger_references_a_loaded_weapon() {
+        let Some(situation) = shipped_situation() else {
+            return;
+        };
+        let Some(registry) = shipped_registry() else {
+            return;
+        };
+        for ganger in &situation.gangers {
+            assert!(
+                registry.spec(&ganger.weapon).is_some(),
+                "shipped ganger weapon key {:?} must resolve against the shipped registry",
+                ganger.weapon,
+            );
+        }
     }
 
     /// GTW-205 AC5 — every value-bearing field in the authored `.ron` carries a

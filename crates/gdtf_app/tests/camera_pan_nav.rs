@@ -42,9 +42,46 @@ use gdtf_battle_sim::{
     metric::{Cell, CellLevel, Level},
     situation::{GangerSpawn, Situation},
     tuning::CombatTuning,
+    weapon::{
+        Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
+        MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Stable, WeaponDamage,
+        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+    },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
+
+/// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
+const TEST_WEAPON_KEY: &str = "test-weapon";
+
+/// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
+/// reference, standing in for the `Load`-built registry (GTW-257) so the deep-walk
+/// setup arms each ganger.
+fn weapon_registry() -> WeaponRegistry {
+    WeaponRegistry::new([(
+        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
+        WeaponSpec {
+            base_spread:   BaseSpread::new(0.25),
+            accuracy:      Accuracy::new(1.0),
+            kickback:      Kickback::new(0.4),
+            fatal_bias:    FatalBias::new(7.0),
+            damage:        WeaponDamage::new(12),
+            punch:         WeaponPunch::new(5),
+            shred:         WeaponShred::new(3),
+            damage_type:   DamageType::Kinetic,
+            magazine_size: MagazineSize::new(30),
+            fire_mode:     FireMode::Single {
+                single: FireModeSpec::new(
+                    ModeName::new("single".to_owned()),
+                    ModeConeMult::new(1.0),
+                    ModeTuPercent::new(0.5),
+                    ModeShots::new(1),
+                ),
+            },
+            stable:        Stable::new(false),
+        },
+    )])
+}
 
 /// A budget large enough to drive the deep walk into the live battle, but bounded so a
 /// machine that never reaches the predicate fails instead of hanging.
@@ -86,6 +123,8 @@ fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         toughness: Toughness::new(f32::from(faction) + 3.0),
         luck: Luck::new(f32::from(faction) + 1.0),
         armor: arbitrary_armor(i32::from(faction) + 1),
+        // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
+        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
     }
 }
 
@@ -125,6 +164,8 @@ fn walk_app() -> bevy::app::App {
     let mut app = GdtfTestAppBuilder::new().default_start().build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // The Load-built WeaponRegistry (GTW-257) so the live battle's setup arms gangers.
+    app.world_mut().insert_resource(weapon_registry());
     app.world_mut()
         .insert_resource(LoadedSituation(two_ganger_situation()));
     app

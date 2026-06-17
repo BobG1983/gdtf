@@ -148,9 +148,23 @@ impl std::error::Error for RonLoadError {
 /// into a [`RonAsset`] wrapping `T`.
 ///
 /// One loader type serves every RON content type: register it per payload with
-/// [`RonAssetAppExt::init_ron_asset`]. The loader is stateless (a zero-sized
-/// marker over `T`), so [`Default`] constructs it and `init_asset_loader`
-/// registers it with no settings.
+/// [`RonAssetAppExt::init_ron_asset`]. The loader is stateless apart from the file
+/// extension(s) it claims; [`Default`] constructs it claiming `ron`.
+///
+/// ## Extension disambiguation (GTW-257)
+///
+/// Bevy dispatches a `load_folder` (untyped, extension-based) load to the
+/// LAST-registered loader for a file's extension. Because GDTF registers MANY
+/// `RonAsset<T>` loaders that all claim `ron`, a `load_folder` of a `.ron`
+/// directory is non-deterministically typed (it picks whichever `.ron` loader
+/// registered last). A TYPED `load::<RonAsset<T>>(path)` is unaffected — it picks
+/// the loader by asset TYPE — so single-file loads are fine; only folder loads are
+/// ambiguous. To fold a folder of ONE concrete RON type, register that type's
+/// loader with a DEDICATED extension via
+/// [`RonAssetAppExt::init_ron_asset_with_extensions`] (e.g. `weapon.ron`) and name
+/// the files `*.weapon.ron`: Bevy's [`AssetPath::get_full_extension`] then matches
+/// the dedicated extension FIRST, so the dispatch is unambiguous regardless of
+/// registration order.
 ///
 /// On `load`, it reads the entire file into a buffer and calls
 /// `ron::de::from_bytes::<T>`. Any read or parse failure becomes a typed
@@ -163,8 +177,26 @@ pub struct RonAssetLoader<T>
 where
     T: TypePath,
 {
-    /// Zero-sized type marker; the loader carries no runtime state.
-    _payload: PhantomData<fn() -> T>,
+    /// The file extension(s) this loader claims (e.g. `["ron"]`, or a dedicated
+    /// `["weapon.ron"]` for an unambiguous folder load — see the type doc).
+    extensions: Vec<&'static str>,
+    /// Zero-sized type marker; the loader carries no other runtime state.
+    _payload:   PhantomData<fn() -> T>,
+}
+
+impl<T> RonAssetLoader<T>
+where
+    T: TypePath,
+{
+    /// Build a loader claiming the given file `extensions` (the dedicated-extension
+    /// path of the type doc). At least one extension should be supplied.
+    #[must_use]
+    pub fn with_extensions(extensions: Vec<&'static str>) -> Self {
+        Self {
+            extensions,
+            _payload: PhantomData,
+        }
+    }
 }
 
 impl<T> Default for RonAssetLoader<T>
@@ -173,7 +205,8 @@ where
 {
     fn default() -> Self {
         Self {
-            _payload: PhantomData,
+            extensions: vec!["ron"],
+            _payload:   PhantomData,
         }
     }
 }
@@ -211,7 +244,7 @@ where
     }
 
     fn extensions(&self) -> &[&str] {
-        &["ron"]
+        &self.extensions
     }
 }
 
@@ -221,11 +254,28 @@ where
 /// `Assets<RonAsset<T>>` collection and the [`RonAssetLoader<T>`] — so a host
 /// crate adds support for a new RON type in a single line.
 pub trait RonAssetAppExt {
-    /// Registers `Assets<RonAsset<T>>` and the [`RonAssetLoader<T>`] for `T`.
+    /// Registers `Assets<RonAsset<T>>` and the [`RonAssetLoader<T>`] for `T`,
+    /// claiming the default `ron` extension.
     ///
     /// After this, `asset_server.load::<RonAsset<T>>("path/to/file.ron")` loads
-    /// and deserializes a loose `.ron` file into a `RonAsset<T>`.
+    /// and deserializes a loose `.ron` file into a `RonAsset<T>`. Suitable for the
+    /// TYPED single-file loads (which pick the loader by asset type); for an
+    /// unambiguous `load_folder` of one RON type use
+    /// [`init_ron_asset_with_extensions`](RonAssetAppExt::init_ron_asset_with_extensions).
     fn init_ron_asset<T>(&mut self) -> &mut Self
+    where
+        T: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static;
+
+    /// Registers `Assets<RonAsset<T>>` and a [`RonAssetLoader<T>`] for `T` claiming
+    /// the given DEDICATED file `extensions` (e.g. `["weapon.ron"]`).
+    ///
+    /// Use this when a folder of ONE concrete RON type is loaded with
+    /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder): a
+    /// dedicated extension makes Bevy's extension dispatch unambiguous regardless of
+    /// how many other `ron` loaders are registered (GTW-257 — see
+    /// [`RonAssetLoader`]'s type doc). Registers the loader INSTANCE (not via
+    /// `Default`) so its `extensions()` carry the dedicated extension(s).
+    fn init_ron_asset_with_extensions<T>(&mut self, extensions: Vec<&'static str>) -> &mut Self
     where
         T: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static;
 }
@@ -237,6 +287,15 @@ impl RonAssetAppExt for App {
     {
         self.init_asset::<RonAsset<T>>();
         self.init_asset_loader::<RonAssetLoader<T>>();
+        self
+    }
+
+    fn init_ron_asset_with_extensions<T>(&mut self, extensions: Vec<&'static str>) -> &mut Self
+    where
+        T: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static,
+    {
+        self.init_asset::<RonAsset<T>>();
+        self.register_asset_loader(RonAssetLoader::<T>::with_extensions(extensions));
         self
     }
 }

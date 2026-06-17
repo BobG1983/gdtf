@@ -21,7 +21,7 @@
 
 use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
-use gdtf_battle_sim::tuning::CombatTuning;
+use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
@@ -63,10 +63,12 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
         "with no AssetServer the kick-off must no-op and the machine rests in Load, not panic",
     );
 
-    // Stand in for the theme + tuning resolves completing (no AssetServer under
-    // MinimalPlugins), driving the real transition (GTW-206 AC5: both required).
+    // Stand in for the theme + tuning + weapons resolves completing (no AssetServer
+    // under MinimalPlugins), driving the real transition (GTW-206 AC5: theme + tuning
+    // required; GTW-257: the WeaponRegistry too).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    app.world_mut().insert_resource(WeaponRegistry::default());
 
     let reached_intro = advance_until(
         &mut app,

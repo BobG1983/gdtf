@@ -18,17 +18,51 @@ use bevy::{
     prelude::{Commands, Entity, MinimalPlugins, World},
 };
 use gdtf_battle_sim::{
-    Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-    BattleSeed, BattleSetup, BodyPart, Cell, CellLevel, CombatTuning, ConcentrationP, ConeAngle,
-    CoverEntry, CoverHp, CoverLedger, Direction, Facing, Faction, GangerSpawn, HeightBand, Hp,
-    Level, LifeState, Luck, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth,
-    Shooting, ShotInputs, ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stance,
-    StanceKind, SurfaceGrid, Toughness, Tu, Wounds, resolve_coarse, setup_battle,
+    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection,
+    ArmorType, BaseSpread, BattleSeed, BattleSetup, BodyPart, Cell, CellLevel, CombatTuning,
+    ConcentrationP, ConeAngle, CoverEntry, CoverHp, CoverLedger, DamageType, Direction, Facing,
+    Faction, FatalBias, FireMode, FireModeSpec, GangerSpawn, HeightBand, Hp, Kickback, Level,
+    LifeState, Luck, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, OccupancyGrid,
+    Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind, ShotOutcome,
+    SimRng, Situation, SourceArmor, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, Wounds,
+    resolve_coarse, setup_battle,
 };
+
+/// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
+const TEST_WEAPON_KEY: &str = "test-weapon";
 
 /// A `(cell, level)` key from raw coordinates.
 fn key(x: i32, y: i32, level: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(level))
+}
+
+/// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
+/// reference, so `setup_battle` arms each ganger (GTW-257).
+fn weapon_registry() -> WeaponRegistry {
+    WeaponRegistry::new([(
+        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
+        WeaponSpec {
+            base_spread:   BaseSpread::new(0.25),
+            accuracy:      Accuracy::new(1.0),
+            kickback:      Kickback::new(0.4),
+            fatal_bias:    FatalBias::new(7.0),
+            damage:        WeaponDamage::new(12),
+            punch:         WeaponPunch::new(5),
+            shred:         WeaponShred::new(3),
+            damage_type:   DamageType::Kinetic,
+            magazine_size: MagazineSize::new(30),
+            fire_mode:     FireMode::Single {
+                single: FireModeSpec::new(
+                    ModeName::new("single".to_owned()),
+                    ModeConeMult::new(1.0),
+                    ModeTuPercent::new(0.5),
+                    ModeShots::new(1),
+                ),
+            },
+            stable:        Stable::new(false),
+        },
+    )])
 }
 
 /// An arbitrary roster armor record (NOT shipped tuning) so a ganger spawns with a
@@ -62,6 +96,8 @@ fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         toughness: Toughness::new(f32::from(faction) + 3.0),
         luck: Luck::new(f32::from(faction) + 1.0),
         armor: arbitrary_armor(i32::from(faction) + 1),
+        // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
+        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
     }
 }
 
@@ -72,9 +108,12 @@ fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
 
+    let registry = weapon_registry();
     let outcome = app
         .world_mut()
-        .run_system_once(move |mut commands: Commands| setup_battle(&situation, &mut commands));
+        .run_system_once(move |mut commands: Commands| {
+            setup_battle(&situation, &registry, &mut commands)
+        });
     assert!(outcome.is_ok(), "the one-shot setup system must run");
     let setup = outcome.ok().and_then(Result::ok);
     assert!(setup.is_some(), "setup_battle must succeed on the fixture");

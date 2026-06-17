@@ -30,7 +30,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{BattleRunningComplete, BattleScapeState, GameState, RunningState};
 use gdtf_battle_presenter::WorldCamera;
-use gdtf_battle_sim::tuning::CombatTuning;
+use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -77,6 +77,9 @@ fn walk_app() -> bevy::app::App {
     let mut app = GdtfTestAppBuilder::new().default_start().build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
+    // situation here, so an empty registry clears the gate).
+    app.world_mut().insert_resource(WeaponRegistry::default());
     app
 }
 

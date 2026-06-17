@@ -41,7 +41,11 @@
 //! the §1/§6 readers take a transient [`WeaponStats`] borrow-view (refs assembled
 //! from the components at the call site — NOT a stored component).
 
-use bevy::prelude::{Bundle, Component, Deref};
+use bevy::{
+    platform::collections::HashMap,
+    prelude::{Bundle, Component, Deref, Resource},
+    reflect::TypePath,
+};
 use serde::{Deserialize, Serialize};
 
 /// A weapon's **base spread** — the intrinsic angular dispersion before the
@@ -712,6 +716,133 @@ impl WeaponBundle {
     }
 }
 
+/// The **authoring struct** an `assets/weapons/*.ron` deserializes into — every
+/// weapon NUMBER the §1/§6 math reads, MINUS the [`WeaponName`] (the name is the
+/// FILE KEY, supplied by the loader from the file's stem) and MINUS the [`Weapon`]
+/// marker (that is added by [`WeaponBundle::new`]).
+///
+/// This is the data-driven, folder-loaded weapon model (the
+/// [[weapons-armor-data-driven]] end-state, GTW-257): a per-weapon loose `.ron`
+/// file is parsed into a `WeaponSpec`, keyed by its filename stem into the
+/// [`WeaponRegistry`], and resolved at battle setup into a [`WeaponBundle`] via
+/// [`into_bundle`](WeaponSpec::into_bundle). It mirrors [`WeaponBundle`]'s data
+/// exactly, dropping only the two fields the loader / spawn-side own: the name
+/// (the file key) and the marker (the armed-entity tag).
+///
+/// Every field is an existing weapon-number newtype authored as its
+/// `#[serde(transparent)]` bare RON scalar (the [`crate::tuning`] / GTW-200 house
+/// style); the authored magnitudes are tuning DATA (commented in the `.ron`), NOT
+/// pinned by tests (the brittle-test rule). Derives [`Deserialize`] so the loose
+/// `.ron` parses, and [`TypePath`] because the [`RonAsset<WeaponSpec>`](gdtf_assets::RonAsset)
+/// the loader wraps it in requires its payload to be [`TypePath`] (the same bound
+/// [`Situation`](crate::situation::Situation) / [`CombatTuning`](crate::tuning::CombatTuning)
+/// satisfy).
+///
+/// **Not `Copy`** — it owns a [`FireMode`] (whose specs own a [`ModeName`], a
+/// [`String`]); it is `Clone`, so the registry can hold specs BY VALUE.
+#[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
+pub struct WeaponSpec {
+    /// The intrinsic angular spread before situational multipliers (`base_spread`).
+    pub base_spread:   BaseSpread,
+    /// The concentration weapon term (`accuracy`; may exceed 1.0).
+    pub accuracy:      Accuracy,
+    /// The per-round recoil added in a burst (`kickback`).
+    pub kickback:      Kickback,
+    /// The severity-score addend, consumed by E3 (`fatal_bias`).
+    pub fatal_bias:    FatalBias,
+    /// The base damage a hit deals before armor (`damage`).
+    pub damage:        WeaponDamage,
+    /// The armor protection a hit ignores — penetration (`punch`).
+    pub punch:         WeaponPunch,
+    /// The extra integrity damage a hit deals to armor durability (`shred`).
+    pub shred:         WeaponShred,
+    /// The damage type the weapon emits — its matchup-wheel node.
+    pub damage_type:   DamageType,
+    /// The round capacity before a reload (`magazine_size`).
+    pub magazine_size: MagazineSize,
+    /// The authored fire-mode selector and its per-mode numbers (each rung's
+    /// [`FireModeSpec`] carrying its [`ModeName`] + cone/TU%/shots).
+    pub fire_mode:     FireMode,
+    /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
+    pub stable:        Stable,
+}
+
+impl WeaponSpec {
+    /// Resolve this authored spec into a spawnable [`WeaponBundle`], supplying the
+    /// [`WeaponName`] from the registry KEY (the weapon file's filename stem).
+    ///
+    /// Groups the per-hit damage fields into a [`DamageProfile`] and the
+    /// magazine/fire-mode/`stable` fields into a [`HandlingProfile`], then calls
+    /// [`WeaponBundle::new`] — the [`Weapon`] marker is added there. Consumes the
+    /// spec by value (it owns the [`FireMode`]); a caller holding a borrowed spec
+    /// clones it first (the registry's specs are `Clone`).
+    #[must_use]
+    pub fn into_bundle(self, name: WeaponName) -> WeaponBundle {
+        WeaponBundle::new(
+            name,
+            self.base_spread,
+            self.accuracy,
+            self.kickback,
+            self.fatal_bias,
+            DamageProfile::new(self.damage, self.punch, self.shred, self.damage_type),
+            HandlingProfile::new(self.magazine_size, self.fire_mode, self.stable),
+        )
+    }
+}
+
+/// The **weapon registry** — a name→spec map the folder loader builds and the
+/// battle setup resolves [`GangerSpawn`](crate::situation::GangerSpawn) weapon keys
+/// against (GTW-257).
+///
+/// A named newtype [`Resource`] over a [`HashMap`]`<`[`WeaponName`]`,
+/// `[`WeaponSpec`]`>` (no-bare-types: a registry is a domain value, not a bare
+/// `HashMap`). The sim OWNS the weapon model, so the type lives here; the app's
+/// `Load` flow POPULATES it from the loaded `assets/weapons/*.ron` folder (keyed by
+/// each file's stem) and inserts it as a resource. It holds the specs BY VALUE
+/// ([`WeaponSpec`] is `Clone`), so they survive even if the loaded-folder asset
+/// handle is dropped.
+///
+/// Private inner with small accessors (the registry answers a weapon LOOKUP, not a
+/// raw-map question — so no derived [`Deref`]). The setup resolves
+/// [`GangerSpawn::weapon`](crate::situation::GangerSpawn) through [`spec`](WeaponRegistry::spec).
+#[derive(Resource, Debug, Clone, Default, PartialEq)]
+pub struct WeaponRegistry(HashMap<WeaponName, WeaponSpec>);
+
+impl WeaponRegistry {
+    /// Build a weapon registry from a `(name, spec)` iterator — the shape the
+    /// folder loader (and a test) keys by filename stem.
+    #[must_use]
+    pub fn new(weapons: impl IntoIterator<Item = (WeaponName, WeaponSpec)>) -> Self {
+        Self(weapons.into_iter().collect())
+    }
+
+    /// Insert one weapon spec under its [`WeaponName`] key, returning the previous
+    /// spec at that key (if any) — the per-file insert the folder loader calls as it
+    /// iterates the loaded folder.
+    pub fn insert(&mut self, name: WeaponName, spec: WeaponSpec) -> Option<WeaponSpec> {
+        self.0.insert(name, spec)
+    }
+
+    /// Look up the [`WeaponSpec`] for a weapon KEY, or [`None`] if no weapon file
+    /// with that stem was loaded — the setup-time resolution the battle reads.
+    #[must_use]
+    pub fn spec(&self, name: &WeaponName) -> Option<&WeaponSpec> {
+        self.0.get(name)
+    }
+
+    /// How many weapons the registry holds — the count the folder-load test asserts.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether the registry holds no weapons.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bevy::prelude::World;
@@ -1233,6 +1364,123 @@ mod tests {
         assert_eq!(
             &*parsed, "full-auto",
             "ModeName must parse from a bare RON string"
+        );
+    }
+
+    // === GTW-257: WeaponSpec authoring struct + WeaponRegistry ===
+
+    /// A shipped weapon `.ron`, read at compile time via the same `include_str!`
+    /// pattern `tuning.rs` / `situation.rs` use — the REAL on-disk authored file
+    /// (`assets/weapons/autogun.weapon.ron`), so a regression in the authored file
+    /// turns this red.
+    const SHIPPED_AUTOGUN_RON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/weapons/autogun.weapon.ron"
+    ));
+
+    /// GTW-257 AC1 — the shipped `assets/weapons/autogun.weapon.ron` parses into a
+    /// `WeaponSpec`, and `into_bundle(name)` yields a `WeaponBundle` carrying that
+    /// `WeaponName` + a `FireMode` whose modes carry their `ModeName`. Value-agnostic
+    /// on the tunable cone/TU/damage magnitudes (the authored numbers are DATA, not
+    /// pinned by the test): it asserts the NAME landed and the fire-mode rungs carry
+    /// non-empty `ModeName`s, never a magnitude.
+    #[test]
+    fn shipped_weapon_spec_parses_and_converts_to_a_bundle() {
+        let parsed = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON);
+        assert!(
+            parsed.is_ok(),
+            "the shipped assets/weapons/autogun.weapon.ron must parse into a WeaponSpec: {parsed:?}",
+        );
+        let Ok(spec) = parsed else {
+            return;
+        };
+
+        // The file does NOT author a name — the name is the FILE KEY, supplied here
+        // (the loader supplies the filename stem). into_bundle carries it through.
+        let key = WeaponName::new("autogun".to_owned());
+        let bundle = spec.into_bundle(key);
+        assert_eq!(
+            &*bundle.name, "autogun",
+            "into_bundle must carry the supplied WeaponName (the file key) onto the bundle",
+        );
+        // The Weapon marker is added by into_bundle (it is NOT authored in the file).
+        assert_eq!(bundle.marker, Weapon, "into_bundle adds the Weapon marker");
+        // The single-shot mode (present on every selector variant) carries a non-empty
+        // ModeName — the authored per-mode name round-tripped (mechanism, not a value).
+        let single = bundle.fire_mode.single();
+        assert!(
+            !single.name.is_empty(),
+            "the authored fire-mode rung must carry a non-empty ModeName",
+        );
+    }
+
+    /// GTW-257 AC1 — a `WeaponSpec` round-trips from inline RON (no shipped magnitudes)
+    /// and `into_bundle` groups the damage / handling blocks faithfully: a spot value
+    /// read back off the bundle equals the authored one. Arbitrary literals
+    /// (mechanism, not a balance pin), proving the authoring shape and the conversion.
+    #[test]
+    fn weapon_spec_round_trips_and_into_bundle_groups_faithfully() {
+        let authored = r#"(
+            base_spread: 0.2, accuracy: 1.1, kickback: 0.3, fatal_bias: 5.0,
+            damage: 14, punch: 6, shred: 4, damage_type: Kinetic,
+            magazine_size: 24,
+            fire_mode: SingleBurst(
+                single: (name: "single", cone_mult: 1.0, tu_percent: 0.5, shots: 1),
+                burst:  (name: "burst",  cone_mult: 1.3, tu_percent: 0.8, shots: 3),
+            ),
+            stable: false,
+        )"#;
+        let parsed = ron::de::from_str::<WeaponSpec>(authored);
+        assert!(
+            parsed.is_ok(),
+            "inline WeaponSpec RON must parse: {parsed:?}"
+        );
+        let Ok(spec) = parsed else {
+            return;
+        };
+
+        let bundle = spec.into_bundle(WeaponName::new("test-gun".to_owned()));
+        // Spot values flowed through the DamageProfile / HandlingProfile grouping
+        // (distinct arbitrary literals so a field swap would surface).
+        assert_eq!(*bundle.damage, 14i32, "damage flows through DamageProfile");
+        assert_eq!(*bundle.punch, 6i32, "punch flows through DamageProfile");
+        assert_eq!(*bundle.shred, 4i32, "shred flows through DamageProfile");
+        assert_eq!(bundle.damage_type, DamageType::Kinetic);
+        assert_eq!(
+            *bundle.magazine_size, 24u16,
+            "magazine_size flows through HandlingProfile",
+        );
+        assert!(!*bundle.stable, "stable flows through HandlingProfile");
+        // The burst rung's name survived the parse + grouping.
+        assert!(matches!(bundle.fire_mode, FireMode::SingleBurst { .. }));
+    }
+
+    /// GTW-257 — a `WeaponRegistry` keys specs by `WeaponName` and resolves a lookup:
+    /// a present key returns the spec, an absent key returns `None`. Built directly
+    /// from `WeaponRegistry::new` (no `AssetServer` — the sim-unit shape AC2/AC3 use).
+    #[test]
+    fn weapon_registry_keys_and_resolves_by_name() {
+        let Ok(spec) = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON) else {
+            return;
+        };
+        let autogun = WeaponName::new("autogun".to_owned());
+        let registry = WeaponRegistry::new([(autogun.clone(), spec)]);
+
+        assert_eq!(
+            registry.len(),
+            1,
+            "the registry holds the one inserted weapon"
+        );
+        assert!(!registry.is_empty(), "a one-weapon registry is non-empty");
+        assert!(
+            registry.spec(&autogun).is_some(),
+            "a present key resolves to its spec",
+        );
+        assert!(
+            registry
+                .spec(&WeaponName::new("missing".to_owned()))
+                .is_none(),
+            "an absent key resolves to None (the setup-time WeaponNotFound trigger)",
         );
     }
 }

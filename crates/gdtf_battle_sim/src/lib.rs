@@ -251,7 +251,8 @@ pub use rng::{BattleSeed, SimRng};
 pub use sample_cone::{ConcentrationP, ShotDir, concentration_p, sample_cone_vector};
 pub use severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod, roll_severity};
 pub use situation::{
-    BattleSetup, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers, setup_battle,
+    BattleSetup, BattleSetupError, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers,
+    setup_battle,
 };
 pub use stability::{ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, stability};
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
@@ -273,5 +274,6 @@ pub use vertical::{
 pub use weapon::{
     Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent,
-    Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponStats,
+    Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
+    WeaponShred, WeaponSpec, WeaponStats,
 };

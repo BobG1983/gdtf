@@ -23,7 +23,7 @@ use std::path::PathBuf;
 
 use bevy::{asset::Handle, state::state::State, text::Font};
 use gdtf_app::test_support::AppState;
-use gdtf_battle_sim::tuning::CombatTuning;
+use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
@@ -87,9 +87,10 @@ fn theme_present_transitions_to_intro_and_persists() {
     );
 
     // Stand in for the async resolves completing: insert the runtime theme + the
-    // GTW-206 tuning (both required before Load transitions, GTW-206 AC5).
+    // GTW-206 tuning + the GTW-257 WeaponRegistry (all required before Load transitions).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    app.world_mut().insert_resource(WeaponRegistry::default());
 
     let reached_intro = advance_until(
         &mut app,

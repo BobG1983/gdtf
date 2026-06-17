@@ -36,6 +36,7 @@
                 left_leg:  (floor: 0, protection: 5, integrity: 18, hardness: 2, armor_type: Flak),  // Left-leg piece
                 right_leg: (floor: 0, protection: 5, integrity: 18, hardness: 2, armor_type: Flak),  // Right-leg piece
             ),
+            weapon:     "autogun",    // weapon KEY — resolves to assets/weapons/autogun.ron at setup
         ),
         // --- Gang 1: a crouching defender across the floor, facing west. ---
         (
@@ -59,6 +60,7 @@
                 left_leg:  (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Left-leg piece
                 right_leg: (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Right-leg piece
             ),
+            weapon:     "lasgun",     // weapon KEY — resolves to assets/weapons/lasgun.ron at setup
         ),
     ],
     // The authored walls — solid fixed geometry on the ground floor. Each is a

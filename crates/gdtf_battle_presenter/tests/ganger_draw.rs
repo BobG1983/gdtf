@@ -36,10 +36,44 @@ use gdtf_battle_presenter::{
     TopDownRendererPlugin, cell_to_world, facing_frame,
 };
 use gdtf_battle_sim::{
-    Aiming, BattleReady, BattleSeed, Cell, CellLevel, Direction, Facing, Faction, GangerSpawn,
-    Level, LifeState, Position, SetupBattleRequested, SimRng, Situation, Stance, StanceKind,
-    setup_battle_on_request,
+    Accuracy, Aiming, BaseSpread, BattleReady, BattleSeed, Cell, CellLevel, DamageType, Direction,
+    Facing, Faction, FatalBias, FireMode, FireModeSpec, GangerSpawn, Kickback, Level, LifeState,
+    MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Position, SetupBattleRequested,
+    SimRng, Situation, Stable, Stance, StanceKind, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponRegistry, WeaponShred, WeaponSpec, setup_battle_on_request,
 };
+
+/// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
+const TEST_WEAPON_KEY: &str = "test-weapon";
+
+/// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
+/// reference, standing in for the `Load`-built registry (GTW-257) so the real
+/// `setup_battle_on_request` spawn path arms each ganger.
+fn weapon_registry() -> WeaponRegistry {
+    WeaponRegistry::new([(
+        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
+        WeaponSpec {
+            base_spread:   BaseSpread::new(0.25),
+            accuracy:      Accuracy::new(1.0),
+            kickback:      Kickback::new(0.4),
+            fatal_bias:    FatalBias::new(0.0),
+            damage:        WeaponDamage::new(12),
+            punch:         WeaponPunch::new(5),
+            shred:         WeaponShred::new(3),
+            damage_type:   DamageType::Kinetic,
+            magazine_size: MagazineSize::new(30),
+            fire_mode:     FireMode::Single {
+                single: FireModeSpec::new(
+                    ModeName::new("single".to_owned()),
+                    ModeConeMult::new(1.0),
+                    ModeTuPercent::new(0.5),
+                    ModeShots::new(1),
+                ),
+            },
+            stable:        Stable::new(false),
+        },
+    )])
+}
 
 /// Generous settle headroom so a slow CI box never flakes on the async atlas /
 /// character-role loads.
@@ -103,6 +137,9 @@ fn headless_renderer_app() -> App {
     .add_message::<gdtf_battle_sim::CoverDestroyed>()
     .add_systems(bevy::app::Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
+    // The Load-built WeaponRegistry (GTW-257): setup_battle_on_request reads it to arm
+    // each spawned ganger. Inserted up front (the fixture gangers reference its key).
+    app.insert_resource(weapon_registry());
     app
 }
 
@@ -128,7 +165,7 @@ fn character_roles(app: &App) -> Option<CharacterRoles> {
 /// Build an authored ganger at `at` with the given faction + facing, otherwise plausible
 /// component values (a standing, hip-firing, alive rifleman). Routed through the real
 /// `GangerSpawn` so the setup path spawns the same component set the draw reads.
-const fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
+fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
     use gdtf_battle_sim::{Hp, Luck, Shooting, Toughness, Tu, Wounds};
     GangerSpawn {
         at,
@@ -150,6 +187,8 @@ const fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn
             gdtf_battle_sim::ArmorHardness::new(0),
             gdtf_battle_sim::ArmorType::DEFAULT,
         )),
+        // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
+        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
     }
 }
 
