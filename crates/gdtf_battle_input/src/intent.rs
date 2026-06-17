@@ -58,9 +58,9 @@ use crate::{SelectedFireMode, SelectedShooter, cycle, fire_mode::next_fire_mode}
 /// fields, so the enum cannot derive `Eq` / `Hash`
 /// (`f32`-field-breaks-container-`Eq`-`Hash`). Nothing keys an `ActIntent` — it is
 /// only pushed to / drained from a `Vec` and compared in tests — so `PartialEq`
-/// suffices. Not `Copy`: [`Fire`](Self::Fire)'s [`FireRequested`] owns a
-/// [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) (which owns a
-/// [`ModeName`](gdtf_battle_sim::ModeName)); the enum is `Clone`.
+/// suffices. Not `Copy`: [`Move`](Self::Move) / [`Turn`](Self::Turn) and
+/// [`Fire`](Self::Fire) carry owned request payloads, and the enum stays `Clone`
+/// (no `Copy`) to keep the variant set uniform.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ActIntent {
     /// Clear the current ganger selection (no sim act — input-layer state only).
@@ -261,9 +261,9 @@ pub fn dispatch_act_intents(
                 let Ok((_, _, _, mode)) = actors.get(actor) else {
                     continue;
                 };
-                // `FireModeSpec` is no longer `Copy` — clone the current selected mode
-                // to read it without moving it out of the `ResMut`.
-                *fire_mode = SelectedFireMode::new(next_fire_mode((**fire_mode).clone(), mode));
+                // `FireModeSpec`/`SelectedFireMode` are `Copy` again (GTW-260) — read
+                // the current mode by copy without moving it out of the `ResMut`.
+                *fire_mode = SelectedFireMode::new(next_fire_mode(**fire_mode, mode));
             }
             ActIntent::Fire(request) => {
                 acts.fire.write(request);

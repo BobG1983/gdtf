@@ -338,7 +338,7 @@ mod tests {
         tuning::RecoilClimb,
         weapon::{
             Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-            HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots,
+            HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
             ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
             WeaponShred,
         },
@@ -366,7 +366,7 @@ mod tests {
     /// [`WeaponStats`] read-view via [`WeaponBundle::stats`].
     fn a_weapon(damage: i32, punch: i32, shred: i32, damage_type: DamageType) -> WeaponBundle {
         let spec = FireModeSpec::new(
-            ModeName::new("single".to_owned()),
+            ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(1.0),
             ModeShots::new(1),
@@ -385,7 +385,7 @@ mod tests {
             ),
             HandlingProfile::new(
                 MagazineSize::new(10),
-                FireMode::Single { single: spec },
+                FireMode::new(vec![spec]),
                 Stable::new(false),
             ),
         )

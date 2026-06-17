@@ -19,28 +19,30 @@
     shred:         2,         // extra integrity damage per hit (attacks armor durability)
     damage_type:   Kinetic,   // the matchup-wheel node this weapon emits (node 3 — slugs / autoguns)
     magazine_size: 30,        // rounds before a reload
-    // The fire-mode selector — single / single+burst / single+burst+full-auto.
-    // Each rung carries its own per-mode numbers: a name, a cone multiplier, the
-    // fraction of the TU pool a shot costs, and the round count per shot action.
-    fire_mode: SingleBurstFullAuto(
-        single: (
-            name:       "single",  // human-facing mode label
+    // The fire-mode selector — a LIST of the modes this weapon offers, in authored
+    // order (Single first). The autogun offers single + burst + full-auto. Each
+    // entry carries its closed kind (Single / Burst / Full — the human label is
+    // derived from it), a cone multiplier, the fraction of the TU pool a shot costs,
+    // and the round count per shot action.
+    fire_mode: [
+        (
+            kind:       Single,    // single shot — the baseline mode
             cone_mult:  1.0,       // selector cone multiplier — single is the baseline (≈ 1)
             tu_percent: 0.30,      // TU% — a single shot costs 30% of the TU pool
             shots:      1,         // rounds fired per shot action
         ),
-        burst: (
-            name:       "burst",   // human-facing mode label
+        (
+            kind:       Burst,     // a short burst
             cone_mult:  1.3,       // selector cone multiplier — a burst throws wider
             tu_percent: 0.45,      // TU% — a burst costs 45% of the TU pool
             shots:      3,         // rounds fired per shot action
         ),
-        full_auto: (
-            name:       "full-auto", // human-facing mode label
-            cone_mult:  1.7,         // selector cone multiplier — full-auto is the sloppiest
-            tu_percent: 0.60,        // TU% — full-auto costs 60% of the TU pool
-            shots:      8,           // rounds fired per shot action
+        (
+            kind:       Full,      // full-auto
+            cone_mult:  1.7,       // selector cone multiplier — full-auto is the sloppiest
+            tu_percent: 0.60,      // TU% — full-auto costs 60% of the TU pool
+            shots:      8,         // rounds fired per shot action
         ),
-    ),
+    ],
     stable: false,            // `stable` tag — NOT braced-by-design (normal recoil/brace gating)
 )

@@ -45,7 +45,7 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent,
+        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
         Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
         WeaponSpec,
     },
@@ -74,14 +74,12 @@ fn weapon_registry() -> WeaponRegistry {
             shred:         WeaponShred::new(3),
             damage_type:   DamageType::Kinetic,
             magazine_size: MagazineSize::new(30),
-            fire_mode:     FireMode::Single {
-                single: FireModeSpec::new(
-                    ModeName::new("single".to_owned()),
-                    ModeConeMult::new(1.0),
-                    ModeTuPercent::new(0.5),
-                    ModeShots::new(1),
-                ),
-            },
+            fire_mode:     FireMode::new(vec![FireModeSpec::new(
+                ModeKind::Single,
+                ModeConeMult::new(1.0),
+                ModeTuPercent::new(0.5),
+                ModeShots::new(1),
+            )]),
             stable:        Stable::new(false),
         },
     )])
@@ -160,9 +158,9 @@ fn two_ganger_situation() -> Situation {
 
 /// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers — the
 /// `acts.rs` fire-test precedent.
-fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
+const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
     FireModeSpec::new(
-        ModeName::new(String::from("single")),
+        ModeKind::Single,
         ModeConeMult::new(1.0),
         ModeTuPercent::new(tu_percent),
         ModeShots::new(shots),
@@ -192,11 +190,7 @@ fn shooter_weapon_kit(mode: FireModeSpec) -> impl bevy::prelude::Bundle {
                 WeaponShred::new(10),
                 DamageType::Kinetic,
             ),
-            HandlingProfile::new(
-                mag_size,
-                FireMode::Single { single: mode },
-                Stable::new(true),
-            ),
+            HandlingProfile::new(mag_size, FireMode::new(vec![mode]), Stable::new(true)),
         ),
         // The shooter query also reads TuMax and decrements a Magazine — neither is
         // authored by `setup_battle`, so the kit supplies both.
@@ -340,7 +334,7 @@ fn fire_requested_in_battle_running_drives_the_sim() {
     let mode = single_mode(0.2, 1);
     app.world_mut()
         .entity_mut(shooter)
-        .insert(shooter_weapon_kit(mode.clone()));
+        .insert(shooter_weapon_kit(mode));
 
     // PUBLISH the target's occupant band in the live grid — the band-free march reads it
     // to band the round vs the occupant (a `Ganger` hit needs both occupant + band, and

@@ -587,7 +587,7 @@ mod tests {
         vertical::{InvalidVerticalLink, LinkKind, VerticalLink},
         weapon::{
             Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
-            MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Stable, WeaponDamage,
+            MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
             WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
         },
     };
@@ -612,14 +612,12 @@ mod tests {
             shred:         WeaponShred::new(3),
             damage_type:   DamageType::Kinetic,
             magazine_size: MagazineSize::new(30),
-            fire_mode:     FireMode::Single {
-                single: FireModeSpec::new(
-                    ModeName::new("single".to_owned()),
-                    ModeConeMult::new(1.0),
-                    ModeTuPercent::new(0.5),
-                    ModeShots::new(1),
-                ),
-            },
+            fire_mode:     FireMode::new(vec![FireModeSpec::new(
+                ModeKind::Single,
+                ModeConeMult::new(1.0),
+                ModeTuPercent::new(0.5),
+                ModeShots::new(1),
+            )]),
             stable:        Stable::new(false),
         }
     }
@@ -1224,7 +1222,7 @@ mod tests {
         // fails the fire guard; the point is the LIVE band runs and stays panic-free).
         let actor = app.world_mut().spawn_empty().id();
         let mode = FireModeSpec::new(
-            ModeName::new("single".to_owned()),
+            ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.2),
             ModeShots::new(1),

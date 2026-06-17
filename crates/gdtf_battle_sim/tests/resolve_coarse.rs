@@ -22,7 +22,7 @@ use gdtf_battle_sim::{
     ArmorType, BaseSpread, BattleSeed, BattleSetup, BodyPart, Cell, CellLevel, CombatTuning,
     ConcentrationP, ConeAngle, CoverEntry, CoverHp, CoverLedger, DamageType, Direction, Facing,
     Faction, FatalBias, FireMode, FireModeSpec, GangerSpawn, HeightBand, Hp, Kickback, Level,
-    LifeState, Luck, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, OccupancyGrid,
+    LifeState, Luck, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
     Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind, ShotOutcome,
     SimRng, Situation, SourceArmor, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu,
     WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, Wounds,
@@ -52,14 +52,12 @@ fn weapon_registry() -> WeaponRegistry {
             shred:         WeaponShred::new(3),
             damage_type:   DamageType::Kinetic,
             magazine_size: MagazineSize::new(30),
-            fire_mode:     FireMode::Single {
-                single: FireModeSpec::new(
-                    ModeName::new("single".to_owned()),
-                    ModeConeMult::new(1.0),
-                    ModeTuPercent::new(0.5),
-                    ModeShots::new(1),
-                ),
-            },
+            fire_mode:     FireMode::new(vec![FireModeSpec::new(
+                ModeKind::Single,
+                ModeConeMult::new(1.0),
+                ModeTuPercent::new(0.5),
+                ModeShots::new(1),
+            )]),
             stable:        Stable::new(false),
         },
     )])

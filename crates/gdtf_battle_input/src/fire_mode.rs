@@ -4,13 +4,13 @@
 //!
 //! The selected mode is the per-mode numbers ([`FireModeSpec`]) the next shot fires
 //! with. On selecting an armed ganger it is set to that weapon's
-//! [`FireMode::single`](gdtf_battle_sim::FireMode::single) (the base mode present on
-//! every selector variant); the fire-mode-cycle key advances it among ONLY the modes
-//! the selected weapon's [`FireMode`](gdtf_battle_sim::FireMode) selector offers —
-//! never inventing a mode the weapon does not author. The stepping reads the selector
-//! VARIANT (single / single+burst / single+burst+full-auto), so a `Single` weapon
-//! stays on single, a `SingleBurst` weapon toggles single<->burst, and a
-//! `SingleBurstFullAuto` weapon walks single->burst->full_auto->single.
+//! [`FireMode::single`](gdtf_battle_sim::FireMode::single) (the `Single`-kind mode);
+//! the fire-mode-cycle key advances it among ONLY the modes the selected weapon's
+//! [`FireMode`](gdtf_battle_sim::FireMode) selector offers — never inventing a mode
+//! the weapon does not author. The stepping walks the selector's LIST by
+//! [`ModeKind`](gdtf_battle_sim::ModeKind) identity, so a one-mode weapon stays on
+//! that mode, a two-mode weapon toggles, and a three-mode weapon walks the list and
+//! wraps.
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{FireMode, FireModeSpec};
@@ -29,9 +29,10 @@ use crate::SelectedShooter;
 /// [`FireMode::single`](gdtf_battle_sim::FireMode::single), and advanced by the
 /// fire-mode-cycle drain arm.
 ///
-/// Not `Copy` — it holds a [`FireModeSpec`], which now owns a
-/// [`ModeName`](gdtf_battle_sim::ModeName) ([`String`]); it is `Clone`.
-#[derive(Resource, Deref, Debug, Clone, PartialEq)]
+/// `Copy` again — it holds a [`FireModeSpec`], which regained `Copy` once the
+/// `String` mode name was dropped (GTW-260). The `Deref`-into-[`FireRequested`] read
+/// stays unchanged.
+#[derive(Resource, Deref, Debug, Clone, Copy, PartialEq)]
 pub struct SelectedFireMode(pub FireModeSpec);
 
 impl SelectedFireMode {
@@ -43,14 +44,14 @@ impl SelectedFireMode {
 }
 
 impl Default for SelectedFireMode {
-    /// The structural single-shot default — `cone_mult = 1`, `tu_percent = 0`,
-    /// `shots = 1`. A spawn-time placeholder, NOT a balance value: the selection path
-    /// resets it to the picked weapon's authored [`FireMode::single`] the moment an
-    /// armed ganger is selected, so this default is only ever live before any
-    /// selection.
+    /// The structural single-shot default — `Single` kind, `cone_mult = 1`,
+    /// `tu_percent = 0`, `shots = 1`. A spawn-time placeholder, NOT a balance value:
+    /// the selection path resets it to the picked weapon's authored
+    /// [`FireMode::single`] the moment an armed ganger is selected, so this default is
+    /// only ever live before any selection.
     fn default() -> Self {
         Self(FireModeSpec::new(
-            gdtf_battle_sim::ModeName::new(String::from("single")),
+            gdtf_battle_sim::ModeKind::Single,
             gdtf_battle_sim::ModeConeMult::new(1.0),
             gdtf_battle_sim::ModeTuPercent::new(0.0),
             gdtf_battle_sim::ModeShots::new(1),
@@ -58,58 +59,46 @@ impl Default for SelectedFireMode {
     }
 }
 
-/// The [`FireModeSpec`] AFTER `current` in the selected weapon's offered ladder,
-/// wrapping past the last offered mode back to single.
+/// The [`FireModeSpec`] AFTER `current` in the selected weapon's offered list,
+/// wrapping past the last offered mode back to the first.
 ///
-/// Reads the selector VARIANT to enumerate ONLY the modes the weapon authors
-/// (resolution.md §1: "selector is single / single+burst / single+burst+full-auto,
-/// authored per weapon") — it NEVER invents a mode a weapon does not offer:
+/// Walks the selector's LIST — enumerating ONLY the modes the weapon authors
+/// (resolution.md §1: the selector is authored per weapon) — and identifies a mode by
+/// its closed [`ModeKind`](gdtf_battle_sim::ModeKind) (no float compare). It NEVER
+/// invents a mode a weapon does not offer:
 ///
-/// - [`FireMode::Single`] offers only `single`, so the cycle stays on `single`.
-/// - [`FireMode::SingleBurst`] toggles `single` <-> `burst`.
-/// - [`FireMode::SingleBurstFullAuto`] walks `single` -> `burst` -> `full_auto` ->
-///   (wrap) `single`.
+/// - an EMPTY selector returns `current` (defensive, no panic);
+/// - a one-mode weapon's only mode is also `current`'s kind → wraps to index 0 (stays
+///   on it);
+/// - a two-mode weapon toggles its two modes;
+/// - a three-mode weapon walks the list and wraps to the first.
 ///
-/// `current` is matched against the weapon's authored specs to locate the current
-/// rung; a `current` that is not one of the offered specs (e.g. a stale mode from a
-/// previously-selected weapon) restarts the ladder at the rung AFTER `single` — i.e.
-/// it steps to `burst` when offered, else stays `single` — a total, never-panicking
-/// fallback.
+/// `current` is matched against the offered specs by KIND to locate the current
+/// position; a `current.kind` that is NOT offered (e.g. a stale mode from a
+/// previously-selected weapon) restarts the list one past the first —
+/// [`get(1)`](slice::get) if present, else index `0` — a total, never-panicking
+/// fallback (so a stale current steps to the 2nd mode on a 2+-mode weapon, else stays
+/// on the only mode of a 1-mode weapon).
 #[must_use]
 pub fn next_fire_mode(current: FireModeSpec, selector: &FireMode) -> FireModeSpec {
-    // The specs are no longer `Copy` (each owns a `ModeName`), so the selector is
-    // matched by reference and the chosen rung is `.clone()`d out — the walk behavior
-    // (single -> burst -> full_auto -> wrap) is unchanged.
-    match selector {
-        // Single-only: there is nothing to advance to — stay on single.
-        FireMode::Single { single } => single.clone(),
-        // Single + burst: toggle. On `burst` (or any non-burst rung) wrap to single
-        // when already on burst, else advance to burst.
-        FireMode::SingleBurst { single, burst } => {
-            if specs_eq(&current, burst) {
-                single.clone()
-            } else {
-                burst.clone()
-            }
-        }
-        // Single + burst + full-auto: walk single -> burst -> full_auto -> single.
-        FireMode::SingleBurstFullAuto {
-            single,
-            burst,
-            full_auto,
-        } => {
-            if specs_eq(&current, single) {
-                burst.clone()
-            } else if specs_eq(&current, burst) {
-                full_auto.clone()
-            } else if specs_eq(&current, full_auto) {
-                single.clone()
-            } else {
-                // A stale / unknown current spec restarts the ladder one past single.
-                burst.clone()
-            }
-        }
+    // `selector` derefs to `&[FireModeSpec]`. An empty selector has nothing to walk —
+    // return `current` unchanged (defensive).
+    if selector.is_empty() {
+        return current;
     }
+    let len = selector.len();
+    // Find the offered mode whose kind matches `current.kind` and advance one,
+    // wrapping. `FireModeSpec` is `Copy` again, so the chosen mode is `.copied()` out.
+    if let Some(i) = selector.iter().position(|spec| spec.kind == current.kind) {
+        return selector.get((i + 1) % len).copied().unwrap_or(current);
+    }
+    // `current.kind` is not offered — restart one past the first: the 2nd mode if the
+    // weapon offers one, else the only mode.
+    selector
+        .get(1)
+        .or_else(|| selector.first())
+        .copied()
+        .unwrap_or(current)
 }
 
 /// On a CHANGE of [`SelectedShooter`] to an armed ganger, RESET [`SelectedFireMode`]
@@ -148,108 +137,82 @@ pub fn sync_fire_mode_on_select(
     }
 }
 
-/// Whether two [`FireModeSpec`]s are the same authored mode.
-///
-/// The specs are never mutated after authoring, so a direct [`PartialEq`] over the
-/// whole spec (its [`ModeName`](gdtf_battle_sim::ModeName) + per-mode numbers) is the
-/// rung comparison (the authored values flow unchanged from the weapon's [`FireMode`]
-/// selector through [`SelectedFireMode`]). Takes the specs by reference (they are no
-/// longer `Copy`). Factored out so the [`next_fire_mode`] ladder reads
-/// `specs_eq(&current, burst)` rather than an inline `==` that clippy's
-/// float-comparison lint would flag at each call site.
-fn specs_eq(a: &FireModeSpec, b: &FireModeSpec) -> bool {
-    a == b
-}
-
 #[cfg(test)]
 mod tests {
-    use gdtf_battle_sim::{ModeConeMult, ModeName, ModeShots, ModeTuPercent};
+    use gdtf_battle_sim::{ModeConeMult, ModeKind, ModeShots, ModeTuPercent};
 
     use super::*;
 
-    /// A fire-mode spec with a marker `tu_percent` so the three rungs are distinct
-    /// authored values (the magnitudes are arbitrary, not pinned tuning). The mode
-    /// name is fixed across rungs, so the per-`tu_percent` marker is what discriminates
-    /// the walk (`specs_eq` compares the whole spec, name included).
-    fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
+    /// A fire-mode spec of an explicit [`ModeKind`](gdtf_battle_sim::ModeKind) — the
+    /// kind is what the walk identifies a mode by (the cone/TU/shots magnitudes are
+    /// arbitrary, not pinned tuning).
+    const fn spec(kind: ModeKind, tu_percent: f32, shots: u16) -> FireModeSpec {
         FireModeSpec::new(
-            ModeName::new(String::from("mode")),
+            kind,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(tu_percent),
             ModeShots::new(shots),
         )
     }
 
-    /// AC2 — a `Single` weapon stays on `single` across repeated cycles (no other
-    /// mode is invented).
+    /// AC3 — a one-mode `[Single]` weapon stays on `single` across repeated cycles
+    /// (no other mode is invented).
     #[test]
     fn single_weapon_stays_on_single() {
-        // The specs are no longer `Copy` (each owns a `ModeName`), so the locals are
-        // cloned where they are reused — the walk behavior is unchanged.
-        let single = spec(0.2, 1);
-        let selector = FireMode::Single {
-            single: single.clone(),
-        };
-        let mut current = single.clone();
+        let single = spec(ModeKind::Single, 0.2, 1);
+        let selector = FireMode::new(vec![single]);
+        let mut current = single;
         for _ in 0..5 {
             current = next_fire_mode(current, &selector);
-            assert_eq!(current, single, "a Single weapon must stay on single");
+            assert_eq!(current, single, "a one-mode weapon must stay on single");
         }
     }
 
-    /// AC2 — a `SingleBurst` weapon toggles single <-> burst.
+    /// AC3 — a two-mode `[Single, Burst]` weapon toggles single <-> burst.
     #[test]
     fn single_burst_weapon_toggles_single_and_burst() {
-        let single = spec(0.2, 1);
-        let burst = spec(0.4, 3);
-        let selector = FireMode::SingleBurst {
-            single: single.clone(),
-            burst:  burst.clone(),
-        };
+        let single = spec(ModeKind::Single, 0.2, 1);
+        let burst = spec(ModeKind::Burst, 0.4, 3);
+        let selector = FireMode::new(vec![single, burst]);
 
         // single -> burst -> single -> burst ...
-        let after_single = next_fire_mode(single.clone(), &selector);
+        let after_single = next_fire_mode(single, &selector);
         assert_eq!(after_single, burst, "single must advance to burst");
         let after_burst = next_fire_mode(burst, &selector);
         assert_eq!(after_burst, single, "burst must wrap back to single");
     }
 
-    /// AC2 — a `SingleBurstFullAuto` weapon walks `single` -> `burst` -> `full_auto`
-    /// -> (wrap) `single`.
+    /// AC3 — a three-mode `[Single, Burst, Full]` weapon walks `single` -> `burst` ->
+    /// `full` -> (wrap) `single`.
     #[test]
     fn full_auto_weapon_walks_all_three_and_wraps() {
-        let single = spec(0.2, 1);
-        let burst = spec(0.4, 3);
-        let full_auto = spec(0.7, 6);
-        let selector = FireMode::SingleBurstFullAuto {
-            single:    single.clone(),
-            burst:     burst.clone(),
-            full_auto: full_auto.clone(),
-        };
+        let single = spec(ModeKind::Single, 0.2, 1);
+        let burst = spec(ModeKind::Burst, 0.4, 3);
+        let full = spec(ModeKind::Full, 0.7, 6);
+        let selector = FireMode::new(vec![single, burst, full]);
 
-        let a = next_fire_mode(single.clone(), &selector);
+        let a = next_fire_mode(single, &selector);
         assert_eq!(a, burst, "single -> burst");
         let b = next_fire_mode(a, &selector);
-        assert_eq!(b, full_auto, "burst -> full_auto");
+        assert_eq!(b, full, "burst -> full");
         let c = next_fire_mode(b, &selector);
-        assert_eq!(c, single, "full_auto wraps back to single");
+        assert_eq!(c, single, "full wraps back to single");
     }
 
-    /// A stale / unknown current spec restarts the ladder one rung past single
-    /// (defensive — a previously-selected weapon's mode never sticks the cycle).
+    /// AC3 — a stale `current.kind` (not offered by the selected weapon) restarts the
+    /// list one past the first (defensive — a previously-selected weapon's mode never
+    /// sticks the cycle). On a two-mode weapon it steps to the 2nd mode.
     #[test]
-    fn unknown_current_restarts_one_past_single() {
-        let single = spec(0.2, 1);
-        let burst = spec(0.4, 3);
-        let stale = spec(9.9, 99);
-        let selector = FireMode::SingleBurst {
-            single,
-            burst: burst.clone(),
-        };
+    fn unknown_current_restarts_one_past_first() {
+        let single = spec(ModeKind::Single, 0.2, 1);
+        let burst = spec(ModeKind::Burst, 0.4, 3);
+        // A `Full`-kind current, but the weapon offers only single + burst.
+        let stale = spec(ModeKind::Full, 9.9, 99);
+        let selector = FireMode::new(vec![single, burst]);
         assert_eq!(
             next_fire_mode(stale, &selector),
             burst,
-            "a stale current must restart the ladder at burst",
+            "a stale current must restart the list at the 2nd mode (burst)",
         );
     }
 }

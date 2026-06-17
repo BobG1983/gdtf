@@ -449,7 +449,7 @@ mod tests {
     /// through `cone_angle`.
     #[test]
     fn aim_and_firemode_terms_are_read_from_data() {
-        use crate::weapon::{FireMode, FireModeSpec, ModeName, ModeShots, ModeTuPercent};
+        use crate::weapon::{FireMode, FireModeSpec, ModeKind, ModeShots, ModeTuPercent};
 
         let tuning = ConeStabilityTuning::default();
         // The aimed mult is exactly the tuning's authored aim cone mult (read from
@@ -459,14 +459,12 @@ mod tests {
 
         // The firemode term is read off the weapon's FireMode data — build an
         // arbitrary single-mode selector and route its cone_mult through cone_angle.
-        let fire_mode = FireMode::Single {
-            single: FireModeSpec::new(
-                ModeName::new("single".to_owned()),
-                ModeConeMult::new(1.0),
-                ModeTuPercent::new(0.5),
-                ModeShots::new(1),
-            ),
-        };
+        let fire_mode = FireMode::new(vec![FireModeSpec::new(
+            ModeKind::Single,
+            ModeConeMult::new(1.0),
+            ModeTuPercent::new(0.5),
+            ModeShots::new(1),
+        )]);
         let firemode_term = fire_mode.single().cone_mult;
         let theta = cone_angle(
             BaseSpread::new(0.2),

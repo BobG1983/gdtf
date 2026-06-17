@@ -19,22 +19,24 @@
     shred:         1,         // extra integrity damage per hit (attacks armor durability)
     damage_type:   Las,       // the matchup-wheel node this weapon emits (node 6 — beams)
     magazine_size: 20,        // rounds before a reload
-    // The fire-mode selector — single / single+burst (the lasgun offers no full-auto).
-    // Each rung carries its own per-mode numbers: a name, a cone multiplier, the
-    // fraction of the TU pool a shot costs, and the round count per shot action.
-    fire_mode: SingleBurst(
-        single: (
-            name:       "single",  // human-facing mode label
+    // The fire-mode selector — a LIST of the modes this weapon offers, in authored
+    // order (Single first). The lasgun offers single + burst (no full-auto). Each
+    // entry carries its closed kind (Single / Burst — the human label is derived
+    // from it), a cone multiplier, the fraction of the TU pool a shot costs, and the
+    // round count per shot action.
+    fire_mode: [
+        (
+            kind:       Single,    // single shot — the baseline mode
             cone_mult:  1.0,       // selector cone multiplier — single is the baseline (≈ 1)
             tu_percent: 0.25,      // TU% — a single shot costs 25% of the TU pool (cheap, steady)
             shots:      1,         // rounds fired per shot action
         ),
-        burst: (
-            name:       "burst",   // human-facing mode label
+        (
+            kind:       Burst,     // a short, controlled burst
             cone_mult:  1.15,      // selector cone multiplier — a tight, controlled burst
             tu_percent: 0.40,      // TU% — a burst costs 40% of the TU pool
             shots:      3,         // rounds fired per shot action
         ),
-    ),
+    ],
     stable: true,             // `stable` tag — braced-by-design (engages the §1a brace bonus unconditionally)
 )

@@ -190,7 +190,7 @@ mod tests {
         metric::{Cell, Level},
         weapon::{
             Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, HandlingProfile,
-            Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Stable,
+            Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable,
             WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
         },
     };
@@ -258,14 +258,12 @@ mod tests {
             ),
             HandlingProfile::new(
                 MagazineSize::new(10),
-                FireMode::Single {
-                    single: FireModeSpec::new(
-                        ModeName::new("single".to_owned()),
-                        ModeConeMult::new(1.0),
-                        ModeTuPercent::new(0.5),
-                        ModeShots::new(1),
-                    ),
-                },
+                FireMode::new(vec![FireModeSpec::new(
+                    ModeKind::Single,
+                    ModeConeMult::new(1.0),
+                    ModeTuPercent::new(0.5),
+                    ModeShots::new(1),
+                )]),
                 Stable::new(stable),
             ),
         )

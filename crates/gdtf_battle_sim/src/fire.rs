@@ -573,7 +573,7 @@ mod tests {
         rng::BattleSeed,
         surface::SurfaceGrid,
         weapon::{
-            DamageProfile, FireMode, HandlingProfile, ModeConeMult, ModeName, ModeShots,
+            DamageProfile, FireMode, HandlingProfile, ModeConeMult, ModeKind, ModeShots,
             ModeTuPercent, WeaponBundle, WeaponName,
         },
     };
@@ -587,9 +587,9 @@ mod tests {
     }
 
     /// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers.
-    fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
+    const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
         FireModeSpec::new(
-            ModeName::new("single".to_owned()),
+            ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(tu_percent),
             ModeShots::new(shots),
@@ -654,11 +654,7 @@ mod tests {
                 WeaponShred::new(10),
                 DamageType::Kinetic,
             ),
-            HandlingProfile::new(
-                mag_size,
-                FireMode::Single { single: spec.mode },
-                Stable::new(true),
-            ),
+            HandlingProfile::new(mag_size, FireMode::new(vec![spec.mode]), Stable::new(true)),
         );
         world
             .spawn((
@@ -710,12 +706,12 @@ mod tests {
         let shooter = spawn_shooter(
             &mut world,
             ShooterSpec {
-                x:      5,
-                y:      5,
-                tu:     200,
+                x: 5,
+                y: 5,
+                tu: 200,
                 tu_max: 100,
-                ammo:   0,
-                mode:   mode.clone(),
+                ammo: 0,
+                mode,
                 aiming: false,
             },
         );
@@ -774,12 +770,12 @@ mod tests {
         let shooter = spawn_shooter(
             &mut world,
             ShooterSpec {
-                x:      5,
-                y:      5,
-                tu:     200,
+                x: 5,
+                y: 5,
+                tu: 200,
                 tu_max: 100,
-                ammo:   10,
-                mode:   mode.clone(),
+                ammo: 10,
+                mode,
                 aiming: false,
             },
         );
@@ -848,7 +844,7 @@ mod tests {
                     tu: 200,
                     tu_max: 100,
                     ammo: 30,
-                    mode: mode.clone(),
+                    mode,
                     aiming,
                 },
             );
@@ -900,12 +896,12 @@ mod tests {
         let shooter = spawn_shooter(
             &mut world,
             ShooterSpec {
-                x:      5,
-                y:      5,
-                tu:     200,
+                x: 5,
+                y: 5,
+                tu: 200,
                 tu_max: 100,
-                ammo:   3, // only 3 loaded
-                mode:   mode.clone(),
+                ammo: 3, // only 3 loaded
+                mode,
                 aiming: false,
             },
         );
@@ -971,7 +967,7 @@ mod tests {
             ),
             HandlingProfile::new(
                 mag_size,
-                FireMode::Single { single: spec.mode },
+                FireMode::new(vec![spec.mode]),
                 Stable::new(false), // un-braced so the climb is not damped to nothing
             ),
         );
@@ -1030,12 +1026,12 @@ mod tests {
             let shooter = spawn_zero_spread_shooter(
                 &mut world,
                 ShooterSpec {
-                    x:      2,
-                    y:      5,
-                    tu:     200,
+                    x: 2,
+                    y: 5,
+                    tu: 200,
                     tu_max: 100,
-                    ammo:   10,
-                    mode:   mode.clone(),
+                    ammo: 10,
+                    mode,
                     aiming: true,
                 },
             );
@@ -1148,12 +1144,12 @@ mod tests {
         let shooter = spawn_shooter(
             &mut world,
             ShooterSpec {
-                x:      2,
-                y:      5,
-                tu:     200,
+                x: 2,
+                y: 5,
+                tu: 200,
                 tu_max: 100,
-                ammo:   10,
-                mode:   mode.clone(),
+                ammo: 10,
+                mode,
                 aiming: true,
             },
         );
@@ -1230,12 +1226,12 @@ mod tests {
         let shooter = spawn_shooter(
             &mut world,
             ShooterSpec {
-                x:      2,
-                y:      5,
-                tu:     200,
+                x: 2,
+                y: 5,
+                tu: 200,
                 tu_max: 100,
-                ammo:   10,
-                mode:   mode.clone(),
+                ammo: 10,
+                mode,
                 aiming: true,
             },
         );
@@ -1283,12 +1279,12 @@ mod tests {
             let shooter = spawn_shooter(
                 &mut world,
                 ShooterSpec {
-                    x:      2,
-                    y:      5,
-                    tu:     200,
+                    x: 2,
+                    y: 5,
+                    tu: 200,
                     tu_max: 100,
-                    ammo:   10,
-                    mode:   mode.clone(),
+                    ammo: 10,
+                    mode,
                     aiming: true,
                 },
             );

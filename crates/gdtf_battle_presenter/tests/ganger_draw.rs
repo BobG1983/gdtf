@@ -38,7 +38,7 @@ use gdtf_battle_presenter::{
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleReady, BattleSeed, Cell, CellLevel, DamageType, Direction,
     Facing, Faction, FatalBias, FireMode, FireModeSpec, GangerSpawn, Kickback, Level, LifeState,
-    MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent, Position, SetupBattleRequested,
+    MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, SetupBattleRequested,
     SimRng, Situation, Stable, Stance, StanceKind, WeaponDamage, WeaponName, WeaponPunch,
     WeaponRegistry, WeaponShred, WeaponSpec, setup_battle_on_request,
 };
@@ -62,14 +62,12 @@ fn weapon_registry() -> WeaponRegistry {
             shred:         WeaponShred::new(3),
             damage_type:   DamageType::Kinetic,
             magazine_size: MagazineSize::new(30),
-            fire_mode:     FireMode::Single {
-                single: FireModeSpec::new(
-                    ModeName::new("single".to_owned()),
-                    ModeConeMult::new(1.0),
-                    ModeTuPercent::new(0.5),
-                    ModeShots::new(1),
-                ),
-            },
+            fire_mode:     FireMode::new(vec![FireModeSpec::new(
+                ModeKind::Single,
+                ModeConeMult::new(1.0),
+                ModeTuPercent::new(0.5),
+                ModeShots::new(1),
+            )]),
             stable:        Stable::new(false),
         },
     )])

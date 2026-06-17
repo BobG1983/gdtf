@@ -303,10 +303,10 @@ impl Stable {
 /// so it is deliberately absent from the [`WeaponStats`] borrow-view.
 ///
 /// A weapon-identity newtype over [`String`] (no-bare-types: a name is a domain
-/// value, distinct from every other `String` newtype — `WeaponName` ≠ [`ModeName`]).
-/// Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON
-/// string. A `#[derive(Component)]` (GTW-200) — its OWN sibling component on the
-/// armed entity, NOT packed into the [`Weapon`] unit marker.
+/// value). Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare
+/// RON string. A `#[derive(Component)]` (GTW-200) — its OWN sibling component on the
+/// armed entity, NOT packed into the [`Weapon`] unit marker. (A fire mode has no
+/// stored name — its label is [`ModeKind`]'s [`Display`], GTW-260.)
 #[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct WeaponName(String);
@@ -376,40 +376,63 @@ impl ModeShots {
     }
 }
 
-/// A per-fire-mode **name** — the human-facing identity of one fire mode (e.g.
-/// `"single"` / `"burst"` / `"full-auto"`, or an authored mode label). Each mode
-/// carries its own name where its per-mode numbers already live (on the
-/// [`FireModeSpec`]); the fire-mode display / picker (GTW-254) reads it. The §1/§6
-/// math never reads it.
+/// A fire mode's **kind** — the closed set of mechanics a mode can be: a single
+/// shot, a burst, or full-auto (resolution.md §1: the selector offers "single /
+/// burst / full-auto" modes). This is the model the user corrected to: a mode is
+/// identified by a **closed enum** (`Single` / `Burst` / `Full`), not by a stored
+/// human-facing name string — the label is derived from this kind via [`Display`].
 ///
-/// A per-mode-name newtype over [`String`] (no-bare-types: a distinct concept from
-/// [`WeaponName`] even though both wrap `String`). Private inner + derived
-/// [`Deref`]; `#[serde(transparent)]` parses a bare RON string.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct ModeName(String);
+/// A named domain enum (no-bare-types: a fire-mode kind is a domain value, not a
+/// bare `u8`/label string). It is a FIELD value on a [`FireModeSpec`], NOT a
+/// `#[derive(Component)]` — the [`FireMode`] selector that holds the specs is the
+/// component. `Deserialize` so a weapon's authored RON names its mode kind by
+/// variant; `Serialize` for the RON round-trip; `Copy`/`Eq`/`Hash` so a
+/// [`FireModeSpec`] is `Copy` and the cycle compares mode identity by kind.
+///
+/// [`Display`] yields the canonical human labels (`"single"` / `"burst"` /
+/// `"full-auto"`) — the picker (GTW-254) shows these, derived from the kind rather
+/// than stored as a per-mode `String`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ModeKind {
+    /// A single aimed/snap shot — one round per shot action (the baseline mode).
+    Single,
+    /// A short burst — a few rounds per shot action, wider than single.
+    Burst,
+    /// Full-auto — the most rounds per shot action, the sloppiest spread.
+    Full,
+}
 
-impl ModeName {
-    /// Build a fire-mode name from its label string.
-    #[must_use]
-    pub const fn new(name: String) -> Self {
-        Self(name)
+impl std::fmt::Display for ModeKind {
+    /// The canonical human-facing mode LABEL the picker shows — `"single"` /
+    /// `"burst"` / `"full-auto"` — derived from the kind (no stored name string).
+    /// These preserve the prior per-mode label strings (the deleted GTW-256
+    /// name-string newtype).
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let label = match self {
+            Self::Single => "single",
+            Self::Burst => "burst",
+            Self::Full => "full-auto",
+        };
+        f.write_str(label)
     }
 }
 
-/// One fire mode's per-mode numbers — its name, cone multiplier, TU%, and shot count.
+/// One fire mode's per-mode numbers — its kind, cone multiplier, TU%, and shot count.
 ///
-/// The selector term carrier of `θ_cone` (resolution.md §1a) plus the mode's name,
+/// The selector term carrier of `θ_cone` (resolution.md §1a) plus the mode's kind,
 /// TU cost, and round count. A named struct (not a bare tuple) so each per-mode
 /// number keeps its [`FireMode`] meaning; every field is a weapon NUMBER newtype or
-/// the per-mode [`ModeName`].
+/// the closed [`ModeKind`]. The human-facing label comes from
+/// [`ModeKind`]'s [`Display`] (`kind.to_string()`), not a stored string.
 ///
-/// **Not `Copy`** — it owns a [`ModeName`] ([`String`]), so it is `Clone`. Callers
-/// that previously copied a spec now clone or borrow it (the name is owned data).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Every field is `Copy`, so the spec is `Copy` (it regained the derive once the
+/// `String` mode name was dropped — GTW-260; it was only `Clone`-not-`Copy` because
+/// of the old owned name).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FireModeSpec {
-    /// The human-facing name of this fire mode.
-    pub name:       ModeName,
+    /// Which mode this is — its closed kind (`Single` / `Burst` / `Full`); the
+    /// human-facing label is `kind.to_string()`.
+    pub kind:       ModeKind,
     /// The selector cone multiplier for this mode (single ≈ 1, full-auto ≥ 1).
     pub cone_mult:  ModeConeMult,
     /// The fraction of the TU pool a shot in this mode costs.
@@ -419,16 +442,16 @@ pub struct FireModeSpec {
 }
 
 impl FireModeSpec {
-    /// Build one fire mode's spec from its name and its three per-mode numbers.
+    /// Build one fire mode's spec from its kind and its three per-mode numbers.
     #[must_use]
     pub const fn new(
-        name: ModeName,
+        kind: ModeKind,
         cone_mult: ModeConeMult,
         tu_percent: ModeTuPercent,
         shots: ModeShots,
     ) -> Self {
         Self {
-            name,
+            kind,
             cone_mult,
             tu_percent,
             shots,
@@ -436,57 +459,54 @@ impl FireModeSpec {
     }
 }
 
-/// A weapon's **fire-mode selector** — which modes a weapon offers, authored as
-/// single / single+burst / single+burst+full-auto (resolution.md §1: "selector is
-/// single / single+burst / single+burst+full-auto, authored per weapon").
+/// A weapon's **fire-mode selector** — the LIST of modes a weapon offers, each a
+/// [`FireModeSpec`] paired with its closed [`ModeKind`] (resolution.md §1: the
+/// selector is authored per weapon). A weapon offers **any subset of `{Single,
+/// Burst, Full}` in authored order** (GTW-260 broadened the old three fixed ladders
+/// — single / single+burst / single+burst+full-auto — to an arbitrary ordered list;
+/// the docs-sync recording this is GTW-258).
 ///
-/// A named domain enum (no-bare-types: a selector is a domain value, not a bare
-/// `u8`/option list). The three variants are the authored ladders: a weapon that
-/// only fires single shots, one that adds a burst, and one that adds full-auto on
-/// top. Every variant carries the [`FireModeSpec`] for *each* mode it offers (so
-/// `single` is present in all three), keeping the per-mode numbers on the
-/// selector itself. A `#[derive(Component)]` (GTW-200) — the selector lives as a
+/// A named newtype over `Vec<`[`FireModeSpec`]`>` (no-bare-types: the selector is a
+/// domain value; the inner `Vec` is the collection-of-domain-values carve-out). The
+/// private inner + derived [`Deref`] gives slice access (`.iter()` / `.len()` /
+/// `.get()`); `#[serde(transparent)]` so it deserializes from a **bare RON list** of
+/// mode entries (`fire_mode: [ (kind: Single, …), … ]`). `Clone`-not-`Copy` (it
+/// holds a `Vec`). A `#[derive(Component)]` (GTW-200) — the selector lives as a
 /// sibling component on the armed entity (its per-mode [`FireModeSpec`] sub-values
 /// ride inside it, not as separate components).
 ///
-/// **Not `Copy`** — each variant holds [`FireModeSpec`]s, which now own a
-/// [`ModeName`] ([`String`]); the selector is `Clone`.
-#[derive(Component, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum FireMode {
-    /// Single-shot only.
-    Single {
-        /// The single-shot mode's per-mode numbers.
-        single: FireModeSpec,
-    },
-    /// Single shot plus a burst.
-    SingleBurst {
-        /// The single-shot mode's per-mode numbers.
-        single: FireModeSpec,
-        /// The burst mode's per-mode numbers.
-        burst:  FireModeSpec,
-    },
-    /// Single shot, a burst, and full-auto.
-    SingleBurstFullAuto {
-        /// The single-shot mode's per-mode numbers.
-        single:    FireModeSpec,
-        /// The burst mode's per-mode numbers.
-        burst:     FireModeSpec,
-        /// The full-auto mode's per-mode numbers.
-        full_auto: FireModeSpec,
-    },
-}
+/// **Invariant:** a well-authored weapon lists at least one mode, with `Single`
+/// first. The code is DEFENSIVE if that is violated — every read has a total
+/// fallback and never panics (see [`FireMode::single`]).
+#[derive(Component, Deref, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct FireMode(Vec<FireModeSpec>);
 
 impl FireMode {
-    /// The single-shot spec — present on every selector variant (single is the
-    /// base mode of all three). Returns an OWNED clone (the spec is no longer
-    /// `Copy` — it owns a [`ModeName`]); not a `const fn` because cloning is not a
-    /// const operation.
+    /// Build a fire-mode selector from its authored list of modes.
+    #[must_use]
+    pub const fn new(modes: Vec<FireModeSpec>) -> Self {
+        Self(modes)
+    }
+
+    /// The **single-shot spec** — the mode whose [`ModeKind`] is
+    /// [`ModeKind::Single`]; else the FIRST authored mode; else a structural
+    /// single-shot default (`Single`, cone ×1.0, 0% TU, 1 shot). Returns BY VALUE
+    /// ([`FireModeSpec`] is `Copy` again). The fallback chain is TOTAL — NO `unwrap`
+    /// / `panic` even for an empty or `Single`-less (mis-authored) selector.
     #[must_use]
     pub fn single(&self) -> FireModeSpec {
-        match self {
-            Self::Single { single }
-            | Self::SingleBurst { single, .. }
-            | Self::SingleBurstFullAuto { single, .. } => single.clone(),
+        if let Some(single) = self.0.iter().find(|spec| spec.kind == ModeKind::Single) {
+            *single
+        } else if let Some(first) = self.0.first() {
+            *first
+        } else {
+            FireModeSpec::new(
+                ModeKind::Single,
+                ModeConeMult::new(1.0),
+                ModeTuPercent::new(0.0),
+                ModeShots::new(1),
+            )
         }
     }
 }
@@ -554,8 +574,8 @@ pub struct WeaponStats<'a> {
 /// [`WeaponName`], or the marker (no bare primitive); build one with
 /// [`WeaponBundle::new`].
 ///
-/// **Not `Copy`** — it carries a [`WeaponName`] and a [`FireMode`], both of which
-/// own a [`String`]; the bundle is `Clone`.
+/// **Not `Copy`** — it carries a [`WeaponName`] ([`String`]) and a [`FireMode`]
+/// (which holds a `Vec`); the bundle is `Clone`.
 #[derive(Bundle, Debug, Clone, PartialEq)]
 pub struct WeaponBundle {
     /// The [`Weapon`] marker tagging the entity as armed.
@@ -634,7 +654,7 @@ impl DamageProfile {
 /// precedent) so [`WeaponBundle::new`] stays under clippy's argument-count gate.
 /// Every field is a weapon-number newtype / the [`FireMode`] selector.
 ///
-/// **Not `Copy`** — it owns a [`FireMode`] (whose specs own a [`ModeName`]); it is
+/// **Not `Copy`** — it owns a [`FireMode`] (which holds a `Vec` of specs); it is
 /// `Clone`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HandlingProfile {
@@ -738,8 +758,8 @@ impl WeaponBundle {
 /// [`Situation`](crate::situation::Situation) / [`CombatTuning`](crate::tuning::CombatTuning)
 /// satisfy).
 ///
-/// **Not `Copy`** — it owns a [`FireMode`] (whose specs own a [`ModeName`], a
-/// [`String`]); it is `Clone`, so the registry can hold specs BY VALUE.
+/// **Not `Copy`** — it owns a [`FireMode`] (which holds a `Vec` of specs); it is
+/// `Clone`, so the registry can hold specs BY VALUE.
 #[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
 pub struct WeaponSpec {
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
@@ -760,8 +780,8 @@ pub struct WeaponSpec {
     pub damage_type:   DamageType,
     /// The round capacity before a reload (`magazine_size`).
     pub magazine_size: MagazineSize,
-    /// The authored fire-mode selector and its per-mode numbers (each rung's
-    /// [`FireModeSpec`] carrying its [`ModeName`] + cone/TU%/shots).
+    /// The authored fire-mode selector — the list of offered modes, each a
+    /// [`FireModeSpec`] carrying its [`ModeKind`] + cone/TU%/shots.
     pub fire_mode:     FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
     pub stable:        Stable,
@@ -849,19 +869,18 @@ mod tests {
 
     use super::*;
 
-    /// Build an arbitrary fire-mode spec from raw literals — NOT shipped
-    /// magnitudes (there are no shipped weapons yet; these only exercise the type
-    /// surface). The mode name is a fixed arbitrary label (the per-mode name is
-    /// exercised explicitly in [`fire_mode_carries_mode_name`]).
-    fn spec(cone: f32, tu: f32, shots: u16) -> FireModeSpec {
-        named_spec("single", cone, tu, shots)
+    /// Build an arbitrary `Single`-kind fire-mode spec from raw literals — NOT
+    /// shipped magnitudes (these only exercise the type surface). For an explicit
+    /// kind, use [`kind_spec`].
+    const fn spec(cone: f32, tu: f32, shots: u16) -> FireModeSpec {
+        kind_spec(ModeKind::Single, cone, tu, shots)
     }
 
-    /// Build a fire-mode spec with an explicit per-mode `name` — for the
-    /// [`ModeName`] round-trip tests (the name string is the thing under test).
-    fn named_spec(name: &str, cone: f32, tu: f32, shots: u16) -> FireModeSpec {
+    /// Build a fire-mode spec with an explicit [`ModeKind`] — for the kind / label
+    /// round-trip tests (the kind is the thing under test).
+    const fn kind_spec(kind: ModeKind, cone: f32, tu: f32, shots: u16) -> FireModeSpec {
         FireModeSpec::new(
-            ModeName::new(name.to_owned()),
+            kind,
             ModeConeMult::new(cone),
             ModeTuPercent::new(tu),
             ModeShots::new(shots),
@@ -884,9 +903,7 @@ mod tests {
     fn handling(mag: u16, stable: bool) -> HandlingProfile {
         HandlingProfile::new(
             MagazineSize::new(mag),
-            FireMode::Single {
-                single: spec(1.0, 0.5, 1),
-            },
+            FireMode::new(vec![spec(1.0, 0.5, 1)]),
             Stable::new(stable),
         )
     }
@@ -947,9 +964,7 @@ mod tests {
                 WeaponShred::new(3),
                 DamageType::Kinetic,
                 MagazineSize::new(30),
-                FireMode::Single {
-                    single: spec(1.0, 0.5, 1),
-                },
+                FireMode::new(vec![spec(1.0, 0.5, 1)]),
                 Stable::new(true),
             ))
             .id();
@@ -1212,104 +1227,112 @@ mod tests {
         );
     }
 
-    /// C2 — each [`FireMode`] selector variant constructs and its per-mode fields
-    /// read back. The selector ladder is single / single+burst /
-    /// single+burst+full-auto; `single` is present on all three.
+    /// AC2 — a [`FireMode`] is a `Vec` of modes: `.iter()` yields the authored modes
+    /// in order, `.len()` is the count, and `single()` returns the `Single`-kind
+    /// spec. Built from arbitrary literals (mechanism, not magnitude).
     #[test]
-    fn fire_mode_selector_variants_carry_per_mode_fields() {
+    fn fire_mode_is_a_vec_of_modes_in_authored_order() {
         // single only
-        let single_only = FireMode::Single {
-            single: spec(1.0, 0.5, 1),
-        };
+        let single_only = FireMode::new(vec![spec(1.0, 0.5, 1)]);
+        assert_eq!(single_only.len(), 1, "a single-only weapon offers one mode");
+        assert_eq!(single_only.single().kind, ModeKind::Single);
         assert_eq!(*single_only.single().shots, 1u16);
-        assert_eq!(
-            (*single_only.single().cone_mult).to_bits(),
-            1.0_f32.to_bits()
-        );
-        assert_eq!(
-            (*single_only.single().tu_percent).to_bits(),
-            0.5_f32.to_bits()
-        );
 
-        // single + burst — assert the variant matches, then bind it (the let-else
-        // avoids the denied `assert!(false)` guard on the no-match arm).
-        let single_burst = FireMode::SingleBurst {
-            single: spec(1.0, 0.5, 1),
-            burst:  spec(1.2, 0.8, 3),
-        };
-        assert!(matches!(single_burst, FireMode::SingleBurst { .. }));
-        // Destructure by reference so `single_burst` stays usable for `single()` below
-        // (the specs are no longer `Copy`).
-        let FireMode::SingleBurst { single, burst } = &single_burst else {
-            return;
-        };
-        assert_eq!(*single.shots, 1u16);
-        assert_eq!(*burst.shots, 3u16);
-        assert_eq!((*burst.cone_mult).to_bits(), 1.2_f32.to_bits());
-        assert_eq!((*burst.tu_percent).to_bits(), 0.8_f32.to_bits());
-        // `single()` reaches the base mode regardless of variant.
-        assert_eq!(*single_burst.single().shots, 1u16);
-
-        // single + burst + full-auto
-        let full = FireMode::SingleBurstFullAuto {
-            single:    spec(1.0, 0.5, 1),
-            burst:     spec(1.2, 0.8, 3),
-            full_auto: spec(1.6, 1.0, 8),
-        };
-        assert!(matches!(full, FireMode::SingleBurstFullAuto { .. }));
-        let FireMode::SingleBurstFullAuto {
-            single: full_single,
-            burst: full_burst,
-            full_auto,
-        } = &full
-        else {
-            return;
-        };
-        assert_eq!(*full_single.shots, 1u16);
-        assert_eq!(*full_burst.shots, 3u16);
-        assert_eq!(*full_auto.shots, 8u16);
-        assert_eq!((*full_auto.cone_mult).to_bits(), 1.6_f32.to_bits());
+        // single + burst + full-auto, in authored order
+        let full = FireMode::new(vec![
+            kind_spec(ModeKind::Single, 1.0, 0.5, 1),
+            kind_spec(ModeKind::Burst, 1.2, 0.8, 3),
+            kind_spec(ModeKind::Full, 1.6, 1.0, 8),
+        ]);
+        assert_eq!(full.len(), 3, "a three-mode weapon offers three modes");
+        // `.iter()` yields the authored modes in order.
+        let kinds: Vec<ModeKind> = full.iter().map(|spec| spec.kind).collect();
+        assert_eq!(
+            kinds,
+            vec![ModeKind::Single, ModeKind::Burst, ModeKind::Full],
+            "the modes iterate in authored order",
+        );
+        // `single()` finds the Single-kind spec regardless of list length.
+        assert_eq!(full.single().kind, ModeKind::Single);
         assert_eq!(*full.single().shots, 1u16);
+
+        // single() falls back to the FIRST mode when no Single-kind is authored
+        // (defensive — never panics on a mis-authored weapon).
+        let no_single = FireMode::new(vec![kind_spec(ModeKind::Burst, 1.2, 0.8, 3)]);
+        assert_eq!(
+            no_single.single().kind,
+            ModeKind::Burst,
+            "single() falls back to the first authored mode",
+        );
+
+        // single() falls back to a structural default on an EMPTY selector.
+        let empty = FireMode::new(vec![]);
+        assert_eq!(
+            empty.single().kind,
+            ModeKind::Single,
+            "single() returns a structural Single default for an empty selector",
+        );
+        assert_eq!(*empty.single().shots, 1u16);
     }
 
-    /// AC2 / C5 — the [`FireMode`] selector round-trips from authored RON where EACH
-    /// rung's spec carries a `name` (a [`ModeName`]) alongside its `tu_percent` and the
-    /// other per-mode bare scalars: parses a hand-written `SingleBurstFullAuto`
-    /// fragment and asserts the per-mode NAME strings (the thing under test), NOT the
-    /// tunable cone/TU magnitudes (brittle-test rule).
+    /// AC1 — [`ModeKind`] renders its canonical human labels via [`Display`]:
+    /// `Single` → `"single"`, `Burst` → `"burst"`, `Full` → `"full-auto"`.
     #[test]
-    fn fire_mode_parses_from_ron_with_bare_scalar_per_mode_fields() {
-        let ron = r#"SingleBurstFullAuto(
-            single:    (name: "single",    cone_mult: 1.0, tu_percent: 0.5, shots: 1),
-            burst:     (name: "burst",     cone_mult: 1.3, tu_percent: 0.8, shots: 3),
-            full_auto: (name: "full-auto", cone_mult: 1.7, tu_percent: 1.0, shots: 10),
-        )"#;
+    fn mode_kind_display_labels() {
+        assert_eq!(ModeKind::Single.to_string(), "single");
+        assert_eq!(ModeKind::Burst.to_string(), "burst");
+        assert_eq!(ModeKind::Full.to_string(), "full-auto");
+    }
+
+    /// AC1 — [`ModeKind`] round-trips as the closed enum through RON (parses each
+    /// variant by name).
+    #[test]
+    fn mode_kind_round_trips_through_ron() {
+        assert_eq!(
+            ron::from_str::<ModeKind>("Single").ok(),
+            Some(ModeKind::Single)
+        );
+        assert_eq!(
+            ron::from_str::<ModeKind>("Burst").ok(),
+            Some(ModeKind::Burst)
+        );
+        assert_eq!(ron::from_str::<ModeKind>("Full").ok(), Some(ModeKind::Full));
+    }
+
+    /// AC2 / C5 — the [`FireMode`] selector deserializes from a **bare RON list** of
+    /// mode entries (each `( kind: …, cone_mult: …, tu_percent: …, shots: … )`):
+    /// parses a hand-written list and asserts the per-mode KINDS in order (the thing
+    /// under test), NOT the tunable cone/TU magnitudes (brittle-test rule).
+    #[test]
+    fn fire_mode_parses_from_a_bare_ron_list() {
+        let ron = r"[
+            ( kind: Single, cone_mult: 1.0, tu_percent: 0.5, shots: 1),
+            ( kind: Burst,  cone_mult: 1.3, tu_percent: 0.8, shots: 3),
+            ( kind: Full,   cone_mult: 1.7, tu_percent: 1.0, shots: 10),
+        ]";
         let parsed = ron::from_str::<FireMode>(ron);
         assert!(
             parsed.is_ok(),
-            "a FireMode selector must deserialize from per-mode RON carrying a name: {parsed:?}",
+            "a FireMode selector must deserialize from a bare RON list: {parsed:?}",
         );
-        let Ok(FireMode::SingleBurstFullAuto {
-            single,
-            burst,
-            full_auto,
-        }) = parsed
-        else {
+        let Ok(fire_mode) = parsed else {
             return;
         };
-        // The authored per-mode NAME strings round-trip onto each rung's ModeName.
-        assert_eq!(&*single.name, "single");
-        assert_eq!(&*burst.name, "burst");
-        assert_eq!(&*full_auto.name, "full-auto");
+        // The authored per-mode KINDS round-trip onto each list entry, in order.
+        let kinds: Vec<ModeKind> = fire_mode.iter().map(|spec| spec.kind).collect();
+        assert_eq!(
+            kinds,
+            vec![ModeKind::Single, ModeKind::Burst, ModeKind::Full],
+        );
     }
 
     /// AC2 — a [`FireModeSpec`] round-trips through serialize → deserialize unchanged
-    /// (`deserialize(serialize(x)) == x`): the per-mode name and numbers survive a
+    /// (`deserialize(serialize(x)) == x`): the per-mode kind and numbers survive a
     /// RON serialize and re-parse. Value-equality of the whole spec, exercising the
     /// serde mechanism (not a pinned tunable).
     #[test]
     fn fire_mode_spec_ron_round_trip_is_identity() {
-        let spec = named_spec("burst", 1.3, 0.8, 3);
+        let spec = kind_spec(ModeKind::Burst, 1.3, 0.8, 3);
         let Ok(serialized) = ron::to_string(&spec) else {
             return;
         };
@@ -1351,19 +1374,21 @@ mod tests {
         );
     }
 
-    /// AC2 — a [`ModeName`] rides on each [`FireModeSpec`] (read back via the spec's
-    /// `name` field) and parses from a bare RON string (`#[serde(transparent)]`),
-    /// distinct from a [`WeaponName`] (no-bare-types: distinct concepts).
+    /// AC1/AC4 — a [`ModeKind`] rides on each [`FireModeSpec`] (read back via the
+    /// spec's `kind` field) and its human label is `kind.to_string()` (no stored
+    /// name string — the GTW-256 name-string newtype is gone).
     #[test]
-    fn mode_name_rides_on_fire_mode_spec_and_parses_from_ron() {
-        let spec = named_spec("full-auto", 1.7, 1.0, 10);
-        assert_eq!(&*spec.name, "full-auto", "ModeName is a FireModeSpec field");
-        let Ok(parsed) = ron::from_str::<ModeName>(r#""full-auto""#) else {
-            return;
-        };
+    fn mode_kind_rides_on_fire_mode_spec_and_labels_via_display() {
+        let spec = kind_spec(ModeKind::Full, 1.7, 1.0, 10);
         assert_eq!(
-            &*parsed, "full-auto",
-            "ModeName must parse from a bare RON string"
+            spec.kind,
+            ModeKind::Full,
+            "ModeKind is a FireModeSpec field"
+        );
+        assert_eq!(
+            spec.kind.to_string(),
+            "full-auto",
+            "the label derives from ModeKind's Display",
         );
     }
 
@@ -1380,10 +1405,11 @@ mod tests {
 
     /// GTW-257 AC1 — the shipped `assets/weapons/autogun.weapon.ron` parses into a
     /// `WeaponSpec`, and `into_bundle(name)` yields a `WeaponBundle` carrying that
-    /// `WeaponName` + a `FireMode` whose modes carry their `ModeName`. Value-agnostic
-    /// on the tunable cone/TU/damage magnitudes (the authored numbers are DATA, not
-    /// pinned by the test): it asserts the NAME landed and the fire-mode rungs carry
-    /// non-empty `ModeName`s, never a magnitude.
+    /// `WeaponName` + a `FireMode` list whose modes carry their `ModeKind`.
+    /// Value-agnostic on the tunable cone/TU/damage magnitudes (the authored numbers
+    /// are DATA, not pinned by the test): it asserts the NAME landed and the
+    /// fire-mode offers at least one mode whose `single()` is `Single`-kind, never a
+    /// magnitude.
     #[test]
     fn shipped_weapon_spec_parses_and_converts_to_a_bundle() {
         let parsed = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON);
@@ -1405,12 +1431,17 @@ mod tests {
         );
         // The Weapon marker is added by into_bundle (it is NOT authored in the file).
         assert_eq!(bundle.marker, Weapon, "into_bundle adds the Weapon marker");
-        // The single-shot mode (present on every selector variant) carries a non-empty
-        // ModeName — the authored per-mode name round-tripped (mechanism, not a value).
-        let single = bundle.fire_mode.single();
+        // The selector offers at least one mode, and single() is the Single-kind one
+        // (mechanism, not a value) — the authored list round-tripped.
         assert!(
-            !single.name.is_empty(),
-            "the authored fire-mode rung must carry a non-empty ModeName",
+            !bundle.fire_mode.is_empty(),
+            "the authored fire-mode must offer at least one mode",
+        );
+        let single = bundle.fire_mode.single();
+        assert_eq!(
+            single.kind,
+            ModeKind::Single,
+            "the shipped autogun's single() mode is Single-kind",
         );
     }
 
@@ -1420,16 +1451,16 @@ mod tests {
     /// (mechanism, not a balance pin), proving the authoring shape and the conversion.
     #[test]
     fn weapon_spec_round_trips_and_into_bundle_groups_faithfully() {
-        let authored = r#"(
+        let authored = r"(
             base_spread: 0.2, accuracy: 1.1, kickback: 0.3, fatal_bias: 5.0,
             damage: 14, punch: 6, shred: 4, damage_type: Kinetic,
             magazine_size: 24,
-            fire_mode: SingleBurst(
-                single: (name: "single", cone_mult: 1.0, tu_percent: 0.5, shots: 1),
-                burst:  (name: "burst",  cone_mult: 1.3, tu_percent: 0.8, shots: 3),
-            ),
+            fire_mode: [
+                ( kind: Single, cone_mult: 1.0, tu_percent: 0.5, shots: 1),
+                ( kind: Burst,  cone_mult: 1.3, tu_percent: 0.8, shots: 3),
+            ],
             stable: false,
-        )"#;
+        )";
         let parsed = ron::de::from_str::<WeaponSpec>(authored);
         assert!(
             parsed.is_ok(),
@@ -1451,8 +1482,9 @@ mod tests {
             "magazine_size flows through HandlingProfile",
         );
         assert!(!*bundle.stable, "stable flows through HandlingProfile");
-        // The burst rung's name survived the parse + grouping.
-        assert!(matches!(bundle.fire_mode, FireMode::SingleBurst { .. }));
+        // The two authored modes survived the parse + grouping, in order.
+        let kinds: Vec<ModeKind> = bundle.fire_mode.iter().map(|spec| spec.kind).collect();
+        assert_eq!(kinds, vec![ModeKind::Single, ModeKind::Burst]);
     }
 
     /// GTW-257 — a `WeaponRegistry` keys specs by `WeaponName` and resolves a lookup:

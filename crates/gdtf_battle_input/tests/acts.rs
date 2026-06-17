@@ -6,8 +6,9 @@
 //! - AC1 drives the REAL selection path (synth left-click on an armed occupant) and
 //!   asserts `SelectedFireMode` defaults to that weapon's `FireMode::single()`.
 //! - AC2 synthesizes the bound fire-mode-cycle key and asserts `SelectedFireMode`
-//!   advances ONLY among the weapon's offered modes (`Single` stays; `SingleBurst`
-//!   toggles; `SingleBurstFullAuto` walks + wraps).
+//!   advances ONLY among the weapon's offered modes (a one-mode `[Single]` stays; a
+//!   two-mode `[Single, Burst]` toggles; a three-mode `[Single, Burst, Full]` walks +
+//!   wraps).
 //! - AC3 synthesizes a left-click on an in-bounds target for an alive / loaded /
 //!   affordable shooter and asserts EXACTLY one `FireRequested` with the expected
 //!   shooter / mode / target fields is emitted (a probe `MessageReader`).
@@ -40,7 +41,7 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
-    FireMode, FireModeSpec, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeName,
+    FireMode, FireModeSpec, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind,
     ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, SimRng, Stance, StanceKind,
     SurfaceGrid, Tu, TuMax,
     acts::{
@@ -79,25 +80,25 @@ const fn test_keybinds() -> Keybinds {
     }
 }
 
-/// One fire-mode spec with a marker `tu_percent` so the rungs are distinct authored
-/// values (magnitudes arbitrary, not pinned tuning). Not a `const fn` — it owns a
-/// [`ModeName`] ([`String`]).
-fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
+/// One fire-mode spec of an explicit [`ModeKind`] — the kind is what the cycle
+/// identifies a mode by (the cone/TU/shots magnitudes are arbitrary, not pinned
+/// tuning).
+const fn spec(kind: ModeKind, tu_percent: f32, shots: u16) -> FireModeSpec {
     FireModeSpec::new(
-        ModeName::new(String::from("mode")),
+        kind,
         ModeConeMult::new(1.0),
         ModeTuPercent::new(tu_percent),
         ModeShots::new(shots),
     )
 }
 
-/// A `SingleBurstFullAuto` selector with three distinct rungs.
+/// A three-mode `[Single, Burst, Full]` selector with three distinct modes.
 fn sbf_selector() -> FireMode {
-    FireMode::SingleBurstFullAuto {
-        single:    spec(0.2, 1),
-        burst:     spec(0.4, 3),
-        full_auto: spec(0.7, 6),
-    }
+    FireMode::new(vec![
+        spec(ModeKind::Single, 0.2, 1),
+        spec(ModeKind::Burst, 0.4, 3),
+        spec(ModeKind::Full, 0.7, 6),
+    ])
 }
 
 /// A cursor offset (from the window centre) that resolves to a non-origin in-grid cell
@@ -291,9 +292,7 @@ fn clear_mouse(app: &mut App) {
 
 /// The current `SelectedFireMode`.
 fn fire_mode(app: &App) -> Option<FireModeSpec> {
-    app.world()
-        .get_resource::<SelectedFireMode>()
-        .map(|m| (**m).clone())
+    app.world().get_resource::<SelectedFireMode>().map(|m| **m)
 }
 
 // ---------------------------------------------------------------------------------
@@ -383,53 +382,45 @@ fn selecting_armed_ganger_defaults_fire_mode_to_single() {
 // AC2 — fire-mode cycle advances ONLY among the selected weapon's offered modes.
 // ---------------------------------------------------------------------------------
 
-/// AC2 — a `SingleBurstFullAuto` weapon walks `single` -> `burst` -> `full_auto` ->
-/// (wrap) `single` across repeated fire-mode-cycle keypresses; a `Single` weapon stays
-/// on `single`; a `SingleBurst` weapon toggles `single` <-> `burst` — all via the REAL
-/// key path.
+/// AC2 — a three-mode `[Single, Burst, Full]` weapon walks `single` -> `burst` ->
+/// `full` -> (wrap) `single` across repeated fire-mode-cycle keypresses; a one-mode
+/// `[Single]` weapon stays on `single`; a two-mode `[Single, Burst]` weapon toggles
+/// `single` <-> `burst` — all via the REAL key path.
 #[test]
 fn fire_mode_cycle_walks_only_offered_modes() {
     let binds = test_keybinds();
 
-    // SingleBurstFullAuto: single -> burst -> full_auto -> single.
+    // [Single, Burst, Full]: single -> burst -> full -> single.
     {
         let mut app = acts_app();
-        // Build the three rungs locally so we can assert against them without
-        // destructuring (a refutable `let else` would need a denied `panic!`).
-        let single = spec(0.2, 1);
-        let burst = spec(0.4, 3);
-        let full_auto = spec(0.7, 6);
-        // Clone the rungs into the selector so the locals stay owned for the assertions
-        // below (the specs are no longer `Copy`).
-        let selector = FireMode::SingleBurstFullAuto {
-            single:    single.clone(),
-            burst:     burst.clone(),
-            full_auto: full_auto.clone(),
-        };
+        // Build the three modes locally so we can assert against them (the specs are
+        // `Copy` again). The kind discriminates each mode.
+        let single = spec(ModeKind::Single, 0.2, 1);
+        let burst = spec(ModeKind::Burst, 0.4, 3);
+        let full = spec(ModeKind::Full, 0.7, 6);
+        let selector = FireMode::new(vec![single, burst, full]);
         let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
         select_ganger(&mut app, ganger);
-        assert_eq!(fire_mode(&app), Some(single.clone()), "starts on single");
+        assert_eq!(fire_mode(&app), Some(single), "starts on single");
 
         let cycle = binds.fire_mode_cycle();
-        for expected in [burst.clone(), full_auto, single, burst] {
+        for expected in [burst, full, single, burst] {
             press_key(&mut app, cycle);
             app.update();
             release_key(&mut app, cycle);
             assert_eq!(
                 fire_mode(&app),
                 Some(expected),
-                "SBF fire-mode cycle must walk single->burst->full_auto->single",
+                "fire-mode cycle must walk single->burst->full->single",
             );
         }
     }
 
-    // Single: stays on single no matter how many times the cycle key is pressed.
+    // [Single]: stays on single no matter how many times the cycle key is pressed.
     {
         let mut app = acts_app();
-        let single = spec(0.2, 1);
-        let selector = FireMode::Single {
-            single: single.clone(),
-        };
+        let single = spec(ModeKind::Single, 0.2, 1);
+        let selector = FireMode::new(vec![single]);
         let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
         select_ganger(&mut app, ganger);
         let cycle = binds.fire_mode_cycle();
@@ -439,32 +430,29 @@ fn fire_mode_cycle_walks_only_offered_modes() {
             release_key(&mut app, cycle);
             assert_eq!(
                 fire_mode(&app),
-                Some(single.clone()),
-                "a Single weapon must stay on single",
+                Some(single),
+                "a one-mode weapon must stay on single",
             );
         }
     }
 
-    // SingleBurst: toggles single <-> burst.
+    // [Single, Burst]: toggles single <-> burst.
     {
         let mut app = acts_app();
-        let single = spec(0.2, 1);
-        let burst = spec(0.4, 3);
-        let selector = FireMode::SingleBurst {
-            single: single.clone(),
-            burst:  burst.clone(),
-        };
+        let single = spec(ModeKind::Single, 0.2, 1);
+        let burst = spec(ModeKind::Burst, 0.4, 3);
+        let selector = FireMode::new(vec![single, burst]);
         let ganger = spawn_ganger(&mut app, selector, StanceKind::Standing, Direction::North);
         select_ganger(&mut app, ganger);
         let cycle = binds.fire_mode_cycle();
-        for expected in [burst.clone(), single, burst] {
+        for expected in [burst, single, burst] {
             press_key(&mut app, cycle);
             app.update();
             release_key(&mut app, cycle);
             assert_eq!(
                 fire_mode(&app),
                 Some(expected),
-                "a SingleBurst weapon must toggle single<->burst",
+                "a two-mode weapon must toggle single<->burst",
             );
         }
     }

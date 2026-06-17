@@ -93,8 +93,9 @@
 //!   ([`weapon::WeaponName`] / [`weapon::BaseSpread`] / [`weapon::Accuracy`] /
 //!   [`weapon::Kickback`] / [`weapon::FatalBias`] / [`weapon::WeaponDamage`] /
 //!   [`weapon::WeaponPunch`] / [`weapon::WeaponShred`] / [`weapon::DamageType`] /
-//!   [`weapon::MagazineSize`] / [`weapon::FireMode`] / [`weapon::Stable`], with each
-//!   [`weapon::FireMode`] spec carrying its [`weapon::ModeName`]) living as sibling
+//!   [`weapon::MagazineSize`] / [`weapon::FireMode`] / [`weapon::Stable`], where the
+//!   [`weapon::FireMode`] selector is a list of [`weapon::FireModeSpec`]s each
+//!   carrying its closed [`weapon::ModeKind`]) living as sibling
 //!   components on the
 //!   armed entity, spawned via the [`weapon::WeaponBundle`]. The §1/§6 readers take
 //!   a transient [`weapon::WeaponStats`] borrow-view (refs assembled from the
@@ -273,7 +274,7 @@ pub use vertical::{
 };
 pub use weapon::{
     Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent,
+    HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
     Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
     WeaponShred, WeaponSpec, WeaponStats,
 };

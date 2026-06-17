@@ -38,7 +38,7 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera, cell_to_world};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
-    LifeState, Magazine, MagazineSize, ModeConeMult, ModeName, ModeShots, ModeTuPercent,
+    LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
     OccupancyGrid, PlayerFaction, Position, Tu, TuMax, acts::SetFacingRequested,
     tuning::CombatTuning,
 };
@@ -56,11 +56,11 @@ const TARGET_SIZE: Vec2 = Vec2::new(1280.0, 720.0);
 // AC2 — the SHARED `decide_left_click` / `decide_turn` match the contract precedence.
 // =================================================================================
 
-/// A fire-mode spec with a marker `tu_percent` (arbitrary, not pinned tuning). Not a
-/// `const fn` — it owns a [`ModeName`] ([`String`]).
-fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
+/// A `Single`-kind fire-mode spec with a marker `tu_percent` (arbitrary, not pinned
+/// tuning).
+const fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
     FireModeSpec::new(
-        ModeName::new(String::from("single")),
+        ModeKind::Single,
         ModeConeMult::new(1.0),
         ModeTuPercent::new(tu_percent),
         ModeShots::new(shots),
@@ -108,7 +108,7 @@ fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
         .spawn((
             PLAYER_FACTION,
             Position::new(cell),
-            FireMode::Single { single },
+            FireMode::new(vec![single]),
             Aiming::new(false),
             LifeState::Alive,
             Tu::new(255),
