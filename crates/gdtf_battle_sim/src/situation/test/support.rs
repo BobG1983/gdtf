@@ -18,7 +18,7 @@ pub(super) use crate::{
     cover::{CoverHp, CoverLedger, Destroyed, HeightBand},
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance,
-        StanceKind, Toughness, Tu, Wounds,
+        StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, TerrainKind},
@@ -154,6 +154,7 @@ pub(super) fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         hp: Hp::new(40),
         wounds: Wounds::new(3),
         tu: Tu::new(60),
+        tu_max: TuMax::new(60),
         life_state: LifeState::Alive,
         // The E3.0 attribute stats — distinct arbitrary magnitudes per faction so
         // a per-field readback is provable (NOT shipped tuning; per-ganger data).

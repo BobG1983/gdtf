@@ -64,7 +64,8 @@ pub use terrain::{
     draw_static_battlefield, load_tile_roles, resolve_tile_roles, swap_destroyed_cover,
 };
 pub use topdown::{
-    CELL_PX, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world, load_topdown_atlases,
+    CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,
+    cell_to_world_layered, load_topdown_atlases,
 };
 pub use world_camera::{
     EDGE_BAND_PX, EdgeBandPx, GamepadCursorMoved, PAN_SPEED, PanSpeed, STICK_DEADZONE,

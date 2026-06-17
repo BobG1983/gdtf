@@ -20,6 +20,58 @@ pub const CELL_PX: f32 = 16.0;
 /// stable per-level z for the projection.
 const Z_PER_LEVEL: f32 = 1.0;
 
+/// The within-storey draw-z bias that lifts a ganger sprite ABOVE its own floor tile.
+///
+/// A `const`, NOT a domain newtype — the `CELL_PX`-class framework-plumbing carve-out
+/// (`.claude/rules/no-bare-types.md` clause 4): a scalar fed straight to a
+/// [`Transform`]'s `z`, not a domain quantity. Strictly `< Z_PER_LEVEL` (`0.1 < 1.0`)
+/// so a ganger's lifted z never sorts into the NEXT storey's band — it stays within its
+/// own storey, just in front of the same-cell terrain (which draws at the bare level z,
+/// [`Layer::Terrain`] = `0.0`). This fixes the GTW-283 occlusion: at storey 0 the ganger
+/// and its floor both projected to `z = 0.0`, and Bevy 0.18's non-deterministic same-z 2D
+/// sort let the opaque floor draw over the ganger. `0.1` is the smallest legible lift.
+pub const GANGER_Z_BIAS: f32 = 0.1;
+
+/// A presenter draw layer within a single storey — the ONE place the
+/// terrain &lt; actor &lt; highlight stacking order lives.
+///
+/// A domain value (a real named type, not a bare z magnitude), per
+/// `.claude/rules/no-bare-types.md`. Each layer's [`z_bias`](Layer::z_bias) is added on
+/// top of the per-storey level z by [`cell_to_world_layered`] so a sprite draws in front
+/// of the lower layers at its own cell without crossing into the next storey's band (every
+/// bias is strictly `< Z_PER_LEVEL`). This slice wires [`Terrain`](Layer::Terrain) (the
+/// bare level z, via [`cell_to_world`]) and [`Actor`](Layer::Actor) (the
+/// [`GANGER_Z_BIAS`] lift); [`Highlight`](Layer::Highlight) is defined so the documented
+/// order is complete, but routing the hover/selection highlight through it is the
+/// in-engine-adjustable later tweak the GTW-283 contract flags (it currently still draws
+/// at the bare level z).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Layer {
+    /// Floor / wall / cover terrain — the ground plane, drawn at the bare per-storey z.
+    Terrain,
+    /// A ganger (actor) — drawn just in front of its own terrain by [`GANGER_Z_BIAS`].
+    Actor,
+    /// The hover / selection highlight — drawn in front of the actor so it tints the unit
+    /// (documented order; wiring deferred, see the type doc).
+    Highlight,
+}
+
+impl Layer {
+    /// This layer's within-storey draw-z bias, added on top of the per-storey level z.
+    ///
+    /// Strictly increasing terrain &lt; actor &lt; highlight, and every value is strictly
+    /// `< Z_PER_LEVEL` so a biased sprite never sorts into the next storey's band.
+    #[must_use]
+    const fn z_bias(self) -> f32 {
+        match self {
+            Self::Terrain => 0.0,
+            Self::Actor => GANGER_Z_BIAS,
+            // Strictly above the actor, still within the storey band (`< Z_PER_LEVEL`).
+            Self::Highlight => GANGER_Z_BIAS * 2.0,
+        }
+    }
+}
+
 /// Projects a sim cell + level into the top-down renderer's world-space position.
 ///
 /// Row 0 sits at the TOP: Bevy's +Y is up, so a larger `cell.y` (further down the
@@ -36,6 +88,22 @@ pub fn cell_to_world(cell: Cell, level: Level) -> Vec3 {
         -(cell.y as f32) * CELL_PX,
         z_for(level),
     )
+}
+
+/// Projects a sim cell + level into world-space, lifted by `layer`'s within-storey
+/// draw-z bias — the [`cell_to_world`] position with [`Layer::z_bias`] added to `z`.
+///
+/// The ONE place a presenter draws a sprite "in front of" the lower layers at the same
+/// cell: [`Terrain`](Layer::Terrain) sits at the bare per-storey z (equivalent to
+/// [`cell_to_world`]), [`Actor`](Layer::Actor) is lifted by [`GANGER_Z_BIAS`] so a ganger
+/// draws over its own floor tile (GTW-283), and the lift never crosses into the next
+/// storey (every bias is strictly `< Z_PER_LEVEL`). `x` / `y` are unchanged from
+/// [`cell_to_world`].
+#[must_use]
+pub fn cell_to_world_layered(cell: Cell, level: Level, layer: Layer) -> Vec3 {
+    let mut world = cell_to_world(cell, level);
+    world.z += layer.z_bias();
+    world
 }
 
 /// The world-space draw-z for a storey `level`.

@@ -22,7 +22,7 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
         gangers: [(
             at: (cell: (x: 0, y: 0), level: 0),
             faction: 0, facing: North, stance: Standing, aiming: false,
-            hp: 10, wounds: 2, tu: 30, life_state: Alive,
+            hp: 10, wounds: 2, tu: 30, tu_max: 30, life_state: Alive,
             shooting: 1.0, toughness: 1.0, luck: 0.0,
             armor: (
                 head:      (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),

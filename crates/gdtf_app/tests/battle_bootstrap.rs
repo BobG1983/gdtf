@@ -158,6 +158,7 @@ fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         hp: Hp::new(40),
         wounds: Wounds::new(3),
         tu: Tu::new(60),
+        tu_max: TuMax::new(60),
         life_state: LifeState::Alive,
         shooting: Shooting::new(f32::from(faction) + 2.0),
         toughness: Toughness::new(f32::from(faction) + 3.0),

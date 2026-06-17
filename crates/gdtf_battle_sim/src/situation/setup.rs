@@ -49,7 +49,8 @@ impl BattleSetup {
 ///    plus [`Faction`](crate::ganger::Faction) / [`Facing`](crate::ganger::Facing) /
 ///    [`Stance`](crate::ganger::Stance) / [`Aiming`](crate::ganger::Aiming) /
 ///    [`Hp`](crate::ganger::Hp) / [`Wounds`](crate::ganger::Wounds) /
-///    [`Tu`](crate::ganger::Tu) / [`LifeState`](crate::ganger::LifeState)), the E3.0 /
+///    [`Tu`](crate::ganger::Tu) / [`TuMax`](crate::ganger::TuMax) /
+///    [`LifeState`](crate::ganger::LifeState)), the E3.0 /
 ///    GTW-182 attribute stats ([`Shooting`](crate::ganger::Shooting) /
 ///    [`Toughness`](crate::ganger::Toughness) / [`Luck`](crate::ganger::Luck)) the
 ///    severity roll reads, the [`WeaponBundle`](crate::weapon::WeaponBundle) resolved
@@ -137,6 +138,7 @@ pub fn setup_battle(
                 ganger.hp,
                 ganger.wounds,
                 ganger.tu,
+                ganger.tu_max,
                 ganger.life_state,
                 ganger.shooting,
                 ganger.toughness,

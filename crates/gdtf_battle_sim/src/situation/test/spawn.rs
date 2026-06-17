@@ -46,6 +46,7 @@ fn each_spawned_ganger_has_all_required_components() {
         &Hp,
         &Wounds,
         &Tu,
+        &TuMax,
         &LifeState,
         &Shooting,
         &Toughness,
@@ -55,7 +56,7 @@ fn each_spawned_ganger_has_all_required_components() {
     assert_eq!(
         all.iter(world).count(),
         2,
-        "both gangers must carry the full E1.2 set + E3.0 attribute stats + WornArmor",
+        "both gangers must carry the full E1.2 set (incl. TuMax) + E3.0 attribute stats + WornArmor",
     );
 }
 

@@ -56,7 +56,7 @@ use gdtf_battle_sim::{
     Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
     BattleInProgress, Cell, CellLevel, Direction, Facing, Faction, FireMode, FireModeSpec,
     GangerSpawn, Hp, Level, LifeState, Luck, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    Shooting, Situation, SourceArmor, Stance, StanceKind, Toughness, Tu, Wounds,
+    Shooting, Situation, SourceArmor, Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
     acts::{SetAimingRequested, SetStanceRequested},
     tuning::CombatTuning,
     weapon::{
@@ -1073,6 +1073,7 @@ fn armed_player_situation() -> Situation {
             hp:         Hp::new(40),
             wounds:     Wounds::new(3),
             tu:         Tu::new(60),
+            tu_max:     TuMax::new(60),
             life_state: LifeState::Alive,
             shooting:   Shooting::new(3.0),
             toughness:  Toughness::new(3.0),

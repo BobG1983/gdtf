@@ -32,8 +32,8 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    ActiveLevel, CELL_PX, CharacterRoles, FacingFrame, GangerSprite, GangerSprites, TopDownAtlases,
-    TopDownRendererPlugin, cell_to_world, facing_frame,
+    ActiveLevel, CELL_PX, CharacterRoles, FacingFrame, GangerSprite, GangerSprites, Layer,
+    TerrainSprite, TopDownAtlases, TopDownRendererPlugin, cell_to_world_layered, facing_frame,
 };
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleReady, BattleSeed, Cell, CellLevel, DamageType, Direction,
@@ -164,7 +164,7 @@ fn character_roles(app: &App) -> Option<CharacterRoles> {
 /// component values (a standing, hip-firing, alive rifleman). Routed through the real
 /// `GangerSpawn` so the setup path spawns the same component set the draw reads.
 fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
-    use gdtf_battle_sim::{Hp, Luck, Shooting, Toughness, Tu, Wounds};
+    use gdtf_battle_sim::{Hp, Luck, Shooting, Toughness, Tu, TuMax, Wounds};
     GangerSpawn {
         at,
         faction: Faction::new(faction),
@@ -174,6 +174,7 @@ fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
         hp: Hp::new(40),
         wounds: Wounds::new(3),
         tu: Tu::new(60),
+        tu_max: TuMax::new(60),
         life_state: LifeState::Alive,
         shooting: Shooting::new(2.0),
         toughness: Toughness::new(3.0),
@@ -244,6 +245,35 @@ fn drawn_gangers(app: &mut App) -> Vec<DrawnGanger> {
             translation: transform.translation,
         })
         .collect()
+}
+
+/// The world-space `z` of the terrain (floor / wall / cover) sprite drawn at `at`, if
+/// the static-battlefield draw spawned one there. Every in-range cell is at least a
+/// floor tile, so a co-located terrain sprite exists at a spawned ganger's cell.
+fn terrain_z_at(app: &mut App, at: CellLevel) -> Option<f32> {
+    let mut q = app.world_mut().query::<(&TerrainSprite, &Transform)>();
+    q.iter(app.world())
+        .find(|(marker, _)| marker.at == at)
+        .map(|(_, transform)| transform.translation.z)
+}
+
+/// Drive bounded `update()`s until a co-located terrain sprite exists at `at`, returning
+/// its `z` (or `None` if none appeared within `MAX_UPDATES`).
+///
+/// `draw_static_battlefield` (`terrain/draw.rs`) fires only when a `BattleReady` is drained
+/// THIS update (or `ActiveLevel.is_changed()`) and `commands.spawn`s the `TerrainSprite`,
+/// so the sprite is queryable only AFTER the end-of-update command flush. `drive_setup`'s
+/// extra update is tuned for the ganger draw's `Added<Position>`, NOT the terrain draw's
+/// `BattleReady`-read + spawn flush, which can land a frame later under parallel test
+/// contention. Settling on the terrain z directly makes the AC2 assertion deterministic.
+fn settle_terrain_z_at(app: &mut App, at: CellLevel) -> Option<f32> {
+    for _ in 0..MAX_UPDATES {
+        if let Some(z) = terrain_z_at(app, at) {
+            return Some(z);
+        }
+        app.update();
+    }
+    terrain_z_at(app, at)
 }
 
 /// The sim entity that occupies `at`, found via its `Position` (the setup spawns one
@@ -336,8 +366,8 @@ fn added_gangers_spawn_one_faction_coloured_sprite_each() {
             );
             assert_eq!(
                 d.translation,
-                cell_to_world(Cell::new(5, 6), Level::new(0)),
-                "faction-0 sprite at cell_to_world of its authored Position",
+                cell_to_world_layered(Cell::new(5, 6), Level::new(0), Layer::Actor),
+                "faction-0 sprite at the Actor-layer projection of its authored Position",
             );
         } else if Some(d.sim_entity) == g1_sim {
             assert_eq!(
@@ -347,8 +377,8 @@ fn added_gangers_spawn_one_faction_coloured_sprite_each() {
             );
             assert_eq!(
                 d.translation,
-                cell_to_world(Cell::new(12, 9), Level::new(0)),
-                "faction-1 sprite at cell_to_world of its authored Position",
+                cell_to_world_layered(Cell::new(12, 9), Level::new(0), Layer::Actor),
+                "faction-1 sprite at the Actor-layer projection of its authored Position",
             );
         }
     }
@@ -412,8 +442,8 @@ fn changed_position_moves_the_same_sprite() {
     );
     assert_eq!(
         drawn_after[0].translation,
-        cell_to_world(Cell::new(7, 8), Level::new(0)),
-        "the sprite moved to cell_to_world of the new Position",
+        cell_to_world_layered(Cell::new(7, 8), Level::new(0), Layer::Actor),
+        "the sprite moved to the Actor-layer projection of the new Position",
     );
     // And the map still points at that same sprite.
     let mapped_after = app
@@ -546,6 +576,90 @@ fn active_level_change_hides_off_level_shows_on_level() {
         visibility_of_sim(&mut app, l0_sim),
         Some(Visibility::Hidden),
         "after the change, the level-0 ganger sprite is hidden",
+    );
+}
+
+/// GTW-283 AC2 — a ganger sprite draws ON TOP of (in front of) its OWN floor tile, both
+/// at spawn and after a move. Drives the REAL setup spawn + the REAL terrain draw, then
+/// asserts (a) the ganger's `z` is strictly greater than the co-located terrain (floor)
+/// `z`, (b) `0.0 < ganger.z < 1.0` at level 0 (the lift stays within its own storey band,
+/// never crossing into the next storey), and (c) after a `Changed<Position>` move the
+/// moved ganger STILL has `z` > the terrain `z` at its NEW cell. RED before the fix (both
+/// projected to `z = 0.0`, so neither the strict-greater nor the `> 0.0` bound held),
+/// GREEN after. The rasterized "the figure draws over the floor" itself is AC7 in-engine QA.
+#[test]
+fn ganger_draws_above_its_own_floor_at_spawn_and_after_move() {
+    let mut app = headless_renderer_app();
+    assert!(settle_resources(&mut app), "resources must resolve");
+
+    let start = CellLevel::new(Cell::new(5, 6), Level::new(0));
+    let situation = Situation {
+        gangers: vec![ganger_at(start, 0, Direction::East)],
+        ..Situation::new()
+    };
+    assert!(
+        drive_setup(&mut app, situation),
+        "setup_battle must complete"
+    );
+
+    // Settle the terrain draw first: its BattleReady-read + spawn flush can land a frame
+    // behind drive_setup's ganger-tuned update under parallel test contention, so drive
+    // bounded update()s until the co-located floor sprite exists (deterministic, no flake).
+    let floor_z = settle_terrain_z_at(&mut app, start);
+    assert!(
+        floor_z.is_some(),
+        "a co-located floor tile must be drawn under the ganger's cell",
+    );
+    let Some(floor_z) = floor_z else { return };
+
+    // The single ganger sprite's z (read after the terrain settle; the ganger has not
+    // moved, so its spawn z is unchanged by the extra terrain-settle updates).
+    let drawn = drawn_gangers(&mut app);
+    assert_eq!(drawn.len(), 1, "one ganger sprite at spawn");
+    let ganger_z = drawn[0].translation.z;
+
+    // (a) the ganger draws strictly in FRONT of its own floor tile.
+    assert!(
+        ganger_z > floor_z,
+        "the ganger sprite z ({ganger_z}) must be strictly greater than its own floor z \
+         ({floor_z}) — it draws on top of, not behind, its floor",
+    );
+    // (b) the lift stays within the storey-0 band: 0.0 < z < 1.0.
+    assert!(
+        ganger_z > 0.0 && ganger_z < 1.0,
+        "the level-0 ganger z ({ganger_z}) must satisfy 0.0 < z < 1.0 (within its own storey)",
+    );
+
+    // (c) after a move the moved ganger STILL draws above the floor at its NEW cell.
+    let sim = sim_entity_at(&mut app, start);
+    assert!(sim.is_some(), "the spawned ganger sim entity must exist");
+    let Some(sim) = sim else { return };
+    let dest = CellLevel::new(Cell::new(7, 8), Level::new(0));
+    let mut pos_q = app.world_mut().query::<&mut Position>();
+    if let Ok(mut pos) = pos_q.get_mut(app.world_mut(), sim) {
+        *pos = Position::new(dest);
+    }
+    app.update();
+
+    let drawn_after = drawn_gangers(&mut app);
+    assert_eq!(
+        drawn_after.len(),
+        1,
+        "still one ganger sprite after the move"
+    );
+    let moved_z = drawn_after[0].translation.z;
+    let dest_floor_z = settle_terrain_z_at(&mut app, dest);
+    assert!(
+        dest_floor_z.is_some(),
+        "a co-located floor tile must be drawn under the moved ganger's new cell",
+    );
+    let Some(dest_floor_z) = dest_floor_z else {
+        return;
+    };
+    assert!(
+        moved_z > dest_floor_z,
+        "after the move the ganger z ({moved_z}) must STILL be strictly greater than the floor \
+         z at its new cell ({dest_floor_z}) — the bias holds across moves",
     );
 }
 

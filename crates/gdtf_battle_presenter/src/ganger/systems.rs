@@ -10,7 +10,7 @@ use super::{
     sprite_map::{GangerSprite, GangerSprites},
     tint::{ganger_tint, stance_aiming_tint},
 };
-use crate::{ActiveLevel, CELL_PX, SheetRole, TopDownAtlases, cell_to_world};
+use crate::{ActiveLevel, CELL_PX, Layer, SheetRole, TopDownAtlases, cell_to_world_layered};
 
 /// The world `(cell, level)` a ganger's [`Position`] projects to — reconstruct the typed
 /// [`Cell`] / [`Level`] from the position's `IVec3` components (the S4 idiom), since
@@ -59,8 +59,11 @@ fn ganger_sprite(index: usize, tint: Color, atlases: &TopDownAtlases) -> Option<
 ///
 /// For every ganger whose [`Position`] was [`Added`] this update AND is on the
 /// [`ActiveLevel`], build a [`Sprite`] (atlas index `faction_base + facing_frame`, the
-/// faction tint) at [`cell_to_world`](crate::cell_to_world), on the
-/// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`GangerSprite`] marker;
+/// faction tint) at the [`Layer::Actor`](crate::Layer) projection
+/// ([`cell_to_world_layered`](crate::cell_to_world_layered) — the cell's world position
+/// lifted by [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS) so it draws over its own floor tile,
+/// GTW-283), on the [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the
+/// [`GangerSprite`] marker;
 /// record `sim Entity -> presenter Entity` in [`GangerSprites`]. Off-`ActiveLevel`
 /// gangers are spawned HIDDEN (a [`Visibility::Hidden`] sprite is recorded too) so a
 /// later [`apply_active_level_filter`] can show it without a respawn — the level filter
@@ -95,7 +98,9 @@ pub fn spawn_ganger_sprites(
         let presenter = commands
             .spawn((
                 sprite,
-                Transform::from_translation(cell_to_world(cell, level)),
+                // The Actor layer lifts the ganger by GANGER_Z_BIAS so it draws over its
+                // own floor tile (GTW-283), without crossing into the next storey's band.
+                Transform::from_translation(cell_to_world_layered(cell, level, Layer::Actor)),
                 visibility,
                 RenderLayers::layer(crate::WORLD_RENDER_LAYER),
                 GangerSprite { entity },
@@ -110,7 +115,10 @@ pub fn spawn_ganger_sprites(
 ///
 /// For every ganger whose [`Position`] is [`Changed`], look the presenter sprite up
 /// through [`GangerSprites`] and move its [`Transform`] to the new
-/// [`cell_to_world`](crate::cell_to_world), updating its [`Visibility`] by whether the
+/// [`Layer::Actor`](crate::Layer) projection
+/// ([`cell_to_world_layered`](crate::cell_to_world_layered) — so the
+/// [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS) lift holds across moves), updating its
+/// [`Visibility`] by whether the
 /// new `(cell, level)` is on the [`ActiveLevel`]. It does NOT spawn a second sprite: it
 /// is idempotent via the map (a just-`Added` ganger handled by [`spawn_ganger_sprites`]
 /// this same update is already mapped — `.after(spawn_ganger_sprites)` guarantees the
@@ -133,7 +141,9 @@ pub fn move_ganger_sprites(
             continue;
         };
         let (cell, level) = cell_and_level(pos);
-        transform.translation = cell_to_world(cell, level);
+        // The Actor-layer lift (GANGER_Z_BIAS) must hold across moves too, so the moved
+        // ganger keeps drawing over the floor tile at its new cell (GTW-283).
+        transform.translation = cell_to_world_layered(cell, level, Layer::Actor);
         *visibility = if on_active_level(pos, **active) {
             Visibility::Inherited
         } else {

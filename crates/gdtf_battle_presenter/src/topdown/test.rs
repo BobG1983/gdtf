@@ -2,7 +2,7 @@
 
 use gdtf_battle_sim::{Cell, Level};
 
-use super::bridge::{CELL_PX, cell_to_world, z_for};
+use super::bridge::{CELL_PX, GANGER_Z_BIAS, Layer, cell_to_world, cell_to_world_layered, z_for};
 
 /// AC2 — `CELL_PX` is exactly 16.0, the single source of truth for cell size.
 #[test]
@@ -57,5 +57,55 @@ fn z_for_is_monotonic_in_storey() {
     assert!(
         z_for(Level::new(1)) > z_for(Level::new(0)),
         "a higher storey must draw at a greater z",
+    );
+}
+
+/// GTW-283 — `cell_to_world_layered` lifts the Actor (ganger) layer ABOVE its
+/// same-cell Terrain (floor) layer, keeps `x`/`y` unchanged, and the lift stays
+/// strictly within its own storey band (Actor z at level 0 stays below the next
+/// storey's z) so a ganger never sorts into the storey above.
+#[test]
+fn actor_layer_draws_above_terrain_within_its_storey() {
+    let l0 = Level::new(0);
+    let cell = Cell::new(3, 4);
+
+    let terrain = cell_to_world_layered(cell, l0, Layer::Terrain);
+    let actor = cell_to_world_layered(cell, l0, Layer::Actor);
+    let highlight = cell_to_world_layered(cell, l0, Layer::Highlight);
+
+    // Terrain at the same cell equals the bare projection (zero bias).
+    assert_eq!(
+        terrain,
+        cell_to_world(cell, l0),
+        "the Terrain layer must equal the bare cell_to_world projection (zero bias)",
+    );
+
+    // x / y are unchanged across layers — only z is biased.
+    assert_eq!(actor.x.to_bits(), terrain.x.to_bits(), "Actor x unchanged");
+    assert_eq!(actor.y.to_bits(), terrain.y.to_bits(), "Actor y unchanged");
+
+    // The documented stacking order: terrain < actor < highlight.
+    assert!(
+        terrain.z < actor.z && actor.z < highlight.z,
+        "draw order must be terrain ({}) < actor ({}) < highlight ({})",
+        terrain.z,
+        actor.z,
+        highlight.z,
+    );
+
+    // The Actor lift is exactly GANGER_Z_BIAS above the floor.
+    assert_eq!(
+        (actor.z - terrain.z).to_bits(),
+        GANGER_Z_BIAS.to_bits(),
+        "the Actor layer lifts by exactly GANGER_Z_BIAS",
+    );
+
+    // The lift never crosses into the next storey: the Actor z at level 0 is still
+    // strictly below the bare z of level 1 (every bias is < Z_PER_LEVEL).
+    assert!(
+        actor.z < z_for(Level::new(1)),
+        "an Actor at level 0 must draw strictly below level 1's band (z {} < {})",
+        actor.z,
+        z_for(Level::new(1)),
     );
 }

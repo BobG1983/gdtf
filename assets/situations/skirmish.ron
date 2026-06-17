@@ -20,7 +20,8 @@
             aiming:     false,        // aim-mode flag — hip-firing, not aimed
             hp:         40,           // hit-points pool — the knock-down pool
             wounds:     3,            // Wounds (life) pool — emptying it is death
-            tu:         60,           // Time-Unit budget — the per-turn action pool
+            tu:         60,           // Time-Unit budget — the per-turn action pool (current)
+            tu_max:     60,           // TU ceiling — round-start max TU resets to (full at battle start = tu)
             life_state: Alive,        // terminal life state — up and fighting
             shooting:   4.0,          // Shooting stat — ranged-to-hit skill (feeds shot concentration)
             toughness:  3.0,          // Toughness — defender's severity-roll mitigation
@@ -47,7 +48,8 @@
             aiming:     true,         // aim-mode flag — aimed shot (narrows the cone at a TU premium)
             hp:         36,           // hit-points pool
             wounds:     3,            // Wounds (life) pool
-            tu:         58,           // Time-Unit budget
+            tu:         58,           // Time-Unit budget (current)
+            tu_max:     58,           // TU ceiling — round-start max TU resets to (full at battle start = tu)
             life_state: Alive,        // terminal life state — up and fighting
             shooting:   5.0,          // Shooting stat
             toughness:  4.0,          // Toughness

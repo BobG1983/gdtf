@@ -8,7 +8,8 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection, SourceArmor},
     cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{
-        Aiming, Facing, Faction, Hp, LifeState, Luck, Shooting, Stance, Toughness, Tu, Wounds,
+        Aiming, Facing, Faction, Hp, LifeState, Luck, Shooting, Stance, Toughness, Tu, TuMax,
+        Wounds,
     },
     metric::CellLevel,
     occupancy::TerrainKind,
@@ -62,6 +63,16 @@ pub struct GangerSpawn {
     pub wounds:     Wounds,
     /// The ganger's Time-Unit budget.
     pub tu:         Tu,
+    /// The ganger's **TU maximum** — the round-start Time-Unit ceiling [`Tu`] resets
+    /// to, and the GTW-38 reaction-ratio denominator (the same sibling-vitals shape as
+    /// [`tu`](GangerSpawn::tu)). [`setup_battle`](crate::situation::setup_battle) spawns
+    /// it as a [`TuMax`] component beside [`tu`](GangerSpawn::tu); the status panel's
+    /// `Vitals` read needs it (non-optional) to render the `cur/max` line, so an authored
+    /// situation MUST supply it (default = the authored [`tu`](GangerSpawn::tu), full at
+    /// battle start). Authored explicitly — `Tu` does NOT `#[require(TuMax)]` (that would
+    /// default the ceiling to `0`, painting a `cur/0` line); the ceiling comes from the
+    /// situation.
+    pub tu_max:     TuMax,
     /// The ganger's terminal life state.
     pub life_state: LifeState,
     /// The ganger's **Shooting** combat stat — the ranged-to-hit skill term the

@@ -24,7 +24,7 @@ use gdtf_battle_sim::{
     Faction, FatalBias, FireMode, FireModeSpec, GangerSpawn, HeightBand, Hp, Kickback, Level,
     LifeState, Luck, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
     Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind, ShotOutcome,
-    SimRng, Situation, SourceArmor, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu,
+    SimRng, Situation, SourceArmor, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
     WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, Wounds,
     resolve_coarse, setup_battle,
 };
@@ -87,6 +87,7 @@ fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         hp: Hp::new(40),
         wounds: Wounds::new(3),
         tu: Tu::new(60),
+        tu_max: TuMax::new(60),
         life_state: LifeState::Alive,
         // The E3.0 attribute stats (GTW-182) — arbitrary magnitudes; this test does
         // not read them, but `GangerSpawn` now carries them.

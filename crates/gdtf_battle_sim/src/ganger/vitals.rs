@@ -85,7 +85,11 @@ impl Tu {
 /// component so the action-economy / reaction path can query `&TuMax` alone. Defaults
 /// to `0` (mirrors [`Tu`]'s structural spawn default — a fresh ganger carries no
 /// budget until the situation setup authors one; not a tunable magnitude).
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+/// `#[serde(transparent)]` lets an authored TU ceiling parse as a bare integer (the
+/// sibling [`Tu`] shape), so an authored situation `.ron`'s `tu_max` deserializes as
+/// part of [`GangerSpawn`](crate::situation::GangerSpawn).
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
 pub struct TuMax(pub(super) u8);
 
 impl TuMax {
