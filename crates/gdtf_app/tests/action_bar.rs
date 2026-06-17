@@ -21,9 +21,12 @@
 //! - GTW-267 — the Stance sub-panel: selecting a ganger marks its current stance toggle
 //!   `ActiveButton`; pressing Prone direct-sets stance Prone (a `SetStanceRequested`) and
 //!   the active mark moves; the three are mutually exclusive.
-//! - GTW-265 — the Mode sub-panel: a Single+Burst weapon spawns exactly two mode toggles
-//!   (no Full); selecting a ganger marks its active mode toggle `ActiveButton`; clicking
-//!   Burst sets `SelectedFireMode` to that weapon's burst spec and the active mark moves.
+//! - GTW-265 / GTW-284 — the Mode sub-panel: the THREE FIXED mode toggles are spawned once
+//!   and MUTATED in place (GTW-284: never despawned/respawned). A Single+Burst weapon shows
+//!   the Single + Burst toggles `Visible` and Full `Hidden`; selecting a ganger marks its
+//!   active mode toggle `ActiveButton`; clicking Burst sets `SelectedFireMode` to that
+//!   weapon's burst spec and the active mark moves. A weapon change keeps the toggle entity
+//!   ids STABLE and only flips their `Visibility`.
 //! - AC5 — the DEFERRED reload / end-turn buttons carry `DisabledButton` and emit NO
 //!   intent under a synthesized press.
 //! - AC6 — with NO `SelectedShooter`, an act-button press is a no-op (no message, no
@@ -171,6 +174,13 @@ fn count_with<M: Component>(app: &mut App) -> usize {
 /// Whether the entity carrying marker `M` (if exactly one) has `ActiveButton`.
 fn marker_is_active<M: Component>(app: &mut App) -> bool {
     single_with::<M>(app).is_some_and(|e| app.world().get::<ActiveButton>(e).is_some())
+}
+
+/// The own [`Visibility`] of the single entity carrying marker `M`, if exactly one exists
+/// (GTW-284: the mode toggles are MUTATED in place, so their visibility — not their
+/// presence — encodes the offered modes).
+fn marker_visibility<M: Component>(app: &mut App) -> Option<Visibility> {
+    single_with::<M>(app).and_then(|e| app.world().get::<Visibility>(e).copied())
 }
 
 /// Asserts exactly one button carrying marker `M` exists and returns it, so callers can
@@ -552,8 +562,9 @@ fn prone_toggle_sets_stance_prone_directly() {
 // GTW-265 — the Mode 3-toggle sub-panel (replaces the popup picker).
 // =================================================================================
 
-/// GTW-265 — a Single+Burst weapon spawns exactly TWO mode toggles (a Single + a Burst,
-/// NO Full); the active mark sits on the live mode (`single()` default on selection).
+/// GTW-265 / GTW-284 — the three FIXED mode toggles always exist; a Single+Burst weapon
+/// shows the Single + Burst toggles `Visible` and HIDES Full (the mode it does not offer).
+/// The active mark sits on the live mode (`single()` default on selection).
 #[test]
 fn mode_panel_spawns_only_offered_modes_and_marks_active() {
     let single = spec(ModeKind::Single, 0.2, 1);
@@ -569,20 +580,36 @@ fn mode_panel_spawns_only_offered_modes_and_marks_active() {
     app.update();
     app.update();
 
+    // GTW-284: the three fixed toggles always exist (one each); only visibility changes.
     assert_eq!(
         count_with::<ModeSingleButton>(&mut app),
         1,
-        "a Single+Burst weapon spawns exactly one Single mode toggle",
+        "the fixed Single mode toggle exists exactly once",
     );
     assert_eq!(
         count_with::<ModeBurstButton>(&mut app),
         1,
-        "a Single+Burst weapon spawns exactly one Burst mode toggle",
+        "the fixed Burst mode toggle exists exactly once",
     );
     assert_eq!(
         count_with::<ModeFullButton>(&mut app),
-        0,
-        "a Single+Burst weapon spawns NO Full mode toggle (the mode it does not offer)",
+        1,
+        "the fixed Full mode toggle exists exactly once (it is HIDDEN, not despawned)",
+    );
+    assert_eq!(
+        marker_visibility::<ModeSingleButton>(&mut app),
+        Some(Visibility::Visible),
+        "a Single+Burst weapon shows the Single mode toggle Visible",
+    );
+    assert_eq!(
+        marker_visibility::<ModeBurstButton>(&mut app),
+        Some(Visibility::Visible),
+        "a Single+Burst weapon shows the Burst mode toggle Visible",
+    );
+    assert_eq!(
+        marker_visibility::<ModeFullButton>(&mut app),
+        Some(Visibility::Hidden),
+        "a Single+Burst weapon HIDES the Full mode toggle (the mode it does not offer)",
     );
 
     // The default-on-select mode is single(), so the Single toggle is the active one.
@@ -643,10 +670,16 @@ fn clicking_burst_toggle_sets_mode_and_moves_active_mark() {
     );
 }
 
-/// GTW-265 — the mode toggles are (re)built when the selected weapon changes: a
-/// 3-mode weapon shows three toggles, then re-selecting a 1-mode weapon shows exactly one.
+/// GTW-284 AC1 — on a weapon/selection change the mode toggles are MUTATED in place, never
+/// despawned/respawned: the toggle `Entity` ids stay STABLE across the change and only their
+/// `Visibility` flips to match the new weapon's offered modes (3-mode weapon → all Visible;
+/// re-select a Single-only weapon → Single Visible, Burst + Full Hidden).
+///
+/// Pin-discriminating: the OLD despawn/respawn body would change the toggle ids on the
+/// re-selection (failing the id-stability asserts) and would leave the Burst/Full toggles
+/// absent rather than `Hidden`.
 #[test]
-fn mode_toggles_rebuild_on_selection_change() {
+fn mode_toggles_mutate_in_place_keeping_stable_ids() {
     let single = spec(ModeKind::Single, 0.2, 1);
     let burst = spec(ModeKind::Burst, 0.4, 3);
     let full = spec(ModeKind::Full, 0.7, 6);
@@ -660,12 +693,35 @@ fn mode_toggles_rebuild_on_selection_change() {
     );
     app.update();
     app.update();
-    let three = count_with::<ModeSingleButton>(&mut app)
-        + count_with::<ModeBurstButton>(&mut app)
-        + count_with::<ModeFullButton>(&mut app);
-    assert_eq!(three, 3, "a 3-mode weapon shows three mode toggles");
 
-    // Re-select a 1-mode (Single-only) weapon: the toggles rebuild to exactly one.
+    // Capture the three fixed toggle ids under weapon A (all three modes offered → Visible).
+    let Some(single_a) = single_with::<ModeSingleButton>(&mut app) else {
+        return;
+    };
+    let Some(burst_a) = single_with::<ModeBurstButton>(&mut app) else {
+        return;
+    };
+    let Some(full_a) = single_with::<ModeFullButton>(&mut app) else {
+        return;
+    };
+    assert_eq!(
+        marker_visibility::<ModeSingleButton>(&mut app),
+        Some(Visibility::Visible),
+        "weapon A (Single+Burst+Full) shows the Single toggle Visible",
+    );
+    assert_eq!(
+        marker_visibility::<ModeBurstButton>(&mut app),
+        Some(Visibility::Visible),
+        "weapon A shows the Burst toggle Visible",
+    );
+    assert_eq!(
+        marker_visibility::<ModeFullButton>(&mut app),
+        Some(Visibility::Visible),
+        "weapon A shows the Full toggle Visible",
+    );
+
+    // Re-select a 1-mode (Single-only) weapon B: the toggles MUTATE (visibility flips), the
+    // entity ids do NOT change (no despawn/respawn).
     arm_and_select(
         &mut app,
         FireMode::new(vec![single]),
@@ -674,17 +730,38 @@ fn mode_toggles_rebuild_on_selection_change() {
     );
     app.update();
     app.update();
-    let one = count_with::<ModeSingleButton>(&mut app)
-        + count_with::<ModeBurstButton>(&mut app)
-        + count_with::<ModeFullButton>(&mut app);
+
     assert_eq!(
-        one, 1,
-        "re-selecting a 1-mode weapon rebuilds to exactly one toggle"
+        single_with::<ModeSingleButton>(&mut app),
+        Some(single_a),
+        "the Single mode toggle Entity id must be STABLE across the weapon change (no respawn)",
     );
     assert_eq!(
-        count_with::<ModeBurstButton>(&mut app),
-        0,
-        "the stale Burst toggle from the previous weapon must be gone",
+        single_with::<ModeBurstButton>(&mut app),
+        Some(burst_a),
+        "the Burst mode toggle Entity id must be STABLE across the weapon change (no respawn)",
+    );
+    assert_eq!(
+        single_with::<ModeFullButton>(&mut app),
+        Some(full_a),
+        "the Full mode toggle Entity id must be STABLE across the weapon change (no respawn)",
+    );
+
+    // Visibility now matches weapon B's single offered mode.
+    assert_eq!(
+        marker_visibility::<ModeSingleButton>(&mut app),
+        Some(Visibility::Visible),
+        "weapon B (Single-only) keeps the Single toggle Visible",
+    );
+    assert_eq!(
+        marker_visibility::<ModeBurstButton>(&mut app),
+        Some(Visibility::Hidden),
+        "weapon B (Single-only) HIDES the Burst toggle (not offered), not despawns it",
+    );
+    assert_eq!(
+        marker_visibility::<ModeFullButton>(&mut app),
+        Some(Visibility::Hidden),
+        "weapon B (Single-only) HIDES the Full toggle (not offered), not despawns it",
     );
 }
 

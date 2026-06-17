@@ -1,27 +1,34 @@
-//! The fire-mode 3-toggle sub-panel (GTW-265) — the always-visible replacement for the
-//! removed GTW-254 popup picker.
+//! The fire-mode 3-toggle sub-panel (GTW-265 / GTW-284) — the always-visible replacement
+//! for the removed GTW-254 popup picker.
 //!
 //! The Mode sub-panel ([`ModePanelRoot`]) is a vertical [`spawn_panel`] column inside the
-//! action bar whose CHILDREN are per-mode toggle buttons — [`ModeSingleButton`] /
-//! [`ModeBurstButton`] / [`ModeFullButton`] — built to exactly the modes the SELECTED
-//! weapon offers (a Single+Burst weapon shows two toggles, no Full). Clicking a toggle
-//! sets [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) DIRECTLY to that mode's
+//! action bar whose CHILDREN are the THREE per-mode toggle buttons — [`ModeSingleButton`] /
+//! [`ModeBurstButton`] / [`ModeFullButton`]. Clicking a toggle sets
+//! [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) DIRECTLY to that mode's
 //! read-back [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) (never fabricated), and the
 //! current mode is shown via the `gdtf_ui` [`ActiveButton`] paint marker (the GTW-253
 //! hook, made sticky by GTW-266). No modal, no scrim, no z-stacking, no world
 //! click-through — by construction the whole popup bug class is gone.
 //!
-//! ## (Re)building the toggles on selection change
+//! ## Mutate, never churn (GTW-284 / [[ui-mutate-not-respawn]])
 //!
-//! The offered modes change with the selected weapon, so [`rebuild_mode_buttons`]
-//! despawns the panel's existing toggle children and respawns one per offered mode
-//! whenever [`SelectedShooter`](gdtf_battle_input::SelectedShooter) changes. It runs
-//! `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3): the spawned toggles are `Themed`,
-//! and `gdtf_ui::apply_theme` (change-driven) inserts their look the frame after they
-//! spawn — running the rebuild after `apply_theme` keeps its inserts ahead of the next
-//! rebuild's despawn in command-apply order, so a re-selection never races a theme-insert
-//! onto an about-to-die toggle (the GTW-254 despawned-entity lesson). An UNARMED selection
-//! (no [`FireMode`](gdtf_battle_sim::FireMode)) clears the toggles.
+//! The THREE toggles are spawned ONCE — at panel spawn ([`spawn_mode_panel`]), each
+//! tagged with its mode marker and its fixed label — and are NEVER despawned/respawned on a
+//! selection change. The offered modes change with the selected weapon, so
+//! [`rebuild_mode_buttons`] MUTATES each toggle's [`Visibility`] to show ONLY the modes the
+//! SELECTED weapon offers ([`Visibility::Hidden`] for the modes it lacks), leaving the
+//! entities (and their stable [`Entity`] ids) in place. A Single+Burst weapon shows the
+//! Single + Burst toggles and hides Full.
+//!
+//! This is the GTW-284 fix: the old body despawned + respawned the `Themed` toggles on
+//! every selection change, so a fresh spawn raised `Added<Themed>` → the (then-unfiltered)
+//! `gdtf_ui::apply_theme` repainted ALL `Themed` widgets, clobbering every button's
+//! hover / [`ActiveButton`] fill for a frame. With no entity churn there is no spurious
+//! `Added<Themed>` to trigger that global repaint.
+//!
+//! It runs `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3) so its visibility writes
+//! settle deterministically relative to the theme pass. An UNARMED selection (no
+//! [`FireMode`](gdtf_battle_sim::FireMode)) hides every toggle and the panel root.
 
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
@@ -33,16 +40,30 @@ use crate::scenes::running::game::battlescape::action_bar::components::{
     ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton,
 };
 
-/// Query FILTER matching ANY mode toggle (Single / Burst / Full).
+/// Query FILTER selecting ONLY the Single mode toggle's [`Visibility`], disjoint from the
+/// panel-root + the other two toggles' `&mut Visibility` queries in
+/// [`rebuild_mode_buttons`] (so Bevy proves the four mutable borrows non-conflicting).
 ///
-/// Factored into a named alias so [`rebuild_mode_buttons`]'s existing-toggle query stays
-/// legible (clippy `type_complexity`); it is the set of all mode-toggle markers, the
-/// children `rebuild_mode_buttons` tears down before respawning to the new selection.
-type AnyModeToggle = Or<(
-    With<ModeSingleButton>,
+/// Aliased so the four `&mut Visibility` query types stay legible (clippy
+/// `type_complexity`). The `Without` clauses are the disjointness proof: each entity carries
+/// at most one of these markers, so the four queries can mutably borrow `Visibility` in one
+/// system.
+type SingleToggle = (With<ModeSingleButton>, Without<ModePanelRoot>);
+
+/// Query FILTER selecting ONLY the Burst mode toggle's [`Visibility`] (see [`SingleToggle`]).
+type BurstToggle = (
     With<ModeBurstButton>,
+    Without<ModePanelRoot>,
+    Without<ModeSingleButton>,
+);
+
+/// Query FILTER selecting ONLY the Full mode toggle's [`Visibility`] (see [`SingleToggle`]).
+type FullToggle = (
     With<ModeFullButton>,
-)>;
+    Without<ModePanelRoot>,
+    Without<ModeSingleButton>,
+    Without<ModeBurstButton>,
+);
 
 /// Vertical gap between the Mode sub-panel's toggle buttons, in logical pixels.
 ///
@@ -56,13 +77,19 @@ impl ModeGapPx {
     const PANEL: Self = Self(4.0);
 }
 
-/// Spawns the empty Mode sub-panel column ([`ModePanelRoot`]) and returns its [`Entity`]
-/// so `spawn_action_bar` can parent it under the bar root (GTW-265).
+/// Spawns the Mode sub-panel column ([`ModePanelRoot`]) with its THREE FIXED per-mode
+/// toggles as children, and returns the panel [`Entity`] so `spawn_action_bar` can parent
+/// it under the bar root (GTW-265 / GTW-284).
 ///
-/// A themed [`spawn_panel`](gdtf_ui::spawn_panel) laid out as a vertical column; its
-/// toggle children are filled in by [`rebuild_mode_buttons`] on the first / each
-/// selection change. Returns the panel so the caller parents it in the bar's left-to-right
-/// row. Takes `&mut Commands` + the live theme (the `spawn_action_bar` precedent).
+/// A themed [`spawn_panel`](gdtf_ui::spawn_panel) laid out as a vertical column whose
+/// children are the Single / Burst / Full toggle buttons, spawned ONCE here (GTW-284: the
+/// toggles are MUTATED in place by [`rebuild_mode_buttons`], never despawned/respawned).
+/// Each toggle is tagged with its mode marker and its fixed
+/// [`Display`](std::fmt::Display) label, and starts [`Visibility::Hidden`] — the panel root
+/// is also [`Visibility::Hidden`] until [`rebuild_mode_buttons`] reveals exactly the modes
+/// the first selected weapon offers (GTW-273). Returns the panel so the caller parents it
+/// in the bar's left-to-right row. Takes `&mut Commands` + the live theme (the
+/// `spawn_action_bar` precedent).
 pub(in crate::scenes::running::game::battlescape) fn spawn_mode_panel(
     commands: &mut Commands,
     theme: &GdtfTheme,
@@ -73,121 +100,143 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_mode_panel(
         Node {
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(*ModeGapPx::PANEL),
-            // GTW-272: FIT CONTENTS vertically — the column sizes to its per-mode toggles
-            // (no fixed/min height), so it grows upward in the FlexEnd-aligned bar.
+            // GTW-272: FIT CONTENTS vertically — the column sizes to its visible per-mode
+            // toggles (no fixed/min height), so it grows upward in the FlexEnd-aligned bar.
             height: Val::Auto,
             ..default()
         },
-        // GTW-273: HIDDEN until an armed selection with modes flips it `Visible`. The
-        // panel spawns with no toggle children (none until the first selection change), so
-        // an empty Mode box would otherwise show before / when nothing armed is selected.
-        // `rebuild_mode_buttons` sets the visibility on every selection-change branch; this
-        // initial `Hidden` covers the pre-first-change gap (and the never-selected empty
-        // battle, where the rebuild's no-op branch keeps it hidden).
+        // GTW-273: HIDDEN until an armed selection with modes reveals the offered toggles.
+        // The three toggle children spawn `Hidden` too, so an empty/over-full Mode box never
+        // shows before / when nothing armed is selected. `rebuild_mode_buttons` sets the
+        // root + per-toggle visibility on every selection-change branch; this initial
+        // `Hidden` covers the pre-first-change gap (and the never-selected empty battle,
+        // where the rebuild's no-op / unarmed branch keeps it hidden).
         Visibility::Hidden,
     ));
+
+    // GTW-284: spawn the THREE FIXED toggles ONCE, each `Hidden` — `rebuild_mode_buttons`
+    // reveals exactly the offered ones on selection change (no despawn/respawn churn). Each
+    // toggle carries its fixed label (the kind's `Display`), so its caption never changes.
+    let single = spawn_hidden_toggle(commands, theme, ModeKind::Single, ModeSingleButton);
+    let burst = spawn_hidden_toggle(commands, theme, ModeKind::Burst, ModeBurstButton);
+    let full = spawn_hidden_toggle(commands, theme, ModeKind::Full, ModeFullButton);
+    commands.entity(panel).add_children(&[single, burst, full]);
+
     panel
 }
 
-/// (Re)builds the Mode sub-panel's toggle children to exactly the modes the SELECTED
-/// weapon offers, whenever [`SelectedShooter`](gdtf_battle_input::SelectedShooter) changes
-/// (GTW-265 AC: a Single+Burst weapon shows exactly two toggles, no Full).
+/// Spawns one Mode toggle [`spawn_button`] for `kind`, tagged with its `marker`, with the
+/// kind's [`Display`](std::fmt::Display) as its fixed label, starting [`Visibility::Hidden`]
+/// (GTW-284).
 ///
-/// On a change of the selection it despawns the panel's current toggle children, then —
-/// for an armed selection — spawns one [`spawn_button`] per mode in the weapon's
-/// [`FireMode`](gdtf_battle_sim::FireMode) selector, each tagged with the marker for its
-/// [`ModeKind`](gdtf_battle_sim::ModeKind) ([`ModeSingleButton`] / [`ModeBurstButton`] /
-/// [`ModeFullButton`]) and labelled by the kind's [`Display`](std::fmt::Display). An
-/// UNARMED selection (no `FireMode`) or a cleared selection leaves the panel empty. Runs
-/// `.after(UiSystems::ApplyTheme)` (see the module docs).
+/// The shared toggle constructor for [`spawn_mode_panel`]'s fixed Single / Burst / Full
+/// set: each toggle exists for the whole bar lifetime and is only ever MUTATED (its
+/// [`Visibility`] and its [`ActiveButton`] marker), never churned. Returns the toggle so
+/// the caller parents it under the panel root.
+fn spawn_hidden_toggle<M: Component>(
+    commands: &mut Commands,
+    theme: &GdtfTheme,
+    kind: ModeKind,
+    marker: M,
+) -> Entity {
+    let toggle = spawn_button(commands, theme, ButtonLabel::new(kind.to_string()), marker);
+    commands.entity(toggle).insert(Visibility::Hidden);
+    toggle
+}
+
+/// MUTATES the Mode sub-panel's three FIXED toggles' [`Visibility`] to show exactly the
+/// modes the SELECTED weapon offers, whenever
+/// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) changes (GTW-265 / GTW-284: a
+/// Single+Burst weapon shows the Single + Burst toggles and HIDES Full).
+///
+/// GTW-284 ([[ui-mutate-not-respawn]]) — it NEVER despawns/respawns toggles. The three
+/// toggles are spawned once by [`spawn_mode_panel`]; on a selection change this system sets
+/// each toggle's [`Visibility`] to [`Visibility::Visible`] if the selected weapon's
+/// [`FireMode`](gdtf_battle_sim::FireMode) selector offers that
+/// [`ModeKind`](gdtf_battle_sim::ModeKind), else [`Visibility::Hidden`] — so the toggle
+/// [`Entity`] ids stay STABLE across the change (no `Added<Themed>` churn that would trigger
+/// `gdtf_ui::apply_theme`'s repaint). An UNARMED selection (no `FireMode`) or a cleared
+/// selection hides all three. Runs `.after(UiSystems::ApplyTheme)` (see the module docs).
 ///
 /// It runs its body on a real selection change OR when the [`ModePanelRoot`] is freshly
 /// spawned ([`Added<ModePanelRoot>`](Added)) — the battle-start auto-select fills
 /// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) several frames BEFORE the action
 /// bar spawns its panel, so the selection-change has already passed by the time the panel
-/// exists; the `Added` trigger (re)builds from the CURRENT selection on the spawn frame
-/// (the GTW-255 auto-select ordering trap). Otherwise it early-returns (change-detection
+/// exists; the `Added` trigger re-reads the CURRENT selection on the spawn frame (the
+/// GTW-255 auto-select ordering trap). Otherwise it early-returns (change-detection
 /// hygiene).
 ///
-/// GTW-273 — it also drives the [`ModePanelRoot`]'s [`Visibility`] on EVERY branch: an
+/// GTW-273 — it also drives the [`ModePanelRoot`]'s own [`Visibility`] on EVERY branch: an
 /// armed selection that HAS modes flips it [`Visibility::Visible`]; an unarmed / cleared /
 /// no-mode selection sets it [`Visibility::Hidden`], so there is never an empty Mode box
-/// when nothing armed is selected (inherited visibility hides the toggle children too). The
-/// root is never despawned — only its toggle children and its visibility change.
+/// when nothing armed is selected (the root's `Hidden` hides every toggle child too). The
+/// root is never despawned — only its and its toggles' visibility change.
 ///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the spawn/despawn, the
-/// `Res<SelectedShooter>` read, a read-only `Query<&FireMode>`, the panel-root query (its
-/// [`Entity`] + a `&mut`[`Visibility`] write), an [`Added<ModePanelRoot>`](Added) spawn
-/// detector, and a read-only existing-toggle query — no `&mut World`.
+/// Param-only (`bevy-traps.md` #7): the `Res<SelectedShooter>` read, a read-only
+/// `Query<&FireMode>`, an [`Added<ModePanelRoot>`](Added) spawn detector, the panel-root
+/// `&mut`[`Visibility`] query, and one `&mut`[`Visibility`] query per mode toggle (disjoint
+/// by marker) — no `Commands`, no `&mut World`.
 pub(in crate::scenes::running::game::battlescape) fn rebuild_mode_buttons(
-    mut commands: Commands,
     selected: Res<SelectedShooter>,
-    theme: Option<Res<GdtfTheme>>,
     weapons: Query<&FireMode>,
-    mut panels: Query<(Entity, &mut Visibility), With<ModePanelRoot>>,
     added_panels: Query<(), Added<ModePanelRoot>>,
-    existing: Query<Entity, AnyModeToggle>,
+    mut panels: Query<&mut Visibility, With<ModePanelRoot>>,
+    mut single: Query<&mut Visibility, SingleToggle>,
+    mut burst: Query<&mut Visibility, BurstToggle>,
+    mut full: Query<&mut Visibility, FullToggle>,
 ) {
-    // Rebuild on a real selection change OR when the Mode panel was JUST spawned (the bar's
+    // Re-read on a real selection change OR when the Mode panel was JUST spawned (the bar's
     // `OnEnter(BattleRunning)` `spawn_mode_panel`). The battle-start auto-select
     // (`auto_select_first_player_ganger`) fills `SelectedShooter` several frames BEFORE the
     // action bar spawns its panel, so the selection-change has already passed by the time
-    // the panel exists — without the `Added` trigger the panel would never get its toggles
-    // or its visibility from the CURRENT selection (the GTW-255 auto-select ordering trap).
+    // the panel exists — without the `Added` trigger the toggles would never get their
+    // visibility from the CURRENT selection (the GTW-255 auto-select ordering trap).
     let panel_just_spawned = added_panels.iter().next().is_some();
     if !selected.is_changed() && !panel_just_spawned {
         return;
     }
-    let Some(theme) = theme else {
-        // No theme yet — leave the panel for the next change once the theme is present
-        // (the bar-spawn precedent: never spawn un-themed buttons).
-        return;
-    };
-    // Tear down the current toggles (they belong to the previous selection's weapon).
-    for toggle in &existing {
-        commands.entity(toggle).despawn();
-    }
 
-    // The toggles for the NEW selection, in the weapon's authored order: empty for an
-    // unarmed / cleared / weapon-less selection, one per offered mode otherwise. The
-    // mode→marker mapping is the closed `ModeKind` set.
-    let toggles: Vec<Entity> = match **selected {
-        Some(shooter) => match weapons.get(shooter) {
-            Ok(weapon) => weapon
-                .iter()
-                .map(|mode| {
-                    let label = ButtonLabel::new(mode.kind.to_string());
-                    match mode.kind {
-                        ModeKind::Single => {
-                            spawn_button(&mut commands, &theme, label, ModeSingleButton)
-                        }
-                        ModeKind::Burst => {
-                            spawn_button(&mut commands, &theme, label, ModeBurstButton)
-                        }
-                        ModeKind::Full => {
-                            spawn_button(&mut commands, &theme, label, ModeFullButton)
-                        }
-                    }
-                })
-                .collect(),
-            // Selected but unarmed (no `FireMode`): no toggles.
-            Err(_) => Vec::new(),
-        },
-        // No selection: no toggles.
-        None => Vec::new(),
-    };
+    // Which modes the SELECTED weapon offers (the closed `ModeKind` set). A cleared / no-
+    // selection / unarmed (no `FireMode`) selection offers nothing → every toggle hidden.
+    let offered = (**selected).and_then(|shooter| weapons.get(shooter).ok());
+    let offers =
+        |kind: ModeKind| offered.is_some_and(|weapon| weapon.iter().any(|m| m.kind == kind));
 
-    // GTW-273 — the panel is VISIBLE only when there is at least one mode toggle to show
-    // (an armed selection with modes), HIDDEN otherwise (unarmed / cleared / no-mode), so
-    // there is never an empty Mode box. Set the visibility on every branch.
-    let want = if toggles.is_empty() {
-        Visibility::Hidden
-    } else {
+    // MUTATE each fixed toggle's visibility to its offered state — no despawn/respawn.
+    set_visibility(&mut single, offers(ModeKind::Single));
+    set_visibility(&mut burst, offers(ModeKind::Burst));
+    set_visibility(&mut full, offers(ModeKind::Full));
+
+    // GTW-273 — the panel root is VISIBLE only when at least one mode is offered (an armed
+    // selection with modes), HIDDEN otherwise, so there is never an empty Mode box.
+    let any_offered = offers(ModeKind::Single) || offers(ModeKind::Burst) || offers(ModeKind::Full);
+    let root_want = if any_offered {
         Visibility::Visible
+    } else {
+        Visibility::Hidden
     };
-    for (panel, mut visibility) in &mut panels {
-        commands.entity(panel).add_children(&toggles);
-        // Write only on a real change (change-detection hygiene).
+    for mut visibility in &mut panels {
+        if *visibility != root_want {
+            *visibility = root_want;
+        }
+    }
+}
+
+/// Sets every [`Visibility`] matched by `query` to [`Visibility::Visible`] when `visible`,
+/// else [`Visibility::Hidden`] — writing only on a real change (change-detection hygiene).
+///
+/// Shared by [`rebuild_mode_buttons`] across the three fixed mode toggles (GTW-284): the
+/// per-toggle mutate that REPLACED the old despawn/respawn.
+fn set_visibility<F: bevy::ecs::query::QueryFilter>(
+    query: &mut Query<&mut Visibility, F>,
+    visible: bool,
+) {
+    let want = if visible {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
+    };
+    for mut visibility in query {
         if *visibility != want {
             *visibility = want;
         }

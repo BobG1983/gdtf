@@ -24,12 +24,13 @@
 //!   selected ganger's `Stance` onto the `ActiveButton` paint marker across the three
 //!   stance toggles (Stand / Kneel / Prone), mutually exclusive, under the same gate. The
 //!   toggles' presses route DIRECT `ActIntent::SetStance` via `action_bar_button_intents`.
-//! - **Mode 3-toggle sub-panel** (GTW-265) — `rebuild_mode_buttons` (re)builds the Mode
-//!   sub-panel's per-mode toggles to the selected weapon's offered modes on a selection
-//!   change (`.after(UiSystems::ApplyTheme)`, the despawned-entity guard);
-//!   `mode_button_pressed` sets `SelectedFireMode` directly to a pressed toggle's read-back
-//!   spec; `sync_mode_buttons_active` marks the live mode `ActiveButton`. This REPLACED the
-//!   GTW-254 popup picker (no modal, no scrim, no world click-through).
+//! - **Mode 3-toggle sub-panel** (GTW-265 / GTW-284) — the three FIXED mode toggles are
+//!   spawned once with the bar; `rebuild_mode_buttons` MUTATES their `Visibility` to the
+//!   selected weapon's offered modes on a selection change (`.after(UiSystems::ApplyTheme)`),
+//!   NEVER despawning/respawning them (GTW-284: no `Themed` churn → no spurious global
+//!   repaint); `mode_button_pressed` sets `SelectedFireMode` directly to a pressed toggle's
+//!   read-back spec; `sync_mode_buttons_active` marks the live mode `ActiveButton`. This
+//!   REPLACED the GTW-254 popup picker (no modal, no scrim, no world click-through).
 //!
 //! The bar WRITES the shared 222a [`PendingActIntent`](gdtf_battle_input::PendingActIntent)
 //! seam that `gdtf_battle_input`'s keyboard surface also writes (parallel surfaces, one
@@ -121,13 +122,12 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                     .chain()
                     .run_if(resource_exists::<BattleInProgress>),
             )
-            // `rebuild_mode_buttons` despawns + respawns the Mode toggles on a selection
-            // change, ordered `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3): the
-            // spawned toggles are `Themed`, and `gdtf_ui::apply_theme` (change-driven)
-            // INSERTs their look the frame after they spawn — running the rebuild after
-            // `apply_theme` keeps its inserts ahead of the next rebuild's despawn in the
-            // command-apply order, so a re-selection never races a theme-insert onto an
-            // about-to-die toggle (the GTW-254 despawned-entity lesson).
+            // GTW-284: `rebuild_mode_buttons` MUTATES the three FIXED Mode toggles'
+            // `Visibility` on a selection change (it no longer despawns/respawns them),
+            // ordered `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3) so its visibility
+            // writes settle deterministically relative to the theme pass. Because no toggle
+            // entity is added/removed, there is no spurious `Added<Themed>` to trigger a
+            // `gdtf_ui::apply_theme` repaint — the GTW-284 root-cause is gone.
             .add_systems(
                 Update,
                 rebuild_mode_buttons

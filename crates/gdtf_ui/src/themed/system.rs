@@ -10,15 +10,49 @@ use bevy::{
 use super::role::{ThemeRole, Themed};
 use crate::theme::{ContentMargin, GdtfTheme};
 
-/// Paints the base, theme-derived look onto every [`Themed`] entity from the
-/// **current** [`GdtfTheme`] resource, by [`ThemeRole`] (see the module docs for
-/// the role→sub-theme mapping).
+/// Read-only [`Query`] data for one [`Themed`] entity: its [`Entity`], its
+/// [`ThemeRole`] marker, and its optional layout [`Node`].
+///
+/// Named so [`apply_theme`]'s two repaint queries (the full-set theme-change pass
+/// and the incremental `Added`/`Changed` pass) share one [`QueryData`] shape and
+/// one paint helper ([`paint_themed`]) without restating the tuple at each call
+/// site (clippy `type_complexity`).
+type ThemedData<'a> = (Entity, &'a Themed, Option<&'a Node>);
+
+/// Query FILTER matching a [`Themed`] entity that was freshly added OR whose
+/// [`Themed`]/[`Node`] changed this frame
+/// ([`Or<(Added<Themed>, Changed<Themed>)>`](Or)).
+///
+/// Named so [`apply_theme`]'s incremental repaint query stays legible (clippy
+/// `type_complexity`): the GTW-284 incremental pass paints exactly these entities
+/// on a steady-theme frame, so an unrelated spawn never recolors an existing
+/// widget back to the resting base.
+type AddedOrChangedThemed = Or<(Added<Themed>, Changed<Themed>)>;
+
+/// Paints the base, theme-derived look onto the [`Themed`] entities that need it
+/// this frame, from the **current** [`GdtfTheme`] resource, by [`ThemeRole`] (see
+/// the module docs for the role→sub-theme mapping).
+///
+/// **Incremental by default (GTW-284).** On a frame where the theme itself did not
+/// change, it repaints ONLY the entities that are freshly added or whose
+/// [`Themed`]/[`Node`] changed
+/// ([`Or<(Added<Themed>, Changed<Themed>)>`](Or)) — so spawning one new widget no
+/// longer drags every existing button's [`BackgroundColor`](bevy::ui::BackgroundColor)
+/// back to the resting base (which clobbered the GTW-118 hover and GTW-253 active
+/// fills for a frame). When the theme resource DID change ([`Res::is_changed`] — the
+/// `Load` insert and the GTW-137 hot-reload re-derive), it repaints the FULL
+/// [`Themed`] set, so a palette swap re-themes every widget (the retheme). A
+/// freshly-spawned widget always gets its initial paint: on the `Load` frame the
+/// theme is changed, so the full-set arm covers it; a later spawn is covered by the
+/// `Added` arm.
 ///
 /// Components are written through [`Commands`], so the look is applied whether or
 /// not the entity already carried the target component — apply-or-insert, robust
 /// to spawn order. The theme is read **live** (a fresh `Res` borrow each run), so
 /// re-running this after the resource changes re-themes; it never snapshots at
-/// spawn.
+/// spawn. The two queries read the SAME [`Themed`]/[`Node`] components and write
+/// only through [`Commands`], so they do not conflict (one filtered incremental,
+/// one full; only one runs per frame).
 ///
 /// Registered by [`UiPlugin`](crate::UiPlugin) in [`Update`] under
 /// [`UiSystems::ApplyTheme`](super::UiSystems::ApplyTheme), **change-driven**
@@ -30,74 +64,26 @@ use crate::theme::{ContentMargin, GdtfTheme};
 pub fn apply_theme(
     mut commands: Commands,
     theme: Res<GdtfTheme>,
-    themed: Query<(Entity, &Themed, Option<&Node>)>,
+    full: Query<ThemedData>,
+    incremental: Query<ThemedData, AddedOrChangedThemed>,
 ) {
     let mut painted = 0usize;
-    for (entity, marker, node) in &themed {
-        painted += 1;
-        match **marker {
-            ThemeRole::Background => {
-                // The backdrop only fills — no border / radius / padding.
-                commands
-                    .entity(entity)
-                    .insert(BackgroundColor(*theme.background.color));
-            }
-            ThemeRole::Panel => {
-                let themed_node = box_node(
-                    node,
-                    *theme.panel.border_width_px,
-                    *theme.panel.corner_radius_px,
-                    theme.panel.margin,
-                );
-                commands.entity(entity).insert((
-                    BackgroundColor(*theme.panel.color),
-                    UiBorderColor::all(*theme.panel.border_color),
-                    themed_node,
-                ));
-            }
-            ThemeRole::Button => {
-                let themed_node = box_node(
-                    node,
-                    *theme.button.border_width_px,
-                    *theme.button.corner_radius_px,
-                    theme.button.margin,
-                );
-                commands.entity(entity).insert((
-                    BackgroundColor(*theme.button.color),
-                    UiBorderColor::all(*theme.button.border_color),
-                    themed_node,
-                ));
-            }
-            ThemeRole::ButtonText => {
-                commands.entity(entity).insert((
-                    UiTextColor(*theme.button.text_color),
-                    TextFont {
-                        font: theme.button.font.clone(),
-                        font_size: *theme.button.font_size_pt,
-                        ..default()
-                    },
-                ));
-            }
-            ThemeRole::Title => {
-                commands.entity(entity).insert((
-                    UiTextColor(*theme.title.text_color),
-                    TextFont {
-                        font: theme.title.font.clone(),
-                        font_size: *theme.title.font_size_pt,
-                        ..default()
-                    },
-                ));
-            }
-            ThemeRole::Text => {
-                commands.entity(entity).insert((
-                    UiTextColor(*theme.text.text_color),
-                    TextFont {
-                        font: theme.text.font.clone(),
-                        font_size: *theme.text.font_size_pt,
-                        ..default()
-                    },
-                ));
-            }
+    if theme.is_changed() {
+        // A real theme change (the `Load` insert or the GTW-137 hot-reload re-derive):
+        // repaint EVERY `Themed` widget so the new palette reaches all of them (the
+        // retheme), and so a widget spawned on the same `Load` frame gets its initial paint.
+        for data in &full {
+            paint_themed(&mut commands, &theme, data);
+            painted += 1;
+        }
+    } else {
+        // Steady theme, but at least one `Themed` entity was added or changed this frame
+        // (the run condition's `any_themed_added` arm fired): paint ONLY those, so an
+        // unrelated spawn never recolors an existing widget back to the resting base and
+        // clobbers its hover / active fill (the GTW-284 fix).
+        for data in &incremental {
+            paint_themed(&mut commands, &theme, data);
+            painted += 1;
         }
     }
     // GTW-146 hot-reload instrumentation: this system is change-driven, so a line
@@ -105,6 +91,79 @@ pub fn apply_theme(
     // the live widgets (the final step of the reload chain).
     if painted > 0 {
         info!("apply_theme: repainted {painted} Themed entities from the current GdtfTheme");
+    }
+}
+
+/// Paints one [`Themed`] entity's base look from `theme` by its [`ThemeRole`],
+/// through [`Commands`] (apply-or-insert).
+///
+/// The single per-entity paint body, shared by [`apply_theme`]'s two repaint
+/// passes (the full-set theme-change pass and the incremental `Added`/`Changed`
+/// pass) so the role→sub-theme mapping lives in one place.
+fn paint_themed(commands: &mut Commands, theme: &GdtfTheme, (entity, marker, node): ThemedData) {
+    match **marker {
+        ThemeRole::Background => {
+            // The backdrop only fills — no border / radius / padding.
+            commands
+                .entity(entity)
+                .insert(BackgroundColor(*theme.background.color));
+        }
+        ThemeRole::Panel => {
+            let themed_node = box_node(
+                node,
+                *theme.panel.border_width_px,
+                *theme.panel.corner_radius_px,
+                theme.panel.margin,
+            );
+            commands.entity(entity).insert((
+                BackgroundColor(*theme.panel.color),
+                UiBorderColor::all(*theme.panel.border_color),
+                themed_node,
+            ));
+        }
+        ThemeRole::Button => {
+            let themed_node = box_node(
+                node,
+                *theme.button.border_width_px,
+                *theme.button.corner_radius_px,
+                theme.button.margin,
+            );
+            commands.entity(entity).insert((
+                BackgroundColor(*theme.button.color),
+                UiBorderColor::all(*theme.button.border_color),
+                themed_node,
+            ));
+        }
+        ThemeRole::ButtonText => {
+            commands.entity(entity).insert((
+                UiTextColor(*theme.button.text_color),
+                TextFont {
+                    font: theme.button.font.clone(),
+                    font_size: *theme.button.font_size_pt,
+                    ..default()
+                },
+            ));
+        }
+        ThemeRole::Title => {
+            commands.entity(entity).insert((
+                UiTextColor(*theme.title.text_color),
+                TextFont {
+                    font: theme.title.font.clone(),
+                    font_size: *theme.title.font_size_pt,
+                    ..default()
+                },
+            ));
+        }
+        ThemeRole::Text => {
+            commands.entity(entity).insert((
+                UiTextColor(*theme.text.text_color),
+                TextFont {
+                    font: theme.text.font.clone(),
+                    font_size: *theme.text.font_size_pt,
+                    ..default()
+                },
+            ));
+        }
     }
 }
 
