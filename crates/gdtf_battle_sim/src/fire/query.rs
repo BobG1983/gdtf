@@ -11,6 +11,7 @@ use crate::{
         Aiming, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, Toughness, Tu, TuMax,
         Wounds,
     },
+    inflicted_wound::InflictedWounds,
     magazine::Magazine,
     metric::{Cell, Level},
     occupancy::OccupancyGrid,
@@ -76,11 +77,11 @@ pub type ShooterQuery<'world, 'state> = Query<
 /// A type alias for the disjoint mutable set so [`fire`](super::fire)'s signature
 /// stays readable. It shares **no** mutable component with [`ShooterQuery`] (the
 /// shooter writes [`Tu`] / [`Magazine`]; the target writes [`Hp`] / [`Wounds`] /
-/// [`LifeState`] / [`WornArmor`](crate::armor::WornArmor)), and [`Luck`] is read-only
-/// in both — so the two queries coexist with no `B0001` conflict (AC1). It carries no
-/// [`Weapon`] filter (a target need not be armed). The shooter's own liveness is read
-/// through this query too (`targets.get(shooter)`), since the shooter is also a
-/// ganger.
+/// [`LifeState`] / [`WornArmor`](crate::armor::WornArmor) /
+/// [`InflictedWounds`]), and [`Luck`] is read-only in both — so the two queries
+/// coexist with no `B0001` conflict (AC1). It carries no [`Weapon`] filter (a target
+/// need not be armed). The shooter's own liveness is read through this query too
+/// (`targets.get(shooter)`), since the shooter is also a ganger.
 pub type TargetQuery<'world, 'state> = Query<
     'world,
     'state,
@@ -89,6 +90,7 @@ pub type TargetQuery<'world, 'state> = Query<
         &'static mut Wounds,
         &'static mut LifeState,
         &'static mut crate::armor::WornArmor,
+        &'static mut InflictedWounds,
         &'static Toughness,
         &'static Luck,
     ),

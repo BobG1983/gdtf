@@ -20,6 +20,7 @@ pub(super) use crate::{
         Aiming, Direction, Facing, Faction, GangerName, Hp, LifeState, Luck, Position, Shooting,
         Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
     },
+    inflicted_wound::InflictedWounds,
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, TerrainKind},
     surface::{SlabState, SurfaceGrid},

@@ -25,11 +25,13 @@ pub(super) use crate::{
         Aiming, Direction, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, StanceKind,
         Toughness, Tu, TuMax, Wounds,
     },
+    inflicted_wound::{InflictedWound, InflictedWounds},
     magazine::{Magazine, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     resolve_coarse::ShotKind,
     rng::{BattleSeed, SimRng},
+    severity::Severity,
     surface::SurfaceGrid,
     tuning::CombatTuning,
     weapon::{
@@ -77,6 +79,7 @@ pub(super) fn target_bundle(hp: u16, wounds: u8, worn: WornArmor) -> impl Bundle
         Wounds::new(wounds),
         LifeState::Alive,
         worn,
+        InflictedWounds::default(),
         Toughness::new(1.0),
         Luck::new(0.0),
     )
@@ -130,12 +133,17 @@ pub(super) fn spawn_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
             Magazine::new(spec.ammo, mag_size),
             // The shooter is also a ganger — it carries the target-query set so
             // its own liveness reads from that query (and it never wounds itself).
-            Hp::new(50),
-            Wounds::new(10),
-            LifeState::Alive,
-            worn_suit(0, 0, 1, 0),
-            Toughness::new(1.0),
-            Luck::new(0.0),
+            // The target-query set is one nested-tuple bundle so the spawn stays
+            // under Bevy's 15-element tuple limit (InflictedWounds is the GTW-279 add).
+            (
+                Hp::new(50),
+                Wounds::new(10),
+                LifeState::Alive,
+                worn_suit(0, 0, 1, 0),
+                InflictedWounds::default(),
+                Toughness::new(1.0),
+                Luck::new(0.0),
+            ),
         ))
         .id()
 }
@@ -180,12 +188,17 @@ pub(super) fn spawn_zero_spread_shooter(world: &mut World, spec: ShooterSpec) ->
             Tu::new(spec.tu),
             TuMax::new(spec.tu_max),
             Magazine::new(spec.ammo, mag_size),
-            Hp::new(50),
-            Wounds::new(10),
-            LifeState::Alive,
-            worn_suit(0, 0, 1, 0),
-            Toughness::new(1.0),
-            Luck::new(0.0),
+            // The target-query set as one nested-tuple bundle (the GTW-279
+            // InflictedWounds add keeps the spawn under the 15-element tuple limit).
+            (
+                Hp::new(50),
+                Wounds::new(10),
+                LifeState::Alive,
+                worn_suit(0, 0, 1, 0),
+                InflictedWounds::default(),
+                Toughness::new(1.0),
+                Luck::new(0.0),
+            ),
         ))
         .id()
 }

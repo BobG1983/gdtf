@@ -244,7 +244,7 @@ pub(super) fn resolve_round(
 
     match outcome.kind {
         ShotKind::Ganger(struck) => match targets.get_mut(struck) {
-            Ok((mut hp, mut wounds, mut life, mut worn, toughness, target_luck)) => {
+            Ok((mut hp, mut wounds, mut life, mut worn, mut inflicted, toughness, target_luck)) => {
                 resolve_and_apply(
                     &outcome,
                     snapshot.weapon_stats(),
@@ -254,6 +254,7 @@ pub(super) fn resolve_round(
                         wounds:    &mut wounds,
                         life:      &mut life,
                         worn:      &mut worn,
+                        inflicted: &mut inflicted,
                         toughness: *toughness,
                         luck:      *target_luck,
                     },

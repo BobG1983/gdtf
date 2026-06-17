@@ -19,13 +19,15 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
     let mut wounds = Wounds::new(9);
     let mut life = LifeState::Alive;
     let mut worn = worn_suit(20);
+    let mut inflicted = InflictedWounds::default();
     let before = *worn.at(part).integrity;
     {
         let target = GangerHitTarget {
-            hp:     &mut hp,
-            wounds: &mut wounds,
-            life:   &mut life,
-            worn:   &mut worn,
+            hp:        &mut hp,
+            wounds:    &mut wounds,
+            life:      &mut life,
+            worn:      &mut worn,
+            inflicted: &mut inflicted,
         };
         let broke = apply_hit(
             target,
@@ -52,12 +54,14 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
     let mut wounds2 = Wounds::new(9);
     let mut life2 = LifeState::Alive;
     let mut worn2 = worn_suit(1); // protecting (1 > 0), one hit from broken
+    let mut inflicted2 = InflictedWounds::default();
     let broke = {
         let target = GangerHitTarget {
-            hp:     &mut hp2,
-            wounds: &mut wounds2,
-            life:   &mut life2,
-            worn:   &mut worn2,
+            hp:        &mut hp2,
+            wounds:    &mut wounds2,
+            life:      &mut life2,
+            worn:      &mut worn2,
+            inflicted: &mut inflicted2,
         };
         apply_hit(target, &hit(1, 5), Severity::Minor, part, ganger, &tuning)
     };
@@ -106,11 +110,13 @@ fn apply_hit_armor_broken_flows_through_a_message_buffer() {
             ArmorHardness::new(0),
             ArmorType::DEFAULT,
         )));
+        let mut inflicted = InflictedWounds::default();
         let target = GangerHitTarget {
-            hp:     &mut hp,
-            wounds: &mut wounds,
-            life:   &mut life,
-            worn:   &mut worn,
+            hp:        &mut hp,
+            wounds:    &mut wounds,
+            life:      &mut life,
+            worn:      &mut worn,
+            inflicted: &mut inflicted,
         };
         if let Some(broke) = apply_hit(target, &hit(1, 5), Severity::Minor, part, ganger, &tuning) {
             writer.write(broke);

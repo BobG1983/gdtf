@@ -154,10 +154,11 @@ pub fn resolve_and_apply(
     // Wounds-by-tier + armor wear + the terminal gates; capture the broken signal.
     let broken = apply_hit(
         GangerHitTarget {
-            hp:     target.hp,
-            wounds: target.wounds,
-            life:   target.life,
-            worn:   target.worn,
+            hp:        target.hp,
+            wounds:    target.wounds,
+            life:      target.life,
+            worn:      target.worn,
+            inflicted: target.inflicted,
         },
         &hit,
         severity,

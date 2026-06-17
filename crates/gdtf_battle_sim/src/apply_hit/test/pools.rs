@@ -12,13 +12,15 @@ fn graze_subtracts_hp_and_spends_no_wound() {
     let mut wounds = Wounds::new(5);
     let mut life = LifeState::Alive;
     let mut worn = worn_suit(100);
+    let mut inflicted = InflictedWounds::default();
     let tuning = CombatTuning::default();
 
     let target = GangerHitTarget {
-        hp:     &mut hp,
-        wounds: &mut wounds,
-        life:   &mut life,
-        worn:   &mut worn,
+        hp:        &mut hp,
+        wounds:    &mut wounds,
+        life:      &mut life,
+        worn:      &mut worn,
+        inflicted: &mut inflicted,
     };
     // A graze: Severity::None, HP-loss 7, low wear (no break).
     let broke = apply_hit(
@@ -32,6 +34,10 @@ fn graze_subtracts_hp_and_spends_no_wound() {
 
     assert_eq!(*hp, 20 - 7, "a graze must subtract its HP-loss from Hp");
     assert_eq!(*wounds, 5, "a graze (Severity::None) must spend NO Wound");
+    assert!(
+        inflicted.is_empty(),
+        "a graze (Severity::None) registers no Wound, so it must record NO InflictedWound (GTW-279 AC3)"
+    );
     assert_eq!(
         life,
         LifeState::Alive,
@@ -55,12 +61,14 @@ fn fatal_empties_the_wounds_pool_regardless_of_prior() {
         let mut wounds = Wounds::new(prior);
         let mut life = LifeState::Alive;
         let mut worn = worn_suit(100);
+        let mut inflicted = InflictedWounds::default();
 
         let target = GangerHitTarget {
-            hp:     &mut hp,
-            wounds: &mut wounds,
-            life:   &mut life,
-            worn:   &mut worn,
+            hp:        &mut hp,
+            wounds:    &mut wounds,
+            life:      &mut life,
+            worn:      &mut worn,
+            inflicted: &mut inflicted,
         };
         let _broke = apply_hit(
             target,
@@ -74,6 +82,11 @@ fn fatal_empties_the_wounds_pool_regardless_of_prior() {
         assert_eq!(
             *wounds, 0,
             "Fatal must empty the Wounds pool from prior {prior}"
+        );
+        assert_eq!(
+            inflicted.as_slice(),
+            &[InflictedWound::new(Severity::Fatal, BodyPart::Head)],
+            "a Fatal hit registers a wound, so it must record one InflictedWound (Fatal/Head)"
         );
     }
 }
@@ -94,11 +107,13 @@ fn wound_cost_orders_minor_lt_major_lt_critical() {
         let mut wounds = start;
         let mut life = LifeState::Alive;
         let mut worn = worn_suit(100);
+        let mut inflicted = InflictedWounds::default();
         let target = GangerHitTarget {
-            hp:     &mut hp,
-            wounds: &mut wounds,
-            life:   &mut life,
-            worn:   &mut worn,
+            hp:        &mut hp,
+            wounds:    &mut wounds,
+            life:      &mut life,
+            worn:      &mut worn,
+            inflicted: &mut inflicted,
         };
         let _broke = apply_hit(
             target,

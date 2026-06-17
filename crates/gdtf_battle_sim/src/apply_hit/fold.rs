@@ -7,6 +7,7 @@ use crate::{
     armor::{BodyPart, WornArmor},
     armor_wear::{ArmorBroken, wear_armor},
     ganger::{Hp, LifeState, Wounds},
+    inflicted_wound::{InflictedWound, InflictedWounds},
     resolve_hit::HitResult,
     severity::Severity,
     tuning::{CombatTuning, WoundCost, WoundCosts},
@@ -15,22 +16,26 @@ use crate::{
 /// The bundle of **mutable** ganger-state borrows [`apply_hit`] folds a hit onto —
 /// the four battle-state surfaces a hit can change.
 ///
-/// Grouping the four `&mut` borrows into one named struct keeps [`apply_hit`] under
+/// Grouping the `&mut` borrows into one named struct keeps [`apply_hit`] under
 /// clippy's argument-count gate (the same precedent as
 /// [`crate::severity::SeverityInputs`] / [`crate::resolve_coarse::ShotInputs`]).
 /// Every field is an existing named domain component ([`Hp`] / [`Wounds`] /
-/// [`LifeState`] / [`WornArmor`] — no-bare-types), exclusively borrowed so the
-/// application mutates them in place. The caller (a Bevy system, or the E3.9
-/// capstone) assembles this from the ganger entity's components.
+/// [`LifeState`] / [`WornArmor`] / [`InflictedWounds`] — no-bare-types), exclusively
+/// borrowed so the application mutates them in place. The caller (a Bevy system, or
+/// the E3.9 capstone) assembles this from the ganger entity's components.
 pub struct GangerHitTarget<'a> {
     /// The ganger's hit-points pool — the HP loss subtracts from it (always).
-    pub hp:     &'a mut Hp,
+    pub hp:        &'a mut Hp,
     /// The ganger's Wounds (life) pool — the severity tier spends from it.
-    pub wounds: &'a mut Wounds,
+    pub wounds:    &'a mut Wounds,
     /// The ganger's terminal life state — the gates set it (Dead trumps Downed).
-    pub life:   &'a mut LifeState,
+    pub life:      &'a mut LifeState,
     /// The ganger's battle-local worn armor — the struck piece wears in place.
-    pub worn:   &'a mut WornArmor,
+    pub worn:      &'a mut WornArmor,
+    /// The ganger's inflicted-wound record (GTW-279) — each registered (non-graze)
+    /// wound appends its tier + struck part here, in the SAME place the [`Wounds`]
+    /// pool is spent (the additive presentation record; never read for combat math).
+    pub inflicted: &'a mut InflictedWounds,
 }
 
 /// The [`Wounds`]-budget cost a non-`Fatal` [`Severity`] tier spends from the life
@@ -97,8 +102,12 @@ fn hp_damage_to_u16(damage: i32) -> u16 {
 /// 2. **HP loss — always** — subtract the [`HitResult`]'s
 ///    [`HpDamage`](crate::resolve_hit::HpDamage) from [`Hp`] (saturating at `0`),
 ///    even on a graze.
-/// 3. **Wounds by tier** — [`Severity::Fatal`] sets [`Wounds`] to `0` (empties the
-///    pool); otherwise subtract [`wound_cost`] (saturating at `0`).
+/// 3. **Wounds by tier + record** — [`Severity::Fatal`] sets [`Wounds`] to `0`
+///    (empties the pool); otherwise subtract [`wound_cost`] (saturating at `0`). In
+///    the SAME branch, every **non-`None`** tier (Minor / Major / Critical / Fatal —
+///    a wound actually registered) appends one [`InflictedWound`] (this tier + the
+///    struck `part`) to [`InflictedWounds`]; a [`Severity::None`] graze records
+///    nothing (HP loss only, no Wound — `docs/combat/resolution.md` §6).
 /// 4. **Armor wear** — persist the [`HitResult`]'s integrity wear onto the struck
 ///    [`WornArmor`] piece via [`wear_armor`], capturing the `Some(`[`ArmorBroken`]`)`
 ///    on the single protecting→broken crossing.
@@ -135,6 +144,15 @@ pub fn apply_hit(
     } else {
         let cost = *wound_cost(severity, tuning.wound_costs);
         *target.wounds = Wounds::new(target.wounds.saturating_sub(cost));
+    }
+
+    // (c2) Record the inflicted wound (GTW-279) — every NON-None tier registered a
+    // wound on the pool above, so it appends one record (this tier + the struck
+    // part) in infliction order. A Severity::None graze spent no pool and records
+    // nothing (HP loss only — resolution.md §6). The list is additive and never read
+    // back for combat math (a presentation record for the GTW-278 panels).
+    if severity != Severity::None {
+        target.inflicted.record(InflictedWound::new(severity, part));
     }
 
     // (d) Armor wear — persist this hit's integrity wear onto the struck worn piece

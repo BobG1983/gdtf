@@ -85,6 +85,34 @@ fn fire_at_in_line_target_applies_damage() {
         hp.is_some_and(|h| h < 30),
         "the target's Hp must have dropped from 30, got {hp:?}",
     );
+
+    // GTW-279 — the InflictedWounds record the fire path wrote must match the
+    // resolution's OWN values (the report it returned), NOT a hand-set fixture:
+    // a non-graze hit appends exactly one InflictedWound carrying the rolled tier
+    // (report.applied.severity) + the struck part (report.part); a graze appends
+    // nothing.
+    let Some(applied) = report.applied else {
+        return;
+    };
+    let recorded = world
+        .get::<InflictedWounds>(target)
+        .map(|w| w.to_vec())
+        .unwrap_or_default();
+    if applied.severity == Severity::None {
+        assert!(
+            recorded.is_empty(),
+            "a graze (Severity::None) must record NO InflictedWound, got {recorded:?}",
+        );
+    } else {
+        let Some(part) = report.part else {
+            return;
+        };
+        assert_eq!(
+            recorded.as_slice(),
+            &[InflictedWound::new(applied.severity, part)],
+            "the recorded InflictedWound must carry the resolution's own tier + struck part",
+        );
+    }
 }
 
 /// AC6 (the miss half) — a fire into empty space (no occupant in the path) yields

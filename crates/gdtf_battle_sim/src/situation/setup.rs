@@ -8,6 +8,7 @@ use crate::{
     armor::WornArmor,
     cover::CoverLedger,
     ganger::Position,
+    inflicted_wound::InflictedWounds,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainPlacement},
     situation::{BattleSetupError, Situation},
     surface::{SlabState, SurfaceGrid},
@@ -59,7 +60,9 @@ impl BattleSetup {
 ///    the [`WeaponRegistry`] (GTW-257 — the [`Weapon`](crate::weapon::Weapon) marker +
 ///    every weapon stat component), PLUS the battle-local [`WornArmor`] seeded by value
 ///    from the ganger's roster [`SourceArmor`](crate::armor::SourceArmor)
-///    ([`WornArmor::seed_from`](crate::armor::WornArmor::seed_from)). The returned Bevy
+///    ([`WornArmor::seed_from`](crate::armor::WornArmor::seed_from)), and the GTW-279
+///    [`InflictedWounds`] record seeded **empty** (the [`Default`]) so a fresh ganger
+///    starts with no recorded wounds. The returned Bevy
 ///    [`Entity`](bevy::prelude::Entity) handle is captured into the
 ///    [`OccupantPlacement`] list — NEVER a numeric id (GTW-10 / GTW-12).
 /// 2. **Seed the [`CoverLedger`]** — insert a [`CoverEntry`](crate::cover::CoverEntry)
@@ -147,7 +150,11 @@ pub fn setup_battle(
                 ganger.luck,
                 WornArmor::seed_from(&ganger.armor),
             ))
-            .insert(weapon_bundle)
+            // The weapon bundle + the GTW-279 empty inflicted-wound record are
+            // inserted in a SECOND `insert` call — the spawn tuple is already at its
+            // component-arity limit, and InflictedWounds is the additive record the
+            // resolution path appends to (seeded empty here, alongside the vitals).
+            .insert((weapon_bundle, InflictedWounds::default()))
             .id();
         occupants.push(OccupantPlacement::new(ganger.at, entity));
     }

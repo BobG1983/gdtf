@@ -17,6 +17,7 @@ pub(super) use crate::{
     cone::{ConeAngle, PriorShots},
     cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
+    inflicted_wound::InflictedWounds,
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel, Level, SimPos},
     resolve_and_apply::{AppliedDamage, HitReport, TargetGanger, resolve_and_apply},

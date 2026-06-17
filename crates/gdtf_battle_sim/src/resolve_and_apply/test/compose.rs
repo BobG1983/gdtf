@@ -20,6 +20,7 @@ fn fold_equals_the_composed_steps() {
     let mut wounds_a = Wounds::new(6);
     let mut life_a = LifeState::Alive;
     let mut worn_a = worn_suit(1, 8, 30, 2, ArmorType::Void);
+    let mut inflicted_a = InflictedWounds::default();
     let toughness = Toughness::new(3.0);
     let defender_luck = Luck::new(4.0);
     let mut rng_a = rng();
@@ -32,6 +33,7 @@ fn fold_equals_the_composed_steps() {
             wounds: &mut wounds_a,
             life: &mut life_a,
             worn: &mut worn_a,
+            inflicted: &mut inflicted_a,
             toughness,
             luck: defender_luck,
         },
@@ -45,6 +47,7 @@ fn fold_equals_the_composed_steps() {
     let mut wounds_b = Wounds::new(6);
     let mut life_b = LifeState::Alive;
     let mut worn_b = worn_suit(1, 8, 30, 2, ArmorType::Void);
+    let mut inflicted_b = InflictedWounds::default();
     let mut rng_b = rng();
 
     let piece = worn_b.at(part);
@@ -68,10 +71,11 @@ fn fold_equals_the_composed_steps() {
     let severity = roll_severity(&inputs, &tuning.severity_scaling, &mut rng_b);
     let broken = apply_hit(
         GangerHitTarget {
-            hp:     &mut hp_b,
-            wounds: &mut wounds_b,
-            life:   &mut life_b,
-            worn:   &mut worn_b,
+            hp:        &mut hp_b,
+            wounds:    &mut wounds_b,
+            life:      &mut life_b,
+            worn:      &mut worn_b,
+            inflicted: &mut inflicted_b,
         },
         &hit,
         severity,
@@ -98,20 +102,14 @@ fn fold_equals_the_composed_steps() {
         "the report carries the struck part"
     );
 
-    // The resulting ganger state matches the hand-composed steps, surface by
-    // surface — the fold mutated the target identically to the composition.
-    assert_eq!(hp_a, hp_b, "HP after the fold must equal the composed HP");
+    // The resulting ganger state matches the hand-composed steps, every mutated
+    // surface at once — the fold mutated the target identically to the composition
+    // (incl. the GTW-279 InflictedWounds record).
     assert_eq!(
-        wounds_a, wounds_b,
-        "Wounds after the fold must equal the composed Wounds",
-    );
-    assert_eq!(
-        life_a, life_b,
-        "LifeState after the fold must equal the composed LifeState",
-    );
-    assert_eq!(
-        worn_a, worn_b,
-        "WornArmor after the fold must equal the composed WornArmor",
+        (hp_a, wounds_a, life_a, worn_a, &inflicted_a),
+        (hp_b, wounds_b, life_b, worn_b, &inflicted_b),
+        "every mutated surface after the fold must equal the hand-composed steps \
+         (Hp / Wounds / LifeState / WornArmor / InflictedWounds)",
     );
 }
 
@@ -132,6 +130,7 @@ fn armored_report_carries_the_real_matchup() {
         let mut wounds = Wounds::new(9);
         let mut life = LifeState::Alive;
         let mut worn = worn_suit(1, 10, 40, 1, armor_type);
+        let mut inflicted = InflictedWounds::default();
         resolve_and_apply(
             &ganger_outcome(entity, part),
             weapon.stats(),
@@ -141,6 +140,7 @@ fn armored_report_carries_the_real_matchup() {
                 wounds:    &mut wounds,
                 life:      &mut life,
                 worn:      &mut worn,
+                inflicted: &mut inflicted,
                 toughness: Toughness::new(0.0),
                 luck:      Luck::new(0.0),
             },

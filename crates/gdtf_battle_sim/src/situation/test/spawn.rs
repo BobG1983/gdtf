@@ -149,6 +149,35 @@ fn setup_seeds_ganger_name_onto_each_ganger() {
     );
 }
 
+/// GTW-279 AC2 — `setup_battle` seeds an EMPTY `InflictedWounds` record onto every
+/// spawned ganger (alongside the existing vitals), queryable off the spawned `Entity`
+/// handle. Reads BOTH gangers — each starts with no recorded wounds. Pin-discriminating:
+/// dropping the `InflictedWounds::default()` seed leaves no component and `get` errs.
+#[test]
+fn setup_seeds_empty_inflicted_wounds_onto_each_ganger() {
+    let (situation, ..) = minimal_fixture();
+    let Some((mut app, setup)) = run_setup(situation) else {
+        return;
+    };
+
+    let alice: Entity = setup.occupants[0].occupant;
+    let bob: Entity = setup.occupants[1].occupant;
+    let world: &mut World = app.world_mut();
+    let mut q = world.query::<&InflictedWounds>();
+
+    for (who, entity) in [("alice", alice), ("bob", bob)] {
+        let record = q.get(world, entity);
+        assert!(
+            record.is_ok(),
+            "{who} must carry a seeded InflictedWounds component (GTW-279 AC2)",
+        );
+        assert!(
+            record.is_ok_and(|r| r.is_empty()),
+            "{who}'s InflictedWounds must be seeded EMPTY (no wounds until inflicted)",
+        );
+    }
+}
+
 /// GTW-182 AC #2 + AC #3 — `setup_battle` seeds the E3.0 attribute stats
 /// (`Shooting`/`Toughness`/`Luck`) onto each spawned ganger from the authored
 /// `GangerSpawn`, and they are queryable off the entity by its spawned `Entity`

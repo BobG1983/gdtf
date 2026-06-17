@@ -25,6 +25,7 @@ fn same_seed_reproduces_the_report_sequence() {
         let mut wounds = Wounds::new(12);
         let mut life = LifeState::Alive;
         let mut worn = worn_suit(1, 6, 40, 2, ArmorType::Flak);
+        let mut inflicted = InflictedWounds::default();
         parts
             .iter()
             .map(|&part| {
@@ -37,6 +38,7 @@ fn same_seed_reproduces_the_report_sequence() {
                         wounds:    &mut wounds,
                         life:      &mut life,
                         worn:      &mut worn,
+                        inflicted: &mut inflicted,
                         toughness: Toughness::new(2.0),
                         luck:      Luck::new(2.0),
                     },

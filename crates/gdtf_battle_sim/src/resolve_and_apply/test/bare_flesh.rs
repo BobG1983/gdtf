@@ -21,6 +21,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
     // integrity 0 ⇒ protects(part) == false ⇒ bare flesh, despite real
     // protection/hardness numbers on the (broken) piece.
     let mut worn = worn_suit(2, 20, 0, 5, ArmorType::Void);
+    let mut inflicted = InflictedWounds::default();
     assert!(
         !worn.protects(part),
         "fixture: the struck piece must already be worn through (no protection)",
@@ -35,6 +36,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
             wounds:    &mut wounds,
             life:      &mut life,
             worn:      &mut worn,
+            inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
         },
@@ -71,6 +73,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
     let mut life2 = LifeState::Alive;
     // High protection, intact (protects == true) ⇒ the soak is in play.
     let mut worn2 = worn_suit(2, 20, 50, 5, ArmorType::Void);
+    let mut inflicted2 = InflictedWounds::default();
     assert!(
         worn2.protects(part),
         "fixture: the armored piece must still protect",
@@ -84,6 +87,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
             wounds:    &mut wounds2,
             life:      &mut life2,
             worn:      &mut worn2,
+            inflicted: &mut inflicted2,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
         },

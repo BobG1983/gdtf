@@ -178,6 +178,7 @@ pub mod fire;
 pub mod firing_arc;
 pub mod ganger;
 pub mod hit_location;
+pub mod inflicted_wound;
 pub mod magazine;
 pub mod march;
 pub mod matchup;
@@ -231,6 +232,7 @@ pub use ganger::{
     Stabilized, Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
 };
 pub use hit_location::roll_body_part;
+pub use inflicted_wound::{InflictedWound, InflictedWounds};
 pub use magazine::{FireActor, Magazine, can_fire, clamp_burst, in_bounds, mode_tu_cost};
 pub use march::{MarchKind, MarchResult, march_vector};
 pub use matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier};

@@ -15,6 +15,7 @@ fn corpse_skip_is_inert_and_draws_nothing() {
     let mut wounds = Wounds::new(3);
     let mut life = LifeState::Dead; // already a corpse
     let mut worn = worn_suit(0, 0, 1, 0, ArmorType::DEFAULT); // a live hit WOULD break it
+    let mut inflicted = InflictedWounds::default();
 
     let hp_before = hp;
     let wounds_before = wounds;
@@ -31,6 +32,7 @@ fn corpse_skip_is_inert_and_draws_nothing() {
             wounds:    &mut wounds,
             life:      &mut life,
             worn:      &mut worn,
+            inflicted: &mut inflicted,
             toughness: Toughness::new(2.0),
             luck:      Luck::new(1.0),
         },
@@ -53,6 +55,10 @@ fn corpse_skip_is_inert_and_draws_nothing() {
     assert_eq!(wounds, wounds_before, "a corpse's Wounds must not change");
     assert_eq!(life, life_before, "a corpse's LifeState must stay Dead");
     assert_eq!(worn, worn_before, "a corpse's WornArmor must not wear");
+    assert!(
+        inflicted.is_empty(),
+        "a corpse-skip must record NO InflictedWound (GTW-279)",
+    );
 
     // No draw was taken: the used RNG's next draw matches a fresh stream's
     // first draw (the cursor never advanced).

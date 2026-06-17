@@ -22,6 +22,7 @@ pub(super) use crate::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
         Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
     },
+    inflicted_wound::InflictedWounds,
     magazine::{Magazine, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
@@ -118,12 +119,17 @@ pub(super) fn spawn_shooter(
             Tu::new(200),
             crate::ganger::TuMax::new(100),
             Magazine::new(10, mag_size),
-            Hp::new(50),
-            Wounds::new(10),
-            LifeState::Alive,
-            worn_suit(0, 0, 1, 0),
-            Toughness::new(1.0),
-            Luck::new(0.0),
+            // The target-query set as one nested-tuple bundle (the GTW-279
+            // InflictedWounds add keeps the spawn under the 15-element tuple limit).
+            (
+                Hp::new(50),
+                Wounds::new(10),
+                LifeState::Alive,
+                worn_suit(0, 0, 1, 0),
+                InflictedWounds::default(),
+                Toughness::new(1.0),
+                Luck::new(0.0),
+            ),
         ))
         .id()
 }
@@ -136,6 +142,7 @@ pub(super) fn target_bundle(hp: u16, wounds: u8, worn: WornArmor) -> impl bevy::
         Wounds::new(wounds),
         LifeState::Alive,
         worn,
+        InflictedWounds::default(),
         Toughness::new(1.0),
         Luck::new(0.0),
     )

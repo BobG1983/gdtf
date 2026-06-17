@@ -48,8 +48,9 @@
 //!    [`Luck`](crate::ganger::Luck). The injected [`SimRng`](crate::rng::SimRng) is
 //!    the **single draw point** — no `thread_rng`, no ad-hoc entropy.
 //! 7. **Apply** — E3.6 [`apply_hit`](crate::apply_hit::apply_hit) folds HP loss +
-//!    Wounds-by-tier + armor wear + the terminal gates onto the target in place,
-//!    surfacing the `Some(`[`ArmorBroken`](crate::armor_wear::ArmorBroken)`)` on a
+//!    Wounds-by-tier + the GTW-279 [`InflictedWounds`](crate::inflicted_wound::InflictedWounds)
+//!    record + armor wear + the terminal gates onto the target in place, surfacing
+//!    the `Some(`[`ArmorBroken`](crate::armor_wear::ArmorBroken)`)` on a
 //!    protecting→broken crossing.
 //! 8. **Freeze** — the returned [`HitReport`] is a `Copy` record of named newtypes
 //!    (the matchup, the [`HitResult`](crate::resolve_hit::HitResult), the

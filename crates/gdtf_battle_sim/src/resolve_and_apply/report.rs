@@ -6,6 +6,7 @@ use crate::{
     armor::{BodyPart, WornArmor},
     armor_wear::ArmorBroken,
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
+    inflicted_wound::InflictedWounds,
     matchup::Matchup,
     resolve_coarse::ShotKind,
     resolve_hit::HitResult,
@@ -19,7 +20,7 @@ use crate::{
 /// Grouping these into one named struct keeps
 /// [`resolve_and_apply`](super::resolve_and_apply) under clippy's argument-count
 /// gate (the [`GangerHitTarget`](crate::apply_hit::GangerHitTarget) /
-/// [`SeverityInputs`](crate::severity::SeverityInputs) precedent). The four mutable
+/// [`SeverityInputs`](crate::severity::SeverityInputs) precedent). The mutable
 /// borrows are exactly the [`GangerHitTarget`](crate::apply_hit::GangerHitTarget)
 /// set (assembled from this bundle when
 /// [`apply_hit`](crate::apply_hit::apply_hit) runs); the two reads
@@ -37,6 +38,9 @@ pub struct TargetGanger<'a> {
     /// The target's battle-local worn armor — the struck piece wears in place; its
     /// [`protects`](WornArmor::protects) decides the armored-vs-bare-flesh branch.
     pub worn:      &'a mut WornArmor,
+    /// The target's inflicted-wound record (GTW-279) — each registered wound appends
+    /// its tier + struck part here (the additive presentation record for GTW-278).
+    pub inflicted: &'a mut InflictedWounds,
     /// The target's Toughness — the defender's severity-mitigation term (E3.0, read).
     pub toughness: Toughness,
     /// The target's Luck — extends the severity roll's floor down (E3.0, read).

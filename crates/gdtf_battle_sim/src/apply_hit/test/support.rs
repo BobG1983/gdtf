@@ -13,6 +13,7 @@ pub(super) use crate::{
     },
     armor_wear::ArmorBroken,
     ganger::{Hp, LifeState, Wounds},
+    inflicted_wound::{InflictedWound, InflictedWounds},
     resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},
     severity::Severity,
     tuning::{CombatTuning, WoundCost, WoundCosts},
