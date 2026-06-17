@@ -1,46 +1,19 @@
-//! The shared ACT-INTENT data seam (GTW-225 / GTW-48 S8 AC9): the ONE buffered
-//! intent surface BOTH input surfaces write — the 222b keyboard systems AND the
-//! 222c `gdtf_app` action-bar buttons — drained by ONE dispatch system.
-//!
-//! # Why a DATA seam, not a shared `fn`
-//!
-//! "Buttons + keys are parallel surfaces over the SAME act dispatch" must be REAL
-//! across the crate boundary. A `SystemParam`-taking dispatch system in
-//! `gdtf_battle_input` cannot be CALLED by a `bevy_ui` button system in `gdtf_app`
-//! (you cannot invoke one Bevy system from inside another). The only thing that
-//! spans the one legal `gdtf_app -> gdtf_battle_input` edge is DATA: both surfaces
-//! [`push`](PendingActIntent::push) an [`ActIntent`] into the [`PendingActIntent`]
-//! queue, and [`dispatch_act_intents`] drains it. ADR-0001's
-//! `input -> presenter -> sim` chain stays acyclic — `gdtf_app` depends on
-//! `gdtf_battle_input`, never the reverse.
-//!
-//! # What 222a owns vs. what 222b (GTW-227) fills
-//!
-//! 222a owns the no-act intents: [`ActIntent::SelectionClear`] /
-//! [`ActIntent::LevelUp`] / [`ActIntent::LevelDown`] — drained here directly
-//! (clearing [`SelectedShooter`] / clamping [`ActiveLevel`]). The act-bearing
-//! variants ([`ActIntent::StanceCycle`] etc.) were DECLARED there so the seam's shape
-//! is fixed from the start; 222b (GTW-227) FILLS their drain arms — emitting the
-//! matching `gdtf_battle_sim::acts::*Requested` for the [`SelectedShooter`], reading
-//! the actor's CURRENT [`Stance`](gdtf_battle_sim::Stance) /
-//! [`Facing`](gdtf_battle_sim::Facing) / [`Aiming`](gdtf_battle_sim::Aiming) off a
-//! query and stepping the authored [`crate::cycle`] order — and adds the
-//! [`ActIntent::Fire`] variant the left-click
-//! FIRE surface writes (its `can_fire` guard runs at the WRITE site, so the drain
-//! just emits the carried [`FireRequested`](gdtf_battle_sim::acts::FireRequested)
-//! payload).
+//! The buffered intent queue + the ONE drain system both input surfaces feed.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
-    Aiming, Facing, Level, MAX_LEVELS, Stance, StanceKind,
+    Aiming, Facing, Stance, StanceKind,
     acts::{
         AimRequest, FireRequested, MoveRequested, SetAimingRequested, SetFacingRequested,
         SetStanceRequested,
     },
 };
 
-use crate::{SelectedShooter, cycle};
+use crate::{
+    SelectedShooter, cycle,
+    intent::level::{LevelStep, step_level},
+};
 
 /// One queued battle intent — the act a press (key OR button) asked for.
 ///
@@ -52,7 +25,8 @@ use crate::{SelectedShooter, cycle};
 /// ([`StanceCycle`](Self::StanceCycle) / [`AimToggle`](Self::AimToggle) /
 /// [`FacingCycle`](Self::FacingCycle)) + the [`Fire`](Self::Fire) variant are filled
 /// / added by 222b (GTW-227). (The fire-mode `FireModeCycle` blind-cycle variant was
-/// REMOVED in GTW-254 — the popup picker sets [`SelectedFireMode`] directly.)
+/// REMOVED in GTW-254 — the popup picker sets
+/// [`SelectedFireMode`](crate::SelectedFireMode) directly.)
 ///
 /// Only [`PartialEq`] (no `Eq` / `Hash`): [`Fire`](Self::Fire) carries an owned
 /// [`FireRequested`] whose [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) has `f32`
@@ -259,76 +233,5 @@ pub fn dispatch_act_intents(
                 acts.facing.write(request);
             }
         }
-    }
-}
-
-/// Which way a level-step intent moves the [`ActiveLevel`].
-///
-/// A tiny domain enum so [`step_level`] reads `Up` / `Down` rather than a bare
-/// sign — the two directions the level-cycle keys drive.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LevelStep {
-    /// Toward a higher storey (saturating at `MAX_LEVELS - 1`).
-    Up,
-    /// Toward a lower storey (flooring at `0`).
-    Down,
-}
-
-/// The [`Level`] after stepping `current` one storey in `direction`, clamped to the
-/// valid `0..MAX_LEVELS` storey range.
-///
-/// `Up` saturates at the top storey (`MAX_LEVELS - 1`) — it never exceeds the grid's
-/// storey count; `Down` floors at `0`. Saturating `u8` arithmetic, then a clamp to
-/// the top storey, so the level can never wrap or escape the grid (the contract's
-/// `0..MAX_LEVELS` clamp). Pure storey math; not a `const fn` because it deref-reads
-/// the derived-`Deref` [`Level`] newtype, which is not a const operation.
-#[must_use]
-pub fn step_level(current: Level, direction: LevelStep) -> Level {
-    // The top valid storey index. `MAX_LEVELS` is 8, so `MAX_LEVELS - 1` (= 7) is the
-    // highest storey; `saturating_sub` guards the (impossible) `MAX_LEVELS == 0`.
-    let top = MAX_LEVELS.saturating_sub(1);
-    let raw = *current;
-    let stepped = match direction {
-        // Saturating add then clamp to the top storey: even if `raw` were already at
-        // u8::MAX it could not wrap, and it can never exceed `top`.
-        LevelStep::Up => {
-            let up = raw.saturating_add(1);
-            if up > top { top } else { up }
-        }
-        // Saturating sub floors at 0.
-        LevelStep::Down => raw.saturating_sub(1),
-    };
-    Level::new(stepped)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// AC6 — level-up steps toward the top and SATURATES at `MAX_LEVELS - 1`; it
-    /// never exceeds the grid's storey count.
-    #[test]
-    fn step_level_up_saturates_at_the_top_storey() {
-        // From the ground floor, up moves one storey.
-        assert_eq!(step_level(Level::new(0), LevelStep::Up), Level::new(1));
-        // One below the top moves to the top.
-        assert_eq!(
-            step_level(Level::new(MAX_LEVELS - 2), LevelStep::Up),
-            Level::new(MAX_LEVELS - 1),
-        );
-        // At the top, up saturates (stays at the top storey).
-        assert_eq!(
-            step_level(Level::new(MAX_LEVELS - 1), LevelStep::Up),
-            Level::new(MAX_LEVELS - 1),
-        );
-    }
-
-    /// AC6 — level-down steps toward the ground and FLOORS at `0`.
-    #[test]
-    fn step_level_down_floors_at_zero() {
-        // From an upper storey, down moves one storey.
-        assert_eq!(step_level(Level::new(3), LevelStep::Down), Level::new(2));
-        // At the ground floor, down floors (stays at 0).
-        assert_eq!(step_level(Level::new(0), LevelStep::Down), Level::new(0));
     }
 }
