@@ -44,6 +44,41 @@ The matchup is a **multiplier on punch and shred only** — nothing else. Everyt
 
 The swing is **asymmetric** — the resisted penalty (−66%) is double the favorable bonus (+33%), so players avoid bad matchups, not just chase good ones. A multiplier is scale-independent and always proportionally felt without ever bypassing armor. The **±33%/66%** values are **tuning defaults** (carried in a tuning-config Bevy `Resource`, not hardcoded).
 
+## Weapons — identity, fire modes, and authoring
+
+A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto the armed ganger entity (GTW-200). Every weapon is **authored data**: a loose per-file `assets/weapons/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/weapons/` folder loads into a name-keyed `WeaponRegistry`; each `GangerSpawn` references a weapon **by key**, and `setup_battle` resolves the key → inserts the `WeaponBundle` onto the ganger (mirroring how `WornArmor` is seeded) — a missing key is a handled error, never a panic (GTW-257). The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
+
+### Weapon name
+
+Every weapon carries a **`WeaponName`** — its human-facing identity (e.g. "autogun", "lasgun"). It is **not** authored as a field; it is the `.weapon.ron` filename **stem** (so `autogun.weapon.ron` → `WeaponName("autogun")`), which is also the registry key a ganger references. The name is **not** read by the combat-math layer (§1/§6) — it is queried only for UI (the status panel and the fire-mode picker, GTW-254/256).
+
+### Fire-mode selector — an authored list, not a fixed ladder
+
+A weapon's **fire-mode selector** is a **`FireMode(Vec<FireModeSpec>)`** — the authored list of modes the weapon offers, **in authored order, Single first by convention**. It is **any subset of {Single, Burst, Full}**: this broadens the earlier "three fixed ladders" (single / single+burst / single+burst+full-auto) so a weapon can offer, say, just single+burst. Each entry is a `FireModeSpec` carrying:
+
+- **`kind: ModeKind`** — a closed enum `Single` / `Burst` / `Full`; its `Display` is the human label ("single" / "burst" / "full-auto") — there is **no** stored name string (GTW-260).
+- **`cone_mult: ModeConeMult`** — the mode's selector cone multiplier (the §1 `firemode` term: single ≈ 1, full-auto ≥ 1).
+- **`tu_percent: ModeTuPercent`** — the fraction of the shooter's TU pool a shot in this mode costs.
+- **`shots: ModeShots`** — rounds fired per shot action.
+
+The player picks the active mode through a **click-to-select popup picker** (GTW-254) — it lists exactly the weapon's offered modes and replaced the old blind cycle; the active mode shows on the action bar and rides in the input layer's `SelectedFireMode`. The code is **defensive**: a selector with no `Single` (or none at all) falls back to the first mode, then to a structural single-shot default — it never panics.
+
+Illustrative authoring (the magnitudes are **tuning data** in the `.weapon.ron`, not pinned by tests):
+
+```ron
+// autogun.weapon.ron — offers all three modes
+fire_mode: [
+    (kind: Single, cone_mult: 1.0, tu_percent: 0.30, shots: 1),
+    (kind: Burst,  cone_mult: 1.3, tu_percent: 0.45, shots: 3),
+    (kind: Full,   cone_mult: 1.7, tu_percent: 0.60, shots: 8),
+]
+// lasgun.weapon.ron — offers only single + burst
+fire_mode: [
+    (kind: Single, cone_mult: 1.0,  tu_percent: 0.25, shots: 1),
+    (kind: Burst,  cone_mult: 1.15, tu_percent: 0.40, shots: 3),
+]
+```
+
 ## TBD (tuning / design)
 
 - All numbers (weapon damage/punch/shred; armor floor/protection/integrity/hardness; the matchup swing).
