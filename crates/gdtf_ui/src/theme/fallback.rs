@@ -1,0 +1,111 @@
+//! The error-path safety-net: the embedded shipped grimdark RON and the
+//! [`default_theme`] / [`const_fallback_theme`] the `Load` scene falls back to
+//! when the loose theme asset (or its fonts) fails to load.
+
+use bevy::prelude::*;
+
+use super::{
+    newtypes::{
+        ActiveColor, BorderColor, BorderWidthPx, ButtonColor, ContentMargin, CornerRadiusPx,
+        DisabledColor, FontKey, FontSizePt, HoverColor, MarginPx, PanelColor, PressedColor,
+        ScreenColor, TextColor,
+    },
+    runtime::{BackgroundTheme, ButtonTheme, GdtfTheme, PanelTheme, TextTheme, TitleTheme},
+    spec::GdtfThemeSpec,
+};
+
+/// The shipped grimdark theme RON, embedded at compile time from the repo's
+/// loose asset.
+///
+/// This is the **same authoritative file** the success path loads through the
+/// `AssetServer` (`assets/theme/grimdark.ron`) — embedding it here lets the
+/// error-path fallback ([`default_theme`]) reuse the authoritative grimdark
+/// values rather than a divergent hand-written palette, so the safety-net looks
+/// like the real theme. It is *not* an `embedded_asset!` (ADR 0003 bans those):
+/// it is a plain `&str` parsed in-process, only ever reached when the loose
+/// load failed.
+pub(super) const SHIPPED_GRIMDARK_RON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/theme/grimdark.ron"
+));
+
+/// The last-resort, code-level default [`GdtfTheme`].
+///
+/// **ADR-0003 sanctioned exception (GTW-143):** ADR 0003 clause 4 forbids
+/// hardcoding theme *values* as `const Color`s — `assets/theme/grimdark.ron`
+/// remains the single styling source of truth on the success path. This function
+/// is the deliberately-narrow exception: it is the error-path safety-net the
+/// `Load` scene falls back to **only** when the loose theme RON (or its fonts)
+/// fails to load, so the app never leaves `Load` without a `GdtfTheme` and never
+/// hangs on a bad asset.
+///
+/// It first reparses the embedded, test-verified [`SHIPPED_GRIMDARK_RON`] (the
+/// authoritative grimdark values, not a fresh palette) and resolves it with a
+/// closure returning the default [`Handle<Font>`] (the fallback has no
+/// `AssetServer` to load fonts). That parse cannot realistically fail — the same
+/// bytes are asserted to deserialize by this module's tests — but to honour the
+/// no-`unwrap`/`expect`/`panic` rule it falls through, on a parse error, to
+/// [`const_fallback_theme`]: the genuinely hardcoded last line of defence.
+#[must_use]
+pub fn default_theme() -> GdtfTheme {
+    match ron::from_str::<GdtfThemeSpec>(SHIPPED_GRIMDARK_RON) {
+        Ok(spec) => spec.resolve(|_| Handle::<Font>::default()),
+        Err(_) => const_fallback_theme(),
+    }
+}
+
+/// The hardcoded final safety-net [`GdtfTheme`], reached only if even the
+/// embedded [`SHIPPED_GRIMDARK_RON`] fails to parse.
+///
+/// **ADR-0003 sanctioned exception (GTW-143):** these are the only hardcoded
+/// theme values in the codebase, and they exist solely so the error path can
+/// always hand back *some* legible theme. The values mirror the shipped grimdark
+/// palette so the unreachable-in-practice fallback still reads as the intended
+/// look. The fidelity gate must not flag this as a hardcoded-color violation —
+/// it is the explicitly-blessed last resort, not the styling source of truth.
+pub(super) fn const_fallback_theme() -> GdtfTheme {
+    let font = Handle::<Font>::default();
+    let margin = ContentMargin {
+        l: MarginPx(12.0),
+        r: MarginPx(12.0),
+        t: MarginPx(6.0),
+        b: MarginPx(6.0),
+    };
+    GdtfTheme {
+        default_font: FontKey(String::from("fonts/Alegreya-Variable.ttf")),
+        background:   BackgroundTheme {
+            color: ScreenColor(Color::srgba(0.05, 0.05, 0.06, 1.0)),
+        },
+        panel:        PanelTheme {
+            color: PanelColor(Color::srgba(0.16, 0.16, 0.18, 0.55)),
+            border_color: BorderColor(Color::srgba(0.20, 0.20, 0.24, 1.0)),
+            border_width_px: BorderWidthPx(2.0),
+            corner_radius_px: CornerRadiusPx(5.0),
+            margin,
+        },
+        button:       ButtonTheme {
+            color: ButtonColor(Color::srgba(0.12, 0.12, 0.15, 0.96)),
+            disabled: DisabledColor(Color::srgba(0.08, 0.08, 0.10, 0.55)),
+            active: ActiveColor(Color::srgba(0.45, 0.62, 0.30, 0.96)),
+            hover: HoverColor(Color::srgba(0.80, 0.16, 0.19, 0.96)),
+            pressed: PressedColor(Color::srgba(0.10, 0.10, 0.12, 0.96)),
+            text_color: TextColor(Color::srgba(0.84, 0.80, 0.73, 1.0)),
+            font_size_pt: FontSizePt(18.0),
+            border_color: BorderColor(Color::srgba(0.20, 0.20, 0.24, 1.0)),
+            border_width_px: BorderWidthPx(2.0),
+            corner_radius_px: CornerRadiusPx(5.0),
+            margin,
+            font: font.clone(),
+        },
+        title:        TitleTheme {
+            text_color:   TextColor(Color::srgba(0.84, 0.80, 0.73, 1.0)),
+            font_size_pt: FontSizePt(36.0),
+            font:         font.clone(),
+        },
+        text:         TextTheme {
+            text_color: TextColor(Color::srgba(0.84, 0.80, 0.73, 1.0)),
+            font_size_pt: FontSizePt(18.0),
+            font,
+        },
+    }
+}
