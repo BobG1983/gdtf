@@ -46,17 +46,23 @@ use bevy::{
 };
 use gdtf_app::test_support::{
     AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton, FleeButton,
-    LevelDownButton, LevelUpButton, ModeBurstButton, ModeFullButton, ModeSingleButton,
-    ReloadButton, RunningState, StanceKneelingButton, StanceProneButton, StanceStandingButton,
+    LevelDownButton, LevelUpButton, LoadedSituation, ModeBurstButton, ModeFullButton,
+    ModePanelRoot, ModeSingleButton, ReloadButton, RunningState, StanceKneelingButton,
+    StancePanelRoot, StanceProneButton, StanceStandingButton,
 };
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, Direction, Facing, FireMode, FireModeSpec, Level, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, Stance, StanceKind,
+    Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
+    BattleInProgress, Cell, CellLevel, Direction, Facing, Faction, FireMode, FireModeSpec,
+    GangerSpawn, Hp, Level, LifeState, Luck, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    Shooting, Situation, SourceArmor, Stance, StanceKind, Toughness, Tu, Wounds,
     acts::{SetAimingRequested, SetStanceRequested},
     tuning::CombatTuning,
-    weapon::WeaponRegistry,
+    weapon::{
+        Accuracy, BaseSpread, DamageType, FatalBias, Kickback, MagazineSize, Stable, WeaponDamage,
+        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+    },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{ActiveButton, DisabledButton, theme::default_theme};
@@ -995,5 +1001,280 @@ fn deferred_buttons_stay_disabled_after_flee_added() {
     assert!(
         app.world().get::<DisabledButton>(flee).is_none(),
         "the flee button is ENABLED — it must NOT carry DisabledButton",
+    );
+}
+
+// =================================================================================
+// GTW-272 + GTW-273 — action-bar layout: Mode LEFT of Stance (AC2) + hide the Mode
+// panel when nothing armed is selected (AC3). Pin-discriminating headless tests.
+//
+// AC1 (fit-content / no clipping) is largely a VISUAL check → in-engine QA per
+// verification.md #3; the headless slice asserts the explicit fit-content `Node`
+// fields the fix sets (no brittle pixel pin), see `action_bar_root_fits_contents`.
+// =================================================================================
+
+/// The weapon key the real-flow armed ganger references — present in [`armed_registry`].
+const PLAYER_WEAPON_KEY: &str = "test-weapon";
+
+/// The gang the player controls in these tests — `Situation::player_faction` defaults to
+/// gang `0`, so the armed ganger is faction `0` for `auto_select_first_player_ganger` to
+/// pick it via the real flow (the `battle_running_driver.rs` precedent).
+const PLAYER_FACTION: u8 = 0;
+
+/// A [`WeaponRegistry`] holding the one [`PLAYER_WEAPON_KEY`] weapon the armed real-flow
+/// ganger references (stands in for the `Load`-built registry, GTW-257, so the Generation
+/// setup arms the ganger). Its `fire_mode` offers a single Single mode, so an armed
+/// selection yields one Mode toggle → the Mode panel is `Visible` (the
+/// `battle_running_driver.rs::weapon_registry` shape).
+fn armed_registry() -> WeaponRegistry {
+    WeaponRegistry::new([(
+        WeaponName::new(PLAYER_WEAPON_KEY.to_owned()),
+        WeaponSpec {
+            base_spread:   BaseSpread::new(0.25),
+            accuracy:      Accuracy::new(1.0),
+            kickback:      Kickback::new(0.4),
+            fatal_bias:    FatalBias::new(0.0),
+            damage:        WeaponDamage::new(12),
+            punch:         WeaponPunch::new(5),
+            shred:         WeaponShred::new(3),
+            damage_type:   DamageType::Kinetic,
+            magazine_size: MagazineSize::new(30),
+            fire_mode:     FireMode::new(vec![spec(ModeKind::Single, 0.5, 1)]),
+            stable:        Stable::new(false),
+        },
+    )])
+}
+
+/// An arbitrary roster armor record (distinct per-part magnitudes, NOT shipped tuning —
+/// the `battle_running_driver.rs::arbitrary_armor` shape).
+const fn arbitrary_armor() -> SourceArmor {
+    SourceArmor::uniform(ArmorPiece::new(
+        ArmorFloor::new(0),
+        ArmorProtection::new(1),
+        ArmorIntegrity::new(2),
+        ArmorHardness::new(3),
+        ArmorType::DEFAULT,
+    ))
+}
+
+/// A one-ganger real situation: a single armed faction-[`PLAYER_FACTION`] ganger the
+/// `SetupBattleRequested` (sent on `OnEnter(Generation)`) spawns via `setup_battle` and
+/// `auto_select_first_player_ganger` then selects through the REAL flow — NO hand-inserted
+/// `SelectedShooter`. Its weapon key is present in [`armed_registry`], so setup arms it
+/// with a `FireMode`, which `rebuild_mode_buttons` reads to show the Mode panel.
+fn armed_player_situation() -> Situation {
+    Situation {
+        gangers: vec![GangerSpawn {
+            at:         CellLevel::new(Cell::new(2, 5), Level::new(0)),
+            faction:    Faction::new(PLAYER_FACTION),
+            facing:     Facing::new(Direction::East),
+            stance:     Stance::new(StanceKind::Standing),
+            aiming:     Aiming::new(false),
+            hp:         Hp::new(40),
+            wounds:     Wounds::new(3),
+            tu:         Tu::new(60),
+            life_state: LifeState::Alive,
+            shooting:   Shooting::new(3.0),
+            toughness:  Toughness::new(3.0),
+            luck:       Luck::new(1.0),
+            armor:      arbitrary_armor(),
+            weapon:     WeaponName::new(PLAYER_WEAPON_KEY.to_owned()),
+        }],
+        ..Situation::new()
+    }
+}
+
+/// Builds the headless walk app exactly like [`walk_app`], but with a real
+/// [`LoadedSituation`] for the Generation setup to pour into the world (so a real player
+/// ganger is spawned + auto-selected) and the matching [`armed_registry`] so setup can arm
+/// it. Mirrors the `battle_running_driver.rs` real-flow harness.
+fn walk_app_with_situation(situation: Situation) -> App {
+    let mut app = GdtfTestAppBuilder::new()
+        .starting_in(AppState::Running)
+        .build();
+    app.world_mut().insert_resource(default_theme());
+    app.world_mut().insert_resource(CombatTuning::default());
+    app.world_mut().insert_resource(armed_registry());
+    app.world_mut().insert_resource(LoadedSituation(situation));
+    app
+}
+
+/// Drives the real-situation walk to `BattleRunning` and returns the app, asserting the
+/// descent succeeded — the live battle where the bar is spawned AND the real auto-select
+/// has run on the spawned player ganger.
+fn battle_running_app_with_situation(situation: Situation) -> App {
+    let mut app = walk_app_with_situation(situation);
+    assert!(
+        drive_to_battle_running(&mut app),
+        "the real-situation walk should reach BattleScapeState::BattleRunning within {BUDGET} \
+         updates; last observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    app
+}
+
+/// The `ModePanelRoot`'s current [`Visibility`], if exactly one exists.
+fn mode_panel_visibility(app: &mut App) -> Option<Visibility> {
+    single_with::<ModePanelRoot>(app)
+        .and_then(|panel| app.world().get::<Visibility>(panel).copied())
+}
+
+// ---------------------------------------------------------------------------------
+// AC2 — the bar root's Children place ModePanelRoot BEFORE StancePanelRoot.
+// ---------------------------------------------------------------------------------
+
+/// GTW-272 AC2 — in the spawned bar, the Mode sub-panel precedes (is LEFT of) the Stance
+/// sub-panel in the bar root's child order. Found via the shared parent (the bar root),
+/// reached through the panels' `ChildOf`, so no internal `ActionBarRoot` marker is needed.
+/// Pin-discriminating: reverting the `add_children` order fails the index comparison.
+#[test]
+fn mode_panel_precedes_stance_panel_in_bar_children() {
+    let mut app = battle_running_app();
+
+    let Some(mode) = require_button::<ModePanelRoot>(&mut app) else {
+        return;
+    };
+    let Some(stance) = require_button::<StancePanelRoot>(&mut app) else {
+        return;
+    };
+
+    // Both sub-panels are children of the same bar root.
+    let mode_parent = app.world().get::<ChildOf>(mode).map(ChildOf::parent);
+    let stance_parent = app.world().get::<ChildOf>(stance).map(ChildOf::parent);
+    assert_eq!(
+        mode_parent, stance_parent,
+        "the Mode and Stance sub-panels must share the same parent (the bar root)",
+    );
+    let Some(bar_root) = mode_parent else {
+        return;
+    };
+
+    let Some(children) = app.world().get::<Children>(bar_root) else {
+        return;
+    };
+    let positions: Vec<Entity> = children.iter().collect();
+    let mode_index = positions.iter().position(|&e| e == mode);
+    let stance_index = positions.iter().position(|&e| e == stance);
+    assert!(
+        mode_index.is_some() && stance_index.is_some(),
+        "both the Mode and Stance sub-panels must appear in the bar root's children",
+    );
+    assert!(
+        mode_index < stance_index,
+        "the Mode sub-panel must precede (render LEFT of) the Stance sub-panel in the bar \
+         root's child order (mode at {mode_index:?}, stance at {stance_index:?})",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC3 — the Mode panel is Hidden when nothing armed is selected, Visible when an armed
+// player ganger is selected (via the REAL selection flow — no hand-inserted selection).
+// ---------------------------------------------------------------------------------
+
+/// GTW-273 AC3 (hidden) — with NO armed selection reached via the REAL flow (the empty
+/// situation spawns no gangers, so `auto_select_first_player_ganger` selects nothing), the
+/// `ModePanelRoot` is `Visibility::Hidden` — no empty Mode box. Pin-discriminating:
+/// reverting the visibility toggle (leaving the panel `Inherited`/visible) fails this.
+#[test]
+fn mode_panel_hidden_when_nothing_armed_selected() {
+    let mut app = battle_running_app();
+    // Settle the initial selection (stays None — no gangers) + the rebuild's no-op /
+    // unarmed branch, which sets the panel Hidden.
+    app.update();
+    app.update();
+
+    assert_eq!(
+        mode_panel_visibility(&mut app),
+        Some(Visibility::Hidden),
+        "with nothing armed selected, the Mode panel must be Hidden (no empty Mode box)",
+    );
+}
+
+/// GTW-273 AC3 (visible) — when an armed player ganger is selected via the REAL flow (the
+/// real `LoadedSituation` setup spawns + arms it, `auto_select_first_player_ganger` picks
+/// it — NO hand-inserted `SelectedShooter`), the `ModePanelRoot` is `Visibility::Visible`
+/// (its weapon offers a mode → a toggle to show). Pin-discriminating: reverting the
+/// visibility toggle (leaving it Hidden) fails this.
+#[test]
+fn mode_panel_visible_when_armed_player_ganger_selected() {
+    let mut app = battle_running_app_with_situation(armed_player_situation());
+    // Settle the real auto-select (fills SelectedShooter with the player ganger) + the
+    // rebuild (.after ApplyTheme) which, for an armed selection with modes, sets Visible.
+    app.update();
+    app.update();
+
+    // The selection was filled by the REAL auto-select path (not hand-inserted).
+    assert!(
+        app.world()
+            .get_resource::<SelectedShooter>()
+            .is_some_and(|s| s.is_some()),
+        "precondition: the real auto-select must have filled SelectedShooter with the player \
+         ganger (no hand-inserted selection)",
+    );
+    // The armed weapon offers exactly one mode → exactly one toggle is built.
+    assert_eq!(
+        count_with::<ModeSingleButton>(&mut app),
+        1,
+        "the armed player ganger's single-mode weapon must build one Mode toggle",
+    );
+    assert_eq!(
+        mode_panel_visibility(&mut app),
+        Some(Visibility::Visible),
+        "with an armed player ganger selected, the Mode panel must be Visible",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC1 — the fit-content fix sets explicit Node fields on the bar root + Stance panel
+// (height Auto; the bar grows upward from the bottom). Headless assert of the fields
+// the fix sets, NOT a brittle pixel pin (the fit-content render itself is in-engine QA).
+// ---------------------------------------------------------------------------------
+
+/// GTW-272 AC1 — the action-bar root is laid out to FIT CONTENTS vertically and grow
+/// UPWARD from the bottom margin: `height: Auto` (sizes to the tallest child column rather
+/// than a fixed/collapsed height) and `align_items: FlexEnd` (anchors children's bottom
+/// edge to the bar's bottom = the screen bottom via `bottom: 0`), so a tall Stance column
+/// is not clipped off the bottom. The Stance sub-panel itself is `height: Auto`. The
+/// fit-content RENDER is an in-engine VISUAL check (verification.md #3); this pins the
+/// explicit `Node` fields the fix sets.
+#[test]
+fn action_bar_root_fits_contents_and_grows_upward() {
+    let mut app = battle_running_app();
+
+    // The bar root is the shared parent of the Stance sub-panel.
+    let Some(stance) = require_button::<StancePanelRoot>(&mut app) else {
+        return;
+    };
+    let Some(bar_root) = app.world().get::<ChildOf>(stance).map(ChildOf::parent) else {
+        return;
+    };
+    let Some(root_node) = app.world().get::<Node>(bar_root) else {
+        return;
+    };
+    assert_eq!(
+        root_node.height,
+        Val::Auto,
+        "the bar root must FIT CONTENTS vertically (height Auto, no fixed height)",
+    );
+    assert_eq!(
+        root_node.align_items,
+        AlignItems::FlexEnd,
+        "the bar root must anchor children to its bottom (FlexEnd) so a tall column grows \
+         upward and is not clipped off the bottom",
+    );
+    assert_eq!(
+        root_node.bottom,
+        Val::Px(0.0),
+        "the bar root stays anchored to the screen bottom",
+    );
+
+    // The Stance sub-panel column fits its three stacked toggles (height Auto).
+    let Some(stance_node) = app.world().get::<Node>(stance) else {
+        return;
+    };
+    assert_eq!(
+        stance_node.height,
+        Val::Auto,
+        "the Stance sub-panel must FIT CONTENTS vertically (height Auto)",
     );
 }

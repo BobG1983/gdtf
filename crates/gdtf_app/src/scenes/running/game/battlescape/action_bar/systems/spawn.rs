@@ -105,7 +105,16 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
             left: Val::Percent(0.0),
             right: Val::Percent(0.0),
             justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
+            // GTW-272: FIT CONTENTS vertically and grow UPWARD from the bottom margin.
+            // `height: Auto` sizes the bar to its tallest child (the 3-button Stance /
+            // Mode columns) rather than a fixed/collapsed height, and `align_items:
+            // FlexEnd` anchors every child's BOTTOM edge to the bar's bottom (= the
+            // screen's bottom via `bottom: 0`), so a tall column grows upward and stays
+            // fully on-screen — the old `Center` centred a tall column on the bar's
+            // mid-line, pushing its bottom off the bottom edge (the Stance-clip bug). This
+            // is fixed in the bar layout, NOT gdtf_ui's generic `box_node` height.
+            height: Val::Auto,
+            align_items: AlignItems::FlexEnd,
             column_gap: Val::Px(*BarGapPx::BAR),
             ..default()
         },
@@ -126,6 +135,9 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         Node {
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(*StanceGapPx::PANEL),
+            // GTW-272: FIT CONTENTS vertically — the column sizes to its three stacked
+            // toggles (no fixed/min height), so the full Stance column is on-screen.
+            height: Val::Auto,
             ..default()
         },
     ));
@@ -201,11 +213,12 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
     );
 
     // Parent every control under the bar root, left-to-right. The Stance + Mode sub-panels
-    // are nested column children of the horizontal bar row.
+    // are nested column children of the horizontal bar row. Mode precedes Stance (GTW-272):
+    // the Mode sub-panel renders to the LEFT of the Stance sub-panel.
     commands.entity(root).add_children(&[
+        mode_panel,
         stance_panel,
         aim,
-        mode_panel,
         level_up,
         level_down,
         reload,
