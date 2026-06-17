@@ -1,0 +1,140 @@
+//! AC6 — application: an in-line target takes a `Ganger` hit with applied damage,
+//! while a fire into empty space yields only `no_effect` reports.
+
+use super::support::*;
+
+/// AC6 — application: firing at an in-line target yields a `HitReport` with
+/// `ShotKind::Ganger(entity)` + an `AppliedDamage` block, and the target's
+/// Hp/Wounds changed in the world; while a fire into empty space yields only
+/// `no_effect` reports and the (absent) target is untouched.
+#[test]
+fn fire_at_in_line_target_applies_damage() {
+    let mut world = World::new();
+    let tuning = CombatTuning::default();
+    let mode = single_mode(0.2, 1);
+    // Shooter at (2,5) facing East; aiming for a tight cone onto the target.
+    let shooter = spawn_shooter(
+        &mut world,
+        ShooterSpec {
+            x: 2,
+            y: 5,
+            tu: 200,
+            tu_max: 100,
+            ammo: 10,
+            mode,
+            aiming: true,
+        },
+    );
+
+    // A standing (HIGH-band) target directly East at (8,5,0). fire()'s aim point
+    // uses the documented default Standing target stance (the locked target query
+    // carries no Stance), so the round flies at the standing silhouette; a HIGH
+    // occupant band is equal-or-lower than any round band → it impacts (the march
+    // bands the round vs the occupant's published band).
+    let target = world
+        .spawn(target_bundle(30, 6, worn_suit(0, 0, 1, 0)))
+        .id();
+    let target_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
+
+    // Build the occupancy grid with the target as a HIGH-band occupant in line.
+    let mut occupancy = OccupancyGrid::new();
+    occupancy.set_occupant(target_at, Some(target));
+    occupancy.set_occupant_band(target_at, Some(HeightBand::High));
+    let surface = SurfaceGrid::new();
+    let cover = CoverLedger::new();
+    let mut r = rng();
+
+    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+    let reports = {
+        let (mut shooters, mut targets) = state.get_mut(&mut world);
+        fire(
+            shooter,
+            FireOrder {
+                mode:         &mode,
+                target_cell:  Cell::new(8, 5),
+                target_level: Level::new(0),
+            },
+            &mut shooters,
+            &mut targets,
+            BattleGrids {
+                occupancy: &occupancy,
+                surface:   &surface,
+                cover:     &cover,
+            },
+            &tuning,
+            &mut r,
+        )
+    };
+
+    assert_eq!(reports.len(), 1, "one round fired");
+    let Some(report) = reports.first() else {
+        return;
+    };
+    assert_eq!(
+        report.kind,
+        ShotKind::Ganger(target),
+        "the in-line shot must strike the target ganger",
+    );
+    assert!(
+        report.applied.is_some(),
+        "a ganger hit must carry an `AppliedDamage` block",
+    );
+    // The target's pools changed in the world (the fold mutated in place).
+    let hp = world.get::<Hp>(target).map(|h| **h);
+    assert!(
+        hp.is_some_and(|h| h < 30),
+        "the target's Hp must have dropped from 30, got {hp:?}",
+    );
+}
+
+/// AC6 (the miss half) — a fire into empty space (no occupant in the path) yields
+/// only a `no_effect` report: one round fired, no `AppliedDamage` block, and (the
+/// target being absent) nothing is mutated.
+#[test]
+fn fire_into_empty_space_is_a_clean_miss() {
+    let tuning = CombatTuning::default();
+    let mode = single_mode(0.2, 1);
+    let mut world = World::new();
+    let shooter = spawn_shooter(
+        &mut world,
+        ShooterSpec {
+            x: 2,
+            y: 5,
+            tu: 200,
+            tu_max: 100,
+            ammo: 10,
+            mode,
+            aiming: true,
+        },
+    );
+    let occupancy = OccupancyGrid::new(); // no occupant anywhere
+    let surface = SurfaceGrid::new();
+    let cover = CoverLedger::new();
+    let mut r = rng();
+    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+    let reports = {
+        let (mut shooters, mut targets) = state.get_mut(&mut world);
+        fire(
+            shooter,
+            FireOrder {
+                mode:         &mode,
+                target_cell:  Cell::new(40, 5),
+                target_level: Level::new(0),
+            },
+            &mut shooters,
+            &mut targets,
+            BattleGrids {
+                occupancy: &occupancy,
+                surface:   &surface,
+                cover:     &cover,
+            },
+            &tuning,
+            &mut r,
+        )
+    };
+    assert_eq!(reports.len(), 1, "one round fired into empty space");
+    let Some(report) = reports.first() else {
+        return;
+    };
+    assert_eq!(report.applied, None, "a clean miss applies no damage");
+}
