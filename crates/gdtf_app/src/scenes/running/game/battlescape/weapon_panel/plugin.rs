@@ -29,10 +29,15 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{InputSystems, dispatch_act_intents};
 use gdtf_battle_sim::BattleInProgress;
+use gdtf_ui::themed::UiSystems;
 
 use crate::{
-    scenes::running::game::battlescape::weapon_panel::systems::{
-        despawn_weapon_panel, reload_button_pressed, spawn_weapon_panel, update_weapon_panel,
+    scenes::running::game::battlescape::{
+        bottom_bar::spawn_bottom_bar,
+        weapon_panel::systems::{
+            despawn_weapon_panel, fit_weapon_panel, reload_button_pressed, spawn_weapon_panel,
+            update_weapon_panel,
+        },
     },
     states::BattleScapeState,
 };
@@ -43,30 +48,49 @@ pub(in crate::scenes::running::game::battlescape) struct GameBattleScapeWeaponPa
 
 impl Plugin for GameBattleScapeWeaponPanelScenePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(BattleScapeState::BattleRunning), spawn_weapon_panel)
-            .add_systems(
-                OnExit(BattleScapeState::BattleRunning),
-                despawn_weapon_panel,
-            )
-            .add_systems(
-                Update,
-                update_weapon_panel
-                    // Run AFTER the input crate's `InputSystems::Gather` band, where the
-                    // GTW-255 auto-select writes the initial `SelectedShooter` — else the
-                    // panel reads the selection before auto-select fills it (the GTW-264
-                    // status-panel ordering precedent, `bevy-traps.md` #3).
-                    .after(InputSystems::Gather)
-                    .run_if(resource_exists::<BattleInProgress>),
-            )
-            .add_systems(
-                Update,
-                reload_button_pressed
-                    // Ordered `.before` the ONE intent drain (`bevy-traps.md` #3): a press
-                    // queued THIS update is drained THIS update (the action-bar same-frame
-                    // guarantee). Gated on the live-battle witness so a press is inert when
-                    // no battle is live.
-                    .before(dispatch_act_intents)
-                    .run_if(resource_exists::<BattleInProgress>),
-            );
+        app.add_systems(
+            OnEnter(BattleScapeState::BattleRunning),
+            // Ordered `.after(spawn_bottom_bar)` (D4): the bottom-bar root must exist so
+            // `spawn_weapon_panel` can parent the Stance Panel INSIDE it (else the stance falls
+            // back to the weapon root). Both run on the same `OnEnter` boundary, so the order
+            // must be explicit (`bevy-traps.md` #3).
+            spawn_weapon_panel.after(spawn_bottom_bar),
+        )
+        .add_systems(
+            OnExit(BattleScapeState::BattleRunning),
+            despawn_weapon_panel,
+        )
+        .add_systems(
+            Update,
+            update_weapon_panel
+                // Run AFTER the input crate's `InputSystems::Gather` band, where the
+                // GTW-255 auto-select writes the initial `SelectedShooter` — else the
+                // panel reads the selection before auto-select fills it (the GTW-264
+                // status-panel ordering precedent, `bevy-traps.md` #3).
+                .after(InputSystems::Gather)
+                .run_if(resource_exists::<BattleInProgress>),
+        )
+        .add_systems(
+            Update,
+            reload_button_pressed
+                // Ordered `.before` the ONE intent drain (`bevy-traps.md` #3): a press
+                // queued THIS update is drained THIS update (the action-bar same-frame
+                // guarantee). Gated on the live-battle witness so a press is inert when
+                // no battle is live.
+                .before(dispatch_act_intents)
+                .run_if(resource_exists::<BattleInProgress>),
+        )
+        // GTW-298 (screenshot review 2026-06-18): the post-theme fit pass — tighten the Item
+        // Panel's horizontal padding (so the item buttons are wider) and shrink the cluster's
+        // labels (so a weapon name like "autogun" fits the narrow Combined panel without
+        // clipping). Ordered `.after(UiSystems::ApplyTheme)` so it runs after the theme pass
+        // re-applies the theme-owned panel padding + label font (which it then locally
+        // overrides for the cluster's own widgets only); same live-battle gate.
+        .add_systems(
+            Update,
+            fit_weapon_panel
+                .after(UiSystems::ApplyTheme)
+                .run_if(resource_exists::<BattleInProgress>),
+        );
     }
 }

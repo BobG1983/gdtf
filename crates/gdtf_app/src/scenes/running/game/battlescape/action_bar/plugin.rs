@@ -49,8 +49,8 @@ use gdtf_ui::themed::UiSystems;
 use crate::{
     scenes::running::game::battlescape::action_bar::systems::{
         action_bar_button_intents, despawn_action_bar, flee_button_pressed, mode_button_pressed,
-        rebuild_mode_buttons, spawn_action_bar, sync_aim_button_active, sync_mode_buttons_active,
-        sync_stance_buttons_active,
+        nowrap_control_labels, rebuild_mode_buttons, spawn_action_bar, sync_aim_button_active,
+        sync_mode_buttons_active, sync_stance_buttons_active,
     },
     states::BattleScapeState,
 };
@@ -131,6 +131,17 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
             .add_systems(
                 Update,
                 rebuild_mode_buttons
+                    .after(UiSystems::ApplyTheme)
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-298: keep the relocated firemode / aim / stance toggle LABELS on one line so a
+            // too-wide caption (e.g. `full-auto`) clips inside its toggle instead of soft-
+            // wrapping + overflowing the short firemode cell into the row above (contract item
+            // 8). Ordered `.after(UiSystems::ApplyTheme)` so it runs after the theme pass settles
+            // the freshly-spawned labels; same live-battle gate as the other control systems.
+            .add_systems(
+                Update,
+                nowrap_control_labels
                     .after(UiSystems::ApplyTheme)
                     .run_if(resource_exists::<BattleInProgress>),
             );

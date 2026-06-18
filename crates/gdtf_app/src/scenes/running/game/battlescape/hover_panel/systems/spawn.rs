@@ -1,7 +1,9 @@
 //! Spawns + despawns the battlescape hover-inspect panel (GTW-274 / GTW-295).
 //!
 //! [`spawn_hover_panel`] runs `OnEnter(BattleScapeState::BattleRunning)` and builds a themed
-//! [`gdtf_ui`] panel on the GTW-120 UI camera anchored TOP-RIGHT, holding TWO mutually
+//! [`gdtf_ui`] panel on the GTW-120 UI camera as an ABSOLUTE, fixed-% (`Val::Vw`/`Val::Vh`)
+//! overlay anchored TOP-RIGHT — hovering OVER the map, contributing NOTHING to the viewport
+//! inset (only the bottom bar reduces the map). It holds TWO mutually
 //! exclusive sub-blocks: the shared ganger [`stat_block`](super::super::super::stat_block)
 //! (marked [`HoverStatBlockHost`]) and a small OBJECT stat block (marked
 //! [`HoverObjectBlock`]) — a title, a labeled Integrity [`ProgressBar`](gdtf_ui::spawn_progress_bar)
@@ -21,7 +23,7 @@
 use bevy::{
     prelude::*,
     text::{TextColor as UiTextColor, TextFont},
-    ui::{Display, Node, Val},
+    ui::{Display, Node, OverflowAxis, Val},
 };
 use gdtf_battle_presenter::TopDownAtlases;
 use gdtf_ui::{FillFraction, spawn_panel, spawn_progress_bar, theme::GdtfTheme};
@@ -45,11 +47,26 @@ const INTEGRITY_LOST: Color = Color::srgb(0.12, 0.14, 0.16);
 /// `ROW_GAP_PX` precedent — a small fixed hairline-class spacing, the one justified px).
 const ROW_GAP_PX: f32 = 4.0;
 
+/// The hover panel's **fixed** width as a fraction of the viewport WIDTH
+/// ([`Val::Vw`](bevy::ui::Val::Vw)). A relative unit (`ui-responsive-not-px`), and *fixed* so
+/// the map area never pops/shifts left-right when the panel's contents change — the same
+/// ganger vs. object block always occupies this one width (item 7). The panel is an absolute
+/// overlay (item 3), so this width contributes NOTHING to the world-map viewport inset.
+const PANEL_WIDTH_VW: f32 = 18.0;
+
+/// The hover panel's **maximum** height as a fraction of the viewport HEIGHT
+/// ([`Val::Vh`](bevy::ui::Val::Vh)). The panel height still tracks its visible block's content
+/// (`height: auto`), but is CAPPED here so a tall ganger block can never overrun the window;
+/// the cap is relative (`ui-responsive-not-px`). Excess content is clipped (overflow hidden)
+/// rather than overflowing onto the map.
+const PANEL_MAX_HEIGHT_VH: f32 = 45.0;
+
 /// Builds the themed hover panel on `OnEnter(BattleScapeState::BattleRunning)`.
 ///
 /// Reads the live [`GdtfTheme`] (`Option<Res<…>>`, no-op if absent, `bevy-traps.md` #1) +
 /// the presenter's [`TopDownAtlases`] (for the portrait). Spawns the panel root via
-/// [`spawn_panel`] anchored TOP-RIGHT and `Visibility::Hidden`, parents the shared stat
+/// [`spawn_panel`] as an ABSOLUTE, fixed-% (`Val::Vw`/`Val::Vh`) overlay anchored TOP-RIGHT
+/// (contributing nothing to the viewport inset) and `Visibility::Hidden`, parents the shared stat
 /// block (marked [`HoverStatBlockHost`]) and the OBJECT block (marked [`HoverObjectBlock`])
 /// under it. BOTH sub-blocks start HIDDEN via [`Display::None`] (removed from layout, GTW-295)
 /// so the panel sizes to the visible block only. The object block holds a title, a labeled
@@ -64,14 +81,31 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_hover_panel(
         return;
     };
 
-    // ROOT: top-right anchored, hidden until something is hovered.
+    // ROOT: an ABSOLUTE, fixed-% overlay anchored TOP-RIGHT, hovering OVER the map (item 3).
+    // It is a UI node on the over-map UI camera, positioned `Absolute` so it is removed from
+    // any layout flow and contributes NOTHING to the world-map viewport inset — only the bottom
+    // bar reduces the map (item 4). Its width is a FIXED fraction of the viewport
+    // (`Val::Vw`, `ui-responsive-not-px`) so the map never pops/shifts when the panel's
+    // contents change (item 7); its height tracks the visible block but is CAPPED in `Val::Vh`
+    // and clips overflow so a tall ganger block can never overrun the map. Replacing the
+    // builder's `Node` is fine: `apply_theme` re-derives the panel's border / radius / padding
+    // from this node every run (it clones the node and overrides only those), so the framed
+    // look is preserved while the size + position here stay authoritative.
     let root = spawn_panel(&mut commands, &theme);
     commands.entity(root).insert((
         HoverPanelRoot,
         Node {
             position_type: PositionType::Absolute,
-            top: Val::Px(0.0),
-            right: Val::Px(0.0),
+            top: Val::Vh(0.0),
+            right: Val::Vw(0.0),
+            width: Val::Vw(PANEL_WIDTH_VW),
+            height: Val::Auto,
+            max_height: Val::Vh(PANEL_MAX_HEIGHT_VH),
+            flex_direction: FlexDirection::Column,
+            overflow: Overflow {
+                x: OverflowAxis::Hidden,
+                y: OverflowAxis::Hidden,
+            },
             ..default()
         },
         Visibility::Hidden,

@@ -6,11 +6,21 @@ mod components;
 mod plugin;
 mod systems;
 
-// GTW-271 — the bar ROOT marker, re-exported to the battlescape neighborhood so the
-// `set_world_viewport` system can measure its `ComputedNode` height for the world-map's BOTTOM
-// margin inset (no test-support gating — it stays inside the neighborhood).
-pub(in crate::scenes::running::game::battlescape) use components::ActionBarRoot;
+// GTW-275 layout overhaul — the bar ROOT marker is no longer re-exported: `set_world_viewport`
+// now insets the world map by the BOTTOM BAR only (the action bar is an in-bar overlay, not a
+// separate inset). The marker stays internal to this module (used by `spawn_action_bar` /
+// `despawn_action_bar` via the `components::` path).
 pub(in crate::scenes::running::game::battlescape) use plugin::GameBattleScapeActionBarScenePlugin;
+// GTW-298 — the relocated-controls spawn seam. The Firemode / Aim / Stance constructors are
+// carried to the battlescape neighborhood so the sibling weapon-panel module can spawn the
+// relocated controls INTO the weapon cluster (the Firemode / Aim / Stance panels), reusing this
+// module's button logic + the gdtf_battle_input intents. The press → intent router
+// (`action_bar_button_intents`), the active-mark syncs, and the `rebuild_mode_buttons`
+// visibility driver stay registered by the action-bar plugin and find the relocated buttons
+// parent-agnostically by marker.
+pub(in crate::scenes::running::game::battlescape) use systems::{
+    spawn_aim_button, spawn_mode_panel, spawn_stance_panel,
+};
 
 // Test-support-only re-export of the per-act button markers (the GTW-145 convention,
 // the menu-button-marker precedent): widened to `pub` under `test-support` so the

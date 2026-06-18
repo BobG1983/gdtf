@@ -11,8 +11,9 @@ mod components;
 mod plugin;
 mod systems;
 
-// GTW-271 — the panel ROOT marker, re-exported to the battlescape neighborhood so the
-// `set_world_viewport` system can measure its `ComputedNode` width for the world-map's LEFT
-// margin inset (no test-support gating — it stays inside the neighborhood).
-pub(in crate::scenes::running::game::battlescape) use components::StatusPanelRoot;
+// As of GTW-275 the status panel is an absolute fixed-% overlay that does NOT feed the
+// world-map viewport inset (only the bottom bar reduces the map), so the `StatusPanelRoot`
+// marker no longer needs re-exporting to the battlescape neighborhood: the panel's own spawn
+// / despawn systems reach it via the internal `components::` path, and no sibling layout code
+// reads it. Re-exporting it here would be an unused import (deny `unused_imports`).
 pub(in crate::scenes::running::game::battlescape) use plugin::GameBattleScapeStatusPanelScenePlugin;

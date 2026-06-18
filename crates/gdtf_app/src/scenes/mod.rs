@@ -64,12 +64,14 @@ crate::support_use! {
         StatWoundsPips, portrait_index_for_name,
     };
 }
-// Test-support-only re-export of the GTW-275 weapon-panel markers, gated so the binary build
-// is `unused`/`unreachable_pub`-clean. The final hop before `crate::test_support`.
+// Test-support-only re-export of the GTW-275 weapon-panel markers + the layout-overhaul
+// bottom-bar root, gated so the binary build is `unused`/`unreachable_pub`-clean. The final
+// hop before `crate::test_support`.
 #[cfg(feature = "test-support")]
 crate::support_use! {
     running::{
-        ReloadButton, WeaponContent, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+        AimPanel, BottomBarRoot, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage,
+        WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
     };
 }
 

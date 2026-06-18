@@ -5,9 +5,9 @@ use crate::{
     scenes::running::game::battlescape::{
         GameBattleScapeActionBarScenePlugin, GameBattleScapeAfterMathScenePlugin,
         GameBattleScapeAnimateInScenePlugin, GameBattleScapeAnimateOutScenePlugin,
-        GameBattleScapeBattleRunningScenePlugin, GameBattleScapeGenerationScenePlugin,
-        GameBattleScapeHoverPanelScenePlugin, GameBattleScapeStatusPanelScenePlugin,
-        GameBattleScapeWeaponPanelScenePlugin, systems::*,
+        GameBattleScapeBattleRunningScenePlugin, GameBattleScapeBottomBarScenePlugin,
+        GameBattleScapeGenerationScenePlugin, GameBattleScapeHoverPanelScenePlugin,
+        GameBattleScapeStatusPanelScenePlugin, GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
     states::{BattleScapeState, GameState},
 };
@@ -95,6 +95,13 @@ fn add_plugins(app: &mut App) {
         // components and renders the shared stat block (hovered ganger) or an object block
         // (hovered wall / cover). UI/view only — no sim/input change, no act.
         .add_plugins(GameBattleScapeHoverPanelScenePlugin)
+        // The GTW-275 layout-overhaul BOTTOM BAR: the ONE opaque full-width strip at the
+        // bottom of the screen — the only UI that reduces the world map (the corner status /
+        // hover panels are overlays). Same `BattleRunning` lifecycle as the panels; its
+        // measured height is the SOLE viewport inset (`set_world_viewport`). Registered BEFORE
+        // the weapon panel so the bar exists when the weapon panel parents into it (item 6).
+        // View-only — no sim/input change, no act.
+        .add_plugins(GameBattleScapeBottomBarScenePlugin)
         // The GTW-275 weapon panel: bottom-left, the selected ganger's weapon (graphic
         // placeholder + name + magazine cur/max) + a LIVE Reload button + throwable
         // placeholders. Same `BattleRunning` lifecycle + `BattleInProgress` gate; its repaint

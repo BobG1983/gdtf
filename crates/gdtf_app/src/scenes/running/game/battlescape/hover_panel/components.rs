@@ -15,12 +15,13 @@ crate::support_item! {
     /// despawn recursively tears down the whole panel by this one marker, and the per-update
     /// mutate toggles the whole panel's visibility by it.
     ///
-    /// The sibling battlescape-level `set_world_viewport` system MEASURES this root's
-    /// [`ComputedNode`](bevy::ui::ComputedNode) width to inset the world-map viewport's RIGHT
-    /// margin (the GTW-271 right-margin twin of the status panel's left-margin inset).
-    /// Widened to `pub` under `test-support` so the hover integration test can assert the
-    /// panel's whole-panel Hidden state on bare floor, and `pub(crate)` otherwise (reachable
-    /// from the battlescape viewport system, `unreachable_pub`-clean in the binary).
+    /// The root is an ABSOLUTE, fixed-% (`Val::Vw`/`Val::Vh`) UI overlay anchored TOP-RIGHT,
+    /// hovering OVER the map on the UI camera — it is removed from layout flow and contributes
+    /// NOTHING to the world-map viewport inset. Only the bottom bar reduces the map; this panel
+    /// does NOT inset it (the overhaul reverses the GTW-271 right-margin inset). Widened to
+    /// `pub` under `test-support` so the hover integration test can assert the panel's
+    /// overlay + fixed-% layout and its whole-panel Hidden state on bare floor, and
+    /// `pub(crate)` otherwise (`unreachable_pub`-clean in the binary).
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

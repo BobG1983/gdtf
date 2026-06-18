@@ -65,7 +65,7 @@ type FullToggle = (
     Without<ModeBurstButton>,
 );
 
-/// Vertical gap between the Mode sub-panel's toggle buttons, in logical pixels.
+/// Horizontal gap between the Firemode panel's toggle buttons, in logical pixels.
 ///
 /// A named newtype over the gap rather than a bare `f32` (no-bare-types rule): it is
 /// layout spacing, not a theme color/size (the action-bar `BarGapPx` precedent).
@@ -73,7 +73,7 @@ type FullToggle = (
 struct ModeGapPx(f32);
 
 impl ModeGapPx {
-    /// The Mode sub-panel's inter-toggle gap: 4 px (a tight stacked toggle column).
+    /// The Firemode panel's inter-toggle gap: 4 px (a tight side-by-side toggle row).
     const PANEL: Self = Self(4.0);
 }
 
@@ -98,11 +98,22 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_mode_panel(
     commands.entity(panel).insert((
         ModePanelRoot,
         Node {
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(*ModeGapPx::PANEL),
-            // GTW-272: FIT CONTENTS vertically — the column sizes to its visible per-mode
-            // toggles (no fixed/min height), so it grows upward in the FlexEnd-aligned bar.
-            height: Val::Auto,
+            // GTW-298: the Firemode panel FILLS its bottom-left grid cell; its 1-3 visible
+            // toggles sit side by side in a ROW, each filling the panel height and sharing
+            // the panel width (width varies by count). A `Row` with full width/height + the
+            // toggles' `flex_grow` produces the contract's "width varies by count, height
+            // fills the panel".
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(*ModeGapPx::PANEL),
+            // Clip any toggle whose label is wider than its flex share so the firemode row
+            // never overflows the panel cell into the neighbouring Aim panel (item 8 — no
+            // panel overlaps another).
+            overflow: bevy::ui::Overflow {
+                x: bevy::ui::OverflowAxis::Hidden,
+                y: bevy::ui::OverflowAxis::Hidden,
+            },
             ..default()
         },
         // GTW-273: HIDDEN until an armed selection with modes reveals the offered toggles.
@@ -139,9 +150,59 @@ fn spawn_hidden_toggle<M: Component>(
     kind: ModeKind,
     marker: M,
 ) -> Entity {
-    let toggle = spawn_button(commands, theme, ButtonLabel::new(kind.to_string()), marker);
-    commands.entity(toggle).insert(Visibility::Hidden);
+    let toggle = spawn_button(
+        commands,
+        theme,
+        ButtonLabel::new(toggle_label(kind)),
+        marker,
+    );
+    // GTW-298: each visible toggle FILLS the panel height + shares the panel width with its
+    // siblings (`flex_grow` + zero `flex_basis` → equal shares; width varies by visible count).
+    // Overwriting the auto-sized `box_node` is safe — `apply_theme` re-applies the theme-owned
+    // border / radius / padding every run, preserving these layout fields.
+    commands.entity(toggle).insert((
+        Node {
+            height: Val::Percent(100.0),
+            flex_grow: 1.0,
+            flex_shrink: 1.0,
+            flex_basis: Val::Percent(0.0),
+            // Allow the toggle to shrink below its label's intrinsic width + clip the caption,
+            // so a wide label (e.g. "full-auto") shares the row evenly instead of overflowing
+            // the panel into the Aim cell.
+            min_width: Val::Px(0.0),
+            // GTW-298: the Firemode panel is the bottom 1/4-height cell — a SHORT strip. Without a
+            // zero `min_height` the button's intrinsic content (18pt label + theme padding) is its
+            // flex min-height, so the toggles refuse to compress and overflow the cell (the label
+            // wrapping + the toggles overlapping the row below). A zero `min_height` lets flexbox
+            // compress them to the cell height; `overflow: Hidden` then clips the label cleanly.
+            min_height: Val::Px(0.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            overflow: bevy::ui::Overflow {
+                x: bevy::ui::OverflowAxis::Hidden,
+                y: bevy::ui::OverflowAxis::Hidden,
+            },
+            ..default()
+        },
+        Visibility::Hidden,
+    ));
     toggle
+}
+
+/// The DISPLAYED firemode-toggle caption for `kind` — `"single"` / `"burst"` for those modes
+/// (the sim's canonical [`ModeKind`] [`Display`](std::fmt::Display) label), and the SHORTER
+/// `"auto"` for [`ModeKind::Full`] (screenshot review 2026-06-18: at the comfortably-legible
+/// `CONTROL_LABEL_PT` font the full sim label `"full-auto"` clipped in the narrow firemode cell,
+/// so the firemode panel displays it as `"auto"`).
+///
+/// A presentation-only override local to this firemode panel: it does NOT change the sim's
+/// [`ModeKind`] [`Display`] (which other readers may rely on) — only what this UI toggle shows.
+/// Single / Burst pass through unchanged.
+fn toggle_label(kind: ModeKind) -> String {
+    match kind {
+        ModeKind::Full => "auto".to_owned(),
+        other => other.to_string(),
+    }
 }
 
 /// MUTATES the Mode sub-panel's three FIXED toggles' [`Visibility`] to show exactly the

@@ -1,6 +1,8 @@
-//! The battlescape hover-inspect panel (GTW-274): the TWIN of the status panel, anchored
-//! TOP-RIGHT (the GTW-271 right margin). It inspects whatever the cursor hovers — reading
-//! the [`HoveredCell`](gdtf_battle_input::HoveredCell) + the
+//! The battlescape hover-inspect panel (GTW-274): the TWIN of the status panel, an ABSOLUTE
+//! fixed-% (`Val::Vw`/`Val::Vh`) overlay anchored TOP-RIGHT, hovering OVER the map (it
+//! contributes NOTHING to the world-map viewport inset — only the bottom bar reduces the map).
+//! It inspects whatever the cursor hovers — reading the
+//! [`HoveredCell`](gdtf_battle_input::HoveredCell) + the
 //! [`OccupancyGrid`](gdtf_battle_sim::OccupancyGrid):
 //!
 //! - a hovered GANGER → the shared [`stat_block`](super::stat_block), with its NAME line
@@ -17,21 +19,24 @@ mod components;
 mod plugin;
 mod systems;
 
+#[cfg(test)]
+mod test;
+
 pub(in crate::scenes::running::game::battlescape) use plugin::GameBattleScapeHoverPanelScenePlugin;
 
-// The panel root marker — `pub` under `test-support` (the hover test asserts the bare-floor
-// Hidden state), `pub(crate)` otherwise (reachable from the battlescape viewport system that
-// measures its width for the RIGHT inset, `unreachable_pub`-clean in the binary).
-crate::support_use!(components::HoverPanelRoot;);
-
-// Test-support-only re-export of the hover-panel's host + object markers, widened to `pub`
-// under `test-support` so the external integration test can name them through
-// `crate::test_support`, and gated so the production binary build stays
-// `unreachable_pub`-clean.
+// Test-support-only re-export of the hover-panel's root + host + object markers, widened to
+// `pub` under `test-support` so the external integration tests (`status_panel`,
+// `real_battle_panel`) can name them through `crate::test_support`. Gated `test-support` so
+// the production binary build stays `unused_imports`/`unreachable_pub`-clean: as of the
+// GTW-275 overlay overhaul nothing in the binary reads `HoverPanelRoot` through this
+// re-export (the panel's own spawn / despawn / update systems and the in-crate `test` module
+// reach it via the internal `components::` path), so an UNCONDITIONAL re-export would be an
+// unused import in the binary (caught by `dbuild`, masked by the `--workspace` clippy's
+// feature unification).
 #[cfg(feature = "test-support")]
 crate::support_use! {
     components::{
         HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
-        HoverObjectProtection, HoverObjectText, HoverStatBlockHost,
+        HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
     };
 }

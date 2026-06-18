@@ -12,8 +12,10 @@
 //!   through the `gdtf_battle_input` seam.
 //! - **AC9** — no selection / no weapon → the weapon content is `Visibility::Hidden`.
 //! - **AC8** — the action-bar no longer carries a Reload button (the removed marker is gone).
-//! - **GTW-295** — the content is CONTAINED + RESPONSIVE: the content carries a responsive
-//!   `min_height` (a `Val::Vh`/`Val::Percent`, NOT a fixed `Val::Px`), and the empty-state
+//! - **GTW-298 rework** — the cluster matches the AUTHORITATIVE structure: the Overall Weapon
+//!   Panel 2×2 grid (Combined / Firemode / Item / Aim) + the separate Stance Panel, the
+//!   relocated firemode / aim / stance controls present in their new panels, and all sizing
+//!   RESPONSIVE (`Val::Vw`/`Val::Vh`/`Val::Percent`, NOT a fixed `Val::Px`); the empty-state
 //!   hide uses `Display::None` (removed from layout) so a hidden weapon block takes no space.
 
 use bevy::{
@@ -23,8 +25,10 @@ use bevy::{
     ui::{Display, widget::Button},
 };
 use gdtf_app::test_support::{
-    AppState, BattleScapeState, ReloadButton, RunningState, WeaponContent, WeaponMagazineText,
-    WeaponNameText, WeaponPanelRoot,
+    AimPanel, AimToggleButton, AppState, BattleScapeState, BottomBarRoot, CombinedWeaponPanel,
+    ModePanelRoot, ReloadButton, RunningState, StancePanelRoot, StanceProneButton,
+    StanceStandingButton, WeaponContent, WeaponImage, WeaponItemButton, WeaponItemPanel,
+    WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
 };
 use gdtf_battle_input::{SelectedShooter, dispatch_act_intents};
 use gdtf_battle_sim::{
@@ -39,7 +43,10 @@ use gdtf_battle_sim::{
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::theme::default_theme;
+use gdtf_ui::{
+    theme::default_theme,
+    themed::{ThemeRole, Themed},
+};
 
 /// A budget large enough to drive the deep walk into the battlescape, bounded so a machine
 /// that never reaches the predicate fails instead of hanging.
@@ -414,14 +421,40 @@ fn weapon_panel_exists_and_is_the_only_reload_button() {
 }
 
 // ---------------------------------------------------------------------------------
-// GTW-295 — the weapon content is CONTAINED + RESPONSIVE, and the empty-state hide uses
-// Display::None (removed from layout) — not just Visibility::Hidden.
+// GTW-298 rework — the cluster matches the AUTHORITATIVE structure (Overall 2×2 grid +
+// separate Stance Panel), the relocated controls are present in their new panels, the content
+// is CONTAINED + RESPONSIVE, and the empty-state hide uses Display::None (removed from layout) —
+// not just Visibility::Hidden.
 // ---------------------------------------------------------------------------------
 
 /// The content column's [`Node`], if present.
 fn content_node(app: &mut App) -> Option<Node> {
     let entity = single_with::<WeaponContent>(app)?;
     app.world().get::<Node>(entity).cloned()
+}
+
+/// The [`Node`] of the single entity carrying marker `M`, if present.
+fn node_of<M: Component>(app: &mut App) -> Option<Node> {
+    let entity = single_with::<M>(app)?;
+    app.world().get::<Node>(entity).cloned()
+}
+
+/// `true` when `descendant` has `ancestor` somewhere on its parent chain (walking
+/// [`ChildOf`](bevy::prelude::ChildOf) upward). Used to assert the Stance Panel is laid out
+/// INSIDE the bottom bar (D4) rather than being a free-floating sibling overlay.
+fn is_descendant_of(app: &App, descendant: Entity, ancestor: Entity) -> bool {
+    let mut current = descendant;
+    // Bounded walk (a UI tree is shallow) so a malformed cycle can never hang the test.
+    for _ in 0..32 {
+        let Some(parent) = app.world().get::<ChildOf>(current) else {
+            return false;
+        };
+        if parent.parent() == ancestor {
+            return true;
+        }
+        current = parent.parent();
+    }
+    false
 }
 
 /// GTW-295 — the weapon content carries a RESPONSIVE `min_height` (a window-relative
@@ -459,12 +492,111 @@ fn weapon_content_has_responsive_min_height_not_px() {
     );
 }
 
-/// GTW-295 — the weapon content is laid out HORIZONTAL-FIRST per the mockup: the top-level
-/// content column is a `FlexDirection::Column`, and the name / magazine / reload markers all
-/// live under the content root. Pin-discriminating: it asserts the structure exists and the
-/// content is a column (the mockup shape), not the old square-graphic stack.
+/// GTW-298 rework — the cluster matches the AUTHORITATIVE structure: the Overall Weapon Panel
+/// root holds the four 2×2 grid cells (Combined / Firemode / Item / Aim), the Combined panel
+/// carries the image + the name/mag text column + the LIVE Reload button, the Item panel carries
+/// TWO disabled item buttons, the Firemode panel (the relocated mode panel) and the Aim panel
+/// (the relocated aim toggle) are present, and the SEPARATE Stance Panel carries the three
+/// relocated stance toggles. Pin-discriminating: it asserts the structural + relocated markers —
+/// a revert to the OLD layout (TOP/BOTTOM bands + empty controls frames, controls still in the
+/// action bar) fails the marker asserts.
 #[test]
-fn weapon_content_structure_is_contained_under_the_root() {
+fn weapon_panel_matches_authoritative_structure() {
+    let mut app = battle_running_app();
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    app.update();
+    // Settle the firemode rebuild (.after ApplyTheme) so the relocated mode toggles resolve.
+    app.update();
+
+    // ONE Overall Weapon Panel root + the four grid cells.
+    assert!(
+        single_with::<WeaponPanelRoot>(&mut app).is_some(),
+        "exactly one Overall Weapon Panel root",
+    );
+    assert!(
+        single_with::<CombinedWeaponPanel>(&mut app).is_some(),
+        "the Combined Weapon Panel (top-left) exists",
+    );
+    assert!(
+        single_with::<WeaponImage>(&mut app).is_some(),
+        "the Combined panel carries the full-width Weapon Image placeholder",
+    );
+    assert!(
+        single_with::<WeaponItemPanel>(&mut app).is_some(),
+        "the Item Panel (top-right) exists",
+    );
+    assert!(
+        single_with::<AimPanel>(&mut app).is_some(),
+        "the Aim Panel (bottom-right) exists",
+    );
+
+    // The weapon-text column inside the Combined panel is a vertical column (name over mag).
+    let content = content_node(&mut app);
+    assert!(content.is_some(), "the weapon-text column must exist");
+    let Some(content) = content else { return };
+    assert_eq!(
+        content.flex_direction,
+        FlexDirection::Column,
+        "the weapon-text column is a vertical column (name over magazine)",
+    );
+
+    // The Combined panel carries the name + magazine lines + the LIVE Reload button.
+    assert!(
+        single_with::<WeaponNameText>(&mut app).is_some(),
+        "the Combined panel carries the weapon name line",
+    );
+    assert!(
+        single_with::<WeaponMagazineText>(&mut app).is_some(),
+        "the Combined panel carries the magazine line",
+    );
+    assert!(
+        single_with::<ReloadButton>(&mut app).is_some(),
+        "the Combined panel carries the LIVE Reload button",
+    );
+
+    // The Item Panel carries exactly TWO disabled item buttons.
+    assert_eq!(
+        all_with::<WeaponItemButton>(&mut app).len(),
+        2,
+        "the Item Panel carries two stacked disabled item buttons",
+    );
+
+    // The relocated Firemode panel (the mode-panel root) is present in the cluster.
+    assert!(
+        single_with::<ModePanelRoot>(&mut app).is_some(),
+        "the relocated Firemode panel (ModePanelRoot) is present",
+    );
+    // The relocated Aim toggle is present in the Aim panel.
+    assert!(
+        single_with::<AimToggleButton>(&mut app).is_some(),
+        "the relocated Aim toggle is present",
+    );
+
+    // The SEPARATE Stance Panel carries the three relocated stance toggles.
+    assert!(
+        single_with::<StancePanelRoot>(&mut app).is_some(),
+        "the separate Stance Panel is present",
+    );
+    assert!(
+        single_with::<StanceStandingButton>(&mut app).is_some()
+            && single_with::<StanceProneButton>(&mut app).is_some(),
+        "the Stance Panel carries the relocated stance toggles",
+    );
+}
+
+/// GTW-298 — the cluster cells size RESPONSIVELY: the Overall panel root carries a
+/// window-relative `Val::Vw`/`Val::Vh` size, and the grid cells (Combined, Item) split it by
+/// `Val::Percent` — NOT fixed `Val::Px`. The separate Stance Panel is a `Val::Vw`-positioned
+/// fixed-fraction column. Pin-discriminating: a revert to a px-pinned layout fails the unit-kind
+/// asserts.
+#[test]
+fn weapon_panel_bands_size_responsively_not_px() {
     let mut app = battle_running_app();
     spawn_armed_and_select(
         &mut app,
@@ -475,27 +607,330 @@ fn weapon_content_structure_is_contained_under_the_root() {
     );
     app.update();
 
-    let node = content_node(&mut app);
-    assert!(node.is_some(), "the weapon content column must exist");
-    let Some(node) = node else { return };
-    assert_eq!(
-        node.flex_direction,
-        FlexDirection::Column,
-        "the content is a vertical column (graphic row above the info column)",
+    // The root is sized in window-relative units (Vw width + Vh height), not fixed px.
+    let root = node_of::<WeaponPanelRoot>(&mut app);
+    assert!(root.is_some(), "the Overall Weapon Panel root must exist");
+    let Some(root) = root else { return };
+    assert!(
+        matches!(root.width, Val::Vw(_) | Val::Vh(_) | Val::Percent(_)),
+        "the panel root width is responsive (Vw/Vh/Percent), not Px — got {:?}",
+        root.width,
+    );
+    assert!(
+        matches!(root.height, Val::Vh(_) | Val::Vw(_) | Val::Percent(_)),
+        "the panel root height is responsive (Vh/Vw/Percent), not Px — got {:?}",
+        root.height,
     );
 
-    // The name / magazine / reload widgets exist (the info column under the content).
+    // The Combined + Item grid cells split their columns by Percent height (the 3/4 split), not
+    // fixed px.
+    let combined = node_of::<CombinedWeaponPanel>(&mut app);
+    let items = node_of::<WeaponItemPanel>(&mut app);
+    let Some(combined) = combined else { return };
+    let Some(items) = items else { return };
     assert!(
-        single_with::<WeaponNameText>(&mut app).is_some(),
-        "the content carries the weapon name line",
+        matches!(combined.height, Val::Percent(_)),
+        "the Combined cell height is a Percent of its column, not Px — got {:?}",
+        combined.height,
     );
     assert!(
-        single_with::<WeaponMagazineText>(&mut app).is_some(),
-        "the content carries the magazine line",
+        matches!(items.height, Val::Percent(_)),
+        "the Item cell height is a Percent of its column, not Px — got {:?}",
+        items.height,
+    );
+
+    // The separate Stance Panel is a fixed-fraction-of-window (Vw) width column.
+    let stance = node_of::<StancePanelRoot>(&mut app);
+    let Some(stance) = stance else { return };
+    assert!(
+        matches!(stance.width, Val::Vw(_)),
+        "the separate Stance Panel width is a fixed window fraction (Vw), not Px — got {:?}",
+        stance.width,
+    );
+}
+
+/// D4 (2026-06-18 screenshot review) — the Stance Panel is laid out INSIDE the bottom bar: its
+/// [`StancePanelRoot`] is a DESCENDANT of the [`BottomBarRoot`] container, not a free-floating
+/// sibling overlay sitting on top of the bottom panel's edge. Pin-discriminating: a revert to
+/// parenting the stance under the weapon root (or anywhere outside the bar) fails the ancestry
+/// assert.
+#[test]
+fn stance_panel_is_child_of_the_bottom_bar() {
+    let mut app = battle_running_app();
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    app.update();
+
+    let stance = single_with::<StancePanelRoot>(&mut app);
+    let bar = single_with::<BottomBarRoot>(&mut app);
+    assert!(
+        stance.is_some() && bar.is_some(),
+        "both the Stance Panel and the bottom bar must exist in BattleRunning",
+    );
+    let (Some(stance), Some(bar)) = (stance, bar) else {
+        return;
+    };
+    assert!(
+        is_descendant_of(&app, stance, bar),
+        "the Stance Panel must be laid out INSIDE the bottom bar (a descendant of BottomBarRoot), \
+         not a free-floating overlay",
+    );
+}
+
+/// D-B (2026-06-18 screenshot review) — the Stance Panel is its OWN bordered sub-panel: its
+/// [`StancePanelRoot`] carries `Themed(ThemeRole::Panel)` (the same themed-box role the weapon
+/// cluster's panels use), NOT a plain transparent `Node`. Pin-discriminating: the prior D4
+/// plain-`Node` Stance column carried NO `Themed`, so this assert fails on a revert.
+#[test]
+fn stance_panel_is_a_themed_panel_box() {
+    let mut app = battle_running_app();
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    app.update();
+
+    let Some(stance) = single_with::<StancePanelRoot>(&mut app) else {
+        return;
+    };
+    assert_eq!(
+        app.world().get::<Themed>(stance).map(|t| t.0),
+        Some(ThemeRole::Panel),
+        "the Stance Panel must be its OWN bordered Themed(Panel) box (D-B), like the weapon cluster",
+    );
+}
+
+/// D-B — the Stance Panel is sized to the SAME HEIGHT as the Overall Weapon Panel (NOT the full
+/// bottom-bar height) and a fixed relative width: both height fields are the SAME responsive
+/// `Val::Vh` value (so the two bordered panels are the same height), and the width is a fixed
+/// window fraction (`Val::Vw`), never a fixed `Val::Px`. Pin-discriminating: sizing the stance to
+/// the full bar height (a different `Vh`) or to a px width fails the equal-height / unit-kind
+/// asserts.
+#[test]
+fn stance_panel_matches_overall_weapon_panel_height_relative_units() {
+    let mut app = battle_running_app();
+    app.update();
+
+    let stance = node_of::<StancePanelRoot>(&mut app);
+    let overall = node_of::<WeaponPanelRoot>(&mut app);
+    let (Some(stance), Some(overall)) = (stance, overall) else {
+        return;
+    };
+
+    // Width is a fixed window fraction (Vw), never Px.
+    assert!(
+        matches!(stance.width, Val::Vw(_)),
+        "the Stance Panel width is a fixed window fraction (Vw), not Px — got {:?}",
+        stance.width,
+    );
+    // Height is responsive (Vh) and EXACTLY the Overall Weapon Panel's height — the same height,
+    // not the full bottom-bar height.
+    assert!(
+        matches!(stance.height, Val::Vh(_)),
+        "the Stance Panel height is responsive (Vh), not Px — got {:?}",
+        stance.height,
+    );
+    assert_eq!(
+        stance.height, overall.height,
+        "the Stance Panel height EQUALS the Overall Weapon Panel height (same height, not the full \
+         bottom-bar height) — D-B",
+    );
+    // B FAIL (2026-06-18 screenshot review) — the Stance Panel is anchored the SAME relative
+    // `bottom` as the Overall Weapon Panel: a non-zero `Val::Vh` inset above the window bottom (NOT
+    // flush at `bottom: 0`, which ran its framed box to the window's bottom edge so it read as
+    // loose buttons on the bar fill). A revert to `bottom: Px(0.0)` (or a mismatch with the Overall
+    // panel) fails this.
+    assert_eq!(
+        stance.bottom, overall.bottom,
+        "the Stance Panel is anchored the SAME relative bottom as the Overall Weapon Panel (so the \
+         two bordered boxes are flush-bottomed and both inset off the window edge) — got {:?} vs {:?}",
+        stance.bottom, overall.bottom,
+    );
+    let stance_bottom = match stance.bottom {
+        Val::Vh(v) => v,
+        _ => 0.0,
+    };
+    assert!(
+        matches!(stance.bottom, Val::Vh(_)) && stance_bottom > 0.0,
+        "the Stance Panel is anchored a bottom-padding ABOVE the window bottom — a non-zero \
+         relative Vh inset, not flush at bottom: 0 — got {:?}",
+        stance.bottom,
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-275 layout overhaul (items 1 / 4 / 6 / 7) — the BOTTOM BAR is the one opaque strip that
+// reduces the map, full-width + responsive height; the weapon panel sits IN it.
+// ---------------------------------------------------------------------------------
+
+/// GTW-275 layout overhaul (items 1 / 4) — exactly ONE bottom bar exists in `BattleRunning`,
+/// sized FULL window WIDTH (`Val::Vw(100)`) with a RESPONSIVE height (a window-relative
+/// `Val::Vh`/`Val::Percent`, NOT a fixed `Val::Px`). It is the only UI that reduces the map.
+/// Pin-discriminating: a missing bar, a non-full width, or a px-pinned height fails the asserts.
+#[test]
+fn bottom_bar_exists_full_width_responsive_height() {
+    let mut app = battle_running_app();
+    app.update();
+
+    assert!(
+        single_with::<BottomBarRoot>(&mut app).is_some(),
+        "exactly one bottom bar is spawned in BattleRunning",
+    );
+    let bar = node_of::<BottomBarRoot>(&mut app);
+    assert!(bar.is_some(), "the bottom bar must have a Node");
+    let Some(bar) = bar else { return };
+    assert_eq!(
+        bar.width,
+        Val::Vw(100.0),
+        "the bottom bar is full window width (Vw 100) — items 1 / 4",
     );
     assert!(
-        single_with::<ReloadButton>(&mut app).is_some(),
-        "the content carries the LIVE Reload button",
+        matches!(bar.height, Val::Vh(_) | Val::Percent(_)),
+        "the bottom bar height is responsive (Vh/Percent), not Px — got {:?}",
+        bar.height,
+    );
+    // It is anchored to the window bottom (absolute, bottom: 0) so the map ends at its top edge.
+    assert_eq!(
+        bar.position_type,
+        PositionType::Absolute,
+        "the bottom bar is an absolute strip",
+    );
+    assert_eq!(
+        bar.bottom,
+        Val::Px(0.0),
+        "the bottom bar is anchored to the window bottom",
+    );
+}
+
+/// Screenshot review 2026-06-18 — the bottom panel insets its content (weapon cluster + stance
+/// column) on ALL FOUR sides via `Node::padding`, in RELATIVE units (`Val::Vw` left/right,
+/// `Val::Vh` top/bottom — NOT a fixed `Val::Px`), so the bottom row (Prone / firemode buttons /
+/// Aim) is not flush against the window bottom and the cluster has breathing room on every edge,
+/// matching the mockup. It survives the theme pass (`repad_bottom_bar` re-applies it after
+/// `apply_theme`'s `box_node` clobbers `Node::padding`). Pin-discriminating: a zero / missing
+/// padding, OR any edge reverted to a fixed `Val::Px`, fails the unit-kind + non-zero asserts.
+#[test]
+fn bottom_bar_content_has_four_sided_relative_padding() {
+    let mut app = battle_running_app();
+    app.update();
+
+    let bar = node_of::<BottomBarRoot>(&mut app);
+    assert!(bar.is_some(), "the bottom bar must have a Node");
+    let Some(bar) = bar else { return };
+    let pad = bar.padding;
+
+    // Every edge is a non-zero, window-relative inset (Vw on the horizontal axis, Vh on the
+    // vertical) — never a fixed Px (px does not survive a resize) and never zero (zero = flush).
+    // A non-relative kind maps to 0.0, so the non-zero assert below catches both a Px revert and
+    // a zero inset on any edge.
+    for (edge, val) in [
+        ("left", pad.left),
+        ("right", pad.right),
+        ("top", pad.top),
+        ("bottom", pad.bottom),
+    ] {
+        let frac = match val {
+            Val::Vw(v) | Val::Vh(v) | Val::Percent(v) => v,
+            _ => 0.0,
+        };
+        assert!(
+            frac > 0.0,
+            "bottom-bar {edge} padding must be a non-zero RELATIVE inset (Vw/Vh/Percent), got {val:?} — so the content is not flush against the {edge} edge",
+        );
+    }
+    // The horizontal edges track WIDTH (Vw) and the vertical edges track HEIGHT (Vh), so the
+    // gutter is uniform-feeling on resize — guards against a swap to the wrong axis.
+    assert!(
+        matches!(pad.left, Val::Vw(_)) && matches!(pad.right, Val::Vw(_)),
+        "the left/right padding tracks window WIDTH (Vw) — got {:?} / {:?}",
+        pad.left,
+        pad.right,
+    );
+    assert!(
+        matches!(pad.top, Val::Vh(_)) && matches!(pad.bottom, Val::Vh(_)),
+        "the top/bottom padding tracks window HEIGHT (Vh) — got {:?} / {:?}",
+        pad.top,
+        pad.bottom,
+    );
+}
+
+/// GTW-275 layout overhaul (item 6) / D5 / A FAIL (2026-06-18 screenshot review) — the weapon
+/// panel sits IN the bottom bar: it is anchored a bottom-padding's worth ABOVE the window bottom
+/// (`bottom: Vh(_)`, a NON-ZERO RELATIVE inset — NOT flush at `bottom: 0`, which jammed the
+/// Firemode / Aim bottom row against the window edge) with a FIXED `Val::Vw` width (item 7 — the
+/// map area does not shift when the contents change) and a responsive `Val::Vh` height that is
+/// INSET inside the bar's CONTENT box — strictly LESS than the full bar height, so it neither
+/// bleeds out the top (item 6) nor jams the bottom row against the window edge (the D5 inset off
+/// both vertical edges). The `bottom` offset + both heights are `Val::Vh` (relative units), never
+/// `Val::Px`. Pin-discriminating: a non-Vw width, a non-Vh height, a `bottom: 0` flush anchor, or a
+/// panel as TALL as (or taller than) the full bar (bleed / no inset) fails.
+#[test]
+fn weapon_panel_sits_inside_the_bottom_bar() {
+    let mut app = battle_running_app();
+    app.update();
+
+    let bar = node_of::<BottomBarRoot>(&mut app);
+    let panel = node_of::<WeaponPanelRoot>(&mut app);
+    assert!(bar.is_some(), "the bottom bar must exist");
+    assert!(panel.is_some(), "the weapon panel must exist");
+    let Some(bar) = bar else { return };
+    let Some(panel) = panel else { return };
+
+    // The panel is a fixed-fraction-of-window width (item 7).
+    assert!(
+        matches!(panel.width, Val::Vw(_)),
+        "the weapon panel width is a fixed window fraction (Vw), not Px/auto — got {:?}",
+        panel.width,
+    );
+    // The panel is anchored a bottom-padding ABOVE the window bottom (A FAIL fix): a NON-ZERO
+    // RELATIVE `Vh` inset, NOT flush at `bottom: 0` (which jammed the Firemode / Aim row against
+    // the window's bottom edge). A revert to `bottom: Px(0.0)` (or any non-Vh / zero offset) fails.
+    let bottom_inset = match panel.bottom {
+        Val::Vh(v) => v,
+        _ => 0.0,
+    };
+    assert!(
+        matches!(panel.bottom, Val::Vh(_)) && bottom_inset > 0.0,
+        "the weapon panel is anchored a bottom-padding ABOVE the window bottom — a non-zero \
+         relative Vh inset, not flush at bottom: 0 — got {:?}",
+        panel.bottom,
+    );
+    // Both heights are responsive (Vh), never Px (a non-Vh kind maps to 0.0 below, which the
+    // non-zero + strict-less asserts then catch).
+    assert!(
+        matches!(panel.height, Val::Vh(_)),
+        "the weapon panel height is responsive (Vh), not Px — got {:?}",
+        panel.height,
+    );
+    assert!(
+        matches!(bar.height, Val::Vh(_)),
+        "the bottom-bar height is responsive (Vh), not Px — got {:?}",
+        bar.height,
+    );
+    let panel_h = match panel.height {
+        Val::Vh(v) => v,
+        _ => 0.0,
+    };
+    let bar_h = match bar.height {
+        Val::Vh(v) => v,
+        _ => 0.0,
+    };
+    // The panel height is INSET inside the bar's content box — strictly less than the full bar
+    // height (D5: it insets off both vertical edges), so it neither bleeds out the top (item 6) nor
+    // jams the bottom row against the window bottom.
+    assert!(
+        panel_h < bar_h,
+        "the weapon panel height ({panel_h}vh) must be INSET inside the bar's content box — strictly \
+         less than the full bar height ({bar_h}vh) — so it neither bleeds out the top nor jams the \
+         bottom (D5 inset)",
     );
 }
 

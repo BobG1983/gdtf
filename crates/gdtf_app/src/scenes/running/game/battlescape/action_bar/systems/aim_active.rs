@@ -40,9 +40,37 @@
 use bevy::prelude::*;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::Aiming;
-use gdtf_ui::ActiveButton;
+use gdtf_ui::{ActiveButton, ButtonLabel, spawn_button, theme::GdtfTheme};
 
 use crate::scenes::running::game::battlescape::action_bar::components::AimToggleButton;
+
+/// Spawns the **Aim toggle** button ([`AimToggleButton`]), sized to FILL its parent cell, and
+/// returns its [`Entity`] so a caller can parent it under the host layout cell (GTW-298).
+///
+/// The reusable Aim-toggle constructor (the `spawn_mode_panel` / `spawn_stance_panel`
+/// precedent): GTW-298 relocated the Aim toggle into the weapon-cluster's Aim Panel, spawned by
+/// the weapon-panel module through this shared constructor — NOT inside the action bar. The
+/// press → intent routing (`action_bar_button_intents`) and the active-mark sync
+/// ([`sync_aim_button_active`]) are UNCHANGED: they query the [`AimToggleButton`] marker
+/// parent-agnostically, so the toggle works wherever it is parented. Takes `&mut Commands` +
+/// the live theme.
+pub(in crate::scenes::running::game::battlescape) fn spawn_aim_button(
+    commands: &mut Commands,
+    theme: &GdtfTheme,
+) -> Entity {
+    let button = spawn_button(commands, theme, ButtonLabel::new("Aim"), AimToggleButton);
+    // FILL the Aim Panel box (GTW-298). Overwriting the auto-sized `box_node` is safe —
+    // `apply_theme` re-applies the theme-owned border / radius / padding every run, preserving
+    // these layout fields.
+    commands.entity(button).insert(Node {
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        ..default()
+    });
+    button
+}
 
 /// Syncs the [`ActiveButton`](gdtf_ui::ActiveButton) marker on the
 /// [`AimToggleButton`](super::super::components::AimToggleButton) entity to the

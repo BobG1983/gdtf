@@ -67,16 +67,29 @@ crate::support_use! {
     };
 }
 
-// The GTW-275 weapon panel (bottom-left): the selected ganger's weapon graphic placeholder
-// + name + magazine cur/max + a LIVE Reload button + throwable placeholders. Its root climbs
-// (like the hover-panel root) so `set_world_viewport` insets the world map's LEFT/BOTTOM
-// margins around it (AC9) AND the AC tests can assert its presence.
+// The GTW-275 layout-overhaul BOTTOM BAR: the ONE opaque full-width strip at the bottom of
+// the screen — the only UI that reduces the world map (the corner panels are overlays). Its
+// root climbs so `set_world_viewport` measures its height for the SOLE viewport inset AND the
+// AC tests can assert its presence. The weapon panel sits inside it.
+mod bottom_bar;
+pub(in crate::scenes::running::game::battlescape) use bottom_bar::GameBattleScapeBottomBarScenePlugin;
+crate::support_use!(bottom_bar::BottomBarRoot;);
+
+// The GTW-275 / GTW-298 weapon cluster (bottom-left): the Overall Weapon Panel 2×2 grid
+// (Combined weapon + Firemode + Item + Aim) plus the separate Stance Panel. It sits INSIDE the
+// bottom bar (GTW-275 overhaul item 6); its root climbs (like the hover-panel root) AND the AC
+// tests can assert its presence.
 mod weapon_panel;
 pub(in crate::scenes::running::game::battlescape) use weapon_panel::GameBattleScapeWeaponPanelScenePlugin;
-crate::support_use!(weapon_panel::WeaponPanelRoot;);
-// Test-support-only re-export of the weapon-panel's content / name / magazine / reload
-// markers (GTW-275), gated so the binary build is `unused`/`unreachable_pub`-clean.
+// Test-support-only re-export of the weapon-cluster's root + content / name / magazine / reload
+// markers + the GTW-298 rework structural markers (Combined / Item / Aim grid cells, image
+// placeholder, disabled item buttons), gated so the binary build is `unused`/`unreachable_pub`-
+// clean. `WeaponPanelRoot` is test-support-ONLY (the GTW-275 overhaul viewport insets by the
+// bottom bar, not the weapon panel — no binary code reads it).
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    weapon_panel::{ReloadButton, WeaponContent, WeaponMagazineText, WeaponNameText};
+    weapon_panel::{
+        AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage, WeaponItemButton,
+        WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+    };
 }

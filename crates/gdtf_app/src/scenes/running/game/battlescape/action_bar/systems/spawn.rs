@@ -2,7 +2,8 @@
 //!
 //! [`spawn_action_bar`] runs `OnEnter(BattleScapeState::BattleRunning)` and builds a
 //! themed [`gdtf_ui`] node tree on the GTW-120 UI camera: a [`spawn_panel`] box
-//! anchored to the bottom of the screen holding the controls — a vertical Stance
+//! anchored to the TOP-CENTRE of the screen (GTW-298 — the contextual-control strip floats over
+//! the map at the top, per the mockup) holding the controls — a vertical Stance
 //! 3-toggle sub-panel (Stand / Kneel / Prone, GTW-267), the aim-toggle button, a vertical
 //! Mode toggle sub-panel (its per-mode toggles built on selection, GTW-265), and the
 //! level-up / level-down buttons — each carrying its own marker, plus the two DEFERRED
@@ -23,12 +24,8 @@
 use bevy::{prelude::*, ui::Val};
 use gdtf_ui::{ButtonLabel, DisabledButton, spawn_button, spawn_panel, theme::GdtfTheme};
 
-use crate::scenes::running::game::battlescape::action_bar::{
-    components::{
-        ActionBarRoot, AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
-    },
-    systems::mode_panel::spawn_mode_panel,
+use crate::scenes::running::game::battlescape::action_bar::components::{
+    ActionBarRoot, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
 };
 
 /// Horizontal gap between the action-bar's buttons, in logical pixels.
@@ -45,38 +42,36 @@ impl BarGapPx {
     const BAR: Self = Self(8.0);
 }
 
-/// Vertical gap between the Stance sub-panel's toggle buttons, in logical pixels.
-///
-/// A named newtype over the gap rather than a bare `f32` (no-bare-types rule): the
-/// vertical stance column's inter-toggle spacing, distinct from the bar's horizontal
-/// [`BarGapPx`] (the `mode_panel` `ModeGapPx` precedent).
-#[derive(Deref, Clone, Copy, PartialEq, Debug)]
-struct StanceGapPx(f32);
-
-impl StanceGapPx {
-    /// The Stance sub-panel's inter-toggle gap: 4 px (a tight stacked toggle column).
-    const PANEL: Self = Self(4.0);
-}
-
 /// Builds the themed action-bar on `OnEnter(BattleScapeState::BattleRunning)`.
 ///
 /// Reads the live [`GdtfTheme`] as `Option<Res<GdtfTheme>>` and no-ops if it is
 /// absent (`bevy-traps.md` #1) — in the running app the theme is present by the time
 /// a battle starts (it loads in `Load`). With the theme present it:
 ///
-/// 1. Spawns the bar root via [`spawn_panel`] (a `Themed(Panel)` box), tagged
-///    [`ActionBarRoot`], laid out as a horizontal flex row anchored to the bottom-centre
-///    of the screen with an inter-button gap.
-/// 2. Spawns the vertical Stance 3-toggle sub-panel (Stand / Kneel / Prone, GTW-267), the
-///    aim-toggle button, the (initially-empty) Mode toggle sub-panel (GTW-265), and the
-///    level-up / level-down buttons — each carrying its own marker so the action systems'
-///    per-marker queries stay disjoint (the GTW-122 precedent).
-/// 3. Spawns the two DEFERRED buttons (reload, end-turn) as [`DisabledButton`] (their
-///    sim acts do not exist yet — they emit no intent; see the marker docs).
-/// 4. Spawns the ENABLED [`FleeButton`] (GTW-240) — an app/lifecycle button (NO
-///    `DisabledButton`) whose press ends the persisting battle via the dedicated
+/// 1. Spawns the bar ROOT as a TRANSPARENT full-window-width centering WRAPPER (no `Themed` /
+///    border / background), tagged [`ActionBarRoot`], anchored to the TOP of the screen and
+///    spanning the full window width with `justify_content: Center` — so its single child (the
+///    compact panel) is centred at the top-middle of the window (D-C, screenshot review
+///    2026-06-18: the strip shrink-wraps + sits top-centre rather than spanning the full width).
+/// 2. Spawns the visible compact PANEL via [`spawn_panel`] (a `Themed(Panel)` box) as a
+///    `width: Auto` / `height: Auto` horizontal flex row that FITS its four buttons, with an
+///    inter-button gap — the bordered strip the player sees.
+/// 3. Spawns the level-up / level-down buttons — each carrying its own marker so the action
+///    systems' per-marker queries stay disjoint (the GTW-122 precedent).
+/// 4. Spawns the DEFERRED end-turn button as a [`DisabledButton`] (its sim act does not
+///    exist yet — it emits no intent; see the marker docs).
+/// 5. Spawns the ENABLED [`FleeButton`] (GTW-240; labelled `"Flee"`, D-D) — an app/lifecycle
+///    button (NO `DisabledButton`) whose press ends the persisting battle via the dedicated
 ///    `flee_button_pressed` handler, not the sim intent seam (flee is not a sim act).
-/// 5. Parents every control under the bar root.
+/// 6. Parents the four controls under the compact panel, then the panel under the wrapper root.
+///
+/// GTW-298 RELOCATED the Stance 3-toggle sub-panel, the Aim toggle, and the Firemode 3-toggle
+/// sub-panel OUT of this bar and INTO the weapon cluster (the weapon-panel module spawns them
+/// into its Stance / Aim / Firemode panels via the shared `spawn_stance_panel` /
+/// `spawn_mode_panel` constructors + the `AimToggleButton` marker). The press → intent router
+/// (`action_bar_button_intents`) and the active-mark syncs are UNCHANGED — they query the
+/// stance / aim markers parent-agnostically, so the relocated controls keep working. This bar
+/// now hosts only the level + end-turn + flee controls.
 ///
 /// The buttons render on the GTW-120 UI camera (a `bevy_ui` tree, no `RenderLayers`),
 /// and are `Themed(Button)` for free (`spawn_button` attaches the marker). Param-only
@@ -91,88 +86,59 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         return;
     };
 
-    // ROOT: the bottom-anchored bar box. `spawn_panel` paints the panel look; we add a
-    // horizontal row layout anchored to the bottom-centre via absolute positioning, plus
-    // the inter-button gap. The layout fields survive `apply_theme` (it overrides only the
-    // theme-owned border / radius / padding for the Panel role — the menu panel precedent).
-    let root = spawn_panel(&mut commands, &theme);
-    commands.entity(root).insert((
-        ActionBarRoot,
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(0.0),
-            left: Val::Percent(0.0),
-            right: Val::Percent(0.0),
-            justify_content: JustifyContent::Center,
-            // GTW-272: FIT CONTENTS vertically and grow UPWARD from the bottom margin.
-            // `height: Auto` sizes the bar to its tallest child (the 3-button Stance /
-            // Mode columns) rather than a fixed/collapsed height, and `align_items:
-            // FlexEnd` anchors every child's BOTTOM edge to the bar's bottom (= the
-            // screen's bottom via `bottom: 0`), so a tall column grows upward and stays
-            // fully on-screen — the old `Center` centred a tall column on the bar's
-            // mid-line, pushing its bottom off the bottom edge (the Stance-clip bug). This
-            // is fixed in the bar layout, NOT gdtf_ui's generic `box_node` height.
-            height: Val::Auto,
-            align_items: AlignItems::FlexEnd,
-            column_gap: Val::Px(*BarGapPx::BAR),
-            ..default()
-        },
-    ));
+    // ROOT: a TRANSPARENT full-window-width centering WRAPPER anchored to the TOP of the screen
+    // (D-C, 2026-06-18 screenshot review). It is NOT itself the visible compact panel — it is an
+    // invisible absolute row spanning the full window width whose ONLY job is to horizontally
+    // CENTRE its single child (the fit-content button panel) via `justify_content: Center`. This
+    // is how a fit-content node is centred under absolute positioning in `bevy_ui` (there is no
+    // CSS `translateX(-50%)`): the panel sizes to its 4 buttons, and the full-width parent centres
+    // it at the top-middle of the window. It carries NO `Themed` / border / background, so only
+    // the inner panel reads as a bordered box. It carries the [`ActionBarRoot`] marker, so the
+    // `OnExit` recursive despawn tears down the wrapper + the panel + the buttons by this one
+    // marker. It is an absolute overlay (like the corner status / hover panels), so it does NOT
+    // inset the world map — `set_world_viewport` measures only the bottom bar.
+    let root = commands
+        .spawn((
+            ActionBarRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                // Anchor the centering row to the TOP, spanning the full window WIDTH so its
+                // `justify_content: Center` can centre the compact panel at the top-middle
+                // (GTW-298 kept the top-of-screen float; this fix shrink-wraps + centres it).
+                top: Val::Px(0.0),
+                left: Val::Vw(0.0),
+                width: Val::Vw(100.0),
+                // FIT CONTENTS vertically (the wrapper is as tall as the panel) and anchor the
+                // panel to the top edge.
+                height: Val::Auto,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::FlexStart,
+                ..default()
+            },
+        ))
+        .id();
     // GTW-271 — the GTW-262 `Interaction::default()` on the bar ROOT is REMOVED: it made
     // `bevy_ui`'s `ui_focus_system` mark the whole bar area `Hovered` (the "green bar"
     // hover-paint), and the camera pan no longer needs it to be suppressed over the bar —
     // the presenter's edge-pan now gates on the cursor being INSIDE the world-map VIEWPORT
     // rect (the bar sits in the margin, outside that rect), so it never pans beneath the bar.
 
-    // STANCE sub-panel (GTW-267): a vertical `spawn_panel` column holding the three
-    // mutually-exclusive stance toggles in a sensible height order (Stand, Kneel, Prone).
-    // `sync_stance_buttons_active` marks the current one ActiveButton; each press pushes a
-    // DIRECT `ActIntent::SetStance` for its posture.
-    let stance_panel = spawn_panel(&mut commands, &theme);
-    commands.entity(stance_panel).insert((
-        StancePanelRoot,
-        Node {
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(*StanceGapPx::PANEL),
-            // GTW-272: FIT CONTENTS vertically — the column sizes to its three stacked
-            // toggles (no fixed/min height), so the full Stance column is on-screen.
-            height: Val::Auto,
-            ..default()
-        },
-    ));
-    let stand = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Stand"),
-        StanceStandingButton,
-    );
-    let kneel = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Kneel"),
-        StanceKneelingButton,
-    );
-    let prone = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Prone"),
-        StanceProneButton,
-    );
-    commands
-        .entity(stance_panel)
-        .add_children(&[stand, kneel, prone]);
+    // PANEL: the visible compact bordered button row (D-C). `spawn_panel` paints the panel look;
+    // we overwrite its [`Node`] with a `width: Auto` / `height: Auto` row that FITS its 4 buttons
+    // (not the old full-window stretch), plus the inter-button gap. As the single child of the
+    // full-width wrapper above, it is centred at the top-middle. The layout fields survive
+    // `apply_theme` (it overrides only the theme-owned border / radius / padding for the Panel
+    // role — the menu panel precedent).
+    let panel = spawn_panel(&mut commands, &theme);
+    commands.entity(panel).insert(Node {
+        // FIT CONTENTS on BOTH axes — the panel is exactly as wide + tall as its 4 buttons, so it
+        // reads as a compact framed strip rather than a full-width bar (D-C: width Auto, not 100%).
+        width: Val::Auto,
+        height: Val::Auto,
+        column_gap: Val::Px(*BarGapPx::BAR),
+        ..default()
+    });
 
-    let aim = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Aim"),
-        AimToggleButton,
-    );
-    // MODE sub-panel (GTW-265): a vertical `spawn_panel` column whose per-mode toggle
-    // children are (re)built to the SELECTED weapon's offered modes by
-    // `rebuild_mode_buttons`. Empty at spawn (no selection yet); filled on the first
-    // selection change. This REPLACED the GTW-254 popup picker (no modal, no scrim).
-    let mode_panel = spawn_mode_panel(&mut commands, &theme);
     let level_up = spawn_button(
         &mut commands,
         &theme,
@@ -196,28 +162,17 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         (EndTurnButton, DisabledButton),
     );
 
-    // The flee button — an ENABLED app/lifecycle button (NO DisabledButton, unlike the two
-    // deferred buttons above). Its press ends the persisting battle via the dedicated
+    // The flee button — an ENABLED app/lifecycle button (NO DisabledButton, unlike the
+    // deferred end-turn button above). Its press ends the persisting battle via the dedicated
     // `flee_button_pressed` handler (GTW-240), NOT the sim intent seam (flee is not a sim act).
-    let flee = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Flee battle"),
-        FleeButton,
-    );
+    let flee = spawn_button(&mut commands, &theme, ButtonLabel::new("Flee"), FleeButton);
 
-    // Parent every control under the bar root, left-to-right. The Stance + Mode sub-panels
-    // are nested column children of the horizontal bar row. Mode precedes Stance (GTW-272):
-    // the Mode sub-panel renders to the LEFT of the Stance sub-panel.
-    commands.entity(root).add_children(&[
-        mode_panel,
-        stance_panel,
-        aim,
-        level_up,
-        level_down,
-        end_turn,
-        flee,
-    ]);
+    // Parent the four controls under the compact PANEL (left-to-right), then parent the panel
+    // under the full-width centering WRAPPER (root) so it is centred at the top-middle (D-C).
+    commands
+        .entity(panel)
+        .add_children(&[level_up, level_down, end_turn, flee]);
+    commands.entity(root).add_children(&[panel]);
 }
 
 /// Despawns the action-bar on `OnExit(BattleScapeState::BattleRunning)`.

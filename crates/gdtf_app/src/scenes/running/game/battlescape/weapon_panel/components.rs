@@ -1,39 +1,97 @@
-//! Marker components for the battlescape weapon panel (GTW-275, bottom-left).
+//! Marker components for the battlescape weapon cluster (GTW-275 / GTW-295 / GTW-298,
+//! bottom-left).
 //!
-//! The weapon panel is a battle-scoped `gdtf_ui` panel showing the selected player
-//! ganger's weapon: a graphic PLACEHOLDER (no per-weapon art / items atlas), the
-//! weapon's [`WeaponName`](gdtf_battle_sim::WeaponName), the magazine `"cur/max"` text,
-//! a LIVE Reload button, and throwable placeholder slot(s). Its tree is a
-//! [`spawn_panel`](gdtf_ui::spawn_panel) box (the [`WeaponPanelRoot`] marker) holding
-//! those children; the per-widget markers below let the per-update mutate find each by
-//! its stored id ([[ui-mutate-not-respawn]]). UI/view only — it reads the sim's weapon
-//! components + the input crate's `SelectedShooter`, owns no combat rule.
+//! The weapon cluster is a battle-scoped `gdtf_ui` panel group laid out to the AUTHORITATIVE
+//! structure (GTW-298, user 2026-06-18): the [`WeaponPanelRoot`] **Overall Weapon Panel** is a
+//! 2×2 grid — a LEFT column of the **Combined Weapon Panel** ([`CombinedWeaponPanel`], top 3/4
+//! height) over the **Firemode Panel** (bottom 1/4 height) and a RIGHT column of the **Item
+//! Panel** ([`WeaponItemPanel`], same 3/4 height) over the **Aim Panel** ([`AimPanel`], same
+//! 1/4 height). A SEPARATE **Stance Panel** sits to the RIGHT of the Overall Weapon Panel
+//! (same height, fixed-% width), wrapping the three stance toggles.
+//!
+//! The Combined Weapon Panel is ONE bordered box: a full-width [`WeaponImage`] placeholder
+//! (top 1/2 height) over an info row of [the [`WeaponContent`] weapon-text column (name +
+//! magazine, 3/4 width) | the LIVE [`ReloadButton`] (1/4 width)] (bottom 1/2 height). The Item
+//! Panel holds two stacked DISABLED [`WeaponItemButton`]s (items are not modeled yet). The
+//! Firemode / Aim / Stance panels host the controls RELOCATED from the action bar (GTW-298):
+//! the firemode toggles, the aim toggle, and the stance toggles keep their action-bar markers
+//! so the existing press → intent + active-mark systems drive them parent-agnostically.
+//!
+//! The per-widget markers below let the per-update mutate find each by its stored id
+//! ([[ui-mutate-not-respawn]]); the structural markers let the AC tests assert the hierarchy.
+//! UI/view only — it reads the sim's weapon components + the input crate's `SelectedShooter`,
+//! owns no combat rule.
 
 use bevy::prelude::*;
 
 crate::support_item! {
-    /// Marks the **root** node of the weapon-panel tree (the
-    /// [`spawn_panel`](gdtf_ui::spawn_panel) box holding the weapon content), so the
-    /// `OnExit(BattleRunning)` despawn finds and recursively tears down the whole panel by
-    /// this one marker rather than tracking each child.
+    /// Marks the **root** node of the weapon-cluster tree — the **Overall Weapon Panel** box
+    /// holding the 2×2 grid, so the `OnExit(BattleRunning)` despawn finds and recursively tears
+    /// down the whole cluster by this one marker rather than tracking each child.
     ///
     /// Widened toward `crate::test_support` via [`support_item!`](crate::support_item) so the
-    /// GTW-275 AC tests can assert the panel's presence, AND re-exported to the battlescape
-    /// neighborhood so the sibling `set_world_viewport` system can MEASURE the panel root's
-    /// [`ComputedNode`](bevy::ui::ComputedNode) size to inset the world-map viewport's
-    /// LEFT/BOTTOM margins (AC9). A unit marker: presence on an entity is the whole signal
-    /// (no-bare-types rule).
+    /// AC tests can assert the panel's presence + measure (it sits IN the bottom bar — the
+    /// layout-overhaul viewport insets the map by the BOTTOM BAR, not this panel). A unit
+    /// marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponPanelRoot;
 }
 
 crate::support_item! {
-    /// Marks the weapon panel's **content container** — the column holding the graphic /
-    /// name / magazine / reload (everything EXCEPT the throwable placeholders), hidden as a
-    /// unit when there is no selection / no weapon (AC9 empty state). A unit marker:
-    /// presence on an entity is the whole signal (no-bare-types rule).
+    /// Marks the weapon cluster's **content container** — the weapon-text column inside the
+    /// Combined Weapon Panel's info row holding the name / magazine lines (the
+    /// [`WeaponImage`] + the [`ReloadButton`] are SIBLINGS, not children, so they stay framed
+    /// in the empty state), hidden as a unit when there is no selection / no weapon (AC9 empty
+    /// state, via [`Display::None`](bevy::ui::Display)). A unit marker: presence on an entity
+    /// is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponContent;
+}
+
+crate::support_item! {
+    /// Marks the **Combined Weapon Panel** (top-left grid cell, top 3/4 height) — the ONE
+    /// bordered box wrapping the full-width [`WeaponImage`] over the info row of [the
+    /// [`WeaponContent`] weapon-text column | the LIVE [`ReloadButton`]]. A structural marker
+    /// letting the AC tests assert the grid cell exists (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct CombinedWeaponPanel;
+}
+
+crate::support_item! {
+    /// Marks the **Weapon Image** placeholder inside the Combined Weapon Panel — the full-width
+    /// "no image" framed box (top 1/2 height) standing in for per-weapon art that does NOT
+    /// exist (the items atlas is deliberately not loaded). A structural marker letting the AC
+    /// tests assert the image cell exists (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct WeaponImage;
+}
+
+crate::support_item! {
+    /// Marks the **Item Panel** (top-right grid cell, same 3/4 height as the Combined panel) —
+    /// the framed box holding the two stacked DISABLED [`WeaponItemButton`]s. A structural
+    /// marker letting the AC tests assert the grid cell exists (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct WeaponItemPanel;
+}
+
+crate::support_item! {
+    /// Marks a **DISABLED Item Button** in the Item Panel — one of TWO stacked
+    /// [`gdtf_ui`](gdtf_ui) buttons (1/2 height each, full width) standing in for unmodeled
+    /// inventory items. Each carries [`DisabledButton`](gdtf_ui::DisabledButton) so it renders
+    /// in the disabled color and emits no interaction (items are not implemented yet). A
+    /// structural marker letting the AC tests assert both item buttons exist (no-bare-types
+    /// rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct WeaponItemButton;
+}
+
+crate::support_item! {
+    /// Marks the **Aim Panel** (bottom-right grid cell, same 1/4 height as the Firemode panel,
+    /// same width as the Item Panel) — the framed box wrapping the single relocated Aim toggle
+    /// (the action-bar `AimToggleButton`, GTW-298), which fills the box. A structural marker
+    /// letting the AC tests assert the grid cell exists (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct AimPanel;
 }
 
 crate::support_item! {

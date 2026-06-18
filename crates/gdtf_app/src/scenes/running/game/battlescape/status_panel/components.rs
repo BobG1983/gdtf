@@ -15,13 +15,14 @@ use bevy::prelude::*;
 /// `OnExit(BattleRunning)` despawn finds and recursively tears down the whole panel by
 /// this one marker rather than tracking each child.
 ///
-/// Widened to `pub(in …battlescape)` (GTW-271) so the sibling battlescape-level
-/// `set_world_viewport` system can MEASURE the panel root's
-/// [`ComputedNode`](bevy::ui::ComputedNode) width to inset the world-map viewport's LEFT
-/// margin. Like [`ActionBarRoot`](super::super::action_bar) it is NOT widened through
-/// `support_item!`/the test-support chain — it stays inside the battlescape neighborhood and
-/// `unreachable_pub`-clean. A unit marker: presence on an entity is the whole signal
-/// (no-bare-types rule).
+/// The root is an ABSOLUTE, fixed-% (`Val::Vw`/`Val::Vh`) OVERLAY anchored to the window's
+/// TOP-LEFT corner (GTW-275): it hovers OVER the full-window map and contributes NOTHING to
+/// the world-map viewport inset (only the bottom bar reduces the map). It stays
+/// `pub(in …battlescape)`, like [`ActionBarRoot`](super::super::action_bar), so the
+/// sibling battlescape-level layout code can still find the root by marker; it is NOT
+/// widened through `support_item!`/the test-support chain — it stays inside the battlescape
+/// neighborhood and `unreachable_pub`-clean. A unit marker: presence on an entity is the
+/// whole signal (no-bare-types rule).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(in crate::scenes::running::game::battlescape) struct StatusPanelRoot;
 

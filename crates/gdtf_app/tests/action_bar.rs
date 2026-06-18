@@ -50,8 +50,8 @@ use bevy::{
 use gdtf_app::test_support::{
     AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton, FleeButton,
     LevelDownButton, LevelUpButton, LoadedSituation, ModeBurstButton, ModeFullButton,
-    ModePanelRoot, ModeSingleButton, RunningState, StanceKneelingButton, StancePanelRoot,
-    StanceProneButton, StanceStandingButton,
+    ModePanelRoot, ModeSingleButton, RunningState, StanceKneelingButton, StanceProneButton,
+    StanceStandingButton,
 };
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
@@ -904,12 +904,12 @@ fn button_label(app: &App, button: Entity) -> Option<String> {
 
 // ---------------------------------------------------------------------------------
 // AC1 — the bar spawns exactly one ENABLED FleeButton (no DisabledButton) in BattleRunning,
-// interactive, labelled "Flee battle".
+// interactive, labelled "Flee" (D-D: shortened from "Flee battle").
 // ---------------------------------------------------------------------------------
 
 /// AC1 — in the live battle exactly one `FleeButton` is spawned; it carries `Button` +
 /// `Interaction` (interactive), is ENABLED (NO `DisabledButton`, unlike the deferred
-/// reload / end-turn buttons), and is labelled `"Flee battle"`.
+/// reload / end-turn buttons), and is labelled `"Flee"` (D-D: shortened from "Flee battle").
 #[test]
 fn flee_button_spawns_enabled_in_battle() {
     let mut app = battle_running_app();
@@ -931,8 +931,8 @@ fn flee_button_spawns_enabled_in_battle() {
     );
     assert_eq!(
         button_label(&app, flee).as_deref(),
-        Some("Flee battle"),
-        "the flee button must be labelled \"Flee battle\"",
+        Some("Flee"),
+        "the flee button must be labelled \"Flee\" (D-D)",
     );
 }
 
@@ -1076,8 +1076,11 @@ fn deferred_buttons_stay_disabled_after_flee_added() {
 }
 
 // =================================================================================
-// GTW-272 + GTW-273 — action-bar layout: Mode LEFT of Stance (AC2) + hide the Mode
-// panel when nothing armed is selected (AC3). Pin-discriminating headless tests.
+// GTW-272 + GTW-273 — Mode-panel visibility: hide the Mode panel when nothing armed is
+// selected (AC3). Pin-discriminating headless tests. (GTW-298 RELOCATED the Mode + Stance
+// sub-panels OUT of the action bar into the weapon cluster, so the old Mode-LEFT-of-Stance
+// bar-child-order test is gone — that layout is now covered by the weapon-cluster structure
+// test in `weapon_panel.rs`.)
 //
 // AC1 (fit-content / no clipping) is largely a VISUAL check → in-engine QA per
 // verification.md #3; the headless slice asserts the explicit fit-content `Node`
@@ -1195,53 +1198,6 @@ fn mode_panel_visibility(app: &mut App) -> Option<Visibility> {
 }
 
 // ---------------------------------------------------------------------------------
-// AC2 — the bar root's Children place ModePanelRoot BEFORE StancePanelRoot.
-// ---------------------------------------------------------------------------------
-
-/// GTW-272 AC2 — in the spawned bar, the Mode sub-panel precedes (is LEFT of) the Stance
-/// sub-panel in the bar root's child order. Found via the shared parent (the bar root),
-/// reached through the panels' `ChildOf`, so no internal `ActionBarRoot` marker is needed.
-/// Pin-discriminating: reverting the `add_children` order fails the index comparison.
-#[test]
-fn mode_panel_precedes_stance_panel_in_bar_children() {
-    let mut app = battle_running_app();
-
-    let Some(mode) = require_button::<ModePanelRoot>(&mut app) else {
-        return;
-    };
-    let Some(stance) = require_button::<StancePanelRoot>(&mut app) else {
-        return;
-    };
-
-    // Both sub-panels are children of the same bar root.
-    let mode_parent = app.world().get::<ChildOf>(mode).map(ChildOf::parent);
-    let stance_parent = app.world().get::<ChildOf>(stance).map(ChildOf::parent);
-    assert_eq!(
-        mode_parent, stance_parent,
-        "the Mode and Stance sub-panels must share the same parent (the bar root)",
-    );
-    let Some(bar_root) = mode_parent else {
-        return;
-    };
-
-    let Some(children) = app.world().get::<Children>(bar_root) else {
-        return;
-    };
-    let positions: Vec<Entity> = children.iter().collect();
-    let mode_index = positions.iter().position(|&e| e == mode);
-    let stance_index = positions.iter().position(|&e| e == stance);
-    assert!(
-        mode_index.is_some() && stance_index.is_some(),
-        "both the Mode and Stance sub-panels must appear in the bar root's children",
-    );
-    assert!(
-        mode_index < stance_index,
-        "the Mode sub-panel must precede (render LEFT of) the Stance sub-panel in the bar \
-         root's child order (mode at {mode_index:?}, stance at {stance_index:?})",
-    );
-}
-
-// ---------------------------------------------------------------------------------
 // AC3 — the Mode panel is Hidden when nothing armed is selected, Visible when an armed
 // player ganger is selected (via the REAL selection flow — no hand-inserted selection).
 // ---------------------------------------------------------------------------------
@@ -1300,56 +1256,77 @@ fn mode_panel_visible_when_armed_player_ganger_selected() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC1 — the fit-content fix sets explicit Node fields on the bar root + Stance panel
-// (height Auto; the bar grows upward from the bottom). Headless assert of the fields
-// the fix sets, NOT a brittle pixel pin (the fit-content render itself is in-engine QA).
+// AC1 — the fit-content fix sets explicit Node fields on the bar root (height Auto; the bar
+// grows upward from the bottom). Headless assert of the fields the fix sets, NOT a brittle
+// pixel pin (the fit-content render itself is in-engine QA).
 // ---------------------------------------------------------------------------------
 
-/// GTW-272 AC1 — the action-bar root is laid out to FIT CONTENTS vertically and grow
-/// UPWARD from the bottom margin: `height: Auto` (sizes to the tallest child column rather
-/// than a fixed/collapsed height) and `align_items: FlexEnd` (anchors children's bottom
-/// edge to the bar's bottom = the screen bottom via `bottom: 0`), so a tall Stance column
-/// is not clipped off the bottom. The Stance sub-panel itself is `height: Auto`. The
-/// fit-content RENDER is an in-engine VISUAL check (verification.md #3); this pins the
-/// explicit `Node` fields the fix sets.
+/// GTW-272 AC1 / GTW-298 / D-C — the top action bar SHRINK-WRAPS its contents and sits at the
+/// TOP-MIDDLE of the window. D-C (2026-06-18 screenshot review) split the bar into a TRANSPARENT
+/// full-window-width centering WRAPPER (the `ActionBarRoot`) holding a compact, fit-content bordered
+/// PANEL of the four buttons:
+///
+/// - the compact PANEL (the `LevelUp` button's direct parent) has `width: Auto` — it FITS its
+///   contents rather than spanning the full window (the old `left:0 + right:0` stretch is gone) —
+///   and `height: Auto` (fit-content vertically too);
+/// - the WRAPPER (the panel's parent) is the full window WIDTH (`Vw(100)`) anchored to the screen
+///   TOP (`top: 0`) and CENTRES the panel horizontally (`justify_content: Center`), anchoring it to
+///   the top edge (`align_items: FlexStart`).
+///
+/// The fit-content / centred RENDER is an in-engine VISUAL check (verification.md #3); this pins
+/// the explicit `Node` fields the layout sets (NO brittle pixel pin — only unit-kind asserts). A
+/// revert to the full-width stretch (panel `width: Percent`/`right: 0`) fails the `width: Auto`
+/// assert; a revert to a non-centred / non-full-width wrapper fails the wrapper asserts.
 #[test]
-fn action_bar_root_fits_contents_and_grows_upward() {
+fn action_bar_root_fits_contents_and_is_top_centered() {
     let mut app = battle_running_app();
 
-    // The bar root is the shared parent of the Stance sub-panel.
-    let Some(stance) = require_button::<StancePanelRoot>(&mut app) else {
+    // The compact PANEL is the parent of the LevelUp button (a remaining action-bar control).
+    let Some(level_up) = require_button::<LevelUpButton>(&mut app) else {
         return;
     };
-    let Some(bar_root) = app.world().get::<ChildOf>(stance).map(ChildOf::parent) else {
+    let Some(panel) = app.world().get::<ChildOf>(level_up).map(ChildOf::parent) else {
         return;
     };
-    let Some(root_node) = app.world().get::<Node>(bar_root) else {
+    let Some(panel_node) = app.world().get::<Node>(panel) else {
         return;
     };
     assert_eq!(
-        root_node.height,
+        panel_node.width,
         Val::Auto,
-        "the bar root must FIT CONTENTS vertically (height Auto, no fixed height)",
+        "the compact button panel must FIT its contents (width Auto, NOT a full-width stretch)",
     );
     assert_eq!(
-        root_node.align_items,
-        AlignItems::FlexEnd,
-        "the bar root must anchor children to its bottom (FlexEnd) so a tall column grows \
-         upward and is not clipped off the bottom",
-    );
-    assert_eq!(
-        root_node.bottom,
-        Val::Px(0.0),
-        "the bar root stays anchored to the screen bottom",
+        panel_node.height,
+        Val::Auto,
+        "the compact button panel must FIT its contents vertically too (height Auto)",
     );
 
-    // The Stance sub-panel column fits its three stacked toggles (height Auto).
-    let Some(stance_node) = app.world().get::<Node>(stance) else {
+    // The WRAPPER (the panel's parent, the `ActionBarRoot`) is the full-window-width centering row.
+    let Some(wrapper) = app.world().get::<ChildOf>(panel).map(ChildOf::parent) else {
+        return;
+    };
+    let Some(wrapper_node) = app.world().get::<Node>(wrapper) else {
         return;
     };
     assert_eq!(
-        stance_node.height,
-        Val::Auto,
-        "the Stance sub-panel must FIT CONTENTS vertically (height Auto)",
+        wrapper_node.width,
+        Val::Vw(100.0),
+        "the centering wrapper spans the full window WIDTH (Vw 100) so it can centre the panel",
+    );
+    assert_eq!(
+        wrapper_node.justify_content,
+        JustifyContent::Center,
+        "the centering wrapper CENTRES the panel horizontally (top-middle) — D-C",
+    );
+    assert_eq!(
+        wrapper_node.align_items,
+        AlignItems::FlexStart,
+        "the centering wrapper anchors the panel to its TOP edge (FlexStart)",
+    );
+    assert_eq!(
+        wrapper_node.top,
+        Val::Px(0.0),
+        "the centering wrapper stays anchored to the screen TOP (GTW-298 / D-C)",
     );
 }

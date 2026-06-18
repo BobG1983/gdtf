@@ -8,3 +8,6 @@ pub(in crate::scenes::running::game::battlescape::weapon_panel) use update::upda
 
 mod actions;
 pub(in crate::scenes::running::game::battlescape::weapon_panel) use actions::reload_button_pressed;
+
+mod fit;
+pub(in crate::scenes::running::game::battlescape::weapon_panel) use fit::fit_weapon_panel;
