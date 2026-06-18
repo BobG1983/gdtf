@@ -30,21 +30,24 @@ use bevy::{
 };
 use gdtf_ui::{ButtonLabel, spawn_button, spawn_panel, theme::GdtfTheme};
 
+/// Vertical gap between the Stance sub-panel's toggle buttons, as a fraction of the
+/// window HEIGHT ([`Val::Vh`](bevy::ui::Val) — GTW-296 responsive ruling).
+///
+/// A named newtype over the gap rather than a bare `f32` (no-bare-types rule): the
+/// vertical stance column's inter-toggle spacing (the `mode_panel` `ModeGapVw` newtype-over-gap
+/// precedent — here the axis is vertical, so a `Vh` value over a `Vw` one).
+#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+struct StanceGapVh(f32);
+
+impl StanceGapVh {
+    /// The Stance sub-panel's inter-toggle gap: `Vh` calibrated to a 4px vertical gap
+    /// at the 1280x720 reference window (4 / 720 = 0.55556) — a tight stacked toggle column.
+    const PANEL: Self = Self(0.55556);
+}
+
 use crate::scenes::running::game::battlescape::action_bar::components::{
     StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
 };
-
-/// Vertical gap between the Stance sub-panel's toggle buttons, in logical pixels.
-///
-/// A named newtype over the gap rather than a bare `f32` (no-bare-types rule): the
-/// vertical stance column's inter-toggle spacing (the `mode_panel` `ModeGapPx` precedent).
-#[derive(Deref, Clone, Copy, PartialEq, Debug)]
-struct StanceGapPx(f32);
-
-impl StanceGapPx {
-    /// The Stance sub-panel's inter-toggle gap: 4 px (a tight stacked toggle column).
-    const PANEL: Self = Self(4.0);
-}
 
 /// Spawns the Stance sub-panel ([`StancePanelRoot`]) — its OWN bordered box — with its THREE
 /// stance toggles as children (Stand / Kneel / Prone), and returns the panel [`Entity`] so a
@@ -77,8 +80,8 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_stance_panel(
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(*StanceGapPx::PANEL),
-            border: UiRect::all(Val::Px(*theme.panel.border_width_px)),
+            row_gap: Val::Vh(*StanceGapVh::PANEL),
+            border: UiRect::all(Val::Vw(*theme.panel.border_width)),
             ..default()
         },
     ));

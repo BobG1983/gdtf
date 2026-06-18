@@ -142,8 +142,8 @@ pub fn spawn_switch(
     marker: impl Bundle,
 ) -> Entity {
     let (width, height) = match orientation {
-        Orientation::Horizontal => (Val::Px(TRACK_LONG_PX), Val::Px(TRACK_SHORT_PX)),
-        Orientation::Vertical => (Val::Px(TRACK_SHORT_PX), Val::Px(TRACK_LONG_PX)),
+        Orientation::Horizontal => (Val::Vw(TRACK_LONG_VW), Val::Vw(TRACK_SHORT_VW)),
+        Orientation::Vertical => (Val::Vw(TRACK_SHORT_VW), Val::Vw(TRACK_LONG_VW)),
     };
     commands
         .spawn((
@@ -156,7 +156,7 @@ pub fn spawn_switch(
                 width,
                 height,
                 flex_direction: orientation.flex_direction(),
-                padding: UiRect::all(Val::Px(TRACK_PAD_PX)),
+                padding: UiRect::all(Val::Vw(TRACK_PAD_VW)),
                 align_items: AlignItems::Center,
                 justify_content: knob_justify(state),
                 border_radius: BorderRadius::all(Val::Percent(50.0)),
@@ -169,8 +169,8 @@ pub fn spawn_switch(
             track.spawn((
                 SwitchKnob,
                 Node {
-                    width: Val::Px(KNOB_DIAMETER_PX),
-                    height: Val::Px(KNOB_DIAMETER_PX),
+                    width: Val::Vw(KNOB_DIAMETER_VW),
+                    height: Val::Vw(KNOB_DIAMETER_VW),
                     border_radius: BorderRadius::all(Val::Percent(50.0)),
                     ..default()
                 },
@@ -247,14 +247,23 @@ const fn knob_justify(state: SwitchState) -> JustifyContent {
     }
 }
 
-/// The long dimension of a switch track, in logical pixels (the slide length).
-const TRACK_LONG_PX: f32 = 36.0;
+/// The long dimension of a switch track, in viewport-width units (the slide
+/// length). `Vw` for BOTH track dims (not `Vh` for the short one) so the
+/// orientation-swap test invariants hold: a horizontal track's width equals a
+/// vertical track's height (both `Vw(TRACK_LONG_VW)`) AND width != height.
+/// Calibrated 36px / 1280 * 100 at the default 1280x720 window.
+const TRACK_LONG_VW: f32 = 2.8125;
 
-/// The short dimension of a switch track, in logical pixels.
-const TRACK_SHORT_PX: f32 = 18.0;
+/// The short dimension of a switch track, in viewport-width units. `Vw` (not
+/// `Vh`) so it shares an axis with [`TRACK_LONG_VW`] — see that const.
+/// Calibrated 18px / 1280 * 100.
+const TRACK_SHORT_VW: f32 = 1.40625;
 
-/// The inner padding around the knob inside the track, in logical pixels.
-const TRACK_PAD_PX: f32 = 2.0;
+/// The inner padding around the knob inside the track, in viewport-width units.
+/// Calibrated 2px / 1280 * 100.
+const TRACK_PAD_VW: f32 = 0.15625;
 
-/// The knob diameter, in logical pixels.
-const KNOB_DIAMETER_PX: f32 = 14.0;
+/// The knob diameter, in viewport-width units (applied to both width + height;
+/// the sub-pixel 16:9 skew on a ~14px knob is invisible). Calibrated
+/// 14px / 1280 * 100.
+const KNOB_DIAMETER_VW: f32 = 1.09375;

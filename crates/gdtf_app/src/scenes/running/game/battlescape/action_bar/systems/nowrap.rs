@@ -20,7 +20,7 @@
 //! relocated control toggle, flips its label to [`LineBreak::NoWrap`] (so a too-wide caption stays
 //! on ONE line), shrinks its [`TextFont::font_size`](bevy::text::TextFont) to
 //! [`CONTROL_LABEL_PT`], AND tightens the toggle root's L/R [`padding`](bevy::ui::Node) to
-//! [`CONTROL_PAD_PX`] (so the narrow firemode toggles spend their width on the caption, not the
+//! [`CONTROL_PAD_VW`] (so the narrow firemode toggles spend their width on the caption, not the
 //! theme's wide inset). It does NOT touch the shared `gdtf_ui` widget (the migration to generic
 //! `Switch` / `SegmentedControl` widgets is still GTW-277) nor the theme (which would resize /
 //! re-pad EVERY button app-wide): it post-processes only the firemode / aim / stance markers. It
@@ -42,7 +42,7 @@ use crate::scenes::running::game::battlescape::action_bar::components::{
 /// captions ("single" / "burst" / "full-auto") fit their narrow toggles without clipping.
 ///
 /// A named newtype over the size rather than a bare `f32` (no-bare-types rule): it is a
-/// presentation font size, the `ModeGapPx` plumbing-newtype precedent. Smaller than the theme's
+/// presentation font size, the `ModeGapVw` plumbing-newtype precedent. Smaller than the theme's
 /// 18 pt button font; applied per-label here so the theme (and every other button) is untouched.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
 struct ControlLabelPt(f32);
@@ -55,25 +55,29 @@ struct ControlLabelPt(f32);
 /// far too small to read.
 const CONTROL_LABEL_PT: ControlLabelPt = ControlLabelPt(14.0);
 
-/// The tightened LEFT/RIGHT padding (px) of a relocated control toggle, replacing the theme's
-/// 12 px button margin so the narrow firemode toggles spend their width on the caption.
+/// The tightened LEFT/RIGHT padding of a relocated control toggle, as a fraction of the viewport
+/// WIDTH ([`Val::Vw`](bevy::ui::Val::Vw)), replacing the theme's button margin so the narrow
+/// firemode toggles spend their width on the caption.
 ///
 /// A named newtype over the padding rather than a bare `f32` (no-bare-types rule): layout
-/// spacing, the `ModeGapPx` precedent. Applied per-toggle here so the theme is untouched.
+/// spacing, the `ModeGapVw` precedent. Horizontal padding, so the unit is `Vw`
+/// (`ui-responsive-not-px`). Applied per-toggle here so the theme is untouched.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-struct ControlPadPx(f32);
+struct ControlPadVw(f32);
 
-/// The relocated control-toggle's tightened horizontal padding: 3 px (a tight inset so even the
-/// widest firemode caption fits the narrow toggle).
-const CONTROL_PAD_PX: ControlPadPx = ControlPadPx(3.0);
+/// The relocated control-toggle's tightened horizontal padding: 0.234375 vw (3 px at the
+/// 1280-wide reference window — a tight inset so even the widest firemode caption fits the narrow
+/// toggle).
+const CONTROL_PAD_VW: ControlPadVw = ControlPadVw(0.234_375);
 
-/// The Firemode panel's tightened LEFT/RIGHT padding: 2 px — the theme paints the
-/// [`ModePanelRoot`] (a `Themed(Panel)`) with its 12 px panel margin, which stole the toggle
-/// row's width and forced the widest caption (`full-auto`) to clip ("full-autc") even at the
-/// small [`CONTROL_LABEL_PT`] font (R2 / NR6). Tightening the panel's own L/R inset to a hairline
-/// gives the toggle row back the cell width so every caption fits. A `ControlPadPx` reuse (the
-/// same plumbing-newtype), applied per-panel here so the theme is untouched.
-const MODE_PANEL_PAD_PX: ControlPadPx = ControlPadPx(2.0);
+/// The Firemode panel's tightened LEFT/RIGHT padding: 0.15625 vw (2 px at the 1280-wide reference
+/// window) — the theme paints the [`ModePanelRoot`] (a `Themed(Panel)`) with its panel margin,
+/// which stole the toggle row's width and forced the widest caption (`full-auto`) to clip
+/// ("full-autc") even at the small [`CONTROL_LABEL_PT`] font (R2 / NR6). Tightening the panel's
+/// own L/R inset to a hairline gives the toggle row back the cell width so every caption fits. A
+/// `ControlPadVw` reuse (the same plumbing-newtype), applied per-panel here so the theme is
+/// untouched.
+const MODE_PANEL_PAD_VW: ControlPadVw = ControlPadVw(0.15625);
 
 /// Query FILTER selecting the relocated control toggles whose label should not wrap — the
 /// firemode, aim, and stance toggles (GTW-298). An `Or` over their markers so one query reaches
@@ -99,11 +103,11 @@ type RelocatedControlToggle = (
 
 /// Keeps the relocated firemode / aim / stance toggle LABELS on one line
 /// ([`LineBreak::NoWrap`]) AND at the small [`CONTROL_LABEL_PT`] font, AND tightens each toggle's
-/// L/R padding to [`CONTROL_PAD_PX`], so a too-wide caption fits its narrow toggle without
+/// L/R padding to [`CONTROL_PAD_VW`], so a too-wide caption fits its narrow toggle without
 /// clipping (GTW-298, contract item 8 + screenshot review 2026-06-18).
 ///
 /// For each toggle carrying a relocated-control marker ([`RelocatedControlToggle`]) it tightens the
-/// toggle root's L/R [`padding`](bevy::ui::Node) to [`CONTROL_PAD_PX`], then walks the toggle's
+/// toggle root's L/R [`padding`](bevy::ui::Node) to [`CONTROL_PAD_VW`], then walks the toggle's
 /// [`Children`] and, for any child that is a [`Text`] label, sets that label's [`TextLayout`]
 /// linebreak to [`LineBreak::NoWrap`] AND its [`TextFont::font_size`](bevy::text::TextFont) to
 /// [`CONTROL_LABEL_PT`] — each write only when it differs (change-detection hygiene). The toggles
@@ -113,7 +117,7 @@ type RelocatedControlToggle = (
 /// Runs under the action-bar plugin's live-battle gate, `.after(UiSystems::ApplyTheme)`.
 ///
 /// It ALSO tightens the Firemode panel root's ([`ModePanelRoot`]) own L/R padding to
-/// [`MODE_PANEL_PAD_PX`] (GTW-298 R2 / NR6): the theme paints that panel with its 12 px panel
+/// [`MODE_PANEL_PAD_VW`] (GTW-298 R2 / NR6): the theme paints that panel with its 12 px panel
 /// margin, which stole the toggle row's width and clipped the widest caption (`full-auto` →
 /// `full-autc`) even at the small label font — so the panel inset is tightened to a hairline to
 /// give the toggle row back the cell width.
@@ -132,22 +136,22 @@ pub(in crate::scenes::running::game::battlescape) fn nowrap_control_labels(
     // Tighten the Firemode panel's own L/R padding so its toggle row uses the full cell width
     // (the theme re-applies its 12 px panel margin every repaint; we override only L/R here).
     for mut node in &mut mode_panels {
-        if node.padding.left != Val::Px(*MODE_PANEL_PAD_PX) {
-            node.padding.left = Val::Px(*MODE_PANEL_PAD_PX);
+        if node.padding.left != Val::Vw(*MODE_PANEL_PAD_VW) {
+            node.padding.left = Val::Vw(*MODE_PANEL_PAD_VW);
         }
-        if node.padding.right != Val::Px(*MODE_PANEL_PAD_PX) {
-            node.padding.right = Val::Px(*MODE_PANEL_PAD_PX);
+        if node.padding.right != Val::Vw(*MODE_PANEL_PAD_VW) {
+            node.padding.right = Val::Vw(*MODE_PANEL_PAD_VW);
         }
     }
     for (children, mut node) in &mut toggles {
         // Tighten the toggle root's L/R padding (the theme re-applies its 12 px button margin
         // every repaint; we override only L/R so the narrow firemode toggle spends its width on
         // the caption).
-        if node.padding.left != Val::Px(*CONTROL_PAD_PX) {
-            node.padding.left = Val::Px(*CONTROL_PAD_PX);
+        if node.padding.left != Val::Vw(*CONTROL_PAD_VW) {
+            node.padding.left = Val::Vw(*CONTROL_PAD_VW);
         }
-        if node.padding.right != Val::Px(*CONTROL_PAD_PX) {
-            node.padding.right = Val::Px(*CONTROL_PAD_PX);
+        if node.padding.right != Val::Vw(*CONTROL_PAD_VW) {
+            node.padding.right = Val::Vw(*CONTROL_PAD_VW);
         }
         for &child in children {
             let Ok((mut layout, mut font)) = labels.get_mut(child) else {

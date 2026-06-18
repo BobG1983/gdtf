@@ -40,10 +40,13 @@ use crate::scenes::running::game::battlescape::stat_block::{
 /// a loop (`.claude/rules/no-bare-types.md` clause 4).
 const WOUND_LINE_POOL: usize = 8;
 
-/// The vertical gap between stat-block rows, in logical pixels.
+/// The vertical gap between stat-block rows, as a fraction of the viewport HEIGHT
+/// ([`Val::Vh`](bevy::ui::Val::Vh)).
 ///
-/// A `const`, layout plumbing fed straight to a [`Node`] (the `CELL_PX`-class carve-out).
-const ROW_GAP_PX: f32 = 4.0;
+/// A `const`, layout plumbing fed straight to a [`Node`] (the `CELL_PX`-class carve-out). A
+/// vertical gap, so the unit is `Vh`; 0.55556 vh is 4 px at the 720-tall reference window
+/// (`ui-responsive-not-px`).
+const ROW_GAP_VH: f32 = 0.55556;
 
 /// Spawns one ganger stat block and returns its root [`Entity`].
 ///
@@ -103,7 +106,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_stat_block(
         .spawn((
             Node {
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(ROW_GAP_PX),
+                row_gap: Val::Vh(ROW_GAP_VH),
                 ..default()
             },
             StatBlockRefs {
@@ -145,8 +148,8 @@ fn spawn_portrait(commands: &mut Commands, atlases: Option<&TopDownAtlases>) -> 
             .spawn((
                 ImageNode::default(),
                 Node {
-                    width: Val::Px(0.0),
-                    height: Val::Px(0.0),
+                    width: Val::ZERO,
+                    height: Val::ZERO,
                     ..default()
                 },
                 StatPortrait,

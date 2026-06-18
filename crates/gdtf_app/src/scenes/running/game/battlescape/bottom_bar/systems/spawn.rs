@@ -82,11 +82,11 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_bottom_bar(
         BottomBarRoot,
         Node {
             position_type: PositionType::Absolute,
-            bottom: Val::Px(0.0),
-            left: Val::Px(0.0),
+            bottom: Val::ZERO,
+            left: Val::ZERO,
             width: Val::Vw(100.0),
             height: Val::Vh(BOTTOM_BAR_H_VH),
-            border: UiRect::all(Val::Px(*theme.panel.border_width_px)),
+            border: UiRect::all(Val::Vw(*theme.panel.border_width)),
             // Four-sided breathing room so the weapon cluster + stance column inset off EVERY
             // edge (especially the bottom row: Prone / firemode buttons / Aim are not flush
             // against the window bottom), matching the mockup. Relative units (Vw/Vh) only.

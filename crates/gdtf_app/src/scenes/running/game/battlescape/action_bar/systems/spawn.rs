@@ -28,18 +28,19 @@ use crate::scenes::running::game::battlescape::action_bar::components::{
     ActionBarRoot, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
 };
 
-/// Horizontal gap between the action-bar's buttons, in logical pixels.
+/// Horizontal gap between the action-bar's buttons, as a fraction of the viewport WIDTH
+/// ([`Val::Vw`](bevy::ui::Val::Vw)).
 ///
 /// A named newtype over the gap rather than a bare `f32` (no-bare-types rule): it is
 /// layout spacing, not a theme color/size, so it is set on the bar [`Node`] directly
 /// (the theme owns palette + font, not inter-child layout — the menu `ColumnGapPx`
-/// precedent).
+/// precedent). A horizontal gap, so the unit is `Vw` (`ui-responsive-not-px`).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-struct BarGapPx(f32);
+struct BarGapVw(f32);
 
-impl BarGapPx {
-    /// The action-bar's inter-button gap: 8 px (the menu column's separation order).
-    const BAR: Self = Self(8.0);
+impl BarGapVw {
+    /// The action-bar's inter-button gap: 0.625 vw (8 px at the 1280-wide reference window).
+    const BAR: Self = Self(0.625);
 }
 
 /// Builds the themed action-bar on `OnEnter(BattleScapeState::BattleRunning)`.
@@ -105,7 +106,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
                 // Anchor the centering row to the TOP, spanning the full window WIDTH so its
                 // `justify_content: Center` can centre the compact panel at the top-middle
                 // (GTW-298 kept the top-of-screen float; this fix shrink-wraps + centres it).
-                top: Val::Px(0.0),
+                top: Val::ZERO,
                 left: Val::Vw(0.0),
                 width: Val::Vw(100.0),
                 // FIT CONTENTS vertically (the wrapper is as tall as the panel) and anchor the
@@ -135,7 +136,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         // reads as a compact framed strip rather than a full-width bar (D-C: width Auto, not 100%).
         width: Val::Auto,
         height: Val::Auto,
-        column_gap: Val::Px(*BarGapPx::BAR),
+        column_gap: Val::Vw(*BarGapVw::BAR),
         ..default()
     });
 

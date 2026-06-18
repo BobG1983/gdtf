@@ -100,7 +100,7 @@ pub fn spawn_progress_bar(
             ProgressBarTrack,
             Node {
                 width: Val::Percent(100.0),
-                height: Val::Px(BAR_HEIGHT_PX),
+                height: Val::Vh(BAR_HEIGHT_VH),
                 ..default()
             },
             BackgroundColor(lost),
@@ -149,8 +149,9 @@ pub fn set_progress_bar(
     false
 }
 
-/// The default track / fill height, in logical pixels.
+/// The default track / fill height, in viewport-height units.
 ///
 /// A thin horizontal bar matching the TU / HP bars in the status-panel mockup; the
 /// width is always 100% of the bar's container, so only the height is fixed here.
-const BAR_HEIGHT_PX: f32 = 10.0;
+/// Calibrated 10px / 720 * 100 at the default 1280x720 window.
+const BAR_HEIGHT_VH: f32 = 1.38889;

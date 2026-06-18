@@ -111,8 +111,8 @@ fn paint_themed(commands: &mut Commands, theme: &GdtfTheme, (entity, marker, nod
         ThemeRole::Panel => {
             let themed_node = box_node(
                 node,
-                *theme.panel.border_width_px,
-                *theme.panel.corner_radius_px,
+                *theme.panel.border_width,
+                *theme.panel.corner_radius,
                 theme.panel.margin,
             );
             commands.entity(entity).insert((
@@ -124,8 +124,8 @@ fn paint_themed(commands: &mut Commands, theme: &GdtfTheme, (entity, marker, nod
         ThemeRole::Button => {
             let themed_node = box_node(
                 node,
-                *theme.button.border_width_px,
-                *theme.button.corner_radius_px,
+                *theme.button.border_width,
+                *theme.button.corner_radius,
                 theme.button.margin,
             );
             commands.entity(entity).insert((
@@ -176,11 +176,21 @@ fn paint_themed(commands: &mut Commands, theme: &GdtfTheme, (entity, marker, nod
 /// corner radius lives in [`Node::border_radius`](bevy::ui::Node), the border
 /// width in [`Node::border`](bevy::ui::Node), and the padding in
 /// [`Node::padding`](bevy::ui::Node) — not standalone components.
-fn box_node(node: Option<&Node>, border_px: f32, radius_px: f32, margin: ContentMargin) -> Node {
+///
+/// All sizes are RELATIVE units (GTW-296): the border width + corner radius are
+/// `Vw` (one axis, so a border/radius pair keeps its ratio), and the per-edge
+/// padding is `Vw` on the horizontal edges + `Vh` on the vertical, so each axis
+/// tracks the matching window dimension on resize.
+fn box_node(node: Option<&Node>, border_vw: f32, radius_vw: f32, margin: ContentMargin) -> Node {
     let mut themed_node = node.cloned().unwrap_or_default();
-    themed_node.border = UiRect::all(Val::Px(border_px));
-    themed_node.border_radius = BorderRadius::all(Val::Px(radius_px));
-    themed_node.padding = UiRect::px(*margin.l, *margin.r, *margin.t, *margin.b);
+    themed_node.border = UiRect::all(Val::Vw(border_vw));
+    themed_node.border_radius = BorderRadius::all(Val::Vw(radius_vw));
+    themed_node.padding = UiRect {
+        left:   Val::Vw(*margin.l),
+        right:  Val::Vw(*margin.r),
+        top:    Val::Vh(*margin.t),
+        bottom: Val::Vh(*margin.b),
+    };
     themed_node
 }
 

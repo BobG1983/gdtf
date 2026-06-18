@@ -36,8 +36,8 @@ use crate::{
 /// reproduces them and a hot-reload re-paints the panel.
 pub fn spawn_panel(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     let node = box_node(
-        *theme.panel.border_width_px,
-        *theme.panel.corner_radius_px,
+        *theme.panel.border_width,
+        *theme.panel.corner_radius,
         theme,
         BoxKind::Panel,
     );
@@ -81,8 +81,8 @@ pub fn spawn_button(
     let font_size = *theme.button.font_size_pt;
     let text_color = *theme.button.text_color;
     let node = box_node(
-        *theme.button.border_width_px,
-        *theme.button.corner_radius_px,
+        *theme.button.border_width,
+        *theme.button.corner_radius,
         theme,
         BoxKind::Button,
     );
@@ -127,15 +127,25 @@ enum BoxKind {
 /// the theme border width, corner radius, and the selected sub-theme's content
 /// padding. The colors are initial-only — [`apply_theme`](crate::themed::apply_theme)
 /// re-derives them.
-fn box_node(border_px: f32, radius_px: f32, theme: &GdtfTheme, kind: BoxKind) -> Node {
+///
+/// All sizes are RELATIVE units (GTW-296): the border width + corner radius are
+/// `Vw` (one axis, so a border/radius pair keeps its ratio), and the per-edge
+/// padding is `Vw` on the horizontal edges + `Vh` on the vertical, so each axis
+/// tracks the matching window dimension on resize.
+fn box_node(border_vw: f32, radius_vw: f32, theme: &GdtfTheme, kind: BoxKind) -> Node {
     let margin = match kind {
         BoxKind::Panel => theme.panel.margin,
         BoxKind::Button => theme.button.margin,
     };
     Node {
-        border: UiRect::all(Val::Px(border_px)),
-        border_radius: BorderRadius::all(Val::Px(radius_px)),
-        padding: UiRect::px(*margin.l, *margin.r, *margin.t, *margin.b),
+        border: UiRect::all(Val::Vw(border_vw)),
+        border_radius: BorderRadius::all(Val::Vw(radius_vw)),
+        padding: UiRect {
+            left:   Val::Vw(*margin.l),
+            right:  Val::Vw(*margin.r),
+            top:    Val::Vh(*margin.t),
+            bottom: Val::Vh(*margin.b),
+        },
         ..default()
     }
 }

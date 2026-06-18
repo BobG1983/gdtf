@@ -29,14 +29,14 @@ fn theme(
          default_font: \"fonts/test.ttf\", \
          background: ( color: (0.05, 0.05, 0.06, 1.0) ), \
          panel: ( color: (0.16, 0.16, 0.18, 0.55), border_color: (0.20, 0.20, 0.24, 1.0), \
-                  border_width_px: 3.0, corner_radius_px: 7.0, \
+                  border_width: 3.0, corner_radius: 7.0, \
                   margin: (left: 9.0, right: 9.0, top: 4.0, bottom: 4.0) ), \
          button: ( color: ({pr}, {pg}, {pb}, 1.0), disabled: (0.08, 0.08, 0.10, 0.55), \
                    active: (0.45, 0.62, 0.30, 0.96), \
                    hover: (0.80, 0.16, 0.19, 0.96), pressed: (0.10, 0.10, 0.12, 0.96), \
                    text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: {button_font_size}, \
                    border_color: ({br}, {bg}, {bb}, 1.0), \
-                   border_width_px: {border_w}, corner_radius_px: {radius}, \
+                   border_width: {border_w}, corner_radius: {radius}, \
                    margin: (left: 8.0, right: 8.0, top: 6.0, bottom: 6.0) ), \
          title: ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 36.0 ), \
          text:  ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0 ))",
@@ -132,25 +132,28 @@ fn apply_theme_paints_role_appropriate_visuals_from_the_resource()
         Some(Color::srgb(0.20, 0.20, 0.24)),
         "button entity should get the button border color on every edge",
     );
+    // GTW-296: the themed box now emits RELATIVE units — Vw for border + radius +
+    // horizontal padding, Vh for vertical padding (asserting the unit KIND, never a px
+    // magnitude). The numeric values are the test theme's own resolved fractions.
     assert_eq!(
         world.get::<Node>(button).map(|n| n.border.left),
-        Some(Val::Px(2.0)),
-        "button border width",
+        Some(Val::Vw(2.0)),
+        "button border width (Vw)",
     );
     assert_eq!(
         world.get::<Node>(button).map(|n| n.padding.left),
-        Some(Val::Px(8.0)),
-        "left content padding",
+        Some(Val::Vw(8.0)),
+        "left content padding (Vw)",
     );
     assert_eq!(
         world.get::<Node>(button).map(|n| n.padding.top),
-        Some(Val::Px(6.0)),
-        "top content padding",
+        Some(Val::Vh(6.0)),
+        "top content padding (Vh)",
     );
     assert_eq!(
         world.get::<Node>(button).map(|n| n.border_radius.top_left),
-        Some(Val::Px(5.0)),
-        "corner radius",
+        Some(Val::Vw(5.0)),
+        "corner radius (Vw)",
     );
 
     Ok(())
@@ -189,15 +192,17 @@ fn apply_theme_paints_background_and_panel() -> Result<(), ron::error::SpannedEr
         "background entity should get the backdrop fill",
     );
     // The Background arm writes only BackgroundColor — it leaves the spawned
-    // node's border at the default (Px(0.0)), never the panel/button themed
-    // border width (which would be Px(3.0)/Px(2.0)).
+    // node's border at the default (a zero-anchored Px(0.0), the Node default),
+    // never the panel/button themed border width (which would be the Vw(3.0)/Vw(2.0)
+    // relative-length border the box arms emit).
     assert_eq!(
         world.get::<Node>(background).map(|n| n.border.left),
         Some(Val::Px(0.0)),
         "background node must keep its default border, not get a themed border width",
     );
 
-    // Panel gets the panel sub-theme box (border 3.0, radius 7.0, padding 9.0).
+    // Panel gets the panel sub-theme box — GTW-296: border + radius in Vw, padding in
+    // Vw (horizontal) / Vh (vertical), asserting the unit KIND not a px magnitude.
     assert_eq!(
         world.get::<BackgroundColor>(panel).map(|c| c.0),
         Some(Color::srgba(0.16, 0.16, 0.18, 0.55)),
@@ -205,13 +210,13 @@ fn apply_theme_paints_background_and_panel() -> Result<(), ron::error::SpannedEr
     );
     assert_eq!(
         world.get::<Node>(panel).map(|n| n.border.left),
-        Some(Val::Px(3.0)),
-        "panel border width from the panel sub-theme",
+        Some(Val::Vw(3.0)),
+        "panel border width from the panel sub-theme (Vw)",
     );
     assert_eq!(
         world.get::<Node>(panel).map(|n| n.padding.left),
-        Some(Val::Px(9.0)),
-        "panel padding from the panel sub-theme",
+        Some(Val::Vw(9.0)),
+        "panel padding from the panel sub-theme (Vw)",
     );
 
     Ok(())
@@ -326,13 +331,13 @@ fn re_theme_after_resource_mutation_repaints_with_new_palette()
     );
     assert_eq!(
         world.get::<Node>(button).map(|n| n.border.left),
-        Some(Val::Px(4.0)),
-        "border width must reflect the NEW theme after re-run",
+        Some(Val::Vw(4.0)),
+        "border width must reflect the NEW theme after re-run (Vw)",
     );
     assert_eq!(
         world.get::<Node>(button).map(|n| n.border_radius.top_left),
-        Some(Val::Px(9.0)),
-        "corner radius must reflect the NEW theme after re-run",
+        Some(Val::Vw(9.0)),
+        "corner radius must reflect the NEW theme after re-run (Vw)",
     );
 
     Ok(())

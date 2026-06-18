@@ -65,16 +65,19 @@ type FullToggle = (
     Without<ModeBurstButton>,
 );
 
-/// Horizontal gap between the Firemode panel's toggle buttons, in logical pixels.
+/// Horizontal gap between the Firemode panel's toggle buttons, as a fraction of the viewport
+/// WIDTH ([`Val::Vw`](bevy::ui::Val::Vw)).
 ///
 /// A named newtype over the gap rather than a bare `f32` (no-bare-types rule): it is
-/// layout spacing, not a theme color/size (the action-bar `BarGapPx` precedent).
+/// layout spacing, not a theme color/size (the action-bar `BarGapVw` precedent). A horizontal
+/// gap, so the unit is `Vw` (`ui-responsive-not-px`).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-struct ModeGapPx(f32);
+struct ModeGapVw(f32);
 
-impl ModeGapPx {
-    /// The Firemode panel's inter-toggle gap: 4 px (a tight side-by-side toggle row).
-    const PANEL: Self = Self(4.0);
+impl ModeGapVw {
+    /// The Firemode panel's inter-toggle gap: 0.3125 vw (4 px at the 1280-wide reference window
+    /// — a tight side-by-side toggle row).
+    const PANEL: Self = Self(0.3125);
 }
 
 /// Spawns the Mode sub-panel column ([`ModePanelRoot`]) with its THREE FIXED per-mode
@@ -106,7 +109,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_mode_panel(
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Row,
-            column_gap: Val::Px(*ModeGapPx::PANEL),
+            column_gap: Val::Vw(*ModeGapVw::PANEL),
             // Clip any toggle whose label is wider than its flex share so the firemode row
             // never overflows the panel cell into the neighbouring Aim panel (item 8 — no
             // panel overlaps another).
@@ -169,13 +172,13 @@ fn spawn_hidden_toggle<M: Component>(
             // Allow the toggle to shrink below its label's intrinsic width + clip the caption,
             // so a wide label (e.g. "full-auto") shares the row evenly instead of overflowing
             // the panel into the Aim cell.
-            min_width: Val::Px(0.0),
+            min_width: Val::ZERO,
             // GTW-298: the Firemode panel is the bottom 1/4-height cell — a SHORT strip. Without a
             // zero `min_height` the button's intrinsic content (18pt label + theme padding) is its
             // flex min-height, so the toggles refuse to compress and overflow the cell (the label
             // wrapping + the toggles overlapping the row below). A zero `min_height` lets flexbox
             // compress them to the cell height; `overflow: Hidden` then clips the label cleanly.
-            min_height: Val::Px(0.0),
+            min_height: Val::ZERO,
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             overflow: bevy::ui::Overflow {

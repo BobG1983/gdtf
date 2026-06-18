@@ -45,18 +45,23 @@ use crate::{
     states::RunningState,
 };
 
-/// Vertical gap between the menu column's children, in logical pixels.
+/// Vertical gap between the menu column's children, as a viewport-height
+/// percentage (`Vh`).
 ///
 /// A named newtype over the gap rather than a bare `f32` (no-bare-types rule):
-/// it mirrors the Godot `VBoxContainer` `separation = 10`. It is layout spacing,
-/// not a theme color/size, so it is set on the column [`Node`] directly (the
-/// theme owns palette + font, not inter-child layout).
+/// it mirrors the Godot `VBoxContainer` `separation = 10` px, calibrated to the
+/// 1280×720 reference window as `10 / 720 * 100 = 1.38889` Vh so the rendered
+/// gap is pixel-identical at the default size while scaling with the window
+/// (GTW-296 px→relative sweep). It is layout spacing, not a theme color/size, so
+/// it is set on the column [`Node`] directly (the theme owns palette + font, not
+/// inter-child layout).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-struct ColumnGapPx(f32);
+struct ColumnGapVh(f32);
 
-impl ColumnGapPx {
-    /// The Godot menu's `VBoxContainer` separation: 10 px between children.
-    const MENU: Self = Self(10.0);
+impl ColumnGapVh {
+    /// The Godot menu's `VBoxContainer` separation (10 px at 1280×720),
+    /// expressed in `Vh`: `10 / 720 * 100 = 1.38889`.
+    const MENU: Self = Self(1.38889);
 }
 
 /// Builds the full main-menu scene when [`RunningState::Menu`] is entered.
@@ -109,7 +114,7 @@ pub(in crate::scenes::running::menu) fn spawn_menu(
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
-                row_gap: Val::Px(*ColumnGapPx::MENU),
+                row_gap: Val::Vh(*ColumnGapVh::MENU),
                 ..default()
             },
             DespawnOnExit(RunningState::Menu),
@@ -139,7 +144,7 @@ pub(in crate::scenes::running::menu) fn spawn_menu(
         Node {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Stretch,
-            row_gap: Val::Px(*ColumnGapPx::MENU),
+            row_gap: Val::Vh(*ColumnGapVh::MENU),
             ..default()
         },
     ));

@@ -2,16 +2,16 @@
 //! [`GdtfThemeSpec`], and the pure spec→runtime resolution.
 //!
 //! These types hold wire-friendly shapes ([`Srgba4`] color quads, `String` font
-//! keys, bare px scalars) and nothing Bevy-asset-bound, so they deserialize with
-//! no `World`. Each carries a `resolve` that maps it into the matching runtime
-//! sub-theme of [`runtime`](super::runtime).
+//! keys, bare relative-length scalars) and nothing Bevy-asset-bound, so they
+//! deserialize with no `World`. Each carries a `resolve` that maps it into the
+//! matching runtime sub-theme of [`runtime`](super::runtime).
 
 use bevy::prelude::*;
 use serde::Deserialize;
 
 use super::{
     newtypes::{
-        ActiveColor, BorderColor, BorderWidthPx, ButtonColor, CornerRadiusPx, DisabledColor,
+        ActiveColor, BorderColor, BorderWidthVw, ButtonColor, CornerRadiusVw, DisabledColor,
         FontKey, FontSizePt, HoverColor, MarginSpec, PanelColor, PressedColor, ScreenColor, Srgba4,
         TextColor,
     },
@@ -38,26 +38,26 @@ impl BackgroundThemeSpec {
 #[derive(Deserialize, Clone, Copy, PartialEq, Debug)]
 pub struct PanelThemeSpec {
     /// Panel fill color.
-    pub color:            Srgba4,
+    pub color:         Srgba4,
     /// Panel border stroke color.
-    pub border_color:     Srgba4,
-    /// Panel border stroke width, in logical pixels.
-    pub border_width_px:  f32,
-    /// Panel corner radius, in logical pixels.
-    pub corner_radius_px: f32,
+    pub border_color:  Srgba4,
+    /// Panel border stroke width, as a window-WIDTH fraction (`Vw`).
+    pub border_width:  f32,
+    /// Panel corner radius, as a window-WIDTH fraction (`Vw`).
+    pub corner_radius: f32,
     /// Panel inner content padding, per edge.
-    pub margin:           MarginSpec,
+    pub margin:        MarginSpec,
 }
 
 impl PanelThemeSpec {
     /// Resolve the panel sub-theme (no font, no resolver needed).
     pub(super) const fn resolve(self) -> PanelTheme {
         PanelTheme {
-            color:            PanelColor(self.color.into_color()),
-            border_color:     BorderColor(self.border_color.into_color()),
-            border_width_px:  BorderWidthPx(self.border_width_px),
-            corner_radius_px: CornerRadiusPx(self.corner_radius_px),
-            margin:           self.margin.resolve(),
+            color:         PanelColor(self.color.into_color()),
+            border_color:  BorderColor(self.border_color.into_color()),
+            border_width:  BorderWidthVw(self.border_width),
+            corner_radius: CornerRadiusVw(self.corner_radius),
+            margin:        self.margin.resolve(),
         }
     }
 }
@@ -69,30 +69,30 @@ impl PanelThemeSpec {
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 pub struct ButtonThemeSpec {
     /// Resting button fill color.
-    pub color:            Srgba4,
+    pub color:         Srgba4,
     /// Disabled button fill color.
-    pub disabled:         Srgba4,
+    pub disabled:      Srgba4,
     /// Active / toggled-on button fill color (GTW-253).
-    pub active:           Srgba4,
+    pub active:        Srgba4,
     /// Hovered button fill color.
-    pub hover:            Srgba4,
+    pub hover:         Srgba4,
     /// Pressed button fill color.
-    pub pressed:          Srgba4,
+    pub pressed:       Srgba4,
     /// Button caption text color.
-    pub text_color:       Srgba4,
+    pub text_color:    Srgba4,
     /// Button caption text size, in typographic points.
-    pub font_size_pt:     f32,
+    pub font_size_pt:  f32,
     /// Button border stroke color.
-    pub border_color:     Srgba4,
-    /// Button border stroke width, in logical pixels.
-    pub border_width_px:  f32,
-    /// Button corner radius, in logical pixels.
-    pub corner_radius_px: f32,
+    pub border_color:  Srgba4,
+    /// Button border stroke width, as a window-WIDTH fraction (`Vw`).
+    pub border_width:  f32,
+    /// Button corner radius, as a window-WIDTH fraction (`Vw`).
+    pub corner_radius: f32,
     /// Button inner content padding, per edge.
-    pub margin:           MarginSpec,
+    pub margin:        MarginSpec,
     /// Optional font override; absent means use the theme `default_font`.
     #[serde(default)]
-    pub font:             Option<String>,
+    pub font:          Option<String>,
 }
 
 impl ButtonThemeSpec {
@@ -107,8 +107,8 @@ impl ButtonThemeSpec {
             text_color: TextColor(self.text_color.into_color()),
             font_size_pt: FontSizePt(self.font_size_pt),
             border_color: BorderColor(self.border_color.into_color()),
-            border_width_px: BorderWidthPx(self.border_width_px),
-            corner_radius_px: CornerRadiusPx(self.corner_radius_px),
+            border_width: BorderWidthVw(self.border_width),
+            corner_radius: CornerRadiusVw(self.corner_radius),
             margin: self.margin.resolve(),
             font,
         }

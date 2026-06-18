@@ -6,9 +6,9 @@ use bevy::prelude::*;
 
 use super::{
     newtypes::{
-        ActiveColor, BorderColor, BorderWidthPx, ButtonColor, ContentMargin, CornerRadiusPx,
-        DisabledColor, FontKey, FontSizePt, HoverColor, MarginPx, PanelColor, PressedColor,
-        ScreenColor, TextColor,
+        ActiveColor, BorderColor, BorderWidthVw, ButtonColor, ContentMargin, CornerRadiusVw,
+        DisabledColor, FontKey, FontSizePt, HoverColor, MarginVh, MarginVw, PanelColor,
+        PressedColor, ScreenColor, TextColor,
     },
     runtime::{BackgroundTheme, ButtonTheme, GdtfTheme, PanelTheme, TextTheme, TitleTheme},
     spec::GdtfThemeSpec,
@@ -65,11 +65,14 @@ pub fn default_theme() -> GdtfTheme {
 /// it is the explicitly-blessed last resort, not the styling source of truth.
 pub(super) fn const_fallback_theme() -> GdtfTheme {
     let font = Handle::<Font>::default();
+    // GTW-296: relative-length insets calibrated to the 1280x720 reference window —
+    // L/R as `Vw` (12px / 1280 = 0.9375), T/B as `Vh` (6px / 720 = 0.83333) — mirroring
+    // the shipped `grimdark.ron` margin so the const safety-net matches the real theme.
     let margin = ContentMargin {
-        l: MarginPx(12.0),
-        r: MarginPx(12.0),
-        t: MarginPx(6.0),
-        b: MarginPx(6.0),
+        l: MarginVw(0.9375),
+        r: MarginVw(0.9375),
+        t: MarginVh(0.83333),
+        b: MarginVh(0.83333),
     };
     GdtfTheme {
         default_font: FontKey(String::from("fonts/Alegreya-Variable.ttf")),
@@ -79,8 +82,9 @@ pub(super) fn const_fallback_theme() -> GdtfTheme {
         panel:        PanelTheme {
             color: PanelColor(Color::srgba(0.16, 0.16, 0.18, 0.55)),
             border_color: BorderColor(Color::srgba(0.20, 0.20, 0.24, 1.0)),
-            border_width_px: BorderWidthPx(2.0),
-            corner_radius_px: CornerRadiusPx(5.0),
+            // GTW-296: Vw fractions calibrated to 1280px width (2px / 1280, 5px / 1280).
+            border_width: BorderWidthVw(0.15625),
+            corner_radius: CornerRadiusVw(0.390_625),
             margin,
         },
         button:       ButtonTheme {
@@ -92,8 +96,9 @@ pub(super) fn const_fallback_theme() -> GdtfTheme {
             text_color: TextColor(Color::srgba(0.84, 0.80, 0.73, 1.0)),
             font_size_pt: FontSizePt(18.0),
             border_color: BorderColor(Color::srgba(0.20, 0.20, 0.24, 1.0)),
-            border_width_px: BorderWidthPx(2.0),
-            corner_radius_px: CornerRadiusPx(5.0),
+            // GTW-296: Vw fractions calibrated to 1280px width (2px / 1280, 5px / 1280).
+            border_width: BorderWidthVw(0.15625),
+            corner_radius: CornerRadiusVw(0.390_625),
             margin,
             font: font.clone(),
         },

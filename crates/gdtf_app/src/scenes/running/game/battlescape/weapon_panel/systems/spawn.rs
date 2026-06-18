@@ -142,10 +142,17 @@ const TEXT_COL_PCT: f32 = 75.0;
 /// fixed px.
 const CONTENT_MIN_H_VH: f32 = 3.0;
 
-/// The vertical/horizontal gap between weapon-cluster sub-nodes, in logical pixels (the
-/// stat-block `ROW_GAP_PX` precedent). A `const`, layout plumbing fed to a [`Node`]. A small
-/// fixed gap is the one justified px (a hairline-class spacing, not a scaling dimension).
-const GAP_PX: f32 = 4.0;
+/// The VERTICAL gap between weapon-cluster sub-nodes (row gaps), as a fraction of the window
+/// HEIGHT ([`Val::Vh`](bevy::ui::Val) — GTW-296 responsive ruling). A `const`, layout plumbing
+/// fed to a [`Node`]. Calibrated to a 4px gap at the 1280x720 reference window (4 / 720 =
+/// 0.55556) so the cluster is visually identical at the default size.
+const GAP_VH: f32 = 0.55556;
+
+/// The HORIZONTAL gap between weapon-cluster sub-nodes (column gaps), as a fraction of the window
+/// WIDTH ([`Val::Vw`](bevy::ui::Val) — GTW-296 responsive ruling). A `const`, layout plumbing fed
+/// to a [`Node`]. Calibrated to a 4px gap at the 1280x720 reference window (4 / 1280 = 0.3125) so
+/// the cluster is visually identical at the default size.
+const GAP_VW: f32 = 0.3125;
 
 /// Builds an EMPTY FRAMED placeholder box tagged `marker`, sized `width` × `height`.
 ///
@@ -166,7 +173,7 @@ fn spawn_frame(
             Node {
                 width,
                 height,
-                border: UiRect::all(Val::Px(*theme.panel.border_width_px)),
+                border: UiRect::all(Val::Vw(*theme.panel.border_width)),
                 ..default()
             },
             BackgroundColor(*theme.panel.color),
@@ -188,7 +195,7 @@ fn spawn_image(commands: &mut Commands, theme: &GdtfTheme, height: Val) -> Entit
                 height,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
-                border: UiRect::all(Val::Px(*theme.panel.border_width_px)),
+                border: UiRect::all(Val::Vw(*theme.panel.border_width)),
                 ..default()
             },
             BackgroundColor(*theme.panel.color),
@@ -256,10 +263,10 @@ fn spawn_info_row(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
                 min_height: Val::Vh(CONTENT_MIN_H_VH),
                 flex_grow: 1.0,
                 flex_shrink: 1.0,
-                min_width: Val::Px(0.0),
+                min_width: Val::ZERO,
                 flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::Center,
-                row_gap: Val::Px(GAP_PX),
+                row_gap: Val::Vh(GAP_VH),
                 overflow: Overflow {
                     x: OverflowAxis::Hidden,
                     y: OverflowAxis::Hidden,
@@ -292,7 +299,7 @@ fn spawn_info_row(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
             width: Val::Percent(100.0),
             height: Val::Percent(INFO_ROW_H_PCT),
             flex_direction: FlexDirection::Row,
-            column_gap: Val::Px(GAP_PX),
+            column_gap: Val::Vw(GAP_VW),
             align_items: AlignItems::Center,
             overflow: Overflow {
                 x: OverflowAxis::Hidden,
@@ -326,12 +333,12 @@ fn spawn_combined_panel(
                 width,
                 height,
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(GAP_PX),
+                row_gap: Val::Vh(GAP_VH),
                 overflow: Overflow {
                     x: OverflowAxis::Hidden,
                     y: OverflowAxis::Hidden,
                 },
-                border: UiRect::all(Val::Px(*theme.panel.border_width_px)),
+                border: UiRect::all(Val::Vw(*theme.panel.border_width)),
                 ..default()
             },
             BackgroundColor(*theme.panel.color),
@@ -353,8 +360,8 @@ fn spawn_item_panel(commands: &mut Commands, theme: &GdtfTheme, width: Val, heig
         width,
         height,
         flex_direction: FlexDirection::Column,
-        row_gap: Val::Px(GAP_PX),
-        border: UiRect::all(Val::Px(*theme.panel.border_width_px)),
+        row_gap: Val::Vh(GAP_VH),
+        border: UiRect::all(Val::Vw(*theme.panel.border_width)),
         ..default()
     });
     commands.entity(panel).add_children(&[item_a, item_b]);
@@ -414,7 +421,7 @@ fn spawn_left_column(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
             width: Val::Percent(LEFT_COL_PCT),
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(GAP_PX),
+            row_gap: Val::Vh(GAP_VH),
             ..default()
         },))
         .id();
@@ -450,7 +457,7 @@ fn spawn_right_column(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
             width: Val::Percent(RIGHT_COL_PCT),
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(GAP_PX),
+            row_gap: Val::Vh(GAP_VH),
             ..default()
         },))
         .id();
@@ -504,7 +511,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_weapon_panel(
             // window's bottom edge, matching the bar's content inset (the mockup's clear gap below
             // the bottom-panel content).
             bottom: Val::Vh(BOTTOM_BAR_PAD_Y_VH),
-            left: Val::Px(0.0),
+            left: Val::ZERO,
             width: Val::Vw(PANEL_W_VW),
             // Height = the bar's CONTENT-box height ([`PANEL_H_VH`] = bar height MINUS its top +
             // bottom padding); anchored a bottom-padding above the window bottom, its TOP lands a
@@ -512,7 +519,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_weapon_panel(
             // bleeds out the top (GTW-275 layout overhaul item 6).
             height: Val::Vh(PANEL_H_VH),
             flex_direction: FlexDirection::Row,
-            column_gap: Val::Px(GAP_PX),
+            column_gap: Val::Vw(GAP_VW),
             ..default()
         },
         // Draw ON TOP of the bottom bar's opaque fill (one z above the bar — item 6).
@@ -564,7 +571,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_weapon_panel(
         // content-box height, so the column cannot overrun the bar's bottom border/padding.
         height: Val::Vh(PANEL_H_VH),
         flex_direction: FlexDirection::Column,
-        row_gap: Val::Px(GAP_PX),
+        row_gap: Val::Vh(GAP_VH),
         ..default()
     });
     // Parent the stance panel INSIDE the bottom bar (D4). `spawn_weapon_panel` is ordered

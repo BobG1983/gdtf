@@ -11,12 +11,12 @@
 //!
 //! - [`GdtfThemeSpec`] (and a `*Spec` for each sub-theme) — the serde-`Deserialize`
 //!   mirror of the on-disk RON. It holds wire-friendly shapes ([`Srgba4`] color
-//!   quads, `String` font keys, bare px scalars) and nothing Bevy-asset-bound, so
-//!   it deserializes with no `World`.
+//!   quads, `String` font keys, bare relative-length scalars) and nothing
+//!   Bevy-asset-bound, so it deserializes with no `World`.
 //! - [`GdtfTheme`] (and a runtime struct for each sub-theme) — the runtime
 //!   `Resource`. Every field is a typed newtype over a resolved value (a
-//!   `Color`, a px scalar, a loaded `Handle<Font>`); it carries **no** raw
-//!   `Color`/`f32`/`String` domain fields.
+//!   `Color`, a relative-length scalar, a loaded `Handle<Font>`); it carries
+//!   **no** raw `Color`/`f32`/`String` domain fields.
 //! - [`GdtfThemeSpec::resolve`] — the pure bridge: it consumes a spec plus a
 //!   **font resolver** closure and produces a [`GdtfTheme`]. It touches no `World`
 //!   and no `AssetServer` directly (the resolver abstracts that), so it is
@@ -49,9 +49,9 @@ mod test_resolve;
 
 pub use fallback::default_theme;
 pub use newtypes::{
-    ActiveColor, BorderColor, BorderWidthPx, ButtonColor, ContentMargin, CornerRadiusPx,
-    DisabledColor, FontKey, FontSizePt, HoverColor, MarginPx, MarginSpec, PanelColor, PressedColor,
-    ScreenColor, Srgba4, TextColor,
+    ActiveColor, BorderColor, BorderWidthVw, ButtonColor, ContentMargin, CornerRadiusVw,
+    DisabledColor, FontKey, FontSizePt, HoverColor, MarginSpec, MarginVh, MarginVw, PanelColor,
+    PressedColor, ScreenColor, Srgba4, TextColor,
 };
 pub use runtime::{
     ActiveThemeHandle, BackgroundTheme, ButtonTheme, GdtfTheme, PanelTheme, TextTheme, TitleTheme,

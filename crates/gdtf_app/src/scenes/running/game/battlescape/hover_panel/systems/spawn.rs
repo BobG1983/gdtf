@@ -43,9 +43,11 @@ const INTEGRITY_REMAINING: Color = Color::srgb(0.55, 0.65, 0.45);
 /// The integrity bar's **lost** (track) color — a dark panel-bg.
 const INTEGRITY_LOST: Color = Color::srgb(0.12, 0.14, 0.16);
 
-/// The vertical gap between object-block rows, in logical pixels (the stat-block
-/// `ROW_GAP_PX` precedent — a small fixed hairline-class spacing, the one justified px).
-const ROW_GAP_PX: f32 = 4.0;
+/// The vertical gap between object-block rows, as a fraction of the viewport HEIGHT
+/// ([`Val::Vh`](bevy::ui::Val::Vh)) — the stat-block `ROW_GAP_VH` precedent, a small fixed
+/// hairline-class spacing. A vertical gap, so the unit is `Vh`; 0.55556 vh is 4 px at the
+/// 720-tall reference window (`ui-responsive-not-px`).
+const ROW_GAP_VH: f32 = 0.55556;
 
 /// The hover panel's **fixed** width as a fraction of the viewport WIDTH
 /// ([`Val::Vw`](bevy::ui::Val::Vw)). A relative unit (`ui-responsive-not-px`), and *fixed* so
@@ -155,7 +157,7 @@ fn spawn_object_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
             HoverObjectBlock,
             Node {
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(ROW_GAP_PX),
+                row_gap: Val::Vh(ROW_GAP_VH),
                 // Hidden via Display::None (removed from layout) until an object hover; its
                 // VISIBILITY inherits from the root (the update flips only its `display`).
                 display: Display::None,

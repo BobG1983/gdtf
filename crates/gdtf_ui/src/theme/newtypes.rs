@@ -1,6 +1,6 @@
-//! The typed leaf values a theme is built from: color / px / font-size / font-key
-//! newtypes, the per-edge content margin, and the wire-shaped `Srgba4` /
-//! `MarginSpec` that resolve into them.
+//! The typed leaf values a theme is built from: color / relative-length /
+//! font-size / font-key newtypes, the per-edge content margin, and the
+//! wire-shaped `Srgba4` / `MarginSpec` that resolve into them.
 //!
 //! Each newtype keeps a `pub(super)` inner field so the sibling spec / runtime /
 //! fallback submodules can construct it with tuple-struct syntax (the same
@@ -59,33 +59,52 @@ pub struct TextColor(pub(super) Color);
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
 pub struct BorderColor(pub(super) Color);
 
-/// Width of a themed box's border stroke, in logical pixels.
+/// Width of a themed box's border stroke, as a fraction of the window WIDTH
+/// (`Vw`, calibrated to the 1280x720 reference window — GTW-296).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct BorderWidthPx(pub(super) f32);
+pub struct BorderWidthVw(pub(super) f32);
 
-/// Corner radius of a themed box, in logical pixels.
+/// Corner radius of a themed box, as a fraction of the window WIDTH (`Vw`, the
+/// same axis as the border so a `2px`/`5px` border/radius pair keeps its ratio —
+/// GTW-296).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct CornerRadiusPx(pub(super) f32);
+pub struct CornerRadiusVw(pub(super) f32);
 
-/// A single content-margin edge inset, in logical pixels.
+/// A horizontal (left / right) content-margin edge inset, as a fraction of the
+/// window WIDTH (`Vw` — GTW-296).
 ///
-/// One newtype shared by all four edges of [`ContentMargin`]: the four edges are
-/// the same *kind* of value (a px inset), distinguished by their field, so they
-/// share a type rather than each owning a near-identical one.
+/// One newtype shared by the LEFT + RIGHT edges of [`ContentMargin`]: both are
+/// the same *kind* of value (a horizontal `Vw` inset), distinguished by their
+/// field, so they share a type. The vertical edges use the separate [`MarginVh`]
+/// so each axis tracks the matching window dimension on resize.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct MarginPx(pub(super) f32);
+pub struct MarginVw(pub(super) f32);
+
+/// A vertical (top / bottom) content-margin edge inset, as a fraction of the
+/// window HEIGHT (`Vh` — GTW-296).
+///
+/// One newtype shared by the TOP + BOTTOM edges of [`ContentMargin`]: both are
+/// the same *kind* of value (a vertical `Vh` inset), distinguished by their
+/// field, so they share a type. The horizontal edges use the separate
+/// [`MarginVw`] so each axis tracks the matching window dimension on resize.
+#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+pub struct MarginVh(pub(super) f32);
 
 /// Inner padding between a themed box's border and its content, per edge.
+///
+/// The horizontal edges are `Vw` (window-width fractions), the vertical edges are
+/// `Vh` (window-height fractions), so each axis tracks the matching window
+/// dimension on resize (GTW-296).
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct ContentMargin {
-    /// Left edge inset.
-    pub l: MarginPx,
-    /// Right edge inset.
-    pub r: MarginPx,
-    /// Top edge inset.
-    pub t: MarginPx,
-    /// Bottom edge inset.
-    pub b: MarginPx,
+    /// Left edge inset (`Vw`).
+    pub l: MarginVw,
+    /// Right edge inset (`Vw`).
+    pub r: MarginVw,
+    /// Top edge inset (`Vh`).
+    pub t: MarginVh,
+    /// Bottom edge inset (`Vh`).
+    pub b: MarginVh,
 }
 
 /// Text size for a themed text role, in typographic points.
@@ -119,30 +138,36 @@ impl Srgba4 {
     }
 }
 
-/// The on-disk margin shape: four named edge insets in logical pixels.
+/// The on-disk margin shape: four named edge insets as relative-length
+/// fractions (left/right `Vw`, top/bottom `Vh` — GTW-296).
 ///
 /// Mirrors the nested `margin: (left:, right:, top:, bottom:)` RON form and
-/// resolves into the runtime [`ContentMargin`].
+/// resolves into the runtime [`ContentMargin`]. The bare `f32` fields are the
+/// wire-shape carve-out (no-bare-types rule): they are the inner-of-newtype
+/// scalars deserialized from disk, mapped to typed [`MarginVw`] / [`MarginVh`]
+/// edges in [`resolve`](Self::resolve).
 #[derive(Deserialize, Clone, Copy, PartialEq, Debug)]
 pub struct MarginSpec {
-    /// Left edge inset, in logical pixels.
+    /// Left edge inset, as a window-WIDTH fraction (`Vw`).
     pub left:   f32,
-    /// Right edge inset, in logical pixels.
+    /// Right edge inset, as a window-WIDTH fraction (`Vw`).
     pub right:  f32,
-    /// Top edge inset, in logical pixels.
+    /// Top edge inset, as a window-HEIGHT fraction (`Vh`).
     pub top:    f32,
-    /// Bottom edge inset, in logical pixels.
+    /// Bottom edge inset, as a window-HEIGHT fraction (`Vh`).
     pub bottom: f32,
 }
 
 impl MarginSpec {
-    /// Resolve this on-disk margin into the runtime [`ContentMargin`].
+    /// Resolve this on-disk margin into the runtime [`ContentMargin`]: the
+    /// horizontal edges become [`MarginVw`] (window-width fractions), the
+    /// vertical edges become [`MarginVh`] (window-height fractions).
     pub(super) const fn resolve(self) -> ContentMargin {
         ContentMargin {
-            l: MarginPx(self.left),
-            r: MarginPx(self.right),
-            t: MarginPx(self.top),
-            b: MarginPx(self.bottom),
+            l: MarginVw(self.left),
+            r: MarginVw(self.right),
+            t: MarginVh(self.top),
+            b: MarginVh(self.bottom),
         }
     }
 }

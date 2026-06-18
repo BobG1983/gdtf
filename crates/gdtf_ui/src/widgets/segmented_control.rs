@@ -156,8 +156,8 @@ pub fn spawn_segmented_control(
             colors,
             Node {
                 flex_direction: orientation.flex_direction(),
-                column_gap: Val::Px(SEGMENT_GAP_PX),
-                row_gap: Val::Px(SEGMENT_GAP_PX),
+                column_gap: Val::Vw(SEGMENT_GAP_VW),
+                row_gap: Val::Vh(SEGMENT_GAP_VH),
                 ..default()
             },
             marker,
@@ -170,10 +170,10 @@ pub fn spawn_segmented_control(
                     SegmentIndex(index),
                     Button,
                     Node {
-                        padding: UiRect::axes(Val::Px(SEGMENT_PAD_X_PX), Val::Px(SEGMENT_PAD_Y_PX)),
+                        padding: UiRect::axes(Val::Vw(SEGMENT_PAD_X_VW), Val::Vh(SEGMENT_PAD_Y_VH)),
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
-                        border_radius: BorderRadius::all(Val::Px(SEGMENT_RADIUS_PX)),
+                        border_radius: BorderRadius::all(Val::Vw(SEGMENT_RADIUS_VW)),
                         ..default()
                     },
                     BackgroundColor(if is_active {
@@ -336,17 +336,28 @@ fn segment_font(is_active: bool) -> TextFont {
     }
 }
 
-/// The gap between adjacent segments, in logical pixels.
-const SEGMENT_GAP_PX: f32 = 2.0;
+/// The horizontal gap between adjacent segments (the Row `column_gap`), in
+/// viewport-width units. The original single 2px gap fed BOTH axes; it splits
+/// into a Vw column gap and a Vh row gap so each axis tracks its own viewport
+/// dimension. Calibrated 2px / 1280 * 100 at the default 1280x720 window.
+const SEGMENT_GAP_VW: f32 = 0.15625;
 
-/// Horizontal inner padding of a segment, in logical pixels.
-const SEGMENT_PAD_X_PX: f32 = 12.0;
+/// The vertical gap between adjacent segments (the Column `row_gap`), in
+/// viewport-height units. The Vh sibling of [`SEGMENT_GAP_VW`].
+/// Calibrated 2px / 720 * 100.
+const SEGMENT_GAP_VH: f32 = 0.27778;
 
-/// Vertical inner padding of a segment, in logical pixels.
-const SEGMENT_PAD_Y_PX: f32 = 6.0;
+/// Horizontal inner padding of a segment, in viewport-width units.
+/// Calibrated 12px / 1280 * 100.
+const SEGMENT_PAD_X_VW: f32 = 0.9375;
 
-/// The corner radius of a segment, in logical pixels.
-const SEGMENT_RADIUS_PX: f32 = 4.0;
+/// Vertical inner padding of a segment, in viewport-height units.
+/// Calibrated 6px / 720 * 100.
+const SEGMENT_PAD_Y_VH: f32 = 0.83333;
+
+/// The corner radius of a segment, in viewport-width units (one axis for radii,
+/// matching the border-width axis convention). Calibrated 4px / 1280 * 100.
+const SEGMENT_RADIUS_VW: f32 = 0.3125;
 
 /// The segment label font size, in typographic points.
 const SEGMENT_FONT_PT: f32 = 16.0;

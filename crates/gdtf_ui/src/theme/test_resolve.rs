@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::{
     fallback::SHIPPED_GRIMDARK_RON,
-    newtypes::{MarginSpec, Srgba4},
+    newtypes::{BorderWidthVw, CornerRadiusVw, MarginSpec, MarginVh, MarginVw, Srgba4},
     spec::{
         BackgroundThemeSpec, ButtonThemeSpec, GdtfThemeSpec, PanelThemeSpec, TextThemeSpec,
         TitleThemeSpec,
@@ -57,11 +57,11 @@ fn distinctive_spec() -> GdtfThemeSpec {
             color: Srgba4([0.01, 0.02, 0.03, 0.04]),
         },
         panel:        PanelThemeSpec {
-            color:            Srgba4([0.10, 0.11, 0.12, 0.13]),
-            border_color:     Srgba4([0.20, 0.21, 0.22, 0.23]),
-            border_width_px:  1.5,
-            corner_radius_px: 2.5,
-            margin:           MarginSpec {
+            color:         Srgba4([0.10, 0.11, 0.12, 0.13]),
+            border_color:  Srgba4([0.20, 0.21, 0.22, 0.23]),
+            border_width:  1.5,
+            corner_radius: 2.5,
+            margin:        MarginSpec {
                 left:   3.5,
                 right:  4.5,
                 top:    5.5,
@@ -69,23 +69,23 @@ fn distinctive_spec() -> GdtfThemeSpec {
             },
         },
         button:       ButtonThemeSpec {
-            color:            Srgba4([0.30, 0.31, 0.32, 0.33]),
-            disabled:         Srgba4([0.40, 0.41, 0.42, 0.43]),
-            active:           Srgba4([0.44, 0.45, 0.46, 0.47]),
-            hover:            Srgba4([0.50, 0.51, 0.52, 0.53]),
-            pressed:          Srgba4([0.60, 0.61, 0.62, 0.63]),
-            text_color:       Srgba4([0.70, 0.71, 0.72, 0.73]),
-            font_size_pt:     7.5,
-            border_color:     Srgba4([0.80, 0.81, 0.82, 0.83]),
-            border_width_px:  8.5,
-            corner_radius_px: 9.5,
-            margin:           MarginSpec {
+            color:         Srgba4([0.30, 0.31, 0.32, 0.33]),
+            disabled:      Srgba4([0.40, 0.41, 0.42, 0.43]),
+            active:        Srgba4([0.44, 0.45, 0.46, 0.47]),
+            hover:         Srgba4([0.50, 0.51, 0.52, 0.53]),
+            pressed:       Srgba4([0.60, 0.61, 0.62, 0.63]),
+            text_color:    Srgba4([0.70, 0.71, 0.72, 0.73]),
+            font_size_pt:  7.5,
+            border_color:  Srgba4([0.80, 0.81, 0.82, 0.83]),
+            border_width:  8.5,
+            corner_radius: 9.5,
+            margin:        MarginSpec {
                 left:   10.5,
                 right:  11.5,
                 top:    12.5,
                 bottom: 13.5,
             },
-            font:             None,
+            font:          None,
         },
         title:        TitleThemeSpec {
             text_color:   Srgba4([0.15, 0.16, 0.17, 0.18]),
@@ -121,35 +121,44 @@ fn resolve_maps_background_and_panel_fields() {
         Color::srgba(0.20, 0.21, 0.22, 0.23),
         "panel.border_color",
     );
+    // KIND check: the resolved field is a `BorderWidthVw` newtype (a relative-length Vw
+    // value, not a px magnitude); Deref-comparing its inner proves the wire field mapped
+    // through to the right runtime newtype.
+    let _border: BorderWidthVw = theme.panel.border_width;
     assert_eq!(
-        theme.panel.border_width_px.to_bits(),
+        theme.panel.border_width.to_bits(),
         1.5_f32.to_bits(),
-        "panel.border_width"
+        "panel.border_width (Vw)"
     );
+    let _radius: CornerRadiusVw = theme.panel.corner_radius;
     assert_eq!(
-        theme.panel.corner_radius_px.to_bits(),
+        theme.panel.corner_radius.to_bits(),
         2.5_f32.to_bits(),
-        "panel.corner_radius"
+        "panel.corner_radius (Vw)"
     );
+    // KIND check: horizontal edges resolve to `MarginVw` (window-width fractions),
+    // vertical edges to `MarginVh` (window-height fractions) — not bare px.
+    let _ml: MarginVw = theme.panel.margin.l;
+    let _mt: MarginVh = theme.panel.margin.t;
     assert_eq!(
         theme.panel.margin.l.to_bits(),
         3.5_f32.to_bits(),
-        "panel margin l"
+        "panel margin l (Vw)"
     );
     assert_eq!(
         theme.panel.margin.r.to_bits(),
         4.5_f32.to_bits(),
-        "panel margin r"
+        "panel margin r (Vw)"
     );
     assert_eq!(
         theme.panel.margin.t.to_bits(),
         5.5_f32.to_bits(),
-        "panel margin t"
+        "panel margin t (Vh)"
     );
     assert_eq!(
         theme.panel.margin.b.to_bits(),
         6.5_f32.to_bits(),
-        "panel margin b"
+        "panel margin b (Vh)"
     );
     assert_eq!(&**theme.default_font, "fonts/default.ttf", "default_font");
 }
@@ -200,35 +209,40 @@ fn resolve_maps_button_title_and_text_fields() {
         Color::srgba(0.80, 0.81, 0.82, 0.83),
         "button.border_color",
     );
+    // KIND check: the button box scalars resolve to the Vw/Vh relative-length newtypes.
+    let _bw: BorderWidthVw = theme.button.border_width;
+    let _cr: CornerRadiusVw = theme.button.corner_radius;
+    let _bml: MarginVw = theme.button.margin.l;
+    let _bmt: MarginVh = theme.button.margin.t;
     assert_eq!(
-        theme.button.border_width_px.to_bits(),
+        theme.button.border_width.to_bits(),
         8.5_f32.to_bits(),
-        "button.border_width"
+        "button.border_width (Vw)"
     );
     assert_eq!(
-        theme.button.corner_radius_px.to_bits(),
+        theme.button.corner_radius.to_bits(),
         9.5_f32.to_bits(),
-        "button.corner_radius"
+        "button.corner_radius (Vw)"
     );
     assert_eq!(
         theme.button.margin.l.to_bits(),
         10.5_f32.to_bits(),
-        "button margin l"
+        "button margin l (Vw)"
     );
     assert_eq!(
         theme.button.margin.r.to_bits(),
         11.5_f32.to_bits(),
-        "button margin r"
+        "button margin r (Vw)"
     );
     assert_eq!(
         theme.button.margin.t.to_bits(),
         12.5_f32.to_bits(),
-        "button margin t"
+        "button margin t (Vh)"
     );
     assert_eq!(
         theme.button.margin.b.to_bits(),
         13.5_f32.to_bits(),
-        "button margin b"
+        "button margin b (Vh)"
     );
 
     assert_eq!(
@@ -273,11 +287,11 @@ fn resolve_picks_override_font_else_default_font() {
             color: Srgba4([0.0, 0.0, 0.0, 1.0]),
         },
         panel:        PanelThemeSpec {
-            color:            Srgba4([0.0, 0.0, 0.0, 1.0]),
-            border_color:     Srgba4([0.0, 0.0, 0.0, 1.0]),
-            border_width_px:  1.0,
-            corner_radius_px: 1.0,
-            margin:           MarginSpec {
+            color:         Srgba4([0.0, 0.0, 0.0, 1.0]),
+            border_color:  Srgba4([0.0, 0.0, 0.0, 1.0]),
+            border_width:  1.0,
+            corner_radius: 1.0,
+            margin:        MarginSpec {
                 left:   0.0,
                 right:  0.0,
                 top:    0.0,
@@ -285,23 +299,23 @@ fn resolve_picks_override_font_else_default_font() {
             },
         },
         button:       ButtonThemeSpec {
-            color:            Srgba4([0.0, 0.0, 0.0, 1.0]),
-            disabled:         Srgba4([0.0, 0.0, 0.0, 1.0]),
-            active:           Srgba4([0.0, 0.0, 0.0, 1.0]),
-            hover:            Srgba4([0.0, 0.0, 0.0, 1.0]),
-            pressed:          Srgba4([0.0, 0.0, 0.0, 1.0]),
-            text_color:       Srgba4([0.0, 0.0, 0.0, 1.0]),
-            font_size_pt:     18.0,
-            border_color:     Srgba4([0.0, 0.0, 0.0, 1.0]),
-            border_width_px:  1.0,
-            corner_radius_px: 1.0,
-            margin:           MarginSpec {
+            color:         Srgba4([0.0, 0.0, 0.0, 1.0]),
+            disabled:      Srgba4([0.0, 0.0, 0.0, 1.0]),
+            active:        Srgba4([0.0, 0.0, 0.0, 1.0]),
+            hover:         Srgba4([0.0, 0.0, 0.0, 1.0]),
+            pressed:       Srgba4([0.0, 0.0, 0.0, 1.0]),
+            text_color:    Srgba4([0.0, 0.0, 0.0, 1.0]),
+            font_size_pt:  18.0,
+            border_color:  Srgba4([0.0, 0.0, 0.0, 1.0]),
+            border_width:  1.0,
+            corner_radius: 1.0,
+            margin:        MarginSpec {
                 left:   0.0,
                 right:  0.0,
                 top:    0.0,
                 bottom: 0.0,
             },
-            font:             None,
+            font:          None,
         },
         title:        TitleThemeSpec {
             text_color:   Srgba4([0.0, 0.0, 0.0, 1.0]),

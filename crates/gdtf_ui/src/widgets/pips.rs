@@ -75,7 +75,7 @@ pub fn spawn_pips(
         .spawn((
             PipsRow,
             Node {
-                column_gap: Val::Px(PIP_GAP_PX),
+                column_gap: Val::Vw(PIP_GAP_VW),
                 ..default()
             },
             marker,
@@ -86,8 +86,8 @@ pub fn spawn_pips(
                 row.spawn((
                     Pip,
                     Node {
-                        width: Val::Px(PIP_DIAMETER_PX),
-                        height: Val::Px(PIP_DIAMETER_PX),
+                        width: Val::Vw(PIP_DIAMETER_VW),
+                        height: Val::Vw(PIP_DIAMETER_VW),
                         // A fully rounded square is a circle.
                         border_radius: BorderRadius::all(Val::Percent(50.0)),
                         ..default()
@@ -130,8 +130,11 @@ pub fn set_pips(
     recolored
 }
 
-/// The diameter of one pip, in logical pixels.
-const PIP_DIAMETER_PX: f32 = 12.0;
+/// The diameter of one pip, in viewport-width units (applied to both width +
+/// height; the sub-pixel 16:9 skew on a ~12px pip is invisible). Calibrated
+/// 12px / 1280 * 100 at the default 1280x720 window.
+const PIP_DIAMETER_VW: f32 = 0.9375;
 
-/// The horizontal gap between adjacent pips, in logical pixels.
-const PIP_GAP_PX: f32 = 4.0;
+/// The horizontal gap between adjacent pips (the row `column_gap`), in
+/// viewport-width units. Calibrated 4px / 1280 * 100.
+const PIP_GAP_VW: f32 = 0.3125;
