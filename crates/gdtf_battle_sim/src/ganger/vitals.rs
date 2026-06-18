@@ -45,7 +45,7 @@ impl GangerName {
 /// lets an authored HP pool parse as a bare integer.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Hp(pub(super) u16);
+pub struct Hp(u16);
 
 impl Hp {
     /// Build a hit-points pool from its count.
@@ -80,7 +80,7 @@ impl Hp {
 /// part of [`GangerSpawn`](crate::situation::GangerSpawn).
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct HpMax(pub(super) u16);
+pub struct HpMax(u16);
 
 impl HpMax {
     /// Build an HP-maximum capacity from its count.
@@ -103,7 +103,7 @@ impl HpMax {
 /// `#[serde(transparent)]` lets an authored Wounds pool parse as a bare integer.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Wounds(pub(super) u8);
+pub struct Wounds(u8);
 
 impl Wounds {
     /// Build a Wounds (life) pool from its count.
@@ -140,7 +140,7 @@ impl Wounds {
 /// as part of [`GangerSpawn`](crate::situation::GangerSpawn).
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct WoundsMax(pub(super) u8);
+pub struct WoundsMax(u8);
 
 impl WoundsMax {
     /// Build a Wounds-maximum capacity from its count.
@@ -163,7 +163,7 @@ impl WoundsMax {
 /// budget parse as a bare integer.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Tu(pub(super) u8);
+pub struct Tu(u8);
 
 impl Tu {
     /// Build a Time-Unit budget from its count.
@@ -195,7 +195,7 @@ impl Tu {
 /// part of [`GangerSpawn`](crate::situation::GangerSpawn).
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct TuMax(pub(super) u8);
+pub struct TuMax(u8);
 
 impl TuMax {
     /// Build a TU-maximum budget from its count.
@@ -226,7 +226,7 @@ impl TuMax {
 /// `#[serde(transparent)]` lets an authored Shooting stat parse as a bare scalar.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Shooting(pub(super) f32);
+pub struct Shooting(f32);
 
 impl Shooting {
     /// Build a Shooting value from its magnitude (dimensionless; higher = steadier
@@ -256,7 +256,7 @@ impl Shooting {
 /// an authored Toughness stat parse as a bare scalar.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Toughness(pub(super) f32);
+pub struct Toughness(f32);
 
 impl Toughness {
     /// Build a Toughness value from its magnitude (dimensionless; higher = harder to
@@ -286,7 +286,7 @@ impl Toughness {
 /// `#[serde(transparent)]` lets an authored Luck stat parse as a bare scalar.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Luck(pub(super) f32);
+pub struct Luck(f32);
 
 impl Luck {
     /// Build a Luck value from its magnitude (dimensionless; directional fortune —

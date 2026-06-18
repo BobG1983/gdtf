@@ -43,7 +43,7 @@ pub enum LifeState {
 /// runs until an ally dresses the wound; a structural spawn default, not a balance
 /// value). Private inner + derived [`Deref`], house style.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct Stabilized(pub(super) bool);
+pub struct Stabilized(bool);
 
 impl Stabilized {
     /// Build a stabilized flag — `true` once an ally has dressed the downed

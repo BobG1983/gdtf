@@ -53,32 +53,32 @@ fn stance_inserts_and_queries_independently() {
 
 #[test]
 fn aiming_inserts_and_queries_independently() {
-    assert_independent(Aiming(true));
+    assert_independent(Aiming::new(true));
 }
 
 #[test]
 fn faction_inserts_and_queries_independently() {
-    assert_independent(Faction(2));
+    assert_independent(Faction::new(2));
 }
 
 #[test]
 fn hp_inserts_and_queries_independently() {
-    assert_independent(Hp(42));
+    assert_independent(Hp::new(42));
 }
 
 #[test]
 fn wounds_inserts_and_queries_independently() {
-    assert_independent(Wounds(7));
+    assert_independent(Wounds::new(7));
 }
 
 #[test]
 fn tu_inserts_and_queries_independently() {
-    assert_independent(Tu(60));
+    assert_independent(Tu::new(60));
 }
 
 #[test]
 fn tu_max_inserts_and_queries_independently() {
-    assert_independent(TuMax(60));
+    assert_independent(TuMax::new(60));
 }
 
 #[test]
@@ -88,22 +88,22 @@ fn life_state_inserts_and_queries_independently() {
 
 #[test]
 fn stabilized_inserts_and_queries_independently() {
-    assert_independent(Stabilized(true));
+    assert_independent(Stabilized::new(true));
 }
 
 #[test]
 fn shooting_inserts_and_queries_independently() {
-    assert_independent(Shooting(3.5));
+    assert_independent(Shooting::new(3.5));
 }
 
 #[test]
 fn toughness_inserts_and_queries_independently() {
-    assert_independent(Toughness(4.0));
+    assert_independent(Toughness::new(4.0));
 }
 
 #[test]
 fn luck_inserts_and_queries_independently() {
-    assert_independent(Luck(2.5));
+    assert_independent(Luck::new(2.5));
 }
 
 // --- GTW-182 AC #1: a ganger constructed carrying Shooting/Toughness/Luck reads
@@ -139,8 +139,12 @@ fn attribute_stats_construct_and_read_back_via_deref() {
 #[test]
 fn shooter_and_defender_attribute_stats_are_queryable() {
     let mut world = World::new();
-    let shooter = world.spawn((Shooting(3.0), Toughness(2.0), Luck(1.0))).id();
-    let defender = world.spawn((Shooting(1.0), Toughness(5.0), Luck(4.0))).id();
+    let shooter = world
+        .spawn((Shooting::new(3.0), Toughness::new(2.0), Luck::new(1.0)))
+        .id();
+    let defender = world
+        .spawn((Shooting::new(1.0), Toughness::new(5.0), Luck::new(4.0)))
+        .id();
 
     // The severity-roll read shape: a tuple query over the three attribute stats.
     let mut q = world.query::<(&Shooting, &Toughness, &Luck)>();
@@ -149,7 +153,7 @@ fn shooter_and_defender_attribute_stats_are_queryable() {
     let shooter_stats = q.get(&world, shooter);
     assert_eq!(
         shooter_stats,
-        Ok((&Shooting(3.0), &Toughness(2.0), &Luck(1.0))),
+        Ok((&Shooting::new(3.0), &Toughness::new(2.0), &Luck::new(1.0))),
         "the shooter's attribute stats are queryable off the entity",
     );
 
@@ -157,7 +161,7 @@ fn shooter_and_defender_attribute_stats_are_queryable() {
     let defender_stats = q.get(&world, defender);
     assert_eq!(
         defender_stats,
-        Ok((&Shooting(1.0), &Toughness(5.0), &Luck(4.0))),
+        Ok((&Shooting::new(1.0), &Toughness::new(5.0), &Luck::new(4.0))),
         "the defender's attribute stats are queryable off the entity",
     );
 }
@@ -171,13 +175,13 @@ fn shooter_and_defender_attribute_stats_are_queryable() {
 #[test]
 fn sibling_components_are_independently_queryable() {
     let mut world = World::new();
-    let id = world.spawn((Hp(10), Tu(25))).id();
+    let id = world.spawn((Hp::new(10), Tu::new(25))).id();
 
     let mut hp_query = world.query::<&Hp>();
-    assert_eq!(hp_query.get(&world, id), Ok(&Hp(10)));
+    assert_eq!(hp_query.get(&world, id), Ok(&Hp::new(10)));
 
     let mut tu_query = world.query::<&Tu>();
-    assert_eq!(tu_query.get(&world, id), Ok(&Tu(25)));
+    assert_eq!(tu_query.get(&world, id), Ok(&Tu::new(25)));
 }
 
 // --- C14(b): default construction produces the documented initial value for
@@ -193,23 +197,23 @@ fn defaults_are_the_documented_initial_values() {
     assert_eq!(Direction::default(), Direction::North);
     assert_eq!(Stance::default(), Stance(StanceKind::Standing));
     assert_eq!(StanceKind::default(), StanceKind::Standing);
-    assert_eq!(Aiming::default(), Aiming(false));
-    assert_eq!(Faction::default(), Faction(0));
-    assert_eq!(Hp::default(), Hp(0));
-    assert_eq!(Wounds::default(), Wounds(0));
-    assert_eq!(Tu::default(), Tu(0));
+    assert_eq!(Aiming::default(), Aiming::new(false));
+    assert_eq!(Faction::default(), Faction::new(0));
+    assert_eq!(Hp::default(), Hp::new(0));
+    assert_eq!(Wounds::default(), Wounds::new(0));
+    assert_eq!(Tu::default(), Tu::new(0));
     // TuMax mirrors Tu's structural spawn default — a fresh ganger carries no
     // round-start budget until the situation setup authors one (not a tunable).
-    assert_eq!(TuMax::default(), TuMax(0));
+    assert_eq!(TuMax::default(), TuMax::new(0));
     assert_eq!(LifeState::default(), LifeState::Alive);
     // A freshly-downed ganger is NOT stabilized — the bleed clock runs until an
     // ally dresses the wound (a structural spawn default, not a tuning value).
-    assert_eq!(Stabilized::default(), Stabilized(false));
+    assert_eq!(Stabilized::default(), Stabilized::new(false));
     // The GTW-182 attribute stats default to 0.0 (a structural "no value yet"
     // spawn floor, not a tuning magnitude — real values are per-ganger data).
-    assert_eq!(Shooting::default(), Shooting(0.0));
-    assert_eq!(Toughness::default(), Toughness(0.0));
-    assert_eq!(Luck::default(), Luck(0.0));
+    assert_eq!(Shooting::default(), Shooting::new(0.0));
+    assert_eq!(Toughness::default(), Toughness::new(0.0));
+    assert_eq!(Luck::default(), Luck::new(0.0));
 }
 
 /// The newtypes' derived [`Deref`](bevy::prelude::Deref) reaches their inner
@@ -219,20 +223,20 @@ fn defaults_are_the_documented_initial_values() {
 fn newtypes_deref_to_inner() {
     assert_eq!(*Facing(Direction::West), Direction::West);
     assert_eq!(*Stance(StanceKind::Crouching), StanceKind::Crouching);
-    assert!(*Aiming(true));
-    assert_eq!(*Faction(5), 5u8);
-    assert_eq!(*Hp(123), 123u16);
-    assert_eq!(*Wounds(9), 9u8);
-    assert_eq!(*Tu(80), 80u8);
+    assert!(*Aiming::new(true));
+    assert_eq!(*Faction::new(5), 5u8);
+    assert_eq!(*Hp::new(123), 123u16);
+    assert_eq!(*Wounds::new(9), 9u8);
+    assert_eq!(*Tu::new(80), 80u8);
     // TuMax derefs to its inner u8 — the GTW-38 reaction ratio denominator.
-    assert_eq!(*TuMax(120), 120u8);
+    assert_eq!(*TuMax::new(120), 120u8);
     // Stabilized derefs to its inner bool (arbitrary value, mechanism not value).
-    assert!(*Stabilized(true));
+    assert!(*Stabilized::new(true));
     // The GTW-182 attribute stats deref to their inner f32 (an f32 compare, so
     // an epsilon tolerance, not a bit-exact compare on a derived value).
-    assert!((*Shooting(3.0) - 3.0).abs() < f32::EPSILON);
-    assert!((*Toughness(4.5) - 4.5).abs() < f32::EPSILON);
-    assert!((*Luck(2.0) - 2.0).abs() < f32::EPSILON);
+    assert!((*Shooting::new(3.0) - 3.0).abs() < f32::EPSILON);
+    assert!((*Toughness::new(4.5) - 4.5).abs() < f32::EPSILON);
+    assert!((*Luck::new(2.0) - 2.0).abs() < f32::EPSILON);
     // Position derefs to CellLevel (C3); compare the whole inner key.
     let key = CellLevel::new(Cell::new(1, 2), Level::new(3));
     assert_eq!(*Position(key), key);

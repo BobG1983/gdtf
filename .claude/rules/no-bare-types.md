@@ -25,6 +25,15 @@ variable name bolted onto a bare primitive.
    **framework plumbing you cannot wrap** — Bevy system params (`Commands`,
    `Query`, `Res`/`ResMut`, `EventWriter`), trait-impl signatures, and indices
    into a collection you own. Those are not domain values.
+5. **The newtype's inner field is PRIVATE — never `pub`, `pub(crate)`, or
+   `pub(super)`.** Construct it through a `new` (or named) constructor, read it
+   through the derived `Deref`, mutate it through `DerefMut` (added only where the
+   value is mutated) or a named setter. A `pub`/`pub(crate)`/`pub(super)` inner
+   leaks the wrapper open to `Self(x)` tuple construction and `x.0 = …` field
+   writes from outside the defining module — bypassing the constructor/accessor
+   contract the newtype exists to enforce, so the name stops being a guarantee.
+   Why: a private inner makes the type the *only* place the raw value is touched,
+   so invariants (clamping, validation, defaults) can never be sidestepped.
 
 ## Example
 
@@ -42,5 +51,7 @@ pub struct Hp(u32);
 ## Enforcement
 
 `/gate`'s `design-gate` audit treats a bare domain type as a violation, even if
-it compiles. Wrapping a value is also how `docs/glossary.md` vocabulary becomes
-code — see `design-fidelity.md`.
+it compiles — and treats a `pub`/`pub(crate)`/`pub(super)` newtype inner field
+(rule 5) as the same violation: the inner must be private, reachable only through
+`Deref`/`DerefMut`/a constructor/a named accessor. Wrapping a value is also how
+`docs/glossary.md` vocabulary becomes code — see `design-fidelity.md`.

@@ -51,7 +51,7 @@ impl Stance {
 /// `#[serde(transparent)]` lets an authored aim-mode parse as a bare boolean.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Aiming(pub(super) bool);
+pub struct Aiming(bool);
 
 impl Aiming {
     /// Build an aim-mode flag — `true` for aimed fire, `false` for hip-fired.
@@ -74,7 +74,7 @@ impl Aiming {
 /// `#[serde(transparent)]` lets an authored gang index parse as a bare integer.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Faction(pub(super) u8);
+pub struct Faction(u8);
 
 impl Faction {
     /// Build a faction (gang) identity from its small gang index.
