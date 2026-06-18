@@ -1,5 +1,9 @@
 //! The deactivation-repaint system (GTW-280): repaint a just-de-selected toggle
-//! the SAME frame it loses [`ActiveButton`], without waiting for a hover.
+//! the SAME frame it loses [`ActiveButton`], without waiting for a hover; and the
+//! theme-reload repaint (GTW-147): repaint every enabled button to its
+//! interaction-correct fill the SAME frame [`GdtfTheme`] changes, so a button held
+//! `Hovered`/`Pressed` across a hot-reload does not get stuck on the new theme's
+//! resting base until the user re-hovers.
 
 use bevy::{
     prelude::*,
@@ -9,7 +13,7 @@ use bevy::{
 use super::theme::interaction_fill;
 use crate::{
     theme::GdtfTheme,
-    widgets::{ActiveButton, DisabledButton, Segment},
+    widgets::{ActiveButton, DisabledButton, Segment, Switch},
 };
 
 /// Query filter selecting the buttons [`repaint_deactivated_buttons`] repaints:
@@ -103,6 +107,92 @@ pub fn repaint_deactivated_buttons(
         let Ok((interaction, mut background, mut border)) = buttons.get_mut(entity) else {
             continue;
         };
+        background.0 = interaction_fill(&theme, *interaction);
+        *border = UiBorderColor::all(*theme.button.border_color);
+    }
+}
+
+/// Query filter selecting the buttons [`repaint_theme_change`] repaints on a theme
+/// reload: enabled, NOT-active, NOT-segment, NOT-switch real buttons — exactly the
+/// set whose fill is owned by the interaction layer
+/// ([`theme_interaction`](super::theme_interaction)) rather than a special paint.
+///
+/// Factored into a named alias both to keep the system signature legible (clippy's
+/// `type_complexity`) and to make the exclusions explicit. It mirrors
+/// [`theme_interaction`](super::theme_interaction)'s filter *without* the
+/// `Changed<Interaction>` term: this system's whole point is to repaint buttons
+/// whose [`Interaction`](bevy::ui::Interaction) did NOT change at the reload frame,
+/// so it must NOT gate on `Changed<Interaction>`. `Without<DisabledButton>` leaves
+/// disabled buttons to
+/// [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons),
+/// `Without<ActiveButton>` leaves toggled-on buttons to
+/// [`paint_active_buttons`](crate::widgets::paint_active_buttons) (the GTW-266
+/// active-is-sticky rule), `Without<Segment>` leaves
+/// [`SegmentedControl`](crate::widgets::SegmentedControl) segment fills to
+/// [`repaint_segments`](crate::widgets::repaint_segments) (GTW-277), and
+/// `Without<Switch>` leaves [`Switch`](crate::widgets::Switch) track fills to
+/// [`drive_switches`](crate::widgets::drive_switches) (GTW-277). Those four
+/// exclusions also make this system's write set DISJOINT from each of those
+/// special paints, so there is no `BackgroundColor` write conflict on a theme-change
+/// frame where they all run.
+type EnabledInteractiveButton = (
+    With<Button>,
+    Without<DisabledButton>,
+    Without<ActiveButton>,
+    Without<Segment>,
+    Without<Switch>,
+);
+
+/// Repaints every ENABLED interactive button to its CURRENT-[`Interaction`]-correct
+/// fill the same frame [`GdtfTheme`] changes (GTW-147).
+///
+/// When the theme hot-reloads (the GTW-137 re-derive overwrites [`GdtfTheme`] in
+/// place), [`apply_theme`](crate::themed::apply_theme) repaints every [`Themed`](crate::themed::Themed)
+/// button to its ROLE/base fill from the new palette, IGNORING the button's current
+/// [`Interaction`](bevy::ui::Interaction). The interaction feedback
+/// ([`theme_interaction`](super::theme_interaction)) only fires on
+/// `Changed<Interaction>`, so a button that is CURRENTLY `Hovered`/`Pressed` at the
+/// reload frame — with no subsequent interaction change — was left showing the new
+/// theme's resting base until the user moved off and re-hovered. This system closes
+/// that gap: it re-derives each enabled button's fill from its CURRENT
+/// [`Interaction`](bevy::ui::Interaction) via the SHARED [`interaction_fill`] helper
+/// (so the `None`→base / `Hovered`→hover / `Pressed`→pressed mapping is never
+/// duplicated, AC2), and re-affirms its [`BorderColor`](bevy::ui::BorderColor) from
+/// the new button sub-theme.
+///
+/// ## What it does NOT touch (disjoint write set)
+///
+/// Disabled buttons keep the disabled fill [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons)
+/// set (`Without<DisabledButton>`); active toggles keep the active fill
+/// [`paint_active_buttons`](crate::widgets::paint_active_buttons) set
+/// (`Without<ActiveButton>`); [`SegmentedControl`](crate::widgets::SegmentedControl)
+/// segments (`Without<Segment>`) and [`Switch`](crate::widgets::Switch) tracks
+/// (`Without<Switch>`) keep their owner-painted fills. Those four exclusions mirror
+/// [`theme_interaction`](super::theme_interaction)'s filter and make this system's
+/// write set DISJOINT from each special paint, so no two systems write the same
+/// button's [`BackgroundColor`](bevy::ui::BackgroundColor) on the reload frame.
+///
+/// ## No feedback loop
+///
+/// It writes ONLY [`BackgroundColor`](bevy::ui::BackgroundColor) and
+/// [`BorderColor`](bevy::ui::BorderColor) — it never touches
+/// [`Interaction`](bevy::ui::Interaction), so it cannot trigger a
+/// `Changed<Interaction>` and re-arm itself or [`theme_interaction`](super::theme_interaction)
+/// (bevy-traps rule 4/7 — no messages, no `&mut World`).
+///
+/// Registered by [`UiPlugin`](crate::UiPlugin) in [`Update`] ordered
+/// `.after(`[`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme)`)` so it
+/// runs the SAME frame, after [`apply_theme`](crate::themed::apply_theme) has written
+/// the base fills (bevy-traps rule 3), and gated on
+/// `resource_changed::<GdtfTheme>().and(resource_exists::<GdtfTheme>)` so it does
+/// nothing on steady-state frames (where it would otherwise clobber per-frame hover
+/// feedback) and is inert and panic-free before the theme is populated (bevy-traps
+/// rule 1).
+pub fn repaint_theme_change(
+    theme: Res<GdtfTheme>,
+    mut buttons: Query<DeactivationVisuals, EnabledInteractiveButton>,
+) {
+    for (interaction, mut background, mut border) in &mut buttons {
         background.0 = interaction_fill(&theme, *interaction);
         *border = UiBorderColor::all(*theme.button.border_color);
     }

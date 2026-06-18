@@ -55,6 +55,19 @@
 //! system repaints each just-de-selected toggle from its CURRENT `Interaction`
 //! via the shared [`interaction_fill`](theme::interaction_fill) helper the SAME
 //! frame the marker is removed.
+//!
+//! ## Theme-reload repaint (GTW-147)
+//!
+//! [`repaint_theme_change`] closes the symmetric gap on a theme hot-reload: when
+//! [`GdtfTheme`](crate::theme::GdtfTheme) changes,
+//! [`apply_theme`](crate::themed::apply_theme) repaints every button to its base
+//! fill IGNORING its current [`Interaction`](bevy::ui::Interaction), while
+//! [`theme_interaction`] only fires on `Changed<Interaction>`. So a button held
+//! `Hovered`/`Pressed` across the reload (no later interaction change) was stuck on
+//! the new theme's resting base until re-hovered. Gated on
+//! `resource_changed::<GdtfTheme>`, ordered `.after(UiSystems::ApplyTheme)`, this
+//! system re-derives every ENABLED button's fill from its CURRENT `Interaction` via
+//! the same [`interaction_fill`](theme::interaction_fill) helper.
 
 mod focus;
 mod repaint;
@@ -63,5 +76,5 @@ mod test;
 mod theme;
 
 pub use focus::sync_hover_to_focus;
-pub use repaint::repaint_deactivated_buttons;
+pub use repaint::{repaint_deactivated_buttons, repaint_theme_change};
 pub use theme::theme_interaction;

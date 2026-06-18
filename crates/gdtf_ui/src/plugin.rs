@@ -5,7 +5,9 @@ use gdtf_assets::RonAsset;
 
 use crate::{
     focus_nav::FocusNavPlugin,
-    interaction::{repaint_deactivated_buttons, sync_hover_to_focus, theme_interaction},
+    interaction::{
+        repaint_deactivated_buttons, repaint_theme_change, sync_hover_to_focus, theme_interaction,
+    },
     retheme::redrive_theme_on_asset_event,
     theme::{GdtfTheme, GdtfThemeSpec},
     themed::{UiSystems, any_themed_added, apply_theme},
@@ -92,6 +94,23 @@ impl Plugin for UiPlugin {
     /// Its write set (`Without<ActiveButton>`) is disjoint from
     /// [`paint_active_buttons`](crate::widgets::paint_active_buttons)'s
     /// (`With<ActiveButton>`), so there is no write conflict between them.
+    ///
+    /// The GTW-147 theme-reload repaint
+    /// ([`repaint_theme_change`](crate::interaction::repaint_theme_change)) runs in the
+    /// **same** `.after(UiSystems::ApplyTheme)` band but is additionally gated on
+    /// `resource_changed::<GdtfTheme>`: on the frame the theme changes, it re-derives
+    /// every ENABLED button's [`BackgroundColor`](bevy::ui::BackgroundColor) from its
+    /// CURRENT [`Interaction`](bevy::ui::Interaction) (the shared
+    /// `interaction_fill` mapping), so a button held `Hovered`/`Pressed` across a
+    /// hot-reload is not left on the new theme's resting base until re-hovered —
+    /// [`apply_theme`](crate::themed::apply_theme) ignores `Interaction`, and
+    /// [`theme_interaction`](crate::interaction::theme_interaction) only fires on
+    /// `Changed<Interaction>`. Its query excludes
+    /// [`DisabledButton`](crate::widgets::DisabledButton),
+    /// [`ActiveButton`](crate::widgets::ActiveButton),
+    /// [`Segment`](crate::widgets::Segment), and [`Switch`](crate::widgets::Switch),
+    /// so its write set is disjoint from the disabled/active/segment/switch paints —
+    /// no two systems write the same button's fill this frame.
     ///
     /// The GTW-141 mouse hover→focus bridge
     /// ([`sync_hover_to_focus`](crate::interaction::sync_hover_to_focus)) runs in the
@@ -195,6 +214,26 @@ impl Plugin for UiPlugin {
                     sync_hover_to_focus,
                 )
                     .after(UiSystems::ApplyTheme),
+                // GTW-147 — theme-reload repaint: on the frame `GdtfTheme` changes,
+                // `apply_theme` repaints every button to its base fill IGNORING its
+                // current `Interaction`, and `theme_interaction` only fires on
+                // `Changed<Interaction>` — so a button held `Hovered`/`Pressed`
+                // across the reload (no later interaction change) was stuck on the
+                // new theme's resting base until re-hovered.
+                // `repaint_theme_change` re-derives every ENABLED button's fill from
+                // its CURRENT `Interaction` (the shared `interaction_fill` mapping).
+                // It runs in the same `.after(UiSystems::ApplyTheme)` band so it
+                // composes on the freshest base (bevy-traps rule 3), gated on
+                // `resource_changed::<GdtfTheme>` so it does nothing on steady frames
+                // (where it would clobber per-frame hover feedback) and on
+                // `resource_exists::<GdtfTheme>` so its `Res<GdtfTheme>` never fails
+                // param validation before the theme is populated (bevy-traps rule 1).
+                // Its write set is DISJOINT from the special paints above
+                // (`Without<DisabledButton/ActiveButton/Segment/Switch>`), so no two
+                // systems write the same button's `BackgroundColor` this frame.
+                repaint_theme_change
+                    .after(UiSystems::ApplyTheme)
+                    .run_if(resource_exists::<GdtfTheme>.and(resource_changed::<GdtfTheme>)),
             ),
         );
     }
