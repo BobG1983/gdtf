@@ -1,44 +1,51 @@
-//! GTW-252 — the battlescape status HUD panel, driven through the REAL app stack.
+//! GTW-278 / GTW-274 — the battlescape status panel + hover-inspect panel (twins), driven
+//! through the REAL app stack.
 //!
-//! These headless `GdtfTestAppBuilder` integration tests drive the genuine state
-//! machine down to `BattleScapeState::BattleRunning`, where the real status-panel
-//! plugin's `OnEnter(BattleRunning)` `spawn_status_panel` runs and its
-//! `update_status_panel` repaints the lines under the `BattleInProgress` gate. They
-//! cover:
+//! These headless `GdtfTestAppBuilder` integration tests drive the genuine state machine
+//! down to `BattleScapeState::BattleRunning`, where the real status-panel + hover-panel
+//! plugins spawn their shared stat blocks and their update systems repaint them under the
+//! `BattleInProgress` gate. They cover:
 //!
-//! - **AC1** — the panel spawns in a live battle and despawns on exit (mirrors the
-//!   action-bar's `action_bar_spawns_in_battle_and_despawns_outside`).
-//! - **AC2** — each line `Text` reflects the selected ganger's known vitals (assert on
-//!   the rendered string content; discriminating — a line wired to the wrong component
-//!   would surface the wrong value).
-//! - **AC3** — changing the selected ganger's `Tu` / `Stance` via the real components
-//!   and re-running `update()` re-renders the lines (the panel is not a one-shot).
-//! - **AC4** — with no selection the panel shows its empty state and does not panic /
-//!   does not show stale ganger data.
-//!
-//! The pure format-helper unit tests (AC5) live in-crate in `status_panel/systems/labels.rs`.
+//! - **AC1 (status)** — the status panel renders the selected ganger's NAME +
+//!   TU/HP `ProgressBar`s + Wounds `Pips` + wound-name list; the removed `LifeState` / `Weapon`
+//!   lines are GONE; selecting a different ganger MUTATES in place.
+//! - **Portrait** — the portrait node carries a `TextureAtlas` at the DETERMINISTIC index
+//!   for the ganger's name (computed in-test from the same rule); a different name mutates
+//!   the index on the SAME node.
+//! - **AC2 (hover)** — `HoveredCell` over a ganger → its stat block; over a cover/object →
+//!   the object block; over bare floor → the panel is hidden.
 
-use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::widget::Button};
+use bevy::{
+    ecs::entity::Entity,
+    image::TextureAtlas,
+    prelude::*,
+    state::state::State,
+    text::TextColor,
+    ui::{Val, widget::ImageNode},
+};
 use gdtf_app::test_support::{
-    AppState, BattleRunningComplete, BattleScapeState, HpText, IdentityText, LifeText,
-    RunningState, StanceText, TuText, WeaponNameText,
+    AppState, BattleScapeState, HoverObjectBar, HoverObjectBlock, HoverPanelRoot,
+    HoverStatBlockHost, RunningState, StatHpBar, StatName, StatPortrait, StatTuBar, StatWoundLine,
+    StatWoundList, StatWoundsPips, portrait_index_for_name,
 };
-use gdtf_battle_input::SelectedShooter;
+use gdtf_battle_input::{HoveredCell, InputSystems, SelectedShooter, pick_hovered_cell};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, GangerName, Hp, Level, LifeState, Position, Stance, StanceKind, Tu,
-    TuMax, WeaponName, Wounds, tuning::CombatTuning, weapon::WeaponRegistry,
+    BodyPart, Cell, CellLevel, Faction, GangerName, Hp, HpMax, InflictedWound, InflictedWounds,
+    Level, LifeState, OccupancyGrid, PlayerFaction, Position, Severity, Stance, StanceKind,
+    TerrainKind, Tu, TuMax, Wounds, WoundsMax, tuning::CombatTuning, weapon::WeaponRegistry,
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::theme::default_theme;
+use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
+use gdtf_ui::{
+    Pip, ProgressBarFill,
+    theme::{GdtfTheme, default_theme},
+};
 
-/// A budget large enough to drive the deep walk into the battlescape (each leaf scene
-/// spends a couple of `FixedUpdate` ticks plus transition propagation), bounded so a
-/// machine that never reaches the predicate fails instead of hanging (the
-/// `action_bar.rs` budget).
+/// A budget large enough to drive the deep walk into the battlescape, bounded so a machine
+/// that never reaches the predicate fails instead of hanging.
 const BUDGET: u32 = 96;
 
 // ---------------------------------------------------------------------------------
-// Harness — drive the real stack to BattleRunning, where the panel is live.
+// Harness — drive the real stack to BattleRunning, where the panels are live.
 // ---------------------------------------------------------------------------------
 
 /// Reads the current [`BattleScapeState`] if it is active.
@@ -55,25 +62,21 @@ fn running_state(app: &App) -> Option<RunningState> {
         .map(|state| *state.get())
 }
 
-/// Builds the headless walk app, injecting the persistent `Load` resources the machine
-/// needs to traverse `Load` (no `AssetServer` under `MinimalPlugins`) — `default_theme()`
-/// (which `spawn_status_panel` reads) + `CombatTuning`. No `LoadedSituation` → the empty
-/// `Situation::default()` battle is set up, which still makes `BattleInProgress` present
-/// in `BattleRunning` (the panel's update gate). The action-bar harness precedent.
+/// Builds the headless walk app, injecting the persistent `Load` resources (theme +
+/// tuning + an empty weapon registry) the machine needs to traverse `Load`. No
+/// `LoadedSituation` → the empty `Situation::default()` battle is set up, which still makes
+/// `BattleInProgress` + `OccupancyGrid` present in `BattleRunning`.
 fn walk_app() -> App {
     let mut app = GdtfTestAppBuilder::new()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
-    // situation here, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());
     app
 }
 
-/// Drives the app from `Running`/`Menu` down to the first update on which
-/// [`BattleScapeState::BattleRunning`] is active. Returns whether it was reached.
+/// Drives the app from `Running`/`Menu` down to `BattleScapeState::BattleRunning`.
 fn drive_to_battle_running(app: &mut App) -> bool {
     let at_menu = advance_until(
         app,
@@ -93,8 +96,7 @@ fn drive_to_battle_running(app: &mut App) -> bool {
     )
 }
 
-/// Drives the walk to `BattleRunning` and returns the app, asserting the descent
-/// succeeded (so each test starts from the live battle where the panel is spawned).
+/// Drives the walk to `BattleRunning` and returns the app, asserting the descent succeeded.
 fn battle_running_app() -> App {
     let mut app = walk_app();
     assert!(
@@ -106,18 +108,106 @@ fn battle_running_app() -> App {
     app
 }
 
-/// Looks up the single entity carrying marker `M`, if exactly one exists (the
-/// `action_bar.rs` `single_with` idiom).
-fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
+/// A larger budget for the real `DefaultPlugins` async asset loads + the full state descent
+/// (the `real_battle_panel.rs` precedent) when the portrait atlas must actually load.
+const LOAD_BUDGET: u32 = 512;
+
+/// Drives the REAL `DefaultPlugins` asset stack (`GdtfLoadTestAppBuilder`, a live
+/// `AssetServer` rooted at the workspace `assets/`) from `Load` down to `BattleRunning`,
+/// asserting the descent. UNLIKE [`battle_running_app`] (`MinimalPlugins`, no `AssetServer`),
+/// here `TopDownRendererPlugin`'s `Startup` `load_topdown_atlases` runs for real, so the
+/// `OnEnter(BattleRunning)` panel spawn reads a present `TopDownAtlases` and the portrait
+/// node carries a `TextureAtlas` over the portraits sheet — the harness the portrait
+/// node-wiring assertions need (the `atlas_load.rs` / `real_battle_panel.rs` pattern).
+fn load_battle_running_app() -> App {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+
+    let at_menu = advance_until(
+        &mut app,
+        |app| running_state(app) == Some(RunningState::Menu),
+        LOAD_BUDGET,
+    );
+    assert!(
+        at_menu,
+        "the real Load + descent must reach RunningState::Menu within {LOAD_BUDGET} updates",
+    );
+    app.world_mut()
+        .resource_mut::<NextState<RunningState>>()
+        .set(RunningState::Game);
+    let at_battle = advance_until(
+        &mut app,
+        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
+        LOAD_BUDGET,
+    );
+    assert!(
+        at_battle,
+        "the real battle must reach BattleScapeState::BattleRunning within {LOAD_BUDGET} \
+         updates; last BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+    app
+}
+
+/// Whether `entity` has an ancestor carrying marker `R` (walks the `ChildOf` chain up).
+fn descends_from<R: Component>(app: &App, entity: Entity) -> bool {
+    let mut current = entity;
+    loop {
+        if app.world().get::<R>(current).is_some() {
+            return true;
+        }
+        match app.world().get::<bevy::prelude::ChildOf>(current) {
+            Some(parent) => current = parent.parent(),
+            None => return false,
+        }
+    }
+}
+
+/// All entities carrying marker `M`.
+fn all_with<M: Component>(app: &mut App) -> Vec<Entity> {
     let mut q = app.world_mut().query_filtered::<Entity, With<M>>();
-    let found: Vec<Entity> = q.iter(app.world()).collect();
+    q.iter(app.world()).collect()
+}
+
+/// The single entity carrying marker `M`, scoped to the STATUS panel (NOT a descendant of
+/// the hover panel root). The two panels share the stat-block markers, so this discriminates
+/// the status panel's widget from the hover panel's.
+fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
+    let found: Vec<Entity> = all_with::<M>(app)
+        .into_iter()
+        .filter(|&e| !descends_from::<HoverPanelRoot>(app, e))
+        .collect();
     match found.as_slice() {
         [one] => Some(*one),
         _ => None,
     }
 }
 
-/// Reads the rendered `Text` string of the single entity carrying line-marker `M`.
+/// The single entity carrying HOVER-EXCLUSIVE marker `M` (only the hover panel carries it,
+/// so no scoping is needed — assert there is exactly one).
+fn single_global<M: Component>(app: &mut App) -> Option<Entity> {
+    match all_with::<M>(app).as_slice() {
+        [one] => Some(*one),
+        _ => None,
+    }
+}
+
+/// The single entity carrying SHARED stat-block marker `M`, scoped to the HOVER panel (a
+/// descendant of the hover panel root) — discriminates the hover stat block's widget from the
+/// status panel's.
+fn single_hover<M: Component>(app: &mut App) -> Option<Entity> {
+    let found: Vec<Entity> = all_with::<M>(app)
+        .into_iter()
+        .filter(|&e| descends_from::<HoverPanelRoot>(app, e))
+        .collect();
+    match found.as_slice() {
+        [one] => Some(*one),
+        _ => None,
+    }
+}
+
+/// Reads the rendered `Text` of the single entity carrying marker `M`.
 fn line_text<M: Component>(app: &mut App) -> Option<String> {
     let entity = single_with::<M>(app)?;
     app.world()
@@ -125,37 +215,81 @@ fn line_text<M: Component>(app: &mut App) -> Option<String> {
         .map(|t| t.as_str().to_owned())
 }
 
-/// A ganger's vitals for a test spawn — grouped into one struct so the spawn helper
-/// stays under clippy's argument-count gate (the `too_many_arguments` group-into-a-struct
-/// idiom).
-struct GangerSetup {
-    /// The ganger's cell.
-    cell:    Cell,
-    /// The ganger's storey level.
-    level:   Level,
-    /// The ganger's display name (GTW-285 — the identity line renders this).
-    name:    GangerName,
-    /// The ganger's faction (gang) index.
-    faction: Faction,
-    /// The ganger's stance posture.
-    stance:  StanceKind,
-    /// The ganger's current TU pool.
-    tu:      Tu,
-    /// The ganger's round-start TU ceiling.
-    tu_max:  TuMax,
-    /// The ganger's current HP pool.
-    hp:      Hp,
-    /// The ganger's Wounds (life) pool.
-    wounds:  Wounds,
-    /// The ganger's terminal life state.
-    life:    LifeState,
+/// The fill PERCENT of the `ProgressBar` rooted at `track` — reads the `ProgressBarFill`
+/// child's `Node.width`. `None` if missing.
+fn bar_fill_at(app: &App, track: Entity) -> Option<f32> {
+    let kids: Vec<Entity> = app
+        .world()
+        .get::<Children>(track)
+        .map(|c| c.iter().collect())
+        .unwrap_or_default();
+    for kid in kids {
+        if app.world().get::<ProgressBarFill>(kid).is_some()
+            && let Some(node) = app.world().get::<Node>(kid)
+            && let Val::Percent(p) = node.width
+        {
+            return Some(p);
+        }
+    }
+    None
 }
 
-/// Spawns a ganger carrying exactly the vital components the panel reads and SELECTS it
-/// via the `SelectedShooter` resource (the selection the update system reads). Returns
-/// its entity. Setting the resource directly is the faithful minimal selection for these
-/// view tests (the cursor-click selection path is covered in `gdtf_battle_input`); the
-/// panel only reads `*SelectedShooter` + the on-entity components.
+/// The fill PERCENT of the status panel's `ProgressBar` carrying track-marker `M`.
+fn bar_fill_percent<M: Component>(app: &mut App) -> Option<f32> {
+    let track = single_with::<M>(app)?;
+    bar_fill_at(app, track)
+}
+
+/// The number of VISIBLE filled pips (background != the lost color, visibility not Hidden)
+/// in the single pips row carrying marker `M`. We count visible pips whose visibility is not
+/// Hidden — a discriminating proxy for `WoundsMax` shown / `Wounds` filled.
+fn visible_pip_count<M: Component>(app: &mut App) -> usize {
+    let Some(row) = single_with::<M>(app) else {
+        return 0;
+    };
+    let kids: Vec<Entity> = app
+        .world()
+        .get::<Children>(row)
+        .map(|c| c.iter().collect())
+        .unwrap_or_default();
+    kids.into_iter()
+        .filter(|&kid| {
+            app.world().get::<Pip>(kid).is_some()
+                && app.world().get::<Visibility>(kid) != Some(&Visibility::Hidden)
+        })
+        .count()
+}
+
+/// The portrait node's current atlas index (the `TextureAtlas.index` on the single
+/// `StatPortrait` `ImageNode`). `None` if the portrait has no atlas (sheet unloaded).
+fn portrait_index(app: &mut App) -> Option<usize> {
+    let portrait = single_with::<StatPortrait>(app)?;
+    app.world()
+        .get::<ImageNode>(portrait)
+        .and_then(|n| n.texture_atlas.as_ref().map(|a: &TextureAtlas| a.index))
+}
+
+/// A ganger's vitals for a test spawn — grouped into one struct (the `too_many_arguments`
+/// idiom).
+struct GangerSetup {
+    cell:       Cell,
+    level:      Level,
+    name:       GangerName,
+    faction:    Faction,
+    stance:     StanceKind,
+    tu:         Tu,
+    tu_max:     TuMax,
+    hp:         Hp,
+    hp_max:     HpMax,
+    wounds:     Wounds,
+    wounds_max: WoundsMax,
+    life:       LifeState,
+    inflicted:  InflictedWounds,
+}
+
+/// Spawns a ganger with the components the stat block reads, SELECTS it, and returns its
+/// entity. (The cursor-click selection is covered in `gdtf_battle_input`; the panel only
+/// reads `*SelectedShooter` + the on-entity components.)
 fn spawn_and_select(app: &mut App, setup: GangerSetup) -> Entity {
     let ganger = app
         .world_mut()
@@ -167,8 +301,11 @@ fn spawn_and_select(app: &mut App, setup: GangerSetup) -> Entity {
             setup.tu,
             setup.tu_max,
             setup.hp,
+            setup.hp_max,
             setup.wounds,
+            setup.wounds_max,
             setup.life,
+            setup.inflicted,
         ))
         .id();
     app.world_mut()
@@ -176,384 +313,495 @@ fn spawn_and_select(app: &mut App, setup: GangerSetup) -> Entity {
     ganger
 }
 
-// ---------------------------------------------------------------------------------
-// AC1 — panel spawns in a live battle, despawns on exit.
-// ---------------------------------------------------------------------------------
-
-/// AC1 — `OnEnter(BattleRunning)` the panel's five vitals lines exist (each a `Text`),
-/// and `OnExit(BattleRunning)` the panel is recursively despawned.
-#[test]
-fn status_panel_spawns_in_battle_and_despawns_outside() {
-    let mut app = battle_running_app();
-
-    // Each per-line marker resolves to exactly one entity carrying a Text.
-    for found in [
-        single_with::<IdentityText>(&mut app),
-        single_with::<StanceText>(&mut app),
-        single_with::<TuText>(&mut app),
-        single_with::<HpText>(&mut app),
-        single_with::<LifeText>(&mut app),
-    ] {
-        assert!(
-            found.is_some(),
-            "the status panel must spawn exactly one Text per vitals line in BattleRunning",
-        );
-        let Some(line) = found else { return };
-        assert!(
-            app.world().get::<Text>(line).is_some(),
-            "a vitals line must carry a Text",
-        );
-        // A panel line is body text, NOT an interactive button.
-        assert!(
-            app.world().get::<Button>(line).is_none(),
-            "a vitals line is plain text, not a button",
-        );
+/// A reasonable default ganger setup the caller overrides per test.
+fn default_setup() -> GangerSetup {
+    GangerSetup {
+        cell:       Cell::new(5, 6),
+        level:      Level::new(0),
+        name:       GangerName::new("Vex Harker".to_owned()),
+        faction:    Faction::new(1),
+        stance:     StanceKind::Crouching,
+        tu:         Tu::new(7),
+        tu_max:     TuMax::new(10),
+        hp:         Hp::new(8),
+        hp_max:     HpMax::new(16),
+        wounds:     Wounds::new(2),
+        wounds_max: WoundsMax::new(3),
+        life:       LifeState::Alive,
+        inflicted:  InflictedWounds::default(),
     }
-
-    // Leave BattleRunning via the explicit end-signal marker (standing in for the
-    // not-yet-wired victory/flee), tripping `move_on` to advance the machine out of
-    // BattleRunning, where `OnExit` despawns the panel (the action-bar AC1 precedent).
-    app.world_mut().insert_resource(BattleRunningComplete);
-    let left = advance_until(
-        &mut app,
-        |app| battlescape_state(app) != Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        left,
-        "an explicit BattleRunningComplete insert must advance the machine out of BattleRunning \
-         within {BUDGET} updates",
-    );
-    assert!(
-        single_with::<StanceText>(&mut app).is_none(),
-        "the status panel must be despawned once the battle leaves BattleRunning",
-    );
 }
 
 // ---------------------------------------------------------------------------------
-// AC2 — lines reflect the selected ganger.
+// AC1 — status panel renders the shared stat block; LifeState/Weapon GONE.
 // ---------------------------------------------------------------------------------
 
-/// AC2 — with a selected ganger at a known cell with known vitals, after `update()`
-/// each line `Text` contains the expected rendered value. Discriminating: a line wired
-/// to the wrong component would surface a different value here (e.g. the TU line showing
-/// HP, or the stance line showing the wrong posture).
+/// AC1 — with a selected ganger, the stat block shows its name + a NON-zero TU/HP bar fill +
+/// the right Wounds pips; and there is NO life-state / weapon text line (the removed lines).
 #[test]
-fn lines_reflect_the_selected_ganger() {
+fn status_panel_renders_the_selected_ganger_stat_block() {
     let mut app = battle_running_app();
-    spawn_and_select(
-        &mut app,
-        GangerSetup {
-            cell:    Cell::new(5, 6),
-            level:   Level::new(2),
-            name:    GangerName::new("Vex Harker".to_owned()),
-            faction: Faction::new(1),
-            stance:  StanceKind::Crouching,
-            tu:      Tu::new(7),
-            tu_max:  TuMax::new(10),
-            hp:      Hp::new(8),
-            wounds:  Wounds::new(3),
-            life:    LifeState::Alive,
-        },
-    );
+    spawn_and_select(&mut app, default_setup());
     app.update();
 
-    let identity = line_text::<IdentityText>(&mut app).unwrap_or_default();
+    let name = line_text::<StatName>(&mut app).unwrap_or_default();
+    assert!(name.contains("Vex Harker"), "name title: {name}");
+
+    let tu = bar_fill_percent::<StatTuBar>(&mut app).unwrap_or(0.0);
+    assert!((tu - 70.0).abs() < 0.5, "TU bar = 7/10 = 70% (got {tu})");
+
+    let hp = bar_fill_percent::<StatHpBar>(&mut app).unwrap_or(0.0);
+    assert!((hp - 50.0).abs() < 0.5, "HP bar = 8/16 = 50% (got {hp})");
+
+    // WoundsMax = 3 visible pips, Wounds = 2 filled (we assert the visible count == 3).
+    assert_eq!(
+        visible_pip_count::<StatWoundsPips>(&mut app),
+        3,
+        "WoundsMax (3) pips must be visible",
+    );
+
+    // The removed LifeState + Weapon lines: NO text line anywhere reads them.
+    let texts: Vec<String> = {
+        let mut q = app.world_mut().query::<&Text>();
+        q.iter(app.world()).map(|t| t.as_str().to_owned()).collect()
+    };
     assert!(
-        identity.contains("Vex Harker"),
-        "identity shows the ganger's name (GTW-285): {identity}",
-    );
-    assert!(
-        identity.contains("Gang 1"),
-        "identity shows the faction: {identity}",
-    );
-    assert!(
-        !identity.contains("Cell"),
-        "identity no longer shows the cell location (GTW-285): {identity}",
-    );
-
-    let stance = line_text::<StanceText>(&mut app).unwrap_or_default();
-    assert!(
-        stance.contains("Crouching"),
-        "stance line shows the posture: {stance}",
-    );
-
-    let tu = line_text::<TuText>(&mut app).unwrap_or_default();
-    assert!(tu.contains("7/10"), "TU line shows current/max: {tu}");
-
-    let hp = line_text::<HpText>(&mut app).unwrap_or_default();
-    assert!(hp.contains('8'), "HP line shows current HP: {hp}");
-    assert!(hp.contains('3'), "HP line shows the Wounds count: {hp}");
-
-    let life = line_text::<LifeText>(&mut app).unwrap_or_default();
-    assert!(life.contains("Alive"), "life line shows the state: {life}");
-}
-
-/// AC2 (discriminating, cross-line) — the TU line shows the TU pair, NOT the HP value,
-/// and the stance/life lines render the correct word, so a mis-wired line is caught.
-/// Uses values where TU and HP would alias if a line were cross-wired.
-#[test]
-fn lines_do_not_cross_wire_components() {
-    let mut app = battle_running_app();
-    spawn_and_select(
-        &mut app,
-        GangerSetup {
-            cell:    Cell::new(1, 2),
-            level:   Level::new(0),
-            name:    GangerName::new("Alex Mercer".to_owned()),
-            faction: Faction::new(0),
-            stance:  StanceKind::Prone,
-            tu:      Tu::new(4),
-            tu_max:  TuMax::new(9),
-            hp:      Hp::new(12),
-            wounds:  Wounds::new(1),
-            life:    LifeState::Downed,
-        },
-    );
-    app.update();
-
-    let tu = line_text::<TuText>(&mut app).unwrap_or_default();
-    assert!(tu.contains("4/9"), "TU line is the TU pair: {tu}");
-    assert!(
-        !tu.contains("12"),
-        "TU line must NOT show the HP value (cross-wire guard): {tu}",
-    );
-
-    let stance = line_text::<StanceText>(&mut app).unwrap_or_default();
-    assert!(stance.contains("Prone"), "stance is Prone: {stance}");
-
-    let life = line_text::<LifeText>(&mut app).unwrap_or_default();
-    assert!(life.contains("Downed"), "life is Downed: {life}");
-}
-
-// ---------------------------------------------------------------------------------
-// AC3 — updates on change.
-// ---------------------------------------------------------------------------------
-
-/// AC3 — after spending TU and changing stance on the selected ganger via the real
-/// components, a re-`update()` re-renders the corresponding lines (the panel reflects
-/// CURRENT state, not a spawn snapshot).
-#[test]
-fn lines_update_when_the_ganger_changes() {
-    let mut app = battle_running_app();
-    let ganger = spawn_and_select(
-        &mut app,
-        GangerSetup {
-            cell:    Cell::new(3, 3),
-            level:   Level::new(0),
-            name:    GangerName::new("Alex Mercer".to_owned()),
-            faction: Faction::new(0),
-            stance:  StanceKind::Standing,
-            tu:      Tu::new(10),
-            tu_max:  TuMax::new(10),
-            hp:      Hp::new(10),
-            wounds:  Wounds::new(2),
-            life:    LifeState::Alive,
-        },
-    );
-    app.update();
-
-    // Baseline: standing, full TU.
-    assert!(
-        line_text::<StanceText>(&mut app)
-            .unwrap_or_default()
-            .contains("Standing"),
-        "baseline stance is Standing",
-    );
-    assert!(
-        line_text::<TuText>(&mut app)
-            .unwrap_or_default()
-            .contains("10/10"),
-        "baseline TU is full",
-    );
-
-    // Spend TU and drop to prone on the real components.
-    if let Some(mut tu) = app.world_mut().get_mut::<Tu>(ganger) {
-        *tu = Tu::new(3);
-    }
-    if let Some(mut stance) = app.world_mut().get_mut::<Stance>(ganger) {
-        *stance = Stance::new(StanceKind::Prone);
-    }
-    app.update();
-
-    let tu = line_text::<TuText>(&mut app).unwrap_or_default();
-    assert!(tu.contains("3/10"), "TU line reflects the spent pool: {tu}");
-    let stance = line_text::<StanceText>(&mut app).unwrap_or_default();
-    assert!(
-        stance.contains("Prone"),
-        "stance line reflects the new posture: {stance}",
+        !texts
+            .iter()
+            .any(|t| t.contains("State:") || t.starts_with("Weapon:")),
+        "the LifeState + Weapon lines must be GONE (texts: {texts:?})",
     );
 }
 
-// ---------------------------------------------------------------------------------
-// AC4 — empty selection is handled.
-// ---------------------------------------------------------------------------------
-
-/// AC4 — with `SelectedShooter == None`, `update()` shows the empty state on every line
-/// and does not panic; and after a ganger was shown then deselected, the lines do NOT
-/// show stale ganger data (they revert to the empty state).
+/// AC1 — an unwounded ganger hides the wound-name list; a wounded ganger shows it with the
+/// matching "{tier} — {location}" entry.
 #[test]
-fn empty_selection_shows_empty_state_and_no_stale_data() {
+fn wound_list_reflects_inflicted_wounds() {
     let mut app = battle_running_app();
 
-    // No selection (SelectedShooter defaults to None) — the empty state, no panic.
+    // Unwounded -> the list container is Hidden.
+    spawn_and_select(&mut app, default_setup());
     app.update();
-    for line in [
-        line_text::<IdentityText>(&mut app),
-        line_text::<StanceText>(&mut app),
-        line_text::<TuText>(&mut app),
-        line_text::<HpText>(&mut app),
-        line_text::<LifeText>(&mut app),
-    ] {
-        let line = line.unwrap_or_default();
-        assert!(
-            line.contains("No ganger selected"),
-            "an unselected line must show the empty state: {line}",
+    let list = single_with::<StatWoundList>(&mut app);
+    assert!(list.is_some(), "the stat block carries a wound list");
+    if let Some(list) = list {
+        assert_eq!(
+            app.world().get::<Visibility>(list),
+            Some(&Visibility::Hidden),
+            "an unwounded ganger hides the wound-name list",
         );
     }
 
-    // Force-select a ganger, render it, then clear the selection: the lines must NOT keep
-    // the stale ganger data — they revert to the empty state. The ganger is an ENEMY
-    // faction (1, distinct from the default `PlayerFaction` 0) so the landed GTW-255
-    // `auto_select_first_player_ganger` (which fills an EMPTY selection with the first
-    // PLAYER-faction ganger) does NOT re-select it on clear — isolating the panel's
-    // revert-on-clear behavior from that separate auto-fill rule. A direct
-    // `SelectedShooter` write bypasses the player-faction SELECT gate, so the enemy
-    // ganger can still be force-shown first.
-    spawn_and_select(
-        &mut app,
-        GangerSetup {
-            cell:    Cell::new(8, 8),
-            level:   Level::new(0),
-            name:    GangerName::new("Vex Harker".to_owned()),
-            faction: Faction::new(1),
-            stance:  StanceKind::Crouching,
-            tu:      Tu::new(5),
-            tu_max:  TuMax::new(5),
-            hp:      Hp::new(5),
-            wounds:  Wounds::new(5),
-            life:    LifeState::Alive,
-        },
-    );
+    // Wounded -> the list is shown and a line reads the wound.
+    let mut wounded = default_setup();
+    wounded.name = GangerName::new("Alex Mercer".to_owned());
+    wounded.inflicted = InflictedWounds::new(vec![InflictedWound::new(
+        Severity::Minor,
+        BodyPart::LeftArm,
+    )]);
+    spawn_and_select(&mut app, wounded);
     app.update();
-    assert!(
-        line_text::<StanceText>(&mut app)
-            .unwrap_or_default()
-            .contains("Crouching"),
-        "the selected ganger is rendered before clearing",
-    );
 
+    if let Some(list) = single_with::<StatWoundList>(&mut app) {
+        assert_ne!(
+            app.world().get::<Visibility>(list),
+            Some(&Visibility::Hidden),
+            "a wounded ganger shows the wound-name list",
+        );
+    }
+    // Some wound line reads "Minor — Left Arm".
+    let lines: Vec<String> = {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Text, With<StatWoundLine>>();
+        q.iter(app.world()).map(|t| t.as_str().to_owned()).collect()
+    };
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains("Minor") && l.contains("Left Arm")),
+        "a wound line must read the inflicted wound (lines: {lines:?})",
+    );
+}
+
+/// AC1 — selecting a DIFFERENT ganger MUTATES the same stat block (stable entity ids — the
+/// portrait/name nodes are the SAME entities, their content changes).
+#[test]
+fn selection_change_mutates_in_place() {
+    let mut app = battle_running_app();
+    spawn_and_select(&mut app, default_setup());
+    app.update();
+    let portrait_before = single_with::<StatPortrait>(&mut app);
+    let name_before = single_with::<StatName>(&mut app);
+
+    let mut other = default_setup();
+    other.name = GangerName::new("Alex Mercer".to_owned());
+    other.tu = Tu::new(2);
+    spawn_and_select(&mut app, other);
+    app.update();
+
+    assert_eq!(
+        single_with::<StatPortrait>(&mut app),
+        portrait_before,
+        "the portrait node entity is stable across a selection change (mutate, no respawn)",
+    );
+    assert_eq!(
+        single_with::<StatName>(&mut app),
+        name_before,
+        "the name node entity is stable across a selection change",
+    );
+    let name = line_text::<StatName>(&mut app).unwrap_or_default();
+    assert!(name.contains("Alex Mercer"), "the name mutated: {name}");
+}
+
+/// AC4-parity — no selection shows the empty state (name = "No ganger selected", bars empty)
+/// and never stale data.
+#[test]
+fn no_selection_shows_empty_state() {
+    let mut app = battle_running_app();
     app.world_mut().insert_resource(SelectedShooter::cleared());
     app.update();
-    let stance = line_text::<StanceText>(&mut app).unwrap_or_default();
+    let name = line_text::<StatName>(&mut app).unwrap_or_default();
+    assert!(name.contains("No ganger selected"), "empty state: {name}");
+    let tu = bar_fill_percent::<StatTuBar>(&mut app).unwrap_or(-1.0);
     assert!(
-        stance.contains("No ganger selected"),
-        "after clearing, the line must revert to the empty state (no stale data): {stance}",
+        tu.abs() < 0.5,
+        "the TU bar is empty (0%) with no selection (got {tu})"
     );
 }
 
 // ---------------------------------------------------------------------------------
-// GTW-264 — the panel reflects the AUTO-SELECTED ganger (ordering vs auto-select).
+// Portrait — deterministic atlas index from the ganger name.
 // ---------------------------------------------------------------------------------
 
-/// GTW-264 — with a PLAYER-faction ganger present and NOTHING selected, ONE `update()`
-/// renders the panel from the GTW-255 auto-selected ganger, NOT the "No ganger selected"
-/// empty state. This proves `update_status_panel` is ordered `.after(InputSystems::Gather)`
-/// (where `auto_select_first_player_ganger` writes the initial `SelectedShooter`): without
-/// that ordering the panel read the selection BEFORE auto-select filled it and painted the
-/// empty state every frame (the play-test bug).
+/// The portrait node carries a `TextureAtlas` pointing at the portraits sheet, at the
+/// DETERMINISTIC index for the ganger's name (computed in-test from the same rule), and
+/// selecting a different-named ganger MUTATES the index on the SAME node (no respawn).
 ///
-/// The harness battle has `BattleInProgress` + `PlayerFaction` (= 0, from `setup_battle`)
-/// and `SelectedShooter` starts empty (the AC4 test's precondition), so auto-select's gate
-/// is satisfied; the ganger is faction 0 so auto-select picks it. Same-update observability
-/// is the whole point — a single `update()` must already show the ganger.
+/// Driven on the REAL `DefaultPlugins` asset stack ([`load_battle_running_app`]) so
+/// `load_topdown_atlases` actually runs and the `OnEnter(BattleRunning)` panel spawn gives
+/// the portrait node a `TextureAtlas` over the portraits sheet — the assertions run
+/// UNCONDITIONALLY (no `if let Some` guard), so a reverted `update_portrait` (or a missing
+/// atlas) would FAIL this test rather than silently skip it.
 #[test]
-fn panel_reflects_the_auto_selected_ganger() {
-    let mut app = battle_running_app();
+fn portrait_index_is_deterministic_for_the_selected_ganger() {
+    let mut app = load_battle_running_app();
 
-    // A PLAYER-faction (0) ganger with a Position (auto-select reasons off Position) and the
-    // vital components the panel reads. SelectedShooter is left EMPTY so auto-select fills it.
-    app.world_mut().spawn((
-        Position::new(CellLevel::new(Cell::new(2, 3), Level::new(0))),
-        GangerName::new("Alex Mercer".to_owned()),
-        Faction::new(0),
-        Stance::new(StanceKind::Crouching),
-        Tu::new(6),
-        TuMax::new(8),
-        Hp::new(9),
-        Wounds::new(2),
-        LifeState::Alive,
-    ));
-
-    // ONE update: auto-select (InputSystems::Gather) fills SelectedShooter, THEN
-    // update_status_panel (.after Gather) renders it — same frame.
+    let vex_name = GangerName::new("Vex Harker".to_owned());
+    let expected_vex = portrait_index_for_name(Some(&vex_name));
+    spawn_and_select(&mut app, default_setup());
     app.update();
 
-    let stance = line_text::<StanceText>(&mut app).unwrap_or_default();
+    let portrait_node = single_with::<StatPortrait>(&mut app);
     assert!(
-        !stance.contains("No ganger selected"),
-        "after one update the panel must reflect the auto-selected ganger, not the empty \
-         state (GTW-264 ordering): {stance}",
-    );
-    assert!(
-        stance.contains("Crouching"),
-        "the panel must render the auto-selected ganger's stance: {stance}",
+        portrait_node.is_some(),
+        "the stat block carries a portrait node"
     );
 
-    let identity = line_text::<IdentityText>(&mut app).unwrap_or_default();
+    // The node carries a TextureAtlas over the portraits sheet (the real atlas loaded).
+    let index = portrait_index(&mut app);
     assert!(
-        identity.contains("Alex Mercer"),
-        "the panel must render the auto-selected ganger's name (GTW-285): {identity}",
+        index.is_some(),
+        "the portrait node must carry a TextureAtlas (the portraits sheet loaded)",
     );
-    let tu = line_text::<TuText>(&mut app).unwrap_or_default();
-    assert!(
-        tu.contains("6/8"),
-        "the panel must render the auto-selected ganger's TU pair: {tu}",
+    let Some(index) = index else { return };
+    assert_eq!(
+        index, expected_vex,
+        "the portrait index is the name's deterministic face"
+    );
+
+    // A different-named ganger MUTATES the index on the SAME node.
+    let mut alex = default_setup();
+    let alex_name = GangerName::new("Alex Mercer".to_owned());
+    alex.name = alex_name.clone();
+    let expected_alex = portrait_index_for_name(Some(&alex_name));
+    // The two authored names must derive DISTINCT faces, else the mutation is unobservable
+    // (the derivation determinism itself is unit-tested in `stat_block/test.rs`).
+    assert_ne!(
+        expected_alex, expected_vex,
+        "the two test names must map to distinct portrait faces for the mutation to be visible",
+    );
+    spawn_and_select(&mut app, alex);
+    app.update();
+    assert_eq!(
+        single_with::<StatPortrait>(&mut app),
+        portrait_node,
+        "the portrait node entity is stable (mutate, no respawn)",
+    );
+    assert_eq!(
+        portrait_index(&mut app),
+        Some(expected_alex),
+        "the portrait index mutated to the new name's deterministic face",
     );
 }
 
 // ---------------------------------------------------------------------------------
-// GTW-254 AC1 — the weapon-name line shows the selected ganger's WeaponName.
+// AC2 (hover) — the hover panel inspects what the cursor hovers.
 // ---------------------------------------------------------------------------------
 
-/// GTW-254 AC1 — selecting an ARMED ganger renders its real `WeaponName` on the
-/// `WeaponNameText` line (the rendered string comes from the component, not a fixture);
-/// with no selection the line shows the no-selection empty state.
-#[test]
-fn weapon_name_line_shows_the_selected_weapon() {
+/// A test-controlled desired hover cell, copied into `HoveredCell` AFTER the headless picker
+/// runs (which would otherwise clobber an injected value to `None`).
+#[derive(Resource, Clone, Copy, Default)]
+struct DesiredHover(Option<CellLevel>);
+
+/// Copies [`DesiredHover`] into [`HoveredCell`] — registered `.after(pick_hovered_cell)` in
+/// `InputSystems::Gather`, so it is the LAST `HoveredCell` writer of the frame and the
+/// `.after(Gather)` hover-panel update reads it. The cursor→cell pick is the one external
+/// this stubs (it is tested in `gdtf_battle_input`); everything downstream is the real path.
+fn force_hover(desired: Res<DesiredHover>, mut hovered: ResMut<HoveredCell>) {
+    *hovered = HoveredCell(desired.0);
+}
+
+/// Builds the battle app with the hover-forcing seam wired in.
+fn hover_app() -> App {
     let mut app = battle_running_app();
-
-    // No selection -> the empty state on the weapon line (AC4 parity).
-    app.update();
-    assert!(
-        line_text::<WeaponNameText>(&mut app)
-            .unwrap_or_default()
-            .contains("No ganger selected"),
-        "an unselected weapon line must show the empty state",
+    app.world_mut().insert_resource(DesiredHover::default());
+    app.add_systems(
+        Update,
+        force_hover
+            .in_set(InputSystems::Gather)
+            .after(pick_hovered_cell),
     );
+    app
+}
 
-    // Spawn an ARMED ganger carrying a real WeaponName, select it, render it.
+/// Sets the desired hover cell and steps one update so the real `update_hover_panel` reads it.
+fn hover(app: &mut App, cell: Option<CellLevel>) {
+    app.world_mut().insert_resource(DesiredHover(cell));
+    app.update();
+}
+
+/// AC2 — hovering a GANGER cell shows the panel + its ganger stat block.
+#[test]
+fn hovering_a_ganger_shows_its_stat_block() {
+    let mut app = hover_app();
+    let cell = CellLevel::new(Cell::new(4, 4), Level::new(0));
+
+    // Spawn a ganger and put it on the occupancy grid at `cell`.
     let ganger = app
         .world_mut()
         .spawn((
-            Position::new(CellLevel::new(Cell::new(4, 4), Level::new(0))),
-            Faction::new(0),
+            Position::new(cell),
+            GangerName::new("Vex Harker".to_owned()),
+            Faction::new(1),
             Stance::new(StanceKind::Standing),
-            Tu::new(10),
+            Tu::new(5),
             TuMax::new(10),
             Hp::new(10),
-            Wounds::new(0),
+            HpMax::new(10),
+            Wounds::new(3),
+            WoundsMax::new(3),
             LifeState::Alive,
-            WeaponName::new("autogun".to_owned()),
+            InflictedWounds::default(),
         ))
         .id();
     app.world_mut()
-        .insert_resource(SelectedShooter::new(ganger));
-    app.update();
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(cell, Some(ganger));
 
-    let weapon = line_text::<WeaponNameText>(&mut app).unwrap_or_default();
+    hover(&mut app, Some(cell));
+
+    // The panel root is visible and the ganger stat-block host is visible.
+    let root = single_global::<HoverPanelRoot>(&mut app);
+    assert!(root.is_some(), "the hover panel must exist");
+    if let Some(root) = root {
+        assert_ne!(
+            app.world().get::<Visibility>(root),
+            Some(&Visibility::Hidden),
+            "hovering a ganger shows the hover panel",
+        );
+    }
+    let host = single_global::<HoverStatBlockHost>(&mut app);
     assert!(
-        weapon.contains("autogun"),
-        "the weapon line must show the selected ganger's WeaponName: {weapon}",
+        host.is_some(),
+        "the hover panel must carry a ganger stat block"
     );
+    if let Some(host) = host {
+        assert_ne!(
+            app.world().get::<Visibility>(host),
+            Some(&Visibility::Hidden),
+            "hovering a ganger shows the ganger stat block",
+        );
+    }
+    if let Some(block) = single_global::<HoverObjectBlock>(&mut app) {
+        assert_eq!(
+            app.world().get::<Visibility>(block),
+            Some(&Visibility::Hidden),
+            "hovering a ganger hides the object block",
+        );
+    }
+
+    // The ganger stat block's name reads the hovered ganger (the shared stat block, scoped
+    // to the hover panel).
+    if let Some(name) = single_hover::<StatName>(&mut app) {
+        let text = app
+            .world()
+            .get::<Text>(name)
+            .map(|t| t.as_str().to_owned())
+            .unwrap_or_default();
+        assert!(
+            text.contains("Vex Harker"),
+            "hover stat block names the ganger: {text}"
+        );
+    }
+}
+
+/// Spawns a ganger of `faction` at `cell`, puts it on the occupancy grid, and returns it.
+fn place_ganger(app: &mut App, cell: CellLevel, faction: Faction) -> Entity {
+    let ganger = app
+        .world_mut()
+        .spawn((
+            Position::new(cell),
+            GangerName::new("Vex Harker".to_owned()),
+            faction,
+            Stance::new(StanceKind::Standing),
+            Tu::new(5),
+            TuMax::new(10),
+            Hp::new(10),
+            HpMax::new(10),
+            Wounds::new(3),
+            WoundsMax::new(3),
+            LifeState::Alive,
+            InflictedWounds::default(),
+        ))
+        .id();
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(cell, Some(ganger));
+    ganger
+}
+
+/// The `TextColor` of the hover panel's name line, if present.
+fn hover_name_color(app: &mut App) -> Option<TextColor> {
+    let name = single_hover::<StatName>(app)?;
+    app.world().get::<TextColor>(name).copied()
+}
+
+/// AC2 — the hover panel tints the NAME line by the hovered ganger's `Faction`: an ENEMY
+/// (faction != `PlayerFaction`) gets a red-ish tint, a PLAYER-faction ganger gets the normal
+/// theme text color. This is the AC2 panel/name COLOR tint (distinct from the "Gang N" text
+/// line). Pin-discriminating: with no tint applied, the enemy name would stay the theme color
+/// and the assertion fails.
+#[test]
+fn hovering_a_ganger_tints_the_name_by_faction() {
+    let mut app = hover_app();
+
+    // The player faction the real default-situation setup seeded (gang 0).
+    let player_res = app
+        .world()
+        .get_resource::<PlayerFaction>()
+        .copied()
+        .map(|p| **p);
+    assert!(player_res.is_some(), "a live battle inserts PlayerFaction");
+    // The normal (player) name color is the runtime theme's body-text color.
+    let normal_res = app
+        .world()
+        .get_resource::<GdtfTheme>()
+        .map(|t| *t.text.text_color);
+    assert!(normal_res.is_some(), "a live battle has the loaded theme");
+    let (Some(player), Some(normal)) = (player_res, normal_res) else {
+        return;
+    };
+
+    // An ENEMY ganger (a faction the player does NOT control) → red-ish tint, NOT the theme.
+    let enemy_faction = Faction::new(player.wrapping_add(1));
+    let enemy_cell = CellLevel::new(Cell::new(4, 4), Level::new(0));
+    place_ganger(&mut app, enemy_cell, enemy_faction);
+    hover(&mut app, Some(enemy_cell));
+    let enemy_color = hover_name_color(&mut app);
+    assert!(
+        enemy_color.is_some(),
+        "the hover stat block carries a name color"
+    );
+    if let Some(color) = enemy_color {
+        assert_ne!(
+            color.0, normal,
+            "an enemy ganger's name is tinted (NOT the normal theme color)",
+        );
+    }
+
+    // A PLAYER-faction ganger → the normal theme color (no enemy tint).
+    let player_cell = CellLevel::new(Cell::new(6, 6), Level::new(0));
+    place_ganger(&mut app, player_cell, Faction::new(player));
+    hover(&mut app, Some(player_cell));
+    if let Some(color) = hover_name_color(&mut app) {
+        assert_eq!(
+            color.0, normal,
+            "a player-faction ganger's name uses the normal theme color",
+        );
+    }
+}
+
+/// AC2 — hovering a non-floor OBJECT (cover) cell shows the panel + the object block (hardness
+/// + integrity), and hides the ganger stat block.
+#[test]
+fn hovering_an_object_shows_the_object_block() {
+    let mut app = hover_app();
+    let cell = CellLevel::new(Cell::new(7, 7), Level::new(0));
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_terrain(cell, TerrainKind::Cover);
+
+    hover(&mut app, Some(cell));
+
+    let block = single_global::<HoverObjectBlock>(&mut app);
+    assert!(
+        block.is_some(),
+        "the hover panel must carry an object block"
+    );
+    if let Some(block) = block {
+        assert_ne!(
+            app.world().get::<Visibility>(block),
+            Some(&Visibility::Hidden),
+            "hovering cover shows the object block",
+        );
+    }
+    if let Some(host) = single_global::<HoverStatBlockHost>(&mut app) {
+        assert_eq!(
+            app.world().get::<Visibility>(host),
+            Some(&Visibility::Hidden),
+            "hovering an object hides the ganger stat block",
+        );
+    }
+    // The object block has an integrity bar with a non-zero fill (a fallback full entry).
+    let bar = single_global::<HoverObjectBar>(&mut app);
+    assert!(
+        bar.is_some(),
+        "the object block must carry an integrity bar"
+    );
+    if let Some(bar) = bar {
+        let integrity = bar_fill_at(&app, bar).unwrap_or(0.0);
+        assert!(
+            integrity > 0.0,
+            "the object integrity bar is filled (got {integrity})"
+        );
+    }
+}
+
+/// AC2 — hovering BARE FLOOR (no occupant, Open terrain) hides the whole panel.
+#[test]
+fn hovering_bare_floor_hides_the_panel() {
+    let mut app = hover_app();
+    let cell = CellLevel::new(Cell::new(20, 20), Level::new(0));
+    // Ensure it is open floor with no occupant (the default grid).
+    hover(&mut app, Some(cell));
+
+    let root = single_global::<HoverPanelRoot>(&mut app);
+    assert!(root.is_some(), "the hover panel must exist");
+    if let Some(root) = root {
+        assert_eq!(
+            app.world().get::<Visibility>(root),
+            Some(&Visibility::Hidden),
+            "hovering bare floor hides the whole hover panel",
+        );
+    }
+    // And nothing hovered hides it too.
+    hover(&mut app, None);
+    if let Some(root) = single_global::<HoverPanelRoot>(&mut app) {
+        assert_eq!(
+            app.world().get::<Visibility>(root),
+            Some(&Visibility::Hidden),
+            "nothing hovered hides the panel",
+        );
+    }
 }

@@ -115,12 +115,15 @@ pub(super) fn z_for(level: Level) -> f32 {
     f32::from(*level) * Z_PER_LEVEL
 }
 
-/// Which of the role-separated 16×16 sprite sheets an atlas entry belongs to.
+/// Which of the role-separated sprite sheets an atlas entry belongs to.
 ///
 /// A domain value (a real named type, not a bare string key), per
-/// `.claude/rules/no-bare-types.md`. This slice loads the three render sheets the
-/// playable slices consume; the deferred `ui` / `items` / `portraits` sheets join
-/// this enum in their consuming slices (GTW-222 / later) via the same mechanism.
+/// `.claude/rules/no-bare-types.md`. This loads the three 16×16 render sheets the
+/// playable slices consume PLUS the GTW-278 [`Portraits`](SheetRole::Portraits) face
+/// sheet (32×32 cells) the status / hover panels read; the remaining deferred `ui` /
+/// `items` sheets join this enum in their consuming slices via the same mechanism. The
+/// per-sheet tile size is NOT hardcoded — each role declares its own [`tile_px`](SheetRole::tile_px)
+/// (the render sheets stay 16, the portrait sheet is 32).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SheetRole {
     /// Terrain tiles — `tiles/alt_tileset_terrain.png` (the S4 draw sheet).
@@ -129,14 +132,25 @@ pub enum SheetRole {
     Characters,
     /// Effect tiles — `tiles/alt_tileset_effects.png` (the S6 draw sheet).
     Effects,
+    /// Portrait faces — `tiles/alt_tileset_portraits.png` (the GTW-278 HUD sheet): a
+    /// 10×10 grid of 32×32-px faces, indices `0..=99`. Read as a `bevy_ui` `ImageNode`
+    /// atlas variant by the status / hover panels' shared stat block, NOT a world
+    /// sprite (the UI layer, not the map). Unlike the render sheets its cells are 32 px
+    /// ([`tile_px`](SheetRole::tile_px)).
+    Portraits,
 }
 
 impl SheetRole {
-    /// The three render sheets this slice loads, in a fixed order.
+    /// Every sheet this loader loads, in a fixed order.
     ///
-    /// `ui` / `items` / `portraits` are deferred to their consuming slices and are
-    /// deliberately absent here.
-    const ALL: [Self; 3] = [Self::Terrain, Self::Characters, Self::Effects];
+    /// The three 16×16 render sheets plus the GTW-278 32×32 portrait sheet; the
+    /// deferred `ui` / `items` sheets are still absent here.
+    const ALL: [Self; 4] = [
+        Self::Terrain,
+        Self::Characters,
+        Self::Effects,
+        Self::Portraits,
+    ];
 
     /// Loose-file path (relative to the asset source root) of this sheet's PNG.
     ///
@@ -147,18 +161,41 @@ impl SheetRole {
             Self::Terrain => "tiles/alt_tileset_terrain.png",
             Self::Characters => "tiles/alt_tileset_characters.png",
             Self::Effects => "tiles/alt_tileset_effects.png",
+            Self::Portraits => "tiles/alt_tileset_portraits.png",
         }
     }
 
-    /// This sheet's grid shape as `(columns, rows)` of 16×16 tiles.
+    /// This sheet's grid shape as `(columns, rows)` of [`tile_px`](SheetRole::tile_px)
+    /// cells.
     ///
-    /// terrain 16×22 (352 tiles), characters 16×18 (288), effects 16×8 (128) — the
-    /// `from_grid` dimensions for [`load_topdown_atlases`].
-    const fn grid(self) -> (u32, u32) {
+    /// terrain 16×22 (352 tiles), characters 16×18 (288), effects 16×8 (128) — all of
+    /// 16×16 px — and the GTW-278 portraits 10×10 (100 faces) of 32×32 px; the
+    /// `from_grid` dimensions for [`load_topdown_atlases`]. `pub(super)` so the sibling
+    /// `topdown::test` module can pin the per-sheet grid without an app harness.
+    pub(super) const fn grid(self) -> (u32, u32) {
         match self {
             Self::Terrain => (16, 22),
             Self::Characters => (16, 18),
             Self::Effects => (16, 8),
+            Self::Portraits => (10, 10),
+        }
+    }
+
+    /// This sheet's per-cell tile size, in source pixels — the square edge of one
+    /// atlas cell.
+    ///
+    /// The render sheets are 16-px tiles; the GTW-278 portrait sheet is 32-px faces.
+    /// Threaded into [`TextureAtlasLayout::from_grid`] per sheet by
+    /// [`load_topdown_atlases`] so the portrait layout is NOT mis-sized to 16 (which
+    /// would carve each 32-px face into four wrong sub-tiles). A `const`, NOT a domain
+    /// newtype — the `CELL_PX`-class framework-plumbing carve-out
+    /// (`.claude/rules/no-bare-types.md` clause 4): it is a layout dimension fed
+    /// straight to `from_grid`, not a domain quantity. `pub(super)` so the sibling
+    /// `topdown::test` module can pin the per-sheet tile size without an app harness.
+    pub(super) const fn tile_px(self) -> u32 {
+        match self {
+            Self::Terrain | Self::Characters | Self::Effects => 16,
+            Self::Portraits => 32,
         }
     }
 }
@@ -172,7 +209,8 @@ impl SheetRole {
 pub struct SheetAtlas {
     /// The sheet image handle (loaded via [`AssetServer::load`]).
     pub image:  Handle<Image>,
-    /// The grid layout over [`Self::image`], one entry per 16×16 tile.
+    /// The grid layout over [`Self::image`], one entry per cell at the sheet's own
+    /// tile size ([`SheetRole::tile_px`]).
     pub layout: Handle<TextureAtlasLayout>,
 }
 
@@ -182,8 +220,9 @@ pub struct SheetAtlas {
 /// for each render sheet. Built ONCE by [`load_topdown_atlases`] and present before
 /// the S4/S5/S6 draw systems run, which read it to spawn sprites. A framework type
 /// (`Resource`), exempt from no-bare-types; the role key it stores is the named
-/// [`SheetRole`]. The deferred `ui` / `items` / `portraits` sheets (GTW-222 / later)
-/// join the same map via the same mechanism.
+/// [`SheetRole`]. The GTW-278 [`Portraits`](SheetRole::Portraits) sheet rides the same
+/// map — the status / hover panels read its image + layout to build a UI portrait node;
+/// the deferred `ui` / `items` sheets join the same way.
 #[derive(Resource, Debug, Clone)]
 pub struct TopDownAtlases {
     /// One loaded [`SheetAtlas`] per loaded [`SheetRole`].
@@ -193,23 +232,24 @@ pub struct TopDownAtlases {
 impl TopDownAtlases {
     /// The loaded [`SheetAtlas`] for `role`, if that role was loaded.
     ///
-    /// Returns [`None`] for a role not in this slice's loaded set (e.g. a deferred
-    /// `ui` / `items` / `portraits` sheet) — callers match the [`Option`] rather
-    /// than risk a panic.
+    /// Returns [`None`] for a role not in this loader's set (e.g. a deferred
+    /// `ui` / `items` sheet) — callers match the [`Option`] rather than risk a panic.
     #[must_use]
     pub fn role(&self, role: SheetRole) -> Option<&SheetAtlas> {
         self.sheets.get(&role)
     }
 }
 
-/// Loads the three render sheets and inserts the [`TopDownAtlases`] resource.
+/// Loads every sprite sheet and inserts the [`TopDownAtlases`] resource.
 ///
 /// Runs ONCE (the [`TopDownRendererPlugin`](crate::TopDownRendererPlugin) schedules
 /// it in [`Startup`]): for each [`SheetRole`] it loads the PNG via
 /// [`AssetServer::load`] (NOT the RON loader — that is `.ron`-only) and builds one
-/// [`TextureAtlasLayout::from_grid`] per sheet (16×16 tiles, the role's `(cols,
-/// rows)`), adding each layout to [`Assets<TextureAtlasLayout>`]. The resource is
-/// inserted via [`Commands`] so it is present before the draw slices run.
+/// [`TextureAtlasLayout::from_grid`] per sheet at the role's OWN tile size
+/// ([`SheetRole::tile_px`] — 16 for the render sheets, 32 for the GTW-278 portrait
+/// sheet) and `(cols, rows)`, adding each layout to [`Assets<TextureAtlasLayout>`].
+/// The resource is inserted via [`Commands`] so it is present before the draw slices
+/// run.
 ///
 /// Per `.claude/rules/bevy-traps.md` #7 this takes only normal system params — no
 /// `&mut World`: [`Commands`] for the resource insert, [`Res<AssetServer>`] for the
@@ -222,7 +262,8 @@ pub fn load_topdown_atlases(
     let mut sheets = HashMap::default();
     for role in SheetRole::ALL {
         let (columns, rows) = role.grid();
-        let layout = TextureAtlasLayout::from_grid(UVec2::splat(16), columns, rows, None, None);
+        let layout =
+            TextureAtlasLayout::from_grid(UVec2::splat(role.tile_px()), columns, rows, None, None);
         sheets.insert(
             role,
             SheetAtlas {

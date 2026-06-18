@@ -10,7 +10,7 @@ use bevy::{camera::Viewport, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::WorldCamera;
 
 use crate::scenes::running::game::battlescape::{
-    action_bar::ActionBarRoot, status_panel::StatusPanelRoot,
+    action_bar::ActionBarRoot, hover_panel::HoverPanelRoot, status_panel::StatusPanelRoot,
 };
 
 /// Round a physical-px [`ComputedNode`] dimension (`f32`, always `>= 0`) to integer physical
@@ -41,9 +41,9 @@ const fn physical_px(value: f32) -> u32 {
 ///
 /// - **LEFT** by the status-panel ([`StatusPanelRoot`]) width (it is anchored top-left),
 /// - **BOTTOM** by the action-bar ([`ActionBarRoot`]) height (it is anchored bottom-centre),
-/// - **RIGHT** by the hover-panel width — that panel does not exist yet, so the right inset is
-///   `0` (the AC1 "tolerate the hover panel not existing → 0" allowance; when it lands, add its
-///   root marker to the right-inset query),
+/// - **RIGHT** by the hover-panel ([`HoverPanelRoot`]) width (GTW-274 — it is anchored
+///   top-right; `0` when the panel is absent / hidden-and-zero-sized, the same panel-absent
+///   allowance as the others),
 /// - **TOP** minimal (`0`).
 ///
 /// The viewport is in PHYSICAL px ([`Viewport::physical_position`] / [`Viewport::physical_size`],
@@ -72,6 +72,7 @@ pub(in crate::scenes::running::game::battlescape) fn set_world_viewport(
     windows: Query<&Window, With<PrimaryWindow>>,
     status_panels: Query<&ComputedNode, With<StatusPanelRoot>>,
     action_bars: Query<&ComputedNode, With<ActionBarRoot>>,
+    hover_panels: Query<&ComputedNode, With<HoverPanelRoot>>,
 ) {
     // The primary window's PHYSICAL size — the surface the viewport rect is carved from. No
     // window → nothing to confine.
@@ -91,8 +92,11 @@ pub(in crate::scenes::running::game::battlescape) fn set_world_viewport(
         .iter()
         .next()
         .map_or(0, |node| physical_px(node.size().y));
-    // RIGHT = hover-panel width — that panel does not exist yet, so 0 (AC1 allowance).
-    let right = 0;
+    // RIGHT = hover-panel width (GTW-274 — anchored top-right; 0 when absent/zero-sized).
+    let right = hover_panels
+        .iter()
+        .next()
+        .map_or(0, |node| physical_px(node.size().x));
     // TOP minimal.
     let top = 0;
 

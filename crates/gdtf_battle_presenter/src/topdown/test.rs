@@ -2,7 +2,9 @@
 
 use gdtf_battle_sim::{Cell, Level};
 
-use super::bridge::{CELL_PX, GANGER_Z_BIAS, Layer, cell_to_world, cell_to_world_layered, z_for};
+use super::bridge::{
+    CELL_PX, GANGER_Z_BIAS, Layer, SheetRole, cell_to_world, cell_to_world_layered, z_for,
+};
 
 /// AC2 — `CELL_PX` is exactly 16.0, the single source of truth for cell size.
 #[test]
@@ -49,6 +51,34 @@ fn cell_to_world_projects_row_zero_to_the_top() {
 
     // z is the per-level draw-z for L0.
     assert_eq!(p.z.to_bits(), z_for(l0).to_bits(), "z must equal z_for(L0)");
+}
+
+/// GTW-278 — the per-sheet tile size + grid: the render sheets stay 16-px tiles while the
+/// portrait sheet is 32-px faces in a 10×10 grid. Pins the per-sheet `tile_px`/`grid`
+/// behavior so a regression (e.g. Portraits reverting to 16, carving each 32-px face into
+/// four wrong sub-tiles) is caught directly, without an app harness.
+#[test]
+fn portraits_use_a_32px_tile_while_render_sheets_stay_16px() {
+    // The render sheets are 16-px tiles.
+    assert_eq!(SheetRole::Terrain.tile_px(), 16, "terrain tiles are 16 px");
+    assert_eq!(
+        SheetRole::Characters.tile_px(),
+        16,
+        "character tiles are 16 px"
+    );
+    assert_eq!(SheetRole::Effects.tile_px(), 16, "effect tiles are 16 px");
+
+    // The GTW-278 portrait sheet is a 10×10 grid of 32-px faces (100 indices).
+    assert_eq!(
+        SheetRole::Portraits.tile_px(),
+        32,
+        "portrait faces are 32 px (NOT 16 — a 16 would mis-carve each face into four tiles)",
+    );
+    assert_eq!(
+        SheetRole::Portraits.grid(),
+        (10, 10),
+        "the portrait sheet is a 10×10 grid (100 faces, indices 0..=99)",
+    );
 }
 
 /// `z_for` is monotonic in the storey index so higher storeys draw in front.

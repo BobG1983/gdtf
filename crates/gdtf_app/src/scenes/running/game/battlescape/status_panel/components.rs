@@ -1,34 +1,19 @@
-//! Marker components for the battlescape status HUD panel (GTW-252).
+//! Marker component for the battlescape status HUD panel (GTW-278).
 //!
 //! The status panel is a battle-scoped `gdtf_ui` panel showing the selected player
-//! ganger's vitals. Its tree is a [`spawn_panel`](gdtf_ui::spawn_panel) box (the
-//! [`StatusPanelRoot`] marker) holding one themed [`Text`](bevy::prelude::Text)
-//! child per vitals line — each carrying its own ZST line-marker so the update
-//! system can target that line's `Text` precisely (one marker per line → disjoint
-//! `Query<&mut Text, With<…>>` writes, the action-bar per-act-marker precedent).
-//!
-//! All markers are **unit structs** — presence alone is the signal. They are not
-//! domain values, so the no-bare-types rule does not apply (a marker's identity is
-//! a named type, never a bare label string compared at runtime). They mirror the
-//! sibling [`action_bar`](super::super::action_bar) module's marker shape.
-//!
-//! ## Visibility (the GTW-145 test-only-surface convention)
-//!
-//! The root marker is internal-only (the spawn/despawn systems are its only
-//! readers), so — like [`ActionBarRoot`](super::super::action_bar) — it stays
-//! `pub(in …status_panel)` and is NOT widened. The per-line markers are widened to
-//! `pub` under the `test-support` feature via [`crate::support_item!`], so the
-//! external integration tests can name them through [`crate::test_support`] to
-//! assert each line's `Text` content (AC2 / AC3); they stay `pub(crate)` otherwise
-//! so the production `grimdark_turfwar` binary build stays `unreachable_pub`-clean
-//! (the action-bar per-act-marker re-export precedent).
+//! ganger's stat block (portrait / name / faction / stance / TU+HP bars / Wounds pips /
+//! wound-name list — the shared
+//! [`stat_block`](super::super::stat_block)). Its tree is a
+//! [`spawn_panel`](gdtf_ui::spawn_panel) box (the [`StatusPanelRoot`] marker) holding the
+//! one shared stat-block subtree; the per-widget markers and the per-update mutate live in
+//! the shared stat-block module, so the panel needs only its own root marker.
 
 use bevy::prelude::*;
 
 /// Marks the **root** node of the status-panel tree (the
-/// [`spawn_panel`](gdtf_ui::spawn_panel) box holding the vitals-line `Text`
-/// children), so the `OnExit(BattleRunning)` despawn finds and recursively tears
-/// down the whole panel by this one marker rather than tracking each child.
+/// [`spawn_panel`](gdtf_ui::spawn_panel) box holding the shared stat block), so the
+/// `OnExit(BattleRunning)` despawn finds and recursively tears down the whole panel by
+/// this one marker rather than tracking each child.
 ///
 /// Widened to `pub(in …battlescape)` (GTW-271) so the sibling battlescape-level
 /// `set_world_viewport` system can MEASURE the panel root's
@@ -40,68 +25,9 @@ use bevy::prelude::*;
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(in crate::scenes::running::game::battlescape) struct StatusPanelRoot;
 
-crate::support_item! {
-    /// Marks the **identity** vitals line — the selected ganger's cell `(x, y, level)`
-    /// (from [`Position`](gdtf_battle_sim::Position)) and [`Faction`](gdtf_battle_sim::Faction).
-    ///
-    /// There is no ganger-name/id component today; the cell + faction stand in for an
-    /// identity. A real `GangerName` newtype on the spawn bundle is FLAGGED future work
-    /// (a follow-up ticket), deliberately not invented here.
-    ///
-    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct IdentityText;
-}
-
-crate::support_item! {
-    /// Marks the **stance** vitals line — the selected ganger's
-    /// [`Stance`](gdtf_battle_sim::Stance) posture (Standing / Crouching / Prone).
-    ///
-    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct StanceText;
-}
-
-crate::support_item! {
-    /// Marks the **time-units** vitals line — the selected ganger's
-    /// [`Tu`](gdtf_battle_sim::Tu) current pool over its [`TuMax`](gdtf_battle_sim::TuMax)
-    /// ceiling, shown as `cur/max` (e.g. "TU 7/10").
-    ///
-    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct TuText;
-}
-
-crate::support_item! {
-    /// Marks the **hit-points** vitals line — the selected ganger's current
-    /// [`Hp`](gdtf_battle_sim::Hp) plus its [`Wounds`](gdtf_battle_sim::Wounds) count.
-    ///
-    /// There is no `HpMax` component today, so the line shows current HP only; a max
-    /// is NOT fabricated. An `HpMax` source is FLAGGED future work.
-    ///
-    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct HpText;
-}
-
-crate::support_item! {
-    /// Marks the **life-state** vitals line — the selected ganger's
-    /// [`LifeState`](gdtf_battle_sim::LifeState) (Alive / Downed / Dead).
-    ///
-    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct LifeText;
-}
-
-crate::support_item! {
-    /// Marks the **weapon-name** vitals line (GTW-254) — the selected ganger's
-    /// [`WeaponName`](gdtf_battle_sim::WeaponName), the human-facing identity of the
-    /// weapon it carries (e.g. "autogun"). This is the FIRST reader of `WeaponName`
-    /// (GTW-256 placed it on the armed entity unread). An UNARMED selection (no
-    /// `WeaponName` component) shows a `—` fallback; no selection shows the shared
-    /// no-selection empty state.
-    ///
-    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct WeaponNameText;
-}
+/// Marks the status panel's shared stat-block root, so the update system finds THIS
+/// panel's [`StatBlockRefs`](super::super::stat_block::StatBlockRefs) (the hover panel's
+/// stat block carries the same handle but a different panel marker). A unit marker:
+/// presence on an entity is the whole signal (no-bare-types rule).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub(in crate::scenes::running::game::battlescape::status_panel) struct StatusStatBlock;

@@ -6,7 +6,7 @@ use crate::{
         GameBattleScapeActionBarScenePlugin, GameBattleScapeAfterMathScenePlugin,
         GameBattleScapeAnimateInScenePlugin, GameBattleScapeAnimateOutScenePlugin,
         GameBattleScapeBattleRunningScenePlugin, GameBattleScapeGenerationScenePlugin,
-        GameBattleScapeStatusPanelScenePlugin, systems::*,
+        GameBattleScapeHoverPanelScenePlugin, GameBattleScapeStatusPanelScenePlugin, systems::*,
     },
     states::{BattleScapeState, GameState},
 };
@@ -87,7 +87,13 @@ fn add_plugins(app: &mut App) {
         // witness. UI/view only — no sim/input change, no act. It deps `gdtf_ui` (the
         // spawn helpers) + `gdtf_battle_input` (the selection seam), both already on the
         // app's edge; the chain stays acyclic.
-        .add_plugins(GameBattleScapeStatusPanelScenePlugin);
+        .add_plugins(GameBattleScapeStatusPanelScenePlugin)
+        // The GTW-274 hover-inspect panel: the twin of the status panel, anchored top-right.
+        // Same `BattleRunning` lifecycle + `BattleInProgress` gate; its repaint reads the
+        // input crate's `HoveredCell` + the sim's `OccupancyGrid` / `CoverLedger` / vital
+        // components and renders the shared stat block (hovered ganger) or an object block
+        // (hovered wall / cover). UI/view only — no sim/input change, no act.
+        .add_plugins(GameBattleScapeHoverPanelScenePlugin);
 }
 
 fn add_states(app: &mut App) {

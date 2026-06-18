@@ -37,13 +37,31 @@ crate::support_use! {
     };
 }
 
-mod status_panel;
-pub(in crate::scenes::running::game::battlescape) use status_panel::GameBattleScapeStatusPanelScenePlugin;
-// Test-support-only re-export of the status-panel's per-line text markers (GTW-252),
-// gated so the binary build is `unused`/`unreachable_pub`-clean (the action-bar
-// per-act-marker precedent). The AC tests name these through `crate::test_support` to
-// assert each line's `Text` content.
+// The GTW-278 shared ganger stat block (portrait / name / faction / stance / TU+HP bars /
+// Wounds pips / wound-name list), reused by BOTH the status panel and the hover panel — DRY.
+mod stat_block;
+// Test-support-only re-export of the stat-block's per-widget markers (GTW-278), gated so
+// the binary build is `unused`/`unreachable_pub`-clean (the status-panel marker precedent).
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    status_panel::{HpText, IdentityText, LifeText, StanceText, TuText, WeaponNameText};
+    stat_block::{
+        StatFaction, StatHpBar, StatName, StatPortrait, StatStance, StatTuBar, StatWoundLine,
+        StatWoundList, StatWoundsPips, portrait_index_for_name,
+    };
+}
+
+mod status_panel;
+pub(in crate::scenes::running::game::battlescape) use status_panel::GameBattleScapeStatusPanelScenePlugin;
+
+// The GTW-274 hover-inspect panel (top-right): the twin of the status panel, rendering the
+// shared stat block for the HOVERED ganger / the hovered object's integrity.
+mod hover_panel;
+pub(in crate::scenes::running::game::battlescape) use hover_panel::GameBattleScapeHoverPanelScenePlugin;
+// Test-support-only re-export of the hover-panel's root + object markers (GTW-274), gated
+// so the binary build is `unused`/`unreachable_pub`-clean.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    hover_panel::{
+        HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
+    };
 }

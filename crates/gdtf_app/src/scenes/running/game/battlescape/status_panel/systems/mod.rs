@@ -1,5 +1,3 @@
-mod labels;
-
 mod spawn;
 pub(in crate::scenes::running::game::battlescape::status_panel) use spawn::{
     despawn_status_panel, spawn_status_panel,

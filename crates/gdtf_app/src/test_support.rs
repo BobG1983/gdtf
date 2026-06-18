@@ -21,11 +21,13 @@ pub use crate::{
     },
     scenes::{
         AimToggleButton, BattleRunningComplete, BattlescapeButton, EndTurnButton, FleeButton,
-        HiveScapeButton, HpText, IdentityText, LevelDownButton, LevelUpButton, LifeText,
-        LoadedSituation, MenuTitle, ModeBurstButton, ModeFullButton, ModePanelRoot,
-        ModeSingleButton, OptionsButton, QuitButton, ReloadButton, ScenesPlugin,
-        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton, StanceText,
-        TuText, WeaponNameText,
+        HiveScapeButton, HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverPanelRoot,
+        HoverStatBlockHost, LevelDownButton, LevelUpButton, LoadedSituation, MenuTitle,
+        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton, OptionsButton,
+        QuitButton, ReloadButton, ScenesPlugin, StanceKneelingButton, StancePanelRoot,
+        StanceProneButton, StanceStandingButton, StatFaction, StatHpBar, StatName, StatPortrait,
+        StatStance, StatTuBar, StatWoundLine, StatWoundList, StatWoundsPips,
+        portrait_index_for_name,
     },
     states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };

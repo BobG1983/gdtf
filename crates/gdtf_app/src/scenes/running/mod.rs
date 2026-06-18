@@ -30,12 +30,16 @@ crate::support_use! {
         StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
     };
 }
-// Test-support-only re-export of the status-panel's per-line text markers (GTW-252),
-// gated so the binary build is `unused`/`unreachable_pub`-clean. Carries the markers up
-// toward `crate::test_support`.
+// Test-support-only re-export of the GTW-278 stat-block markers + the GTW-274 hover-panel
+// markers, gated so the binary build is `unused`/`unreachable_pub`-clean. Carries the
+// markers up toward `crate::test_support`.
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    game::{HpText, IdentityText, LifeText, StanceText, TuText, WeaponNameText};
+    game::{
+        HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverPanelRoot, HoverStatBlockHost, StatFaction,
+        StatHpBar, StatName, StatPortrait, StatStance, StatTuBar, StatWoundLine, StatWoundList,
+        StatWoundsPips, portrait_index_for_name,
+    };
 }
 
 mod options;
