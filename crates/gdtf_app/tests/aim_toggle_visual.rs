@@ -1,22 +1,22 @@
-//! GTW-253 — the Aim action-bar button's active (toggled-on) visual, driven through
-//! the REAL app stack.
+//! GTW-253 / GTW-277 — the Aim control's on/off visual, driven through the REAL app
+//! stack.
 //!
-//! These headless `GdtfTestAppBuilder` integration tests drive the genuine state
-//! machine down to `BattleScapeState::BattleRunning`, where the real action-bar
-//! plugin's `OnEnter(BattleRunning)` `spawn_action_bar` spawns the `AimToggleButton`
-//! and its `Update` `sync_aim_button_active` (gated on `BattleInProgress`) mirrors the
-//! selected ganger's `Aiming` onto the `gdtf_ui` `ActiveButton` paint marker. They cover
-//! AC4:
+//! GTW-277 migrated the Aim control from an ad-hoc toggle button to a `gdtf_ui` `Switch`.
+//! These headless `GdtfTestAppBuilder` integration tests drive the genuine state machine
+//! down to `BattleScapeState::BattleRunning`, where the real weapon-panel module spawns the
+//! `AimToggleButton` switch and the action-bar plugin's `Update` `sync_aim_switch_state`
+//! (gated on `BattleInProgress`) mirrors the selected ganger's `Aiming` onto the switch's
+//! `SwitchState`. They cover AC4 (adapted to the widget seam — the visual CONTRACT is
+//! unchanged: the control reflects whether the selected ganger is aiming):
 //!
-//! - a selected ganger with `Aiming(true)` → the `AimToggleButton` HAS `ActiveButton`;
-//! - flipping to `Aiming(false)` → it does NOT;
-//! - no selection → no `ActiveButton`.
+//! - a selected ganger with `Aiming(true)` → the `AimToggleButton` switch is `SwitchState::On`;
+//! - flipping to `Aiming(false)` → it is `SwitchState::Off`;
+//! - no selection → `SwitchState::Off`.
 //!
-//! Discriminating: the marker is read off the REAL `AimToggleButton` entity the bar
-//! spawns and the REAL `Aiming` sim component, so a sync wired to the wrong
-//! component/entity would surface the wrong result. The `gdtf_ui` paint mechanism (AC1)
-//! and interaction/disabled rules (AC2/AC3) live as `gdtf_ui` in-crate tests; the theme
-//! round-trip (AC5) lives in `gdtf_ui::theme`.
+//! Discriminating: the state is read off the REAL `AimToggleButton` switch entity the
+//! weapon panel spawns and the REAL `Aiming` sim component, so a sync wired to the wrong
+//! component/entity would surface the wrong result. The `gdtf_ui` switch mechanism lives as
+//! `gdtf_ui` in-crate tests; the theme round-trip (AC5) lives in `gdtf_ui::theme`.
 //!
 //! Every `app.world_mut()` mutation is in a TEST BODY — the accepted headless idiom
 //! (`bevy-traps.md` #7 carve-out (a)). No function here takes `&mut World`/`&World`.
@@ -28,7 +28,7 @@ use gdtf_battle_sim::{
     Aiming, Cell, CellLevel, Faction, Level, Position, tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::{ActiveButton, theme::default_theme};
+use gdtf_ui::{SwitchState, theme::default_theme};
 
 /// A budget large enough to drive the deep walk into the battlescape, bounded so a
 /// machine that never reaches the predicate fails instead of hanging (the
@@ -116,14 +116,15 @@ fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
     }
 }
 
-/// Whether the single `AimToggleButton` entity currently carries the `gdtf_ui`
-/// `ActiveButton` paint marker. Returns `false` if the marker is absent and panics
-/// nowhere — it is read off the REAL bar button entity.
+/// Whether the single `AimToggleButton` switch is currently `SwitchState::On` (GTW-277).
+/// Returns `false` if the switch is absent / off — it is read off the REAL switch entity.
 fn aim_button_is_active(app: &mut App) -> bool {
-    let Some(button) = single_with::<AimToggleButton>(app) else {
+    let Some(switch) = single_with::<AimToggleButton>(app) else {
         return false;
     };
-    app.world().get::<ActiveButton>(button).is_some()
+    app.world()
+        .get::<SwitchState>(switch)
+        .is_some_and(|s| s.is_on())
 }
 
 /// Spawns a ganger with the given faction and an [`Aiming`] component, and SELECTS it
@@ -167,7 +168,7 @@ fn aim_button_active_follows_selected_ganger_aiming() {
     app.update();
     assert!(
         aim_button_is_active(&mut app),
-        "with the selected ganger aiming, the Aim button must carry ActiveButton",
+        "with the selected ganger aiming, the Aim switch must be SwitchState::On",
     );
 
     // Flip the selected ganger to NOT aiming on the real component.
@@ -177,13 +178,12 @@ fn aim_button_active_follows_selected_ganger_aiming() {
     app.update();
     assert!(
         !aim_button_is_active(&mut app),
-        "with the selected ganger no longer aiming, the Aim button must NOT carry \
-         ActiveButton",
+        "with the selected ganger no longer aiming, the Aim switch must be SwitchState::Off",
     );
 }
 
-/// AC4 — with NO selection, the Aim button does NOT carry `ActiveButton` (it shows OFF)
-/// and `update()` does not panic.
+/// AC4 — with NO selection, the Aim switch is `SwitchState::Off` (it shows OFF) and
+/// `update()` does not panic.
 ///
 /// The previously-shown ganger is an ENEMY faction (1, distinct from the default
 /// `PlayerFaction` 0) so the landed GTW-255 `auto_select_first_player_ganger` (which
@@ -200,7 +200,7 @@ fn no_selection_clears_active_marker() {
     app.update();
     assert!(
         aim_button_is_active(&mut app),
-        "the force-selected aiming ganger shows the Aim button active before clearing",
+        "the force-selected aiming ganger shows the Aim switch On before clearing",
     );
 
     // Clear the selection. Auto-select will not re-pick the enemy ganger, and there is
@@ -209,6 +209,6 @@ fn no_selection_clears_active_marker() {
     app.update();
     assert!(
         !aim_button_is_active(&mut app),
-        "with no selection, the Aim button must NOT carry ActiveButton (no stale ON state)",
+        "with no selection, the Aim switch must be SwitchState::Off (no stale ON state)",
     );
 }

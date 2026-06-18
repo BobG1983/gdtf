@@ -236,3 +236,37 @@ crate::support_item! {
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ModePanelRoot;
 }
+
+crate::support_item! {
+    /// Identity marker on the Stance [`SegmentedControl`](gdtf_ui::SegmentedControl) ROOT
+    /// (GTW-277) — the inner control of the [`StancePanelRoot`] framed box.
+    ///
+    /// `gdtf_ui` cannot know what a segment MEANS, so it reports a
+    /// [`SegmentSelected`](gdtf_ui::SegmentSelected) carrying the control ENTITY; the
+    /// `stance_segment_intent` listener reads THIS marker off that entity to know the select
+    /// is a STANCE select, and the `sync_stance_active_segment` system writes the control's
+    /// [`ActiveSegment`](gdtf_ui::ActiveSegment) by this marker. Carried alongside the
+    /// per-segment markers ([`StanceStandingButton`] / [`StanceKneelingButton`] /
+    /// [`StanceProneButton`]).
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct StanceControl;
+}
+
+crate::support_item! {
+    /// Identity marker on the Mode [`SegmentedControl`](gdtf_ui::SegmentedControl) ROOT
+    /// (GTW-277) — the inner control of the [`ModePanelRoot`] framed box.
+    ///
+    /// The `mode_segment_write` listener reads THIS marker off a
+    /// [`SegmentSelected`](gdtf_ui::SegmentSelected)'s control entity to know the select is a
+    /// fire-MODE select (and write [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode)),
+    /// `sync_mode_active_segment` writes the control's
+    /// [`ActiveSegment`](gdtf_ui::ActiveSegment) by it, and `rebuild_mode_segments` walks the
+    /// control's segments by it. Carried alongside the per-segment markers
+    /// ([`ModeSingleButton`] / [`ModeBurstButton`] / [`ModeFullButton`]).
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ModeControl;
+}

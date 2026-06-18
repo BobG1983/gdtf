@@ -35,7 +35,7 @@ pub(in crate::scenes::running::game::battlescape) use plugin::GameBattleScapeWea
 #[cfg(feature = "test-support")]
 crate::support_use! {
     components::{
-        AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage, WeaponItemButton,
-        WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+        AimLabel, AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage,
+        WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
     };
 }

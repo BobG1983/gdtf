@@ -64,6 +64,6 @@ pub use widgets::{
     SegmentIndex, SegmentLabel, SegmentSelected, SegmentText, SegmentedControl, Switch,
     SwitchColors, SwitchKnob, SwitchOrientation, SwitchState, ToggleFlipped, drive_switches,
     paint_active_buttons, paint_disabled_buttons, repaint_segments, select_segment_on_press,
-    set_pips, set_progress_bar, spawn_button, spawn_panel, spawn_pips, spawn_progress_bar,
-    spawn_segmented_control, spawn_switch,
+    set_pips, set_progress_bar, set_segment_visible, spawn_button, spawn_panel, spawn_pips,
+    spawn_progress_bar, spawn_segmented_control, spawn_switch,
 };

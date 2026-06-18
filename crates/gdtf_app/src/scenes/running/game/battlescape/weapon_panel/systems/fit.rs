@@ -30,7 +30,7 @@ use bevy::{
 };
 
 use crate::scenes::running::game::battlescape::weapon_panel::components::{
-    ReloadButton, WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText,
+    AimLabel, ReloadButton, WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText,
 };
 
 /// The tightened LEFT/RIGHT padding of the Item Panel, as a fraction of the viewport WIDTH
@@ -62,9 +62,10 @@ struct WeaponLabelPt(f32);
 const WEAPON_LABEL_PT: WeaponLabelPt = WeaponLabelPt(14.0);
 
 /// Query FILTER selecting the weapon-cluster widgets whose label font should shrink — the weapon
-/// name / magazine lines (the marker sits on the `Text` node itself) and the item / reload buttons
-/// (the marker sits on the button ROOT; its label is a `Text` CHILD). An `Or` over their markers
-/// so one query reaches every cluster label owner (GTW-298).
+/// name / magazine lines (the marker sits on the `Text` node itself), the item / reload buttons
+/// (the marker sits on the button ROOT; its label is a `Text` CHILD), and the Aim caption
+/// ([`AimLabel`] — restored next to the Aim toggle, the marker sits on the `Text` node itself).
+/// An `Or` over their markers so one query reaches every cluster label owner (GTW-298).
 ///
 /// Aliased so the [`fit_weapon_panel`] owner query type stays legible (clippy `type_complexity`).
 type WeaponLabelOwner = Or<(
@@ -72,6 +73,7 @@ type WeaponLabelOwner = Or<(
     With<WeaponMagazineText>,
     With<WeaponItemButton>,
     With<ReloadButton>,
+    With<AimLabel>,
 )>;
 
 /// Post-theme fit pass over the weapon cluster (GTW-298): tightens the Item Panel's horizontal

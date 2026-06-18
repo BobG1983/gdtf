@@ -9,7 +9,7 @@ use bevy::{
 use super::theme::interaction_fill;
 use crate::{
     theme::GdtfTheme,
-    widgets::{ActiveButton, DisabledButton},
+    widgets::{ActiveButton, DisabledButton, Segment},
 };
 
 /// Query filter selecting the buttons [`repaint_deactivated_buttons`] repaints:
@@ -20,12 +20,21 @@ use crate::{
 /// (clippy's `type_complexity`) and to make the exclusions explicit:
 /// `With<Button>` restricts to real buttons, `Without<DisabledButton>` leaves
 /// disabled buttons to [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons),
-/// and `Without<ActiveButton>` confirms the button is no longer active (the
+/// `Without<ActiveButton>` confirms the button is no longer active (the
 /// `RemovedComponents` signal fires the frame the marker is removed, by which
-/// time the component is already gone). A despawned entity also surfaces in
+/// time the component is already gone), and `Without<Segment>` leaves
+/// [`SegmentedControl`](crate::widgets::SegmentedControl) segment fills to
+/// [`repaint_segments`](crate::widgets::repaint_segments) (GTW-277 — a segment IS a
+/// [`Button`](bevy::ui::widget::Button), so without this it would steal a segment's
+/// active highlight). A despawned entity also surfaces in
 /// [`RemovedComponents`](bevy::prelude::RemovedComponents) but misses this query,
 /// so it is silently skipped.
-type DeactivatedButton = (With<Button>, Without<DisabledButton>, Without<ActiveButton>);
+type DeactivatedButton = (
+    With<Button>,
+    Without<DisabledButton>,
+    Without<ActiveButton>,
+    Without<Segment>,
+);
 
 /// The per-button visuals [`repaint_deactivated_buttons`] reads and writes: the
 /// current [`Interaction`](bevy::ui::Interaction) plus the

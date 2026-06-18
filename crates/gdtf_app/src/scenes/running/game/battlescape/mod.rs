@@ -32,8 +32,9 @@ pub(in crate::scenes::running::game::battlescape) use action_bar::GameBattleScap
 crate::support_use! {
     action_bar::{
         AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton,
-        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
+        ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
+        StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
+        StanceStandingButton,
     };
 }
 
@@ -89,7 +90,7 @@ pub(in crate::scenes::running::game::battlescape) use weapon_panel::GameBattleSc
 #[cfg(feature = "test-support")]
 crate::support_use! {
     weapon_panel::{
-        AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage, WeaponItemButton,
-        WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+        AimLabel, AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage,
+        WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
     };
 }

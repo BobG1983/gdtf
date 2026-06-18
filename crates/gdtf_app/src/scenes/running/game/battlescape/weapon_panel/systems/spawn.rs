@@ -57,8 +57,8 @@ use crate::scenes::running::game::battlescape::{
     action_bar::{spawn_aim_button, spawn_mode_panel, spawn_stance_panel},
     bottom_bar::{BOTTOM_BAR_H_VH, BOTTOM_BAR_PAD_Y_VH, BottomBarRoot},
     weapon_panel::components::{
-        AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage, WeaponItemButton,
-        WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+        AimLabel, AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage,
+        WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
     },
 };
 
@@ -216,6 +216,34 @@ fn spawn_image(commands: &mut Commands, theme: &GdtfTheme, height: Val) -> Entit
         .id();
     commands.entity(slot).add_children(&[label]);
     slot
+}
+
+/// Spawns the Aim Panel's **"Aim" caption** [`Text`] ([`AimLabel`]) — the static label that sits
+/// to the LEFT of the relocated Aim [`Switch`](gdtf_ui::Switch) so the control reads
+/// "Aim [switch]" (the mockup; the GTW-277 widget migration had dropped this caption). Returns
+/// its [`Entity`].
+///
+/// A `Themed(ThemeRole::Text)` line (the "no image" caption precedent), so `apply_theme` paints
+/// its font + color from the theme like any themed text. Its [`AimLabel`] marker is added to
+/// [`fit_weapon_panel`](super::fit::fit_weapon_panel)'s label-owner set, which holds the caption
+/// at the 14 pt control-label size `.after(UiSystems::ApplyTheme)` — matching the firemode /
+/// stance segment captions (`nowrap_control_labels`) so the whole control cluster's labels read
+/// at one size. A non-empty seed feeds the first-frame measure; the caption is static (never
+/// mutated).
+fn spawn_aim_label(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
+    commands
+        .spawn((
+            AimLabel,
+            Themed(ThemeRole::Text),
+            Text::new("Aim"),
+            TextFont {
+                font: theme.text.font.clone(),
+                font_size: *theme.text.font_size_pt,
+                ..default()
+            },
+            UiTextColor(*theme.text.text_color),
+        ))
+        .id()
 }
 
 /// Spawns a themed [`Text`] line tagged `marker`, started at `initial` (the stat-block
@@ -440,9 +468,16 @@ fn spawn_right_column(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
         Val::Percent(TOP_CELL_PCT),
     );
     // The Aim panel = a framed cell wrapping the relocated action-bar Aim toggle (GTW-298),
-    // which FILLS the box (the `spawn_aim_button` constructor). The toggle keeps its
-    // `AimToggleButton` marker so the existing press → intent + `sync_aim_button_active`
-    // systems drive it parent-agnostically.
+    // laid out as a ROW: an "Aim" caption ([`AimLabel`]) on the LEFT, the toggle `Switch` on the
+    // RIGHT — matching the mockup's "AIM [switch]" reading (the GTW-277 widget migration had
+    // dropped the caption, leaving the bare switch). A ROW (not a column) was chosen because the
+    // cell is the SHORT bottom 1/4-height of the right column: a horizontal "Aim [switch]" reads
+    // cleaner in a short-and-wide box than stacking the caption over the already-horizontal
+    // switch would in the tight vertical room. The cell centres the row
+    // (`justify_content`/`align_items: Center`) with a small inter-child gap so the caption + the
+    // self-contained switch (sized by its own track geometry, NOT a fill-the-box button) sit
+    // together rather than the switch stretching to fill. The switch keeps its `AimToggleButton`
+    // marker so the press → intent + sim-sync systems drive it parent-agnostically.
     let aim_panel = spawn_frame(
         commands,
         theme,
@@ -450,8 +485,20 @@ fn spawn_right_column(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
         Val::Percent(100.0),
         Val::Percent(BOTTOM_CELL_PCT),
     );
+    commands
+        .entity(aim_panel)
+        .entry::<Node>()
+        .and_modify(|mut n| {
+            n.flex_direction = FlexDirection::Row;
+            n.justify_content = JustifyContent::Center;
+            n.align_items = AlignItems::Center;
+            n.column_gap = Val::Vw(GAP_VW);
+        });
+    let aim_label = spawn_aim_label(commands, theme);
     let aim_button = spawn_aim_button(commands, theme);
-    commands.entity(aim_panel).add_children(&[aim_button]);
+    commands
+        .entity(aim_panel)
+        .add_children(&[aim_label, aim_button]);
     let column = commands
         .spawn((Node {
             width: Val::Percent(RIGHT_COL_PCT),

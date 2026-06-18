@@ -30,7 +30,8 @@ pub(in crate::scenes::running::game::battlescape) use systems::{
 crate::support_use! {
     components::{
         AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton,
-        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
+        ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
+        StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
+        StanceStandingButton,
     };
 }

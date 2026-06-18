@@ -1,113 +1,88 @@
-//! [`sync_stance_buttons_active`] — drive the three Stance toggles' active (toggled-on)
-//! look from the selected ganger's [`Stance`] state (GTW-267).
+//! The Stance control's press → intent mapping and its sim-driven active-segment sync
+//! (GTW-267 / GTW-277).
 //!
-//! Play-test bug #7: the blind `StanceCycleButton` had no current-state indicator, so the
-//! player could not tell which posture the selected ganger held. The fix (decided 2026-06-17)
-//! replaced it with THREE mutually-exclusive toggle buttons (Stand / Kneel / Prone); this
-//! system supplies the missing VISUAL feedback — it does NOT change how the toggles set the
-//! stance (each press pushes a direct
-//! [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance) →
-//! [`SetStanceRequested`](gdtf_battle_sim::acts::SetStanceRequested) → sim-sets-[`Stance`]).
-//! It mirrors the sim's [`Stance`] onto the `gdtf_ui`
-//! [`ActiveButton`](gdtf_ui::ActiveButton) paint primitive, exactly as
-//! [`sync_aim_button_active`](super::aim_active::sync_aim_button_active) does for Aim.
-//!
-//! ## The sim → button mapping
-//!
-//! Each battle frame it reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter)
-//! → the selected entity → its [`Stance`] component, then marks exactly the matching toggle
-//! [`ActiveButton`](gdtf_ui::ActiveButton) and removes it from the other two:
-//!
-//! - [`StanceKind::Standing`](gdtf_battle_sim::StanceKind::Standing) → [`StanceStandingButton`];
-//! - [`StanceKind::Crouching`](gdtf_battle_sim::StanceKind::Crouching) → [`StanceKneelingButton`];
-//! - [`StanceKind::Prone`](gdtf_battle_sim::StanceKind::Prone) → [`StanceProneButton`];
-//! - no selection, or a selected entity with no [`Stance`] → none active.
-//!
-//! The result is mutually exclusive (exactly one toggle is active at a time, or none), and
-//! the active toggle reads as toggled-on (the GTW-266 sticky `ActiveButton` paint, so the
-//! active fill is not overridden by hover/press feedback).
-//!
-//! ## Gating + ordering (`bevy-traps.md` #1 / #3 / #7)
-//!
-//! Registered `run_if(resource_exists::<BattleInProgress>)` by the action-bar plugin — the
-//! SAME live-battle witness the other action-bar systems gate on. It uses [`Commands`] for
-//! the insert/remove (NOT `&mut World`). The look reflects the CURRENT [`Stance`]; because
-//! the sim applies the set in its own dispatch, the button look may lag a press by at most
-//! one frame, which is acceptable for a visual indicator.
+//! GTW-277 migrated the Stance control to a `gdtf_ui` vertical
+//! [`SegmentedControl`](gdtf_ui::SegmentedControl) (see
+//! [`spawn_stance_panel`](super::stance_panel::spawn_stance_panel)). Selecting a segment
+//! pushes a DIRECT [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance) for the
+//! named posture (NOT a blind cycle), exactly as the three ad-hoc toggles did — so the
+//! `prone_toggle_sets_stance_prone_directly` byte-equal parity is preserved. The active
+//! mark is the widget's own [`ActiveSegment`](gdtf_ui::ActiveSegment) highlight, synced FROM
+//! the selected ganger's [`Stance`](gdtf_battle_sim::Stance).
 
 use bevy::prelude::*;
-use gdtf_battle_input::SelectedShooter;
+use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
 use gdtf_battle_sim::{Stance, StanceKind};
-use gdtf_ui::ActiveButton;
+use gdtf_ui::{ActiveSegment, SegmentSelected, SegmentedControl};
 
-use crate::scenes::running::game::battlescape::action_bar::components::{
-    StanceKneelingButton, StanceProneButton, StanceStandingButton,
-};
+use super::stance_panel::{stance_for_index, stance_index};
+use crate::scenes::running::game::battlescape::action_bar::components::StanceControl;
 
-/// Syncs the [`ActiveButton`](gdtf_ui::ActiveButton) marker across the three Stance
-/// toggles to the selected ganger's [`Stance`] (GTW-267).
+/// Pushes a DIRECT [`ActIntent::SetStance`] when a Stance segment is selected by the user
+/// (GTW-267 / GTW-277).
 ///
-/// Reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter); if it holds an
-/// entity with a [`Stance`], the toggle for that posture gets
-/// [`ActiveButton`](gdtf_ui::ActiveButton) inserted and the other two have it removed (so
-/// exactly one reads as toggled-on). With no selection — or a selected entity that carries
-/// no [`Stance`] — none of the three is active. Insert/remove are idempotent, so this runs
-/// every frame.
+/// Reads [`SegmentSelected`](gdtf_ui::SegmentSelected) messages (emitted by `gdtf_ui`'s
+/// [`select_segment_on_press`](gdtf_ui::select_segment_on_press) on a real click), and for
+/// each whose control carries the [`StanceControl`] marker, maps the chosen
+/// [`SegmentIndex`](gdtf_ui::SegmentIndex) → [`StanceKind`] and
+/// [`push`](PendingActIntent::push)es the SAME
+/// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(kind)` the direct
+/// stance intent (and the keyboard stance keys' `SetStance` path) pushes — so the widget +
+/// key surfaces stay parallel over the ONE [`PendingActIntent`] drain (the byte-equal parity
+/// `prone_toggle_sets_stance_prone_directly` pins). The keyboard stance-CYCLE key still
+/// pushes the cycling [`ActIntent::StanceCycle`] (unchanged). A select with no selection is a
+/// no-op in the drain (AC6).
 ///
-/// This is VISUAL-ONLY: the marker does not affect interaction (`gdtf_ui` paints
-/// `ActiveButton` but never filters it out of the press path), so the toggles stay
-/// clickable to set a different stance.
+/// Param-only (`bevy-traps.md` #7): a [`MessageReader<SegmentSelected>`](MessageReader)
+/// (bevy-traps rule 4), the [`ResMut<PendingActIntent>`](ResMut) write, and a read-only
+/// `Query<(), With<StanceControl>>` — no `&mut World`.
+pub(in crate::scenes::running::game::battlescape) fn stance_segment_intent(
+    mut chosen: MessageReader<SegmentSelected>,
+    mut pending: ResMut<PendingActIntent>,
+    stance_controls: Query<(), With<StanceControl>>,
+) {
+    for event in chosen.read() {
+        if stance_controls.get(event.control).is_err() {
+            continue;
+        }
+        if let Some(kind) = stance_for_index(*event.index) {
+            pending.push(ActIntent::SetStance(kind));
+        }
+    }
+}
+
+/// Drives the Stance control's active SEGMENT from the selected ganger's
+/// [`Stance`](gdtf_battle_sim::Stance) (GTW-267 / GTW-277).
 ///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the insert/remove, a
-/// `Res<`[`SelectedShooter`](gdtf_battle_input::SelectedShooter)`>` read, a read-only
-/// `Query<&`[`Stance`]`>`, and one `Query<`[`Entity`]`, With<…>>` per stance toggle — no
+/// Reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter); if it holds an entity
+/// with a [`Stance`], the control root's [`ActiveSegment`](gdtf_ui::ActiveSegment) is set to
+/// that posture's index ([`stance_index`]) — so `gdtf_ui`'s
+/// [`repaint_segments`](gdtf_ui::repaint_segments) highlights exactly that segment (filled +
+/// bold) and the others return to base the same frame (mutually-exclusive, the color-blind-
+/// safe active mark). With no selection — or a selected entity carrying no [`Stance`] — the
+/// active segment is left UNCHANGED (the highlight holds its last posture rather than
+/// flickering to none, since the control always has a valid active index). Written via
+/// [`set_if_neq`](bevy::prelude::DetectChangesMut::set_if_neq) so it repaints only on a real
+/// change. No despawn/respawn — pure index write ([[ui-mutate-not-respawn]]).
+///
+/// Param-only (`bevy-traps.md` #7): a `Res<SelectedShooter>` read, a read-only
+/// `Query<&Stance>`, and a `Query<&mut ActiveSegment, With<StanceControl>>` write — no
 /// `&mut World`.
-pub(in crate::scenes::running::game::battlescape) fn sync_stance_buttons_active(
-    mut commands: Commands,
+pub(in crate::scenes::running::game::battlescape) fn sync_stance_active_segment(
     selected: Res<SelectedShooter>,
     stances: Query<&Stance>,
-    stand_buttons: Query<Entity, With<StanceStandingButton>>,
-    kneel_buttons: Query<Entity, With<StanceKneelingButton>>,
-    prone_buttons: Query<Entity, With<StanceProneButton>>,
+    mut controls: Query<&mut ActiveSegment, (With<StanceControl>, With<SegmentedControl>)>,
 ) {
-    // The selected ganger's posture, if any (no selection / no `Stance` → none active).
+    // The selected ganger's posture, if any (no selection / no `Stance` → leave the
+    // highlight where it is; the control always carries a valid active index).
     let current: Option<StanceKind> = (**selected)
         .and_then(|entity| stances.get(entity).ok())
         .map(|stance| **stance);
-
-    set_active(
-        &mut commands,
-        &stand_buttons,
-        current == Some(StanceKind::Standing),
-    );
-    set_active(
-        &mut commands,
-        &kneel_buttons,
-        current == Some(StanceKind::Crouching),
-    );
-    set_active(
-        &mut commands,
-        &prone_buttons,
-        current == Some(StanceKind::Prone),
-    );
-}
-
-/// Inserts or removes [`ActiveButton`](gdtf_ui::ActiveButton) on every button matched by
-/// `buttons`, by whether that toggle is the `active` one this frame.
-///
-/// Factored out so each of the three stance toggles applies the same idempotent
-/// insert-or-remove (the `aim_active.rs` per-button loop, generalized to three toggles).
-fn set_active<M: Component>(
-    commands: &mut Commands,
-    buttons: &Query<Entity, With<M>>,
-    active: bool,
-) {
-    for button in buttons {
-        let mut entity = commands.entity(button);
-        if active {
-            entity.insert(ActiveButton);
-        } else {
-            entity.remove::<ActiveButton>();
-        }
+    let Some(kind) = current else {
+        return;
+    };
+    let want = ActiveSegment::new(stance_index(kind));
+    for mut active in &mut controls {
+        active.set_if_neq(want);
     }
 }

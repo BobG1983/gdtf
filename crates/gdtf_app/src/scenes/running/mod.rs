@@ -26,8 +26,9 @@ crate::support_use!(game::BattleRunningComplete;);
 crate::support_use! {
     game::{
         AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton,
-        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
+        ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
+        StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
+        StanceStandingButton,
     };
 }
 // Test-support-only re-export of the GTW-278 stat-block markers + the GTW-274 hover-panel
@@ -48,8 +49,9 @@ crate::support_use! {
 #[cfg(feature = "test-support")]
 crate::support_use! {
     game::{
-        AimPanel, BottomBarRoot, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage,
-        WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+        AimLabel, AimPanel, BottomBarRoot, CombinedWeaponPanel, ReloadButton, WeaponContent,
+        WeaponImage, WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText,
+        WeaponPanelRoot,
     };
 }
 

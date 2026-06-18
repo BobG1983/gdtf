@@ -14,23 +14,24 @@
 //!   battle is live — no press is a silent no-op during generation/aftermath because the
 //!   bar is only spawned in `BattleRunning` AND the action system only runs while the
 //!   battle witness is present.
-//! - **Aim toggle visual** (GTW-253) — `sync_aim_button_active` runs in `Update` under
-//!   the SAME `run_if(resource_exists::<BattleInProgress>)` gate; it mirrors the selected
-//!   ganger's `Aiming` onto the `gdtf_ui` `ActiveButton` paint marker on the
-//!   `AimToggleButton`, so the Aim button visibly shows ON/OFF. It is VISUAL-ONLY — it
-//!   does NOT change how the aim toggle works (the existing `AimToggle` intent path is
-//!   untouched).
-//! - **Stance 3-toggle visual** (GTW-267) — `sync_stance_buttons_active` mirrors the
-//!   selected ganger's `Stance` onto the `ActiveButton` paint marker across the three
-//!   stance toggles (Stand / Kneel / Prone), mutually exclusive, under the same gate. The
-//!   toggles' presses route DIRECT `ActIntent::SetStance` via `action_bar_button_intents`.
-//! - **Mode 3-toggle sub-panel** (GTW-265 / GTW-284) — the three FIXED mode toggles are
-//!   spawned once with the bar; `rebuild_mode_buttons` MUTATES their `Visibility` to the
-//!   selected weapon's offered modes on a selection change (`.after(UiSystems::ApplyTheme)`),
-//!   NEVER despawning/respawning them (GTW-284: no `Themed` churn → no spurious global
-//!   repaint); `mode_button_pressed` sets `SelectedFireMode` directly to a pressed toggle's
-//!   read-back spec; `sync_mode_buttons_active` marks the live mode `ActiveButton`. This
-//!   REPLACED the GTW-254 popup picker (no modal, no scrim, no world click-through).
+//! - **Aim control** (GTW-253 / GTW-277) — a `gdtf_ui` `Switch`. `aim_switch_flip_intent`
+//!   reads the widget's `ToggleFlipped` message and pushes `ActIntent::AimToggle` on the
+//!   SAME 222a seam the aim key does; `sync_aim_switch_state` mirrors the selected ganger's
+//!   `Aiming` onto the switch's `SwitchState` (+ re-derives the track look) so the switch
+//!   visibly shows ON/OFF, under the `run_if(resource_exists::<BattleInProgress>)` gate.
+//! - **Stance control** (GTW-267 / GTW-277) — a `gdtf_ui` vertical `SegmentedControl`
+//!   (Stand / Kneel / Prone). `stance_segment_intent` reads the widget's `SegmentSelected`
+//!   message and pushes a DIRECT `ActIntent::SetStance(kind)`; `sync_stance_active_segment`
+//!   writes the control's `ActiveSegment` from the selected ganger's `Stance` (mutually
+//!   exclusive), under the same gate.
+//! - **Mode control** (GTW-265 / GTW-277 / GTW-284) — a `gdtf_ui` horizontal
+//!   `SegmentedControl` (Single / Burst / Full). Its three segments are spawned once;
+//!   `rebuild_mode_segments` MUTATES per-segment `Display` (via
+//!   `gdtf_ui::set_segment_visible`) to the selected weapon's offered modes on a selection
+//!   change (`.after(UiSystems::ApplyTheme)`), NEVER despawning/respawning them (GTW-284:
+//!   stable ids, no `Themed` churn); `mode_segment_write` sets `SelectedFireMode` directly
+//!   to the chosen mode's read-back spec; `sync_mode_active_segment` writes the control's
+//!   `ActiveSegment`. This REPLACED the GTW-254 popup picker (no modal, no scrim).
 //!
 //! The bar WRITES the shared 222a [`PendingActIntent`](gdtf_battle_input::PendingActIntent)
 //! seam that `gdtf_battle_input`'s keyboard surface also writes (parallel surfaces, one
@@ -44,13 +45,14 @@
 use bevy::prelude::*;
 use gdtf_battle_input::dispatch_act_intents;
 use gdtf_battle_sim::BattleInProgress;
-use gdtf_ui::themed::UiSystems;
+use gdtf_ui::{drive_switches, repaint_segments, select_segment_on_press, themed::UiSystems};
 
 use crate::{
     scenes::running::game::battlescape::action_bar::systems::{
-        action_bar_button_intents, despawn_action_bar, flee_button_pressed, mode_button_pressed,
-        nowrap_control_labels, rebuild_mode_buttons, spawn_action_bar, sync_aim_button_active,
-        sync_mode_buttons_active, sync_stance_buttons_active,
+        action_bar_button_intents, aim_switch_flip_intent, despawn_action_bar, flee_button_pressed,
+        mode_segment_write, nowrap_control_labels, rebuild_mode_segments, spawn_action_bar,
+        stance_segment_intent, sync_aim_switch_state, sync_mode_active_segment,
+        sync_stance_active_segment, tag_mode_segments, tag_stance_segments,
     },
     states::BattleScapeState,
 };
@@ -84,53 +86,90 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                 Update,
                 flee_button_pressed.run_if(resource_exists::<BattleInProgress>),
             )
-            // GTW-253: drive the Aim button's active (toggled-on) look from the selected
-            // ganger's `Aiming`. Gated on the SAME live-battle witness so it is inert
-            // outside a live battle. It is VISUAL-ONLY — it inserts/removes the gdtf_ui
-            // `ActiveButton` paint marker via `Commands`, never touching the act/intent
-            // seam or how the aim toggle works. Unordered relative to the press systems:
-            // it reflects the CURRENT `Aiming` (after the sim applied a toggle), so the
-            // button look may lag a press by at most one frame, which is fine for a visual
-            // indicator.
+            // GTW-277 AIM (a `gdtf_ui` `Switch`): `aim_switch_flip_intent` reads the
+            // widget's `ToggleFlipped` message and pushes `ActIntent::AimToggle` on the SAME
+            // 222a seam the aim key does. It is ordered `.before(dispatch_act_intents)` so a
+            // flip queued this update is drained this update (the byte-equal same-frame
+            // guarantee). `sync_aim_switch_state` mirrors the selected ganger's `Aiming` onto
+            // the switch's `SwitchState` + re-derives the track look (a sim-driven set, never
+            // re-emitting a flip). Same live-battle gate.
             .add_systems(
                 Update,
-                sync_aim_button_active.run_if(resource_exists::<BattleInProgress>),
-            )
-            // GTW-267: the Stance 3-toggle active-mark sync, mirroring the selected
-            // ganger's `Stance` onto the three stance toggles (mutually exclusive). Same
-            // live-battle gate; VISUAL-ONLY (the press path is `action_bar_button_intents`).
-            .add_systems(
-                Update,
-                sync_stance_buttons_active.run_if(resource_exists::<BattleInProgress>),
-            )
-            // GTW-265: the Mode 3-toggle sub-panel. `mode_button_pressed` sets
-            // `SelectedFireMode` directly to a pressed toggle's read-back spec;
-            // `sync_mode_buttons_active` marks the live mode `ActiveButton`. They read their
-            // own disjoint mode markers, so they do not conflict with the stance/level
-            // `action_bar_button_intents`. Same live-battle gate.
-            //
-            // `sync_mode_buttons_active` is ordered `.after(mode_button_pressed)`
-            // (`bevy-traps.md` #3): the sync READS `SelectedFireMode` that the press WRITES, so
-            // the active mark must move the SAME update the press lands — without the explicit
-            // ordering the two ran in a nondeterministic (executor-chosen) order and the active
-            // mark lagged a press by a frame whenever the sync happened to run first (a latent
-            // GTW-271-exposed ambiguity: adding any `Update` system can flip the executor's
-            // choice). The chain expresses the real read-after-write dependency.
-            .add_systems(
-                Update,
-                (mode_button_pressed, sync_mode_buttons_active)
-                    .chain()
+                aim_switch_flip_intent
+                    // READS the `ToggleFlipped` message `drive_switches` writes this update, so
+                    // it must run AFTER the widget driver to see the same-update flip — and
+                    // BEFORE the intent drain so the pushed intent is drained this update
+                    // (`bevy-traps.md` #3).
+                    .after(drive_switches)
+                    .before(dispatch_act_intents)
                     .run_if(resource_exists::<BattleInProgress>),
             )
-            // GTW-284: `rebuild_mode_buttons` MUTATES the three FIXED Mode toggles'
-            // `Visibility` on a selection change (it no longer despawns/respawns them),
-            // ordered `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3) so its visibility
-            // writes settle deterministically relative to the theme pass. Because no toggle
-            // entity is added/removed, there is no spurious `Added<Themed>` to trigger a
-            // `gdtf_ui::apply_theme` repaint — the GTW-284 root-cause is gone.
             .add_systems(
                 Update,
-                rebuild_mode_buttons
+                sync_aim_switch_state.run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-277 STANCE (a `gdtf_ui` vertical `SegmentedControl`): `stance_segment_intent`
+            // reads the widget's `SegmentSelected` message and pushes a DIRECT
+            // `ActIntent::SetStance(kind)` on the 222a seam (ordered `.before` the drain like
+            // the aim flip). `sync_stance_active_segment` writes the control's `ActiveSegment`
+            // from the selected ganger's `Stance`, ordered `.before(repaint_segments)` so the
+            // active-segment highlight repaints the SAME frame the selection changes
+            // (`bevy-traps.md` #3 — the `gdtf_ui` repaint reacts to `Changed<ActiveSegment>`).
+            // `tag_stance_segments` runs once (on `Added<StanceControl>`) to attach the
+            // per-stance markers to the freshly-spawned segments. Same live-battle gate.
+            .add_systems(
+                Update,
+                stance_segment_intent
+                    // READS the `SegmentSelected` message `select_segment_on_press` writes this
+                    // update, so it runs AFTER the widget driver to see the same-update select —
+                    // and BEFORE the intent drain so the pushed intent is drained this update
+                    // (`bevy-traps.md` #3).
+                    .after(select_segment_on_press)
+                    .before(dispatch_act_intents)
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            .add_systems(
+                Update,
+                (
+                    tag_stance_segments,
+                    sync_stance_active_segment.before(repaint_segments),
+                )
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-277 MODE (a `gdtf_ui` horizontal `SegmentedControl`): `mode_segment_write`
+            // reads the widget's `SegmentSelected` message and sets `SelectedFireMode` DIRECTLY
+            // to the chosen mode's read-back spec (Mode does NOT use the intent seam — GTW-265).
+            // `sync_mode_active_segment` writes the control's `ActiveSegment` from
+            // `SelectedFireMode`, ordered `.after(mode_segment_write)` (read-after-write — the
+            // active mark moves the SAME update a select lands) AND `.before(repaint_segments)`
+            // (the highlight repaints the same frame; `bevy-traps.md` #3). `tag_mode_segments`
+            // runs once (on `Added<ModeControl>`) to attach the per-mode markers. Same gate.
+            .add_systems(
+                Update,
+                (
+                    // `mode_segment_write` READS the `SegmentSelected` message
+                    // `select_segment_on_press` writes this update → run AFTER the widget driver
+                    // (`bevy-traps.md` #3). `sync_mode_active_segment` READS `SelectedFireMode`
+                    // that the write produces → run AFTER it AND `.before(repaint_segments)` so
+                    // the highlight repaints the same frame.
+                    mode_segment_write.after(select_segment_on_press),
+                    tag_mode_segments,
+                    sync_mode_active_segment
+                        .after(mode_segment_write)
+                        .before(repaint_segments),
+                )
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-277 / GTW-284: `rebuild_mode_segments` MUTATES the three FIXED Mode segments'
+            // per-segment `Display` (via `gdtf_ui::set_segment_visible`) on a selection change
+            // (it never despawns/respawns them), ordered `.after(UiSystems::ApplyTheme)`
+            // (`bevy-traps.md` #3) so its writes settle deterministically relative to the theme
+            // pass. Because no segment entity is added/removed, the segment ids stay STABLE and
+            // there is no spurious `Added<Themed>` to trigger a global repaint — the GTW-284
+            // root-cause is gone.
+            .add_systems(
+                Update,
+                rebuild_mode_segments
                     .after(UiSystems::ApplyTheme)
                     .run_if(resource_exists::<BattleInProgress>),
             )

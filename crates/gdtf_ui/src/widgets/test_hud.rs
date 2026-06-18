@@ -14,14 +14,14 @@ use bevy::{
     input::InputPlugin,
     prelude::*,
     text::{FontWeight, TextColor as UiTextColor, TextFont},
-    ui::{BackgroundColor, Interaction, Node, Val},
+    ui::{BackgroundColor, Display, Interaction, Node, Val},
 };
 
 use super::{
     ActiveSegment, FillFraction, FilledPips, Orientation, Pip, ProgressBarFill, Segment,
     SegmentColors, SegmentIndex, SegmentLabel, SegmentSelected, SegmentText, SwitchColors,
-    SwitchKnob, SwitchState, ToggleFlipped, set_pips, set_progress_bar, spawn_pips,
-    spawn_progress_bar, spawn_segmented_control, spawn_switch,
+    SwitchKnob, SwitchState, ToggleFlipped, set_pips, set_progress_bar, set_segment_visible,
+    spawn_pips, spawn_progress_bar, spawn_segmented_control, spawn_switch,
 };
 use crate::UiPlugin;
 
@@ -388,6 +388,70 @@ fn switch_supports_both_orientations() {
     assert_ne!(hn.width, hn.height, "a switch track is not square");
 }
 
+/// The `Vw` magnitude of a [`Val`], for proportion comparisons. Returns `None`
+/// for any non-`Vw` unit so a unit regression fails the assert rather than
+/// silently comparing across kinds.
+fn vw(val: Val) -> Option<f32> {
+    match val {
+        Val::Vw(v) => Some(v),
+        _ => None,
+    }
+}
+
+/// AC (GTW pill fix) — the knob is a pip INSIDE a visible track, not a circle that
+/// FILLS it: the track's SHORT dimension is strictly TALLER than the knob diameter
+/// so track shows around the knob on the short axis, AND the track's LONG dimension
+/// exceeds the knob so the knob has travel. All dims stay `Vw` (the orientation-swap
+/// invariant). Pin-discriminating: shrinking the track short dim back to the knob
+/// diameter (the original invisible-track bug) fails the first assert.
+#[test]
+fn switch_track_frames_the_knob() {
+    let mut app = harness();
+    let colors = SwitchColors {
+        off:  LOST,
+        on:   REMAINING,
+        knob: Color::WHITE,
+    };
+    let switch = {
+        let mut commands = app.world_mut().commands();
+        spawn_switch(
+            &mut commands,
+            SwitchState::Off,
+            colors,
+            Orientation::Horizontal,
+            (),
+        )
+    };
+    app.world_mut().flush();
+
+    let maybe_knob = knob_of(&mut app, switch);
+    assert!(maybe_knob.is_some(), "switch must have a knob child");
+    let Some(knob) = maybe_knob else { return };
+
+    let track = app.world().get::<Node>(switch).cloned();
+    let knob_node = app.world().get::<Node>(knob).cloned();
+    let (Some(track), Some(knob_node)) = (track, knob_node) else {
+        unreachable!("the track and knob both have a Node after flush");
+    };
+
+    // Horizontal: width is the LONG axis, height the SHORT axis.
+    let (Some(long), Some(short)) = (vw(track.width), vw(track.height)) else {
+        unreachable!("both track dims are Vw");
+    };
+    let (Some(knob_w), Some(knob_h)) = (vw(knob_node.width), vw(knob_node.height)) else {
+        unreachable!("both knob dims are Vw");
+    };
+    assert!(
+        short > knob_h,
+        "the track SHORT dimension ({short}) must exceed the knob diameter ({knob_h}) \
+         so track shows around the knob (the knob is a pip, not a fill)",
+    );
+    assert!(
+        long > knob_w,
+        "the track LONG dimension ({long}) must exceed the knob ({knob_w}) so the knob travels",
+    );
+}
+
 // ---- SegmentedControl -----------------------------------------------------
 
 /// A caller-attached identity marker on a segmented control.
@@ -595,6 +659,131 @@ fn segmented_control_supports_row_and_column() {
     );
 }
 
+/// GTW-277 (screenshot review V2): a [`SegmentedControl`] renders as ONE connected
+/// container, NOT a stack of detached pills — the segments butt together with NO
+/// inter-segment gap, the ROOT carries the rounded corners + clips its children (so the
+/// inner segment corners are square and the whole control reads as a single rounded box),
+/// and every segment AFTER the first carries a hairline divider on its leading edge (left
+/// for a Row), while the first segment has no leading divider (its leading edge is the
+/// control's outer edge).
+///
+/// Pin-discriminating: a non-zero column/row gap (the old detached-pill look), a missing
+/// root radius/clip, or a leading divider on segment 0 / a missing divider on segment 1
+/// each fails an assert. Asserts layout KIND (gap is zero, divider edge is non-zero), not
+/// px magnitudes.
+#[test]
+fn segmented_control_reads_as_one_connected_control() {
+    use bevy::ui::{BorderColor, Overflow};
+
+    let mut app = harness();
+    let control = spawn_fire_mode(&mut app);
+
+    // The ROOT: no inter-segment gap, a rounded outer container, clipped children.
+    let root_node = app.world().get::<Node>(control).cloned();
+    assert!(root_node.is_some(), "control root must have a Node");
+    let Some(root) = root_node else { return };
+    assert_eq!(
+        root.column_gap,
+        Val::ZERO,
+        "a connected control has NO inter-segment column gap (V2)",
+    );
+    assert_eq!(
+        root.row_gap,
+        Val::ZERO,
+        "a connected control has NO inter-segment row gap (V2)",
+    );
+    assert_eq!(
+        root.overflow,
+        Overflow::clip(),
+        "the root clips its children so the inner segment corners stay hidden (V2)",
+    );
+    assert_ne!(
+        root.border_radius.top_left,
+        Val::ZERO,
+        "the root (the single container) carries the rounded corner (V2)",
+    );
+
+    // The segments: butt together (no per-segment rounding), divider on each leading edge
+    // EXCEPT the first.
+    let segments = segments_of(&mut app, control);
+    assert_eq!(segments.len(), 3, "must have 3 segments");
+    let first = segments[0].0;
+    let second = segments[1].0;
+
+    let first_node = app.world().get::<Node>(first).cloned();
+    let second_node = app.world().get::<Node>(second).cloned();
+    let (Some(first_n), Some(second_n)) = (first_node, second_node) else {
+        return;
+    };
+    assert_eq!(
+        first_n.border_radius.top_left,
+        Val::ZERO,
+        "segments carry NO per-segment rounding — the root owns the corners (V2)",
+    );
+    assert_eq!(
+        first_n.border.left,
+        Val::ZERO,
+        "the FIRST segment has no leading divider (its leading edge is the outer edge)",
+    );
+    assert_ne!(
+        second_n.border.left,
+        Val::ZERO,
+        "every segment after the first carries a leading-edge divider (the connected \
+         control's adjacent dividers, V2)",
+    );
+
+    // The divider is the base_text color (a subtle hairline), painted once at spawn.
+    let second_border = app.world().get::<BorderColor>(second).map(|b| b.left);
+    assert_eq!(
+        second_border,
+        Some(SEG_COLORS.base_text),
+        "the divider uses the base_text color",
+    );
+}
+
+/// GTW-277 (V2): a VERTICAL segmented control's dividers run along the TOP edge (the
+/// orientation-correct leading edge), not the left, so a stacked Stand/Kneel/Prone control
+/// reads as one connected vertical control with horizontal dividers between rows.
+///
+/// Pin-discriminating: a vertical control whose divider is on the left (the horizontal
+/// edge) instead of the top fails the assert.
+#[test]
+fn vertical_segmented_control_divides_on_the_top_edge() {
+    let mut app = harness();
+    let labels = [
+        SegmentLabel::new("Stand"),
+        SegmentLabel::new("Kneel"),
+        SegmentLabel::new("Prone"),
+    ];
+    let control = {
+        let mut commands = app.world_mut().commands();
+        spawn_segmented_control(
+            &mut commands,
+            &labels,
+            0,
+            SEG_COLORS,
+            Orientation::Vertical,
+            (),
+        )
+    };
+    app.world_mut().flush();
+
+    let segs = segments_of(&mut app, control);
+    assert_eq!(segs.len(), 3, "must have 3 segments");
+    let n1 = app.world().get::<Node>(segs[1].0).cloned();
+    let Some(node1) = n1 else { return };
+    assert_ne!(
+        node1.border.top,
+        Val::ZERO,
+        "a vertical control's divider runs along the TOP (leading) edge of each row (V2)",
+    );
+    assert_eq!(
+        node1.border.left,
+        Val::ZERO,
+        "a vertical control's divider is NOT on the left/horizontal edge",
+    );
+}
+
 /// AC — re-pressing the ALREADY-active segment neither repaints nor re-emits (the
 /// `set_if_neq` no-op).
 #[test]
@@ -616,6 +805,102 @@ fn segmented_control_repress_active_is_noop() {
     assert_eq!(
         count, 0,
         "re-pressing the active segment emits no SegmentSelected"
+    );
+}
+
+/// The `(SegmentIndex, &mut Node)` set [`SystemState`] driving [`set_segment_visible`]
+/// in tests (clippy `type_complexity`).
+type SegmentVisibilitySet = (
+    Query<'static, 'static, &'static Children>,
+    Query<'static, 'static, (&'static SegmentIndex, &'static mut Node), With<Segment>>,
+);
+
+/// Drives [`set_segment_visible`] once against the live world's queries.
+fn drive_set_segment_visible(app: &mut App, control: Entity, index: usize, visible: bool) -> bool {
+    let mut state: SystemState<SegmentVisibilitySet> = SystemState::new(app.world_mut());
+    let (children, mut segments) = state.get_mut(app.world_mut());
+    let ok = set_segment_visible(control, index, visible, &children, &mut segments);
+    state.apply(app.world_mut());
+    ok
+}
+
+/// The [`Display`] of a segment entity's [`Node`].
+fn segment_display(app: &App, segment: Entity) -> Option<Display> {
+    app.world().get::<Node>(segment).map(|n| n.display)
+}
+
+/// GTW-277 widget enhancement — per-segment visibility: [`set_segment_visible`] hides /
+/// shows a single segment BY INDEX by toggling its [`Node::display`] (the row collapses a
+/// hidden segment to nothing), MUTATING the existing segment in place — the segment entity
+/// ids stay STABLE (the GTW-284 mutate-not-churn invariant a [`SegmentedControl`] used as
+/// an offered-subset control needs).
+///
+/// Pin-discriminating: hiding segment 2 sets ONLY segment 2's display to `None` (0 and 1
+/// stay `Flex`); re-showing it returns it to `Flex`; and the segment entity ids do NOT
+/// change across the hide/show (a respawn would change them). An out-of-range index is a
+/// no-op (returns `false`).
+#[test]
+fn set_segment_visible_hides_one_segment_keeping_stable_ids() {
+    let mut app = harness();
+    let control = spawn_fire_mode(&mut app);
+    app.update();
+
+    let before = segments_of(&mut app, control);
+    assert_eq!(before.len(), 3, "must have 3 segments");
+    let seg0 = before[0].0;
+    let seg1 = before[1].0;
+    let seg2 = before[2].0;
+
+    // Precondition: all three segments start visible (Display::Flex).
+    for seg in [seg0, seg1, seg2] {
+        assert_eq!(
+            segment_display(&app, seg),
+            Some(Display::Flex),
+            "every segment starts visible (Display::Flex)",
+        );
+    }
+
+    // Hide segment 2 — ONLY it collapses; 0 and 1 stay visible.
+    assert!(
+        drive_set_segment_visible(&mut app, control, 2, false),
+        "hiding an in-range segment must report a match",
+    );
+    assert_eq!(
+        segment_display(&app, seg2),
+        Some(Display::None),
+        "the hidden segment collapses to Display::None",
+    );
+    assert_eq!(
+        segment_display(&app, seg0),
+        Some(Display::Flex),
+        "segment 0 stays visible when a sibling is hidden",
+    );
+    assert_eq!(
+        segment_display(&app, seg1),
+        Some(Display::Flex),
+        "segment 1 stays visible when a sibling is hidden",
+    );
+
+    // Re-show segment 2 — it returns to Display::Flex.
+    assert!(drive_set_segment_visible(&mut app, control, 2, true));
+    assert_eq!(
+        segment_display(&app, seg2),
+        Some(Display::Flex),
+        "re-showing the segment returns it to Display::Flex",
+    );
+
+    // The segment entity ids are STABLE across the hide/show (mutate, not respawn).
+    let after = segments_of(&mut app, control);
+    assert_eq!(
+        after.iter().map(|&(e, _)| e).collect::<Vec<_>>(),
+        before.iter().map(|&(e, _)| e).collect::<Vec<_>>(),
+        "segment entity ids must be stable across hide/show (mutate, never respawn)",
+    );
+
+    // An out-of-range index is an inert no-op.
+    assert!(
+        !drive_set_segment_visible(&mut app, control, 9, false),
+        "an out-of-range index reports no match (no-op)",
     );
 }
 
@@ -658,4 +943,80 @@ fn color_overrides_are_honored() {
     );
     assert_eq!(base_bg, palette.base_bg, "base bg override honored");
     assert_eq!(base_text, palette.base_text, "base text override honored");
+}
+
+/// GTW-277 (screenshot review V1/V2): a [`SegmentedControl`] segment IS a
+/// [`Button`](bevy::ui::widget::Button), so the generic button-interaction painters
+/// ([`theme_interaction`](crate::interaction::theme_interaction) and
+/// [`repaint_deactivated_buttons`](crate::interaction::repaint_deactivated_buttons)) used to
+/// CLOBBER the active segment's [`SegmentColors::active_bg`] highlight with the theme's resting
+/// button fill the frame the segment's [`Interaction`](bevy::ui::Interaction) changed — so the
+/// active segment never read as selected on screen. The fix EXCLUDES `Segment` from those
+/// painters (`Without<Segment>`), so the segment background comes ONLY from
+/// [`repaint_segments`](super::repaint_segments).
+///
+/// This test pins it on the REAL code path: it inserts a `GdtfTheme` (so the interaction
+/// painters actually run — they early-return when the resource is absent, as in the other HUD
+/// tests), then changes the ACTIVE segment's `Interaction` (triggering `theme_interaction`'s
+/// `Changed<Interaction>`), and asserts the active segment KEEPS its `active_bg` rather than
+/// being repainted to `theme.button.color`. Without the exclusion this is RED (the active
+/// segment goes resting-gray); with it, GREEN.
+#[test]
+fn segment_active_highlight_survives_theme_interaction() {
+    use crate::theme::{GdtfTheme, default_theme};
+
+    let mut app = harness();
+    // Insert a theme so the generic interaction painters run (they guard
+    // `Option<Res<GdtfTheme>>` and are inert without it — the same reason the other HUD
+    // tests don't see them). The default theme's resting button fill is what WOULD clobber
+    // the segment if it were not excluded.
+    app.insert_resource::<GdtfTheme>(default_theme());
+    let control = spawn_fire_mode(&mut app);
+    // Settle: spawn paint + apply_theme + the first interaction pass.
+    app.update();
+    app.update();
+
+    let segs = segments_of(&mut app, control);
+    assert_eq!(segs.len(), 3, "must have 3 segments");
+    let seg_active = segs[0].0; // Single — active at spawn.
+
+    // Precondition: the active segment carries the active fill, NOT the theme's resting fill.
+    let (bg0, ..) = segment_look(&mut app, seg_active);
+    assert_eq!(
+        bg0, SEG_COLORS.active_bg,
+        "precondition: the active segment starts with the active fill",
+    );
+    let resting = {
+        let theme = app.world().resource::<GdtfTheme>();
+        *theme.button.color
+    };
+    assert_ne!(
+        SEG_COLORS.active_bg, resting,
+        "test is only meaningful if the active fill differs from the theme resting fill",
+    );
+
+    // Force a `Changed<Interaction>` on the ACTIVE segment (what a hover/click would do) —
+    // this is exactly what would invite `theme_interaction` to repaint it to the resting fill.
+    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(seg_active) {
+        *interaction = Interaction::Hovered;
+    }
+    app.update();
+    // And back to None (a second `Changed<Interaction>` that maps to the resting fill).
+    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(seg_active) {
+        *interaction = Interaction::None;
+    }
+    app.update();
+
+    // The active segment STILL shows its active fill — the interaction painters left it alone.
+    let (bg_after, ..) = segment_look(&mut app, seg_active);
+    assert_eq!(
+        bg_after, SEG_COLORS.active_bg,
+        "the active segment must keep its active fill (not the theme resting fill) across an \
+         Interaction change — the segment fill is owned by repaint_segments, not the generic \
+         button-interaction painters",
+    );
+    assert_ne!(
+        bg_after, resting,
+        "the active segment must NOT be clobbered to the theme's resting button fill",
+    );
 }

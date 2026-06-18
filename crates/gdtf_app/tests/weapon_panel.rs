@@ -25,10 +25,10 @@ use bevy::{
     ui::{Display, widget::Button},
 };
 use gdtf_app::test_support::{
-    AimPanel, AimToggleButton, AppState, BattleScapeState, BottomBarRoot, CombinedWeaponPanel,
-    ModePanelRoot, ReloadButton, RunningState, StancePanelRoot, StanceProneButton,
-    StanceStandingButton, WeaponContent, WeaponImage, WeaponItemButton, WeaponItemPanel,
-    WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+    AimLabel, AimPanel, AimToggleButton, AppState, BattleScapeState, BottomBarRoot,
+    CombinedWeaponPanel, ModePanelRoot, ReloadButton, RunningState, StancePanelRoot,
+    StanceProneButton, StanceStandingButton, WeaponContent, WeaponImage, WeaponItemButton,
+    WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
 };
 use gdtf_battle_input::{SelectedShooter, dispatch_act_intents};
 use gdtf_battle_sim::{
@@ -587,6 +587,67 @@ fn weapon_panel_matches_authoritative_structure() {
         single_with::<StanceStandingButton>(&mut app).is_some()
             && single_with::<StanceProneButton>(&mut app).is_some(),
         "the Stance Panel carries the relocated stance toggles",
+    );
+}
+
+/// The Aim control reads "Aim [switch]" — the GTW-277 widget migration dropped the caption,
+/// leaving the bare `Switch`; this restores an [`AimLabel`] "Aim" Text caption laid out in the
+/// SAME cell as the switch (a ROW, label on the LEFT). Pin-discriminating: with the bare switch
+/// (no label restored) the `AimLabel` marker is absent and the cell is not a Row, so both the
+/// label assert and the row-layout assert fail.
+#[test]
+fn aim_panel_has_aim_caption_beside_the_switch() {
+    let mut app = battle_running_app();
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    app.update();
+    // Settle the post-ApplyTheme fit pass (the label font is held at the control size there).
+    app.update();
+
+    // The "Aim" caption exists and reads "Aim".
+    assert!(
+        single_with::<AimLabel>(&mut app).is_some(),
+        "the Aim Panel carries the restored \"Aim\" caption (GTW-277 had dropped it)",
+    );
+    assert_eq!(
+        line_text::<AimLabel>(&mut app).as_deref(),
+        Some("Aim"),
+        "the Aim caption reads \"Aim\"",
+    );
+
+    // The caption + the switch live in the SAME cell — both descend from the one Aim Panel.
+    let cell_entity = single_with::<AimPanel>(&mut app);
+    let label = single_with::<AimLabel>(&mut app);
+    let switch = single_with::<AimToggleButton>(&mut app);
+    assert!(
+        cell_entity.is_some() && label.is_some() && switch.is_some(),
+        "the Aim Panel cell, the caption, and the switch all exist",
+    );
+    let (Some(aim_panel), Some(label), Some(switch)) = (cell_entity, label, switch) else {
+        return;
+    };
+    assert!(
+        is_descendant_of(&app, label, aim_panel),
+        "the \"Aim\" caption is laid out inside the Aim Panel cell",
+    );
+    assert!(
+        is_descendant_of(&app, switch, aim_panel),
+        "the Aim switch is laid out inside the Aim Panel cell (same cell as the caption)",
+    );
+
+    // The cell lays the caption + switch out as a ROW ("Aim [switch]", the mockup reading).
+    let cell = node_of::<AimPanel>(&mut app);
+    assert!(cell.is_some(), "the Aim Panel cell has a Node");
+    let Some(cell) = cell else { return };
+    assert_eq!(
+        cell.flex_direction,
+        FlexDirection::Row,
+        "the Aim Panel cell is a ROW so the caption sits to the LEFT of the switch",
     );
 }
 

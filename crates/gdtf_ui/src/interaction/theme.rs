@@ -7,7 +7,7 @@ use bevy::{
 
 use crate::{
     theme::GdtfTheme,
-    widgets::{ActiveButton, DisabledButton},
+    widgets::{ActiveButton, DisabledButton, Segment, Switch},
 };
 
 /// Query filter selecting the buttons [`theme_interaction`] restyles: enabled,
@@ -18,13 +18,26 @@ use crate::{
 /// `Without<DisabledButton>` skips disabled buttons (AC#5), `Without<ActiveButton>`
 /// skips toggled-on buttons so their color comes ONLY from
 /// [`paint_active_buttons`](crate::widgets::paint_active_buttons) — the GTW-266
-/// active-is-STICKY rule (no hover/press override flicker on an active toggle) — and
-/// `Changed<Interaction>` limits the work to state transitions.
+/// active-is-STICKY rule (no hover/press override flicker on an active toggle) —
+/// `Without<Segment>` skips [`SegmentedControl`](crate::widgets::SegmentedControl)
+/// segments so their fill comes ONLY from
+/// [`repaint_segments`](crate::widgets::repaint_segments) — the GTW-277 segment-active
+/// rule (a segment is a [`Button`](bevy::ui::widget::Button), so without this exclusion
+/// the resting/hover fill would clobber the active segment's highlight) —
+/// `Without<Switch>` skips [`Switch`](crate::widgets::Switch) tracks so their fill comes
+/// ONLY from [`drive_switches`](crate::widgets::drive_switches) (and the caller's
+/// sim-driven sync) — the GTW-277 switch-track rule (a switch track is itself a
+/// [`Button`](bevy::ui::widget::Button), so without this exclusion the resting
+/// `button.color` fill would clobber the switch's off/on track color the frame its
+/// `Interaction` is added/changed, leaving the track near-invisible against the panel) —
+/// and `Changed<Interaction>` limits the work to state transitions.
 type InteractedButton = (
     Changed<Interaction>,
     With<Button>,
     Without<DisabledButton>,
     Without<ActiveButton>,
+    Without<Segment>,
+    Without<Switch>,
 );
 
 /// The per-button visuals [`theme_interaction`] reads and writes: the current
@@ -66,9 +79,12 @@ pub(crate) fn interaction_fill(theme: &GdtfTheme, interaction: Interaction) -> C
 /// Lays theme-derived hover/press feedback on top of the base button look.
 ///
 /// Queries every [`Button`](bevy::ui::Button) whose
-/// [`Interaction`](bevy::ui::Interaction) `Changed` this frame and is **neither** a
-/// [`DisabledButton`](crate::widgets::DisabledButton) **nor** an
-/// [`ActiveButton`](crate::widgets::ActiveButton), and writes its
+/// [`Interaction`](bevy::ui::Interaction) `Changed` this frame and is **none** of a
+/// [`DisabledButton`](crate::widgets::DisabledButton), an
+/// [`ActiveButton`](crate::widgets::ActiveButton), a
+/// [`Segment`](crate::widgets::Segment) of a
+/// [`SegmentedControl`](crate::widgets::SegmentedControl), **nor** a
+/// [`Switch`](crate::widgets::Switch) track, and writes its
 /// [`BackgroundColor`](bevy::ui::BackgroundColor) (and re-affirms its
 /// [`BorderColor`](bevy::ui::BorderColor)) from the **current**
 /// [`GdtfTheme`](crate::theme::GdtfTheme):
@@ -93,6 +109,26 @@ pub(crate) fn interaction_fill(theme: &GdtfTheme, interaction: Interaction) -> C
 /// one-frame flicker the unordered active-vs-interaction writers produced when a button
 /// was BOTH active and hovered, and gives the deterministic toggle-button UX the
 /// Mode/Stance toggle panels need.
+///
+/// GTW-277 — segment fill is OWNED by the segmented control: the query EXCLUDES
+/// [`Segment`](crate::widgets::Segment) (`Without<Segment>`), so a
+/// [`SegmentedControl`](crate::widgets::SegmentedControl) segment — which IS a
+/// [`Button`](bevy::ui::widget::Button) — never takes a resting/hover/press fill here;
+/// its background comes solely from
+/// [`repaint_segments`](crate::widgets::repaint_segments) (active = the filled active
+/// background, else the base background). Without this exclusion the resting fill would
+/// clobber the active segment's highlight the frame its `Interaction` was added (spawn)
+/// or changed (hover), so the active segment never read as selected.
+///
+/// GTW-277 — switch track fill is OWNED by the switch driver: the query EXCLUDES
+/// [`Switch`](crate::widgets::Switch) (`Without<Switch>`). A [`Switch`] track is itself
+/// a [`Button`](bevy::ui::widget::Button) (so a click anywhere on the track flips it),
+/// so without this exclusion the resting `button.color` fill would clobber the switch's
+/// off/on track color the frame its `Interaction` was added (spawn) or changed (hover) —
+/// leaving the track painted the near-panel `button.color` and reading as a bare knob
+/// with no visible pill. Its background now comes solely from
+/// [`drive_switches`](crate::widgets::drive_switches) (the click flip) and the caller's
+/// sim-driven sync.
 ///
 /// Registered by [`UiPlugin`](crate::UiPlugin) in [`Update`] ordered
 /// `.after(`[`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme)`)` and

@@ -45,7 +45,7 @@ use bevy::{
     ecs::entity::Entity,
     prelude::*,
     state::state::State,
-    ui::{Interaction, Node, widget::Button},
+    ui::{Display, Interaction, Node, widget::Button},
 };
 use gdtf_app::test_support::{
     AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton, FleeButton,
@@ -69,7 +69,7 @@ use gdtf_battle_sim::{
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::{ActiveButton, DisabledButton, theme::default_theme};
+use gdtf_ui::{ActiveSegment, DisabledButton, SegmentIndex, theme::default_theme};
 
 /// A budget large enough to drive the deep walk into the battlescape (each leaf scene
 /// spends a couple of `FixedUpdate` ticks plus transition propagation), bounded so a
@@ -172,16 +172,35 @@ fn count_with<M: Component>(app: &mut App) -> usize {
     q.iter(app.world()).count()
 }
 
-/// Whether the entity carrying marker `M` (if exactly one) has `ActiveButton`.
-fn marker_is_active<M: Component>(app: &mut App) -> bool {
-    single_with::<M>(app).is_some_and(|e| app.world().get::<ActiveButton>(e).is_some())
+/// Whether the SEGMENT carrying marker `M` is the ACTIVE one of its
+/// [`SegmentedControl`](gdtf_ui::SegmentedControl) (GTW-277): its
+/// [`SegmentIndex`](gdtf_ui::SegmentIndex) equals its parent control's
+/// [`ActiveSegment`](gdtf_ui::ActiveSegment).
+///
+/// The widget-seam equivalent of the old `ActiveButton`-on-toggle check: with the migration
+/// to a `SegmentedControl`, the mutually-exclusive active mark is the control's
+/// `ActiveSegment` index (driven + repainted by `gdtf_ui`), so "marker M is active" means
+/// "M's segment index is the control's active index".
+fn segment_is_active<M: Component>(app: &mut App) -> bool {
+    let Some(segment) = single_with::<M>(app) else {
+        return false;
+    };
+    let Some(index) = app.world().get::<SegmentIndex>(segment).map(|i| **i) else {
+        return false;
+    };
+    let Some(parent) = app.world().get::<ChildOf>(segment).map(ChildOf::parent) else {
+        return false;
+    };
+    app.world()
+        .get::<ActiveSegment>(parent)
+        .is_some_and(|active| **active == index)
 }
 
-/// The own [`Visibility`] of the single entity carrying marker `M`, if exactly one exists
-/// (GTW-284: the mode toggles are MUTATED in place, so their visibility — not their
-/// presence — encodes the offered modes).
-fn marker_visibility<M: Component>(app: &mut App) -> Option<Visibility> {
-    single_with::<M>(app).and_then(|e| app.world().get::<Visibility>(e).copied())
+/// The [`Display`] of the SEGMENT carrying marker `M`, if exactly one exists (GTW-277: the
+/// mode segments are MUTATED in place — their `Display` (Flex / None), not their presence,
+/// encodes the offered modes; the GTW-284 mutate-not-churn invariant adapted to the widget).
+fn segment_display<M: Component>(app: &mut App) -> Option<Display> {
+    single_with::<M>(app).and_then(|e| app.world().get::<Node>(e).map(|n| n.display))
 }
 
 /// Asserts exactly one button carrying marker `M` exists and returns it, so callers can
@@ -476,13 +495,13 @@ fn stance_panel_marks_current_stance_active() {
     app.update();
 
     assert!(
-        marker_is_active::<StanceKneelingButton>(&mut app),
-        "the selected ganger's current stance (kneel) toggle must be ActiveButton",
+        segment_is_active::<StanceKneelingButton>(&mut app),
+        "the selected ganger's current stance (kneel) segment must be the active segment",
     );
     assert!(
-        !marker_is_active::<StanceStandingButton>(&mut app)
-            && !marker_is_active::<StanceProneButton>(&mut app),
-        "the other two stance toggles must NOT be active (mutually exclusive)",
+        !segment_is_active::<StanceStandingButton>(&mut app)
+            && !segment_is_active::<StanceProneButton>(&mut app),
+        "the other two stance segments must NOT be active (mutually exclusive)",
     );
 
     // Selecting a PRONE ganger moves the active mark to Prone.
@@ -494,12 +513,12 @@ fn stance_panel_marks_current_stance_active() {
     );
     app.update();
     assert!(
-        marker_is_active::<StanceProneButton>(&mut app),
-        "selecting a prone ganger must move the active mark to the Prone toggle",
+        segment_is_active::<StanceProneButton>(&mut app),
+        "selecting a prone ganger must move the active mark to the Prone segment",
     );
     assert!(
-        !marker_is_active::<StanceStandingButton>(&mut app)
-            && !marker_is_active::<StanceKneelingButton>(&mut app),
+        !segment_is_active::<StanceStandingButton>(&mut app)
+            && !segment_is_active::<StanceKneelingButton>(&mut app),
         "the active stance mark must be exclusive after the re-selection",
     );
 }
@@ -559,13 +578,92 @@ fn prone_toggle_sets_stance_prone_directly() {
     );
 }
 
+/// GTW-277 (new — the `SegmentSelected` → `SetStance` index→kind MAPPING) — selecting EACH
+/// stance segment pushes the matching `ActIntent::SetStance(kind)` (Stand → Standing, Kneel
+/// → Crouching, Prone → Prone), proving the `stance_segment_intent` listener maps the
+/// widget's segment INDEX to the right `StanceKind`, not just the Prone case.
+#[test]
+fn each_stance_segment_sets_its_stance() {
+    for (label, marker_press, start, expected) in [
+        // Start from a stance DIFFERENT from the target so pressing the segment is a REAL
+        // active-segment change (re-pressing the already-active segment is a widget no-op,
+        // the GTW-276 set_if_neq behavior).
+        (
+            "Stand",
+            StanceSegment::Standing,
+            StanceKind::Prone,
+            StanceKind::Standing,
+        ),
+        (
+            "Kneel",
+            StanceSegment::Kneeling,
+            StanceKind::Standing,
+            StanceKind::Crouching,
+        ),
+        (
+            "Prone",
+            StanceSegment::Prone,
+            StanceKind::Standing,
+            StanceKind::Prone,
+        ),
+    ] {
+        let mut app = battle_running_app();
+        add_probes(&mut app);
+        let ganger = arm_and_select(&mut app, sbf_selector(), start, Direction::North);
+        // Settle the segment tagging + the active-segment sync to the ganger's STARTING
+        // stance, so pressing the target segment is a real change (emits SegmentSelected →
+        // SetStance).
+        app.update();
+        app.update();
+        let Some(segment) = marker_press.entity(&mut app) else {
+            return;
+        };
+        press_button(&mut app, segment);
+        app.update();
+
+        let pushed = stances(&app);
+        assert_eq!(
+            pushed.len(),
+            1,
+            "{label} segment must push exactly one SetStanceRequested",
+        );
+        assert_eq!(pushed[0].actor, ganger, "{label}: actor = *SelectedShooter");
+        assert_eq!(
+            pushed[0].stance, expected,
+            "the {label} segment must direct-set {expected:?}",
+        );
+    }
+}
+
+/// Picks the right stance-segment entity by its per-stance marker for
+/// [`each_stance_segment_sets_its_stance`] (a small dispatch so the loop can press each).
+enum StanceSegment {
+    Standing,
+    Kneeling,
+    Prone,
+}
+
+impl StanceSegment {
+    /// The single entity carrying this stance's segment marker, if exactly one exists.
+    fn entity(&self, app: &mut App) -> Option<Entity> {
+        match self {
+            Self::Standing => single_with::<StanceStandingButton>(app),
+            Self::Kneeling => single_with::<StanceKneelingButton>(app),
+            Self::Prone => single_with::<StanceProneButton>(app),
+        }
+    }
+}
+
 // =================================================================================
 // GTW-265 — the Mode 3-toggle sub-panel (replaces the popup picker).
 // =================================================================================
 
-/// GTW-265 / GTW-284 — the three FIXED mode toggles always exist; a Single+Burst weapon
-/// shows the Single + Burst toggles `Visible` and HIDES Full (the mode it does not offer).
-/// The active mark sits on the live mode (`single()` default on selection).
+/// GTW-265 / GTW-277 / GTW-284 — the three FIXED mode SEGMENTS always exist; a Single+Burst
+/// weapon SHOWS the Single + Burst segments (`Display::Flex`) and HIDES Full
+/// (`Display::None`, the mode it does not offer). The active mark sits on the live mode
+/// (`single()` default on selection) — the control's `ActiveSegment`. (Adapted to the
+/// GTW-277 widget seam: "visible" = `Display::Flex`, "active" = the control's active
+/// segment; the only-offered-visible + active-mark CONTRACTS are unchanged.)
 #[test]
 fn mode_panel_spawns_only_offered_modes_and_marks_active() {
     let single = spec(ModeKind::Single, 0.2, 1);
@@ -581,51 +679,54 @@ fn mode_panel_spawns_only_offered_modes_and_marks_active() {
     app.update();
     app.update();
 
-    // GTW-284: the three fixed toggles always exist (one each); only visibility changes.
+    // GTW-277/284: the three fixed segments always exist (one each); only Display changes.
     assert_eq!(
         count_with::<ModeSingleButton>(&mut app),
         1,
-        "the fixed Single mode toggle exists exactly once",
+        "the fixed Single mode segment exists exactly once",
     );
     assert_eq!(
         count_with::<ModeBurstButton>(&mut app),
         1,
-        "the fixed Burst mode toggle exists exactly once",
+        "the fixed Burst mode segment exists exactly once",
     );
     assert_eq!(
         count_with::<ModeFullButton>(&mut app),
         1,
-        "the fixed Full mode toggle exists exactly once (it is HIDDEN, not despawned)",
+        "the fixed Full mode segment exists exactly once (it is collapsed, not despawned)",
     );
     assert_eq!(
-        marker_visibility::<ModeSingleButton>(&mut app),
-        Some(Visibility::Visible),
-        "a Single+Burst weapon shows the Single mode toggle Visible",
+        segment_display::<ModeSingleButton>(&mut app),
+        Some(Display::Flex),
+        "a Single+Burst weapon shows the Single mode segment (Display::Flex)",
     );
     assert_eq!(
-        marker_visibility::<ModeBurstButton>(&mut app),
-        Some(Visibility::Visible),
-        "a Single+Burst weapon shows the Burst mode toggle Visible",
+        segment_display::<ModeBurstButton>(&mut app),
+        Some(Display::Flex),
+        "a Single+Burst weapon shows the Burst mode segment (Display::Flex)",
     );
     assert_eq!(
-        marker_visibility::<ModeFullButton>(&mut app),
-        Some(Visibility::Hidden),
-        "a Single+Burst weapon HIDES the Full mode toggle (the mode it does not offer)",
+        segment_display::<ModeFullButton>(&mut app),
+        Some(Display::None),
+        "a Single+Burst weapon HIDES the Full mode segment (Display::None — not offered)",
     );
 
-    // The default-on-select mode is single(), so the Single toggle is the active one.
+    // The default-on-select mode is single(), so the Single segment is the active one.
     assert!(
-        marker_is_active::<ModeSingleButton>(&mut app),
-        "the active mode toggle must be the live SelectedFireMode (single() default)",
+        segment_is_active::<ModeSingleButton>(&mut app),
+        "the active mode segment must be the live SelectedFireMode (single() default)",
     );
     assert!(
-        !marker_is_active::<ModeBurstButton>(&mut app),
-        "the non-active mode toggle must NOT be marked active",
+        !segment_is_active::<ModeBurstButton>(&mut app),
+        "the non-active mode segment must NOT be marked active",
     );
 }
 
-/// GTW-265 — clicking the Burst toggle sets `SelectedFireMode` to that weapon's burst
-/// spec (read-back identity, never fabricated) and the active mark moves Single -> Burst.
+/// GTW-265 / GTW-277 — selecting the Burst SEGMENT sets `SelectedFireMode` to that weapon's
+/// burst spec (read-back identity, never fabricated) and the active mark moves Single ->
+/// Burst. Driving the widget = pressing the segment (its `Interaction` → `Pressed`), which
+/// `gdtf_ui`'s `select_segment_on_press` turns into a `SegmentSelected` message the
+/// `mode_segment_write` listener reads — the SAME downstream contract as the old toggle press.
 #[test]
 fn clicking_burst_toggle_sets_mode_and_moves_active_mark() {
     let single = spec(ModeKind::Single, 0.2, 1);
@@ -638,7 +739,7 @@ fn clicking_burst_toggle_sets_mode_and_moves_active_mark() {
         StanceKind::Standing,
         Direction::North,
     );
-    // Settle default-on-select + the toggle rebuild + the active sync.
+    // Settle default-on-select + the segment rebuild + the active sync.
     app.update();
     app.update();
 
@@ -649,36 +750,39 @@ fn clicking_burst_toggle_sets_mode_and_moves_active_mark() {
         "the default-on-select mode must be single()",
     );
 
-    let Some(burst_toggle) = require_button::<ModeBurstButton>(&mut app) else {
+    let Some(burst_segment) = require_button::<ModeBurstButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, burst_toggle);
+    press_button(&mut app, burst_segment);
     app.update();
 
     assert_eq!(
         selected_mode(&app),
         Some(burst),
-        "clicking the Burst toggle sets SelectedFireMode to the weapon's burst spec \
+        "selecting the Burst segment sets SelectedFireMode to the weapon's burst spec \
          (read-back, not fabricated)",
     );
     assert!(
-        marker_is_active::<ModeBurstButton>(&mut app),
-        "the active mark must move to the Burst toggle",
+        segment_is_active::<ModeBurstButton>(&mut app),
+        "the active mark must move to the Burst segment",
     );
     assert!(
-        !marker_is_active::<ModeSingleButton>(&mut app),
-        "the Single toggle must no longer be active after Burst is chosen",
+        !segment_is_active::<ModeSingleButton>(&mut app),
+        "the Single segment must no longer be active after Burst is chosen",
     );
 }
 
-/// GTW-284 AC1 — on a weapon/selection change the mode toggles are MUTATED in place, never
-/// despawned/respawned: the toggle `Entity` ids stay STABLE across the change and only their
-/// `Visibility` flips to match the new weapon's offered modes (3-mode weapon → all Visible;
-/// re-select a Single-only weapon → Single Visible, Burst + Full Hidden).
+/// GTW-284 AC1 / GTW-277 — on a weapon/selection change the mode SEGMENTS are MUTATED in
+/// place, never despawned/respawned: the segment `Entity` ids stay STABLE across the change
+/// and only their `Display` flips to match the new weapon's offered modes (3-mode weapon →
+/// all `Display::Flex`; re-select a Single-only weapon → Single Flex, Burst + Full
+/// `Display::None`). This is the GTW-284 stable-id invariant preserved through the migration
+/// to a `gdtf_ui` `SegmentedControl` — the control is spawned ONCE with all 3 segments and
+/// per-segment visibility is toggled via `set_segment_visible`, never a respawn.
 ///
-/// Pin-discriminating: the OLD despawn/respawn body would change the toggle ids on the
-/// re-selection (failing the id-stability asserts) and would leave the Burst/Full toggles
-/// absent rather than `Hidden`.
+/// Pin-discriminating: a despawn/respawn body would change the segment ids on the
+/// re-selection (failing the id-stability asserts) and would leave the Burst/Full segments
+/// absent rather than `Display::None`.
 #[test]
 fn mode_toggles_mutate_in_place_keeping_stable_ids() {
     let single = spec(ModeKind::Single, 0.2, 1);
@@ -695,7 +799,7 @@ fn mode_toggles_mutate_in_place_keeping_stable_ids() {
     app.update();
     app.update();
 
-    // Capture the three fixed toggle ids under weapon A (all three modes offered → Visible).
+    // Capture the three fixed segment ids under weapon A (all three modes offered → Flex).
     let Some(single_a) = single_with::<ModeSingleButton>(&mut app) else {
         return;
     };
@@ -706,22 +810,22 @@ fn mode_toggles_mutate_in_place_keeping_stable_ids() {
         return;
     };
     assert_eq!(
-        marker_visibility::<ModeSingleButton>(&mut app),
-        Some(Visibility::Visible),
-        "weapon A (Single+Burst+Full) shows the Single toggle Visible",
+        segment_display::<ModeSingleButton>(&mut app),
+        Some(Display::Flex),
+        "weapon A (Single+Burst+Full) shows the Single segment (Display::Flex)",
     );
     assert_eq!(
-        marker_visibility::<ModeBurstButton>(&mut app),
-        Some(Visibility::Visible),
-        "weapon A shows the Burst toggle Visible",
+        segment_display::<ModeBurstButton>(&mut app),
+        Some(Display::Flex),
+        "weapon A shows the Burst segment (Display::Flex)",
     );
     assert_eq!(
-        marker_visibility::<ModeFullButton>(&mut app),
-        Some(Visibility::Visible),
-        "weapon A shows the Full toggle Visible",
+        segment_display::<ModeFullButton>(&mut app),
+        Some(Display::Flex),
+        "weapon A shows the Full segment (Display::Flex)",
     );
 
-    // Re-select a 1-mode (Single-only) weapon B: the toggles MUTATE (visibility flips), the
+    // Re-select a 1-mode (Single-only) weapon B: the segments MUTATE (Display flips), the
     // entity ids do NOT change (no despawn/respawn).
     arm_and_select(
         &mut app,
@@ -735,34 +839,34 @@ fn mode_toggles_mutate_in_place_keeping_stable_ids() {
     assert_eq!(
         single_with::<ModeSingleButton>(&mut app),
         Some(single_a),
-        "the Single mode toggle Entity id must be STABLE across the weapon change (no respawn)",
+        "the Single mode segment Entity id must be STABLE across the weapon change (no respawn)",
     );
     assert_eq!(
         single_with::<ModeBurstButton>(&mut app),
         Some(burst_a),
-        "the Burst mode toggle Entity id must be STABLE across the weapon change (no respawn)",
+        "the Burst mode segment Entity id must be STABLE across the weapon change (no respawn)",
     );
     assert_eq!(
         single_with::<ModeFullButton>(&mut app),
         Some(full_a),
-        "the Full mode toggle Entity id must be STABLE across the weapon change (no respawn)",
+        "the Full mode segment Entity id must be STABLE across the weapon change (no respawn)",
     );
 
-    // Visibility now matches weapon B's single offered mode.
+    // Display now matches weapon B's single offered mode.
     assert_eq!(
-        marker_visibility::<ModeSingleButton>(&mut app),
-        Some(Visibility::Visible),
-        "weapon B (Single-only) keeps the Single toggle Visible",
+        segment_display::<ModeSingleButton>(&mut app),
+        Some(Display::Flex),
+        "weapon B (Single-only) keeps the Single segment shown (Display::Flex)",
     );
     assert_eq!(
-        marker_visibility::<ModeBurstButton>(&mut app),
-        Some(Visibility::Hidden),
-        "weapon B (Single-only) HIDES the Burst toggle (not offered), not despawns it",
+        segment_display::<ModeBurstButton>(&mut app),
+        Some(Display::None),
+        "weapon B (Single-only) HIDES the Burst segment (Display::None — not offered), not despawns it",
     );
     assert_eq!(
-        marker_visibility::<ModeFullButton>(&mut app),
-        Some(Visibility::Hidden),
-        "weapon B (Single-only) HIDES the Full toggle (not offered), not despawns it",
+        segment_display::<ModeFullButton>(&mut app),
+        Some(Display::None),
+        "weapon B (Single-only) HIDES the Full segment (Display::None — not offered), not despawns it",
     );
 }
 

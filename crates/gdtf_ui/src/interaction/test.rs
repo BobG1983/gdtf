@@ -13,7 +13,10 @@ use crate::{
     UiPlugin,
     theme::{GdtfTheme, GdtfThemeSpec},
     themed::{UiSystems, apply_theme},
-    widgets::{ActiveButton, ButtonLabel, DisabledButton, spawn_button},
+    widgets::{
+        ActiveButton, ButtonLabel, DisabledButton, Orientation, SwitchColors, SwitchState,
+        spawn_button, spawn_switch,
+    },
 };
 
 /// Builds a [`GdtfTheme`] with caller-chosen button resting / hover / pressed
@@ -445,6 +448,84 @@ fn deactivated_button_repaints_to_resting_same_frame() -> Result<(), ron::error:
         app.world().get::<BackgroundColor>(b).map(|c| c.0),
         Some(*theme_res.button.active),
         "B must show the ACTIVE fill the frame it becomes the new selection",
+    );
+
+    Ok(())
+}
+
+/// GTW-277 (track-visibility fix) — `theme_interaction` SKIPS a `Switch` track: its track
+/// `BackgroundColor` is OWNED by the switch driver / caller, so the resting `button.color`
+/// fill never clobbers the switch's distinct off-track color on the frame its `Interaction`
+/// is added (spawn) or changes (hover).
+///
+/// A switch track IS a `Button` (a click anywhere flips it), so without `Without<Switch>` in
+/// `theme_interaction`'s filter the resting fill would overwrite the off-track color the frame
+/// the switch's `Interaction` was added — leaving the track painted the near-panel
+/// `button.color` and reading as a bare knob with no visible pill (the reported defect).
+///
+/// Pin-discriminating: dropping `Without<Switch>` lets the spawn-frame `Changed<Interaction>`
+/// repaint the track to `button.color`, and BOTH asserts (track keeps its OFF color; track is
+/// NOT `button.color`) fail. The OFF color here is deliberately distinct from `button.color`.
+#[test]
+fn switch_track_is_skipped_by_interaction() -> Result<(), ron::error::SpannedError> {
+    let panel = [0.16, 0.16, 0.18, 1.0];
+    let hover = [0.20, 0.20, 0.24, 1.0];
+    let press = [0.04, 0.04, 0.06, 1.0];
+    let theme_res = theme(panel, hover, press)?;
+
+    // A switch OFF-track color clearly distinct from the resting button fill (so a clobber is
+    // detectable) and from the active/hover/pressed fills.
+    let off_track = Color::srgb(0.58, 0.58, 0.59);
+    let colors = SwitchColors {
+        off:  off_track,
+        on:   *theme_res.button.active,
+        knob: *theme_res.button.text_color,
+    };
+
+    let mut app = app_with_interaction();
+    app.insert_resource(theme_res.clone());
+
+    let switch = {
+        let mut commands = app.world_mut().commands();
+        spawn_switch(
+            &mut commands,
+            SwitchState::Off,
+            colors,
+            Orientation::Horizontal,
+            (),
+        )
+    };
+    app.world_mut().flush();
+
+    // Test precondition: the OFF track color and the resting button fill differ, so a clobber
+    // would be visible.
+    assert_ne!(
+        off_track, *theme_res.button.color,
+        "test precondition: the OFF-track color must differ from the resting button fill",
+    );
+
+    // The spawn frame adds `Interaction` (Changed) — the frame `theme_interaction` would
+    // clobber the track if the switch were not excluded.
+    app.update();
+    assert_eq!(
+        app.world().get::<BackgroundColor>(switch).map(|c| c.0),
+        Some(off_track),
+        "the switch track must KEEP its OFF color across the spawn frame \
+         (theme_interaction skips Switch)",
+    );
+
+    // A subsequent hover is another `Changed<Interaction>` — still must not clobber.
+    set_interaction(&mut app, switch, Interaction::Hovered);
+    app.update();
+    assert_eq!(
+        app.world().get::<BackgroundColor>(switch).map(|c| c.0),
+        Some(off_track),
+        "a hovered switch track must STILL keep its OFF color (theme_interaction skips Switch)",
+    );
+    assert_ne!(
+        app.world().get::<BackgroundColor>(switch).map(|c| c.0),
+        Some(*theme_res.button.color),
+        "the switch track must never be repainted to the resting button fill",
     );
 
     Ok(())

@@ -251,19 +251,30 @@ const fn knob_justify(state: SwitchState) -> JustifyContent {
 /// length). `Vw` for BOTH track dims (not `Vh` for the short one) so the
 /// orientation-swap test invariants hold: a horizontal track's width equals a
 /// vertical track's height (both `Vw(TRACK_LONG_VW)`) AND width != height.
-/// Calibrated 36px / 1280 * 100 at the default 1280x720 window.
-const TRACK_LONG_VW: f32 = 2.8125;
+/// Calibrated 48px / 1280 * 100 at the default 1280x720 window. The long axis is
+/// ~2.4× the short axis (48:20) — an elongated PILL like the mockup's: with the
+/// knob (14px + 2×3px pad) pinned to one end, a clear ~28px band of track color
+/// shows past it, so the control reads as a stadium toggle rather than a single
+/// circle (GTW-277 track-visibility fix). Kept close to the proven 44px footprint
+/// so it still fits the narrow Aim-panel cell beside its "Aim" caption.
+const TRACK_LONG_VW: f32 = 3.75;
 
 /// The short dimension of a switch track, in viewport-width units. `Vw` (not
 /// `Vh`) so it shares an axis with [`TRACK_LONG_VW`] — see that const.
-/// Calibrated 18px / 1280 * 100.
-const TRACK_SHORT_VW: f32 = 1.40625;
+/// Calibrated 20px / 1280 * 100. Strictly TALLER than the knob diameter (14px)
+/// plus both paddings (2×3px = 6px → 20px) so the track frames the knob on the
+/// short axis: the knob reads as a pip INSIDE a visible pill, not a circle that
+/// fills the track (the `switch_track_frames_the_knob` invariant — GTW-277).
+const TRACK_SHORT_VW: f32 = 1.562_5;
 
 /// The inner padding around the knob inside the track, in viewport-width units.
-/// Calibrated 2px / 1280 * 100.
-const TRACK_PAD_VW: f32 = 0.15625;
+/// Calibrated 3px / 1280 * 100 — keeps the knob clear of the rounded track ends so
+/// the rounded pill caps show past the knob at the pinned end (GTW-277).
+const TRACK_PAD_VW: f32 = 0.234_375;
 
 /// The knob diameter, in viewport-width units (applied to both width + height;
 /// the sub-pixel 16:9 skew on a ~14px knob is invisible). Calibrated
-/// 14px / 1280 * 100.
+/// 14px / 1280 * 100. Kept SMALLER than the track short dimension (20px) less both
+/// paddings so the pill track frames the knob on the short axis (the
+/// `switch_track_frames_the_knob` invariant — GTW-277).
 const KNOB_DIAMETER_VW: f32 = 1.09375;

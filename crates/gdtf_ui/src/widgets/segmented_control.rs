@@ -21,8 +21,8 @@ use bevy::{
     prelude::*,
     text::{FontWeight, TextColor as UiTextColor, TextFont},
     ui::{
-        AlignItems, BackgroundColor, BorderRadius, Interaction, JustifyContent, Node, UiRect, Val,
-        widget::Button,
+        AlignItems, BackgroundColor, BorderColor, BorderRadius, Display, Interaction,
+        JustifyContent, Node, Overflow, UiRect, Val, widget::Button,
     },
 };
 
@@ -82,6 +82,21 @@ pub struct SegmentedControl;
 #[derive(Component, Deref, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct ActiveSegment(usize);
 
+impl ActiveSegment {
+    /// Wraps a segment index into an [`ActiveSegment`].
+    ///
+    /// The constructor a caller uses to DRIVE the active segment from code (e.g. syncing
+    /// the highlight to a sim value): write it onto the control root with
+    /// [`set_if_neq`](bevy::prelude::DetectChangesMut::set_if_neq) and
+    /// [`repaint_segments`] repaints the same frame. The index is clamped by
+    /// [`repaint_segments`]' equality check (an out-of-range value simply highlights
+    /// nothing), so no clamp is needed here.
+    #[must_use]
+    pub const fn new(index: usize) -> Self {
+        Self(index)
+    }
+}
+
 /// Marker on one segment (a [`Button`] child of a [`SegmentedControl`] root).
 ///
 /// Each segment carries its [`SegmentIndex`]; [`repaint_segments`] re-styles it by
@@ -139,6 +154,18 @@ pub struct SegmentSelected {
 /// segment is given the active fill + bold text at spawn; [`repaint_segments`]
 /// re-derives the look on every active-index change ([[ui-mutate-not-respawn]]).
 ///
+/// ## Connected look (GTW-277 screenshot review V2)
+///
+/// The control reads as ONE connected container, NOT a stack of detached pills: the
+/// segments butt directly together (NO inter-segment gap), the ROOT carries the rounded
+/// corners and CLIPS its children ([`Overflow::clip`](bevy::ui::Overflow::clip) + a
+/// [`BorderRadius`] on the root) so the inner segment corners stay square and the whole
+/// control reads as a single rounded box, and each segment after the first carries a thin
+/// DIVIDER on its leading edge (left for a Row, top for a Column — the
+/// [`base_text`](SegmentColors::base_text) color) so adjacent segments are visually
+/// separated by a hairline rather than a gap. This is the "single container, adjacent
+/// dividers, no gaps" the mockup's STAND/KNEEL/PRONE + SINGLE/BURST/AUTO controls show.
+///
 /// An empty `labels` yields a control with no segments (a no-op control).
 pub fn spawn_segmented_control(
     commands: &mut Commands,
@@ -156,8 +183,14 @@ pub fn spawn_segmented_control(
             colors,
             Node {
                 flex_direction: orientation.flex_direction(),
-                column_gap: Val::Vw(SEGMENT_GAP_VW),
-                row_gap: Val::Vh(SEGMENT_GAP_VH),
+                // No inter-segment gap: a connected control's segments butt together, with
+                // a hairline divider between them (set per-segment below) — not a gap (V2).
+                column_gap: Val::ZERO,
+                row_gap: Val::ZERO,
+                // Round the OUTER container and clip the children, so the inner (square)
+                // segment corners are hidden and the whole control reads as one rounded box.
+                border_radius: BorderRadius::all(Val::Vw(SEGMENT_RADIUS_VW)),
+                overflow: Overflow::clip(),
                 ..default()
             },
             marker,
@@ -173,9 +206,13 @@ pub fn spawn_segmented_control(
                         padding: UiRect::axes(Val::Vw(SEGMENT_PAD_X_VW), Val::Vh(SEGMENT_PAD_Y_VH)),
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
-                        border_radius: BorderRadius::all(Val::Vw(SEGMENT_RADIUS_VW)),
+                        // No per-segment corner rounding — the ROOT owns the rounded corners
+                        // (square inner corners read as one connected control, V2). Each
+                        // segment after the first carries a leading-edge divider border.
+                        border: segment_divider(orientation, index),
                         ..default()
                     },
+                    BorderColor::all(colors.base_text),
                     BackgroundColor(if is_active {
                         colors.active_bg
                     } else {
@@ -197,6 +234,25 @@ pub fn spawn_segmented_control(
             }
         })
         .id()
+}
+
+/// The DIVIDER border of segment `index` in a control of the given `orientation`: a
+/// hairline on the segment's LEADING edge (left for a [`Row`](Orientation::Horizontal),
+/// top for a [`Column`](Orientation::Vertical)) for every segment after the first, and
+/// none for the first segment (its leading edge is the control's outer edge).
+///
+/// The leading-edge-only divider gives ONE hairline between each pair of adjacent segments
+/// (segment N's leading border butts against segment N-1's trailing edge) — the "adjacent
+/// dividers" of a connected segmented control (V2), with no doubled lines.
+const fn segment_divider(orientation: Orientation, index: usize) -> UiRect {
+    if index == 0 {
+        return UiRect::ZERO;
+    }
+    let line = Val::Vw(SEGMENT_DIVIDER_VW);
+    match orientation {
+        Orientation::Horizontal => UiRect::left(line),
+        Orientation::Vertical => UiRect::top(line),
+    }
 }
 
 /// Read-write [`Query`] data for one pressed [`Segment`]: its [`SegmentIndex`] and its
@@ -303,6 +359,56 @@ pub fn repaint_segments(
     }
 }
 
+/// Shows or hides a single segment of a [`SegmentedControl`] BY INDEX, MUTATING the
+/// segment's [`Node::display`](bevy::ui::Node) in place — never despawning/respawning it
+/// ([[ui-mutate-not-respawn]]).
+///
+/// A hidden segment is set to [`Display::None`], so the flex row/column COLLAPSES it: the
+/// control visibly shows only the still-[`Display::Flex`] segments, with no gap left where
+/// a hidden one was. This is the per-segment visibility a caller needs when a
+/// [`SegmentedControl`]'s segments map to an OFFERED set that varies (e.g. a weapon's
+/// fire modes) yet the segment entity ids must stay STABLE — the GTW-284 mutate-not-churn
+/// invariant: the control is spawned once with ALL segments, and the offered subset is
+/// revealed by toggling per-segment visibility rather than rebuilding the control.
+///
+/// It walks the control's `children` for the [`Segment`] whose [`SegmentIndex`] equals
+/// `index` and sets its [`Display`]; an out-of-range index is a no-op. The write is
+/// guarded so it marks the [`Node`] changed only on a REAL change (change-detection
+/// hygiene). Returns whether a matching segment was found.
+///
+/// Caller-driven (the `set_*` helper idiom — no per-frame system; the bar / pips
+/// precedent): build a
+/// `SystemState<(Query<&Children>, Query<(&SegmentIndex, &mut Node), With<Segment>>)>`,
+/// call this, then `state.apply(world)`. Param-only — no `&mut World` (bevy-traps rule 7).
+pub fn set_segment_visible(
+    control: Entity,
+    index: usize,
+    visible: bool,
+    children: &Query<&Children>,
+    segments: &mut Query<(&SegmentIndex, &mut Node), With<Segment>>,
+) -> bool {
+    let Ok(kids) = children.get(control) else {
+        return false;
+    };
+    let want = if visible {
+        Display::Flex
+    } else {
+        Display::None
+    };
+    for &child in kids {
+        let Ok((seg_index, mut node)) = segments.get_mut(child) else {
+            continue;
+        };
+        if **seg_index == index {
+            if node.display != want {
+                node.display = want;
+            }
+            return true;
+        }
+    }
+    false
+}
+
 /// Clamps a requested active index to a valid segment slot.
 ///
 /// For a non-empty control the index is clamped to `0..count`; for an empty control it
@@ -336,17 +442,6 @@ fn segment_font(is_active: bool) -> TextFont {
     }
 }
 
-/// The horizontal gap between adjacent segments (the Row `column_gap`), in
-/// viewport-width units. The original single 2px gap fed BOTH axes; it splits
-/// into a Vw column gap and a Vh row gap so each axis tracks its own viewport
-/// dimension. Calibrated 2px / 1280 * 100 at the default 1280x720 window.
-const SEGMENT_GAP_VW: f32 = 0.15625;
-
-/// The vertical gap between adjacent segments (the Column `row_gap`), in
-/// viewport-height units. The Vh sibling of [`SEGMENT_GAP_VW`].
-/// Calibrated 2px / 720 * 100.
-const SEGMENT_GAP_VH: f32 = 0.27778;
-
 /// Horizontal inner padding of a segment, in viewport-width units.
 /// Calibrated 12px / 1280 * 100.
 const SEGMENT_PAD_X_VW: f32 = 0.9375;
@@ -355,9 +450,16 @@ const SEGMENT_PAD_X_VW: f32 = 0.9375;
 /// Calibrated 6px / 720 * 100.
 const SEGMENT_PAD_Y_VH: f32 = 0.83333;
 
-/// The corner radius of a segment, in viewport-width units (one axis for radii,
-/// matching the border-width axis convention). Calibrated 4px / 1280 * 100.
+/// The corner radius of the control's OUTER container, in viewport-width units (one axis
+/// for radii, matching the border-width axis convention). The root rounds + clips; the
+/// segments themselves are square so the control reads as one connected box (V2).
+/// Calibrated 4px / 1280 * 100.
 const SEGMENT_RADIUS_VW: f32 = 0.3125;
+
+/// The width of the hairline DIVIDER between two adjacent segments, in viewport-width
+/// units (one axis for a thin line — a connected control's "adjacent dividers", V2).
+/// Calibrated 1px / 1280 * 100 at the default 1280x720 window.
+const SEGMENT_DIVIDER_VW: f32 = 0.078_125;
 
 /// The segment label font size, in typographic points.
 const SEGMENT_FONT_PT: f32 = 16.0;

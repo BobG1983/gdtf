@@ -79,7 +79,7 @@ pub use progress_bar::{
 };
 pub use segmented_control::{
     ActiveSegment, Segment, SegmentColors, SegmentIndex, SegmentLabel, SegmentSelected,
-    SegmentText, SegmentedControl, repaint_segments, select_segment_on_press,
+    SegmentText, SegmentedControl, repaint_segments, select_segment_on_press, set_segment_visible,
     spawn_segmented_control,
 };
 pub use switch::{

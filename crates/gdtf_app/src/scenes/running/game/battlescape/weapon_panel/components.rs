@@ -87,11 +87,23 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the **Aim Panel** (bottom-right grid cell, same 1/4 height as the Firemode panel,
-    /// same width as the Item Panel) — the framed box wrapping the single relocated Aim toggle
-    /// (the action-bar `AimToggleButton`, GTW-298), which fills the box. A structural marker
-    /// letting the AC tests assert the grid cell exists (no-bare-types rule).
+    /// same width as the Item Panel) — the framed box wrapping the relocated Aim toggle (the
+    /// action-bar `AimToggleButton`, GTW-298) laid out as a ROW: an [`AimLabel`] "Aim" caption
+    /// on the LEFT, the toggle [`Switch`](gdtf_ui::Switch) on the RIGHT, matching the mockup's
+    /// "AIM [switch]" reading. A structural marker letting the AC tests assert the grid cell
+    /// exists (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct AimPanel;
+}
+
+crate::support_item! {
+    /// Marks the Aim Panel's **"Aim" caption** [`Text`](bevy::prelude::Text) — the text label
+    /// laid out to the LEFT of the relocated Aim toggle so the control reads "Aim [switch]"
+    /// (the mockup; the GTW-277 widget migration had dropped this label, leaving the bare
+    /// switch). A static caption (not mutated): presence on an entity is the whole signal
+    /// (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct AimLabel;
 }
 
 crate::support_item! {

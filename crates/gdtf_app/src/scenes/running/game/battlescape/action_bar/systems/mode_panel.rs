@@ -1,98 +1,92 @@
-//! The fire-mode 3-toggle sub-panel (GTW-265 / GTW-284) — the always-visible replacement
-//! for the removed GTW-254 popup picker.
+//! The fire-mode control — a `gdtf_ui` horizontal [`SegmentedControl`] (GTW-265 /
+//! GTW-277 / GTW-284) — its constructor, its offered-mode visibility driver, its press →
+//! `SelectedFireMode` write, and its active-segment sync.
 //!
-//! The Mode sub-panel ([`ModePanelRoot`]) is a vertical [`spawn_panel`] column inside the
-//! action bar whose CHILDREN are the THREE per-mode toggle buttons — [`ModeSingleButton`] /
-//! [`ModeBurstButton`] / [`ModeFullButton`]. Clicking a toggle sets
+//! GTW-277 migrated the fire-mode control from three ad-hoc toggle buttons to ONE generic
+//! `gdtf_ui` [`SegmentedControl`] (3 horizontal segments Single / Burst / Full-Auto — the
+//! Fire-Mode control in the mockup). Selecting a segment sets
 //! [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) DIRECTLY to that mode's
-//! read-back [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) (never fabricated), and the
-//! current mode is shown via the `gdtf_ui` [`ActiveButton`] paint marker (the GTW-253
-//! hook, made sticky by GTW-266). No modal, no scrim, no z-stacking, no world
-//! click-through — by construction the whole popup bug class is gone.
+//! read-back [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) (never fabricated); the current
+//! mode is the control's own [`ActiveSegment`](gdtf_ui::ActiveSegment) highlight, synced
+//! FROM [`SelectedFireMode`]. Mode does NOT use [`ActIntent`](gdtf_battle_input::ActIntent)
+//! (it writes the resource directly) — that is unchanged from GTW-265.
 //!
-//! ## Mutate, never churn (GTW-284 / [[ui-mutate-not-respawn]])
+//! ## Only the offered modes show, via per-segment visibility (GTW-284)
 //!
-//! The THREE toggles are spawned ONCE — at panel spawn ([`spawn_mode_panel`]), each
-//! tagged with its mode marker and its fixed label — and are NEVER despawned/respawned on a
-//! selection change. The offered modes change with the selected weapon, so
-//! [`rebuild_mode_buttons`] MUTATES each toggle's [`Visibility`] to show ONLY the modes the
-//! SELECTED weapon offers ([`Visibility::Hidden`] for the modes it lacks), leaving the
-//! entities (and their stable [`Entity`] ids) in place. A Single+Burst weapon shows the
-//! Single + Burst toggles and hides Full.
+//! The THREE segments are spawned ONCE — a weapon offers a SUBSET of {Single, Burst, Full}
+//! — and [`rebuild_mode_segments`] reveals exactly the offered ones by toggling each
+//! segment's [`Display`](bevy::ui::Display) (`Display::None` collapses a non-offered
+//! segment so the row shrinks to the offered set) via `gdtf_ui`'s
+//! [`set_segment_visible`](gdtf_ui::set_segment_visible) — NEVER despawning/respawning the
+//! control on a selection/weapon change. So the segment [`Entity`] ids stay STABLE across a
+//! weapon change ([[ui-mutate-not-respawn]] / the GTW-284 invariant) and the offered subset
+//! is the only thing that visibly changes. An UNARMED selection (no
+//! [`FireMode`](gdtf_battle_sim::FireMode)) hides every segment and the panel root.
 //!
-//! This is the GTW-284 fix: the old body despawned + respawned the `Themed` toggles on
-//! every selection change, so a fresh spawn raised `Added<Themed>` → the (then-unfiltered)
-//! `gdtf_ui::apply_theme` repainted ALL `Themed` widgets, clobbering every button's
-//! hover / [`ActiveButton`] fill for a frame. With no entity churn there is no spurious
-//! `Added<Themed>` to trigger that global repaint.
-//!
-//! It runs `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3) so its visibility writes
-//! settle deterministically relative to the theme pass. An UNARMED selection (no
-//! [`FireMode`](gdtf_battle_sim::FireMode)) hides every toggle and the panel root.
+//! It runs `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3) so its writes settle
+//! deterministically relative to the theme pass.
 
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::{FireMode, FireModeSpec, ModeKind};
-use gdtf_ui::{ActiveButton, ButtonLabel, spawn_button, theme::GdtfTheme};
-
-use super::actions::{PressedButton, is_press};
-use crate::scenes::running::game::battlescape::action_bar::components::{
-    ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton,
+use gdtf_ui::{
+    ActiveSegment, Orientation, Segment, SegmentColors, SegmentIndex, SegmentLabel,
+    SegmentSelected, SegmentedControl, set_segment_visible, spawn_segmented_control,
+    theme::GdtfTheme,
 };
 
-/// Query FILTER selecting ONLY the Single mode toggle's [`Visibility`], disjoint from the
-/// panel-root + the other two toggles' `&mut Visibility` queries in
-/// [`rebuild_mode_buttons`] (so Bevy proves the four mutable borrows non-conflicting).
-///
-/// Aliased so the four `&mut Visibility` query types stay legible (clippy
-/// `type_complexity`). The `Without` clauses are the disjointness proof: each entity carries
-/// at most one of these markers, so the four queries can mutably borrow `Visibility` in one
-/// system.
-type SingleToggle = (With<ModeSingleButton>, Without<ModePanelRoot>);
+use super::stance_panel::control_segment_colors;
+use crate::scenes::running::game::battlescape::action_bar::components::{
+    ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
+};
 
-/// Query FILTER selecting ONLY the Burst mode toggle's [`Visibility`] (see [`SingleToggle`]).
-type BurstToggle = (
-    With<ModeBurstButton>,
-    Without<ModePanelRoot>,
-    Without<ModeSingleButton>,
-);
+/// The three fire-mode segment indices, in DISPLAY (left-to-right) order: Single / Burst /
+/// Full. The index ↔ [`ModeKind`] mapping the press listener + the active-sync + the
+/// visibility driver share.
+pub(in crate::scenes::running::game::battlescape) const MODE_ORDER: [ModeKind; 3] =
+    [ModeKind::Single, ModeKind::Burst, ModeKind::Full];
 
-/// Query FILTER selecting ONLY the Full mode toggle's [`Visibility`] (see [`SingleToggle`]).
-type FullToggle = (
-    With<ModeFullButton>,
-    Without<ModePanelRoot>,
-    Without<ModeSingleButton>,
-    Without<ModeBurstButton>,
-);
-
-/// Horizontal gap between the Firemode panel's toggle buttons, as a fraction of the viewport
-/// WIDTH ([`Val::Vw`](bevy::ui::Val::Vw)).
-///
-/// A named newtype over the gap rather than a bare `f32` (no-bare-types rule): it is
-/// layout spacing, not a theme color/size (the action-bar `BarGapVw` precedent). A horizontal
-/// gap, so the unit is `Vw` (`ui-responsive-not-px`).
-#[derive(Deref, Clone, Copy, PartialEq, Debug)]
-struct ModeGapVw(f32);
-
-impl ModeGapVw {
-    /// The Firemode panel's inter-toggle gap: 0.3125 vw (4 px at the 1280-wide reference window
-    /// — a tight side-by-side toggle row).
-    const PANEL: Self = Self(0.3125);
+/// The segment INDEX of a [`ModeKind`] in [`MODE_ORDER`] (the active-sync direction).
+fn mode_index(kind: ModeKind) -> usize {
+    MODE_ORDER.iter().position(|k| *k == kind).unwrap_or(0)
 }
 
-/// Spawns the Mode sub-panel column ([`ModePanelRoot`]) with its THREE FIXED per-mode
-/// toggles as children, and returns the panel [`Entity`] so `spawn_action_bar` can parent
-/// it under the bar root (GTW-265 / GTW-284).
+/// The [`ModeKind`] of a segment INDEX in [`MODE_ORDER`] (the press-listener direction),
+/// or [`None`] for an out-of-range index (defensive; the control has exactly three).
+fn mode_for_index(index: usize) -> Option<ModeKind> {
+    MODE_ORDER.get(index).copied()
+}
+
+/// The DISPLAYED firemode label for `kind` — `"single"` / `"burst"` for those modes (the
+/// sim's canonical [`ModeKind`] [`Display`](std::fmt::Display) label), and the SHORTER
+/// `"auto"` for [`ModeKind::Full`] (the GTW-298 presentation map: at the legible control
+/// font the full sim label `"full-auto"` clipped in the narrow firemode cell, so it shows
+/// as `"auto"`).
 ///
-/// A themed [`spawn_panel`](gdtf_ui::spawn_panel) laid out as a vertical column whose
-/// children are the Single / Burst / Full toggle buttons, spawned ONCE here (GTW-284: the
-/// toggles are MUTATED in place by [`rebuild_mode_buttons`], never despawned/respawned).
-/// Each toggle is tagged with its mode marker and its fixed
-/// [`Display`](std::fmt::Display) label, and starts [`Visibility::Hidden`] — the panel root
-/// is also [`Visibility::Hidden`] until [`rebuild_mode_buttons`] reveals exactly the modes
-/// the first selected weapon offers (GTW-273). Returns the panel so the caller parents it
-/// in the bar's left-to-right row. Takes `&mut Commands` + the live theme (the
-/// `spawn_action_bar` precedent).
+/// A presentation-only override local to this firemode control: it does NOT change the
+/// sim's [`ModeKind`] [`Display`]. Single / Burst pass through unchanged.
+fn mode_label(kind: ModeKind) -> String {
+    match kind {
+        ModeKind::Full => "auto".to_owned(),
+        other => other.to_string(),
+    }
+}
+
+/// Spawns the Mode sub-panel ([`ModePanelRoot`]) holding ONE horizontal
+/// [`SegmentedControl`] of three fire-mode segments (Single / Burst / Full-Auto), and
+/// returns the panel [`Entity`] so the caller can parent it under the bottom-left grid cell
+/// (GTW-265 / GTW-277 / GTW-284).
+///
+/// A themed [`spawn_panel`](gdtf_ui::spawn_panel) (`Themed(Panel)`, re-painted by
+/// `apply_theme`) laid out as a full-size row that CLIPS its content (so a wide caption
+/// never overflows into a sibling cell — GTW-298 item 8), holding the segmented control.
+/// The control's root carries the [`ModeControl`] identity marker (so the
+/// [`SegmentSelected`](gdtf_ui::SegmentSelected) listener maps a select to a fire mode);
+/// each segment carries its per-mode marker ([`ModeSingleButton`] / [`ModeBurstButton`] /
+/// [`ModeFullButton`]) — tagged once the segments exist ([`tag_mode_segments`]). The panel
+/// (and every segment) starts [`Visibility::Hidden`] / collapsed until
+/// [`rebuild_mode_segments`] reveals exactly the offered modes (GTW-273). Takes
+/// `&mut Commands` + the live theme.
 pub(in crate::scenes::running::game::battlescape) fn spawn_mode_panel(
     commands: &mut Commands,
     theme: &GdtfTheme,
@@ -101,179 +95,197 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_mode_panel(
     commands.entity(panel).insert((
         ModePanelRoot,
         Node {
-            // GTW-298: the Firemode panel FILLS its bottom-left grid cell; its 1-3 visible
-            // toggles sit side by side in a ROW, each filling the panel height and sharing
-            // the panel width (width varies by count). A `Row` with full width/height + the
-            // toggles' `flex_grow` produces the contract's "width varies by count, height
-            // fills the panel".
+            // GTW-298: the Firemode panel FILLS its bottom-left grid cell; its 1–3 visible
+            // segments sit side by side in a ROW (the control itself is the row). Clip any
+            // segment wider than its share so the row never overflows the cell.
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Row,
-            column_gap: Val::Vw(*ModeGapVw::PANEL),
-            // Clip any toggle whose label is wider than its flex share so the firemode row
-            // never overflows the panel cell into the neighbouring Aim panel (item 8 — no
-            // panel overlaps another).
             overflow: bevy::ui::Overflow {
                 x: bevy::ui::OverflowAxis::Hidden,
                 y: bevy::ui::OverflowAxis::Hidden,
             },
             ..default()
         },
-        // GTW-273: HIDDEN until an armed selection with modes reveals the offered toggles.
-        // The three toggle children spawn `Hidden` too, so an empty/over-full Mode box never
-        // shows before / when nothing armed is selected. `rebuild_mode_buttons` sets the
-        // root + per-toggle visibility on every selection-change branch; this initial
-        // `Hidden` covers the pre-first-change gap (and the never-selected empty battle,
-        // where the rebuild's no-op / unarmed branch keeps it hidden).
+        // GTW-273: HIDDEN until an armed selection with modes reveals the offered segments.
         Visibility::Hidden,
     ));
 
-    // GTW-284: spawn the THREE FIXED toggles ONCE, each `Hidden` — `rebuild_mode_buttons`
-    // reveals exactly the offered ones on selection change (no despawn/respawn churn). Each
-    // toggle carries its fixed label (the kind's `Display`), so its caption never changes.
-    let single = spawn_hidden_toggle(commands, theme, ModeKind::Single, ModeSingleButton);
-    let burst = spawn_hidden_toggle(commands, theme, ModeKind::Burst, ModeBurstButton);
-    let full = spawn_hidden_toggle(commands, theme, ModeKind::Full, ModeFullButton);
-    commands.entity(panel).add_children(&[single, burst, full]);
-
+    let labels: Vec<SegmentLabel> = MODE_ORDER
+        .iter()
+        .map(|k| SegmentLabel::new(mode_label(*k)))
+        .collect();
+    let control = spawn_segmented_control(
+        commands,
+        &labels,
+        mode_index(ModeKind::Single),
+        mode_segment_colors(theme),
+        Orientation::Horizontal,
+        ModeControl,
+    );
+    // FILL the panel cell (GTW-298: width varies by visible count, height fills the panel —
+    // each segment's flex share). MUTATE only width/height — a wholesale `insert(Node {
+    // ..default() })` would DROP the widget's connected-look fields (the root's rounded
+    // `border_radius` + `Overflow::clip`, the zero inter-segment gap, the Row direction),
+    // re-breaking the offered segments into loose boxes (the V2 defect). The widget already
+    // lays out as a zero-gap, clipped, rounded Row; we only re-size it to fill the cell.
+    commands
+        .entity(control)
+        .entry::<Node>()
+        .and_modify(|mut node| {
+            node.width = Val::Percent(100.0);
+            node.height = Val::Percent(100.0);
+        });
+    commands.entity(panel).add_children(&[control]);
     panel
 }
 
-/// Spawns one Mode toggle [`spawn_button`] for `kind`, tagged with its `marker`, with the
-/// kind's [`Display`](std::fmt::Display) as its fixed label, starting [`Visibility::Hidden`]
-/// (GTW-284).
-///
-/// The shared toggle constructor for [`spawn_mode_panel`]'s fixed Single / Burst / Full
-/// set: each toggle exists for the whole bar lifetime and is only ever MUTATED (its
-/// [`Visibility`] and its [`ActiveButton`] marker), never churned. Returns the toggle so
-/// the caller parents it under the panel root.
-fn spawn_hidden_toggle<M: Component>(
-    commands: &mut Commands,
-    theme: &GdtfTheme,
-    kind: ModeKind,
-    marker: M,
-) -> Entity {
-    let toggle = spawn_button(
-        commands,
-        theme,
-        ButtonLabel::new(toggle_label(kind)),
-        marker,
-    );
-    // GTW-298: each visible toggle FILLS the panel height + shares the panel width with its
-    // siblings (`flex_grow` + zero `flex_basis` → equal shares; width varies by visible count).
-    // Overwriting the auto-sized `box_node` is safe — `apply_theme` re-applies the theme-owned
-    // border / radius / padding every run, preserving these layout fields.
-    commands.entity(toggle).insert((
-        Node {
-            height: Val::Percent(100.0),
-            flex_grow: 1.0,
-            flex_shrink: 1.0,
-            flex_basis: Val::Percent(0.0),
-            // Allow the toggle to shrink below its label's intrinsic width + clip the caption,
-            // so a wide label (e.g. "full-auto") shares the row evenly instead of overflowing
-            // the panel into the Aim cell.
-            min_width: Val::ZERO,
-            // GTW-298: the Firemode panel is the bottom 1/4-height cell — a SHORT strip. Without a
-            // zero `min_height` the button's intrinsic content (18pt label + theme padding) is its
-            // flex min-height, so the toggles refuse to compress and overflow the cell (the label
-            // wrapping + the toggles overlapping the row below). A zero `min_height` lets flexbox
-            // compress them to the cell height; `overflow: Hidden` then clips the label cleanly.
-            min_height: Val::ZERO,
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            overflow: bevy::ui::Overflow {
-                x: bevy::ui::OverflowAxis::Hidden,
-                y: bevy::ui::OverflowAxis::Hidden,
-            },
-            ..default()
-        },
-        Visibility::Hidden,
-    ));
-    toggle
+/// The active/base color palette the Mode [`SegmentedControl`] paints with — the SAME
+/// theme-derived palette the Stance control uses (shared [`control_segment_colors`]).
+fn mode_segment_colors(theme: &GdtfTheme) -> SegmentColors {
+    control_segment_colors(theme)
 }
 
-/// The DISPLAYED firemode-toggle caption for `kind` — `"single"` / `"burst"` for those modes
-/// (the sim's canonical [`ModeKind`] [`Display`](std::fmt::Display) label), and the SHORTER
-/// `"auto"` for [`ModeKind::Full`] (screenshot review 2026-06-18: at the comfortably-legible
-/// `CONTROL_LABEL_PT` font the full sim label `"full-auto"` clipped in the narrow firemode cell,
-/// so the firemode panel displays it as `"auto"`).
+/// Read-write [`Query`] data for one freshly-spawned Mode segment to be tagged + flex-sized:
+/// its [`Entity`], its [`SegmentIndex`](gdtf_ui::SegmentIndex), and its [`Node`] (to set its
+/// even flex share so the three firemode segments fit the narrow cell — V1/V4 fix).
 ///
-/// A presentation-only override local to this firemode panel: it does NOT change the sim's
-/// [`ModeKind`] [`Display`] (which other readers may rely on) — only what this UI toggle shows.
-/// Single / Burst pass through unchanged.
-fn toggle_label(kind: ModeKind) -> String {
-    match kind {
-        ModeKind::Full => "auto".to_owned(),
-        other => other.to_string(),
+/// Named to keep [`tag_mode_segments`]'s signature legible (clippy `type_complexity`).
+type NewModeSegment = (Entity, &'static SegmentIndex, &'static mut Node);
+
+/// Tags each Mode [`SegmentedControl`](gdtf_ui::SegmentedControl) segment with its per-mode
+/// marker ([`ModeSingleButton`] / [`ModeBurstButton`] / [`ModeFullButton`]) AND sizes it to a
+/// flex-EVEN share of the firemode row, once the control's segment children exist (GTW-277).
+///
+/// `spawn_segmented_control` spawns the segments via the command buffer, so they do not
+/// exist until that flush — the per-mode markers + the segment flex sizing cannot be attached
+/// synchronously in [`spawn_mode_panel`]. This system runs on the spawn frame (gated
+/// `Added<`[`ModeControl`]`>`), finds the Mode control, walks its [`Children`], gives each
+/// segment an even flex share (`flex_grow: 1` + `flex_basis: 0` + `min_width: 0` +
+/// `overflow: Hidden` — so three segments fit the SHORT/NARROW firemode cell and a too-wide
+/// caption clips WITHIN its segment, never overflowing the cell — the V1/V4 clip fix), and
+/// inserts the marker for each segment's [`SegmentIndex`](gdtf_ui::SegmentIndex) ([`MODE_ORDER`]
+/// maps index → mode). The segments are spawned once (GTW-284), so it runs exactly once and
+/// never churns anything (it inserts a unit marker + sizes the existing segment).
+///
+/// Param-only (`bevy-traps.md` #7): [`Commands`], an `Added<ModeControl>` detector with the
+/// control's [`Children`], and a `Query<(Entity, &SegmentIndex, &mut Node), With<Segment>>`
+/// over the freshly-spawned segments — no `&mut World`.
+pub(in crate::scenes::running::game::battlescape) fn tag_mode_segments(
+    mut commands: Commands,
+    controls: Query<&Children, (With<ModeControl>, Added<ModeControl>)>,
+    mut segments: Query<NewModeSegment, With<Segment>>,
+) {
+    for children in &controls {
+        for &child in children {
+            let Ok((segment, index, mut node)) = segments.get_mut(child) else {
+                continue;
+            };
+            // V1/V4 fix (GTW-277 screenshot review): the firemode control sits in a SHORT,
+            // NARROW (bottom 1/4) cell where three content-sized segments + the panel inset
+            // overflowed, CLIPPING the third ("auto") at the cell's right edge. Make each
+            // segment flex-SHARE the row evenly (`flex_grow: 1` + `flex_basis: 0` +
+            // `min_width: 0`) so all three always fit the cell width — and clip a too-wide
+            // caption WITHIN its own segment (`overflow: Hidden`) rather than overflowing the
+            // row. The three even segments read as a connected segmented control (the mockup),
+            // not three loosely-sized boxes.
+            node.flex_grow = 1.0;
+            node.flex_basis = Val::ZERO;
+            node.min_width = Val::ZERO;
+            node.overflow = bevy::ui::Overflow {
+                x: bevy::ui::OverflowAxis::Hidden,
+                y: bevy::ui::OverflowAxis::Hidden,
+            };
+            match mode_for_index(**index) {
+                Some(ModeKind::Single) => {
+                    commands.entity(segment).insert(ModeSingleButton);
+                }
+                Some(ModeKind::Burst) => {
+                    commands.entity(segment).insert(ModeBurstButton);
+                }
+                Some(ModeKind::Full) => {
+                    commands.entity(segment).insert(ModeFullButton);
+                }
+                None => {}
+            }
+        }
     }
 }
 
-/// MUTATES the Mode sub-panel's three FIXED toggles' [`Visibility`] to show exactly the
-/// modes the SELECTED weapon offers, whenever
-/// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) changes (GTW-265 / GTW-284: a
-/// Single+Burst weapon shows the Single + Burst toggles and HIDES Full).
+/// Read-write [`Query`] data for the Mode control during a rebuild: its [`Entity`] and its
+/// [`Children`] (the segments to show/hide).
 ///
-/// GTW-284 ([[ui-mutate-not-respawn]]) — it NEVER despawns/respawns toggles. The three
-/// toggles are spawned once by [`spawn_mode_panel`]; on a selection change this system sets
-/// each toggle's [`Visibility`] to [`Visibility::Visible`] if the selected weapon's
-/// [`FireMode`](gdtf_battle_sim::FireMode) selector offers that
-/// [`ModeKind`](gdtf_battle_sim::ModeKind), else [`Visibility::Hidden`] — so the toggle
-/// [`Entity`] ids stay STABLE across the change (no `Added<Themed>` churn that would trigger
-/// `gdtf_ui::apply_theme`'s repaint). An UNARMED selection (no `FireMode`) or a cleared
-/// selection hides all three. Runs `.after(UiSystems::ApplyTheme)` (see the module docs).
+/// Named to keep [`rebuild_mode_segments`]'s signature legible (clippy `type_complexity`).
+type ModeControlChildren = (Entity, &'static Children);
+
+/// MUTATES the Mode control's per-segment visibility to show exactly the modes the SELECTED
+/// weapon offers, whenever [`SelectedShooter`](gdtf_battle_input::SelectedShooter) changes
+/// (GTW-265 / GTW-277 / GTW-284).
 ///
-/// It runs its body on a real selection change OR when the [`ModePanelRoot`] is freshly
-/// spawned ([`Added<ModePanelRoot>`](Added)) — the battle-start auto-select fills
-/// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) several frames BEFORE the action
-/// bar spawns its panel, so the selection-change has already passed by the time the panel
-/// exists; the `Added` trigger re-reads the CURRENT selection on the spawn frame (the
-/// GTW-255 auto-select ordering trap). Otherwise it early-returns (change-detection
-/// hygiene).
+/// GTW-284 ([[ui-mutate-not-respawn]]) — it NEVER despawns/respawns segments. The three are
+/// spawned once by [`spawn_mode_panel`]; on a selection change this system toggles each
+/// segment's [`Display`](bevy::ui::Display) via `gdtf_ui`'s
+/// [`set_segment_visible`](gdtf_ui::set_segment_visible) — `Display::Flex` if the selected
+/// weapon's [`FireMode`](gdtf_battle_sim::FireMode) offers that
+/// [`ModeKind`](gdtf_battle_sim::ModeKind) (so the row shows only the offered set),
+/// `Display::None` otherwise. The segment [`Entity`] ids stay STABLE across the change. An
+/// UNARMED / cleared selection hides all three. Runs `.after(UiSystems::ApplyTheme)`.
 ///
-/// GTW-273 — it also drives the [`ModePanelRoot`]'s own [`Visibility`] on EVERY branch: an
-/// armed selection that HAS modes flips it [`Visibility::Visible`]; an unarmed / cleared /
-/// no-mode selection sets it [`Visibility::Hidden`], so there is never an empty Mode box
-/// when nothing armed is selected (the root's `Hidden` hides every toggle child too). The
-/// root is never despawned — only its and its toggles' visibility change.
+/// It runs its body on a real selection change OR when the [`ModeControl`] was freshly
+/// spawned ([`Added<ModeControl>`](Added)) — the battle-start auto-select fills
+/// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) several frames BEFORE the control
+/// spawns, so the change has passed by the time the control exists; the `Added` trigger
+/// re-reads the CURRENT selection on the spawn frame (the GTW-255 auto-select ordering
+/// trap). Otherwise it early-returns (change-detection hygiene).
 ///
-/// Param-only (`bevy-traps.md` #7): the `Res<SelectedShooter>` read, a read-only
-/// `Query<&FireMode>`, an [`Added<ModePanelRoot>`](Added) spawn detector, the panel-root
-/// `&mut`[`Visibility`] query, and one `&mut`[`Visibility`] query per mode toggle (disjoint
-/// by marker) — no `Commands`, no `&mut World`.
-pub(in crate::scenes::running::game::battlescape) fn rebuild_mode_buttons(
+/// GTW-273 — it also drives the [`ModePanelRoot`]'s [`Visibility`] on EVERY branch: an
+/// armed selection with modes → [`Visibility::Visible`]; unarmed / cleared / no-mode →
+/// [`Visibility::Hidden`], so there is never an empty Mode box. The root is never
+/// despawned — only its visibility (and the segments' display) change.
+///
+/// Param-only (`bevy-traps.md` #7): a `Res<SelectedShooter>` read, a read-only
+/// `Query<&FireMode>`, an [`Added<ModeControl>`](Added) detector, a `Query<&Children>` (to
+/// walk the control's segments for [`set_segment_visible`](gdtf_ui::set_segment_visible)), a
+/// `Query<(&SegmentIndex, &mut Node), With<Segment>>` write, a control-root
+/// `Query<ModeControlChildren, With<ModeControl>>`, and the panel-root `&mut`[`Visibility`]
+/// query — no `Commands`, no `&mut World`.
+#[allow(
+    clippy::type_complexity,
+    reason = "param tuple aliased where possible; the \
+    set_segment_visible call signature fixes the children/segments query shapes"
+)]
+pub(in crate::scenes::running::game::battlescape) fn rebuild_mode_segments(
     selected: Res<SelectedShooter>,
     weapons: Query<&FireMode>,
-    added_panels: Query<(), Added<ModePanelRoot>>,
+    added_controls: Query<(), Added<ModeControl>>,
+    children: Query<&Children>,
+    mut segments: Query<(&SegmentIndex, &mut Node), With<Segment>>,
+    controls: Query<ModeControlChildren, With<ModeControl>>,
     mut panels: Query<&mut Visibility, With<ModePanelRoot>>,
-    mut single: Query<&mut Visibility, SingleToggle>,
-    mut burst: Query<&mut Visibility, BurstToggle>,
-    mut full: Query<&mut Visibility, FullToggle>,
 ) {
-    // Re-read on a real selection change OR when the Mode panel was JUST spawned (the bar's
-    // `OnEnter(BattleRunning)` `spawn_mode_panel`). The battle-start auto-select
-    // (`auto_select_first_player_ganger`) fills `SelectedShooter` several frames BEFORE the
-    // action bar spawns its panel, so the selection-change has already passed by the time
-    // the panel exists — without the `Added` trigger the toggles would never get their
-    // visibility from the CURRENT selection (the GTW-255 auto-select ordering trap).
-    let panel_just_spawned = added_panels.iter().next().is_some();
-    if !selected.is_changed() && !panel_just_spawned {
+    // Re-read on a real selection change OR when the Mode control was JUST spawned (the
+    // GTW-255 auto-select ordering trap — see the doc comment).
+    let control_just_spawned = added_controls.iter().next().is_some();
+    if !selected.is_changed() && !control_just_spawned {
         return;
     }
 
-    // Which modes the SELECTED weapon offers (the closed `ModeKind` set). A cleared / no-
-    // selection / unarmed (no `FireMode`) selection offers nothing → every toggle hidden.
+    // Which modes the SELECTED weapon offers (the closed `ModeKind` set). A cleared /
+    // no-selection / unarmed (no `FireMode`) selection offers nothing → every segment hidden.
     let offered = (**selected).and_then(|shooter| weapons.get(shooter).ok());
     let offers =
         |kind: ModeKind| offered.is_some_and(|weapon| weapon.iter().any(|m| m.kind == kind));
 
-    // MUTATE each fixed toggle's visibility to its offered state — no despawn/respawn.
-    set_visibility(&mut single, offers(ModeKind::Single));
-    set_visibility(&mut burst, offers(ModeKind::Burst));
-    set_visibility(&mut full, offers(ModeKind::Full));
+    // MUTATE each segment's visibility per the offered set — no despawn/respawn. The control
+    // root is `With<ModeControl>`; `set_segment_visible` walks its segment children by index.
+    for (control, _) in &controls {
+        for (index, kind) in MODE_ORDER.iter().enumerate() {
+            set_segment_visible(control, index, offers(*kind), &children, &mut segments);
+        }
+    }
 
-    // GTW-273 — the panel root is VISIBLE only when at least one mode is offered (an armed
-    // selection with modes), HIDDEN otherwise, so there is never an empty Mode box.
-    let any_offered = offers(ModeKind::Single) || offers(ModeKind::Burst) || offers(ModeKind::Full);
+    // GTW-273 — the panel root is VISIBLE only when at least one mode is offered.
+    let any_offered = MODE_ORDER.iter().any(|k| offers(*k));
     let root_want = if any_offered {
         Visibility::Visible
     } else {
@@ -286,105 +298,77 @@ pub(in crate::scenes::running::game::battlescape) fn rebuild_mode_buttons(
     }
 }
 
-/// Sets every [`Visibility`] matched by `query` to [`Visibility::Visible`] when `visible`,
-/// else [`Visibility::Hidden`] — writing only on a real change (change-detection hygiene).
+/// On a Mode segment select, set [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode)
+/// DIRECTLY to that mode's read-back spec off the selected weapon (GTW-265 / GTW-277).
 ///
-/// Shared by [`rebuild_mode_buttons`] across the three fixed mode toggles (GTW-284): the
-/// per-toggle mutate that REPLACED the old despawn/respawn.
-fn set_visibility<F: bevy::ecs::query::QueryFilter>(
-    query: &mut Query<&mut Visibility, F>,
-    visible: bool,
+/// Reads [`SegmentSelected`](gdtf_ui::SegmentSelected) messages (emitted by
+/// `gdtf_ui`'s [`select_segment_on_press`](gdtf_ui::select_segment_on_press) on a real
+/// click), and for each whose control carries the [`ModeControl`] marker, maps the chosen
+/// [`SegmentIndex`](gdtf_ui::SegmentIndex) → [`ModeKind`] ([`MODE_ORDER`]) and looks up the
+/// matching [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) in the selected weapon's
+/// [`FireMode`](gdtf_battle_sim::FireMode) selector, setting [`SelectedFireMode`] to it —
+/// the read-back value, NEVER a fabricated spec. A segment is only ever offered for a mode
+/// the weapon has, so the lookup is total in practice; a missing mode (defensive) is a
+/// no-op. Writes only on a real change (change-detection hygiene).
+///
+/// Param-only (`bevy-traps.md` #7): a [`MessageReader<SegmentSelected>`](MessageReader)
+/// (bevy-traps rule 4), the `ResMut<SelectedFireMode>` write, the `Res<SelectedShooter>`
+/// read, a read-only `Query<&FireMode>`, and a read-only `Query<(), With<ModeControl>>` — no
+/// `&mut World`.
+pub(in crate::scenes::running::game::battlescape) fn mode_segment_write(
+    mut chosen: MessageReader<SegmentSelected>,
+    mut fire_mode: ResMut<SelectedFireMode>,
+    selected: Res<SelectedShooter>,
+    weapons: Query<&FireMode>,
+    mode_controls: Query<(), With<ModeControl>>,
 ) {
-    let want = if visible {
-        Visibility::Visible
-    } else {
-        Visibility::Hidden
-    };
-    for mut visibility in query {
-        if *visibility != want {
-            *visibility = want;
+    for event in chosen.read() {
+        if mode_controls.get(event.control).is_err() {
+            continue;
+        }
+        let Some(kind) = mode_for_index(*event.index) else {
+            continue;
+        };
+        // Read the selected weapon's spec for that kind — never a fabricated value.
+        let Some(spec) = mode_spec_for(*selected, &weapons, kind) else {
+            continue;
+        };
+        let next = SelectedFireMode::new(spec);
+        if *fire_mode != next {
+            *fire_mode = next;
         }
     }
 }
 
-/// On a Mode toggle press, set [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode)
-/// DIRECTLY to that mode's read-back spec off the selected weapon (GTW-265).
+/// Drives the Mode control's active SEGMENT from the live
+/// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) (GTW-265 / GTW-277).
 ///
-/// For each pressed toggle ([`ModeSingleButton`] / [`ModeBurstButton`] /
-/// [`ModeFullButton`]), it looks up the matching [`FireModeSpec`](gdtf_battle_sim::FireModeSpec)
-/// in the selected weapon's [`FireMode`](gdtf_battle_sim::FireMode) selector and sets
-/// [`SelectedFireMode`] to it — the read-back value, NEVER a fabricated spec. A toggle was
-/// spawned only for a mode the weapon offers, so the lookup is total in practice; a
-/// missing mode (defensive) is a no-op. Writes only on a real change (change-detection
-/// hygiene). The three press queries are disjoint per marker, so they never conflict.
+/// Sets the control root's [`ActiveSegment`](gdtf_ui::ActiveSegment) to the index of the
+/// selected mode's [`ModeKind`](gdtf_battle_sim::ModeKind) ([`MODE_ORDER`]). Writing it via
+/// [`set_if_neq`](bevy::prelude::DetectChangesMut::set_if_neq) marks it changed only on a
+/// real change — exactly the signal `gdtf_ui`'s
+/// [`repaint_segments`](gdtf_ui::repaint_segments) keys off, so the active segment repaints
+/// (filled + bold) and the de-selected one returns to base the same frame (the color-blind-
+/// safe active mark). No despawn/respawn — pure index write ([[ui-mutate-not-respawn]]).
 ///
-/// Param-only (`bevy-traps.md` #7): the `ResMut<SelectedFireMode>` write, the
-/// `Res<SelectedShooter>` read, a read-only `Query<&FireMode>`, and three read-only
-/// per-marker press queries — no `&mut World`.
-pub(in crate::scenes::running::game::battlescape) fn mode_button_pressed(
-    mut fire_mode: ResMut<SelectedFireMode>,
-    selected: Res<SelectedShooter>,
-    weapons: Query<&FireMode>,
-    single: Query<&Interaction, PressedButton<ModeSingleButton>>,
-    burst: Query<&Interaction, PressedButton<ModeBurstButton>>,
-    full: Query<&Interaction, PressedButton<ModeFullButton>>,
-) {
-    // Which mode (if any) was pressed this frame. The toggles are disjoint, so at most one
-    // matches per frame in practice; the first match wins.
-    let pressed: Option<ModeKind> = if single.iter().copied().any(is_press) {
-        Some(ModeKind::Single)
-    } else if burst.iter().copied().any(is_press) {
-        Some(ModeKind::Burst)
-    } else if full.iter().copied().any(is_press) {
-        Some(ModeKind::Full)
-    } else {
-        None
-    };
-    let Some(kind) = pressed else {
-        return;
-    };
-    // Read the selected weapon's spec for that kind — never a fabricated value.
-    let Some(spec) = mode_spec_for(*selected, &weapons, kind) else {
-        return;
-    };
-    let next = SelectedFireMode::new(spec);
-    if *fire_mode != next {
-        *fire_mode = next;
-    }
-}
-
-/// Drives the three Mode toggles' active (toggled-on) look from the live
-/// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) (GTW-265).
-///
-/// Marks exactly the toggle whose [`ModeKind`](gdtf_battle_sim::ModeKind) equals the
-/// selected mode's kind [`ActiveButton`](gdtf_ui::ActiveButton) and removes it from the
-/// other two, so the current mode reads as toggled-on (the GTW-266 sticky paint). Insert /
-/// remove are idempotent, so it runs every frame. Mirrors
-/// [`sync_stance_buttons_active`](super::stance_active::sync_stance_buttons_active).
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the insert/remove, the
-/// `Res<SelectedFireMode>` read, and one `Query<Entity, With<…>>` per mode toggle — no
-/// `&mut World`.
-pub(in crate::scenes::running::game::battlescape) fn sync_mode_buttons_active(
-    mut commands: Commands,
+/// Param-only (`bevy-traps.md` #7): the `Res<SelectedFireMode>` read and a
+/// `Query<&mut ActiveSegment, With<ModeControl>>` write — no `&mut World`.
+pub(in crate::scenes::running::game::battlescape) fn sync_mode_active_segment(
     fire_mode: Res<SelectedFireMode>,
-    single_buttons: Query<Entity, With<ModeSingleButton>>,
-    burst_buttons: Query<Entity, With<ModeBurstButton>>,
-    full_buttons: Query<Entity, With<ModeFullButton>>,
+    mut controls: Query<&mut ActiveSegment, (With<ModeControl>, With<SegmentedControl>)>,
 ) {
-    let active = fire_mode.kind;
-    set_active(&mut commands, &single_buttons, active == ModeKind::Single);
-    set_active(&mut commands, &burst_buttons, active == ModeKind::Burst);
-    set_active(&mut commands, &full_buttons, active == ModeKind::Full);
+    let want = ActiveSegment::new(mode_index(fire_mode.kind));
+    for mut active in &mut controls {
+        active.set_if_neq(want);
+    }
 }
 
 /// The selected weapon's [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) for `kind`, read
 /// back off its [`FireMode`](gdtf_battle_sim::FireMode) selector — or [`None`] when there
 /// is no selection, the selection is unarmed, or the weapon does not offer `kind`.
 ///
-/// The single read-back point so [`mode_button_pressed`] never fabricates a spec (the
-/// GTW-265 "read-back, never fabricated" rule). Read-only over the selection + weapon
-/// query.
+/// The single read-back point so [`mode_segment_write`] never fabricates a spec (the
+/// GTW-265 "read-back, never fabricated" rule). Read-only over the selection + weapon query.
 fn mode_spec_for(
     selected: SelectedShooter,
     weapons: &Query<&FireMode>,
@@ -393,24 +377,4 @@ fn mode_spec_for(
     let shooter = (*selected)?;
     let weapon = weapons.get(shooter).ok()?;
     weapon.iter().find(|spec| spec.kind == kind).copied()
-}
-
-/// Inserts or removes [`ActiveButton`](gdtf_ui::ActiveButton) on every button matched by
-/// `buttons`, by whether that toggle is the `active` one this frame.
-///
-/// Shared by [`sync_mode_buttons_active`] across the three mode toggles (the stance-panel
-/// `set_active` shape).
-fn set_active<M: Component>(
-    commands: &mut Commands,
-    buttons: &Query<Entity, With<M>>,
-    active: bool,
-) {
-    for button in buttons {
-        let mut entity = commands.entity(button);
-        if active {
-            entity.insert(ActiveButton);
-        } else {
-            entity.remove::<ActiveButton>();
-        }
-    }
 }
