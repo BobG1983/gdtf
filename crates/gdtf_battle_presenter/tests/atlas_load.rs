@@ -122,3 +122,9 @@ fn topdown_renderer_builds_the_sheet_atlases_including_32px_portraits() {
         "terrain tiles must stay 16×16 px",
     );
 }
+
+// NOTE (GTW-295): the PORTRAITS nearest-sampler decision is pinned by a unit test in
+// `crate::topdown::test` (`SheetRole::sampler_override`), NOT here — the headless `no_renderer`
+// config never finishes DECODING the image into `Assets<Image>` (the load state stays
+// `Loading` without a render device), so the loaded image's sampler is unreachable from an
+// integration test. The visual (no white fringe) is in-engine QA.

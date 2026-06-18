@@ -50,8 +50,9 @@ crate::support_item! {
 }
 
 crate::support_item! {
-    /// Marks the object block's **name/hardness** `Text` (e.g. "Cover · Hardness 3").
-    /// Widened to `pub` under `test-support` for the hover integration test.
+    /// Marks the object block's **title** `Text` (e.g. "Cover") — the object kind heading
+    /// (GTW-295 AC3, the analogue of the ganger block's name title). Widened to `pub` under
+    /// `test-support` for the hover integration test.
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -65,4 +66,41 @@ crate::support_item! {
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct HoverObjectBar;
+}
+
+/// Marks the object block's **Integrity** label `Text` — the static "Integrity" caption
+/// beside the integrity bar (GTW-295 AC3 — the bar reads bare without it).
+///
+/// Crate-internal only (the static label is set once at spawn and never asserted by a test,
+/// so it is NOT widened to `pub` via `support_item!`). A unit marker: presence on an entity is
+/// the whole signal (no-bare-types rule).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub(in crate::scenes::running::game::battlescape::hover_panel) struct HoverObjectIntegrity;
+
+crate::support_item! {
+    /// Marks the object block's **Hardness** `Text` line (e.g. "Hardness 3") — the cover's
+    /// `armor_hardness` from its [`CoverEntry`](gdtf_battle_sim::CoverEntry), mutated in place
+    /// (GTW-295 AC3). Widened to `pub` under `test-support` for the hover integration test. A
+    /// unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct HoverObjectHardness;
+}
+
+crate::support_item! {
+    /// Marks the object block's **Protection** `Text` line (e.g. "Protection 2") — the
+    /// cover's `armor_protection` from its [`CoverEntry`](gdtf_battle_sim::CoverEntry),
+    /// mutated in place (GTW-295 AC3). Widened to `pub` under `test-support` for the hover
+    /// integration test. A unit marker: presence on an entity is the whole signal
+    /// (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct HoverObjectProtection;
+}
+
+crate::support_item! {
+    /// Marks the object block's **Height band** `Text` line (e.g. "Height: High") — the
+    /// cover's `height_band` from its [`CoverEntry`](gdtf_battle_sim::CoverEntry), mutated in
+    /// place (GTW-295 AC3). Widened to `pub` under `test-support` for the hover integration
+    /// test. A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct HoverObjectHeight;
 }

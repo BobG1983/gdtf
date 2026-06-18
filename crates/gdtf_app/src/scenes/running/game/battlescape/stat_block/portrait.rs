@@ -34,12 +34,16 @@ use gdtf_battle_sim::GangerName;
 /// presenter's `(10, 10)` grid for this sheet.
 const PORTRAIT_COUNT: usize = 100;
 
-/// The on-screen edge of the portrait node, in logical pixels.
+/// The on-screen edge of the portrait node, as a fraction of the WINDOW HEIGHT
+/// ([`Val::Vh`](bevy::ui::Val) — GTW-295 responsive ruling).
 ///
 /// A `const`, NOT a domain newtype — layout plumbing fed straight to a [`Node`]'s
-/// `width`/`height` (the `CELL_PX`-class carve-out). 56 px sits in the mockup's
-/// "portrait-sized" 48–64 band, a square face above the vitals.
-const PORTRAIT_PX: f32 = 56.0;
+/// `width`/`height` (the `CELL_PX`-class carve-out). Used for BOTH the width and the
+/// height so the face stays SQUARE while scaling with the window (a `vh` on each edge keeps
+/// the same window-relative edge length both ways). `8` vh sits in the mockup's
+/// "portrait-sized" band, a square face above the vitals — and replaces the old fixed
+/// 56-px size so the portrait scales instead of staying pinned at one resolution.
+const PORTRAIT_VH: f32 = 8.0;
 
 /// A deterministic index into the portrait atlas (`0..`[`PORTRAIT_COUNT`]).
 ///
@@ -93,10 +97,11 @@ pub fn portrait_index_for_name(name: Option<&GangerName>) -> usize {
 }
 
 /// Builds the portrait `bevy_ui` [`ImageNode`](bevy::ui::widget::ImageNode) atlas-variant
-/// bundle for `image` + `layout` at `index`, sized [`PORTRAIT_PX`] square.
+/// bundle for `image` + `layout` at `index`, sized [`PORTRAIT_VH`] square.
 ///
 /// The portrait is a UI node (NOT a world `Sprite` — the wrong layer for a panel): a
-/// fixed-size square [`Node`] carrying an [`ImageNode`] built via
+/// window-relative square [`Node`] (both edges [`PORTRAIT_VH`] vh, so it scales with the
+/// window yet stays square — GTW-295 responsive ruling) carrying an [`ImageNode`] built via
 /// [`ImageNode::from_atlas_image`] over the portraits sheet at the given atlas `index`.
 /// The caller's identity marker is attached alongside. The update mutates the node's
 /// [`TextureAtlas::index`] in place ([[ui-mutate-not-respawn]]).
@@ -115,8 +120,8 @@ pub(in crate::scenes::running::game::battlescape) fn portrait_node(
             },
         ),
         Node {
-            width: Val::Px(PORTRAIT_PX),
-            height: Val::Px(PORTRAIT_PX),
+            width: Val::Vh(PORTRAIT_VH),
+            height: Val::Vh(PORTRAIT_VH),
             ..default()
         },
         marker,

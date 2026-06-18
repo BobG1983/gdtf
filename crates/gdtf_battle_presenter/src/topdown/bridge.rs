@@ -1,7 +1,11 @@
 //! The px/coordinate bridge definitions: [`CELL_PX`], the [`cell_to_world`] projection,
 //! the role-keyed atlas resource, and the atlas-load system.
 
-use bevy::{image::TextureAtlasLayout, platform::collections::HashMap, prelude::*};
+use bevy::{
+    image::{ImageLoaderSettings, ImageSampler, TextureAtlasLayout},
+    platform::collections::HashMap,
+    prelude::*,
+};
 use gdtf_battle_sim::{Cell, Level};
 
 /// On-screen size of one cell, in world units.
@@ -198,6 +202,28 @@ impl SheetRole {
             Self::Portraits => 32,
         }
     }
+
+    /// This sheet's per-asset texture SAMPLER override, or [`None`] to keep the asset
+    /// server's default (GTW-295).
+    ///
+    /// The render sheets ([`Terrain`](SheetRole::Terrain) /
+    /// [`Characters`](SheetRole::Characters) / [`Effects`](SheetRole::Effects)) draw as world
+    /// sprites at ~1:1 source-to-screen and do not bleed, so they keep the default sampler
+    /// ([`None`]). The [`Portraits`](SheetRole::Portraits) sheet is upscaled into a `bevy_ui`
+    /// portrait node much larger than its 32-px faces; the default LINEAR sampler bilinearly
+    /// blends the transparent-white (255,255,255,0) rows inset at the top of each face into a
+    /// whitish fringe — so it overrides to [`ImageSampler::nearest`] (point sampling, no
+    /// interpolation across those rows). [`load_topdown_atlases`] feeds this into
+    /// [`load_with_settings`](AssetServer::load_with_settings); `pub(super)` so the sibling
+    /// `topdown::test` module can pin the per-sheet decision without an app harness (the loaded
+    /// image's sampler is unreachable in the headless `no_renderer` config — the image asset
+    /// never finishes decoding without a render device).
+    pub(super) fn sampler_override(self) -> Option<ImageSampler> {
+        match self {
+            Self::Portraits => Some(ImageSampler::nearest()),
+            Self::Terrain | Self::Characters | Self::Effects => None,
+        }
+    }
 }
 
 /// One render sheet's loaded handles: its image plus the atlas layout over it.
@@ -267,11 +293,31 @@ pub fn load_topdown_atlases(
         sheets.insert(
             role,
             SheetAtlas {
-                image:  asset_server.load(role.asset_path()),
+                image:  load_sheet_image(&asset_server, role),
                 layout: layouts.add(layout),
             },
         );
     }
 
     commands.insert_resource(TopDownAtlases { sheets });
+}
+
+/// Loads `role`'s sheet image, choosing the texture sampler per role (GTW-295).
+///
+/// The per-role sampler DECISION is [`role.sampler_override()`](SheetRole::sampler_override):
+/// the render sheets keep the asset server's DEFAULT sampler ([`None`]), and the
+/// [`Portraits`](SheetRole::Portraits) sheet overrides it to NEAREST so its upscale into the
+/// HUD portrait node point-samples instead of bilinearly blending the tiles' transparent-white
+/// top rows into a whitish fringe (the GTW-295 white-line fix). `from_grid` stays the
+/// geometrically-correct atlas carving; only the SAMPLER changes.
+fn load_sheet_image(asset_server: &AssetServer, role: SheetRole) -> Handle<Image> {
+    match role.sampler_override() {
+        Some(sampler) => asset_server.load_with_settings(
+            role.asset_path(),
+            move |settings: &mut ImageLoaderSettings| {
+                settings.sampler = sampler.clone();
+            },
+        ),
+        None => asset_server.load(role.asset_path()),
+    }
 }

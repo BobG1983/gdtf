@@ -13,7 +13,7 @@
 //! witness, `bevy-traps.md` #1), `.after(InputSystems::Gather)` (so it observes the same
 //! update's auto-select write to `SelectedShooter`, the status-panel ordering precedent).
 
-use bevy::prelude::*;
+use bevy::{prelude::*, ui::Display};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{Magazine, WeaponName};
 
@@ -72,8 +72,9 @@ type ReloadFilter = (
 /// transparent system-param bundle of framework queries — not itself a wrapped domain scalar.
 #[derive(bevy::ecs::system::SystemParam)]
 pub(in crate::scenes::running::game::battlescape::weapon_panel) struct WeaponWidgets<'w, 's> {
-    /// The content column's visibility — revealed when a weapon is selected, else hidden.
-    content:  Query<'w, 's, &'static mut Visibility, ContentFilter>,
+    /// The content column's visibility + layout `Node` — revealed when a weapon is selected,
+    /// else HIDDEN via `Display::None` (removed from layout, GTW-295) AND `Visibility::Hidden`.
+    content:  Query<'w, 's, (&'static mut Visibility, &'static mut Node), ContentFilter>,
     /// The weapon-name text line.
     name:     Query<'w, 's, &'static mut Text, NameFilter>,
     /// The magazine `"cur/max"` text line + its visibility (shown only with `size > 0`).
@@ -100,6 +101,19 @@ fn set_visible(visibility: &mut Visibility, visible: bool) {
     };
     if *visibility != want {
         *visibility = want;
+    }
+}
+
+/// Show / hide the content column by BOTH its layout [`Display`] and its [`Visibility`]
+/// (GTW-295): when hidden the column is [`Display::None`] (removed from layout, so it takes
+/// NO space — the AC2 mechanism) AND [`Visibility::Hidden`] (the existing GTW-275 contract);
+/// when shown it is [`Display::Flex`] + [`Visibility::Inherited`]. Each write is gated on a
+/// real change ([[ui-mutate-not-respawn]]).
+fn set_content_shown(visibility: &mut Visibility, node: &mut Node, shown: bool) {
+    set_visible(visibility, shown);
+    let want = if shown { Display::Flex } else { Display::None };
+    if node.display != want {
+        node.display = want;
     }
 }
 
@@ -143,9 +157,10 @@ pub(in crate::scenes::running::game::battlescape) fn update_weapon_panel(
         None => (false, String::new(), String::new(), false),
     };
 
-    // The content column: shown only when a weapon is selected (AC9).
-    if let Ok(mut visibility) = widgets.content.single_mut() {
-        set_visible(&mut visibility, has_weapon);
+    // The content column: shown only when a weapon is selected (AC9). Hidden via
+    // `Display::None` (no layout space) + `Visibility::Hidden` (GTW-295 / GTW-275).
+    if let Ok((mut visibility, mut node)) = widgets.content.single_mut() {
+        set_content_shown(&mut visibility, &mut node, has_weapon);
     }
 
     // The weapon name text (mutated in place; blank when unarmed).

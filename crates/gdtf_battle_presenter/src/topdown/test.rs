@@ -1,5 +1,6 @@
 //! Unit tests for the top-down renderer px/coordinate bridge.
 
+use bevy::image::ImageSampler;
 use gdtf_battle_sim::{Cell, Level};
 
 use super::bridge::{
@@ -78,6 +79,43 @@ fn portraits_use_a_32px_tile_while_render_sheets_stay_16px() {
         SheetRole::Portraits.grid(),
         (10, 10),
         "the portrait sheet is a 10×10 grid (100 faces, indices 0..=99)",
+    );
+}
+
+/// GTW-295 — the PORTRAITS sheet overrides its sampler to NEAREST (so its HUD upscale point-
+/// samples and does not bilinearly blend the tiles' transparent-white top rows into a fringe),
+/// while the render sheets keep the DEFAULT sampler (`None`).
+///
+/// Pins the per-sheet sampler DECISION on the real code path `load_topdown_atlases` takes
+/// (`SheetRole::sampler_override`), without an app — the loaded image's sampler is unreachable
+/// headlessly (the image asset never finishes decoding without a render device). A revert to a
+/// plain default load for Portraits makes its override `None` and fails this assert.
+#[test]
+fn portraits_override_to_nearest_sampler_render_sheets_keep_default() {
+    // The portrait sheet overrides specifically to the NEAREST sampler (ImageSampler derives
+    // PartialEq, so this pins the exact descriptor — not merely "some override").
+    assert_eq!(
+        SheetRole::Portraits.sampler_override(),
+        Some(ImageSampler::nearest()),
+        "the portraits sheet must override to the NEAREST sampler (the white-line fix)",
+    );
+
+    // The render sheets keep the DEFAULT sampler (no override) — they draw ~1:1 and do not
+    // bleed, so the nearest override is Portraits-only.
+    assert_eq!(
+        SheetRole::Terrain.sampler_override(),
+        None,
+        "the terrain sheet keeps the default sampler (no override)",
+    );
+    assert_eq!(
+        SheetRole::Characters.sampler_override(),
+        None,
+        "the characters sheet keeps the default sampler (no override)",
+    );
+    assert_eq!(
+        SheetRole::Effects.sampler_override(),
+        None,
+        "the effects sheet keeps the default sampler (no override)",
     );
 }
 

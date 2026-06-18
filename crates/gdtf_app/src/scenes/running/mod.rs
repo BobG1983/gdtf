@@ -36,7 +36,8 @@ crate::support_use! {
 #[cfg(feature = "test-support")]
 crate::support_use! {
     game::{
-        HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverPanelRoot, HoverStatBlockHost, StatFaction,
+        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
+        HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost, StatFaction,
         StatHpBar, StatName, StatPortrait, StatStance, StatTuBar, StatWoundLine, StatWoundList,
         StatWoundsPips, portrait_index_for_name,
     };

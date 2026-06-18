@@ -62,7 +62,8 @@ pub(in crate::scenes::running::game::battlescape) use hover_panel::GameBattleSca
 #[cfg(feature = "test-support")]
 crate::support_use! {
     hover_panel::{
-        HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
+        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
+        HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
     };
 }
 

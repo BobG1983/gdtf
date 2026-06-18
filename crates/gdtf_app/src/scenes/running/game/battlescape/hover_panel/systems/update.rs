@@ -8,25 +8,29 @@
 //! - a hovered GANGER → show the shared stat block (the host) for it (with its NAME line
 //!   color tinted by the ganger's `Faction` — enemy red-ish, player the normal theme),
 //!   hide the object block;
-//! - a hovered non-floor OBJECT (wall / cover) → show the object block (hardness + integrity),
-//!   hide the stat block;
+//! - a hovered non-floor OBJECT (wall / cover) → show the OBJECT stat block (title + a labeled
+//!   Integrity bar + labeled Hardness / Protection / Height-band lines, GTW-295), hide the
+//!   ganger stat block;
 //! - bare floor / nothing → hide the whole panel.
 //!
-//! Every change is a mutate of the existing widgets ([[ui-mutate-not-respawn]]); the system
-//! never writes the sim. It runs in `Update` gated `run_if(resource_exists::<BattleInProgress>)`
-//! (`bevy-traps.md` #1), `.after(InputSystems::Gather)` so it observes the same update's hover
-//! pick.
+//! The panel ROOT is hidden by `Visibility`; the two SUB-BLOCKS by `Node.display` (`None`
+//! removes a hidden block from layout, so the panel sizes to the visible block only — GTW-295
+//! fixes the cover-hover balloon). Every change is a mutate of the existing widgets
+//! ([[ui-mutate-not-respawn]]); the system never writes the sim. It runs in `Update` gated
+//! `run_if(resource_exists::<BattleInProgress>)` (`bevy-traps.md` #1), `.after(InputSystems::Gather)`
+//! so it observes the same update's hover pick.
 
-use bevy::{prelude::*, text::TextColor as UiTextColor};
+use bevy::{prelude::*, text::TextColor as UiTextColor, ui::Display};
 use gdtf_battle_input::HoveredCell;
 use gdtf_battle_sim::{
-    CoverEntry, CoverLedger, Faction, OccupancyGrid, PlayerFaction, TerrainKind,
+    CoverEntry, CoverLedger, Faction, HeightBand, OccupancyGrid, PlayerFaction, TerrainKind,
 };
-use gdtf_ui::{FillFraction, set_progress_bar, theme::GdtfTheme};
+use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar, theme::GdtfTheme};
 
 use crate::scenes::running::game::battlescape::{
     hover_panel::components::{
-        HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
+        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
+        HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
     },
     stat_block::{
         StatBlockData, StatBlockRefs, StatBlockWidgets, clear_stat_block, update_stat_block,
@@ -52,14 +56,24 @@ const ENEMY_TINT: Color = Color::srgb(0.86, 0.26, 0.22);
 pub(in crate::scenes::running::game::battlescape) struct HoverNodes<'w, 's> {
     /// The panel root (whole-panel visibility toggle).
     pub root:         Query<'w, 's, Entity, With<HoverPanelRoot>>,
-    /// The shared stat-block host (the ganger sub-block visibility toggle).
+    /// The shared stat-block host (the ganger sub-block show/hide target).
     pub host:         Query<'w, 's, Entity, With<HoverStatBlockHost>>,
-    /// The object block container (the object sub-block visibility toggle).
+    /// The object block container (the object sub-block show/hide target).
     pub object_block: Query<'w, 's, Entity, With<HoverObjectBlock>>,
-    /// The object block's name/hardness `Text`.
-    pub object_text:  Query<'w, 's, Entity, With<HoverObjectText>>,
+    /// The object block's **title** `Text` (object kind heading).
+    pub object_title: Query<'w, 's, Entity, With<HoverObjectText>>,
+    /// The object block's **Hardness** `Text` line.
+    pub hardness:     Query<'w, 's, Entity, With<HoverObjectHardness>>,
+    /// The object block's **Protection** `Text` line.
+    pub protection:   Query<'w, 's, Entity, With<HoverObjectProtection>>,
+    /// The object block's **Height band** `Text` line.
+    pub height:       Query<'w, 's, Entity, With<HoverObjectHeight>>,
     /// The object block's integrity `ProgressBar` track.
     pub object_bar:   Query<'w, 's, Entity, With<HoverObjectBar>>,
+    /// The sub-blocks' layout `Node` writer — drives `Display::Flex` / `Display::None` so a
+    /// hidden sub-block is REMOVED from layout (GTW-295). Filtered `Without<ProgressBarFill>`
+    /// so it stays disjoint from the [`StatBlockWidgets`] `fills` `&mut Node` writer.
+    pub display:      Query<'w, 's, &'static mut Node, Without<ProgressBarFill>>,
 }
 
 /// The sim-resource reads the hover panel resolves its hovered cell against.
@@ -111,7 +125,7 @@ pub(in crate::scenes::running::game::battlescape) fn update_hover_panel(
     blocks: Query<&StatBlockRefs, With<HoverStatBlockHost>>,
     data: Query<StatBlockData>,
     mut widgets: StatBlockWidgets,
-    nodes: HoverNodes,
+    mut nodes: HoverNodes,
     mut tint: FactionTint,
 ) {
     let Ok(&refs) = blocks.single() else {
@@ -119,19 +133,22 @@ pub(in crate::scenes::running::game::battlescape) fn update_hover_panel(
     };
 
     // What is under the cursor: a ganger entity, a non-floor object's cover entry, or
-    // bare floor / nothing. Each branch toggles the panel + sub-blocks (mutate-in-place).
+    // bare floor / nothing. Each branch toggles the panel + sub-blocks (mutate-in-place):
+    // the panel ROOT by `Visibility`, the two SUB-BLOCKS by `Display` (None removes a hidden
+    // block from layout, so the panel sizes to the visible block only — GTW-295).
     let cell = **reads.hovered;
     let occupant = cell.and_then(|c| reads.grid.as_deref().and_then(|g| g.occupant(&c)));
+
+    // Resolve the two sub-block entities up front (immutable Entity reads) so the per-branch
+    // `Display` writes do not re-borrow `nodes` while a marker query is still borrowed.
+    let host = nodes.host.iter().next();
+    let object_block = nodes.object_block.iter().next();
 
     if let Some(ganger) = occupant.and_then(|e| data.get(e).ok()) {
         // A hovered GANGER → show the panel + the ganger sub-block, hide the object block.
         toggle(&mut widgets.visibility, &nodes.root, Visibility::Inherited);
-        toggle(&mut widgets.visibility, &nodes.host, Visibility::Inherited);
-        toggle(
-            &mut widgets.visibility,
-            &nodes.object_block,
-            Visibility::Hidden,
-        );
+        set_display(&mut nodes.display, host, Display::Flex);
+        set_display(&mut nodes.display, object_block, Display::None);
         // AC2 faction tint: recolor the name line — enemy red-ish, player the normal theme.
         tint_name(refs.name, *ganger.faction, &mut tint);
         update_stat_block(refs, &ganger, &mut widgets);
@@ -143,12 +160,8 @@ pub(in crate::scenes::running::game::battlescape) fn update_hover_panel(
     {
         // A hovered non-floor OBJECT → show the panel + the object block, hide the ganger block.
         toggle(&mut widgets.visibility, &nodes.root, Visibility::Inherited);
-        toggle(&mut widgets.visibility, &nodes.host, Visibility::Hidden);
-        toggle(
-            &mut widgets.visibility,
-            &nodes.object_block,
-            Visibility::Inherited,
-        );
+        set_display(&mut nodes.display, host, Display::None);
+        set_display(&mut nodes.display, object_block, Display::Flex);
         // Clear the ganger block so it carries no stale data while hidden.
         clear_stat_block(refs, &mut widgets);
         fill_object_block(&mut widgets, &nodes, entry);
@@ -157,6 +170,25 @@ pub(in crate::scenes::running::game::battlescape) fn update_hover_panel(
 
     // Bare floor / nothing hovered → hide the whole panel.
     toggle(&mut widgets.visibility, &nodes.root, Visibility::Hidden);
+}
+
+/// Sets the [`Node::display`] of `entity` (if present) to `want` via the `display` writer
+/// (GTW-295: a hidden sub-block is `Display::None`, removed from layout so the panel sizes to
+/// the visible block only).
+///
+/// Writes only when the display differs (change-detection hygiene); a missing entity / node is
+/// a graceful no-op.
+fn set_display(
+    display: &mut Query<&mut Node, Without<ProgressBarFill>>,
+    entity: Option<Entity>,
+    want: Display,
+) {
+    if let Some(entity) = entity
+        && let Ok(mut node) = display.get_mut(entity)
+        && node.display != want
+    {
+        node.display = want;
+    }
 }
 
 /// Tints the name line `Entity`'s [`TextColor`](bevy::text::TextColor) by `faction` (AC2):
@@ -213,21 +245,61 @@ fn object_entry(
     })
 }
 
-/// Fills the object block's name/hardness `Text` + integrity `ProgressBar` from a
-/// [`CoverEntry`] — mutate-in-place ([[ui-mutate-not-respawn]]).
+/// Fills the object block from a hovered [`CoverEntry`] (GTW-295 AC3) — a readable object
+/// stat block comparable to the ganger block, mutate-in-place ([[ui-mutate-not-respawn]]):
+///
+/// - the TITLE line ([`HoverObjectText`]) → `"Cover"` (the object kind);
+/// - the Integrity [`ProgressBar`] ([`HoverObjectBar`]) → `current_hp / max_hp`;
+/// - the Hardness line ([`HoverObjectHardness`]) → `"Hardness {armor_hardness}"`;
+/// - the Protection line ([`HoverObjectProtection`]) → `"Protection {armor_protection}"`;
+/// - the Height-band line ([`HoverObjectHeight`]) → `"Height: {height_band}"`.
+///
+/// Each `Text` write is gated on a real change; the static "Integrity" label is spawned once
+/// and never rewritten.
 fn fill_object_block(widgets: &mut StatBlockWidgets, nodes: &HoverNodes, entry: CoverEntry) {
-    if let Some(text) = nodes.object_text.iter().next() {
-        let label = format!("Cover · Hardness {}", *entry.armor_hardness);
-        if let Ok(mut t) = widgets.texts.get_mut(text)
-            && t.as_str() != label
-        {
-            label.clone_into(&mut t.0);
-        }
-    }
+    set_line(widgets, nodes.object_title.iter().next(), "Cover");
+    set_line(
+        widgets,
+        nodes.hardness.iter().next(),
+        &format!("Hardness {}", *entry.armor_hardness),
+    );
+    set_line(
+        widgets,
+        nodes.protection.iter().next(),
+        &format!("Protection {}", *entry.armor_protection),
+    );
+    set_line(
+        widgets,
+        nodes.height.iter().next(),
+        &format!("Height: {}", height_label(entry.height_band)),
+    );
     if let Some(bar) = nodes.object_bar.iter().next() {
         let fraction =
             FillFraction::from_ratio(hp_as_f32(*entry.current_hp), hp_as_f32(*entry.max_hp));
         set_progress_bar(bar, fraction, &widgets.children, &mut widgets.fills);
+    }
+}
+
+/// Writes `value` into the `Text` of `entity` (if present) via the stat-block `texts` writer,
+/// mutate-in-place and gated on a real change ([[ui-mutate-not-respawn]]).
+fn set_line(widgets: &mut StatBlockWidgets, entity: Option<Entity>, value: &str) {
+    if let Some(entity) = entity
+        && let Ok(mut text) = widgets.texts.get_mut(entity)
+        && text.as_str() != value
+    {
+        value.clone_into(&mut text.0);
+    }
+}
+
+/// The display label for a cover's [`HeightBand`] (the LOW / MID / HIGH clearance band).
+///
+/// [`HeightBand`] has no `Display`, so the hover block names it directly here (a small,
+/// fixed enum — no domain logic, just the on-screen caption).
+const fn height_label(band: HeightBand) -> &'static str {
+    match band {
+        HeightBand::Low => "Low",
+        HeightBand::Mid => "Mid",
+        HeightBand::High => "High",
     }
 }
 

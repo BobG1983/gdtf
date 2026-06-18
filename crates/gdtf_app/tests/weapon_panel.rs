@@ -12,8 +12,16 @@
 //!   through the `gdtf_battle_input` seam.
 //! - **AC9** — no selection / no weapon → the weapon content is `Visibility::Hidden`.
 //! - **AC8** — the action-bar no longer carries a Reload button (the removed marker is gone).
+//! - **GTW-295** — the content is CONTAINED + RESPONSIVE: the content carries a responsive
+//!   `min_height` (a `Val::Vh`/`Val::Percent`, NOT a fixed `Val::Px`), and the empty-state
+//!   hide uses `Display::None` (removed from layout) so a hidden weapon block takes no space.
 
-use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::widget::Button};
+use bevy::{
+    ecs::entity::Entity,
+    prelude::*,
+    state::state::State,
+    ui::{Display, widget::Button},
+};
 use gdtf_app::test_support::{
     AppState, BattleScapeState, ReloadButton, RunningState, WeaponContent, WeaponMagazineText,
     WeaponNameText, WeaponPanelRoot,
@@ -402,5 +410,137 @@ fn weapon_panel_exists_and_is_the_only_reload_button() {
         reloads.len(),
         1,
         "exactly one Reload button exists (the weapon panel's LIVE button)",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-295 — the weapon content is CONTAINED + RESPONSIVE, and the empty-state hide uses
+// Display::None (removed from layout) — not just Visibility::Hidden.
+// ---------------------------------------------------------------------------------
+
+/// The content column's [`Node`], if present.
+fn content_node(app: &mut App) -> Option<Node> {
+    let entity = single_with::<WeaponContent>(app)?;
+    app.world().get::<Node>(entity).cloned()
+}
+
+/// GTW-295 — the weapon content carries a RESPONSIVE `min_height` (a window-relative
+/// `Val::Vh` / `Val::Percent`, NOT a fixed `Val::Px`), so the panel contains its content and
+/// scales with the window instead of being pinned at one resolution. Pin-discriminating: a
+/// revert to a fixed `Val::Px` height (or no `min_height`) fails the unit-kind assert.
+#[test]
+fn weapon_content_has_responsive_min_height_not_px() {
+    let mut app = battle_running_app();
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    app.update();
+
+    let node = content_node(&mut app);
+    assert!(node.is_some(), "the weapon content column must exist");
+    let Some(node) = node else { return };
+    assert!(
+        matches!(node.min_height, Val::Vh(_) | Val::Percent(_)),
+        "the weapon content min_height must be responsive (Vh/Percent), not Px — got {:?}",
+        node.min_height,
+    );
+    // And it must be a NON-zero floor (the actual containment — a zero would not contain).
+    let floor = match node.min_height {
+        Val::Vh(v) | Val::Percent(v) => v,
+        _ => 0.0,
+    };
+    assert!(
+        floor > 0.0,
+        "the responsive min_height must be a non-zero floor (got {floor})",
+    );
+}
+
+/// GTW-295 — the weapon content is laid out HORIZONTAL-FIRST per the mockup: the top-level
+/// content column is a `FlexDirection::Column`, and the name / magazine / reload markers all
+/// live under the content root. Pin-discriminating: it asserts the structure exists and the
+/// content is a column (the mockup shape), not the old square-graphic stack.
+#[test]
+fn weapon_content_structure_is_contained_under_the_root() {
+    let mut app = battle_running_app();
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    app.update();
+
+    let node = content_node(&mut app);
+    assert!(node.is_some(), "the weapon content column must exist");
+    let Some(node) = node else { return };
+    assert_eq!(
+        node.flex_direction,
+        FlexDirection::Column,
+        "the content is a vertical column (graphic row above the info column)",
+    );
+
+    // The name / magazine / reload widgets exist (the info column under the content).
+    assert!(
+        single_with::<WeaponNameText>(&mut app).is_some(),
+        "the content carries the weapon name line",
+    );
+    assert!(
+        single_with::<WeaponMagazineText>(&mut app).is_some(),
+        "the content carries the magazine line",
+    );
+    assert!(
+        single_with::<ReloadButton>(&mut app).is_some(),
+        "the content carries the LIVE Reload button",
+    );
+}
+
+/// GTW-295 — the empty-state hide removes the content from LAYOUT via `Display::None` (so a
+/// hidden weapon block takes no space), not merely `Visibility::Hidden`. Pin-discriminating:
+/// a revert to a Visibility-only hide leaves `display == Display::Flex` and fails this assert.
+#[test]
+fn empty_state_hides_content_with_display_none() {
+    let mut app = battle_running_app();
+
+    // Armed → the content is shown (Display::Flex).
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    app.update();
+    if let Some(node) = content_node(&mut app) {
+        assert_eq!(
+            node.display,
+            Display::Flex,
+            "an armed selection shows the content (Display::Flex)",
+        );
+    }
+
+    // Unarmed → the content is removed from layout (Display::None).
+    spawn_unarmed_and_select(&mut app);
+    app.update();
+    let node = content_node(&mut app);
+    assert!(
+        node.is_some(),
+        "the content column persists (mutate-in-place)"
+    );
+    let Some(node) = node else { return };
+    assert_eq!(
+        node.display,
+        Display::None,
+        "an unarmed selection removes the content from layout (Display::None)",
+    );
+    // And the existing Visibility contract still holds (GTW-275 not regressed).
+    assert_eq!(
+        visibility::<WeaponContent>(&mut app),
+        Some(Visibility::Hidden),
+        "the content is also Visibility::Hidden (GTW-275 contract preserved)",
     );
 }

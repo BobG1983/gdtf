@@ -21,18 +21,20 @@ use bevy::{
     prelude::*,
     state::state::State,
     text::TextColor,
-    ui::{Val, widget::ImageNode},
+    ui::{Display, Val, widget::ImageNode},
 };
 use gdtf_app::test_support::{
-    AppState, BattleScapeState, HoverObjectBar, HoverObjectBlock, HoverPanelRoot,
-    HoverStatBlockHost, RunningState, StatHpBar, StatName, StatPortrait, StatTuBar, StatWoundLine,
-    StatWoundList, StatWoundsPips, portrait_index_for_name,
+    AppState, BattleScapeState, HoverObjectBar, HoverObjectBlock, HoverObjectHardness,
+    HoverObjectHeight, HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
+    RunningState, StatHpBar, StatName, StatPortrait, StatTuBar, StatWoundLine, StatWoundList,
+    StatWoundsPips, portrait_index_for_name,
 };
 use gdtf_battle_input::{HoveredCell, InputSystems, SelectedShooter, pick_hovered_cell};
 use gdtf_battle_sim::{
-    BodyPart, Cell, CellLevel, Faction, GangerName, Hp, HpMax, InflictedWound, InflictedWounds,
-    Level, LifeState, OccupancyGrid, PlayerFaction, Position, Severity, Stance, StanceKind,
-    TerrainKind, Tu, TuMax, Wounds, WoundsMax, tuning::CombatTuning, weapon::WeaponRegistry,
+    ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry, CoverHp, CoverLedger,
+    Destroyed, Faction, GangerName, HeightBand, Hp, HpMax, InflictedWound, InflictedWounds, Level,
+    LifeState, OccupancyGrid, PlayerFaction, Position, Severity, Stance, StanceKind, TerrainKind,
+    Tu, TuMax, Wounds, WoundsMax, tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{
@@ -210,6 +212,22 @@ fn single_hover<M: Component>(app: &mut App) -> Option<Entity> {
 /// Reads the rendered `Text` of the single entity carrying marker `M`.
 fn line_text<M: Component>(app: &mut App) -> Option<String> {
     let entity = single_with::<M>(app)?;
+    app.world()
+        .get::<Text>(entity)
+        .map(|t| t.as_str().to_owned())
+}
+
+/// The layout [`Display`] of the single entity carrying HOVER-EXCLUSIVE marker `M` — the
+/// GTW-295 discriminating signal for a sub-block's show (`Display::Flex`) / hide
+/// (`Display::None`, removed from layout). `None` if the node is missing.
+fn display_of<M: Component>(app: &mut App) -> Option<Display> {
+    let entity = single_global::<M>(app)?;
+    app.world().get::<Node>(entity).map(|n| n.display)
+}
+
+/// The rendered `Text` of the single entity carrying HOVER-EXCLUSIVE marker `M`.
+fn global_line_text<M: Component>(app: &mut App) -> Option<String> {
+    let entity = single_global::<M>(app)?;
     app.world()
         .get::<Text>(entity)
         .map(|t| t.as_str().to_owned())
@@ -616,20 +634,18 @@ fn hovering_a_ganger_shows_its_stat_block() {
         host.is_some(),
         "the hover panel must carry a ganger stat block"
     );
-    if let Some(host) = host {
-        assert_ne!(
-            app.world().get::<Visibility>(host),
-            Some(&Visibility::Hidden),
-            "hovering a ganger shows the ganger stat block",
-        );
-    }
-    if let Some(block) = single_global::<HoverObjectBlock>(&mut app) {
-        assert_eq!(
-            app.world().get::<Visibility>(block),
-            Some(&Visibility::Hidden),
-            "hovering a ganger hides the object block",
-        );
-    }
+    // GTW-295 — the sub-blocks show/hide via Node.display (Flex/None), so a hidden block is
+    // removed from layout and never balloons the panel.
+    assert_eq!(
+        display_of::<HoverStatBlockHost>(&mut app),
+        Some(Display::Flex),
+        "hovering a ganger shows the ganger stat block (Display::Flex)",
+    );
+    assert_eq!(
+        display_of::<HoverObjectBlock>(&mut app),
+        Some(Display::None),
+        "hovering a ganger removes the object block from layout (Display::None)",
+    );
 
     // The ganger stat block's name reads the hovered ganger (the shared stat block, scoped
     // to the hover panel).
@@ -741,6 +757,19 @@ fn hovering_an_object_shows_the_object_block() {
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_terrain(cell, TerrainKind::Cover);
+    // Seed a KNOWN cover entry so the object block's stat lines are discriminating: half
+    // integrity, a distinct hardness / protection, a MID height band.
+    app.world_mut().resource_mut::<CoverLedger>().insert(
+        cell,
+        CoverEntry {
+            current_hp:       CoverHp::new(4),
+            max_hp:           CoverHp::new(8),
+            height_band:      HeightBand::Mid,
+            armor_protection: ArmorProtection::new(2),
+            armor_hardness:   ArmorHardness::new(3),
+            destroyed:        Destroyed::new(false),
+        },
+    );
 
     hover(&mut app, Some(cell));
 
@@ -749,33 +778,55 @@ fn hovering_an_object_shows_the_object_block() {
         block.is_some(),
         "the hover panel must carry an object block"
     );
-    if let Some(block) = block {
-        assert_ne!(
-            app.world().get::<Visibility>(block),
-            Some(&Visibility::Hidden),
-            "hovering cover shows the object block",
-        );
-    }
-    if let Some(host) = single_global::<HoverStatBlockHost>(&mut app) {
-        assert_eq!(
-            app.world().get::<Visibility>(host),
-            Some(&Visibility::Hidden),
-            "hovering an object hides the ganger stat block",
-        );
-    }
-    // The object block has an integrity bar with a non-zero fill (a fallback full entry).
+    // GTW-295 — the sub-blocks show/hide via Node.display: the object block is Flex (visible,
+    // in layout), the ganger block is None (removed from layout, so the panel stays compact).
+    assert_eq!(
+        display_of::<HoverObjectBlock>(&mut app),
+        Some(Display::Flex),
+        "hovering cover shows the object block (Display::Flex)",
+    );
+    assert_eq!(
+        display_of::<HoverStatBlockHost>(&mut app),
+        Some(Display::None),
+        "hovering an object removes the ganger stat block from layout (Display::None)",
+    );
+
+    // The object block has an integrity bar with a half fill (4/8 of the seeded entry).
     let bar = single_global::<HoverObjectBar>(&mut app);
     assert!(
         bar.is_some(),
         "the object block must carry an integrity bar"
     );
     if let Some(bar) = bar {
-        let integrity = bar_fill_at(&app, bar).unwrap_or(0.0);
+        let integrity = bar_fill_at(&app, bar).unwrap_or(-1.0);
         assert!(
-            integrity > 0.0,
-            "the object integrity bar is filled (got {integrity})"
+            (integrity - 50.0).abs() < 0.5,
+            "the object integrity bar reads 4/8 == 50% (got {integrity})"
         );
     }
+
+    // GTW-295 AC3 — the object block carries the full readable cover stat set, populated from
+    // the seeded CoverEntry (title + labeled hardness / protection / height-band lines).
+    assert_eq!(
+        global_line_text::<HoverObjectText>(&mut app).as_deref(),
+        Some("Cover"),
+        "the object block titles the kind",
+    );
+    let hardness = global_line_text::<HoverObjectHardness>(&mut app).unwrap_or_default();
+    assert!(
+        hardness.contains('3'),
+        "the Hardness line reads the seeded armor_hardness (3): {hardness}",
+    );
+    let protection = global_line_text::<HoverObjectProtection>(&mut app).unwrap_or_default();
+    assert!(
+        protection.contains('2'),
+        "the Protection line reads the seeded armor_protection (2): {protection}",
+    );
+    let height = global_line_text::<HoverObjectHeight>(&mut app).unwrap_or_default();
+    assert!(
+        height.contains("Mid"),
+        "the Height-band line reads the seeded height_band (Mid): {height}",
+    );
 }
 
 /// AC2 — hovering BARE FLOOR (no occupant, Open terrain) hides the whole panel.

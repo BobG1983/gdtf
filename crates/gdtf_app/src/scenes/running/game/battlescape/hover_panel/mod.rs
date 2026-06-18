@@ -5,7 +5,8 @@
 //!
 //! - a hovered GANGER → the shared [`stat_block`](super::stat_block), with its NAME line
 //!   color tinted by the ganger's `Faction` (enemy red-ish, player the normal theme color);
-//! - a hovered non-floor OBJECT (wall / cover) → an object block (hardness + integrity);
+//! - a hovered non-floor OBJECT (wall / cover) → an object stat block: a title, a labeled
+//!   Integrity bar, and labeled Hardness / Protection / Height-band lines (GTW-295);
 //! - bare floor / nothing → the panel is `Visibility::Hidden`.
 //!
 //! Pure VIEW; mutate-in-place on `HoveredCell` change ([[ui-mutate-not-respawn]]). It
@@ -29,5 +30,8 @@ crate::support_use!(components::HoverPanelRoot;);
 // `unreachable_pub`-clean.
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    components::{HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverStatBlockHost};
+    components::{
+        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
+        HoverObjectProtection, HoverObjectText, HoverStatBlockHost,
+    };
 }
