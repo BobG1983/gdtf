@@ -8,7 +8,8 @@ use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest};
 use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction,
     acts::{
-        FireRequested, MoveRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
+        FireRequested, MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+        SetStanceRequested,
     },
     occupancy_sync::SimSystems,
     setup_battle_on_request,
@@ -117,7 +118,7 @@ impl Plugin for GdtfBattleInputPlugin {
         // `GamepadCursor` inits to its window-centre default; `ActivePointer` to `Mouse`.
         .init_resource::<GamepadCursor>()
         .init_resource::<ActivePointer>()
-        // The seam EMITS these `*Requested` messages — register the five buffers the ONE
+        // The seam EMITS these `*Requested` messages — register the six buffers the ONE
         // `dispatch_act_intents` drain writes into so its `MessageWriter`s pass param
         // validation whether or not the sim's `SimActsPlugin` is present (`bevy-traps.md`
         // #4). `add_message` is IDEMPOTENT, so this coexists with E10's `BattleSimPlugin`.
@@ -126,6 +127,8 @@ impl Plugin for GdtfBattleInputPlugin {
         .add_message::<SetStanceRequested>()
         .add_message::<SetAimingRequested>()
         .add_message::<SetFacingRequested>()
+        // GTW-275 — the reload-act buffer the weapon panel's Reload intent drains into.
+        .add_message::<ReloadRequested>()
         // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
         // emitter's `MessageWriter<HighlightRequest>` passes param validation even
         // headlessly (`bevy-traps.md` #4). `add_message` is IDEMPOTENT.

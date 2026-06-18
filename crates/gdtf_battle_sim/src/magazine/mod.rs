@@ -5,17 +5,17 @@
 //! "ammo clamp"; §9 `can_stabilize` precedent: "button and act share one guard
 //! set"):
 //!
-//! 1. The current-rounds AMMO state — a [`Magazine`] Component carrying the rounds
-//!    currently loaded, **clamped at construction** by the weapon's
-//!    [`MagazineSize`](crate::weapon::MagazineSize) (a weapon NUMBER; the current
-//!    rounds are battle-local state). A **saturating** per-round decrement
-//!    ([`Magazine::spend_round`], floors at `0`, never underflows) and the
-//!    burst-clamp primitive [`clamp_burst`] (the round count `fire()` may actually
-//!    loop = `min(mode shots, rounds left)`). **Reload boundary:** this slice ships
-//!    ONLY the ammo state + the per-round decrement + the burst clamp — a standalone
-//!    `reload()` act with the `reload_tu` refill (resolution.md L166 names
-//!    `reload_tu` tunable, but no `reload_tu` tuning leaf exists yet and a reload
-//!    ACT is not in GTW-9's scope) is OUT of E4, noted here, not built.
+//! 1. The AMMO state — a [`Magazine`] GROUPING Component (GTW-275, the user's
+//!    `Magazine { size, reload_tu, … }` model) carrying the weapon's
+//!    [`MagazineSize`](crate::weapon::MagazineSize) capacity, its per-weapon
+//!    [`ReloadTu`] reload cost, and the [`LoadedRounds`] currently loaded (the
+//!    battle-local state, **clamped at construction** by `size`). A **saturating**
+//!    per-round decrement ([`Magazine::spend_round`], floors at `0`, never
+//!    underflows), the reload refill ([`Magazine::refill`], tops back to `size`), and
+//!    the burst-clamp primitive [`clamp_burst`] (the round count `fire()` may actually
+//!    loop = `min(mode shots, rounds left)`). The standalone TU-costed reload ACT
+//!    (GTW-275 `dispatch_reload`) lives in [`crate::acts`]; it charges this magazine's
+//!    own [`ReloadTu`] (per-weapon) and calls [`Magazine::refill`].
 //!
 //! 2. The [`can_fire`] GUARD SET — the validation the HUD button and `fire()`
 //!    SHARE (one guard set, the §9 `can_stabilize` precedent). It returns `true`
@@ -45,5 +45,5 @@ mod guard;
 #[cfg(test)]
 mod test;
 
-pub use ammo::{Magazine, clamp_burst};
+pub use ammo::{LoadedRounds, Magazine, ReloadTu, clamp_burst};
 pub use guard::{FireActor, can_fire, in_bounds, mode_tu_cost};

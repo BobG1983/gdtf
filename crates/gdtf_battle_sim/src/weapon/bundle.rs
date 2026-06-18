@@ -6,9 +6,10 @@
 use bevy::prelude::Bundle;
 
 use super::{
-    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Kickback, MagazineSize, Stable, Weapon,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Kickback, Stable, Weapon, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred,
 };
+use crate::magazine::Magazine;
 
 /// A transient **borrow-view** of a weapon's stats — refs assembled at the call
 /// site from the individual weapon components, the read-shape the §1/§6 readers
@@ -52,42 +53,45 @@ pub struct WeaponStats<'a> {
 ///
 /// A Bevy [`Bundle`] so spawning an armed (ganger) entity carries the marker and
 /// every stat component in one `commands.spawn(...)` / `entity.insert(...)` call.
-/// The current ammo count is **not** here — that is the separate
-/// [`crate::magazine::Magazine`] battle-state component (this bundle carries the
-/// [`MagazineSize`] capacity only). Every field is a weapon-number newtype, the
-/// [`WeaponName`], or the marker (no bare primitive); build one with
-/// [`WeaponBundle::new`].
+/// The ammo state is the [`crate::magazine::Magazine`] grouping component (GTW-275:
+/// the [`MagazineSize`](super::MagazineSize) capacity, the per-weapon
+/// [`ReloadTu`](crate::magazine::ReloadTu), and the live
+/// [`LoadedRounds`](crate::magazine::LoadedRounds) count) — spawned FULL by
+/// [`WeaponSpec::into_bundle`](super::WeaponSpec::into_bundle). Every field is a
+/// weapon-number newtype, the [`Magazine`] grouping, the [`WeaponName`], or the marker
+/// (no bare primitive); build one with [`WeaponBundle::new`].
 ///
 /// **Not `Copy`** — it carries a [`WeaponName`] ([`String`]) and a [`FireMode`]
 /// (which holds a `Vec`); the bundle is `Clone`.
 #[derive(Bundle, Debug, Clone, PartialEq)]
 pub struct WeaponBundle {
     /// The [`Weapon`] marker tagging the entity as armed.
-    pub marker:        Weapon,
+    pub marker:      Weapon,
     /// The weapon's human-facing name (its own sibling component).
-    pub name:          WeaponName,
+    pub name:        WeaponName,
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
-    pub base_spread:   BaseSpread,
+    pub base_spread: BaseSpread,
     /// The concentration weapon term (`accuracy`; may exceed 1.0).
-    pub accuracy:      Accuracy,
+    pub accuracy:    Accuracy,
     /// The per-round recoil added in a burst (`kickback`).
-    pub kickback:      Kickback,
+    pub kickback:    Kickback,
     /// The severity-score addend, consumed by E3 (`fatal_bias`).
-    pub fatal_bias:    FatalBias,
+    pub fatal_bias:  FatalBias,
     /// The base damage a hit deals before armor (`damage`).
-    pub damage:        WeaponDamage,
+    pub damage:      WeaponDamage,
     /// The armor protection a hit ignores — penetration (`punch`).
-    pub punch:         WeaponPunch,
+    pub punch:       WeaponPunch,
     /// The extra integrity damage a hit deals to armor durability (`shred`).
-    pub shred:         WeaponShred,
+    pub shred:       WeaponShred,
     /// The damage type the weapon emits — its matchup-wheel node.
-    pub damage_type:   DamageType,
-    /// The round capacity before a reload (`magazine_size`).
-    pub magazine_size: MagazineSize,
+    pub damage_type: DamageType,
+    /// The ammo state — the [`Magazine`] grouping (capacity + per-weapon reload cost +
+    /// the live loaded-rounds count, spawned full).
+    pub magazine:    Magazine,
     /// The authored fire-mode selector and its per-mode numbers.
-    pub fire_mode:     FireMode,
+    pub fire_mode:   FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
-    pub stable:        Stable,
+    pub stable:      Stable,
 }
 
 /// A weapon's **damage block** for spawning — the three per-hit damage numbers plus
@@ -131,34 +135,36 @@ impl DamageProfile {
     }
 }
 
-/// A weapon's **handling block** for spawning — its [`MagazineSize`] capacity,
-/// authored [`FireMode`] selector, and [`Stable`] tag, handed to
-/// [`WeaponBundle::new`] as one cohesive value.
+/// A weapon's **handling block** for spawning — its [`Magazine`] grouping (capacity +
+/// per-weapon reload cost + the spawn-full loaded count), authored [`FireMode`]
+/// selector, and [`Stable`] tag, handed to [`WeaponBundle::new`] as one cohesive
+/// value.
 ///
 /// An owned ctor-input grouping (the [`DamageProfile`] /
 /// [`FireModeSpec`](super::FireModeSpec) precedent) so [`WeaponBundle::new`] stays
-/// under clippy's argument-count gate. Every field is a weapon-number newtype / the
+/// under clippy's argument-count gate. Every field is a weapon-number grouping / the
 /// [`FireMode`] selector.
 ///
 /// **Not `Copy`** — it owns a [`FireMode`] (which holds a `Vec` of specs); it is
 /// `Clone`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HandlingProfile {
-    /// The round capacity before a reload.
-    pub magazine_size: MagazineSize,
+    /// The ammo state — the [`Magazine`] grouping (capacity + reload cost + loaded
+    /// count).
+    pub magazine:  Magazine,
     /// The authored fire-mode selector and its per-mode numbers.
-    pub fire_mode:     FireMode,
+    pub fire_mode: FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
-    pub stable:        Stable,
+    pub stable:    Stable,
 }
 
 impl HandlingProfile {
-    /// Build a handling block from a weapon's magazine capacity, fire-mode selector,
-    /// and `stable` tag.
+    /// Build a handling block from a weapon's [`Magazine`] grouping, fire-mode
+    /// selector, and `stable` tag.
     #[must_use]
-    pub const fn new(magazine_size: MagazineSize, fire_mode: FireMode, stable: Stable) -> Self {
+    pub const fn new(magazine: Magazine, fire_mode: FireMode, stable: Stable) -> Self {
         Self {
-            magazine_size,
+            magazine,
             fire_mode,
             stable,
         }
@@ -196,7 +202,7 @@ impl WeaponBundle {
             punch: damage.punch,
             shred: damage.shred,
             damage_type: damage.damage_type,
-            magazine_size: handling.magazine_size,
+            magazine: handling.magazine,
             fire_mode: handling.fire_mode,
             stable: handling.stable,
         }

@@ -18,6 +18,7 @@ pub(super) use crate::{
     cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
+    magazine::{Magazine, ReloadTu},
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel, Level, SimPos},
     resolve_and_apply::{AppliedDamage, HitReport, TargetGanger, resolve_and_apply},
@@ -80,7 +81,7 @@ pub(super) fn a_weapon(
             damage_type,
         ),
         HandlingProfile::new(
-            MagazineSize::new(10),
+            Magazine::loaded(MagazineSize::new(10), ReloadTu::new(10)),
             FireMode::new(vec![spec]),
             Stable::new(false),
         ),

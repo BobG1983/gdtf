@@ -33,10 +33,11 @@
 //! [`ActiveButton`](gdtf_ui::ActiveButton) paint marker (the GTW-253 hook, made sticky
 //! by GTW-266). There is deliberately NO `FireButton`: a button press carries no
 //! `HoveredCell` target, so FIRE stays the left-click-on-target surface (landed in
-//! 222b); explicit-target fire is GTW-11. The DEFERRED acts (reload, end-turn) have
-//! NO sim act yet, so they are rendered as `DisabledButton` ([`ReloadButton`] /
-//! [`EndTurnButton`]) that emit NO intent under any interaction — the `Without<
-//! DisabledButton>` action filter excludes them (the menu `HiveScape` precedent).
+//! 222b); explicit-target fire is GTW-11. The DEFERRED end-turn act has NO sim act yet,
+//! so it is rendered as a `DisabledButton` ([`EndTurnButton`]) that emits NO intent
+//! under any interaction — the `Without<DisabledButton>` action filter excludes it (the
+//! menu `HiveScape` precedent). (Reload was a `DisabledButton` stub here until GTW-275
+//! made it a LIVE button in the weapon panel — see the `weapon_panel` module.)
 
 use bevy::prelude::*;
 
@@ -150,18 +151,9 @@ crate::support_item! {
     struct LevelDownButton;
 }
 
-crate::support_item! {
-    /// Marks the **reload** action button — a DEFERRED act (GTW-228): no `reload()` act
-    /// nor `reload_tu` leaf exists yet (`gdtf_battle_sim::magazine` ships only ammo state +
-    /// `spend_round`/`clamp_burst`; a reload act is OUT of E4, owned by the magazine/reload
-    /// epic). Rendered as a [`DisabledButton`](gdtf_ui::DisabledButton) that emits NO
-    /// intent under any interaction (the `Without<DisabledButton>` action filter excludes
-    /// it — the menu `HiveScape` precedent). Re-enabled when the reload act lands.
-    ///
-    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct ReloadButton;
-}
+// GTW-275 removed the DEFERRED `ReloadButton` DisabledButton stub that lived here — the
+// reload act is now a REAL, TU-costed sim act, and its LIVE button lives in the weapon
+// panel (`weapon_panel`), not the action bar.
 
 crate::support_item! {
     /// Marks the **end-turn** action button — a DEFERRED act (GTW-228): no end-turn /
@@ -190,7 +182,7 @@ crate::support_item! {
     /// [`PendingActIntent`](gdtf_battle_input::PendingActIntent) /
     /// [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) sim seam: that seam
     /// carries only sim `*Requested` acts against the `SelectedShooter`, and flee is not a
-    /// sim verb (no actor, no TU, no `*Requested`). Unlike the DEFERRED [`ReloadButton`] /
+    /// sim verb (no actor, no TU, no `*Requested`). Unlike the DEFERRED
     /// [`EndTurnButton`], flee is ENABLED — it carries NO
     /// [`DisabledButton`](gdtf_ui::DisabledButton), so it is interactive and its handler's
     /// `Without<DisabledButton>` press filter INCLUDES it.

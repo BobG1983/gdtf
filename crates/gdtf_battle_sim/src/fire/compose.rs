@@ -132,18 +132,7 @@ pub(super) fn read_shooter(
     let (
         (position, facing, stance, aiming, shooting, luck, tu_max),
         (tu, magazine),
-        (
-            base_spread,
-            accuracy,
-            kickback,
-            fatal_bias,
-            damage,
-            punch,
-            shred,
-            damage_type,
-            _magazine_size,
-            stable,
-        ),
+        (base_spread, accuracy, kickback, fatal_bias, damage, punch, shred, damage_type, stable),
     ) = reads;
     let snapshot = ShooterSnapshot {
         position:    *position,

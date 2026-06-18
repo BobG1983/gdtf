@@ -23,7 +23,7 @@ pub(super) use crate::{
         Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
-    magazine::{Magazine, mode_tu_cost},
+    magazine::{Magazine, ReloadTu, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::OccupancyMaintenancePlugin,
@@ -94,6 +94,7 @@ pub(super) fn spawn_shooter(
     aiming: bool,
 ) -> Entity {
     let mag_size = MagazineSize::new(30);
+    let reload_tu = ReloadTu::new(12);
     let bundle = WeaponBundle::new(
         WeaponName::new("test-weapon".to_owned()),
         BaseSpread::new(0.05),
@@ -106,7 +107,15 @@ pub(super) fn spawn_shooter(
             WeaponShred::new(10),
             DamageType::Kinetic,
         ),
-        HandlingProfile::new(mag_size, FireMode::new(vec![mode]), Stable::new(true)),
+        // A known 10-round load (the fire tests assert a fixed starting count); the
+        // bundle carries this Magazine directly (GTW-275: WeaponBundle::new uses the
+        // handling's magazine as-authored, so no separate Magazine insert is needed —
+        // a second Magazine in the spawn tuple would be a duplicate-component panic).
+        HandlingProfile::new(
+            Magazine::new(10, mag_size, reload_tu),
+            FireMode::new(vec![mode]),
+            Stable::new(true),
+        ),
     );
     world
         .spawn((
@@ -118,7 +127,6 @@ pub(super) fn spawn_shooter(
             Shooting::new(1.0),
             Tu::new(200),
             crate::ganger::TuMax::new(100),
-            Magazine::new(10, mag_size),
             // The target-query set as one nested-tuple bundle (the GTW-279
             // InflictedWounds add keeps the spawn under the 15-element tuple limit).
             (

@@ -10,7 +10,7 @@ fn plugin_registers_every_message_buffer() {
 
     /// A probe counter each reader-probe system bumps to prove it RAN (so its
     /// `MessageReader` param was validated by the scheduler, not skipped). One
-    /// counter, not six bools, so all six probes increment the same resource.
+    /// counter, not eight bools, so all eight probes increment the same resource.
     #[derive(Resource, Default)]
     struct Probed(u8);
 
@@ -18,8 +18,8 @@ fn plugin_registers_every_message_buffer() {
     app.insert_resource(Probed::default());
     // One probe system per message type — each takes a `MessageReader<T>`, which the
     // scheduler param-validates against the registered buffer. An UNregistered buffer
-    // would fail that validation; reaching the post-update assert (all six probes ran)
-    // proves all six are registered by `SimActsPlugin`.
+    // would fail that validation; reaching the post-update assert (all eight probes ran)
+    // proves all eight are registered by `SimActsPlugin`.
     app.add_systems(
         Update,
         (
@@ -51,6 +51,10 @@ fn plugin_registers_every_message_buffer() {
                 for _ in r.read() {}
                 p.0 += 1;
             },
+            |mut r: MessageReader<ReloadRequested>, mut p: ResMut<Probed>| {
+                for _ in r.read() {}
+                p.0 += 1;
+            },
         ),
     );
 
@@ -59,8 +63,8 @@ fn plugin_registers_every_message_buffer() {
     let ran = app.world().get_resource::<Probed>().map(|p| p.0);
     assert_eq!(
         ran,
-        Some(7),
-        "every `MessageReader<*Requested>` must pass param-validation — all seven \
+        Some(8),
+        "every `MessageReader<*Requested>` must pass param-validation — all eight \
          buffers are registered by `SimActsPlugin`",
     );
 }

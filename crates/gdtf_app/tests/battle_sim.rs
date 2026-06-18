@@ -26,6 +26,7 @@ use gdtf_battle_sim::{
         Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Shooting,
         Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
     },
+    magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     rng::{BattleSeed, SimRng},
@@ -52,22 +53,22 @@ fn weapon_registry() -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(TEST_WEAPON_KEY.to_owned()),
         WeaponSpec {
-            base_spread:   BaseSpread::new(0.25),
-            accuracy:      Accuracy::new(1.0),
-            kickback:      Kickback::new(0.4),
-            fatal_bias:    FatalBias::new(7.0),
-            damage:        WeaponDamage::new(12),
-            punch:         WeaponPunch::new(5),
-            shred:         WeaponShred::new(3),
-            damage_type:   DamageType::Kinetic,
-            magazine_size: MagazineSize::new(30),
-            fire_mode:     FireMode::new(vec![FireModeSpec::new(
+            base_spread: BaseSpread::new(0.25),
+            accuracy:    Accuracy::new(1.0),
+            kickback:    Kickback::new(0.4),
+            fatal_bias:  FatalBias::new(7.0),
+            damage:      WeaponDamage::new(12),
+            punch:       WeaponPunch::new(5),
+            shred:       WeaponShred::new(3),
+            damage_type: DamageType::Kinetic,
+            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+            fire_mode:   FireMode::new(vec![FireModeSpec::new(
                 ModeKind::Single,
                 ModeConeMult::new(1.0),
                 ModeTuPercent::new(0.5),
                 ModeShots::new(1),
             )]),
-            stable:        Stable::new(false),
+            stable:      Stable::new(false),
         },
     )])
 }

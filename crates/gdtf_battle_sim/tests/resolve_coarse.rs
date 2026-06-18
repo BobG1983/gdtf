@@ -22,11 +22,11 @@ use gdtf_battle_sim::{
     ArmorType, BaseSpread, BattleSeed, BattleSetup, BodyPart, Cell, CellLevel, CombatTuning,
     ConcentrationP, ConeAngle, CoverEntry, CoverHp, CoverLedger, DamageType, Direction, Facing,
     Faction, FatalBias, FireMode, FireModeSpec, GangerName, GangerSpawn, HeightBand, Hp, HpMax,
-    Kickback, Level, LifeState, Luck, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting,
-    ShotInputs, ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stable, Stance, StanceKind,
-    SurfaceGrid, Toughness, Tu, TuMax, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-    WeaponShred, WeaponSpec, Wounds, WoundsMax, resolve_coarse, setup_battle,
+    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, ReloadTu,
+    Shooting, ShotInputs, ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stable, Stance,
+    StanceKind, SurfaceGrid, Toughness, Tu, TuMax, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponRegistry, WeaponShred, WeaponSpec, Wounds, WoundsMax, resolve_coarse, setup_battle,
 };
 
 /// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
@@ -43,22 +43,22 @@ fn weapon_registry() -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(TEST_WEAPON_KEY.to_owned()),
         WeaponSpec {
-            base_spread:   BaseSpread::new(0.25),
-            accuracy:      Accuracy::new(1.0),
-            kickback:      Kickback::new(0.4),
-            fatal_bias:    FatalBias::new(7.0),
-            damage:        WeaponDamage::new(12),
-            punch:         WeaponPunch::new(5),
-            shred:         WeaponShred::new(3),
-            damage_type:   DamageType::Kinetic,
-            magazine_size: MagazineSize::new(30),
-            fire_mode:     FireMode::new(vec![FireModeSpec::new(
+            base_spread: BaseSpread::new(0.25),
+            accuracy:    Accuracy::new(1.0),
+            kickback:    Kickback::new(0.4),
+            fatal_bias:  FatalBias::new(7.0),
+            damage:      WeaponDamage::new(12),
+            punch:       WeaponPunch::new(5),
+            shred:       WeaponShred::new(3),
+            damage_type: DamageType::Kinetic,
+            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+            fire_mode:   FireMode::new(vec![FireModeSpec::new(
                 ModeKind::Single,
                 ModeConeMult::new(1.0),
                 ModeTuPercent::new(0.5),
                 ModeShots::new(1),
             )]),
-            stable:        Stable::new(false),
+            stable:      Stable::new(false),
         },
     )])
 }

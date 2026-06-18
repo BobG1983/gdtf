@@ -52,16 +52,19 @@
 //!   [`move_acts::MoveOutcome::Blocked`]). It writes ONLY [`ganger::Position`] — the grid
 //!   slot maintenance is the landed [`occupancy_sync::sync_moved_gangers`]
 //!   `Changed<Position>` reactor. Pure math, no `World` access.
-//! - [`magazine`] — the E4.4 ammo state + the shared firing guard: the
-//!   [`magazine::Magazine`] current-rounds Component (clamped to
-//!   [`weapon::MagazineSize`] at construction, saturating
-//!   [`magazine::Magazine::spend_round`], the [`magazine::clamp_burst`] burst
+//! - [`magazine`] — the ammo state + the shared firing guard: the
+//!   [`magazine::Magazine`] GROUPING Component (GTW-275 — the [`weapon::MagazineSize`]
+//!   capacity, the per-weapon [`magazine::ReloadTu`] reload cost, and the
+//!   [`magazine::LoadedRounds`] live count, clamped to capacity at construction;
+//!   saturating [`magazine::Magazine::spend_round`], the
+//!   [`magazine::Magazine::refill`] reload, the [`magazine::clamp_burst`] burst
 //!   primitive), the shared [`magazine::mode_tu_cost`] per-shot TU charge
 //!   ([`ganger::TuMax`]-derived × [`weapon::ModeTuPercent`] × the aim premium when
 //!   aiming — resolution.md §1 / §1a), and the
 //!   [`magazine::can_fire`] guard set (over a [`magazine::FireActor`] bundle): alive +
 //!   affords the mode TU + ≥1 round + [`magazine::in_bounds`] — NO LOS input (fog is
-//!   presenter player policy). The reload act + `reload_tu` refill are OUT of E4.
+//!   presenter player policy). The TU-costed reload ACT is [`acts::dispatch_reload`]
+//!   (it charges the magazine's own per-weapon `reload_tu`).
 //! - [`ganger`] — per-field ganger battle-state components (including the
 //!   [`ganger::Stabilized`] bleed-out flag, owned here from E3.7); [`armor`] —
 //!   armor stats + the battle-local [`armor::WornArmor`]; [`armor_wear`] —
@@ -93,7 +96,9 @@
 //!   ([`weapon::WeaponName`] / [`weapon::BaseSpread`] / [`weapon::Accuracy`] /
 //!   [`weapon::Kickback`] / [`weapon::FatalBias`] / [`weapon::WeaponDamage`] /
 //!   [`weapon::WeaponPunch`] / [`weapon::WeaponShred`] / [`weapon::DamageType`] /
-//!   [`weapon::MagazineSize`] / [`weapon::FireMode`] / [`weapon::Stable`], where the
+//!   the [`magazine::Magazine`] grouping (its [`weapon::MagazineSize`] /
+//!   [`magazine::ReloadTu`] / [`magazine::LoadedRounds`] leaves, GTW-275) /
+//!   [`weapon::FireMode`] / [`weapon::Stable`], where the
 //!   [`weapon::FireMode`] selector is a list of [`weapon::FireModeSpec`]s each
 //!   carrying its closed [`weapon::ModeKind`]) living as sibling
 //!   components on the
@@ -233,7 +238,9 @@ pub use ganger::{
 };
 pub use hit_location::roll_body_part;
 pub use inflicted_wound::{InflictedWound, InflictedWounds};
-pub use magazine::{FireActor, Magazine, can_fire, clamp_burst, in_bounds, mode_tu_cost};
+pub use magazine::{
+    FireActor, LoadedRounds, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost,
+};
 pub use march::{MarchKind, MarchResult, march_vector};
 pub use matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier};
 pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};

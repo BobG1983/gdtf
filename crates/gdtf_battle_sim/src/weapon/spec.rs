@@ -7,9 +7,9 @@ use serde::Deserialize;
 
 use super::{
     Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, HandlingProfile,
-    Kickback, MagazineSize, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponShred,
+    Kickback, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
+use crate::magazine::Magazine;
 
 /// The **authoring struct** an `assets/weapons/*.ron` deserializes into — every
 /// weapon NUMBER the §1/§6 math reads, MINUS the [`WeaponName`] (the name is the
@@ -38,29 +38,32 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
 pub struct WeaponSpec {
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
-    pub base_spread:   BaseSpread,
+    pub base_spread: BaseSpread,
     /// The concentration weapon term (`accuracy`; may exceed 1.0).
-    pub accuracy:      Accuracy,
+    pub accuracy:    Accuracy,
     /// The per-round recoil added in a burst (`kickback`).
-    pub kickback:      Kickback,
+    pub kickback:    Kickback,
     /// The severity-score addend, consumed by E3 (`fatal_bias`).
-    pub fatal_bias:    FatalBias,
+    pub fatal_bias:  FatalBias,
     /// The base damage a hit deals before armor (`damage`).
-    pub damage:        WeaponDamage,
+    pub damage:      WeaponDamage,
     /// The armor protection a hit ignores — penetration (`punch`).
-    pub punch:         WeaponPunch,
+    pub punch:       WeaponPunch,
     /// The extra integrity damage a hit deals to armor durability (`shred`).
-    pub shred:         WeaponShred,
+    pub shred:       WeaponShred,
     /// The damage type the weapon emits — its matchup-wheel node.
-    pub damage_type:   DamageType,
-    /// The round capacity before a reload (`magazine_size`).
-    pub magazine_size: MagazineSize,
+    pub damage_type: DamageType,
+    /// The ammo state — the [`Magazine`] grouping authored as `(size: N, reload_tu: N)`
+    /// (the per-weapon round capacity + reload TU cost). The live loaded-rounds count
+    /// is NOT authored (it defaults to `0` on deserialize); [`into_bundle`](WeaponSpec::into_bundle)
+    /// spawns the magazine FULL (`loaded == size`), the GTW-275 spawn-full path.
+    pub magazine:    Magazine,
     /// The authored fire-mode selector — the list of offered modes, each a
     /// [`FireModeSpec`](super::FireModeSpec) carrying its [`ModeKind`](super::ModeKind)
     /// + cone/TU%/shots.
-    pub fire_mode:     FireMode,
+    pub fire_mode:   FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
-    pub stable:        Stable,
+    pub stable:      Stable,
 }
 
 impl WeaponSpec {
@@ -70,10 +73,14 @@ impl WeaponSpec {
     /// Groups the per-hit damage fields into a [`DamageProfile`] and the
     /// magazine/fire-mode/`stable` fields into a [`HandlingProfile`], then calls
     /// [`WeaponBundle::new`] — the [`Weapon`](super::Weapon) marker is added there.
-    /// Consumes the spec by value (it owns the [`FireMode`]); a caller holding a
+    /// The spawned [`Magazine`] is built FULL (loaded to `size`) from the authored
+    /// `size` + `reload_tu` (the GTW-275 "full magazine at spawn" path, matching the
+    /// mockup's "30/30"), regardless of the spec's (unauthored, default-`0`) loaded
+    /// count. Consumes the spec by value (it owns the [`FireMode`]); a caller holding a
     /// borrowed spec clones it first (the registry's specs are `Clone`).
     #[must_use]
     pub fn into_bundle(self, name: WeaponName) -> WeaponBundle {
+        let magazine = Magazine::loaded(self.magazine.size(), self.magazine.reload_tu());
         WeaponBundle::new(
             name,
             self.base_spread,
@@ -81,7 +88,7 @@ impl WeaponSpec {
             self.kickback,
             self.fatal_bias,
             DamageProfile::new(self.damage, self.punch, self.shred, self.damage_type),
-            HandlingProfile::new(self.magazine_size, self.fire_mode, self.stable),
+            HandlingProfile::new(magazine, self.fire_mode, self.stable),
         )
     }
 }

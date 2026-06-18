@@ -123,6 +123,6 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
         3,
         "the burst is clamped to the 3 loaded rounds"
     );
-    let mag = world.get::<Magazine>(shooter).map(|m| **m);
+    let mag = world.get::<Magazine>(shooter).map(|m| *m.rounds());
     assert_eq!(mag, Some(0), "the magazine ends drained to 0");
 }

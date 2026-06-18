@@ -17,8 +17,8 @@ use crate::{
     occupancy::OccupancyGrid,
     surface::SurfaceGrid,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, MagazineSize, Stable,
-        Weapon, WeaponDamage, WeaponPunch, WeaponShred,
+        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, Stable, Weapon,
+        WeaponDamage, WeaponPunch, WeaponShred,
     },
 };
 
@@ -53,7 +53,9 @@ pub type ShooterQuery<'world, 'state> = Query<
         ),
         // The mutable firing economy — the up-front TU charge + per-round ammo.
         (&'static mut Tu, &'static mut Magazine),
-        // The GTW-200 weapon-stat components the WeaponStats view borrows.
+        // The GTW-200 weapon-stat components the WeaponStats view borrows. The magazine
+        // CAPACITY is no longer a standalone component — it is the `size` leaf of the
+        // mutable `Magazine` grouping above (GTW-275), so it is not read here.
         (
             &'static BaseSpread,
             &'static Accuracy,
@@ -63,7 +65,6 @@ pub type ShooterQuery<'world, 'state> = Query<
             &'static WeaponPunch,
             &'static WeaponShred,
             &'static DamageType,
-            &'static MagazineSize,
             &'static Stable,
         ),
     ),

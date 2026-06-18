@@ -55,7 +55,7 @@ use gdtf_battle_sim::{
         Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Shooting,
         Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
     },
-    magazine::Magazine,
+    magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     rng::SimRng,
@@ -85,22 +85,22 @@ fn weapon_registry() -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(TEST_WEAPON_KEY.to_owned()),
         WeaponSpec {
-            base_spread:   BaseSpread::new(0.25),
-            accuracy:      Accuracy::new(1.0),
-            kickback:      Kickback::new(0.4),
-            fatal_bias:    FatalBias::new(0.0),
-            damage:        WeaponDamage::new(12),
-            punch:         WeaponPunch::new(5),
-            shred:         WeaponShred::new(3),
-            damage_type:   DamageType::Kinetic,
-            magazine_size: MagazineSize::new(30),
-            fire_mode:     FireMode::new(vec![FireModeSpec::new(
+            base_spread: BaseSpread::new(0.25),
+            accuracy:    Accuracy::new(1.0),
+            kickback:    Kickback::new(0.4),
+            fatal_bias:  FatalBias::new(0.0),
+            damage:      WeaponDamage::new(12),
+            punch:       WeaponPunch::new(5),
+            shred:       WeaponShred::new(3),
+            damage_type: DamageType::Kinetic,
+            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+            fire_mode:   FireMode::new(vec![FireModeSpec::new(
                 ModeKind::Single,
                 ModeConeMult::new(1.0),
                 ModeTuPercent::new(0.5),
                 ModeShots::new(1),
             )]),
-            stable:        Stable::new(false),
+            stable:      Stable::new(false),
         },
     )])
 }
@@ -207,8 +207,8 @@ const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
 /// since GTW-257 `setup_battle` arms every ganger from the registry, this OVERWRITES
 /// that registry weapon (via a second `insert` on the queried-from-`setup_battle`
 /// shooter entity) with a precise, high-damage kit so the test's single shot lands in a
-/// known regime. It ALSO supplies `TuMax` + `Magazine`, which `setup_battle` does NOT
-/// add (the `WeaponBundle` carries only the `MagazineSize` capacity). Arbitrary
+/// known regime. It ALSO supplies `TuMax`, which `setup_battle` does NOT add (the
+/// `WeaponBundle` carries the `Magazine` grouping itself since GTW-275). Arbitrary
 /// magnitudes (not shipped tuning). Mirrors the `acts.rs` weapon kit.
 fn shooter_weapon_kit(mode: FireModeSpec) -> impl bevy::prelude::Bundle {
     let mag_size = MagazineSize::new(30);
@@ -225,12 +225,18 @@ fn shooter_weapon_kit(mode: FireModeSpec) -> impl bevy::prelude::Bundle {
                 WeaponShred::new(10),
                 DamageType::Kinetic,
             ),
-            HandlingProfile::new(mag_size, FireMode::new(vec![mode]), Stable::new(true)),
+            // GTW-275: the WeaponBundle now carries the Magazine grouping, so the kit's
+            // known 10-round load rides in the HandlingProfile (a separate Magazine in the
+            // same bundle would be a duplicate-component panic).
+            HandlingProfile::new(
+                Magazine::new(10, mag_size, ReloadTu::new(12)),
+                FireMode::new(vec![mode]),
+                Stable::new(true),
+            ),
         ),
-        // The shooter query also reads TuMax and decrements a Magazine — neither is
-        // authored by `setup_battle`, so the kit supplies both.
+        // The shooter query also reads TuMax — not authored by `setup_battle` — so the kit
+        // supplies it (the Magazine is now part of the WeaponBundle above).
         TuMax::new(100),
-        Magazine::new(10, mag_size),
     )
 }
 

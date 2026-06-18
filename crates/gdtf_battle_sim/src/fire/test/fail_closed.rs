@@ -121,6 +121,6 @@ fn dead_shooter_fires_nothing() {
     assert!(reports.is_empty(), "a downed shooter must fire nothing");
     let tu = world.get::<Tu>(shooter).copied();
     assert_eq!(tu, Some(Tu::new(200)), "no TU charged for a downed shooter");
-    let mag = world.get::<Magazine>(shooter).map(|m| **m);
+    let mag = world.get::<Magazine>(shooter).map(|m| *m.rounds());
     assert_eq!(mag, Some(10), "ammo unchanged for a downed shooter");
 }

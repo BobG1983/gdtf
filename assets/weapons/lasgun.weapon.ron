@@ -18,7 +18,13 @@
     punch:         6,         // armor protection a hit ignores (penetration)
     shred:         1,         // extra integrity damage per hit (attacks armor durability)
     damage_type:   Las,       // the matchup-wheel node this weapon emits (node 6 — beams)
-    magazine_size: 20,        // rounds before a reload
+    // The magazine grouping — the weapon's ammo numbers (the user's
+    // `Magazine { size, reload_tu, … }` model). The live loaded-round count is NOT
+    // authored: the magazine is spawned FULL (20/20) at battle setup.
+    magazine: (
+        size:      20,        // round capacity before a reload (spawns full: 20/20)
+        reload_tu: 10,        // TU spent to reload — a tidy 20-round las pack swaps faster (tunable)
+    ),
     // The fire-mode selector — a LIST of the modes this weapon offers, in authored
     // order (Single first). The lasgun offers single + burst (no full-auto). Each
     // entry carries its closed kind (Single / Burst — the human label is derived

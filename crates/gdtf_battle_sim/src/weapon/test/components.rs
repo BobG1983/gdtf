@@ -35,7 +35,9 @@ fn each_sub_value_is_a_component() {
             WeaponPunch::new(5),
             WeaponShred::new(3),
             DamageType::Kinetic,
-            MagazineSize::new(30),
+            // GTW-275: the ammo state is the Magazine grouping (size + reload_tu +
+            // loaded), spawned as one component (was a standalone MagazineSize).
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![spec(1.0, 0.5, 1)]),
             Stable::new(true),
         ))
@@ -93,8 +95,14 @@ fn weapon_leaves_deref_to_inner() {
     assert_eq!((*bundle.accuracy).to_bits(), 1.3_f32.to_bits());
     assert_eq!((*bundle.kickback).to_bits(), 0.4_f32.to_bits());
     assert_eq!((*bundle.fatal_bias).to_bits(), 7.0_f32.to_bits());
-    // The u16 weapon number: deref reaches the inner u16.
-    assert_eq!(*bundle.magazine_size, 30u16);
+    // GTW-275: the magazine capacity is the Magazine grouping's `size` leaf (a u16
+    // newtype that derefs to its inner). `handling(30, …)` spawns the magazine full.
+    assert_eq!(*bundle.magazine.size(), 30u16);
+    assert_eq!(
+        *bundle.magazine.rounds(),
+        *bundle.magazine.size(),
+        "handling() loads the magazine full (loaded == size)"
+    );
 }
 
 /// AC1 — the `damage` / `punch` / `shred` components are distinct newtypes that

@@ -16,8 +16,9 @@
 //!
 //! ## Module map
 //!
-//! - [`request`] — the seven [`#[derive(Message)]`](bevy::prelude::Message) `*Requested`
-//!   types (the input contract) + the [`AimRequest`] aim-flag newtype. Each carries the
+//! - [`request`] — the eight [`#[derive(Message)]`](bevy::prelude::Message) `*Requested`
+//!   types (the input contract; the eighth, [`ReloadRequested`], added in GTW-275) +
+//!   the [`AimRequest`] aim-flag newtype. Each carries the
 //!   act's [`Entity`](bevy::prelude::Entity) actor ref(s) plus the act's OWNED payload; a
 //!   `Message` cannot hold a borrow, so [`FireRequested`] carries an OWNED
 //!   [`FireModeSpec`](crate::weapon::FireModeSpec) (now `Copy` again, GTW-260) and has
@@ -31,9 +32,13 @@
 //! - [`downed`] — the [`dispatch_stabilize_downed`] / [`dispatch_execute_downed`] systems
 //!   (E10.2 AC5).
 //! - [`movement`] — the [`dispatch_move`] system (E4 / GTW-234).
+//! - [`reload`] — the [`dispatch_reload`] system (GTW-275): the real, TU-costed
+//!   reload act, charging the actor's own per-weapon
+//!   [`Magazine::reload_tu`](crate::magazine::Magazine::reload_tu) and refilling the
+//!   magazine to full.
 //! - [`plugin`] — the public [`SimActsPlugin`] registration unit: it
-//!   [`add_message`](bevy::app::App::add_message)s all seven types exactly once each
-//!   (`bevy-traps.md` #5) and adds the seven dispatch systems
+//!   [`add_message`](bevy::app::App::add_message)s all eight types exactly once each
+//!   (`bevy-traps.md` #5) and adds the eight dispatch systems
 //!   `.in_set(SimSystems::Simulate)` in [`Update`](bevy::prelude::Update) — consuming
 //!   E10.0's set (it imports and uses it, never redefines it, and never calls
 //!   `configure_sets`, which is E10.0's). So the dispatch systems compose deterministically
@@ -50,6 +55,7 @@ mod fire;
 mod movement;
 mod plugin;
 mod posture;
+mod reload;
 mod request;
 
 #[cfg(test)]
@@ -60,7 +66,8 @@ pub use fire::{BattleGridsParam, dispatch_fire};
 pub use movement::dispatch_move;
 pub use plugin::SimActsPlugin;
 pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance};
+pub use reload::dispatch_reload;
 pub use request::{
-    AimRequest, ExecuteDownedRequested, FireRequested, MoveRequested, SetAimingRequested,
-    SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
+    AimRequest, ExecuteDownedRequested, FireRequested, MoveRequested, ReloadRequested,
+    SetAimingRequested, SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
 };

@@ -6,7 +6,8 @@ use crate::{
         GameBattleScapeActionBarScenePlugin, GameBattleScapeAfterMathScenePlugin,
         GameBattleScapeAnimateInScenePlugin, GameBattleScapeAnimateOutScenePlugin,
         GameBattleScapeBattleRunningScenePlugin, GameBattleScapeGenerationScenePlugin,
-        GameBattleScapeHoverPanelScenePlugin, GameBattleScapeStatusPanelScenePlugin, systems::*,
+        GameBattleScapeHoverPanelScenePlugin, GameBattleScapeStatusPanelScenePlugin,
+        GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
     states::{BattleScapeState, GameState},
 };
@@ -93,7 +94,15 @@ fn add_plugins(app: &mut App) {
         // input crate's `HoveredCell` + the sim's `OccupancyGrid` / `CoverLedger` / vital
         // components and renders the shared stat block (hovered ganger) or an object block
         // (hovered wall / cover). UI/view only — no sim/input change, no act.
-        .add_plugins(GameBattleScapeHoverPanelScenePlugin);
+        .add_plugins(GameBattleScapeHoverPanelScenePlugin)
+        // The GTW-275 weapon panel: bottom-left, the selected ganger's weapon (graphic
+        // placeholder + name + magazine cur/max) + a LIVE Reload button + throwable
+        // placeholders. Same `BattleRunning` lifecycle + `BattleInProgress` gate; its repaint
+        // reads `Res<SelectedShooter>` + the sim's `WeaponName` / `Magazine` components, and
+        // its Reload button WRITES the input crate's act-intent seam (→ `ReloadRequested` →
+        // the sim's `dispatch_reload`). It deps `gdtf_ui` (spawn helpers) + `gdtf_battle_input`
+        // (selection + intent seam), both already on the app's edge; the chain stays acyclic.
+        .add_plugins(GameBattleScapeWeaponPanelScenePlugin);
 }
 
 fn add_states(app: &mut App) {

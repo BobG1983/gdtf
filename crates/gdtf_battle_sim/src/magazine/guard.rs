@@ -142,6 +142,6 @@ pub fn can_fire(
             actor.tu,
             mode_tu_cost(mode, actor.tu_max, actor.aiming, tuning),
         )
-        && **actor.magazine >= 1
+        && !actor.magazine.is_empty()
         && in_bounds(target_cell, target_level)
 }

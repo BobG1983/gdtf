@@ -26,8 +26,8 @@ pub use crate::{
         ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton, OptionsButton,
         QuitButton, ReloadButton, ScenesPlugin, StanceKneelingButton, StancePanelRoot,
         StanceProneButton, StanceStandingButton, StatFaction, StatHpBar, StatName, StatPortrait,
-        StatStance, StatTuBar, StatWoundLine, StatWoundList, StatWoundsPips,
-        portrait_index_for_name,
+        StatStance, StatTuBar, StatWoundLine, StatWoundList, StatWoundsPips, WeaponContent,
+        WeaponMagazineText, WeaponNameText, WeaponPanelRoot, portrait_index_for_name,
     },
     states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };

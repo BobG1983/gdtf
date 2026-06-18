@@ -7,6 +7,7 @@ use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     faced_cell::faced_cell,
     ganger::{Aiming, Direction, Facing, Position, Stance, StanceKind},
+    magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
@@ -84,7 +85,7 @@ pub(super) fn weapon_tagged(base: f32, kick: f32, stable: bool) -> WeaponBundle 
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            MagazineSize::new(10),
+            Magazine::loaded(MagazineSize::new(10), ReloadTu::new(10)),
             FireMode::new(vec![FireModeSpec::new(
                 ModeKind::Single,
                 ModeConeMult::new(1.0),

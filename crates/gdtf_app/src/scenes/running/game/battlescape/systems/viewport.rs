@@ -10,7 +10,8 @@ use bevy::{camera::Viewport, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::WorldCamera;
 
 use crate::scenes::running::game::battlescape::{
-    action_bar::ActionBarRoot, hover_panel::HoverPanelRoot, status_panel::StatusPanelRoot,
+    WeaponPanelRoot, action_bar::ActionBarRoot, hover_panel::HoverPanelRoot,
+    status_panel::StatusPanelRoot,
 };
 
 /// Round a physical-px [`ComputedNode`] dimension (`f32`, always `>= 0`) to integer physical
@@ -39,8 +40,12 @@ const fn physical_px(value: f32) -> u32 {
 /// further logical→physical conversion is applied; see the flag below) and insets the world
 /// map by:
 ///
-/// - **LEFT** by the status-panel ([`StatusPanelRoot`]) width (it is anchored top-left),
-/// - **BOTTOM** by the action-bar ([`ActionBarRoot`]) height (it is anchored bottom-centre),
+/// - **LEFT** by the WIDER of the status-panel ([`StatusPanelRoot`], top-left) and the
+///   weapon-panel ([`WeaponPanelRoot`], bottom-left) widths — both occupy the left margin
+///   column, so the inset must clear whichever is wider (GTW-275 AC9),
+/// - **BOTTOM** by the TALLER of the action-bar ([`ActionBarRoot`], bottom-centre) and the
+///   weapon-panel ([`WeaponPanelRoot`], bottom-left) heights — both occupy the bottom margin
+///   row (GTW-275 AC9),
 /// - **RIGHT** by the hover-panel ([`HoverPanelRoot`]) width (GTW-274 — it is anchored
 ///   top-right; `0` when the panel is absent / hidden-and-zero-sized, the same panel-absent
 ///   allowance as the others),
@@ -73,6 +78,7 @@ pub(in crate::scenes::running::game::battlescape) fn set_world_viewport(
     status_panels: Query<&ComputedNode, With<StatusPanelRoot>>,
     action_bars: Query<&ComputedNode, With<ActionBarRoot>>,
     hover_panels: Query<&ComputedNode, With<HoverPanelRoot>>,
+    weapon_panels: Query<&ComputedNode, With<WeaponPanelRoot>>,
 ) {
     // The primary window's PHYSICAL size — the surface the viewport rect is carved from. No
     // window → nothing to confine.
@@ -82,16 +88,30 @@ pub(in crate::scenes::running::game::battlescape) fn set_world_viewport(
     let win = window.physical_size();
 
     // Margins from the panels' PHYSICAL `ComputedNode` sizes (0 when a panel is absent — not
-    // spawned yet, or the future hover panel). `.x`/`.y` are physical px; round to integer
-    // pixels for the UVec2 viewport (`u32` saturates a negative/NaN to 0, never panics).
-    let left = status_panels
+    // spawned yet). `.x`/`.y` are physical px; round to integer pixels for the UVec2 viewport
+    // (`u32` saturates a negative/NaN to 0, never panics).
+    let status_w = status_panels
         .iter()
         .next()
         .map_or(0, |node| physical_px(node.size().x));
-    let bottom = action_bars
+    let action_h = action_bars
         .iter()
         .next()
         .map_or(0, |node| physical_px(node.size().y));
+    // The bottom-left weapon panel (GTW-275 AC9) occupies BOTH the left column and the bottom
+    // row, so its width feeds the LEFT inset and its height the BOTTOM inset.
+    let weapon_w = weapon_panels
+        .iter()
+        .next()
+        .map_or(0, |node| physical_px(node.size().x));
+    let weapon_h = weapon_panels
+        .iter()
+        .next()
+        .map_or(0, |node| physical_px(node.size().y));
+    // LEFT = wider of the top-left status panel and the bottom-left weapon panel (AC9).
+    let left = status_w.max(weapon_w);
+    // BOTTOM = taller of the bottom-centre action bar and the bottom-left weapon panel (AC9).
+    let bottom = action_h.max(weapon_h);
     // RIGHT = hover-panel width (GTW-274 — anchored top-right; 0 when absent/zero-sized).
     let right = hover_panels
         .iter()

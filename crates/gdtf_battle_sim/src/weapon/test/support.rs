@@ -12,6 +12,9 @@
 pub(super) use bevy::prelude::World;
 
 pub(super) use super::super::*;
+// The magazine grouping (GTW-275) lives in `crate::magazine`, NOT in `weapon`, so the
+// `super::super::*` glob does not reach it — re-export it for the concern test files.
+pub(super) use crate::magazine::{Magazine, ReloadTu};
 
 /// Build an arbitrary `Single`-kind fire-mode spec from raw literals — NOT
 /// shipped magnitudes (these only exercise the type surface). For an explicit
@@ -47,11 +50,11 @@ pub(super) fn profile(
     )
 }
 
-/// Build an arbitrary handling block (magazine + single-mode selector +
-/// `stable` tag) from raw literals — NOT shipped magnitudes.
+/// Build an arbitrary handling block (a full [`Magazine`] grouping + single-mode
+/// selector + `stable` tag) from raw literals — NOT shipped magnitudes.
 pub(super) fn handling(mag: u16, stable: bool) -> HandlingProfile {
     HandlingProfile::new(
-        MagazineSize::new(mag),
+        Magazine::loaded(MagazineSize::new(mag), ReloadTu::new(12)),
         FireMode::new(vec![spec(1.0, 0.5, 1)]),
         Stable::new(stable),
     )

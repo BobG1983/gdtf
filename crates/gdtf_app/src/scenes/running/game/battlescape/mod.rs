@@ -32,7 +32,7 @@ pub(in crate::scenes::running::game::battlescape) use action_bar::GameBattleScap
 crate::support_use! {
     action_bar::{
         AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton, ReloadButton,
+        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton,
         StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
     };
 }
@@ -64,4 +64,18 @@ crate::support_use! {
     hover_panel::{
         HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
     };
+}
+
+// The GTW-275 weapon panel (bottom-left): the selected ganger's weapon graphic placeholder
+// + name + magazine cur/max + a LIVE Reload button + throwable placeholders. Its root climbs
+// (like the hover-panel root) so `set_world_viewport` insets the world map's LEFT/BOTTOM
+// margins around it (AC9) AND the AC tests can assert its presence.
+mod weapon_panel;
+pub(in crate::scenes::running::game::battlescape) use weapon_panel::GameBattleScapeWeaponPanelScenePlugin;
+crate::support_use!(weapon_panel::WeaponPanelRoot;);
+// Test-support-only re-export of the weapon-panel's content / name / magazine / reload
+// markers (GTW-275), gated so the binary build is `unused`/`unreachable_pub`-clean.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    weapon_panel::{ReloadButton, WeaponContent, WeaponMagazineText, WeaponNameText};
 }

@@ -15,6 +15,7 @@ use crate::{
     cone::{ConeAngle, PriorShots},
     cover::HeightBand,
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
+    magazine::{Magazine, ReloadTu},
     metric::{Cell, Level, SimPos},
     resolve_and_apply::{TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotKind, ShotOutcome},
@@ -59,7 +60,7 @@ fn a_weapon() -> WeaponBundle {
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            MagazineSize::new(10),
+            Magazine::loaded(MagazineSize::new(10), ReloadTu::new(10)),
             FireMode::new(vec![FireModeSpec::new(
                 ModeKind::Single,
                 ModeConeMult::new(1.0),

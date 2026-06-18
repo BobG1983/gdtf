@@ -39,8 +39,8 @@ use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera, cell_to_
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
     LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, TerrainKind, Tu, TuMax, acts::SetFacingRequested,
-    tuning::CombatTuning,
+    OccupancyGrid, PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax,
+    acts::SetFacingRequested, tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -113,7 +113,7 @@ fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
             LifeState::Alive,
             Tu::new(255),
             TuMax::new(100),
-            Magazine::new(10, MagazineSize::new(30)),
+            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
         ))
         .id();
     app.world_mut()

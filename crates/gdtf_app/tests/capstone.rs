@@ -18,8 +18,8 @@
 use bevy::{prelude::*, state::state::State};
 use gdtf_app::test_support::{
     AimToggleButton, AutoBattleActive, AutoBattlePlugin, BattleScapeState, EndTurnButton,
-    LevelDownButton, LevelUpButton, LoadedSituation, ReloadButton, RunningState,
-    StanceKneelingButton, StanceProneButton, StanceStandingButton, auto_battle_enabled,
+    LevelDownButton, LevelUpButton, LoadedSituation, RunningState, StanceKneelingButton,
+    StanceProneButton, StanceStandingButton, auto_battle_enabled,
 };
 // (no `GameState` import — the e2e test reads BattleScapeState directly.)
 use gdtf_battle_input::HoveredCell;
@@ -286,10 +286,12 @@ fn full_stack_composes_to_battle_running() {
 
 /// The number of STABLE action-bar buttons spawned in `BattleRunning` at
 /// `OnEnter(BattleRunning)`: the 3 stance toggles (Stand / Kneel / Prone), the aim toggle,
-/// and the 2 level buttons (the 4 control buttons), plus the 2 deferred buttons (reload,
-/// end-turn). The Mode sub-panel's per-mode toggles are built on a selection (none at
-/// spawn, when the e2e has no `SelectedShooter`), so they are not counted here.
-const EXPECTED_ACTION_BAR_BUTTONS: usize = 8;
+/// the 2 level buttons (the 4 control buttons), plus the 1 deferred end-turn button. (The
+/// Reload deferred-button stub was REMOVED in GTW-275 — reload is now a LIVE button in the
+/// weapon panel, not the action bar.) The Mode sub-panel's per-mode toggles are built on a
+/// selection (none at spawn, when the e2e has no `SelectedShooter`), so they are not counted
+/// here.
+const EXPECTED_ACTION_BAR_BUTTONS: usize = 7;
 
 /// Counts the stable action-bar buttons present by summing each marker. Re-encodes the
 /// bar's composition so a regression that drops a button turns the e2e test red.
@@ -300,7 +302,6 @@ fn count_action_bar_buttons(app: &mut App) -> usize {
         + count_marker::<AimToggleButton>(app)
         + count_marker::<LevelUpButton>(app)
         + count_marker::<LevelDownButton>(app)
-        + count_marker::<ReloadButton>(app)
         + count_marker::<EndTurnButton>(app)
 }
 

@@ -26,7 +26,7 @@ crate::support_use!(game::BattleRunningComplete;);
 crate::support_use! {
     game::{
         AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton, ReloadButton,
+        ModeBurstButton, ModeFullButton, ModePanelRoot, ModeSingleButton,
         StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
     };
 }
@@ -39,6 +39,14 @@ crate::support_use! {
         HoverObjectBar, HoverObjectBlock, HoverObjectText, HoverPanelRoot, HoverStatBlockHost, StatFaction,
         StatHpBar, StatName, StatPortrait, StatStance, StatTuBar, StatWoundLine, StatWoundList,
         StatWoundsPips, portrait_index_for_name,
+    };
+}
+// Test-support-only re-export of the GTW-275 weapon-panel markers, gated so the binary build
+// is `unused`/`unreachable_pub`-clean. Carries the markers up toward `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    game::{
+        ReloadButton, WeaponContent, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
     };
 }
 

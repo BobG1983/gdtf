@@ -1,5 +1,6 @@
-//! The public [`SimActsPlugin`] — the sim-acts registration unit that wires the seven
-//! `*Requested` message buffers + the seven per-act dispatch systems (E10.2 / GTW-204).
+//! The public [`SimActsPlugin`] — the sim-acts registration unit that wires the eight
+//! `*Requested` message buffers + the eight per-act dispatch systems (E10.2 / GTW-204;
+//! the eighth — reload — added in GTW-275).
 
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update};
 
@@ -9,18 +10,20 @@ use crate::{
         fire::dispatch_fire,
         movement::dispatch_move,
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
+        reload::dispatch_reload,
         request::{
-            ExecuteDownedRequested, FireRequested, MoveRequested, SetAimingRequested,
-            SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
+            ExecuteDownedRequested, FireRequested, MoveRequested, ReloadRequested,
+            SetAimingRequested, SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
         },
     },
     occupancy_sync::SimSystems,
 };
 
-/// The **sim-acts registration unit** — registers the seven `*Requested` message buffers
-/// and adds the seven per-act dispatch systems, every one `.in_set(SimSystems::Simulate)`
+/// The **sim-acts registration unit** — registers the eight `*Requested` message buffers
+/// and adds the eight per-act dispatch systems, every one `.in_set(SimSystems::Simulate)`
 /// in [`Update`] (E10.2 / GTW-204; the seventh — [`MoveRequested`] / [`dispatch_move`] —
-/// added in GTW-234).
+/// added in GTW-234; the eighth — [`ReloadRequested`] / [`dispatch_reload`] — in
+/// GTW-275).
 ///
 /// This slice CREATES this plugin — E10.0 lands only the [`SimSystems::Simulate`]
 /// [`SystemSet`](bevy::prelude::SystemSet) enum and its `configure_sets`; it builds no
@@ -28,12 +31,12 @@ use crate::{
 ///
 /// - [`add_message`](App::add_message)s [`FireRequested`], [`SetAimingRequested`],
 ///   [`SetStanceRequested`], [`SetFacingRequested`], [`StabilizeDownedRequested`],
-///   [`ExecuteDownedRequested`], and [`MoveRequested`] — exactly once each
-///   (`bevy-traps.md` #5; an unregistered message buffer fails a
+///   [`ExecuteDownedRequested`], [`MoveRequested`], and [`ReloadRequested`] — exactly
+///   once each (`bevy-traps.md` #5; an unregistered message buffer fails a
 ///   [`MessageReader`](bevy::prelude::MessageReader)'s param validation, the
 ///   [`OccupancyMaintenancePlugin`](crate::occupancy_sync::OccupancyMaintenancePlugin)
 ///   precedent); and
-/// - adds the seven dispatch systems to [`Update`] `.in_set(SimSystems::Simulate)`,
+/// - adds the eight dispatch systems to [`Update`] `.in_set(SimSystems::Simulate)`,
 ///   composing deterministically with the occupancy-maintenance systems already in that
 ///   set (`bevy-traps.md` #3).
 ///
@@ -54,6 +57,7 @@ impl Plugin for SimActsPlugin {
             .add_message::<StabilizeDownedRequested>()
             .add_message::<ExecuteDownedRequested>()
             .add_message::<MoveRequested>()
+            .add_message::<ReloadRequested>()
             .add_systems(
                 Update,
                 (
@@ -64,6 +68,7 @@ impl Plugin for SimActsPlugin {
                     dispatch_stabilize_downed,
                     dispatch_execute_downed,
                     dispatch_move,
+                    dispatch_reload,
                 )
                     .in_set(SimSystems::Simulate),
             );

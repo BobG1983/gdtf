@@ -26,8 +26,7 @@ use gdtf_ui::{ButtonLabel, DisabledButton, spawn_button, spawn_panel, theme::Gdt
 use crate::scenes::running::game::battlescape::action_bar::{
     components::{
         ActionBarRoot, AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-        ReloadButton, StanceKneelingButton, StancePanelRoot, StanceProneButton,
-        StanceStandingButton,
+        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
     },
     systems::mode_panel::spawn_mode_panel,
 };
@@ -187,14 +186,9 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         LevelDownButton,
     );
 
-    // The two DEFERRED buttons — DisabledButton so they are painted inert and skipped by
-    // the action layer (the `Without<DisabledButton>` filter). They emit no intent.
-    let reload = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Reload"),
-        (ReloadButton, DisabledButton),
-    );
+    // The DEFERRED end-turn button — DisabledButton so it is painted inert and skipped by
+    // the action layer (the `Without<DisabledButton>` filter). It emits no intent. (The
+    // Reload stub was REMOVED in GTW-275 — reload is now a LIVE button in the weapon panel.)
     let end_turn = spawn_button(
         &mut commands,
         &theme,
@@ -221,7 +215,6 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         aim,
         level_up,
         level_down,
-        reload,
         end_turn,
         flee,
     ]);

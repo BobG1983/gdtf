@@ -18,7 +18,13 @@
     punch:         4,         // armor protection a hit ignores (penetration)
     shred:         2,         // extra integrity damage per hit (attacks armor durability)
     damage_type:   Kinetic,   // the matchup-wheel node this weapon emits (node 3 — slugs / autoguns)
-    magazine_size: 30,        // rounds before a reload
+    // The magazine grouping — the weapon's ammo numbers (the user's
+    // `Magazine { size, reload_tu, … }` model). The live loaded-round count is NOT
+    // authored: the magazine is spawned FULL (30/30) at battle setup.
+    magazine: (
+        size:      30,        // round capacity before a reload (spawns full: 30/30)
+        reload_tu: 14,        // TU spent to reload — a big 30-round mag is slow to swap (tunable)
+    ),
     // The fire-mode selector — a LIST of the modes this weapon offers, in authored
     // order (Single first). The autogun offers single + burst + full-auto. Each
     // entry carries its closed kind (Single / Burst / Full — the human label is

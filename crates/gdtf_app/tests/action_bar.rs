@@ -50,17 +50,17 @@ use bevy::{
 use gdtf_app::test_support::{
     AimToggleButton, AppState, BattleRunningComplete, BattleScapeState, EndTurnButton, FleeButton,
     LevelDownButton, LevelUpButton, LoadedSituation, ModeBurstButton, ModeFullButton,
-    ModePanelRoot, ModeSingleButton, ReloadButton, RunningState, StanceKneelingButton,
-    StancePanelRoot, StanceProneButton, StanceStandingButton,
+    ModePanelRoot, ModeSingleButton, RunningState, StanceKneelingButton, StancePanelRoot,
+    StanceProneButton, StanceStandingButton,
 };
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
     Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
     BattleInProgress, Cell, CellLevel, Direction, Facing, Faction, FireMode, FireModeSpec,
-    GangerName, GangerSpawn, Hp, HpMax, Level, LifeState, Luck, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, Shooting, Situation, SourceArmor, Stance, StanceKind, Toughness, Tu, TuMax,
-    Wounds, WoundsMax,
+    GangerName, GangerSpawn, Hp, HpMax, Level, LifeState, Luck, Magazine, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, ReloadTu, Shooting, Situation, SourceArmor, Stance, StanceKind,
+    Toughness, Tu, TuMax, Wounds, WoundsMax,
     acts::{SetAimingRequested, SetStanceRequested},
     tuning::CombatTuning,
     weapon::{
@@ -786,10 +786,9 @@ fn deferred_buttons_are_disabled_and_emit_nothing() {
         Direction::North,
     );
 
-    let deferred = [
-        require_button::<ReloadButton>(&mut app),
-        require_button::<EndTurnButton>(&mut app),
-    ];
+    // GTW-275 removed the Reload deferred stub (reload is now a LIVE weapon-panel button);
+    // end-turn is the remaining deferred (DisabledButton) action-bar control.
+    let deferred = [require_button::<EndTurnButton>(&mut app)];
     for found in deferred {
         let Some(button) = found else { return };
         assert!(
@@ -1050,17 +1049,15 @@ fn flee_button_despawns_on_exit_battle_running() {
 // AC5 — regression: the deferred buttons stay disabled, flee stays enabled.
 // ---------------------------------------------------------------------------------
 
-/// AC5 — adding the flee button did NOT re-enable the deferred buttons: `ReloadButton` and
-/// `EndTurnButton` still carry `DisabledButton`, while the `FleeButton` is ENABLED
+/// AC5 — adding the flee button did NOT re-enable the deferred end-turn button:
+/// `EndTurnButton` still carries `DisabledButton`, while the `FleeButton` is ENABLED
 /// (carries NO `DisabledButton`). The full deferred-emit-nothing regression is
-/// `deferred_buttons_are_disabled_and_emit_nothing`.
+/// `deferred_buttons_are_disabled_and_emit_nothing`. (GTW-275: the Reload deferred stub is
+/// GONE — reload is a LIVE weapon-panel button now, so it is no longer asserted here.)
 #[test]
 fn deferred_buttons_stay_disabled_after_flee_added() {
     let mut app = battle_running_app();
 
-    let Some(reload) = require_button::<ReloadButton>(&mut app) else {
-        return;
-    };
     let Some(end_turn) = require_button::<EndTurnButton>(&mut app) else {
         return;
     };
@@ -1068,10 +1065,6 @@ fn deferred_buttons_stay_disabled_after_flee_added() {
         return;
     };
 
-    assert!(
-        app.world().get::<DisabledButton>(reload).is_some(),
-        "the reload button must STAY DisabledButton after FleeButton was added",
-    );
     assert!(
         app.world().get::<DisabledButton>(end_turn).is_some(),
         "the end-turn button must STAY DisabledButton after FleeButton was added",
@@ -1108,17 +1101,17 @@ fn armed_registry() -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(PLAYER_WEAPON_KEY.to_owned()),
         WeaponSpec {
-            base_spread:   BaseSpread::new(0.25),
-            accuracy:      Accuracy::new(1.0),
-            kickback:      Kickback::new(0.4),
-            fatal_bias:    FatalBias::new(0.0),
-            damage:        WeaponDamage::new(12),
-            punch:         WeaponPunch::new(5),
-            shred:         WeaponShred::new(3),
-            damage_type:   DamageType::Kinetic,
-            magazine_size: MagazineSize::new(30),
-            fire_mode:     FireMode::new(vec![spec(ModeKind::Single, 0.5, 1)]),
-            stable:        Stable::new(false),
+            base_spread: BaseSpread::new(0.25),
+            accuracy:    Accuracy::new(1.0),
+            kickback:    Kickback::new(0.4),
+            fatal_bias:  FatalBias::new(0.0),
+            damage:      WeaponDamage::new(12),
+            punch:       WeaponPunch::new(5),
+            shred:       WeaponShred::new(3),
+            damage_type: DamageType::Kinetic,
+            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+            fire_mode:   FireMode::new(vec![spec(ModeKind::Single, 0.5, 1)]),
+            stable:      Stable::new(false),
         },
     )])
 }

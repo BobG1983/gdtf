@@ -26,7 +26,7 @@ pub(super) use crate::{
         Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::{InflictedWound, InflictedWounds},
-    magazine::{Magazine, mode_tu_cost},
+    magazine::{Magazine, ReloadTu, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     resolve_coarse::ShotKind,
@@ -106,6 +106,7 @@ pub(super) struct ShooterSpec {
 /// magnitudes throughout.
 pub(super) fn spawn_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
     let mag_size = MagazineSize::new(30);
+    let reload_tu = ReloadTu::new(12);
     let bundle = WeaponBundle::new(
         WeaponName::new("test-weapon".to_owned()),
         BaseSpread::new(0.05),
@@ -118,7 +119,14 @@ pub(super) fn spawn_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
             WeaponShred::new(10),
             DamageType::Kinetic,
         ),
-        HandlingProfile::new(mag_size, FireMode::new(vec![spec.mode]), Stable::new(true)),
+        // The bundle carries the test's exact ammo count directly (GTW-275: the
+        // WeaponBundle now holds the Magazine grouping, so a separate Magazine in the
+        // spawn tuple would be a duplicate-component panic).
+        HandlingProfile::new(
+            Magazine::new(spec.ammo, mag_size, reload_tu),
+            FireMode::new(vec![spec.mode]),
+            Stable::new(true),
+        ),
     );
     world
         .spawn((
@@ -130,7 +138,6 @@ pub(super) fn spawn_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
             Shooting::new(1.0),
             Tu::new(spec.tu),
             TuMax::new(spec.tu_max),
-            Magazine::new(spec.ammo, mag_size),
             // The shooter is also a ganger — it carries the target-query set so
             // its own liveness reads from that query (and it never wounds itself).
             // The target-query set is one nested-tuple bundle so the spawn stays
@@ -159,6 +166,7 @@ pub(super) fn spawn_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
 /// at `(spec.x, spec.y, 0)` facing East. Arbitrary (not shipped) magnitudes.
 pub(super) fn spawn_zero_spread_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
     let mag_size = MagazineSize::new(30);
+    let reload_tu = ReloadTu::new(12);
     let bundle = WeaponBundle::new(
         WeaponName::new("test-weapon".to_owned()),
         BaseSpread::new(0.0), // zero cone → trajectory is the climb axis exactly
@@ -172,7 +180,9 @@ pub(super) fn spawn_zero_spread_shooter(world: &mut World, spec: ShooterSpec) ->
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            mag_size,
+            // The bundle carries the test's exact ammo count directly (GTW-275: no
+            // separate Magazine in the spawn tuple — that would be a duplicate).
+            Magazine::new(spec.ammo, mag_size, reload_tu),
             FireMode::new(vec![spec.mode]),
             Stable::new(false), // un-braced so the climb is not damped to nothing
         ),
@@ -187,7 +197,6 @@ pub(super) fn spawn_zero_spread_shooter(world: &mut World, spec: ShooterSpec) ->
             Shooting::new(1.0),
             Tu::new(spec.tu),
             TuMax::new(spec.tu_max),
-            Magazine::new(spec.ammo, mag_size),
             // The target-query set as one nested-tuple bundle (the GTW-279
             // InflictedWounds add keeps the spawn under the 15-element tuple limit).
             (

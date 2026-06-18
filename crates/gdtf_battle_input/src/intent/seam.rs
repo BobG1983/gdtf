@@ -5,8 +5,8 @@ use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, Facing, Stance, StanceKind,
     acts::{
-        AimRequest, FireRequested, MoveRequested, SetAimingRequested, SetFacingRequested,
-        SetStanceRequested,
+        AimRequest, FireRequested, MoveRequested, ReloadRequested, SetAimingRequested,
+        SetFacingRequested, SetStanceRequested,
     },
 };
 
@@ -79,6 +79,12 @@ pub enum ActIntent {
     /// [`FacingCycle`](Self::FacingCycle) intent uses (the per-45deg-step turn TU cost is
     /// the sim's facing dispatch, not this layer's).
     Turn(SetFacingRequested),
+    /// RELOAD the [`SelectedShooter`]'s weapon — drained to [`ReloadRequested`] for the
+    /// selection (GTW-275). The weapon panel's Reload button pushes this; the drain
+    /// emits [`ReloadRequested::new(selected)`](ReloadRequested::new) ONLY when a shooter
+    /// is selected (a no-op with no selection). The per-weapon `reload_tu` cost is the
+    /// sim's reload dispatch, not this layer's.
+    Reload,
 }
 
 /// The shared intent QUEUE — the buffered seam both input surfaces write.
@@ -120,12 +126,12 @@ impl PendingActIntent {
     }
 }
 
-/// The five `*Requested` act [`MessageWriter`]s [`dispatch_act_intents`] emits onto,
+/// The six `*Requested` act [`MessageWriter`]s [`dispatch_act_intents`] emits onto,
 /// grouped into ONE [`SystemParam`] so the drain's parameter list stays under
 /// clippy's argument-count gate (the sim's `BattleGridsParam` precedent).
 ///
 /// Grouping the cohesive emission writers into one param keeps
-/// [`dispatch_act_intents`] at six parameters; the drain arms call
+/// [`dispatch_act_intents`] at five parameters; the drain arms call
 /// `acts.fire.write(..)` / `acts.stance.write(..)` etc. A transparent system-param
 /// bundle of framework [`MessageWriter`]s — not itself a wrapped domain scalar. The
 /// [`SetFacingRequested`] writer ([`facing`](Self::facing)) is REUSED by BOTH the
@@ -144,6 +150,9 @@ pub struct ActWriters<'w> {
     /// The set-facing writer — the facing-cycle key's AND the right-click turn-to-face
     /// surface's drained message (GTW-238 reuses it for [`ActIntent::Turn`]).
     facing:   MessageWriter<'w, SetFacingRequested>,
+    /// The reload-act writer — the weapon panel Reload button's drained message
+    /// (GTW-275).
+    reload:   MessageWriter<'w, ReloadRequested>,
 }
 
 /// **Dispatch** the queued [`ActIntent`]s — the ONE drain system over the shared seam.
@@ -176,6 +185,9 @@ pub struct ActWriters<'w> {
 /// - [`ActIntent::Turn`] emits the carried [`SetFacingRequested`] verbatim onto the SAME
 ///   facing writer the [`FacingCycle`](ActIntent::FacingCycle) arm uses (GTW-238) — the
 ///   per-45deg-step turn TU cost is the sim's facing dispatch.
+/// - [`ActIntent::Reload`] emits [`ReloadRequested`] for the [`SelectedShooter`]
+///   (GTW-275) — a no-op with no selection; the per-weapon `reload_tu` cost is the sim's
+///   reload dispatch.
 ///
 /// With NO [`SelectedShooter`] the cycle intents are no-ops (nothing to act on); a
 /// cycle intent for a selected entity that lacks the relevant component is skipped
@@ -249,6 +261,12 @@ pub fn dispatch_act_intents(
             }
             ActIntent::Turn(request) => {
                 acts.facing.write(request);
+            }
+            ActIntent::Reload => {
+                // Emit a reload for the selection only — mirror the SetStance arm
+                // (GTW-275). With no selection there is nothing to reload.
+                let Some(actor) = **selected else { continue };
+                acts.reload.write(ReloadRequested::new(actor));
             }
         }
     }

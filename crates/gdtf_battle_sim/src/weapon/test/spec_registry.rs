@@ -63,7 +63,7 @@ fn weapon_spec_round_trips_and_into_bundle_groups_faithfully() {
     let authored = r"(
         base_spread: 0.2, accuracy: 1.1, kickback: 0.3, fatal_bias: 5.0,
         damage: 14, punch: 6, shred: 4, damage_type: Kinetic,
-        magazine_size: 24,
+        magazine: ( size: 24, reload_tu: 11 ),
         fire_mode: [
             ( kind: Single, cone_mult: 1.0, tu_percent: 0.5, shots: 1),
             ( kind: Burst,  cone_mult: 1.3, tu_percent: 0.8, shots: 3),
@@ -86,9 +86,18 @@ fn weapon_spec_round_trips_and_into_bundle_groups_faithfully() {
     assert_eq!(*bundle.punch, 6i32, "punch flows through DamageProfile");
     assert_eq!(*bundle.shred, 4i32, "shred flows through DamageProfile");
     assert_eq!(bundle.damage_type, DamageType::Kinetic);
+    // GTW-275: the authored `magazine: (size, reload_tu)` grouping parses, and
+    // into_bundle spawns the magazine FULL (loaded == size). The reload_tu magnitude is
+    // tunable (not pinned); only the size + full-load RELATION is asserted.
     assert_eq!(
-        *bundle.magazine_size, 24u16,
-        "magazine_size flows through HandlingProfile",
+        *bundle.magazine.size(),
+        24u16,
+        "the magazine size flows through HandlingProfile",
+    );
+    assert_eq!(
+        *bundle.magazine.rounds(),
+        *bundle.magazine.size(),
+        "into_bundle spawns the magazine full (loaded == size)",
     );
     assert!(!*bundle.stable, "stable flows through HandlingProfile");
     // The two authored modes survived the parse + grouping, in order.

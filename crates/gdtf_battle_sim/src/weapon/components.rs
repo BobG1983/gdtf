@@ -210,14 +210,15 @@ impl DamageType {
 /// A weapon's **magazine size** — how many rounds it holds before a reload
 /// (resolution.md §"What's tunable" names the `reload_tu` refill; the magazine's
 /// capacity is a weapon number). The ammo clamp `fire()` honors (resolution.md
-/// §"What's pure math vs sim": "ammo clamp") reads this — carried here, spent by
-/// the firing act in a later slice.
+/// §"What's pure math vs sim": "ammo clamp") reads this.
 ///
 /// A weapon NUMBER, a small non-negative count (`u16`). Private inner + derived
-/// [`Deref`]; `#[serde(transparent)]`. A `#[derive(Component)]` (GTW-200) — a
-/// sibling component on the armed entity (the capacity; the live ammo count is the
-/// separate [`crate::magazine::Magazine`] battle-state component).
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+/// [`Deref`]; `#[serde(transparent)]`. Since GTW-275 it is **not** a standalone
+/// `#[derive(Component)]` — it is the `size` LEAF of the [`crate::magazine::Magazine`]
+/// grouping component (the user's `Magazine { size, reload_tu, … }` model), which
+/// also carries the per-weapon [`ReloadTu`](crate::magazine::ReloadTu) and the live
+/// [`LoadedRounds`](crate::magazine::LoadedRounds) battle-state count.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct MagazineSize(u16);
 
@@ -226,6 +227,15 @@ impl MagazineSize {
     #[must_use]
     pub const fn new(rounds: u16) -> Self {
         Self(rounds)
+    }
+
+    /// The capacity as its inner round count — a `const` accessor (the derived
+    /// [`Deref`] is not `const`, so `const fn` callers like
+    /// [`Magazine::loaded`](crate::magazine::Magazine::loaded) read the capacity
+    /// through this).
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0
     }
 }
 
@@ -286,8 +296,9 @@ impl WeaponName {
 /// The weapon's stats are **not** packed inside this — each is its own sibling
 /// `#[derive(Component)]` newtype on the same entity (`BaseSpread`, `Accuracy`,
 /// `Kickback`, `FatalBias`, `WeaponDamage`, `WeaponPunch`, `WeaponShred`,
-/// `DamageType`, `MagazineSize`, [`FireMode`](super::FireMode), `Stable`), spawned
-/// together via [`WeaponBundle`](super::WeaponBundle). Because the stats are direct
+/// `DamageType`, the [`crate::magazine::Magazine`] grouping (its `MagazineSize` /
+/// `ReloadTu` / `LoadedRounds` leaves), [`FireMode`](super::FireMode), `Stable`),
+/// spawned together via [`WeaponBundle`](super::WeaponBundle). Because the stats are direct
 /// components, the combat act (E4.5 `fire()`) is a proper query-based Bevy system
 /// with NO `&mut World` indirection: it queries the individual stat components off
 /// the ganger entity (or assembles a transient [`WeaponStats`](super::WeaponStats)

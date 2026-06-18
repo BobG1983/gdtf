@@ -36,7 +36,9 @@ fn weapon_bundle_spawns_an_armed_entity() {
     assert!(world.get::<WeaponPunch>(entity).is_some(), "punch");
     assert!(world.get::<WeaponShred>(entity).is_some(), "shred");
     assert!(world.get::<DamageType>(entity).is_some(), "damage_type");
-    assert!(world.get::<MagazineSize>(entity).is_some(), "magazine_size");
+    // GTW-275: the capacity is no longer a standalone MagazineSize component — the
+    // bundle carries the Magazine grouping (size + reload_tu + loaded), spawned full.
+    assert!(world.get::<Magazine>(entity).is_some(), "magazine");
     assert!(world.get::<FireMode>(entity).is_some(), "fire_mode");
     assert!(world.get::<Stable>(entity).is_some(), "stable");
 
@@ -45,6 +47,24 @@ fn weapon_bundle_spawns_an_armed_entity() {
         return;
     };
     assert_eq!(**damage, 12i32);
+
+    // GTW-275: the spawned magazine carries the size-30 capacity and is loaded FULL
+    // (loaded == size) — the spawn-full path. The reload_tu magnitude is tunable, so
+    // it is not pinned; only the size + full-load RELATION is asserted.
+    let Some(magazine) = world.get::<Magazine>(entity) else {
+        return;
+    };
+    assert_eq!(
+        *magazine.size(),
+        30u16,
+        "the magazine capacity is the authored 30"
+    );
+    assert_eq!(
+        *magazine.rounds(),
+        *magazine.size(),
+        "the spawned magazine is loaded FULL (loaded == size)"
+    );
+    assert!(magazine.is_full(), "the spawned magazine is full");
 }
 
 /// AC3 — a [`WeaponStats`] borrow-view assembled off a bundle reads the same

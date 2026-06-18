@@ -42,11 +42,11 @@ use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
     FireMode, FireModeSpec, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, SimRng, Stance, StanceKind,
+    ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng, Stance, StanceKind,
     SurfaceGrid, Tu, TuMax,
     acts::{
-        AimRequest, FireRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        SimActsPlugin,
+        AimRequest, FireRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+        SetStanceRequested, SimActsPlugin,
     },
     tuning::CombatTuning,
 };
@@ -205,7 +205,7 @@ fn spawn_ganger(
             LifeState::Alive,
             Tu::new(255),
             TuMax::new(100),
-            Magazine::new(10, size),
+            Magazine::new(10, size, ReloadTu::new(12)),
         ))
         .id()
 }
@@ -302,8 +302,11 @@ struct AimProbe(Vec<SetAimingRequested>);
 /// Collected `SetFacingRequested` messages (probe).
 #[derive(Resource, Default)]
 struct FacingProbe(Vec<SetFacingRequested>);
+/// Collected `ReloadRequested` messages (probe, GTW-275).
+#[derive(Resource, Default)]
+struct ReloadProbe(Vec<ReloadRequested>);
 
-/// Adds the four message-collecting probe systems, each running AFTER the drain so it
+/// Adds the five message-collecting probe systems, each running AFTER the drain so it
 /// observes the same update's emitted messages. The probes have their own
 /// `MessageReader` cursors (independent of the sim's `dispatch_*`), so they read every
 /// message the drain wrote.
@@ -311,7 +314,8 @@ fn add_probes(app: &mut App) {
     app.insert_resource(FireProbe::default())
         .insert_resource(StanceProbe::default())
         .insert_resource(AimProbe::default())
-        .insert_resource(FacingProbe::default());
+        .insert_resource(FacingProbe::default())
+        .insert_resource(ReloadProbe::default());
     app.add_systems(
         Update,
         (
@@ -326,6 +330,9 @@ fn add_probes(app: &mut App) {
                 p.0.extend(r.read().copied());
             },
             |mut r: MessageReader<SetFacingRequested>, mut p: ResMut<FacingProbe>| {
+                p.0.extend(r.read().copied());
+            },
+            |mut r: MessageReader<ReloadRequested>, mut p: ResMut<ReloadProbe>| {
                 p.0.extend(r.read().copied());
             },
         )
@@ -479,9 +486,11 @@ fn can_fire_failure_blocks_fire_requested() {
         select_ganger(&mut app, ganger);
         let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
         place_enemy(&mut app, target);
-        app.world_mut()
-            .entity_mut(ganger)
-            .insert(Magazine::new(0, MagazineSize::new(30)));
+        app.world_mut().entity_mut(ganger).insert(Magazine::new(
+            0,
+            MagazineSize::new(30),
+            ReloadTu::new(12),
+        ));
         press_left(&mut app);
         app.update();
         assert!(
@@ -691,6 +700,27 @@ fn facing_key_emits_next_of_cycle_and_matches_direct_intent() {
     );
 }
 
+/// GTW-275 AC4 — pushing `ActIntent::Reload` emits exactly one `ReloadRequested` for
+/// the `*SelectedShooter` through the `gdtf_battle_input` seam (the weapon panel's Reload
+/// button surrogate, over the SAME `dispatch_act_intents` drain the other intents use).
+#[test]
+fn reload_intent_emits_one_reload_requested_for_the_selection() {
+    let (app, ganger) = drive_one_act(Drive::Intent(ActIntent::Reload));
+    let reloads = app
+        .world()
+        .get_resource::<ReloadProbe>()
+        .map_or_else(Vec::new, |p| p.0.clone());
+    assert_eq!(
+        reloads.len(),
+        1,
+        "one ReloadRequested via the reload intent",
+    );
+    assert_eq!(
+        reloads[0].actor, ganger,
+        "the ReloadRequested actor is the *SelectedShooter",
+    );
+}
+
 // ---------------------------------------------------------------------------------
 // AC6 — with NO SelectedShooter, every act key/click is a no-op (zero messages).
 // ---------------------------------------------------------------------------------
@@ -725,6 +755,11 @@ fn no_selection_makes_every_act_a_no_op() {
     press_key(&mut app, binds.stance_cycle());
     press_key(&mut app, binds.aim_toggle());
     press_key(&mut app, binds.facing_cycle());
+    // The Reload act has no key binding — push its intent directly (the button surrogate)
+    // to prove the drain is a no-op with no selection (GTW-275).
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::Reload);
     press_left(&mut app);
     app.update();
 
@@ -749,5 +784,11 @@ fn no_selection_makes_every_act_a_no_op() {
             .get_resource::<FacingProbe>()
             .is_none_or(|p| p.0.is_empty()),
         "no SetFacingRequested without a selection",
+    );
+    assert!(
+        app.world()
+            .get_resource::<ReloadProbe>()
+            .is_none_or(|p| p.0.is_empty()),
+        "no ReloadRequested without a selection",
     );
 }
