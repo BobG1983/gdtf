@@ -58,9 +58,9 @@ use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
     Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
     BattleInProgress, Cell, CellLevel, Direction, Facing, Faction, FireMode, FireModeSpec,
-    GangerName, GangerSpawn, Hp, Level, LifeState, Luck, ModeConeMult, ModeKind, ModeShots,
+    GangerName, GangerSpawn, Hp, HpMax, Level, LifeState, Luck, ModeConeMult, ModeKind, ModeShots,
     ModeTuPercent, Shooting, Situation, SourceArmor, Stance, StanceKind, Toughness, Tu, TuMax,
-    Wounds,
+    Wounds, WoundsMax,
     acts::{SetAimingRequested, SetStanceRequested},
     tuning::CombatTuning,
     weapon::{
@@ -1150,7 +1150,9 @@ fn armed_player_situation() -> Situation {
             stance:     Stance::new(StanceKind::Standing),
             aiming:     Aiming::new(false),
             hp:         Hp::new(40),
+            hp_max:     HpMax::new(40),
             wounds:     Wounds::new(3),
+            wounds_max: WoundsMax::new(3),
             tu:         Tu::new(60),
             tu_max:     TuMax::new(60),
             life_state: LifeState::Alive,

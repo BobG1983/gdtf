@@ -40,4 +40,4 @@ pub use direction::{Direction, Facing};
 pub use life::{LifeState, Stabilized};
 pub use position::Position;
 pub use stance::{Aiming, Faction, Stance, StanceKind};
-pub use vitals::{GangerName, Hp, Luck, Shooting, Toughness, Tu, TuMax, Wounds};
+pub use vitals::{GangerName, Hp, HpMax, Luck, Shooting, Toughness, Tu, TuMax, Wounds, WoundsMax};

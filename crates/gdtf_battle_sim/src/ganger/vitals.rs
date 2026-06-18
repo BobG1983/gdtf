@@ -58,6 +58,42 @@ impl Hp {
     }
 }
 
+/// A ganger's **HP maximum** — the authored full hit-points capacity, the HP bar's
+/// denominator.
+///
+/// The per-ganger ceiling for [`Hp`]: the authored full pool, used by the status
+/// panel (GTW-278) as the DENOMINATOR of the HP `ProgressBar` (`Hp / HpMax` → fill
+/// fraction) and the structural "full health" value. **Unlike [`TuMax`]** — which is
+/// a round-RESET target ([`crate::tu::reset_tu`] restores [`Tu`] to [`TuMax`] every
+/// round) — `HpMax` is a pure DISPLAY/CAPACITY ceiling: [`Hp`] is a PERSISTENT damage
+/// pool that depletes and STAYS depleted across rounds, so `HpMax` is NEVER a
+/// reset/restore target and the setup wires NO reset logic for it.
+///
+/// A **distinct** component from [`Hp`] per no-bare-types rule 3 — same inner `u16`,
+/// but a different concept (the ceiling/denominator, not the current pool), so the two
+/// are never interchangeable. Private inner + derived [`Deref`], house style. A distinct
+/// component so the panel / display path can query `&HpMax` alone. Defaults to `0`
+/// (mirrors [`Hp`]'s structural spawn default — a fresh ganger carries no capacity
+/// until the situation setup authors one; not a tunable magnitude).
+/// `#[serde(transparent)]` lets an authored HP ceiling parse as a bare integer (the
+/// sibling [`Hp`] shape), so an authored situation `.ron`'s `hp_max` deserializes as
+/// part of [`GangerSpawn`](crate::situation::GangerSpawn).
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
+pub struct HpMax(pub(super) u16);
+
+impl HpMax {
+    /// Build an HP-maximum capacity from its count.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup and tests can
+    /// build an `HpMax` from an authored full-HP capacity without reaching the private
+    /// field.
+    #[must_use]
+    pub const fn new(hp_max: u16) -> Self {
+        Self(hp_max)
+    }
+}
+
 /// A ganger's Wounds — the small **life** pool; `Wounds ≤ 0` → Dead.
 ///
 /// Wounds is the life pool, "small, < a dozen" (stats.md): every hit can spend it
@@ -77,6 +113,44 @@ impl Wounds {
     #[must_use]
     pub const fn new(wounds: u8) -> Self {
         Self(wounds)
+    }
+}
+
+/// A ganger's **Wounds maximum** — the authored full life-pool capacity, the Wounds
+/// pip count.
+///
+/// The per-ganger ceiling for [`Wounds`]: the authored full life pool, used by the
+/// status panel (GTW-278) as the total **pip count** for the Wounds `Pips` widget
+/// (filled = remaining [`Wounds`], empty = the rest of `WoundsMax`) and the structural
+/// "full wounds" value. **Unlike [`TuMax`]** — which is a round-RESET target
+/// ([`crate::tu::reset_tu`] restores [`Tu`] to [`TuMax`] every round) — `WoundsMax`
+/// is a pure DISPLAY/CAPACITY ceiling: [`Wounds`] is a PERSISTENT life pool that
+/// depletes by injury severity and STAYS depleted (emptying it is death), so
+/// `WoundsMax` is NEVER a reset/restore target and the setup wires NO reset logic
+/// for it.
+///
+/// A **distinct** component from [`Wounds`] per no-bare-types rule 3 — same inner `u8`,
+/// but a different concept (the ceiling/pip-count, not the current pool), so the two
+/// are never interchangeable. Private inner + derived [`Deref`], house style. A distinct
+/// component so the panel / display path can query `&WoundsMax` alone. Defaults to `0`
+/// (mirrors [`Wounds`]'s structural spawn default — a fresh ganger carries no capacity
+/// until the situation setup authors one; not a tunable magnitude).
+/// `#[serde(transparent)]` lets an authored Wounds ceiling parse as a bare integer (the
+/// sibling [`Wounds`] shape), so an authored situation `.ron`'s `wounds_max` deserializes
+/// as part of [`GangerSpawn`](crate::situation::GangerSpawn).
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[serde(transparent)]
+pub struct WoundsMax(pub(super) u8);
+
+impl WoundsMax {
+    /// Build a Wounds-maximum capacity from its count.
+    ///
+    /// The public constructor (house style) so the E1.8 / GTW-158 setup and tests can
+    /// build a `WoundsMax` from an authored full-Wounds capacity without reaching the
+    /// private field.
+    #[must_use]
+    pub const fn new(wounds_max: u8) -> Self {
+        Self(wounds_max)
     }
 }
 

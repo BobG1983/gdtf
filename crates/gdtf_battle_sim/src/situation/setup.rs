@@ -50,7 +50,8 @@ impl BattleSetup {
 ///    the [`GangerName`](crate::ganger::GangerName) identity,
 ///    plus [`Faction`](crate::ganger::Faction) / [`Facing`](crate::ganger::Facing) /
 ///    [`Stance`](crate::ganger::Stance) / [`Aiming`](crate::ganger::Aiming) /
-///    [`Hp`](crate::ganger::Hp) / [`Wounds`](crate::ganger::Wounds) /
+///    [`Hp`](crate::ganger::Hp) / [`HpMax`](crate::ganger::HpMax) /
+///    [`Wounds`](crate::ganger::Wounds) / [`WoundsMax`](crate::ganger::WoundsMax) /
 ///    [`Tu`](crate::ganger::Tu) / [`TuMax`](crate::ganger::TuMax) /
 ///    [`LifeState`](crate::ganger::LifeState)), the E3.0 /
 ///    GTW-182 attribute stats ([`Shooting`](crate::ganger::Shooting) /
@@ -150,11 +151,20 @@ pub fn setup_battle(
                 ganger.luck,
                 WornArmor::seed_from(&ganger.armor),
             ))
-            // The weapon bundle + the GTW-279 empty inflicted-wound record are
-            // inserted in a SECOND `insert` call — the spawn tuple is already at its
-            // component-arity limit, and InflictedWounds is the additive record the
-            // resolution path appends to (seeded empty here, alongside the vitals).
-            .insert((weapon_bundle, InflictedWounds::default()))
+            // The weapon bundle + the GTW-279 empty inflicted-wound record + the
+            // GTW-291 display ceilings (HpMax / WoundsMax) are inserted in a SECOND
+            // `insert` call — the spawn tuple is already at its 15-component arity
+            // limit. InflictedWounds is the additive record the resolution path
+            // appends to (seeded empty here); HpMax / WoundsMax are the authored full
+            // capacities the status panel reads as the HP-bar denominator / Wounds-pip
+            // count — pure DISPLAY ceilings, NOT round-reset targets (no reset wiring),
+            // seeded beside the persistent Hp / Wounds pools.
+            .insert((
+                weapon_bundle,
+                InflictedWounds::default(),
+                ganger.hp_max,
+                ganger.wounds_max,
+            ))
             .id();
         occupants.push(OccupantPlacement::new(ganger.at, entity));
     }

@@ -19,8 +19,10 @@
             facing:     East,         // which of the 8 grid directions it faces
             stance:     Standing,     // posture — upright (full silhouette, full stability gate)
             aiming:     false,        // aim-mode flag — hip-firing, not aimed
-            hp:         40,           // hit-points pool — the knock-down pool
-            wounds:     3,            // Wounds (life) pool — emptying it is death
+            hp:         40,           // hit-points pool — the knock-down pool (current)
+            hp_max:     40,           // HP ceiling — full HP capacity, the HP-bar denominator (full at start = hp; NOT a reset target)
+            wounds:     3,            // Wounds (life) pool — emptying it is death (current)
+            wounds_max: 3,            // Wounds ceiling — full life capacity, the Wounds pip count (full at start = wounds; NOT a reset target)
             tu:         60,           // Time-Unit budget — the per-turn action pool (current)
             tu_max:     60,           // TU ceiling — round-start max TU resets to (full at battle start = tu)
             life_state: Alive,        // terminal life state — up and fighting
@@ -48,8 +50,10 @@
             facing:     West,         // faces back toward gang 0
             stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)
             aiming:     true,         // aim-mode flag — aimed shot (narrows the cone at a TU premium)
-            hp:         36,           // hit-points pool
-            wounds:     3,            // Wounds (life) pool
+            hp:         36,           // hit-points pool (current)
+            hp_max:     36,           // HP ceiling — full HP capacity, the HP-bar denominator (full at start = hp; NOT a reset target)
+            wounds:     3,            // Wounds (life) pool (current)
+            wounds_max: 3,            // Wounds ceiling — full life capacity, the Wounds pip count (full at start = wounds; NOT a reset target)
             tu:         58,           // Time-Unit budget (current)
             tu_max:     58,           // TU ceiling — round-start max TU resets to (full at battle start = tu)
             life_state: Alive,        // terminal life state — up and fighting

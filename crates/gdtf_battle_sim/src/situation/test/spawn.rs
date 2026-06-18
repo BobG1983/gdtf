@@ -37,6 +37,10 @@ fn each_spawned_ganger_has_all_required_components() {
     // A query naming EVERY required component — only an entity carrying all of
     // them matches, so a count of 2 proves both gangers have the full set
     // (E1.2 state + E3.0 attribute stats + WornArmor).
+    // The vitals pools + their display ceilings are grouped into a nested sub-tuple:
+    // Bevy's `QueryData` tuple impls cap at 16 elements, and the full set now numbers
+    // 17 (GTW-291 added `HpMax` / `WoundsMax`), so nesting keeps the outer arity legal
+    // while still requiring every component to match.
     let mut all = world.query::<(
         &Position,
         &GangerName,
@@ -44,8 +48,7 @@ fn each_spawned_ganger_has_all_required_components() {
         &Facing,
         &Stance,
         &Aiming,
-        &Hp,
-        &Wounds,
+        (&Hp, &HpMax, &Wounds, &WoundsMax),
         &Tu,
         &TuMax,
         &LifeState,
@@ -57,8 +60,8 @@ fn each_spawned_ganger_has_all_required_components() {
     assert_eq!(
         all.iter(world).count(),
         2,
-        "both gangers must carry the full E1.2 set (incl. TuMax + GangerName) + E3.0 attribute \
-         stats + WornArmor",
+        "both gangers must carry the full E1.2 set (incl. TuMax + HpMax + WoundsMax + GangerName) \
+         + E3.0 attribute stats + WornArmor",
     );
 }
 
@@ -146,6 +149,43 @@ fn setup_seeds_ganger_name_onto_each_ganger() {
         bob_name.map(|n| (**n).clone()).ok(),
         Some("Ganger 1".to_owned()),
         "bob carries his authored GangerName",
+    );
+}
+
+/// GTW-291 — `setup_battle` seeds each authored `GangerSpawn.hp_max` / `wounds_max`
+/// onto the spawned ganger as queryable `HpMax` / `WoundsMax` components, looked up by
+/// the spawned `Entity` handle (never a numeric id). The fixture authors both ceilings
+/// = the authored full `hp` (40) / `wounds` (3) for every ganger (full at battle start),
+/// so a match against `HpMax::new(40)` / `WoundsMax::new(3)` proves the per-ganger seed.
+/// Pin-discriminating: dropping the `hp_max` / `wounds_max` spawn in `setup_battle` (the
+/// second `insert`) leaves no `HpMax` / `WoundsMax` and this fails. These are DISPLAY
+/// ceilings, not reset targets — the test reads them at setup, never after a round flip.
+#[test]
+fn setup_seeds_hp_max_and_wounds_max_onto_each_ganger() {
+    let (situation, ..) = minimal_fixture();
+    let Some((mut app, setup)) = run_setup(situation) else {
+        return;
+    };
+
+    let alice: Entity = setup.occupants[0].occupant;
+    let bob: Entity = setup.occupants[1].occupant;
+    let world: &mut World = app.world_mut();
+    let mut q = world.query::<(&HpMax, &WoundsMax)>();
+
+    // Alice — the fixture's authored full capacity (HpMax = hp = 40, WoundsMax = wounds = 3).
+    let alice_caps = q.get(world, alice);
+    assert_eq!(
+        alice_caps.map(|(h, w)| (*h, *w)).ok(),
+        Some((HpMax::new(40), WoundsMax::new(3))),
+        "alice carries her authored HpMax + WoundsMax display ceilings",
+    );
+
+    // Bob — the same authored full capacity (a per-ganger seed, not a shared default).
+    let bob_caps = q.get(world, bob);
+    assert_eq!(
+        bob_caps.map(|(h, w)| (*h, *w)).ok(),
+        Some((HpMax::new(40), WoundsMax::new(3))),
+        "bob carries his authored HpMax + WoundsMax display ceilings",
     );
 }
 

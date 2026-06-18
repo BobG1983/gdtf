@@ -8,8 +8,8 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection, SourceArmor},
     cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{
-        Aiming, Facing, Faction, GangerName, Hp, LifeState, Luck, Shooting, Stance, Toughness, Tu,
-        TuMax, Wounds,
+        Aiming, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Shooting, Stance,
+        Toughness, Tu, TuMax, Wounds, WoundsMax,
     },
     metric::CellLevel,
     occupancy::TerrainKind,
@@ -66,8 +66,27 @@ pub struct GangerSpawn {
     pub aiming:     Aiming,
     /// The ganger's hit-points pool.
     pub hp:         Hp,
+    /// The ganger's **HP maximum** — the authored full hit-points capacity, the HP
+    /// bar's denominator (GTW-278's `ProgressBar`).
+    /// [`setup_battle`](crate::situation::setup_battle) spawns it as an [`HpMax`]
+    /// component beside [`hp`](GangerSpawn::hp). A DISPLAY/CAPACITY ceiling, NOT a
+    /// round-reset target — unlike [`tu_max`](GangerSpawn::tu_max), nothing restores
+    /// [`hp`](GangerSpawn::hp) to it; [`Hp`] is a persistent damage pool. An authored
+    /// situation supplies it (default = the authored [`hp`](GangerSpawn::hp), full at
+    /// battle start). Authored as a bare integer ([`HpMax`] is `#[serde(transparent)]`).
+    pub hp_max:     HpMax,
     /// The ganger's Wounds (life) pool.
     pub wounds:     Wounds,
+    /// The ganger's **Wounds maximum** — the authored full life-pool capacity, the
+    /// Wounds pip count (GTW-278's `Pips`).
+    /// [`setup_battle`](crate::situation::setup_battle) spawns it as a [`WoundsMax`]
+    /// component beside [`wounds`](GangerSpawn::wounds). A DISPLAY/CAPACITY ceiling, NOT
+    /// a round-reset target — unlike [`tu_max`](GangerSpawn::tu_max), nothing restores
+    /// [`wounds`](GangerSpawn::wounds) to it; [`Wounds`] is a persistent life pool. An
+    /// authored situation supplies it (default = the authored
+    /// [`wounds`](GangerSpawn::wounds), full at battle start). Authored as a bare
+    /// integer ([`WoundsMax`] is `#[serde(transparent)]`).
+    pub wounds_max: WoundsMax,
     /// The ganger's Time-Unit budget.
     pub tu:         Tu,
     /// The ganger's **TU maximum** — the round-start Time-Unit ceiling [`Tu`] resets
