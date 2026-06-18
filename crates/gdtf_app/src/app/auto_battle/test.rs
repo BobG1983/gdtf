@@ -44,35 +44,45 @@ fn construction_records_the_gate() {
     );
 }
 
-/// A1 (GTW play-test wave 3) — `seed_load_fallbacks` seeds the EMPTY
-/// [`LoadedSituation`](crate::scenes::LoadedSituation) fallback ONLY when there is no
-/// [`AssetServer`]: with one present (the real GUI launch) it must NOT, so the GTW-261
-/// Load→Intro gate WAITS for the real `situations/skirmish.ron` instead of the empty
-/// seed winning the race.
+/// A1 (GTW play-test wave 3) + `AC3b` (GTW-297) — `seed_load_fallbacks` seeds the EMPTY
+/// [`LoadedSituation`](crate::scenes::LoadedSituation) **and** the empty
+/// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) fallbacks ONLY when there
+/// is no [`AssetServer`]: with one present (the real GUI launch) it must NOT seed EITHER,
+/// so the Load scene's `poll_and_resolve` — which only RESOLVES the situation / registry
+/// while those resources are ABSENT — WAITS for and populates the real
+/// `situations/skirmish.ron` + `assets/weapons/*.weapon.ron` instead of an empty seed
+/// winning the race (the empty registry shadow is the `AC3b` `WeaponNotFound` black-screen
+/// bug). The two seeds are SYMMETRIC.
 ///
 /// Drives the REAL `seed_load_fallbacks` system on its real `Startup` schedule (the
 /// `AutoBattlePlugin` registers it there) — added directly here so the test needs none
 /// of the unrelated `RunningState` sub-state machinery `drive_past_menu` requires. One
 /// `app.update()` runs `Startup`. Two apps:
 ///
-/// - WITHOUT an `AssetServer` (bare [`MinimalPlugins`]) → `LoadedSituation` IS seeded
-///   (the headless / asset-less fallback that keeps the machine traversing `Load`).
-/// - WITH an `AssetServer` (a real [`AssetPlugin`] on the task pools) → `LoadedSituation`
-///   is NOT seeded (the A1 fix).
+/// - WITHOUT an `AssetServer` (bare [`MinimalPlugins`]) → `LoadedSituation` AND
+///   `WeaponRegistry` ARE seeded (the headless / asset-less fallbacks that keep the
+///   machine traversing `Load`).
+/// - WITH an `AssetServer` (a real [`AssetPlugin`] on the task pools) → NEITHER
+///   `LoadedSituation` NOR `WeaponRegistry` is seeded (the A1 / `AC3b` fix).
 ///
-/// The theme + tuning + weapon-registry seeds are present in BOTH (unchanged by A1).
-/// Driven from the test body (`bevy-traps.md` #7 carve-out). Gated on `test-support`
-/// because `seed_load_fallbacks` is widened to `pub` only there.
+/// The theme + tuning seeds are present in BOTH (they are resolved UNCONDITIONALLY by the
+/// Load scene, overwriting the seed in place, so they need no such gate). Driven from the
+/// test body (`bevy-traps.md` #7 carve-out). Gated on `test-support` because
+/// `seed_load_fallbacks` is widened to `pub` only there.
+///
+/// PIN: the WITH-AssetServer half goes red if EITHER empty seed reverts to being inserted
+/// unconditionally — the exact regression that re-introduces the A1 empty-battlefield /
+/// `AC3b` `WeaponNotFound` failures.
 #[cfg(feature = "test-support")]
 #[test]
-fn empty_situation_seed_only_without_asset_server() {
+fn empty_fallbacks_seeded_only_without_asset_server() {
     use bevy::{asset::AssetPlugin, prelude::*};
     use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
     use gdtf_ui::theme::GdtfTheme;
 
     use crate::scenes::LoadedSituation;
 
-    // No AssetServer (bare MinimalPlugins): the empty fallback situation IS seeded.
+    // No AssetServer (bare MinimalPlugins): both empty fallbacks ARE seeded.
     {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
@@ -88,14 +98,19 @@ fn empty_situation_seed_only_without_asset_server() {
             "without an AssetServer the empty LoadedSituation fallback must be seeded",
         );
         assert!(
+            app.world().get_resource::<WeaponRegistry>().is_some(),
+            "without an AssetServer the empty WeaponRegistry fallback must be seeded (keeps the \
+             GTW-257 Load gate satisfiable on an asset-less drive)",
+        );
+        assert!(
             app.world().get_resource::<GdtfTheme>().is_some()
-                && app.world().get_resource::<CombatTuning>().is_some()
-                && app.world().get_resource::<WeaponRegistry>().is_some(),
-            "the theme / tuning / weapon-registry seeds must be present regardless of A1",
+                && app.world().get_resource::<CombatTuning>().is_some(),
+            "the theme / tuning seeds must be present regardless (resolved unconditionally)",
         );
     }
 
-    // With a real AssetServer (AssetPlugin on the task pools): NO LoadedSituation seed.
+    // With a real AssetServer (AssetPlugin on the task pools): NEITHER empty fallback is
+    // seeded — the real folder / situation resolve must win.
     {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
@@ -113,10 +128,15 @@ fn empty_situation_seed_only_without_asset_server() {
              (A1 — the real skirmish must win the GTW-261 Load gate)",
         );
         assert!(
+            app.world().get_resource::<WeaponRegistry>().is_none(),
+            "with an AssetServer present the seed must NOT insert an empty WeaponRegistry \
+             (AC3b — else poll_and_resolve skips resolve_weapons and battle setup fails with \
+             WeaponNotFound)",
+        );
+        assert!(
             app.world().get_resource::<GdtfTheme>().is_some()
-                && app.world().get_resource::<CombatTuning>().is_some()
-                && app.world().get_resource::<WeaponRegistry>().is_some(),
-            "the theme / tuning / weapon-registry seeds must still be present with an AssetServer",
+                && app.world().get_resource::<CombatTuning>().is_some(),
+            "the theme / tuning seeds must still be present with an AssetServer",
         );
     }
 }

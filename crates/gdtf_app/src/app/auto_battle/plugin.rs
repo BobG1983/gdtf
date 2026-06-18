@@ -24,12 +24,17 @@
 //! `bevy-traps.md` #7):
 //!
 //! - **`Startup`** seeds the persistent `Load` resources a headless walk lacks
-//!   ([`default_theme`] + [`CombatTuning::default`] + a default [`LoadedSituation`]).
-//!   Under the real GUI launch the `Load` scene resolves the shipped theme /
-//!   tuning / `situations/skirmish.ron` from assets and `insert_resource`-overwrites
-//!   these seeds (the asset versions win — that is the QA battlefield); the seeds
-//!   are the fallback that keeps the machine traversing `Load` even with no
-//!   `AssetServer` / a failed asset.
+//!   ([`default_theme`] + [`CombatTuning::default`] unconditionally, plus an empty
+//!   [`WeaponRegistry`] + a default [`LoadedSituation`] ONLY when there is no
+//!   `AssetServer`). Under the real GUI launch the `Load` scene resolves the shipped
+//!   theme / tuning from assets and `insert_resource`-overwrites those seeds, and —
+//!   because its `poll_and_resolve` only RESOLVES the weapon registry /
+//!   `situations/skirmish.ron` while those resources are ABSENT — the registry +
+//!   situation seeds are deliberately withheld when an `AssetServer` is present so the
+//!   real `assets/weapons/*.weapon.ron` + skirmish win (the asset versions are the QA
+//!   battlefield). With no `AssetServer` / a failed asset the empty fallbacks still
+//!   keep the machine traversing `Load`. See [`seed_load_fallbacks`] for the full
+//!   rationale (A1 + GTW-297 `AC3b`).
 //! - **`Update`** drives the ONE non-automatic transition: the menu does not
 //!   auto-advance (GTW-121), so [`drive_past_menu`] sets
 //!   `NextState<RunningState>::Game` once [`RunningState::Menu`] rests. Everything
@@ -186,27 +191,38 @@ crate::support_item! {
     /// Seeds the persistent `Load` resources the auto-battle drive needs so the state
     /// machine can traverse `Load` even without a resolved asset stack.
     ///
-    /// Inserts [`default_theme`] + [`CombatTuning::default`] + an empty [`WeaponRegistry`]
-    /// unconditionally, and a default (EMPTY) [`LoadedSituation`] **only when no
+    /// Inserts [`default_theme`] + [`CombatTuning::default`] unconditionally, and an empty
+    /// [`WeaponRegistry`] + a default (EMPTY) [`LoadedSituation`] **only when no
     /// [`AssetServer`] is present** (a headless / asset-less build). Under the real GUI
-    /// launch the `Load` scene later `insert_resource`-overwrites the theme / tuning /
-    /// registry with the shipped assets (the real `situations/skirmish.ron` battlefield +
-    /// theme + tuning + `assets/weapons/*.ron` registry), so those are a fallback, not the
-    /// QA battlefield. Runs once in `Startup` (before the first `Update`, hence before
-    /// `Load` resolves), so the seed is in place no matter how the assets resolve — and
-    /// the GTW-257 Load→Intro gate (which now requires a [`WeaponRegistry`]) is satisfied
-    /// even if the weapons folder fails to resolve.
+    /// launch the `Load` scene later `insert_resource`-overwrites the theme / tuning with
+    /// the shipped assets (the real theme + tuning), and — crucially — its
+    /// [`poll_and_resolve`](crate::scenes::load) only RESOLVES the registry / situation
+    /// from `assets/weapons/*.weapon.ron` + `situations/skirmish.ron` while those resources
+    /// are still ABSENT, so the empty seeds must NOT be present for the real assets to win.
+    /// Runs once in `Startup` (before the first `Update`, hence before `Load` resolves), so
+    /// the unconditional seeds are in place no matter how the assets resolve, and the
+    /// gated ones are absent whenever a real asset stack can resolve the genuine articles.
     ///
-    /// **A1 (GTW play-test wave 3).** The default [`LoadedSituation`] is the EMPTY
-    /// situation (zero gangers). Post-GTW-261 a present [`LoadedSituation`] SATISFIES the
-    /// Load→Intro gate, so seeding the empty one UNCONDITIONALLY let it win the race against
-    /// the real `situations/skirmish.ron` load under `DefaultPlugins` — the auto-battle
-    /// dropped into an empty battlefield. Gating the empty seed on the [`AssetServer`] being
-    /// ABSENT means: with an asset stack present (the real GUI launch) the seed does NOT
-    /// insert a [`LoadedSituation`], so the GTW-261 gate WAITS for the real skirmish to load;
-    /// without one (a headless asset-less drive) the empty fallback still keeps the machine
-    /// traversing `Load`. The fallback registry needs no weapons because the EMPTY situation
-    /// fields no gangers.
+    /// **A1 (GTW play-test wave 3) — and GTW-297 (`AC3b`).** The default [`LoadedSituation`]
+    /// is the EMPTY situation (zero gangers) and the default [`WeaponRegistry`] holds zero
+    /// weapons. Post-GTW-261 a present [`LoadedSituation`] SATISFIES the Load→Intro gate,
+    /// and per GTW-257 [`poll_and_resolve`](crate::scenes::load) only runs
+    /// `resolve_weapons` / `resolve_situation` `if` the registry / situation is still
+    /// ABSENT. So seeding EITHER empty fallback UNCONDITIONALLY shadowed the real load
+    /// under `DefaultPlugins`: the empty situation won the GTW-261 gate race (auto-battle
+    /// dropped into an empty battlefield), and the empty registry made `resolve_weapons`
+    /// skip loading `assets/weapons/*.weapon.ron` entirely — so battle setup's
+    /// `weapons.spec("autogun")` returned `None` and aborted with
+    /// [`WeaponNotFound`](gdtf_battle_sim::situation::BattleSetupError), never reaching
+    /// `BattleRunning` (a black screen). Gating BOTH empty seeds on the [`AssetServer`]
+    /// being ABSENT (SYMMETRIC seeds) means: with an asset stack present (the real GUI
+    /// launch) NEITHER empty fallback is inserted, so `poll_and_resolve` WAITS for and
+    /// populates the real skirmish + the real weapon registry; without one (a headless
+    /// asset-less drive) both empty fallbacks are still seeded so the machine keeps
+    /// traversing `Load` and the GTW-257 Load→Intro gate (which requires a
+    /// [`WeaponRegistry`]) is satisfied. The unconditional theme + tuning seeds are
+    /// overwritten in place by the resolved assets (their resolve is unconditional), so
+    /// they need no such gate.
     ///
     /// Param-only (`bevy-traps.md` #7): [`Commands`] + an `Option<Res<AssetServer>>` probe
     /// (`Option` so it is panic-free whether or not the asset stack is wired) — no
@@ -219,10 +235,13 @@ crate::support_item! {
     fn seed_load_fallbacks(asset_server: Option<Res<AssetServer>>, mut commands: Commands) {
         commands.insert_resource(default_theme());
         commands.insert_resource(CombatTuning::default());
-        commands.insert_resource(WeaponRegistry::default());
-        // A1 — only seed the empty fallback situation when there is NO AssetServer; with
-        // one present the real `situations/skirmish.ron` must win the GTW-261 Load gate.
+        // A1 / AC3b — only seed the empty fallback registry + situation when there is NO
+        // AssetServer. With one present the real `assets/weapons/*.weapon.ron` registry
+        // and `situations/skirmish.ron` must win: `poll_and_resolve` only resolves them
+        // while ABSENT, so a pre-seeded empty resource would shadow the real load (the
+        // registry shadow is the AC3b WeaponNotFound bug). The two seeds are SYMMETRIC.
         if asset_server.is_none() {
+            commands.insert_resource(WeaponRegistry::default());
             commands.insert_resource(LoadedSituation(
                 gdtf_battle_sim::situation::Situation::default(),
             ));

@@ -39,6 +39,17 @@ dynamic_linking = ["bevy/dynamic_linking"]
 # the real state machine (the states + ScenesPlugin are pub(crate) otherwise).
 # Test/dev only — never enabled for release artifacts or by the binary crate.
 test-support = []
+# DEV / LOCAL-only screenshot / visual-QA capture (GTW-297). Compiles in the
+# `crate::app::capture` affordance, which is ADDITIONALLY double-gated on
+# `cfg!(debug_assertions)` at the wiring site, so a release binary never sees it even
+# with the feature on. `Screenshot` / `save_to_disk` live in `bevy_render` (already
+# present via `DefaultPlugins`), so no extra bevy feature is required. The affordance
+# is inert at runtime until `GDTF_CAPTURE_PATH` is set.
+#
+# NOT in the default feature set and NEVER forced into CI / test / release builds. The
+# capture code is NOT compiled by the default green suite — it is built + linted
+# separately with this feature on (see GTW-297's verification note).
+dev_capture = []
 # DEV / LOCAL-only asset hot-reload. Enables Bevy's asset file watcher: with the
 # default `AssetPlugin { watch_for_changes_override: None, .. }`, Bevy starts the
 # watcher iff its internal `watch` cfg is set, which `bevy/file_watcher` activates

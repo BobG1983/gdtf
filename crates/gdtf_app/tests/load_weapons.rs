@@ -23,8 +23,8 @@
 //! is keyed by the authored filename stems), so a tuning edit to a weapon `.ron`
 //! never reddens these tests.
 
-use bevy::state::state::State;
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use bevy::{app::Startup, state::state::State};
+use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
 use gdtf_battle_sim::{
     situation::Situation,
     tuning::CombatTuning,
@@ -196,5 +196,88 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
     assert!(
         app.world().get_resource::<GdtfTheme>().is_some(),
         "the theme resolved alongside the weapons (the gated transition fired)",
+    );
+}
+
+/// GTW-297 (`AC3b`) — the REAL auto-battle path: the `AutoBattlePlugin`'s
+/// `seed_load_fallbacks` runs on `Startup` AND a real `AssetServer` is present
+/// (the GUI auto-battle launch). The empty `WeaponRegistry::default()` seed must NOT
+/// shadow the real folder resolve: with an `AssetServer` present the seed must NOT
+/// insert an empty registry, so `poll_and_resolve` (which only runs `resolve_weapons`
+/// while the registry is ABSENT) populates it from `assets/weapons/*.weapon.ron`.
+///
+/// This reproduces the bug's exact preconditions on the real code path: a
+/// `GdtfLoadTestAppBuilder` app (live `AssetServer` rooted at the workspace `assets/`)
+/// with the genuine `seed_load_fallbacks` system registered on `Startup`, exactly as
+/// `AutoBattlePlugin::build` wires it. The assertions encode the fix:
+///
+/// - the resolved `WeaponRegistry` is non-empty and resolves the authored `autogun`
+///   stem (so battle setup's `weapons.spec("autogun")` would NOT return `None` /
+///   `WeaponNotFound`);
+/// - the machine reaches `Intro` with the registry present (the gate waited for the
+///   REAL registry, not the empty seed).
+///
+/// PIN: if the seed reverts to inserting `WeaponRegistry::default()` UNCONDITIONALLY,
+/// the registry is present from `Startup`, `poll_and_resolve` SKIPS `resolve_weapons`
+/// (its `if !weapons_present` guard), the registry stays empty, `spec("autogun")`
+/// returns `None`, and this test goes red — exactly the `AC3b` black-screen failure.
+#[test]
+fn seeded_startup_does_not_shadow_real_weapon_resolution() {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+    // Wire the REAL auto-battle Startup seed (the path AutoBattlePlugin registers),
+    // minus the unrelated `drive_past_menu` that needs the RunningState machinery.
+    app.add_systems(Startup, seed_load_fallbacks);
+
+    // With the AssetServer present the empty seed must NOT win: the real folder resolve
+    // must populate a registry that holds the authored weapons.
+    let resolved = advance_until(
+        &mut app,
+        |app| {
+            app.world()
+                .get_resource::<WeaponRegistry>()
+                .is_some_and(|registry| {
+                    registry
+                        .spec(&WeaponName::new("autogun".to_owned()))
+                        .is_some()
+                })
+        },
+        LOAD_BUDGET,
+    );
+    assert!(
+        resolved,
+        "with `seed_load_fallbacks` on Startup AND a real AssetServer, the empty registry seed \
+         must NOT shadow the folder resolve — the WeaponRegistry must end up holding `autogun` \
+         within {LOAD_BUDGET} updates (AC3b); last observed AppState was {:?}",
+        app_state(&app),
+    );
+
+    if let Some(registry) = app.world().get_resource::<WeaponRegistry>() {
+        assert!(
+            !registry.is_empty(),
+            "the real folder resolve must populate the registry, not leave the empty seed",
+        );
+        assert!(
+            registry
+                .spec(&WeaponName::new("lasgun".to_owned()))
+                .is_some(),
+            "the resolved registry must also hold `lasgun` (the empty seed held neither)",
+        );
+    }
+
+    // The gate waited for the REAL registry: the machine reaches Intro with it present,
+    // so a real auto-battle run would advance toward BattleRunning rather than aborting
+    // at Generation with WeaponNotFound.
+    let reached_intro = advance_until(
+        &mut app,
+        |app| app_state(app) == AppState::Intro,
+        LOAD_BUDGET,
+    );
+    assert!(
+        reached_intro,
+        "with the Startup seed present, Load must still reach Intro once the real weapons resolve; \
+         last AppState was {:?}",
+        app_state(&app),
     );
 }
