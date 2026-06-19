@@ -6,6 +6,7 @@ use bevy::{platform::collections::HashSet, prelude::Commands};
 
 use crate::{
     armor::WornArmor,
+    clearance::silhouette_band,
     cover::CoverLedger,
     ganger::Position,
     inflicted_wound::InflictedWounds,
@@ -166,7 +167,14 @@ pub fn setup_battle(
                 ganger.wounds_max,
             ))
             .id();
-        occupants.push(OccupantPlacement::new(ganger.at, entity));
+        // The occupant's silhouette band is derived from its authored stance
+        // (standing → HIGH, kneeling → MID, prone → LOW) so the grid pour places the
+        // occupant AND its band together (GTW-304).
+        occupants.push(OccupantPlacement::new(
+            ganger.at,
+            entity,
+            silhouette_band(*ganger.stance),
+        ));
     }
 
     // 2. Seed the cover ledger from walls + scatter (the one unified ledger).

@@ -37,4 +37,6 @@ mod band;
 #[cfg(test)]
 mod test;
 
-pub use band::{Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant};
+pub use band::{
+    Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant, silhouette_band,
+};

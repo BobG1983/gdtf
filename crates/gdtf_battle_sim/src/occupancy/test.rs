@@ -1,7 +1,10 @@
 use bevy::ecs::world::World;
 
 use super::*;
-use crate::metric::{Cell, CellLevel, Level, MAX_LEVELS};
+use crate::{
+    cover::HeightBand,
+    metric::{Cell, CellLevel, Level, MAX_LEVELS},
+};
 
 fn key(x: i32, y: i32, level: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(level))
@@ -43,8 +46,8 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
             TerrainPlacement::new(cover_at, TerrainKind::Cover),
         ],
         occupants: vec![
-            OccupantPlacement::new(alice_at, alice),
-            OccupantPlacement::new(bob_at, bob),
+            OccupantPlacement::new(alice_at, alice, HeightBand::High),
+            OccupantPlacement::new(bob_at, bob, HeightBand::Low),
         ],
     };
 
@@ -72,6 +75,18 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
         Some(bob),
         "bob's slot must hold bob's Entity handle",
     );
+    // The silhouette band is poured TOGETHER with the occupant (GTW-304): a placed
+    // occupant must carry its band so the march can strike it.
+    assert_eq!(
+        grid.occupant_band(&alice_at),
+        Some(HeightBand::High),
+        "alice's slot must carry her placement band (poured with the occupant)",
+    );
+    assert_eq!(
+        grid.occupant_band(&bob_at),
+        Some(HeightBand::Low),
+        "bob's slot must carry his placement band (poured with the occupant)",
+    );
     // A slot the situation never touched is Open with no occupant.
     assert_eq!(
         grid.terrain(&empty_at),
@@ -82,6 +97,11 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
         grid.occupant(&empty_at),
         None,
         "an untouched slot must have no occupant",
+    );
+    assert_eq!(
+        grid.occupant_band(&empty_at),
+        None,
+        "an untouched slot must have no published band",
     );
     // A terrain slot carries no occupant and an occupant slot is Open terrain —
     // the two facts are independent per slot.
@@ -243,8 +263,8 @@ fn later_occupant_placement_wins() {
     let input = OccupancyInput {
         terrain:   Vec::new(),
         occupants: vec![
-            OccupantPlacement::new(at, first),
-            OccupantPlacement::new(at, second),
+            OccupantPlacement::new(at, first, HeightBand::Low),
+            OccupantPlacement::new(at, second, HeightBand::High),
         ],
     };
     let grid = OccupancyGrid::build_from_occupancy_input(&input);
@@ -252,5 +272,10 @@ fn later_occupant_placement_wins() {
         grid.occupant(&at),
         Some(second),
         "the later placement at the same cell wins",
+    );
+    assert_eq!(
+        grid.occupant_band(&at),
+        Some(HeightBand::High),
+        "the winning placement's band wins too (occupant + band poured together)",
     );
 }

@@ -149,7 +149,9 @@ impl OccupancyGrid {
     /// Starts from an empty grid (all [`TerrainKind::Open`], no occupants), then sets
     /// each [`TerrainPlacement`](crate::occupancy::TerrainPlacement)'s slot terrain
     /// and each [`OccupantPlacement`](crate::occupancy::OccupantPlacement)'s slot
-    /// occupant. Placements whose `(cell, level)` falls **outside** the grid extent
+    /// occupant **and** its silhouette band (set together — GTW-304: a placed
+    /// occupant carries its band so the march can strike it from the first frame).
+    /// Placements whose `(cell, level)` falls **outside** the grid extent
     /// are skipped (graceful — no panic, the bounds-check rule). The new grid's
     /// [`destroyed_cover`](OccupancyGrid::destroyed_cover) set starts empty; carrying
     /// destroyed cover across a rebuild is the caller's append (E1.7 / GTW-157).
@@ -160,7 +162,11 @@ impl OccupancyGrid {
             grid.set_terrain(placement.at, placement.terrain);
         }
         for placement in &input.occupants {
+            // Pour the occupant AND its silhouette band together (GTW-304): the march
+            // only strikes a ganger when BOTH are present at a cell, so a placed
+            // occupant must carry its band from the first frame.
             grid.set_occupant(placement.at, Some(placement.occupant));
+            grid.set_occupant_band(placement.at, Some(placement.band));
         }
         grid
     }

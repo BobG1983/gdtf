@@ -191,9 +191,10 @@ fn resolve_coarse_yields_ganger_outcome_on_real_path() {
     };
     let target_entity: Entity = setup.occupants[1].occupant;
 
-    // The change-driven occupancy sync (a later slice) publishes the occupant band;
-    // this test simulates that maintained state via set_occupant_band (HIGH so any
-    // round impacts).
+    // The change-driven occupancy sync (occupancy_sync::sync_moved_gangers, GTW-304)
+    // publishes the occupant band on the real path; this isolated geometry test sets
+    // the same maintained state directly via set_occupant_band (HIGH so any round
+    // impacts), keeping the hand-computed geometry independent of the sync wiring.
     let world: &mut World = app.world_mut();
     let Some(mut grid) = world.get_resource_mut::<OccupancyGrid>() else {
         return;

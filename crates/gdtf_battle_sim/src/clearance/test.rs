@@ -3,12 +3,37 @@
 
 use crate::{
     clearance::{
-        Clearance, band::band_rank, round_band_for_cell, round_band_fraction, round_clears_occupant,
+        Clearance, band::band_rank, round_band_for_cell, round_band_fraction,
+        round_clears_occupant, silhouette_band,
     },
     cover::{BandFraction, HeightBand, band_for},
+    ganger::StanceKind,
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, pos_to_cell},
     tuning::CombatTuning,
 };
+
+/// GTW-304 — the canonical stance → silhouette-band mapping: standing presents the
+/// HIGH band, kneeling the MID band, prone the LOW band (`docs/combat/resolution.md`
+/// §1/§4; `docs/combat/battle-space.md` §"Banding"). A higher silhouette ranks
+/// strictly above a lower one, so the mapping is monotone in posture height.
+#[test]
+fn silhouette_band_maps_stance_to_its_band() {
+    assert_eq!(silhouette_band(StanceKind::Standing), HeightBand::High);
+    assert_eq!(silhouette_band(StanceKind::Crouching), HeightBand::Mid);
+    assert_eq!(silhouette_band(StanceKind::Prone), HeightBand::Low);
+
+    // Monotone in posture height: standing ranks above kneeling ranks above prone.
+    assert!(
+        band_rank(silhouette_band(StanceKind::Standing))
+            > band_rank(silhouette_band(StanceKind::Crouching)),
+        "standing presents a strictly higher silhouette than kneeling",
+    );
+    assert!(
+        band_rank(silhouette_band(StanceKind::Crouching))
+            > band_rank(silhouette_band(StanceKind::Prone)),
+        "kneeling presents a strictly higher silhouette than prone",
+    );
+}
 
 /// A `SimPos` at the center of cell `(x, y)` on storey `level`, raised to
 /// `above_floor` sim units **within** that level — the round's continuous z is

@@ -221,7 +221,9 @@ pub use battle::{
 };
 pub use bleed::{Bleeding, tick_bleed};
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
-pub use clearance::{Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant};
+pub use clearance::{
+    Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant, silhouette_band,
+};
 pub use cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor};
 pub use cover::{
     BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,

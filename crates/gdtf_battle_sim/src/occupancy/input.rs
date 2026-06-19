@@ -4,7 +4,7 @@
 
 use bevy::prelude::Entity;
 
-use crate::{metric::CellLevel, occupancy::TerrainKind};
+use crate::{cover::HeightBand, metric::CellLevel, occupancy::TerrainKind};
 
 /// A terrain placement in an [`OccupancyInput`] — a `(cell, level)` slot and the
 /// [`TerrainKind`] authored there.
@@ -29,13 +29,19 @@ impl TerrainPlacement {
     }
 }
 
-/// An occupant placement in an [`OccupancyInput`] — a `(cell, level)` slot and the
-/// Bevy [`Entity`] standing there.
+/// An occupant placement in an [`OccupancyInput`] — a `(cell, level)` slot, the Bevy
+/// [`Entity`] standing there, and its **silhouette band**.
 ///
 /// The grid-relevant slice of a situation's live occupants (gangers poured into the
 /// grid). Carries an [`Entity`] handle, **never a numeric id** (GTW-10 / GTW-12). A
 /// named struct rather than a bare `(CellLevel, Entity)` tuple so the input shape is
 /// self-describing. The full situation authoring/orchestration is GTW-158.
+///
+/// The [`band`](OccupantPlacement::band) is the occupant's stance-derived silhouette
+/// band ([`crate::clearance::silhouette_band`]); the build pours it into the grid
+/// **together with** the occupant so a placed ganger is immediately visible to the
+/// march (which only strikes a ganger when BOTH occupant and band are present —
+/// `docs/combat/resolution.md` §2; GTW-304).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct OccupantPlacement {
     /// The `(cell, level)` the occupant stands in.
@@ -43,14 +49,17 @@ pub struct OccupantPlacement {
     /// The entity occupying [`at`](OccupantPlacement::at) — a Bevy [`Entity`], never
     /// a numeric id.
     pub occupant: Entity,
+    /// The occupant's stance-derived silhouette [`HeightBand`] — what a round must
+    /// fly strictly higher than to clear it (GTW-304).
+    pub band:     HeightBand,
 }
 
 impl OccupantPlacement {
-    /// Build an occupant placement from its `(cell, level)` and the occupying
-    /// [`Entity`].
+    /// Build an occupant placement from its `(cell, level)`, the occupying
+    /// [`Entity`], and its silhouette [`HeightBand`].
     #[must_use]
-    pub const fn new(at: CellLevel, occupant: Entity) -> Self {
-        Self { at, occupant }
+    pub const fn new(at: CellLevel, occupant: Entity, band: HeightBand) -> Self {
+        Self { at, occupant, band }
     }
 }
 

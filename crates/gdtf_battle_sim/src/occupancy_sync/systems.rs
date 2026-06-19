@@ -2,52 +2,89 @@
 //! [`OccupancyGrid`] IN PLACE off a SINGLE trigger (a `Changed<T>` filter or the
 //! [`CoverDestroyed`] message reader), never a full-grid rebuild.
 
-use bevy::prelude::{Changed, Commands, Entity, MessageReader, Query, ResMut};
+use bevy::prelude::{Changed, Commands, Entity, MessageReader, Or, Query, ResMut};
 
 use crate::{
-    ganger::{LifeState, Position},
+    clearance::silhouette_band,
+    ganger::{LifeState, Position, Stance, StanceKind},
     occupancy::OccupancyGrid,
     occupancy_sync::{CoverDestroyed, PrevSlot},
 };
 
-/// Maintain the occupancy grid for **moved** gangers — `Changed<`[`Position`]`>`.
+/// The read-set [`sync_moved_gangers`] queries per entity: its identity, current
+/// slot ([`Position`]), optional [`Stance`] (the band source) and optional
+/// [`PrevSlot`] (the old-slot memory). Aliased to keep the `Query` under the
+/// `type_complexity` lint.
+type MovedReads<'a> = (
+    Entity,
+    &'a Position,
+    Option<&'a Stance>,
+    Option<&'a PrevSlot>,
+);
+
+/// The change-detection filter [`sync_moved_gangers`] runs on: a ganger that **moved**
+/// (`Changed<`[`Position`]`>`) **or re-posed** (`Changed<`[`Stance`]`>`). Aliased to
+/// keep the `Query` under the `type_complexity` lint.
+type MovedOrReposed = Or<(Changed<Position>, Changed<Stance>)>;
+
+/// Maintain the occupancy grid for **moved or re-posed** gangers —
+/// `Or<(Changed<`[`Position`]`>, Changed<`[`Stance`]`>)>`.
 ///
-/// Reacts to Bevy change detection: for every entity whose [`Position`] changed
-/// this frame, it clears the entity's OLD occupancy slot (read from its
-/// [`PrevSlot`] bookkeeping, if any) and marks its NEW slot, then records the new
-/// slot back into [`PrevSlot`]. The grid is edited **in place** via
-/// [`OccupancyGrid::set_occupant`] — it is NEVER rebuilt (C6).
+/// Reacts to Bevy change detection: for every entity whose [`Position`] **or**
+/// [`Stance`] changed this frame, it clears the entity's OLD occupancy slot (read
+/// from its [`PrevSlot`] bookkeeping, if any) and marks its NEW slot, then records
+/// the new slot back into [`PrevSlot`]. The grid is edited **in place** via
+/// [`OccupancyGrid::set_occupant`] / [`OccupancyGrid::set_occupant_band`] — it is
+/// NEVER rebuilt (C6).
+///
+/// The OCCUPANT and its **silhouette band** are kept consistent: wherever the
+/// occupant marker is set or cleared, its band is set or cleared in the same step
+/// (the march only strikes a ganger when BOTH the occupant and its band are present
+/// at a cell — `docs/combat/resolution.md` §2; a published occupant with no band
+/// would be invisible to fire, GTW-304). The band is derived from the ganger's
+/// [`Stance`] via [`silhouette_band`] (standing → HIGH, kneeling → MID, prone →
+/// LOW); a ganger with no [`Stance`] component defaults to the structural
+/// [`StanceKind::Standing`] silhouette.
 ///
 /// Behavior per entity:
 /// - **Old slot:** if the entity has a [`PrevSlot`] AND that slot's current
-///   occupant is this entity, clear it (`set_occupant(old, None)`). The occupant
+///   occupant is this entity, clear BOTH its occupant and its band
+///   (`set_occupant(old, None)` + `set_occupant_band(old, None)`). The occupant
 ///   guard means a move never clobbers a slot another entity has since taken.
-/// - **New slot:** mark `set_occupant(new, Some(entity))` and write
-///   `PrevSlot(new)`.
+/// - **New slot:** mark `set_occupant(new, Some(entity))`, publish
+///   `set_occupant_band(new, Some(band))`, and write `PrevSlot(new)`.
 /// - **First sync (initial placement):** a freshly-inserted [`Position`] reads as
 ///   `Changed` on the first tick (Bevy first-run semantics) with no prior
 ///   [`PrevSlot`] — there is no old slot to clear, so the system simply marks the
-///   new slot and records the [`PrevSlot`]. Initial placement is handled sanely.
+///   new slot (occupant + band) and records the [`PrevSlot`]. Initial placement is
+///   handled sanely.
+/// - **Re-pose in place:** a [`Stance`] change with no move re-publishes the band
+///   at the (unchanged) current slot, keeping the silhouette current.
 ///
-/// `Commands` writes the [`PrevSlot`] bookkeeping; the occupant edits go straight
-/// to the shared `ResMut<`[`OccupancyGrid`]`>`.
+/// `Commands` writes the [`PrevSlot`] bookkeeping; the occupant/band edits go
+/// straight to the shared `ResMut<`[`OccupancyGrid`]`>`.
 pub fn sync_moved_gangers(
     mut commands: Commands,
     mut grid: ResMut<OccupancyGrid>,
-    moved: Query<(Entity, &Position, Option<&PrevSlot>), Changed<Position>>,
+    moved: Query<MovedReads, MovedOrReposed>,
 ) {
-    for (entity, position, prev) in &moved {
+    for (entity, position, stance, prev) in &moved {
         let new_slot = **position;
-        // Clear the OLD slot, but only if we still own it — a move must not stomp
-        // a slot another entity has taken since (C3: clear OLD, mark NEW).
+        let stance_kind = stance.map_or(StanceKind::Standing, |s| **s);
+        let band = silhouette_band(stance_kind);
+        // Clear the OLD slot (occupant AND band together), but only if we still own
+        // it — a move must not stomp a slot another entity has taken since (C3:
+        // clear OLD, mark NEW).
         if let Some(prev) = prev {
             let old_slot = prev.slot();
             if old_slot != new_slot && grid.occupant(&old_slot) == Some(entity) {
                 grid.set_occupant(old_slot, None);
+                grid.set_occupant_band(old_slot, None);
             }
         }
-        // Mark the NEW slot and remember it for the next move.
+        // Mark the NEW slot (occupant AND band) and remember it for the next move.
         grid.set_occupant(new_slot, Some(entity));
+        grid.set_occupant_band(new_slot, Some(band));
         commands.entity(entity).insert(PrevSlot::new(new_slot));
     }
 }
@@ -64,7 +101,8 @@ pub fn sync_moved_gangers(
 ///
 /// The slot cleared is the one in [`PrevSlot`] (the slot the move system last
 /// synced this entity into); the occupant guard ensures only this entity's own
-/// marker is cleared.
+/// marker is cleared. The occupant's **silhouette band** is cleared in the same
+/// step, keeping occupant and band consistent (GTW-304).
 pub fn sync_dead_gangers(
     mut grid: ResMut<OccupancyGrid>,
     downed: Query<(Entity, &LifeState, &PrevSlot), Changed<LifeState>>,
@@ -76,6 +114,7 @@ pub fn sync_dead_gangers(
         let slot = prev.slot();
         if grid.occupant(&slot) == Some(entity) {
             grid.set_occupant(slot, None);
+            grid.set_occupant_band(slot, None);
         }
     }
 }

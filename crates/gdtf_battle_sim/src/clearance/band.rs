@@ -3,9 +3,42 @@
 
 use crate::{
     cover::{BandFraction, HeightBand, band_for},
+    ganger::StanceKind,
     metric::{SimPos, pos_to_cell},
     tuning::CombatTuning,
 };
+
+/// The **silhouette band** a ganger presents to the march while holding `stance` —
+/// the band a round must fly strictly higher than to clear the ganger
+/// (`docs/combat/resolution.md` §1: stance "reshapes the clearance silhouette";
+/// §4: "standing (full height), kneeling (compressed, legs tucked low), prone (very
+/// low/flat)"; `docs/combat/battle-space.md` §"Banding": the LOW/MID/HIGH band "pairs
+/// with stance (prone / kneel / stand)").
+///
+/// The canonical stance → band mapping, pinned in one place so the change-driven
+/// maintenance can publish the occupant's band off its [`Stance`](crate::ganger::Stance)
+/// component and the march reads it back via
+/// [`OccupancyGrid::occupant_band`](crate::occupancy::OccupancyGrid::occupant_band):
+///
+/// - [`StanceKind::Standing`] → [`HeightBand::High`] — full / high silhouette; the
+///   doc's "stand" (only a HIGH round flies strictly over it within a storey).
+/// - [`StanceKind::Crouching`] → [`HeightBand::Mid`] — compressed silhouette; the
+///   doc's "kneel".
+/// - [`StanceKind::Prone`] → [`HeightBand::Low`] — lowest / flat silhouette; the
+///   doc's "prone".
+///
+/// This is the silhouette band (what a round must clear), distinct from the
+/// per-stance *muzzle*/aim heights ([`crate::central_axis`]'s `SilhouetteTops`): the
+/// band is the coarse three-rung clearance abstraction the march compares, not a
+/// continuous level-fraction.
+#[must_use]
+pub const fn silhouette_band(stance: StanceKind) -> HeightBand {
+    match stance {
+        StanceKind::Standing => HeightBand::High,
+        StanceKind::Crouching => HeightBand::Mid,
+        StanceKind::Prone => HeightBand::Low,
+    }
+}
 
 /// The outcome of the per-crossing clearance test — whether the round sails over
 /// the occupant or impacts it (`docs/combat/resolution.md` §2:
