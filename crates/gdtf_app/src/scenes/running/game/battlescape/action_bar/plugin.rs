@@ -44,6 +44,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::dispatch_act_intents;
+use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::BattleInProgress;
 use gdtf_ui::{drive_switches, repaint_segments, select_segment_on_press, themed::UiSystems};
 
@@ -51,9 +52,9 @@ use crate::{
     scenes::running::game::battlescape::action_bar::systems::{
         action_bar_button_intents, aim_switch_flip_intent, despawn_action_bar, flee_button_pressed,
         mode_segment_write, nowrap_control_labels, rebuild_mode_segments, spawn_action_bar,
-        stance_segment_intent, sync_aim_switch_state, sync_mode_active_segment,
-        sync_mode_tu_cost_lines, sync_stance_active_segment, tag_mode_segments,
-        tag_stance_segments,
+        stance_segment_intent, sync_aim_switch_state, sync_level_button_bounds,
+        sync_mode_active_segment, sync_mode_tu_cost_lines, sync_stance_active_segment,
+        tag_mode_segments, tag_stance_segments,
     },
     states::BattleScapeState,
 };
@@ -76,6 +77,23 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                     // queued AFTER the drain ran and only take effect a frame late.
                     .before(dispatch_act_intents)
                     .run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-293: `sync_level_button_bounds` greys (inserts `DisabledButton` on) the
+            // **Level −** button at the floor storey (0) and the **Level +** button at the
+            // ceiling (`MAX_LEVELS - 1`), removing it off the bound — reacting to the live
+            // `ActiveLevel`. The same marker disables the look AND makes the press router's
+            // `Without<DisabledButton>` filter ignore the bounded button, so it is ordered
+            // `.before(action_bar_button_intents)` (`bevy-traps.md` #3): the bound is applied
+            // BEFORE the press is read this update, so a press at the bound never fires. Gated on
+            // BOTH the live-battle witness AND `resource_exists::<ActiveLevel>` (`bevy-traps.md`
+            // #1) — the presenter inserts `ActiveLevel` for the whole battle span, but the gate
+            // keeps the system inert if it is somehow absent.
+            .add_systems(
+                Update,
+                sync_level_button_bounds
+                    .before(action_bar_button_intents)
+                    .run_if(resource_exists::<BattleInProgress>)
+                    .run_if(resource_exists::<ActiveLevel>),
             )
             // The flee button (GTW-240): an ENABLED app/lifecycle button whose press ends the
             // persisting battle. Gated on the SAME live-battle witness so a press is inert
