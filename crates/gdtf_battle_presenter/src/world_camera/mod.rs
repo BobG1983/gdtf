@@ -20,22 +20,31 @@
 //! and `CLAUDE.md`) puts `WorldCamera` in the presenter so the input crate can depend
 //! on it.
 //!
-//! The lifecycle splits across three concern modules: [`mod@marker`] (the marker +
+//! The lifecycle splits across five concern modules: [`mod@marker`] (the marker +
 //! spawn/despawn), [`mod@framing`] (the GTW-249 battle-start frame-on-units + the
-//! bounds clamp), and [`mod@pan`] (the GTW-250 pan-navigation helpers/systems + the
-//! GTW-259 gamepad-cursor edge-pan message).
+//! bounds clamp), [`mod@pan`] (the GTW-250 pan-navigation helpers/systems + the
+//! GTW-259 gamepad-cursor edge-pan message), [`mod@tuning`] (the GTW-299
+//! hot-reloadable edge-pan tuning table + its RON load / resolve / re-derive chain), and
+//! [`mod@dwell`] (the GTW-299 edge-band dwell accumulator + the pure dwell decision).
 
+mod dwell;
 mod framing;
 mod marker;
 mod pan;
+mod tuning;
 
 #[cfg(test)]
 mod test;
 
+pub use dwell::{DwellElapsed, PanEdgeDwellState, should_edge_pan_after_dwell};
 pub use framing::{camera_focus, clamp_camera, clamp_camera_to_bounds, frame_camera_on_units};
 pub use marker::{WORLD_RENDER_LAYER, WorldCamera, despawn_world_camera, spawn_world_camera};
 pub use pan::{
-    EDGE_BAND_PX, EdgeBandPx, GamepadCursorMoved, PAN_SPEED, PanSpeed, STICK_DEADZONE,
-    StickDeadzone, keyboard_pan_dir, mouse_edge_dir, pan_camera, pan_camera_on_gamepad_cursor_edge,
-    pan_velocity, stick_pan_dir, viewport_edge_dir,
+    EdgeBandPx, GamepadCursorMoved, PanSpeed, STICK_DEADZONE, StickDeadzone, keyboard_pan_dir,
+    mouse_edge_dir, pan_camera, pan_camera_on_gamepad_cursor_edge, pan_velocity, stick_pan_dir,
+    viewport_edge_dir,
+};
+pub use tuning::{
+    DwellDelaySeconds, PanTuning, PanTuningHandle, load_pan_tuning,
+    redrive_pan_tuning_on_asset_event, resolve_pan_tuning,
 };

@@ -10,25 +10,36 @@
 //! keyboard / stick panning), so this file no longer reads `bevy_ui::Interaction`.
 
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
+use serde::Deserialize;
 
-use super::marker::WorldCamera;
+use super::{
+    dwell::{PanEdgeDwellState, should_edge_pan_after_dwell},
+    marker::WorldCamera,
+    tuning::{DwellDelaySeconds, PanTuning},
+};
 
 /// The pan speed of the [`WorldCamera`], in world units per second.
 ///
-/// A VIEW tunable (how fast the camera glides under player navigation), not combat or
-/// theme tuning — so it lives as a presenter-level const here with a doc-comment, NOT in
-/// a `.ron` data file (the contract's view-config ruling). A newtype with a private inner
+/// A VIEW tunable (how fast the camera glides under player navigation), now MIGRATED into
+/// the hot-reloadable [`PanTuning`] table (GTW-299): the shipped value lives as the
+/// [`DEFAULT`](Self::DEFAULT) const here AND in `assets/tiles/pan_tuning.ron`, so editing
+/// the `.ron` retunes the camera glide WITHOUT a rebuild. A newtype with a private inner
 /// `f32` + derived [`Deref`](std::ops::Deref) (the house style for a domain value,
-/// `no-bare-types.md`): the
-/// speed is a domain quantity (world-units/sec), never a bare `f32`.
-///
-/// FOLLOW-UP (flagged per the contract): if the user later wants pan speed authored / hot-
-/// swappable, promote this to a presenter view-config `.ron` resource — it is deliberately
-/// a const for the first cut.
-#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+/// `no-bare-types.md`): the speed is a domain quantity (world-units/sec), never a bare `f32`.
+/// `#[serde(transparent)]` + [`Deserialize`] so the `.ron` authors the inner number directly;
+/// [`Default`] carries the shipped value so a missing `.ron` field degrades to the prior
+/// behaviour rather than a parse error (mirrors [`FxTuning`](crate::FxTuning)'s newtypes).
+#[derive(Deref, Clone, Copy, PartialEq, Debug, Deserialize)]
+#[serde(transparent)]
 pub struct PanSpeed(f32);
 
 impl PanSpeed {
+    /// The shipped default: `400` world-units/sec — the user's deliberate pan-feel tune (down
+    /// from the old GTW-250 `600`), which was the ACTUAL existing runtime behaviour in the working
+    /// tree before this migration. Preserved VERBATIM as the [`PanTuning`] default so the
+    /// migration leaves the camera glide exactly as the user had it (AC4: behaviour unchanged).
+    pub const DEFAULT: f32 = 400.0;
+
     /// Construct a [`PanSpeed`] from world-units-per-second.
     #[must_use]
     pub const fn new(units_per_second: f32) -> Self {
@@ -36,20 +47,41 @@ impl PanSpeed {
     }
 }
 
+impl Default for PanSpeed {
+    fn default() -> Self {
+        Self(Self::DEFAULT)
+    }
+}
+
 /// The mouse-edge band thickness, in logical screen pixels.
 ///
 /// The cursor is "at an edge" (and pans the camera that way) when it sits within this many
-/// logical pixels of a window edge. A VIEW tunable, so a presenter const with a doc-comment
-/// (not `.ron`), and a newtype over a private `f32` ([`Deref`](std::ops::Deref)) per
-/// `no-bare-types.md`.
-#[derive(Deref, Clone, Copy, PartialEq, Debug)]
+/// logical pixels of a window edge. A VIEW tunable, now MIGRATED into the hot-reloadable
+/// [`PanTuning`] table (GTW-299): the shipped value lives as the [`DEFAULT`](Self::DEFAULT)
+/// const here AND in `assets/tiles/pan_tuning.ron`, so editing the `.ron` retunes the band
+/// WITHOUT a rebuild. A newtype over a private `f32` ([`Deref`](std::ops::Deref)) per
+/// `no-bare-types.md`. `#[serde(transparent)]` + [`Deserialize`] so the `.ron` authors the
+/// inner number directly; [`Default`] carries the shipped value so a missing `.ron` field
+/// degrades to the prior behaviour rather than a parse error.
+#[derive(Deref, Clone, Copy, PartialEq, Debug, Deserialize)]
+#[serde(transparent)]
 pub struct EdgeBandPx(f32);
 
 impl EdgeBandPx {
+    /// The shipped default: `24` logical pixels — the migrated GTW-250 edge-band tune
+    /// (preserved verbatim as the [`PanTuning`] default so behaviour is unchanged).
+    pub const DEFAULT: f32 = 24.0;
+
     /// Construct an [`EdgeBandPx`] from a logical-pixel band thickness.
     #[must_use]
     pub const fn new(pixels: f32) -> Self {
         Self(pixels)
+    }
+}
+
+impl Default for EdgeBandPx {
+    fn default() -> Self {
+        Self(Self::DEFAULT)
     }
 }
 
@@ -68,17 +100,6 @@ impl StickDeadzone {
         Self(magnitude)
     }
 }
-
-/// The shipping pan speed: world units the camera glides per second under navigation.
-///
-/// A view const (see [`PanSpeed`]). Chosen so the whole 60-cell battlefield can be crossed
-/// in a couple of seconds at the 16-px cell pitch ([`CELL_PX`](crate::CELL_PX)); FLAGGED for
-/// data-driving later.
-pub const PAN_SPEED: PanSpeed = PanSpeed::new(600.0);
-
-/// The shipping mouse-edge band: cursor within this many logical pixels of a window edge
-/// pans the camera that way (see [`EdgeBandPx`]).
-pub const EDGE_BAND_PX: EdgeBandPx = EdgeBandPx::new(24.0);
 
 /// The shipping gamepad right-stick deadzone (see [`StickDeadzone`]): a stick magnitude at
 /// or below this is ignored so a resting stick never drifts the camera.
@@ -259,7 +280,28 @@ pub struct GamepadCursorMoved(pub Vec2);
 /// ENTITY-component in Bevy 0.18, NOT the pre-0.15 `Res<Axis<GamepadAxis>>`), and the
 /// [`WorldCamera`]'s `&Camera` (its [`Camera::logical_viewport_rect`] — the map sub-rect the
 /// mouse edge bands against) alongside its `&mut Transform`. Movement scales by `Res<Time>`'s
-/// `delta_secs()`. Param-only (`Res` / `Query`), no `&mut World` (`bevy-traps.md` #7); the
+/// `delta_secs()`.
+///
+/// GTW-299: the pan speed + edge band are now READ from the hot-reloadable [`PanTuning`]
+/// resource ([`PanTuning::pan_speed`] / [`PanTuning::edge_band_px`]) rather than the old
+/// `PAN_SPEED` / `EDGE_BAND_PX` consts, so editing `assets/tiles/pan_tuning.ron` retunes them
+/// live. The resource is taken as `Option<Res<PanTuning>>` so a headless app with no
+/// `AssetServer` (the resource never loads) falls back to the newtype [`Default`]s — the
+/// shipped 400 / 24 — and behaves exactly as before (`bevy-traps.md` #1).
+///
+/// GTW-299 DWELL: the MOUSE-EDGE contribution is now gated behind a per-cursor-linger DWELL — the
+/// cursor must rest continuously inside the edge band for at least
+/// [`PanTuning::dwell_delay_seconds`] before it pans, so a brief graze / a click-release near the
+/// border does NOT yank the camera. Each frame the cursor is in-band the mouse accumulator in
+/// [`PanEdgeDwellState`] grows by `time.delta_secs()`; the frame it is NOT in-band (centre, in a
+/// UI margin, or off the window) the accumulator RESETS to zero. The mouse edge is added to the
+/// pan only once [`should_edge_pan_after_dwell`] is true. KEYBOARD and STICK are NOT dwell-gated —
+/// they stay immediate (they are not cursor-bound). The dwell state is taken as
+/// `Option<ResMut<PanEdgeDwellState>>` so a headless app that never inserts it still pans (it
+/// falls back to a default-elapsed accumulator and behaves as before the dwell gate when the
+/// resource is present with a zero threshold; the registration always inserts it).
+///
+/// Param-only (`Res` / `Query`), no `&mut World` (`bevy-traps.md` #7); the
 /// battle gate (`bevy-traps.md` #1) and the `.before(clamp)` ordering (`bevy-traps.md` #3) are
 /// applied at registration.
 pub fn pan_camera(
@@ -267,11 +309,25 @@ pub fn pan_camera(
     windows: Query<&Window, With<PrimaryWindow>>,
     gamepads: Query<&Gamepad>,
     time: Res<Time>,
+    tuning: Option<Res<PanTuning>>,
+    mut dwell: Option<ResMut<PanEdgeDwellState>>,
     mut cameras: Query<(&Camera, &mut Transform), With<WorldCamera>>,
 ) {
+    // The hot-reloadable speed + edge band + dwell delay, or the shipped defaults when the tuning
+    // table is absent (a headless app without an AssetServer never loads it) — behaviour unchanged.
+    let pan_speed = tuning
+        .as_ref()
+        .map_or_else(PanSpeed::default, |t| t.pan_speed);
+    let edge_band = tuning
+        .as_ref()
+        .map_or_else(EdgeBandPx::default, |t| t.edge_band_px);
+    let dwell_delay = tuning
+        .as_ref()
+        .map_or_else(DwellDelaySeconds::default, |t| t.dwell_delay_seconds);
+
     let mut dir = Vec2::ZERO;
 
-    // Keyboard: WASD + arrow aliases. Not cursor-bound — always contributes.
+    // Keyboard: WASD + arrow aliases. Not cursor-bound, NOT dwell-gated — always contributes.
     dir += keyboard_pan_dir(
         keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp),
         keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown),
@@ -279,7 +335,8 @@ pub fn pan_camera(
         keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight),
     );
 
-    // Gamepad RIGHT stick (the first connected pad), past the deadzone. Not cursor-bound.
+    // Gamepad RIGHT stick (the first connected pad), past the deadzone. Not cursor-bound, not
+    // dwell-gated.
     if let Some(gamepad) = gamepads.iter().next() {
         dir += stick_pan_dir(gamepad.right_stick(), STICK_DEADZONE);
     }
@@ -288,14 +345,47 @@ pub fn pan_camera(
         .iter()
         .next()
         .and_then(bevy::window::Window::cursor_position);
+
+    // The mouse-edge direction implied by the cursor this frame (ZERO when no cursor, in a margin,
+    // or in the viewport centre). Computed once: the dwell accumulator tracks whether the cursor
+    // is in-band (a non-ZERO edge dir) across the whole camera set, mirroring the single OS cursor.
+    let edge_dir = cameras
+        .iter()
+        .find_map(|(camera, _)| {
+            let (Some(cursor), Some(viewport)) = (cursor, camera.logical_viewport_rect()) else {
+                return None;
+            };
+            let dir = viewport_edge_dir(cursor, viewport, edge_band);
+            (dir != Vec2::ZERO).then_some(dir)
+        })
+        .unwrap_or(Vec2::ZERO);
+
+    // Accumulate the in-band linger (or reset it the frame the cursor leaves the band) so the
+    // mouse edge only pans after a deliberate dwell — GTW-299 DWELL. With no dwell resource
+    // (a headless app that never inserts it) the mouse edge is treated as immediate, matching
+    // the pre-dwell behaviour.
+    let mouse_dwelt = match dwell.as_mut() {
+        Some(state) => {
+            if edge_dir == Vec2::ZERO {
+                state.mouse.reset();
+            } else {
+                state.mouse.accumulate(time.delta_secs());
+            }
+            should_edge_pan_after_dwell(state.mouse, dwell_delay)
+        }
+        None => true,
+    };
+
     for (camera, mut transform) in &mut cameras {
         let mut total = dir;
         // Mouse edge: only when the cursor is inside THIS camera's map viewport rect and near
-        // an edge (a cursor in a margin / over UI contributes nothing — GTW-271 AC4).
-        if let (Some(cursor), Some(viewport)) = (cursor, camera.logical_viewport_rect()) {
-            total += viewport_edge_dir(cursor, viewport, EDGE_BAND_PX);
+        // an edge (GTW-271 AC4) AND it has dwelt there past the dwell delay (GTW-299 DWELL).
+        if mouse_dwelt
+            && let (Some(cursor), Some(viewport)) = (cursor, camera.logical_viewport_rect())
+        {
+            total += viewport_edge_dir(cursor, viewport, edge_band);
         }
-        let velocity = pan_velocity(total, PAN_SPEED);
+        let velocity = pan_velocity(total, pan_speed);
         if velocity == Vec2::ZERO {
             continue;
         }
@@ -312,9 +402,10 @@ pub fn pan_camera(
 /// Drains the [`MessageReader<GamepadCursorMoved>`] (the input crate writes the gamepad
 /// cursor's screen position every update the gamepad is the active pointer) and acts on the
 /// LATEST position this update (the freshest cursor read), REUSING the GTW-271 viewport-edge
-/// helper: [`viewport_edge_dir`]`(pos, `[`Camera::logical_viewport_rect`]`, `[`EDGE_BAND_PX`]`)`
+/// helper: [`viewport_edge_dir`]`(pos, `[`Camera::logical_viewport_rect`]`, edge_band)`
 /// for the edge direction (with the screen-y → camera-y flip), [`pan_velocity`]`(dir,
-/// `[`PAN_SPEED`]`)` for the per-second velocity, scaled by `time.delta_secs()`, added to the
+/// pan_speed)` for the per-second velocity (the edge band + speed now read from the
+/// hot-reloadable [`PanTuning`], see below), scaled by `time.delta_secs()`, added to the
 /// camera `Transform.translation.xy` (z is kept — ground plane only). When NO message arrives
 /// this update (the gamepad is not the active pointer, or the cursor is not near an edge) the
 /// camera is left untouched (no pan). In `Mouse` mode the OS-cursor edge-pan in [`pan_camera`]
@@ -325,22 +416,85 @@ pub fn pan_camera(
 /// never drags the battlefield beneath a panel. That viewport-inside gate REPLACED the GTW-262
 /// `Interaction`-over-UI early-return.
 ///
-/// Reads the [`MessageReader<GamepadCursorMoved>`], `Res<Time>` (`delta_secs()`), and the
-/// [`WorldCamera`]'s `&Camera` (its [`Camera::logical_viewport_rect`] — the map sub-rect the
-/// edge bands against) alongside its `&mut Transform`. Param-only (`Res` / `Query` /
-/// `MessageReader`), no `&mut World` (`bevy-traps.md` #7); the battle gate (`bevy-traps.md` #1)
-/// and the `.before(clamp_camera_to_bounds)` ordering (`bevy-traps.md` #3 — the clamp stays the
-/// last writer) are applied at registration. It emits NO sim message — pan is presenter-only.
+/// GTW-299: the pan speed + edge band are now READ from the hot-reloadable [`PanTuning`]
+/// resource ([`PanTuning::pan_speed`] / [`PanTuning::edge_band_px`]) rather than the old
+/// `PAN_SPEED` / `EDGE_BAND_PX` consts — taken as `Option<Res<PanTuning>>` so a headless app
+/// with no `AssetServer` falls back to the newtype [`Default`]s (the shipped 400 / 24) and
+/// behaves exactly as before.
+///
+/// GTW-299 DWELL: like the mouse edge, the gamepad-cursor edge is now gated behind a
+/// per-cursor-linger DWELL — the gamepad cursor must sit continuously in the edge band for at
+/// least [`PanTuning::dwell_delay_seconds`] before it pans. Each frame the cursor is in-band the
+/// gamepad accumulator in [`PanEdgeDwellState`] grows by `time.delta_secs()`; the frame it is NOT
+/// in-band — no message this update (the gamepad is not the active pointer), or a message whose
+/// cursor is in a margin / the viewport centre — the accumulator RESETS to zero, so a brief edge
+/// graze never pans. A DISTINCT accumulator from the mouse edge keeps the two pointer sources from
+/// interfering. The dwell state is taken as `Option<ResMut<PanEdgeDwellState>>` so a headless app
+/// that never inserts it pans immediately, matching the pre-dwell behaviour.
+///
+/// Reads the [`MessageReader<GamepadCursorMoved>`], `Res<Time>` (`delta_secs()`), the optional
+/// [`PanTuning`] / [`PanEdgeDwellState`], and the [`WorldCamera`]'s `&Camera` (its
+/// [`Camera::logical_viewport_rect`] — the map sub-rect the edge bands against) alongside its
+/// `&mut Transform`. Param-only (`Res` / `Query` / `MessageReader`), no `&mut World`
+/// (`bevy-traps.md` #7); the battle gate (`bevy-traps.md` #1) and the
+/// `.before(clamp_camera_to_bounds)` ordering (`bevy-traps.md` #3 — the clamp stays the last
+/// writer) are applied at registration. It emits NO sim message — pan is presenter-only.
 pub fn pan_camera_on_gamepad_cursor_edge(
     mut cursor_moves: MessageReader<GamepadCursorMoved>,
     time: Res<Time>,
+    tuning: Option<Res<PanTuning>>,
+    mut dwell: Option<ResMut<PanEdgeDwellState>>,
     mut cameras: Query<(&Camera, &mut Transform), With<WorldCamera>>,
 ) {
     // Act on only the LATEST gamepad cursor position this update — earlier reads are stale.
-    // No message => the gamepad is not the active pointer (or no edge) => no pan.
+    // No message => the gamepad is not the active pointer => the cursor is not lingering at an
+    // edge, so the gamepad dwell RESETS and no pan happens this frame.
     let Some(GamepadCursorMoved(cursor)) = cursor_moves.read().last().copied() else {
+        if let Some(state) = dwell.as_mut() {
+            state.gamepad.reset();
+        }
         return;
     };
+
+    // The hot-reloadable speed + edge band + dwell delay, or the shipped defaults when the tuning
+    // table is absent (a headless app without an AssetServer never loads it) — behaviour unchanged.
+    let pan_speed = tuning
+        .as_ref()
+        .map_or_else(PanSpeed::default, |t| t.pan_speed);
+    let edge_band = tuning
+        .as_ref()
+        .map_or_else(EdgeBandPx::default, |t| t.edge_band_px);
+    let dwell_delay = tuning
+        .as_ref()
+        .map_or_else(DwellDelaySeconds::default, |t| t.dwell_delay_seconds);
+
+    // The gamepad-cursor edge direction this update (ZERO when no camera has a viewport rect, or
+    // the cursor is in a margin / centre). Mirrors the single gamepad software cursor.
+    let edge_dir = cameras
+        .iter()
+        .find_map(|(camera, _)| {
+            let viewport = camera.logical_viewport_rect()?;
+            let dir = viewport_edge_dir(cursor, viewport, edge_band);
+            (dir != Vec2::ZERO).then_some(dir)
+        })
+        .unwrap_or(Vec2::ZERO);
+
+    // Accumulate the in-band linger (or reset it when out of band) so the gamepad edge only pans
+    // after a deliberate dwell — GTW-299 DWELL. With no dwell resource the edge is immediate.
+    let gamepad_dwelt = match dwell.as_mut() {
+        Some(state) => {
+            if edge_dir == Vec2::ZERO {
+                state.gamepad.reset();
+            } else {
+                state.gamepad.accumulate(time.delta_secs());
+            }
+            should_edge_pan_after_dwell(state.gamepad, dwell_delay)
+        }
+        None => true,
+    };
+    if !gamepad_dwelt {
+        return;
+    }
 
     for (camera, mut transform) in &mut cameras {
         // The gamepad cursor edge-pans only when it is inside THIS camera's map viewport rect
@@ -348,8 +502,8 @@ pub fn pan_camera_on_gamepad_cursor_edge(
         let Some(viewport) = camera.logical_viewport_rect() else {
             continue;
         };
-        let dir = viewport_edge_dir(cursor, viewport, EDGE_BAND_PX);
-        let velocity = pan_velocity(dir, PAN_SPEED);
+        let dir = viewport_edge_dir(cursor, viewport, edge_band);
+        let velocity = pan_velocity(dir, pan_speed);
         if velocity == Vec2::ZERO {
             continue;
         }

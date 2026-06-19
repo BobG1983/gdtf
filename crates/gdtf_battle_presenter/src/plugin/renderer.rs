@@ -10,15 +10,17 @@ use gdtf_battle_sim::{
 
 use crate::{
     ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle, FxTuning,
-    FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PresenterSystems,
-    TileRoles, TileRolesHandle, TopDownAtlases, advance_projectiles, animate_impact,
-    apply_active_level_filter, clamp_camera_to_bounds, despawn_removed_ganger_sprites,
-    draw_highlight_on_request, draw_static_battlefield, expire_flashes, frame_camera_on_units,
-    load_character_roles, load_effect_roles, load_fx_tuning, load_tile_roles, load_topdown_atlases,
-    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, read_armor_broken,
-    read_bleeding, read_cover_destroyed, redrive_fx_tuning_on_asset_event, reframe_ganger_sprites,
-    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_tile_roles,
-    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
+    FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
+    PanTuning, PanTuningHandle, PresenterSystems, TileRoles, TileRolesHandle, TopDownAtlases,
+    advance_projectiles, animate_impact, apply_active_level_filter, clamp_camera_to_bounds,
+    despawn_removed_ganger_sprites, draw_highlight_on_request, draw_static_battlefield,
+    expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
+    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
+    pan_camera_on_gamepad_cursor_edge, read_armor_broken, read_bleeding, read_cover_destroyed,
+    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
+    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
+    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
+    update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -131,60 +133,12 @@ impl Plugin for TopDownRendererPlugin {
             );
 
         // The RON-asset registration (`init_ron_asset` / `init_asset`) PANICS at
-        // registration without an `AssetServer` (no `Assets<T>` machinery), so it — and
-        // the load/resolve chain that reads it — is gated on the asset stack being
-        // present. Under `DefaultPlugins` (the app + the AssetServer harness) this runs
-        // for real; under `MinimalPlugins` it is skipped entirely (no draw, no panic).
-        // BOTH the S4 terrain role table and the S5 character role table load this way.
-        if app.world().get_resource::<AssetServer>().is_some() {
-            app.init_ron_asset::<TileRoles>()
-                .init_ron_asset::<CharacterRoles>()
-                // GTW-220 (S6): the FX-flash effect-role table loads the same RON way.
-                .init_ron_asset::<EffectRoles>()
-                // GTW-306 (TUNING): the hot-reloadable firing-FX tuning table loads the same way.
-                .init_ron_asset::<FxTuning>()
-                .add_systems(
-                    Startup,
-                    (
-                        load_tile_roles,
-                        load_character_roles,
-                        load_effect_roles,
-                        load_fx_tuning,
-                    ),
-                )
-                .add_systems(
-                    Update,
-                    resolve_tile_roles.run_if(
-                        resource_exists::<TileRolesHandle>.and(not(resource_exists::<TileRoles>)),
-                    ),
-                )
-                .add_systems(
-                    Update,
-                    resolve_character_roles.run_if(
-                        resource_exists::<CharacterRolesHandle>
-                            .and(not(resource_exists::<CharacterRoles>)),
-                    ),
-                )
-                .add_systems(
-                    Update,
-                    resolve_effect_roles.run_if(
-                        resource_exists::<EffectRolesHandle>
-                            .and(not(resource_exists::<EffectRoles>)),
-                    ),
-                )
-                // GTW-306 (TUNING): resolve the FX tuning ONCE, then re-derive it LIVE on every
-                // matching asset Modified event so an `fx_tuning.ron` edit hot-reloads without a
-                // rebuild (mirrors the UI theme's redrive-on-AssetEvent). The resolve is gated
-                // like the others (handle present, resource not yet resolved); the redrive runs
-                // every frame and self-gates on the resources being present (it Options them).
-                .add_systems(
-                    Update,
-                    resolve_fx_tuning.run_if(
-                        resource_exists::<FxTuningHandle>.and(not(resource_exists::<FxTuning>)),
-                    ),
-                )
-                .add_systems(Update, redrive_fx_tuning_on_asset_event);
-        }
+        // registration without an `AssetServer` (no `Assets<T>` machinery), so the whole
+        // table-load chain is gated on the asset stack being present and lives in
+        // `register_ron_tables` (extracted to keep this `build` under the `too_many_lines`
+        // lint). Under `DefaultPlugins` it runs for real; under `MinimalPlugins` it is
+        // skipped entirely (no draw, no panic).
+        register_ron_tables(app);
 
         // The shared presenter draw band (S5's ganger draw joins this set). Defined
         // ONCE via `configure_sets` (`bevy-traps.md` #5), ordered after the sim's
@@ -273,6 +227,84 @@ impl Plugin for TopDownRendererPlugin {
     }
 }
 
+/// Registers the AssetServer-gated RON-table load chains: the S4 [`TileRoles`], the S5
+/// [`CharacterRoles`], the S6 [`EffectRoles`], the GTW-306 firing-FX [`FxTuning`], and the
+/// GTW-299 edge-pan [`PanTuning`] — each loaded through the generic
+/// [`RonAsset<T>`](gdtf_assets::RonAsset) loader (extracted from `build` to keep it under the
+/// `too_many_lines` lint).
+///
+/// The whole block is gated on an [`AssetServer`] existing: `init_ron_asset` PANICS at
+/// registration without the `Assets<T>` machinery, so a `MinimalPlugins` headless app (no asset
+/// stack) skips the entire chain — no load, no panic (`bevy-traps.md` #1). Under `DefaultPlugins`
+/// (the app + the `AssetServer` harness) every table loads for real.
+///
+/// Each table follows the SAME load / resolve / (for the two hot-reloadable tuning tables)
+/// redrive shape: a `Startup` load that stores the typed handle, an `Update` resolve gated
+/// `run_if(handle present AND resource not yet resolved)` so it inserts the resolved resource
+/// ONCE, and — for [`FxTuning`] / [`PanTuning`] — an unguarded `Update` redrive that re-derives
+/// the resource LIVE on a matching asset `Modified` event so an `.ron` edit hot-reloads without a
+/// rebuild (the redrive self-gates on its resources being present, taking them as `Option`s).
+fn register_ron_tables(app: &mut App) {
+    if app.world().get_resource::<AssetServer>().is_none() {
+        return;
+    }
+    app.init_ron_asset::<TileRoles>()
+        .init_ron_asset::<CharacterRoles>()
+        // GTW-220 (S6): the FX-flash effect-role table loads the same RON way.
+        .init_ron_asset::<EffectRoles>()
+        // GTW-306 (TUNING): the hot-reloadable firing-FX tuning table loads the same way.
+        .init_ron_asset::<FxTuning>()
+        // GTW-299 (TUNING): the hot-reloadable edge-pan tuning table loads the same way.
+        .init_ron_asset::<PanTuning>()
+        .add_systems(
+            Startup,
+            (
+                load_tile_roles,
+                load_character_roles,
+                load_effect_roles,
+                load_fx_tuning,
+                load_pan_tuning,
+            ),
+        )
+        .add_systems(
+            Update,
+            resolve_tile_roles
+                .run_if(resource_exists::<TileRolesHandle>.and(not(resource_exists::<TileRoles>))),
+        )
+        .add_systems(
+            Update,
+            resolve_character_roles.run_if(
+                resource_exists::<CharacterRolesHandle>.and(not(resource_exists::<CharacterRoles>)),
+            ),
+        )
+        .add_systems(
+            Update,
+            resolve_effect_roles.run_if(
+                resource_exists::<EffectRolesHandle>.and(not(resource_exists::<EffectRoles>)),
+            ),
+        )
+        // GTW-306 (TUNING): resolve the FX tuning ONCE, then re-derive it LIVE on every matching
+        // asset Modified event so an `fx_tuning.ron` edit hot-reloads without a rebuild (mirrors
+        // the UI theme's redrive-on-AssetEvent). The resolve is gated like the others (handle
+        // present, resource not yet resolved); the redrive runs every frame and self-gates on the
+        // resources being present (it Options them).
+        .add_systems(
+            Update,
+            resolve_fx_tuning
+                .run_if(resource_exists::<FxTuningHandle>.and(not(resource_exists::<FxTuning>))),
+        )
+        .add_systems(Update, redrive_fx_tuning_on_asset_event)
+        // GTW-299 (TUNING): resolve the pan tuning ONCE, then re-derive it LIVE on every matching
+        // asset Modified event so a `pan_tuning.ron` edit hot-reloads without a rebuild — the
+        // exact load/resolve/redrive shape the FX tuning above uses.
+        .add_systems(
+            Update,
+            resolve_pan_tuning
+                .run_if(resource_exists::<PanTuningHandle>.and(not(resource_exists::<PanTuning>))),
+        )
+        .add_systems(Update, redrive_pan_tuning_on_asset_event);
+}
+
 /// Registers the GTW-249 camera-positioning systems plus the GTW-250 pan navigation and the
 /// GTW-259 gamepad-cursor edge-pan: the one-shot [`frame_camera_on_units`] (centre the
 /// [`WorldCamera`](crate::WorldCamera) on the player gangers at battle start), the every-frame
@@ -305,8 +337,16 @@ impl Plugin for TopDownRendererPlugin {
 /// same buffer so its `MessageWriter` validates headlessly, and the two coexist (the
 /// [`HighlightRequest`] precedent: the presenter DEFINES the message; input WRITES it,
 /// input→presenter, no cycle).
+///
+/// The GTW-299 edge-pan DWELL accumulator ([`PanEdgeDwellState`]) is initialised here with
+/// [`App::init_resource`] so it is always present for the (battle-gated) pan systems to read — it
+/// is lightweight VIEW state with a [`Default`] (both accumulators zero), so a headless app gets
+/// it for free and the dwell gate exercises the real path rather than the `Option`-absent
+/// fallback. The pan systems still take it as `Option<ResMut<…>>` so they never panic if it is
+/// somehow absent (`bevy-traps.md` #1).
 fn register_camera_framing_systems(app: &mut App) {
     let battle_gate = resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>);
+    app.init_resource::<PanEdgeDwellState>();
     app.add_message::<GamepadCursorMoved>().add_systems(
         Update,
         (

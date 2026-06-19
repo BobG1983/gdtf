@@ -1,0 +1,24 @@
+// GDTF edge-pan tuning — the HOT-RELOADABLE numbers that drive the GTW-250 camera pan
+// navigation (mouse-edge + keyboard + gamepad) and the GTW-299 edge-band dwell delay.
+// Migrated out of Rust consts (PAN_SPEED / EDGE_BAND_PX) so pan speed / edge band / dwell
+// tune WITHOUT a rebuild: edit a value, save, and the running game re-derives it live
+// through the same RonAsset<T> loader the theme / situation / tile-roles / fx-tuning tables
+// use.
+//
+// EVERY field is OPTIONAL (serde default): omit one and it falls back to the shipped
+// default shown below, so you can tune a single number without restating the rest.
+(
+    // How many LOGICAL PIXELS from a map-viewport edge the cursor must be within to count as
+    // "at an edge" and pan the camera that way. Bigger = a fatter edge band (easier to hit,
+    // pans from further in). Default 24.0.
+    edge_band_px:        24.0,
+    // How fast the camera glides under navigation, in WORLD UNITS PER SECOND. At the 16px cell
+    // pitch the whole 60-cell battlefield crosses in a couple of seconds. Bigger = faster pan.
+    // 400.0 is the user's deliberate pan-feel tune (down from the old 600.0), live-tunable.
+    pan_speed:           400.0,
+    // How long the cursor must LINGER inside the edge band before edge-pan starts, in SECONDS —
+    // a brief graze (e.g. a click-release near the border) does NOT pan; only a deliberate rest
+    // at the edge does. Bigger = the cursor must dwell longer before the camera moves.
+    // Default 0.3.
+    dwell_delay_seconds: 0.3,
+)
