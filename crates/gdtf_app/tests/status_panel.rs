@@ -26,8 +26,8 @@ use bevy::{
 use gdtf_app::test_support::{
     AppState, BattleScapeState, InspectObjectBar, InspectObjectBlock, InspectObjectHardness,
     InspectObjectHeight, InspectObjectProtection, InspectObjectText, InspectPanelRoot,
-    InspectStatBlockHost, RunningState, StatHpBar, StatName, StatPortrait, StatTuBar,
-    StatWoundLine, StatWoundList, StatWoundsPips, portrait_index_for_name,
+    InspectStatBlockHost, RunningState, StatHpBar, StatHpLabel, StatName, StatPortrait, StatTuBar,
+    StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips, portrait_index_for_name,
 };
 use gdtf_battle_input::{InputSystems, InspectTarget, SelectedShooter, pick_hovered_cell};
 use gdtf_battle_sim::{
@@ -391,6 +391,55 @@ fn status_panel_renders_the_selected_ganger_stat_block() {
     );
 }
 
+/// GTW-310 — the HP bar and TU bar each carry a numeric `cur/max` label that reads the
+/// seeded ganger's `Hp`/`HpMax` and `Tu`/`TuMax` exactly, and a value change MUTATES the
+/// label in place (no respawn). The displayed number must equal current/max.
+#[test]
+fn stat_block_shows_numeric_hp_and_tu() {
+    let mut app = battle_running_app();
+    // default_setup: Tu 7/10, Hp 8/16.
+    spawn_and_select(&mut app, default_setup());
+    app.update();
+
+    let tu = line_text::<StatTuLabel>(&mut app).unwrap_or_default();
+    assert_eq!(tu, "7/10", "the TU label reads Tu/TuMax (got {tu})");
+    let hp = line_text::<StatHpLabel>(&mut app).unwrap_or_default();
+    assert_eq!(hp, "8/16", "the HP label reads Hp/HpMax (got {hp})");
+
+    // A changed selection mutates the SAME label entities in place.
+    let tu_label_before = single_with::<StatTuLabel>(&mut app);
+    let hp_label_before = single_with::<StatHpLabel>(&mut app);
+    let mut other = default_setup();
+    other.name = GangerName::new("Alex Mercer".to_owned());
+    other.tu = Tu::new(3);
+    other.tu_max = TuMax::new(12);
+    other.hp = Hp::new(5);
+    other.hp_max = HpMax::new(20);
+    spawn_and_select(&mut app, other);
+    app.update();
+
+    assert_eq!(
+        single_with::<StatTuLabel>(&mut app),
+        tu_label_before,
+        "the TU label entity is stable across a selection change (mutate, no respawn)",
+    );
+    assert_eq!(
+        single_with::<StatHpLabel>(&mut app),
+        hp_label_before,
+        "the HP label entity is stable across a selection change (mutate, no respawn)",
+    );
+    assert_eq!(
+        line_text::<StatTuLabel>(&mut app).unwrap_or_default(),
+        "3/12",
+        "the TU label mutated to the new ganger's Tu/TuMax",
+    );
+    assert_eq!(
+        line_text::<StatHpLabel>(&mut app).unwrap_or_default(),
+        "5/20",
+        "the HP label mutated to the new ganger's Hp/HpMax",
+    );
+}
+
 /// AC1 — an unwounded ganger hides the wound-name list; a wounded ganger shows it with the
 /// matching "{tier} — {location}" entry.
 #[test]
@@ -661,6 +710,26 @@ fn hovering_a_ganger_shows_its_stat_block() {
             text.contains("Vex Harker"),
             "inspect stat block names the ganger: {text}"
         );
+    }
+
+    // GTW-310 — the SHARED stat block's numeric HP/TU labels also render in the INSPECT
+    // panel (one change to the shared block updates both panels). The hovered ganger has
+    // Tu 5/10 and Hp 10/10.
+    if let Some(tu_label) = single_inspect::<StatTuLabel>(&mut app) {
+        let text = app
+            .world()
+            .get::<Text>(tu_label)
+            .map(|t| t.as_str().to_owned())
+            .unwrap_or_default();
+        assert_eq!(text, "5/10", "inspect stat block TU label reads Tu/TuMax");
+    }
+    if let Some(hp_label) = single_inspect::<StatHpLabel>(&mut app) {
+        let text = app
+            .world()
+            .get::<Text>(hp_label)
+            .map(|t| t.as_str().to_owned())
+            .unwrap_or_default();
+        assert_eq!(text, "10/10", "inspect stat block HP label reads Hp/HpMax");
     }
 }
 

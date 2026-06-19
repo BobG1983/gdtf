@@ -125,6 +125,12 @@ pub(in crate::scenes::running::game::battlescape) fn update_stat_block(
         &widgets.children,
         &mut widgets.fills,
     );
+    // The TU cur/max numeric overlay (the magazine "30/30" formatting model — GTW-310).
+    write_text(
+        &mut widgets.texts,
+        refs.tu_label,
+        &format!("{}/{}", **data.tu, **data.tu_max),
+    );
     // HP ceiling: HpMax when present, else the current HP (so a missing ceiling renders a
     // full bar rather than a div-by-zero empty one).
     let hp_max = data.hp_max.map_or(**data.hp, |m| **m);
@@ -133,6 +139,13 @@ pub(in crate::scenes::running::game::battlescape) fn update_stat_block(
         FillFraction::from_ratio(f32::from(**data.hp), f32::from(hp_max)),
         &widgets.children,
         &mut widgets.fills,
+    );
+    // The HP cur/max numeric overlay — current over the SAME display ceiling the bar uses
+    // (HpMax when present, else current HP), so the number equals the rendered fill ratio.
+    write_text(
+        &mut widgets.texts,
+        refs.hp_label,
+        &format!("{}/{}", **data.hp, hp_max),
     );
 
     // Wounds pips — show the first `WoundsMax` pips (filled per the remaining `Wounds`
@@ -289,12 +302,14 @@ pub(in crate::scenes::running::game::battlescape) fn clear_stat_block(
         &widgets.children,
         &mut widgets.fills,
     );
+    write_text(&mut widgets.texts, refs.tu_label, "");
     set_progress_bar(
         refs.hp_bar,
         FillFraction::new(0.0),
         &widgets.children,
         &mut widgets.fills,
     );
+    write_text(&mut widgets.texts, refs.hp_label, "");
     // Hide every pip and the wound list.
     update_pips(refs.wounds, 0, 0, widgets);
     update_wound_list(refs.wound_list, None, widgets);

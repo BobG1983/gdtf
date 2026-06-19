@@ -41,8 +41,12 @@ pub(in crate::scenes::running::game::battlescape) struct StatBlockRefs {
     pub stance:     Entity,
     /// The TU `ProgressBar` track (its fill width is mutated).
     pub tu_bar:     Entity,
+    /// The TU `cur/max` numeric `Text` overlaid on the TU bar (its content is mutated).
+    pub tu_label:   Entity,
     /// The HP `ProgressBar` track (its fill width is mutated).
     pub hp_bar:     Entity,
+    /// The HP `cur/max` numeric `Text` overlaid on the HP bar (its content is mutated).
+    pub hp_label:   Entity,
     /// The Wounds `Pips` row (its pip colors are mutated).
     pub wounds:     Entity,
     /// The wound-name list container (its line children + its visibility are mutated).
@@ -92,11 +96,31 @@ crate::support_item! {
 }
 
 crate::support_item! {
+    /// Marks the **TU** `cur/max` numeric `Text` of a stat block — the literal `Tu`/`TuMax`
+    /// value (e.g. `"7/10"`) overlaid on the TU bar so the player reads the exact numbers,
+    /// not just the bar fill (GTW-310).
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct StatTuLabel;
+}
+
+crate::support_item! {
     /// Marks the **HP** `ProgressBar` track of a stat block — fill = `Hp`/`HpMax`.
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct StatHpBar;
+}
+
+crate::support_item! {
+    /// Marks the **HP** `cur/max` numeric `Text` of a stat block — the literal `Hp`/`HpMax`
+    /// value (e.g. `"8/16"`) overlaid on the HP bar so the player reads the exact numbers,
+    /// not just the bar fill (GTW-310).
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct StatHpLabel;
 }
 
 crate::support_item! {

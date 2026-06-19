@@ -37,8 +37,8 @@ crate::support_use! {
     battlescape::{
         InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
         InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
-        StatFaction, StatHpBar, StatName, StatPortrait, StatStance, StatTuBar, StatWoundLine,
-        StatWoundList, StatWoundsPips, portrait_index_for_name,
+        StatFaction, StatHpBar, StatHpLabel, StatName, StatPortrait, StatStance, StatTuBar,
+        StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips, portrait_index_for_name,
     };
 }
 // Test-support-only re-export of the GTW-275 weapon-panel markers + the layout-overhaul
