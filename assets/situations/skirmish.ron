@@ -45,7 +45,34 @@
         // --- Gang 1: a crouching defender across the floor, facing west. ---
         (
             at:         (cell: (x: 12, y: 9), level: 0),  // (cell, level) it spawns at
-            name:       "Vex Harker",  // display name — the status panel's identity line shows this
+            name:       "Vex 1",  // display name — the status panel's identity line shows this
+            faction:    1,            // gang identity — gang 1 (the opposing side)
+            facing:     West,         // faces back toward gang 0
+            stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)
+            aiming:     true,         // aim-mode flag — aimed shot (narrows the cone at a TU premium)
+            hp:         36,           // hit-points pool (current)
+            hp_max:     36,           // HP ceiling — full HP capacity, the HP-bar denominator (full at start = hp; NOT a reset target)
+            wounds:     3,            // Wounds (life) pool (current)
+            wounds_max: 3,            // Wounds ceiling — full life capacity, the Wounds pip count (full at start = wounds; NOT a reset target)
+            tu:         58,           // Time-Unit budget (current)
+            tu_max:     58,           // TU ceiling — round-start max TU resets to (full at battle start = tu)
+            life_state: Alive,        // terminal life state — up and fighting
+            shooting:   5.0,          // Shooting stat
+            toughness:  4.0,          // Toughness
+            luck:       2.0,          // Luck
+            armor:      (
+                head:      (floor: 1, protection: 7, integrity: 22, hardness: 4, armor_type: Plated),  // Head piece
+                torso:     (floor: 1, protection: 9, integrity: 32, hardness: 4, armor_type: Plated),  // Torso piece
+                left_arm:  (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Left-arm piece
+                right_arm: (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Right-arm piece
+                left_leg:  (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Left-leg piece
+                right_leg: (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Right-leg piece
+            ),
+            weapon:     "lasgun",     // weapon KEY — resolves to assets/weapons/lasgun.ron at setup
+        ),
+                (
+            at:         (cell: (x: 12, y: 12), level: 0),  // (cell, level) it spawns at
+            name:       "Vex 2",  // display name — the status panel's identity line shows this
             faction:    1,            // gang identity — gang 1 (the opposing side)
             facing:     West,         // faces back toward gang 0
             stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)
