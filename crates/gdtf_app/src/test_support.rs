@@ -22,8 +22,8 @@ pub use crate::{
     scenes::{
         AimLabel, AimPanel, AimToggleButton, BattleRunningComplete, BattlescapeButton,
         BottomBarRoot, CombinedWeaponPanel, EndTurnButton, FleeButton, HiveScapeButton,
-        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
-        HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
+        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
+        InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
         LevelDownButton, LevelUpButton, LoadedSituation, MenuTitle, ModeBurstButton, ModeControl,
         ModeFullButton, ModePanelRoot, ModeSingleButton, OptionsButton, QuitButton, ReloadButton,
         ScenesPlugin, StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,

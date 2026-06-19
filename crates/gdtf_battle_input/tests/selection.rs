@@ -6,7 +6,7 @@
 //! - AC1 proves `GdtfBattleInputPlugin` `init_resource`s `SelectedShooter` (present +
 //!   `None` after one update) and the `PendingActIntent` queue.
 //! - drives the REAL `left_click_act` system: a synthesized `ButtonInput<MouseButton>`
-//!   press + a `HoveredCell` + an `OccupancyGrid` PLAYER-faction occupant selects that
+//!   press + an `InspectTarget` + an `OccupancyGrid` PLAYER-faction occupant selects that
 //!   occupant; an empty cell clears to `None`. GTW-238 gates SELECT to the player
 //!   faction (an enemy occupant is NOT selected — covered in `control.rs`).
 //! - drives `update_selection_highlight`: the one `SelectionHighlight` sprite snaps to
@@ -114,10 +114,10 @@ fn press_key(app: &mut App, key: KeyCode) {
     keys.press(key);
 }
 
-/// Sets the `HoveredCell` to a given cell (or clears it).
+/// Sets the `InspectTarget`'s live hovered cell to a given cell (or clears it).
 fn set_hovered(app: &mut App, cell: Option<CellLevel>) {
-    use gdtf_battle_input::HoveredCell;
-    app.world_mut().insert_resource(HoveredCell(cell));
+    use gdtf_battle_input::InspectTarget;
+    app.world_mut().insert_resource(InspectTarget::new(cell));
 }
 
 /// Presses (just-pressed edge) the left mouse button in the input resource.
@@ -350,7 +350,7 @@ fn clicking_an_enemy_is_a_no_op_on_the_player_selection() {
 
 /// GTW-288 — with a PLAYER ganger selected, a left-click with NO hovered cell (the
 /// over-UI / margin / off-map case the GTW-286 viewport gate produces by resolving
-/// `HoveredCell` to `None`) is a NO-OP: `SelectedShooter` stays that player ganger across
+/// `InspectTarget` to `None`) is a NO-OP: `SelectedShooter` stays that player ganger across
 /// the update, with NO transient `None`. This is the regression GTW-286 introduced (every
 /// bottom action-bar click cleared the selection, flickering the status panel and breaking
 /// Mode/Stance) and GTW-288 fixes — the no-hover branch now returns `NoOp`, not `Clear`.
@@ -358,7 +358,7 @@ fn clicking_an_enemy_is_a_no_op_on_the_player_selection() {
 /// Pin-discriminating: reverting the no-hover branch to `Clear` wipes the selection to
 /// `None`, failing the unchanged-selection assertion — RED. With the GTW-288 `NoOp` the
 /// no-hover click leaves the selection untouched. Distinct from the empty-IN-GRID-cell case
-/// (`left_click_on_empty_cell_clears_the_selection`), where `HoveredCell` is `Some` and the
+/// (`left_click_on_empty_cell_clears_the_selection`), where `InspectTarget` is `Some` and the
 /// chain genuinely CLEARs.
 #[test]
 fn clicking_with_no_hovered_cell_is_a_no_op_on_the_player_selection() {

@@ -5,9 +5,9 @@
 //! `dispatch_act_intents` drain -> the emitted `*Requested`).
 //!
 //! Tests are headless `GdtfBattleInputPlugin` apps: synth `ButtonInput<MouseButton>` +
-//! `HoveredCell` + `OccupancyGrid` + `PlayerFaction` + spawned `Faction`/`Position`/firing
+//! `InspectTarget` + `OccupancyGrid` + `PlayerFaction` + spawned `Faction`/`Position`/firing
 //! components, `app.update()`, assert the emitted `*Requested` / `SelectedShooter`. The
-//! click systems run `.before(pick_hovered_cell)`, so an INJECTED `HoveredCell` is read
+//! click systems run `.before(pick_hovered_cell)`, so an INJECTED `InspectTarget` is read
 //! that update before the (headless, camera-less) picker clobbers it to `None`.
 //!
 //! - AC1 — left-click SELECTS only a player ganger (enemy/empty does not select-as-own).
@@ -26,7 +26,7 @@
 
 use bevy::{input::ButtonInput, prelude::*};
 use gdtf_battle_input::{
-    ActIntent, GdtfBattleInputPlugin, HoveredCell, PendingActIntent, SelectedFireMode,
+    ActIntent, GdtfBattleInputPlugin, InspectTarget, PendingActIntent, SelectedFireMode,
     SelectedShooter,
 };
 use gdtf_battle_presenter::ActiveLevel;
@@ -53,7 +53,7 @@ const LEVEL: Level = Level::new(0);
 /// `GdtfBattleInputPlugin`, the presenter-owned `ActiveLevel`, the `BattleInProgress`
 /// gate, an empty `OccupancyGrid`, `CombatTuning`, the `PlayerFaction` the decision gates
 /// on, and an empty `ButtonInput<MouseButton>`. No synthetic camera is needed because the
-/// click systems run before `pick_hovered_cell`, so an injected `HoveredCell` is read
+/// click systems run before `pick_hovered_cell`, so an injected `InspectTarget` is read
 /// before the headless picker clobbers it.
 fn control_app() -> App {
     let mut app = App::new();
@@ -116,10 +116,10 @@ fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
     enemy
 }
 
-/// Injects the `HoveredCell` (read by the click systems before the headless picker
-/// clobbers it).
+/// Injects the `InspectTarget`'s live hovered cell (read by the click systems before the
+/// headless picker clobbers it).
 fn set_hovered(app: &mut App, cell: Option<CellLevel>) {
-    app.world_mut().insert_resource(HoveredCell(cell));
+    app.world_mut().insert_resource(InspectTarget::new(cell));
 }
 
 /// Forces the current `SelectedShooter` to `entity` (the test-injected selection).
@@ -371,7 +371,8 @@ fn left_click_empty_with_fire_mode_falls_through_to_move() {
 // AC5 — right-click + selection -> SetFacingRequested to from_cells(actor, hovered).
 // ---------------------------------------------------------------------------------
 
-/// AC5 — with a player-faction selection on `Position` cell `(5,5)` and `HoveredCell` on
+/// AC5 — with a player-faction selection on `Position` cell `(5,5)` and the `InspectTarget`
+/// hovered cell on
 /// `(8,5)`, one Right press emits exactly one `SetFacingRequested { facing = East }`
 /// (`Direction::from_cells((5,5),(8,5)) == East`). Hovering the actor's OWN cell emits no
 /// intent.

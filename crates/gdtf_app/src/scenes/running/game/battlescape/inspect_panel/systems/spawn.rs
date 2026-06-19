@@ -1,23 +1,23 @@
-//! Spawns + despawns the battlescape hover-inspect panel (GTW-274 / GTW-295).
+//! Spawns + despawns the battlescape inspect panel (GTW-274 / GTW-295).
 //!
-//! [`spawn_hover_panel`] runs `OnEnter(BattleScapeState::BattleRunning)` and builds a themed
+//! [`spawn_inspect_panel`] runs `OnEnter(BattleScapeState::BattleRunning)` and builds a themed
 //! [`gdtf_ui`] panel on the GTW-120 UI camera as an ABSOLUTE, fixed-% (`Val::Vw`/`Val::Vh`)
 //! overlay anchored TOP-RIGHT — hovering OVER the map, contributing NOTHING to the viewport
 //! inset (only the bottom bar reduces the map). It holds TWO mutually
 //! exclusive sub-blocks: the shared ganger [`stat_block`](super::super::super::stat_block)
-//! (marked [`HoverStatBlockHost`]) and a small OBJECT stat block (marked
-//! [`HoverObjectBlock`]) — a title, a labeled Integrity [`ProgressBar`](gdtf_ui::spawn_progress_bar)
-//! ([`HoverObjectBar`]), and labeled Hardness / Protection / Height-band lines, read from a
+//! (marked [`InspectStatBlockHost`]) and a small OBJECT stat block (marked
+//! [`InspectObjectBlock`]) — a title, a labeled Integrity [`ProgressBar`](gdtf_ui::spawn_progress_bar)
+//! ([`InspectObjectBar`]), and labeled Hardness / Protection / Height-band lines, read from a
 //! hovered cover's [`CoverEntry`](gdtf_battle_sim::CoverEntry).
 //!
 //! Each sub-block is HIDDEN via [`Display::None`] (removed from layout, GTW-295) so the
 //! panel sizes to the VISIBLE block only — a hidden tall ganger block no longer balloons the
 //! panel on a small object hover. The whole panel root starts `Visibility::Hidden`;
-//! [`update_hover_panel`](super::update::update_hover_panel) toggles it and its sub-blocks from
-//! the [`HoveredCell`](gdtf_battle_input::HoveredCell) every battle frame, mutating in place.
+//! [`update_inspect_panel`](super::update::update_inspect_panel) toggles it and its sub-blocks from
+//! the EFFECTIVE [`InspectTarget`](gdtf_battle_input::InspectTarget) every battle frame, mutating in place.
 //!
-//! [`despawn_hover_panel`] runs `OnExit(BattleScapeState::BattleRunning)` and recursively
-//! despawns the panel by its [`HoverPanelRoot`] marker — battle-scoped, mirroring the status
+//! [`despawn_inspect_panel`] runs `OnExit(BattleScapeState::BattleRunning)` and recursively
+//! despawns the panel by its [`InspectPanelRoot`] marker — battle-scoped, mirroring the status
 //! panel.
 
 use bevy::{
@@ -29,10 +29,10 @@ use gdtf_battle_presenter::TopDownAtlases;
 use gdtf_ui::{FillFraction, spawn_panel, spawn_progress_bar, theme::GdtfTheme};
 
 use crate::scenes::running::game::battlescape::{
-    hover_panel::components::{
-        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
-        HoverObjectIntegrity, HoverObjectProtection, HoverObjectText, HoverPanelRoot,
-        HoverStatBlockHost,
+    inspect_panel::components::{
+        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
+        InspectObjectIntegrity, InspectObjectProtection, InspectObjectText, InspectPanelRoot,
+        InspectStatBlockHost,
     },
     stat_block::spawn_stat_block,
 };
@@ -49,32 +49,32 @@ const INTEGRITY_LOST: Color = Color::srgb(0.12, 0.14, 0.16);
 /// 720-tall reference window (`ui-responsive-not-px`).
 const ROW_GAP_VH: f32 = 0.55556;
 
-/// The hover panel's **fixed** width as a fraction of the viewport WIDTH
+/// The inspect panel's **fixed** width as a fraction of the viewport WIDTH
 /// ([`Val::Vw`](bevy::ui::Val::Vw)). A relative unit (`ui-responsive-not-px`), and *fixed* so
 /// the map area never pops/shifts left-right when the panel's contents change — the same
 /// ganger vs. object block always occupies this one width (item 7). The panel is an absolute
 /// overlay (item 3), so this width contributes NOTHING to the world-map viewport inset.
 const PANEL_WIDTH_VW: f32 = 18.0;
 
-/// The hover panel's **maximum** height as a fraction of the viewport HEIGHT
+/// The inspect panel's **maximum** height as a fraction of the viewport HEIGHT
 /// ([`Val::Vh`](bevy::ui::Val::Vh)). The panel height still tracks its visible block's content
 /// (`height: auto`), but is CAPPED here so a tall ganger block can never overrun the window;
 /// the cap is relative (`ui-responsive-not-px`). Excess content is clipped (overflow hidden)
 /// rather than overflowing onto the map.
 const PANEL_MAX_HEIGHT_VH: f32 = 45.0;
 
-/// Builds the themed hover panel on `OnEnter(BattleScapeState::BattleRunning)`.
+/// Builds the themed inspect panel on `OnEnter(BattleScapeState::BattleRunning)`.
 ///
 /// Reads the live [`GdtfTheme`] (`Option<Res<…>>`, no-op if absent, `bevy-traps.md` #1) +
 /// the presenter's [`TopDownAtlases`] (for the portrait). Spawns the panel root via
 /// [`spawn_panel`] as an ABSOLUTE, fixed-% (`Val::Vw`/`Val::Vh`) overlay anchored TOP-RIGHT
 /// (contributing nothing to the viewport inset) and `Visibility::Hidden`, parents the shared stat
-/// block (marked [`HoverStatBlockHost`]) and the OBJECT block (marked [`HoverObjectBlock`])
+/// block (marked [`InspectStatBlockHost`]) and the OBJECT block (marked [`InspectObjectBlock`])
 /// under it. BOTH sub-blocks start HIDDEN via [`Display::None`] (removed from layout, GTW-295)
 /// so the panel sizes to the visible block only. The object block holds a title, a labeled
 /// Integrity [`ProgressBar`](gdtf_ui::spawn_progress_bar), and labeled Hardness / Protection /
 /// Height-band lines (AC3). Param-only (`bevy-traps.md` #7).
-pub(in crate::scenes::running::game::battlescape) fn spawn_hover_panel(
+pub(in crate::scenes::running::game::battlescape) fn spawn_inspect_panel(
     mut commands: Commands,
     theme: Option<Res<GdtfTheme>>,
     atlases: Option<Res<TopDownAtlases>>,
@@ -95,7 +95,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_hover_panel(
     // look is preserved while the size + position here stay authoritative.
     let root = spawn_panel(&mut commands, &theme);
     commands.entity(root).insert((
-        HoverPanelRoot,
+        InspectPanelRoot,
         Node {
             position_type: PositionType::Absolute,
             top: Val::Vh(0.0),
@@ -122,7 +122,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_hover_panel(
     // layout. The update sets its display each frame; it starts at the builder default (Flex),
     // harmless since the root starts Hidden.
     let block = spawn_stat_block(&mut commands, &theme, atlases.as_deref());
-    commands.entity(block).insert(HoverStatBlockHost);
+    commands.entity(block).insert(InspectStatBlockHost);
 
     let object_block = spawn_object_block(&mut commands, &theme);
 
@@ -131,30 +131,30 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_hover_panel(
 
 /// Spawns the OBJECT stat block (GTW-295 AC3) and returns its container [`Entity`].
 ///
-/// A vertical column ([`HoverObjectBlock`], hidden via [`Display::None`] until an object
-/// hover) holding, top to bottom: a TITLE line ([`HoverObjectText`], e.g. "Cover"), a labeled
-/// Integrity row (an "Integrity" label + the [`HoverObjectBar`] [`ProgressBar`]), and labeled
-/// Hardness ([`HoverObjectHardness`]) / Protection ([`HoverObjectProtection`]) / Height-band
-/// ([`HoverObjectHeight`]) [`Text`] lines — a readable block comparable to the ganger block.
+/// A vertical column ([`InspectObjectBlock`], hidden via [`Display::None`] until an object
+/// hover) holding, top to bottom: a TITLE line ([`InspectObjectText`], e.g. "Cover"), a labeled
+/// Integrity row (an "Integrity" label + the [`InspectObjectBar`] [`ProgressBar`]), and labeled
+/// Hardness ([`InspectObjectHardness`]) / Protection ([`InspectObjectProtection`]) / Height-band
+/// ([`InspectObjectHeight`]) [`Text`] lines — a readable block comparable to the ganger block.
 /// The widgets seed empty; the update fills them from the hovered [`CoverEntry`](gdtf_battle_sim::CoverEntry)
 /// in place ([[ui-mutate-not-respawn]]).
 fn spawn_object_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
-    let title = spawn_line(commands, theme, HoverObjectText, "");
-    let integrity_label = spawn_line(commands, theme, HoverObjectIntegrity, "Integrity");
+    let title = spawn_line(commands, theme, InspectObjectText, "");
+    let integrity_label = spawn_line(commands, theme, InspectObjectIntegrity, "Integrity");
     let bar = spawn_progress_bar(
         commands,
         FillFraction::new(0.0),
         INTEGRITY_REMAINING,
         INTEGRITY_LOST,
-        HoverObjectBar,
+        InspectObjectBar,
     );
-    let hardness = spawn_line(commands, theme, HoverObjectHardness, "");
-    let protection = spawn_line(commands, theme, HoverObjectProtection, "");
-    let height = spawn_line(commands, theme, HoverObjectHeight, "");
+    let hardness = spawn_line(commands, theme, InspectObjectHardness, "");
+    let protection = spawn_line(commands, theme, InspectObjectProtection, "");
+    let height = spawn_line(commands, theme, InspectObjectHeight, "");
 
     let block = commands
         .spawn((
-            HoverObjectBlock,
+            InspectObjectBlock,
             Node {
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Vh(ROW_GAP_VH),
@@ -198,13 +198,13 @@ fn spawn_line(
         .id()
 }
 
-/// Despawns the hover panel on `OnExit(BattleScapeState::BattleRunning)`.
+/// Despawns the inspect panel on `OnExit(BattleScapeState::BattleRunning)`.
 ///
-/// Recursively despawns the [`HoverPanelRoot`] entity (and its sub-blocks) — battle-scoped
+/// Recursively despawns the [`InspectPanelRoot`] entity (and its sub-blocks) — battle-scoped
 /// lifecycle. Param-only (`bevy-traps.md` #7).
-pub(in crate::scenes::running::game::battlescape) fn despawn_hover_panel(
+pub(in crate::scenes::running::game::battlescape) fn despawn_inspect_panel(
     mut commands: Commands,
-    panels: Query<Entity, With<HoverPanelRoot>>,
+    panels: Query<Entity, With<InspectPanelRoot>>,
 ) {
     for panel in &panels {
         commands.entity(panel).despawn();

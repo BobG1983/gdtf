@@ -32,7 +32,7 @@
 //! the currently-held option is shown via the `gdtf_ui`
 //! [`ActiveButton`](gdtf_ui::ActiveButton) paint marker (the GTW-253 hook, made sticky
 //! by GTW-266). There is deliberately NO `FireButton`: a button press carries no
-//! `HoveredCell` target, so FIRE stays the left-click-on-target surface (landed in
+//! `InspectTarget` hovered-cell target, so FIRE stays the left-click-on-target surface (landed in
 //! 222b); explicit-target fire is GTW-11. The end-turn act ([`EndTurnButton`]) is a LIVE
 //! button since GTW-309 (the turn-cycle engine landed): it carries NO `DisabledButton`, so
 //! the `Without<DisabledButton>` action filter INCLUDES it and its press pushes

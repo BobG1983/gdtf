@@ -26,7 +26,7 @@ use crate::{
     intent::{PendingActIntent, dispatch_act_intents},
     keybinds::{Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds},
     keyboard::{level_keys, posture_keys, select_clear_key},
-    picking::{HoveredCell, emit_highlight_request, pick_hovered_cell},
+    picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
         SelectedShooter, auto_select_first_player_ganger, left_click_act, right_click_turn_to_face,
         update_selection_highlight,
@@ -48,7 +48,7 @@ pub struct GdtfBattleInputActive;
 /// `BattlePresenterPlugin::default()`, so its `build` runs when the scene plugins register.
 /// On `build` it:
 ///
-/// - inserts the [`GdtfBattleInputActive`] marker and initialises the [`HoveredCell`] (S7),
+/// - inserts the [`GdtfBattleInputActive`] marker and initialises the [`InspectTarget`] (S7),
 ///   [`SelectedShooter`], [`SelectedFireMode`] (222b), and [`PendingActIntent`] resources,
 ///   and registers the `*Requested` message buffers the drain emits;
 /// - registers the S7 cursor picker ([`pick_hovered_cell`]) + the GTW-251 highlight EMITTER
@@ -110,7 +110,7 @@ impl Plugin for GdtfBattleInputPlugin {
                 .after(setup_battle_on_request),
         )
         .insert_resource(GdtfBattleInputActive)
-        .init_resource::<HoveredCell>()
+        .init_resource::<InspectTarget>()
         .init_resource::<SelectedShooter>()
         .init_resource::<SelectedFireMode>()
         .init_resource::<PendingActIntent>()

@@ -26,7 +26,7 @@
 //!
 //! # Don't act through the UI (GTW-286)
 //!
-//! Every click branch keys off [`HoveredCell`](crate::HoveredCell), which the picker
+//! Every click branch keys off the LIVE hovered cell ([`InspectTarget::hovered`](crate::InspectTarget::hovered)), which the picker
 //! ([`pick_hovered_cell`](crate::pick_hovered_cell)) now resolves to [`None`] for any cursor
 //! OUTSIDE the map viewport rect (a margin / a UI panel) — the GTW-286 viewport gate in
 //! `resolve_hovered_cell`. So a click over a UI button never reaches a cell: nothing hovered →
@@ -45,6 +45,15 @@
 //! are inspected via the GTW-274 hover panel, never selected/cleared as your shooter. CLEAR
 //! still fires for the genuine "nothing to act on" cases (an empty / blocked cell with a
 //! non-player or stale selection).
+//!
+//! # Clicking ALSO pins the inspect panel (GTW-300)
+//!
+//! Every left-click (mouse OR gamepad) resolves a SECOND, ORTHOGONAL effect: the inspect-panel
+//! pin ([`decide_pin`] / [`apply_pin`], a [`PinOutcome`]). Clicking COVER or an ENEMY pins the
+//! panel on that cell (it freezes there, ignoring hover); clicking an EMPTY tile unpins (hover
+//! resumes); clicking your OWN ganger (a SELECT) or FIRING on an enemy KEEPS the pin. The pin
+//! lives on a DIFFERENT resource ([`InspectTarget`](crate::InspectTarget)) than the
+//! selection/act effect, so the two compose on one click with no double-dispatch.
 
 mod auto_select;
 mod decision;
@@ -54,7 +63,8 @@ mod systems;
 
 pub use auto_select::auto_select_first_player_ganger;
 pub use decision::{
-    LeftClickOutcome, LeftClickReads, TurnReads, apply_left_click, decide_left_click, decide_turn,
+    LeftClickOutcome, LeftClickReads, PinOutcome, TurnReads, apply_left_click, apply_pin,
+    decide_left_click, decide_pin, decide_turn,
 };
 pub use highlight::update_selection_highlight;
 pub use resources::{SelectedShooter, SelectionHighlight};

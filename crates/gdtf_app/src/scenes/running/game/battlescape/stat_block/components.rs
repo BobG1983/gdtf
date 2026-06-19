@@ -4,15 +4,15 @@
 //! The stat block is the one render of a ganger's portrait / name / faction / stance /
 //! TU+HP bars / Wounds pips / wound-name list, built once by
 //! [`spawn_stat_block`](super::spawn_stat_block) and reused by BOTH the top-left status
-//! panel (reads `SelectedShooter`) and the top-right hover panel (reads `HoveredCell`).
+//! panel (reads `SelectedShooter`) and the top-right inspect panel (reads `InspectTarget`).
 //! Each panel spawns its OWN stat block, so the two coexist; the widgets are found for
 //! the per-update mutate via the [`StatBlockRefs`] handle the builder stamps on the
 //! block root (stable entity ids — [[ui-mutate-not-respawn]]), not by a shared marker.
 //!
 //! The per-widget markers below carry the panel-discriminating identity the
-//! integration tests query by (`status_panel` / `hover_panel` attach their own variant
+//! integration tests query by (`status_panel` / `inspect_panel` attach their own variant
 //! alongside the shared widget so a test can name "the status panel's HP bar" vs "the
-//! hover panel's HP bar"). They are **unit structs** — presence alone is the signal, no
+//! inspect panel's HP bar"). They are **unit structs** — presence alone is the signal, no
 //! domain value, so the no-bare-types rule does not apply (the status-panel per-line
 //! marker precedent).
 

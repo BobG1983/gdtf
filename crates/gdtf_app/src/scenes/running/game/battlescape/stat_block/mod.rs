@@ -1,7 +1,7 @@
 //! The shared ganger **stat block** (GTW-278 / GTW-274) — the ONE render of a ganger's
 //! portrait / name / faction / stance / TU+HP bars / Wounds pips / wound-name list, built
 //! once and reused by BOTH the top-left status panel (`SelectedShooter`) and the top-right
-//! hover-inspect panel (`HoveredCell`). DRY: the render lives here, the panels only own
+//! inspect panel (`InspectTarget`). DRY: the render lives here, the panels only own
 //! their root, lifecycle, and target-resolution.
 //!
 //! - [`spawn_stat_block`] builds one block (the [`build`] submodule).

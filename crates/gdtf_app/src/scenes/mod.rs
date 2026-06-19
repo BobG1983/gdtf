@@ -53,16 +53,16 @@ crate::support_use! {
         StanceStandingButton,
     };
 }
-// Test-support-only re-export of the GTW-278 stat-block markers + the GTW-274 hover-panel
+// Test-support-only re-export of the GTW-278 stat-block markers + the GTW-274 inspect-panel
 // markers, gated so the binary build is `unused`/`unreachable_pub`-clean (the action-bar
 // per-act-marker re-export chain precedent). The final hop before `crate::test_support`.
 #[cfg(feature = "test-support")]
 crate::support_use! {
     running::{
-        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
-        HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost, StatFaction,
-        StatHpBar, StatName, StatPortrait, StatStance, StatTuBar, StatWoundLine, StatWoundList,
-        StatWoundsPips, portrait_index_for_name,
+        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
+        InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
+        StatFaction, StatHpBar, StatName, StatPortrait, StatStance, StatTuBar, StatWoundLine,
+        StatWoundList, StatWoundsPips, portrait_index_for_name,
     };
 }
 // Test-support-only re-export of the GTW-275 weapon-panel markers + the layout-overhaul

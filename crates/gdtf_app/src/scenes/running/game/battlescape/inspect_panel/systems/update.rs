@@ -1,7 +1,7 @@
-//! Repaints the hover-inspect panel from the [`HoveredCell`](gdtf_battle_input::HoveredCell)
-//! (GTW-274).
+//! Repaints the inspect panel from the EFFECTIVE
+//! [`InspectTarget`](gdtf_battle_input::InspectTarget) — pinned-else-hovered (GTW-274 / GTW-300).
 //!
-//! [`update_hover_panel`] reads the hovered cell + the
+//! [`update_inspect_panel`] reads the effective inspect cell + the
 //! [`OccupancyGrid`](gdtf_battle_sim::OccupancyGrid) (occupant / terrain) +
 //! [`CoverLedger`](gdtf_battle_sim::CoverLedger) and drives the panel:
 //!
@@ -21,23 +21,23 @@
 //! so it observes the same update's hover pick.
 
 use bevy::{prelude::*, text::TextColor as UiTextColor, ui::Display};
-use gdtf_battle_input::HoveredCell;
+use gdtf_battle_input::{InspectMode, InspectTarget};
 use gdtf_battle_sim::{
     CoverEntry, CoverLedger, Faction, HeightBand, OccupancyGrid, PlayerFaction, TerrainKind,
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar, theme::GdtfTheme};
 
 use crate::scenes::running::game::battlescape::{
-    hover_panel::components::{
-        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
-        HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
+    inspect_panel::components::{
+        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
+        InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
     },
     stat_block::{
         StatBlockData, StatBlockRefs, StatBlockWidgets, clear_stat_block, update_stat_block,
     },
 };
 
-/// The enemy-ganger name tint — a red-ish accent applied to the hover panel's name line
+/// The enemy-ganger name tint — a red-ish accent applied to the inspect panel's name line
 /// when the hovered ganger is NOT the player's faction (the contract's "enemy = red-ish"),
 /// matching the mockup's red enemy panel.
 ///
@@ -47,52 +47,53 @@ use crate::scenes::running::game::battlescape::{
 /// text line); the player faction keeps the normal theme text color.
 const ENEMY_TINT: Color = Color::srgb(0.86, 0.26, 0.22);
 
-/// The read-only marker→entity lookups the hover panel needs to find its own nodes.
+/// The read-only marker→entity lookups the inspect panel needs to find its own nodes.
 ///
 /// A [`SystemParam`] bundle so the update system declares them as one param. All read-only
 /// `Query<Entity, With<…>>` (the markers are disjoint), so no conflict with the
 /// [`StatBlockWidgets`] write bundle. `pub(in …battlescape)` for `private_interfaces`.
 #[derive(bevy::ecs::system::SystemParam)]
-pub(in crate::scenes::running::game::battlescape) struct HoverNodes<'w, 's> {
+pub(in crate::scenes::running::game::battlescape) struct InspectNodes<'w, 's> {
     /// The panel root (whole-panel visibility toggle).
-    pub root:         Query<'w, 's, Entity, With<HoverPanelRoot>>,
+    pub root:         Query<'w, 's, Entity, With<InspectPanelRoot>>,
     /// The shared stat-block host (the ganger sub-block show/hide target).
-    pub host:         Query<'w, 's, Entity, With<HoverStatBlockHost>>,
+    pub host:         Query<'w, 's, Entity, With<InspectStatBlockHost>>,
     /// The object block container (the object sub-block show/hide target).
-    pub object_block: Query<'w, 's, Entity, With<HoverObjectBlock>>,
+    pub object_block: Query<'w, 's, Entity, With<InspectObjectBlock>>,
     /// The object block's **title** `Text` (object kind heading).
-    pub object_title: Query<'w, 's, Entity, With<HoverObjectText>>,
+    pub object_title: Query<'w, 's, Entity, With<InspectObjectText>>,
     /// The object block's **Hardness** `Text` line.
-    pub hardness:     Query<'w, 's, Entity, With<HoverObjectHardness>>,
+    pub hardness:     Query<'w, 's, Entity, With<InspectObjectHardness>>,
     /// The object block's **Protection** `Text` line.
-    pub protection:   Query<'w, 's, Entity, With<HoverObjectProtection>>,
+    pub protection:   Query<'w, 's, Entity, With<InspectObjectProtection>>,
     /// The object block's **Height band** `Text` line.
-    pub height:       Query<'w, 's, Entity, With<HoverObjectHeight>>,
+    pub height:       Query<'w, 's, Entity, With<InspectObjectHeight>>,
     /// The object block's integrity `ProgressBar` track.
-    pub object_bar:   Query<'w, 's, Entity, With<HoverObjectBar>>,
+    pub object_bar:   Query<'w, 's, Entity, With<InspectObjectBar>>,
     /// The sub-blocks' layout `Node` writer — drives `Display::Flex` / `Display::None` so a
     /// hidden sub-block is REMOVED from layout (GTW-295). Filtered `Without<ProgressBarFill>`
     /// so it stays disjoint from the [`StatBlockWidgets`] `fills` `&mut Node` writer.
     pub display:      Query<'w, 's, &'static mut Node, Without<ProgressBarFill>>,
 }
 
-/// The sim-resource reads the hover panel resolves its hovered cell against.
+/// The sim-resource reads the inspect panel resolves its EFFECTIVE target against (GTW-300).
 ///
-/// A [`SystemParam`] bundle so the update system declares the cursor + grid + ledger reads
-/// as ONE param (the [`too_many_arguments`](clippy::too_many_arguments) idiom). The grid
+/// A [`SystemParam`] bundle so the update system declares the inspect target + grid + ledger
+/// reads as ONE param (the [`too_many_arguments`](clippy::too_many_arguments) idiom). The grid
 /// and ledger are [`Option`] (state-scoped — present only during a live battle,
 /// `bevy-traps.md` #1). `pub(in …battlescape)` for `private_interfaces`.
 #[derive(bevy::ecs::system::SystemParam)]
-pub(in crate::scenes::running::game::battlescape) struct HoverReads<'w> {
-    /// The picked hovered cell (`gdtf_battle_input`).
-    pub hovered: Res<'w, HoveredCell>,
+pub(in crate::scenes::running::game::battlescape) struct InspectReads<'w> {
+    /// The inspect target (`gdtf_battle_input`) — the panel reads its EFFECTIVE mode
+    /// (pinned-else-hovered, GTW-300), NOT the raw cursor cell.
+    pub target: Res<'w, InspectTarget>,
     /// The occupancy / terrain grid (occupant lookup + terrain kind).
-    pub grid:    Option<Res<'w, OccupancyGrid>>,
+    pub grid:   Option<Res<'w, OccupancyGrid>>,
     /// The cover ledger (a hovered object's seeded structural stats).
-    pub ledger:  Option<Res<'w, CoverLedger>>,
+    pub ledger: Option<Res<'w, CoverLedger>>,
 }
 
-/// The faction-tint reads the hover panel needs to recolor the name line by the hovered
+/// The faction-tint reads the inspect panel needs to recolor the name line by the hovered
 /// ganger's allegiance (AC2).
 ///
 /// A [`SystemParam`] bundle so the update system declares the tint inputs as ONE param
@@ -111,32 +112,37 @@ pub(in crate::scenes::running::game::battlescape) struct FactionTint<'w, 's> {
     pub colors: Query<'w, 's, &'static mut UiTextColor>,
 }
 
-/// Repaints the hover panel from the current [`HoveredCell`].
+/// Repaints the inspect panel from the current EFFECTIVE [`InspectTarget`] (pinned-else-hovered,
+/// GTW-300): a pinned cell freezes the panel on its occupant / cover; with no pin it follows the
+/// live hovered cell.
 ///
-/// Resolves the hovered cell to a ganger (the grid's
+/// Resolves the effective cell to a ganger (the grid's
 /// [`occupant`](gdtf_battle_sim::OccupancyGrid::occupant) with [`StatBlockData`]), else a
 /// non-floor object (the grid's [`terrain`](gdtf_battle_sim::OccupancyGrid::terrain) being a
 /// wall / cover, with its seeded [`CoverEntry`] from the ledger), else bare floor; and toggles
 /// the panel + its two sub-blocks accordingly. On a ganger hover it ALSO tints the name line
 /// by the ganger's [`Faction`] (AC2 — enemy red-ish, player the normal theme color). Param-only
 /// (`bevy-traps.md` #7).
-pub(in crate::scenes::running::game::battlescape) fn update_hover_panel(
-    reads: HoverReads,
-    blocks: Query<&StatBlockRefs, With<HoverStatBlockHost>>,
+pub(in crate::scenes::running::game::battlescape) fn update_inspect_panel(
+    reads: InspectReads,
+    blocks: Query<&StatBlockRefs, With<InspectStatBlockHost>>,
     data: Query<StatBlockData>,
     mut widgets: StatBlockWidgets,
-    mut nodes: HoverNodes,
+    mut nodes: InspectNodes,
     mut tint: FactionTint,
 ) {
     let Ok(&refs) = blocks.single() else {
         return;
     };
 
-    // What is under the cursor: a ganger entity, a non-floor object's cover entry, or
-    // bare floor / nothing. Each branch toggles the panel + sub-blocks (mutate-in-place):
-    // the panel ROOT by `Visibility`, the two SUB-BLOCKS by `Display` (None removes a hidden
-    // block from layout, so the panel sizes to the visible block only — GTW-295).
-    let cell = **reads.hovered;
+    // What the panel describes: the EFFECTIVE inspect target (pinned-else-hovered, GTW-300),
+    // resolved to a sim cell. With a pin, `effective()` is `Pinned(cell)` and the panel freezes
+    // on that cell's occupant / cover; with no pin it is `Hovered(cell)`, following the cursor.
+    // Either way the cell flows through the SAME occupant / terrain resolution below. Each
+    // branch below toggles the panel + sub-blocks (mutate-in-place): the panel ROOT by
+    // `Visibility`, the two SUB-BLOCKS by `Display` (None removes a hidden block from layout,
+    // so the panel sizes to the visible block only — GTW-295).
+    let cell = effective_cell(reads.target.effective());
     let occupant = cell.and_then(|c| reads.grid.as_deref().and_then(|g| g.occupant(&c)));
 
     // Resolve the two sub-block entities up front (immutable Entity reads) so the per-branch
@@ -170,6 +176,23 @@ pub(in crate::scenes::running::game::battlescape) fn update_hover_panel(
 
     // Bare floor / nothing hovered → hide the whole panel.
     toggle(&mut widgets.visibility, &nodes.root, Visibility::Hidden);
+}
+
+/// Resolves the EFFECTIVE inspect [`InspectMode`] to the sim cell the panel describes (GTW-300).
+///
+/// - [`InspectMode::Hovered`]`(cell)` → that cell (the live cursor cell — `None` = bare floor /
+///   off-map, so the panel hides). The no-pin case: the panel follows the cursor.
+/// - [`InspectMode::Pinned`]`(cell)` → that PINNED cell, FROZEN against the cursor — the panel
+///   keeps describing whatever occupies it (an enemy occupant OR a cover/wall) because the pin is
+///   a CELL the same downstream occupant / terrain resolution already handles (no entity→cell
+///   reverse lookup needed: a cell pin sidesteps the grid's missing reverse map entirely).
+const fn effective_cell(mode: InspectMode) -> Option<gdtf_battle_sim::CellLevel> {
+    match mode {
+        InspectMode::Hovered(cell) => cell,
+        // GTW-300 slice 3 — a pinned cell IS the cell the panel describes; the rest of
+        // `update_inspect_panel` resolves it to an enemy / cover exactly like a hovered cell.
+        InspectMode::Pinned(cell) => Some(cell),
+    }
 }
 
 /// Sets the [`Node::display`] of `entity` (if present) to `want` via the `display` writer
@@ -248,15 +271,15 @@ fn object_entry(
 /// Fills the object block from a hovered [`CoverEntry`] (GTW-295 AC3) — a readable object
 /// stat block comparable to the ganger block, mutate-in-place ([[ui-mutate-not-respawn]]):
 ///
-/// - the TITLE line ([`HoverObjectText`]) → `"Cover"` (the object kind);
-/// - the Integrity [`ProgressBar`] ([`HoverObjectBar`]) → `current_hp / max_hp`;
-/// - the Hardness line ([`HoverObjectHardness`]) → `"Hardness {armor_hardness}"`;
-/// - the Protection line ([`HoverObjectProtection`]) → `"Protection {armor_protection}"`;
-/// - the Height-band line ([`HoverObjectHeight`]) → `"Height: {height_band}"`.
+/// - the TITLE line ([`InspectObjectText`]) → `"Cover"` (the object kind);
+/// - the Integrity [`ProgressBar`] ([`InspectObjectBar`]) → `current_hp / max_hp`;
+/// - the Hardness line ([`InspectObjectHardness`]) → `"Hardness {armor_hardness}"`;
+/// - the Protection line ([`InspectObjectProtection`]) → `"Protection {armor_protection}"`;
+/// - the Height-band line ([`InspectObjectHeight`]) → `"Height: {height_band}"`.
 ///
 /// Each `Text` write is gated on a real change; the static "Integrity" label is spawned once
 /// and never rewritten.
-fn fill_object_block(widgets: &mut StatBlockWidgets, nodes: &HoverNodes, entry: CoverEntry) {
+fn fill_object_block(widgets: &mut StatBlockWidgets, nodes: &InspectNodes, entry: CoverEntry) {
     set_line(widgets, nodes.object_title.iter().next(), "Cover");
     set_line(
         widgets,

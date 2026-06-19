@@ -22,7 +22,7 @@ use gdtf_app::test_support::{
     StanceProneButton, StanceStandingButton, auto_battle_enabled,
 };
 // (no `GameState` import — the e2e test reads BattleScapeState directly.)
-use gdtf_battle_input::HoveredCell;
+use gdtf_battle_input::InspectTarget;
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -219,7 +219,7 @@ fn active_affordance_seeds_its_own_load_fallbacks() {
 /// (pin-discriminating):
 ///
 /// - the S2 `WorldCamera` spawned `OnEnter(GameState::BattleScape)`;
-/// - the input crate's `HoveredCell` resource (`init_resource` ran);
+/// - the input crate's `InspectTarget` resource (`init_resource` ran);
 /// - the action-bar's 5 existing-act buttons + 2 deferred buttons spawned
 ///   `OnEnter(BattleRunning)`;
 /// - and the `PresenterSystems::Draw` wiring composes — the app `update()`s through
@@ -255,11 +255,11 @@ fn full_stack_composes_to_battle_running() {
          lifecycle ran)",
     );
 
-    // The input crate's HoveredCell resource is present (GdtfBattleInputPlugin's
+    // The input crate's InspectTarget resource is present (GdtfBattleInputPlugin's
     // init_resource ran inside the real ScenesPlugin).
     assert!(
-        app.world().get_resource::<HoveredCell>().is_some(),
-        "the input crate's HoveredCell resource must be present (GdtfBattleInputPlugin \
+        app.world().get_resource::<InspectTarget>().is_some(),
+        "the input crate's InspectTarget resource must be present (GdtfBattleInputPlugin \
          is wired into the real stack)",
     );
 

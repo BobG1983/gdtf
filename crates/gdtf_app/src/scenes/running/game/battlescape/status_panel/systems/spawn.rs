@@ -15,7 +15,7 @@
 //! width is a FIXED fraction of the viewport so the map never pops/shifts left-right when the
 //! panel's contents change (a different selected ganger), and its height tracks the content
 //! but is CAPPED in `Val::Vh` with overflow clipped so it can never overrun the window. This
-//! mirrors the sibling top-right [`hover_panel`](super::super::super::hover_panel).
+//! mirrors the sibling top-right [`inspect_panel`](super::super::super::inspect_panel).
 //!
 //! [`despawn_status_panel`] runs `OnExit(BattleScapeState::BattleRunning)` and recursively
 //! despawns the whole panel by its [`StatusPanelRoot`] marker, so the panel is
@@ -40,14 +40,14 @@ use crate::scenes::running::game::battlescape::{
 /// the map area never pops/shifts left-right when the panel's contents change — the selected
 /// ganger's stat block always occupies this one width (item 7). The panel is an absolute
 /// overlay (item 2), so this width contributes NOTHING to the world-map viewport inset
-/// (only the bottom bar reduces the map — item 4). Matches the sibling hover panel's width.
+/// (only the bottom bar reduces the map — item 4). Matches the sibling inspect panel's width.
 const PANEL_WIDTH_VW: f32 = 18.0;
 
 /// The status panel's **maximum** height as a fraction of the viewport HEIGHT
 /// ([`Val::Vh`](bevy::ui::Val::Vh)). The panel height tracks its stat-block content
 /// (`height: auto`), but is CAPPED here so it can never overrun the window; the cap is
 /// relative (`ui-responsive-not-px`). Excess content is clipped (overflow hidden) rather than
-/// overflowing onto the map. Matches the sibling hover panel's cap.
+/// overflowing onto the map. Matches the sibling inspect panel's cap.
 const PANEL_MAX_HEIGHT_VH: f32 = 45.0;
 
 /// Builds the themed status panel on `OnEnter(BattleScapeState::BattleRunning)`.
@@ -82,7 +82,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_status_panel(
     // fine: `apply_theme` re-derives the panel's border / radius / padding from this node
     // every run (it clones the node and overrides only those), so the framed look is
     // preserved while the size + position here stay authoritative. Mirrors the sibling
-    // top-right `hover_panel`.
+    // top-right `inspect_panel`.
     let root = spawn_panel(&mut commands, &theme);
     commands.entity(root).insert((
         StatusPanelRoot,

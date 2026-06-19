@@ -5,10 +5,13 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{Faction, PlayerFaction, Position};
 
 use crate::{
-    ActIntent, PendingActIntent,
+    ActIntent, InspectTarget, PendingActIntent,
     fire_surface::ShooterFireData,
     selection::{
-        decision::{LeftClickReads, TurnReads, apply_left_click, decide_left_click, decide_turn},
+        decision::{
+            LeftClickReads, TurnReads, apply_left_click, apply_pin, decide_left_click, decide_pin,
+            decide_turn,
+        },
         resources::SelectedShooter,
     },
 };
@@ -43,28 +46,41 @@ use crate::{
 /// does not touch [`SelectedShooter`]; a SELECT edge emits no act message; an enemy-click NO-OP
 /// (GTW-287) touches nothing.
 ///
+/// GTW-300 — the SAME edge also resolves the PARALLEL inspect-panel pin
+/// ([`decide_pin`] / [`apply_pin`]): clicking cover or an enemy PINS the panel on that cell,
+/// clicking an empty tile UNPINS, and a SELECT / FIRE / no-hover click leaves the pin untouched.
+/// The pin is ORTHOGONAL to the FIRE / SELECT / MOVE / CLEAR effect (a different resource,
+/// [`InspectTarget`]), so both effects compose on one click with no double-dispatch.
+///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` + `Query<ShooterFireData>`, the [`ResMut<SelectedShooter>`] /
-/// [`ResMut<PendingActIntent>`] writes — no `&mut World`. Runs `.before(pick_hovered_cell)`
-/// (`bevy-traps.md` #3) so it reads the cell resolved last update, and
-/// `.before(dispatch_act_intents)` so the drain sees this update's pushes.
+/// [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes — no `&mut World`. Runs
+/// `.before(pick_hovered_cell)` (`bevy-traps.md` #3) so it reads the cell resolved last update,
+/// and `.before(dispatch_act_intents)` so the drain sees this update's pushes.
 pub fn left_click_act(
     reads: LeftClickReads,
     factions: Query<&Faction>,
     shooters: Query<ShooterFireData>,
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
+    mut inspect: ResMut<InspectTarget>,
 ) {
     // Only act on the press edge; a held button does not re-resolve.
     if !reads.mouse.just_pressed(MouseButton::Left) {
         return;
     }
-    let outcome = decide_left_click(&reads, &factions, &shooters, &selected);
+    // Decide both effects from the immutable inspect target FIRST, then commit them (the pin
+    // write borrows `inspect` mutably, so the read-only decisions must finish before it).
+    let outcome = decide_left_click(&reads, &inspect, &factions, &shooters, &selected);
+    let pin = decide_pin(&reads, &inspect, &factions);
     apply_left_click(outcome, &mut selected, &mut pending);
+    // GTW-300 — the parallel pin effect (orthogonal to the act/selection effect above).
+    apply_pin(pin, &mut inspect);
 }
 
-/// Turns the player-faction [`SelectedShooter`] to face the [`HoveredCell`](crate::HoveredCell)
-/// on a Right press (GTW-238), pushing an [`ActIntent::Turn`].
+/// Turns the player-faction [`SelectedShooter`] to face the LIVE hovered cell
+/// ([`InspectTarget::hovered`](crate::InspectTarget::hovered)) on a Right press (GTW-238),
+/// pushing an [`ActIntent::Turn`].
 ///
 /// On a `ButtonInput<MouseButton>` `just_pressed(Right)` with a player-faction
 /// [`SelectedShooter`], it applies the SHARED [`decide_turn`] decision (the SAME one

@@ -11,7 +11,7 @@
 //! no-op and no shot is observable. This test wires the WHOLE chain:
 //!
 //! ```text
-//!   left-click (real cursor -> HoveredCell)            [gdtf_battle_input]
+//!   left-click (real cursor -> InspectTarget)            [gdtf_battle_input]
 //!     -> left_click_act decides FIRE                   (decision.rs)
 //!       -> ActIntent::Fire pushed                      (apply_left_click)
 //!         -> dispatch_act_intents drains -> FireRequested emitted   (intent/seam.rs)
@@ -39,7 +39,7 @@ use bevy::{
     transform::components::GlobalTransform,
     window::{PrimaryWindow, Window, WindowResolution},
 };
-use gdtf_battle_input::{GdtfBattleInputPlugin, HoveredCell, SelectedShooter};
+use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger,
@@ -231,8 +231,8 @@ fn hover_at(app: &mut App, offset: Vec2) -> CellLevel {
     set_cursor(app, Some(TARGET_SIZE * 0.5 + offset));
     app.update();
     app.world()
-        .get_resource::<HoveredCell>()
-        .and_then(|h| **h)
+        .get_resource::<InspectTarget>()
+        .and_then(InspectTarget::hovered)
         .unwrap_or_else(|| CellLevel::new(Cell::new(0, 0), Level::new(0)))
 }
 

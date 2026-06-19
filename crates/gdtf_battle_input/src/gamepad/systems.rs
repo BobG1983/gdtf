@@ -6,14 +6,14 @@ use gdtf_battle_presenter::GamepadCursorMoved;
 use gdtf_battle_sim::{Faction, Position};
 
 use crate::{
-    ActIntent, PendingActIntent,
+    ActIntent, InspectTarget, PendingActIntent,
     fire_surface::ShooterFireData,
     gamepad::cursor::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, GamepadCursor, move_cursor,
     },
     selection::{
-        LeftClickReads, SelectedShooter, TurnReads, apply_left_click, decide_left_click,
-        decide_turn,
+        LeftClickReads, SelectedShooter, TurnReads, apply_left_click, apply_pin, decide_left_click,
+        decide_pin, decide_turn,
     },
 };
 
@@ -93,10 +93,14 @@ pub fn mouse_reclaims_pointer(
 /// [`dispatch_act_intents`](crate::dispatch_act_intents) drain emits the carried act). With no
 /// gamepad, or no South press, nothing happens.
 ///
+/// GTW-300 — South ALSO resolves the PARALLEL inspect-panel pin
+/// ([`decide_pin`] / [`apply_pin`]) for free, since it routes through the SAME shared decision:
+/// clicking cover / an enemy PINS the panel, an empty tile UNPINS, a SELECT / FIRE keeps the pin.
+///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` / `Query<ShooterFireData>` + the [`ResMut<SelectedShooter>`] /
-/// [`ResMut<PendingActIntent>`] writes + the [`Gamepad`] query; no `&mut World`. Runs
-/// `.before(pick_hovered_cell)` and `.before(dispatch_act_intents)`.
+/// [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes + the [`Gamepad`] query; no
+/// `&mut World`. Runs `.before(pick_hovered_cell)` and `.before(dispatch_act_intents)`.
 ///
 /// HONESTY: the raw South-button read is device-event-driven and not headlessly drivable; the
 /// shared decision (exercised via the mouse path) + in-engine QA cover it.
@@ -107,6 +111,7 @@ pub fn gamepad_click_act(
     shooters: Query<ShooterFireData>,
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
+    mut inspect: ResMut<InspectTarget>,
 ) {
     let Some(gamepad) = gamepads.iter().next() else {
         return;
@@ -114,8 +119,13 @@ pub fn gamepad_click_act(
     if !gamepad.just_pressed(GamepadButton::South) {
         return;
     }
-    let outcome = decide_left_click(&reads, &factions, &shooters, &selected);
+    // Decide both effects from the immutable inspect target FIRST, then commit them (the pin
+    // write borrows `inspect` mutably, so the read-only decisions must finish before it).
+    let outcome = decide_left_click(&reads, &inspect, &factions, &shooters, &selected);
+    let pin = decide_pin(&reads, &inspect, &factions);
     apply_left_click(outcome, &mut selected, &mut pending);
+    // GTW-300 — the parallel pin effect (same shared decision as the mouse path).
+    apply_pin(pin, &mut inspect);
 }
 
 /// `Update` (battle-gated, `InputSystems::Gather`, `.before(dispatch_act_intents)`): East =
@@ -131,7 +141,7 @@ pub fn gamepad_click_act(
 /// selection, or a `None` decision, nothing happens.
 ///
 /// Param-only (`bevy-traps.md` #7): read-only `Query<&Gamepad>` / `Query<&Faction>` /
-/// `Query<&Position>` + `Res<PlayerFaction>` / `Res<SelectedShooter>` / `Res<HoveredCell>` + the
+/// `Query<&Position>` + `Res<PlayerFaction>` / `Res<SelectedShooter>` / `Res<InspectTarget>` + the
 /// [`ResMut<PendingActIntent>`] write; no `&mut World`. Runs `.before(dispatch_act_intents)`.
 ///
 /// HONESTY: the raw East-button read is device-event-driven and not headlessly drivable; the shared

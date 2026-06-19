@@ -35,7 +35,7 @@ use bevy::{
     window::{PrimaryWindow, Window, WindowResolution},
 };
 use gdtf_battle_input::{
-    ActIntent, BoundKey, GdtfBattleInputPlugin, HoveredCell, Keybinds, PendingActIntent,
+    ActIntent, BoundKey, GdtfBattleInputPlugin, InspectTarget, Keybinds, PendingActIntent,
     SelectedFireMode, SelectedShooter, next_facing, next_stance,
 };
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
@@ -133,7 +133,7 @@ fn synthetic_camera() -> Camera {
 /// `BattleInProgress` gate, an empty `OccupancyGrid`, the sim resources `SimActsPlugin`
 /// reads, `CombatTuning`, a `Keybinds` table, seeded `ButtonInput` buffers, and a
 /// SYNTHETIC `WorldCamera` + `Window` so the REAL `pick_hovered_cell` resolves a cursor
-/// to an in-grid cell (driving the genuine cursor -> `HoveredCell` -> select/fire chain,
+/// to an in-grid cell (driving the genuine cursor -> `InspectTarget` -> select/fire chain,
 /// not an injected cell). The keybinds are inserted directly (the sanctioned headless
 /// idiom — no `AssetServer` under `MinimalPlugins`).
 fn acts_app() -> App {
@@ -231,8 +231,8 @@ fn hover_at(app: &mut App, offset: Vec2) -> CellLevel {
     set_cursor(app, Some(TARGET_SIZE * 0.5 + offset));
     app.update();
     app.world()
-        .get_resource::<HoveredCell>()
-        .and_then(|h| **h)
+        .get_resource::<InspectTarget>()
+        .and_then(InspectTarget::hovered)
         .unwrap_or_else(|| CellLevel::new(Cell::new(0, 0), Level::new(0)))
 }
 
@@ -244,7 +244,7 @@ fn set_cursor(app: &mut App, position: Option<Vec2>) {
     }
 }
 
-/// Selects `ganger` over the REAL cursor -> `HoveredCell` -> `left_click_act` chain:
+/// Selects `ganger` over the REAL cursor -> `InspectTarget` -> `left_click_act` chain:
 /// places the cursor over the shooter cell, places `ganger` there in the occupancy grid,
 /// then a fresh left-click + `update()` selects it. The cursor stays over the shooter
 /// cell (so the value is stable). Returns the resolved shooter cell.
@@ -397,8 +397,8 @@ fn selecting_armed_ganger_defaults_fire_mode_to_single() {
 // ---------------------------------------------------------------------------------
 
 /// AC3 — a left-click on an ENEMY target cell emits EXACTLY one `FireRequested { shooter
-/// = *SelectedShooter, mode = *SelectedFireMode, target from HoveredCell }`, driven over
-/// the REAL cursor -> `HoveredCell` -> `left_click_act` FIRE-branch chain.
+/// = *SelectedShooter, mode = *SelectedFireMode, target from the hovered cell }`, driven over
+/// the REAL cursor -> `InspectTarget` -> `left_click_act` FIRE-branch chain.
 #[test]
 fn left_click_emits_one_fire_requested() {
     let mut app = acts_app();
@@ -434,10 +434,13 @@ fn left_click_emits_one_fire_requested() {
     let msg = &emitted[0];
     assert_eq!(msg.shooter, ganger, "shooter = *SelectedShooter");
     assert_eq!(msg.mode, selector.single(), "mode = *SelectedFireMode");
-    assert_eq!(msg.target_cell, target_cell, "target cell from HoveredCell");
+    assert_eq!(
+        msg.target_cell, target_cell,
+        "target cell from the hovered cell"
+    );
     assert_eq!(
         msg.target_level, target_level,
-        "target level from HoveredCell"
+        "target level from the hovered cell"
     );
 }
 
@@ -539,7 +542,7 @@ fn can_fire_failure_blocks_fire_requested() {
         );
     }
 
-    // No in-bounds target — an off-window cursor resolves `HoveredCell(None)`, so the
+    // No in-bounds target — an off-window cursor resolves the hovered cell to `None`, so the
     // fire surface has no target and emits nothing (the in-bounds boundary at this layer).
     {
         let mut app = acts_app();
@@ -554,9 +557,11 @@ fn can_fire_failure_blocks_fire_requested() {
         set_cursor(&mut app, None);
         app.update();
         assert_eq!(
-            app.world().get_resource::<HoveredCell>().and_then(|h| **h),
+            app.world()
+                .get_resource::<InspectTarget>()
+                .and_then(InspectTarget::hovered),
             None,
-            "an off-window cursor must resolve HoveredCell to None",
+            "an off-window cursor must resolve the hovered cell to None",
         );
         press_left(&mut app);
         app.update();

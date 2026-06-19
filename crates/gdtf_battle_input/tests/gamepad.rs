@@ -31,7 +31,7 @@ use bevy::{
     window::{CursorMoved, PrimaryWindow, Window, WindowResolution},
 };
 use gdtf_battle_input::{
-    ActivePointer, GamepadCursor, GdtfBattleInputPlugin, HoveredCell, LeftClickOutcome,
+    ActivePointer, GamepadCursor, GdtfBattleInputPlugin, InspectTarget, LeftClickOutcome,
     SelectedFireMode, SelectedShooter, decide_left_click, decide_turn,
     fire_surface::ShooterFireData, selection::LeftClickReads,
 };
@@ -72,7 +72,7 @@ const fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
 /// style: carve-out (a), every mutation in a TEST BODY) — and seeds the resources the SHARED
 /// [`decide_left_click`] reads beyond what the plugin `init_resource`s.
 ///
-/// The plugin already `init_resource`s `HoveredCell` / `SelectedShooter` / `PendingActIntent`
+/// The plugin already `init_resource`s `InspectTarget` / `SelectedShooter` / `PendingActIntent`
 /// / `SelectedFireMode`; this seeds the battle-scoped reads the AC2 decision also consults
 /// (`OccupancyGrid` / `CombatTuning` / `PlayerFaction`), overrides `SelectedFireMode` with the
 /// marker spec the FIRE branch needs, and inserts the `ButtonInput<MouseButton>` the
@@ -133,9 +133,12 @@ fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
 }
 
 /// The `SystemState` param tuple for [`decide_left_click`] (aliased to keep clippy's
-/// `type_complexity` happy — the framework-plumbing carve-out for a `SystemState` tuple).
+/// `type_complexity` happy — the framework-plumbing carve-out for a `SystemState` tuple). The
+/// [`InspectTarget`] is a SEPARATE `Res` (GTW-300: it is no longer inside [`LeftClickReads`], so
+/// the click systems can hold it as a `ResMut` for the pin write without a B0002 conflict).
 type DecideParams<'w, 's> = (
     LeftClickReads<'w>,
+    Res<'w, InspectTarget>,
     Query<'w, 's, &'static Faction>,
     Query<'w, 's, ShooterFireData<'static>>,
     Res<'w, SelectedShooter>,
@@ -147,15 +150,15 @@ type DecideParams<'w, 's> = (
 fn decide(app: &mut App) -> LeftClickOutcome {
     let world = app.world_mut();
     let mut state: SystemState<DecideParams> = SystemState::new(world);
-    let (reads, factions, shooters, selected) = state.get(world);
-    decide_left_click(&reads, &factions, &shooters, &selected)
+    let (reads, inspect, factions, shooters, selected) = state.get(world);
+    decide_left_click(&reads, &inspect, &factions, &shooters, &selected)
 }
 
 /// Calls the SHARED [`decide_turn`] over the `app`'s world via a `SystemState` constructed in
 /// this helper's body (carve-out (a) — `app.world_mut()`, NOT a `&mut World` signature).
 fn turn(app: &mut App) -> Option<SetFacingRequested> {
     let world = app.world_mut();
-    let mut state: SystemState<(Res<SelectedShooter>, Res<HoveredCell>, Query<&Position>)> =
+    let mut state: SystemState<(Res<SelectedShooter>, Res<InspectTarget>, Query<&Position>)> =
         SystemState::new(world);
     let (selected, hovered, positions) = state.get(world);
     decide_turn(&selected, &hovered, &positions)
@@ -175,7 +178,8 @@ fn decide_left_click_matches_the_contract_precedence() {
             .insert_resource(SelectedShooter::new(ganger));
         let target = CellLevel::new(Cell::new(6, 2), LEVEL);
         let _enemy = place_enemy(&mut app, target);
-        app.world_mut().insert_resource(HoveredCell(Some(target)));
+        app.world_mut()
+            .insert_resource(InspectTarget::new(Some(target)));
 
         let outcome = decide(&mut app);
         assert!(
@@ -199,7 +203,8 @@ fn decide_left_click_matches_the_contract_precedence() {
         let cell = CellLevel::new(Cell::new(5, 5), LEVEL);
         let ganger = spawn_player_shooter(&mut app, cell);
         app.world_mut().insert_resource(SelectedShooter::cleared());
-        app.world_mut().insert_resource(HoveredCell(Some(cell)));
+        app.world_mut()
+            .insert_resource(InspectTarget::new(Some(cell)));
 
         assert_eq!(
             decide(&mut app),
@@ -216,7 +221,8 @@ fn decide_left_click_matches_the_contract_precedence() {
         app.world_mut()
             .insert_resource(SelectedShooter::new(ganger));
         let dest = CellLevel::new(Cell::new(4, 3), LEVEL);
-        app.world_mut().insert_resource(HoveredCell(Some(dest)));
+        app.world_mut()
+            .insert_resource(InspectTarget::new(Some(dest)));
 
         let outcome = decide(&mut app);
         assert!(
@@ -231,12 +237,12 @@ fn decide_left_click_matches_the_contract_precedence() {
     }
 
     // --- NO-OP: nothing hovered (GTW-288). The GTW-286 viewport gate resolves an over-UI /
-    //     margin / off-map click to no HoveredCell, and a no-hover click must NOT clear the
+    //     margin / off-map click to no hovered cell, and a no-hover click must NOT clear the
     //     selection — it is a NoOp (the gamepad shares the same `decide_left_click`). ---
     {
         let mut app = decision_app();
         app.world_mut().insert_resource(SelectedShooter::cleared());
-        app.world_mut().insert_resource(HoveredCell(None));
+        app.world_mut().insert_resource(InspectTarget::new(None));
 
         assert_eq!(
             decide(&mut app),
@@ -256,7 +262,8 @@ fn decide_left_click_matches_the_contract_precedence() {
         // occupant (none), SELECT needs a player occupant (none), MOVE needs a player-faction
         // selection (the bare `stale` is not), NO-OP needs an enemy occupant (none) -> CLEAR.
         let cell = CellLevel::new(Cell::new(6, 6), LEVEL);
-        app.world_mut().insert_resource(HoveredCell(Some(cell)));
+        app.world_mut()
+            .insert_resource(InspectTarget::new(Some(cell)));
 
         assert_eq!(
             decide(&mut app),
@@ -275,7 +282,8 @@ fn decide_left_click_matches_the_contract_precedence() {
         app.world_mut()
             .insert_resource(SelectedShooter::new(ganger));
         let dest = CellLevel::new(Cell::new(11, 10), LEVEL);
-        app.world_mut().insert_resource(HoveredCell(Some(dest)));
+        app.world_mut()
+            .insert_resource(InspectTarget::new(Some(dest)));
 
         assert!(
             matches!(decide(&mut app), LeftClickOutcome::Move(_)),
@@ -297,7 +305,10 @@ fn decide_turn_matches_the_contract() {
         app.world_mut()
             .insert_resource(SelectedShooter::new(ganger));
         app.world_mut()
-            .insert_resource(HoveredCell(Some(CellLevel::new(Cell::new(8, 5), LEVEL))));
+            .insert_resource(InspectTarget::new(Some(CellLevel::new(
+                Cell::new(8, 5),
+                LEVEL,
+            ))));
 
         let request = turn(&mut app);
         assert!(
@@ -323,7 +334,7 @@ fn decide_turn_matches_the_contract() {
         app.world_mut()
             .insert_resource(SelectedShooter::new(ganger));
         app.world_mut()
-            .insert_resource(HoveredCell(Some(actor_cell)));
+            .insert_resource(InspectTarget::new(Some(actor_cell)));
 
         assert_eq!(
             turn(&mut app),
@@ -338,7 +349,7 @@ fn decide_turn_matches_the_contract() {
         let ganger = spawn_player_shooter(&mut app, CellLevel::new(Cell::new(5, 5), LEVEL));
         app.world_mut()
             .insert_resource(SelectedShooter::new(ganger));
-        app.world_mut().insert_resource(HoveredCell(None));
+        app.world_mut().insert_resource(InspectTarget::new(None));
 
         assert_eq!(turn(&mut app), None, "nothing hovered must yield no turn");
     }
@@ -402,9 +413,11 @@ fn set_os_cursor(app: &mut App, position: Option<Vec2>) {
     }
 }
 
-/// Reads the current `HoveredCell` value.
+/// Reads the current `InspectTarget` live hovered cell.
 fn hovered(app: &App) -> Option<CellLevel> {
-    app.world().get_resource::<HoveredCell>().and_then(|h| **h)
+    app.world()
+        .get_resource::<InspectTarget>()
+        .and_then(InspectTarget::hovered)
 }
 
 /// The camera's world unprojection of a screen `cursor` (so the test derives the expected
@@ -418,7 +431,7 @@ fn unproject(app: &mut App, cursor: Vec2) -> Option<Vec2> {
 }
 
 /// AC3 — with `ActivePointer::Gamepad` and a `GamepadCursor` over a known cell (resources set
-/// directly), `pick_hovered_cell` writes THAT cell to `HoveredCell` (the gamepad cursor's,
+/// directly), `pick_hovered_cell` writes THAT cell to `InspectTarget` (the gamepad cursor's,
 /// NOT the OS cursor's); flipping back to `Mouse` reverts to the OS-cursor path.
 #[test]
 fn picker_honors_active_pointer() {

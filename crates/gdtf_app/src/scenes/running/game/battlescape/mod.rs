@@ -39,7 +39,7 @@ crate::support_use! {
 }
 
 // The GTW-278 shared ganger stat block (portrait / name / faction / stance / TU+HP bars /
-// Wounds pips / wound-name list), reused by BOTH the status panel and the hover panel — DRY.
+// Wounds pips / wound-name list), reused by BOTH the status panel and the inspect panel — DRY.
 mod stat_block;
 // Test-support-only re-export of the stat-block's per-widget markers (GTW-278), gated so
 // the binary build is `unused`/`unreachable_pub`-clean (the status-panel marker precedent).
@@ -54,17 +54,17 @@ crate::support_use! {
 mod status_panel;
 pub(in crate::scenes::running::game::battlescape) use status_panel::GameBattleScapeStatusPanelScenePlugin;
 
-// The GTW-274 hover-inspect panel (top-right): the twin of the status panel, rendering the
+// The GTW-274 inspect panel (top-right): the twin of the status panel, rendering the
 // shared stat block for the HOVERED ganger / the hovered object's integrity.
-mod hover_panel;
-pub(in crate::scenes::running::game::battlescape) use hover_panel::GameBattleScapeHoverPanelScenePlugin;
-// Test-support-only re-export of the hover-panel's root + object markers (GTW-274), gated
+mod inspect_panel;
+pub(in crate::scenes::running::game::battlescape) use inspect_panel::GameBattleScapeInspectPanelScenePlugin;
+// Test-support-only re-export of the inspect-panel's root + object markers (GTW-274), gated
 // so the binary build is `unused`/`unreachable_pub`-clean.
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    hover_panel::{
-        HoverObjectBar, HoverObjectBlock, HoverObjectHardness, HoverObjectHeight,
-        HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
+    inspect_panel::{
+        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
+        InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
     };
 }
 
@@ -78,7 +78,7 @@ crate::support_use!(bottom_bar::BottomBarRoot;);
 
 // The GTW-275 / GTW-298 weapon cluster (bottom-left): the Overall Weapon Panel 2×2 grid
 // (Combined weapon + Firemode + Item + Aim) plus the separate Stance Panel. It sits INSIDE the
-// bottom bar (GTW-275 overhaul item 6); its root climbs (like the hover-panel root) AND the AC
+// bottom bar (GTW-275 overhaul item 6); its root climbs (like the inspect-panel root) AND the AC
 // tests can assert its presence.
 mod weapon_panel;
 pub(in crate::scenes::running::game::battlescape) use weapon_panel::GameBattleScapeWeaponPanelScenePlugin;

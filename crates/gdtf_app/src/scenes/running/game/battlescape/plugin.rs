@@ -6,7 +6,7 @@ use crate::{
         GameBattleScapeActionBarScenePlugin, GameBattleScapeAfterMathScenePlugin,
         GameBattleScapeAnimateInScenePlugin, GameBattleScapeAnimateOutScenePlugin,
         GameBattleScapeBattleRunningScenePlugin, GameBattleScapeBottomBarScenePlugin,
-        GameBattleScapeGenerationScenePlugin, GameBattleScapeHoverPanelScenePlugin,
+        GameBattleScapeGenerationScenePlugin, GameBattleScapeInspectPanelScenePlugin,
         GameBattleScapeStatusPanelScenePlugin, GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
     states::{BattleScapeState, GameState},
@@ -70,7 +70,7 @@ fn add_plugins(app: &mut App) {
         // presenter; its picking + hover-highlight systems run in `Update` gated
         // on the sim's `BattleInProgress` witness, so the cursor is inert until a
         // live battle. It reads the presenter's `WorldCamera` + px/level interface
-        // and writes `HoveredCell` + one highlight sprite; it emits NO act (S8).
+        // and writes `InspectTarget` + one highlight sprite; it emits NO act (S8).
         .add_plugins(gdtf_battle_input::GdtfBattleInputPlugin)
         // The GTW-48 S9 / 222c action-bar (GTW-228): a themed `gdtf_ui` button surface
         // on the GTW-120 UI camera. It spawns/despawns on the `BattleScapeState::
@@ -89,15 +89,15 @@ fn add_plugins(app: &mut App) {
         // spawn helpers) + `gdtf_battle_input` (the selection seam), both already on the
         // app's edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeStatusPanelScenePlugin)
-        // The GTW-274 hover-inspect panel: the twin of the status panel, anchored top-right.
+        // The GTW-274 inspect panel: the twin of the status panel, anchored top-right.
         // Same `BattleRunning` lifecycle + `BattleInProgress` gate; its repaint reads the
-        // input crate's `HoveredCell` + the sim's `OccupancyGrid` / `CoverLedger` / vital
+        // input crate's `InspectTarget` + the sim's `OccupancyGrid` / `CoverLedger` / vital
         // components and renders the shared stat block (hovered ganger) or an object block
         // (hovered wall / cover). UI/view only — no sim/input change, no act.
-        .add_plugins(GameBattleScapeHoverPanelScenePlugin)
+        .add_plugins(GameBattleScapeInspectPanelScenePlugin)
         // The GTW-275 layout-overhaul BOTTOM BAR: the ONE opaque full-width strip at the
         // bottom of the screen — the only UI that reduces the world map (the corner status /
-        // hover panels are overlays). Same `BattleRunning` lifecycle as the panels; its
+        // inspect panels are overlays). Same `BattleRunning` lifecycle as the panels; its
         // measured height is the SOLE viewport inset (`set_world_viewport`). Registered BEFORE
         // the weapon panel so the bar exists when the weapon panel parents into it (item 6).
         // View-only — no sim/input change, no act.

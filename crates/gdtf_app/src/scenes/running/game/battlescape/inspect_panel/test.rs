@@ -1,9 +1,9 @@
-//! Structure tests for the hover-panel ROOT layout (the GTW-275 overlay overhaul).
+//! Structure tests for the inspect-panel ROOT layout (the GTW-275 overlay overhaul).
 //!
-//! The hover panel must be an ABSOLUTE, fixed-% overlay anchored TOP-RIGHT — it hovers OVER
+//! The inspect panel must be an ABSOLUTE, fixed-% overlay anchored TOP-RIGHT — it hovers OVER
 //! the map and contributes NOTHING to the world-map viewport inset (only the bottom bar
-//! reduces the map). These tests drive the real [`spawn_hover_panel`] system over a `World`
-//! and assert the spawned [`HoverPanelRoot`]'s [`Node`] is:
+//! reduces the map). These tests drive the real [`spawn_inspect_panel`] system over a `World`
+//! and assert the spawned [`InspectPanelRoot`]'s [`Node`] is:
 //!
 //! - `PositionType::Absolute` (an overlay, removed from layout flow);
 //! - sized in RELATIVE viewport units — a FIXED [`Val::Vw`] width (so the map never shifts
@@ -20,11 +20,11 @@ use bevy::{
 };
 use gdtf_ui::theme::default_theme;
 
-use crate::scenes::running::game::battlescape::hover_panel::{
-    components::HoverPanelRoot, systems::spawn_hover_panel,
+use crate::scenes::running::game::battlescape::inspect_panel::{
+    components::InspectPanelRoot, systems::spawn_inspect_panel,
 };
 
-/// The `SystemState` params `spawn_hover_panel` reads, aliased to keep the tuple out of the
+/// The `SystemState` params `spawn_inspect_panel` reads, aliased to keep the tuple out of the
 /// `type_complexity` deny lint (the system is `Commands`-driven with two optional resources).
 type SpawnParams<'w, 's> = SystemState<(
     Commands<'w, 's>,
@@ -32,9 +32,9 @@ type SpawnParams<'w, 's> = SystemState<(
     Option<Res<'w, gdtf_battle_presenter::TopDownAtlases>>,
 )>;
 
-/// Runs the real `spawn_hover_panel` system once over a fresh `World` (the loaded fallback
+/// Runs the real `spawn_inspect_panel` system once over a fresh `World` (the loaded fallback
 /// theme inserted, no atlases — the portrait takes its `None` branch) and returns the spawned
-/// `HoverPanelRoot`'s `Node`, if any. Drives the actual system via a `SystemState` so the test
+/// `InspectPanelRoot`'s `Node`, if any. Drives the actual system via a `SystemState` so the test
 /// exercises the production spawn path, not a hand-rolled copy.
 fn spawn_root_node() -> Option<Node> {
     let mut world = World::new();
@@ -42,20 +42,20 @@ fn spawn_root_node() -> Option<Node> {
 
     let mut state: SpawnParams = SystemState::new(&mut world);
     let (commands, theme, atlases) = state.get(&world);
-    // `spawn_hover_panel` is `Commands`-driven; build it from the same params then apply.
-    spawn_hover_panel(commands, theme, atlases);
+    // `spawn_inspect_panel` is `Commands`-driven; build it from the same params then apply.
+    spawn_inspect_panel(commands, theme, atlases);
     state.apply(&mut world);
 
-    let mut roots = world.query_filtered::<&Node, With<HoverPanelRoot>>();
+    let mut roots = world.query_filtered::<&Node, With<InspectPanelRoot>>();
     roots.iter(&world).next().cloned()
 }
 
 #[test]
-fn hover_panel_root_is_an_absolute_overlay() {
+fn inspect_panel_root_is_an_absolute_overlay() {
     let node = spawn_root_node();
     assert!(
         node.is_some(),
-        "spawn_hover_panel must spawn a HoverPanelRoot"
+        "spawn_inspect_panel must spawn an InspectPanelRoot"
     );
     let Some(node) = node else {
         return;
@@ -63,16 +63,16 @@ fn hover_panel_root_is_an_absolute_overlay() {
     assert_eq!(
         node.position_type,
         PositionType::Absolute,
-        "the hover panel root is an absolute overlay (contributes nothing to the viewport inset)",
+        "the inspect panel root is an absolute overlay (contributes nothing to the viewport inset)",
     );
 }
 
 #[test]
-fn hover_panel_root_width_is_a_fixed_viewport_fraction() {
+fn inspect_panel_root_width_is_a_fixed_viewport_fraction() {
     let node = spawn_root_node();
     assert!(
         node.is_some(),
-        "spawn_hover_panel must spawn a HoverPanelRoot"
+        "spawn_inspect_panel must spawn an InspectPanelRoot"
     );
     let Some(node) = node else {
         return;
@@ -81,23 +81,23 @@ fn hover_panel_root_width_is_a_fixed_viewport_fraction() {
     // left-right when the panel's contents change. Assert the unit KIND, not the magnitude.
     assert!(
         matches!(node.width, Val::Vw(_)),
-        "the hover panel width must be a fixed viewport-width fraction (Val::Vw), got {:?}",
+        "the inspect panel width must be a fixed viewport-width fraction (Val::Vw), got {:?}",
         node.width,
     );
     // The height is capped in viewport-height units so a tall block can never overrun the map.
     assert!(
         matches!(node.max_height, Val::Vh(_)),
-        "the hover panel max-height must be a viewport-height fraction (Val::Vh), got {:?}",
+        "the inspect panel max-height must be a viewport-height fraction (Val::Vh), got {:?}",
         node.max_height,
     );
 }
 
 #[test]
-fn hover_panel_root_is_anchored_top_right() {
+fn inspect_panel_root_is_anchored_top_right() {
     let node = spawn_root_node();
     assert!(
         node.is_some(),
-        "spawn_hover_panel must spawn a HoverPanelRoot"
+        "spawn_inspect_panel must spawn an InspectPanelRoot"
     );
     let Some(node) = node else {
         return;
@@ -106,12 +106,12 @@ fn hover_panel_root_is_anchored_top_right() {
     // are left auto. The kind of `top`/`right` is a viewport fraction (Vh/Vw), not auto.
     assert!(
         matches!(node.top, Val::Vh(_)),
-        "the hover panel is anchored to the top (Val::Vh), got {:?}",
+        "the inspect panel is anchored to the top (Val::Vh), got {:?}",
         node.top,
     );
     assert!(
         matches!(node.right, Val::Vw(_)),
-        "the hover panel is anchored to the right (Val::Vw), got {:?}",
+        "the inspect panel is anchored to the right (Val::Vw), got {:?}",
         node.right,
     );
     assert_eq!(

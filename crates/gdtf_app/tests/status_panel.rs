@@ -1,8 +1,8 @@
-//! GTW-278 / GTW-274 — the battlescape status panel + hover-inspect panel (twins), driven
+//! GTW-278 / GTW-274 — the battlescape status panel + inspect panel (twins), driven
 //! through the REAL app stack.
 //!
 //! These headless `GdtfTestAppBuilder` integration tests drive the genuine state machine
-//! down to `BattleScapeState::BattleRunning`, where the real status-panel + hover-panel
+//! down to `BattleScapeState::BattleRunning`, where the real status-panel + inspect-panel
 //! plugins spawn their shared stat blocks and their update systems repaint them under the
 //! `BattleInProgress` gate. They cover:
 //!
@@ -12,7 +12,7 @@
 //! - **Portrait** — the portrait node carries a `TextureAtlas` at the DETERMINISTIC index
 //!   for the ganger's name (computed in-test from the same rule); a different name mutates
 //!   the index on the SAME node.
-//! - **AC2 (hover)** — `HoveredCell` over a ganger → its stat block; over a cover/object →
+//! - **AC2 (hover)** — `InspectTarget` over a ganger → its stat block; over a cover/object →
 //!   the object block; over bare floor → the panel is hidden.
 
 use bevy::{
@@ -24,12 +24,12 @@ use bevy::{
     ui::{Display, Val, widget::ImageNode},
 };
 use gdtf_app::test_support::{
-    AppState, BattleScapeState, HoverObjectBar, HoverObjectBlock, HoverObjectHardness,
-    HoverObjectHeight, HoverObjectProtection, HoverObjectText, HoverPanelRoot, HoverStatBlockHost,
-    RunningState, StatHpBar, StatName, StatPortrait, StatTuBar, StatWoundLine, StatWoundList,
-    StatWoundsPips, portrait_index_for_name,
+    AppState, BattleScapeState, InspectObjectBar, InspectObjectBlock, InspectObjectHardness,
+    InspectObjectHeight, InspectObjectProtection, InspectObjectText, InspectPanelRoot,
+    InspectStatBlockHost, RunningState, StatHpBar, StatName, StatPortrait, StatTuBar,
+    StatWoundLine, StatWoundList, StatWoundsPips, portrait_index_for_name,
 };
-use gdtf_battle_input::{HoveredCell, InputSystems, SelectedShooter, pick_hovered_cell};
+use gdtf_battle_input::{InputSystems, InspectTarget, SelectedShooter, pick_hovered_cell};
 use gdtf_battle_sim::{
     ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry, CoverHp, CoverLedger,
     Destroyed, Faction, GangerName, HeightBand, Hp, HpMax, InflictedWound, InflictedWounds, Level,
@@ -173,12 +173,12 @@ fn all_with<M: Component>(app: &mut App) -> Vec<Entity> {
 }
 
 /// The single entity carrying marker `M`, scoped to the STATUS panel (NOT a descendant of
-/// the hover panel root). The two panels share the stat-block markers, so this discriminates
-/// the status panel's widget from the hover panel's.
+/// the inspect panel root). The two panels share the stat-block markers, so this discriminates
+/// the status panel's widget from the inspect panel's.
 fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
     let found: Vec<Entity> = all_with::<M>(app)
         .into_iter()
-        .filter(|&e| !descends_from::<HoverPanelRoot>(app, e))
+        .filter(|&e| !descends_from::<InspectPanelRoot>(app, e))
         .collect();
     match found.as_slice() {
         [one] => Some(*one),
@@ -186,7 +186,7 @@ fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
     }
 }
 
-/// The single entity carrying HOVER-EXCLUSIVE marker `M` (only the hover panel carries it,
+/// The single entity carrying INSPECT-EXCLUSIVE marker `M` (only the inspect panel carries it,
 /// so no scoping is needed — assert there is exactly one).
 fn single_global<M: Component>(app: &mut App) -> Option<Entity> {
     match all_with::<M>(app).as_slice() {
@@ -195,13 +195,13 @@ fn single_global<M: Component>(app: &mut App) -> Option<Entity> {
     }
 }
 
-/// The single entity carrying SHARED stat-block marker `M`, scoped to the HOVER panel (a
-/// descendant of the hover panel root) — discriminates the hover stat block's widget from the
-/// status panel's.
-fn single_hover<M: Component>(app: &mut App) -> Option<Entity> {
+/// The single entity carrying SHARED stat-block marker `M`, scoped to the INSPECT panel (a
+/// descendant of the inspect panel root) — discriminates the inspect stat block's widget from
+/// the status panel's.
+fn single_inspect<M: Component>(app: &mut App) -> Option<Entity> {
     let found: Vec<Entity> = all_with::<M>(app)
         .into_iter()
-        .filter(|&e| descends_from::<HoverPanelRoot>(app, e))
+        .filter(|&e| descends_from::<InspectPanelRoot>(app, e))
         .collect();
     match found.as_slice() {
         [one] => Some(*one),
@@ -217,7 +217,7 @@ fn line_text<M: Component>(app: &mut App) -> Option<String> {
         .map(|t| t.as_str().to_owned())
 }
 
-/// The layout [`Display`] of the single entity carrying HOVER-EXCLUSIVE marker `M` — the
+/// The layout [`Display`] of the single entity carrying INSPECT-EXCLUSIVE marker `M` — the
 /// GTW-295 discriminating signal for a sub-block's show (`Display::Flex`) / hide
 /// (`Display::None`, removed from layout). `None` if the node is missing.
 fn display_of<M: Component>(app: &mut App) -> Option<Display> {
@@ -225,7 +225,7 @@ fn display_of<M: Component>(app: &mut App) -> Option<Display> {
     app.world().get::<Node>(entity).map(|n| n.display)
 }
 
-/// The rendered `Text` of the single entity carrying HOVER-EXCLUSIVE marker `M`.
+/// The rendered `Text` of the single entity carrying INSPECT-EXCLUSIVE marker `M`.
 fn global_line_text<M: Component>(app: &mut App) -> Option<String> {
     let entity = single_global::<M>(app)?;
     app.world()
@@ -554,20 +554,22 @@ fn portrait_index_is_deterministic_for_the_selected_ganger() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC2 (hover) — the hover panel inspects what the cursor hovers.
+// AC2 (hover) — the inspect panel inspects what the cursor hovers.
 // ---------------------------------------------------------------------------------
 
-/// A test-controlled desired hover cell, copied into `HoveredCell` AFTER the headless picker
+/// A test-controlled desired hover cell, copied into `InspectTarget` AFTER the headless picker
 /// runs (which would otherwise clobber an injected value to `None`).
 #[derive(Resource, Clone, Copy, Default)]
 struct DesiredHover(Option<CellLevel>);
 
-/// Copies [`DesiredHover`] into [`HoveredCell`] — registered `.after(pick_hovered_cell)` in
-/// `InputSystems::Gather`, so it is the LAST `HoveredCell` writer of the frame and the
-/// `.after(Gather)` hover-panel update reads it. The cursor→cell pick is the one external
-/// this stubs (it is tested in `gdtf_battle_input`); everything downstream is the real path.
-fn force_hover(desired: Res<DesiredHover>, mut hovered: ResMut<HoveredCell>) {
-    *hovered = HoveredCell(desired.0);
+/// Copies [`DesiredHover`] into [`InspectTarget`]'s live hovered cell — registered
+/// `.after(pick_hovered_cell)` in `InputSystems::Gather`, so it is the LAST hovered-cell writer
+/// of the frame and the `.after(Gather)` inspect-panel update reads it. Writes ONLY the hovered
+/// cell (via `set_hovered`), leaving any pin untouched (GTW-300). The cursor→cell pick is the one
+/// external this stubs (it is tested in `gdtf_battle_input`); everything downstream is the real
+/// path.
+fn force_hover(desired: Res<DesiredHover>, mut target: ResMut<InspectTarget>) {
+    target.set_hovered(desired.0);
 }
 
 /// Builds the battle app with the hover-forcing seam wired in.
@@ -583,7 +585,7 @@ fn hover_app() -> App {
     app
 }
 
-/// Sets the desired hover cell and steps one update so the real `update_hover_panel` reads it.
+/// Sets the desired hover cell and steps one update so the real `update_inspect_panel` reads it.
 fn hover(app: &mut App, cell: Option<CellLevel>) {
     app.world_mut().insert_resource(DesiredHover(cell));
     app.update();
@@ -620,36 +622,36 @@ fn hovering_a_ganger_shows_its_stat_block() {
     hover(&mut app, Some(cell));
 
     // The panel root is visible and the ganger stat-block host is visible.
-    let root = single_global::<HoverPanelRoot>(&mut app);
-    assert!(root.is_some(), "the hover panel must exist");
+    let root = single_global::<InspectPanelRoot>(&mut app);
+    assert!(root.is_some(), "the inspect panel must exist");
     if let Some(root) = root {
         assert_ne!(
             app.world().get::<Visibility>(root),
             Some(&Visibility::Hidden),
-            "hovering a ganger shows the hover panel",
+            "hovering a ganger shows the inspect panel",
         );
     }
-    let host = single_global::<HoverStatBlockHost>(&mut app);
+    let host = single_global::<InspectStatBlockHost>(&mut app);
     assert!(
         host.is_some(),
-        "the hover panel must carry a ganger stat block"
+        "the inspect panel must carry a ganger stat block"
     );
     // GTW-295 — the sub-blocks show/hide via Node.display (Flex/None), so a hidden block is
     // removed from layout and never balloons the panel.
     assert_eq!(
-        display_of::<HoverStatBlockHost>(&mut app),
+        display_of::<InspectStatBlockHost>(&mut app),
         Some(Display::Flex),
         "hovering a ganger shows the ganger stat block (Display::Flex)",
     );
     assert_eq!(
-        display_of::<HoverObjectBlock>(&mut app),
+        display_of::<InspectObjectBlock>(&mut app),
         Some(Display::None),
         "hovering a ganger removes the object block from layout (Display::None)",
     );
 
     // The ganger stat block's name reads the hovered ganger (the shared stat block, scoped
-    // to the hover panel).
-    if let Some(name) = single_hover::<StatName>(&mut app) {
+    // to the inspect panel).
+    if let Some(name) = single_inspect::<StatName>(&mut app) {
         let text = app
             .world()
             .get::<Text>(name)
@@ -657,7 +659,7 @@ fn hovering_a_ganger_shows_its_stat_block() {
             .unwrap_or_default();
         assert!(
             text.contains("Vex Harker"),
-            "hover stat block names the ganger: {text}"
+            "inspect stat block names the ganger: {text}"
         );
     }
 }
@@ -687,13 +689,13 @@ fn place_ganger(app: &mut App, cell: CellLevel, faction: Faction) -> Entity {
     ganger
 }
 
-/// The `TextColor` of the hover panel's name line, if present.
-fn hover_name_color(app: &mut App) -> Option<TextColor> {
-    let name = single_hover::<StatName>(app)?;
+/// The `TextColor` of the inspect panel's name line, if present.
+fn inspect_name_color(app: &mut App) -> Option<TextColor> {
+    let name = single_inspect::<StatName>(app)?;
     app.world().get::<TextColor>(name).copied()
 }
 
-/// AC2 — the hover panel tints the NAME line by the hovered ganger's `Faction`: an ENEMY
+/// AC2 — the inspect panel tints the NAME line by the hovered ganger's `Faction`: an ENEMY
 /// (faction != `PlayerFaction`) gets a red-ish tint, a PLAYER-faction ganger gets the normal
 /// theme text color. This is the AC2 panel/name COLOR tint (distinct from the "Gang N" text
 /// line). Pin-discriminating: with no tint applied, the enemy name would stay the theme color
@@ -724,10 +726,10 @@ fn hovering_a_ganger_tints_the_name_by_faction() {
     let enemy_cell = CellLevel::new(Cell::new(4, 4), Level::new(0));
     place_ganger(&mut app, enemy_cell, enemy_faction);
     hover(&mut app, Some(enemy_cell));
-    let enemy_color = hover_name_color(&mut app);
+    let enemy_color = inspect_name_color(&mut app);
     assert!(
         enemy_color.is_some(),
-        "the hover stat block carries a name color"
+        "the inspect stat block carries a name color"
     );
     if let Some(color) = enemy_color {
         assert_ne!(
@@ -740,7 +742,7 @@ fn hovering_a_ganger_tints_the_name_by_faction() {
     let player_cell = CellLevel::new(Cell::new(6, 6), Level::new(0));
     place_ganger(&mut app, player_cell, Faction::new(player));
     hover(&mut app, Some(player_cell));
-    if let Some(color) = hover_name_color(&mut app) {
+    if let Some(color) = inspect_name_color(&mut app) {
         assert_eq!(
             color.0, normal,
             "a player-faction ganger's name uses the normal theme color",
@@ -773,26 +775,26 @@ fn hovering_an_object_shows_the_object_block() {
 
     hover(&mut app, Some(cell));
 
-    let block = single_global::<HoverObjectBlock>(&mut app);
+    let block = single_global::<InspectObjectBlock>(&mut app);
     assert!(
         block.is_some(),
-        "the hover panel must carry an object block"
+        "the inspect panel must carry an object block"
     );
     // GTW-295 — the sub-blocks show/hide via Node.display: the object block is Flex (visible,
     // in layout), the ganger block is None (removed from layout, so the panel stays compact).
     assert_eq!(
-        display_of::<HoverObjectBlock>(&mut app),
+        display_of::<InspectObjectBlock>(&mut app),
         Some(Display::Flex),
         "hovering cover shows the object block (Display::Flex)",
     );
     assert_eq!(
-        display_of::<HoverStatBlockHost>(&mut app),
+        display_of::<InspectStatBlockHost>(&mut app),
         Some(Display::None),
         "hovering an object removes the ganger stat block from layout (Display::None)",
     );
 
     // The object block has an integrity bar with a half fill (4/8 of the seeded entry).
-    let bar = single_global::<HoverObjectBar>(&mut app);
+    let bar = single_global::<InspectObjectBar>(&mut app);
     assert!(
         bar.is_some(),
         "the object block must carry an integrity bar"
@@ -808,21 +810,21 @@ fn hovering_an_object_shows_the_object_block() {
     // GTW-295 AC3 — the object block carries the full readable cover stat set, populated from
     // the seeded CoverEntry (title + labeled hardness / protection / height-band lines).
     assert_eq!(
-        global_line_text::<HoverObjectText>(&mut app).as_deref(),
+        global_line_text::<InspectObjectText>(&mut app).as_deref(),
         Some("Cover"),
         "the object block titles the kind",
     );
-    let hardness = global_line_text::<HoverObjectHardness>(&mut app).unwrap_or_default();
+    let hardness = global_line_text::<InspectObjectHardness>(&mut app).unwrap_or_default();
     assert!(
         hardness.contains('3'),
         "the Hardness line reads the seeded armor_hardness (3): {hardness}",
     );
-    let protection = global_line_text::<HoverObjectProtection>(&mut app).unwrap_or_default();
+    let protection = global_line_text::<InspectObjectProtection>(&mut app).unwrap_or_default();
     assert!(
         protection.contains('2'),
         "the Protection line reads the seeded armor_protection (2): {protection}",
     );
-    let height = global_line_text::<HoverObjectHeight>(&mut app).unwrap_or_default();
+    let height = global_line_text::<InspectObjectHeight>(&mut app).unwrap_or_default();
     assert!(
         height.contains("Mid"),
         "the Height-band line reads the seeded height_band (Mid): {height}",
@@ -837,18 +839,18 @@ fn hovering_bare_floor_hides_the_panel() {
     // Ensure it is open floor with no occupant (the default grid).
     hover(&mut app, Some(cell));
 
-    let root = single_global::<HoverPanelRoot>(&mut app);
-    assert!(root.is_some(), "the hover panel must exist");
+    let root = single_global::<InspectPanelRoot>(&mut app);
+    assert!(root.is_some(), "the inspect panel must exist");
     if let Some(root) = root {
         assert_eq!(
             app.world().get::<Visibility>(root),
             Some(&Visibility::Hidden),
-            "hovering bare floor hides the whole hover panel",
+            "hovering bare floor hides the whole inspect panel",
         );
     }
     // And nothing hovered hides it too.
     hover(&mut app, None);
-    if let Some(root) = single_global::<HoverPanelRoot>(&mut app) {
+    if let Some(root) = single_global::<InspectPanelRoot>(&mut app) {
         assert_eq!(
             app.world().get::<Visibility>(root),
             Some(&Visibility::Hidden),

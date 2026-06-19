@@ -5,7 +5,7 @@
 //! presenter's [`WorldCamera`](gdtf_battle_presenter::WorldCamera) and the OS cursor, unprojects
 //! the cursor into a sim [`Cell`](gdtf_battle_sim::Cell) on the presenter's
 //! [`ActiveLevel`](gdtf_battle_presenter::ActiveLevel) (the INVERSE of `cell_to_world`), stores it
-//! in [`HoveredCell`], and EMITS a presenter-owned `HighlightRequest` for the presenter to draw
+//! in [`InspectTarget`]'s live hovered cell, and EMITS a presenter-owned `HighlightRequest` for the presenter to draw
 //! (GTW-251). The selection / act surfaces (S8) ride on top of that.
 //!
 //! # The one-way dependency chain (ADR-0001)
@@ -53,11 +53,13 @@ pub use intent::{
 };
 pub use keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds};
 pub use keyboard::{level_keys, posture_keys, select_clear_key};
-pub use picking::{HoveredCell, emit_highlight_request, pick_hovered_cell, world_to_cell};
+pub use picking::{
+    InspectMode, InspectTarget, emit_highlight_request, pick_hovered_cell, world_to_cell,
+};
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
 pub use selection::{
-    LeftClickOutcome, LeftClickReads, SelectedShooter, SelectionHighlight, TurnReads,
-    apply_left_click, auto_select_first_player_ganger, decide_left_click, decide_turn,
-    left_click_act, right_click_turn_to_face, update_selection_highlight,
+    LeftClickOutcome, LeftClickReads, PinOutcome, SelectedShooter, SelectionHighlight, TurnReads,
+    apply_left_click, apply_pin, auto_select_first_player_ganger, decide_left_click, decide_pin,
+    decide_turn, left_click_act, right_click_turn_to_face, update_selection_highlight,
 };
 pub use sets::InputSystems;

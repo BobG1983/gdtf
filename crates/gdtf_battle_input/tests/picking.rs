@@ -6,7 +6,7 @@
 //!   state machine) descends to `GameState::BattleScape` and the plugin's
 //!   `GdtfBattleInputActive` marker is present — the exact `presenter_foundation.rs`
 //!   build-ran pattern. It also names the boundary types
-//!   (`HoveredCell` / the presenter's `WorldCamera` / `CELL_PX` / `cell_to_world` /
+//!   (`InspectTarget` / the presenter's `WorldCamera` / `CELL_PX` / `cell_to_world` /
 //!   `ActiveLevel` / `gdtf_battle_sim::{Cell, Level, CellLevel}`) so the chain is
 //!   compile-proven reachable.
 //!
@@ -16,11 +16,11 @@
 //!   test body, mirroring bevy's own `viewport_to_world` unit test), a `Window` +
 //!   `PrimaryWindow` is spawned with a known cursor, `ActiveLevel` + the
 //!   `BattleInProgress` gate are inserted, then `app.update()` runs the real
-//!   systems and the test asserts on `HoveredCell`.
+//!   systems and the test asserts on `InspectTarget`.
 //!
-//! - GTW-251 AC1 (picker emits a request matching `HoveredCell`): a probe drains the
+//! - GTW-251 AC1 (picker emits a request matching `InspectTarget`): a probe drains the
 //!   presenter-owned `HighlightRequest` buffer AFTER `emit_highlight_request` and
-//!   asserts the emitted request equals the resolved `HoveredCell` (`Some(cell)` when
+//!   asserts the emitted request equals the resolved `InspectTarget` (`Some(cell)` when
 //!   hovered, `None` when off-grid). The DRAWING moved to the presenter (GTW-251), so
 //!   the old input-side draw test migrated there (`tests/highlight_draw.rs`).
 //!
@@ -42,7 +42,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, GameState, RunningState};
 use gdtf_battle_input::{
-    GdtfBattleInputActive, GdtfBattleInputPlugin, HoveredCell, emit_highlight_request,
+    GdtfBattleInputActive, GdtfBattleInputPlugin, InspectTarget, emit_highlight_request,
     world_to_cell,
 };
 use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera};
@@ -116,7 +116,7 @@ fn drive_to_battlescape(app: &mut App) -> bool {
 
 /// AC1 — `GameBattleScapeScenePlugin` adds `GdtfBattleInputPlugin`, and its `build`
 /// actually runs inside the real scene stack: descending to `GameState::BattleScape`
-/// leaves the `GdtfBattleInputActive` marker (and the `HoveredCell` resource the
+/// leaves the `GdtfBattleInputActive` marker (and the `InspectTarget` resource the
 /// plugin initialises) present in the world.
 #[test]
 fn battlescape_scene_runs_the_input_plugin_build() {
@@ -140,8 +140,8 @@ fn battlescape_scene_runs_the_input_plugin_build() {
          GdtfBattleInputActive marker is present once BattleScape is active",
     );
     assert!(
-        app.world().get_resource::<HoveredCell>().is_some(),
-        "GdtfBattleInputPlugin must initialise the HoveredCell resource on build",
+        app.world().get_resource::<InspectTarget>().is_some(),
+        "GdtfBattleInputPlugin must initialise the InspectTarget resource on build",
     );
 }
 
@@ -216,9 +216,11 @@ fn set_cursor(app: &mut App, position: Option<Vec2>) {
     }
 }
 
-/// Reads the current `HoveredCell` value.
+/// Reads the current `InspectTarget` live hovered cell.
 fn hovered(app: &App) -> Option<CellLevel> {
-    app.world().get_resource::<HoveredCell>().and_then(|h| **h)
+    app.world()
+        .get_resource::<InspectTarget>()
+        .and_then(InspectTarget::hovered)
 }
 
 /// The camera's world unprojection of `cursor` — what the picking system computes
@@ -234,7 +236,7 @@ fn unproject(app: &mut App, cursor: Vec2) -> Option<Vec2> {
 
 /// AC2 — given a synthesized camera + cursor, the picking maps the cursor to the
 /// `CellLevel` the test computes INDEPENDENTLY from `viewport_to_world_2d` + the
-/// documented inverse, and writes `HoveredCell(Some(..))`.
+/// documented inverse, and writes `InspectTarget(Some(..))`.
 #[test]
 fn picking_resolves_the_cursor_to_the_documented_cell() {
     let level = Level::new(0);
@@ -266,11 +268,11 @@ fn picking_resolves_the_cursor_to_the_documented_cell() {
     assert_eq!(
         hovered(&app),
         expected,
-        "HoveredCell must equal the documented inverse of the camera unprojection",
+        "InspectTarget must equal the documented inverse of the camera unprojection",
     );
 }
 
-/// AC3 — `HoveredCell` resolves fail-closed to `None` (no panic) when: the cursor is
+/// AC3 — `InspectTarget` resolves fail-closed to `None` (no panic) when: the cursor is
 /// off-window; the computed cell is outside the 60×60 grid; and there is no world
 /// camera. Each case drives `app.update()` and asserts `None`.
 #[test]
@@ -285,7 +287,7 @@ fn picking_fails_closed_to_none() {
         assert_eq!(
             hovered(&app),
             None,
-            "an off-window cursor (no cursor_position) must resolve HoveredCell to None",
+            "an off-window cursor (no cursor_position) must resolve InspectTarget to None",
         );
     }
 
@@ -310,7 +312,7 @@ fn picking_fails_closed_to_none() {
         assert_eq!(
             hovered(&app),
             None,
-            "an off-grid cursor must resolve HoveredCell to None",
+            "an off-grid cursor must resolve InspectTarget to None",
         );
     }
 
@@ -331,13 +333,13 @@ fn picking_fails_closed_to_none() {
         assert_eq!(
             hovered(&app),
             None,
-            "with no WorldCamera the picking must resolve HoveredCell to None",
+            "with no WorldCamera the picking must resolve InspectTarget to None",
         );
     }
 }
 
 // ---------------------------------------------------------------------------------
-// GTW-251 AC1 — the picker EMITS a `HighlightRequest` matching `HoveredCell`.
+// GTW-251 AC1 — the picker EMITS a `HighlightRequest` matching `InspectTarget`.
 // ---------------------------------------------------------------------------------
 
 /// The `HighlightRequest`s the probe drained this run (test-only framework plumbing —
@@ -368,7 +370,7 @@ fn requests(app: &App) -> Vec<HighlightRequest> {
         .unwrap_or_default()
 }
 
-/// GTW-251 AC1 + GTW-268 — the picker emits a `HighlightRequest` matching `HoveredCell`,
+/// GTW-251 AC1 + GTW-268 — the picker emits a `HighlightRequest` matching `InspectTarget`,
 /// GATED on occupancy: an in-grid cursor over a BLOCKING (or occupied) cell emits
 /// `Some(that cell)`; over BARE FLOOR it emits `None` (GTW-268: gangers + objects only);
 /// off-grid it emits `None`. The DRAWING is the presenter's (`tests/highlight_draw.rs`);
@@ -410,7 +412,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
         "over a blocking cell the picker must emit exactly one HighlightRequest = Some(cell)",
     );
 
-    // Now move the cursor off-grid: HoveredCell becomes None and the emitted request
+    // Now move the cursor off-grid: InspectTarget becomes None and the emitted request
     // must follow it to None.
     let cursor_off = TARGET_SIZE * 0.5 - Vec2::new(64.0, 0.0);
     set_cursor(&mut app, Some(cursor_off));
@@ -421,7 +423,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     assert_eq!(
         hovered(&app),
         None,
-        "the off-grid cursor clears HoveredCell"
+        "the off-grid cursor clears InspectTarget"
     );
     assert_eq!(
         requests(&app),
@@ -432,7 +434,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
 
 // ---------------------------------------------------------------------------------
 // GTW-286 (Bug D) — the world-click/pick path is GATED to the map viewport rect: a
-// cursor over a margin / UI panel resolves `HoveredCell` to None, so no move/select/
+// cursor over a margin / UI panel resolves `InspectTarget` to None, so no move/select/
 // fire/reticle reaches through the UI even though `viewport_to_world_2d` would happily
 // EXTRAPOLATE it into a valid in-grid cell.
 // ---------------------------------------------------------------------------------
@@ -519,7 +521,7 @@ fn press_left(app: &mut App) {
 }
 
 /// GTW-286 INSIDE — a cursor INSIDE the viewport sub-rect over a valid in-grid cell
-/// resolves `HoveredCell` to that cell AND a left-click there emits a `MoveRequested`.
+/// resolves `InspectTarget` to that cell AND a left-click there emits a `MoveRequested`.
 /// (Guards against over-suppression: the gate must NOT reject an in-viewport cursor.)
 #[test]
 fn click_inside_the_viewport_resolves_a_cell_and_moves() {
@@ -532,7 +534,7 @@ fn click_inside_the_viewport_resolves_a_cell_and_moves() {
     let viewport_centre = VIEWPORT_RECT.center().as_vec2();
     let cursor = viewport_centre + Vec2::new(20.0, 16.0);
 
-    // Update 1: the picker resolves `HoveredCell` from the in-viewport cursor.
+    // Update 1: the picker resolves `InspectTarget` from the in-viewport cursor.
     set_cursor(&mut app, Some(cursor));
     app.update();
 
@@ -549,10 +551,10 @@ fn click_inside_the_viewport_resolves_a_cell_and_moves() {
     assert_eq!(
         hovered(&app),
         expected,
-        "an INSIDE-viewport cursor must resolve HoveredCell to its cell (gate must not over-suppress)",
+        "an INSIDE-viewport cursor must resolve InspectTarget to its cell (gate must not over-suppress)",
     );
 
-    // Update 2: press Left -> `left_click_act` (which reads last update's HoveredCell)
+    // Update 2: press Left -> `left_click_act` (which reads last update's InspectTarget)
     // decides MOVE (player selection + empty in-bounds cell) and the drain emits it.
     press_left(&mut app);
     app.update();
@@ -565,7 +567,7 @@ fn click_inside_the_viewport_resolves_a_cell_and_moves() {
 
 /// GTW-286 MARGIN — a cursor in the BOTTOM margin (below the viewport's `max.y`) at a
 /// screen position whose EXTRAPOLATED world point still floors to an in-grid 0..60 cell
-/// (proving the OLD ungated code would have moved) resolves `HoveredCell` to None AND a
+/// (proving the OLD ungated code would have moved) resolves `InspectTarget` to None AND a
 /// left-click there emits NO `MoveRequested`. Pin-discriminating: RED before the gate
 /// (the extrapolated cell is in-grid -> a MOVE), GREEN after.
 #[test]
@@ -599,7 +601,7 @@ fn click_in_the_bottom_margin_resolves_none_and_does_not_move() {
     assert_eq!(
         hovered(&app),
         None,
-        "a cursor in the bottom margin (outside the viewport rect) must resolve HoveredCell to \
+        "a cursor in the bottom margin (outside the viewport rect) must resolve InspectTarget to \
          None — even though its extrapolated cell is in-grid (GTW-286 gate)",
     );
 

@@ -25,7 +25,7 @@ use bevy::{
     transform::components::GlobalTransform,
     window::{PrimaryWindow, Window, WindowResolution},
 };
-use gdtf_battle_input::{GdtfBattleInputPlugin, HoveredCell, world_to_cell};
+use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, world_to_cell};
 use gdtf_battle_presenter::{
     ActiveLevel, HoverHighlight, TopDownRendererPlugin, WorldCamera, cell_to_world,
 };
@@ -98,9 +98,11 @@ fn set_cursor(app: &mut App, position: Option<Vec2>) {
     }
 }
 
-/// The current `HoveredCell` value.
+/// The current `InspectTarget` live hovered cell.
 fn hovered(app: &App) -> Option<CellLevel> {
-    app.world().get_resource::<HoveredCell>().and_then(|h| **h)
+    app.world()
+        .get_resource::<InspectTarget>()
+        .and_then(InspectTarget::hovered)
 }
 
 /// The single hover-highlight sprite's translation + visibility, if exactly one exists.
@@ -135,7 +137,7 @@ fn end_to_end_highlight_lands_at_the_hovered_cell() {
     // sign reasoning).
     let cursor = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
     set_cursor(&mut app, Some(cursor));
-    // Frame 1: the picker resolves HoveredCell. (GTW-268 — the emit now gates on the grid,
+    // Frame 1: the picker resolves InspectTarget. (GTW-268 — the emit now gates on the grid,
     // and the cell is still bare floor here, so nothing highlights yet.)
     app.update();
 
@@ -179,7 +181,7 @@ fn end_to_end_highlight_lands_at_the_hovered_cell() {
         "the highlight must be at the hovered cell, not a neighbouring one",
     );
 
-    // Off-grid cursor: HoveredCell -> None, the request -> None, the highlight hides.
+    // Off-grid cursor: InspectTarget -> None, the request -> None, the highlight hides.
     let cursor_off = TARGET_SIZE * 0.5 - Vec2::new(64.0, 0.0);
     set_cursor(&mut app, Some(cursor_off));
     // Confirm the chosen cursor really is off-grid via the documented inverse.
@@ -202,7 +204,7 @@ fn end_to_end_highlight_lands_at_the_hovered_cell() {
     assert_eq!(
         hovered(&app),
         None,
-        "the off-grid cursor clears HoveredCell"
+        "the off-grid cursor clears InspectTarget"
     );
     assert_eq!(
         highlight_count(&mut app),

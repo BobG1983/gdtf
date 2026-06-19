@@ -2,7 +2,7 @@
 //! from a ganger's CURRENT components, in place ([[ui-mutate-not-respawn]]).
 //!
 //! Both panels' update systems resolve their target ganger (the status panel from
-//! `SelectedShooter`, the hover panel from `HoveredCell`), read its components, and call
+//! `SelectedShooter`, the inspect panel from `InspectTarget`), read its components, and call
 //! [`update_stat_block`] with the panel's [`StatBlockRefs`] handle + the shared
 //! [`StatBlockWidgets`] query bundle. The updater writes the name/faction/stance text,
 //! the TU/HP bar fills, the Wounds pips, the wound-name list (content + per-line + container

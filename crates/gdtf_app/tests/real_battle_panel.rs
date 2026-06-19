@@ -23,7 +23,7 @@
 
 use bevy::{app::App, prelude::*, state::state::State, ui::Val};
 use gdtf_app::test_support::{
-    AppState, BattleScapeState, HoverPanelRoot, RunningState, StatName, StatStance, StatTuBar,
+    AppState, BattleScapeState, InspectPanelRoot, RunningState, StatName, StatStance, StatTuBar,
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
@@ -70,14 +70,14 @@ fn descends_from<R: Component>(app: &App, entity: Entity) -> bool {
     }
 }
 
-/// The single STATUS-panel entity carrying marker `M` (NOT a descendant of the hover panel —
+/// The single STATUS-panel entity carrying marker `M` (NOT a descendant of the inspect panel —
 /// the two panels share the stat-block markers, so this discriminates the status panel's).
 fn status_entity<M: Component>(app: &mut App) -> Option<Entity> {
     let mut q = app.world_mut().query_filtered::<Entity, With<M>>();
     let all: Vec<Entity> = q.iter(app.world()).collect();
     let found: Vec<Entity> = all
         .into_iter()
-        .filter(|&e| !descends_from::<HoverPanelRoot>(app, e))
+        .filter(|&e| !descends_from::<InspectPanelRoot>(app, e))
         .collect();
     match found.as_slice() {
         [one] => Some(*one),
