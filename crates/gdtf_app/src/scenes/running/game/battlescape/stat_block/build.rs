@@ -30,13 +30,14 @@ use crate::scenes::running::game::battlescape::stat_block::{
     update::MAX_WOUND_PIPS,
 };
 
-/// The font size of the `cur/max` numeric label overlaid on the TU / HP bars, in points.
+/// The font size of the `cur/max` numeric label sitting ABOVE its TU / HP bar, in points.
 ///
-/// Slightly smaller than the body text so the number reads cleanly ON a thin bar without
-/// overflowing it (the bars are `BAR_HEIGHT_VH`-tall). `font_size` in points is the ONE
-/// permitted bare-`f32` exception to `ui-responsive-not-px` (a typographic size, not a
-/// layout dimension); a `const` so the overlay size lives in one place.
-const BAR_LABEL_FONT_PT: f32 = 10.0;
+/// Matches the body-text size so the number reads cleanly on the DARK panel background
+/// (the mockup pairing — `cur/max` shares the line/size of the caption it sits with), a
+/// legible size, not a tiny overlay. `font_size` in points is the ONE permitted
+/// bare-`f32` exception to `ui-responsive-not-px` (a typographic size, not a layout
+/// dimension); a `const` so the label size lives in one place (GTW-310 rework).
+const BAR_LABEL_FONT_PT: f32 = 12.0;
 
 /// The maximum number of wound-name lines a stat block renders.
 ///
@@ -83,6 +84,9 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_stat_block(
     let faction = spawn_text(commands, theme, StatFaction, "");
     let stance = spawn_text(commands, theme, StatStance, "");
     // The bars/pips spawn empty (the update fills them from the ganger's components).
+    // Each bar + its cur/max number are wrapped in a small column: the number sits ABOVE
+    // the bar on the DARK panel background (not overlaid on the bright bar) so it reads
+    // with contrast and never overflows the thin track (GTW-310 rework).
     let tu_bar = spawn_progress_bar(
         commands,
         FillFraction::new(0.0),
@@ -90,9 +94,8 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_stat_block(
         TU_LOST,
         StatTuBar,
     );
-    // The cur/max numeric overlay, centered ON the bar (the update fills it from Tu/TuMax).
     let tu_label = spawn_bar_label(commands, theme, StatTuLabel);
-    commands.entity(tu_bar).add_child(tu_label);
+    let tu_group = spawn_bar_group(commands, tu_label, tu_bar);
     let hp_bar = spawn_progress_bar(
         commands,
         FillFraction::new(0.0),
@@ -100,9 +103,8 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_stat_block(
         HP_LOST,
         StatHpBar,
     );
-    // The cur/max numeric overlay, centered ON the bar (the update fills it from Hp/HpMax).
     let hp_label = spawn_bar_label(commands, theme, StatHpLabel);
-    commands.entity(hp_bar).add_child(hp_label);
+    let hp_group = spawn_bar_group(commands, hp_label, hp_bar);
     // A FIXED pool of pips — the update shows the first `WoundsMax` of them (filled per
     // `Wounds`) and hides the rest, so the displayed pip count tracks the ganger's
     // `WoundsMax` without ever respawning the row ([[ui-mutate-not-respawn]]).
@@ -138,7 +140,7 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_stat_block(
         ))
         .id();
     commands.entity(root).add_children(&[
-        portrait, name, faction, stance, tu_bar, hp_bar, wounds, wound_list,
+        portrait, name, faction, stance, tu_group, hp_group, wounds, wound_list,
     ]);
     root
 }
@@ -200,19 +202,20 @@ fn spawn_text(
         .id()
 }
 
-/// Spawns the `cur/max` numeric overlay [`Text`](bevy::prelude::Text) for a TU / HP bar,
-/// carrying its `marker`, and returns its [`Entity`].
+/// Spawns the `cur/max` numeric [`Text`](bevy::prelude::Text) for a TU / HP bar, carrying
+/// its `marker`, and returns its [`Entity`].
 ///
-/// The label is parented (by the caller) under the bar's
-/// [`ProgressBarTrack`](gdtf_ui::ProgressBarFill) root and positioned
-/// [`PositionType::Absolute`] so it OVERLAYS the bar (centered, full track extent) WITHOUT
-/// consuming layout space — it never widens the bar or the panel, and it does NOT disturb
-/// the bar's [`ProgressBarFill`](gdtf_ui::ProgressBarFill) child the fill/update queries
-/// look up (it carries no fill marker, so those filtered queries skip it). It is a
-/// [`Themed(ThemeRole::Text)`](Themed) line so `apply_theme` restyles it on a theme change,
-/// but at the slightly smaller [`BAR_LABEL_FONT_PT`] so the number reads on the thin bar
-/// (GTW-310). Spawned empty; the per-update [`update_stat_block`](super::update_stat_block)
-/// writes `"cur/max"` in place ([[ui-mutate-not-respawn]]).
+/// Unlike the original GTW-310 overlay, the label is now a NORMAL-FLOW line that the
+/// [`spawn_bar_group`] wrapper stacks ABOVE its bar, so the number sits on the DARK panel
+/// background (not on the bright bar fill) where the [theme text color](GdtfTheme) reads
+/// with contrast — the same light color the name / faction / stance lines use, which read
+/// cleanly on the dark panel — and where it has room rather than overflowing the thin
+/// track (GTW-310 rework). It is a [`Themed(ThemeRole::Text)`](Themed) line so
+/// `apply_theme` restyles it on a theme change, at the legible [`BAR_LABEL_FONT_PT`]; the
+/// text is right-justified so the number aligns to the bar's right edge (the mockup
+/// pairing). Spawned empty; the per-update
+/// [`update_stat_block`](super::update_stat_block) writes `"cur/max"` in place
+/// ([[ui-mutate-not-respawn]]).
 fn spawn_bar_label(commands: &mut Commands, theme: &GdtfTheme, marker: impl Bundle) -> Entity {
     commands
         .spawn((
@@ -225,19 +228,40 @@ fn spawn_bar_label(commands: &mut Commands, theme: &GdtfTheme, marker: impl Bund
                 ..default()
             },
             UiTextColor(*theme.text.text_color),
-            TextLayout::new_with_justify(Justify::Center),
+            TextLayout::new_with_justify(Justify::Right),
+            // A full-width line so the right-justified number anchors to the bar's right
+            // edge above it; the column wrapper gives it a row of its own (no overflow).
             Node {
-                position_type: PositionType::Absolute,
-                left: Val::ZERO,
-                right: Val::ZERO,
-                top: Val::ZERO,
-                bottom: Val::ZERO,
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
+                width: Val::Percent(100.0),
                 ..default()
             },
         ))
         .id()
+}
+
+/// Wraps a TU / HP `cur/max` `label` and its `bar` in a tight vertical column (label ON
+/// TOP, bar below) and returns the wrapper [`Entity`].
+///
+/// This is the GTW-310 rework's contrast/overflow fix: the number rides on the DARK panel
+/// background ABOVE the bar — off the bright bar fill — so it reads cleanly and has room.
+/// The wrapper is a plain layout [`Node`] (no [`Themed`] marker, so `apply_theme` leaves
+/// it alone) that consumes the bar's full width; the bar keeps its own
+/// [`StatTuBar`](super::components::StatTuBar) /
+/// [`StatHpBar`](super::components::StatHpBar) marker + its
+/// [`ProgressBarFill`](gdtf_ui::ProgressBarFill) child untouched, so the per-update fill
+/// query still finds it by stored id. A small `row_gap` keeps the number off the bar's top
+/// edge.
+fn spawn_bar_group(commands: &mut Commands, label: Entity, bar: Entity) -> Entity {
+    let group = commands
+        .spawn(Node {
+            flex_direction: FlexDirection::Column,
+            width: Val::Percent(100.0),
+            row_gap: Val::Vh(ROW_GAP_VH),
+            ..default()
+        })
+        .id();
+    commands.entity(group).add_children(&[label, bar]);
+    group
 }
 
 /// Spawns the wound-name list container (hidden) with [`WOUND_LINE_POOL`] pooled,

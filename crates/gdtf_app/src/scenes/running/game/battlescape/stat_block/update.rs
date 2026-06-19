@@ -125,7 +125,7 @@ pub(in crate::scenes::running::game::battlescape) fn update_stat_block(
         &widgets.children,
         &mut widgets.fills,
     );
-    // The TU cur/max numeric overlay (the magazine "30/30" formatting model — GTW-310).
+    // The TU cur/max numeric label (the magazine "30/30" formatting model — GTW-310).
     write_text(
         &mut widgets.texts,
         refs.tu_label,
@@ -140,7 +140,7 @@ pub(in crate::scenes::running::game::battlescape) fn update_stat_block(
         &widgets.children,
         &mut widgets.fills,
     );
-    // The HP cur/max numeric overlay — current over the SAME display ceiling the bar uses
+    // The HP cur/max numeric label — current over the SAME display ceiling the bar uses
     // (HpMax when present, else current HP), so the number equals the rendered fill ratio.
     write_text(
         &mut widgets.texts,
