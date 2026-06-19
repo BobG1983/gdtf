@@ -5,10 +5,10 @@
 //! anchored to the TOP-CENTRE of the screen (GTW-298 — the contextual-control strip floats over
 //! the map at the top, per the mockup) holding the controls — a vertical Stance
 //! 3-toggle sub-panel (Stand / Kneel / Prone, GTW-267), the aim-toggle button, a vertical
-//! Mode toggle sub-panel (its per-mode toggles built on selection, GTW-265), and the
-//! level-up / level-down buttons — each carrying its own marker, plus the two DEFERRED
-//! buttons (reload, end-turn) rendered as [`DisabledButton`] (their acts do not exist yet
-//! — see the marker docs).
+//! Mode toggle sub-panel (its per-mode toggles built on selection, GTW-265), the
+//! level-up / level-down buttons, and the end-turn button — each carrying its own marker.
+//! GTW-309 made the end-turn button LIVE: it is now an ENABLED button that pushes
+//! `ActIntent::EndTurn` on a press (no longer a disabled placeholder).
 //!
 //! [`despawn_action_bar`] runs `OnExit(BattleScapeState::BattleRunning)` and
 //! recursively despawns the whole bar by its [`ActionBarRoot`] marker, so the bar is
@@ -22,7 +22,7 @@
 //! (`bevy-traps.md` #6) — NO `Pickable`/`IsDefaultUiCamera`/picking plugin needed.
 
 use bevy::{prelude::*, ui::Val};
-use gdtf_ui::{ButtonLabel, DisabledButton, spawn_button, spawn_panel, theme::GdtfTheme};
+use gdtf_ui::{ButtonLabel, spawn_button, spawn_panel, theme::GdtfTheme};
 
 use crate::scenes::running::game::battlescape::action_bar::components::{
     ActionBarRoot, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
@@ -59,8 +59,8 @@ impl BarGapVw {
 ///    inter-button gap — the bordered strip the player sees.
 /// 3. Spawns the level-up / level-down buttons — each carrying its own marker so the action
 ///    systems' per-marker queries stay disjoint (the GTW-122 precedent).
-/// 4. Spawns the DEFERRED end-turn button as a [`DisabledButton`] (its sim act does not
-///    exist yet — it emits no intent; see the marker docs).
+/// 4. Spawns the LIVE end-turn button (GTW-309) — an ENABLED button (NO `DisabledButton`)
+///    whose press pushes `ActIntent::EndTurn` on the shared 222a seam; see the marker docs.
 /// 5. Spawns the ENABLED [`FleeButton`] (GTW-240; labelled `"Flee"`, D-D) — an app/lifecycle
 ///    button (NO `DisabledButton`) whose press ends the persisting battle via the dedicated
 ///    `flee_button_pressed` handler, not the sim intent seam (flee is not a sim act).
@@ -153,14 +153,15 @@ pub(in crate::scenes::running::game::battlescape) fn spawn_action_bar(
         LevelDownButton,
     );
 
-    // The DEFERRED end-turn button — DisabledButton so it is painted inert and skipped by
-    // the action layer (the `Without<DisabledButton>` filter). It emits no intent. (The
-    // Reload stub was REMOVED in GTW-275 — reload is now a LIVE button in the weapon panel.)
+    // GTW-309: the end-turn button is now LIVE (the turn-cycle engine landed). It is an
+    // ENABLED action-bar button (NO `DisabledButton`, so the `Without<DisabledButton>`
+    // action filter now INCLUDES it) whose press pushes `ActIntent::EndTurn` onto the shared
+    // 222a seam — the same fieldless GLOBAL turn signal the keyboard surface pushes.
     let end_turn = spawn_button(
         &mut commands,
         &theme,
         ButtonLabel::new("End Turn"),
-        (EndTurnButton, DisabledButton),
+        EndTurnButton,
     );
 
     // The flee button — an ENABLED app/lifecycle button (NO DisabledButton, unlike the

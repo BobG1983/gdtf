@@ -45,8 +45,8 @@ use gdtf_battle_sim::{
     ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng, Stance, StanceKind,
     SurfaceGrid, Tu, TuMax,
     acts::{
-        AimRequest, FireRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-        SetStanceRequested, SimActsPlugin,
+        AimRequest, EndTurnRequested, FireRequested, ReloadRequested, SetAimingRequested,
+        SetFacingRequested, SetStanceRequested, SimActsPlugin,
     },
     tuning::CombatTuning,
 };
@@ -305,6 +305,9 @@ struct FacingProbe(Vec<SetFacingRequested>);
 /// Collected `ReloadRequested` messages (probe, GTW-275).
 #[derive(Resource, Default)]
 struct ReloadProbe(Vec<ReloadRequested>);
+/// Collected `EndTurnRequested` messages (probe, GTW-309).
+#[derive(Resource, Default)]
+struct EndTurnProbe(Vec<EndTurnRequested>);
 
 /// Adds the five message-collecting probe systems, each running AFTER the drain so it
 /// observes the same update's emitted messages. The probes have their own
@@ -315,7 +318,8 @@ fn add_probes(app: &mut App) {
         .insert_resource(StanceProbe::default())
         .insert_resource(AimProbe::default())
         .insert_resource(FacingProbe::default())
-        .insert_resource(ReloadProbe::default());
+        .insert_resource(ReloadProbe::default())
+        .insert_resource(EndTurnProbe::default());
     app.add_systems(
         Update,
         (
@@ -333,6 +337,9 @@ fn add_probes(app: &mut App) {
                 p.0.extend(r.read().copied());
             },
             |mut r: MessageReader<ReloadRequested>, mut p: ResMut<ReloadProbe>| {
+                p.0.extend(r.read().copied());
+            },
+            |mut r: MessageReader<EndTurnRequested>, mut p: ResMut<EndTurnProbe>| {
                 p.0.extend(r.read().copied());
             },
         )
@@ -718,6 +725,42 @@ fn reload_intent_emits_one_reload_requested_for_the_selection() {
     assert_eq!(
         reloads[0].actor, ganger,
         "the ReloadRequested actor is the *SelectedShooter",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-309 — pushing ActIntent::EndTurn emits exactly one (fieldless) EndTurnRequested
+// through the same drain, with NO selection (a GLOBAL turn signal).
+// ---------------------------------------------------------------------------------
+
+/// GTW-309 — pushing the GLOBAL `ActIntent::EndTurn` emits EXACTLY one fieldless
+/// `EndTurnRequested` through the `dispatch_act_intents` drain (the action-bar End-Turn
+/// button surrogate). Unlike the per-ganger acts, end-turn needs NO `SelectedShooter`, so
+/// this drives it with the selection cleared and still asserts exactly one message.
+#[test]
+fn end_turn_intent_emits_one_end_turn_requested_without_selection() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    // No ganger spawned, selection cleared — end-turn is GLOBAL, not per-actor.
+    app.world_mut().insert_resource(SelectedShooter::cleared());
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::EndTurn);
+    app.update();
+
+    let ends = app
+        .world()
+        .get_resource::<EndTurnProbe>()
+        .map_or_else(Vec::new, |p| p.0.clone());
+    assert_eq!(
+        ends.len(),
+        1,
+        "one EndTurnRequested via the end-turn intent, with no selection",
+    );
+    assert_eq!(
+        ends[0], EndTurnRequested,
+        "the drained message is the fieldless EndTurnRequested unit value",
     );
 }
 

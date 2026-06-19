@@ -5,8 +5,8 @@ use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, Facing, Stance, StanceKind,
     acts::{
-        AimRequest, FireRequested, MoveRequested, ReloadRequested, SetAimingRequested,
-        SetFacingRequested, SetStanceRequested,
+        AimRequest, EndTurnRequested, FireRequested, MoveRequested, ReloadRequested,
+        SetAimingRequested, SetFacingRequested, SetStanceRequested,
     },
 };
 
@@ -85,6 +85,15 @@ pub enum ActIntent {
     /// is selected (a no-op with no selection). The per-weapon `reload_tu` cost is the
     /// sim's reload dispatch, not this layer's.
     Reload,
+    /// END the active team's turn — drained 1:1 to a fieldless [`EndTurnRequested`]
+    /// (GTW-309). A GLOBAL turn signal like [`SelectionClear`](Self::SelectionClear) /
+    /// [`LevelUp`](Self::LevelUp), NOT a per-ganger act: which team's turn is ending lives
+    /// in the sim's [`ActiveFaction`](gdtf_battle_sim::ActiveFaction) resource, so it needs
+    /// NO [`SelectedShooter`] and carries no payload. The action-bar's End-Turn button
+    /// pushes this; the drain emits the unit [`EndTurnRequested`] unconditionally (the
+    /// sim's [`dispatch_end_turn`](gdtf_battle_sim::dispatch_end_turn) advances the cycle
+    /// and runs the next team's turn-start TU regen).
+    EndTurn,
 }
 
 /// The shared intent QUEUE — the buffered seam both input surfaces write.
@@ -153,6 +162,9 @@ pub struct ActWriters<'w> {
     /// The reload-act writer — the weapon panel Reload button's drained message
     /// (GTW-275).
     reload:   MessageWriter<'w, ReloadRequested>,
+    /// The end-turn writer — the action-bar End-Turn button's drained message (GTW-309).
+    /// A fieldless turn signal: the drain emits the unit [`EndTurnRequested`] verbatim.
+    end_turn: MessageWriter<'w, EndTurnRequested>,
 }
 
 /// **Dispatch** the queued [`ActIntent`]s — the ONE drain system over the shared seam.
@@ -188,6 +200,9 @@ pub struct ActWriters<'w> {
 /// - [`ActIntent::Reload`] emits [`ReloadRequested`] for the [`SelectedShooter`]
 ///   (GTW-275) — a no-op with no selection; the per-weapon `reload_tu` cost is the sim's
 ///   reload dispatch.
+/// - [`ActIntent::EndTurn`] emits the fieldless [`EndTurnRequested`] unconditionally
+///   (GTW-309) — a GLOBAL turn signal needing no selection; the sim's `dispatch_end_turn`
+///   advances the turn cycle and runs the next team's turn-start TU regen.
 ///
 /// With NO [`SelectedShooter`] the cycle intents are no-ops (nothing to act on); a
 /// cycle intent for a selected entity that lacks the relevant component is skipped
@@ -267,6 +282,12 @@ pub fn dispatch_act_intents(
                 // (GTW-275). With no selection there is nothing to reload.
                 let Some(actor) = **selected else { continue };
                 acts.reload.write(ReloadRequested::new(actor));
+            }
+            ActIntent::EndTurn => {
+                // Emit the fieldless turn signal (GTW-309). A GLOBAL act like SelectionClear
+                // / LevelUp — no selection needed; the sim's ActiveFaction tracks whose turn
+                // is ending, so the drain just writes the unit message unconditionally.
+                acts.end_turn.write(EndTurnRequested);
             }
         }
     }

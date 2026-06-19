@@ -8,8 +8,8 @@ use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest};
 use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction,
     acts::{
-        FireRequested, MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-        SetStanceRequested,
+        EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, SetAimingRequested,
+        SetFacingRequested, SetStanceRequested,
     },
     occupancy_sync::SimSystems,
     setup_battle_on_request,
@@ -50,7 +50,7 @@ pub struct GdtfBattleInputActive;
 ///
 /// - inserts the [`GdtfBattleInputActive`] marker and initialises the [`HoveredCell`] (S7),
 ///   [`SelectedShooter`], [`SelectedFireMode`] (222b), and [`PendingActIntent`] resources,
-///   and registers the five `*Requested` message buffers the drain emits;
+///   and registers the `*Requested` message buffers the drain emits;
 /// - registers the S7 cursor picker ([`pick_hovered_cell`]) + the GTW-251 highlight EMITTER
 ///   ([`emit_highlight_request`]) and the [`HighlightRequest`] buffer;
 /// - registers the GTW-238 unified left-click decision ([`left_click_act`]) + the right-click
@@ -118,7 +118,7 @@ impl Plugin for GdtfBattleInputPlugin {
         // `GamepadCursor` inits to its window-centre default; `ActivePointer` to `Mouse`.
         .init_resource::<GamepadCursor>()
         .init_resource::<ActivePointer>()
-        // The seam EMITS these `*Requested` messages — register the six buffers the ONE
+        // The seam EMITS these `*Requested` messages — register every buffer the ONE
         // `dispatch_act_intents` drain writes into so its `MessageWriter`s pass param
         // validation whether or not the sim's `SimActsPlugin` is present (`bevy-traps.md`
         // #4). `add_message` is IDEMPOTENT, so this coexists with E10's `BattleSimPlugin`.
@@ -129,6 +129,10 @@ impl Plugin for GdtfBattleInputPlugin {
         .add_message::<SetFacingRequested>()
         // GTW-275 — the reload-act buffer the weapon panel's Reload intent drains into.
         .add_message::<ReloadRequested>()
+        // GTW-309 — the fieldless end-turn buffer the action-bar End-Turn intent drains
+        // into, so the drain's `MessageWriter<EndTurnRequested>` passes param validation
+        // whether or not `SimActsPlugin` is present (`add_message` is IDEMPOTENT).
+        .add_message::<EndTurnRequested>()
         // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
         // emitter's `MessageWriter<HighlightRequest>` passes param validation even
         // headlessly (`bevy-traps.md` #4). `add_message` is IDEMPOTENT.

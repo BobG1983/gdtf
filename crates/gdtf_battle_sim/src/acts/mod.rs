@@ -68,6 +68,7 @@ pub use plugin::SimActsPlugin;
 pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance};
 pub use reload::dispatch_reload;
 pub use request::{
-    AimRequest, ExecuteDownedRequested, FireRequested, MoveRequested, ReloadRequested,
-    SetAimingRequested, SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
+    AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
+    ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
+    StabilizeDownedRequested,
 };

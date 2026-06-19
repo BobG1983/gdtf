@@ -33,11 +33,12 @@
 //! [`ActiveButton`](gdtf_ui::ActiveButton) paint marker (the GTW-253 hook, made sticky
 //! by GTW-266). There is deliberately NO `FireButton`: a button press carries no
 //! `HoveredCell` target, so FIRE stays the left-click-on-target surface (landed in
-//! 222b); explicit-target fire is GTW-11. The DEFERRED end-turn act has NO sim act yet,
-//! so it is rendered as a `DisabledButton` ([`EndTurnButton`]) that emits NO intent
-//! under any interaction — the `Without<DisabledButton>` action filter excludes it (the
-//! menu `HiveScape` precedent). (Reload was a `DisabledButton` stub here until GTW-275
-//! made it a LIVE button in the weapon panel — see the `weapon_panel` module.)
+//! 222b); explicit-target fire is GTW-11. The end-turn act ([`EndTurnButton`]) is a LIVE
+//! button since GTW-309 (the turn-cycle engine landed): it carries NO `DisabledButton`, so
+//! the `Without<DisabledButton>` action filter INCLUDES it and its press pushes
+//! [`ActIntent::EndTurn`](gdtf_battle_input::ActIntent::EndTurn) onto the shared seam — the
+//! GTW-228 placeholder disablement was removed. (Reload was a `DisabledButton` stub here
+//! until GTW-275 made it a LIVE button in the weapon panel — see the `weapon_panel` module.)
 
 use bevy::prelude::*;
 
@@ -156,13 +157,16 @@ crate::support_item! {
 // panel (`weapon_panel`), not the action bar.
 
 crate::support_item! {
-    /// Marks the **end-turn** action button — a DEFERRED act (GTW-228): no end-turn /
-    /// turn-advance / next-round act exists yet (`gdtf_battle_sim::battle` ships only the
-    /// E10 setup/teardown lifecycle, not a turn loop; `tu::reset_tu` is a round-start refill
-    /// helper, not a player act — the turn loop is owned by E9/GTW-14). Rendered as a
-    /// [`DisabledButton`](gdtf_ui::DisabledButton) that emits NO intent under any
-    /// interaction (the `Without<DisabledButton>` action filter excludes it). Re-enabled
-    /// when the turn loop lands.
+    /// Marks the **end-turn** action button — a LIVE act since GTW-309 (the turn-cycle
+    /// engine landed). A press pushes the fieldless
+    /// [`ActIntent::EndTurn`](gdtf_battle_input::ActIntent::EndTurn), the same GLOBAL turn
+    /// signal the end-turn KEY pushes (no selection needed — like `SelectionClear` /
+    /// `LevelUp`). The ONE [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents)
+    /// drain emits a fieldless `EndTurnRequested`, which the sim's `dispatch_end_turn`
+    /// advances `ActiveFaction` on (running the next team's turn-start TU regen and
+    /// auto-passing the enemy turn back to the player). It is an ENABLED button — it carries
+    /// NO [`DisabledButton`](gdtf_ui::DisabledButton), so the `Without<DisabledButton>`
+    /// action filter now INCLUDES it (the GTW-228 placeholder disablement was removed).
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -182,8 +186,8 @@ crate::support_item! {
     /// [`PendingActIntent`](gdtf_battle_input::PendingActIntent) /
     /// [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) sim seam: that seam
     /// carries only sim `*Requested` acts against the `SelectedShooter`, and flee is not a
-    /// sim verb (no actor, no TU, no `*Requested`). Unlike the DEFERRED
-    /// [`EndTurnButton`], flee is ENABLED — it carries NO
+    /// sim verb (no actor, no TU, no `*Requested`). Like the LIVE
+    /// [`EndTurnButton`] (GTW-309), flee is ENABLED — it carries NO
     /// [`DisabledButton`](gdtf_ui::DisabledButton), so it is interactive and its handler's
     /// `Without<DisabledButton>` press filter INCLUDES it.
     ///

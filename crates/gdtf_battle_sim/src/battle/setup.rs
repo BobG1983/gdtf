@@ -15,6 +15,7 @@ use crate::{
     rng::SimRng,
     situation::setup_battle,
     surface::SurfaceGrid,
+    turn::ActiveFaction,
     vertical::VerticalLinkGraph,
     weapon::WeaponRegistry,
 };
@@ -37,13 +38,15 @@ use crate::{
 ///    [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) band gates on),
 ///    the [`PlayerFaction`] is inserted seeded from
 ///    [`Situation::player_faction`](crate::situation::Situation), the
-///    [`BattleRoster`] is captured from the situation's fielded gangers' factions (both
-///    sharing [`BattleInProgress`]'s lifetime), and a [`BattleReady`] is written; on `Err`
-///    the typed [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid
-///    vertical link OR an unresolved weapon key) is surfaced via [`error!`] and NEITHER
-///    [`BattleInProgress`] / [`PlayerFaction`] / [`BattleRoster`] NOR [`BattleReady`] is
-///    written — the app never advances on a bad battle, and the gate never opens. NO
-///    `unwrap`/`expect`/`panic`.
+///    [`BattleRoster`] is captured from the situation's fielded gangers' factions, the
+///    [`ActiveFaction`] turn-cycle resource is seeded to the same player faction (the
+///    player acts first; GTW-309) — all sharing [`BattleInProgress`]'s lifetime — and a
+///    [`BattleReady`] is written; on `Err` the typed
+///    [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid vertical link OR
+///    an unresolved weapon key) is surfaced via [`error!`] and NEITHER
+///    [`BattleInProgress`] / [`PlayerFaction`] / [`BattleRoster`] / [`ActiveFaction`] NOR
+///    [`BattleReady`] is written — the app never advances on a bad battle, and the gate
+///    never opens. NO `unwrap`/`expect`/`panic`.
 ///
 /// The [`WeaponRegistry`] is read as `Option<Res<_>>` (PERSISTENT `Load` state like
 /// [`CombatTuning`](crate::tuning::CombatTuning)); a setup requested before it loads
@@ -94,6 +97,10 @@ pub fn setup_battle_on_request(
                         .iter()
                         .map(|ganger| ganger.faction),
                 ));
+                // GTW-309: seed the turn cycle to the PlayerFaction (the player acts
+                // first), sharing the BattleInProgress lifetime (removed together on
+                // teardown) so the turn-cycle engine's ActiveFaction read is panic-free.
+                commands.insert_resource(ActiveFaction::new(request.situation.player_faction));
                 ready.write(BattleReady);
             }
             Err(error) => {
@@ -115,9 +122,9 @@ pub fn setup_battle_on_request(
 /// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`]), the
 /// [`BattleInProgress`] witness (closing the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) gate so the
-/// bundled runtime goes inert again), the [`PlayerFaction`], and the [`BattleRoster`]
-/// (both lifetimes track [`BattleInProgress`], so they are removed in the same teardown).
-/// These resources are BATTLE-lifetime: the app
+/// bundled runtime goes inert again), the [`PlayerFaction`], the [`BattleRoster`], and the
+/// [`ActiveFaction`] turn-cycle resource (all lifetimes track [`BattleInProgress`], so they
+/// are removed in the same teardown). These resources are BATTLE-lifetime: the app
 /// sends this trigger only at the battle boundary (its `OnExit(GameState::BattleScape)`),
 /// so they survive the whole battle for the E10.6 acts before being cleaned
 /// (`bevy-traps.md` #1 at the correct state level).
@@ -151,5 +158,8 @@ pub fn teardown_battle_on_request(
         // Remove the BattleRoster alongside, so its lifetime stays identical to
         // BattleInProgress (the Simulate-band census reads it within that window).
         commands.remove_resource::<BattleRoster>();
+        // Remove the ActiveFaction alongside, so the turn cycle's lifetime stays identical
+        // to BattleInProgress (the turn-cycle engine reads it within that window; GTW-309).
+        commands.remove_resource::<ActiveFaction>();
     }
 }

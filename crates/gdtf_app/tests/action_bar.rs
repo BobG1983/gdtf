@@ -61,7 +61,7 @@ use gdtf_battle_sim::{
     GangerName, GangerSpawn, Hp, HpMax, Level, LifeState, Luck, Magazine, ModeConeMult, ModeKind,
     ModeShots, ModeTuPercent, ReloadTu, Shooting, Situation, SourceArmor, Stance, StanceKind,
     Toughness, Tu, TuMax, Wounds, WoundsMax,
-    acts::{SetAimingRequested, SetStanceRequested},
+    acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, Kickback, MagazineSize, Stable, WeaponDamage,
@@ -291,6 +291,32 @@ fn stances(app: &App) -> Vec<SetStanceRequested> {
 fn aims(app: &App) -> Vec<SetAimingRequested> {
     app.world()
         .get_resource::<AimProbe>()
+        .map(|p| p.0.clone())
+        .unwrap_or_default()
+}
+
+/// Collected `EndTurnRequested` messages (GTW-309 probe).
+#[derive(Resource, Default)]
+struct EndTurnProbe(Vec<EndTurnRequested>);
+
+/// Adds the `EndTurnRequested` probe, running AFTER the intent drain so it observes the same
+/// update's emitted message (the `add_probes` idiom). Its own `MessageReader` cursor is
+/// independent of the sim's `dispatch_end_turn`, so it reads every message the drain wrote.
+fn add_end_turn_probe(app: &mut App) {
+    app.world_mut().insert_resource(EndTurnProbe::default());
+    app.add_systems(
+        Update,
+        (|mut r: MessageReader<EndTurnRequested>, mut p: ResMut<EndTurnProbe>| {
+            p.0.extend(r.read().copied());
+        })
+        .after(gdtf_battle_input::dispatch_act_intents),
+    );
+}
+
+/// The collected `EndTurnRequested` messages.
+fn end_turns(app: &App) -> Vec<EndTurnRequested> {
+    app.world()
+        .get_resource::<EndTurnProbe>()
         .map(|p| p.0.clone())
         .unwrap_or_default()
 }
@@ -871,47 +897,87 @@ fn mode_toggles_mutate_in_place_keeping_stable_ids() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC5 — a DEFERRED button (reload / end-turn) is DisabledButton and emits NO intent
-// under any interaction.
+// GTW-309 — the end-turn button is now LIVE: enabled, and a press pushes the fieldless
+// GLOBAL ActIntent::EndTurn, which the ONE drain emits as a fieldless EndTurnRequested
+// WITHOUT needing a selection. (GTW-275 removed the Reload deferred stub — reload is a LIVE
+// weapon-panel button now — so there is no longer ANY deferred action-bar button.)
 // ---------------------------------------------------------------------------------
 
-/// AC5 — the reload + end-turn buttons are rendered as `DisabledButton` and a
-/// synthesized press emits ZERO messages / intents on the seam (the
-/// `Without<DisabledButton>` action filter excludes them — the menu precedent).
+/// GTW-309 — the end-turn button is ENABLED: it carries NO `DisabledButton`, so the
+/// `Without<DisabledButton>` action filter now INCLUDES it (it is no longer a deferred
+/// placeholder). The full press→intent→message wiring is exercised by
+/// [`end_turn_button_emits_one_end_turn_requested_without_selection`].
 #[test]
-fn deferred_buttons_are_disabled_and_emit_nothing() {
+fn end_turn_button_is_enabled_not_disabled() {
     let mut app = battle_running_app();
-    add_probes(&mut app);
-    // Arm + select a ganger so an act WOULD emit if a deferred button leaked an intent.
-    arm_and_select(
-        &mut app,
-        sbf_selector(),
-        StanceKind::Standing,
-        Direction::North,
+    let Some(end_turn) = require_button::<EndTurnButton>(&mut app) else {
+        return;
+    };
+    assert!(
+        app.world().get::<DisabledButton>(end_turn).is_none(),
+        "the end-turn button must be ENABLED — it must NOT carry DisabledButton (GTW-309)",
     );
+    assert!(
+        app.world().get::<Button>(end_turn).is_some(),
+        "the end-turn button must carry Button (interactive)",
+    );
+    assert!(
+        app.world().get::<Interaction>(end_turn).is_some(),
+        "the end-turn button must carry Interaction (interactive)",
+    );
+}
 
-    // GTW-275 removed the Reload deferred stub (reload is now a LIVE weapon-panel button);
-    // end-turn is the remaining deferred (DisabledButton) action-bar control.
-    let deferred = [require_button::<EndTurnButton>(&mut app)];
-    for found in deferred {
-        let Some(button) = found else { return };
-        assert!(
-            app.world().get::<DisabledButton>(button).is_some(),
-            "a deferred button must carry DisabledButton",
-        );
-        press_button(&mut app, button);
-    }
+/// GTW-309 — pressing the end-turn button enqueues exactly one fieldless
+/// `ActIntent::EndTurn`, and the ONE `dispatch_act_intents` drain emits exactly one fieldless
+/// `EndTurnRequested` from it — with NO `SelectedShooter` set (the global turn signal needs no
+/// selection, unlike a per-actor act). This is the load-bearing AC: it drives the REAL stack
+/// (button press → 222a seam → the SAME drain the keyboard surface feeds) and asserts the
+/// end-to-end message, byte-for-byte equal to the message the direct `ActIntent::EndTurn`
+/// pushes (the `acts.rs` parity idiom).
+///
+/// Pin-discriminating: removing the new `EndTurnButton` arm in `action_bar_button_intents`
+/// (or re-adding the `DisabledButton` marker) leaves the queue empty and emits zero messages,
+/// failing the `len == 1` asserts.
+#[test]
+fn end_turn_button_emits_one_end_turn_requested_without_selection() {
+    let mut app = battle_running_app();
+    add_end_turn_probe(&mut app);
+    // Deliberately NO arm_and_select / SelectedShooter — the end-turn intent is a fieldless
+    // GLOBAL signal the drain emits unconditionally.
+
+    let Some(end_turn) = require_button::<EndTurnButton>(&mut app) else {
+        return;
+    };
+    press_button(&mut app, end_turn);
     app.update();
 
-    assert!(
-        stances(&app).is_empty() && aims(&app).is_empty(),
-        "a DisabledButton press must emit NO *Requested on the seam",
+    let via_button = end_turns(&app);
+    assert_eq!(
+        via_button.len(),
+        1,
+        "pressing the end-turn button must emit exactly one EndTurnRequested (no selection \
+         needed)",
     );
-    assert!(
-        app.world()
-            .get_resource::<PendingActIntent>()
-            .is_some_and(PendingActIntent::is_empty),
-        "a DisabledButton press must queue NO intent",
+
+    // Byte-for-byte equal to the message the direct ActIntent::EndTurn (the keyboard surface)
+    // pushes over the SAME seam — proving the button is a parallel surface, not a divergent
+    // emission path.
+    let mut app2 = battle_running_app();
+    add_end_turn_probe(&mut app2);
+    app2.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::EndTurn);
+    app2.update();
+    let via_intent = end_turns(&app2);
+    assert_eq!(
+        via_intent.len(),
+        1,
+        "one EndTurnRequested via the direct ActIntent::EndTurn"
+    );
+    assert_eq!(
+        via_button[0], via_intent[0],
+        "the button and the key/intent surface must produce byte-for-byte equal \
+         EndTurnRequested",
     );
 }
 
@@ -1150,16 +1216,17 @@ fn flee_button_despawns_on_exit_battle_running() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC5 — regression: the deferred buttons stay disabled, flee stays enabled.
+// GTW-309 / GTW-240 — the end-turn and flee buttons are both ENABLED, distinct controls.
 // ---------------------------------------------------------------------------------
 
-/// AC5 — adding the flee button did NOT re-enable the deferred end-turn button:
-/// `EndTurnButton` still carries `DisabledButton`, while the `FleeButton` is ENABLED
-/// (carries NO `DisabledButton`). The full deferred-emit-nothing regression is
-/// `deferred_buttons_are_disabled_and_emit_nothing`. (GTW-275: the Reload deferred stub is
-/// GONE — reload is a LIVE weapon-panel button now, so it is no longer asserted here.)
+/// GTW-309 / GTW-240 — the end-turn button (GTW-309 made it LIVE) and the flee button are
+/// both ENABLED (neither carries `DisabledButton`) and are distinct entities: enabling the
+/// end-turn button did not disturb the flee button, and vice versa. The full end-turn
+/// press→emit wiring is `end_turn_button_emits_one_end_turn_requested_without_selection`;
+/// the flee end-battle wiring is `flee_button_press_ends_battle`. (GTW-275: the Reload
+/// deferred stub is GONE — reload is a LIVE weapon-panel button now.)
 #[test]
-fn deferred_buttons_stay_disabled_after_flee_added() {
+fn end_turn_and_flee_buttons_are_both_enabled() {
     let mut app = battle_running_app();
 
     let Some(end_turn) = require_button::<EndTurnButton>(&mut app) else {
@@ -1169,9 +1236,13 @@ fn deferred_buttons_stay_disabled_after_flee_added() {
         return;
     };
 
+    assert_ne!(
+        end_turn, flee,
+        "the end-turn and flee buttons must be distinct entities",
+    );
     assert!(
-        app.world().get::<DisabledButton>(end_turn).is_some(),
-        "the end-turn button must STAY DisabledButton after FleeButton was added",
+        app.world().get::<DisabledButton>(end_turn).is_none(),
+        "the end-turn button is ENABLED since GTW-309 — it must NOT carry DisabledButton",
     );
     assert!(
         app.world().get::<DisabledButton>(flee).is_none(),

@@ -1,8 +1,9 @@
-//! The public [`SimActsPlugin`] — the sim-acts registration unit that wires the eight
-//! `*Requested` message buffers + the eight per-act dispatch systems (E10.2 / GTW-204;
-//! the eighth — reload — added in GTW-275).
+//! The public [`SimActsPlugin`] — the sim-acts registration unit that wires the
+//! `*Requested` message buffers + the per-act dispatch systems (E10.2 / GTW-204; the
+//! eighth — reload — added in GTW-275; the ninth — the fieldless [`EndTurnRequested`]
+//! turn signal + the [`dispatch_end_turn`] turn-cycle engine — added in GTW-309).
 
-use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update};
+use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update, resource_exists};
 
 use crate::{
     acts::{
@@ -12,12 +13,14 @@ use crate::{
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
         reload::dispatch_reload,
         request::{
-            ExecuteDownedRequested, FireRequested, MoveRequested, ReloadRequested,
-            SetAimingRequested, SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
+            EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
+            ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
+            StabilizeDownedRequested,
         },
     },
     occupancy_sync::SimSystems,
     shot_fired::ShotFired,
+    turn::{ActiveFaction, dispatch_end_turn},
 };
 
 /// The **sim-acts registration unit** — registers the eight `*Requested` message buffers
@@ -62,6 +65,8 @@ impl Plugin for SimActsPlugin {
             .add_message::<ExecuteDownedRequested>()
             .add_message::<MoveRequested>()
             .add_message::<ReloadRequested>()
+            // GTW-309: the fieldless end-turn signal the turn-cycle engine drains.
+            .add_message::<EndTurnRequested>()
             // GTW-290: the output fire-trajectory signal dispatch_fire emits per round.
             .add_message::<ShotFired>()
             .add_systems(
@@ -76,6 +81,16 @@ impl Plugin for SimActsPlugin {
                     dispatch_move,
                     dispatch_reload,
                 )
+                    .in_set(SimSystems::Simulate),
+            )
+            // GTW-309: the turn-cycle engine joins the gated Simulate band, but takes the
+            // battle-lifetime ActiveFaction resource (co-inserted with BattleInProgress),
+            // so it carries its OWN resource_exists::<ActiveFaction> run_if to keep its
+            // ResMut<ActiveFaction> read panic-free (bevy-traps.md #1).
+            .add_systems(
+                Update,
+                dispatch_end_turn
+                    .run_if(resource_exists::<ActiveFaction>)
                     .in_set(SimSystems::Simulate),
             );
     }

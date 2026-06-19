@@ -22,6 +22,12 @@
 //!   ganger's [`ganger::Tu`] (current pool) and [`ganger::TuMax`] (round-start max —
 //!   the denominator of GTW-38's `TU_left / TU_max` reaction ratio). Pure math, no
 //!   `World` access; the COST magnitudes are tuning sourced by later E4 slices.
+//! - [`turn`] — the GTW-309 turn-cycle engine: the [`turn::ActiveFaction`] battle-lifetime
+//!   resource (whose turn it is), the pure [`turn::regen_team_tu`] turn-start TU-regen
+//!   helper (resets one team's [`ganger::Tu`] to [`ganger::TuMax`] via [`tu::reset_tu`]),
+//!   and the [`turn::dispatch_end_turn`] system that drains the
+//!   [`acts::EndTurnRequested`] signal and cycles the turn — handing off to the other team
+//!   and (while the enemy has no AI) auto-passing the enemy turn back to the player.
 //! - [`faced_cell`] — the E4.2 geometry helper [`faced_cell::faced_cell`]: shooter
 //!   [`ganger::Position`] + [`ganger::Facing`] → the faced ([`metric::Cell`],
 //!   [`metric::Level`]) one unit step along the facing (same storey). The cell whose
@@ -204,6 +210,7 @@ pub mod stability;
 pub mod surface;
 pub mod tu;
 pub mod tuning;
+pub mod turn;
 pub mod vertical;
 pub mod weapon;
 
@@ -281,6 +288,7 @@ pub use tuning::{
     StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution,
     StanceStability, ToughnessMitigation, TurnTu, WoundCost, WoundCosts,
 };
+pub use turn::{ActiveFaction, dispatch_end_turn, regen_team_tu};
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
     build_vertical_link_graph,

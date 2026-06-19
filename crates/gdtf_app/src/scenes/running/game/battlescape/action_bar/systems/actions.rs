@@ -43,7 +43,7 @@ use gdtf_battle_input::{ActIntent, PendingActIntent};
 use gdtf_ui::DisabledButton;
 
 use crate::scenes::running::game::battlescape::action_bar::components::{
-    LevelDownButton, LevelUpButton,
+    EndTurnButton, LevelDownButton, LevelUpButton,
 };
 
 /// Query filter selecting the ENABLED button carrying marker `M` whose
@@ -84,34 +84,40 @@ pub(in crate::scenes::running::game::battlescape::action_bar) const fn is_press(
 ///
 /// - [`LevelUpButton`] → [`ActIntent::LevelUp`]
 /// - [`LevelDownButton`] → [`ActIntent::LevelDown`]
+/// - [`EndTurnButton`] → [`ActIntent::EndTurn`] (GTW-309 — the fieldless GLOBAL turn signal;
+///   no selection needed, like `SelectionClear` / `LevelUp`)
 ///
 /// GTW-277 — the AIM and STANCE controls are now `gdtf_ui` widgets (a
 /// [`Switch`](gdtf_ui::Switch) / a [`SegmentedControl`](gdtf_ui::SegmentedControl)), so
 /// their press → intent mapping moved to the widget-native MESSAGE listeners
 /// (`aim_switch_flip_intent` reads [`ToggleFlipped`](gdtf_ui::ToggleFlipped) → `AimToggle`;
 /// `stance_segment_intent` reads [`SegmentSelected`](gdtf_ui::SegmentSelected) → `SetStance`),
-/// NOT this `Changed<Interaction>` button-press router — which now handles only the two
-/// LEVEL buttons. The MODE control sets
+/// NOT this `Changed<Interaction>` button-press router — which now handles the two LEVEL
+/// buttons and the LIVE end-turn button (GTW-309). The MODE control sets
 /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly via its own
-/// `mode_panel` message listener, NOT the intent seam (unchanged from GTW-265). The two
-/// LEVEL queries are disjoint per marker (each filtered to one role marker and
-/// `Without<DisabledButton>`), so they never conflict; the DEFERRED end-turn button carries
-/// [`DisabledButton`] and so matches NEITHER query — it pushes no intent (AC5). The buttons
-/// write NO `*Requested` directly — the ONE
-/// [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) drain interprets each
-/// pushed intent, so a press with no selection is a no-op in the drain (AC6).
+/// `mode_panel` message listener, NOT the intent seam (unchanged from GTW-265). The three
+/// queries are disjoint per marker (each filtered to one role marker and
+/// `Without<DisabledButton>`), so they never conflict. The buttons write NO `*Requested`
+/// directly — the ONE [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents)
+/// drain interprets each pushed intent (the end-turn intent emits `EndTurnRequested`
+/// unconditionally — it needs no selection — while a per-actor intent with no selection is a
+/// no-op in the drain, AC6).
 ///
-/// Param-only (`bevy-traps.md` #7): two read-only `Query<&Interaction, …>`s + the
+/// Param-only (`bevy-traps.md` #7): three read-only `Query<&Interaction, …>`s + the
 /// `ResMut<PendingActIntent>` write — no `&mut World`.
 pub(in crate::scenes::running::game::battlescape) fn action_bar_button_intents(
     mut pending: ResMut<PendingActIntent>,
     level_up: Query<&Interaction, PressedButton<LevelUpButton>>,
     level_down: Query<&Interaction, PressedButton<LevelDownButton>>,
+    end_turn: Query<&Interaction, PressedButton<EndTurnButton>>,
 ) {
     if level_up.iter().copied().any(is_press) {
         pending.push(ActIntent::LevelUp);
     }
     if level_down.iter().copied().any(is_press) {
         pending.push(ActIntent::LevelDown);
+    }
+    if end_turn.iter().copied().any(is_press) {
+        pending.push(ActIntent::EndTurn);
     }
 }

@@ -1,6 +1,7 @@
-//! The eight `*Requested` buffered [`Message`] types — the message-driven **input
+//! The `*Requested` buffered [`Message`] types — the message-driven **input
 //! contract** for the landed combat acts (E10.2 / GTW-204; the seventh,
-//! [`MoveRequested`], added in GTW-234; the eighth, [`ReloadRequested`], in GTW-275).
+//! [`MoveRequested`], added in GTW-234; the eighth, [`ReloadRequested`], in GTW-275; the
+//! ninth, the fieldless [`EndTurnRequested`] turn signal, in GTW-309).
 //!
 //! Eight [`#[derive(Message)]`](bevy::prelude::Message) buffered messages — mirroring
 //! [`crate::bleed::Bleeding`] / [`crate::occupancy_sync::CoverDestroyed`], the buffered
@@ -259,3 +260,19 @@ impl ReloadRequested {
         Self { actor }
     }
 }
+
+/// An **end-turn** act was requested — the active team passes control to the other team
+/// (GTW-309).
+///
+/// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying **NO
+/// payload**. End-turn is a GLOBAL turn signal, not a per-ganger act: which team's turn is
+/// ending is tracked by the [`ActiveFaction`](crate::turn::ActiveFaction) resource, NOT a
+/// message field — so this is deliberately FIELDLESS (no `{ actor: Entity }`), unlike the
+/// per-ganger [`ReloadRequested`] / [`MoveRequested`]. A fieldless unit struct carries no
+/// domain value, so the no-bare-types rule — which wraps *values* — does not apply; the
+/// type's identity IS the signal. [`dispatch_end_turn`](crate::turn::dispatch_end_turn)
+/// drains this and advances the turn cycle: it hands the turn to the other team (running
+/// that team's turn-start TU regen), and — while the enemy has no AI — immediately
+/// auto-passes the enemy turn back to the player.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EndTurnRequested;
