@@ -21,8 +21,8 @@ use bevy::{
     prelude::*,
     text::{FontWeight, TextColor as UiTextColor, TextFont},
     ui::{
-        AlignItems, BackgroundColor, BorderColor, BorderRadius, Display, Interaction,
-        JustifyContent, Node, Overflow, UiRect, Val, widget::Button,
+        AlignItems, BackgroundColor, BorderColor, BorderRadius, Display, FlexDirection,
+        Interaction, JustifyContent, Node, Overflow, UiRect, Val, widget::Button,
     },
 };
 
@@ -38,6 +38,26 @@ pub struct SegmentLabel(String);
 
 impl SegmentLabel {
     /// Wraps a caption into a [`SegmentLabel`].
+    #[must_use]
+    pub fn new(label: impl Into<String>) -> Self {
+        Self(label.into())
+    }
+}
+
+/// The OPTIONAL secondary caption ("sub-line") under a [`SegmentedControl`] segment's
+/// primary [`SegmentLabel`].
+///
+/// A named newtype over the sub-line string (mirroring [`SegmentLabel`], no-bare-types
+/// rule): a segment's sub-line is a smaller, dimmer second line of widget-level text
+/// (e.g. the firemode's TU cost under its name — GTW-303), rendered by a separate
+/// [`SegmentSubText`] node so it can carry its own smaller font + dimmer color (a single
+/// `Text` with an embedded newline cannot give two lines different styling). It is set /
+/// cleared in place via [`set_segment_sub_line`].
+#[derive(Deref, Clone, PartialEq, Eq, Debug)]
+pub struct SegmentSubLabel(String);
+
+impl SegmentSubLabel {
+    /// Wraps a sub-line caption into a [`SegmentSubLabel`].
     #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
         Self(label.into())
@@ -124,6 +144,23 @@ pub struct SegmentIndex(usize);
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct SegmentText;
 
+/// Marker on the OPTIONAL sub-line text child of a [`Segment`] (GTW-303).
+///
+/// A second [`Text`](bevy::prelude::Text) node STACKED below the segment's primary
+/// [`SegmentText`] label (the segment [`Button`] is a centered [`Column`](FlexDirection::Column)),
+/// rendered at a SMALLER font ([`SEGMENT_SUB_FONT_PT`]) and a DIMMER color ([`sub_line_color`])
+/// than the label so it reads as a quiet secondary line. It is created / removed in place by
+/// [`set_segment_sub_line`] — a segment with no sub-line has NO node carrying this marker, so it
+/// renders exactly as a single centered label (the stance control + any pre-GTW-303 caller are
+/// visually unchanged). UNLIKE [`SegmentText`], it is NOT touched by
+/// [`repaint_segments`]: the sub-line keeps its dimmer style regardless of the active segment
+/// (it is a quiet annotation, not the selection signal — the bold/fill active mark stays on the
+/// LABEL).
+///
+/// A unit marker — presence alone is the signal (no-bare-types rule).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct SegmentSubText;
+
 /// A buffered Bevy **message** emitted when a [`SegmentedControl`]'s active segment
 /// changes (bevy-traps rule 4: buffered events are messages in 0.18).
 ///
@@ -204,6 +241,13 @@ pub fn spawn_segmented_control(
                     Button,
                     Node {
                         padding: UiRect::axes(Val::Vw(SEGMENT_PAD_X_VW), Val::Vh(SEGMENT_PAD_Y_VH)),
+                        // A centered COLUMN so the OPTIONAL sub-line (GTW-303) stacks BELOW the
+                        // label. With a single centered child (the no-sub-line case) a Column with
+                        // both axes centered renders identically to a Row, so the stance control +
+                        // any pre-GTW-303 caller are visually unchanged; the label stays the
+                        // segment's first DIRECT child (so callers that post-process the label —
+                        // e.g. the action bar's nowrap pass — still reach it).
+                        flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
                         // No per-segment corner rounding — the ROOT owns the rounded corners
@@ -409,6 +453,97 @@ pub fn set_segment_visible(
     false
 }
 
+/// Read-only [`Query`] data identifying one segment when setting its sub-line: its
+/// [`SegmentIndex`] and its [`Children`] (to look for an existing [`SegmentSubText`] node).
+///
+/// Named to keep [`set_segment_sub_line`]'s signature legible (clippy `type_complexity`).
+type SubLineSegment = (&'static SegmentIndex, &'static Children);
+
+/// Sets, updates, or clears a single segment's OPTIONAL sub-line BY INDEX (GTW-303),
+/// returning whether a matching segment was found.
+///
+/// The sub-line is a SECOND [`Text`](bevy::prelude::Text) node ([`SegmentSubText`]) STACKED
+/// below the segment's primary [`SegmentText`] label, at a smaller font
+/// ([`SEGMENT_SUB_FONT_PT`]) and a dimmer color ([`sub_line_color`] of the segment's base
+/// text) so it reads as a quiet secondary line. It is created / mutated / removed IN PLACE —
+/// never by despawning/respawning the SEGMENT ([[ui-mutate-not-respawn]]):
+///
+/// - `Some(label)` and the segment has NO sub-line yet → SPAWNS the sub-line node as a child
+///   of the segment (so it stacks below the label in the segment's centered column).
+/// - `Some(label)` and the segment ALREADY has a sub-line → MUTATES that existing node's
+///   [`Text`] in place to the new caption (the sub-line entity id stays STABLE), only when
+///   the text actually differs (change-detection hygiene).
+/// - `None` → DESPAWNS the segment's sub-line node if present (clears the sub-line), leaving
+///   the segment rendering as a single centered label again.
+///
+/// A segment with no sub-line has NO [`SegmentSubText`] node, so it renders exactly as it did
+/// before GTW-303 — the stance control and any other pre-GTW-303 caller are unaffected. The
+/// sub-line's color is derived from the control root's [`SegmentColors::base_text`] (dimmed),
+/// so it matches the segment palette without the caller re-passing colors.
+///
+/// Caller-driven (the `set_*` helper idiom — the bar / pips / [`set_segment_visible`]
+/// precedent): build a
+/// `SystemState<(Commands, Query<(&Children, &SegmentColors)>, Query<SubLineSegment, With<Segment>>, Query<&mut Text, With<SegmentSubText>>)>`,
+/// call this, then `state.apply(world)`. Param-only — no `&mut World` (bevy-traps rule 7); the
+/// spawn / despawn go through [`Commands`].
+#[allow(
+    clippy::type_complexity,
+    reason = "param tuple aliased where possible; the spawn/mutate/clear paths fix the \
+    children + colors + sub-text query shapes"
+)]
+pub fn set_segment_sub_line(
+    commands: &mut Commands,
+    control: Entity,
+    index: usize,
+    sub_line: Option<&SegmentSubLabel>,
+    controls: &Query<(&Children, &SegmentColors)>,
+    segments: &Query<SubLineSegment, With<Segment>>,
+    sub_texts: &mut Query<&mut Text, With<SegmentSubText>>,
+) -> bool {
+    let Ok((kids, colors)) = controls.get(control) else {
+        return false;
+    };
+    let dim = sub_line_color(colors.base_text);
+    for &child in kids {
+        let Ok((seg_index, seg_children)) = segments.get(child) else {
+            continue;
+        };
+        if **seg_index != index {
+            continue;
+        }
+        // The segment's existing sub-line node, if any (a SegmentSubText child).
+        let existing = seg_children.iter().find(|&kid| sub_texts.get(kid).is_ok());
+        match (sub_line, existing) {
+            // Set / update: mutate an existing sub-line in place, or spawn a fresh one.
+            (Some(label), Some(node)) => {
+                if let Ok(mut text) = sub_texts.get_mut(node) {
+                    let want = label.to_string();
+                    if text.0 != want {
+                        text.0 = want;
+                    }
+                }
+            }
+            (Some(label), None) => {
+                commands.entity(child).with_children(|seg| {
+                    seg.spawn((
+                        SegmentSubText,
+                        Text::new(label.to_string()),
+                        sub_line_font(),
+                        UiTextColor(dim),
+                    ));
+                });
+            }
+            // Clear: despawn the sub-line node if present; nothing to do otherwise.
+            (None, Some(node)) => {
+                commands.entity(node).despawn();
+            }
+            (None, None) => {}
+        }
+        return true;
+    }
+    false
+}
+
 /// Clamps a requested active index to a valid segment slot.
 ///
 /// For a non-empty control the index is clamped to `0..count`; for an empty control it
@@ -442,6 +577,23 @@ fn segment_font(is_active: bool) -> TextFont {
     }
 }
 
+/// The [`TextFont`](bevy::text::TextFont) for a segment's OPTIONAL sub-line (GTW-303): the
+/// smaller [`SEGMENT_SUB_FONT_PT`] at normal weight — quieter than the bold-on-active label.
+fn sub_line_font() -> TextFont {
+    TextFont {
+        font_size: SEGMENT_SUB_FONT_PT,
+        weight: FontWeight::NORMAL,
+        ..default()
+    }
+}
+
+/// The DIMMED color of a segment's sub-line, derived from the segment's `base_text` color
+/// (GTW-303): the same hue at [`SEGMENT_SUB_ALPHA`] opacity, so the sub-line reads as a
+/// quieter second line that matches the palette without the caller re-passing a color.
+fn sub_line_color(base_text: Color) -> Color {
+    base_text.with_alpha(base_text.alpha() * SEGMENT_SUB_ALPHA)
+}
+
 /// Horizontal inner padding of a segment, in viewport-width units.
 /// Calibrated 12px / 1280 * 100.
 const SEGMENT_PAD_X_VW: f32 = 0.9375;
@@ -463,3 +615,13 @@ const SEGMENT_DIVIDER_VW: f32 = 0.078_125;
 
 /// The segment label font size, in typographic points.
 const SEGMENT_FONT_PT: f32 = 16.0;
+
+/// The segment SUB-LINE font size, in typographic points (GTW-303): ~11 pt — distinctly
+/// smaller than the [`SEGMENT_FONT_PT`] label so the second line reads as a quiet annotation
+/// (the TU cost under the firemode name). Font size in pt is the ONE permitted px exception to
+/// the relative-units rule (`ui-responsive-not-px`), matching the label const.
+const SEGMENT_SUB_FONT_PT: f32 = 11.0;
+
+/// The opacity MULTIPLIER applied to a segment's `base_text` color to dim its sub-line
+/// (GTW-303): 0.7 — visibly dimmer than the label without becoming unreadable.
+const SEGMENT_SUB_ALPHA: f32 = 0.7;

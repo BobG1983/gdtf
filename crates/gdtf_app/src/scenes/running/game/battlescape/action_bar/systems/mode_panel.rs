@@ -26,13 +26,15 @@
 //! It runs `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3) so its writes settle
 //! deterministically relative to the theme pass.
 
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
-use gdtf_battle_sim::{FireMode, FireModeSpec, ModeKind};
+use gdtf_battle_sim::{
+    Aiming, FireMode, FireModeSpec, ModeKind, TuMax, mode_tu_cost, tuning::CombatTuning,
+};
 use gdtf_ui::{
     ActiveSegment, Orientation, Segment, SegmentColors, SegmentIndex, SegmentLabel,
-    SegmentSelected, SegmentedControl, set_segment_visible, spawn_segmented_control,
-    theme::GdtfTheme,
+    SegmentSelected, SegmentSubLabel, SegmentSubText, SegmentedControl, set_segment_sub_line,
+    set_segment_visible, spawn_segmented_control, theme::GdtfTheme,
 };
 
 use super::stance_panel::control_segment_colors;
@@ -192,6 +194,14 @@ pub(in crate::scenes::running::game::battlescape) fn tag_mode_segments(
             node.flex_grow = 1.0;
             node.flex_basis = Val::ZERO;
             node.min_width = Val::ZERO;
+            // GTW-303 clip fix (2026-06-19): the firemode segments are now TWO lines (the mode
+            // name over its `"{n} TU"` cost sub-line). Without `min_height: 0`, a segment's flex
+            // MIN height is its intrinsic two-line content height, which can exceed the short
+            // firemode cell's share — forcing the segment taller than the cell and clipping the
+            // cost line at the cell's bottom edge. Letting the segment shrink below its content
+            // min (`min_height: 0`) keeps it within the cell; the cell is sized (the larger
+            // `BOTTOM_CELL_PCT` band over the taller bottom bar) to fit both lines.
+            node.min_height = Val::ZERO;
             node.overflow = bevy::ui::Overflow {
                 x: bevy::ui::OverflowAxis::Hidden,
                 y: bevy::ui::OverflowAxis::Hidden,
@@ -377,4 +387,125 @@ fn mode_spec_for(
     let shooter = (*selected)?;
     let weapon = weapons.get(shooter).ok()?;
     weapon.iter().find(|spec| spec.kind == kind).copied()
+}
+
+/// Read-only [`Query`] data the cost-line system reads off the SELECTED shooter to compute
+/// each offered mode's TU charge: its [`FireMode`] selector (the offered specs), its
+/// [`TuMax`] (the round-start ceiling the charge is a percentage of), and its [`Aiming`]
+/// flag (selects the aim premium).
+///
+/// Named to keep [`sync_mode_tu_cost_lines`]'s signature legible (clippy `type_complexity`).
+type CostShooter = (&'static FireMode, &'static TuMax, &'static Aiming);
+
+/// Read-only [`Query`] FILTER selecting each Mode [`Segment`] (its [`SegmentIndex`] +
+/// [`Children`]), the shape [`set_segment_sub_line`](gdtf_ui::set_segment_sub_line) reads.
+///
+/// Aliased so [`sync_mode_tu_cost_lines`]'s `set_segment_sub_line` argument query stays
+/// legible (clippy `type_complexity`).
+type ModeSegment = (&'static SegmentIndex, &'static Children);
+
+/// The cost INPUTS + recompute-trigger reads [`sync_mode_tu_cost_lines`] needs, grouped into
+/// one [`SystemParam`] so the system stays under clippy's argument-count gate (the
+/// [`set_segment_sub_line`](gdtf_ui::set_segment_sub_line) call already fixes four params).
+///
+/// Bundling the selection + tuning + per-shooter reads + the two change detectors keeps the
+/// firing-cost derivation's read surface in one named value (no bare framework tuple) without
+/// taking exclusive `&mut World`.
+#[derive(SystemParam)]
+pub(in crate::scenes::running::game::battlescape) struct ModeCostInputs<'w, 's> {
+    /// The current selection — the shooter whose modes' costs are displayed.
+    selected:       Res<'w, SelectedShooter>,
+    /// The live combat tuning the per-shot charge reads (the aim premium factor).
+    tuning:         Res<'w, CombatTuning>,
+    /// The selected shooter's cost inputs ([`FireMode`] / [`TuMax`] / [`Aiming`]).
+    shooters:       Query<'w, 's, CostShooter>,
+    /// Detects an Aim flip (a [`Changed<Aiming>`](Changed) on any ganger) → recompute.
+    aim_changed:    Query<'w, 's, (), Changed<Aiming>>,
+    /// Detects the [`ModeControl`] freshly spawned (the GTW-255 auto-select ordering trap).
+    added_controls: Query<'w, 's, (), Added<ModeControl>>,
+}
+
+/// MUTATES each OFFERED Mode segment's sub-line to its aim-adjusted per-shot TU cost
+/// ("{n} TU"), and CLEARS the sub-line of a non-offered / hidden segment (GTW-303).
+///
+/// Each segment of the firemode control shows its mode name (the primary
+/// [`SegmentText`](gdtf_ui::SegmentText) label, top) over its TU cost (a quieter
+/// [`SegmentSubText`](gdtf_ui::SegmentSubText) sub-line, bottom — slice 1's
+/// [`set_segment_sub_line`](gdtf_ui::set_segment_sub_line)). The displayed cost is the EXACT
+/// value the sim charges: [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) of the selected
+/// shooter's [`FireModeSpec`] / [`TuMax`] / [`Aiming`] under the live
+/// [`CombatTuning`](gdtf_battle_sim::tuning::CombatTuning) — reusing that one function so the
+/// display can never diverge from the charge (no presenter-side re-derivation). When Aim is
+/// ON the cost includes the aim ×premium; when OFF it reverts to the hip-fire base — the
+/// `Changed<Aiming>` trigger re-derives both directions IN PLACE (the sub-line text mutates,
+/// the node id stays stable, [[ui-mutate-not-respawn]]).
+///
+/// A mode is shown only when the selected weapon offers it ([`FireMode::iter`]); a
+/// non-offered mode (its segment collapsed by [`rebuild_mode_segments`]) gets its sub-line
+/// CLEARED so a stale cost never lingers on a hidden segment. No selection, an unarmed
+/// selection (no [`FireMode`]), or a selection missing [`TuMax`]/[`Aiming`] clears EVERY
+/// segment's sub-line (the panel is hidden in that state anyway — GTW-273).
+///
+/// It re-derives on the same signals [`rebuild_mode_segments`] / [`sync_aim_switch_state`]
+/// key off: a [`SelectedShooter`](gdtf_battle_input::SelectedShooter) change, a
+/// [`Changed<Aiming>`](Changed) on any ganger (Aim flips on the selected shooter), or the
+/// [`ModeControl`] freshly spawned ([`Added<ModeControl>`](Added)) — the GTW-255 auto-select
+/// ordering trap, where the selection is filled several frames before the control exists.
+/// Otherwise it early-returns (change-detection hygiene). Runs `.after(UiSystems::ApplyTheme)`
+/// alongside [`rebuild_mode_segments`] so the offered set is settled before the cost lines are
+/// written.
+///
+/// Param-only (`bevy-traps.md` #7): [`Commands`] (the sub-line spawn/despawn go through it),
+/// the [`ModeCostInputs`] bundle (selection + tuning + per-shooter reads + the two recompute
+/// detectors), a marker-only [`ModeControl`] root query (which controls to write), and the
+/// three [`set_segment_sub_line`](gdtf_ui::set_segment_sub_line) argument queries (the control
+/// `(Children, SegmentColors)` read, the segments, and the writable sub-text query) — no
+/// `&mut World`.
+#[allow(
+    clippy::type_complexity,
+    reason = "param tuple aliased where possible; the set_segment_sub_line call signature \
+    fixes the controls / segments / sub-texts query shapes"
+)]
+pub(in crate::scenes::running::game::battlescape) fn sync_mode_tu_cost_lines(
+    mut commands: Commands,
+    inputs: ModeCostInputs,
+    mode_controls: Query<Entity, With<ModeControl>>,
+    controls: Query<(&Children, &SegmentColors)>,
+    segments: Query<ModeSegment, With<Segment>>,
+    mut sub_texts: Query<&mut Text, With<SegmentSubText>>,
+) {
+    // Re-derive on a selection change, an Aim flip (Changed<Aiming>), OR when the Mode control
+    // was JUST spawned (the GTW-255 auto-select ordering trap — see the doc comment). Otherwise
+    // early-return (change-detection hygiene).
+    let control_just_spawned = inputs.added_controls.iter().next().is_some();
+    let aim_flipped = inputs.aim_changed.iter().next().is_some();
+    if !inputs.selected.is_changed() && !aim_flipped && !control_just_spawned {
+        return;
+    }
+
+    // The selected shooter's cost inputs, if it is armed and carries the vitals/posture the
+    // charge reads. Absent / unarmed → every sub-line is cleared below.
+    let shooter_inputs = (**inputs.selected).and_then(|shooter| inputs.shooters.get(shooter).ok());
+
+    for control in &mode_controls {
+        for (index, mode) in MODE_ORDER.iter().enumerate() {
+            // The offered spec for this mode (and the shooter's TuMax/Aiming) → its cost line;
+            // a non-offered mode / no armed selection → clear the sub-line (None). The cost is
+            // the EXACT sim charge (`mode_tu_cost`), so the display equals the debit.
+            let label = shooter_inputs.and_then(|(weapon, tu_max, aiming)| {
+                let spec = weapon.iter().find(|s| s.kind == *mode)?;
+                let cost = mode_tu_cost(spec, tu_max, aiming, &inputs.tuning);
+                Some(SegmentSubLabel::new(format!("{} TU", *cost)))
+            });
+            set_segment_sub_line(
+                &mut commands,
+                control,
+                index,
+                label.as_ref(),
+                &controls,
+                &segments,
+                &mut sub_texts,
+            );
+        }
+    }
 }

@@ -35,7 +35,15 @@ crate::support_item! {
 /// `set_world_viewport` insets the map by the bar's measured height (item 1). Sized so the
 /// later mode / aim / stance widgets (GTW-277) + the contextual panel (GTW-294) drop in. The
 /// bottom strip of the mockup is roughly a quarter of the window height.
-pub(in crate::scenes::running::game::battlescape) const BOTTOM_BAR_H_VH: f32 = 26.0;
+///
+/// GTW-303 clip fix (2026-06-19): bumped from 26 → 30 vh so the firemode segments — now
+/// TWO lines (the mode name over its `"{n} TU"` cost sub-line — GTW-303) — have the vertical
+/// room to render BOTH lines fully within the window. At 26 vh the bottom firemode row's cost
+/// line was clipped at the window's bottom edge; the extra 4 vh (with the cell split below
+/// giving the firemode / aim row a larger share) lets both lines sit inside the bar. Still
+/// roughly a quarter of the window and a responsive `Vh`, so the rest of the bottom bar (weapon
+/// panel, Aim switch, Stance sub-panel) scales with it and stays uncramped.
+pub(in crate::scenes::running::game::battlescape) const BOTTOM_BAR_H_VH: f32 = 30.0;
 
 /// The bottom bar's INNER padding on the TOP and BOTTOM edges, as a fraction of the WINDOW HEIGHT
 /// ([`Val::Vh`](bevy::ui::Val) — the responsive-units ruling: relative units only, NO fixed px,

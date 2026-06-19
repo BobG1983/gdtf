@@ -52,7 +52,8 @@ use crate::{
         action_bar_button_intents, aim_switch_flip_intent, despawn_action_bar, flee_button_pressed,
         mode_segment_write, nowrap_control_labels, rebuild_mode_segments, spawn_action_bar,
         stance_segment_intent, sync_aim_switch_state, sync_mode_active_segment,
-        sync_stance_active_segment, tag_mode_segments, tag_stance_segments,
+        sync_mode_tu_cost_lines, sync_stance_active_segment, tag_mode_segments,
+        tag_stance_segments,
     },
     states::BattleScapeState,
 };
@@ -171,6 +172,20 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                 Update,
                 rebuild_mode_segments
                     .after(UiSystems::ApplyTheme)
+                    .run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-303 slice 2: `sync_mode_tu_cost_lines` MUTATES each offered Mode segment's
+            // sub-line to its aim-adjusted per-shot TU cost ("{n} TU"), reusing the sim's
+            // `mode_tu_cost` so the display equals the charge (slice 1's `set_segment_sub_line`
+            // writes/clears the line in place — no respawn). It re-derives on a selection
+            // change, a `Changed<Aiming>` Aim flip, or the freshly-spawned control, ordered
+            // `.after(rebuild_mode_segments)` so the offered set is settled (hence
+            // `.after(UiSystems::ApplyTheme)` transitively; `bevy-traps.md` #3) before the cost
+            // lines are written. Same live-battle gate.
+            .add_systems(
+                Update,
+                sync_mode_tu_cost_lines
+                    .after(rebuild_mode_segments)
                     .run_if(resource_exists::<BattleInProgress>),
             )
             // GTW-298: keep the relocated firemode / aim / stance toggle LABELS on one line so a

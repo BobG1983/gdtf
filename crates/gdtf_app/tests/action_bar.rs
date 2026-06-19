@@ -62,6 +62,7 @@ use gdtf_battle_sim::{
     ModeShots, ModeTuPercent, ReloadTu, Shooting, Situation, SourceArmor, Stance, StanceKind,
     Toughness, Tu, TuMax, Wounds, WoundsMax,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
+    mode_tu_cost,
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, Kickback, MagazineSize, Stable, WeaponDamage,
@@ -69,7 +70,7 @@ use gdtf_battle_sim::{
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::{ActiveSegment, DisabledButton, SegmentIndex, theme::default_theme};
+use gdtf_ui::{ActiveSegment, DisabledButton, SegmentIndex, SegmentSubText, theme::default_theme};
 
 /// A budget large enough to drive the deep walk into the battlescape (each leaf scene
 /// spends a couple of `FixedUpdate` ticks plus transition propagation), bounded so a
@@ -345,6 +346,72 @@ fn arm_and_select(
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger
+}
+
+/// Like [`arm_and_select`], but ALSO gives the selected ganger a [`TuMax`] (the round-start
+/// ceiling the per-shot TU charge is a percentage of) — the input GTW-303's cost-line system
+/// reads off the selected shooter. `arm_and_select` omits `TuMax` (the posture/mode tests do
+/// not need it), so the cost-line tests use this variant. Returns the ganger entity.
+fn arm_and_select_with_tu(
+    app: &mut App,
+    selector: FireMode,
+    tu_max: TuMax,
+    stance: StanceKind,
+    facing: Direction,
+) -> Entity {
+    let ganger = app
+        .world_mut()
+        .spawn((
+            Stance::new(stance),
+            Facing::new(facing),
+            Aiming::new(false),
+            tu_max,
+            selector,
+        ))
+        .id();
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+    ganger
+}
+
+/// The TU-cost SUB-LINE text of the firemode SEGMENT carrying marker `M`, if exactly one
+/// such segment exists and it has a [`SegmentSubText`] child (GTW-303): the string the
+/// `set_segment_sub_line` slice-1 path wrote below that segment's mode-name label.
+///
+/// Returns `None` when the segment has no sub-line node (the cost line was cleared, e.g. an
+/// unarmed selection or a non-offered mode), which is how the "no cost line" cases assert.
+fn segment_sub_line<M: Component>(app: &mut App) -> Option<String> {
+    let segment = single_with::<M>(app)?;
+    let children: Vec<Entity> = app
+        .world()
+        .get::<Children>(segment)
+        .map(|kids| kids.iter().collect())
+        .unwrap_or_default();
+    children.into_iter().find_map(|child| {
+        if app.world().get::<SegmentSubText>(child).is_some() {
+            app.world().get::<Text>(child).map(|t| t.0.clone())
+        } else {
+            None
+        }
+    })
+}
+
+/// Sets the selected ganger's [`Aiming`] flag (marking it `Changed`, so the cost-line system
+/// re-derives), then settles a couple of updates so the live cost lines reflect the new aim
+/// state. The selection is the `SelectedShooter` resource.
+fn set_selected_aiming(app: &mut App, aiming: bool) {
+    let Some(shooter) = app
+        .world()
+        .get_resource::<SelectedShooter>()
+        .and_then(|s| **s)
+    else {
+        return;
+    };
+    if let Some(mut aim) = app.world_mut().get_mut::<Aiming>(shooter) {
+        *aim = Aiming::new(aiming);
+    }
+    app.update();
+    app.update();
 }
 
 /// The current `ActiveLevel` storey as a plain `u8`, if present.
@@ -893,6 +960,202 @@ fn mode_toggles_mutate_in_place_keeping_stable_ids() {
         segment_display::<ModeFullButton>(&mut app),
         Some(Display::None),
         "weapon B (Single-only) HIDES the Full segment (Display::None — not offered), not despawns it",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-303 — each firemode segment shows a TU-cost SUB-LINE ("{n} TU") = the EXACT value
+// `mode_tu_cost` charges, hip-fire when Aim is off and base×premium when Aim is on; a
+// non-offered mode / unarmed selection shows NO cost line. The expected value is computed
+// with the SAME `mode_tu_cost` the production system reuses, so the display==charge guarantee
+// is pinned (no hardcoded magic number that could drift from the tuning).
+// ---------------------------------------------------------------------------------
+
+/// GTW-303 — with a known `TuMax` and three distinct `tu_percent` modes, each OFFERED segment's
+/// cost sub-line equals `mode_tu_cost(spec, tu_max, Aiming(false), tuning)` formatted "{n} TU"
+/// while Aim is OFF (hip-fire). All three modes are covered (different `tu_percent`s → distinct
+/// costs), proving the cost is per-mode, not a single shared value.
+#[test]
+fn mode_cost_lines_show_hip_fire_cost_per_mode() {
+    let single = spec(ModeKind::Single, 0.2, 1);
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+    let full = spec(ModeKind::Full, 0.7, 6);
+    let tu_max = TuMax::new(100);
+    let tuning = CombatTuning::default();
+    let aiming_off = Aiming::new(false);
+
+    let mut app = battle_running_app();
+    arm_and_select_with_tu(
+        &mut app,
+        FireMode::new(vec![single, burst, full]),
+        tu_max,
+        StanceKind::Standing,
+        Direction::North,
+    );
+    // Settle the selection default, the segment rebuild (.after ApplyTheme), and the cost-line
+    // write (.after rebuild).
+    app.update();
+    app.update();
+
+    // Expected = the SAME sim fn the production system reuses (display==charge), per mode.
+    let want = |mode: &FireModeSpec| {
+        let cost = mode_tu_cost(mode, &tu_max, &aiming_off, &tuning);
+        format!("{} TU", *cost)
+    };
+    assert_eq!(
+        segment_sub_line::<ModeSingleButton>(&mut app),
+        Some(want(&single)),
+        "the Single segment shows its hip-fire TU cost",
+    );
+    assert_eq!(
+        segment_sub_line::<ModeBurstButton>(&mut app),
+        Some(want(&burst)),
+        "the Burst segment shows its hip-fire TU cost (a different tu_percent → a distinct cost)",
+    );
+    assert_eq!(
+        segment_sub_line::<ModeFullButton>(&mut app),
+        Some(want(&full)),
+        "the Full segment shows its hip-fire TU cost (a third distinct tu_percent)",
+    );
+}
+
+/// GTW-303 — the displayed cost INCLUDES the aim premium when Aim is ON, and REVERTS to the
+/// hip-fire base when Aim is OFF. With the default tuning premium (×1.5) the aimed cost is
+/// strictly greater than the hip-fire cost for every offered mode, and equals
+/// `mode_tu_cost(.., Aiming(true), ..)`.
+///
+/// Pin-discriminating: if the system dropped the aim premium (computed the cost with a fixed
+/// `Aiming(false)`), the aimed sub-line would equal the hip-fire one and the `!=` /
+/// `aimed > hip` asserts would fail — so a regression that ignores `Aiming` is caught.
+#[test]
+fn mode_cost_lines_include_aim_premium_and_revert() {
+    let single = spec(ModeKind::Single, 0.2, 1);
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+    let full = spec(ModeKind::Full, 0.7, 6);
+    let tu_max = TuMax::new(100);
+    let tuning = CombatTuning::default();
+    let aiming_off = Aiming::new(false);
+    let aiming_on = Aiming::new(true);
+
+    let mut app = battle_running_app();
+    arm_and_select_with_tu(
+        &mut app,
+        FireMode::new(vec![single, burst, full]),
+        tu_max,
+        StanceKind::Standing,
+        Direction::North,
+    );
+    app.update();
+    app.update();
+
+    let hip =
+        |mode: &FireModeSpec| format!("{} TU", *mode_tu_cost(mode, &tu_max, &aiming_off, &tuning));
+    let aimed =
+        |mode: &FireModeSpec| format!("{} TU", *mode_tu_cost(mode, &tu_max, &aiming_on, &tuning));
+
+    // Pre-condition: hip-fire (Aim off) cost, captured per mode.
+    assert_eq!(
+        segment_sub_line::<ModeSingleButton>(&mut app),
+        Some(hip(&single))
+    );
+    assert_eq!(
+        segment_sub_line::<ModeBurstButton>(&mut app),
+        Some(hip(&burst))
+    );
+    assert_eq!(
+        segment_sub_line::<ModeFullButton>(&mut app),
+        Some(hip(&full))
+    );
+
+    // Flip Aim ON (Changed<Aiming> drives the recompute): every cost line updates to the aimed
+    // value, strictly greater than hip-fire (the default ×1.5 premium).
+    set_selected_aiming(&mut app, true);
+    for (marker_cost_aimed, hip_cost, mode) in [
+        (
+            segment_sub_line::<ModeSingleButton>(&mut app),
+            hip(&single),
+            single,
+        ),
+        (
+            segment_sub_line::<ModeBurstButton>(&mut app),
+            hip(&burst),
+            burst,
+        ),
+        (
+            segment_sub_line::<ModeFullButton>(&mut app),
+            hip(&full),
+            full,
+        ),
+    ] {
+        assert_eq!(
+            marker_cost_aimed,
+            Some(aimed(&mode)),
+            "with Aim ON, the cost line includes the aim premium (== mode_tu_cost aimed)",
+        );
+        assert_ne!(
+            marker_cost_aimed,
+            Some(hip_cost),
+            "the aimed cost must DIFFER from the hip-fire cost (the premium is applied)",
+        );
+    }
+
+    // Flip Aim OFF: every cost line reverts to the hip-fire base.
+    set_selected_aiming(&mut app, false);
+    assert_eq!(
+        segment_sub_line::<ModeSingleButton>(&mut app),
+        Some(hip(&single)),
+        "with Aim OFF again, the Single cost line reverts to hip-fire",
+    );
+    assert_eq!(
+        segment_sub_line::<ModeBurstButton>(&mut app),
+        Some(hip(&burst)),
+        "with Aim OFF again, the Burst cost line reverts to hip-fire",
+    );
+    assert_eq!(
+        segment_sub_line::<ModeFullButton>(&mut app),
+        Some(hip(&full)),
+        "with Aim OFF again, the Full cost line reverts to hip-fire",
+    );
+}
+
+/// GTW-303 — a NON-OFFERED mode shows NO cost line: a Single+Burst weapon offers no Full mode,
+/// so the (collapsed) Full segment has no sub-line node, while the two offered segments do show
+/// their cost. This proves the system clears the sub-line of a mode the weapon does not offer.
+#[test]
+fn non_offered_mode_has_no_cost_line() {
+    let single = spec(ModeKind::Single, 0.2, 1);
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+    let tu_max = TuMax::new(80);
+    let tuning = CombatTuning::default();
+    let aiming_off = Aiming::new(false);
+
+    let mut app = battle_running_app();
+    arm_and_select_with_tu(
+        &mut app,
+        FireMode::new(vec![single, burst]),
+        tu_max,
+        StanceKind::Standing,
+        Direction::North,
+    );
+    app.update();
+    app.update();
+
+    let want =
+        |mode: &FireModeSpec| format!("{} TU", *mode_tu_cost(mode, &tu_max, &aiming_off, &tuning));
+    assert_eq!(
+        segment_sub_line::<ModeSingleButton>(&mut app),
+        Some(want(&single)),
+        "the offered Single segment shows its cost line",
+    );
+    assert_eq!(
+        segment_sub_line::<ModeBurstButton>(&mut app),
+        Some(want(&burst)),
+        "the offered Burst segment shows its cost line",
+    );
+    assert_eq!(
+        segment_sub_line::<ModeFullButton>(&mut app),
+        None,
+        "the NON-OFFERED Full segment shows NO cost line (the sub-line is cleared)",
     );
 }
 

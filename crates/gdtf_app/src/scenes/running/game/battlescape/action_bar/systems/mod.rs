@@ -24,7 +24,8 @@ pub(in crate::scenes::running::game::battlescape::action_bar) use nowrap::nowrap
 
 pub(in crate::scenes::running::game::battlescape::action_bar) mod mode_panel;
 pub(in crate::scenes::running::game::battlescape::action_bar) use mode_panel::{
-    mode_segment_write, rebuild_mode_segments, sync_mode_active_segment, tag_mode_segments,
+    mode_segment_write, rebuild_mode_segments, sync_mode_active_segment, sync_mode_tu_cost_lines,
+    tag_mode_segments,
 };
 
 mod stance_panel;

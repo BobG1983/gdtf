@@ -109,13 +109,24 @@ const PANEL_Z: i32 = 11;
 /// would not resolve child `Percent` heights). Responsive (`vh`), NOT a fixed px height.
 const PANEL_H_VH: f32 = BOTTOM_BAR_H_VH - 2.0 * BOTTOM_BAR_PAD_Y_VH;
 
-/// The COMBINED / ITEM cell height as a `Percent` of its column — the top 3/4 (the authoritative
+/// The COMBINED / ITEM cell height as a `Percent` of its column — the top band (the authoritative
 /// height split). A `const` layout plumbing value, NOT a fixed px.
-const TOP_CELL_PCT: f32 = 75.0;
+///
+/// GTW-303 clip fix (2026-06-19): shrunk from 75 → 65 % (and [`BOTTOM_CELL_PCT`] grown to match)
+/// so the bottom firemode / aim row gets a larger share of the column. The firemode segments are
+/// now TWO lines (the mode name over its `"{n} TU"` cost sub-line — GTW-303); the larger bottom
+/// cell gives the second line the vertical room it needs so it is not clipped. The Combined / Item
+/// cells stay comfortably tall for the image + name/mag/Reload row at 65 %.
+const TOP_CELL_PCT: f32 = 65.0;
 
-/// The FIREMODE / AIM cell height as a `Percent` of its column — the bottom 1/4 (the
+/// The FIREMODE / AIM cell height as a `Percent` of its column — the bottom band (the
 /// authoritative height split). A `const` layout plumbing value, NOT a fixed px.
-const BOTTOM_CELL_PCT: f32 = 25.0;
+///
+/// GTW-303 clip fix (2026-06-19): grown from 25 → 35 % (mirroring [`TOP_CELL_PCT`]'s shrink) so
+/// the firemode control's now-TWO-line segments (mode name over the `"{n} TU"` cost sub-line —
+/// GTW-303) have the vertical room to render BOTH lines fully, instead of the cost line clipping
+/// at the cell's bottom edge.
+const BOTTOM_CELL_PCT: f32 = 35.0;
 
 /// The LEFT column width as a `Percent` of the Overall panel — the 3/4 share (Combined +
 /// Firemode). A `const` layout plumbing value, NOT a fixed px.
