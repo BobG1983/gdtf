@@ -198,6 +198,7 @@ pub mod resolve_hit;
 pub mod rng;
 pub mod sample_cone;
 pub mod severity;
+pub mod shot_fired;
 pub mod situation;
 pub mod stability;
 pub mod surface;
@@ -231,7 +232,7 @@ pub use downed_acts::{
     stabilize_downed,
 };
 pub use faced_cell::faced_cell;
-pub use fire::{BattleGrids, ShooterQuery, TargetQuery, fire};
+pub use fire::{BattleGrids, ShooterQuery, TargetQuery, Volley, fire};
 pub use ganger::{
     Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Position, Shooting,
     Stabilized, Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
@@ -260,6 +261,7 @@ pub use resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, res
 pub use rng::{BattleSeed, SimRng};
 pub use sample_cone::{ConcentrationP, ShotDir, concentration_p, sample_cone_vector};
 pub use severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod, roll_severity};
+pub use shot_fired::ShotFired;
 pub use situation::{
     BattleSetup, BattleSetupError, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers,
     setup_battle,

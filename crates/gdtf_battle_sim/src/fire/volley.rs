@@ -12,10 +12,49 @@ use super::{
 use crate::{
     magazine::{FireActor, can_fire, clamp_burst, mode_tu_cost},
     resolve_and_apply::HitReport,
+    resolve_coarse::ShotOutcome,
     rng::SimRng,
     tu::spend_tu,
     tuning::CombatTuning,
 };
+
+/// The **frozen volley** [`fire`] returns — the per-round [`HitReport`] reports PLUS the
+/// matching per-round [`ShotOutcome`] trajectory geometry, in fired order.
+///
+/// The [`reports`](Volley::reports) are the E3.9 damage / wound verdicts (unchanged from
+/// the pre-GTW-290 `Vec<HitReport>` return). The [`shots`](Volley::shots) are the
+/// already-computed E2 [`ShotOutcome`] geometry of the SAME rounds — the muzzle /
+/// trajectory / impact the presenter draws the GTW-290 muzzle / tracer / impact FX from,
+/// exposed (not recomputed) so [`dispatch_fire`](crate::acts::dispatch_fire) can emit one
+/// [`ShotFired`](crate::shot_fired::ShotFired) per round. The two vectors are parallel:
+/// `reports[i]` and `shots[i]` are the same fired round, so both have the clamped-burst
+/// length.
+///
+/// A transparent value record of the two named result vectors (not itself a wrapped
+/// domain scalar). Derives [`PartialEq`] — NOT [`Eq`]: a [`ShotOutcome`] holds `f32`
+/// positions, so volley equality is the bit-wise seeded-replay comparison (the same
+/// [`BattleSeed`](crate::rng::BattleSeed) reproduces a byte-equal volley, AC7).
+#[derive(Debug, Clone, PartialEq)]
+#[must_use]
+pub struct Volley {
+    /// The per-round damage / wound reports, in fired order (the pre-GTW-290 result).
+    pub reports: Vec<HitReport>,
+    /// The per-round [`ShotOutcome`] trajectory geometry, parallel to
+    /// [`reports`](Volley::reports) — the GTW-290 FX source.
+    pub shots:   Vec<ShotOutcome>,
+}
+
+impl Volley {
+    /// The **empty** volley — no rounds fired, mutating nothing (the fail-closed result
+    /// when [`can_fire`] fails, the shooter is not in the query, or the magazine is
+    /// empty).
+    const fn empty() -> Self {
+        Self {
+            reports: Vec::new(),
+            shots:   Vec::new(),
+        }
+    }
+}
 
 /// Run the whole firing act and return its **frozen volley** — the E4.5 capstone
 /// integrator (`docs/combat/resolution.md` §1 / §1a; the authoritative-model role
@@ -53,13 +92,17 @@ use crate::{
 /// byte-equal volley (AC7); no LOS / fog is consulted (the presenter boundary). The
 /// aim cell + selected mode ride in `order` ([`FireOrder`]); the world grids in
 /// `grids` ([`BattleGrids`]). **Zero pixels** — the reports carry only damage / wound
-/// math.
+/// math, and the [`Volley::shots`] geometry rides in sim units (a cubic-voxel
+/// [`SimPos`](crate::metric::SimPos) muzzle, a unit-vector trajectory), never a screen
+/// coordinate.
 ///
-/// Returns an empty `Vec` (and mutates nothing) when [`can_fire`] fails, the shooter
-/// entity is not in the shooter query, or the magazine is empty. The struck entity
-/// not being a queryable target (e.g. it lacks a target component) folds that round
-/// to [`HitReport::no_effect`] — never a panic.
-#[must_use]
+/// Returns the frozen [`Volley`] — the per-round [`HitReport`] reports PLUS the parallel
+/// per-round [`ShotOutcome`] geometry (the GTW-290 FX source, exposed verbatim, not
+/// recomputed). Returns an [`empty`](Volley::empty) volley (and mutates nothing) when
+/// [`can_fire`] fails, the shooter entity is not in the shooter query, or the magazine is
+/// empty. The struck entity not being a queryable target (e.g. it lacks a target
+/// component) folds that round to [`HitReport::no_effect`] — never a panic (the round's
+/// [`ShotOutcome`] still rides in [`Volley::shots`]).
 pub fn fire(
     shooter: Entity,
     order: FireOrder,
@@ -68,14 +111,14 @@ pub fn fire(
     grids: BattleGrids,
     tuning: &CombatTuning,
     rng: &mut SimRng,
-) -> Vec<HitReport> {
+) -> Volley {
     // (1) Snapshot the shooter's Copy read state up front (the immutable borrow is
     //     released before the mutable re-borrows). A shooter not in the shooter query
     //     (unarmed / despawned) fires nothing.
     let Some((snapshot, shooter_tu, shooter_tu_max, shooter_aiming, magazine_now)) =
         read_shooter(shooter, shooters)
     else {
-        return Vec::new();
+        return Volley::empty();
     };
 
     // The shooter's own liveness is read from the TARGET query (the shooter is also
@@ -83,7 +126,7 @@ pub fn fire(
     // the target query's &mut LifeState). A shooter with no target-query components
     // cannot be validated as alive → fail-closed (empty volley, no mutation).
     let Ok((_, _, shooter_life, ..)) = targets.get(shooter) else {
-        return Vec::new();
+        return Volley::empty();
     };
     let shooter_life = *shooter_life;
 
@@ -103,7 +146,7 @@ pub fn fire(
         order.target_level,
         tuning,
     ) {
-        return Vec::new();
+        return Volley::empty();
     }
 
     // (2) CHARGE the full mode TU ONCE up front (AC3) — debit the shooter's Tu via
@@ -113,7 +156,7 @@ pub fn fire(
         spend_tu(&mut tu_mut, charge);
     } else {
         // Unreachable after the get() above succeeded, but stay panic-free.
-        return Vec::new();
+        return Volley::empty();
     }
 
     // (3) CLAMP the burst to the rounds actually loaded (AC4): min(ModeShots, ammo).
@@ -131,8 +174,11 @@ pub fn fire(
     // (5) PER-ROUND LOOP. Recoil climbs with prior_shots = i (the round index), and
     //     resets between fire() calls because i restarts at 0 every call.
     let mut reports = Vec::with_capacity(usize::from(rounds));
+    let mut shots = Vec::with_capacity(usize::from(rounds));
     for i in 0..rounds {
-        let report = resolve_round(
+        // resolve_round returns BOTH the report AND the round's already-computed
+        // ShotOutcome geometry (the GTW-290 FX source — exposed, not recomputed).
+        let (report, outcome) = resolve_round(
             setup,
             crate::cone::PriorShots::new(i),
             grids,
@@ -148,7 +194,8 @@ pub fn fire(
         }
 
         reports.push(report);
+        shots.push(outcome);
     }
 
-    reports
+    Volley { reports, shots }
 }

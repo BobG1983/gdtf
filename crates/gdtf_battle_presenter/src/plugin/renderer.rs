@@ -5,7 +5,7 @@ use bevy::{ecs::message::Messages, prelude::*};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CoverDestroyed, CoverLedger, OccupancyGrid,
-    PlayerFaction, SurfaceGrid, occupancy_sync::SimSystems,
+    PlayerFaction, ShotFired, SurfaceGrid, occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -16,8 +16,8 @@ use crate::{
     expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles,
     load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
     pan_camera_on_gamepad_cursor_edge, read_armor_broken, read_bleeding, read_cover_destroyed,
-    reframe_ganger_sprites, resolve_character_roles, resolve_effect_roles, resolve_tile_roles,
-    spawn_ganger_sprites, swap_destroyed_cover, update_ganger_life_state,
+    read_shot_fired, reframe_ganger_sprites, resolve_character_roles, resolve_effect_roles,
+    resolve_tile_roles, spawn_ganger_sprites, swap_destroyed_cover, update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -307,9 +307,12 @@ fn register_camera_framing_systems(app: &mut App) {
 ///
 /// Each reader drains a [`MessageReader`] over one sim FX message
 /// ([`Bleeding`](gdtf_battle_sim::Bleeding) / [`ArmorBroken`](gdtf_battle_sim::ArmorBroken) /
-/// [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed)) the sim already emits, looks up the
-/// cell via `Query<&Position>` (read-only, NO sim plumbing added), and `Commands::spawn`s a
-/// short-lived effects sprite.
+/// [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) — the consequence flashes — plus the
+/// GTW-290 [`ShotFired`](gdtf_battle_sim::ShotFired) firing FX) the sim already emits, looks
+/// up the cell via `Query<&Position>` / the message geometry (read-only, NO sim plumbing
+/// added), and `Commands::spawn`s the short-lived effects sprite(s). `read_shot_fired` is
+/// the generic muzzle / tracer / impact per round; it does NOT duplicate the three
+/// consequence flashes.
 ///
 /// Each reader's gate is `resource_exists::<BattleInProgress>` AND every render resource it
 /// reads — the [`EffectRoles`] data table + [`TopDownAtlases`] — AND its own `Messages<M>`
@@ -348,9 +351,18 @@ fn register_fx_flash_systems(app: &mut App) {
     )
     .add_systems(
         Update,
-        read_cover_destroyed
+        read_cover_destroyed.in_set(PresenterSystems::Draw).run_if(
+            render_gate
+                .clone()
+                .and(resource_exists::<Messages<CoverDestroyed>>),
+        ),
+    )
+    // GTW-290: the firing FX reader — muzzle / tracer / impact per ShotFired round.
+    .add_systems(
+        Update,
+        read_shot_fired
             .in_set(PresenterSystems::Draw)
-            .run_if(render_gate.and(resource_exists::<Messages<CoverDestroyed>>)),
+            .run_if(render_gate.and(resource_exists::<Messages<ShotFired>>)),
     )
     .add_systems(Update, expire_flashes.in_set(PresenterSystems::Draw));
 }

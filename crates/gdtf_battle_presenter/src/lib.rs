@@ -46,7 +46,7 @@ pub mod world_camera;
 
 pub use fx::{
     EffectRoles, EffectRolesHandle, FlashTtl, FxFlash, expire_flashes, load_effect_roles,
-    read_armor_broken, read_bleeding, read_cover_destroyed, resolve_effect_roles,
+    read_armor_broken, read_bleeding, read_cover_destroyed, read_shot_fired, resolve_effect_roles,
 };
 pub use ganger::{
     CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites,
@@ -65,7 +65,7 @@ pub use terrain::{
 };
 pub use topdown::{
     CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,
-    cell_to_world_layered, load_topdown_atlases,
+    cell_to_world_layered, load_topdown_atlases, sim_pos_to_world,
 };
 pub use world_camera::{
     EDGE_BAND_PX, EdgeBandPx, GamepadCursorMoved, PAN_SPEED, PanSpeed, STICK_DEADZONE,

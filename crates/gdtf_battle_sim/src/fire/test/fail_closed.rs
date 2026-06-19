@@ -30,7 +30,7 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
     let mut fresh = rng();
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
-    let reports = {
+    let volley = {
         let (mut shooters, mut targets) = state.get_mut(&mut world);
         fire(
             shooter,
@@ -51,7 +51,10 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
         )
     };
 
-    assert!(reports.is_empty(), "an empty magazine must fire nothing");
+    assert!(
+        volley.reports.is_empty() && volley.shots.is_empty(),
+        "an empty magazine must fire nothing",
+    );
     // No draw was taken — the used RNG matches a fresh stream's next draw.
     assert_eq!(
         r.next_u64(),
@@ -97,7 +100,7 @@ fn dead_shooter_fires_nothing() {
     let mut r = rng();
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
-    let reports = {
+    let volley = {
         let (mut shooters, mut targets) = state.get_mut(&mut world);
         fire(
             shooter,
@@ -118,7 +121,10 @@ fn dead_shooter_fires_nothing() {
         )
     };
 
-    assert!(reports.is_empty(), "a downed shooter must fire nothing");
+    assert!(
+        volley.reports.is_empty() && volley.shots.is_empty(),
+        "a downed shooter must fire nothing",
+    );
     let tu = world.get::<Tu>(shooter).copied();
     assert_eq!(tu, Some(Tu::new(200)), "no TU charged for a downed shooter");
     let mag = world.get::<Magazine>(shooter).map(|m| *m.rounds());

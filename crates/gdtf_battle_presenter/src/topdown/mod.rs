@@ -48,5 +48,5 @@ mod test;
 
 pub use bridge::{
     CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,
-    cell_to_world_layered, load_topdown_atlases,
+    cell_to_world_layered, load_topdown_atlases, sim_pos_to_world,
 };

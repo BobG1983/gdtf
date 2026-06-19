@@ -42,7 +42,7 @@ fn charge_is_taken_once_and_reflects_aiming() {
         {
             let (mut shooters, mut targets) = state.get_mut(&mut world);
             // off into empty space → all misses, fires the full clamped burst
-            let reports = fire(
+            let volley = fire(
                 shooter,
                 FireOrder {
                     mode:         &mode,
@@ -59,7 +59,13 @@ fn charge_is_taken_once_and_reflects_aiming() {
                 &tuning,
                 &mut r,
             );
-            assert_eq!(reports.len(), 5, "the full 5-round burst fired");
+            assert_eq!(volley.reports.len(), 5, "the full 5-round burst fired");
+            // GTW-290: the per-round ShotOutcome geometry is parallel to the reports.
+            assert_eq!(
+                volley.shots.len(),
+                volley.reports.len(),
+                "one ShotOutcome per fired round (parallel to the reports)",
+            );
         }
 
         let tu = world.get::<Tu>(shooter).map(|t| **t);
@@ -97,7 +103,7 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
     let mut r = rng();
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
-    let reports = {
+    let volley = {
         let (mut shooters, mut targets) = state.get_mut(&mut world);
         fire(
             shooter,
@@ -119,7 +125,7 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
     };
 
     assert_eq!(
-        reports.len(),
+        volley.reports.len(),
         3,
         "the burst is clamped to the 3 loaded rounds"
     );

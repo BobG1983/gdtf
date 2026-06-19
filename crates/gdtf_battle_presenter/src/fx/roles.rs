@@ -27,6 +27,18 @@ pub struct EffectRoles {
     pub armor_break:     TileIndex,
     /// The [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) debris/rubble-burst tile (the §3 cover-smashed signal).
     pub cover_destroyed: TileIndex,
+    /// The GTW-290 muzzle-flash tile — the burst at the
+    /// [`ShotFired`](gdtf_battle_sim::ShotFired) muzzle origin (the fire-signal flash).
+    pub muzzle_flash:    TileIndex,
+    /// The GTW-290 tracer-beam tile — the sprite STRETCHED + rotated along the
+    /// [`ShotFired`](gdtf_battle_sim::ShotFired) muzzle→impact line (the round's flight).
+    pub tracer:          TileIndex,
+    /// The GTW-290 GENERIC projectile-impact mark — the dust/spark at the
+    /// [`ShotFired`](gdtf_battle_sim::ShotFired) impact point. NOT a consequence FX: the
+    /// [`Bleeding`](gdtf_battle_sim::Bleeding) / [`ArmorBroken`](gdtf_battle_sim::ArmorBroken)
+    /// / [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) marks are emitted + drawn
+    /// separately; this is only the generic hit dust (a miss shows it too).
+    pub impact:          TileIndex,
 }
 
 /// The path of the loose FX-role RON, relative to the asset source root.

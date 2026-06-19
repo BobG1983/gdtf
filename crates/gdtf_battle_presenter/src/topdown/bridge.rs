@@ -6,7 +6,7 @@ use bevy::{
     platform::collections::HashMap,
     prelude::*,
 };
-use gdtf_battle_sim::{Cell, Level};
+use gdtf_battle_sim::{Cell, Level, SimPos};
 
 /// On-screen size of one cell, in world units.
 ///
@@ -92,6 +92,22 @@ pub fn cell_to_world(cell: Cell, level: Level) -> Vec3 {
         -(cell.y as f32) * CELL_PX,
         z_for(level),
     )
+}
+
+/// Projects a CONTINUOUS sim-unit position ([`SimPos`]) into the top-down renderer's
+/// world-space — the [`cell_to_world`] projection generalised to a fractional point.
+///
+/// Same mapping as [`cell_to_world`] (one sim unit = one [`CELL_PX`] cell; +Y is up, so a
+/// larger `pos.y` yields a smaller world `y`), but for a continuous point rather than a
+/// discrete `(cell, level)`: the GTW-290 muzzle origin is a [`SimPos`] (a fractional 3D
+/// fire point), so the muzzle flash + tracer origin map through this. The `z` scales the
+/// fractional storey by [`Z_PER_LEVEL`] (matching [`z_for`]'s discrete `*level *
+/// Z_PER_LEVEL`) so a muzzle on storey *n* draws in that storey's band.
+///
+/// `pos.x` / `pos.y` / `pos.z` read through [`SimPos`]'s `Deref<Target = Vec3>`.
+#[must_use]
+pub fn sim_pos_to_world(pos: SimPos) -> Vec3 {
+    Vec3::new(pos.x * CELL_PX, -pos.y * CELL_PX, pos.z * Z_PER_LEVEL)
 }
 
 /// Projects a sim cell + level into world-space, lifted by `layer`'s within-storey

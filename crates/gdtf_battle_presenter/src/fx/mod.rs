@@ -12,6 +12,12 @@
 //!   at the ganger's cell ([`read_armor_broken`]).
 //! - [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) `{ at }` -> a debris/rubble burst at
 //!   `cell_to_world(at)` ([`read_cover_destroyed`]); ADDITIVE to the S4 rubble swap.
+//! - [`ShotFired`](gdtf_battle_sim::ShotFired) `{ muzzle, trajectory, impact, kind }` ->
+//!   the GTW-290 FIRING FX ([`read_shot_fired`]): a muzzle flash at the muzzle world pos, a
+//!   tracer beam STRETCHED + rotated along muzzle→impact, and a GENERIC impact mark at the
+//!   impact world pos — one per ROUND (a burst draws a tracer per round). It is the generic
+//!   projectile FX ONLY; it does NOT duplicate the three CONSEQUENCE flashes above (a hit on
+//!   a ganger still bleeds via `Bleeding`, breaks armor via `ArmorBroken`, etc.).
 //!
 //! Every spawned flash carries a [`FlashTtl`] lifetime + an [`FxFlash`] marker; the
 //! [`expire_flashes`] system ticks each [`FlashTtl`] with [`Res<Time>`] and despawns the
@@ -37,5 +43,5 @@ mod roles;
 mod test;
 
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
-pub use readers::{read_armor_broken, read_bleeding, read_cover_destroyed};
+pub use readers::{read_armor_broken, read_bleeding, read_cover_destroyed, read_shot_fired};
 pub use roles::{EffectRoles, EffectRolesHandle, load_effect_roles, resolve_effect_roles};

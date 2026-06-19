@@ -37,7 +37,9 @@
 //!    [`HitReport::no_effect`](crate::resolve_and_apply::HitReport::no_effect) (AC5 /
 //!    AC6). The recoil climbs across the burst and RESETS between `fire()` calls
 //!    (each `fire()` starts at `prior_shots = 0`).
-//! 5. **Freeze** — returns the `Vec<HitReport>` volley (one report per fired round).
+//! 5. **Freeze** — returns the frozen [`Volley`] (one [`HitReport`](crate::resolve_and_apply::HitReport)
+//!    report PLUS one [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) trajectory per
+//!    fired round — the latter the GTW-290 FX source).
 //!
 //! ## The two-query disjoint-access design (AC1)
 //!
@@ -64,7 +66,7 @@ mod query;
 mod volley;
 
 pub use query::{BattleGrids, FireOrder, ShooterQuery, TargetQuery};
-pub use volley::fire;
+pub use volley::{Volley, fire};
 
 #[cfg(test)]
 mod test;

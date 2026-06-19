@@ -8,7 +8,7 @@
 
 use bevy::{
     ecs::system::{ParamSet, SystemParam},
-    prelude::{MessageReader, Query, Res, ResMut},
+    prelude::{MessageReader, MessageWriter, Query, Res, ResMut},
 };
 
 use crate::{
@@ -21,6 +21,7 @@ use crate::{
     metric::Cell,
     occupancy::OccupancyGrid,
     rng::SimRng,
+    shot_fired::ShotFired,
     surface::SurfaceGrid,
     tu::spend_tu,
     tuning::CombatTuning,
@@ -165,6 +166,14 @@ fn decide_fire_arc(
 /// `&mut World`); the turn write is taken FIRST, the [`fire`] re-borrow SECOND. No act
 /// logic is reimplemented — the shot resolution REUSES [`fire`] verbatim; this slice only
 /// GATES it and front-loads the turn.
+///
+/// **The GTW-290 fire signal.** AFTER the volley resolves (before it is dropped) this
+/// emits ONE [`ShotFired`] message per ROUND fired ([`Volley::shots`](crate::fire::Volley::shots)),
+/// each sourced from that round's already-computed
+/// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) ([`ShotFired::from_outcome`]) — so
+/// the presenter draws a muzzle / tracer / impact FX per round (a burst → multiple
+/// tracers). This changes NO fire-result logic — it only exposes the resolved trajectory
+/// the volley already computed (the [`MessageWriter`], `bevy-traps.md` #4 / #7).
 pub fn dispatch_fire(
     mut requests: MessageReader<FireRequested>,
     mut shooter_set: ParamSet<(ShooterQuery, TurnQuery)>,
@@ -172,6 +181,7 @@ pub fn dispatch_fire(
     grids: BattleGridsParam,
     tuning: Res<CombatTuning>,
     mut rng: ResMut<SimRng>,
+    mut shots_fired: MessageWriter<ShotFired>,
 ) {
     for request in requests.read() {
         // (1) READ the arc-relevant shooter state through the ShooterQuery half, copying
@@ -224,7 +234,7 @@ pub fn dispatch_fire(
         }
 
         // (4) Run the landed verb ONCE (REUSED verbatim) — it spends the fire TU and
-        //     resolves the shot. The dropped volley's effects are the in-world mutations
+        //     resolves the shot. The volley's effects are the in-world mutations
         //     (TU / ammo / target surfaces) the presenter observes via change-detection.
         let order = FireOrder {
             mode:         &request.mode,
@@ -232,7 +242,7 @@ pub fn dispatch_fire(
             target_level: request.target_level,
         };
         let mut shooters = shooter_set.p0();
-        let _volley = fire(
+        let volley = fire(
             request.shooter,
             order,
             &mut shooters,
@@ -241,6 +251,13 @@ pub fn dispatch_fire(
             &tuning,
             &mut rng,
         );
+
+        // (5) GTW-290: emit one ShotFired per ROUND fired, sourced from the round's
+        //     already-computed ShotOutcome (no recompute, no fire-result change) — so a
+        //     burst draws a tracer per round. An empty (fail-closed) volley emits none.
+        for outcome in &volley.shots {
+            shots_fired.write(ShotFired::from_outcome(request.shooter, outcome));
+        }
     }
 }
 

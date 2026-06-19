@@ -9,7 +9,7 @@
 
 // Re-exported so each concern file's `use super::support::*` reaches the Bevy harness
 // types + every `acts` dispatch/message item + the crate components the tests touch.
-pub(super) use bevy::prelude::{App, Entity, MinimalPlugins, Update, World};
+pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, Update, World};
 
 pub(super) use crate::{
     acts::*,
@@ -27,7 +27,9 @@ pub(super) use crate::{
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::OccupancyMaintenancePlugin,
+    resolve_coarse::ShotKind,
     rng::{BattleSeed, SimRng},
+    shot_fired::ShotFired,
     surface::SurfaceGrid,
     tuning::CombatTuning,
     weapon::{

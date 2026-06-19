@@ -20,6 +20,21 @@ use crate::{central_axis::AimDir, cone::ConeAngle, sample_cone::ConcentrationP};
 pub struct ShotDir(Vec3);
 
 impl ShotDir {
+    /// Build a [`ShotDir`] from an arbitrary direction, NORMALISED to unit length
+    /// (`normalize_or_zero`, the same construction [`sample_cone_vector`] uses).
+    ///
+    /// The primary producer is [`sample_cone_vector`] (the in-cone draw); this named
+    /// constructor lets a caller that ALREADY has a resolved direction (e.g. a presenter
+    /// FX test reconstructing a [`crate::shot_fired::ShotFired`], or a fixed-axis fallback)
+    /// build one without re-running the cone draw — while preserving the unit-length
+    /// invariant (a zero input degrades to a zero vector, not a panic). The inner stays
+    /// private (no-bare-types rule 5): construction goes through here or
+    /// [`sample_cone_vector`], never a tuple literal.
+    #[must_use]
+    pub fn from_direction(direction: Vec3) -> Self {
+        Self(direction.normalize_or_zero())
+    }
+
     /// The inner unit direction vector, by value.
     ///
     /// A convenience over the derived [`Deref`](bevy::prelude::Deref) for callers

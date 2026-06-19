@@ -10,4 +10,7 @@
     bleed:           0,    // Bleeding -> a blood/hit drop (row 0 col 0, a teardrop/blood-drop) — the §9 bleed-out flash
     armor_break:     3,    // ArmorBroken -> a spark/break burst (row 0 col 3, a starburst/spark) — the worn-piece-shattered flash
     cover_destroyed: 112,  // CoverDestroyed -> a debris/rubble burst (row 7 col 0, a scatter cluster) — the §3 cover-smashed flash
+    muzzle_flash:    16,   // GTW-290 ShotFired -> a bright muzzle burst (row 1 col 0, a flash) — drawn at the muzzle origin
+    tracer:          17,   // GTW-290 ShotFired -> a thin streak (row 1 col 1, a line/bolt) — STRETCHED + rotated along muzzle->impact
+    impact:          18,   // GTW-290 ShotFired -> a generic spark/dust mark (row 1 col 2, a small spark) — drawn at the impact point (NOT a consequence FX)
 )

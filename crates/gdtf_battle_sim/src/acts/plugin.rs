@@ -17,6 +17,7 @@ use crate::{
         },
     },
     occupancy_sync::SimSystems,
+    shot_fired::ShotFired,
 };
 
 /// The **sim-acts registration unit** — registers the eight `*Requested` message buffers
@@ -29,11 +30,14 @@ use crate::{
 /// [`SystemSet`](bevy::prelude::SystemSet) enum and its `configure_sets`; it builds no
 /// plugin. In `build()` the plugin:
 ///
-/// - [`add_message`](App::add_message)s [`FireRequested`], [`SetAimingRequested`],
-///   [`SetStanceRequested`], [`SetFacingRequested`], [`StabilizeDownedRequested`],
-///   [`ExecuteDownedRequested`], [`MoveRequested`], and [`ReloadRequested`] — exactly
-///   once each (`bevy-traps.md` #5; an unregistered message buffer fails a
-///   [`MessageReader`](bevy::prelude::MessageReader)'s param validation, the
+/// - [`add_message`](App::add_message)s the eight `*Requested` input buffers
+///   ([`FireRequested`], [`SetAimingRequested`], [`SetStanceRequested`],
+///   [`SetFacingRequested`], [`StabilizeDownedRequested`], [`ExecuteDownedRequested`],
+///   [`MoveRequested`], [`ReloadRequested`]) PLUS the GTW-290 output buffer
+///   [`ShotFired`] (emitted by [`dispatch_fire`]) — exactly once each (`bevy-traps.md`
+///   #5; an unregistered message buffer fails a
+///   [`MessageReader`](bevy::prelude::MessageReader) /
+///   [`MessageWriter`](bevy::prelude::MessageWriter)'s param validation, the
 ///   [`OccupancyMaintenancePlugin`](crate::occupancy_sync::OccupancyMaintenancePlugin)
 ///   precedent); and
 /// - adds the eight dispatch systems to [`Update`] `.in_set(SimSystems::Simulate)`,
@@ -58,6 +62,8 @@ impl Plugin for SimActsPlugin {
             .add_message::<ExecuteDownedRequested>()
             .add_message::<MoveRequested>()
             .add_message::<ReloadRequested>()
+            // GTW-290: the output fire-trajectory signal dispatch_fire emits per round.
+            .add_message::<ShotFired>()
             .add_systems(
                 Update,
                 (

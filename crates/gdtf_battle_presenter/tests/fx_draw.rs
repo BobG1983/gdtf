@@ -31,11 +31,11 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    EffectRoles, FxFlash, TopDownAtlases, TopDownRendererPlugin, cell_to_world,
+    EffectRoles, FxFlash, TopDownAtlases, TopDownRendererPlugin, cell_to_world, sim_pos_to_world,
 };
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel, CoverDestroyed, Level,
-    Position, Wounds,
+    Position, ShotDir, ShotFired, ShotKind, SimPos, Wounds,
 };
 
 /// Generous settle headroom so a slow CI box never flakes on the async atlas /
@@ -82,11 +82,13 @@ fn headless_renderer_app() -> App {
                 ..default()
             }),
     )
-    // The three FX readers drain these buffers; the sim's BattleSimPlugin registers them in
-    // the real app, but this focused harness adds only the three the readers need.
+    // The FX readers drain these buffers; the sim's plugins register them in the real app,
+    // but this focused harness adds only the ones the readers need (the GTW-290 ShotFired
+    // included).
     .add_message::<Bleeding>()
     .add_message::<ArmorBroken>()
     .add_message::<CoverDestroyed>()
+    .add_message::<ShotFired>()
     .add_plugins(TopDownRendererPlugin);
     app
 }
@@ -310,6 +312,134 @@ fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
         index,
         Some(*roles.cover_destroyed),
         "the cover-destroyed flash's index must equal the table's cover_destroyed role index",
+    );
+}
+
+/// The atlas indices of every `FxFlash` sprite currently in the world (unordered).
+fn flash_indices(app: &mut App) -> Vec<usize> {
+    let mut q = app.world_mut().query::<(&FxFlash, &Sprite)>();
+    q.iter(app.world())
+        .filter_map(|(_, sprite)| sprite.texture_atlas.as_ref().map(|atlas| atlas.index))
+        .collect()
+}
+
+/// Whether ANY `FxFlash` sprite sits at (approximately) `world` — a position-presence
+/// check across all flashes (the muzzle / tracer / impact spawn three at once, so the
+/// SINGLE-flash helper does not apply).
+fn any_flash_at(app: &mut App, world: bevy::math::Vec3) -> bool {
+    let mut q = app.world_mut().query::<(&FxFlash, &Transform)>();
+    q.iter(app.world())
+        .any(|(_, t)| t.translation.distance(world) < 0.01)
+}
+
+/// Counts the `FlashTtl` lifetimes currently in the world (every FX flash carries one).
+fn ttl_count(app: &mut App) -> usize {
+    let mut q = app.world_mut().query::<&gdtf_battle_presenter::FlashTtl>();
+    q.iter(app.world()).count()
+}
+
+/// GTW-290 — a `ShotFired` spawns THREE transient flashes: a muzzle flash at
+/// `sim_pos_to_world(muzzle)`, a tracer beam, and a generic impact mark at
+/// `cell_to_world(impact)` — each carrying `FlashTtl`, at the table's muzzle/tracer/impact
+/// indices (read structurally from `EffectRoles`, never a literal). All three despawn once
+/// the TTL elapses.
+#[test]
+fn shot_fired_spawns_muzzle_tracer_and_impact_flashes() {
+    let mut app = headless_renderer_app();
+    assert!(settle_resources(&mut app), "resources must resolve");
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let roles = effect_roles(&app);
+    assert!(roles.is_some(), "EffectRoles must be resident");
+    let Some(roles) = roles else { return };
+
+    // A struck ganger entity (the ShotKind::Ganger payload) + a known fire geometry.
+    let struck = app.world_mut().spawn_empty().id();
+    let muzzle = SimPos::new(2.0, 5.0, 0.0);
+    let impact_cell = Cell::new(8, 5);
+    let impact_level = Level::new(0);
+    let shot = ShotFired {
+        shooter: app.world_mut().spawn_empty().id(),
+        muzzle,
+        trajectory: ShotDir::from_direction(bevy::math::Vec3::new(1.0, 0.0, 0.0)),
+        impact_cell,
+        impact_level,
+        kind: ShotKind::Ganger(struck),
+    };
+
+    app.world_mut()
+        .resource_mut::<Messages<ShotFired>>()
+        .write(shot);
+    app.update();
+
+    // Three flashes — muzzle, tracer, impact — each on a FlashTtl.
+    assert_eq!(
+        fx_count(&mut app),
+        3,
+        "a ShotFired must spawn three flashes (muzzle + tracer + impact)",
+    );
+    assert_eq!(
+        ttl_count(&mut app),
+        3,
+        "every firing-FX flash must carry a FlashTtl one-shot clock",
+    );
+
+    // The muzzle flash sits at sim_pos_to_world(muzzle); the impact mark at
+    // cell_to_world(impact). The tracer's midpoint is between them.
+    assert!(
+        any_flash_at(&mut app, sim_pos_to_world(muzzle)),
+        "a flash must sit at the muzzle world position (sim_pos_to_world(muzzle))",
+    );
+    assert!(
+        any_flash_at(&mut app, cell_to_world(impact_cell, impact_level)),
+        "a flash must sit at the impact world position (cell_to_world(impact))",
+    );
+
+    // The indices are the table's muzzle/tracer/impact roles (structural, not pinned).
+    let indices = flash_indices(&mut app);
+    assert!(
+        indices.contains(&*roles.muzzle_flash)
+            && indices.contains(&*roles.tracer)
+            && indices.contains(&*roles.impact),
+        "the three flashes must use the table's muzzle/tracer/impact indices, got {indices:?}",
+    );
+
+    // All three are one-shot: they despawn once the TTL elapses.
+    advance_past_ttl(&mut app);
+    assert_eq!(
+        fx_count(&mut app),
+        0,
+        "all three firing-FX flashes must despawn once their FlashTtl elapses",
+    );
+}
+
+/// GTW-290 — a MISS still draws the firing FX: muzzle + tracer + generic impact mark (the
+/// tracer terminates at the impact cell). A miss carries no struck object but the same
+/// geometry, so the presenter draws the same three flashes.
+#[test]
+fn shot_fired_miss_still_spawns_muzzle_tracer_and_impact() {
+    let mut app = headless_renderer_app();
+    assert!(settle_resources(&mut app), "resources must resolve");
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let shot = ShotFired {
+        shooter:      app.world_mut().spawn_empty().id(),
+        muzzle:       SimPos::new(1.0, 1.0, 0.0),
+        trajectory:   ShotDir::from_direction(bevy::math::Vec3::new(0.0, 1.0, 0.0)),
+        impact_cell:  Cell::new(1, 9),
+        impact_level: Level::new(0),
+        kind:         ShotKind::Miss,
+    };
+
+    app.world_mut()
+        .resource_mut::<Messages<ShotFired>>()
+        .write(shot);
+    app.update();
+
+    assert_eq!(
+        fx_count(&mut app),
+        3,
+        "a miss still draws muzzle + tracer + impact (the tracer terminates at the cell)",
     );
 }
 

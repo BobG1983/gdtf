@@ -181,6 +181,13 @@ pub(super) struct RoundSetup<'a> {
 /// — a struck entity that is not a queryable target, or any non-ganger kind, folds to
 /// [`HitReport::no_effect`], never a panic). Every draw is from the injected
 /// [`SimRng`].
+///
+/// Returns BOTH the frozen [`HitReport`] **and** the round's
+/// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) — the already-computed E2
+/// trajectory geometry [`fire`](super::fire) collects so
+/// [`dispatch_fire`](crate::acts::dispatch_fire) can emit a per-round
+/// [`ShotFired`](crate::shot_fired::ShotFired) (GTW-290). The outcome is returned
+/// verbatim, NOT recomputed — the fold below already consumes it.
 pub(super) fn resolve_round(
     setup: RoundSetup,
     prior_shots: crate::cone::PriorShots,
@@ -188,7 +195,7 @@ pub(super) fn resolve_round(
     targets: &mut TargetQuery,
     tuning: &CombatTuning,
     rng: &mut SimRng,
-) -> HitReport {
+) -> (HitReport, crate::resolve_coarse::ShotOutcome) {
     let snapshot = setup.snapshot;
     let geometry = setup.geometry;
     let shooter_view = snapshot.shooter_view();
@@ -231,7 +238,7 @@ pub(super) fn resolve_round(
         rng,
     );
 
-    match outcome.kind {
+    let report = match outcome.kind {
         ShotKind::Ganger(struck) => match targets.get_mut(struck) {
             Ok((mut hp, mut wounds, mut life, mut worn, mut inflicted, toughness, target_luck)) => {
                 resolve_and_apply(
@@ -255,5 +262,8 @@ pub(super) fn resolve_round(
             Err(_) => HitReport::no_effect(outcome.kind),
         },
         other => HitReport::no_effect(other),
-    }
+    };
+    // Return the resolved report PLUS the already-computed outcome geometry (verbatim,
+    // not recomputed) so the volley can surface a per-round ShotFired (GTW-290).
+    (report, outcome)
 }

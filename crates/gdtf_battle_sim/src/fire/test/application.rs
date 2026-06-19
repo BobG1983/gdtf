@@ -45,7 +45,7 @@ fn fire_at_in_line_target_applies_damage() {
     let mut r = rng();
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
-    let reports = {
+    let volley = {
         let (mut shooters, mut targets) = state.get_mut(&mut world);
         fire(
             shooter,
@@ -66,8 +66,8 @@ fn fire_at_in_line_target_applies_damage() {
         )
     };
 
-    assert_eq!(reports.len(), 1, "one round fired");
-    let Some(report) = reports.first() else {
+    assert_eq!(volley.reports.len(), 1, "one round fired");
+    let Some(report) = volley.reports.first() else {
         return;
     };
     assert_eq!(
@@ -140,7 +140,7 @@ fn fire_into_empty_space_is_a_clean_miss() {
     let cover = CoverLedger::new();
     let mut r = rng();
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
-    let reports = {
+    let volley = {
         let (mut shooters, mut targets) = state.get_mut(&mut world);
         fire(
             shooter,
@@ -160,8 +160,8 @@ fn fire_into_empty_space_is_a_clean_miss() {
             &mut r,
         )
     };
-    assert_eq!(reports.len(), 1, "one round fired into empty space");
-    let Some(report) = reports.first() else {
+    assert_eq!(volley.reports.len(), 1, "one round fired into empty space");
+    let Some(report) = volley.reports.first() else {
         return;
     };
     assert_eq!(report.applied, None, "a clean miss applies no damage");

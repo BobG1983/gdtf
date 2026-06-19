@@ -96,10 +96,10 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
     };
 
     let (volley, target) = run();
-    assert_eq!(volley.len(), 3, "the full 3-round burst fired");
+    assert_eq!(volley.reports.len(), 3, "the full 3-round burst fired");
 
     // Round 0 (zero prior shots → level flight) IMPACTS the LOW occupant.
-    let Some(first) = volley.first() else {
+    let Some(first) = volley.reports.first() else {
         return;
     };
     assert_eq!(
@@ -117,6 +117,7 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
     // `Ganger(target)`. A fixed-PriorShots::new(0) regression would strike the
     // target on every round (a uniform volley) and FAIL this assertion.
     let all_strike_target = volley
+        .reports
         .iter()
         .all(|report| report.kind == ShotKind::Ganger(target));
     assert!(
@@ -128,7 +129,7 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
     // RESET — a second fire() call over an identical fresh world + fresh seed
     // reproduces the SAME round-0 outcome (each call starts at prior_shots = 0).
     let (volley_again, _) = run();
-    let Some(first_again) = volley_again.first() else {
+    let Some(first_again) = volley_again.reports.first() else {
         return;
     };
     assert_eq!(
