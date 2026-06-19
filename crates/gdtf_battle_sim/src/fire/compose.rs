@@ -16,6 +16,7 @@ use crate::{
     ganger::{Aiming, Facing, Luck, Position, Shooting, Stance, StanceKind, Tu, TuMax},
     magazine::Magazine,
     metric::{Cell, CellLevel, Level},
+    occupancy::OccupancyGrid,
     resolve_and_apply::{HitReport, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotInputs, ShotKind, resolve_coarse},
     rng::SimRng,
@@ -89,12 +90,22 @@ impl ShooterSnapshot {
 /// The **target geometry** every round in the burst aims at — composed once (it is
 /// constant across the burst) and threaded into each round's [`ShotInputs`].
 ///
-/// The target position is the player's aim `(cell, level)`; its stance defaults to
-/// [`StanceKind::Standing`] — the locked TARGET query (the disjoint mutable set, AC1)
-/// carries **no** `Stance` to read, so the documented default stands in; the cover
-/// band is the model ledger's entry at the target cell (so a deliberately-shot crate
-/// aims at its own band midpoint), or `None` for a bare ganger target. Every field is
-/// an existing named domain value (no bare primitive).
+/// The target position is the player's aim `(cell, level)`. The aim **z** comes from
+/// the [`cover_band`](TargetGeometry::cover_band): a published band routes the shot
+/// through [`target_aim_point`](crate::central_axis::target_aim_point)'s band-midpoint
+/// branch, so the central axis lands squarely **inside** the band the §2 clearance
+/// test ([`round_clears_occupant`](crate::clearance::round_clears_occupant)) compares
+/// against (`docs/combat/resolution.md` §1 aim point; §2 clearance). That band is, in
+/// order: the model cover ledger's entry at the target cell (so a deliberately-shot
+/// crate aims at its own band midpoint), else the **occupant's published silhouette
+/// band** ([`OccupancyGrid::occupant_band`], GTW-304 — a Standing target bands HIGH, a
+/// Crouching target MID, a Prone target LOW), else `None`.
+///
+/// The [`stance`](TargetGeometry::stance) field is the **inert documented fallback**
+/// for the `cover_band == None` case ONLY: the locked TARGET query (the disjoint
+/// mutable set, AC1) carries no `Stance` to read, so [`StanceKind::Standing`] stands in
+/// when no band is published. Every field is an existing named domain value (no bare
+/// primitive).
 #[derive(Debug, Clone, Copy)]
 pub(super) struct TargetGeometry {
     position:   Position,
@@ -103,14 +114,34 @@ pub(super) struct TargetGeometry {
 }
 
 impl TargetGeometry {
-    /// Compose the target geometry once from the aim `(cell, level)` and the model
-    /// cover ledger (peeked for the target cell's band — never rebuilt).
-    pub(super) fn compose(target_cell: Cell, target_level: Level, cover: &CoverLedger) -> Self {
+    /// Compose the target geometry once from the aim `(cell, level)`, the model cover
+    /// ledger, and the occupancy grid (both peeked at the target cell — never rebuilt).
+    ///
+    /// The aim band is the cover ledger's entry at the target cell, falling back to the
+    /// occupant's published silhouette band ([`OccupancyGrid::occupant_band`], GTW-304)
+    /// — the SAME band the §2 clearance test reads — so a standing shooter's central
+    /// axis lands inside a crouching (MID) / prone (LOW) target's band instead of
+    /// sailing over it (`docs/combat/resolution.md` §1 aim point; §2 clearance). With
+    /// no band published at all, the aim falls back to the inert
+    /// [`stance`](TargetGeometry::stance) = [`StanceKind::Standing`] field.
+    pub(super) fn compose(
+        target_cell: Cell,
+        target_level: Level,
+        cover: &CoverLedger,
+        occupancy: &OccupancyGrid,
+    ) -> Self {
         let at = CellLevel::new(target_cell, target_level);
+        // Prefer the cover band (a deliberately-shot crate), else the occupant's
+        // published silhouette band (a bare ganger target) — both are the band the §2
+        // clearance test compares the round against.
+        let aim_band = cover
+            .peek(&at)
+            .map(|entry| entry.height_band)
+            .or_else(|| occupancy.occupant_band(&at));
         Self {
             position:   Position::new(at),
             stance:     Stance::new(StanceKind::Standing),
-            cover_band: cover.peek(&at).map(|entry| entry.height_band),
+            cover_band: aim_band,
         }
     }
 }

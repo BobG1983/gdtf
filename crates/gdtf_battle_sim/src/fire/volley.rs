@@ -163,8 +163,15 @@ pub fn fire(
     let rounds = *clamp_burst(order.mode.shots, &magazine_now);
 
     // (4) The target geometry, composed once (constant across the burst); the
-    //     constant-per-burst inputs bundled for the per-round verb.
-    let geometry = TargetGeometry::compose(order.target_cell, order.target_level, grids.cover);
+    //     constant-per-burst inputs bundled for the per-round verb. The occupancy grid
+    //     supplies the target's published silhouette band (GTW-304/GTW-314) so the aim
+    //     lands inside a crouching / prone target's band, not over it.
+    let geometry = TargetGeometry::compose(
+        order.target_cell,
+        order.target_level,
+        grids.cover,
+        grids.occupancy,
+    );
     let setup = RoundSetup {
         snapshot: &snapshot,
         geometry,
