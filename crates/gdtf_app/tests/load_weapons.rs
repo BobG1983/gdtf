@@ -30,15 +30,24 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     weapon::{WeaponName, WeaponRegistry},
 };
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{
+    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
+};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
-/// Bounded budget for the Load orchestration plus its state-transition propagation.
-/// Sized generously: the weapons folder load shares the `AssetServer` with the
-/// theme/situation/tuning + the presenter's startup tile-sheet loads (the full scene
-/// stack is registered in this harness), so the async resolve can need many headless
-/// `update()` polls under contention (the `load_situation.rs` budget).
-const LOAD_BUDGET: u32 = 512;
+/// Bounded budget for the Tier (a) `MinimalPlugins` transition / negative waits,
+/// where all gate resources are injected by hand — a true, small, deterministic
+/// frame count (no async load to wait on).
+const TRANSITION_BUDGET: u32 = 32;
+
+/// Generous SAFETY-NET cap for the real-asset (Tier b) `advance_until` waits gated
+/// on an async asset load resolving. The weapons folder load shares the
+/// `AssetServer` with the theme / situation / tuning + the presenter's startup
+/// tile-sheet loads (the full scene stack is registered in this harness), so under
+/// parallel `cargo` contention the async resolve has NO fixed frame count. These
+/// waits key off the resolved SIGNAL; the cap is a safety net against a genuine
+/// never-resolve hang, not a timing budget (GTW-305).
+const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// Reads the current [`AppState`].
 fn app_state(app: &bevy::app::App) -> AppState {
@@ -82,12 +91,12 @@ fn weapons_loader_no_ops_cleanly_without_asset_server() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
     assert!(
         reached_intro,
         "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation present, Load must \
-         advance to Intro within {LOAD_BUDGET} updates; last observed AppState was {:?}",
+         advance to Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 }
@@ -113,7 +122,7 @@ fn load_does_not_leave_without_a_weapon_registry() {
     let left_load = advance_until(
         &mut app,
         |app| app_state(app) != AppState::Load,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
 
     assert!(
@@ -143,18 +152,9 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
         .starting_in(AppState::Load)
         .build();
 
-    // The real weapons folder load resolves a WeaponRegistry within the budget.
-    let resolved = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<WeaponRegistry>().is_some(),
-        LOAD_BUDGET,
-    );
-    assert!(
-        resolved,
-        "the real weapons folder load should resolve a WeaponRegistry within {LOAD_BUDGET} \
-         updates; last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // Signal-poll the async weapons folder load: wait until the WeaponRegistry is
+    // inserted, not a fixed frame count. Cap is a safety net (GTW-305).
+    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
 
     // The registry is keyed by the authored filename stems (presence, not a value).
     if let Some(registry) = app.world().get_resource::<WeaponRegistry>() {
@@ -181,7 +181,7 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         reached_intro,
@@ -230,33 +230,26 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
     // minus the unrelated `drive_past_menu` that needs the RunningState machinery.
     app.add_systems(Startup, seed_load_fallbacks);
 
-    // With the AssetServer present the empty seed must NOT win: the real folder resolve
-    // must populate a registry that holds the authored weapons.
-    let resolved = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<WeaponRegistry>()
-                .is_some_and(|registry| {
-                    registry
-                        .spec(&WeaponName::new("autogun".to_owned()))
-                        .is_some()
-                })
-        },
-        LOAD_BUDGET,
-    );
-    assert!(
-        resolved,
-        "with `seed_load_fallbacks` on Startup AND a real AssetServer, the empty registry seed \
-         must NOT shadow the folder resolve — the WeaponRegistry must end up holding `autogun` \
-         within {LOAD_BUDGET} updates (AC3b); last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // Signal-poll the WeaponRegistry insert (not a fixed frame count): the real resolve
+    // only inserts the registry ONCE it is fully built from the folder (it stays ABSENT
+    // while members are still resolving — see `resolve_weapons`), so on the GOOD path
+    // existence implies the authored weapons are present. The cap is a safety net
+    // (GTW-305). The seed-shadow regression instead inserts an EMPTY registry at Startup,
+    // which the assertions below catch immediately.
+    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
 
     if let Some(registry) = app.world().get_resource::<WeaponRegistry>() {
+        // AC3b pin: with the AssetServer present the empty seed must NOT win — the real
+        // folder resolve must populate a registry that holds the authored weapons.
         assert!(
             !registry.is_empty(),
             "the real folder resolve must populate the registry, not leave the empty seed",
+        );
+        assert!(
+            registry
+                .spec(&WeaponName::new("autogun".to_owned()))
+                .is_some(),
+            "the registry must hold `autogun` — the empty seed must NOT have shadowed the resolve",
         );
         assert!(
             registry
@@ -272,7 +265,7 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         reached_intro,

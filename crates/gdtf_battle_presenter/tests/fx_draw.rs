@@ -42,10 +42,16 @@ use gdtf_battle_sim::{
     IntegrityWear, Level, LifeState, Matchup, PenetratingDamage, Position, Severity, ShotDir,
     ShotFired, ShotKind, SimPos, Wounds,
 };
+use gdtf_test_utils::advance_until_resource_exists;
 
-/// Generous settle headroom so a slow CI box never flakes on the async atlas /
-/// effect-role loads.
-const MAX_UPDATES: u32 = 128;
+/// Generous SAFETY-NET cap for the async atlas / effect-role / tuning / character
+/// loads. It is a safety net against a genuine never-resolve hang, NOT a timing
+/// budget: each gate resource is waited on by its inserted SIGNAL (not a fixed
+/// frame count), which is what makes these FX tests deterministic under parallel
+/// `cargo` load (GTW-305). A fixed 128-update budget previously starved under
+/// contention and silently left the `run_if`-gated spawn systems no-op (0 vs 1
+/// projectile).
+const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// The workspace-root `assets/` directory (this crate's manifest → up two → assets),
 /// the same root the running app uses so the shipped sheets + `effect_roles.ron` load.
@@ -99,8 +105,12 @@ fn headless_renderer_app() -> App {
 }
 
 /// Drives `update()`s until `EffectRoles` + `TopDownAtlases` + `FxTuning` + `CharacterRoles`
-/// are resident (the async load chain has settled). Returns whether they settled within
-/// `MAX_UPDATES`.
+/// are ALL resident (the async load chain has settled), polling each resource's inserted
+/// SIGNAL rather than a fixed frame count (GTW-305). All four resolve over the same async
+/// `AssetServer` chain, so waiting for them in sequence drives the app until the LAST one
+/// is present. Panics (naming the missing resource) if any is still absent after the
+/// safety-net cap — a genuine load failure, surfaced loudly rather than silently leaving the
+/// `run_if`-gated spawn systems no-op.
 ///
 /// `FxTuning` (GTW-306) is part of the settle gate because `spawn_shot_projectiles` now
 /// `run_if(resource_exists::<FxTuning>)` — without waiting for it the projectile-spawn tests
@@ -108,18 +118,11 @@ fn headless_renderer_app() -> App {
 /// `CharacterRoles` is part of the gate so the entity-aim test's real `spawn_ganger_sprites`
 /// path (gated `run_if(resource_exists::<CharacterRoles>)`) actually runs and registers the
 /// hit ganger's presenter sprite in `GangerSprites` — the lookup the entity-aim branch reads.
-fn settle_resources(app: &mut App) -> bool {
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        let has_roles = app.world().get_resource::<EffectRoles>().is_some();
-        let has_atlases = app.world().get_resource::<TopDownAtlases>().is_some();
-        let has_tuning = app.world().get_resource::<FxTuning>().is_some();
-        let has_characters = app.world().get_resource::<CharacterRoles>().is_some();
-        if has_roles && has_atlases && has_tuning && has_characters {
-            return true;
-        }
-    }
-    false
+fn settle_resources(app: &mut App) {
+    advance_until_resource_exists::<EffectRoles>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<FxTuning>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<CharacterRoles>(app, LOAD_SAFETY_NET);
 }
 
 /// Reads the resolved `EffectRoles` resource as a clone, or `None` if it is absent (the
@@ -185,6 +188,26 @@ fn advance_past_ttl(app: &mut App) {
         .insert_resource(TimeUpdateStrategy::Automatic);
 }
 
+/// Runs exactly ONE `update()` with the clock delta pinned to ZERO, then restores `Automatic`
+/// time — the firing-FX read frame, made delta-deterministic.
+///
+/// The firing tests write a `ShotFired` and then read the spawned projectile expecting it AT the
+/// muzzle. Under `DefaultPlugins`' default `Automatic` time the first update after the
+/// variable-length [`settle_resources`] carries a non-deterministic wall-clock delta, so
+/// `advance_projectiles` could move the bolt a contention-dependent distance off the muzzle and
+/// flake the assertion (GTW-305, same parallel-`cargo` non-determinism family as the load flakes).
+/// A `ManualDuration(0)` delta keeps the bolt exactly where `spawn_shot_projectiles` placed it,
+/// regardless of scheduling, without weakening any assertion.
+fn fire_with_zero_delta(app: &mut App) {
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::ManualDuration(
+            std::time::Duration::ZERO,
+        ));
+    app.update();
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::Automatic);
+}
+
 /// AC1 — a `Bleeding { ganger }` spawns EXACTLY ONE `FxFlash` at the ganger's cell with the
 /// table's `bleed` atlas index (read structurally from `EffectRoles`, never a literal), and a
 /// `*Wounds`-relation tint. A `Bleeding` for an entity with no `Position`/`Wounds` spawns no
@@ -192,10 +215,7 @@ fn advance_past_ttl(app: &mut App) {
 #[test]
 fn bleeding_spawns_one_flash_at_the_ganger_cell_with_the_bleed_index() {
     let mut app = headless_renderer_app();
-    assert!(
-        settle_resources(&mut app),
-        "EffectRoles + TopDownAtlases must resolve within {MAX_UPDATES} updates",
-    );
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let cell = Cell::new(5, 6);
@@ -249,7 +269,7 @@ fn bleeding_spawns_one_flash_at_the_ganger_cell_with_the_bleed_index() {
 #[test]
 fn armor_broken_spawns_one_flash_at_the_armor_break_index() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let cell = Cell::new(9, 2);
@@ -292,7 +312,7 @@ fn armor_broken_spawns_one_flash_at_the_armor_break_index() {
 #[test]
 fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let cell = Cell::new(3, 4);
@@ -354,7 +374,7 @@ fn projectile_positions_and_indices(app: &mut App) -> Vec<(bevy::math::Vec3, Opt
 #[test]
 fn shot_fired_spawns_directional_projectile_and_no_muzzle_flash() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let roles = effect_roles(&app);
@@ -381,7 +401,13 @@ fn shot_fired_spawns_directional_projectile_and_no_muzzle_flash() {
     app.world_mut()
         .resource_mut::<Messages<ShotFired>>()
         .write(shot);
-    app.update();
+    // Pin the firing update's clock delta to ZERO so the just-spawned projectile cannot travel a
+    // wall-clock-dependent distance off the muzzle on the read frame: under `Automatic` time, the
+    // first update after the variable-length `settle_resources` carries a non-deterministic delta,
+    // which flaked the "starts at the muzzle" assertion under parallel `cargo` load (GTW-305). A
+    // zero delta keeps `advance_projectiles` from moving the bolt regardless of scheduling, without
+    // weakening the assertion (the spawn-at-muzzle truth it pins is delta-independent).
+    fire_with_zero_delta(&mut app);
 
     // No standalone muzzle FxFlash spawns on fire (the muzzle flash was removed in GTW-307;
     // the impact-frame flashes spawn later, when the projectile ARRIVES, not on fire).
@@ -418,7 +444,7 @@ fn shot_fired_spawns_directional_projectile_and_no_muzzle_flash() {
 #[test]
 fn shot_fired_miss_still_spawns_projectile_and_no_muzzle_flash() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let shot = ShotFired {
@@ -515,7 +541,7 @@ fn single_projectile_arrival(app: &mut App) -> Option<bevy::math::Vec3> {
 #[test]
 fn shot_fired_at_a_ganger_aims_at_the_hit_entitys_rendered_position() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     // The struck ganger sits at a cell DISTINCT from the shot's impact cell, so the
@@ -582,7 +608,7 @@ fn shot_fired_at_a_ganger_aims_at_the_hit_entitys_rendered_position() {
 #[test]
 fn flash_expires_after_its_ttl_and_nothing_lingers() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let ganger = spawn_ganger(&mut app, Cell::new(1, 1), Level::new(0), 2);
@@ -614,7 +640,7 @@ fn flash_expires_after_its_ttl_and_nothing_lingers() {
 #[test]
 fn two_bleeding_messages_spawn_two_independent_flashes() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let ganger = spawn_ganger(&mut app, Cell::new(7, 7), Level::new(0), 1);
@@ -701,7 +727,7 @@ const fn ganger_hit_report(
 #[test]
 fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     // A struck ganger carrying a Position (the FCT reader anchors the pops at its cell).
@@ -776,7 +802,7 @@ fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
 #[test]
 fn shot_fired_clean_miss_pops_nothing() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let cell = Cell::new(2, 9);
@@ -810,7 +836,7 @@ fn shot_fired_clean_miss_pops_nothing() {
 #[test]
 fn bleeding_pops_the_amber_bleeding_fct_tag() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let cell = Cell::new(4, 7);
@@ -850,7 +876,7 @@ fn bleeding_pops_the_amber_bleeding_fct_tag() {
 #[test]
 fn armor_broken_pops_the_red_armor_broken_fct_tag() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
     let cell = Cell::new(9, 3);

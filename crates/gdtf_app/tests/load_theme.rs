@@ -24,13 +24,25 @@ use std::path::PathBuf;
 use bevy::{asset::Handle, state::state::State, text::Font};
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{
+    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
+};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
 /// Bounded budget for the short Load orchestration plus its state-transition
-/// propagation — bounded so a machine that never resolves fails instead of
-/// hanging (AC3: the app must never hang on a failed asset).
-const LOAD_BUDGET: u32 = 32;
+/// propagation in the Tier (a) `MinimalPlugins` tests, where all gate resources
+/// are injected by hand: with nothing left to load this is a true, small,
+/// deterministic frame count (no async load to wait on).
+const TRANSITION_BUDGET: u32 = 32;
+
+/// Generous SAFETY-NET cap for the real-asset (Tier b) `advance_until` waits that
+/// are gated on an async asset load resolving (the `Load -> Intro` transition
+/// needs theme + tuning + weapons + situation all resolved). It is a safety net
+/// against a genuine never-resolve hang, NOT a timing budget: an async load polled
+/// under parallel `cargo` contention has no fixed frame count, so the wait keys off
+/// the resolved SIGNAL and merely caps the worst case high enough to absorb any
+/// variance (GTW-305).
+const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// Reads the current [`AppState`].
 fn app_state(app: &bevy::app::App) -> AppState {
@@ -98,12 +110,12 @@ fn theme_present_transitions_to_intro_and_persists() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
     assert!(
         reached_intro,
-        "with a GdtfTheme present, Load must transition to Intro within {LOAD_BUDGET} updates; \
-         last observed AppState was {:?}",
+        "with a GdtfTheme present, Load must transition to Intro within {TRANSITION_BUDGET} \
+         updates; last observed AppState was {:?}",
         app_state(&app),
     );
 
@@ -130,7 +142,7 @@ fn load_does_not_leave_without_a_theme() {
     let left_load = advance_until(
         &mut app,
         |app| app_state(app) != AppState::Load,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
 
     assert!(
@@ -168,17 +180,10 @@ fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
         .starting_in(AppState::Load)
         .build();
 
-    let resolved = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<GdtfTheme>().is_some(),
-        LOAD_BUDGET,
-    );
-    assert!(
-        resolved,
-        "the real theme load should resolve a GdtfTheme within {LOAD_BUDGET} updates; \
-         last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // Signal-poll the async theme load: wait until the resolved GdtfTheme is
+    // inserted (covers both the success-resolve and the failure-default paths),
+    // not a fixed frame count — the cap is a safety net (GTW-305).
+    advance_until_resource_exists::<GdtfTheme>(&mut app, LOAD_SAFETY_NET);
 
     if let Some(theme) = app.world().get_resource::<GdtfTheme>() {
         assert_eq!(
@@ -201,11 +206,13 @@ fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
         }
     }
 
-    // And the machine leaves Load for Intro now that a theme is present.
+    // And the machine leaves Load for Intro once ALL gate resources resolve. That
+    // transition is itself gated on the remaining async loads (tuning / weapons /
+    // situation), so it gets the generous safety-net cap, not a frame budget.
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         reached_intro,
@@ -228,17 +235,8 @@ fn real_asset_multi_font_load_resolves_distinct_title_font() {
         .starting_in(AppState::Load)
         .build();
 
-    let resolved = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<GdtfTheme>().is_some(),
-        LOAD_BUDGET,
-    );
-    assert!(
-        resolved,
-        "the multi-font theme load should resolve a GdtfTheme within {LOAD_BUDGET} updates; \
-         last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // Signal-poll the async multi-font theme load (cap is a safety net, GTW-305).
+    advance_until_resource_exists::<GdtfTheme>(&mut app, LOAD_SAFETY_NET);
 
     if let Some(theme) = app.world().get_resource::<GdtfTheme>() {
         // Title overrides its font; button + text fall to the default_font. The
@@ -276,19 +274,10 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_theme() {
         .starting_in(AppState::Load)
         .build();
 
-    // The bad theme must still produce a theme (the const fallback) within the
-    // bounded budget — proving the app never hangs on a failed asset.
-    let recovered = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<GdtfTheme>().is_some(),
-        LOAD_BUDGET,
-    );
-    assert!(
-        recovered,
-        "a failed theme load must fall back to a default GdtfTheme within {LOAD_BUDGET} updates \
-         (never hang); last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // The bad theme must still produce a theme (the const fallback): the failure
+    // path inserts the default, so the same inserted-resource signal fires — proving
+    // the app never hangs on a failed asset. Signal-poll, cap is a safety net.
+    advance_until_resource_exists::<GdtfTheme>(&mut app, LOAD_SAFETY_NET);
 
     if let Some(theme) = app.world().get_resource::<GdtfTheme>() {
         assert_eq!(
@@ -298,11 +287,12 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_theme() {
         );
     }
 
-    // The machine still leaves Load — a bad asset does not strand it themeless.
+    // The machine still leaves Load — a bad asset does not strand it themeless. The
+    // transition is gated on the remaining async loads, so it gets the safety-net cap.
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         reached_intro,

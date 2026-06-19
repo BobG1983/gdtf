@@ -29,13 +29,23 @@ use std::path::PathBuf;
 use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{
+    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
+};
 use gdtf_ui::theme::default_theme;
 
-/// Bounded budget for the Load orchestration plus its state-transition
-/// propagation — bounded so a machine that never resolves fails instead of
-/// hanging (AC6: a bad tuning must never strand `Load`).
-const LOAD_BUDGET: u32 = 32;
+/// Bounded budget for the Tier (a) `MinimalPlugins` transition / negative waits,
+/// where all gate resources are injected by hand — a true, small, deterministic
+/// frame count (no async load to wait on).
+const TRANSITION_BUDGET: u32 = 32;
+
+/// Generous SAFETY-NET cap for the real-asset (Tier b) `advance_until` waits gated
+/// on an async asset load resolving (the `Load -> Intro` transition needs theme +
+/// tuning + weapons + situation all resolved). A safety net against a genuine
+/// never-resolve hang, NOT a timing budget: those waits key off the resolved SIGNAL
+/// and merely cap the worst case high enough to absorb parallel-load variance
+/// (GTW-305).
+const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// Reads the current [`AppState`].
 fn app_state(app: &bevy::app::App) -> AppState {
@@ -100,12 +110,12 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
     assert!(
         reached_intro,
         "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation present, Load must \
-         advance to Intro within {LOAD_BUDGET} updates; last observed AppState was {:?}",
+         advance to Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 }
@@ -127,7 +137,7 @@ fn load_does_not_leave_without_a_tuning() {
     let left_load = advance_until(
         &mut app,
         |app| app_state(app) != AppState::Load,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
 
     assert!(
@@ -156,7 +166,7 @@ fn load_does_not_leave_on_theme_only() {
     let left_load = advance_until(
         &mut app,
         |app| app_state(app) != AppState::Load,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
 
     assert!(
@@ -187,18 +197,10 @@ fn real_asset_resolves_persistent_combat_tuning() {
         .starting_in(AppState::Load)
         .build();
 
-    // The real tuning load resolves a CombatTuning within the bounded budget.
-    let resolved = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<CombatTuning>().is_some(),
-        LOAD_BUDGET,
-    );
-    assert!(
-        resolved,
-        "the real tuning load should resolve a CombatTuning within {LOAD_BUDGET} updates; \
-         last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // Signal-poll the async tuning load: wait until CombatTuning is inserted (the
+    // success-resolve path; the failure path would insert the default — same signal),
+    // not a fixed frame count. Cap is a safety net (GTW-305).
+    advance_until_resource_exists::<CombatTuning>(&mut app, LOAD_SAFETY_NET);
 
     // AC5 mechanism (not magnitude): IF the shipped file differs from Default, the
     // GOOD path must have loaded the real file (not silently fallen to the const
@@ -220,7 +222,7 @@ fn real_asset_resolves_persistent_combat_tuning() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         reached_intro,
@@ -251,19 +253,10 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_tuning() {
         .starting_in(AppState::Load)
         .build();
 
-    // The bad tuning must still produce a CombatTuning (the const fallback) within
-    // the bounded budget — proving the app never hangs on a failed tuning.
-    let recovered = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<CombatTuning>().is_some(),
-        LOAD_BUDGET,
-    );
-    assert!(
-        recovered,
-        "a failed tuning load must fall back to a default CombatTuning within {LOAD_BUDGET} \
-         updates (never hang); last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // The bad tuning must still produce a CombatTuning (the const fallback): the
+    // failure path inserts the default, so the same inserted-resource signal fires —
+    // proving the app never hangs on a failed tuning. Signal-poll, cap is a safety net.
+    advance_until_resource_exists::<CombatTuning>(&mut app, LOAD_SAFETY_NET);
 
     if let Some(tuning) = app.world().get_resource::<CombatTuning>() {
         assert_eq!(
@@ -279,7 +272,7 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_tuning() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         reached_intro,

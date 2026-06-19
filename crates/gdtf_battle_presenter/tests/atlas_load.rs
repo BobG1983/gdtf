@@ -24,13 +24,15 @@
 use bevy::{app::App, asset::Assets, image::TextureAtlasLayout};
 use gdtf_app::test_support::AppState;
 use gdtf_battle_presenter::{SheetRole, TopDownAtlases};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
+use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
-/// Generous so a slow CI box never flakes; the resource is inserted by the `Startup`
-/// system on the first `update()` and the layouts are added synchronously there
-/// (only the image bytes load async, which this test does not wait on — it asserts
-/// the layout STRUCTURE, available immediately).
-const MAX_UPDATES: u32 = 64;
+/// Generous SAFETY-NET cap for the wait on the `TopDownAtlases` resource being built. It is a
+/// safety net against a genuine never-build hang, NOT a timing budget: the wait keys off the
+/// resource's inserted SIGNAL (not a fixed frame count), so it stays deterministic under
+/// parallel `cargo` load (GTW-305). The resource is inserted by the `Startup` system and its
+/// layouts are added synchronously there (only the image bytes load async, which this test
+/// does not wait on — it asserts the layout STRUCTURE, available the moment the resource exists).
+const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// Reads the tile count of `role`'s layout out of the `TopDownAtlases` resource and
 /// `Assets<TextureAtlasLayout>`, without panicking on a missing resource/handle.
@@ -72,18 +74,15 @@ fn topdown_renderer_builds_the_sheet_atlases_including_32px_portraits() {
         .starting_in(AppState::Load)
         .build();
 
-    // Drive until the resource is present and terrain's layout has resolved (the
-    // Startup system runs on the first update; this is just settle headroom).
-    let built = advance_until(
-        &mut app,
-        |app| layout_tile_count(app, SheetRole::Terrain).is_some(),
-        MAX_UPDATES,
-    );
+    // Signal-poll the built resource: drive until `TopDownAtlases` is inserted (the Startup
+    // system builds it once on the real scene stack with a live AssetServer), not a fixed frame
+    // count — the cap is a safety net (GTW-305). Its layouts are added synchronously in that same
+    // build, so the moment the resource exists the structural asserts below are valid.
+    advance_until_resource_exists::<TopDownAtlases>(&mut app, LOAD_SAFETY_NET);
     assert!(
-        built,
-        "TopDownRendererPlugin must build the TopDownAtlases resource within \
-         {MAX_UPDATES} updates — proves the Startup load system ran on the real \
-         scene stack with a live AssetServer",
+        layout_tile_count(&app, SheetRole::Terrain).is_some(),
+        "TopDownRendererPlugin must build the TopDownAtlases resource with terrain's layout — \
+         proves the Startup load system ran on the real scene stack with a live AssetServer",
     );
 
     assert_eq!(

@@ -59,7 +59,7 @@ mod builder;
 mod load;
 mod ui;
 
-pub use advance::advance_until;
+pub use advance::{advance_until, advance_until_resource_exists};
 pub use builder::{GdtfTestAppBuilder, NoState, WithState};
 pub use load::GdtfLoadTestAppBuilder;
 pub use ui::{GdtfUiTestAppBuilder, NoCamera, WithCamera};

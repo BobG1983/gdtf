@@ -28,17 +28,21 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    ActiveLevel, CELL_PX, TerrainSprite, TileRoles, TopDownRendererPlugin, cell_to_world,
+    ActiveLevel, CELL_PX, TerrainSprite, TileRoles, TopDownAtlases, TopDownRendererPlugin,
+    cell_to_world,
 };
 use gdtf_battle_sim::{
     ArmorHardness, ArmorProtection, BattleInProgress, BattleReady, Cell, CellLevel, CoverDestroyed,
     CoverEntry, CoverHp, CoverLedger, HeightBand, Level, OccupancyGrid, OccupancyInput, SlabState,
     SurfaceGrid, TerrainKind, TerrainPlacement,
 };
+use gdtf_test_utils::advance_until_resource_exists;
 
-/// Generous settle headroom so a slow CI box never flakes on the async atlas /
-/// tile-role loads.
-const MAX_UPDATES: u32 = 128;
+/// Generous SAFETY-NET cap for the async atlas / tile-role loads polled by
+/// [`settle_resources`]. It is a safety net against a genuine never-resolve hang, NOT a timing
+/// budget: each gate resource is waited on by its inserted SIGNAL (not a fixed frame count),
+/// which is what makes these draw tests deterministic under parallel `cargo` load (GTW-305).
+const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// The workspace-root `assets/` directory (this crate's manifest → up two → assets),
 /// the same root the running app uses so the shipped sheets + `tile_roles.ron` load.
@@ -88,21 +92,15 @@ fn headless_renderer_app() -> App {
     app
 }
 
-/// Drives `update()`s until `TileRoles` + `TopDownAtlases` are resident (the async
-/// load chain has settled). Returns whether they settled within `MAX_UPDATES`.
-fn settle_resources(app: &mut App) -> bool {
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        let has_roles = app.world().get_resource::<TileRoles>().is_some();
-        let has_atlases = app
-            .world()
-            .get_resource::<gdtf_battle_presenter::TopDownAtlases>()
-            .is_some();
-        if has_roles && has_atlases {
-            return true;
-        }
-    }
-    false
+/// Drives `update()`s until `TileRoles` + `TopDownAtlases` are BOTH resident (the async
+/// load chain has settled), polling each resource's inserted SIGNAL rather than a fixed frame
+/// count (GTW-305). Both resolve over the same async `AssetServer` chain, so waiting for them
+/// in sequence drives the app until the last is present. Panics (naming the missing resource)
+/// via [`advance_until_resource_exists`] if either is still absent after the safety-net cap — a
+/// genuine load failure, surfaced loudly rather than leaving the draw systems silently no-op.
+fn settle_resources(app: &mut App) {
+    advance_until_resource_exists::<TileRoles>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
 }
 
 /// Authors an `OccupancyGrid` with the given terrain placements (built through the real
@@ -174,10 +172,7 @@ fn terrain_sprite_count(app: &mut App) -> usize {
 #[test]
 fn battle_ready_draws_role_correct_sized_positioned_sprites() {
     let mut app = headless_renderer_app();
-    assert!(
-        settle_resources(&mut app),
-        "TileRoles + TopDownAtlases must resolve within {MAX_UPDATES} updates",
-    );
+    settle_resources(&mut app);
 
     let wall_cell = Cell::new(8, 7);
     let cover_cell = Cell::new(9, 8);
@@ -262,7 +257,7 @@ fn battle_ready_draws_role_correct_sized_positioned_sprites() {
 #[test]
 fn cover_destroyed_swaps_the_cover_cell_to_rubble() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
 
     let wall_cell = Cell::new(8, 7);
     let cover_cell = Cell::new(9, 8);
@@ -321,7 +316,7 @@ fn cover_destroyed_swaps_the_cover_cell_to_rubble() {
 #[test]
 fn active_level_change_redraws_only_the_new_level() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
 
     let slab_cell = Cell::new(2, 2);
     let l0 = Level::new(0);

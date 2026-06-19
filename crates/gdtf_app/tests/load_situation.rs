@@ -25,16 +25,24 @@ use std::path::PathBuf;
 use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{
+    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
+};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
-/// Bounded budget for the Load orchestration plus its state-transition
-/// propagation — bounded so a machine that never resolves fails instead of
-/// hanging. Sized generously: the situation/theme/tuning loads now share the
+/// Bounded budget for the Tier (a) `MinimalPlugins` transition / negative waits,
+/// where all gate resources are injected by hand — a true, small, deterministic
+/// frame count (no async load to wait on).
+const TRANSITION_BUDGET: u32 = 32;
+
+/// Generous SAFETY-NET cap for the real-asset (Tier b) `advance_until` waits gated
+/// on an async asset load resolving. The situation / theme / tuning loads share the
 /// `AssetServer` with the presenter's startup tile-sheet + role-table loads (the
-/// full scene stack is registered in this harness), so the async resolve can
-/// need many headless `update()` polls under contention — 32 proved flaky.
-const LOAD_BUDGET: u32 = 512;
+/// full scene stack is registered in this harness), so under parallel `cargo`
+/// contention the async resolve has NO fixed frame count (a hard 32-update budget
+/// proved flaky). These waits key off the resolved SIGNAL; the cap is a safety net
+/// against a genuine never-resolve hang, not a timing budget (GTW-305).
+const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// Reads the current [`AppState`].
 fn app_state(app: &bevy::app::App) -> AppState {
@@ -81,12 +89,12 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
     assert!(
         reached_intro,
         "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation present, Load must \
-         advance to Intro within {LOAD_BUDGET} updates; last observed AppState was {:?}",
+         advance to Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 
@@ -120,18 +128,10 @@ fn real_asset_resolves_persistent_loaded_situation() {
         .starting_in(AppState::Load)
         .build();
 
-    // The real situation load resolves a LoadedSituation within the budget.
-    let resolved = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<LoadedSituation>().is_some(),
-        LOAD_BUDGET,
-    );
-    assert!(
-        resolved,
-        "the real situation load should resolve a LoadedSituation within {LOAD_BUDGET} updates; \
-         last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // Signal-poll the async situation load: wait until LoadedSituation is inserted
+    // (the success-resolve path; the failure path inserts the empty default — same
+    // signal), not a fixed frame count. Cap is a safety net (GTW-305).
+    advance_until_resource_exists::<LoadedSituation>(&mut app, LOAD_SAFETY_NET);
 
     // The resolved situation round-trips to a Situation with non-empty gangers
     // (presence + non-empty, never a magnitude).
@@ -148,7 +148,7 @@ fn real_asset_resolves_persistent_loaded_situation() {
     let left_load = advance_until(
         &mut app,
         |app| app_state(app) != AppState::Load,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         left_load,
@@ -180,7 +180,7 @@ fn real_asset_gate_waits_for_the_real_situation() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         reached_intro,
@@ -231,7 +231,7 @@ fn load_does_not_leave_without_a_situation() {
     let left_load = advance_until(
         &mut app,
         |app| app_state(app) != AppState::Load,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
     assert!(
         !left_load,
@@ -251,11 +251,11 @@ fn load_does_not_leave_without_a_situation() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        TRANSITION_BUDGET,
     );
     assert!(
         reached_intro,
-        "once a LoadedSituation is inserted, Load must advance to Intro within {LOAD_BUDGET} \
+        "once a LoadedSituation is inserted, Load must advance to Intro within {TRANSITION_BUDGET} \
          updates; last observed AppState was {:?}",
         app_state(&app),
     );
@@ -290,19 +290,11 @@ fn real_asset_failed_situation_falls_back_and_does_not_strand() {
         .starting_in(AppState::Load)
         .build();
 
-    // The failed situation must still produce a LoadedSituation (the empty default)
-    // within the bounded budget — proving the app never hangs on a failed situation.
-    let recovered = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<LoadedSituation>().is_some(),
-        LOAD_BUDGET,
-    );
-    assert!(
-        recovered,
-        "a failed situation load must fall back to an empty default LoadedSituation within \
-         {LOAD_BUDGET} updates (never hang); last observed AppState was {:?}",
-        app_state(&app),
-    );
+    // Signal-poll: the failed situation must still produce a LoadedSituation (the empty
+    // default) — the failure path inserts the default, so the same inserted-resource
+    // signal fires, proving the app never hangs on a failed situation. Cap is a safety
+    // net (GTW-305).
+    advance_until_resource_exists::<LoadedSituation>(&mut app, LOAD_SAFETY_NET);
 
     // The fallback is the EMPTY default (zero gangers) — distinguishing the failure
     // path from the good path that loads the shipped non-empty skirmish.
@@ -319,7 +311,7 @@ fn real_asset_failed_situation_falls_back_and_does_not_strand() {
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
-        LOAD_BUDGET,
+        LOAD_SAFETY_NET,
     );
     assert!(
         reached_intro,

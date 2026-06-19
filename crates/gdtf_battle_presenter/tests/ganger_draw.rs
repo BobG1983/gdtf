@@ -42,6 +42,7 @@ use gdtf_battle_sim::{
     SetupBattleRequested, SimRng, Situation, Stable, Stance, StanceKind, WeaponDamage, WeaponName,
     WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, setup_battle_on_request,
 };
+use gdtf_test_utils::advance_until_resource_exists;
 
 /// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
 const TEST_WEAPON_KEY: &str = "test-weapon";
@@ -73,9 +74,17 @@ fn weapon_registry() -> WeaponRegistry {
     )])
 }
 
-/// Generous settle headroom so a slow CI box never flakes on the async atlas /
-/// character-role loads.
+/// Bounded settle headroom for the post-setup STATE / SPAWN waits (`drive_setup`'s
+/// `SimRng`-present signal, `settle_terrain_z_at`'s spawned-sprite signal). These wait on a
+/// SYNCHRONOUS battle setup + its command flush, NOT on an async asset load, so a true small
+/// frame count is the right termination — they are out of GTW-305's async-load scope.
 const MAX_UPDATES: u32 = 128;
+
+/// Generous SAFETY-NET cap for the async atlas / character-role loads polled by
+/// [`settle_resources`]. It is a safety net against a genuine never-resolve hang, NOT a timing
+/// budget: each gate resource is waited on by its inserted SIGNAL (not a fixed frame count),
+/// which is what makes these draw tests deterministic under parallel `cargo` load (GTW-305).
+const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// A fixed seed for the deterministic `SetupBattleRequested` (the draw is RNG-free; the
 /// seed only feeds the unused battle `SimRng`).
@@ -141,18 +150,15 @@ fn headless_renderer_app() -> App {
     app
 }
 
-/// Drives `update()`s until `CharacterRoles` + `TopDownAtlases` are resident (the async
-/// load chain has settled). Returns whether they settled within `MAX_UPDATES`.
-fn settle_resources(app: &mut App) -> bool {
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        let has_roles = app.world().get_resource::<CharacterRoles>().is_some();
-        let has_atlases = app.world().get_resource::<TopDownAtlases>().is_some();
-        if has_roles && has_atlases {
-            return true;
-        }
-    }
-    false
+/// Drives `update()`s until `CharacterRoles` + `TopDownAtlases` are BOTH resident (the async
+/// load chain has settled), polling each resource's inserted SIGNAL rather than a fixed frame
+/// count (GTW-305). Both resolve over the same async `AssetServer` chain, so waiting for them
+/// in sequence drives the app until the last is present. Panics (naming the missing resource)
+/// via [`advance_until_resource_exists`] if either is still absent after the safety-net cap — a
+/// genuine load failure, surfaced loudly rather than leaving the draw systems silently no-op.
+fn settle_resources(app: &mut App) {
+    advance_until_resource_exists::<CharacterRoles>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
 }
 
 /// The resolved `CharacterRoles` resource as a clone, or `None` if absent.
@@ -303,10 +309,7 @@ fn expected_index(roles: &CharacterRoles, faction: u8, facing: Direction) -> usi
 #[test]
 fn added_gangers_spawn_one_faction_coloured_sprite_each() {
     let mut app = headless_renderer_app();
-    assert!(
-        settle_resources(&mut app),
-        "CharacterRoles + TopDownAtlases must resolve within {MAX_UPDATES} updates",
-    );
+    settle_resources(&mut app);
 
     let g0_at = CellLevel::new(Cell::new(5, 6), Level::new(0));
     let g1_at = CellLevel::new(Cell::new(12, 9), Level::new(0));
@@ -394,7 +397,7 @@ fn added_gangers_spawn_one_faction_coloured_sprite_each() {
 #[test]
 fn changed_position_moves_the_same_sprite() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
 
     let start = CellLevel::new(Cell::new(5, 6), Level::new(0));
     let situation = Situation {
@@ -467,7 +470,7 @@ fn changed_position_moves_the_same_sprite() {
 #[test]
 fn downed_retints_and_dead_despawns() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
 
     let at = CellLevel::new(Cell::new(5, 6), Level::new(0));
     let situation = Situation {
@@ -529,7 +532,7 @@ fn downed_retints_and_dead_despawns() {
 #[test]
 fn active_level_change_hides_off_level_shows_on_level() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
 
     let l0_at = CellLevel::new(Cell::new(5, 6), Level::new(0));
     let l1_at = CellLevel::new(Cell::new(7, 8), Level::new(1));
@@ -595,7 +598,7 @@ fn active_level_change_hides_off_level_shows_on_level() {
 #[test]
 fn ganger_draws_above_its_own_floor_at_spawn_and_after_move() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
 
     let start = CellLevel::new(Cell::new(5, 6), Level::new(0));
     let situation = Situation {
@@ -684,7 +687,7 @@ fn ganger_draws_above_its_own_floor_at_spawn_and_after_move() {
 #[test]
 fn changed_facing_reframes_and_stance_aiming_retints_the_same_sprite() {
     let mut app = headless_renderer_app();
-    assert!(settle_resources(&mut app), "resources must resolve");
+    settle_resources(&mut app);
 
     // Spawn fixture: faction 0, facing East (RIGHT frame), Standing, not aiming.
     let at = CellLevel::new(Cell::new(5, 6), Level::new(0));
