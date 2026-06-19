@@ -29,6 +29,7 @@ use crate::{
     metric::{Cell, Level, SimPos},
     resolve_coarse::{ShotKind, ShotOutcome},
     sample_cone::ShotDir,
+    weapon::DamageType,
 };
 
 /// One **round was fired** — the per-round trajectory geometry the presenter draws the
@@ -70,17 +71,30 @@ pub struct ShotFired {
     /// What the round struck ([`ShotKind`]: ganger / cover / slab / ground / miss) — the
     /// presenter may branch the impact mark on it; a miss still draws muzzle + tracer.
     pub kind:         ShotKind,
+    /// The firing weapon's [`DamageType`] (GTW-306) — the weapon-side wheel node the round
+    /// carries (`docs/combat/matchup.md` §"The 7 types"). Known at FIRE time (sourced from
+    /// the shooter's [`DamageType`] component in
+    /// [`dispatch_fire`](crate::acts::dispatch_fire)), so it rides on HIT and MISS alike;
+    /// the presenter selects the per-damage-type projectile graphic from it (a domain enum,
+    /// never a sprite / pixel — the sim stays render-free). NOTE GTW-302 will FURTHER extend
+    /// [`ShotFired`] with the hit report (damage / severity / part) for combat text; this
+    /// ticket adds only the damage type.
+    pub damage:       DamageType,
 }
 
 impl ShotFired {
-    /// Build a [`ShotFired`] for `shooter` from the round's already-computed
+    /// Build a [`ShotFired`] for `shooter` firing `damage` from the round's already-computed
     /// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome).
     ///
     /// Copies the geometry straight off the outcome — muzzle / trajectory / impact
-    /// `(cell, level)` / kind — so the message EXPOSES the resolved trajectory without
-    /// recomputing or changing any fire-result logic.
+    /// `(cell, level)` / kind — and pairs it with the weapon's [`DamageType`] (GTW-306),
+    /// which is NOT part of the coarse outcome (it is weapon-side, read from the shooter's
+    /// [`DamageType`] component at fire time in
+    /// [`dispatch_fire`](crate::acts::dispatch_fire)). So the message EXPOSES the resolved
+    /// trajectory plus the damage type WITHOUT recomputing or changing any fire-result
+    /// logic — pure exposure.
     #[must_use]
-    pub const fn from_outcome(shooter: Entity, outcome: &ShotOutcome) -> Self {
+    pub const fn from_outcome(shooter: Entity, damage: DamageType, outcome: &ShotOutcome) -> Self {
         Self {
             shooter,
             muzzle: outcome.muzzle,
@@ -88,6 +102,7 @@ impl ShotFired {
             impact_cell: outcome.cell,
             impact_level: outcome.level,
             kind: outcome.kind,
+            damage,
         }
     }
 }

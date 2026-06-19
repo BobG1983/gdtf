@@ -1,0 +1,404 @@
+//! The GTW-306 traveling DIRECTIONAL projectile FX — the muzzle→target flight that
+//! REPLACES GTW-290's smeared stretched-sprite "tracer".
+//!
+//! On each [`ShotFired`](gdtf_battle_sim::ShotFired) round the sim emits,
+//! [`spawn_shot_projectiles`] spawns ONE small (one-tile) projectile sprite at the
+//! muzzle world point, showing the per-damage-type directional tile picked for the
+//! shot's heading (the [`EffectRoles`] color row → its 8-way rose →
+//! [`nearest_direction_index`](super::roles::nearest_direction_index) of the
+//! trajectory).
+//!
+//! The bolt flies at a CONSTANT VELOCITY (the hot-reloadable
+//! [`ProjectileVelocity`](super::tuning::ProjectileVelocity), px/sec) — not over a
+//! fixed-seconds window — so every shot shares one visual SPEED regardless of how far
+//! it travels; a long shot simply spends more frames in flight. [`advance_projectiles`]
+//! steps the sprite `velocity × delta` along the muzzle→target ray each frame, the
+//! sprite TRAVELS at constant scale, NEVER stretched/scaled along the vector (that smear
+//! was the GTW-290 bug). A straight shot is one direction, so it shows one tile for the
+//! whole flight, and DESPAWNS the instant it reaches the target point.
+//!
+//! Where the bolt flies depends on WHAT the round struck ([`ShotFired::kind`]): for a
+//! [`Ganger`](gdtf_battle_sim::ShotKind::Ganger) hit it flies to that hit entity's
+//! CURRENT rendered world position (its presenter [`Transform`], looked up through
+//! [`GangerSprites`](crate::GangerSprites)) — which already reflects the target's stance
+//! / silhouette height, so the bolt angles correctly toward a prone / kneeling target
+//! with NO sim change and NO 3D impact field. For a non-ganger hit or a clean miss it
+//! flies to the impact `(cell, level)` ([`cell_to_world`](crate::cell_to_world) of
+//! `msg.impact_cell` / `msg.impact_level`). When the bolt REACHES that target point it
+//! despawns and spawns the impact there.
+//!
+//! On arrival, [`advance_projectiles`] spawns a [`PendingImpact`] at the arrival
+//! point carrying the shot's [`DamageType`](gdtf_battle_sim::DamageType) — the SEAM
+//! FX-B's [`animate_impact`](super::impact::animate_impact) reads to play the
+//! damage type's 3-frame impact animation there. FX-A only HANDS OFF the impact
+//! position + type; FX-B owns the animation.
+//!
+//! A burst / full-auto shot emits one [`ShotFired`] PER ROUND in one frame.
+//! [`spawn_shot_projectiles`] drains them in read order and gives each round a
+//! staggered LAUNCH DELAY (its read-order index × the hot-reloadable
+//! [`InterShotSeconds`](super::tuning::InterShotSeconds)) so the volley animates
+//! SHOT-BY-SHOT rather than all bolts leaving the muzzle at once: a
+//! projectile is held INVISIBLE at the muzzle until its launch delay elapses, then
+//! runs its velocity travel. So a burst reads as distinct sequential rounds (GTW-308).
+//!
+//! Pure VIEW (ADR-0001): it only READS [`ShotFired`] + the rendered ganger
+//! [`Transform`]s + draws sprites; it adds no sim plumbing and never writes the sim.
+//! Param-only throughout (`bevy-traps.md` #7).
+
+use bevy::{camera::visibility::RenderLayers, prelude::*};
+use gdtf_battle_sim::{DamageType, ShotFired, ShotKind};
+
+use super::{
+    readers::fx_sprite_scaled,
+    roles::{EffectRoles, nearest_direction_index},
+    tuning::{FxTuning, ProjectileVelocity},
+};
+use crate::{GangerSprite, GangerSprites, TopDownAtlases, cell_to_world, sim_pos_to_world};
+
+/// Marker tagging every traveling projectile sprite this slice spawns.
+///
+/// A value-free marker (the no-bare-types marker carve-out) so [`advance_projectiles`]
+/// finds exactly the GTW-306 projectiles — never the FX flashes ([`FxFlash`](super::FxFlash)),
+/// never terrain / ganger sprites / the camera.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ShotProjectile;
+
+/// One projectile's flight — its CONSTANT-VELOCITY travel from the muzzle world point
+/// toward the target world point, after a staggered launch delay.
+///
+/// A NAMED grouping component (not a bare tuple): [`from`](ProjectileTravel::from) /
+/// [`to`](ProjectileTravel::to) are the endpoints (world-space, the
+/// [`Vec3`](bevy::math::Vec3) inner is the only carve-out the no-bare-types rule
+/// allows — framework geometry the [`Transform`] consumes directly), `damage` is the
+/// shot's [`DamageType`] (carried so the arrival [`PendingImpact`] knows which
+/// 3-frame impact to play), `launch` is the one-shot LAUNCH-DELAY clock that holds the
+/// round at the muzzle (invisible) until the volley's stagger step elapses,
+/// `velocity` is the bolt's constant flight speed (the hot-reloadable
+/// [`ProjectileVelocity`] CAPTURED from [`FxTuning`] at spawn, so a live `.ron` edit
+/// re-tunes the next shot), and `traveled` is the distance (world px) the bolt has
+/// covered along the `from → to` ray so far — advanced by `*velocity × delta` each
+/// frame once launched. The launch timer + traveled distance mutate ONLY through
+/// [`advance`](ProjectileTravel::advance) (no `DerefMut`).
+#[derive(Component, Debug, Clone)]
+pub struct ProjectileTravel {
+    /// The muzzle world point the flight starts at (`traveled = 0`).
+    from:     Vec3,
+    /// The target world point the flight ends at (`traveled = distance(from, to)`).
+    to:       Vec3,
+    /// The shot's damage type — handed to the arrival [`PendingImpact`] so FX-B
+    /// plays the matching 3-frame impact animation.
+    damage:   DamageType,
+    /// The one-shot LAUNCH-DELAY clock (this round's read-order index × the
+    /// hot-reloadable [`InterShotSeconds`](super::tuning::InterShotSeconds)). Until it
+    /// finishes the round is held INVISIBLE at the muzzle so a multi-round volley
+    /// animates shot-by-shot; once it finishes the bolt starts accumulating `traveled`.
+    launch:   Timer,
+    /// The bolt's constant flight speed (world px/sec) — the hot-reloadable
+    /// [`ProjectileVelocity`] this round CAPTURED from [`FxTuning`] at spawn, so a live
+    /// `.ron` edit re-tunes subsequently fired shots without a rebuild.
+    velocity: ProjectileVelocity,
+    /// Distance (world px) flown along the `from → to` ray so far — grows by
+    /// `*velocity × delta` each launched frame; arrival is when it reaches the full
+    /// `from → to` distance.
+    traveled: f32,
+}
+
+impl ProjectileTravel {
+    /// Start a fresh projectile flight from `from` toward `to` carrying `damage`, flying at
+    /// `velocity`, after a `launch_delay` hold at the muzzle.
+    ///
+    /// `velocity` is the hot-reloadable [`ProjectileVelocity`] the caller READ from the
+    /// resident [`FxTuning`] resource — CAPTURED here so a later `.ron` edit re-tunes the
+    /// NEXT shot rather than mid-flight ones. `launch_delay` is this round's stagger offset
+    /// (its read-order index × the tuning's
+    /// [`InterShotSeconds`](super::tuning::InterShotSeconds)); a
+    /// [`Duration::ZERO`](std::time::Duration::ZERO) delay launches at once (round 0 / a
+    /// single shot — a zero-duration `Once` timer is already finished). The launch hold is a
+    /// [`TimerMode::Once`] clock; once it finishes the bolt flies at `*velocity` (px/sec)
+    /// until it has covered the whole `from → to` distance, at which point it has arrived and
+    /// is despawned.
+    #[must_use]
+    pub fn new(
+        from: Vec3,
+        to: Vec3,
+        damage: DamageType,
+        velocity: ProjectileVelocity,
+        launch_delay: std::time::Duration,
+    ) -> Self {
+        Self {
+            from,
+            to,
+            damage,
+            launch: Timer::new(launch_delay, TimerMode::Once),
+            velocity,
+            traveled: 0.0,
+        }
+    }
+
+    /// The full `from → to` flight distance, in world px.
+    #[must_use]
+    fn distance(&self) -> f32 {
+        self.from.distance(self.to)
+    }
+
+    /// Advance the round by `delta` and report whether its flight has now ARRIVED.
+    ///
+    /// The LAUNCH-DELAY hold ticks first: while it is unfinished the round stays parked at
+    /// the muzzle (no distance accrues) and this returns `false`. Once the launch delay
+    /// finishes, the bolt accumulates `*velocity × delta` world px of travel (the captured
+    /// hot-reloadable [`ProjectileVelocity`]); this returns `true` only once `traveled` has
+    /// reached the full `from → to` distance — the signal [`advance_projectiles`] despawns +
+    /// spawns the [`PendingImpact`] on. Wraps the inner [`Timer`] + distance so they mutate
+    /// through a named method (no `DerefMut`).
+    pub fn advance(&mut self, delta: std::time::Duration) -> bool {
+        if !self.launch.tick(delta).is_finished() {
+            // Still parked at the muzzle — hold this round until its stagger step elapses.
+            return false;
+        }
+        self.traveled = self.velocity.mul_add(delta.as_secs_f32(), self.traveled);
+        self.traveled >= self.distance()
+    }
+
+    /// Whether this round's launch delay has elapsed — i.e. it has LEFT the muzzle and
+    /// should now be drawn. While `false` the round is held invisible at the muzzle so the
+    /// volley animates shot-by-shot.
+    #[must_use]
+    pub fn launched(&self) -> bool {
+        self.launch.is_finished()
+    }
+
+    /// The current travel fraction `t ∈ [0, 1]` (distance flown / total distance) — the
+    /// flight progress the projectile's world position interpolates by. Reads `0` while the
+    /// round is still parked at the muzzle (no distance flown yet); a zero-length flight
+    /// (muzzle == target) reads `1` (already arrived) rather than dividing by zero.
+    #[must_use]
+    pub fn fraction(&self) -> f32 {
+        let distance = self.distance();
+        if distance <= f32::EPSILON {
+            return 1.0;
+        }
+        (self.traveled / distance).clamp(0.0, 1.0)
+    }
+
+    /// The projectile's CURRENT world position — `from.lerp(to, t)` at the travel
+    /// fraction, the constant-velocity travel point (NEVER a stretch/scale).
+    #[must_use]
+    pub fn position(&self) -> Vec3 {
+        self.from.lerp(self.to, self.fraction())
+    }
+
+    /// The arrival (target) world point — the flight terminus (`to`).
+    #[must_use]
+    pub const fn arrival(&self) -> Vec3 {
+        self.to
+    }
+
+    /// The shot's damage type — handed to the arrival [`PendingImpact`].
+    #[must_use]
+    pub const fn damage(&self) -> DamageType {
+        self.damage
+    }
+}
+
+/// A projectile has ARRIVED — the SEAM FX-B reads to play the 3-frame impact.
+///
+/// [`advance_projectiles`] spawns one of these (a bare entity carrying ONLY this
+/// component) at the arrival point the instant a projectile despawns; FX-B's
+/// [`animate_impact`](super::impact::animate_impact) queries for them and steps the
+/// [`damage`](PendingImpact::damage) type's 3 impact frames there before despawning
+/// the impact entity. FX-A defines + spawns this so FX-B's `impact.rs` only fills
+/// the animation body (no `mod.rs` collision).
+///
+/// A NAMED grouping component: [`at`](PendingImpact::at) is the impact world point
+/// (the [`Vec3`](bevy::math::Vec3) carve-out — framework geometry), `damage` the
+/// shot's [`DamageType`] (so FX-B picks the matching impact strip).
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct PendingImpact {
+    /// The world point the projectile arrived at — where the impact animation plays.
+    pub at:     Vec3,
+    /// The shot's damage type — selects which 3-frame impact strip FX-B animates.
+    pub damage: DamageType,
+}
+
+/// `Update` (`PresenterSystems::Draw`): spawn the traveling DIRECTIONAL projectile per
+/// [`ShotFired`] round.
+///
+/// Drains [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired); for each round it picks the
+/// per-damage-type FX row ([`EffectRoles::fx_for`]) and, within it, the directional tile for
+/// the shot's heading ([`nearest_direction_index`] of `msg.trajectory`), then spawns ONE
+/// small projectile sprite at the muzzle world point ([`sim_pos_to_world`](crate::sim_pos_to_world)
+/// of `msg.muzzle`) carrying a [`ProjectileTravel`] toward the TARGET world point.
+///
+/// The target point depends on WHAT the round struck ([`ShotFired::kind`]): for a
+/// [`Ganger`](gdtf_battle_sim::ShotKind::Ganger) hit, the bolt flies to that hit entity's
+/// CURRENT rendered world position — looked up by mapping its sim [`Entity`] through
+/// [`GangerSprites`](crate::GangerSprites) to its presenter sprite, then reading that sprite's
+/// [`Transform`]. That rendered position ALREADY reflects the target's stance / silhouette
+/// height (a prone / kneeling ganger draws lower), so the bolt angles correctly toward it with
+/// NO sim change and NO 3D impact field. For any other kind (cover / slab / ground hit, or a
+/// clean miss) — or if the hit ganger has no rendered sprite (off the active level) — the bolt
+/// flies to the impact cell ([`cell_to_world`](crate::cell_to_world) of `msg.impact_cell` /
+/// `msg.impact_level`).
+///
+/// The sprite is drawn at a UNIFORM
+/// [`ProjectileDrawScale`](super::tuning::ProjectileDrawScale) of `CELL_PX` — READ from the
+/// hot-reloadable [`FxTuning`] resource (legibly larger so the directional comet reads, the
+/// SAME factor on both axes — NEVER stretched along the vector); [`advance_projectiles`] only
+/// TRANSLATES it. A missing effects sheet skips the spawn fail-closed (`fx_sprite_scaled`
+/// returns [`None`]).
+///
+/// A burst / full-auto shot emits one [`ShotFired`] per round in ONE frame, so this spawns one
+/// projectile per round — and STAGGERS them (GTW-308): each round's read-order index (0, 1, 2, …)
+/// × the tuning's [`InterShotSeconds`](super::tuning::InterShotSeconds) is its
+/// [`ProjectileTravel`] launch delay, so the volley animates shot-by-shot rather than as a
+/// single fat bolt. Each round spawns [`Visibility::Hidden`] (held invisible at the muzzle);
+/// [`advance_projectiles`] reveals it once its launch delay elapses. The read-order index
+/// counts every round drained this call (across multiple bursts in one frame, too), which is
+/// the order the rounds leave the muzzle.
+///
+/// The draw scale, the constant flight [`ProjectileVelocity`] each [`ProjectileTravel`]
+/// captures, and the inter-shot stagger are ALL read here from the resident [`FxTuning`]
+/// resource (the migrated-from-`const`, hot-reloadable `.ron` table), so a live edit to
+/// `assets/tiles/fx_tuning.ron` re-tunes the next shot's size / speed / spacing without a
+/// rebuild.
+///
+/// Param-only (`bevy-traps.md` #7): [`Commands`], [`Res<TopDownAtlases>`], [`Res<EffectRoles>`],
+/// [`Res<FxTuning>`], [`Res<GangerSprites>`] + the read-only ganger
+/// `Query<&Transform, With<GangerSprite>>` (for the hit-entity aim lookup), and
+/// [`MessageReader<ShotFired>`].
+pub fn spawn_shot_projectiles(
+    mut commands: Commands,
+    atlases: Res<TopDownAtlases>,
+    roles: Res<EffectRoles>,
+    tuning: Res<FxTuning>,
+    ganger_sprites: Res<GangerSprites>,
+    ganger_transforms: Query<&Transform, With<GangerSprite>>,
+    mut shots: MessageReader<ShotFired>,
+) {
+    // The hot-reloadable tuning the whole volley reads (captured per spawn so a later edit
+    // re-tunes the NEXT shot, not in-flight ones).
+    let draw_scale = *tuning.projectile_draw_scale;
+    let velocity = tuning.projectile_velocity;
+    let inter_shot = *tuning.inter_shot_seconds;
+    // The read-order index of each round drained this call — its position in the volley, which
+    // sets its stagger offset so successive rounds leave the muzzle one step apart.
+    for (round, msg) in shots.read().enumerate() {
+        let muzzle_world = sim_pos_to_world(msg.muzzle);
+        // Where the bolt flies: a ganger hit aims at the hit entity's CURRENT rendered
+        // position (its Transform already encodes its stance/silhouette height), so a
+        // prone/kneeling target is angled DOWN at with no sim change. Everything else
+        // (cover/slab/ground hit, or a miss) flies to the impact cell.
+        let target_world = ganger_hit_world(msg.kind, &ganger_sprites, &ganger_transforms)
+            .unwrap_or_else(|| cell_to_world(msg.impact_cell, msg.impact_level));
+
+        // The per-damage-type row -> its 8-way rose -> the tile for this heading.
+        let fx = roles.fx_for(msg.damage);
+        let dir_index = nearest_direction_index(msg.trajectory.vec());
+        let Some(tile) = fx.directions.get(dir_index) else {
+            // Unreachable for a well-formed table (dir_index is in 0..8), but a short
+            // strip degrades to no projectile rather than panicking.
+            continue;
+        };
+        let Some(sprite) = fx_sprite_scaled(*tile, Color::WHITE, draw_scale, &atlases) else {
+            continue;
+        };
+        // This round's launch delay = its read-order index × the inter-shot step (round 0 = 0,
+        // launches at once). Scaling a `Duration` by the `u32` index keeps it exact with no `as`
+        // float cast (`Duration` implements `Mul<u32>`).
+        let round_index = u32::try_from(round).unwrap_or(u32::MAX);
+        let launch_delay = std::time::Duration::from_secs_f32(inter_shot) * round_index;
+        commands.spawn((
+            sprite,
+            Transform::from_translation(muzzle_world),
+            // Hidden until this round's launch delay elapses (advance_projectiles reveals it),
+            // so a staggered volley reads shot-by-shot rather than every bolt at once.
+            Visibility::Hidden,
+            RenderLayers::layer(crate::WORLD_RENDER_LAYER),
+            ProjectileTravel::new(
+                muzzle_world,
+                target_world,
+                msg.damage,
+                velocity,
+                launch_delay,
+            ),
+            ShotProjectile,
+        ));
+    }
+}
+
+/// The CURRENT rendered world position of the ganger a round struck, or [`None`] when the
+/// round did not hit a ganger (or that ganger has no rendered sprite).
+///
+/// For a [`ShotKind::Ganger`] outcome it maps the hit sim [`Entity`] through
+/// [`GangerSprites`] to its presenter sprite [`Entity`], then reads that sprite's
+/// [`Transform`] translation — the position the target is DRAWN at, which already encodes its
+/// stance / silhouette height (a prone / kneeling target draws lower). Any other
+/// [`ShotKind`] (cover / slab / ground / miss) returns [`None`], and so does a ganger hit
+/// whose sprite is not currently mapped / rendered (e.g. on another storey) — the caller then
+/// falls back to the impact cell. A pure read-only lookup: no sim change, no 3D impact field.
+fn ganger_hit_world(
+    kind: ShotKind,
+    ganger_sprites: &GangerSprites,
+    ganger_transforms: &Query<&Transform, With<GangerSprite>>,
+) -> Option<Vec3> {
+    let ShotKind::Ganger(sim_entity) = kind else {
+        return None;
+    };
+    let sprite_entity = ganger_sprites.sprite_for(sim_entity)?;
+    let transform = ganger_transforms.get(sprite_entity).ok()?;
+    Some(transform.translation)
+}
+
+/// `Update` (`PresenterSystems::Draw`): advance every traveling projectile and HAND OFF its
+/// impact on arrival.
+///
+/// Advances each [`ProjectileTravel`] by the frame [`Res<Time>`] delta. A round whose staggered
+/// launch delay has NOT yet elapsed is held INVISIBLE at the muzzle ([`Visibility::Hidden`], no
+/// translation) so a multi-round volley animates shot-by-shot; the frame its launch delay
+/// elapses it becomes [`Visibility::Visible`] and thereafter its `Transform` is written to its
+/// current travel point ([`ProjectileTravel::position`]) — constant-VELOCITY TRANSLATION, the
+/// sprite never stretched/scaled. The instant the bolt has flown the whole `from → to` distance
+/// ([`ProjectileTravel::advance`] returns `true`), it `Commands::entity(e).despawn`s the
+/// projectile AND `Commands::spawn`s a [`PendingImpact`] at the arrival point carrying the shot's
+/// damage type — the seam FX-B's [`animate_impact`](super::impact::animate_impact) reads. It
+/// touches ONLY [`ShotProjectile`]-marked entities; it needs no `BattleInProgress` gate (inert
+/// with no projectiles — the query is empty — so a projectile spawned during a battle still
+/// completes its flight after it ends).
+///
+/// Param-only (`bevy-traps.md` #7): [`Commands`] for the despawn / impact spawn, [`Res<Time>`]
+/// for the delta, and the `(Entity, &mut Transform, &mut Visibility, &mut ProjectileTravel)`
+/// query (`With<ShotProjectile>`).
+pub fn advance_projectiles(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut projectiles: Query<
+        (
+            Entity,
+            &mut Transform,
+            &mut Visibility,
+            &mut ProjectileTravel,
+        ),
+        With<ShotProjectile>,
+    >,
+) {
+    let delta = time.delta();
+    for (entity, mut transform, mut visibility, mut travel) in &mut projectiles {
+        let arrived = travel.advance(delta);
+        if !travel.launched() {
+            // Still parked at the muzzle — keep it hidden, do not move it yet.
+            continue;
+        }
+        // Launched: reveal it (set_if_neq avoids a needless change-detection write each frame)
+        // and translate to the current flight point (never scale — that was the bug).
+        visibility.set_if_neq(Visibility::Visible);
+        transform.translation = travel.position();
+        if arrived {
+            // Hand the impact off to FX-B at the arrival point, then despawn the bolt.
+            commands.spawn(PendingImpact {
+                at:     travel.arrival(),
+                damage: travel.damage(),
+            });
+            commands.entity(entity).despawn();
+        }
+    }
+}

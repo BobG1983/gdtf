@@ -31,11 +31,13 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    EffectRoles, FxFlash, TopDownAtlases, TopDownRendererPlugin, cell_to_world, sim_pos_to_world,
+    CharacterRoles, EffectRoles, FxFlash, FxTuning, GangerSprites, ProjectileTravel,
+    ShotProjectile, TopDownAtlases, TopDownRendererPlugin, cell_to_world, sim_pos_to_world,
 };
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel, CoverDestroyed, Level,
-    Position, ShotDir, ShotFired, ShotKind, SimPos, Wounds,
+    ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel, CoverDestroyed, DamageType,
+    Direction, Facing, Faction, Level, LifeState, Position, ShotDir, ShotFired, ShotKind, SimPos,
+    Wounds,
 };
 
 /// Generous settle headroom so a slow CI box never flakes on the async atlas /
@@ -93,14 +95,24 @@ fn headless_renderer_app() -> App {
     app
 }
 
-/// Drives `update()`s until `EffectRoles` + `TopDownAtlases` are resident (the async
-/// load chain has settled). Returns whether they settled within `MAX_UPDATES`.
+/// Drives `update()`s until `EffectRoles` + `TopDownAtlases` + `FxTuning` + `CharacterRoles`
+/// are resident (the async load chain has settled). Returns whether they settled within
+/// `MAX_UPDATES`.
+///
+/// `FxTuning` (GTW-306) is part of the settle gate because `spawn_shot_projectiles` now
+/// `run_if(resource_exists::<FxTuning>)` — without waiting for it the projectile-spawn tests
+/// flake (the system silently does not run until the hot-reloadable tuning has resolved).
+/// `CharacterRoles` is part of the gate so the entity-aim test's real `spawn_ganger_sprites`
+/// path (gated `run_if(resource_exists::<CharacterRoles>)`) actually runs and registers the
+/// hit ganger's presenter sprite in `GangerSprites` — the lookup the entity-aim branch reads.
 fn settle_resources(app: &mut App) -> bool {
     for _ in 0..MAX_UPDATES {
         app.update();
         let has_roles = app.world().get_resource::<EffectRoles>().is_some();
         let has_atlases = app.world().get_resource::<TopDownAtlases>().is_some();
-        if has_roles && has_atlases {
+        let has_tuning = app.world().get_resource::<FxTuning>().is_some();
+        let has_characters = app.world().get_resource::<CharacterRoles>().is_some();
+        if has_roles && has_atlases && has_tuning && has_characters {
             return true;
         }
     }
@@ -315,36 +327,29 @@ fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
     );
 }
 
-/// The atlas indices of every `FxFlash` sprite currently in the world (unordered).
-fn flash_indices(app: &mut App) -> Vec<usize> {
-    let mut q = app.world_mut().query::<(&FxFlash, &Sprite)>();
+/// The (world translation, atlas index) of every `ShotProjectile` sprite (the GTW-306
+/// traveling projectiles), unordered.
+fn projectile_positions_and_indices(app: &mut App) -> Vec<(bevy::math::Vec3, Option<usize>)> {
+    let mut q = app
+        .world_mut()
+        .query::<(&ShotProjectile, &Sprite, &Transform)>();
     q.iter(app.world())
-        .filter_map(|(_, sprite)| sprite.texture_atlas.as_ref().map(|atlas| atlas.index))
+        .map(|(_, sprite, transform)| {
+            (
+                transform.translation,
+                sprite.texture_atlas.as_ref().map(|atlas| atlas.index),
+            )
+        })
         .collect()
 }
 
-/// Whether ANY `FxFlash` sprite sits at (approximately) `world` — a position-presence
-/// check across all flashes (the muzzle / tracer / impact spawn three at once, so the
-/// SINGLE-flash helper does not apply).
-fn any_flash_at(app: &mut App, world: bevy::math::Vec3) -> bool {
-    let mut q = app.world_mut().query::<(&FxFlash, &Transform)>();
-    q.iter(app.world())
-        .any(|(_, t)| t.translation.distance(world) < 0.01)
-}
-
-/// Counts the `FlashTtl` lifetimes currently in the world (every FX flash carries one).
-fn ttl_count(app: &mut App) -> usize {
-    let mut q = app.world_mut().query::<&gdtf_battle_presenter::FlashTtl>();
-    q.iter(app.world()).count()
-}
-
-/// GTW-290 — a `ShotFired` spawns THREE transient flashes: a muzzle flash at
-/// `sim_pos_to_world(muzzle)`, a tracer beam, and a generic impact mark at
-/// `cell_to_world(impact)` — each carrying `FlashTtl`, at the table's muzzle/tracer/impact
-/// indices (read structurally from `EffectRoles`, never a literal). All three despawn once
-/// the TTL elapses.
+/// GTW-307 — a `ShotFired` spawns NO standalone muzzle flash (it was removed: it rendered
+/// oversized at the shooter's feet and read poorly), only a traveling DIRECTIONAL projectile (a
+/// `ShotProjectile` starting at the muzzle, on a `ProjectileTravel` toward the impact). The
+/// projectile uses the per-damage-type directional tile (orange row for Kinetic) and IS the
+/// fire signal; the old stretched tracer is also gone.
 #[test]
-fn shot_fired_spawns_muzzle_tracer_and_impact_flashes() {
+fn shot_fired_spawns_directional_projectile_and_no_muzzle_flash() {
     let mut app = headless_renderer_app();
     assert!(settle_resources(&mut app), "resources must resolve");
     app.world_mut().insert_resource(BattleInProgress);
@@ -353,7 +358,8 @@ fn shot_fired_spawns_muzzle_tracer_and_impact_flashes() {
     assert!(roles.is_some(), "EffectRoles must be resident");
     let Some(roles) = roles else { return };
 
-    // A struck ganger entity (the ShotKind::Ganger payload) + a known fire geometry.
+    // A struck ganger entity (the ShotKind::Ganger payload) + a known fire geometry, fired
+    // EAST (the +x heading -> compass column 0 of the row).
     let struck = app.world_mut().spawn_empty().id();
     let muzzle = SimPos::new(2.0, 5.0, 0.0);
     let impact_cell = Cell::new(8, 5);
@@ -365,6 +371,7 @@ fn shot_fired_spawns_muzzle_tracer_and_impact_flashes() {
         impact_cell,
         impact_level,
         kind: ShotKind::Ganger(struck),
+        damage: DamageType::Kinetic,
     };
 
     app.world_mut()
@@ -372,52 +379,40 @@ fn shot_fired_spawns_muzzle_tracer_and_impact_flashes() {
         .write(shot);
     app.update();
 
-    // Three flashes — muzzle, tracer, impact — each on a FlashTtl.
-    assert_eq!(
-        fx_count(&mut app),
-        3,
-        "a ShotFired must spawn three flashes (muzzle + tracer + impact)",
-    );
-    assert_eq!(
-        ttl_count(&mut app),
-        3,
-        "every firing-FX flash must carry a FlashTtl one-shot clock",
-    );
-
-    // The muzzle flash sits at sim_pos_to_world(muzzle); the impact mark at
-    // cell_to_world(impact). The tracer's midpoint is between them.
-    assert!(
-        any_flash_at(&mut app, sim_pos_to_world(muzzle)),
-        "a flash must sit at the muzzle world position (sim_pos_to_world(muzzle))",
-    );
-    assert!(
-        any_flash_at(&mut app, cell_to_world(impact_cell, impact_level)),
-        "a flash must sit at the impact world position (cell_to_world(impact))",
-    );
-
-    // The indices are the table's muzzle/tracer/impact roles (structural, not pinned).
-    let indices = flash_indices(&mut app);
-    assert!(
-        indices.contains(&*roles.muzzle_flash)
-            && indices.contains(&*roles.tracer)
-            && indices.contains(&*roles.impact),
-        "the three flashes must use the table's muzzle/tracer/impact indices, got {indices:?}",
-    );
-
-    // All three are one-shot: they despawn once the TTL elapses.
-    advance_past_ttl(&mut app);
+    // No standalone muzzle FxFlash spawns on fire (the muzzle flash was removed in GTW-307;
+    // the impact-frame flashes spawn later, when the projectile ARRIVES, not on fire).
     assert_eq!(
         fx_count(&mut app),
         0,
-        "all three firing-FX flashes must despawn once their FlashTtl elapses",
+        "a ShotFired must spawn NO muzzle FxFlash on fire (the muzzle flash was removed)",
     );
+
+    // Exactly one traveling directional projectile, starting at the muzzle, at the orange-row
+    // east tile (Kinetic -> orange; +x heading -> column 0).
+    let projectiles = projectile_positions_and_indices(&mut app);
+    assert_eq!(
+        projectiles.len(),
+        1,
+        "a ShotFired must spawn exactly one traveling projectile",
+    );
+    if let Some((pos, index)) = projectiles.first() {
+        assert!(
+            pos.distance(sim_pos_to_world(muzzle)) < 0.01,
+            "the projectile must START at the muzzle world position",
+        );
+        assert_eq!(
+            *index,
+            Some(*roles.orange.directions[0]),
+            "the Kinetic east shot must use the orange row's column-0 (E) directional tile",
+        );
+    }
 }
 
-/// GTW-290 — a MISS still draws the firing FX: muzzle + tracer + generic impact mark (the
-/// tracer terminates at the impact cell). A miss carries no struck object but the same
-/// geometry, so the presenter draws the same three flashes.
+/// GTW-307 — a MISS still draws the firing FX: a traveling projectile (the projectile
+/// terminates at the impact cell). A miss carries no struck object but the same geometry, so
+/// the presenter draws the same projectile — and, like a hit, NO standalone muzzle flash.
 #[test]
-fn shot_fired_miss_still_spawns_muzzle_tracer_and_impact() {
+fn shot_fired_miss_still_spawns_projectile_and_no_muzzle_flash() {
     let mut app = headless_renderer_app();
     assert!(settle_resources(&mut app), "resources must resolve");
     app.world_mut().insert_resource(BattleInProgress);
@@ -429,6 +424,7 @@ fn shot_fired_miss_still_spawns_muzzle_tracer_and_impact() {
         impact_cell:  Cell::new(1, 9),
         impact_level: Level::new(0),
         kind:         ShotKind::Miss,
+        damage:       DamageType::Kinetic,
     };
 
     app.world_mut()
@@ -438,8 +434,139 @@ fn shot_fired_miss_still_spawns_muzzle_tracer_and_impact() {
 
     assert_eq!(
         fx_count(&mut app),
-        3,
-        "a miss still draws muzzle + tracer + impact (the tracer terminates at the cell)",
+        0,
+        "a miss draws NO muzzle flash on fire (the muzzle flash was removed)",
+    );
+    assert_eq!(
+        projectile_positions_and_indices(&mut app).len(),
+        1,
+        "a miss still draws a traveling projectile (it terminates at the impact cell)",
+    );
+}
+
+/// Spawns a REAL sim ganger (the components `spawn_ganger_sprites` queries — `Position`,
+/// `Faction`, `Facing`, `LifeState`) at `cell`/`level` and drives one `update()` so the
+/// presenter's real spawn system builds its sprite and registers the `sim Entity -> sprite
+/// Entity` link in `GangerSprites`. Returns the sim `Entity` (the `ShotKind::Ganger`
+/// payload). `BattleInProgress` must already be resident (the spawn gate).
+fn spawn_sim_ganger_with_sprite(
+    app: &mut App,
+    cell: Cell,
+    level: Level,
+) -> bevy::ecs::entity::Entity {
+    let at = CellLevel::new(cell, level);
+    let sim = app
+        .world_mut()
+        .spawn((
+            Position::new(at),
+            Faction::new(0),
+            Facing::new(Direction::East),
+            LifeState::Alive,
+        ))
+        .id();
+    // Drive the real spawn_ganger_sprites system (gated on CharacterRoles + TopDownAtlases +
+    // BattleInProgress, all resident after settle) so the presenter sprite + GangerSprites
+    // mapping exist before the shot is fired.
+    app.update();
+    sim
+}
+
+/// The `GangerSprites`-mapped presenter sprite's rendered world `Transform.translation` for
+/// `sim` ganger, or `None` if it was not spawned/mapped (the caller asserts `Some`).
+fn ganger_sprite_world(app: &App, sim: bevy::ecs::entity::Entity) -> Option<bevy::math::Vec3> {
+    let sprite_entity = app
+        .world()
+        .get_resource::<GangerSprites>()
+        .and_then(|sprites| sprites.sprite_for(sim))?;
+    app.world()
+        .get::<Transform>(sprite_entity)
+        .map(|transform| transform.translation)
+}
+
+/// The arrival (target) world point of the SINGLE `ShotProjectile` in flight — its
+/// `ProjectileTravel` terminus. Returns `None` unless exactly one projectile exists (the
+/// caller asserts `Some`).
+fn single_projectile_arrival(app: &mut App) -> Option<bevy::math::Vec3> {
+    let mut q = app.world_mut().query::<&ProjectileTravel>();
+    let mut found: Option<bevy::math::Vec3> = None;
+    for travel in q.iter(app.world()) {
+        if found.is_some() {
+            return None;
+        }
+        found = Some(travel.arrival());
+    }
+    found
+}
+
+/// GTW-306 (C2 / C5) — a `ShotFired` that struck a GANGER aims its traveling projectile at
+/// that hit entity's CURRENT rendered world position (its presenter `Transform`, looked up
+/// through `GangerSprites`), NOT at the impact `(cell, level)`. This drives the REAL
+/// `spawn_ganger_sprites` path so the hit ganger has a mapped sprite, places that ganger in a
+/// DIFFERENT cell from the message's `impact_cell`, and asserts the projectile's
+/// `ProjectileTravel` terminus equals the ganger sprite's rendered translation — and is
+/// distinctly NOT `cell_to_world(impact_cell, impact_level)`. Reverting the entity-aim logic
+/// to always use `cell_to_world(impact_cell)` would flip both assertions (the path is no
+/// longer dead-code to the suite).
+#[test]
+fn shot_fired_at_a_ganger_aims_at_the_hit_entitys_rendered_position() {
+    let mut app = headless_renderer_app();
+    assert!(settle_resources(&mut app), "resources must resolve");
+    app.world_mut().insert_resource(BattleInProgress);
+
+    // The struck ganger sits at a cell DISTINCT from the shot's impact cell, so the
+    // entity-aim endpoint and the impact-cell fallback are unambiguously different points.
+    let ganger_cell = Cell::new(8, 5);
+    let level = Level::new(0);
+    let struck = spawn_sim_ganger_with_sprite(&mut app, ganger_cell, level);
+
+    // The ganger's sprite must have been spawned + mapped by the real spawn system.
+    let ganger_world = ganger_sprite_world(&app, struck);
+    assert!(
+        ganger_world.is_some(),
+        "the struck ganger's presenter sprite must be spawned + mapped in GangerSprites",
+    );
+    let Some(ganger_world) = ganger_world else {
+        return;
+    };
+
+    // Fire AT that ganger, but with an impact cell DELIBERATELY elsewhere — proving the bolt
+    // tracks the entity, not the message's impact cell.
+    let muzzle = SimPos::new(1.0, 1.0, 0.0);
+    let impact_cell = Cell::new(2, 2);
+    let impact_level = Level::new(0);
+    let shot = ShotFired {
+        shooter: app.world_mut().spawn_empty().id(),
+        muzzle,
+        trajectory: ShotDir::from_direction(bevy::math::Vec3::new(1.0, 0.0, 0.0)),
+        impact_cell,
+        impact_level,
+        kind: ShotKind::Ganger(struck),
+        damage: DamageType::Kinetic,
+    };
+    app.world_mut()
+        .resource_mut::<Messages<ShotFired>>()
+        .write(shot);
+    app.update();
+
+    let arrival = single_projectile_arrival(&mut app);
+    assert!(
+        arrival.is_some(),
+        "exactly one traveling projectile must spawn for the ganger hit",
+    );
+    let Some(arrival) = arrival else { return };
+
+    // The projectile must fly to the hit ganger's RENDERED position (entity-aim), the (x, y)
+    // of its sprite Transform — NOT the impact cell. (Compare x/y: the projectile's z is the
+    // FX layer, distinct from the ganger sprite's Actor-layer z bias, so a 2D compare isolates
+    // the aim choice from the z-layering.)
+    assert!(
+        arrival.truncate().distance(ganger_world.truncate()) < 0.01,
+        "the bolt must aim at the hit ganger's rendered position {ganger_world:?}, got {arrival:?}",
+    );
+    let impact_world = cell_to_world(impact_cell, impact_level);
+    assert!(
+        arrival.truncate().distance(impact_world.truncate()) > 0.01,
+        "the bolt must NOT aim at the impact cell {impact_world:?} for a ganger hit (entity-aim)",
     );
 }
 

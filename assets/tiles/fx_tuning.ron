@@ -1,0 +1,27 @@
+// GDTF firing-FX tuning — the four HOT-RELOADABLE numbers that drive the GTW-306
+// traveling-projectile + impact FX. Migrated out of Rust consts (the TRAVEL slice)
+// so size / velocity / stagger / impact-timing tune WITHOUT a rebuild: edit a value,
+// save, and the running game re-derives it live through the same RonAsset<T> loader
+// the theme / situation / tuning / tile-roles / effect-roles tables use.
+//
+// EVERY field is OPTIONAL (serde default): omit one and it falls back to the shipped
+// default shown below, so you can tune a single number without restating the rest.
+(
+    // The traveling projectile's draw size, as a UNIFORM fraction of CELL_PX (16px) —
+    // the SAME factor on both axes (never stretched along the shot vector). The comet
+    // glyph fills only ~7px of its tile, so a sub-1.0 value still reads. 0.5 is the
+    // user's TRAVEL-slice size tune. Default 0.5.
+    projectile_draw_scale: 0.5,
+    // How fast every bolt flies, in WORLD PIXELS PER SECOND (constant velocity, NOT a
+    // fixed-seconds window — a far shot just spends more frames in flight). 480 px/s
+    // ≈ 30 cells/s, so a 5-cell (80px) shot flies in ~0.17 s. Default 480.0.
+    projectile_velocity:   480.0,
+    // The gap between successive rounds of a burst / full-auto shot leaving the muzzle,
+    // in SECONDS — round N waits N * this before launching, so a volley reads
+    // shot-by-shot instead of one fat bolt. Bigger = more spread-out burst. Default 0.35.
+    inter_shot_seconds:    0.35,
+    // How long each of the 3 impact-animation frames holds on screen, in SECONDS —
+    // 3 * this is the whole impact burst -> ring -> breaking-ring shockwave. Bigger =
+    // a slower, more lingering impact. Default 0.08.
+    impact_frame_seconds:  0.08,
+)

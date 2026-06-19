@@ -12,12 +12,19 @@
 //!   at the ganger's cell ([`read_armor_broken`]).
 //! - [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) `{ at }` -> a debris/rubble burst at
 //!   `cell_to_world(at)` ([`read_cover_destroyed`]); ADDITIVE to the S4 rubble swap.
-//! - [`ShotFired`](gdtf_battle_sim::ShotFired) `{ muzzle, trajectory, impact, kind }` ->
-//!   the GTW-290 FIRING FX ([`read_shot_fired`]): a muzzle flash at the muzzle world pos, a
-//!   tracer beam STRETCHED + rotated along muzzle→impact, and a GENERIC impact mark at the
-//!   impact world pos — one per ROUND (a burst draws a tracer per round). It is the generic
-//!   projectile FX ONLY; it does NOT duplicate the three CONSEQUENCE flashes above (a hit on
-//!   a ganger still bleeds via `Bleeding`, breaks armor via `ArmorBroken`, etc.).
+//! - [`ShotFired`](gdtf_battle_sim::ShotFired) `{ muzzle, trajectory, impact, kind, damage }`
+//!   -> the GTW-306 FIRING FX (reshaped from GTW-290's smeared stretched tracer): a
+//!   **traveling directional projectile** that LERPS muzzle→impact then despawns
+//!   ([`spawn_shot_projectiles`] / [`advance_projectiles`]), and a **3-frame impact
+//!   animation** at its arrival point ([`animate_impact`], FX-B). The projectile + impact
+//!   tiles are PER DAMAGE TYPE (the [`ShotFired`] `damage` selects the color row; the
+//!   trajectory selects the 8-way direction). The standalone muzzle flash was REMOVED
+//!   (GTW-307): it rendered oversized at the shooter's feet and read poorly, so the
+//!   traveling projectile (departing the muzzle) IS the fire signal. It is the generic firing
+//!   FX ONLY; it does NOT duplicate the three CONSEQUENCE flashes above (a hit on a ganger
+//!   still bleeds via `Bleeding`, breaks armor via `ArmorBroken`, etc.). One projectile per
+//!   ROUND — a burst / full-auto shot spawns one per round, STAGGERED so the volley animates
+//!   shot-by-shot.
 //!
 //! Every spawned flash carries a [`FlashTtl`] lifetime + an [`FxFlash`] marker; the
 //! [`expire_flashes`] system ticks each [`FlashTtl`] with [`Res<Time>`] and despawns the
@@ -36,12 +43,26 @@
 //! `input -> presenter -> sim` edge (ADR-0001); the sim never reads the presenter.
 
 mod flash;
+mod impact;
+mod projectile;
 mod readers;
 mod roles;
+mod tuning;
 
 #[cfg(test)]
 mod test;
 
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
-pub use readers::{read_armor_broken, read_bleeding, read_cover_destroyed, read_shot_fired};
-pub use roles::{EffectRoles, EffectRolesHandle, load_effect_roles, resolve_effect_roles};
+pub use impact::animate_impact;
+pub use projectile::{
+    PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles, spawn_shot_projectiles,
+};
+pub use readers::{read_armor_broken, read_bleeding, read_cover_destroyed};
+pub use roles::{
+    COMPASS_DIRECTIONS, DIRECTION_COUNT, DamageTypeFx, EffectRoles, EffectRolesHandle,
+    IMPACT_FRAME_COUNT, load_effect_roles, nearest_direction_index, resolve_effect_roles,
+};
+pub use tuning::{
+    FxTuning, FxTuningHandle, ImpactFrameSeconds, InterShotSeconds, ProjectileDrawScale,
+    ProjectileVelocity, load_fx_tuning, redrive_fx_tuning_on_asset_event, resolve_fx_tuning,
+};

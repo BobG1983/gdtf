@@ -9,15 +9,16 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
-    ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle,
-    GamepadCursorMoved, GangerSprites, HighlightRequest, PresenterSystems, TileRoles,
-    TileRolesHandle, TopDownAtlases, apply_active_level_filter, clamp_camera_to_bounds,
-    despawn_removed_ganger_sprites, draw_highlight_on_request, draw_static_battlefield,
-    expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles,
-    load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
-    pan_camera_on_gamepad_cursor_edge, read_armor_broken, read_bleeding, read_cover_destroyed,
-    read_shot_fired, reframe_ganger_sprites, resolve_character_roles, resolve_effect_roles,
-    resolve_tile_roles, spawn_ganger_sprites, swap_destroyed_cover, update_ganger_life_state,
+    ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle, FxTuning,
+    FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PresenterSystems,
+    TileRoles, TileRolesHandle, TopDownAtlases, advance_projectiles, animate_impact,
+    apply_active_level_filter, clamp_camera_to_bounds, despawn_removed_ganger_sprites,
+    draw_highlight_on_request, draw_static_battlefield, expire_flashes, frame_camera_on_units,
+    load_character_roles, load_effect_roles, load_fx_tuning, load_tile_roles, load_topdown_atlases,
+    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, read_armor_broken,
+    read_bleeding, read_cover_destroyed, redrive_fx_tuning_on_asset_event, reframe_ganger_sprites,
+    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_tile_roles,
+    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -140,9 +141,16 @@ impl Plugin for TopDownRendererPlugin {
                 .init_ron_asset::<CharacterRoles>()
                 // GTW-220 (S6): the FX-flash effect-role table loads the same RON way.
                 .init_ron_asset::<EffectRoles>()
+                // GTW-306 (TUNING): the hot-reloadable firing-FX tuning table loads the same way.
+                .init_ron_asset::<FxTuning>()
                 .add_systems(
                     Startup,
-                    (load_tile_roles, load_character_roles, load_effect_roles),
+                    (
+                        load_tile_roles,
+                        load_character_roles,
+                        load_effect_roles,
+                        load_fx_tuning,
+                    ),
                 )
                 .add_systems(
                     Update,
@@ -163,7 +171,19 @@ impl Plugin for TopDownRendererPlugin {
                         resource_exists::<EffectRolesHandle>
                             .and(not(resource_exists::<EffectRoles>)),
                     ),
-                );
+                )
+                // GTW-306 (TUNING): resolve the FX tuning ONCE, then re-derive it LIVE on every
+                // matching asset Modified event so an `fx_tuning.ron` edit hot-reloads without a
+                // rebuild (mirrors the UI theme's redrive-on-AssetEvent). The resolve is gated
+                // like the others (handle present, resource not yet resolved); the redrive runs
+                // every frame and self-gates on the resources being present (it Options them).
+                .add_systems(
+                    Update,
+                    resolve_fx_tuning.run_if(
+                        resource_exists::<FxTuningHandle>.and(not(resource_exists::<FxTuning>)),
+                    ),
+                )
+                .add_systems(Update, redrive_fx_tuning_on_asset_event);
         }
 
         // The shared presenter draw band (S5's ganger draw joins this set). Defined
@@ -310,9 +330,13 @@ fn register_camera_framing_systems(app: &mut App) {
 /// [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) — the consequence flashes — plus the
 /// GTW-290 [`ShotFired`](gdtf_battle_sim::ShotFired) firing FX) the sim already emits, looks
 /// up the cell via `Query<&Position>` / the message geometry (read-only, NO sim plumbing
-/// added), and `Commands::spawn`s the short-lived effects sprite(s). `read_shot_fired` is
-/// the generic muzzle / tracer / impact per round; it does NOT duplicate the three
-/// consequence flashes.
+/// added), and `Commands::spawn`s the short-lived effects sprite(s). The GTW-306 firing FX is
+/// split across [`spawn_shot_projectiles`] + [`advance_projectiles`] (the traveling directional
+/// projectile that LERPs muzzle→impact then despawns, handing off a `PendingImpact`) and
+/// [`animate_impact`] (FX-B's 3-frame impact animation at the arrival point); it does NOT
+/// duplicate the three consequence flashes. The standalone muzzle flash was REMOVED (GTW-307):
+/// it rendered oversized at the shooter's feet and read poorly, so the traveling projectile
+/// (departing the muzzle) IS the fire signal.
 ///
 /// Each reader's gate is `resource_exists::<BattleInProgress>` AND every render resource it
 /// reads — the [`EffectRoles`] data table + [`TopDownAtlases`] — AND its own `Messages<M>`
@@ -357,13 +381,36 @@ fn register_fx_flash_systems(app: &mut App) {
                 .and(resource_exists::<Messages<CoverDestroyed>>),
         ),
     )
-    // GTW-290: the firing FX reader — muzzle / tracer / impact per ShotFired round.
+    // GTW-306: the firing FX. spawn_shot_projectiles spawns the traveling DIRECTIONAL
+    // projectile off the ShotFired buffer (the muzzle flash was removed in GTW-307 — the
+    // departing projectile IS the fire signal) under the same render gate; animate_impact
+    // (below) drains the SAME buffer independently (a buffered message survives a frame).
+    // Both now READ the hot-reloadable FxTuning resource, so each adds it to its gate so a
+    // pre-resolve frame (tuning not yet loaded) does not fail param validation.
     .add_systems(
         Update,
-        read_shot_fired
+        spawn_shot_projectiles
             .in_set(PresenterSystems::Draw)
-            .run_if(render_gate.and(resource_exists::<Messages<ShotFired>>)),
+            .run_if(
+                render_gate
+                    .clone()
+                    .and(resource_exists::<FxTuning>)
+                    .and(resource_exists::<Messages<ShotFired>>),
+            ),
     )
+    // GTW-306: the 3-frame impact animation (FX-B fills the body). Gated on the same render
+    // resources it reads (EffectRoles + TopDownAtlases + BattleInProgress + the
+    // hot-reloadable FxTuning) so FX-B edits only impact.rs — never this registration.
+    .add_systems(
+        Update,
+        animate_impact
+            .in_set(PresenterSystems::Draw)
+            .run_if(render_gate.and(resource_exists::<FxTuning>)),
+    )
+    // GTW-306: advance every traveling projectile + hand off its impact. Needs only Time + the
+    // ShotProjectile query (no render resource / message buffer), inert with none — registered
+    // unguarded like expire_flashes so an in-flight projectile completes after a battle ends.
+    .add_systems(Update, advance_projectiles.in_set(PresenterSystems::Draw))
     .add_systems(Update, expire_flashes.in_set(PresenterSystems::Draw));
 }
 

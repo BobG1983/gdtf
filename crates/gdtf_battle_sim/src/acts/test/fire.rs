@@ -106,6 +106,46 @@ fn fire_dispatch_emits_one_shot_fired_per_round_with_geometry() {
     );
 }
 
+// GTW-306 — the emitted ShotFired carries the FIRING WEAPON'S DamageType, sourced from
+// the shooter's own DamageType component at fire time (pure exposure, no fire-result
+// change). To prove the value FLOWS FROM the live component (not a hardcoded constant or a
+// default), the shooter's weapon DamageType is OVERRIDDEN to a non-default node (Plasma)
+// before the shot, then the emitted message is asserted to carry exactly that node.
+#[test]
+fn fire_dispatch_shot_fired_carries_the_weapon_damage_type() {
+    let (mut app, shooter, _target) = fire_scenario();
+    // Override the shooter's weapon damage type to a node distinct from the fixture's
+    // default (Kinetic) — so a passing assert can only mean the type was read off the
+    // shooter's component, not a constant baked into the emit.
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(shooter) {
+        entity.insert(DamageType::Plasma);
+    }
+
+    app.world_mut().write_message(FireRequested::new(
+        shooter,
+        single_mode(0.2, 1),
+        Cell::new(8, 5),
+        Level::new(0),
+    ));
+    app.update();
+
+    let shots = drain_shots_fired(&mut app);
+    assert_eq!(
+        shots.len(),
+        1,
+        "a single-shot fire emits exactly one ShotFired",
+    );
+    let Some(shot) = shots.first() else {
+        return;
+    };
+    assert_eq!(
+        shot.damage,
+        DamageType::Plasma,
+        "the ShotFired must carry the firing weapon's DamageType (sourced from the \
+         shooter's component at fire time), not a constant: {shot:?}",
+    );
+}
+
 // GTW-290 — a BURST volley emits one ShotFired PER ROUND (so the presenter draws a
 // tracer per round). A 3-shot mode over a 10-round magazine fires 3 rounds → 3 messages.
 #[test]

@@ -25,6 +25,7 @@ use crate::{
     surface::SurfaceGrid,
     tu::spend_tu,
     tuning::CombatTuning,
+    weapon::DamageType,
 };
 
 /// The three change-driven world-grid resources [`dispatch_fire`] reads, bundled into one
@@ -187,10 +188,15 @@ pub fn dispatch_fire(
         // (1) READ the arc-relevant shooter state through the ShooterQuery half, copying
         //     every Copy value out so the query borrow ends at the block boundary (freeing
         //     the ParamSet to lend p1 below). A shooter not in the query (unarmed /
-        //     despawned) fires nothing (fail-closed).
+        //     despawned) fires nothing (fail-closed). The weapon's DamageType (GTW-306) is
+        //     read here too — it is the 8th leaf of the third (weapon-stat) sub-tuple — so
+        //     the per-round ShotFired can carry it (pure exposure; no fire-result change).
         let shooters = shooter_set.p0();
-        let Ok(((position, facing, _, aiming, _, _, tu_max), (tu, _), _)) =
-            shooters.get(request.shooter)
+        let Ok((
+            (position, facing, _, aiming, _, _, tu_max),
+            (tu, _),
+            (_, _, _, _, _, _, _, damage, _),
+        )) = shooters.get(request.shooter)
         else {
             continue;
         };
@@ -199,6 +205,7 @@ pub fn dispatch_fire(
         let tu: Tu = *tu;
         let tu_max: TuMax = *tu_max;
         let aiming: Aiming = *aiming;
+        let damage: DamageType = *damage;
 
         // (2) The fire-TU cost — the EXISTING fire-act charge (mode_tu_cost), the same
         //     source fire()'s own debit reads; both gates agree on the cost.
@@ -252,11 +259,13 @@ pub fn dispatch_fire(
             &mut rng,
         );
 
-        // (5) GTW-290: emit one ShotFired per ROUND fired, sourced from the round's
-        //     already-computed ShotOutcome (no recompute, no fire-result change) — so a
-        //     burst draws a tracer per round. An empty (fail-closed) volley emits none.
+        // (5) GTW-290 / GTW-306: emit one ShotFired per ROUND fired, sourced from the
+        //     round's already-computed ShotOutcome plus the weapon's DamageType read in
+        //     step (1) (no recompute, no fire-result change) — so a burst draws a tracer
+        //     per round, each carrying the per-type FX selector. An empty (fail-closed)
+        //     volley emits none.
         for outcome in &volley.shots {
-            shots_fired.write(ShotFired::from_outcome(request.shooter, outcome));
+            shots_fired.write(ShotFired::from_outcome(request.shooter, damage, outcome));
         }
     }
 }

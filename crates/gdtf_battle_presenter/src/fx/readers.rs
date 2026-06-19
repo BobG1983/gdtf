@@ -1,15 +1,13 @@
 //! The three sim-FX-message readers and their shared sprite/spawn/tint helpers.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use gdtf_battle_sim::{
-    ArmorBroken, Bleeding, Cell, CoverDestroyed, Level, Position, ShotFired, Wounds,
-};
+use gdtf_battle_sim::{ArmorBroken, Bleeding, Cell, CoverDestroyed, Level, Position, Wounds};
 
 use super::{
     flash::{FlashTtl, FxFlash},
     roles::EffectRoles,
 };
-use crate::{CELL_PX, SheetRole, TileIndex, TopDownAtlases, cell_to_world, sim_pos_to_world};
+use crate::{CELL_PX, SheetRole, TileIndex, TopDownAtlases, cell_to_world};
 
 /// The world `(cell, level)` a ganger's [`Position`] projects to — reconstruct the typed
 /// [`Cell`] / [`Level`] from the position's `IVec3` components (the S4/S5 `cell_and_level`
@@ -46,8 +44,30 @@ pub(super) fn bleed_tint(wounds: Wounds) -> Color {
 /// `Sprite::from_atlas_image(effects.image, TextureAtlas { layout, index })` with
 /// `custom_size = Some(Vec2::splat(CELL_PX))` (the documented S3 sizing recipe) and the `tint`
 /// applied to `Sprite.color`. Returns [`None`] if the effects sheet was not loaded (so the
-/// caller skips the spawn rather than panic).
-fn fx_sprite(index: TileIndex, tint: Color, atlases: &TopDownAtlases) -> Option<Sprite> {
+/// caller skips the spawn rather than panic). `pub(super)` so the GTW-306 `projectile` /
+/// `impact` FX systems build their effects sprites from the SAME recipe.
+pub(super) fn fx_sprite(index: TileIndex, tint: Color, atlases: &TopDownAtlases) -> Option<Sprite> {
+    fx_sprite_scaled(index, tint, 1.0, atlases)
+}
+
+/// Builds one FX [`Sprite`] like [`fx_sprite`], but at a UNIFORM `scale` of [`CELL_PX`].
+///
+/// The sprite's `custom_size` is `Vec2::splat(CELL_PX * scale)` — the SAME factor on BOTH
+/// axes, so the tile is enlarged/shrunk uniformly and NEVER stretched along one axis (the
+/// GTW-290 smear bug was a one-axis stretch along the shot vector; this is its opposite).
+/// GTW-306 readability fix (V2/V3/V4): the small in-tile FX glyphs (the directional comet
+/// is only ~7px of its 16px tile, the impact-ring expansion is subtle at 1x) read more
+/// clearly when drawn a little larger, and the muzzle pop reads as a tight flash when drawn
+/// a little smaller. A `scale` of `1.0` is exactly [`fx_sprite`]. `scale` is framework
+/// plumbing (a uniform multiplier fed straight to `custom_size`), not a domain value.
+/// `pub(super)` so the `projectile` / `impact` FX systems draw their sprites at their own
+/// legible sizes.
+pub(super) fn fx_sprite_scaled(
+    index: TileIndex,
+    tint: Color,
+    scale: f32,
+    atlases: &TopDownAtlases,
+) -> Option<Sprite> {
     let effects = atlases.role(SheetRole::Effects)?;
     let mut sprite = Sprite::from_atlas_image(
         effects.image.clone(),
@@ -56,7 +76,7 @@ fn fx_sprite(index: TileIndex, tint: Color, atlases: &TopDownAtlases) -> Option<
             index:  *index,
         },
     );
-    sprite.custom_size = Some(Vec2::splat(CELL_PX));
+    sprite.custom_size = Some(Vec2::splat(CELL_PX * scale));
     sprite.color = tint;
     Some(sprite)
 }
@@ -176,90 +196,5 @@ pub fn read_cover_destroyed(
             continue;
         };
         spawn_flash(&mut commands, sprite, cell_to_world(cell, level));
-    }
-}
-
-/// Spawn one transient TRACER-beam flash from `muzzle` to `impact` (both world-space)
-/// showing `sprite` — a single effects sprite STRETCHED to the muzzle→impact length and
-/// ROTATED to its angle, on a [`FlashTtl`] lifetime ([`FxFlash`]-marked like every flash).
-///
-/// The beam sits at the muzzle→impact MIDPOINT, rotated by the segment's XY angle, and
-/// scaled along its local +X by `length / `[`CELL_PX`] so the base `CELL_PX`-square sprite
-/// covers the full distance (its +Y stays at the sprite's own width so the beam reads as a
-/// thin line). A degenerate zero-length segment (muzzle == impact) draws nothing rather
-/// than dividing by zero. The beam's `z` is the muzzle's (the shot draws in the firing
-/// storey's band). Mirrors [`spawn_flash`]'s bundle, differing only in the stretch/rotate
-/// transform the muzzle/impact flashes do not need.
-fn spawn_tracer(commands: &mut Commands, sprite: Sprite, muzzle: Vec3, impact: Vec3) {
-    let delta = (impact - muzzle).truncate(); // the XY segment the tracer spans
-    let length = delta.length();
-    if length <= f32::EPSILON {
-        // Zero-length segment (muzzle coincides with impact) — no beam to draw.
-        return;
-    }
-    let midpoint = muzzle.lerp(impact, 0.5);
-    let angle = delta.y.atan2(delta.x); // the muzzle->impact heading in the XY plane
-    let mut transform = Transform::from_translation(midpoint.with_z(muzzle.z));
-    transform.rotation = Quat::from_rotation_z(angle);
-    // Stretch the CELL_PX-square sprite along its local +X to span the full distance; the
-    // local +Y keeps the sprite's own width so the beam reads as a thin line.
-    transform.scale = Vec3::new(length / CELL_PX, 1.0, 1.0);
-    commands.spawn((
-        sprite,
-        transform,
-        RenderLayers::layer(crate::WORLD_RENDER_LAYER),
-        FlashTtl::new(),
-        FxFlash,
-    ));
-}
-
-/// `Update` (`PresenterSystems::Draw`): spawn the GTW-290 muzzle / tracer / impact FX per
-/// [`ShotFired`] message.
-///
-/// Drains [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired); for each round fired it
-/// spawns THREE transient [`FlashTtl`] flashes from the message's already-resolved sim
-/// geometry (no rule logic — the presenter only draws what the sim emitted):
-///
-/// - a **muzzle flash** (the table's `muzzle_flash` index) at the muzzle world position
-///   ([`sim_pos_to_world`](crate::sim_pos_to_world) of `msg.muzzle`);
-/// - a **tracer** (the `tracer` index) stretched + rotated along muzzle→impact
-///   ([`spawn_tracer`]); and
-/// - a generic **impact** mark (the `impact` index) at the impact world position
-///   ([`cell_to_world`](crate::cell_to_world) of `msg.impact_cell` / `msg.impact_level`).
-///
-/// This is the GENERIC projectile FX ONLY — it does NOT duplicate the
-/// [`Bleeding`](gdtf_battle_sim::Bleeding) / [`ArmorBroken`](gdtf_battle_sim::ArmorBroken) /
-/// [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) CONSEQUENCE flashes ([`read_bleeding`]
-/// / [`read_armor_broken`] / [`read_cover_destroyed`] draw those off their own sim
-/// messages). A miss still draws muzzle + tracer terminating at the impact cell + the
-/// generic impact mark. A burst emits one [`ShotFired`] per round, so it draws one tracer
-/// per round. Every index is the table's (never a literal); the muzzle/impact tints are an
-/// opaque white spark, leaving colour to the sheet art. A missing effects sheet skips the
-/// spawn fail-closed (`fx_sprite` returns [`None`]).
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`], [`Res<TopDownAtlases>`],
-/// [`Res<EffectRoles>`], and [`MessageReader<ShotFired>`].
-pub fn read_shot_fired(
-    mut commands: Commands,
-    atlases: Res<TopDownAtlases>,
-    roles: Res<EffectRoles>,
-    mut shots: MessageReader<ShotFired>,
-) {
-    for msg in shots.read() {
-        let muzzle_world = sim_pos_to_world(msg.muzzle);
-        let impact_world = cell_to_world(msg.impact_cell, msg.impact_level);
-
-        // (1) Muzzle flash at the 3D fire origin.
-        if let Some(sprite) = fx_sprite(roles.muzzle_flash, Color::WHITE, &atlases) {
-            spawn_flash(&mut commands, sprite, muzzle_world);
-        }
-        // (2) Tracer beam stretched + rotated along muzzle -> impact.
-        if let Some(sprite) = fx_sprite(roles.tracer, Color::WHITE, &atlases) {
-            spawn_tracer(&mut commands, sprite, muzzle_world, impact_world);
-        }
-        // (3) Generic impact mark at the impact cell (NOT a consequence FX).
-        if let Some(sprite) = fx_sprite(roles.impact, Color::WHITE, &atlases) {
-            spawn_flash(&mut commands, sprite, impact_world);
-        }
     }
 }

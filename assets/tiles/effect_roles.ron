@@ -1,16 +1,46 @@
 // GDTF transient-FX tile-role table — DATA-DRIVEN atlas indices for the GTW-48
-// top-down FX-flash draw (S6 / GTW-220). Maps each one-shot FX to a TileIndex into
+// top-down FX draw (S6 / GTW-220), reshaped to the PER-DAMAGE-TYPE projectile +
+// 3-frame impact model in GTW-306. Maps each FX role to a TileIndex into
 // assets/tiles/alt_tileset_effects.png (the role-separated 16x8 = 128-tile effects
 // sheet; index = row*16 + col, 0-based row-major). Edit freely — every field is a
 // tunable index, hot-swappable through the same RonAsset<T> loader the theme /
 // situation / tuning / tile-roles use; nothing about the index choices is hardcoded
-// in Rust. Indices eyeballed against the shipped alt_tileset_effects.png grid (the
-// burst / spark / hit layout) and may be re-tuned per FX as the sheet reads better.
+// in Rust.
+//
+// SHEET LAYOUT (read precisely off alt_tileset_effects.png, GTW-306):
+//   Rows 0..4 = the FOUR damage-type COLOR variants (row 0 orange, 1 blue, 2 green,
+//   3 purple). EACH such row holds, by column:
+//     cols 0..8  = the 8-way DIRECTIONAL projectile rose, in compass column order
+//                  0 E · 1 SE · 2 S · 3 SW · 4 N · 5 NW · 6 W · 7 NE
+//     cols 8..11 = the 3-frame IMPACT animation (8 solid burst -> 9 open ring ->
+//                  10 breaking ring; an expanding shockwave). cols 11..16 are
+//                  alternate/decorative tiles this table does not use.
+//   Rows 5..8 = the legacy bleed / armor-break / cover-destroyed consequence FX
+//               (left working; indices below pin them).
+//
+// So a row R's directional col C = index R*16 + C; its impact frame F = R*16 + 8 + F.
 (
-    bleed:           0,    // Bleeding -> a blood/hit drop (row 0 col 0, a teardrop/blood-drop) — the §9 bleed-out flash
-    armor_break:     3,    // ArmorBroken -> a spark/break burst (row 0 col 3, a starburst/spark) — the worn-piece-shattered flash
-    cover_destroyed: 112,  // CoverDestroyed -> a debris/rubble burst (row 7 col 0, a scatter cluster) — the §3 cover-smashed flash
-    muzzle_flash:    16,   // GTW-290 ShotFired -> a bright muzzle burst (row 1 col 0, a flash) — drawn at the muzzle origin
-    tracer:          17,   // GTW-290 ShotFired -> a thin streak (row 1 col 1, a line/bolt) — STRETCHED + rotated along muzzle->impact
-    impact:          18,   // GTW-290 ShotFired -> a generic spark/dust mark (row 1 col 2, a small spark) — drawn at the impact point (NOT a consequence FX)
+    // --- Legacy consequence-flash tiles (sheet rows 5..8) — unchanged from S6/GTW-220 ---
+    bleed:           0,    // Bleeding -> a blood/hit drop — the §9 bleed-out flash
+    armor_break:     3,    // ArmorBroken -> a spark/break burst — the worn-piece-shattered flash
+    cover_destroyed: 112,  // CoverDestroyed -> a debris/rubble burst (row 7 col 0) — the §3 cover-smashed flash
+    // --- Per-damage-type projectile rose + 3-frame impact (sheet rows 0..4) ---
+    // NOTE: `directions` is a fixed [TileIndex; 8] and `impact` a [TileIndex; 3]; RON
+    // deserializes fixed arrays as TUPLES, so each is parenthesised `( .. )`, NOT `[ .. ]`.
+    orange: (        // row 0 (orange): Kinetic + Blast (warm slug / explosive read; also the fallback)
+        directions: (0, 1, 2, 3, 4, 5, 6, 7),         // E,SE,S,SW,N,NW,W,NE projectile tiles (row 0 cols 0..8)
+        impact:     (8, 9, 10),                        // solid burst -> open ring -> breaking ring (row 0 cols 8..11)
+    ),
+    blue: (          // row 1 (blue): Las + Shock (beam / arc-EMP read)
+        directions: (16, 17, 18, 19, 20, 21, 22, 23), // E..NE projectile tiles (row 1 cols 0..8)
+        impact:     (24, 25, 26),                      // burst -> ring -> breaking ring (row 1 cols 8..11)
+    ),
+    green: (         // row 2 (green): Chem (toxin / acid / gas read)
+        directions: (32, 33, 34, 35, 36, 37, 38, 39), // E..NE projectile tiles (row 2 cols 0..8)
+        impact:     (40, 41, 42),                      // burst -> ring -> breaking ring (row 2 cols 8..11)
+    ),
+    purple: (        // row 3 (purple): Plasma + Rend (superheated / power-edge read)
+        directions: (48, 49, 50, 51, 52, 53, 54, 55), // E..NE projectile tiles (row 3 cols 0..8)
+        impact:     (56, 57, 58),                      // burst -> ring -> breaking ring (row 3 cols 8..11)
+    ),
 )
