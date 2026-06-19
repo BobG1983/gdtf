@@ -41,7 +41,7 @@
 //! `Teardown`.
 
 use bevy::{
-    app::App,
+    app::{App, AppExit},
     state::state::{NextState, State},
 };
 use gdtf_app::test_support::{
@@ -135,20 +135,15 @@ fn drive_past_menu(app: &mut App) -> bool {
     reached_menu
 }
 
-/// (a) From the default start, the deep walk RESTS at
-/// [`BattleScapeState::BattleRunning`] (it does NOT reach [`AppState::Teardown`] on
-/// the walk alone, GTW-236) and reaches `Teardown` ONLY after an explicit
-/// [`BattleRunningComplete`] insert stands in for the not-yet-wired victory/flee end
-/// condition.
+/// Drives the default-start walk all the way down to [`AppState::Teardown`] and returns
+/// the app resting there, asserting each leg along the way (so a regression in the
+/// transition graph fails in this shared driver, not just in one caller).
 ///
-/// Pin: this fails if any top-level transition target regresses (so the walk stalls
-/// before `BattleRunning`); it ALSO fails if the placeholder auto-exit ever returns
-/// (the walk would reach `Teardown` on its own, before the explicit insert, and the
-/// rest-at-`BattleRunning` assertion would catch the early advance). After the
-/// insert, a regression in the deep terminal popping back out to `Teardown` keeps
-/// the predicate unmet within budget.
-#[test]
-fn full_walk_reaches_teardown() {
+/// Standing in for the (not-yet-wired) player and victory/flee end conditions: it drives
+/// past the menu (GTW-121), down to `BattleRunning` (GTW-236), verifies the battle
+/// PERSISTS with no end-signal marker, then inserts the explicit `BattleRunningComplete`
+/// marker which lets the deep terminal pop out to `Teardown`.
+fn drive_to_teardown() -> App {
     let mut app = walk_app_with_theme();
 
     // The menu no longer auto-advances (GTW-121); stand in for the player to keep
@@ -200,12 +195,74 @@ fn full_walk_reaches_teardown() {
         |app| app_state(app) == AppState::Teardown,
         WALK_BUDGET,
     );
-
     assert!(
         reached,
         "an explicit BattleRunningComplete insert should advance the walk to AppState::Teardown \
          within {WALK_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
+    );
+
+    app
+}
+
+/// (a) From the default start, the deep walk RESTS at
+/// [`BattleScapeState::BattleRunning`] (it does NOT reach [`AppState::Teardown`] on
+/// the walk alone, GTW-236) and reaches `Teardown` ONLY after an explicit
+/// [`BattleRunningComplete`] insert stands in for the not-yet-wired victory/flee end
+/// condition.
+///
+/// Pin: this fails if any top-level transition target regresses (so the walk stalls
+/// before `BattleRunning`); it ALSO fails if the placeholder auto-exit ever returns
+/// (the walk would reach `Teardown` on its own, before the explicit insert, and the
+/// rest-at-`BattleRunning` assertion would catch the early advance). After the
+/// insert, a regression in the deep terminal popping back out to `Teardown` keeps
+/// the predicate unmet within budget.
+#[test]
+fn full_walk_reaches_teardown() {
+    // The shared driver asserts the whole walk down to Teardown; reaching it without a
+    // panic IS the assertion for this test.
+    let app = drive_to_teardown();
+    assert_eq!(
+        app_state(&app),
+        AppState::Teardown,
+        "the driven walk should rest in AppState::Teardown",
+    );
+}
+
+/// (a′) GTW-311: once the walk reaches [`AppState::Teardown`], the terminal `move_on`
+/// system emits [`AppExit::Success`] within a bounded number of updates.
+///
+/// Pin: this is the regression that let the macOS shutdown hang (Bevy issue #23313)
+/// ship — the prior `state_walk` reached `Teardown` but never asserted the exit fired,
+/// so a `move_on` that silently failed to quit was invisible. This proves the HEADLESS
+/// exit path (`exit.write(AppExit::Success)`) still fires: `App::should_exit()` reads
+/// the `Messages<AppExit>` buffer, so checking it after each update catches the message
+/// regardless of the message double-buffer's clear timing. The macOS window-despawn path
+/// (winit consuming the close to terminate the loop) is NOT headless-testable — there is
+/// no window under `MinimalPlugins` — and is verified by the in-engine playtest
+/// (verification.md rule 3).
+#[test]
+fn teardown_emits_app_exit() {
+    let mut app = drive_to_teardown();
+
+    // After Teardown is entered, `teardown_complete` inserts the marker (1-tick deferred
+    // Commands handoff) and then the marker-gated `move_on` writes `AppExit::Success`.
+    // Poll `should_exit` each update so the assertion does not depend on the message
+    // buffer's clear timing.
+    let mut observed_exit = None;
+    for _ in 0..WALK_BUDGET {
+        app.update();
+        if let Some(exit) = app.should_exit() {
+            observed_exit = Some(exit);
+            break;
+        }
+    }
+
+    assert_eq!(
+        observed_exit,
+        Some(AppExit::Success),
+        "Teardown's move_on must emit AppExit::Success within {WALK_BUDGET} updates of reaching \
+         Teardown (GTW-311); observed {observed_exit:?}",
     );
 }
 
