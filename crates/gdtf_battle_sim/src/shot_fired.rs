@@ -27,6 +27,7 @@ use bevy::prelude::{Entity, Message};
 
 use crate::{
     metric::{Cell, Level, SimPos},
+    resolve_and_apply::HitReport,
     resolve_coarse::{ShotKind, ShotOutcome},
     sample_cone::ShotDir,
     weapon::DamageType,
@@ -47,6 +48,13 @@ use crate::{
 /// [`kind`](ShotFired::kind) is the [`ShotKind`] the shot struck (ganger / cover / slab /
 /// ground / miss) — a clean miss still carries muzzle + trajectory + the cell the round
 /// left through, so the presenter draws a tracer terminating at the impact cell.
+///
+/// The [`report`](ShotFired::report) (GTW-302) carries the round's already-computed
+/// [`HitReport`] — the damage / wound / severity / armor verdict the floating-combat-text
+/// presenter draws from — so the ONE message drives BOTH the firing FX and the FCT. It is
+/// PURE EXPOSURE of the parallel [`Volley::reports`](crate::fire::Volley::reports) entry
+/// (the report `dispatch_fire` would otherwise drop), NOT a recompute: no fire-result,
+/// RNG, or severity logic runs to build it.
 ///
 /// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`). The
 /// [`shooter`](ShotFired::shooter) is a Bevy [`Entity`] handle — framework plumbing, the
@@ -76,15 +84,32 @@ pub struct ShotFired {
     /// the shooter's [`DamageType`] component in
     /// [`dispatch_fire`](crate::acts::dispatch_fire)), so it rides on HIT and MISS alike;
     /// the presenter selects the per-damage-type projectile graphic from it (a domain enum,
-    /// never a sprite / pixel — the sim stays render-free). NOTE GTW-302 will FURTHER extend
-    /// [`ShotFired`] with the hit report (damage / severity / part) for combat text; this
-    /// ticket adds only the damage type.
+    /// never a sprite / pixel — the sim stays render-free).
     pub damage:       DamageType,
+    /// The round's already-computed damage / wound / severity / armor verdict (GTW-302) —
+    /// the [`HitReport`] the floating-combat-text presenter reads (HP damage, the
+    /// [`Severity`](crate::severity::Severity) tier, the struck
+    /// [`BodyPart`](crate::armor::BodyPart), the [`LifeState`](crate::ganger::LifeState)
+    /// after, and the `Some(`[`ArmorBroken`](crate::armor_wear::ArmorBroken)`)` on a
+    /// destroyed piece). It is PURE EXPOSURE of the parallel
+    /// [`Volley::reports`](crate::fire::Volley::reports) entry — the same `reports[i]` the
+    /// volley already produced — never a recompute (no fire-result / RNG / severity logic).
+    ///
+    /// `None` ONLY when the round has no parallel report to carry: that happens when
+    /// [`from_outcome`](ShotFired::from_outcome) builds the message WITHOUT a report (e.g.
+    /// the GTW-290 geometry-only callers). In `dispatch_fire`'s zip, every fired round has
+    /// its `reports[i]`, so the report is always `Some` for a real volley round (a clean
+    /// MISS still carries `Some` — a [`HitReport`] whose [`kind`](HitReport::kind) is
+    /// [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss) and whose
+    /// [`applied`](HitReport::applied) is `None`). A non-ganger / corpse-skip round carries
+    /// `Some` with a no-effect report (`applied: None`).
+    pub report:       Option<HitReport>,
 }
 
 impl ShotFired {
-    /// Build a [`ShotFired`] for `shooter` firing `damage` from the round's already-computed
-    /// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome).
+    /// Build a **geometry-only** [`ShotFired`] for `shooter` firing `damage` from the
+    /// round's already-computed [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) — the
+    /// [`report`](ShotFired::report) is `None`.
     ///
     /// Copies the geometry straight off the outcome — muzzle / trajectory / impact
     /// `(cell, level)` / kind — and pairs it with the weapon's [`DamageType`] (GTW-306),
@@ -93,6 +118,11 @@ impl ShotFired {
     /// [`dispatch_fire`](crate::acts::dispatch_fire)). So the message EXPOSES the resolved
     /// trajectory plus the damage type WITHOUT recomputing or changing any fire-result
     /// logic — pure exposure.
+    ///
+    /// Use [`from_round`](ShotFired::from_round) when the parallel
+    /// [`Volley::reports`](crate::fire::Volley::reports) entry is available (the
+    /// `dispatch_fire` path), so the FCT presenter (GTW-302) gets the damage / wound /
+    /// severity / armor verdict; this constructor is the geometry-only fallback.
     #[must_use]
     pub const fn from_outcome(shooter: Entity, damage: DamageType, outcome: &ShotOutcome) -> Self {
         Self {
@@ -103,6 +133,37 @@ impl ShotFired {
             impact_level: outcome.level,
             kind: outcome.kind,
             damage,
+            report: None,
+        }
+    }
+
+    /// Build a [`ShotFired`] for `shooter` firing `damage` from the round's already-computed
+    /// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) AND its parallel
+    /// [`HitReport`] (GTW-302) — the report the floating-combat-text presenter draws from.
+    ///
+    /// The geometry is copied exactly as [`from_outcome`](ShotFired::from_outcome) does; the
+    /// `report` is the round's matching [`Volley::reports`](crate::fire::Volley::reports)
+    /// entry, carried verbatim onto [`report`](ShotFired::report). PURE EXPOSURE of the
+    /// already-computed report — no fire-result / RNG / severity logic runs here. In
+    /// `dispatch_fire`'s zip of `shots[i]` with `reports[i]`, `report` is always `Some`; a
+    /// clean MISS rides `Some` with a [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss)
+    /// report (no `applied`).
+    #[must_use]
+    pub const fn from_round(
+        shooter: Entity,
+        damage: DamageType,
+        outcome: &ShotOutcome,
+        report: HitReport,
+    ) -> Self {
+        Self {
+            shooter,
+            muzzle: outcome.muzzle,
+            trajectory: outcome.trajectory,
+            impact_cell: outcome.cell,
+            impact_level: outcome.level,
+            kind: outcome.kind,
+            damage,
+            report: Some(report),
         }
     }
 }

@@ -22,22 +22,25 @@ use bevy::{
     app::{App, PluginGroup},
     asset::AssetPlugin,
     ecs::message::Messages,
-    prelude::default,
+    prelude::{Text2d, default},
     render::{RenderPlugin, settings::WgpuSettings},
     sprite::Sprite,
+    text::TextColor,
     time::TimeUpdateStrategy,
     transform::components::Transform,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    CharacterRoles, EffectRoles, FxFlash, FxTuning, GangerSprites, ProjectileTravel,
-    ShotProjectile, TopDownAtlases, TopDownRendererPlugin, cell_to_world, sim_pos_to_world,
+    CharacterRoles, EffectRoles, FctValence, FloatingCombatText, FxFlash, FxTuning, GangerSprites,
+    ProjectileTravel, ShotProjectile, TopDownAtlases, TopDownRendererPlugin, cell_to_world,
+    severity_color, sim_pos_to_world, valence_color,
 };
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel, CoverDestroyed, DamageType,
-    Direction, Facing, Faction, Level, LifeState, Position, ShotDir, ShotFired, ShotKind, SimPos,
-    Wounds,
+    AppliedDamage, ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel,
+    CoverDestroyed, DamageType, Direction, Facing, Faction, HitReport, HitResult, HpDamage,
+    IntegrityWear, Level, LifeState, Matchup, PenetratingDamage, Position, Severity, ShotDir,
+    ShotFired, ShotKind, SimPos, Wounds,
 };
 
 /// Generous settle headroom so a slow CI box never flakes on the async atlas /
@@ -372,6 +375,7 @@ fn shot_fired_spawns_directional_projectile_and_no_muzzle_flash() {
         impact_level,
         kind: ShotKind::Ganger(struck),
         damage: DamageType::Kinetic,
+        report: None,
     };
 
     app.world_mut()
@@ -425,6 +429,7 @@ fn shot_fired_miss_still_spawns_projectile_and_no_muzzle_flash() {
         impact_level: Level::new(0),
         kind:         ShotKind::Miss,
         damage:       DamageType::Kinetic,
+        report:       None,
     };
 
     app.world_mut()
@@ -542,6 +547,7 @@ fn shot_fired_at_a_ganger_aims_at_the_hit_entitys_rendered_position() {
         impact_level,
         kind: ShotKind::Ganger(struck),
         damage: DamageType::Kinetic,
+        report: None,
     };
     app.world_mut()
         .resource_mut::<Messages<ShotFired>>()
@@ -630,5 +636,241 @@ fn two_bleeding_messages_spawn_two_independent_flashes() {
         fx_count(&mut app),
         0,
         "both independent flashes must expire once their FlashTtl elapses",
+    );
+}
+
+/// The `(text, alpha-1 color)` of every live `FloatingCombatText` pop — the rendered string and
+/// its `TextColor` (full-alpha at spawn, before the first fade tick). Unordered.
+fn fct_pops(app: &mut App) -> Vec<(String, bevy::prelude::Color)> {
+    let mut q = app
+        .world_mut()
+        .query::<(&FloatingCombatText, &Text2d, &TextColor)>();
+    q.iter(app.world())
+        .map(|(_, text, color)| ((**text).clone(), color.0))
+        .collect()
+}
+
+/// Whether the live pops contain a pop with exactly `text` whose color's RGB matches `color`'s
+/// (alpha-agnostic, since the pop fades — but at spawn, pre-tick, it is still full alpha).
+fn has_fct_pop(
+    pops: &[(String, bevy::prelude::Color)],
+    text: &str,
+    color: bevy::prelude::Color,
+) -> bool {
+    let want = color.to_srgba();
+    pops.iter().any(|(t, c)| {
+        let got = c.to_srgba();
+        t == text
+            && (got.red - want.red).abs() < 0.001
+            && (got.green - want.green).abs() < 0.001
+            && (got.blue - want.blue).abs() < 0.001
+    })
+}
+
+/// A ganger-hit `HitReport` for `part` with `hp` HP loss / `pen` penetration / `severity` tier
+/// / `life_after` state, struck on `struck` — the report the FCT reader classifies.
+const fn ganger_hit_report(
+    struck: bevy::ecs::entity::Entity,
+    part: BodyPart,
+    hp: i32,
+    pen: i32,
+    severity: Severity,
+    life_after: LifeState,
+) -> HitReport {
+    HitReport {
+        kind:    ShotKind::Ganger(struck),
+        part:    Some(part),
+        applied: Some(AppliedDamage {
+            matchup: Matchup::Neutral,
+            hit: HitResult {
+                penetrating: PenetratingDamage::new(pen),
+                hp_damage:   HpDamage::new(hp),
+                wear:        IntegrityWear::new(0),
+            },
+            severity,
+            life_after,
+            broken: None,
+        }),
+    }
+}
+
+/// GTW-302 (slice 3) — the REAL dispatch path: a `ShotFired` carrying a damaging, lethal
+/// ganger-hit `HitReport` drives the registered `read_shot_fired_text` system to spawn the
+/// floating-combat-text pops (HP number RED, wound AMBER, penetration verdict, DOWN/DEAD lethal
+/// RED), anchored at the hit ganger's cell. Pin-discriminates each pop's text + color.
+#[test]
+fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
+    let mut app = headless_renderer_app();
+    assert!(settle_resources(&mut app), "resources must resolve");
+    app.world_mut().insert_resource(BattleInProgress);
+
+    // A struck ganger carrying a Position (the FCT reader anchors the pops at its cell).
+    let cell = Cell::new(6, 4);
+    let level = Level::new(0);
+    let struck = app
+        .world_mut()
+        .spawn(Position::new(CellLevel::new(cell, level)))
+        .id();
+
+    // A Critical, DEAD, penetrating torso hit dealing 9 HP.
+    let report = ganger_hit_report(
+        struck,
+        BodyPart::Torso,
+        9,
+        6,
+        Severity::Critical,
+        LifeState::Dead,
+    );
+    let shot = ShotFired {
+        shooter:      app.world_mut().spawn_empty().id(),
+        muzzle:       SimPos::new(1.0, 1.0, 0.0),
+        trajectory:   ShotDir::from_direction(bevy::math::Vec3::new(1.0, 0.0, 0.0)),
+        impact_cell:  cell,
+        impact_level: level,
+        kind:         ShotKind::Ganger(struck),
+        damage:       DamageType::Kinetic,
+        report:       Some(report),
+    };
+    app.world_mut()
+        .resource_mut::<Messages<ShotFired>>()
+        .write(shot);
+    app.update();
+
+    let pops = fct_pops(&mut app);
+    // HP number (RED), wound (Critical amber), penetration verdict (GREY "Penetrated"), DEAD
+    // (lethal RED) — four distinct pops.
+    assert!(
+        has_fct_pop(&pops, "-9", valence_color(FctValence::Damage)),
+        "the 9-HP hit must pop a RED \"-9\", got {pops:?}",
+    );
+    assert!(
+        has_fct_pop(&pops, "Torso Critical", severity_color(Severity::Critical)),
+        "a Critical torso wound must pop \"Torso Critical\" in the Critical amber, got {pops:?}",
+    );
+    assert!(
+        has_fct_pop(&pops, "Penetrated", valence_color(FctValence::Neutral)),
+        "a penetrating hit must pop a GREY \"Penetrated\", got {pops:?}",
+    );
+    assert!(
+        has_fct_pop(&pops, "DEAD", valence_color(FctValence::Lethal)),
+        "a Dead outcome must pop a lethal-RED \"DEAD\", got {pops:?}",
+    );
+
+    // The pops are anchored at the hit ganger's cell (x/y of cell_to_world; the FCT z is the
+    // Highlight band, distinct from the cell z, so compare the planar position).
+    let anchor = cell_to_world(cell, level);
+    let mut q = app.world_mut().query::<(&FloatingCombatText, &Transform)>();
+    let any_at_cell = q
+        .iter(app.world())
+        .any(|(_, transform)| (transform.translation.x - anchor.x).abs() < 0.001);
+    assert!(
+        any_at_cell,
+        "the FCT pops must anchor at the hit ganger's cell x ({})",
+        anchor.x,
+    );
+}
+
+/// GTW-302 (slice 3) — a clean MISS `ShotFired` (a non-connecting shot) spawns NO
+/// floating-combat-text pop at all on the real registered-system dispatch path: a missed shot
+/// gets no pop (per user feedback, there is no "Miss" popup text).
+#[test]
+fn shot_fired_clean_miss_pops_nothing() {
+    let mut app = headless_renderer_app();
+    assert!(settle_resources(&mut app), "resources must resolve");
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(2, 9);
+    let level = Level::new(0);
+    let shot = ShotFired {
+        shooter:      app.world_mut().spawn_empty().id(),
+        muzzle:       SimPos::new(1.0, 1.0, 0.0),
+        trajectory:   ShotDir::from_direction(bevy::math::Vec3::new(0.0, 1.0, 0.0)),
+        impact_cell:  cell,
+        impact_level: level,
+        kind:         ShotKind::Miss,
+        damage:       DamageType::Kinetic,
+        report:       Some(HitReport::no_effect(ShotKind::Miss)),
+    };
+    app.world_mut()
+        .resource_mut::<Messages<ShotFired>>()
+        .write(shot);
+    app.update();
+
+    let pops = fct_pops(&mut app);
+    assert!(
+        pops.is_empty(),
+        "a clean miss must spawn no FCT pop, got {pops:?}"
+    );
+}
+
+/// GTW-302 (slice 4) — the REAL dispatch path: a `Bleeding { ganger }` drives the registered
+/// `read_consequence_fct` system to spawn the AMBER `"Bleeding"` floating-combat-text pop over
+/// the bleeding ganger's cell (ALONGSIDE the existing `read_bleeding` blood flash). Pins the
+/// pop's text + valence on the registered-system path.
+#[test]
+fn bleeding_pops_the_amber_bleeding_fct_tag() {
+    let mut app = headless_renderer_app();
+    assert!(settle_resources(&mut app), "resources must resolve");
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(4, 7);
+    let level = Level::new(0);
+    let ganger = spawn_ganger(&mut app, cell, level, 2);
+
+    app.world_mut()
+        .resource_mut::<Messages<Bleeding>>()
+        .write(Bleeding::new(ganger));
+    app.update();
+
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "Bleeding", valence_color(FctValence::Wound)),
+        "a Bleeding consequence must pop an AMBER \"Bleeding\" tag, got {pops:?}",
+    );
+
+    // The pop is anchored at the bleeding ganger's cell (planar x — the FCT z is the Highlight
+    // band, distinct from the cell z).
+    let anchor = cell_to_world(cell, level);
+    let mut q = app.world_mut().query::<(&FloatingCombatText, &Transform)>();
+    let any_at_cell = q
+        .iter(app.world())
+        .any(|(_, transform)| (transform.translation.x - anchor.x).abs() < 0.001);
+    assert!(
+        any_at_cell,
+        "the Bleeding pop must anchor at the bleeding ganger's cell x ({})",
+        anchor.x,
+    );
+}
+
+/// GTW-302 (slice 4) — the REAL dispatch path: an `ArmorBroken { ganger, part }` drives the
+/// registered `read_consequence_fct` system to spawn the RED `"Armor Broken"` floating-combat-
+/// text pop over the ganger's cell (ALONGSIDE the existing `read_armor_broken` spark flash).
+/// Pins the destroy-crossing tag's text + RED valence; the numeric `"Armor -N"` is DEFERRED
+/// (the message carries no integrity-delta amount), so NO `"Armor -"` pop appears.
+#[test]
+fn armor_broken_pops_the_red_armor_broken_fct_tag() {
+    let mut app = headless_renderer_app();
+    assert!(settle_resources(&mut app), "resources must resolve");
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(9, 3);
+    let level = Level::new(0);
+    let ganger = spawn_ganger(&mut app, cell, level, 5);
+
+    app.world_mut()
+        .resource_mut::<Messages<ArmorBroken>>()
+        .write(ArmorBroken::new(ganger, BodyPart::Torso));
+    app.update();
+
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "Armor Broken", valence_color(FctValence::Damage)),
+        "an ArmorBroken consequence must pop a RED \"Armor Broken\" tag, got {pops:?}",
+    );
+    // The numeric "Armor -N" variant is DEFERRED (no integrity delta on the message) — no
+    // "Armor -" pop should appear.
+    assert!(
+        !pops.iter().any(|(t, _)| t.starts_with("Armor -")),
+        "no numeric \"Armor -N\" pop is built this slice (no integrity delta), got {pops:?}",
     );
 }

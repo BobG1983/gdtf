@@ -45,13 +45,15 @@ pub mod topdown;
 pub mod world_camera;
 
 pub use fx::{
-    COMPASS_DIRECTIONS, DIRECTION_COUNT, DamageTypeFx, EffectRoles, EffectRolesHandle, FlashTtl,
-    FxFlash, FxTuning, FxTuningHandle, IMPACT_FRAME_COUNT, ImpactFrameSeconds, InterShotSeconds,
-    PendingImpact, ProjectileDrawScale, ProjectileTravel, ProjectileVelocity, ShotProjectile,
-    advance_projectiles, animate_impact, expire_flashes, load_effect_roles, load_fx_tuning,
-    nearest_direction_index, read_armor_broken, read_bleeding, read_cover_destroyed,
-    redrive_fx_tuning_on_asset_event, resolve_effect_roles, resolve_fx_tuning,
-    spawn_shot_projectiles,
+    COMPASS_DIRECTIONS, CombatText, DIRECTION_COUNT, DamageTypeFx, EffectRoles, EffectRolesHandle,
+    FctEmphasis, FctRiseRate, FctStackIndex, FctTtlSeconds, FctValence, FlashTtl,
+    FloatingCombatText, FxFlash, FxTuning, FxTuningHandle, IMPACT_FRAME_COUNT, ImpactFrameSeconds,
+    InterShotSeconds, PendingImpact, ProjectileDrawScale, ProjectileTravel, ProjectileVelocity,
+    ShotProjectile, advance_projectiles, animate_floating_text, animate_impact, expire_flashes,
+    load_effect_roles, load_fx_tuning, nearest_direction_index, read_armor_broken, read_bleeding,
+    read_consequence_fct, read_cover_destroyed, read_shot_fired_text,
+    redrive_fx_tuning_on_asset_event, resolve_effect_roles, resolve_fx_tuning, severity_color,
+    spawn_shot_projectiles, valence_color,
 };
 pub use ganger::{
     CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites,

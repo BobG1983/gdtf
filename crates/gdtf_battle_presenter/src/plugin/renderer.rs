@@ -12,11 +12,12 @@ use crate::{
     ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle, FxTuning,
     FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
     PanTuning, PanTuningHandle, PresenterSystems, TileRoles, TileRolesHandle, TopDownAtlases,
-    advance_projectiles, animate_impact, apply_active_level_filter, clamp_camera_to_bounds,
-    despawn_removed_ganger_sprites, draw_highlight_on_request, draw_static_battlefield,
-    expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
-    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
-    pan_camera_on_gamepad_cursor_edge, read_armor_broken, read_bleeding, read_cover_destroyed,
+    advance_projectiles, animate_floating_text, animate_impact, apply_active_level_filter,
+    clamp_camera_to_bounds, despawn_removed_ganger_sprites, draw_highlight_on_request,
+    draw_static_battlefield, expire_flashes, frame_camera_on_units, load_character_roles,
+    load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
+    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, read_armor_broken,
+    read_bleeding, read_consequence_fct, read_cover_destroyed, read_shot_fired_text,
     redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
     resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
     resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
@@ -438,6 +439,36 @@ fn register_fx_flash_systems(app: &mut App) {
                     .and(resource_exists::<Messages<ShotFired>>),
             ),
     )
+    // GTW-302 (slice 3): the floating-combat-text READER. Drains the SAME ShotFired buffer the
+    // tracer reader does (a buffered message survives the frame, so both read independently)
+    // and spawns a rise/fade Text2d pop per Phase-1 event each round's HitReport yields (HP
+    // damage / wound / graze / penetration verdict / miss / DOWN / DEAD). It needs NO render
+    // resource (it spawns Text2d, not an effects sprite), so it is gated only on
+    // BattleInProgress (pops belong to a live battle) AND its ShotFired buffer (the
+    // MessageReader param panics validation without the buffer — bevy-traps.md #1 / #4).
+    .add_systems(
+        Update,
+        read_shot_fired_text.in_set(PresenterSystems::Draw).run_if(
+            resource_exists::<BattleInProgress>.and(resource_exists::<Messages<ShotFired>>),
+        ),
+    )
+    // GTW-302 (slice 4): the AUXILIARY-SIGNAL floating-combat-text reader. Drains the SAME
+    // Bleeding + ArmorBroken buffers the read_bleeding / read_armor_broken blood/spark flash
+    // readers do (a buffered message survives the frame, so both read independently) and spawns
+    // a rise/fade Text2d pop per consequence event — "Bleeding" (AMBER) / "Armor Broken" (RED).
+    // Like read_shot_fired_text it spawns Text2d (no effects sprite), so it needs NO render
+    // resource — gated only on BattleInProgress (pops belong to a live battle) AND BOTH message
+    // buffers its two MessageReaders drain (a MessageReader param panics validation without its
+    // buffer — bevy-traps.md #1 / #4). Reload pops + the numeric "Armor -N" are DEFERRED (no
+    // backing sim signal — see the consequence module docs).
+    .add_systems(
+        Update,
+        read_consequence_fct.in_set(PresenterSystems::Draw).run_if(
+            resource_exists::<BattleInProgress>
+                .and(resource_exists::<Messages<Bleeding>>)
+                .and(resource_exists::<Messages<ArmorBroken>>),
+        ),
+    )
     // GTW-306: the 3-frame impact animation (FX-B fills the body). Gated on the same render
     // resources it reads (EffectRoles + TopDownAtlases + BattleInProgress + the
     // hot-reloadable FxTuning) so FX-B edits only impact.rs — never this registration.
@@ -451,6 +482,13 @@ fn register_fx_flash_systems(app: &mut App) {
     // ShotProjectile query (no render resource / message buffer), inert with none — registered
     // unguarded like expire_flashes so an in-flight projectile completes after a battle ends.
     .add_systems(Update, advance_projectiles.in_set(PresenterSystems::Draw))
+    // GTW-302 (slice 2): rise + fade + despawn every live floating-combat-text pop. Like
+    // expire_flashes / advance_projectiles it needs only Time + its own (FloatingCombatText)
+    // query — no render resource, no message buffer — and is inert with no pops, so it is
+    // registered unguarded by BattleInProgress: a pop spawned during a battle still completes
+    // its rise/fade after the battle ends. The reader slices (3-4) SPAWN the pops; this is the
+    // generic animator the primitive owns.
+    .add_systems(Update, animate_floating_text.in_set(PresenterSystems::Draw))
     .add_systems(Update, expire_flashes.in_set(PresenterSystems::Draw));
 }
 

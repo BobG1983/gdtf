@@ -168,13 +168,18 @@ fn decide_fire_arc(
 /// logic is reimplemented — the shot resolution REUSES [`fire`] verbatim; this slice only
 /// GATES it and front-loads the turn.
 ///
-/// **The GTW-290 fire signal.** AFTER the volley resolves (before it is dropped) this
-/// emits ONE [`ShotFired`] message per ROUND fired ([`Volley::shots`](crate::fire::Volley::shots)),
-/// each sourced from that round's already-computed
-/// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) ([`ShotFired::from_outcome`]) — so
-/// the presenter draws a muzzle / tracer / impact FX per round (a burst → multiple
-/// tracers). This changes NO fire-result logic — it only exposes the resolved trajectory
-/// the volley already computed (the [`MessageWriter`], `bevy-traps.md` #4 / #7).
+/// **The GTW-290 / GTW-302 fire signal.** AFTER the volley resolves (before it is dropped)
+/// this emits ONE [`ShotFired`] message per ROUND fired, zipping the parallel
+/// [`Volley::shots`](crate::fire::Volley::shots) geometry with the
+/// [`Volley::reports`](crate::fire::Volley::reports) verdicts so each message carries BOTH
+/// that round's already-computed [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) AND its
+/// [`HitReport`](crate::resolve_and_apply::HitReport) ([`ShotFired::from_round`]) — so the
+/// presenter draws a muzzle / tracer / impact FX per round (a burst → multiple tracers) AND
+/// the floating-combat-text presenter (GTW-302) draws that round's damage / wound / severity
+/// / armor verdict. The two vectors are parallel (`reports[i]`/`shots[i]` are the same fired
+/// round), so the report rides `Some` for every fired round. This changes NO fire-result
+/// logic — it only EXPOSES the trajectory + report the volley already computed (the
+/// [`MessageWriter`], `bevy-traps.md` #4 / #7).
 pub fn dispatch_fire(
     mut requests: MessageReader<FireRequested>,
     mut shooter_set: ParamSet<(ShooterQuery, TurnQuery)>,
@@ -259,13 +264,23 @@ pub fn dispatch_fire(
             &mut rng,
         );
 
-        // (5) GTW-290 / GTW-306: emit one ShotFired per ROUND fired, sourced from the
-        //     round's already-computed ShotOutcome plus the weapon's DamageType read in
-        //     step (1) (no recompute, no fire-result change) — so a burst draws a tracer
-        //     per round, each carrying the per-type FX selector. An empty (fail-closed)
-        //     volley emits none.
-        for outcome in &volley.shots {
-            shots_fired.write(ShotFired::from_outcome(request.shooter, damage, outcome));
+        // (5) GTW-290 / GTW-306 / GTW-302: emit one ShotFired per ROUND fired, sourced from
+        //     the round's already-computed ShotOutcome plus the weapon's DamageType read in
+        //     step (1) AND the PARALLEL HitReport the volley already produced (no recompute,
+        //     no fire-result change) — so a burst draws a tracer per round, each carrying
+        //     the per-type FX selector and the round's damage/wound/severity/armor verdict
+        //     the floating-combat-text presenter reads. `Volley::reports` and
+        //     `Volley::shots` are parallel (`reports[i]`/`shots[i]` are the same fired
+        //     round, both the clamped-burst length), so the zip pairs each round's geometry
+        //     with its own report — every fired round therefore carries `Some(report)`. An
+        //     empty (fail-closed) volley emits none.
+        for (outcome, report) in volley.shots.iter().zip(volley.reports.iter()) {
+            shots_fired.write(ShotFired::from_round(
+                request.shooter,
+                damage,
+                outcome,
+                *report,
+            ));
         }
     }
 }

@@ -1,0 +1,340 @@
+//! Unit tests for the GTW-302 (slice 2) floating-combat-text primitive — the
+//! [`spawn_floating_text`] spawn + the [`animate_floating_text`] rise / fade / despawn, plus
+//! the [`palette`](super::palette) valence / severity color mapping.
+//!
+//! These prove the animation LOGIC headless (`MinimalPlugins` — the primitive needs only the
+//! [`Time`] clock + its own query, no asset stack / renderer): a pop rises (its `y`
+//! increases), fades (its [`TextColor`] alpha decreases), and despawns once its
+//! [`FctTtlSeconds`] lifetime elapses; and the color helpers map each valence / severity tier
+//! to the documented swatch. "It visibly pops + fades on screen" is the deferred in-engine QA.
+
+use std::time::Duration;
+
+use bevy::{
+    MinimalPlugins,
+    app::{App, Update},
+    ecs::system::RunSystemOnce,
+    prelude::{Alpha, Color, Commands, Transform},
+    text::{FontWeight, TextColor, TextFont},
+    time::TimeUpdateStrategy,
+};
+use gdtf_battle_sim::{Cell, Level, Severity};
+
+use super::{
+    palette::{FctValence, severity_color, valence_color},
+    text::{
+        CombatText, FctEmphasis, FctStackIndex, FloatingCombatText, animate_floating_text,
+        spawn_floating_text,
+    },
+};
+
+/// A headless `MinimalPlugins` app with the FCT animator registered — the primitive needs
+/// only the [`Time`] clock (in `MinimalPlugins`) and its own query, so no asset / render stack.
+fn fct_app() -> App {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .add_systems(Update, animate_floating_text);
+    app
+}
+
+/// Spawns one ordinary (body-weight) FCT pop via the real [`spawn_floating_text`] helper, at
+/// `cell` / `level` in `color` at stack slot `stack`.
+fn spawn_pop(app: &mut App, color: Color, cell: Cell, level: Level, stack: FctStackIndex) {
+    spawn_pop_with(app, color, FctEmphasis::Normal, cell, level, stack);
+}
+
+/// Spawns one FCT pop via the real [`spawn_floating_text`] helper (driven through a one-shot
+/// `Commands` system so the production spawn path is exercised, not a hand-built entity), at
+/// `cell` / `level` in `color` at `emphasis` weight + stack slot `stack`, then applies the
+/// deferred commands.
+fn spawn_pop_with(
+    app: &mut App,
+    color: Color,
+    emphasis: FctEmphasis,
+    cell: Cell,
+    level: Level,
+    stack: FctStackIndex,
+) {
+    let ran = app
+        .world_mut()
+        .run_system_once(move |mut commands: Commands| {
+            spawn_floating_text(
+                &mut commands,
+                CombatText::new("-7"),
+                color,
+                emphasis,
+                cell,
+                level,
+                stack,
+            );
+        });
+    assert!(
+        ran.is_ok(),
+        "the one-shot spawn system must run successfully"
+    );
+}
+
+/// The (translation, alpha) of the SINGLE live pop — asserts exactly one exists, returning
+/// `None` otherwise (the caller asserts `Some`).
+fn single_pop(app: &mut App) -> Option<(bevy::math::Vec3, f32)> {
+    let mut q = app
+        .world_mut()
+        .query::<(&FloatingCombatText, &Transform, &TextColor)>();
+    let mut found: Option<(bevy::math::Vec3, f32)> = None;
+    for (_, transform, color) in q.iter(app.world()) {
+        if found.is_some() {
+            return None;
+        }
+        found = Some((transform.translation, color.0.alpha()));
+    }
+    found
+}
+
+/// The number of live [`FloatingCombatText`] pops in the world.
+fn pop_count(app: &mut App) -> usize {
+    let mut q = app.world_mut().query::<&FloatingCombatText>();
+    q.iter(app.world()).count()
+}
+
+/// The `(weight, font_size)` of the SINGLE live pop's [`TextFont`] — the styling attributes
+/// the emphasis tier controls. Returns `None` unless exactly one pop exists.
+fn single_pop_font(app: &mut App) -> Option<(FontWeight, f32)> {
+    let mut q = app.world_mut().query::<(&FloatingCombatText, &TextFont)>();
+    let mut found: Option<(FontWeight, f32)> = None;
+    for (_, font) in q.iter(app.world()) {
+        if found.is_some() {
+            return None;
+        }
+        found = Some((font.weight, font.font_size));
+    }
+    found
+}
+
+/// A spawned pop RISES (its `y` increases over consecutive ticks) and FADES (its alpha
+/// decreases), then DESPAWNS once its `FctTtlSeconds` lifetime elapses.
+#[test]
+fn a_pop_rises_then_fades_then_despawns() {
+    let mut app = fct_app();
+    // Manual 100ms ticks so the rise / fade are observed mid-lifetime, then enough to clear
+    // the 0.6s default lifetime.
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+            100,
+        )));
+
+    let cell = Cell::new(4, 6);
+    let level = Level::new(0);
+    spawn_pop(
+        &mut app,
+        Color::srgba(0.9, 0.13, 0.10, 1.0),
+        cell,
+        level,
+        FctStackIndex::BASE,
+    );
+    assert_eq!(pop_count(&mut app), 1, "exactly one pop must spawn");
+
+    // First tick (the clock has not advanced yet on the very first update — capture the
+    // baseline after one update so Time has a real delta).
+    app.update();
+    let first = single_pop(&mut app);
+    assert!(first.is_some(), "the pop must still be live after one tick");
+    let Some((first_pos, first_alpha)) = first else {
+        return;
+    };
+
+    // A second tick: it must have risen (higher y) and faded (lower alpha).
+    app.update();
+    let second = single_pop(&mut app);
+    assert!(
+        second.is_some(),
+        "the pop must still be live after two ticks"
+    );
+    let Some((second_pos, second_alpha)) = second else {
+        return;
+    };
+    assert!(
+        second_pos.y > first_pos.y,
+        "the pop must RISE: y must increase ({} -> {})",
+        first_pos.y,
+        second_pos.y,
+    );
+    assert!(
+        second_alpha < first_alpha,
+        "the pop must FADE: alpha must decrease ({first_alpha} -> {second_alpha})",
+    );
+
+    // Run well past the 0.6s lifetime (100ms × these updates) — the pop must despawn.
+    for _ in 0..8 {
+        app.update();
+    }
+    assert_eq!(
+        pop_count(&mut app),
+        0,
+        "the pop must despawn once its FctTtlSeconds lifetime elapses",
+    );
+}
+
+/// A higher `FctStackIndex` offsets the pop's spawn `y` DOWNWARD so simultaneous pops on one
+/// cell do not overlap (the stack-offset).
+#[test]
+fn a_higher_stack_index_offsets_the_pop_downward() {
+    let base_y = {
+        let mut app = fct_app();
+        app.world_mut()
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        spawn_pop(
+            &mut app,
+            Color::WHITE,
+            Cell::new(2, 2),
+            Level::new(0),
+            FctStackIndex::BASE,
+        );
+        single_pop(&mut app).map(|(pos, _)| pos.y)
+    };
+    let stacked_y = {
+        let mut app = fct_app();
+        app.world_mut()
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        spawn_pop(
+            &mut app,
+            Color::WHITE,
+            Cell::new(2, 2),
+            Level::new(0),
+            FctStackIndex::new(2),
+        );
+        single_pop(&mut app).map(|(pos, _)| pos.y)
+    };
+    assert!(
+        base_y.is_some() && stacked_y.is_some(),
+        "both pops must spawn"
+    );
+    let (Some(base_y), Some(stacked_y)) = (base_y, stacked_y) else {
+        return;
+    };
+    assert!(
+        stacked_y < base_y,
+        "a higher stack index must offset the pop DOWNWARD ({base_y} -> {stacked_y})",
+    );
+}
+
+/// An [`FctEmphasis::Bold`] pop (the lethal DOWN / DEAD tag) is spawned with a HEAVIER
+/// [`TextFont`] than a [`FctEmphasis::Normal`] pop — both a bolder [`FontWeight`] AND a larger
+/// `font_size` — delivering the contract's "DOWN / DEAD (RED bold)" styling, not just all-caps.
+#[test]
+fn a_bold_pop_is_drawn_heavier_than_a_normal_pop() {
+    let normal = {
+        let mut app = fct_app();
+        app.world_mut()
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        spawn_pop_with(
+            &mut app,
+            Color::WHITE,
+            FctEmphasis::Normal,
+            Cell::new(1, 1),
+            Level::new(0),
+            FctStackIndex::BASE,
+        );
+        single_pop_font(&mut app)
+    };
+    let bold = {
+        let mut app = fct_app();
+        app.world_mut()
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        spawn_pop_with(
+            &mut app,
+            Color::WHITE,
+            FctEmphasis::Bold,
+            Cell::new(1, 1),
+            Level::new(0),
+            FctStackIndex::BASE,
+        );
+        single_pop_font(&mut app)
+    };
+    assert!(
+        normal.is_some() && bold.is_some(),
+        "both pops must spawn exactly one entity"
+    );
+    let (Some((normal_weight, normal_size)), Some((bold_weight, bold_size))) = (normal, bold)
+    else {
+        return;
+    };
+    assert!(
+        bold_weight.0 > normal_weight.0,
+        "a bold pop must carry a heavier FontWeight ({} -> {})",
+        normal_weight.0,
+        bold_weight.0,
+    );
+    assert_eq!(
+        bold_weight,
+        FontWeight::BOLD,
+        "a bold pop must be drawn in FontWeight::BOLD",
+    );
+    assert!(
+        bold_size > normal_size,
+        "a bold pop must be drawn LARGER ({normal_size} -> {bold_size})",
+    );
+}
+
+/// The [`valence_color`] helper maps each [`FctValence`] to its documented family: damage +
+/// lethal share the blood red, wound is the amber base, neutral is the grey.
+#[test]
+fn valence_color_maps_each_valence_to_its_family() {
+    // Damage and lethal are the SAME blood-red hue (lethal is drawn heavier by the caller).
+    assert_eq!(
+        valence_color(FctValence::Damage),
+        valence_color(FctValence::Lethal),
+        "damage + lethal must share the blood-red family",
+    );
+    // The three families are mutually DISTINCT swatches.
+    let damage = valence_color(FctValence::Damage);
+    let wound = valence_color(FctValence::Wound);
+    let neutral = valence_color(FctValence::Neutral);
+    assert_ne!(damage, wound, "damage red must differ from wound amber");
+    assert_ne!(wound, neutral, "wound amber must differ from neutral grey");
+    assert_ne!(damage, neutral, "damage red must differ from neutral grey");
+}
+
+/// The [`severity_color`] ramp maps the [`Severity`] ladder into the documented bands: a
+/// graze reads NEUTRAL (not a wound), the wounding tiers climb within the amber family, and a
+/// Fatal hit jumps to the lethal red.
+#[test]
+fn severity_color_ramps_through_the_wound_family_to_lethal() {
+    // A graze (None) costs no Wound -> it reads neutral, NOT a wound amber.
+    assert_eq!(
+        severity_color(Severity::None),
+        valence_color(FctValence::Neutral),
+        "a graze (Severity::None) must read NEUTRAL, not a wound amber",
+    );
+    // A Fatal hit is the lethal blood-red (a death, not a wound).
+    assert_eq!(
+        severity_color(Severity::Fatal),
+        valence_color(FctValence::Lethal),
+        "a Fatal severity must read the LETHAL red, not a wound amber",
+    );
+    // The wounding tiers (Minor -> Major -> Critical) are within the amber family and are
+    // mutually distinct (the ramp climbs), and none collapse onto neutral / lethal.
+    let minor = severity_color(Severity::Minor);
+    let major = severity_color(Severity::Major);
+    let critical = severity_color(Severity::Critical);
+    assert_ne!(minor, major, "the wound ramp must climb (Minor != Major)");
+    assert_ne!(
+        major, critical,
+        "the wound ramp must climb (Major != Critical)"
+    );
+    let neutral = severity_color(Severity::None);
+    let lethal = severity_color(Severity::Fatal);
+    for (tier, color) in [
+        (Severity::Minor, minor),
+        (Severity::Major, major),
+        (Severity::Critical, critical),
+    ] {
+        assert_ne!(
+            color, neutral,
+            "a wounding tier ({tier:?}) must not read NEUTRAL",
+        );
+        assert_ne!(
+            color, lethal,
+            "a wounding tier ({tier:?}) must not read the LETHAL red",
+        );
+    }
+}

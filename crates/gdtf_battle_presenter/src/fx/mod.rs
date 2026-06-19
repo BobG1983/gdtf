@@ -42,6 +42,7 @@
 //! ZERO sim setup/teardown. It mirrors, never owns, combat truth — the one-way
 //! `input -> presenter -> sim` edge (ADR-0001); the sim never reads the presenter.
 
+mod fct;
 mod flash;
 mod impact;
 mod projectile;
@@ -52,6 +53,11 @@ mod tuning;
 #[cfg(test)]
 mod test;
 
+pub use fct::{
+    CombatText, FctEmphasis, FctRiseRate, FctStackIndex, FctTtlSeconds, FctValence,
+    FloatingCombatText, animate_floating_text, read_consequence_fct, read_shot_fired_text,
+    severity_color, spawn_floating_text, valence_color,
+};
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
 pub use impact::animate_impact;
 pub use projectile::{
