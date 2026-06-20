@@ -117,7 +117,7 @@ fn focus_activation_on_enabled_button_requests_mapped_transition() {
         let mut app = menu_app();
         let button = marker_lookup(&mut app).unwrap_or(Entity::PLACEHOLDER);
 
-        app.world_mut().write_message(FocusActivated(button));
+        app.world_mut().write_message(FocusActivated::new(button));
         app.update();
 
         assert_eq!(
@@ -147,7 +147,8 @@ fn disabled_hivescape_produces_no_transition_on_any_input() {
 
     // Inject BOTH activation paths at once on the HiveScape entity.
     set_interaction(&mut app, hivescape, Interaction::Pressed);
-    app.world_mut().write_message(FocusActivated(hivescape));
+    app.world_mut()
+        .write_message(FocusActivated::new(hivescape));
     app.update();
 
     assert_eq!(

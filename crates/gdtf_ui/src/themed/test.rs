@@ -94,11 +94,11 @@ fn apply_theme_paints_role_appropriate_visuals_from_the_resource()
 
     let text = app
         .world_mut()
-        .spawn((Themed(ThemeRole::ButtonText), Text::new("x")))
+        .spawn((Themed::new(ThemeRole::ButtonText), Text::new("x")))
         .id();
     let button = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Button), Node::default()))
+        .spawn((Themed::new(ThemeRole::Button), Node::default()))
         .id();
 
     app.update();
@@ -175,11 +175,11 @@ fn apply_theme_paints_background_and_panel() -> Result<(), ron::error::SpannedEr
 
     let background = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Background), Node::default()))
+        .spawn((Themed::new(ThemeRole::Background), Node::default()))
         .id();
     let panel = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Panel), Node::default()))
+        .spawn((Themed::new(ThemeRole::Panel), Node::default()))
         .id();
 
     app.update();
@@ -237,7 +237,7 @@ fn apply_theme_uses_title_sub_theme_font_size() -> Result<(), ron::error::Spanne
 
     let title = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Title), Text::new("GRIMDARK TURFWAR")))
+        .spawn((Themed::new(ThemeRole::Title), Text::new("GRIMDARK TURFWAR")))
         .id();
 
     app.update();
@@ -290,11 +290,11 @@ fn re_theme_after_resource_mutation_repaints_with_new_palette()
 
     let text = app
         .world_mut()
-        .spawn((Themed(ThemeRole::ButtonText), Text::new("x")))
+        .spawn((Themed::new(ThemeRole::ButtonText), Text::new("x")))
         .id();
     let button = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Button), Node::default()))
+        .spawn((Themed::new(ThemeRole::Button), Node::default()))
         .id();
 
     app.update();
@@ -353,7 +353,7 @@ fn re_theme_after_resource_mutation_repaints_with_new_palette()
 fn absent_theme_does_not_panic() {
     let mut app = app_with_apply_theme();
     app.world_mut()
-        .spawn((Themed(ThemeRole::Panel), Node::default()));
+        .spawn((Themed::new(ThemeRole::Panel), Node::default()));
 
     // No GdtfTheme inserted. The guard must keep apply_theme from running.
     app.update();
@@ -394,7 +394,7 @@ fn incremental_repaint_does_not_recolor_existing_on_new_spawn()
     // reaches the steady state (no theme change, no added → `apply_theme` skipped).
     let e = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Button), Button, Node::default()))
+        .spawn((Themed::new(ThemeRole::Button), Button, Node::default()))
         .id();
     app.update();
     app.update();
@@ -410,7 +410,7 @@ fn incremental_repaint_does_not_recolor_existing_on_new_spawn()
     // `apply_theme` run (the production run condition), but the theme did NOT change.
     let f = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Button), Button, Node::default()))
+        .spawn((Themed::new(ThemeRole::Button), Button, Node::default()))
         .id();
     app.update();
 
@@ -455,7 +455,7 @@ fn theme_change_repaints_all_themed() -> Result<(), ron::error::SpannedError> {
     // Spawn E and settle it on the original palette (paint, then steady).
     let e = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Button), Button, Node::default()))
+        .spawn((Themed::new(ThemeRole::Button), Button, Node::default()))
         .id();
     app.update();
     app.update();

@@ -43,7 +43,7 @@ pub fn spawn_panel(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     );
     commands
         .spawn((
-            Themed(ThemeRole::Panel),
+            Themed::new(ThemeRole::Panel),
             node,
             BackgroundColor(*theme.panel.color),
             UiBorderColor::all(*theme.panel.border_color),
@@ -90,7 +90,7 @@ pub fn spawn_button(
     commands
         .spawn((
             Button,
-            Themed(ThemeRole::Button),
+            Themed::new(ThemeRole::Button),
             node,
             BackgroundColor(*theme.button.color),
             UiBorderColor::all(*theme.button.border_color),
@@ -98,7 +98,7 @@ pub fn spawn_button(
         ))
         .with_children(|parent| {
             parent.spawn((
-                Themed(ThemeRole::ButtonText),
+                Themed::new(ThemeRole::ButtonText),
                 Text::new(label.into_inner()),
                 TextFont {
                     font,

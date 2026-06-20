@@ -227,7 +227,7 @@ pub(in crate::scenes::load) fn poll_and_resolve(
         commands.insert_resource(theme);
         // The persistent handle the GTW-137 retheme system filters against and
         // GTW-138's watcher keeps loaded; survives OnExit(Load) like GdtfTheme.
-        commands.insert_resource(ActiveThemeHandle((*handles.theme).clone()));
+        commands.insert_resource(ActiveThemeHandle::new((*handles.theme).clone()));
     }
 }
 
@@ -244,5 +244,5 @@ fn fall_back(commands: &mut Commands, path: FailedAssetPath, handles: &LoadHandl
     );
     commands.insert_resource(LoadFailed(path));
     commands.insert_resource(default_theme());
-    commands.insert_resource(ActiveThemeHandle((*handles.theme).clone()));
+    commands.insert_resource(ActiveThemeHandle::new((*handles.theme).clone()));
 }

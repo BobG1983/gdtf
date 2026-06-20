@@ -190,7 +190,7 @@ fn spawn_text(
     commands
         .spawn((
             marker,
-            Themed(ThemeRole::Text),
+            Themed::new(ThemeRole::Text),
             Text::new(initial),
             TextFont {
                 font: theme.text.font.clone(),
@@ -220,7 +220,7 @@ fn spawn_bar_label(commands: &mut Commands, theme: &GdtfTheme, marker: impl Bund
     commands
         .spawn((
             marker,
-            Themed(ThemeRole::Text),
+            Themed::new(ThemeRole::Text),
             Text::new(""),
             TextFont {
                 font: theme.text.font.clone(),
@@ -289,7 +289,7 @@ fn spawn_wound_list(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
             commands
                 .spawn((
                     StatWoundLine,
-                    Themed(ThemeRole::Text),
+                    Themed::new(ThemeRole::Text),
                     Text::new(""),
                     TextFont {
                         font: theme.text.font.clone(),

@@ -29,7 +29,7 @@ impl BackgroundThemeSpec {
     /// Resolve the backdrop sub-theme (no font, no resolver needed).
     pub(super) const fn resolve(self) -> BackgroundTheme {
         BackgroundTheme {
-            color: ScreenColor(self.color.into_color()),
+            color: ScreenColor::new(self.color.into_color()),
         }
     }
 }
@@ -53,10 +53,10 @@ impl PanelThemeSpec {
     /// Resolve the panel sub-theme (no font, no resolver needed).
     pub(super) const fn resolve(self) -> PanelTheme {
         PanelTheme {
-            color:         PanelColor(self.color.into_color()),
-            border_color:  BorderColor(self.border_color.into_color()),
-            border_width:  BorderWidthVw(self.border_width),
-            corner_radius: CornerRadiusVw(self.corner_radius),
+            color:         PanelColor::new(self.color.into_color()),
+            border_color:  BorderColor::new(self.border_color.into_color()),
+            border_width:  BorderWidthVw::new(self.border_width),
+            corner_radius: CornerRadiusVw::new(self.corner_radius),
             margin:        self.margin.resolve(),
         }
     }
@@ -99,16 +99,16 @@ impl ButtonThemeSpec {
     /// Resolve the button sub-theme, threading the chosen font handle in.
     fn resolve(self, font: Handle<Font>) -> ButtonTheme {
         ButtonTheme {
-            color: ButtonColor(self.color.into_color()),
-            disabled: DisabledColor(self.disabled.into_color()),
-            active: ActiveColor(self.active.into_color()),
-            hover: HoverColor(self.hover.into_color()),
-            pressed: PressedColor(self.pressed.into_color()),
-            text_color: TextColor(self.text_color.into_color()),
-            font_size_pt: FontSizePt(self.font_size_pt),
-            border_color: BorderColor(self.border_color.into_color()),
-            border_width: BorderWidthVw(self.border_width),
-            corner_radius: CornerRadiusVw(self.corner_radius),
+            color: ButtonColor::new(self.color.into_color()),
+            disabled: DisabledColor::new(self.disabled.into_color()),
+            active: ActiveColor::new(self.active.into_color()),
+            hover: HoverColor::new(self.hover.into_color()),
+            pressed: PressedColor::new(self.pressed.into_color()),
+            text_color: TextColor::new(self.text_color.into_color()),
+            font_size_pt: FontSizePt::new(self.font_size_pt),
+            border_color: BorderColor::new(self.border_color.into_color()),
+            border_width: BorderWidthVw::new(self.border_width),
+            corner_radius: CornerRadiusVw::new(self.corner_radius),
             margin: self.margin.resolve(),
             font,
         }
@@ -134,8 +134,8 @@ impl TitleThemeSpec {
     /// Resolve the title sub-theme, threading the chosen font handle in.
     fn resolve(self, font: Handle<Font>) -> TitleTheme {
         TitleTheme {
-            text_color: TextColor(self.text_color.into_color()),
-            font_size_pt: FontSizePt(self.font_size_pt),
+            text_color: TextColor::new(self.text_color.into_color()),
+            font_size_pt: FontSizePt::new(self.font_size_pt),
             font,
         }
     }
@@ -160,8 +160,8 @@ impl TextThemeSpec {
     /// Resolve the body-text sub-theme, threading the chosen font handle in.
     fn resolve(self, font: Handle<Font>) -> TextTheme {
         TextTheme {
-            text_color: TextColor(self.text_color.into_color()),
-            font_size_pt: FontSizePt(self.font_size_pt),
+            text_color: TextColor::new(self.text_color.into_color()),
+            font_size_pt: FontSizePt::new(self.font_size_pt),
             font,
         }
     }
@@ -215,7 +215,7 @@ impl GdtfThemeSpec {
         let text_font = resolve_font(self.text.font.as_deref().unwrap_or(&self.default_font));
 
         GdtfTheme {
-            default_font: FontKey(self.default_font),
+            default_font: FontKey::new(self.default_font),
             background:   self.background.resolve(),
             panel:        self.panel.resolve(),
             button:       self.button.resolve(button_font),

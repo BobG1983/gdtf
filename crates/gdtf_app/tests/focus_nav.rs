@@ -94,7 +94,7 @@ fn navigate_down_advances_focus() {
 
     // Synthesize a navigate-Down (the bridge's output) and let the apply system
     // consume it.
-    world.write_message(NavigateRequest(NavDirection::DOWN));
+    world.write_message(NavigateRequest::new(NavDirection::DOWN));
     app.update();
 
     assert_eq!(

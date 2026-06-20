@@ -54,11 +54,11 @@ fn distinctive_spec() -> GdtfThemeSpec {
     GdtfThemeSpec {
         default_font: String::from("fonts/default.ttf"),
         background:   BackgroundThemeSpec {
-            color: Srgba4([0.01, 0.02, 0.03, 0.04]),
+            color: Srgba4::new([0.01, 0.02, 0.03, 0.04]),
         },
         panel:        PanelThemeSpec {
-            color:         Srgba4([0.10, 0.11, 0.12, 0.13]),
-            border_color:  Srgba4([0.20, 0.21, 0.22, 0.23]),
+            color:         Srgba4::new([0.10, 0.11, 0.12, 0.13]),
+            border_color:  Srgba4::new([0.20, 0.21, 0.22, 0.23]),
             border_width:  1.5,
             corner_radius: 2.5,
             margin:        MarginSpec {
@@ -69,14 +69,14 @@ fn distinctive_spec() -> GdtfThemeSpec {
             },
         },
         button:       ButtonThemeSpec {
-            color:         Srgba4([0.30, 0.31, 0.32, 0.33]),
-            disabled:      Srgba4([0.40, 0.41, 0.42, 0.43]),
-            active:        Srgba4([0.44, 0.45, 0.46, 0.47]),
-            hover:         Srgba4([0.50, 0.51, 0.52, 0.53]),
-            pressed:       Srgba4([0.60, 0.61, 0.62, 0.63]),
-            text_color:    Srgba4([0.70, 0.71, 0.72, 0.73]),
+            color:         Srgba4::new([0.30, 0.31, 0.32, 0.33]),
+            disabled:      Srgba4::new([0.40, 0.41, 0.42, 0.43]),
+            active:        Srgba4::new([0.44, 0.45, 0.46, 0.47]),
+            hover:         Srgba4::new([0.50, 0.51, 0.52, 0.53]),
+            pressed:       Srgba4::new([0.60, 0.61, 0.62, 0.63]),
+            text_color:    Srgba4::new([0.70, 0.71, 0.72, 0.73]),
             font_size_pt:  7.5,
-            border_color:  Srgba4([0.80, 0.81, 0.82, 0.83]),
+            border_color:  Srgba4::new([0.80, 0.81, 0.82, 0.83]),
             border_width:  8.5,
             corner_radius: 9.5,
             margin:        MarginSpec {
@@ -88,12 +88,12 @@ fn distinctive_spec() -> GdtfThemeSpec {
             font:          None,
         },
         title:        TitleThemeSpec {
-            text_color:   Srgba4([0.15, 0.16, 0.17, 0.18]),
+            text_color:   Srgba4::new([0.15, 0.16, 0.17, 0.18]),
             font_size_pt: 14.5,
             font:         None,
         },
         text:         TextThemeSpec {
-            text_color:   Srgba4([0.25, 0.26, 0.27, 0.28]),
+            text_color:   Srgba4::new([0.25, 0.26, 0.27, 0.28]),
             font_size_pt: 15.5,
             font:         None,
         },
@@ -284,11 +284,11 @@ fn resolve_picks_override_font_else_default_font() {
     let spec = GdtfThemeSpec {
         default_font: String::from("fonts/default.ttf"),
         background:   BackgroundThemeSpec {
-            color: Srgba4([0.0, 0.0, 0.0, 1.0]),
+            color: Srgba4::new([0.0, 0.0, 0.0, 1.0]),
         },
         panel:        PanelThemeSpec {
-            color:         Srgba4([0.0, 0.0, 0.0, 1.0]),
-            border_color:  Srgba4([0.0, 0.0, 0.0, 1.0]),
+            color:         Srgba4::new([0.0, 0.0, 0.0, 1.0]),
+            border_color:  Srgba4::new([0.0, 0.0, 0.0, 1.0]),
             border_width:  1.0,
             corner_radius: 1.0,
             margin:        MarginSpec {
@@ -299,14 +299,14 @@ fn resolve_picks_override_font_else_default_font() {
             },
         },
         button:       ButtonThemeSpec {
-            color:         Srgba4([0.0, 0.0, 0.0, 1.0]),
-            disabled:      Srgba4([0.0, 0.0, 0.0, 1.0]),
-            active:        Srgba4([0.0, 0.0, 0.0, 1.0]),
-            hover:         Srgba4([0.0, 0.0, 0.0, 1.0]),
-            pressed:       Srgba4([0.0, 0.0, 0.0, 1.0]),
-            text_color:    Srgba4([0.0, 0.0, 0.0, 1.0]),
+            color:         Srgba4::new([0.0, 0.0, 0.0, 1.0]),
+            disabled:      Srgba4::new([0.0, 0.0, 0.0, 1.0]),
+            active:        Srgba4::new([0.0, 0.0, 0.0, 1.0]),
+            hover:         Srgba4::new([0.0, 0.0, 0.0, 1.0]),
+            pressed:       Srgba4::new([0.0, 0.0, 0.0, 1.0]),
+            text_color:    Srgba4::new([0.0, 0.0, 0.0, 1.0]),
             font_size_pt:  18.0,
-            border_color:  Srgba4([0.0, 0.0, 0.0, 1.0]),
+            border_color:  Srgba4::new([0.0, 0.0, 0.0, 1.0]),
             border_width:  1.0,
             corner_radius: 1.0,
             margin:        MarginSpec {
@@ -318,12 +318,12 @@ fn resolve_picks_override_font_else_default_font() {
             font:          None,
         },
         title:        TitleThemeSpec {
-            text_color:   Srgba4([0.0, 0.0, 0.0, 1.0]),
+            text_color:   Srgba4::new([0.0, 0.0, 0.0, 1.0]),
             font_size_pt: 36.0,
             font:         Some(String::from("fonts/title-override.ttf")),
         },
         text:         TextThemeSpec {
-            text_color:   Srgba4([0.0, 0.0, 0.0, 1.0]),
+            text_color:   Srgba4::new([0.0, 0.0, 0.0, 1.0]),
             font_size_pt: 18.0,
             font:         None,
         },
@@ -377,4 +377,42 @@ fn weak_font_handle(key: &str) -> Handle<Font> {
             .wrapping_add(u128::from(byte));
     }
     Handle::Uuid(Uuid::from_u128(id), PhantomData)
+}
+
+/// **Privacy regression guard (GTW-325):** the RON-deserialized theme newtype
+/// group still `Deserialize`s through its now-**private** inner, and the
+/// resolved value is reachable through the derived [`Deref`].
+///
+/// Two halves cover the group. (1) [`Srgba4`] is the directly-`serde(transparent)`
+/// newtype: deserializing a representative RON quad and asserting it equals
+/// [`Srgba4::new`] proves `Deserialize` built the value through the private inner
+/// (the wire shape and constructor contract are intact). (2) Feeding that parsed
+/// quad through a [`BackgroundThemeSpec`] deserialize + `resolve` and reading the
+/// resolved [`ScreenColor`] through `Deref` proves the wrap-on-resolve path and
+/// the `Deref` accessor still work over the private fields. Together they prove
+/// privatizing the inners changed neither the on-disk shape nor the read path.
+#[test]
+fn theme_newtypes_round_trip_through_private_inner() -> Result<(), ron::error::SpannedError> {
+    // (1) Directly-`Deserialize` newtype: the parsed value equals `::new`,
+    // proving `Deserialize` builds through the private inner via `PartialEq`.
+    let input = [0.12_f32, 0.34, 0.56, 0.78];
+    let parsed: Srgba4 = ron::from_str("(0.12, 0.34, 0.56, 0.78)")?;
+    assert_eq!(
+        parsed,
+        Srgba4::new(input),
+        "Srgba4 must deserialize through its private inner"
+    );
+
+    // (2) Deserialize + resolve, then read the resolved `ScreenColor` through
+    // `Deref` (`*resolved.color`), proving the resolve-time `::new` wrap and the
+    // `Deref` accessor are intact over the private field.
+    let bg: BackgroundThemeSpec = ron::from_str("(color: (0.12, 0.34, 0.56, 0.78))")?;
+    let resolved = bg.resolve();
+    assert_eq!(
+        *resolved.color,
+        Color::srgba(0.12, 0.34, 0.56, 0.78),
+        "ScreenColor must be readable through Deref after resolving the parsed spec"
+    );
+
+    Ok(())
 }

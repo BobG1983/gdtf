@@ -2,10 +2,10 @@
 //! font-size / font-key newtypes, the per-edge content margin, and the
 //! wire-shaped `Srgba4` / `MarginSpec` that resolve into them.
 //!
-//! Each newtype keeps a `pub(super)` inner field so the sibling spec / runtime /
-//! fallback submodules can construct it with tuple-struct syntax (the same
-//! construction the pre-split single-file `theme.rs` used) while the field stays
-//! private to anything outside the `theme` module (no-bare-types rule).
+//! Each newtype keeps a **private** inner field (no-bare-types rule 5): the
+//! sibling spec / runtime / fallback submodules construct it through the `new`
+//! constructor and read it through the derived [`Deref`], so the raw value is
+//! touched only inside this module.
 
 use bevy::prelude::*;
 use serde::Deserialize;
@@ -15,15 +15,39 @@ use serde::Deserialize;
 /// Named [`ScreenColor`] rather than `BackgroundColor` to avoid clashing with
 /// `bevy::ui::BackgroundColor`, the component `apply_theme` writes this into.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct ScreenColor(pub(super) Color);
+pub struct ScreenColor(Color);
+
+impl ScreenColor {
+    /// Wrap a resolved backdrop fill [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// The resting fill color of a themed panel box.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct PanelColor(pub(super) Color);
+pub struct PanelColor(Color);
+
+impl PanelColor {
+    /// Wrap a resolved panel fill [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// The resting fill color of a themed button.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct ButtonColor(pub(super) Color);
+pub struct ButtonColor(Color);
+
+impl ButtonColor {
+    /// Wrap a resolved button fill [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// The flat background fill of a disabled / non-interactive button.
 ///
@@ -31,7 +55,15 @@ pub struct ButtonColor(pub(super) Color);
 /// distinct from the active button fill — an explicit, data-driven value, not a
 /// computed alpha-dim.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct DisabledColor(pub(super) Color);
+pub struct DisabledColor(Color);
+
+impl DisabledColor {
+    /// Wrap a resolved disabled-button fill [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// The flat background fill of an **active / toggled-on** button (GTW-253).
 ///
@@ -41,34 +73,90 @@ pub struct DisabledColor(pub(super) Color);
 /// click-feedback, a different meaning) nor the [`DisabledColor`]: an active
 /// button reads as a persistently-engaged state, so it earns its own color.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct ActiveColor(pub(super) Color);
+pub struct ActiveColor(Color);
+
+impl ActiveColor {
+    /// Wrap a resolved active-button fill [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// The button fill shown while a themed button is hovered.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct HoverColor(pub(super) Color);
+pub struct HoverColor(Color);
+
+impl HoverColor {
+    /// Wrap a resolved hovered-button fill [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// The button fill shown while a themed button is pressed.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct PressedColor(pub(super) Color);
+pub struct PressedColor(Color);
+
+impl PressedColor {
+    /// Wrap a resolved pressed-button fill [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// Foreground color of themed text (labels, button captions, titles, rich text).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct TextColor(pub(super) Color);
+pub struct TextColor(Color);
+
+impl TextColor {
+    /// Wrap a resolved themed-text foreground [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// Color of a themed box's border stroke (a panel or a button border).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct BorderColor(pub(super) Color);
+pub struct BorderColor(Color);
+
+impl BorderColor {
+    /// Wrap a resolved border-stroke [`Color`].
+    #[must_use]
+    pub const fn new(color: Color) -> Self {
+        Self(color)
+    }
+}
 
 /// Width of a themed box's border stroke, as a fraction of the window WIDTH
 /// (`Vw`, calibrated to the 1280x720 reference window — GTW-296).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct BorderWidthVw(pub(super) f32);
+pub struct BorderWidthVw(f32);
+
+impl BorderWidthVw {
+    /// Wrap a border-width window-WIDTH fraction (`Vw`).
+    #[must_use]
+    pub const fn new(vw: f32) -> Self {
+        Self(vw)
+    }
+}
 
 /// Corner radius of a themed box, as a fraction of the window WIDTH (`Vw`, the
 /// same axis as the border so a `2px`/`5px` border/radius pair keeps its ratio —
 /// GTW-296).
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct CornerRadiusVw(pub(super) f32);
+pub struct CornerRadiusVw(f32);
+
+impl CornerRadiusVw {
+    /// Wrap a corner-radius window-WIDTH fraction (`Vw`).
+    #[must_use]
+    pub const fn new(vw: f32) -> Self {
+        Self(vw)
+    }
+}
 
 /// A horizontal (left / right) content-margin edge inset, as a fraction of the
 /// window WIDTH (`Vw` — GTW-296).
@@ -78,7 +166,15 @@ pub struct CornerRadiusVw(pub(super) f32);
 /// field, so they share a type. The vertical edges use the separate [`MarginVh`]
 /// so each axis tracks the matching window dimension on resize.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct MarginVw(pub(super) f32);
+pub struct MarginVw(f32);
+
+impl MarginVw {
+    /// Wrap a horizontal content-margin window-WIDTH fraction (`Vw`).
+    #[must_use]
+    pub const fn new(vw: f32) -> Self {
+        Self(vw)
+    }
+}
 
 /// A vertical (top / bottom) content-margin edge inset, as a fraction of the
 /// window HEIGHT (`Vh` — GTW-296).
@@ -88,7 +184,15 @@ pub struct MarginVw(pub(super) f32);
 /// field, so they share a type. The horizontal edges use the separate
 /// [`MarginVw`] so each axis tracks the matching window dimension on resize.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct MarginVh(pub(super) f32);
+pub struct MarginVh(f32);
+
+impl MarginVh {
+    /// Wrap a vertical content-margin window-HEIGHT fraction (`Vh`).
+    #[must_use]
+    pub const fn new(vh: f32) -> Self {
+        Self(vh)
+    }
+}
 
 /// Inner padding between a themed box's border and its content, per edge.
 ///
@@ -109,7 +213,15 @@ pub struct ContentMargin {
 
 /// Text size for a themed text role, in typographic points.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
-pub struct FontSizePt(pub(super) f32);
+pub struct FontSizePt(f32);
+
+impl FontSizePt {
+    /// Wrap a themed-text size in typographic points.
+    #[must_use]
+    pub const fn new(pt: f32) -> Self {
+        Self(pt)
+    }
+}
 
 /// Identifier of a theme font asset — a loose font's path under `assets/`.
 ///
@@ -117,7 +229,15 @@ pub struct FontSizePt(pub(super) f32);
 /// runtime each text-bearing sub-theme carries the resolved [`Handle<Font>`] for
 /// its chosen font (its override, or the theme default).
 #[derive(Deref, Clone, PartialEq, Eq, Debug)]
-pub struct FontKey(pub(super) String);
+pub struct FontKey(String);
+
+impl FontKey {
+    /// Wrap a loose font-path key (e.g. `"fonts/Alegreya-Variable.ttf"`).
+    #[must_use]
+    pub fn new(key: impl Into<String>) -> Self {
+        Self(key.into())
+    }
+}
 
 /// A non-premultiplied sRGB color quad as it appears on disk: `(r, g, b, a)`,
 /// each channel in `0.0..=1.0`.
@@ -128,9 +248,15 @@ pub struct FontKey(pub(super) String);
 /// avoids coupling the RON schema to Bevy's internal color representation.
 #[derive(Deserialize, Clone, Copy, PartialEq, Debug)]
 #[serde(transparent)]
-pub struct Srgba4(pub(super) [f32; 4]);
+pub struct Srgba4([f32; 4]);
 
 impl Srgba4 {
+    /// Wrap a non-premultiplied sRGB `(r, g, b, a)` quad.
+    #[must_use]
+    pub const fn new(channels: [f32; 4]) -> Self {
+        Self(channels)
+    }
+
     /// Resolve this on-disk color quad into a runtime sRGB [`Color`].
     pub(super) const fn into_color(self) -> Color {
         let [r, g, b, a] = self.0;
@@ -164,10 +290,10 @@ impl MarginSpec {
     /// vertical edges become [`MarginVh`] (window-height fractions).
     pub(super) const fn resolve(self) -> ContentMargin {
         ContentMargin {
-            l: MarginVw(self.left),
-            r: MarginVw(self.right),
-            t: MarginVh(self.top),
-            b: MarginVh(self.bottom),
+            l: MarginVw::new(self.left),
+            r: MarginVw::new(self.right),
+            t: MarginVh::new(self.top),
+            b: MarginVh::new(self.bottom),
         }
     }
 }

@@ -140,4 +140,12 @@ pub struct GdtfTheme {
 /// It is **not** inserted at startup; readers guard for its absence per the
 /// state-scoped-resource convention (bevy-traps rule 1).
 #[derive(Resource, Deref, Clone, Debug)]
-pub struct ActiveThemeHandle(pub Handle<RonAsset<GdtfThemeSpec>>);
+pub struct ActiveThemeHandle(Handle<RonAsset<GdtfThemeSpec>>);
+
+impl ActiveThemeHandle {
+    /// Wrap the strong [`Handle`] to the active theme RON asset.
+    #[must_use]
+    pub const fn new(handle: Handle<RonAsset<GdtfThemeSpec>>) -> Self {
+        Self(handle)
+    }
+}

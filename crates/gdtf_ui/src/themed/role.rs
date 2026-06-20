@@ -48,7 +48,15 @@ pub enum ThemeRole {
 /// *role*; it never copies theme values itself, which is what keeps the look in
 /// one place and live.
 #[derive(Component, Deref, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Themed(pub ThemeRole);
+pub struct Themed(ThemeRole);
+
+impl Themed {
+    /// Tag an entity with the [`ThemeRole`] `apply_theme` should paint onto it.
+    #[must_use]
+    pub const fn new(role: ThemeRole) -> Self {
+        Self(role)
+    }
+}
 
 /// Explicit system-ordering sets for the UI theming layer.
 ///

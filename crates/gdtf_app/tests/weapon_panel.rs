@@ -769,7 +769,7 @@ fn stance_panel_is_a_themed_panel_box() {
         return;
     };
     assert_eq!(
-        app.world().get::<Themed>(stance).map(|t| t.0),
+        app.world().get::<Themed>(stance).map(|t| **t),
         Some(ThemeRole::Panel),
         "the Stance Panel must be its OWN bordered Themed(Panel) box (D-B), like the weapon cluster",
     );

@@ -114,15 +114,15 @@ fn modified_event_rederives_theme_and_repaints_widgets() -> Result<(), ron::erro
             .resolve(|_| Handle::<Font>::default()),
     );
     app.world_mut()
-        .insert_resource(ActiveThemeHandle(handle.clone()));
+        .insert_resource(ActiveThemeHandle::new(handle.clone()));
 
     let text = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Text), Text::new("x")))
+        .spawn((Themed::new(ThemeRole::Text), Text::new("x")))
         .id();
     let panel = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Panel), Node::default()))
+        .spawn((Themed::new(ThemeRole::Panel), Node::default()))
         .id();
 
     // First update paints the OLD base look (the Added<Themed> path).
@@ -186,7 +186,8 @@ fn modified_event_for_other_id_does_not_rederive() -> Result<(), ron::error::Spa
         spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?
             .resolve(|_| Handle::<Font>::default()),
     );
-    app.world_mut().insert_resource(ActiveThemeHandle(active));
+    app.world_mut()
+        .insert_resource(ActiveThemeHandle::new(active));
 
     app.update();
     let before = app.world().get_resource::<GdtfTheme>().cloned();
@@ -231,7 +232,7 @@ fn rederive_reresolves_fonts_through_the_asset_server() -> Result<(), ron::error
             .resolve(|_| Handle::<Font>::default()),
     );
     app.world_mut()
-        .insert_resource(ActiveThemeHandle(handle.clone()));
+        .insert_resource(ActiveThemeHandle::new(handle.clone()));
 
     app.update();
 
@@ -284,7 +285,7 @@ fn change_driven_apply_theme_does_not_clobber_hover() -> Result<(), ron::error::
 
     let button = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Button), Button, Node::default()))
+        .spawn((Themed::new(ThemeRole::Button), Button, Node::default()))
         .id();
 
     // Frame 1: apply_theme paints the base look (Added<Themed> + theme-changed).
@@ -340,7 +341,7 @@ fn newly_added_themed_entity_gets_base_look() -> Result<(), ron::error::SpannedE
     // Now spawn a Themed panel AFTER the theme settled (steady state).
     let panel = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Panel), Node::default()))
+        .spawn((Themed::new(ThemeRole::Panel), Node::default()))
         .id();
     app.update();
 
@@ -369,7 +370,7 @@ fn theme_change_repaints_all_themed() -> Result<(), ron::error::SpannedError> {
 
     let panel = app
         .world_mut()
-        .spawn((Themed(ThemeRole::Panel), Node::default()))
+        .spawn((Themed::new(ThemeRole::Panel), Node::default()))
         .id();
 
     // Settle: base look painted, then a steady frame.

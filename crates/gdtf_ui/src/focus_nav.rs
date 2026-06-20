@@ -67,13 +67,19 @@ use bevy::{
 /// ([`NavDirection::UP`] / [`NavDirection::DOWN`]); the type can carry any
 /// octant when horizontal navigation is added.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct NavDirection(pub CompassOctant);
+pub struct NavDirection(CompassOctant);
 
 impl NavDirection {
     /// Move focus upward — [`CompassOctant::North`].
     pub const UP: Self = Self(CompassOctant::North);
     /// Move focus downward — [`CompassOctant::South`].
     pub const DOWN: Self = Self(CompassOctant::South);
+
+    /// Wrap a [`CompassOctant`] as a focus-navigation direction.
+    #[must_use]
+    pub const fn new(octant: CompassOctant) -> Self {
+        Self(octant)
+    }
 }
 
 /// A request to move input focus one step in a [`NavDirection`].
@@ -84,7 +90,15 @@ impl NavDirection {
 /// without any real device, and read deterministically the same frame it is
 /// raised.
 #[derive(Message, Deref, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct NavigateRequest(pub NavDirection);
+pub struct NavigateRequest(NavDirection);
+
+impl NavigateRequest {
+    /// Wrap a [`NavDirection`] as a focus-navigation request message.
+    #[must_use]
+    pub const fn new(direction: NavDirection) -> Self {
+        Self(direction)
+    }
+}
 
 /// The focused entity has been activated (the player pressed `Enter` / gamepad
 /// South while it held focus).
@@ -95,7 +109,15 @@ pub struct NavigateRequest(pub NavDirection);
 /// an activation into a concrete menu effect, so the navigation layer and the
 /// action layer stay decoupled and independently testable (bevy-traps rule 4).
 #[derive(Message, Deref, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct FocusActivated(pub Entity);
+pub struct FocusActivated(Entity);
+
+impl FocusActivated {
+    /// Wrap the [`Entity`] that was activated while it held focus.
+    #[must_use]
+    pub const fn new(entity: Entity) -> Self {
+        Self(entity)
+    }
+}
 
 /// Explicit system-ordering sets for the focus-navigation pipeline.
 ///
@@ -174,15 +196,15 @@ pub fn bridge_keyboard_navigation(
     };
 
     if keys.any_just_pressed([KeyCode::ArrowUp, KeyCode::KeyW]) {
-        navigate.write(NavigateRequest(NavDirection::UP));
+        navigate.write(NavigateRequest::new(NavDirection::UP));
     }
     if keys.any_just_pressed([KeyCode::ArrowDown, KeyCode::KeyS]) {
-        navigate.write(NavigateRequest(NavDirection::DOWN));
+        navigate.write(NavigateRequest::new(NavDirection::DOWN));
     }
     if keys.just_pressed(KeyCode::Enter)
         && let Some(focused) = focus.get()
     {
-        activate.write(FocusActivated(focused));
+        activate.write(FocusActivated::new(focused));
     }
 }
 
@@ -200,15 +222,15 @@ pub fn bridge_gamepad_navigation(
 ) {
     for gamepad in &gamepads {
         if gamepad.just_pressed(GamepadButton::DPadUp) {
-            navigate.write(NavigateRequest(NavDirection::UP));
+            navigate.write(NavigateRequest::new(NavDirection::UP));
         }
         if gamepad.just_pressed(GamepadButton::DPadDown) {
-            navigate.write(NavigateRequest(NavDirection::DOWN));
+            navigate.write(NavigateRequest::new(NavDirection::DOWN));
         }
         if gamepad.just_pressed(GamepadButton::South)
             && let Some(focused) = focus.get()
         {
-            activate.write(FocusActivated(focused));
+            activate.write(FocusActivated::new(focused));
         }
     }
 }
@@ -230,6 +252,6 @@ pub fn apply_navigation(
         // A missing neighbor / no-focus is expected at the edges of the menu;
         // `navigate` only mutates `InputFocus` on success, so dropping the
         // `Err` leaves focus where it was.
-        let _ = navigation.navigate(*request.0);
+        let _ = navigation.navigate(***request);
     }
 }

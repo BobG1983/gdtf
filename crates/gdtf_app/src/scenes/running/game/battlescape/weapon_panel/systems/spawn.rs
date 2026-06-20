@@ -180,7 +180,7 @@ fn spawn_frame(
     commands
         .spawn((
             marker,
-            Themed(ThemeRole::Panel),
+            Themed::new(ThemeRole::Panel),
             Node {
                 width,
                 height,
@@ -200,7 +200,7 @@ fn spawn_image(commands: &mut Commands, theme: &GdtfTheme, height: Val) -> Entit
     let slot = commands
         .spawn((
             WeaponImage,
-            Themed(ThemeRole::Panel),
+            Themed::new(ThemeRole::Panel),
             Node {
                 width: Val::Percent(100.0),
                 height,
@@ -215,7 +215,7 @@ fn spawn_image(commands: &mut Commands, theme: &GdtfTheme, height: Val) -> Entit
         .id();
     let label = commands
         .spawn((
-            Themed(ThemeRole::Text),
+            Themed::new(ThemeRole::Text),
             Text::new("no image"),
             TextFont {
                 font: theme.text.font.clone(),
@@ -245,7 +245,7 @@ fn spawn_aim_label(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     commands
         .spawn((
             AimLabel,
-            Themed(ThemeRole::Text),
+            Themed::new(ThemeRole::Text),
             Text::new("Aim"),
             TextFont {
                 font: theme.text.font.clone(),
@@ -269,7 +269,7 @@ fn spawn_text(
     commands
         .spawn((
             marker,
-            Themed(ThemeRole::Text),
+            Themed::new(ThemeRole::Text),
             Text::new(initial),
             TextFont {
                 font: theme.text.font.clone(),
@@ -367,7 +367,7 @@ fn spawn_combined_panel(
     let panel = commands
         .spawn((
             CombinedWeaponPanel,
-            Themed(ThemeRole::Panel),
+            Themed::new(ThemeRole::Panel),
             Node {
                 width,
                 height,

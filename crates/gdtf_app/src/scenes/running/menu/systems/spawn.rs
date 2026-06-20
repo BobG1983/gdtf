@@ -107,7 +107,7 @@ pub(in crate::scenes::running::menu) fn spawn_menu(
     // survives `apply_theme`, which writes only BackgroundColor for this role.
     let root = commands
         .spawn((
-            Themed(ThemeRole::Background),
+            Themed::new(ThemeRole::Background),
             Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
@@ -125,7 +125,7 @@ pub(in crate::scenes::running::menu) fn spawn_menu(
     // root so it floats on the backdrop above the panel.
     let title = commands
         .spawn((
-            Themed(ThemeRole::Title),
+            Themed::new(ThemeRole::Title),
             Text::new("GRIMDARK TURFWAR"),
             TextLayout::new_with_justify(Justify::Center),
             MenuTitle,

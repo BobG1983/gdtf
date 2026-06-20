@@ -69,47 +69,47 @@ pub(super) fn const_fallback_theme() -> GdtfTheme {
     // L/R as `Vw` (12px / 1280 = 0.9375), T/B as `Vh` (6px / 720 = 0.83333) — mirroring
     // the shipped `grimdark.ron` margin so the const safety-net matches the real theme.
     let margin = ContentMargin {
-        l: MarginVw(0.9375),
-        r: MarginVw(0.9375),
-        t: MarginVh(0.83333),
-        b: MarginVh(0.83333),
+        l: MarginVw::new(0.9375),
+        r: MarginVw::new(0.9375),
+        t: MarginVh::new(0.83333),
+        b: MarginVh::new(0.83333),
     };
     GdtfTheme {
-        default_font: FontKey(String::from("fonts/Alegreya-Variable.ttf")),
+        default_font: FontKey::new("fonts/Alegreya-Variable.ttf"),
         background:   BackgroundTheme {
-            color: ScreenColor(Color::srgba(0.05, 0.05, 0.06, 1.0)),
+            color: ScreenColor::new(Color::srgba(0.05, 0.05, 0.06, 1.0)),
         },
         panel:        PanelTheme {
-            color: PanelColor(Color::srgba(0.16, 0.16, 0.18, 0.55)),
-            border_color: BorderColor(Color::srgba(0.20, 0.20, 0.24, 1.0)),
+            color: PanelColor::new(Color::srgba(0.16, 0.16, 0.18, 0.55)),
+            border_color: BorderColor::new(Color::srgba(0.20, 0.20, 0.24, 1.0)),
             // GTW-296: Vw fractions calibrated to 1280px width (2px / 1280, 5px / 1280).
-            border_width: BorderWidthVw(0.15625),
-            corner_radius: CornerRadiusVw(0.390_625),
+            border_width: BorderWidthVw::new(0.15625),
+            corner_radius: CornerRadiusVw::new(0.390_625),
             margin,
         },
         button:       ButtonTheme {
-            color: ButtonColor(Color::srgba(0.12, 0.12, 0.15, 0.96)),
-            disabled: DisabledColor(Color::srgba(0.08, 0.08, 0.10, 0.55)),
-            active: ActiveColor(Color::srgba(0.45, 0.62, 0.30, 0.96)),
-            hover: HoverColor(Color::srgba(0.80, 0.16, 0.19, 0.96)),
-            pressed: PressedColor(Color::srgba(0.10, 0.10, 0.12, 0.96)),
-            text_color: TextColor(Color::srgba(0.84, 0.80, 0.73, 1.0)),
-            font_size_pt: FontSizePt(18.0),
-            border_color: BorderColor(Color::srgba(0.20, 0.20, 0.24, 1.0)),
+            color: ButtonColor::new(Color::srgba(0.12, 0.12, 0.15, 0.96)),
+            disabled: DisabledColor::new(Color::srgba(0.08, 0.08, 0.10, 0.55)),
+            active: ActiveColor::new(Color::srgba(0.45, 0.62, 0.30, 0.96)),
+            hover: HoverColor::new(Color::srgba(0.80, 0.16, 0.19, 0.96)),
+            pressed: PressedColor::new(Color::srgba(0.10, 0.10, 0.12, 0.96)),
+            text_color: TextColor::new(Color::srgba(0.84, 0.80, 0.73, 1.0)),
+            font_size_pt: FontSizePt::new(18.0),
+            border_color: BorderColor::new(Color::srgba(0.20, 0.20, 0.24, 1.0)),
             // GTW-296: Vw fractions calibrated to 1280px width (2px / 1280, 5px / 1280).
-            border_width: BorderWidthVw(0.15625),
-            corner_radius: CornerRadiusVw(0.390_625),
+            border_width: BorderWidthVw::new(0.15625),
+            corner_radius: CornerRadiusVw::new(0.390_625),
             margin,
             font: font.clone(),
         },
         title:        TitleTheme {
-            text_color:   TextColor(Color::srgba(0.84, 0.80, 0.73, 1.0)),
-            font_size_pt: FontSizePt(36.0),
+            text_color:   TextColor::new(Color::srgba(0.84, 0.80, 0.73, 1.0)),
+            font_size_pt: FontSizePt::new(36.0),
             font:         font.clone(),
         },
         text:         TextTheme {
-            text_color: TextColor(Color::srgba(0.84, 0.80, 0.73, 1.0)),
-            font_size_pt: FontSizePt(18.0),
+            text_color: TextColor::new(Color::srgba(0.84, 0.80, 0.73, 1.0)),
+            font_size_pt: FontSizePt::new(18.0),
             font,
         },
     }
