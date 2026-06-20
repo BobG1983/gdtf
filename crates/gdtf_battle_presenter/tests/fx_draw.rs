@@ -21,7 +21,7 @@ use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
     asset::AssetPlugin,
-    ecs::message::Messages,
+    ecs::{error::warn, message::Messages},
     prelude::{Text2d, default},
     render::{RenderPlugin, settings::WgpuSettings},
     sprite::Sprite,
@@ -101,6 +101,12 @@ fn headless_renderer_app() -> App {
     .add_message::<CoverDestroyed>()
     .add_message::<ShotFired>()
     .add_plugins(TopDownRendererPlugin);
+    // Bevy 0.19 routes a FAILED system-param validation to the global error handler
+    // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the
+    // render-provided resources some DefaultPlugins systems want (e.g. bevy_light's
+    // update_gizmo_meshes -> Assets<GizmoAsset>), so `warn` restores the 0.18 skip
+    // behavior instead of an intermittent headless panic.
+    app.set_error_handler(warn);
     app
 }
 

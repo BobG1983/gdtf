@@ -27,7 +27,7 @@
 
 use bevy::{
     prelude::*,
-    text::{LineBreak, TextFont},
+    text::{FontSize, LineBreak, TextFont},
     ui::{Node, Val},
 };
 
@@ -141,8 +141,8 @@ pub(in crate::scenes::running::game::battlescape) fn nowrap_control_labels(
             if layout.linebreak != LineBreak::NoWrap {
                 layout.linebreak = LineBreak::NoWrap;
             }
-            if font.font_size != *CONTROL_LABEL_PT {
-                font.font_size = *CONTROL_LABEL_PT;
+            if font.font_size != FontSize::Px(*CONTROL_LABEL_PT) {
+                font.font_size = FontSize::Px(*CONTROL_LABEL_PT);
             }
         }
     }

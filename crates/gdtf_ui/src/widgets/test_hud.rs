@@ -13,7 +13,7 @@ use bevy::{
     ecs::system::SystemState,
     input::InputPlugin,
     prelude::*,
-    text::{FontWeight, TextColor as UiTextColor, TextFont},
+    text::{FontSize, FontWeight, TextColor as UiTextColor, TextFont},
     ui::{BackgroundColor, Display, Interaction, Node, Val},
 };
 
@@ -61,7 +61,9 @@ fn harness() -> App {
 /// The fill child of the bar rooted at `track`, if any.
 fn fill_of(app: &mut App, track: Entity) -> Option<Entity> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
-    let children = state.get(app.world());
+    let Ok(children) = state.get(app.world()) else {
+        return None;
+    };
     children
         .get(track)
         .ok()?
@@ -72,7 +74,9 @@ fn fill_of(app: &mut App, track: Entity) -> Option<Entity> {
 /// Drives [`set_progress_bar`] once against the live world's queries.
 fn drive_set_progress_bar(app: &mut App, track: Entity, fraction: FillFraction) -> bool {
     let mut state: SystemState<ProgressBarSet> = SystemState::new(app.world_mut());
-    let (children, mut fills) = state.get_mut(app.world_mut());
+    let Ok((children, mut fills)) = state.get_mut(app.world_mut()) else {
+        return false;
+    };
     let ok = set_progress_bar(track, fraction, &children, &mut fills);
     state.apply(app.world_mut());
     ok
@@ -167,7 +171,9 @@ fn progress_bar_update_mutates_same_fill_entity() {
 /// All pip entities of the row rooted at `row`, in child order.
 fn pips_of(app: &mut App, row: Entity) -> Vec<Entity> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
-    let children = state.get(app.world());
+    let Ok(children) = state.get(app.world()) else {
+        return Vec::new();
+    };
     let Ok(kids) = children.get(row) else {
         return Vec::new();
     };
@@ -185,7 +191,9 @@ fn drive_set_pips(
     lost: Color,
 ) -> usize {
     let mut state: SystemState<PipsSet> = SystemState::new(app.world_mut());
-    let (children, mut pips) = state.get_mut(app.world_mut());
+    let Ok((children, mut pips)) = state.get_mut(app.world_mut()) else {
+        return 0;
+    };
     let n = set_pips(row, filled, remaining, lost, &children, &mut pips);
     state.apply(app.world_mut());
     n
@@ -256,7 +264,9 @@ struct AimToggle;
 /// The knob child of the switch rooted at `switch`, if any.
 fn knob_of(app: &mut App, switch: Entity) -> Option<Entity> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
-    let children = state.get(app.world());
+    let Ok(children) = state.get(app.world()) else {
+        return None;
+    };
     children
         .get(switch)
         .ok()?
@@ -328,7 +338,11 @@ fn switch_click_flips_emits_and_recolors_track() {
     );
     // The flip message carries this switch's identity, and the entity is stable.
     let mut state: SystemState<MessageReader<ToggleFlipped>> = SystemState::new(app.world_mut());
-    let mut reader = state.get_mut(app.world_mut());
+    let reader_result = state.get_mut(app.world_mut());
+    assert!(reader_result.is_ok(), "MessageReader params must validate");
+    let Ok(mut reader) = reader_result else {
+        return;
+    };
     let msgs: Vec<ToggleFlipped> = reader.read().copied().collect();
     assert_eq!(msgs.len(), 1, "exactly one ToggleFlipped per click");
     assert_eq!(msgs[0].switch, switch, "the message carries the switch id");
@@ -463,7 +477,9 @@ struct FireMode;
 /// `(entity, index)`.
 fn segments_of(app: &mut App, control: Entity) -> Vec<(Entity, usize)> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
-    let children = state.get(app.world());
+    let Ok(children) = state.get(app.world()) else {
+        return Vec::new();
+    };
     let Ok(kids) = children.get(control) else {
         return Vec::new();
     };
@@ -487,9 +503,11 @@ fn segment_look(app: &mut App, segment: Entity) -> (Color, FontWeight, Color) {
     let label = {
         let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
         let children = state.get(app.world());
-        children.get(segment).ok().and_then(|kids| {
-            kids.iter()
-                .find(|&c| app.world().get::<SegmentText>(c).is_some())
+        children.ok().and_then(|children| {
+            children.get(segment).ok().and_then(|kids| {
+                kids.iter()
+                    .find(|&c| app.world().get::<SegmentText>(c).is_some())
+            })
         })
     };
     let (weight, color) = label.map_or((FontWeight::NORMAL, Color::NONE), |l| {
@@ -599,7 +617,11 @@ fn segmented_control_active_change_repaints_all_one_update() {
 
     // The selection message carries B's identity.
     let mut state: SystemState<MessageReader<SegmentSelected>> = SystemState::new(app.world_mut());
-    let mut reader = state.get_mut(app.world_mut());
+    let reader_result = state.get_mut(app.world_mut());
+    assert!(reader_result.is_ok(), "MessageReader params must validate");
+    let Ok(mut reader) = reader_result else {
+        return;
+    };
     let msgs: Vec<SegmentSelected> = reader.read().copied().collect();
     assert_eq!(
         msgs.len(),
@@ -801,7 +823,11 @@ fn segmented_control_repress_active_is_noop() {
     app.update();
 
     let mut state: SystemState<MessageReader<SegmentSelected>> = SystemState::new(app.world_mut());
-    let mut reader = state.get_mut(app.world_mut());
+    let reader_result = state.get_mut(app.world_mut());
+    assert!(reader_result.is_ok(), "MessageReader params must validate");
+    let Ok(mut reader) = reader_result else {
+        return;
+    };
     let count = reader.read().count();
     assert_eq!(
         count, 0,
@@ -819,7 +845,9 @@ type SegmentVisibilitySet = (
 /// Drives [`set_segment_visible`] once against the live world's queries.
 fn drive_set_segment_visible(app: &mut App, control: Entity, index: usize, visible: bool) -> bool {
     let mut state: SystemState<SegmentVisibilitySet> = SystemState::new(app.world_mut());
-    let (children, mut segments) = state.get_mut(app.world_mut());
+    let Ok((children, mut segments)) = state.get_mut(app.world_mut()) else {
+        return false;
+    };
     let ok = set_segment_visible(control, index, visible, &children, &mut segments);
     state.apply(app.world_mut());
     ok
@@ -910,15 +938,22 @@ fn set_segment_visible_hides_one_segment_keeping_stable_ids() {
 fn sub_line_of(app: &mut App, segment: Entity) -> Option<(Entity, String, f32, Color)> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
     let children = state.get(app.world());
-    let node = children.get(segment).ok().and_then(|kids| {
-        kids.iter()
-            .find(|&c| app.world().get::<SegmentSubText>(c).is_some())
+    let node = children.ok().and_then(|children| {
+        children.get(segment).ok().and_then(|kids| {
+            kids.iter()
+                .find(|&c| app.world().get::<SegmentSubText>(c).is_some())
+        })
     })?;
     let content = app.world().get::<Text>(node).map(|t| t.0.clone())?;
+    // `FontSize` is now an enum (Bevy 0.19); pull the logical-pixel f32 out of the
+    // `Px` variant (NaN for an absent / non-`Px` size, as before).
     let size = app
         .world()
         .get::<TextFont>(node)
-        .map_or(f32::NAN, |f| f.font_size);
+        .map_or(f32::NAN, |f| match f.font_size {
+            FontSize::Px(px) => px,
+            _ => f32::NAN,
+        });
     let color = app
         .world()
         .get::<UiTextColor>(node)
@@ -930,11 +965,20 @@ fn sub_line_of(app: &mut App, segment: Entity) -> Option<(Entity, String, f32, C
 fn label_font_size(app: &mut App, segment: Entity) -> Option<f32> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
     let children = state.get(app.world());
-    let label = children.get(segment).ok().and_then(|kids| {
-        kids.iter()
-            .find(|&c| app.world().get::<SegmentText>(c).is_some())
+    let label = children.ok().and_then(|children| {
+        children.get(segment).ok().and_then(|kids| {
+            kids.iter()
+                .find(|&c| app.world().get::<SegmentText>(c).is_some())
+        })
     })?;
-    app.world().get::<TextFont>(label).map(|f| f.font_size)
+    // `FontSize` is now an enum (Bevy 0.19); return the logical-pixel value of the
+    // `Px` variant (None for a non-`Px` size).
+    app.world()
+        .get::<TextFont>(label)
+        .and_then(|f| match f.font_size {
+            FontSize::Px(px) => Some(px),
+            _ => None,
+        })
 }
 
 /// The four-query [`SystemState`] driving [`set_segment_sub_line`] in tests (clippy
@@ -954,7 +998,10 @@ fn drive_set_segment_sub_line(
     sub_line: Option<SegmentSubLabel>,
 ) -> bool {
     let mut state: SystemState<SubLineSet> = SystemState::new(app.world_mut());
-    let (mut commands, controls, segments, mut sub_texts) = state.get_mut(app.world_mut());
+    let Ok((mut commands, controls, segments, mut sub_texts)) = state.get_mut(app.world_mut())
+    else {
+        return false;
+    };
     let ok = set_segment_sub_line(
         &mut commands,
         control,

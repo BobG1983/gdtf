@@ -21,14 +21,14 @@ fn add_systems(app: &mut App) {
             FixedUpdate,
             game_battlescape_aftermath_animate_in_complete.run_if(
                 in_state(AfterMathState::AnimateIn)
-                    .and(not(resource_exists::<AfterMathAnimateInComplete>)),
+                    .and_then(not(resource_exists::<AfterMathAnimateInComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
             move_on.run_if(
                 in_state(AfterMathState::AnimateIn)
-                    .and(resource_exists::<AfterMathAnimateInComplete>),
+                    .and_then(resource_exists::<AfterMathAnimateInComplete>),
             ),
         )
         .add_systems(OnExit(AfterMathState::AnimateIn), (print_on_exit, cleanup));

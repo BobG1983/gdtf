@@ -1,14 +1,15 @@
 //! Keyboard + gamepad focus navigation for the hand-rolled GDTF UI.
 //!
 //! This module is the first-party (bevy-only) focus-navigation layer the menu
-//! work hangs on. It wires Bevy's [`bevy::input_focus`] framework — the
-//! [`InputDispatchPlugin`](bevy::input_focus::InputDispatchPlugin) (focus
-//! tracking via the [`InputFocus`](bevy::input_focus::InputFocus) resource) and
-//! the
+//! work hangs on. It wires Bevy's [`bevy::input_focus`] framework. Focus
+//! tracking via the [`InputFocus`](bevy::input_focus::InputFocus) resource — and
+//! the `InputDispatchPlugin` that owns it — now ships INSIDE `DefaultPlugins` (as
+//! of Bevy 0.19, behind the default-on `bevy_input_focus` feature), so this
+//! module only adds the
 //! [`DirectionalNavigationPlugin`](bevy::input_focus::directional_navigation::DirectionalNavigationPlugin)
-//! (a directed graph of focusable entities) — and bridges real device input
-//! onto it. No ecosystem navigation crate is used; this is `bevy::input_focus`
-//! only, pinned to 0.18.1.
+//! (a directed graph of focusable entities; NOT in defaults) and bridges real
+//! device input onto it. No ecosystem navigation crate is used; this is
+//! `bevy::input_focus` only, pinned to 0.19.
 //!
 //! ## The pipeline (explicitly ordered — see [`FocusNavSystems`])
 //!
@@ -52,7 +53,7 @@
 use bevy::{
     input::gamepad::{Gamepad, GamepadButton},
     input_focus::{
-        InputDispatchPlugin, InputFocus,
+        InputFocus,
         directional_navigation::{DirectionalNavigation, DirectionalNavigationPlugin},
     },
     math::CompassOctant,
@@ -150,10 +151,12 @@ pub fn set_initial_focus(commands: &mut Commands, entity: Entity) {
 /// The focus-navigation sub-plugin, added by
 /// [`UiPlugin`](crate::UiPlugin).
 ///
-/// Installs Bevy's focus framework
-/// ([`InputDispatchPlugin`](bevy::input_focus::InputDispatchPlugin) +
-/// [`DirectionalNavigationPlugin`](bevy::input_focus::directional_navigation::DirectionalNavigationPlugin)),
-/// registers the [`NavigateRequest`] / [`FocusActivated`] messages, and adds the
+/// Installs the navigation half of Bevy's focus framework
+/// ([`DirectionalNavigationPlugin`](bevy::input_focus::directional_navigation::DirectionalNavigationPlugin)).
+/// The `InputDispatchPlugin` (and the [`InputFocus`](bevy::input_focus::InputFocus)
+/// resource it owns) is NOT added here: as of Bevy 0.19 it ships in
+/// `DefaultPlugins`, and adding it again would be a double-add panic.
+/// This plugin also registers the [`NavigateRequest`] / [`FocusActivated`] messages, and adds the
 /// bridge + apply systems to [`Update`] with the
 /// [`Bridge`](FocusNavSystems::Bridge)-before-[`Apply`](FocusNavSystems::Apply)
 /// ordering.
@@ -161,7 +164,16 @@ pub struct FocusNavPlugin;
 
 impl Plugin for FocusNavPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((InputDispatchPlugin, DirectionalNavigationPlugin))
+        app.add_plugins(DirectionalNavigationPlugin)
+            // `InputFocus` is `init_resource`d by `InputDispatchPlugin` — which
+            // now lives in `DefaultPlugins` (Bevy 0.19), NOT in this plugin.
+            // Headless harnesses run `MinimalPlugins` + `UiPlugin` WITHOUT
+            // `DefaultPlugins`, so they would never get `InputFocus` and the
+            // focus-nav bridge (which takes `Res`/`ResMut<InputFocus>`) would
+            // panic on the first `update()`. Init it here so the resource is
+            // present wherever this plugin is; `init_resource` is idempotent, so
+            // the real app's `InputDispatchPlugin` does not double-insert it.
+            .init_resource::<InputFocus>()
             .add_message::<NavigateRequest>()
             .add_message::<FocusActivated>()
             .configure_sets(

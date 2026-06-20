@@ -328,12 +328,14 @@ pub fn load_topdown_atlases(
 /// geometrically-correct atlas carving; only the SAMPLER changes.
 fn load_sheet_image(asset_server: &AssetServer, role: SheetRole) -> Handle<Image> {
     match role.sampler_override() {
-        Some(sampler) => asset_server.load_with_settings(
-            role.asset_path(),
-            move |settings: &mut ImageLoaderSettings| {
+        // `load_with_settings` is deprecated in Bevy 0.19 in favor of the
+        // `load_builder().with_settings(..).load(path)` chain.
+        Some(sampler) => asset_server
+            .load_builder()
+            .with_settings(move |settings: &mut ImageLoaderSettings| {
                 settings.sampler = sampler.clone();
-            },
-        ),
+            })
+            .load(role.asset_path()),
         None => asset_server.load(role.asset_path()),
     }
 }

@@ -21,14 +21,14 @@ fn add_systems(app: &mut App) {
             FixedUpdate,
             game_battlescape_aftermath_display_aftermath_complete.run_if(
                 in_state(AfterMathState::DisplayAftermath)
-                    .and(not(resource_exists::<DisplayAftermathComplete>)),
+                    .and_then(not(resource_exists::<DisplayAftermathComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
             move_on.run_if(
                 in_state(AfterMathState::DisplayAftermath)
-                    .and(resource_exists::<DisplayAftermathComplete>),
+                    .and_then(resource_exists::<DisplayAftermathComplete>),
             ),
         )
         .add_systems(

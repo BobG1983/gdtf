@@ -277,50 +277,50 @@ fn nav_chain_links_enabled_buttons_only() {
 
     // Battlescape <-> Options.
     assert_eq!(
-        map.get_neighbor(battlescape, CompassOctant::South),
+        map.get_neighbor(battlescape, CompassOctant::South).get(),
         Some(options),
         "Battlescape South neighbor must be Options",
     );
     assert_eq!(
-        map.get_neighbor(options, CompassOctant::North),
+        map.get_neighbor(options, CompassOctant::North).get(),
         Some(battlescape),
         "Options North neighbor must be Battlescape",
     );
     // Options <-> Quit.
     assert_eq!(
-        map.get_neighbor(options, CompassOctant::South),
+        map.get_neighbor(options, CompassOctant::South).get(),
         Some(quit),
         "Options South neighbor must be Quit",
     );
     assert_eq!(
-        map.get_neighbor(quit, CompassOctant::North),
+        map.get_neighbor(quit, CompassOctant::North).get(),
         Some(options),
         "Quit North neighbor must be Options",
     );
     // No wrap: Quit has no South neighbor, Battlescape has no North neighbor.
     assert_eq!(
-        map.get_neighbor(quit, CompassOctant::South),
+        map.get_neighbor(quit, CompassOctant::South).get(),
         None,
         "Quit must have no South neighbor (no wrap)",
     );
     assert_eq!(
-        map.get_neighbor(battlescape, CompassOctant::North),
+        map.get_neighbor(battlescape, CompassOctant::North).get(),
         None,
         "Battlescape must have no North neighbor (no wrap)",
     );
     // HiveScape (disabled) is omitted entirely from the chain.
     assert_eq!(
-        map.get_neighbor(hivescape, CompassOctant::North),
+        map.get_neighbor(hivescape, CompassOctant::North).get(),
         None,
         "disabled HiveScape must not be in the nav chain",
     );
     assert_eq!(
-        map.get_neighbor(hivescape, CompassOctant::South),
+        map.get_neighbor(hivescape, CompassOctant::South).get(),
         None,
         "disabled HiveScape must not be in the nav chain",
     );
     assert_eq!(
-        map.get_neighbor(options, CompassOctant::South),
+        map.get_neighbor(options, CompassOctant::South).get(),
         Some(quit),
         "Options must skip the disabled HiveScape and link straight to Quit",
     );

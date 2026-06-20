@@ -18,11 +18,11 @@ fn add_systems(app: &mut App) {
         .add_systems(
             FixedUpdate,
             game_setup_complete
-                .run_if(in_state(GameState::Setup).and(not(resource_exists::<SetupComplete>))),
+                .run_if(in_state(GameState::Setup).and_then(not(resource_exists::<SetupComplete>))),
         )
         .add_systems(
             FixedUpdate,
-            move_on.run_if(in_state(GameState::Setup).and(resource_exists::<SetupComplete>)),
+            move_on.run_if(in_state(GameState::Setup).and_then(resource_exists::<SetupComplete>)),
         )
         .add_systems(OnExit(GameState::Setup), (print_on_exit, cleanup));
 }

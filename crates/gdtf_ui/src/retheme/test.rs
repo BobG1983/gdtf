@@ -53,9 +53,13 @@ fn spec(
 /// `AssetPlugin` (so the `Assets` collection and `AssetEvent` messages exist),
 /// the theme RON asset registered, and `UiPlugin` (which registers the
 /// re-derive system before the `ApplyTheme` set and the change-driven
-/// `apply_theme`). `InputPlugin` is added because `UiPlugin`'s focus-nav layer
-/// pulls in `InputDispatchPlugin`, whose dispatch systems need the input
-/// message buffers (see the `interaction` tests / bevy-traps rule 1).
+/// `apply_theme`). `InputPlugin` is added because `UiPlugin`'s focus-nav bridge
+/// reads the `ButtonInput<KeyCode>` resource / keyboard message buffers that
+/// `InputPlugin` registers. (As of Bevy 0.19 the `InputDispatchPlugin` that owns
+/// `InputFocus` ships in `DefaultPlugins`, not in `UiPlugin`; this headless app
+/// uses `MinimalPlugins`, so it never gets that plugin — only the focus-nav
+/// bridge + `DirectionalNavigationPlugin` that `UiPlugin` adds. See the
+/// `interaction` tests / bevy-traps rule 1.)
 fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
@@ -82,7 +86,9 @@ fn hot_edit(app: &mut App, handle: &Handle<RonAsset<GdtfThemeSpec>>, spec: GdtfT
     let mut assets = app
         .world_mut()
         .resource_mut::<Assets<RonAsset<GdtfThemeSpec>>>();
-    if let Some(asset) = assets.get_mut(handle) {
+    // `Assets::get_mut` now hands back an `AssetMut` guard (Bevy 0.19) that
+    // `DerefMut`s to the asset, so the binding must be `mut` to write through it.
+    if let Some(mut asset) = assets.get_mut(handle) {
         asset.0 = spec;
     }
 }

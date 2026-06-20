@@ -312,11 +312,12 @@ fn absent_theme_does_not_panic() {
 /// Pin-discriminating: dropping the `focus.set` call, or the
 /// `== Interaction::Hovered` guard, leaves focus empty and this assert fails.
 ///
-/// `InputPlugin` is added because `UiPlugin`'s focus-nav layer pulls in
-/// `InputDispatchPlugin`, whose dispatch systems require the input message
-/// buffers `InputPlugin` registers — `MinimalPlugins` alone panics
-/// "Message not initialized" (bevy-traps rule 1 / the headless-input
-/// prerequisite).
+/// `InputPlugin` is added so `UiPlugin`'s focus-nav bridge has the
+/// `ButtonInput<KeyCode>` resource / keyboard message buffers it reads — under
+/// bare `MinimalPlugins` those are absent. (As of Bevy 0.19 the
+/// `InputDispatchPlugin` that owns `InputFocus` ships in `DefaultPlugins`, not in
+/// `UiPlugin`; `FocusNavPlugin` `init_resource`s `InputFocus` itself so this
+/// `MinimalPlugins` harness still has it — bevy-traps rule 1.)
 #[test]
 fn hover_moves_input_focus_to_button() {
     let mut app = App::new();

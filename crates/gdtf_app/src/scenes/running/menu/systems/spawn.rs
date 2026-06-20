@@ -127,7 +127,7 @@ pub(in crate::scenes::running::menu) fn spawn_menu(
         .spawn((
             Themed::new(ThemeRole::Title),
             Text::new("GRIMDARK TURFWAR"),
-            TextLayout::new_with_justify(Justify::Center),
+            TextLayout::justify(Justify::Center),
             MenuTitle,
             DespawnOnExit(RunningState::Menu),
         ))

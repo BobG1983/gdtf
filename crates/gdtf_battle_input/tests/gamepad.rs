@@ -150,7 +150,12 @@ type DecideParams<'w, 's> = (
 fn decide(app: &mut App) -> LeftClickOutcome {
     let world = app.world_mut();
     let mut state: SystemState<DecideParams> = SystemState::new(world);
-    let (reads, inspect, factions, shooters, selected) = state.get(world);
+    // `get` now returns a `Result` (Bevy 0.19); these params always validate, so
+    // an `Err` is structurally impossible — fall back to the no-op outcome, which
+    // would fail the calling assertion loudly rather than panic.
+    let Ok((reads, inspect, factions, shooters, selected)) = state.get(world) else {
+        return LeftClickOutcome::NoOp;
+    };
     decide_left_click(&reads, &inspect, &factions, &shooters, &selected)
 }
 
@@ -160,7 +165,10 @@ fn turn(app: &mut App) -> Option<SetFacingRequested> {
     let world = app.world_mut();
     let mut state: SystemState<(Res<SelectedShooter>, Res<InspectTarget>, Query<&Position>)> =
         SystemState::new(world);
-    let (selected, hovered, positions) = state.get(world);
+    // `get` now returns a `Result` (Bevy 0.19); these params always validate.
+    let Ok((selected, hovered, positions)) = state.get(world) else {
+        return None;
+    };
     decide_turn(&selected, &hovered, &positions)
 }
 

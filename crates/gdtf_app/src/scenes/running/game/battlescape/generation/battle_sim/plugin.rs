@@ -58,7 +58,7 @@ impl Plugin for BattleSimPlugin {
                 Update,
                 gate_generation_complete.after(SimSystems::Simulate).run_if(
                     in_state(BattleScapeState::Generation)
-                        .and(not(resource_exists::<GenerationComplete>)),
+                        .and_then(not(resource_exists::<GenerationComplete>)),
                 ),
             )
             .add_systems(OnExit(GameState::BattleScape), request_battle_teardown);

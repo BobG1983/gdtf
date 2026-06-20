@@ -60,7 +60,9 @@ fn edge_pan_app() -> App {
                 pan_camera_on_gamepad_cursor_edge,
                 clamp_camera_to_bounds.after(pan_camera_on_gamepad_cursor_edge),
             )
-                .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>)),
+                .run_if(
+                    resource_exists::<BattleInProgress>.and_then(resource_exists::<PlayerFaction>),
+                ),
         );
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut()

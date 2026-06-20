@@ -22,7 +22,7 @@ use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
     asset::AssetPlugin,
-    ecs::message::Messages,
+    ecs::{error::warn, message::Messages},
     math::Vec2,
     prelude::{Entity, Visibility, default},
     render::{RenderPlugin, settings::WgpuSettings},
@@ -121,6 +121,12 @@ fn headless_renderer_app() -> App {
     // each spawned ganger. The canonical shared [`test_armor_registry`] (GTW-324),
     // inserted up front (the fixture gangers reference its [`TEST_ARMOR_KEY`]).
     app.insert_resource(test_armor_registry());
+    // Bevy 0.19 routes a FAILED system-param validation to the global error handler
+    // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the
+    // render-provided resources some DefaultPlugins systems want (e.g. bevy_light's
+    // update_gizmo_meshes -> Assets<GizmoAsset>), so `warn` restores the 0.18 skip
+    // behavior instead of an intermittent headless panic.
+    app.set_error_handler(warn);
     app
 }
 

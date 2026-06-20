@@ -10,7 +10,7 @@
 
 use bevy::{
     prelude::*,
-    text::{TextColor as UiTextColor, TextFont},
+    text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{Node, Val, widget::ImageNode},
 };
 use gdtf_battle_presenter::{SheetRole, TopDownAtlases};
@@ -193,8 +193,8 @@ fn spawn_text(
             Themed::new(ThemeRole::Text),
             Text::new(initial),
             TextFont {
-                font: theme.text.font.clone(),
-                font_size: *theme.text.font_size_pt,
+                font: theme.text.font.clone().into(),
+                font_size: FontSize::Px(*theme.text.font_size_pt),
                 ..default()
             },
             UiTextColor(*theme.text.text_color),
@@ -223,12 +223,12 @@ fn spawn_bar_label(commands: &mut Commands, theme: &GdtfTheme, marker: impl Bund
             Themed::new(ThemeRole::Text),
             Text::new(""),
             TextFont {
-                font: theme.text.font.clone(),
-                font_size: BAR_LABEL_FONT_PT,
+                font: theme.text.font.clone().into(),
+                font_size: FontSize::Px(BAR_LABEL_FONT_PT),
                 ..default()
             },
             UiTextColor(*theme.text.text_color),
-            TextLayout::new_with_justify(Justify::Right),
+            TextLayout::justify(Justify::Right),
             // A full-width line so the right-justified number anchors to the bar's right
             // edge above it; the column wrapper gives it a row of its own (no overflow).
             Node {
@@ -292,8 +292,8 @@ fn spawn_wound_list(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
                     Themed::new(ThemeRole::Text),
                     Text::new(""),
                     TextFont {
-                        font: theme.text.font.clone(),
-                        font_size: *theme.text.font_size_pt,
+                        font: theme.text.font.clone().into(),
+                        font_size: FontSize::Px(*theme.text.font_size_pt),
                         ..default()
                     },
                     UiTextColor(*theme.text.text_color),

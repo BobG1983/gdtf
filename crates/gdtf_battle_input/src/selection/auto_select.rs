@@ -48,7 +48,7 @@ fn cell_order_key(position: &Position) -> CellOrderKey {
 ///
 /// Param-only (`bevy-traps.md` #7): a read-only `Query<(`[`Entity`]`, &`[`Faction`]`,
 /// &`[`Position`]`)>` + `Res<`[`PlayerFaction`]`>` + the [`ResMut<SelectedShooter>`] write — no
-/// `&mut World`. Gated `run_if(resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>))`
+/// `&mut World`. Gated `run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<PlayerFaction>))`
 /// (`bevy-traps.md` #1), placed in [`InputSystems::Gather`](crate::InputSystems) ordered
 /// `.before(`[`left_click_act`](crate::left_click_act)`)`.
 pub fn auto_select_first_player_ganger(

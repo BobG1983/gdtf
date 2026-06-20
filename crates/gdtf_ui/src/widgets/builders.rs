@@ -10,7 +10,7 @@
 
 use bevy::{
     prelude::*,
-    text::{TextColor as UiTextColor, TextFont},
+    text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{BackgroundColor, BorderColor as UiBorderColor, BorderRadius, Node, UiRect, Val},
 };
 
@@ -101,8 +101,8 @@ pub fn spawn_button(
                 Themed::new(ThemeRole::ButtonText),
                 Text::new(label.into_inner()),
                 TextFont {
-                    font,
-                    font_size,
+                    font: font.into(),
+                    font_size: FontSize::Px(font_size),
                     ..default()
                 },
                 UiTextColor(text_color),

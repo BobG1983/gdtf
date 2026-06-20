@@ -19,11 +19,11 @@ fn add_systems(app: &mut App) {
         .add_systems(
             FixedUpdate,
             init_complete
-                .run_if(in_state(AppState::Init).and(not(resource_exists::<InitComplete>))),
+                .run_if(in_state(AppState::Init).and_then(not(resource_exists::<InitComplete>))),
         )
         .add_systems(
             FixedUpdate,
-            move_on.run_if(in_state(AppState::Init).and(resource_exists::<InitComplete>)),
+            move_on.run_if(in_state(AppState::Init).and_then(resource_exists::<InitComplete>)),
         )
         .add_systems(OnExit(AppState::Init), (print_on_exit, cleanup));
 }

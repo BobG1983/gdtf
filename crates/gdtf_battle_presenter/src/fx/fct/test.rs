@@ -15,7 +15,7 @@ use bevy::{
     app::{App, Update},
     ecs::system::RunSystemOnce,
     prelude::{Alpha, Color, Commands, Transform},
-    text::{FontWeight, TextColor, TextFont},
+    text::{FontSize, FontWeight, TextColor, TextFont},
     time::TimeUpdateStrategy,
 };
 use gdtf_battle_sim::{Cell, Level, Severity};
@@ -113,7 +113,12 @@ fn single_pop_font(app: &mut App) -> Option<(FontWeight, f32)> {
         if found.is_some() {
             return None;
         }
-        found = Some((font.weight, font.font_size));
+        // `FontSize` is now an enum (Bevy 0.19); pull the logical-pixel f32 out of the
+        // `Px` variant (the emphasis tier always sizes in `Px`).
+        let FontSize::Px(size) = font.font_size else {
+            return None;
+        };
+        found = Some((font.weight, size));
     }
     found
 }

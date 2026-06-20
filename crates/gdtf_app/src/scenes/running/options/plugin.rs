@@ -18,12 +18,14 @@ fn add_systems(app: &mut App) {
         .add_systems(
             FixedUpdate,
             options_complete.run_if(
-                in_state(RunningState::Options).and(not(resource_exists::<OptionsComplete>)),
+                in_state(RunningState::Options).and_then(not(resource_exists::<OptionsComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
-            move_on.run_if(in_state(RunningState::Options).and(resource_exists::<OptionsComplete>)),
+            move_on.run_if(
+                in_state(RunningState::Options).and_then(resource_exists::<OptionsComplete>),
+            ),
         )
         .add_systems(OnExit(RunningState::Options), (print_on_exit, cleanup));
 }

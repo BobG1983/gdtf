@@ -49,14 +49,14 @@ pub use crate::{
 ///    `.claude/rules/bevy-traps.md` rule 5).
 /// 4. [`ScenesPlugin`], which adds every scene plugin.
 /// 5. [`InputPlugin`] — the render-free Bevy input layer. `MinimalPlugins`
-///    omits it, but [`UiPlugin`] now installs `bevy::input_focus`'s
-///    `InputDispatchPlugin`, whose `dispatch_focused_input` systems read the
-///    keyboard/gamepad message buffers; without `InputPlugin` registering those
-///    buffers (`Messages<KeyboardInput>` etc.) those systems panic on the first
-///    `update()`. `InputPlugin` registers exactly those buffers and the
-///    `ButtonInput<KeyCode>` resource the focus-nav bridge reads, and is
-///    headless-safe (no window/render). `DefaultPlugins` already includes it, so
-///    [`crate::GdtfApp`] needs no change.
+///    omits it, but [`UiPlugin`]'s focus-nav bridge reads the
+///    `ButtonInput<KeyCode>` resource / keyboard message buffers that
+///    `InputPlugin` registers; without it the bridge has nothing to read.
+///    `InputPlugin` is headless-safe (no window/render). `DefaultPlugins`
+///    already includes it, so [`crate::GdtfApp`] needs no change. (As of Bevy
+///    0.19 the `InputDispatchPlugin` that owns `InputFocus` ships in
+///    `DefaultPlugins`, not in `UiPlugin`; this `MinimalPlugins` harness never
+///    gets it — only the focus-nav bridge + `DirectionalNavigationPlugin`.)
 /// 6. [`UiPlugin`], the UI registration seam — added here to keep this headless
 ///    path a faithful mirror of [`crate::GdtfApp`], which also adds it. A
 ///    harness test can then assert `is_plugin_added::<UiPlugin>()` and prove the

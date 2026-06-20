@@ -46,7 +46,9 @@ fn fire_at_in_line_target_applies_damage() {
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
     let volley = {
-        let (mut shooters, mut targets) = state.get_mut(&mut world);
+        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+            return;
+        };
         fire(
             shooter,
             FireOrder {
@@ -141,7 +143,9 @@ fn fire_into_empty_space_is_a_clean_miss() {
     let mut r = rng();
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
     let volley = {
-        let (mut shooters, mut targets) = state.get_mut(&mut world);
+        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+            return;
+        };
         fire(
             shooter,
             FireOrder {

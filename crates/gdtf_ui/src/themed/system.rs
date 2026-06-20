@@ -3,7 +3,7 @@
 
 use bevy::{
     prelude::*,
-    text::{TextColor as UiTextColor, TextFont},
+    text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{BackgroundColor, BorderColor as UiBorderColor, BorderRadius, Node, UiRect, Val},
 };
 
@@ -138,8 +138,8 @@ fn paint_themed(commands: &mut Commands, theme: &GdtfTheme, (entity, marker, nod
             commands.entity(entity).insert((
                 UiTextColor(*theme.button.text_color),
                 TextFont {
-                    font: theme.button.font.clone(),
-                    font_size: *theme.button.font_size_pt,
+                    font: theme.button.font.clone().into(),
+                    font_size: FontSize::Px(*theme.button.font_size_pt),
                     ..default()
                 },
             ));
@@ -148,8 +148,8 @@ fn paint_themed(commands: &mut Commands, theme: &GdtfTheme, (entity, marker, nod
             commands.entity(entity).insert((
                 UiTextColor(*theme.title.text_color),
                 TextFont {
-                    font: theme.title.font.clone(),
-                    font_size: *theme.title.font_size_pt,
+                    font: theme.title.font.clone().into(),
+                    font_size: FontSize::Px(*theme.title.font_size_pt),
                     ..default()
                 },
             ));
@@ -158,8 +158,8 @@ fn paint_themed(commands: &mut Commands, theme: &GdtfTheme, (entity, marker, nod
             commands.entity(entity).insert((
                 UiTextColor(*theme.text.text_color),
                 TextFont {
-                    font: theme.text.font.clone(),
-                    font_size: *theme.text.font_size_pt,
+                    font: theme.text.font.clone().into(),
+                    font_size: FontSize::Px(*theme.text.font_size_pt),
                     ..default()
                 },
             ));

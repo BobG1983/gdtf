@@ -87,13 +87,13 @@ fn add_systems(app: &mut App) {
             // when the transition checks for them.
             poll_and_resolve.run_if(
                 in_state(AppState::Load)
-                    .and(resource_exists::<LoadHandles>)
-                    .and(
+                    .and_then(resource_exists::<LoadHandles>)
+                    .and_then(
                         not(resource_exists::<GdtfTheme>)
-                            .or(not(resource_exists::<CombatTuning>))
-                            .or(not(resource_exists::<WeaponRegistry>))
-                            .or(not(resource_exists::<LoadedSituation>))
-                            .or(not(resource_exists::<ArmorRegistry>)),
+                            .or_else(not(resource_exists::<CombatTuning>))
+                            .or_else(not(resource_exists::<WeaponRegistry>))
+                            .or_else(not(resource_exists::<LoadedSituation>))
+                            .or_else(not(resource_exists::<ArmorRegistry>)),
                     ),
             ),
             // Once a GdtfTheme, a CombatTuning, a WeaponRegistry, a LoadedSituation,
@@ -108,11 +108,11 @@ fn add_systems(app: &mut App) {
             // strands Load (the no-strand guarantee preserved via the failure fallback).
             transition_to_intro.run_if(
                 in_state(AppState::Load)
-                    .and(resource_exists::<GdtfTheme>)
-                    .and(resource_exists::<CombatTuning>)
-                    .and(resource_exists::<WeaponRegistry>)
-                    .and(resource_exists::<LoadedSituation>)
-                    .and(resource_exists::<ArmorRegistry>),
+                    .and_then(resource_exists::<GdtfTheme>)
+                    .and_then(resource_exists::<CombatTuning>)
+                    .and_then(resource_exists::<WeaponRegistry>)
+                    .and_then(resource_exists::<LoadedSituation>)
+                    .and_then(resource_exists::<ArmorRegistry>),
             ),
         )
             .chain(),

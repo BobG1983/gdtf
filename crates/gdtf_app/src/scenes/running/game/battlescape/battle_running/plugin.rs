@@ -37,14 +37,14 @@ fn add_systems(app: &mut App) {
             Update,
             end_battle_on_outcome.after(SimSystems::Simulate).run_if(
                 in_state(BattleScapeState::BattleRunning)
-                    .and(not(resource_exists::<BattleRunningComplete>)),
+                    .and_then(not(resource_exists::<BattleRunningComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
             move_on.run_if(
                 in_state(BattleScapeState::BattleRunning)
-                    .and(resource_exists::<BattleRunningComplete>),
+                    .and_then(resource_exists::<BattleRunningComplete>),
             ),
         )
         .add_systems(

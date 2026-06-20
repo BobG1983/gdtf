@@ -2,7 +2,7 @@
 
 A turn-based tactics **situation generator** (Necromunda campaign × XCOM) — grimdark.
 Core loop: `fight → consequences on survivors → carry the scarred roster forward → fight again, changed`.
-This is the **Rust + Bevy 0.18** (0.18.1) rewrite of the Godot game *grimdark* — same design, new engine.
+This is the **Rust + Bevy 0.19** (0.19.0) rewrite of the Godot game *grimdark* — same design, new engine.
 GDTF = **GrimDark TurF war**. Design canon lives in [`docs/`](docs/index.md).
 
 The **work queue lives in Linear** (project **GDTF**; tickets prefixed **GTW-**). Discover the owning

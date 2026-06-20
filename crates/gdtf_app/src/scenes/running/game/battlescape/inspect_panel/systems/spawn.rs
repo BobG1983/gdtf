@@ -22,7 +22,7 @@
 
 use bevy::{
     prelude::*,
-    text::{TextColor as UiTextColor, TextFont},
+    text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{Display, Node, OverflowAxis, Val},
 };
 use gdtf_battle_presenter::TopDownAtlases;
@@ -189,8 +189,8 @@ fn spawn_line(
             marker,
             Text::new(initial),
             TextFont {
-                font: theme.text.font.clone(),
-                font_size: *theme.text.font_size_pt,
+                font: theme.text.font.clone().into(),
+                font_size: FontSize::Px(*theme.text.font_size_pt),
                 ..default()
             },
             UiTextColor(*theme.text.text_color),

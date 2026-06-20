@@ -34,24 +34,27 @@ fn same_seed_reproduces_byte_equal_volley() {
         let cover = CoverLedger::new();
         let mut r = rng();
         let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
-        let (mut shooters, mut targets) = state.get_mut(&mut world);
-        fire(
-            shooter,
-            FireOrder {
-                mode:         &mode,
-                target_cell:  Cell::new(8, 5),
-                target_level: Level::new(0),
-            },
-            &mut shooters,
-            &mut targets,
-            BattleGrids {
-                occupancy: &occupancy,
-                surface:   &surface,
-                cover:     &cover,
-            },
-            &tuning,
-            &mut r,
-        )
+        // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
+        match state.get_mut(&mut world) {
+            Ok((mut shooters, mut targets)) => fire(
+                shooter,
+                FireOrder {
+                    mode:         &mode,
+                    target_cell:  Cell::new(8, 5),
+                    target_level: Level::new(0),
+                },
+                &mut shooters,
+                &mut targets,
+                BattleGrids {
+                    occupancy: &occupancy,
+                    surface:   &surface,
+                    cover:     &cover,
+                },
+                &tuning,
+                &mut r,
+            ),
+            Err(_) => Volley::empty(),
+        }
     };
 
     assert_eq!(

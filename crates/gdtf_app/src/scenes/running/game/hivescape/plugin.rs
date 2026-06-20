@@ -18,13 +18,14 @@ fn add_systems(app: &mut App) {
         .add_systems(
             FixedUpdate,
             game_hivescape_complete.run_if(
-                in_state(GameState::HiveScape).and(not(resource_exists::<HiveScapeComplete>)),
+                in_state(GameState::HiveScape).and_then(not(resource_exists::<HiveScapeComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
-            move_on
-                .run_if(in_state(GameState::HiveScape).and(resource_exists::<HiveScapeComplete>)),
+            move_on.run_if(
+                in_state(GameState::HiveScape).and_then(resource_exists::<HiveScapeComplete>),
+            ),
         )
         .add_systems(OnExit(GameState::HiveScape), (print_on_exit, cleanup));
 }

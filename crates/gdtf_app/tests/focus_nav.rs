@@ -36,8 +36,10 @@ fn set_initial_focus_sets_the_start() {
     let mut app = GdtfTestAppBuilder::new()
         .starting_in(gdtf_app::test_support::AppState::Running)
         .build();
-    // One update so the app enters its initial state and `InputDispatchPlugin`'s
-    // PostStartup focus default (a no-op headless: no primary window) has run.
+    // One update so the app enters its initial state. (As of Bevy 0.19 the
+    // `InputDispatchPlugin` that defaults focus ships in `DefaultPlugins`, not in
+    // `UiPlugin`; this `MinimalPlugins` harness never adds it, so there is no
+    // PostStartup focus-default system to run here.)
     app.update();
 
     let world = app.world_mut();

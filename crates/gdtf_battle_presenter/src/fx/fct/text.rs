@@ -19,7 +19,12 @@
 
 use std::time::Duration;
 
-use bevy::{camera::visibility::RenderLayers, prelude::*, sprite::Anchor, text::FontWeight};
+use bevy::{
+    camera::visibility::RenderLayers,
+    prelude::*,
+    sprite::Anchor,
+    text::{FontSize, FontWeight},
+};
 use gdtf_battle_sim::{Cell, Level};
 
 use super::super::tuning::{FctRiseRate, FctTtlSeconds};
@@ -248,7 +253,7 @@ pub fn spawn_floating_text(
             // The emphasis tier picks BOTH the weight (correct on a variable font) and the
             // size bump (the visible lever on the bundled non-variable font), so a Bold pop
             // reads heavier regardless of which font is loaded.
-            font_size: emphasis.font_size(),
+            font_size: FontSize::Px(emphasis.font_size()),
             weight: emphasis.weight(),
             ..default()
         },

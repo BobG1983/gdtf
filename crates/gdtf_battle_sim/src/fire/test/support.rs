@@ -20,7 +20,7 @@ pub(super) use crate::{
         ArmorType, WornArmor,
     },
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    fire::{BattleGrids, FireOrder, ShooterQuery, TargetQuery, fire},
+    fire::{BattleGrids, FireOrder, ShooterQuery, TargetQuery, Volley, fire},
     ganger::{
         Aiming, Direction, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, StanceKind,
         Toughness, Tu, TuMax, Wounds,

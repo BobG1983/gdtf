@@ -88,7 +88,7 @@ fn frame_on_units_centres_once_and_latches() {
     app.add_plugins(MinimalPlugins).add_systems(
         Update,
         frame_camera_on_units
-            .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>)),
+            .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<PlayerFaction>)),
     );
 
     // Battle-scoped witnesses the system gates on.
@@ -164,7 +164,7 @@ fn clamp_pulls_out_of_bounds_camera_back_inside() {
     app.add_plugins(MinimalPlugins).add_systems(
         Update,
         clamp_camera_to_bounds
-            .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>)),
+            .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<PlayerFaction>)),
     );
 
     app.world_mut().insert_resource(BattleInProgress);
@@ -289,7 +289,7 @@ fn clamp_uses_the_viewport_half_extent_in_the_fallback() {
     app.add_plugins(MinimalPlugins).add_systems(
         Update,
         clamp_camera_to_bounds
-            .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>)),
+            .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<PlayerFaction>)),
     );
 
     app.world_mut().insert_resource(BattleInProgress);

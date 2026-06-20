@@ -25,7 +25,8 @@ fn add_systems(app: &mut App) {
         .add_systems(
             FixedUpdate,
             move_on.run_if(
-                in_state(BattleScapeState::Generation).and(resource_exists::<GenerationComplete>),
+                in_state(BattleScapeState::Generation)
+                    .and_then(resource_exists::<GenerationComplete>),
             ),
         )
         .add_systems(

@@ -184,7 +184,7 @@ type EnabledInteractiveButton = (
 /// `.after(`[`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme)`)` so it
 /// runs the SAME frame, after [`apply_theme`](crate::themed::apply_theme) has written
 /// the base fills (bevy-traps rule 3), and gated on
-/// `resource_changed::<GdtfTheme>().and(resource_exists::<GdtfTheme>)` so it does
+/// `resource_changed::<GdtfTheme>().and_then(resource_exists::<GdtfTheme>)` so it does
 /// nothing on steady-state frames (where it would otherwise clobber per-frame hover
 /// feedback) and is inert and panic-free before the theme is populated (bevy-traps
 /// rule 1).

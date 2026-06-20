@@ -161,9 +161,13 @@ fn fire_volley(
 
     let mut state: SystemState<(ShooterQuery, gdtf_battle_sim::TargetQuery)> =
         SystemState::new(world);
-    let volley = {
-        let (mut shooters, mut targets) = state.get_mut(world);
-        gdtf_battle_sim::fire(
+    // `get_mut` now returns a `Result` (Bevy 0.19); the params always validate
+    // here, so an `Err` is a structural impossibility — assert it loudly rather
+    // than silently producing an empty volley.
+    let access = state.get_mut(world);
+    assert!(access.is_ok(), "shooter/target queries must validate");
+    let volley = match access {
+        Ok((mut shooters, mut targets)) => gdtf_battle_sim::fire(
             shooter,
             FireOrder {
                 mode:         &mode,
@@ -179,7 +183,11 @@ fn fire_volley(
             },
             &tuning,
             &mut rng,
-        )
+        ),
+        Err(_) => Volley {
+            reports: Vec::new(),
+            shots:   Vec::new(),
+        },
     };
     state.apply(world);
     volley

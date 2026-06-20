@@ -2,7 +2,7 @@
 
 use bevy::{
     prelude::*,
-    text::{TextColor as UiTextColor, TextFont},
+    text::{FontSize, FontSource, TextColor as UiTextColor, TextFont},
     ui::{BackgroundColor, BorderColor as UiBorderColor, Interaction, Node, widget::Button},
 };
 
@@ -150,13 +150,13 @@ fn spawned_button_text_child_is_themed_button_text_from_theme()
     );
     assert_eq!(
         world.get::<TextFont>(child).map(|f| f.font.clone()),
-        Some(Handle::<Font>::default()),
+        Some(FontSource::from(Handle::<Font>::default())),
         "text child must carry the button font handle",
     );
     assert!(
         world
             .get::<TextFont>(child)
-            .is_some_and(|f| (f.font_size - 18.0).abs() < f32::EPSILON),
+            .is_some_and(|f| f.font_size == FontSize::Px(18.0)),
         "text child must carry the button font size",
     );
     assert_eq!(

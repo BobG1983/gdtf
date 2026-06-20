@@ -25,7 +25,7 @@
 
 use bevy::{
     prelude::*,
-    text::TextFont,
+    text::{FontSize, TextFont},
     ui::{Node, Val},
 };
 
@@ -131,7 +131,7 @@ fn set_label_font(fonts: &mut Query<&mut TextFont, With<Text>>, label: Entity) {
     let Ok(mut font) = fonts.get_mut(label) else {
         return;
     };
-    if font.font_size != *WEAPON_LABEL_PT {
-        font.font_size = *WEAPON_LABEL_PT;
+    if font.font_size != FontSize::Px(*WEAPON_LABEL_PT) {
+        font.font_size = FontSize::Px(*WEAPON_LABEL_PT);
     }
 }

@@ -188,10 +188,12 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .unwrap_or_default();
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(app.world_mut());
-    let volley = {
-        let world = app.world_mut();
-        let (mut shooters, mut targets) = state.get_mut(world);
-        gdtf_battle_sim::fire(
+    // `get_mut` now returns a `Result` (Bevy 0.19); the params always validate, so
+    // an `Err` is structurally impossible — assert loudly rather than firing nothing.
+    let access = state.get_mut(app.world_mut());
+    assert!(access.is_ok(), "shooter/target queries must validate");
+    let volley = match access {
+        Ok((mut shooters, mut targets)) => gdtf_battle_sim::fire(
             shooter,
             FireOrder {
                 mode:         &mode,
@@ -207,7 +209,11 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             },
             &tuning,
             &mut rng,
-        )
+        ),
+        Err(_) => Volley {
+            reports: Vec::new(),
+            shots:   Vec::new(),
+        },
     };
     state.apply(app.world_mut());
     volley

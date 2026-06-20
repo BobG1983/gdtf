@@ -83,7 +83,7 @@ hot-reload policy. Specifically:
    file-watcher that detects on-disk edits is fenced behind a **local/dev binary
    feature** and is **NOT** exercised in CI. The reapply LOGIC is verified
    **headlessly** by injecting an `AssetEvent::Modified` for the theme asset and
-   asserting the resource and styling update; in Bevy 0.18 an `AssetEvent` is a
+   asserting the resource and styling update; in Bevy 0.19 an `AssetEvent` is a
    `MessageReader` MESSAGE (not `EventReader`), so the test drives it as a
    message. Visual confirmation of a live retheme is **local-only**.
 

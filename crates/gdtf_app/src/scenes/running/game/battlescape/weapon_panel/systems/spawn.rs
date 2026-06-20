@@ -44,7 +44,7 @@
 
 use bevy::{
     prelude::*,
-    text::{TextColor as UiTextColor, TextFont},
+    text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{Display, GlobalZIndex, Node, Overflow, OverflowAxis, UiRect, Val},
 };
 use gdtf_ui::{
@@ -218,8 +218,8 @@ fn spawn_image(commands: &mut Commands, theme: &GdtfTheme, height: Val) -> Entit
             Themed::new(ThemeRole::Text),
             Text::new("no image"),
             TextFont {
-                font: theme.text.font.clone(),
-                font_size: *theme.text.font_size_pt,
+                font: theme.text.font.clone().into(),
+                font_size: FontSize::Px(*theme.text.font_size_pt),
                 ..default()
             },
             UiTextColor(*theme.text.text_color),
@@ -248,8 +248,8 @@ fn spawn_aim_label(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
             Themed::new(ThemeRole::Text),
             Text::new("Aim"),
             TextFont {
-                font: theme.text.font.clone(),
-                font_size: *theme.text.font_size_pt,
+                font: theme.text.font.clone().into(),
+                font_size: FontSize::Px(*theme.text.font_size_pt),
                 ..default()
             },
             UiTextColor(*theme.text.text_color),
@@ -272,8 +272,8 @@ fn spawn_text(
             Themed::new(ThemeRole::Text),
             Text::new(initial),
             TextFont {
-                font: theme.text.font.clone(),
-                font_size: *theme.text.font_size_pt,
+                font: theme.text.font.clone().into(),
+                font_size: FontSize::Px(*theme.text.font_size_pt),
                 ..default()
             },
             UiTextColor(*theme.text.text_color),

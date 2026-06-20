@@ -29,10 +29,11 @@ fn add_systems(app: &mut App) {
             Update,
             (
                 teardown_complete.run_if(
-                    in_state(AppState::Teardown).and(not(resource_exists::<TeardownComplete>)),
+                    in_state(AppState::Teardown).and_then(not(resource_exists::<TeardownComplete>)),
                 ),
-                move_on
-                    .run_if(in_state(AppState::Teardown).and(resource_exists::<TeardownComplete>)),
+                move_on.run_if(
+                    in_state(AppState::Teardown).and_then(resource_exists::<TeardownComplete>),
+                ),
             )
                 .chain(),
         )

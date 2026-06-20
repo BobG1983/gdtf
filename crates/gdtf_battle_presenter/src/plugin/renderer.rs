@@ -160,18 +160,18 @@ impl Plugin for TopDownRendererPlugin {
                     .in_set(PresenterSystems::Draw)
                     .run_if(
                         resource_exists::<BattleInProgress>
-                            .and(resource_exists::<TileRoles>)
-                            .and(resource_exists::<TopDownAtlases>)
-                            .and(resource_exists::<OccupancyGrid>)
-                            .and(resource_exists::<CoverLedger>)
-                            .and(resource_exists::<SurfaceGrid>),
+                            .and_then(resource_exists::<TileRoles>)
+                            .and_then(resource_exists::<TopDownAtlases>)
+                            .and_then(resource_exists::<OccupancyGrid>)
+                            .and_then(resource_exists::<CoverLedger>)
+                            .and_then(resource_exists::<SurfaceGrid>),
                     ),
             )
             .add_systems(
                 Update,
-                swap_destroyed_cover
-                    .in_set(PresenterSystems::Draw)
-                    .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<TileRoles>)),
+                swap_destroyed_cover.in_set(PresenterSystems::Draw).run_if(
+                    resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>),
+                ),
             );
 
         // GTW-219 (S5): the ganger-draw change-detection systems join the SAME
@@ -186,8 +186,8 @@ impl Plugin for TopDownRendererPlugin {
         // `.after(spawn_ganger_sprites)` so a same-update spawn is already mapped when
         // the move runs (the idempotent-via-the-map move path).
         let gate = resource_exists::<BattleInProgress>
-            .and(resource_exists::<CharacterRoles>)
-            .and(resource_exists::<TopDownAtlases>);
+            .and_then(resource_exists::<CharacterRoles>)
+            .and_then(resource_exists::<TopDownAtlases>);
         app.add_systems(
             Update,
             (
@@ -268,19 +268,21 @@ fn register_ron_tables(app: &mut App) {
         )
         .add_systems(
             Update,
-            resolve_tile_roles
-                .run_if(resource_exists::<TileRolesHandle>.and(not(resource_exists::<TileRoles>))),
+            resolve_tile_roles.run_if(
+                resource_exists::<TileRolesHandle>.and_then(not(resource_exists::<TileRoles>)),
+            ),
         )
         .add_systems(
             Update,
             resolve_character_roles.run_if(
-                resource_exists::<CharacterRolesHandle>.and(not(resource_exists::<CharacterRoles>)),
+                resource_exists::<CharacterRolesHandle>
+                    .and_then(not(resource_exists::<CharacterRoles>)),
             ),
         )
         .add_systems(
             Update,
             resolve_effect_roles.run_if(
-                resource_exists::<EffectRolesHandle>.and(not(resource_exists::<EffectRoles>)),
+                resource_exists::<EffectRolesHandle>.and_then(not(resource_exists::<EffectRoles>)),
             ),
         )
         // GTW-306 (TUNING): resolve the FX tuning ONCE, then re-derive it LIVE on every matching
@@ -290,8 +292,9 @@ fn register_ron_tables(app: &mut App) {
         // resources being present (it Options them).
         .add_systems(
             Update,
-            resolve_fx_tuning
-                .run_if(resource_exists::<FxTuningHandle>.and(not(resource_exists::<FxTuning>))),
+            resolve_fx_tuning.run_if(
+                resource_exists::<FxTuningHandle>.and_then(not(resource_exists::<FxTuning>)),
+            ),
         )
         .add_systems(Update, redrive_fx_tuning_on_asset_event)
         // GTW-299 (TUNING): resolve the pan tuning ONCE, then re-derive it LIVE on every matching
@@ -299,8 +302,9 @@ fn register_ron_tables(app: &mut App) {
         // exact load/resolve/redrive shape the FX tuning above uses.
         .add_systems(
             Update,
-            resolve_pan_tuning
-                .run_if(resource_exists::<PanTuningHandle>.and(not(resource_exists::<PanTuning>))),
+            resolve_pan_tuning.run_if(
+                resource_exists::<PanTuningHandle>.and_then(not(resource_exists::<PanTuning>)),
+            ),
         )
         .add_systems(Update, redrive_pan_tuning_on_asset_event);
 }
@@ -345,7 +349,8 @@ fn register_ron_tables(app: &mut App) {
 /// fallback. The pan systems still take it as `Option<ResMut<…>>` so they never panic if it is
 /// somehow absent (`bevy-traps.md` #1).
 fn register_camera_framing_systems(app: &mut App) {
-    let battle_gate = resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>);
+    let battle_gate =
+        resource_exists::<BattleInProgress>.and_then(resource_exists::<PlayerFaction>);
     app.init_resource::<PanEdgeDwellState>();
     app.add_message::<GamepadCursorMoved>().add_systems(
         Update,
@@ -395,14 +400,14 @@ fn register_camera_framing_systems(app: &mut App) {
 /// battle still expires after the battle ends.
 fn register_fx_flash_systems(app: &mut App) {
     let render_gate = resource_exists::<BattleInProgress>
-        .and(resource_exists::<EffectRoles>)
-        .and(resource_exists::<TopDownAtlases>);
+        .and_then(resource_exists::<EffectRoles>)
+        .and_then(resource_exists::<TopDownAtlases>);
     app.add_systems(
         Update,
         read_bleeding.in_set(PresenterSystems::Draw).run_if(
             render_gate
                 .clone()
-                .and(resource_exists::<Messages<Bleeding>>),
+                .and_then(resource_exists::<Messages<Bleeding>>),
         ),
     )
     .add_systems(
@@ -410,7 +415,7 @@ fn register_fx_flash_systems(app: &mut App) {
         read_armor_broken.in_set(PresenterSystems::Draw).run_if(
             render_gate
                 .clone()
-                .and(resource_exists::<Messages<ArmorBroken>>),
+                .and_then(resource_exists::<Messages<ArmorBroken>>),
         ),
     )
     .add_systems(
@@ -418,7 +423,7 @@ fn register_fx_flash_systems(app: &mut App) {
         read_cover_destroyed.in_set(PresenterSystems::Draw).run_if(
             render_gate
                 .clone()
-                .and(resource_exists::<Messages<CoverDestroyed>>),
+                .and_then(resource_exists::<Messages<CoverDestroyed>>),
         ),
     )
     // GTW-306: the firing FX. spawn_shot_projectiles spawns the traveling DIRECTIONAL
@@ -439,8 +444,8 @@ fn register_fx_flash_systems(app: &mut App) {
             .run_if(
                 render_gate
                     .clone()
-                    .and(resource_exists::<FxTuning>)
-                    .and(resource_exists::<Messages<ShotFired>>),
+                    .and_then(resource_exists::<FxTuning>)
+                    .and_then(resource_exists::<Messages<ShotFired>>),
             ),
     )
     // GTW-302 (slice 4): the AUXILIARY-SIGNAL floating-combat-text reader. Drains the SAME
@@ -459,9 +464,9 @@ fn register_fx_flash_systems(app: &mut App) {
         Update,
         read_consequence_fct.in_set(PresenterSystems::Draw).run_if(
             resource_exists::<BattleInProgress>
-                .and(resource_exists::<Messages<Bleeding>>)
-                .and(resource_exists::<Messages<ArmorBroken>>)
-                .and(resource_exists::<FxTuning>),
+                .and_then(resource_exists::<Messages<Bleeding>>)
+                .and_then(resource_exists::<Messages<ArmorBroken>>)
+                .and_then(resource_exists::<FxTuning>),
         ),
     )
     // GTW-306: the 3-frame impact animation (FX-B fills the body). Gated on the same render
@@ -471,7 +476,7 @@ fn register_fx_flash_systems(app: &mut App) {
         Update,
         animate_impact
             .in_set(PresenterSystems::Draw)
-            .run_if(render_gate.and(resource_exists::<FxTuning>)),
+            .run_if(render_gate.and_then(resource_exists::<FxTuning>)),
     )
     // GTW-306: advance every traveling projectile + hand off its impact. Needs only Time + the
     // ShotProjectile query (no render resource / message buffer), inert with none — registered

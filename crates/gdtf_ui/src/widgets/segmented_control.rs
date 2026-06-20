@@ -19,7 +19,7 @@
 
 use bevy::{
     prelude::*,
-    text::{FontWeight, TextColor as UiTextColor, TextFont},
+    text::{FontSize, FontWeight, TextColor as UiTextColor, TextFont},
     ui::{
         AlignItems, BackgroundColor, BorderColor, BorderRadius, Display, FlexDirection,
         Interaction, JustifyContent, Node, Overflow, UiRect, Val, widget::Button,
@@ -571,7 +571,7 @@ const fn active_weight(is_active: bool) -> FontWeight {
 /// The label [`TextFont`](bevy::text::TextFont) for a segment by active-ness.
 fn segment_font(is_active: bool) -> TextFont {
     TextFont {
-        font_size: SEGMENT_FONT_PT,
+        font_size: FontSize::Px(SEGMENT_FONT_PT),
         weight: active_weight(is_active),
         ..default()
     }
@@ -581,7 +581,7 @@ fn segment_font(is_active: bool) -> TextFont {
 /// smaller [`SEGMENT_SUB_FONT_PT`] at normal weight — quieter than the bold-on-active label.
 fn sub_line_font() -> TextFont {
     TextFont {
-        font_size: SEGMENT_SUB_FONT_PT,
+        font_size: FontSize::Px(SEGMENT_SUB_FONT_PT),
         weight: FontWeight::NORMAL,
         ..default()
     }

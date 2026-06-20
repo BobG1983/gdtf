@@ -53,7 +53,7 @@ impl Plugin for UiPlugin {
     /// [`apply_theme`](crate::themed::apply_theme) runs in [`Update`] inside the named
     /// [`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme) set. It is
     /// **change-driven** (GTW-144): gated by
-    /// `resource_exists::<GdtfTheme>().and(resource_changed::<GdtfTheme>.or(`[`any_themed_added`](crate::themed::any_themed_added)`))`,
+    /// `resource_exists::<GdtfTheme>().and_then(resource_changed::<GdtfTheme>.or_else(`[`any_themed_added`](crate::themed::any_themed_added)`))`,
     /// so it runs only when the theme changed (the `Load` insert, or the GTW-137
     /// re-derive — repainting ALL [`Themed`](crate::themed::Themed) entities = the
     /// retheme) or a new [`Themed`](crate::themed::Themed) entity appeared (so a
@@ -168,7 +168,8 @@ impl Plugin for UiPlugin {
                 redrive_theme_on_asset_event
                     .before(UiSystems::ApplyTheme)
                     .run_if(
-                        resource_exists::<GdtfTheme>.and(resource_exists::<ThemeAssetMessages>),
+                        resource_exists::<GdtfTheme>
+                            .and_then(resource_exists::<ThemeAssetMessages>),
                     ),
                 // GTW-144: `apply_theme` is CHANGE-DRIVEN — it runs only when the
                 // theme changed (the Load insert OR a GTW-137 re-derive: repaints
@@ -178,7 +179,7 @@ impl Plugin for UiPlugin {
                 // hover/press feedback that only updates on `Changed<Interaction>`.
                 apply_theme.in_set(UiSystems::ApplyTheme).run_if(
                     resource_exists::<GdtfTheme>
-                        .and(resource_changed::<GdtfTheme>.or(any_themed_added)),
+                        .and_then(resource_changed::<GdtfTheme>.or_else(any_themed_added)),
                 ),
                 // GTW-118 disabled paint, GTW-253 active paint, and the hover/press
                 // swap all compose ON TOP of the base look, ordered after the ApplyTheme
@@ -233,7 +234,7 @@ impl Plugin for UiPlugin {
                 // systems write the same button's `BackgroundColor` this frame.
                 repaint_theme_change
                     .after(UiSystems::ApplyTheme)
-                    .run_if(resource_exists::<GdtfTheme>.and(resource_changed::<GdtfTheme>)),
+                    .run_if(resource_exists::<GdtfTheme>.and_then(resource_changed::<GdtfTheme>)),
             ),
         );
     }

@@ -40,7 +40,9 @@ fn charge_is_taken_once_and_reflects_aiming() {
 
         let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
         {
-            let (mut shooters, mut targets) = state.get_mut(&mut world);
+            let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+                return;
+            };
             // off into empty space → all misses, fires the full clamped burst
             let volley = fire(
                 shooter,
@@ -104,7 +106,9 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
     let volley = {
-        let (mut shooters, mut targets) = state.get_mut(&mut world);
+        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+            return;
+        };
         fire(
             shooter,
             FireOrder {

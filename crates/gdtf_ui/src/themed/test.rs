@@ -2,7 +2,7 @@
 
 use bevy::{
     prelude::*,
-    text::{TextColor as UiTextColor, TextFont},
+    text::{FontSize, FontSource, TextColor as UiTextColor, TextFont},
     ui::{BackgroundColor, BorderColor as UiBorderColor, Node, Val},
 };
 
@@ -55,7 +55,7 @@ fn app_with_apply_theme() -> App {
 
 /// A minimal app with `apply_theme` registered under the FULL production run
 /// condition (GTW-144 / GTW-284):
-/// `resource_exists::<GdtfTheme>().and(resource_changed::<GdtfTheme>.or(any_themed_added))`,
+/// `resource_exists::<GdtfTheme>().and_then(resource_changed::<GdtfTheme>.or_else(any_themed_added))`,
 /// the exact gate [`UiPlugin`](crate::UiPlugin) installs.
 ///
 /// The incremental-repaint tests need this real gate (not the bare
@@ -68,7 +68,7 @@ fn app_with_production_run_condition() -> App {
         Update,
         apply_theme.run_if(
             resource_exists::<GdtfTheme>
-                .and(resource_changed::<GdtfTheme>.or(super::any_themed_added)),
+                .and_then(resource_changed::<GdtfTheme>.or_else(super::any_themed_added)),
         ),
     );
     app
@@ -112,13 +112,13 @@ fn apply_theme_paints_role_appropriate_visuals_from_the_resource()
     );
     assert_eq!(
         world.get::<TextFont>(text).map(|f| f.font.clone()),
-        Some(Handle::<Font>::default()),
+        Some(FontSource::from(Handle::<Font>::default())),
         "button-text entity should get the button font handle",
     );
     assert!(
         world
             .get::<TextFont>(text)
-            .is_some_and(|f| (f.font_size - 18.0).abs() < f32::EPSILON),
+            .is_some_and(|f| f.font_size == FontSize::Px(18.0)),
         "button-text entity font size should be the button size",
     );
 
@@ -250,12 +250,19 @@ fn apply_theme_uses_title_sub_theme_font_size() -> Result<(), ron::error::Spanne
     );
     assert_eq!(
         world.get::<TextFont>(title).map(|f| f.font.clone()),
-        Some(Handle::<Font>::default()),
+        Some(FontSource::from(Handle::<Font>::default())),
         "title must use the title font handle",
     );
     // The title sub-theme size is 36.0 — its own value, not 18 * a scale —
     // and strictly larger than the resolved text sub-theme's body size (18).
-    let title_size = world.get::<TextFont>(title).map(|f| f.font_size);
+    // `FontSize` is now an enum (Bevy 0.19); pull the logical-pixel f32 back out of
+    // the `Px` variant so the size assertions stay numeric (and skip non-`Px` units).
+    let title_size = world
+        .get::<TextFont>(title)
+        .and_then(|f| match f.font_size {
+            FontSize::Px(px) => Some(px),
+            _ => None,
+        });
     assert!(
         title_size.is_some_and(|s| (s - 36.0).abs() < f32::EPSILON),
         "title font size must be the title sub-theme's own font_size_pt (36)",
@@ -316,7 +323,7 @@ fn re_theme_after_resource_mutation_repaints_with_new_palette()
     assert!(
         world
             .get::<TextFont>(text)
-            .is_some_and(|f| (f.font_size - 30.0).abs() < f32::EPSILON),
+            .is_some_and(|f| f.font_size == FontSize::Px(30.0)),
         "button-text size must reflect the NEW theme after re-run",
     );
     assert_eq!(

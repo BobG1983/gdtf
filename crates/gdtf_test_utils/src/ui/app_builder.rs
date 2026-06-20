@@ -60,6 +60,7 @@ use bevy::{
     app::{App, PluginGroup},
     asset::AssetPlugin,
     camera::Camera2d,
+    ecs::error::warn,
     prelude::default,
     render::{RenderPlugin, settings::WgpuSettings},
     window::{ExitCondition, WindowPlugin},
@@ -176,6 +177,16 @@ impl GdtfUiTestAppBuilder<NoCamera> {
                     ..default()
                 }),
         );
+        // Bevy 0.19 made a FAILED system-param validation a hard error routed to the
+        // global error handler (the default panics); 0.18 silently SKIPPED such a
+        // system. This headless harness disables the render backend, so some
+        // `DefaultPlugins` systems whose params are render-provided (notably
+        // `bevy_light`'s `update_gizmo_meshes::<LightGizmoConfigGroup>`, which wants
+        // `Assets<GizmoAsset>`) cannot validate and would intermittently panic the
+        // run. `warn` restores the 0.18 skip-with-a-log behavior — these systems are
+        // irrelevant to a UI-layout test. No production code path changes (the GUI
+        // app keeps the default panicking handler).
+        app.set_error_handler(warn);
         Self {
             app,
             _phase: PhantomData,

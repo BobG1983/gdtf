@@ -1,7 +1,7 @@
 //! The GTW-141 mouse-hover-follows-focus bridge.
 
 use bevy::{
-    input_focus::InputFocus,
+    input_focus::{FocusCause, InputFocus},
     prelude::*,
     ui::{Interaction, widget::Button},
 };
@@ -44,17 +44,22 @@ type HoverableButton = (Changed<Interaction>, With<Button>, Without<DisabledButt
 /// Registered by [`UiPlugin`](crate::UiPlugin) in [`Update`] ordered
 /// `.after(`[`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme)`)`
 /// — the same band as [`theme_interaction`](super::theme_interaction) (bevy-traps
-/// rule 3). [`InputFocus`](bevy::input_focus::InputFocus) is initialized by the
-/// `InputDispatchPlugin` that [`UiPlugin`](crate::UiPlugin) installs via the
-/// focus-nav layer, so it is always present and the `ResMut` never panics
-/// (bevy-traps rule 1).
+/// rule 3). [`InputFocus`](bevy::input_focus::InputFocus) is `init_resource`d by
+/// [`FocusNavPlugin`](crate::focus_nav::FocusNavPlugin) (which `UiPlugin` adds),
+/// so it is always present and the `ResMut` never panics (bevy-traps rule 1).
+/// In the real app the `InputDispatchPlugin` in `DefaultPlugins` also owns it
+/// (Bevy 0.19), but `FocusNavPlugin` initializing it keeps the `MinimalPlugins`
+/// headless harnesses sound.
 pub fn sync_hover_to_focus(
     mut focus: ResMut<InputFocus>,
     buttons: Query<(Entity, &Interaction), HoverableButton>,
 ) {
     for (entity, interaction) in &buttons {
         if *interaction == Interaction::Hovered {
-            focus.set(entity);
+            // `FocusCause::Navigated` (Bevy 0.19): hover-to-focus is not a primary
+            // mouse press, so it carries the default cause, matching how upstream
+            // treats non-`Pressed` mouse-driven focus.
+            focus.set(entity, FocusCause::Navigated);
         }
     }
 }

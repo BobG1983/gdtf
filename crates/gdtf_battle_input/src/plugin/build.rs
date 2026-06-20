@@ -77,6 +77,21 @@ pub struct GdtfBattleInputActive;
 /// of it.
 pub struct GdtfBattleInputPlugin;
 
+/// The shared run-condition for the click / gamepad ACT decision systems: a live
+/// battle WITH the player faction AND the occupancy / mouse-button / tuning the
+/// decision reads (`bevy-traps.md` #1). Factored into one combinator so the mouse
+/// ([`left_click_act`] / [`right_click_turn_to_face`]) and gamepad
+/// ([`gamepad_click_act`] / [`gamepad_turn`]) registrations share the identical gate
+/// without restating the five-resource chain at each `run_if` (it also keeps the
+/// plugin `build` body under clippy's `too_many_lines`).
+fn battle_act_gate() -> impl SystemCondition<()> {
+    resource_exists::<BattleInProgress>
+        .and_then(resource_exists::<OccupancyGrid>)
+        .and_then(resource_exists::<ButtonInput<MouseButton>>)
+        .and_then(resource_exists::<CombatTuning>)
+        .and_then(resource_exists::<PlayerFaction>)
+}
+
 impl Plugin for GdtfBattleInputPlugin {
     fn build(&self, app: &mut App) {
         // GTW-245 — anchor the whole input band BEFORE the sim band, realizing the
@@ -166,7 +181,9 @@ impl Plugin for GdtfBattleInputPlugin {
             auto_select_first_player_ganger
                 .in_set(InputSystems::Gather)
                 .before(left_click_act)
-                .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<PlayerFaction>)),
+                .run_if(
+                    resource_exists::<BattleInProgress>.and_then(resource_exists::<PlayerFaction>),
+                ),
         )
         // GTW-238 — the ONE disambiguated left-click decision (FIRE -> SELECT -> MOVE ->
         // CLEAR) + the right-click turn-to-face surface. Both gated to a live battle WITH
@@ -180,20 +197,16 @@ impl Plugin for GdtfBattleInputPlugin {
                 .in_set(InputSystems::Gather)
                 .before(pick_hovered_cell)
                 .before(dispatch_act_intents)
-                .run_if(
-                    resource_exists::<BattleInProgress>
-                        .and(resource_exists::<OccupancyGrid>)
-                        .and(resource_exists::<ButtonInput<MouseButton>>)
-                        .and(resource_exists::<CombatTuning>)
-                        .and(resource_exists::<PlayerFaction>),
-                ),
+                .run_if(battle_act_gate()),
         )
         .add_systems(
             Update,
             update_selection_highlight
                 .in_set(InputSystems::Gather)
                 .after(left_click_act)
-                .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<OccupancyGrid>)),
+                .run_if(
+                    resource_exists::<BattleInProgress>.and_then(resource_exists::<OccupancyGrid>),
+                ),
         )
         // 222b: on a fresh selection, default `SelectedFireMode` to the picked weapon's
         // `FireMode::single()` (AC1). Runs after `left_click_act` so it observes the same
@@ -212,7 +225,7 @@ impl Plugin for GdtfBattleInputPlugin {
             Update,
             (level_keys, select_clear_key, posture_keys)
                 .in_set(InputSystems::Gather)
-                .run_if(resource_exists::<BattleInProgress>.and(resource_exists::<Keybinds>)),
+                .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<Keybinds>)),
         )
         // The ONE intent drain — after EVERY intent writer (the keyboard keys + GTW-238's
         // left-click decision + right-click turn surface) so it sees this update's pushes;
@@ -249,7 +262,8 @@ impl Plugin for GdtfBattleInputPlugin {
                 .add_systems(
                     Update,
                     resolve_keybinds.run_if(
-                        resource_exists::<KeybindsHandle>.and(not(resource_exists::<Keybinds>)),
+                        resource_exists::<KeybindsHandle>
+                            .and_then(not(resource_exists::<Keybinds>)),
                     ),
                 );
         }
@@ -285,7 +299,7 @@ fn register_gamepad_systems(app: &mut App) {
     .add_systems(
         Update,
         mouse_reclaims_pointer.in_set(InputSystems::Gather).run_if(
-            resource_exists::<BattleInProgress>.and(resource_exists::<Messages<CursorMoved>>),
+            resource_exists::<BattleInProgress>.and_then(resource_exists::<Messages<CursorMoved>>),
         ),
     )
     .add_systems(
@@ -294,13 +308,7 @@ fn register_gamepad_systems(app: &mut App) {
             .in_set(InputSystems::Gather)
             .before(pick_hovered_cell)
             .before(dispatch_act_intents)
-            .run_if(
-                resource_exists::<BattleInProgress>
-                    .and(resource_exists::<OccupancyGrid>)
-                    .and(resource_exists::<ButtonInput<MouseButton>>)
-                    .and(resource_exists::<CombatTuning>)
-                    .and(resource_exists::<PlayerFaction>),
-            ),
+            .run_if(battle_act_gate()),
     )
     .add_systems(
         Update,

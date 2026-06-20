@@ -41,7 +41,10 @@ fn spawn_root_node() -> Option<Node> {
     world.insert_resource(default_theme());
 
     let mut state: SpawnParams = SystemState::new(&mut world);
-    let (commands, theme, atlases) = state.get(&world);
+    // `get` now returns a `Result` (Bevy 0.19); these params always validate.
+    let Ok((commands, theme, atlases)) = state.get(&world) else {
+        return None;
+    };
     // `spawn_inspect_panel` is `Commands`-driven; build it from the same params then apply.
     spawn_inspect_panel(commands, theme, atlases);
     state.apply(&mut world);

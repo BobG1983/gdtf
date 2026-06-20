@@ -15,6 +15,11 @@ fn two_queries_are_access_compatible_no_b0001() {
     // panic here (the param-validation B0001 check). Reaching the assert proves
     // the design is disjoint.
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
-    let (_shooters, _targets) = state.get_mut(&mut world);
-    // Reaching here means the access set validated — the two queries coexist.
+    // `get_mut` now returns a `Result` (Bevy 0.19); an `Ok` IS the disjoint-access
+    // proof — a conflicting mutable access would surface as the validation error.
+    let access = state.get_mut(&mut world);
+    assert!(
+        access.is_ok(),
+        "the shooter + target queries must validate as access-compatible (no B0001)",
+    );
 }

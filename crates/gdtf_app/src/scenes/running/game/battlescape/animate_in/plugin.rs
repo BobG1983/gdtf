@@ -21,14 +21,14 @@ fn add_systems(app: &mut App) {
             FixedUpdate,
             game_battlescape_animate_in_complete.run_if(
                 in_state(BattleScapeState::AnimateIn)
-                    .and(not(resource_exists::<BattleAnimateInComplete>)),
+                    .and_then(not(resource_exists::<BattleAnimateInComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
             move_on.run_if(
                 in_state(BattleScapeState::AnimateIn)
-                    .and(resource_exists::<BattleAnimateInComplete>),
+                    .and_then(resource_exists::<BattleAnimateInComplete>),
             ),
         )
         .add_systems(

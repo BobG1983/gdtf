@@ -1,6 +1,6 @@
 ---
 name: "ADR 0001: Reimplement grimdark-turfwar in Rust + Bevy"
-description: Reimplement the Godot grimdark-turfwar game in Rust + Bevy 0.18, preserving the design canon and the model/view split.
+description: Reimplement the Godot grimdark-turfwar game in Rust + Bevy 0.19, preserving the design canon and the model/view split.
 ---
 
 # 0001. Reimplement grimdark-turfwar in Rust + Bevy
@@ -43,8 +43,8 @@ deliberately removed; its content now lives here and in
 
 ## Decision
 
-We will reimplement grimdark-turfwar from scratch in **Rust + Bevy 0.18**
-(0.18.1) as a new project, **GDTF** (GrimDark TurF war), in the `gdtf` repo.
+We will reimplement grimdark-turfwar from scratch in **Rust + Bevy 0.19**
+(0.19.0) as a new project, **GDTF** (GrimDark TurF war), in the `gdtf` repo.
 This is a clean-room engine rebuild, **not** a port of GDScript:
 
 - The app is a Bevy `App` driven by a top-level `AppState` enum

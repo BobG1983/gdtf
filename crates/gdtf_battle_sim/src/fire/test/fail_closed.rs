@@ -31,7 +31,9 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
     let volley = {
-        let (mut shooters, mut targets) = state.get_mut(&mut world);
+        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+            return;
+        };
         fire(
             shooter,
             FireOrder {
@@ -101,7 +103,9 @@ fn dead_shooter_fires_nothing() {
 
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
     let volley = {
-        let (mut shooters, mut targets) = state.get_mut(&mut world);
+        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+            return;
+        };
         fire(
             shooter,
             FireOrder {

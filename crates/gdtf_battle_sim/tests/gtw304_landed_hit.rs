@@ -185,7 +185,12 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
     let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(app.world_mut());
     {
         let world = app.world_mut();
-        let (mut shooters, mut targets) = state.get_mut(world);
+        // `get_mut` returns a `Result` (Bevy 0.19); the params always validate, so
+        // `Err` is structurally impossible — returning `false` would fail the
+        // calling assertion loudly rather than silently skip the fire.
+        let Ok((mut shooters, mut targets)) = state.get_mut(world) else {
+            return false;
+        };
         let _volley = gdtf_battle_sim::fire(
             shooter,
             FireOrder {

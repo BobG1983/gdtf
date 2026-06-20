@@ -48,7 +48,7 @@ impl Volley {
     /// The **empty** volley — no rounds fired, mutating nothing (the fail-closed result
     /// when [`can_fire`] fails, the shooter is not in the query, or the magazine is
     /// empty).
-    const fn empty() -> Self {
+    pub(crate) const fn empty() -> Self {
         Self {
             reports: Vec::new(),
             shots:   Vec::new(),
