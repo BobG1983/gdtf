@@ -19,7 +19,16 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
     // Present → stops the round at the boundary.
     let mut present = SurfaceGrid::new();
     present.set_slab(slab_at, SlabState::Present);
-    let r_present = march_vector(muzzle, dir, &grid, &present, &cover, &tuning, far_shooter());
+    let r_present = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &present,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         r_present.kind,
         MarchKind::Slab,
@@ -38,6 +47,7 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
         &cover,
         &tuning,
         far_shooter(),
+        no_dead(),
     );
     assert_ne!(
         r_destroyed.kind,
@@ -47,7 +57,16 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
 
     // Absent (the default) → the round also crosses freely.
     let absent = SurfaceGrid::new();
-    let r_absent = march_vector(muzzle, dir, &grid, &absent, &cover, &tuning, far_shooter());
+    let r_absent = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &absent,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_ne!(
         r_absent.kind,
         MarchKind::Slab,

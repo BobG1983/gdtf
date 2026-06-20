@@ -13,7 +13,7 @@ use super::query::{BattleGrids, ShooterQuery, TargetQuery};
 use crate::{
     aim::{Shooter, cone_for, stability_for},
     cover::CoverLedger,
-    ganger::{Aiming, Facing, Luck, Position, Shooting, Stance, StanceKind, Tu, TuMax},
+    ganger::{Aiming, Facing, LifeState, Luck, Position, Shooting, Stance, StanceKind, Tu, TuMax},
     magazine::Magazine,
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
@@ -260,6 +260,21 @@ pub(super) fn resolve_round(
         recoil_growth,
     };
 
+    // GTW-317 dead-occupant skip: the march passes THROUGH corpses (a `Dead` ganger)
+    // and continues to the next blocker, while a live (incl. `Downed`) occupant still
+    // stops the round. The predicate reads each candidate occupant's CURRENT
+    // `LifeState` straight off the TARGET query, so a burst round that kills the front
+    // target writes `Dead` to its `LifeState` (via `resolve_and_apply` below) BEFORE
+    // the next round runs — making the next round pass through the fresh corpse. The
+    // immutable borrow this closure holds on `targets` ends when `resolve_coarse`
+    // returns (NLL), so the later `targets.get_mut(struck)` does not conflict.
+    let is_dead = |e: Entity| {
+        // The TargetQuery row carries `&LifeState` as its third item; an entity not in
+        // the query (e.g. cover, the surface) is never a corpse.
+        targets
+            .get(e)
+            .is_ok_and(|(_, _, life, ..)| *life == LifeState::Dead)
+    };
     let outcome = resolve_coarse(
         &shot,
         grids.occupancy,
@@ -267,6 +282,7 @@ pub(super) fn resolve_round(
         grids.cover,
         tuning,
         rng,
+        is_dead,
     );
 
     let report = match outcome.kind {

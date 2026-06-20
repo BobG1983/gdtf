@@ -14,7 +14,16 @@ fn direction_leaving_grid_immediately_is_a_graceful_miss() {
 
     let muzzle = center(0, 0, 0);
     let dir = Vec3::new(-1.0, 0.0, 0.0); // straight off the west edge
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Miss,
@@ -39,6 +48,7 @@ fn zero_direction_is_a_graceful_miss() {
         &cover,
         &tuning,
         far_shooter(),
+        no_dead(),
     );
     assert_eq!(
         result.kind,
@@ -63,7 +73,16 @@ fn out_of_grid_muzzle_is_a_graceful_miss() {
     // x past the grid extent.
     let muzzle = SimPos::new(100.0, 5.0, 0.5);
     let dir = Vec3::new(1.0, 0.0, 0.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Miss,
@@ -87,7 +106,16 @@ fn impact_point_lies_on_the_ray() {
 
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
 
     let from_muzzle = *result.impact - *muzzle;
     // Collinear with dir → the cross product is ~zero.
@@ -138,6 +166,7 @@ fn band_edges_come_from_tuning() {
         &cover,
         &default,
         far_shooter(),
+        no_dead(),
     );
     assert!(
         !matches!(r_default.kind, MarchKind::Ganger(_)),
@@ -148,7 +177,16 @@ fn band_edges_come_from_tuning() {
     // MID occupant → impacts. Proves the band edge is read from tuning.
     let mut raised = CombatTuning::default();
     raised.projectile_band_edges.mid_high = BandEdge::new(probe + 0.1);
-    let r_raised = march_vector(muzzle, dir, &grid, &surface, &cover, &raised, far_shooter());
+    let r_raised = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &raised,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         r_raised.kind,
         MarchKind::Ganger(entity),
@@ -178,7 +216,16 @@ fn marches_over_real_built_grids() {
 
     let muzzle = at_height(2, 3, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Cover(wall_entry),
@@ -199,7 +246,16 @@ fn long_diagonal_completes_within_step_cap() {
     let muzzle = center(0, 0, 0);
     // A shallow diagonal so the ray crosses the full 60×60 span before exiting.
     let dir = Vec3::new(1.0, 1.0, 0.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Miss,

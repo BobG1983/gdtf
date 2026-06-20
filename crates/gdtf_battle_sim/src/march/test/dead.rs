@@ -1,0 +1,210 @@
+//! GTW-317: the dead-occupant skip — a corpse is transparent to the round, a live
+//! (incl. Downed) occupant still stops it. The `is_dead` predicate is read-only and
+//! draws no RNG, so the skip is purely deterministic.
+
+use super::support::*;
+
+/// Two LOW gangers stand in a line on a flat East ray. When the predicate marks the
+/// FIRST one dead, the round passes through that corpse and impacts the SECOND (live)
+/// ganger — returning the second entity, at the second cell.
+#[test]
+fn first_occupant_dead_round_strikes_second_live_occupant() {
+    let tuning = CombatTuning::default();
+    let surface = SurfaceGrid::new();
+    let cover = CoverLedger::new();
+    let (first, second) = spawn_two_entities();
+
+    let first_cell = key(5, 2, 0);
+    let second_cell = key(7, 2, 0);
+    let mut grid = OccupancyGrid::new();
+    grid.set_occupant(first_cell, Some(first));
+    grid.set_occupant_band(first_cell, Some(HeightBand::Low));
+    grid.set_occupant(second_cell, Some(second));
+    grid.set_occupant_band(second_cell, Some(HeightBand::Low));
+
+    // A LOW round flat East through both cells; only the FIRST ganger is a corpse.
+    let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
+    let dir = Vec3::new(1.0, 0.0, 0.0);
+    let is_dead = move |e: Entity| e == first;
+
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        is_dead,
+    );
+    assert_eq!(
+        result.kind,
+        MarchKind::Ganger(second),
+        "the round passes through the dead first ganger and strikes the live second",
+    );
+    assert_eq!(
+        result.at, second_cell,
+        "the impact cell is the live second ganger's cell, not the corpse's",
+    );
+}
+
+/// Regression guard: with the predicate marking NEITHER occupant dead, the round
+/// stops on the FIRST occupant exactly as it does today (no behavior change when no
+/// corpse is in the path).
+#[test]
+fn no_occupant_dead_round_strikes_first_as_before() {
+    let tuning = CombatTuning::default();
+    let surface = SurfaceGrid::new();
+    let cover = CoverLedger::new();
+    let (first, second) = spawn_two_entities();
+
+    let first_cell = key(5, 2, 0);
+    let second_cell = key(7, 2, 0);
+    let mut grid = OccupancyGrid::new();
+    grid.set_occupant(first_cell, Some(first));
+    grid.set_occupant_band(first_cell, Some(HeightBand::Low));
+    grid.set_occupant(second_cell, Some(second));
+    grid.set_occupant_band(second_cell, Some(HeightBand::Low));
+
+    let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
+    let dir = Vec3::new(1.0, 0.0, 0.0);
+
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
+    assert_eq!(
+        result.kind,
+        MarchKind::Ganger(first),
+        "with nothing dead, the first occupant still stops the round (today's behavior)",
+    );
+    assert_eq!(
+        result.at, first_cell,
+        "the impact cell is the first ganger's cell"
+    );
+}
+
+/// A dead first occupant with a HIGH cover ("wall") behind it: the round passes
+/// through the corpse and is stopped by the cover, returning a `Cover` kind at the
+/// wall cell.
+#[test]
+fn first_occupant_dead_wall_behind_returns_wall() {
+    let tuning = CombatTuning::default();
+    let surface = SurfaceGrid::new();
+    let corpse = spawn_entity();
+
+    let corpse_cell = key(5, 2, 0);
+    let wall_cell = key(7, 2, 0);
+    let mut grid = OccupancyGrid::new();
+    grid.set_occupant(corpse_cell, Some(corpse));
+    grid.set_occupant_band(corpse_cell, Some(HeightBand::Low));
+    let mut cover = CoverLedger::new();
+    cover.insert(wall_cell, cover_entry(HeightBand::High)); // a wall-cover behind
+
+    let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
+    let dir = Vec3::new(1.0, 0.0, 0.0);
+    let is_dead = move |e: Entity| e == corpse;
+
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        is_dead,
+    );
+    assert!(
+        matches!(result.kind, MarchKind::Cover(_)),
+        "passing through the corpse, the round is stopped by the wall behind it",
+    );
+    assert_eq!(
+        result.at, wall_cell,
+        "the impact cell is the wall cell behind the corpse"
+    );
+}
+
+/// A dead first occupant with NOTHING behind it: the round passes through the corpse
+/// and flies off the grid → a clean Miss (it must not strike the corpse).
+#[test]
+fn first_occupant_dead_nothing_behind_misses() {
+    let tuning = CombatTuning::default();
+    let surface = SurfaceGrid::new();
+    let cover = CoverLedger::new();
+    let corpse = spawn_entity();
+
+    let corpse_cell = key(5, 2, 0);
+    let mut grid = OccupancyGrid::new();
+    grid.set_occupant(corpse_cell, Some(corpse));
+    grid.set_occupant_band(corpse_cell, Some(HeightBand::Low));
+
+    let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
+    let dir = Vec3::new(1.0, 0.0, 0.0);
+    let is_dead = move |e: Entity| e == corpse;
+
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        is_dead,
+    );
+    assert_eq!(
+        result.kind,
+        MarchKind::Miss,
+        "with nothing behind the corpse, the round flies off the grid → Miss",
+    );
+    assert!(
+        !matches!(result.kind, MarchKind::Ganger(_)),
+        "the round must not strike the corpse",
+    );
+}
+
+/// A SINGLE occupant the predicate marks dead, with nothing behind: the round must
+/// NOT strike the corpse — it sails through to a clean Miss.
+#[test]
+fn single_dead_occupant_is_not_struck() {
+    let tuning = CombatTuning::default();
+    let surface = SurfaceGrid::new();
+    let cover = CoverLedger::new();
+    let corpse = spawn_entity();
+
+    let corpse_cell = key(5, 2, 0);
+    let mut grid = OccupancyGrid::new();
+    grid.set_occupant(corpse_cell, Some(corpse));
+    grid.set_occupant_band(corpse_cell, Some(HeightBand::Low));
+
+    let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
+    let dir = Vec3::new(1.0, 0.0, 0.0);
+    let is_dead = move |e: Entity| e == corpse;
+
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        is_dead,
+    );
+    assert!(
+        !matches!(result.kind, MarchKind::Ganger(_)),
+        "a corpse the predicate marks dead is never struck",
+    );
+    assert_eq!(
+        result.kind,
+        MarchKind::Miss,
+        "the lone corpse is transparent → the round misses off the grid",
+    );
+}

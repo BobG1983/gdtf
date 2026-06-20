@@ -24,7 +24,16 @@ fn flat_axis_aligned_ray_walks_expected_cell_sequence() {
         cover.insert(key(next_x, 2, 0), cover_entry(HeightBand::High));
         let grid = OccupancyGrid::new();
 
-        let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+        let result = march_vector(
+            muzzle,
+            dir,
+            &grid,
+            &surface,
+            &cover,
+            &tuning,
+            far_shooter(),
+            no_dead(),
+        );
         assert_eq!(
             result.at,
             key(next_x, 2, 0),
@@ -70,7 +79,16 @@ fn diagonal_climbing_ray_walks_expected_staircase() {
         cover.insert(cell, cover_entry(HeightBand::High));
         let grid = OccupancyGrid::new();
 
-        let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+        let result = march_vector(
+            muzzle,
+            dir,
+            &grid,
+            &surface,
+            &cover,
+            &tuning,
+            far_shooter(),
+            no_dead(),
+        );
         assert_eq!(
             result.at, cell,
             "the diagonal climbing ray must cross {cell:?} in DDA order",

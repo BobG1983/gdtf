@@ -146,6 +146,13 @@ const fn no_recoil() -> (PriorShots, RecoilClimb, RecoilGrowth) {
     )
 }
 
+/// The no-op corpse predicate (GTW-317) — marks no occupant dead, so every occupant
+/// still stops the round. These `resolve_coarse` tests exercise the coarse pipeline
+/// over live occupants only, so the dead-skip is never engaged here.
+fn no_dead() -> impl Fn(Entity) -> bool {
+    |_| false
+}
+
 /// Bundle the per-shot description into a [`ShotInputs`] (GTW-179): a standing East
 /// shooter at `shooter_at` firing at a standing target at `target_at`, with the
 /// given `cover_band` / cone width and zero recoil (the first shot). This is the
@@ -215,7 +222,15 @@ fn resolve_coarse_yields_ganger_outcome_on_real_path() {
     };
 
     let shot = standing_shot(shooter_at, target_at, None, zero_cone());
-    let outcome = resolve_coarse(&shot, occupancy, surface, cover, &tuning, &mut rng);
+    let outcome = resolve_coarse(
+        &shot,
+        occupancy,
+        surface,
+        cover,
+        &tuning,
+        &mut rng,
+        no_dead(),
+    );
 
     assert_eq!(
         outcome.kind,
@@ -252,7 +267,15 @@ fn clearing_shot_returns_miss_carrying_trajectory() {
     let mut rng = SimRng::from_seed(BattleSeed::new(7));
 
     let shot = standing_shot(key(2, 2, 0), key(5, 2, 0), None, zero_cone());
-    let outcome = resolve_coarse(&shot, &occupancy, &surface, &cover, &tuning, &mut rng);
+    let outcome = resolve_coarse(
+        &shot,
+        &occupancy,
+        &surface,
+        &cover,
+        &tuning,
+        &mut rng,
+        no_dead(),
+    );
 
     assert_eq!(
         outcome.kind,
@@ -298,7 +321,15 @@ fn shot_into_cover_returns_cover_entry() {
         Some(HeightBand::High),
         zero_cone(),
     );
-    let outcome = resolve_coarse(&shot, &occupancy, &surface, &cover, &tuning, &mut rng);
+    let outcome = resolve_coarse(
+        &shot,
+        &occupancy,
+        &surface,
+        &cover,
+        &tuning,
+        &mut rng,
+        no_dead(),
+    );
 
     assert_eq!(
         outcome.kind,
@@ -337,7 +368,15 @@ fn downward_shot_off_bottom_returns_ground() {
         recoil_climb,
         recoil_growth,
     };
-    let outcome = resolve_coarse(&shot, &occupancy, &surface, &cover, &tuning, &mut rng);
+    let outcome = resolve_coarse(
+        &shot,
+        &occupancy,
+        &surface,
+        &cover,
+        &tuning,
+        &mut rng,
+        no_dead(),
+    );
 
     assert!(
         matches!(outcome.kind, ShotKind::Ground(_)),
@@ -373,7 +412,15 @@ fn same_seed_yields_same_outcome() {
     let shot = standing_shot(key(2, 2, 0), target, None, ConeAngle::new(0.05));
     let run = |seed: u64| -> ShotOutcome {
         let mut rng = SimRng::from_seed(BattleSeed::new(seed));
-        resolve_coarse(&shot, &occupancy, &surface, &cover, &tuning, &mut rng)
+        resolve_coarse(
+            &shot,
+            &occupancy,
+            &surface,
+            &cover,
+            &tuning,
+            &mut rng,
+            no_dead(),
+        )
     };
 
     let a = run(0xC0_FFEE);
@@ -451,7 +498,15 @@ fn resolve_coarse_mutates_no_combat_state() {
             return;
         };
         let shot = standing_shot(shooter_at, target_at, None, zero_cone());
-        let outcome = resolve_coarse(&shot, occupancy, surface, cover, &tuning, &mut rng);
+        let outcome = resolve_coarse(
+            &shot,
+            occupancy,
+            surface,
+            cover,
+            &tuning,
+            &mut rng,
+            no_dead(),
+        );
         assert_eq!(
             outcome.kind,
             ShotKind::Ganger(target_entity),
@@ -516,7 +571,7 @@ fn resolve_coarse_reads_the_passed_grid() {
     let shot = standing_shot(key(2, 2, 0), target, None, zero_cone());
     let run = |grid: &OccupancyGrid| -> ShotOutcome {
         let mut rng = SimRng::from_seed(BattleSeed::new(1));
-        resolve_coarse(&shot, grid, &surface, &cover, &tuning, &mut rng)
+        resolve_coarse(&shot, grid, &surface, &cover, &tuning, &mut rng, no_dead())
     };
 
     let with_occupant = run(&grid_with_occupant);

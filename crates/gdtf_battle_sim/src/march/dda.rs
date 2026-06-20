@@ -2,7 +2,7 @@
 //! state, the grid-bounds tests, the per-voxel occupant impact test, and the
 //! z-boundary slab crossing. Driven by [`march_vector`](super::march_vector).
 
-use bevy::math::Vec3;
+use bevy::{math::Vec3, prelude::Entity};
 
 use crate::{
     clearance::{Clearance, round_band_for_cell, round_clears_occupant},
@@ -92,17 +92,29 @@ enum SteppedAxis {
 /// clears. **Any** actor impacts, including the shooter's own gang (true friendly
 /// fire — AC #2, #6). `here_point` is the round's position in the voxel; `round_band`
 /// is its band there.
+///
+/// A **dead** occupant is transparent: when a ganger would otherwise be struck but
+/// `is_dead(entity)` is `true`, the round passes through the corpse and the test
+/// falls through to the cover below it (and, finding nothing, returns `None` so the
+/// march continues to the next voxel). A live occupant — including a
+/// [`LifeState::Downed`](crate::ganger::LifeState::Downed) one — still stops the
+/// round; only [`LifeState::Dead`](crate::ganger::LifeState::Dead) is skipped, which
+/// is exactly what the caller's predicate encodes (GTW-317). The predicate is
+/// read-only and draws no RNG — the skip is purely deterministic.
 pub(super) fn impact_at(
     here: CellLevel,
     here_point: SimPos,
     round_band: HeightBand,
     occupancy: &OccupancyGrid,
     cover: &CoverLedger,
+    is_dead: &impl Fn(Entity) -> bool,
 ) -> Option<MarchResult> {
-    // 1. A ganger occupant, banded by its silhouette band off the grid.
+    // 1. A ganger occupant, banded by its silhouette band off the grid — unless it is
+    //    a corpse (`is_dead`), in which case the round passes through it (GTW-317).
     if let (Some(entity), Some(occ_band)) =
         (occupancy.occupant(&here), occupancy.occupant_band(&here))
         && round_clears_occupant(round_band, occ_band) == Clearance::Impacts
+        && !is_dead(entity)
     {
         return Some(MarchResult {
             kind:   MarchKind::Ganger(entity),

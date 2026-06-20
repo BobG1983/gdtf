@@ -20,7 +20,16 @@ fn ganger_at_equal_band_impacts_returning_entity() {
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0); // flat East at constant low z
 
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Ganger(entity),
@@ -53,7 +62,16 @@ fn strictly_higher_round_sails_over_ganger() {
     let muzzle = at_height(2, 2, 0, high_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
 
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert!(
         !matches!(result.kind, MarchKind::Ganger(_)),
         "a HIGH round must sail over a LOW ganger, not impact it",

@@ -19,7 +19,16 @@ fn cover_stops_non_strictly_higher_round() {
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
 
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Cover(entry),
@@ -47,7 +56,16 @@ fn destroyed_cover_passes_through() {
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
 
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert!(
         !matches!(result.kind, MarchKind::Cover(_)),
         "destroyed cover must NOT stop the round",
@@ -76,7 +94,16 @@ fn ledger_destroyed_flag_passes_through() {
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
 
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Miss,

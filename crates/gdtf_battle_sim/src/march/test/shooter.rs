@@ -22,7 +22,16 @@ fn shooter_own_cell_never_blocks() {
     // A LOW round fired from the shooter's own cell East — it must LEAVE the cell.
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, shooter_cell);
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        shooter_cell,
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Miss,
@@ -52,7 +61,16 @@ fn friendly_fire_is_real() {
     // A LOW round (not strictly higher than MID) flat East impacts the ally.
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Ganger(ally),

@@ -13,7 +13,16 @@ fn ray_leaving_the_top_is_a_sky_miss() {
     // Straight up from the center of (3, 3, 0).
     let muzzle = center(3, 3, 0);
     let dir = Vec3::new(0.0, 0.0, 1.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Miss,
@@ -32,7 +41,16 @@ fn ray_leaving_the_bottom_strikes_ground() {
     // Straight down from the center of (4, 4, 0): crosses z = 0 in cell (4,4).
     let muzzle = center(4, 4, 0);
     let dir = Vec3::new(0.0, 0.0, -1.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Ground,
@@ -56,7 +74,16 @@ fn ray_leaving_laterally_is_a_miss() {
     // Flat West from the center of (1, 1, 0): leaves the grid at x < 0.
     let muzzle = center(1, 1, 0);
     let dir = Vec3::new(-1.0, 0.0, 0.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Miss,
@@ -87,7 +114,16 @@ fn no_target_stop_round_continues_to_the_blocker_behind() {
     // wall at `behind`.
     let muzzle = at_height(2, 2, 0, high_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
-    let result = march_vector(muzzle, dir, &grid, &surface, &cover, &tuning, far_shooter());
+    let result = march_vector(
+        muzzle,
+        dir,
+        &grid,
+        &surface,
+        &cover,
+        &tuning,
+        far_shooter(),
+        no_dead(),
+    );
     assert_eq!(
         result.kind,
         MarchKind::Cover(behind_cover),

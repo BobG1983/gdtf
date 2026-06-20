@@ -235,6 +235,15 @@ fn split_cell_level(at: CellLevel) -> (Cell, Level) {
 /// their own parameters — they are world state + config + entropy, NOT part of the
 /// shot description.
 ///
+/// `is_dead` is the caller's read-only, RNG-free corpse predicate, threaded
+/// straight into the [`march_vector`] step (GTW-317): a round that would strike a
+/// ganger for which `is_dead(entity)` is `true` passes **through** the corpse and
+/// continues to the next blocker, while a live occupant — including a
+/// [`LifeState::Downed`](crate::ganger::LifeState::Downed) one — still stops the
+/// round (only [`LifeState::Dead`](crate::ganger::LifeState::Dead) is skipped). The
+/// predicate is consulted ONLY inside the march; it takes no draw, so seeded replay
+/// is unaffected and the part-roll / no-draw discipline below is unchanged.
+///
 /// **Mutates nothing** but the injected [`SimRng`]'s draw cursor: no damage /
 /// severity (E3) and no TU / ammo bookkeeping (E4) — the target's `Hp` / `Wounds`
 /// / `WornArmor` and the shooter's `Tu` are untouched. Every position in the
@@ -249,6 +258,7 @@ pub fn resolve_coarse(
     cover: &CoverLedger,
     tuning: &CombatTuning,
     rng: &mut SimRng,
+    is_dead: impl Fn(Entity) -> bool,
 ) -> ShotOutcome {
     // 1. The 3D muzzle point (E2.4).
     let muzzle = muzzle_position(
@@ -289,6 +299,11 @@ pub fn resolve_coarse(
         cover,
         tuning,
         shooter_cell,
+        // GTW-317 dead-occupant skip: thread the caller's real `life == Dead` predicate
+        // straight into the march. A corpse is transparent; a live (incl. Downed)
+        // occupant still stops the round. The predicate takes no draw, so seeded replay
+        // is unchanged.
+        is_dead,
     );
 
     outcome_from_march(march, muzzle, trajectory, tuning, rng)

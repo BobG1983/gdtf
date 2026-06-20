@@ -67,8 +67,24 @@ pub(super) fn spawn_entity() -> Entity {
     world.spawn_empty().id()
 }
 
+/// Two **distinct** spawned `Entity` handles from the SAME `World` — distinct
+/// indices, so equality (`==`) tells them apart. (`spawn_entity` called twice
+/// returns the same `0v0` from two fresh worlds; a dead-skip test that distinguishes
+/// occupants needs genuinely different handles.)
+pub(super) fn spawn_two_entities() -> (Entity, Entity) {
+    let mut world = World::new();
+    (world.spawn_empty().id(), world.spawn_empty().id())
+}
+
 /// A cell far off the grid so it never coincides with any real cell under test —
 /// the "no shooter cell exception in play" sentinel.
 pub(super) fn far_shooter() -> CellLevel {
     key(59, 59, 7)
+}
+
+/// A no-op `is_dead` predicate — marks no occupant a corpse, so every occupant
+/// stops the round (today's behavior; the GTW-317 dead-skip is off). The dead-skip
+/// tests pass their own closures instead.
+pub(super) fn no_dead() -> impl Fn(Entity) -> bool {
+    |_| false
 }

@@ -4,6 +4,7 @@
 mod support;
 
 mod cover;
+mod dead;
 mod degenerate;
 mod exit;
 mod ganger;
