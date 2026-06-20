@@ -38,20 +38,27 @@ const GOOD_FIXTURE_PATH: &str = "test/ron_loader_fixture.ron";
 /// Loose-file path of the deliberately malformed fixture (`count` is a string).
 const MALFORMED_FIXTURE_PATH: &str = "test/ron_loader_malformed.ron";
 
-/// Max `App::update()` iterations to wait for an async asset load to settle.
-/// Generous so a slow CI box never flakes; the loads settle in a few frames.
-const MAX_LOAD_UPDATES: u32 = 64;
+/// Generous SAFETY-NET cap on `App::update()` iterations while waiting for an
+/// async asset load to settle — NOT a timing budget. The wait is signal-based
+/// (it polls the `AssetServer`'s terminal `LoadState` via
+/// [`advance_until_load_state`](gdtf_test_utils::advance_until_load_state)), so
+/// the load resolves whenever it resolves; this cap only bounds a genuinely
+/// stuck load so the test fails with a diagnostic rather than hanging forever.
+/// An async load polled under parallel `cargo` contention has no fixed frame
+/// count, which is why a tight frame budget (the former 64) was the source of
+/// the flake this value replaces (GTW-319, mirroring GTW-305).
+const GENEROUS_LOAD_UPDATES: u32 = 10_000;
 
 /// The generic RON loader resolves a well-formed loose `.ron` into a typed
 /// `RonAsset<LoaderFixture>` whose fields equal the on-disk values.
 ///
 /// Pin-discriminating: this drives the **real** `AssetServer` + the registered
 /// `RonAssetLoader<LoaderFixture>`. If the loader were not registered (the
-/// `init_ron_asset` clause), the asset would never resolve and the wait would
-/// time out (`assert!(loaded, ...)` fails). If the loader deserialized into the
-/// wrong shape, the field asserts fail. If the source root were wrong (the
-/// repo-root `assets/` clause), the file would not be found and the load would
-/// fail rather than resolve.
+/// `init_ron_asset` clause), the asset would never reach `LoadState::Loaded` and
+/// the signal wait would time out with a diagnostic naming the unresolved id. If
+/// the loader deserialized into the wrong shape, the field asserts fail. If the
+/// source root were wrong (the repo-root `assets/` clause), the file would not be
+/// found and the load would fail rather than resolve.
 #[test]
 fn well_formed_ron_resolves_to_typed_asset() {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
@@ -62,24 +69,17 @@ fn well_formed_ron_resolves_to_typed_asset() {
         asset_server.load(GOOD_FIXTURE_PATH)
     };
 
-    // Drive the app until the asset collection contains the resolved asset.
+    // Signal-poll the AssetServer until the load reaches its terminal SUCCESS state
+    // (`LoadState::Loaded`). This is a robust completion signal under parallel-load
+    // contention, where a fixed frame budget is not (GTW-319). A genuine
+    // unresolved load (unregistered loader / wrong source root / panicking loader)
+    // never reaches `Loaded`, so the helper's timeout assert fires with a diagnostic.
     let id = handle.id();
-    let loaded = gdtf_test_utils::advance_until(
+    gdtf_test_utils::advance_until_load_state(
         &mut app,
-        |app| {
-            app.world()
-                .resource::<Assets<RonAsset<LoaderFixture>>>()
-                .get(id)
-                .is_some()
-        },
-        MAX_LOAD_UPDATES,
-    );
-
-    assert!(
-        loaded,
-        "RonAsset<LoaderFixture> should resolve from {GOOD_FIXTURE_PATH} within \
-         {MAX_LOAD_UPDATES} updates — proves the loader is registered and the \
-         asset source root resolves the loose fixture",
+        id,
+        |state| state.is_loaded(),
+        GENEROUS_LOAD_UPDATES,
     );
 
     let assets = app.world().resource::<Assets<RonAsset<LoaderFixture>>>();
@@ -121,23 +121,17 @@ fn malformed_ron_fails_with_typed_load_state() {
     };
     let id = handle.id();
 
-    // Drive until the asset server reports a terminal failure for this id.
-    let failed = gdtf_test_utils::advance_until(
+    // Signal-poll the AssetServer until the load reaches its terminal FAILURE state
+    // (`LoadState::Failed`) — the robust completion signal for the error path under
+    // parallel-load contention, where a fixed frame budget is not (GTW-319). If the
+    // loader panicked on a parse error instead of returning a typed `RonLoadError`,
+    // this would abort before observing `Failed`; if a bad file silently resolved,
+    // `Failed` would never be reached and the helper's timeout assert would fire.
+    gdtf_test_utils::advance_until_load_state(
         &mut app,
-        |app| {
-            app.world()
-                .resource::<AssetServer>()
-                .get_load_state(id)
-                .is_some_and(|state| state.is_failed())
-        },
-        MAX_LOAD_UPDATES,
-    );
-
-    assert!(
-        failed,
-        "loading the malformed {MALFORMED_FIXTURE_PATH} should reach \
-         LoadState::Failed within {MAX_LOAD_UPDATES} updates — proves the loader \
-         surfaces a typed error rather than panicking or silently succeeding",
+        id,
+        |state| state.is_failed(),
+        GENEROUS_LOAD_UPDATES,
     );
 
     // And the asset must NOT have been inserted into the collection.
