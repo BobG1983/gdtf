@@ -216,6 +216,7 @@ pub mod turn;
 pub mod vertical;
 pub mod weapon;
 
+pub use acts::{ReloadOutcome, ReloadResult};
 pub use aim::{Shooter, cone_for, stability_for};
 pub use apply_hit::{GangerHitTarget, apply_hit};
 pub use armor::{

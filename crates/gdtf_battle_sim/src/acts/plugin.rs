@@ -11,7 +11,7 @@ use crate::{
         fire::dispatch_fire,
         movement::dispatch_move,
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
-        reload::dispatch_reload,
+        reload::{ReloadResult, dispatch_reload},
         request::{
             EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
             ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
@@ -69,6 +69,9 @@ impl Plugin for SimActsPlugin {
             .add_message::<EndTurnRequested>()
             // GTW-290: the output fire-trajectory signal dispatch_fire emits per round.
             .add_message::<ShotFired>()
+            // GTW-312: the output reload-result signal dispatch_reload emits per resolved
+            // reload (the three real outcomes; presenter-visible, like ShotFired).
+            .add_message::<ReloadResult>()
             .add_systems(
                 Update,
                 (

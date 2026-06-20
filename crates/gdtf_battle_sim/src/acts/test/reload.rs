@@ -14,6 +14,15 @@ fn empty_magazine(size: u16, reload_tu: u8) -> Magazine {
     Magazine::new(0, MagazineSize::new(size), ReloadTu::new(reload_tu))
 }
 
+/// Drain the buffered [`ReloadResult`] messages from the app's world (GTW-312) — the
+/// presenter-visible reload-result signals `dispatch_reload` emitted this update.
+fn drain_reload_results(app: &mut App) -> Vec<ReloadResult> {
+    app.world_mut()
+        .resource_mut::<Messages<ReloadResult>>()
+        .drain()
+        .collect()
+}
+
 #[test]
 fn reload_dispatch_spends_reload_tu_and_refills_to_full() {
     let mut app = headless_app();
@@ -37,6 +46,13 @@ fn reload_dispatch_spends_reload_tu_and_refills_to_full() {
 
     app.world_mut().write_message(ReloadRequested::new(actor));
     app.update();
+
+    // GTW-312: the success branch emits a single Reloaded result for this actor.
+    assert_eq!(
+        drain_reload_results(&mut app),
+        vec![ReloadResult::new(actor, ReloadOutcome::Reloaded)],
+        "a successful reload must emit one ReloadResult::Reloaded for the actor",
+    );
 
     let tu_after = app.world().get::<Tu>(actor).map(|t| **t);
     let mag_after = app.world().get::<Magazine>(actor).map(|m| *m.rounds());
@@ -79,6 +95,13 @@ fn reload_dispatch_unaffordable_is_a_no_op() {
     app.world_mut().write_message(ReloadRequested::new(actor));
     app.update();
 
+    // GTW-312: the can't-afford branch emits a single NoTu result for this actor.
+    assert_eq!(
+        drain_reload_results(&mut app),
+        vec![ReloadResult::new(actor, ReloadOutcome::NoTu)],
+        "an unaffordable reload must emit one ReloadResult::NoTu for the actor",
+    );
+
     assert_eq!(
         app.world().get::<Tu>(actor).map(|t| **t),
         Some(pool),
@@ -103,6 +126,13 @@ fn reload_dispatch_when_not_alive_is_a_no_op() {
             .id();
         app.world_mut().write_message(ReloadRequested::new(actor));
         app.update();
+        // GTW-312: the not-alive guard is an INTERNAL skip — it emits NO ReloadResult
+        // (a dead/absent ganger never issues a reload intent).
+        assert_eq!(
+            drain_reload_results(&mut app),
+            vec![],
+            "a {life:?} actor's reload must emit NO ReloadResult",
+        );
         assert_eq!(
             app.world().get::<Tu>(actor).map(|t| **t),
             Some(60),
@@ -134,6 +164,13 @@ fn reload_dispatch_of_a_full_magazine_is_a_no_op_no_charge() {
 
     app.world_mut().write_message(ReloadRequested::new(actor));
     app.update();
+
+    // GTW-312: the already-full branch emits a single AlreadyFull result for this actor.
+    assert_eq!(
+        drain_reload_results(&mut app),
+        vec![ReloadResult::new(actor, ReloadOutcome::AlreadyFull)],
+        "an already-full reload must emit one ReloadResult::AlreadyFull for the actor",
+    );
 
     assert_eq!(
         app.world().get::<Tu>(actor).map(|t| **t),

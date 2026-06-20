@@ -11,7 +11,7 @@
 //! [`refill`](crate::magazine::Magazine::refill). It fetches the actor's components via
 //! a Bevy query (`bevy-traps.md` #7 — no `&mut World`).
 
-use bevy::prelude::{MessageReader, Query};
+use bevy::prelude::{Entity, Message, MessageReader, MessageWriter, Query};
 
 use crate::{
     acts::request::ReloadRequested,
@@ -19,6 +19,70 @@ use crate::{
     magazine::Magazine,
     tu::{can_spend_tu, spend_tu},
 };
+
+/// The user-facing OUTCOME of a single [`dispatch_reload`] of one
+/// [`ReloadRequested`] message — the three real, presenter-visible branches
+/// (GTW-312).
+///
+/// A `Copy` enum (a domain value, not a bare type — no-bare-types rule): the
+/// presenter classifies a [`ReloadResult`] by this variant to pop the matching
+/// floating-combat-text. It deliberately has NO "Empty" / "out of ammo" variant:
+/// the GTW-275 reload model carries no ammo reserve
+/// ([`Magazine::refill`](crate::magazine::Magazine::refill) always succeeds, mags
+/// spawn full), so an empty-reserve outcome cannot occur.
+///
+/// The internal guard branches (a not-[`Alive`](crate::ganger::LifeState::Alive)
+/// actor, a missing queried component) emit NO [`ReloadResult`] at all — a
+/// dead / absent ganger never issues a reload intent — so they have no variant
+/// here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReloadOutcome {
+    /// The success branch — the actor could afford the magazine's `reload_tu`, so
+    /// it spent the TU and refilled the magazine to full.
+    Reloaded,
+    /// The already-full no-op branch — the magazine was already full, so the act
+    /// was a no-op and charged NO TU (the FLAGGED GTW-275 "redundant act = no
+    /// charge" choice; see [`dispatch_reload`]).
+    AlreadyFull,
+    /// The can't-afford branch — the actor's [`Tu`] could not pay the magazine's
+    /// own [`reload_tu`](crate::magazine::Magazine::reload_tu), so the reload was
+    /// silently rejected: no TU spent, no refill.
+    NoTu,
+}
+
+/// A reload act RESOLVED — its `actor` and the [`ReloadOutcome`] that befell it
+/// (GTW-312).
+///
+/// Emitted by [`dispatch_reload`] exactly once per drained [`ReloadRequested`]
+/// that reaches one of the three real outcome branches (NOT the internal guard
+/// skips). The presenter (and any reactive sim system) reads this to react to the
+/// reload moment — mirroring the [`ArmorBroken`](crate::armor_wear::ArmorBroken)
+/// presenter-visible signal.
+///
+/// A buffered Bevy **message** (`#[derive(Message)]`), NOT the observer `Event`
+/// API (`bevy-traps.md` #4: Bevy 0.18 renamed buffered `Event`/`EventReader` to
+/// `Message`/`MessageReader`), so it is written with
+/// [`bevy::prelude::MessageWriter`] and read with
+/// [`bevy::prelude::MessageReader`]. The payload is named — [`ReloadOutcome`] is a
+/// domain enum (no-bare-types); [`Entity`] is Bevy framework plumbing (the only
+/// bare type the no-bare-types rule permits — an entity handle, not a domain
+/// value).
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReloadResult {
+    /// The ganger whose reload was resolved — the actor that issued the intent.
+    pub actor:   Entity,
+    /// Which of the three real reload outcomes befell the `actor`.
+    pub outcome: ReloadOutcome,
+}
+
+impl ReloadResult {
+    /// Build a reload-result signal for `actor`'s reload that resolved to
+    /// `outcome`.
+    #[must_use]
+    pub const fn new(actor: Entity, outcome: ReloadOutcome) -> Self {
+        Self { actor, outcome }
+    }
+}
 
 /// **Dispatch** buffered [`ReloadRequested`] messages — drain each and reload the
 /// actor's magazine, charging the weapon's per-weapon reload TU cost (GTW-275).
@@ -48,6 +112,7 @@ use crate::{
 pub fn dispatch_reload(
     mut requests: MessageReader<ReloadRequested>,
     mut actors: Query<(&'static mut Magazine, &'static mut Tu, &'static LifeState)>,
+    mut results: MessageWriter<ReloadResult>,
 ) {
     for request in requests.read() {
         let Ok((mut magazine, mut tu, &life)) = actors.get_mut(request.actor) else {
@@ -55,13 +120,15 @@ pub fn dispatch_reload(
         };
 
         // GATE: alive only (a Downed/Dead ganger cannot reload), mirroring the firing
-        // act's liveness gate.
+        // act's liveness gate. Internal skip — emits NO ReloadResult (a dead/absent
+        // ganger never issues a reload intent).
         if life != LifeState::Alive {
             continue;
         }
 
         // Already-full reload is a no-op — no charge (FLAGGED choice; see the fn doc).
         if magazine.is_full() {
+            results.write(ReloadResult::new(request.actor, ReloadOutcome::AlreadyFull));
             continue;
         }
 
@@ -69,11 +136,13 @@ pub fn dispatch_reload(
         // when short, matching fire/move/stance).
         let cost = Tu::new(*magazine.reload_tu());
         if !can_spend_tu(&tu, cost) {
+            results.write(ReloadResult::new(request.actor, ReloadOutcome::NoTu));
             continue;
         }
 
         // SUCCESS: charge the reload_tu, then refill the magazine to full.
         spend_tu(&mut tu, cost);
         magazine.refill();
+        results.write(ReloadResult::new(request.actor, ReloadOutcome::Reloaded));
     }
 }
