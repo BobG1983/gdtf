@@ -10,6 +10,7 @@ use crate::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
         BodyPart, WornArmor,
     },
+    armor_wear::ArmorWearOutcome,
     ganger::{LifeState, Luck},
     matchup::{Matchup, matchup},
     resolve_and_apply::report::{AppliedDamage, HitReport, TargetGanger},
@@ -151,8 +152,9 @@ pub fn resolve_and_apply(
     let severity = roll_severity(&inputs, &tuning.severity_scaling, rng);
 
     // (7) Apply the resolved hit onto the target in place (E3.6) — HP loss +
-    // Wounds-by-tier + armor wear + the terminal gates; capture the broken signal.
-    let broken = apply_hit(
+    // Wounds-by-tier + armor wear + the terminal gates; capture the per-hit
+    // ArmorWearOutcome (the break crossing / a non-breaking reduction / nothing).
+    let wear_outcome = apply_hit(
         GangerHitTarget {
             hp:        target.hp,
             wounds:    target.wounds,
@@ -167,6 +169,15 @@ pub fn resolve_and_apply(
         tuning,
     );
 
+    // Map the mutually-exclusive outcome onto the report's two sibling armor fields:
+    // a Broke hit sets `broken` (worn None), a Worn hit sets `worn` (broken None),
+    // an Unaffected hit leaves BOTH None (GTW-313). At most one is ever Some.
+    let (broken, worn) = match wear_outcome {
+        ArmorWearOutcome::Broke(broken) => (Some(broken), None),
+        ArmorWearOutcome::Worn(worn) => (None, Some(worn)),
+        ArmorWearOutcome::Unaffected => (None, None),
+    };
+
     // (8) Freeze the verdict — a Copy record of named newtypes, no pixel.
     HitReport {
         kind:    outcome.kind,
@@ -177,6 +188,7 @@ pub fn resolve_and_apply(
             severity,
             life_after: *target.life,
             broken,
+            worn,
         }),
     }
 }

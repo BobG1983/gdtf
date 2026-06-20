@@ -716,6 +716,7 @@ const fn ganger_hit_report(
             severity,
             life_after,
             broken: None,
+            worn: None,
         }),
     }
 }

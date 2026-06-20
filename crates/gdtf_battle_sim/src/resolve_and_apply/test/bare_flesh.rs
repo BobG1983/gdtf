@@ -62,9 +62,15 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         *applied.hit.hp_damage, *weapon.damage,
         "bare flesh deals full weapon damage (no protection / hardness)",
     );
+    // Bare flesh wears no piece — there is nothing to break OR to wear, so the report
+    // surfaces NEITHER armor signal (GTW-313: a hit on an unarmored part emits neither).
     assert_eq!(
         applied.broken, None,
         "bare flesh wears no piece — there is nothing to break",
+    );
+    assert_eq!(
+        applied.worn, None,
+        "bare flesh wears no piece — there is nothing to wear (no ArmorWorn either)",
     );
 
     // --- Armored counterpart: the same weapon vs a protecting piece soaks. ---

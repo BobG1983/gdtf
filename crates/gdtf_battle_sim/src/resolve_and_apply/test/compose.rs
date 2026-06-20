@@ -69,7 +69,7 @@ fn fold_equals_the_composed_steps() {
         defender_luck,
     );
     let severity = roll_severity(&inputs, &tuning.severity_scaling, &mut rng_b);
-    let broken = apply_hit(
+    let wear_outcome = apply_hit(
         GangerHitTarget {
             hp:        &mut hp_b,
             wounds:    &mut wounds_b,
@@ -83,6 +83,13 @@ fn fold_equals_the_composed_steps() {
         entity,
         &tuning,
     );
+    // Map the ArmorWearOutcome onto the two report fields the SAME way the fold does
+    // (GTW-313), so the composition stays a real equivalence on BOTH armor signals.
+    let (broken, worn) = match wear_outcome {
+        ArmorWearOutcome::Broke(broken) => (Some(broken), None),
+        ArmorWearOutcome::Worn(worn) => (None, Some(worn)),
+        ArmorWearOutcome::Unaffected => (None, None),
+    };
 
     // The report's damage block matches the hand-composed steps.
     assert_eq!(
@@ -93,6 +100,7 @@ fn fold_equals_the_composed_steps() {
             severity,
             life_after: life_b,
             broken,
+            worn,
         }),
         "the folded report must equal the composed matchup/hit/severity/state",
     );

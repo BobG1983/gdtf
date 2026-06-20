@@ -6,15 +6,18 @@
 use super::support::*;
 
 /// AC7 (wear path) — `apply_hit` wears the struck piece as part of application: the
-/// struck location's integrity drops by exactly the hit's wear, and a high-wear
-/// hit on a near-broken piece returns `Some(ArmorBroken)`. A unit assertion on
-/// the worn copy through the real `apply_hit` entry point.
+/// struck location's integrity drops by exactly the hit's wear, a sub-fatal wear on
+/// a still-protecting piece returns `Worn` carrying that exact delta (GTW-313), and
+/// a high-wear hit on a near-broken piece returns `Broke(ArmorBroken)`. A unit
+/// assertion on the worn copy + the per-hit outcome through the real `apply_hit`.
 #[test]
 fn apply_hit_wears_the_struck_piece_and_can_break_it() {
     let tuning = CombatTuning::default();
     let part = BodyPart::RightArm;
 
-    // (1) Wears by exactly the hit's wear: a sturdy piece, sub-fatal wear.
+    // (1) Wears by exactly the hit's wear: a sturdy piece, sub-fatal wear. The piece
+    //     stays protecting, so apply_hit returns Worn carrying the exact delta (6).
+    let ganger1 = a_ganger();
     let mut hp = Hp::new(50);
     let mut wounds = Wounds::new(9);
     let mut life = LifeState::Alive;
@@ -29,17 +32,11 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
             worn:      &mut worn,
             inflicted: &mut inflicted,
         };
-        let broke = apply_hit(
-            target,
-            &hit(1, 6),
-            Severity::Minor,
-            part,
-            a_ganger(),
-            &tuning,
-        );
+        let outcome = apply_hit(target, &hit(1, 6), Severity::Minor, part, ganger1, &tuning);
         assert_eq!(
-            broke, None,
-            "a sub-fatal wear on a sturdy piece must not break it"
+            outcome,
+            ArmorWearOutcome::Worn(ArmorWorn::new(ganger1, part, IntegrityWear::new(6))),
+            "a sub-fatal wear on a sturdy piece must not break it — it must report Worn(delta=6)",
         );
     }
     assert_eq!(
@@ -48,14 +45,14 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
         "apply_hit must drop the struck piece's integrity by exactly the hit's wear",
     );
 
-    // (2) A high-wear hit on a near-broken piece returns Some(ArmorBroken).
+    // (2) A high-wear hit on a near-broken piece returns Broke(ArmorBroken).
     let ganger = a_ganger();
     let mut hp2 = Hp::new(50);
     let mut wounds2 = Wounds::new(9);
     let mut life2 = LifeState::Alive;
     let mut worn2 = worn_suit(1); // protecting (1 > 0), one hit from broken
     let mut inflicted2 = InflictedWounds::default();
-    let broke = {
+    let outcome = {
         let target = GangerHitTarget {
             hp:        &mut hp2,
             wounds:    &mut wounds2,
@@ -66,9 +63,9 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
         apply_hit(target, &hit(1, 5), Severity::Minor, part, ganger, &tuning)
     };
     assert_eq!(
-        broke,
-        Some(ArmorBroken::new(ganger, part)),
-        "a high-wear hit crossing a near-broken piece to ≤ 0 must return Some(ArmorBroken)",
+        outcome,
+        ArmorWearOutcome::Broke(ArmorBroken::new(ganger, part)),
+        "a high-wear hit crossing a near-broken piece to ≤ 0 must return Broke(ArmorBroken)",
     );
     assert!(
         !worn2.protects(part),
@@ -118,7 +115,12 @@ fn apply_hit_armor_broken_flows_through_a_message_buffer() {
             worn:      &mut worn,
             inflicted: &mut inflicted,
         };
-        if let Some(broke) = apply_hit(target, &hit(1, 5), Severity::Minor, part, ganger, &tuning) {
+        // The breaking hit yields Broke(ArmorBroken) — write its payload to the buffer
+        // (the system-boundary message write; a Worn/Unaffected outcome would write
+        // nothing here, exactly as the old `if let Some` did).
+        if let ArmorWearOutcome::Broke(broke) =
+            apply_hit(target, &hit(1, 5), Severity::Minor, part, ganger, &tuning)
+        {
             writer.write(broke);
         }
     };

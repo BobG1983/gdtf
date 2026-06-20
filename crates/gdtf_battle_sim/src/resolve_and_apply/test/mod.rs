@@ -4,6 +4,7 @@
 
 mod support;
 
+mod armor_signal;
 mod bare_flesh;
 mod compose;
 mod corpse;

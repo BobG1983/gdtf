@@ -24,6 +24,7 @@ fn report_is_a_frozen_record_of_named_newtypes() {
         severity:   Severity::Major,
         life_after: LifeState::Downed,
         broken:     Some(ArmorBroken::new(entity, BodyPart::Torso)),
+        worn:       None,
     };
     let applied_copy = applied; // Copy
     assert_eq!(

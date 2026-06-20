@@ -8,7 +8,7 @@ use crate::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
         ArmorType, BodyPart, WornArmor,
     },
-    armor_wear::{ArmorBroken, wear_armor},
+    armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor},
     resolve_hit::IntegrityWear,
 };
 
@@ -106,38 +106,66 @@ fn emits_exactly_once_on_the_crossing() {
     let mut worn = worn_suit(5);
     let ganger = a_ganger();
 
-    // First hit crosses 5 → -1 (protecting → broken): emits.
+    // First hit crosses 5 → -1 (protecting → broken): emits Broke once.
     let first = wear_armor(&mut worn, BodyPart::LeftArm, IntegrityWear::new(6), ganger);
     assert_eq!(
         first,
-        Some(ArmorBroken::new(ganger, BodyPart::LeftArm)),
-        "the protecting→broken crossing must emit ArmorBroken once",
+        ArmorWearOutcome::Broke(ArmorBroken::new(ganger, BodyPart::LeftArm)),
+        "the protecting→broken crossing must emit Broke(ArmorBroken) once",
     );
 
-    // Second hit re-wears an already-broken piece (-1 → -7): no re-emit.
+    // Second hit re-wears an already-broken piece (-1 → -7): no re-emit (Unaffected,
+    // NOT Worn — an already-broken piece is not protecting, so it surfaces nothing).
     let second = wear_armor(&mut worn, BodyPart::LeftArm, IntegrityWear::new(6), ganger);
     assert_eq!(
-        second, None,
+        second,
+        ArmorWearOutcome::Unaffected,
         "an already-broken piece that re-wears must NOT re-emit (emit once)",
     );
 }
 
-/// A wear that does NOT cross zero (stays protecting) emits nothing — the
-/// signal is only the crossing, not every hit.
+/// A wear that does NOT cross zero (stays protecting) emits no [`ArmorBroken`] — but
+/// it DOES surface the GTW-313 [`ArmorWorn`] reduction carrying the exact delta (the
+/// wear signal is per reduction, the break signal is only the crossing).
 #[test]
-fn no_emit_when_still_protecting() {
+fn worn_not_broken_when_still_protecting() {
     let mut worn = worn_suit(10);
     let ganger = a_ganger();
 
     let result = wear_armor(&mut worn, BodyPart::RightLeg, IntegrityWear::new(4), ganger);
 
     assert_eq!(
-        result, None,
-        "a hit that leaves integrity > 0 must not emit ArmorBroken",
+        result,
+        ArmorWearOutcome::Worn(ArmorWorn::new(
+            ganger,
+            BodyPart::RightLeg,
+            IntegrityWear::new(4)
+        )),
+        "a hit that leaves integrity > 0 must surface Worn(delta=4), never Broke",
     );
     assert!(
         worn.protects(BodyPart::RightLeg),
         "the piece must still protect after a sub-fatal wear",
+    );
+}
+
+/// A ZERO-wear hit on a still-protecting piece surfaces NEITHER signal — Unaffected
+/// (no "Armor -0" pop, mirroring [`ArmorBroken`]'s emit-only-on-the-event rule).
+#[test]
+fn zero_wear_on_protecting_piece_is_unaffected() {
+    let mut worn = worn_suit(10);
+    let ganger = a_ganger();
+
+    let result = wear_armor(&mut worn, BodyPart::RightLeg, IntegrityWear::new(0), ganger);
+
+    assert_eq!(
+        result,
+        ArmorWearOutcome::Unaffected,
+        "a zero-wear hit must surface nothing (no misleading Armor -0)",
+    );
+    assert!(
+        worn.protects(BodyPart::RightLeg),
+        "a zero-wear hit must leave the piece protecting",
     );
 }
 
@@ -174,7 +202,11 @@ fn armor_broken_is_a_buffered_message_read_in_a_headless_app() {
             ArmorHardness::new(0),
             ArmorType::DEFAULT,
         )));
-        if let Some(broke) = wear_armor(&mut worn, part, IntegrityWear::new(2), ganger) {
+        // The breaking wear yields Broke(ArmorBroken) — write its payload to the buffer
+        // (a Worn/Unaffected outcome would write nothing, as the old `if let Some` did).
+        if let ArmorWearOutcome::Broke(broke) =
+            wear_armor(&mut worn, part, IntegrityWear::new(2), ganger)
+        {
             writer.write(broke);
         }
     };

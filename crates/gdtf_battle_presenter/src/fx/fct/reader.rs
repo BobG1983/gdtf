@@ -341,6 +341,7 @@ mod test {
                 severity,
                 life_after,
                 broken: None,
+                worn: None,
             }),
         }
     }

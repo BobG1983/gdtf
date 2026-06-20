@@ -25,13 +25,16 @@
 //! the targeted/observer `Event` API.
 //!
 //! The crossing-detection lives in the **pure** [`wear_armor`] helper so it is
-//! deterministic and unit-testable with no Bevy app; the caller (E3.6's
-//! `apply_hit`, and the headless test here) writes the returned `Some` to a
-//! [`bevy::prelude::MessageWriter<ArmorBroken>`] at the system boundary. Pure
-//! model logic — no renderer, no pixel.
+//! deterministic and unit-testable with no Bevy app; it returns an
+//! [`ArmorWearOutcome`] ([`Unaffected`](ArmorWearOutcome::Unaffected) /
+//! [`Worn`](ArmorWearOutcome::Worn) carrying the per-hit integrity delta /
+//! [`Broke`](ArmorWearOutcome::Broke)), which the caller (E3.6's `apply_hit`)
+//! maps onto the hit report's `broken` / `worn` fields — surfaced to the
+//! presenter on [`ShotFired`](crate::ShotFired)`.report` (GTW-313). Pure model
+//! logic — no renderer, no pixel.
 
 #[cfg(test)]
 mod test;
 mod wear;
 
-pub use wear::{ArmorBroken, wear_armor};
+pub use wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor};

@@ -5,7 +5,7 @@ use bevy::prelude::Entity;
 
 use crate::{
     armor::{BodyPart, WornArmor},
-    armor_wear::{ArmorBroken, wear_armor},
+    armor_wear::{ArmorWearOutcome, wear_armor},
     ganger::{Hp, LifeState, Wounds},
     inflicted_wound::{InflictedWound, InflictedWounds},
     resolve_hit::HitResult,
@@ -92,13 +92,14 @@ fn hp_damage_to_u16(damage: i32) -> u16 {
 /// (E3.4) as inputs — it applies them, it does not recompute them (the
 /// resolve → severity → apply chain is the E3.9 capstone). `part` is the struck
 /// [`BodyPart`] (E3.4's location roll), `ganger` is the owning [`Entity`] (carried
-/// on the returned [`ArmorBroken`]), and `tuning` supplies the per-tier
+/// on the returned [`ArmorBroken`](crate::armor_wear::ArmorBroken) /
+/// [`ArmorWorn`](crate::armor_wear::ArmorWorn)), and `tuning` supplies the per-tier
 /// [`crate::tuning::WoundCosts`].
 ///
 /// Order (verbatim, see the module docs):
 ///
 /// 1. **Corpse-skip** — if the ganger is already [`LifeState::Dead`], return
-///    [`None`] and mutate nothing.
+///    [`ArmorWearOutcome::Unaffected`] and mutate nothing.
 /// 2. **HP loss — always** — subtract the [`HitResult`]'s
 ///    [`HpDamage`](crate::resolve_hit::HpDamage) from [`Hp`] (saturating at `0`),
 ///    even on a graze.
@@ -109,15 +110,18 @@ fn hp_damage_to_u16(damage: i32) -> u16 {
 ///    struck `part`) to [`InflictedWounds`]; a [`Severity::None`] graze records
 ///    nothing (HP loss only, no Wound — `docs/combat/resolution.md` §6).
 /// 4. **Armor wear** — persist the [`HitResult`]'s integrity wear onto the struck
-///    [`WornArmor`] piece via [`wear_armor`], capturing the `Some(`[`ArmorBroken`]`)`
-///    on the single protecting→broken crossing.
+///    [`WornArmor`] piece via [`wear_armor`], capturing the [`ArmorWearOutcome`]:
+///    [`Broke`](ArmorWearOutcome::Broke) on the protecting→broken crossing,
+///    [`Worn`](ArmorWearOutcome::Worn) on a reduction that did not break it, or
+///    [`Unaffected`](ArmorWearOutcome::Unaffected).
 /// 5. **Terminal gates** — `Wounds == 0` → [`LifeState::Dead`] (**trumps**); else
 ///    `Hp == 0` → [`LifeState::Downed`].
 ///
-/// Returns the [`ArmorBroken`] signal iff this hit broke the struck piece (for the
-/// caller to write to a [`bevy::prelude::MessageWriter<ArmorBroken>`]), [`None`]
-/// otherwise (including the corpse-skip). Pure, render-free, saturating arithmetic
-/// — no underflow, no pixel.
+/// Returns the [`ArmorWearOutcome`] this hit produced (GTW-313) — the caller maps
+/// it to the matching message(s) /
+/// [`HitReport`](crate::resolve_and_apply::HitReport) fields. A corpse-skip returns
+/// [`ArmorWearOutcome::Unaffected`]. Pure, render-free, saturating arithmetic — no
+/// underflow, no pixel.
 #[must_use]
 pub fn apply_hit(
     target: GangerHitTarget<'_>,
@@ -126,10 +130,10 @@ pub fn apply_hit(
     part: BodyPart,
     ganger: Entity,
     tuning: &CombatTuning,
-) -> Option<ArmorBroken> {
+) -> ArmorWearOutcome {
     // (a) Corpse-skip: a dead ganger is final — mutate nothing, emit nothing.
     if *target.life == LifeState::Dead {
-        return None;
+        return ArmorWearOutcome::Unaffected;
     }
 
     // (b) HP loss ALWAYS — saturating at 0 (Hp is unsigned; a lethal hit depletes
@@ -156,8 +160,9 @@ pub fn apply_hit(
     }
 
     // (d) Armor wear — persist this hit's integrity wear onto the struck worn piece
-    // (E3.5), capturing the broken signal on the single protecting→broken crossing.
-    let broken = wear_armor(target.worn, part, hit.wear, ganger);
+    // (E3.5), capturing the per-hit ArmorWearOutcome (Broke crossing / Worn reduction
+    // / Unaffected). The mutation is unchanged; only the classification is enriched.
+    let wear_outcome = wear_armor(target.worn, part, hit.wear, ganger);
 
     // (e) Terminal gates, in order — Wounds depleted to 0 → Dead (TRUMPS Downed,
     // checked first); else Hp depleted to 0 → Downed. (Pools are unsigned, so the
@@ -168,5 +173,5 @@ pub fn apply_hit(
         *target.life = LifeState::Downed;
     }
 
-    broken
+    wear_outcome
 }

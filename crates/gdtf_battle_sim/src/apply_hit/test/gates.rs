@@ -148,7 +148,7 @@ fn corpse_skip_changes_nothing() {
     };
     // A hit that, on a live ganger, would subtract HP, spend Wounds, and break
     // the near-broken piece — proving the skip, not a harmless input.
-    let broke = apply_hit(
+    let outcome = apply_hit(
         target,
         &hit(10, 50),
         Severity::Critical,
@@ -157,7 +157,11 @@ fn corpse_skip_changes_nothing() {
         &tuning,
     );
 
-    assert_eq!(broke, None, "a corpse-skip must emit no ArmorBroken");
+    assert_eq!(
+        outcome,
+        ArmorWearOutcome::Unaffected,
+        "a corpse-skip must emit no ArmorBroken / ArmorWorn (Unaffected)"
+    );
     assert_eq!(hp, hp_before, "a corpse's Hp must not change");
     assert_eq!(wounds, wounds_before, "a corpse's Wounds must not change");
     assert_eq!(life, life_before, "a corpse's LifeState must stay Dead");

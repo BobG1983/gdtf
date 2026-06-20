@@ -4,7 +4,7 @@
 
 use crate::{
     armor::{BodyPart, WornArmor},
-    armor_wear::ArmorBroken,
+    armor_wear::{ArmorBroken, ArmorWorn},
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
     matchup::Matchup,
@@ -52,11 +52,13 @@ pub struct TargetGanger<'a> {
 ///
 /// A frozen `Copy` record of named newtypes (no bare primitive, no pixel): the
 /// resolved [`Matchup`], the per-hit [`HitResult`], the rolled [`Severity`], the
-/// ganger's [`LifeState`] **after** application, and the `Some(`[`ArmorBroken`]`)`
-/// iff this hit broke the struck piece. The presenter reads it for FX; it is never
-/// mutated after [`resolve_and_apply`](super::resolve_and_apply) returns. Present
-/// only when the hit actually landed on a ganger — a non-ganger / corpse-skip /
-/// no-part report carries `None` in [`HitReport::applied`].
+/// ganger's [`LifeState`] **after** application, and the **mutually-exclusive**
+/// armor signals — the `Some(`[`ArmorBroken`]`)` iff this hit broke the struck
+/// piece, OR the `Some(`[`ArmorWorn`]`)` iff it reduced the piece short of breaking
+/// it (GTW-313). The presenter reads it for FX; it is never mutated after
+/// [`resolve_and_apply`](super::resolve_and_apply) returns. Present only when the
+/// hit actually landed on a ganger — a non-ganger / corpse-skip / no-part report
+/// carries `None` in [`HitReport::applied`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AppliedDamage {
     /// The resolved weapon×armor matchup (E3.2) — [`Matchup::Neutral`] on bare flesh.
@@ -68,7 +70,16 @@ pub struct AppliedDamage {
     /// The target's [`LifeState`] **after** the hit was applied (E3.6's terminal gates).
     pub life_after: LifeState,
     /// The armor-broken signal iff this hit broke the struck piece (E3.6) — else `None`.
+    ///
+    /// **Mutually exclusive** with [`worn`](AppliedDamage::worn): at most one of the
+    /// two is `Some` per hit (the breaking hit sets `broken`, a wearing hit sets
+    /// `worn`, an unaffected hit leaves both `None`).
     pub broken:     Option<ArmorBroken>,
+    /// The armor-worn signal iff this hit reduced the struck piece **without**
+    /// breaking it (GTW-313) — carries the per-hit integrity `delta`; else `None`.
+    ///
+    /// **Mutually exclusive** with [`broken`](AppliedDamage::broken) (see above).
+    pub worn:       Option<ArmorWorn>,
 }
 
 /// The **frozen per-hit report** [`resolve_and_apply`](super::resolve_and_apply)

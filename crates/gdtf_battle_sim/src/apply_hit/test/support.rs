@@ -11,7 +11,7 @@ pub(super) use crate::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
         ArmorType, BodyPart, WornArmor,
     },
-    armor_wear::ArmorBroken,
+    armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn},
     ganger::{Hp, LifeState, Wounds},
     inflicted_wound::{InflictedWound, InflictedWounds},
     resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},

@@ -223,7 +223,7 @@ pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
     ArmorRegistry, ArmorSpec, ArmorType, BodyPart, SourceArmor, WornArmor,
 };
-pub use armor_wear::{ArmorBroken, wear_armor};
+pub use armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor};
 pub use battle::{
     BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleSimPlugin, BattleWon,
     PlayerFaction, SetupBattleRequested, TeardownBattleRequested, check_outcome,

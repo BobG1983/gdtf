@@ -13,7 +13,8 @@
 //!
 //! 1. **Corpse-skip** — a ganger already at [`LifeState::Dead`](crate::ganger::LifeState::Dead)
 //!    is **skipped entirely**: nothing mutates and no
-//!    [`ArmorBroken`](crate::armor_wear::ArmorBroken) fires (the "corpse-skip
+//!    [`ArmorBroken`](crate::armor_wear::ArmorBroken) /
+//!    [`ArmorWorn`](crate::armor_wear::ArmorWorn) fires (the "corpse-skip
 //!    discipline" of resolution.md §9's `resolve_and_apply`). Death is final; a
 //!    later round in a burst cannot re-kill a corpse.
 //! 2. **HP loss — ALWAYS** — the [`HitResult`](crate::resolve_hit::HitResult)'s
@@ -36,9 +37,11 @@
 //! 4. **Armor wear** — the [`HitResult`](crate::resolve_hit::HitResult)'s
 //!    [`crate::resolve_hit::IntegrityWear`] is persisted onto the struck location of
 //!    the battle-local [`WornArmor`](crate::armor::WornArmor) via the E3.5
-//!    [`wear_armor`](crate::armor_wear::wear_armor) path, surfacing the
-//!    `Some(`[`ArmorBroken`](crate::armor_wear::ArmorBroken)`)` on the single
-//!    protecting→broken crossing for the caller to write to a message buffer.
+//!    [`wear_armor`](crate::armor_wear::wear_armor) path, surfacing the per-hit
+//!    [`ArmorWearOutcome`](crate::armor_wear::ArmorWearOutcome): the
+//!    [`ArmorBroken`](crate::armor_wear::ArmorBroken) crossing, the GTW-313
+//!    [`ArmorWorn`](crate::armor_wear::ArmorWorn) reduction, or nothing — for the
+//!    caller to write to the matching message buffer.
 //! 5. **Terminal gates, in order** (resolution.md §9: "`Wounds ≤ 0` → **Dead**
 //!    (trumps Downed …), else `HP ≤ 0` → **Downed**"). Because the pools are
 //!    unsigned and the subtractions saturate, "≤ 0" is reached as **depleted to
@@ -50,9 +53,11 @@
 //!
 //! Pure, render-free model logic: no renderer, no pixel. [`apply_hit`] mutates the
 //! ganger state in place through the borrowed [`GangerHitTarget`] bundle and
-//! returns the armor-broken signal; the caller writes that `Some` to a
-//! [`bevy::prelude::MessageWriter<ArmorBroken>`](crate::armor_wear::ArmorBroken) at
-//! the system boundary (the same pure-helper / message-at-the-boundary split as
+//! returns the per-hit [`ArmorWearOutcome`](crate::armor_wear::ArmorWearOutcome);
+//! the caller writes its [`ArmorBroken`](crate::armor_wear::ArmorBroken) /
+//! [`ArmorWorn`](crate::armor_wear::ArmorWorn) payload to the matching
+//! [`bevy::prelude::MessageWriter`](bevy::prelude::MessageWriter) at the system
+//! boundary (the same pure-helper / message-at-the-boundary split as
 //! [`wear_armor`](crate::armor_wear::wear_armor)).
 
 mod fold;
