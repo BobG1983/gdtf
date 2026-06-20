@@ -45,8 +45,9 @@ use gdtf_battle_sim::{
     ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng, Stance, StanceKind,
     SurfaceGrid, Tu, TuMax,
     acts::{
-        AimRequest, EndTurnRequested, FireRequested, ReloadRequested, SetAimingRequested,
-        SetFacingRequested, SetStanceRequested, SimActsPlugin,
+        AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, ReloadRequested,
+        SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
+        StabilizeDownedRequested,
     },
     tuning::CombatTuning,
 };
@@ -308,8 +309,14 @@ struct ReloadProbe(Vec<ReloadRequested>);
 /// Collected `EndTurnRequested` messages (probe, GTW-309).
 #[derive(Resource, Default)]
 struct EndTurnProbe(Vec<EndTurnRequested>);
+/// Collected `ExecuteDownedRequested` messages (probe, GTW-294).
+#[derive(Resource, Default)]
+struct ExecuteProbe(Vec<ExecuteDownedRequested>);
+/// Collected `StabilizeDownedRequested` messages (probe, GTW-294).
+#[derive(Resource, Default)]
+struct StabilizeProbe(Vec<StabilizeDownedRequested>);
 
-/// Adds the five message-collecting probe systems, each running AFTER the drain so it
+/// Adds the message-collecting probe systems, each running AFTER the drain so it
 /// observes the same update's emitted messages. The probes have their own
 /// `MessageReader` cursors (independent of the sim's `dispatch_*`), so they read every
 /// message the drain wrote.
@@ -319,7 +326,9 @@ fn add_probes(app: &mut App) {
         .insert_resource(AimProbe::default())
         .insert_resource(FacingProbe::default())
         .insert_resource(ReloadProbe::default())
-        .insert_resource(EndTurnProbe::default());
+        .insert_resource(EndTurnProbe::default())
+        .insert_resource(ExecuteProbe::default())
+        .insert_resource(StabilizeProbe::default());
     app.add_systems(
         Update,
         (
@@ -340,6 +349,12 @@ fn add_probes(app: &mut App) {
                 p.0.extend(r.read().copied());
             },
             |mut r: MessageReader<EndTurnRequested>, mut p: ResMut<EndTurnProbe>| {
+                p.0.extend(r.read().copied());
+            },
+            |mut r: MessageReader<ExecuteDownedRequested>, mut p: ResMut<ExecuteProbe>| {
+                p.0.extend(r.read().copied());
+            },
+            |mut r: MessageReader<StabilizeDownedRequested>, mut p: ResMut<StabilizeProbe>| {
                 p.0.extend(r.read().copied());
             },
         )
@@ -730,6 +745,104 @@ fn reload_intent_emits_one_reload_requested_for_the_selection() {
     assert_eq!(
         reloads[0].actor, ganger,
         "the ReloadRequested actor is the *SelectedShooter",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-294 — pushing ActIntent::Execute / ActIntent::Stabilize emits exactly one
+// ExecuteDownedRequested / StabilizeDownedRequested for the SelectedShooter as the actor
+// over the carried downed target; with the selection cleared, nothing is written.
+// ---------------------------------------------------------------------------------
+
+/// GTW-294 — pushing `ActIntent::Execute(target)` and `ActIntent::Stabilize(target)` with
+/// a selected shooter emits EXACTLY one `ExecuteDownedRequested { actor, target }` and one
+/// `StabilizeDownedRequested { actor, target }` through the `dispatch_act_intents` drain,
+/// the actor being the `*SelectedShooter` and the target the carried downed entity (the
+/// downed-target affordance surrogate, over the SAME seam the other intents use).
+#[test]
+fn downed_intents_emit_requests_for_selection_over_carried_target() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    let actor = spawn_ganger(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    select_ganger(&mut app, actor);
+    // The downed target entity — only its identity matters at this seam (the sim's
+    // faction/adjacency gate is the authoritative check, not this layer).
+    let target = app.world_mut().spawn(ENEMY_FACTION).id();
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::Execute(target));
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::Stabilize(target));
+    app.update();
+
+    let executes = app
+        .world()
+        .get_resource::<ExecuteProbe>()
+        .map_or_else(Vec::new, |p| p.0.clone());
+    assert_eq!(
+        executes.len(),
+        1,
+        "one ExecuteDownedRequested via the execute intent",
+    );
+    assert_eq!(
+        executes[0],
+        ExecuteDownedRequested::new(actor, target),
+        "ExecuteDownedRequested has actor = *SelectedShooter and target = carried",
+    );
+
+    let stabilizes = app
+        .world()
+        .get_resource::<StabilizeProbe>()
+        .map_or_else(Vec::new, |p| p.0.clone());
+    assert_eq!(
+        stabilizes.len(),
+        1,
+        "one StabilizeDownedRequested via the stabilize intent",
+    );
+    assert_eq!(
+        stabilizes[0],
+        StabilizeDownedRequested::new(actor, target),
+        "StabilizeDownedRequested has actor = *SelectedShooter and target = carried",
+    );
+}
+
+/// GTW-294 — with the selection cleared (`SelectedShooter(None)`), pushing both downed
+/// intents writes NOTHING (the drain resolves the actor from the selection and is a no-op
+/// without one — the same fail-closed shape as the Reload arm).
+#[test]
+fn downed_intents_emit_nothing_without_selection() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    // A downed target exists but there is NO selected actor.
+    let target = app.world_mut().spawn(ENEMY_FACTION).id();
+    app.world_mut().insert_resource(SelectedShooter::cleared());
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::Execute(target));
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::Stabilize(target));
+    app.update();
+
+    assert!(
+        app.world()
+            .get_resource::<ExecuteProbe>()
+            .is_none_or(|p| p.0.is_empty()),
+        "no ExecuteDownedRequested without a selection",
+    );
+    assert!(
+        app.world()
+            .get_resource::<StabilizeProbe>()
+            .is_none_or(|p| p.0.is_empty()),
+        "no StabilizeDownedRequested without a selection",
     );
 }
 

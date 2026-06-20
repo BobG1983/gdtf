@@ -5,8 +5,9 @@ use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, Facing, Stance, StanceKind,
     acts::{
-        AimRequest, EndTurnRequested, FireRequested, MoveRequested, ReloadRequested,
-        SetAimingRequested, SetFacingRequested, SetStanceRequested,
+        AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
+        ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
+        StabilizeDownedRequested,
     },
 };
 
@@ -94,6 +95,22 @@ pub enum ActIntent {
     /// sim's [`dispatch_end_turn`](gdtf_battle_sim::dispatch_end_turn) advances the cycle
     /// and runs the next team's turn-start TU regen).
     EndTurn,
+    /// EXECUTE the carried downed `target` — drained to [`ExecuteDownedRequested`] for the
+    /// [`SelectedShooter`] as the actor (GTW-294). The carried [`Entity`] is the downed
+    /// TARGET; the actor is always the selection. The drain emits
+    /// [`ExecuteDownedRequested::new(actor, target)`](ExecuteDownedRequested::new) ONLY when
+    /// a shooter is selected (a no-op with no selection); the sim's
+    /// [`execute_downed`](gdtf_battle_sim::execute_downed) faction gate (an 8-adjacent alive
+    /// ENEMY) is the authoritative check, not this layer's.
+    Execute(Entity),
+    /// STABILIZE the carried downed `target` — drained to [`StabilizeDownedRequested`] for
+    /// the [`SelectedShooter`] as the actor (GTW-294). The carried [`Entity`] is the downed
+    /// TARGET; the actor is always the selection. The drain emits
+    /// [`StabilizeDownedRequested::new(actor, target)`](StabilizeDownedRequested::new) ONLY
+    /// when a shooter is selected (a no-op with no selection); the sim's
+    /// [`stabilize_downed`](gdtf_battle_sim::stabilize_downed) faction gate (an 8-adjacent
+    /// alive ALLY) is the authoritative check, not this layer's.
+    Stabilize(Entity),
 }
 
 /// The shared intent QUEUE — the buffered seam both input surfaces write.
@@ -135,7 +152,7 @@ impl PendingActIntent {
     }
 }
 
-/// The six `*Requested` act [`MessageWriter`]s [`dispatch_act_intents`] emits onto,
+/// The `*Requested` act [`MessageWriter`]s [`dispatch_act_intents`] emits onto,
 /// grouped into ONE [`SystemParam`] so the drain's parameter list stays under
 /// clippy's argument-count gate (the sim's `BattleGridsParam` precedent).
 ///
@@ -149,22 +166,28 @@ impl PendingActIntent {
 #[derive(SystemParam)]
 pub struct ActWriters<'w> {
     /// The FIRE-act writer — the left-click FIRE surface's drained message.
-    fire:     MessageWriter<'w, FireRequested>,
+    fire:      MessageWriter<'w, FireRequested>,
     /// The MOVE-act writer — the left-click MOVE branch's drained message (GTW-238).
-    movement: MessageWriter<'w, MoveRequested>,
+    movement:  MessageWriter<'w, MoveRequested>,
     /// The set-stance writer — the stance-cycle key's drained message.
-    stance:   MessageWriter<'w, SetStanceRequested>,
+    stance:    MessageWriter<'w, SetStanceRequested>,
     /// The set-aiming writer — the aim-toggle key's drained message.
-    aiming:   MessageWriter<'w, SetAimingRequested>,
+    aiming:    MessageWriter<'w, SetAimingRequested>,
     /// The set-facing writer — the facing-cycle key's AND the right-click turn-to-face
     /// surface's drained message (GTW-238 reuses it for [`ActIntent::Turn`]).
-    facing:   MessageWriter<'w, SetFacingRequested>,
+    facing:    MessageWriter<'w, SetFacingRequested>,
     /// The reload-act writer — the weapon panel Reload button's drained message
     /// (GTW-275).
-    reload:   MessageWriter<'w, ReloadRequested>,
+    reload:    MessageWriter<'w, ReloadRequested>,
     /// The end-turn writer — the action-bar End-Turn button's drained message (GTW-309).
     /// A fieldless turn signal: the drain emits the unit [`EndTurnRequested`] verbatim.
-    end_turn: MessageWriter<'w, EndTurnRequested>,
+    end_turn:  MessageWriter<'w, EndTurnRequested>,
+    /// The execute-downed writer — the downed-target Execute affordance's drained message
+    /// (GTW-294). Emitted only for a selected actor over the carried downed target.
+    execute:   MessageWriter<'w, ExecuteDownedRequested>,
+    /// The stabilize-downed writer — the downed-target Stabilize affordance's drained
+    /// message (GTW-294). Emitted only for a selected actor over the carried downed target.
+    stabilize: MessageWriter<'w, StabilizeDownedRequested>,
 }
 
 /// **Dispatch** the queued [`ActIntent`]s — the ONE drain system over the shared seam.
@@ -203,6 +226,12 @@ pub struct ActWriters<'w> {
 /// - [`ActIntent::EndTurn`] emits the fieldless [`EndTurnRequested`] unconditionally
 ///   (GTW-309) — a GLOBAL turn signal needing no selection; the sim's `dispatch_end_turn`
 ///   advances the turn cycle and runs the next team's turn-start TU regen.
+/// - [`ActIntent::Execute`] emits [`ExecuteDownedRequested`] with the [`SelectedShooter`] as
+///   the actor and the carried downed target (GTW-294) — a no-op with no selection; the
+///   sim's `execute_downed` faction gate (an 8-adjacent alive ENEMY) is authoritative.
+/// - [`ActIntent::Stabilize`] emits [`StabilizeDownedRequested`] with the [`SelectedShooter`]
+///   as the actor and the carried downed target (GTW-294) — a no-op with no selection; the
+///   sim's `stabilize_downed` faction gate (an 8-adjacent alive ALLY) is authoritative.
 ///
 /// With NO [`SelectedShooter`] the cycle intents are no-ops (nothing to act on); a
 /// cycle intent for a selected entity that lacks the relevant component is skipped
@@ -288,6 +317,22 @@ pub fn dispatch_act_intents(
                 // / LevelUp — no selection needed; the sim's ActiveFaction tracks whose turn
                 // is ending, so the drain just writes the unit message unconditionally.
                 acts.end_turn.write(EndTurnRequested);
+            }
+            ActIntent::Execute(target) => {
+                // Execute the carried downed target — actor is the selection (GTW-294).
+                // Mirror the Reload arm: a no-op with no selection. The sim's execute_downed
+                // faction gate (an 8-adjacent alive ENEMY) is the authoritative check.
+                let Some(actor) = **selected else { continue };
+                acts.execute
+                    .write(ExecuteDownedRequested::new(actor, target));
+            }
+            ActIntent::Stabilize(target) => {
+                // Stabilize the carried downed target — actor is the selection (GTW-294).
+                // Mirror the Reload arm: a no-op with no selection. The sim's stabilize_downed
+                // faction gate (an 8-adjacent alive ALLY) is the authoritative check.
+                let Some(actor) = **selected else { continue };
+                acts.stabilize
+                    .write(StabilizeDownedRequested::new(actor, target));
             }
         }
     }

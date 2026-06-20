@@ -8,8 +8,8 @@ use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest};
 use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction,
     acts::{
-        EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, SetAimingRequested,
-        SetFacingRequested, SetStanceRequested,
+        EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested, ReloadRequested,
+        SetAimingRequested, SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
     },
     occupancy_sync::SimSystems,
     setup_battle_on_request,
@@ -133,6 +133,12 @@ impl Plugin for GdtfBattleInputPlugin {
         // into, so the drain's `MessageWriter<EndTurnRequested>` passes param validation
         // whether or not `SimActsPlugin` is present (`add_message` is IDEMPOTENT).
         .add_message::<EndTurnRequested>()
+        // GTW-294 — the downed-act buffers the Execute / Stabilize intents drain into, so
+        // the drain's `MessageWriter<ExecuteDownedRequested>` / `<StabilizeDownedRequested>`
+        // pass param validation whether or not `SimActsPlugin` is present (`add_message` is
+        // IDEMPOTENT, so this coexists with the sim's registration).
+        .add_message::<ExecuteDownedRequested>()
+        .add_message::<StabilizeDownedRequested>()
         // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
         // emitter's `MessageWriter<HighlightRequest>` passes param validation even
         // headlessly (`bevy-traps.md` #4). `add_message` is IDEMPOTENT.

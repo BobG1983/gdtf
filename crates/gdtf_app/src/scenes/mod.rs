@@ -76,6 +76,14 @@ crate::support_use! {
         WeaponPanelRoot,
     };
 }
+// Test-support-only re-export of the GTW-294 contextual-panel markers, gated so the binary build
+// is `unused`/`unreachable_pub`-clean. The final hop before `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    running::{
+        ContextualPanelRoot, ExecuteButton, OpenDoorButton, StabilizeButton,
+    };
+}
 
 mod teardown;
 pub(in crate::scenes) use teardown::TeardownScenePlugin;

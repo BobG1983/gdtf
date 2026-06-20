@@ -3,11 +3,12 @@ use gdtf_battle_sim::BattleInProgress;
 
 use crate::{
     scenes::running::game::battlescape::{
-        GameBattleScapeActionBarScenePlugin, GameBattleScapeAfterMathScenePlugin,
-        GameBattleScapeAnimateInScenePlugin, GameBattleScapeAnimateOutScenePlugin,
-        GameBattleScapeBattleRunningScenePlugin, GameBattleScapeBottomBarScenePlugin,
-        GameBattleScapeGenerationScenePlugin, GameBattleScapeInspectPanelScenePlugin,
-        GameBattleScapeStatusPanelScenePlugin, GameBattleScapeWeaponPanelScenePlugin, systems::*,
+        ContextualPanelPlugin, GameBattleScapeActionBarScenePlugin,
+        GameBattleScapeAfterMathScenePlugin, GameBattleScapeAnimateInScenePlugin,
+        GameBattleScapeAnimateOutScenePlugin, GameBattleScapeBattleRunningScenePlugin,
+        GameBattleScapeBottomBarScenePlugin, GameBattleScapeGenerationScenePlugin,
+        GameBattleScapeInspectPanelScenePlugin, GameBattleScapeStatusPanelScenePlugin,
+        GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
     states::{BattleScapeState, GameState},
 };
@@ -109,7 +110,16 @@ fn add_plugins(app: &mut App) {
         // its Reload button WRITES the input crate's act-intent seam (→ `ReloadRequested` →
         // the sim's `dispatch_reload`). It deps `gdtf_ui` (spawn helpers) + `gdtf_battle_input`
         // (selection + intent seam), both already on the app's edge; the chain stays acyclic.
-        .add_plugins(GameBattleScapeWeaponPanelScenePlugin);
+        .add_plugins(GameBattleScapeWeaponPanelScenePlugin)
+        // The GTW-294 CONTEXTUAL PANEL (bottom-right): the cluster of situational acts on a
+        // downed neighbour (Execute / Stabilize / Open Door). Same `BattleRunning` lifecycle as
+        // the panels; it inits the `ContextualTargets` seam, runs `detect_contextual_targets`
+        // (fills the targets + toggles each button's `Visibility` IN PLACE when a valid downed
+        // neighbour is in reach) and `contextual_button_intents` (routes a press onto the shared
+        // act-intent seam → the sim's `dispatch_act_intents`), both in `Update` gated on the
+        // `BattleInProgress` witness. Execute + Stabilize are live; Open Door stays hidden (no
+        // sim verb yet). View-only — it reads the input selection + writes the intent seam.
+        .add_plugins(ContextualPanelPlugin);
 }
 
 fn add_states(app: &mut App) {

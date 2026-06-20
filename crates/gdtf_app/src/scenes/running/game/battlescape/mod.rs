@@ -94,3 +94,18 @@ crate::support_use! {
         WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
     };
 }
+
+// The GTW-294 CONTEXTUAL PANEL (bottom-right): the cluster of situational acts on a downed
+// neighbour (Execute / Stabilize / Open Door). This scaffold slice spawns/despawns the panel on
+// the `BattleRunning` boundary with all three buttons `Visibility::Hidden` — no behavior yet.
+mod contextual_panel;
+pub(in crate::scenes::running::game::battlescape) use contextual_panel::ContextualPanelPlugin;
+// Test-support-only re-export of the contextual-panel's root + the three button markers (GTW-294),
+// gated so the binary build is `unused`/`unreachable_pub`-clean (the weapon-panel marker re-export
+// chain precedent). The AC tests name these through `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    contextual_panel::{
+        ContextualPanelRoot, ExecuteButton, OpenDoorButton, StabilizeButton,
+    };
+}

@@ -52,3 +52,12 @@ crate::support_use! {
         WeaponPanelRoot,
     };
 }
+// Test-support-only re-export of the GTW-294 contextual-panel markers (Execute / Stabilize /
+// Open Door buttons + the panel root), gated so the binary build is `unused`/`unreachable_pub`-
+// clean. Carries the markers up toward `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    battlescape::{
+        ContextualPanelRoot, ExecuteButton, OpenDoorButton, StabilizeButton,
+    };
+}
