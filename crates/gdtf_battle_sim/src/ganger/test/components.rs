@@ -38,17 +38,20 @@ fn assert_independent<C: Component + Copy + PartialEq + core::fmt::Debug>(compon
 
 #[test]
 fn position_inserts_and_queries_independently() {
-    assert_independent(Position(CellLevel::new(Cell::new(3, 4), Level::new(1))));
+    assert_independent(Position::new(CellLevel::new(
+        Cell::new(3, 4),
+        Level::new(1),
+    )));
 }
 
 #[test]
 fn facing_inserts_and_queries_independently() {
-    assert_independent(Facing(Direction::SouthEast));
+    assert_independent(Facing::new(Direction::SouthEast));
 }
 
 #[test]
 fn stance_inserts_and_queries_independently() {
-    assert_independent(Stance(StanceKind::Prone));
+    assert_independent(Stance::new(StanceKind::Prone));
 }
 
 #[test]
@@ -193,9 +196,9 @@ fn sibling_components_are_independently_queryable() {
 fn defaults_are_the_documented_initial_values() {
     // Position has no Default (no canonical spawn cell) — placement is the
     // caller's, so it is intentionally absent from this pin.
-    assert_eq!(Facing::default(), Facing(Direction::North));
+    assert_eq!(Facing::default(), Facing::new(Direction::North));
     assert_eq!(Direction::default(), Direction::North);
-    assert_eq!(Stance::default(), Stance(StanceKind::Standing));
+    assert_eq!(Stance::default(), Stance::new(StanceKind::Standing));
     assert_eq!(StanceKind::default(), StanceKind::Standing);
     assert_eq!(Aiming::default(), Aiming::new(false));
     assert_eq!(Faction::default(), Faction::new(0));
@@ -221,8 +224,8 @@ fn defaults_are_the_documented_initial_values() {
 /// literals so this pins the Deref mechanism + target type, not a default value.
 #[test]
 fn newtypes_deref_to_inner() {
-    assert_eq!(*Facing(Direction::West), Direction::West);
-    assert_eq!(*Stance(StanceKind::Crouching), StanceKind::Crouching);
+    assert_eq!(*Facing::new(Direction::West), Direction::West);
+    assert_eq!(*Stance::new(StanceKind::Crouching), StanceKind::Crouching);
     assert!(*Aiming::new(true));
     assert_eq!(*Faction::new(5), 5u8);
     assert_eq!(*Hp::new(123), 123u16);
@@ -239,5 +242,5 @@ fn newtypes_deref_to_inner() {
     assert!((*Luck::new(2.0) - 2.0).abs() < f32::EPSILON);
     // Position derefs to CellLevel (C3); compare the whole inner key.
     let key = CellLevel::new(Cell::new(1, 2), Level::new(3));
-    assert_eq!(*Position(key), key);
+    assert_eq!(*Position::new(key), key);
 }

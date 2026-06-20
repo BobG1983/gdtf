@@ -30,9 +30,9 @@ impl Default for StanceStability {
         // Stance contributions from resolution.md §1a (prone 40 / kneel 25 /
         // stand 10) — tunable balance data, not pinned by a value test.
         Self {
-            prone: StanceContribution(40.0),
-            kneel: StanceContribution(25.0),
-            stand: StanceContribution(10.0),
+            prone: StanceContribution::new(40.0),
+            kneel: StanceContribution::new(25.0),
+            stand: StanceContribution::new(10.0),
         }
     }
 }
@@ -119,22 +119,22 @@ impl Default for StabilityCurves {
         Self {
             cone_mult:     StabilityCurve::new(vec![
                 StabilityCurvePoint {
-                    score:  StabilityCurveCoord(0.0),
-                    output: StabilityCurveCoord(1.0),
+                    score:  StabilityCurveCoord::new(0.0),
+                    output: StabilityCurveCoord::new(1.0),
                 },
                 StabilityCurvePoint {
-                    score:  StabilityCurveCoord(100.0),
-                    output: StabilityCurveCoord(0.5),
+                    score:  StabilityCurveCoord::new(100.0),
+                    output: StabilityCurveCoord::new(0.5),
                 },
             ]),
             recoil_growth: StabilityCurve::new(vec![
                 StabilityCurvePoint {
-                    score:  StabilityCurveCoord(0.0),
-                    output: StabilityCurveCoord(1.0),
+                    score:  StabilityCurveCoord::new(0.0),
+                    output: StabilityCurveCoord::new(1.0),
                 },
                 StabilityCurvePoint {
-                    score:  StabilityCurveCoord(100.0),
-                    output: StabilityCurveCoord(0.25),
+                    score:  StabilityCurveCoord::new(100.0),
+                    output: StabilityCurveCoord::new(0.25),
                 },
             ]),
         }
@@ -156,8 +156,8 @@ impl Default for AimMode {
         // Aim-mode coefficients from resolution.md §1a (×0.6 cone, ×1.5 TU) —
         // tunable, not pinned.
         Self {
-            cone_mult:  AimConeMult(0.6),
-            tu_premium: AimTuPremium(1.5),
+            cone_mult:  AimConeMult::new(0.6),
+            tu_premium: AimTuPremium::new(1.5),
         }
     }
 }
@@ -181,8 +181,8 @@ impl Default for ConcentrationCoeffs {
         // Placeholder coefficients for the resolution.md §1b `p` curve: base ≈ 1
         // (even scatter at low accuracy), a positive per-accuracy scale. TUNABLE.
         Self {
-            base:  ConcentrationCoeff(1.0),
-            scale: ConcentrationCoeff(1.0),
+            base:  ConcentrationCoeff::new(1.0),
+            scale: ConcentrationCoeff::new(1.0),
         }
     }
 }
@@ -206,9 +206,9 @@ impl Default for MuzzleHeights {
         // HIGH clearance bands (battle-space.md §"Banding" defaults ≈ ⅓, ⅔). The
         // exact fractions are TUNABLE — value-agnostic tests only.
         Self {
-            prone: MuzzleHeight(0.15),
-            kneel: MuzzleHeight(0.45),
-            stand: MuzzleHeight(0.8),
+            prone: MuzzleHeight::new(0.15),
+            kneel: MuzzleHeight::new(0.45),
+            stand: MuzzleHeight::new(0.8),
         }
     }
 }
@@ -232,9 +232,9 @@ impl Default for SilhouetteTops {
         // Per-stance silhouette-top level-fractions (prone lowest, standing
         // tallest). TUNABLE — value-agnostic tests only.
         Self {
-            prone: SilhouetteTop(0.3),
-            kneel: SilhouetteTop(0.6),
-            stand: SilhouetteTop(0.95),
+            prone: SilhouetteTop::new(0.3),
+            kneel: SilhouetteTop::new(0.6),
+            stand: SilhouetteTop::new(0.95),
         }
     }
 }
@@ -283,14 +283,14 @@ impl Default for ConeStabilityTuning {
         // carry their own doc-default impls.
         Self {
             stance_stability:      StanceStability::default(),
-            brace_contribution:    BraceContribution(30.0),
+            brace_contribution:    BraceContribution::new(30.0),
             brace_min_height:      BraceMinHeight::default(),
             stability_curves:      StabilityCurves::default(),
             aim_mode:              AimMode::default(),
-            recoil_climb:          RecoilClimb(0.01),
+            recoil_climb:          RecoilClimb::new(0.01),
             concentration:         ConcentrationCoeffs::default(),
-            aim_height_frac:       AimHeightFrac(1.0),
-            muzzle_forward_offset: MuzzleForwardOffset(0.3),
+            aim_height_frac:       AimHeightFrac::new(1.0),
+            muzzle_forward_offset: MuzzleForwardOffset::new(0.3),
             muzzle_heights:        MuzzleHeights::default(),
             silhouette_tops:       SilhouetteTops::default(),
         }

@@ -114,10 +114,17 @@ impl RecoilGrowth {
 /// prejudging which curve produced it. Internal to this layer — private inner +
 /// derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
-pub(super) struct CurveOutput(pub(super) f32);
+pub(super) struct CurveOutput(f32);
 
 impl CurveOutput {
     /// The **identity** curve output — `1.0`, no scaling. Returned for a degenerate
     /// (empty) curve so the read stays panic-free.
     pub(super) const IDENTITY: Self = Self(1.0);
+
+    /// Build a curve output from the raw value read off a curve — the constructor
+    /// the [`crate::stability::curve`] read uses so the inner stays private (house
+    /// style: a newtype's inner is reached only through a ctor / [`Deref`]).
+    pub(super) const fn new(output: f32) -> Self {
+        Self(output)
+    }
 }

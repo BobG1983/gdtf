@@ -7,19 +7,49 @@ use serde::Deserialize;
 /// (resolution.md §6 severity score).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct PenDamageScale(pub(super) f32);
+pub struct PenDamageScale(f32);
+
+impl PenDamageScale {
+    /// Build a penetrating-damage scale from its coefficient magnitude — for tests
+    /// and programmatic tuning edits; shipped values come from the `.ron` via the
+    /// derived [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(scale: f32) -> Self {
+        Self(scale)
+    }
+}
 
 /// `k` — Toughness mitigation: how much the defender's Toughness subtracts from
 /// the severity score (resolution.md §6).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct ToughnessMitigation(pub(super) f32);
+pub struct ToughnessMitigation(f32);
+
+impl ToughnessMitigation {
+    /// Build a Toughness-mitigation coefficient from its magnitude — for tests and
+    /// programmatic tuning edits; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(scale: f32) -> Self {
+        Self(scale)
+    }
+}
 
 /// `I` — shooter-luck scale: the shooter's Luck adds to the severity score,
 /// nudging toward nastier wounds (resolution.md §6).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct ShooterLuckScale(pub(super) f32);
+pub struct ShooterLuckScale(f32);
+
+impl ShooterLuckScale {
+    /// Build a shooter-luck scale from its coefficient magnitude — for tests and
+    /// programmatic tuning edits; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(scale: f32) -> Self {
+        Self(scale)
+    }
+}
 
 /// `L` — defender-luck scale: how far the defender's Luck pushes the severity
 /// roll's **lower bound below 0** (resolution.md §6, floor-extend form
@@ -32,7 +62,17 @@ pub struct ShooterLuckScale(pub(super) f32);
 /// the lower bound *moves*, the spread is not merely shrunk.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct DefenderLuckScale(pub(super) f32);
+pub struct DefenderLuckScale(f32);
+
+impl DefenderLuckScale {
+    /// Build a defender-luck scale from its coefficient magnitude — for tests and
+    /// programmatic tuning edits; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(scale: f32) -> Self {
+        Self(scale)
+    }
+}
 
 /// `R` — the **upper bound** (ceiling) of the severity roll's random term
 /// (resolution.md §6: `roll(−L × Luck_defender .. R)`).
@@ -42,7 +82,17 @@ pub struct DefenderLuckScale(pub(super) f32);
 /// worst-case roll is unchanged.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct RandomSpread(pub(super) f32);
+pub struct RandomSpread(f32);
+
+impl RandomSpread {
+    /// Build a random-spread ceiling from its magnitude — for tests and programmatic
+    /// tuning edits; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(spread: f32) -> Self {
+        Self(spread)
+    }
+}
 
 /// A single **severity-bucket edge** — one ascending threshold on the §6
 /// severity score (resolution.md §6: `< e0 → None`, `< e1 → Minor`, …,
@@ -55,7 +105,7 @@ pub struct RandomSpread(pub(super) f32);
 /// tunable balance data — never pinned by a value test.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct SeverityEdge(pub(super) f32);
+pub struct SeverityEdge(f32);
 
 impl SeverityEdge {
     /// Build a severity-bucket edge from its score-threshold magnitude (TBD
@@ -92,10 +142,10 @@ impl Default for SeverityEdges {
         // ordering (e0 < e1 < e2 < e3) is a fixed mechanism; the magnitudes are
         // TUNABLE balance data, value-agnostic tests only.
         Self {
-            e0: SeverityEdge(1.0),
-            e1: SeverityEdge(5.0),
-            e2: SeverityEdge(10.0),
-            e3: SeverityEdge(15.0),
+            e0: SeverityEdge::new(1.0),
+            e1: SeverityEdge::new(5.0),
+            e2: SeverityEdge::new(10.0),
+            e3: SeverityEdge::new(15.0),
         }
     }
 }
@@ -137,11 +187,11 @@ impl Default for SeverityScaling {
         // forms are fixed, these numbers are balance data (de-brittled: tests
         // exercise the serde mechanism, not these shipped values).
         Self {
-            pen_damage_scale:     PenDamageScale(1.0),
-            toughness_mitigation: ToughnessMitigation(1.0),
-            shooter_luck_scale:   ShooterLuckScale(1.0),
-            defender_luck_scale:  DefenderLuckScale(1.0),
-            random_spread:        RandomSpread(10.0),
+            pen_damage_scale:     PenDamageScale::new(1.0),
+            toughness_mitigation: ToughnessMitigation::new(1.0),
+            shooter_luck_scale:   ShooterLuckScale::new(1.0),
+            defender_luck_scale:  DefenderLuckScale::new(1.0),
+            random_spread:        RandomSpread::new(10.0),
             edges:                SeverityEdges::default(),
         }
     }

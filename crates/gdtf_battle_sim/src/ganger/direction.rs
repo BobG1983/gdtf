@@ -200,7 +200,7 @@ impl Direction {
 /// authored facing parse as the bare [`Direction`] variant.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Facing(pub(super) Direction);
+pub struct Facing(Direction);
 
 impl Facing {
     /// Build a facing from the [`Direction`] the ganger faces.

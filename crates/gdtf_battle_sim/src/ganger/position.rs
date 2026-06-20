@@ -12,7 +12,7 @@ use crate::metric::CellLevel;
 /// distinct component from the rest of ganger state so movement systems can query
 /// `&Position` / `&mut Position` alone.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Position(pub(super) CellLevel);
+pub struct Position(CellLevel);
 
 impl Position {
     /// Build a ganger position from the `(cell, level)` key it occupies.

@@ -19,18 +19,21 @@ use crate::{cover::HeightBand, occupancy::TerrainKind};
 fn tuning_newtypes_wrap_inner_and_deref() {
     // Each f32 newtype: deref reaches the inner f32 (bit-exact arbitrary
     // value, not the default).
-    assert_eq!((*BandEdge(5.0)).to_bits(), 5.0_f32.to_bits());
-    assert_eq!((*PenDamageScale(2.5)).to_bits(), 2.5_f32.to_bits());
-    assert_eq!((*ToughnessMitigation(3.5)).to_bits(), 3.5_f32.to_bits());
-    assert_eq!((*ShooterLuckScale(4.5)).to_bits(), 4.5_f32.to_bits());
-    assert_eq!((*DefenderLuckScale(6.5)).to_bits(), 6.5_f32.to_bits());
-    assert_eq!((*RandomSpread(7.5)).to_bits(), 7.5_f32.to_bits());
-    assert_eq!((*SeverityEdge(8.5)).to_bits(), 8.5_f32.to_bits());
+    assert_eq!((*BandEdge::new(5.0)).to_bits(), 5.0_f32.to_bits());
+    assert_eq!((*PenDamageScale::new(2.5)).to_bits(), 2.5_f32.to_bits());
+    assert_eq!(
+        (*ToughnessMitigation::new(3.5)).to_bits(),
+        3.5_f32.to_bits()
+    );
+    assert_eq!((*ShooterLuckScale::new(4.5)).to_bits(), 4.5_f32.to_bits());
+    assert_eq!((*DefenderLuckScale::new(6.5)).to_bits(), 6.5_f32.to_bits());
+    assert_eq!((*RandomSpread::new(7.5)).to_bits(), 7.5_f32.to_bits());
+    assert_eq!((*SeverityEdge::new(8.5)).to_bits(), 8.5_f32.to_bits());
     // The u16 newtype: deref reaches the inner u16 (arbitrary value).
-    assert_eq!(*BodyPartWeight(3), 3u16);
+    assert_eq!(*BodyPartWeight::new(3), 3u16);
     // The u8 bleed-out rate: deref reaches the inner u8 (arbitrary value, the
     // mechanism not the shipped magnitude).
-    assert_eq!(*BleedRate(4), 4u8);
+    assert_eq!(*BleedRate::new(4), 4u8);
     // GTW-242 — the firing-arc f32 newtype: deref reaches the inner degrees (bit-exact
     // arbitrary value, never the 120° default — the Deref mechanism, not a magnitude).
     assert_eq!((*FiringArc::new(75.0)).to_bits(), 75.0_f32.to_bits());
@@ -43,22 +46,34 @@ fn tuning_newtypes_wrap_inner_and_deref() {
 /// exactly-representable literals — no `float_cmp` lint).
 #[test]
 fn cone_stability_newtypes_wrap_inner_and_deref() {
-    assert_eq!((*StanceContribution(11.0)).to_bits(), 11.0_f32.to_bits());
-    assert_eq!((*BraceContribution(22.0)).to_bits(), 22.0_f32.to_bits());
-    assert_eq!((*StabilityCurveCoord(33.0)).to_bits(), 33.0_f32.to_bits());
-    assert_eq!((*AimConeMult(0.25)).to_bits(), 0.25_f32.to_bits());
-    assert_eq!((*AimTuPremium(1.25)).to_bits(), 1.25_f32.to_bits());
-    assert_eq!((*RecoilClimb(0.5)).to_bits(), 0.5_f32.to_bits());
-    assert_eq!((*ConcentrationCoeff(2.5)).to_bits(), 2.5_f32.to_bits());
-    assert_eq!((*AimHeightFrac(0.75)).to_bits(), 0.75_f32.to_bits());
-    assert_eq!((*MuzzleForwardOffset(0.125)).to_bits(), 0.125_f32.to_bits());
-    assert_eq!((*MuzzleHeight(0.625)).to_bits(), 0.625_f32.to_bits());
-    assert_eq!((*SilhouetteTop(0.875)).to_bits(), 0.875_f32.to_bits());
+    assert_eq!(
+        (*StanceContribution::new(11.0)).to_bits(),
+        11.0_f32.to_bits()
+    );
+    assert_eq!(
+        (*BraceContribution::new(22.0)).to_bits(),
+        22.0_f32.to_bits()
+    );
+    assert_eq!(
+        (*StabilityCurveCoord::new(33.0)).to_bits(),
+        33.0_f32.to_bits()
+    );
+    assert_eq!((*AimConeMult::new(0.25)).to_bits(), 0.25_f32.to_bits());
+    assert_eq!((*AimTuPremium::new(1.25)).to_bits(), 1.25_f32.to_bits());
+    assert_eq!((*RecoilClimb::new(0.5)).to_bits(), 0.5_f32.to_bits());
+    assert_eq!((*ConcentrationCoeff::new(2.5)).to_bits(), 2.5_f32.to_bits());
+    assert_eq!((*AimHeightFrac::new(0.75)).to_bits(), 0.75_f32.to_bits());
+    assert_eq!(
+        (*MuzzleForwardOffset::new(0.125)).to_bits(),
+        0.125_f32.to_bits()
+    );
+    assert_eq!((*MuzzleHeight::new(0.625)).to_bits(), 0.625_f32.to_bits());
+    assert_eq!((*SilhouetteTop::new(0.875)).to_bits(), 0.875_f32.to_bits());
 
     // The curve newtype derefs to its inner Vec (arbitrary one-point shape).
     let curve = StabilityCurve::new(vec![StabilityCurvePoint {
-        score:  StabilityCurveCoord(50.0),
-        output: StabilityCurveCoord(0.7),
+        score:  StabilityCurveCoord::new(50.0),
+        output: StabilityCurveCoord::new(0.7),
     }]);
     assert_eq!(curve.len(), 1);
     assert_eq!((*curve[0].output).to_bits(), 0.7_f32.to_bits());
@@ -307,7 +322,7 @@ fn posture_tu_leaves_parse_from_bare_scalar_ron() {
     let stance = ron::from_str::<StanceChangeTu>("7");
     assert_eq!(
         stance,
-        Ok(StanceChangeTu(7)),
+        Ok(StanceChangeTu::new(7)),
         "StanceChangeTu must parse from a bare RON scalar: {stance:?}",
     );
     // Read the parsed value back through the derived Deref (arbitrary magnitude).
@@ -318,10 +333,82 @@ fn posture_tu_leaves_parse_from_bare_scalar_ron() {
     let turn = ron::from_str::<TurnTu>("3");
     assert_eq!(
         turn,
-        Ok(TurnTu(3)),
+        Ok(TurnTu::new(3)),
         "TurnTu must parse from a bare RON scalar: {turn:?}",
     );
     if let Ok(parsed) = turn {
         assert_eq!(*parsed, 3u8, "TurnTu derefs to its inner u8");
+    }
+}
+
+/// GTW-301 — every touched tuning sub-file's leaf newtype still **deserializes
+/// through its now-private inner**: each parses from a bare-scalar RON literal
+/// (`#[serde(transparent)]`) and the value read back through the derived [`Deref`]
+/// equals the parsed input.
+///
+/// This is the privatization regression guard: with the inner field private,
+/// `#[derive(Deserialize)]` on a `#[serde(transparent)]` newtype must still build
+/// the value (the derive constructs through the wrapper, not by writing the field),
+/// so a leaf that failed to round-trip would mean the private inner broke serde. One
+/// representative leaf per touched sub-file (`severity` / `cone` / `economy` /
+/// `body_part` / `wounds` / `band`). Value-agnostic: arbitrary, mutually-distinct literals (never the
+/// shipped/default magnitudes) — it pins the serde-through-private-inner MECHANISM,
+/// not a balance number. The `f32` leaves compare by bit pattern (the literals are
+/// exactly representable, so this is exact integer equality — no `float_cmp` lint).
+#[test]
+fn touched_leaves_round_trip_through_private_inner() {
+    // severity.rs
+    let pen = ron::from_str::<PenDamageScale>("2.5");
+    assert_eq!(pen, Ok(PenDamageScale::new(2.5)), "PenDamageScale: {pen:?}");
+    if let Ok(p) = pen {
+        assert_eq!((*p).to_bits(), 2.5_f32.to_bits(), "PenDamageScale deref");
+    }
+    let edge = ron::from_str::<SeverityEdge>("8.5");
+    assert_eq!(edge, Ok(SeverityEdge::new(8.5)), "SeverityEdge: {edge:?}");
+    if let Ok(e) = edge {
+        assert_eq!((*e).to_bits(), 8.5_f32.to_bits(), "SeverityEdge deref");
+    }
+
+    // cone.rs
+    let aim = ron::from_str::<AimConeMult>("0.25");
+    assert_eq!(aim, Ok(AimConeMult::new(0.25)), "AimConeMult: {aim:?}");
+    if let Ok(a) = aim {
+        assert_eq!((*a).to_bits(), 0.25_f32.to_bits(), "AimConeMult deref");
+    }
+
+    // economy.rs
+    let stance = ron::from_str::<StanceChangeTu>("7");
+    assert_eq!(
+        stance,
+        Ok(StanceChangeTu::new(7)),
+        "StanceChangeTu: {stance:?}"
+    );
+    if let Ok(s) = stance {
+        assert_eq!(*s, 7u8, "StanceChangeTu deref");
+    }
+
+    // body_part.rs
+    let weight = ron::from_str::<BodyPartWeight>("3");
+    assert_eq!(
+        weight,
+        Ok(BodyPartWeight::new(3)),
+        "BodyPartWeight: {weight:?}"
+    );
+    if let Ok(w) = weight {
+        assert_eq!(*w, 3u16, "BodyPartWeight deref");
+    }
+
+    // wounds.rs
+    let bleed = ron::from_str::<BleedRate>("4");
+    assert_eq!(bleed, Ok(BleedRate::new(4)), "BleedRate: {bleed:?}");
+    if let Ok(b) = bleed {
+        assert_eq!(*b, 4u8, "BleedRate deref");
+    }
+
+    // band.rs
+    let band = ron::from_str::<BandEdge>("5.0");
+    assert_eq!(band, Ok(BandEdge::new(5.0)), "BandEdge: {band:?}");
+    if let Ok(be) = band {
+        assert_eq!((*be).to_bits(), 5.0_f32.to_bits(), "BandEdge deref");
     }
 }

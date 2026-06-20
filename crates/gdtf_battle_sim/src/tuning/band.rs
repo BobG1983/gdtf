@@ -13,7 +13,7 @@ use serde::Deserialize;
 /// §"Banding"). `#[serde(transparent)]` lets it parse a bare RON scalar.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct BandEdge(pub(super) f32);
+pub struct BandEdge(f32);
 
 impl BandEdge {
     /// Build a band-edge level-fraction from its magnitude (a fraction of one

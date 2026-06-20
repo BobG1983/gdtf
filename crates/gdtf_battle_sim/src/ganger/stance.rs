@@ -29,7 +29,7 @@ pub enum StanceKind {
 /// [`StanceKind`] variant.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Stance(pub(super) StanceKind);
+pub struct Stance(StanceKind);
 
 impl Stance {
     /// Build a stance from the [`StanceKind`] posture the ganger holds.

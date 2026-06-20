@@ -11,7 +11,7 @@ use serde::Deserialize;
 /// `#[serde(transparent)]` lets it parse a bare RON scalar.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
-pub struct BodyPartWeight(pub(super) u16);
+pub struct BodyPartWeight(u16);
 
 impl BodyPartWeight {
     /// Build a body-part pick weight from its relative magnitude (TBD tuning).

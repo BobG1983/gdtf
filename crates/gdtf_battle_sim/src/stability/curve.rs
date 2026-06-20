@@ -32,7 +32,7 @@ pub(super) fn read_curve(curve: &StabilityCurve, score: StabilityScore) -> Curve
     };
     // At or below the first sample → the first output (left clamp).
     if s <= *first.score {
-        return CurveOutput(*first.output);
+        return CurveOutput::new(*first.output);
     }
     // Walk adjacent pairs; the score sits in exactly one span (points are authored
     // in ascending score order — resolution.md §1a curve definition).
@@ -45,15 +45,15 @@ pub(super) fn read_curve(curve: &StabilityCurve, score: StabilityScore) -> Curve
             // Coincident scores (zero span) → take the higher point's output rather
             // than dividing by zero.
             if span <= 0.0 {
-                return CurveOutput(*hi.output);
+                return CurveOutput::new(*hi.output);
             }
             let t = (s - *lo.score) / span;
-            return CurveOutput(t.mul_add(*hi.output - *lo.output, *lo.output));
+            return CurveOutput::new(t.mul_add(*hi.output - *lo.output, *lo.output));
         }
     }
     // Above the last sample → the last output (right clamp). `last()` is `Some`
     // because `first()` was; fall back to the identity if somehow absent.
     points
         .last()
-        .map_or(CurveOutput::IDENTITY, |p| CurveOutput(*p.output))
+        .map_or(CurveOutput::IDENTITY, |p| CurveOutput::new(*p.output))
 }

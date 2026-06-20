@@ -19,7 +19,7 @@ use crate::occupancy::TerrainKind;
 /// it parse a bare RON scalar; private inner + derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
-pub struct StanceChangeTu(pub(super) u8);
+pub struct StanceChangeTu(u8);
 
 impl StanceChangeTu {
     /// Build a stance-change TU cost from its flat Time-Unit magnitude (a starting
@@ -60,7 +60,7 @@ impl Default for StanceChangeTu {
 /// derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
-pub struct TurnTu(pub(super) u8);
+pub struct TurnTu(u8);
 
 impl TurnTu {
     /// Build a turn TU cost from its per-45deg-step Time-Unit magnitude (tunable balance

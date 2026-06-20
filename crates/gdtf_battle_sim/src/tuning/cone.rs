@@ -16,7 +16,17 @@ use serde::Deserialize;
 /// `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct StanceContribution(pub(super) f32);
+pub struct StanceContribution(f32);
+
+impl StanceContribution {
+    /// Build a stance stability contribution from its point magnitude — for tests
+    /// and programmatic tuning edits; shipped values come from the `.ron` via the
+    /// derived [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(points: f32) -> Self {
+        Self(points)
+    }
+}
 
 /// The **auto-brace contribution** — the points automatic bracing adds to the
 /// stability score (resolution.md §1a: "+30 when the faced cell's cover height
@@ -25,7 +35,17 @@ pub struct StanceContribution(pub(super) f32);
 /// A tuning COEFFICIENT. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct BraceContribution(pub(super) f32);
+pub struct BraceContribution(f32);
+
+impl BraceContribution {
+    /// Build an auto-brace stability contribution from its point magnitude — for tests
+    /// and programmatic tuning edits; shipped values come from the `.ron` via the
+    /// derived [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(points: f32) -> Self {
+        Self(points)
+    }
+}
 
 /// A point sampled on a **stability curve** — one `(score, output)` pair (the 0–100
 /// stability score on the x axis, the curve's multiplier/coefficient on the y
@@ -39,7 +59,17 @@ pub struct BraceContribution(pub(super) f32);
 /// derived [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct StabilityCurveCoord(pub(super) f32);
+pub struct StabilityCurveCoord(f32);
+
+impl StabilityCurveCoord {
+    /// Build a stability-curve coordinate from its magnitude (a `(score, output)`
+    /// axis value) — for tests and programmatic tuning edits; shipped values come from
+    /// the `.ron` via the derived [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(coord: f32) -> Self {
+        Self(coord)
+    }
+}
 
 /// The **aim-mode cone multiplier** — the `aim` term of `θ_cone` when aiming
 /// (resolution.md §1a: aimed narrows ×0.6; hip-fired = 1). A multiplier on the
@@ -48,7 +78,7 @@ pub struct StabilityCurveCoord(pub(super) f32);
 /// A tuning COEFFICIENT. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct AimConeMult(pub(super) f32);
+pub struct AimConeMult(f32);
 
 impl AimConeMult {
     /// Build an aim-mode cone multiplier from its magnitude (a dimensionless
@@ -75,7 +105,17 @@ impl AimConeMult {
 /// A tuning COEFFICIENT. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct AimTuPremium(pub(super) f32);
+pub struct AimTuPremium(f32);
+
+impl AimTuPremium {
+    /// Build an aim-mode TU premium from its multiplier magnitude — for tests and
+    /// programmatic tuning edits; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(premium: f32) -> Self {
+        Self(premium)
+    }
+}
 
 /// The **recoil-climb coefficient** — the per-prior-shot upward axis tilt
 /// (resolution.md §1a: round *i*'s axis tilts up by `prior_shots × recoil_climb ×
@@ -85,7 +125,7 @@ pub struct AimTuPremium(pub(super) f32);
 /// A tuning COEFFICIENT. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct RecoilClimb(pub(super) f32);
+pub struct RecoilClimb(f32);
 
 impl RecoilClimb {
     /// Build a recoil-climb coefficient from its magnitude (the per-prior-shot
@@ -106,7 +146,7 @@ impl RecoilClimb {
 /// A tuning COEFFICIENT. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct ConcentrationCoeff(pub(super) f32);
+pub struct ConcentrationCoeff(f32);
 
 impl ConcentrationCoeff {
     /// Build a concentration-p coefficient from its magnitude (a scalar of the
@@ -127,7 +167,7 @@ impl ConcentrationCoeff {
 /// A tuning COEFFICIENT. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct AimHeightFrac(pub(super) f32);
+pub struct AimHeightFrac(f32);
 
 impl AimHeightFrac {
     /// Build an aim-height fraction from its magnitude (a dimensionless
@@ -147,7 +187,7 @@ impl AimHeightFrac {
 /// A tuning COEFFICIENT. Private inner + derived [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct MuzzleForwardOffset(pub(super) f32);
+pub struct MuzzleForwardOffset(f32);
 
 impl MuzzleForwardOffset {
     /// Build a muzzle forward offset from its magnitude (a cell-fraction along the
@@ -172,7 +212,17 @@ impl MuzzleForwardOffset {
 /// `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct MuzzleHeight(pub(super) f32);
+pub struct MuzzleHeight(f32);
+
+impl MuzzleHeight {
+    /// Build a per-stance muzzle height from its level-fraction magnitude — for tests
+    /// and programmatic tuning edits; shipped values come from the `.ron` via the
+    /// derived [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(height: f32) -> Self {
+        Self(height)
+    }
+}
 
 /// A **per-stance silhouette-top height** — the tunable **level-fraction** of a
 /// ganger's silhouette top for one stance (the aim-point source: aim z = this ×
@@ -186,7 +236,7 @@ pub struct MuzzleHeight(pub(super) f32);
 /// [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct SilhouetteTop(pub(super) f32);
+pub struct SilhouetteTop(f32);
 
 impl SilhouetteTop {
     /// Build a silhouette-top from its magnitude (a dimensionless level-fraction of a

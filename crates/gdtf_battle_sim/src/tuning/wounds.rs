@@ -54,7 +54,7 @@ impl WoundCost {
 /// derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
-pub struct BleedRate(pub(super) u8);
+pub struct BleedRate(u8);
 
 impl BleedRate {
     /// Build a bleed-out rate from its per-round Wounds drain (a starting point,
