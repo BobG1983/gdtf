@@ -14,8 +14,8 @@ pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, Update, Wo
 pub(super) use crate::{
     acts::*,
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        SourceArmor, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
+        ArmorType, WornArmor,
     },
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{
@@ -76,7 +76,7 @@ pub(super) const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
 /// A worn suit whose every piece starts at the given stats — arbitrary (not shipped)
 /// magnitudes so a hit lands in a known regime.
 pub(super) fn worn_suit(floor: i32, protection: i32, integrity: i32, hardness: i32) -> WornArmor {
-    WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(floor),
         ArmorProtection::new(protection),
         ArmorIntegrity::new(integrity),

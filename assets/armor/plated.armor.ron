@@ -1,0 +1,23 @@
+// GDTF authored armor — "plated" (the armor KEY = ArmorName = the filename stem
+// minus the `.armor` infix; this file is `plated.armor.ron`, key "plated").
+// A heavier combat suit: rigid plate that ignores more punch and lasts longer, the
+// matchup-wheel Plated node. This is AUTHORED CONTENT (a per-armor stat block, the
+// six per-location ArmorPieces of one suit), folder-loaded as a loose `.armor.ron`
+// through the RonAsset<ArmorSpec> loader (GTW-269) and resolved at battle setup
+// into the roster SourceArmor record for every ganger that references this key
+// (slice C). The dedicated `.armor.ron` extension makes the folder load unambiguous
+// among GDTF's many `.ron` loaders. The file does NOT author a `name` field — the
+// name is supplied from the key ("plated"). Render-free, pixel-free: every number is
+// an armor stat the §"Per-hit resolution" formula reads. Magnitudes here mirror the
+// armor the shipped skirmish.ron authors inline for its Plated gangers (so slice C
+// can reference this set by key with NO behavior change); they are per-piece DATA,
+// NOT pinned by tests. Each piece: (floor, protection, integrity, hardness, armor_type).
+// Each line says what it authors — edit freely.
+(
+    head:      (floor: 1, protection: 7, integrity: 22, hardness: 4, armor_type: Plated),  // Head piece — rarely struck, severity-amplifying
+    torso:     (floor: 1, protection: 9, integrity: 32, hardness: 4, armor_type: Plated),  // Torso piece — bulk of the silhouette, most hits land here
+    left_arm:  (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Left-arm piece
+    right_arm: (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Right-arm piece
+    left_leg:  (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Left-leg piece
+    right_leg: (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Right-leg piece
+)

@@ -37,13 +37,13 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection,
-    ArmorType, BaseSpread, BattleGrids, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
+    ArmorSpec, ArmorType, BaseSpread, BattleGrids, BattleSeed, Cell, CellLevel, CombatTuning,
+    CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    Position, ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, SourceArmor, Stable, Stance,
-    StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponShred, Wounds, fire::FireOrder,
+    Position, ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, Stable, Stance, StanceKind,
+    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponShred, Wounds, fire::FireOrder,
 };
 
 /// The shooter's cell.
@@ -70,7 +70,7 @@ const fn single_mode() -> FireModeSpec {
 /// A thin worn suit built from the sim's armor constructors (irrelevant to the
 /// geometric HIT/MISS this test asserts, but the `TargetQuery` set needs it).
 const fn thin_suit() -> gdtf_battle_sim::WornArmor {
-    gdtf_battle_sim::WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    gdtf_battle_sim::WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(1),

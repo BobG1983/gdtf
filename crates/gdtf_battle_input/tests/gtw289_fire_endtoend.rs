@@ -190,10 +190,10 @@ fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Ent
 /// re-exporting it here.
 const fn gdtf_battle_sim_worn_suit() -> gdtf_battle_sim::WornArmor {
     use gdtf_battle_sim::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        SourceArmor, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
+        ArmorType, WornArmor,
     };
-    WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(1),

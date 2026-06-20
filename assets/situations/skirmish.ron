@@ -7,9 +7,9 @@
 // storey index), never pixels. Each line says what it authors — edit freely.
 (
     // The authored gangers — two gangs (faction 0 and faction 1) facing off. Each
-    // carries its full battle-state component VALUES + a six-piece roster armor
-    // record (seeded into the battle-local WornArmor at setup). Magnitudes here are
-    // per-ganger DATA (a generated roster), not pinned tuning.
+    // carries its full battle-state component VALUES + an armor KEY (resolved against
+    // the ArmorRegistry into the battle-local WornArmor at setup, GTW-269) + a weapon
+    // KEY. Magnitudes here are per-ganger DATA (a generated roster), not pinned tuning.
     gangers: [
         // --- Gang 0: a standing rifleman on the ground floor, facing east. ---
         (
@@ -29,17 +29,7 @@
             shooting:   4.0,          // Shooting stat — ranged-to-hit skill (feeds shot concentration)
             toughness:  3.0,          // Toughness — defender's severity-roll mitigation
             luck:       1.0,          // Luck — directional fortune shaping the severity roll's tail
-            // Roster armor, one named piece per body location. Each piece:
-            // (floor, protection, integrity, hardness, armor_type). Magnitudes are
-            // per-piece DATA, not tuning.
-            armor:      (
-                head:      (floor: 1, protection: 6, integrity: 20, hardness: 3, armor_type: Flak),  // Head piece
-                torso:     (floor: 1, protection: 8, integrity: 30, hardness: 3, armor_type: Flak),  // Torso piece
-                left_arm:  (floor: 0, protection: 4, integrity: 15, hardness: 2, armor_type: Flak),  // Left-arm piece
-                right_arm: (floor: 0, protection: 4, integrity: 15, hardness: 2, armor_type: Flak),  // Right-arm piece
-                left_leg:  (floor: 0, protection: 5, integrity: 18, hardness: 2, armor_type: Flak),  // Left-leg piece
-                right_leg: (floor: 0, protection: 5, integrity: 18, hardness: 2, armor_type: Flak),  // Right-leg piece
-            ),
+            armor:      "flak",       // armor KEY — resolves to assets/armor/flak.armor.ron at setup (pieces authored there, GTW-269)
             weapon:     "autogun",    // weapon KEY — resolves to assets/weapons/autogun.ron at setup
         ),
         // --- Gang 1: a crouching defender across the floor, facing west. ---
@@ -60,14 +50,7 @@
             shooting:   5.0,          // Shooting stat
             toughness:  4.0,          // Toughness
             luck:       2.0,          // Luck
-            armor:      (
-                head:      (floor: 1, protection: 7, integrity: 22, hardness: 4, armor_type: Plated),  // Head piece
-                torso:     (floor: 1, protection: 9, integrity: 32, hardness: 4, armor_type: Plated),  // Torso piece
-                left_arm:  (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Left-arm piece
-                right_arm: (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Right-arm piece
-                left_leg:  (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Left-leg piece
-                right_leg: (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Right-leg piece
-            ),
+            armor:      "plated",     // armor KEY — resolves to assets/armor/plated.armor.ron at setup (pieces authored there, GTW-269)
             weapon:     "lasgun",     // weapon KEY — resolves to assets/weapons/lasgun.ron at setup
         ),
                 (
@@ -87,14 +70,7 @@
             shooting:   5.0,          // Shooting stat
             toughness:  4.0,          // Toughness
             luck:       2.0,          // Luck
-            armor:      (
-                head:      (floor: 1, protection: 7, integrity: 22, hardness: 4, armor_type: Plated),  // Head piece
-                torso:     (floor: 1, protection: 9, integrity: 32, hardness: 4, armor_type: Plated),  // Torso piece
-                left_arm:  (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Left-arm piece
-                right_arm: (floor: 0, protection: 5, integrity: 16, hardness: 3, armor_type: Plated),  // Right-arm piece
-                left_leg:  (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Left-leg piece
-                right_leg: (floor: 0, protection: 6, integrity: 19, hardness: 3, armor_type: Plated),  // Right-leg piece
-            ),
+            armor:      "plated",     // armor KEY — resolves to assets/armor/plated.armor.ron at setup (pieces authored there, GTW-269)
             weapon:     "lasgun",     // weapon KEY — resolves to assets/weapons/lasgun.ron at setup
         ),
     ],

@@ -1,6 +1,6 @@
 //! The typed [`BattleSetupError`] — the no-panic setup-abort contract.
 
-use crate::{vertical::InvalidVerticalLink, weapon::WeaponName};
+use crate::{armor::ArmorName, vertical::InvalidVerticalLink, weapon::WeaponName};
 
 /// The typed ways [`setup_battle`](crate::situation::setup_battle) can fail — the
 /// no-panic setup-abort contract (GTW-257).
@@ -9,10 +9,13 @@ use crate::{vertical::InvalidVerticalLink, weapon::WeaponName};
 /// bare string / `()`), returned in the `Err` arm of
 /// [`setup_battle`](crate::situation::setup_battle)'s [`Result`].
 /// It subsumes the prior `Err(InvalidVerticalLink)` (now the
-/// [`InvalidLink`](BattleSetupError::InvalidLink) variant) and adds the GTW-257
+/// [`InvalidLink`](BattleSetupError::InvalidLink) variant), adds the GTW-257
 /// [`WeaponNotFound`](BattleSetupError::WeaponNotFound) variant for a
 /// [`GangerSpawn::weapon`](crate::situation::GangerSpawn::weapon) key that no loaded
-/// weapon file supplies. The caller
+/// weapon file supplies, and adds the GTW-269
+/// [`ArmorNotFound`](BattleSetupError::ArmorNotFound) variant for a
+/// [`GangerSpawn::armor`](crate::situation::GangerSpawn::armor) key that no loaded
+/// armor file supplies (the armor mirror of `WeaponNotFound`). The caller
 /// ([`setup_battle_on_request`](crate::battle::setup_battle_on_request)) matches on
 /// it and fails closed (logs, no [`BattleReady`](crate::battle::BattleReady)) — it
 /// NEVER panics / unwraps.
@@ -27,6 +30,13 @@ pub enum BattleSetupError {
     WeaponNotFound {
         /// The unresolved weapon key (the missing file's stem).
         weapon: WeaponName,
+    },
+    /// A ganger's [`armor`](crate::situation::GangerSpawn::armor) key was not in the
+    /// [`ArmorRegistry`](crate::armor::ArmorRegistry) — no `assets/armor/*.armor.ron`
+    /// with that filename stem loaded (the armor mirror of [`WeaponNotFound`](BattleSetupError::WeaponNotFound)).
+    ArmorNotFound {
+        /// The unresolved armor key (the missing file's stem).
+        armor: ArmorName,
     },
 }
 

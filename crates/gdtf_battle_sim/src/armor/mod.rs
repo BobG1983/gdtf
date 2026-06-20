@@ -37,17 +37,33 @@
 //! sides. This is the DATA substrate only; the matchup lookup (the wheel itself)
 //! is a later E3 slice, not here.
 //!
+//! ## GTW-269 — the data-driven armor loader model
+//!
+//! The GTW-269 slice adds the authoring + registry types that mirror the landed
+//! weapon model (GTW-257): [`ArmorSpec`] (the per-armor `.ron` authoring struct, the
+//! armor mirror of [`crate::weapon::WeaponSpec`]) and the [`ArmorRegistry`] /
+//! [`ArmorName`] name→spec map (the armor mirror of
+//! [`crate::weapon::WeaponRegistry`] / [`crate::weapon::WeaponName`]). This slice
+//! ADDS those types only — they are not yet consumed by [`WornArmor::seed_from`] /
+//! `GangerSpawn` / [`SourceArmor`] (that consumption swap is a later slice), so the
+//! existing roster/battle-local model is unchanged.
+//!
 //! GTW-201 code-health: this concern is a dir-module split by responsibility — the
-//! per-location stats / keys / wheel node ([`stats`]) and the roster / battle-local
-//! armor records ([`worn`]). This `mod.rs` is wiring-only; every public path is
-//! preserved via the re-exports below.
+//! per-location stats / keys / wheel node ([`stats`]), the roster / battle-local
+//! armor records ([`worn`]), the authoring spec ([`spec`]), and the registry
+//! ([`registry`]). This `mod.rs` is wiring-only; every public path is preserved via
+//! the re-exports below.
 
+mod registry;
+mod spec;
 mod stats;
 mod worn;
 
 #[cfg(test)]
 mod test;
 
+pub use registry::{ArmorName, ArmorRegistry};
+pub use spec::ArmorSpec;
 pub use stats::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
 };

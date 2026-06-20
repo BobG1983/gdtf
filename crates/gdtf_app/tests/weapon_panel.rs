@@ -75,6 +75,12 @@ fn battle_running_app() -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::WeaponRegistry::default());
+    // GTW-269: setup_battle_on_request now reads an ArmorRegistry to armor each ganger,
+    // failing closed (no BattleReady) without one. This panel harness builds a
+    // ganger-free default battle, so an empty registry suffices — it just must be
+    // present for the setup to run and reach BattleRunning.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
 
     let at_menu = advance_until(
         &mut app,

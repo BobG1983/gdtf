@@ -18,19 +18,23 @@ use bevy::{
     prelude::{Commands, Entity, MinimalPlugins, World},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection,
-    ArmorType, BaseSpread, BattleSeed, BattleSetup, BodyPart, Cell, CellLevel, CombatTuning,
-    ConcentrationP, ConeAngle, CoverEntry, CoverHp, CoverLedger, DamageType, Direction, Facing,
-    Faction, FatalBias, FireMode, FireModeSpec, GangerName, GangerSpawn, HeightBand, Hp, HpMax,
-    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, ReloadTu,
-    Shooting, ShotInputs, ShotKind, ShotOutcome, SimRng, Situation, SourceArmor, Stable, Stance,
-    StanceKind, SurfaceGrid, Toughness, Tu, TuMax, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponRegistry, WeaponShred, WeaponSpec, Wounds, WoundsMax, resolve_coarse, setup_battle,
+    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece,
+    ArmorProtection, ArmorRegistry, ArmorSpec, ArmorType, BaseSpread, BattleSeed, BattleSetup,
+    BodyPart, Cell, CellLevel, CombatTuning, ConcentrationP, ConeAngle, CoverEntry, CoverHp,
+    CoverLedger, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
+    GangerName, GangerSpawn, HeightBand, Hp, HpMax, Kickback, Level, LifeState, Luck, Magazine,
+    MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, Position,
+    PriorShots, RecoilClimb, RecoilGrowth, ReloadTu, Shooting, ShotInputs, ShotKind, ShotOutcome,
+    SimRng, Situation, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, Wounds, WoundsMax,
+    resolve_coarse, setup_battle,
 };
 
 /// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
 const TEST_WEAPON_KEY: &str = "test-weapon";
+
+/// The armor KEY every fixture ganger references — present in [`armor_registry`].
+const TEST_ARMOR_KEY: &str = "test-armor";
 
 /// A `(cell, level)` key from raw coordinates.
 fn key(x: i32, y: i32, level: u8) -> CellLevel {
@@ -63,16 +67,26 @@ fn weapon_registry() -> WeaponRegistry {
     )])
 }
 
-/// An arbitrary roster armor record (NOT shipped tuning) so a ganger spawns with a
-/// full per-part armor set the no-mutation test can read back unchanged.
-const fn arbitrary_armor(base: i32) -> SourceArmor {
-    SourceArmor::uniform(ArmorPiece::new(
+/// An arbitrary armor SPEC (NOT shipped tuning) — the suit the [`TEST_ARMOR_KEY`]
+/// resolves to in [`armor_registry`], so a ganger spawns with a full per-part armor
+/// set the no-mutation test can read back unchanged (GTW-269).
+const fn arbitrary_armor(base: i32) -> ArmorSpec {
+    ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(base),
         ArmorProtection::new(base + 1),
         ArmorIntegrity::new(base + 2),
         ArmorHardness::new(base + 3),
         ArmorType::DEFAULT,
     ))
+}
+
+/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit the fixture gangers
+/// reference, so `setup_battle` armors each ganger (GTW-269).
+fn armor_registry() -> ArmorRegistry {
+    ArmorRegistry::new([(
+        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
+        arbitrary_armor(1),
+    )])
 }
 
 /// An authored ganger at `at` (faction `faction`) — standing, hip-firing, with a
@@ -97,7 +111,8 @@ fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         shooting: Shooting::new(f32::from(faction) + 2.0),
         toughness: Toughness::new(f32::from(faction) + 3.0),
         luck: Luck::new(f32::from(faction) + 1.0),
-        armor: arbitrary_armor(i32::from(faction) + 1),
+        // Every fixture ganger references the one TEST_ARMOR_KEY in armor_registry.
+        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
         // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
         weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
     }
@@ -111,10 +126,11 @@ fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     app.add_plugins(MinimalPlugins);
 
     let registry = weapon_registry();
+    let armor = armor_registry();
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &mut commands)
+            setup_battle(&situation, &registry, &armor, &mut commands)
         });
     assert!(outcome.is_ok(), "the one-shot setup system must run");
     let setup = outcome.ok().and_then(Result::ok);

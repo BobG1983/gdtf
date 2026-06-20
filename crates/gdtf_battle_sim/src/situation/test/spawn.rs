@@ -255,13 +255,16 @@ fn setup_seeds_attribute_stats_onto_each_ganger() {
     );
 }
 
-/// C8(d) — the worn armor on a spawned ganger equals the fixture's roster armor,
-/// field-by-field across all six parts (E1.3 seed-from on the real spawn path).
+/// C8(d) / GTW-269 — the worn armor on a spawned ganger equals the suit the
+/// `TEST_ARMOR_KEY` resolves to in the registry, field-by-field across all six parts
+/// (the registry-keyed seed-from on the real spawn path: the ganger authors only the
+/// armor KEY, and setup resolves it into the seeded `WornArmor`).
 #[test]
-fn spawned_worn_armor_matches_the_fixture_roster() {
+fn spawned_worn_armor_matches_the_resolved_registry_spec() {
     let (situation, ..) = minimal_fixture();
-    // The fixture's alice roster armor (faction 0 → base 1).
-    let expected = arbitrary_armor(1);
+    // The suit the test armor registry maps TEST_ARMOR_KEY to (base 1), seeded into a
+    // WornArmor exactly as setup does — the expected battle-local copy.
+    let expected = WornArmor::seed_from(&arbitrary_armor(1));
     let Some((mut app, setup)) = run_setup(situation) else {
         return;
     };
@@ -281,7 +284,7 @@ fn spawned_worn_armor_matches_the_fixture_roster() {
         assert_eq!(
             worn.at(part),
             expected.at(part),
-            "worn armor at {part:?} must equal the seeded roster piece",
+            "worn armor at {part:?} must equal the registry-resolved seeded piece",
         );
     }
 }

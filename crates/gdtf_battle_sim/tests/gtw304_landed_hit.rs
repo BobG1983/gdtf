@@ -30,13 +30,13 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection,
-    ArmorType, BaseSpread, BattleGrids, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
+    ArmorSpec, ArmorType, BaseSpread, BattleGrids, BattleSeed, Cell, CellLevel, CombatTuning,
+    CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    Position, ReloadTu, ShooterQuery, Shooting, SimRng, SourceArmor, Stable, Stance, StanceKind,
-    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, Wounds, fire::FireOrder,
+    Position, ReloadTu, ShooterQuery, Shooting, SimRng, Stable, Stance, StanceKind, SurfaceGrid,
+    TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponShred, Wounds, fire::FireOrder,
 };
 
 /// The faithful skirmish-style geometry the contract names: a shooter near (5,6).
@@ -62,7 +62,7 @@ const fn single_mode() -> FireModeSpec {
 /// A thin worn suit (so a landed round is likely to apply a visible effect) built
 /// from the sim's armor constructors.
 const fn thin_suit() -> gdtf_battle_sim::WornArmor {
-    gdtf_battle_sim::WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    gdtf_battle_sim::WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(1),

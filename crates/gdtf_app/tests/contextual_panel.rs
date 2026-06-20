@@ -58,6 +58,9 @@ fn battle_running_app() -> App {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
 
     let at_menu = advance_until(
         &mut app,

@@ -47,6 +47,21 @@ pub(in crate::scenes::load) struct FontFolderHandle(pub Handle<LoadedFolder>);
 #[derive(Deref, Clone, Debug)]
 pub(in crate::scenes::load) struct WeaponsFolderHandle(pub Handle<LoadedFolder>);
 
+/// Typed handle to the in-flight **armor folder** load (`armor/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
+/// mirroring [`WeaponsFolderHandle`] (GTW-269). The `Load` scene preloads the whole
+/// `assets/armor/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
+/// poll/resolve system gates on its recursive load state, then builds the
+/// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) from the loaded
+/// `RonAsset<ArmorSpec>` files (keyed by filename stem). Holding this handle keeps a
+/// strong reference to every armor asset while the registry is built; the registry
+/// then holds the specs BY VALUE, so they survive the handle being dropped on
+/// `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::scenes::load) struct ArmorsFolderHandle(pub Handle<LoadedFolder>);
+
 /// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
@@ -70,10 +85,10 @@ pub(in crate::scenes::load) struct TuningHandle(pub Handle<RonAsset<CombatTuning
 /// The Load-scoped handles to the assets the [`AppState::Load`](crate::states::AppState::Load)
 /// kick-off started loading.
 ///
-/// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], [`SituationHandle`], and
-/// [`TuningHandle`] the poll/resolve system reads each frame to check load
-/// progress. Inserted `OnEnter(Load)` and removed `OnExit(Load)` (it has no
-/// meaning outside `Load`).
+/// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], [`SituationHandle`],
+/// [`TuningHandle`], [`WeaponsFolderHandle`], and [`ArmorsFolderHandle`] the
+/// poll/resolve system reads each frame to check load progress. Inserted
+/// `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning outside `Load`).
 #[derive(Resource, Clone, Debug)]
 pub(in crate::scenes::load) struct LoadHandles {
     /// The theme RON asset being loaded.
@@ -86,6 +101,8 @@ pub(in crate::scenes::load) struct LoadHandles {
     pub tuning:    TuningHandle,
     /// The weapons folder being preloaded (all weapon `.ron`s up front, GTW-257).
     pub weapons:   WeaponsFolderHandle,
+    /// The armor folder being preloaded (all armor `.ron`s up front, GTW-269).
+    pub armor:     ArmorsFolderHandle,
 }
 
 crate::support_item! {

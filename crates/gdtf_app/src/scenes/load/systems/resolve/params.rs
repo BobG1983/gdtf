@@ -10,6 +10,7 @@ use bevy::{
 };
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
+    armor::{ArmorRegistry, ArmorSpec},
     situation::Situation,
     tuning::CombatTuning,
     weapon::{WeaponRegistry, WeaponSpec},
@@ -41,6 +42,8 @@ pub(in crate::scenes::load) struct LoadAssetCollections<'w> {
     pub(super) folders:      Option<Res<'w, Assets<LoadedFolder>>>,
     /// The loaded per-weapon RON collection (`weapons/*.ron`, GTW-257).
     pub(super) weapon_specs: Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
+    /// The loaded per-armor RON collection (`armor/*.ron`, GTW-269).
+    pub(super) armor_specs:  Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
 }
 
 /// The four persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -61,4 +64,6 @@ pub(in crate::scenes::load) struct ResolvedResources<'w> {
     pub(super) weapons:   Option<Res<'w, WeaponRegistry>>,
     /// Whether the resolved [`LoadedSituation`] is already inserted (GTW-261).
     pub(super) situation: Option<Res<'w, LoadedSituation>>,
+    /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).
+    pub(super) armor:     Option<Res<'w, ArmorRegistry>>,
 }

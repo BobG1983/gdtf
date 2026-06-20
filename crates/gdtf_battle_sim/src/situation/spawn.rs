@@ -5,7 +5,7 @@ use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use crate::{
-    armor::{ArmorHardness, ArmorProtection, SourceArmor},
+    armor::{ArmorHardness, ArmorName, ArmorProtection},
     cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{
         Aiming, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Shooting, Stance,
@@ -25,9 +25,12 @@ use crate::{
 /// self-describing. The component fields are the E1.2 newtypes carried **by value**
 /// ([`setup_battle`](crate::situation::setup_battle) spawns an entity with each as a
 /// component) plus the E3.0 / GTW-182 attribute stats ([`Shooting`] / [`Toughness`] /
-/// [`Luck`], the substrate the severity roll reads); `armor` is the E1.3 read-only
-/// [`SourceArmor`] record ([`WornArmor::seed_from`](crate::armor::WornArmor::seed_from)
-/// copies it onto the spawned entity). The grid key [`at`](GangerSpawn::at) becomes the
+/// [`Luck`], the substrate the severity roll reads); `armor` is the armor KEY
+/// ([`ArmorName`]) resolved at setup against the
+/// [`ArmorRegistry`](crate::armor::ArmorRegistry) into the
+/// [`ArmorSpec`](crate::armor::ArmorSpec) that seeds the spawned entity's battle-local
+/// [`WornArmor`](crate::armor::WornArmor) (GTW-269 — mirroring the
+/// [`weapon`](GangerSpawn::weapon) key). The grid key [`at`](GangerSpawn::at) becomes the
 /// spawned ganger's [`Position`](crate::ganger::Position).
 ///
 /// Not `Eq` / `Hash`: the E3.0 attribute stats ([`Shooting`] / [`Toughness`] /
@@ -36,9 +39,10 @@ use crate::{
 /// ([`has_stacked_gangers`](crate::situation::has_stacked_gangers)) hashes
 /// [`at`](GangerSpawn::at), never the whole struct.
 ///
-/// Not `Copy` (GTW-257 / GTW-285): the [`weapon`](GangerSpawn::weapon) key is a
-/// [`WeaponName`] over a [`String`] and the [`name`](GangerSpawn::name) is a
-/// [`GangerName`] over a [`String`] (both owned, not `Copy`), so the authored ganger
+/// Not `Copy` (GTW-257 / GTW-285 / GTW-269): the [`weapon`](GangerSpawn::weapon) key
+/// is a [`WeaponName`] over a [`String`], the [`armor`](GangerSpawn::armor) key is an
+/// [`ArmorName`] over a [`String`], and the [`name`](GangerSpawn::name) is a
+/// [`GangerName`] over a [`String`] (all owned, not `Copy`), so the authored ganger
 /// is `Clone` only. The [`setup_battle`](crate::situation::setup_battle) spawn loop
 /// borrows each ganger, so dropping `Copy` costs nothing on the real path.
 ///
@@ -110,9 +114,17 @@ pub struct GangerSpawn {
     /// The ganger's **Luck** attribute — directional fortune shaping the severity
     /// roll's one-sided tail (E3.0 / GTW-182).
     pub luck:       Luck,
-    /// The ganger's read-only roster armor (`armor_by_part`) — copied into a
-    /// battle-local [`WornArmor`](crate::armor::WornArmor) at setup, never mutated.
-    pub armor:      SourceArmor,
+    /// The ganger's **armor KEY** — the filename stem of an `assets/armor/*.armor.ron`
+    /// (e.g. `"flak"`), resolved against the
+    /// [`ArmorRegistry`](crate::armor::ArmorRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle) into the
+    /// [`ArmorSpec`](crate::armor::ArmorSpec) that seeds the spawned entity's
+    /// battle-local [`WornArmor`](crate::armor::WornArmor) by value — never mutated on
+    /// the roster (GTW-269, mirroring the [`weapon`](GangerSpawn::weapon) key). A key
+    /// absent from the registry is a handled
+    /// [`BattleSetupError::ArmorNotFound`](crate::situation::BattleSetupError::ArmorNotFound)
+    /// error (no panic).
+    pub armor:      ArmorName,
     /// The ganger's **weapon KEY** — the filename stem of an `assets/weapons/*.ron`
     /// (e.g. `"autogun"`), resolved against the
     /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) at

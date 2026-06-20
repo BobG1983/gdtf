@@ -36,16 +36,38 @@ use gdtf_battle_presenter::{
     TerrainSprite, TopDownAtlases, TopDownRendererPlugin, cell_to_world_layered, facing_frame,
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, BaseSpread, BattleReady, BattleSeed, Cell, CellLevel, DamageType, Direction,
-    Facing, Faction, FatalBias, FireMode, FireModeSpec, GangerSpawn, Kickback, Level, LifeState,
-    Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, ReloadTu,
-    SetupBattleRequested, SimRng, Situation, Stable, Stance, StanceKind, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, setup_battle_on_request,
+    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece,
+    ArmorProtection, ArmorRegistry, ArmorSpec, ArmorType, BaseSpread, BattleReady, BattleSeed,
+    Cell, CellLevel, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
+    GangerSpawn, Kickback, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, Position, ReloadTu, SetupBattleRequested, SimRng, Situation, Stable,
+    Stance, StanceKind, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+    WeaponSpec, setup_battle_on_request,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
 /// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
 const TEST_WEAPON_KEY: &str = "test-weapon";
+
+/// The armor KEY every fixture ganger references — present in [`armor_registry`]
+/// (GTW-269).
+const TEST_ARMOR_KEY: &str = "test-armor";
+
+/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit the fixture gangers
+/// reference, standing in for the `Load`-built registry (GTW-269) so the real
+/// `setup_battle_on_request` spawn path armors each ganger.
+fn armor_registry() -> ArmorRegistry {
+    ArmorRegistry::new([(
+        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
+        ArmorSpec::uniform(ArmorPiece::new(
+            ArmorFloor::new(0),
+            ArmorProtection::new(1),
+            ArmorIntegrity::new(5),
+            ArmorHardness::new(0),
+            ArmorType::DEFAULT,
+        )),
+    )])
+}
 
 /// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
 /// reference, standing in for the `Load`-built registry (GTW-257) so the real
@@ -147,6 +169,9 @@ fn headless_renderer_app() -> App {
     // The Load-built WeaponRegistry (GTW-257): setup_battle_on_request reads it to arm
     // each spawned ganger. Inserted up front (the fixture gangers reference its key).
     app.insert_resource(weapon_registry());
+    // The Load-built ArmorRegistry (GTW-269): setup_battle_on_request reads it to armor
+    // each spawned ganger. Inserted up front (the fixture gangers reference its key).
+    app.insert_resource(armor_registry());
     app
 }
 
@@ -190,13 +215,8 @@ fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
         shooting: Shooting::new(2.0),
         toughness: Toughness::new(3.0),
         luck: Luck::new(1.0),
-        armor: gdtf_battle_sim::SourceArmor::uniform(gdtf_battle_sim::ArmorPiece::new(
-            gdtf_battle_sim::ArmorFloor::new(0),
-            gdtf_battle_sim::ArmorProtection::new(1),
-            gdtf_battle_sim::ArmorIntegrity::new(5),
-            gdtf_battle_sim::ArmorHardness::new(0),
-            gdtf_battle_sim::ArmorType::DEFAULT,
-        )),
+        // Every fixture ganger references the one TEST_ARMOR_KEY in armor_registry.
+        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
         // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
         weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
     }

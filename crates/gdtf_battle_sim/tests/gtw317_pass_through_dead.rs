@@ -24,13 +24,13 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection,
-    ArmorType, BaseSpread, BattleGrids, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
+    ArmorSpec, ArmorType, BaseSpread, BattleGrids, BattleSeed, Cell, CellLevel, CombatTuning,
+    CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
     MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, Position,
-    ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, SourceArmor, Stable, Stance, StanceKind,
-    SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponShred, WornArmor, Wounds, fire::FireOrder,
+    ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, Stable, Stance, StanceKind, SurfaceGrid,
+    Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    WornArmor, Wounds, fire::FireOrder,
 };
 
 /// The shooter cell — well to the West so the East-facing line of occupants lies
@@ -61,7 +61,7 @@ const fn burst_mode(shots: u16) -> FireModeSpec {
 
 /// A wafer-thin worn suit so a landed round reliably penetrates to flesh.
 const fn thin_suit() -> WornArmor {
-    WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(1),

@@ -103,7 +103,7 @@ fn apply_hit_armor_broken_flows_through_a_message_buffer() {
         let mut hp = Hp::new(30);
         let mut wounds = Wounds::new(6);
         let mut life = LifeState::Alive;
-        let mut worn = WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+        let mut worn = WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
             ArmorFloor::new(0),
             ArmorProtection::new(0),
             ArmorIntegrity::new(1),

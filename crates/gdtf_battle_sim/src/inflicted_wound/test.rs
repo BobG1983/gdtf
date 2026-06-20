@@ -8,8 +8,8 @@ use bevy::prelude::World;
 use super::{InflictedWound, InflictedWounds};
 use crate::{
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        BodyPart, SourceArmor, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
+        ArmorType, BodyPart, WornArmor,
     },
     central_axis::climb_aim_dir,
     cone::{ConeAngle, PriorShots},
@@ -75,7 +75,7 @@ fn a_weapon() -> WeaponBundle {
 /// A worn suit worn-through at every piece (integrity 0 ⇒ bare flesh) so a hit lands
 /// full damage and reliably wounds.
 fn bare_suit() -> WornArmor {
-    WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(0),

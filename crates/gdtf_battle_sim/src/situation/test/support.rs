@@ -12,8 +12,8 @@ pub(super) use bevy::{
 pub(super) use super::super::*;
 pub(super) use crate::{
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        BodyPart, SourceArmor, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+        ArmorRegistry, ArmorSpec, ArmorType, BodyPart, WornArmor,
     },
     cover::{CoverHp, CoverLedger, Destroyed, HeightBand},
     ganger::{
@@ -35,6 +35,10 @@ pub(super) use crate::{
 
 /// The weapon KEY every test ganger references — present in [`test_registry`].
 pub(super) const TEST_WEAPON_KEY: &str = "test-weapon";
+
+/// The armor KEY every test ganger references — present in [`test_armor_registry`]
+/// (the armor mirror of [`TEST_WEAPON_KEY`]; GTW-269).
+pub(super) const TEST_ARMOR_KEY: &str = "test-armor";
 
 /// Build a `(cell, level)` key from raw coordinates.
 pub(super) fn key(x: i32, y: i32, level: u8) -> CellLevel {
@@ -106,19 +110,54 @@ pub(super) fn shipped_registry() -> Option<WeaponRegistry> {
     ]))
 }
 
+/// The two shipped armor `.armor.ron` files, read at compile time via the same
+/// `include_str!` pattern the shipped weapons use — the REAL on-disk authored armor
+/// suits (keyed by their filename stems, minus the `.armor` infix), so a GTW-269
+/// regression in either file turns the shipped-setup test red.
+const SHIPPED_FLAK_RON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/armor/flak.armor.ron"
+));
+const SHIPPED_PLATED_RON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/armor/plated.armor.ron"
+));
+
+/// Build an armor registry from the shipped armor files, keyed by their filename stems
+/// (minus the `.armor` infix) — the real-asset armor registry the shipped
+/// `skirmish.ron` setup resolves against (GTW-269, the armor mirror of
+/// [`shipped_registry`]). Returns `None` (assert-fail) if either file fails to parse
+/// (no panic in tests).
+pub(super) fn shipped_armor_registry() -> Option<ArmorRegistry> {
+    let flak = ron::de::from_str::<ArmorSpec>(SHIPPED_FLAK_RON);
+    let plated = ron::de::from_str::<ArmorSpec>(SHIPPED_PLATED_RON);
+    assert!(
+        flak.is_ok() && plated.is_ok(),
+        "both shipped armor files must parse: flak={flak:?} plated={plated:?}",
+    );
+    let (Ok(flak), Ok(plated)) = (flak, plated) else {
+        return None;
+    };
+    Some(ArmorRegistry::new([
+        (ArmorName::new("flak".to_owned()), flak),
+        (ArmorName::new("plated".to_owned()), plated),
+    ]))
+}
+
 /// Run [`setup_battle`] on a fresh `MinimalPlugins` app against the GIVEN registry
 /// (the [`run_setup`] variant for the shipped-weapons AC5 path), returning the app +
 /// [`BattleSetup`] on success, else assert-failing and returning `None`.
 pub(super) fn run_setup_with(
     situation: Situation,
     registry: WeaponRegistry,
+    armor: ArmorRegistry,
 ) -> Option<(App, BattleSetup)> {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &mut commands)
+            setup_battle(&situation, &registry, &armor, &mut commands)
         });
     assert!(outcome.is_ok(), "the one-shot setup system must run");
     let setup = outcome.ok().and_then(Result::ok);
@@ -131,16 +170,27 @@ pub(super) fn run_setup_with(
     Some((app, setup))
 }
 
-/// An arbitrary roster armor record — distinct per-part magnitudes (NOT shipped
-/// tuning) so the seed copy is provably faithful, never asserting a magnitude.
-pub(super) fn arbitrary_armor(base: i32) -> SourceArmor {
-    SourceArmor::uniform(ArmorPiece::new(
+/// An arbitrary armor SPEC — distinct per-part magnitudes (NOT shipped tuning) so the
+/// registry-resolved seed copy is provably faithful, never asserting a magnitude. The
+/// suit the [`TEST_ARMOR_KEY`] resolves to in [`test_armor_registry`] (GTW-269).
+pub(super) fn arbitrary_armor(base: i32) -> ArmorSpec {
+    ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(base),
         ArmorProtection::new(base + 1),
         ArmorIntegrity::new(base + 2),
         ArmorHardness::new(base + 3),
         ArmorType::DEFAULT,
     ))
+}
+
+/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit — the test-built armor
+/// registry the setup resolves each ganger's `armor` key against (no `AssetServer`),
+/// the armor mirror of [`test_registry`] (GTW-269).
+pub(super) fn test_armor_registry() -> ArmorRegistry {
+    ArmorRegistry::new([(
+        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
+        arbitrary_armor(1),
+    )])
 }
 
 /// Build an authored ganger at `at` with the given faction and otherwise
@@ -168,7 +218,8 @@ pub(super) fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         shooting: Shooting::new(f32::from(faction) + 2.0),
         toughness: Toughness::new(f32::from(faction) + 3.0),
         luck: Luck::new(f32::from(faction) + 1.0),
-        armor: arbitrary_armor(i32::from(faction) + 1),
+        // Every test ganger references the one TEST_ARMOR_KEY in test_armor_registry.
+        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
         // Every test ganger references the one TEST_WEAPON_KEY in test_registry.
         weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
     }
@@ -214,13 +265,14 @@ pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
 
-    // Run setup as a one-shot system reading the fixture against the test registry,
-    // capturing its result.
+    // Run setup as a one-shot system reading the fixture against the test weapon +
+    // armor registries, capturing its result.
     let registry = test_registry();
+    let armor = test_armor_registry();
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &mut commands)
+            setup_battle(&situation, &registry, &armor, &mut commands)
         });
 
     // The one-shot system itself must run (Ok), and the inner setup must succeed.

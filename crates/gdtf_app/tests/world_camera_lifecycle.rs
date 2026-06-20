@@ -81,6 +81,10 @@ fn walk_app() -> bevy::app::App {
     // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
     // situation here, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-269: the Load->Intro gate also requires an ArmorRegistry; empty clears it (the
+    // registry is dormant this slice — the setup does not read it yet).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     // GTW-261: the Load->Intro gate now also requires a LoadedSituation (the
     // empty-battle-race fix); seed the empty default beside the other three.
     app.world_mut()

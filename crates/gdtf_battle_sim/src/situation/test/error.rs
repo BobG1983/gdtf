@@ -21,10 +21,11 @@ fn setup_aborts_on_invalid_vertical_link() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     let registry = test_registry();
+    let armor = test_armor_registry();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &mut commands)
+            setup_battle(&situation, &registry, &armor, &mut commands)
         });
 
     // The one-shot system ran; the inner setup returned the typed error (now wrapped
@@ -73,10 +74,11 @@ fn setup_errors_on_a_missing_weapon_key() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     let registry = test_registry();
+    let armor = test_armor_registry();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &mut commands)
+            setup_battle(&situation, &registry, &armor, &mut commands)
         });
 
     assert!(result.is_ok(), "the one-shot system must run");
@@ -103,5 +105,57 @@ fn setup_errors_on_a_missing_weapon_key() {
     assert!(
         world.get_resource::<CoverLedger>().is_none(),
         "a weapon-resolution abort must insert no resources",
+    );
+}
+
+/// GTW-269 — an `armor` key ABSENT from the armor registry makes `setup_battle` return
+/// `Err(BattleSetupError::ArmorNotFound)` and spawn NOTHING (armor resolution runs
+/// before the spawn loop) — the no-panic handled-error contract, the armor mirror of
+/// `setup_errors_on_a_missing_weapon_key`.
+#[test]
+fn setup_errors_on_a_missing_armor_key() {
+    // A ganger whose armor key is not the one the armor registry holds (its weapon key
+    // IS present, so the weapon resolution passes and the armor resolution is reached).
+    let mut ganger = ganger_at(key(0, 0, 0), 0);
+    ganger.armor = ArmorName::new("no-such-armor".to_owned());
+    let situation = Situation {
+        gangers: vec![ganger],
+        ..Situation::new()
+    };
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    let registry = test_registry();
+    let armor = test_armor_registry();
+    let result = app
+        .world_mut()
+        .run_system_once(move |mut commands: Commands| {
+            setup_battle(&situation, &registry, &armor, &mut commands)
+        });
+
+    assert!(result.is_ok(), "the one-shot system must run");
+    let Ok(setup_result) = result else {
+        return;
+    };
+    assert_eq!(
+        setup_result.err(),
+        Some(BattleSetupError::ArmorNotFound {
+            armor: ArmorName::new("no-such-armor".to_owned()),
+        }),
+        "a missing armor key must abort setup with ArmorNotFound (no panic)",
+    );
+
+    // Nothing was spawned (armor resolution aborted before the spawn loop).
+    app.world_mut().flush();
+    let world = app.world_mut();
+    let mut q = world.query::<&WornArmor>();
+    assert_eq!(
+        q.iter(world).count(),
+        0,
+        "an armor-resolution abort must spawn no gangers",
+    );
+    assert!(
+        world.get_resource::<CoverLedger>().is_none(),
+        "an armor-resolution abort must insert no resources",
     );
 }

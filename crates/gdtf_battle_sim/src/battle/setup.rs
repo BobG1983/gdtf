@@ -6,6 +6,7 @@
 use bevy::prelude::{Commands, MessageReader, MessageWriter, Res, error};
 
 use crate::{
+    armor::ArmorRegistry,
     battle::{
         messages::{BattleReady, SetupBattleRequested, TeardownBattleRequested},
         resources::{BattleInProgress, BattleRoster, PlayerFaction},
@@ -30,7 +31,8 @@ use crate::{
 ///    [`SimRng::from_seed`](crate::rng::SimRng::from_seed) — the deterministic stream the
 ///    acts draw from).
 /// 2. Calls [`setup_battle`] on the REAL [`Commands`] path, resolving each ganger's
-///    weapon key against the [`WeaponRegistry`] (GTW-257). On `Ok` the four sim
+///    weapon key against the [`WeaponRegistry`] (GTW-257) and each ganger's armor key
+///    against the [`ArmorRegistry`] (GTW-269). On `Ok` the four sim
 ///    resources ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
 ///    [`VerticalLinkGraph`]) and the spawned ganger entities (each armed with its
 ///    resolved [`WeaponBundle`](crate::weapon::WeaponBundle)) land in the world, the
@@ -42,21 +44,22 @@ use crate::{
 ///    [`ActiveFaction`] turn-cycle resource is seeded to the same player faction (the
 ///    player acts first; GTW-309) — all sharing [`BattleInProgress`]'s lifetime — and a
 ///    [`BattleReady`] is written; on `Err` the typed
-///    [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid vertical link OR
-///    an unresolved weapon key) is surfaced via [`error!`] and NEITHER
+///    [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid vertical link,
+///    an unresolved weapon key, OR an unresolved armor key) is surfaced via [`error!`] and NEITHER
 ///    [`BattleInProgress`] / [`PlayerFaction`] / [`BattleRoster`] / [`ActiveFaction`] NOR
 ///    [`BattleReady`] is written — the app never advances on a bad battle, and the gate
 ///    never opens. NO `unwrap`/`expect`/`panic`.
 ///
-/// The [`WeaponRegistry`] is read as `Option<Res<_>>` (PERSISTENT `Load` state like
-/// [`CombatTuning`](crate::tuning::CombatTuning)); a setup requested before it loads
-/// fails closed (logged, no [`BattleReady`]). [`CombatTuning`](crate::tuning::CombatTuning)
-/// is NOT inserted here: it is E10.4's PERSISTENT `Load` resource, present throughout the
-/// battle for the acts to read.
+/// The [`WeaponRegistry`] and [`ArmorRegistry`] are each read as `Option<Res<_>>`
+/// (PERSISTENT `Load` state like [`CombatTuning`](crate::tuning::CombatTuning)); a setup
+/// requested before EITHER loads fails closed (logged, no [`BattleReady`]).
+/// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
+/// PERSISTENT `Load` resource, present throughout the battle for the acts to read.
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,
     mut ready: MessageWriter<BattleReady>,
     weapons: Option<Res<WeaponRegistry>>,
+    armor: Option<Res<ArmorRegistry>>,
     mut commands: Commands,
 ) {
     for request in requests.read() {
@@ -72,15 +75,25 @@ pub fn setup_battle_on_request(
             );
             continue;
         };
+        // The armor registry is the same PERSISTENT `Load` state (GTW-269), read as
+        // `Option<Res<_>>` so a setup somehow requested before it loaded fails closed —
+        // no setup, no BattleReady (bevy-traps #1, mirroring the weapon registry guard).
+        let Some(armor) = armor.as_deref() else {
+            error!(
+                "battle setup requested but no ArmorRegistry is loaded; no BattleReady will be \
+                 signalled (the armor folder must load before a battle starts)"
+            );
+            continue;
+        };
 
         // 1. Seed the battle-lifetime RNG from the trigger's seed.
         commands.insert_resource(SimRng::from_seed(request.seed));
 
         // 2. Pour the situation into the world via the authoritative setup. A bad
-        //    vertical link OR a missing weapon key returns the typed error — log it
-        //    (NEVER panic / unwrap) and write NO BattleReady, so the app's gate never
-        //    fires (fail-closed).
-        match setup_battle(&request.situation, weapons, &mut commands) {
+        //    vertical link, a missing weapon key, OR a missing armor key returns the
+        //    typed error — log it (NEVER panic / unwrap) and write NO BattleReady, so
+        //    the app's gate never fires (fail-closed).
+        match setup_battle(&request.situation, weapons, armor, &mut commands) {
             Ok(_setup) => {
                 // The battle is live: insert the gate witness (alongside the four
                 // setup_battle grids + the seeded SimRng) so the Simulate band's bundled
@@ -105,8 +118,8 @@ pub fn setup_battle_on_request(
             }
             Err(error) => {
                 error!(
-                    "battle setup failed: {error:?} (an invalid vertical link or an unresolved \
-                     weapon key); no BattleReady will be signalled"
+                    "battle setup failed: {error:?} (an invalid vertical link, an unresolved \
+                     weapon key, or an unresolved armor key); no BattleReady will be signalled"
                 );
             }
         }

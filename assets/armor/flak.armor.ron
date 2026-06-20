@@ -1,0 +1,23 @@
+// GDTF authored armor — "flak" (the armor KEY = ArmorName = the filename stem
+// minus the `.armor` infix; this file is `flak.armor.ron`, key "flak").
+// A common light combat suit: flexible plates that soak modest punch, the
+// matchup-wheel Flak node. This is AUTHORED CONTENT (a per-armor stat block, the
+// six per-location ArmorPieces of one suit), folder-loaded as a loose `.armor.ron`
+// through the RonAsset<ArmorSpec> loader (GTW-269) and resolved at battle setup
+// into the roster SourceArmor record for every ganger that references this key
+// (slice C). The dedicated `.armor.ron` extension makes the folder load unambiguous
+// among GDTF's many `.ron` loaders. The file does NOT author a `name` field — the
+// name is supplied from the key ("flak"). Render-free, pixel-free: every number is
+// an armor stat the §"Per-hit resolution" formula reads. Magnitudes here mirror the
+// armor the shipped skirmish.ron authors inline for its Flak ganger (so slice C can
+// reference this set by key with NO behavior change); they are per-piece DATA, NOT
+// pinned by tests. Each piece: (floor, protection, integrity, hardness, armor_type).
+// Each line says what it authors — edit freely.
+(
+    head:      (floor: 1, protection: 6, integrity: 20, hardness: 3, armor_type: Flak),  // Head piece — rarely struck, severity-amplifying
+    torso:     (floor: 1, protection: 8, integrity: 30, hardness: 3, armor_type: Flak),  // Torso piece — bulk of the silhouette, most hits land here
+    left_arm:  (floor: 0, protection: 4, integrity: 15, hardness: 2, armor_type: Flak),  // Left-arm piece
+    right_arm: (floor: 0, protection: 4, integrity: 15, hardness: 2, armor_type: Flak),  // Right-arm piece
+    left_leg:  (floor: 0, protection: 5, integrity: 18, hardness: 2, armor_type: Flak),  // Left-leg piece
+    right_leg: (floor: 0, protection: 5, integrity: 18, hardness: 2, armor_type: Flak),  // Right-leg piece
+)

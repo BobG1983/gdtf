@@ -217,8 +217,8 @@ pub mod weapon;
 pub use aim::{Shooter, cone_for, stability_for};
 pub use apply_hit::{GangerHitTarget, apply_hit};
 pub use armor::{
-    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
-    SourceArmor, WornArmor,
+    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+    ArmorRegistry, ArmorSpec, ArmorType, BodyPart, SourceArmor, WornArmor,
 };
 pub use armor_wear::{ArmorBroken, wear_armor};
 pub use battle::{

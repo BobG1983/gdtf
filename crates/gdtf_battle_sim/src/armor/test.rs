@@ -2,16 +2,22 @@
 //! body-part keying, the newtype Deref, and the dual-vocabulary wheel parity.
 
 use crate::armor::{
-    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
-    SourceArmor, WornArmor,
+    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+    ArmorRegistry, ArmorSpec, ArmorType, BodyPart, WornArmor,
 };
 
-/// A roster source built from arbitrary, per-location-DISTINCT magnitudes —
+/// The armor piece a [`BodyPart`] resolves to in an [`ArmorSpec`] — the spec mirror
+/// of `SourceArmor::at`, reading [`ArmorSpec::pieces`] in [`BodyPart::ALL`] order.
+fn spec_at(spec: &ArmorSpec, part: BodyPart) -> ArmorPiece {
+    spec.pieces()[part.index()]
+}
+
+/// A source spec built from arbitrary, per-location-DISTINCT magnitudes —
 /// NOT shipped tuning values. Distinct per part proves the seeding copies each
 /// slot independently (not a single value smeared across all six), and using
 /// arbitrary numbers keeps the test asserting the copy/isolation *mechanism*,
 /// never a magnitude (magnitudes are TBD tuning).
-fn arbitrary_source() -> SourceArmor {
+fn arbitrary_source() -> ArmorSpec {
     let pieces = [
         // Head — distinct ArmorType per slot proves the type copies per piece.
         ArmorPiece::new(
@@ -62,7 +68,7 @@ fn arbitrary_source() -> SourceArmor {
             ArmorType::Reinforced,
         ),
     ];
-    SourceArmor::new(pieces)
+    ArmorSpec::new(pieces)
 }
 
 /// C7(a): a worn copy seeded from a source starts EQUAL to the source,
@@ -75,7 +81,7 @@ fn seeded_copy_equals_source_field_by_field() {
     let worn = WornArmor::seed_from(&source);
 
     for part in BodyPart::ALL {
-        let src = source.at(part);
+        let src = spec_at(&source, part);
         let cpy = worn.at(part);
         assert_eq!(cpy.floor, src.floor, "floor mismatch at {part:?}");
         assert_eq!(
@@ -105,15 +111,15 @@ fn wearing_worn_integrity_does_not_mutate_source() {
     let source = arbitrary_source();
     let mut worn = WornArmor::seed_from(&source);
 
-    let original = source.at(BodyPart::Torso).integrity;
+    let original = spec_at(&source, BodyPart::Torso).integrity;
     // Arbitrary wear amount — the mechanism, not a tuned magnitude.
     worn.wear_integrity(BodyPart::Torso, ArmorIntegrity::new(5));
 
-    // The source torso integrity is unchanged — the roster never wears.
+    // The source torso integrity is unchanged — the spec never wears.
     assert_eq!(
-        source.at(BodyPart::Torso).integrity,
+        spec_at(&source, BodyPart::Torso).integrity,
         original,
-        "roster source integrity must NOT change when the worn copy wears",
+        "source spec integrity must NOT change when the worn copy wears",
     );
     // The worn torso integrity DID change (the wear actually applied).
     assert_eq!(
@@ -128,7 +134,7 @@ fn wearing_worn_integrity_does_not_mutate_source() {
         }
         assert_eq!(
             worn.at(part),
-            source.at(part),
+            spec_at(&source, part),
             "non-struck worn slot {part:?} must equal the source",
         );
     }
@@ -140,7 +146,7 @@ fn wearing_worn_integrity_does_not_mutate_source() {
 /// underflow-panicked), confirming the `i32` choice carries the contract.
 #[test]
 fn worn_integrity_can_fall_below_zero() {
-    let source = SourceArmor::uniform(ArmorPiece::new(
+    let source = ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(3),
@@ -156,7 +162,10 @@ fn worn_integrity_can_fall_below_zero() {
         "worn integrity must be able to fall below zero (useless-at-≤0 gate)",
     );
     // The source is, again, untouched.
-    assert_eq!(source.at(BodyPart::Head).integrity, ArmorIntegrity::new(3));
+    assert_eq!(
+        spec_at(&source, BodyPart::Head).integrity,
+        ArmorIntegrity::new(3)
+    );
 }
 
 /// [`WornArmor::protects`] tracks the "useless at `≤ 0`" gate: a piece with
@@ -166,7 +175,7 @@ fn worn_integrity_can_fall_below_zero() {
 /// predicate flips at the crossing and stays false thereafter.
 #[test]
 fn protects_is_false_at_or_below_zero() {
-    let source = SourceArmor::uniform(ArmorPiece::new(
+    let source = ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(2),
@@ -290,6 +299,141 @@ fn armor_piece_carries_armor_type() {
 
     // And it survives the seed copy onto a worn piece (the field is part of the
     // copied record, like the four stats).
-    let worn = WornArmor::seed_from(&SourceArmor::uniform(piece));
+    let worn = WornArmor::seed_from(&ArmorSpec::uniform(piece));
     assert_eq!(worn.at(BodyPart::Torso).armor_type, ArmorType::Ceramic);
+}
+
+/// The six pieces the inline-authored `ArmorSpec` RON below is EXPECTED to parse
+/// into, in [`BodyPart::ALL`] order — per-location-DISTINCT arbitrary magnitudes
+/// and a distinct [`ArmorType`] per slot, so a field that lands in the wrong slot
+/// surfaces. The mechanism, not pinned tuning. Mirrors the RON literal field for
+/// field.
+fn expected_round_trip_pieces() -> [ArmorPiece; 6] {
+    [
+        ArmorPiece::new(
+            ArmorFloor::new(1),
+            ArmorProtection::new(11),
+            ArmorIntegrity::new(21),
+            ArmorHardness::new(31),
+            ArmorType::Plated,
+        ),
+        ArmorPiece::new(
+            ArmorFloor::new(2),
+            ArmorProtection::new(12),
+            ArmorIntegrity::new(22),
+            ArmorHardness::new(32),
+            ArmorType::Refractive,
+        ),
+        ArmorPiece::new(
+            ArmorFloor::new(3),
+            ArmorProtection::new(13),
+            ArmorIntegrity::new(23),
+            ArmorHardness::new(33),
+            ArmorType::Flak,
+        ),
+        ArmorPiece::new(
+            ArmorFloor::new(4),
+            ArmorProtection::new(14),
+            ArmorIntegrity::new(24),
+            ArmorHardness::new(34),
+            ArmorType::Void,
+        ),
+        ArmorPiece::new(
+            ArmorFloor::new(5),
+            ArmorProtection::new(15),
+            ArmorIntegrity::new(25),
+            ArmorHardness::new(35),
+            ArmorType::Hazard,
+        ),
+        ArmorPiece::new(
+            ArmorFloor::new(6),
+            ArmorProtection::new(16),
+            ArmorIntegrity::new(26),
+            ArmorHardness::new(36),
+            ArmorType::Reinforced,
+        ),
+    ]
+}
+
+/// GTW-269 (the ticket-required round-trip, mirroring
+/// `weapon_spec_round_trips_and_into_bundle_groups_faithfully`): an authored
+/// 6-piece [`ArmorSpec`] parses from inline RON, an [`ArmorRegistry`] keys it by
+/// [`ArmorName`], `spec()` resolves it back, and every one of the five fields
+/// (floor / protection / integrity / hardness / `armor_type`) of each of the six
+/// pieces matches the authored values — read off [`ArmorSpec::pieces`] in
+/// [`BodyPart::ALL`] order. Per-location-DISTINCT arbitrary magnitudes (the
+/// mechanism, not pinned tuning) prove each named field round-trips into the right
+/// slot.
+#[test]
+fn armor_spec_round_trips_and_registry_resolves_by_name() {
+    // Authored six-piece suit — each field a self-describing line (the per-line
+    // authoring convention). Distinct floor/protection/integrity/hardness per slot
+    // and a distinct ArmorType per slot prove each named field maps to its slot.
+    let authored = r"(
+        head:      ( floor: 1, protection: 11, integrity: 21, hardness: 31, armor_type: Plated ),
+        torso:     ( floor: 2, protection: 12, integrity: 22, hardness: 32, armor_type: Refractive ),
+        left_arm:  ( floor: 3, protection: 13, integrity: 23, hardness: 33, armor_type: Flak ),
+        right_arm: ( floor: 4, protection: 14, integrity: 24, hardness: 34, armor_type: Void ),
+        left_leg:  ( floor: 5, protection: 15, integrity: 25, hardness: 35, armor_type: Hazard ),
+        right_leg: ( floor: 6, protection: 16, integrity: 26, hardness: 36, armor_type: Reinforced ),
+    )";
+    let parsed = ron::de::from_str::<ArmorSpec>(authored);
+    assert!(
+        parsed.is_ok(),
+        "inline ArmorSpec RON must parse: {parsed:?}"
+    );
+    let Ok(spec) = parsed else {
+        return;
+    };
+
+    // Key it into a registry by name and resolve it back (the lookup mechanism).
+    let armor_name = ArmorName::new("flak-jacket".to_owned());
+    let registry = ArmorRegistry::new([(armor_name.clone(), spec)]);
+    assert_eq!(
+        registry.len(),
+        1,
+        "the registry holds the one inserted armor"
+    );
+    assert!(!registry.is_empty(), "a one-armor registry is non-empty");
+    assert!(
+        registry
+            .spec(&ArmorName::new("missing".to_owned()))
+            .is_none(),
+        "an absent key resolves to None",
+    );
+    let resolved = registry.spec(&armor_name);
+    assert!(
+        resolved.is_some(),
+        "the present key must resolve to its spec",
+    );
+    let Some(resolved) = resolved else {
+        return;
+    };
+
+    // The authored pieces, in BodyPart::ALL order, with their five expected fields.
+    let expected = expected_round_trip_pieces();
+
+    // Walk all six parts; assert each of the five fields per piece matches the
+    // authored value (pieces() returns them in BodyPart::ALL order).
+    let pieces = resolved.pieces();
+    for (i, part) in BodyPart::ALL.into_iter().enumerate() {
+        let got = pieces[i];
+        let want = expected[i];
+        assert_eq!(got.floor, want.floor, "floor mismatch at {part:?}");
+        assert_eq!(
+            got.protection, want.protection,
+            "protection mismatch at {part:?}"
+        );
+        assert_eq!(
+            got.integrity, want.integrity,
+            "integrity mismatch at {part:?}"
+        );
+        assert_eq!(got.hardness, want.hardness, "hardness mismatch at {part:?}");
+        assert_eq!(
+            got.armor_type, want.armor_type,
+            "armor_type mismatch at {part:?}"
+        );
+        // And the whole piece round-tripped.
+        assert_eq!(got, want, "piece mismatch at {part:?}");
+    }
 }

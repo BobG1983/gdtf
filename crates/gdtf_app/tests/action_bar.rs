@@ -56,11 +56,11 @@ use gdtf_app::test_support::{
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
-    Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-    BattleInProgress, Cell, CellLevel, Direction, Facing, Faction, FireMode, FireModeSpec,
-    GangerName, GangerSpawn, Hp, HpMax, Level, LifeState, Luck, MAX_LEVELS, Magazine, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, ReloadTu, Shooting, Situation, SourceArmor, Stance,
-    StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
+    Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+    ArmorRegistry, ArmorSpec, ArmorType, BattleInProgress, Cell, CellLevel, Direction, Facing,
+    Faction, FireMode, FireModeSpec, GangerName, GangerSpawn, Hp, HpMax, Level, LifeState, Luck,
+    MAX_LEVELS, Magazine, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, ReloadTu, Shooting,
+    Situation, Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     mode_tu_cost,
     tuning::CombatTuning,
@@ -116,6 +116,10 @@ fn walk_app() -> App {
     // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
     // situation here, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-269: the Load->Intro gate also requires an ArmorRegistry; the empty-default
+    // situation has zero gangers, so an empty registry clears the gate and the setup
+    // resolves no armor keys.
+    app.world_mut().insert_resource(ArmorRegistry::default());
     app
 }
 
@@ -1635,6 +1639,10 @@ fn end_turn_and_flee_buttons_are_both_enabled() {
 /// The weapon key the real-flow armed ganger references — present in [`armed_registry`].
 const PLAYER_WEAPON_KEY: &str = "test-weapon";
 
+/// The armor key the real-flow armed ganger references — present in
+/// [`armed_armor_registry`] (GTW-269).
+const PLAYER_ARMOR_KEY: &str = "test-armor";
+
 /// The gang the player controls in these tests — `Situation::player_faction` defaults to
 /// gang `0`, so the armed ganger is faction `0` for `auto_select_first_player_ganger` to
 /// pick it via the real flow (the `battle_running_driver.rs` precedent).
@@ -1664,16 +1672,27 @@ fn armed_registry() -> WeaponRegistry {
     )])
 }
 
-/// An arbitrary roster armor record (distinct per-part magnitudes, NOT shipped tuning —
-/// the `battle_running_driver.rs::arbitrary_armor` shape).
-const fn arbitrary_armor() -> SourceArmor {
-    SourceArmor::uniform(ArmorPiece::new(
+/// An arbitrary armor SPEC (distinct per-part magnitudes, NOT shipped tuning) — the suit
+/// the [`PLAYER_ARMOR_KEY`] resolves to in [`armed_armor_registry`] (GTW-269, the
+/// `battle_running_driver.rs::arbitrary_armor` shape).
+const fn arbitrary_armor() -> ArmorSpec {
+    ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(1),
         ArmorIntegrity::new(2),
         ArmorHardness::new(3),
         ArmorType::DEFAULT,
     ))
+}
+
+/// An [`ArmorRegistry`] holding the one [`PLAYER_ARMOR_KEY`] armor suit the armed
+/// real-flow ganger references (stands in for the `Load`-built registry, GTW-269, so the
+/// Generation setup armors the ganger).
+fn armed_armor_registry() -> ArmorRegistry {
+    ArmorRegistry::new([(
+        ArmorName::new(PLAYER_ARMOR_KEY.to_owned()),
+        arbitrary_armor(),
+    )])
 }
 
 /// A one-ganger real situation: a single armed faction-[`PLAYER_FACTION`] ganger the
@@ -1700,7 +1719,7 @@ fn armed_player_situation() -> Situation {
             shooting:   Shooting::new(3.0),
             toughness:  Toughness::new(3.0),
             luck:       Luck::new(1.0),
-            armor:      arbitrary_armor(),
+            armor:      ArmorName::new(PLAYER_ARMOR_KEY.to_owned()),
             weapon:     WeaponName::new(PLAYER_WEAPON_KEY.to_owned()),
         }],
         ..Situation::new()
@@ -1718,6 +1737,9 @@ fn walk_app_with_situation(situation: Situation) -> App {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(armed_registry());
+    // The Load-built ArmorRegistry (GTW-269) so the Generation setup armors the player
+    // ganger: it references PLAYER_ARMOR_KEY, which this registry holds.
+    app.world_mut().insert_resource(armed_armor_registry());
     app.world_mut().insert_resource(LoadedSituation(situation));
     app
 }

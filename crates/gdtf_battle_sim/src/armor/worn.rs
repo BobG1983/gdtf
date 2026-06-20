@@ -5,19 +5,24 @@
 use bevy::prelude::Component;
 use serde::Deserialize;
 
-use super::stats::{ArmorIntegrity, ArmorPiece, BodyPart};
+use super::{
+    spec::ArmorSpec,
+    stats::{ArmorIntegrity, ArmorPiece, BodyPart},
+};
 
 /// The **read-only** roster armor record — the persistent representation of a
 /// ganger's worn armor across all six body locations (`armor_at` keyed by
 /// [`BodyPart`], `weapons-and-armor.md` §"Per-hit resolution").
 ///
-/// This is the roster source of truth: the per-location [`ArmorPiece`]s a ganger
-/// carries into a battle. Per the battle-local / roster separation (ADR-0001,
+/// This is a roster source-of-truth shape: the per-location [`ArmorPiece`]s a
+/// ganger carries into a battle. Per the battle-local / roster separation (ADR-0001,
 /// `docs/decisions/0001-rust-bevy-rewrite.md`), this record is **never** mutated
-/// during a battle — it is read once
-/// to seed an owned [`WornArmor`] copy ([`WornArmor::seed_from`]). It is plain
-/// data (not a [`Component`]); the battle-local copy is the component the sim
-/// places on ganger entities.
+/// during a battle. It is plain data (not a [`Component`]); the battle-local
+/// [`WornArmor`] copy is the component the sim places on ganger entities (since
+/// GTW-269 that copy is seeded from a registry-resolved
+/// [`ArmorSpec`](super::ArmorSpec) via [`WornArmor::seed_from`], not from this record
+/// — `SourceArmor` remains the roster authoring shape and the test fixtures' uniform
+/// suit builder).
 ///
 /// Deserializes through a per-body-part authoring shape ([`SourceArmorDef`]) that
 /// routes the six named pieces through [`SourceArmor::new`] — so an authored
@@ -112,19 +117,22 @@ pub struct WornArmor {
 }
 
 impl WornArmor {
-    /// Seed a battle-local worn copy **from** a read-only roster [`SourceArmor`]
-    /// record, **by value**.
+    /// Seed a battle-local worn copy **from** a resolved [`ArmorSpec`] (the suit the
+    /// [`ArmorRegistry`](super::ArmorRegistry) keyed by a ganger's armor key at
+    /// setup), **by value**.
     ///
     /// This is the C4 seeding function: it produces the owned battle-local copy
     /// the sim mutates during the battle. Because [`ArmorPiece`] is `Copy` and the
-    /// pieces are taken by value out of the source, no reference to the roster
+    /// six pieces are read by value out of the spec (in
+    /// [`BodyPart::ALL`](super::BodyPart::ALL) order via
+    /// [`ArmorSpec::pieces`](super::ArmorSpec::pieces)), no reference to the source
     /// record survives — a later [`wear_integrity`](WornArmor::wear_integrity) on
-    /// this copy can never reach the source (the roster data is never touched;
-    /// ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).
+    /// this copy can never reach the spec the registry holds (the roster data is
+    /// never touched; ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).
     #[must_use]
-    pub const fn seed_from(source: &SourceArmor) -> Self {
+    pub const fn seed_from(source: &ArmorSpec) -> Self {
         Self {
-            pieces: source.pieces,
+            pieces: source.pieces(),
         }
     }
 

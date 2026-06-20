@@ -25,16 +25,16 @@
 //!
 //! - **`Startup`** seeds the persistent `Load` resources a headless walk lacks
 //!   ([`default_theme`] + [`CombatTuning::default`] unconditionally, plus an empty
-//!   [`WeaponRegistry`] + a default [`LoadedSituation`] ONLY when there is no
-//!   `AssetServer`). Under the real GUI launch the `Load` scene resolves the shipped
-//!   theme / tuning from assets and `insert_resource`-overwrites those seeds, and —
-//!   because its `poll_and_resolve` only RESOLVES the weapon registry /
-//!   `situations/skirmish.ron` while those resources are ABSENT — the registry +
-//!   situation seeds are deliberately withheld when an `AssetServer` is present so the
-//!   real `assets/weapons/*.weapon.ron` + skirmish win (the asset versions are the QA
-//!   battlefield). With no `AssetServer` / a failed asset the empty fallbacks still
-//!   keep the machine traversing `Load`. See [`seed_load_fallbacks`] for the full
-//!   rationale (A1 + GTW-297 `AC3b`).
+//!   [`WeaponRegistry`] + an empty [`ArmorRegistry`] + a default [`LoadedSituation`]
+//!   ONLY when there is no `AssetServer`). Under the real GUI launch the `Load` scene
+//!   resolves the shipped theme / tuning from assets and `insert_resource`-overwrites
+//!   those seeds, and — because its `poll_and_resolve` only RESOLVES the weapon /
+//!   armor registries / `situations/skirmish.ron` while those resources are ABSENT —
+//!   the registry + situation seeds are deliberately withheld when an `AssetServer` is
+//!   present so the real `assets/weapons/*.weapon.ron` + `assets/armor/*.armor.ron` +
+//!   skirmish win (the asset versions are the QA battlefield). With no `AssetServer` /
+//!   a failed asset the empty fallbacks still keep the machine traversing `Load`. See
+//!   [`seed_load_fallbacks`] for the full rationale (A1 + GTW-297 `AC3b`).
 //! - **`Update`** drives the ONE non-automatic transition: the menu does not
 //!   auto-advance (GTW-121), so [`drive_past_menu`] sets
 //!   `NextState<RunningState>::Game` once [`RunningState::Menu`] rests. Everything
@@ -45,7 +45,7 @@
 //! gates on is removed the moment it leaves the menu, so it nudges exactly once.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{armor::ArmorRegistry, tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_ui::theme::default_theme;
 
 use crate::{scenes::LoadedSituation, states::RunningState};
@@ -192,13 +192,14 @@ crate::support_item! {
     /// machine can traverse `Load` even without a resolved asset stack.
     ///
     /// Inserts [`default_theme`] + [`CombatTuning::default`] unconditionally, and an empty
-    /// [`WeaponRegistry`] + a default (EMPTY) [`LoadedSituation`] **only when no
-    /// [`AssetServer`] is present** (a headless / asset-less build). Under the real GUI
-    /// launch the `Load` scene later `insert_resource`-overwrites the theme / tuning with
-    /// the shipped assets (the real theme + tuning), and — crucially — its
-    /// [`poll_and_resolve`](crate::scenes::load) only RESOLVES the registry / situation
-    /// from `assets/weapons/*.weapon.ron` + `situations/skirmish.ron` while those resources
-    /// are still ABSENT, so the empty seeds must NOT be present for the real assets to win.
+    /// [`WeaponRegistry`] + an empty [`ArmorRegistry`] + a default (EMPTY) [`LoadedSituation`]
+    /// **only when no [`AssetServer`] is present** (a headless / asset-less build). Under the
+    /// real GUI launch the `Load` scene later `insert_resource`-overwrites the theme / tuning
+    /// with the shipped assets (the real theme + tuning), and — crucially — its
+    /// [`poll_and_resolve`](crate::scenes::load) only RESOLVES the registries / situation
+    /// from `assets/weapons/*.weapon.ron` + `assets/armor/*.armor.ron` +
+    /// `situations/skirmish.ron` while those resources are still ABSENT, so the empty seeds
+    /// must NOT be present for the real assets to win.
     /// Runs once in `Startup` (before the first `Update`, hence before `Load` resolves), so
     /// the unconditional seeds are in place no matter how the assets resolve, and the
     /// gated ones are absent whenever a real asset stack can resolve the genuine articles.
@@ -216,11 +217,12 @@ crate::support_item! {
     /// [`WeaponNotFound`](gdtf_battle_sim::situation::BattleSetupError), never reaching
     /// `BattleRunning` (a black screen). Gating BOTH empty seeds on the [`AssetServer`]
     /// being ABSENT (SYMMETRIC seeds) means: with an asset stack present (the real GUI
-    /// launch) NEITHER empty fallback is inserted, so `poll_and_resolve` WAITS for and
-    /// populates the real skirmish + the real weapon registry; without one (a headless
-    /// asset-less drive) both empty fallbacks are still seeded so the machine keeps
-    /// traversing `Load` and the GTW-257 Load→Intro gate (which requires a
-    /// [`WeaponRegistry`]) is satisfied. The unconditional theme + tuning seeds are
+    /// launch) NONE of the empty fallbacks is inserted, so `poll_and_resolve` WAITS for and
+    /// populates the real skirmish + the real weapon registry + the real armor registry;
+    /// without one (a headless asset-less drive) all empty fallbacks are still seeded so the
+    /// machine keeps traversing `Load` and the GTW-257 / GTW-269 Load→Intro gate (which
+    /// requires a [`WeaponRegistry`] and an [`ArmorRegistry`]) is satisfied. The
+    /// unconditional theme + tuning seeds are
     /// overwritten in place by the resolved assets (their resolve is unconditional), so
     /// they need no such gate.
     ///
@@ -235,13 +237,15 @@ crate::support_item! {
     fn seed_load_fallbacks(asset_server: Option<Res<AssetServer>>, mut commands: Commands) {
         commands.insert_resource(default_theme());
         commands.insert_resource(CombatTuning::default());
-        // A1 / AC3b — only seed the empty fallback registry + situation when there is NO
-        // AssetServer. With one present the real `assets/weapons/*.weapon.ron` registry
-        // and `situations/skirmish.ron` must win: `poll_and_resolve` only resolves them
-        // while ABSENT, so a pre-seeded empty resource would shadow the real load (the
-        // registry shadow is the AC3b WeaponNotFound bug). The two seeds are SYMMETRIC.
+        // A1 / AC3b — only seed the empty fallback registries + situation when there is NO
+        // AssetServer. With one present the real `assets/weapons/*.weapon.ron` +
+        // `assets/armor/*.armor.ron` registries and `situations/skirmish.ron` must win:
+        // `poll_and_resolve` only resolves them while ABSENT, so a pre-seeded empty resource
+        // would shadow the real load (the registry shadow is the AC3b WeaponNotFound bug).
+        // The three seeds are SYMMETRIC (GTW-269 adds the armor registry to the set).
         if asset_server.is_none() {
             commands.insert_resource(WeaponRegistry::default());
+            commands.insert_resource(ArmorRegistry::default());
             commands.insert_resource(LoadedSituation(
                 gdtf_battle_sim::situation::Situation::default(),
             ));

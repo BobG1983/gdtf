@@ -25,14 +25,7 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
             faction: 0, facing: North, stance: Standing, aiming: false,
             hp: 10, hp_max: 10, wounds: 2, wounds_max: 2, tu: 30, tu_max: 30, life_state: Alive,
             shooting: 1.0, toughness: 1.0, luck: 0.0,
-            armor: (
-                head:      (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
-                torso:     (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
-                left_arm:  (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
-                right_arm: (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
-                left_leg:  (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
-                right_leg: (floor: 0, protection: 1, integrity: 5, hardness: 0, armor_type: Plated),
-            ),
+            armor: \"flak\",
             weapon: \"autogun\",
         )],
         walls: [(
@@ -130,15 +123,17 @@ fn shipped_situation_player_faction_defaults_to_gang_zero() {
     );
 }
 
-/// GTW-205 AC4 / GTW-257 AC5 — the shipped file's vertical links validate AND every
-/// authored ganger's weapon key resolves against the SHIPPED weapons registry,
-/// proving it is a setup-able, fully-armed situation. Deserialize the shipped file,
-/// run `setup_battle` on a `MinimalPlugins` app against the shipped-weapons registry,
-/// and assert it returns `Ok(BattleSetup)` with `ganger_count()` equal to the
-/// authored ganger count AND exactly that many `WornArmor`-carrying entities AND
-/// exactly that many ARMED (`Weapon`-marked) entities. Count-equality + Ok — proving
-/// the links validate, the file drives the real setup path, and each ganger ends up
-/// armed from the shipped weapon files (the GTW-257 AC5 sim-side proof).
+/// GTW-205 AC4 / GTW-257 AC5 / GTW-269 — the shipped file's vertical links validate AND
+/// every authored ganger's weapon key resolves against the SHIPPED weapons registry AND
+/// every authored ganger's armor key resolves against the SHIPPED armor registry,
+/// proving it is a setup-able, fully-armed, fully-armored situation. Deserialize the
+/// shipped file, run `setup_battle` on a `MinimalPlugins` app against the shipped weapon
+/// and armor registries, and assert it returns `Ok(BattleSetup)` with `ganger_count()`
+/// equal to the authored ganger count AND exactly that many `WornArmor`-carrying
+/// entities AND exactly that many ARMED (`Weapon`-marked) entities. Count-equality plus
+/// Ok proves the links validate, the file drives the real setup path, each ganger ends
+/// up armed from the shipped weapon files, and each ganger ends up armored from the
+/// shipped armor files (the GTW-257 AC5 + GTW-269 sim-side proof).
 #[test]
 fn shipped_situation_ron_drives_the_real_setup_path() {
     let Some(situation) = shipped_situation() else {
@@ -147,9 +142,12 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
     let Some(registry) = shipped_registry() else {
         return;
     };
+    let Some(armor) = shipped_armor_registry() else {
+        return;
+    };
     let authored_ganger_count = situation.gangers.len();
 
-    let Some((mut app, setup)) = run_setup_with(situation, registry) else {
+    let Some((mut app, setup)) = run_setup_with(situation, registry, armor) else {
         return;
     };
 
@@ -195,6 +193,27 @@ fn every_shipped_ganger_references_a_loaded_weapon() {
             registry.spec(&ganger.weapon).is_some(),
             "shipped ganger weapon key {:?} must resolve against the shipped registry",
             ganger.weapon,
+        );
+    }
+}
+
+/// GTW-269 (companion) — every shipped ganger's authored `armor` key is a valid stem
+/// present in the shipped-armor registry. A pure-data check (no spawn): proves the
+/// `skirmish.ron` ↔ `assets/armor/*.armor.ron` references are consistent, so the setup
+/// never hits `ArmorNotFound` (the armor mirror of the weapon-key consistency check).
+#[test]
+fn every_shipped_ganger_references_a_loaded_armor() {
+    let Some(situation) = shipped_situation() else {
+        return;
+    };
+    let Some(armor) = shipped_armor_registry() else {
+        return;
+    };
+    for ganger in &situation.gangers {
+        assert!(
+            armor.spec(&ganger.armor).is_some(),
+            "shipped ganger armor key {:?} must resolve against the shipped armor registry",
+            ganger.armor,
         );
     }
 }

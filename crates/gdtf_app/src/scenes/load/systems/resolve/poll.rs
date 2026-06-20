@@ -9,6 +9,7 @@ use gdtf_ui::theme::{ActiveThemeHandle, GdtfTheme, default_theme};
 use crate::scenes::load::{
     resources::{FailedAssetPath, LoadFailed, LoadHandles},
     systems::resolve::{
+        armor::resolve_armor,
         params::{LoadAssetCollections, ResolvedResources},
         situation::resolve_situation,
         tuning::resolve_tuning,
@@ -69,14 +70,25 @@ use crate::scenes::load::{
 /// `Resource`), so the loaded payload is inserted directly. On the failure path it
 /// `warn!`s naming `combat/tuning.ron` and inserts `CombatTuning::default`, so
 /// `Load` always exits with a tuning present. A `GdtfTheme`, a `CombatTuning`, a
-/// `WeaponRegistry`, AND a `LoadedSituation` must ALL be present before the plugin's
-/// transition leaves `Load` (see the plugin wiring); this branch makes the tuning
-/// one of those four required resources.
+/// `WeaponRegistry`, a `LoadedSituation`, AND an `ArmorRegistry` must ALL be present
+/// before the plugin's transition leaves `Load` (see the plugin wiring); this branch
+/// makes the tuning one of those five required resources.
+///
+/// GTW-269: it ALSO resolves the loaded `assets/armor/` folder into a persistent
+/// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) (the armor mirror of the
+/// `WeaponRegistry` branch). The armor branch runs on its OWN `ArmorRegistry`-absence
+/// guard ([`resolve_armor`]), so it neither starves nor is starved by the other
+/// branches. The registry is DORMANT after this slice — nothing consumes it yet
+/// (slice C does); it is resolved and gated on purely so it is present (and the
+/// folder verified loaded) before `Load` exits. On the failure path
+/// [`resolve_armor`] `warn!`s and inserts an empty registry, preserving the
+/// no-strand guarantee.
 ///
 /// Guarded by `run_if(resource_exists::<LoadHandles>)` plus the
 /// `not(resource_exists::<GdtfTheme>).or(not(resource_exists::<CombatTuning>))
-/// .or(not(resource_exists::<WeaponRegistry>)).or(not(resource_exists::<LoadedSituation>))`
-/// gate in the plugin wiring (run while ANY of the four required resources is still
+/// .or(not(resource_exists::<WeaponRegistry>)).or(not(resource_exists::<LoadedSituation>))
+/// .or(not(resource_exists::<ArmorRegistry>))`
+/// gate in the plugin wiring (run while ANY of the five required resources is still
 /// missing), and takes `Res<AssetServer>`/`Res<Assets<_>>`/`Res<LoadHandles>` —
 /// all of which are present whenever those run-conditions hold, so it never panics
 /// on a missing resource (bevy-traps rule 1). The early-`return`s on the
@@ -91,11 +103,12 @@ pub(in crate::scenes::load) fn poll_and_resolve(
     resolved: ResolvedResources,
     handles: Option<Res<LoadHandles>>,
 ) {
-    let (theme_present, tuning_present, weapons_present, situation_present) = (
+    let (theme_present, tuning_present, weapons_present, situation_present, armor_present) = (
         resolved.theme.is_some(),
         resolved.tuning.is_some(),
         resolved.weapons.is_some(),
         resolved.situation.is_some(),
+        resolved.armor.is_some(),
     );
     let (
         Some(asset_server),
@@ -104,6 +117,7 @@ pub(in crate::scenes::load) fn poll_and_resolve(
         Some(tuning_assets),
         Some(folders),
         Some(weapon_specs),
+        Some(armor_specs),
         Some(handles),
     ) = (
         asset_server,
@@ -112,6 +126,7 @@ pub(in crate::scenes::load) fn poll_and_resolve(
         collections.tuning,
         collections.folders,
         collections.weapon_specs,
+        collections.armor_specs,
         handles,
     )
     else {
@@ -136,6 +151,21 @@ pub(in crate::scenes::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &weapon_specs,
+            &handles,
+        );
+    }
+
+    // GTW-269: resolve the armor folder into the name-keyed ArmorRegistry on its OWN
+    // absence guard, independently of the theme/tuning/weapons/situation branches —
+    // so a slow armor folder never blocks them and vice-versa (the weapons-branch
+    // precedent). The registry is DORMANT after this slice (nothing consumes it yet —
+    // slice C does); it is resolved here purely so it is present when the gate checks.
+    if !armor_present {
+        resolve_armor(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &armor_specs,
             &handles,
         );
     }

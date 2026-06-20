@@ -5,18 +5,24 @@ use bevy::prelude::{App, Entity, MessageReader, MessageWriter, MinimalPlugins, U
 
 use crate::{
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        BodyPart, SourceArmor, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
+        ArmorType, BodyPart, WornArmor,
     },
     armor_wear::{ArmorBroken, wear_armor},
     resolve_hit::IntegrityWear,
 };
 
+/// The armor piece a [`BodyPart`] resolves to in an [`ArmorSpec`] — reads
+/// [`ArmorSpec::pieces`] in [`BodyPart::ALL`] order (the spec has no `at`).
+fn spec_at(spec: &ArmorSpec, part: BodyPart) -> ArmorPiece {
+    spec.pieces()[part.index()]
+}
+
 /// A uniform worn suit at a chosen starting integrity — an arbitrary
 /// (NOT-shipped-tuning) magnitude, so the tests pin the wear *mechanism*, never
 /// a tuned value. The other three stats are irrelevant to wear and set to 0.
 fn worn_suit(integrity: i32) -> WornArmor {
-    WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(integrity),
@@ -55,19 +61,19 @@ fn wear_past_zero_leaves_piece_unprotected() {
 }
 
 /// AC2 — the worn copy is battle-local: wearing it past zero never mutates the
-/// roster [`SourceArmor`] it was seeded from. Leans on the same isolation
+/// source [`ArmorSpec`] it was seeded from. Leans on the same isolation
 /// guarantee `armor::tests::wearing_worn_integrity_does_not_mutate_source`
 /// proves, but through the [`wear_armor`] entry point.
 #[test]
 fn wearing_does_not_mutate_source() {
-    let source = SourceArmor::uniform(ArmorPiece::new(
+    let source = ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(1),
         ArmorProtection::new(2),
         ArmorIntegrity::new(4),
         ArmorHardness::new(3),
         ArmorType::Ceramic,
     ));
-    // SourceArmor is Copy — snapshot it by value, then prove the snapshot still
+    // ArmorSpec is Copy — snapshot it by value, then prove the snapshot still
     // equals the source after the worn copy is worn past zero.
     let source_before = source;
     let mut worn = WornArmor::seed_from(&source);
@@ -76,17 +82,17 @@ fn wearing_does_not_mutate_source() {
     // Wear the head's piece well past zero through the real entry point.
     let _broke = wear_armor(&mut worn, BodyPart::Head, IntegrityWear::new(100), ganger);
 
-    // The roster source is unchanged on every location (the worn copy can never
+    // The source spec is unchanged on every location (the worn copy can never
     // reach it — battle-local seeding by value).
     assert_eq!(
         source, source_before,
-        "the roster source must NOT change when the worn copy wears (whole record)",
+        "the source spec must NOT change when the worn copy wears (whole record)",
     );
     for part in BodyPart::ALL {
         assert_eq!(
-            source.at(part),
-            source_before.at(part),
-            "the roster source must NOT change when the worn copy wears at {part:?}",
+            spec_at(&source, part),
+            spec_at(&source_before, part),
+            "the source spec must NOT change when the worn copy wears at {part:?}",
         );
     }
 }
@@ -161,7 +167,7 @@ fn armor_broken_is_a_buffered_message_read_in_a_headless_app() {
     // The producer: wears a fresh worn suit past zero and writes the Some to the
     // buffered message. Owns its WornArmor locally — the sim's message boundary.
     let produce = move |mut writer: MessageWriter<ArmorBroken>| {
-        let mut worn = WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+        let mut worn = WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
             ArmorFloor::new(0),
             ArmorProtection::new(0),
             ArmorIntegrity::new(1),

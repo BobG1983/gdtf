@@ -6,7 +6,8 @@ use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning};
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::scenes::load::resources::{
-    FontFolderHandle, LoadHandles, SituationHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
+    ArmorsFolderHandle, FontFolderHandle, LoadHandles, SituationHandle, ThemeHandle, TuningHandle,
+    WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -28,6 +29,11 @@ const TUNING_RON_PATH: &str = "combat/tuning.ron";
 /// folder so the `.ron` loader dispatch is unambiguous (weapons only, no armour).
 const WEAPONS_DIR: &str = "weapons";
 
+/// Path of the loose armor folder, relative to the asset source root (GTW-269 —
+/// the per-armor `assets/armor/*.ron` files the registry is built from). Its OWN
+/// folder so the `.ron` loader dispatch is unambiguous (armor only, no weapons).
+const ARMOR_DIR: &str = "armor";
+
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
 ///
@@ -40,7 +46,10 @@ const WEAPONS_DIR: &str = "weapons";
 /// a `RonAsset<CombatTuning>` (GTW-206 / E10.4 — through the same generic loader)
 /// AND preloads the entire `weapons` folder via `load_folder` (GTW-257 — every
 /// `assets/weapons/*.ron`, each a `RonAsset<WeaponSpec>`, so the poll/resolve system
-/// can build the name-keyed [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry)),
+/// can build the name-keyed [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry))
+/// AND preloads the entire `armor` folder via `load_folder` (GTW-269 — every
+/// `assets/armor/*.ron`, each a `RonAsset<ArmorSpec>`, so the poll/resolve system can
+/// build the name-keyed [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry)),
 /// then inserts the Load-scoped [`LoadHandles`] resource the poll/resolve system
 /// reads.
 ///
@@ -61,6 +70,7 @@ pub(in crate::scenes::load) fn kick_off_loads(
     let situation = SituationHandle(asset_server.load::<RonAsset<Situation>>(SITUATION_RON_PATH));
     let tuning = TuningHandle(asset_server.load::<RonAsset<CombatTuning>>(TUNING_RON_PATH));
     let weapons = WeaponsFolderHandle(asset_server.load_folder(WEAPONS_DIR));
+    let armor = ArmorsFolderHandle(asset_server.load_folder(ARMOR_DIR));
 
     commands.insert_resource(LoadHandles {
         theme,
@@ -68,5 +78,6 @@ pub(in crate::scenes::load) fn kick_off_loads(
         situation,
         tuning,
         weapons,
+        armor,
     });
 }

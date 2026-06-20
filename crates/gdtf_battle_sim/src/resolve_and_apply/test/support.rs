@@ -9,8 +9,8 @@ pub(super) use bevy::prelude::{Entity, World};
 pub(super) use crate::{
     apply_hit::{GangerHitTarget, apply_hit},
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        BodyPart, SourceArmor, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
+        ArmorType, BodyPart, WornArmor,
     },
     armor_wear::ArmorBroken,
     central_axis::climb_aim_dir,
@@ -97,7 +97,7 @@ pub(super) fn worn_suit(
     hardness: i32,
     armor_type: ArmorType,
 ) -> WornArmor {
-    WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(floor),
         ArmorProtection::new(protection),
         ArmorIntegrity::new(integrity),

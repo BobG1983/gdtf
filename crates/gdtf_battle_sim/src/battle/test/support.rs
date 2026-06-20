@@ -11,8 +11,8 @@ pub(super) use bevy::{
 pub(super) use crate::{
     acts::FireRequested,
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        SourceArmor, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+        ArmorRegistry, ArmorSpec, ArmorType, WornArmor,
     },
     battle::{
         BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleSimPlugin, BattleWon,
@@ -45,6 +45,10 @@ pub(super) const SEED: u64 = 0x5A1C_AC75;
 /// The weapon KEY every fixture ganger references — present in the registry the
 /// `headless_app` inserts (so a setup arms each ganger; GTW-257).
 pub(super) const TEST_WEAPON_KEY: &str = "test-weapon";
+
+/// The armor KEY every fixture ganger references — present in the armor registry the
+/// `headless_app` inserts (so a setup armors each ganger; GTW-269).
+pub(super) const TEST_ARMOR_KEY: &str = "test-armor";
 
 /// An arbitrary [`WeaponSpec`] (NOT shipped magnitudes — mechanism only) for the
 /// one [`TEST_WEAPON_KEY`] the fixture gangers reference.
@@ -79,15 +83,27 @@ pub(super) fn weapon_registry() -> WeaponRegistry {
     )])
 }
 
+/// The test [`ArmorRegistry`] — the one [`TEST_ARMOR_KEY`] armor suit the fixture
+/// gangers reference, standing in for the app's `Load`-built registry (always present
+/// before a battle in the real app; GTW-269). `setup_battle_on_request` reads it to
+/// armor each ganger.
+pub(super) fn armor_registry() -> ArmorRegistry {
+    ArmorRegistry::new([(
+        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
+        arbitrary_armor(1),
+    )])
+}
+
 /// Build a `(cell, level)` key from raw coordinates.
 pub(super) fn key(x: i32, y: i32, level: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(level))
 }
 
-/// An arbitrary roster-armor record (distinct per-part magnitudes, NOT shipped
-/// tuning) so a fixture ganger carries a faithful `SourceArmor`.
-pub(super) fn arbitrary_armor(base: i32) -> SourceArmor {
-    SourceArmor::uniform(ArmorPiece::new(
+/// An arbitrary armor SPEC (distinct per-part magnitudes, NOT shipped tuning) — the
+/// suit the [`TEST_ARMOR_KEY`] resolves to in [`armor_registry`], so a fixture ganger's
+/// resolved `WornArmor` is a faithful copy (GTW-269).
+pub(super) fn arbitrary_armor(base: i32) -> ArmorSpec {
+    ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(base),
         ArmorProtection::new(base + 1),
         ArmorIntegrity::new(base + 2),
@@ -115,7 +131,8 @@ pub(super) fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         shooting: Shooting::new(f32::from(faction) + 2.0),
         toughness: Toughness::new(f32::from(faction) + 3.0),
         luck: Luck::new(f32::from(faction) + 1.0),
-        armor: arbitrary_armor(i32::from(faction) + 1),
+        // Every fixture ganger references the one TEST_ARMOR_KEY in armor_registry.
+        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
         // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
         weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
     }
@@ -169,16 +186,18 @@ pub(super) fn dangling_link_situation() -> (Situation, VerticalLink) {
 /// `acts.rs::insert_sim_resources` precedent). It is deliberately NOT one of the
 /// battle-lifetime resources the teardown removes.
 ///
-/// Inserts the test [`WeaponRegistry`] too (GTW-257): like `CombatTuning` it is
-/// PERSISTENT `Load` state present before a battle, and `setup_battle_on_request`
-/// reads it to arm each ganger. The fixture gangers reference [`TEST_WEAPON_KEY`],
-/// which it holds, so a setup succeeds.
+/// Inserts the test [`WeaponRegistry`] + [`ArmorRegistry`] too (GTW-257 / GTW-269):
+/// like `CombatTuning` they are PERSISTENT `Load` state present before a battle, and
+/// `setup_battle_on_request` reads both to arm + armor each ganger. The fixture gangers
+/// reference [`TEST_WEAPON_KEY`] / [`TEST_ARMOR_KEY`], which the registries hold, so a
+/// setup succeeds.
 pub(super) fn headless_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(BattleSimPlugin);
     app.insert_resource(CombatTuning::default());
     app.insert_resource(weapon_registry());
+    app.insert_resource(armor_registry());
     app
 }
 

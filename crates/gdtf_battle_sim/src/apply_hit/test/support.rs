@@ -8,8 +8,8 @@ pub(super) use bevy::prelude::{App, Entity, MinimalPlugins, Update, World};
 pub(super) use super::super::{GangerHitTarget, apply_hit, fold::wound_cost};
 pub(super) use crate::{
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        BodyPart, SourceArmor, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
+        ArmorType, BodyPart, WornArmor,
     },
     armor_wear::ArmorBroken,
     ganger::{Hp, LifeState, Wounds},
@@ -31,7 +31,7 @@ pub(super) fn a_ganger() -> Entity {
 /// (NOT-shipped-tuning) magnitude; the other three armor stats are irrelevant to
 /// these tests and set to `0`. So a hit's wear lands without first being soaked.
 pub(super) fn worn_suit(integrity: i32) -> WornArmor {
-    WornArmor::seed_from(&SourceArmor::uniform(ArmorPiece::new(
+    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(0),
         ArmorProtection::new(0),
         ArmorIntegrity::new(integrity),

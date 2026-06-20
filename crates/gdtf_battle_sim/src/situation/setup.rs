@@ -5,7 +5,7 @@
 use bevy::{platform::collections::HashSet, prelude::Commands};
 
 use crate::{
-    armor::WornArmor,
+    armor::{ArmorRegistry, WornArmor},
     clearance::silhouette_band,
     cover::CoverLedger,
     ganger::Position,
@@ -61,8 +61,9 @@ impl BattleSetup {
 ///    from the ganger's [`weapon`](crate::situation::GangerSpawn::weapon) key against
 ///    the [`WeaponRegistry`] (GTW-257 — the [`Weapon`](crate::weapon::Weapon) marker +
 ///    every weapon stat component), PLUS the battle-local [`WornArmor`] seeded by value
-///    from the ganger's roster [`SourceArmor`](crate::armor::SourceArmor)
-///    ([`WornArmor::seed_from`](crate::armor::WornArmor::seed_from)), and the GTW-279
+///    from the [`ArmorSpec`](crate::armor::ArmorSpec) resolved from the ganger's
+///    [`armor`](crate::situation::GangerSpawn::armor) key against the [`ArmorRegistry`]
+///    (GTW-269 — [`WornArmor::seed_from`](crate::armor::WornArmor::seed_from)), and the GTW-279
 ///    [`InflictedWounds`] record seeded **empty** (the [`Default`]) so a fresh ganger
 ///    starts with no recorded wounds. The returned Bevy
 ///    [`Entity`](bevy::prelude::Entity) handle is captured into the
@@ -87,7 +88,9 @@ impl BattleSetup {
 /// render-free and headless-driven (it touches no renderer / asset server), so a
 /// `MinimalPlugins` test can run it directly. It reads a [`WeaponRegistry`] by
 /// reference (GTW-257) to resolve each ganger's
-/// [`weapon`](crate::situation::GangerSpawn::weapon) key.
+/// [`weapon`](crate::situation::GangerSpawn::weapon) key, and an [`ArmorRegistry`] by
+/// reference (GTW-269) to resolve each ganger's
+/// [`armor`](crate::situation::GangerSpawn::armor) key.
 ///
 /// # Errors
 ///
@@ -97,14 +100,18 @@ impl BattleSetup {
 ///   [`build_vertical_link_graph`];
 /// - [`BattleSetupError::WeaponNotFound`] if any ganger's
 ///   [`weapon`](crate::situation::GangerSpawn::weapon) key is absent from `weapons`
-///   (no loaded `assets/weapons/*.ron` with that stem).
+///   (no loaded `assets/weapons/*.ron` with that stem);
+/// - [`BattleSetupError::ArmorNotFound`] if any ganger's
+///   [`armor`](crate::situation::GangerSpawn::armor) key is absent from `armor`
+///   (no loaded `assets/armor/*.armor.ron` with that stem).
 ///
-/// Both are validated BEFORE any entity is spawned or any resource inserted, so a
+/// All three are validated BEFORE any entity is spawned or any resource inserted, so a
 /// failure leaves no partial, unspawnable world behind (the GTW-205 abort-first
-/// invariant, extended to the weapon resolution).
+/// invariant, extended to the weapon + armor resolution).
 pub fn setup_battle(
     situation: &Situation,
     weapons: &WeaponRegistry,
+    armor: &ArmorRegistry,
     commands: &mut Commands,
 ) -> Result<BattleSetup, BattleSetupError> {
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
@@ -126,6 +133,21 @@ pub fn setup_battle(
         weapon_bundles.push(spec.clone().into_bundle(ganger.weapon.clone()));
     }
 
+    // Resolve every ganger's armor key against the armor registry the same way —
+    // BEFORE the spawn loop — so a missing key aborts setup with ArmorNotFound (no
+    // panic) with no partial world spawned (the abort-first invariant, mirroring the
+    // weapon resolution; GTW-269). The resolved specs are copied by value (ArmorSpec is
+    // Copy) and the spawn loop seeds each ganger's WornArmor from its spec.
+    let mut armor_specs = Vec::with_capacity(situation.gangers.len());
+    for ganger in &situation.gangers {
+        let Some(spec) = armor.spec(&ganger.armor) else {
+            return Err(BattleSetupError::ArmorNotFound {
+                armor: ganger.armor.clone(),
+            });
+        };
+        armor_specs.push(*spec);
+    }
+
     // 1. Spawn each ganger with its full component set + seeded worn armor + the
     //    resolved WeaponBundle, keeping the returned Entity handle (never a numeric id
     //    — GTW-10 / GTW-12). The weapon bundle is inserted in a SECOND `insert` call
@@ -133,7 +155,12 @@ pub fn setup_battle(
     //    its whole component set in one call), mirroring the WornArmor seed-from at the
     //    spawn tuple.
     let mut occupants = Vec::with_capacity(situation.gangers.len());
-    for (ganger, weapon_bundle) in situation.gangers.iter().zip(weapon_bundles) {
+    for ((ganger, weapon_bundle), armor_spec) in situation
+        .gangers
+        .iter()
+        .zip(weapon_bundles)
+        .zip(armor_specs)
+    {
         let entity = commands
             .spawn((
                 Position::new(ganger.at),
@@ -150,7 +177,7 @@ pub fn setup_battle(
                 ganger.shooting,
                 ganger.toughness,
                 ganger.luck,
-                WornArmor::seed_from(&ganger.armor),
+                WornArmor::seed_from(&armor_spec),
             ))
             // The weapon bundle + the GTW-279 empty inflicted-wound record + the
             // GTW-291 display ceilings (HpMax / WoundsMax) are inserted in a SECOND

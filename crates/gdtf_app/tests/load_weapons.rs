@@ -26,6 +26,7 @@
 use bevy::{app::Startup, state::state::State};
 use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
 use gdtf_battle_sim::{
+    armor::ArmorRegistry,
     situation::Situation,
     tuning::CombatTuning,
     weapon::{WeaponName, WeaponRegistry},
@@ -78,13 +79,14 @@ fn weapons_loader_no_ops_cleanly_without_asset_server() {
         "with no AssetServer the kick-off must no-op and the machine rests in Load, not panic",
     );
 
-    // Stand in for the theme + tuning + weapons + situation resolves completing (no
-    // AssetServer under MinimalPlugins), driving the real gated transition (GTW-257:
+    // Stand in for the theme + tuning + weapons + situation + armor resolves completing
+    // (no AssetServer under MinimalPlugins), driving the real gated transition (GTW-257:
     // the WeaponRegistry is required before Load transitions; GTW-261: the
-    // LoadedSituation too).
+    // LoadedSituation too; GTW-269: the ArmorRegistry too).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
+    app.world_mut().insert_resource(ArmorRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation(Situation::default()));
 
@@ -95,8 +97,9 @@ fn weapons_loader_no_ops_cleanly_without_asset_server() {
     );
     assert!(
         reached_intro,
-        "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation present, Load must \
-         advance to Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
+        "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation + ArmorRegistry \
+         present, Load must advance to Intro within {TRANSITION_BUDGET} updates; last observed \
+         AppState was {:?}",
         app_state(&app),
     );
 }

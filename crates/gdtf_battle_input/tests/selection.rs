@@ -960,8 +960,8 @@ fn auto_select_inert_without_battle_in_progress() {
 use gdtf_battle_sim::{
     SetupBattleRequested,
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        SourceArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+        ArmorRegistry, ArmorSpec, ArmorType,
     },
     ganger::{
         Aiming, Direction, Facing, GangerName, Hp, HpMax, LifeState, Luck, Shooting, Stance,
@@ -981,6 +981,11 @@ use gdtf_battle_sim::{
 /// The weapon KEY every fixture ganger references — present in [`real_flow_registry`] so
 /// the real `setup_battle_on_request` arms each spawned ganger (GTW-257).
 const REAL_FLOW_WEAPON_KEY: &str = "test-weapon";
+
+/// The armor KEY every fixture ganger references — present in
+/// [`real_flow_armor_registry`] so the real `setup_battle_on_request` armors each spawned
+/// ganger (GTW-269).
+const REAL_FLOW_ARMOR_KEY: &str = "test-armor";
 
 /// An arbitrary [`WeaponSpec`] (mechanism only, not shipped magnitudes) for the one
 /// [`REAL_FLOW_WEAPON_KEY`] the fixture gangers reference.
@@ -1014,16 +1019,26 @@ fn real_flow_registry() -> WeaponRegistry {
     )])
 }
 
-/// An arbitrary roster-armor record (mechanism only) so a fixture ganger carries a
-/// faithful `SourceArmor` for the real setup to copy into a `WornArmor`.
-const fn real_flow_armor(base: i32) -> SourceArmor {
-    SourceArmor::uniform(ArmorPiece::new(
+/// An arbitrary armor SPEC (mechanism only) — the suit the [`REAL_FLOW_ARMOR_KEY`]
+/// resolves to in [`real_flow_armor_registry`], so the real setup copies it into each
+/// ganger's `WornArmor` (GTW-269).
+const fn real_flow_armor(base: i32) -> ArmorSpec {
+    ArmorSpec::uniform(ArmorPiece::new(
         ArmorFloor::new(base),
         ArmorProtection::new(base + 1),
         ArmorIntegrity::new(base + 2),
         ArmorHardness::new(base + 3),
         ArmorType::DEFAULT,
     ))
+}
+
+/// The test [`ArmorRegistry`] — the one [`REAL_FLOW_ARMOR_KEY`] armor suit the fixture
+/// gangers reference, standing in for the app's `Load`-built registry (GTW-269).
+fn real_flow_armor_registry() -> ArmorRegistry {
+    ArmorRegistry::new([(
+        ArmorName::new(REAL_FLOW_ARMOR_KEY.to_owned()),
+        real_flow_armor(1),
+    )])
 }
 
 /// Build an authored [`GangerSpawn`] at `at` (faction `faction`) with arbitrary-but-valid
@@ -1046,7 +1061,8 @@ fn real_flow_ganger(at: CellLevel, faction: u8) -> GangerSpawn {
         shooting: Shooting::new(f32::from(faction) + 2.0),
         toughness: Toughness::new(f32::from(faction) + 3.0),
         luck: Luck::new(f32::from(faction) + 1.0),
-        armor: real_flow_armor(i32::from(faction) + 1),
+        // Every fixture ganger references the one REAL_FLOW_ARMOR_KEY in the registry.
+        armor: ArmorName::new(REAL_FLOW_ARMOR_KEY.to_owned()),
         weapon: WeaponName::new(REAL_FLOW_WEAPON_KEY.to_owned()),
     }
 }
@@ -1079,6 +1095,9 @@ fn real_flow_app() -> App {
     app.world_mut().insert_resource(ActiveLevel(Level::new(0)));
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(real_flow_registry());
+    // The Load-built ArmorRegistry (GTW-269) so the real setup armors each spawned
+    // ganger (its key is present in this registry); without it setup fails closed.
+    app.world_mut().insert_resource(real_flow_armor_registry());
     // An empty mouse buffer so the input band's click systems pass param validation.
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());

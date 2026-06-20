@@ -83,6 +83,9 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation(Situation::default()));
 
@@ -223,10 +226,13 @@ fn load_does_not_leave_without_a_situation() {
         .starting_in(AppState::Load)
         .build();
 
-    // Theme + tuning + weapons present, but the LoadedSituation deliberately withheld.
+    // Theme + tuning + weapons + armor present, but the LoadedSituation deliberately
+    // withheld (so the situation is the ONE missing gate resource being asserted on).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
 
     let left_load = advance_until(
         &mut app,
