@@ -46,7 +46,7 @@ fn pin_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin);
-    app.world_mut().insert_resource(ActiveLevel(LEVEL));
+    app.world_mut().insert_resource(ActiveLevel::new(LEVEL));
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(CombatTuning::default());

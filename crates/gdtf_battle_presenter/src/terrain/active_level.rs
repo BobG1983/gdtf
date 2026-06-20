@@ -12,12 +12,20 @@ use gdtf_battle_sim::Level;
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin) inserts the
 /// [`Default`] — level 0 — on build) so the later input slice has a resource to mutate.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ActiveLevel(pub Level);
+pub struct ActiveLevel(Level);
+
+impl ActiveLevel {
+    /// Build the active-storey resource from the [`Level`] the terrain draw renders.
+    #[must_use]
+    pub const fn new(level: Level) -> Self {
+        Self(level)
+    }
+}
 
 impl Default for ActiveLevel {
     /// The default active storey: the ground floor (level 0).
     fn default() -> Self {
-        Self(Level::new(0))
+        Self::new(Level::new(0))
     }
 }
 

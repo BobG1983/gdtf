@@ -246,7 +246,7 @@ crate::support_item! {
         if asset_server.is_none() {
             commands.insert_resource(WeaponRegistry::default());
             commands.insert_resource(ArmorRegistry::default());
-            commands.insert_resource(LoadedSituation(
+            commands.insert_resource(LoadedSituation::new(
                 gdtf_battle_sim::situation::Situation::default(),
             ));
         }

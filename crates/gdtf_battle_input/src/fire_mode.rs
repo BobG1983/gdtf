@@ -32,7 +32,7 @@ use crate::SelectedShooter;
 /// `String` mode name was dropped (GTW-260). The `Deref`-into-[`FireRequested`] read
 /// stays unchanged.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq)]
-pub struct SelectedFireMode(pub FireModeSpec);
+pub struct SelectedFireMode(FireModeSpec);
 
 impl SelectedFireMode {
     /// Build a selected fire mode holding `spec`.

@@ -56,7 +56,7 @@ pub(super) fn resolve_situation(
             "GDTF Load: asset `situations/skirmish.ron` failed to load; falling back to the empty \
              default situation (the battle will have no gangers)",
         );
-        commands.insert_resource(LoadedSituation(Situation::default()));
+        commands.insert_resource(LoadedSituation::new(Situation::default()));
         return;
     }
 
@@ -71,6 +71,6 @@ pub(super) fn resolve_situation(
         };
         // Persist the resolved battlefield for the Generation consumer (E10.5);
         // like GdtfTheme it survives OnExit(Load) (not removed in cleanup).
-        commands.insert_resource(LoadedSituation((**situation).clone()));
+        commands.insert_resource(LoadedSituation::new((**situation).clone()));
     }
 }

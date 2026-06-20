@@ -86,7 +86,7 @@ fn walk_app_with_theme() -> App {
     // empty-battle-race fix). The headless walk has no AssetServer to resolve one, so
     // seed the empty default beside the other three — symmetric with theme/tuning/weapons.
     app.world_mut()
-        .insert_resource(LoadedSituation(Situation::default()));
+        .insert_resource(LoadedSituation::new(Situation::default()));
     app
 }
 

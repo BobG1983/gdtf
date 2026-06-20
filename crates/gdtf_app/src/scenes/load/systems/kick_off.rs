@@ -65,12 +65,13 @@ pub(in crate::scenes::load) fn kick_off_loads(
         return;
     };
 
-    let theme = ThemeHandle(asset_server.load::<RonAsset<GdtfThemeSpec>>(THEME_RON_PATH));
-    let fonts = FontFolderHandle(asset_server.load_folder(FONTS_FOLDER_PATH));
-    let situation = SituationHandle(asset_server.load::<RonAsset<Situation>>(SITUATION_RON_PATH));
-    let tuning = TuningHandle(asset_server.load::<RonAsset<CombatTuning>>(TUNING_RON_PATH));
-    let weapons = WeaponsFolderHandle(asset_server.load_folder(WEAPONS_DIR));
-    let armor = ArmorsFolderHandle(asset_server.load_folder(ARMOR_DIR));
+    let theme = ThemeHandle::new(asset_server.load::<RonAsset<GdtfThemeSpec>>(THEME_RON_PATH));
+    let fonts = FontFolderHandle::new(asset_server.load_folder(FONTS_FOLDER_PATH));
+    let situation =
+        SituationHandle::new(asset_server.load::<RonAsset<Situation>>(SITUATION_RON_PATH));
+    let tuning = TuningHandle::new(asset_server.load::<RonAsset<CombatTuning>>(TUNING_RON_PATH));
+    let weapons = WeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
+    let armor = ArmorsFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
 
     commands.insert_resource(LoadHandles {
         theme,

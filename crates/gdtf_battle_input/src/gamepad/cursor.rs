@@ -15,9 +15,15 @@ use bevy::prelude::*;
 /// generalized [`pick_hovered_cell`](crate::pick_hovered_cell) projects it when the gamepad is the
 /// active pointer.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq)]
-pub struct GamepadCursor(pub Vec2);
+pub struct GamepadCursor(Vec2);
 
 impl GamepadCursor {
+    /// Build a gamepad cursor at screen position `pos` (logical px, window origin top-left).
+    #[must_use]
+    pub const fn new(pos: Vec2) -> Self {
+        Self(pos)
+    }
+
     /// The initial cursor position before the window size is known: a fixed off-origin screen
     /// point so the cursor starts somewhere on a typical window rather than the top-left corner.
     /// The first [`move_gamepad_cursor`](crate::gamepad::move_gamepad_cursor) update clamps it

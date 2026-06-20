@@ -72,7 +72,15 @@ const TILE_ROLES_RON_PATH: &str = "tiles/tile_roles.ron";
 /// domain meaning; this name says "the tile-role table being loaded"). Inserted by
 /// [`load_tile_roles`] and read by [`resolve_tile_roles`].
 #[derive(Resource, Deref, Debug, Clone)]
-pub struct TileRolesHandle(pub Handle<RonAsset<TileRoles>>);
+pub struct TileRolesHandle(Handle<RonAsset<TileRoles>>);
+
+impl TileRolesHandle {
+    /// Wrap the in-flight tile-role RON handle.
+    #[must_use]
+    pub const fn new(handle: Handle<RonAsset<TileRoles>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// `Startup`: kick off the `tile_roles.ron` load, storing its typed handle.
 ///
@@ -90,7 +98,7 @@ pub fn load_tile_roles(mut commands: Commands, asset_server: Option<Res<AssetSer
         return;
     };
     let handle = asset_server.load::<RonAsset<TileRoles>>(TILE_ROLES_RON_PATH);
-    commands.insert_resource(TileRolesHandle(handle));
+    commands.insert_resource(TileRolesHandle::new(handle));
 }
 
 /// `Update` (gated until [`TileRoles`] is resolved): resolve the loaded RON into the

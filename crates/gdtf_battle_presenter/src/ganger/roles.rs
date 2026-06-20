@@ -62,7 +62,15 @@ const CHARACTER_ROLES_RON_PATH: &str = "tiles/character_roles.ron";
 /// [`load_character_roles`] and read by [`resolve_character_roles`] — the S4
 /// `TileRolesHandle` precedent for the character table.
 #[derive(Resource, Deref, Debug, Clone)]
-pub struct CharacterRolesHandle(pub Handle<RonAsset<CharacterRoles>>);
+pub struct CharacterRolesHandle(Handle<RonAsset<CharacterRoles>>);
+
+impl CharacterRolesHandle {
+    /// Wrap the in-flight character-role RON handle.
+    #[must_use]
+    pub const fn new(handle: Handle<RonAsset<CharacterRoles>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// `Startup`: kick off the `character_roles.ron` load, storing its typed handle.
 ///
@@ -81,7 +89,7 @@ pub fn load_character_roles(mut commands: Commands, asset_server: Option<Res<Ass
         return;
     };
     let handle = asset_server.load::<RonAsset<CharacterRoles>>(CHARACTER_ROLES_RON_PATH);
-    commands.insert_resource(CharacterRolesHandle(handle));
+    commands.insert_resource(CharacterRolesHandle::new(handle));
 }
 
 /// `Update` (gated until [`CharacterRoles`] is resolved): resolve the loaded RON into

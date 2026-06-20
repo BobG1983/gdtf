@@ -88,7 +88,7 @@ fn walk_app() -> bevy::app::App {
     // GTW-261: the Load->Intro gate now also requires a LoadedSituation (the
     // empty-battle-race fix); seed the empty default beside the other three.
     app.world_mut()
-        .insert_resource(LoadedSituation(Situation::default()));
+        .insert_resource(LoadedSituation::new(Situation::default()));
     app
 }
 

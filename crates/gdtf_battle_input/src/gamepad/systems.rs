@@ -55,7 +55,7 @@ pub fn move_gamepad_cursor(
         window.size(),
     );
     if **cursor != next {
-        *cursor = GamepadCursor(next);
+        *cursor = GamepadCursor::new(next);
     }
     // Only CLAIM the pointer when the stick is genuinely deflected (past the deadzone) — a resting
     // stick must not steal control from the mouse (last-moved-wins).
@@ -190,6 +190,6 @@ pub fn emit_gamepad_cursor_move(
     mut moves: MessageWriter<GamepadCursorMoved>,
 ) {
     if *active == ActivePointer::Gamepad {
-        moves.write(GamepadCursorMoved(**cursor));
+        moves.write(GamepadCursorMoved::new(**cursor));
     }
 }

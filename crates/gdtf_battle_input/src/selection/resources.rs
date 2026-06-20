@@ -13,7 +13,7 @@ use bevy::prelude::*;
 /// [`update_selection_highlight`](crate::update_selection_highlight) sprite + the act surfaces
 /// read it.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct SelectedShooter(pub Option<Entity>);
+pub struct SelectedShooter(Option<Entity>);
 
 impl SelectedShooter {
     /// Build a selection holding `entity`.

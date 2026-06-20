@@ -434,7 +434,7 @@ fn is_disabled<M: Component>(app: &mut App) -> bool {
 /// (`sync_level_button_bounds`) reacts and writes the `DisabledButton` markers (GTW-293).
 fn set_active_level(app: &mut App, storey: u8) {
     app.world_mut()
-        .insert_resource(ActiveLevel(Level::new(storey)));
+        .insert_resource(ActiveLevel::new(Level::new(storey)));
     app.update();
 }
 
@@ -562,7 +562,8 @@ fn aim_button_toggles_and_matches_direct_intent() {
 #[test]
 fn level_buttons_step_active_level_like_the_intent() {
     let mut app = battle_running_app();
-    app.world_mut().insert_resource(ActiveLevel(Level::new(0)));
+    app.world_mut()
+        .insert_resource(ActiveLevel::new(Level::new(0)));
 
     let Some(up) = require_button::<LevelUpButton>(&mut app) else {
         return;
@@ -1738,7 +1739,8 @@ fn walk_app_with_situation(situation: Situation) -> App {
     // The Load-built ArmorRegistry (GTW-269) so the Generation setup armors the player
     // ganger: it references PLAYER_ARMOR_KEY, which this registry holds.
     app.world_mut().insert_resource(armed_armor_registry());
-    app.world_mut().insert_resource(LoadedSituation(situation));
+    app.world_mut()
+        .insert_resource(LoadedSituation::new(situation));
     app
 }
 

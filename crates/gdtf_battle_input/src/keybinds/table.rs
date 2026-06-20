@@ -139,7 +139,15 @@ impl Keybinds {
 /// [`load_keybinds`] and read by [`resolve_keybinds`] — the `TileRolesHandle`
 /// precedent.
 #[derive(Resource, Deref, Debug, Clone)]
-pub struct KeybindsHandle(pub Handle<RonAsset<Keybinds>>);
+pub struct KeybindsHandle(Handle<RonAsset<Keybinds>>);
+
+impl KeybindsHandle {
+    /// Wrap the in-flight `keybinds.ron` handle.
+    #[must_use]
+    pub const fn new(handle: Handle<RonAsset<Keybinds>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// `Startup`: kick off the `keybinds.ron` load, storing its typed handle.
 ///
@@ -157,7 +165,7 @@ pub fn load_keybinds(mut commands: Commands, asset_server: Option<Res<AssetServe
         return;
     };
     let handle = asset_server.load::<RonAsset<Keybinds>>(KEYBINDS_RON_PATH);
-    commands.insert_resource(KeybindsHandle(handle));
+    commands.insert_resource(KeybindsHandle::new(handle));
 }
 
 /// `Update` (gated until [`Keybinds`] is resolved): resolve the loaded RON into the

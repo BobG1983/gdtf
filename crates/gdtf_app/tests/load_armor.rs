@@ -96,7 +96,7 @@ fn armor_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     app.world_mut()
-        .insert_resource(LoadedSituation(Situation::default()));
+        .insert_resource(LoadedSituation::new(Situation::default()));
 
     let reached_intro = advance_until(
         &mut app,
@@ -133,7 +133,7 @@ fn load_does_not_leave_without_an_armor_registry() {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut()
-        .insert_resource(LoadedSituation(Situation::default()));
+        .insert_resource(LoadedSituation::new(Situation::default()));
 
     let left_load = advance_until(
         &mut app,

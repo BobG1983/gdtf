@@ -80,7 +80,7 @@ impl BattleAppBuilder {
         app.world_mut().insert_resource(test_armor_registry());
         // The authored battlefield the Generation setup pours into the world.
         app.world_mut()
-            .insert_resource(LoadedSituation(self.situation));
+            .insert_resource(LoadedSituation::new(self.situation));
 
         // Stand in for the player at the menu (it no longer auto-advances): advance
         // until the menu rests, then queue Menu -> Options to descend toward the game.

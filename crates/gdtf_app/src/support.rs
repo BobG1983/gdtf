@@ -17,11 +17,14 @@
 /// one place and lets `unreachable_pub` stay satisfied in both configurations. It wraps
 /// `enum` / `struct` item definitions and free / inherent `fn` items (the GTW-223
 /// auto-battle affordance widens its `auto_battle_enabled` gate + its `from_env`
-/// constructor this way).
+/// constructor this way). The `const fn` arm exists because clippy
+/// `missing_const_for_fn` (denied) forces a const-eligible constructor to be
+/// `const` — a plain `fn` arm cannot express that (e.g. `LoadedSituation::new`).
 #[cfg(feature = "test-support")]
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => { $(#[$meta])* pub enum $($rest)* };
     ($(#[$meta:meta])* struct $($rest:tt)*) => { $(#[$meta])* pub struct $($rest)* };
+    ($(#[$meta:meta])* const fn $($rest:tt)*) => { $(#[$meta])* pub const fn $($rest)* };
     ($(#[$meta:meta])* fn $($rest:tt)*) => { $(#[$meta])* pub fn $($rest)* };
 }
 
@@ -32,6 +35,7 @@ macro_rules! support_item {
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => { $(#[$meta])* pub(crate) enum $($rest)* };
     ($(#[$meta:meta])* struct $($rest:tt)*) => { $(#[$meta])* pub(crate) struct $($rest)* };
+    ($(#[$meta:meta])* const fn $($rest:tt)*) => { $(#[$meta])* pub(crate) const fn $($rest)* };
     ($(#[$meta:meta])* fn $($rest:tt)*) => { $(#[$meta])* pub(crate) fn $($rest)* };
 }
 

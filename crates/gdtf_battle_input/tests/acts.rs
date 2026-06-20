@@ -143,7 +143,7 @@ fn acts_app() -> App {
         .add_plugins(GdtfBattleInputPlugin)
         .add_plugins(SimActsPlugin);
     let level = Level::new(0);
-    app.world_mut().insert_resource(ActiveLevel(level));
+    app.world_mut().insert_resource(ActiveLevel::new(level));
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(CombatTuning::default());

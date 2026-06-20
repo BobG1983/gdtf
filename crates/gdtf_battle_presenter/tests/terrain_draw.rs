@@ -363,7 +363,7 @@ fn active_level_change_redraws_only_the_new_level() {
     );
 
     // Change the active level to 1.
-    app.world_mut().resource_mut::<ActiveLevel>().0 = l1;
+    *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
     app.update();
 
     assert_eq!(

@@ -19,7 +19,14 @@ use gdtf_ui::theme::GdtfThemeSpec;
 /// for asset plumbing: a bare `Handle<RonAsset<GdtfThemeSpec>>` carries no domain
 /// meaning, this name says "the theme being loaded".
 #[derive(Deref, Clone, Debug)]
-pub(in crate::scenes::load) struct ThemeHandle(pub Handle<RonAsset<GdtfThemeSpec>>);
+pub(in crate::scenes::load) struct ThemeHandle(Handle<RonAsset<GdtfThemeSpec>>);
+
+impl ThemeHandle {
+    /// Wrap an in-flight theme RON asset handle.
+    pub(in crate::scenes::load) const fn new(handle: Handle<RonAsset<GdtfThemeSpec>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// Typed handle to the in-flight **fonts folder** load (`fonts/`).
 ///
@@ -30,7 +37,14 @@ pub(in crate::scenes::load) struct ThemeHandle(pub Handle<RonAsset<GdtfThemeSpec
 /// theme) selects is already resident and `asset_server.load(key)` returns the
 /// loaded handle idempotently.
 #[derive(Deref, Clone, Debug)]
-pub(in crate::scenes::load) struct FontFolderHandle(pub Handle<LoadedFolder>);
+pub(in crate::scenes::load) struct FontFolderHandle(Handle<LoadedFolder>);
+
+impl FontFolderHandle {
+    /// Wrap an in-flight fonts-folder load handle.
+    pub(in crate::scenes::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
 
 /// Typed handle to the in-flight **weapons folder** load (`weapons/`).
 ///
@@ -45,7 +59,14 @@ pub(in crate::scenes::load) struct FontFolderHandle(pub Handle<LoadedFolder>);
 /// registry then holds the specs BY VALUE, so they survive the handle being dropped
 /// on `OnExit(Load)`.
 #[derive(Deref, Clone, Debug)]
-pub(in crate::scenes::load) struct WeaponsFolderHandle(pub Handle<LoadedFolder>);
+pub(in crate::scenes::load) struct WeaponsFolderHandle(Handle<LoadedFolder>);
+
+impl WeaponsFolderHandle {
+    /// Wrap an in-flight weapons-folder load handle.
+    pub(in crate::scenes::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
 
 /// Typed handle to the in-flight **armor folder** load (`armor/`).
 ///
@@ -60,7 +81,14 @@ pub(in crate::scenes::load) struct WeaponsFolderHandle(pub Handle<LoadedFolder>)
 /// then holds the specs BY VALUE, so they survive the handle being dropped on
 /// `OnExit(Load)`.
 #[derive(Deref, Clone, Debug)]
-pub(in crate::scenes::load) struct ArmorsFolderHandle(pub Handle<LoadedFolder>);
+pub(in crate::scenes::load) struct ArmorsFolderHandle(Handle<LoadedFolder>);
+
+impl ArmorsFolderHandle {
+    /// Wrap an in-flight armor-folder load handle.
+    pub(in crate::scenes::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
 
 /// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
 ///
@@ -70,7 +98,14 @@ pub(in crate::scenes::load) struct ArmorsFolderHandle(pub Handle<LoadedFolder>);
 /// E10.3). The poll/resolve system reads it to check the load's progress, then
 /// resolves it into the persistent [`LoadedSituation`].
 #[derive(Deref, Clone, Debug)]
-pub(in crate::scenes::load) struct SituationHandle(pub Handle<RonAsset<Situation>>);
+pub(in crate::scenes::load) struct SituationHandle(Handle<RonAsset<Situation>>);
+
+impl SituationHandle {
+    /// Wrap an in-flight situation RON asset handle.
+    pub(in crate::scenes::load) const fn new(handle: Handle<RonAsset<Situation>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// Typed handle to the in-flight combat-tuning RON asset (`combat/tuning.ron`).
 ///
@@ -80,7 +115,14 @@ pub(in crate::scenes::load) struct SituationHandle(pub Handle<RonAsset<Situation
 /// E10.4). The poll/resolve system reads it to check the load's progress, then
 /// inserts the deserialized [`CombatTuning`] as the persistent runtime resource.
 #[derive(Deref, Clone, Debug)]
-pub(in crate::scenes::load) struct TuningHandle(pub Handle<RonAsset<CombatTuning>>);
+pub(in crate::scenes::load) struct TuningHandle(Handle<RonAsset<CombatTuning>>);
+
+impl TuningHandle {
+    /// Wrap an in-flight combat-tuning RON asset handle.
+    pub(in crate::scenes::load) const fn new(handle: Handle<RonAsset<CombatTuning>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// The Load-scoped handles to the assets the [`AppState::Load`](crate::states::AppState::Load)
 /// kick-off started loading.
@@ -122,7 +164,20 @@ crate::support_item! {
     /// (the AC7 real-asset harness names it) and `pub(crate)` in the binary build
     /// (E10.5 consumes it in-crate) — keeping the binary `unreachable_pub`-clean.
     #[derive(Resource, Deref, Clone, Debug)]
-    struct LoadedSituation(pub Situation);
+    struct LoadedSituation(Situation);
+}
+
+impl LoadedSituation {
+    // `new` is `pub` under `test-support` (the AC7 real-asset harness + the
+    // `gdtf_test_utils` battle builder construct it) and `pub(crate)` in the
+    // binary, via `support_item!` per method — the same visibility flip the type
+    // itself uses, so `unreachable_pub` stays satisfied in both configurations.
+    crate::support_item! {
+        /// Wrap a resolved authored battlefield as the persistent resource.
+        const fn new(situation: Situation) -> Self {
+            Self(situation)
+        }
+    }
 }
 
 /// The loose-asset path of a load that reached
@@ -131,7 +186,14 @@ crate::support_item! {
 /// A named newtype over the path `String` so the failure record names *what*
 /// failed in the type, not a bare string.
 #[derive(Deref, Clone, PartialEq, Eq, Debug)]
-pub(in crate::scenes::load) struct FailedAssetPath(pub String);
+pub(in crate::scenes::load) struct FailedAssetPath(String);
+
+impl FailedAssetPath {
+    /// Record the loose-asset path of a load that failed.
+    pub(in crate::scenes::load) fn new(path: impl Into<String>) -> Self {
+        Self(path.into())
+    }
+}
 
 /// Records that a required `Load` asset failed to load.
 ///
@@ -141,4 +203,11 @@ pub(in crate::scenes::load) struct FailedAssetPath(pub String);
 /// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) so the app never hangs and never
 /// leaves `Load` themeless. Load-scoped: removed `OnExit(Load)`.
 #[derive(Resource, Deref, Clone, PartialEq, Eq, Debug)]
-pub(in crate::scenes::load) struct LoadFailed(pub FailedAssetPath);
+pub(in crate::scenes::load) struct LoadFailed(FailedAssetPath);
+
+impl LoadFailed {
+    /// Record that a required `Load` asset failed to load, naming its path.
+    pub(in crate::scenes::load) const fn new(path: FailedAssetPath) -> Self {
+        Self(path)
+    }
+}

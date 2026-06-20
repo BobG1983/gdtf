@@ -108,7 +108,7 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     app.world_mut()
-        .insert_resource(LoadedSituation(Situation::default()));
+        .insert_resource(LoadedSituation::new(Situation::default()));
 
     let reached_intro = advance_until(
         &mut app,

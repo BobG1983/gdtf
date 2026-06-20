@@ -50,5 +50,5 @@ pub fn emit_highlight_request(
         let grid = grid.as_ref()?;
         (grid.occupant(&cell).is_some() || grid.is_blocked(&cell)).then_some(cell)
     });
-    requests.write(HighlightRequest(highlighted));
+    requests.write(HighlightRequest::new(highlighted));
 }

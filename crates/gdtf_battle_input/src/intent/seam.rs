@@ -257,13 +257,13 @@ pub fn dispatch_act_intents(
             ActIntent::LevelUp => {
                 let next = step_level(**active_level, LevelStep::Up);
                 if next != **active_level {
-                    *active_level = ActiveLevel(next);
+                    *active_level = ActiveLevel::new(next);
                 }
             }
             ActIntent::LevelDown => {
                 let next = step_level(**active_level, LevelStep::Down);
                 if next != **active_level {
-                    *active_level = ActiveLevel(next);
+                    *active_level = ActiveLevel::new(next);
                 }
             }
             ActIntent::StanceCycle => {

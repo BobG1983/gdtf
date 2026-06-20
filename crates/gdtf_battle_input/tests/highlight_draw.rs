@@ -65,7 +65,8 @@ fn e2e_app(active_level: Level) -> App {
         .add_plugins(TopDownRendererPlugin);
     // TopDownRendererPlugin init_resource-s ActiveLevel(0) on build; override to the
     // level under test so the picker bands on it.
-    app.world_mut().insert_resource(ActiveLevel(active_level));
+    app.world_mut()
+        .insert_resource(ActiveLevel::new(active_level));
     app.world_mut().insert_resource(BattleInProgress);
     // GTW-268 — the highlight emit now gates on the `OccupancyGrid`: only an occupied or
     // blocking cell highlights. Insert an empty grid (all `Open`, no occupants); a test

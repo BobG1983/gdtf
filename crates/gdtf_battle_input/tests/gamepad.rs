@@ -385,7 +385,7 @@ fn picking_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin);
-    app.world_mut().insert_resource(ActiveLevel(LEVEL));
+    app.world_mut().insert_resource(ActiveLevel::new(LEVEL));
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().spawn((
         Camera2d,
@@ -447,7 +447,7 @@ fn picker_honors_active_pointer() {
     // Force the gamepad to be the active pointer + park its cursor over the known point.
     app.world_mut().insert_resource(ActivePointer::Gamepad);
     app.world_mut()
-        .insert_resource(GamepadCursor(gamepad_screen));
+        .insert_resource(GamepadCursor::new(gamepad_screen));
     app.update();
 
     // The expected cell is the documented inverse of the GAMEPAD cursor's unprojection.
@@ -512,7 +512,7 @@ fn highlight_follows_the_gamepad_cursor() {
     let gamepad_screen = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
     app.world_mut().insert_resource(ActivePointer::Gamepad);
     app.world_mut()
-        .insert_resource(GamepadCursor(gamepad_screen));
+        .insert_resource(GamepadCursor::new(gamepad_screen));
     app.update();
 
     let cell = hovered(&app);
@@ -540,7 +540,7 @@ fn highlight_follows_the_gamepad_cursor() {
         .unwrap_or_default();
     assert_eq!(
         emitted,
-        vec![HighlightRequest(cell)],
+        vec![HighlightRequest::new(cell)],
         "the highlight request must follow the gamepad cursor's resolved cell",
     );
     // Sanity: that cell really is `cell_to_world`-projectable (the highlight will draw there).

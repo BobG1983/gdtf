@@ -92,7 +92,15 @@ const PAN_TUNING_RON_PATH: &str = "tiles/pan_tuning.ron";
 /// [`load_pan_tuning`] and read by [`resolve_pan_tuning`] / [`redrive_pan_tuning_on_asset_event`],
 /// mirroring the [`FxTuningHandle`](crate::FxTuningHandle).
 #[derive(Resource, Deref, Debug, Clone)]
-pub struct PanTuningHandle(pub Handle<RonAsset<PanTuning>>);
+pub struct PanTuningHandle(Handle<RonAsset<PanTuning>>);
+
+impl PanTuningHandle {
+    /// Wrap the in-flight pan-tuning RON handle.
+    #[must_use]
+    pub const fn new(handle: Handle<RonAsset<PanTuning>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// `Startup`: kick off the `pan_tuning.ron` load, storing its typed handle.
 ///
@@ -109,7 +117,7 @@ pub fn load_pan_tuning(mut commands: Commands, asset_server: Option<Res<AssetSer
         return;
     };
     let handle = asset_server.load::<RonAsset<PanTuning>>(PAN_TUNING_RON_PATH);
-    commands.insert_resource(PanTuningHandle(handle));
+    commands.insert_resource(PanTuningHandle::new(handle));
 }
 
 /// `Update` (gated until [`PanTuning`] is resolved): resolve the loaded RON into the

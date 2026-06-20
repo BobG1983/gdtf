@@ -521,7 +521,7 @@ fn active_level_change_hides_off_level_shows_on_level() {
     );
 
     // Change the active level to 1.
-    app.world_mut().resource_mut::<ActiveLevel>().0 = Level::new(1);
+    *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(Level::new(1));
     app.update();
 
     // Now the level-1 ganger is shown and the level-0 ganger hidden.

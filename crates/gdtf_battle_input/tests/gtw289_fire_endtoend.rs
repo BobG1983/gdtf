@@ -104,7 +104,8 @@ fn endtoend_app() -> App {
         .add_plugins(GdtfBattleInputPlugin)
         .add_plugins(SimActsPlugin)
         .add_plugins(OccupancyMaintenancePlugin);
-    app.world_mut().insert_resource(ActiveLevel(Level::new(0)));
+    app.world_mut()
+        .insert_resource(ActiveLevel::new(Level::new(0)));
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(SurfaceGrid::new());

@@ -121,7 +121,7 @@ fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     // GTW-261: the Load→Intro gate now requires a LoadedSituation; seed the fixture
     // when given, else the empty default so the walk still traverses Load.
     app.world_mut()
-        .insert_resource(LoadedSituation(situation.unwrap_or_default()));
+        .insert_resource(LoadedSituation::new(situation.unwrap_or_default()));
     app
 }
 

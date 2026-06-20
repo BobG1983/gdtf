@@ -197,17 +197,13 @@ pub(in crate::scenes::load) fn poll_and_resolve(
     if theme_state.is_failed() {
         fall_back(
             &mut commands,
-            FailedAssetPath(String::from("theme/grimdark.ron")),
+            FailedAssetPath::new("theme/grimdark.ron"),
             &handles,
         );
         return;
     }
     if matches!(fonts_state, RecursiveDependencyLoadState::Failed(_)) {
-        fall_back(
-            &mut commands,
-            FailedAssetPath(String::from("fonts")),
-            &handles,
-        );
+        fall_back(&mut commands, FailedAssetPath::new("fonts"), &handles);
         return;
     }
 
@@ -242,7 +238,7 @@ fn fall_back(commands: &mut Commands, path: FailedAssetPath, handles: &LoadHandl
         "GDTF Load: asset `{}` failed to load; falling back to the const default theme",
         &*path,
     );
-    commands.insert_resource(LoadFailed(path));
+    commands.insert_resource(LoadFailed::new(path));
     commands.insert_resource(default_theme());
     commands.insert_resource(ActiveThemeHandle::new((*handles.theme).clone()));
 }

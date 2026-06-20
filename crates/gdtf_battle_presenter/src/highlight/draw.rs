@@ -18,7 +18,15 @@ use crate::{CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
 /// cell this slice means the future gamepad cursor (GTW-259) reuses the SAME pipeline
 /// — it emits the same request from the stick-driven pick.
 #[derive(Message, Deref, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HighlightRequest(pub Option<CellLevel>);
+pub struct HighlightRequest(Option<CellLevel>);
+
+impl HighlightRequest {
+    /// Build a highlight request from the cell to highlight, or [`None`] to hide it.
+    #[must_use]
+    pub const fn new(cell: Option<CellLevel>) -> Self {
+        Self(cell)
+    }
+}
 
 /// Marker for the single hover-highlight [`Sprite`].
 ///

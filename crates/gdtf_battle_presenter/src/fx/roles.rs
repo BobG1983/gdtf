@@ -205,7 +205,15 @@ const EFFECT_ROLES_RON_PATH: &str = "tiles/effect_roles.ron";
 /// [`load_effect_roles`] and read by [`resolve_effect_roles`], mirroring S4's
 /// `TileRolesHandle`.
 #[derive(Resource, Deref, Debug, Clone)]
-pub struct EffectRolesHandle(pub Handle<RonAsset<EffectRoles>>);
+pub struct EffectRolesHandle(Handle<RonAsset<EffectRoles>>);
+
+impl EffectRolesHandle {
+    /// Wrap the in-flight FX-role RON handle.
+    #[must_use]
+    pub const fn new(handle: Handle<RonAsset<EffectRoles>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// `Startup`: kick off the `effect_roles.ron` load, storing its typed handle.
 ///
@@ -222,7 +230,7 @@ pub fn load_effect_roles(mut commands: Commands, asset_server: Option<Res<AssetS
         return;
     };
     let handle = asset_server.load::<RonAsset<EffectRoles>>(EFFECT_ROLES_RON_PATH);
-    commands.insert_resource(EffectRolesHandle(handle));
+    commands.insert_resource(EffectRolesHandle::new(handle));
 }
 
 /// `Update` (gated until [`EffectRoles`] is resolved): resolve the loaded RON into the

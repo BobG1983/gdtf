@@ -250,8 +250,16 @@ pub fn pan_velocity(dir: Vec2, speed: PanSpeed) -> Vec2 {
 /// presenter never names input. The inner [`Vec2`] is framework-math plumbing (a raw screen
 /// position — the GTW-249/250/251 carve-out for screen / direction coords), not a wrapped
 /// domain scalar.
-#[derive(Message, Debug, Clone, Copy, PartialEq)]
-pub struct GamepadCursorMoved(pub Vec2);
+#[derive(Message, Deref, Debug, Clone, Copy, PartialEq)]
+pub struct GamepadCursorMoved(Vec2);
+
+impl GamepadCursorMoved {
+    /// Build the gamepad-cursor-moved message from a raw screen position.
+    #[must_use]
+    pub const fn new(cursor: Vec2) -> Self {
+        Self(cursor)
+    }
+}
 
 /// `Update` (battle-gated): pan the [`WorldCamera`] each frame from the three navigation
 /// sources, BEFORE the [`clamp_camera_to_bounds`](super::clamp_camera_to_bounds) clamp so
@@ -449,12 +457,13 @@ pub fn pan_camera_on_gamepad_cursor_edge(
     // Act on only the LATEST gamepad cursor position this update — earlier reads are stale.
     // No message => the gamepad is not the active pointer => the cursor is not lingering at an
     // edge, so the gamepad dwell RESETS and no pan happens this frame.
-    let Some(GamepadCursorMoved(cursor)) = cursor_moves.read().last().copied() else {
+    let Some(moved) = cursor_moves.read().last().copied() else {
         if let Some(state) = dwell.as_mut() {
             state.gamepad.reset();
         }
         return;
     };
+    let cursor = *moved;
 
     // The hot-reloadable speed + edge band + dwell delay, or the shipped defaults when the tuning
     // table is absent (a headless app without an AssetServer never loads it) — behaviour unchanged.

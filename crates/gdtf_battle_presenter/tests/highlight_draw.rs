@@ -90,7 +90,7 @@ fn presenter_draws_highlight_from_the_request() {
 
     // First Some(cell) — the highlight spawns at cell_to_world(cell), visible.
     let cell_a = CellLevel::new(Cell::new(4, 7), level);
-    send_request(&mut app, HighlightRequest(Some(cell_a)));
+    send_request(&mut app, HighlightRequest::new(Some(cell_a)));
     app.update();
     assert_eq!(
         highlight_count(&mut app),
@@ -112,7 +112,7 @@ fn presenter_draws_highlight_from_the_request() {
 
     // A different Some(cell) — the highlight MOVES, no duplicate.
     let cell_b = CellLevel::new(Cell::new(11, 2), level);
-    send_request(&mut app, HighlightRequest(Some(cell_b)));
+    send_request(&mut app, HighlightRequest::new(Some(cell_b)));
     app.update();
     assert_eq!(
         highlight_count(&mut app),
@@ -129,7 +129,7 @@ fn presenter_draws_highlight_from_the_request() {
     );
 
     // None — the highlight hides (entity persists, not despawned, not duplicated).
-    send_request(&mut app, HighlightRequest(None));
+    send_request(&mut app, HighlightRequest::new(None));
     app.update();
     assert_eq!(
         highlight_count(&mut app),
@@ -143,7 +143,7 @@ fn presenter_draws_highlight_from_the_request() {
     );
 
     // Some again — it re-shows at the new cell, proving the draw tracks the MESSAGE.
-    send_request(&mut app, HighlightRequest(Some(cell_a)));
+    send_request(&mut app, HighlightRequest::new(Some(cell_a)));
     app.update();
     assert_eq!(
         highlight_state(&mut app),
@@ -168,7 +168,7 @@ fn no_highlight_drawn_without_battle_in_progress() {
     // Deliberately NO BattleInProgress.
 
     let cell = CellLevel::new(Cell::new(4, 7), level);
-    send_request(&mut app, HighlightRequest(Some(cell)));
+    send_request(&mut app, HighlightRequest::new(Some(cell)));
     app.update();
 
     assert_eq!(

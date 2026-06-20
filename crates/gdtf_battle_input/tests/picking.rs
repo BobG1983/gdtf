@@ -181,7 +181,8 @@ fn picking_app(active_level: Level) -> App {
         .add_plugins(GdtfBattleInputPlugin);
     // The presenter normally owns ActiveLevel (init in TopDownRendererPlugin); the
     // focused harness inserts it directly so picking has a level to band on.
-    app.world_mut().insert_resource(ActiveLevel(active_level));
+    app.world_mut()
+        .insert_resource(ActiveLevel::new(active_level));
     app.world_mut().insert_resource(BattleInProgress);
 
     // The synthetic world camera: a deterministic projection at the identity
@@ -396,7 +397,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     // GTW-268 — over BARE FLOOR the emit is gated to None even though a cell is hovered.
     assert_eq!(
         requests(&app),
-        vec![HighlightRequest(None)],
+        vec![HighlightRequest::new(None)],
         "a bare-floor in-grid cell must emit HighlightRequest(None) (GTW-268)",
     );
 
@@ -408,7 +409,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     app.update();
     assert_eq!(
         requests(&app),
-        vec![HighlightRequest(cell)],
+        vec![HighlightRequest::new(cell)],
         "over a blocking cell the picker must emit exactly one HighlightRequest = Some(cell)",
     );
 
@@ -427,7 +428,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     );
     assert_eq!(
         requests(&app),
-        vec![HighlightRequest(None)],
+        vec![HighlightRequest::new(None)],
         "the picker must emit HighlightRequest(None) when nothing is hovered",
     );
 }

@@ -196,7 +196,15 @@ const FX_TUNING_RON_PATH: &str = "tiles/fx_tuning.ron";
 /// [`redrive_fx_tuning_on_asset_event`], mirroring the
 /// [`EffectRolesHandle`](super::roles::EffectRolesHandle).
 #[derive(Resource, Deref, Debug, Clone)]
-pub struct FxTuningHandle(pub Handle<RonAsset<FxTuning>>);
+pub struct FxTuningHandle(Handle<RonAsset<FxTuning>>);
+
+impl FxTuningHandle {
+    /// Wrap the in-flight FX-tuning RON handle.
+    #[must_use]
+    pub const fn new(handle: Handle<RonAsset<FxTuning>>) -> Self {
+        Self(handle)
+    }
+}
 
 /// `Startup`: kick off the `fx_tuning.ron` load, storing its typed handle.
 ///
@@ -214,7 +222,7 @@ pub fn load_fx_tuning(mut commands: Commands, asset_server: Option<Res<AssetServ
         return;
     };
     let handle = asset_server.load::<RonAsset<FxTuning>>(FX_TUNING_RON_PATH);
-    commands.insert_resource(FxTuningHandle(handle));
+    commands.insert_resource(FxTuningHandle::new(handle));
 }
 
 /// `Update` (gated until [`FxTuning`] is resolved): resolve the loaded RON into the

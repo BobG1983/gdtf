@@ -126,7 +126,7 @@ fn battlefield_centre() -> Vec2 {
 fn send_cursor(app: &mut App, pos: Vec2) {
     app.world_mut()
         .resource_mut::<bevy::ecs::message::Messages<GamepadCursorMoved>>()
-        .write(GamepadCursorMoved(pos));
+        .write(GamepadCursorMoved::new(pos));
 }
 
 /// GTW-271 AC4 — the gamepad edge-pan is VIEWPORT-GATED: with NO map-viewport rect (the

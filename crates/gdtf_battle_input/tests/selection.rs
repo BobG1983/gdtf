@@ -56,7 +56,8 @@ fn selection_app(active_level: Level) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin);
-    app.world_mut().insert_resource(ActiveLevel(active_level));
+    app.world_mut()
+        .insert_resource(ActiveLevel::new(active_level));
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(CombatTuning::default());
@@ -676,7 +677,7 @@ fn inert_without_battle_in_progress() {
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin);
     // NOTE: no BattleInProgress inserted.
-    app.world_mut().insert_resource(ActiveLevel(level));
+    app.world_mut().insert_resource(ActiveLevel::new(level));
     app.world_mut().insert_resource(OccupancyGrid::default());
 
     // Queue a level-up + a click on an occupant, then run several updates.
@@ -922,7 +923,7 @@ fn auto_select_inert_without_battle_in_progress() {
         .add_plugins(GdtfBattleInputPlugin);
     // NOTE: no BattleInProgress inserted; PlayerFaction present so only the battle gate
     // is the witness under test.
-    app.world_mut().insert_resource(ActiveLevel(level));
+    app.world_mut().insert_resource(ActiveLevel::new(level));
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
 
@@ -1093,7 +1094,8 @@ fn real_flow_app() -> App {
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin)
         .add_plugins(BattleSimPlugin);
-    app.world_mut().insert_resource(ActiveLevel(Level::new(0)));
+    app.world_mut()
+        .insert_resource(ActiveLevel::new(Level::new(0)));
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(real_flow_registry());
     // The Load-built ArmorRegistry (GTW-269) so the real setup armors each spawned
