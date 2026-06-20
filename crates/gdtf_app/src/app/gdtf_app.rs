@@ -3,7 +3,7 @@
 use bevy::{asset::AssetPlugin, prelude::*};
 use gdtf_ui::UiPlugin;
 
-use crate::{scenes::ScenesPlugin, states::AppState};
+use crate::states::{AppState, ScenesPlugin};
 
 /// Absolute path to the workspace-root `assets/` directory.
 ///

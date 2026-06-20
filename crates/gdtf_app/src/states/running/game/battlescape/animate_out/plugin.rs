@@ -1,0 +1,36 @@
+use bevy::prelude::*;
+
+use crate::states::{
+    BattleScapeState,
+    running::game::battlescape::animate_out::{resources::BattleAnimateOutComplete, systems::*},
+};
+
+pub(in crate::states) struct GameBattleScapeAnimateOutScenePlugin;
+
+impl Plugin for GameBattleScapeAnimateOutScenePlugin {
+    fn build(&self, app: &mut App) {
+        add_systems(app);
+    }
+}
+
+fn add_systems(app: &mut App) {
+    app.add_systems(OnEnter(BattleScapeState::AnimateOut), print_on_enter)
+        .add_systems(
+            FixedUpdate,
+            game_battlescape_animate_out_complete.run_if(
+                in_state(BattleScapeState::AnimateOut)
+                    .and_then(not(resource_exists::<BattleAnimateOutComplete>)),
+            ),
+        )
+        .add_systems(
+            FixedUpdate,
+            move_on.run_if(
+                in_state(BattleScapeState::AnimateOut)
+                    .and_then(resource_exists::<BattleAnimateOutComplete>),
+            ),
+        )
+        .add_systems(
+            OnExit(BattleScapeState::AnimateOut),
+            (print_on_exit, cleanup),
+        );
+}

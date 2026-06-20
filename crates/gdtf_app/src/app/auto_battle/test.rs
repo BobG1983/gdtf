@@ -45,7 +45,7 @@ fn construction_records_the_gate() {
 }
 
 /// A1 (GTW play-test wave 3) + `AC3b` (GTW-297) — `seed_load_fallbacks` seeds the EMPTY
-/// [`LoadedSituation`](crate::scenes::LoadedSituation) **and** the empty
+/// [`LoadedSituation`](crate::states::LoadedSituation) **and** the empty
 /// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) fallbacks ONLY when there
 /// is no [`AssetServer`]: with one present (the real GUI launch) it must NOT seed EITHER,
 /// so the Load scene's `poll_and_resolve` — which only RESOLVES the situation / registry
@@ -80,7 +80,7 @@ fn empty_fallbacks_seeded_only_without_asset_server() {
     use gdtf_battle_sim::{tuning::CombatTuning, weapon::WeaponRegistry};
     use gdtf_ui::theme::GdtfTheme;
 
-    use crate::scenes::LoadedSituation;
+    use crate::states::LoadedSituation;
 
     // No AssetServer (bare MinimalPlugins): both empty fallbacks ARE seeded.
     {

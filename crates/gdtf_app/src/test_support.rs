@@ -19,21 +19,21 @@ pub use crate::{
     app::auto_battle::{
         AutoBattleActive, AutoBattlePlugin, auto_battle_enabled, seed_load_fallbacks,
     },
-    scenes::{
-        AimLabel, AimPanel, AimToggleButton, BattleRunningComplete, BattlescapeButton,
-        BottomBarRoot, CombinedWeaponPanel, ContextualPanelRoot, EndTurnButton, ExecuteButton,
-        FleeButton, HiveScapeButton, InspectObjectBar, InspectObjectBlock, InspectObjectHardness,
-        InspectObjectHeight, InspectObjectProtection, InspectObjectText, InspectPanelRoot,
-        InspectStatBlockHost, LevelDownButton, LevelUpButton, LoadedSituation, MenuTitle,
-        ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
-        OpenDoorButton, OptionsButton, QuitButton, ReloadButton, ScenesPlugin, StabilizeButton,
-        StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
-        StanceStandingButton, StatFaction, StatHpBar, StatHpLabel, StatName, StatPortrait,
-        StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips,
-        WeaponContent, WeaponImage, WeaponItemButton, WeaponItemPanel, WeaponMagazineText,
-        WeaponNameText, WeaponPanelRoot, portrait_index_for_name,
+    states::{
+        AfterMathState, AimLabel, AimPanel, AimToggleButton, AppState, BattleRunningComplete,
+        BattleScapeState, BattlescapeButton, BottomBarRoot, CombinedWeaponPanel,
+        ContextualPanelRoot, EndTurnButton, ExecuteButton, FleeButton, GameState, HiveScapeButton,
+        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
+        InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
+        LevelDownButton, LevelUpButton, LoadedSituation, MenuTitle, ModeBurstButton, ModeControl,
+        ModeFullButton, ModePanelRoot, ModeSingleButton, OpenDoorButton, OptionsButton, QuitButton,
+        ReloadButton, RunningState, ScenesPlugin, StabilizeButton, StanceControl,
+        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
+        StatFaction, StatHpBar, StatHpLabel, StatName, StatPortrait, StatStance, StatTuBar,
+        StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips, WeaponContent, WeaponImage,
+        WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+        portrait_index_for_name,
     },
-    states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };
 
 /// Registers the full headless GDTF state stack on `app`.

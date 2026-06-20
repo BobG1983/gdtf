@@ -2,14 +2,14 @@
 //!
 //! [`support_item`] / [`support_use`] declare an item / re-export a path with `pub`
 //! visibility when the `test-support` feature is enabled and `pub(crate)` otherwise,
-//! so the state enums, [`ScenesPlugin`](crate::scenes::ScenesPlugin), and the GTW-223
+//! so the state enums, [`ScenesPlugin`](crate::states::ScenesPlugin), and the GTW-223
 //! auto-battle affordance can widen to `pub` for the external test harness while
 //! staying `pub(crate)` (and `unreachable_pub`-clean) in the production binary.
 
 /// Declares an item with `pub` visibility when the `test-support` feature is
 /// enabled, and `pub(crate)` visibility otherwise.
 ///
-/// The state enums and [`scenes::ScenesPlugin`](crate::scenes::ScenesPlugin) are
+/// The state enums and [`states::ScenesPlugin`](crate::states::ScenesPlugin) are
 /// crate-internal in normal builds (the production public API is exactly
 /// [`GdtfApp`](crate::GdtfApp)). With `test-support` on, an external crate must be able
 /// to *name* them through [`test_support`](crate::test_support), so their definitions

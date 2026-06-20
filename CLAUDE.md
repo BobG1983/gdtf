@@ -97,9 +97,9 @@ A cargo workspace (resolver 3), `crates/*` + `bins/*`:
 ```text
 crates/gdtf_app/             the Bevy App
   src/app/gdtf_app.rs        GdtfApp wrapper: init_state::<AppState>() + add ScenesPlugin
-  src/states/app_state.rs    AppState enum: Init, Load, Intro, MainMenu, Playing, Teardown
-  src/scenes/<scene>/        one module per scene; plugin.rs (OnEnter/OnExit) + systems/
-  src/scenes/plugin.rs       ScenesPlugin registers every scene plugin
+  src/states/app_state.rs    AppState enum: Init, Load, Intro, Running, Teardown
+  src/states/<scene>/        one module per scene; plugin.rs (OnEnter/OnExit) + systems/
+  src/states/plugin.rs       ScenesPlugin registers every scene plugin
 crates/gdtf_battle_sim/      the AUTHORITATIVE, render-free combat sim (the MODEL)
 crates/gdtf_battle_presenter/  the VIEW/presenter that mirrors the sim
 bins/grimdark_turfwar/       binary entry point (src/main.rs)

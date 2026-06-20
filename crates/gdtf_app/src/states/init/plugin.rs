@@ -1,0 +1,29 @@
+use bevy::prelude::*;
+
+use crate::states::{
+    AppState,
+    init::{resources::InitComplete, systems::*},
+};
+
+// Initialization plugin for the GDTF app.
+pub(in crate::states) struct InitScenePlugin;
+
+impl Plugin for InitScenePlugin {
+    fn build(&self, app: &mut App) {
+        add_systems(app);
+    }
+}
+
+fn add_systems(app: &mut App) {
+    app.add_systems(OnEnter(AppState::Init), print_on_enter)
+        .add_systems(
+            FixedUpdate,
+            init_complete
+                .run_if(in_state(AppState::Init).and_then(not(resource_exists::<InitComplete>))),
+        )
+        .add_systems(
+            FixedUpdate,
+            move_on.run_if(in_state(AppState::Init).and_then(resource_exists::<InitComplete>)),
+        )
+        .add_systems(OnExit(AppState::Init), (print_on_exit, cleanup));
+}
