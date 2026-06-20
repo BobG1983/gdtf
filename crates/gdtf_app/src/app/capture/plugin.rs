@@ -43,13 +43,22 @@
 //! `Res<FrameCount>` would hang on macOS, Bevy issue #24035). On each frame matching a
 //! target in [`CaptureFrames`] it spawns a [`Screenshot::primary_window`] entity with an
 //! observer that saves the frame to that frame's PNG path; on the LAST target frame the
-//! observer also writes `AppExit::Success`.
+//! observer hands off to the shutdown cascade by setting
+//! [`RunningState::Quit`](crate::states::RunningState::Quit).
 //!
-//! `AppExit::Success` is written ONLY from inside the
+//! ## How it exits (GTW-316)
+//!
+//! The capture completion rides the SAME shutdown cascade as the battle aftermath instead
+//! of writing `AppExit` directly: the
 //! [`ScreenshotCaptured`](bevy::render::view::window::screenshot::ScreenshotCaptured)
-//! observer (the `ci_testing` pattern) to mitigate the macOS `AppExit` hang (Bevy issue
-//! #23313, not fixed in 0.18.1). If a future Bevy still hangs there, the documented
-//! fallback is to despawn the `PrimaryWindow` entity to take winit's native exit path.
+//! observer saves the final PNG synchronously, then on the last scheduled frame sets
+//! [`RunningState::Quit`](crate::states::RunningState::Quit). That advances
+//! [`AppState::Teardown`](crate::states::AppState::Teardown), whose scene despawns the
+//! `PrimaryWindow` (windowed/macOS native exit, no hang) and writes `AppExit` (headless
+//! fallback). Writing `AppExit` from an ordinary observer does NOT reliably terminate
+//! winit on macOS (Bevy issue #23313, unfixed in 0.18.1) — that is what made the capture
+//! run hang at its last frame. GTW-311 fixed the teardown-driven exit; GTW-316 routes
+//! this sibling capture path through the same cascade.
 //!
 //! The actual screenshot capture needs a real render device, so it CANNOT be
 //! headless-tested — it is verified by RUNNING the app (the orchestrator does so, then
@@ -79,7 +88,7 @@ use gdtf_battle_sim::{
     acts::FireRequested,
 };
 
-use crate::states::BattleScapeState;
+use crate::states::{BattleScapeState, RunningState};
 
 /// The `GDTF_CAPTURE_PATH` environment variable: the absolute path of the output
 /// PNG. Setting it (in a `dev_capture` debug build) opts into the capture affordance.
@@ -515,9 +524,14 @@ impl Plugin for DevCapturePlugin {
 /// [`Screenshot::primary_window`] entity with an observer that calls
 /// [`save_to_disk`](bevy::render::view::window::screenshot::save_to_disk) to write that
 /// frame's PNG (the exact path for the single-frame case, a `.fNN`-tagged path otherwise
-/// — [`frame_path`]); the observer for the LAST target frame ALSO writes
-/// `AppExit::Success`. The exit is written ONLY from inside that observer (the
-/// `ci_testing` pattern, mitigating the macOS `AppExit` hang — Bevy issue #23313).
+/// — [`frame_path`]). The observer saves SYNCHRONOUSLY first (so the final PNG flushes),
+/// then on the LAST target frame sets [`RunningState::Quit`] to ride the shared shutdown
+/// cascade — Quit -> [`AppState::Teardown`](crate::states::AppState::Teardown) despawns
+/// the `PrimaryWindow` (windowed/macOS native exit) and writes `AppExit` (headless
+/// fallback). It does NOT write `AppExit` itself: an `AppExit` from an ordinary
+/// observer does not reliably terminate winit on macOS (Bevy issue #23313, unfixed in
+/// 0.18.1). GTW-311 fixed the teardown exit; GTW-316 routes this sibling capture path
+/// through the same cascade so it exits cleanly instead of hanging.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] + [`Res`]`<`[`CaptureConfig`]`>` + a
 /// [`Local<u32>`] — no `&mut World`. The actual capture needs a real render device, so
@@ -542,13 +556,18 @@ fn capture_when_ready(
         frame_path(&config.path, current)
     };
     commands.spawn(Screenshot::primary_window()).observe(
-        move |captured: On<ScreenshotCaptured>, mut exit: MessageWriter<AppExit>| {
-            // Save this frame, then (only on the last scheduled frame) quit from INSIDE
-            // the observer (the macOS-safe ci_testing exit pattern — bevy-traps.md #4 /
-            // issue #23313).
+        move |captured: On<ScreenshotCaptured>, mut next: ResMut<NextState<RunningState>>| {
+            // Flush this frame's PNG to disk FIRST and synchronously (so the final image is
+            // written before anything tears the app down). Then, only on the last scheduled
+            // frame, hand off to the shared shutdown CASCADE by setting RunningState::Quit
+            // (GTW-316): that drives the Quit scene -> AppState::Teardown, which despawns the
+            // PrimaryWindow (windowed/macOS native exit, no #23313 hang) AND writes AppExit
+            // (headless fallback). Writing AppExit directly from this observer does NOT
+            // reliably terminate winit on macOS (Bevy issue #23313, not fixed in 0.18.1) —
+            // GTW-311 fixed the teardown path but this sibling capture path bypassed it.
             save_to_disk(&path)(captured);
             if is_last {
-                exit.write(AppExit::Success);
+                next.set(RunningState::Quit);
             }
         },
     );
