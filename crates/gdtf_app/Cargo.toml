@@ -30,6 +30,12 @@ gdtf_battle_input = { path = "../gdtf_battle_input" }
 # in gdtf_app with `test-support`, which unifies that feature on for this
 # crate's test target, so the integration tests can name `gdtf_app::test_support`.
 gdtf_test_utils = { path = "../gdtf_test_utils" }
+# The canonical shared sim test builders (GTW-324). `gdtf_app` already deps the sim
+# in the NORMAL graph; this adds the `test-support` feature for the TEST target so
+# integration tests name `gdtf_battle_sim::test_support`. (Feature-unification turns
+# `test-support` on for the sim across the workspace test build — fine: it is test/dev
+# only and the binary build enables it nowhere.)
+gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
 
 [features]
 # Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled

@@ -8,30 +8,18 @@
 //! `setup_battle`), and the GTW-212 [`BattleInProgress`]-gated battle-wide dispatch
 //! that E10.6 keeps live across `BattleRunning`.
 //!
-//! Built on [`GdtfTestAppBuilder`] (`MinimalPlugins`, a one-tick fixed timestep, and the
-//! real `ScenesPlugin` state machine) exactly as `state_walk.rs` and the E10.6
-//! `battle_running_driver.rs` are. It seeds the resources the real `Load` scene resolves
-//! from assets but a `MinimalPlugins` app has no `AssetServer` to load
-//! ([`GdtfTheme`](gdtf_ui::theme::GdtfTheme) via [`default_theme`], plus [`CombatTuning`]),
-//! inserts the test's authored [`Situation`] inline as a [`LoadedSituation`] (the
-//! resolved-load stand-in the E10.6 precedent established — `Situation` derives
-//! `Deserialize` now, E10.3/GTW-205, but the test owns the fixture inline), drives the
-//! state machine down to `BattleScapeState::BattleRunning`, and exercises the REAL path
-//! end-to-end (real `ScenesPlugin`, real `setup_battle`, real E10.2 dispatch, real verb,
-//! the injected seeded [`SimRng`]).
+//! PROOF MIGRATION (GTW-324): this file is now built on the shared test
+//! architecture — the drive-to-battle sequence is the crate-central
+//! [`gdtf_test_utils::BattleAppBuilder`], and the authored battlefield + fixture
+//! gangers come from the canonical [`gdtf_battle_sim::test_support`] builders
+//! ([`GangerSpawnBuilder`] / [`SituationBuilder`]). It no longer hand-rolls a
+//! `capstone_app`, its weapon/armor registries, or its `ganger_at` — those are the
+//! shared builders the `BattleAppBuilder` seeds. The drive STOPS at
+//! `BattleScapeState::BattleRunning` (never `AfterMath`).
 //!
 //! These are *pin-discriminating* tests: each `#[test]` re-encodes one acceptance
 //! criterion as a before≠after / equality RELATION (never a pinned tunable magnitude),
 //! so a regression in the E10 wiring turns the test red.
-//!
-//! CORRECTIONS honored (the contract's CORRECTIONS block):
-//! 1. The test inserts a [`LoadedSituation`] + drives; it does NOT manually send
-//!    `SetupBattleRequested` (the app's `OnEnter(Generation)` does).
-//! 2. A `GangerSpawn` authors NO weapon, so the drive proof ARMS the queried shooter in
-//!    the TEST BODY via `app.world_mut().entity_mut(shooter).insert(<kit>)` and PUBLISHES
-//!    the target's occupant band in the live [`OccupancyGrid`] (the E10.6 precedent).
-//! 3. Dispatch runs BATTLE-WIDE via the GTW-212 [`BattleInProgress`]-gated band, present
-//!    across `BattleRunning`, so a `*Requested` emitted in `BattleRunning` resolves.
 //!
 //! NO function in this file takes `&mut World`/`&World`; every `app.world_mut()` /
 //! `app.world()` call is in the TEST BODY (the established `gdtf_app` test idiom). No
@@ -40,79 +28,28 @@
 //! `AfterMath` / `AfterMathState`).
 
 use bevy::{ecs::entity::Entity, state::state::State};
-use gdtf_app::test_support::{
-    AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
-};
+use gdtf_app::test_support::{BattleScapeState, GameState};
 use gdtf_battle_sim::{
     acts::{FireRequested, SetStanceRequested},
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-        ArmorRegistry, ArmorSpec, ArmorType,
-    },
     battle::BattleInProgress,
     cover::{CoverLedger, HeightBand},
-    ganger::{
-        Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Shooting,
-        Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
-    },
+    ganger::{Facing, Faction, Hp, LifeState, Stance, StanceKind, TuMax, Wounds},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     rng::SimRng,
-    situation::{GangerSpawn, Situation},
+    situation::Situation,
     surface::SurfaceGrid,
+    test_support::{GangerSpawnBuilder, SituationBuilder, key},
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
-        WeaponSpec,
+        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::theme::default_theme;
-
-/// The weapon KEY every fixture ganger references — present in [`weapon_registry`]
-/// (the same `"test-weapon"` key the deterministic [`shooter_weapon_kit`] re-arms with).
-const TEST_WEAPON_KEY: &str = "test-weapon";
-
-/// The armor KEY every fixture ganger references — present in [`armor_registry`]
-/// (GTW-269).
-const TEST_ARMOR_KEY: &str = "test-armor";
-
-/// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
-/// reference, standing in for the `Load`-built registry (GTW-257) so the deep-walk
-/// setup arms each ganger. The drive proof later OVERWRITES the shooter's weapon with
-/// the deterministic [`shooter_weapon_kit`]; the registry only needs the key to exist.
-fn weapon_registry() -> WeaponRegistry {
-    WeaponRegistry::new([(
-        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-        WeaponSpec {
-            base_spread: BaseSpread::new(0.25),
-            accuracy:    Accuracy::new(1.0),
-            kickback:    Kickback::new(0.4),
-            fatal_bias:  FatalBias::new(0.0),
-            damage:      WeaponDamage::new(12),
-            punch:       WeaponPunch::new(5),
-            shred:       WeaponShred::new(3),
-            damage_type: DamageType::Kinetic,
-            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-            fire_mode:   FireMode::new(vec![FireModeSpec::new(
-                ModeKind::Single,
-                ModeConeMult::new(1.0),
-                ModeTuPercent::new(0.5),
-                ModeShots::new(1),
-            )]),
-            stable:      Stable::new(false),
-        },
-    )])
-}
-
-/// A budget large enough to drive the deep walk down into the battlescape (each leaf
-/// scene spends a couple of `FixedUpdate` ticks plus its transition propagation), but
-/// bounded so a machine that never reaches the predicate fails instead of hanging.
-const BUDGET: u32 = 96;
+use gdtf_test_utils::BattleAppBuilder;
 
 /// The shooter's faction in the fixture (the ganger the drive proof arms + fires).
 const SHOOTER_FACTION: u8 = 0;
@@ -127,87 +64,55 @@ const SHOOTER_AT: (i32, i32, u8) = (2, 5, 0);
 const TARGET_AT: (i32, i32, u8) = (8, 5, 0);
 
 /// The stance every fixture ganger is authored holding — the AC3 "authored start" value
-/// the requested stance must differ from.
+/// the requested stance must differ from. Matches the
+/// [`GangerSpawnBuilder`](gdtf_battle_sim::test_support::GangerSpawnBuilder) default.
 const AUTHORED_STANCE: StanceKind = StanceKind::Standing;
 /// The stance the AC3 `SetStanceRequested` asks for — DISTINCT from [`AUTHORED_STANCE`],
 /// so a successful flip is observable as a change to exactly this value.
 const REQUESTED_STANCE: StanceKind = StanceKind::Prone;
 
-/// Build a `(cell, level)` key from raw coordinates.
-fn key(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
-}
-
-/// An arbitrary armor SPEC (distinct per-part magnitudes, NOT shipped tuning) — the
-/// suit the [`TEST_ARMOR_KEY`] resolves to in [`armor_registry`] (GTW-269). Base 0 =
-/// paper-thin, so a landed shot lands in a known regime.
-const fn arbitrary_armor(base: i32) -> ArmorSpec {
-    ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(base),
-        ArmorProtection::new(base + 1),
-        ArmorIntegrity::new(base + 2),
-        ArmorHardness::new(base + 3),
-        ArmorType::DEFAULT,
-    ))
-}
-
-/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit the fixture gangers
-/// reference, standing in for the `Load`-built registry (GTW-269) so the deep-walk
-/// setup armors each ganger. Paper-thin (base 0), so a landed shot lands in a known
-/// regime.
-fn armor_registry() -> ArmorRegistry {
-    ArmorRegistry::new([(
-        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        arbitrary_armor(0),
-    )])
-}
-
-/// Build an authored ganger at `at` with arbitrary-but-valid component values, holding
-/// the [`AUTHORED_STANCE`]. The target carries paper-thin armor (`base 0`) so a landed
-/// shot lands in a known regime.
-fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
-    GangerSpawn {
-        at,
-        name: GangerName::new(format!("Ganger {faction}")),
-        faction: Faction::new(faction),
-        facing: Facing::new(Direction::East),
-        stance: Stance::new(AUTHORED_STANCE),
-        aiming: Aiming::new(true),
-        hp: Hp::new(40),
-        hp_max: HpMax::new(40),
-        wounds: Wounds::new(3),
-        wounds_max: WoundsMax::new(3),
-        tu: Tu::new(60),
-        tu_max: TuMax::new(60),
-        life_state: LifeState::Alive,
-        shooting: Shooting::new(f32::from(faction) + 2.0),
-        toughness: Toughness::new(f32::from(faction) + 3.0),
-        luck: Luck::new(f32::from(faction) + 1.0),
-        // Every fixture ganger references the one TEST_ARMOR_KEY in armor_registry.
-        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
-        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-    }
-}
-
 /// The authored ganger count the fixture spawns — the AC1 `WornArmor`-count assertion
 /// reads this exact number.
 const AUTHORED_GANGER_COUNT: usize = 2;
 
-/// A valid two-ganger fixture situation (link-free → validates trivially): a shooter
-/// (faction [`SHOOTER_FACTION`]) facing East, and a target (faction [`TARGET_FACTION`])
-/// directly East at close range. The `SetupBattleRequested` the app sends on
-/// `OnEnter(Generation)` pours this real battle into the world before `BattleRunning`.
-fn two_ganger_situation() -> Situation {
+/// Build the bootstrap fixture's authored ganger at `at` / `faction` via the central
+/// [`GangerSpawnBuilder`](gdtf_battle_sim::test_support::GangerSpawnBuilder): facing
+/// East (so a due-East shot reaches the target), holding the [`AUTHORED_STANCE`],
+/// referencing the central test weapon + armor keys (the default), so a setup arms +
+/// armors it from the registries the [`BattleAppBuilder`] seeds.
+fn bootstrap_ganger(at: CellLevel, faction: u8) -> gdtf_battle_sim::situation::GangerSpawn {
+    GangerSpawnBuilder::new()
+        .at(at)
+        .faction(Faction::new(faction))
+        .facing(Facing::new(gdtf_battle_sim::ganger::Direction::East))
+        .stance(Stance::new(AUTHORED_STANCE))
+        .build()
+}
+
+/// The bootstrap fixture: a shooter (faction [`SHOOTER_FACTION`]) facing East and a
+/// target (faction [`TARGET_FACTION`]) directly East at close range, built over the
+/// central [`SituationBuilder`](gdtf_battle_sim::test_support::SituationBuilder).
+/// Link-free, so the setup validates trivially. The `SetupBattleRequested` the app
+/// sends on `OnEnter(Generation)` pours this real battle into the world before
+/// `BattleRunning`.
+fn bootstrap_situation() -> Situation {
     let (sx, sy, sl) = SHOOTER_AT;
     let (tx, ty, tl) = TARGET_AT;
-    Situation {
-        gangers: vec![
-            ganger_at(key(sx, sy, sl), SHOOTER_FACTION),
-            ganger_at(key(tx, ty, tl), TARGET_FACTION),
-        ],
-        ..Situation::new()
-    }
+    SituationBuilder::new()
+        .with_gangers([
+            bootstrap_ganger(key(sx, sy, sl), SHOOTER_FACTION),
+            bootstrap_ganger(key(tx, ty, tl), TARGET_FACTION),
+        ])
+        .build()
+}
+
+/// Build the bootstrap app already driven to a live battle via the shared
+/// [`BattleAppBuilder`], seeded with the bootstrap [`bootstrap_situation`]. Returns
+/// `None` if the shared drive does not reach `BattleRunning` (the caller asserts).
+fn bootstrap_app() -> Option<bevy::app::App> {
+    BattleAppBuilder::new()
+        .with_situation(bootstrap_situation())
+        .build()
 }
 
 /// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers — the
@@ -285,68 +190,10 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
         .map(|state| *state.get())
 }
 
-/// Reads the current [`RunningState`] if it is active.
-fn running_state(app: &bevy::app::App) -> Option<RunningState> {
-    app.world()
-        .get_resource::<State<RunningState>>()
-        .map(|state| *state.get())
-}
-
-/// Builds the headless capstone app, starting at [`AppState::Running`] and seeding the
-/// persistent `Load` resources the machine needs to traverse `Load` under
-/// `MinimalPlugins` (no `AssetServer`): [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) via
-/// [`default_theme`] + [`CombatTuning`] (the `state_walk` / E10.6 precedent), plus the
-/// test's authored [`Situation`] inserted inline as a [`LoadedSituation`] for the
-/// Generation setup to pour into the world.
-fn capstone_app(situation: Situation) -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new()
-        .starting_in(AppState::Running)
-        .build();
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    // The Load-built WeaponRegistry (GTW-257) so the Generation setup arms each ganger.
-    app.world_mut().insert_resource(weapon_registry());
-    // The Load-built ArmorRegistry (GTW-269) so the Generation setup armors each
-    // ganger: every fixture ganger references TEST_ARMOR_KEY, which this registry holds
-    // (it must be populated now that setup_battle resolves armor keys).
-    app.world_mut().insert_resource(armor_registry());
-    app.world_mut().insert_resource(LoadedSituation(situation));
-    app
-}
-
-/// Stands in for the player at the menu (it no longer auto-advances, GTW-121):
-/// advances until [`RunningState::Menu`] rests, then queues `Menu → Options`.
-fn drive_past_menu(app: &mut bevy::app::App) -> bool {
-    let reached = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    if reached {
-        app.world_mut()
-            .resource_mut::<bevy::state::state::NextState<RunningState>>()
-            .set(RunningState::Options);
-    }
-    reached
-}
-
-/// Drives the capstone app from the [`AppState::Running`] start down to the first update
-/// on which [`BattleScapeState::BattleRunning`] is active. Returns whether it was reached.
-fn drive_to_battle_running(app: &mut bevy::app::App) -> bool {
-    if !drive_past_menu(app) {
-        return false;
-    }
-    advance_until(
-        app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    )
-}
-
-/// AC1 — Bootstrap reaches `BattleScape` with the sim constructed. Driving the capstone
-/// (seeded with [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) + [`CombatTuning`] + the inline
-/// [`Situation`] source, started at [`AppState::Running`], driven past
-/// [`RunningState::Menu`]) descends to [`GameState::BattleScape`], and once
+/// AC1 — Bootstrap reaches `BattleScape` with the sim constructed. The shared
+/// [`BattleAppBuilder`] (seeded with the persistent `Load` resources + the inline
+/// [`bootstrap_situation`], started at [`AppState::Running`](gdtf_app::test_support::AppState::Running),
+/// driven past the menu) descends to [`GameState::BattleScape`], and once
 /// [`BattleScapeState::Generation`] has run E10.5's wired `setup_battle` the world holds
 /// the four sim resources ([`OccupancyGrid`] / [`CoverLedger`] / [`SurfaceGrid`] /
 /// [`VerticalLinkGraph`]), the seeded [`SimRng`], AND the [`CombatTuning`] present
@@ -355,13 +202,14 @@ fn drive_to_battle_running(app: &mut bevy::app::App) -> bool {
 /// spawned by the REAL setup, not a no-op scaffold).
 #[test]
 fn bootstrap_reaches_battlescape_with_the_sim_constructed() {
-    let mut app = capstone_app(two_ganger_situation());
+    let app_opt = bootstrap_app();
     assert!(
-        drive_to_battle_running(&mut app),
-        "the walk should descend to BattleScapeState::BattleRunning within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
+        app_opt.is_some(),
+        "the shared BattleAppBuilder drive should descend to BattleScapeState::BattleRunning",
     );
+    let Some(mut app) = app_opt else {
+        return;
+    };
 
     // We descended through GameState::BattleScape (the Generation child ran on the way).
     assert_eq!(
@@ -411,24 +259,26 @@ fn bootstrap_reaches_battlescape_with_the_sim_constructed() {
 }
 
 /// AC2 — A `FireRequested` emitted inline in `BattleRunning` mutates the model. With the
-/// app rested in [`BattleScapeState::BattleRunning`], the drive proof QUERIES the spawned
-/// shooter + target by [`Faction`] (off `app.world_mut()`, the test-body idiom), ARMS the
-/// queried shooter via `entity_mut(..).insert(<weapon kit + TuMax + Magazine>)` (a
-/// `GangerSpawn` authors no weapon), PUBLISHES the target's occupant band in the live
-/// [`OccupancyGrid`] (the silhouette the band-free march reads to resolve a `Ganger`
-/// hit), snapshots the target's `Hp`/`Wounds`/`LifeState`, emits a [`FireRequested`]
-/// inline via the world message buffer, `update()`s once so the GTW-212-gated battle-wide
-/// dispatch consumes it, and asserts ≥1 of `Hp`/`Wounds`/`LifeState` changed — a landed
-/// hit, phrased as a before≠after relation, never a pinned magnitude.
+/// shared builder rested in [`BattleScapeState::BattleRunning`], the drive proof QUERIES
+/// the spawned shooter + target by [`Faction`] (off `app.world_mut()`, the test-body
+/// idiom), ARMS the queried shooter via `entity_mut(..).insert(<weapon kit + TuMax +
+/// Magazine>)` (a `GangerSpawn` authors no weapon), PUBLISHES the target's occupant band
+/// in the live [`OccupancyGrid`] (the silhouette the band-free march reads to resolve a
+/// `Ganger` hit), snapshots the target's `Hp`/`Wounds`/`LifeState`, emits a
+/// [`FireRequested`] inline via the world message buffer, `update()`s once so the
+/// GTW-212-gated battle-wide dispatch consumes it, and asserts ≥1 of
+/// `Hp`/`Wounds`/`LifeState` changed — a landed hit, phrased as a before≠after relation,
+/// never a pinned magnitude.
 #[test]
 fn fire_requested_in_battle_running_mutates_the_model() {
-    let mut app = capstone_app(two_ganger_situation());
+    let app_opt = bootstrap_app();
     assert!(
-        drive_to_battle_running(&mut app),
-        "the walk should reach BattleScapeState::BattleRunning within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
+        app_opt.is_some(),
+        "the shared BattleAppBuilder drive should reach BattleScapeState::BattleRunning",
     );
+    let Some(mut app) = app_opt else {
+        return;
+    };
 
     // The witness the GTW-212-gated battle-wide dispatch keys on is present in
     // BattleRunning, and the OccupancyGrid the march reads is too.
@@ -453,8 +303,9 @@ fn fire_requested_in_battle_running_mutates_the_model() {
     };
     assert_ne!(shooter, target, "shooter and target are distinct entities");
 
-    // ARM the queried shooter — a GangerSpawn authors no weapon, so insert the kit onto
-    // the EXISTING setup-spawned entity (augment, never re-spawn).
+    // ARM the queried shooter — insert the deterministic high-damage kit onto the
+    // EXISTING setup-spawned entity (augment, never re-spawn), overwriting the registry
+    // weapon so the test's single shot lands in a known regime.
     let mode = single_mode(0.2, 1);
     app.world_mut()
         .entity_mut(shooter)
@@ -507,13 +358,14 @@ fn fire_requested_in_battle_running_mutates_the_model() {
 /// carries the actor [`Entity`] correctly (a relation, no tunable pinned).
 #[test]
 fn set_stance_requested_in_battle_running_flips_the_component() {
-    let mut app = capstone_app(two_ganger_situation());
+    let app_opt = bootstrap_app();
     assert!(
-        drive_to_battle_running(&mut app),
-        "the walk should reach BattleScapeState::BattleRunning within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
+        app_opt.is_some(),
+        "the shared BattleAppBuilder drive should reach BattleScapeState::BattleRunning",
     );
+    let Some(mut app) = app_opt else {
+        return;
+    };
 
     // Address the setup-spawned shooter as the posture actor (it carries Stance + Tu).
     let actor_found = find_ganger(&mut app, SHOOTER_FACTION);
@@ -550,9 +402,9 @@ fn set_stance_requested_in_battle_running_flips_the_component() {
 
 /// AC4 — The boundary holds: no panic and seeded determinism. The whole drive
 /// (Generation `setup_battle` + a `BattleRunning` `FireRequested` round) runs without
-/// panic, and is reproducible: two independent capstone apps built from the SAME inline
-/// [`Situation`] and the SAME fixed [`BattleSeed`] source (the app's Generation seeds
-/// `SimRng::from_seed` with its fixed `DEFAULT_BATTLE_SEED`, identical across runs),
+/// panic, and is reproducible: two independent bootstrap apps built from the SAME inline
+/// [`bootstrap_situation`] and the SAME fixed [`BattleSeed`] source (the app's Generation
+/// seeds `SimRng::from_seed` with its fixed `DEFAULT_BATTLE_SEED`, identical across runs),
 /// driven through the identical sequence, produce the identical observable outcome. The
 /// test builds-and-drives twice and asserts the post-fire target `(Hp, Wounds,
 /// LifeState)` tuple is equal across the two runs; the run completing the full
@@ -564,10 +416,7 @@ fn the_drive_is_panic_free_and_seed_deterministic_across_runs() {
     // not reach BattleRunning or the setup did not spawn the gangers — the no-unwrap
     // let-else style so the test body stays panic-free.
     let post_fire_target_state = || -> Option<(Option<Hp>, Option<Wounds>, Option<LifeState>)> {
-        let mut app = capstone_app(two_ganger_situation());
-        if !drive_to_battle_running(&mut app) {
-            return None;
-        }
+        let mut app = bootstrap_app()?;
         let shooter = find_ganger(&mut app, SHOOTER_FACTION)?;
         let target = find_ganger(&mut app, TARGET_FACTION)?;
 
@@ -600,7 +449,7 @@ fn the_drive_is_panic_free_and_seed_deterministic_across_runs() {
     let second = post_fire_target_state();
     assert!(
         first.is_some(),
-        "the seeded drive must reach BattleRunning and fire within {BUDGET} updates",
+        "the seeded drive must reach BattleRunning and fire",
     );
     assert_eq!(
         first, second,
@@ -618,13 +467,14 @@ fn the_drive_is_panic_free_and_seed_deterministic_across_runs() {
 /// contract is.)
 #[test]
 fn drive_is_headless_and_stops_at_battle_running() {
-    let mut app = capstone_app(two_ganger_situation());
+    let app_opt = bootstrap_app();
     assert!(
-        drive_to_battle_running(&mut app),
-        "the walk should reach BattleScapeState::BattleRunning within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
+        app_opt.is_some(),
+        "the shared BattleAppBuilder drive should reach BattleScapeState::BattleRunning",
     );
+    let Some(app) = app_opt else {
+        return;
+    };
 
     // The drive rests AT BattleRunning — this slice's path stops here and does not enter
     // AfterMath (the AfterMath leg is intentionally out of this slice).

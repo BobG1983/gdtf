@@ -34,6 +34,11 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 # what the test body names to build the synthetic camera + window and assert on the
 # resolved `HoveredCell` / the highlight sprite.
 bevy = { workspace = true }
+# The canonical shared sim test builders (GTW-324). This crate already deps the sim
+# in the NORMAL graph; the dev-dep adds the `test-support` feature for the TEST target
+# so tests name `gdtf_battle_sim::test_support`. Test/dev only — the binary enables it
+# nowhere.
+gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
 # The S8 keybind test parses the shipped `keybinds.ron` the same way the loader does
 # (`ron::from_str`) to prove the schema + the file agree and every act resolves.
 ron = { workspace = true }

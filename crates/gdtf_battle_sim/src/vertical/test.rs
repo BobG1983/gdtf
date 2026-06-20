@@ -3,25 +3,25 @@ use super::{
     build_vertical_link_graph,
 };
 use crate::{
-    metric::{Cell, CellLevel, Level, MAX_LEVELS},
+    metric::{CellLevel, MAX_LEVELS},
     situation::Situation,
+    test_support::{SituationBuilder, key},
 };
-
-/// Build a `(cell, level)` key from raw coordinates.
-fn key(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
-}
 
 /// A situation whose **slabs** occupy every `(cell, level)` in `cells` — a
 /// cell-existence source for the dangling check — plus the given links. Slabs
 /// are the lightest authored-cell carrier (just a `CellLevel`), so they isolate
-/// the vertical-link rules under test from wall / scatter authoring.
+/// the vertical-link rules under test from wall / scatter authoring. Built over
+/// the crate-central [`SituationBuilder`] (GTW-324).
 fn situation_with(cells: &[CellLevel], links: Vec<VerticalLink>) -> Situation {
-    Situation {
-        slabs: cells.to_vec(),
-        vertical_links: links,
-        ..Situation::new()
+    let mut builder = SituationBuilder::new();
+    for &cell in cells {
+        builder = builder.slab_at(cell);
     }
+    for link in links {
+        builder = builder.vertical_link(link);
+    }
+    builder.build()
 }
 
 /// Build the graph, asserting it is `Ok`, and return it — or assert-fail and

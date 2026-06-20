@@ -118,12 +118,12 @@ fn occupancy_grid_seeded_from_fixture() {
 fn setup_inserts_vertical_link_graph() {
     let lower = key(1, 2, 0);
     let upper = key(1, 2, 1);
-    let situation = Situation {
-        // Author both endpoint cells as slabs so the link does not dangle.
-        slabs: vec![lower, upper],
-        vertical_links: vec![VerticalLink::new(lower, upper, LinkKind::stair())],
-        ..Situation::new()
-    };
+    // Author both endpoint cells as slabs so the link does not dangle.
+    let situation = SituationBuilder::new()
+        .slab_at(lower)
+        .slab_at(upper)
+        .vertical_link(VerticalLink::new(lower, upper, LinkKind::stair()))
+        .build();
 
     let Some((app, _setup)) = run_setup(situation) else {
         return;

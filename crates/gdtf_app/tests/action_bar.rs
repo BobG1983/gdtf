@@ -58,9 +58,8 @@ use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
     Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
     ArmorRegistry, ArmorSpec, ArmorType, BattleInProgress, Cell, CellLevel, Direction, Facing,
-    Faction, FireMode, FireModeSpec, GangerName, GangerSpawn, Hp, HpMax, Level, LifeState, Luck,
-    MAX_LEVELS, Magazine, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, ReloadTu, Shooting,
-    Situation, Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
+    Faction, FireMode, FireModeSpec, GangerName, Level, MAX_LEVELS, Magazine, ModeConeMult,
+    ModeKind, ModeShots, ModeTuPercent, ReloadTu, Shooting, Situation, Stance, StanceKind, TuMax,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     mode_tu_cost,
     tuning::CombatTuning,
@@ -1701,29 +1700,28 @@ fn armed_armor_registry() -> ArmorRegistry {
 /// `SelectedShooter`. Its weapon key is present in [`armed_registry`], so setup arms it
 /// with a `FireMode`, which `rebuild_mode_buttons` reads to show the Mode panel.
 fn armed_player_situation() -> Situation {
-    Situation {
-        gangers: vec![GangerSpawn {
-            at:         CellLevel::new(Cell::new(2, 5), Level::new(0)),
-            name:       GangerName::new("Alex Mercer".to_owned()),
-            faction:    Faction::new(PLAYER_FACTION),
-            facing:     Facing::new(Direction::East),
-            stance:     Stance::new(StanceKind::Standing),
-            aiming:     Aiming::new(false),
-            hp:         Hp::new(40),
-            hp_max:     HpMax::new(40),
-            wounds:     Wounds::new(3),
-            wounds_max: WoundsMax::new(3),
-            tu:         Tu::new(60),
-            tu_max:     TuMax::new(60),
-            life_state: LifeState::Alive,
-            shooting:   Shooting::new(3.0),
-            toughness:  Toughness::new(3.0),
-            luck:       Luck::new(1.0),
-            armor:      ArmorName::new(PLAYER_ARMOR_KEY.to_owned()),
-            weapon:     WeaponName::new(PLAYER_WEAPON_KEY.to_owned()),
-        }],
-        ..Situation::new()
-    }
+    use gdtf_battle_sim::test_support::{GangerSpawnBuilder, SituationBuilder};
+    // Routed through the canonical shared builders (GTW-324) — value-for-value identical to
+    // the prior 18-field `GangerSpawn` struct literal. Every field whose value differs from a
+    // `GangerSpawnBuilder` default is set explicitly: the place, the authored name, the player
+    // faction, hip-fire (`aiming` false — the builder default aims), the Shooting 3.0 stat (the
+    // builder default is 2.0), and the explicit `PLAYER_ARMOR_KEY` / `PLAYER_WEAPON_KEY` keys
+    // (so `armed_registry` / `armed_armor_registry` still resolve). The remaining fields —
+    // facing East, Standing, full vitals (HP 40, Wounds 3, TU 60), Alive, Toughness 3.0, Luck
+    // 1.0 — are the builder defaults already.
+    SituationBuilder::new()
+        .with_ganger(
+            GangerSpawnBuilder::new()
+                .at(CellLevel::new(Cell::new(2, 5), Level::new(0)))
+                .name(GangerName::new("Alex Mercer".to_owned()))
+                .faction(Faction::new(PLAYER_FACTION))
+                .aiming(Aiming::new(false))
+                .shooting(Shooting::new(3.0))
+                .armor(ArmorName::new(PLAYER_ARMOR_KEY.to_owned()))
+                .weapon(WeaponName::new(PLAYER_WEAPON_KEY.to_owned()))
+                .build(),
+        )
+        .build()
 }
 
 /// Builds the headless walk app exactly like [`walk_app`], but with a real

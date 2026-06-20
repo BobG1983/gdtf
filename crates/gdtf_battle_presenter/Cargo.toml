@@ -28,6 +28,11 @@ serde = { workspace = true }
 # because dev-dependencies are outside the normal build graph (the same dev cycle
 # `gdtf_app` already uses).
 gdtf_test_utils = { path = "../gdtf_test_utils" }
+# The canonical shared sim test builders (GTW-324). This crate already deps the sim
+# in the NORMAL graph; the dev-dep adds the `test-support` feature for the TEST target
+# so tests name `gdtf_battle_sim::test_support`. Test/dev only — the binary enables it
+# nowhere.
+gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
 # The AC4 test names `gdtf_app::test_support::AppState` to drive the load harness;
 # `test-support` exposes that module. Dev-only edge (same permitted dev cycle as
 # above: `gdtf_app` depends on this crate in the normal graph).

@@ -24,216 +24,28 @@ use bevy::{
     ecs::prelude::With,
     input::{ButtonInput, keyboard::KeyCode},
     math::Vec2,
-    state::state::{NextState, State},
     transform::components::Transform,
 };
-use gdtf_app::test_support::{BattleScapeState, GameState, LoadedSituation, RunningState};
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-        ArmorRegistry, ArmorSpec, ArmorType,
-    },
     battle::{BattleInProgress, PlayerFaction},
-    ganger::{
-        Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Shooting,
-        Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
-    },
-    magazine::{Magazine, ReloadTu},
-    metric::{Cell, CellLevel, Level},
-    situation::{GangerSpawn, Situation},
-    tuning::CombatTuning,
-    weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
-        MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
-        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
-    },
+    metric::{Cell, Level},
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::theme::default_theme;
-
-/// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
-const TEST_WEAPON_KEY: &str = "test-weapon";
-
-/// The armor KEY every fixture ganger references — present in [`armor_registry`]
-/// (GTW-269).
-const TEST_ARMOR_KEY: &str = "test-armor";
-
-/// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
-/// reference, standing in for the `Load`-built registry (GTW-257) so the deep-walk
-/// setup arms each ganger.
-fn weapon_registry() -> WeaponRegistry {
-    WeaponRegistry::new([(
-        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-        WeaponSpec {
-            base_spread: BaseSpread::new(0.25),
-            accuracy:    Accuracy::new(1.0),
-            kickback:    Kickback::new(0.4),
-            fatal_bias:  FatalBias::new(7.0),
-            damage:      WeaponDamage::new(12),
-            punch:       WeaponPunch::new(5),
-            shred:       WeaponShred::new(3),
-            damage_type: DamageType::Kinetic,
-            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-            fire_mode:   FireMode::new(vec![FireModeSpec::new(
-                ModeKind::Single,
-                ModeConeMult::new(1.0),
-                ModeTuPercent::new(0.5),
-                ModeShots::new(1),
-            )]),
-            stable:      Stable::new(false),
-        },
-    )])
-}
-
-/// A budget large enough to drive the deep walk into the live battle, but bounded so a
-/// machine that never reaches the predicate fails instead of hanging.
-const BUDGET: u32 = 96;
+use gdtf_test_utils::BattleAppBuilder;
 
 /// How many updates to hold a pan key — enough for the per-update virtual-time delta
 /// (`FixedTimesteps(1)`, ~1/64 s) to accumulate a clearly measurable, non-clamped move.
 const PAN_UPDATES: u32 = 12;
 
-/// Build a `(cell, level)` key from raw coordinates.
-fn key(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
-}
-
-/// An arbitrary armor SPEC (distinct per-part magnitudes, NOT shipped tuning) — the
-/// suit the [`TEST_ARMOR_KEY`] resolves to in [`armor_registry`] (GTW-269).
-const fn arbitrary_armor(base: i32) -> ArmorSpec {
-    ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(base),
-        ArmorProtection::new(base + 1),
-        ArmorIntegrity::new(base + 2),
-        ArmorHardness::new(base + 3),
-        ArmorType::DEFAULT,
-    ))
-}
-
-/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit the fixture gangers
-/// reference, so the live battle's setup armors each ganger (GTW-269).
-fn armor_registry() -> ArmorRegistry {
-    ArmorRegistry::new([(
-        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        arbitrary_armor(1),
-    )])
-}
-
-/// Build an authored ganger at `at` with arbitrary-but-valid component values.
-fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
-    GangerSpawn {
-        at,
-        name: GangerName::new(format!("Ganger {faction}")),
-        faction: Faction::new(faction),
-        facing: Facing::new(Direction::East),
-        stance: Stance::new(StanceKind::Crouching),
-        aiming: Aiming::new(true),
-        hp: Hp::new(40),
-        hp_max: HpMax::new(40),
-        wounds: Wounds::new(3),
-        wounds_max: WoundsMax::new(3),
-        tu: Tu::new(60),
-        tu_max: TuMax::new(60),
-        life_state: LifeState::Alive,
-        shooting: Shooting::new(f32::from(faction) + 2.0),
-        toughness: Toughness::new(f32::from(faction) + 3.0),
-        luck: Luck::new(f32::from(faction) + 1.0),
-        // Every fixture ganger references the one TEST_ARMOR_KEY in armor_registry.
-        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
-        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-    }
-}
-
-/// A valid two-ganger fixture situation (link-free, so it validates trivially) — enough for
-/// `setup_battle` to succeed and insert `BattleInProgress` + `PlayerFaction`.
-fn two_ganger_situation() -> Situation {
-    Situation {
-        gangers: vec![ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)],
-        ..Situation::new()
-    }
-}
-
-/// Reads the current [`RunningState`] if it is active.
-fn running_state(app: &bevy::app::App) -> Option<RunningState> {
-    app.world()
-        .get_resource::<State<RunningState>>()
-        .map(|state| *state.get())
-}
-
-/// Reads the current [`GameState`] if it is active.
-fn game_state(app: &bevy::app::App) -> Option<GameState> {
-    app.world()
-        .get_resource::<State<GameState>>()
-        .map(|state| *state.get())
-}
-
-/// Reads the current [`BattleScapeState`] if it is active.
-fn battlescape_state(app: &bevy::app::App) -> Option<BattleScapeState> {
-    app.world()
-        .get_resource::<State<BattleScapeState>>()
-        .map(|state| *state.get())
-}
-
-/// Builds the headless walk app with the persistent `Load` resources + a two-ganger
-/// situation fixture (so the live battle's `setup_battle` succeeds).
-fn walk_app() -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    // The Load-built WeaponRegistry (GTW-257) so the live battle's setup arms gangers.
-    app.world_mut().insert_resource(weapon_registry());
-    // The Load-built ArmorRegistry (GTW-269) so the live battle's setup armors each
-    // ganger: every fixture ganger references TEST_ARMOR_KEY, which this registry holds
-    // (it must be populated now that setup_battle resolves armor keys).
-    app.world_mut().insert_resource(armor_registry());
-    app.world_mut()
-        .insert_resource(LoadedSituation(two_ganger_situation()));
-    app
-}
-
-/// Stands in for the player at the menu (it no longer auto-advances, GTW-121): advances
-/// until [`RunningState::Menu`] rests, then queues `Menu → Options`.
-fn drive_past_menu(app: &mut bevy::app::App) -> bool {
-    let reached = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    if reached {
-        app.world_mut()
-            .resource_mut::<NextState<RunningState>>()
-            .set(RunningState::Options);
-    }
-    reached
-}
-
-/// Drives into a LIVE battle: down to `GameState::BattleScape` AND past `Generation` (so the
-/// successful `setup_battle` has inserted `BattleInProgress` + `PlayerFaction`, the gate the
-/// camera systems run under). Returns whether the live battle was reached within budget.
-fn drive_into_live_battle(app: &mut bevy::app::App) -> bool {
-    if !drive_past_menu(app) {
-        return false;
-    }
-    let reached_scape = advance_until(
-        app,
-        |app| game_state(app) == Some(GameState::BattleScape),
-        BUDGET,
-    );
-    if !reached_scape {
-        return false;
-    }
-    // Past Generation: the setup Ok path (which inserts BattleInProgress + PlayerFaction)
-    // has run, so the camera gate is satisfied.
-    advance_until(
-        app,
-        |app| {
-            app.world().get_resource::<BattleInProgress>().is_some()
-                && app.world().get_resource::<PlayerFaction>().is_some()
-        },
-        BUDGET,
-    )
+/// Builds the headless app already driven to a live battle via the shared
+/// [`BattleAppBuilder`] (the default `fixtures::two_ganger` situation, seeded with the
+/// canonical `Load` resources + test registries). It rests at
+/// `BattleScapeState::BattleRunning`, which is PAST `Generation`, so the successful
+/// `setup_battle` has inserted [`BattleInProgress`] + [`PlayerFaction`] — the gate the
+/// camera systems run under. Returns `None` if the shared drive does not reach the live
+/// battle (the caller asserts the `Some`).
+fn live_battle_app() -> Option<bevy::app::App> {
+    BattleAppBuilder::new().build()
 }
 
 /// Reads the single `WorldCamera`'s translation `xy`.
@@ -303,14 +115,16 @@ fn hold_key_for_pan(app: &mut bevy::app::App, key_code: KeyCode) {
 /// battlefield; pressing nothing leaves the camera put.
 #[test]
 fn keyboard_w_pans_camera_up_within_bounds() {
-    let mut app = walk_app();
+    let app_opt = live_battle_app();
     assert!(
-        drive_into_live_battle(&mut app),
-        "the walk should reach a LIVE battle (BattleInProgress + PlayerFaction) within {BUDGET} \
-         updates; last observed GameState was {:?}, BattleScapeState {:?}",
-        game_state(&app),
-        battlescape_state(&app),
+        app_opt.is_some(),
+        "the shared BattleAppBuilder drive should reach a LIVE battle (rested at \
+         BattleScapeState::BattleRunning, past Generation, so BattleInProgress + PlayerFaction \
+         are present)",
     );
+    let Some(mut app) = app_opt else {
+        return;
+    };
 
     // The system must be battle-gated AND actually running — both witnesses present.
     assert!(

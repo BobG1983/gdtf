@@ -964,8 +964,7 @@ use gdtf_battle_sim::{
         ArmorRegistry, ArmorSpec, ArmorType,
     },
     ganger::{
-        Aiming, Direction, Facing, GangerName, Hp, HpMax, LifeState, Luck, Shooting, Stance,
-        StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
+        Aiming, Direction, Facing, GangerName, Luck, Shooting, Stance, StanceKind, Toughness,
     },
     magazine::{Magazine, ReloadTu},
     rng::BattleSeed,
@@ -1043,42 +1042,44 @@ fn real_flow_armor_registry() -> ArmorRegistry {
 
 /// Build an authored [`GangerSpawn`] at `at` (faction `faction`) with arbitrary-but-valid
 /// component values, referencing the one [`REAL_FLOW_WEAPON_KEY`].
+///
+/// Routed through the canonical shared [`GangerSpawnBuilder`] (GTW-324). The builder's
+/// default TEST armor/weapon keys are the same `"test-weapon"` / `"test-armor"` strings as
+/// [`REAL_FLOW_WEAPON_KEY`] / [`REAL_FLOW_ARMOR_KEY`], so the existing `real_flow_registry`
+/// / `real_flow_armor_registry` still resolve. The original fixture overrides — the
+/// per-faction `"Ganger {faction}"` name, the per-faction Shooting/Toughness/Luck offsets
+/// (the auto-select tests read no values off them, but they keep the fixture's identity),
+/// and the Crouching stance — are applied explicitly so the migration is value-for-value
+/// identical to the prior struct literal.
 fn real_flow_ganger(at: CellLevel, faction: u8) -> GangerSpawn {
-    GangerSpawn {
-        at,
-        name: GangerName::new(format!("Ganger {faction}")),
-        faction: Faction::new(faction),
-        facing: Facing::new(Direction::East),
-        stance: Stance::new(StanceKind::Crouching),
-        aiming: Aiming::new(true),
-        hp: Hp::new(40),
-        hp_max: HpMax::new(40),
-        wounds: Wounds::new(3),
-        wounds_max: WoundsMax::new(3),
-        tu: Tu::new(60),
-        tu_max: TuMax::new(60),
-        life_state: LifeState::Alive,
-        shooting: Shooting::new(f32::from(faction) + 2.0),
-        toughness: Toughness::new(f32::from(faction) + 3.0),
-        luck: Luck::new(f32::from(faction) + 1.0),
-        // Every fixture ganger references the one REAL_FLOW_ARMOR_KEY in the registry.
-        armor: ArmorName::new(REAL_FLOW_ARMOR_KEY.to_owned()),
-        weapon: WeaponName::new(REAL_FLOW_WEAPON_KEY.to_owned()),
-    }
+    use gdtf_battle_sim::test_support::GangerSpawnBuilder;
+    GangerSpawnBuilder::new()
+        .at(at)
+        .name(GangerName::new(format!("Ganger {faction}")))
+        .faction(Faction::new(faction))
+        .facing(Facing::new(Direction::East))
+        .stance(Stance::new(StanceKind::Crouching))
+        .aiming(Aiming::new(true))
+        .shooting(Shooting::new(f32::from(faction) + 2.0))
+        .toughness(Toughness::new(f32::from(faction) + 3.0))
+        .luck(Luck::new(f32::from(faction) + 1.0))
+        .build()
 }
 
 /// A two-ganger fixture (link-free → validates trivially): a PLAYER ganger (faction 0,
 /// the default `player_faction`) and an ENEMY ganger (faction 1). The auto-select must
 /// pick the player ganger, never the enemy.
 fn real_flow_situation() -> Situation {
+    use gdtf_battle_sim::test_support::SituationBuilder;
     let level = Level::new(0);
-    Situation {
-        gangers: vec![
+    // Built via the canonical [`SituationBuilder`] (GTW-324) — value-for-value identical to
+    // the prior struct literal: the two `real_flow_ganger` gangers, no terrain/links.
+    SituationBuilder::new()
+        .with_gangers(vec![
             real_flow_ganger(CellLevel::new(Cell::new(5, 6), level), 0),
             real_flow_ganger(CellLevel::new(Cell::new(7, 8), level), 1),
-        ],
-        ..Situation::new()
-    }
+        ])
+        .build()
 }
 
 /// Builds the REAL-FLOW app: `MinimalPlugins` + BOTH the input plugin AND the sim's

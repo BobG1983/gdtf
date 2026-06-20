@@ -16,66 +16,19 @@ use gdtf_app::test_support::{
     BattleRunningComplete, BattleScapeState, GameState, LoadedSituation, RunningState,
 };
 use gdtf_battle_sim::{
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-        ArmorRegistry, ArmorSpec, ArmorType, WornArmor,
-    },
+    armor::WornArmor,
     battle::BattleInProgress,
     cover::CoverLedger,
-    ganger::{
-        Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Shooting,
-        Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
-    },
-    magazine::{Magazine, ReloadTu},
-    metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     rng::{BattleSeed, SimRng},
-    situation::{GangerSpawn, Situation},
+    situation::Situation,
     surface::SurfaceGrid,
+    test_support::{SituationBuilder, ganger_at, key, test_armor_registry, test_weapon_registry},
     tuning::CombatTuning,
     vertical::{LinkKind, VerticalLink, VerticalLinkGraph},
-    weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
-        MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
-        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
-    },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
-
-/// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
-const TEST_WEAPON_KEY: &str = "test-weapon";
-
-/// The armor KEY every fixture ganger references — present in [`armor_registry`]
-/// (GTW-269).
-const TEST_ARMOR_KEY: &str = "test-armor";
-
-/// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
-/// reference, standing in for the app's `Load`-built registry (GTW-257) so the
-/// deep-walk setup arms each ganger.
-fn weapon_registry() -> WeaponRegistry {
-    WeaponRegistry::new([(
-        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-        WeaponSpec {
-            base_spread: BaseSpread::new(0.25),
-            accuracy:    Accuracy::new(1.0),
-            kickback:    Kickback::new(0.4),
-            fatal_bias:  FatalBias::new(7.0),
-            damage:      WeaponDamage::new(12),
-            punch:       WeaponPunch::new(5),
-            shred:       WeaponShred::new(3),
-            damage_type: DamageType::Kinetic,
-            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-            fire_mode:   FireMode::new(vec![FireModeSpec::new(
-                ModeKind::Single,
-                ModeConeMult::new(1.0),
-                ModeTuPercent::new(0.5),
-                ModeShots::new(1),
-            )]),
-            stable:      Stable::new(false),
-        },
-    )])
-}
 
 /// A budget large enough to drive the deep walk down into the battlescape (each
 /// leaf scene spends a couple of `FixedUpdate` ticks plus its transition
@@ -83,81 +36,31 @@ fn weapon_registry() -> WeaponRegistry {
 /// instead of hanging.
 const BUDGET: u32 = 96;
 
-/// Build a `(cell, level)` key from raw coordinates.
-fn key(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
-}
-
-/// An arbitrary armor SPEC (distinct per-part magnitudes, NOT shipped tuning) — the
-/// suit the [`TEST_ARMOR_KEY`] resolves to in [`armor_registry`], so a fixture ganger's
-/// resolved `WornArmor` is a faithful copy (GTW-269).
-const fn arbitrary_armor(base: i32) -> ArmorSpec {
-    ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(base),
-        ArmorProtection::new(base + 1),
-        ArmorIntegrity::new(base + 2),
-        ArmorHardness::new(base + 3),
-        ArmorType::DEFAULT,
-    ))
-}
-
-/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit the fixture gangers
-/// reference, standing in for the app's `Load`-built registry (GTW-269) so the
-/// deep-walk setup armors each ganger.
-fn armor_registry() -> ArmorRegistry {
-    ArmorRegistry::new([(
-        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        arbitrary_armor(1),
-    )])
-}
-
-/// Build an authored ganger at `at` with arbitrary-but-valid component values.
-fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
-    GangerSpawn {
-        at,
-        name: GangerName::new(format!("Ganger {faction}")),
-        faction: Faction::new(faction),
-        facing: Facing::new(Direction::East),
-        stance: Stance::new(StanceKind::Crouching),
-        aiming: Aiming::new(true),
-        hp: Hp::new(40),
-        hp_max: HpMax::new(40),
-        wounds: Wounds::new(3),
-        wounds_max: WoundsMax::new(3),
-        tu: Tu::new(60),
-        tu_max: TuMax::new(60),
-        life_state: LifeState::Alive,
-        shooting: Shooting::new(f32::from(faction) + 2.0),
-        toughness: Toughness::new(f32::from(faction) + 3.0),
-        luck: Luck::new(f32::from(faction) + 1.0),
-        // Every fixture ganger references the one TEST_ARMOR_KEY in armor_registry.
-        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
-        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-    }
-}
-
 /// A valid two-ganger fixture situation (no cover / slabs / links needed — a
-/// link-free situation validates trivially).
+/// link-free situation validates trivially), built over the central
+/// [`SituationBuilder`](gdtf_battle_sim::test_support::SituationBuilder) +
+/// [`ganger_at`](gdtf_battle_sim::test_support::ganger_at).
 fn two_ganger_situation() -> Situation {
-    Situation {
-        gangers: vec![ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)],
-        ..Situation::new()
-    }
+    SituationBuilder::new()
+        .with_gangers([ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)])
+        .build()
 }
 
 /// A situation with a DANGLING vertical link (an endpoint at a `(cell, level)` no
 /// authored tile occupies) — `setup_battle` returns `Err(DanglingCell)` and inserts
-/// no resource (the `setup_aborts_on_invalid_vertical_link` precedent).
+/// no resource (the `setup_aborts_on_invalid_vertical_link` precedent). Built entirely
+/// over the central
+/// [`SituationBuilder`](gdtf_battle_sim::test_support::SituationBuilder), whose
+/// [`vertical_link`](gdtf_battle_sim::test_support::SituationBuilder::vertical_link)
+/// setter authors the deliberately-bad link this validation-abort test reaches for.
 fn dangling_link_situation() -> Situation {
     let present = key(4, 4, 0);
     let missing = key(4, 4, 1); // never authored — the link dangles off it
-    Situation {
-        gangers: vec![ganger_at(key(0, 0, 0), 0)],
-        slabs: vec![present], // only `present` authored; `missing` dangles
-        vertical_links: vec![VerticalLink::new(present, missing, LinkKind::stair())],
-        ..Situation::new()
-    }
+    SituationBuilder::new()
+        .with_ganger(ganger_at(key(0, 0, 0), 0))
+        .slab_at(present) // only `present` authored; `missing` dangles
+        .vertical_link(VerticalLink::new(present, missing, LinkKind::stair()))
+        .build()
 }
 
 /// Reads the current [`BattleScapeState`] if it is active.
@@ -205,13 +108,16 @@ fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     app.world_mut().insert_resource(CombatTuning::default());
     // The Load-built WeaponRegistry (GTW-257): persistent `Load` state the real app
     // resolves from assets/weapons/, injected here for the MinimalPlugins deep-walk
-    // (no AssetServer) so the Generation setup arms each ganger from it.
-    app.world_mut().insert_resource(weapon_registry());
+    // (no AssetServer) so the Generation setup arms each ganger from it — the canonical
+    // `test_weapon_registry` (GTW-324), which holds the `test-weapon` key every fixture
+    // ganger references.
+    app.world_mut().insert_resource(test_weapon_registry());
     // The Load-built ArmorRegistry (GTW-269) so the Generation setup armors each
-    // ganger: every fixture ganger references TEST_ARMOR_KEY, which this registry holds
-    // (it must be populated now that setup_battle resolves armor keys; the empty-default
-    // situation has zero gangers, so even then this registry is harmless).
-    app.world_mut().insert_resource(armor_registry());
+    // ganger: every fixture ganger references the central `test-armor` key, which the
+    // canonical `test_armor_registry` (GTW-324) holds (it must be populated now that
+    // setup_battle resolves armor keys; the empty-default situation has zero gangers, so
+    // even then this registry is harmless).
+    app.world_mut().insert_resource(test_armor_registry());
     // GTW-261: the Load→Intro gate now requires a LoadedSituation; seed the fixture
     // when given, else the empty default so the walk still traverses Load.
     app.world_mut()

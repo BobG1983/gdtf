@@ -3,7 +3,17 @@
 
 use bevy::platform::collections::HashSet;
 
-use super::support::*;
+// PROOF MIGRATION (GTW-324): this concern file constructs its gangers/situations via
+// the crate-central `test_support` builders directly, validating the canonical
+// builder end-to-end from inside the sim's own unit tests.
+use crate::{
+    armor::{ArmorHardness, ArmorProtection},
+    cover::{CoverHp, HeightBand},
+    metric::CellLevel,
+    occupancy::TerrainKind,
+    situation::{CoverSpawn, has_stacked_gangers},
+    test_support::{SituationBuilder, ganger_at, key},
+};
 
 /// `authored_cells` is the union of wall, scatter, and slab cells — NOT ganger
 /// cells (a ganger does not author a tile a link can attach to).
@@ -13,20 +23,19 @@ fn authored_cells_unions_walls_scatter_slabs_only() {
     let prop = key(2, 2, 0);
     let slab = key(3, 3, 1);
     let ganger = key(9, 9, 0);
-    let situation = Situation {
-        gangers: vec![ganger_at(ganger, 0)],
-        walls: vec![wall_at(wall)],
-        scatter: vec![CoverSpawn::new(
+    let situation = SituationBuilder::new()
+        .with_ganger(ganger_at(ganger, 0))
+        .wall_at(wall)
+        .with_scatter(CoverSpawn::new(
             prop,
             TerrainKind::Cover,
             CoverHp::new(20),
             HeightBand::Low,
             ArmorProtection::new(1),
             ArmorHardness::new(0),
-        )],
-        slabs: vec![slab],
-        ..Situation::new()
-    };
+        ))
+        .slab_at(slab)
+        .build();
 
     let cells: HashSet<CellLevel> = situation.authored_cells().collect();
     assert!(cells.contains(&wall), "wall cell is authored");
@@ -44,16 +53,18 @@ fn authored_cells_unions_walls_scatter_slabs_only() {
 #[test]
 fn stacked_ganger_detection() {
     let at = key(5, 5, 0);
-    let stacked = Situation {
-        gangers: vec![ganger_at(at, 0), ganger_at(at, 1)],
-        ..Situation::new()
-    };
+    // Built via the canonical [`SituationBuilder`] (GTW-324) — two gangers at the SAME cell
+    // (the builder does not dedupe, preserving the stack the detection under test reads).
+    let stacked = SituationBuilder::new()
+        .with_gangers(vec![ganger_at(at, 0), ganger_at(at, 1)])
+        .build();
     assert!(
         has_stacked_gangers(&stacked),
         "two gangers on one cell stack"
     );
 
-    let (clean, ..) = minimal_fixture();
+    // The central two-ganger-plus-terrain fixture has distinct ganger cells.
+    let clean = crate::test_support::fixtures::minimal_with_cells();
     assert!(
         !has_stacked_gangers(&clean),
         "distinct ganger cells do not stack",

@@ -56,10 +56,12 @@
 
 mod advance;
 mod builder;
+mod builders;
 mod load;
 mod ui;
 
 pub use advance::{advance_until, advance_until_load_state, advance_until_resource_exists};
 pub use builder::{GdtfTestAppBuilder, NoState, WithState};
+pub use builders::BattleAppBuilder;
 pub use load::GdtfLoadTestAppBuilder;
 pub use ui::{GdtfUiTestAppBuilder, NoCamera, WithCamera};

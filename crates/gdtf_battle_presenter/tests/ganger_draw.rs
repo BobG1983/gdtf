@@ -36,65 +36,12 @@ use gdtf_battle_presenter::{
     TerrainSprite, TopDownAtlases, TopDownRendererPlugin, cell_to_world_layered, facing_frame,
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece,
-    ArmorProtection, ArmorRegistry, ArmorSpec, ArmorType, BaseSpread, BattleReady, BattleSeed,
-    Cell, CellLevel, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
-    GangerSpawn, Kickback, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, Position, ReloadTu, SetupBattleRequested, SimRng, Situation, Stable,
-    Stance, StanceKind, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
-    WeaponSpec, setup_battle_on_request,
+    Aiming, BattleReady, BattleSeed, Cell, CellLevel, Direction, Facing, Faction, GangerSpawn,
+    Level, LifeState, Position, SetupBattleRequested, SimRng, Situation, Stance, StanceKind,
+    setup_battle_on_request,
+    test_support::{SituationBuilder, test_armor_registry, test_weapon_registry},
 };
 use gdtf_test_utils::advance_until_resource_exists;
-
-/// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
-const TEST_WEAPON_KEY: &str = "test-weapon";
-
-/// The armor KEY every fixture ganger references — present in [`armor_registry`]
-/// (GTW-269).
-const TEST_ARMOR_KEY: &str = "test-armor";
-
-/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit the fixture gangers
-/// reference, standing in for the `Load`-built registry (GTW-269) so the real
-/// `setup_battle_on_request` spawn path armors each ganger.
-fn armor_registry() -> ArmorRegistry {
-    ArmorRegistry::new([(
-        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        ArmorSpec::uniform(ArmorPiece::new(
-            ArmorFloor::new(0),
-            ArmorProtection::new(1),
-            ArmorIntegrity::new(5),
-            ArmorHardness::new(0),
-            ArmorType::DEFAULT,
-        )),
-    )])
-}
-
-/// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
-/// reference, standing in for the `Load`-built registry (GTW-257) so the real
-/// `setup_battle_on_request` spawn path arms each ganger.
-fn weapon_registry() -> WeaponRegistry {
-    WeaponRegistry::new([(
-        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-        WeaponSpec {
-            base_spread: BaseSpread::new(0.25),
-            accuracy:    Accuracy::new(1.0),
-            kickback:    Kickback::new(0.4),
-            fatal_bias:  FatalBias::new(0.0),
-            damage:      WeaponDamage::new(12),
-            punch:       WeaponPunch::new(5),
-            shred:       WeaponShred::new(3),
-            damage_type: DamageType::Kinetic,
-            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-            fire_mode:   FireMode::new(vec![FireModeSpec::new(
-                ModeKind::Single,
-                ModeConeMult::new(1.0),
-                ModeTuPercent::new(0.5),
-                ModeShots::new(1),
-            )]),
-            stable:      Stable::new(false),
-        },
-    )])
-}
 
 /// Bounded settle headroom for the post-setup STATE / SPAWN waits (`drive_setup`'s
 /// `SimRng`-present signal, `settle_terrain_z_at`'s spawned-sprite signal). These wait on a
@@ -167,11 +114,13 @@ fn headless_renderer_app() -> App {
     .add_systems(bevy::app::Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
     // The Load-built WeaponRegistry (GTW-257): setup_battle_on_request reads it to arm
-    // each spawned ganger. Inserted up front (the fixture gangers reference its key).
-    app.insert_resource(weapon_registry());
+    // each spawned ganger. The canonical shared [`test_weapon_registry`] (GTW-324),
+    // inserted up front (the fixture gangers reference its [`TEST_WEAPON_KEY`]).
+    app.insert_resource(test_weapon_registry());
     // The Load-built ArmorRegistry (GTW-269): setup_battle_on_request reads it to armor
-    // each spawned ganger. Inserted up front (the fixture gangers reference its key).
-    app.insert_resource(armor_registry());
+    // each spawned ganger. The canonical shared [`test_armor_registry`] (GTW-324),
+    // inserted up front (the fixture gangers reference its [`TEST_ARMOR_KEY`]).
+    app.insert_resource(test_armor_registry());
     app
 }
 
@@ -192,34 +141,22 @@ fn character_roles(app: &App) -> Option<CharacterRoles> {
 }
 
 /// Build an authored ganger at `at` with the given faction + facing, otherwise plausible
-/// component values (a standing, hip-firing, alive rifleman). Routed through the real
-/// `GangerSpawn` so the setup path spawns the same component set the draw reads.
+/// component values (a standing, hip-firing, alive rifleman). Routed through the canonical
+/// shared [`GangerSpawnBuilder`] (GTW-324) so the setup path spawns the same component set
+/// the draw reads. The builder's TEST armor/weapon keys are `TEST_ARMOR_KEY` /
+/// `TEST_WEAPON_KEY`, the same keys the canonical shared [`test_armor_registry`] /
+/// [`test_weapon_registry`] resolve. Overrides off the builder defaults: the per-faction
+/// `"Ganger {faction}"` name (the faction-distinct sprite-colour assertion reads it) and
+/// `aiming(false)` (this is the hip-firing draw fixture; the builder default aims).
 fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
-    use gdtf_battle_sim::{
-        GangerName, Hp, HpMax, Luck, Shooting, Toughness, Tu, TuMax, Wounds, WoundsMax,
-    };
-    GangerSpawn {
-        at,
-        name: GangerName::new(format!("Ganger {faction}")),
-        faction: Faction::new(faction),
-        facing: Facing::new(facing),
-        stance: Stance::new(StanceKind::Standing),
-        aiming: Aiming::new(false),
-        hp: Hp::new(40),
-        hp_max: HpMax::new(40),
-        wounds: Wounds::new(3),
-        wounds_max: WoundsMax::new(3),
-        tu: Tu::new(60),
-        tu_max: TuMax::new(60),
-        life_state: LifeState::Alive,
-        shooting: Shooting::new(2.0),
-        toughness: Toughness::new(3.0),
-        luck: Luck::new(1.0),
-        // Every fixture ganger references the one TEST_ARMOR_KEY in armor_registry.
-        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
-        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-    }
+    use gdtf_battle_sim::{GangerName, test_support::GangerSpawnBuilder};
+    GangerSpawnBuilder::new()
+        .at(at)
+        .name(GangerName::new(format!("Ganger {faction}")))
+        .faction(Faction::new(faction))
+        .facing(Facing::new(facing))
+        .aiming(Aiming::new(false))
+        .build()
 }
 
 /// Pour `situation` into the battle via the REAL setup path: write a
@@ -333,13 +270,10 @@ fn added_gangers_spawn_one_faction_coloured_sprite_each() {
 
     let g0_at = CellLevel::new(Cell::new(5, 6), Level::new(0));
     let g1_at = CellLevel::new(Cell::new(12, 9), Level::new(0));
-    let situation = Situation {
-        gangers: vec![
-            ganger_at(g0_at, 0, Direction::East),
-            ganger_at(g1_at, 1, Direction::North),
-        ],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_ganger(ganger_at(g0_at, 0, Direction::East))
+        .with_ganger(ganger_at(g1_at, 1, Direction::North))
+        .build();
     assert!(
         drive_setup(&mut app, situation),
         "setup_battle must complete"
@@ -420,10 +354,9 @@ fn changed_position_moves_the_same_sprite() {
     settle_resources(&mut app);
 
     let start = CellLevel::new(Cell::new(5, 6), Level::new(0));
-    let situation = Situation {
-        gangers: vec![ganger_at(start, 0, Direction::East)],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_ganger(ganger_at(start, 0, Direction::East))
+        .build();
     assert!(
         drive_setup(&mut app, situation),
         "setup_battle must complete"
@@ -493,10 +426,9 @@ fn downed_retints_and_dead_despawns() {
     settle_resources(&mut app);
 
     let at = CellLevel::new(Cell::new(5, 6), Level::new(0));
-    let situation = Situation {
-        gangers: vec![ganger_at(at, 0, Direction::East)],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_ganger(ganger_at(at, 0, Direction::East))
+        .build();
     assert!(
         drive_setup(&mut app, situation),
         "setup_battle must complete"
@@ -556,16 +488,14 @@ fn active_level_change_hides_off_level_shows_on_level() {
 
     let l0_at = CellLevel::new(Cell::new(5, 6), Level::new(0));
     let l1_at = CellLevel::new(Cell::new(7, 8), Level::new(1));
-    let situation = Situation {
-        gangers: vec![
-            ganger_at(l0_at, 0, Direction::East),
-            ganger_at(l1_at, 1, Direction::West),
-        ],
-        // Author both endpoints as slabs so the (implicit) cell existence is clean — not
-        // strictly required for the draw, but keeps the situation valid.
-        slabs: vec![l0_at, l1_at],
-        ..Situation::new()
-    };
+    // Author both endpoints as slabs so the (implicit) cell existence is clean — not
+    // strictly required for the draw, but keeps the situation valid.
+    let situation = SituationBuilder::new()
+        .with_ganger(ganger_at(l0_at, 0, Direction::East))
+        .with_ganger(ganger_at(l1_at, 1, Direction::West))
+        .slab_at(l0_at)
+        .slab_at(l1_at)
+        .build();
     assert!(
         drive_setup(&mut app, situation),
         "setup_battle must complete"
@@ -621,10 +551,9 @@ fn ganger_draws_above_its_own_floor_at_spawn_and_after_move() {
     settle_resources(&mut app);
 
     let start = CellLevel::new(Cell::new(5, 6), Level::new(0));
-    let situation = Situation {
-        gangers: vec![ganger_at(start, 0, Direction::East)],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_ganger(ganger_at(start, 0, Direction::East))
+        .build();
     assert!(
         drive_setup(&mut app, situation),
         "setup_battle must complete"
@@ -711,10 +640,9 @@ fn changed_facing_reframes_and_stance_aiming_retints_the_same_sprite() {
 
     // Spawn fixture: faction 0, facing East (RIGHT frame), Standing, not aiming.
     let at = CellLevel::new(Cell::new(5, 6), Level::new(0));
-    let situation = Situation {
-        gangers: vec![ganger_at(at, 0, Direction::East)],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_ganger(ganger_at(at, 0, Direction::East))
+        .build();
     assert!(
         drive_setup(&mut app, situation),
         "setup_battle must complete"

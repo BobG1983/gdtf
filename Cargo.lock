@@ -2626,6 +2626,7 @@ name = "gdtf_battle_sim"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "gdtf_battle_sim",
  "rand 0.10.1",
  "ron",
  "serde",
@@ -2649,6 +2650,8 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_app",
+ "gdtf_battle_sim",
+ "gdtf_ui",
 ]
 
 [[package]]

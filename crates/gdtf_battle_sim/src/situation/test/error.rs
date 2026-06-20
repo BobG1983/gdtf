@@ -11,12 +11,11 @@ fn setup_aborts_on_invalid_vertical_link() {
     let present = key(4, 4, 0);
     let missing = key(4, 4, 1); // never authored
     let link = VerticalLink::new(present, missing, LinkKind::stair());
-    let situation = Situation {
-        gangers: vec![ganger_at(key(0, 0, 0), 0)],
-        slabs: vec![present], // only `present` authored — `missing` dangles
-        vertical_links: vec![link],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_ganger(ganger_at(key(0, 0, 0), 0))
+        .slab_at(present) // only `present` authored — `missing` dangles
+        .vertical_link(link)
+        .build();
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -63,13 +62,14 @@ fn setup_aborts_on_invalid_vertical_link() {
 /// precedent, for the weapon resolution.
 #[test]
 fn setup_errors_on_a_missing_weapon_key() {
-    // A ganger whose weapon key is not the one the registry holds.
-    let mut ganger = ganger_at(key(0, 0, 0), 0);
-    ganger.weapon = WeaponName::new("no-such-weapon".to_owned());
-    let situation = Situation {
-        gangers: vec![ganger],
-        ..Situation::new()
-    };
+    // A ganger whose weapon key is not the one the registry holds — overridden
+    // off the central default via the builder's `.weapon()`.
+    let ganger = GangerSpawnBuilder::new()
+        .at(key(0, 0, 0))
+        .faction(Faction::new(0))
+        .weapon(WeaponName::new("no-such-weapon".to_owned()))
+        .build();
+    let situation = SituationBuilder::new().with_ganger(ganger).build();
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -115,13 +115,15 @@ fn setup_errors_on_a_missing_weapon_key() {
 #[test]
 fn setup_errors_on_a_missing_armor_key() {
     // A ganger whose armor key is not the one the armor registry holds (its weapon key
-    // IS present, so the weapon resolution passes and the armor resolution is reached).
-    let mut ganger = ganger_at(key(0, 0, 0), 0);
-    ganger.armor = ArmorName::new("no-such-armor".to_owned());
-    let situation = Situation {
-        gangers: vec![ganger],
-        ..Situation::new()
-    };
+    // IS present — the builder default `TEST_WEAPON_KEY` — so the weapon resolution
+    // passes and the armor resolution is reached). The bad armor key is overridden off
+    // the central default via the builder's `.armor()`.
+    let ganger = GangerSpawnBuilder::new()
+        .at(key(0, 0, 0))
+        .faction(Faction::new(0))
+        .armor(ArmorName::new("no-such-armor".to_owned()))
+        .build();
+    let situation = SituationBuilder::new().with_ganger(ganger).build();
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);

@@ -208,6 +208,8 @@ pub mod shot_fired;
 pub mod situation;
 pub mod stability;
 pub mod surface;
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support;
 pub mod tu;
 pub mod tuning;
 pub mod turn;

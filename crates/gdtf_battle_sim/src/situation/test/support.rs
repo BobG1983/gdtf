@@ -1,6 +1,8 @@
-//! Shared test fixtures + helpers for the `situation` module tests — the registry
-//! builders, the minimal C8 fixture, the `MinimalPlugins` setup drivers, and the
-//! shipped-asset `include_str!` constants. Each concern file does
+//! Shared test fixtures + helpers for the `situation` module tests — the
+//! `MinimalPlugins` setup drivers, the C8 minimal fixture, and the shipped-asset
+//! `include_str!` constants. The reusable ganger / situation / registry builders
+//! now live in the crate-central [`crate::test_support`]; this file re-exports them
+//! and keeps only the `situation`-module-specific harness. Each concern file does
 //! `use super::support::*;` to reach them.
 
 pub(super) use bevy::{
@@ -10,73 +12,26 @@ pub(super) use bevy::{
 };
 
 pub(super) use super::super::*;
+// The canonical shared builders + specs + registries + the `(cell, level)` key
+// helper (consolidated out of this file's former local copies).
+pub(super) use crate::test_support::{
+    GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, arbitrary_armor, ganger_at, key,
+    test_armor_registry, test_weapon_registry as test_registry, wall_at,
+};
 pub(super) use crate::{
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-        ArmorRegistry, ArmorSpec, ArmorType, BodyPart, WornArmor,
-    },
-    cover::{CoverHp, CoverLedger, Destroyed, HeightBand},
+    armor::{ArmorName, ArmorRegistry, ArmorSpec, BodyPart, WornArmor},
+    cover::{CoverLedger, Destroyed},
     ganger::{
-        Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Position,
-        Shooting, Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
+        Aiming, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Position, Shooting,
+        Stance, Toughness, Tu, TuMax, Wounds, WoundsMax,
     },
     inflicted_wound::InflictedWounds,
-    magazine::{Magazine, ReloadTu},
-    metric::{Cell, CellLevel, Level},
+    metric::CellLevel,
     occupancy::{OccupancyGrid, TerrainKind},
     surface::{SlabState, SurfaceGrid},
     vertical::{InvalidVerticalLink, LinkKind, VerticalLink, VerticalLinkGraph},
-    weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
-        MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, Weapon,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
-    },
+    weapon::{FireMode, Weapon, WeaponName, WeaponRegistry, WeaponSpec},
 };
-
-/// The weapon KEY every test ganger references — present in [`test_registry`].
-pub(super) const TEST_WEAPON_KEY: &str = "test-weapon";
-
-/// The armor KEY every test ganger references — present in [`test_armor_registry`]
-/// (the armor mirror of [`TEST_WEAPON_KEY`]; GTW-269).
-pub(super) const TEST_ARMOR_KEY: &str = "test-armor";
-
-/// Build a `(cell, level)` key from raw coordinates.
-pub(super) fn key(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
-}
-
-/// An arbitrary [`WeaponSpec`] (NOT shipped magnitudes — mechanism only) carrying
-/// a single-shot [`FireMode`] whose one mode is [`ModeKind::Single`], so a
-/// resolved bundle proves the [`Weapon`] marker + [`FireMode`] landed.
-pub(super) fn arbitrary_weapon_spec() -> WeaponSpec {
-    WeaponSpec {
-        base_spread: BaseSpread::new(0.25),
-        accuracy:    Accuracy::new(1.3),
-        kickback:    Kickback::new(0.4),
-        fatal_bias:  FatalBias::new(7.0),
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(5),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.5),
-            ModeShots::new(1),
-        )]),
-        stable:      Stable::new(false),
-    }
-}
-
-/// A registry holding the one [`TEST_WEAPON_KEY`] weapon — the test-built registry
-/// the setup resolves each ganger's `weapon` key against (no `AssetServer`).
-pub(super) fn test_registry() -> WeaponRegistry {
-    WeaponRegistry::new([(
-        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-        arbitrary_weapon_spec(),
-    )])
-}
 
 /// The two shipped weapon `.ron` files, read at compile time via the same
 /// `include_str!` pattern the shipped situation uses — the REAL on-disk authored
@@ -170,87 +125,20 @@ pub(super) fn run_setup_with(
     Some((app, setup))
 }
 
-/// An arbitrary armor SPEC — distinct per-part magnitudes (NOT shipped tuning) so the
-/// registry-resolved seed copy is provably faithful, never asserting a magnitude. The
-/// suit the [`TEST_ARMOR_KEY`] resolves to in [`test_armor_registry`] (GTW-269).
-pub(super) fn arbitrary_armor(base: i32) -> ArmorSpec {
-    ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(base),
-        ArmorProtection::new(base + 1),
-        ArmorIntegrity::new(base + 2),
-        ArmorHardness::new(base + 3),
-        ArmorType::DEFAULT,
-    ))
-}
-
-/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit — the test-built armor
-/// registry the setup resolves each ganger's `armor` key against (no `AssetServer`),
-/// the armor mirror of [`test_registry`] (GTW-269).
-pub(super) fn test_armor_registry() -> ArmorRegistry {
-    ArmorRegistry::new([(
-        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        arbitrary_armor(1),
-    )])
-}
-
-/// Build an authored ganger at `at` with the given faction and otherwise
-/// arbitrary-but-DISTINCT component values, so a test can prove each field
-/// lands on the spawned entity.
-pub(super) fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
-    GangerSpawn {
-        at,
-        // A distinct authored name per faction so a spawn test can prove the
-        // `GangerName` component lands on the entity (GTW-285).
-        name: GangerName::new(format!("Ganger {faction}")),
-        faction: Faction::new(faction),
-        facing: Facing::new(Direction::East),
-        stance: Stance::new(StanceKind::Crouching),
-        aiming: Aiming::new(true),
-        hp: Hp::new(40),
-        hp_max: HpMax::new(40),
-        wounds: Wounds::new(3),
-        wounds_max: WoundsMax::new(3),
-        tu: Tu::new(60),
-        tu_max: TuMax::new(60),
-        life_state: LifeState::Alive,
-        // The E3.0 attribute stats — distinct arbitrary magnitudes per faction so
-        // a per-field readback is provable (NOT shipped tuning; per-ganger data).
-        shooting: Shooting::new(f32::from(faction) + 2.0),
-        toughness: Toughness::new(f32::from(faction) + 3.0),
-        luck: Luck::new(f32::from(faction) + 1.0),
-        // Every test ganger references the one TEST_ARMOR_KEY in test_armor_registry.
-        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        // Every test ganger references the one TEST_WEAPON_KEY in test_registry.
-        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-    }
-}
-
-/// An authored wall at `at` with arbitrary cover stats.
-pub(super) fn wall_at(at: CellLevel) -> CoverSpawn {
-    CoverSpawn::new(
-        at,
-        TerrainKind::Wall,
-        CoverHp::new(120),
-        HeightBand::High,
-        ArmorProtection::new(8),
-        ArmorHardness::new(4),
-    )
-}
-
 /// The C8 minimal fixture: 2 gangers (distinct factions + cells), 1 wall, 1
-/// slab — the SAME fixture every C8 assertion reads from.
+/// slab — the SAME fixture every C8 assertion reads from. Built over the central
+/// [`ganger_at`] / [`wall_at`] builders.
 pub(super) fn minimal_fixture() -> (Situation, CellLevel, CellLevel, CellLevel, CellLevel) {
     let alice_at = key(5, 6, 0);
     let bob_at = key(7, 8, 0);
     let wall_cell = key(1, 2, 0);
     let slab_cell = key(3, 4, 1);
 
-    let situation = Situation {
-        gangers: vec![ganger_at(alice_at, 0), ganger_at(bob_at, 1)],
-        walls: vec![wall_at(wall_cell)],
-        slabs: vec![slab_cell],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_gangers([ganger_at(alice_at, 0), ganger_at(bob_at, 1)])
+        .wall_at(wall_cell)
+        .slab_at(slab_cell)
+        .build();
     (situation, alice_at, bob_at, wall_cell, slab_cell)
 }
 
@@ -265,8 +153,8 @@ pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
 
-    // Run setup as a one-shot system reading the fixture against the test weapon +
-    // armor registries, capturing its result.
+    // Run setup as a one-shot system reading the fixture against the central test
+    // weapon + armor registries, capturing its result.
     let registry = test_registry();
     let armor = test_armor_registry();
     let outcome = app

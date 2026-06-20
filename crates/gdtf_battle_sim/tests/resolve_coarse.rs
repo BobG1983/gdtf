@@ -17,106 +17,18 @@ use bevy::{
     ecs::system::RunSystemOnce,
     prelude::{Commands, Entity, MinimalPlugins, World},
 };
-use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece,
-    ArmorProtection, ArmorRegistry, ArmorSpec, ArmorType, BaseSpread, BattleSeed, BattleSetup,
-    BodyPart, Cell, CellLevel, CombatTuning, ConcentrationP, ConeAngle, CoverEntry, CoverHp,
-    CoverLedger, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
-    GangerName, GangerSpawn, HeightBand, Hp, HpMax, Kickback, Level, LifeState, Luck, Magazine,
-    MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, Position,
-    PriorShots, RecoilClimb, RecoilGrowth, ReloadTu, Shooting, ShotInputs, ShotKind, ShotOutcome,
-    SimRng, Situation, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, Wounds, WoundsMax,
-    resolve_coarse, setup_battle,
+// The canonical shared builders + specs + registries + the `(cell, level)` key
+// helper (consolidated out of this file's former local copies — GTW-324 migration).
+use gdtf_battle_sim::test_support::{
+    SituationBuilder, ganger_at, key, test_armor_registry, test_weapon_registry,
 };
-
-/// The weapon KEY every fixture ganger references — present in [`weapon_registry`].
-const TEST_WEAPON_KEY: &str = "test-weapon";
-
-/// The armor KEY every fixture ganger references — present in [`armor_registry`].
-const TEST_ARMOR_KEY: &str = "test-armor";
-
-/// A `(cell, level)` key from raw coordinates.
-fn key(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
-}
-
-/// A registry holding the one [`TEST_WEAPON_KEY`] weapon the fixture gangers
-/// reference, so `setup_battle` arms each ganger (GTW-257).
-fn weapon_registry() -> WeaponRegistry {
-    WeaponRegistry::new([(
-        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-        WeaponSpec {
-            base_spread: BaseSpread::new(0.25),
-            accuracy:    Accuracy::new(1.0),
-            kickback:    Kickback::new(0.4),
-            fatal_bias:  FatalBias::new(7.0),
-            damage:      WeaponDamage::new(12),
-            punch:       WeaponPunch::new(5),
-            shred:       WeaponShred::new(3),
-            damage_type: DamageType::Kinetic,
-            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-            fire_mode:   FireMode::new(vec![FireModeSpec::new(
-                ModeKind::Single,
-                ModeConeMult::new(1.0),
-                ModeTuPercent::new(0.5),
-                ModeShots::new(1),
-            )]),
-            stable:      Stable::new(false),
-        },
-    )])
-}
-
-/// An arbitrary armor SPEC (NOT shipped tuning) — the suit the [`TEST_ARMOR_KEY`]
-/// resolves to in [`armor_registry`], so a ganger spawns with a full per-part armor
-/// set the no-mutation test can read back unchanged (GTW-269).
-const fn arbitrary_armor(base: i32) -> ArmorSpec {
-    ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(base),
-        ArmorProtection::new(base + 1),
-        ArmorIntegrity::new(base + 2),
-        ArmorHardness::new(base + 3),
-        ArmorType::DEFAULT,
-    ))
-}
-
-/// A registry holding the one [`TEST_ARMOR_KEY`] armor suit the fixture gangers
-/// reference, so `setup_battle` armors each ganger (GTW-269).
-fn armor_registry() -> ArmorRegistry {
-    ArmorRegistry::new([(
-        ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        arbitrary_armor(1),
-    )])
-}
-
-/// An authored ganger at `at` (faction `faction`) — standing, hip-firing, with a
-/// known Hp / Wounds / Tu the no-mutation test pins.
-fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
-    GangerSpawn {
-        at,
-        name: GangerName::new(format!("Ganger {faction}")),
-        faction: Faction::new(faction),
-        facing: Facing::new(Direction::East),
-        stance: Stance::new(StanceKind::Standing),
-        aiming: Aiming::new(false),
-        hp: Hp::new(40),
-        hp_max: HpMax::new(40),
-        wounds: Wounds::new(3),
-        wounds_max: WoundsMax::new(3),
-        tu: Tu::new(60),
-        tu_max: TuMax::new(60),
-        life_state: LifeState::Alive,
-        // The E3.0 attribute stats (GTW-182) — arbitrary magnitudes; this test does
-        // not read them, but `GangerSpawn` now carries them.
-        shooting: Shooting::new(f32::from(faction) + 2.0),
-        toughness: Toughness::new(f32::from(faction) + 3.0),
-        luck: Luck::new(f32::from(faction) + 1.0),
-        // Every fixture ganger references the one TEST_ARMOR_KEY in armor_registry.
-        armor: ArmorName::new(TEST_ARMOR_KEY.to_owned()),
-        // Every fixture ganger references the one TEST_WEAPON_KEY in weapon_registry.
-        weapon: WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-    }
-}
+use gdtf_battle_sim::{
+    ArmorHardness, ArmorProtection, BattleSeed, BattleSetup, BodyPart, Cell, CellLevel,
+    CombatTuning, ConcentrationP, ConeAngle, CoverEntry, CoverHp, CoverLedger, Direction, Facing,
+    HeightBand, Hp, Level, OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth,
+    ShotInputs, ShotKind, ShotOutcome, SimRng, Situation, Stance, StanceKind, SurfaceGrid, Tu,
+    Wounds, resolve_coarse, setup_battle,
+};
 
 /// Run `setup_battle` on a fresh `MinimalPlugins` app, flush the deferred commands,
 /// and return the app + `BattleSetup` — or `None` on failure (keeping the tests
@@ -125,8 +37,8 @@ fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
 
-    let registry = weapon_registry();
-    let armor = armor_registry();
+    let registry = test_weapon_registry();
+    let armor = test_armor_registry();
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -205,10 +117,9 @@ const fn standing_shot(
 fn resolve_coarse_yields_ganger_outcome_on_real_path() {
     let shooter_at = key(2, 2, 0);
     let target_at = key(5, 2, 0);
-    let situation = Situation {
-        gangers: vec![ganger_at(shooter_at, 0), ganger_at(target_at, 1)],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_gangers([ganger_at(shooter_at, 0), ganger_at(target_at, 1)])
+        .build();
     let Some((mut app, setup)) = run_setup(situation) else {
         return;
     };
@@ -478,10 +389,9 @@ fn combat_snapshot(world: &World, target: Entity, shooter: Entity) -> Option<Com
 fn resolve_coarse_mutates_no_combat_state() {
     let shooter_at = key(2, 2, 0);
     let target_at = key(5, 2, 0);
-    let situation = Situation {
-        gangers: vec![ganger_at(shooter_at, 0), ganger_at(target_at, 1)],
-        ..Situation::new()
-    };
+    let situation = SituationBuilder::new()
+        .with_gangers([ganger_at(shooter_at, 0), ganger_at(target_at, 1)])
+        .build();
     let Some((mut app, setup)) = run_setup(situation) else {
         return;
     };
