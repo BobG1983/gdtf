@@ -21,12 +21,18 @@ use bevy::{
 use gdtf_battle_sim::{Cell, Level, Severity};
 
 use super::{
+    super::tuning::{FctRiseRate, FctTtlSeconds},
     palette::{FctValence, severity_color, valence_color},
     text::{
         CombatText, FctEmphasis, FctStackIndex, FloatingCombatText, animate_floating_text,
         spawn_floating_text,
     },
 };
+
+/// A short, EXPLICIT pop lifetime for the animation tests — decoupled from the shipped
+/// [`FctTtlSeconds::DEFAULT`] (GTW-327 re-tuned it to a longer readable window) so the
+/// despawn-timing test stays fast and is not a brittle pin on the shipped magnitude.
+const TEST_TTL: FctTtlSeconds = FctTtlSeconds::new(0.6);
 
 /// A headless `MinimalPlugins` app with the FCT animator registered — the primitive needs
 /// only the [`Time`] clock (in `MinimalPlugins`) and its own query, so no asset / render stack.
@@ -66,6 +72,8 @@ fn spawn_pop_with(
                 cell,
                 level,
                 stack,
+                TEST_TTL,
+                FctRiseRate::default(),
             );
         });
     assert!(
@@ -116,7 +124,7 @@ fn single_pop_font(app: &mut App) -> Option<(FontWeight, f32)> {
 fn a_pop_rises_then_fades_then_despawns() {
     let mut app = fct_app();
     // Manual 100ms ticks so the rise / fade are observed mid-lifetime, then enough to clear
-    // the 0.6s default lifetime.
+    // the explicit TEST_TTL (0.6s) lifetime.
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -163,7 +171,7 @@ fn a_pop_rises_then_fades_then_despawns() {
         "the pop must FADE: alpha must decrease ({first_alpha} -> {second_alpha})",
     );
 
-    // Run well past the 0.6s lifetime (100ms × these updates) — the pop must despawn.
+    // Run well past the TEST_TTL (0.6s) lifetime (100ms × these updates) — the pop must despawn.
     for _ in 0..8 {
         app.update();
     }

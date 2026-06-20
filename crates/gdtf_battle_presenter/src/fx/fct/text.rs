@@ -22,64 +22,8 @@ use std::time::Duration;
 use bevy::{camera::visibility::RenderLayers, prelude::*, sprite::Anchor, text::FontWeight};
 use gdtf_battle_sim::{Cell, Level};
 
+use super::super::tuning::{FctRiseRate, FctTtlSeconds};
 use crate::{Layer, cell_to_world_layered};
-
-/// How long one floating-combat-text pop lives before it despawns, in seconds.
-///
-/// A NAMED newtype over the lifetime `f32` (no-bare-types: a pop's on-screen lifetime is a
-/// domain value, not a bare scalar), [`Deref`]ing to it so the animation reads it straight
-/// through. The pop rises + fades across this whole window and despawns the moment its
-/// clock finishes. The [`DEFAULT`](FctTtlSeconds::DEFAULT) (`0.6s`) is the genre-typical
-/// "long enough to read, short enough not to clutter" window the ticket specifies.
-#[derive(Debug, Clone, Copy, PartialEq, Deref)]
-pub struct FctTtlSeconds(f32);
-
-impl FctTtlSeconds {
-    /// The default pop lifetime — `0.6s`, the ticket's "~0.6s rise + fade" window.
-    pub const DEFAULT: Self = Self(0.6);
-
-    /// Build a pop-lifetime in seconds.
-    #[must_use]
-    pub const fn new(seconds: f32) -> Self {
-        Self(seconds)
-    }
-}
-
-impl Default for FctTtlSeconds {
-    /// The [`DEFAULT`](FctTtlSeconds::DEFAULT) `0.6s` window.
-    fn default() -> Self {
-        Self::DEFAULT
-    }
-}
-
-/// How fast a floating-combat-text pop ascends, in world px per second.
-///
-/// A NAMED newtype over the rise-rate `f32` (no-bare-types: an ascent speed is a domain
-/// value), [`Deref`]ing to it so the animation multiplies it by the frame delta straight
-/// through. The [`DEFAULT`](FctRiseRate::DEFAULT) lifts the pop roughly one and a half
-/// cells (`24px ≈ 1.5 × CELL_PX`) over the default `0.6s` lifetime — a legible drift
-/// upward without flying off the unit.
-#[derive(Debug, Clone, Copy, PartialEq, Deref)]
-pub struct FctRiseRate(f32);
-
-impl FctRiseRate {
-    /// The default ascent speed — `40px/s` (≈ `24px`, one and a half cells, across the
-    /// default `0.6s` lifetime).
-    pub const DEFAULT: Self = Self(40.0);
-
-    /// Build a rise rate in world px per second.
-    #[must_use]
-    pub const fn new(px_per_second: f32) -> Self {
-        Self(px_per_second)
-    }
-}
-
-impl Default for FctRiseRate {
-    /// The [`DEFAULT`](FctRiseRate::DEFAULT) `40px/s` ascent.
-    fn default() -> Self {
-        Self::DEFAULT
-    }
-}
 
 /// The combat-text STRING a pop renders — a damage number, a wound tag, a "miss".
 ///
@@ -258,10 +202,14 @@ impl FloatingCombatText {
 /// ([`cell_to_world_layered`] at the [`Layer::Highlight`] band so it draws ABOVE the
 /// ganger / terrain / FX sprites at that cell), shifted DOWN by `*stack_index × STACK_STEP_PX`
 /// so simultaneous pops on the cell fan out instead of overlapping. It carries a fresh
-/// [`FloatingCombatText`] (the default [`FctRiseRate`] ascent + default [`FctTtlSeconds`]
-/// lifetime, capturing `color`'s alpha as the fade base) and the
+/// [`FloatingCombatText`] (the passed-in [`FctRiseRate`] ascent + [`FctTtlSeconds`] lifetime,
+/// capturing `color`'s alpha as the fade base) and the
 /// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER) so it renders on the world camera.
 /// [`animate_floating_text`] then drives its rise + fade + despawn.
+///
+/// `ttl` / `rise` are the pop's lifetime + ascent speed, passed in by the caller from the
+/// hot-reloadable [`FxTuning`](super::super::FxTuning) (GTW-327) rather than read from a
+/// `const`, so a live `fx_tuning.ron` edit re-tunes the very next pop.
 ///
 /// `emphasis` is the styling WEIGHT ([`FctEmphasis`]): a [`Bold`](FctEmphasis::Bold) pop (the
 /// lethal DOWN / DEAD) is drawn in [`FontWeight::BOLD`] at a larger [`FctEmphasis::font_size`],
@@ -271,6 +219,11 @@ impl FloatingCombatText {
 /// `cell` / `level` are the typed sim grid position (the world anchor); `text` / `color` /
 /// `emphasis` / `stack_index` are the pop's content + color + weight + stacking slot. Pure
 /// VIEW: it only spawns a presenter entity (ADR-0001), reads + writes no sim state.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the FCT pop's content, color, weight, world anchor, stack slot, and now its \
+              hot-reloadable lifetime + rise are all distinct caller-chosen inputs"
+)]
 pub fn spawn_floating_text(
     commands: &mut Commands,
     text: CombatText,
@@ -279,14 +232,14 @@ pub fn spawn_floating_text(
     cell: Cell,
     level: Level,
     stack_index: FctStackIndex,
+    ttl: FctTtlSeconds,
+    rise: FctRiseRate,
 ) {
     // Anchor over the cell on the highlight band (above gangers/terrain/FX), then shift the
     // whole pop DOWN by its stack slot so simultaneous pops on one cell fan out vertically.
     let mut world = cell_to_world_layered(cell, level, Layer::Highlight);
     world.y = (*stack_index as f32).mul_add(-STACK_STEP_PX, world.y);
 
-    let rise = FctRiseRate::DEFAULT;
-    let ttl = FctTtlSeconds::DEFAULT;
     let base_alpha = color.alpha();
 
     commands.spawn((

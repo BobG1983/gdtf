@@ -25,6 +25,7 @@ use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::DamageType;
 
 use super::{
+    projectile::spawn_pops_at_anchor,
     readers::fx_sprite_scaled,
     roles::{EffectRoles, IMPACT_FRAME_COUNT},
     tuning::{FxTuning, ImpactFrameSeconds},
@@ -146,36 +147,42 @@ impl ImpactAnimation {
 }
 
 /// `Update` (`PresenterSystems::Draw`): play the 3-frame damage-type impact
-/// animation at each arrived projectile's [`PendingImpact`].
+/// animation — AND spawn this shot's floating-combat-text pops (GTW-327) — at each
+/// arrived projectile's [`PendingImpact`].
 ///
 /// Two passes over the world, both `Commands`/`Query`-only (no `&mut World`,
 /// `bevy-traps.md` #7):
 ///
-/// 1. **Seed → animation.** For each freshly-arrived
+/// 1. **Seed → animation + pops.** For each freshly-arrived
 ///    [`PendingImpact`](super::projectile::PendingImpact) FX-A's
 ///    [`advance_projectiles`](super::projectile::advance_projectiles) spawned, it
 ///    builds the FIRST impact tile of the damage type's strip
 ///    ([`EffectRoles::fx_for`](super::roles::EffectRoles::fx_for)`(damage).impact[0]`)
-///    via [`fx_sprite`](super::readers::fx_sprite) at the impact world point, spawns
-///    it with an [`ImpactAnimation`], and DESPAWNS the seed (consumed once). A
-///    missing effects sheet skips the draw fail-closed (`fx_sprite` returns
-///    [`None`]) but still consumes the seed (no re-attempt pile-up).
+///    via [`fx_sprite_scaled`](super::readers::fx_sprite_scaled) at the impact world
+///    point, spawns it with an [`ImpactAnimation`], SPAWNS the shot's classified
+///    floating-combat-text pops at their anchor (GTW-327 — so each shot's numbers appear
+///    when THIS shot's staggered impact lands, fanned out by per-shot
+///    [`FctStackIndex`](super::fct::FctStackIndex)), and DESPAWNS the seed (consumed once).
+///    A missing effects sheet skips the impact SPRITE fail-closed
+///    (`fx_sprite_scaled` returns [`None`]) but STILL spawns the pops (they are
+///    [`Text2d`], needing no atlas) and still consumes the seed (no re-attempt pile-up).
 /// 2. **Step the animations.** Each [`ImpactAnimation`] is ticked by the frame
 ///    [`Res<Time>`] delta ([`ImpactAnimation::advance`]); on a frame step it swaps
 ///    the sprite to the new frame's tile, and on the last frame finishing it
 ///    despawns the animation entity. A short impact strip degrades gracefully (an
 ///    out-of-range frame skips the redraw, the animation still despawns on finish).
 ///
-/// The per-impact-frame hold is READ from the hot-reloadable [`FxTuning`] resource and
-/// CAPTURED into each new [`ImpactAnimation`], so a live edit to `assets/tiles/fx_tuning.ron`
-/// re-tunes the next impact's pacing without a rebuild.
+/// The per-impact-frame hold AND the pop lifetime / rise (GTW-327) are READ from the
+/// hot-reloadable [`FxTuning`] resource, so a live edit to `assets/tiles/fx_tuning.ron`
+/// re-tunes the next impact's pacing + the next pop's lifetime without a rebuild.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the spawn / sprite swap /
 /// despawn, [`Res<Time>`] for the per-frame delta, [`Res<EffectRoles>`] +
 /// [`Res<TopDownAtlases>`] for the data-driven tiles, [`Res<FxTuning>`] for the
-/// per-frame hold, and the disjoint `PendingImpact` (seed) / `ImpactAnimation`
-/// (playing) queries. Its registration gates on `BattleInProgress` + `EffectRoles` +
-/// `TopDownAtlases` + `FxTuning` existing (FX-A wired it), so all are present when it runs.
+/// per-frame hold + the pop lifetime / rise, and the disjoint `PendingImpact` (seed) /
+/// `ImpactAnimation` (playing) queries. Its registration gates on `BattleInProgress` +
+/// `EffectRoles` + `TopDownAtlases` + `FxTuning` existing (FX-A wired it), so all are
+/// present when it runs.
 pub fn animate_impact(
     mut commands: Commands,
     time: Res<Time>,
@@ -187,8 +194,8 @@ pub fn animate_impact(
 ) {
     // The hot-reloadable per-frame hold each freshly-seeded impact captures.
     let frame_seconds = tuning.impact_frame_seconds;
-    // Pass 1: turn each arrival seed into a playing animation (frame 0), then
-    // consume the seed so it is handled exactly once.
+    // Pass 1: turn each arrival seed into a playing animation (frame 0) + spawn this shot's
+    // FCT pops at the impact (GTW-327), then consume the seed so it is handled exactly once.
     for (seed_entity, impact) in &seeds {
         let fx = roles.fx_for(impact.damage);
         if let Some(tile) = fx.impact.first()
@@ -202,6 +209,10 @@ pub fn animate_impact(
                 ImpactAnimation::new(impact.damage, frame_seconds),
             ));
         }
+        // GTW-327: spawn this shot's floating-combat-text pops at the impact (independent of the
+        // impact SPRITE — the Text2d pops need no atlas, so they still appear when the effects
+        // sheet is absent). Empty for a clean miss (no numbers).
+        spawn_pops_at_anchor(&mut commands, &impact.pops, impact.anchor, &tuning);
         // Consume the seed whether or not the sheet was loaded (no re-attempt pile-up).
         commands.entity(seed_entity).despawn();
     }

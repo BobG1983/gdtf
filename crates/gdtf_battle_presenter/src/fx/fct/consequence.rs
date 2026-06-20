@@ -39,6 +39,7 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{ArmorBroken, Bleeding, Cell, Level, Position};
 
 use super::{
+    super::FxTuning,
     palette::{FctValence, valence_color},
     text::{CombatText, FctEmphasis, FctStackIndex, spawn_floating_text},
 };
@@ -64,13 +65,17 @@ use super::{
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], the read-only `Query<&Position>` for the
 /// ganger anchor (the pop sits on the ganger's sim cell, not its rendered stance-height
-/// sprite — so the cheaper [`Position`] lookup suffices), and the two
-/// [`MessageReader`](bevy::ecs::message::MessageReader)s. It never writes the sim.
+/// sprite — so the cheaper [`Position`] lookup suffices), the two
+/// [`MessageReader`](bevy::ecs::message::MessageReader)s, and [`Res<FxTuning>`] for the
+/// hot-reloadable pop lifetime + rise (GTW-327) each spawned pop is given. Its plugin gate adds
+/// `resource_exists::<FxTuning>` so the resource is always present when this runs. It never
+/// writes the sim.
 pub fn read_consequence_fct(
     mut commands: Commands,
     positions: Query<&Position>,
     mut bleeds: MessageReader<Bleeding>,
     mut broken: MessageReader<ArmorBroken>,
+    tuning: Res<FxTuning>,
 ) {
     // The per-cell stack counter for THIS drain, shared across both message kinds so two
     // simultaneous pops on one cell (e.g. a bleed + an armor-break) fan one step further down
@@ -80,12 +85,26 @@ pub fn read_consequence_fct(
 
     for msg in bleeds.read() {
         let pop = bleeding_pop();
-        spawn_aux_pop(&mut commands, &positions, &mut stacks, msg.ganger, pop);
+        spawn_aux_pop(
+            &mut commands,
+            &positions,
+            &mut stacks,
+            msg.ganger,
+            pop,
+            &tuning,
+        );
     }
 
     for msg in broken.read() {
         let pop = armor_broken_pop();
-        spawn_aux_pop(&mut commands, &positions, &mut stacks, msg.ganger, pop);
+        spawn_aux_pop(
+            &mut commands,
+            &positions,
+            &mut stacks,
+            msg.ganger,
+            pop,
+            &tuning,
+        );
     }
 }
 
@@ -136,13 +155,15 @@ fn armor_broken_pop() -> AuxPop {
 /// Shared by both consequence drains: it resolves the ganger's `(cell, level)` anchor from
 /// the `Query<&Position>` (reconstructing the typed [`Cell`] / [`Level`] from the position's
 /// `IVec3`), pulls the next [`FctStackIndex`] for that cell out of the shared `stacks`
-/// counter, and spawns the pop. A `Position`-less ganger is skipped — no panic, no pop.
+/// counter, and spawns the pop with the hot-reloadable [`FxTuning`] lifetime + rise (GTW-327).
+/// A `Position`-less ganger is skipped — no panic, no pop.
 fn spawn_aux_pop(
     commands: &mut Commands,
     positions: &Query<&Position>,
     stacks: &mut std::collections::HashMap<(i32, i32, u8), usize>,
     ganger: Entity,
     pop: AuxPop,
+    tuning: &FxTuning,
 ) {
     // Fail-closed: a ganger with no Position spawns no pop (its cell is unknown), no panic.
     let Ok(pos) = positions.get(ganger) else {
@@ -163,6 +184,8 @@ fn spawn_aux_pop(
         cell,
         level,
         FctStackIndex::new(*slot),
+        tuning.fct_ttl_seconds,
+        tuning.fct_rise_rate,
     );
     *slot += 1;
 }

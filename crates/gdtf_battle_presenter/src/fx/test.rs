@@ -10,7 +10,7 @@ use bevy::{
     prelude::{Alpha, Transform, Visibility},
     time::TimeUpdateStrategy,
 };
-use gdtf_battle_sim::{DamageType, Wounds};
+use gdtf_battle_sim::{Cell, DamageType, Level, Wounds};
 
 use super::{
     flash::{FLASH_SECONDS, FlashTtl},
@@ -28,6 +28,13 @@ const TEST_VELOCITY: f32 = ProjectileVelocity::DEFAULT;
 /// The burst stagger step (seconds) the stagger unit test drives a round's launch delay with —
 /// the shipped hot-reloadable default.
 const TEST_INTER_SHOT: f32 = InterShotSeconds::DEFAULT;
+
+/// A throw-away anchor `(cell, level)` for the projectile-FLIGHT unit tests, which exercise the
+/// muzzle→target travel + arrival seam, not the GTW-327 FCT pops (those rides empty in these
+/// tests; the pop-staggering is proven on the real registered-system path in `fx_draw.rs`).
+fn test_anchor() -> (Cell, Level) {
+    (Cell::new(0, 0), Level::new(0))
+}
 
 /// The shipped `effect_roles.ron` parses into `EffectRoles` and exposes every FX role —
 /// a `ron::de` round-trip of the SHIPPED bytes.
@@ -168,12 +175,16 @@ fn projectile_travels_then_despawns_leaving_a_pending_impact() {
             // must carry it to match the real query (a zero launch delay reveals it at once).
             Visibility::Hidden,
             // A single shot — zero launch delay launches at once, flying at the default velocity.
+            // No FCT pops in this flight-only test (the GTW-327 pop staggering is proven on the
+            // real path in fx_draw.rs).
             ProjectileTravel::new(
                 from,
                 to,
                 DamageType::Kinetic,
                 ProjectileVelocity::default(),
                 Duration::ZERO,
+                Vec::new(),
+                test_anchor(),
             ),
             ShotProjectile,
         ))
@@ -249,10 +260,24 @@ fn projectile_flies_at_a_constant_velocity_regardless_of_distance() {
     let near = Vec3::new(per_step_px, 0.0, 0.0);
     let far = Vec3::new(per_step_px * 3.0, 0.0, 0.0);
     let velocity = ProjectileVelocity::default();
-    let mut short =
-        ProjectileTravel::new(origin, near, DamageType::Kinetic, velocity, Duration::ZERO);
-    let mut long =
-        ProjectileTravel::new(origin, far, DamageType::Kinetic, velocity, Duration::ZERO);
+    let mut short = ProjectileTravel::new(
+        origin,
+        near,
+        DamageType::Kinetic,
+        velocity,
+        Duration::ZERO,
+        Vec::new(),
+        test_anchor(),
+    );
+    let mut long = ProjectileTravel::new(
+        origin,
+        far,
+        DamageType::Kinetic,
+        velocity,
+        Duration::ZERO,
+        Vec::new(),
+        test_anchor(),
+    );
 
     // The near shot arrives in ONE velocity step.
     assert!(
@@ -290,6 +315,8 @@ fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
         DamageType::Kinetic,
         ProjectileVelocity::default(),
         launch_delay,
+        Vec::new(),
+        test_anchor(),
     );
 
     // Before the launch delay elapses the bolt is parked at the muzzle — not launched, fraction 0.
@@ -321,9 +348,12 @@ fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
 }
 
 /// The `PendingImpact`s currently in the world (FX-B's impact-animation seeds).
+///
+/// Cloned (not `.copied()`): `PendingImpact` carries the GTW-327 owned pop `Vec`, so it is no
+/// longer `Copy`.
 fn pending_impacts(app: &mut App) -> Vec<PendingImpact> {
     let mut q = app.world_mut().query::<&PendingImpact>();
-    q.iter(app.world()).copied().collect()
+    q.iter(app.world()).cloned().collect()
 }
 
 /// How many `PendingImpact`s are in the world.

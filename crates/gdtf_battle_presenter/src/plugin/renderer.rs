@@ -17,11 +17,10 @@ use crate::{
     draw_static_battlefield, expire_flashes, frame_camera_on_units, load_character_roles,
     load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
     move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, read_armor_broken,
-    read_bleeding, read_consequence_fct, read_cover_destroyed, read_shot_fired_text,
-    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
-    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
-    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
-    update_ganger_life_state,
+    read_bleeding, read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
+    redrive_pan_tuning_on_asset_event, reframe_ganger_sprites, resolve_character_roles,
+    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
+    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -426,8 +425,13 @@ fn register_fx_flash_systems(app: &mut App) {
     // projectile off the ShotFired buffer (the muzzle flash was removed in GTW-307 — the
     // departing projectile IS the fire signal) under the same render gate; animate_impact
     // (below) drains the SAME buffer independently (a buffered message survives a frame).
-    // Both now READ the hot-reloadable FxTuning resource, so each adds it to its gate so a
-    // pre-resolve frame (tuning not yet loaded) does not fail param validation.
+    // GTW-327 (slice 2): spawn_shot_projectiles now ALSO classifies each shot's FCT pops
+    // (classify_report) + anchor and threads them THROUGH the projectile -> PendingImpact ->
+    // animate_impact pipeline, so each shot's numbers appear at its own STAGGERED impact (no
+    // separate read_shot_fired_text system — the immediate-spawn that dumped a whole volley's
+    // numbers on the drain frame is gone). Both READ the hot-reloadable FxTuning resource, so
+    // each adds it to its gate so a pre-resolve frame (tuning not yet loaded) does not fail
+    // param validation.
     .add_systems(
         Update,
         spawn_shot_projectiles
@@ -439,34 +443,25 @@ fn register_fx_flash_systems(app: &mut App) {
                     .and(resource_exists::<Messages<ShotFired>>),
             ),
     )
-    // GTW-302 (slice 3): the floating-combat-text READER. Drains the SAME ShotFired buffer the
-    // tracer reader does (a buffered message survives the frame, so both read independently)
-    // and spawns a rise/fade Text2d pop per Phase-1 event each round's HitReport yields (HP
-    // damage / wound / graze / penetration verdict / miss / DOWN / DEAD). It needs NO render
-    // resource (it spawns Text2d, not an effects sprite), so it is gated only on
-    // BattleInProgress (pops belong to a live battle) AND its ShotFired buffer (the
-    // MessageReader param panics validation without the buffer — bevy-traps.md #1 / #4).
-    .add_systems(
-        Update,
-        read_shot_fired_text.in_set(PresenterSystems::Draw).run_if(
-            resource_exists::<BattleInProgress>.and(resource_exists::<Messages<ShotFired>>),
-        ),
-    )
     // GTW-302 (slice 4): the AUXILIARY-SIGNAL floating-combat-text reader. Drains the SAME
     // Bleeding + ArmorBroken buffers the read_bleeding / read_armor_broken blood/spark flash
     // readers do (a buffered message survives the frame, so both read independently) and spawns
     // a rise/fade Text2d pop per consequence event — "Bleeding" (AMBER) / "Armor Broken" (RED).
-    // Like read_shot_fired_text it spawns Text2d (no effects sprite), so it needs NO render
-    // resource — gated only on BattleInProgress (pops belong to a live battle) AND BOTH message
+    // It spawns Text2d (no effects sprite), so it needs NO render resource — and unlike the
+    // per-shot FCT (which now rides the staggered projectile->impact pipeline) the consequence
+    // pops are spawned immediately off their own one-shot messages. Gated on BattleInProgress
+    // (pops belong to a live battle), BOTH message
     // buffers its two MessageReaders drain (a MessageReader param panics validation without its
-    // buffer — bevy-traps.md #1 / #4). Reload pops + the numeric "Armor -N" are DEFERRED (no
-    // backing sim signal — see the consequence module docs).
+    // buffer — bevy-traps.md #1 / #4), AND — GTW-327 — the hot-reloadable FxTuning resource it
+    // now READS for the pop lifetime + rise. Reload pops + the numeric "Armor -N" are DEFERRED
+    // (no backing sim signal — see the consequence module docs).
     .add_systems(
         Update,
         read_consequence_fct.in_set(PresenterSystems::Draw).run_if(
             resource_exists::<BattleInProgress>
                 .and(resource_exists::<Messages<Bleeding>>)
-                .and(resource_exists::<Messages<ArmorBroken>>),
+                .and(resource_exists::<Messages<ArmorBroken>>)
+                .and(resource_exists::<FxTuning>),
         ),
     )
     // GTW-306: the 3-frame impact animation (FX-B fills the body). Gated on the same render

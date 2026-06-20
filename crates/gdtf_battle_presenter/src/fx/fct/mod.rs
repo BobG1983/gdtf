@@ -16,12 +16,16 @@
 //!   The reader slices (3-4) classify a [`ShotFired`](gdtf_battle_sim::ShotFired)
 //!   consequence into a valence / severity and feed the resulting color to
 //!   [`spawn_floating_text`].
-//! - [`reader`] — the GTW-302 slice-3 [`ShotFired`](gdtf_battle_sim::ShotFired) →
-//!   floating-combat-text READER ([`read_shot_fired_text`]): it drains the per-round fire
-//!   message, classifies each round's [`HitReport`](gdtf_battle_sim::HitReport) into the
-//!   Phase-1 events derivable from it (HP damage, wound, graze, penetration verdict,
-//!   DOWN / DEAD — a clean miss yields nothing), and spawns one pop per event through
-//!   [`spawn_floating_text`].
+//! - [`reader`] — the GTW-302 slice-3 / GTW-327 slice-2
+//!   [`ShotFired`](gdtf_battle_sim::ShotFired) → floating-combat-text CLASSIFICATION
+//!   ([`classify_report`](reader::classify_report) / [`anchor_cell`](reader::anchor_cell)): the
+//!   shared, reusable functions that classify each round's
+//!   [`HitReport`](gdtf_battle_sim::HitReport) into the Phase-1 events derivable from it (HP
+//!   damage, wound, graze, penetration verdict, DOWN / DEAD — a clean miss yields nothing) and
+//!   find their anchor cell. GTW-327 removed the immediate-spawn `read_shot_fired_text` system;
+//!   [`spawn_shot_projectiles`](super::spawn_shot_projectiles) now calls these at
+//!   projectile-spawn time and threads the pops THROUGH the staggered projectile → impact
+//!   pipeline so each shot's numbers appear at its own impact.
 //! - [`consequence`] — the GTW-302 slice-4 AUXILIARY-SIGNAL READER ([`read_consequence_fct`]):
 //!   the Phase-1 pops NOT derivable from [`ShotFired`] alone but riding the dedicated
 //!   consequence messages — `"Bleeding"` (AMBER) from [`Bleeding`](gdtf_battle_sim::Bleeding),
@@ -30,9 +34,10 @@
 //!   module docs).
 //!
 //! Pure VIEW (ADR-0001): the primitive spawns + animates presenter entities only; it never
-//! reads or writes the sim. [`animate_floating_text`], [`read_shot_fired_text`] and
-//! [`read_consequence_fct`] are registered into the shared
-//! [`PresenterSystems::Draw`](crate::PresenterSystems) band by `TopDownRendererPlugin`.
+//! reads or writes the sim. [`animate_floating_text`] and [`read_consequence_fct`] are
+//! registered into the shared [`PresenterSystems::Draw`](crate::PresenterSystems) band by
+//! `TopDownRendererPlugin`; the per-shot FCT pops are now spawned at the impact by
+//! [`animate_impact`](super::animate_impact) off the classification this module provides.
 
 mod consequence;
 mod palette;
@@ -44,8 +49,8 @@ mod test;
 
 pub use consequence::read_consequence_fct;
 pub use palette::{FctValence, severity_color, valence_color};
-pub use reader::read_shot_fired_text;
+pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};
 pub use text::{
-    CombatText, FctEmphasis, FctRiseRate, FctStackIndex, FctTtlSeconds, FloatingCombatText,
-    animate_floating_text, spawn_floating_text,
+    CombatText, FctEmphasis, FctStackIndex, FloatingCombatText, animate_floating_text,
+    spawn_floating_text,
 };

@@ -54,9 +54,8 @@ mod tuning;
 mod test;
 
 pub use fct::{
-    CombatText, FctEmphasis, FctRiseRate, FctStackIndex, FctTtlSeconds, FctValence,
-    FloatingCombatText, animate_floating_text, read_consequence_fct, read_shot_fired_text,
-    severity_color, spawn_floating_text, valence_color,
+    CombatText, FctEmphasis, FctStackIndex, FctValence, FloatingCombatText, animate_floating_text,
+    read_consequence_fct, severity_color, spawn_floating_text, valence_color,
 };
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
 pub use impact::animate_impact;
@@ -69,6 +68,7 @@ pub use roles::{
     IMPACT_FRAME_COUNT, load_effect_roles, nearest_direction_index, resolve_effect_roles,
 };
 pub use tuning::{
-    FxTuning, FxTuningHandle, ImpactFrameSeconds, InterShotSeconds, ProjectileDrawScale,
-    ProjectileVelocity, load_fx_tuning, redrive_fx_tuning_on_asset_event, resolve_fx_tuning,
+    FctRiseRate, FctTtlSeconds, FxTuning, FxTuningHandle, ImpactFrameSeconds, InterShotSeconds,
+    ProjectileDrawScale, ProjectileVelocity, load_fx_tuning, redrive_fx_tuning_on_asset_event,
+    resolve_fx_tuning,
 };

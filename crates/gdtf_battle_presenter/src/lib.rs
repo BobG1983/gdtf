@@ -51,9 +51,8 @@ pub use fx::{
     InterShotSeconds, PendingImpact, ProjectileDrawScale, ProjectileTravel, ProjectileVelocity,
     ShotProjectile, advance_projectiles, animate_floating_text, animate_impact, expire_flashes,
     load_effect_roles, load_fx_tuning, nearest_direction_index, read_armor_broken, read_bleeding,
-    read_consequence_fct, read_cover_destroyed, read_shot_fired_text,
-    redrive_fx_tuning_on_asset_event, resolve_effect_roles, resolve_fx_tuning, severity_color,
-    spawn_shot_projectiles, valence_color,
+    read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
+    resolve_effect_roles, resolve_fx_tuning, severity_color, spawn_shot_projectiles, valence_color,
 };
 pub use ganger::{
     CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites,

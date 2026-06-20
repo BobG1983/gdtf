@@ -1,12 +1,23 @@
-//! GTW-302 (slice 3): the [`ShotFired`] → floating-combat-text READER — the system that
-//! turns each fired round's already-computed [`HitReport`] into the rise-and-fade pops the
-//! slice-2 primitive ([`spawn_floating_text`](super::text::spawn_floating_text)) draws.
+//! GTW-302 (slice 3) / GTW-327 (slice 2): the [`ShotFired`] → floating-combat-text
+//! CLASSIFICATION — the shared, reusable functions that turn each fired round's
+//! already-computed [`HitReport`] into the ordered list of rise-and-fade pops the slice-2
+//! primitive ([`spawn_floating_text`](super::text::spawn_floating_text)) draws, plus the
+//! `(cell, level)` anchor those pops sit on.
 //!
-//! It drains [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired) — the SAME buffer the
-//! GTW-306 [`spawn_shot_projectiles`](super::super::spawn_shot_projectiles) tracer reader
-//! drains (a buffered Bevy message survives the frame, so both readers see every round) — and
-//! for each round CLASSIFIES its [`report`](gdtf_battle_sim::ShotFired::report) into the
-//! Phase-1 combat events this slice covers, spawning one pop per event:
+//! GTW-302 originally spawned the pops IMMEDIATELY when draining the [`ShotFired`] buffer (in a
+//! `read_shot_fired_text` system here). That dumped a whole burst / full-auto volley's numbers
+//! on the single drain frame even though the GTW-306 tracer projectiles
+//! ([`spawn_shot_projectiles`](super::super::spawn_shot_projectiles)) fly STAGGERED, so the
+//! numbers and the bolts desynced. GTW-327 slice 2 REPURPOSES this module: the immediate-spawn
+//! system is gone; [`classify_report`] + [`anchor_cell`] are now the SHARED classification
+//! [`spawn_shot_projectiles`] calls at projectile-spawn time, threading each round's
+//! [`ClassifiedPop`] list + anchor THROUGH the staggered projectile → impact pipeline so each
+//! shot's pops appear when THAT shot's impact lands (see
+//! [`projectile`](super::super::projectile) / [`impact`](super::super::impact)). This also sets
+//! up GTW-328's shared event → text layer (the classification is a clean, reusable seam).
+//!
+//! For each round [`classify_report`] CLASSIFIES its [`report`](gdtf_battle_sim::ShotFired::report)
+//! into the Phase-1 combat events this slice covers, one pop per event:
 //!
 //! - **HP damage** (`report.applied.hit.hp_damage > 0`) — the numeric loss, e.g. `-7`, drawn
 //!   the damage RED ([`FctValence::Damage`](super::palette::FctValence::Damage)).
@@ -27,10 +38,12 @@
 //! [`ShotFired`] alone — armor `"Armor -N"` / `"Armor Broken"`, reload `"Reloaded"` / `"Empty"`
 //! / `"No TU"`, and bleeding — from the consequence messages
 //! ([`ArmorBroken`](gdtf_battle_sim::ArmorBroken) / [`Bleeding`](gdtf_battle_sim::Bleeding)) or
-//! a future reload signal.
+//! a future reload signal. Those pops are NOT staggered (they ride their own one-shot
+//! consequence messages, not the per-round projectile pipeline).
 //!
-//! Pure VIEW (ADR-0001): it only READS the message + looks up the hit ganger's cell, then
-//! SPAWNS presenter pops; it never reads any raw sim state by polling and never writes the sim.
+//! Pure VIEW (ADR-0001): these functions only READ the message + look up the hit ganger's cell;
+//! the SPAWN happens downstream (at the impact) and never reads any raw sim state by polling and
+//! never writes the sim.
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
@@ -39,18 +52,26 @@ use gdtf_battle_sim::{
 
 use super::{
     palette::{FctValence, severity_color, valence_color},
-    text::{CombatText, FctEmphasis, FctStackIndex, spawn_floating_text},
+    text::{CombatText, FctEmphasis},
 };
 
 /// One ready-to-spawn floating-combat-text pop — the classified string, its valence color,
 /// and its emphasis weight, before it is anchored at the hit cell and given its stack slot.
 ///
 /// A NAMED grouping struct (not a bare `(CombatText, Color, FctEmphasis)` tuple):
-/// [`classify_report`] builds the ordered list of pops one round's [`HitReport`] yields, and
-/// the reader anchors each at the round's cell with the next [`FctStackIndex`]. The
-/// [`Color`](bevy::prelude::Color) is framework plumbing (the swatch fed straight to the
-/// primitive), the only bare type the no-bare-types rule permits here.
-struct ClassifiedPop {
+/// [`classify_report`] builds the ordered list of pops one round's [`HitReport`] yields;
+/// [`spawn_shot_projectiles`](super::super::spawn_shot_projectiles) threads that list THROUGH
+/// the staggered projectile pipeline and [`animate_impact`](super::super::animate_impact)
+/// anchors each at the round's cell with the next [`FctStackIndex`](super::text::FctStackIndex)
+/// when the impact lands. The [`Color`](bevy::prelude::Color) is framework plumbing (the swatch
+/// fed straight to the primitive), the only bare type the no-bare-types rule permits here.
+///
+/// `pub(in crate::fx)`: built here by [`classify_report`], consumed by the sibling
+/// `projectile` / `impact` modules — read through the [`text`](Self::text) /
+/// [`color`](Self::color) / [`emphasis`](Self::emphasis) accessors (the fields stay private so
+/// a pop is only constructed through the classifier, never field-assembled outside).
+#[derive(Debug, Clone)]
+pub(in crate::fx) struct ClassifiedPop {
     /// The combat-text string this pop renders (a damage number, a wound tag, `"Grazed"`, …).
     text:     CombatText,
     /// The valence swatch the pop is drawn in (the damage RED / wound AMBER / neutral GREY /
@@ -80,64 +101,23 @@ impl ClassifiedPop {
             emphasis: FctEmphasis::Bold,
         }
     }
-}
 
-/// `Update` (`PresenterSystems::Draw`): drain [`ShotFired`] and spawn the floating-combat-text
-/// pops each round's [`HitReport`] yields.
-///
-/// For every round read off [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired) it:
-///
-/// 1. Finds the round's ANCHOR `(cell, level)` — the hit ganger's current
-///    [`Position`](gdtf_battle_sim::Position) for a [`ShotKind::Ganger`] outcome (so the pops
-///    sit on the body that was hit), else the round's impact `(cell, level)` (a non-ganger hit
-///    pops over where the round landed; a clean miss classifies to no pops at all).
-/// 2. CLASSIFIES the round's report into its ordered list of pops ([`classify_report`]).
-/// 3. Spawns each pop via [`spawn_floating_text`], assigning each the next per-cell
-///    [`FctStackIndex`] so simultaneous pops on one cell (multiple events from one round, or
-///    several rounds landing on one cell this frame) fan out vertically instead of overlapping.
-///
-/// The per-cell stack counter persists across the WHOLE drain (a [`HashMap`] keyed by the
-/// anchor cell + level), so a burst landing several rounds on one cell stacks them all rather
-/// than overlapping at the base slot. A round that did NOT connect — a non-ganger outcome, a
-/// ganger hit that applied nothing, or a `None` (geometry-only
-/// [`from_outcome`](gdtf_battle_sim::ShotFired::from_outcome)) report — is a clean miss and
-/// classifies to NO pops, so a missed shot spawns no floating text at all.
-///
-/// It does NOT consume the [`ShotFired`] buffer destructively — `MessageReader` advances its
-/// own cursor, leaving the buffer for the GTW-306 tracer reader (both read independently). Pure
-/// VIEW: it spawns presenter entities only and never writes the sim.
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`], the read-only `Query<&Position>` for the
-/// ganger anchor (the pop sits on the hit ganger's sim cell, not its rendered stance-height
-/// sprite — so the cheaper [`Position`] lookup suffices, no `GangerSprites` needed), and
-/// [`MessageReader<ShotFired>`].
-pub fn read_shot_fired_text(
-    mut commands: Commands,
-    positions: Query<&Position>,
-    mut shots: MessageReader<ShotFired>,
-) {
-    // The per-cell stack counter for THIS drain: each anchor cell remembers how many pops it
-    // has already taken so the next pop on it fans one step further down. Keyed by the integer
-    // cell + level so two distinct cells never share a slot.
-    let mut stacks: std::collections::HashMap<(i32, i32, u8), usize> =
-        std::collections::HashMap::new();
+    /// The pop's combat-text string (consumed by reference at spawn — the caller clones the
+    /// inner [`CombatText`] into the [`Text2d`](bevy::prelude::Text2d)).
+    pub(in crate::fx) const fn text(&self) -> &CombatText {
+        &self.text
+    }
 
-    for msg in shots.read() {
-        let (cell, level) = anchor_cell(msg, &positions);
-        let pops = classify_report(msg.report.as_ref());
-        let slot = stacks.entry((cell.x, cell.y, *level)).or_insert(0);
-        for pop in pops {
-            spawn_floating_text(
-                &mut commands,
-                pop.text,
-                pop.color,
-                pop.emphasis,
-                cell,
-                level,
-                FctStackIndex::new(*slot),
-            );
-            *slot += 1;
-        }
+    /// The pop's valence swatch — the [`Color`](bevy::prelude::Color) fed straight to
+    /// [`spawn_floating_text`](super::text::spawn_floating_text).
+    pub(in crate::fx) const fn color(&self) -> Color {
+        self.color
+    }
+
+    /// The pop's styling weight ([`FctEmphasis::Bold`] for the lethal tag, else
+    /// [`FctEmphasis::Normal`]).
+    pub(in crate::fx) const fn emphasis(&self) -> FctEmphasis {
+        self.emphasis
     }
 }
 
@@ -149,7 +129,12 @@ pub fn read_shot_fired_text(
 /// [`Level`] from the position's `IVec3` (the readers.rs `cell_and_level` idiom). For any other
 /// kind (cover / slab / ground / miss), or a ganger whose [`Position`] is missing (fail-closed),
 /// it falls back to the round's impact `(cell, level)` — where the round landed.
-fn anchor_cell(msg: &ShotFired, positions: &Query<&Position>) -> (Cell, Level) {
+///
+/// `pub(in crate::fx)`: called by [`spawn_shot_projectiles`](super::super::spawn_shot_projectiles)
+/// at projectile-spawn time so the anchor is captured AT THE SHOT and threaded through the
+/// staggered projectile → impact pipeline (so the pop still sits on the body that was hit even
+/// if it has moved by the time the staggered impact lands).
+pub(in crate::fx) fn anchor_cell(msg: &ShotFired, positions: &Query<&Position>) -> (Cell, Level) {
     if let ShotKind::Ganger(entity) = msg.kind
         && let Ok(pos) = positions.get(entity)
     {
@@ -169,9 +154,15 @@ fn anchor_cell(msg: &ShotFired, positions: &Query<&Position>) -> (Cell, Level) {
 /// `None` on a ganger hit) is a CONNECTING shot and still yields a GREY `"Grazed"` instead of a
 /// wound tag.
 ///
-/// Split out (not inlined in the system) so the event-to-pop mapping is unit-testable without
-/// an [`App`] — the test feeds a synthesized [`HitReport`] and asserts the exact pop list.
-fn classify_report(report: Option<&HitReport>) -> Vec<ClassifiedPop> {
+/// Split out so the event-to-pop mapping is unit-testable without an [`App`] (the test feeds a
+/// synthesized [`HitReport`] and asserts the exact pop list) AND reusable: it is the SHARED
+/// classification [`spawn_shot_projectiles`](super::super::spawn_shot_projectiles) calls at
+/// projectile-spawn time, so the SAME mapping that drove the immediate-spawn reader now rides
+/// the staggered projectile → impact pipeline.
+///
+/// `pub(in crate::fx)`: called by the sibling `projectile` module; the classification stays
+/// private to the FX layer.
+pub(in crate::fx) fn classify_report(report: Option<&HitReport>) -> Vec<ClassifiedPop> {
     // A round with no report at all (a geometry-only message) is a clean miss — no pops.
     let Some(report) = report else {
         return Vec::new();

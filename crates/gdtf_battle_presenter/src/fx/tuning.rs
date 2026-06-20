@@ -153,6 +153,74 @@ impl Default for ImpactFrameSeconds {
     }
 }
 
+/// How long one floating-combat-text (FCT) pop lives before it despawns, in SECONDS.
+///
+/// A pop rises + fades across this whole window and despawns the moment its clock
+/// finishes. GTW-327 RE-TUNE: the migrated default is `1.5` s — a readable window
+/// (the original `0.6` s faded too fast to read) — and, now that it is a hot-reloadable
+/// [`FxTuning`] field, the user dials it live in `fx_tuning.ron` without a rebuild. The
+/// live per-pop clock is a separate concern
+/// ([`FloatingCombatText`](super::fct::FloatingCombatText)); this is the tunable lifetime
+/// it runs for.
+///
+/// A named newtype over the `f32` seconds (`.claude/rules/no-bare-types.md`): the inner
+/// is PRIVATE, read through [`Deref`] and built through [`new`](Self::new) / [`Default`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct FctTtlSeconds(f32);
+
+impl FctTtlSeconds {
+    /// The GTW-327 re-tuned default: `1.5` s — a window long enough to read (the original
+    /// `0.6` s faded too fast); RON-tunable so the user can dial it live.
+    pub const DEFAULT: f32 = 1.5;
+
+    /// Build a pop-lifetime in seconds.
+    #[must_use]
+    pub const fn new(seconds: f32) -> Self {
+        Self(seconds)
+    }
+}
+
+impl Default for FctTtlSeconds {
+    fn default() -> Self {
+        Self(Self::DEFAULT)
+    }
+}
+
+/// How fast a floating-combat-text (FCT) pop ASCENDS, in world px per second.
+///
+/// The pop's `y` grows by this × elapsed life each frame — a legible drift upward
+/// without flying off the unit. The default `40` px/s lifts the pop a few cells over the
+/// (now `1.5` s) lifetime, a slow, readable climb that does not overshoot the cell it is
+/// reporting on. Now a hot-reloadable [`FxTuning`] field so the user tunes the climb live.
+///
+/// A named newtype over the `f32` px/sec (`.claude/rules/no-bare-types.md`): the inner is
+/// PRIVATE, read through [`Deref`] and built through [`new`](Self::new) / [`Default`]. The
+/// live per-pop ascent state IS the separate
+/// [`FloatingCombatText`](super::fct::FloatingCombatText); this is the tunable rate it
+/// advances by.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct FctRiseRate(f32);
+
+impl FctRiseRate {
+    /// The default ascent speed — `40` px/s; a slow, readable climb that, across the
+    /// re-tuned `1.5` s lifetime, drifts the pop a few cells up without overshooting.
+    pub const DEFAULT: f32 = 40.0;
+
+    /// Build a rise rate in world px per second.
+    #[must_use]
+    pub const fn new(px_per_second: f32) -> Self {
+        Self(px_per_second)
+    }
+}
+
+impl Default for FctRiseRate {
+    fn default() -> Self {
+        Self(Self::DEFAULT)
+    }
+}
+
 /// The HOT-RELOADABLE firing-FX tuning table — the four TRAVEL-slice tuning numbers,
 /// loaded from `assets/tiles/fx_tuning.ron` and read live by the projectile + impact
 /// systems.
@@ -183,6 +251,10 @@ pub struct FxTuning {
     pub inter_shot_seconds:    InterShotSeconds,
     /// The per-impact-frame hold (seconds).
     pub impact_frame_seconds:  ImpactFrameSeconds,
+    /// The floating-combat-text pop lifetime (seconds) — GTW-327 re-tune to a readable window.
+    pub fct_ttl_seconds:       FctTtlSeconds,
+    /// The floating-combat-text pop ascent speed (world px/sec).
+    pub fct_rise_rate:         FctRiseRate,
 }
 
 /// The path of the loose FX-tuning RON, relative to the asset source root.
@@ -308,7 +380,8 @@ pub fn redrive_fx_tuning_on_asset_event(
 #[cfg(test)]
 mod test {
     use super::{
-        FxTuning, ImpactFrameSeconds, InterShotSeconds, ProjectileDrawScale, ProjectileVelocity,
+        FctRiseRate, FctTtlSeconds, FxTuning, ImpactFrameSeconds, InterShotSeconds,
+        ProjectileDrawScale, ProjectileVelocity,
     };
 
     /// The shipped `fx_tuning.ron` parses into `FxTuning` and carries every tuning value —
@@ -348,6 +421,14 @@ mod test {
             (*tuning.impact_frame_seconds - ImpactFrameSeconds::DEFAULT).abs() < f32::EPSILON,
             "the default impact-frame hold must be the TRAVEL-slice 0.08 s",
         );
+        assert!(
+            (*tuning.fct_ttl_seconds - FctTtlSeconds::DEFAULT).abs() < f32::EPSILON,
+            "the default FCT lifetime must be the GTW-327 re-tuned readable window",
+        );
+        assert!(
+            (*tuning.fct_rise_rate - FctRiseRate::DEFAULT).abs() < f32::EPSILON,
+            "the default FCT rise rate must be the shipped ascent speed",
+        );
     }
 
     /// A PARTIAL `.ron` (one field authored, the rest omitted) parses, taking the authored
@@ -380,6 +461,14 @@ mod test {
         assert!(
             (*tuning.impact_frame_seconds - ImpactFrameSeconds::DEFAULT).abs() < f32::EPSILON,
             "an omitted impact hold must fall back to the default",
+        );
+        assert!(
+            (*tuning.fct_ttl_seconds - FctTtlSeconds::DEFAULT).abs() < f32::EPSILON,
+            "an omitted FCT lifetime must fall back to the default",
+        );
+        assert!(
+            (*tuning.fct_rise_rate - FctRiseRate::DEFAULT).abs() < f32::EPSILON,
+            "an omitted FCT rise rate must fall back to the default",
         );
     }
 }

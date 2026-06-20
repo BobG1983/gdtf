@@ -46,9 +46,10 @@
 //! Param-only throughout (`bevy-traps.md` #7).
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use gdtf_battle_sim::{DamageType, ShotFired, ShotKind};
+use gdtf_battle_sim::{Cell, DamageType, Level, Position, ShotFired, ShotKind};
 
 use super::{
+    fct::{ClassifiedPop, FctStackIndex, anchor_cell, classify_report, spawn_floating_text},
     readers::fx_sprite_scaled,
     roles::{EffectRoles, nearest_direction_index},
     tuning::{FxTuning, ProjectileVelocity},
@@ -79,6 +80,13 @@ pub struct ShotProjectile;
 /// covered along the `from → to` ray so far — advanced by `*velocity × delta` each
 /// frame once launched. The launch timer + traveled distance mutate ONLY through
 /// [`advance`](ProjectileTravel::advance) (no `DerefMut`).
+///
+/// GTW-327 (slice 2): the bolt ALSO carries this round's classified floating-combat-text
+/// `pops` (the [`ClassifiedPop`] list [`classify_report`] built from the shot's
+/// [`HitReport`](gdtf_battle_sim::HitReport) — empty for a clean miss) + the `anchor`
+/// `(cell, level)` the pops sit on ([`anchor_cell`] of the hit ganger at the SHOT, not the
+/// impact cell), so each shot's numbers ride its own staggered flight and appear when THAT
+/// shot's impact lands — handed to the arrival [`PendingImpact`].
 #[derive(Component, Debug, Clone)]
 pub struct ProjectileTravel {
     /// The muzzle world point the flight starts at (`traveled = 0`).
@@ -101,11 +109,20 @@ pub struct ProjectileTravel {
     /// `*velocity × delta` each launched frame; arrival is when it reaches the full
     /// `from → to` distance.
     traveled: f32,
+    /// This shot's classified floating-combat-text pops (GTW-327) — handed to the arrival
+    /// [`PendingImpact`] so [`animate_impact`](super::impact::animate_impact) spawns them
+    /// when THIS shot's impact lands (staggered with the bolt). Empty for a clean miss.
+    pops:     Vec<ClassifiedPop>,
+    /// The `(cell, level)` this shot's pops anchor over (GTW-327) — captured at the SHOT
+    /// ([`anchor_cell`], the hit ganger's cell, not the impact cell) and threaded through so
+    /// the pops sit on the body that was hit.
+    anchor:   (Cell, Level),
 }
 
 impl ProjectileTravel {
     /// Start a fresh projectile flight from `from` toward `to` carrying `damage`, flying at
-    /// `velocity`, after a `launch_delay` hold at the muzzle.
+    /// `velocity`, after a `launch_delay` hold at the muzzle, carrying this shot's classified
+    /// floating-combat-text `pops` anchored over `anchor`.
     ///
     /// `velocity` is the hot-reloadable [`ProjectileVelocity`] the caller READ from the
     /// resident [`FxTuning`] resource — CAPTURED here so a later `.ron` edit re-tunes the
@@ -117,13 +134,24 @@ impl ProjectileTravel {
     /// [`TimerMode::Once`] clock; once it finishes the bolt flies at `*velocity` (px/sec)
     /// until it has covered the whole `from → to` distance, at which point it has arrived and
     /// is despawned.
+    ///
+    /// `pops` (GTW-327) is this round's [`ClassifiedPop`] list ([`classify_report`] of the
+    /// shot's report — empty for a clean miss) and `anchor` the `(cell, level)` they sit on
+    /// ([`anchor_cell`]); they are carried through to the arrival [`PendingImpact`] so the
+    /// numbers appear when THIS shot's impact lands rather than on the drain frame.
+    ///
+    /// `pub(in crate::fx)`: it takes the FX-internal [`ClassifiedPop`], so it stays sealed to
+    /// the FX layer (the `spawn_shot_projectiles` caller + the in-crate flight tests construct
+    /// it; nothing outside `crate::fx` needs to build a flight).
     #[must_use]
-    pub fn new(
+    pub(in crate::fx) fn new(
         from: Vec3,
         to: Vec3,
         damage: DamageType,
         velocity: ProjectileVelocity,
         launch_delay: std::time::Duration,
+        pops: Vec<ClassifiedPop>,
+        anchor: (Cell, Level),
     ) -> Self {
         Self {
             from,
@@ -132,6 +160,8 @@ impl ProjectileTravel {
             launch: Timer::new(launch_delay, TimerMode::Once),
             velocity,
             traveled: 0.0,
+            pops,
+            anchor,
         }
     }
 
@@ -198,26 +228,54 @@ impl ProjectileTravel {
     pub const fn damage(&self) -> DamageType {
         self.damage
     }
+
+    /// This shot's classified floating-combat-text pops (GTW-327), moved out at arrival so the
+    /// [`PendingImpact`] owns them (the bolt is despawned the same frame, so the [`Vec`] is not
+    /// needed on it afterward). Empty for a clean miss.
+    #[must_use]
+    fn take_pops(&mut self) -> Vec<ClassifiedPop> {
+        std::mem::take(&mut self.pops)
+    }
+
+    /// The `(cell, level)` this shot's pops anchor over (GTW-327) — handed to the arrival
+    /// [`PendingImpact`].
+    #[must_use]
+    const fn anchor(&self) -> (Cell, Level) {
+        self.anchor
+    }
 }
 
 /// A projectile has ARRIVED — the SEAM FX-B reads to play the 3-frame impact.
 ///
 /// [`advance_projectiles`] spawns one of these (a bare entity carrying ONLY this
-/// component) at the arrival point the instant a projectile despawns; FX-B's
+/// component) at the arrival point the instant a projectile despawns;
 /// [`animate_impact`](super::impact::animate_impact) queries for them and steps the
-/// [`damage`](PendingImpact::damage) type's 3 impact frames there before despawning
-/// the impact entity. FX-A defines + spawns this so FX-B's `impact.rs` only fills
-/// the animation body (no `mod.rs` collision).
+/// [`damage`](PendingImpact::damage) type's 3 impact frames there (AND, GTW-327, spawns this
+/// shot's floating-combat-text pops at the [`anchor`](PendingImpact::anchor)) before despawning
+/// the impact entity. FX-A defines + spawns this so FX-B's `impact.rs` only fills the animation
+/// body (no `mod.rs` collision).
 ///
 /// A NAMED grouping component: [`at`](PendingImpact::at) is the impact world point
 /// (the [`Vec3`](bevy::math::Vec3) carve-out — framework geometry), `damage` the
-/// shot's [`DamageType`] (so FX-B picks the matching impact strip).
-#[derive(Component, Debug, Clone, Copy, PartialEq)]
+/// shot's [`DamageType`] (so FX-B picks the matching impact strip), and — GTW-327 —
+/// [`pops`](PendingImpact::pops) the shot's classified floating-combat-text pops +
+/// [`anchor`](PendingImpact::anchor) the `(cell, level)` they sit on, so the numbers appear at
+/// THIS shot's staggered impact. Not [`Copy`] (it owns the pop [`Vec`]); the
+/// [`fields`](PendingImpact) are `pub(in crate::fx)` so `animate_impact` reads + consumes them
+/// while the type stays sealed to the FX layer.
+#[derive(Component, Debug, Clone)]
 pub struct PendingImpact {
     /// The world point the projectile arrived at — where the impact animation plays.
-    pub at:     Vec3,
+    pub(in crate::fx) at:     Vec3,
     /// The shot's damage type — selects which 3-frame impact strip FX-B animates.
-    pub damage: DamageType,
+    pub(in crate::fx) damage: DamageType,
+    /// This shot's classified floating-combat-text pops (GTW-327) — spawned by
+    /// [`animate_impact`](super::impact::animate_impact) at the [`anchor`](PendingImpact::anchor)
+    /// when the impact lands. Empty for a clean miss (no pops).
+    pub(in crate::fx) pops:   Vec<ClassifiedPop>,
+    /// The `(cell, level)` this shot's pops anchor over (GTW-327) — the hit ganger's cell at
+    /// the SHOT (not the impact cell), threaded through the staggered flight.
+    pub(in crate::fx) anchor: (Cell, Level),
 }
 
 /// `Update` (`PresenterSystems::Draw`): spawn the traveling DIRECTIONAL projectile per
@@ -262,10 +320,30 @@ pub struct PendingImpact {
 /// `assets/tiles/fx_tuning.ron` re-tunes the next shot's size / speed / spacing without a
 /// rebuild.
 ///
+/// GTW-327 (slice 2): each round's classified floating-combat-text pops are computed HERE
+/// ([`classify_report`] of its [`HitReport`](gdtf_battle_sim::HitReport)) + their anchor cell
+/// ([`anchor_cell`], the hit ganger's [`Position`](gdtf_battle_sim::Position)) and threaded INTO
+/// the [`ProjectileTravel`], so each shot's numbers ride its own STAGGERED flight and appear
+/// when THAT shot's impact lands ([`animate_impact`](super::impact::animate_impact)) — not all
+/// at once on this drain frame. The coverage guarantee: every round that classifies to ≥ 1 pop
+/// (a connecting shot) spawns a projectile that always arrives + spawns a [`PendingImpact`]
+/// carrying those pops; the ONE path that drops a projectile (a missing effects sheet —
+/// `fx_sprite_scaled` returns [`None`]) FALLS BACK to spawning that shot's pops IMMEDIATELY
+/// ([`spawn_floating_text`]) so no connecting shot's FCT is ever lost (the [`Text2d`] pops need
+/// no effects atlas, only the projectile sprite does). A clean miss classifies to no pops, so it
+/// rides an empty-pop bolt (still a tracer, no numbers).
+///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`Res<TopDownAtlases>`], [`Res<EffectRoles>`],
 /// [`Res<FxTuning>`], [`Res<GangerSprites>`] + the read-only ganger
-/// `Query<&Transform, With<GangerSprite>>` (for the hit-entity aim lookup), and
-/// [`MessageReader<ShotFired>`].
+/// `Query<&Transform, With<GangerSprite>>` (for the hit-entity aim lookup), the read-only
+/// `Query<&Position>` (GTW-327, for the pop anchor cell), and [`MessageReader<ShotFired>`].
+#[expect(
+    clippy::too_many_arguments,
+    reason = "each is a distinct Bevy system param: the spawn Commands, the three data tables \
+              (atlases / effect roles / fx tuning), the two aim lookups (ganger sprite map + \
+              its transforms), the GTW-327 anchor Query<&Position>, and the ShotFired reader — \
+              none can be merged without obscuring the wiring; the System fn IS the bundle"
+)]
 pub fn spawn_shot_projectiles(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
@@ -273,6 +351,7 @@ pub fn spawn_shot_projectiles(
     tuning: Res<FxTuning>,
     ganger_sprites: Res<GangerSprites>,
     ganger_transforms: Query<&Transform, With<GangerSprite>>,
+    positions: Query<&Position>,
     mut shots: MessageReader<ShotFired>,
 ) {
     // The hot-reloadable tuning the whole volley reads (captured per spawn so a later edit
@@ -291,15 +370,22 @@ pub fn spawn_shot_projectiles(
         let target_world = ganger_hit_world(msg.kind, &ganger_sprites, &ganger_transforms)
             .unwrap_or_else(|| cell_to_world(msg.impact_cell, msg.impact_level));
 
+        // GTW-327: classify this shot's FCT pops + their anchor cell HERE (at the shot), to
+        // thread through the staggered flight so the numbers land with this bolt's impact.
+        let pops = classify_report(msg.report.as_ref());
+        let anchor = anchor_cell(msg, &positions);
+
         // The per-damage-type row -> its 8-way rose -> the tile for this heading.
         let fx = roles.fx_for(msg.damage);
         let dir_index = nearest_direction_index(msg.trajectory.vec());
-        let Some(tile) = fx.directions.get(dir_index) else {
-            // Unreachable for a well-formed table (dir_index is in 0..8), but a short
-            // strip degrades to no projectile rather than panicking.
-            continue;
-        };
-        let Some(sprite) = fx_sprite_scaled(*tile, Color::WHITE, draw_scale, &atlases) else {
+        let tile = fx.directions.get(dir_index);
+        let sprite = tile.and_then(|t| fx_sprite_scaled(*t, Color::WHITE, draw_scale, &atlases));
+        let Some(sprite) = sprite else {
+            // No projectile sprite (no effects sheet, or a short strip) — there is no bolt to
+            // carry the pops to an impact, so spawn this shot's FCT pops IMMEDIATELY rather
+            // than silently dropping them (the Text2d pops need no effects atlas). Coverage
+            // fallback: a connecting shot ALWAYS gets its numbers.
+            spawn_pops_at_anchor(&mut commands, &pops, anchor, &tuning);
             continue;
         };
         // This round's launch delay = its read-order index × the inter-shot step (round 0 = 0,
@@ -320,9 +406,43 @@ pub fn spawn_shot_projectiles(
                 msg.damage,
                 velocity,
                 launch_delay,
+                pops,
+                anchor,
             ),
             ShotProjectile,
         ));
+    }
+}
+
+/// Spawn one shot's classified floating-combat-text `pops` over `anchor` IMMEDIATELY, each at
+/// the next per-shot vertical stack slot so multiple pops of the one shot fan out.
+///
+/// The GTW-327 COVERAGE FALLBACK (and the shared spawn used at the impact, see
+/// [`animate_impact`](super::impact::animate_impact)): when a shot has no projectile to thread
+/// its pops through (a missing effects sheet — the [`Text2d`] pops still need no atlas), this
+/// spawns them right away so a connecting shot never loses its numbers. The pops fan DOWN by
+/// their per-shot [`FctStackIndex`] (`0, 1, 2, …`) so the HP number / wound tag / penetration /
+/// DOWN of one shot stack rather than overlap. `ttl` / `rise` come from the resident
+/// hot-reloadable [`FxTuning`].
+pub(in crate::fx) fn spawn_pops_at_anchor(
+    commands: &mut Commands,
+    pops: &[ClassifiedPop],
+    anchor: (Cell, Level),
+    tuning: &FxTuning,
+) {
+    let (cell, level) = anchor;
+    for (slot, pop) in pops.iter().enumerate() {
+        spawn_floating_text(
+            commands,
+            pop.text().clone(),
+            pop.color(),
+            pop.emphasis(),
+            cell,
+            level,
+            FctStackIndex::new(slot),
+            tuning.fct_ttl_seconds,
+            tuning.fct_rise_rate,
+        );
     }
 }
 
@@ -393,10 +513,14 @@ pub fn advance_projectiles(
         visibility.set_if_neq(Visibility::Visible);
         transform.translation = travel.position();
         if arrived {
-            // Hand the impact off to FX-B at the arrival point, then despawn the bolt.
+            // Hand the impact off to FX-B at the arrival point, carrying this shot's classified
+            // FCT pops + their anchor (GTW-327) so the numbers appear with THIS bolt's impact,
+            // then despawn the bolt (its pops are MOVED into the impact, not duplicated).
             commands.spawn(PendingImpact {
                 at:     travel.arrival(),
                 damage: travel.damage(),
+                anchor: travel.anchor(),
+                pops:   travel.take_pops(),
             });
             commands.entity(entity).despawn();
         }
