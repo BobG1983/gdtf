@@ -115,7 +115,7 @@ pub struct GangerSpawn {
     /// roll's one-sided tail (E3.0 / GTW-182).
     pub luck:       Luck,
     /// The ganger's **armor KEY** — the filename stem of an `assets/armor/*.armor.ron`
-    /// (e.g. `"flak"`), resolved against the
+    /// (e.g. `"flak_vest"`), resolved against the
     /// [`ArmorRegistry`](crate::armor::ArmorRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) into the
     /// [`ArmorSpec`](crate::armor::ArmorSpec) that seeds the spawned entity's
@@ -126,7 +126,7 @@ pub struct GangerSpawn {
     /// error (no panic).
     pub armor:      ArmorName,
     /// The ganger's **weapon KEY** — the filename stem of an `assets/weapons/*.ron`
-    /// (e.g. `"autogun"`), resolved against the
+    /// (e.g. `"stub_pistol"`), resolved against the
     /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) into the
     /// [`WeaponBundle`](crate::weapon::WeaponBundle) inserted onto the

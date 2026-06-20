@@ -1,0 +1,22 @@
+// Flechette slinger — flings a fan of razored darts that tear and tumble through
+// soft tissue. Ragged, rending wounds; cruel to anything lightly armored. No
+// trigger discipline here: it only ever empties a screaming spray, never a tap.
+(
+    base_spread:   0.10,
+    accuracy:      1.0,
+    kickback:      0.05,
+    fatal_bias:    0.0,
+    damage:        12,
+    punch:         5,
+    shred:         2,
+    damage_type:   Rend,
+    magazine: (
+        size:      12,
+        reload_tu: 12,
+    ),
+    // Always auto-firing — its only mode is the full spray.
+    fire_mode: [
+        (kind: Full, cone_mult: 1.7, tu_percent: 0.60, shots: 6),
+    ],
+    stable: false,
+)

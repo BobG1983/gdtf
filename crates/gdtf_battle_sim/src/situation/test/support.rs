@@ -82,31 +82,31 @@ pub(super) fn test_registry() -> WeaponRegistry {
 /// `include_str!` pattern the shipped situation uses — the REAL on-disk authored
 /// weapons (keyed by their filename stems), so an AC5 regression in either file
 /// turns the shipped-setup test red.
-const SHIPPED_AUTOGUN_RON: &str = include_str!(concat!(
+const SHIPPED_STUB_PISTOL_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/weapons/autogun.weapon.ron"
+    "/../../assets/weapons/stub_pistol.weapon.ron"
 ));
-const SHIPPED_LASGUN_RON: &str = include_str!(concat!(
+const SHIPPED_LAS_CARBINE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/weapons/lasgun.weapon.ron"
+    "/../../assets/weapons/las_carbine.weapon.ron"
 ));
 
 /// Build a registry from the shipped weapon files, keyed by their filename stems —
 /// the real-asset registry the shipped `skirmish.ron` setup resolves against (AC5).
 /// Returns `None` (assert-fail) if either file fails to parse (no panic in tests).
 pub(super) fn shipped_registry() -> Option<WeaponRegistry> {
-    let autogun = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON);
-    let lasgun = ron::de::from_str::<WeaponSpec>(SHIPPED_LASGUN_RON);
+    let stub_pistol = ron::de::from_str::<WeaponSpec>(SHIPPED_STUB_PISTOL_RON);
+    let las_carbine = ron::de::from_str::<WeaponSpec>(SHIPPED_LAS_CARBINE_RON);
     assert!(
-        autogun.is_ok() && lasgun.is_ok(),
-        "both shipped weapon files must parse: autogun={autogun:?} lasgun={lasgun:?}",
+        stub_pistol.is_ok() && las_carbine.is_ok(),
+        "both shipped weapon files must parse: stub_pistol={stub_pistol:?} las_carbine={las_carbine:?}",
     );
-    let (Ok(autogun), Ok(lasgun)) = (autogun, lasgun) else {
+    let (Ok(stub_pistol), Ok(las_carbine)) = (stub_pistol, las_carbine) else {
         return None;
     };
     Some(WeaponRegistry::new([
-        (WeaponName::new("autogun".to_owned()), autogun),
-        (WeaponName::new("lasgun".to_owned()), lasgun),
+        (WeaponName::new("stub_pistol".to_owned()), stub_pistol),
+        (WeaponName::new("las_carbine".to_owned()), las_carbine),
     ]))
 }
 
@@ -114,13 +114,13 @@ pub(super) fn shipped_registry() -> Option<WeaponRegistry> {
 /// `include_str!` pattern the shipped weapons use — the REAL on-disk authored armor
 /// suits (keyed by their filename stems, minus the `.armor` infix), so a GTW-269
 /// regression in either file turns the shipped-setup test red.
-const SHIPPED_FLAK_RON: &str = include_str!(concat!(
+const SHIPPED_FLAK_VEST_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/armor/flak.armor.ron"
+    "/../../assets/armor/flak_vest.armor.ron"
 ));
-const SHIPPED_PLATED_RON: &str = include_str!(concat!(
+const SHIPPED_CARAPACE_PLATE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/armor/plated.armor.ron"
+    "/../../assets/armor/carapace_plate.armor.ron"
 ));
 
 /// Build an armor registry from the shipped armor files, keyed by their filename stems
@@ -129,18 +129,18 @@ const SHIPPED_PLATED_RON: &str = include_str!(concat!(
 /// [`shipped_registry`]). Returns `None` (assert-fail) if either file fails to parse
 /// (no panic in tests).
 pub(super) fn shipped_armor_registry() -> Option<ArmorRegistry> {
-    let flak = ron::de::from_str::<ArmorSpec>(SHIPPED_FLAK_RON);
-    let plated = ron::de::from_str::<ArmorSpec>(SHIPPED_PLATED_RON);
+    let flak_vest = ron::de::from_str::<ArmorSpec>(SHIPPED_FLAK_VEST_RON);
+    let carapace_plate = ron::de::from_str::<ArmorSpec>(SHIPPED_CARAPACE_PLATE_RON);
     assert!(
-        flak.is_ok() && plated.is_ok(),
-        "both shipped armor files must parse: flak={flak:?} plated={plated:?}",
+        flak_vest.is_ok() && carapace_plate.is_ok(),
+        "both shipped armor files must parse: flak_vest={flak_vest:?} carapace_plate={carapace_plate:?}",
     );
-    let (Ok(flak), Ok(plated)) = (flak, plated) else {
+    let (Ok(flak_vest), Ok(carapace_plate)) = (flak_vest, carapace_plate) else {
         return None;
     };
     Some(ArmorRegistry::new([
-        (ArmorName::new("flak".to_owned()), flak),
-        (ArmorName::new("plated".to_owned()), plated),
+        (ArmorName::new("flak_vest".to_owned()), flak_vest),
+        (ArmorName::new("carapace_plate".to_owned()), carapace_plate),
     ]))
 }
 

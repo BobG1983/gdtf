@@ -13,8 +13,8 @@
 //!    narrow within the item column. This tightens its left/right padding to [`ITEM_PAD_VW`] so
 //!    the item buttons fill more of the column (the top/bottom padding is left at the theme value).
 //! 2. **Weapon name / magazine + item / reload label font** — those labels (`Themed(Text)` /
-//!    `Themed(ButtonText)`) render at the theme's 18 pt, at which a name like "autogun" clipped to
-//!    "autogur" in the narrow Combined panel. This shrinks them to [`WEAPON_LABEL_PT`] so the
+//!    `Themed(ButtonText)`) render at the theme's 18 pt, at which a name like "`stub_pistol`" clipped
+//!    to "`stub_pisto`" in the narrow Combined panel. This shrinks them to [`WEAPON_LABEL_PT`] so the
 //!    captions fit without clipping.
 //!
 //! Each write is gated on a real change (change-detection hygiene), so once the freshly-spawned
@@ -49,7 +49,7 @@ struct ItemPadVw(f32);
 const ITEM_PAD_VW: ItemPadVw = ItemPadVw(0.3125);
 
 /// The font size (pt) the weapon name / magazine + item / reload labels are shrunk to so a name
-/// like "autogun" fits the narrow Combined panel without clipping.
+/// like "`stub_pistol`" fits the narrow Combined panel without clipping.
 ///
 /// A named newtype over the size rather than a bare `f32` (no-bare-types rule): a presentation
 /// font size, the `ControlLabelPt` precedent. Smaller than the theme's 18 pt; applied per-label

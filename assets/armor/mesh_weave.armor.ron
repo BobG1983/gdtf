@@ -1,0 +1,12 @@
+// mesh_weave — a reinforced undersuit worn close to the skin. A flexible woven
+// layer with no weak seam and no standout stat: even coverage, steady endurance
+// that runs a notch above baseline, the honest all-rounder that holds together
+// while flashier suits give out.
+(
+    head:      (floor: 1, protection: 6, integrity: 60, hardness: 3, armor_type: Reinforced),
+    torso:     (floor: 1, protection: 8, integrity: 70, hardness: 3, armor_type: Reinforced),  // most hits land here
+    left_arm:  (floor: 0, protection: 4, integrity: 55, hardness: 2, armor_type: Reinforced),
+    right_arm: (floor: 0, protection: 4, integrity: 55, hardness: 2, armor_type: Reinforced),
+    left_leg:  (floor: 0, protection: 5, integrity: 60, hardness: 2, armor_type: Reinforced),
+    right_leg: (floor: 0, protection: 5, integrity: 60, hardness: 2, armor_type: Reinforced),
+)

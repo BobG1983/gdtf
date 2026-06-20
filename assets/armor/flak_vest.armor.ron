@@ -1,0 +1,12 @@
+// flak_vest — the baseline light combat suit every ganger trusts. Flexible plates
+// soak a modest punch and let you keep moving, but they're leaky: the weave always
+// lets a bruise through. The reference budget the matchup wheel is measured against —
+// the Flak armor_type places it, and so does that stubborn floor that never reads zero.
+(
+    head:      (floor: 4, protection: 6, integrity: 50, hardness: 3, armor_type: Flak),
+    torso:     (floor: 5, protection: 8, integrity: 60, hardness: 3, armor_type: Flak),  // most hits land here — highest leak-through on the wheel
+    left_arm:  (floor: 3, protection: 4, integrity: 45, hardness: 2, armor_type: Flak),  // even the limbs always feel it
+    right_arm: (floor: 3, protection: 4, integrity: 45, hardness: 2, armor_type: Flak),
+    left_leg:  (floor: 3, protection: 5, integrity: 50, hardness: 2, armor_type: Flak),
+    right_leg: (floor: 3, protection: 5, integrity: 50, hardness: 2, armor_type: Flak),
+)

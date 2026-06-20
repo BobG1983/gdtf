@@ -26,7 +26,7 @@ fn each_sub_value_is_a_component() {
     let entity = world
         .spawn((
             Weapon,
-            WeaponName::new("autogun".to_owned()),
+            WeaponName::new("stub_pistol".to_owned()),
             BaseSpread::new(0.25),
             Accuracy::new(1.3),
             Kickback::new(0.4),
@@ -53,7 +53,7 @@ fn each_sub_value_is_a_component() {
         return;
     };
     assert_eq!(
-        &**name, "autogun",
+        &**name, "stub_pistol",
         "the weapon name round-trips through the ECS"
     );
     let Some(base) = world.get::<BaseSpread>(entity) else {

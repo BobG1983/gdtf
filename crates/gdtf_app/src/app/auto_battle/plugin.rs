@@ -213,7 +213,7 @@ crate::support_item! {
     /// under `DefaultPlugins`: the empty situation won the GTW-261 gate race (auto-battle
     /// dropped into an empty battlefield), and the empty registry made `resolve_weapons`
     /// skip loading `assets/weapons/*.weapon.ron` entirely — so battle setup's
-    /// `weapons.spec("autogun")` returned `None` and aborted with
+    /// `weapons.spec("stub_pistol")` returned `None` and aborted with
     /// [`WeaponNotFound`](gdtf_battle_sim::situation::BattleSetupError), never reaching
     /// `BattleRunning` (a black screen). Gating BOTH empty seeds on the [`AssetServer`]
     /// being ABSENT (SYMMETRIC seeds) means: with an asset stack present (the real GUI

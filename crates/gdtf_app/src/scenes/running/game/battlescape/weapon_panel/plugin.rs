@@ -82,7 +82,7 @@ impl Plugin for GameBattleScapeWeaponPanelScenePlugin {
         )
         // GTW-298 (screenshot review 2026-06-18): the post-theme fit pass — tighten the Item
         // Panel's horizontal padding (so the item buttons are wider) and shrink the cluster's
-        // labels (so a weapon name like "autogun" fits the narrow Combined panel without
+        // labels (so a weapon name like "stub_pistol" fits the narrow Combined panel without
         // clipping). Ordered `.after(UiSystems::ApplyTheme)` so it runs after the theme pass
         // re-applies the theme-owned panel padding + label font (which it then locally
         // overrides for the cluster's own widgets only); same live-battle gate.

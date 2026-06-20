@@ -29,8 +29,8 @@
             shooting:   4.0,          // Shooting stat — ranged-to-hit skill (feeds shot concentration)
             toughness:  3.0,          // Toughness — defender's severity-roll mitigation
             luck:       1.0,          // Luck — directional fortune shaping the severity roll's tail
-            armor:      "flak",       // armor KEY — resolves to assets/armor/flak.armor.ron at setup (pieces authored there, GTW-269)
-            weapon:     "autogun",    // weapon KEY — resolves to assets/weapons/autogun.ron at setup
+            armor:      "flak_vest",  // armor KEY — resolves to assets/armor/flak_vest.armor.ron at setup (pieces authored there, GTW-269)
+            weapon:     "stub_pistol", // weapon KEY — resolves to assets/weapons/stub_pistol.weapon.ron at setup
         ),
         // --- Gang 1: a crouching defender across the floor, facing west. ---
         (
@@ -50,8 +50,8 @@
             shooting:   5.0,          // Shooting stat
             toughness:  4.0,          // Toughness
             luck:       2.0,          // Luck
-            armor:      "plated",     // armor KEY — resolves to assets/armor/plated.armor.ron at setup (pieces authored there, GTW-269)
-            weapon:     "lasgun",     // weapon KEY — resolves to assets/weapons/lasgun.ron at setup
+            armor:      "carapace_plate", // armor KEY — resolves to assets/armor/carapace_plate.armor.ron at setup (pieces authored there, GTW-269)
+            weapon:     "las_carbine", // weapon KEY — resolves to assets/weapons/las_carbine.weapon.ron at setup
         ),
                 (
             at:         (cell: (x: 12, y: 12), level: 0),  // (cell, level) it spawns at
@@ -70,8 +70,8 @@
             shooting:   5.0,          // Shooting stat
             toughness:  4.0,          // Toughness
             luck:       2.0,          // Luck
-            armor:      "plated",     // armor KEY — resolves to assets/armor/plated.armor.ron at setup (pieces authored there, GTW-269)
-            weapon:     "lasgun",     // weapon KEY — resolves to assets/weapons/lasgun.ron at setup
+            armor:      "carapace_plate", // armor KEY — resolves to assets/armor/carapace_plate.armor.ron at setup (pieces authored there, GTW-269)
+            weapon:     "las_carbine", // weapon KEY — resolves to assets/weapons/las_carbine.weapon.ron at setup
         ),
     ],
     // The authored walls — solid fixed geometry on the ground floor. Each is a

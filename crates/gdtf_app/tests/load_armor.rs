@@ -17,13 +17,17 @@
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace
 //!   `assets/`. The good path loads `assets/armor/*.armor.ron` into an `ArmorRegistry`
-//!   keyed by file stem (`flak`, `plated`).
+//!   keyed by file stem (`flak_vest`, `carapace_plate`).
 //!
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance criterion
-//! so a regression turns the test red. VALUE-AGNOSTIC throughout — no pinned armor
-//! magnitude is ever asserted (only the registry's PRESENCE + that it is keyed by the
-//! authored filename stems), so a tuning edit to an armor `.ron` never reddens these
-//! tests.
+//! so a regression turns the test red. They are VALUE-AGNOSTIC (only the registry's
+//! PRESENCE + that it is keyed by the authored filename stems), so a tuning edit never
+//! reddens them — the authored armor magnitudes are tuning DATA, NOT pinned by tests
+//! (the brittle-test rule; see [`ArmorSpec`](gdtf_battle_sim::armor::ArmorSpec)). The
+//! field-to-slot conversion MECHANISM is covered by the fixture-based sim round-trip
+//! (`armor::test::armor_spec_round_trips_and_registry_resolves_by_name`); this harness
+//! proves the REAL `assets/armor/` folder loads through the Load code path and that its
+//! authored KEYS resolve.
 
 use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
 use gdtf_battle_sim::{
@@ -116,7 +120,7 @@ fn armor_loader_no_ops_cleanly_without_asset_server() {
 ///
 /// Pin: this fails if the transition ever fired without the armor registry present
 /// (regressing the GTW-269 gate clause), which would let `Load` exit before the armor
-/// folder resolved.
+/// folder resolved (so `spec("flak_vest")` could return `None` at battle setup).
 #[test]
 fn load_does_not_leave_without_an_armor_registry() {
     let mut app = GdtfTestAppBuilder::new()
@@ -150,15 +154,18 @@ fn load_does_not_leave_without_an_armor_registry() {
     );
 }
 
-/// AC (tier b) — with a real `AssetServer` rooted at the workspace `assets/`, entering
-/// `Load` loads `assets/armor/*.armor.ron` and builds an `ArmorRegistry` keyed by each
-/// armor file's filename stem (with the `.armor` infix stripped). Proves the folder
-/// loaded into the registry keyed by filename (the authored `flak` / `plated` keys
-/// resolve), and that the Load gate waited for it (the machine reaches Intro with a
-/// registry present).
+/// AC (tier b) / GTW-270 AC — with a real `AssetServer` rooted at the workspace
+/// `assets/`, entering `Load` loads `assets/armor/*.armor.ron` and builds an
+/// `ArmorRegistry` keyed by each armor file's filename stem (with the `.armor` infix
+/// stripped). Proves the folder loaded into the registry keyed by filename (the
+/// canonical `flak_vest` / `carapace_plate` keys resolve), and that the Load gate
+/// waited for it (the machine reaches Intro with a registry present).
 ///
-/// Value-agnostic: it asserts the registry is PRESENT, non-empty, and resolves the
-/// authored STEMS — never a pinned armor magnitude.
+/// GTW-270: this asserts that the REAL armor folder loads + each authored KEY resolves
+/// to `Some(spec)` through the Load code path (mirroring the GTW-257/269 precedent). It
+/// does NOT pin any authored magnitude — those are tuning DATA (the brittle-test rule);
+/// the field-to-slot conversion mechanism is covered by the fixture-based sim round-trip
+/// (`armor::test::armor_spec_round_trips_and_registry_resolves_by_name`).
 #[test]
 fn real_asset_resolves_armor_registry_keyed_by_filename() {
     let mut app = GdtfLoadTestAppBuilder::new()
@@ -169,22 +176,25 @@ fn real_asset_resolves_armor_registry_keyed_by_filename() {
     // not a fixed frame count. Cap is a safety net (GTW-305).
     advance_until_resource_exists::<ArmorRegistry>(&mut app, LOAD_SAFETY_NET);
 
-    // The registry is keyed by the authored filename stems (presence, not a value):
-    // `flak.armor.ron`'s stem `flak.armor` keys `flak`; `plated.armor.ron` keys `plated`.
+    // The registry is keyed by the authored filename stems (with the `.armor` infix
+    // stripped): `flak_vest.armor.ron` keys `flak_vest`; `carapace_plate.armor.ron` keys
+    // `carapace_plate`. Each authored key resolves to its loaded spec.
     if let Some(registry) = app.world().get_resource::<ArmorRegistry>() {
         assert!(
             !registry.is_empty(),
             "the resolved ArmorRegistry must carry the authored (non-empty) armor",
         );
         assert!(
-            registry.spec(&ArmorName::new("flak".to_owned())).is_some(),
-            "the registry must hold the `flak` armor (keyed by flak.armor.ron's stem)",
+            registry
+                .spec(&ArmorName::new("flak_vest".to_owned()))
+                .is_some(),
+            "the registry must hold the `flak_vest` armor (keyed by flak_vest.armor.ron's stem)",
         );
         assert!(
             registry
-                .spec(&ArmorName::new("plated".to_owned()))
+                .spec(&ArmorName::new("carapace_plate".to_owned()))
                 .is_some(),
-            "the registry must hold the `plated` armor (keyed by plated.armor.ron's stem)",
+            "the registry must hold the `carapace_plate` armor (keyed by carapace_plate.armor.ron's stem)",
         );
     }
 
@@ -226,7 +236,7 @@ fn real_asset_resolves_armor_registry_keyed_by_filename() {
 ///
 /// PIN: if the seed reverts to inserting `ArmorRegistry::default()` UNCONDITIONALLY,
 /// the registry is present from `Startup`, `poll_and_resolve` SKIPS `resolve_armor`
-/// (its `if !armor_present` guard), the registry stays empty, `spec("flak")` returns
+/// (its `if !armor_present` guard), the registry stays empty, `spec("flak_vest")` returns
 /// `None`, and this test goes red.
 #[test]
 fn seeded_startup_does_not_shadow_real_armor_resolution() {
@@ -255,14 +265,16 @@ fn seeded_startup_does_not_shadow_real_armor_resolution() {
             "the real folder resolve must populate the registry, not leave the empty seed",
         );
         assert!(
-            registry.spec(&ArmorName::new("flak".to_owned())).is_some(),
-            "the registry must hold `flak` — the empty seed must NOT have shadowed the resolve",
+            registry
+                .spec(&ArmorName::new("flak_vest".to_owned()))
+                .is_some(),
+            "the registry must hold `flak_vest` — the empty seed must NOT have shadowed the resolve",
         );
         assert!(
             registry
-                .spec(&ArmorName::new("plated".to_owned()))
+                .spec(&ArmorName::new("carapace_plate".to_owned()))
                 .is_some(),
-            "the resolved registry must also hold `plated` (the empty seed held neither)",
+            "the resolved registry must also hold `carapace_plate` (the empty seed held neither)",
         );
     }
 

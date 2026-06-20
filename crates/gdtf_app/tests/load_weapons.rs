@@ -15,13 +15,18 @@
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace
 //!   `assets/`. The good path loads `assets/weapons/*.ron` into a `WeaponRegistry`
-//!   keyed by file stem (`autogun`, `lasgun`).
+//!   keyed by file stem (`stub_pistol`, `las_carbine`).
 //!
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance
-//! criterion so a regression turns the test red. VALUE-AGNOSTIC throughout — no
-//! pinned weapon magnitude is ever asserted (only the registry's PRESENCE + that it
-//! is keyed by the authored filename stems), so a tuning edit to a weapon `.ron`
-//! never reddens these tests.
+//! criterion so a regression turns the test red. They are VALUE-AGNOSTIC (only the
+//! registry's PRESENCE + that it is keyed by the authored filename stems), so a
+//! tuning edit never reddens them — the authored weapon magnitudes are tuning DATA,
+//! NOT pinned by tests (the brittle-test rule; see
+//! [`WeaponSpec`](gdtf_battle_sim::weapon::WeaponSpec)). The field-to-bundle
+//! conversion MECHANISM is covered by the fixture-based sim round-trip
+//! (`weapon::test::weapon_spec_round_trips_and_into_bundle_groups_faithfully`); this
+//! harness proves the REAL `assets/weapons/` folder loads through the Load code path
+//! and that its authored KEYS resolve.
 
 use bevy::{app::Startup, state::state::State};
 use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
@@ -141,14 +146,19 @@ fn load_does_not_leave_without_a_weapon_registry() {
     );
 }
 
-/// AC4 (tier b) — with a real `AssetServer` rooted at the workspace `assets/`,
-/// entering `Load` loads `assets/weapons/*.ron` and builds a `WeaponRegistry` keyed
-/// by each weapon's filename stem. Proves the folder loaded into the registry keyed
-/// by filename (the authored `autogun` / `lasgun` keys resolve), and that the Load
-/// gate waited for it (the machine reaches Intro with a registry present).
+/// AC4 (tier b) / GTW-270 AC — with a real `AssetServer` rooted at the workspace
+/// `assets/`, entering `Load` loads `assets/weapons/*.weapon.ron` and builds a
+/// `WeaponRegistry` keyed by each weapon's filename stem. Proves the folder loaded
+/// into the registry keyed by filename (the canonical `stub_pistol` / `las_carbine`
+/// keys resolve), and that the Load gate waited for it (the machine reaches Intro with
+/// a registry present).
 ///
-/// Value-agnostic: it asserts the registry is PRESENT, non-empty, and resolves the
-/// authored STEMS — never a pinned weapon magnitude.
+/// GTW-270: this asserts that the REAL weapons folder loads + each authored KEY
+/// resolves to `Some(spec)` through the Load code path (mirroring the GTW-257
+/// precedent). It does NOT pin any authored magnitude — those are tuning DATA (the
+/// brittle-test rule); the field-to-bundle conversion mechanism is covered by the
+/// fixture-based sim round-trip
+/// (`weapon::test::weapon_spec_round_trips_and_into_bundle_groups_faithfully`).
 #[test]
 fn real_asset_resolves_weapon_registry_keyed_by_filename() {
     let mut app = GdtfLoadTestAppBuilder::new()
@@ -159,7 +169,8 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
     // inserted, not a fixed frame count. Cap is a safety net (GTW-305).
     advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
 
-    // The registry is keyed by the authored filename stems (presence, not a value).
+    // The registry is keyed by the authored filename stems, and each authored key
+    // resolves to its loaded spec.
     if let Some(registry) = app.world().get_resource::<WeaponRegistry>() {
         assert!(
             !registry.is_empty(),
@@ -167,15 +178,15 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
         );
         assert!(
             registry
-                .spec(&WeaponName::new("autogun".to_owned()))
+                .spec(&WeaponName::new("stub_pistol".to_owned()))
                 .is_some(),
-            "the registry must hold the `autogun` weapon (keyed by autogun.ron's stem)",
+            "the registry must hold the `stub_pistol` weapon (keyed by stub_pistol.weapon.ron's stem)",
         );
         assert!(
             registry
-                .spec(&WeaponName::new("lasgun".to_owned()))
+                .spec(&WeaponName::new("las_carbine".to_owned()))
                 .is_some(),
-            "the registry must hold the `lasgun` weapon (keyed by lasgun.ron's stem)",
+            "the registry must hold the `las_carbine` weapon (keyed by las_carbine.weapon.ron's stem)",
         );
     }
 
@@ -214,15 +225,15 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
 /// with the genuine `seed_load_fallbacks` system registered on `Startup`, exactly as
 /// `AutoBattlePlugin::build` wires it. The assertions encode the fix:
 ///
-/// - the resolved `WeaponRegistry` is non-empty and resolves the authored `autogun`
-///   stem (so battle setup's `weapons.spec("autogun")` would NOT return `None` /
+/// - the resolved `WeaponRegistry` is non-empty and resolves the canonical `stub_pistol`
+///   stem (so battle setup's `weapons.spec("stub_pistol")` would NOT return `None` /
 ///   `WeaponNotFound`);
 /// - the machine reaches `Intro` with the registry present (the gate waited for the
 ///   REAL registry, not the empty seed).
 ///
 /// PIN: if the seed reverts to inserting `WeaponRegistry::default()` UNCONDITIONALLY,
 /// the registry is present from `Startup`, `poll_and_resolve` SKIPS `resolve_weapons`
-/// (its `if !weapons_present` guard), the registry stays empty, `spec("autogun")`
+/// (its `if !weapons_present` guard), the registry stays empty, `spec("stub_pistol")`
 /// returns `None`, and this test goes red — exactly the `AC3b` black-screen failure.
 #[test]
 fn seeded_startup_does_not_shadow_real_weapon_resolution() {
@@ -250,15 +261,15 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
         );
         assert!(
             registry
-                .spec(&WeaponName::new("autogun".to_owned()))
+                .spec(&WeaponName::new("stub_pistol".to_owned()))
                 .is_some(),
-            "the registry must hold `autogun` — the empty seed must NOT have shadowed the resolve",
+            "the registry must hold `stub_pistol` — the empty seed must NOT have shadowed the resolve",
         );
         assert!(
             registry
-                .spec(&WeaponName::new("lasgun".to_owned()))
+                .spec(&WeaponName::new("las_carbine".to_owned()))
                 .is_some(),
-            "the resolved registry must also hold `lasgun` (the empty seed held neither)",
+            "the resolved registry must also hold `las_carbine` (the empty seed held neither)",
         );
     }
 

@@ -25,8 +25,8 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
             faction: 0, facing: North, stance: Standing, aiming: false,
             hp: 10, hp_max: 10, wounds: 2, wounds_max: 2, tu: 30, tu_max: 30, life_state: Alive,
             shooting: 1.0, toughness: 1.0, luck: 0.0,
-            armor: \"flak\",
-            weapon: \"autogun\",
+            armor: \"flak_vest\",
+            weapon: \"stub_pistol\",
         )],
         walls: [(
             at: (cell: (x: 1, y: 1), level: 0), terrain: Wall, cover_hp: 50,

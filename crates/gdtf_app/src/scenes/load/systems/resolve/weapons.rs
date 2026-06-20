@@ -28,8 +28,8 @@ use crate::scenes::load::resources::LoadHandles;
 /// - On success it reads the [`LoadedFolder`]'s member handles, types each as a
 ///   `RonAsset<WeaponSpec>`, reads its [`WeaponSpec`] out of the
 ///   `Assets<RonAsset<WeaponSpec>>` collection, keys it by the asset path's file
-///   STEM with the dedicated `.weapon` infix stripped (so `autogun.weapon.ron` keys
-///   `autogun` — the weapon KEY), and inserts every `(WeaponName, WeaponSpec)` into
+///   STEM with the dedicated `.weapon` infix stripped (so `stub_pistol.weapon.ron` keys
+///   `stub_pistol` — the weapon KEY), and inserts every `(WeaponName, WeaponSpec)` into
 ///   the registry. If ANY member spec is not yet in the collection (the one-frame
 ///   loaded-but-not-yet-in-collection race), it returns WITHOUT inserting and retries
 ///   next frame — so a partial / empty registry is never published while the folder
@@ -81,8 +81,8 @@ pub(super) fn resolve_weapons(
                 return;
             };
             // Key by the asset path's file STEM with the dedicated `.weapon` infix
-            // stripped: `autogun.weapon.ron`'s `file_stem()` is `autogun.weapon`, whose
-            // weapon KEY is `autogun`. A handle with no resolvable path / stem is
+            // stripped: `stub_pistol.weapon.ron`'s `file_stem()` is `stub_pistol.weapon`,
+            // whose weapon KEY is `stub_pistol`. A handle with no resolvable path / stem is
             // skipped defensively (it would carry no usable key).
             let Some(stem) = asset_server.get_path(untyped.id()).and_then(|path| {
                 path.path()

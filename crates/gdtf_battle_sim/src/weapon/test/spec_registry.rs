@@ -5,14 +5,14 @@ use super::support::*;
 
 /// A shipped weapon `.ron`, read at compile time via the same `include_str!`
 /// pattern `tuning.rs` / `situation.rs` use — the REAL on-disk authored file
-/// (`assets/weapons/autogun.weapon.ron`), so a regression in the authored file
+/// (`assets/weapons/stub_pistol.weapon.ron`), so a regression in the authored file
 /// turns this red.
-const SHIPPED_AUTOGUN_RON: &str = include_str!(concat!(
+const SHIPPED_STUB_PISTOL_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/weapons/autogun.weapon.ron"
+    "/../../assets/weapons/stub_pistol.weapon.ron"
 ));
 
-/// GTW-257 AC1 — the shipped `assets/weapons/autogun.weapon.ron` parses into a
+/// GTW-257 AC1 — the shipped `assets/weapons/stub_pistol.weapon.ron` parses into a
 /// `WeaponSpec`, and `into_bundle(name)` yields a `WeaponBundle` carrying that
 /// `WeaponName` + a `FireMode` list whose modes carry their `ModeKind`.
 /// Value-agnostic on the tunable cone/TU/damage magnitudes (the authored numbers
@@ -21,10 +21,10 @@ const SHIPPED_AUTOGUN_RON: &str = include_str!(concat!(
 /// magnitude.
 #[test]
 fn shipped_weapon_spec_parses_and_converts_to_a_bundle() {
-    let parsed = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON);
+    let parsed = ron::de::from_str::<WeaponSpec>(SHIPPED_STUB_PISTOL_RON);
     assert!(
         parsed.is_ok(),
-        "the shipped assets/weapons/autogun.weapon.ron must parse into a WeaponSpec: {parsed:?}",
+        "the shipped assets/weapons/stub_pistol.weapon.ron must parse into a WeaponSpec: {parsed:?}",
     );
     let Ok(spec) = parsed else {
         return;
@@ -32,10 +32,10 @@ fn shipped_weapon_spec_parses_and_converts_to_a_bundle() {
 
     // The file does NOT author a name — the name is the FILE KEY, supplied here
     // (the loader supplies the filename stem). into_bundle carries it through.
-    let key = WeaponName::new("autogun".to_owned());
+    let key = WeaponName::new("stub_pistol".to_owned());
     let bundle = spec.into_bundle(key);
     assert_eq!(
-        &*bundle.name, "autogun",
+        &*bundle.name, "stub_pistol",
         "into_bundle must carry the supplied WeaponName (the file key) onto the bundle",
     );
     // The Weapon marker is added by into_bundle (it is NOT authored in the file).
@@ -50,7 +50,7 @@ fn shipped_weapon_spec_parses_and_converts_to_a_bundle() {
     assert_eq!(
         single.kind,
         ModeKind::Single,
-        "the shipped autogun's single() mode is Single-kind",
+        "the shipped stub_pistol's single() mode is Single-kind",
     );
 }
 
@@ -110,11 +110,11 @@ fn weapon_spec_round_trips_and_into_bundle_groups_faithfully() {
 /// from `WeaponRegistry::new` (no `AssetServer` — the sim-unit shape AC2/AC3 use).
 #[test]
 fn weapon_registry_keys_and_resolves_by_name() {
-    let Ok(spec) = ron::de::from_str::<WeaponSpec>(SHIPPED_AUTOGUN_RON) else {
+    let Ok(spec) = ron::de::from_str::<WeaponSpec>(SHIPPED_STUB_PISTOL_RON) else {
         return;
     };
-    let autogun = WeaponName::new("autogun".to_owned());
-    let registry = WeaponRegistry::new([(autogun.clone(), spec)]);
+    let stub_pistol = WeaponName::new("stub_pistol".to_owned());
+    let registry = WeaponRegistry::new([(stub_pistol.clone(), spec)]);
 
     assert_eq!(
         registry.len(),
@@ -123,7 +123,7 @@ fn weapon_registry_keys_and_resolves_by_name() {
     );
     assert!(!registry.is_empty(), "a one-weapon registry is non-empty");
     assert!(
-        registry.spec(&autogun).is_some(),
+        registry.spec(&stub_pistol).is_some(),
         "a present key resolves to its spec",
     );
     assert!(
