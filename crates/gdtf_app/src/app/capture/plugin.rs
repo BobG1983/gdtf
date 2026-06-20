@@ -206,8 +206,9 @@ impl CaptureFrames {
         Self(frames)
     }
 
-    /// The last (highest) frame in the schedule — the one whose capture writes
-    /// `AppExit::Success`. Infallible: the list is non-empty by construction.
+    /// The last (highest) frame in the schedule — the LAST target frame, after which
+    /// the capture observer sets `RunningState::Quit` to ride the shared shutdown
+    /// cascade. Infallible: the list is non-empty by construction.
     #[must_use]
     fn last_frame(&self) -> CaptureFrame {
         // `copied().max()` over a non-empty sorted list; the `unwrap_or` is a structural

@@ -86,6 +86,30 @@ session, so the next session pays the toll once.
    structure + Bevy lens) ENFORCES this: a registered system or helper fn taking
    exclusive World access without a doc-comment justification FAILS the gate. [codified
    GTW-213, generalizing the GTW-198 / GTW-208 build direction]
+8. A `bevy_ui` node can be `Visibility::Visible` AND correctly laid out yet draw
+   ZERO pixels — and the green suite, ALL headless tests, AND the `design-gate`
+   can ALL pass it; only an in-engine capture catches it. Two parts. (a) DEBUG
+   METHOD for "UI node visible but not drawn": do NOT theorize — add a one-shot
+   diagnostic system and probe, IN ONE RUN, on the broken node AND a sibling that
+   renders: `ChildOf` (parent), `ComputedUiTargetCamera` (resolved camera vs the
+   working node's), `UiGlobalTransform` (actual screen xy), `ComputedNode` (size),
+   own `Visibility` + `InheritedVisibility`, and `ComputedNode.stack_index` /
+   `GlobalZIndex` + `BackgroundColor` (occlusion / transparency). The
+   broken-vs-working diff IS the answer. Do NOT probe `GlobalTransform` — 0.18 UI
+   positions via `UiGlobalTransform` / `ComputedNode`, NOT `Transform` /
+   `GlobalTransform` (that absence is NORMAL for a UI node; a rendering sibling
+   lacks it too). (b) The GTW-294 root cause was OCCLUSION: a panel anchored
+   inside an opaque, full-width sibling's footprint (the bottom bar —
+   `GlobalZIndex(10)`, opaque fill) with NO `GlobalZIndex` (default 0) is painted
+   OVER, drawing nothing despite resolving the right camera + an on-screen
+   position + a non-zero size + Visible. FIX: give the panel a `GlobalZIndex`
+   strictly ABOVE the occluder (the bottom-bar precedent: a bare absolute root +
+   `GlobalZIndex` + opaque fill renders fine; `GlobalZIndex` propagates to
+   children). Z map: bottom_bar=10, on-bar weapon/stance cluster=11, contextual
+   panel=20. Symptom: a correctly-built, Visible, on-screen, sized panel draws
+   nothing — the real cause was a higher-`GlobalZIndex` opaque sibling painting
+   over it. [burned a long GTW-294 session — headless + gate + design-gate ALL
+   passed it; only the in-engine capture caught it]
 
 ## wgpu / cargo
 
