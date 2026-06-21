@@ -29,6 +29,14 @@
     // only (the panel width is tunable; the height is ANIMATED toward the line count —
     // see height_lerp_rate).
     panel_width_vw: 28.0,
+    // The point size each log line is drawn at — the log's OWN readable body size, kept
+    // DELIBERATELY LARGER than the theme's 18pt body text so the strip reads cleanly over the
+    // HUD (a body-sized log rendered too small). A lethal DOWN/DEAD line is drawn at a heavier
+    // weight + a small size bump on top of this. Bigger = a chunkier, more prominent log;
+    // smaller = a terser strip. Default 20.0 (clearly above the 18pt theme body). Font size in
+    // pt is the sanctioned responsive-units carve-out (a glyph size is intrinsically a point
+    // measure).
+    line_font_pt: 20.0,
     // ---- ANIMATION FEEL (GTW-328 slice B) — the log MOVES instead of snapping. ----
     // How fast each line eases toward its target slot as the stack reflows (a new line
     // appends below, or a faded line is removed above), as a per-second LERP rate. Each
@@ -52,4 +60,13 @@
     // 1 - exp(-rate * dt) each frame, never set in one frame. Bigger = a snappier
     // grow/shrink; smaller = a slower breathe. Default 10.0/s (~0.3 s to settle).
     height_lerp_rate: 10.0,
+    // The bottom CLEARANCE reserved below the newest (bottommost) line, as a multiple of a
+    // LINE HEIGHT — added to the animated panel height so the panel grows a touch beyond the
+    // content sum. The flex column is top-aligned, so the extra space lands at the BOTTOM,
+    // lifting the newest line's full glyph box ABOVE the clip / bottom-bar edge so its
+    // descenders are not shaved (the cut-off fix). Expressed as a line-height multiple (it
+    // scales with the responsive line_font_pt glyph size on resize), NOT a fixed px. Bigger =
+    // more breathing room below the newest line; 0.0 = flush at the edge (the bug). Default 0.5
+    // (about half a line of clearance).
+    bottom_clearance_lines: 0.5,
 )

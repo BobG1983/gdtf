@@ -28,7 +28,7 @@ use bevy::{
     ecs::system::SystemParam,
     prelude::*,
     scene::{CommandsSceneExt, bsn},
-    text::{FontSize, FontWeight, TextColor as UiTextColor, TextFont},
+    text::{FontSize, FontWeight, LineHeight, TextColor as UiTextColor, TextFont},
     ui::{ComputedNode, Node, PositionType, Val},
 };
 use gdtf_battle_presenter::{
@@ -257,20 +257,33 @@ fn trim_to_cap(
 /// cosmetic (the slide eases to `0` regardless).
 const APPEAR_OFFSET_LINE_HEIGHTS: f32 = 1.3;
 
+/// The line-height multiple of a combat-log line's font size — the full glyph box reserved per
+/// line (ascenders + descenders + leading), set EXPLICITLY as [`LineHeight::Px`] and matched by the
+/// line node's `min_height` so the clip never shaves a settled line (the cut-off fix).
+///
+/// A framework-plumbing layout `const` (the `ui-responsive-not-px` carve-out — a glyph-relative
+/// multiple, not a fixed px). Bevy's [`LineHeight`] default is `RelativeToFont(1.2)`; this is a
+/// touch more generous (`1.4`) so descenders + leading have headroom and a resting line is fully
+/// legible rather than clipped flush at the panel's bottom edge.
+const LINE_HEIGHT_SCALE: f32 = 1.4;
+
 /// Spawn ONE combat-log line as a UI text node carrying the classified [`LogLine`]'s text +
 /// color + emphasis-weight, plus the [`CombatLogLine`] marker, its [`LogLineFade`] clock, and its
 /// [`LineSlide`] appear-offset (GTW-328 slice B).
 ///
 /// Post-BSN spawn idiom (`bsn!` / `spawn_scene`): `Text` + `UiTextColor` ride the `bsn!` macro
 /// inline; the runtime-valued `TextFont` (not `Unpin`) rides the `template(move |_| ..)`
-/// closure escape hatch (the weapon-panel `spawn_text` precedent). The emphasis maps to a
-/// [`FontWeight`] (BOLD for a lethal DOWN/DEAD line) and a size bump so the line reads heavier
-/// on the bundled font. The [`CombatLogLine`] marker, the three-phase [`LogLineFade`] clock (the
-/// tuned TTL + fade-in / fade-out seconds, scaling from the line's own alpha), the [`LineSlide`]
-/// (seeded ~one line-height below its slot so it slides UP into place), and a `Node` with a
-/// `top` the slide system animates are `.insert`ed after the scene reserves the entity id. The
-/// line spawns at `alpha 0` (its fade-in ramps it on) so it does not flash at full opacity for a
-/// frame before the fade system runs. Returns the line entity.
+/// closure escape hatch (the weapon-panel `spawn_text` precedent). The line draws at the tuned
+/// [`line_font_pt`](CombatLogTuning::line_font_pt) — the log's OWN readable body size, kept larger
+/// than the theme's body text (the readability fix) — and a lethal DOWN/DEAD line maps to a
+/// [`FontWeight::BOLD`] + a size bump on top of that ([`emphasis_style`]). The [`CombatLogLine`]
+/// marker, the three-phase [`LogLineFade`] clock (the tuned TTL + fade-in / fade-out seconds,
+/// scaling from the line's own alpha), the [`LineSlide`] (seeded ~one line-height below its slot so
+/// it slides UP into place), an explicit [`LineHeight::Px`] + matching `min_height` (so the full
+/// glyph box is reserved and the clip never shaves a settled line — the cut-off fix), and a `Node`
+/// with a `top` the slide system animates are `.insert`ed after the scene reserves the entity id.
+/// The line spawns at `alpha 0` (its fade-in ramps it on) so it does not flash at full opacity for
+/// a frame before the fade system runs. Returns the line entity.
 fn spawn_log_line(
     commands: &mut Commands,
     theme: &GdtfTheme,
@@ -280,7 +293,7 @@ fn spawn_log_line(
     let text = (**line.text()).clone();
     let mut color = line.color();
     let base_alpha = color.alpha();
-    let (weight, font_size) = emphasis_style(line.emphasis(), *theme.text.font_size_pt);
+    let (weight, font_size) = emphasis_style(line.emphasis(), *tuning.line_font_pt);
     let font = theme.text.font.clone();
     let text_font = TextFont {
         font: font.into(),
@@ -288,6 +301,9 @@ fn spawn_log_line(
         weight,
         ..default()
     };
+    // Reserve the FULL glyph box (ascenders + descenders + leading) so the clip never shaves a
+    // settled line — set explicitly rather than relying on bevy's RelativeToFont(1.2) default.
+    let line_box_px = font_size * LINE_HEIGHT_SCALE;
     let fade = LogLineFade::new(
         tuning.line_ttl_seconds,
         tuning.fade_in_seconds,
@@ -308,10 +324,16 @@ fn spawn_log_line(
             CombatLogLine,
             fade,
             slide,
+            // The full glyph box per line (matches `min_height` below) so a settled line is never
+            // shaved by the panel clip — descenders + leading have headroom (the cut-off fix).
+            LineHeight::Px(line_box_px),
             // A RELATIVE node whose `top` carries the slide offset (the line keeps its flex-column
-            // slot; `top` displaces it from that slot, eased to 0 by `slide_combat_log_lines`).
+            // slot; `top` displaces it from that slot, eased to 0 by `slide_combat_log_lines`). Its
+            // `min_height` reserves the full line box so the laid-out line never collapses shorter
+            // than its glyphs (and the height target / clip account for the real line height).
             Node {
                 position_type: PositionType::Relative,
+                min_height: Val::Px(line_box_px),
                 top: Val::Px(font_size * APPEAR_OFFSET_LINE_HEIGHTS),
                 ..default()
             },
@@ -399,35 +421,131 @@ pub(in crate::states::running::game::battlescape) fn slide_combat_log_lines(
 }
 
 /// Ease the combat-log panel's [`PanelHeightAnim`] toward its natural content height (the summed
-/// logical line heights) and write it into the root's [`Node::height`](bevy::ui::Node), so the
-/// panel grows / shrinks SMOOTHLY as lines are added / removed instead of snapping (GTW-328
-/// slice B).
+/// logical line heights plus any active slide displacement plus the bottom clearance) and write it
+/// into the root's [`Node::height`](bevy::ui::Node), so the panel grows / shrinks SMOOTHLY as lines
+/// are added / removed instead of snapping (GTW-328 slice B).
 ///
 /// Runs in `Update`, unguarded — it self-gates on the [`PanelHeightAnim`] root existing. It sums
 /// the logical heights of the current [`CombatLogLine`] [`ComputedNode`]s (physical px scaled by
-/// the inverse scale factor) as the target, eases the animated height toward it by
-/// [`lerp_factor`] at the tuned [`height_lerp_rate`](CombatLogTuning::height_lerp_rate) per frame
-/// (frame-rate independent; tuning DEFAULTED until its RON resolves), and writes the eased height
-/// into the root [`Node`]. Param-only (`bevy-traps.md` #7): the [`Time`] read, the optional
-/// tuning read, the line-`ComputedNode` query, and the root query.
+/// the inverse scale factor) and ADDS the largest active downward [`LineSlide`] offset — so while a
+/// fresh line is still sliding UP into place (a positive `top`), the clipped panel is tall enough
+/// to show it fully rather than shaving its bottom; as the slide settles to `0` that addend
+/// vanishes and the panel eases back to the content height (GTW-328 slice B). It THEN adds a fixed
+/// BOTTOM CLEARANCE (the tuned [`bottom_clearance_lines`](CombatLogTuning::bottom_clearance_lines)
+/// times the line height) so the panel is always a touch taller than its content: the flex column is
+/// top-aligned, so that surplus lands at the BOTTOM and lifts the NEWEST (bottommost) line's full
+/// glyph box ABOVE the clip / bottom-bar edge — without it the bottommost line rests flush at the
+/// clip and its descenders are shaved (the cut-off fix). The clearance is in the height target
+/// rather than `Node::padding` because the themed panel's `padding` is re-derived from the theme by
+/// `apply_theme` every repaint (it would clobber a spawn-time padding); the height is the panel's own
+/// animated lever. The target is eased by [`lerp_factor`] at the tuned
+/// [`height_lerp_rate`](CombatLogTuning::height_lerp_rate) per frame (frame-rate independent; tuning
+/// DEFAULTED until its RON resolves), and written into the root [`Node`]. Param-only
+/// (`bevy-traps.md` #7): the [`Time`] read, the optional tuning read, the line query (`ComputedNode`
+/// + `LineSlide`), and the root query.
 pub(in crate::states::running::game::battlescape) fn animate_combat_log_height(
     time: Res<Time>,
     tuning: Option<Res<CombatLogTuning>>,
-    lines: Query<&ComputedNode, With<CombatLogLine>>,
+    lines: Query<(&ComputedNode, &LineSlide), With<CombatLogLine>>,
     mut roots: Query<(&mut Node, &mut PanelHeightAnim), With<CombatLogRoot>>,
 ) {
     let Ok((mut node, mut anim)) = roots.single_mut() else {
         // No log root (not in a battle / not spawned yet) — nothing to animate.
         return;
     };
-    // The natural content height: the sum of the visible lines' LOGICAL heights.
-    let target: f32 = lines
-        .iter()
-        .map(|computed| computed.size().y * computed.inverse_scale_factor())
-        .sum();
-
     let tuning = tuning.map_or_else(CombatLogTuning::default, |t| *t);
+    // The natural content height: the sum of the visible lines' LOGICAL heights.
+    let content: f32 = lines
+        .iter()
+        .map(|(computed, _)| computed.size().y * computed.inverse_scale_factor())
+        .sum();
+    // The largest active downward slide offset — a line still easing UP into place is displaced
+    // below its slot by this much, so the clipped panel must be this much taller to show it fully.
+    // Settles to 0 as the slides finish, so the panel breathes back to the pure content height.
+    let max_slide: f32 = lines
+        .iter()
+        .map(|(_, slide)| slide.current().max(0.0))
+        .fold(0.0_f32, f32::max);
+    // The fixed bottom clearance below the NEWEST line (a line-height multiple of the responsive
+    // line font size) — so the top-aligned column leaves room at the bottom and the bottommost
+    // line's full glyph box clears the clip / bottom-bar edge (the cut-off fix).
+    let clearance = *tuning.line_font_pt * *tuning.bottom_clearance_lines;
+    let target = height_target(content, max_slide, clearance);
+
     let factor = lerp_factor(*tuning.height_lerp_rate, time.delta_secs());
     anim.ease_toward(target, factor);
     node.height = Val::Px(anim.current());
+}
+
+/// The combat-log panel's animated-height TARGET (logical px): the summed line `content` height,
+/// plus the largest active slide displacement `max_slide` (so a still-sliding line is shown fully),
+/// plus a bottom `clearance` so the bottommost line clears the panel clip / bottom-bar edge (the
+/// cut-off fix).
+///
+/// The clearance is applied ONLY when there is content (`content > 0`) so an EMPTY log collapses to
+/// `0` rather than holding open a `clearance`-tall sliver of empty panel. With content present the
+/// target STRICTLY EXCEEDS the content sum by the clearance: the flex column is top-aligned, so that
+/// surplus lands at the bottom and lifts the newest line's full glyph box above the clip edge.
+fn height_target(content: f32, max_slide: f32, clearance: f32) -> f32 {
+    if content <= f32::EPSILON {
+        // An empty log animates back to a collapsed 0 height — no clearance sliver held open.
+        return 0.0;
+    }
+    content + max_slide + clearance
+}
+
+#[cfg(test)]
+mod test {
+    use super::height_target;
+
+    /// A line that is close to `expected` (the float-cmp idiom; clippy `float_cmp` denies `==` on
+    /// `f32`).
+    fn approx(actual: f32, expected: f32) -> bool {
+        (actual - expected).abs() < 1e-4
+    }
+
+    /// With content present, the height target STRICTLY EXCEEDS the content sum by the bottom
+    /// clearance (plus any slide) — the cut-off fix: the panel is taller than its lines so the
+    /// top-aligned column leaves room below the newest line for its descenders to clear the clip.
+    /// (Before the fix the target was exactly `content + max_slide`, leaving the bottommost line
+    /// flush at the clip edge.)
+    #[test]
+    fn the_target_reserves_bottom_clearance_above_the_content_sum() {
+        let content = 80.0;
+        let clearance = 10.0;
+        // Settled (no active slide): the target is the content PLUS the clearance — strictly taller.
+        let target = height_target(content, 0.0, clearance);
+        assert!(
+            target > content,
+            "with a positive clearance the panel must be taller than its content ({target} must \
+             exceed {content}) so the bottommost line is not clipped",
+        );
+        assert!(
+            approx(target, content + clearance),
+            "the settled target is exactly content + clearance, got {target}",
+        );
+    }
+
+    /// The clearance is ADDED ON TOP of an active slide displacement (they do not replace each
+    /// other): while a fresh line still slides up, the panel reserves BOTH the slide room and the
+    /// bottom clearance.
+    #[test]
+    fn the_clearance_stacks_with_an_active_slide() {
+        let target = height_target(80.0, 6.0, 10.0);
+        assert!(
+            approx(target, 96.0),
+            "content + slide + clearance are all reserved (80 + 6 + 10), got {target}",
+        );
+    }
+
+    /// An EMPTY log (no content) collapses to `0` — the clearance is NOT held open as a sliver of
+    /// empty panel, so an empty log animates fully closed.
+    #[test]
+    fn an_empty_log_collapses_to_zero_with_no_clearance_sliver() {
+        let target = height_target(0.0, 0.0, 10.0);
+        assert!(
+            approx(target, 0.0),
+            "an empty log targets 0 height (no clearance sliver), got {target}",
+        );
+    }
 }
