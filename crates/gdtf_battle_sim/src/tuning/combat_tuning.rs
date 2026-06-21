@@ -12,6 +12,7 @@ use crate::tuning::{
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
     severity::SeverityScaling,
+    visibility::{ExploredDim, ViewRange},
     wounds::{BleedRate, ExecuteTu, StabilizeTu, WoundCosts},
 };
 
@@ -79,4 +80,16 @@ pub struct CombatTuning {
     /// the shot is rejected. GLOBAL (one arc for all weapons this slice); magnitude is
     /// tunable (default 120°), mirroring the other tuning leaves.
     pub firing_arc:            FiringArc,
+    /// The squad-FOV view range (GTW-338) — one ganger's sight radius in Chebyshev
+    /// cells, the 2D disc bounding per-ganger FOV before the LOS probe owns the height
+    /// axis (visibility.md §"Tunables"). Default 14: the 60×60 city gets a real fog
+    /// horizon, the 12×12 fixtures read fully lit. Sim-authored; consumed by the
+    /// presenter fog writer (GTW-342). Tunable, mirroring the other tuning leaves.
+    pub view_range:            ViewRange,
+    /// The EXPLORED-memory dim factor (GTW-338) — the modulate on EXPLORED terrain
+    /// (rendered RGB × this, alpha untouched; visibility.md §"Tunables"). Default 0.55:
+    /// dark enough to read "memory, not live sight", bright enough to navigate by.
+    /// Sim-authored here but CONSUMED by the presenter fog writer (GTW-342). Tunable,
+    /// mirroring the other tuning leaves.
+    pub explored_dim:          ExploredDim,
 }

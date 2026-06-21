@@ -187,4 +187,19 @@
     // slice (a per-weapon arc, pistol wide / rifle narrow, is a flagged future refinement).
     // STARTING POINT (tunable): 120° = ±60° off the facing.
     firing_arc: 120.0,  // full firing-cone width in degrees (target must be within ±60° to fire without turning)
+
+    // Squad fog-of-war view range (GTW-338; visibility.md §"Tunables"): one ganger's
+    // sight radius in CHEBYSHEV CELLS — the 2D disc bounds per-ganger FOV; the level-aware
+    // LOS probe owns the height axis (a ganger sees a cell iff Chebyshev(F,cell) <= this
+    // AND has_los). The shipped 60×60 city gets a real fog horizon (the disc is smaller
+    // than the map); the 12×12 fixtures read fully lit (the range exceeds the whole map).
+    // STARTING POINT (tunable).
+    view_range: 14,  // sight radius in Chebyshev cells (60×60 = fog horizon, 12×12 = fully lit)
+
+    // EXPLORED-memory dim factor (GTW-338; visibility.md §"Tunables"): the modulate the
+    // presenter fog writer (GTW-342) applies to EXPLORED terrain — rendered RGB × this,
+    // ALPHA UNTOUCHED. Memory shows live terrain dimmed, never a snapshot. A value in
+    // 0..=1: dark enough to read "memory, not live sight", bright enough to navigate by.
+    // STARTING POINT (tunable).
+    explored_dim: 0.55,  // EXPLORED terrain RGB modulate (alpha untouched); 0..=1
 )

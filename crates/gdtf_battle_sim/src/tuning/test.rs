@@ -37,6 +37,12 @@ fn tuning_newtypes_wrap_inner_and_deref() {
     // GTW-242 — the firing-arc f32 newtype: deref reaches the inner degrees (bit-exact
     // arbitrary value, never the 120° default — the Deref mechanism, not a magnitude).
     assert_eq!((*FiringArc::new(75.0)).to_bits(), 75.0_f32.to_bits());
+    // GTW-338 — the view-range u16 newtype: deref reaches the inner Chebyshev cell count
+    // (arbitrary value, never the 14 default — the Deref mechanism, not a magnitude).
+    assert_eq!(*ViewRange::new(9), 9u16);
+    // GTW-338 — the explored-dim f32 newtype: deref reaches the inner modulate factor
+    // (bit-exact arbitrary value, never the 0.55 default — the Deref mechanism only).
+    assert_eq!((*ExploredDim::new(0.25)).to_bits(), 0.25_f32.to_bits());
 }
 
 /// C3 — every E2.1 cone/stability/recoil/aim extension leaf wraps the right
@@ -261,6 +267,31 @@ fn shipped_tuning_ron_deserializes() {
         *tuning.firing_arc > 0.0,
         "shipped firing_arc must be a positive cone width (a real facing arc)",
     );
+
+    // GTW-338 — the squad-FOV visibility leaves (`view_range` / `explored_dim`)
+    // deserialize from the real shipped file. `CombatTuning` has no `#[serde(default)]`,
+    // so a missing leaf would fail the parse above; this asserts the two leaves are
+    // PRESENT and parse deterministically across two parses, and the structural
+    // invariants each must hold: the view range is a positive sight disc (so the squad
+    // can see at all), and the explored dim is a real RGB modulate in 0..=1 (so EXPLORED
+    // terrain reads dimmer than live, never brightened or negative). Value-agnostic —
+    // never the exact 14 / 0.55 magnitudes, since both are tunable balance data.
+    assert_eq!(
+        tuning.view_range, reparsed.view_range,
+        "shipped view_range must be present and parse deterministically",
+    );
+    assert!(
+        *tuning.view_range > 0,
+        "shipped view_range must be a positive sight disc (the squad can see at all)",
+    );
+    assert_eq!(
+        tuning.explored_dim, reparsed.explored_dim,
+        "shipped explored_dim must be present and parse deterministically",
+    );
+    assert!(
+        (0.0..=1.0).contains(&*tuning.explored_dim),
+        "shipped explored_dim must be an RGB modulate in 0..=1 (dimmer, never brightened)",
+    );
 }
 
 /// GTW-234 AC8 — the `MoveCosts` table round-trips through serde (the `tuning.ron`
@@ -341,6 +372,30 @@ fn posture_tu_leaves_parse_from_bare_scalar_ron() {
     }
 }
 
+/// GTW-338 — the two squad-FOV visibility leaves resolve to their **documented
+/// defaults** on the const-fallback `CombatTuning::default()` path, so a headless
+/// fixture with NO loaded asset still gets a real view range and explored dim
+/// (the same fallback the failed-load and asset-less harnesses rely on).
+///
+/// Unlike the real-asset loader tests (value-agnostic by the brittle-test rule), this
+/// pins the `Default` impl this ticket authored — the defaults ARE the design contract
+/// (visibility.md §"Tunables": `view_range` 14, `explored_dim` 0.55). The check is
+/// exact: view range is an integer count; the dim's `f32` is an exactly-representable
+/// literal compared by bit pattern (no `float_cmp` lint, no epsilon).
+#[test]
+fn visibility_leaves_resolve_to_documented_defaults() {
+    let tuning = CombatTuning::default();
+    assert_eq!(
+        *tuning.view_range, 14u16,
+        "CombatTuning::default view_range must be the documented 14 Chebyshev cells",
+    );
+    assert_eq!(
+        (*tuning.explored_dim).to_bits(),
+        0.55_f32.to_bits(),
+        "CombatTuning::default explored_dim must be the documented 0.55 RGB modulate",
+    );
+}
+
 /// GTW-301 — every touched tuning sub-file's leaf newtype still **deserializes
 /// through its now-private inner**: each parses from a bare-scalar RON literal
 /// (`#[serde(transparent)]`) and the value read back through the derived [`Deref`]
@@ -410,5 +465,19 @@ fn touched_leaves_round_trip_through_private_inner() {
     assert_eq!(band, Ok(BandEdge::new(5.0)), "BandEdge: {band:?}");
     if let Ok(be) = band {
         assert_eq!((*be).to_bits(), 5.0_f32.to_bits(), "BandEdge deref");
+    }
+
+    // visibility.rs (GTW-338) — the u16 view range round-trips through its private inner.
+    let view = ron::from_str::<ViewRange>("9");
+    assert_eq!(view, Ok(ViewRange::new(9)), "ViewRange: {view:?}");
+    if let Ok(v) = view {
+        assert_eq!(*v, 9u16, "ViewRange deref");
+    }
+
+    // visibility.rs (GTW-338) — the f32 explored dim round-trips through its private inner.
+    let dim = ron::from_str::<ExploredDim>("0.25");
+    assert_eq!(dim, Ok(ExploredDim::new(0.25)), "ExploredDim: {dim:?}");
+    if let Ok(d) = dim {
+        assert_eq!((*d).to_bits(), 0.25_f32.to_bits(), "ExploredDim deref");
     }
 }

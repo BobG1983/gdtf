@@ -25,6 +25,7 @@
 //! - [`cone_groups`] — the §1 grouping structs + the [`ConeStabilityTuning`] bundle.
 //! - [`matchup`] — the 7-type matchup multipliers (E3.2).
 //! - [`firing_arc`] — the GTW-242 firing arc.
+//! - [`visibility`] — the GTW-338 squad fog-of-war view range + explored dim.
 //! - [`combat_tuning`] — the top-level [`CombatTuning`] resource composing them all.
 
 mod band;
@@ -36,6 +37,7 @@ mod economy;
 mod firing_arc;
 mod matchup;
 mod severity;
+mod visibility;
 mod wounds;
 
 #[cfg(test)]
@@ -60,4 +62,5 @@ pub use severity::{
     DefenderLuckScale, PenDamageScale, RandomSpread, SeverityEdge, SeverityEdges, SeverityScaling,
     ShooterLuckScale, ToughnessMitigation,
 };
+pub use visibility::{ExploredDim, ViewRange};
 pub use wounds::{BleedRate, ExecuteTu, StabilizeTu, WoundCost, WoundCosts};
