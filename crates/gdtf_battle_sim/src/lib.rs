@@ -82,7 +82,9 @@
 //!   tuning [`tuning::BleedRate`] of [`ganger::Wounds`] per round from each
 //!   un-stabilized [`ganger::LifeState::Downed`] ganger, emits the
 //!   [`bleed::Bleeding`] message, and runs the once-only terminal gate to
-//!   [`ganger::LifeState::Dead`] on depletion.
+//!   [`ganger::LifeState::Dead`] on depletion. The clock is wired into the live
+//!   runtime by [`acts::SimActsPlugin`]: it runs `tick_bleed` once per full round
+//!   at the enemy-phase start, gated on [`bleed::enemy_phase_started`] (GTW-336).
 //! - [`downed_acts`] — the §9 from-Downed verbs + their shared faction-aware
 //!   predicates: [`downed_acts::can_stabilize`] / [`downed_acts::stabilize_downed`]
 //!   (an 8-adjacent ALIVE ally halts the bleed clock by setting [`ganger::Stabilized`],
@@ -230,7 +232,7 @@ pub use battle::{
     PlayerFaction, SetupBattleRequested, TeardownBattleRequested, check_outcome,
     setup_battle_on_request, teardown_battle_on_request,
 };
-pub use bleed::{Bleeding, tick_bleed};
+pub use bleed::{Bleeding, enemy_phase_started, tick_bleed};
 pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
 pub use clearance::{
     Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant, silhouette_band,

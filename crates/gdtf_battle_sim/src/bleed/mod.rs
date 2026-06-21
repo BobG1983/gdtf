@@ -37,9 +37,11 @@
 //! [`bevy::prelude::MessageReader`]. Pure, render-free model logic: no renderer, no
 //! pixel; the drain saturates (no underflow, no `unwrap`).
 
+mod schedule;
 mod tick;
 
 #[cfg(test)]
 mod test;
 
+pub use schedule::enemy_phase_started;
 pub use tick::{Bleeding, tick_bleed};

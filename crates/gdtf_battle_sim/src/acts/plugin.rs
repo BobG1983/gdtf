@@ -18,6 +18,7 @@ use crate::{
             StabilizeDownedRequested,
         },
     },
+    bleed::{Bleeding, enemy_phase_started, tick_bleed},
     occupancy_sync::SimSystems,
     shot_fired::ShotFired,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
@@ -52,6 +53,17 @@ use crate::{
 /// whichever plugin owns the set's configuration (the
 /// [`OccupancyMaintenancePlugin`](crate::occupancy_sync::OccupancyMaintenancePlugin)).
 /// Wiring this plugin into the `BattleRunning` lifecycle is E10.6, out of scope here.
+///
+/// **GTW-336 — the §9 bleed-out clock.** The plugin ALSO registers the
+/// [`Bleeding`](crate::bleed::Bleeding) signal buffer and adds
+/// [`tick_bleed`](crate::bleed::tick_bleed) `.in_set(SimSystems::Simulate)`,
+/// `.after(`[`dispatch_end_turn`](crate::turn::dispatch_end_turn)`)` and gated
+/// `.run_if(`[`enemy_phase_started`](crate::bleed::enemy_phase_started)`)` — so the
+/// bleed-out drain fires once per FULL ROUND, at the enemy-phase start
+/// (`docs/combat/resolution.md` §9). Until this slice the drain was unit-test-only; this
+/// is what makes Downed gangers actually bleed (and die to the clock) in a live battle and
+/// what creates the `Messages<Bleeding>` buffer the presenter's `"Bleeding"` consequence
+/// pop is gated on.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SimActsPlugin;
 
@@ -80,6 +92,12 @@ impl Plugin for SimActsPlugin {
             .add_message::<FireDeclaration>()
             .add_message::<MovementOccurred>()
             .add_message::<TurnStarted>()
+            // GTW-336: the §9 bleed-out signal `tick_bleed` emits per Downed ganger that
+            // bled this round (the presenter's "Bleeding" FCT pop drains it). Registering
+            // the buffer here makes `tick_bleed`'s MessageWriter<Bleeding> param valid and
+            // creates the Messages<Bleeding> resource the presenter's consequence reader is
+            // gated on (bevy-traps.md #4 / #5).
+            .add_message::<Bleeding>()
             .add_systems(
                 Update,
                 (
@@ -102,6 +120,24 @@ impl Plugin for SimActsPlugin {
                 Update,
                 dispatch_end_turn
                     .run_if(resource_exists::<ActiveFaction>)
+                    .in_set(SimSystems::Simulate),
+            )
+            // GTW-336: wire the §9 bleed-out clock into the live runtime. `tick_bleed`
+            // drains a flat tuning BleedRate of Wounds from every un-stabilized Downed
+            // ganger ONCE PER FULL ROUND, AT THE ENEMY-PHASE START (resolution.md §9). The
+            // turn-cycle engine `dispatch_end_turn` emits a TurnStarted at each advance and
+            // the enemy one fires exactly once per full round, so `tick_bleed` runs
+            // `.after(dispatch_end_turn)` (so the frame's TurnStarted is buffered) and
+            // `.run_if(enemy_phase_started)` (true iff a non-player TurnStarted was emitted
+            // this frame — its own independent reader, so it never steals the boundary from
+            // the combat-log reader). It joins the BattleInProgress-gated Simulate band, so
+            // its Res<CombatTuning> read is panic-free outside a live battle (the band's
+            // run_if skips it — bevy-traps.md #1).
+            .add_systems(
+                Update,
+                tick_bleed
+                    .after(dispatch_end_turn)
+                    .run_if(enemy_phase_started)
                     .in_set(SimSystems::Simulate),
             );
     }
