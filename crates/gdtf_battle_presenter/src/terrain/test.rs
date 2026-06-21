@@ -43,9 +43,6 @@ fn shipped_tile_roles_ron_parses_with_all_roles() {
     // The door role is documented; the struct parsing means it is present.
     let _ = roles.door;
     let _ = roles.floor_alt_panel;
-    let _ = roles.floor_alt_stone;
-    let _ = roles.floor_alt_dirt;
-    let _ = roles.floor_alt_grass;
 }
 
 /// `i32_extent` returns the grid extent unchanged for the real 60x60 grid.
