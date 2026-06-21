@@ -111,6 +111,21 @@ pub fn round_band_for_cell(round: SimPos, tuning: &CombatTuning) -> HeightBand {
     band_for(round_band_fraction(round), tuning)
 }
 
+/// The **lower** of two [`HeightBand`]s on the LOW < MID < HIGH ladder (ties return
+/// either, they are equal) — the band the §2 clearance test compares against when a
+/// round sweeps across a voxel between two endpoint bands (GTW-329).
+///
+/// A straight-line round's height is monotone within a voxel, so the lowest band it
+/// occupies anywhere inside the cell is the lower of its entry and exit bands. The
+/// march bands the clearance test against that lowest band so a steep point-blank
+/// shot impacts an occupant the round dips into MID-cell, instead of clearing it at
+/// the higher entry boundary. For a flat shot the two endpoint bands are equal, so
+/// this is the (unchanged) entry band.
+#[must_use]
+pub const fn lower_band(a: HeightBand, b: HeightBand) -> HeightBand {
+    if band_rank(a) <= band_rank(b) { a } else { b }
+}
+
 /// The per-crossing **clearance predicate**: does a round in `round_band` clear an
 /// occupant in `occupant_band`? (`docs/combat/resolution.md` §2:
 /// "strictly higher sails over; equal-or-lower impacts"; AC #2, #3.)

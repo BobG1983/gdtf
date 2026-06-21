@@ -5,7 +5,7 @@
 use bevy::{math::Vec3, prelude::Entity};
 
 use crate::{
-    clearance::round_band_for_cell,
+    clearance::{lower_band, round_band_for_cell},
     cover::CoverLedger,
     march::{
         dda::{MAX_STEPS, MarchState, Step, impact_at},
@@ -100,20 +100,31 @@ pub fn march_vector(
 
     for _ in 0..MAX_STEPS {
         let here = key_of(state.vx, state.vy, state.vz);
-        // The round's position as it sits in this voxel (its entry point) bands it at
-        // this crossing (AC #1, #2). The shooter's own cell never blocks its own shot
-        // (the one hard exception, AC #6) — skip the occupant / cover checks there.
+        // The round's position as it ENTERS this voxel — the reported impact point and
+        // the round's band at the crossing boundary (AC #1, #2).
         let here_point = point_at(muzzle, dir, state.entry_t);
-        let round_band = round_band_for_cell(here_point, tuning);
+        let entry_band = round_band_for_cell(here_point, tuning);
+        // A steep round's z changes WITHIN a single voxel, so it can enter a cell in a
+        // higher band yet dip into the occupant's band before it exits. Band the
+        // clearance test against the LOWEST band the round occupies anywhere inside the
+        // voxel — the lower of the entry and exit bands (the round's height is monotone
+        // across the cell). This lets a point-blank shot at a lower-stanced target
+        // connect instead of clearing it at the entry boundary and diving past into the
+        // ground (GTW-329). For a flat shot the two bands are equal, so the test band is
+        // the unchanged entry band.
+        let exit_band = round_band_for_cell(state.exit_point(muzzle, dir), tuning);
+        let test_band = lower_band(entry_band, exit_band);
+        // The shooter's own cell never blocks its own shot (the one hard exception,
+        // AC #6) — skip the occupant / cover checks there.
         if here != shooter_cell
-            && let Some(result) =
-                impact_at(here, here_point, round_band, occupancy, cover, &is_dead)
+            && let Some(result) = impact_at(here, here_point, test_band, occupancy, cover, &is_dead)
         {
             return result;
         }
 
-        // Step to the next voxel; an exit / intact slab ends the march here.
-        match state.advance(muzzle, dir, surface, tuning, round_band) {
+        // Step to the next voxel; an exit / intact slab ends the march here. The
+        // z-boundary slab result records the round's ENTRY band, the existing semantic.
+        match state.advance(muzzle, dir, surface, tuning, entry_band) {
             Step::Continue => {}
             Step::Stopped(result) => return result,
         }

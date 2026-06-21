@@ -3,7 +3,7 @@
 
 use crate::{
     clearance::{
-        Clearance, band::band_rank, round_band_for_cell, round_band_fraction,
+        Clearance, band::band_rank, lower_band, round_band_for_cell, round_band_fraction,
         round_clears_occupant, silhouette_band,
     },
     cover::{BandFraction, HeightBand, band_for},
@@ -248,6 +248,40 @@ fn low_round_does_not_clear_low_occupant() {
         Clearance::Impacts,
         "a LOW round vs a LOW occupant is EQUAL, so it impacts (prone can't clear LOW)",
     );
+}
+
+/// GTW-329 — `lower_band` returns the LOW < MID < HIGH minimum of two bands, and is
+/// symmetric and idempotent. This is the band the march compares the clearance test
+/// against when a steep round sweeps across a voxel between two endpoint bands — the
+/// lowest band the round occupies in the cell, so a point-blank round that dips into
+/// a lower-stanced occupant's band mid-cell still impacts it.
+#[test]
+fn lower_band_returns_the_minimum_of_two_bands() {
+    use HeightBand::{High, Low, Mid};
+
+    // Idempotent: equal endpoints yield that band (the flat-shot case — entry == exit).
+    assert_eq!(lower_band(Low, Low), Low);
+    assert_eq!(lower_band(Mid, Mid), Mid);
+    assert_eq!(lower_band(High, High), High);
+
+    // The strict minimum across each unequal pair, in both orders (symmetric).
+    assert_eq!(lower_band(High, Mid), Mid);
+    assert_eq!(lower_band(Mid, High), Mid);
+    assert_eq!(lower_band(High, Low), Low);
+    assert_eq!(lower_band(Low, High), Low);
+    assert_eq!(lower_band(Mid, Low), Low);
+    assert_eq!(lower_band(Low, Mid), Low);
+
+    // Full ladder cross-check: the result never ranks above either input, and equals
+    // the lower-ranked input.
+    for a in [Low, Mid, High] {
+        for b in [Low, Mid, High] {
+            let lo = lower_band(a, b);
+            assert!(band_rank(lo) <= band_rank(a) && band_rank(lo) <= band_rank(b));
+            let expected = if band_rank(a) <= band_rank(b) { a } else { b };
+            assert_eq!(lo, expected, "lower_band({a:?}, {b:?})");
+        }
+    }
 }
 
 /// AC #1 end-to-end — classifying a crossed cell then running the predicate: a

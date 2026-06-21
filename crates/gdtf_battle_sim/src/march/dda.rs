@@ -90,8 +90,17 @@ enum SteppedAxis {
 /// cover ([`MarchKind::Cover`], destroyed cover excluded). The clearance is
 /// band-vs-band ([`round_clears_occupant`]): equal-or-lower impacts, strictly-higher
 /// clears. **Any** actor impacts, including the shooter's own gang (true friendly
-/// fire — AC #2, #6). `here_point` is the round's position in the voxel; `round_band`
-/// is its band there.
+/// fire — AC #2, #6).
+///
+/// `here_point` is the round's position at the voxel ENTRY (the reported impact
+/// point, recorded on the [`MarchResult`]). `test_band` is the band the clearance
+/// rule compares against — the **lowest** band the round occupies anywhere INSIDE
+/// this voxel (GTW-329). A steep shot's z changes within a single cell, so the round
+/// can ENTER a cell in a higher band yet dip into the occupant's band before it
+/// exits; banding the clearance test against the round's lowest in-voxel band lets a
+/// point-blank shot at a lower-stanced target connect instead of sailing over the
+/// entry boundary and diving into the ground. For a flat shot the in-voxel band does
+/// not change, so `test_band` equals the entry band and the verdict is unchanged.
 ///
 /// A **dead** occupant is transparent: when a ganger would otherwise be struck but
 /// `is_dead(entity)` is `true`, the round passes through the corpse and the test
@@ -104,7 +113,7 @@ enum SteppedAxis {
 pub(super) fn impact_at(
     here: CellLevel,
     here_point: SimPos,
-    round_band: HeightBand,
+    test_band: HeightBand,
     occupancy: &OccupancyGrid,
     cover: &CoverLedger,
     is_dead: &impl Fn(Entity) -> bool,
@@ -113,13 +122,13 @@ pub(super) fn impact_at(
     //    a corpse (`is_dead`), in which case the round passes through it (GTW-317).
     if let (Some(entity), Some(occ_band)) =
         (occupancy.occupant(&here), occupancy.occupant_band(&here))
-        && round_clears_occupant(round_band, occ_band) == Clearance::Impacts
+        && round_clears_occupant(test_band, occ_band) == Clearance::Impacts
         && !is_dead(entity)
     {
         return Some(MarchResult {
             kind:   MarchKind::Ganger(entity),
             at:     here,
-            band:   round_band,
+            band:   test_band,
             impact: here_point,
         });
     }
@@ -127,12 +136,12 @@ pub(super) fn impact_at(
     if !occupancy.is_cover_destroyed(&here)
         && let Some(entry) = cover.peek(&here)
         && !*entry.destroyed
-        && round_clears_occupant(round_band, entry.height_band) == Clearance::Impacts
+        && round_clears_occupant(test_band, entry.height_band) == Clearance::Impacts
     {
         return Some(MarchResult {
             kind:   MarchKind::Cover(*entry),
             at:     here,
-            band:   round_band,
+            band:   test_band,
             impact: here_point,
         });
     }
@@ -180,6 +189,21 @@ impl MarchState {
             az: AxisDda::new(muzzle.z, dir.z, vz),
             entry_t: 0.0,
         }
+    }
+
+    /// The round's position at the **exit boundary** of the voxel it currently sits
+    /// in — `muzzle + t_exit × dir`, where `t_exit` is the next voxel boundary the ray
+    /// reaches (the smallest of the three per-axis `t_max`s, Amanatides–Woo).
+    ///
+    /// Paired with the entry point ([`entry_t`](MarchState::entry_t)), this gives the
+    /// two endpoints of the ray's segment through the current voxel — the round's band
+    /// sweeps monotonically between them, so the lowest band it occupies in the voxel
+    /// is the lower of the entry and exit bands (GTW-329). A non-moving / degenerate
+    /// ray has all-`INFINITY` `t_max`s, so `t_exit` is `INFINITY` and the exit point
+    /// coincides with the (capped) march end — harmless, as such a ray takes no step.
+    pub(super) fn exit_point(&self, muzzle: SimPos, dir: Vec3) -> SimPos {
+        let t_exit = self.ax.t_max.min(self.ay.t_max).min(self.az.t_max);
+        point_at(muzzle, dir, t_exit)
     }
 
     /// Step to the next voxel along the smallest-`t_max` axis (Amanatides–Woo),
