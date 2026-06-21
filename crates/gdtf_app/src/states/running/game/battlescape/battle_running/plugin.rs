@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use gdtf_battle_presenter::PresenterSystems;
 use gdtf_battle_sim::occupancy_sync::SimSystems;
 
 use crate::states::{
@@ -38,9 +39,22 @@ fn add_systems(app: &mut App) {
                     .and_then(not(resource_exists::<BattleRunningComplete>)),
             ),
         )
+        // GTW-334: `move_on` advances `BattleRunning → AnimateOut`, but DEFERRED past the
+        // deciding shot's FX. The sim emits its `BattleWon` / `BattleLost` the SAME drain frame
+        // the killing shot resolves, and `end_battle_on_outcome` latches `BattleRunningComplete`
+        // that frame (the correct "outcome decided" latch — unchanged). The BUG was that the
+        // transition fired the same frame, before the deciding tracer animates. `move_on` now
+        // runs in `Update` (so it can read the presenter's FX-pipeline state each frame, which a
+        // `FixedUpdate` placement could not order against), `.after(PresenterSystems::Draw)` so
+        // this frame's FX spawn / advance / impact systems have already run, and holds the
+        // transition until the deciding shot's projectile / impact pipeline has gone busy and
+        // drained. It classifies a FLEE / non-shot end (no `ShotFired` at the latch) as PROMPT so
+        // it never hangs on a pipeline that never goes busy (trap B); the spawn-race (trap A) is
+        // closed by classifying off the latch-frame `ShotFired` (present even before the deferred
+        // bolt materializes) and requiring busy-since-latch before idle counts as drained.
         .add_systems(
-            FixedUpdate,
-            move_on.run_if(
+            Update,
+            move_on.after(PresenterSystems::Draw).run_if(
                 in_state(BattleScapeState::BattleRunning)
                     .and_then(resource_exists::<BattleRunningComplete>),
             ),
