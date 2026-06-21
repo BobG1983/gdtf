@@ -18,6 +18,7 @@ use crate::{
     surface::SurfaceGrid,
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
+    visibility::SquadVisibility,
     weapon::WeaponRegistry,
 };
 
@@ -42,7 +43,10 @@ use crate::{
 ///    [`Situation::player_faction`](crate::situation::Situation), the
 ///    [`BattleRoster`] is captured from the situation's fielded gangers' factions, the
 ///    [`ActiveFaction`] turn-cycle resource is seeded to the same player faction (the
-///    player acts first; GTW-309) — all sharing [`BattleInProgress`]'s lifetime — and a
+///    player acts first; GTW-309), an EMPTY
+///    [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog is inserted (GTW-341 —
+///    the [`BattleReady`] trigger below fills it with the spawn-time FOV on the next update)
+///    — all sharing [`BattleInProgress`]'s lifetime — and a
 ///    [`BattleReady`] is written; on `Err` the typed
 ///    [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid vertical link,
 ///    an unresolved weapon key, OR an unresolved armor key) is surfaced via [`error!`] and NEITHER
@@ -114,6 +118,14 @@ pub fn setup_battle_on_request(
                 // first), sharing the BattleInProgress lifetime (removed together on
                 // teardown) so the turn-cycle engine's ActiveFaction read is panic-free.
                 commands.insert_resource(ActiveFaction::new(request.situation.player_faction));
+                // GTW-341: insert an EMPTY SquadVisibility on this same Ok path, sharing
+                // the BattleInProgress lifetime. It starts empty; the BattleReady we write
+                // below trips recompute_visibility (the SOLE writer) on the next update,
+                // filling it with the spawn-time squad FOV — so the spawn FOV is covered by
+                // the BattleReady trigger, not computed here (clause 4). The empty insert
+                // makes the ResMut<SquadVisibility> read panic-free the moment the gated
+                // Simulate band can run (bevy-traps.md #1).
+                commands.insert_resource(SquadVisibility::default());
                 ready.write(BattleReady);
             }
             Err(error) => {
@@ -135,9 +147,11 @@ pub fn setup_battle_on_request(
 /// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`]), the
 /// [`BattleInProgress`] witness (closing the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) gate so the
-/// bundled runtime goes inert again), the [`PlayerFaction`], the [`BattleRoster`], and the
-/// [`ActiveFaction`] turn-cycle resource (all lifetimes track [`BattleInProgress`], so they
-/// are removed in the same teardown). These resources are BATTLE-lifetime: the app
+/// bundled runtime goes inert again), the [`PlayerFaction`], the [`BattleRoster`], the
+/// [`ActiveFaction`] turn-cycle resource, and the
+/// [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog (GTW-341) (all lifetimes
+/// track [`BattleInProgress`], so they are removed in the same teardown). These resources are
+/// BATTLE-lifetime: the app
 /// sends this trigger only at the battle boundary (its `OnExit(GameState::BattleScape)`),
 /// so they survive the whole battle for the E10.6 acts before being cleaned
 /// (`bevy-traps.md` #1 at the correct state level).
@@ -174,5 +188,9 @@ pub fn teardown_battle_on_request(
         // Remove the ActiveFaction alongside, so the turn cycle's lifetime stays identical
         // to BattleInProgress (the turn-cycle engine reads it within that window; GTW-309).
         commands.remove_resource::<ActiveFaction>();
+        // Remove the SquadVisibility alongside, so the squad fog's lifetime stays identical
+        // to BattleInProgress (recompute_visibility — the sole writer — reads its
+        // ResMut within that window; GTW-341).
+        commands.remove_resource::<SquadVisibility>();
     }
 }

@@ -13,7 +13,8 @@ use crate::{
         resources::BattleInProgress,
         setup::{setup_battle_on_request, teardown_battle_on_request},
     },
-    occupancy_sync::{OccupancyMaintenancePlugin, SimSystems},
+    occupancy_sync::{OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover},
+    visibility::{SquadVisibility, recompute_visibility, should_recompute_visibility},
 };
 
 /// The sim's **battle-lifecycle registration unit** — adding this ONE plugin wires
@@ -33,7 +34,15 @@ use crate::{
 ///   [`MessageReader`](bevy::prelude::MessageReader)'s param validation);
 /// - adds the roster-grounded [`check_outcome`] census `.in_set(`[`SimSystems::Simulate`]`)`
 ///   — so it rides the same [`BattleInProgress`] gate as the bundled runtime (inert and
-///   panic-free outside a live battle); and
+///   panic-free outside a live battle);
+/// - adds the GTW-341 squad-fog writer
+///   [`recompute_visibility`](crate::visibility::recompute_visibility) — the SOLE
+///   [`SquadVisibility`](crate::visibility::SquadVisibility) mutator — into the same gated
+///   `Simulate` band, ordered `.after`
+///   [`sync_destroyed_cover`](crate::occupancy_sync::sync_destroyed_cover) (the last
+///   `occupancy_sync` grid-maintenance system) and gated on its
+///   [`should_recompute_visibility`](crate::visibility::should_recompute_visibility) trigger
+///   predicate; and
 /// - adds [`setup_battle_on_request`] + [`teardown_battle_on_request`] to [`Update`],
 ///   ordered around the [`SimSystems::Simulate`] band (setup `.before`, teardown
 ///   `.after`), so the battle-lifetime resources are created before the bundled
@@ -91,6 +100,28 @@ impl Plugin for BattleSimPlugin {
             // a live battle — same window as BattleInProgress (GTW-237). No configure_sets
             // (the set is owned upstream by OccupancyMaintenancePlugin).
             .add_systems(Update, check_outcome.in_set(SimSystems::Simulate))
+            // The squad-fog writer (GTW-341): the SOLE SquadVisibility mutator, joining the
+            // gated Simulate band so its grid/tuning/SquadVisibility reads stay panic-free
+            // in the battle-active window (bevy-traps.md #1). Ordered `.after`
+            // sync_destroyed_cover — the LAST system in the occupancy_sync move → die →
+            // cover maintenance chain — so the grids reflect the new occupant
+            // positions/bands BEFORE sight is recomputed (clause 3; union_fov reads
+            // OccupancyGrid::occupant_band, bevy-traps.md #3). Gated again on its trigger
+            // predicate so the expensive union scan runs only on a sight-changing update.
+            .add_systems(
+                Update,
+                recompute_visibility
+                    .in_set(SimSystems::Simulate)
+                    .after(sync_destroyed_cover)
+                    // Guard the ResMut<SquadVisibility> read on the resource's presence
+                    // (bevy-traps.md #1): setup inserts it on the Ok path, so it shares the
+                    // BattleInProgress window — but a headless harness can open the
+                    // BattleInProgress gate WITHOUT going through setup (the bleed runtime
+                    // tests do), so this extra guard keeps the writer inert until the fog
+                    // resource actually exists, rather than panicking on its absence.
+                    .run_if(resource_exists::<SquadVisibility>)
+                    .run_if(should_recompute_visibility),
+            )
             // The lifecycle drivers run UNCONDITIONALLY (outside the gated band): setup
             // before the band (it creates the witness), teardown after (it removes it).
             .add_systems(

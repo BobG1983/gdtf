@@ -334,7 +334,8 @@ pub use vertical::{
     build_vertical_link_graph,
 };
 pub use visibility::{
-    FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible, union_fov,
+    FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible, recompute_visibility,
+    should_recompute_visibility, union_fov,
 };
 pub use weapon::{
     Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,

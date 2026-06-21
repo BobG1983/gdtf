@@ -8,7 +8,8 @@
 //! per-ganger overlays. The presenter (GTW-342) presents it; it never owns it (the
 //! model/view split, ADR-0001).
 //!
-//! This leaf provides the **data + helpers**, NOT the system trigger wiring:
+//! This module provides the **data + helpers** (GTW-340) and the **writer system +
+//! trigger gate** that wire them onto the battle (GTW-341):
 //!
 //! - [`SquadVisibility`] — the Bevy [`Resource`](bevy::prelude::Resource) holding the
 //!   VISIBLE and EXPLORED [`HashSet`](bevy::platform::collections::HashSet)`<`[`CellLevel`](crate::metric::CellLevel)`>`
@@ -24,15 +25,26 @@
 //!   candidate set, resolving each candidate's band the shot-pipeline way) and
 //!   [`accrue`] (VISIBLE replaces, EXPLORED grows monotonically).
 //!
-//! The recompute SYSTEM that wires these onto every `Changed<Position>` move step (and
-//! the other triggers) is GTW-341 (leaf 5) — NOT here. Everything in this module is
-//! pure: render-free, deterministic, RNG-free, no `&mut World` / `Commands`.
+//! - The **writer system** [`recompute_visibility`] (GTW-341, leaf 5) — the SOLE mutator
+//!   of [`SquadVisibility`]: it gathers the conscious player-faction observers and runs
+//!   [`union_fov`] then [`accrue`] on every trigger (a ganger move / re-pose / life flip,
+//!   a [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed) message, or a
+//!   [`BattleReady`](crate::battle::BattleReady) spawn-FOV), and its trigger gate
+//!   [`should_recompute_visibility`]. Wired by
+//!   [`BattleSimPlugin`](crate::battle::BattleSimPlugin) after the `occupancy_sync` grid
+//!   maintenance, inside the [`BattleInProgress`](crate::battle::BattleInProgress)-gated
+//!   `Simulate` band.
+//!
+//! The GTW-340 helpers are pure (render-free, deterministic, RNG-free, no `&mut World`);
+//! the GTW-341 writer is param-only (`Query` / `Res` / `ResMut`), no `&mut World`.
 
 mod compute;
+mod recompute;
 mod squad;
 
 #[cfg(test)]
 mod test;
 
 pub use compute::{FovObserver, accrue, union_fov};
+pub use recompute::{recompute_visibility, should_recompute_visibility};
 pub use squad::{FactionRelation, SquadVisibility, is_ganger_visible};
