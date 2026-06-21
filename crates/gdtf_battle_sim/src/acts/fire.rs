@@ -8,7 +8,7 @@
 
 use bevy::{
     ecs::system::{ParamSet, SystemParam},
-    prelude::{MessageReader, MessageWriter, Query, Res, ResMut},
+    prelude::{Entity, Message, MessageReader, MessageWriter, Query, Res, ResMut},
 };
 
 use crate::{
@@ -18,15 +18,65 @@ use crate::{
     firing_arc::target_in_arc,
     ganger::{Aiming, Direction, Facing, Position, Tu, TuMax},
     magazine::mode_tu_cost,
-    metric::Cell,
+    metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
     rng::SimRng,
     shot_fired::ShotFired,
     surface::SurfaceGrid,
     tu::spend_tu,
     tuning::CombatTuning,
-    weapon::DamageType,
+    weapon::{DamageType, ModeKind},
 };
+
+/// A **fire was declared** — the combat-log signal that `shooter` fired `mode` at
+/// `target` (GTW-328), emitted ONCE per [`FireRequested`] that passes the firing-arc gate,
+/// BEFORE the shot rolls.
+///
+/// The combat-text LOG event for a shot declaration ("<name> fired <Single/Burst/Full> at
+/// <target>") — the user-facing announcement that a shot is being taken, distinct from the
+/// per-round [`ShotFired`] outcome signal (a burst declares ONCE but fires multiple
+/// rounds). It carries ONLY data the [`dispatch_fire`] system already holds at fire time —
+/// the [`shooter`](FireDeclaration::shooter) ref, the resolved [`target`](FireDeclaration::target)
+/// occupant entity (if the aimed cell holds one, else `None`), and the
+/// [`mode`](FireDeclaration::mode) [`ModeKind`] (read off the request's
+/// [`FireModeSpec`](crate::weapon::FireModeSpec) kind). It adds **no** fire-result logic,
+/// performs **no** RNG draw, and re-resolves nothing — the determinism property is
+/// untouched (`docs/combat/resolution.md` §"What's pure math vs sim").
+///
+/// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), written
+/// with [`MessageWriter`] and read with [`MessageReader`], mirroring [`ShotFired`] /
+/// [`ReloadResult`](crate::acts::ReloadResult). The [`shooter`](FireDeclaration::shooter) /
+/// [`target`](FireDeclaration::target) are Bevy [`Entity`] handles — framework plumbing,
+/// the only bare type the no-bare-types rule permits in a payload; [`mode`](FireDeclaration::mode)
+/// is the domain [`ModeKind`] enum, never a bare label string.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FireDeclaration {
+    /// The firing entity (the armed shooter the round leaves) — resolved to a name by the
+    /// combat-log presenter via `Query<&GangerName>`.
+    pub shooter: Entity,
+    /// The intended target occupant entity — the ganger standing in the aimed `(cell,
+    /// level)` if one is there (the occupancy grid read the dispatch already holds), else
+    /// `None` (the shot is aimed at an empty cell / impact point). NOT a fresh raycast or
+    /// re-resolve — a single O(1) grid peek of the data the dispatch already reads.
+    pub target:  Option<Entity>,
+    /// The declared fire mode's closed kind (`Single` / `Burst` / `Full`) — read off the
+    /// request's [`FireModeSpec`](crate::weapon::FireModeSpec) kind; the log renders its
+    /// [`Display`](std::fmt::Display) label.
+    pub mode:    ModeKind,
+}
+
+impl FireDeclaration {
+    /// Build a fire-declaration signal for `shooter` firing `mode` at `target` (the
+    /// resolved occupant entity, or `None` for an empty-cell shot).
+    #[must_use]
+    pub const fn new(shooter: Entity, target: Option<Entity>, mode: ModeKind) -> Self {
+        Self {
+            shooter,
+            target,
+            mode,
+        }
+    }
+}
 
 /// The three change-driven world-grid resources [`dispatch_fire`] reads, bundled into one
 /// [`SystemParam`] so the system's parameter list stays under clippy's argument-count gate
@@ -56,6 +106,24 @@ impl BattleGridsParam<'_> {
             cover:     &self.cover,
         }
     }
+}
+
+/// The two output signal [`MessageWriter`]s [`dispatch_fire`] emits on, bundled into one
+/// [`SystemParam`] so the system's parameter list stays under clippy's argument-count gate
+/// (the [`BattleGridsParam`] grouping precedent above).
+///
+/// Grouping the cohesive output writers into one param keeps [`dispatch_fire`] at seven
+/// parameters: the per-round [`ShotFired`] geometry/FCT signal (GTW-290 / GTW-302) and the
+/// per-request [`FireDeclaration`] combat-log signal (GTW-328). A transparent system-param
+/// bundle of two named output buffers — not itself a wrapped domain value.
+#[derive(SystemParam)]
+pub struct FireSignals<'w> {
+    /// The per-ROUND fire-trajectory signal (one per round resolved) — the presenter's
+    /// muzzle / tracer / impact FX + the floating-combat-text verdict.
+    shots:        MessageWriter<'w, ShotFired>,
+    /// The per-REQUEST combat-log declaration (one per proceeding shot) — "<name> fired
+    /// <mode> at <target>".
+    declarations: MessageWriter<'w, FireDeclaration>,
 }
 
 /// The query the GTW-242 fire dispatch turns the shooter through for an out-of-arc shot —
@@ -187,7 +255,7 @@ pub fn dispatch_fire(
     grids: BattleGridsParam,
     tuning: Res<CombatTuning>,
     mut rng: ResMut<SimRng>,
-    mut shots_fired: MessageWriter<ShotFired>,
+    mut signals: FireSignals,
 ) {
     for request in requests.read() {
         // (1) READ the arc-relevant shooter state through the ShooterQuery half, copying
@@ -245,6 +313,21 @@ pub fn dispatch_fire(
             FireArcDecision::FireInArc => {} // direct shot: no turn, fall through to fire()
         }
 
+        // (3b) GTW-328: declare the shot for the combat-text LOG — ONCE per fire request
+        //      that proceeds (the Reject arm `continue`d above, so a rejected/unaffordable
+        //      shot logs nothing). Emitted BEFORE the shot rolls, carrying ONLY data the
+        //      dispatch already holds: the shooter ref, the resolved target occupant at the
+        //      aimed (cell, level) (a single O(1) occupancy peek — NOT a fresh raycast or
+        //      re-resolve), and the request's mode kind. No RNG draw, no fire-result logic
+        //      — the determinism property is untouched.
+        let aim_cell_level = CellLevel::new(request.target_cell, request.target_level);
+        let target = grids.occupancy.occupant(&aim_cell_level);
+        signals.declarations.write(FireDeclaration::new(
+            request.shooter,
+            target,
+            request.mode.kind,
+        ));
+
         // (4) Run the landed verb ONCE (REUSED verbatim) — it spends the fire TU and
         //     resolves the shot. The volley's effects are the in-world mutations
         //     (TU / ammo / target surfaces) the presenter observes via change-detection.
@@ -275,7 +358,7 @@ pub fn dispatch_fire(
         //     with its own report — every fired round therefore carries `Some(report)`. An
         //     empty (fail-closed) volley emits none.
         for (outcome, report) in volley.shots.iter().zip(volley.reports.iter()) {
-            shots_fired.write(ShotFired::from_round(
+            signals.shots.write(ShotFired::from_round(
                 request.shooter,
                 damage,
                 outcome,

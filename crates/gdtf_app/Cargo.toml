@@ -23,8 +23,15 @@ gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 # sim deps neither); this new `gdtf_app -> gdtf_battle_input` edge does NOT create
 # a cycle (the input crate does not depend on `gdtf_app`).
 gdtf_battle_input = { path = "../gdtf_battle_input" }
+# The combat-log tuning table (GTW-328) is a hot-reloadable `RonAsset<CombatLogTuning>`
+# loaded through the generic `gdtf_assets` loader, so the payload derives `serde::Deserialize`
+# (the FX-tuning / pan-tuning `RonAsset` payload precedent).
+serde = { workspace = true }
 
 [dev-dependencies]
+# The GTW-328 combat-log tuning test parses the shipped `combat_log.ron` bytes with
+# `ron::de::from_str` (the FX-tuning `shipped_fx_tuning_ron_parses` precedent).
+ron = { workspace = true }
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo
 # (dev-dependencies are not part of the normal build graph). The harness pulls
 # in gdtf_app with `test-support`, which unifies that feature on for this

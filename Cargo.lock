@@ -2655,6 +2655,8 @@ dependencies = [
  "gdtf_battle_sim",
  "gdtf_test_utils",
  "gdtf_ui",
+ "ron",
+ "serde",
 ]
 
 [[package]]

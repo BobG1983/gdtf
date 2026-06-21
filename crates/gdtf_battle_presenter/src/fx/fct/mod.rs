@@ -26,6 +26,14 @@
 //!   [`spawn_shot_projectiles`](super::spawn_shot_projectiles) now calls these at
 //!   projectile-spawn time and threads the pops THROUGH the staggered projectile → impact
 //!   pipeline so each shot's numbers appear at its own impact.
+//! - [`log_event`] — the GTW-328 slice-2 COMBAT-LOG classification
+//!   ([`classify_log_event`](log_event::classify_log_event)): the shared, PURE function that
+//!   turns a resolved [`CombatLogEvent`](log_event::CombatLogEvent) (the five Phase-1 combat
+//!   events — fire declaration / movement / shot outcome / reload / turn boundary, with each
+//!   [`Entity`](bevy::prelude::Entity) ALREADY resolved to a name) into the ordered
+//!   [`LogLine`](log_event::LogLine)s the bottom-left HUD log renders. The shot outcome REUSES
+//!   [`classify_report`](reader::classify_report) (its FCT callers untouched); a clean miss is
+//!   shown (`"<name> missed"`), NOT suppressed.
 //! - [`consequence`] — the GTW-302 slice-4 AUXILIARY-SIGNAL READER ([`read_consequence_fct`]):
 //!   the Phase-1 pops NOT derivable from [`ShotFired`] alone but riding the dedicated
 //!   consequence messages — `"Bleeding"` (AMBER) from [`Bleeding`](gdtf_battle_sim::Bleeding),
@@ -40,6 +48,7 @@
 //! [`animate_impact`](super::animate_impact) off the classification this module provides.
 
 mod consequence;
+mod log_event;
 mod palette;
 mod reader;
 mod text;
@@ -48,6 +57,7 @@ mod text;
 mod test;
 
 pub use consequence::read_consequence_fct;
+pub use log_event::{CombatLogEvent, LogLine, LogName, classify_log_event};
 pub use palette::{FctValence, severity_color, valence_color};
 pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};
 pub use text::{

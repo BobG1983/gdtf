@@ -2,7 +2,7 @@
 //! [`EndTurnRequested`] and advances the active team, regenerating TU at each turn-start
 //! (GTW-309).
 
-use bevy::prelude::{MessageReader, Query, Res, ResMut};
+use bevy::prelude::{Message, MessageReader, MessageWriter, Query, Res, ResMut};
 
 use crate::{
     acts::EndTurnRequested,
@@ -10,6 +10,37 @@ use crate::{
     ganger::{Faction, Tu, TuMax},
     turn::{ActiveFaction, regen::regen_team_tu},
 };
+
+/// A **turn started** — the combat-log signal that the turn passed to `now_active`
+/// (GTW-328), emitted ONCE per [`ActiveFaction`] advance inside [`dispatch_end_turn`].
+///
+/// The combat-text LOG event for a turn boundary ("Player turn" / "Enemy turn") — the
+/// user-facing announcement that the active team changed. Because a single
+/// [`EndTurnRequested`] cycles the turn off the ending team to the other team AND (while
+/// the enemy has no AI) auto-passes back to the player, [`dispatch_end_turn`] advances
+/// [`ActiveFaction`] up to TWICE per request — so it emits a [`TurnStarted`] after EACH
+/// advance (the enemy turn start, then the player turn start), in order, so the log reads
+/// both boundaries. It adds **no** turn-cycle logic and re-resolves nothing — pure
+/// exposure of the faction the cycle just made active.
+///
+/// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), mirroring
+/// [`crate::acts::ReloadResult`]. [`now_active`](TurnStarted::now_active) is the domain
+/// [`Faction`] newtype — the combat-log presenter compares it to the
+/// [`PlayerFaction`] to render "Player turn" vs "Enemy turn".
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TurnStarted {
+    /// The faction whose turn just started — the team [`ActiveFaction`] now points at
+    /// after the advance.
+    pub now_active: Faction,
+}
+
+impl TurnStarted {
+    /// Build a turn-started signal for the team that just became active.
+    #[must_use]
+    pub const fn new(now_active: Faction) -> Self {
+        Self { now_active }
+    }
+}
 
 /// **Dispatch an end-turn** — hand the turn to the other team, regenerate that team's TU
 /// at its turn-start, and (while the enemy has no AI) auto-pass the enemy turn back to the
@@ -44,6 +75,7 @@ pub fn dispatch_end_turn(
     mut active: ResMut<ActiveFaction>,
     player: Option<Res<PlayerFaction>>,
     mut gangers: Query<(&Faction, &mut Tu, &TuMax)>,
+    mut turns: MessageWriter<TurnStarted>,
 ) {
     // PlayerFaction shares ActiveFaction's battle lifetime; without it there is no live
     // battle to cycle, so a missing resource is a total no-op (bevy-traps #1).
@@ -62,6 +94,8 @@ pub fn dispatch_end_turn(
                 .map(|(faction, tu, tu_max)| (faction, tu.into_inner(), tu_max)),
             now_active,
         );
+        // GTW-328: announce the turn boundary the cycle just crossed (combat-log signal).
+        turns.write(TurnStarted::new(now_active));
 
         // 3. If the newly-active team is the ENEMY, auto-pass the enemy turn straight back
         //    to the player and regenerate the player's TU at its turn-start, so control
@@ -76,6 +110,8 @@ pub fn dispatch_end_turn(
                     .map(|(faction, tu, tu_max)| (faction, tu.into_inner(), tu_max)),
                 player_team,
             );
+            // GTW-328: announce the player's turn start after the enemy auto-pass.
+            turns.write(TurnStarted::new(player_team));
         }
     }
 }

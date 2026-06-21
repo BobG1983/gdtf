@@ -103,6 +103,13 @@ crate::support_use! {
         ContextualPanelRoot, ExecuteButton, OpenDoorButton, StabilizeButton,
     };
 }
+// Test-support-only re-export of the GTW-328 combat-log markers (the log root + per-line marker),
+// gated so the binary build is `unused`/`unreachable_pub`-clean. The final hop before
+// `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    running::{CombatLogLine, CombatLogRoot};
+}
 
 mod teardown;
 pub(in crate::states) use teardown::TeardownScenePlugin;

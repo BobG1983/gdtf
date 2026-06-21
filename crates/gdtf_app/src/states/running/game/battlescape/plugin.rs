@@ -7,9 +7,9 @@ use crate::states::{
         ContextualPanelPlugin, GameBattleScapeActionBarScenePlugin,
         GameBattleScapeAfterMathScenePlugin, GameBattleScapeAnimateInScenePlugin,
         GameBattleScapeAnimateOutScenePlugin, GameBattleScapeBattleRunningScenePlugin,
-        GameBattleScapeBottomBarScenePlugin, GameBattleScapeGenerationScenePlugin,
-        GameBattleScapeInspectPanelScenePlugin, GameBattleScapeStatusPanelScenePlugin,
-        GameBattleScapeWeaponPanelScenePlugin, systems::*,
+        GameBattleScapeBottomBarScenePlugin, GameBattleScapeCombatLogScenePlugin,
+        GameBattleScapeGenerationScenePlugin, GameBattleScapeInspectPanelScenePlugin,
+        GameBattleScapeStatusPanelScenePlugin, GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
 };
 
@@ -119,7 +119,18 @@ fn add_plugins(app: &mut App) {
         // act-intent seam → the sim's `dispatch_act_intents`), both in `Update` gated on the
         // `BattleInProgress` witness. Execute + Stabilize are live; Open Door stays hidden (no
         // sim verb yet). View-only — it reads the input selection + writes the intent seam.
-        .add_plugins(ContextualPanelPlugin);
+        .add_plugins(ContextualPanelPlugin)
+        // The GTW-328 COMBAT-TEXT LOG (bottom-left, ABOVE the weapon panel): the scroll-up-and-
+        // fade strip of recent combat events. Same `BattleRunning` lifecycle as the panels; it
+        // loads its hot-reloadable `combat_log.ron` tuning (the FX-tuning RON precedent), and its
+        // update system drains the sim's five combat-event messages
+        // (FireDeclaration/MovementOccurred/TurnStarted/ReloadResult/ShotFired), resolves each
+        // Entity to a ganger name, classifies them via the shared presenter `classify_log_event`,
+        // and appends fading UI text lines (FIFO-trimmed to the tuned cap), gated on the
+        // `BattleInProgress` witness. View-only — it reads sim messages + names, writes nothing
+        // back. It deps `gdtf_ui` + `gdtf_battle_presenter` + `gdtf_battle_sim` + `gdtf_assets`,
+        // all already on the app's edge; the chain stays acyclic.
+        .add_plugins(GameBattleScapeCombatLogScenePlugin);
 }
 
 fn add_states(app: &mut App) {

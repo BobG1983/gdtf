@@ -51,7 +51,7 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{Cell, DamageType, Level, Position, ShotFired, ShotKind};
+use gdtf_battle_sim::{Cell, DamageType, HitReport, Level, Position, ShotFired, ShotKind};
 
 use super::{
     fct::{ClassifiedPop, FctStackIndex, anchor_cell, classify_report, spawn_floating_text},
@@ -122,6 +122,17 @@ pub struct ProjectileTravel {
     /// ([`anchor_cell`], the hit ganger's cell, not the impact cell) and threaded through so
     /// the pops sit on the body that was hit.
     anchor:   (Cell, Level),
+    /// The firing entity (GTW-328) — threaded through so the arrival
+    /// [`PendingImpact`] can name the shooter when [`animate_impact`](super::impact::animate_impact)
+    /// emits the shared [`ShotImpactResolved`](super::impact::ShotImpactResolved) signal the
+    /// combat log keys its outcome lines off (the [`Entity`] is framework plumbing, the
+    /// no-bare-types carve-out). It rides the bolt so the signal fires at THIS shot's staggered
+    /// impact, not on the fire frame.
+    shooter:  Entity,
+    /// This shot's already-computed hit report (GTW-328) — the sim's verdict, threaded through to
+    /// the arrival [`PendingImpact`] so the impact-resolved signal carries the data the combat log
+    /// classifies a shot outcome from. [`None`] for a geometry-only round (read as a miss).
+    report:   Option<HitReport>,
 }
 
 impl ProjectileTravel {
@@ -148,6 +159,18 @@ impl ProjectileTravel {
     /// `pub(in crate::fx)`: it takes the FX-internal [`ClassifiedPop`], so it stays sealed to
     /// the FX layer (the `spawn_shot_projectiles` caller + the in-crate flight tests construct
     /// it; nothing outside `crate::fx` needs to build a flight).
+    ///
+    /// `shooter` + `report` (GTW-328) ride through to the arrival [`PendingImpact`] so
+    /// [`animate_impact`](super::impact::animate_impact) can emit the shared
+    /// [`ShotImpactResolved`](super::impact::ShotImpactResolved) signal — naming the shooter and
+    /// carrying its verdict — when THIS shot's staggered impact lands (the combat log keys its
+    /// outcome lines off that signal, not the fire-frame `ShotFired` drain).
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "each is a distinct flight datum: the two endpoints, the damage type, the \
+                  velocity, the stagger launch delay, the GTW-327 pops + anchor, and the GTW-328 \
+                  shooter + report threaded to the impact signal — the ctor IS the bundle"
+    )]
     #[must_use]
     pub(in crate::fx) fn new(
         from: Vec3,
@@ -157,6 +180,8 @@ impl ProjectileTravel {
         launch_delay: std::time::Duration,
         pops: Vec<ClassifiedPop>,
         anchor: (Cell, Level),
+        shooter: Entity,
+        report: Option<HitReport>,
     ) -> Self {
         Self {
             from,
@@ -167,6 +192,8 @@ impl ProjectileTravel {
             traveled: 0.0,
             pops,
             anchor,
+            shooter,
+            report,
         }
     }
 
@@ -248,6 +275,20 @@ impl ProjectileTravel {
     const fn anchor(&self) -> (Cell, Level) {
         self.anchor
     }
+
+    /// The firing entity (GTW-328) — handed to the arrival [`PendingImpact`] so the
+    /// impact-resolved signal names the shooter.
+    #[must_use]
+    const fn shooter(&self) -> Entity {
+        self.shooter
+    }
+
+    /// This shot's hit report (GTW-328) — handed to the arrival [`PendingImpact`] so the
+    /// impact-resolved signal carries the verdict the combat log classifies.
+    #[must_use]
+    const fn report(&self) -> Option<HitReport> {
+        self.report
+    }
 }
 
 /// A projectile has ARRIVED — the SEAM FX-B reads to play the 3-frame impact.
@@ -271,16 +312,25 @@ impl ProjectileTravel {
 #[derive(Component, Debug, Clone)]
 pub struct PendingImpact {
     /// The world point the projectile arrived at — where the impact animation plays.
-    pub(in crate::fx) at:     Vec3,
+    pub(in crate::fx) at:      Vec3,
     /// The shot's damage type — selects which 3-frame impact strip FX-B animates.
-    pub(in crate::fx) damage: DamageType,
+    pub(in crate::fx) damage:  DamageType,
     /// This shot's classified floating-combat-text pops (GTW-327) — spawned by
     /// [`animate_impact`](super::impact::animate_impact) at the [`anchor`](PendingImpact::anchor)
     /// when the impact lands. Empty for a clean miss (no pops).
-    pub(in crate::fx) pops:   Vec<ClassifiedPop>,
+    pub(in crate::fx) pops:    Vec<ClassifiedPop>,
     /// The `(cell, level)` this shot's pops anchor over (GTW-327) — the hit ganger's cell at
     /// the SHOT (not the impact cell), threaded through the staggered flight.
-    pub(in crate::fx) anchor: (Cell, Level),
+    pub(in crate::fx) anchor:  (Cell, Level),
+    /// The firing entity (GTW-328) — so [`animate_impact`](super::impact::animate_impact) names
+    /// the shooter in the [`ShotImpactResolved`](super::impact::ShotImpactResolved) signal it
+    /// emits when this impact resolves. The [`Entity`] is framework plumbing (the no-bare-types
+    /// carve-out).
+    pub(in crate::fx) shooter: Entity,
+    /// This shot's hit report (GTW-328) — the sim's verdict, carried into the
+    /// [`ShotImpactResolved`](super::impact::ShotImpactResolved) signal so the combat log
+    /// classifies the shot outcome at THIS shot's staggered impact. [`None`] reads as a miss.
+    pub(in crate::fx) report:  Option<HitReport>,
 }
 
 /// `Update` (`PresenterSystems::Draw`): spawn the traveling DIRECTIONAL projectile per
@@ -417,6 +467,8 @@ pub fn spawn_shot_projectiles(
             launch_delay,
             pops,
             anchor,
+            msg.shooter,
+            msg.report,
         );
         let transform = Transform::from_translation(muzzle_world);
         let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
@@ -541,10 +593,12 @@ pub fn advance_projectiles(
             // old `commands.spawn(PendingImpact { .. })` produced — same component, deferred to
             // that frame's `SpawnScene` schedule).
             let pending = PendingImpact {
-                at:     travel.arrival(),
-                damage: travel.damage(),
-                anchor: travel.anchor(),
-                pops:   travel.take_pops(),
+                at:      travel.arrival(),
+                damage:  travel.damage(),
+                anchor:  travel.anchor(),
+                shooter: travel.shooter(),
+                report:  travel.report(),
+                pops:    travel.take_pops(),
             };
             commands.spawn_scene(bsn! { template(move |_| Ok(pending.clone())) });
             commands.entity(entity).despawn();

@@ -8,8 +8,8 @@ use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update, resource_exists};
 use crate::{
     acts::{
         downed::{dispatch_execute_downed, dispatch_stabilize_downed},
-        fire::dispatch_fire,
-        movement::dispatch_move,
+        fire::{FireDeclaration, dispatch_fire},
+        movement::{MovementOccurred, dispatch_move},
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
         reload::{ReloadResult, dispatch_reload},
         request::{
@@ -20,7 +20,7 @@ use crate::{
     },
     occupancy_sync::SimSystems,
     shot_fired::ShotFired,
-    turn::{ActiveFaction, dispatch_end_turn},
+    turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
 };
 
 /// The **sim-acts registration unit** — registers the eight `*Requested` message buffers
@@ -72,6 +72,14 @@ impl Plugin for SimActsPlugin {
             // GTW-312: the output reload-result signal dispatch_reload emits per resolved
             // reload (the three real outcomes; presenter-visible, like ShotFired).
             .add_message::<ReloadResult>()
+            // GTW-328: the three output combat-LOG signals — a fire declaration per
+            // proceeding shot (dispatch_fire), a move per real step (dispatch_move), and a
+            // turn boundary per ActiveFaction advance (dispatch_end_turn). Presenter-only
+            // signals, like ShotFired / ReloadResult; they add no fire-result logic and no
+            // RNG draw, so determinism is preserved.
+            .add_message::<FireDeclaration>()
+            .add_message::<MovementOccurred>()
+            .add_message::<TurnStarted>()
             .add_systems(
                 Update,
                 (

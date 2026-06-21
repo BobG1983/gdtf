@@ -38,6 +38,13 @@ fn test_anchor() -> (Cell, Level) {
     (Cell::new(0, 0), Level::new(0))
 }
 
+/// A throw-away firing entity for the projectile-FLIGHT unit tests — the GTW-328 shooter the bolt
+/// threads to its `PendingImpact`; these flight-only tests exercise the travel + arrival seam, not
+/// the shot-impact signal (its staggering is proven on the real path in `fx_draw.rs`).
+fn test_shooter() -> bevy::ecs::entity::Entity {
+    bevy::ecs::entity::Entity::PLACEHOLDER
+}
+
 /// The shipped `effect_roles.ron` parses into `EffectRoles` and exposes every FX role —
 /// a `ron::de` round-trip of the SHIPPED bytes.
 ///
@@ -192,6 +199,8 @@ fn projectile_travels_then_despawns_leaving_a_pending_impact() {
                 Duration::ZERO,
                 Vec::new(),
                 test_anchor(),
+                test_shooter(),
+                None,
             ),
             ShotProjectile,
         ))
@@ -275,6 +284,8 @@ fn projectile_flies_at_a_constant_velocity_regardless_of_distance() {
         Duration::ZERO,
         Vec::new(),
         test_anchor(),
+        test_shooter(),
+        None,
     );
     let mut long = ProjectileTravel::new(
         origin,
@@ -284,6 +295,8 @@ fn projectile_flies_at_a_constant_velocity_regardless_of_distance() {
         Duration::ZERO,
         Vec::new(),
         test_anchor(),
+        test_shooter(),
+        None,
     );
 
     // The near shot arrives in ONE velocity step.
@@ -324,6 +337,8 @@ fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
         launch_delay,
         Vec::new(),
         test_anchor(),
+        test_shooter(),
+        None,
     );
 
     // Before the launch delay elapses the bolt is parked at the muzzle — not launched, fraction 0.

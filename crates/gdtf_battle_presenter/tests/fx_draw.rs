@@ -33,8 +33,8 @@ use bevy::{
 };
 use gdtf_battle_presenter::{
     CharacterRoles, EffectRoles, FctValence, FloatingCombatText, FxFlash, FxTuning, GangerSprites,
-    ProjectileTravel, ShotProjectile, TopDownAtlases, TopDownRendererPlugin, cell_to_world,
-    severity_color, sim_pos_to_world, valence_color,
+    ProjectileTravel, ShotImpactResolved, ShotProjectile, TopDownAtlases, TopDownRendererPlugin,
+    cell_to_world, severity_color, sim_pos_to_world, valence_color,
 };
 use gdtf_battle_sim::{
     AppliedDamage, ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel,
@@ -746,6 +746,35 @@ fn fct_pop_count(app: &mut App) -> usize {
     q.iter(app.world()).count()
 }
 
+/// Drains and returns the `ShotImpactResolved` signals (GTW-328) emitted SINCE the last drain —
+/// the per-shot impact-resolved messages `animate_impact` writes. The combat-text LOG drains this
+/// exact buffer to build its shot-outcome lines, so the count of these signals over a stepped run
+/// is the number of outcome lines the log gains: zero means no shot has resolved its impact yet.
+fn drain_impacts(app: &mut App) -> Vec<ShotImpactResolved> {
+    app.world_mut()
+        .resource_mut::<Messages<ShotImpactResolved>>()
+        .drain()
+        .collect()
+}
+
+/// Advances the app a fixed number of `step`-sized manual updates, DRAINING the
+/// `ShotImpactResolved` buffer after EACH update and accumulating the total emitted across the
+/// run, then restores `Automatic` time. The per-update drain is what makes the accumulation
+/// reliable: the buffer double-buffers, so a message left un-drained across two updates is
+/// dropped — draining each frame captures every staggered impact as it resolves.
+fn step_counting_impacts(app: &mut App, step: std::time::Duration, updates: u32) -> usize {
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::ManualDuration(step));
+    let mut total = 0;
+    for _ in 0..updates {
+        app.update();
+        total += drain_impacts(app).len();
+    }
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::Automatic);
+    total
+}
+
 /// GTW-302 (slice 3) / GTW-327 (slice 2) — the REAL dispatch path: a `ShotFired` carrying a
 /// damaging, lethal ganger-hit `HitReport` drives the firing pipeline to spawn the
 /// floating-combat-text pops (HP number RED, wound AMBER, penetration verdict, DOWN/DEAD lethal
@@ -985,6 +1014,116 @@ fn a_multi_round_volley_pops_its_fct_staggered_per_impact() {
     assert!(
         fct_pop_count(&mut app) >= after_first,
         "a freshly-impacted pop must persist for its tuned lifetime, not vanish on the next frame",
+    );
+}
+
+/// GTW-328 (slice A) — the BUG FIX, deterministic + headless: a MULTI-ROUND volley's per-shot
+/// `ShotImpactResolved` SIGNALS (the shared per-shot impact moment the combat-text LOG keys its
+/// outcome lines off) arrive STAGGERED at each shot's own impact, NOT all at once on the
+/// `ShotFired`-drain frame. This is the exact analogue of the GTW-327 FCT staggered test, but on
+/// the LOG's signal: the log builds one shot-outcome line per `ShotImpactResolved`, so this proves
+/// a burst's outcome lines appear one-per-impact in cadence rather than dumped on the fire frame.
+///
+/// Two connecting ganger-hit rounds are written in one frame (the way a burst / full-auto fires);
+/// their bolts fly staggered by `InterShotSeconds` (GTW-308), and each shot's `ShotImpactResolved`
+/// is emitted only when THAT shot's bolt arrives. So at the drain frame ZERO signals exist, after
+/// the first shot's (short) flight exactly the first shot's signal has fired, and only ~one
+/// `InterShotSeconds` later (the second bolt's launch delay) does the second shot's signal fire —
+/// monotonic growth across stepped time, the robust shape of "shot-by-shot, not all at once".
+#[test]
+fn a_multi_round_volley_emits_shot_impact_resolved_staggered_per_impact() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    // The hot-reloadable stagger step the system uses (read off the resident FxTuning so the test
+    // is not pinned to a literal magnitude the user may retune).
+    let tuning = app.world().get_resource::<FxTuning>().copied();
+    assert!(
+        tuning.is_some(),
+        "FxTuning must be resident after settle_resources",
+    );
+    let Some(tuning) = tuning else { return };
+    let inter_shot = std::time::Duration::from_secs_f32(*tuning.inter_shot_seconds);
+    assert!(
+        inter_shot >= std::time::Duration::from_millis(100),
+        "this test assumes a stagger step (InterShotSeconds {inter_shot:?}) comfortably larger \
+         than a flight step — the shipped default is 0.35s",
+    );
+
+    // Two struck gangers on the SAME cell, each a connecting hit (so each yields a shot-outcome
+    // signal). The shooter is named via its Entity in the signal (the log resolves it downstream).
+    let cell = Cell::new(5, 5);
+    let level = Level::new(0);
+    let muzzle = SimPos::new(4.0, 5.0, 0.0); // one cell west of the target — a short flight.
+    let write_round = |app: &mut App, struck: bevy::ecs::entity::Entity| {
+        let report = ganger_hit_report(
+            struck,
+            BodyPart::Torso,
+            4,
+            6,
+            Severity::None,
+            LifeState::Alive,
+        );
+        let shot = ShotFired {
+            shooter: app.world_mut().spawn_empty().id(),
+            muzzle,
+            trajectory: ShotDir::from_direction(bevy::math::Vec3::new(1.0, 0.0, 0.0)),
+            impact_cell: cell,
+            impact_level: level,
+            kind: ShotKind::Ganger(struck),
+            damage: DamageType::Kinetic,
+            report: Some(report),
+        };
+        app.world_mut()
+            .resource_mut::<Messages<ShotFired>>()
+            .write(shot);
+    };
+    let struck_a = app
+        .world_mut()
+        .spawn(Position::new(CellLevel::new(cell, level)))
+        .id();
+    let struck_b = app
+        .world_mut()
+        .spawn(Position::new(CellLevel::new(cell, level)))
+        .id();
+    write_round(&mut app, struck_a);
+    write_round(&mut app, struck_b);
+
+    // Drain both ShotFired on a zero-delta frame: BOTH bolts spawn (held at the muzzle), and
+    // CRUCIALLY no impact-resolved signal fires yet — the bug was the LOG dumping every outcome
+    // line on THIS drain frame (it used to drain ShotFired directly).
+    fire_with_zero_delta(&mut app);
+    assert_eq!(
+        drain_impacts(&mut app).len(),
+        0,
+        "at the drain frame NO ShotImpactResolved may fire — the whole point of the fix is that \
+         the shot-outcome lines do not all appear at once on the ShotFired-drain frame",
+    );
+
+    // Fly the FIRST bolt to its impact (a short flight, well under one InterShotSeconds): exactly
+    // the first shot's impact-resolved signal fires; the second bolt is still parked at the muzzle.
+    let short_step = std::time::Duration::from_millis(30);
+    let after_first = step_counting_impacts(&mut app, short_step, 4);
+    assert!(
+        after_first >= 1,
+        "after the first bolt's flight its ShotImpactResolved must have fired (got {after_first})",
+    );
+
+    // Advance PAST the second bolt's launch delay (one InterShotSeconds) + its flight: the second
+    // shot's signal fires, so the cumulative count STRICTLY GROWS — the volley resolved shot-by-shot.
+    let after_second = after_first + step_counting_impacts(&mut app, inter_shot, 2);
+    assert!(
+        after_second > after_first,
+        "after the second bolt's staggered impact MORE ShotImpactResolved must have fired in \
+         total ({after_second} must exceed {after_first}) — the second shot's outcome resolved later",
+    );
+
+    // Both shots, exactly once each: a two-round volley resolves two outcome signals across the run.
+    assert_eq!(
+        after_second, 2,
+        "a two-round volley must emit exactly two ShotImpactResolved (one per shot), staggered, \
+         got {after_second}",
     );
 }
 

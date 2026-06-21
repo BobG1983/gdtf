@@ -1,0 +1,55 @@
+// GDTF combat-log tuning (GTW-328) — the HOT-RELOADABLE feel of the bottom-left
+// battlescape combat-text LOG (the scroll-up-and-fade strip of recent combat events:
+// movement, shot declarations, hit/miss outcomes, damage/wounds, reloads, turn
+// boundaries). Loaded through the same generic RonAsset<T> loader the theme / FX-tuning
+// / pan-tuning tables use, so editing a value + saving re-derives it live in the running
+// game WITHOUT a rebuild.
+//
+// EVERY field is OPTIONAL (serde default): omit one and it falls back to the shipped
+// default shown below, so you can tune a single number without restating the rest.
+(
+    // How many log lines stay visible at once. When a new event pushes the count past
+    // this, the OLDEST line is despawned (FIFO scroll-off). Bigger = a taller log with
+    // more history; smaller = a terser, less cluttered strip. Default 6.
+    max_visible_lines: 6,
+    // How long each log line lives before it fades out + despawns, in SECONDS — the line
+    // holds at full opacity for most of this window, then fades over the tail (see
+    // fade_fraction). Bigger = lines linger longer; smaller = a faster-clearing log.
+    // Default 5.0.
+    line_ttl_seconds: 5.0,
+    // The fraction of a line's lifetime spent FADING at the end (0.0..=1.0). A line stays
+    // fully opaque for (1 - this) of its life, then its alpha ramps from full to 0 over
+    // the final this-fraction. e.g. 0.35 = opaque for the first 65% of the TTL, fading
+    // across the last 35%. (Retained as a fallback floor; the absolute fade_out_seconds
+    // below now drives the tail, clamped to the remaining life.) Default 0.35.
+    fade_fraction: 0.35,
+    // The log panel's width, as a fraction of the WINDOW WIDTH (Vw) — the bottom-left
+    // strip spans this much of the screen horizontally. Bigger = a wider log that fits
+    // longer lines; smaller = a narrower column. Default 28.0 (28vw). Responsive units
+    // only (the panel width is tunable; the height is ANIMATED toward the line count —
+    // see height_lerp_rate).
+    panel_width_vw: 28.0,
+    // ---- ANIMATION FEEL (GTW-328 slice B) — the log MOVES instead of snapping. ----
+    // How fast each line eases toward its target slot as the stack reflows (a new line
+    // appends below, or a faded line is removed above), as a per-second LERP rate. Each
+    // frame the line's position offset eases toward 0 (its natural slot) by
+    // 1 - exp(-rate * dt) — never SNAPS. Bigger = a snappier settle; smaller = a longer,
+    // gentler glide. Default 12.0/s (a typical reflow settles in ~0.25 s).
+    line_lerp_rate: 12.0,
+    // How long a line spends FADING IN on appear, in SECONDS — a fresh line ramps its
+    // alpha from 0 to full over this window before its hold/fade-out lifetime begins, so
+    // it appears gently rather than snapping on. Bigger = a softer entrance; 0.0 = an
+    // instant on. Default 0.18.
+    fade_in_seconds: 0.18,
+    // How long a line spends FADING OUT at end of life, in SECONDS — after fade-in + hold
+    // the line ramps its alpha from full back to 0 over this tail, then despawns. Bigger =
+    // a softer exit. Default 0.9. (This is the absolute-duration form; if it exceeds the
+    // remaining life it is clamped so the fade still completes before the line despawns.)
+    fade_out_seconds: 0.9,
+    // How fast the PANEL HEIGHT eases toward its natural content height, as a per-second
+    // LERP rate. As lines are added the animated height grows toward the summed line
+    // height; as lines fade / are removed it shrinks back down — both eased by
+    // 1 - exp(-rate * dt) each frame, never set in one frame. Bigger = a snappier
+    // grow/shrink; smaller = a slower breathe. Default 10.0/s (~0.3 s to settle).
+    height_lerp_rate: 10.0,
+)

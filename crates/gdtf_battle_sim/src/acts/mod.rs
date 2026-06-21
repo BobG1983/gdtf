@@ -62,8 +62,8 @@ mod request;
 mod test;
 
 pub use downed::{dispatch_execute_downed, dispatch_stabilize_downed};
-pub use fire::{BattleGridsParam, dispatch_fire};
-pub use movement::dispatch_move;
+pub use fire::{BattleGridsParam, FireDeclaration, dispatch_fire};
+pub use movement::{MovementOccurred, dispatch_move};
 pub use plugin::SimActsPlugin;
 pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance};
 pub use reload::{ReloadOutcome, ReloadResult, dispatch_reload};

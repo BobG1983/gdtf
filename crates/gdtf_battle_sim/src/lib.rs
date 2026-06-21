@@ -216,7 +216,7 @@ pub mod turn;
 pub mod vertical;
 pub mod weapon;
 
-pub use acts::{ReloadOutcome, ReloadResult};
+pub use acts::{FireDeclaration, MovementOccurred, ReloadOutcome, ReloadResult};
 pub use aim::{Shooter, cone_for, stability_for};
 pub use apply_hit::{GangerHitTarget, apply_hit};
 pub use armor::{
@@ -291,7 +291,7 @@ pub use tuning::{
     StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution,
     StanceStability, ToughnessMitigation, TurnTu, WoundCost, WoundCosts,
 };
-pub use turn::{ActiveFaction, dispatch_end_turn, regen_team_tu};
+pub use turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu};
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
     build_vertical_link_graph,

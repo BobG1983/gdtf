@@ -72,6 +72,12 @@ crate::support_use! {
         ContextualPanelRoot, ExecuteButton, OpenDoorButton, StabilizeButton,
     };
 }
+// Test-support-only re-export of the GTW-328 combat-log markers, gated so the binary build is
+// `unused`/`unreachable_pub`-clean. Carries the markers up toward `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    game::{CombatLogLine, CombatLogRoot};
+}
 
 mod options;
 pub(in crate::states::running) use options::OptionsScenePlugin;

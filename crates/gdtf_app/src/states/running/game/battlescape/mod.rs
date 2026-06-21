@@ -103,6 +103,21 @@ crate::support_use! {
     };
 }
 
+// The GTW-328 COMBAT-TEXT LOG (bottom-left, ABOVE the weapon panel): the strip of recent combat
+// events (movement, shot declarations, hit/miss outcomes, damage/wounds, reloads, turn
+// boundaries) that scroll up and fade. It drains the sim combat-event messages + classifies them
+// through the shared presenter classifier; its root + line markers climb so the AC test can
+// assert the log gains lines + FIFO overflow.
+mod combat_log;
+pub(in crate::states::running::game::battlescape) use combat_log::GameBattleScapeCombatLogScenePlugin;
+// Test-support-only re-export of the combat-log's root + per-line markers (GTW-328), gated so the
+// binary build is `unused`/`unreachable_pub`-clean (the weapon-panel marker re-export chain
+// precedent). The AC test names these through `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    combat_log::{CombatLogLine, CombatLogRoot};
+}
+
 // The GTW-294 CONTEXTUAL PANEL (bottom-right): the cluster of situational acts on a downed
 // neighbour (Execute / Stabilize / Open Door). This scaffold slice spawns/despawns the panel on
 // the `BattleRunning` boundary with all three buttons `Visibility::Hidden` — no behavior yet.

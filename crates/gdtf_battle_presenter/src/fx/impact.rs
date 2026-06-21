@@ -23,11 +23,11 @@
 
 use bevy::{
     camera::visibility::RenderLayers,
-    ecs::template::template,
+    ecs::{message::MessageWriter, template::template},
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::DamageType;
+use gdtf_battle_sim::{DamageType, HitReport};
 
 use super::{
     projectile::spawn_pops_at_anchor,
@@ -36,6 +36,33 @@ use super::{
     tuning::{FxTuning, ImpactFrameSeconds},
 };
 use crate::TopDownAtlases;
+
+/// A per-shot SHOT-IMPACT-RESOLVED signal — emitted (GTW-328) the instant each shot's
+/// [`PendingImpact`](super::projectile::PendingImpact) is consumed in [`animate_impact`], i.e.
+/// when the staggered bolt has flown and its impact lands.
+///
+/// This is the SHARED presenter-side per-shot impact moment the firing FX already keys off
+/// (the floating-combat-text pops spawn here, GTW-327) — surfaced as a buffered
+/// [`Message`](bevy::ecs::message::Message) so a downstream consumer can react at the SAME
+/// staggered cadence. The combat-text LOG (`gdtf_app`) drains it to build a shot-outcome line PER
+/// IMPACT (instead of dumping a whole volley's lines on the `ShotFired`-drain frame), and GTW-331
+/// (death-despawn at impact) will reuse it. It carries exactly what a downstream needs to name +
+/// classify the shot: the firing [`Entity`] and the sim's already-computed verdict.
+///
+/// Pure VIEW (ADR-0001): it is emitted from the presenter's own impact-resolution timing over data
+/// the sim already produced (the [`HitReport`]); it adds NO sim plumbing and never writes the sim.
+/// The [`shooter`](ShotImpactResolved::shooter) [`Entity`] is framework plumbing (the
+/// no-bare-types carve-out), and [`report`](ShotImpactResolved::report) is the sim's own value type
+/// — the consumer resolves the entity to a name + reuses the report through the shared classifier.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShotImpactResolved {
+    /// The firing entity whose shot just impacted — the consumer resolves it to a display name.
+    pub shooter: Entity,
+    /// The sim's already-computed verdict for this shot ([`HitReport`]: damage / wound / DOWN /
+    /// DEAD, or a no-effect miss). [`None`] for a geometry-only round (read as a miss). Reused
+    /// through the shared classifier — never recomputed.
+    pub report:  Option<HitReport>,
+}
 
 /// The per-frame UNIFORM draw scale of the impact strip, frame-by-frame (GTW-306 V3 fix).
 ///
@@ -167,7 +194,9 @@ impl ImpactAnimation {
 ///    point, spawns it with an [`ImpactAnimation`], SPAWNS the shot's classified
 ///    floating-combat-text pops at their anchor (GTW-327 — so each shot's numbers appear
 ///    when THIS shot's staggered impact lands, fanned out by per-shot
-///    [`FctStackIndex`](super::fct::FctStackIndex)), and DESPAWNS the seed (consumed once).
+///    [`FctStackIndex`](super::fct::FctStackIndex)), EMITS the shared [`ShotImpactResolved`]
+///    signal (GTW-328 — the shooter + verdict, so the combat-text LOG / GTW-331 react at this
+///    same staggered moment, not on the fire frame), and DESPAWNS the seed (consumed once).
 ///    A missing effects sheet skips the impact SPRITE fail-closed
 ///    (`fx_sprite_scaled` returns [`None`]) but STILL spawns the pops (they are
 ///    [`Text2d`], needing no atlas) and still consumes the seed (no re-attempt pile-up).
@@ -184,16 +213,25 @@ impl ImpactAnimation {
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the spawn / sprite swap /
 /// despawn, [`Res<Time>`] for the per-frame delta, [`Res<EffectRoles>`] +
 /// [`Res<TopDownAtlases>`] for the data-driven tiles, [`Res<FxTuning>`] for the
-/// per-frame hold + the pop lifetime / rise, and the disjoint `PendingImpact` (seed) /
-/// `ImpactAnimation` (playing) queries. Its registration gates on `BattleInProgress` +
-/// `EffectRoles` + `TopDownAtlases` + `FxTuning` existing (FX-A wired it), so all are
-/// present when it runs.
+/// per-frame hold + the pop lifetime / rise, the
+/// [`MessageWriter<ShotImpactResolved>`](bevy::ecs::message::MessageWriter) for the GTW-328
+/// per-shot impact signal, and the disjoint `PendingImpact` (seed) / `ImpactAnimation` (playing)
+/// queries. Its registration gates on `BattleInProgress` + `EffectRoles` + `TopDownAtlases` +
+/// `FxTuning` existing (FX-A wired it), so all are present when it runs.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "each is a distinct Bevy system param: the spawn Commands, the per-frame Time, the \
+              two data tables (effect roles / atlases), the FxTuning read, the GTW-328 \
+              ShotImpactResolved writer, and the two disjoint seed / playing queries — none can \
+              merge without obscuring the wiring; the System fn IS the bundle"
+)]
 pub fn animate_impact(
     mut commands: Commands,
     time: Res<Time>,
     roles: Res<EffectRoles>,
     atlases: Res<TopDownAtlases>,
     tuning: Res<FxTuning>,
+    mut impact_resolved: MessageWriter<ShotImpactResolved>,
     seeds: Query<(Entity, &super::projectile::PendingImpact)>,
     mut playing: Query<(Entity, &mut Sprite, &mut ImpactAnimation)>,
 ) {
@@ -230,6 +268,15 @@ pub fn animate_impact(
         // impact SPRITE — the Text2d pops need no atlas, so they still appear when the effects
         // sheet is absent). Empty for a clean miss (no numbers).
         spawn_pops_at_anchor(&mut commands, &impact.pops, impact.anchor, &tuning);
+        // GTW-328: emit the SHARED per-shot impact-resolved signal at this exact (staggered) moment
+        // — carrying the shooter + the shot's verdict — so a downstream consumer (the combat-text
+        // LOG; GTW-331's death-despawn next) reacts at the SAME cadence the FCT pops do, NOT all at
+        // once on the fire frame. Emitted whether or not the impact sprite drew (it is independent
+        // of the effects atlas, like the pops).
+        impact_resolved.write(ShotImpactResolved {
+            shooter: impact.shooter,
+            report:  impact.report,
+        });
         // Consume the seed whether or not the sheet was loaded (no re-attempt pile-up).
         commands.entity(seed_entity).despawn();
     }

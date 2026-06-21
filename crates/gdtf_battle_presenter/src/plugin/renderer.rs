@@ -11,16 +11,17 @@ use gdtf_battle_sim::{
 use crate::{
     ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle, FxTuning,
     FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
-    PanTuning, PanTuningHandle, PresenterSystems, TileRoles, TileRolesHandle, TopDownAtlases,
-    advance_projectiles, animate_floating_text, animate_impact, apply_active_level_filter,
-    clamp_camera_to_bounds, despawn_removed_ganger_sprites, draw_highlight_on_request,
-    draw_static_battlefield, expire_flashes, frame_camera_on_units, load_character_roles,
-    load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
-    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, read_armor_broken,
-    read_bleeding, read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
-    redrive_pan_tuning_on_asset_event, reframe_ganger_sprites, resolve_character_roles,
-    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
-    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
+    PanTuning, PanTuningHandle, PresenterSystems, ShotImpactResolved, TileRoles, TileRolesHandle,
+    TopDownAtlases, advance_projectiles, animate_floating_text, animate_impact,
+    apply_active_level_filter, clamp_camera_to_bounds, despawn_removed_ganger_sprites,
+    draw_highlight_on_request, draw_static_battlefield, expire_flashes, frame_camera_on_units,
+    load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
+    load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
+    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
+    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
+    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
+    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
+    update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -399,6 +400,12 @@ fn register_camera_framing_systems(app: &mut App) {
 /// empty), so it is registered unguarded by `BattleInProgress` — a flash spawned during a
 /// battle still expires after the battle ends.
 fn register_fx_flash_systems(app: &mut App) {
+    // GTW-328: register the shared per-shot impact-resolved signal buffer `animate_impact` emits
+    // (the combat log drains it). `add_message` is idempotent and creates the `Messages<T>`
+    // resource so the `MessageWriter` param is always valid even when `animate_impact` is gated
+    // off (`bevy-traps.md` #4 — a MessageWriter panics validation without its buffer); a downstream
+    // consumer (the combat-log plugin in `gdtf_app`) also registers it idempotently.
+    app.add_message::<ShotImpactResolved>();
     let render_gate = resource_exists::<BattleInProgress>
         .and_then(resource_exists::<EffectRoles>)
         .and_then(resource_exists::<TopDownAtlases>);
@@ -472,6 +479,11 @@ fn register_fx_flash_systems(app: &mut App) {
     // GTW-306: the 3-frame impact animation (FX-B fills the body). Gated on the same render
     // resources it reads (EffectRoles + TopDownAtlases + BattleInProgress + the
     // hot-reloadable FxTuning) so FX-B edits only impact.rs — never this registration.
+    // GTW-328: it ALSO emits the shared per-shot `ShotImpactResolved` signal at each impact
+    // (the combat log keys its outcome lines off it). Its buffer is registered just below via
+    // `add_message` (idempotent), so the `MessageWriter` param is always valid (`bevy-traps.md`
+    // #4) — no extra run gate is needed for the writer (a writer needs only the buffer, which
+    // the registration guarantees).
     .add_systems(
         Update,
         animate_impact

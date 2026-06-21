@@ -3,7 +3,7 @@
 //! turn-start; the enemy team's TU is untouched when the player's turn starts (and vice
 //! versa).
 
-use bevy::prelude::{App, Entity, MinimalPlugins, World};
+use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 
 use crate::{
     acts::{EndTurnRequested, SimActsPlugin},
@@ -14,7 +14,7 @@ use crate::{
     rng::{BattleSeed, SimRng},
     surface::SurfaceGrid,
     tuning::CombatTuning,
-    turn::{ActiveFaction, regen_team_tu},
+    turn::{ActiveFaction, TurnStarted, regen_team_tu},
 };
 
 /// A fixed seed for the per-test RNG stream (arbitrary, not tuned).
@@ -62,6 +62,46 @@ fn spawn_drained(world: &mut World, faction: Faction, tu_max: u8) -> Entity {
 /// Read a ganger's current [`Tu`] from the world.
 fn tu_of(world: &World, entity: Entity) -> Tu {
     world.get::<Tu>(entity).copied().unwrap_or_default()
+}
+
+/// Drain the buffered [`TurnStarted`] combat-log messages emitted this run, in order
+/// (GTW-328).
+fn drain_turns_started(app: &mut App) -> Vec<TurnStarted> {
+    app.world_mut()
+        .resource_mut::<Messages<TurnStarted>>()
+        .drain()
+        .collect()
+}
+
+/// (GTW-328) A player End Turn emits TWO [`TurnStarted`] in order — the ENEMY turn start
+/// (the hand-off), then the PLAYER turn start (the enemy auto-pass) — each carrying the
+/// faction the cycle just made active. This pins the per-advance combat-log boundary signal.
+#[test]
+fn end_turn_emits_turn_started_per_active_faction_advance() {
+    let mut app = turn_app();
+    spawn_drained(app.world_mut(), PLAYER, 100);
+    spawn_drained(app.world_mut(), ENEMY, 100);
+
+    app.world_mut().write_message(EndTurnRequested);
+    app.update();
+
+    let turns = drain_turns_started(&mut app);
+    assert_eq!(
+        turns.len(),
+        2,
+        "a player End Turn crosses two turn boundaries (enemy hand-off + player \
+         auto-pass): {turns:?}",
+    );
+    assert_eq!(
+        turns.first().map(|t| t.now_active),
+        Some(ENEMY),
+        "the first TurnStarted announces the enemy's turn (the hand-off)",
+    );
+    assert_eq!(
+        turns.get(1).map(|t| t.now_active),
+        Some(PLAYER),
+        "the second TurnStarted announces the player's turn (the auto-pass back)",
+    );
 }
 
 /// (a) A player End Turn auto-passes the enemy turn straight back to the player — the

@@ -54,11 +54,12 @@ mod tuning;
 mod test;
 
 pub use fct::{
-    CombatText, FctEmphasis, FctStackIndex, FctValence, FloatingCombatText, animate_floating_text,
-    read_consequence_fct, severity_color, spawn_floating_text, valence_color,
+    CombatLogEvent, CombatText, FctEmphasis, FctStackIndex, FctValence, FloatingCombatText,
+    LogLine, LogName, animate_floating_text, classify_log_event, read_consequence_fct,
+    severity_color, spawn_floating_text, valence_color,
 };
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
-pub use impact::animate_impact;
+pub use impact::{ShotImpactResolved, animate_impact};
 pub use projectile::{
     PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles, spawn_shot_projectiles,
 };
