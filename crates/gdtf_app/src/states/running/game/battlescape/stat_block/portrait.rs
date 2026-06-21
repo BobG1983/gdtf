@@ -96,21 +96,24 @@ pub fn portrait_index_for_name(name: Option<&GangerName>) -> usize {
     *PortraitIndex::for_name(name)
 }
 
-/// Builds the portrait `bevy_ui` [`ImageNode`](bevy::ui::widget::ImageNode) atlas-variant
-/// bundle for `image` + `layout` at `index`, sized [`PORTRAIT_VH`] square.
+/// Builds the portrait `bevy_ui` [`ImageNode`](bevy::ui::widget::ImageNode) atlas variant
+/// and its square [`Node`] for `image` + `layout` at `index`, sized [`PORTRAIT_VH`] square.
 ///
 /// The portrait is a UI node (NOT a world `Sprite` — the wrong layer for a panel): a
 /// window-relative square [`Node`] (both edges [`PORTRAIT_VH`] vh, so it scales with the
 /// window yet stays square — GTW-295 responsive ruling) carrying an [`ImageNode`] built via
 /// [`ImageNode::from_atlas_image`] over the portraits sheet at the given atlas `index`.
-/// The caller's identity marker is attached alongside. The update mutates the node's
-/// [`TextureAtlas::index`] in place ([[ui-mutate-not-respawn]]).
+/// The update mutates the node's [`TextureAtlas::index`] in place ([[ui-mutate-not-respawn]]).
+///
+/// GTW-322 — returns the two runtime-valued components as a `(ImageNode, Node)` pair so the
+/// caller can compose them onto a `bsn!` scene entity via
+/// [`template_value`](bevy::scene::template_value) and attach the identity marker itself
+/// (a generic marker cannot ride the reflection-free `bsn!` grammar).
 pub(in crate::states::running::game::battlescape) fn portrait_node(
     image: Handle<Image>,
     layout: Handle<TextureAtlasLayout>,
     index: PortraitIndex,
-    marker: impl Bundle,
-) -> impl Bundle {
+) -> (ImageNode, Node) {
     (
         ImageNode::from_atlas_image(
             image,
@@ -124,6 +127,5 @@ pub(in crate::states::running::game::battlescape) fn portrait_node(
             height: Val::Vh(PORTRAIT_VH),
             ..default()
         },
-        marker,
     )
 }

@@ -2,9 +2,11 @@
 
 use bevy::{
     MinimalPlugins,
+    asset::AssetPlugin,
     input::InputPlugin,
     input_focus::InputFocus,
     prelude::*,
+    scene::ScenePlugin,
     ui::{BackgroundColor, Interaction, widget::Button},
 };
 
@@ -56,8 +58,13 @@ fn theme(
 /// Builds a minimal app with the real production schedule: `apply_theme`
 /// (in its named set) before `theme_interaction`, both under the live run
 /// condition — mirroring [`UiPlugin`](crate::UiPlugin)'s wiring.
+///
+/// Includes `MinimalPlugins` + `AssetPlugin` + `ScenePlugin` (GTW-322) so the
+/// widget `bsn!` builders' `Commands::spawn_scene` resolves on flush instead of
+/// panicking on the missing scene/asset resources.
 fn app_with_interaction() -> App {
     let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     app.add_systems(
         Update,
         (
@@ -322,6 +329,8 @@ fn absent_theme_does_not_panic() {
 fn hover_moves_input_focus_to_button() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
 
@@ -346,6 +355,8 @@ fn hover_moves_input_focus_to_button() {
 fn hover_does_not_focus_disabled_button() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
 
@@ -387,6 +398,8 @@ fn deactivated_button_repaints_to_resting_same_frame() -> Result<(), ron::error:
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
     app.insert_resource(theme_res.clone());
@@ -481,6 +494,8 @@ fn held_hover_button_repaints_to_new_hover_on_theme_change() -> Result<(), ron::
     )?;
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
     app.insert_resource(old.clone());
@@ -562,6 +577,8 @@ fn held_pressed_button_repaints_to_new_pressed_on_theme_change()
     )?;
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
     app.insert_resource(old.clone());
@@ -620,6 +637,8 @@ fn theme_change_repaint_leaves_disabled_and_active_buttons() -> Result<(), ron::
     )?;
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
     app.insert_resource(old.clone());

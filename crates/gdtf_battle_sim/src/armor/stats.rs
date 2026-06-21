@@ -12,7 +12,11 @@ use serde::Deserialize;
 /// `max`'d against the subtraction result). Private inner + derived [`Deref`]
 /// (house style); a magnitude is TBD tuning. `#[serde(transparent)]` lets an
 /// authored floor parse as a bare integer.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`ArmorFloor(0)`) is a **spawn-seed sentinel only** — the `bsn!`
+/// spawn path seeds the [`ArmorPiece`] / [`WornArmor`](super::worn::WornArmor)
+/// component slot via `Default` before the authored value overwrites it
+/// (GTW-322). It is NOT a valid authored armor stat.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 #[serde(transparent)]
 pub struct ArmorFloor(i32);
 
@@ -32,7 +36,10 @@ impl ArmorFloor {
 /// `min(protection, damage)`. An `i32` for the signed `protection − effPen`
 /// subtraction. Private inner + derived [`Deref`]; a magnitude is TBD tuning.
 /// `#[serde(transparent)]` lets an authored protection parse as a bare integer.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`ArmorProtection(0)`) is a **spawn-seed sentinel only** — seeded by
+/// the `bsn!` spawn path before the authored value overwrites it (GTW-322). NOT a
+/// valid authored armor stat.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 #[serde(transparent)]
 pub struct ArmorProtection(i32);
 
@@ -54,7 +61,12 @@ impl ArmorProtection {
 /// value is mutated through the newtype) and must track **below zero**, which is
 /// why the inner type is a *signed* `i32`. A magnitude is TBD tuning.
 /// `#[serde(transparent)]` lets an authored integrity parse as a bare integer.
-#[derive(Deref, DerefMut, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`ArmorIntegrity(0)`) is a **spawn-seed sentinel only** — seeded by
+/// the `bsn!` spawn path before the authored value overwrites it (GTW-322). NOT a
+/// valid authored armor stat (`0` would read as already-useless armor).
+#[derive(
+    Deref, DerefMut, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default,
+)]
 #[serde(transparent)]
 pub struct ArmorIntegrity(i32);
 
@@ -76,7 +88,10 @@ impl ArmorIntegrity {
 /// (no [`DerefMut`]). An `i32` for the signed `punch − hardness` subtraction;
 /// a magnitude is TBD tuning. `#[serde(transparent)]` lets an authored hardness
 /// parse as a bare integer.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`ArmorHardness(0)`) is a **spawn-seed sentinel only** — seeded by
+/// the `bsn!` spawn path before the authored value overwrites it (GTW-322). NOT a
+/// valid authored armor stat.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 #[serde(transparent)]
 pub struct ArmorHardness(i32);
 
@@ -156,9 +171,13 @@ impl BodyPart {
 /// — which armor node resists which weapon node — is a later E3 slice; this only
 /// fixes the vocabulary and its node order. `Deserialize` so an armor piece's
 /// authored data names its type by variant.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` is [`ArmorType::Plated`] — matching the documented [`ArmorType::DEFAULT`]
+/// (node 0, the canonical first wheel node). Used as the `bsn!` spawn-seed sentinel
+/// (GTW-322), consistent with the existing `DEFAULT` fallback.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 pub enum ArmorType {
     /// Wheel node 0 — mirror of [`DamageType::Shock`](crate::weapon::DamageType::Shock).
+    #[default]
     Plated,
     /// Wheel node 1 — mirror of [`DamageType::Blast`](crate::weapon::DamageType::Blast).
     Refractive,
@@ -209,7 +228,10 @@ impl ArmorType {
 /// copy's [`ArmorIntegrity`] (the type and the other stats are immutable through
 /// the worn copy). Derives [`Deserialize`] so an authored situation's roster
 /// armor names each piece by its five typed stats.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (all-zero stats, [`ArmorType::Plated`]) is a **spawn-seed sentinel
+/// only** — seeded by the `bsn!` spawn path before the authored piece overwrites
+/// it (GTW-322). NOT a valid authored piece (zero integrity reads as already-useless).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 pub struct ArmorPiece {
     /// Minimum damage a landing hit deals through this piece.
     pub floor:      ArmorFloor,

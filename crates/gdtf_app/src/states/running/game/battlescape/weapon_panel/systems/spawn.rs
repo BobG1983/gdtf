@@ -43,7 +43,9 @@
 //! mirroring the sibling status panel / action bar.
 
 use bevy::{
+    ecs::template::template,
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{Display, GlobalZIndex, Node, Overflow, OverflowAxis, UiRect, Val},
 };
@@ -177,19 +179,26 @@ fn spawn_frame(
     width: Val,
     height: Val,
 ) -> Entity {
+    // GTW-322 — `Themed` rides the `bsn!` macro inline; the runtime-valued `Node`,
+    // `BackgroundColor`, and `BorderColor` are composed with `template_value` (the
+    // builder `BorderColor::all` is a method call, which the inline `CompA(expr)` grammar
+    // rejects, so it is precomputed into a value); the generic `marker` is `.insert`ed.
+    let node = Node {
+        width,
+        height,
+        border: UiRect::all(Val::Vw(*theme.panel.border_width)),
+        ..default()
+    };
+    let background = BackgroundColor(*theme.panel.color);
+    let border = bevy::ui::BorderColor::all(*theme.panel.border_color);
     commands
-        .spawn((
-            marker,
-            Themed::new(ThemeRole::Panel),
-            Node {
-                width,
-                height,
-                border: UiRect::all(Val::Vw(*theme.panel.border_width)),
-                ..default()
-            },
-            BackgroundColor(*theme.panel.color),
-            bevy::ui::BorderColor::all(*theme.panel.border_color),
+        .spawn_scene((
+            bsn! { Themed::new(ThemeRole::Panel) },
+            template_value(node),
+            template_value(background),
+            template_value(border),
         ))
+        .insert(marker)
         .id()
 }
 
@@ -197,33 +206,44 @@ fn spawn_frame(
 /// "no image" caption, spanning the Combined panel's full width at `height` (a [`Val::Percent`]
 /// of the panel's top half). Standing in for per-weapon art that does NOT exist.
 fn spawn_image(commands: &mut Commands, theme: &GdtfTheme, height: Val) -> Entity {
+    // GTW-322 — `WeaponImage` + `Themed` ride the `bsn!` macro inline; the runtime-valued
+    // `Node`, `BackgroundColor`, and `BorderColor` are composed with `template_value`.
+    let slot_node = Node {
+        width: Val::Percent(100.0),
+        height,
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        border: UiRect::all(Val::Vw(*theme.panel.border_width)),
+        ..default()
+    };
+    let background = BackgroundColor(*theme.panel.color);
+    let border = bevy::ui::BorderColor::all(*theme.panel.border_color);
     let slot = commands
-        .spawn((
-            WeaponImage,
-            Themed::new(ThemeRole::Panel),
-            Node {
-                width: Val::Percent(100.0),
-                height,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                border: UiRect::all(Val::Vw(*theme.panel.border_width)),
-                ..default()
+        .spawn_scene((
+            bsn! {
+                WeaponImage
+                Themed::new(ThemeRole::Panel)
             },
-            BackgroundColor(*theme.panel.color),
-            bevy::ui::BorderColor::all(*theme.panel.border_color),
+            template_value(slot_node),
+            template_value(background),
+            template_value(border),
         ))
         .id();
+    // The "no image" caption: `Themed` + `Text` + `UiTextColor` inline, `TextFont` (not
+    // `Unpin`) on the `template(|_| ..)` closure.
+    let text_color = *theme.text.text_color;
+    let text_font = TextFont {
+        font: theme.text.font.clone().into(),
+        font_size: FontSize::Px(*theme.text.font_size_pt),
+        ..default()
+    };
     let label = commands
-        .spawn((
-            Themed::new(ThemeRole::Text),
-            Text::new("no image"),
-            TextFont {
-                font: theme.text.font.clone().into(),
-                font_size: FontSize::Px(*theme.text.font_size_pt),
-                ..default()
-            },
-            UiTextColor(*theme.text.text_color),
-        ))
+        .spawn_scene(bsn! {
+            Themed::new(ThemeRole::Text)
+            Text::new("no image")
+            UiTextColor(text_color)
+            template(move |_| Ok(text_font.clone()))
+        })
         .id();
     commands.entity(slot).add_children(&[label]);
     slot
@@ -242,18 +262,22 @@ fn spawn_image(commands: &mut Commands, theme: &GdtfTheme, height: Val) -> Entit
 /// at one size. A non-empty seed feeds the first-frame measure; the caption is static (never
 /// mutated).
 fn spawn_aim_label(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
+    // GTW-322 — `AimLabel` + `Themed` + `Text` + `UiTextColor` ride the `bsn!` macro
+    // inline; `TextFont` (not `Unpin`) rides the `template(|_| ..)` closure.
+    let text_color = *theme.text.text_color;
+    let text_font = TextFont {
+        font: theme.text.font.clone().into(),
+        font_size: FontSize::Px(*theme.text.font_size_pt),
+        ..default()
+    };
     commands
-        .spawn((
-            AimLabel,
-            Themed::new(ThemeRole::Text),
-            Text::new("Aim"),
-            TextFont {
-                font: theme.text.font.clone().into(),
-                font_size: FontSize::Px(*theme.text.font_size_pt),
-                ..default()
-            },
-            UiTextColor(*theme.text.text_color),
-        ))
+        .spawn_scene(bsn! {
+            AimLabel
+            Themed::new(ThemeRole::Text)
+            Text::new("Aim")
+            UiTextColor(text_color)
+            template(move |_| Ok(text_font.clone()))
+        })
         .id()
 }
 
@@ -266,18 +290,24 @@ fn spawn_text(
     marker: impl Bundle,
     initial: &str,
 ) -> Entity {
+    // GTW-322 — `Themed` + `Text::new` + `UiTextColor` ride the `bsn!` macro inline;
+    // `TextFont` (not `Unpin`) rides the `template(|_| ..)` closure; the generic `marker`
+    // is `.insert`ed. The seed string is owned (`'static`) for the deferred apply.
+    let text_color = *theme.text.text_color;
+    let caption = initial.to_owned();
+    let text_font = TextFont {
+        font: theme.text.font.clone().into(),
+        font_size: FontSize::Px(*theme.text.font_size_pt),
+        ..default()
+    };
     commands
-        .spawn((
-            marker,
-            Themed::new(ThemeRole::Text),
-            Text::new(initial),
-            TextFont {
-                font: theme.text.font.clone().into(),
-                font_size: FontSize::Px(*theme.text.font_size_pt),
-                ..default()
-            },
-            UiTextColor(*theme.text.text_color),
-        ))
+        .spawn_scene(bsn! {
+            Themed::new(ThemeRole::Text)
+            Text::new(caption)
+            UiTextColor(text_color)
+            template(move |_| Ok(text_font.clone()))
+        })
+        .insert(marker)
         .id()
 }
 
@@ -291,62 +321,64 @@ fn spawn_text(
 fn spawn_info_row(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     let name = spawn_text(commands, theme, WeaponNameText, "—");
     let magazine = spawn_text(commands, theme, WeaponMagazineText, "0/0");
+    // GTW-322 — `WeaponContent` rides the `bsn!` macro inline; its runtime-valued `Node`
+    // (the flex-sponge text column) + `Visibility::Hidden` are composed with `template_value`.
+    let content_node = Node {
+        width: Val::Percent(TEXT_COL_PCT),
+        height: Val::Percent(100.0),
+        // The GTW-275 overflow floor: a RESPONSIVE (`Val::Vh`) min height so the
+        // auto-sized panel cannot mismeasure the weapon-text against near-zero text.
+        min_height: Val::Vh(CONTENT_MIN_H_VH),
+        flex_grow: 1.0,
+        flex_shrink: 1.0,
+        min_width: Val::ZERO,
+        flex_direction: FlexDirection::Column,
+        justify_content: JustifyContent::Center,
+        row_gap: Val::Vh(GAP_VH),
+        overflow: Overflow {
+            x: OverflowAxis::Hidden,
+            y: OverflowAxis::Hidden,
+        },
+        // Hidden as a unit when there is no selection / no weapon (AC9 empty state):
+        // Display::None (removed from layout) + Visibility::Hidden. The update reveals it.
+        display: Display::None,
+        ..default()
+    };
     let content = commands
-        .spawn((
-            WeaponContent,
-            Node {
-                width: Val::Percent(TEXT_COL_PCT),
-                height: Val::Percent(100.0),
-                // The GTW-275 overflow floor: a RESPONSIVE (`Val::Vh`) min height so the
-                // auto-sized panel cannot mismeasure the weapon-text against near-zero text.
-                min_height: Val::Vh(CONTENT_MIN_H_VH),
-                flex_grow: 1.0,
-                flex_shrink: 1.0,
-                min_width: Val::ZERO,
-                flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::Center,
-                row_gap: Val::Vh(GAP_VH),
-                overflow: Overflow {
-                    x: OverflowAxis::Hidden,
-                    y: OverflowAxis::Hidden,
-                },
-                // Hidden as a unit when there is no selection / no weapon (AC9 empty state):
-                // Display::None (removed from layout) + Visibility::Hidden. The update reveals it.
-                display: Display::None,
-                ..default()
-            },
-            Visibility::Hidden,
+        .spawn_scene((
+            bsn! { WeaponContent },
+            template_value(content_node),
+            template_value(Visibility::Hidden),
         ))
         .id();
     commands.entity(content).add_children(&[name, magazine]);
 
     let reload = spawn_button(commands, theme, ButtonLabel::new("Reload"), ReloadButton);
-    let reload_cell = commands
-        .spawn((Node {
-            width: Val::Percent(100.0 - TEXT_COL_PCT),
-            flex_shrink: 0.0,
-            flex_direction: FlexDirection::Row,
-            justify_content: JustifyContent::FlexEnd,
-            align_items: AlignItems::Center,
-            ..default()
-        },))
-        .id();
+    // GTW-322 — plain layout `Node`s (no markers); composed via `template_value`.
+    let reload_cell_node = Node {
+        width: Val::Percent(100.0 - TEXT_COL_PCT),
+        flex_shrink: 0.0,
+        flex_direction: FlexDirection::Row,
+        justify_content: JustifyContent::FlexEnd,
+        align_items: AlignItems::Center,
+        ..default()
+    };
+    let reload_cell = commands.spawn_scene(template_value(reload_cell_node)).id();
     commands.entity(reload_cell).add_children(&[reload]);
 
-    let info_row = commands
-        .spawn((Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(INFO_ROW_H_PCT),
-            flex_direction: FlexDirection::Row,
-            column_gap: Val::Vw(GAP_VW),
-            align_items: AlignItems::Center,
-            overflow: Overflow {
-                x: OverflowAxis::Hidden,
-                y: OverflowAxis::Hidden,
-            },
-            ..default()
-        },))
-        .id();
+    let info_row_node = Node {
+        width: Val::Percent(100.0),
+        height: Val::Percent(INFO_ROW_H_PCT),
+        flex_direction: FlexDirection::Row,
+        column_gap: Val::Vw(GAP_VW),
+        align_items: AlignItems::Center,
+        overflow: Overflow {
+            x: OverflowAxis::Hidden,
+            y: OverflowAxis::Hidden,
+        },
+        ..default()
+    };
+    let info_row = commands.spawn_scene(template_value(info_row_node)).id();
     commands
         .entity(info_row)
         .add_children(&[content, reload_cell]);
@@ -364,24 +396,32 @@ fn spawn_combined_panel(
 ) -> Entity {
     let image = spawn_image(commands, theme, Val::Percent(INFO_ROW_H_PCT));
     let info_row = spawn_info_row(commands, theme);
+    // GTW-322 — `CombinedWeaponPanel` + `Themed` ride the `bsn!` macro inline; the
+    // runtime-valued `Node`, `BackgroundColor`, and `BorderColor` are composed with
+    // `template_value`.
+    let panel_node = Node {
+        width,
+        height,
+        flex_direction: FlexDirection::Column,
+        row_gap: Val::Vh(GAP_VH),
+        overflow: Overflow {
+            x: OverflowAxis::Hidden,
+            y: OverflowAxis::Hidden,
+        },
+        border: UiRect::all(Val::Vw(*theme.panel.border_width)),
+        ..default()
+    };
+    let background = BackgroundColor(*theme.panel.color);
+    let border = bevy::ui::BorderColor::all(*theme.panel.border_color);
     let panel = commands
-        .spawn((
-            CombinedWeaponPanel,
-            Themed::new(ThemeRole::Panel),
-            Node {
-                width,
-                height,
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Vh(GAP_VH),
-                overflow: Overflow {
-                    x: OverflowAxis::Hidden,
-                    y: OverflowAxis::Hidden,
-                },
-                border: UiRect::all(Val::Vw(*theme.panel.border_width)),
-                ..default()
+        .spawn_scene((
+            bsn! {
+                CombinedWeaponPanel
+                Themed::new(ThemeRole::Panel)
             },
-            BackgroundColor(*theme.panel.color),
-            bevy::ui::BorderColor::all(*theme.panel.border_color),
+            template_value(panel_node),
+            template_value(background),
+            template_value(border),
         ))
         .id();
     commands.entity(panel).add_children(&[image, info_row]);
@@ -455,15 +495,15 @@ fn spawn_left_column(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
         .and_modify(|mut node| {
             node.height = Val::Percent(BOTTOM_CELL_PCT);
         });
-    let column = commands
-        .spawn((Node {
-            width: Val::Percent(LEFT_COL_PCT),
-            height: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Vh(GAP_VH),
-            ..default()
-        },))
-        .id();
+    // GTW-322 — a plain layout `Node` column (no markers); composed via `template_value`.
+    let column_node = Node {
+        width: Val::Percent(LEFT_COL_PCT),
+        height: Val::Percent(100.0),
+        flex_direction: FlexDirection::Column,
+        row_gap: Val::Vh(GAP_VH),
+        ..default()
+    };
+    let column = commands.spawn_scene(template_value(column_node)).id();
     commands.entity(column).add_children(&[combined, firemode]);
     column
 }
@@ -510,15 +550,15 @@ fn spawn_right_column(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     commands
         .entity(aim_panel)
         .add_children(&[aim_label, aim_button]);
-    let column = commands
-        .spawn((Node {
-            width: Val::Percent(RIGHT_COL_PCT),
-            height: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Vh(GAP_VH),
-            ..default()
-        },))
-        .id();
+    // GTW-322 — a plain layout `Node` column (no markers); composed via `template_value`.
+    let column_node = Node {
+        width: Val::Percent(RIGHT_COL_PCT),
+        height: Val::Percent(100.0),
+        flex_direction: FlexDirection::Column,
+        row_gap: Val::Vh(GAP_VH),
+        ..default()
+    };
+    let column = commands.spawn_scene(template_value(column_node)).id();
     commands.entity(column).add_children(&[items, aim_panel]);
     column
 }

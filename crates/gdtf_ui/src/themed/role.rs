@@ -9,11 +9,21 @@ use bevy::prelude::*;
 /// A named role rather than a bare boolean or marker pair: the set of widget
 /// kinds the theme knows how to paint is a closed vocabulary, and a closed
 /// vocabulary is an enum.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+///
+/// The `#[default]` ([`ThemeRole::Background`]) is a **spawn-seed sentinel only**,
+/// NOT a meaningful default role: GTW-322's `bsn!` scene path seeds a [`Themed`]
+/// slot with [`Default`] before overwriting it with the authored role (the
+/// `Themed::new(role)` constructor patch), so [`ThemeRole`] must be `Default` for
+/// the blanket `Template` bound. Spawning code always supplies an explicit role.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ThemeRole {
     /// The full-screen backdrop [`Node`](bevy::ui::Node):
     /// [`apply_theme`](super::apply_theme) sets its background fill from the
     /// **background** sub-theme (no border/radius/padding).
+    ///
+    /// Also the `#[default]` spawn-seed sentinel (see the type doc) — never a
+    /// role chosen on purpose by a builder.
+    #[default]
     Background,
     /// A panel-box [`Node`](bevy::ui::Node): [`apply_theme`](super::apply_theme)
     /// sets its fill, border color, border width, corner radius, and content
@@ -47,7 +57,13 @@ pub enum ThemeRole {
 /// resource so a theme change re-themes it. Spawning code only declares the
 /// *role*; it never copies theme values itself, which is what keeps the look in
 /// one place and live.
-#[derive(Component, Deref, Clone, Copy, PartialEq, Eq, Debug)]
+///
+/// The derived [`Default`] is a **spawn-seed sentinel only** (GTW-322): the
+/// `bsn!` scene path seeds the component slot with [`Default`] before the
+/// `Themed::new(role)` constructor patch overwrites it with the authored role.
+/// It is never a meaningful "untyped themed" value — a builder always declares
+/// the explicit [`ThemeRole`].
+#[derive(Component, Deref, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Themed(ThemeRole);
 
 impl Themed {

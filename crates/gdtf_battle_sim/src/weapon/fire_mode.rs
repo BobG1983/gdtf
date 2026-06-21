@@ -168,7 +168,12 @@ impl FireModeSpec {
 /// **Invariant:** a well-authored weapon lists at least one mode, with `Single`
 /// first. The code is DEFENSIVE if that is violated — every read has a total
 /// fallback and never panics (see [`FireMode::single`]).
-#[derive(Component, Deref, Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// `Default` (`FireMode(Vec::new())`, the empty selector) is a **spawn-seed
+/// sentinel only** — the `bsn!` spawn path seeds the slot via `Default` before
+/// `FireMode::new(..)` overwrites it (GTW-322). An empty selector is NOT a valid
+/// authored weapon; every read has a total fallback (see [`FireMode::single`]),
+/// but the spawn path always overwrites the sentinel with the authored list.
+#[derive(Component, Deref, Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct FireMode(Vec<FireModeSpec>);
 

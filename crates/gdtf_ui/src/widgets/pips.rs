@@ -13,6 +13,7 @@
 
 use bevy::{
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     ui::{BackgroundColor, BorderRadius, Node, Val},
 };
 
@@ -71,31 +72,43 @@ pub fn spawn_pips(
     lost: Color,
     marker: impl Bundle,
 ) -> Entity {
-    commands
-        .spawn((
-            PipsRow,
-            Node {
-                column_gap: Val::Vw(PIP_GAP_VW),
-                ..default()
-            },
-            marker,
-        ))
-        .with_children(|row| {
-            for index in 0..total {
-                let color = if index < *filled { remaining } else { lost };
-                row.spawn((
-                    Pip,
-                    Node {
-                        width: Val::Vw(PIP_DIAMETER_VW),
-                        height: Val::Vw(PIP_DIAMETER_VW),
-                        // A fully rounded square is a circle.
-                        border_radius: BorderRadius::all(Val::Percent(50.0)),
-                        ..default()
-                    },
-                    BackgroundColor(color),
-                ));
+    // The row + per-pip layout nodes are runtime values (no `bsn!` value-grammar form),
+    // bridged with `template_value`. The pip COUNT is a runtime `total`, so the N pip
+    // child scenes cannot be a compile-time `Children [ .. ]` list; they are built as a
+    // runtime `Vec<Scene>` (a `SceneList`) and spliced into the relationship list via the
+    // `{ expr }` scene-list-include grammar. The caller's generic `marker` is `.insert`ed
+    // after (GTW-322).
+    let row_node = Node {
+        column_gap: Val::Vw(PIP_GAP_VW),
+        ..default()
+    };
+    let pip_node = Node {
+        width: Val::Vw(PIP_DIAMETER_VW),
+        height: Val::Vw(PIP_DIAMETER_VW),
+        // A fully rounded square is a circle.
+        border_radius: BorderRadius::all(Val::Percent(50.0)),
+        ..default()
+    };
+    let pips: Vec<_> = (0..total)
+        .map(|index| {
+            let color = if index < *filled { remaining } else { lost };
+            let node = pip_node.clone();
+            bsn! {
+                Pip
+                BackgroundColor(color)
+                template_value(node)
             }
         })
+        .collect();
+    commands
+        .spawn_scene((
+            bsn! {
+                PipsRow
+                Children [ { pips } ]
+            },
+            template_value(row_node),
+        ))
+        .insert(marker)
         .id()
 }
 

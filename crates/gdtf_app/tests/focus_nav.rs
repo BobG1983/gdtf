@@ -33,7 +33,10 @@ use gdtf_ui::focus_nav::{NavDirection, NavigateRequest, set_initial_focus};
 /// the spawned entity and this fails.
 #[test]
 fn set_initial_focus_sets_the_start() {
-    let mut app = GdtfTestAppBuilder::new()
+    // GTW-322 — starting in `Running` enters `Menu`, whose `spawn_menu` now authors its
+    // tree via `bsn!` / `spawn_scene`; the deferred scene apply needs the scene resources,
+    // so use the scene-support constructor (the widget-builder slice precedent).
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(gdtf_app::test_support::AppState::Running)
         .build();
     // One update so the app enters its initial state. (As of Bevy 0.19 the
@@ -71,7 +74,9 @@ fn set_initial_focus_sets_the_start() {
 /// final assertion would fail. This is the navigate clause's discriminating test.
 #[test]
 fn navigate_down_advances_focus() {
-    let mut app = GdtfTestAppBuilder::new()
+    // GTW-322 — see the sibling test: the `Menu` `spawn_menu` scene needs the scene
+    // resources, so build with scene support.
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(gdtf_app::test_support::AppState::Running)
         .build();
     app.update();

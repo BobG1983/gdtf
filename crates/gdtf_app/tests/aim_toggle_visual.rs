@@ -60,7 +60,7 @@ fn running_state(app: &App) -> Option<RunningState> {
 /// in `BattleRunning` (the sync system's gate) and spawns NO gangers (so the test owns
 /// the only gangers). The `action_bar.rs` harness precedent.
 fn walk_app() -> App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());

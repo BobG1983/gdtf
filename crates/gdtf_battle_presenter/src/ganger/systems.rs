@@ -1,7 +1,12 @@
 //! The change-driven ganger-sprite spawn / move / reframe / life / removal / level-filter
 //! systems and their per-ganger projection helpers.
 
-use bevy::{camera::visibility::RenderLayers, ecs::lifecycle::RemovedComponents, prelude::*};
+use bevy::{
+    camera::visibility::RenderLayers,
+    ecs::{lifecycle::RemovedComponents, template::template},
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
+};
 use gdtf_battle_sim::{Aiming, Cell, Facing, Faction, Level, LifeState, Position, Stance};
 
 use super::{
@@ -95,16 +100,34 @@ pub fn spawn_ganger_sprites(
         } else {
             Visibility::Hidden
         };
+        // The Actor layer lifts the ganger by GANGER_Z_BIAS so it draws over its own
+        // floor tile (GTW-283), without crossing into the next storey's band.
+        let transform =
+            Transform::from_translation(cell_to_world_layered(cell, level, Layer::Actor));
+        let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+        // GTW-322 — authored as a `bsn!` scene. The atlas-indexed `Sprite` is NOT `Unpin`
+        // (its `Option<Handle<Image>>` / `Option<TextureAtlas>` fields), so it rides
+        // NEITHER `template_value` (which bounds `Unpin`) nor a `bsn!` field patch — it
+        // takes the `template(move |_| Ok(value.clone()))` closure escape hatch (the
+        // `FnTemplate` has no `Unpin` bound on its output), the same one the AREA-1 widget
+        // builders use for `TextFont`. The runtime `Transform` / `Visibility` and
+        // `RenderLayers` ARE `Clone + Default + Unpin`, so each rides `template_value` (a
+        // value-overwrite). The `GangerSprite` marker carries a runtime sim `Entity` and
+        // has no `Default` (so no `bsn!` / `template_value` form) — it is `.insert`ed onto
+        // the synchronously-reserved id after the scene. `spawn_scene` reserves the id NOW
+        // (so the `GangerSprites` map records a usable handle this update); the scene's
+        // components materialize on the `SpawnScene` schedule (~one update later) — the
+        // same entity + components result, only the spawn SHAPE changed. The move /
+        // reframe / level-filter systems look the sprite up through the map and gracefully
+        // skip until its components exist.
         let presenter = commands
-            .spawn((
-                sprite,
-                // The Actor layer lifts the ganger by GANGER_Z_BIAS so it draws over its
-                // own floor tile (GTW-283), without crossing into the next storey's band.
-                Transform::from_translation(cell_to_world_layered(cell, level, Layer::Actor)),
-                visibility,
-                RenderLayers::layer(crate::WORLD_RENDER_LAYER),
-                GangerSprite { entity },
+            .spawn_scene((
+                bsn! { template(move |_| Ok(sprite.clone())) },
+                template_value(transform),
+                template_value(visibility),
+                template_value(layers),
             ))
+            .insert(GangerSprite { entity })
             .id();
         sprites.insert(entity, presenter);
     }

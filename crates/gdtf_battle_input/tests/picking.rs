@@ -85,7 +85,7 @@ fn running_state(app: &App) -> Option<RunningState> {
 /// `CombatTuning`. No `LoadedSituation` is seeded — Generation falls back to the
 /// default (empty) situation, sufficient to reach `BattleScape`.
 fn scene_stack_app() -> App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());

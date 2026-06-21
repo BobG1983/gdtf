@@ -1,7 +1,7 @@
 //! Unit tests for the world camera: render-layer isolation, framing geometry, the
 //! pan-navigation pure helpers, the GTW-263 zoom, and the GTW-271 viewport-aware edge gate.
 
-use bevy::{camera::visibility::RenderLayers, prelude::*};
+use bevy::{asset::AssetPlugin, camera::visibility::RenderLayers, prelude::*, scene::ScenePlugin};
 
 use super::{
     dwell::{DwellElapsed, PanEdgeDwellState, should_edge_pan_after_dwell},
@@ -301,7 +301,13 @@ fn pan_velocity_scales_and_diagonal_is_not_faster() {
 #[test]
 fn world_camera_spawns_at_half_orthographic_scale() {
     let mut app = App::new();
+    // GTW-322 — `spawn_world_camera` now authors its camera via `bsn!` / `spawn_scene`, which
+    // resolves in the `SpawnScene` schedule and PANICS without the scene resources; add
+    // `AssetPlugin` + `ScenePlugin` (the camera has no asset deps, so the scene materializes
+    // on the first `update`, with a second `update` to settle before the query reads it).
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     app.add_systems(Startup, spawn_world_camera);
+    app.update();
     app.update();
 
     let mut cameras = app

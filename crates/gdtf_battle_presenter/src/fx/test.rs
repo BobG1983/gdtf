@@ -6,8 +6,10 @@ use std::time::Duration;
 use bevy::{
     MinimalPlugins,
     app::{App, Update},
+    asset::AssetPlugin,
     math::Vec3,
     prelude::{Alpha, Transform, Visibility},
+    scene::ScenePlugin,
     time::TimeUpdateStrategy,
 };
 use gdtf_battle_sim::{Cell, DamageType, Level, Wounds};
@@ -154,7 +156,12 @@ fn nearest_direction_index_picks_the_matching_compass_column() {
 #[test]
 fn projectile_travels_then_despawns_leaving_a_pending_impact() {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
+    // GTW-322: `advance_projectiles`' arrival hands off the `PendingImpact` via
+    // `commands.spawn_scene(bsn! { .. })`, which panics without the `AssetPlugin` + `ScenePlugin`
+    // the deferred `apply_scene` reads — so the harness adds both. The `PendingImpact` then
+    // materializes on the `SpawnScene` schedule (run inside each `app.update()` below), so the
+    // post-arrival update loop already drives it before the count assertion.
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     // A small controlled per-update delta — a fraction of the flight, so the FIRST measured
     // update lands the projectile MID-flight (the virtual clock reports 0 on the warm-up
     // update, then this fixed step each subsequent one). The 100px flight at TEST_VELOCITY

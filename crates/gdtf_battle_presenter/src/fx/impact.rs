@@ -21,7 +21,12 @@
 //! [`EffectRoles`] table and draws sprites; it never writes the sim. Param-only
 //! throughout (`bevy-traps.md` #7).
 
-use bevy::{camera::visibility::RenderLayers, prelude::*};
+use bevy::{
+    camera::visibility::RenderLayers,
+    ecs::template::template,
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
+};
 use gdtf_battle_sim::DamageType;
 
 use super::{
@@ -202,11 +207,23 @@ pub fn animate_impact(
             && let Some(sprite) =
                 fx_sprite_scaled(*tile, Color::WHITE, impact_frame_scale(0), &atlases)
         {
-            commands.spawn((
-                sprite,
-                Transform::from_translation(impact.at),
-                RenderLayers::layer(crate::WORLD_RENDER_LAYER),
-                ImpactAnimation::new(impact.damage, frame_seconds),
+            // GTW-322 — authored as a `bsn!` scene (the SAME entity tree, only the spawn SHAPE
+            // changed). The atlas-indexed `Sprite` is NOT `Unpin`, and the `ImpactAnimation`
+            // (a `Timer` + the frame index) has no `Default`, so BOTH ride the
+            // `template(move |_| Ok(value.clone()))` closure escape hatch (the `FnTemplate`
+            // output is bound by neither `Unpin` nor `Default`). The `Transform` and
+            // `RenderLayers` are `Clone + Default + Unpin`, so each rides `template_value`. The
+            // animation materializes on this frame's `SpawnScene` schedule; pass 2's
+            // `ImpactAnimation` query picks it up next update — the same one-update-later step
+            // the old `commands.spawn` produced (commands also flushed after `Update`).
+            let transform = Transform::from_translation(impact.at);
+            let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+            let animation = ImpactAnimation::new(impact.damage, frame_seconds);
+            commands.spawn_scene((
+                bsn! { template(move |_| Ok(sprite.clone())) },
+                template_value(transform),
+                template_value(layers),
+                bsn! { template(move |_| Ok(animation.clone())) },
             ));
         }
         // GTW-327: spawn this shot's floating-combat-text pops at the impact (independent of the

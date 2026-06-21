@@ -21,7 +21,11 @@
 //! `bevy_ui` to the highest-order camera = the GTW-120 UI camera
 //! (`bevy-traps.md` #6) — NO `Pickable`/`IsDefaultUiCamera`/picking plugin needed.
 
-use bevy::{prelude::*, ui::Val};
+use bevy::{
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
+    ui::Val,
+};
 use gdtf_ui::{ButtonLabel, spawn_button, spawn_panel, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::action_bar::components::{
@@ -98,25 +102,27 @@ pub(in crate::states::running::game::battlescape) fn spawn_action_bar(
     // `OnExit` recursive despawn tears down the wrapper + the panel + the buttons by this one
     // marker. It is an absolute overlay (like the corner status / hover panels), so it does NOT
     // inset the world map — `set_world_viewport` measures only the bottom bar.
+    // GTW-322 — authored as a `bsn!` scene. The fieldless `ActionBarRoot` marker
+    // rides the macro inline (its sentinel `Default`); the runtime-valued `Node`
+    // (the absolute centering layout) has no `bsn!` value grammar, so it is
+    // composed onto the same entity with `template_value`.
+    let root_node = Node {
+        position_type: PositionType::Absolute,
+        // Anchor the centering row to the TOP, spanning the full window WIDTH so its
+        // `justify_content: Center` can centre the compact panel at the top-middle
+        // (GTW-298 kept the top-of-screen float; this fix shrink-wraps + centres it).
+        top: Val::ZERO,
+        left: Val::Vw(0.0),
+        width: Val::Vw(100.0),
+        // FIT CONTENTS vertically (the wrapper is as tall as the panel) and anchor the
+        // panel to the top edge.
+        height: Val::Auto,
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::FlexStart,
+        ..default()
+    };
     let root = commands
-        .spawn((
-            ActionBarRoot,
-            Node {
-                position_type: PositionType::Absolute,
-                // Anchor the centering row to the TOP, spanning the full window WIDTH so its
-                // `justify_content: Center` can centre the compact panel at the top-middle
-                // (GTW-298 kept the top-of-screen float; this fix shrink-wraps + centres it).
-                top: Val::ZERO,
-                left: Val::Vw(0.0),
-                width: Val::Vw(100.0),
-                // FIT CONTENTS vertically (the wrapper is as tall as the panel) and anchor the
-                // panel to the top edge.
-                height: Val::Auto,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::FlexStart,
-                ..default()
-            },
-        ))
+        .spawn_scene((bsn! { ActionBarRoot }, template_value(root_node)))
         .id();
     // GTW-271 — the GTW-262 `Interaction::default()` on the bar ROOT is REMOVED: it made
     // `bevy_ui`'s `ui_focus_system` mark the whole bar area `Hovered` (the "green bar"

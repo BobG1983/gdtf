@@ -139,7 +139,14 @@ fn synthetic_camera() -> Camera {
 /// idiom — no `AssetServer` under `MinimalPlugins`).
 fn acts_app() -> App {
     let mut app = App::new();
+    // GTW-322: `update_selection_highlight` (in `GdtfBattleInputPlugin`) spawns its reticle
+    // via `Commands::spawn_scene`, which needs an `AssetServer` + the scene schedule. Under
+    // `MinimalPlugins` that flush PANICS without `AssetPlugin` + `ScenePlugin` (the
+    // spike-documented requirement); adding them keeps the harness a no-op asset world while
+    // the converted spawn path resolves.
     app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .add_plugins(bevy::scene::ScenePlugin)
         .add_plugins(GdtfBattleInputPlugin)
         .add_plugins(SimActsPlugin);
     let level = Level::new(0);

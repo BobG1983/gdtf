@@ -10,9 +10,11 @@
 
 use bevy::{
     MinimalPlugins,
+    asset::AssetPlugin,
     ecs::system::SystemState,
     input::InputPlugin,
     prelude::*,
+    scene::ScenePlugin,
     text::{FontSize, FontWeight, TextColor as UiTextColor, TextFont},
     ui::{BackgroundColor, Display, Interaction, Node, Val},
 };
@@ -46,11 +48,21 @@ type PipsSet = (
 );
 
 /// Builds the minimal harness used by every HUD-widget test: `MinimalPlugins`
-/// (schedules + time), `InputPlugin` (so `Interaction` plumbing is sane), and
-/// `UiPlugin` (which registers the GTW-276 driver systems + message buffers).
+/// (schedules + time), `InputPlugin` (so `Interaction` plumbing is sane),
+/// `AssetPlugin` + `ScenePlugin` (GTW-322 — the widget builders spawn via `bsn!`
+/// scenes through `Commands::spawn_scene`, which needs the scene/asset
+/// infrastructure or it panics on flush), and `UiPlugin` (which registers the
+/// GTW-276 driver systems + message buffers).
+///
+/// The widgets resolve their `bsn!` scenes on `app.world_mut().flush()` (no asset
+/// dependencies → `apply_scene` resolves synchronously in the queued command), so
+/// the existing tests' single `flush()` still materializes the tree — no extra
+/// `app.update()` is needed before asserting.
 fn harness() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
     app
@@ -1012,6 +1024,13 @@ fn drive_set_segment_sub_line(
         &mut sub_texts,
     );
     state.apply(app.world_mut());
+    // GTW-322: the SPAWN branch now authors the sub-line via
+    // `queue_spawn_related_scenes`, which is resolved on the `SpawnScene` schedule rather
+    // than synchronously on `state.apply`. Run one `update()` so the queued child
+    // materializes before the caller asserts (the update / clear branches mutate / despawn
+    // synchronously, but the extra update is harmless for them — `repaint_segments` just
+    // re-applies the same look). Behavior-preserving: the same node + components result.
+    app.update();
     ok
 }
 

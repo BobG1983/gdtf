@@ -107,7 +107,7 @@ fn running_state(app: &App) -> Option<RunningState> {
 /// `Situation::default()` battle is set up, which still makes `BattleInProgress` present
 /// in `BattleRunning` (the bar's action-system gate).
 fn walk_app() -> App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());
@@ -1730,7 +1730,7 @@ fn armed_player_situation() -> Situation {
 /// ganger is spawned + auto-selected) and the matching [`armed_registry`] so setup can arm
 /// it. Mirrors the `battle_running_driver.rs` real-flow harness.
 fn walk_app_with_situation(situation: Situation) -> App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());

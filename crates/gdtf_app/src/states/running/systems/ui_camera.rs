@@ -1,4 +1,8 @@
-use bevy::{camera::ClearColorConfig, prelude::*};
+use bevy::{
+    camera::ClearColorConfig,
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
+};
 
 /// Marker for the persistent UI [`Camera2d`] owned by the app shell.
 ///
@@ -6,7 +10,11 @@ use bevy::{camera::ClearColorConfig, prelude::*};
 /// exempt from the no-bare-types rule), not a domain value — it exists purely so
 /// the survival test can name *this* camera unambiguously and so future systems
 /// can target the UI camera without re-querying every `Camera2d` in the world.
-#[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+///
+/// The derived [`Default`] is a **spawn-seed sentinel only** (GTW-322): a fieldless
+/// marker, so its `Default` is the same zero-sized value, present purely so the
+/// reflection-free `bsn!` macro can seed the component slot. It carries no state.
+#[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 struct UiCamera;
 
 /// Spawns the single persistent UI [`Camera2d`] on entry to
@@ -43,12 +51,14 @@ struct UiCamera;
 /// confined-map recipe. (The default `ClearColorConfig::Default` would clear the surface to
 /// the `ClearColor` resource, wiping the map the world camera just drew.)
 pub(in crate::states::running) fn spawn_ui_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera2d,
-        UiCamera,
-        Camera {
-            clear_color: ClearColorConfig::None,
-            ..default()
-        },
-    ));
+    // GTW-322 — authored as a `bsn!` scene. The fieldless framework / marker
+    // components (`Camera2d`, `UiCamera`) ride the macro directly (each has
+    // `Default`); the runtime-valued `Camera` (the `ClearColorConfig::None`
+    // overlay knob) has no `bsn!` value grammar, so it is composed onto the same
+    // entity with `template_value` (a `Clone + Default + Unpin` value-overwrite).
+    let camera = Camera {
+        clear_color: ClearColorConfig::None,
+        ..default()
+    };
+    commands.spawn_scene((bsn! { Camera2d UiCamera }, template_value(camera)));
 }

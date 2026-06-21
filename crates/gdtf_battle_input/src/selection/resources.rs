@@ -38,7 +38,11 @@ impl SelectedShooter {
 /// [`update_selection_highlight`](crate::update_selection_highlight) queries
 /// `With<SelectionHighlight>` to find and MOVE the one existing highlight rather than spawning a
 /// duplicate each update. Distinct from the hover highlight so the two reticles coexist.
-#[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+///
+/// The [`Default`] is the `bsn!` spawn-seed sentinel (GTW-322): every inline component-position
+/// form in a `bsn!` scene seeds its slot via `Default::default()` before the value is written;
+/// a unit marker's `Default` is trivial and carries no authored state.
+#[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct SelectionHighlight;
 
 /// The translucent tint of the selection-highlight sprite.

@@ -36,7 +36,7 @@ use gdtf_ui::{
 /// [`GdtfTheme`] (the menu reads it on entry), and runs one update so the menu
 /// is spawned and resting in [`RunningState::Menu`].
 fn menu_app() -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     // Seed the theme BEFORE the first update so `OnEnter(RunningState::Menu)`'s

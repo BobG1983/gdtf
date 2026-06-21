@@ -2,7 +2,7 @@
 
 use bevy::prelude::{Component, Deref};
 
-use crate::metric::CellLevel;
+use crate::metric::{Cell, CellLevel, Level};
 
 /// A ganger's grid position — the `(cell, level)` key it occupies.
 ///
@@ -24,5 +24,16 @@ impl Position {
     #[must_use]
     pub const fn new(at: CellLevel) -> Self {
         Self(at)
+    }
+}
+
+/// `Default` (`Position` at the origin cell `(0, 0, 0)`) is a **spawn-seed
+/// sentinel only** — the `bsn!`-scene spawn path's `get_or_insert_template`
+/// seeds the component slot via `Default` before the authored `Position::new(..)`
+/// overwrites it (GTW-322). It is NOT a meaningful authored position; a spawned
+/// ganger always carries the situation's authored cell.
+impl Default for Position {
+    fn default() -> Self {
+        Self::new(CellLevel::new(Cell::new(0, 0), Level::new(0)))
     }
 }

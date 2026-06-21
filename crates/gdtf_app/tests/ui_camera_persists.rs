@@ -52,10 +52,15 @@ fn running_state(app: &bevy::app::App) -> Option<RunningState> {
 /// camera (count `> 1`).
 #[test]
 fn entering_running_spawns_exactly_one_camera() {
-    let mut app = GdtfTestAppBuilder::new()
+    // GTW-322 — `spawn_ui_camera` (and the `Menu` `spawn_menu`) now author their entities
+    // via `bsn!` / `spawn_scene`; the deferred apply needs the scene resources, so build
+    // with scene support. A second `update` lets the camera scene materialize before the
+    // `Camera2d` census reads it.
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
 
+    app.update();
     app.update();
 
     assert_eq!(
@@ -81,10 +86,13 @@ fn entering_running_spawns_exactly_one_camera() {
 /// entity would be despawned (or replaced) and this assertion fails.
 #[test]
 fn ui_camera_survives_running_substate_exit() -> Result<(), &'static str> {
-    let mut app = GdtfTestAppBuilder::new()
+    // GTW-322 — see the sibling test: the `bsn!` camera / menu scenes need the scene
+    // resources, plus a settling `update` before the `Camera2d` census reads them.
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
 
+    app.update();
     app.update();
 
     // Capture the exact camera entity spawned on entry to Running.

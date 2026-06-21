@@ -12,6 +12,7 @@
 
 use bevy::{
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     ui::{BackgroundColor, Node, Val},
 };
 
@@ -95,28 +96,36 @@ pub fn spawn_progress_bar(
     lost: Color,
     marker: impl Bundle,
 ) -> Entity {
+    // The track + fill layout nodes are built before the macro and bridged with
+    // `template_value` (a runtime `Node` has no `bsn!` value-grammar form); the static
+    // markers + the runtime fill/track colors (a `BackgroundColor(val)` tuple entry) ride
+    // the inline `bsn!`, and the caller's generic `marker` is `.insert`ed after (GTW-322).
+    let track_node = Node {
+        width: Val::Percent(100.0),
+        height: Val::Vh(BAR_HEIGHT_VH),
+        ..default()
+    };
+    let fill_node = Node {
+        width: fraction.as_percent(),
+        height: Val::Percent(100.0),
+        ..default()
+    };
     commands
-        .spawn((
-            ProgressBarTrack,
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Vh(BAR_HEIGHT_VH),
-                ..default()
+        .spawn_scene((
+            bsn! {
+                ProgressBarTrack
+                BackgroundColor(lost)
+                Children [
+                    (
+                        ProgressBarFill
+                        BackgroundColor(remaining)
+                        template_value(fill_node)
+                    )
+                ]
             },
-            BackgroundColor(lost),
-            marker,
+            template_value(track_node),
         ))
-        .with_children(|track| {
-            track.spawn((
-                ProgressBarFill,
-                Node {
-                    width: fraction.as_percent(),
-                    height: Val::Percent(100.0),
-                    ..default()
-                },
-                BackgroundColor(remaining),
-            ));
-        })
+        .insert(marker)
         .id()
 }
 

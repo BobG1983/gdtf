@@ -1,6 +1,11 @@
 //! The hover-highlight message, the marker, and the request-driven draw system.
 
-use bevy::{camera::visibility::RenderLayers, prelude::*};
+use bevy::{
+    camera::visibility::RenderLayers,
+    ecs::template::template,
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
+};
 use gdtf_battle_sim::{Cell, CellLevel, Level};
 
 use crate::{CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
@@ -35,7 +40,12 @@ impl HighlightRequest {
 /// [`TerrainSprite`](crate::TerrainSprite) markers use): [`draw_highlight_on_request`]
 /// queries `With<HoverHighlight>` to find and MOVE the one existing highlight rather
 /// than spawning a duplicate each request.
-#[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+///
+/// The [`Default`] is the `bsn!` spawn-seed sentinel (GTW-322): every inline
+/// component-position form in a `bsn!` scene seeds its slot via `Default::default()`
+/// before the value is written; a unit marker's `Default` is trivial and carries no
+/// authored state.
+#[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct HoverHighlight;
 
 /// The translucent tint of the hover-highlight sprite.
@@ -101,19 +111,34 @@ pub fn draw_highlight_on_request(
         // absent until the first `Some`, which is equivalent to "hidden".)
         Err(_) => {
             if let Some(world) = target {
-                commands.spawn((
-                    HoverHighlight,
-                    Sprite {
-                        color: HIGHLIGHT_TINT,
-                        custom_size: Some(Vec2::splat(CELL_PX)),
-                        ..default()
+                let sprite = Sprite {
+                    color: HIGHLIGHT_TINT,
+                    custom_size: Some(Vec2::splat(CELL_PX)),
+                    ..default()
+                };
+                let transform = Transform::from_translation(world);
+                // Explicitly Visible (not the `Inherited` default) so the reticle
+                // shows from the first frame it is requested, independent of any
+                // parent visibility.
+                let visibility = Visibility::Visible;
+                let layers = RenderLayers::layer(WORLD_RENDER_LAYER);
+                // GTW-322 — authored as a `bsn!` scene (mirrors the converted ganger
+                // sprite). The `Sprite` is NOT `Unpin` (its `Option<Handle<Image>>` /
+                // `Option<TextureAtlas>` fields), so it rides NEITHER `template_value`
+                // (which bounds `Unpin`) nor a `bsn!` field patch — it takes the
+                // `template(move |_| Ok(value.clone()))` closure escape hatch (the
+                // `FnTemplate` has no `Unpin` bound on its output). The `Transform` /
+                // `Visibility` / `RenderLayers` ARE `Clone + Default + Unpin`, so each
+                // rides `template_value`. The `HoverHighlight` marker is a unit type, so
+                // it inlines in the macro.
+                commands.spawn_scene((
+                    bsn! {
+                        HoverHighlight
+                        template(move |_| Ok(sprite.clone()))
                     },
-                    Transform::from_translation(world),
-                    // Explicitly Visible (not the `Inherited` default) so the reticle
-                    // shows from the first frame it is requested, independent of any
-                    // parent visibility.
-                    Visibility::Visible,
-                    RenderLayers::layer(WORLD_RENDER_LAYER),
+                    template_value(transform),
+                    template_value(visibility),
+                    template_value(layers),
                 ));
             }
         }

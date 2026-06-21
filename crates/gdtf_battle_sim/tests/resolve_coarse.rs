@@ -14,8 +14,10 @@
 
 use bevy::{
     app::App,
+    asset::AssetPlugin,
     ecs::system::RunSystemOnce,
     prelude::{Commands, Entity, MinimalPlugins, World},
+    scene::ScenePlugin,
 };
 // The canonical shared builders + specs + registries + the `(cell, level)` key
 // helper (consolidated out of this file's former local copies — GTW-324 migration).
@@ -30,12 +32,16 @@ use gdtf_battle_sim::{
     Wounds, resolve_coarse, setup_battle,
 };
 
-/// Run `setup_battle` on a fresh `MinimalPlugins` app, flush the deferred commands,
-/// and return the app + `BattleSetup` — or `None` on failure (keeping the tests
-/// free of `unwrap`/`expect`/`panic`, all denied in tests too).
+/// Run `setup_battle` on a fresh app, drive the `SpawnScene` schedule so the deferred
+/// `bsn!` ganger components materialize (GTW-322), and return the app + `BattleSetup`
+/// — or `None` on failure (keeping the tests free of `unwrap`/`expect`/`panic`, all
+/// denied in tests too).
 fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
+    // `AssetPlugin` + `ScenePlugin` are required: `setup_battle` now spawns each ganger
+    // as a `bsn!` Scene (GTW-322), whose deferred materialization needs the scene/asset
+    // infrastructure.
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
 
     let registry = test_weapon_registry();
     let armor = test_armor_registry();
@@ -48,7 +54,9 @@ fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     let setup = outcome.ok().and_then(Result::ok);
     assert!(setup.is_some(), "setup_battle must succeed on the fixture");
     let setup = setup?;
-    app.world_mut().flush();
+    // Only `app.update()` runs the `SpawnScene` schedule that turns the queued ganger
+    // scenes into live components the per-entity `combat_snapshot` reads (GTW-322).
+    app.update();
     Some((app, setup))
 }
 

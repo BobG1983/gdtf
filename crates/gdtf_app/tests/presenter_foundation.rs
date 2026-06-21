@@ -56,7 +56,7 @@ fn running_state(app: &bevy::app::App) -> Option<RunningState> {
 /// `LoadedSituation` is seeded — the Generation setup falls back to the default
 /// (empty) situation, which is sufficient to reach `BattleScape`.
 fn presenter_app() -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());

@@ -68,7 +68,7 @@ fn running_state(app: &App) -> Option<RunningState> {
 
 /// Drives the real stack to `BattleScapeState::BattleRunning`, where the weapon panel is live.
 fn battle_running_app() -> App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());

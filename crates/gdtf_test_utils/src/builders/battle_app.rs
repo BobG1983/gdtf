@@ -68,7 +68,7 @@ impl BattleAppBuilder {
     /// itself.
     #[must_use]
     pub fn build(self) -> Option<App> {
-        let mut app = GdtfTestAppBuilder::new()
+        let mut app = GdtfTestAppBuilder::new_with_scene_support()
             .starting_in(AppState::Running)
             .build();
 

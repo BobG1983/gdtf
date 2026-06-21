@@ -14,8 +14,11 @@
 //! "no px magnitudes" rule for the overhaul's structure tests.
 
 use bevy::{
+    MinimalPlugins,
+    asset::AssetPlugin,
     ecs::system::SystemState,
     prelude::*,
+    scene::ScenePlugin,
     ui::{Node, PositionType, Val},
 };
 use gdtf_ui::theme::default_theme;
@@ -32,25 +35,35 @@ type SpawnParams<'w, 's> = SystemState<(
     Option<Res<'w, gdtf_battle_presenter::TopDownAtlases>>,
 )>;
 
-/// Runs the real `spawn_inspect_panel` system once over a fresh `World` (the loaded fallback
-/// theme inserted, no atlases — the portrait takes its `None` branch) and returns the spawned
-/// `InspectPanelRoot`'s `Node`, if any. Drives the actual system via a `SystemState` so the test
-/// exercises the production spawn path, not a hand-rolled copy.
+/// Runs the real `spawn_inspect_panel` system once and returns the spawned
+/// `InspectPanelRoot`'s `Node`, if any. Drives the actual production spawn path via a
+/// `SystemState` (the loaded fallback theme inserted, no atlases — the portrait takes
+/// its `None` branch), not a hand-rolled copy.
+///
+/// GTW-322 — the panel builders now spawn through `Commands::spawn_scene` (a `bsn!`
+/// [`Scene`](bevy::scene::Scene)), whose deferred `apply_scene` reads the
+/// `AssetServer` + `Assets<ScenePatch>` resources; a raw `World` lacks them and panics
+/// on apply. So the system is driven over an `App` world carrying `MinimalPlugins` +
+/// `AssetPlugin` + `ScenePlugin` (the scene/asset infrastructure); `state.apply` runs
+/// the queued scene application (dependency-free → resolves immediately) and the
+/// `InspectPanelRoot` / `Node` insert, both before the assertion reads the `Node`.
 fn spawn_root_node() -> Option<Node> {
-    let mut world = World::new();
-    world.insert_resource(default_theme());
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.insert_resource(default_theme());
+    let world = app.world_mut();
 
-    let mut state: SpawnParams = SystemState::new(&mut world);
+    let mut state: SpawnParams = SystemState::new(world);
     // `get` now returns a `Result` (Bevy 0.19); these params always validate.
-    let Ok((commands, theme, atlases)) = state.get(&world) else {
+    let Ok((commands, theme, atlases)) = state.get(world) else {
         return None;
     };
     // `spawn_inspect_panel` is `Commands`-driven; build it from the same params then apply.
     spawn_inspect_panel(commands, theme, atlases);
-    state.apply(&mut world);
+    state.apply(world);
 
     let mut roots = world.query_filtered::<&Node, With<InspectPanelRoot>>();
-    roots.iter(&world).next().cloned()
+    roots.iter(world).next().cloned()
 }
 
 #[test]

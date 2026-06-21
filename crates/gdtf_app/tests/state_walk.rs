@@ -72,7 +72,9 @@ const WALK_BUDGET: u32 = 64;
 /// persist, so seeding them before the walk is faithful to how the real app carries
 /// them forward.
 fn walk_app_with_theme() -> App {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .default_start()
+        .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     // GTW-257: the Load→Intro gate also requires a WeaponRegistry (the deep walk uses
@@ -280,7 +282,10 @@ fn teardown_emits_app_exit() {
 /// assertion fails.
 #[test]
 fn running_hosts_menu() {
-    let mut app = GdtfTestAppBuilder::new()
+    // GTW-322 — entering `Running` enters `Menu`, whose `spawn_menu` now authors its tree
+    // via `bsn!` / `spawn_scene`; the deferred apply needs the scene resources, so build
+    // with scene support (matching this file's other walk helpers).
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
 
@@ -308,7 +313,9 @@ fn running_hosts_menu() {
 /// reached within budget) or if `Game` auto-advances past `Setup`.
 #[test]
 fn game_hosts_setup() {
-    let mut app = GdtfTestAppBuilder::new()
+    // GTW-322 — see `running_hosts_menu`: the `Menu` `spawn_menu` scene needs the scene
+    // resources, so build with scene support.
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
 

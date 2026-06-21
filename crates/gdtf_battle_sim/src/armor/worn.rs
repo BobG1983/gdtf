@@ -109,7 +109,12 @@ impl SourceArmor {
 /// `integrity ≤ 0` stops protecting for the rest of the battle. It is seeded **by
 /// value** from a read-only [`SourceArmor`] ([`seed_from`](WornArmor::seed_from)),
 /// so a worn-copy mutation can never leak back to the roster source.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// `Default` (six all-zero [`ArmorPiece`]s) is a **spawn-seed sentinel only** —
+/// the `bsn!`-scene spawn path's `get_or_insert_template` seeds the component slot
+/// via `Default` before the authored [`WornArmor::seed_from`]-produced value
+/// overwrites it (GTW-322). It is NOT a valid authored suit (every location reads
+/// as already-useless armor); a spawned ganger always carries its seeded copy.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct WornArmor {
     /// The six per-location worn pieces, indexed by [`BodyPart::index`]. Only the
     /// [`ArmorIntegrity`] of each wears mid-battle.

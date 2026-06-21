@@ -7,8 +7,10 @@
 
 pub(super) use bevy::{
     app::App,
+    asset::AssetPlugin,
     ecs::system::RunSystemOnce,
     prelude::{Commands, Entity, MinimalPlugins, World},
+    scene::ScenePlugin,
 };
 
 pub(super) use super::super::*;
@@ -107,8 +109,11 @@ pub(super) fn run_setup_with(
     registry: WeaponRegistry,
     armor: ArmorRegistry,
 ) -> Option<(App, BattleSetup)> {
+    // `AssetPlugin` + `ScenePlugin` are required: `setup_battle` now spawns each ganger
+    // as a `bsn!` Scene (GTW-322), whose deferred materialization needs the scene/asset
+    // infrastructure (the spike's pinned finding).
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -121,7 +126,11 @@ pub(super) fn run_setup_with(
         "setup_battle must succeed on a valid situation + registry",
     );
     let setup = setup?;
-    app.world_mut().flush();
+    // Drive the `SpawnScene` schedule so the deferred ganger components materialize
+    // before the caller queries them (GTW-322): `run_system_once` + `flush()` apply
+    // the `spawn_scene` command + reserve the Entity id, but only `app.update()` runs
+    // the `SpawnScene` schedule that turns the queued scenes into live components.
+    app.update();
     Some((app, setup))
 }
 
@@ -147,11 +156,15 @@ pub(super) fn minimal_fixture() -> (Situation, CellLevel, CellLevel, CellLevel, 
 /// [`BattleSetup`] — or assert-fail and return `None` (keeping the tests free of
 /// `unwrap`/`expect`/`panic`, all denied in tests too).
 ///
-/// Drives the real `Commands` path via `run_system_once` and flushes the
-/// deferred commands via `world.flush()`.
+/// Drives the real `Commands` path via `run_system_once`, then `app.update()`s once
+/// to drive the `SpawnScene` schedule so the deferred `bsn!` ganger components
+/// materialize before the caller queries them (GTW-322).
 pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
+    // `AssetPlugin` + `ScenePlugin` are required: `setup_battle` now spawns each ganger
+    // as a `bsn!` Scene (GTW-322), whose deferred materialization needs the scene/asset
+    // infrastructure (the spike's pinned finding).
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
 
     // Run setup as a one-shot system reading the fixture against the central test
     // weapon + armor registries, capturing its result.
@@ -171,8 +184,11 @@ pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
         "setup_battle must succeed on a valid situation",
     );
     let setup = setup?;
-    // Flush the deferred Commands (spawns + insert_resource) into the world.
-    app.world_mut().flush();
+    // Drive the `SpawnScene` schedule so the deferred ganger components materialize
+    // before the caller queries them (GTW-322): `run_system_once` applies the
+    // `spawn_scene` command + reserves the Entity id, but only `app.update()` runs the
+    // `SpawnScene` schedule that turns the queued scenes into live components.
+    app.update();
     Some((app, setup))
 }
 

@@ -27,7 +27,10 @@
 //! nav graph.
 
 use bevy::{
-    input_focus::directional_navigation::DirectionalNavigationMap, math::CompassOctant, prelude::*,
+    input_focus::directional_navigation::DirectionalNavigationMap,
+    math::CompassOctant,
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     ui::Val,
 };
 use gdtf_ui::{
@@ -105,31 +108,43 @@ pub(in crate::states::running::menu) fn spawn_menu(
     // ROOT: the centered, full-screen backdrop. `Themed(Background)` paints the
     // backdrop fill; the layout (full size, centered column, inter-child gap)
     // survives `apply_theme`, which writes only BackgroundColor for this role.
+    //
+    // GTW-322 — authored as a `bsn!` scene. `Themed` rides the macro inline (its
+    // `Themed::new` ctor + sentinel `Default`); the runtime-valued `Node` (the
+    // layout) and `DespawnOnExit` (state-scope) have no `bsn!` value grammar, so
+    // they are composed onto the same entity with `template_value`.
+    let root_node = Node {
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        flex_direction: FlexDirection::Column,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        row_gap: Val::Vh(*ColumnGapVh::MENU),
+        ..default()
+    };
     let root = commands
-        .spawn((
-            Themed::new(ThemeRole::Background),
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                row_gap: Val::Vh(*ColumnGapVh::MENU),
-                ..default()
-            },
-            DespawnOnExit(RunningState::Menu),
+        .spawn_scene((
+            bsn! { Themed::new(ThemeRole::Background) },
+            template_value(root_node),
+            template_value(DespawnOnExit(RunningState::Menu)),
         ))
         .id();
 
     // TITLE — a theme-derived heading (ThemeRole::Title), a DIRECT child of the
     // root so it floats on the backdrop above the panel.
+    //
+    // GTW-322 — `Themed`, `Text::new`, and the `MenuTitle` marker ride the `bsn!`
+    // macro inline; the runtime-valued `TextLayout` (justify) and `DespawnOnExit`
+    // are composed with `template_value`.
     let title = commands
-        .spawn((
-            Themed::new(ThemeRole::Title),
-            Text::new("GRIMDARK TURFWAR"),
-            TextLayout::justify(Justify::Center),
-            MenuTitle,
-            DespawnOnExit(RunningState::Menu),
+        .spawn_scene((
+            bsn! {
+                Themed::new(ThemeRole::Title)
+                Text::new("GRIMDARK TURFWAR")
+                MenuTitle
+            },
+            template_value(TextLayout::justify(Justify::Center)),
+            template_value(DespawnOnExit(RunningState::Menu)),
         ))
         .id();
 

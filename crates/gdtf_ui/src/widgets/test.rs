@@ -1,7 +1,10 @@
 //! Tests for the widget spawn helpers and the disabled / active paint passes.
 
 use bevy::{
+    MinimalPlugins,
+    asset::AssetPlugin,
     prelude::*,
+    scene::ScenePlugin,
     text::{FontSize, FontSource, TextColor as UiTextColor, TextFont},
     ui::{BackgroundColor, BorderColor as UiBorderColor, Interaction, Node, widget::Button},
 };
@@ -14,6 +17,21 @@ use crate::{
     theme::{GdtfTheme, GdtfThemeSpec},
     themed::{ThemeRole, Themed, apply_theme},
 };
+
+/// Builds the headless harness for the widget-builder tests with the scene/asset
+/// infrastructure the GTW-322 `bsn!` builders need.
+///
+/// The builders spawn via [`Commands::spawn_scene`](bevy::scene::CommandsSceneExt::spawn_scene),
+/// whose deferred `apply_scene` (run on the next `flush`) reads the `AssetServer` +
+/// `Assets<ScenePatch>` resources; without `AssetPlugin` + `ScenePlugin` it panics.
+/// `MinimalPlugins` supplies the task pool `AssetPlugin` requires. The widget scenes
+/// have no asset dependencies, so they materialize on the existing single `flush()`
+/// (no extra `app.update()` is needed before asserting).
+fn scene_app() -> App {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app
+}
 
 /// Builds a [`GdtfTheme`] through the real resolution path (deserialize the
 /// nested spec, then [`GdtfThemeSpec::resolve`]) with a defaulted-font
@@ -57,7 +75,7 @@ fn theme(
 #[test]
 fn spawned_button_has_interaction_visuals_and_themed_marker() -> Result<(), ron::error::SpannedError>
 {
-    let mut app = App::new();
+    let mut app = scene_app();
     app.insert_resource(theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?);
 
     let theme_res = app.world().resource::<GdtfTheme>().clone();
@@ -93,7 +111,7 @@ fn spawned_button_has_interaction_visuals_and_themed_marker() -> Result<(), ron:
 /// `spawn_panel` builds a `Themed(Panel)` node with background + border.
 #[test]
 fn spawned_panel_is_themed_with_visuals() -> Result<(), ron::error::SpannedError> {
-    let mut app = App::new();
+    let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
 
     let panel = {
@@ -126,7 +144,7 @@ fn spawned_panel_is_themed_with_visuals() -> Result<(), ron::error::SpannedError
 #[test]
 fn spawned_button_text_child_is_themed_button_text_from_theme()
 -> Result<(), ron::error::SpannedError> {
-    let mut app = App::new();
+    let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
 
     let button = {
@@ -172,7 +190,7 @@ fn spawned_button_text_child_is_themed_button_text_from_theme()
 /// `disabled` fill after `paint_disabled_buttons` runs, and it stays `Themed`.
 #[test]
 fn disabled_button_is_painted_from_theme() -> Result<(), ron::error::SpannedError> {
-    let mut app = App::new();
+    let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
     app.insert_resource(theme_res.clone());
     app.add_systems(
@@ -221,7 +239,7 @@ fn disabled_button_is_painted_from_theme() -> Result<(), ron::error::SpannedErro
 /// fail. The two fills are distinct in the test theme.
 #[test]
 fn active_button_is_painted_from_theme() -> Result<(), ron::error::SpannedError> {
-    let mut app = App::new();
+    let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
     app.insert_resource(theme_res.clone());
     app.add_systems(
@@ -288,7 +306,7 @@ fn active_button_stays_active_when_pressed() -> Result<(), ron::error::SpannedEr
 
     use crate::{interaction::theme_interaction, themed::UiSystems, widgets::paint_active_buttons};
 
-    let mut app = App::new();
+    let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
     app.insert_resource(theme_res.clone());
     // The real production band: apply_theme (its set), then theme_interaction, then
@@ -344,7 +362,7 @@ fn active_button_stays_active_when_pressed() -> Result<(), ron::error::SpannedEr
 /// (expecting the disabled fill) would fail.
 #[test]
 fn disabled_beats_active() -> Result<(), ron::error::SpannedError> {
-    let mut app = App::new();
+    let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
     app.insert_resource(theme_res.clone());
     // The real production band: apply_theme, then both paint passes.
@@ -398,15 +416,16 @@ fn disabled_beats_active() -> Result<(), ron::error::SpannedError> {
 /// the de-selected button stays stuck on the active fill, failing the assert.
 #[test]
 fn deselected_toggle_drops_active_fill_without_hover() -> Result<(), ron::error::SpannedError> {
-    use bevy::{MinimalPlugins, input::InputPlugin};
+    use bevy::input::InputPlugin;
 
     use crate::UiPlugin;
 
-    let mut app = App::new();
+    // `scene_app()` already adds `MinimalPlugins` + the GTW-322 `AssetPlugin` +
+    // `ScenePlugin` the widget `bsn!` builders need; this test additionally drives
+    // the real `UiPlugin` path so `repaint_deactivated_buttons` runs.
+    let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(InputPlugin)
-        .add_plugins(UiPlugin);
+    app.add_plugins(InputPlugin).add_plugins(UiPlugin);
     app.insert_resource(theme_res.clone());
 
     let button = {

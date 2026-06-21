@@ -12,6 +12,7 @@
 
 use bevy::{
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     ui::{
         AlignItems, BackgroundColor, BorderRadius, Interaction, JustifyContent, Node, UiRect, Val,
         widget::Button,
@@ -57,7 +58,12 @@ impl SwitchState {
 /// knob, per the contract), and the knob keeps its own constant color across the flip.
 /// Carried as a [`Component`] on the switch root so [`drive_switches`] can re-derive
 /// the track color from the new state without the caller re-passing colors.
-#[derive(Component, Clone, Copy, PartialEq, Debug)]
+///
+/// The derived [`Default`] (all-black) is a **spawn-seed sentinel only** (GTW-322):
+/// the `bsn!` scene path seeds the slot with [`Default`] before
+/// [`template_value`](bevy::scene::template_value) overwrites it with the caller's
+/// colors. It is never a meaningful color set — a builder always supplies real colors.
+#[derive(Component, Clone, Copy, PartialEq, Debug, Default)]
 pub struct SwitchColors {
     /// Track color while OFF.
     pub off:  Color,
@@ -145,38 +151,49 @@ pub fn spawn_switch(
         Orientation::Horizontal => (Val::Vw(TRACK_LONG_VW), Val::Vw(TRACK_SHORT_VW)),
         Orientation::Vertical => (Val::Vw(TRACK_SHORT_VW), Val::Vw(TRACK_LONG_VW)),
     };
+    // The track + knob layout nodes and the runtime-valued state / colors / axis are
+    // built before the macro and bridged with `template_value` (no `bsn!` value-grammar
+    // form for these runtime values); the static markers + the click `Button` ride the
+    // inline `bsn!`, and the caller's generic `marker` is `.insert`ed after (GTW-322).
+    let track_node = Node {
+        width,
+        height,
+        flex_direction: orientation.flex_direction(),
+        padding: UiRect::all(Val::Vw(TRACK_PAD_VW)),
+        align_items: AlignItems::Center,
+        justify_content: knob_justify(state),
+        border_radius: BorderRadius::all(Val::Percent(50.0)),
+        ..default()
+    };
+    let knob_node = Node {
+        width: Val::Vw(KNOB_DIAMETER_VW),
+        height: Val::Vw(KNOB_DIAMETER_VW),
+        border_radius: BorderRadius::all(Val::Percent(50.0)),
+        ..default()
+    };
+    let switch_orientation = SwitchOrientation(orientation);
+    let track_color = colors.track(state);
+    let knob_color = colors.knob;
     commands
-        .spawn((
-            Switch,
-            SwitchOrientation(orientation),
-            state,
-            colors,
-            Button,
-            Node {
-                width,
-                height,
-                flex_direction: orientation.flex_direction(),
-                padding: UiRect::all(Val::Vw(TRACK_PAD_VW)),
-                align_items: AlignItems::Center,
-                justify_content: knob_justify(state),
-                border_radius: BorderRadius::all(Val::Percent(50.0)),
-                ..default()
+        .spawn_scene((
+            bsn! {
+                Switch
+                Button
+                BackgroundColor(track_color)
+                Children [
+                    (
+                        SwitchKnob
+                        BackgroundColor(knob_color)
+                        template_value(knob_node)
+                    )
+                ]
             },
-            BackgroundColor(colors.track(state)),
-            marker,
+            template_value(switch_orientation),
+            template_value(state),
+            template_value(colors),
+            template_value(track_node),
         ))
-        .with_children(|track| {
-            track.spawn((
-                SwitchKnob,
-                Node {
-                    width: Val::Vw(KNOB_DIAMETER_VW),
-                    height: Val::Vw(KNOB_DIAMETER_VW),
-                    border_radius: BorderRadius::all(Val::Percent(50.0)),
-                    ..default()
-                },
-                BackgroundColor(colors.knob),
-            ));
-        })
+        .insert(marker)
         .id()
 }
 

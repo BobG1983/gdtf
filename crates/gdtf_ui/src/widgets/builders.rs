@@ -7,9 +7,23 @@
 //! colors are **not** authoritative: the central
 //! [`apply_theme`](crate::themed::apply_theme) system re-derives and re-writes them
 //! from the live [`GdtfTheme`](crate::theme::GdtfTheme) on every run.
+//!
+//! GTW-322 — the tree is authored as a `bsn!` [`Scene`](bevy::scene::Scene) and
+//! spawned via [`Commands::spawn_scene`](bevy::scene::CommandsSceneExt::spawn_scene):
+//! the SAME entities and components result, only the spawn SHAPE changed. The
+//! returned [`Entity`] id is still available synchronously (`spawn_scene` reserves
+//! the id immediately and defers the component-application command), so callers that
+//! parent / insert onto the returned id are unaffected. Runtime-valued components
+//! that have no `bsn!` value-grammar form (e.g. [`BorderColor`](bevy::ui::BorderColor),
+//! the built [`TextFont`](bevy::text::TextFont)) are composed onto the entity with
+//! [`template_value`](bevy::scene::template_value); the caller's generic `marker`
+//! bundle is added with `.insert(marker)` (a generic [`Bundle`] cannot be inlined
+//! into the reflection-free `bsn!` grammar).
 
 use bevy::{
+    ecs::template::template,
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{BackgroundColor, BorderColor as UiBorderColor, BorderRadius, Node, UiRect, Val},
 };
@@ -41,12 +55,14 @@ pub fn spawn_panel(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
         theme,
         BoxKind::Panel,
     );
+    let border_color = UiBorderColor::all(*theme.panel.border_color);
+    let background = BackgroundColor(*theme.panel.color);
     commands
-        .spawn((
-            Themed::new(ThemeRole::Panel),
-            node,
-            BackgroundColor(*theme.panel.color),
-            UiBorderColor::all(*theme.panel.border_color),
+        .spawn_scene((
+            bsn! { Themed::new(ThemeRole::Panel) },
+            template_value(node),
+            template_value(background),
+            template_value(border_color),
         ))
         .id()
 }
@@ -86,28 +102,43 @@ pub fn spawn_button(
         theme,
         BoxKind::Button,
     );
+    let border_color = UiBorderColor::all(*theme.button.border_color);
+    let background = BackgroundColor(*theme.button.color);
+    // The caption's font is built before the macro. `TextFont` is not `Unpin`, so it
+    // rides neither `template_value` (the whole-value `Template` bound) nor the field
+    // patch (`FontSource` has no `From`-into-template); the `template(|_| ..)` closure
+    // entry is the escape hatch — a `Clone` closure whose output is the `TextFont`
+    // component, cloned into the slot each build (the bsn! "function returning a
+    // Template" grammar).
+    let text_font = TextFont {
+        font: font.into(),
+        font_size: FontSize::Px(font_size),
+        ..default()
+    };
+    let caption = label.into_inner();
 
     commands
-        .spawn((
-            Button,
-            Themed::new(ThemeRole::Button),
-            node,
-            BackgroundColor(*theme.button.color),
-            UiBorderColor::all(*theme.button.border_color),
-            marker,
+        .spawn_scene((
+            bsn! {
+                Button
+                Themed::new(ThemeRole::Button)
+                Children [
+                    (
+                        Themed::new(ThemeRole::ButtonText)
+                        Text::new(caption)
+                        UiTextColor(text_color)
+                        template(move |_| Ok(text_font.clone()))
+                    )
+                ]
+            },
+            template_value(node),
+            template_value(background),
+            template_value(border_color),
         ))
-        .with_children(|parent| {
-            parent.spawn((
-                Themed::new(ThemeRole::ButtonText),
-                Text::new(label.into_inner()),
-                TextFont {
-                    font: font.into(),
-                    font_size: FontSize::Px(font_size),
-                    ..default()
-                },
-                UiTextColor(text_color),
-            ));
-        })
+        // The caller's generic `marker` bundle cannot be inlined into the
+        // reflection-free `bsn!` grammar, so it is inserted onto the root after
+        // the scene is queued (its components are disjoint from the scene's).
+        .insert(marker)
         .id()
 }
 

@@ -10,7 +10,7 @@
 //! side / top inset). It would FAIL if a side/top inset were reintroduced, the viewport write
 //! removed, or the bottom-bar marker dropped from the inset query.
 
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{asset::AssetPlugin, prelude::*, scene::ScenePlugin, window::PrimaryWindow};
 use gdtf_battle_presenter::{WorldCamera, spawn_world_camera};
 
 use super::set_world_viewport;
@@ -60,7 +60,12 @@ fn world_viewport(app: &mut App) -> Option<bevy::camera::Viewport> {
 #[test]
 fn set_world_viewport_insets_the_map_by_the_bottom_bar_only() {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
+    // GTW-322 — `spawn_world_camera` now authors its camera via `bsn!` / `spawn_scene`, which
+    // resolves in the `SpawnScene` schedule and PANICS without the scene resources, so this
+    // headless harness adds `AssetPlugin` + `ScenePlugin` directly (the widget-builder slice
+    // precedent). The camera has no asset deps, so the scene materializes on the first
+    // `update`; the second `update` then runs `set_world_viewport` against the live camera.
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     spawn_window(&mut app);
 
     // The REAL world camera (presenter `spawn_world_camera`) + the REAL bottom-bar root marker
@@ -70,6 +75,7 @@ fn set_world_viewport_insets_the_map_by_the_bottom_bar_only() {
         .spawn((BottomBarRoot, computed(Vec2::new(1280.0, BAR_HEIGHT))));
 
     app.add_systems(Update, set_world_viewport);
+    app.update();
     app.update();
 
     let viewport = world_viewport(&mut app);
@@ -100,11 +106,14 @@ fn set_world_viewport_insets_the_map_by_the_bottom_bar_only() {
 #[test]
 fn set_world_viewport_full_window_when_no_bottom_bar() {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
+    // GTW-322 — see the sibling test: `spawn_world_camera`'s `bsn!` scene needs the scene
+    // resources + a settling `update` before `set_world_viewport` can read the live camera.
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     spawn_window(&mut app);
 
     app.add_systems(Startup, spawn_world_camera);
     app.add_systems(Update, set_world_viewport);
+    app.update();
     app.update();
 
     let viewport = world_viewport(&mut app);

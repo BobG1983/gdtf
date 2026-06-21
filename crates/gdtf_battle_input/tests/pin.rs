@@ -44,8 +44,15 @@ const LEVEL: Level = Level::new(0);
 /// headless picker (which has no camera and so resolves `None`) would clobber it.
 fn pin_app() -> App {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(GdtfBattleInputPlugin);
+    // GTW-322: `update_selection_highlight` (in `GdtfBattleInputPlugin`) spawns its reticle
+    // via `Commands::spawn_scene`, which PANICS under `MinimalPlugins` without an
+    // `AssetServer` + the scene schedule (the spike-documented requirement).
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin::default(),
+        bevy::scene::ScenePlugin,
+    ))
+    .add_plugins(GdtfBattleInputPlugin);
     app.world_mut().insert_resource(ActiveLevel::new(LEVEL));
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());

@@ -1,7 +1,12 @@
 //! The static-battlefield draw + cover-swap reaction, with the sim-grid bundle and the
 //! presenter-owned sim-fact → tile-role mapping.
 
-use bevy::{camera::visibility::RenderLayers, ecs::system::SystemParam, prelude::*};
+use bevy::{
+    camera::visibility::RenderLayers,
+    ecs::{system::SystemParam, template::template},
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
+};
 use gdtf_battle_sim::{
     BattleReady, Cell, CellLevel, CoverDestroyed, CoverLedger, GRID_HEIGHT, GRID_WIDTH,
     OccupancyGrid, SlabState, SurfaceGrid, TerrainKind,
@@ -173,12 +178,27 @@ pub fn draw_static_battlefield(
             let Some(sprite) = terrain_sprite(role, &roles, &atlases) else {
                 continue;
             };
-            commands.spawn((
-                sprite,
-                Transform::from_translation(cell_to_world(cell, level)),
-                RenderLayers::layer(crate::WORLD_RENDER_LAYER),
-                TerrainSprite { at: key },
-            ));
+            let transform = Transform::from_translation(cell_to_world(cell, level));
+            let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+            // GTW-322 — authored as a `bsn!` scene. The atlas-indexed `Sprite` is NOT
+            // `Unpin` (its `Option<Handle<Image>>` / `Option<TextureAtlas>` fields), so it
+            // rides the `template(move |_| Ok(value.clone()))` closure escape hatch (the
+            // `FnTemplate` output has no `Unpin` bound), the same one the AREA-1 widget
+            // builders use for `TextFont`. The runtime `Transform` and `RenderLayers` ARE
+            // `Clone + Default + Unpin`, so each rides `template_value` (a value-overwrite).
+            // The `TerrainSprite` marker carries the runtime source `CellLevel` and has no
+            // `Default` (so no `bsn!` / `template_value` form) — it is `.insert`ed after
+            // the scene. This terrain sprite is never read back by id (the redraw /
+            // cover-swap finds it via the `TerrainSprite { at }` query, not a captured
+            // handle), so the deferred materialization is inert here — the same entity +
+            // components result.
+            commands
+                .spawn_scene((
+                    bsn! { template(move |_| Ok(sprite.clone())) },
+                    template_value(transform),
+                    template_value(layers),
+                ))
+                .insert(TerrainSprite { at: key });
         }
     }
 }

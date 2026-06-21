@@ -45,7 +45,12 @@
 //! [`Transform`]s + draws sprites; it adds no sim plumbing and never writes the sim.
 //! Param-only throughout (`bevy-traps.md` #7).
 
-use bevy::{camera::visibility::RenderLayers, prelude::*};
+use bevy::{
+    camera::visibility::RenderLayers,
+    ecs::template::template,
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
+};
 use gdtf_battle_sim::{Cell, DamageType, Level, Position, ShotFired, ShotKind};
 
 use super::{
@@ -393,24 +398,37 @@ pub fn spawn_shot_projectiles(
         // float cast (`Duration` implements `Mul<u32>`).
         let round_index = u32::try_from(round).unwrap_or(u32::MAX);
         let launch_delay = std::time::Duration::from_secs_f32(inter_shot) * round_index;
-        commands.spawn((
-            sprite,
-            Transform::from_translation(muzzle_world),
-            // Hidden until this round's launch delay elapses (advance_projectiles reveals it),
-            // so a staggered volley reads shot-by-shot rather than every bolt at once.
-            Visibility::Hidden,
-            RenderLayers::layer(crate::WORLD_RENDER_LAYER),
-            ProjectileTravel::new(
-                muzzle_world,
-                target_world,
-                msg.damage,
-                velocity,
-                launch_delay,
-                pops,
-                anchor,
-            ),
-            ShotProjectile,
-        ));
+        // GTW-322 — authored as a `bsn!` scene (the SAME entity tree, only the spawn SHAPE
+        // changed). The atlas-indexed `Sprite` is NOT `Unpin` (its `Option<Handle>` fields),
+        // and the `ProjectileTravel` flight (a `Timer` + the owned `Vec<ClassifiedPop>`) has no
+        // `Default`, so BOTH ride the `template(move |_| Ok(value.clone()))` closure escape
+        // hatch (the `FnTemplate` output is bound by neither `Unpin` nor `Default`). The
+        // `Transform`, `Visibility::Hidden` (held at the muzzle until the launch delay elapses,
+        // so a staggered volley reads shot-by-shot), and `RenderLayers` are all
+        // `Clone + Default + Unpin`, so each rides `template_value`. The value-free
+        // `ShotProjectile` marker has no `Default` — it is `.insert`ed onto the
+        // synchronously-reserved id after the scene; the scene's components materialize on that
+        // frame's `SpawnScene` schedule (between `Update` and `PostUpdate`).
+        let travel = ProjectileTravel::new(
+            muzzle_world,
+            target_world,
+            msg.damage,
+            velocity,
+            launch_delay,
+            pops,
+            anchor,
+        );
+        let transform = Transform::from_translation(muzzle_world);
+        let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+        commands
+            .spawn_scene((
+                bsn! { template(move |_| Ok(sprite.clone())) },
+                template_value(transform),
+                template_value(Visibility::Hidden),
+                template_value(layers),
+                bsn! { template(move |_| Ok(travel.clone())) },
+            ))
+            .insert(ShotProjectile);
     }
 }
 
@@ -516,12 +534,19 @@ pub fn advance_projectiles(
             // Hand the impact off to FX-B at the arrival point, carrying this shot's classified
             // FCT pops + their anchor (GTW-327) so the numbers appear with THIS bolt's impact,
             // then despawn the bolt (its pops are MOVED into the impact, not duplicated).
-            commands.spawn(PendingImpact {
+            //
+            // GTW-322 — the seam entity carries ONLY `PendingImpact`, which owns the pop `Vec`
+            // (no `Default`), so it is spawned as a single-`bsn!` scene via the
+            // `template(move |_| Ok(value.clone()))` closure escape hatch (the bare entity the
+            // old `commands.spawn(PendingImpact { .. })` produced — same component, deferred to
+            // that frame's `SpawnScene` schedule).
+            let pending = PendingImpact {
                 at:     travel.arrival(),
                 damage: travel.damage(),
                 anchor: travel.anchor(),
                 pops:   travel.take_pops(),
-            });
+            };
+            commands.spawn_scene(bsn! { template(move |_| Ok(pending.clone())) });
             commands.entity(entity).despawn();
         }
     }

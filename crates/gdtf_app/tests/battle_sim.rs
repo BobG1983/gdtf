@@ -103,7 +103,9 @@ fn drive_past_menu(app: &mut bevy::app::App) -> bool {
 /// default exercises the zero-ganger battle-build path the way the absent
 /// `request_battle_setup` fallback used to.
 fn walk_app(situation: Option<Situation>) -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .default_start()
+        .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     // The Load-built WeaponRegistry (GTW-257): persistent `Load` state the real app

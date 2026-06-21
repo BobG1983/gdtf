@@ -23,7 +23,10 @@
 //! Every `app.world_mut()` mutation is in a TEST BODY — the accepted headless idiom
 //! (`bevy-traps.md` #7 carve-out (a)). No function here takes `&mut World`/`&World`.
 
-use bevy::{camera::visibility::RenderLayers, input::ButtonInput, prelude::*};
+use bevy::{
+    asset::AssetPlugin, camera::visibility::RenderLayers, input::ButtonInput, prelude::*,
+    scene::ScenePlugin,
+};
 use gdtf_battle_input::{
     ActIntent, BoundKey, GdtfBattleInputPlugin, Keybinds, PendingActIntent, SelectedShooter,
     SelectionHighlight,
@@ -54,7 +57,12 @@ fn mint_entity() -> Entity {
 fn selection_app(active_level: Level) -> App {
     use gdtf_battle_sim::tuning::CombatTuning;
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
+    // GTW-322: this builder inserts both `BattleInProgress` + `OccupancyGrid`, so
+    // `update_selection_highlight` runs and spawns its reticle via `Commands::spawn_scene`,
+    // which PANICS under `MinimalPlugins` without an `AssetServer` + the scene schedule (the
+    // spike-documented requirement). The inert (no-`BattleInProgress`) builders below leave
+    // the system gated off, so they keep the bare `MinimalPlugins` harness.
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
         .add_plugins(GdtfBattleInputPlugin);
     app.world_mut()
         .insert_resource(ActiveLevel::new(active_level));
@@ -1091,7 +1099,14 @@ fn real_flow_situation() -> Situation {
 /// `SetupBattleRequested` the test sends, so this exercises the production setup path.
 fn real_flow_app() -> App {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
+    // `AssetPlugin` + `ScenePlugin` are required: `setup_battle` now spawns each ganger
+    // as a `bsn!` Scene via `commands.spawn_scene` (GTW-322). `Commands::spawn_scene`
+    // applies the scene SYNCHRONOUSLY at the command-flush sync point (it calls
+    // `apply_scene`, not the deferred `SpawnScene`-schedule path), so the ganger
+    // components still materialize the SAME frame the setup runs (preserving the A2
+    // same-update auto-select) — but `apply_scene` reads the `AssetServer`, which panics
+    // under bare `MinimalPlugins`. In the real app both ride `DefaultPlugins`.
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
         .add_plugins(GdtfBattleInputPlugin)
         .add_plugins(BattleSimPlugin);
     app.world_mut()

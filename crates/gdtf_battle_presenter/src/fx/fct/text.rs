@@ -21,7 +21,9 @@ use std::time::Duration;
 
 use bevy::{
     camera::visibility::RenderLayers,
+    ecs::template::template,
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     sprite::Anchor,
     text::{FontSize, FontWeight},
 };
@@ -247,22 +249,37 @@ pub fn spawn_floating_text(
 
     let base_alpha = color.alpha();
 
-    commands.spawn((
-        Text2d::new((*text).clone()),
-        TextFont {
-            // The emphasis tier picks BOTH the weight (correct on a variable font) and the
-            // size bump (the visible lever on the bundled non-variable font), so a Bold pop
-            // reads heavier regardless of which font is loaded.
-            font_size: FontSize::Px(emphasis.font_size()),
-            weight: emphasis.weight(),
-            ..default()
-        },
-        TextColor(color),
+    // GTW-322 — authored as a `bsn!` scene (the SAME entity tree the old spawn tuple produced,
+    // only the spawn SHAPE changed). `Text2d` and `TextFont` are NOT `Unpin` (the same family as
+    // the AREA-1 widget builders' text), and the `FloatingCombatText` animation state (a `Timer`
+    // + the rise / base-alpha) has no `Default`, so all three ride the
+    // `template(move |_| Ok(value.clone()))` closure escape hatch (the `FnTemplate` output is
+    // bound by neither `Unpin` nor `Default`). `TextColor`, `Anchor`, `Transform`, and
+    // `RenderLayers` are all `Clone + Default + Unpin`, so each rides `template_value` (a
+    // value-overwrite). The pop materializes on this frame's `SpawnScene` schedule; the
+    // unguarded `animate_floating_text` picks it up to rise / fade / despawn it.
+    let text_2d = Text2d::new((*text).clone());
+    let text_font = TextFont {
+        // The emphasis tier picks BOTH the weight (correct on a variable font) and the
+        // size bump (the visible lever on the bundled non-variable font), so a Bold pop
+        // reads heavier regardless of which font is loaded.
+        font_size: FontSize::Px(emphasis.font_size()),
+        weight: emphasis.weight(),
+        ..default()
+    };
+    let transform = Transform::from_translation(world);
+    let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+    let pop = FloatingCombatText::new(rise, ttl, base_alpha);
+
+    commands.spawn_scene((
+        bsn! { template(move |_| Ok(text_2d.clone())) },
+        bsn! { template(move |_| Ok(text_font.clone())) },
+        template_value(TextColor(color)),
         // Bottom-center so the pop sits ON the cell and rises up off it.
-        Anchor::BOTTOM_CENTER,
-        Transform::from_translation(world),
-        RenderLayers::layer(crate::WORLD_RENDER_LAYER),
-        FloatingCombatText::new(rise, ttl, base_alpha),
+        template_value(Anchor::BOTTOM_CENTER),
+        template_value(transform),
+        template_value(layers),
+        bsn! { template(move |_| Ok(pop.clone())) },
     ));
 }
 

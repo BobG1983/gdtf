@@ -12,9 +12,11 @@ use std::time::Duration;
 
 use bevy::{
     MinimalPlugins,
-    app::{App, Update},
+    app::{App, SpawnScene, Update},
+    asset::AssetPlugin,
     ecs::system::RunSystemOnce,
     prelude::{Alpha, Color, Commands, Transform},
+    scene::ScenePlugin,
     text::{FontSize, FontWeight, TextColor, TextFont},
     time::TimeUpdateStrategy,
 };
@@ -34,13 +36,29 @@ use super::{
 /// despawn-timing test stays fast and is not a brittle pin on the shipped magnitude.
 const TEST_TTL: FctTtlSeconds = FctTtlSeconds::new(0.6);
 
-/// A headless `MinimalPlugins` app with the FCT animator registered — the primitive needs
-/// only the [`Time`] clock (in `MinimalPlugins`) and its own query, so no asset / render stack.
+/// A headless app with the FCT animator registered. The animator itself needs only the
+/// [`Time`] clock (in `MinimalPlugins`) and its own query, but GTW-322's [`spawn_floating_text`]
+/// now spawns the pop as a `bsn!` scene via
+/// [`Commands::spawn_scene`](bevy::scene::CommandsSceneExt::spawn_scene), which panics without
+/// the [`AssetPlugin`] + [`ScenePlugin`] the deferred `apply_scene` reads — so the harness adds
+/// both (the same requirement the GTW-322 spike found for headless `spawn_scene`).
 fn fct_app() -> App {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
         .add_systems(Update, animate_floating_text);
     app
+}
+
+/// Materialize any queued `bsn!` scene WITHOUT advancing [`Time`] or ticking the animator.
+///
+/// GTW-322: `spawn_floating_text` now `spawn_scene`s the pop, whose components materialize on the
+/// `SpawnScene` schedule. Driving that schedule directly (after flushing the spawn command) makes
+/// the pop synchronously present for the tests' assertions while leaving the [`Time`]-driven
+/// rise/fade timeline UNTOUCHED — so the existing per-test `app.update()` accounting (warm-up
+/// zero delta, then each manual step) is preserved exactly, only the spawn SHAPE changed.
+fn materialize_scenes(app: &mut App) {
+    app.world_mut().flush();
+    app.world_mut().run_schedule(SpawnScene);
 }
 
 /// Spawns one ordinary (body-weight) FCT pop via the real [`spawn_floating_text`] helper, at
@@ -80,6 +98,9 @@ fn spawn_pop_with(
         ran.is_ok(),
         "the one-shot spawn system must run successfully"
     );
+    // GTW-322: drive the SpawnScene schedule so the just-queued `bsn!` pop materializes
+    // synchronously (no Time tick), matching the old immediate spawn for the assertions below.
+    materialize_scenes(app);
 }
 
 /// The (translation, alpha) of the SINGLE live pop — asserts exactly one exists, returning

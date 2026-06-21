@@ -1,6 +1,11 @@
 //! The three sim-FX-message readers and their shared sprite/spawn/tint helpers.
 
-use bevy::{camera::visibility::RenderLayers, prelude::*};
+use bevy::{
+    camera::visibility::RenderLayers,
+    ecs::template::template,
+    prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
+};
 use gdtf_battle_sim::{ArmorBroken, Bleeding, Cell, CoverDestroyed, Level, Position, Wounds};
 
 use super::{
@@ -87,14 +92,30 @@ pub(super) fn fx_sprite_scaled(
 /// world position, the [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), a fresh
 /// [`FlashTtl`] one-shot clock, and the [`FxFlash`] marker. Factored so the three readers
 /// spawn identically (the only per-FX difference is the sprite's index + tint).
+///
+/// GTW-322 — authored as a `bsn!` scene (the SAME entity tree the old spawn tuple produced,
+/// only the spawn SHAPE changed). The atlas-indexed [`Sprite`] is NOT `Unpin` (its
+/// `Option<Handle<Image>>` / `Option<TextureAtlas>` fields), so it rides the
+/// `template(move |_| Ok(value.clone()))` closure escape hatch (the `FnTemplate` output has
+/// no `Unpin` bound), the same one the AREA-1 widget builders + AREA-2 sprite spawns use. The
+/// [`Transform`], [`RenderLayers`], and [`FlashTtl`] (a `Timer`-backed newtype) are all
+/// `Clone + Default + Unpin`, so each rides [`template_value`] (a value-overwrite). The
+/// value-free [`FxFlash`] marker has no `Default` (so no `bsn!` / `template_value` form) — it
+/// is `.insert`ed onto the synchronously-reserved id after the scene. `spawn_scene` reserves
+/// the id NOW; the scene's components materialize on that frame's `SpawnScene` schedule
+/// (between `Update` and `PostUpdate`), so the reader's same-`update()` flash is fully present
+/// by `PostUpdate` — identical to the old immediate spawn for the readers' single-update tests.
 fn spawn_flash(commands: &mut Commands, sprite: Sprite, world: Vec3) {
-    commands.spawn((
-        sprite,
-        Transform::from_translation(world),
-        RenderLayers::layer(crate::WORLD_RENDER_LAYER),
-        FlashTtl::new(),
-        FxFlash,
-    ));
+    let transform = Transform::from_translation(world);
+    let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+    commands
+        .spawn_scene((
+            bsn! { template(move |_| Ok(sprite.clone())) },
+            template_value(transform),
+            template_value(layers),
+            template_value(FlashTtl::new()),
+        ))
+        .insert(FxFlash);
 }
 
 /// `Update` (`PresenterSystems::Draw`): spawn a blood/hit FX flash per [`Bleeding`] message.

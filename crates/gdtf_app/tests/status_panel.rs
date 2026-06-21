@@ -69,7 +69,7 @@ fn running_state(app: &App) -> Option<RunningState> {
 /// `LoadedSituation` → the empty `Situation::default()` battle is set up, which still makes
 /// `BattleInProgress` + `OccupancyGrid` present in `BattleRunning`.
 fn walk_app() -> App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());

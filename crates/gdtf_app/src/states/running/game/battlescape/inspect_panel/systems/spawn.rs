@@ -21,7 +21,9 @@
 //! panel.
 
 use bevy::{
+    ecs::template::template,
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{Display, Node, OverflowAxis, Val},
 };
@@ -152,18 +154,18 @@ fn spawn_object_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     let protection = spawn_line(commands, theme, InspectObjectProtection, "");
     let height = spawn_line(commands, theme, InspectObjectHeight, "");
 
+    // GTW-322 — the `InspectObjectBlock` marker rides the `bsn!` macro inline; the
+    // runtime-valued column `Node` is composed with `template_value`.
+    let block_node = Node {
+        flex_direction: FlexDirection::Column,
+        row_gap: Val::Vh(ROW_GAP_VH),
+        // Hidden via Display::None (removed from layout) until an object hover; its
+        // VISIBILITY inherits from the root (the update flips only its `display`).
+        display: Display::None,
+        ..default()
+    };
     let block = commands
-        .spawn((
-            InspectObjectBlock,
-            Node {
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Vh(ROW_GAP_VH),
-                // Hidden via Display::None (removed from layout) until an object hover; its
-                // VISIBILITY inherits from the root (the update flips only its `display`).
-                display: Display::None,
-                ..default()
-            },
-        ))
+        .spawn_scene((bsn! { InspectObjectBlock }, template_value(block_node)))
         .id();
     commands.entity(block).add_children(&[
         title,
@@ -184,17 +186,23 @@ fn spawn_line(
     marker: impl Bundle,
     initial: &str,
 ) -> Entity {
+    // GTW-322 — `Text::new` + `UiTextColor` ride the `bsn!` macro inline; `TextFont` (not
+    // `Unpin`) rides the `template(|_| ..)` closure; the generic `marker` is `.insert`ed
+    // after the scene is queued. The seed string is owned (`'static`) for the deferred apply.
+    let text_color = *theme.text.text_color;
+    let caption = initial.to_owned();
+    let text_font = TextFont {
+        font: theme.text.font.clone().into(),
+        font_size: FontSize::Px(*theme.text.font_size_pt),
+        ..default()
+    };
     commands
-        .spawn((
-            marker,
-            Text::new(initial),
-            TextFont {
-                font: theme.text.font.clone().into(),
-                font_size: FontSize::Px(*theme.text.font_size_pt),
-                ..default()
-            },
-            UiTextColor(*theme.text.text_color),
-        ))
+        .spawn_scene(bsn! {
+            Text::new(caption)
+            UiTextColor(text_color)
+            template(move |_| Ok(text_font.clone()))
+        })
+        .insert(marker)
         .id()
 }
 

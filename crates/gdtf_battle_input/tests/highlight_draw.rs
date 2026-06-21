@@ -60,9 +60,17 @@ fn synthetic_camera() -> Camera {
 /// `BattleInProgress` gate. The cursor is left unset until a test sets it.
 fn e2e_app(active_level: Level) -> App {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(GdtfBattleInputPlugin)
-        .add_plugins(TopDownRendererPlugin);
+    // GTW-322: both `update_selection_highlight` (input plugin) and
+    // `draw_highlight_on_request` (presenter renderer) spawn their reticle via
+    // `Commands::spawn_scene`, which PANICS under `MinimalPlugins` without an `AssetServer` +
+    // the scene schedule (the spike-documented requirement).
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin::default(),
+        bevy::scene::ScenePlugin,
+    ))
+    .add_plugins(GdtfBattleInputPlugin)
+    .add_plugins(TopDownRendererPlugin);
     // TopDownRendererPlugin init_resource-s ActiveLevel(0) on build; override to the
     // level under test so the picker bands on it.
     app.world_mut()

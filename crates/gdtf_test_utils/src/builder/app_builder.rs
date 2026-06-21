@@ -2,7 +2,10 @@
 
 use core::marker::PhantomData;
 
-use bevy::{MinimalPlugins, app::App, state::state::NextState, time::TimeUpdateStrategy};
+use bevy::{
+    MinimalPlugins, app::App, asset::AssetPlugin, scene::ScenePlugin, state::state::NextState,
+    time::TimeUpdateStrategy,
+};
 use gdtf_app::test_support::{self, AppState};
 
 /// Type-state marker: the builder has **not** yet been given an initial
@@ -50,8 +53,49 @@ impl GdtfTestAppBuilder<NoState> {
     /// [`default_start`](Self::default_start) to reach [`WithState`].
     #[must_use]
     pub fn new() -> Self {
+        Self::build_core(false)
+    }
+
+    /// Like [`new`](Self::new), but ALSO adds the Bevy SCENE/ASSET infrastructure
+    /// (`AssetPlugin` + `ScenePlugin`) the GTW-322 `bsn!` widget builders need —
+    /// added BEFORE the GDTF state stack so the `Load` scene plugin sees the
+    /// `AssetServer` and registers its RON loaders.
+    ///
+    /// The `gdtf_ui` widget builders ([`spawn_panel`](gdtf_ui::spawn_panel),
+    /// [`spawn_button`](gdtf_ui::spawn_button), etc.) spawn via
+    /// `Commands::spawn_scene` (a `bsn!` [`Scene`](bevy::scene::Scene)); the
+    /// deferred scene application reads the `AssetServer` + `Assets<ScenePatch>`
+    /// resources and panics without them. Any harness that drives a UI panel (menu,
+    /// action bar, status / weapon / inspect panel) must use this constructor.
+    ///
+    /// ORDERING is load-bearing: the `AssetServer` exists when
+    /// [`register_headless`](gdtf_app::test_support::register_headless)'s
+    /// `ScenesPlugin` builds, so `LoadScenePlugin::build` (which guards its
+    /// `init_ron_asset` calls on `AssetServer` presence) registers the RON loader
+    /// asset types. So a `default_start` walk through `Load` does not panic on an
+    /// uninitialized asset type — the asset loads simply never complete in a
+    /// headless walk, and the pre-seeded `Load`-gate resources still drive the
+    /// transition. This constructor is **separate** from [`new`](Self::new) so the
+    /// `Load`-tier-(a) tests, which deliberately run WITHOUT an `AssetServer` (and
+    /// assert the kick-off no-ops), keep using [`new`](Self::new).
+    #[must_use]
+    pub fn new_with_scene_support() -> Self {
+        Self::build_core(true)
+    }
+
+    /// Shared construction for [`new`](Self::new) /
+    /// [`new_with_scene_support`](Self::new_with_scene_support).
+    ///
+    /// When `scene_support` is set, `AssetPlugin` + `ScenePlugin` are added FIRST,
+    /// so the `AssetServer` is present when the GDTF state stack (and its `Load`
+    /// scene plugin's RON-loader registration) builds — see
+    /// [`new_with_scene_support`](Self::new_with_scene_support).
+    fn build_core(scene_support: bool) -> Self {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        if scene_support {
+            app.add_plugins((AssetPlugin::default(), ScenePlugin));
+        }
         app.insert_resource(TimeUpdateStrategy::FixedTimesteps(1));
         test_support::register_headless(&mut app);
         Self {

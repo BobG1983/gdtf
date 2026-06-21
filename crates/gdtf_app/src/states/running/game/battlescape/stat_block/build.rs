@@ -9,7 +9,9 @@
 //! the stored widget entities ([[ui-mutate-not-respawn]]).
 
 use bevy::{
+    ecs::template::template,
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     text::{FontSize, TextColor as UiTextColor, TextFont},
     ui::{Node, Val, widget::ImageNode},
 };
@@ -118,26 +120,31 @@ pub(in crate::states::running::game::battlescape) fn spawn_stat_block(
     );
     let wound_list = spawn_wound_list(commands, theme);
 
+    // GTW-322 — authored via `spawn_scene`. The root's only components are the
+    // runtime-valued column `Node` (composed with `template_value`) and the
+    // `StatBlockRefs` handle (a struct of live `Entity` ids — it has no meaningful
+    // `Default`, so it is `.insert`ed after the scene is queued rather than seeded
+    // into the reflection-free `bsn!` grammar; its components are disjoint from the
+    // scene's so the same root + components result).
+    let root_node = Node {
+        flex_direction: FlexDirection::Column,
+        row_gap: Val::Vh(ROW_GAP_VH),
+        ..default()
+    };
     let root = commands
-        .spawn((
-            Node {
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Vh(ROW_GAP_VH),
-                ..default()
-            },
-            StatBlockRefs {
-                portrait,
-                name,
-                faction,
-                stance,
-                tu_bar,
-                tu_label,
-                hp_bar,
-                hp_label,
-                wounds,
-                wound_list,
-            },
-        ))
+        .spawn_scene(template_value(root_node))
+        .insert(StatBlockRefs {
+            portrait,
+            name,
+            faction,
+            stance,
+            tu_bar,
+            tu_label,
+            hp_bar,
+            hp_label,
+            wounds,
+            wound_list,
+        })
         .id();
     commands.entity(root).add_children(&[
         portrait, name, faction, stance, tu_group, hp_group, wounds, wound_list,
@@ -153,26 +160,42 @@ pub(in crate::states::running::game::battlescape) fn spawn_stat_block(
 /// spawns a bare marked node (no image) so the panel still builds — the update sets the
 /// index on whatever node exists.
 fn spawn_portrait(commands: &mut Commands, atlases: Option<&TopDownAtlases>) -> Entity {
-    match atlases.and_then(|a| a.role(SheetRole::Portraits)) {
-        Some(sheet) => commands
-            .spawn(portrait_node(
-                sheet.image.clone(),
-                sheet.layout.clone(),
-                PortraitIndex::for_name(None),
-                StatPortrait,
-            ))
-            .id(),
-        None => commands
-            .spawn((
-                ImageNode::default(),
-                Node {
-                    width: Val::ZERO,
-                    height: Val::ZERO,
-                    ..default()
+    // GTW-322 — both arms author the `StatPortrait` marker via `bsn!` (its sentinel
+    // `Default`) and compose the runtime-valued `Node` with `template_value`. `ImageNode`
+    // is NOT `Unpin` (it carries `Option<Handle<Image>>` fields), so — like `TextFont` — it
+    // rides the `template(|_| ..)` closure escape hatch rather than `template_value`. The
+    // `portrait_node` helper returns the `(ImageNode, Node)` pair so it can be spliced onto
+    // the same scene entity here.
+    if let Some(sheet) = atlases.and_then(|a| a.role(SheetRole::Portraits)) {
+        let (image_node, node) = portrait_node(
+            sheet.image.clone(),
+            sheet.layout.clone(),
+            PortraitIndex::for_name(None),
+        );
+        commands
+            .spawn_scene((
+                bsn! {
+                    StatPortrait
+                    template(move |_| Ok(image_node.clone()))
                 },
-                StatPortrait,
+                template_value(node),
             ))
-            .id(),
+            .id()
+    } else {
+        let node = Node {
+            width: Val::ZERO,
+            height: Val::ZERO,
+            ..default()
+        };
+        commands
+            .spawn_scene((
+                bsn! {
+                    StatPortrait
+                    template(|_| Ok(ImageNode::default()))
+                },
+                template_value(node),
+            ))
+            .id()
     }
 }
 
@@ -187,18 +210,27 @@ fn spawn_text(
     marker: impl Bundle,
     initial: &str,
 ) -> Entity {
+    // GTW-322 — `Themed` + `Text::new` ride the `bsn!` macro inline; `UiTextColor` is a
+    // simple tuple-component value; `TextFont` is NOT `Unpin`, so it rides the
+    // `template(|_| ..)` closure escape hatch (the `spawn_button` caption precedent), and
+    // the generic `marker` is `.insert`ed after the scene is queued.
+    let text_color = *theme.text.text_color;
+    // The macro's `Type::new(expr)` stores a DEFERRED constructor, so the seed string must
+    // be owned (`'static`) — a borrowed `&str` would not outlive the deferred apply.
+    let caption = initial.to_owned();
+    let text_font = TextFont {
+        font: theme.text.font.clone().into(),
+        font_size: FontSize::Px(*theme.text.font_size_pt),
+        ..default()
+    };
     commands
-        .spawn((
-            marker,
-            Themed::new(ThemeRole::Text),
-            Text::new(initial),
-            TextFont {
-                font: theme.text.font.clone().into(),
-                font_size: FontSize::Px(*theme.text.font_size_pt),
-                ..default()
-            },
-            UiTextColor(*theme.text.text_color),
-        ))
+        .spawn_scene(bsn! {
+            Themed::new(ThemeRole::Text)
+            Text::new(caption)
+            UiTextColor(text_color)
+            template(move |_| Ok(text_font.clone()))
+        })
+        .insert(marker)
         .id()
 }
 
@@ -217,25 +249,34 @@ fn spawn_text(
 /// [`update_stat_block`](super::update_stat_block) writes `"cur/max"` in place
 /// ([[ui-mutate-not-respawn]]).
 fn spawn_bar_label(commands: &mut Commands, theme: &GdtfTheme, marker: impl Bundle) -> Entity {
+    // GTW-322 — `Themed` + `Text::new` + `UiTextColor` ride the `bsn!` macro inline;
+    // `TextFont` (not `Unpin`) rides the `template(|_| ..)` closure; the runtime-valued
+    // `TextLayout` (right-justify) and full-width `Node` are composed with `template_value`;
+    // the generic `marker` is `.insert`ed after the scene is queued.
+    let text_color = *theme.text.text_color;
+    let text_font = TextFont {
+        font: theme.text.font.clone().into(),
+        font_size: FontSize::Px(BAR_LABEL_FONT_PT),
+        ..default()
+    };
+    // A full-width line so the right-justified number anchors to the bar's right edge
+    // above it; the column wrapper gives it a row of its own (no overflow).
+    let node = Node {
+        width: Val::Percent(100.0),
+        ..default()
+    };
     commands
-        .spawn((
-            marker,
-            Themed::new(ThemeRole::Text),
-            Text::new(""),
-            TextFont {
-                font: theme.text.font.clone().into(),
-                font_size: FontSize::Px(BAR_LABEL_FONT_PT),
-                ..default()
+        .spawn_scene((
+            bsn! {
+                Themed::new(ThemeRole::Text)
+                Text::new("")
+                UiTextColor(text_color)
+                template(move |_| Ok(text_font.clone()))
             },
-            UiTextColor(*theme.text.text_color),
-            TextLayout::justify(Justify::Right),
-            // A full-width line so the right-justified number anchors to the bar's right
-            // edge above it; the column wrapper gives it a row of its own (no overflow).
-            Node {
-                width: Val::Percent(100.0),
-                ..default()
-            },
+            template_value(TextLayout::justify(Justify::Right)),
+            template_value(node),
         ))
+        .insert(marker)
         .id()
 }
 
@@ -252,14 +293,14 @@ fn spawn_bar_label(commands: &mut Commands, theme: &GdtfTheme, marker: impl Bund
 /// query still finds it by stored id. A small `row_gap` keeps the number off the bar's top
 /// edge.
 fn spawn_bar_group(commands: &mut Commands, label: Entity, bar: Entity) -> Entity {
-    let group = commands
-        .spawn(Node {
-            flex_direction: FlexDirection::Column,
-            width: Val::Percent(100.0),
-            row_gap: Val::Vh(ROW_GAP_VH),
-            ..default()
-        })
-        .id();
+    // GTW-322 — a plain layout `Node` (no markers); composed via `template_value`.
+    let node = Node {
+        flex_direction: FlexDirection::Column,
+        width: Val::Percent(100.0),
+        row_gap: Val::Vh(ROW_GAP_VH),
+        ..default()
+    };
+    let group = commands.spawn_scene(template_value(node)).id();
     commands.entity(group).add_children(&[label, bar]);
     group
 }
@@ -273,31 +314,41 @@ fn spawn_bar_group(commands: &mut Commands, label: Entity, bar: Entity) -> Entit
 /// content, hides the rest, and shows/hides the container — all mutate-in-place
 /// ([[ui-mutate-not-respawn]]).
 fn spawn_wound_list(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
+    // GTW-322 — the container authors `StatWoundList` via `bsn!`; its runtime-valued
+    // `Node` + `Visibility::Hidden` ride `template_value`. Each pooled line authors
+    // `StatWoundLine` + `Themed` + `Text::new` + `UiTextColor` inline, with `TextFont`
+    // (not `Unpin`) on the `template(|_| ..)` closure and `Visibility::Hidden` composed
+    // with `template_value`.
+    let container_node = Node {
+        flex_direction: FlexDirection::Column,
+        ..default()
+    };
     let container = commands
-        .spawn((
-            StatWoundList,
-            Node {
-                flex_direction: FlexDirection::Column,
-                ..default()
-            },
+        .spawn_scene((
+            bsn! { StatWoundList },
+            template_value(container_node),
             // Hidden until the ganger has ≥1 inflicted wound.
-            Visibility::Hidden,
+            template_value(Visibility::Hidden),
         ))
         .id();
+    let text_color = *theme.text.text_color;
     let lines: Vec<Entity> = (0..WOUND_LINE_POOL)
         .map(|_| {
+            let text_font = TextFont {
+                font: theme.text.font.clone().into(),
+                font_size: FontSize::Px(*theme.text.font_size_pt),
+                ..default()
+            };
             commands
-                .spawn((
-                    StatWoundLine,
-                    Themed::new(ThemeRole::Text),
-                    Text::new(""),
-                    TextFont {
-                        font: theme.text.font.clone().into(),
-                        font_size: FontSize::Px(*theme.text.font_size_pt),
-                        ..default()
+                .spawn_scene((
+                    bsn! {
+                        StatWoundLine
+                        Themed::new(ThemeRole::Text)
+                        Text::new("")
+                        UiTextColor(text_color)
+                        template(move |_| Ok(text_font.clone()))
                     },
-                    UiTextColor(*theme.text.text_color),
-                    Visibility::Hidden,
+                    template_value(Visibility::Hidden),
                 ))
                 .id()
         })

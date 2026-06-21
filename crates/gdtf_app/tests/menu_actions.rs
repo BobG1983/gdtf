@@ -44,7 +44,7 @@ use gdtf_ui::{DisabledButton, focus_nav::FocusActivated, theme::default_theme};
 /// spawned (mirrors `menu_scene.rs`'s `menu_app`): seed the theme before the
 /// first update so `OnEnter(RunningState::Menu)`'s `spawn_menu` sees it.
 fn menu_app() -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());

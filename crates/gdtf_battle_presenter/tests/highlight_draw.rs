@@ -8,10 +8,11 @@
 //! wired to the MESSAGE (a no-message update leaves the highlight following the last
 //! request, never duplicating).
 //!
-//! The highlight sprite is a solid-tint reticle (no atlas), so this needs no
-//! `AssetServer` — a `MinimalPlugins` app + `TopDownRendererPlugin` (which registers
-//! the `HighlightRequest` buffer + the battle-gated `draw_highlight_on_request`) +
-//! the `BattleInProgress` gate is sufficient. Messages are written and the highlight
+//! The highlight sprite is a solid-tint reticle (no atlas), but GTW-322 authors it via
+//! `Commands::spawn_scene`, so the harness adds `AssetPlugin` + `ScenePlugin` over
+//! `MinimalPlugins` (the spike-documented scene-spawn requirement) alongside
+//! `TopDownRendererPlugin` (which registers the `HighlightRequest` buffer + the
+//! battle-gated `draw_highlight_on_request`) + the `BattleInProgress` gate. Messages are written and the highlight
 //! is inspected DIRECTLY via `app.world_mut()` in the test body — the accepted
 //! headless idiom (`bevy-traps.md` #7 carve-out (a)). No function here takes
 //! `&mut World`/`&World`.
@@ -23,14 +24,22 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level};
 
-/// Builds a focused headless presenter app: `MinimalPlugins` + the
-/// `TopDownRendererPlugin` (which registers the `HighlightRequest` buffer + the
-/// battle-gated `draw_highlight_on_request`) + the `BattleInProgress` gate. No
-/// `AssetServer` — the highlight is a solid-tint sprite, not an atlas tile.
+/// Builds a focused headless presenter app: `MinimalPlugins` + `AssetPlugin` +
+/// `ScenePlugin` + the `TopDownRendererPlugin` (which registers the `HighlightRequest`
+/// buffer + the battle-gated `draw_highlight_on_request`) + the `BattleInProgress` gate.
+///
+/// GTW-322: the highlight is still a solid-tint sprite (not an atlas tile), but it is now
+/// authored via `Commands::spawn_scene`, which PANICS under `MinimalPlugins` without an
+/// `AssetServer` + the scene schedule (the spike-documented requirement) — hence the added
+/// `AssetPlugin` + `ScenePlugin`.
 fn highlight_app() -> App {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(TopDownRendererPlugin);
+    app.add_plugins((
+        MinimalPlugins,
+        bevy::asset::AssetPlugin::default(),
+        bevy::scene::ScenePlugin,
+    ))
+    .add_plugins(TopDownRendererPlugin);
     app.world_mut().insert_resource(BattleInProgress);
     app
 }

@@ -104,7 +104,9 @@ fn gate_predicate_is_wired_and_off_by_default() {
 /// and STOPS".
 #[test]
 fn gate_off_rests_at_menu_never_reaching_battle() {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .default_start()
+        .build();
     // A disabled affordance must register nothing — adding it is indistinguishable from
     // a build without it (the inert-by-default contract).
     app.add_plugins(AutoBattlePlugin::with_enabled(false));
@@ -154,7 +156,9 @@ fn gate_off_rests_at_menu_never_reaching_battle() {
 /// removes its `AutoBattleActive` witness (it fires exactly once).
 #[test]
 fn gate_on_drives_into_battle_running() {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .default_start()
+        .build();
     app.add_plugins(AutoBattlePlugin::with_enabled(true));
     // The affordance seeds these on Startup too; seeding here matches the gate-OFF app so
     // the ONLY difference between the two is the affordance's activation.
@@ -190,7 +194,9 @@ fn gate_on_drives_into_battle_running() {
 /// drive is self-contained, exactly as the GUI launch needs.
 #[test]
 fn active_affordance_seeds_its_own_load_fallbacks() {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .default_start()
+        .build();
     app.add_plugins(AutoBattlePlugin::with_enabled(true));
     // No seed_load here — the affordance's Startup seed must supply the Load resources.
 
@@ -231,7 +237,9 @@ fn active_affordance_seeds_its_own_load_fallbacks() {
 ///   absent so the draw no-ops by design; the live sprite COUNT is the AC5 carve-out).
 #[test]
 fn full_stack_composes_to_battle_running() {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .default_start()
+        .build();
     // The affordance drives the walk for us (the same drive the GUI uses). Seeding via
     // the affordance keeps this test exercising the affordance + the full stack together.
     app.add_plugins(AutoBattlePlugin::with_enabled(true));

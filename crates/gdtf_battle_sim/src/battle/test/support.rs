@@ -6,8 +6,10 @@
 //! battle-lifecycle-specific harness.
 
 pub(super) use bevy::{
+    asset::AssetPlugin,
     ecs::message::Messages,
     prelude::{App, MinimalPlugins},
+    scene::ScenePlugin,
 };
 
 // The canonical shared builders + registries + fixtures (consolidated out of this
@@ -75,9 +77,19 @@ pub(super) fn dangling_link_situation() -> (Situation, VerticalLink) {
     (situation, link)
 }
 
-/// Build a headless app: [`MinimalPlugins`] (no window / renderer) +
+/// Build a headless app: [`MinimalPlugins`] (no window / renderer) + the
+/// [`AssetPlugin`] + [`ScenePlugin`] the GTW-322 `bsn!` ganger spawn needs +
 /// [`BattleSimPlugin`] — the `occupancy_sync` / `acts` headless precedent. The sim
 /// crate alone, proving NO `gdtf_app` coupling.
+///
+/// [`AssetPlugin`] + [`ScenePlugin`] are required because `setup_battle` now spawns
+/// each ganger as a `bsn!` [`Scene`](bevy::scene::Scene) via
+/// `commands.spawn_scene` (GTW-322): the deferred `SpawnScene` flush PANICS in
+/// `bevy_asset` without an `AssetServer` (the spike's pinned finding). In the real
+/// app both ride `DefaultPlugins`, so this only mirrors production for the headless
+/// harness. The ganger components materialize on the `SpawnScene` schedule, which
+/// runs after `Update` within the SAME `app.update()`, so a single `update()` after a
+/// `SetupBattleRequested` settles them.
 ///
 /// Inserts [`CombatTuning::default`] up front, standing in for E10.4's PERSISTENT
 /// `Load` resource (always present in the real app before a battle): once a setup
@@ -93,7 +105,7 @@ pub(super) fn dangling_link_situation() -> (Situation, VerticalLink) {
 /// hold, so a setup succeeds.
 pub(super) fn headless_app() -> App {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     app.add_plugins(BattleSimPlugin);
     app.insert_resource(CombatTuning::default());
     app.insert_resource(weapon_registry());

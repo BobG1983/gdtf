@@ -16,7 +16,11 @@ use serde::{Deserialize, Serialize};
 /// [`Deref`]; `#[serde(transparent)]` parses a bare RON scalar. A
 /// `#[derive(Component)]` so it lives as a sibling component on the armed entity
 /// (GTW-200).
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+/// `Default` (`BaseSpread(0.0)`) is a **spawn-seed sentinel only** — the
+/// `bsn!`-scene spawn path's `get_or_insert_template` seeds the component slot
+/// via `Default` before the authored `BaseSpread::new(..)` overwrites it
+/// (GTW-322). It is NOT a valid authored weapon stat.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 #[serde(transparent)]
 pub struct BaseSpread(f32);
 
@@ -37,7 +41,10 @@ impl BaseSpread {
 /// near center — independent of how *wide* the cone can throw (the two levers of
 /// §1b). Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+/// `Default` (`Accuracy(0.0)`) is a **spawn-seed sentinel only** — the `bsn!`
+/// spawn path seeds the slot via `Default` before `Accuracy::new(..)` overwrites
+/// it (GTW-322). It is NOT a valid authored weapon stat.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 #[serde(transparent)]
 pub struct Accuracy(f32);
 
@@ -56,7 +63,10 @@ impl Accuracy {
 ///
 /// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+/// `Default` (`Kickback(0.0)`) is a **spawn-seed sentinel only** — the `bsn!`
+/// spawn path seeds the slot via `Default` before `Kickback::new(..)` overwrites
+/// it (GTW-322). It is NOT a valid authored weapon stat.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 #[serde(transparent)]
 pub struct Kickback(f32);
 
@@ -75,7 +85,10 @@ impl Kickback {
 ///
 /// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+/// `Default` (`FatalBias(0.0)`) is a **spawn-seed sentinel only** — the `bsn!`
+/// spawn path seeds the slot via `Default` before `FatalBias::new(..)` overwrites
+/// it (GTW-322). It is NOT a valid authored weapon stat.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 #[serde(transparent)]
 pub struct FatalBias(f32);
 
@@ -98,7 +111,10 @@ impl FatalBias {
 /// Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON
 /// scalar. A magnitude is TBD tuning (no shipped weapons yet). A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`WeaponDamage(0)`) is a **spawn-seed sentinel only** — the `bsn!`
+/// spawn path seeds the slot via `Default` before `WeaponDamage::new(..)`
+/// overwrites it (GTW-322). It is NOT a valid authored weapon stat.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 #[serde(transparent)]
 pub struct WeaponDamage(i32);
 
@@ -120,7 +136,10 @@ impl WeaponDamage {
 /// the `i32` armor hardness ([`crate::armor::ArmorHardness`]). Private inner +
 /// derived [`Deref`]; `#[serde(transparent)]`. A magnitude is TBD tuning. A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`WeaponPunch(0)`) is a **spawn-seed sentinel only** — the `bsn!`
+/// spawn path seeds the slot via `Default` before `WeaponPunch::new(..)`
+/// overwrites it (GTW-322). It is NOT a valid authored weapon stat.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 #[serde(transparent)]
 pub struct WeaponPunch(i32);
 
@@ -142,7 +161,10 @@ impl WeaponPunch {
 /// side ([`crate::armor::ArmorIntegrity`], which tracks below zero). Private inner,
 /// a derived [`Deref`], and `#[serde(transparent)]`; a magnitude is TBD tuning. A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`WeaponShred(0)`) is a **spawn-seed sentinel only** — the `bsn!`
+/// spawn path seeds the slot via `Default` before `WeaponShred::new(..)`
+/// overwrites it (GTW-322). It is NOT a valid authored weapon stat.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 #[serde(transparent)]
 pub struct WeaponShred(i32);
 
@@ -173,7 +195,11 @@ impl WeaponShred {
 /// vocabulary and its node order. `Deserialize` so a weapon's authored RON names
 /// its type by variant. A `#[derive(Component)]` (GTW-200) — a sibling component
 /// on the armed entity.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`DamageType::Kinetic`) is a **spawn-seed sentinel only** — the
+/// `bsn!` spawn path seeds the slot via `Default` before the authored
+/// `DamageType::<Variant>` patch overwrites it (GTW-322). `Kinetic` is chosen as
+/// the most ordinary node; it carries no special meaning as the default.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 pub enum DamageType {
     /// Wheel node 0 — arc / EMP (mirror of [`crate::armor::ArmorType::Plated`]).
     Shock,
@@ -182,6 +208,7 @@ pub enum DamageType {
     /// Wheel node 2 — toxin / acid / gas (mirror of [`ArmorType::Flak`](crate::armor::ArmorType::Flak)).
     Chem,
     /// Wheel node 3 — slugs / autoguns / shrapnel (mirror of [`ArmorType::Void`](crate::armor::ArmorType::Void)).
+    #[default]
     Kinetic,
     /// Wheel node 4 — superheated (mirror of [`ArmorType::Hazard`](crate::armor::ArmorType::Hazard)).
     Plasma,
@@ -253,7 +280,11 @@ impl MagazineSize {
 /// inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON `true` /
 /// `false`. A `#[derive(Component)]` (GTW-200) — a sibling component on the armed
 /// entity.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Default` (`Stable(false)`) is a **spawn-seed sentinel only** — the `bsn!`
+/// spawn path seeds the slot via `Default` before `Stable::new(..)` overwrites it
+/// (GTW-322). It is NOT a valid authored weapon tag (though `false` happens to
+/// coincide with "not braced-by-design", it is overwritten regardless).
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 #[serde(transparent)]
 pub struct Stable(bool);
 
@@ -278,7 +309,11 @@ impl Stable {
 /// armed entity, NOT packed into the [`Weapon`] unit marker. (A fire mode has no
 /// stored name — its label is [`ModeKind`](super::ModeKind)'s [`Display`](std::fmt::Display),
 /// GTW-260.)
-#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// `Default` (`WeaponName(String::new())`, the empty string) is a **spawn-seed
+/// sentinel only** — the `bsn!` spawn path seeds the slot via `Default` before
+/// `WeaponName::new(..)` overwrites it (GTW-322). It is NOT a valid authored
+/// weapon name.
+#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct WeaponName(String);
 

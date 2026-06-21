@@ -75,7 +75,9 @@ fn running_state(app: &bevy::app::App) -> Option<RunningState> {
 /// `LoadedSituation` seeded here is the empty default — the camera lifecycle reads no
 /// sim state, so an empty battle suffices. Mirrors `battle_running_driver.rs::walk_app`.
 fn walk_app() -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new().default_start().build();
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .default_start()
+        .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default

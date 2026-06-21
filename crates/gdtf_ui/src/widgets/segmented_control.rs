@@ -18,7 +18,9 @@
 //! listener maps it to an action; `gdtf_ui` defines the message, never the act.
 
 use bevy::{
+    ecs::template::template,
     prelude::*,
+    scene::{CommandsSceneExt, EntityCommandsSceneExt, bsn, bsn_list, template_value},
     text::{FontSize, FontWeight, TextColor as UiTextColor, TextFont},
     ui::{
         AlignItems, BackgroundColor, BorderColor, BorderRadius, Display, FlexDirection,
@@ -72,7 +74,12 @@ impl SegmentSubLabel {
 /// color-blind-safe second channel the contract requires (NOT color alone). Stored as
 /// a [`Component`] on the control root so [`repaint_segments`] re-derives every
 /// segment's look from the active index without the caller re-passing colors.
-#[derive(Component, Clone, Copy, PartialEq, Debug)]
+///
+/// The derived [`Default`] (all-black) is a **spawn-seed sentinel only** (GTW-322):
+/// the `bsn!` scene path seeds the slot with [`Default`] before
+/// [`template_value`](bevy::scene::template_value) overwrites it with the caller's
+/// colors. It is never a meaningful palette — a builder always supplies real colors.
+#[derive(Component, Clone, Copy, PartialEq, Debug, Default)]
 pub struct SegmentColors {
     /// Background fill of the ACTIVE segment.
     pub active_bg:   Color,
@@ -213,70 +220,91 @@ pub fn spawn_segmented_control(
     marker: impl Bundle,
 ) -> Entity {
     let active = clamp_active(active, labels.len());
-    commands
-        .spawn((
-            SegmentedControl,
-            ActiveSegment(active),
-            colors,
-            Node {
-                flex_direction: orientation.flex_direction(),
-                // No inter-segment gap: a connected control's segments butt together, with
-                // a hairline divider between them (set per-segment below) — not a gap (V2).
-                column_gap: Val::ZERO,
-                row_gap: Val::ZERO,
-                // Round the OUTER container and clip the children, so the inner (square)
-                // segment corners are hidden and the whole control reads as one rounded box.
-                border_radius: BorderRadius::all(Val::Vw(SEGMENT_RADIUS_VW)),
-                overflow: Overflow::clip(),
+    // The root container + per-segment layout nodes and the runtime active index / colors /
+    // border color are bridged with `template_value` (no `bsn!` value-grammar form). The
+    // segment COUNT is runtime (`labels.len()`), so the segment child scenes are built as a
+    // runtime `Vec<Scene>` (a `SceneList`) and spliced into the relationship list via the
+    // `{ expr }` scene-list-include grammar. Each segment's label `TextFont` is not `Unpin`
+    // (so it rides neither `template_value` nor a field patch) — the `template(|_| ..)`
+    // closure entry carries it. The caller's generic `marker` is `.insert`ed after (GTW-322).
+    let root_node = Node {
+        flex_direction: orientation.flex_direction(),
+        // No inter-segment gap: a connected control's segments butt together, with
+        // a hairline divider between them (set per-segment below) — not a gap (V2).
+        column_gap: Val::ZERO,
+        row_gap: Val::ZERO,
+        // Round the OUTER container and clip the children, so the inner (square)
+        // segment corners are hidden and the whole control reads as one rounded box.
+        border_radius: BorderRadius::all(Val::Vw(SEGMENT_RADIUS_VW)),
+        overflow: Overflow::clip(),
+        ..default()
+    };
+    let segments: Vec<_> = labels
+        .iter()
+        .enumerate()
+        .map(|(index, label)| {
+            let is_active = index == active;
+            let seg_node = Node {
+                padding: UiRect::axes(Val::Vw(SEGMENT_PAD_X_VW), Val::Vh(SEGMENT_PAD_Y_VH)),
+                // A centered COLUMN so the OPTIONAL sub-line (GTW-303) stacks BELOW the
+                // label. With a single centered child (the no-sub-line case) a Column with
+                // both axes centered renders identically to a Row, so the stance control +
+                // any pre-GTW-303 caller are visually unchanged; the label stays the
+                // segment's first DIRECT child (so callers that post-process the label —
+                // e.g. the action bar's nowrap pass — still reach it).
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                // No per-segment corner rounding — the ROOT owns the rounded corners
+                // (square inner corners read as one connected control, V2). Each
+                // segment after the first carries a leading-edge divider border.
+                border: segment_divider(orientation, index),
                 ..default()
-            },
-            marker,
-        ))
-        .with_children(|root| {
-            for (index, label) in labels.iter().enumerate() {
-                let is_active = index == active;
-                root.spawn((
-                    Segment,
-                    SegmentIndex(index),
-                    Button,
-                    Node {
-                        padding: UiRect::axes(Val::Vw(SEGMENT_PAD_X_VW), Val::Vh(SEGMENT_PAD_Y_VH)),
-                        // A centered COLUMN so the OPTIONAL sub-line (GTW-303) stacks BELOW the
-                        // label. With a single centered child (the no-sub-line case) a Column with
-                        // both axes centered renders identically to a Row, so the stance control +
-                        // any pre-GTW-303 caller are visually unchanged; the label stays the
-                        // segment's first DIRECT child (so callers that post-process the label —
-                        // e.g. the action bar's nowrap pass — still reach it).
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::Center,
-                        // No per-segment corner rounding — the ROOT owns the rounded corners
-                        // (square inner corners read as one connected control, V2). Each
-                        // segment after the first carries a leading-edge divider border.
-                        border: segment_divider(orientation, index),
-                        ..default()
-                    },
-                    BorderColor::all(colors.base_text),
-                    BackgroundColor(if is_active {
-                        colors.active_bg
-                    } else {
-                        colors.base_bg
-                    }),
-                ))
-                .with_children(|seg| {
-                    seg.spawn((
-                        SegmentText,
-                        Text::new(label.to_string()),
-                        segment_font(is_active),
-                        UiTextColor(if is_active {
-                            colors.active_text
-                        } else {
-                            colors.base_text
-                        }),
-                    ));
-                });
-            }
+            };
+            let seg_border = BorderColor::all(colors.base_text);
+            let seg_bg = BackgroundColor(if is_active {
+                colors.active_bg
+            } else {
+                colors.base_bg
+            });
+            let label_text_color = if is_active {
+                colors.active_text
+            } else {
+                colors.base_text
+            };
+            let label_font = segment_font(is_active);
+            let caption = label.to_string();
+            (
+                bsn! {
+                    Segment
+                    SegmentIndex(index)
+                    Button
+                    Children [
+                        (
+                            SegmentText
+                            Text::new(caption)
+                            UiTextColor(label_text_color)
+                            template(move |_| Ok(label_font.clone()))
+                        )
+                    ]
+                },
+                template_value(seg_node),
+                template_value(seg_border),
+                template_value(seg_bg),
+            )
         })
+        .collect();
+    commands
+        .spawn_scene((
+            bsn! {
+                SegmentedControl
+                ActiveSegment::new(active)
+                Children [ { segments } ]
+            },
+            template_value(colors),
+            template_value(root_node),
+        ))
+        .insert(marker)
         .id()
 }
 
@@ -524,14 +552,26 @@ pub fn set_segment_sub_line(
                 }
             }
             (Some(label), None) => {
-                commands.entity(child).with_children(|seg| {
-                    seg.spawn((
-                        SegmentSubText,
-                        Text::new(label.to_string()),
-                        sub_line_font(),
-                        UiTextColor(dim),
-                    ));
-                });
+                let caption = label.to_string();
+                let font = sub_line_font();
+                // GTW-322 — author the sub-line text child as a `bsn!` scene parented
+                // under the segment (mirrors the converted segment label + the
+                // `SwitchKnob` child). `Text::new` + the unit `SegmentSubText` marker +
+                // `UiTextColor(dim)` ride the inline macro; the `TextFont` is NOT `Unpin`
+                // (its `FontFeatures` / `FontVariations` fields), so it takes the
+                // `template(move |_| Ok(value.clone()))` closure escape hatch. It is
+                // queued as a `Children` related-scene on the existing `child` segment, so
+                // the lazy "spawn once if absent" semantics are preserved.
+                commands
+                    .entity(child)
+                    .queue_spawn_related_scenes::<Children>(bsn_list! {
+                        (
+                            SegmentSubText
+                            Text::new(caption)
+                            UiTextColor(dim)
+                            template(move |_| Ok(font.clone()))
+                        )
+                    });
             }
             // Clear: despawn the sub-line node if present; nothing to do otherwise.
             (None, Some(node)) => {

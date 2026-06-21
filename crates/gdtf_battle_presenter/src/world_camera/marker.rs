@@ -4,6 +4,7 @@
 use bevy::{
     camera::{ClearColorConfig, visibility::RenderLayers},
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
 };
 
 /// The non-zero render layer the world camera renders.
@@ -55,7 +56,11 @@ const WORLD_CAMERA_SCALE: f32 = 0.5;
 /// It is `pub` so the S7 input crate (`gdtf_battle_input`) can query `With<WorldCamera>`
 /// to read the world camera, and so the app can despawn precisely *this* camera on exit
 /// without re-querying every `Camera2d` in the world.
-#[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+///
+/// The derived [`Default`] is a **spawn-seed sentinel only** (GTW-322): a fieldless
+/// marker, so its `Default` is the same zero-sized value, present purely so the
+/// reflection-free `bsn!` macro can seed the component slot. It carries no state.
+#[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub struct WorldCamera;
 
 /// Spawns the single SHARED world [`Camera2d`] (the [`WorldCamera`]).
@@ -74,29 +79,37 @@ pub struct WorldCamera;
 /// Param-only (`Commands`): spawning is `Commands::spawn`, never `&mut World`
 /// (`bevy-traps.md` #7).
 pub fn spawn_world_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera2d,
-        WorldCamera,
-        Camera {
-            order: WORLD_CAMERA_ORDER,
-            // GTW-271 — clear the WHOLE surface to the margin bg (LoadOp::Clear is not
-            // scissored to the viewport), so the area OUTSIDE the world-map viewport sub-rect
-            // (the app sets that rect in AC1) renders a defined color rather than garbage; the
-            // map blits scissored into the sub-rect and the UI camera composites over (its
-            // `ClearColorConfig::None` in `spawn_ui_camera`).
-            clear_color: ClearColorConfig::Custom(MARGIN_BG),
-            ..default()
-        },
-        RenderLayers::layer(WORLD_RENDER_LAYER),
-        // GTW-263 — zoom the battle in 2x. `Camera2d` `#[require]`s a default-2d
-        // orthographic projection at `scale = 1.0`; spawn the projection explicitly with
-        // `scale = 0.5` so the visible half-extent halves (the framing reads `window * 0.5
-        // * scale`), drawing the battlefield at twice the on-screen size. The rest of the
-        // projection keeps the `default_2d` values (near plane, scaling mode, etc.).
-        Projection::Orthographic(OrthographicProjection {
-            scale: WORLD_CAMERA_SCALE,
-            ..OrthographicProjection::default_2d()
-        }),
+    // GTW-271 — clear the WHOLE surface to the margin bg (LoadOp::Clear is not
+    // scissored to the viewport), so the area OUTSIDE the world-map viewport sub-rect
+    // (the app sets that rect in AC1) renders a defined color rather than garbage; the
+    // map blits scissored into the sub-rect and the UI camera composites over (its
+    // `ClearColorConfig::None` in `spawn_ui_camera`).
+    let camera = Camera {
+        order: WORLD_CAMERA_ORDER,
+        clear_color: ClearColorConfig::Custom(MARGIN_BG),
+        ..default()
+    };
+    let layers = RenderLayers::layer(WORLD_RENDER_LAYER);
+    // GTW-263 — zoom the battle in 2x. `Camera2d` `#[require]`s a default-2d
+    // orthographic projection at `scale = 1.0`; spawn the projection explicitly with
+    // `scale = 0.5` so the visible half-extent halves (the framing reads `window * 0.5
+    // * scale`), drawing the battlefield at twice the on-screen size. The rest of the
+    // projection keeps the `default_2d` values (near plane, scaling mode, etc.).
+    let projection = Projection::Orthographic(OrthographicProjection {
+        scale: WORLD_CAMERA_SCALE,
+        ..OrthographicProjection::default_2d()
+    });
+    // GTW-322 — authored as a `bsn!` scene. The fieldless framework / marker
+    // components (`Camera2d`, `WorldCamera`) ride the macro directly (each has
+    // `Default`); the runtime-valued `Camera`, `RenderLayers`, and `Projection`
+    // have no `bsn!` value grammar, so they are each composed onto the SAME entity
+    // with `template_value` (a `Clone + Default + Unpin` value-overwrite) — the
+    // same entity + components result, only the spawn SHAPE changed.
+    commands.spawn_scene((
+        bsn! { Camera2d WorldCamera },
+        template_value(camera),
+        template_value(layers),
+        template_value(projection),
     ));
 }
 

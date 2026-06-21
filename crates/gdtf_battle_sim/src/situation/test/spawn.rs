@@ -289,6 +289,175 @@ fn spawned_worn_armor_matches_the_resolved_registry_spec() {
     }
 }
 
+/// GTW-322 — the `bsn!`-scene spawn is FAITHFUL: a ganger spawned through the
+/// converted `setup_battle` (`commands.spawn_scene(ganger_scene(..))`) carries the
+/// COMPLETE component set the old `commands.spawn(tuple).insert(bundle)` produced —
+/// the per-field ganger state, the E3.0 attribute stats, the resolved weapon's
+/// components (incl. the `template_value`-composed runtime `DamageType` + value-typed
+/// `Magazine`), the seeded `WornArmor`, and the empty `InflictedWounds` — AND the
+/// occupancy grid places that EXACT spawned `Entity` (keyed off the authored cell, not
+/// the deferred `Position` component) with the stance-derived silhouette band. Reads
+/// ONE ganger by its spawned handle, asserting every component value + the occupancy
+/// placement together (the deferred-spawn contract proof). Pin-discriminating: a
+/// dropped component, a sentinel-defaulted `DamageType`/`Magazine`/`WornArmor`, or a
+/// mis-keyed occupant all fail this.
+#[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "GTW-322: asserts every ganger component round-trips through the bsn! scene, \
+              one assert per field, plus the occupancy placement (the deferred-spawn proof)"
+)]
+fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
+    use crate::{
+        clearance::silhouette_band,
+        cover::HeightBand,
+        ganger::{Direction, StanceKind},
+        magazine::Magazine,
+        occupancy::OccupancyGrid,
+        weapon::DamageType,
+    };
+
+    let (situation, alice_at, ..) = minimal_fixture();
+    // The battle-local worn armor the TEST_ARMOR_KEY resolves to (base 1), seeded
+    // exactly as setup does — the expected copy for the field-by-field assertion.
+    let expected_armor = WornArmor::seed_from(&arbitrary_armor(1));
+    // The damage type the TEST_WEAPON_KEY resolves to, computed exactly as setup does
+    // (registry spec → into_bundle) — the expected value the template_value composition
+    // must carry through (NOT the Default sentinel).
+    let weapon_key = WeaponName::new(TEST_WEAPON_KEY.to_owned());
+    let expected_damage_type = test_registry()
+        .spec(&weapon_key)
+        .cloned()
+        .map(|spec| spec.into_bundle(weapon_key.clone()).damage_type);
+    let Some((mut app, setup)) = run_setup(situation) else {
+        return;
+    };
+
+    // Alice — authored placement 0 (faction 0, standing). Her spawned Entity handle.
+    let alice: Entity = setup.occupants[0].occupant;
+    assert_eq!(setup.occupants[0].at, alice_at, "alice's authored cell");
+
+    // The occupancy grid placed the EXACT spawned Entity at the authored cell, with the
+    // standing → HIGH silhouette band (keyed off `at`, not the deferred Position).
+    let world: &mut World = app.world_mut();
+    let grid_present = world.get_resource::<OccupancyGrid>().is_some();
+    assert!(grid_present, "setup must insert an OccupancyGrid");
+    let Some(grid) = world.get_resource::<OccupancyGrid>() else {
+        return;
+    };
+    assert_eq!(
+        grid.occupant(&alice_at),
+        Some(alice),
+        "the occupancy grid must place alice's spawned Entity at her authored cell",
+    );
+    assert_eq!(
+        grid.occupant_band(&alice_at),
+        Some(silhouette_band(StanceKind::Standing)),
+        "the occupancy grid must record alice's stance-derived silhouette band (HIGH)",
+    );
+    assert_eq!(
+        silhouette_band(StanceKind::Standing),
+        HeightBand::High,
+        "precondition: a standing ganger's silhouette band is HIGH",
+    );
+
+    // Every component the old spawn-tuple + second insert produced is present on the
+    // spawned entity, with the authored value. The vitals pools + ceilings nest into a
+    // sub-tuple to stay under Bevy's 16-element QueryData arity cap.
+    let mut q = world.query::<(
+        &Position,
+        &GangerName,
+        &Faction,
+        &Facing,
+        &Stance,
+        &Aiming,
+        (&Hp, &HpMax, &Wounds, &WoundsMax),
+        (&Tu, &TuMax),
+        &LifeState,
+        (&Shooting, &Toughness, &Luck),
+    )>();
+    let ganger_set = q.get(world, alice);
+    assert!(
+        ganger_set.is_ok(),
+        "alice's spawned entity must carry the full ganger set",
+    );
+    let Ok((pos, name, faction, facing, stance, aiming, vitals, tu, life, stats)) = ganger_set
+    else {
+        return;
+    };
+    let (hp, hp_max, wounds, wounds_max) = vitals;
+    let (cur_tu, tu_max) = tu;
+    let (shooting, toughness, luck) = stats;
+    assert_eq!(*pos, Position::new(alice_at), "Position round-trips");
+    assert_eq!((**name), "Ganger 0".to_owned(), "GangerName round-trips");
+    assert_eq!(*faction, Faction::new(0), "Faction round-trips");
+    assert_eq!(*facing, Facing::new(Direction::East), "Facing round-trips");
+    assert_eq!(
+        *stance,
+        Stance::new(StanceKind::Standing),
+        "Stance round-trips"
+    );
+    assert_eq!(*aiming, Aiming::new(true), "Aiming round-trips");
+    assert_eq!(*hp, Hp::new(40), "Hp round-trips");
+    assert_eq!(*hp_max, HpMax::new(40), "HpMax round-trips");
+    assert_eq!(*wounds, Wounds::new(3), "Wounds round-trips");
+    assert_eq!(*wounds_max, WoundsMax::new(3), "WoundsMax round-trips");
+    assert_eq!(*cur_tu, Tu::new(60), "Tu round-trips");
+    assert_eq!(*tu_max, TuMax::new(60), "TuMax round-trips");
+    assert_eq!(
+        *life,
+        LifeState::Alive,
+        "LifeState (template_value) round-trips"
+    );
+    assert_eq!(*shooting, Shooting::new(2.0), "Shooting round-trips");
+    assert_eq!(*toughness, Toughness::new(3.0), "Toughness round-trips");
+    assert_eq!(*luck, Luck::new(1.0), "Luck round-trips");
+
+    // The weapon + the template_value-composed runtime DamageType / value Magazine, the
+    // seeded WornArmor, and the empty InflictedWounds — the second-insert + tuple tail.
+    let mut wq = world.query::<(
+        &Weapon,
+        &WeaponName,
+        &FireMode,
+        &DamageType,
+        &Magazine,
+        &WornArmor,
+        &InflictedWounds,
+    )>();
+    let weapon_set = wq.get(world, alice);
+    assert!(
+        weapon_set.is_ok(),
+        "alice's spawned entity must carry the full weapon + tail set",
+    );
+    let Ok((_marker, weapon_name, _fire, damage_type, _magazine, worn, inflicted)) = weapon_set
+    else {
+        return;
+    };
+    assert_eq!(
+        (**weapon_name),
+        TEST_WEAPON_KEY.to_owned(),
+        "WeaponName (the authored key) round-trips",
+    );
+    // The test weapon's authored damage type — NOT the Default sentinel. The
+    // template_value composition must carry the resolved value through.
+    assert_eq!(
+        Some(*damage_type),
+        expected_damage_type,
+        "DamageType (template_value-composed) round-trips — NOT the Default sentinel",
+    );
+    for part in BodyPart::ALL {
+        assert_eq!(
+            worn.at(part),
+            expected_armor.at(part),
+            "WornArmor (template_value-composed) at {part:?} round-trips",
+        );
+    }
+    assert!(
+        inflicted.is_empty(),
+        "InflictedWounds is seeded EMPTY, matching the old spawn path",
+    );
+}
+
 /// GTW-257 AC2 — `setup_battle` ARMS each ganger from the registry: every spawned
 /// ganger entity carries the [`Weapon`] marker + its [`WeaponName`] (= the authored
 /// key) + the [`FireMode`] selector. Mirrors the worn-armor assertion (the
