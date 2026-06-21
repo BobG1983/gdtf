@@ -7,8 +7,8 @@
 // /tmp/terrain_labeled.png and confirmed before locking (DOOR + prop alts were
 // [UNVERIFIED] in the draft; DOOR 339 reads as a dark hatch/doorway panel, locked).
 (
-    floor:           128,    // default walkable ground — neutral grey plating (the S4 default floor)
-    floor_alt_panel: 112,    // alt floor — bolted/riveted grey panel (future variety, matches floor 6's palette)
+    floor:           144,    // default walkable ground — neutral grey plating (the S4 default floor)
+    floor_alt_panel: 128,    // alt floor — bolted/riveted grey panel (future variety, matches floor 6's palette)
     wall:            16,    // TerrainKind::Wall — solid heavy dark wall strip (blocking geometry)
     cover:           248,   // TerrainKind::Cover — chest-high crate/box cover prop on a floor cell
     slab:            22,    // SurfaceGrid Present slab — raised light-grey elevated deck panel
