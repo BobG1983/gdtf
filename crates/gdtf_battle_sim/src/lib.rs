@@ -119,6 +119,17 @@
 //!   recoil-climb axis) → [`sample_cone`] (the in-cone shot vector) → [`clearance`] +
 //!   [`march`] (the 3-axis voxel-DDA travel) → [`hit_location`] (the part roll) →
 //!   a [`resolve_coarse::ShotOutcome`].
+//! - [`los`] — the GTW-337 level-aware coarse-geometry sight probe
+//!   [`los::has_los`]: can an [`los::Observer`] SEE a [`los::Target`]? It WRAPS the one
+//!   geometry truth ([`march::march_vector`]) and REUSES the shot pipeline's
+//!   z-anchoring — a **facing-neutral** eye (`cell_center` + per-stance
+//!   [`tuning::MuzzleHeights`] z, no per-facing forward offset) and the EXACT
+//!   `cover.peek().or_else(occupant_band)` aim band of
+//!   [`fire`]'s `TargetGeometry::compose` fed into [`central_axis::target_aim_point`].
+//!   It marches the eye→aim ray ONCE and reports a [`los::Sighted`] verdict (BLOCKED iff
+//!   the march stops on a slab / cover / non-target ganger strictly before the target;
+//!   corpses do not block). Asymmetric sight falls out of eye-vs-aim anchoring. Pure,
+//!   render-free, RNG-free; leaf 1 of the GTW-13 FOV epic.
 //! - [`matchup`] — the 7-type weapon×armor Paley-tournament lookup
 //!   ([`matchup::matchup`] over [`weapon::DamageType`] / [`armor::ArmorType`]) and
 //!   the punch-&-shred [`matchup::MatchupMultiplier`] it yields from tuning.
@@ -193,6 +204,7 @@ pub mod firing_arc;
 pub mod ganger;
 pub mod hit_location;
 pub mod inflicted_wound;
+pub mod los;
 pub mod magazine;
 pub mod march;
 pub mod matchup;
@@ -257,6 +269,7 @@ pub use ganger::{
 };
 pub use hit_location::roll_body_part;
 pub use inflicted_wound::{InflictedWound, InflictedWounds};
+pub use los::{Observer, Sighted, Target, has_los};
 pub use magazine::{
     FireActor, LoadedRounds, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost,
 };

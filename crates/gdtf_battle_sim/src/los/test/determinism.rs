@@ -1,0 +1,81 @@
+//! AC: the probe is deterministic — it draws no RNG, so a repeated call on the same
+//! inputs returns the same verdict (asserted by repeat-call equality).
+
+use super::support::*;
+
+/// Repeated `has_los` calls on identical inputs return an identical verdict — across a
+/// CLEAR geometry and a BLOCKED one (so determinism holds for both verdicts), proving
+/// the probe draws no RNG.
+#[test]
+fn repeat_calls_are_identical() {
+    let tuning = CombatTuning::default();
+    let surface = SurfaceGrid::new();
+    let from_pos = position(2, 5, 0);
+    let from_stance = stance(StanceKind::Standing);
+    let from_facing = facing(Direction::East);
+    let to_pos = position(8, 5, 0);
+    let to_stance = stance(StanceKind::Standing);
+    let observer = Observer {
+        position: &from_pos,
+        stance:   &from_stance,
+        facing:   &from_facing,
+    };
+    let target = Target {
+        position: &to_pos,
+        stance:   &to_stance,
+    };
+
+    // CLEAR (open) geometry.
+    let open = OccupancyGrid::new();
+    let open_cover = CoverLedger::new();
+    let clear_a = has_los(
+        &observer,
+        &target,
+        &open,
+        &surface,
+        &open_cover,
+        &tuning,
+        no_dead(),
+    );
+    let clear_b = has_los(
+        &observer,
+        &target,
+        &open,
+        &surface,
+        &open_cover,
+        &tuning,
+        no_dead(),
+    );
+    assert_eq!(
+        clear_a, clear_b,
+        "an open line of sight must be deterministic"
+    );
+    assert!(*clear_a, "the open geometry is CLEAR");
+
+    // BLOCKED geometry (a HIGH wall between).
+    let mut blocked_cover = CoverLedger::new();
+    blocked_cover.insert(key(5, 5, 0), cover_entry(HeightBand::High));
+    let blocked_a = has_los(
+        &observer,
+        &target,
+        &open,
+        &surface,
+        &blocked_cover,
+        &tuning,
+        no_dead(),
+    );
+    let blocked_b = has_los(
+        &observer,
+        &target,
+        &open,
+        &surface,
+        &blocked_cover,
+        &tuning,
+        no_dead(),
+    );
+    assert_eq!(
+        blocked_a, blocked_b,
+        "a blocked line of sight must be deterministic"
+    );
+    assert!(!*blocked_a, "the walled geometry is BLOCKED");
+}

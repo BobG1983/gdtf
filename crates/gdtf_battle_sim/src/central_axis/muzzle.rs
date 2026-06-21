@@ -9,7 +9,13 @@ use crate::{
 
 /// The per-stance muzzle height level-fraction for `stance`, read off `tuning`'s
 /// [`crate::tuning::MuzzleHeights`] — no magnitude lives here.
-const fn muzzle_height(stance: StanceKind, tuning: &CombatTuning) -> MuzzleHeight {
+///
+/// `pub(crate)` so the level-aware LOS probe ([`crate::los`]) reuses the SAME
+/// per-stance muzzle level-fraction [`muzzle_position`] reads for its facing-neutral
+/// eye anchor (GTW-337 clause 3) — the eye is `cell_center + muzzle_height(stance)`
+/// z, WITHOUT the per-facing forward XY offset [`muzzle_position`] adds, so the
+/// observer's facing never moves its eye.
+pub(crate) const fn muzzle_height(stance: StanceKind, tuning: &CombatTuning) -> MuzzleHeight {
     let heights = &tuning.cone_stability.muzzle_heights;
     match stance {
         StanceKind::Prone => heights.prone,
