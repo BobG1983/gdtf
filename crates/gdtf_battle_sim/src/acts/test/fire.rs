@@ -287,10 +287,15 @@ fn fire_dispatch_emits_one_shot_fired_per_round_with_geometry() {
 #[test]
 fn fire_dispatch_shot_fired_carries_the_weapon_damage_type() {
     let (mut app, shooter, _target) = fire_scenario();
-    // Override the shooter's weapon damage type to a node distinct from the fixture's
+    // Override the wielded weapon's damage type to a node distinct from the fixture's
     // default (Kinetic) — so a passing assert can only mean the type was read off the
-    // shooter's component, not a constant baked into the emit.
-    if let Ok(mut entity) = app.world_mut().get_entity_mut(shooter) {
+    // weapon ENTITY's component (GTW-323 slice 2: `ganger → Wields → the weapon
+    // entity`), not a constant baked into the emit. Resolve the weapon entity through
+    // the relationship, then override its `DamageType`.
+    let weapon = app.world().get::<Wields>(shooter).and_then(Wields::weapon);
+    if let Some(weapon) = weapon
+        && let Ok(mut entity) = app.world_mut().get_entity_mut(weapon)
+    {
         entity.insert(DamageType::Plasma);
     }
 
@@ -561,10 +566,7 @@ fn spawn_arc_shooter(world: &mut World, x: i32, y: i32, facing: Direction, tu: u
 /// Place a HIGH-band ganger target at `(x, y, 0)` in the occupancy grid + spawn its
 /// battle-state bundle — the GTW-242 target fixture (mirrors `fire_scenario`).
 fn place_arc_target(app: &mut App, x: i32, y: i32) -> Entity {
-    let target = app
-        .world_mut()
-        .spawn(target_bundle(30, 6, worn_suit(0, 0, 1, 0)))
-        .id();
+    let target = app.world_mut().spawn(target_bundle(30, 6)).id();
     let at = CellLevel::new(Cell::new(x, y), Level::new(0));
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
         grid.set_occupant(at, Some(target));

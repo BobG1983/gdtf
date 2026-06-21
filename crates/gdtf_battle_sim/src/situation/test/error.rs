@@ -44,7 +44,7 @@ fn setup_aborts_on_invalid_vertical_link() {
     // Nothing was spawned (validation aborted before the spawn loop).
     app.world_mut().flush();
     let world = app.world_mut();
-    let mut q = world.query::<&WornArmor>();
+    let mut q = world.query::<&Wears>();
     assert_eq!(
         q.iter(world).count(),
         0,
@@ -96,7 +96,7 @@ fn setup_errors_on_a_missing_weapon_key() {
     // Nothing was spawned (resolution aborted before the spawn loop).
     app.world_mut().flush();
     let world = app.world_mut();
-    let mut q = world.query::<&WornArmor>();
+    let mut q = world.query::<&Wears>();
     assert_eq!(
         q.iter(world).count(),
         0,
@@ -150,7 +150,7 @@ fn setup_errors_on_a_missing_armor_key() {
     // Nothing was spawned (armor resolution aborted before the spawn loop).
     app.world_mut().flush();
     let world = app.world_mut();
-    let mut q = world.query::<&WornArmor>();
+    let mut q = world.query::<&Wears>();
     assert_eq!(
         q.iter(world).count(),
         0,

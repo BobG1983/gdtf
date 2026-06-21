@@ -4,31 +4,17 @@
 use bevy::prelude::{App, Entity, MessageReader, MessageWriter, MinimalPlugins, Update, World};
 
 use crate::{
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
-        ArmorType, BodyPart, WornArmor,
-    },
+    armor::{ArmorIntegrity, BodyPart},
     armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor},
     resolve_hit::IntegrityWear,
 };
 
-/// The armor piece a [`BodyPart`] resolves to in an [`ArmorSpec`] — reads
-/// [`ArmorSpec::pieces`] in [`BodyPart::ALL`] order (the spec has no `at`).
-fn spec_at(spec: &ArmorSpec, part: BodyPart) -> ArmorPiece {
-    spec.pieces()[part.index()]
-}
-
-/// A uniform worn suit at a chosen starting integrity — an arbitrary
-/// (NOT-shipped-tuning) magnitude, so the tests pin the wear *mechanism*, never
-/// a tuned value. The other three stats are irrelevant to wear and set to 0.
-fn worn_suit(integrity: i32) -> WornArmor {
-    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(0),
-        ArmorProtection::new(0),
-        ArmorIntegrity::new(integrity),
-        ArmorHardness::new(0),
-        ArmorType::DEFAULT,
-    )))
+/// A struck piece's [`ArmorIntegrity`] component at a chosen starting magnitude — an
+/// arbitrary (NOT-shipped-tuning) value, so the tests pin the wear *mechanism*, never
+/// a tuned value. Since GTW-323 (ADR-0004) [`wear_armor`] mutates the piece entity's
+/// integrity component directly, so the unit tests drive that component by `&mut`.
+fn piece_integrity(integrity: i32) -> ArmorIntegrity {
+    ArmorIntegrity::new(integrity)
 }
 
 /// A real, valid [`Entity`] id to stand in for the owning ganger — spawned from
@@ -39,75 +25,43 @@ fn a_ganger() -> Entity {
     World::new().spawn_empty().id()
 }
 
-/// AC1 — a hit whose wear drives a piece's integrity to `≤ 0` leaves the worn
-/// copy at `≤ 0` and [`WornArmor::protects`] false thereafter (bare flesh).
-/// Drives the real [`wear_armor`] path past zero, then asserts the next read is
-/// unprotected.
+/// AC1 — a hit whose wear drives a piece's integrity to `≤ 0` leaves the piece
+/// integrity at `≤ 0` (no longer protecting — bare flesh thereafter). Drives the real
+/// [`wear_armor`] path past zero, then asserts the resulting component is `≤ 0`.
 #[test]
 fn wear_past_zero_leaves_piece_unprotected() {
-    let mut worn = worn_suit(3);
+    let mut integrity = piece_integrity(3);
     let ganger = a_ganger();
 
-    let _broke = wear_armor(&mut worn, BodyPart::Torso, IntegrityWear::new(10), ganger);
+    let _broke = wear_armor(
+        &mut integrity,
+        BodyPart::Torso,
+        IntegrityWear::new(10),
+        ganger,
+    );
 
     assert!(
-        *worn.at(BodyPart::Torso).integrity <= 0,
-        "wear past the starting value must leave integrity ≤ 0",
+        *integrity <= 0,
+        "wear past the starting value must leave integrity ≤ 0 (bare flesh thereafter)",
     );
-    assert!(
-        !worn.protects(BodyPart::Torso),
-        "a piece worn to ≤ 0 must stop protecting (bare flesh)",
-    );
-}
-
-/// AC2 — the worn copy is battle-local: wearing it past zero never mutates the
-/// source [`ArmorSpec`] it was seeded from. Leans on the same isolation
-/// guarantee `armor::tests::wearing_worn_integrity_does_not_mutate_source`
-/// proves, but through the [`wear_armor`] entry point.
-#[test]
-fn wearing_does_not_mutate_source() {
-    let source = ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(1),
-        ArmorProtection::new(2),
-        ArmorIntegrity::new(4),
-        ArmorHardness::new(3),
-        ArmorType::Ceramic,
-    ));
-    // ArmorSpec is Copy — snapshot it by value, then prove the snapshot still
-    // equals the source after the worn copy is worn past zero.
-    let source_before = source;
-    let mut worn = WornArmor::seed_from(&source);
-    let ganger = a_ganger();
-
-    // Wear the head's piece well past zero through the real entry point.
-    let _broke = wear_armor(&mut worn, BodyPart::Head, IntegrityWear::new(100), ganger);
-
-    // The source spec is unchanged on every location (the worn copy can never
-    // reach it — battle-local seeding by value).
-    assert_eq!(
-        source, source_before,
-        "the source spec must NOT change when the worn copy wears (whole record)",
-    );
-    for part in BodyPart::ALL {
-        assert_eq!(
-            spec_at(&source, part),
-            spec_at(&source_before, part),
-            "the source spec must NOT change when the worn copy wears at {part:?}",
-        );
-    }
 }
 
 /// AC3 (mechanism) — exactly one crossing: two successive [`wear_armor`] calls
-/// drive the SAME part past zero. The FIRST (protecting→broken) returns
-/// `Some(ArmorBroken)`; the SECOND (already broken) returns `None` — the signal
+/// drive the SAME piece past zero. The FIRST (protecting→broken) returns
+/// `Broke(ArmorBroken)`; the SECOND (already broken) returns `Unaffected` — the signal
 /// fires once, never re-emitting on an already-broken piece.
 #[test]
 fn emits_exactly_once_on_the_crossing() {
-    let mut worn = worn_suit(5);
+    let mut integrity = piece_integrity(5);
     let ganger = a_ganger();
 
     // First hit crosses 5 → -1 (protecting → broken): emits Broke once.
-    let first = wear_armor(&mut worn, BodyPart::LeftArm, IntegrityWear::new(6), ganger);
+    let first = wear_armor(
+        &mut integrity,
+        BodyPart::LeftArm,
+        IntegrityWear::new(6),
+        ganger,
+    );
     assert_eq!(
         first,
         ArmorWearOutcome::Broke(ArmorBroken::new(ganger, BodyPart::LeftArm)),
@@ -116,7 +70,12 @@ fn emits_exactly_once_on_the_crossing() {
 
     // Second hit re-wears an already-broken piece (-1 → -7): no re-emit (Unaffected,
     // NOT Worn — an already-broken piece is not protecting, so it surfaces nothing).
-    let second = wear_armor(&mut worn, BodyPart::LeftArm, IntegrityWear::new(6), ganger);
+    let second = wear_armor(
+        &mut integrity,
+        BodyPart::LeftArm,
+        IntegrityWear::new(6),
+        ganger,
+    );
     assert_eq!(
         second,
         ArmorWearOutcome::Unaffected,
@@ -129,10 +88,15 @@ fn emits_exactly_once_on_the_crossing() {
 /// wear signal is per reduction, the break signal is only the crossing).
 #[test]
 fn worn_not_broken_when_still_protecting() {
-    let mut worn = worn_suit(10);
+    let mut integrity = piece_integrity(10);
     let ganger = a_ganger();
 
-    let result = wear_armor(&mut worn, BodyPart::RightLeg, IntegrityWear::new(4), ganger);
+    let result = wear_armor(
+        &mut integrity,
+        BodyPart::RightLeg,
+        IntegrityWear::new(4),
+        ganger,
+    );
 
     assert_eq!(
         result,
@@ -144,8 +108,8 @@ fn worn_not_broken_when_still_protecting() {
         "a hit that leaves integrity > 0 must surface Worn(delta=4), never Broke",
     );
     assert!(
-        worn.protects(BodyPart::RightLeg),
-        "the piece must still protect after a sub-fatal wear",
+        *integrity > 0,
+        "the piece must still protect (integrity > 0) after a sub-fatal wear",
     );
 }
 
@@ -153,10 +117,15 @@ fn worn_not_broken_when_still_protecting() {
 /// (no "Armor -0" pop, mirroring [`ArmorBroken`]'s emit-only-on-the-event rule).
 #[test]
 fn zero_wear_on_protecting_piece_is_unaffected() {
-    let mut worn = worn_suit(10);
+    let mut integrity = piece_integrity(10);
     let ganger = a_ganger();
 
-    let result = wear_armor(&mut worn, BodyPart::RightLeg, IntegrityWear::new(0), ganger);
+    let result = wear_armor(
+        &mut integrity,
+        BodyPart::RightLeg,
+        IntegrityWear::new(0),
+        ganger,
+    );
 
     assert_eq!(
         result,
@@ -164,8 +133,8 @@ fn zero_wear_on_protecting_piece_is_unaffected() {
         "a zero-wear hit must surface nothing (no misleading Armor -0)",
     );
     assert!(
-        worn.protects(BodyPart::RightLeg),
-        "a zero-wear hit must leave the piece protecting",
+        *integrity > 0,
+        "a zero-wear hit must leave the piece protecting (integrity > 0)",
     );
 }
 
@@ -192,20 +161,15 @@ fn armor_broken_is_a_buffered_message_read_in_a_headless_app() {
     let ganger = a_ganger();
     let part = BodyPart::Head;
 
-    // The producer: wears a fresh worn suit past zero and writes the Some to the
-    // buffered message. Owns its WornArmor locally — the sim's message boundary.
+    // The producer: wears a fresh piece integrity past zero and writes the payload to
+    // the buffered message. Owns its piece integrity locally — the sim's message
+    // boundary (since GTW-323 `wear_armor` mutates the piece component directly).
     let produce = move |mut writer: MessageWriter<ArmorBroken>| {
-        let mut worn = WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-            ArmorFloor::new(0),
-            ArmorProtection::new(0),
-            ArmorIntegrity::new(1),
-            ArmorHardness::new(0),
-            ArmorType::DEFAULT,
-        )));
+        let mut integrity = piece_integrity(1);
         // The breaking wear yields Broke(ArmorBroken) — write its payload to the buffer
         // (a Worn/Unaffected outcome would write nothing, as the old `if let Some` did).
         if let ArmorWearOutcome::Broke(broke) =
-            wear_armor(&mut worn, part, IntegrityWear::new(2), ganger)
+            wear_armor(&mut integrity, part, IntegrityWear::new(2), ganger)
         {
             writer.write(broke);
         }

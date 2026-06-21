@@ -7,10 +7,7 @@ use bevy::prelude::World;
 
 use super::{InflictedWound, InflictedWounds};
 use crate::{
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
-        ArmorType, BodyPart, WornArmor,
-    },
+    armor::BodyPart,
     central_axis::climb_aim_dir,
     cone::{ConeAngle, PriorShots},
     cover::HeightBand,
@@ -70,18 +67,6 @@ fn a_weapon() -> WeaponBundle {
             Stable::new(false),
         ),
     )
-}
-
-/// A worn suit worn-through at every piece (integrity 0 ⇒ bare flesh) so a hit lands
-/// full damage and reliably wounds.
-fn bare_suit() -> WornArmor {
-    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(0),
-        ArmorProtection::new(0),
-        ArmorIntegrity::new(0),
-        ArmorHardness::new(0),
-        ArmorType::DEFAULT,
-    )))
 }
 
 /// A `ShotKind::Ganger` outcome on `entity` struck at `part` — minted through the
@@ -146,7 +131,6 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
     let mut hp = Hp::new(255);
     let mut wounds = Wounds::new(255);
     let mut life = LifeState::Alive;
-    let mut worn = bare_suit();
     let mut inflicted = InflictedWounds::default();
     let mut r = rng();
 
@@ -167,7 +151,9 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
                 life:      &mut life,
-                worn:      &mut worn,
+                // Bare flesh (no protecting piece) — the wound recording under test is
+                // independent of armor; a None piece resolves full damage (GTW-323).
+                piece:     None,
                 inflicted: &mut inflicted,
                 toughness: Toughness::new(0.0),
                 luck:      Luck::new(0.0),

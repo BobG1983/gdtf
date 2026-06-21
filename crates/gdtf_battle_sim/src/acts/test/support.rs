@@ -13,10 +13,9 @@ pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, Update, Wo
 
 pub(super) use crate::{
     acts::*,
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
-        ArmorType, WornArmor,
-    },
+    // `ArmorProtection` / `ArmorHardness` are reused for cover `CoverEntry`s in the
+    // co-schedule test (terrain armor), not ganger-worn armor — kept for that glob use.
+    armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
@@ -35,7 +34,8 @@ pub(super) use crate::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+        Wields,
     },
 };
 
@@ -73,18 +73,6 @@ pub(super) const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
     )
 }
 
-/// A worn suit whose every piece starts at the given stats — arbitrary (not shipped)
-/// magnitudes so a hit lands in a known regime.
-pub(super) fn worn_suit(floor: i32, protection: i32, integrity: i32, hardness: i32) -> WornArmor {
-    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(floor),
-        ArmorProtection::new(protection),
-        ArmorIntegrity::new(integrity),
-        ArmorHardness::new(hardness),
-        ArmorType::DEFAULT,
-    )))
-}
-
 /// Spawn an armed shooter facing East at `(x, y, 0)` — carries the full shooter-query
 /// component set AND the target-query set (the shooter is also a ganger, so its own
 /// liveness reads from the target query). Arbitrary magnitudes (not shipped tuning).
@@ -119,9 +107,8 @@ pub(super) fn spawn_shooter(
             Stable::new(true),
         ),
     );
-    world
+    let shooter = world
         .spawn((
-            bundle,
             Position::new(CellLevel::new(Cell::new(x, y), Level::new(0))),
             Facing::new(Direction::East),
             Stance::new(StanceKind::Standing),
@@ -130,28 +117,34 @@ pub(super) fn spawn_shooter(
             Tu::new(200),
             crate::ganger::TuMax::new(100),
             // The target-query set as one nested-tuple bundle (the GTW-279
-            // InflictedWounds add keeps the spawn under the 15-element tuple limit).
+            // InflictedWounds add); the shooter's armor (if any) lives on related piece
+            // entities (GTW-323), NOT here.
             (
                 Hp::new(50),
                 Wounds::new(10),
                 LifeState::Alive,
-                worn_suit(0, 0, 1, 0),
                 InflictedWounds::default(),
                 Toughness::new(1.0),
                 Luck::new(0.0),
             ),
         ))
-        .id()
+        .id();
+    // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`), read by
+    // `dispatch_fire`/`fire()` + `dispatch_reload` through `ganger → Wields → the weapon
+    // entity`. The `WieldedBy` insert hook populates the ganger's `Wields` synchronously
+    // in a bare `World` spawn so the very next dispatch resolves it.
+    world.spawn((WieldedBy(shooter), bundle));
+    shooter
 }
 
-/// The per-ganger battle-state bundle a fire target carries (the target query set +
-/// worn armor) — arbitrary magnitudes.
-pub(super) fn target_bundle(hp: u16, wounds: u8, worn: WornArmor) -> impl bevy::prelude::Bundle {
+/// The per-ganger battle-state bundle a fire target carries (the target query set) —
+/// arbitrary magnitudes. Since GTW-323 the armor lives on related piece entities, NOT
+/// the ganger, so this bundle carries no armor.
+pub(super) fn target_bundle(hp: u16, wounds: u8) -> impl bevy::prelude::Bundle {
     (
         Hp::new(hp),
         Wounds::new(wounds),
         LifeState::Alive,
-        worn,
         InflictedWounds::default(),
         Toughness::new(1.0),
         Luck::new(0.0),
@@ -165,10 +158,7 @@ pub(super) fn fire_scenario() -> (App, Entity, Entity) {
     let mut app = headless_app();
     let mode = single_mode(0.2, 1);
     let shooter = spawn_shooter(app.world_mut(), 2, 5, mode, true);
-    let target = app
-        .world_mut()
-        .spawn(target_bundle(30, 6, worn_suit(0, 0, 1, 0)))
-        .id();
+    let target = app.world_mut().spawn(target_bundle(30, 6)).id();
     let target_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
         grid.set_occupant(target_at, Some(target));

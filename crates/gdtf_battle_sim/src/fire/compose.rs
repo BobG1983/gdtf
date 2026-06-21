@@ -9,15 +9,18 @@
 
 use bevy::prelude::Entity;
 
-use super::query::{BattleGrids, ShooterQuery, TargetQuery};
+use super::query::{
+    BattleGrids, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery, WieldsQuery,
+};
 use crate::{
     aim::{Shooter, cone_for, stability_for},
+    armor::BodyPart,
     cover::CoverLedger,
     ganger::{Aiming, Facing, LifeState, Luck, Position, Shooting, Stance, StanceKind, Tu, TuMax},
     magazine::Magazine,
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    resolve_and_apply::{HitReport, TargetGanger, resolve_and_apply},
+    resolve_and_apply::{HitReport, StruckPiece, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotInputs, ShotKind, resolve_coarse},
     rng::SimRng,
     sample_cone::concentration_p,
@@ -27,6 +30,28 @@ use crate::{
         WeaponPunch, WeaponShred, WeaponStats,
     },
 };
+
+/// Resolve a struck ganger's worn-armor piece **entity** for a struck [`BodyPart`] —
+/// the `ganger → Wears → the BodyPart-tagged piece` keyed lookup (GTW-323 / ADR-0004).
+///
+/// Reads the ganger's [`Wears`](crate::armor::Wears) collection (read-only,
+/// `wears.get(ganger)`), iterates its related piece entities, and returns the one
+/// tagged with `part` — keyed access (NOT order-dependent), so the looked-up piece is
+/// identical regardless of entity storage / spawn order (the determinism property of
+/// ADR-0004). Returns `None` when the ganger has no `Wears` collection or no piece
+/// tags `part` (folds to bare flesh upstream). The `pieces` query is borrowed
+/// immutably here only to read each candidate's [`BodyPart`] tag; the caller re-borrows
+/// it mutably to wear the resolved piece.
+fn struck_piece_entity(
+    ganger: Entity,
+    part: BodyPart,
+    wears: &WearsQuery,
+    pieces: &PieceQuery,
+) -> Option<Entity> {
+    let worn = wears.get(ganger).ok()?;
+    worn.pieces()
+        .find(|&piece| pieces.get(piece).is_ok_and(|p| *p.part == part))
+}
 
 /// The shooter's `Copy` read state, snapshotted **before** the burst loop so the
 /// shooter query is only re-borrowed (mutably, for the `Magazine` decrement) one
@@ -146,25 +171,69 @@ impl TargetGeometry {
     }
 }
 
-/// Read the shooter's `Copy` state off the shooter query into a [`ShooterSnapshot`]
-/// plus the [`FireActor`](crate::magazine::FireActor)-shaping economy reads —
-/// releasing the query's immutable borrow before [`fire`](super::fire)'s mutable
-/// re-borrows.
+/// The shooter read result — the `Copy` [`ShooterSnapshot`], the wielded
+/// [`weapon`](ShooterReads::weapon) entity (whose [`Magazine`] the burst decrements),
+/// and the [`FireActor`](crate::magazine::FireActor)-shaping economy reads.
 ///
-/// Returns `None` when the shooter is not in the query (unarmed / despawned), so
-/// [`fire`](super::fire) fails closed. The `(Tu, TuMax, Aiming, Magazine, Luck)` tuple
-/// is the economy state [`can_fire`](crate::magazine::can_fire) /
-/// [`mode_tu_cost`](crate::magazine::mode_tu_cost) / [`resolve_and_apply`] read.
+/// Bundles the values [`read_shooter`] hands back so [`fire`](super::fire) can validate
+/// the act (the `(Tu, TuMax, Aiming, Magazine)` economy), charge the up-front TU, and —
+/// across the burst loop — re-borrow the weapon entity to spend a round per fired
+/// iteration. Every field is an owned named domain value or a Bevy [`Entity`] handle
+/// (framework plumbing); the bundle itself is a transparent call-site record, not a
+/// wrapped domain scalar.
+pub(super) struct ShooterReads {
+    /// The shooter's `Copy` ganger-state + weapon-stat snapshot.
+    pub(super) snapshot: ShooterSnapshot,
+    /// The wielded weapon entity — the burst re-borrows its [`Magazine`] per round.
+    pub(super) weapon:   Entity,
+    /// The shooter's current TU pool ([`can_fire`](crate::magazine::can_fire) reads it).
+    pub(super) tu:       Tu,
+    /// The shooter's TU ceiling ([`mode_tu_cost`](crate::magazine::mode_tu_cost) reads it).
+    pub(super) tu_max:   TuMax,
+    /// Whether the shooter is aiming (the ×1.5 TU premium toggle).
+    pub(super) aiming:   Aiming,
+    /// The weapon's ammo state, snapshotted for the affordability / burst-clamp reads.
+    pub(super) magazine: Magazine,
+}
+
+/// Read the shooter's `Copy` state into a [`ShooterSnapshot`] — its ganger state off the
+/// [`ShooterQuery`] and its GTW-200 weapon stats off the related **weapon entity**
+/// (`ganger → Wields → the weapon entity`, GTW-323 slice 2) — plus the
+/// [`FireActor`](crate::magazine::FireActor)-shaping economy reads, releasing the query
+/// borrows before [`fire`](super::fire)'s mutable re-borrows.
+///
+/// Returns `None` when the shooter is not in the shooter query (despawned), wields no
+/// weapon (no [`Wields`](crate::weapon::Wields) collection / it is empty), or the
+/// resolved weapon entity is not in the weapon query — so [`fire`](super::fire) fails
+/// closed in every unarmed/missing case. The economy reads
+/// `(Tu, TuMax, Aiming, Magazine)` are what [`can_fire`](crate::magazine::can_fire) /
+/// [`mode_tu_cost`](crate::magazine::mode_tu_cost) / [`resolve_and_apply`] consume; the
+/// returned [`weapon`](ShooterReads::weapon) entity is the one the burst loop re-borrows
+/// to decrement the [`Magazine`] per fired round.
 pub(super) fn read_shooter(
     shooter: Entity,
     shooters: &ShooterQuery,
-) -> Option<(ShooterSnapshot, Tu, TuMax, Aiming, Magazine)> {
-    let reads = shooters.get(shooter).ok()?;
+    wields: &WieldsQuery,
+    weapons: &WeaponQuery,
+) -> Option<ShooterReads> {
+    let ((position, facing, stance, aiming, shooting, luck, tu_max), tu) =
+        shooters.get(shooter).ok()?;
+    // Resolve `ganger → Wields → the weapon entity` (GTW-323 slice 2), then read the
+    // GTW-200 weapon stats + magazine off that weapon entity (a different entity than
+    // the ganger, so the borrow is disjoint).
+    let weapon = wields.get(shooter).ok()?.weapon()?;
     let (
-        (position, facing, stance, aiming, shooting, luck, tu_max),
-        (tu, magazine),
-        (base_spread, accuracy, kickback, fatal_bias, damage, punch, shred, damage_type, stable),
-    ) = reads;
+        base_spread,
+        accuracy,
+        kickback,
+        fatal_bias,
+        damage,
+        punch,
+        shred,
+        damage_type,
+        stable,
+        magazine,
+    ) = weapons.get(weapon).ok()?;
     let snapshot = ShooterSnapshot {
         position:    *position,
         facing:      *facing,
@@ -182,7 +251,14 @@ pub(super) fn read_shooter(
         damage_type: *damage_type,
         stable:      *stable,
     };
-    Some((snapshot, *tu, *tu_max, *aiming, *magazine))
+    Some(ShooterReads {
+        snapshot,
+        weapon,
+        tu: *tu,
+        tu_max: *tu_max,
+        aiming: *aiming,
+        magazine: *magazine,
+    })
 }
 
 /// The **constant-per-burst inputs** to [`resolve_round`] — the shooter snapshot, the
@@ -219,11 +295,18 @@ pub(super) struct RoundSetup<'a> {
 /// [`dispatch_fire`](crate::acts::dispatch_fire) can emit a per-round
 /// [`ShotFired`](crate::shot_fired::ShotFired) (GTW-290). The outcome is returned
 /// verbatim, NOT recomputed — the fold below already consumes it.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the GTW-323 armor-relationship adds the disjoint wears/pieces queries to \
+              the per-round verb; bundling them would obscure the query-disjointness"
+)]
 pub(super) fn resolve_round(
     setup: RoundSetup,
     prior_shots: crate::cone::PriorShots,
     grids: BattleGrids,
     targets: &mut TargetQuery,
+    wears: &WearsQuery,
+    pieces: &mut PieceQuery,
     tuning: &CombatTuning,
     rng: &mut SimRng,
 ) -> (HitReport, crate::resolve_coarse::ShotOutcome) {
@@ -286,28 +369,50 @@ pub(super) fn resolve_round(
     );
 
     let report = match outcome.kind {
-        ShotKind::Ganger(struck) => match targets.get_mut(struck) {
-            Ok((mut hp, mut wounds, mut life, mut worn, mut inflicted, toughness, target_luck)) => {
-                resolve_and_apply(
-                    &outcome,
-                    snapshot.weapon_stats(),
-                    snapshot.luck,
-                    TargetGanger {
-                        hp:        &mut hp,
-                        wounds:    &mut wounds,
-                        life:      &mut life,
-                        worn:      &mut worn,
-                        inflicted: &mut inflicted,
-                        toughness: *toughness,
-                        luck:      *target_luck,
-                    },
-                    struck,
-                    tuning,
-                    rng,
-                )
+        ShotKind::Ganger(struck) => {
+            // GTW-323 / ADR-0004: resolve the struck location's worn piece ENTITY via
+            // `ganger → Wears → the BodyPart-tagged piece`, then read its stats + wear
+            // its `&mut ArmorIntegrity` through the fold. The lookup keys on the §4
+            // struck part (carried on the outcome); a missing part / piece folds to
+            // bare flesh (StruckPiece == None). The `wears`/`pieces` queries are
+            // disjoint from `targets` (a different ganger component / a different entity
+            // set), so they coexist with the `targets.get_mut(struck)` below.
+            let struck_piece_view = outcome
+                .body_part
+                .and_then(|part| struck_piece_entity(struck, part, wears, pieces))
+                .and_then(|piece_entity| {
+                    pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
+                        floor:      *piece.floor,
+                        protection: *piece.protection,
+                        hardness:   *piece.hardness,
+                        armor_type: *piece.armor_type,
+                        integrity:  piece.integrity.into_inner(),
+                    })
+                });
+
+            match targets.get_mut(struck) {
+                Ok((mut hp, mut wounds, mut life, mut inflicted, toughness, target_luck)) => {
+                    resolve_and_apply(
+                        &outcome,
+                        snapshot.weapon_stats(),
+                        snapshot.luck,
+                        TargetGanger {
+                            hp:        &mut hp,
+                            wounds:    &mut wounds,
+                            life:      &mut life,
+                            piece:     struck_piece_view,
+                            inflicted: &mut inflicted,
+                            toughness: *toughness,
+                            luck:      *target_luck,
+                        },
+                        struck,
+                        tuning,
+                        rng,
+                    )
+                }
+                Err(_) => HitReport::no_effect(outcome.kind),
             }
-            Err(_) => HitReport::no_effect(outcome.kind),
-        },
+        }
         other => HitReport::no_effect(other),
     };
     // Return the resolved report PLUS the already-computed outcome geometry (verbatim,

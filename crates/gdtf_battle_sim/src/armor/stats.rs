@@ -13,9 +13,9 @@ use serde::Deserialize;
 /// (house style); a magnitude is TBD tuning. `#[serde(transparent)]` lets an
 /// authored floor parse as a bare integer.
 /// `Default` (`ArmorFloor(0)`) is a **spawn-seed sentinel only** — the `bsn!`
-/// spawn path seeds the [`ArmorPiece`] / [`WornArmor`](super::worn::WornArmor)
-/// component slot via `Default` before the authored value overwrites it
-/// (GTW-322). It is NOT a valid authored armor stat.
+/// spawn path seeds the [`ArmorPiece`] / armor-piece entity (related via
+/// [`Wears`](super::Wears)) component slot via `Default` before the authored value
+/// overwrites it (GTW-322). It is NOT a valid authored armor stat.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 #[serde(transparent)]
 pub struct ArmorFloor(i32);
@@ -56,10 +56,11 @@ impl ArmorProtection {
 ///
 /// Formula step 3 degrades it per hit (`integrity −= min(protection, damage) +
 /// effPen + shred`); at `integrity ≤ 0` the armor stops protecting for the rest
-/// of the battle. This is the **one mutable wear field** of [`WornArmor`](super::worn::WornArmor),
-/// so it derives [`DerefMut`] (the house rule: `DerefMut` only where the inner
-/// value is mutated through the newtype) and must track **below zero**, which is
-/// why the inner type is a *signed* `i32`. A magnitude is TBD tuning.
+/// of the battle. This is the **one mutable wear field** of an armor-piece entity
+/// ([`wear_armor`](crate::armor_wear::wear_armor) mutates this in place), so it derives
+/// [`DerefMut`] (the house rule: `DerefMut` only where the inner value is mutated
+/// through the newtype) and must track **below zero**, which is why the inner type
+/// is a *signed* `i32`. A magnitude is TBD tuning.
 /// `#[serde(transparent)]` lets an authored integrity parse as a bare integer.
 /// `Default` (`ArmorIntegrity(0)`) is a **spawn-seed sentinel only** — seeded by
 /// the `bsn!` spawn path before the authored value overwrites it (GTW-322). NOT a
@@ -106,13 +107,22 @@ impl ArmorHardness {
 /// One of the six body locations a hit can land on (`docs/combat/resolution.md`
 /// §4: "Head · Torso · L-Arm · R-Arm · L-Leg · R-Leg").
 ///
-/// Introduced here as the key for armor-by-location ([`SourceArmor`](super::worn::SourceArmor) /
-/// [`WornArmor`](super::worn::WornArmor)); the §4 weighted `roll_body_part` (a
-/// later ticket) picks over the same six parts. A named domain enum, not a bare
-/// index — it is the keying vocabulary for everything per-location.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Introduced here as the key for armor-by-location ([`SourceArmor`](super::worn::SourceArmor)
+/// and the armor-piece entities related via [`Wears`](super::Wears), each tagged with its
+/// `BodyPart`); the §4 weighted `roll_body_part` (a later ticket) picks over the same six
+/// parts. A named domain enum, not a bare index — it is the keying vocabulary for
+/// everything per-location.
+///
+/// A Bevy [`Component`] since GTW-323 (ADR-0004): it tags each worn-armor-piece
+/// entity with the body location it protects, so the `struck_piece` lookup keys
+/// `ganger → Wears → the BodyPart-tagged piece`. `Default` ([`BodyPart::Head`], the
+/// first canonical part) is the GTW-322 `bsn!` spawn-seed sentinel — the
+/// `template_value` spawn path seeds the slot via `Default` before the authored
+/// per-piece tag overwrites it; it is never a meaningful default location.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum BodyPart {
     /// The head — rarely struck, but severity-amplifying when it is.
+    #[default]
     Head,
     /// The torso — the bulk of the silhouette, most hits land here.
     Torso,
@@ -174,7 +184,11 @@ impl BodyPart {
 /// `Default` is [`ArmorType::Plated`] — matching the documented [`ArmorType::DEFAULT`]
 /// (node 0, the canonical first wheel node). Used as the `bsn!` spawn-seed sentinel
 /// (GTW-322), consistent with the existing `DEFAULT` fallback.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+///
+/// A Bevy [`Component`] since GTW-323 (ADR-0004): the per-piece wheel node lives on
+/// the worn-armor-piece entity (the `struck_piece` matchup reads it off the piece),
+/// not packed inside a ganger-side array.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
 pub enum ArmorType {
     /// Wheel node 0 — mirror of [`DamageType::Shock`](crate::weapon::DamageType::Shock).
     #[default]
@@ -222,12 +236,13 @@ impl ArmorType {
 ///
 /// One piece of armor protecting one [`BodyPart`]: its [`ArmorFloor`],
 /// [`ArmorProtection`], [`ArmorIntegrity`], [`ArmorHardness`], and its
-/// [`ArmorType`]. This is the shared shape used both in the read-only roster
-/// [`SourceArmor`](super::worn::SourceArmor) record and in the battle-local
-/// [`WornArmor`](super::worn::WornArmor) copy; battle wear mutates only the worn
-/// copy's [`ArmorIntegrity`] (the type and the other stats are immutable through
-/// the worn copy). Derives [`Deserialize`] so an authored situation's roster
-/// armor names each piece by its five typed stats.
+/// [`ArmorType`]. This is the shared shape used in the read-only roster
+/// [`SourceArmor`](super::worn::SourceArmor) record AND as the per-piece stat
+/// components spawned onto the battle-local armor-piece entities (related via
+/// [`Wears`](super::Wears), ADR-0004); battle wear mutates only a piece entity's
+/// [`ArmorIntegrity`] component (the type and the other stats are immutable). Derives
+/// [`Deserialize`] so an authored situation's roster armor names each piece by its
+/// five typed stats.
 /// `Default` (all-zero stats, [`ArmorType::Plated`]) is a **spawn-seed sentinel
 /// only** — seeded by the `bsn!` spawn path before the authored piece overwrites
 /// it (GTW-322). NOT a valid authored piece (zero integrity reads as already-useless).

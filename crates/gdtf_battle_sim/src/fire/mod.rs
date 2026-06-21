@@ -46,13 +46,19 @@
 //! The two queries share **no mutable component**, so they coexist without a Bevy
 //! `B0001` access conflict: the SHOOTER query holds the read stats + `&mut Tu` +
 //! `&mut Magazine` (and **no** `&LifeState`); the TARGET query holds `&mut Hp` /
-//! `&mut Wounds` / `&mut LifeState` / `&mut WornArmor` + `&Toughness` + `&Luck`.
+//! `&mut Wounds` / `&mut LifeState` / `&mut InflictedWounds` + `&Toughness` + `&Luck`.
 //! [`Luck`](crate::ganger::Luck) is read-only in BOTH (a `&`-vs-`&` overlap is
 //! compatible — only a write-vs-read/write of the SAME component conflicts). The
 //! shooter's own [`LifeState`](crate::ganger::LifeState) is read from the TARGET query
 //! (the shooter is also a ganger → `targets.get(shooter)`), so `&LifeState` never
 //! enters the shooter query (which would clash with the target query's `&mut
 //! LifeState`).
+//!
+//! Since GTW-323 (ADR-0004) the struck location's armor is resolved through two more
+//! disjoint queries — the read-only [`WearsQuery`] (`&Wears` on the ganger, a
+//! different component than the target query's) and the mutable [`PieceQuery`]
+//! (`PieceArmorMut` on the **piece entities**, a different entity set entirely) — so
+//! all four queries coexist with no conflict.
 //!
 //! Render-free, deterministic model logic: every random draw bottoms out in the
 //! single injected [`SimRng`](crate::rng::SimRng) (no `thread_rng`, no ad-hoc
@@ -65,7 +71,10 @@ mod compose;
 mod query;
 mod volley;
 
-pub use query::{BattleGrids, FireOrder, ShooterQuery, TargetQuery};
+pub use query::{
+    BattleGrids, FireOrder, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery,
+    WieldsQuery,
+};
 pub use volley::{Volley, fire};
 
 #[cfg(test)]

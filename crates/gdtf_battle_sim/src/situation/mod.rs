@@ -17,8 +17,7 @@
 //!   [`Tu`](crate::ganger::Tu) / [`LifeState`](crate::ganger::LifeState)), the E3.0
 //!   attribute stats ([`Shooting`](crate::ganger::Shooting) /
 //!   [`Toughness`](crate::ganger::Toughness) / [`Luck`](crate::ganger::Luck)), a
-//!   read-only [`SourceArmor`](crate::armor::SourceArmor) record (`armor_by_part`) to
-//!   seed the battle-local [`WornArmor`](crate::armor::WornArmor) (E1.3), and a
+//!   read-only [`SourceArmor`](crate::armor::SourceArmor) record (`armor_by_part`) and a
 //!   [`weapon`](GangerSpawn::weapon) KEY resolved against the
 //!   [`WeaponRegistry`](crate::weapon::WeaponRegistry) into the spawned
 //!   [`WeaponBundle`](crate::weapon::WeaponBundle) (GTW-257).
@@ -35,10 +34,12 @@
 //! [`setup_battle`] reads a [`Situation`] and builds the battle in the ECS world
 //! (the setup systems described above). It is **render-free** and driven from
 //! a headless `MinimalPlugins` app (it takes only [`Commands`](bevy::prelude::Commands)
-//! — no renderer, no asset server). For each ganger it `commands.spawn(...)`s ALL the
-//! per-field components plus the seeded [`WornArmor`](crate::armor::WornArmor),
-//! capturing the returned Bevy [`Entity`](bevy::prelude::Entity) handle — **never a
-//! numeric id** (GTW-10 / GTW-12). It then seeds the
+//! — no renderer, no asset server). For each ganger it `commands.spawn_scene(...)`s its
+//! own per-field components (no equipment stat data — GTW-323, ADR-0004) and relates its
+//! weapon entity ([`Wields`](crate::weapon::Wields)) + six armor-piece entities
+//! ([`Wears`](crate::armor::Wears)), capturing the returned Bevy
+//! [`Entity`](bevy::prelude::Entity) handle — **never a numeric id** (GTW-10 / GTW-12).
+//! It then seeds the
 //! [`CoverLedger`](crate::cover::CoverLedger) (E1.4) from the walls + scatter, the
 //! [`SurfaceGrid`](crate::surface::SurfaceGrid) (E1.5) from the slabs, and the
 //! [`OccupancyGrid`](crate::occupancy::OccupancyGrid) (E1.6) from the authored terrain

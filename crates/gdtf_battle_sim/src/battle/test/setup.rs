@@ -92,8 +92,9 @@ fn setup_threads_the_message_seed_through_sim_rng() {
     );
 }
 
-// === AC3 — setup_battle runs on the REAL Commands path: the spawned WornArmor
-// count equals the authored ganger count, and the four resources are present. ===
+// === AC3 — setup_battle runs on the REAL Commands path: the spawned ganger count
+// (each carrying the `Wears` armor relationship) equals the authored ganger count,
+// and the four resources are present. ===
 
 #[test]
 fn setup_runs_setup_battle_on_the_real_commands_path() {
@@ -102,15 +103,23 @@ fn setup_runs_setup_battle_on_the_real_commands_path() {
     let mut app = headless_app();
     app.world_mut()
         .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+    // First update: the SetupBattleRequested drain runs setup_battle, which spawns each
+    // ganger as a `bsn!` scene + queues its `Wears` armor-piece related scenes. The ganger
+    // scene materializes on this update's SpawnScene; the related-piece spawn lands the
+    // NEXT update, so settle a second update for the `WornBy` hook to populate `Wears`.
+    app.update();
     app.update();
 
     let world = app.world_mut();
-    let mut query = world.query::<&WornArmor>();
+    // Since GTW-323 (ADR-0004) each spawned ganger carries the `Wears` armor
+    // relationship (the armor stats live on related piece entities, not a `WornArmor`
+    // component), so the spawned-ganger count is the count of `Wears` carriers.
+    let mut query = world.query::<&Wears>();
     assert_eq!(
         query.iter(world).count(),
         authored,
-        "the spawned WornArmor ganger count must equal the authored ganger count (the real \
-         setup_battle ran, not a stub)",
+        "the spawned ganger count (each wearing armor via Wears) must equal the authored ganger \
+         count (the real setup_battle ran, not a stub)",
     );
 }
 

@@ -11,7 +11,7 @@ fn graze_subtracts_hp_and_spends_no_wound() {
     let mut hp = Hp::new(20);
     let mut wounds = Wounds::new(5);
     let mut life = LifeState::Alive;
-    let mut worn = worn_suit(100);
+    let mut integrity = worn_piece_integrity(100);
     let mut inflicted = InflictedWounds::default();
     let tuning = CombatTuning::default();
 
@@ -19,7 +19,7 @@ fn graze_subtracts_hp_and_spends_no_wound() {
         hp:        &mut hp,
         wounds:    &mut wounds,
         life:      &mut life,
-        worn:      &mut worn,
+        integrity: Some(&mut integrity),
         inflicted: &mut inflicted,
     };
     // A graze: Severity::None, HP-loss 7, low wear (wears but does not break).
@@ -68,14 +68,14 @@ fn fatal_empties_the_wounds_pool_regardless_of_prior() {
         let mut hp = Hp::new(50);
         let mut wounds = Wounds::new(prior);
         let mut life = LifeState::Alive;
-        let mut worn = worn_suit(100);
+        let mut integrity = worn_piece_integrity(100);
         let mut inflicted = InflictedWounds::default();
 
         let target = GangerHitTarget {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            integrity: Some(&mut integrity),
             inflicted: &mut inflicted,
         };
         let _broke = apply_hit(
@@ -114,13 +114,13 @@ fn wound_cost_orders_minor_lt_major_lt_critical() {
         let mut hp = Hp::new(50);
         let mut wounds = start;
         let mut life = LifeState::Alive;
-        let mut worn = worn_suit(100);
+        let mut integrity = worn_piece_integrity(100);
         let mut inflicted = InflictedWounds::default();
         let target = GangerHitTarget {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            integrity: Some(&mut integrity),
             inflicted: &mut inflicted,
         };
         let _broke = apply_hit(

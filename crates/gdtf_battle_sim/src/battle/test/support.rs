@@ -22,7 +22,7 @@ pub(super) use crate::test_support::{
 };
 pub(super) use crate::{
     acts::FireRequested,
-    armor::WornArmor,
+    armor::Wears,
     battle::{
         BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleSimPlugin, BattleWon,
         PlayerFaction, SetupBattleRequested, TeardownBattleRequested,

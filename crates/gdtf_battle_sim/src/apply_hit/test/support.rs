@@ -7,10 +7,7 @@ pub(super) use bevy::prelude::{App, Entity, MinimalPlugins, Update, World};
 
 pub(super) use super::super::{GangerHitTarget, apply_hit, fold::wound_cost};
 pub(super) use crate::{
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
-        ArmorType, BodyPart, WornArmor,
-    },
+    armor::{ArmorIntegrity, BodyPart},
     armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn},
     ganger::{Hp, LifeState, Wounds},
     inflicted_wound::{InflictedWound, InflictedWounds},
@@ -27,17 +24,14 @@ pub(super) fn a_ganger() -> Entity {
     World::new().spawn_empty().id()
 }
 
-/// A uniform worn suit whose every piece starts at `integrity` — an arbitrary
-/// (NOT-shipped-tuning) magnitude; the other three armor stats are irrelevant to
-/// these tests and set to `0`. So a hit's wear lands without first being soaked.
-pub(super) fn worn_suit(integrity: i32) -> WornArmor {
-    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(0),
-        ArmorProtection::new(0),
-        ArmorIntegrity::new(integrity),
-        ArmorHardness::new(0),
-        ArmorType::DEFAULT,
-    )))
+/// The struck piece's [`ArmorIntegrity`] component at `integrity` — an arbitrary
+/// (NOT-shipped-tuning) magnitude; since GTW-323 (ADR-0004) `apply_hit` wears the
+/// struck piece ENTITY's integrity component directly (via `GangerHitTarget.integrity`),
+/// so the tests drive that component by `&mut` rather than a `WornArmor` array slot. A
+/// hit's wear lands on it without first being soaked (the other armor stats are
+/// irrelevant to these wear-path tests).
+pub(super) fn worn_piece_integrity(integrity: i32) -> ArmorIntegrity {
+    ArmorIntegrity::new(integrity)
 }
 
 /// Build a [`HitResult`] from arbitrary per-test magnitudes — mechanism inputs,

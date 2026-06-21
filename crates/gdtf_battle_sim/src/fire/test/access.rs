@@ -5,9 +5,9 @@ use super::support::*;
 /// AC1 — the two-query design is access-compatible: a `SystemState` over
 /// `(ShooterQuery, TargetQuery)` constructs WITHOUT a `B0001` conflict panic.
 /// Building the `SystemState` validates the access set, so this IS the regression
-/// check that the shooter (mut Tu/Magazine, no `LifeState`) and target (mut
-/// Hp/Wounds/`LifeState`/`WornArmor`) queries share no conflicting mutable
-/// component.
+/// check that the shooter (mut Tu, no `LifeState`) and target (mut
+/// Hp/Wounds/`LifeState`) queries share no conflicting mutable component (the armor
+/// integrity now wears on related piece entities, GTW-323).
 #[test]
 fn two_queries_are_access_compatible_no_b0001() {
     let mut world = World::new();

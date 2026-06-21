@@ -6,6 +6,7 @@
 use bevy::ecs::{query::With, system::Query};
 
 use crate::{
+    armor::{PieceArmorMut, Wears, WornBy},
     cover::CoverLedger,
     ganger::{
         Aiming, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, Toughness, Tu, TuMax,
@@ -17,26 +18,33 @@ use crate::{
     occupancy::OccupancyGrid,
     surface::SurfaceGrid,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, Stable, Weapon,
-        WeaponDamage, WeaponPunch, WeaponShred,
+        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, Stable, WeaponDamage,
+        WeaponPunch, WeaponShred, WieldedBy, Wields,
     },
 };
 
-/// The **shooter query shape** [`fire`](super::fire) reads the firing entity through
-/// — the shooter's ganger state plus each GTW-200 weapon-stat
-/// [`Component`](bevy::prelude::Component), `With<Weapon>`.
+/// The **shooter query shape** [`fire`](super::fire) reads the firing ganger through —
+/// the shooter's ganger state plus the mutable [`Tu`] up-front TU charge.
 ///
-/// A type alias for the wide read+mutate tuple so [`fire`](super::fire)'s signature
-/// stays readable. It is mutable on [`Tu`] (the up-front TU charge) and [`Magazine`]
-/// (the per-round decrement) and read-only on everything else; it carries **no**
-/// [`LifeState`] — the shooter's liveness is read from the [`TargetQuery`] (whose
-/// `&mut LifeState` would clash with a `&LifeState` here). Every other field is the
-/// read state [`cone_for`](crate::aim::cone_for) /
+/// A type alias for the read+mutate tuple so [`fire`](super::fire)'s signature stays
+/// readable. It is mutable on [`Tu`] (the up-front TU charge) and read-only on
+/// everything else; it carries **no** [`LifeState`] — the shooter's liveness is read
+/// from the [`TargetQuery`] (whose `&mut LifeState` would clash with a `&LifeState`
+/// here). Every other field is the read state [`cone_for`](crate::aim::cone_for) /
 /// [`stability_for`](crate::aim::stability_for) /
 /// [`concentration_p`](crate::sample_cone::concentration_p) /
 /// [`mode_tu_cost`](crate::magazine::mode_tu_cost) /
 /// [`resolve_coarse`](crate::resolve_coarse::resolve_coarse) consume, assembled into
 /// the borrow-views at the call site.
+///
+/// Since GTW-323 slice 2 (ADR-0004) this query NO LONGER carries the GTW-200 weapon-stat
+/// components or the [`Magazine`] — those live on the related **weapon entity**, read +
+/// worn through the disjoint [`WieldsQuery`] / [`WeaponQuery`] (`ganger → Wields → the
+/// weapon entity`). The transient on-ganger weapon components still ride on the ganger
+/// (removed in slice 3) but are no longer queried for the firing math. There is also no
+/// longer a `With<Weapon>` filter here (the marker is on the weapon entity now); a
+/// shooter that wields no weapon is caught by the [`WieldsQuery`] resolution failing,
+/// not by the ganger row being absent.
 pub type ShooterQuery<'world, 'state> = Query<
     'world,
     'state,
@@ -51,24 +59,51 @@ pub type ShooterQuery<'world, 'state> = Query<
             &'static Luck,
             &'static TuMax,
         ),
-        // The mutable firing economy — the up-front TU charge + per-round ammo.
-        (&'static mut Tu, &'static mut Magazine),
-        // The GTW-200 weapon-stat components the WeaponStats view borrows. The magazine
-        // CAPACITY is no longer a standalone component — it is the `size` leaf of the
-        // mutable `Magazine` grouping above (GTW-275), so it is not read here.
-        (
-            &'static BaseSpread,
-            &'static Accuracy,
-            &'static Kickback,
-            &'static FatalBias,
-            &'static WeaponDamage,
-            &'static WeaponPunch,
-            &'static WeaponShred,
-            &'static DamageType,
-            &'static Stable,
-        ),
+        // The mutable firing economy — the up-front TU charge. The per-round ammo
+        // decrement now lives on the weapon entity (the `WeaponQuery`'s `&mut Magazine`).
+        &'static mut Tu,
     ),
-    With<Weapon>,
+>;
+
+/// The **wielded-weapon relationship query** [`fire`](super::fire) resolves a shooter's
+/// weapon entity through — read-only access to each ganger's [`Wields`] collection
+/// (GTW-323 slice 2 / ADR-0004).
+///
+/// A type alias for the `Query<&Wields>` the fire path keys `ganger → Wields → the
+/// weapon entity` with (mirroring the armor side's [`WearsQuery`]). Read-only and
+/// disjoint from both the [`ShooterQuery`] (a different component on the ganger) and the
+/// [`WeaponQuery`] (a different entity — the weapon) — so all coexist with no `B0001`
+/// conflict.
+pub type WieldsQuery<'world, 'state> = Query<'world, 'state, &'static Wields>;
+
+/// The **wielded-weapon query** [`fire`](super::fire) reads the GTW-200 weapon-stat
+/// components + decrements the [`Magazine`] through — the weapon entity's stat columns,
+/// `With<`[`WieldedBy`]`>` (GTW-323 slice 2 / ADR-0004).
+///
+/// A type alias for the weapon entity's read stats plus its **one mutable** [`Magazine`]
+/// (the per-round ammo decrement). `fire()` assembles a transient
+/// [`WeaponStats`](crate::weapon::WeaponStats) borrow-view from the read columns and
+/// spends a round off the [`Magazine`] per fired iteration. Operates on the **weapon
+/// entities** (disjoint from the ganger entities of [`ShooterQuery`] / [`TargetQuery`] /
+/// [`WieldsQuery`]), so it never conflicts with the ganger-state mutation. The magazine
+/// CAPACITY is the `size` leaf of this mutable [`Magazine`] grouping (GTW-275), not a
+/// standalone component.
+pub type WeaponQuery<'world, 'state> = Query<
+    'world,
+    'state,
+    (
+        &'static BaseSpread,
+        &'static Accuracy,
+        &'static Kickback,
+        &'static FatalBias,
+        &'static WeaponDamage,
+        &'static WeaponPunch,
+        &'static WeaponShred,
+        &'static DamageType,
+        &'static Stable,
+        &'static mut Magazine,
+    ),
+    With<WieldedBy>,
 >;
 
 /// The **target query shape** [`fire`](super::fire) folds a hit onto — the struck
@@ -78,11 +113,16 @@ pub type ShooterQuery<'world, 'state> = Query<
 /// A type alias for the disjoint mutable set so [`fire`](super::fire)'s signature
 /// stays readable. It shares **no** mutable component with [`ShooterQuery`] (the
 /// shooter writes [`Tu`] / [`Magazine`]; the target writes [`Hp`] / [`Wounds`] /
-/// [`LifeState`] / [`WornArmor`](crate::armor::WornArmor) /
-/// [`InflictedWounds`]), and [`Luck`] is read-only in both — so the two queries
-/// coexist with no `B0001` conflict (AC1). It carries no [`Weapon`] filter (a target
-/// need not be armed). The shooter's own liveness is read through this query too
-/// (`targets.get(shooter)`), since the shooter is also a ganger.
+/// [`LifeState`] / [`InflictedWounds`]), and [`Luck`] is read-only in both — so the
+/// two queries coexist with no `B0001` conflict (AC1). It carries no [`Weapon`] filter
+/// (a target need not be armed). The shooter's own liveness is read through this query
+/// too (`targets.get(shooter)`), since the shooter is also a ganger.
+///
+/// Since GTW-323 (ADR-0004) the struck location's armor is no longer a `&mut
+/// WornArmor` column here — armor lives on related **piece entities** read through the
+/// disjoint [`WearsQuery`] / [`PieceQuery`]. The transient ganger-side `WornArmor`
+/// blob still rides on the entity (removed in slice 3) but is no longer queried for
+/// combat.
 pub type TargetQuery<'world, 'state> = Query<
     'world,
     'state,
@@ -90,12 +130,32 @@ pub type TargetQuery<'world, 'state> = Query<
         &'static mut Hp,
         &'static mut Wounds,
         &'static mut LifeState,
-        &'static mut crate::armor::WornArmor,
         &'static mut InflictedWounds,
         &'static Toughness,
         &'static Luck,
     ),
 >;
+
+/// The **worn-armor relationship query** [`fire`](super::fire) resolves a struck
+/// ganger's worn pieces through — read-only access to each ganger's [`Wears`]
+/// collection (GTW-323 / ADR-0004).
+///
+/// A type alias for the `Query<&Wears>` the fire path keys `ganger → Wears → the
+/// BodyPart-tagged piece` with. Read-only and disjoint from both the mutable
+/// [`TargetQuery`] (a different component on the ganger) and the [`PieceQuery`] (a
+/// different set of entities) — so all three coexist with no `B0001` conflict.
+pub type WearsQuery<'world, 'state> = Query<'world, 'state, &'static Wears>;
+
+/// The **worn-armor-piece query** [`fire`](super::fire) reads + wears each struck
+/// piece entity through — the mutable [`PieceArmorMut`] view, `With<`[`WornBy`]`>`
+/// (GTW-323 / ADR-0004).
+///
+/// A type alias for `Query<PieceArmorMut, With<WornBy>>`: the `struck_piece` lookup
+/// reads the four piece stats off it and `wear_armor` degrades its mutable
+/// [`ArmorIntegrity`](crate::armor::ArmorIntegrity) in place. Operates on the **piece
+/// entities** (disjoint from the ganger entities of [`TargetQuery`] / [`WearsQuery`]),
+/// so it never conflicts with the ganger-state mutation.
+pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<WornBy>>;
 
 /// The **change-driven world grids** [`fire`](super::fire) marches each round through
 /// — bundled into one named ref-struct so [`fire`](super::fire) stays under clippy's

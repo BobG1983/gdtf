@@ -29,14 +29,15 @@ use bevy::{
     prelude::{Entity, MinimalPlugins},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection,
-    ArmorSpec, ArmorType, BaseSpread, BattleGrids, BattleSeed, Cell, CellLevel, CombatTuning,
-    CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
+    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
+    BaseSpread, BattleGrids, BattleSeed, BodyPart, Cell, CellLevel, CombatTuning, CoverLedger,
+    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    Position, ReloadTu, ShooterQuery, Shooting, SimRng, Stable, Stance, StanceKind, SurfaceGrid,
-    TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponShred, Wounds, fire::FireOrder,
+    PieceQuery, Position, ReloadTu, ShooterQuery, Shooting, SimRng, Stable, Stance, StanceKind,
+    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
+    fire::FireOrder,
 };
 
 /// The faithful skirmish-style geometry the contract names: a shooter near (5,6).
@@ -59,16 +60,23 @@ const fn single_mode() -> FireModeSpec {
     )
 }
 
-/// A thin worn suit (so a landed round is likely to apply a visible effect) built
-/// from the sim's armor constructors.
-const fn thin_suit() -> gdtf_battle_sim::WornArmor {
-    gdtf_battle_sim::WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(0),
-        ArmorProtection::new(0),
-        ArmorIntegrity::new(1),
-        ArmorHardness::new(0),
-        ArmorType::DEFAULT,
-    )))
+/// Equip a ganger's six worn-armor-piece entities (one per [`BodyPart`]) at the thin
+/// uniform stats, related via `WornBy` (GTW-323 / ADR-0004). `fire()` resolves the
+/// struck location through `ganger → Wears → the BodyPart-tagged piece`, so a target
+/// must carry its pieces; the relationship hook populates `Wears` synchronously in a
+/// bare `World` spawn.
+fn equip_thin_armor(app: &mut App, ganger: Entity) {
+    for part in BodyPart::ALL {
+        app.world_mut().spawn((
+            WornBy(ganger),
+            part,
+            ArmorFloor::new(0),
+            ArmorProtection::new(0),
+            ArmorIntegrity::new(1),
+            ArmorHardness::new(0),
+            ArmorType::DEFAULT,
+        ));
+    }
 }
 
 /// Build the real-path app: `MinimalPlugins` + `OccupancyMaintenancePlugin` (whose
@@ -108,9 +116,9 @@ fn spawn_shooter(app: &mut App, facing: Direction) -> Entity {
             Stable::new(true),
         ),
     );
-    app.world_mut()
+    let shooter = app
+        .world_mut()
         .spawn((
-            bundle,
             Position::new(shooter_cell()),
             Facing::new(facing),
             Stance::new(StanceKind::Standing),
@@ -122,13 +130,17 @@ fn spawn_shooter(app: &mut App, facing: Direction) -> Entity {
                 Hp::new(50),
                 Wounds::new(10),
                 LifeState::Alive,
-                thin_suit(),
                 InflictedWounds::default(),
                 Toughness::new(1.0),
                 Luck::new(0.0),
             ),
         ))
-        .id()
+        .id();
+    // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`), not the
+    // ganger; the `WieldedBy` insert hook populates the ganger's `Wields` synchronously
+    // in a bare `World` spawn so the very next `fire()` resolves it.
+    app.world_mut().spawn((WieldedBy(shooter), bundle));
+    shooter
 }
 
 /// Spawn a STANDING enemy ganger at the enemy cell with a real `Position` + `Stance`
@@ -142,7 +154,6 @@ fn spawn_enemy(app: &mut App) -> Entity {
             Hp::new(30),
             Wounds::new(6),
             LifeState::Alive,
-            thin_suit(),
             InflictedWounds::default(),
             Toughness::new(1.0),
             Luck::new(0.0),
@@ -182,13 +193,22 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
         .cloned()
         .unwrap_or_default();
 
-    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(app.world_mut());
+    let mut state: SystemState<(
+        ShooterQuery,
+        TargetQuery,
+        WearsQuery,
+        PieceQuery,
+        WieldsQuery,
+        WeaponQuery,
+    )> = SystemState::new(app.world_mut());
     {
         let world = app.world_mut();
         // `get_mut` returns a `Result` (Bevy 0.19); the params always validate, so
         // `Err` is structurally impossible — returning `false` would fail the
         // calling assertion loudly rather than silently skip the fire.
-        let Ok((mut shooters, mut targets)) = state.get_mut(world) else {
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+            state.get_mut(world)
+        else {
             return false;
         };
         let _volley = gdtf_battle_sim::fire(
@@ -200,6 +220,10 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
             },
             &mut shooters,
             &mut targets,
+            &wears,
+            &mut pieces,
+            &wields,
+            &mut weapons,
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
@@ -236,6 +260,10 @@ fn real_path_ganger_shot_lands_on_at_least_one_seed() {
     let shooter = spawn_shooter(&mut app, facing);
     let enemy = spawn_enemy(&mut app);
     assert_ne!(shooter, enemy, "distinct shooter / enemy entities");
+    // GTW-323: equip each ganger's worn-armor PIECE entities (the combat read+wear
+    // path that `fire()` resolves through `Wears`).
+    equip_thin_armor(&mut app, shooter);
+    equip_thin_armor(&mut app, enemy);
 
     // ONE update: the production occupancy-maintenance chain runs. `sync_moved_gangers`
     // sees both freshly-spawned Positions as `Changed` (first-run semantics) and

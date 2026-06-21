@@ -35,15 +35,16 @@ use bevy::{
     prelude::{Entity, MinimalPlugins, World},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection,
-    ArmorSpec, ArmorType, BaseSpread, BattleGrids, BattleSeed, Cell, CellLevel, CombatTuning,
-    CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
+    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
+    BaseSpread, BattleGrids, BattleSeed, BodyPart, Cell, CellLevel, CombatTuning, CoverLedger,
+    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
     MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    OccupancyMaintenancePlugin, Position, PriorShots, RecoilClimb, RecoilGrowth, ReloadTu,
-    ShooterQuery, Shooting, ShotKind, SimRng, Stable, Stance, StanceKind, SurfaceGrid, TargetQuery,
-    Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
-    Wounds, climb_aim_dir, fire::FireOrder, march_vector, muzzle_position, target_aim_point,
+    OccupancyMaintenancePlugin, PieceQuery, Position, PriorShots, RecoilClimb, RecoilGrowth,
+    ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, Stable, Stance, StanceKind, SurfaceGrid,
+    TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, climb_aim_dir,
+    fire::FireOrder, march_vector, muzzle_position, target_aim_point,
 };
 
 /// The shooter's cell (interior of the grid so every facing has an adjacent cell).
@@ -79,16 +80,22 @@ const fn single_mode() -> FireModeSpec {
     )
 }
 
-/// A thin worn suit built from the sim's armor constructors (irrelevant to the
-/// geometric HIT/MISS this test asserts, but the `TargetQuery` set needs it).
-const fn thin_suit() -> gdtf_battle_sim::WornArmor {
-    gdtf_battle_sim::WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(0),
-        ArmorProtection::new(0),
-        ArmorIntegrity::new(1),
-        ArmorHardness::new(0),
-        ArmorType::DEFAULT,
-    )))
+/// Equip a ganger's six worn-armor-piece entities (GTW-323 / ADR-0004) at the thin
+/// uniform stats, related via `WornBy` so `fire()` resolves the struck location through
+/// `ganger → Wears → the BodyPart-tagged piece` (the relationship hook populates `Wears`
+/// synchronously in a bare `World` spawn).
+fn equip_thin_armor(app: &mut App, ganger: Entity) {
+    for part in BodyPart::ALL {
+        app.world_mut().spawn((
+            WornBy(ganger),
+            part,
+            ArmorFloor::new(0),
+            ArmorProtection::new(0),
+            ArmorIntegrity::new(1),
+            ArmorHardness::new(0),
+            ArmorType::DEFAULT,
+        ));
+    }
 }
 
 // --- The low-level march sweep: the precise mechanism. ---
@@ -229,9 +236,9 @@ fn spawn_standing_shooter(app: &mut App) -> Entity {
             Stable::new(true),
         ),
     );
-    app.world_mut()
+    let shooter = app
+        .world_mut()
         .spawn((
-            bundle,
             Position::new(shooter_cell()),
             Facing::new(Direction::East),
             Stance::new(StanceKind::Standing),
@@ -243,13 +250,17 @@ fn spawn_standing_shooter(app: &mut App) -> Entity {
                 Hp::new(50),
                 Wounds::new(10),
                 LifeState::Alive,
-                thin_suit(),
                 InflictedWounds::default(),
                 Toughness::new(1.0),
                 Luck::new(0.0),
             ),
         ))
-        .id()
+        .id();
+    // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`); the
+    // `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
+    // `World` spawn so the very next `fire()` resolves it.
+    app.world_mut().spawn((WieldedBy(shooter), bundle));
+    shooter
 }
 
 /// Spawn a PRONE enemy at the point-blank cell immediately East (the production
@@ -262,7 +273,6 @@ fn spawn_prone_enemy(app: &mut App) -> Entity {
             Hp::new(30),
             Wounds::new(6),
             LifeState::Alive,
-            thin_suit(),
             InflictedWounds::default(),
             Toughness::new(1.0),
             Luck::new(0.0),
@@ -293,27 +303,40 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .cloned()
         .unwrap_or_default();
 
-    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(app.world_mut());
+    let mut state: SystemState<(
+        ShooterQuery,
+        TargetQuery,
+        WearsQuery,
+        PieceQuery,
+        WieldsQuery,
+        WeaponQuery,
+    )> = SystemState::new(app.world_mut());
     let access = state.get_mut(app.world_mut());
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
-        Ok((mut shooters, mut targets)) => gdtf_battle_sim::fire(
-            shooter,
-            FireOrder {
-                mode:         &mode,
-                target_cell:  Cell::new(east_enemy_cell().x, east_enemy_cell().y),
-                target_level: Level::new(0),
-            },
-            &mut shooters,
-            &mut targets,
-            BattleGrids {
-                occupancy: &occupancy,
-                surface:   &surface,
-                cover:     &cover,
-            },
-            &tuning,
-            &mut rng,
-        ),
+        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) => {
+            gdtf_battle_sim::fire(
+                shooter,
+                FireOrder {
+                    mode:         &mode,
+                    target_cell:  Cell::new(east_enemy_cell().x, east_enemy_cell().y),
+                    target_level: Level::new(0),
+                },
+                &mut shooters,
+                &mut targets,
+                &wears,
+                &mut pieces,
+                &wields,
+                &mut weapons,
+                BattleGrids {
+                    occupancy: &occupancy,
+                    surface:   &surface,
+                    cover:     &cover,
+                },
+                &tuning,
+                &mut rng,
+            )
+        }
         Err(_) => Volley {
             reports: Vec::new(),
             shots:   Vec::new(),
@@ -339,6 +362,9 @@ fn point_blank_fire_strikes_the_adjacent_prone_enemy() {
     let mut app = point_blank_app();
     let shooter = spawn_standing_shooter(&mut app);
     let enemy = spawn_prone_enemy(&mut app);
+    // GTW-323: equip each ganger's worn-armor PIECE entities (the `fire()` armor path).
+    equip_thin_armor(&mut app, shooter);
+    equip_thin_armor(&mut app, enemy);
     // ONE update: `sync_moved_gangers` publishes each occupant's band off the grid.
     app.update();
 

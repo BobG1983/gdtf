@@ -29,13 +29,13 @@ fn non_ganger_outcomes_are_inert() {
         let mut hp = Hp::new(30);
         let mut wounds = Wounds::new(5);
         let mut life = LifeState::Alive;
-        let mut worn = worn_suit(0, 0, 1, 0, ArmorType::DEFAULT);
+        let mut integrity = piece_integrity(1);
         let mut inflicted = InflictedWounds::default();
 
         let hp_before = hp;
         let wounds_before = wounds;
         let life_before = life;
-        let worn_before = worn;
+        let integrity_before = integrity;
 
         let mut rng_used = rng();
         let report = resolve_and_apply(
@@ -46,7 +46,7 @@ fn non_ganger_outcomes_are_inert() {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
                 life:      &mut life,
-                worn:      &mut worn,
+                piece:     Some(struck_piece(0, 0, 0, ArmorType::DEFAULT, &mut integrity)),
                 inflicted: &mut inflicted,
                 toughness: Toughness::new(1.0),
                 luck:      Luck::new(1.0),
@@ -66,7 +66,10 @@ fn non_ganger_outcomes_are_inert() {
         assert_eq!(hp, hp_before, "{kind:?} must not change Hp");
         assert_eq!(wounds, wounds_before, "{kind:?} must not change Wounds");
         assert_eq!(life, life_before, "{kind:?} must not change LifeState");
-        assert_eq!(worn, worn_before, "{kind:?} must not wear WornArmor");
+        assert_eq!(
+            integrity, integrity_before,
+            "{kind:?} must not wear the struck piece's integrity"
+        );
         assert!(
             inflicted.is_empty(),
             "{kind:?} (non-ganger) must record NO InflictedWound (GTW-279)",

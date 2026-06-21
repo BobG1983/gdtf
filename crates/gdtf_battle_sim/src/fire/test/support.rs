@@ -16,11 +16,13 @@ pub(super) use bevy::{
 
 pub(super) use crate::{
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
-        ArmorType, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart, WornBy,
     },
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    fire::{BattleGrids, FireOrder, ShooterQuery, TargetQuery, Volley, fire},
+    fire::{
+        BattleGrids, FireOrder, PieceQuery, ShooterQuery, TargetQuery, Volley, WeaponQuery,
+        WearsQuery, WieldsQuery, fire,
+    },
     ganger::{
         Aiming, Direction, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, StanceKind,
         Toughness, Tu, TuMax, Wounds,
@@ -37,9 +39,23 @@ pub(super) use crate::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
     },
 };
+
+/// The six disjoint `fire()` queries bundled into one [`SystemState`] tuple type — the
+/// shooter / target / armor-relationship (`Wears`/pieces) / weapon-relationship
+/// (`Wields`/weapon) queries `fire()` reads through (GTW-323). A test-local type alias so
+/// each concern file spells the wide tuple ONCE (`SystemState::<FireQueries>::new(..)`),
+/// keeping the per-test `fire()` setup under clippy's line-count gate.
+pub(super) type FireQueries = (
+    ShooterQuery<'static, 'static>,
+    TargetQuery<'static, 'static>,
+    WearsQuery<'static, 'static>,
+    PieceQuery<'static, 'static>,
+    WieldsQuery<'static, 'static>,
+    WeaponQuery<'static, 'static>,
+);
 
 /// A fixed seed for the per-test RNG streams (an arbitrary value, not tuned).
 pub(super) const SEED: u64 = 0xF12E_5EED;
@@ -59,29 +75,112 @@ pub(super) const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
     )
 }
 
-/// A worn suit whose every piece starts at the given stats — arbitrary (NOT
-/// shipped) magnitudes so a hit lands in a known regime.
-pub(super) fn worn_suit(floor: i32, protection: i32, integrity: i32, hardness: i32) -> WornArmor {
-    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(floor),
-        ArmorProtection::new(protection),
-        ArmorIntegrity::new(integrity),
-        ArmorHardness::new(hardness),
-        ArmorType::DEFAULT,
-    )))
-}
-
 /// The full per-ganger battle-state bundle a target carries (the target query's
-/// component set + the worn armor) — arbitrary magnitudes.
-pub(super) fn target_bundle(hp: u16, wounds: u8, worn: WornArmor) -> impl Bundle {
+/// component set) — arbitrary magnitudes. Since GTW-323 (ADR-0004) the combat armor
+/// lives on related piece entities (spawned via [`equip_uniform_armor`]), NOT on the
+/// ganger, so this bundle carries NO armor (GTW-323 slice 3 removed the on-ganger copy).
+pub(super) fn target_bundle(hp: u16, wounds: u8) -> impl Bundle {
     (
         Hp::new(hp),
         Wounds::new(wounds),
         LifeState::Alive,
-        worn,
         InflictedWounds::default(),
         Toughness::new(1.0),
         Luck::new(0.0),
+    )
+}
+
+/// Spawn + relate a ganger's six worn-armor-piece entities (one per [`BodyPart`]),
+/// all carrying the SAME uniform stats — the `World`-test equivalent of
+/// `setup_battle`'s `queue_spawn_related_scenes::<Wears>` (GTW-323 / ADR-0004).
+///
+/// `fire()` resolves the struck location through `ganger → Wears → the
+/// BodyPart-tagged piece`, so a target spawned for a `fire()` test must carry its
+/// piece entities. Spawns each piece with [`WornBy`]`(ganger)` directly — the
+/// relationship's insert hook populates the ganger's [`Wears`] collection
+/// **synchronously** in a bare `World` (no scene-schedule deferral, so the very next
+/// `fire()` call sees the pieces). Uniform stats keep a hit in a known regime; the
+/// magnitudes are arbitrary (NOT shipped tuning).
+pub(super) fn equip_uniform_armor(
+    world: &mut World,
+    ganger: Entity,
+    floor: i32,
+    protection: i32,
+    integrity: i32,
+    hardness: i32,
+) {
+    for part in BodyPart::ALL {
+        world.spawn((
+            WornBy(ganger),
+            part,
+            ArmorFloor::new(floor),
+            ArmorProtection::new(protection),
+            ArmorIntegrity::new(integrity),
+            ArmorHardness::new(hardness),
+            ArmorType::DEFAULT,
+        ));
+    }
+}
+
+/// The loaded round count of a shooter's wielded-weapon magazine — resolved through
+/// `ganger → Wields → the weapon entity → Magazine` (GTW-323 slice 2: the [`Magazine`]
+/// lives on the weapon entity now, not the ganger). `None` if the ganger wields no
+/// weapon or the weapon carries no magazine.
+pub(super) fn weapon_rounds(world: &World, ganger: Entity) -> Option<u16> {
+    let wields = world.get::<crate::weapon::Wields>(ganger)?;
+    let weapon = wields.weapon()?;
+    world.get::<Magazine>(weapon).map(|m| *m.rounds())
+}
+
+/// Spawn + relate a ganger's wielded-weapon entity from a built [`WeaponBundle`] — the
+/// `World`-test equivalent of `setup_battle`'s `queue_spawn_related_scenes::<Wields>`
+/// (GTW-323 slice 2 / ADR-0004).
+///
+/// `fire()` resolves the shooter's weapon through `ganger → Wields → the weapon entity`,
+/// so a shooter spawned for a `fire()` test must carry its weapon entity. Spawns the
+/// weapon with [`WieldedBy`]`(ganger)` directly — the relationship's insert hook
+/// populates the ganger's [`Wields`](crate::weapon::Wields) collection **synchronously**
+/// in a bare `World` (no scene-schedule deferral, so the very next `fire()` call sees the
+/// weapon), mirroring [`equip_uniform_armor`]. The [`WeaponBundle`] (the GTW-200
+/// component set) is inserted on the weapon entity, NOT the ganger.
+pub(super) fn equip_weapon(world: &mut World, ganger: Entity, weapon: WeaponBundle) {
+    world.spawn((WieldedBy(ganger), weapon));
+}
+
+/// Build a test [`WeaponBundle`] from arbitrary (not-shipped) handling/spread numbers —
+/// the shared shape `spawn_shooter` / `spawn_zero_spread_shooter` equip their shooters
+/// with. `base_spread` and `stable` are the two levers the two spawn variants differ on
+/// (a normal vs zero-cone weapon); `ammo` is the test's exact magazine count; `mode` is
+/// the offered fire mode (the volley FIRES the mode that rides in the [`FireOrder`], so
+/// the offered list is for completeness — the `fire()` path reads the order's mode).
+fn test_weapon(
+    ammo: u16,
+    base_spread: f32,
+    kickback: f32,
+    stable: bool,
+    mode: FireModeSpec,
+) -> WeaponBundle {
+    let mag_size = MagazineSize::new(30);
+    let reload_tu = ReloadTu::new(12);
+    WeaponBundle::new(
+        WeaponName::new("test-weapon".to_owned()),
+        BaseSpread::new(base_spread),
+        Accuracy::new(2.0),
+        Kickback::new(kickback),
+        FatalBias::new(0.0),
+        DamageProfile::new(
+            WeaponDamage::new(40),
+            WeaponPunch::new(20),
+            WeaponShred::new(10),
+            DamageType::Kinetic,
+        ),
+        // The bundle carries the test's exact ammo count directly (GTW-275: the
+        // WeaponBundle holds the Magazine grouping, spawned on the weapon entity).
+        HandlingProfile::new(
+            Magazine::new(ammo, mag_size, reload_tu),
+            FireMode::new(vec![mode]),
+            Stable::new(stable),
+        ),
     )
 }
 
@@ -100,37 +199,16 @@ pub(super) struct ShooterSpec {
     pub(super) aiming: bool,
 }
 
-/// Spawn an armed shooter facing East at `(spec.x, spec.y, 0)` — carries the full
-/// shooter-query component set AND the target-query component set (the shooter is
-/// also a ganger, so its own liveness is read from the target query). Arbitrary
+/// Spawn an armed shooter facing East at `(spec.x, spec.y, 0)` — the ganger carries the
+/// full shooter-query component set AND the target-query component set (the shooter is
+/// also a ganger, so its own liveness is read from the target query), and its weapon
+/// rides on a related **weapon entity** (`Wields`, GTW-323 slice 2). Arbitrary
 /// magnitudes throughout.
 pub(super) fn spawn_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
-    let mag_size = MagazineSize::new(30);
-    let reload_tu = ReloadTu::new(12);
-    let bundle = WeaponBundle::new(
-        WeaponName::new("test-weapon".to_owned()),
-        BaseSpread::new(0.05),
-        Accuracy::new(2.0),
-        Kickback::new(0.2),
-        FatalBias::new(0.0),
-        DamageProfile::new(
-            WeaponDamage::new(40),
-            WeaponPunch::new(20),
-            WeaponShred::new(10),
-            DamageType::Kinetic,
-        ),
-        // The bundle carries the test's exact ammo count directly (GTW-275: the
-        // WeaponBundle now holds the Magazine grouping, so a separate Magazine in the
-        // spawn tuple would be a duplicate-component panic).
-        HandlingProfile::new(
-            Magazine::new(spec.ammo, mag_size, reload_tu),
-            FireMode::new(vec![spec.mode]),
-            Stable::new(true),
-        ),
-    );
-    world
+    let ammo = spec.ammo;
+    let mode = spec.mode;
+    let shooter = world
         .spawn((
-            bundle,
             Position::new(CellLevel::new(Cell::new(spec.x, spec.y), Level::new(0))),
             Facing::new(Direction::East),
             Stance::new(StanceKind::Standing),
@@ -140,19 +218,26 @@ pub(super) fn spawn_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
             TuMax::new(spec.tu_max),
             // The shooter is also a ganger — it carries the target-query set so
             // its own liveness reads from that query (and it never wounds itself).
-            // The target-query set is one nested-tuple bundle so the spawn stays
-            // under Bevy's 15-element tuple limit (InflictedWounds is the GTW-279 add).
+            // The target-query set is one nested-tuple bundle (InflictedWounds is the
+            // GTW-279 add); the shooter's armor lives on related piece entities
+            // (GTW-323 slice 1), NOT here.
             (
                 Hp::new(50),
                 Wounds::new(10),
                 LifeState::Alive,
-                worn_suit(0, 0, 1, 0),
                 InflictedWounds::default(),
                 Toughness::new(1.0),
                 Luck::new(0.0),
             ),
         ))
-        .id()
+        .id();
+    // The shooter's weapon rides on a related weapon entity (GTW-323 slice 2); a normal
+    // (non-zero) base spread + a braced weapon, matching the prior on-ganger bundle.
+    equip_weapon(world, shooter, test_weapon(ammo, 0.05, 0.2, true, mode));
+    // The shooter is a ganger too — equip its worn pieces (GTW-323 slice 1) so a round
+    // that strikes it (it never wounds itself, but the query must resolve) finds them.
+    equip_uniform_armor(world, shooter, 0, 0, 1, 0);
+    shooter
 }
 
 /// Spawn a shooter whose weapon has a **zero `BaseSpread`** — so every round's
@@ -163,33 +248,13 @@ pub(super) fn spawn_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
 /// per-round `PriorShots::new(i)` wiring on the real `fire()` path: with the cone
 /// pinned to zero, a divergent per-round outcome can come ONLY from the climb.
 /// Carries the full shooter + target component sets (the shooter is also a ganger)
-/// at `(spec.x, spec.y, 0)` facing East. Arbitrary (not shipped) magnitudes.
+/// at `(spec.x, spec.y, 0)` facing East, its weapon on a related weapon entity
+/// (`Wields`). Arbitrary (not shipped) magnitudes.
 pub(super) fn spawn_zero_spread_shooter(world: &mut World, spec: ShooterSpec) -> Entity {
-    let mag_size = MagazineSize::new(30);
-    let reload_tu = ReloadTu::new(12);
-    let bundle = WeaponBundle::new(
-        WeaponName::new("test-weapon".to_owned()),
-        BaseSpread::new(0.0), // zero cone → trajectory is the climb axis exactly
-        Accuracy::new(2.0),
-        Kickback::new(0.4), // positive kickback so recoil_growth is engaged
-        FatalBias::new(0.0),
-        DamageProfile::new(
-            WeaponDamage::new(40),
-            WeaponPunch::new(20),
-            WeaponShred::new(10),
-            DamageType::Kinetic,
-        ),
-        HandlingProfile::new(
-            // The bundle carries the test's exact ammo count directly (GTW-275: no
-            // separate Magazine in the spawn tuple — that would be a duplicate).
-            Magazine::new(spec.ammo, mag_size, reload_tu),
-            FireMode::new(vec![spec.mode]),
-            Stable::new(false), // un-braced so the climb is not damped to nothing
-        ),
-    );
-    world
+    let ammo = spec.ammo;
+    let mode = spec.mode;
+    let shooter = world
         .spawn((
-            bundle,
             Position::new(CellLevel::new(Cell::new(spec.x, spec.y), Level::new(0))),
             Facing::new(Direction::East),
             Stance::new(StanceKind::Standing),
@@ -198,16 +263,23 @@ pub(super) fn spawn_zero_spread_shooter(world: &mut World, spec: ShooterSpec) ->
             Tu::new(spec.tu),
             TuMax::new(spec.tu_max),
             // The target-query set as one nested-tuple bundle (the GTW-279
-            // InflictedWounds add keeps the spawn under the 15-element tuple limit).
+            // InflictedWounds add); the shooter's armor lives on related piece
+            // entities (GTW-323 slice 1), NOT here.
             (
                 Hp::new(50),
                 Wounds::new(10),
                 LifeState::Alive,
-                worn_suit(0, 0, 1, 0),
                 InflictedWounds::default(),
                 Toughness::new(1.0),
                 Luck::new(0.0),
             ),
         ))
-        .id()
+        .id();
+    // The zero-cone weapon on a related weapon entity (GTW-323 slice 2): zero base
+    // spread (trajectory is the climb axis exactly), positive kickback (recoil_growth
+    // engaged), un-braced (so the climb is not damped to nothing).
+    equip_weapon(world, shooter, test_weapon(ammo, 0.0, 0.4, false, mode));
+    // The shooter is a ganger too — equip its worn pieces (GTW-323 slice 1).
+    equip_uniform_armor(world, shooter, 0, 0, 1, 0);
+    shooter
 }

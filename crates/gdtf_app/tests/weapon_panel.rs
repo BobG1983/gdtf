@@ -160,9 +160,12 @@ fn weapon_kit(name: &str, magazine: Magazine) -> WeaponBundle {
     )
 }
 
-/// Spawns an armed ganger carrying `weapon`, SELECTS it, and returns its entity. (The
-/// cursor-click selection is covered in `gdtf_battle_input`; the panel only reads
-/// `*SelectedShooter` + the on-entity components.)
+/// Spawns an armed ganger wielding `weapon` on a related WEAPON entity (`Wields`,
+/// GTW-323 slice 3 — the panel reads the weapon's `WeaponName`/`Magazine` off the weapon
+/// entity through `ganger → Wields → weapon`, not the ganger), SELECTS the ganger, and
+/// returns its entity. The `WieldedBy` insert hook populates the ganger's `Wields`
+/// synchronously in a bare `World` spawn. (The cursor-click selection is covered in
+/// `gdtf_battle_input`; the panel only reads `*SelectedShooter` + the wielded weapon.)
 fn spawn_armed_and_select(app: &mut App, weapon: WeaponBundle) -> Entity {
     let ganger = app
         .world_mut()
@@ -178,9 +181,10 @@ fn spawn_armed_and_select(app: &mut App, weapon: WeaponBundle) -> Entity {
             Tu::new(100),
             TuMax::new(100),
             LifeState::Alive,
-            weapon,
         ))
         .id();
+    app.world_mut()
+        .spawn((gdtf_battle_sim::WieldedBy(ganger), weapon));
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger

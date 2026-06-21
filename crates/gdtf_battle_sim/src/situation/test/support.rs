@@ -21,7 +21,7 @@ pub(super) use crate::test_support::{
     test_armor_registry, test_weapon_registry as test_registry, wall_at,
 };
 pub(super) use crate::{
-    armor::{ArmorName, ArmorRegistry, ArmorSpec, BodyPart, WornArmor},
+    armor::{ArmorName, ArmorRegistry, ArmorSpec, BodyPart, Wears},
     cover::{CoverLedger, Destroyed},
     ganger::{
         Aiming, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Position, Shooting,
@@ -32,7 +32,7 @@ pub(super) use crate::{
     occupancy::{OccupancyGrid, TerrainKind},
     surface::{SlabState, SurfaceGrid},
     vertical::{InvalidVerticalLink, LinkKind, VerticalLink, VerticalLinkGraph},
-    weapon::{FireMode, Weapon, WeaponName, WeaponRegistry, WeaponSpec},
+    weapon::{FireMode, Weapon, WeaponName, WeaponRegistry, WeaponSpec, WieldedBy, Wields},
 };
 
 /// The two shipped weapon `.ron` files, read at compile time via the same

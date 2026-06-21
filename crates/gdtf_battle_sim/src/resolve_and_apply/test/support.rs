@@ -9,8 +9,7 @@ pub(super) use bevy::prelude::{Entity, World};
 pub(super) use crate::{
     apply_hit::{GangerHitTarget, apply_hit},
     armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
-        ArmorType, BodyPart, WornArmor,
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
     },
     armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn},
     central_axis::climb_aim_dir,
@@ -21,7 +20,7 @@ pub(super) use crate::{
     magazine::{Magazine, ReloadTu},
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel, Level, SimPos},
-    resolve_and_apply::{AppliedDamage, HitReport, TargetGanger, resolve_and_apply},
+    resolve_and_apply::{AppliedDamage, HitReport, StruckPiece, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::{HitResult, resolve_hit},
     rng::{BattleSeed, SimRng},
@@ -88,22 +87,35 @@ pub(super) fn a_weapon(
     )
 }
 
-/// A uniform worn suit whose every piece starts at the given stats — arbitrary
-/// (NOT shipped-tuning) magnitudes, so a hit lands in a known regime.
-pub(super) fn worn_suit(
+/// The starting [`ArmorIntegrity`] for a struck-piece fixture — an arbitrary (NOT
+/// shipped-tuning) magnitude. Since GTW-323 (ADR-0004) the fold reads + wears the
+/// struck piece's integrity component by `&mut`, so the tests hold this local and lend
+/// it to a [`StruckPiece`] via [`struck_piece`].
+pub(super) fn piece_integrity(integrity: i32) -> ArmorIntegrity {
+    ArmorIntegrity::new(integrity)
+}
+
+/// Build a [`StruckPiece`] borrow-view from arbitrary (NOT shipped-tuning) stats and
+/// the caller's mutable [`ArmorIntegrity`] local — the piece-entity replacement for
+/// the old uniform `worn_suit`, so a hit lands in a known regime.
+///
+/// The caller owns the integrity (a `let mut` local) and lends it here so the view's
+/// `&mut` wear borrow outlives the `resolve_and_apply` call; the four read stats are
+/// passed by value.
+pub(super) fn struck_piece(
     floor: i32,
     protection: i32,
-    integrity: i32,
     hardness: i32,
     armor_type: ArmorType,
-) -> WornArmor {
-    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(floor),
-        ArmorProtection::new(protection),
-        ArmorIntegrity::new(integrity),
-        ArmorHardness::new(hardness),
+    integrity: &mut ArmorIntegrity,
+) -> StruckPiece<'_> {
+    StruckPiece {
+        floor: ArmorFloor::new(floor),
+        protection: ArmorProtection::new(protection),
+        hardness: ArmorHardness::new(hardness),
         armor_type,
-    )))
+        integrity,
+    }
 }
 
 /// A unit-direction [`ShotDir`] fixture — minted through the REAL pipeline

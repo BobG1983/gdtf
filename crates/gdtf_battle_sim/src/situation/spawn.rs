@@ -18,8 +18,9 @@ use crate::{
 };
 
 /// One authored ganger placement — its `(cell, level)` plus every E1.2 component
-/// VALUE, the E3.0 attribute stats, and the read-only roster armor to seed its
-/// battle-local [`WornArmor`](crate::armor::WornArmor).
+/// VALUE, the E3.0 attribute stats, and the armor KEY whose resolved
+/// [`ArmorSpec`](crate::armor::ArmorSpec) spawns the ganger's battle-local armor-piece
+/// entities (related via [`Wears`](crate::armor::Wears)).
 ///
 /// A named struct (not a bare tuple) so the authored ganger shape is
 /// self-describing. The component fields are the E1.2 newtypes carried **by value**
@@ -28,9 +29,10 @@ use crate::{
 /// [`Luck`], the substrate the severity roll reads); `armor` is the armor KEY
 /// ([`ArmorName`]) resolved at setup against the
 /// [`ArmorRegistry`](crate::armor::ArmorRegistry) into the
-/// [`ArmorSpec`](crate::armor::ArmorSpec) that seeds the spawned entity's battle-local
-/// [`WornArmor`](crate::armor::WornArmor) (GTW-269 — mirroring the
-/// [`weapon`](GangerSpawn::weapon) key). The grid key [`at`](GangerSpawn::at) becomes the
+/// [`ArmorSpec`](crate::armor::ArmorSpec) that the spawned ganger's battle-local
+/// armor-piece entities ([`Wears`](crate::armor::Wears)) are seeded from (GTW-269 /
+/// GTW-323 — mirroring the [`weapon`](GangerSpawn::weapon) key, whose resolved bundle
+/// spawns the related weapon entity). The grid key [`at`](GangerSpawn::at) becomes the
 /// spawned ganger's [`Position`](crate::ganger::Position).
 ///
 /// Not `Eq` / `Hash`: the E3.0 attribute stats ([`Shooting`] / [`Toughness`] /
@@ -118,10 +120,10 @@ pub struct GangerSpawn {
     /// (e.g. `"flak_vest"`), resolved against the
     /// [`ArmorRegistry`](crate::armor::ArmorRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) into the
-    /// [`ArmorSpec`](crate::armor::ArmorSpec) that seeds the spawned entity's
-    /// battle-local [`WornArmor`](crate::armor::WornArmor) by value — never mutated on
-    /// the roster (GTW-269, mirroring the [`weapon`](GangerSpawn::weapon) key). A key
-    /// absent from the registry is a handled
+    /// [`ArmorSpec`](crate::armor::ArmorSpec) that the spawned ganger's battle-local
+    /// armor-piece entities ([`Wears`](crate::armor::Wears)) are seeded from by value —
+    /// never mutated on the roster (GTW-269 / GTW-323, mirroring the
+    /// [`weapon`](GangerSpawn::weapon) key). A key absent from the registry is a handled
     /// [`BattleSetupError::ArmorNotFound`](crate::situation::BattleSetupError::ArmorNotFound)
     /// error (no panic).
     pub armor:      ArmorName,
@@ -129,8 +131,9 @@ pub struct GangerSpawn {
     /// (e.g. `"stub_pistol"`), resolved against the
     /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) into the
-    /// [`WeaponBundle`](crate::weapon::WeaponBundle) inserted onto the
-    /// spawned entity (GTW-257). REQUIRED — every authored ganger is armed; an
+    /// [`WeaponBundle`](crate::weapon::WeaponBundle) spawned onto the related weapon
+    /// entity ([`Wields`](crate::weapon::Wields), GTW-257 / GTW-323). REQUIRED — every
+    /// authored ganger is armed; an
     /// unarmed `Option<WeaponName>` case is a deliberate FUTURE option (the
     /// [[weapons-armor-data-driven]] model arms every ganger for now). A key absent
     /// from the registry is a handled

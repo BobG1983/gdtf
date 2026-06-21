@@ -33,7 +33,7 @@ use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
     LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, ReloadTu, Tu, TuMax,
+    OccupancyGrid, PlayerFaction, Position, ReloadTu, Tu, TuMax, WieldedBy,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
@@ -94,19 +94,25 @@ const fn spec(tu_percent: f32, shots: u16) -> FireModeSpec {
 /// places it in the occupancy grid, and returns its entity.
 fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
     let single = spec(0.2, 1);
+    // The ganger carries its OWN vitals only — the weapon's FireMode + Magazine ride on a
+    // related WEAPON entity (`Wields`, GTW-323 slice 3); the `WieldedBy` insert hook
+    // populates the ganger's `Wields` synchronously in a bare `World` spawn.
     let ganger = app
         .world_mut()
         .spawn((
             PLAYER_FACTION,
             Position::new(cell),
-            FireMode::new(vec![single]),
             Aiming::new(false),
             LifeState::Alive,
             Tu::new(255),
             TuMax::new(100),
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
         ))
         .id();
+    app.world_mut().spawn((
+        WieldedBy(ganger),
+        FireMode::new(vec![single]),
+        Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+    ));
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_occupant(cell, Some(ganger));

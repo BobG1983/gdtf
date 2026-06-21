@@ -14,13 +14,13 @@ fn corpse_skip_is_inert_and_draws_nothing() {
     let mut hp = Hp::new(15);
     let mut wounds = Wounds::new(3);
     let mut life = LifeState::Dead; // already a corpse
-    let mut worn = worn_suit(0, 0, 1, 0, ArmorType::DEFAULT); // a live hit WOULD break it
+    let mut integrity = piece_integrity(1); // a live hit WOULD break it
     let mut inflicted = InflictedWounds::default();
 
     let hp_before = hp;
     let wounds_before = wounds;
     let life_before = life;
-    let worn_before = worn;
+    let integrity_before = integrity;
 
     let mut rng_used = rng();
     let report = resolve_and_apply(
@@ -31,7 +31,7 @@ fn corpse_skip_is_inert_and_draws_nothing() {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            piece:     Some(struck_piece(0, 0, 0, ArmorType::DEFAULT, &mut integrity)),
             inflicted: &mut inflicted,
             toughness: Toughness::new(2.0),
             luck:      Luck::new(1.0),
@@ -54,7 +54,10 @@ fn corpse_skip_is_inert_and_draws_nothing() {
     assert_eq!(hp, hp_before, "a corpse's Hp must not change");
     assert_eq!(wounds, wounds_before, "a corpse's Wounds must not change");
     assert_eq!(life, life_before, "a corpse's LifeState must stay Dead");
-    assert_eq!(worn, worn_before, "a corpse's WornArmor must not wear");
+    assert_eq!(
+        integrity, integrity_before,
+        "a corpse's struck-piece integrity must not wear"
+    );
     assert!(
         inflicted.is_empty(),
         "a corpse-skip must record NO InflictedWound (GTW-279)",

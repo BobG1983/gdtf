@@ -14,7 +14,10 @@ use bevy::{
 use crate::{
     acts::request::FireRequested,
     cover::CoverLedger,
-    fire::{BattleGrids, FireOrder, ShooterQuery, TargetQuery, fire},
+    fire::{
+        BattleGrids, FireOrder, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery,
+        WieldsQuery, fire,
+    },
     firing_arc::target_in_arc,
     ganger::{Aiming, Direction, Facing, Position, Tu, TuMax},
     magazine::mode_tu_cost,
@@ -25,7 +28,7 @@ use crate::{
     surface::SurfaceGrid,
     tu::spend_tu,
     tuning::CombatTuning,
-    weapon::{DamageType, ModeKind},
+    weapon::{DamageType, ModeKind, Wields},
 };
 
 /// A **fire was declared** — the combat-log signal that `shooter` fired `mode` at
@@ -248,10 +251,31 @@ fn decide_fire_arc(
 /// round), so the report rides `Some` for every fired round. This changes NO fire-result
 /// logic — it only EXPOSES the trajectory + report the volley already computed (the
 /// [`MessageWriter`], `bevy-traps.md` #4 / #7).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the GTW-323 armor + weapon relationships add the disjoint wears/pieces + \
+              wields/weapons system params to the dispatch_fire signature; each is a \
+              distinct, independently-borrowed Bevy SystemParam that cannot be bundled \
+              without a custom SystemParam struct that would only obscure the access set"
+)]
 pub fn dispatch_fire(
     mut requests: MessageReader<FireRequested>,
     mut shooter_set: ParamSet<(ShooterQuery, TurnQuery)>,
     mut targets: TargetQuery,
+    // GTW-323 / ADR-0004: the disjoint worn-armor relationship queries `fire()` resolves
+    // a struck piece through (`ganger → Wears → the BodyPart-tagged piece`). `wears` reads
+    // `&Wears` on gangers (a different component than `targets`' set); `pieces` reads+wears
+    // the piece entities (a different entity set) — so neither conflicts with the
+    // ShooterQuery/TurnQuery/TargetQuery access (no ParamSet needed).
+    wears: WearsQuery,
+    mut pieces: PieceQuery,
+    // GTW-323 slice 2 / ADR-0004: the disjoint wielded-weapon relationship queries `fire()`
+    // resolves the shooter's weapon through (`ganger → Wields → the weapon entity`).
+    // `wields` reads `&Wields` on gangers (a different component than the shooter set);
+    // `weapons` reads the weapon stats + decrements the `Magazine` on the weapon entities
+    // (a different entity set) — so neither conflicts with the shooter/turn/target access.
+    wields: WieldsQuery,
+    mut weapons: WeaponQuery,
     grids: BattleGridsParam,
     tuning: Res<CombatTuning>,
     mut rng: ResMut<SimRng>,
@@ -260,16 +284,10 @@ pub fn dispatch_fire(
     for request in requests.read() {
         // (1) READ the arc-relevant shooter state through the ShooterQuery half, copying
         //     every Copy value out so the query borrow ends at the block boundary (freeing
-        //     the ParamSet to lend p1 below). A shooter not in the query (unarmed /
-        //     despawned) fires nothing (fail-closed). The weapon's DamageType (GTW-306) is
-        //     read here too — it is the 8th leaf of the third (weapon-stat) sub-tuple — so
-        //     the per-round ShotFired can carry it (pure exposure; no fire-result change).
+        //     the ParamSet to lend p1 below). A shooter not in the query (despawned) fires
+        //     nothing (fail-closed).
         let shooters = shooter_set.p0();
-        let Ok((
-            (position, facing, _, aiming, _, _, tu_max),
-            (tu, _),
-            (_, _, _, _, _, _, _, damage, _),
-        )) = shooters.get(request.shooter)
+        let Ok(((position, facing, _, aiming, _, _, tu_max), tu)) = shooters.get(request.shooter)
         else {
             continue;
         };
@@ -278,7 +296,21 @@ pub fn dispatch_fire(
         let tu: Tu = *tu;
         let tu_max: TuMax = *tu_max;
         let aiming: Aiming = *aiming;
-        let damage: DamageType = *damage;
+
+        // GTW-323 slice 2: the weapon's DamageType (GTW-306) now lives on the related
+        // weapon entity (`ganger → Wields → the weapon entity`), read here so the
+        // per-round ShotFired can carry it (pure exposure; no fire-result change). A
+        // shooter wielding no weapon — or whose weapon entity is not in the weapon query
+        // — fires nothing (fail-closed, the same outcome `fire()` reaches internally).
+        let Some(weapon_entity) = wields.get(request.shooter).ok().and_then(Wields::weapon) else {
+            continue;
+        };
+        // The WeaponQuery row is (base_spread, accuracy, kickback, fatal_bias, damage,
+        // punch, shred, DAMAGE_TYPE, stable, magazine) — the 8th leaf is the DamageType.
+        let Ok((_, _, _, _, _, _, _, damage_type, ..)) = weapons.get(weapon_entity) else {
+            continue;
+        };
+        let damage: DamageType = *damage_type;
 
         // (2) The fire-TU cost — the EXISTING fire-act charge (mode_tu_cost), the same
         //     source fire()'s own debit reads; both gates agree on the cost.
@@ -342,6 +374,10 @@ pub fn dispatch_fire(
             order,
             &mut shooters,
             &mut targets,
+            &wears,
+            &mut pieces,
+            &wields,
+            &mut weapons,
             grids.grids(),
             &tuning,
             &mut rng,

@@ -29,9 +29,11 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
     let mut r = rng();
     let mut fresh = rng();
 
-    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+    let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+            state.get_mut(&mut world)
+        else {
             return;
         };
         fire(
@@ -43,6 +45,10 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
             },
             &mut shooters,
             &mut targets,
+            &wears,
+            &mut pieces,
+            &wields,
+            &mut weapons,
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
@@ -101,9 +107,11 @@ fn dead_shooter_fires_nothing() {
     let cover = CoverLedger::new();
     let mut r = rng();
 
-    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+    let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+            state.get_mut(&mut world)
+        else {
             return;
         };
         fire(
@@ -115,6 +123,10 @@ fn dead_shooter_fires_nothing() {
             },
             &mut shooters,
             &mut targets,
+            &wears,
+            &mut pieces,
+            &wields,
+            &mut weapons,
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
@@ -131,6 +143,6 @@ fn dead_shooter_fires_nothing() {
     );
     let tu = world.get::<Tu>(shooter).copied();
     assert_eq!(tu, Some(Tu::new(200)), "no TU charged for a downed shooter");
-    let mag = world.get::<Magazine>(shooter).map(|m| *m.rounds());
+    let mag = weapon_rounds(&world, shooter);
     assert_eq!(mag, Some(10), "ammo unchanged for a downed shooter");
 }

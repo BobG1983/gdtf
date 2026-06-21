@@ -1,5 +1,76 @@
 use super::support::*;
 
+/// The hand-composed `matchup` → `resolve_hit` → `roll_severity` → `apply_hit` steps
+/// the AC1 equivalence test runs as the reference side — returns the composed
+/// [`AppliedDamage`] block PLUS the final mutated ganger state, so the test body stays
+/// the comparison only (one verb chain, no shadowing of the units under test).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the reference side mirrors `resolve_and_apply`'s own inputs verbatim so the \
+              equivalence is exact; bundling them would diverge the two sides' shapes"
+)]
+fn compose_by_hand(
+    weapon: &WeaponBundle,
+    part: BodyPart,
+    piece: ArmorPiece,
+    shooter_luck: Luck,
+    toughness: Toughness,
+    defender_luck: Luck,
+    tuning: &CombatTuning,
+    entity: Entity,
+) -> (
+    AppliedDamage,
+    (Hp, Wounds, LifeState, ArmorIntegrity, InflictedWounds),
+) {
+    let mut hp = Hp::new(40);
+    let mut wounds = Wounds::new(6);
+    let mut life = LifeState::Alive;
+    let mut integrity = piece.integrity;
+    let mut inflicted = InflictedWounds::default();
+    let mut rng_b = rng();
+
+    let m = matchup(weapon.damage_type, piece.armor_type);
+    let hit = resolve_hit(weapon.damage, weapon.punch, weapon.shred, &piece, m, tuning);
+    let inputs = SeverityInputs::new(
+        hit.penetrating,
+        toughness,
+        part_severity_mod(part),
+        weapon.fatal_bias,
+        shooter_luck,
+        defender_luck,
+    );
+    let severity = roll_severity(&inputs, &tuning.severity_scaling, &mut rng_b);
+    let wear_outcome = apply_hit(
+        GangerHitTarget {
+            hp:        &mut hp,
+            wounds:    &mut wounds,
+            life:      &mut life,
+            integrity: Some(&mut integrity),
+            inflicted: &mut inflicted,
+        },
+        &hit,
+        severity,
+        part,
+        entity,
+        tuning,
+    );
+    // Map the ArmorWearOutcome onto the two report fields the SAME way the fold does.
+    let (broken, worn) = match wear_outcome {
+        ArmorWearOutcome::Broke(broken) => (Some(broken), None),
+        ArmorWearOutcome::Worn(worn) => (None, Some(worn)),
+        ArmorWearOutcome::Unaffected => (None, None),
+    };
+    let applied = AppliedDamage {
+        matchup: m,
+        hit,
+        severity,
+        life_after: life,
+        broken,
+        worn,
+    };
+    (applied, (hp, wounds, life, integrity, inflicted))
+}
+
 /// AC1 (THE key test) — the fold equals the composition: `resolve_and_apply` on
 /// a `Ganger` outcome produces a report whose damage / severity AND the
 /// resulting ganger state are IDENTICAL to running `matchup` → `resolve_hit` →
@@ -15,15 +86,20 @@ fn fold_equals_the_composed_steps() {
     let shooter_luck = Luck::new(2.0);
     let outcome = ganger_outcome(entity, part);
 
+    // The struck piece's stats (the fixture both sides resolve against). Integrity is
+    // held per side so each path wears its OWN piece-entity component (GTW-323).
+    let (floor, prot, integ, hard, at) = (1, 8, 30, 2, ArmorType::Void);
+    let toughness = Toughness::new(3.0);
+    let defender_luck = Luck::new(4.0);
+
     // --- The folded act ---
     let mut hp_a = Hp::new(40);
     let mut wounds_a = Wounds::new(6);
     let mut life_a = LifeState::Alive;
-    let mut worn_a = worn_suit(1, 8, 30, 2, ArmorType::Void);
+    let mut integrity_a = piece_integrity(integ);
     let mut inflicted_a = InflictedWounds::default();
-    let toughness = Toughness::new(3.0);
-    let defender_luck = Luck::new(4.0);
     let mut rng_a = rng();
+    let piece_a = Some(struck_piece(floor, prot, hard, at, &mut integrity_a));
     let report = resolve_and_apply(
         &outcome,
         weapon.stats(),
@@ -32,7 +108,7 @@ fn fold_equals_the_composed_steps() {
             hp: &mut hp_a,
             wounds: &mut wounds_a,
             life: &mut life_a,
-            worn: &mut worn_a,
+            piece: piece_a,
             inflicted: &mut inflicted_a,
             toughness,
             luck: defender_luck,
@@ -43,65 +119,30 @@ fn fold_equals_the_composed_steps() {
     );
 
     // --- The composed steps, BY HAND, on a clone with the same seed ---
-    let mut hp_b = Hp::new(40);
-    let mut wounds_b = Wounds::new(6);
-    let mut life_b = LifeState::Alive;
-    let mut worn_b = worn_suit(1, 8, 30, 2, ArmorType::Void);
-    let mut inflicted_b = InflictedWounds::default();
-    let mut rng_b = rng();
-
-    let piece = worn_b.at(part);
-    let m = matchup(weapon.damage_type, piece.armor_type);
-    let hit = resolve_hit(
-        weapon.damage,
-        weapon.punch,
-        weapon.shred,
-        &piece,
-        m,
-        &tuning,
+    // The read-only ArmorPiece value the damage formula consumes (the same value
+    // `struck_piece` assembles from the piece's stat components).
+    let piece = ArmorPiece::new(
+        ArmorFloor::new(floor),
+        ArmorProtection::new(prot),
+        ArmorIntegrity::new(integ),
+        ArmorHardness::new(hard),
+        at,
     );
-    let inputs = SeverityInputs::new(
-        hit.penetrating,
-        toughness,
-        part_severity_mod(part),
-        weapon.fatal_bias,
-        shooter_luck,
-        defender_luck,
-    );
-    let severity = roll_severity(&inputs, &tuning.severity_scaling, &mut rng_b);
-    let wear_outcome = apply_hit(
-        GangerHitTarget {
-            hp:        &mut hp_b,
-            wounds:    &mut wounds_b,
-            life:      &mut life_b,
-            worn:      &mut worn_b,
-            inflicted: &mut inflicted_b,
-        },
-        &hit,
-        severity,
+    let (applied_b, (hp_b, wounds_b, life_b, integrity_b, inflicted_b)) = compose_by_hand(
+        &weapon,
         part,
-        entity,
+        piece,
+        shooter_luck,
+        toughness,
+        defender_luck,
         &tuning,
+        entity,
     );
-    // Map the ArmorWearOutcome onto the two report fields the SAME way the fold does
-    // (GTW-313), so the composition stays a real equivalence on BOTH armor signals.
-    let (broken, worn) = match wear_outcome {
-        ArmorWearOutcome::Broke(broken) => (Some(broken), None),
-        ArmorWearOutcome::Worn(worn) => (None, Some(worn)),
-        ArmorWearOutcome::Unaffected => (None, None),
-    };
 
     // The report's damage block matches the hand-composed steps.
     assert_eq!(
         report.applied,
-        Some(AppliedDamage {
-            matchup: m,
-            hit,
-            severity,
-            life_after: life_b,
-            broken,
-            worn,
-        }),
+        Some(applied_b),
         "the folded report must equal the composed matchup/hit/severity/state",
     );
     assert_eq!(
@@ -112,12 +153,12 @@ fn fold_equals_the_composed_steps() {
 
     // The resulting ganger state matches the hand-composed steps, every mutated
     // surface at once — the fold mutated the target identically to the composition
-    // (incl. the GTW-279 InflictedWounds record).
+    // (incl. the struck piece's worn integrity and the GTW-279 InflictedWounds record).
     assert_eq!(
-        (hp_a, wounds_a, life_a, worn_a, &inflicted_a),
-        (hp_b, wounds_b, life_b, worn_b, &inflicted_b),
+        (hp_a, wounds_a, life_a, integrity_a, &inflicted_a),
+        (hp_b, wounds_b, life_b, integrity_b, &inflicted_b),
         "every mutated surface after the fold must equal the hand-composed steps \
-         (Hp / Wounds / LifeState / WornArmor / InflictedWounds)",
+         (Hp / Wounds / LifeState / struck-piece integrity / InflictedWounds)",
     );
 }
 
@@ -137,7 +178,7 @@ fn armored_report_carries_the_real_matchup() {
         let mut hp = Hp::new(50);
         let mut wounds = Wounds::new(9);
         let mut life = LifeState::Alive;
-        let mut worn = worn_suit(1, 10, 40, 1, armor_type);
+        let mut integrity = piece_integrity(40);
         let mut inflicted = InflictedWounds::default();
         resolve_and_apply(
             &ganger_outcome(entity, part),
@@ -147,7 +188,7 @@ fn armored_report_carries_the_real_matchup() {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
                 life:      &mut life,
-                worn:      &mut worn,
+                piece:     Some(struck_piece(1, 10, 1, armor_type, &mut integrity)),
                 inflicted: &mut inflicted,
                 toughness: Toughness::new(0.0),
                 luck:      Luck::new(0.0),

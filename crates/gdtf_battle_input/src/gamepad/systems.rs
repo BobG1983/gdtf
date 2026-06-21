@@ -3,11 +3,11 @@
 
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::GamepadCursorMoved;
-use gdtf_battle_sim::{Faction, Position};
+use gdtf_battle_sim::{Faction, Position, WieldedBy, Wields};
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent,
-    fire_surface::ShooterFireData,
+    fire_surface::{ShooterFireData, WeaponMagazine},
     gamepad::cursor::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, GamepadCursor, move_cursor,
     },
@@ -98,17 +98,27 @@ pub fn mouse_reclaims_pointer(
 /// clicking cover / an enemy PINS the panel, an empty tile UNPINS, a SELECT / FIRE keeps the pin.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
-/// `Query<&Faction>` / `Query<ShooterFireData>` + the [`ResMut<SelectedShooter>`] /
-/// [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes + the [`Gamepad`] query; no
-/// `&mut World`. Runs `.before(pick_hovered_cell)` and `.before(dispatch_act_intents)`.
+/// `Query<&Faction>` / `Query<ShooterFireData>` / `Query<&Wields>` + the weapon-magazine query
+/// (the fire guard's magazine lives on the related weapon entity since GTW-323 slice 3) + the
+/// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes +
+/// the [`Gamepad`] query; no `&mut World`. Runs `.before(pick_hovered_cell)` and
+/// `.before(dispatch_act_intents)`.
 ///
 /// HONESTY: the raw South-button read is device-event-driven and not headlessly drivable; the
 /// shared decision (exercised via the mouse path) + in-engine QA cover it.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "GTW-323 slice 3: mirrors left_click_act — the fire guard's magazine moved to the \
+              related weapon entity, so the shared decision needs the extra Wields + weapon-magazine \
+              queries on top of the gamepad + reads/writes"
+)]
 pub fn gamepad_click_act(
     gamepads: Query<&Gamepad>,
     reads: LeftClickReads,
     factions: Query<&Faction>,
     shooters: Query<ShooterFireData>,
+    wields: Query<&Wields>,
+    weapons: Query<WeaponMagazine, With<WieldedBy>>,
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
     mut inspect: ResMut<InspectTarget>,
@@ -121,7 +131,9 @@ pub fn gamepad_click_act(
     }
     // Decide both effects from the immutable inspect target FIRST, then commit them (the pin
     // write borrows `inspect` mutably, so the read-only decisions must finish before it).
-    let outcome = decide_left_click(&reads, &inspect, &factions, &shooters, &selected);
+    let outcome = decide_left_click(
+        &reads, &inspect, &factions, &shooters, &wields, &weapons, &selected,
+    );
     let pin = decide_pin(&reads, &inspect, &factions);
     apply_left_click(outcome, &mut selected, &mut pending);
     // GTW-300 — the parallel pin effect (same shared decision as the mouse path).

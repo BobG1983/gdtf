@@ -71,7 +71,7 @@ const AUTHORED_STANCE: StanceKind = StanceKind::Standing;
 /// so a successful flip is observable as a change to exactly this value.
 const REQUESTED_STANCE: StanceKind = StanceKind::Prone;
 
-/// The authored ganger count the fixture spawns — the AC1 `WornArmor`-count assertion
+/// The authored ganger count the fixture spawns — the AC1 `Wears`-count assertion
 /// reads this exact number.
 const AUTHORED_GANGER_COUNT: usize = 2;
 
@@ -197,9 +197,10 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
 /// [`BattleScapeState::Generation`] has run E10.5's wired `setup_battle` the world holds
 /// the four sim resources ([`OccupancyGrid`] / [`CoverLedger`] / [`SurfaceGrid`] /
 /// [`VerticalLinkGraph`]), the seeded [`SimRng`], AND the [`CombatTuning`] present
-/// through the battle — and `query::<&WornArmor>().count()` equals the authored ganger
-/// count (the `setup_battle` C8(a) entity-count precedent, proving the entities were
-/// spawned by the REAL setup, not a no-op scaffold).
+/// through the battle — and `query::<&Wears>().count()` (the armor relationship every
+/// ganger carries since GTW-323) equals the authored ganger count (the `setup_battle`
+/// C8(a) entity-count precedent, proving the entities were spawned by the REAL setup,
+/// not a no-op scaffold).
 #[test]
 fn bootstrap_reaches_battlescape_with_the_sim_constructed() {
     let app_opt = bootstrap_app();
@@ -247,14 +248,16 @@ fn bootstrap_reaches_battlescape_with_the_sim_constructed() {
     );
 
     // The authored gangers were spawned as entities by the REAL setup_battle: exactly
-    // one WornArmor-carrying entity per authored ganger (count-equality, not a magnitude).
+    // one `Wears`-carrying ganger per authored ganger (count-equality, not a magnitude).
+    // Since GTW-323 the armor stats live on related piece entities, so a ganger is
+    // identified by its `Wears` armor relationship, not a `WornArmor` component.
     let world = app.world_mut();
-    let mut worn = world.query::<&gdtf_battle_sim::armor::WornArmor>();
+    let mut worn = world.query::<&gdtf_battle_sim::armor::Wears>();
     assert_eq!(
         worn.iter(world).count(),
         AUTHORED_GANGER_COUNT,
-        "the world must hold exactly the authored ganger count of WornArmor entities — the real \
-         setup_battle spawned the gangers, not a no-op scaffold",
+        "the world must hold exactly the authored ganger count of gangers wearing armor (Wears) — \
+         the real setup_battle spawned the gangers, not a no-op scaffold",
     );
 }
 

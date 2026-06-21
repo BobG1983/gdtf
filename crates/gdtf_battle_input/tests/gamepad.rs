@@ -33,13 +33,14 @@ use bevy::{
 use gdtf_battle_input::{
     ActivePointer, GamepadCursor, GdtfBattleInputPlugin, InspectTarget, LeftClickOutcome,
     SelectedFireMode, SelectedShooter, decide_left_click, decide_turn,
-    fire_surface::ShooterFireData, selection::LeftClickReads,
+    fire_surface::{ShooterFireData, WeaponMagazine},
+    selection::LeftClickReads,
 };
 use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera, cell_to_world};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
     LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax,
+    OccupancyGrid, PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax, WieldedBy, Wields,
     acts::SetFacingRequested, tuning::CombatTuning,
 };
 
@@ -103,19 +104,26 @@ fn decision_app() -> App {
 /// `selection.rs` `place_player_ganger` / `spawn_ganger` precedent).
 fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
     let single = spec(0.2, 1);
+    // The ganger carries its OWN vitals only — no weapon stat data (GTW-323 slice 3).
     let ganger = app
         .world_mut()
         .spawn((
             PLAYER_FACTION,
             Position::new(cell),
-            FireMode::new(vec![single]),
             Aiming::new(false),
             LifeState::Alive,
             Tu::new(255),
             TuMax::new(100),
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
         ))
         .id();
+    // The weapon's FireMode + Magazine ride on a related WEAPON entity (`Wields`); the
+    // `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
+    // `World` spawn, so the shared fire decision resolves the magazine off the weapon.
+    app.world_mut().spawn((
+        WieldedBy(ganger),
+        FireMode::new(vec![single]),
+        Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+    ));
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_occupant(cell, Some(ganger));
@@ -141,22 +149,29 @@ type DecideParams<'w, 's> = (
     Res<'w, InspectTarget>,
     Query<'w, 's, &'static Faction>,
     Query<'w, 's, ShooterFireData<'static>>,
+    Query<'w, 's, &'static Wields>,
+    Query<'w, 's, WeaponMagazine<'static>, With<WieldedBy>>,
     Res<'w, SelectedShooter>,
 );
 
 /// Calls the SHARED [`decide_left_click`] over the `app`'s world via a `SystemState`
 /// constructed in this helper's body (carve-out (a) — `app.world_mut()`, NOT a `&mut World`
 /// signature). Exercising the pub decision fn with `Query` params over the real app world.
+/// Since GTW-323 slice 3 the fire guard's magazine lives on the related weapon entity, so the
+/// decision also takes the `Wields` relationship + the weapon-magazine query.
 fn decide(app: &mut App) -> LeftClickOutcome {
     let world = app.world_mut();
     let mut state: SystemState<DecideParams> = SystemState::new(world);
     // `get` now returns a `Result` (Bevy 0.19); these params always validate, so
     // an `Err` is structurally impossible — fall back to the no-op outcome, which
     // would fail the calling assertion loudly rather than panic.
-    let Ok((reads, inspect, factions, shooters, selected)) = state.get(world) else {
+    let Ok((reads, inspect, factions, shooters, wields, weapons, selected)) = state.get(world)
+    else {
         return LeftClickOutcome::NoOp;
     };
-    decide_left_click(&reads, &inspect, &factions, &shooters, &selected)
+    decide_left_click(
+        &reads, &inspect, &factions, &shooters, &wields, &weapons, &selected,
+    )
 }
 
 /// Calls the SHARED [`decide_turn`] over the `app`'s world via a `SystemState` constructed in

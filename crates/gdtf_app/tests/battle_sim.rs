@@ -16,7 +16,7 @@ use gdtf_app::test_support::{
     BattleRunningComplete, BattleScapeState, GameState, LoadedSituation, RunningState,
 };
 use gdtf_battle_sim::{
-    armor::WornArmor,
+    armor::Wears,
     battle::BattleInProgress,
     cover::CoverLedger,
     occupancy::OccupancyGrid,
@@ -200,8 +200,8 @@ fn entering_generation_seeds_sim_rng() {
 }
 
 /// AC3 — `setup_battle` runs on the real `Commands` path: its four resources land
-/// in the world, and the authored ganger count equals the spawned `WornArmor`
-/// entity count — proving the real setup ran, not a stub.
+/// in the world, and the authored ganger count equals the spawned `Wears`-carrying
+/// ganger count (the armor relationship) — proving the real setup ran, not a stub.
 #[test]
 fn setup_battle_lands_resources_and_spawns_gangers() {
     let situation = two_ganger_situation();
@@ -230,14 +230,19 @@ fn setup_battle_lands_resources_and_spawns_gangers() {
         "setup_battle must insert a VerticalLinkGraph",
     );
 
-    // The spawned ganger count equals the authored count (the WornArmor-count
-    // precedent): exactly the fixture's gangers were spawned on the real path.
+    // The spawned ganger count equals the authored count (each ganger carries the
+    // `Wears` armor relationship since GTW-323): exactly the fixture's gangers were
+    // spawned on the real path. The ganger + its `Wears` armor-piece entities spawn as
+    // `bsn!` scenes (`queue_spawn_related_scenes::<Wears>`), deferred to the `SpawnScene`
+    // schedule; the related-piece spawn lands a frame after the ganger scene, so settle
+    // one update so the `WornBy` back-reference hook has populated each ganger's `Wears`.
+    app.update();
     let world = app.world_mut();
-    let mut query = world.query::<&WornArmor>();
+    let mut query = world.query::<&Wears>();
     assert_eq!(
         query.iter(world).count(),
         authored_gangers,
-        "the spawned WornArmor ganger count must equal the authored ganger count",
+        "the spawned ganger count (each wearing armor via Wears) must equal the authored count",
     );
 }
 
@@ -458,7 +463,7 @@ fn empty_situation_builds_and_advances() {
 
     // No gangers spawned (empty battlefield).
     let world = app.world_mut();
-    let mut query = world.query::<&WornArmor>();
+    let mut query = world.query::<&Wears>();
     assert_eq!(
         query.iter(world).count(),
         0,

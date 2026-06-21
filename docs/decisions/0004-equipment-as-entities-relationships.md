@@ -7,10 +7,13 @@ description: Model weapons and armor as their own entities related to the ganger
 
 ## Status
 
-`Proposed` — 2026-06-20, driven by [GTW-323](https://linear.app/robert-gardner/issue/GTW-323).
+`Accepted` — 2026-06-21, driven by [GTW-323](https://linear.app/robert-gardner/issue/GTW-323).
 
-Awaiting review/acceptance before the remodel is built. The implementation is
-intentionally **not** started: this ADR is the design pass GTW-323 calls for.
+Implemented across GTW-323's three slices: slice 1 (armor-as-entities), slice 2
+(weapon-as-entity), and slice 3 (presenter reads through the relationships + removal
+of the transient on-ganger shapes). Equipment now lives exclusively on the related
+weapon (`Wields`) and armor-piece (`Wears`) entities — no equipment stat data is stored
+on the ganger.
 
 ## Context
 
@@ -42,7 +45,7 @@ The data-driven loaders for both already landed:
 ganger's weapon/armor *keys* against those registries and **seeds the resolved
 values onto the ganger** (a `WeaponBundle` insert; `WornArmor::seed_from`).
 
-Bevy 0.18 has first-class **ECS relationships** (a `Relationship` component +
+Bevy 0.19.0 has first-class **ECS relationships** (a `Relationship` component +
 its `RelationshipTarget` collection, with automatic back-reference maintenance
 and despawn-cascade). That makes "a ganger *has* these equipment entities" an
 ECS-native concept rather than something we hand-roll with stored `Entity`
@@ -68,12 +71,13 @@ ECS relationships, instead of as components stored on the ganger.**
   GTW-41) and for multiple wielded/stowed weapons + throwables as additional
   related entities.
 
-Concretely: define custom relationship component pairs (e.g. `WornBy`/`Wears`
-for armor pieces, `WieldedBy`/`Wields` for the weapon — exact derive syntax to
-be confirmed against the pinned Bevy 0.18 API during the build). `setup_battle`
+Concretely: custom relationship component pairs `WornBy`/`Wears` (armor pieces) and
+`WieldedBy`/`Wields` (the weapon), defined against the pinned Bevy 0.19.0
+`#[relationship]` / `#[relationship_target(linked_spawn)]` API. `setup_battle`
 **spawns** an armor-piece entity per `ArmorSpec` piece and a weapon entity from
-the `WeaponSpec`, then **relates** them to the ganger — instead of inserting a
-`WornArmor`/`WeaponBundle` onto the ganger. The
+the `WeaponSpec` (via `bsn!` `queue_spawn_related_scenes`, post-GTW-322), then
+**relates** them to the ganger — instead of inserting a `WornArmor`/`WeaponBundle`
+onto the ganger. The
 [GTW-257](https://linear.app/robert-gardner/issue/GTW-257)/[GTW-269](https://linear.app/robert-gardner/issue/GTW-269)
 registries → spec lookups are **reused unchanged**; only the terminal "seed onto
 the ganger" step becomes "spawn equipment entity + relate".
@@ -142,13 +146,21 @@ remodel is absorbed by the builders rather than ~30 inline test sites.
 `docs/combat/weapons-and-armor.md` should gain a short "where equipment lives"
 note once this is Accepted (link, don't duplicate).
 
-## Open questions (resolve during the build)
+## Resolved during the build
 
-- Exact Bevy 0.18 relationship derive syntax + whether one `Wears` relation with
-  a per-piece `BodyPart` tag, or per-slot relations, reads cleanest at the
-  `struck_piece` lookup. Confirm via the `bevy-expert` at slice 1.
-- Whether `WornArmor`/the `WeaponBundle` are fully removed or kept as a transient
-  authoring shape — decide once the entity model is in.
+- **Relationship derive syntax + keying.** Bevy 0.19.0's
+  `#[derive(Component)] #[relationship(relationship_target = Wears)]` (back-reference)
+  - `#[relationship_target(relationship = WornBy, linked_spawn)]` (collection). ONE
+  `Wears` relation with a per-piece `BodyPart` tag (keyed `ganger → Wears →
+  BodyPart-tagged piece` at the `struck_piece` lookup), NOT per-slot relations — keyed
+  access keeps determinism (allocation-order-independent) and reads cleanest.
+- **`WornArmor` / the on-ganger `WeaponBundle` are fully REMOVED** (GTW-323 slice 3).
+  Slices 1 + 2 kept them as a transient on-ganger authoring copy so the sim could
+  migrate ahead of the presenter; slice 3 migrated the presenter + input reads to the
+  relationships and removed the on-ganger shapes (the `WornArmor` type is deleted; the
+  weapon stat components no longer ride on the ganger). The `WeaponBundle`/`ArmorSpec`
+  resolved-spec carriers remain — they are the values `setup_battle` spawns the related
+  entities FROM, never stored on the ganger.
 
 ## Alternatives considered
 

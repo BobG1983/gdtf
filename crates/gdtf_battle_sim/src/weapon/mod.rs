@@ -51,6 +51,7 @@ mod bundle;
 mod components;
 mod fire_mode;
 mod registry;
+mod relationship;
 mod spec;
 
 #[cfg(test)]
@@ -63,4 +64,5 @@ pub use components::{
 };
 pub use fire_mode::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent};
 pub use registry::WeaponRegistry;
+pub use relationship::{WieldedBy, Wields};
 pub use spec::WeaponSpec;

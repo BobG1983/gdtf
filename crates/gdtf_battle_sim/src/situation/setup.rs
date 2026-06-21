@@ -5,11 +5,16 @@
 use bevy::{
     platform::collections::HashSet,
     prelude::Commands,
-    scene::{CommandsSceneExt, Scene, bsn, template_value},
+    scene::{
+        CommandsSceneExt, EntityCommandsSceneExt, Scene, SceneList, bsn, bsn_list, template_value,
+    },
 };
 
 use crate::{
-    armor::{ArmorRegistry, WornArmor},
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorRegistry, ArmorSpec,
+        BodyPart, Wears,
+    },
     clearance::silhouette_band,
     cover::CoverLedger,
     ganger::{
@@ -23,7 +28,7 @@ use crate::{
     vertical::build_vertical_link_graph,
     weapon::{
         Accuracy, BaseSpread, FatalBias, FireMode, Kickback, Stable, Weapon, WeaponBundle,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, Wields,
     },
 };
 
@@ -54,23 +59,27 @@ impl BattleSetup {
 /// [`setup_battle`] spawns for each [`GangerSpawn`](crate::situation::GangerSpawn)
 /// (GTW-322).
 ///
-/// Faithfully mirrors the old `commands.spawn(tuple).insert(bundle)` shape: the
-/// per-field ganger state ([`Position`] / [`GangerName`] / [`Faction`] / [`Facing`] /
-/// [`Stance`] / [`Aiming`] / [`Hp`] / [`HpMax`] / [`Wounds`] / [`WoundsMax`] / [`Tu`] /
-/// [`TuMax`] / [`LifeState`](crate::ganger::LifeState)), the E3.0 / GTW-182 attribute stats ([`Shooting`] /
-/// [`Toughness`] / [`Luck`]), the resolved [`WeaponBundle`]'s components ([`Weapon`]
-/// marker + every weapon stat), the seeded [`WornArmor`], and the GTW-279 empty
-/// [`InflictedWounds`] record — the SAME set, with the SAME authored values, that the
-/// old tuple + second `insert` produced (behavior-preserving).
+/// The ganger carries its OWN state only — **no equipment stat data**. Since GTW-323
+/// slice 3 (ADR-0004) the weapon and armor stats live exclusively on the related
+/// weapon ([`Wields`]) and armor-piece ([`Wears`]) entities spawned alongside the
+/// ganger (see [`wielded_weapon_scenes`] / [`worn_piece_scenes`]); the ganger holds
+/// the relationship, never the components. So this scene composes the per-field ganger
+/// state ([`Position`] / [`GangerName`] / [`Faction`] / [`Facing`] / [`Stance`] /
+/// [`Aiming`] / [`Hp`] / [`HpMax`] / [`Wounds`] / [`WoundsMax`] / [`Tu`] / [`TuMax`] /
+/// [`LifeState`](crate::ganger::LifeState)), the E3.0 / GTW-182 attribute stats
+/// ([`Shooting`] / [`Toughness`] / [`Luck`]), and the GTW-279 empty
+/// [`InflictedWounds`] record — and nothing else. (Slices 1 + 2 kept the equipment
+/// stats here as a TRANSIENT authoring copy until the presenter migrated to the
+/// relationships; slice 3 removed that copy, so equipment stat data is now stored
+/// nowhere on the ganger.)
 ///
 /// **The `bsn!` recipe (GTW-322 spike).** Every newtype with a `Type::new(value)`
-/// constructor is inlined in `bsn!`. The runtime-valued fieldless enums
-/// ([`LifeState`](crate::ganger::LifeState) and the weapon's [`DamageType`](crate::weapon::DamageType)) and the
-/// value-typed [`Magazine`](crate::magazine::Magazine) / [`WornArmor`] (no
-/// `new(value)` whole-value ctor) have NO `bsn!` grammar form — inlining a variant
-/// would NARROW the authored value — so they are bridged via
-/// [`template_value`](bevy::scene::template_value) and tuple-composed onto the SAME
-/// root entity. Each composed type carries a GTW-322 spawn-seed-sentinel [`Default`].
+/// constructor is inlined in `bsn!`. The runtime-valued fieldless enum
+/// [`LifeState`](crate::ganger::LifeState) (no `new(value)` whole-value ctor) has NO
+/// `bsn!` grammar form — inlining a variant would NARROW the authored value — so it is
+/// bridged via [`template_value`](bevy::scene::template_value) and tuple-composed onto
+/// the SAME root entity. The composed type carries a GTW-322 spawn-seed-sentinel
+/// [`Default`].
 ///
 /// **Deferred materialization.** `bsn!`-scene components materialize on the
 /// `SpawnScene` schedule (~one `app.update()` later), NOT synchronously. The caller
@@ -78,12 +87,12 @@ impl BattleSetup {
 /// [`at`](crate::situation::GangerSpawn::at) value and the synchronously-reserved
 /// `Entity` id (`spawn_scene(..).id()`), never off the deferred [`Position`]
 /// component.
-fn ganger_scene(ganger: &GangerSpawn, weapon: &WeaponBundle, armor: &WornArmor) -> impl Scene {
+fn ganger_scene(ganger: &GangerSpawn) -> impl Scene {
     // The `bsn!` `Type::new(expr)` form stores a DEFERRED constructor, so every value
-    // it captures must be OWNED/`'static` — a borrow (`&GangerSpawn` / `&WeaponBundle`)
-    // captured into the macro would make the returned scene outlive the references (the
-    // GTW-322 spike's `'static` finding). So bind every inline value to an owned local
-    // FIRST, and let the macro capture those owned locals (never the `&` params).
+    // it captures must be OWNED/`'static` — a borrow (`&GangerSpawn`) captured into the
+    // macro would make the returned scene outlive the reference (the GTW-322 spike's
+    // `'static` finding). So bind every inline value to an owned local FIRST, and let
+    // the macro capture those owned locals (never the `&` param).
     let at = ganger.at;
     let name = (*ganger.name).clone();
     let faction = *ganger.faction;
@@ -99,22 +108,9 @@ fn ganger_scene(ganger: &GangerSpawn, weapon: &WeaponBundle, armor: &WornArmor) 
     let shooting = *ganger.shooting;
     let toughness = *ganger.toughness;
     let luck = *ganger.luck;
-    let weapon_name = (*weapon.name).clone();
-    let base_spread = *weapon.base_spread;
-    let accuracy = *weapon.accuracy;
-    let kickback = *weapon.kickback;
-    let fatal_bias = *weapon.fatal_bias;
-    let weapon_damage = *weapon.damage;
-    let weapon_punch = *weapon.punch;
-    let weapon_shred = *weapon.shred;
-    let fire_mode = (*weapon.fire_mode).clone();
-    let stable = *weapon.stable;
-    // The runtime-valued / value-typed leaves with no `bsn!` grammar form, owned for
-    // the `template_value` tuple-composition tail (see the doc-comment recipe).
+    // The runtime-valued leaf with no `bsn!` grammar form, owned for the
+    // `template_value` tuple-composition tail (see the doc-comment recipe).
     let life_state = ganger.life_state;
-    let damage_type = weapon.damage_type;
-    let magazine = weapon.magazine;
-    let worn = *armor;
     (
         bsn! {
             Position::new(at)
@@ -132,6 +128,136 @@ fn ganger_scene(ganger: &GangerSpawn, weapon: &WeaponBundle, armor: &WornArmor) 
             Shooting::new(shooting)
             Toughness::new(toughness)
             Luck::new(luck)
+            InflictedWounds::default()
+        },
+        // The runtime-valued component with no `bsn!` grammar form, bridged via
+        // `template_value` and tuple-composed onto the SAME root entity (the GTW-322
+        // spike's canonical runtime-value path).
+        template_value(life_state),
+    )
+}
+
+/// Compose the six worn-armor-piece **related scenes** for a ganger as a
+/// [`SceneList`] — one piece entity per [`BodyPart`], each carrying its stat
+/// components, to spawn-and-relate via `Wears` (GTW-323 slice 1, ADR-0004).
+///
+/// The [`setup_battle`] spawn loop hands this list to
+/// [`queue_spawn_related_scenes::<Wears>`](bevy::scene::EntityCommandsSceneExt::queue_spawn_related_scenes)
+/// on the freshly-spawned ganger entity: the framework spawns one entity per scene,
+/// applies the scene's components, and inserts [`WornBy`](crate::armor::WornBy)`(ganger)` on each — whose
+/// back-reference hook populates the ganger's [`Wears`] collection automatically.
+///
+/// Each piece scene tags the entity with its [`BodyPart`] (so the `struck_piece`
+/// lookup keys `ganger → Wears → the BodyPart-tagged piece`) and carries the five
+/// per-piece stat components ([`ArmorFloor`] / [`ArmorProtection`] / [`ArmorIntegrity`]
+/// / [`ArmorHardness`] / `ArmorType`) read **by value** from the resolved
+/// [`ArmorSpec`] in [`BodyPart::ALL`] order. These piece entities are the ONLY armor
+/// storage — GTW-323 slice 3 removed the transient ganger-side copy, so no armor stat
+/// data is stored on the ganger. The four stat newtypes inline via their
+/// `Type::new(value)` `bsn!` form; the
+/// runtime-valued [`BodyPart`] tag and `ArmorType` (fieldless enums with no `new`
+/// grammar form) bridge via [`template_value`] (their GTW-322 spawn-seed-sentinel
+/// [`Default`]s seed the slot before the authored value overwrites it), tuple-composed
+/// onto the same piece entity.
+fn worn_piece_scenes(spec: &ArmorSpec) -> impl SceneList {
+    // bsn! `Type::new(expr)` stores a DEFERRED constructor, so every captured value
+    // must be OWNED (the GTW-322 `'static` finding). Read each piece by value out of
+    // the spec FIRST (ArmorPiece is Copy), then let the macro capture the owned locals.
+    let pieces = spec.pieces();
+    bsn_list! {
+        worn_piece_scene(BodyPart::Head, pieces[BodyPart::Head.index()]),
+        worn_piece_scene(BodyPart::Torso, pieces[BodyPart::Torso.index()]),
+        worn_piece_scene(BodyPart::LeftArm, pieces[BodyPart::LeftArm.index()]),
+        worn_piece_scene(BodyPart::RightArm, pieces[BodyPart::RightArm.index()]),
+        worn_piece_scene(BodyPart::LeftLeg, pieces[BodyPart::LeftLeg.index()]),
+        worn_piece_scene(BodyPart::RightLeg, pieces[BodyPart::RightLeg.index()]),
+    }
+}
+
+/// Compose ONE worn-armor-piece entity as a `bsn!` [`Scene`] — its [`BodyPart`] tag
+/// plus the five stat components, read by value from `piece` (GTW-323 slice 1).
+///
+/// The four stat newtypes inline via `Type::new(value)`; the runtime-valued
+/// [`BodyPart`] tag and `ArmorType` fieldless enums bridge via [`template_value`]
+/// (no `bsn!` grammar form), tuple-composed onto the same piece entity (the GTW-322
+/// runtime-value path). The [`WornBy`](crate::armor::WornBy) back-reference is inserted by the framework's
+/// `queue_spawn_related_scenes::<Wears>` wiring, NOT here, so it is absent from this
+/// scene.
+fn worn_piece_scene(part: BodyPart, piece: crate::armor::ArmorPiece) -> impl Scene {
+    // Bind every inline value to an owned local FIRST (the bsn! `'static` finding).
+    let floor = *piece.floor;
+    let protection = *piece.protection;
+    let integrity = *piece.integrity;
+    let hardness = *piece.hardness;
+    let armor_type = piece.armor_type;
+    (
+        bsn! {
+            ArmorFloor::new(floor)
+            ArmorProtection::new(protection)
+            ArmorIntegrity::new(integrity)
+            ArmorHardness::new(hardness)
+        },
+        // The runtime-valued fieldless enums with no `bsn!` grammar form, bridged via
+        // `template_value` and tuple-composed onto the SAME piece entity (GTW-322).
+        template_value(part),
+        template_value(armor_type),
+    )
+}
+
+/// Compose the wielded-weapon **related scene list** for a ganger as a [`SceneList`] —
+/// the single weapon entity carrying the full GTW-200 decomposed weapon-stat component
+/// set, read by value from the resolved [`WeaponBundle`], to spawn-and-relate via
+/// [`Wields`] (GTW-323 slice 2, ADR-0004).
+///
+/// The [`setup_battle`] spawn loop hands this list to
+/// [`queue_spawn_related_scenes::<Wields>`](bevy::scene::EntityCommandsSceneExt::queue_spawn_related_scenes)
+/// on the freshly-spawned ganger entity: the framework spawns the weapon entity, applies
+/// the scene's components, and inserts [`WieldedBy`](crate::weapon::WieldedBy)`(ganger)`
+/// on it — whose back-reference hook populates the ganger's [`Wields`] collection
+/// automatically. So `fire()` reads the weapon stats off the **weapon entity** through
+/// `ganger → Wields → the weapon entity`, mirroring the slice-1 armor traversal. The
+/// list holds ONE entry this slice (a ganger wields a single weapon); the
+/// [`queue_spawn_related_scenes`](bevy::scene::EntityCommandsSceneExt::queue_spawn_related_scenes)
+/// surface takes a [`SceneList`], so the single weapon scene is wrapped in a one-element
+/// `bsn_list!` (the same shape the multi-weapon loadout the ADR anticipates would take).
+fn wielded_weapon_scenes(weapon: &WeaponBundle) -> impl SceneList {
+    bsn_list! { wielded_weapon_scene(weapon) }
+}
+
+/// Compose ONE wielded-weapon entity as a `bsn!` [`Scene`] — the [`Weapon`] marker plus
+/// the full GTW-200 decomposed weapon-stat component set, read by value from the
+/// resolved [`WeaponBundle`] (GTW-323 slice 2, ADR-0004).
+///
+/// This weapon entity is the ONLY weapon storage — GTW-323 slice 3 removed the
+/// transient on-ganger weapon copy, so no weapon stat data is stored on the ganger.
+/// The [`Weapon`] marker, every weapon-number newtype, the [`WeaponName`], the
+/// [`FireMode`], and the [`Stable`] tag inline via their `Type::new(value)` `bsn!`
+/// form; the runtime-valued [`DamageType`](crate::weapon::DamageType) and the
+/// value-typed [`Magazine`](crate::magazine::Magazine) — neither has a `bsn!` grammar
+/// form — bridge via [`template_value`] and tuple-compose onto the same weapon entity.
+/// The [`WieldedBy`](crate::weapon::WieldedBy) back-reference is inserted by the
+/// framework's `queue_spawn_related_scenes::<Wields>` wiring, NOT here, so it is absent
+/// from this scene.
+fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
+    // bsn! `Type::new(expr)` stores a DEFERRED constructor, so every captured value must
+    // be OWNED (the GTW-322 `'static` finding). Read each stat by value out of the
+    // bundle FIRST, then let the macro capture the owned locals (never the `&` param).
+    let weapon_name = (*weapon.name).clone();
+    let base_spread = *weapon.base_spread;
+    let accuracy = *weapon.accuracy;
+    let kickback = *weapon.kickback;
+    let fatal_bias = *weapon.fatal_bias;
+    let weapon_damage = *weapon.damage;
+    let weapon_punch = *weapon.punch;
+    let weapon_shred = *weapon.shred;
+    let fire_mode = (*weapon.fire_mode).clone();
+    let stable = *weapon.stable;
+    // The runtime-valued / value-typed leaves with no `bsn!` grammar form, owned for the
+    // `template_value` tuple-composition tail (the GTW-322 runtime-value path).
+    let damage_type = weapon.damage_type;
+    let magazine = weapon.magazine;
+    (
+        bsn! {
             Weapon
             WeaponName::new(weapon_name)
             BaseSpread::new(base_spread)
@@ -143,15 +269,11 @@ fn ganger_scene(ganger: &GangerSpawn, weapon: &WeaponBundle, armor: &WornArmor) 
             WeaponShred::new(weapon_shred)
             FireMode::new(fire_mode)
             Stable::new(stable)
-            InflictedWounds::default()
         },
-        // Runtime-valued / value-typed components with no `bsn!` grammar form, bridged
-        // via `template_value` and tuple-composed onto the SAME root entity (the
-        // GTW-322 spike's canonical runtime-value path).
-        template_value(life_state),
+        // The runtime-valued / value-typed components with no `bsn!` grammar form,
+        // bridged via `template_value` and tuple-composed onto the SAME weapon entity.
         template_value(damage_type),
         template_value(magazine),
-        template_value(worn),
     )
 }
 
@@ -161,10 +283,10 @@ fn ganger_scene(ganger: &GangerSpawn, weapon: &WeaponBundle, armor: &WornArmor) 
 ///
 /// Steps, in order:
 ///
-/// 1. **Spawn each ganger** — for every [`GangerSpawn`](crate::situation::GangerSpawn),
-///    `commands.spawn_scene(`[`ganger_scene`]`(..))` the full per-field component set as a
-///    Bevy `bsn!` [`Scene`] (GTW-322; the SAME entity tree the old spawn-tuple +
-///    second `insert` produced) — [`Position`] from `at`,
+/// 1. **Spawn each ganger + relate its equipment** — for every
+///    [`GangerSpawn`](crate::situation::GangerSpawn),
+///    `commands.spawn_scene(`[`ganger_scene`]`(..))` the ganger's OWN per-field state
+///    as a Bevy `bsn!` [`Scene`] (GTW-322) — [`Position`] from `at`,
 ///    the [`GangerName`](crate::ganger::GangerName) identity,
 ///    plus [`Faction`](crate::ganger::Faction) / [`Facing`](crate::ganger::Facing) /
 ///    [`Stance`](crate::ganger::Stance) / [`Aiming`](crate::ganger::Aiming) /
@@ -174,16 +296,18 @@ fn ganger_scene(ganger: &GangerSpawn, weapon: &WeaponBundle, armor: &WornArmor) 
 ///    [`LifeState`](crate::ganger::LifeState)), the E3.0 /
 ///    GTW-182 attribute stats ([`Shooting`](crate::ganger::Shooting) /
 ///    [`Toughness`](crate::ganger::Toughness) / [`Luck`](crate::ganger::Luck)) the
-///    severity roll reads, the [`WeaponBundle`](crate::weapon::WeaponBundle) resolved
-///    from the ganger's [`weapon`](crate::situation::GangerSpawn::weapon) key against
-///    the [`WeaponRegistry`] (GTW-257 — the [`Weapon`](crate::weapon::Weapon) marker +
-///    every weapon stat component), PLUS the battle-local [`WornArmor`] seeded by value
-///    from the [`ArmorSpec`](crate::armor::ArmorSpec) resolved from the ganger's
+///    severity roll reads, and the GTW-279 [`InflictedWounds`] record seeded **empty**
+///    (the [`Default`]) so a fresh ganger starts with no recorded wounds. The
+///    equipment carries **no stat data on the ganger** (GTW-323 slice 3, ADR-0004):
+///    the [`WeaponBundle`](crate::weapon::WeaponBundle) resolved from the ganger's
+///    [`weapon`](crate::situation::GangerSpawn::weapon) key against the
+///    [`WeaponRegistry`] (GTW-257) is spawned as a **related weapon entity** via
+///    [`queue_spawn_related_scenes::<Wields>`](bevy::scene::EntityCommandsSceneExt::queue_spawn_related_scenes),
+///    and the suit resolved from the ganger's
 ///    [`armor`](crate::situation::GangerSpawn::armor) key against the [`ArmorRegistry`]
-///    (GTW-269 — [`WornArmor::seed_from`](crate::armor::WornArmor::seed_from)), and the GTW-279
-///    [`InflictedWounds`] record seeded **empty** (the [`Default`]) so a fresh ganger
-///    starts with no recorded wounds. The returned Bevy
-///    [`Entity`](bevy::prelude::Entity) handle is captured into the
+///    (GTW-269) is spawned as six **related armor-piece entities** via
+///    `queue_spawn_related_scenes::<Wears>` — the ganger holds only the relationship.
+///    The returned Bevy [`Entity`](bevy::prelude::Entity) handle is captured into the
 ///    [`OccupantPlacement`] list — NEVER a numeric id (GTW-10 / GTW-12).
 /// 2. **Seed the [`CoverLedger`]** — insert a [`CoverEntry`](crate::cover::CoverEntry)
 ///    for every wall and scatter piece (the one unified ledger).
@@ -254,7 +378,8 @@ pub fn setup_battle(
     // BEFORE the spawn loop — so a missing key aborts setup with ArmorNotFound (no
     // panic) with no partial world spawned (the abort-first invariant, mirroring the
     // weapon resolution; GTW-269). The resolved specs are copied by value (ArmorSpec is
-    // Copy) and the spawn loop seeds each ganger's WornArmor from its spec.
+    // Copy) and the spawn loop spawns each ganger's worn-armor-piece entities from its
+    // spec (related via `Wears`; GTW-323 slice 3 — no on-ganger `WornArmor`).
     let mut armor_specs = Vec::with_capacity(situation.gangers.len());
     for ganger in &situation.gangers {
         let Some(spec) = armor.spec(&ganger.armor) else {
@@ -279,13 +404,34 @@ pub fn setup_battle(
         .zip(weapon_bundles)
         .zip(armor_specs)
     {
-        // The battle-local worn armor seeded by value from the resolved spec, composed
-        // onto the scene (GTW-269); the empty InflictedWounds record (GTW-279) and the
-        // GTW-291 display ceilings (HpMax / WoundsMax) ride inside `ganger_scene`.
-        let worn = WornArmor::seed_from(&armor_spec);
-        let entity = commands
-            .spawn_scene(ganger_scene(ganger, &weapon_bundle, &worn))
-            .id();
+        // The ganger carries its OWN state only — NO equipment stat data (GTW-323
+        // slice 3, ADR-0004). The empty InflictedWounds record (GTW-279) and the
+        // GTW-291 display ceilings (HpMax / WoundsMax) ride inside `ganger_scene`; the
+        // weapon + armor stats live on the related entities spawned below.
+        let entity = commands.spawn_scene(ganger_scene(ganger)).id();
+        // GTW-323 slice 1 (ADR-0004): spawn the six worn-armor-piece entities from the
+        // resolved spec and relate them to this ganger via `Wears` — using `bsn!`
+        // (`queue_spawn_related_scenes::<Wears>(bsn_list!{..})`), the post-GTW-322 spawn
+        // form. The framework inserts `WornBy(entity)` on each spawned piece, whose hook
+        // populates the ganger's `Wears` collection. `linked_spawn` makes the pieces
+        // battle-local (despawning the ganger cascade-despawns them). These piece
+        // entities are the ONLY armor storage — the sim's hit-pipeline read+wear AND the
+        // presenter read both go through the relationship (no on-ganger `WornArmor`).
+        commands
+            .entity(entity)
+            .queue_spawn_related_scenes::<Wears>(worn_piece_scenes(&armor_spec));
+        // GTW-323 slice 2 (ADR-0004): spawn the wielded-weapon entity from the resolved
+        // `WeaponBundle` and relate it to this ganger via `Wields` — using `bsn!`
+        // (`queue_spawn_related_scenes::<Wields>(..)`), the post-GTW-322 spawn form
+        // (mirroring the `Wears` spawn above). The framework inserts `WieldedBy(entity)`
+        // on the spawned weapon, whose hook populates the ganger's `Wields` collection.
+        // `linked_spawn` makes the weapon battle-local (despawning the ganger
+        // cascade-despawns it). This weapon entity is the ONLY weapon storage — the
+        // sim's `fire()` read+wear AND the presenter's weapon panel / fire-mode reads
+        // both go through `ganger → Wields → the weapon entity` (no on-ganger copy).
+        commands
+            .entity(entity)
+            .queue_spawn_related_scenes::<Wields>(wielded_weapon_scenes(&weapon_bundle));
         // The occupant's silhouette band is derived from its authored stance
         // (standing → HIGH, kneeling → MID, prone → LOW) so the grid pour places the
         // occupant AND its band together (GTW-304). Keyed off the authored `at` value

@@ -48,7 +48,7 @@ use gdtf_battle_sim::{
     MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
     OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng, Stable,
     Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, Wounds, acts::SimActsPlugin, tuning::CombatTuning,
+    WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin, tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches `PlayerFaction`).
@@ -169,9 +169,13 @@ fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Ent
             Stable::new(true),
         ),
     );
-    app.world_mut()
+    // The ganger carries its OWN state only — no weapon stat data (GTW-323 slice 3). The
+    // input layer's `can_fire` precheck (`fire_surface::try_fire_request`) now reads the
+    // shooter's `Magazine` off the related WEAPON entity (`ganger → Wields → weapon`),
+    // not the ganger, mirroring production's `ganger_scene`.
+    let shooter = app
+        .world_mut()
         .spawn((
-            bundle,
             PLAYER_FACTION,
             Position::new(cell),
             Facing::new(facing),
@@ -184,34 +188,25 @@ fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Ent
                 Hp::new(50),
                 Wounds::new(10),
                 LifeState::Alive,
-                gdtf_battle_sim_worn_suit(),
                 InflictedWounds::default(),
                 Toughness::new(1.0),
                 Luck::new(0.0),
             ),
         ))
-        .id()
-}
-
-/// A worn suit (thin, so a hit is likely to land an effect) built from the sim's armor
-/// constructors. Kept tiny to mirror the sim's `worn_suit(0, 0, 1, 0)` fixture without
-/// re-exporting it here.
-const fn gdtf_battle_sim_worn_suit() -> gdtf_battle_sim::WornArmor {
-    use gdtf_battle_sim::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorSpec,
-        ArmorType, WornArmor,
-    };
-    WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-        ArmorFloor::new(0),
-        ArmorProtection::new(0),
-        ArmorIntegrity::new(1),
-        ArmorHardness::new(0),
-        ArmorType::DEFAULT,
-    )))
+        .id();
+    // GTW-323: the AUTHORITATIVE weapon rides on a related weapon entity (`Wields`), read
+    // by the input `can_fire` precheck AND `dispatch_fire`/`fire()` through
+    // `ganger → Wields → the weapon entity`. The `WieldedBy` insert hook populates the
+    // ganger's `Wields` synchronously in a bare `World` spawn so the end-to-end fire chain
+    // resolves the weapon this update (mirroring production's
+    // `queue_spawn_related_scenes::<Wields>`).
+    app.world_mut().spawn((WieldedBy(shooter), bundle));
+    shooter
 }
 
 /// Place an ENEMY-faction ganger carrying the full TARGET battle-surface set at `cell` in the
-/// occupancy grid (HIGH band, so the march finds a body to strike), returning its entity.
+/// occupancy grid (HIGH band, so the march finds a body to strike), returning its entity. Its
+/// armor (if any) would live on related piece entities (GTW-323); this bare enemy wears none.
 fn place_armed_enemy(app: &mut App, cell: CellLevel) -> Entity {
     let enemy = app
         .world_mut()
@@ -220,7 +215,6 @@ fn place_armed_enemy(app: &mut App, cell: CellLevel) -> Entity {
             Hp::new(30),
             Wounds::new(6),
             LifeState::Alive,
-            gdtf_battle_sim_worn_suit(),
             InflictedWounds::default(),
             Toughness::new(1.0),
             Luck::new(0.0),

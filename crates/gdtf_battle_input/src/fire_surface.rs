@@ -22,21 +22,31 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Aiming, Cell, CellLevel, FireActor, Level, LifeState, Magazine, Tu, TuMax, acts::FireRequested,
-    can_fire, tuning::CombatTuning,
+    Aiming, Cell, CellLevel, FireActor, Level, LifeState, Magazine, Tu, TuMax, WieldedBy, Wields,
+    acts::FireRequested, can_fire, tuning::CombatTuning,
 };
 
 use crate::SelectedFireMode;
 
-/// The shooter components the FIRE branch queries to assemble a
+/// The shooter VITALS the FIRE branch queries off the GANGER to assemble a
 /// [`FireActor`](gdtf_battle_sim::FireActor) for the shared `can_fire` guard.
 ///
-/// The exact five reads `FireActor` borrows (`magazine.rs`): the shooter's
-/// [`LifeState`], current [`Tu`], [`TuMax`], [`Aiming`] flag, and [`Magazine`]. A
-/// `QueryData` tuple of borrowed sim components — framework plumbing, not a domain
-/// scalar. Read-only (`&`), so the surface never mutates the shooter (the actual TU /
-/// ammo debit is the sim's `fire()` job, downstream of the emitted message).
-pub type ShooterFireData<'a> = (&'a LifeState, &'a Tu, &'a TuMax, &'a Aiming, &'a Magazine);
+/// The four vitals `FireActor` borrows from the ganger: its [`LifeState`], current
+/// [`Tu`], [`TuMax`], and [`Aiming`] flag. The fifth `FireActor` field, the
+/// [`Magazine`], lives on the related WEAPON entity since GTW-323 slice 3 (ADR-0004)
+/// — it is read separately off `ganger → `[`Wields`]` → the weapon entity`
+/// ([`WeaponMagazine`]), NOT off the ganger. A `QueryData` tuple of borrowed sim
+/// components — framework plumbing, not a domain scalar. Read-only (`&`), so the
+/// surface never mutates the shooter (the actual TU / ammo debit is the sim's `fire()`
+/// job, downstream of the emitted message).
+pub type ShooterFireData<'a> = (&'a LifeState, &'a Tu, &'a TuMax, &'a Aiming);
+
+/// The wielded-weapon [`Magazine`] read off a WEAPON entity (`With<`[`WieldedBy`]`>`)
+/// — the fifth [`FireActor`](gdtf_battle_sim::FireActor) field, resolved through the
+/// shooter's [`Wields`] relationship since GTW-323 slice 3 (ADR-0004). Read-only; a
+/// `QueryData` borrow filtered to weapon entities so it never collides with the
+/// ganger-vitals [`ShooterFireData`] query.
+pub type WeaponMagazine<'a> = &'a Magazine;
 
 /// Assemble a [`FireRequested`] for `shooter` against `target`, or [`None`] when the
 /// shared `can_fire` guard fails (GTW-227's guard, folded verbatim for GTW-238).
@@ -52,10 +62,11 @@ pub type ShooterFireData<'a> = (&'a LifeState, &'a Tu, &'a TuMax, &'a Aiming, &'
 ///    target_level })` — which the unified system pushes as an
 ///    [`ActIntent::Fire`](crate::ActIntent::Fire).
 ///
-/// Returns [`None`] (no fire) when: the shooter has no firing components; or `can_fire`
-/// is `false` (a Downed/Dead shooter, an empty magazine, insufficient TU, or an
-/// out-of-bounds target — AC3's `can_fire` rung). A read-only helper borrowing the
-/// caller's `shooters` query (`bevy-traps.md` #7 — no `&mut World`).
+/// Returns [`None`] (no fire) when: the shooter has no firing components / wields no
+/// weapon; or `can_fire` is `false` (a Downed/Dead shooter, an empty magazine,
+/// insufficient TU, or an out-of-bounds target — AC3's `can_fire` rung). A read-only
+/// helper borrowing the caller's `shooters` / `wields` / `weapons` queries
+/// (`bevy-traps.md` #7 — no `&mut World`).
 #[must_use]
 pub(crate) fn try_fire_request(
     shooter: Entity,
@@ -63,11 +74,22 @@ pub(crate) fn try_fire_request(
     fire_mode: &SelectedFireMode,
     tuning: &CombatTuning,
     shooters: &Query<ShooterFireData>,
+    wields: &Query<&Wields>,
+    weapons: &Query<WeaponMagazine, With<WieldedBy>>,
 ) -> Option<FireRequested> {
-    // The shooter must carry the firing components, else fail-closed (no fire).
-    let Ok((life, tu, tu_max, aiming, magazine)) = shooters.get(shooter) else {
+    // The shooter must carry the firing VITALS, else fail-closed (no fire).
+    let Ok((life, tu, tu_max, aiming)) = shooters.get(shooter) else {
         return None;
     };
+    // The magazine lives on the wielded WEAPON entity (GTW-323 slice 3): resolve
+    // `ganger → Wields → the weapon entity → Magazine`. An unarmed shooter (no
+    // `Wields`, no weapon, or no `Magazine` on the weapon) fails closed (the `?`
+    // short-circuits to `None`).
+    let magazine = wields
+        .get(shooter)
+        .ok()
+        .and_then(Wields::weapon)
+        .and_then(|weapon| weapons.get(weapon).ok())?;
     let actor = FireActor {
         life,
         tu,

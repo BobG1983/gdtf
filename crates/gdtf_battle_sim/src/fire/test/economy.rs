@@ -38,9 +38,11 @@ fn charge_is_taken_once_and_reflects_aiming() {
         let cover = CoverLedger::new();
         let mut r = rng();
 
-        let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+        let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         {
-            let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+            let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+                state.get_mut(&mut world)
+            else {
                 return;
             };
             // off into empty space → all misses, fires the full clamped burst
@@ -53,6 +55,10 @@ fn charge_is_taken_once_and_reflects_aiming() {
                 },
                 &mut shooters,
                 &mut targets,
+                &wears,
+                &mut pieces,
+                &wields,
+                &mut weapons,
                 BattleGrids {
                     occupancy: &occupancy,
                     surface:   &surface,
@@ -104,9 +110,11 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
     let cover = CoverLedger::new();
     let mut r = rng();
 
-    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+    let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+            state.get_mut(&mut world)
+        else {
             return;
         };
         fire(
@@ -118,6 +126,10 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
             },
             &mut shooters,
             &mut targets,
+            &wears,
+            &mut pieces,
+            &wields,
+            &mut weapons,
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
@@ -133,6 +145,6 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
         3,
         "the burst is clamped to the 3 loaded rounds"
     );
-    let mag = world.get::<Magazine>(shooter).map(|m| *m.rounds());
+    let mag = weapon_rounds(&world, shooter);
     assert_eq!(mag, Some(0), "the magazine ends drained to 0");
 }

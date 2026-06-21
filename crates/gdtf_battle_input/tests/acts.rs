@@ -43,7 +43,7 @@ use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
     FireMode, FireModeSpec, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind,
     ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng, Stance, StanceKind,
-    SurfaceGrid, Tu, TuMax,
+    SurfaceGrid, Tu, TuMax, WieldedBy,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, ReloadRequested,
         SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
@@ -193,9 +193,13 @@ fn acts_app() -> App {
 
 /// Spawns an armed, alive, loaded, affordable PLAYER-faction ganger with the given
 /// fire-mode selector, stance, and facing, and returns its entity. Carries exactly the
-/// components the act systems query: `Faction` (GTW-238 SELECT/FIRE gating),
-/// `Stance`/`Facing`/`Aiming`/`FireMode` (cycle + selection) and
-/// `LifeState`/`Tu`/`TuMax`/`Magazine` (the `FireActor` `can_fire` reads).
+/// GANGER components the act systems query: `Faction` (GTW-238 SELECT/FIRE gating),
+/// `Stance`/`Facing`/`Aiming` (cycle + selection) and `LifeState`/`Tu`/`TuMax` (the
+/// `FireActor` `can_fire` vitals). The weapon's `FireMode` selector + `Magazine` ride on
+/// a related WEAPON entity (`Wields`, GTW-323 slice 3 — the fire-mode default + the
+/// `can_fire` magazine read both resolve through `ganger → Wields → weapon` now). The
+/// `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
+/// `World` spawn.
 fn spawn_ganger(
     app: &mut App,
     selector: FireMode,
@@ -203,19 +207,41 @@ fn spawn_ganger(
     facing: Direction,
 ) -> Entity {
     let size = MagazineSize::new(30);
-    app.world_mut()
+    let ganger = app
+        .world_mut()
         .spawn((
             PLAYER_FACTION,
             Stance::new(stance),
             Facing::new(facing),
             Aiming::new(false),
-            selector,
             LifeState::Alive,
             Tu::new(255),
             TuMax::new(100),
-            Magazine::new(10, size, ReloadTu::new(12)),
         ))
-        .id()
+        .id();
+    app.world_mut().spawn((
+        WieldedBy(ganger),
+        selector,
+        Magazine::new(10, size, ReloadTu::new(12)),
+    ));
+    ganger
+}
+
+/// Empties the wielded WEAPON entity's magazine (GTW-323 slice 3: the fire guard reads
+/// `ganger → Wields → weapon → Magazine`, so an empty-magazine test must empty the WEAPON,
+/// not the ganger). No-op if the ganger wields no weapon.
+fn empty_wielded_magazine(app: &mut App, ganger: Entity) {
+    if let Some(weapon) = app
+        .world()
+        .get::<gdtf_battle_sim::Wields>(ganger)
+        .and_then(gdtf_battle_sim::Wields::weapon)
+    {
+        app.world_mut().entity_mut(weapon).insert(Magazine::new(
+            0,
+            MagazineSize::new(30),
+            ReloadTu::new(12),
+        ));
+    }
 }
 
 /// Places an ENEMY-faction occupant in the occupancy grid at `cell` (so the FIRE branch
@@ -518,11 +544,9 @@ fn can_fire_failure_blocks_fire_requested() {
         select_ganger(&mut app, ganger);
         let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
         place_enemy(&mut app, target);
-        app.world_mut().entity_mut(ganger).insert(Magazine::new(
-            0,
-            MagazineSize::new(30),
-            ReloadTu::new(12),
-        ));
+        // GTW-323 slice 3: the magazine lives on the related WEAPON entity now, so empty
+        // THAT (the fire guard reads `ganger → Wields → weapon → Magazine`), not the ganger.
+        empty_wielded_magazine(&mut app, ganger);
         press_left(&mut app);
         app.update();
         assert!(

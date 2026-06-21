@@ -372,27 +372,43 @@ fn same_seed_yields_same_outcome() {
 // --- AC #6 — no mutation; sim-unit positions; no damage / TU bookkeeping. ---
 
 /// A snapshot of the combat state `resolve_coarse` must NOT touch — the target's
-/// `Hp` / `Wounds` / `WornArmor` (E3) and the shooter's `Tu` (E4).
+/// `Hp` / `Wounds` / worn-piece `ArmorIntegrity` (E3, on the related `Wears` piece
+/// entities since GTW-323) and the shooter's `Tu` (E4).
 struct CombatSnapshot {
     hp:     Hp,
     wounds: Wounds,
-    armor:  gdtf_battle_sim::WornArmor,
+    /// The target's worn-piece integrities (sorted) — read off the `Wears` piece
+    /// entities (GTW-323 / ADR-0004), not a removed `WornArmor` component.
+    armor:  Vec<i32>,
     tu:     Tu,
 }
 
 /// Read the [`CombatSnapshot`] for `(target, shooter)` off the world, or `None` if
 /// any component is missing (keeping the test panic-free).
 fn combat_snapshot(world: &World, target: Entity, shooter: Entity) -> Option<CombatSnapshot> {
+    use bevy::ecs::relationship::RelationshipTarget;
+
+    let wears = world.get::<gdtf_battle_sim::Wears>(target)?;
+    let mut armor: Vec<i32> = wears
+        .iter()
+        .filter_map(|piece| {
+            world
+                .get::<gdtf_battle_sim::ArmorIntegrity>(piece)
+                .map(|c| **c)
+        })
+        .collect();
+    armor.sort_unstable();
     Some(CombatSnapshot {
-        hp:     *world.get::<Hp>(target)?,
+        hp: *world.get::<Hp>(target)?,
         wounds: *world.get::<Wounds>(target)?,
-        armor:  *world.get::<gdtf_battle_sim::WornArmor>(target)?,
-        tu:     *world.get::<Tu>(shooter)?,
+        armor,
+        tu: *world.get::<Tu>(shooter)?,
     })
 }
 
 /// `resolve_coarse` mutates NOTHING: after the call the struck ganger's `Hp` /
-/// `Wounds` / `WornArmor` and the shooter's `Tu` are unchanged (E3 / E4 boundary).
+/// `Wounds` / worn-piece integrities and the shooter's `Tu` are unchanged (E3 / E4
+/// boundary).
 #[test]
 fn resolve_coarse_mutates_no_combat_state() {
     let shooter_at = key(2, 2, 0);
@@ -465,13 +481,10 @@ fn resolve_coarse_mutates_no_combat_state() {
         after.wounds, before.wounds,
         "the target's Wounds are unchanged (no severity)",
     );
-    for part in BodyPart::ALL {
-        assert_eq!(
-            after.armor.at(part),
-            before.armor.at(part),
-            "the target's worn armor at {part:?} is unchanged (no degradation)",
-        );
-    }
+    assert_eq!(
+        after.armor, before.armor,
+        "the target's worn-piece integrities are unchanged (no degradation)",
+    );
     assert_eq!(
         after.tu, before.tu,
         "the shooter's Tu is unchanged (no fire economy)"

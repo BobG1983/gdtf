@@ -83,12 +83,10 @@ fn dispatch_and_occupancy_co_schedule_and_a_kill_frees_the_slot() {
     // A shooter aiming at a LOW-HP in-line target so the volley downs/kills it.
     let mode = single_mode(0.2, 1);
     let shooter = spawn_shooter(app.world_mut(), 2, 5, mode, true);
-    // Deliberately fragile target (1 HP, 1 Wound, paper armor) so the shot finishes
-    // it — a relation (it dies), never a pinned damage number.
-    let target = app
-        .world_mut()
-        .spawn(target_bundle(1, 1, worn_suit(0, 0, 1, 0)))
-        .id();
+    // Deliberately fragile target (1 HP, 1 Wound, no armor) so the shot finishes it —
+    // a relation (it dies), never a pinned damage number. Armor lives on related piece
+    // entities now (GTW-323); this bare target wears none, so the shot lands on flesh.
+    let target = app.world_mut().spawn(target_bundle(1, 1)).id();
     let target_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
     // Place the target in the occupancy grid + give it a Position so the occupancy
     // move-sync writes its PrevSlot (the slot sync_dead_gangers later frees).

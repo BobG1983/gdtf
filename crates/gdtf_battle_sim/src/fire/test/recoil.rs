@@ -50,9 +50,10 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
         // real armor so round 0 wounds but does NOT kill it. That way the volley's
         // later rounds turning non-`Ganger` is unambiguously the recoil climb
         // (they sail OVER), not corpse-skip turning a struck round into no-effect.
-        let target = world
-            .spawn(target_bundle(500, 60, worn_suit(20, 60, 200, 10)))
-            .id();
+        let target = world.spawn(target_bundle(500, 60)).id();
+        // GTW-323: equip the target's worn-armor PIECE entities (the combat read+wear
+        // path) — the ONLY armor storage (no on-ganger copy, GTW-323 slice 3).
+        equip_uniform_armor(&mut world, target, 20, 60, 200, 10);
         let target_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
         let mut occupancy = OccupancyGrid::new();
         occupancy.set_occupant(target_at, Some(target));
@@ -73,10 +74,10 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
             ),
         );
         let mut r = rng();
-        let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+        let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
         let reports = match state.get_mut(&mut world) {
-            Ok((mut shooters, mut targets)) => fire(
+            Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) => fire(
                 shooter,
                 FireOrder {
                     mode:         &mode,
@@ -85,6 +86,10 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
                 },
                 &mut shooters,
                 &mut targets,
+                &wears,
+                &mut pieces,
+                &wields,
+                &mut weapons,
                 BattleGrids {
                     occupancy: &occupancy,
                     surface:   &surface,

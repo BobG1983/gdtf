@@ -23,9 +23,11 @@ fn same_seed_reproduces_byte_equal_volley() {
                 aiming: true,
             },
         );
-        let target = world
-            .spawn(target_bundle(60, 12, worn_suit(1, 4, 20, 1)))
-            .id();
+        let target = world.spawn(target_bundle(60, 12)).id();
+        // GTW-323: equip the target's worn-armor PIECE entities (the combat read+wear
+        // path) — the same uniform stats both seeded runs share, so the byte-equal-
+        // volley determinism property holds through the keyed piece lookup.
+        equip_uniform_armor(&mut world, target, 1, 4, 20, 1);
         let target_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
         let mut occupancy = OccupancyGrid::new();
         occupancy.set_occupant(target_at, Some(target));
@@ -33,10 +35,10 @@ fn same_seed_reproduces_byte_equal_volley() {
         let surface = SurfaceGrid::new();
         let cover = CoverLedger::new();
         let mut r = rng();
-        let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+        let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
         match state.get_mut(&mut world) {
-            Ok((mut shooters, mut targets)) => fire(
+            Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) => fire(
                 shooter,
                 FireOrder {
                     mode:         &mode,
@@ -45,6 +47,10 @@ fn same_seed_reproduces_byte_equal_volley() {
                 },
                 &mut shooters,
                 &mut targets,
+                &wears,
+                &mut pieces,
+                &wields,
+                &mut weapons,
                 BattleGrids {
                     occupancy: &occupancy,
                     surface:   &surface,

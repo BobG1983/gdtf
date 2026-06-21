@@ -26,9 +26,9 @@
 //!    [`ShotOutcome::body_part`](crate::resolve_coarse::ShotOutcome::body_part)
 //!    (the §4 location roll already drawn upstream). A `Ganger` outcome carries
 //!    `Some`; a defensive `None` folds to a no-damage report.
-//! 4. **Armor lookup (or bare flesh)** — if the worn piece at the struck part
-//!    still [`protects`](crate::armor::WornArmor::protects), the hit resolves
-//!    against that [`ArmorPiece`](crate::armor::ArmorPiece) under the E3.2
+//! 4. **Armor lookup (or bare flesh)** — if the struck part's worn piece entity
+//!    still protects (its [`ArmorIntegrity`](crate::armor::ArmorIntegrity) `> 0`), the
+//!    hit resolves against that [`ArmorPiece`](crate::armor::ArmorPiece) under the E3.2
 //!    [`matchup`](crate::matchup::matchup) of the weapon's
 //!    [`DamageType`](crate::weapon::DamageType) vs the piece's
 //!    [`ArmorType`](crate::armor::ArmorType). Otherwise it resolves as **bare
@@ -72,4 +72,4 @@ mod report;
 mod test;
 
 pub use fold::resolve_and_apply;
-pub use report::{AppliedDamage, HitReport, TargetGanger};
+pub use report::{AppliedDamage, HitReport, StruckPiece, TargetGanger};

@@ -6,8 +6,11 @@
 use bevy::prelude::Entity;
 
 use super::{
-    compose::{RoundSetup, TargetGeometry, read_shooter, resolve_round},
-    query::{BattleGrids, FireOrder, ShooterQuery, TargetQuery},
+    compose::{RoundSetup, ShooterReads, TargetGeometry, read_shooter, resolve_round},
+    query::{
+        BattleGrids, FireOrder, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery,
+        WieldsQuery,
+    },
 };
 use crate::{
     magazine::{FireActor, can_fire, clamp_burst, mode_tu_cost},
@@ -103,20 +106,46 @@ impl Volley {
 /// empty. The struck entity not being a queryable target (e.g. it lacks a target
 /// component) folds that round to [`HitReport::no_effect`] — never a panic (the round's
 /// [`ShotOutcome`] still rides in [`Volley::shots`]).
+///
+/// Since GTW-323 slice 1 (ADR-0004) the struck location's worn armor is read + worn
+/// through the `wears` ([`WearsQuery`]) → `pieces` ([`PieceQuery`]) relationship
+/// traversal (`ganger → Wears → the BodyPart-tagged piece`), not a `&mut WornArmor`
+/// column; since slice 2 the shooter's weapon stats + [`Magazine`](crate::magazine::Magazine)
+/// are read + decremented through the `wields` ([`WieldsQuery`]) → `weapons`
+/// ([`WeaponQuery`]) traversal (`ganger → Wields → the weapon entity`), not weapon
+/// columns on the [`ShooterQuery`].
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the GTW-323 armor + weapon relationships add the disjoint wears/pieces + \
+              wields/weapons queries to the fire() signature; bundling them would \
+              obscure the query-disjointness the signature documents"
+)]
 pub fn fire(
     shooter: Entity,
     order: FireOrder,
     shooters: &mut ShooterQuery,
     targets: &mut TargetQuery,
+    wears: &WearsQuery,
+    pieces: &mut PieceQuery,
+    wields: &WieldsQuery,
+    weapons: &mut WeaponQuery,
     grids: BattleGrids,
     tuning: &CombatTuning,
     rng: &mut SimRng,
 ) -> Volley {
-    // (1) Snapshot the shooter's Copy read state up front (the immutable borrow is
+    // (1) Snapshot the shooter's Copy read state up front (the immutable borrows are
     //     released before the mutable re-borrows). A shooter not in the shooter query
-    //     (unarmed / despawned) fires nothing.
-    let Some((snapshot, shooter_tu, shooter_tu_max, shooter_aiming, magazine_now)) =
-        read_shooter(shooter, shooters)
+    //     (despawned), wielding no weapon, or whose weapon entity is not in the weapon
+    //     query fires nothing (fail-closed). The weapon stats come off the related
+    //     weapon entity (`ganger → Wields → the weapon entity`, GTW-323 slice 2).
+    let Some(ShooterReads {
+        snapshot,
+        weapon: weapon_entity,
+        tu: shooter_tu,
+        tu_max: shooter_tu_max,
+        aiming: shooter_aiming,
+        magazine: magazine_now,
+    }) = read_shooter(shooter, shooters, wields, weapons)
     else {
         return Volley::empty();
     };
@@ -152,7 +181,7 @@ pub fn fire(
     // (2) CHARGE the full mode TU ONCE up front (AC3) — debit the shooter's Tu via
     //     the shared mode_tu_cost (the same source can_fire's affordability read).
     let charge = mode_tu_cost(order.mode, &shooter_tu_max, &shooter_aiming, tuning);
-    if let Ok((_, (mut tu_mut, _), _)) = shooters.get_mut(shooter) {
+    if let Ok((_, mut tu_mut)) = shooters.get_mut(shooter) {
         spend_tu(&mut tu_mut, charge);
     } else {
         // Unreachable after the get() above succeeded, but stay panic-free.
@@ -190,13 +219,16 @@ pub fn fire(
             crate::cone::PriorShots::new(i),
             grids,
             targets,
+            wears,
+            pieces,
             tuning,
             rng,
         );
 
         // Decrement the magazine one round per fired iteration (saturating, AC4) —
-        // re-borrow the shooter query mutably (disjoint from the target get_mut above).
-        if let Ok((_, (_, mut mag_mut), _)) = shooters.get_mut(shooter) {
+        // re-borrow the WEAPON entity mutably (GTW-323 slice 2: the Magazine lives on
+        // the weapon now, disjoint from the ganger entities of the other queries).
+        if let Ok((.., mut mag_mut)) = weapons.get_mut(weapon_entity) {
             mag_mut.spend_round();
         }
 

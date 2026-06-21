@@ -20,27 +20,39 @@ fn same_seed_reproduces_the_report_sequence() {
 
     let run = || {
         let mut r = SimRng::from_seed(BattleSeed::new(SEED));
-        // A fresh target per call so wear/state don't drift the comparison.
+        // A fresh target per call so wear/state don't drift the comparison. Each part
+        // has its own piece-entity integrity (keyed access — GTW-323 / ADR-0004), so the
+        // repeated Torso hit wears the SAME piece across the sequence (the same
+        // per-location wear the old shared uniform suit modelled).
         let mut hp = Hp::new(60);
         let mut wounds = Wounds::new(12);
         let mut life = LifeState::Alive;
-        let mut worn = worn_suit(1, 6, 40, 2, ArmorType::Flak);
+        let mut integrity: bevy::platform::collections::HashMap<BodyPart, ArmorIntegrity> =
+            BodyPart::ALL
+                .into_iter()
+                .map(|p| (p, piece_integrity(40)))
+                .collect();
         let mut inflicted = InflictedWounds::default();
         parts
             .iter()
             .map(|&part| {
+                // Key the struck part's piece integrity (`ganger → Wears → the
+                // BodyPart-tagged piece` in the full ECS path; a per-part map here).
+                let piece = integrity
+                    .get_mut(&part)
+                    .map(|integ| struck_piece(1, 6, 2, ArmorType::Flak, integ));
                 resolve_and_apply(
                     &ganger_outcome(entity, part),
                     weapon.stats(),
                     Luck::new(1.0),
                     TargetGanger {
-                        hp:        &mut hp,
-                        wounds:    &mut wounds,
-                        life:      &mut life,
-                        worn:      &mut worn,
+                        hp: &mut hp,
+                        wounds: &mut wounds,
+                        life: &mut life,
+                        piece,
                         inflicted: &mut inflicted,
                         toughness: Toughness::new(2.0),
-                        luck:      Luck::new(2.0),
+                        luck: Luck::new(2.0),
                     },
                     entity,
                     &tuning,

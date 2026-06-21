@@ -6,14 +6,11 @@ use bevy::prelude::Entity;
 
 use crate::{
     apply_hit::{GangerHitTarget, apply_hit},
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
-        BodyPart, WornArmor,
-    },
+    armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType},
     armor_wear::ArmorWearOutcome,
     ganger::{LifeState, Luck},
     matchup::{Matchup, matchup},
-    resolve_and_apply::report::{AppliedDamage, HitReport, TargetGanger},
+    resolve_and_apply::report::{AppliedDamage, HitReport, StruckPiece, TargetGanger},
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::resolve_hit,
     rng::SimRng,
@@ -23,8 +20,9 @@ use crate::{
 };
 
 /// The **bare-flesh** armor piece — a zeroed soak used when the struck location no
-/// longer [`protects`](WornArmor::protects) (`weapons-and-armor.md` §"Per-hit
-/// resolution": "later hits on that location resolve as bare flesh").
+/// longer protects (its piece entity's [`ArmorIntegrity`](crate::armor::ArmorIntegrity)
+/// `≤ 0`; `weapons-and-armor.md` §"Per-hit resolution": "later hits on that location
+/// resolve as bare flesh").
 ///
 /// Floor / protection / hardness are all `0` so the per-hit formula soaks nothing
 /// (on bare flesh `dmg == damage` regardless of matchup, since protection `0`),
@@ -43,25 +41,33 @@ const BARE_FLESH: ArmorPiece = ArmorPiece::new(
 /// Resolve the struck location to the `(`[`ArmorPiece`]`, `[`Matchup`]`)` the
 /// per-hit formula runs against — the armored branch or **bare flesh**.
 ///
-/// If the worn piece at `part` still [`protects`](WornArmor::protects), returns that
-/// piece and the E3.2 [`matchup`] of the weapon's
+/// If a worn [`StruckPiece`] is present AND still [`protects`](StruckPiece::protects),
+/// returns that piece's stats (read off its piece-entity components — GTW-323 /
+/// ADR-0004) and the E3.2 [`matchup`] of the weapon's
 /// [`DamageType`](crate::weapon::DamageType) vs the piece's [`ArmorType`] (the wheel
-/// advantage applies). Otherwise returns the zeroed [`BARE_FLESH`] piece under
-/// [`Matchup::Neutral`] — there is no armor type to match against, so no wheel
-/// advantage, and the zeroed soak means the hit lands as full weapon damage
-/// (`weapons-and-armor.md` §"Per-hit resolution").
-fn struck_piece(
-    worn: &WornArmor,
-    part: BodyPart,
-    weapon: WeaponStats<'_>,
-) -> (ArmorPiece, Matchup) {
-    if worn.protects(part) {
-        let piece = worn.at(part);
-        let resolved = matchup(*weapon.damage_type, piece.armor_type);
-        (piece, resolved)
-    } else {
-        // Bare flesh: no protection / hardness, no armor type to match → Neutral.
-        (BARE_FLESH, Matchup::Neutral)
+/// advantage applies). Otherwise (no piece at this location, or it is worn through)
+/// returns the zeroed [`BARE_FLESH`] piece under [`Matchup::Neutral`] — there is no
+/// armor type to match against, so no wheel advantage, and the zeroed soak means the
+/// hit lands as full weapon damage (`weapons-and-armor.md` §"Per-hit resolution").
+fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (ArmorPiece, Matchup) {
+    match piece {
+        Some(p) if p.protects() => {
+            // Re-assemble the read-only ArmorPiece value the damage formula consumes
+            // from the piece entity's stat components (integrity is read by value here;
+            // the wear mutation happens later in `apply_hit`).
+            let assembled = ArmorPiece::new(
+                p.floor,
+                p.protection,
+                p.integrity_value(),
+                p.hardness,
+                p.armor_type,
+            );
+            let resolved = matchup(*weapon.damage_type, p.armor_type);
+            (assembled, resolved)
+        }
+        // No protecting piece (missing piece OR worn through) ⇒ bare flesh: no
+        // protection / hardness, no armor type to match → Neutral.
+        _ => (BARE_FLESH, Matchup::Neutral),
     }
 }
 
@@ -125,8 +131,11 @@ pub fn resolve_and_apply(
         return HitReport::no_effect(outcome.kind);
     };
 
-    // (4) Armored piece + matchup, or zeroed bare flesh under Neutral.
-    let (piece, resolved_matchup) = struck_piece(target.worn, part, weapon);
+    // (4) Armored piece + matchup, or zeroed bare flesh under Neutral. The struck
+    // piece is resolved by the caller from `ganger → Wears → the BodyPart-tagged piece`
+    // (GTW-323 / ADR-0004); `struck_piece` reads its stats (the wear mutation comes
+    // later in `apply_hit`, via the same piece's `&mut ArmorIntegrity`).
+    let (piece, resolved_matchup) = struck_piece(target.piece.as_ref(), weapon);
 
     // (5) The per-hit damage formula (E3.3) — pure, mutates nothing.
     let hit = resolve_hit(
@@ -159,7 +168,9 @@ pub fn resolve_and_apply(
             hp:        target.hp,
             wounds:    target.wounds,
             life:      target.life,
-            worn:      target.worn,
+            // The struck piece's `&mut ArmorIntegrity` (None on bare flesh / no piece)
+            // — `apply_hit`'s `wear_armor` degrades it in place (GTW-323 / ADR-0004).
+            integrity: target.piece.map(|p| p.integrity),
             inflicted: target.inflicted,
         },
         &hit,

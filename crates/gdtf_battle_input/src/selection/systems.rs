@@ -2,11 +2,11 @@
 //! MOVE → CLEAR decision) and [`right_click_turn_to_face`], both gated to the player's faction.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Faction, PlayerFaction, Position};
+use gdtf_battle_sim::{Faction, PlayerFaction, Position, WieldedBy, Wields};
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent,
-    fire_surface::ShooterFireData,
+    fire_surface::{ShooterFireData, WeaponMagazine},
     selection::{
         decision::{
             LeftClickReads, TurnReads, apply_left_click, apply_pin, decide_left_click, decide_pin,
@@ -53,14 +53,24 @@ use crate::{
 /// [`InspectTarget`]), so both effects compose on one click with no double-dispatch.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
-/// `Query<&Faction>` + `Query<ShooterFireData>`, the [`ResMut<SelectedShooter>`] /
-/// [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes — no `&mut World`. Runs
-/// `.before(pick_hovered_cell)` (`bevy-traps.md` #3) so it reads the cell resolved last update,
-/// and `.before(dispatch_act_intents)` so the drain sees this update's pushes.
+/// `Query<&Faction>` + `Query<ShooterFireData>` + `Query<&Wields>` + the weapon-magazine query
+/// (the fire guard's magazine lives on the related weapon entity since GTW-323 slice 3), the
+/// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes —
+/// no `&mut World`. Runs `.before(pick_hovered_cell)` (`bevy-traps.md` #3) so it reads the cell
+/// resolved last update, and `.before(dispatch_act_intents)` so the drain sees this update's
+/// pushes.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "GTW-323 slice 3: the fire guard's magazine moved to the related weapon entity, so the \
+              shared decision needs the extra Wields + weapon-magazine queries on top of the existing \
+              reads/writes; LeftClickReads already bundles the Res-only reads"
+)]
 pub fn left_click_act(
     reads: LeftClickReads,
     factions: Query<&Faction>,
     shooters: Query<ShooterFireData>,
+    wields: Query<&Wields>,
+    weapons: Query<WeaponMagazine, With<WieldedBy>>,
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
     mut inspect: ResMut<InspectTarget>,
@@ -71,7 +81,9 @@ pub fn left_click_act(
     }
     // Decide both effects from the immutable inspect target FIRST, then commit them (the pin
     // write borrows `inspect` mutably, so the read-only decisions must finish before it).
-    let outcome = decide_left_click(&reads, &inspect, &factions, &shooters, &selected);
+    let outcome = decide_left_click(
+        &reads, &inspect, &factions, &shooters, &wields, &weapons, &selected,
+    );
     let pin = decide_pin(&reads, &inspect, &factions);
     apply_left_click(outcome, &mut selected, &mut pending);
     // GTW-300 — the parallel pin effect (orthogonal to the act/selection effect above).

@@ -18,12 +18,12 @@ fn bare_flesh_uses_no_protection_or_hardness() {
     let mut hp = Hp::new(50);
     let mut wounds = Wounds::new(9);
     let mut life = LifeState::Alive;
-    // integrity 0 ⇒ protects(part) == false ⇒ bare flesh, despite real
+    // integrity 0 ⇒ protects() == false ⇒ bare flesh, despite real
     // protection/hardness numbers on the (broken) piece.
-    let mut worn = worn_suit(2, 20, 0, 5, ArmorType::Void);
+    let mut integrity = piece_integrity(0);
     let mut inflicted = InflictedWounds::default();
     assert!(
-        !worn.protects(part),
+        *integrity <= 0,
         "fixture: the struck piece must already be worn through (no protection)",
     );
 
@@ -35,7 +35,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            piece:     Some(struck_piece(2, 20, 5, ArmorType::Void, &mut integrity)),
             inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
@@ -78,10 +78,10 @@ fn bare_flesh_uses_no_protection_or_hardness() {
     let mut wounds2 = Wounds::new(9);
     let mut life2 = LifeState::Alive;
     // High protection, intact (protects == true) ⇒ the soak is in play.
-    let mut worn2 = worn_suit(2, 20, 50, 5, ArmorType::Void);
+    let mut integrity2 = piece_integrity(50);
     let mut inflicted2 = InflictedWounds::default();
     assert!(
-        worn2.protects(part),
+        *integrity2 > 0,
         "fixture: the armored piece must still protect",
     );
     let report2 = resolve_and_apply(
@@ -92,7 +92,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
             hp:        &mut hp2,
             wounds:    &mut wounds2,
             life:      &mut life2,
-            worn:      &mut worn2,
+            piece:     Some(struck_piece(2, 20, 5, ArmorType::Void, &mut integrity2)),
             inflicted: &mut inflicted2,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),

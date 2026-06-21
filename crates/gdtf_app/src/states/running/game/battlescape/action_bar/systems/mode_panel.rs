@@ -29,7 +29,8 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::{
-    Aiming, FireMode, FireModeSpec, ModeKind, TuMax, mode_tu_cost, tuning::CombatTuning,
+    Aiming, FireMode, FireModeSpec, ModeKind, TuMax, WieldedBy, Wields, mode_tu_cost,
+    tuning::CombatTuning,
 };
 use gdtf_ui::{
     ActiveSegment, Orientation, Segment, SegmentColors, SegmentIndex, SegmentLabel,
@@ -254,19 +255,24 @@ type ModeControlChildren = (Entity, &'static Children);
 /// despawned — only its visibility (and the segments' display) change.
 ///
 /// Param-only (`bevy-traps.md` #7): a `Res<SelectedShooter>` read, a read-only
-/// `Query<&FireMode>`, an [`Added<ModeControl>`](Added) detector, a `Query<&Children>` (to
-/// walk the control's segments for [`set_segment_visible`](gdtf_ui::set_segment_visible)), a
+/// `Query<&Wields>` (the relationship) + a `Query<&FireMode, With<WieldedBy>>` weapon-entity
+/// query (the offered modes live on the related weapon entity since GTW-323 slice 3), an
+/// [`Added<ModeControl>`](Added) detector, a `Query<&Children>` (to walk the control's
+/// segments for [`set_segment_visible`](gdtf_ui::set_segment_visible)), a
 /// `Query<(&SegmentIndex, &mut Node), With<Segment>>` write, a control-root
 /// `Query<ModeControlChildren, With<ModeControl>>`, and the panel-root `&mut`[`Visibility`]
 /// query — no `Commands`, no `&mut World`.
 #[allow(
     clippy::type_complexity,
-    reason = "param tuple aliased where possible; the \
-    set_segment_visible call signature fixes the children/segments query shapes"
+    clippy::too_many_arguments,
+    reason = "param tuple aliased where possible; the set_segment_visible call signature fixes the \
+    children/segments query shapes, and GTW-323 slice 3 adds the Wields relationship query so the \
+    offered modes resolve off the related weapon entity"
 )]
 pub(in crate::states::running::game::battlescape) fn rebuild_mode_segments(
     selected: Res<SelectedShooter>,
-    weapons: Query<&FireMode>,
+    wields: Query<&Wields>,
+    weapons: Query<&FireMode, With<WieldedBy>>,
     added_controls: Query<(), Added<ModeControl>>,
     children: Query<&Children>,
     mut segments: Query<(&SegmentIndex, &mut Node), With<Segment>>,
@@ -280,9 +286,15 @@ pub(in crate::states::running::game::battlescape) fn rebuild_mode_segments(
         return;
     }
 
-    // Which modes the SELECTED weapon offers (the closed `ModeKind` set). A cleared /
-    // no-selection / unarmed (no `FireMode`) selection offers nothing → every segment hidden.
-    let offered = (**selected).and_then(|shooter| weapons.get(shooter).ok());
+    // Which modes the SELECTED weapon offers (the closed `ModeKind` set). The FireMode
+    // selector lives on the wielded WEAPON entity (GTW-323 slice 3): resolve
+    // `ganger → Wields → the weapon entity → FireMode`. A cleared / no-selection /
+    // unarmed (no Wields / no weapon / no FireMode) selection offers nothing → every
+    // segment hidden.
+    let offered = (**selected)
+        .and_then(|shooter| wields.get(shooter).ok())
+        .and_then(Wields::weapon)
+        .and_then(|weapon| weapons.get(weapon).ok());
     let offers =
         |kind: ModeKind| offered.is_some_and(|weapon| weapon.iter().any(|m| m.kind == kind));
 
@@ -323,13 +335,15 @@ pub(in crate::states::running::game::battlescape) fn rebuild_mode_segments(
 ///
 /// Param-only (`bevy-traps.md` #7): a [`MessageReader<SegmentSelected>`](MessageReader)
 /// (bevy-traps rule 4), the `ResMut<SelectedFireMode>` write, the `Res<SelectedShooter>`
-/// read, a read-only `Query<&FireMode>`, and a read-only `Query<(), With<ModeControl>>` — no
-/// `&mut World`.
+/// read, a read-only `Query<&Wields>` (the relationship) + a `Query<&FireMode,
+/// With<WieldedBy>>` weapon-entity query (the modes live on the related weapon entity since
+/// GTW-323 slice 3), and a read-only `Query<(), With<ModeControl>>` — no `&mut World`.
 pub(in crate::states::running::game::battlescape) fn mode_segment_write(
     mut chosen: MessageReader<SegmentSelected>,
     mut fire_mode: ResMut<SelectedFireMode>,
     selected: Res<SelectedShooter>,
-    weapons: Query<&FireMode>,
+    wields: Query<&Wields>,
+    weapons: Query<&FireMode, With<WieldedBy>>,
     mode_controls: Query<(), With<ModeControl>>,
 ) {
     for event in chosen.read() {
@@ -340,7 +354,7 @@ pub(in crate::states::running::game::battlescape) fn mode_segment_write(
             continue;
         };
         // Read the selected weapon's spec for that kind — never a fabricated value.
-        let Some(spec) = mode_spec_for(*selected, &weapons, kind) else {
+        let Some(spec) = mode_spec_for(*selected, &wields, &weapons, kind) else {
             continue;
         };
         let next = SelectedFireMode::new(spec);
@@ -375,27 +389,38 @@ pub(in crate::states::running::game::battlescape) fn sync_mode_active_segment(
 
 /// The selected weapon's [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) for `kind`, read
 /// back off its [`FireMode`](gdtf_battle_sim::FireMode) selector — or [`None`] when there
-/// is no selection, the selection is unarmed, or the weapon does not offer `kind`.
+/// is no selection, the selection wields no weapon, or the weapon does not offer `kind`.
 ///
 /// The single read-back point so [`mode_segment_write`] never fabricates a spec (the
-/// GTW-265 "read-back, never fabricated" rule). Read-only over the selection + weapon query.
+/// GTW-265 "read-back, never fabricated" rule). Resolves the [`FireMode`] off the related
+/// WEAPON entity (`ganger → Wields → the weapon entity`, GTW-323 slice 3). Read-only over
+/// the selection + the [`Wields`] relationship + the weapon-entity query.
 fn mode_spec_for(
     selected: SelectedShooter,
-    weapons: &Query<&FireMode>,
+    wields: &Query<&Wields>,
+    weapons: &Query<&FireMode, With<WieldedBy>>,
     kind: ModeKind,
 ) -> Option<FireModeSpec> {
     let shooter = (*selected)?;
-    let weapon = weapons.get(shooter).ok()?;
-    weapon.iter().find(|spec| spec.kind == kind).copied()
+    let weapon = wields.get(shooter).ok().and_then(Wields::weapon)?;
+    let fire_mode = weapons.get(weapon).ok()?;
+    fire_mode.iter().find(|spec| spec.kind == kind).copied()
 }
 
-/// Read-only [`Query`] data the cost-line system reads off the SELECTED shooter to compute
-/// each offered mode's TU charge: its [`FireMode`] selector (the offered specs), its
-/// [`TuMax`] (the round-start ceiling the charge is a percentage of), and its [`Aiming`]
-/// flag (selects the aim premium).
+/// Read-only [`Query`] data the cost-line system reads off the SELECTED GANGER to compute
+/// each offered mode's TU charge: its [`TuMax`] (the round-start ceiling the charge is a
+/// percentage of) and its [`Aiming`] flag (selects the aim premium). The third input, the
+/// [`FireMode`] selector (the offered specs), lives on the related WEAPON entity since
+/// GTW-323 slice 3 — read separately ([`CostWeapon`]) through the ganger's [`Wields`]
+/// relationship, NOT off the ganger.
 ///
 /// Named to keep [`sync_mode_tu_cost_lines`]'s signature legible (clippy `type_complexity`).
-type CostShooter = (&'static FireMode, &'static TuMax, &'static Aiming);
+type CostShooter = (&'static TuMax, &'static Aiming);
+
+/// Read-only [`Query`] data the cost-line system reads off a WEAPON entity
+/// (`With<`[`WieldedBy`]`>`): its [`FireMode`] selector (the offered specs), resolved
+/// through the selected ganger's [`Wields`] relationship since GTW-323 slice 3.
+type CostWeapon = &'static FireMode;
 
 /// Read-only [`Query`] FILTER selecting each Mode [`Segment`] (its [`SegmentIndex`] +
 /// [`Children`]), the shape [`set_segment_sub_line`](gdtf_ui::set_segment_sub_line) reads.
@@ -417,8 +442,12 @@ pub(in crate::states::running::game::battlescape) struct ModeCostInputs<'w, 's> 
     selected:       Res<'w, SelectedShooter>,
     /// The live combat tuning the per-shot charge reads (the aim premium factor).
     tuning:         Res<'w, CombatTuning>,
-    /// The selected shooter's cost inputs ([`FireMode`] / [`TuMax`] / [`Aiming`]).
+    /// The selected GANGER's cost inputs ([`TuMax`] / [`Aiming`]).
     shooters:       Query<'w, 's, CostShooter>,
+    /// The selected ganger's [`Wields`] relationship (resolves the weapon entity).
+    wields:         Query<'w, 's, &'static Wields>,
+    /// The wielded WEAPON entity's [`FireMode`] selector ([`CostWeapon`]) — the offered specs.
+    weapons:        Query<'w, 's, CostWeapon, With<WieldedBy>>,
     /// Detects an Aim flip (a [`Changed<Aiming>`](Changed) on any ganger) → recompute.
     aim_changed:    Query<'w, 's, (), Changed<Aiming>>,
     /// Detects the [`ModeControl`] freshly spawned (the GTW-255 auto-select ordering trap).
@@ -483,20 +512,30 @@ pub(in crate::states::running::game::battlescape) fn sync_mode_tu_cost_lines(
         return;
     }
 
-    // The selected shooter's cost inputs, if it is armed and carries the vitals/posture the
-    // charge reads. Absent / unarmed → every sub-line is cleared below.
-    let shooter_inputs = (**inputs.selected).and_then(|shooter| inputs.shooters.get(shooter).ok());
+    // The selected ganger's cost inputs (TuMax/Aiming) + its wielded weapon's FireMode
+    // selector (resolved `ganger → Wields → the weapon entity`, GTW-323 slice 3). Absent /
+    // unarmed (no ganger inputs, no Wields, or no FireMode on the weapon) → every sub-line
+    // is cleared below.
+    let ganger = **inputs.selected;
+    let shooter_inputs = ganger.and_then(|shooter| inputs.shooters.get(shooter).ok());
+    let weapon_mode = ganger
+        .and_then(|shooter| inputs.wields.get(shooter).ok())
+        .and_then(Wields::weapon)
+        .and_then(|weapon| inputs.weapons.get(weapon).ok());
 
     for control in &mode_controls {
         for (index, mode) in MODE_ORDER.iter().enumerate() {
-            // The offered spec for this mode (and the shooter's TuMax/Aiming) → its cost line;
-            // a non-offered mode / no armed selection → clear the sub-line (None). The cost is
-            // the EXACT sim charge (`mode_tu_cost`), so the display equals the debit.
-            let label = shooter_inputs.and_then(|(weapon, tu_max, aiming)| {
-                let spec = weapon.iter().find(|s| s.kind == *mode)?;
-                let cost = mode_tu_cost(spec, tu_max, aiming, &inputs.tuning);
-                Some(SegmentSubLabel::new(format!("{} TU", *cost)))
-            });
+            // The offered spec for this mode (off the weapon) + the ganger's TuMax/Aiming →
+            // its cost line; a non-offered mode / no armed selection → clear the sub-line
+            // (None). The cost is the EXACT sim charge (`mode_tu_cost`), so the display
+            // equals the debit.
+            let label = shooter_inputs
+                .zip(weapon_mode)
+                .and_then(|((tu_max, aiming), weapon)| {
+                    let spec = weapon.iter().find(|s| s.kind == *mode)?;
+                    let cost = mode_tu_cost(spec, tu_max, aiming, &inputs.tuning);
+                    Some(SegmentSubLabel::new(format!("{} TU", *cost)))
+                });
             set_segment_sub_line(
                 &mut commands,
                 control,

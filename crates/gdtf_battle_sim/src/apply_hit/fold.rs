@@ -4,7 +4,7 @@
 use bevy::prelude::Entity;
 
 use crate::{
-    armor::{BodyPart, WornArmor},
+    armor::{ArmorIntegrity, BodyPart},
     armor_wear::{ArmorWearOutcome, wear_armor},
     ganger::{Hp, LifeState, Wounds},
     inflicted_wound::{InflictedWound, InflictedWounds},
@@ -14,15 +14,18 @@ use crate::{
 };
 
 /// The bundle of **mutable** ganger-state borrows [`apply_hit`] folds a hit onto —
-/// the four battle-state surfaces a hit can change.
+/// the battle-state surfaces a hit can change.
 ///
 /// Grouping the `&mut` borrows into one named struct keeps [`apply_hit`] under
 /// clippy's argument-count gate (the same precedent as
 /// [`crate::severity::SeverityInputs`] / [`crate::resolve_coarse::ShotInputs`]).
 /// Every field is an existing named domain component ([`Hp`] / [`Wounds`] /
-/// [`LifeState`] / [`WornArmor`] / [`InflictedWounds`] — no-bare-types), exclusively
-/// borrowed so the application mutates them in place. The caller (a Bevy system, or
-/// the E3.9 capstone) assembles this from the ganger entity's components.
+/// [`LifeState`] / [`ArmorIntegrity`] / [`InflictedWounds`] — no-bare-types),
+/// exclusively borrowed so the application mutates them in place. The caller (a Bevy
+/// system, or the E3.9 capstone) assembles this from the ganger entity's components
+/// and — since GTW-323 (ADR-0004) — the **struck piece entity's** [`ArmorIntegrity`]
+/// (resolved from `ganger → Wears → the BodyPart-tagged piece`), not a `WornArmor`
+/// array slot.
 pub struct GangerHitTarget<'a> {
     /// The ganger's hit-points pool — the HP loss subtracts from it (always).
     pub hp:        &'a mut Hp,
@@ -30,8 +33,11 @@ pub struct GangerHitTarget<'a> {
     pub wounds:    &'a mut Wounds,
     /// The ganger's terminal life state — the gates set it (Dead trumps Downed).
     pub life:      &'a mut LifeState,
-    /// The ganger's battle-local worn armor — the struck piece wears in place.
-    pub worn:      &'a mut WornArmor,
+    /// The struck worn-armor **piece entity's** durability — wears in place (the
+    /// piece resolved from `ganger → Wears → the BodyPart-tagged piece`; ADR-0004).
+    /// `None` when the struck location wears no protecting piece (bare flesh — there
+    /// is nothing to wear), so the wear step folds to [`ArmorWearOutcome::Unaffected`].
+    pub integrity: Option<&'a mut ArmorIntegrity>,
     /// The ganger's inflicted-wound record (GTW-279) — each registered (non-graze)
     /// wound appends its tier + struck part here, in the SAME place the [`Wounds`]
     /// pool is spent (the additive presentation record; never read for combat math).
@@ -110,7 +116,8 @@ fn hp_damage_to_u16(damage: i32) -> u16 {
 ///    struck `part`) to [`InflictedWounds`]; a [`Severity::None`] graze records
 ///    nothing (HP loss only, no Wound — `docs/combat/resolution.md` §6).
 /// 4. **Armor wear** — persist the [`HitResult`]'s integrity wear onto the struck
-///    [`WornArmor`] piece via [`wear_armor`], capturing the [`ArmorWearOutcome`]:
+///    piece entity's [`ArmorIntegrity`](crate::armor::ArmorIntegrity) via
+///    [`wear_armor`], capturing the [`ArmorWearOutcome`]:
 ///    [`Broke`](ArmorWearOutcome::Broke) on the protecting→broken crossing,
 ///    [`Worn`](ArmorWearOutcome::Worn) on a reduction that did not break it, or
 ///    [`Unaffected`](ArmorWearOutcome::Unaffected).
@@ -160,9 +167,15 @@ pub fn apply_hit(
     }
 
     // (d) Armor wear — persist this hit's integrity wear onto the struck worn piece
-    // (E3.5), capturing the per-hit ArmorWearOutcome (Broke crossing / Worn reduction
-    // / Unaffected). The mutation is unchanged; only the classification is enriched.
-    let wear_outcome = wear_armor(target.worn, part, hit.wear, ganger);
+    // ENTITY's integrity component (E3.5; the piece resolved from `ganger → Wears`,
+    // ADR-0004 / GTW-323), capturing the per-hit ArmorWearOutcome (Broke crossing /
+    // Worn reduction / Unaffected). A struck location with no protecting piece (bare
+    // flesh — `integrity == None`) wears nothing, folding to Unaffected. The wear
+    // mutation itself is byte-identical to the pre-GTW-323 array-slot wear.
+    let wear_outcome = match target.integrity {
+        Some(integrity) => wear_armor(integrity, part, hit.wear, ganger),
+        None => ArmorWearOutcome::Unaffected,
+    };
 
     // (e) Terminal gates, in order — Wounds depleted to 0 → Dead (TRUMPS Downed,
     // checked first); else Hp depleted to 0 → Downed. (Pools are unsigned, so the

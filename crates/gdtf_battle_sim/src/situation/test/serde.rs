@@ -129,11 +129,11 @@ fn shipped_situation_player_faction_defaults_to_gang_zero() {
 /// proving it is a setup-able, fully-armed, fully-armored situation. Deserialize the
 /// shipped file, run `setup_battle` on a `MinimalPlugins` app against the shipped weapon
 /// and armor registries, and assert it returns `Ok(BattleSetup)` with `ganger_count()`
-/// equal to the authored ganger count AND exactly that many `WornArmor`-carrying
-/// entities AND exactly that many ARMED (`Weapon`-marked) entities. Count-equality plus
-/// Ok proves the links validate, the file drives the real setup path, each ganger ends
-/// up armed from the shipped weapon files, and each ganger ends up armored from the
-/// shipped armor files (the GTW-257 AC5 + GTW-269 sim-side proof).
+/// equal to the authored ganger count AND exactly that many `Wears`-carrying gangers
+/// (the armor relationship) AND exactly that many ARMED (wielded-weapon) entities.
+/// Count-equality plus Ok proves the links validate, the file drives the real setup
+/// path, each ganger ends up armed from the shipped weapon files, and each ganger ends
+/// up armored from the shipped armor files (the GTW-257 AC5 + GTW-269 sim-side proof).
 #[test]
 fn shipped_situation_ron_drives_the_real_setup_path() {
     let Some(situation) = shipped_situation() else {
@@ -156,23 +156,28 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
         authored_ganger_count,
         "setup must spawn exactly the authored ganger count from the shipped file",
     );
-    // Exactly that many entities carry the seeded worn armor — proving the file
-    // poured through the real spawn path (and that the vertical links validated,
-    // since setup aborts before spawning on a bad link).
+    // Exactly that many gangers carry the `Wears` armor relationship — proving the file
+    // poured through the real spawn path (and that the vertical links validated, since
+    // setup aborts before spawning on a bad link). Since GTW-323 slice 3 (ADR-0004) the
+    // armor stats live on related piece entities, NOT the ganger, so the ganger carries
+    // the `Wears` collection (one per ganger), not a `WornArmor` component.
     let world: &mut World = app.world_mut();
-    let mut armor_query = world.query::<&WornArmor>();
+    let mut armor_query = world.query::<&Wears>();
     assert_eq!(
         armor_query.iter(world).count(),
         authored_ganger_count,
-        "the world must hold exactly the authored ganger count of WornArmor entities",
+        "the world must hold exactly the authored ganger count of gangers wearing armor (Wears)",
     );
-    // GTW-257 AC5 — and exactly that many ARMED entities: each shipped ganger
-    // resolved its weapon key and carries the Weapon marker.
-    let mut armed_query = world.query::<&Weapon>();
+    // GTW-257 AC5 — and exactly that many ARMED entities: each shipped ganger resolved
+    // its weapon key and carries the Weapon marker. Since GTW-323 (ADR-0004) the weapon
+    // is the related WEAPON entity (one per ganger, `WieldedBy` + Weapon), so the armed
+    // count is the count of weapon entities.
+    let mut armed_query = world.query::<(&Weapon, &WieldedBy)>();
     assert_eq!(
         armed_query.iter(world).count(),
         authored_ganger_count,
-        "each shipped ganger must end up armed (the Weapon marker landed via the registry)",
+        "each shipped ganger must wield a weapon ENTITY (the Weapon marker landed via the \
+         registry on its related weapon)",
     );
 }
 

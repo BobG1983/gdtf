@@ -21,15 +21,15 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
     let mut hp = Hp::new(50);
     let mut wounds = Wounds::new(9);
     let mut life = LifeState::Alive;
-    let mut worn = worn_suit(20);
+    let mut integrity = worn_piece_integrity(20);
     let mut inflicted = InflictedWounds::default();
-    let before = *worn.at(part).integrity;
+    let before = *integrity;
     {
         let target = GangerHitTarget {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            integrity: Some(&mut integrity),
             inflicted: &mut inflicted,
         };
         let outcome = apply_hit(target, &hit(1, 6), Severity::Minor, part, ganger1, &tuning);
@@ -40,9 +40,9 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
         );
     }
     assert_eq!(
-        *worn.at(part).integrity,
+        *integrity,
         before - 6,
-        "apply_hit must drop the struck piece's integrity by exactly the hit's wear",
+        "apply_hit must drop the struck piece entity's integrity by exactly the hit's wear",
     );
 
     // (2) A high-wear hit on a near-broken piece returns Broke(ArmorBroken).
@@ -50,14 +50,14 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
     let mut hp2 = Hp::new(50);
     let mut wounds2 = Wounds::new(9);
     let mut life2 = LifeState::Alive;
-    let mut worn2 = worn_suit(1); // protecting (1 > 0), one hit from broken
+    let mut integrity2 = worn_piece_integrity(1); // protecting (1 > 0), one hit from broken
     let mut inflicted2 = InflictedWounds::default();
     let outcome = {
         let target = GangerHitTarget {
             hp:        &mut hp2,
             wounds:    &mut wounds2,
             life:      &mut life2,
-            worn:      &mut worn2,
+            integrity: Some(&mut integrity2),
             inflicted: &mut inflicted2,
         };
         apply_hit(target, &hit(1, 5), Severity::Minor, part, ganger, &tuning)
@@ -68,7 +68,7 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
         "a high-wear hit crossing a near-broken piece to ≤ 0 must return Broke(ArmorBroken)",
     );
     assert!(
-        !worn2.protects(part),
+        *integrity2 <= 0,
         "the struck piece must be broken (≤ 0) after the crossing hit",
     );
 }
@@ -100,19 +100,13 @@ fn apply_hit_armor_broken_flows_through_a_message_buffer() {
         let mut hp = Hp::new(30);
         let mut wounds = Wounds::new(6);
         let mut life = LifeState::Alive;
-        let mut worn = WornArmor::seed_from(&ArmorSpec::uniform(ArmorPiece::new(
-            ArmorFloor::new(0),
-            ArmorProtection::new(0),
-            ArmorIntegrity::new(1),
-            ArmorHardness::new(0),
-            ArmorType::DEFAULT,
-        )));
+        let mut integrity = worn_piece_integrity(1);
         let mut inflicted = InflictedWounds::default();
         let target = GangerHitTarget {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            integrity: Some(&mut integrity),
             inflicted: &mut inflicted,
         };
         // The breaking hit yields Broke(ArmorBroken) — write its payload to the buffer

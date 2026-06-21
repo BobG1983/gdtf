@@ -4,7 +4,7 @@
 use bevy::prelude::{Entity, Message};
 
 use crate::{
-    armor::{ArmorIntegrity, BodyPart, WornArmor},
+    armor::{ArmorIntegrity, BodyPart},
     resolve_hit::IntegrityWear,
 };
 
@@ -115,23 +115,28 @@ impl ArmorBroken {
     }
 }
 
-/// Persist a hit's integrity `wear` onto the battle-local [`WornArmor`] at `part`,
-/// returning the per-hit [`ArmorWearOutcome`] — the [`ArmorBroken`] crossing, the
-/// [`ArmorWorn`] reduction (GTW-313), or nothing.
+/// Persist a hit's integrity `wear` onto the struck worn-armor-piece **entity's**
+/// [`ArmorIntegrity`] component at `part`, returning the per-hit [`ArmorWearOutcome`]
+/// — the [`ArmorBroken`] crossing, the [`ArmorWorn`] reduction (GTW-313), or nothing.
 ///
 /// The wear-side primitive E3.6's `apply_hit` calls (`docs/combat/
-/// weapons-and-armor.md` §"Per-hit resolution" step 3). It:
+/// weapons-and-armor.md` §"Per-hit resolution" step 3). Since GTW-323 (ADR-0004) it
+/// mutates the struck **piece entity's** integrity component directly (resolved by the
+/// caller from `ganger → Wears → the BodyPart-tagged piece`), NOT a slot of a
+/// ganger-side `WornArmor` array — the model is the same, the storage is the piece
+/// entity. It:
 ///
-/// 1. reads the **pre**-wear integrity at `part` (protecting iff `> 0`);
-/// 2. subtracts `wear` via [`WornArmor::wear_integrity`] (integrity may fall to
-///    `≤ 0` — "useless at `≤ 0`"); and
+/// 1. reads the **pre**-wear integrity (protecting iff `> 0`);
+/// 2. subtracts `wear` from `integrity` in place (integrity may fall to `≤ 0` —
+///    "useless at `≤ 0`"); and
 /// 3. reads the **post**-wear integrity (broken iff `≤ 0`).
 ///
-/// The mutation in step 2 is byte-identical to the pre-GTW-313 helper — only the
-/// return is enriched from `Option<ArmorBroken>` to [`ArmorWearOutcome`]:
+/// The mutation in step 2 is byte-identical to the pre-GTW-323 array-slot wear — only
+/// the storage moved from a `WornArmor` slot to the piece entity's component. The
+/// return classification is unchanged from GTW-313:
 ///
 /// - protecting before AND broken after ⇒ [`ArmorWearOutcome::Broke`] — the single
-///   protecting→broken crossing (the UNCHANGED break case; was the `Some`);
+///   protecting→broken crossing (the UNCHANGED break case);
 /// - protecting before, NOT broken after, AND `wear > 0` ⇒
 ///   [`ArmorWearOutcome::Worn`] carrying the `delta = wear` removed this hit (the
 ///   GTW-313 reduction signal);
@@ -145,25 +150,26 @@ impl ArmorBroken {
 /// [`bevy::prelude::MessageWriter`] at the system boundary, keeping the "emit once /
 /// emit per reduction" rule in the pure function and the buffer write outside it.
 ///
-/// Battle-local: this only ever mutates the passed [`WornArmor`] copy, never the
-/// roster [`crate::armor::SourceArmor`] it was seeded from (the model/view
-/// separation; ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`).
+/// Battle-local: this only ever mutates the passed battle-local piece-entity
+/// [`ArmorIntegrity`], never the roster [`crate::armor::SourceArmor`] /
+/// [`crate::armor::ArmorSpec`] it was seeded from (the model/view separation; ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`).
 #[must_use]
 pub fn wear_armor(
-    worn: &mut WornArmor,
+    integrity: &mut ArmorIntegrity,
     part: BodyPart,
     wear: IntegrityWear,
     ganger: Entity,
 ) -> ArmorWearOutcome {
     // Was the piece protecting before this hit? (integrity > 0)
-    let was_protecting = worn.protects(part);
+    let was_protecting = **integrity > 0;
 
-    // Apply the wear in place on the battle-local copy (may drop to ≤ 0).
-    // BYTE-IDENTICAL to the pre-GTW-313 mutation — only the classification below changed.
-    worn.wear_integrity(part, ArmorIntegrity::new(*wear));
+    // Apply the wear in place on the battle-local piece component (may drop to ≤ 0).
+    // BYTE-IDENTICAL to the pre-GTW-323 array-slot mutation — only the storage moved.
+    *integrity = ArmorIntegrity::new(**integrity - *wear);
 
     // Is the piece broken now? (integrity ≤ 0)
-    let now_broken = !worn.protects(part);
+    let now_broken = **integrity <= 0;
 
     // Classify the per-hit outcome — at most one of the two armor signals. An
     // already-broken piece (was_protecting == false) emits NEITHER; a zero-wear hit

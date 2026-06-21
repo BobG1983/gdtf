@@ -31,9 +31,10 @@ fn fire_at_in_line_target_applies_damage() {
     // carries no Stance), so the round flies at the standing silhouette; a HIGH
     // occupant band is equal-or-lower than any round band → it impacts (the march
     // bands the round vs the occupant's published band).
-    let target = world
-        .spawn(target_bundle(30, 6, worn_suit(0, 0, 1, 0)))
-        .id();
+    let target = world.spawn(target_bundle(30, 6)).id();
+    // GTW-323: equip the target's worn-armor PIECE entities (the combat read+wear path) —
+    // the ONLY armor storage (no on-ganger copy, GTW-323 slice 3).
+    equip_uniform_armor(&mut world, target, 0, 0, 1, 0);
     let target_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
 
     // Build the occupancy grid with the target as a HIGH-band occupant in line.
@@ -44,9 +45,11 @@ fn fire_at_in_line_target_applies_damage() {
     let cover = CoverLedger::new();
     let mut r = rng();
 
-    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+    let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+            state.get_mut(&mut world)
+        else {
             return;
         };
         fire(
@@ -58,6 +61,10 @@ fn fire_at_in_line_target_applies_damage() {
             },
             &mut shooters,
             &mut targets,
+            &wears,
+            &mut pieces,
+            &wields,
+            &mut weapons,
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
@@ -141,9 +148,11 @@ fn fire_into_empty_space_is_a_clean_miss() {
     let surface = SurfaceGrid::new();
     let cover = CoverLedger::new();
     let mut r = rng();
-    let mut state: SystemState<(ShooterQuery, TargetQuery)> = SystemState::new(&mut world);
+    let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets)) = state.get_mut(&mut world) else {
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+            state.get_mut(&mut world)
+        else {
             return;
         };
         fire(
@@ -155,6 +164,10 @@ fn fire_into_empty_space_is_a_clean_miss() {
             },
             &mut shooters,
             &mut targets,
+            &wears,
+            &mut pieces,
+            &wields,
+            &mut weapons,
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,

@@ -3,7 +3,7 @@
 //! returns. No-bare-types, no pixel: every field is a named domain newtype.
 
 use crate::{
-    armor::{BodyPart, WornArmor},
+    armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart},
     armor_wear::{ArmorBroken, ArmorWorn},
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
@@ -35,9 +35,12 @@ pub struct TargetGanger<'a> {
     pub wounds:    &'a mut Wounds,
     /// The target's terminal life state — the gates set it; corpse-skip reads it.
     pub life:      &'a mut LifeState,
-    /// The target's battle-local worn armor — the struck piece wears in place; its
-    /// [`protects`](WornArmor::protects) decides the armored-vs-bare-flesh branch.
-    pub worn:      &'a mut WornArmor,
+    /// The struck location's worn-armor **piece** — its read stats + the mutable
+    /// integrity the hit wears in place (since GTW-323 / ADR-0004 the piece is a
+    /// related entity resolved from `ganger → Wears → the BodyPart-tagged piece`, not a
+    /// `WornArmor` array slot). `None` when the struck location wears no piece (a
+    /// missing-piece defensive fold → bare flesh).
+    pub piece:     Option<StruckPiece<'a>>,
     /// The target's inflicted-wound record (GTW-279) — each registered wound appends
     /// its tier + struck part here (the additive presentation record for GTW-278).
     pub inflicted: &'a mut InflictedWounds,
@@ -45,6 +48,49 @@ pub struct TargetGanger<'a> {
     pub toughness: Toughness,
     /// The target's Luck — extends the severity roll's floor down (E3.0, read).
     pub luck:      Luck,
+}
+
+/// The **struck worn-armor piece** borrow-view the fold resolves and applies a hit
+/// against — the four read-only stats (consumed by the matchup + the per-hit damage
+/// formula) plus the one **mutable** [`ArmorIntegrity`] the wear degrades (GTW-323 /
+/// ADR-0004).
+///
+/// The piece-entity replacement for the old `WornArmor` array-slot access: the caller
+/// (the E4 `fire()` path) resolves `ganger → Wears → the BodyPart-tagged piece` and
+/// assembles this from that piece entity's [`crate::armor::PieceArmorMut`] query row.
+/// The struck-vs-bare-flesh branch reads [`protects`](StruckPiece::protects) (the
+/// piece integrity `> 0`); the wear mutates [`integrity`](StruckPiece::integrity) in
+/// place. Every read field is a `Copy` named domain newtype (no-bare-types).
+pub struct StruckPiece<'a> {
+    /// The piece's minimum-damage floor (read).
+    pub floor:      ArmorFloor,
+    /// The piece's damage-soak protection (read).
+    pub protection: ArmorProtection,
+    /// The piece's penetration-ignoring hardness (read; does not degrade).
+    pub hardness:   ArmorHardness,
+    /// The piece's matchup-wheel node (read).
+    pub armor_type: ArmorType,
+    /// The piece's durability — the **one mutable** wear field (degrades per hit).
+    pub integrity:  &'a mut ArmorIntegrity,
+}
+
+impl StruckPiece<'_> {
+    /// Whether this worn piece still **protects** — its [`ArmorIntegrity`] is strictly
+    /// above zero (`weapons-and-armor.md` §"Per-hit resolution" step 3: "useless at
+    /// `≤ 0`"). The struck-vs-bare-flesh gate the fold reads (mirrors the old
+    /// `WornArmor::protects`).
+    #[must_use]
+    pub fn protects(&self) -> bool {
+        **self.integrity > 0
+    }
+
+    /// The piece's current [`ArmorIntegrity`] read **by value** — the read the
+    /// per-hit damage formula assembles into its [`crate::armor::ArmorPiece`]
+    /// (separate from the `&mut` wear path, so the read borrows immutably).
+    #[must_use]
+    pub const fn integrity_value(&self) -> ArmorIntegrity {
+        *self.integrity
+    }
 }
 
 /// The **applied-damage block** of a [`HitReport`] — the resolved damage of a hit

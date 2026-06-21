@@ -1,12 +1,15 @@
 //! Repaints the weapon panel from the selected player ganger (GTW-275).
 //!
 //! [`update_weapon_panel`] reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter),
-//! resolves it to the selected [`Entity`], reads the ganger's
+//! resolves it to the selected ganger [`Entity`], then resolves that ganger's WIELDED
+//! WEAPON ENTITY through `ganger → `[`Wields`](gdtf_battle_sim::Wields)` → the weapon
+//! entity` (GTW-323 slice 3, ADR-0004 — the weapon stats live on the related weapon
+//! entity, not the ganger), and reads the WEAPON entity's
 //! [`WeaponName`](gdtf_battle_sim::WeaponName) + [`Magazine`](gdtf_battle_sim::Magazine)
-//! (both `Option` — a ganger may be unarmed), and MUTATES the panel widgets in place
+//! (both `Option` — a weapon may carry no magazine). It MUTATES the panel widgets in place
 //! ([[ui-mutate-not-respawn]]): it sets the name text, the magazine `"cur/max"` text, and
 //! reveals / hides the content column + the Reload button by the rules in AC5 / AC6 / AC9.
-//! With no selection — or a selected entity with no weapon — the content column is
+//! With no selection — or a selected ganger that wields no weapon — the content column is
 //! [`Visibility::Hidden`] (the empty state). Never stale, never a panic.
 //!
 //! It runs in `Update` gated `run_if(resource_exists::<BattleInProgress>)` (the live-battle
@@ -15,24 +18,27 @@
 
 use bevy::{prelude::*, ui::Display};
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{Magazine, WeaponName};
+use gdtf_battle_sim::{Magazine, WeaponName, WieldedBy, Wields};
 
 use crate::states::running::game::battlescape::weapon_panel::components::{
     ReloadButton, WeaponContent, WeaponMagazineText, WeaponNameText,
 };
 
-/// The read-only weapon state of a selected ganger the panel renders — the
-/// [`WeaponName`] + [`Magazine`], both `Option` so an unarmed ganger (no weapon
-/// components) reads as "no weapon" rather than failing the query.
+/// The read-only weapon state of a wielded WEAPON ENTITY the panel renders — the
+/// [`WeaponName`] + [`Magazine`], both `Option` so a weapon with no magazine (or a
+/// missing field) reads as "no magazine" rather than failing the query.
 ///
-/// A [`QueryData`](bevy::ecs::query::QueryData) read-struct (the status-panel
-/// `StatBlockData` precedent) so [`update_weapon_panel`] resolves the selection with ONE
-/// `.get`. Every field is a borrowed named sim component (no bare primitive).
+/// Queried off the WEAPON entity (`With<`[`WieldedBy`]`>`), NOT the ganger (GTW-323
+/// slice 3): [`update_weapon_panel`] resolves the selected ganger's
+/// [`Wields`] relationship to the weapon entity, then `.get`s this read-struct off it
+/// with ONE lookup (the status-panel `StatBlockData` precedent). The `With<WieldedBy>`
+/// filter scopes the query to weapon entities. Every field is a borrowed named sim
+/// component (no bare primitive).
 #[derive(bevy::ecs::query::QueryData)]
 pub(in crate::states::running::game::battlescape::weapon_panel) struct WeaponData {
-    /// The selected weapon's display name (absent on an unarmed ganger).
+    /// The wielded weapon's display name (absent if the weapon carries no name).
     name:     Option<&'static WeaponName>,
-    /// The selected weapon's magazine grouping (absent on an unarmed ganger).
+    /// The wielded weapon's magazine grouping (absent if the weapon carries none).
     magazine: Option<&'static Magazine>,
 }
 
@@ -119,9 +125,12 @@ fn set_content_shown(visibility: &mut Visibility, node: &mut Node, shown: bool) 
 
 /// Repaints the weapon panel from the current [`SelectedShooter`].
 ///
-/// Resolves the selection to its [`WeaponData`] (ONE `.get` over the read-only query) and:
+/// Resolves the selected ganger's WIELDED WEAPON ENTITY (`ganger → `[`Wields`]` → the
+/// weapon entity`, GTW-323 slice 3) and reads its [`WeaponData`] (ONE `.get` over the
+/// read-only weapon-entity query) and:
 ///
-/// - **No selection / no weapon** → the [`WeaponContent`] column is hidden (AC9 empty state).
+/// - **No selection / wields no weapon** → the [`WeaponContent`] column is hidden (AC9
+///   empty state).
 /// - **A weapon** → the content is shown; the [`WeaponNameText`] is set to the
 ///   [`WeaponName`] (AC5); and the magazine line + the LIVE [`ReloadButton`] are shown
 ///   with `"cur/max"` ONLY when the weapon has a magazine (`size > 0`), else hidden
@@ -129,14 +138,20 @@ fn set_content_shown(visibility: &mut Visibility, node: &mut Node, shown: bool) 
 ///
 /// Mutates in place ([[ui-mutate-not-respawn]]); never panics on a missing widget /
 /// component (a `let else` / `Option` everywhere — AC9). Param-only (`bevy-traps.md` #7):
-/// [`Res<SelectedShooter>`] + the read-only [`WeaponData`] query + the [`WeaponWidgets`]
-/// write bundle.
+/// [`Res<SelectedShooter>`] + the read-only `Query<&Wields>` (the relationship) + the
+/// read-only [`WeaponData`] weapon-entity query + the [`WeaponWidgets`] write bundle.
 pub(in crate::states::running::game::battlescape) fn update_weapon_panel(
     selected: Res<SelectedShooter>,
-    data: Query<WeaponData>,
+    wields: Query<&Wields>,
+    data: Query<WeaponData, With<WieldedBy>>,
     mut widgets: WeaponWidgets,
 ) {
-    let selection = (**selected).and_then(|entity| data.get(entity).ok());
+    // Resolve `ganger → Wields → the weapon entity`, then read the weapon's WeaponData
+    // off that entity. No selection, no Wields, or an unarmed ganger → no weapon.
+    let selection = (**selected)
+        .and_then(|ganger| wields.get(ganger).ok())
+        .and_then(Wields::weapon)
+        .and_then(|weapon| data.get(weapon).ok());
 
     // The weapon name (None when unarmed / no selection) and whether the weapon has a
     // magazine (size > 0) with its cur/max string.

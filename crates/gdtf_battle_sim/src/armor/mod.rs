@@ -1,6 +1,7 @@
 //! Armor: the four per-location armor stats, an [`ArmorPiece`] bundling them for
 //! one body location, the read-only roster [`SourceArmor`] record, and the
-//! battle-local [`WornArmor`] component that mid-battle wear mutates.
+//! battle-local armor-piece **entities** (related to a ganger via [`Wears`]) whose
+//! [`ArmorIntegrity`] mid-battle wear mutates.
 //!
 //! This is the E1.3 battle-local-armor slice. The armor model is shared by
 //! gangers and cover (`docs/combat/resolution.md` §3) and feeds the per-hit
@@ -20,12 +21,13 @@
 //! only [`ArmorIntegrity`] wears, so it is the worn copy's single mutable field.
 //!
 //! The model/view split (ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`): the
-//! [`SourceArmor`] record is
-//! the roster representation and is **never** mutated during a battle; a battle
-//! starts by seeding an owned [`WornArmor`] copy **by value** from it, and only
-//! that copy wears. Seeding by value means a worn-copy mutation can never leak
-//! back to the roster source. The full situation→entities setup that places these
-//! components on ganger entities is E1.8 (GTW-158), not this slice.
+//! [`SourceArmor`] record is the roster representation and is **never** mutated during a
+//! battle; a battle starts by spawning per-piece armor **entities** (related to the
+//! ganger via [`Wears`], ADR-0004) seeded **by value** from a registry-resolved
+//! [`ArmorSpec`], and only those battle-local entities wear. Seeding by value means a
+//! worn mutation can never leak back to the roster source. The situation→entities setup
+//! that spawns and relates these piece entities is `setup_battle`
+//! (`crate::situation::setup_battle`).
 //!
 //! ## E3.1 — the armor-type vocabulary
 //!
@@ -43,10 +45,10 @@
 //! weapon model (GTW-257): [`ArmorSpec`] (the per-armor `.ron` authoring struct, the
 //! armor mirror of [`crate::weapon::WeaponSpec`]) and the [`ArmorRegistry`] /
 //! [`ArmorName`] name→spec map (the armor mirror of
-//! [`crate::weapon::WeaponRegistry`] / [`crate::weapon::WeaponName`]). This slice
-//! ADDS those types only — they are not yet consumed by [`WornArmor::seed_from`] /
-//! `GangerSpawn` / [`SourceArmor`] (that consumption swap is a later slice), so the
-//! existing roster/battle-local model is unchanged.
+//! [`crate::weapon::WeaponRegistry`] / [`crate::weapon::WeaponName`]). Since GTW-269 the
+//! [`ArmorRegistry`] resolves each ganger's authored armor key into the [`ArmorSpec`]
+//! that `setup_battle` spawns the per-piece armor entities from (the `GangerSpawn`
+//! authors only the key; [`SourceArmor`] remains the roster authoring shape).
 //!
 //! GTW-201 code-health: this concern is a dir-module split by responsibility — the
 //! per-location stats / keys / wheel node ([`stats`]), the roster / battle-local
@@ -55,6 +57,7 @@
 //! the re-exports below.
 
 mod registry;
+mod relationship;
 mod spec;
 mod stats;
 mod worn;
@@ -63,8 +66,9 @@ mod worn;
 mod test;
 
 pub use registry::{ArmorName, ArmorRegistry};
+pub use relationship::{PieceArmorMut, Wears, WornBy};
 pub use spec::ArmorSpec;
 pub use stats::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
 };
-pub use worn::{SourceArmor, SourceArmorDef, WornArmor};
+pub use worn::{SourceArmor, SourceArmorDef};

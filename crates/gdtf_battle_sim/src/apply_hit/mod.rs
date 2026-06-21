@@ -35,8 +35,9 @@
 //!    tiers": "**Fatal** … **dead** — outright, skips Downed"). The cost
 //!    subtraction saturates at `0`.
 //! 4. **Armor wear** — the [`HitResult`](crate::resolve_hit::HitResult)'s
-//!    [`crate::resolve_hit::IntegrityWear`] is persisted onto the struck location of
-//!    the battle-local [`WornArmor`](crate::armor::WornArmor) via the E3.5
+//!    [`crate::resolve_hit::IntegrityWear`] is persisted onto the struck location's
+//!    battle-local armor-piece ENTITY (its [`ArmorIntegrity`](crate::armor::ArmorIntegrity),
+//!    resolved via [`Wears`](crate::armor::Wears)) by the E3.5
 //!    [`wear_armor`](crate::armor_wear::wear_armor) path, surfacing the per-hit
 //!    [`ArmorWearOutcome`](crate::armor_wear::ArmorWearOutcome): the
 //!    [`ArmorBroken`](crate::armor_wear::ArmorBroken) crossing, the GTW-313

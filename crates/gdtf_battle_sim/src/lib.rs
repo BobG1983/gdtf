@@ -73,10 +73,11 @@
 //!   (it charges the magazine's own per-weapon `reload_tu`).
 //! - [`ganger`] — per-field ganger battle-state components (including the
 //!   [`ganger::Stabilized`] bleed-out flag, owned here from E3.7); [`armor`] —
-//!   armor stats + the battle-local [`armor::WornArmor`]; [`armor_wear`] —
-//!   persisting a hit's [`resolve_hit::IntegrityWear`] onto the worn copy
-//!   ([`armor_wear::wear_armor`]) + the [`armor_wear::ArmorBroken`] message on the
-//!   protecting→broken crossing.
+//!   armor stats + the battle-local armor-piece entities related via
+//!   [`armor::Wears`] (ADR-0004); [`armor_wear`] — persisting a hit's
+//!   [`resolve_hit::IntegrityWear`] onto the struck piece entity's
+//!   [`armor::ArmorIntegrity`] ([`armor_wear::wear_armor`]) + the
+//!   [`armor_wear::ArmorBroken`] message on the protecting→broken crossing.
 //! - [`bleed`] — the §9 bleed-out clock: [`bleed::tick_bleed`] drains a flat
 //!   tuning [`tuning::BleedRate`] of [`ganger::Wounds`] per round from each
 //!   un-stabilized [`ganger::LifeState::Downed`] ganger, emits the
@@ -221,7 +222,7 @@ pub use aim::{Shooter, cone_for, stability_for};
 pub use apply_hit::{GangerHitTarget, apply_hit};
 pub use armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-    ArmorRegistry, ArmorSpec, ArmorType, BodyPart, SourceArmor, WornArmor,
+    ArmorRegistry, ArmorSpec, ArmorType, BodyPart, PieceArmorMut, SourceArmor, Wears, WornBy,
 };
 pub use armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor};
 pub use battle::{
@@ -244,7 +245,10 @@ pub use downed_acts::{
     stabilize_downed,
 };
 pub use faced_cell::faced_cell;
-pub use fire::{BattleGrids, ShooterQuery, TargetQuery, Volley, fire};
+pub use fire::{
+    BattleGrids, PieceQuery, ShooterQuery, TargetQuery, Volley, WeaponQuery, WearsQuery,
+    WieldsQuery, fire,
+};
 pub use ganger::{
     Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Position, Shooting,
     Stabilized, Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
@@ -300,5 +304,5 @@ pub use weapon::{
     Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
     Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-    WeaponShred, WeaponSpec, WeaponStats,
+    WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
 };

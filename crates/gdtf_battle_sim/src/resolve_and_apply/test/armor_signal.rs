@@ -21,10 +21,10 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
     let mut wounds = Wounds::new(9);
     let mut life = LifeState::Alive;
     // High integrity (100) so the single hit's wear leaves it well above zero.
-    let mut worn = worn_suit(2, 8, 100, 1, ArmorType::Void);
+    let mut integrity = piece_integrity(100);
     let mut inflicted = InflictedWounds::default();
     assert!(
-        worn.protects(part),
+        *integrity > 0,
         "fixture: the struck piece must start protecting",
     );
 
@@ -36,7 +36,7 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            piece:     Some(struck_piece(2, 8, 1, ArmorType::Void, &mut integrity)),
             inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
@@ -54,7 +54,7 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
         return;
     };
     assert!(
-        worn.protects(part),
+        *integrity > 0,
         "fixture: a non-breaking hit must leave the piece still protecting",
     );
     // The Worn signal carries the EXACT delta the hit's wear computed (the report's
@@ -88,10 +88,10 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
     let mut wounds = Wounds::new(9);
     let mut life = LifeState::Alive;
     // Integrity 1: protecting, but one wearing hit crosses it to ≤ 0.
-    let mut worn = worn_suit(0, 0, 1, 0, ArmorType::Void);
+    let mut integrity = piece_integrity(1);
     let mut inflicted = InflictedWounds::default();
     assert!(
-        worn.protects(part),
+        *integrity > 0,
         "fixture: the near-broken piece must start protecting (1 > 0)",
     );
 
@@ -103,7 +103,7 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            piece:     Some(struck_piece(0, 0, 0, ArmorType::Void, &mut integrity)),
             inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
@@ -121,7 +121,7 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
         return;
     };
     assert!(
-        !worn.protects(part),
+        *integrity <= 0,
         "fixture: the breaking hit must leave the piece worn through (≤ 0)",
     );
     assert_eq!(
@@ -148,10 +148,10 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
     let mut wounds = Wounds::new(9);
     let mut life = LifeState::Alive;
     // Integrity 0 ⇒ already worn through ⇒ bare flesh (protects == false).
-    let mut worn = worn_suit(0, 0, 0, 0, ArmorType::Void);
+    let mut integrity = piece_integrity(0);
     let mut inflicted = InflictedWounds::default();
     assert!(
-        !worn.protects(part),
+        *integrity <= 0,
         "fixture: the struck piece must already be worn through (bare flesh)",
     );
 
@@ -163,7 +163,7 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
-            worn:      &mut worn,
+            piece:     Some(struck_piece(0, 0, 0, ArmorType::Void, &mut integrity)),
             inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),

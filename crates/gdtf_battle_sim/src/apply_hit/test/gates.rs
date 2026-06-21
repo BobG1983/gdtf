@@ -13,7 +13,7 @@ fn wounds_to_zero_is_dead() {
     let mut hp = Hp::new(50); // full HP — death comes from the life pool, not HP
     let mut wounds = Wounds::new(3);
     let mut life = LifeState::Alive;
-    let mut worn = worn_suit(100);
+    let mut integrity = worn_piece_integrity(100);
     let mut inflicted = InflictedWounds::default();
     let tuning = CombatTuning::default();
 
@@ -21,7 +21,7 @@ fn wounds_to_zero_is_dead() {
         hp:        &mut hp,
         wounds:    &mut wounds,
         life:      &mut life,
-        worn:      &mut worn,
+        integrity: Some(&mut integrity),
         inflicted: &mut inflicted,
     };
     let _broke = apply_hit(
@@ -49,7 +49,7 @@ fn hp_to_zero_with_wounds_left_is_downed() {
     let mut hp = Hp::new(8);
     let mut wounds = Wounds::new(5); // plenty left after a Minor spend
     let mut life = LifeState::Alive;
-    let mut worn = worn_suit(100);
+    let mut integrity = worn_piece_integrity(100);
     let mut inflicted = InflictedWounds::default();
     let tuning = CombatTuning::default();
 
@@ -57,7 +57,7 @@ fn hp_to_zero_with_wounds_left_is_downed() {
         hp:        &mut hp,
         wounds:    &mut wounds,
         life:      &mut life,
-        worn:      &mut worn,
+        integrity: Some(&mut integrity),
         inflicted: &mut inflicted,
     };
     // HP-loss (20) overshoots HP (8) — saturates to 0; Minor leaves Wounds > 0.
@@ -90,7 +90,7 @@ fn both_pools_depleted_is_dead_not_downed() {
     let mut hp = Hp::new(4);
     let mut wounds = Wounds::new(2);
     let mut life = LifeState::Alive;
-    let mut worn = worn_suit(100);
+    let mut integrity = worn_piece_integrity(100);
     let mut inflicted = InflictedWounds::default();
     let tuning = CombatTuning::default();
 
@@ -98,7 +98,7 @@ fn both_pools_depleted_is_dead_not_downed() {
         hp:        &mut hp,
         wounds:    &mut wounds,
         life:      &mut life,
-        worn:      &mut worn,
+        integrity: Some(&mut integrity),
         inflicted: &mut inflicted,
     };
     // HP-loss (99) overshoots HP (4) → 0, AND Fatal empties Wounds → 0.
@@ -129,7 +129,7 @@ fn corpse_skip_changes_nothing() {
     let mut hp = Hp::new(12);
     let mut wounds = Wounds::new(4);
     let mut life = LifeState::Dead; // already a corpse
-    let mut worn = worn_suit(1); // near-broken: a live hit here WOULD break it
+    let mut integrity = worn_piece_integrity(1); // near-broken: a live hit here WOULD break it
     let mut inflicted = InflictedWounds::default();
     let tuning = CombatTuning::default();
 
@@ -137,13 +137,13 @@ fn corpse_skip_changes_nothing() {
     let hp_before = hp;
     let wounds_before = wounds;
     let life_before = life;
-    let worn_before = worn;
+    let integrity_before = integrity;
 
     let target = GangerHitTarget {
         hp:        &mut hp,
         wounds:    &mut wounds,
         life:      &mut life,
-        worn:      &mut worn,
+        integrity: Some(&mut integrity),
         inflicted: &mut inflicted,
     };
     // A hit that, on a live ganger, would subtract HP, spend Wounds, and break
@@ -165,7 +165,10 @@ fn corpse_skip_changes_nothing() {
     assert_eq!(hp, hp_before, "a corpse's Hp must not change");
     assert_eq!(wounds, wounds_before, "a corpse's Wounds must not change");
     assert_eq!(life, life_before, "a corpse's LifeState must stay Dead");
-    assert_eq!(worn, worn_before, "a corpse's WornArmor must not wear");
+    assert_eq!(
+        integrity, integrity_before,
+        "a corpse's struck-piece integrity must not wear"
+    );
     assert!(
         inflicted.is_empty(),
         "a corpse-skip must record NO InflictedWound (GTW-279)"

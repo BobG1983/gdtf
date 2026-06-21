@@ -4,11 +4,11 @@
 //! weapons-and-armor.md` §"Per-hit resolution" step 3): a hit's computed
 //! [`IntegrityWear`](crate::resolve_hit::IntegrityWear) (the E3.3
 //! [`crate::resolve_hit::HitResult::wear`]) is subtracted from the struck location's
-//! [`crate::armor::ArmorIntegrity`] on the **battle-local**
-//! [`WornArmor`](crate::armor::WornArmor) copy, so a piece worn to `integrity ≤ 0` stops
-//! protecting for the rest of the battle (later hits on that location resolve as
-//! bare flesh — the [`WornArmor::protects`](crate::armor::WornArmor::protects) gate). The
-//! worn copy is battle-local (E1.3): wearing it **never** touches the roster
+//! **battle-local armor-piece ENTITY** [`crate::armor::ArmorIntegrity`] component
+//! (resolved via [`Wears`](crate::armor::Wears), ADR-0004), so a piece worn to
+//! `integrity ≤ 0` stops protecting for the rest of the battle (later hits on that
+//! location resolve as bare flesh — the `integrity > 0` gate). The piece entity is
+//! battle-local (`linked_spawn`, E1.3): wearing it **never** touches the roster
 //! [`crate::armor::SourceArmor`] (the model/view separation; ADR-0001,
 //! `docs/decisions/0001-rust-bevy-rewrite.md`).
 //!

@@ -14,6 +14,28 @@ fn empty_magazine(size: u16, reload_tu: u8) -> Magazine {
     Magazine::new(0, MagazineSize::new(size), ReloadTu::new(reload_tu))
 }
 
+/// Spawn a reload-act actor — the ganger carries the `Tu`/`LifeState` the gate reads, and
+/// its `magazine` rides on a related **weapon entity** (`Wields`, GTW-323 slice 2: the
+/// `Magazine` lives on the weapon now). The `WieldedBy` insert hook populates the
+/// ganger's `Wields` synchronously in a bare `World` spawn so the next dispatch resolves
+/// it. Returns `(actor, weapon)` so a test can read the magazine off the weapon entity.
+fn spawn_reload_actor(
+    app: &mut App,
+    magazine: Magazine,
+    tu: u8,
+    life: LifeState,
+) -> (Entity, Entity) {
+    let actor = app.world_mut().spawn((Tu::new(tu), life)).id();
+    let weapon = app.world_mut().spawn((WieldedBy(actor), magazine)).id();
+    (actor, weapon)
+}
+
+/// The loaded round count of the actor's wielded-weapon magazine (`Wields`, GTW-323
+/// slice 2) — read off the weapon entity, the authoritative ammo location.
+fn weapon_rounds(app: &App, weapon: Entity) -> Option<u16> {
+    app.world().get::<Magazine>(weapon).map(|m| *m.rounds())
+}
+
 /// Drain the buffered [`ReloadResult`] messages from the app's world (GTW-312) — the
 /// presenter-visible reload-result signals `dispatch_reload` emitted this update.
 fn drain_reload_results(app: &mut App) -> Vec<ReloadResult> {
@@ -28,16 +50,15 @@ fn reload_dispatch_spends_reload_tu_and_refills_to_full() {
     let mut app = headless_app();
     let reload_cost = 12u8;
     let size = 30u16;
-    let actor = app
-        .world_mut()
-        .spawn((
-            empty_magazine(size, reload_cost),
-            Tu::new(60),
-            LifeState::Alive,
-        ))
-        .id();
+    // GTW-323 slice 2: the magazine lives on the actor's wielded-weapon entity.
+    let (actor, weapon) = spawn_reload_actor(
+        &mut app,
+        empty_magazine(size, reload_cost),
+        60,
+        LifeState::Alive,
+    );
     let tu_before = app.world().get::<Tu>(actor).map(|t| **t);
-    let mag_before = app.world().get::<Magazine>(actor).map(|m| *m.rounds());
+    let mag_before = weapon_rounds(&app, weapon);
     assert_eq!(
         mag_before,
         Some(0),
@@ -55,7 +76,7 @@ fn reload_dispatch_spends_reload_tu_and_refills_to_full() {
     );
 
     let tu_after = app.world().get::<Tu>(actor).map(|t| **t);
-    let mag_after = app.world().get::<Magazine>(actor).map(|m| *m.rounds());
+    let mag_after = weapon_rounds(&app, weapon);
 
     // The magazine refilled to its full capacity.
     assert_eq!(
@@ -83,14 +104,12 @@ fn reload_dispatch_unaffordable_is_a_no_op() {
     let size = 30u16;
     // The pool is one TU short of the reload cost → cannot afford → silent reject.
     let pool = reload_cost - 1;
-    let actor = app
-        .world_mut()
-        .spawn((
-            empty_magazine(size, reload_cost),
-            Tu::new(pool),
-            LifeState::Alive,
-        ))
-        .id();
+    let (actor, weapon) = spawn_reload_actor(
+        &mut app,
+        empty_magazine(size, reload_cost),
+        pool,
+        LifeState::Alive,
+    );
 
     app.world_mut().write_message(ReloadRequested::new(actor));
     app.update();
@@ -108,7 +127,7 @@ fn reload_dispatch_unaffordable_is_a_no_op() {
         "an unaffordable reload must NOT spend any TU",
     );
     assert_eq!(
-        app.world().get::<Magazine>(actor).map(|m| *m.rounds()),
+        weapon_rounds(&app, weapon),
         Some(0),
         "an unaffordable reload must NOT refill the magazine",
     );
@@ -120,10 +139,8 @@ fn reload_dispatch_when_not_alive_is_a_no_op() {
     let reload_cost = 12u8;
     let size = 30u16;
     for life in [LifeState::Downed, LifeState::Dead] {
-        let actor = app
-            .world_mut()
-            .spawn((empty_magazine(size, reload_cost), Tu::new(60), life))
-            .id();
+        let (actor, weapon) =
+            spawn_reload_actor(&mut app, empty_magazine(size, reload_cost), 60, life);
         app.world_mut().write_message(ReloadRequested::new(actor));
         app.update();
         // GTW-312: the not-alive guard is an INTERNAL skip — it emits NO ReloadResult
@@ -139,7 +156,7 @@ fn reload_dispatch_when_not_alive_is_a_no_op() {
             "a {life:?} actor's reload must spend no TU",
         );
         assert_eq!(
-            app.world().get::<Magazine>(actor).map(|m| *m.rounds()),
+            weapon_rounds(&app, weapon),
             Some(0),
             "a {life:?} actor's reload must not refill the magazine",
         );
@@ -153,14 +170,12 @@ fn reload_dispatch_of_a_full_magazine_is_a_no_op_no_charge() {
     let mut app = headless_app();
     let reload_cost = 12u8;
     let size = 30u16;
-    let actor = app
-        .world_mut()
-        .spawn((
-            Magazine::loaded(MagazineSize::new(size), ReloadTu::new(reload_cost)),
-            Tu::new(60),
-            LifeState::Alive,
-        ))
-        .id();
+    let (actor, weapon) = spawn_reload_actor(
+        &mut app,
+        Magazine::loaded(MagazineSize::new(size), ReloadTu::new(reload_cost)),
+        60,
+        LifeState::Alive,
+    );
 
     app.world_mut().write_message(ReloadRequested::new(actor));
     app.update();
@@ -178,7 +193,7 @@ fn reload_dispatch_of_a_full_magazine_is_a_no_op_no_charge() {
         "reloading an already-full magazine must charge no TU (FLAGGED no-op choice)",
     );
     assert_eq!(
-        app.world().get::<Magazine>(actor).map(|m| *m.rounds()),
+        weapon_rounds(&app, weapon),
         Some(size),
         "an already-full magazine stays full",
     );

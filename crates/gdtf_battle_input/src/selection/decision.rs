@@ -4,14 +4,14 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Cell, Direction, Faction, OccupancyGrid, PlayerFaction, Position,
+    Cell, Direction, Faction, OccupancyGrid, PlayerFaction, Position, WieldedBy, Wields,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent, SelectedFireMode,
-    fire_surface::{ShooterFireData, try_fire_request},
+    fire_surface::{ShooterFireData, WeaponMagazine, try_fire_request},
     selection::resources::{SelectedShooter, set_selection},
 };
 
@@ -143,15 +143,20 @@ pub enum PinOutcome {
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + the [`InspectTarget`]
 /// (passed as a separate `&` so the caller can hold it as a `ResMut` for the pin write — see
-/// [`LeftClickReads`]) + read-only `Query<&Faction>` / `Query<ShooterFireData>` + the current
-/// [`SelectedShooter`], no `&mut World`. It does NOT read the mouse button (the caller gates on
-/// its own press edge), so the gamepad surface reuses it without a `ButtonInput<MouseButton>`.
+/// [`LeftClickReads`]) + read-only `Query<&Faction>` / `Query<ShooterFireData>` / `Query<&Wields>`
+/// / the weapon-[`Magazine`](gdtf_battle_sim::Magazine) query + the current [`SelectedShooter`],
+/// no `&mut World`. The `Wields` + weapon-magazine queries resolve the fire guard's magazine off
+/// the related weapon entity (`ganger → Wields → the weapon entity`, GTW-323 slice 3). It does
+/// NOT read the mouse button (the caller gates on its own press edge), so the gamepad surface
+/// reuses it without a `ButtonInput<MouseButton>`.
 #[must_use]
 pub fn decide_left_click(
     reads: &LeftClickReads,
     inspect: &InspectTarget,
     factions: &Query<&Faction>,
     shooters: &Query<ShooterFireData>,
+    wields: &Query<&Wields>,
+    weapons: &Query<WeaponMagazine, With<WieldedBy>>,
     selected: &SelectedShooter,
 ) -> LeftClickOutcome {
     // Nothing hovered -> no cell to act on -> NO-OP (GTW-288): the GTW-286 viewport gate
@@ -176,8 +181,15 @@ pub fn decide_left_click(
     if let (Some(shooter), Some(enemy_faction)) = (**selected, occupant_faction)
         && selection_is_player
         && enemy_faction != player
-        && let Some(request) =
-            try_fire_request(shooter, target, &reads.fire_mode, &reads.tuning, shooters)
+        && let Some(request) = try_fire_request(
+            shooter,
+            target,
+            &reads.fire_mode,
+            &reads.tuning,
+            shooters,
+            wields,
+            weapons,
+        )
     {
         return LeftClickOutcome::Fire(request); // FIRE wins this edge.
     }

@@ -11,13 +11,17 @@
 //! [`refill`](crate::magazine::Magazine::refill). It fetches the actor's components via
 //! a Bevy query (`bevy-traps.md` #7 — no `&mut World`).
 
-use bevy::prelude::{Entity, Message, MessageReader, MessageWriter, Query};
+use bevy::{
+    ecs::query::With,
+    prelude::{Entity, Message, MessageReader, MessageWriter, Query},
+};
 
 use crate::{
     acts::request::ReloadRequested,
     ganger::{LifeState, Tu},
     magazine::Magazine,
     tu::{can_spend_tu, spend_tu},
+    weapon::{WieldedBy, Wields},
 };
 
 /// The user-facing OUTCOME of a single [`dispatch_reload`] of one
@@ -109,13 +113,22 @@ impl ReloadResult {
 /// REUSES the magazine grouping's own primitives. A message for an actor missing any
 /// queried component is skipped (fail-closed, no panic — the `dispatch_set_*`
 /// precedent).
+///
+/// Since GTW-323 slice 2 (ADR-0004) the actor's [`Magazine`] lives on the related
+/// **weapon entity**, not the ganger — so this resolves `ganger → Wields → the weapon
+/// entity` and reloads the weapon entity's magazine. The ganger's `(&mut `[`Tu`]`,
+/// &`[`LifeState`]`, &`[`Wields`]`)` are read off the `actors` query (gangers); the
+/// `&mut `[`Magazine`] off the disjoint `weapons` query (`With<`[`WieldedBy`]`>`, the
+/// weapon entities). A shooter wielding no weapon — or whose weapon entity is not in the
+/// weapon query — is skipped (fail-closed).
 pub fn dispatch_reload(
     mut requests: MessageReader<ReloadRequested>,
-    mut actors: Query<(&'static mut Magazine, &'static mut Tu, &'static LifeState)>,
+    mut actors: Query<(&'static mut Tu, &'static LifeState, &'static Wields)>,
+    mut weapons: Query<&'static mut Magazine, With<WieldedBy>>,
     mut results: MessageWriter<ReloadResult>,
 ) {
     for request in requests.read() {
-        let Ok((mut magazine, mut tu, &life)) = actors.get_mut(request.actor) else {
+        let Ok((mut tu, &life, wields)) = actors.get_mut(request.actor) else {
             continue;
         };
 
@@ -125,6 +138,17 @@ pub fn dispatch_reload(
         if life != LifeState::Alive {
             continue;
         }
+
+        // GTW-323 slice 2: resolve the actor's weapon entity (`ganger → Wields → the
+        // weapon entity`) and fetch its magazine. A ganger wielding no weapon (or whose
+        // weapon entity is absent from the weapon query) is skipped silently — no
+        // ReloadResult (it could not have issued a reload intent).
+        let Some(weapon_entity) = wields.weapon() else {
+            continue;
+        };
+        let Ok(mut magazine) = weapons.get_mut(weapon_entity) else {
+            continue;
+        };
 
         // Already-full reload is a no-op — no charge (FLAGGED choice; see the fn doc).
         if magazine.is_full() {

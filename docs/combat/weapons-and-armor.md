@@ -4,6 +4,8 @@ How a hit resolves: weapon stats vs armor stats, the per-hit formula, and how th
 
 > The *structure* is settled. All magnitudes (weapon and armor numbers, the matchup swing) are **TBD (tuning)**.
 
+> **Where equipment lives (the ECS shape).** The stat components below live on the related **weapon** and **armor-piece entities**, not on the ganger: a ganger `Wields` a weapon entity (carrying the weapon stats) and `Wears` six armor-piece entities (each carrying its piece stats), via Bevy ECS relationships. This page defines the stat *vocabulary*; for *where* those stats are stored — and why — see [ADR 0004](../decisions/0004-equipment-as-entities-relationships.md).
+
 ## The 7 types
 
 One shared wheel — armor types **Plated, Refractive, Flak, Void, Hazard, Reinforced, Ceramic**, each the mirror of a weapon damage flavor (Shock, Blast, Chem, Kinetic, Plasma, Rend, Las respectively) at the same wheel node. Definitions, the wheel, and the underlying math: [matchup.md](matchup.md) and [two-paradox-tournament.md](two-paradox-tournament.md). Same-type (a weapon vs its own armor) is the **neutral** mirror; favorable / resisted come from the Paley wheel between *different* types.
@@ -30,7 +32,7 @@ Weapon (`damage`, `punch`, `shred`) vs armor (`floor`, `protection`, `integrity`
    — protection soaks, but penetration eats into protection, and the result never drops below `floor`.
 3. **Armor integrity wears:** `integrity −= min(protection, damage) + effPen + shred` — the soak/penetration wear **plus the weapon's shred** (extra integrity damage). At `integrity ≤ 0` the armor is **useless** (stops protecting). **Hardness does not degrade** — shred attacks durability, not hardness.
 
-Mid-battle wear is **live**: each hit's integrity result persists on a battle-local worn copy of the piece (a per-ganger `armor_at` field on the sim's ganger-state component/struct, keyed by body location), so armor worn to ≤ 0 stops protecting for the rest of the battle — later hits on that location resolve as bare flesh. The roster sheet itself never wears mid-battle; whether wear carries between missions is the open maintenance question below. (This worn copy lives in the render-free sim — `gdtf_battle_sim` — never in the presenter.)
+Mid-battle wear is **live**: each hit's integrity result persists on the battle-local **armor-piece entity** the ganger `Wears` for that body location (its `integrity` component, keyed by `BodyPart`; see [ADR 0004](../decisions/0004-equipment-as-entities-relationships.md)), so armor worn to ≤ 0 stops protecting for the rest of the battle — later hits on that location resolve as bare flesh. The roster sheet itself never wears mid-battle; whether wear carries between missions is the open maintenance question below. (These battle-local piece entities live in the render-free sim — `gdtf_battle_sim` — never in the presenter.)
 
 `dmg` then feeds the HP / Wound model: it reduces **HP**, and **every hit** rolls **wound severity** (the sim's `roll_severity`) — a penetration-gated bucket roll: penetrating damage drives the score, **Toughness** mitigates, the struck part and the weapon's **Fatal-bias** push it up, both gangers' **Luck** bend the one-sided random tail; bucketed Minor→Fatal, and a low roll is a graze (no Wound). See [stats.md](stats.md) and [wounds-and-roster.md](wounds-and-roster.md).
 

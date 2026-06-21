@@ -60,6 +60,7 @@ use gdtf_battle_sim::{
     ArmorRegistry, ArmorSpec, ArmorType, BattleInProgress, Cell, CellLevel, Direction, Facing,
     Faction, FireMode, FireModeSpec, GangerName, Level, MAX_LEVELS, Magazine, ModeConeMult,
     ModeKind, ModeShots, ModeTuPercent, ReloadTu, Shooting, Situation, Stance, StanceKind, TuMax,
+    WieldedBy,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     mode_tu_cost,
     tuning::CombatTuning,
@@ -325,12 +326,15 @@ fn end_turns(app: &App) -> Vec<EndTurnRequested> {
         .unwrap_or_default()
 }
 
-/// Spawns a ganger carrying exactly the components the act / panel systems read
-/// (`Stance`/`Facing`/`Aiming`/`FireMode`) and SELECTS it via the `SelectedShooter`
-/// resource — the selection the act drain + the sub-panels read. Returns its entity. (The
-/// act surface only reads `*SelectedShooter`, so setting the resource directly is the
-/// faithful, minimal selection for these button tests; the cursor-click selection path is
-/// covered in `gdtf_battle_input`'s `acts.rs`.)
+/// Spawns a ganger carrying exactly the GANGER components the act / panel systems read
+/// (`Stance`/`Facing`/`Aiming`) plus a related WEAPON entity carrying the `FireMode`
+/// selector (`ganger → Wields → weapon`, GTW-323 slice 3 — the mode panel reads the
+/// offered modes off the weapon entity now, not the ganger), and SELECTS the ganger via
+/// the `SelectedShooter` resource. Returns the ganger entity. (The act surface only reads
+/// `*SelectedShooter`, so setting the resource directly is the faithful, minimal selection
+/// for these button tests; the cursor-click selection path is covered in
+/// `gdtf_battle_input`'s `acts.rs`.) The `WieldedBy` insert hook populates the ganger's
+/// `Wields` synchronously in a bare `World` spawn, so the next update resolves the weapon.
 fn arm_and_select(
     app: &mut App,
     selector: FireMode,
@@ -339,22 +343,19 @@ fn arm_and_select(
 ) -> Entity {
     let ganger = app
         .world_mut()
-        .spawn((
-            Stance::new(stance),
-            Facing::new(facing),
-            Aiming::new(false),
-            selector,
-        ))
+        .spawn((Stance::new(stance), Facing::new(facing), Aiming::new(false)))
         .id();
+    app.world_mut().spawn((WieldedBy(ganger), selector));
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger
 }
 
-/// Like [`arm_and_select`], but ALSO gives the selected ganger a [`TuMax`] (the round-start
+/// Like [`arm_and_select`], but ALSO gives the selected GANGER a [`TuMax`] (the round-start
 /// ceiling the per-shot TU charge is a percentage of) — the input GTW-303's cost-line system
 /// reads off the selected shooter. `arm_and_select` omits `TuMax` (the posture/mode tests do
-/// not need it), so the cost-line tests use this variant. Returns the ganger entity.
+/// not need it), so the cost-line tests use this variant. The `FireMode` selector rides on
+/// the related weapon entity (`Wields`, GTW-323 slice 3). Returns the ganger entity.
 fn arm_and_select_with_tu(
     app: &mut App,
     selector: FireMode,
@@ -369,9 +370,9 @@ fn arm_and_select_with_tu(
             Facing::new(facing),
             Aiming::new(false),
             tu_max,
-            selector,
         ))
         .id();
+    app.world_mut().spawn((WieldedBy(ganger), selector));
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger
