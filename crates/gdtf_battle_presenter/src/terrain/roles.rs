@@ -45,12 +45,6 @@ pub struct TileRoles {
     pub floor:           TileIndex,
     /// A bolted/riveted grey-panel floor alternate (future variety).
     pub floor_alt_panel: TileIndex,
-    /// A flat blue-grey stone floor alternate (future variety).
-    pub floor_alt_stone: TileIndex,
-    /// A flat orange/tan dirt floor alternate (future variety).
-    pub floor_alt_dirt:  TileIndex,
-    /// A green grass-field floor alternate (future variety).
-    pub floor_alt_grass: TileIndex,
     /// The [`TerrainKind::Wall`](gdtf_battle_sim::TerrainKind::Wall) tile — solid fixed geometry.
     pub wall:            TileIndex,
     /// The [`TerrainKind::Cover`](gdtf_battle_sim::TerrainKind::Cover) tile — a chest-high cover prop.
