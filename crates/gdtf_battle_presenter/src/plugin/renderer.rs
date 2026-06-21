@@ -4,8 +4,9 @@
 use bevy::{ecs::message::Messages, prelude::*};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, CoverDestroyed, CoverLedger, OccupancyGrid,
-    PlayerFaction, ShotFired, SurfaceGrid, occupancy_sync::SimSystems,
+    ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
+    OccupancyGrid, PlayerFaction, ShotFired, SquadVisibility, SurfaceGrid,
+    occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -17,11 +18,11 @@ use crate::{
     despawn_removed_ganger_sprites, draw_highlight_on_request, draw_static_battlefield,
     expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
     load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
-    pan_camera_on_gamepad_cursor_edge, read_armor_broken, read_bleeding, read_consequence_fct,
-    read_cover_destroyed, redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
-    reframe_ganger_sprites, resolve_character_roles, resolve_effect_roles, resolve_fx_tuning,
-    resolve_pan_tuning, resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles,
-    swap_destroyed_cover, update_ganger_life_state,
+    pan_camera_on_gamepad_cursor_edge, present_fog, read_armor_broken, read_bleeding,
+    read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
+    redrive_pan_tuning_on_asset_event, reframe_ganger_sprites, resolve_character_roles,
+    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
+    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -255,6 +256,11 @@ impl Plugin for TopDownRendererPlugin {
         // upstream writer) EMITS `HighlightRequest`; this presenter (which DEFINES it, the
         // one-way `input -> presenter -> sim` edge) LISTENS and draws.
         register_highlight_systems(app);
+
+        // GTW-342: the squad fog WRITER. It modulates the already-drawn terrain layer +
+        // hard-cuts actor sprites from the sim's `SquadVisibility` (extracted to keep
+        // `build` under the `too_many_lines` lint).
+        register_fog_systems(app);
     }
 }
 
@@ -562,6 +568,54 @@ fn register_highlight_systems(app: &mut App) {
         draw_highlight_on_request
             .in_set(PresenterSystems::Draw)
             .run_if(resource_exists::<BattleInProgress>),
+    );
+}
+
+/// Registers the GTW-342 squad fog WRITER into the already-defined
+/// [`PresenterSystems::Draw`] band.
+///
+/// [`present_fog`] is the VIEW arm of the squad fog (`docs/combat/visibility.md`): the sim
+/// owns the three [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) states and the
+/// [`recompute_visibility`](gdtf_battle_sim::recompute_visibility) writer (GTW-341); this
+/// presenter READS them and modulates the already-drawn layer in place (the rendered layer
+/// IS the fog mask — it never repaints from a snapshot).
+///
+/// # Ordering (the CRITICAL clause, `bevy-traps.md` #3)
+///
+/// It is ordered strictly `.after(draw_static_battlefield)` and `.after(swap_destroyed_cover)`
+/// so it always colours LIVE, freshly-spawned / just-swapped [`TerrainSprite`](crate::TerrainSprite)
+/// entities — including after an [`ActiveLevel`] cycle, which despawns + respawns the terrain on
+/// the SAME update (so the fog re-applies to the newly drawn storey, not to stale entities). It
+/// is ALSO ordered after the ganger storey-filter writers
+/// ([`spawn_ganger_sprites`] / [`move_ganger_sprites`] / [`apply_active_level_filter`]) so it is
+/// the SINGLE FINAL writer of each actor sprite's [`Visibility`]: it composes the slice's storey
+/// fact AND the fog fact rather than crossing the slice's writer (`docs/combat/visibility.md`
+/// §"Composition with the view slice").
+///
+/// # Gating (`bevy-traps.md` #1)
+///
+/// `run_if(resource_exists::<BattleInProgress>)` (the live-battle witness) AND
+/// `resource_exists::<SquadVisibility>` (the fog sets — inserted by the sim's `setup_battle`,
+/// absent in a focused harness that opens `BattleInProgress` directly; without this guard the
+/// `Res<SquadVisibility>` param would panic validation) AND `resource_exists::<CombatTuning>`
+/// (the `Load`-state tuning the `explored_dim` factor is read off — absent in a `MinimalPlugins`
+/// app that never runs Load). `GangerSprites` + `ActiveLevel` are `init_resource`-d on build, so
+/// they are always present.
+fn register_fog_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        present_fog
+            .in_set(PresenterSystems::Draw)
+            .after(draw_static_battlefield)
+            .after(swap_destroyed_cover)
+            .after(spawn_ganger_sprites)
+            .after(move_ganger_sprites)
+            .after(apply_active_level_filter)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<SquadVisibility>)
+                    .and_then(resource_exists::<CombatTuning>),
+            ),
     );
 }
 

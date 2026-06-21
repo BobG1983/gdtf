@@ -34,9 +34,22 @@
 //! `SimSystems::Simulate`, and registers the one-shot [`draw_static_battlefield`] +
 //! the [`swap_destroyed_cover`] reaction (both gated on the sim's `BattleInProgress`).
 //! It draws NO gangers (S5), NO FX (S6), and reads NO input (S7/S8).
+//!
+//! GTW-342 (the squad fog WRITER, leaf 6 of the GTW-13 FOV epic) adds [`mod@fog`]: the
+//! [`present_fog`] system MODULATES the already-drawn layer from the sim's
+//! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) — terrain VISIBLE → full /
+//! EXPLORED → RGB × `explored_dim` / UNSEEN → hidden, and each actor sprite hard-cut by
+//! [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible) (a player ganger always shown,
+//! an enemy / corpse shown iff its cell is squad-VISIBLE). It mutates the existing
+//! sprites in place (never despawn + respawn) and is ordered `.after`
+//! [`draw_static_battlefield`] / [`swap_destroyed_cover`] so it always colours the LIVE
+//! terrain, even after an [`ActiveLevel`] cycle. The sim owns the fog; this is the VIEW
+//! that mirrors it (the public [`present_fog`] seam). It mints NO fire / targeting
+//! fog-gate UX (GTW-11).
 
 mod plugin;
 
+pub mod fog;
 pub mod fx;
 pub mod ganger;
 pub mod highlight;
@@ -44,6 +57,7 @@ pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
 
+pub use fog::present_fog;
 pub use fx::{
     COMPASS_DIRECTIONS, CombatLogEvent, CombatText, DIRECTION_COUNT, DamageTypeFx, EffectRoles,
     EffectRolesHandle, FctEmphasis, FctRiseRate, FctStackIndex, FctTtlSeconds, FctValence,
