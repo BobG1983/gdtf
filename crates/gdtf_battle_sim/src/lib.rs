@@ -134,6 +134,19 @@
 //!   gate ([`ganger::LifeState::is_active`]), the 2D Chebyshev range disc bound by
 //!   [`tuning::ViewRange`], and [`los::has_los`] — faction-agnostic, consulted per
 //!   observer/target pair by the AI engagement gate and reaction fire.
+//! - [`visibility`] — the GTW-340 squad fog-of-war three-state model (leaf 4 of the
+//!   GTW-13 FOV epic): the [`visibility::SquadVisibility`] resource (the VISIBLE /
+//!   EXPLORED [`metric::CellLevel`] sets, UNSEEN the implicit complement; EXPLORED is
+//!   monotone), the PURE read seams the GTW-11 fog gate / GTW-70 AI / GTW-38 reaction
+//!   fire consume ([`visibility::SquadVisibility::is_cell_visible`] /
+//!   [`visibility::SquadVisibility::is_cell_explored`] /
+//!   [`visibility::SquadVisibility::visible_cells`] and
+//!   [`visibility::is_ganger_visible`] over an explicit [`visibility::FactionRelation`]),
+//!   and the pure value transforms GTW-341's recompute system calls
+//!   ([`visibility::union_fov`] — the squad VISIBLE union over a disc-bounded
+//!   authored/occupied candidate set, each candidate banded the shot-pipeline way —
+//!   and [`visibility::accrue`], VISIBLE-replaces / EXPLORED-grows). Pure data +
+//!   helpers; the recompute system wiring is GTW-341, not here.
 //! - [`matchup`] — the 7-type weapon×armor Paley-tournament lookup
 //!   ([`matchup::matchup`] over [`weapon::DamageType`] / [`armor::ArmorType`]) and
 //!   the punch-&-shred [`matchup::MatchupMultiplier`] it yields from tuning.
@@ -233,6 +246,7 @@ pub mod tu;
 pub mod tuning;
 pub mod turn;
 pub mod vertical;
+pub mod visibility;
 pub mod weapon;
 
 pub use acts::{FireDeclaration, MovementOccurred, ReloadOutcome, ReloadResult};
@@ -318,6 +332,9 @@ pub use turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu};
 pub use vertical::{
     InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
     build_vertical_link_graph,
+};
+pub use visibility::{
+    FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible, union_fov,
 };
 pub use weapon::{
     Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,

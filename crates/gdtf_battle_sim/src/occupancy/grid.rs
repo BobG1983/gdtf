@@ -8,7 +8,7 @@ use bevy::{
 
 use crate::{
     cover::HeightBand,
-    metric::{CellLevel, MAX_LEVELS},
+    metric::{Cell, CellLevel, Level, MAX_LEVELS},
     occupancy::{OccupancyInput, TerrainKind},
 };
 
@@ -308,5 +308,49 @@ impl OccupancyGrid {
     #[must_use]
     pub const fn destroyed_cover(&self) -> &DestroyedCover {
         &self.destroyed_cover
+    }
+
+    /// Iterate the grid's **authored / occupied** `(cell, level)` keys — every slot
+    /// whose static terrain is non-[`Open`](TerrainKind::Open) (a wall or cover entry)
+    /// OR that holds an occupant — and nothing else.
+    ///
+    /// This is the **bounded candidate source** the squad-FOV union
+    /// ([`union_fov`](crate::visibility::union_fov), GTW-340) scans: the visible/fog
+    /// epic's rule is "the rendered layer IS the fog mask" (`docs/combat/visibility.md`
+    /// §"Composition with the view slice") — only an authored, still-standing
+    /// `(cell, level)` (or one a ganger stands in) has a cell to reveal, so empty air
+    /// is never a candidate. It walks the flat slot buffer ONCE (yielding the sparse
+    /// authored/occupied content, not the dense `60 × 60 × 8` extent), so the union can
+    /// intersect it with each observer's Chebyshev disc rather than scanning the disc's
+    /// air per observer per move step (`union_fov`'s per-step perf invariant). The
+    /// iterator is read-only and borrows the grid for its lifetime.
+    pub fn authored_or_occupied_cells(&self) -> impl Iterator<Item = CellLevel> + '_ {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| slot.terrain != TerrainKind::Open || slot.occupant.is_some())
+            .map(|(index, _)| Self::cell_level_of_index(index))
+    }
+
+    /// The `(cell, level)` key the flat-buffer slot at `index` represents — the inverse
+    /// of [`slot_index`](OccupancyGrid::slot_index) for an in-bounds index.
+    ///
+    /// `index = x + y·WIDTH + level·WIDTH·HEIGHT`, so the components recover by
+    /// successive division/modulo. Used only by
+    /// [`authored_or_occupied_cells`](OccupancyGrid::authored_or_occupied_cells) over
+    /// the buffer's own indices, which are in `0..SLOT_COUNT` by construction.
+    fn cell_level_of_index(index: usize) -> CellLevel {
+        let level = index / (GRID_WIDTH * GRID_HEIGHT);
+        let plane = index % (GRID_WIDTH * GRID_HEIGHT);
+        let y = plane / GRID_WIDTH;
+        let x = plane % GRID_WIDTH;
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_possible_wrap,
+            reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the index's own \
+                      construction, so these conversions cannot truncate, wrap, or sign-flip"
+        )]
+        let key = (x as i32, y as i32, level as u8);
+        CellLevel::new(Cell::new(key.0, key.1), Level::new(key.2))
     }
 }
