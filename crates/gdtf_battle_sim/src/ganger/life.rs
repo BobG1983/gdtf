@@ -24,6 +24,22 @@ pub enum LifeState {
     Dead,
 }
 
+impl LifeState {
+    /// Whether this ganger is a **conscious observer** — `true` ONLY for
+    /// [`Alive`](LifeState::Alive).
+    ///
+    /// The squad-FOV epic's `is_active` gate (GTW-13 / `docs/combat/visibility.md`):
+    /// a ganger contributes sight only while it is up and aware. A
+    /// [`Downed`](LifeState::Downed) ganger is incapacitated (bleeding out, no agency)
+    /// and a [`Dead`](LifeState::Dead) one is a corpse — neither watches, so both
+    /// SEE NOTHING. [`can_see`](crate::los::can_see) consults this first: an inactive
+    /// observer fails the gate regardless of range or line of sight.
+    #[must_use]
+    pub const fn is_active(self) -> bool {
+        matches!(self, Self::Alive)
+    }
+}
+
 /// Whether a [`LifeState::Downed`] ganger has been **stabilized** — its bleed-out
 /// clock halted.
 ///

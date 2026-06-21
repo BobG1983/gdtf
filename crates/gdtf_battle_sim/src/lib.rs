@@ -129,7 +129,11 @@
 //!   It marches the eye→aim ray ONCE and reports a [`los::Sighted`] verdict (BLOCKED iff
 //!   the march stops on a slab / cover / non-target ganger strictly before the target;
 //!   corpses do not block). Asymmetric sight falls out of eye-vs-aim anchoring. Pure,
-//!   render-free, RNG-free; leaf 1 of the GTW-13 FOV epic.
+//!   render-free, RNG-free; leaf 1 of the GTW-13 FOV epic. [`los::can_see`] (leaf 3,
+//!   GTW-339) is the single-observer engagement gate composing the conscious-observer
+//!   gate ([`ganger::LifeState::is_active`]), the 2D Chebyshev range disc bound by
+//!   [`tuning::ViewRange`], and [`los::has_los`] — faction-agnostic, consulted per
+//!   observer/target pair by the AI engagement gate and reaction fire.
 //! - [`matchup`] — the 7-type weapon×armor Paley-tournament lookup
 //!   ([`matchup::matchup`] over [`weapon::DamageType`] / [`armor::ArmorType`]) and
 //!   the punch-&-shred [`matchup::MatchupMultiplier`] it yields from tuning.
@@ -269,7 +273,7 @@ pub use ganger::{
 };
 pub use hit_location::roll_body_part;
 pub use inflicted_wound::{InflictedWound, InflictedWounds};
-pub use los::{Observer, Sighted, Target, has_los};
+pub use los::{CanSee, Observer, Sighted, Target, can_see, has_los};
 pub use magazine::{
     FireActor, LoadedRounds, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost,
 };

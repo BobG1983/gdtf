@@ -9,12 +9,12 @@ pub(super) use bevy::{ecs::world::World, prelude::Entity};
 pub(super) use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    ganger::{Direction, Facing, Position, Stance, StanceKind},
-    los::{Observer, Target, has_los},
+    ganger::{Direction, Facing, LifeState, Position, Stance, StanceKind},
+    los::{Observer, Target, can_see, has_los},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     surface::{SlabState, SurfaceGrid},
-    tuning::CombatTuning,
+    tuning::{CombatTuning, ViewRange},
 };
 
 /// A `(cell, level)` key from raw coords.

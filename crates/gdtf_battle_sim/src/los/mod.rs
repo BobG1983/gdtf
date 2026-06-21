@@ -26,10 +26,19 @@
 //!
 //! Asymmetric sight (a low watcher sees a tall target, but not the reverse) falls out
 //! of anchoring eye-vs-aim and folds in HERE — it needs no extra rule.
+//!
+//! [`can_see`] (GTW-339, leaf 3 of GTW-13) is the single-observer **engagement gate**
+//! built on top of [`has_los`]: it composes the conscious-observer gate
+//! ([`LifeState::is_active`](crate::ganger::LifeState::is_active)), the 2D Chebyshev
+//! range disc bounded by the [`ViewRange`](crate::tuning::ViewRange) tunable, and
+//! [`has_los`] (called once, verbatim). It is faction-agnostic — the player-faction
+//! squad union is GTW-340's concern, not this gate's.
 
+mod engagement;
 mod probe;
 
 #[cfg(test)]
 mod test;
 
+pub use engagement::{CanSee, can_see};
 pub use probe::{Observer, Sighted, Target, has_los};

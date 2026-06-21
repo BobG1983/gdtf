@@ -5,6 +5,7 @@
 mod support;
 
 mod asymmetry;
+mod can_see;
 mod clear;
 mod corpse;
 mod cover_band;
