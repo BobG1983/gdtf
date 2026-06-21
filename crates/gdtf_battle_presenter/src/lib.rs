@@ -57,9 +57,9 @@ pub use fx::{
 };
 pub use ganger::{
     CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites,
-    apply_active_level_filter, despawn_removed_ganger_sprites, facing_frame, load_character_roles,
-    move_ganger_sprites, reframe_ganger_sprites, resolve_character_roles, spawn_ganger_sprites,
-    update_ganger_life_state,
+    apply_active_level_filter, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
+    facing_frame, load_character_roles, move_ganger_sprites, reframe_ganger_sprites,
+    resolve_character_roles, spawn_ganger_sprites, update_ganger_life_state,
 };
 pub use highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request};
 pub use plugin::{

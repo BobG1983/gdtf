@@ -32,7 +32,12 @@
 //!   [`Changed<Aiming>`]: recomputes the atlas index (facing reframe) and re-tints the
 //!   sprite (the stance / aiming delta) in place.
 //! - [`update_ganger_life_state`] — [`Changed<LifeState>`]: tints/reframes a `Downed`
-//!   ganger and despawns a `Dead` one (dropping its [`GangerSprites`] entry).
+//!   ganger and despawns a `Dead` one — but a shot-kill whose tracer is still in flight is
+//!   DEFERRED (GTW-331): it despawns only a death with no pending incoming shot (a non-shot
+//!   death), dropping its [`GangerSprites`] entry.
+//! - [`despawn_killed_ganger_on_impact`] — [`ShotImpactResolved`](crate::ShotImpactResolved):
+//!   despawns a SHOT-killed ganger's sprite when its killing tracer LANDS (GTW-331), so the body
+//!   does not vanish before the bolt reaches it; drops its [`GangerSprites`] entry.
 //! - [`despawn_removed_ganger_sprites`] — [`RemovedComponents<Position>`]: despawns the
 //!   mapped presenter sprite and drops its map entry.
 //! - [`apply_active_level_filter`] — on an [`ActiveLevel`] change: hides off-level ganger
@@ -58,6 +63,6 @@ pub use roles::{
 };
 pub use sprite_map::{GangerSprite, GangerSprites};
 pub use systems::{
-    apply_active_level_filter, despawn_removed_ganger_sprites, move_ganger_sprites,
-    reframe_ganger_sprites, spawn_ganger_sprites, update_ganger_life_state,
+    apply_active_level_filter, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
+    move_ganger_sprites, reframe_ganger_sprites, spawn_ganger_sprites, update_ganger_life_state,
 };

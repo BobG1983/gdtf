@@ -3,11 +3,14 @@
 
 use bevy::{
     camera::visibility::RenderLayers,
-    ecs::{lifecycle::RemovedComponents, template::template},
+    ecs::{lifecycle::RemovedComponents, message::MessageReader, template::template},
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{Aiming, Cell, Facing, Faction, Level, LifeState, Position, Stance};
+use gdtf_battle_sim::{
+    Aiming, Cell, Facing, Faction, HitReport, Level, LifeState, Position, ShotFired, ShotKind,
+    Stance,
+};
 
 use super::{
     frame::atlas_index,
@@ -15,7 +18,10 @@ use super::{
     sprite_map::{GangerSprite, GangerSprites},
     tint::{ganger_tint, stance_aiming_tint},
 };
-use crate::{ActiveLevel, CELL_PX, Layer, SheetRole, TopDownAtlases, cell_to_world_layered};
+use crate::{
+    ActiveLevel, CELL_PX, Layer, SheetRole, ShotImpactResolved, TopDownAtlases,
+    cell_to_world_layered,
+};
 
 /// The world `(cell, level)` a ganger's [`Position`] projects to — reconstruct the typed
 /// [`Cell`] / [`Level`] from the position's `IVec3` components (the S4 idiom), since
@@ -240,18 +246,58 @@ pub fn reframe_ganger_sprites(
 /// death-delta — despawn, not a corpse tile). An [`Alive`](LifeState::Alive) transition
 /// (a revive) restores the live tint.
 ///
+/// GTW-331 — the death-despawn DISCRIMINATOR. The sim flips a shot-killed ganger's
+/// [`LifeState`] to [`Dead`](LifeState::Dead) AND emits the killing
+/// [`ShotFired`](gdtf_battle_sim::ShotFired) in the SAME tick (`dispatch_fire` — `fire()`
+/// applies the damage then writes the per-round signal), so the presenter observes BOTH on the
+/// same drain update — well BEFORE the staggered killing tracer flies + impacts (GTW-308). Were
+/// the sprite despawned here, the body would vanish at sim-drain time, before its tracer lands.
+///
+/// So a [`Dead`](LifeState::Dead) ganger is despawned here ONLY when NO killing shot for it
+/// arrived this frame — i.e. no drained [`ShotFired`] whose threaded
+/// [`HitReport`](gdtf_battle_sim::HitReport) names this ganger ([`ShotKind::Ganger`]) and left it
+/// [`Dead`](LifeState::Dead). That is a NON-shot death (a bleed-out, a directly-set state — no
+/// tracer is coming), so it despawns promptly. When a killing shot DID arrive, the despawn is
+/// DEFERRED to [`despawn_killed_ganger_on_impact`], which drains the bolt's
+/// [`ShotImpactResolved`](crate::ShotImpactResolved) signal at the staggered impact moment — so the
+/// body lives until the tracer reaches it, then despawns exactly once.
+///
+/// `ShotFired` is the reliable discriminator (NOT a query of the in-flight bolt): the bolt is
+/// spawned via a deferred `commands.spawn_scene` and its [`ProjectileTravel`] materializes only on
+/// a later schedule, so it is NOT queryable on the drain frame the life-state flips — but the
+/// `ShotFired` message IS present that exact frame (its own reader cursor, independent of the
+/// projectile spawner's). The [`GangerSprites`] entry is dropped on whichever path despawns the
+/// sprite, never both (a shot-kill is guarded out here and despawned at impact; a non-shot death
+/// has no impact to fire).
+///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`ResMut<GangerSprites>`], the
-/// changed-life query, and the presenter-sprite [`Sprite`] query.
+/// changed-life query, the presenter-sprite [`Sprite`] query, and the
+/// [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired) the discriminator drains for this
+/// frame's killing shots.
 pub fn update_ganger_life_state(
     mut commands: Commands,
     mut sprites: ResMut<GangerSprites>,
     changed: Query<(Entity, &Faction, &LifeState), Changed<LifeState>>,
     mut presenters: Query<&mut Sprite, With<GangerSprite>>,
+    mut shots: MessageReader<ShotFired>,
 ) {
+    // The set of gangers a killing shot arrived for THIS frame — those deaths are pending an
+    // incoming tracer, so the despawn is deferred to `despawn_killed_ganger_on_impact`. Built
+    // once per run from this frame's `ShotFired` (its own reader cursor; the projectile spawner
+    // drains the buffer through a separate cursor).
+    let shot_killed: Vec<Entity> = shots.read().filter_map(shot_kill_victim).collect();
     for (entity, faction, life) in &changed {
         match life {
             LifeState::Dead => {
-                // Despawn the presenter sprite and drop its map entry.
+                // A shot-kill whose tracer has not yet landed (a killing `ShotFired` arrived this
+                // frame naming this ganger) is left alive on screen —
+                // `despawn_killed_ganger_on_impact` despawns it when the killing shot's
+                // `ShotImpactResolved` fires. Only a NON-shot death (no killing shot this frame)
+                // despawns promptly here.
+                if shot_killed.contains(&entity) {
+                    continue;
+                }
+                // Despawn the presenter sprite and drop its map entry (a non-shot death).
                 if let Some(presenter) = sprites.remove(entity) {
                     commands.entity(presenter).despawn();
                 }
@@ -265,6 +311,80 @@ pub fn update_ganger_life_state(
                 };
                 sprite.color = ganger_tint(*faction, *life);
             }
+        }
+    }
+}
+
+/// The sim ganger [`Entity`] a [`ShotFired`](gdtf_battle_sim::ShotFired) KILLED, if it struck a
+/// ganger ([`ShotKind::Ganger`]) AND left it [`Dead`](LifeState::Dead) (GTW-331) — else [`None`]
+/// (a non-ganger hit, a non-lethal hit, a clean miss, or a geometry-only round).
+///
+/// [`update_ganger_life_state`]'s discriminator reads it over this frame's `ShotFired` to find
+/// deaths pending a tracer; it delegates to [`report_kill_victim`] so the fire-frame guard and the
+/// impact-frame despawn ([`despawn_killed_ganger_on_impact`]) classify a kill IDENTICALLY.
+fn shot_kill_victim(shot: &ShotFired) -> Option<Entity> {
+    report_kill_victim(shot.report)
+}
+
+/// The sim ganger [`Entity`] a shot's [`HitReport`](gdtf_battle_sim::HitReport) KILLED, if it
+/// struck a ganger ([`ShotKind::Ganger`]) AND left it [`Dead`](LifeState::Dead) (GTW-331) — else
+/// [`None`].
+///
+/// The shared kill-classifier both death-despawn halves use over the SAME sim verdict: the
+/// fire-frame guard reads it off the [`ShotFired`](gdtf_battle_sim::ShotFired)'s threaded report
+/// (via [`shot_kill_victim`]), the impact-frame despawn reads it off the
+/// [`ShotImpactResolved`](crate::ShotImpactResolved)'s threaded report — so a kill is the same
+/// kill on both ends (the deferral and the despawn never disagree). The [`Entity`] is framework
+/// plumbing (the no-bare-types carve-out).
+fn report_kill_victim(report: Option<HitReport>) -> Option<Entity> {
+    let report = report?;
+    let ShotKind::Ganger(victim) = report.kind else {
+        return None;
+    };
+    matches!(
+        report.applied.map(|applied| applied.life_after),
+        Some(LifeState::Dead)
+    )
+    .then_some(victim)
+}
+
+/// `Update` (`PresenterSystems::Draw`): despawn the presenter sprite of a ganger killed by a
+/// shot WHEN the killing tracer lands (GTW-331).
+///
+/// Drains [`MessageReader<ShotImpactResolved>`](crate::ShotImpactResolved) — the shared per-shot
+/// impact-resolved signal [`animate_impact`](crate::animate_impact) emits at each staggered impact
+/// (GTW-328). For every signal whose threaded
+/// [`HitReport`](gdtf_battle_sim::HitReport) struck a ganger ([`ShotKind::Ganger`]) AND left it
+/// [`Dead`](LifeState::Dead) ([`life_after`](gdtf_battle_sim::AppliedDamage::life_after)), it
+/// despawns that ganger's mapped presenter sprite and drops its [`GangerSprites`] entry — so the
+/// body vanishes the instant its killing bolt arrives, not at sim-drain time.
+///
+/// This is the SHOT-KILL half of the death-despawn (the NON-shot half stays in
+/// [`update_ganger_life_state`], which despawns only a death with no pending tracer). The two are
+/// disjoint: a shot-kill is guarded OUT of the life-state path (a tracer is pending) and despawned
+/// here; a non-shot death has no impact signal and is despawned there — so the [`GangerSprites`]
+/// entry is dropped EXACTLY ONCE. A signal for an already-despawned / unmapped ganger (e.g. a
+/// non-lethal hit, or a corpse the life-state path already removed) is a no-op
+/// ([`GangerSprites::remove`] returns [`None`]).
+///
+/// Param-only (`bevy-traps.md` #7): [`Commands`], [`ResMut<GangerSprites>`], and the
+/// [`MessageReader<ShotImpactResolved>`](crate::ShotImpactResolved).
+pub fn despawn_killed_ganger_on_impact(
+    mut commands: Commands,
+    mut sprites: ResMut<GangerSprites>,
+    mut impacts: MessageReader<ShotImpactResolved>,
+) {
+    for impact in impacts.read() {
+        // Classify the resolved impact with the SAME kill-classifier the fire-frame guard uses
+        // (`report_kill_victim`): a non-ganger / non-lethal / miss / geometry-only round yields
+        // no victim and is skipped.
+        let Some(victim) = report_kill_victim(impact.report) else {
+            continue;
+        };
+        // The killing tracer has landed: despawn the struck ganger's sprite + drop its map entry
+        // (a no-op if the life-state path already removed it / it was never mapped).
+        if let Some(presenter) = sprites.remove(victim) {
+            commands.entity(presenter).despawn();
         }
     }
 }

@@ -13,15 +13,15 @@ use crate::{
     FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
     PanTuning, PanTuningHandle, PresenterSystems, ShotImpactResolved, TileRoles, TileRolesHandle,
     TopDownAtlases, advance_projectiles, animate_floating_text, animate_impact,
-    apply_active_level_filter, clamp_camera_to_bounds, despawn_removed_ganger_sprites,
-    draw_highlight_on_request, draw_static_battlefield, expire_flashes, frame_camera_on_units,
-    load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
-    load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
-    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
-    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
-    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
-    update_ganger_life_state,
+    apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
+    despawn_removed_ganger_sprites, draw_highlight_on_request, draw_static_battlefield,
+    expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
+    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
+    pan_camera_on_gamepad_cursor_edge, read_armor_broken, read_bleeding, read_consequence_fct,
+    read_cover_destroyed, redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
+    reframe_ganger_sprites, resolve_character_roles, resolve_effect_roles, resolve_fx_tuning,
+    resolve_pan_tuning, resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles,
+    swap_destroyed_cover, update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -186,6 +186,16 @@ impl Plugin for TopDownRendererPlugin {
         // build, so they are always present. `move_ganger_sprites` runs
         // `.after(spawn_ganger_sprites)` so a same-update spawn is already mapped when
         // the move runs (the idempotent-via-the-map move path).
+        // GTW-331: `update_ganger_life_state` drains `MessageReader<ShotFired>` to discriminate a
+        // shot-kill (deferred to the impact despawn) from a non-shot death (despawned promptly) —
+        // see its docs. A `MessageReader` panics param validation without its `Messages<ShotFired>`
+        // buffer (`bevy-traps.md` #4), and the sim's `BattleSimPlugin` only registers it in a real
+        // battle, so register it idempotently HERE (the `ShotImpactResolved` / `HighlightRequest`
+        // precedent): `add_message` creates the buffer if absent and is a no-op if the sim already
+        // did — so the ganger batch's gate stays `BattleInProgress + CharacterRoles +
+        // TopDownAtlases` (an empty buffer is fine), and the life-state system keeps running for
+        // the Downed re-tint + non-shot death despawn even in a focused harness that fires nothing.
+        app.add_message::<ShotFired>();
         let gate = resource_exists::<BattleInProgress>
             .and_then(resource_exists::<CharacterRoles>)
             .and_then(resource_exists::<TopDownAtlases>);
@@ -210,6 +220,26 @@ impl Plugin for TopDownRendererPlugin {
             despawn_removed_ganger_sprites
                 .in_set(PresenterSystems::Draw)
                 .run_if(resource_exists::<BattleInProgress>),
+        )
+        // GTW-331: the SHOT-KILL death-despawn. It drains the shared GTW-328
+        // `ShotImpactResolved` signal `animate_impact` emits at each staggered impact and
+        // despawns a ganger whose killing tracer just LANDED (its threaded report struck the
+        // ganger + left it Dead) — so the body does not vanish at sim-drain time, before the
+        // bolt reaches it. Like `despawn_removed_ganger_sprites` it only despawns mapped sprites
+        // + drops map entries (no render resource), so it is gated on the battle witness AND its
+        // `Messages<ShotImpactResolved>` buffer (a `MessageReader` panics validation without its
+        // buffer — `bevy-traps.md` #4); the buffer is registered unconditionally in
+        // `register_fx_flash_systems` (idempotent `add_message`), so the gate is satisfied
+        // whenever a battle is live. The `Changed<LifeState>` path (above) defers a shot-kill to
+        // this system, so the two never double-despawn (the map entry drops exactly once).
+        .add_systems(
+            Update,
+            despawn_killed_ganger_on_impact
+                .in_set(PresenterSystems::Draw)
+                .run_if(
+                    resource_exists::<BattleInProgress>
+                        .and_then(resource_exists::<Messages<ShotImpactResolved>>),
+                ),
         );
 
         // GTW-220 (S6): the transient FX-flash readers + the one-shot expiry clock join the
