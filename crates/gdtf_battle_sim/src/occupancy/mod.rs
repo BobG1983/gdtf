@@ -31,6 +31,14 @@
 //!    set, **distinct** from the GTW-154 [`crate::cover::CoverLedger`]'s HP-depletion
 //!    [`crate::cover::Destroyed`] flag — syncing the two is GTW-157 (E1.7), not here.
 //!
+//! Reading on TOP of the grid (E7 · GTW-12b, ADR-0005) is the pure
+//! [`pathable_neighbors`] enumeration: the same-storey 8-connected planar
+//! neighbours of a `(cell, level)` that are in-bounds and walkable, each priced at
+//! its step cost (orthogonal terrain `move_cost`, diagonal octile
+//! `round(move_cost × √2)`), in deterministic `(z, y, x)` order. It is the planar
+//! half of the route core's edge model; the cross-storey half is GTW-351's
+//! [`crate::vertical::traversable_links`], and route assembly over both is GTW-352.
+//!
 //! The grid dimensions are STRUCTURAL constants: [`GRID_WIDTH`] / [`GRID_HEIGHT`]
 //! (60×60, introduced here from `docs/combat/battle-space.md`) ×
 //! [`MAX_LEVELS`](crate::metric::MAX_LEVELS) (8, from E1.1). Out-of-range
@@ -40,6 +48,7 @@
 mod grid;
 mod input;
 mod kind;
+mod neighbours;
 
 #[cfg(test)]
 mod test;
@@ -47,3 +56,4 @@ mod test;
 pub use grid::{DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancySlot};
 pub use input::{OccupancyInput, OccupantPlacement, TerrainPlacement};
 pub use kind::TerrainKind;
+pub use neighbours::pathable_neighbors;

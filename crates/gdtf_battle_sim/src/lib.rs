@@ -297,7 +297,7 @@ pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to
 pub use move_acts::{MoveOutcome, move_ganger};
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
-    OccupantPlacement, TerrainKind, TerrainPlacement,
+    OccupantPlacement, TerrainKind, TerrainPlacement, pathable_neighbors,
 };
 pub use occupancy_sync::{
     CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
