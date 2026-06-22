@@ -9,8 +9,8 @@ use crate::{
     cover::CoverLedger,
     ganger::{Facing, LifeState, Position, Stance, StanceKind},
     los::{Observer, Target, can_see},
-    metric::CellLevel,
-    occupancy::OccupancyGrid,
+    metric::{Cell, CellLevel, Level},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
     surface::SurfaceGrid,
     tuning::CombatTuning,
     visibility::SquadVisibility,
@@ -42,37 +42,47 @@ pub struct FovObserver<'a> {
     pub life:     LifeState,
 }
 
-/// The squad **VISIBLE** union over a **bounded candidate set** — the cells some
-/// conscious player-faction `observers` member currently sees (GTW-340 clause 5).
+/// The squad **VISIBLE** union over a **disc-bounded DENSE scan** — every `(cell, level)`
+/// some conscious player-faction `observers` member currently sees (GTW-340 clause 5,
+/// GTW-347 regression fix).
 ///
-/// Candidate set (concrete, bounded — clause 5 / 6): for each conscious observer, the
-/// candidates are the grid's **authored / occupied** `(cell, level)` entries
-/// ([`OccupancyGrid::authored_or_occupied_cells`]) that fall **within that observer's
-/// Chebyshev disc** (`max(|dx|, |dy|) <= *view_range`, across the level axis) — NOT
-/// every cell in the `~29 × 29 × 8` disc. The rendered layer IS the fog mask
-/// (`docs/combat/visibility.md`): empty air has no cell to reveal, and a far
-/// out-of-disc cell is never tested. This is the same disc bound [`can_see`] applies
-/// internally — the explicit filter here is what keeps the candidate scan
-/// **disc-bounded over the sparse authored content**, never a blind `60 × 60 × 8`
-/// (or full-disc-air) scan.
+/// Candidate set (concrete, bounded — clause 1 / 3): for each conscious observer, scan
+/// its Chebyshev disc **densely** — every `(x, y)` with `max(|dx|, |dy|) <= *view_range`,
+/// clamped to the grid extent (`0..GRID_WIDTH` × `0..GRID_HEIGHT`) — across the map's
+/// **authored level range** ([`OccupancyGrid::authored_level_range`]) UNIONED with the
+/// observer's own storey. This is a dense disc scan, NOT the sparse authored/occupied
+/// subset: the presenter floors EVERY in-range open cell (`role_at` maps
+/// [`TerrainKind::Open`](crate::occupancy::TerrainKind) → floor), so the rendered terrain
+/// layer is the WHOLE active-level grid — the fog mask must reveal the same dense floor
+/// the view draws (GTW-347; the pre-fix sparse scan revealed only authored/occupied cells,
+/// so open floor was never revealed and `present_fog` hid the whole map).
+///
+/// The level axis is the authored range (so a single-level map collapses to that one
+/// storey, never a blind `0..`[`MAX_LEVELS`](crate::metric::MAX_LEVELS)) unioned with the
+/// observer's storey — an observer on a flat all-Open floor with NO authored content still
+/// reveals the cells on its own level. The `x`/`y` bound mirrors the presenter's
+/// `draw_static_battlefield` per-level `0..GRID_WIDTH` × `0..GRID_HEIGHT` scan, intersected
+/// with the disc, so the fog and the rendered layer cover the same cells.
 ///
 /// For each candidate, the occupant's band is resolved the EXACT way the shot pipeline
-/// resolves it — `cover.peek(at).map(height_band).or_else(|| occupancy.occupant_band(at))`
-/// (the [`TargetGeometry::compose`](crate::fire) pattern) — and the [`Target`] view is
-/// built at that band (an inert [`StanceKind::Standing`] fallback for the no-band case,
-/// mirroring the shot pipeline) before [`can_see`] runs. So the union's enemy-visible
-/// decision uses the **same banded anchor the shot pipeline aims at**: a crouched
-/// (non-Standing) occupant is classified by its occupant-band silhouette, not a generic
-/// cell center. The [`can_see`]-true candidates fold into one VISIBLE set.
+/// resolves it (inside [`can_see`] → [`has_los`](crate::los::has_los):
+/// `cover.peek(at).map(height_band).or_else(|| occupancy.occupant_band(at))`), and the
+/// [`Target`] view is built with an inert [`StanceKind::Standing`] fallback (mirroring the
+/// shot pipeline) before [`can_see`] runs. [`can_see`] applies the SAME range disc + LOS
+/// probe — so an out-of-sight or LOS-blocked cell is correctly excluded even though the
+/// disc scan offered it. The [`can_see`]-true candidates fold into one VISIBLE set.
 ///
 /// Read-only over the grids; render-free, RNG-free, deterministic, no `&mut World` /
 /// `Commands`. The `is_dead` corpse predicate is the same read-only pass-through
 /// [`can_see`] / [`has_los`](crate::los::has_los) take.
 ///
-/// PERF (clause 6): the recompute (GTW-341) rides EVERY accepted `Changed<Position>`
-/// move step — the per-step ambush-reveal trigger — so this candidate scan MUST stay
-/// the disc-bounded authored/occupied set above, never a blind `60 × 60 × 8` (or
-/// full-disc air) scan per observer per step.
+/// PERF (clause 3): the per-step recompute cost is **the disc** — `~(2·view_range + 1)²`
+/// `can_see` probes per observer per authored level, never the full `60 × 60 × 8` grid
+/// (the disc is clamped to the grid extent and bounded to the authored level range). The
+/// recompute (GTW-341) rides EVERY accepted `Changed<Position>` move step, so this scan
+/// MUST stay disc-bounded. NOTE: a shadowcasting FOV (an `O(perimeter)` sweep instead of
+/// the `O(disc area)` per-cell probe) is a DEFERRED future optimization — it is NOT built
+/// here; the disc-bounded per-cell probe is the shipped GTW-347 behaviour.
 #[must_use]
 pub fn union_fov(
     observers: &[FovObserver],
@@ -83,6 +93,9 @@ pub fn union_fov(
     is_dead: impl Fn(bevy::prelude::Entity) -> bool,
 ) -> HashSet<CellLevel> {
     let mut visible = HashSet::default();
+    // The map's authored storey range (None on an entirely empty grid) — the level span
+    // the dense disc scans, unioned per observer with that observer's own storey.
+    let authored = occupancy.authored_level_range();
     for fov in observers {
         // Conscious-observer gate (clause "only conscious player-faction observers
         // contribute"): a Downed / Dead observer reveals nothing. The caller restricts
@@ -95,17 +108,16 @@ pub fn union_fov(
             stance:   fov.stance,
             facing:   fov.facing,
         };
-        // Scan ONLY the grid's authored/occupied cells (sparse content), filtered to
-        // this observer's Chebyshev disc — never the disc's air (clause 5 / 6).
-        for candidate in occupancy.authored_or_occupied_cells() {
-            if chebyshev(fov.position, &candidate) > *tuning.view_range {
-                continue;
-            }
-            // Resolve the candidate occupant's band the SAME way the shot pipeline does
-            // (cover entry else published occupant band), and build the Target at that
-            // band so `can_see` aims at the shot-pipeline anchor (clause 5; the
-            // banded-occupant AC). The inert Standing stance is the documented no-band
-            // fallback, mirroring `TargetGeometry::compose`.
+        // Scan the observer's Chebyshev disc DENSELY over the authored level range (∪ the
+        // observer's own storey), clamped to the grid extent — the dense floor the
+        // presenter draws (clause 1 / 3). `can_see` re-applies the range disc + LOS, so
+        // an out-of-sight cell offered by the (square) disc bound is excluded.
+        for (level, cell) in disc_cells(fov.position, *tuning.view_range, authored) {
+            let candidate = CellLevel::new(cell, level);
+            // Build the Target at the candidate cell. The occupant's band is resolved
+            // inside `can_see` / `has_los` the SAME way the shot pipeline does (cover
+            // entry else published occupant band); the inert Standing stance is the
+            // documented no-band fallback (the banded-occupant AC).
             let position = Position::new(candidate);
             let stance = Stance::new(StanceKind::Standing);
             let target = Target {
@@ -130,18 +142,59 @@ pub fn union_fov(
     visible
 }
 
-/// The 2D Chebyshev distance between an observer position and a candidate cell —
-/// `max(|dx|, |dy|)` over the `(x, y)` ground plane only (the level/z axis is the LOS
-/// probe's, never this term — the [`can_see`] disc convention).
+/// Enumerate the `(level, cell)` candidates of one observer's dense Chebyshev disc — every
+/// `(x, y)` with `max(|dx|, |dy|) <= view_range`, clamped to the grid extent
+/// (`0..GRID_WIDTH` × `0..GRID_HEIGHT`), across the `authored` level range unioned with the
+/// observer's own storey (GTW-347 clause 1 / 3).
 ///
-/// A `u16` to match [`ViewRange`](crate::tuning::ViewRange)'s inner; the cell deltas on
-/// the 60×60 grid fit it comfortably, saturating rather than wrapping on a pathological
-/// out-of-grid delta.
-fn chebyshev(observer: &Position, candidate: &CellLevel) -> u16 {
-    // `Position` derefs `CellLevel` → the inner `IVec3`; `candidate` is a `CellLevel`.
-    let dx = (observer.x - candidate.x).unsigned_abs();
-    let dy = (observer.y - candidate.y).unsigned_abs();
-    u16::try_from(dx.max(dy)).unwrap_or(u16::MAX)
+/// The `x`/`y` window is the observer's cell ± `view_range`, clamped to the grid so it
+/// never offers an off-grid cell (mirroring the presenter's per-level
+/// `draw_static_battlefield` scan). The level span is `authored` (the map's authored storey
+/// range) widened to include the observer's storey, so a single-level map scans one storey
+/// and a flat all-Open floor (no authored content) still scans the observer's level. The
+/// caller hands each `(level, cell)` to [`can_see`], which re-applies the exact disc + LOS,
+/// so the corner cells of the square `x`/`y` window outside the Chebyshev radius and any
+/// blocked cell are excluded there.
+fn disc_cells(
+    observer: &Position,
+    view_range: u16,
+    authored: Option<(Level, Level)>,
+) -> impl Iterator<Item = (Level, Cell)> {
+    let radius = i32::from(view_range);
+    // The observer's own storey is always in the scan (a flat all-Open floor has no
+    // authored content, yet the squad still sees its own level — clause 1 / 4).
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "an observer's z is a storey index in 0..MAX_LEVELS (8) by construction, \
+                  so the i32 -> u8 narrowing cannot truncate or sign-flip"
+    )]
+    let observer_level = Level::new(observer.z as u8);
+    let (lo, hi) = match authored {
+        None => (observer_level, observer_level),
+        Some((lo, hi)) => (lo.min(observer_level), hi.max(observer_level)),
+    };
+    // The x/y window: the observer's cell ± view_range, clamped to the grid extent so no
+    // off-grid (x, y) is ever offered (the presenter never draws one either).
+    let x_min = (observer.x - radius).max(0);
+    let x_max = (observer.x + radius).min(i32_extent(GRID_WIDTH) - 1);
+    let y_min = (observer.y - radius).max(0);
+    let y_max = (observer.y + radius).min(i32_extent(GRID_HEIGHT) - 1);
+    (*lo..=*hi).flat_map(move |level_index| {
+        (y_min..=y_max).flat_map(move |y| {
+            (x_min..=x_max).map(move |x| (Level::new(level_index), Cell::new(x, y)))
+        })
+    })
+}
+
+/// The grid extent `dimension` (a `usize` slot-buffer width) as an `i32` coordinate bound —
+/// the inclusive upper edge of the `x`/`y` disc clamp.
+///
+/// `GRID_WIDTH` / `GRID_HEIGHT` are `60`, so the conversion is always in range; a
+/// pathological oversize saturates at [`i32::MAX`] rather than wrapping (defined, never a
+/// panic).
+fn i32_extent(dimension: usize) -> i32 {
+    i32::try_from(dimension).unwrap_or(i32::MAX)
 }
 
 /// Fold a freshly-computed VISIBLE set into a new squad fog — VISIBLE **replaces**, but

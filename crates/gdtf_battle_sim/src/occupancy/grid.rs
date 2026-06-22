@@ -314,22 +314,50 @@ impl OccupancyGrid {
     /// whose static terrain is non-[`Open`](TerrainKind::Open) (a wall or cover entry)
     /// OR that holds an occupant — and nothing else.
     ///
-    /// This is the **bounded candidate source** the squad-FOV union
-    /// ([`union_fov`](crate::visibility::union_fov), GTW-340) scans: the visible/fog
-    /// epic's rule is "the rendered layer IS the fog mask" (`docs/combat/visibility.md`
-    /// §"Composition with the view slice") — only an authored, still-standing
-    /// `(cell, level)` (or one a ganger stands in) has a cell to reveal, so empty air
-    /// is never a candidate. It walks the flat slot buffer ONCE (yielding the sparse
-    /// authored/occupied content, not the dense `60 × 60 × 8` extent), so the union can
-    /// intersect it with each observer's Chebyshev disc rather than scanning the disc's
-    /// air per observer per move step (`union_fov`'s per-step perf invariant). The
-    /// iterator is read-only and borrows the grid for its lifetime.
+    /// The sparse authored/occupied content of the grid (it walks the flat slot buffer
+    /// ONCE, never the dense `60 × 60 × 8` extent). The squad-FOV union derives its
+    /// **authored level range** ([`authored_level_range`](OccupancyGrid::authored_level_range))
+    /// from this set — the storeys the map authors, which bound the union's dense disc
+    /// scan (GTW-347). The iterator is read-only and borrows the grid for its lifetime.
     pub fn authored_or_occupied_cells(&self) -> impl Iterator<Item = CellLevel> + '_ {
         self.slots
             .iter()
             .enumerate()
             .filter(|(_, slot)| slot.terrain != TerrainKind::Open || slot.occupant.is_some())
             .map(|(index, _)| Self::cell_level_of_index(index))
+    }
+
+    /// The inclusive `(min, max)` storey range of the grid's **authored / occupied**
+    /// content — the lowest and highest [`Level`] any non-[`Open`](TerrainKind::Open)
+    /// terrain or occupant slot sits on — or [`None`] when the grid holds no authored or
+    /// occupied content at all (an entirely empty grid).
+    ///
+    /// This is the **authored level range** the squad-FOV union
+    /// ([`union_fov`](crate::visibility::union_fov), GTW-347) sweeps its dense Chebyshev
+    /// disc across (unioned with each observer's own storey), so the disc scan spans only
+    /// the storeys the map actually authors — a single-level map collapses to `(L, L)`
+    /// rather than blind-scanning a fixed `0..`[`MAX_LEVELS`]. Derived from the same
+    /// [`authored_or_occupied_cells`](OccupancyGrid::authored_or_occupied_cells) content
+    /// (the grid extents), so the two stay in lockstep. A read-only fold over the sparse
+    /// authored/occupied keys — it never touches empty air.
+    #[must_use]
+    pub fn authored_level_range(&self) -> Option<(Level, Level)> {
+        self.authored_or_occupied_cells().fold(None, |range, key| {
+            // `CellLevel` derefs `IVec3`; its `z` is the storey index, 0..MAX_LEVELS by
+            // construction (the slot buffer never holds an out-of-range level).
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "key.z is a storey index in 0..MAX_LEVELS (8) by the slot buffer's \
+                          own construction, so the i32 -> u8 narrowing cannot truncate or \
+                          sign-flip"
+            )]
+            let level = Level::new(key.z as u8);
+            Some(match range {
+                None => (level, level),
+                Some((lo, hi)) => (lo.min(level), hi.max(level)),
+            })
+        })
     }
 
     /// The `(cell, level)` key the flat-buffer slot at `index` represents — the inverse

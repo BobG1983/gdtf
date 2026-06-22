@@ -21,8 +21,10 @@
 //!   explicit [`FactionRelation`]: own squad trivially visible, an enemy visible iff
 //!   its cell is squad-VISIBLE).
 //! - The pure **value transforms** GTW-341's recompute system calls:
-//!   [`union_fov`] (the squad VISIBLE union over a disc-bounded authored/occupied
-//!   candidate set, resolving each candidate's band the shot-pipeline way) and
+//!   [`union_fov`] (the squad VISIBLE union over each conscious observer's dense
+//!   `view_range`-bounded Chebyshev disc, filtered by [`can_see`](crate::los::can_see)
+//!   / [`has_los`](crate::los::has_los) and resolving each candidate's band the
+//!   shot-pipeline way) and
 //!   [`accrue`] (VISIBLE replaces, EXPLORED grows monotonically).
 //!
 //! - The **writer system** [`recompute_visibility`] (GTW-341, leaf 5) — the SOLE mutator
