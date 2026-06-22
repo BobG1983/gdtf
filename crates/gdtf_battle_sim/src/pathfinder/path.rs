@@ -69,14 +69,23 @@ impl PathCost {
 }
 
 /// A successful route the search found — the ordered cells from `start` to `goal`
-/// (inclusive on both ends) and the route's total [`Tu`] cost.
+/// (inclusive on both ends), the per-step entry costs, and the route's total [`Tu`]
+/// cost.
 ///
 /// The typed result of [`find_path`](super::find_path) (C3). The
 /// [`cells`](Path::cells) list runs `start..=goal` in step order (the first element
-/// is `start`, the last is `goal`); the [`total`](Path::total) is the sum of the
-/// per-step edge costs ALONG that route — the §48 bit-identity guarantee that the
-/// returned total equals the step-by-step sum GTW-355 will charge. A zero-length
-/// route (`start == goal`) is the one-cell path `[start]` at total `0`.
+/// is `start`, the last is `goal`); the [`steps`](Path::steps) list carries the
+/// per-step ENTRY cost ALIGNED to `cells[1..]` (`steps[i]` is the cost of entering
+/// `cells[i + 1]` from `cells[i]`, so `steps.len() == cells.len() - 1`); the
+/// [`total`](Path::total) is the sum of those per-step costs.
+///
+/// **§48 bit-identity (GTW-355).** The per-step costs are NOT re-derived by re-running
+/// the cost math — they are the SAME accumulated-cost deltas the search relaxed with
+/// (`cost(cells[i + 1]) − cost(cells[i])`, the exact
+/// [`PathCost::add_step`](PathCost::add_step) increment along the reconstructed route),
+/// so the stepped walk that charges [`steps`](Path::steps) one cell at a time sums to
+/// [`total`](Path::total) **bit-for-bit by construction**. A zero-length route
+/// (`start == goal`) is the one-cell path `[start]` with no steps at total `0`.
 ///
 /// Private fields + read accessors (house style — a `Path` is built only by the
 /// search core, never field-assembled from outside).
@@ -84,22 +93,49 @@ impl PathCost {
 pub struct Path {
     /// The ordered route cells, `start..=goal` in step order (≥ 1 element).
     cells: Vec<CellLevel>,
-    /// The route's total cost — the sum of the per-step edge [`Tu`] along it.
+    /// The per-step ENTRY costs, aligned to `cells[1..]`: `steps[i]` is the [`Tu`] cost
+    /// of entering `cells[i + 1]` from `cells[i]`. Empty for the degenerate one-cell
+    /// route. Their sum equals [`total`](Path::total) (the §48 bit-identity).
+    steps: Vec<Tu>,
+    /// The route's total cost — the sum of the per-step entry [`Tu`] along it.
     total: Tu,
 }
 
 impl Path {
-    /// Build a route from its ordered `start..=goal` cells and total cost — the
-    /// constructor the search core calls once it has reconstructed the route.
+    /// Build a route from its ordered `start..=goal` cells, per-step entry costs, and
+    /// total cost — the constructor the search core calls once it has reconstructed the
+    /// route.
+    ///
+    /// `steps` MUST be aligned to `cells[1..]` (one entry per traversed edge, so
+    /// `steps.len() == cells.len().saturating_sub(1)`) and sum to `total` — the
+    /// invariant the search core upholds by reconstructing each step from the settled
+    /// accumulated-cost deltas (the §48 bit-identity).
     #[must_use]
-    pub const fn new(cells: Vec<CellLevel>, total: Tu) -> Self {
-        Self { cells, total }
+    pub const fn new(cells: Vec<CellLevel>, steps: Vec<Tu>, total: Tu) -> Self {
+        Self {
+            cells,
+            steps,
+            total,
+        }
     }
 
     /// The ordered route cells, `start..=goal` in step order — read-only.
     #[must_use]
     pub fn cells(&self) -> &[CellLevel] {
         &self.cells
+    }
+
+    /// The per-step ENTRY costs aligned to `cells[1..]` — read-only.
+    ///
+    /// `steps()[i]` is the [`Tu`] charged to enter `cells()[i + 1]` from `cells()[i]`;
+    /// the slice is empty for a degenerate one-cell route. The GTW-355 stepped walk
+    /// charges these one cell at a time as it advances, and their sum is
+    /// [`total`](Path::total) bit-for-bit (the §48 identity), so an uninterrupted walk
+    /// spends exactly the preview's price and an interrupted one spends exactly the
+    /// ground it covered.
+    #[must_use]
+    pub fn steps(&self) -> &[Tu] {
+        &self.steps
     }
 
     /// The route's total [`Tu`] cost — the sum of the per-step edge costs along it

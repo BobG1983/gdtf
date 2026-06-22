@@ -311,7 +311,7 @@ pub use magazine::{
 pub use march::{MarchKind, MarchResult, march_vector};
 pub use matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier};
 pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
-pub use move_acts::{MoveOutcome, move_ganger};
+pub use move_acts::{MoveOutcome, ReactionShotFired, WalkInProgress, advance_walk, move_ganger};
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
     OccupantPlacement, TerrainKind, TerrainPlacement, pathable_neighbors,

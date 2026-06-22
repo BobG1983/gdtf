@@ -19,6 +19,7 @@ use crate::{
         },
     },
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
+    move_acts::{ReactionShotFired, advance_walk},
     occupancy_sync::{SimSystems, sync_destroyed_cover},
     shot_fired::ShotFired,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
@@ -103,6 +104,12 @@ impl Plugin for SimActsPlugin {
             // creates the Messages<Bleeding> resource the presenter's consequence reader is
             // gated on (bevy-traps.md #4 / #5).
             .add_message::<Bleeding>()
+            // GTW-355: the typed reaction-shot interrupt the committed walk (`advance_walk`)
+            // stops on (C5(b)). Registering the buffer here makes `advance_walk`'s
+            // MessageReader<ReactionShotFired> param valid. NOTHING in the sim emits it yet —
+            // the PRODUCER is GTW-38-future reaction fire / overwatch (the orchestrator will
+            // log this); this slice builds the RECEIVING hook only (bevy-traps.md #4 / #5).
+            .add_message::<ReactionShotFired>()
             .add_systems(
                 Update,
                 (
@@ -126,6 +133,23 @@ impl Plugin for SimActsPlugin {
             .add_systems(
                 Update,
                 dispatch_move
+                    .after(sync_destroyed_cover)
+                    .in_set(SimSystems::Simulate),
+            )
+            // GTW-355 (C6): the committed-walk engine. It advances every WalkInProgress by
+            // ONE discrete step per tick — bump-stopping on the LIVE grid, charging each
+            // step's planned cost atomically, halting on a reveal or a reaction interrupt.
+            // Ordered `.after(dispatch_move)` so a fresh accept's WalkInProgress is visible
+            // and its first step lands the same frame (the Commands sync point the ordering
+            // forces makes the just-inserted component present this tick), and `.after`
+            // the occupancy_sync chain (its bump-stop reads a settled grid). It writes
+            // Position/Tu; recompute_visibility is ordered `.after(advance_walk)` (in
+            // BattleSimPlugin) so each step's reveal is computed before the NEXT tick reads
+            // it (the §44 ambush invariant; bevy-traps.md #3).
+            .add_systems(
+                Update,
+                advance_walk
+                    .after(dispatch_move)
                     .after(sync_destroyed_cover)
                     .in_set(SimSystems::Simulate),
             )

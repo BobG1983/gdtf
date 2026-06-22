@@ -193,6 +193,37 @@ impl DistanceField {
         out
     }
 
+    /// The per-step ENTRY costs along the reconstructed `route` (the `start..=goal`
+    /// cell list), aligned to `route[1..]` — `step_costs[i]` is the [`Tu`] to enter
+    /// `route[i + 1]` from `route[i]`.
+    ///
+    /// Each step cost is the SETTLED accumulated-cost DELTA the relaxation already
+    /// recorded — `cost(route[i + 1]) − cost(route[i])` — NOT a re-run of the octile /
+    /// link cost math. Because the route is the cheapest-cost reconstruction, those
+    /// deltas are exactly the per-edge [`PathCost::add_step`](super::path::PathCost::add_step)
+    /// increments that built the goal's total, so their sum is the route total
+    /// bit-for-bit (the §48 bit-identity). A single in-domain step is a `u8`
+    /// [`Tu`](crate::ganger::Tu) (octile `≤ round(255 × √2)` is bounded; the search
+    /// only relaxes edges priced from a `u8` `move_cost` / `link_tu`), so the per-step
+    /// delta narrows to [`Tu`] exactly via [`PathCost::to_tu`](super::path::PathCost::to_tu).
+    /// A cell whose cost was somehow not settled (impossible for a reconstructed route)
+    /// contributes [`PathCost::ZERO`].
+    #[must_use]
+    pub(super) fn step_costs(&self, route: &[CellLevel]) -> Vec<Tu> {
+        route
+            .windows(2)
+            .map(|window| {
+                let from = self.cost_of(&window[0]).unwrap_or(PathCost::ZERO);
+                let to = self.cost_of(&window[1]).unwrap_or(PathCost::ZERO);
+                // The cheapest route is monotone in cost (non-negative edges), so
+                // `to >= from`; saturating to ZERO on the impossible reverse keeps it
+                // panic-free without masking a real bug (a reconstructed route never
+                // hits it).
+                PathCost::new((*to).saturating_sub(*from)).to_tu()
+            })
+            .collect()
+    }
+
     /// Reconstruct the ordered `start..=goal` route to `goal` by walking the
     /// predecessor back-pointers, or `None` if `goal` was never reached.
     ///

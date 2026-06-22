@@ -13,6 +13,7 @@ use crate::{
         resources::BattleInProgress,
         setup::{setup_battle_on_request, teardown_battle_on_request},
     },
+    move_acts::advance_walk,
     occupancy_sync::{OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover},
     visibility::{SquadVisibility, recompute_visibility, should_recompute_visibility},
 };
@@ -113,6 +114,12 @@ impl Plugin for BattleSimPlugin {
                 recompute_visibility
                     .in_set(SimSystems::Simulate)
                     .after(sync_destroyed_cover)
+                    // GTW-355: after the committed-walk engine too, so each accepted step's
+                    // new Position is reflected in the squad FOV this same tick — the next
+                    // walk tick then reads the refreshed fog before stepping again (the §44
+                    // ambush invariant: revealed iff the mover's sight reaches it from where
+                    // it stopped; bevy-traps.md #3).
+                    .after(advance_walk)
                     // Guard the ResMut<SquadVisibility> read on the resource's presence
                     // (bevy-traps.md #1): setup inserts it on the Ok path, so it shares the
                     // BattleInProgress window — but a headless harness can open the

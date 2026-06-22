@@ -36,13 +36,13 @@
 //! It fetches the actor's components + reads the grids via Bevy queries / `Res`
 //! (`bevy-traps.md` #7 — no `&mut World`); it only READS the grids + the squad fog.
 
-use bevy::prelude::{Entity, Message, MessageReader, MessageWriter, Query, Res};
+use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query, Res};
 
 use crate::{
     acts::request::MoveRequested,
-    ganger::{Faction, LifeState, Position, Tu},
+    ganger::{Faction, Position, Tu},
     metric::{Cell, CellLevel},
-    move_acts::{MoveOutcome, move_ganger},
+    move_acts::WalkInProgress,
     occupancy::OccupancyGrid,
     pathfinder::{PlanningView, find_path},
     tu::can_spend_tu,
@@ -103,16 +103,18 @@ impl MoveRejected {
 }
 
 /// A **move occurred** — the combat-log signal that `actor` stepped from `from` to `to`
-/// (GTW-328), emitted ONCE per [`MoveRequested`] whose move actually SUCCEEDS.
+/// (GTW-328), emitted ONCE per accepted WALK STEP (GTW-355).
 ///
 /// The combat-text LOG event for a move ("<name> moved <from> -> <to>") — the user-facing
-/// announcement that a ganger changed cell. It is emitted ONLY on a real step
-/// ([`MoveOutcome::Moved`]); a rejected (unreachable / unaffordable) or no-op move logs
-/// nothing (it emits a [`MoveRejected`] on a gate-failed commit instead). The
-/// [`from`](MovementOccurred::from) cell is captured BEFORE the [`Position`] write and
-/// [`to`](MovementOccurred::to) AFTER, so they are the actual pre/post ground cells. It
-/// adds **no** act logic and re-resolves nothing — pure exposure of the move the verb
-/// already performed.
+/// announcement that a ganger changed cell. Since GTW-355 the committed walk
+/// ([`advance_walk`](crate::move_acts::advance_walk)) emits ONE of these per DISCRETE step
+/// it takes, so a multi-cell walk announces a step per cell entered; a rejected
+/// (unreachable / unaffordable) commit emits a [`MoveRejected`] and no `MovementOccurred`,
+/// and a bump-stopped / interrupted walk simply stops emitting them. The
+/// [`from`](MovementOccurred::from) cell is the actor's pre-step ground cell and
+/// [`to`](MovementOccurred::to) the cell it entered, so they are the actual pre/post ground
+/// cells of THAT step. It adds **no** act logic and re-resolves nothing — pure exposure of
+/// the step the walk already performed.
 ///
 /// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), mirroring
 /// [`crate::acts::ReloadResult`]. The [`actor`](MovementOccurred::actor) is a Bevy
@@ -124,9 +126,9 @@ pub struct MovementOccurred {
     /// The ganger that stepped — resolved to a name by the combat-log presenter via
     /// `Query<&GangerName>`.
     pub actor: Entity,
-    /// The ground [`Cell`] the actor stepped FROM (captured before the [`Position`] write).
+    /// The ground [`Cell`] the actor stepped FROM (its pre-step cell).
     pub from:  Cell,
-    /// The ground [`Cell`] the actor stepped TO (captured after the [`Position`] write).
+    /// The ground [`Cell`] the actor stepped TO (the cell it entered this step).
     pub to:    Cell,
 }
 
@@ -136,14 +138,6 @@ impl MovementOccurred {
     pub const fn new(actor: Entity, from: Cell, to: Cell) -> Self {
         Self { actor, from, to }
     }
-}
-
-/// The ground-plane [`Cell`] of a [`Position`] — its `(x, y)` (the `z` storey is dropped).
-/// [`Position`] derefs to [`CellLevel`](crate::metric::CellLevel) → the inner `IVec3`; the
-/// cell is its `x`/`y` (the [`crate::acts::fire`] `actor_cell` precedent).
-fn position_cell(position: &Position) -> Cell {
-    let key = ***position;
-    Cell::new(key.x, key.y)
 }
 
 /// The faction relation of `occupant` **relative to** `mover_faction` — same gang is
@@ -169,80 +163,79 @@ fn relation_to(
 }
 
 /// **Dispatch** buffered [`MoveRequested`] commits — for each, plan a reachable affordable
-/// route and (only then) run the landed [`move_ganger`] verb (E7 · GTW-12f / GTW-354).
+/// route and (only then) START the committed step-by-step walk (E7 · GTW-12f / GTW-12g;
+/// GTW-354 added the route+affordability gate, GTW-355 made the accept start a walk
+/// instead of jumping to the destination).
 ///
 /// Per drained [`MoveRequested`] (the COMMIT — C2), the SINGLE constrained writer:
 ///
-/// 1. fetches the mover's `(&mut `[`Position`]`, &mut `[`Tu`]`, &`[`LifeState`]`, &`[`Faction`]`)`
-///    (a message for an actor missing any of these is SKIPPED — fail-closed, no panic, the
-///    `dispatch_*` precedent; no [`MoveRejected`] for a guard skip);
+/// 1. fetches the mover's `(&`[`Position`]`, &`[`Tu`]`, &`[`Faction`]`)` (a message for an
+///    actor missing any of these is SKIPPED — fail-closed, no panic, the `dispatch_*`
+///    precedent; no [`MoveRejected`] for a guard skip); it reads, never mutates — the
+///    [`Position`] / [`Tu`] mutation now lives in the walk;
 /// 2. builds the GTW-353 [`PlanningView`] from the LIVE world — the [`SquadVisibility`]
 ///    resource plus an occupant→[`FactionRelation`] resolver ([`relation_to`]) closed over
 ///    the mover's faction and the `&`[`Faction`] query (C1) — and runs [`find_path`] from
 ///    the mover's cell to `request.dest` over the [`OccupancyGrid`] + [`VerticalLinkGraph`]
 ///    + the [`MoveCosts`](crate::tuning::MoveCosts) table in [`CombatTuning`];
 /// 3. on [`PathBlocked`](crate::pathfinder::PathBlocked) emits a TYPED
-///    [`MoveRejected`]`(`[`MoveRejection::Unreachable`]`)` and steps NOTHING (this kills the
+///    [`MoveRejected`]`(`[`MoveRejection::Unreachable`]`)` and starts NOTHING (this kills the
 ///    pre-GTW-354 any-empty-cell teleport — C1);
 /// 4. performs ONE up-front full-route **affordability** gate
 ///    (`docs/combat/visibility.md` §48) — [`can_spend_tu`] against the [`Path::total`](crate::pathfinder::Path::total)
-///    — emitting [`MoveRejected`]`(`[`MoveRejection::Unaffordable`]`)` and stepping NOTHING
-///    when the mover cannot afford the whole route (C3, NO partial move); and
-/// 5. ONLY on a reachable affordable route runs the EXISTING accept: [`move_ganger`]
-///    (whose own gates + the DESTINATION-terrain per-step charge hold verbatim — the charge
-///    mechanism is UNCHANGED, GTW-355 owns the stepped walk) and, on
-///    [`MoveOutcome::Moved`], the [`MovementOccurred`] log signal (C4).
+///    — emitting [`MoveRejected`]`(`[`MoveRejection::Unaffordable`]`)` and starting NOTHING
+///    when the mover cannot afford the whole route (C3, NO walk); and
+/// 5. ONLY on a reachable affordable route STARTS the walk (GTW-355, C6): it attaches a
+///    [`WalkInProgress`](crate::move_acts::WalkInProgress) holding the route AHEAD
+///    (`path.cells()[1..]`) and its planned per-step entry costs
+///    ([`path.steps()`](crate::pathfinder::Path::steps), the §48 bit-identity source). The
+///    landed [`advance_walk`](crate::move_acts::advance_walk) system then walks it ONE
+///    discrete cell per tick — bump-stopping, charging per step, halting on reveal /
+///    interrupt. A degenerate `start == goal` route (one cell) attaches NO walk.
 ///
-/// The up-front gate is a CHECK, not a second charge: the only TU spend is the existing
-/// [`move_ganger`] per-step charge on accept. (`find_path` itself never charges TU — it
-/// plans and totals; §48.)
+/// The up-front gate is a CHECK, not a charge: the only TU spend is the walk's per-step
+/// charge (`find_path` itself never charges TU — it plans and totals; §48). This system
+/// does NOT write [`Position`] or [`Tu`] (the walk does), so the old single-frame jump is
+/// gone — no teleport-to-destination remains.
 ///
-/// Param-only (`Query` / `Res` / `MessageReader` / `MessageWriter`) — no `&mut World`
-/// (`bevy-traps.md` #7). It READS the grids (`Res<OccupancyGrid>` / `Res<VerticalLinkGraph>`)
-/// and the squad fog (`Res<SquadVisibility>`) for the route gate; the grid's slot
-/// maintenance is the landed
-/// [`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers) reacting to the
-/// `Changed<`[`Position`]`>` this verb produces. This system is ordered
-/// `.after(`the `occupancy_sync` maintenance chain`)` in the
+/// Param-only (`Query` / `Res` / `MessageReader` / `MessageWriter` / `Commands`) — no
+/// `&mut World` (`bevy-traps.md` #7). It READS the grids (`Res<OccupancyGrid>` /
+/// `Res<VerticalLinkGraph>`) and the squad fog (`Res<SquadVisibility>`) for the route gate.
+/// This system is ordered `.after(`the `occupancy_sync` maintenance chain`)` in the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) set (C5 /
 /// `bevy-traps.md` #3) so [`find_path`] plans over a grid whose occupant slots have already
-/// settled this frame; the `&Faction` query is disjoint from the `&mut Position`/`&mut Tu`
-/// actor query so the two compose with no access conflict.
+/// settled this frame; `advance_walk` is ordered `.after(dispatch_move)` so the first walk
+/// step lands the same frame as the accept.
 #[expect(
     clippy::too_many_arguments,
     reason = "the constrained move dispatch genuinely needs the actor query + the disjoint \
               faction query + the four route-gate resources (grid / links / squad fog / \
-              tuning) + the two output message writers; bundling them into an opaque \
-              SystemParam struct would hide the system's real reads (the dispatch_fire \
-              BattleGridsParam precedent applies only when a bundle is reused across systems)"
+              tuning) + the reject writer + Commands (to start the walk); bundling them into \
+              an opaque SystemParam struct would hide the system's real reads (the \
+              dispatch_fire BattleGridsParam precedent applies only when a bundle is reused \
+              across systems)"
 )]
 pub fn dispatch_move(
     mut requests: MessageReader<MoveRequested>,
-    mut actors: Query<(
-        &'static mut Position,
-        &'static mut Tu,
-        &'static LifeState,
-        &'static Faction,
-    )>,
+    actors: Query<(&'static Position, &'static Tu, &'static Faction)>,
     factions: Query<&'static Faction>,
     grid: Res<OccupancyGrid>,
     links: Res<VerticalLinkGraph>,
     squad: Res<SquadVisibility>,
     tuning: Res<CombatTuning>,
-    mut moves: MessageWriter<MovementOccurred>,
     mut rejects: MessageWriter<MoveRejected>,
+    mut commands: Commands,
 ) {
     for request in requests.read() {
-        let Ok((mut position, mut tu, &life, &mover_faction)) = actors.get_mut(request.actor)
-        else {
+        let Ok((position, tu, &mover_faction)) = actors.get(request.actor) else {
             // Fail-closed guard skip (no MoveRejected): a message for an actor missing a
             // queried component is silently dropped, the `dispatch_*` precedent.
             continue;
         };
 
         // The mover's current cell — the route's start. (Routing is from where the mover
-        // STANDS, not the FROM-for-logging ground cell, so it keeps the storey.) `Position`
-        // derefs to the `CellLevel` `find_path` expects (one deref — NOT the inner `IVec3`).
+        // STANDS, so it keeps the storey.) `Position` derefs to the `CellLevel` `find_path`
+        // expects (one deref — NOT the inner `IVec3`).
         let start: CellLevel = **position;
 
         // C1: build the GTW-353 visibility-gated planning view from the LIVE world — the
@@ -260,10 +253,12 @@ pub fn dispatch_move(
             continue;
         };
 
-        // C3: ONE up-front full-route affordability gate (§48) — the planned total vs the
-        // mover's Tu. Unaffordable → typed reject, NO partial move (the mover stays put).
-        // This is a CHECK, not a charge — the only spend is move_ganger's per-step charge.
-        if !can_spend_tu(&tu, path.total()) {
+        // C3: ONE up-front full-route affordability gate (§48; GTW-354) — the planned
+        // total vs the mover's Tu. Unaffordable → typed reject, NO walk started (the mover
+        // stays put). This is a CHECK, not a charge — the per-step charges land in the walk
+        // and always succeed (the up-front gate guarantees the whole route is payable, and
+        // strictly turn-based play means nothing spends the mover's TU mid-walk).
+        if !can_spend_tu(tu, path.total()) {
             rejects.write(MoveRejected::new(
                 request.actor,
                 MoveRejection::Unaffordable,
@@ -271,22 +266,22 @@ pub fn dispatch_move(
             continue;
         }
 
-        // Reachable AND affordable → the EXISTING accept. Capture the FROM ground cell
-        // BEFORE the Position write (GTW-328), run the landed verb (its gates + the
-        // DESTINATION-terrain per-step charge hold verbatim — the charge is UNCHANGED,
-        // GTW-355 owns the stepped walk), then emit MovementOccurred on a real step (C4).
-        let from = position_cell(&position);
-        let outcome = move_ganger(
-            &mut position,
-            &mut tu,
-            life,
-            request.dest,
-            &grid,
-            &tuning.move_costs,
-        );
-        if outcome == MoveOutcome::Moved {
-            let to = position_cell(&position);
-            moves.write(MovementOccurred::new(request.actor, from, to));
+        // Reachable AND affordable → START the committed step-by-step walk (GTW-355, C6).
+        // The accept no longer JUMPS the mover to the destination (the old single-frame
+        // move_ganger teleport): it attaches a WalkInProgress holding the route AHEAD
+        // (`cells[1..]`) and the planned per-step entry costs (`Path::steps()`, the §48
+        // bit-identity source), which `advance_walk` then walks ONE discrete cell per tick
+        // — bump-stopping on live obstacles, charging each step atomically with its
+        // Position write, and halting on a reveal or a reaction interrupt. The per-step
+        // Position writes are the discrete steps the presenter will tween (the visual tween
+        // itself is a presenter follow-up, OUT OF SCOPE — GTW-355 C4). A degenerate
+        // `start == goal` route (one cell, no steps) attaches no walk — there is nothing to
+        // walk, and MovementOccurred is emitted only on a real step.
+        let cells = path.cells();
+        if cells.len() > 1 {
+            commands
+                .entity(request.actor)
+                .insert(WalkInProgress::new(&cells[1..], path.steps()));
         }
     }
 }

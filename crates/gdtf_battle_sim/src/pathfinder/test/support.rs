@@ -134,7 +134,7 @@ pub(super) fn summed_step_cost(path: &Path, grid: &OccupancyGrid, tuning: &Comba
 /// A same-storey pair is a terrain step (orthogonal = entered terrain `move_cost`,
 /// diagonal = its octile); a different-storey pair is a vertical-link hop (the flat
 /// `link_tu`). The destination's terrain drives the terrain step (GTW-350).
-fn step_cost_between(
+pub(super) fn step_cost_between(
     from: CellLevel,
     to: CellLevel,
     grid: &OccupancyGrid,

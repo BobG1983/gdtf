@@ -137,8 +137,14 @@ where
     let Some(cells) = field.reconstruct(goal) else {
         return Err(PathBlocked);
     };
+    // The per-step entry costs ALIGNED to `cells[1..]`, derived from the SAME settled
+    // accumulated-cost deltas the relaxation built (NOT re-run cost math): the cost to
+    // enter `cells[i + 1]` is `cost(cells[i + 1]) − cost(cells[i])`, the exact
+    // `PathCost::add_step` increment along the route. Their sum is the goal's settled
+    // cost (the route total), bit-for-bit — the §48 identity GTW-355's walk charges.
+    let steps = field.step_costs(&cells);
     let total = field.cost_of(&goal).unwrap_or(PathCost::ZERO).to_tu();
-    Ok(Path::new(cells, total))
+    Ok(Path::new(cells, steps, total))
 }
 
 /// Every `(cell, level)` reachable from `start` within `budget` TU, each paired with

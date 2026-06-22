@@ -51,5 +51,7 @@
 #[cfg(test)]
 mod test;
 mod verb;
+mod walk;
 
 pub use verb::{MoveOutcome, move_ganger};
+pub use walk::{ReactionShotFired, WalkInProgress, advance_walk};
