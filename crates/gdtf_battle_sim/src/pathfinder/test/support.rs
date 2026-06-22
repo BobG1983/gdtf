@@ -3,20 +3,64 @@
 //! shipped tunable magnitudes (the brittle-test rule) — costs are asserted by their
 //! DERIVATION over the tuning the fixtures themselves expose.
 
+use bevy::{platform::collections::HashSet, prelude::Entity};
+
 use crate::{
     ganger::Tu,
-    metric::CellLevel,
-    occupancy::{OccupancyGrid, TerrainKind},
-    pathfinder::{Path, find_path, reachable_within},
+    metric::{Cell, CellLevel, Level, MAX_LEVELS},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, TerrainKind},
+    pathfinder::{Path, PlanningView, find_path, reachable_within},
     test_support::{SituationBuilder, key},
     tuning::CombatTuning,
     vertical::{VerticalLink, VerticalLinkGraph, build_vertical_link_graph},
+    visibility::{FactionRelation, SquadVisibility},
 };
 
 /// The central `(x, y, level)` cell-key helper, re-exported under a terse name for
 /// the sibling test files (the vertical-test `key` precedent).
 pub(super) fn cell(x: i32, y: i32, level: u8) -> CellLevel {
     key(x, y, level)
+}
+
+/// An occupant-faction resolver that maps EVERY occupant to
+/// [`FactionRelation::Other`] — the default for the geometry fixtures (which carry no
+/// occupants, so the resolver is never actually invoked).
+pub(super) fn all_other(_occupant: Entity) -> FactionRelation {
+    FactionRelation::Other
+}
+
+/// A [`SquadVisibility`] with the ENTIRE grid extent (`GRID_WIDTH × GRID_HEIGHT ×
+/// MAX_LEVELS`) both VISIBLE and EXPLORED — the "full vision" fog the pre-GTW-353
+/// geometry fixtures route under (every cell routable, so the visibility gate is a
+/// no-op and the route depends only on geometry).
+pub(super) fn full_vision() -> SquadVisibility {
+    let mut all = HashSet::default();
+    for level in 0..MAX_LEVELS {
+        for y in 0..GRID_HEIGHT {
+            for x in 0..GRID_WIDTH {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_possible_wrap,
+                    reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the loop bounds, so \
+                              the usize/u8 -> i32/u8 narrowing cannot truncate or wrap"
+                )]
+                let c = CellLevel::new(Cell::new(x as i32, y as i32), Level::new(level));
+                all.insert(c);
+            }
+        }
+    }
+    SquadVisibility::new(all.clone(), all)
+}
+
+/// A hand-seeded [`SquadVisibility`] from explicit VISIBLE and EXPLORED cell lists —
+/// the GTW-353 fixtures build the three states by hand (UNSEEN is whatever is in
+/// neither list). The VISIBLE cells are also added to EXPLORED to honour the accrual
+/// invariant `VISIBLE ⊆ EXPLORED`.
+pub(super) fn fog(visible: &[CellLevel], explored_only: &[CellLevel]) -> SquadVisibility {
+    let visible_set: HashSet<CellLevel> = visible.iter().copied().collect();
+    let mut explored_set = visible_set.clone();
+    explored_set.extend(explored_only.iter().copied());
+    SquadVisibility::new(visible_set, explored_set)
 }
 
 /// A fresh all-[`TerrainKind::Open`] grid with the given `(cell, terrain)`
@@ -115,8 +159,10 @@ fn step_cost_between(
     Tu::new(octile)
 }
 
-/// Run `find_path` over a fixture and return the route, asserting it succeeded —
-/// keeps the Ok-needing tests free of `unwrap`/`expect`.
+/// Run `find_path` over a fixture under FULL VISION (the geometry fixtures' default
+/// fog — every cell routable) and return the route, asserting it succeeded — keeps the
+/// Ok-needing tests free of `unwrap`/`expect`. The GTW-353 visibility tests call
+/// `find_path` directly with a hand-seeded [`PlanningView`].
 pub(super) fn ok_path(
     start: CellLevel,
     goal: CellLevel,
@@ -124,13 +170,15 @@ pub(super) fn ok_path(
     links: &VerticalLinkGraph,
     tuning: &CombatTuning,
 ) -> Option<Path> {
-    let result = find_path(start, goal, grid, links, tuning);
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+    let result = find_path(start, goal, grid, links, tuning, &planning);
     assert!(result.is_ok(), "expected a route, got {result:?}");
     result.ok()
 }
 
-/// Run `reachable_within` and reduce the result to a `Vec<((x, y, z), Tu)>` so the
-/// relations read clearly in assertions.
+/// Run `reachable_within` under FULL VISION and reduce the result to a
+/// `Vec<((x, y, z), Tu)>` so the relations read clearly in assertions.
 pub(super) fn reachable_triples(
     start: CellLevel,
     budget: Tu,
@@ -138,7 +186,29 @@ pub(super) fn reachable_triples(
     links: &VerticalLinkGraph,
     tuning: &CombatTuning,
 ) -> Vec<((i32, i32, i32), Tu)> {
-    reachable_within(start, budget, grid, links, tuning)
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+    reachable_within(start, budget, grid, links, tuning, &planning)
+        .into_iter()
+        .map(|(c, cost)| ((c.x, c.y, c.z), cost))
+        .collect()
+}
+
+/// Reduce a `reachable_within` result to `Vec<((x, y, z), Tu)>` — the same projection
+/// as [`reachable_triples`] but over a CALLER-supplied [`PlanningView`] (the GTW-353
+/// fixtures seed their own fog + occupant resolver).
+pub(super) fn reachable_triples_with<R>(
+    start: CellLevel,
+    budget: Tu,
+    grid: &OccupancyGrid,
+    links: &VerticalLinkGraph,
+    tuning: &CombatTuning,
+    planning: &PlanningView<'_, R>,
+) -> Vec<((i32, i32, i32), Tu)>
+where
+    R: Fn(Entity) -> FactionRelation,
+{
+    reachable_within(start, budget, grid, links, tuning, planning)
         .into_iter()
         .map(|(c, cost)| ((c.x, c.y, c.z), cost))
         .collect()

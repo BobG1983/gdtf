@@ -4,11 +4,13 @@
 //! repeated calls. No RNG; the `(cost, (z, y, x) cell_key)` frontier tie-break + the
 //! pre-sorted GTW-350/351 edge enumeration pin the result.
 
-use super::support::{cell, grid_with, links_graph, reachable_triples, stair, tuning};
+use super::support::{
+    all_other, cell, full_vision, grid_with, links_graph, reachable_triples, stair, tuning,
+};
 use crate::{
     ganger::Tu,
     occupancy::TerrainKind,
-    pathfinder::{find_path, reachable_within},
+    pathfinder::{PlanningView, find_path, reachable_within},
 };
 
 /// `find_path` over a non-trivial multi-storey grid (a wall to detour, a link to
@@ -30,9 +32,11 @@ fn find_path_is_byte_identical_across_replays() {
     let start = cell(1, 2, 0);
     let goal = cell(9, 2, 1);
 
-    let first = find_path(start, goal, &grid, &links, &tuning);
-    let second = find_path(start, goal, &grid, &links, &tuning);
-    let third = find_path(start, goal, &grid, &links, &tuning);
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+    let first = find_path(start, goal, &grid, &links, &tuning, &planning);
+    let second = find_path(start, goal, &grid, &links, &tuning, &planning);
+    let third = find_path(start, goal, &grid, &links, &tuning, &planning);
 
     assert!(first.is_ok(), "the fixture has a route: {first:?}");
     // Byte-identical across all three replays (the whole Path: cells + total).
@@ -58,8 +62,10 @@ fn reachable_within_is_byte_identical_across_replays() {
     let start = cell(5, 5, 0);
     let budget = Tu::new(20);
 
-    let first = reachable_within(start, budget, &grid, &links, &tuning);
-    let second = reachable_within(start, budget, &grid, &links, &tuning);
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+    let first = reachable_within(start, budget, &grid, &links, &tuning, &planning);
+    let second = reachable_within(start, budget, &grid, &links, &tuning, &planning);
 
     // Byte-identical: same cells, same costs, same ORDER (the (z, y, x) sort).
     assert_eq!(

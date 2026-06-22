@@ -3,8 +3,10 @@
 //! cost-accumulation check).
 
 use super::support::{
-    cell, grid_with, link_step, links_graph, ok_path, stair, summed_step_cost, tuning,
+    all_other, cell, full_vision, grid_with, link_step, links_graph, ok_path, stair,
+    summed_step_cost, tuning,
 };
+use crate::pathfinder::PlanningView;
 
 /// A route from a cell on storey 0 to a cell on storey 1 traverses the authored
 /// stair link, changes storey across exactly that hop, and the total accumulates
@@ -85,7 +87,9 @@ fn upper_storey_unreachable_without_a_link() {
     let start = cell(3, 5, 0);
     let goal = cell(7, 5, 1);
 
-    let result = crate::pathfinder::find_path(start, goal, &grid, &links, &tuning);
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+    let result = crate::pathfinder::find_path(start, goal, &grid, &links, &tuning, &planning);
     assert!(
         result.is_err(),
         "without a vertical link, another storey is unreachable",

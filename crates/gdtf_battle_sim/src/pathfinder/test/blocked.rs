@@ -1,10 +1,10 @@
 //! C6 — an unreachable goal yields the typed [`PathBlocked`](crate::pathfinder::PathBlocked)
 //! `Err`, NEVER a panic and NEVER an empty `Path`.
 
-use super::support::{cell, grid_with, no_links, tuning};
+use super::support::{all_other, cell, full_vision, grid_with, no_links, tuning};
 use crate::{
     occupancy::TerrainKind,
-    pathfinder::{PathBlocked, find_path},
+    pathfinder::{PathBlocked, PlanningView, find_path},
 };
 
 /// A goal walled off on all eight sides is UNREACHABLE — `find_path` returns
@@ -32,7 +32,9 @@ fn goal_walled_in_is_path_blocked() {
     let start = cell(0, 0, 0);
     let goal = cell(5, 5, 0); // open, but boxed in by walls
 
-    let result = find_path(start, goal, &grid, &links, &tuning);
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+    let result = find_path(start, goal, &grid, &links, &tuning, &planning);
     assert_eq!(
         result,
         Err(PathBlocked),
@@ -51,7 +53,9 @@ fn other_storey_without_link_is_path_blocked() {
     let start = cell(2, 2, 0);
     let goal = cell(2, 2, 3); // three storeys up, no link
 
-    let result = find_path(start, goal, &grid, &links, &tuning);
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+    let result = find_path(start, goal, &grid, &links, &tuning, &planning);
     assert_eq!(
         result,
         Err(PathBlocked),
@@ -70,6 +74,8 @@ fn out_of_grid_goal_is_path_blocked() {
     let start = cell(1, 1, 0);
     let goal = cell(-5, -5, 0); // off the grid
 
-    let result = find_path(start, goal, &grid, &links, &tuning);
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+    let result = find_path(start, goal, &grid, &links, &tuning, &planning);
     assert_eq!(result, Err(PathBlocked), "an off-grid goal is PathBlocked");
 }

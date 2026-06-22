@@ -37,11 +37,15 @@ Two visibility writers, two flags, never crossed (the same separation as [battle
 
 The player **plans around exactly what is rendered**, and nothing more:
 
-- **Own squad** always blocks a route (player ids are trivially visible); an **enemy blocks iff squad-VISIBLE** — the same `is_ganger_visible` read that shows/hides its entity, so plan and render can never disagree (the roster query for other-ganger positions).
-- **Blocking scatter** joins the planning solids per query, on **non-UNSEEN** cells only (the pathfinder's scatter-planning-blockers) — a prop the player can see or remembers bends the route; an unseen one never does.
-- **Walls/floor stay geometry truth** — the route plans through the dark on true geometry (the UFO precedent). Fog hides *occupants*, not the map's bones.
+**Routing excludes UNSEEN** (user-ratified OQ-5, 2026-06-22; reverses the old "plan through the dark", see [ADR 0005](../decisions/0005-pathfinding-adjacency-and-search.md)): the path search **must not route INTO cells the squad cannot currently SEE**. An UNSEEN `(cell, level)` — in *neither* the VISIBLE nor the EXPLORED set — is **non-routable** (impassable for planning), so the route bends around it within the non-UNSEEN set and a destination reachable only by crossing UNSEEN is no route at all. **EXPLORED (remembered) cells remain routable** — the XCOM model: you plan through what you remember, just not the true dark. So **ROUTABLE = non-UNSEEN = VISIBLE ∪ EXPLORED**.
 
-What the fog hides never bends a preview — bending around an unseen body would leak its position. **The ambush** is the enforcement at walk time: before *entering* each next cell the committed walk checks live model truth (a living ganger there, or blocking scatter) and **bump-stops at the last free step** — no teleport, no co-location. Each accepted step's writer recomputes the squad FOV, so the ambusher is **revealed iff the mover's own sight reaches it from where it stopped** — the per-step recompute is the reveal mechanic; there is no extra one.
+Within routable cells the blocking predicate is visibility-aware:
+
+- **Own squad** always blocks a route (player ids are trivially visible); an **enemy blocks iff squad-VISIBLE** — the same `is_ganger_visible` read that shows/hides its entity, so plan and render can never disagree (the roster query for other-ganger positions).
+- **Blocking scatter** joins the planning solids on **non-UNSEEN** cells only (the pathfinder's scatter-planning-blockers) — a prop the player can see or remembers bends the route; an unseen one never does (and its cell is non-routable anyway, so the non-UNSEEN bound holds by construction).
+- **Walls/floor stay geometry truth** — the route plans **on true geometry over the routable (non-UNSEEN) cells**; UNSEEN is non-routable. Fog hides *occupants* and the *never-seen dark*, not the bones of what you can see or remember.
+
+What the fog *currently* hides never bends a preview into it — routing around an unseen body would leak its position, and routing INTO the never-seen dark is forbidden outright. **The ambush** is the enforcement at walk time and is **kept** (user move-interaction ruling): before *entering* each next cell the committed walk checks live model truth (a living ganger there, or blocking scatter) and **bump-stops at the last free step** — no teleport, no co-location. Each accepted step's writer recomputes the squad FOV, so the ambusher is **revealed iff the mover's own sight reaches it from where it stopped** — the per-step recompute is the reveal mechanic; there is no extra one.
 
 ## Pay-per-step TUs
 
@@ -49,8 +53,8 @@ Movement TU **charges land with each step**: the movement writers carry the char
 
 ## UX edges
 
-- **Walking into the dark is allowed** — movement carries no fog gate; an EXPLORED or UNSEEN walkable destination previews and commits at the normal geometry price (no fog premium).
-- **UNSEEN path steps draw the unknown treatment** — a reduced-alpha highlight on the previewed route's dark steps. **TBD (Bevy):** the highlight rendering is a presenter concern.
+- **Walking into the never-seen dark is refused** (user-ratified OQ-5, 2026-06-22; reverses the old "walking into the dark is allowed", see [ADR 0005](../decisions/0005-pathfinding-adjacency-and-search.md)) — the route preview and the commit **exclude UNSEEN cells**: you cannot path into cells you have never seen. **Walking into EXPLORED (remembered) territory stays allowed** — an EXPLORED walkable destination previews and commits at the normal geometry price (no fog premium); only the true, never-seen dark is off-limits to routing.
+- **EXPLORED path steps stay routable** — a previewed route may run over remembered (EXPLORED) cells at the normal price; it never crosses an UNSEEN cell (those are non-routable, so no "unknown" step exists on a preview to highlight). **TBD (Bevy):** any memory-tint on the previewed route's remembered steps is a presenter concern.
 - **The cursor leaks no walkability on UNSEEN cells** — the box reticle reads one constant for every unseen cell (it always shows) instead of betraying where fog hides standing surface; EXPLORED cells keep the real verdict — that terrain is mission memory.
 - **Targeting is refused into any non-VISIBLE cell** (UNSEEN *or* merely explored): the reticle recolours and the status reads **"unseen — hold your fire"**, and the fire commit refuses identically (zero TU, zero rounds, zero model mutation, targeting stays armed). Hint and act share one read (`_cell_squad_visible`) so they can never disagree.
 

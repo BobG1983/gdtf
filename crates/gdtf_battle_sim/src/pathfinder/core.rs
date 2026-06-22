@@ -26,15 +26,16 @@ use std::{
     collections::BinaryHeap,
 };
 
-use bevy::platform::collections::HashMap;
+use bevy::{platform::collections::HashMap, prelude::Entity};
 
-use super::path::PathCost;
+use super::{path::PathCost, planning::PlanningView};
 use crate::{
     ganger::Tu,
     metric::CellLevel,
     occupancy::{OccupancyGrid, pathable_neighbors},
     tuning::CombatTuning,
     vertical::{VerticalLinkGraph, traversable_links},
+    visibility::FactionRelation,
 };
 
 /// The `(z, y, x)` total-ordering key of a [`CellLevel`] — the FINAL, data-only
@@ -96,39 +97,60 @@ impl PartialOrd for FrontierNode {
     }
 }
 
-/// The borrowed grids + tuning the search reads as a change-driven SNAPSHOT (C5) —
-/// bundled so the relaxation core and both entry points thread ONE param.
+/// The borrowed grids + tuning + visibility-aware planning gate the search reads as a
+/// change-driven SNAPSHOT (C5) — bundled so the relaxation core and both entry points
+/// thread ONE param.
 ///
 /// A read-only view: the [`OccupancyGrid`] (walkable/blocked + terrain costs), the
-/// [`VerticalLinkGraph`] (cross-storey links), and the [`CombatTuning`] (the
-/// [`MoveCosts`](crate::tuning::MoveCosts) table + the flat
-/// [`LinkTu`](crate::tuning::LinkTu)). The search NEVER rebuilds these per query — it
-/// reads the already-maintained resources (ADR-0005 / resolution.md). It is
-/// framework plumbing (a borrow bundle), not a domain value.
-#[derive(Clone, Copy)]
-pub(super) struct SearchGrids<'a> {
+/// [`VerticalLinkGraph`] (cross-storey links), the [`CombatTuning`] (the
+/// [`MoveCosts`](crate::tuning::MoveCosts) table plus the flat
+/// [`LinkTu`](crate::tuning::LinkTu)), and the GTW-353 [`PlanningView`] (the squad fog
+/// with the occupant-faction resolver that gates which candidates are routable). The
+/// search NEVER rebuilds these per query — it reads the already-maintained resources
+/// (ADR-0005 / resolution.md). It is framework plumbing (a borrow bundle), not a
+/// domain value. Generic over the occupant→[`FactionRelation`] resolver `R` the
+/// planning view carries.
+pub(super) struct SearchGrids<'a, R>
+where
+    R: Fn(Entity) -> FactionRelation,
+{
     /// The authoritative walkable/blocked + terrain surface.
-    pub(super) grid:   &'a OccupancyGrid,
+    pub(super) grid:     &'a OccupancyGrid,
     /// The authored cross-storey stair/ladder links.
-    pub(super) links:  &'a VerticalLinkGraph,
+    pub(super) links:    &'a VerticalLinkGraph,
     /// The balance tuning — the per-terrain move costs + the flat link cost.
-    pub(super) tuning: &'a CombatTuning,
+    pub(super) tuning:   &'a CombatTuning,
+    /// The visibility-aware planning gate — the squad fog + occupant-faction resolver
+    /// deciding which candidate `(cell, level)`s are routable (C1 / C2).
+    pub(super) planning: &'a PlanningView<'a, R>,
 }
 
-impl SearchGrids<'_> {
+impl<R> SearchGrids<'_, R>
+where
+    R: Fn(Entity) -> FactionRelation,
+{
     /// Enumerate the outgoing edges of `origin` — the UNION of GTW-350 planar
     /// [`pathable_neighbors`] (8-connected, octile-priced) and GTW-351 cross-storey
     /// [`traversable_links`] (flat `link_tu`), each as a `(neighbour, step_cost)`
-    /// pair (C1).
+    /// pair, FILTERED to the visibility-routable candidates (C1 / C2).
     ///
     /// Both halves are ALREADY emitted in a fixed, deterministic order (the planar
     /// `(z, y, x)` offset table, then the graph-index link order), so the relaxation
     /// never iterates a raw `HashMap` in the hot loop (C4). Planar edges are listed
-    /// first, then vertical hops — a fixed concatenation.
+    /// first, then vertical hops — a fixed concatenation. The GTW-353 visibility gate
+    /// then drops any neighbour that is non-routable
+    /// ([`PlanningView::is_routable`] `== false`): UNSEEN cells (C1) and cells blocked
+    /// within-routable by geometry or a blocking occupant (C2). The gate only REMOVES
+    /// edges in a deterministic, set-membership way — it never reorders the survivors
+    /// or alters their octile / link costs, so the C4 determinism + the cost model are
+    /// untouched.
     fn edges(&self, origin: CellLevel) -> Vec<(CellLevel, Tu)> {
         let planar = pathable_neighbors(origin, self.grid, &self.tuning.move_costs);
         let vertical = traversable_links(origin, self.links, self.tuning.link_tu);
-        planar.chain(vertical).collect()
+        planar
+            .chain(vertical)
+            .filter(|(neighbour, _)| self.planning.is_routable(*neighbour, self.grid))
+            .collect()
     }
 }
 
@@ -215,15 +237,16 @@ impl DistanceField {
 /// invariant on non-negative edges, which all `move_cost`/`link_tu` are); later,
 /// stale heap entries for an already-settled cell are skipped. The frontier is
 /// seeded with `start` at [`PathCost::ZERO`] and predecessor `None`.
-pub(super) fn relax<H, S>(
+pub(super) fn relax<H, S, R>(
     start: CellLevel,
-    grids: SearchGrids<'_>,
+    grids: SearchGrids<'_, R>,
     heuristic: H,
     stop: S,
 ) -> DistanceField
 where
     H: Fn(CellLevel) -> PathCost,
     S: Fn(CellLevel, PathCost) -> StopRule,
+    R: Fn(Entity) -> FactionRelation,
 {
     let mut field = DistanceField {
         cost: HashMap::default(),

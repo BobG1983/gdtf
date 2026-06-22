@@ -9,13 +9,16 @@
 //! A\* heuristic and halts at the goal; `reachable_within` uses `h ≡ 0` and prunes
 //! at the TU budget.
 
+use bevy::prelude::Entity;
+
 use super::{
     core::{SearchGrids, StopRule, relax},
     path::{Path, PathBlocked, PathCost},
+    planning::PlanningView,
 };
 use crate::{
     ganger::Tu, metric::CellLevel, occupancy::OccupancyGrid, tuning::CombatTuning,
-    vertical::VerticalLinkGraph,
+    vertical::VerticalLinkGraph, visibility::FactionRelation,
 };
 
 /// The minimum positive per-step move cost on the grid — `4`, the cheapest
@@ -56,7 +59,17 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 }
 
 /// Find the cheapest legal route from `start` to `goal` over the occupancy grid +
-/// vertical-link graph, or [`PathBlocked`] if no route exists (C1).
+/// vertical-link graph, **routing only through visibility-routable cells** (GTW-353),
+/// or [`PathBlocked`] if no such route exists (C1).
+///
+/// **Visibility gating (GTW-353, C1 / C2).** `planning` ([`PlanningView`]) gates which
+/// candidate cells the search may route INTO: an UNSEEN (never-seen) cell is
+/// non-routable, so the search routes AROUND it and a goal reachable ONLY by crossing
+/// UNSEEN is [`PathBlocked`]; EXPLORED (remembered) cells remain routable (the
+/// user-ratified OQ-5 interpretation). Within routable cells, walls / floor / standing
+/// cover always block, an own-squad ganger always blocks, and an enemy blocks iff its
+/// cell is squad-VISIBLE (see [`PlanningView::is_routable`]). The cost model + the
+/// deterministic tie-break are unchanged — the gate only removes edges.
 ///
 /// **A\* = Dijkstra + an admissible heuristic** on the ONE shared relaxation core
 /// ([`relax`]): it expands the frontier ordered by `(cost + h, (z, y, x) cell_key)`
@@ -86,19 +99,25 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 /// # Errors
 ///
 /// Returns [`PathBlocked`] when `goal` is not reachable from `start` over the
-/// walkable grid + links (a typed no-route result — never a panic, never an empty
-/// [`Path`]).
-pub fn find_path(
+/// walkable, visibility-routable grid + links (a typed no-route result — never a
+/// panic, never an empty [`Path`]) — including when every route to `goal` must cross
+/// an UNSEEN cell (C1).
+pub fn find_path<R>(
     start: CellLevel,
     goal: CellLevel,
     grid: &OccupancyGrid,
     links: &VerticalLinkGraph,
     tuning: &CombatTuning,
-) -> Result<Path, PathBlocked> {
+    planning: &PlanningView<'_, R>,
+) -> Result<Path, PathBlocked>
+where
+    R: Fn(Entity) -> FactionRelation,
+{
     let grids = SearchGrids {
         grid,
         links,
         tuning,
+        planning,
     };
     let field = relax(
         start,
@@ -134,6 +153,14 @@ pub fn find_path(
 /// neighbours are not paid for beyond the budget. The result is every cell whose
 /// cheapest route cost is `≤ budget`.
 ///
+/// **Visibility gating (GTW-353, C1 / C2).** `planning` ([`PlanningView`]) gates the
+/// flood: an UNSEEN (never-seen) cell is non-routable, so it is **never yielded** and
+/// the flood does not pay to expand through it; EXPLORED (remembered) cells remain
+/// reachable (the user-ratified OQ-5 interpretation). Within routable cells the same
+/// within-routable blocking applies as [`find_path`] (walls / floor / cover always
+/// block, an own-squad ganger always blocks, an enemy blocks iff squad-VISIBLE — see
+/// [`PlanningView::is_routable`]).
+///
 /// The returned collection is SORTED by the `(z, y, x)` cell key (C4) — the
 /// underlying `HashMap` order never leaks, so two replays over the same snapshot +
 /// budget yield a byte-identical reachable set. This is what the GTW-357
@@ -142,17 +169,22 @@ pub fn find_path(
 /// PURE (`bevy-traps.md` #7): a free function over the borrowed snapshot — no
 /// `&mut World`, no system, no RNG, no per-query rebuild (C5).
 #[must_use]
-pub fn reachable_within(
+pub fn reachable_within<R>(
     start: CellLevel,
     budget: Tu,
     grid: &OccupancyGrid,
     links: &VerticalLinkGraph,
     tuning: &CombatTuning,
-) -> Vec<(CellLevel, Tu)> {
+    planning: &PlanningView<'_, R>,
+) -> Vec<(CellLevel, Tu)>
+where
+    R: Fn(Entity) -> FactionRelation,
+{
     let grids = SearchGrids {
         grid,
         links,
         tuning,
+        planning,
     };
     let budget_cost = PathCost::new(u32::from(*budget));
     let field = relax(

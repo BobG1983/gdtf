@@ -12,6 +12,9 @@
 //!   byte-identical [`reachable_within`](super::reachable_within) set, asserted twice.
 //! - [`budget`] — [`reachable_within`](super::reachable_within) respects the budget
 //!   (a cell just over budget excluded, one within included).
+//! - [`visibility_gated`] — GTW-353: UNSEEN cells are non-routable (route around them /
+//!   excluded from the flood), EXPLORED stays routable, and the visibility-aware
+//!   blocking predicate (own-squad always, enemy iff VISIBLE, scatter/walls always).
 
 mod bit_identity;
 mod blocked;
@@ -20,3 +23,4 @@ mod cross_storey;
 mod determinism;
 mod same_storey;
 mod support;
+mod visibility_gated;

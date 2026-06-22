@@ -49,16 +49,30 @@
 //! rebuilds them per query (resolution.md). It plans and totals route cost; it never
 //! charges TU — the per-step writers charge at commit (§48).
 //!
+//! ## Visibility-gated planning (GTW-353, the user-ratified OQ-5 ruling)
+//!
+//! Both entry points take a [`PlanningView`] — the GTW-13 squad fog + an
+//! occupant-faction resolver — and route ONLY through **routable** cells: UNSEEN
+//! (never-seen) cells are non-routable (the search routes around them; a goal
+//! reachable only by crossing UNSEEN is [`PathBlocked`]), EXPLORED (remembered) cells
+//! remain routable, and within routable cells walls / floor / cover always block while
+//! an enemy blocks only when squad-VISIBLE (`docs/combat/visibility.md` §40–§42, as
+//! reversed by OQ-5). The gate only removes candidate edges — the octile / link costs
+//! and the deterministic `(z, y, x)` tie-break are untouched.
+//!
 //! Scope: the search core ONLY — no tile work, no movement dispatch. Consumed by
-//! GTW-354 (constrain dispatch), GTW-357 (range overlay), GTW-358 (path preview),
-//! GTW-353 (visibility-gated planning).
+//! GTW-354 (constrain dispatch) and mirrored by GTW-358 (presenter path preview, the
+//! same constraint); GTW-357 (range overlay) reads the visibility-gated
+//! [`reachable_within`].
 
 mod core;
 mod path;
+mod planning;
 mod search;
 
 #[cfg(test)]
 mod test;
 
 pub use path::{Path, PathBlocked, PathCost};
+pub use planning::PlanningView;
 pub use search::{find_path, reachable_within};
