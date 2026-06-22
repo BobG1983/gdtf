@@ -60,6 +60,7 @@ pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
 pub use selection::{
     LeftClickOutcome, LeftClickReads, PinOutcome, SelectedShooter, SelectionHighlight, TurnReads,
     apply_left_click, apply_pin, auto_select_first_player_ganger, decide_left_click, decide_pin,
-    decide_turn, left_click_act, right_click_turn_to_face, update_selection_highlight,
+    decide_turn, left_click_act, populate_reachable_overlay, right_click_turn_to_face,
+    update_selection_highlight,
 };
 pub use sets::InputSystems;

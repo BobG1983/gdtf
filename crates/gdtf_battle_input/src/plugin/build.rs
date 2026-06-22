@@ -4,9 +4,9 @@
 
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
 use gdtf_assets::RonAssetAppExt;
-use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest};
+use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, ReachableOverlay};
 use gdtf_battle_sim::{
-    BattleInProgress, OccupancyGrid, PlayerFaction,
+    BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
     acts::{
         EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested, ReloadRequested,
         SetAimingRequested, SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
@@ -28,8 +28,8 @@ use crate::{
     keyboard::{level_keys, posture_keys, select_clear_key},
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
-        SelectedShooter, auto_select_first_player_ganger, left_click_act, right_click_turn_to_face,
-        update_selection_highlight,
+        SelectedShooter, auto_select_first_player_ganger, left_click_act,
+        populate_reachable_overlay, right_click_turn_to_face, update_selection_highlight,
     },
 };
 
@@ -252,6 +252,10 @@ impl Plugin for GdtfBattleInputPlugin {
         // across `add_systems` calls, so this helper's systems still order correctly.
         register_gamepad_systems(app);
 
+        // GTW-357 — the reachable-range overlay POPULATE system (extracted to keep `build`
+        // under the `too_many_lines` lint, the `register_gamepad_systems` precedent).
+        register_reachable_overlay_population(app);
+
         // The data-driven keybind table loads the GTW-136 RON way. `init_ron_asset` PANICS at
         // registration without an `AssetServer`, so it — and the load/resolve chain — is gated
         // on the asset stack being present (`bevy-traps.md` #1). Under `DefaultPlugins` it runs
@@ -315,5 +319,45 @@ fn register_gamepad_systems(app: &mut App) {
         emit_gamepad_cursor_move
             .in_set(InputSystems::Gather)
             .run_if(resource_exists::<BattleInProgress>),
+    );
+}
+
+/// Registers the GTW-357 reachable-range overlay POPULATE system into
+/// [`InputSystems::Gather`].
+///
+/// [`populate_reachable_overlay`] reads the current [`SelectedShooter`] and fills the
+/// presenter-owned [`ReachableOverlay`](gdtf_battle_presenter::ReachableOverlay) the SAME way
+/// [`dispatch_move`](gdtf_battle_sim::acts::dispatch_move) plans a route (the visibility-gated
+/// `PlanningView` over the squad fog + `reachable_within`). Ordered `.after(left_click_act)` (so
+/// it reads the same update's selection) and `.after(auto_select_first_player_ganger)` (so the
+/// battle-start auto-select lights the overlay on the first frame, exactly as a click would).
+///
+/// Gated on the live battle WITH every grid the flood reads — the [`OccupancyGrid`], the
+/// [`VerticalLinkGraph`], the [`SquadVisibility`] fog, and the [`CombatTuning`] — so a focused
+/// headless harness that opens `BattleInProgress` WITHOUT routing through `setup_battle` (which
+/// seeds these) keeps the system inert rather than panicking the `Res` param validation
+/// (`bevy-traps.md` #1). In the real app `setup_battle` inserts all four, so the overlay
+/// populates exactly when a battle is live. Extracted from
+/// [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep `build` under the
+/// `too_many_lines` lint (the `register_gamepad_systems` precedent).
+fn register_reachable_overlay_population(app: &mut App) {
+    app.add_systems(
+        Update,
+        populate_reachable_overlay
+            .in_set(InputSystems::Gather)
+            .after(left_click_act)
+            .after(auto_select_first_player_ganger)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<OccupancyGrid>)
+                    .and_then(resource_exists::<VerticalLinkGraph>)
+                    .and_then(resource_exists::<SquadVisibility>)
+                    .and_then(resource_exists::<CombatTuning>)
+                    // The PRESENTER `init_resource`s `ReachableOverlay` (its `TopDownRendererPlugin`
+                    // build); this gate guards the `ResMut<ReachableOverlay>` param so a focused
+                    // input-only harness (no presenter plugin, so no `ReachableOverlay`) keeps the
+                    // populate system inert rather than panicking validation (`bevy-traps.md` #1).
+                    .and_then(resource_exists::<ReachableOverlay>),
+            ),
     );
 }

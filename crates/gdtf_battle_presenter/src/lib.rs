@@ -58,6 +58,7 @@ pub mod fog;
 pub mod fx;
 pub mod ganger;
 pub mod highlight;
+pub mod reachable;
 pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
@@ -84,6 +85,10 @@ pub use highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request}
 pub use plugin::{
     BattlePresenterMode, BattlePresenterPlugin, IsoRendererPlugin, TopDownRendererActive,
     TopDownRendererPlugin,
+};
+pub use reachable::{
+    LabelPool, ReachableLabel, ReachableOverlay, ReachableTint, draw_reachable_labels,
+    draw_reachable_overlay,
 };
 pub use terrain::{
     ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles, TileRolesHandle,

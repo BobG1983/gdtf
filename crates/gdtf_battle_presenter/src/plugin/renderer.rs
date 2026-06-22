@@ -12,18 +12,18 @@ use gdtf_battle_sim::{
 use crate::{
     ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle, FxTuning,
     FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
-    PanTuning, PanTuningHandle, PresenterSystems, ShotImpactResolved, TerrainFogMaterial,
-    TileRoles, TileRolesHandle, TopDownAtlases, advance_projectiles, animate_floating_text,
-    animate_impact, apply_active_level_filter, clamp_camera_to_bounds,
+    PanTuning, PanTuningHandle, PresenterSystems, ReachableOverlay, ShotImpactResolved,
+    TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases, advance_projectiles,
+    animate_floating_text, animate_impact, apply_active_level_filter, clamp_camera_to_bounds,
     despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites, draw_highlight_on_request,
-    draw_static_battlefield, expire_flashes, frame_camera_on_units, load_character_roles,
-    load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
-    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
-    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
-    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
-    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
-    update_ganger_life_state,
+    draw_reachable_labels, draw_reachable_overlay, draw_static_battlefield, expire_flashes,
+    frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
+    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
+    pan_camera_on_gamepad_cursor_edge, present_fog, read_armor_broken, read_bleeding,
+    read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
+    redrive_pan_tuning_on_asset_event, reframe_ganger_sprites, resolve_character_roles,
+    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
+    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -139,6 +139,11 @@ impl Plugin for TopDownRendererPlugin {
         }
         app.insert_resource(TopDownRendererActive)
             .init_resource::<ActiveLevel>()
+            // GTW-357 — the reachable-range overlay read-seam (the cells the selected ganger
+            // can reach). Present for the whole battle span: the input crate POPULATES it
+            // (clearing it when no ganger is selected); the draw systems READ it. Its Default
+            // is the empty set, so a battle with nothing selected lights nothing.
+            .init_resource::<ReachableOverlay>()
             // The S5 ganger-sprite map (sim Entity -> presenter Entity), present for the
             // whole battle span so the spawn / move / reframe / death / removal systems
             // share one mapping.
@@ -276,6 +281,12 @@ impl Plugin for TopDownRendererPlugin {
         // hard-cuts actor sprites from the sim's `SquadVisibility` (extracted to keep
         // `build` under the `too_many_lines` lint).
         register_fog_systems(app);
+
+        // GTW-357: the reachable-range move overlay DRAW (the tint sprites + the per-cell TU
+        // labels). It reads the presenter-owned `ReachableOverlay` (populated by the input
+        // crate) and hard-cuts to the active storey (extracted to keep `build` under the
+        // `too_many_lines` lint).
+        register_reachable_overlay_systems(app);
     }
 }
 
@@ -645,6 +656,37 @@ fn register_fog_systems(app: &mut App) {
                     .and_then(resource_exists::<Assets<TerrainFogMaterial>>)
                     .and_then(resource_exists::<CombatTuning>),
             ),
+    );
+}
+
+/// Registers the GTW-357 reachable-range overlay DRAW systems into the already-defined
+/// [`PresenterSystems::Draw`] band.
+///
+/// The PRESENTER owns the [`ReachableOverlay`] read-seam (`init_resource`-d on build above)
+/// plus these two draw systems; the INPUT crate POPULATES the resource — the
+/// [`HighlightRequest`] precedent, where the presenter DEFINES the type and input WRITES it,
+/// keeping the `input → presenter → sim` direction (never a cycle).
+///
+/// - [`draw_reachable_overlay`] tints each reachable cell on the active storey with a pooled,
+///   mutated-in-place [`Sprite`] (never despawn-respawned);
+/// - [`draw_reachable_labels`] draws the per-cell TU-cost [`Text2d`] label ABOVE each reachable
+///   cell (the user OQ-5 ruling), pooled + mutated in place.
+///
+/// Both are gated `run_if(resource_exists::<BattleInProgress>)` — the sim's live-battle
+/// witness, the same gate the highlight draw uses (the inert-pre-battle requirement,
+/// `bevy-traps.md` #1). They need NO render resource (a solid-tint sprite + a `Text2d`, not an
+/// atlas tile) and the always-present `init_resource`-d [`ReachableOverlay`] + [`ActiveLevel`]
+/// resources, so the battle gate alone is sufficient. They are ordered `.after(present_fog)`
+/// (and so transitively after the terrain / ganger / highlight draws) so the overlay
+/// composites OVER the fogged battlefield — it is the topmost within-storey band
+/// ([`Layer::ReachableOverlay`]).
+fn register_reachable_overlay_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        (draw_reachable_overlay, draw_reachable_labels)
+            .in_set(PresenterSystems::Draw)
+            .after(present_fog)
+            .run_if(resource_exists::<BattleInProgress>),
     );
 }
 
