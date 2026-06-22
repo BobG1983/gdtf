@@ -58,6 +58,7 @@ pub mod fog;
 pub mod fx;
 pub mod ganger;
 pub mod highlight;
+pub mod path_preview;
 pub mod reachable;
 pub mod terrain;
 pub mod topdown;
@@ -82,6 +83,7 @@ pub use ganger::{
     resolve_character_roles, spawn_ganger_sprites, update_ganger_life_state,
 };
 pub use highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request};
+pub use path_preview::{PathPreview, PathStepSprite, draw_path_preview};
 pub use plugin::{
     BattlePresenterMode, BattlePresenterPlugin, IsoRendererPlugin, TopDownRendererActive,
     TopDownRendererPlugin,

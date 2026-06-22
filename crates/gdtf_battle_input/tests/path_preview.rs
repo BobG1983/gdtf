@@ -1,0 +1,255 @@
+//! GTW-358 (C1 / C2 / C6 / C7): headless integration tests for the input-crate
+//! `populate_path_preview` system — it POPULATES the presenter-owned `PathPreview` for the
+//! `SelectedShooter` → the `PathPreviewTarget` the SAME way `dispatch_move` plans a route,
+//! REUSING `find_path` (no re-implemented routing), exposing the §48 `Path::total` cost, and
+//! is WIRED in the input plugin.
+//!
+//! POSITIVE — every assertion NAMES the route cells + the cost (not "some preview exists"):
+//!
+//! - C1 / C6 (the producer): with a selected ganger + a target + the live grids + a
+//!   full-vision `SquadVisibility`, after one update the `PathPreview` cells EXACTLY equal
+//!   `find_path(start, goal, grids, &PlanningView::new(&squad, relation)).cells()` and its
+//!   cost EXACTLY equals `path.total()` (the §48 bit-identity) — proving it reuses the sim
+//!   search with the same `PlanningView` construction (so the previewed route + cost match
+//!   what a commit accepts). Selection + target are never written into the sim.
+//! - C2 (unreachable → empty): a target the ganger cannot reach (a goal walled off) yields an
+//!   EMPTY preview.
+//! - C1 (no target → empty): with NOTHING targeted the preview is empty (no route drawn).
+//! - C7 (WIRED): the systems run only via the registered plugin (no manual `add_systems`).
+//!
+//! Every `app.world_mut()` mutation is in a TEST BODY — the accepted headless idiom
+//! (`bevy-traps.md` #7 carve-out (a)).
+
+use bevy::{
+    asset::AssetPlugin, input::ButtonInput, platform::collections::HashSet, prelude::*,
+    scene::ScenePlugin,
+};
+use gdtf_battle_input::{GdtfBattleInputPlugin, PathPreviewTarget, SelectedShooter};
+use gdtf_battle_presenter::{ActiveLevel, PathPreview};
+use gdtf_battle_sim::{
+    BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, GRID_HEIGHT,
+    GRID_WIDTH, Level, MAX_LEVELS, OccupancyGrid, PlanningView, PlayerFaction, Position,
+    SquadVisibility, TerrainKind, Tu, VerticalLinkGraph, find_path,
+};
+
+/// The faction the player controls in these tests (matches `PlayerFaction`).
+const PLAYER_FACTION: Faction = Faction::new(0);
+
+/// The selected ganger's TU budget — generous so affordability never gates the preview (the
+/// preview shows the route regardless of budget; `find_path` plans, it does not charge).
+const BUDGET: Tu = Tu::new(200);
+
+/// A full-vision `SquadVisibility` (the whole grid extent VISIBLE + EXPLORED) so every cell is
+/// routable and the route depends only on geometry — the hand-built mirror of the sim's
+/// internal `full_vision` fixture.
+fn full_vision() -> SquadVisibility {
+    let mut all = HashSet::default();
+    for level in 0..MAX_LEVELS {
+        for y in 0..GRID_HEIGHT {
+            for x in 0..GRID_WIDTH {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_possible_wrap,
+                    reason = "x/y are 0..60 and level is 0..MAX_LEVELS by the loop bounds, so the \
+                              usize/u8 -> i32/u8 narrowing cannot truncate or wrap"
+                )]
+                let c = CellLevel::new(Cell::new(x as i32, y as i32), Level::new(level));
+                all.insert(c);
+            }
+        }
+    }
+    SquadVisibility::new(all.clone(), all)
+}
+
+/// Map every occupant to `FactionRelation::Other` — the flat fixtures carry only the one player
+/// ganger (its own cell is the start, never gated), so the resolver result is incidental.
+const fn all_other(_occupant: Entity) -> FactionRelation {
+    FactionRelation::Other
+}
+
+/// Builds a focused headless app: `MinimalPlugins` + the real `GdtfBattleInputPlugin`, plus the
+/// grids `populate_path_preview` reads (all-Open occupancy, empty links, full-vision fog,
+/// default tuning), the `BattleInProgress` + `PlayerFaction` gate witnesses, and the
+/// presenter-owned `PathPreview` + `ActiveLevel` (which the presenter plugin would normally
+/// init — inserted here since this focused harness adds no renderer plugin).
+fn preview_app() -> App {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
+        .add_plugins(GdtfBattleInputPlugin);
+    let w = app.world_mut();
+    w.insert_resource(BattleInProgress);
+    w.insert_resource(OccupancyGrid::default());
+    w.insert_resource(VerticalLinkGraph::default());
+    w.insert_resource(full_vision());
+    w.insert_resource(CombatTuning::default());
+    w.insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    w.insert_resource(ButtonInput::<MouseButton>::default());
+    w.insert_resource(ActiveLevel::new(Level::new(0)));
+    w.insert_resource(PathPreview::cleared());
+    app
+}
+
+/// Spawn a selected player-faction ganger at `start` with the BUDGET TU, and target `goal`.
+fn select_and_target(app: &mut App, start: CellLevel, goal: CellLevel) {
+    let ganger = app
+        .world_mut()
+        .spawn((Position::new(start), BUDGET, PLAYER_FACTION))
+        .id();
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+    app.world_mut()
+        .insert_resource(PathPreviewTarget::new(goal));
+}
+
+/// The route computed DIRECTLY (the same construction `dispatch_move` uses) — the independent
+/// baseline the populate system's output must equal. `None` if the fixture does not route (the
+/// caller asserts a route is present), keeping `expect`/`unwrap` out of the test (denied lints).
+fn expected_route(app: &App, start: CellLevel, goal: CellLevel) -> Option<(Vec<CellLevel>, Tu)> {
+    let grid = app.world().resource::<OccupancyGrid>();
+    let links = app.world().resource::<VerticalLinkGraph>();
+    let squad = app.world().resource::<SquadVisibility>();
+    let tuning = app.world().resource::<CombatTuning>();
+    let planning = PlanningView::new(squad, all_other);
+    find_path(start, goal, grid, links, tuning, &planning)
+        .ok()
+        .map(|path| (path.cells().to_vec(), path.total()))
+}
+
+/// C1 / C6 — with a selected ganger + a target the populate system fills `PathPreview` with
+/// EXACTLY the `find_path` route cells the same way `dispatch_move` plans it, and the previewed
+/// cost EXACTLY equals `Path::total()` (the §48 bit-identity). REUSE, no re-impl.
+#[test]
+fn populates_route_cells_and_cost_matching_find_path() {
+    let mut app = preview_app();
+
+    let start = CellLevel::new(Cell::new(10, 10), Level::new(0));
+    let goal = CellLevel::new(Cell::new(14, 12), Level::new(0));
+    select_and_target(&mut app, start, goal);
+
+    // The baseline is computed BEFORE the update so it reads the same grids the system will.
+    let expected = expected_route(&app, start, goal);
+    assert!(
+        expected.is_some(),
+        "the open-grid fixture must route from start to goal",
+    );
+    let (expected_cells, expected_cost) = expected.unwrap_or((Vec::new(), Tu::new(0)));
+    assert!(
+        expected_cells.first() == Some(&start) && expected_cells.last() == Some(&goal),
+        "the fixture route must run start..=goal",
+    );
+
+    app.update();
+
+    let preview = app.world().resource::<PathPreview>();
+    // POSITIVE: the drawn preview cells == find_path cells() (NAMED start + goal endpoints).
+    assert_eq!(
+        preview.cells(),
+        &expected_cells[..],
+        "the populated preview cells must EXACTLY equal find_path cells() over the same \
+         PlanningView (it reuses the sim search, no re-implemented routing)",
+    );
+    // POSITIVE: the exposed previewed cost == path.total() (the §48 bit-identity).
+    assert_eq!(
+        preview.cost(),
+        expected_cost,
+        "the previewed cost must EXACTLY equal Path::total() (the §48 cost GTW-355 charges)",
+    );
+}
+
+/// C1 — with NOTHING targeted the populate system writes the empty preview (no route drawn),
+/// even with a ganger selected.
+#[test]
+fn clears_preview_when_no_target() {
+    let mut app = preview_app();
+
+    let start = CellLevel::new(Cell::new(8, 8), Level::new(0));
+    let ganger = app
+        .world_mut()
+        .spawn((Position::new(start), BUDGET, PLAYER_FACTION))
+        .id();
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+    // Seed a stale non-empty preview, then leave the target empty (the default `None`).
+    app.world_mut().insert_resource(PathPreview::new(
+        vec![CellLevel::new(Cell::new(3, 3), Level::new(0))],
+        Tu::new(4),
+    ));
+    app.world_mut()
+        .insert_resource(PathPreviewTarget::cleared());
+
+    app.update();
+
+    let preview = app.world().resource::<PathPreview>();
+    assert!(
+        preview.is_empty(),
+        "with no target set the preview clears to the empty route (no preview drawn)",
+    );
+}
+
+/// C2 — an UNREACHABLE target (a goal sealed off by a ring of impassable walls) yields an EMPTY
+/// preview (no-route → no preview).
+#[test]
+fn unreachable_target_yields_empty_preview() {
+    let mut app = preview_app();
+
+    let start = CellLevel::new(Cell::new(10, 10), Level::new(0));
+    // Wall the goal cell off: a solid box of Wall around (20,20) on level 0 so no route reaches it.
+    let goal = CellLevel::new(Cell::new(20, 20), Level::new(0));
+    {
+        let mut grid = app.world_mut().resource_mut::<OccupancyGrid>();
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                grid.set_terrain(
+                    CellLevel::new(Cell::new(20 + dx, 20 + dy), Level::new(0)),
+                    TerrainKind::Wall,
+                );
+            }
+        }
+    }
+    select_and_target(&mut app, start, goal);
+
+    // Sanity: find_path agrees the goal is blocked over the same grids.
+    let grid = app.world().resource::<OccupancyGrid>();
+    let links = app.world().resource::<VerticalLinkGraph>();
+    let squad = app.world().resource::<SquadVisibility>();
+    let tuning = app.world().resource::<CombatTuning>();
+    let planning = PlanningView::new(squad, all_other);
+    assert!(
+        find_path(start, goal, grid, links, tuning, &planning).is_err(),
+        "the fixture must seal the goal off so find_path returns PathBlocked",
+    );
+
+    app.update();
+
+    assert!(
+        app.world().resource::<PathPreview>().is_empty(),
+        "an unreachable target yields no preview (C2: PathBlocked → empty preview)",
+    );
+}
+
+/// C6 — the populate system NEVER pushes the selection / target into the sim: they stay
+/// input-crate resources, and the only output is the presenter-owned `PathPreview`.
+#[test]
+fn does_not_push_selection_or_target_into_sim() {
+    let mut app = preview_app();
+    let start = CellLevel::new(Cell::new(9, 9), Level::new(0));
+    let goal = CellLevel::new(Cell::new(12, 9), Level::new(0));
+    select_and_target(&mut app, start, goal);
+    app.update();
+
+    // Selection + target live ONLY on the input-crate resources; the produced output is the
+    // presenter-owned `PathPreview` (a regression that mirrored either into a sim resource
+    // would need a new sim resource — none exists; this pins the read-seam direction).
+    assert_eq!(
+        **app.world().resource::<PathPreviewTarget>(),
+        Some(goal),
+        "the target stays the input-crate PathPreviewTarget (never copied into the sim)",
+    );
+    assert!(
+        !app.world().resource::<PathPreview>().is_empty(),
+        "the populate output is the presenter-owned PathPreview, not a sim write",
+    );
+}

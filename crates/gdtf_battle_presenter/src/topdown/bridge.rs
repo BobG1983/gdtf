@@ -37,7 +37,8 @@ const Z_PER_LEVEL: f32 = 1.0;
 pub const GANGER_Z_BIAS: f32 = 0.1;
 
 /// A presenter draw layer within a single storey — the ONE place the
-/// terrain &lt; actor &lt; highlight &lt; reachable-overlay stacking order lives.
+/// terrain &lt; actor &lt; highlight &lt; path-preview &lt; reachable-overlay stacking order
+/// lives.
 ///
 /// A domain value (a real named type, not a bare z magnitude), per
 /// `.claude/rules/no-bare-types.md`. Each layer's [`z_bias`](Layer::z_bias) is added on
@@ -48,9 +49,11 @@ pub const GANGER_Z_BIAS: f32 = 0.1;
 /// [`GANGER_Z_BIAS`] lift); [`Highlight`](Layer::Highlight) is defined so the documented
 /// order is complete, but routing the hover/selection highlight through it is the
 /// in-engine-adjustable later tweak the GTW-283 contract flags (it currently still draws
-/// at the bare level z). [`ReachableOverlay`](Layer::ReachableOverlay) is the topmost
-/// band — the GTW-357 move-range tint, drawn AT/ABOVE the highlight so the reachable cells
-/// composite over the terrain + actors + reticle.
+/// at the bare level z). [`PathPreview`](Layer::PathPreview) is the GTW-358 route-preview
+/// band, drawn ABOVE the highlight so the previewed route reads over the reticle.
+/// [`ReachableOverlay`](Layer::ReachableOverlay) is the topmost band — the GTW-357
+/// move-range tint, drawn ABOVE the path preview so the reachable wash composites over
+/// everything (the route preview sits between the highlight and the move-range overlay).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Layer {
     /// Floor / wall / cover terrain — the ground plane, drawn at the bare per-storey z.
@@ -60,19 +63,25 @@ pub enum Layer {
     /// The hover / selection highlight — drawn in front of the actor so it tints the unit
     /// (documented order; wiring deferred, see the type doc).
     Highlight,
+    /// The GTW-358 route-preview highlight — the previewed `find_path` route from the
+    /// selected ganger to the target cell, drawn strictly ABOVE the highlight so the route
+    /// reads over the terrain, actors, and reticle. Still strictly `< Z_PER_LEVEL` so it
+    /// never sorts into the next storey's band; below [`ReachableOverlay`](Layer::ReachableOverlay)
+    /// so the move-range wash (when both are present) composites on top.
+    PathPreview,
     /// The GTW-357 reachable-range move overlay — the topmost within-storey band, drawn
-    /// strictly ABOVE the highlight so the move-range tint + its TU-cost label composite
-    /// over the terrain, actors, and reticle at the cell. Still strictly `< Z_PER_LEVEL`
-    /// so the overlay never sorts into the next storey's band.
+    /// strictly ABOVE the path preview so the move-range tint + its TU-cost label composite
+    /// over the terrain, actors, reticle, and route preview at the cell. Still strictly
+    /// `< Z_PER_LEVEL` so the overlay never sorts into the next storey's band.
     ReachableOverlay,
 }
 
 impl Layer {
     /// This layer's within-storey draw-z bias, added on top of the per-storey level z.
     ///
-    /// Strictly increasing terrain &lt; actor &lt; highlight &lt; reachable-overlay, and
-    /// every value is strictly `< Z_PER_LEVEL` so a biased sprite never sorts into the next
-    /// storey's band.
+    /// Strictly increasing terrain &lt; actor &lt; highlight &lt; path-preview &lt;
+    /// reachable-overlay, and every value is strictly `< Z_PER_LEVEL` so a biased sprite
+    /// never sorts into the next storey's band.
     #[must_use]
     const fn z_bias(self) -> f32 {
         match self {
@@ -80,8 +89,10 @@ impl Layer {
             Self::Actor => GANGER_Z_BIAS,
             // Strictly above the actor, still within the storey band (`< Z_PER_LEVEL`).
             Self::Highlight => GANGER_Z_BIAS * 2.0,
-            // Topmost within-storey band — above the highlight, still `< Z_PER_LEVEL`.
-            Self::ReachableOverlay => GANGER_Z_BIAS * 3.0,
+            // Above the highlight (the route reads over the reticle), below the overlay.
+            Self::PathPreview => GANGER_Z_BIAS * 3.0,
+            // Topmost within-storey band — above the path preview, still `< Z_PER_LEVEL`.
+            Self::ReachableOverlay => GANGER_Z_BIAS * 4.0,
         }
     }
 }

@@ -4,7 +4,7 @@
 
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
 use gdtf_assets::RonAssetAppExt;
-use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, ReachableOverlay};
+use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, PathPreview, ReachableOverlay};
 use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
     acts::{
@@ -28,8 +28,9 @@ use crate::{
     keyboard::{level_keys, posture_keys, select_clear_key},
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
-        SelectedShooter, auto_select_first_player_ganger, left_click_act,
-        populate_reachable_overlay, right_click_turn_to_face, update_selection_highlight,
+        PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
+        populate_path_preview, populate_reachable_overlay, right_click_turn_to_face,
+        update_selection_highlight,
     },
 };
 
@@ -128,6 +129,10 @@ impl Plugin for GdtfBattleInputPlugin {
         .init_resource::<InspectTarget>()
         .init_resource::<SelectedShooter>()
         .init_resource::<SelectedFireMode>()
+        // GTW-358 — the route path-preview TARGET seam (the cell the preview previews TO).
+        // Its `Default` is the empty target (`None` → no preview); the GTW-356 two-click flow
+        // SETS it on click-1 (target select). THIS ticket only DEFINES + wires it.
+        .init_resource::<PathPreviewTarget>()
         .init_resource::<PendingActIntent>()
         // GTW-259 — the gamepad software cursor + the last-moved-wins pointer arbiter.
         // `GamepadCursor` inits to its window-centre default; `ActivePointer` to `Mouse`.
@@ -256,6 +261,11 @@ impl Plugin for GdtfBattleInputPlugin {
         // under the `too_many_lines` lint, the `register_gamepad_systems` precedent).
         register_reachable_overlay_population(app);
 
+        // GTW-358 — the route path-preview POPULATE system (calls `find_path` for the selected
+        // ganger → the `PathPreviewTarget`; extracted to keep `build` under the
+        // `too_many_lines` lint).
+        register_path_preview_population(app);
+
         // The data-driven keybind table loads the GTW-136 RON way. `init_ron_asset` PANICS at
         // registration without an `AssetServer`, so it — and the load/resolve chain — is gated
         // on the asset stack being present (`bevy-traps.md` #1). Under `DefaultPlugins` it runs
@@ -358,6 +368,46 @@ fn register_reachable_overlay_population(app: &mut App) {
                     // input-only harness (no presenter plugin, so no `ReachableOverlay`) keeps the
                     // populate system inert rather than panicking validation (`bevy-traps.md` #1).
                     .and_then(resource_exists::<ReachableOverlay>),
+            ),
+    );
+}
+
+/// Registers the GTW-358 route path-preview POPULATE system into [`InputSystems::Gather`].
+///
+/// [`populate_path_preview`] reads the current [`SelectedShooter`] + the [`PathPreviewTarget`]
+/// and fills the presenter-owned [`PathPreview`](gdtf_battle_presenter::PathPreview) the SAME
+/// way [`dispatch_move`](gdtf_battle_sim::acts::dispatch_move) plans a route (the
+/// visibility-gated `PlanningView` over the squad fog + `find_path`), exposing
+/// [`Path::total`](gdtf_battle_sim::Path::total) — the §48 cost GTW-355 charges. Ordered
+/// `.after(left_click_act)` (so it reads the same update's selection) and
+/// `.after(auto_select_first_player_ganger)` (the GTW-357 `populate_reachable_overlay`
+/// precedent). The TARGET itself is set by the GTW-356 two-click flow (click-1); until then it
+/// stays `None` and the preview is empty (THIS ticket only defines + wires the seam).
+///
+/// Gated on the live battle WITH every grid the route reads — the [`OccupancyGrid`], the
+/// [`VerticalLinkGraph`], the [`SquadVisibility`] fog, and the [`CombatTuning`] — AND the
+/// presenter-`init_resource`-d [`PathPreview`](gdtf_battle_presenter::PathPreview): the SAME
+/// trap family as the reachable overlay — a focused input-only harness opens `BattleInProgress`
+/// WITHOUT a presenter plugin (so no `PathPreview`), so without that guard the
+/// `ResMut<PathPreview>` param would panic validation (`bevy-traps.md` #1). In the real app
+/// `setup_battle` inserts the grids + the presenter `init_resource`s `PathPreview`, so the
+/// preview populates exactly when a battle is live. Extracted from
+/// [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep `build` under the
+/// `too_many_lines` lint (the `register_gamepad_systems` precedent).
+fn register_path_preview_population(app: &mut App) {
+    app.add_systems(
+        Update,
+        populate_path_preview
+            .in_set(InputSystems::Gather)
+            .after(left_click_act)
+            .after(auto_select_first_player_ganger)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<OccupancyGrid>)
+                    .and_then(resource_exists::<VerticalLinkGraph>)
+                    .and_then(resource_exists::<SquadVisibility>)
+                    .and_then(resource_exists::<CombatTuning>)
+                    .and_then(resource_exists::<PathPreview>),
             ),
     );
 }
