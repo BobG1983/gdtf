@@ -25,17 +25,25 @@
 //!    answering [`links_from`](VerticalLinkGraph::links_from): the links departing a
 //!    given `(cell, level)`. A link is indexed in BOTH directions unless its kind is
 //!    [`one-way`](LinkKind::is_one_way).
+//! 4. The **traversal gate** (E7 · GTW-12c) — [`traversable_links`], a PURE read
+//!    over the index that yields each reachable cross-storey neighbour and its
+//!    flat [`LinkTu`](crate::tuning::LinkTu) hop cost (`docs/combat/visibility.md`
+//!    §48: one `link_tu` per hop regardless of stair / ladder kind). One-way
+//!    directionality is honoured by the index alone (a one-way link is recorded
+//!    under its [`from`](VerticalLink::from) endpoint only), not re-checked.
 //!
-//! Scope: this is **graph + validation ONLY**. There is no traversal,
-//! pathfinding, or movement cost here — that is the multi-level movement work
-//! (GTW-12). [`links_from`](VerticalLinkGraph::links_from) is the existence query
-//! (what links leave here), not a path.
+//! Scope: this is **graph + validation + the traversal gate**. There is no
+//! pathfinding / route assembly here — that is the route core (GTW-352).
+//! [`links_from`](VerticalLinkGraph::links_from) is the existence query (what
+//! links leave here); [`traversable_links`] adds the per-hop cost; neither is a path.
 
 mod graph;
 mod links;
+mod traverse;
 
 #[cfg(test)]
 mod test;
 
 pub use graph::{InvalidVerticalLink, VerticalLinkGraph, build_vertical_link_graph};
 pub use links::{LinkKind, OneWay, VerticalLink};
+pub use traverse::traversable_links;
