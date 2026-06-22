@@ -9,7 +9,7 @@ use crate::{
     acts::{
         downed::{dispatch_execute_downed, dispatch_stabilize_downed},
         fire::{FireDeclaration, dispatch_fire},
-        movement::{MovementOccurred, dispatch_move},
+        movement::{MoveRejected, MovementOccurred, dispatch_move},
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
         reload::{ReloadResult, dispatch_reload},
         request::{
@@ -19,7 +19,7 @@ use crate::{
         },
     },
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
-    occupancy_sync::SimSystems,
+    occupancy_sync::{SimSystems, sync_destroyed_cover},
     shot_fired::ShotFired,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
 };
@@ -92,6 +92,11 @@ impl Plugin for SimActsPlugin {
             .add_message::<FireDeclaration>()
             .add_message::<MovementOccurred>()
             .add_message::<TurnStarted>()
+            // GTW-354: the typed move-REJECTED signal `dispatch_move` emits per commit whose
+            // route gate fails — no route (Unreachable) or an unaffordable route
+            // (Unaffordable). Presenter-visible like MovementOccurred / ReloadResult; it adds
+            // no act logic and no RNG draw, so determinism is preserved.
+            .add_message::<MoveRejected>()
             // GTW-336: the §9 bleed-out signal `tick_bleed` emits per Downed ganger that
             // bled this round (the presenter's "Bleeding" FCT pop drains it). Registering
             // the buffer here makes `tick_bleed`'s MessageWriter<Bleeding> param valid and
@@ -107,9 +112,21 @@ impl Plugin for SimActsPlugin {
                     dispatch_set_facing,
                     dispatch_stabilize_downed,
                     dispatch_execute_downed,
-                    dispatch_move,
                     dispatch_reload,
                 )
+                    .in_set(SimSystems::Simulate),
+            )
+            // GTW-354 (C5): the constrained move dispatch joins the same gated Simulate band
+            // but is ordered `.after` the `occupancy_sync` grid-maintenance chain —
+            // explicitly `.after(sync_destroyed_cover)`, its LAST system (move → die → cover)
+            // — so `find_path` plans over a grid whose occupant slots have already settled
+            // this frame (bevy-traps.md #3 — explicit ordering; the recompute_visibility
+            // precedent). It writes `Position`/`Tu`; `sync_moved_gangers` reacts to the
+            // resulting `Changed<Position>` next frame, so the two compose with no ambiguity.
+            .add_systems(
+                Update,
+                dispatch_move
+                    .after(sync_destroyed_cover)
                     .in_set(SimSystems::Simulate),
             )
             // GTW-309: the turn-cycle engine joins the gated Simulate band, but takes the

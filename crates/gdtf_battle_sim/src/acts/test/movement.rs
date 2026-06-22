@@ -5,14 +5,20 @@
 
 use super::support::*;
 
-/// Spawn a move-capable actor ([`Position`] / [`Tu`] / [`LifeState::Alive`]) at
-/// `(x, y, 0)`.
+/// Spawn a move-capable actor ([`Position`] / [`Tu`] / [`LifeState::Alive`] /
+/// [`Faction`]) at `(x, y, 0)`.
+///
+/// GTW-354: the move dispatch fetches `&Faction` (to classify route occupants relative to
+/// the mover) and runs `find_path` — so a move actor carries the player gang
+/// ([`TEST_PLAYER_GANG`]) so it is found by the actor query and so its own-squad relation
+/// resolves.
 fn spawn_move_actor(world: &mut World, x: i32, y: i32, tu: u8) -> Entity {
     world
         .spawn((
             Position::new(CellLevel::new(Cell::new(x, y), Level::new(0))),
             Tu::new(tu),
             LifeState::Alive,
+            Faction::new(TEST_PLAYER_GANG),
         ))
         .id()
 }

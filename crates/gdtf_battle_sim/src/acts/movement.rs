@@ -1,28 +1,114 @@
-//! The **move** dispatch — drain each buffered [`MoveRequested`] message and run the
-//! landed [`move_ganger`] verb once per message (E4 / GTW-234).
+//! The **move** dispatch — the SINGLE writer that, on each buffered [`MoveRequested`]
+//! commit, plans a reachable affordable route and (only then) runs the landed
+//! [`move_ganger`] verb (E7 · GTW-12f / GTW-354; the original any-cell dispatch was E4 /
+//! GTW-234).
 //!
-//! No act logic is reimplemented: the system REUSES the landed
-//! [`move_ganger`](crate::move_acts::move_ganger) verb verbatim (whose gates + the
-//! destination-terrain TU cost hold end-to-end) and fetches the actor's components via a
-//! Bevy query (`bevy-traps.md` #7 — no `&mut World`); it only READS the grid.
+//! ## What this slice adds (GTW-354)
+//!
+//! Before GTW-354 the dispatch let [`move_ganger`] step to ANY single empty in-bounds
+//! cell — an any-empty-cell teleport (the destination need not be adjacent or reachable).
+//! GTW-354 makes [`dispatch_move`] the single CONSTRAINED writer: on each
+//! [`MoveRequested`] (the COMMIT — see below) it runs [`find_path`] from the mover's cell
+//! to the requested [`CellLevel`] through the GTW-353 visibility-gated
+//! [`PlanningView`] and:
+//!
+//! - **REJECTS** the move (a TYPED [`MoveRejected`], NO step) when no route exists
+//!   ([`PathBlocked`] — the teleport is dead); and
+//! - performs ONE up-front **full-route affordability** gate (`docs/combat/visibility.md`
+//!   §48 — "the commit gates full-route affordability once, up front") against the
+//!   [`Path::total`], rejecting (TYPED [`MoveRejected`], NO step) when the mover cannot
+//!   afford the whole route.
+//!
+//! Only when a route exists AND is affordable does it run the EXISTING accept: the landed
+//! [`move_ganger`] verb (its own gates + the DESTINATION-terrain per-step charge hold
+//! verbatim) plus the [`MovementOccurred`] log signal. No act logic is reimplemented and
+//! the per-step charge is UNTOUCHED (the stepped / interruptible walk is GTW-355; the
+//! up-front gate here is a CHECK against the planned total, NOT a second charge).
+//!
+//! ## Commit semantics (C2 — cross-ticket boundary)
+//!
+//! [`dispatch_move`] dispatches on [`MoveRequested`], which IS the commit (the 2nd /
+//! commit click). It does NOT dispatch on a select / preview. The two-click INPUT (click-1
+//! select+preview vs click-2 commit) is **GTW-356** and the preview DISPLAY is **GTW-358**
+//! — NOT this slice. This dispatch treats every drained [`MoveRequested`] as a
+//! commit-dispatch; it does no click-counting (that is GTW-356's input concern).
+//!
+//! It fetches the actor's components + reads the grids via Bevy queries / `Res`
+//! (`bevy-traps.md` #7 — no `&mut World`); it only READS the grids + the squad fog.
 
 use bevy::prelude::{Entity, Message, MessageReader, MessageWriter, Query, Res};
 
 use crate::{
     acts::request::MoveRequested,
-    ganger::{LifeState, Position, Tu},
-    metric::Cell,
+    ganger::{Faction, LifeState, Position, Tu},
+    metric::{Cell, CellLevel},
     move_acts::{MoveOutcome, move_ganger},
     occupancy::OccupancyGrid,
+    pathfinder::{PlanningView, find_path},
+    tu::can_spend_tu,
     tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::{FactionRelation, SquadVisibility},
 };
+
+/// Why a [`MoveRequested`] commit was **rejected** — the two no-step outcomes of the
+/// GTW-354 route + affordability gate (C3).
+///
+/// A named domain enum (no-bare-types: a move's rejection reason is a domain value, not a
+/// bare flag), mirroring the [`ReloadOutcome`](crate::acts::ReloadOutcome) shape. The
+/// presenter / any reactive system classifies a [`MoveRejected`] by this variant. A move
+/// that SUCCEEDS emits no [`MoveRejected`] (it emits [`MovementOccurred`] instead), so
+/// there is no "accepted" variant here — and an actor missing a queried component is an
+/// internal guard SKIP (no rejection signal at all, the `dispatch_*` precedent).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MoveRejection {
+    /// No route exists from the mover's cell to the requested destination over the
+    /// visibility-routable grid + links ([`find_path`] returned
+    /// [`PathBlocked`](crate::pathfinder::PathBlocked)) — the destination is unreachable
+    /// (it may be off-grid, walled off, behind an UNSEEN region, or blocked by a visible
+    /// ganger). This is what kills the pre-GTW-354 any-empty-cell teleport.
+    Unreachable,
+    /// A route exists but the mover cannot afford its full-route [`Tu`] cost — the single
+    /// up-front affordability gate (`docs/combat/visibility.md` §48) failed against the
+    /// planned [`Path::total`](crate::pathfinder::Path::total). NO partial move: the mover
+    /// stays put and spends nothing (GTW-355 owns the stepped walk; this is a CHECK, not a
+    /// charge).
+    Unaffordable,
+}
+
+/// A **move was rejected** — the typed no-step signal that `actor`'s commit could not be
+/// dispatched, with the [`MoveRejection`] reason (GTW-354, C3).
+///
+/// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), mirroring
+/// [`ReloadResult`](crate::acts::ReloadResult) / [`MovementOccurred`]. Emitted ONCE per
+/// drained [`MoveRequested`] whose route gate fails — either no route
+/// ([`MoveRejection::Unreachable`]) or an unaffordable route
+/// ([`MoveRejection::Unaffordable`]). Neither [`Position`] nor [`Tu`] is touched on a
+/// reject (a TOTAL no-op). The [`actor`](MoveRejected::actor) is a Bevy [`Entity`] handle
+/// — framework plumbing, the only bare type the no-bare-types rule permits in a payload.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MoveRejected {
+    /// The ganger whose move commit was rejected.
+    pub actor:  Entity,
+    /// Why the commit was rejected (no route, or an unaffordable route).
+    pub reason: MoveRejection,
+}
+
+impl MoveRejected {
+    /// Build a move-rejected signal for `actor` with the given [`MoveRejection`] reason.
+    #[must_use]
+    pub const fn new(actor: Entity, reason: MoveRejection) -> Self {
+        Self { actor, reason }
+    }
+}
 
 /// A **move occurred** — the combat-log signal that `actor` stepped from `from` to `to`
 /// (GTW-328), emitted ONCE per [`MoveRequested`] whose move actually SUCCEEDS.
 ///
 /// The combat-text LOG event for a move ("<name> moved <from> -> <to>") — the user-facing
 /// announcement that a ganger changed cell. It is emitted ONLY on a real step
-/// ([`MoveOutcome::Moved`]); a blocked / unaffordable / no-op move logs nothing. The
+/// ([`MoveOutcome::Moved`]); a rejected (unreachable / unaffordable) or no-op move logs
+/// nothing (it emits a [`MoveRejected`] on a gate-failed commit instead). The
 /// [`from`](MovementOccurred::from) cell is captured BEFORE the [`Position`] write and
 /// [`to`](MovementOccurred::to) AFTER, so they are the actual pre/post ground cells. It
 /// adds **no** act logic and re-resolves nothing — pure exposure of the move the verb
@@ -60,37 +146,135 @@ fn position_cell(position: &Position) -> Cell {
     Cell::new(key.x, key.y)
 }
 
-/// **Dispatch** buffered [`MoveRequested`] messages — drain each and run the landed
-/// [`move_ganger`] verb once per message (E4 / GTW-234).
+/// The faction relation of `occupant` **relative to** `mover_faction` — same gang is
+/// [`FactionRelation::OwnSquad`], any other (or an occupant with no [`Faction`]) is
+/// [`FactionRelation::Other`] (C1).
 ///
-/// Queries the actor's `(&mut `[`Position`]`, &mut `[`Tu`]`, &`[`LifeState`]`)`, reads
-/// the [`OccupancyGrid`] (for the gates AND the destination-terrain cost lookup) and the
-/// [`CombatTuning`] resource (for the [`MoveCosts`](crate::tuning::MoveCosts) table), and
-/// calls [`move_ganger`] — whose gates (liveness / in-bounds / not-blocked / unoccupied /
-/// affordable) hold end-to-end, charging the DESTINATION terrain's move cost. REUSES the
-/// landed verb verbatim. A message for an actor missing any queried component is skipped
-/// (fail-closed, no panic — the `dispatch_set_*` precedent).
+/// This is the [`PlanningView`] occupant→relation resolver, built per-commit from the
+/// mover's faction and the live `&`[`Faction`] query. An occupant entity that is not a
+/// faction ganger (an unexpected non-ganger occupant) maps to [`FactionRelation::Other`]
+/// — the conservative classification: the gate then only blocks it when its cell is
+/// squad-VISIBLE (it never silently blocks an unseen non-ganger). For the PLAYER mover
+/// this is exactly "relative to the player squad", which is the relation
+/// [`is_ganger_visible`](crate::visibility::is_ganger_visible) consumes.
+fn relation_to(
+    factions: &Query<&'static Faction>,
+    mover_faction: Faction,
+    occupant: Entity,
+) -> FactionRelation {
+    match factions.get(occupant) {
+        Ok(faction) if *faction == mover_faction => FactionRelation::OwnSquad,
+        _ => FactionRelation::Other,
+    }
+}
+
+/// **Dispatch** buffered [`MoveRequested`] commits — for each, plan a reachable affordable
+/// route and (only then) run the landed [`move_ganger`] verb (E7 · GTW-12f / GTW-354).
 ///
-/// This dispatch ONLY READS the grid (`Res<OccupancyGrid>`) for the gates + the terrain
-/// cost; it never writes it. The grid's slot maintenance is the landed
+/// Per drained [`MoveRequested`] (the COMMIT — C2), the SINGLE constrained writer:
+///
+/// 1. fetches the mover's `(&mut `[`Position`]`, &mut `[`Tu`]`, &`[`LifeState`]`, &`[`Faction`]`)`
+///    (a message for an actor missing any of these is SKIPPED — fail-closed, no panic, the
+///    `dispatch_*` precedent; no [`MoveRejected`] for a guard skip);
+/// 2. builds the GTW-353 [`PlanningView`] from the LIVE world — the [`SquadVisibility`]
+///    resource plus an occupant→[`FactionRelation`] resolver ([`relation_to`]) closed over
+///    the mover's faction and the `&`[`Faction`] query (C1) — and runs [`find_path`] from
+///    the mover's cell to `request.dest` over the [`OccupancyGrid`] + [`VerticalLinkGraph`]
+///    + the [`MoveCosts`](crate::tuning::MoveCosts) table in [`CombatTuning`];
+/// 3. on [`PathBlocked`](crate::pathfinder::PathBlocked) emits a TYPED
+///    [`MoveRejected`]`(`[`MoveRejection::Unreachable`]`)` and steps NOTHING (this kills the
+///    pre-GTW-354 any-empty-cell teleport — C1);
+/// 4. performs ONE up-front full-route **affordability** gate
+///    (`docs/combat/visibility.md` §48) — [`can_spend_tu`] against the [`Path::total`](crate::pathfinder::Path::total)
+///    — emitting [`MoveRejected`]`(`[`MoveRejection::Unaffordable`]`)` and stepping NOTHING
+///    when the mover cannot afford the whole route (C3, NO partial move); and
+/// 5. ONLY on a reachable affordable route runs the EXISTING accept: [`move_ganger`]
+///    (whose own gates + the DESTINATION-terrain per-step charge hold verbatim — the charge
+///    mechanism is UNCHANGED, GTW-355 owns the stepped walk) and, on
+///    [`MoveOutcome::Moved`], the [`MovementOccurred`] log signal (C4).
+///
+/// The up-front gate is a CHECK, not a second charge: the only TU spend is the existing
+/// [`move_ganger`] per-step charge on accept. (`find_path` itself never charges TU — it
+/// plans and totals; §48.)
+///
+/// Param-only (`Query` / `Res` / `MessageReader` / `MessageWriter`) — no `&mut World`
+/// (`bevy-traps.md` #7). It READS the grids (`Res<OccupancyGrid>` / `Res<VerticalLinkGraph>`)
+/// and the squad fog (`Res<SquadVisibility>`) for the route gate; the grid's slot
+/// maintenance is the landed
 /// [`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers) reacting to the
-/// `Changed<`[`Position`]`>` this verb produces — both sit in the
-/// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) set and compose
-/// with no ambiguity (`dispatch_move`'s `&mut Position` writes, `sync_moved_gangers`'s
-/// `&Position` reads it next).
+/// `Changed<`[`Position`]`>` this verb produces. This system is ordered
+/// `.after(`the `occupancy_sync` maintenance chain`)` in the
+/// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) set (C5 /
+/// `bevy-traps.md` #3) so [`find_path`] plans over a grid whose occupant slots have already
+/// settled this frame; the `&Faction` query is disjoint from the `&mut Position`/`&mut Tu`
+/// actor query so the two compose with no access conflict.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the constrained move dispatch genuinely needs the actor query + the disjoint \
+              faction query + the four route-gate resources (grid / links / squad fog / \
+              tuning) + the two output message writers; bundling them into an opaque \
+              SystemParam struct would hide the system's real reads (the dispatch_fire \
+              BattleGridsParam precedent applies only when a bundle is reused across systems)"
+)]
 pub fn dispatch_move(
     mut requests: MessageReader<MoveRequested>,
-    mut actors: Query<(&'static mut Position, &'static mut Tu, &'static LifeState)>,
+    mut actors: Query<(
+        &'static mut Position,
+        &'static mut Tu,
+        &'static LifeState,
+        &'static Faction,
+    )>,
+    factions: Query<&'static Faction>,
     grid: Res<OccupancyGrid>,
+    links: Res<VerticalLinkGraph>,
+    squad: Res<SquadVisibility>,
     tuning: Res<CombatTuning>,
     mut moves: MessageWriter<MovementOccurred>,
+    mut rejects: MessageWriter<MoveRejected>,
 ) {
     for request in requests.read() {
-        let Ok((mut position, mut tu, &life)) = actors.get_mut(request.actor) else {
+        let Ok((mut position, mut tu, &life, &mover_faction)) = actors.get_mut(request.actor)
+        else {
+            // Fail-closed guard skip (no MoveRejected): a message for an actor missing a
+            // queried component is silently dropped, the `dispatch_*` precedent.
             continue;
         };
-        // GTW-328: capture the FROM ground cell BEFORE the Position write, so the
-        // combat-log signal carries the actual pre-move cell.
+
+        // The mover's current cell — the route's start. (Routing is from where the mover
+        // STANDS, not the FROM-for-logging ground cell, so it keeps the storey.) `Position`
+        // derefs to the `CellLevel` `find_path` expects (one deref — NOT the inner `IVec3`).
+        let start: CellLevel = **position;
+
+        // C1: build the GTW-353 visibility-gated planning view from the LIVE world — the
+        // squad fog + the per-commit occupant→relation resolver (closed over the mover's
+        // faction and the disjoint `&Faction` query). UNSEEN cells are non-routable; a
+        // visible enemy / own-squad ganger blocks; EXPLORED stays routable.
+        let planning = PlanningView::new(&squad, |occupant| {
+            relation_to(&factions, mover_faction, occupant)
+        });
+
+        // C1: plan the route. No route → typed Unreachable reject, NO step (this kills the
+        // pre-GTW-354 any-empty-cell teleport).
+        let Ok(path) = find_path(start, request.dest, &grid, &links, &tuning, &planning) else {
+            rejects.write(MoveRejected::new(request.actor, MoveRejection::Unreachable));
+            continue;
+        };
+
+        // C3: ONE up-front full-route affordability gate (§48) — the planned total vs the
+        // mover's Tu. Unaffordable → typed reject, NO partial move (the mover stays put).
+        // This is a CHECK, not a charge — the only spend is move_ganger's per-step charge.
+        if !can_spend_tu(&tu, path.total()) {
+            rejects.write(MoveRejected::new(
+                request.actor,
+                MoveRejection::Unaffordable,
+            ));
+            continue;
+        }
+
+        // Reachable AND affordable → the EXISTING accept. Capture the FROM ground cell
+        // BEFORE the Position write (GTW-328), run the landed verb (its gates + the
+        // DESTINATION-terrain per-step charge hold verbatim — the charge is UNCHANGED,
+        // GTW-355 owns the stepped walk), then emit MovementOccurred on a real step (C4).
         let from = position_cell(&position);
         let outcome = move_ganger(
             &mut position,
@@ -100,9 +284,6 @@ pub fn dispatch_move(
             &grid,
             &tuning.move_costs,
         );
-        // GTW-328: emit the combat-log move signal ONLY on a real step — the TO ground
-        // cell is read AFTER the write. A blocked / unaffordable / no-op move logs
-        // nothing. No re-resolve, no RNG — pure exposure of the verb's effect.
         if outcome == MoveOutcome::Moved {
             let to = position_cell(&position);
             moves.write(MovementOccurred::new(request.actor, from, to));

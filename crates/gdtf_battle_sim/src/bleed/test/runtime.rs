@@ -24,6 +24,8 @@ use crate::{
     surface::SurfaceGrid,
     tuning::CombatTuning,
     turn::ActiveFaction,
+    vertical::VerticalLinkGraph,
+    visibility::SquadVisibility,
 };
 
 /// Seed the shared battle-lifetime resources a live battle has (everything BUT the
@@ -40,6 +42,13 @@ fn seed_battle_resources(app: &mut App) {
     app.insert_resource(OccupancyGrid::new());
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(CoverLedger::new());
+    // GTW-354: the GTW-354 constrained `dispatch_move` (bundled by `SimActsPlugin`) reads
+    // `Res<VerticalLinkGraph>` + `Res<SquadVisibility>` for its route gate, so the live
+    // harness seeds them (empty graph + empty fog — these bleed-clock tests never move, so
+    // the route gate result is irrelevant; the resources need only exist so the band's
+    // `dispatch_move` params validate when the Simulate band runs).
+    app.insert_resource(VerticalLinkGraph::default());
+    app.insert_resource(SquadVisibility::default());
     app.insert_resource(SimRng::from_seed(BattleSeed::new(SEED)));
     app.insert_resource(CombatTuning::default());
     app.insert_resource(BattleRoster::new([PLAYER, ENEMY]));

@@ -46,9 +46,10 @@ use gdtf_battle_sim::{
     DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
     MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng, Stable,
-    Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin, tuning::CombatTuning,
+    OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng,
+    SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
+    VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+    Wounds, acts::SimActsPlugin, tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches `PlayerFaction`).
@@ -117,6 +118,13 @@ fn endtoend_app() -> App {
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(CoverLedger::new());
+    // GTW-354: the constrained `dispatch_move` reads `Res<VerticalLinkGraph>` +
+    // `Res<SquadVisibility>` for its route gate, so seed them (empty graph + empty fog —
+    // this fire-path test never moves, so the route gate result is irrelevant; the
+    // resources need only exist so `dispatch_move`'s params validate).
+    app.world_mut()
+        .insert_resource(VerticalLinkGraph::default());
+    app.world_mut().insert_resource(SquadVisibility::default());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));

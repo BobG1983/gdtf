@@ -9,13 +9,17 @@
 
 // Re-exported so each concern file's `use super::support::*` reaches the Bevy harness
 // types + every `acts` dispatch/message item + the crate components the tests touch.
-pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, Update, World};
+pub(super) use bevy::{
+    platform::collections::HashSet,
+    prelude::{App, Entity, Messages, MinimalPlugins, Update, World},
+};
 
 pub(super) use crate::{
     acts::*,
     // `ArmorProtection` / `ArmorHardness` are reused for cover `CoverEntry`s in the
     // co-schedule test (terrain armor), not ganger-worn armor — kept for that glob use.
     armor::{ArmorHardness, ArmorProtection},
+    battle::PlayerFaction,
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
@@ -23,14 +27,16 @@ pub(super) use crate::{
     },
     inflicted_wound::InflictedWounds,
     magazine::{Magazine, ReloadTu, mode_tu_cost},
-    metric::{Cell, CellLevel, Level},
-    occupancy::OccupancyGrid,
+    metric::{Cell, CellLevel, Level, MAX_LEVELS},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
     occupancy_sync::OccupancyMaintenancePlugin,
     resolve_coarse::ShotKind,
     rng::{BattleSeed, SimRng},
     shot_fired::ShotFired,
     surface::SurfaceGrid,
     tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::SquadVisibility,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
@@ -42,13 +48,48 @@ pub(super) use crate::{
 /// A fixed seed for the per-test RNG stream (arbitrary, not tuned).
 const SEED: u64 = 0x5A1C_AC75;
 
-/// Insert the shared sim resources a dispatch system reads — the three grids, a
-/// seeded [`SimRng`], and [`CombatTuning::default`]. The grids are inserted EMPTY by
+/// The player gang the move-dispatch harness seeds (arbitrary; gang `0`).
+pub(super) const TEST_PLAYER_GANG: u8 = 0;
+
+/// A [`SquadVisibility`] with the ENTIRE grid extent both VISIBLE and EXPLORED — the
+/// "full vision" fog the GTW-354 move-dispatch tests route under (every cell routable, so
+/// the GTW-353 visibility gate is a no-op and the route depends only on geometry +
+/// occupancy). Mirrors the pathfinder-test `full_vision` fixture.
+pub(super) fn full_vision() -> SquadVisibility {
+    let mut all = HashSet::default();
+    for level in 0..MAX_LEVELS {
+        for y in 0..GRID_HEIGHT {
+            for x in 0..GRID_WIDTH {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_possible_wrap,
+                    reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the loop bounds, so \
+                              the usize/u8 -> i32/u8 narrowing cannot truncate or wrap"
+                )]
+                let c = CellLevel::new(Cell::new(x as i32, y as i32), Level::new(level));
+                all.insert(c);
+            }
+        }
+    }
+    SquadVisibility::new(all.clone(), all)
+}
+
+/// Insert the shared sim resources a dispatch system reads — the three grids, the empty
+/// [`VerticalLinkGraph`], a full-vision [`SquadVisibility`], the [`PlayerFaction`] seed,
+/// a seeded [`SimRng`], and [`CombatTuning::default`]. The grids are inserted EMPTY by
 /// default; a test mutates them via `app.world_mut()` before the run.
+///
+/// GTW-354: the move dispatch now reads `Res<VerticalLinkGraph>` / `Res<SquadVisibility>`
+/// / `Res<PlayerFaction>` for its route gate, so the harness seeds them — a full-vision
+/// fog and an empty link graph keep the planar adjacent-cell move tests routing on
+/// geometry/occupancy alone.
 pub(super) fn insert_sim_resources(app: &mut App) {
     app.insert_resource(OccupancyGrid::new());
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(CoverLedger::new());
+    app.insert_resource(VerticalLinkGraph::default());
+    app.insert_resource(full_vision());
+    app.insert_resource(PlayerFaction::new(Faction::new(TEST_PLAYER_GANG)));
     app.insert_resource(SimRng::from_seed(BattleSeed::new(SEED)));
     app.insert_resource(CombatTuning::default());
 }

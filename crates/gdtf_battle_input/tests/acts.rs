@@ -42,8 +42,8 @@ use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
     FireMode, FireModeSpec, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng, Stance, StanceKind,
-    SurfaceGrid, Tu, TuMax, WieldedBy,
+    ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng, SquadVisibility,
+    Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLinkGraph, WieldedBy,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, ReloadRequested,
         SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
@@ -163,6 +163,13 @@ fn acts_app() -> App {
     // `*Requested` MESSAGE — only its registered buffers / dispatch must validate.
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(CoverLedger::new());
+    // GTW-354: the constrained `dispatch_move` reads `Res<VerticalLinkGraph>` +
+    // `Res<SquadVisibility>` for its route gate, so the harness seeds them (empty link
+    // graph + empty fog — these AC tests assert the input `*Requested` MESSAGE, never a
+    // move outcome, so the route gate result is irrelevant; they need only validate).
+    app.world_mut()
+        .insert_resource(VerticalLinkGraph::default());
+    app.world_mut().insert_resource(SquadVisibility::default());
     app.world_mut()
         .insert_resource(SimRng::from_seed(BattleSeed::new(0x5A1C_AC75)));
     app.world_mut().insert_resource(test_keybinds());

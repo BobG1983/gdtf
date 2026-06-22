@@ -15,6 +15,8 @@ use crate::{
     surface::SurfaceGrid,
     tuning::CombatTuning,
     turn::{ActiveFaction, TurnStarted, regen_team_tu},
+    vertical::VerticalLinkGraph,
+    visibility::SquadVisibility,
 };
 
 /// A fixed seed for the per-test RNG stream (arbitrary, not tuned).
@@ -46,6 +48,12 @@ fn turn_app() -> App {
     app.insert_resource(OccupancyGrid::new());
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(CoverLedger::new());
+    // GTW-354: this harness has no `BattleInProgress` gate (it omits the
+    // `OccupancyMaintenancePlugin` that owns the Simulate `configure_sets`), so the bundled
+    // `dispatch_move` runs ungated and its new route-gate reads must validate — seed an
+    // empty `VerticalLinkGraph` + `SquadVisibility` (these turn-cycle tests never move).
+    app.insert_resource(VerticalLinkGraph::default());
+    app.insert_resource(SquadVisibility::default());
     app.insert_resource(SimRng::from_seed(BattleSeed::new(SEED)));
     app.insert_resource(CombatTuning::default());
     app.insert_resource(ActiveFaction::new(PLAYER));
