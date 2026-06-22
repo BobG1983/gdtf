@@ -39,9 +39,9 @@ redesign them:
 
 - **The movement economy is canon** ([visibility.md `## Pay-per-step TUs`](../combat/visibility.md),
   referred to below as §48 — the in-repo shorthand for that section, matching the
-  code comment in `tuning/economy.rs`). TU charges land **per step**: `sync_ganger_cell`
-  charges the entered cell's terrain `move_cost`; a vertical-link hop charges the flat
-  `link_tu` **instead of** terrain (`crates/gdtf_battle_sim/src/tuning/economy.rs`). The
+  code comment in `tuning/economy.rs`). TU charges land **per step**: the committed-walk
+  writer `advance_walk` charges the entered cell's terrain `move_cost`; a vertical-link hop
+  charges the flat `link_tu` **instead of** terrain (`crates/gdtf_battle_sim/src/tuning/economy.rs`). The
   **move-commit step gates full-route affordability once, up front**; per-step charges then
   always succeed (strictly turn-based). Interruptions are arithmetic-free — *charged = ground
   covered*; the old spend-plus-refund economy is deleted. **Pathfinding must honour
@@ -205,8 +205,8 @@ With a ganger selected, movement is a **two-click** interaction:
 - **All movement is tweened** from the start cell to the end cell — the ganger animates
   smoothly between cells; nothing snaps.
 - **TU is spent per step taken, not all at once** (consistent with §48 — *charged = ground
-  covered*). The per-step writers (`sync_ganger_cell` terrain cost / vertical-link
-  `link_tu`) charge each entered cell as the walk progresses; the commit gate guaranteed
+  covered*). The committed-walk writer (`advance_walk`: terrain cost / vertical-link
+  `link_tu`) charges each entered cell as the walk progresses; the commit gate guaranteed
   affordability up front, so each step's charge always succeeds.
 - The walk **stops** when an **enemy is revealed**, or when a **reaction shot is fired** —
   either is an interrupt that halts the walk where the ganger stands. This is arithmetic-free

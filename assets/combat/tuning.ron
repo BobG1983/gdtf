@@ -71,8 +71,8 @@
 
     // Per-terrain move cost (combat.md L34: "step" costs TUs): the flat Time Units a ganger
     // spends to step ONTO a destination cell — TERRAIN-DETERMINED (the floor tile crossed
-    // determines the cost), looked up by the destination cell's TerrainKind (move_ganger reads
-    // grid.terrain(dest) then this table). Coarse per-TerrainKind (Open/Cover/Wall), NOT
+    // determines the cost), looked up by the entered cell's TerrainKind (advance_walk reads
+    // grid.terrain(entered) then this table). Coarse per-TerrainKind (Open/Cover/Wall), NOT
     // per-floor-TYPE — richer per-floor-type costs need a richer sim terrain model (a follow-up).
     // The cost is applied FLAT regardless of step direction (a diagonal-costs-more differential is
     // deferred). STARTING POINTS (tunable, flagged — the user gave a facing cost but NOT per-terrain
@@ -84,8 +84,8 @@
     ),
     // Per-link traversal cost (E7 · GTW-12a; visibility.md §48: a crossing prices link_tu
     // INSTEAD OF terrain): the flat Time Units a step spends when it is a vertical-link hop
-    // (stair / ladder) between levels — move_ganger charges THIS at a link hop instead of
-    // the destination terrain's move_cost. ONE flat cost for every link kind (no per-kind
+    // (stair / ladder) between levels — advance_walk charges THIS at a link hop instead of
+    // the entered terrain's move_cost. ONE flat cost for every link kind (no per-kind
     // stair/ladder split — OQ-6's per-kind variant would need a docs change first).
     // Consumed later by GTW-351 (vertical-link traversal); this leaf only ADDS the tunable.
     // STARTING POINT (tunable, flagged — matched to the cheapest move-cost baseline).

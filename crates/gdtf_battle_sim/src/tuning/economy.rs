@@ -195,8 +195,8 @@ impl Default for MoveCosts {
 
 /// The **per-link traversal TU cost** — the flat number of Time Units a ganger spends to
 /// cross a single vertical link (a stair / ladder hop between levels;
-/// `docs/combat/visibility.md` §48: "`move_ganger` charges the flat `link_tu` at a link
-/// hop (a crossing prices `link_tu` *instead of* terrain)").
+/// `docs/combat/visibility.md` §48: "`advance_walk` ... charges ... the flat `link_tu`
+/// at a link hop (a crossing prices `link_tu` *instead of* terrain)").
 ///
 /// One FLAT cost for every link kind — the canon prices a crossing at a single `link_tu`,
 /// NOT a per-kind table (no `stair_tu` / `ladder_tu` split; OQ-6's per-kind variant would
