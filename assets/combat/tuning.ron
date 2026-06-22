@@ -82,6 +82,14 @@
         cover: 6,  // step onto a Cover cell — dearer; reachable only once the cover is DESTROYED (then it no longer blocks)
         wall:  8,  // step onto a Wall — placeholder; a wall always blocks, so this is never charged (dead under the gate)
     ),
+    // Per-link traversal cost (E7 · GTW-12a; visibility.md §48: a crossing prices link_tu
+    // INSTEAD OF terrain): the flat Time Units a step spends when it is a vertical-link hop
+    // (stair / ladder) between levels — move_ganger charges THIS at a link hop instead of
+    // the destination terrain's move_cost. ONE flat cost for every link kind (no per-kind
+    // stair/ladder split — OQ-6's per-kind variant would need a docs change first).
+    // Consumed later by GTW-351 (vertical-link traversal); this leaf only ADDS the tunable.
+    // STARTING POINT (tunable, flagged — matched to the cheapest move-cost baseline).
+    link_tu: 4,  // TU a ganger spends to cross one vertical link (stair/ladder hop); flat, all kinds
 
     // Hit-location weights — the RELATIVE odds each body part is the one struck on a hit
     // (resolution.md §4 `roll_body_part`). Larger = struck more often; they need not sum to

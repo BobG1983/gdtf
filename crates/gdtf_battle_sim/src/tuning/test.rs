@@ -43,6 +43,9 @@ fn tuning_newtypes_wrap_inner_and_deref() {
     // GTW-338 — the explored-dim f32 newtype: deref reaches the inner modulate factor
     // (bit-exact arbitrary value, never the 0.55 default — the Deref mechanism only).
     assert_eq!((*ExploredDim::new(0.25)).to_bits(), 0.25_f32.to_bits());
+    // GTW-349 — the per-link traversal u8 newtype: deref reaches the inner TU count
+    // (arbitrary value, never the default — the Deref mechanism, not a magnitude).
+    assert_eq!(*LinkTu::new(5), 5u8);
 }
 
 /// C3 — every E2.1 cone/stability/recoil/aim extension leaf wraps the right
@@ -268,14 +271,24 @@ fn shipped_tuning_ron_deserializes() {
         "shipped firing_arc must be a positive cone width (a real facing arc)",
     );
 
-    // GTW-338 — the squad-FOV visibility leaves (`view_range` / `explored_dim`)
-    // deserialize from the real shipped file. `CombatTuning` has no `#[serde(default)]`,
-    // so a missing leaf would fail the parse above; this asserts the two leaves are
-    // PRESENT and parse deterministically across two parses, and the structural
-    // invariants each must hold: the view range is a positive sight disc (so the squad
-    // can see at all), and the explored dim is a real RGB modulate in 0..=1 (so EXPLORED
-    // terrain reads dimmer than live, never brightened or negative). Value-agnostic —
-    // never the exact 14 / 0.55 magnitudes, since both are tunable balance data.
+    // GTW-338 / GTW-349 — the squad-FOV visibility + per-link economy leaves resolve from
+    // the shipped file (extracted to keep this monolith under the line cap as it accretes
+    // one block per ticket).
+    assert_visibility_and_link_leaves_resolve(&tuning, &reparsed);
+}
+
+/// GTW-338 / GTW-349 — the squad-FOV visibility leaves (`view_range` / `explored_dim`)
+/// and the per-link economy leaf (`link_tu`) deserialize from the real shipped file.
+///
+/// `CombatTuning` has no `#[serde(default)]`, so a missing leaf would fail the parse in
+/// the caller; this asserts each leaf is PRESENT and parses deterministically across the
+/// two parses (the resolve / parse-OK check), plus the structural invariants the FOV
+/// leaves must hold: the view range is a positive sight disc (the squad can see at all),
+/// and the explored dim is a real RGB modulate in `0..=1`. Value-agnostic — never the
+/// exact `14` / `0.55` magnitudes nor any `link_tu` number, since all three are tunable
+/// balance data (`link_tu` is consumed later by GTW-351; this leaf only ADDS the tunable,
+/// per the loader-tests-no-magnitude-pins convention).
+fn assert_visibility_and_link_leaves_resolve(tuning: &CombatTuning, reparsed: &CombatTuning) {
     assert_eq!(
         tuning.view_range, reparsed.view_range,
         "shipped view_range must be present and parse deterministically",
@@ -291,6 +304,10 @@ fn shipped_tuning_ron_deserializes() {
     assert!(
         (0.0..=1.0).contains(&*tuning.explored_dim),
         "shipped explored_dim must be an RGB modulate in 0..=1 (dimmer, never brightened)",
+    );
+    assert_eq!(
+        tuning.link_tu, reparsed.link_tu,
+        "shipped link_tu must be present and parse deterministically",
     );
 }
 
@@ -440,6 +457,15 @@ fn touched_leaves_round_trip_through_private_inner() {
     );
     if let Ok(s) = stance {
         assert_eq!(*s, 7u8, "StanceChangeTu deref");
+    }
+
+    // economy.rs (GTW-349) — the u8 per-link traversal cost round-trips through its
+    // private inner (a bare `#[serde(transparent)]` scalar; arbitrary value, never the
+    // default — it pins the serde-through-private-inner mechanism, not a magnitude).
+    let link = ron::from_str::<LinkTu>("5");
+    assert_eq!(link, Ok(LinkTu::new(5)), "LinkTu: {link:?}");
+    if let Ok(l) = link {
+        assert_eq!(*l, 5u8, "LinkTu deref");
     }
 
     // body_part.rs

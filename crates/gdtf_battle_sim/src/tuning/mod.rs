@@ -20,7 +20,7 @@
 //! - [`body_part`] — the §4 body-part hit-location weights.
 //! - [`wounds`] — the per-tier Wounds-budget costs, bleed-out rate, and from-Downed
 //!   TU costs (E3.6 / E3.7 / E3.8).
-//! - [`economy`] — the E4 TU economy: stance-change / turn / per-terrain move costs.
+//! - [`economy`] — the E4 TU economy: stance-change / turn / per-terrain move / per-link costs.
 //! - [`cone`] — the §1 cone/stability/recoil/aim leaf coefficient newtypes.
 //! - [`cone_groups`] — the §1 grouping structs + the [`ConeStabilityTuning`] bundle.
 //! - [`matchup`] — the 7-type matchup multipliers (E3.2).
@@ -55,7 +55,7 @@ pub use cone_groups::{
     AimMode, BraceMinHeight, ConcentrationCoeffs, ConeStabilityTuning, MuzzleHeights,
     SilhouetteTops, StabilityCurve, StabilityCurvePoint, StabilityCurves, StanceStability,
 };
-pub use economy::{MoveCost, MoveCosts, StanceChangeTu, TurnTu};
+pub use economy::{LinkTu, MoveCost, MoveCosts, StanceChangeTu, TurnTu};
 pub use firing_arc::FiringArc;
 pub use matchup::MatchupMultipliers;
 pub use severity::{

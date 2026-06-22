@@ -192,3 +192,46 @@ impl Default for MoveCosts {
         }
     }
 }
+
+/// The **per-link traversal TU cost** — the flat number of Time Units a ganger spends to
+/// cross a single vertical link (a stair / ladder hop between levels;
+/// `docs/combat/visibility.md` §48: "`move_ganger` charges the flat `link_tu` at a link
+/// hop (a crossing prices `link_tu` *instead of* terrain)").
+///
+/// One FLAT cost for every link kind — the canon prices a crossing at a single `link_tu`,
+/// NOT a per-kind table (no `stair_tu` / `ladder_tu` split; OQ-6's per-kind variant would
+/// require a docs change first). When a step is a link hop the movement verb charges THIS
+/// instead of the destination cell's [`MoveCost`] — the crossing's cost is the link's, not
+/// the terrain's. A small `u8` count, matching [`crate::ganger::Tu`]'s inner type so the
+/// economy subtracts it directly. The default is a **starting point**, tunable balance data
+/// — tests assert only the relation to this value (the drop equals it), never the magnitude.
+/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner + derived [`Deref`].
+///
+/// **Consumed later by GTW-351** (the vertical-link traversal verb) — this leaf only ADDS
+/// the tunable; no movement code reads it yet.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct LinkTu(u8);
+
+impl LinkTu {
+    /// Build a per-link traversal TU cost from its flat Time-Unit magnitude (a starting
+    /// point, TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style)
+    /// while letting tests and any programmatic tuning edit build a cost without a bare
+    /// `u8` escaping; shipped values come from the `.ron` via the derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for LinkTu {
+    fn default() -> Self {
+        // A flat 4 TU to cross one vertical link — a STARTING POINT (tunable balance data),
+        // matched to the cheapest move-cost baseline (a link hop is one "step" of effort).
+        // ONE flat cost for every link kind (no per-kind split). Value-agnostic tests only,
+        // never a pinned magnitude.
+        Self(4)
+    }
+}

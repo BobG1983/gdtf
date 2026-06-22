@@ -8,7 +8,7 @@ use crate::tuning::{
     band::ProjectileBandEdges,
     body_part::BodyPartWeights,
     cone_groups::ConeStabilityTuning,
-    economy::{MoveCosts, StanceChangeTu, TurnTu},
+    economy::{LinkTu, MoveCosts, StanceChangeTu, TurnTu},
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
     severity::SeverityScaling,
@@ -66,6 +66,14 @@ pub struct CombatTuning {
     /// flat per-cell constant; magnitudes are tunable starting points (flagged), mirroring
     /// `stance_change_tu` / `turn_tu`.
     pub move_costs:            MoveCosts,
+    /// The per-link traversal TU cost (E7 · GTW-12a) — the flat Time Units a step spends
+    /// when it is a vertical-link hop (stair / ladder) instead of a terrain step: a
+    /// crossing prices `link_tu` *instead of* the destination terrain's
+    /// [`MoveCost`](crate::tuning::MoveCost) (visibility.md §48). ONE flat cost for every
+    /// link kind (no per-kind split). Sim-authored; **consumed later by GTW-351** (the
+    /// vertical-link traversal verb) — this leaf only ADDS the tunable, no movement code
+    /// reads it yet. Tunable starting point, mirroring the other economy leaves.
+    pub link_tu:               LinkTu,
     /// The §4 body-part hit-location weights.
     pub body_part_weights:     BodyPartWeights,
     /// The §1 cone / stability / recoil / aim coefficients (E2.1) — the data
