@@ -214,6 +214,24 @@ fn settle_sprite_mapped(app: &mut App, sim: Entity) {
     }
 }
 
+/// Drive bounded `update()`s until the presenter sprite mirroring sim ganger `sim` reports the
+/// `expected` [`Visibility`] (or the bound elapses).
+///
+/// The cross-storey Visibility flip is `move_ganger_sprites` in `PresenterSystems::Draw`, so after
+/// a `Position` mutation the flip can trail the sim write by a frame under parallel `cargo dtest`
+/// contention. This bounded settle removes that flip-lag race before the Visibility is asserted —
+/// it never weakens the check: the following `assert_eq!` still fails if the value never converges,
+/// the bound only stops a transient one-frame-off read (and a never-converging value still surfaces
+/// as the assertion failing on the final read, not a hang).
+fn settle_visibility(app: &mut App, sim: Entity, expected: Visibility) {
+    for _ in 0..MAX_UPDATES {
+        if visibility_of_sim(app, Some(sim)) == Some(expected) {
+            return;
+        }
+        app.update();
+    }
+}
+
 /// C6 (b) — the loaded SHIPPED `TileRoles` resolves stair == 77 + ladder == 235 (the
 /// LOCKED system constants, user OQ-3), AND the rendered link-cell tile carries the
 /// correct atlas index: a Stair link endpoint draws 77, a Ladder link endpoint draws 235.
@@ -314,6 +332,10 @@ fn link_draw_hard_cuts_to_the_active_storey() {
     // place, never both endpoints at once).
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(Level::new(1));
     app.update();
+    // Settle the Draw-schedule re-draw for the new active level before reading (the link draw
+    // runs in `PresenterSystems::Draw` and can trail the `ActiveLevel` switch a frame under
+    // parallel contention; the assert stands).
+    settle_link_sprites(&mut app);
     assert_eq!(
         visible_link_indices(&mut app),
         vec![STAIR_INDEX],
@@ -347,6 +369,12 @@ fn ganger_visibility_flips_hidden_when_position_leaves_active_storey() {
     assert!(sim.is_some(), "the ganger sim entity must exist");
     let Some(sim) = sim else { return };
 
+    // Wait out the presenter spawn-lag: under parallel `cargo dtest` the ganger sprite + its
+    // `GangerSprites` map entry land in `PresenterSystems::Draw` and can trail the sim spawn by a
+    // frame, so settle the map before reading the Visibility (removes the spawn-lag race that left
+    // `sprite_for` -> None -> the assertion seeing None instead of Inherited; the asserts are unchanged).
+    settle_sprite_mapped(&mut app, sim);
+
     // On the active storey (level 0): Inherited.
     assert_eq!(
         visibility_of_sim(&mut app, Some(sim)),
@@ -360,6 +388,8 @@ fn ganger_visibility_flips_hidden_when_position_leaves_active_storey() {
         *pos = Position::new(l1);
     }
     app.update();
+    // Settle the Draw-schedule flip before reading (removes the flip-lag race; the assert stands).
+    settle_visibility(&mut app, sim, Visibility::Hidden);
     assert_eq!(
         visibility_of_sim(&mut app, Some(sim)),
         Some(Visibility::Hidden),
@@ -372,6 +402,8 @@ fn ganger_visibility_flips_hidden_when_position_leaves_active_storey() {
         *pos = Position::new(l0);
     }
     app.update();
+    // Settle the Draw-schedule flip before reading (removes the flip-lag race; the assert stands).
+    settle_visibility(&mut app, sim, Visibility::Inherited);
     assert_eq!(
         visibility_of_sim(&mut app, Some(sim)),
         Some(Visibility::Inherited),
