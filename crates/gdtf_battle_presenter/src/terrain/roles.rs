@@ -55,6 +55,16 @@ pub struct TileRoles {
     pub rubble:          TileIndex,
     /// A doorway / hatch tile (authored for future variety).
     pub door:            TileIndex,
+    /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Stair`-endpoint tile — a
+    /// staircase cell (atlas index `77`, a LOCKED system constant per the user OQ-3
+    /// ruling). Drawn at each stair link cell on the active storey by the GTW-359
+    /// link-cell draw.
+    pub stair:           TileIndex,
+    /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Ladder`-endpoint tile — a
+    /// ladder cell (atlas index `235`, a LOCKED system constant per the user OQ-3
+    /// ruling). Drawn at each ladder link cell on the active storey by the GTW-359
+    /// link-cell draw.
+    pub ladder:          TileIndex,
 }
 
 /// The path of the loose tile-role RON, relative to the asset source root.

@@ -77,10 +77,11 @@ pub use fx::{
     resolve_effect_roles, resolve_fx_tuning, severity_color, spawn_shot_projectiles, valence_color,
 };
 pub use ganger::{
-    CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites,
-    apply_active_level_filter, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
-    facing_frame, load_character_roles, move_ganger_sprites, reframe_ganger_sprites,
-    resolve_character_roles, spawn_ganger_sprites, update_ganger_life_state,
+    CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites, SpriteTween,
+    advance_sprite_tweens, apply_active_level_filter, despawn_killed_ganger_on_impact,
+    despawn_removed_ganger_sprites, facing_frame, load_character_roles, move_ganger_sprites,
+    reframe_ganger_sprites, resolve_character_roles, spawn_ganger_sprites,
+    update_ganger_life_state,
 };
 pub use highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request};
 pub use path_preview::{PathPreview, PathStepSprite, draw_path_preview};
@@ -94,7 +95,8 @@ pub use reachable::{
 };
 pub use terrain::{
     ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles, TileRolesHandle,
-    draw_static_battlefield, load_tile_roles, resolve_tile_roles, swap_destroyed_cover,
+    VerticalLinkSprite, draw_static_battlefield, draw_vertical_links, load_tile_roles,
+    resolve_tile_roles, swap_destroyed_cover,
 };
 pub use topdown::{
     CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,

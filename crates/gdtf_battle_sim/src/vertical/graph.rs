@@ -84,6 +84,19 @@ impl VerticalLinkGraph {
             .filter_map(|&i| self.links.get(i))
     }
 
+    /// Every validated link in the graph, in author order (each authored link
+    /// yielded once, regardless of how many directions it is indexed under).
+    ///
+    /// The whole-graph read seam — distinct from
+    /// [`links_from`](VerticalLinkGraph::links_from), which yields only the links
+    /// departing a given `origin`. The GTW-359 presenter draw iterates this to render
+    /// one stair / ladder tile per link endpoint on the active storey (it needs every
+    /// link's endpoints + kind, not the per-origin departure set). Existence only — no
+    /// reachability / cost / path (GTW-12).
+    pub fn links(&self) -> impl Iterator<Item = &VerticalLink> {
+        self.links.iter()
+    }
+
     /// The total number of validated links in the graph (each authored link
     /// counted once, regardless of how many directions it is indexed under).
     #[must_use]

@@ -53,6 +53,7 @@ mod roles;
 mod sprite_map;
 mod systems;
 mod tint;
+mod tween;
 
 #[cfg(test)]
 mod test;
@@ -66,3 +67,4 @@ pub use systems::{
     apply_active_level_filter, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
     move_ganger_sprites, reframe_ganger_sprites, spawn_ganger_sprites, update_ganger_life_state,
 };
+pub use tween::{SpriteTween, advance_sprite_tweens};

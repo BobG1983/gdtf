@@ -27,6 +27,7 @@ use bevy::{
     prelude::{Entity, Visibility, default},
     render::{RenderPlugin, settings::WgpuSettings},
     sprite::Sprite,
+    time::TimeUpdateStrategy,
     transform::components::Transform,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
@@ -393,7 +394,11 @@ fn changed_position_moves_the_same_sprite() {
     if let Ok(mut pos) = pos_q.get_mut(app.world_mut(), sim) {
         *pos = Position::new(dest);
     }
-    app.update();
+    // GTW-359 (C4): the move is now GLIDED (a re-targeting tween), not snapped — so the
+    // sprite reaches the new cell over a few frames, not in one update. Settle the glide
+    // (bounded), then assert it landed exactly on the new cell.
+    let dest_world = cell_to_world_layered(Cell::new(7, 8), Level::new(0), Layer::Actor);
+    settle_sprite_at(&mut app, sprite_before, dest_world);
 
     let drawn_after = drawn_gangers(&mut app);
     assert_eq!(
@@ -407,10 +412,11 @@ fn changed_position_moves_the_same_sprite() {
         drawn_after[0].sprite_entity, sprite_before,
         "the move reuses the SAME presenter sprite entity",
     );
-    assert_eq!(
+    assert!(
+        drawn_after[0].translation.distance(dest_world) < 1.0e-3,
+        "the sprite glided to the Actor-layer projection of the new Position (got {:?}, \
+         expected {dest_world:?})",
         drawn_after[0].translation,
-        cell_to_world_layered(Cell::new(7, 8), Level::new(0), Layer::Actor),
-        "the sprite moved to the Actor-layer projection of the new Position",
     );
     // And the map still points at that same sprite.
     let mapped_after = app
@@ -739,6 +745,33 @@ fn luminance(color: Option<bevy::color::Color>) -> f32 {
 fn sprite_color(app: &mut App, entity: Entity) -> Option<bevy::color::Color> {
     let mut q = app.world_mut().query::<&Sprite>();
     q.get(app.world(), entity).ok().map(|s| s.color)
+}
+
+/// The world translation of the presenter sprite `entity`, if it exists.
+fn sprite_translation(app: &mut App, entity: Entity) -> Option<bevy::math::Vec3> {
+    let mut q = app.world_mut().query::<&Transform>();
+    q.get(app.world(), entity).ok().map(|t| t.translation)
+}
+
+/// Drive bounded `update()`s until the presenter sprite `entity` GLIDES to within a hair
+/// of `target` (GTW-359 C4: the move is now a tween, so it settles over frames, not in one
+/// update).
+///
+/// Installs [`TimeUpdateStrategy::ManualDuration`] so each `app.update()` advances
+/// `Res<Time>` by a FIXED, generous delta (longer than the tween's own glide duration),
+/// making the settle DETERMINISTIC rather than dependent on real wall-clock deltas under
+/// parallel test load — a couple of updates land the glide exactly on `target`. The loop
+/// is bounded so a never-arriving glide surfaces as a failed assertion, not a hang.
+fn settle_sprite_at(app: &mut App, entity: Entity, target: bevy::math::Vec3) {
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(
+        std::time::Duration::from_millis(500),
+    ));
+    for _ in 0..MAX_UPDATES {
+        app.update();
+        if sprite_translation(app, entity).is_some_and(|t| t.distance(target) < 1.0e-3) {
+            return;
+        }
+    }
 }
 
 /// Set the `LifeState` of sim ganger `sim` (the real `Changed<LifeState>` trigger).

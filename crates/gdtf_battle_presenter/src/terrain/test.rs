@@ -43,6 +43,56 @@ fn shipped_tile_roles_ron_parses_with_all_roles() {
     // The door role is documented; the struct parsing means it is present.
     let _ = roles.door;
     let _ = roles.floor_alt_panel;
+    // GTW-359 (C1): the stair / ladder indices are LOCKED SYSTEM CONSTANTS (user OQ-3
+    // ruling), not tunable magnitudes the engineer eyeballs — so asserting them is the
+    // locked-constant exemption, not a brittle magnitude pin. The shipped tile_roles.ron
+    // must resolve stair == 77 and ladder == 235.
+    assert_eq!(
+        *roles.stair, 77,
+        "the shipped tile_roles.ron must resolve the LOCKED stair index 77 (user OQ-3)",
+    );
+    assert_eq!(
+        *roles.ladder, 235,
+        "the shipped tile_roles.ron must resolve the LOCKED ladder index 235 (user OQ-3)",
+    );
+}
+
+/// GTW-359 (C1) — the `TileRoles` field-set is DISCRIMINATING: a `tile_roles.ron` MISSING
+/// the new `stair` (or `ladder`) key, or RENAMING it, fails to deserialize.
+///
+/// This pins the struct's field-set 1:1 with the `.ron` keys (the round-trip above proves
+/// the shipped file parses; this proves the parse is not vacuous — dropping or renaming a
+/// required role IS rejected, so the field-set stays in lockstep with the data). It builds
+/// a complete authored body, then re-authors it MISSING the stair key (and separately with
+/// the stair key RENAMED) and asserts each fails.
+#[test]
+fn tile_roles_field_set_is_discriminating() {
+    // A complete authored body parses (the positive control).
+    const COMPLETE: &str = "(\
+        floor: 144, floor_alt_panel: 128, wall: 16, cover: 248, slab: 22, rubble: 295, \
+        door: 339, stair: 77, ladder: 235)";
+    // MISSING the `stair` key — must fail (the field is required).
+    const MISSING_STAIR: &str = "(\
+        floor: 144, floor_alt_panel: 128, wall: 16, cover: 248, slab: 22, rubble: 295, \
+        door: 339, ladder: 235)";
+    // RENAMED `stair` -> `staircase` — must fail (the field-set is fixed, no unknown key
+    // substitutes for a required one).
+    const RENAMED_STAIR: &str = "(\
+        floor: 144, floor_alt_panel: 128, wall: 16, cover: 248, slab: 22, rubble: 295, \
+        door: 339, staircase: 77, ladder: 235)";
+
+    assert!(
+        ron::de::from_str::<TileRoles>(COMPLETE).is_ok(),
+        "a complete authored TileRoles body must parse",
+    );
+    assert!(
+        ron::de::from_str::<TileRoles>(MISSING_STAIR).is_err(),
+        "a TileRoles body missing the `stair` key must fail to deserialize",
+    );
+    assert!(
+        ron::de::from_str::<TileRoles>(RENAMED_STAIR).is_err(),
+        "a TileRoles body with `stair` renamed to `staircase` must fail to deserialize",
+    );
 }
 
 /// `i32_extent` returns the grid extent unchanged for the real 60x60 grid.

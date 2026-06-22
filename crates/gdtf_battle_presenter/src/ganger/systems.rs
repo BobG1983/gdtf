@@ -17,6 +17,7 @@ use super::{
     roles::CharacterRoles,
     sprite_map::{GangerSprite, GangerSprites},
     tint::{ganger_tint, stance_aiming_tint},
+    tween::SpriteTween,
 };
 use crate::{
     ActiveLevel, CELL_PX, Layer, SheetRole, ShotImpactResolved, TopDownAtlases,
@@ -108,9 +109,14 @@ pub fn spawn_ganger_sprites(
         };
         // The Actor layer lifts the ganger by GANGER_Z_BIAS so it draws over its own
         // floor tile (GTW-283), without crossing into the next storey's band.
-        let transform =
-            Transform::from_translation(cell_to_world_layered(cell, level, Layer::Actor));
+        let spawn_world = cell_to_world_layered(cell, level, Layer::Actor);
+        let transform = Transform::from_translation(spawn_world);
         let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+        // GTW-359 (C4): seed a SETTLED movement tween at the spawn position so the move
+        // path (`move_ganger_sprites`) always finds a tween to RE-TARGET rather than
+        // special-casing the first move. A settled tween produces no motion until the
+        // first `Changed<Position>` retargets it.
+        let tween = SpriteTween::settled(spawn_world);
         // GTW-322 — authored as a `bsn!` scene. The atlas-indexed `Sprite` is NOT `Unpin`
         // (its `Option<Handle<Image>>` / `Option<TextureAtlas>` fields), so it rides
         // NEITHER `template_value` (which bounds `Unpin`) nor a `bsn!` field patch — it
@@ -132,6 +138,11 @@ pub fn spawn_ganger_sprites(
                 template_value(transform),
                 template_value(visibility),
                 template_value(layers),
+                // GTW-359 (C4): the SpriteTween (a Timer + two Vec3s) has no Default, so —
+                // like the ImpactAnimation — it rides the `template(move |_| Ok(value.clone()))`
+                // closure escape hatch (the FnTemplate output is bound by neither Unpin nor
+                // Default), not `template_value`.
+                bsn! { template(move |_| Ok(tween.clone())) },
             ))
             .insert(GangerSprite { entity })
             .id();
@@ -139,40 +150,60 @@ pub fn spawn_ganger_sprites(
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`, `.after(spawn_ganger_sprites)`): move (do NOT
-/// respawn) the presenter sprite of a ganger whose [`Position`] changed.
+/// `Update` (`PresenterSystems::Draw`, `.after(spawn_ganger_sprites)`): RE-TARGET the
+/// movement tween (do NOT respawn, do NOT snap) of a ganger whose [`Position`] changed,
+/// and flip its [`Visibility`].
 ///
 /// For every ganger whose [`Position`] is [`Changed`], look the presenter sprite up
-/// through [`GangerSprites`] and move its [`Transform`] to the new
-/// [`Layer::Actor`](crate::Layer) projection
-/// ([`cell_to_world_layered`](crate::cell_to_world_layered) — so the
-/// [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS) lift holds across moves), updating its
-/// [`Visibility`] by whether the
-/// new `(cell, level)` is on the [`ActiveLevel`]. It does NOT spawn a second sprite: it
-/// is idempotent via the map (a just-`Added` ganger handled by [`spawn_ganger_sprites`]
-/// this same update is already mapped — `.after(spawn_ganger_sprites)` guarantees the
-/// entry exists — so this only re-sets the same transform; a not-yet-mapped ganger is
-/// skipped). The contract's "idempotent via the map" move path.
+/// through [`GangerSprites`] and:
+///
+/// - GTW-359 (C4): RE-TARGET its [`SpriteTween`] — source = the sprite's CURRENT (possibly
+///   mid-glide) [`Transform`] translation, target = the new
+///   [`Layer::Actor`](crate::Layer) projection of the cell
+///   ([`cell_to_world_layered`](crate::cell_to_world_layered) — so the
+///   [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS) lift holds across moves), restarting the
+///   glide clock. The actual [`Transform`] write is the
+///   [`advance_sprite_tweens`](super::advance_sprite_tweens) glide that runs
+///   `.after` this; setting the source to the live translation means a sim that outruns
+///   the tween keeps the sprite gliding continuously toward the latest cell — it NEVER
+///   snaps and NEVER gates the sim (the sim's [`Position`] is authoritative; the tween
+///   only smooths the view). Covers planar AND cross-storey moves (the GENERAL per-step
+///   glide that subsumes GTW-361);
+/// - GTW-359 (C3, KEPT): flip its [`Visibility`] by whether the new `(cell, level)` is on
+///   the [`ActiveLevel`] — the cross-storey handoff (Hidden when the ganger leaves the
+///   active storey, Inherited when on it). The tween restructured the [`Transform`] write
+///   (now via the glide) but this hard-cut is unchanged.
+///
+/// It does NOT spawn a second sprite: it is idempotent via the map (a just-`Added` ganger
+/// handled by [`spawn_ganger_sprites`] this same update is already mapped —
+/// `.after(spawn_ganger_sprites)` guarantees the entry + its seeded [`SpriteTween`] exist
+/// — so this only re-targets the same tween; a not-yet-mapped ganger is skipped). The
+/// contract's "idempotent via the map" move path.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], [`Res<ActiveLevel>`], the
-/// moved-ganger query, and the presenter-sprite [`Transform`] / [`Visibility`] query.
+/// moved-ganger query, and the presenter-sprite [`Transform`] / [`SpriteTween`] /
+/// [`Visibility`] query.
 pub fn move_ganger_sprites(
     sprites: Res<GangerSprites>,
     active: Res<ActiveLevel>,
     moved: Query<(Entity, &Position), Changed<Position>>,
-    mut presenters: Query<(&mut Transform, &mut Visibility), With<GangerSprite>>,
+    mut presenters: Query<(&Transform, &mut SpriteTween, &mut Visibility), With<GangerSprite>>,
 ) {
     for (entity, pos) in &moved {
         let Some(presenter) = sprites.sprite_for(entity) else {
             continue;
         };
-        let Ok((mut transform, mut visibility)) = presenters.get_mut(presenter) else {
+        let Ok((transform, mut tween, mut visibility)) = presenters.get_mut(presenter) else {
             continue;
         };
         let (cell, level) = cell_and_level(pos);
         // The Actor-layer lift (GANGER_Z_BIAS) must hold across moves too, so the moved
         // ganger keeps drawing over the floor tile at its new cell (GTW-283).
-        transform.translation = cell_to_world_layered(cell, level, Layer::Actor);
+        let target = cell_to_world_layered(cell, level, Layer::Actor);
+        // RE-TARGET from the sprite's CURRENT translation (possibly mid-glide) so the
+        // glide is seamless across a rapid sequence of Changed<Position> (the sim never
+        // gated, the sprite never snapped).
+        tween.retarget(transform.translation, target);
         *visibility = if on_active_level(pos, **active) {
             Visibility::Inherited
         } else {

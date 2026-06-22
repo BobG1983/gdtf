@@ -37,8 +37,8 @@ const Z_PER_LEVEL: f32 = 1.0;
 pub const GANGER_Z_BIAS: f32 = 0.1;
 
 /// A presenter draw layer within a single storey — the ONE place the
-/// terrain &lt; actor &lt; highlight &lt; path-preview &lt; reachable-overlay stacking order
-/// lives.
+/// terrain &lt; vertical-link &lt; actor &lt; highlight &lt; path-preview &lt; reachable-overlay
+/// stacking order lives.
 ///
 /// A domain value (a real named type, not a bare z magnitude), per
 /// `.claude/rules/no-bare-types.md`. Each layer's [`z_bias`](Layer::z_bias) is added on
@@ -58,6 +58,12 @@ pub const GANGER_Z_BIAS: f32 = 0.1;
 pub enum Layer {
     /// Floor / wall / cover terrain — the ground plane, drawn at the bare per-storey z.
     Terrain,
+    /// A GTW-359 vertical-link (stair / ladder) endpoint tile — drawn just ABOVE the
+    /// terrain ground plane (so the stair / ladder reads over its own floor tile) but
+    /// strictly BELOW the [`Actor`](Layer::Actor) band so a ganger standing on the link
+    /// cell draws over it. Strictly `< GANGER_Z_BIAS < Z_PER_LEVEL`, so it never sorts
+    /// into the actor band or the next storey's band.
+    VerticalLink,
     /// A ganger (actor) — drawn just in front of its own terrain by [`GANGER_Z_BIAS`].
     Actor,
     /// The hover / selection highlight — drawn in front of the actor so it tints the unit
@@ -79,13 +85,16 @@ pub enum Layer {
 impl Layer {
     /// This layer's within-storey draw-z bias, added on top of the per-storey level z.
     ///
-    /// Strictly increasing terrain &lt; actor &lt; highlight &lt; path-preview &lt;
-    /// reachable-overlay, and every value is strictly `< Z_PER_LEVEL` so a biased sprite
-    /// never sorts into the next storey's band.
+    /// Strictly increasing terrain &lt; vertical-link &lt; actor &lt; highlight &lt;
+    /// path-preview &lt; reachable-overlay, and every value is strictly `< Z_PER_LEVEL` so a
+    /// biased sprite never sorts into the next storey's band.
     #[must_use]
     const fn z_bias(self) -> f32 {
         match self {
             Self::Terrain => 0.0,
+            // Above the terrain ground plane, strictly below the actor band so a ganger
+            // standing on the stair / ladder draws over it (`0.05 < GANGER_Z_BIAS`).
+            Self::VerticalLink => GANGER_Z_BIAS * 0.5,
             Self::Actor => GANGER_Z_BIAS,
             // Strictly above the actor, still within the storey band (`< Z_PER_LEVEL`).
             Self::Highlight => GANGER_Z_BIAS * 2.0,

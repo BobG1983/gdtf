@@ -14,4 +14,6 @@
     slab:            22,    // SurfaceGrid Present slab — raised light-grey elevated deck panel
     rubble:          295,   // CoverDestroyed / damaged — sparse broken-debris scatter
     door:            339,   // doorway / hatch panel — dark hatch tile (authored for future variety)
+    stair:           77,    // VerticalLink Stair endpoint — staircase tile (LOCKED system constant, user OQ-3 ruling GTW-359)
+    ladder:          235,   // VerticalLink Ladder endpoint — ladder tile (LOCKED system constant, user OQ-3 ruling GTW-359)
 )

@@ -5,7 +5,7 @@ use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
-    OccupancyGrid, PlayerFaction, ShotFired, SquadVisibility, SurfaceGrid,
+    OccupancyGrid, PlayerFaction, ShotFired, SquadVisibility, SurfaceGrid, VerticalLinkGraph,
     occupancy_sync::SimSystems,
 };
 
@@ -14,17 +14,17 @@ use crate::{
     FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
     PanTuning, PanTuningHandle, PathPreview, PresenterSystems, ReachableOverlay,
     ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases,
-    advance_projectiles, animate_floating_text, animate_impact, apply_active_level_filter,
-    clamp_camera_to_bounds, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
-    draw_highlight_on_request, draw_path_preview, draw_reachable_labels, draw_reachable_overlay,
-    draw_static_battlefield, expire_flashes, frame_camera_on_units, load_character_roles,
-    load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
-    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
-    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
-    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
-    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
-    update_ganger_life_state,
+    advance_projectiles, advance_sprite_tweens, animate_floating_text, animate_impact,
+    apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
+    despawn_removed_ganger_sprites, draw_highlight_on_request, draw_path_preview,
+    draw_reachable_labels, draw_reachable_overlay, draw_static_battlefield, draw_vertical_links,
+    expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
+    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
+    pan_camera_on_gamepad_cursor_edge, present_fog, read_armor_broken, read_bleeding,
+    read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
+    redrive_pan_tuning_on_asset_event, reframe_ganger_sprites, resolve_character_roles,
+    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
+    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -201,6 +201,25 @@ impl Plugin for TopDownRendererPlugin {
                 swap_destroyed_cover.in_set(PresenterSystems::Draw).run_if(
                     resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>),
                 ),
+            )
+            // GTW-359 (AC4 / C2): the vertical-link (stair / ladder) cell draw. It reads the
+            // sim's `VerticalLinkGraph` + the presenter's `TileRoles` / `TopDownAtlases` and
+            // draws one stair (index 77) / ladder (index 235) tile per authored link endpoint
+            // on the active storey (the hard cut), pooled + mutated in place (C5). Gated on
+            // `BattleInProgress` (the live-battle witness) AND on every resource it reads:
+            // `VerticalLinkGraph` (inserted by the sim's setup_battle, absent in a focused
+            // harness that opens BattleInProgress directly), `TileRoles`, and `TopDownAtlases`
+            // (a `MinimalPlugins` headless app with no `AssetServer` never loads the latter two)
+            // — so a no-resource state simply does not draw rather than panicking param
+            // validation (`bevy-traps.md` #1).
+            .add_systems(
+                Update,
+                draw_vertical_links.in_set(PresenterSystems::Draw).run_if(
+                    resource_exists::<BattleInProgress>
+                        .and_then(resource_exists::<VerticalLinkGraph>)
+                        .and_then(resource_exists::<TileRoles>)
+                        .and_then(resource_exists::<TopDownAtlases>),
+                ),
             );
 
         // GTW-219 (S5): the ganger-draw change-detection systems join the SAME
@@ -247,6 +266,21 @@ impl Plugin for TopDownRendererPlugin {
             Update,
             despawn_removed_ganger_sprites
                 .in_set(PresenterSystems::Draw)
+                .run_if(resource_exists::<BattleInProgress>),
+        )
+        // GTW-359 (AC3 / C4): the general sprite-movement glide. It ticks each ganger
+        // sprite's `SpriteTween` (re-targeted by `move_ganger_sprites`) and writes the
+        // interpolated `Transform.translation` IN PLACE — so a move is GLIDED, never
+        // snapped. Ordered `.after(move_ganger_sprites)` so a same-frame re-target glides
+        // this frame. Like `despawn_removed_ganger_sprites` it needs no render resource
+        // (only `Res<Time>` + the `(Transform, SpriteTween)` query) and is inert with no
+        // tweened sprites, so it is gated on the battle witness alone — an in-flight glide
+        // still completes regardless of the table / atlas being present.
+        .add_systems(
+            Update,
+            advance_sprite_tweens
+                .in_set(PresenterSystems::Draw)
+                .after(move_ganger_sprites)
                 .run_if(resource_exists::<BattleInProgress>),
         )
         // GTW-331: the SHOT-KILL death-despawn. It drains the shared GTW-328
