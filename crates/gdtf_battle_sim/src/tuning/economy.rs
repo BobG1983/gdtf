@@ -89,7 +89,7 @@ impl Default for TurnTu {
 /// step ONTO a cell of a given [`TerrainKind`] (`docs/combat/combat.md` L34
 /// affirmatively lists "step" among the actions that "cost TUs").
 ///
-/// The per-terrain cost the E4 movement verb ([`crate::move_acts::move_ganger`])
+/// The per-terrain cost the movement walk ([`crate::move_acts::advance_walk`])
 /// charges via [`crate::tu::spend_tu`] when a step lands on a cell — the move cost is
 /// **terrain-determined** (the floor tile crossed determines the cost), so this is the
 /// cost looked up from the destination cell's terrain via [`MoveCosts::cost`], NOT a flat
@@ -124,8 +124,8 @@ impl MoveCost {
 /// cell's [`TerrainKind`] (the data-driven, terrain-determined step cost,
 /// `docs/combat/combat.md` L34: "step" costs TUs).
 ///
-/// The single lookup choke point the E4 movement verb
-/// ([`crate::move_acts::move_ganger`]) reads: it asks
+/// The single lookup choke point the movement walk
+/// ([`crate::move_acts::advance_walk`]) reads: it asks
 /// [`OccupancyGrid::terrain`](crate::occupancy::OccupancyGrid::terrain) for the
 /// destination's [`TerrainKind`] and looks the cost up here via [`MoveCosts::cost`]. One
 /// [`MoveCost`] field per [`TerrainKind`] variant (the [`WoundCosts`](crate::tuning::WoundCosts)

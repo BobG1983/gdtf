@@ -215,9 +215,11 @@ impl ExecuteDownedRequested {
 /// lifetime parameter** — mirroring [`SetFacingRequested`] / [`SetStanceRequested`]. The
 /// actor is a Bevy [`Entity`] handle — framework plumbing, the only bare type the
 /// no-bare-types rule permits in a payload; `dest` is the landed [`CellLevel`] newtype.
-/// [`dispatch_move`](super::movement::dispatch_move) drains this and runs the landed
-/// [`move_ganger`](crate::move_acts::move_ganger) verb once per message, whose TU cost is
-/// the DESTINATION cell's terrain movement cost.
+/// [`dispatch_move`](super::movement::dispatch_move) drains this and, per message, plans a
+/// reachable affordable route and attaches a
+/// [`WalkInProgress`](crate::move_acts::WalkInProgress) the landed
+/// [`advance_walk`](crate::move_acts::advance_walk) walk drives, each step's TU cost being
+/// the entered cell's terrain movement cost.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MoveRequested {
     /// The acting ganger to step.

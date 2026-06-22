@@ -58,8 +58,8 @@ pub struct CombatTuning {
     /// [`crate::tu::spend_tu`] when a ganger's facing actually changes (combat.md
     /// L34 "turn" costs TUs; magnitude is tunable, mirroring `stance_change_tu`).
     pub turn_tu:               TurnTu,
-    /// The per-terrain move-cost table (E4 movement) — the flat Time Units
-    /// [`crate::move_acts::move_ganger`] spends via [`crate::tu::spend_tu`] to step onto
+    /// The per-terrain move-cost table (movement) — the flat Time Units
+    /// [`crate::move_acts::advance_walk`] spends via [`crate::tu::spend_tu`] to step onto
     /// a destination cell, keyed by that cell's
     /// [`TerrainKind`](crate::occupancy::TerrainKind) (the floor tile crossed determines
     /// the cost; combat.md L34 "step" costs TUs). Terrain-determined, NOT a

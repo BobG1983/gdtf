@@ -50,14 +50,14 @@
 //!   and [`posture::set_facing`] (charges [`tuning::TurnTu`] on a real turn). Each
 //!   costed verb is a no-op — no charge — when the value is unchanged. Pure math, no
 //!   `World` access.
-//! - [`move_acts`] — the GTW-234 movement verb [`move_acts::move_ganger`]: steps a ganger
-//!   one cell to a destination `(cell, level)`, charging a TERRAIN-DETERMINED TU cost (the
-//!   destination cell's [`occupancy::TerrainKind`] movement cost from the per-terrain
-//!   [`tuning::MoveCosts`] table, NOT a flat constant). Gated by liveness + in-bounds +
-//!   not-blocked + unoccupied + affordable; any gate failure is a TOTAL no-op (returns
-//!   [`move_acts::MoveOutcome::Blocked`]). It writes ONLY [`ganger::Position`] — the grid
-//!   slot maintenance is the landed [`occupancy_sync::sync_moved_gangers`]
-//!   `Changed<Position>` reactor. Pure math, no `World` access.
+//! - [`move_acts`] — the GTW-355 committed walk [`move_acts::advance_walk`]: drives an
+//!   accepted route ONE cell per tick, charging each entered cell its TERRAIN-DETERMINED
+//!   TU cost (the cell's [`occupancy::TerrainKind`] movement cost from the per-terrain
+//!   [`tuning::MoveCosts`] table, NOT a flat constant) atomically with the step. The route
+//!   is planned + gated affordable up front by `dispatch_move`; each step bump-stops on
+//!   live obstacles and halts on a reveal / reaction interrupt. It writes ONLY
+//!   [`ganger::Position`] — the grid slot maintenance is the landed
+//!   [`occupancy_sync::sync_moved_gangers`] `Changed<Position>` reactor.
 //! - [`magazine`] — the ammo state + the shared firing guard: the
 //!   [`magazine::Magazine`] GROUPING Component (GTW-275 — the [`weapon::MagazineSize`]
 //!   capacity, the per-weapon [`magazine::ReloadTu`] reload cost, and the
@@ -311,7 +311,7 @@ pub use magazine::{
 pub use march::{MarchKind, MarchResult, march_vector};
 pub use matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier};
 pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
-pub use move_acts::{MoveOutcome, ReactionShotFired, WalkInProgress, advance_walk, move_ganger};
+pub use move_acts::{ReactionShotFired, WalkInProgress, advance_walk};
 pub use occupancy::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
     OccupantPlacement, TerrainKind, TerrainPlacement, pathable_neighbors,

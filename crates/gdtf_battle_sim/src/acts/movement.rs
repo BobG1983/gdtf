@@ -1,15 +1,14 @@
 //! The **move** dispatch — the SINGLE writer that, on each buffered [`MoveRequested`]
-//! commit, plans a reachable affordable route and (only then) runs the landed
-//! [`move_ganger`] verb (E7 · GTW-12f / GTW-354; the original any-cell dispatch was E4 /
-//! GTW-234).
+//! commit, plans a reachable affordable route and (only then) starts the committed walk
+//! (E7 · GTW-12f / GTW-354 / GTW-355; the original any-cell dispatch was E4 / GTW-234).
 //!
 //! ## What this slice adds (GTW-354)
 //!
-//! Before GTW-354 the dispatch let [`move_ganger`] step to ANY single empty in-bounds
-//! cell — an any-empty-cell teleport (the destination need not be adjacent or reachable).
-//! GTW-354 makes [`dispatch_move`] the single CONSTRAINED writer: on each
-//! [`MoveRequested`] (the COMMIT — see below) it runs [`find_path`] from the mover's cell
-//! to the requested [`CellLevel`] through the GTW-353 visibility-gated
+//! Before GTW-354 the dispatch let the original single-step `move_ganger` verb jump to ANY
+//! single empty in-bounds cell — an any-empty-cell teleport (the destination need not be
+//! adjacent or reachable). GTW-354 makes [`dispatch_move`] the single CONSTRAINED writer:
+//! on each [`MoveRequested`] (the COMMIT — see below) it runs [`find_path`] from the
+//! mover's cell to the requested [`CellLevel`] through the GTW-353 visibility-gated
 //! [`PlanningView`] and:
 //!
 //! - **REJECTS** the move (a TYPED [`MoveRejected`], NO step) when no route exists
@@ -19,11 +18,12 @@
 //!   [`Path::total`], rejecting (TYPED [`MoveRejected`], NO step) when the mover cannot
 //!   afford the whole route.
 //!
-//! Only when a route exists AND is affordable does it run the EXISTING accept: the landed
-//! [`move_ganger`] verb (its own gates + the DESTINATION-terrain per-step charge hold
-//! verbatim) plus the [`MovementOccurred`] log signal. No act logic is reimplemented and
-//! the per-step charge is UNTOUCHED (the stepped / interruptible walk is GTW-355; the
-//! up-front gate here is a CHECK against the planned total, NOT a second charge).
+//! Only when a route exists AND is affordable does it accept: per GTW-355 it attaches a
+//! [`WalkInProgress`] holding the planned route ahead (each cell's DESTINATION-terrain
+//! per-step charge held verbatim), which [`advance_walk`](crate::move_acts::advance_walk)
+//! then walks ONE cell per tick, plus the [`MovementOccurred`] log signal. No act logic is
+//! reimplemented and the per-step charge is UNTOUCHED; the up-front gate here is a CHECK
+//! against the planned total, NOT a second charge.
 //!
 //! ## Commit semantics (C2 — cross-ticket boundary)
 //!

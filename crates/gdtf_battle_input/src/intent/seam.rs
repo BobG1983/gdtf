@@ -71,7 +71,7 @@ pub enum ActIntent {
     /// unified left-click surface pushes this when the MOVE branch wins (a player-faction
     /// selection + an empty, in-bounds, unblocked hovered cell); the drain emits the
     /// payload verbatim onto the move writer (the destination's terrain TU cost is the
-    /// sim's [`move_ganger`](gdtf_battle_sim::move_ganger), not this layer's).
+    /// sim's `dispatch_move` / committed-walk concern, not this layer's).
     Move(MoveRequested),
     /// TURN the carried request — drained 1:1 to a [`SetFacingRequested`] (GTW-238). The
     /// right-click turn-to-face surface pushes this with the
@@ -216,7 +216,7 @@ pub struct ActWriters<'w> {
 /// - [`ActIntent::Fire`] emits the carried [`FireRequested`] verbatim — the `can_fire`
 ///   guard already ran at the WRITE site.
 /// - [`ActIntent::Move`] emits the carried [`MoveRequested`] verbatim onto the move
-///   writer (GTW-238) — the destination's terrain TU cost is the sim's `move_ganger`.
+///   writer (GTW-238) — the destination's terrain TU cost is the sim's move dispatch.
 /// - [`ActIntent::Turn`] emits the carried [`SetFacingRequested`] verbatim onto the SAME
 ///   facing writer the [`FacingCycle`](ActIntent::FacingCycle) arm uses (GTW-238) — the
 ///   per-45deg-step turn TU cost is the sim's facing dispatch.
