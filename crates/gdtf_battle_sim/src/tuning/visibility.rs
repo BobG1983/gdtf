@@ -48,18 +48,25 @@ impl Default for ViewRange {
     }
 }
 
-/// The **explored dim** — the modulate factor applied to EXPLORED terrain: the
-/// rendered geometry's RGB is multiplied by this, **alpha untouched**
-/// (`docs/combat/visibility.md` §"Tunables"). Dark enough to read "memory, not live
-/// sight", bright enough to navigate by — a value in `0..=1`.
+/// The **explored dim** — historically the modulate factor applied to EXPLORED terrain
+/// (the rendered RGB × this, alpha untouched). A dimensionless value in `0..=1`.
 ///
-/// Sim-authored here, but **consumed by the presenter** fog writer (GTW-342): the
-/// model owns the VISIBLE / EXPLORED / UNSEEN sets, the presenter modulates the live
-/// rendered geometry by this factor on EXPLORED cells (memory shows live terrain
-/// dimmed, never a snapshot). A distinct domain concept ⇒ its own newtype: a
-/// dimensionless RGB modulate factor, never a bare `f32`. Private inner + derived
-/// [`Deref`]; `#[serde(transparent)]`. **Tunable** balance data — tests assert only
-/// its range / parse, never the magnitude.
+/// **DEPRECATED / UNUSED by the renderer as of GTW-348.** The user changed the EXPLORED
+/// treatment from "dimmer, same colour" to "same brightness, GREYSCALE" — colour-loss is
+/// the memory cue, not brightness-loss (`docs/combat/visibility.md` §"Tunables"). The
+/// presenter fog writer (GTW-342) no longer reads this factor: EXPLORED terrain renders at
+/// full luminance, desaturated to greyscale, via the presenter's `TerrainFogMaterial`
+/// `saturation` knob (`0.0` on EXPLORED), with no brightness scaling.
+///
+/// It is RETAINED (not removed) because GTW-348 is presenter-only — pruning it from
+/// [`CombatTuning`](crate::CombatTuning), the shipped `tuning.ron`, and the sim parse /
+/// default tests would ripple into the model and outside that scope. It stays a valid,
+/// parseable tuning leaf so the model/RON contract is unbroken; a future ticket may either
+/// repurpose it (e.g. a greyscale-floor offset) or retire it.
+///
+/// A distinct domain concept ⇒ its own newtype: a dimensionless RGB modulate factor, never
+/// a bare `f32`. Private inner + derived [`Deref`]; `#[serde(transparent)]`. **Tunable**
+/// balance data — tests assert only its range / parse, never the magnitude.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct ExploredDim(f32);

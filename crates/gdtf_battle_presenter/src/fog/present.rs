@@ -1,50 +1,35 @@
-//! The [`present_fog`] writer system: the public seam that modulates the rendered
-//! terrain layer and hard-cuts actor sprites from the sim's
+//! The [`present_fog`] writer system: the public seam that desaturates the rendered
+//! terrain layer (GTW-348) and hard-cuts actor sprites from the sim's
 //! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility).
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    CellLevel, CombatTuning, Faction, FactionRelation, Level, LifeState, PlayerFaction, Position,
+    CellLevel, Faction, FactionRelation, Level, LifeState, PlayerFaction, Position,
     SquadVisibility, is_ganger_visible,
 };
 
-use crate::{GangerSprite, GangerSprites, TerrainSprite};
+use crate::{GangerSprite, GangerSprites, TerrainFogMaterial, TerrainSprite};
 
-/// Build the identity terrain modulate — full colour, the atlas tile's own pixels read
-/// through unchanged.
-///
-/// A VISIBLE cell renders at full colour, so its [`TerrainSprite`] is modulated by white
-/// (the multiplicative identity for a sprite tint). [`Color`] is framework plumbing; this
-/// is the CHOICE the fog applies on a squad-VISIBLE cell.
-pub(super) const fn visible_modulate() -> Color {
-    Color::WHITE
-}
+/// The [`TerrainFogMaterial`] saturation for a squad-VISIBLE cell — full colour (the atlas
+/// tile's own pixels read through unchanged).
+const VISIBLE_SATURATION: f32 = 1.0;
 
-/// Build the EXPLORED terrain modulate — the identity colour's RGB scaled by `dim`, with
-/// the alpha left at full.
-///
-/// An EXPLORED (seen-before, not-now) cell renders DIMMED: its RGB is multiplied by
-/// `explored_dim` while alpha is untouched (`docs/combat/visibility.md` §"Tunables" — "RGB
-/// × this, alpha untouched"). Derived from the [`visible_modulate`] identity each run so
-/// the dim never compounds across updates. `dim` is the dimensionless
-/// [`ExploredDim`](gdtf_battle_sim::CombatTuning) factor read from tuning, never a
-/// presenter literal.
-pub(super) fn explored_modulate(dim: f32) -> Color {
-    // Scale the identity white's RGB by the tunable dim; keep alpha at the identity's
-    // full opacity (the "alpha untouched" rule).
-    let base = visible_modulate().to_srgba();
-    Color::srgb(base.red * dim, base.green * dim, base.blue * dim)
-}
+/// The [`TerrainFogMaterial`] saturation for a squad-EXPLORED cell — full GREYSCALE
+/// (GTW-348: EXPLORED renders at the SAME brightness but with its colour removed, so
+/// colour-loss is the memory cue, not brightness-loss). `0.0` mixes the tile fully toward
+/// its BT.709 luminance in the shader.
+const EXPLORED_SATURATION: f32 = 0.0;
 
-/// The fog treatment a `(cell, level)` resolves to, for a sprite the fog modulates.
+/// The fog treatment a `(cell, level)` resolves to, for a terrain tile the fog modulates.
 ///
 /// A named view-domain decision (no bare tuple / option): the three states map to the
-/// three rendered treatments. UNSEEN hides the sprite; the other two show it with a
-/// modulate colour.
+/// three rendered treatments. UNSEEN hides the tile; the other two show it at a
+/// [`TerrainFogMaterial`] saturation (VISIBLE full colour, EXPLORED full greyscale).
 pub(super) enum CellFog {
-    /// Squad-VISIBLE — shown at full identity colour.
+    /// Squad-VISIBLE — shown at full colour ([`VISIBLE_SATURATION`]).
     Visible,
-    /// Squad-EXPLORED (not VISIBLE) — shown dimmed by `explored_dim`.
+    /// Squad-EXPLORED (not VISIBLE) — shown at full-brightness greyscale
+    /// ([`EXPLORED_SATURATION`]).
     Explored,
     /// UNSEEN — hidden (the dark clear colour reads through).
     Unseen,
@@ -74,16 +59,15 @@ impl CellFog {
 /// the pure seams and MODULATES the already-drawn layer in place — it never owns fog and
 /// never repaints from a snapshot (the rendered layer IS the fog mask).
 ///
-/// # Terrain (per-cell modulate)
+/// # Terrain (per-cell desaturate)
 ///
-/// For every [`TerrainSprite`] on the active level it sets the sprite's
-/// [`Sprite::color`] + [`Visibility`] by the fog state of the marker's
-/// [`CellLevel`](gdtf_battle_sim::CellLevel) key: VISIBLE → full identity
-/// ([`Color::WHITE`], shown); EXPLORED → RGB × `explored_dim` (read off
-/// [`CombatTuning`], alpha untouched, shown); UNSEEN →
-/// [`Visibility::Hidden`]. The colour is always re-derived from the identity base so the
-/// EXPLORED dim never compounds, and it MUTATES the existing sprite — never despawn +
-/// respawn (the UI-mutate-not-respawn convention).
+/// For every [`TerrainSprite`] on the active level it sets the tile's
+/// [`TerrainFogMaterial`] `saturation` + [`Visibility`] by the fog state of the marker's
+/// [`CellLevel`](gdtf_battle_sim::CellLevel) key: VISIBLE → full colour (`saturation` 1.0,
+/// shown); EXPLORED → FULL-brightness GREYSCALE (`saturation` 0.0 — colour-loss as the
+/// memory cue, GTW-348, shown); UNSEEN → [`Visibility::Hidden`]. It MUTATES the existing
+/// material in place via [`Assets::get_mut`](bevy::asset::Assets::get_mut) (which re-uploads
+/// the uniform next frame) — never despawn + respawn (the UI-mutate-not-respawn convention).
 ///
 /// # Actors (per-entity hard-cut)
 ///
@@ -99,28 +83,33 @@ impl CellFog {
 /// flag.
 ///
 /// Param-only (`bevy-traps.md` #7): the read [`Res`]ources
-/// ([`SquadVisibility`] / [`CombatTuning`] / the optional [`PlayerFaction`] /
-/// [`GangerSprites`] map), the [`TerrainSprite`] modulate query, the sim-ganger
-/// [`Position`] / [`Faction`] / [`LifeState`] query, and the actor-sprite
+/// ([`SquadVisibility`] / the optional [`PlayerFaction`] / [`GangerSprites`] map /
+/// [`ActiveLevel`](crate::ActiveLevel)), the terrain materials store
+/// ([`ResMut<Assets<TerrainFogMaterial>>`] — GTW-348, the terrain arm drives each tile's
+/// saturation in place), the [`TerrainSprite`] / [`MeshMaterial2d`] terrain query, the
+/// sim-ganger [`Position`] / [`Faction`] / [`LifeState`] query, and the actor-sprite
 /// [`Visibility`] query. It takes no [`Commands`] — every change is an in-place mutate.
 #[expect(
     clippy::too_many_arguments,
-    reason = "the genuine read params (four resources) plus the three disjoint queries \
-              the fog writer needs; grouping into a SystemParam bundle would not reduce \
-              the count and would obscure the per-arg docs"
+    reason = "the genuine read params (the resources + the materials store) plus the three \
+              disjoint queries the fog writer needs; grouping into a SystemParam bundle would \
+              not reduce the count and would obscure the per-arg docs"
 )]
 pub fn present_fog(
     squad: Res<SquadVisibility>,
-    tuning: Res<CombatTuning>,
     player: Option<Res<PlayerFaction>>,
     sprites: Res<GangerSprites>,
     active: Res<crate::ActiveLevel>,
-    mut terrain: Query<(&TerrainSprite, &mut Sprite, &mut Visibility)>,
+    mut materials: ResMut<Assets<TerrainFogMaterial>>,
+    terrain: Query<(
+        &TerrainSprite,
+        &MeshMaterial2d<TerrainFogMaterial>,
+        &mut Visibility,
+    )>,
     gangers: Query<(Entity, &Position, &Faction, &LifeState)>,
     mut actors: Query<&mut Visibility, (With<GangerSprite>, Without<TerrainSprite>)>,
 ) {
-    let dim = *tuning.explored_dim;
-    present_terrain_fog(&squad, dim, &mut terrain);
+    present_terrain_fog(&squad, &mut materials, terrain);
     present_actor_fog(
         &squad,
         player.as_deref().copied(),
@@ -131,25 +120,37 @@ pub fn present_fog(
     );
 }
 
-/// Modulate every active-level [`TerrainSprite`] by its cell's fog state (the terrain arm
-/// of [`present_fog`]).
+/// Desaturate every active-level terrain tile by its cell's fog state (the terrain arm of
+/// [`present_fog`]).
 ///
-/// Re-derives the colour from the identity base each run (no compounding) and mutates the
-/// sprite in place. UNSEEN hides via [`Visibility::Hidden`]; the two shown states restore
-/// [`Visibility::Inherited`] (so a cell that re-enters sight from UNSEEN shows again).
+/// Drives each tile's [`TerrainFogMaterial`] `saturation` in place via
+/// [`Assets::get_mut`](bevy::asset::Assets::get_mut): VISIBLE → full colour, EXPLORED →
+/// full-brightness greyscale (GTW-348). UNSEEN hides via [`Visibility::Hidden`]; the two
+/// shown states restore [`Visibility::Inherited`] (so a cell that re-enters sight from
+/// UNSEEN shows again). Setting the value unconditionally each run (not only on change)
+/// keeps the tile consistent after a saturation flip with no compounding — the material is
+/// the single source, never a stacked modulate.
 fn present_terrain_fog(
     squad: &SquadVisibility,
-    dim: f32,
-    terrain: &mut Query<(&TerrainSprite, &mut Sprite, &mut Visibility)>,
+    materials: &mut Assets<TerrainFogMaterial>,
+    mut terrain: Query<(
+        &TerrainSprite,
+        &MeshMaterial2d<TerrainFogMaterial>,
+        &mut Visibility,
+    )>,
 ) {
-    for (marker, mut sprite, mut visibility) in terrain {
+    for (marker, mat_handle, mut visibility) in &mut terrain {
         match CellFog::resolve(squad, &marker.at) {
             CellFog::Visible => {
-                sprite.color = visible_modulate();
+                if let Some(mut material) = materials.get_mut(mat_handle.id()) {
+                    material.saturation = VISIBLE_SATURATION;
+                }
                 *visibility = Visibility::Inherited;
             }
             CellFog::Explored => {
-                sprite.color = explored_modulate(dim);
+                if let Some(mut material) = materials.get_mut(mat_handle.id()) {
+                    material.saturation = EXPLORED_SATURATION;
+                }
                 *visibility = Visibility::Inherited;
             }
             CellFog::Unseen => {

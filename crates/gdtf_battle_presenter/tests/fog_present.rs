@@ -1,8 +1,14 @@
-//! GTW-342 (GTW-48 leaf 6 / the ONLY VIEW leaf of GTW-13): headless draw-LOGIC tests
-//! for the presenter FOG WRITER — the three-state terrain treatment (VISIBLE full /
-//! EXPLORED dimmed / UNSEEN hidden), the enemy hard-cut + player always-shown actor
-//! flags, and the CRITICAL post-level-cycle re-apply (proving the fog runs `.after`
-//! `draw_static_battlefield` + `swap_destroyed_cover`).
+//! GTW-342 / GTW-348: headless draw-LOGIC tests for the presenter FOG WRITER — the
+//! three-state terrain treatment (VISIBLE full colour `saturation` 1.0 / EXPLORED
+//! full-brightness GREYSCALE `saturation` 0.0 / UNSEEN hidden), the enemy hard-cut +
+//! player always-shown actor flags, and the CRITICAL post-level-cycle re-apply (proving
+//! the fog runs `.after` `draw_static_battlefield` + `swap_destroyed_cover`).
+//!
+//! GTW-348 moved terrain from the `Sprite` path to a `Mesh2d` +
+//! `MeshMaterial2d<TerrainFogMaterial>` so EXPLORED can render DESATURATED (the sprite
+//! pipeline's multiply tint cannot desaturate). So the terrain assertions read each tile's
+//! `TerrainFogMaterial.saturation` (from `Assets<TerrainFogMaterial>`) + `Visibility`,
+//! NOT `Sprite.color`.
 //!
 //! These prove the WRITER LOGIC headless; "the fog horizon + enemy pop-in actually
 //! render" is the in-engine QA evidence (the green suite + gate are blind to it — a
@@ -21,17 +27,17 @@ use std::path::PathBuf;
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup, Update},
-    asset::AssetPlugin,
+    asset::{AssetPlugin, Assets},
     ecs::{error::warn, message::Messages},
     platform::collections::HashSet,
-    prelude::{Entity, Visibility, default},
+    prelude::{Entity, MeshMaterial2d, Visibility, default},
     render::{RenderPlugin, settings::WgpuSettings},
-    sprite::Sprite,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    ActiveLevel, GangerSprites, TerrainSprite, TopDownAtlases, TopDownRendererPlugin,
+    ActiveLevel, GangerSprites, TerrainFogMaterial, TerrainSprite, TopDownAtlases,
+    TopDownRendererPlugin,
 };
 use gdtf_battle_sim::{
     Aiming, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger, Direction, Facing, Faction,
@@ -101,8 +107,10 @@ fn headless_renderer_app() -> App {
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(test_weapon_registry());
     app.insert_resource(test_armor_registry());
-    // The fog writer reads CombatTuning for explored_dim (a Load-state resource the focused
-    // setup path does NOT insert); author the Default (the shipped 0.55 dim flows through).
+    // The dense-FOV helper (dense_visible_from_observer -> union_fov) reads CombatTuning for
+    // view_range (a Load-state resource the focused setup path does NOT insert); author the
+    // Default. GTW-348: the fog WRITER itself no longer reads CombatTuning (EXPLORED is
+    // greyscale, not dimmed), so this is only for the union_fov helper.
     app.insert_resource(CombatTuning::default());
     app.set_error_handler(warn);
     app
@@ -153,14 +161,25 @@ fn set_fog(app: &mut App, visible: &[CellLevel], explored: &[CellLevel]) {
         .insert_resource(SquadVisibility::new(visible, explored_set));
 }
 
-/// The (`Sprite.color`, `Visibility`) of the one `TerrainSprite` at `key`.
-fn terrain_at(app: &mut App, key: CellLevel) -> Option<(bevy::prelude::Color, Visibility)> {
-    let mut q = app
-        .world_mut()
-        .query::<(&TerrainSprite, &Sprite, &Visibility)>();
-    q.iter(app.world())
+/// The (`TerrainFogMaterial.saturation`, `Visibility`) of the one `TerrainSprite` at `key`
+/// (GTW-348 — terrain renders through a material, so the fog is read off `saturation`, not
+/// `Sprite.color`).
+fn terrain_at(app: &mut App, key: CellLevel) -> Option<(f32, Visibility)> {
+    let mut q = app.world_mut().query::<(
+        &TerrainSprite,
+        &MeshMaterial2d<TerrainFogMaterial>,
+        &Visibility,
+    )>();
+    let (handle, vis) = q
+        .iter(app.world())
         .find(|(t, ..)| t.at == key)
-        .map(|(_, sprite, vis)| (sprite.color, *vis))
+        .map(|(_, mat, vis)| (mat.id(), *vis))?;
+    let saturation = app
+        .world()
+        .get_resource::<Assets<TerrainFogMaterial>>()?
+        .get(handle)?
+        .saturation;
+    Some((saturation, vis))
 }
 
 /// The sim entity occupying `at` (the setup spawns one ganger per authored cell).
@@ -211,9 +230,14 @@ fn settle_actor(app: &mut App, sim: Option<Entity>) -> bool {
     actor_visibility(app, sim).is_some()
 }
 
-/// AC — terrain three-state: a squad-VISIBLE cell renders at full identity colour; an
-/// EXPLORED-but-not-visible cell renders dimmed by `explored_dim` (RGB scaled, alpha
-/// intact); an UNSEEN cell does not render its terrain (`Visibility::Hidden`).
+/// AC (GTW-348) — terrain three-state: a squad-VISIBLE cell renders at full colour
+/// (`TerrainFogMaterial.saturation == 1.0`); an EXPLORED-but-not-visible cell renders
+/// full-brightness GREYSCALE (`saturation == 0.0` — colour-loss, not brightness-loss, as
+/// the memory cue); an UNSEEN cell does not render its terrain (`Visibility::Hidden`).
+///
+/// Pin-discriminating: it asserts EXPLORED maps to `0.0` (greyscale) and VISIBLE to `1.0`
+/// (colour); if EXPLORED were mapped to the wrong saturation (e.g. still dimmed, or left at
+/// `1.0`), the EXPLORED assert fails.
 #[test]
 fn terrain_renders_visible_explored_unseen() {
     let mut app = headless_renderer_app();
@@ -239,65 +263,52 @@ fn terrain_renders_visible_explored_unseen() {
     set_fog(&mut app, &[visible_cell], &[explored_cell]);
     app.update();
 
-    let dim = app
-        .world()
-        .get_resource::<CombatTuning>()
-        .map(|t| *t.explored_dim);
-    assert!(dim.is_some(), "CombatTuning must be resident");
-    let Some(dim) = dim else { return };
-
-    // VISIBLE -> full identity (white modulate), shown.
+    // VISIBLE -> full colour (saturation 1.0), shown.
     let visible_terrain = terrain_at(&mut app, visible_cell);
     assert!(
         visible_terrain.is_some(),
-        "the VISIBLE cell must have a terrain sprite"
+        "the VISIBLE cell must have a terrain tile + material"
     );
-    let Some((vis_color, vis_flag)) = visible_terrain else {
+    let Some((vis_saturation, vis_flag)) = visible_terrain else {
         return;
     };
-    assert_eq!(
-        vis_color,
-        bevy::prelude::Color::WHITE,
-        "a squad-VISIBLE cell renders at full identity colour",
+    assert!(
+        (vis_saturation - 1.0).abs() < f32::EPSILON,
+        "a squad-VISIBLE cell renders at full colour (saturation 1.0); got {vis_saturation}",
     );
     assert_eq!(vis_flag, Visibility::Inherited, "VISIBLE terrain is shown");
 
-    // EXPLORED -> RGB x explored_dim, alpha untouched, shown.
+    // EXPLORED -> full-brightness greyscale (saturation 0.0), shown.
     let explored_terrain = terrain_at(&mut app, explored_cell);
     assert!(
         explored_terrain.is_some(),
-        "the EXPLORED cell must have a terrain sprite"
+        "the EXPLORED cell must have a terrain tile + material"
     );
-    let Some((exp_color, exp_flag)) = explored_terrain else {
+    let Some((exp_saturation, exp_flag)) = explored_terrain else {
         return;
     };
-    let exp = exp_color.to_srgba();
-    let white = bevy::prelude::Color::WHITE.to_srgba();
     assert!(
-        white.red.mul_add(-dim, exp.red).abs() < 1e-5,
-        "EXPLORED RGB is the identity RGB times explored_dim (read from tuning, not a literal)",
+        exp_saturation.abs() < f32::EPSILON,
+        "an EXPLORED cell renders full-brightness GREYSCALE (saturation 0.0 — colour-loss as \
+         the memory cue, not brightness-loss); got {exp_saturation}",
     );
     assert!(
-        (exp.alpha - white.alpha).abs() < 1e-5,
-        "EXPLORED leaves alpha untouched",
-    );
-    assert!(
-        exp.red < white.red,
-        "EXPLORED is dimmer than VISIBLE (a memory, not live sight)",
+        exp_saturation < vis_saturation,
+        "EXPLORED is desaturated relative to VISIBLE (the memory cue is colour-loss)",
     );
     assert_eq!(
         exp_flag,
         Visibility::Inherited,
-        "EXPLORED terrain is shown (dimmed)",
+        "EXPLORED terrain is shown (greyscale, full brightness)",
     );
 
     // UNSEEN -> hidden.
     let unseen_terrain = terrain_at(&mut app, unseen_cell);
     assert!(
         unseen_terrain.is_some(),
-        "the UNSEEN cell must have a terrain sprite"
+        "the UNSEEN cell must have a terrain tile + material"
     );
-    let Some((_unseen_color, unseen_flag)) = unseen_terrain else {
+    let Some((_unseen_saturation, unseen_flag)) = unseen_terrain else {
         return;
     };
     assert_eq!(
@@ -388,25 +399,25 @@ fn dense_floor_set_renders_lit_floor_around_observer() {
         observer_terrain.is_some() && near_terrain.is_some(),
         "the observer + neighbour floor cells must have terrain sprites",
     );
-    let (Some((obs_color, obs_flag)), Some((near_color, near_flag))) =
+    let (Some((obs_saturation, obs_flag)), Some((near_saturation, near_flag))) =
         (observer_terrain, near_terrain)
     else {
         return;
     };
-    assert_eq!(
-        obs_color,
-        bevy::prelude::Color::WHITE,
-        "the observer's open-floor cell renders at full identity colour (lit, not black)",
+    assert!(
+        (obs_saturation - 1.0).abs() < f32::EPSILON,
+        "the observer's open-floor cell renders at full colour (saturation 1.0 — lit, not black); \
+         got {obs_saturation}",
     );
     assert_eq!(
         obs_flag,
         Visibility::Inherited,
         "the observer's open-floor cell is shown",
     );
-    assert_eq!(
-        near_color,
-        bevy::prelude::Color::WHITE,
-        "an in-range open-floor cell renders LIT (the dense fog reveals the rendered floor)",
+    assert!(
+        (near_saturation - 1.0).abs() < f32::EPSILON,
+        "an in-range open-floor cell renders LIT at full colour (the dense fog reveals the \
+         rendered floor); got {near_saturation}",
     );
     assert_eq!(
         near_flag,
@@ -418,9 +429,9 @@ fn dense_floor_set_renders_lit_floor_around_observer() {
     let far_terrain = terrain_at(&mut app, far_floor);
     assert!(
         far_terrain.is_some(),
-        "the far open-floor cell must have a terrain sprite (every cell is at least floor)",
+        "the far open-floor cell must have a terrain tile (every cell is at least floor)",
     );
-    let Some((_far_color, far_flag)) = far_terrain else {
+    let Some((_far_saturation, far_flag)) = far_terrain else {
         return;
     };
     assert_eq!(
@@ -542,15 +553,15 @@ fn fog_reapplies_after_level_cycle() {
     let visible_terrain = terrain_at(&mut app, visible_l1);
     assert!(
         visible_terrain.is_some(),
-        "the level-1 VISIBLE cell must have a respawned sprite"
+        "the level-1 VISIBLE cell must have a respawned tile + material"
     );
-    let Some((vis_color, vis_flag)) = visible_terrain else {
+    let Some((vis_saturation, vis_flag)) = visible_terrain else {
         return;
     };
-    assert_eq!(
-        vis_color,
-        bevy::prelude::Color::WHITE,
-        "the freshly-respawned VISIBLE level-1 terrain is at full colour",
+    assert!(
+        (vis_saturation - 1.0).abs() < f32::EPSILON,
+        "the freshly-respawned VISIBLE level-1 terrain is at full colour (saturation 1.0); \
+         got {vis_saturation}",
     );
     assert_eq!(
         vis_flag,
@@ -561,9 +572,9 @@ fn fog_reapplies_after_level_cycle() {
     let unseen_terrain = terrain_at(&mut app, unseen_l1);
     assert!(
         unseen_terrain.is_some(),
-        "the level-1 UNSEEN cell must have a respawned sprite"
+        "the level-1 UNSEEN cell must have a respawned tile + material"
     );
-    let Some((_c, unseen_flag)) = unseen_terrain else {
+    let Some((_s, unseen_flag)) = unseen_terrain else {
         return;
     };
     assert_eq!(

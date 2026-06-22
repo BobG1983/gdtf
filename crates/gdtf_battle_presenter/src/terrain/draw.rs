@@ -4,6 +4,8 @@
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::{system::SystemParam, template::template},
+    image::TextureAtlasLayout,
+    math::primitives::Rectangle,
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
@@ -16,7 +18,7 @@ use super::{
     active_level::ActiveLevel,
     roles::{TileIndex, TileRoles},
 };
-use crate::{CELL_PX, SheetRole, TopDownAtlases, cell_to_world};
+use crate::{CELL_PX, SheetRole, TerrainFogMaterial, TopDownAtlases, cell_to_world};
 
 /// Marker tagging every static-terrain sprite this slice spawns.
 ///
@@ -111,23 +113,32 @@ impl StaticMap<'_> {
     }
 }
 
-/// Builds one terrain [`Sprite`] for `role` on the terrain sheet, via the S3 recipe.
+/// Builds one terrain [`TerrainFogMaterial`] for `role` on the terrain sheet (GTW-348).
 ///
-/// `Sprite::from_atlas_image(terrain.image, TextureAtlas { layout, index })` with the
-/// role's [`TileIndex`] read from [`TileRoles`], then `custom_size =
-/// Some(Vec2::splat(CELL_PX))` (the documented S3 sizing recipe). Returns [`None`] if
-/// the terrain sheet was not loaded (so the caller skips the spawn rather than panic).
-fn terrain_sprite(role: TileRole, roles: &TileRoles, atlases: &TopDownAtlases) -> Option<Sprite> {
+/// Resolves the role's [`TileIndex`] from [`TileRoles`] and the terrain sheet's RESOLVED
+/// [`TextureAtlasLayout`] (looked up from the handle via
+/// [`Assets<TextureAtlasLayout>::get`](bevy::asset::Assets::get) — the material holds the
+/// layout STRUCT, not the handle, so its [`AsBindGroupShaderType`](bevy::render::render_resource::AsBindGroupShaderType)
+/// can bake the atlas UV). `custom_size = Some(Vec2::splat(CELL_PX))` (the S3 sizing
+/// recipe) and `saturation = 1.0` (seeded VISIBLE — the fog writer drives it per cell).
+/// Returns [`None`] if the terrain sheet OR its layout was not loaded (so the caller skips
+/// the spawn rather than panic).
+fn terrain_material(
+    role: TileRole,
+    roles: &TileRoles,
+    atlases: &TopDownAtlases,
+    layouts: &Assets<TextureAtlasLayout>,
+) -> Option<TerrainFogMaterial> {
     let terrain = atlases.role(SheetRole::Terrain)?;
-    let mut sprite = Sprite::from_atlas_image(
-        terrain.image.clone(),
-        TextureAtlas {
-            layout: terrain.layout.clone(),
-            index:  *role.index(roles),
-        },
-    );
-    sprite.custom_size = Some(Vec2::splat(CELL_PX));
-    Some(sprite)
+    let atlas_layout = layouts.get(&terrain.layout)?.clone();
+    Some(TerrainFogMaterial {
+        image:        terrain.image.clone(),
+        atlas_layout: Some(atlas_layout),
+        atlas_index:  *role.index(roles),
+        custom_size:  Some(Vec2::splat(CELL_PX)),
+        // Seed VISIBLE (full colour); present_fog drives it to 0.0 on EXPLORED cells.
+        saturation:   1.0,
+    })
 }
 
 /// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): the
@@ -136,21 +147,36 @@ fn terrain_sprite(role: TileRole, roles: &TileRoles, atlases: &TopDownAtlases) -
 /// Fires when EITHER a [`BattleReady`](gdtf_battle_sim::BattleReady) drained this update
 /// OR [`ActiveLevel`] `is_changed()`. It despawns ALL existing [`TerrainSprite`]
 /// entities, then for the [`ActiveLevel`] ONLY scans `0..GRID_WIDTH` × `0..GRID_HEIGHT`
-/// and spawns one terrain [`Sprite`] per non-empty cell (every in-range cell is at least
-/// floor) at [`cell_to_world`](crate::cell_to_world), on the
+/// and spawns one terrain tile per non-empty cell (every in-range cell is at least floor)
+/// as a shared unit-rect [`Mesh2d`] + [`MeshMaterial2d<TerrainFogMaterial>`] (GTW-348 — the
+/// material path so EXPLORED can render greyscale; the `Sprite` pipeline cannot desaturate)
+/// at [`cell_to_world`](crate::cell_to_world), on the
 /// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`TerrainSprite`] marker.
 /// The despawn-first step makes the first-ready double-fire (a `BattleReady` on the same
 /// update `ActiveLevel` first reads `is_changed`) idempotent.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], the [`StaticMap`] sim-grid bundle,
-/// [`Res<TopDownAtlases>`], [`Res<TileRoles>`], [`Res<ActiveLevel>`],
+/// [`Res<TopDownAtlases>`], [`Res<TileRoles>`], [`Res<ActiveLevel>`], the asset stores it
+/// builds tiles from ([`ResMut<Assets<TerrainFogMaterial>>`] for the per-tile material,
+/// [`ResMut<Assets<Mesh>>`] + a [`Local`] cache for the shared unit-rect quad,
+/// [`Res<Assets<TextureAtlasLayout>>`] to resolve the atlas layout — GTW-348),
 /// [`MessageReader<BattleReady>`], and the [`TerrainSprite`] despawn query.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the GTW-348 material path adds three asset stores (TerrainFogMaterial, Mesh, \
+              the atlas-layout resolve) to the existing draw params; grouping into a \
+              SystemParam bundle would not reduce the count and would obscure the per-arg docs"
+)]
 pub fn draw_static_battlefield(
     mut commands: Commands,
     map: StaticMap,
     atlases: Res<TopDownAtlases>,
     roles: Res<TileRoles>,
     active: Res<ActiveLevel>,
+    mut materials: ResMut<Assets<TerrainFogMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut quad: Local<Option<Handle<Mesh>>>,
+    layouts: Res<Assets<TextureAtlasLayout>>,
     mut ready: MessageReader<BattleReady>,
     existing: Query<Entity, With<TerrainSprite>>,
 ) {
@@ -169,32 +195,44 @@ pub fn draw_static_battlefield(
         commands.entity(entity).despawn();
     }
 
+    // The shared unit-rect quad (Rectangle::from_size(1×1), the same mesh Bevy's
+    // SpriteMeshPlugin builds): added ONCE, then reused for every tile. The per-tile
+    // TerrainFogMaterial's vertex_scale (= custom_size) sizes the quad in the shader.
+    let mesh = quad
+        .get_or_insert_with(|| meshes.add(Rectangle::from_size(Vec2::ONE)))
+        .clone();
+
     let level = **active;
     for y in 0..i32_extent(GRID_HEIGHT) {
         for x in 0..i32_extent(GRID_WIDTH) {
             let cell = Cell::new(x, y);
             let key = CellLevel::new(cell, level);
             let role = map.role_at(&key);
-            let Some(sprite) = terrain_sprite(role, &roles, &atlases) else {
+            let Some(material) = terrain_material(role, &roles, &atlases, &layouts) else {
                 continue;
             };
+            let mesh2d = Mesh2d(mesh.clone());
+            let material2d = MeshMaterial2d(materials.add(material));
             let transform = Transform::from_translation(cell_to_world(cell, level));
             let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
-            // GTW-322 — authored as a `bsn!` scene. The atlas-indexed `Sprite` is NOT
-            // `Unpin` (its `Option<Handle<Image>>` / `Option<TextureAtlas>` fields), so it
-            // rides the `template(move |_| Ok(value.clone()))` closure escape hatch (the
-            // `FnTemplate` output has no `Unpin` bound), the same one the AREA-1 widget
-            // builders use for `TextFont`. The runtime `Transform` and `RenderLayers` ARE
-            // `Clone + Default + Unpin`, so each rides `template_value` (a value-overwrite).
-            // The `TerrainSprite` marker carries the runtime source `CellLevel` and has no
-            // `Default` (so no `bsn!` / `template_value` form) — it is `.insert`ed after
-            // the scene. This terrain sprite is never read back by id (the redraw /
-            // cover-swap finds it via the `TerrainSprite { at }` query, not a captured
-            // handle), so the deferred materialization is inert here — the same entity +
-            // components result.
+            // GTW-348 — terrain moved from the `Sprite` path to a `Mesh2d` +
+            // `MeshMaterial2d<TerrainFogMaterial>` so EXPLORED cells can render GREYSCALE
+            // (the sprite pipeline's per-channel multiply tint cannot desaturate). Authored
+            // via `spawn_scene` (GTW-322): `Mesh2d` / `MeshMaterial2d` each wrap a `Handle<_>`,
+            // which is NOT `Unpin` (so it has no `Template` impl) — exactly like the old atlas
+            // `Sprite` — so each rides the `template(move |_| Ok(value.clone()))` closure escape
+            // hatch (the `FnTemplate` output carries no `Unpin` bound), the same one the AREA-1
+            // widget builders use. The runtime `Transform` / `RenderLayers` ARE
+            // `Clone + Default + Unpin`, so each rides `template_value` (a value-overwrite). The
+            // `TerrainSprite` marker carries the runtime source `CellLevel` (no `Default`), so it
+            // is `.insert`ed after the scene. The tile is never read back by id (the redraw /
+            // cover-swap / fog find it via the `TerrainSprite { at }` query, not a captured
+            // handle), so the deferred materialization is inert — the same entity + components
+            // result.
             commands
                 .spawn_scene((
-                    bsn! { template(move |_| Ok(sprite.clone())) },
+                    bsn! { template(move |_| Ok(mesh2d.clone())) },
+                    bsn! { template(move |_| Ok(material2d.clone())) },
                     template_value(transform),
                     template_value(layers),
                 ))
@@ -214,13 +252,16 @@ pub fn draw_static_battlefield(
 /// than a hole — AC3 asserts the swap.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Res<ActiveLevel>`], [`Res<TileRoles>`],
-/// [`MessageReader<CoverDestroyed>`], and the [`TerrainSprite`] query (to edit the
-/// sprite at `at`) — no [`Commands`] needed, the swap edits the sprite in place.
+/// [`ResMut<Assets<TerrainFogMaterial>>`] (GTW-348 — the swap re-indexes the tile's
+/// material rather than its sprite), [`MessageReader<CoverDestroyed>`], and the
+/// [`TerrainSprite`] / [`MeshMaterial2d`] query (to find the material at `at`) — no
+/// [`Commands`] needed, the swap edits the material in place (no despawn / respawn).
 pub fn swap_destroyed_cover(
     active: Res<ActiveLevel>,
     roles: Res<TileRoles>,
+    mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut destroyed: MessageReader<CoverDestroyed>,
-    mut sprites: Query<(&TerrainSprite, &mut Sprite)>,
+    tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
 ) {
     let active_storey = **active;
     let rubble = *roles.rubble;
@@ -229,16 +270,17 @@ pub fn swap_destroyed_cover(
         if event.at.z != i32::from(*active_storey) {
             continue;
         }
-        for (terrain, mut sprite) in &mut sprites {
+        for (terrain, mat_handle) in &tiles {
             if terrain.at != event.at {
                 continue;
             }
-            // Swap to the rubble tile — keep the sprite (it still reads as terrain),
-            // re-using the terrain sheet's loaded atlas the draw already built it from.
-            // A sprite drawn with no atlas (the terrain sheet was absent at draw time)
-            // has nothing to re-index; skip it rather than panic.
-            if let Some(atlas) = sprite.texture_atlas.as_mut() {
-                atlas.index = rubble;
+            // Re-index to the rubble tile — keep the entity (it still reads as terrain).
+            // get_mut marks the material asset dirty so the UV-transform uniform re-uploads
+            // next frame (mirroring the fog writer's in-place saturation edit). A tile whose
+            // material was dropped (the terrain sheet was absent at draw time, so none
+            // spawned) is simply not in the query; nothing to re-index.
+            if let Some(mut material) = materials.get_mut(mat_handle.id()) {
+                material.atlas_index = rubble;
             }
         }
     }

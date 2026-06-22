@@ -1,43 +1,20 @@
-//! In-crate unit tests for the fog writer's PURE helpers (GTW-342): the EXPLORED dim
-//! modulate, the three-state fog resolution, and the per-actor faction-relation gate.
+//! In-crate unit tests for the fog writer's PURE helpers: the three-state fog resolution
+//! and the per-actor faction-relation gate.
 //!
-//! These exercise the colour / relation DECISIONS in isolation (no App / no render); the
-//! full system wiring (ordering after the terrain draw + cover swap, the per-cell terrain
-//! modulate, the actor hard-cut, the post-level-cycle re-apply) is the headless
-//! integration test in `tests/fog_present.rs`.
+//! These exercise the relation / state-resolution DECISIONS in isolation (no App / no
+//! render); the full system wiring (ordering after the terrain draw + cover swap, the
+//! per-cell terrain DESATURATE, the actor hard-cut, the post-level-cycle re-apply) is the
+//! headless integration test in `tests/fog_present.rs`. The GTW-348 per-cell
+//! `TerrainFogMaterial.saturation` mapping (VISIBLE 1.0 / EXPLORED 0.0) lives in that
+//! integration test, where the real material assets exist (the saturation values are not a
+//! pure helper any more — they are written into the material store by the system).
 
-use bevy::{platform::collections::HashSet, prelude::Color};
+use bevy::platform::collections::HashSet;
 use gdtf_battle_sim::{
     Cell, CellLevel, Faction, FactionRelation, Level, LifeState, PlayerFaction, SquadVisibility,
 };
 
-use super::present::{CellFog, actor_relation, explored_modulate, visible_modulate};
-
-/// VISIBLE modulate is the multiplicative identity (full white) — the atlas tile's own
-/// colours read through unchanged.
-#[test]
-fn visible_modulate_is_white_identity() {
-    assert_eq!(visible_modulate(), Color::WHITE);
-}
-
-/// EXPLORED modulate scales the identity's RGB by `dim` while leaving alpha at full — the
-/// "RGB × this, alpha untouched" rule. Asserts the RELATION (RGB scaled, alpha intact),
-/// not a pinned shipped magnitude (brittle-test rule).
-#[test]
-fn explored_modulate_scales_rgb_keeps_alpha() {
-    let dim = 0.5_f32;
-    let base = visible_modulate().to_srgba();
-    let dimmed = explored_modulate(dim).to_srgba();
-
-    // RGB is the identity's RGB times the dim factor.
-    assert!(base.red.mul_add(-dim, dimmed.red).abs() < f32::EPSILON);
-    assert!(base.green.mul_add(-dim, dimmed.green).abs() < f32::EPSILON);
-    assert!(base.blue.mul_add(-dim, dimmed.blue).abs() < f32::EPSILON);
-    // Alpha is untouched (the identity's full opacity).
-    assert!((dimmed.alpha - base.alpha).abs() < f32::EPSILON);
-    // A dim < 1 darkens (the dimmed RGB is strictly less than the identity's).
-    assert!(dimmed.red < base.red);
-}
+use super::present::{CellFog, actor_relation};
 
 /// `CellFog::resolve` maps the three squad states: VISIBLE wins over EXPLORED, and a cell
 /// in neither set is UNSEEN.

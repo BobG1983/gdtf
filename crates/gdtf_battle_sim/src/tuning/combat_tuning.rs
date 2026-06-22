@@ -86,10 +86,12 @@ pub struct CombatTuning {
     /// horizon, the 12×12 fixtures read fully lit. Sim-authored; consumed by the
     /// presenter fog writer (GTW-342). Tunable, mirroring the other tuning leaves.
     pub view_range:            ViewRange,
-    /// The EXPLORED-memory dim factor (GTW-338) — the modulate on EXPLORED terrain
-    /// (rendered RGB × this, alpha untouched; visibility.md §"Tunables"). Default 0.55:
-    /// dark enough to read "memory, not live sight", bright enough to navigate by.
-    /// Sim-authored here but CONSUMED by the presenter fog writer (GTW-342). Tunable,
-    /// mirroring the other tuning leaves.
+    /// The EXPLORED-memory dim factor (GTW-338) — historically the modulate on EXPLORED
+    /// terrain. **DEPRECATED / UNUSED by the renderer as of GTW-348**: EXPLORED now renders
+    /// full-brightness GREYSCALE (colour-loss as the memory cue, not brightness-loss), so the
+    /// presenter fog writer no longer reads this factor (see [`ExploredDim`]). Retained as a
+    /// valid, parseable leaf (GTW-348 is presenter-only — pruning it would ripple into the
+    /// model + RON + the parse/default tests); a future ticket repurposes or retires it.
+    /// Tunable, mirroring the other tuning leaves.
     pub explored_dim:          ExploredDim,
 }

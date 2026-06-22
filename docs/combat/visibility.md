@@ -7,7 +7,7 @@ What the player's side can see, remember, and act on. **Three states per (cell, 
 | State | Meaning | Presents as |
 |-------|---------|-------------|
 | **VISIBLE** | Some conscious squad ganger currently sees it | Normal |
-| **EXPLORED** | Seen at some point this mission, not currently | Dimmed (`explored_dim`) |
+| **EXPLORED** | Seen at some point this mission, not currently | Full brightness, **greyscale** (BT.709 luma — colour removed, not dimmed) |
 | **UNSEEN** | Never seen this mission | Hidden — the dark clear color reads through |
 
 All three are **per (cell, level)** (`IVec3` keys on the model's sets): a fogged upper storey can sit over a visible ground floor. Reads are pure set lookups (`is_cell_visible` / `is_cell_explored` / `is_ganger_visible`); the one writer is `recompute_visibility`, run on every trigger that can change what the squad sees (moves, life flips, real stance changes, geometry destruction, setup's spawn FOV).
@@ -16,7 +16,7 @@ All three are **per (cell, level)** (`IVec3` keys on the model's sets): a fogged
 
 A ganger F sees (cell, level) iff **`Chebyshev(F.cell, cell) <= view_range` AND `has_los(F.cell, F.level, cell, level)`** — the same level-aware coarse-geometry probe the shot pipeline flies through ([resolution.md](resolution.md); ONE geometry truth, never a second LOS). Only **conscious** (`is_active` — ALIVE) **player-faction** gangers observe: Downed/Dead gangers see nothing, enemies feed no squad FOV. The squad's **VISIBLE** set is the **union** of every observer's FOV; **EXPLORED** accrues from it and is **monotone per mission** — it only ever grows, surviving every recompute (`recompute_visibility`).
 
-Memory shows **live terrain dimmed, not snapshots**: the fog treatment modulates the *current* rendered geometry, and destruction erases tiles / frees props at impact time regardless of fog — nothing ever repaints from a stored snapshot. A wall destroyed while fogged vanishes from the dimmed memory too; the player's "map memory" is honest about geometry without leaking who destroyed it.
+Memory shows **live terrain in greyscale, not snapshots**: the fog treatment modulates the *current* rendered geometry, and destruction erases tiles / frees props at impact time regardless of fog — nothing ever repaints from a stored snapshot. An EXPLORED tile renders at its **full live brightness with its colour removed** (the perceptual BT.709 luminance) — colour-loss, not brightness-loss, is the memory cue (user decision 2026-06-21). A wall destroyed while fogged vanishes from the greyscale memory too; the player's "map memory" is honest about geometry without leaking who destroyed it.
 
 ## Asymmetric sight (user ruling 2026-06-12 — "No forced symmetry is excellent")
 
@@ -59,6 +59,6 @@ Movement TU **charges land with each step**: the movement writers carry the char
 | Tunable | Default | Meaning |
 |---------|---------|---------|
 | `view_range` | 14 | One ganger's sight radius, in Chebyshev cells — the 2D disc bounds the range, the LOS probe owns the level axis. The shipped 60×60 city gets a real fog horizon; the 12×12 fixtures read fully lit around the squad. |
-| `explored_dim` | 0.55 | Modulate factor on EXPLORED terrain (RGB × this, alpha untouched) — dark enough to read "memory, not live sight", bright enough to navigate by. |
+| `explored_dim` | 0.55 | **DEPRECATED / UNUSED as of GTW-348.** Historically the RGB modulate factor on EXPLORED terrain (dimmer, same colour). The EXPLORED treatment is now **full-brightness greyscale** (colour-loss, not brightness-loss — user decision 2026-06-21), implemented presenter-side via the `TerrainFogMaterial` `saturation` knob (`1.0` VISIBLE colour / `0.0` EXPLORED greyscale), so it reads no tunable magnitude. The leaf is retained as a parseable, unread tuning field (GTW-348 was presenter-only); a future ticket repurposes or retires it. |
 
 See [combat.md](combat.md) for where LOS sits among the core mechanics, and [resolution.md](resolution.md) for the shot pipeline the probe shares its geometry with.

@@ -37,10 +37,15 @@
 //!
 //! GTW-342 (the squad fog WRITER, leaf 6 of the GTW-13 FOV epic) adds [`mod@fog`]: the
 //! [`present_fog`] system MODULATES the already-drawn layer from the sim's
-//! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) — terrain VISIBLE → full /
-//! EXPLORED → RGB × `explored_dim` / UNSEEN → hidden, and each actor sprite hard-cut by
+//! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) — terrain VISIBLE → full colour /
+//! EXPLORED → full-brightness GREYSCALE (GTW-348 — colour-loss as the memory cue, not
+//! brightness-loss) / UNSEEN → hidden, and each actor sprite hard-cut by
 //! [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible) (a player ganger always shown,
-//! an enemy / corpse shown iff its cell is squad-VISIBLE). It mutates the existing
+//! an enemy / corpse shown iff its cell is squad-VISIBLE). The terrain renders through a
+//! [`TerrainFogMaterial`] (a [`Material2d`](bevy::sprite::Material2d) with a `saturation`
+//! knob the fog writer drives per cell: `1.0` VISIBLE colour, `0.0` EXPLORED greyscale),
+//! because the [`Sprite`](bevy::prelude::Sprite) pipeline's per-channel multiply tint cannot
+//! desaturate (GTW-348); gangers stay on the sprite path. It mutates the existing material /
 //! sprites in place (never despawn + respawn) and is ordered `.after`
 //! [`draw_static_battlefield`] / [`swap_destroyed_cover`] so it always colours the LIVE
 //! terrain, even after an [`ActiveLevel`] cycle. The sim owns the fog; this is the VIEW
@@ -57,7 +62,7 @@ pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
 
-pub use fog::present_fog;
+pub use fog::{TerrainFogMaterial, TerrainFogUniform, present_fog};
 pub use fx::{
     COMPASS_DIRECTIONS, CombatLogEvent, CombatText, DIRECTION_COUNT, DamageTypeFx, EffectRoles,
     EffectRolesHandle, FctEmphasis, FctRiseRate, FctStackIndex, FctTtlSeconds, FctValence,

@@ -1,7 +1,7 @@
 //! The presenter mode selector and the renderer plugins, with the top-down renderer's
 //! full system wiring.
 
-use bevy::{ecs::message::Messages, prelude::*};
+use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
@@ -12,17 +12,18 @@ use gdtf_battle_sim::{
 use crate::{
     ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle, FxTuning,
     FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
-    PanTuning, PanTuningHandle, PresenterSystems, ShotImpactResolved, TileRoles, TileRolesHandle,
-    TopDownAtlases, advance_projectiles, animate_floating_text, animate_impact,
-    apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
-    despawn_removed_ganger_sprites, draw_highlight_on_request, draw_static_battlefield,
-    expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
-    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
-    pan_camera_on_gamepad_cursor_edge, present_fog, read_armor_broken, read_bleeding,
-    read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
-    redrive_pan_tuning_on_asset_event, reframe_ganger_sprites, resolve_character_roles,
-    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
-    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
+    PanTuning, PanTuningHandle, PresenterSystems, ShotImpactResolved, TerrainFogMaterial,
+    TileRoles, TileRolesHandle, TopDownAtlases, advance_projectiles, animate_floating_text,
+    animate_impact, apply_active_level_filter, clamp_camera_to_bounds,
+    despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites, draw_highlight_on_request,
+    draw_static_battlefield, expire_flashes, frame_camera_on_units, load_character_roles,
+    load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
+    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
+    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
+    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
+    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
+    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
+    update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -122,6 +123,20 @@ pub struct TopDownRendererPlugin;
 
 impl Plugin for TopDownRendererPlugin {
     fn build(&self, app: &mut App) {
+        // GTW-348: the terrain-fog material pipeline. Terrain tiles render through a
+        // `Material2d` (a unit-rect Mesh2d + MeshMaterial2d<TerrainFogMaterial>) so an
+        // EXPLORED cell can render full-brightness GREYSCALE — the `Sprite` pipeline's
+        // per-channel multiply tint cannot desaturate. `Material2dPlugin` registers the
+        // `Assets<TerrainFogMaterial>` store + (when a `RenderApp` is present) the render
+        // pipeline; `DefaultPlugins` registers the built-in materials but NOT a custom one.
+        // It is gated on an `AssetServer` (like `register_ron_tables` below): `init_asset`
+        // needs the asset machinery, so a `MinimalPlugins` headless app (no asset stack)
+        // skips it — and there the draw / fog systems never run anyway (they are gated on
+        // `TopDownAtlases`, which only loads with an `AssetServer`), so the absent
+        // `Assets<TerrainFogMaterial>` store is never reached (`bevy-traps.md` #1).
+        if app.world().get_resource::<AssetServer>().is_some() {
+            app.add_plugins(Material2dPlugin::<TerrainFogMaterial>::default());
+        }
         app.insert_resource(TopDownRendererActive)
             .init_resource::<ActiveLevel>()
             // The S5 ganger-sprite map (sim Entity -> presenter Entity), present for the
@@ -597,10 +612,23 @@ fn register_highlight_systems(app: &mut App) {
 /// `run_if(resource_exists::<BattleInProgress>)` (the live-battle witness) AND
 /// `resource_exists::<SquadVisibility>` (the fog sets — inserted by the sim's `setup_battle`,
 /// absent in a focused harness that opens `BattleInProgress` directly; without this guard the
-/// `Res<SquadVisibility>` param would panic validation) AND `resource_exists::<CombatTuning>`
-/// (the `Load`-state tuning the `explored_dim` factor is read off — absent in a `MinimalPlugins`
-/// app that never runs Load). `GangerSprites` + `ActiveLevel` are `init_resource`-d on build, so
-/// they are always present.
+/// `Res<SquadVisibility>` param would panic validation) AND
+/// `resource_exists::<Assets<TerrainFogMaterial>>` (GTW-348 — the terrain arm drives each tile's
+/// material `saturation` via this store; created by `Material2dPlugin` only when an `AssetServer`
+/// is present, so a `MinimalPlugins` app without it never runs the writer) AND
+/// `resource_exists::<CombatTuning>` (the `Load`-state combat tuning — the "a real battle's
+/// balance data is configured" witness). `GangerSprites` + `ActiveLevel` are `init_resource`-d
+/// on build, so they are always present.
+///
+/// GTW-348 NOTE on the `CombatTuning` gate: the EXPLORED treatment no longer reads `explored_dim`
+/// (EXPLORED is full-brightness greyscale, not a brightness dim) and `present_fog` no longer takes
+/// a `CombatTuning` param — so the gate is no longer a "the param needs this resource" guard. It
+/// is KEPT as the battle-configured witness: in the real app `CombatTuning` is always present
+/// during a battle (a `Load`-state resource), so fog runs exactly as before; but a focused
+/// presenter harness that drives a bare ganger spawn WITHOUT inserting `CombatTuning` (e.g. the
+/// storey-filter `ganger_draw` tests) keeps fog INERT, so this change does not silently flip the
+/// actor-fog hard-cut on in those harnesses — GTW-348 is a TERRAIN-only change, so the actor arm's
+/// observable behavior is held identical to pre-GTW-348 in every harness.
 fn register_fog_systems(app: &mut App) {
     app.add_systems(
         Update,
@@ -614,6 +642,7 @@ fn register_fog_systems(app: &mut App) {
             .run_if(
                 resource_exists::<BattleInProgress>
                     .and_then(resource_exists::<SquadVisibility>)
+                    .and_then(resource_exists::<Assets<TerrainFogMaterial>>)
                     .and_then(resource_exists::<CombatTuning>),
             ),
     );

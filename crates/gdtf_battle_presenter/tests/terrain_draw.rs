@@ -17,19 +17,18 @@ use std::path::PathBuf;
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
-    asset::AssetPlugin,
+    asset::{AssetPlugin, Assets},
     ecs::{error::warn, message::Messages},
     math::Vec2,
-    prelude::default,
+    prelude::{MeshMaterial2d, default},
     render::{RenderPlugin, settings::WgpuSettings},
-    sprite::Sprite,
     transform::components::Transform,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    ActiveLevel, CELL_PX, TerrainSprite, TileRoles, TopDownAtlases, TopDownRendererPlugin,
-    cell_to_world,
+    ActiveLevel, CELL_PX, TerrainFogMaterial, TerrainSprite, TileRoles, TopDownAtlases,
+    TopDownRendererPlugin, cell_to_world,
 };
 use gdtf_battle_sim::{
     ArmorHardness, ArmorProtection, BattleInProgress, BattleReady, Cell, CellLevel, CoverDestroyed,
@@ -136,28 +135,44 @@ const fn low_cover_entry() -> CoverEntry {
     )
 }
 
-/// Reads the atlas index of the one `TerrainSprite` at `key`, if present.
+/// Reads the atlas index of the one `TerrainSprite` at `key`, if present (GTW-348 — the
+/// tile renders through a `TerrainFogMaterial`, so the index is read off the material's
+/// `atlas_index`, not a `Sprite`'s `TextureAtlas`).
 fn sprite_index_at(app: &mut App, key: CellLevel) -> Option<usize> {
-    let mut q = app.world_mut().query::<(&TerrainSprite, &Sprite)>();
-    for (terrain, sprite) in q.iter(app.world()) {
-        if terrain.at == key {
-            return sprite.texture_atlas.as_ref().map(|a| a.index);
-        }
-    }
-    None
-}
-
-/// Reads the (`custom_size`, translation) of the one `TerrainSprite` at `key`.
-fn sprite_geometry_at(app: &mut App, key: CellLevel) -> Option<(Option<Vec2>, bevy::math::Vec3)> {
     let mut q = app
         .world_mut()
-        .query::<(&TerrainSprite, &Sprite, &Transform)>();
-    for (terrain, sprite, transform) in q.iter(app.world()) {
-        if terrain.at == key {
-            return Some((sprite.custom_size, transform.translation));
-        }
-    }
-    None
+        .query::<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>();
+    let handle = q
+        .iter(app.world())
+        .find(|(t, _)| t.at == key)
+        .map(|(_, mat)| mat.id())?;
+    let index = app
+        .world()
+        .get_resource::<Assets<TerrainFogMaterial>>()?
+        .get(handle)?
+        .atlas_index;
+    Some(index)
+}
+
+/// Reads the (material `custom_size`, entity translation) of the one `TerrainSprite` at
+/// `key` (GTW-348 — `custom_size` lives on the `TerrainFogMaterial`, the `Transform` stays
+/// on the entity).
+fn sprite_geometry_at(app: &mut App, key: CellLevel) -> Option<(Option<Vec2>, bevy::math::Vec3)> {
+    let mut q = app.world_mut().query::<(
+        &TerrainSprite,
+        &MeshMaterial2d<TerrainFogMaterial>,
+        &Transform,
+    )>();
+    let (handle, translation) = q
+        .iter(app.world())
+        .find(|(t, ..)| t.at == key)
+        .map(|(_, mat, transform)| (mat.id(), transform.translation))?;
+    let custom_size = app
+        .world()
+        .get_resource::<Assets<TerrainFogMaterial>>()?
+        .get(handle)?
+        .custom_size;
+    Some((custom_size, translation))
 }
 
 /// Counts the `TerrainSprite` entities currently in the world.

@@ -8,9 +8,9 @@
 //! writer (GTW-341). The presenter never owns fog; it READS the squad sets through the
 //! pure seams ([`SquadVisibility::is_cell_visible`](gdtf_battle_sim::SquadVisibility::is_cell_visible)
 //! / [`SquadVisibility::is_cell_explored`](gdtf_battle_sim::SquadVisibility::is_cell_explored)
-//! / [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible)) and the
-//! [`explored_dim`](gdtf_battle_sim::CombatTuning) tunable, then MODULATES the already-drawn
-//! layer in place (`docs/combat/visibility.md` §"Composition with the view slice").
+//! / [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible)), then MODULATES the
+//! already-drawn layer in place (`docs/combat/visibility.md` §"Composition with the view
+//! slice").
 //!
 //! # The rendered layer IS the fog mask
 //!
@@ -18,13 +18,19 @@
 //! (`docs/combat/visibility.md` §"Per-ganger FOV, the squad union, the mission memory").
 //! Only authored, still-standing terrain has a [`TerrainSprite`](crate::TerrainSprite)
 //! cell to modulate, so fog can never present over void and destroyed terrain stays
-//! destroyed. Per `(cell, level)`:
+//! destroyed. Per `(cell, level)` (GTW-348 — colour-loss, not brightness-loss, as the
+//! memory cue):
 //!
-//! - **VISIBLE** → full identity ([`Color::WHITE`] modulate — the atlas tile's own
-//!   colours read through), shown;
-//! - **EXPLORED** → the tile's RGB × `explored_dim` (alpha untouched — "memory, not live
-//!   sight"), shown;
+//! - **VISIBLE** → full colour (the [`TerrainFogMaterial`] `saturation` is `1.0`, the atlas
+//!   tile's own colours read through), shown;
+//! - **EXPLORED** → FULL-brightness GREYSCALE (the material `saturation` is `0.0` — the
+//!   tile's BT.709 luminance with its colour removed; "memory, not live sight"), shown;
 //! - **UNSEEN** → hidden ([`Visibility::Hidden`] — the dark clear colour reads through).
+//!
+//! Terrain tiles render through a [`Material2d`](bevy::sprite::Material2d)
+//! ([`TerrainFogMaterial`]) rather than a [`Sprite`](bevy::prelude::Sprite), because the
+//! sprite pipeline's per-channel multiply tint cannot DESATURATE (GTW-348). Gangers stay on
+//! the sprite path — the actor arm of [`present_fog`] is a Visibility hard-cut, unchanged.
 //!
 //! # Composition with the view slice — never crossing writers
 //!
@@ -54,9 +60,11 @@
 //! It mints NO fire / targeting fog-GATE UX (the reticle / "hold your fire" refusal) —
 //! that is GTW-11, which consumes the SIM read seams, not this presenter writer.
 
+mod material;
 mod present;
 
 #[cfg(test)]
 mod test;
 
+pub use material::{TerrainFogMaterial, TerrainFogUniform};
 pub use present::present_fog;
