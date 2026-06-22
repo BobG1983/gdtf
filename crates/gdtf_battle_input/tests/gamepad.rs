@@ -32,16 +32,20 @@ use bevy::{
 };
 use gdtf_battle_input::{
     ActivePointer, GamepadCursor, GdtfBattleInputPlugin, InspectTarget, LeftClickOutcome,
-    SelectedFireMode, SelectedShooter, decide_left_click, decide_turn,
+    PathPreviewTarget, SelectedFireMode, SelectedShooter, decide_left_click, decide_turn,
     fire_surface::{ShooterFireData, WeaponMagazine},
     selection::LeftClickReads,
 };
 use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera, cell_to_world};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
-    LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax, WieldedBy, Wields,
-    acts::SetFacingRequested, tuning::CombatTuning,
+    LifeState, LinkKind, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax, VerticalLink,
+    VerticalLinkGraph, WieldedBy, Wields,
+    acts::{MoveRequested, SetFacingRequested},
+    build_vertical_link_graph,
+    test_support::SituationBuilder,
+    tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -89,6 +93,11 @@ fn decision_app() -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    // GTW-356: the `LeftClickReads` bundle now reads `Res<VerticalLinkGraph>` (the OQ-4
+    // link-tile gate), so seed an empty graph for the `SystemState` to validate (no links, so
+    // every move target is a non-link tile unless a test adds one).
+    app.world_mut()
+        .insert_resource(VerticalLinkGraph::default());
     // The `LeftClickReads` bundle reads `ButtonInput<MouseButton>` (the `mouse` field) even
     // though `decide_left_click` does NOT consult it — the bundle is shared with the mouse
     // surface; insert it so the `SystemState` over `LeftClickReads` validates.
@@ -140,6 +149,22 @@ fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
     enemy
 }
 
+/// A [`VerticalLinkGraph`] holding ONE stair link `from → to` (built through the real
+/// [`build_vertical_link_graph`] validation off a minimal [`Situation`] with slabs at both
+/// endpoints, so `links_from(from)` reports `from` as a vertical-link tile — the GTW-356 OQ-4
+/// non-target gate). The `Err` arm is structurally impossible (both endpoints are authored
+/// slabs and on distinct storeys), so it falls back to an empty graph rather than panicking
+/// (the no-`unwrap` test rule).
+fn link_graph_with_link(from: CellLevel, to: CellLevel) -> VerticalLinkGraph {
+    let link = VerticalLink::new(from, to, LinkKind::stair());
+    let situation = SituationBuilder::new()
+        .slab_at(from)
+        .slab_at(to)
+        .vertical_link(link)
+        .build();
+    build_vertical_link_graph(&situation).unwrap_or_default()
+}
+
 /// The `SystemState` param tuple for [`decide_left_click`] (aliased to keep clippy's
 /// `type_complexity` happy — the framework-plumbing carve-out for a `SystemState` tuple). The
 /// [`InspectTarget`] is a SEPARATE `Res` (GTW-300: it is no longer inside [`LeftClickReads`], so
@@ -147,6 +172,7 @@ fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
 type DecideParams<'w, 's> = (
     LeftClickReads<'w>,
     Res<'w, InspectTarget>,
+    Res<'w, PathPreviewTarget>,
     Query<'w, 's, &'static Faction>,
     Query<'w, 's, ShooterFireData<'static>>,
     Query<'w, 's, &'static Wields>,
@@ -165,12 +191,20 @@ fn decide(app: &mut App) -> LeftClickOutcome {
     // `get` now returns a `Result` (Bevy 0.19); these params always validate, so
     // an `Err` is structurally impossible — fall back to the no-op outcome, which
     // would fail the calling assertion loudly rather than panic.
-    let Ok((reads, inspect, factions, shooters, wields, weapons, selected)) = state.get(world)
+    let Ok((reads, inspect, move_target, factions, shooters, wields, weapons, selected)) =
+        state.get(world)
     else {
         return LeftClickOutcome::NoOp;
     };
     decide_left_click(
-        &reads, &inspect, &factions, &shooters, &wields, &weapons, &selected,
+        &reads,
+        &inspect,
+        &move_target,
+        &factions,
+        &shooters,
+        &wields,
+        &weapons,
+        &selected,
     )
 }
 
@@ -236,7 +270,9 @@ fn decide_left_click_matches_the_contract_precedence() {
         );
     }
 
-    // --- MOVE: a player selection + an empty, in-bounds, unblocked cell. ---
+    // --- MOVE (two-click, GTW-356): a player selection + an empty, in-bounds, unblocked,
+    //     non-link cell. Click-1 (no current target) SETS the target; a click on the SAME cell
+    //     (target == cell) COMMITS. ---
     {
         let mut app = decision_app();
         let shooter_cell = CellLevel::new(Cell::new(3, 3), LEVEL);
@@ -247,16 +283,20 @@ fn decide_left_click_matches_the_contract_precedence() {
         app.world_mut()
             .insert_resource(InspectTarget::new(Some(dest)));
 
-        let outcome = decide(&mut app);
-        assert!(
-            matches!(outcome, LeftClickOutcome::Move(_)),
-            "an empty cell with a selection must MOVE, got {outcome:?}",
+        // Click-1 (default target None) -> SET the target, not a commit.
+        assert_eq!(
+            decide(&mut app),
+            LeftClickOutcome::SetMoveTarget(dest),
+            "click-1 over an empty cell with a selection must SET the move target (GTW-356)",
         );
-        let LeftClickOutcome::Move(request) = outcome else {
-            return;
-        };
-        assert_eq!(request.actor, ganger, "MOVE actor = the selection");
-        assert_eq!(request.dest, dest, "MOVE dest = the hovered cell");
+        // With the target now equal to the cell, a click on the SAME cell COMMITS.
+        app.world_mut()
+            .insert_resource(PathPreviewTarget::new(dest));
+        assert_eq!(
+            decide(&mut app),
+            LeftClickOutcome::Move(MoveRequested::new(ganger, dest)),
+            "a click on the SAME cell as the current target must COMMIT the move (GTW-356)",
+        );
     }
 
     // --- NO-OP: nothing hovered (GTW-288). The GTW-286 viewport gate resolves an over-UI /
@@ -296,8 +336,8 @@ fn decide_left_click_matches_the_contract_precedence() {
         );
     }
 
-    // --- Fall-through pin: a fire mode over an EMPTY cell must NOT lock out MOVE (not FIRE,
-    //     not CLEAR). ---
+    // --- Fall-through pin: a fire mode over an EMPTY cell must NOT lock out the two-click MOVE
+    //     path (not FIRE, not CLEAR). With no current target it falls through to SetMoveTarget. ---
     {
         let mut app = decision_app();
         let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
@@ -308,11 +348,39 @@ fn decide_left_click_matches_the_contract_precedence() {
         app.world_mut()
             .insert_resource(InspectTarget::new(Some(dest)));
 
-        assert!(
-            matches!(decide(&mut app), LeftClickOutcome::Move(_)),
-            "a fire mode over an EMPTY cell must fall through to MOVE, not FIRE / CLEAR",
+        assert_eq!(
+            decide(&mut app),
+            LeftClickOutcome::SetMoveTarget(dest),
+            "a fire mode over an EMPTY cell must fall through to the move path (SetMoveTarget), \
+             not FIRE / CLEAR",
         );
     }
+}
+
+/// GTW-356 OQ-4 — the SHARED `decide_left_click` resolves a click on a VERTICAL-LINK tile to
+/// `NoOp`: not a move target, not a move dispatch (the same decision the mouse AND the gamepad
+/// use). Split out of [`decide_left_click_matches_the_contract_precedence`] to keep each test
+/// under the `too_many_lines` lint.
+#[test]
+fn decide_left_click_on_a_link_tile_is_a_no_op() {
+    let mut app = decision_app();
+    let shooter_cell = CellLevel::new(Cell::new(7, 7), LEVEL);
+    let ganger = spawn_player_shooter(&mut app, shooter_cell);
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+    // A vertical-link tile at the clicked cell (a stair link up from it).
+    let link_cell = CellLevel::new(Cell::new(8, 7), LEVEL);
+    let up_cell = CellLevel::new(Cell::new(8, 7), Level::new(1));
+    let graph = link_graph_with_link(link_cell, up_cell);
+    app.world_mut().insert_resource(graph);
+    app.world_mut()
+        .insert_resource(InspectTarget::new(Some(link_cell)));
+
+    assert_eq!(
+        decide(&mut app),
+        LeftClickOutcome::NoOp,
+        "a click on a vertical-link tile is a NO-OP (OQ-4: not a move target)",
+    );
 }
 
 /// AC2 — `decide_turn` resolves the actor→hovered direction into a `SetFacingRequested`, and

@@ -48,7 +48,7 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera};
 use gdtf_battle_sim::{
     BattleInProgress, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, TerrainKind,
-    acts::MoveRequested, tuning::CombatTuning,
+    VerticalLinkGraph, acts::MoveRequested, tuning::CombatTuning,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -478,6 +478,11 @@ fn move_path_app(active_level: Level) -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    // GTW-356: the shared left-click decision reads `Res<VerticalLinkGraph>` (the OQ-4
+    // link-tile gate) via `LeftClickReads`, and `battle_act_gate()` now gates the click systems
+    // on it — seed an empty graph (no links, so every move target is a non-link tile).
+    app.world_mut()
+        .insert_resource(VerticalLinkGraph::default());
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());
 
@@ -521,11 +526,25 @@ fn press_left(app: &mut App) {
     }
 }
 
+/// Releases + clears the mouse edges so the NEXT `press_left` is a fresh just-pressed (under
+/// the headless harness no `InputPlugin` clears the edges per frame, so a two-click sequence —
+/// the GTW-356 target-then-commit flow — must clear between presses).
+fn clear_mouse(app: &mut App) {
+    if let Some(mut mouse) = app
+        .world_mut()
+        .get_resource_mut::<ButtonInput<MouseButton>>()
+    {
+        mouse.release(MouseButton::Left);
+        mouse.clear();
+    }
+}
+
 /// GTW-286 INSIDE — a cursor INSIDE the viewport sub-rect over a valid in-grid cell
-/// resolves `InspectTarget` to that cell AND a left-click there emits a `MoveRequested`.
-/// (Guards against over-suppression: the gate must NOT reject an in-viewport cursor.)
+/// resolves `InspectTarget` to that cell AND a TWO-CLICK there (GTW-356: click-1 targets,
+/// click-2 commits) emits a `MoveRequested`. (Guards against over-suppression: the gate must
+/// NOT reject an in-viewport cursor.)
 #[test]
-fn click_inside_the_viewport_resolves_a_cell_and_moves() {
+fn two_click_inside_the_viewport_resolves_a_cell_and_moves() {
     let level = Level::new(0);
     let mut app = move_path_app(level);
 
@@ -555,14 +574,23 @@ fn click_inside_the_viewport_resolves_a_cell_and_moves() {
         "an INSIDE-viewport cursor must resolve InspectTarget to its cell (gate must not over-suppress)",
     );
 
-    // Update 2: press Left -> `left_click_act` (which reads last update's InspectTarget)
-    // decides MOVE (player selection + empty in-bounds cell) and the drain emits it.
+    // Update 2: click-1 -> `left_click_act` (which reads last update's InspectTarget) SETS
+    // the move target (GTW-356); NO MoveRequested yet.
+    press_left(&mut app);
+    app.update();
+    assert!(
+        move_requests(&app).is_empty(),
+        "click-1 on an in-viewport empty cell SETS the target — no MoveRequested yet (GTW-356)",
+    );
+
+    // Update 3: click-2 on the SAME cell (cursor unmoved) COMMITS — exactly one MoveRequested.
+    clear_mouse(&mut app);
     press_left(&mut app);
     app.update();
     assert_eq!(
         move_requests(&app).len(),
         1,
-        "an INSIDE-viewport left-click on an empty cell must emit exactly one MoveRequested",
+        "click-2 on the same in-viewport cell must commit exactly one MoveRequested (GTW-356)",
     );
 }
 
@@ -606,7 +634,14 @@ fn click_in_the_bottom_margin_resolves_none_and_does_not_move() {
          None — even though its extrapolated cell is in-grid (GTW-286 gate)",
     );
 
-    // Update 2: a Left press now finds nothing hovered -> no MOVE through the UI margin.
+    // Update 2 + 3: TWO Left presses now find nothing hovered -> no MOVE through the UI margin
+    // (GTW-356: even the two-click target-then-commit never fires, because the gate resolves
+    // the margin cursor to None so click-1 can never set a target). If the gate were removed,
+    // the extrapolated in-grid cell would be targeted then committed — so two clicks make this
+    // pin-discriminating against the two-click flow, not just the old single-click move.
+    press_left(&mut app);
+    app.update();
+    clear_mouse(&mut app);
     press_left(&mut app);
     app.update();
     assert!(

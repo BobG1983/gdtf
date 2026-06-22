@@ -26,7 +26,8 @@ use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, LifeState,
     Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax, tuning::CombatTuning,
+    PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax, VerticalLinkGraph,
+    tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -59,6 +60,11 @@ fn pin_app() -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    // GTW-356: the shared left-click decision reads `Res<VerticalLinkGraph>` (the OQ-4
+    // link-tile gate) via `LeftClickReads`, and `battle_act_gate()` now gates the click systems
+    // on it — seed an empty graph so the click decision (and its pin effect) runs.
+    app.world_mut()
+        .insert_resource(VerticalLinkGraph::default());
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());
     app

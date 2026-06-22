@@ -8,6 +8,7 @@ use crate::{
     ActIntent, InspectTarget, PendingActIntent,
     fire_surface::{ShooterFireData, WeaponMagazine},
     selection::{
+        PathPreviewTarget,
         decision::{
             LeftClickReads, TurnReads, apply_left_click, apply_pin, decide_left_click, decide_pin,
             decide_turn,
@@ -29,11 +30,17 @@ use crate::{
 ///    and the shared [`can_fire`](gdtf_battle_sim::can_fire) guard passes → push
 ///    [`ActIntent::Fire`]; nothing else changes this edge.
 /// 2. **SELECT** — the hovered cell holds one of YOUR gangers
-///    ([`Faction`] `==` [`PlayerFaction`]) → set [`SelectedShooter::new`]; no act emitted.
-/// 3. **MOVE** — there is a player-faction selection AND the hovered cell is empty, in-bounds,
-///    and unblocked → push [`ActIntent::Move`] to the hovered destination.
-/// 4. **CLEAR** — none of the above → [`SelectedShooter::cleared`] (still fires for an empty /
-///    blocked cell with a non-player or stale selection).
+///    ([`Faction`] `==` [`PlayerFaction`]) → set [`SelectedShooter::new`] + clear the move
+///    target (GTW-356 C4); no act emitted.
+/// 3. **MOVE (two-click, GTW-356)** — there is a player-faction selection AND the hovered cell
+///    is a VALID move target (empty, in-bounds, unblocked, NOT a vertical-link tile). It does
+///    NOT dispatch immediately: a click on a cell that EQUALS the current
+///    [`PathPreviewTarget`](crate::selection::PathPreviewTarget) COMMITS (push
+///    [`ActIntent::Move`] + clear the target); a click on a DIFFERENT / no target SETS the
+///    target (the preview + range overlay + cost show, no dispatch). A click on a vertical-link
+///    tile is a no-op (OQ-4 — not a move target).
+/// 4. **CLEAR** — none of the above → [`SelectedShooter::cleared`] + clear the move target
+///    (still fires for an empty / blocked cell with a non-player or stale selection).
 ///
 /// Between MOVE (clause 3) and CLEAR (clause 4) sits the GTW-287 NO-OP rung: an enemy-occupied
 /// click that does not FIRE does NOTHING — it NEVER clears the player's selection (enemies are
@@ -63,7 +70,8 @@ use crate::{
     clippy::too_many_arguments,
     reason = "GTW-323 slice 3: the fire guard's magazine moved to the related weapon entity, so the \
               shared decision needs the extra Wields + weapon-magazine queries on top of the existing \
-              reads/writes; LeftClickReads already bundles the Res-only reads"
+              reads/writes; GTW-356 adds the PathPreviewTarget write for the two-click move target; \
+              LeftClickReads already bundles the Res-only reads"
 )]
 pub fn left_click_act(
     reads: LeftClickReads,
@@ -74,18 +82,23 @@ pub fn left_click_act(
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
     mut inspect: ResMut<InspectTarget>,
+    mut target: ResMut<PathPreviewTarget>,
 ) {
     // Only act on the press edge; a held button does not re-resolve.
     if !reads.mouse.just_pressed(MouseButton::Left) {
         return;
     }
-    // Decide both effects from the immutable inspect target FIRST, then commit them (the pin
-    // write borrows `inspect` mutably, so the read-only decisions must finish before it).
+    // Decide both effects from the immutable inspect + move-target reads FIRST, then commit them
+    // (the pin / target writes borrow `inspect` / `target` mutably, so the read-only decisions
+    // must finish before them — the GTW-300 InspectTarget precedent, now also for the GTW-356
+    // PathPreviewTarget two-click state machine).
     let outcome = decide_left_click(
-        &reads, &inspect, &factions, &shooters, &wields, &weapons, &selected,
+        &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &selected,
     );
     let pin = decide_pin(&reads, &inspect, &factions);
-    apply_left_click(outcome, &mut selected, &mut pending);
+    // GTW-356 — `apply_left_click` ALSO commits the two-click move target (set on click-1,
+    // cleared on commit / select / clear / fire).
+    apply_left_click(outcome, &mut selected, &mut pending, &mut target);
     // GTW-300 — the parallel pin effect (orthogonal to the act/selection effect above).
     apply_pin(pin, &mut inspect);
 }

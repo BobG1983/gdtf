@@ -34,7 +34,7 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
 use gdtf_battle_sim::{
     BattleInProgress, BattleSimPlugin, Cell, CellLevel, Faction, Level, MAX_LEVELS, OccupancyGrid,
-    PlayerFaction, Position,
+    PlayerFaction, Position, VerticalLinkGraph,
 };
 
 /// The faction the player controls in these tests (matches `PlayerFaction`).
@@ -71,6 +71,11 @@ fn selection_app(active_level: Level) -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    // GTW-356: the shared left-click decision reads `Res<VerticalLinkGraph>` (the OQ-4
+    // link-tile gate) via `LeftClickReads`, and `battle_act_gate()` now gates the click systems
+    // on it — seed an empty graph so the SELECT / CLEAR / NoOp click decision runs.
+    app.world_mut()
+        .insert_resource(VerticalLinkGraph::default());
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());
     app

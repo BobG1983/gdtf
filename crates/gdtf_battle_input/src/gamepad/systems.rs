@@ -12,8 +12,8 @@ use crate::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, GamepadCursor, move_cursor,
     },
     selection::{
-        LeftClickReads, SelectedShooter, TurnReads, apply_left_click, apply_pin, decide_left_click,
-        decide_pin, decide_turn,
+        LeftClickReads, PathPreviewTarget, SelectedShooter, TurnReads, apply_left_click, apply_pin,
+        decide_left_click, decide_pin, decide_turn,
     },
 };
 
@@ -100,8 +100,9 @@ pub fn mouse_reclaims_pointer(
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` / `Query<ShooterFireData>` / `Query<&Wields>` + the weapon-magazine query
 /// (the fire guard's magazine lives on the related weapon entity since GTW-323 slice 3) + the
-/// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes +
-/// the [`Gamepad`] query; no `&mut World`. Runs `.before(pick_hovered_cell)` and
+/// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] /
+/// [`ResMut<PathPreviewTarget>`](crate::selection::PathPreviewTarget) (GTW-356 two-click target)
+/// writes + the [`Gamepad`] query; no `&mut World`. Runs `.before(pick_hovered_cell)` and
 /// `.before(dispatch_act_intents)`.
 ///
 /// HONESTY: the raw South-button read is device-event-driven and not headlessly drivable; the
@@ -110,7 +111,7 @@ pub fn mouse_reclaims_pointer(
     clippy::too_many_arguments,
     reason = "GTW-323 slice 3: mirrors left_click_act — the fire guard's magazine moved to the \
               related weapon entity, so the shared decision needs the extra Wields + weapon-magazine \
-              queries on top of the gamepad + reads/writes"
+              queries on top of the gamepad + reads/writes; GTW-356 adds the PathPreviewTarget write"
 )]
 pub fn gamepad_click_act(
     gamepads: Query<&Gamepad>,
@@ -122,6 +123,7 @@ pub fn gamepad_click_act(
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
     mut inspect: ResMut<InspectTarget>,
+    mut target: ResMut<PathPreviewTarget>,
 ) {
     let Some(gamepad) = gamepads.iter().next() else {
         return;
@@ -129,13 +131,17 @@ pub fn gamepad_click_act(
     if !gamepad.just_pressed(GamepadButton::South) {
         return;
     }
-    // Decide both effects from the immutable inspect target FIRST, then commit them (the pin
-    // write borrows `inspect` mutably, so the read-only decisions must finish before it).
+    // Decide both effects from the immutable inspect + move-target reads FIRST, then commit them
+    // (the pin / target writes borrow `inspect` / `target` mutably, so the read-only decisions
+    // must finish before them — the GTW-300 InspectTarget precedent + the GTW-356 two-click
+    // PathPreviewTarget state machine).
     let outcome = decide_left_click(
-        &reads, &inspect, &factions, &shooters, &wields, &weapons, &selected,
+        &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &selected,
     );
     let pin = decide_pin(&reads, &inspect, &factions);
-    apply_left_click(outcome, &mut selected, &mut pending);
+    // GTW-356 — the SAME two-click move-target commit the mouse path runs (set/commit/clear of
+    // PathPreviewTarget); South shares the decision, so the two-click flow is identical.
+    apply_left_click(outcome, &mut selected, &mut pending, &mut target);
     // GTW-300 — the parallel pin effect (same shared decision as the mouse path).
     apply_pin(pin, &mut inspect);
 }

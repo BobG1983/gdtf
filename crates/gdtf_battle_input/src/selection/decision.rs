@@ -4,7 +4,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Cell, Direction, Faction, OccupancyGrid, PlayerFaction, Position, WieldedBy, Wields,
+    Cell, CellLevel, Direction, Faction, OccupancyGrid, PlayerFaction, Position, VerticalLinkGraph,
+    WieldedBy, Wields,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
@@ -12,7 +13,10 @@ use gdtf_battle_sim::{
 use crate::{
     ActIntent, InspectTarget, PendingActIntent, SelectedFireMode,
     fire_surface::{ShooterFireData, WeaponMagazine, try_fire_request},
-    selection::resources::{SelectedShooter, set_selection},
+    selection::{
+        path_preview::PathPreviewTarget,
+        resources::{SelectedShooter, set_selection},
+    },
 };
 
 /// The read-only resources [`decide_left_click`] consults, grouped into ONE [`SystemParam`]
@@ -39,6 +43,10 @@ pub struct LeftClickReads<'w> {
     tuning:           Res<'w, CombatTuning>,
     /// The player's own faction — the friend/foe gate for every branch.
     player:           Res<'w, PlayerFaction>,
+    /// The vertical-link graph — the GTW-356 OQ-4 gate: a click on a vertical-link tile is
+    /// NOT a move target (the player switches storey + clicks a destination tile; the route
+    /// auto-stitches through the link).
+    links:            Res<'w, VerticalLinkGraph>,
 }
 
 /// The single resolved outcome of one left-click edge — the ONE source of truth the mouse
@@ -57,17 +65,31 @@ pub enum LeftClickOutcome {
     /// selection is unchanged.
     Fire(FireRequested),
     /// SELECT the carried entity — clause 2 won (the hovered cell holds one of YOUR gangers).
-    /// Sets [`SelectedShooter::new`]; no act emitted.
+    /// Sets [`SelectedShooter::new`] AND CLEARS the pending move target (GTW-356 C4: a new
+    /// selection drops any stale route preview); no act emitted.
     Select(Entity),
-    /// MOVE the carried request — clause 3 won (a player-faction selection over an empty,
-    /// in-bounds, unblocked cell). Pushed as an [`ActIntent::Move`]; the selection is unchanged.
+    /// SET the carried cell as the move target — the GTW-356 two-click CLICK-1 / RE-TARGET
+    /// rung (clause 3, OQ-5). A player-faction selection clicked a VALID move target (empty,
+    /// in-bounds, unblocked, NOT a vertical-link tile) that does NOT equal the current
+    /// [`PathPreviewTarget`] (it was [`None`] or a different cell). Sets
+    /// [`PathPreviewTarget::new`] so the preview + range overlay + cost show; NO act emitted,
+    /// the selection is unchanged. A SECOND click on the SAME cell then COMMITS ([`Move`]).
+    SetMoveTarget(CellLevel),
+    /// COMMIT the carried move — the GTW-356 two-click CLICK-2 rung (clause 3, OQ-5). A
+    /// player-faction selection clicked a VALID move target that EQUALS the current
+    /// [`PathPreviewTarget`]. Pushed as an [`ActIntent::Move`] AND CLEARS
+    /// [`PathPreviewTarget`] (the route is committed, the preview is consumed); the selection
+    /// is unchanged.
     Move(MoveRequested),
-    /// NO-OP — does NOTHING, leaving [`SelectedShooter`] untouched (no clear, no transient
-    /// `None`). Two cases reach it: clause 3.5 (GTW-287), the clicked cell holds an ENEMY you
-    /// cannot FIRE on (enemies are inspected via the GTW-274 hover panel, never selected or
-    /// cleared as your shooter); and the no-hover case (GTW-288), a click with no map cell
-    /// (cursor over the UI / a margin / off the map, the GTW-286 viewport gate) — which must
-    /// not clear the selection, lest it flicker the status panel and break Mode/Stance.
+    /// NO-OP — does NOTHING, leaving [`SelectedShooter`] AND [`PathPreviewTarget`] untouched (no
+    /// clear, no transient `None`). Three cases reach it: clause 3.5 (GTW-287), the clicked cell
+    /// holds an ENEMY you cannot FIRE on (enemies are inspected via the GTW-274 hover panel, never
+    /// selected or cleared as your shooter); the no-hover case (GTW-288), a click with no map cell
+    /// (cursor over the UI / a margin / off the map, the GTW-286 viewport gate) — which must not
+    /// clear the selection, lest it flicker the status panel and break Mode/Stance; and the
+    /// GTW-356 OQ-4 LINK-TILE case, a click on a vertical-link tile, which is NOT a targeting
+    /// action (no target set, no move dispatched, no active-level change — the player switches
+    /// storey + clicks a destination tile, and the route auto-stitches through the link).
     NoOp,
     /// CLEAR the selection — clause 4: a valid in-grid hovered cell
     /// ([`InspectTarget::hovered`] is [`Some`]) where none of FIRE / SELECT / MOVE / NO-OP
@@ -116,12 +138,36 @@ pub enum PinOutcome {
 ///    → [`LeftClickOutcome::Fire`].
 /// 2. **SELECT** — the hovered cell holds one of YOUR gangers
 ///    ([`Faction`] `==` [`PlayerFaction`]) → [`LeftClickOutcome::Select`].
-/// 3. **MOVE** — there is a player-faction selection AND the hovered cell is empty
-///    (`occupant == None`), in-bounds (a [`Some`] hovered cell is always in-grid), and
-///    unblocked (`!is_blocked`) → [`LeftClickOutcome::Move`].
+/// 3. **MOVE (two-click, GTW-356 OQ-5)** — there is a player-faction selection AND the hovered
+///    cell is a VALID move target: empty (`occupant == None`), in-bounds (a [`Some`] hovered
+///    cell is always in-grid), unblocked (`!is_blocked`), and NOT a vertical-link tile
+///    ([`VerticalLinkGraph::links_from`]`(cell).next().is_none()`, OQ-4). It does NOT dispatch
+///    immediately; it runs a state machine over the current [`PathPreviewTarget`]:
+///    - the clicked cell EQUALS the current target → [`LeftClickOutcome::Move`] (COMMIT: the
+///      preview was confirmed; dispatch + clear the target);
+///    - the clicked cell does NOT equal the current target ([`None`] or a different cell) →
+///      [`LeftClickOutcome::SetMoveTarget`] (CLICK-1 / RE-TARGET: set the target, show the
+///      preview, dispatch NOTHING);
+///    - a VALID-but-vertical-LINK tile is the GTW-356 OQ-4 NON-target case — it falls to
+///      [`LeftClickOutcome::NoOp`] (no target set, no dispatch, no level change), NOT a target.
 /// 4. **CLEAR** — a valid in-grid hovered cell (a [`Some`] [`InspectTarget::hovered`]) where none
 ///    of the above applied → [`LeftClickOutcome::Clear`]. The genuine "nothing to act on" cases
 ///    (an empty / blocked cell with a non-player or stale selection) still clear.
+///
+/// # The GTW-356 same-cell-commit semantics (FLAGGED)
+///
+/// "Click again on the SAME cell COMMITS; a different cell RE-TARGETS" is the user OQ-5
+/// two-click interpretation built here — the first click is always a target-select (the
+/// preview shows), a second click on that exact cell confirms the move, and a click on any
+/// OTHER valid cell re-points the preview without committing. EDGE CASE resolved: a click on
+/// a BLOCKED / out-of-range / vertical-link cell while a target is PENDING does NOT commit and
+/// does NOT clear the pending target — it is the corresponding non-MOVE outcome (CLEAR for a
+/// blocked empty cell with a stale selection, [`NoOp`](LeftClickOutcome::NoOp) for a link tile /
+/// enemy / no-hover), leaving the pending target intact so the player keeps their preview.
+/// (Affordability — out-of-TU — is
+/// the SIM's [`dispatch_move`](gdtf_battle_sim::acts::dispatch_move) gate, not this layer's; the
+/// preview's `find_path` cost surfaces it, and a commit that the sim rejects is a sim-side
+/// no-op.)
 ///
 /// A NO-HOVER click is NOT clause 4: when the hovered cell is [`None`] — a click with no map
 /// cell (cursor over the bottom UI / a margin / off the map, which the GTW-286 viewport gate
@@ -142,17 +188,27 @@ pub enum PinOutcome {
 /// through to CLEAR (it would wipe the selection); it is the GTW-287 NO-OP rung above.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + the [`InspectTarget`]
-/// (passed as a separate `&` so the caller can hold it as a `ResMut` for the pin write — see
-/// [`LeftClickReads`]) + read-only `Query<&Faction>` / `Query<ShooterFireData>` / `Query<&Wields>`
-/// / the weapon-[`Magazine`](gdtf_battle_sim::Magazine) query + the current [`SelectedShooter`],
-/// no `&mut World`. The `Wields` + weapon-magazine queries resolve the fire guard's magazine off
-/// the related weapon entity (`ganger → Wields → the weapon entity`, GTW-323 slice 3). It does
-/// NOT read the mouse button (the caller gates on its own press edge), so the gamepad surface
-/// reuses it without a `ButtonInput<MouseButton>`.
+/// AND the [`PathPreviewTarget`] (BOTH passed as a separate `&` so the caller can hold each as a
+/// `ResMut` for its write — the pin write on [`InspectTarget`], the two-click target write on
+/// [`PathPreviewTarget`] — without a `Res` + `ResMut` aliasing conflict on the SAME resource
+/// (B0002); the [`InspectTarget`] precedent, GTW-300) + read-only `Query<&Faction>` /
+/// `Query<ShooterFireData>` / `Query<&Wields>` / the weapon-[`Magazine`](gdtf_battle_sim::Magazine)
+/// query + the current [`SelectedShooter`], no `&mut World`. The `Wields` + weapon-magazine queries
+/// resolve the fire guard's magazine off the related weapon entity (`ganger → Wields → the weapon
+/// entity`, GTW-323 slice 3). It does NOT read the mouse button (the caller gates on its own press
+/// edge), so the gamepad surface reuses it without a `ButtonInput<MouseButton>`.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "GTW-356: the two-click move state machine reads the current PathPreviewTarget, which \
+              must be passed as a separate `&` (not in LeftClickReads) so the caller holds the \
+              ResMut for the target write without a B0002 Res+ResMut alias — the InspectTarget \
+              precedent; on top of the GTW-323 slice-3 Wields + weapon-magazine queries"
+)]
 #[must_use]
 pub fn decide_left_click(
     reads: &LeftClickReads,
     inspect: &InspectTarget,
+    move_target: &PathPreviewTarget,
     factions: &Query<&Faction>,
     shooters: &Query<ShooterFireData>,
     wields: &Query<&Wields>,
@@ -201,13 +257,26 @@ pub fn decide_left_click(
         return LeftClickOutcome::Select(entity); // SELECT wins — no act emitted.
     }
 
-    // 3. MOVE — a player-faction selection + an empty, in-bounds, unblocked hovered cell.
+    // 3. MOVE (two-click, GTW-356) — a player-faction selection + an empty, in-bounds,
+    //    unblocked hovered cell.
     if let Some(actor) = **selected
         && selection_is_player
         && occupant.is_none()
         && !reads.occupancy.is_blocked(&target)
     {
-        return LeftClickOutcome::Move(MoveRequested::new(actor, target)); // MOVE wins.
+        // OQ-4: a vertical-link tile is NOT a move target — clicking it is a no-op (no target
+        // set, no dispatch, no active-level change). Reaching another storey is "switch
+        // ActiveLevel + click a destination tile there"; the route auto-stitches the link.
+        if reads.links.links_from(&target).next().is_some() {
+            return LeftClickOutcome::NoOp; // link tile -> non-target, leave everything as-is.
+        }
+        // OQ-5 two-click state machine over the current PathPreviewTarget: a click on the SAME
+        // cell COMMITS the move; a click on a DIFFERENT (or no) target (RE-)TARGETS it.
+        return if **move_target == Some(target) {
+            LeftClickOutcome::Move(MoveRequested::new(actor, target)) // click-2 -> COMMIT.
+        } else {
+            LeftClickOutcome::SetMoveTarget(target) // click-1 / re-target -> SET the preview.
+        };
     }
 
     // 3.5. NO-OP (GTW-287) — the cell holds an ENEMY you couldn't FIRE on. Clicking an enemy you
@@ -288,26 +357,70 @@ pub fn decide_pin(
 /// FIRE / MOVE push the carried act onto [`PendingActIntent`] (the ONE
 /// [`dispatch_act_intents`](crate::dispatch_act_intents) drain emits it); SELECT sets
 /// [`SelectedShooter::new`]; CLEAR sets [`SelectedShooter::cleared`]. The selection writes go
-/// through `set_selection` (change-detection hygiene). FIRE / MOVE / NO-OP do NOT touch the
-/// selection — and [`LeftClickOutcome::NoOp`] (GTW-287, the enemy-click case) does NOTHING at
-/// all: no push, no `set_selection`, so the player's selection is left exactly as it was.
+/// through `set_selection` (change-detection hygiene).
+///
+/// GTW-356 two-click move target:
+///
+/// - [`SetMoveTarget`](LeftClickOutcome::SetMoveTarget) (click-1 / re-target) writes
+///   [`PathPreviewTarget::new`] (the preview shows) and dispatches NOTHING.
+/// - [`Move`](LeftClickOutcome::Move) (click-2 commit) pushes [`ActIntent::Move`] AND CLEARS
+///   [`PathPreviewTarget`] (the preview is consumed).
+/// - [`Select`](LeftClickOutcome::Select) / [`Clear`](LeftClickOutcome::Clear) ALSO CLEAR the
+///   target (C4: a new/dropped selection drops any stale preview).
+/// - [`Fire`](LeftClickOutcome::Fire) clears the target too (a fire edge abandons a pending
+///   move plan), and [`NoOp`](LeftClickOutcome::NoOp) (GTW-287 enemy / GTW-288 no-hover /
+///   GTW-356 link-tile) does NOTHING at all — no push, no selection write, no target write —
+///   so a pending target survives a no-op click.
+///
+/// Each write is guarded so it trips change-detection only on a real change ([`set_selection`]
+/// for the selection; the `!=` guard for the target), keeping `Changed<PathPreviewTarget>` /
+/// `Changed<SelectedShooter>` honest for the populate / fire-mode-sync systems.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`ResMut<SelectedShooter>`] /
-/// [`ResMut<PendingActIntent>`] writes, no `&mut World`.
+/// [`ResMut<PendingActIntent>`] / [`ResMut<PathPreviewTarget>`] writes, no `&mut World`.
 pub fn apply_left_click(
     outcome: LeftClickOutcome,
     selected: &mut ResMut<SelectedShooter>,
     pending: &mut ResMut<PendingActIntent>,
+    target: &mut ResMut<PathPreviewTarget>,
 ) {
     match outcome {
-        LeftClickOutcome::Fire(request) => pending.push(ActIntent::Fire(request)),
+        // A fire edge abandons any pending move target (C4-adjacent: a different act took over).
+        LeftClickOutcome::Fire(request) => {
+            pending.push(ActIntent::Fire(request));
+            set_move_target(target, PathPreviewTarget::cleared());
+        }
+        // A new selection drops the previous selection's stale preview (C4).
         LeftClickOutcome::Select(entity) => {
             set_selection(selected, SelectedShooter::new(entity));
+            set_move_target(target, PathPreviewTarget::cleared());
         }
-        LeftClickOutcome::Move(request) => pending.push(ActIntent::Move(request)),
-        // GTW-287 — an enemy-click no-op: do nothing, leave the selection untouched.
+        // Click-1 / re-target: set the preview target, dispatch nothing.
+        LeftClickOutcome::SetMoveTarget(cell) => {
+            set_move_target(target, PathPreviewTarget::new(cell));
+        }
+        // Click-2 commit: dispatch the move AND consume the preview target.
+        LeftClickOutcome::Move(request) => {
+            pending.push(ActIntent::Move(request));
+            set_move_target(target, PathPreviewTarget::cleared());
+        }
+        // GTW-287 enemy / GTW-288 no-hover / GTW-356 link-tile: do nothing, leave the selection
+        // AND the pending target exactly as they were.
         LeftClickOutcome::NoOp => {}
-        LeftClickOutcome::Clear => set_selection(selected, SelectedShooter::cleared()),
+        // CLEAR drops the selection AND any pending preview (C4: deselecting clears the target).
+        LeftClickOutcome::Clear => {
+            set_selection(selected, SelectedShooter::cleared());
+            set_move_target(target, PathPreviewTarget::cleared());
+        }
+    }
+}
+
+/// Writes `next` into `target` only on a real change (change-detection hygiene), so a no-op
+/// clear / set does not spuriously trip `Changed<PathPreviewTarget>` (which
+/// [`populate_path_preview`](crate::populate_path_preview) keys off via its own `!=` guard).
+fn set_move_target(target: &mut ResMut<PathPreviewTarget>, next: PathPreviewTarget) {
+    if **target != next {
+        **target = next;
     }
 }
 

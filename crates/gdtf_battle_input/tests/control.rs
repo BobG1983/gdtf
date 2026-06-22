@@ -33,7 +33,7 @@ use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
     LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, ReloadTu, Tu, TuMax, WieldedBy,
+    OccupancyGrid, PlayerFaction, Position, ReloadTu, Tu, TuMax, VerticalLinkGraph, WieldedBy,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
@@ -72,6 +72,12 @@ fn control_app() -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    // GTW-356: the shared left-click decision reads `Res<VerticalLinkGraph>` (the OQ-4
+    // link-tile non-target gate, via `LeftClickReads`), and `battle_act_gate()` now gates the
+    // click systems on it — seed an empty graph so the click decision runs (these control tests
+    // place no vertical links, so every move target is a non-link tile).
+    app.world_mut()
+        .insert_resource(VerticalLinkGraph::default());
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());
     add_probes(&mut app);
@@ -152,6 +158,22 @@ fn press(app: &mut App, button: MouseButton) {
     app.world_mut()
         .resource_mut::<ButtonInput<MouseButton>>()
         .press(button);
+}
+
+/// Releases + clears the mouse edges so the NEXT `press` is a fresh just-pressed (under
+/// `MinimalPlugins` no `InputPlugin` clears the edges per frame, so a two-click sequence must
+/// clear between presses).
+fn clear_mouse(app: &mut App) {
+    let mut mouse = app.world_mut().resource_mut::<ButtonInput<MouseButton>>();
+    mouse.release(MouseButton::Left);
+    mouse.clear();
+}
+
+/// The current `PathPreviewTarget` (the GTW-356 two-click move target the preview previews TO).
+fn move_target(app: &App) -> Option<CellLevel> {
+    app.world()
+        .get_resource::<gdtf_battle_input::PathPreviewTarget>()
+        .and_then(|t| **t)
 }
 
 /// The current `SelectedShooter`.
@@ -272,20 +294,40 @@ fn left_click_selects_only_a_player_ganger() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC2 — left-click empty + player selection -> MOVE.
+// AC2 (GTW-356) — left-click empty + player selection is TWO-CLICK: click-1 SETS the
+// move target (no dispatch); click-2 on the SAME cell COMMITS the move.
 // ---------------------------------------------------------------------------------
 
-/// AC2 — with a player-faction `SelectedShooter` and a Left press on an empty, in-bounds,
-/// unblocked cell, exactly one `MoveRequested { actor = selection, dest = hovered }` is
-/// emitted and zero `FireRequested`.
+/// AC2 — with a player-faction `SelectedShooter`, the FIRST Left press on an empty,
+/// in-bounds, unblocked cell SETS `PathPreviewTarget` to that cell and emits NO
+/// `MoveRequested`; the SECOND Left press on the SAME cell emits exactly one `MoveRequested
+/// { actor = selection, dest = hovered }`, clears the target, and emits zero `FireRequested`
+/// (GTW-356 two-click flow — the single-click immediate-move was REPLACED, not weakened).
 #[test]
-fn left_click_empty_with_selection_moves() {
+fn two_click_empty_with_selection_targets_then_moves() {
     let mut app = control_app();
     let shooter_cell = CellLevel::new(Cell::new(3, 3), LEVEL);
     let ganger = spawn_player_shooter(&mut app, shooter_cell);
     set_selection(&mut app, ganger);
 
     let dest = CellLevel::new(Cell::new(4, 3), LEVEL);
+    set_hovered(&mut app, Some(dest));
+
+    // Click-1: SET the target, dispatch NOTHING.
+    press(&mut app, MouseButton::Left);
+    app.update();
+    assert!(
+        moves(&app).is_empty(),
+        "click-1 on a valid target must emit NO MoveRequested (it only sets the target)",
+    );
+    assert_eq!(
+        move_target(&app),
+        Some(dest),
+        "click-1 must SET PathPreviewTarget to the clicked cell",
+    );
+
+    // Click-2 on the SAME cell: COMMIT.
+    clear_mouse(&mut app);
     set_hovered(&mut app, Some(dest));
     press(&mut app, MouseButton::Left);
     app.update();
@@ -294,13 +336,56 @@ fn left_click_empty_with_selection_moves() {
     assert_eq!(
         emitted.len(),
         1,
-        "exactly one MoveRequested on an empty-cell click with a player selection",
+        "click-2 on the SAME cell must emit exactly one MoveRequested (commit)",
     );
     assert_eq!(emitted[0].actor, ganger, "move actor = the selection");
-    assert_eq!(emitted[0].dest, dest, "move dest = the hovered cell");
+    assert_eq!(emitted[0].dest, dest, "move dest = the targeted cell");
+    assert_eq!(
+        move_target(&app),
+        None,
+        "committing the move must CLEAR PathPreviewTarget",
+    );
     assert!(
         fires(&app).is_empty(),
-        "a MOVE edge must emit no FireRequested",
+        "a MOVE commit must emit no FireRequested",
+    );
+}
+
+/// AC2 (GTW-356 re-target) — with a target already pending, a click on a DIFFERENT valid
+/// cell RE-TARGETS the preview (does NOT commit): no `MoveRequested`, and the target follows
+/// the new cell. (The same-cell-commit / different-cell-retarget interpretation, FLAGGED.)
+#[test]
+fn click_on_a_different_cell_retargets_without_committing() {
+    let mut app = control_app();
+    let shooter_cell = CellLevel::new(Cell::new(3, 3), LEVEL);
+    let ganger = spawn_player_shooter(&mut app, shooter_cell);
+    set_selection(&mut app, ganger);
+
+    let first = CellLevel::new(Cell::new(4, 3), LEVEL);
+    set_hovered(&mut app, Some(first));
+    press(&mut app, MouseButton::Left);
+    app.update();
+    assert_eq!(
+        move_target(&app),
+        Some(first),
+        "click-1 sets the first target"
+    );
+
+    // A click on a DIFFERENT valid cell re-targets, never commits.
+    clear_mouse(&mut app);
+    let second = CellLevel::new(Cell::new(5, 3), LEVEL);
+    set_hovered(&mut app, Some(second));
+    press(&mut app, MouseButton::Left);
+    app.update();
+
+    assert!(
+        moves(&app).is_empty(),
+        "a click on a DIFFERENT cell must RE-TARGET, never commit (no MoveRequested)",
+    );
+    assert_eq!(
+        move_target(&app),
+        Some(second),
+        "the target must follow the newly-clicked cell",
     );
 }
 
@@ -350,14 +435,17 @@ fn left_click_enemy_with_fire_mode_fires_and_is_mutually_exclusive() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC4 — left-click EMPTY + fire mode + selection -> falls through to MOVE.
+// AC4 (GTW-356) — left-click EMPTY + fire mode + selection -> falls through to the
+// two-click MOVE path: click-1 SETS the target (no fire); click-2 same cell COMMITS.
 // ---------------------------------------------------------------------------------
 
 /// AC4 — with a fire mode selected, a player-faction selection, and a Left press on an
-/// EMPTY in-bounds unblocked cell, the fire mode does NOT lock out move: exactly one
-/// `MoveRequested` and zero `FireRequested` (the flagged fall-through precedence).
+/// EMPTY in-bounds unblocked cell, the fire mode does NOT lock out move: click-1 falls
+/// through to SET the move target (no `FireRequested`, no `MoveRequested`); click-2 on the
+/// SAME cell commits exactly one `MoveRequested` (the flagged fall-through precedence, now
+/// over the two-click flow).
 #[test]
-fn left_click_empty_with_fire_mode_falls_through_to_move() {
+fn empty_with_fire_mode_falls_through_to_two_click_move() {
     let mut app = control_app();
     let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
     let ganger = spawn_player_shooter(&mut app, shooter_cell);
@@ -366,17 +454,37 @@ fn left_click_empty_with_fire_mode_falls_through_to_move() {
 
     let dest = CellLevel::new(Cell::new(11, 10), LEVEL);
     set_hovered(&mut app, Some(dest));
+
+    // Click-1: falls through FIRE (empty cell) to SET the move target — no fire, no move.
     press(&mut app, MouseButton::Left);
     app.update();
-
-    assert_eq!(
-        moves(&app).len(),
-        1,
-        "a fire mode over an EMPTY cell must fall through to exactly one MoveRequested",
-    );
     assert!(
         fires(&app).is_empty(),
         "the fire mode must NOT lock out move on an empty cell (no FireRequested)",
+    );
+    assert!(
+        moves(&app).is_empty(),
+        "click-1 only sets the target (no immediate MoveRequested)",
+    );
+    assert_eq!(
+        move_target(&app),
+        Some(dest),
+        "click-1 with a fire mode over an empty cell still SETS the move target",
+    );
+
+    // Click-2 on the SAME cell: COMMIT the move.
+    clear_mouse(&mut app);
+    set_hovered(&mut app, Some(dest));
+    press(&mut app, MouseButton::Left);
+    app.update();
+    assert_eq!(
+        moves(&app).len(),
+        1,
+        "click-2 on the same cell commits exactly one MoveRequested",
+    );
+    assert!(
+        fires(&app).is_empty(),
+        "the commit must still emit no FireRequested",
     );
 }
 

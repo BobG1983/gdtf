@@ -91,6 +91,13 @@ fn battle_act_gate() -> impl SystemCondition<()> {
         .and_then(resource_exists::<ButtonInput<MouseButton>>)
         .and_then(resource_exists::<CombatTuning>)
         .and_then(resource_exists::<PlayerFaction>)
+        // GTW-356 — the shared left-click decision reads `Res<VerticalLinkGraph>` (the OQ-4
+        // link-tile non-target gate, via `LeftClickReads`), so a focused headless harness that
+        // opens `BattleInProgress` WITHOUT routing through `setup_battle` (which seeds it) keeps
+        // the click systems inert rather than panicking the `Res` param validation
+        // (`bevy-traps.md` #1). In the real app `setup_battle` inserts it, so the click decision
+        // runs exactly when a battle is live.
+        .and_then(resource_exists::<VerticalLinkGraph>)
 }
 
 impl Plugin for GdtfBattleInputPlugin {
