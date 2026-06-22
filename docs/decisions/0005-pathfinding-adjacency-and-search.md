@@ -7,14 +7,17 @@ description: Resolve GTW-12's parked pathfinding forks — adjacency/diagonal po
 
 ## Status
 
-`Proposed` — 2026-06-21, driven by [GTW-12](https://linear.app/robert-gardner/issue/GTW-12).
+`Accepted` — 2026-06-22 (user-ratified), driven by [GTW-12](https://linear.app/robert-gardner/issue/GTW-12).
+Proposed 2026-06-21.
 
 This ADR resolves the two design forks that GTW-12 was parked on. **OQ-2 (search
 algorithm + deterministic tie-break)** is an engineering-determined call and is
-recommended with confidence below. **OQ-1 (adjacency / diagonal / corner-cutting)**
-is a tactical-feel call the user parked deliberately; the recommendation here is
-**tentative and awaits user ratification** — it may be ratified or overridden
-without disturbing OQ-2.
+**accepted** as recommended below. **OQ-1 (adjacency / diagonal / corner-cutting)**
+is a tactical-feel call the user parked deliberately; the recommendation here was
+**ratified by the user (2026-06-22)** — 8-connected + octile diagonal cost +
+no-corner-cutting is the chosen model. The user also ratified the **movement-interaction
+spec** and the **cross-storey targeting** rule (new section below), and resolved the
+**stairs sprite** open question.
 
 ## Context
 
@@ -75,10 +78,12 @@ search and the neighbour model; it does not touch the economy.
 
 ## Decision
 
-### OQ-1 — Adjacency, diagonal cost, corner-cutting *(tactical-feel — tentative, awaiting user ratification)*
+### OQ-1 — Adjacency, diagonal cost, corner-cutting *(tactical-feel — user-ratified 2026-06-22)*
 
 This is a design/feel call, not an engineering-correctness one, and the user parked
-it on purpose. We present both honestly and recommend tentatively.
+it on purpose. We present both honestly. The user accepted the recommendation
+("That's fine"), so **8-connected + octile diagonal cost + no-corner-cutting is the
+chosen model**; the 4-connected option below is recorded as the rejected alternative.
 
 **4-connected (orthogonal only)**
 
@@ -103,7 +108,7 @@ it on purpose. We present both honestly and recommend tentatively.
 inch-based free measurement, gridless; if anything its any-angle feel argues for the
 *continuous* approximation that 8-connected gives, not for 4.
 
-If 8-connected is ratified, two sub-policies are mandatory (they are exploit-fixes,
+With 8-connected ratified, two sub-policies are mandatory (they are exploit-fixes,
 not taste):
 
 - **Diagonal cost = octile (≈ √2 × orthogonal).** With integer TU we approximate the
@@ -114,13 +119,14 @@ not taste):
   `AT_LEAST_ONE_WALKABLE` rule): a diagonal step is illegal if both shared-edge
   orthogonal neighbours are blocked. Matters on cover-heavy grimdark maps.
 
-> **Recommendation (tentative): adopt 8-connected with octile diagonal cost and the
-> no-corner-cutting rule.** Rationale: it matches the XCOM precedent GDTF is chasing
-> and reuses the load-bearing `Direction` compass. **This is the user's call to ratify
-> or override.** Critically, OQ-2 below is **adjacency-agnostic** — it works identically
-> for 4- or 8-connected, so this choice locks nothing in the search/tie-break.
+> **Decision (user-ratified 2026-06-22): adopt 8-connected with octile diagonal cost
+> and the no-corner-cutting rule.** Rationale: it matches the XCOM precedent GDTF is
+> chasing and reuses the load-bearing `Direction` compass. The user accepted this
+> recommendation ("That's fine"). Critically, OQ-2 below is **adjacency-agnostic** — it
+> works identically for 4- or 8-connected, so this choice locks nothing in the
+> search/tie-break.
 
-### OQ-2 — Search algorithm + deterministic tie-break *(engineering-determined — recommended)*
+### OQ-2 — Search algorithm + deterministic tie-break *(engineering-determined — accepted 2026-06-22)*
 
 We will implement **one weighted uniform-cost search core (Dijkstra)** over the
 weighted, directed, multi-storey graph, and use it for **both** deliverables:
@@ -172,6 +178,68 @@ The economy itself is untouched: the search *plans* the route and totals its cos
 existing per-step writers *charge* it at commit, and the **move-commit affordability
 gate stays the single up-front check** (§48).
 
+## Movement interaction (user-ratified 2026-06-22)
+
+The pathfinding core (above) is the sim plumbing; this section captures the
+**player-facing movement loop** the user ratified on 2026-06-22, which sits on top of
+that core and is faithful to the §48 economy.
+
+### Two-click select → preview → commit
+
+With a ganger selected, movement is a **two-click** interaction:
+
+1. **First click — select target + reveal path + show cost.** Clicking a target square
+   selects it, **reveals the path** to it (the point-to-point route from the OQ-2 core),
+   and **shows the planned move's TU cost above the target cell**. Pathing into areas the
+   player **cannot see is not allowed** — the route may only run through visible cells, so
+   a target requiring a path through the unseen does not preview a route. (The "what counts
+   as seen" filter is GTW-13's; see open question 6.)
+2. **Second click — commit + walk.** Clicking again **commits** the move. Commit is the
+   **single up-front affordability check** (§48): the move-commit gate verifies the full
+   planned route is affordable, once, here — exactly the §48 gate the search feeds. On
+   commit the ganger starts a **tweened, per-step-charged, interruptible** walk along the
+   previewed route.
+
+### Tweened, per-step, interruptible walk
+
+- **All movement is tweened** from the start cell to the end cell — the ganger animates
+  smoothly between cells; nothing snaps.
+- **TU is spent per step taken, not all at once** (consistent with §48 — *charged = ground
+  covered*). The per-step writers (`sync_ganger_cell` terrain cost / vertical-link
+  `link_tu`) charge each entered cell as the walk progresses; the commit gate guaranteed
+  affordability up front, so each step's charge always succeeds.
+- The walk **stops** when an **enemy is revealed**, or when a **reaction shot is fired** —
+  either is an interrupt that halts the walk where the ganger stands. This is arithmetic-free
+  and consistent with the §48 charged = ground-covered economy: the walk simply **stops
+  paying** at the interrupt; there is no refund of the un-walked remainder, because the
+  un-walked cells were never charged.
+
+### Cross-storey targeting (OQ-4)
+
+Clicking a **vertical-link tile** (stair / ladder) does **not** change the active level and
+does **not** target the link. To move to another storey, the player **clicks a tile on that
+storey** — selecting another storey switches the active-level view, and the destination tile
+on that storey is the click-target. The route then **routes through the vertical link**
+(per *Vertical stitching* above), but the link tile itself is **never** the target; the
+destination cell on the other storey is.
+
+### How the GTW-12 children carry each part
+
+(Child ticket IDs are created/confirmed on the board at GTW-12 breakdown — see open
+question 7; the mapping below is by responsibility, not asserted IDs.)
+
+- **Path-preview child** — first-click route reveal over the OQ-2 point-to-point core,
+  including the "no pathing into unseen" constraint.
+- **Range / cost-display child** — the TU cost shown above the target cell (and the
+  reachable-range overlay from the OQ-2 Dijkstra flood).
+- **Dispatch-constrain + commit child** — second-click commit wired to the §48 up-front
+  affordability gate, then dispatching the route to the per-step move writers.
+- **Tween + interrupt child** — the tweened per-step walk and the stop-on-enemy-revealed /
+  stop-on-reaction-shot interrupt.
+- **Cross-storey input child** — click-on-destination-storey targeting (OQ-4): switching
+  the active-level view by storey selection and routing through the link, never targeting
+  the link tile.
+
 ## Consequences
 
 - **Both GTW-12 deliverables share one core.** The reachable-range overlay and
@@ -186,9 +254,9 @@ gate stays the single up-front check** (§48).
   set) should ship with the search-core child ticket.
 - **Determinism note must be enforced in code**: keyed/cell-based lookups only; no
   `Entity`-ID-order iteration, no raw `HashMap`-order iteration in the hot loop.
-- **If 8-connected is ratified**, the build owes the octile cost *and* the
+- **With 8-connected ratified**, the build owes the octile cost *and* the
   no-corner-cutting rule together; shipping diagonals without both reopens the two
-  exploits. The cover-facing model (4 vs 8 faces) inherits the choice.
+  exploits. The cover-facing model is the 8-face one (ratified).
 - **A* is deferrable.** Shipping Dijkstra-only (h ≡ 0) for routing is correct, just
   slower; the heuristic is a pure speed optimization layered on the same core later,
   with no replay impact (it changes which equal-cost path *order* is explored only up
@@ -225,40 +293,58 @@ gate stays the single up-front check** (§48).
 - **Flat same-cost diagonals (if 8-connected).** Rejected: lets a unit travel ~41%
   farther per TU on the diagonal, making diagonal dashes strictly optimal — a known
   exploit the genre avoids.
-- **4-connected adjacency.** A genuine, lower-cost option, recorded as the live
-  alternative to the tentative 8-connected recommendation. Not chosen *tentatively*
-  because it under-uses the `Direction` compass and diverges from the XCOM feel — **but
-  this is the user's call and 4-connected remains fully on the table.**
+- **4-connected adjacency.** A genuine, lower-cost option, **rejected** (user-ratified
+  2026-06-22 in favour of 8-connected): it under-uses the `Direction` compass and
+  diverges from the XCOM feel the project chases. Recorded here as the considered-and-
+  rejected alternative; revisiting it would require a superseding ADR.
 - **Do nothing / keep single-step movement.** Rejected: GTW-12 (multi-level path search
   - reachable-range overlay) is required for the manual-play loop; single-step `move_ganger`
   cannot preview routes or reachable footprints.
 
-## Open questions to resolve before / at build
+## Open questions
 
-1. **OQ-1 ratification (BLOCKING for the neighbour-enumeration child work):** does the
-   user ratify 8-connected + octile + no-corner-cutting, or choose 4-connected?
-   Neighbour enumeration cannot be finalized until this is settled. The cover-facing
-   count (4 vs 8) follows from it.
-2. **Octile integer approximation (only if 8-connected):** orthogonal=4 / diagonal=6
-   (ratio 1.5, on the existing min-4 scale) vs a tighter `≈1.41×`? A tuning leaf, but
-   it must be authored before the search core's cost function is final. (The 4/6 example
-   is an inference from the existing min-cost-4 scale, not yet authored canon.)
-3. **`link_tu` per-kind split:** §48 currently prices *one* flat `link_tu` for every
-   link kind (confirmed in `tuning/economy.rs`: `LinkTu(u8)`, "ONE flat cost for every
-   link kind"). Confirm stairs and ladders stay the same flat cost (assumed yes); if
-   they ever differ, the search edge cost and the heuristic's `min_link_cost` bound both
-   move.
-4. **Straightness/larger-`g` tie-break tier:** ship the bare `(cost, cell_key)` order
+### Resolved (user-ratified 2026-06-22)
+
+- **OQ-1 — adjacency / diagonal / corner-cutting: RESOLVED.** The user ratified
+  **8-connected + octile diagonal cost + no-corner-cutting** ("That's fine" to the
+  recommendation above). Neighbour enumeration is 8-connected; the cover-facing count is
+  8 faces. (The octile *integer* approximation is a separate tuning value — still open
+  below.)
+- **OQ-3 — stairs vertical-link sprite: RESOLVED.** The stairs tile is **atlas index 77**
+  (authored as **row 5, column 14**, 1-indexed → 0-based `(5-1) × 16 + (14-1) = 77` on the
+  16-wide atlas). The **ladder stays atlas 235**. The tile-role build that consumes this is
+  **GTW-359** (this ADR only records the resolved index).
+- **OQ-4 — cross-storey targeting: RESOLVED.** Clicking a vertical-link tile does **not**
+  change the active level or target the link; the player clicks a tile **on the destination
+  storey** (which switches the active-level view) and the path routes through the link. The
+  link tile is never the target. Captured in *Movement interaction* above.
+- **OQ-5 — movement interaction: RESOLVED.** Tweened movement, two-click
+  select/preview/commit, per-step TU charge, TU cost shown above the target cell,
+  stop-on-enemy-revealed / stop-on-reaction-shot interrupt, and no pathing into unseen
+  areas. Captured in *Movement interaction* above.
+
+### Still open — to resolve before / at build
+
+1. **Octile integer approximation:** orthogonal=4 / diagonal=6 (ratio 1.5, on the existing
+   min-4 scale) vs a tighter `≈1.41×`? A tuning leaf, but it must be authored before the
+   search core's cost function is final. (The 4/6 example is an inference from the existing
+   min-cost-4 scale, not yet authored canon.)
+2. **`link_tu` per-kind split:** §48 currently prices *one* flat `link_tu` for every link
+   kind (confirmed in `tuning/economy.rs`: `LinkTu(u8)`, "ONE flat cost for every link
+   kind"). Confirm stairs and ladders stay the same flat cost (assumed yes); if they ever
+   differ, the search edge cost and the heuristic's `min_link_cost` bound both move.
+3. **Straightness/larger-`g` tie-break tier:** ship the bare `(cost, cell_key)` order
    first, or include a larger-`g` tier above the cell key for straighter-looking paths?
    Cosmetic, must not displace the final cell-key tier.
-5. **Path representation at the API boundary:** does the search return a full
+4. **Path representation at the API boundary:** does the search return a full
    `Vec<CellLevel>` route (fits the current one-message-per-step dispatch and easy
    preview) or a richer route handle with per-step cost metadata? Affects the
    pathfinder ↔ dispatch seam, not the economy.
-6. **Visibility coupling (defer to GTW-13):** §48 plans routes on *true geometry* but
+5. **Visibility coupling (defer to GTW-13):** §48 plans routes on *true geometry* but
    bends around *visible-or-remembered* blocking scatter only. GTW-12's core can stay
    FOV-agnostic; confirm the scatter-visibility filter is layered in by the FOV ticket,
-   not baked into the search.
-7. **Child ticket IDs (Linear):** the GTW-12 breakdown (neighbour enumeration; search
-   core) needs its child tickets created/confirmed on the board before this ADR cites
-   any specific GTW-* IDs for them.
+   not baked into the search. (This is also the source of the "no pathing into unseen"
+   filter in *Movement interaction* above.)
+6. **Child ticket IDs (Linear):** the GTW-12 breakdown (neighbour enumeration; search
+   core; and the movement-interaction children listed above) needs its child tickets
+   created/confirmed on the board before this ADR cites any specific GTW-* IDs for them.
