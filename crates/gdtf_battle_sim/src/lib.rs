@@ -147,6 +147,20 @@
 //!   authored/occupied candidate set, each candidate banded the shot-pipeline way —
 //!   and [`visibility::accrue`], VISIBLE-replaces / EXPLORED-grows). Pure data +
 //!   helpers; the recompute system wiring is GTW-341, not here.
+//! - [`pathfinder`] — the GTW-12d multi-level route core (ADR-0005, visibility.md
+//!   §48): the deterministic weighted search over `(cell, level)` nodes that serves
+//!   BOTH of GTW-12's deliverables from ONE relaxation core. [`pathfinder::find_path`]
+//!   is point-to-point A\* (Dijkstra + the admissible `chebyshev_xy × 4` heuristic)
+//!   returning a typed [`pathfinder::Path`] (the ordered `start..=goal` cells + the
+//!   total [`ganger::Tu`], the total == the summed per-step edge costs — the §48
+//!   bit-identity) or a typed [`pathfinder::PathBlocked`]; [`pathfinder::reachable_within`]
+//!   is the bounded Dijkstra distance-field FLOOD (`h ≡ 0`) yielding every
+//!   `(cell, level)` within a [`ganger::Tu`] budget. Edges are the UNION of GTW-350
+//!   planar [`occupancy::pathable_neighbors`] and GTW-351 cross-storey
+//!   [`vertical::traversable_links`]; the frontier's `(cost, (z, y, x) cell_key)`
+//!   tie-break + the pre-sorted edge enumeration make replays byte-equal (no RNG).
+//!   PURE free functions over the borrowed grids/tuning snapshot — no `&mut World`, no
+//!   per-query rebuild; it plans + totals, never charges TU.
 //! - [`matchup`] — the 7-type weapon×armor Paley-tournament lookup
 //!   ([`matchup::matchup`] over [`weapon::DamageType`] / [`armor::ArmorType`]) and
 //!   the punch-&-shred [`matchup::MatchupMultiplier`] it yields from tuning.
@@ -229,6 +243,7 @@ pub mod metric;
 pub mod move_acts;
 pub mod occupancy;
 pub mod occupancy_sync;
+pub mod pathfinder;
 pub mod posture;
 pub mod resolve_and_apply;
 pub mod resolve_coarse;
@@ -303,6 +318,7 @@ pub use occupancy_sync::{
     CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
     sync_moved_gangers,
 };
+pub use pathfinder::{Path, PathBlocked, PathCost, find_path, reachable_within};
 pub use posture::{set_aiming, set_facing, set_stance};
 pub use resolve_and_apply::{AppliedDamage, HitReport, TargetGanger, resolve_and_apply};
 pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};

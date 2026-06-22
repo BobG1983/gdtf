@@ -1,0 +1,157 @@
+//! Shared fixtures for the pathfinder tests — hand-built grids, a vertical-link
+//! graph from authored slabs, and a default tuning. RELATIONS-ONLY: no pinned
+//! shipped tunable magnitudes (the brittle-test rule) — costs are asserted by their
+//! DERIVATION over the tuning the fixtures themselves expose.
+
+use crate::{
+    ganger::Tu,
+    metric::CellLevel,
+    occupancy::{OccupancyGrid, TerrainKind},
+    pathfinder::{Path, find_path, reachable_within},
+    test_support::{SituationBuilder, key},
+    tuning::CombatTuning,
+    vertical::{VerticalLink, VerticalLinkGraph, build_vertical_link_graph},
+};
+
+/// The central `(x, y, level)` cell-key helper, re-exported under a terse name for
+/// the sibling test files (the vertical-test `key` precedent).
+pub(super) fn cell(x: i32, y: i32, level: u8) -> CellLevel {
+    key(x, y, level)
+}
+
+/// A fresh all-[`TerrainKind::Open`] grid with the given `(cell, terrain)`
+/// placements set — a HAND-BUILT fixture (C6), never the asset loader.
+pub(super) fn grid_with(terrain: &[(CellLevel, TerrainKind)]) -> OccupancyGrid {
+    let mut grid = OccupancyGrid::new();
+    for &(at, kind) in terrain {
+        grid.set_terrain(at, kind);
+    }
+    grid
+}
+
+/// An EMPTY vertical-link graph — for same-storey-only routes (no links).
+pub(super) fn no_links() -> VerticalLinkGraph {
+    VerticalLinkGraph::default()
+}
+
+/// Build a vertical-link graph from the given links, authoring every endpoint cell
+/// as a slab so the build's dangling check passes. Returns the built graph or
+/// `None` on a (test-author) validation failure — keeping the test free of
+/// `unwrap`/`expect`/`panic` (all denied in tests too).
+pub(super) fn links_graph(links: &[VerticalLink]) -> Option<VerticalLinkGraph> {
+    let mut builder = SituationBuilder::new();
+    for link in links {
+        builder = builder.slab_at(link.from).slab_at(link.to);
+        builder = builder.vertical_link(*link);
+    }
+    let situation = builder.build();
+    build_vertical_link_graph(&situation).ok()
+}
+
+/// The default combat tuning — the move-cost table + the flat link cost. The tests
+/// assert RELATIONS over these values (read back off `tuning`), never the shipped
+/// default magnitudes.
+pub(super) fn tuning() -> CombatTuning {
+    CombatTuning::default()
+}
+
+/// The orthogonal (open) step cost from the tuning — read back, not hard-coded.
+pub(super) fn open_step(tuning: &CombatTuning) -> Tu {
+    Tu::new(*tuning.move_costs.open)
+}
+
+/// The flat vertical-link hop cost from the tuning — read back, not hard-coded.
+pub(super) fn link_step(tuning: &CombatTuning) -> Tu {
+    Tu::new(*tuning.link_tu)
+}
+
+/// Sum the per-step edge costs along a route by re-deriving each step from `tuning`
+/// — the INDEPENDENT step-by-step total the §48 bit-identity checks the [`Path`]'s
+/// own `total` against. Each consecutive cell pair is one edge: a same-storey
+/// orthogonal/diagonal terrain step, or a cross-storey vertical-link hop.
+///
+/// Returns `None` if the route is empty (it never is for a search result). The sum
+/// is computed in a wide `u32` (a long route can exceed a single `u8` step), the
+/// same width the search accumulates in.
+pub(super) fn summed_step_cost(path: &Path, grid: &OccupancyGrid, tuning: &CombatTuning) -> u32 {
+    let cells = path.cells();
+    let mut total = 0u32;
+    for pair in cells.windows(2) {
+        let [from, to] = pair else { continue };
+        let step = step_cost_between(*from, *to, grid, tuning);
+        total += u32::from(*step);
+    }
+    total
+}
+
+/// The per-step edge cost between two CONSECUTIVE route cells — the same cost the
+/// search relaxed with, re-derived independently for the §48 cross-check.
+///
+/// A same-storey pair is a terrain step (orthogonal = entered terrain `move_cost`,
+/// diagonal = its octile); a different-storey pair is a vertical-link hop (the flat
+/// `link_tu`). The destination's terrain drives the terrain step (GTW-350).
+fn step_cost_between(
+    from: CellLevel,
+    to: CellLevel,
+    grid: &OccupancyGrid,
+    tuning: &CombatTuning,
+) -> Tu {
+    if from.z != to.z {
+        // A storey change is a vertical-link hop, priced at the flat link cost.
+        return link_step(tuning);
+    }
+    let diagonal = from.x != to.x && from.y != to.y;
+    let move_cost = *tuning.move_costs.cost(grid.terrain(&to));
+    if !diagonal {
+        return Tu::new(move_cost);
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "move_cost is a small u8; move_cost * √2 rounds to a value that fits a u8 and is \
+                  non-negative, so the cast cannot truncate or sign-flip"
+    )]
+    let octile = (f32::from(move_cost) * std::f32::consts::SQRT_2).round() as u8;
+    Tu::new(octile)
+}
+
+/// Run `find_path` over a fixture and return the route, asserting it succeeded —
+/// keeps the Ok-needing tests free of `unwrap`/`expect`.
+pub(super) fn ok_path(
+    start: CellLevel,
+    goal: CellLevel,
+    grid: &OccupancyGrid,
+    links: &VerticalLinkGraph,
+    tuning: &CombatTuning,
+) -> Option<Path> {
+    let result = find_path(start, goal, grid, links, tuning);
+    assert!(result.is_ok(), "expected a route, got {result:?}");
+    result.ok()
+}
+
+/// Run `reachable_within` and reduce the result to a `Vec<((x, y, z), Tu)>` so the
+/// relations read clearly in assertions.
+pub(super) fn reachable_triples(
+    start: CellLevel,
+    budget: Tu,
+    grid: &OccupancyGrid,
+    links: &VerticalLinkGraph,
+    tuning: &CombatTuning,
+) -> Vec<((i32, i32, i32), Tu)> {
+    reachable_within(start, budget, grid, links, tuning)
+        .into_iter()
+        .map(|(c, cost)| ((c.x, c.y, c.z), cost))
+        .collect()
+}
+
+/// Whether a `(x, y, z)` cell appears in a reachable-triples set.
+pub(super) fn reachable_contains(set: &[((i32, i32, i32), Tu)], want: (i32, i32, i32)) -> bool {
+    set.iter().any(|(c, _)| *c == want)
+}
+
+/// A bidirectional stair link between two `(cell, level)` endpoints — the common
+/// vertical fixture.
+pub(super) fn stair(from: CellLevel, to: CellLevel) -> VerticalLink {
+    use crate::vertical::LinkKind;
+    VerticalLink::new(from, to, LinkKind::stair())
+}
