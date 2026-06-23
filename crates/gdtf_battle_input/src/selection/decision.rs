@@ -3,9 +3,10 @@
 //! the mouse and the gamepad both use, plus the [`LeftClickReads`] / [`TurnReads`] bundles.
 
 use bevy::prelude::*;
+use gdtf_battle_presenter::cell_squad_visible;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Faction, OccupancyGrid, PlayerFaction, Position, VerticalLinkGraph,
-    WieldedBy, Wields,
+    Cell, CellLevel, Direction, Faction, FactionRelation, OccupancyGrid, PlayerFaction, Position,
+    SquadVisibility, VerticalLinkGraph, WieldedBy, Wields,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
@@ -47,6 +48,14 @@ pub struct LeftClickReads<'w> {
     /// NOT a move target (the player switches storey + clicks a destination tile; the route
     /// auto-stitches through the link).
     links:            Res<'w, VerticalLinkGraph>,
+    /// The squad fog — the GTW-11 targeting-fog gate: a click on a cell that is NOT
+    /// squad-VISIBLE refuses the fire commit (the new [`NoOp`](LeftClickOutcome::NoOp) rung
+    /// before FIRE). Read as
+    /// `Option<Res<…>>` so the decision FAILS CLOSED when the resource is absent (a harness
+    /// with no sim plugin, or a frame before the battle seeds it) — a non-VISIBLE cell can
+    /// never be fired into. The presenter's `cell_squad_visible` consumes it through the
+    /// SAME shared read the reticle + hint use, so the three never disagree.
+    squad_visibility: Option<Res<'w, SquadVisibility>>,
 }
 
 /// The single resolved outcome of one left-click edge — the ONE source of truth the mouse
@@ -129,9 +138,17 @@ pub enum PinOutcome {
 /// gamepad both use.
 ///
 /// READ-ONLY: it reads the hovered cell, the occupancy, the fire mode / tuning, the player
-/// faction, the current selection, and the faction / firing components off the queries, and
-/// returns the resolved outcome WITHOUT touching any state.
+/// faction, the squad fog, the current selection, and the faction / firing components off the
+/// queries, and returns the resolved outcome WITHOUT touching any state.
 ///
+/// 0. **TARGETING FOG GATE (GTW-11)** — BEFORE FIRE: if the hovered cell holds an ENEMY and
+///    the player selection could fire on it, but that cell is NOT squad-VISIBLE (UNSEEN *or*
+///    merely EXPLORED, both refused identically), the fire commit is refused →
+///    [`LeftClickOutcome::NoOp`] (armed, zero mutation). The same shared
+///    [`cell_squad_visible`](gdtf_battle_presenter::cell_squad_visible) read the reticle + the
+///    hint consume (FAIL-CLOSED on an absent fog), so the three never disagree. A MOVE into an
+///    EXPLORED EMPTY cell is NOT a fire target and is unaffected (walking into remembered
+///    territory stays allowed, `docs/combat/visibility.md` §"UX edges").
 /// 1. **FIRE** — a fire mode is selected, the hovered cell holds an ENEMY occupant
 ///    (a [`Faction`] `!=` [`PlayerFaction`]), the current selection is a player-faction ganger,
 ///    and the shared [`can_fire`](gdtf_battle_sim::can_fire) guard passes ([`try_fire_request`])
@@ -232,6 +249,32 @@ pub fn decide_left_click(
     let selection_is_player = (**selected)
         .and_then(|e| factions.get(e).ok().copied())
         .is_some_and(|f| f == player);
+
+    // 0. TARGETING FOG GATE (GTW-11) — a NEW rung AFTER the no-hover guard and BEFORE FIRE:
+    //    refuse the fire commit into a cell that is NOT squad-VISIBLE (UNSEEN *or* merely
+    //    EXPLORED, both refused identically — `docs/combat/visibility.md` §"UX edges"). It is
+    //    scoped to the FIRE-target shape (an ENEMY occupant + a player-faction selection) so it
+    //    refuses ONLY the targeting path: walking into REMEMBERED (EXPLORED) territory stays
+    //    allowed (§"UX edges": "Walking into EXPLORED ... stays allowed"), so a MOVE into an
+    //    explored EMPTY cell is NOT a fire target and never reaches this rung. The verdict is the
+    //    SAME shared `cell_squad_visible` read the reticle + the hint consume (FAIL-CLOSED on an
+    //    absent fog), so the three can never disagree. Returns the EXISTING `NoOp` (armed, zero
+    //    mutation — no fire request, no selection / target write): targeting stays armed, and the
+    //    enemy is still inspected via the GTW-274 hover panel. A non-VISIBLE enemy is refused even
+    //    when `can_fire` would pass (the fog gate is player policy, never inside `can_fire`,
+    //    `docs/combat/resolution.md` §"What's pure math vs sim").
+    if let Some(enemy_faction) = occupant_faction
+        && selection_is_player
+        && enemy_faction != player
+        && !cell_squad_visible(
+            reads.squad_visibility.as_deref(),
+            &target,
+            Some(FactionRelation::Other),
+        )
+        .is_squad_visible()
+    {
+        return LeftClickOutcome::NoOp; // unseen/explored enemy -> refuse the fire commit.
+    }
 
     // 1. FIRE — a fire mode + an ENEMY occupant + a player-faction selection + can_fire.
     if let (Some(shooter), Some(enemy_faction)) = (**selected, occupant_faction)

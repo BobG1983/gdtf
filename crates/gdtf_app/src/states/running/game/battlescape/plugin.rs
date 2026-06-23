@@ -9,7 +9,8 @@ use crate::states::{
         GameBattleScapeAnimateOutScenePlugin, GameBattleScapeBattleRunningScenePlugin,
         GameBattleScapeBottomBarScenePlugin, GameBattleScapeCombatLogScenePlugin,
         GameBattleScapeGenerationScenePlugin, GameBattleScapeInspectPanelScenePlugin,
-        GameBattleScapeStatusPanelScenePlugin, GameBattleScapeWeaponPanelScenePlugin, systems::*,
+        GameBattleScapeStatusPanelScenePlugin, GameBattleScapeTargetingHintScenePlugin,
+        GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
 };
 
@@ -90,6 +91,15 @@ fn add_plugins(app: &mut App) {
         // spawn helpers) + `gdtf_battle_input` (the selection seam), both already on the
         // app's edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeStatusPanelScenePlugin)
+        // The GTW-11 targeting fog HINT: a small battlescape-scoped Text node reading the canon
+        // "unseen — hold your fire" string when the targeted cell is NOT squad-VISIBLE — the VIEW
+        // arm of the targeting fog gate (beside the reticle recolour + the fire-refusal). Same
+        // `BattleRunning` lifecycle + `BattleInProgress` gate as the panels; its update reads the
+        // input crate's `InspectTarget` + the sim's `SquadVisibility` and mutates the one hint Text
+        // node from the SHARED `cell_squad_visible` read. It deps `gdtf_ui` (theme) +
+        // `gdtf_battle_input` (the hovered cell) + `gdtf_battle_presenter` (the shared verdict) +
+        // `gdtf_battle_sim`, all already on the app's edge; the chain stays acyclic.
+        .add_plugins(GameBattleScapeTargetingHintScenePlugin)
         // The GTW-274 inspect panel: the twin of the status panel, anchored top-right.
         // Same `BattleRunning` lifecycle + `BattleInProgress` gate; its repaint reads the
         // input crate's `InspectTarget` + the sim's `OccupancyGrid` / `CoverLedger` / vital

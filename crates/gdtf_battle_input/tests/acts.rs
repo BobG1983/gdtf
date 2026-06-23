@@ -258,11 +258,28 @@ fn empty_wielded_magazine(app: &mut App, ganger: Entity) {
 /// of the unified left-click decision sees a non-player target there), returning its
 /// entity. The enemy carries only a `Faction` — the fire path reads the SHOOTER's firing
 /// components, never the target's.
+///
+/// GTW-11 — it ALSO marks `cell` squad-VISIBLE in the fog, the realistic battle state (you fire
+/// on a SEEN enemy): without this the new targeting-fog rung in `decide_left_click` would refuse
+/// every fire (fail-closed on a cell absent from the default-empty `SquadVisibility`). The
+/// can_fire-FAILURE tests still emit nothing — they fail `can_fire` for OTHER reasons (no TU,
+/// empty magazine, out of bounds), which a visible cell does not change.
 fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
     let enemy = app.world_mut().spawn(ENEMY_FACTION).id();
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_occupant(cell, Some(enemy));
+    // Mark the enemy cell squad-VISIBLE so the fire commit passes the GTW-11 fog gate.
+    if let Some(fog) = app.world_mut().get_resource::<SquadVisibility>() {
+        let mut visible: bevy::platform::collections::HashSet<CellLevel> =
+            fog.visible_cells().copied().collect();
+        let mut explored: bevy::platform::collections::HashSet<CellLevel> =
+            fog.explored_cells().copied().collect();
+        visible.insert(cell);
+        explored.insert(cell);
+        app.world_mut()
+            .insert_resource(SquadVisibility::new(visible, explored));
+    }
     enemy
 }
 

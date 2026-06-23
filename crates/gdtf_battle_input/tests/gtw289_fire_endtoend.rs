@@ -232,6 +232,18 @@ fn place_armed_enemy(app: &mut App, cell: CellLevel) -> Entity {
         grid.set_occupant(cell, Some(enemy));
         grid.set_occupant_band(cell, Some(HeightBand::High));
     }
+    // GTW-11 — mark the enemy cell squad-VISIBLE so the end-to-end fire passes the new
+    // targeting-fog rung in `decide_left_click` (without it the fire is refused fail-closed
+    // against the harness's empty `SquadVisibility`). The realistic battle state: you fire on a
+    // SEEN enemy.
+    let mut visible: bevy::platform::collections::HashSet<CellLevel> = app
+        .world()
+        .get_resource::<SquadVisibility>()
+        .map(|fog| fog.visible_cells().copied().collect())
+        .unwrap_or_default();
+    visible.insert(cell);
+    app.world_mut()
+        .insert_resource(SquadVisibility::new(visible.clone(), visible));
     enemy
 }
 

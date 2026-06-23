@@ -19,10 +19,17 @@
 
 use bevy::{camera::visibility::RenderLayers, math::Vec3, prelude::*};
 use gdtf_battle_presenter::{
-    CELL_PX, HighlightRequest, HoverHighlight, TopDownRendererPlugin, WORLD_RENDER_LAYER,
-    cell_to_world,
+    CELL_PX, CellVisibility, HighlightRequest, HoverHighlight, TopDownRendererPlugin,
+    WORLD_RENDER_LAYER, cell_to_world,
 };
 use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level};
+
+/// A squad-VISIBLE highlight request for `cell` — the normal-tint reticle (GTW-251 callers
+/// predate the GTW-11 verdict, so the migrated ctor carries the `SquadVisible` verdict to keep
+/// the original look unchanged).
+const fn visible_request(cell: Option<CellLevel>) -> HighlightRequest {
+    HighlightRequest::new(cell, CellVisibility::SquadVisible)
+}
 
 /// Builds a focused headless presenter app: `MinimalPlugins` + `AssetPlugin` +
 /// `ScenePlugin` + the `TopDownRendererPlugin` (which registers the `HighlightRequest`
@@ -68,6 +75,15 @@ fn highlight_state(app: &mut App) -> Option<(Vec3, Visibility)> {
     iter.next().map(|(t, v)| (t.translation, *v))
 }
 
+/// The single hover-highlight sprite's tint colour, if exactly one exists.
+fn highlight_color(app: &mut App) -> Option<Color> {
+    let mut q = app
+        .world_mut()
+        .query_filtered::<&Sprite, With<HoverHighlight>>();
+    let mut iter = q.iter(app.world());
+    iter.next().map(|sprite| sprite.color)
+}
+
 /// Whether the one highlight sprite is `CELL_PX`-sized and on the world render layer.
 fn highlight_on_world_layer_at_cell_size(app: &mut App) -> bool {
     let mut q = app
@@ -99,7 +115,7 @@ fn presenter_draws_highlight_from_the_request() {
 
     // First Some(cell) — the highlight spawns at cell_to_world(cell), visible.
     let cell_a = CellLevel::new(Cell::new(4, 7), level);
-    send_request(&mut app, HighlightRequest::new(Some(cell_a)));
+    send_request(&mut app, visible_request(Some(cell_a)));
     app.update();
     assert_eq!(
         highlight_count(&mut app),
@@ -121,7 +137,7 @@ fn presenter_draws_highlight_from_the_request() {
 
     // A different Some(cell) — the highlight MOVES, no duplicate.
     let cell_b = CellLevel::new(Cell::new(11, 2), level);
-    send_request(&mut app, HighlightRequest::new(Some(cell_b)));
+    send_request(&mut app, visible_request(Some(cell_b)));
     app.update();
     assert_eq!(
         highlight_count(&mut app),
@@ -138,7 +154,7 @@ fn presenter_draws_highlight_from_the_request() {
     );
 
     // None — the highlight hides (entity persists, not despawned, not duplicated).
-    send_request(&mut app, HighlightRequest::new(None));
+    send_request(&mut app, visible_request(None));
     app.update();
     assert_eq!(
         highlight_count(&mut app),
@@ -152,7 +168,7 @@ fn presenter_draws_highlight_from_the_request() {
     );
 
     // Some again — it re-shows at the new cell, proving the draw tracks the MESSAGE.
-    send_request(&mut app, HighlightRequest::new(Some(cell_a)));
+    send_request(&mut app, visible_request(Some(cell_a)));
     app.update();
     assert_eq!(
         highlight_state(&mut app),
@@ -177,12 +193,81 @@ fn no_highlight_drawn_without_battle_in_progress() {
     // Deliberately NO BattleInProgress.
 
     let cell = CellLevel::new(Cell::new(4, 7), level);
-    send_request(&mut app, HighlightRequest::new(Some(cell)));
+    send_request(&mut app, visible_request(Some(cell)));
     app.update();
 
     assert_eq!(
         highlight_count(&mut app),
         0,
         "no highlight may be drawn when BattleInProgress is absent (the draw is battle-gated)",
+    );
+}
+
+/// GTW-11 C6(2) — the reticle RECOLOURS off the carried `CellVisibility` verdict, mutating the
+/// ONE sprite: a `NotSquadVisible` cell (the presenter-collapsed verdict for BOTH UNSEEN and a
+/// merely-EXPLORED cell — the EXPLORED-vs-UNSEEN distinction lives upstream in
+/// `cell_squad_visible`, asserted in the sim `targeting_gate` test) takes the unseen tint; a
+/// `SquadVisible` cell takes the normal tint; the two tints DIFFER; and flipping the verdict on
+/// the SAME cell recolours the ONE existing sprite (no duplicate). (The EXPLORED-vs-UNSEEN
+/// distinction lives upstream in `cell_squad_visible` — asserted in `targeting_gate::gate`'s unit
+/// tests — and collapses to one `NotSquadVisible` verdict by the time it reaches this draw.)
+#[test]
+fn presenter_recolours_reticle_off_the_verdict() {
+    let level = Level::new(0);
+    let mut app = highlight_app();
+    let cell = CellLevel::new(Cell::new(6, 6), level);
+
+    // A NotSquadVisible request (UNSEEN): the reticle spawns at the cell in the UNSEEN tint. The
+    // EXPLORED-vs-UNSEEN distinction lives upstream in `cell_squad_visible` (asserted in
+    // `targeting_gate::gate`); by the time it reaches this draw both collapse to NotSquadVisible.
+    send_request(
+        &mut app,
+        HighlightRequest::new(Some(cell), CellVisibility::NotSquadVisible),
+    );
+    app.update();
+    assert_eq!(
+        highlight_count(&mut app),
+        1,
+        "one reticle after the first request",
+    );
+    let unseen_tint = highlight_color(&mut app);
+    assert!(unseen_tint.is_some(), "the reticle must carry a tint");
+
+    // A SquadVisible request on the SAME cell: the ONE sprite recolours to the normal tint.
+    send_request(
+        &mut app,
+        HighlightRequest::new(Some(cell), CellVisibility::SquadVisible),
+    );
+    app.update();
+    assert_eq!(
+        highlight_count(&mut app),
+        1,
+        "still ONE reticle after the verdict flip (no duplicate)",
+    );
+    let visible_tint = highlight_color(&mut app);
+    assert!(visible_tint.is_some(), "the reticle must carry a tint");
+
+    // The two tints DIFFER — the reticle genuinely recolours on the verdict.
+    assert_ne!(
+        unseen_tint, visible_tint,
+        "the unseen tint must DIFFER from the visible tint (the reticle recolours)",
+    );
+
+    // A merely-EXPLORED cell reaches the presenter as the SAME NotSquadVisible verdict, so it
+    // recolours to the SAME unseen tint as UNSEEN (C5 — EXPLORED is refused like UNSEEN).
+    send_request(
+        &mut app,
+        HighlightRequest::new(Some(cell), CellVisibility::NotSquadVisible),
+    );
+    app.update();
+    assert_eq!(
+        highlight_color(&mut app),
+        unseen_tint,
+        "an EXPLORED-collapsed NotSquadVisible verdict takes the SAME unseen tint as UNSEEN",
+    );
+    assert_eq!(
+        highlight_count(&mut app),
+        1,
+        "still ONE reticle (the recolour mutates in place)",
     );
 }

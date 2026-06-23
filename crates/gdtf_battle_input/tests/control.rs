@@ -33,7 +33,8 @@ use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
     LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, ReloadTu, Tu, TuMax, VerticalLinkGraph, WieldedBy,
+    OccupancyGrid, PlayerFaction, Position, ReloadTu, SquadVisibility, Tu, TuMax,
+    VerticalLinkGraph, WieldedBy,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
@@ -127,11 +128,26 @@ fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
 
 /// Spawns an ENEMY-faction occupant at `cell` (only a `Faction` — the fire path reads
 /// the SHOOTER's firing components, never the target's) and returns its entity.
+///
+/// GTW-11 — it ALSO marks `cell` squad-VISIBLE in the fog (inserting a `SquadVisibility` if
+/// absent), the realistic battle state (you fire on a SEEN enemy): without this the new
+/// targeting-fog rung in `decide_left_click` would refuse the fire (fail-closed on a cell absent
+/// from the fog). The `NoOp` / non-fire control tests are unaffected (they assert no fire for
+/// other reasons, which a visible cell does not change).
 fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
     let enemy = app.world_mut().spawn(ENEMY_FACTION).id();
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_occupant(cell, Some(enemy));
+    // Mark the enemy cell squad-VISIBLE so the fire commit passes the GTW-11 fog gate.
+    let mut visible: bevy::platform::collections::HashSet<CellLevel> = app
+        .world()
+        .get_resource::<SquadVisibility>()
+        .map(|fog| fog.visible_cells().copied().collect())
+        .unwrap_or_default();
+    visible.insert(cell);
+    app.world_mut()
+        .insert_resource(SquadVisibility::new(visible.clone(), visible));
     enemy
 }
 

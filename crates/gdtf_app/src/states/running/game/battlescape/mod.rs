@@ -62,6 +62,19 @@ crate::support_use! {
 mod status_panel;
 pub(in crate::states::running::game::battlescape) use status_panel::GameBattleScapeStatusPanelScenePlugin;
 
+// The GTW-11 targeting fog HINT: a small battlescape-scoped Text node that reads the canon
+// "unseen — hold your fire" string when the targeted cell is NOT squad-VISIBLE (the VIEW arm of
+// the targeting fog gate, beside the reticle recolour + the fire-refusal). View-only.
+mod targeting_hint;
+pub(in crate::states::running::game::battlescape) use targeting_hint::GameBattleScapeTargetingHintScenePlugin;
+// Test-support-only re-export of the hint's Text marker (GTW-11), gated so the binary build is
+// `unused`/`unreachable_pub`-clean (the status-panel marker re-export chain precedent). The AC
+// test names it through `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    targeting_hint::TargetingHintText;
+}
+
 // The GTW-274 inspect panel (top-right): the twin of the status panel, rendering the
 // shared stat block for the HOVERED ganger / the hovered object's integrity.
 mod inspect_panel;

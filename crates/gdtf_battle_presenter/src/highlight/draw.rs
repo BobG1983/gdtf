@@ -8,28 +8,50 @@ use bevy::{
 };
 use gdtf_battle_sim::{Cell, CellLevel, Level};
 
-use crate::{CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
+use crate::{CELL_PX, CellVisibility, WORLD_RENDER_LAYER, cell_to_world};
 
-/// A request to move/show/hide the hover-highlight on a cell.
+/// A request to move/show/hide the hover-highlight on a cell, CARRYING the squad-visible
+/// verdict so the reticle recolours into a non-VISIBLE cell (GTW-11).
 ///
 /// The presenter-owned input API for the highlight: a buffered [`Message`] (Bevy
 /// 0.18 — buffered events are messages, `bevy-traps.md` #4) carrying the cell to
-/// highlight, or [`None`] to clear/hide it. A NAMED single-field newtype over the
-/// sim's [`CellLevel`] (no-bare-types — the requested cell is a domain value),
-/// [`Deref`]ing to its inner [`Option`] so the draw system matches it directly.
+/// highlight (or [`None`] to clear/hide it) ALONGSIDE the cell's [`CellVisibility`]
+/// verdict (the squad-visible gate, `docs/combat/visibility.md` §"UX edges"). Both fields
+/// are NAMED domain values (no-bare-types: the requested cell is a [`CellLevel`], the
+/// verdict is a [`CellVisibility`], not a bare bool). It [`Deref`]s to its cell
+/// [`Option`] so the draw system reads the cell directly; the verdict is read through
+/// [`visibility`](HighlightRequest::visibility).
 ///
 /// The INPUT crate WRITES this (via [`MessageWriter`] after its picker resolves the
-/// hovered cell); [`draw_highlight_on_request`] READS it. Keeping the payload to the
-/// cell this slice means the future gamepad cursor (GTW-259) reuses the SAME pipeline
-/// — it emits the same request from the stick-driven pick.
+/// hovered cell AND the shared
+/// [`cell_squad_visible`](crate::cell_squad_visible) verdict);
+/// [`draw_highlight_on_request`] READS it and tints the one reticle sprite by the
+/// carried verdict. The future gamepad cursor (GTW-259) reuses the SAME pipeline — its
+/// pick flows through the same emitter, which computes the same verdict.
 #[derive(Message, Deref, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HighlightRequest(Option<CellLevel>);
+pub struct HighlightRequest {
+    /// The cell to highlight, or [`None`] to hide the reticle. [`Deref`] target so
+    /// existing reads (`*request`) keep matching the cell.
+    #[deref]
+    cell:       Option<CellLevel>,
+    /// The cell's squad-visible verdict — drives the reticle tint (a non-VISIBLE cell
+    /// recolours to the [`UNSEEN_TINT`]).
+    visibility: CellVisibility,
+}
 
 impl HighlightRequest {
-    /// Build a highlight request from the cell to highlight, or [`None`] to hide it.
+    /// Build a highlight request from the cell to highlight (or [`None`] to hide it)
+    /// and its squad-visible [`CellVisibility`] verdict.
     #[must_use]
-    pub const fn new(cell: Option<CellLevel>) -> Self {
-        Self(cell)
+    pub const fn new(cell: Option<CellLevel>, visibility: CellVisibility) -> Self {
+        Self { cell, visibility }
+    }
+
+    /// The cell's squad-visible verdict — the [`CellVisibility`] the reticle tint
+    /// branches on (the carried gate result, so reticle + hint + fire-refusal agree).
+    #[must_use]
+    pub const fn visibility(self) -> CellVisibility {
+        self.visibility
     }
 }
 
@@ -56,8 +78,28 @@ pub struct HoverHighlight;
 /// atlas (only Terrain / Characters / Effects), so a tinted solid `Sprite` is the
 /// renderer-agnostic option. A faint warm-white at low alpha so it reads as a
 /// highlight OVER the cell without hiding the tile beneath. MIGRATED verbatim from
-/// `gdtf_battle_input` (GTW-251) so the look is unchanged.
+/// `gdtf_battle_input` (GTW-251) so the look is unchanged. Used for a squad-VISIBLE
+/// cell ([`CellVisibility::SquadVisible`]) — the normal "you can act here" reticle.
 const HIGHLIGHT_TINT: Color = Color::srgba(1.0, 0.95, 0.6, 0.35);
+
+/// The reticle tint over a NON-VISIBLE cell ([`CellVisibility::NotSquadVisible`], UNSEEN
+/// or merely EXPLORED) — the "unseen — hold your fire" recolour (GTW-11,
+/// `docs/combat/visibility.md` §"UX edges"). A desaturated cold-grey at the SAME alpha as
+/// [`HIGHLIGHT_TINT`] so it reads as "the reticle is here but you may not act" — visually
+/// DISTINCT from the warm-white normal tint (drained of warmth, the colour-loss fog cue
+/// mirroring GTW-348's EXPLORED greyscale). Framework plumbing — a literal [`Color`] handed
+/// to a [`Sprite`] (the `CELL_PX`-class const carve-out), not a domain quantity.
+const UNSEEN_TINT: Color = Color::srgba(0.55, 0.6, 0.7, 0.35);
+
+/// The reticle tint for a [`CellVisibility`] verdict: a squad-VISIBLE cell keeps the warm
+/// [`HIGHLIGHT_TINT`]; a non-VISIBLE cell (UNSEEN / EXPLORED) recolours to [`UNSEEN_TINT`].
+const fn tint_for(visibility: CellVisibility) -> Color {
+    if visibility.is_squad_visible() {
+        HIGHLIGHT_TINT
+    } else {
+        UNSEEN_TINT
+    }
+}
 
 /// Maintains exactly ONE hover-highlight sprite from the latest [`HighlightRequest`].
 ///
@@ -76,16 +118,22 @@ const HIGHLIGHT_TINT: Color = Color::srgba(1.0, 0.95, 0.6, 0.35);
 /// following the last requested cell), so the picker — which emits every update it
 /// runs — keeps the drawn highlight in lockstep with the hovered cell.
 ///
+/// GTW-11 — the reticle RECOLOURS off the request's carried
+/// [`CellVisibility`](crate::CellVisibility) verdict: a squad-VISIBLE cell keeps the warm
+/// [`HIGHLIGHT_TINT`], a non-VISIBLE cell (UNSEEN / EXPLORED) takes the [`UNSEEN_TINT`]
+/// ("unseen — hold your fire"). It STILL mutates the ONE [`HoverHighlight`] sprite in
+/// place (its `color` alongside its `Transform` / `Visibility`) — never a second sprite.
+///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy spawn, a
 /// [`MessageReader<HighlightRequest>`] for the request, and a
-/// `Query<(&mut Transform, &mut Visibility), With<HoverHighlight>>` for the
-/// move + show/hide. Battle-gated + in [`PresenterSystems::Draw`](crate::PresenterSystems)
+/// `Query<(&mut Transform, &mut Sprite, &mut Visibility), With<HoverHighlight>>` for the
+/// move + recolour + show/hide. Battle-gated + in [`PresenterSystems::Draw`](crate::PresenterSystems)
 /// by the [`TopDownRendererPlugin`](crate::TopDownRendererPlugin), so it observes a
 /// settled sim state and is inert pre-battle.
 pub fn draw_highlight_on_request(
     mut commands: Commands,
     mut requests: MessageReader<HighlightRequest>,
-    mut highlights: Query<(&mut Transform, &mut Visibility), With<HoverHighlight>>,
+    mut highlights: Query<(&mut Transform, &mut Sprite, &mut Visibility), With<HoverHighlight>>,
 ) {
     // Act on only the LATEST request this update — earlier reads are stale cursor
     // positions superseded by the freshest one. No request => leave the highlight as
@@ -97,11 +145,16 @@ pub fn draw_highlight_on_request(
     // The world position the one highlight should take, or `None` to hide it.
     let target = (*request)
         .map(|cell| cell_to_world(Cell::new(cell.x, cell.y), Level::new(level_index(cell))));
+    // The tint for this request's squad-visible verdict (warm = VISIBLE, cold-grey =
+    // non-VISIBLE — the "unseen — hold your fire" recolour).
+    let tint = tint_for(request.visibility());
 
     match highlights.single_mut() {
-        Ok((mut transform, mut visibility)) => match target {
+        Ok((mut transform, mut sprite, mut visibility)) => match target {
             Some(world) => {
                 transform.translation = world;
+                // Recolour the ONE sprite in place off the carried verdict.
+                sprite.color = tint;
                 *visibility = Visibility::Visible;
             }
             None => *visibility = Visibility::Hidden,
@@ -112,7 +165,9 @@ pub fn draw_highlight_on_request(
         Err(_) => {
             if let Some(world) = target {
                 let sprite = Sprite {
-                    color: HIGHLIGHT_TINT,
+                    // Spawn already tinted by the carried verdict (so the first-frame
+                    // reticle recolours correctly, not only on a later move).
+                    color: tint,
                     custom_size: Some(Vec2::splat(CELL_PX)),
                     ..default()
                 };

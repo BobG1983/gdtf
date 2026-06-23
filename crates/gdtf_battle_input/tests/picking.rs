@@ -45,7 +45,7 @@ use gdtf_battle_input::{
     GdtfBattleInputActive, GdtfBattleInputPlugin, InspectTarget, emit_highlight_request,
     world_to_cell,
 };
-use gdtf_battle_presenter::{ActiveLevel, HighlightRequest, WorldCamera};
+use gdtf_battle_presenter::{ActiveLevel, CellVisibility, HighlightRequest, WorldCamera};
 use gdtf_battle_sim::{
     BattleInProgress, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, TerrainKind,
     VerticalLinkGraph, acts::MoveRequested, tuning::CombatTuning,
@@ -394,10 +394,12 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     assert!(cell.is_some(), "the in-grid cursor must resolve a cell");
     let Some(resolved) = cell else { return };
 
-    // GTW-268 — over BARE FLOOR the emit is gated to None even though a cell is hovered.
+    // GTW-268 — over BARE FLOOR the emit is gated to None even though a cell is hovered. GTW-11 —
+    // the request carries the squad-visible verdict; this harness seeds NO `SquadVisibility`, so
+    // the shared `cell_squad_visible` read FAILS CLOSED to `NotSquadVisible`.
     assert_eq!(
         requests(&app),
-        vec![HighlightRequest::new(None)],
+        vec![HighlightRequest::new(None, CellVisibility::NotSquadVisible)],
         "a bare-floor in-grid cell must emit HighlightRequest(None) (GTW-268)",
     );
 
@@ -409,8 +411,9 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     app.update();
     assert_eq!(
         requests(&app),
-        vec![HighlightRequest::new(cell)],
-        "over a blocking cell the picker must emit exactly one HighlightRequest = Some(cell)",
+        vec![HighlightRequest::new(cell, CellVisibility::NotSquadVisible)],
+        "over a blocking cell the picker must emit exactly one HighlightRequest = Some(cell) \
+         (GTW-11: NotSquadVisible — no fog seeded, fail-closed)",
     );
 
     // Now move the cursor off-grid: InspectTarget becomes None and the emitted request
@@ -428,7 +431,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     );
     assert_eq!(
         requests(&app),
-        vec![HighlightRequest::new(None)],
+        vec![HighlightRequest::new(None, CellVisibility::NotSquadVisible)],
         "the picker must emit HighlightRequest(None) when nothing is hovered",
     );
 }

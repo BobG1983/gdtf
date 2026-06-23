@@ -60,6 +60,7 @@ pub mod ganger;
 pub mod highlight;
 pub mod path_preview;
 pub mod reachable;
+pub mod targeting_gate;
 pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
@@ -93,6 +94,7 @@ pub use reachable::{
     LabelPool, ReachableLabel, ReachableOverlay, ReachableTint, draw_reachable_labels,
     draw_reachable_overlay,
 };
+pub use targeting_gate::{CellVisibility, cell_squad_visible};
 pub use terrain::{
     ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles, TileRolesHandle,
     VerticalLinkSprite, draw_static_battlefield, draw_vertical_links, load_tile_roles,
