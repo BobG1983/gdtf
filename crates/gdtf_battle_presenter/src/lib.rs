@@ -54,6 +54,7 @@
 
 mod plugin;
 
+pub mod fire_target;
 pub mod fog;
 pub mod fx;
 pub mod ganger;
@@ -64,6 +65,7 @@ pub mod terrain;
 pub mod topdown;
 pub mod world_camera;
 
+pub use fire_target::{FireTargetHighlight, FireTargetLabel, FireTargetTile, draw_fire_target};
 pub use fog::{TerrainFogMaterial, TerrainFogUniform, present_fog};
 pub use fx::{
     COMPASS_DIRECTIONS, CombatLogEvent, CombatText, DIRECTION_COUNT, DamageTypeFx, EffectRoles,

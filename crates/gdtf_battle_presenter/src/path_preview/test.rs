@@ -10,7 +10,7 @@
 use bevy::{platform::collections::HashSet, prelude::Alpha};
 use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility, Tu};
 
-use super::preview::{PathPreview, label_text, preview_draws};
+use super::preview::{LABEL_COLOR, PathPreview, label_text, preview_draws};
 
 /// A `SquadVisibility` with `visible` cells VISIBLE and `explored` cells EXPLORED-only.
 fn fog(visible: &[CellLevel], explored_only: &[CellLevel]) -> SquadVisibility {
@@ -89,6 +89,36 @@ fn visible_steps_full_alpha_explored_steps_dimmer() {
         exp_alpha < vis_alpha,
         "the EXPLORED (remembered) step draws at a REDUCED alpha vs the VISIBLE step (§53): \
          explored={exp_alpha:?} visible={vis_alpha:?}",
+    );
+}
+
+/// GTW-371 C1 (pin-discriminating) — the VISIBLE route TILE draws at EXACTLY 0.5 alpha (the
+/// transparency the user asked for on the path tiles) while the cost-LABEL colour stays FULLY
+/// OPAQUE (alpha 1.0, unchanged). The two are distinct: transparency on the route TILES only,
+/// never on the cost TEXT.
+#[test]
+fn route_tile_is_half_alpha_but_cost_label_stays_opaque() {
+    let visible_cell = c0(5, 5);
+    let preview = PathPreview::new(vec![visible_cell], Tu::new(8));
+    let squad = fog(&[visible_cell], &[]);
+
+    let draws = preview_draws(&preview, Level::new(0), &squad);
+    let tile_alpha = draws
+        .iter()
+        .find(|d| d.cell == visible_cell)
+        .map(|d| d.tint.alpha());
+    assert!(
+        tile_alpha.is_some_and(|a| (a - 0.5).abs() < 0.001),
+        "the VISIBLE route TILE draws at EXACTLY 0.5 alpha (GTW-371 C1): the route tiles are \
+         ~half transparent; got {tile_alpha:?}",
+    );
+
+    // The cost LABEL colour is FULLY OPAQUE — transparency applies to the TILE, never the TEXT.
+    assert!(
+        (LABEL_COLOR.alpha() - 1.0).abs() < 0.001,
+        "the cost LABEL colour stays FULLY OPAQUE (alpha 1.0) — transparency is on the route \
+         tiles only, never the cost text (GTW-371 C1); got {}",
+        LABEL_COLOR.alpha(),
     );
 }
 

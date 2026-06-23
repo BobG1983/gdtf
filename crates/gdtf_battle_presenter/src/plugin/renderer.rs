@@ -10,20 +10,21 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
-    ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle, FxTuning,
-    FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
-    PanTuning, PanTuningHandle, PathPreview, PresenterSystems, ShotImpactResolved,
-    TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases, advance_projectiles,
-    advance_sprite_tweens, animate_floating_text, animate_impact, apply_active_level_filter,
-    clamp_camera_to_bounds, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
-    draw_highlight_on_request, draw_path_preview, draw_static_battlefield, draw_vertical_links,
-    expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
-    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
-    pan_camera_on_gamepad_cursor_edge, present_fog, read_armor_broken, read_bleeding,
-    read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
-    redrive_pan_tuning_on_asset_event, reframe_ganger_sprites, resolve_character_roles,
-    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
-    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
+    ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle,
+    FireTargetHighlight, FxTuning, FxTuningHandle, GamepadCursorMoved, GangerSprites,
+    HighlightRequest, PanEdgeDwellState, PanTuning, PanTuningHandle, PathPreview, PresenterSystems,
+    ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases,
+    advance_projectiles, advance_sprite_tweens, animate_floating_text, animate_impact,
+    apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
+    despawn_removed_ganger_sprites, draw_fire_target, draw_highlight_on_request, draw_path_preview,
+    draw_static_battlefield, draw_vertical_links, expire_flashes, frame_camera_on_units,
+    load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
+    load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
+    present_fog, read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
+    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
+    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
+    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
+    update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -145,6 +146,11 @@ impl Plugin for TopDownRendererPlugin {
             // unreachable); the draw system READS it. Its Default is the empty preview, so a
             // battle with no target draws no route.
             .init_resource::<PathPreview>()
+            // GTW-371 — the fire-target highlight read-seam (the hovered fireable-enemy cell +
+            // the fire TU cost). Present for the whole battle span: the input crate POPULATES it
+            // (clearing it off any non-fireable hover); the draw system READS it. Its Default is
+            // the empty highlight, so a battle with no fireable hover draws no fire target.
+            .init_resource::<FireTargetHighlight>()
             // The S5 ganger-sprite map (sim Entity -> presenter Entity), present for the
             // whole battle span so the spawn / move / reframe / death / removal systems
             // share one mapping.
@@ -323,6 +329,12 @@ impl Plugin for TopDownRendererPlugin {
         // `SquadVisibility` (the §53 VISIBLE-vs-EXPLORED dim) and hard-cuts to the active storey
         // (extracted to keep `build` under the `too_many_lines` lint).
         register_path_preview_systems(app);
+
+        // GTW-371: the fire-target highlight DRAW (the red under-actor tile + the opaque TU-cost
+        // label). It reads the presenter-owned `FireTargetHighlight` (populated by the input
+        // crate) and hard-cuts to the active storey (extracted to keep `build` under the
+        // `too_many_lines` lint).
+        register_fire_target_systems(app);
     }
 }
 
@@ -733,6 +745,40 @@ fn register_path_preview_systems(app: &mut App) {
             .run_if(
                 resource_exists::<BattleInProgress>.and_then(resource_exists::<SquadVisibility>),
             ),
+    );
+}
+
+/// Registers the GTW-371 fire-target highlight DRAW system into the already-defined
+/// [`PresenterSystems::Draw`] band.
+///
+/// The PRESENTER owns the [`FireTargetHighlight`] read-seam (`init_resource`-d on build above)
+/// plus this draw system; the INPUT crate POPULATES the resource by deciding the fireable-enemy
+/// verdict (mirroring `decide_left_click`'s FIRE rung) + computing the
+/// [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) — the [`HighlightRequest`] precedent, where the
+/// presenter DEFINES the type and input WRITES it, keeping the `input → presenter → sim`
+/// direction (never a cycle).
+///
+/// [`draw_fire_target`] draws the SINGLE red tile UNDER the hovered enemy
+/// ([`Layer::FireTarget`](crate::Layer), z below the actor band) with a pooled,
+/// mutated-in-place [`Sprite`] (never despawn-respawned) plus the SINGLE OPAQUE TU-cost
+/// [`Text2d`] label above the cell, hard-cut to the active storey and hidden off a fireable
+/// hover.
+///
+/// Gated `run_if(resource_exists::<BattleInProgress>)` — the sim's live-battle witness, the same
+/// gate the highlight / path-preview draws use (the inert-pre-battle requirement,
+/// `bevy-traps.md` #1). It needs NO render resource (a solid-tint sprite + a `Text2d`, not an
+/// atlas tile) and NO `SquadVisibility` (the input populate applies the fog gate before writing
+/// the seam — the draw only reads the resolved highlight + the always-present `init_resource`-d
+/// [`FireTargetHighlight`] / [`ActiveLevel`]). It is ordered `.after(present_fog)` so the red tile
+/// composites OVER the fogged battlefield (and, being at [`Layer::FireTarget`](crate::Layer),
+/// UNDER the enemy sprite).
+fn register_fire_target_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        draw_fire_target
+            .in_set(PresenterSystems::Draw)
+            .after(present_fog)
+            .run_if(resource_exists::<BattleInProgress>),
     );
 }
 

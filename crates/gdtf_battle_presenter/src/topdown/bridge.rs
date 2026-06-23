@@ -37,7 +37,7 @@ const Z_PER_LEVEL: f32 = 1.0;
 pub const GANGER_Z_BIAS: f32 = 0.1;
 
 /// A presenter draw layer within a single storey — the ONE place the
-/// terrain &lt; vertical-link &lt; actor &lt; highlight &lt; path-preview
+/// terrain &lt; vertical-link &lt; fire-target &lt; actor &lt; highlight &lt; path-preview
 /// stacking order lives.
 ///
 /// A domain value (a real named type, not a bare z magnitude), per
@@ -62,6 +62,12 @@ pub enum Layer {
     /// cell draws over it. Strictly `< GANGER_Z_BIAS < Z_PER_LEVEL`, so it never sorts
     /// into the actor band or the next storey's band.
     VerticalLink,
+    /// The GTW-371 fire-target highlight — the RED tile drawn UNDER the enemy a fireable
+    /// hover would shoot. Drawn ABOVE the terrain + vertical-link bands but strictly BELOW
+    /// the [`Actor`](Layer::Actor) band (`GANGER_Z_BIAS * 0.75 = 0.075 < GANGER_Z_BIAS`),
+    /// so it renders UNDER the enemy's own sprite — the contract's "under the actor"
+    /// treatment, exactly the way the vertical-link tile sits under a ganger standing on it.
+    FireTarget,
     /// A ganger (actor) — drawn just in front of its own terrain by [`GANGER_Z_BIAS`].
     Actor,
     /// The hover / selection highlight — drawn in front of the actor so it tints the unit
@@ -78,9 +84,9 @@ pub enum Layer {
 impl Layer {
     /// This layer's within-storey draw-z bias, added on top of the per-storey level z.
     ///
-    /// Strictly increasing terrain &lt; vertical-link &lt; actor &lt; highlight &lt;
-    /// path-preview, and every value is strictly `< Z_PER_LEVEL` so a biased sprite never
-    /// sorts into the next storey's band.
+    /// Strictly increasing terrain &lt; vertical-link &lt; fire-target &lt; actor &lt;
+    /// highlight &lt; path-preview, and every value is strictly `< Z_PER_LEVEL` so a biased
+    /// sprite never sorts into the next storey's band.
     #[must_use]
     const fn z_bias(self) -> f32 {
         match self {
@@ -88,6 +94,10 @@ impl Layer {
             // Above the terrain ground plane, strictly below the actor band so a ganger
             // standing on the stair / ladder draws over it (`0.05 < GANGER_Z_BIAS`).
             Self::VerticalLink => GANGER_Z_BIAS * 0.5,
+            // GTW-371: above the terrain / vertical-link bands, strictly below the actor band
+            // so the red fire-target tile renders UNDER the enemy's sprite
+            // (`0.075 < GANGER_Z_BIAS`).
+            Self::FireTarget => GANGER_Z_BIAS * 0.75,
             Self::Actor => GANGER_Z_BIAS,
             // Strictly above the actor, still within the storey band (`< Z_PER_LEVEL`).
             Self::Highlight => GANGER_Z_BIAS * 2.0,

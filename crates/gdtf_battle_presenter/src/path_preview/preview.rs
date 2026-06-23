@@ -174,8 +174,10 @@ pub struct PathTargetLabel;
 /// against the amber route trail beneath it.
 ///
 /// Framework plumbing — a literal [`Color`] handed straight to a [`TextColor`], not a domain
-/// quantity (the `CELL_PX`-class const carve-out).
-const LABEL_COLOR: Color = Color::srgb(0.95, 1.0, 0.95);
+/// quantity (the `CELL_PX`-class const carve-out). `pub(super)` so the sibling
+/// `path_preview::test` module can pin that the cost TEXT stays FULLY OPAQUE (GTW-371 C1) while
+/// the route TILE tint goes ~50% transparent.
+pub(super) const LABEL_COLOR: Color = Color::srgb(0.95, 1.0, 0.95);
 
 /// The target-cell TU-cost label font size, in world-space px.
 ///
@@ -195,9 +197,11 @@ const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 ///
 /// Framework plumbing — a literal [`Color`] handed straight to a [`Sprite`], not a domain
 /// quantity (the `CELL_PX`-class const carve-out, the [`HoverHighlight`](crate::HoverHighlight)
-/// tint precedent). A warm amber at moderate alpha so the previewed route reads as a "this is
+/// tint precedent). A warm amber at 50% alpha (GTW-371 C1: the route TILES are ~half
+/// transparent so the terrain beneath reads through; the TU-cost TEXT stays FULLY OPAQUE — that
+/// is the SEPARATE [`LABEL_COLOR`], untouched) so the previewed route reads as a "this is
 /// where you'd walk" trail distinct from the cyan selection reticle.
-const PREVIEW_TINT: Color = Color::srgba(1.0, 0.75, 0.2, 0.55);
+const PREVIEW_TINT: Color = Color::srgba(1.0, 0.75, 0.2, 0.5);
 
 /// The §53 EXPLORED (remembered, not currently visible) alpha SCALE applied to
 /// [`PREVIEW_TINT`]'s alpha — the "remembered" treatment is dimmer than the VISIBLE step

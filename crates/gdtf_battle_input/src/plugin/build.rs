@@ -4,7 +4,9 @@
 
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
 use gdtf_assets::RonAssetAppExt;
-use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, PathPreview};
+use gdtf_battle_presenter::{
+    FireTargetHighlight, GamepadCursorMoved, HighlightRequest, PathPreview,
+};
 use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
     acts::{
@@ -29,7 +31,8 @@ use crate::{
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
         PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
-        populate_path_preview, right_click_turn_to_face, update_selection_highlight,
+        populate_fire_target, populate_path_preview, right_click_turn_to_face,
+        update_selection_highlight,
     },
 };
 
@@ -268,6 +271,11 @@ impl Plugin for GdtfBattleInputPlugin {
         // `too_many_lines` lint).
         register_path_preview_population(app);
 
+        // GTW-371 — the fire-target highlight POPULATE system (decides the fireable-enemy verdict
+        // on the hovered cell + computes the `mode_tu_cost`; extracted to keep `build` under the
+        // `too_many_lines` lint).
+        register_fire_target_population(app);
+
         // The data-driven keybind table loads the GTW-136 RON way. `init_ron_asset` PANICS at
         // registration without an `AssetServer`, so it — and the load/resolve chain — is gated
         // on the asset stack being present (`bevy-traps.md` #1). Under `DefaultPlugins` it runs
@@ -370,6 +378,50 @@ fn register_path_preview_population(app: &mut App) {
                     .and_then(resource_exists::<SquadVisibility>)
                     .and_then(resource_exists::<CombatTuning>)
                     .and_then(resource_exists::<PathPreview>),
+            ),
+    );
+}
+
+/// Registers the GTW-371 fire-target highlight POPULATE system into [`InputSystems::Gather`].
+///
+/// [`populate_fire_target`] reads the current [`SelectedShooter`] + [`SelectedFireMode`] + the
+/// hovered cell ([`InspectTarget`](crate::InspectTarget)) and fills the presenter-owned
+/// [`FireTargetHighlight`](gdtf_battle_presenter::FireTargetHighlight) when the hover is a
+/// fireable ENEMY (the SAME FIRE-rung conditions [`left_click_act`] gates fire on, plus the
+/// GTW-346 fog gate), exposing the [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) the shot
+/// would charge. Ordered `.after(left_click_act)` (so it reads the same update's selection) and
+/// `.after(auto_select_first_player_ganger)` (so the battle-start auto-select can show the
+/// affordance on the first frame).
+///
+/// Gated on the live battle WITH the resources the verdict reads as a hard `Res` — the
+/// [`OccupancyGrid`] (the occupant lookup), the [`CombatTuning`] (the aim premium), the
+/// [`PlayerFaction`] (the friend/foe gate) — AND the presenter-`init_resource`-d
+/// [`FireTargetHighlight`](gdtf_battle_presenter::FireTargetHighlight): a focused input-only
+/// harness opens `BattleInProgress` WITHOUT a presenter plugin (so no `FireTargetHighlight`), so
+/// without that guard the `ResMut<FireTargetHighlight>` param would panic validation
+/// (`bevy-traps.md` #1). The [`SquadVisibility`] fog is read as an `Option` (FAIL-CLOSED on
+/// absence), so it is NOT in the gate. Extracted from
+/// [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep `build` under the
+/// `too_many_lines` lint (the `register_path_preview_population` precedent).
+fn register_fire_target_population(app: &mut App) {
+    app.add_systems(
+        Update,
+        populate_fire_target
+            .in_set(InputSystems::Gather)
+            .after(left_click_act)
+            .after(auto_select_first_player_ganger)
+            // Reads `InspectTarget`'s LIVE hovered cell, so it runs `.before(pick_hovered_cell)`
+            // (the click-decision precedent, `bevy-traps.md` #3): it acts on the cell resolved
+            // last update, the deterministic consume->resolve order — and a headless harness that
+            // injects `InspectTarget` directly has it read before the camera-less picker clobbers
+            // it to `None`.
+            .before(pick_hovered_cell)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<OccupancyGrid>)
+                    .and_then(resource_exists::<CombatTuning>)
+                    .and_then(resource_exists::<PlayerFaction>)
+                    .and_then(resource_exists::<FireTargetHighlight>),
             ),
     );
 }

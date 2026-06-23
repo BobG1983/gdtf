@@ -57,6 +57,7 @@
 
 mod auto_select;
 mod decision;
+mod fire_target;
 mod highlight;
 mod path_preview;
 mod resources;
@@ -67,6 +68,7 @@ pub use decision::{
     LeftClickOutcome, LeftClickReads, PinOutcome, TurnReads, apply_left_click, apply_pin,
     decide_left_click, decide_pin, decide_turn,
 };
+pub use fire_target::{FireTargetReads, populate_fire_target};
 pub use highlight::update_selection_highlight;
 pub use path_preview::{PathPreviewTarget, PreviewGrids, populate_path_preview};
 pub use resources::{SelectedShooter, SelectionHighlight};

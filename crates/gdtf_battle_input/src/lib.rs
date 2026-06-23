@@ -58,9 +58,10 @@ pub use picking::{
 };
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
 pub use selection::{
-    LeftClickOutcome, LeftClickReads, PathPreviewTarget, PinOutcome, PreviewGrids, SelectedShooter,
-    SelectionHighlight, TurnReads, apply_left_click, apply_pin, auto_select_first_player_ganger,
-    decide_left_click, decide_pin, decide_turn, left_click_act, populate_path_preview,
-    right_click_turn_to_face, update_selection_highlight,
+    FireTargetReads, LeftClickOutcome, LeftClickReads, PathPreviewTarget, PinOutcome, PreviewGrids,
+    SelectedShooter, SelectionHighlight, TurnReads, apply_left_click, apply_pin,
+    auto_select_first_player_ganger, decide_left_click, decide_pin, decide_turn, left_click_act,
+    populate_fire_target, populate_path_preview, right_click_turn_to_face,
+    update_selection_highlight,
 };
 pub use sets::InputSystems;
