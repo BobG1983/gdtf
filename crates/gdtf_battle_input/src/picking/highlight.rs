@@ -29,6 +29,15 @@ use crate::picking::hovered::InspectTarget;
 /// (nothing to highlight without occupancy truth), keeping the system panic-free
 /// (`bevy-traps.md` #1).
 ///
+/// GTW-378: an OCCUPANT contributes to the highlight ONLY when the occupant's cell is
+/// currently squad-VISIBLE (the shared [`cell_squad_visible`] verdict, fail-closed). A
+/// fog-hidden enemy (an occupant in a NON-visible cell) no longer lights the reticle —
+/// that grey highlight was an info-leak betraying where the fog hides an enemy. A BLOCKING
+/// wall / cover still highlights regardless of fog (it is map geometry / mission memory,
+/// not a hidden enemy, and GTW-346 keeps recolouring its reticle grey on a non-VISIBLE cell
+/// while refusing fire). This does NOT touch the GTW-346 reticle recolour / fire-refusal —
+/// it only stops the reticle from APPEARING over a fog-hidden occupant.
+///
 /// Emitting EVERY update (not only on `Changed<InspectTarget>`) keeps the highlight in
 /// lockstep: a per-frame re-emit is a no-op move, and a once-only emit could miss the first
 /// draw if the picker resolved the cell before the presenter's reader was ready.
@@ -61,14 +70,27 @@ pub fn emit_highlight_request(
 ) {
     // GTW-268 — only a cell holding a ganger (occupant) or an object / cover (blocking)
     // highlights; bare floor, an off-grid hover, or an absent grid emit `None` (hide).
+    // GTW-378 — an OCCUPANT only counts toward the highlight when its cell is squad-VISIBLE
+    // (a fog-hidden enemy must NOT light the reticle, the info-leak); a BLOCKING wall / cover
+    // still counts regardless of fog (map geometry, not a hidden enemy). When the grid is
+    // ABSENT the gate fails closed to `None`.
     let highlighted = target.hovered().and_then(|cell| {
         let grid = grid.as_ref()?;
-        (grid.occupant(&cell).is_some() || grid.is_blocked(&cell)).then_some(cell)
+        // GTW-11 — the squad-visible verdict for the hovered cell, via the SHARED predicate
+        // (FAIL-CLOSED on an absent fog). The occupant's relation to the player squad routes
+        // the predicate through `is_ganger_visible` (own-squad always visible, an enemy iff the
+        // cell is VISIBLE); a blocking-terrain cell carries no occupant, so its relation is
+        // `None`.
+        let relation = grid
+            .occupant(&cell)
+            .map(|occupant| occupant_relation(occupant, &factions, player.as_deref()));
+        let occupant_visible = grid.occupant(&cell).is_some()
+            && cell_squad_visible(squad.as_deref(), &cell, relation).is_squad_visible();
+        (occupant_visible || grid.is_blocked(&cell)).then_some(cell)
     });
-    // GTW-11 — the squad-visible verdict for the highlighted cell, via the SHARED predicate
-    // (FAIL-CLOSED on an absent fog). The occupant's relation to the player squad routes the
-    // predicate through `is_ganger_visible` (own-squad always visible, an enemy iff the cell is
-    // VISIBLE); a blocking-terrain cell carries no occupant, so its relation is `None`.
+    // GTW-11 — the verdict CARRIED to the presenter (drives the reticle recolour + the
+    // fire-refusal share). Computed for the cell that survived the highlight gate (a blocking
+    // wall in fog still carries `NotSquadVisible`, so GTW-346 recolours it grey + refuses fire).
     let visibility = highlighted.map_or(
         // No cell to highlight (hidden reticle): the verdict is irrelevant — carry the
         // not-visible default so a `None`-cell request never claims squad-visibility.

@@ -33,8 +33,9 @@ use gdtf_battle_input::{InputSystems, InspectTarget, SelectedShooter, pick_hover
 use gdtf_battle_sim::{
     ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry, CoverHp, CoverLedger,
     Destroyed, Faction, GangerName, HeightBand, Hp, HpMax, InflictedWound, InflictedWounds, Level,
-    LifeState, OccupancyGrid, PlayerFaction, Position, Severity, Stance, StanceKind, TerrainKind,
-    Tu, TuMax, Wounds, WoundsMax, tuning::CombatTuning, weapon::WeaponRegistry,
+    LifeState, OccupancyGrid, PlayerFaction, Position, Severity, SquadVisibility, Stance,
+    StanceKind, TerrainKind, Tu, TuMax, Wounds, WoundsMax, tuning::CombatTuning,
+    weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{
@@ -643,6 +644,19 @@ fn hover(app: &mut App, cell: Option<CellLevel>) {
     app.update();
 }
 
+/// Replaces the squad fog so EXACTLY the given cells are currently squad-VISIBLE (GTW-378).
+///
+/// The fog gate now suppresses the inspect panel for a fog-hidden enemy occupant, so the
+/// hover tests that inspect an ENEMY ganger must seed its cell as squad-VISIBLE (the
+/// real default-situation fog leaves arbitrary spawn cells UNSEEN). The VISIBLE set is its
+/// own EXPLORED superset (the accrual invariant), matching `recompute_visibility`'s output.
+fn make_cells_visible(app: &mut App, cells: &[CellLevel]) {
+    let visible: bevy::platform::collections::HashSet<CellLevel> = cells.iter().copied().collect();
+    let explored = visible.clone();
+    app.world_mut()
+        .insert_resource(SquadVisibility::new(visible, explored));
+}
+
 /// AC2 — hovering a GANGER cell shows the panel + its ganger stat block.
 #[test]
 fn hovering_a_ganger_shows_its_stat_block() {
@@ -670,6 +684,9 @@ fn hovering_a_ganger_shows_its_stat_block() {
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_occupant(cell, Some(ganger));
+    // GTW-378 — the inspect panel now refuses a fog-hidden enemy; make the cell squad-VISIBLE
+    // so this AC2 case (a SEEN enemy shows its stat block) holds under the new fog gate.
+    make_cells_visible(&mut app, &[cell]);
 
     hover(&mut app, Some(cell));
 
@@ -736,6 +753,58 @@ fn hovering_a_ganger_shows_its_stat_block() {
     }
 }
 
+/// GTW-378 (regression) — hovering a FOG-HIDDEN enemy (an enemy occupant on a cell that is
+/// NOT currently squad-VISIBLE) does NOT populate the inspect panel (the info-leak); making
+/// the SAME cell squad-VISIBLE then DOES show it.
+///
+/// Pin-discriminating: it fails if the panel populates in fog (the leak the GTW-378 fix
+/// closes) AND it fails if the visible-cell positive control never shows (proving the gate is
+/// not merely hiding everything). Hovers a single enemy ganger across the two fog states.
+#[test]
+fn fog_hidden_enemy_is_not_inspected_but_a_seen_one_is() {
+    let mut app = hover_app();
+
+    // The player faction the real default-situation setup seeded.
+    let Some(player) = app
+        .world()
+        .get_resource::<PlayerFaction>()
+        .copied()
+        .map(|p| **p)
+    else {
+        return;
+    };
+    let enemy_faction = Faction::new(player.wrapping_add(1));
+    let cell = CellLevel::new(Cell::new(4, 4), Level::new(0));
+    place_ganger(&mut app, cell, enemy_faction);
+
+    // FOG case — the cell is NOT squad-VISIBLE (empty VISIBLE set): the panel must stay hidden.
+    make_cells_visible(&mut app, &[]);
+    hover(&mut app, Some(cell));
+    let root = single_global::<InspectPanelRoot>(&mut app);
+    assert!(root.is_some(), "the inspect panel must exist");
+    assert_eq!(
+        root.and_then(|root| app.world().get::<Visibility>(root)),
+        Some(&Visibility::Hidden),
+        "hovering a FOG-HIDDEN enemy must NOT populate the inspect panel (GTW-378 info-leak)",
+    );
+
+    // VISIBLE case (positive control) — make the SAME cell squad-VISIBLE: the panel now shows.
+    make_cells_visible(&mut app, &[cell]);
+    hover(&mut app, Some(cell));
+    if let Some(root) = single_global::<InspectPanelRoot>(&mut app) {
+        assert_ne!(
+            app.world().get::<Visibility>(root),
+            Some(&Visibility::Hidden),
+            "hovering a SEEN enemy still shows the inspect panel (GTW-378 positive control)",
+        );
+    }
+    assert_eq!(
+        display_of::<InspectStatBlockHost>(&mut app),
+        Some(Display::Flex),
+        "a squad-VISIBLE enemy lays out the ganger stat block (GTW-378 positive control)",
+    );
+}
+
 /// Spawns a ganger of `faction` at `cell`, puts it on the occupancy grid, and returns it.
 fn place_ganger(app: &mut App, cell: CellLevel, faction: Faction) -> Entity {
     let ganger = app
@@ -796,7 +865,11 @@ fn hovering_a_ganger_tints_the_name_by_faction() {
     // An ENEMY ganger (a faction the player does NOT control) → red-ish tint, NOT the theme.
     let enemy_faction = Faction::new(player.wrapping_add(1));
     let enemy_cell = CellLevel::new(Cell::new(4, 4), Level::new(0));
+    let player_cell = CellLevel::new(Cell::new(6, 6), Level::new(0));
     place_ganger(&mut app, enemy_cell, enemy_faction);
+    // GTW-378 — both hovered cells must be squad-VISIBLE for the panel (and its name tint) to
+    // populate under the new fog gate; this test inspects a SEEN enemy + a player ganger.
+    make_cells_visible(&mut app, &[enemy_cell, player_cell]);
     hover(&mut app, Some(enemy_cell));
     let enemy_color = inspect_name_color(&mut app);
     assert!(
@@ -810,8 +883,8 @@ fn hovering_a_ganger_tints_the_name_by_faction() {
         );
     }
 
-    // A PLAYER-faction ganger → the normal theme color (no enemy tint).
-    let player_cell = CellLevel::new(Cell::new(6, 6), Level::new(0));
+    // A PLAYER-faction ganger → the normal theme color (no enemy tint). The cell was made
+    // squad-VISIBLE above (GTW-378); a player-faction occupant is trivially visible regardless.
     place_ganger(&mut app, player_cell, Faction::new(player));
     hover(&mut app, Some(player_cell));
     if let Some(color) = inspect_name_color(&mut app) {

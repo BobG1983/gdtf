@@ -48,8 +48,8 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, CellVisibility, HighlightRequest, WorldCamera};
 use gdtf_battle_sim::{
-    BattleInProgress, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, TerrainKind,
-    VerticalLinkGraph, acts::MoveRequested, tuning::CombatTuning,
+    BattleInProgress, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, SquadVisibility,
+    TerrainKind, VerticalLinkGraph, acts::MoveRequested, tuning::CombatTuning,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -338,6 +338,76 @@ fn picking_fails_closed_to_none() {
             "with no WorldCamera the picking must resolve InspectTarget to None",
         );
     }
+}
+
+/// Inserts a `SquadVisibility` whose VISIBLE (= EXPLORED) set is exactly `cells`.
+fn make_cells_visible(app: &mut App, cells: &[CellLevel]) {
+    let visible: bevy::platform::collections::HashSet<CellLevel> = cells.iter().copied().collect();
+    let explored = visible.clone();
+    app.world_mut()
+        .insert_resource(SquadVisibility::new(visible, explored));
+}
+
+/// GTW-378 (regression) — an ENEMY occupant on a NOT currently squad-VISIBLE (fog) cell does
+/// NOT light the hover reticle (emits `HighlightRequest(None)`); making the SAME cell
+/// squad-VISIBLE then emits `Some(cell)` with the `SquadVisible` verdict.
+///
+/// Pin-discriminating: it fails if the reticle lights over the fog-hidden enemy (the
+/// info-leak the GTW-378 fix closes) AND if the visible-cell positive control never emits.
+/// This is the input half of the leak fix; the inspect-panel half lives in the app's
+/// `status_panel.rs`. Leaves GTW-346's blocking-wall reticle (covered by
+/// `picker_emits_highlight_request_matching_hovered_cell`) untouched: only an OCCUPANT is
+/// fog-gated.
+#[test]
+fn fog_hidden_enemy_occupant_does_not_light_the_reticle() {
+    let level = Level::new(0);
+    let mut app = picking_app(level);
+    app.world_mut().insert_resource(OccupancyGrid::default());
+    // The player squad is gang 0; the occupant is an ENEMY (gang 1).
+    app.world_mut()
+        .insert_resource(PlayerFaction::new(Faction::new(0)));
+    let enemy = app.world_mut().spawn(Faction::new(1)).id();
+    add_highlight_probe(&mut app);
+
+    // Resolve the cell the in-grid cursor hovers, then put the enemy occupant there.
+    let cursor = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
+    set_cursor(&mut app, Some(cursor));
+    app.update();
+    assert!(
+        hovered(&app).is_some(),
+        "the in-grid cursor must resolve a cell"
+    );
+    let Some(resolved) = hovered(&app) else {
+        return;
+    };
+    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
+        grid.set_occupant(resolved, Some(enemy));
+    }
+
+    // FOG case — the occupant's cell is NOT squad-VISIBLE: the reticle must stay hidden (None),
+    // never betraying where the fog hides the enemy.
+    make_cells_visible(&mut app, &[]);
+    app.world_mut().resource_mut::<HighlightProbe>().0.clear();
+    app.update();
+    assert_eq!(
+        requests(&app),
+        vec![HighlightRequest::new(None, CellVisibility::NotSquadVisible)],
+        "a FOG-HIDDEN enemy occupant must NOT light the reticle (GTW-378 info-leak)",
+    );
+
+    // VISIBLE case (positive control) — the SAME cell is now squad-VISIBLE: the reticle lights
+    // on it, carrying the SquadVisible verdict.
+    make_cells_visible(&mut app, &[resolved]);
+    app.world_mut().resource_mut::<HighlightProbe>().0.clear();
+    app.update();
+    assert_eq!(
+        requests(&app),
+        vec![HighlightRequest::new(
+            Some(resolved),
+            CellVisibility::SquadVisible
+        )],
+        "a squad-VISIBLE enemy occupant lights the reticle (GTW-378 positive control)",
+    );
 }
 
 // ---------------------------------------------------------------------------------
