@@ -28,10 +28,10 @@
         // The ascending bucket edges on the score: < e0 graze (None), then Minor/Major/Critical,
         // and ≥ e3 is Fatal. Must climb e0 < e1 < e2 < e3 for the buckets to be monotone.
         edges: (
-            e0: 1.0,    // None→Minor  — below this is a graze (HP loss only, no Wound)
-            e1: 5.0,    // Minor→Major — at/above e1 the wound costs 2 Wounds
-            e2: 10.0,   // Major→Critical
-            e3: 15.0,   // Critical→Fatal — at/above e3 the hit empties the Wounds pool (death)
+            e0: 5.0,    // None→Minor  — below this is a graze (HP loss only, no Wound)
+            e1: 10.0,    // Minor→Major — at/above e1 the wound costs 2 Wounds
+            e2: 20.0,   // Major→Critical
+            e3: 40.0,   // Critical→Fatal — at/above e3 the hit empties the Wounds pool (death)
         ),
     ),
     // Per-tier Wounds-budget cost (wounds-and-roster.md §"Severity tiers"): how many
