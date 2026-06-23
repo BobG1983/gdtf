@@ -7,3 +7,5 @@ Jason Rohrer's framing (GDC 2019) splits games into *consumables* — a crafted 
 The lineage is direct. Old Necromunda's campaign rules — a persistent named gang, permadeath, the Injuries table, turf and income, XP and advancement, captures, grudges — are arguably the purest tabletop situation generator ever printed. XCOM productized that loop for a screen. We are building that engine, deliberately, as the point of the whole project.
 
 Every system is judged against this. A feature that authors a fixed outcome, removes player agency, or smooths away the rough emergent edges is suspect. A feature that creates new situations — a ganger captured behind enemy lines, a grudge that reshapes the next deployment, a wound that changes how a veteran plays — is doing the core job.
+
+**Reference:** Jason Rohrer's GDC 2019 talk on *consumables vs. situation generators* — [youtube.com/watch?v=sIqz5xmQKnc](https://www.youtube.com/watch?v=sIqz5xmQKnc).
