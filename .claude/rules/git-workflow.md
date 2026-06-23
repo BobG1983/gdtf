@@ -33,3 +33,20 @@ on top of it.
    `git push origin develop`. Landing is the only way work reaches `develop`.
 7. When a workflow spawns a sub-agent to run git plumbing, the same rules
    apply to it — explicit staging, gate-gated commits, ticket-tagged subjects.
+
+## Optional: two epics at once via shared-target worktrees
+
+To work two INDEPENDENT epics in parallel, use git worktrees that SHARE one cargo
+target dir — Bevy compiles once across all worktrees, so a 2nd worktree's diverged
+build is ~9x cheaper (verified, GTW-382). The setup is committed:
+
+- `.cargo/config.toml` sets `[unstable] checksum-freshness = true` — hash-based
+  freshness so a shared target dir can't false-"fresh" across worktrees and silently
+  run stale code (the mtime hazard). Nightly-only; the repo pins nightly.
+- `.envrc` exports `CARGO_TARGET_DIR=$HOME/.cache/gdtf-target` (direnv; per-machine,
+  invisible to CI). One-time per machine: add `eval "$(direnv hook zsh)"` to your
+  shell rc, then `direnv allow` in each checkout/worktree.
+
+Then `git worktree add ../gdtf-<epic> <branch>` per epic. Builds serialize on cargo's
+target-dir lock only when two compile at the same instant (rare). One ticket per
+worktree still holds (Rule 2, per-worktree).
