@@ -31,8 +31,8 @@ use crate::{
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
         PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
-        populate_fire_target, populate_path_preview, right_click_turn_to_face,
-        update_selection_highlight,
+        populate_fire_target, populate_path_preview, reset_move_target_on_fire_mode_change,
+        right_click_turn_to_face, update_selection_highlight,
     },
 };
 
@@ -342,7 +342,8 @@ fn register_gamepad_systems(app: &mut App) {
     );
 }
 
-/// Registers the GTW-358 route path-preview POPULATE system into [`InputSystems::Gather`].
+/// Registers the GTW-358 route path-preview POPULATE system into [`InputSystems::Gather`], plus
+/// the GTW-379 FIRE→MOVE move-target RESET that runs `.before` it.
 ///
 /// [`populate_path_preview`] reads the current [`SelectedShooter`] + the [`PathPreviewTarget`]
 /// and fills the presenter-owned [`PathPreview`](gdtf_battle_presenter::PathPreview) the SAME
@@ -364,8 +365,33 @@ fn register_gamepad_systems(app: &mut App) {
 /// preview populates exactly when a battle is live. Extracted from
 /// [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep `build` under the
 /// `too_many_lines` lint (the `register_gamepad_systems` precedent).
+///
+/// GTW-379 — [`reset_move_target_on_fire_mode_change`] runs in the same band, ordered
+/// `.before(populate_path_preview)`, so when the player engages the fire-mode toggle (a
+/// `Changed<`[`SelectedFireMode`]`>`) it clears [`PathPreviewTarget`] and the populate system
+/// then writes the empty [`PathPreview`](gdtf_battle_presenter::PathPreview) the SAME update —
+/// hiding + resetting the stale move path on the FIRE→MOVE switch. It only reads the always-present
+/// [`SelectedFireMode`] / [`PathPreviewTarget`] (both `init_resource`-d above), so it needs only
+/// the `BattleInProgress` gate — NOT the grid/`PathPreview` gate the route populate needs.
 fn register_path_preview_population(app: &mut App) {
     app.add_systems(
+        Update,
+        reset_move_target_on_fire_mode_change
+            .in_set(InputSystems::Gather)
+            .after(left_click_act)
+            .after(auto_select_first_player_ganger)
+            // CRITICAL — `.after(sync_fire_mode_on_select)`: that system writes `SelectedFireMode`
+            // (the on-select / GTW-376 weapon-arrival auto-default) within this same update. The
+            // reset must observe that write IN ORDER, so its `last_run` advances PAST it; otherwise
+            // (running before it) the reset would see the auto-default's change on the NEXT update
+            // — with the selection no longer changed — and wrongly clear a move target the player
+            // set that frame (the GTW-356 two-click re-target regression). It still runs
+            // `.before(populate_path_preview)` so a real switch clears the preview the same update.
+            .after(sync_fire_mode_on_select)
+            .before(populate_path_preview)
+            .run_if(resource_exists::<BattleInProgress>),
+    )
+    .add_systems(
         Update,
         populate_path_preview
             .in_set(InputSystems::Gather)
