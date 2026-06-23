@@ -194,6 +194,9 @@ pub fn redrive_pan_tuning_on_asset_event(
         return;
     };
     *tuning = **updated;
+    // GTW-374 Part C: log EVERY hot-reload path naming what reloaded, so a live edit can
+    // be traced (mirrors the theme / combat-log / B1-B3 handlers).
+    info!("pan hot-reload: re-derived PanTuning from `tiles/pan_tuning.ron`");
 }
 
 #[cfg(test)]

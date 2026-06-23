@@ -180,6 +180,75 @@ impl LoadedSituation {
     }
 }
 
+/// The PERSISTENT handle to the resolved combat-tuning RON asset (`combat/tuning.ron`).
+///
+/// A named newtype over the bevy [`Handle`] (no-bare-types) that — unlike the
+/// Load-scoped [`TuningHandle`] inside [`LoadHandles`], which is dropped
+/// `OnExit(Load)` — **persists** past `Load`, mirroring
+/// [`ActiveThemeHandle`](gdtf_ui::theme::ActiveThemeHandle) (GTW-374). It is inserted
+/// alongside the resolved [`CombatTuning`] resource and kept alive so the GTW-374 live
+/// hot-reload handler
+/// ([`redrive_combat_tuning_on_asset_event`](super::systems::resolve::tuning::redrive_combat_tuning_on_asset_event))
+/// can (1) filter incoming [`AssetEvent`](bevy::asset::AssetEvent) ids against the
+/// active tuning handle and (2) re-read the refreshed asset out of the `Assets`
+/// collection on a hot edit. Holding the handle also keeps a strong reference so the
+/// asset stays loaded for the file-watcher. Like [`CombatTuning`], it is **not**
+/// removed in `cleanup`. The handler is `redrive_combat_tuning_on_asset_event`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveTuningHandle(Handle<RonAsset<CombatTuning>>);
+
+impl ActiveTuningHandle {
+    /// Wrap the resolved combat-tuning RON handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<RonAsset<CombatTuning>>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **weapons folder** (`weapons/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
+/// unlike the Load-scoped [`WeaponsFolderHandle`] inside [`LoadHandles`], which is
+/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-374). It is inserted
+/// alongside the resolved [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry)
+/// and kept alive so the GTW-374 live hot-reload handler
+/// (`redrive_weapons_on_asset_event`)
+/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
+/// to ANY `assets/weapons/*.weapon.ron`. Holding the folder handle keeps every member
+/// weapon asset loaded for the file-watcher. Like the registry, it is **not** removed
+/// in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveWeaponsFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveWeaponsFolderHandle {
+    /// Wrap the loaded weapons-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **armor folder** (`armor/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
+/// unlike the Load-scoped [`ArmorsFolderHandle`] inside [`LoadHandles`], which is
+/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-374), the armor mirror of
+/// [`ActiveWeaponsFolderHandle`]. It is inserted alongside the resolved
+/// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) and kept alive so the
+/// GTW-374 live hot-reload handler
+/// (`redrive_armor_on_asset_event`)
+/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
+/// to ANY `assets/armor/*.armor.ron`. Holding the folder handle keeps every member
+/// armor asset loaded for the file-watcher. Like the registry, it is **not** removed
+/// in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveArmorFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveArmorFolderHandle {
+    /// Wrap the loaded armor-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// The loose-asset path of a load that reached
 /// [`LoadState::Failed`](bevy::asset::LoadState::Failed).
 ///

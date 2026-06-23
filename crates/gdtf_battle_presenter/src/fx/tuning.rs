@@ -375,6 +375,9 @@ pub fn redrive_fx_tuning_on_asset_event(
         return;
     };
     *tuning = **updated;
+    // GTW-374 Part C: log EVERY hot-reload path naming what reloaded, so a live edit can
+    // be traced (mirrors the theme / combat-log / B1-B3 handlers).
+    info!("FX hot-reload: re-derived FxTuning from `tiles/fx_tuning.ron`");
 }
 
 #[cfg(test)]

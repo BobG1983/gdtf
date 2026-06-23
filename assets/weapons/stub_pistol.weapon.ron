@@ -6,9 +6,9 @@
     accuracy:      1.0,
     kickback:      0.05,
     fatal_bias:    0.0,
-    damage:        12,
-    punch:         5,
-    shred:         2,
+    damage:        6,   // GTW-374: halved from 12 (combat re-balance, slower lethality)
+    punch:         2,   // GTW-374: halved from 5 (floor of 5/2)
+    shred:         1,   // GTW-374: halved from 2
     damage_type:   Kinetic,
     magazine: (
         size:      12,
