@@ -111,12 +111,5 @@ crate::support_use! {
 crate::support_use! {
     running::{CombatLogLine, CombatLogRoot};
 }
-// Test-support-only re-export of the GTW-11 targeting-hint Text marker — the final hop before
-// `crate::test_support`. Gated so the binary build is `unused`/`unreachable_pub`-clean.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::TargetingHintText;
-}
-
 mod teardown;
 pub(in crate::states) use teardown::TeardownScenePlugin;

@@ -549,10 +549,11 @@ fn apply_and_assert_inert(
     );
 }
 
-/// GTW-11 C6(4) — the SHARED read agreement: flipping `SquadVisibility` for ONE enemy cell flips
-/// the reticle verdict, the hint verdict (`cell_squad_visible`), AND the `decide_left_click`
-/// fire-refusal in LOCKSTEP — VISIBLE yields `SquadVisible` + Fire; non-VISIBLE yields
-/// `NotSquadVisible` + `NoOp`. Proves the three consumers read the ONE predicate (never disagree).
+/// GTW-11 C6(4) / GTW-369 — the SHARED read agreement: flipping `SquadVisibility` for ONE enemy
+/// cell flips the reticle verdict (`cell_squad_visible`) AND the `decide_left_click` fire-refusal
+/// in LOCKSTEP — VISIBLE yields `SquadVisible` + Fire; non-VISIBLE yields `NotSquadVisible` +
+/// `NoOp`. Proves the two consumers read the ONE predicate (never disagree). The text hint was
+/// removed (user-ruled 2026-06-22, GTW-369); the affordance is the reticle recolour + the refusal.
 #[test]
 fn shared_squad_visible_read_flips_in_lockstep() {
     use gdtf_battle_presenter::{CellVisibility, cell_squad_visible};
@@ -561,7 +562,7 @@ fn shared_squad_visible_read_flips_in_lockstep() {
     let shooter_cell = CellLevel::new(Cell::new(2, 2), LEVEL);
     let target = CellLevel::new(Cell::new(6, 2), LEVEL);
 
-    // VISIBLE: the predicate (reticle + hint) says SquadVisible AND the decision FIREs.
+    // VISIBLE: the predicate (the reticle's read) says SquadVisible AND the decision FIREs.
     {
         let mut app = decision_app();
         let ganger = spawn_player_shooter(&mut app, shooter_cell);
@@ -576,7 +577,7 @@ fn shared_squad_visible_read_flips_in_lockstep() {
         assert_eq!(
             cell_squad_visible(Some(fog), &target, Some(FactionRelation::Other)),
             CellVisibility::SquadVisible,
-            "VISIBLE: the shared predicate (reticle + hint) must say SquadVisible",
+            "VISIBLE: the shared predicate (the reticle's read) must say SquadVisible",
         );
         assert!(
             matches!(decide(&mut app), LeftClickOutcome::Fire(_)),
@@ -600,7 +601,7 @@ fn shared_squad_visible_read_flips_in_lockstep() {
         assert_eq!(
             cell_squad_visible(Some(fog), &target, Some(FactionRelation::Other)),
             CellVisibility::NotSquadVisible,
-            "NON-VISIBLE: the shared predicate (reticle + hint) must say NotSquadVisible",
+            "NON-VISIBLE: the shared predicate (the reticle's read) must say NotSquadVisible",
         );
         assert_eq!(
             decide(&mut app),

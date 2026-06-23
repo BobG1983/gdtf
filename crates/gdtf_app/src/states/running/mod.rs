@@ -79,13 +79,6 @@ crate::support_use! {
 crate::support_use! {
     game::{CombatLogLine, CombatLogRoot};
 }
-// Test-support-only re-export of the GTW-11 targeting-hint Text marker, gated so the binary build
-// is `unused`/`unreachable_pub`-clean. Carries the marker up toward `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    game::TargetingHintText;
-}
-
 mod options;
 pub(in crate::states::running) use options::OptionsScenePlugin;
 
