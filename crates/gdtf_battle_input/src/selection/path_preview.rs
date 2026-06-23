@@ -30,11 +30,11 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::PathPreview;
 use gdtf_battle_sim::{
-    CellLevel, CombatTuning, Faction, FactionRelation, OccupancyGrid, PlanningView, Position,
-    SquadVisibility, VerticalLinkGraph, find_path,
+    CellLevel, CombatTuning, Faction, FactionRelation, FireMode, OccupancyGrid, PlanningView,
+    Position, SquadVisibility, VerticalLinkGraph, find_path,
 };
 
-use crate::selection::resources::SelectedShooter;
+use crate::{SelectedFireMode, selection::resources::SelectedShooter};
 
 /// The cell the route preview previews TO — the target the SELECTED ganger's route is drawn
 /// toward (C6).
@@ -67,6 +67,75 @@ impl PathPreviewTarget {
     #[must_use]
     pub const fn cleared() -> Self {
         Self(None)
+    }
+}
+
+/// `Update` ([`InputSystems::Gather`](crate::InputSystems)): on the FIRE→MOVE switch — the user
+/// engaging the fire-mode toggle — RESET the move-target state so any stale route preview is
+/// dropped (GTW-379).
+///
+/// The "fire/move mode" the player switches between is the action-bar fire-mode toggle
+/// ([`SelectedFireMode`], set by the Mode segmented control / `sync_fire_mode_on_select`) over
+/// the two-click move surface (a click on an empty cell sets [`PathPreviewTarget`], a second
+/// click commits). When the player engages the fire-mode toggle they have declared FIRE intent,
+/// so any PENDING move plan is now stale: this clears [`PathPreviewTarget`] back to
+/// [`PathPreviewTarget::cleared`], which makes [`populate_path_preview`] (ordered AFTER this
+/// system) write [`PathPreview::cleared`] the SAME update — so the move-path preview is HIDDEN
+/// and its state RESET. To plan a move again the player must select a fresh target cell and
+/// click (the GTW-356 two-click flow), exactly as after a de-selection.
+///
+/// This MIRRORS how the fire-target highlight is cleared on de-selection: rather than the
+/// presenter clearing its own draw, the input layer resets the SOURCE state
+/// ([`PathPreviewTarget`]) and the populate system recomputes the empty preview — keeping the
+/// `input → presenter → sim` direction (the input crate writes the target seam; the presenter
+/// reads it and draws). It NEVER touches [`PathPreview`] directly.
+///
+/// It reacts on a USER fire-mode toggle — a [`Changed<SelectedFireMode>`](Changed) — but NOT on
+/// the AUTO-default writes the same resource also receives. [`SelectedFireMode`] is written for
+/// three reasons, only one of which is a FIRE→MOVE switch: (a) the user pressing a fire-mode
+/// segment (`mode_segment_write`, the app crate) — the genuine switch this resets the move plan
+/// for; (b) the on-SELECT default ([`sync_fire_mode_on_select`](crate::sync_fire_mode_on_select),
+/// when [`SelectedShooter`] changes) — internal plumbing, NOT a switch; and (c) the GTW-376
+/// deferred-weapon-arrival re-resolve (when a wielded weapon's `FireMode` first becomes queryable,
+/// an `Added<FireMode>`) — also internal plumbing.
+///
+/// Cases (b) & (c) are the SAME triggers `sync_fire_mode_on_select` fires on, so this system
+/// EXCLUDES them by reading those same signals
+/// ([`SelectedShooter::is_changed`](DetectChanges::is_changed) + an [`Added<FireMode>`](Added)
+/// detector): a fire-mode change that coincides with a selection change OR a weapon arrival is the
+/// auto-default, not a user toggle, and must NOT reset a move plan (a fresh selection already
+/// clears the target via [`apply_left_click`](crate::apply_left_click), and a weapon arriving
+/// mid-plan must not wipe the route the player just set — the GTW-376 race could otherwise
+/// coincide with a click). What remains — a `SelectedFireMode` change with NO selection change and
+/// NO weapon arrival — is the user's toggle press, the FIRE→MOVE switch.
+///
+/// On a switch it clears [`PathPreviewTarget`] back to [`PathPreviewTarget::cleared`], which makes
+/// [`populate_path_preview`] (ordered AFTER this system) write [`PathPreview::cleared`] the SAME
+/// update. The `!=` guard keeps `Changed<PathPreviewTarget>` honest when the target is already
+/// empty. Scoped to the FIRE→MOVE switch only — it touches nothing but the move target.
+///
+/// Param-only (`bevy-traps.md` #7): a `Res<SelectedFireMode>` read (its `.is_changed()` flag), a
+/// `Res<SelectedShooter>` read (its `.is_changed()` flag), an [`Added<FireMode>`](Added) detector,
+/// and the `ResMut<PathPreviewTarget>` write — no `Commands`, no `&mut World`.
+pub fn reset_move_target_on_fire_mode_change(
+    fire_mode: Res<SelectedFireMode>,
+    selected: Res<SelectedShooter>,
+    weapon_just_armed: Query<(), Added<FireMode>>,
+    mut target: ResMut<PathPreviewTarget>,
+) {
+    // Only a USER fire-mode toggle resets the move plan. A fire-mode change that did NOT happen
+    // this update is no switch; a change that COINCIDES with a selection change or a weapon
+    // arrival is the auto-default (`sync_fire_mode_on_select`), not a user toggle — both leave a
+    // pending move target intact.
+    let weapon_arrived = weapon_just_armed.iter().next().is_some();
+    if !fire_mode.is_changed() || selected.is_changed() || weapon_arrived {
+        return;
+    }
+    // Drop any pending move plan; populate_path_preview (after this) clears PathPreview to match.
+    // Guarded so an already-empty target does not spuriously trip Changed<PathPreviewTarget>.
+    let cleared = PathPreviewTarget::cleared();
+    if *target != cleared {
+        *target = cleared;
     }
 }
 

@@ -70,6 +70,8 @@ pub use decision::{
 };
 pub use fire_target::{FireTargetReads, populate_fire_target};
 pub use highlight::update_selection_highlight;
-pub use path_preview::{PathPreviewTarget, PreviewGrids, populate_path_preview};
+pub use path_preview::{
+    PathPreviewTarget, PreviewGrids, populate_path_preview, reset_move_target_on_fire_mode_change,
+};
 pub use resources::{SelectedShooter, SelectionHighlight};
 pub use systems::{left_click_act, right_click_turn_to_face};

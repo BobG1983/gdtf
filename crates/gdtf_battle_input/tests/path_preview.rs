@@ -17,6 +17,12 @@
 //! - C1 (no target → empty): with NOTHING targeted the preview is empty (no route drawn).
 //! - C7 (WIRED): the systems run only via the registered plugin (no manual `add_systems`).
 //!
+//! GTW-379 (FIRE→MOVE reset): engaging the fire-mode toggle (a `Changed<SelectedFireMode>`)
+//! HIDES + RESETS a stale move-path preview — after the switch the `PathPreview` is empty and
+//! `PathPreviewTarget` is cleared, and the preview only REAPPEARS after a fresh target select
+//! (pin-discriminating — fails if the stale path persists); a normal move still plans + shows
+//! its path. Driven through the same registered `GdtfBattleInputPlugin` systems.
+//!
 //! Every `app.world_mut()` mutation is in a TEST BODY — the accepted headless idiom
 //! (`bevy-traps.md` #7 carve-out (a)).
 
@@ -24,13 +30,17 @@ use bevy::{
     asset::AssetPlugin, input::ButtonInput, platform::collections::HashSet, prelude::*,
     scene::ScenePlugin,
 };
-use gdtf_battle_input::{GdtfBattleInputPlugin, PathPreviewTarget, SelectedShooter};
+use gdtf_battle_input::{
+    GdtfBattleInputPlugin, PathPreviewTarget, SelectedFireMode, SelectedShooter,
+};
 use gdtf_battle_presenter::{ActiveLevel, PathPreview};
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, GRID_HEIGHT,
-    GRID_WIDTH, Level, MAX_LEVELS, OccupancyGrid, PlanningView, PlayerFaction, Position,
-    SquadVisibility, TerrainKind, Tu, VerticalLinkGraph, find_path,
+    BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, FireModeSpec,
+    GRID_HEIGHT, GRID_WIDTH, Level, MAX_LEVELS, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, PlanningView, PlayerFaction, Position, SquadVisibility, TerrainKind, Tu,
+    VerticalLinkGraph, find_path,
 };
+use gdtf_test_utils::advance_until;
 
 /// The faction the player controls in these tests (matches `PlayerFaction`).
 const PLAYER_FACTION: Faction = Faction::new(0);
@@ -251,5 +261,83 @@ fn does_not_push_selection_or_target_into_sim() {
     assert!(
         !app.world().resource::<PathPreview>().is_empty(),
         "the populate output is the presenter-owned PathPreview, not a sim write",
+    );
+}
+
+/// A fire mode DISTINCT from `SelectedFireMode::default()` so writing it trips
+/// `Changed<SelectedFireMode>` — the FIRE→MOVE switch (`tu_percent` differs from the default 0).
+const fn distinct_fire_mode() -> SelectedFireMode {
+    SelectedFireMode::new(FireModeSpec::new(
+        ModeKind::Single,
+        ModeConeMult::new(1.0),
+        ModeTuPercent::new(0.5),
+        ModeShots::new(1),
+    ))
+}
+
+/// GTW-379 — switching FROM fire mode (the player engages the fire-mode toggle) HIDES + RESETS a
+/// stale move-path preview: after a `Changed<SelectedFireMode>` the `PathPreview` is EMPTY and
+/// `PathPreviewTarget` is cleared, and the preview only REAPPEARS after a FRESH target select.
+/// PIN-DISCRIMINATING: it fails if the stale path persists across the switch.
+#[test]
+fn fire_mode_switch_hides_and_resets_stale_move_path() {
+    let mut app = preview_app();
+
+    let start = CellLevel::new(Cell::new(10, 10), Level::new(0));
+    let goal = CellLevel::new(Cell::new(14, 12), Level::new(0));
+    select_and_target(&mut app, start, goal);
+
+    // PRECONDITION (a normal move plans + shows its path): with a target set and NO fire-mode
+    // change, the populate system draws the route. Settle past the first-update add frame.
+    assert!(
+        advance_until(
+            &mut app,
+            |app| !app.world().resource::<PathPreview>().is_empty(),
+            8,
+        ),
+        "a normal move target must plan + show its path before any fire-mode switch",
+    );
+    assert_eq!(
+        **app.world().resource::<PathPreviewTarget>(),
+        Some(goal),
+        "the move target is set before the switch",
+    );
+
+    // SWITCH to fire mode: the player engages the fire-mode toggle (a Changed<SelectedFireMode>).
+    app.world_mut().insert_resource(distinct_fire_mode());
+    app.update();
+
+    // The stale move plan is RESET — the target cleared AND the preview hidden the same switch.
+    assert_eq!(
+        **app.world().resource::<PathPreviewTarget>(),
+        None,
+        "the FIRE→MOVE switch resets the move target to cleared",
+    );
+    assert!(
+        app.world().resource::<PathPreview>().is_empty(),
+        "the FIRE→MOVE switch HIDES the stale move-path preview (PIN: fails if it persists)",
+    );
+
+    // It STAYS hidden across further updates with no fresh target — the player must re-plan.
+    app.update();
+    assert!(
+        app.world().resource::<PathPreview>().is_empty(),
+        "the move-path preview stays hidden until a FRESH target is selected",
+    );
+
+    // RE-PLAN: a fresh target select brings the preview back (the two-click flow's click-1).
+    let new_goal = CellLevel::new(Cell::new(7, 9), Level::new(0));
+    app.world_mut()
+        .insert_resource(PathPreviewTarget::new(new_goal));
+    app.update();
+    let preview = app.world().resource::<PathPreview>();
+    assert!(
+        !preview.is_empty(),
+        "the preview REAPPEARS only after a fresh target select (a new plan is allowed)",
+    );
+    assert_eq!(
+        preview.cells().last(),
+        Some(&new_goal),
+        "the re-planned preview routes to the NEW target (not the stale goal)",
     );
 }
