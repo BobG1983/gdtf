@@ -23,10 +23,10 @@ use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, Cell, CellLevel, Faction, FireModeSpec, Level, LifeState, Magazine,
-    MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction,
-    Position, ReloadTu, SquadVisibility, Tu, TuMax, VerticalLinkGraph, WieldedBy, mode_tu_cost,
-    tuning::CombatTuning,
+    Aiming, BattleInProgress, Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, LifeState,
+    Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
+    PlayerFaction, Position, ReloadTu, SquadVisibility, Tu, TuMax, VerticalLinkGraph, WieldedBy,
+    mode_tu_cost, tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -107,6 +107,59 @@ fn spawn_and_select_shooter(app: &mut App, cell: CellLevel) -> (Entity, TuMax, A
     (ganger, tu_max, aiming)
 }
 
+/// Spawns an armed, alive PLAYER-faction shooter at `cell` carrying a real
+/// [`FireMode`]-bearing weapon entity (so the in-app `sync_fire_mode_on_select` resolves
+/// `SelectedFireMode` off the weapon, the REAL runtime path — not an injected
+/// `SelectedFireMode`), and selects it.
+///
+/// Reproduces the GTW-376 runtime ordering: the ganger is spawned and SELECTED FIRST, then
+/// the wielded weapon entity (its `FireMode` + the `WieldedBy` back-reference) is spawned a
+/// frame LATER, exactly as `setup_battle`'s deferred `queue_spawn_related_scenes::<Wields>`
+/// applies after the GTW-255 auto-select has already flipped the selection. The fix's
+/// `Added<FireMode>` re-trigger must then recover the mode (without this the mode stays at the
+/// `tu_percent: 0` default and the cost reads "0 TU"). Returns the shooter entity, its TU max /
+/// aiming, and the authored single-mode `tu_percent` so the test computes the expected cost
+/// from the SAME inputs the resolved mode carries.
+fn spawn_select_then_arm_late(
+    app: &mut App,
+    cell: CellLevel,
+    single_tu_percent: f32,
+) -> (Entity, TuMax, Aiming, f32) {
+    let tu_max = TuMax::new(100);
+    let aiming = Aiming::new(false);
+    let ganger = app
+        .world_mut()
+        .spawn((
+            PLAYER_FACTION,
+            Position::new(cell),
+            aiming,
+            LifeState::Alive,
+            Tu::new(255),
+            tu_max,
+        ))
+        .id();
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(cell, Some(ganger));
+    // SELECT first — the selection-change frame, while the weapon's FireMode does not yet exist.
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+    app.update();
+    // The wielded weapon arrives LATE (the deferred-scene-spawn race): a real FireMode selector
+    // (Single first, with the authored tu_percent) + the WieldedBy back-reference. The
+    // WieldedBy hook populates the ganger's Wields collection on the next flush.
+    app.world_mut().spawn((
+        WieldedBy(ganger),
+        FireMode::new(vec![spec(single_tu_percent)]),
+        Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+    ));
+    // One update for the WieldedBy hook + the GTW-376 Added<FireMode> re-trigger to resolve the
+    // mode off the now-present weapon.
+    app.update();
+    app.update();
+    (ganger, tu_max, aiming, single_tu_percent)
+}
+
 /// Places an ENEMY occupant at `cell` and marks the cell squad-VISIBLE (the realistic
 /// fire-on-a-seen-enemy state), and returns its entity.
 fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
@@ -176,6 +229,102 @@ fn hovering_fireable_enemy_populates_cell_and_mode_tu_cost() {
         h.cost(),
         Some(expected_cost),
         "the highlight cost EXACTLY equals mode_tu_cost(SelectedFireMode, TuMax, Aiming, tuning)",
+    );
+}
+
+/// GTW-376 DEFECT 1 (pin-discriminating) — hovering a fireable VISIBLE enemy with the
+/// `SelectedFireMode` resolved off the WEAPON via the REAL in-app `sync_fire_mode_on_select`
+/// path (NOT an injected mode) populates the highlight with a cost EXACTLY equal to
+/// `mode_tu_cost(resolved mode, TuMax, Aiming, tuning)` AND strictly GREATER THAN ZERO.
+///
+/// This reproduces the runtime bug: the wielded weapon entity spawns a frame AFTER the
+/// battle-start auto-select flips the selection (the deferred `queue_spawn_related_scenes`
+/// race), so `sync_fire_mode_on_select`'s `selected.is_changed()` branch has already passed
+/// when the weapon's `FireMode` becomes queryable — leaving `SelectedFireMode` at the
+/// `tu_percent: 0` default and the cost reading "0 TU". The GTW-376 `Added<FireMode>`
+/// re-trigger recovers the mode the frame the weapon arrives. The `> 0` assertion FAILS if
+/// the mode stays at the zero default (the exact in-engine symptom).
+#[test]
+fn fireable_enemy_cost_resolves_off_weapon_and_is_nonzero() {
+    let mut app = fire_target_app();
+    let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
+    let enemy_cell = CellLevel::new(Cell::new(13, 11), LEVEL);
+
+    // Arm via the REAL resolution path: select, then spawn the weapon's FireMode LATE
+    // (the deferred-spawn race) with a non-zero authored TU%. `sync_fire_mode_on_select` must
+    // recover the mode off the late-spawned weapon.
+    let (_shooter, tu_max, aiming, _) = spawn_select_then_arm_late(&mut app, shooter_cell, 0.3);
+    place_enemy(&mut app, enemy_cell);
+    set_hovered(&mut app, Some(enemy_cell));
+
+    // The resolved SelectedFireMode (off the weapon) is what the producer + the shot both read.
+    // The expected cost is computed from this resolved mode — so if the GTW-376 race left it at
+    // the `tu_percent: 0` default, `expected_cost` is 0 and the `> 0` assertion below FAILS (no
+    // magnitude pin: the cost is whatever `mode_tu_cost` yields, asserted `> 0` separately).
+    let resolved_mode = **app.world().resource::<SelectedFireMode>();
+    let tuning = app.world().resource::<CombatTuning>();
+    let expected_cost = mode_tu_cost(&resolved_mode, &tu_max, &aiming, tuning);
+
+    app.update();
+
+    let h = highlight(&app);
+    assert_eq!(
+        h.cell(),
+        Some(enemy_cell),
+        "hovering a fireable VISIBLE enemy populates the highlight with the hovered cell",
+    );
+    assert_eq!(
+        h.cost(),
+        Some(expected_cost),
+        "the highlight cost EXACTLY equals mode_tu_cost(resolved SelectedFireMode, TuMax, \
+         Aiming, tuning)",
+    );
+    // PIN-DISCRIMINATING: a normal weapon/mode charges a non-zero cost — this FAILS if the mode
+    // is stuck at the tu_percent:0 default (the "0 TU" in-engine defect).
+    assert!(
+        h.cost().is_some_and(|cost| *cost > 0),
+        "the resolved fire cost is strictly positive for a normal weapon/mode (not 0 TU); got {:?}",
+        h.cost(),
+    );
+}
+
+/// GTW-376 DEFECT 2 (pin-discriminating, real-armed path) — hovering an enemy on a NON-VISIBLE
+/// (fog) cell writes NO highlight, even when the shooter is fully armed (a real
+/// weapon-resolved, non-zero `SelectedFireMode`) so the ONLY thing refusing the target is the
+/// GTW-346 fog gate (`cell_squad_visible` → `CellVisibility::Visible`, fail-closed). FAILS if
+/// the highlight leaks onto a fog enemy. The complementary visible-enemy case
+/// ([`fireable_enemy_cost_resolves_off_weapon_and_is_nonzero`]) proves the SAME armed shooter
+/// DOES highlight when the enemy cell is VISIBLE, so this isolates the fog gate as the cause.
+#[test]
+fn fog_enemy_writes_no_highlight_even_when_armed() {
+    let mut app = fire_target_app();
+    let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
+    let enemy_cell = CellLevel::new(Cell::new(30, 30), LEVEL);
+
+    // Fully arm the shooter via the real resolution path (non-zero resolved mode).
+    let (_shooter, tu_max, aiming, _) = spawn_select_then_arm_late(&mut app, shooter_cell, 0.3);
+    // Precondition: the shooter is armed with a non-zero mode (so ONLY the fog gate can refuse
+    // the target). Checked through the integer `mode_tu_cost` to avoid an f32 `==` (clippy
+    // float_cmp) — a non-zero cost proves the mode resolved off the weapon, not the zero default.
+    let resolved_mode = **app.world().resource::<SelectedFireMode>();
+    let tuning = app.world().resource::<CombatTuning>();
+    assert!(
+        *mode_tu_cost(&resolved_mode, &tu_max, &aiming, tuning) > 0,
+        "precondition: the shooter is armed with a non-zero mode (so only the fog gate refuses)",
+    );
+    // Spawn the enemy occupant but DO NOT mark its cell visible — it stays in fog.
+    let enemy = app.world_mut().spawn(ENEMY_FACTION).id();
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(enemy_cell, Some(enemy));
+    set_hovered(&mut app, Some(enemy_cell));
+
+    app.update();
+
+    assert!(
+        highlight(&app).is_empty(),
+        "hovering an armed shooter's target on a NON-VISIBLE cell writes NO highlight \
+         (GTW-346 fog gate, fail-closed)",
     );
 }
 

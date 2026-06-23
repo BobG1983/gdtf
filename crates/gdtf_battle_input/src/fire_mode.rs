@@ -58,8 +58,10 @@ impl Default for SelectedFireMode {
     }
 }
 
-/// On a CHANGE of [`SelectedShooter`] to an armed ganger, RESET [`SelectedFireMode`]
-/// to that weapon's [`FireMode::single`] (GTW-227 / 222b AC1).
+/// On a CHANGE of [`SelectedShooter`] to an armed ganger — OR when a wielded weapon's
+/// [`FireMode`] first becomes queryable (the deferred-spawn race below) — RESET
+/// [`SelectedFireMode`] to that weapon's [`FireMode::single`] (GTW-227 / 222b AC1;
+/// GTW-376).
 ///
 /// Runs `.after(left_click_act)` so it observes the SAME update's selection. When
 /// the [`SelectedShooter`] resource changed this update (a fresh selection), it
@@ -71,17 +73,39 @@ impl Default for SelectedFireMode {
 /// [`Wields`], no weapon, or no [`FireMode`] on the weapon) leaves the mode untouched
 /// (fail-closed via the relationship + query lookup); clearing the selection likewise
 /// leaves it (nothing to read). Only writes on a real change of the resulting mode
-/// (change-detection hygiene). Param-only (`bevy-traps.md` #7): a `Res<SelectedShooter>`
-/// read, a read-only `Query<&Wields>`, a `Query<&FireMode, With<WieldedBy>>`
-/// weapon-entity query, and the `ResMut<SelectedFireMode>` write.
+/// (change-detection hygiene).
+///
+/// GTW-376 — it ALSO re-resolves when ANY weapon's [`FireMode`] was just spawned
+/// ([`Added<FireMode>`](Added)). The wielded weapon entity is spawned by
+/// `setup_battle` via the framework's deferred `queue_spawn_related_scenes::<Wields>`
+/// (GTW-323 slice 2), which applies a FRAME LATER than the ganger spawn — so the
+/// GTW-255 battle-start [`auto_select_first_player_ganger`] flips
+/// [`SelectedShooter`] before the weapon's [`FireMode`] is queryable, leaving this
+/// system's `selected.is_changed()` branch to fail-close and the mode stuck at the
+/// `tu_percent: 0` [`Default`] (the fire-target highlight then reads "0 TU"). Mirroring
+/// the action-bar `rebuild_mode_segments` / `sync_mode_tu_cost_lines`
+/// `Added<ModeControl>` re-trigger, the `Added<FireMode>` signal re-resolves the
+/// CURRENT selection's mode the frame the weapon arrives, so the resolved
+/// [`SelectedFireMode`] (the same value the shot charges via `mode_tu_cost`) becomes
+/// non-zero without a click. The write stays change-guarded, so the extra trigger is
+/// idempotent on a quiet update.
+///
+/// Param-only (`bevy-traps.md` #7): a `Res<SelectedShooter>` read, a read-only
+/// `Query<&Wields>`, a `Query<&FireMode, With<WieldedBy>>` weapon-entity query, an
+/// [`Added<FireMode>`](Added) detector, and the `ResMut<SelectedFireMode>` write.
 pub fn sync_fire_mode_on_select(
     selected: Res<SelectedShooter>,
     wields: Query<&Wields>,
     weapons: Query<&FireMode, With<WieldedBy>>,
+    weapon_just_armed: Query<(), Added<FireMode>>,
     mut fire_mode: ResMut<SelectedFireMode>,
 ) {
-    // Only react when the selection actually changed this update.
-    if !selected.is_changed() {
+    // React on a real selection change OR when a weapon's FireMode was JUST spawned (the
+    // GTW-376 deferred-weapon-spawn race — the battle-start auto-select flips the selection
+    // a frame BEFORE the wielded weapon's FireMode is queryable, so the selection change has
+    // passed by the time the weapon exists; re-resolving on its arrival recovers the cost).
+    let weapon_arrived = weapon_just_armed.iter().next().is_some();
+    if !selected.is_changed() && !weapon_arrived {
         return;
     }
     let Some(shooter) = **selected else {
