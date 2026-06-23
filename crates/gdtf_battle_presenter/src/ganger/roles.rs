@@ -1,6 +1,6 @@
 //! The DATA-DRIVEN per-faction base-actor table and its RON load/resolve chain.
 
-use bevy::prelude::*;
+use bevy::{asset::AssetEvent, prelude::*};
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::Faction;
 use serde::Deserialize;
@@ -118,4 +118,290 @@ pub fn resolve_character_roles(
         return;
     };
     commands.insert_resource((**loaded).clone());
+}
+
+/// `Update` (unguarded; self-gates on its [`Option`] borrows): live-reload the resident
+/// [`CharacterRoles`] resource when its `character_roles.ron` is re-saved (GTW-375 C4).
+///
+/// Reads the [`MessageReader`] of
+/// [`AssetEvent`](bevy::asset::AssetEvent)`<`[`RonAsset`]`<`[`CharacterRoles`]`>>` — asset
+/// events are MESSAGES in Bevy 0.19, so this is a `MessageReader`, not an `EventReader`
+/// (`bevy-traps.md` #4) — and acts only on a
+/// [`Modified`](bevy::asset::AssetEvent::Modified) event whose `id` matches the in-flight
+/// [`CharacterRolesHandle`]; events for any other handle are ignored. On a match it clones
+/// the refreshed [`CharacterRoles`] out of the `Assets` collection and overwrites the
+/// resident resource through [`ResMut`] — which MARKS it changed, so
+/// [`reindex_ganger_sprites_on_character_roles_change`] re-indexes every mapped ganger
+/// sprite against the new atlas indices the very next frame. Mirrors
+/// [`redrive_tile_roles_on_asset_event`](crate::redrive_tile_roles_on_asset_event).
+///
+/// [`CharacterRoles`] is NOT `Copy` (it derives `Clone`), so the overwrite is
+/// `(**updated).clone()`.
+///
+/// Guarded so it never panics before the load chain has run (pre-resolve): it takes the
+/// handle / the `Assets` collection / the [`CharacterRoles`] resource as [`Option`]al
+/// borrows, draining the reader and returning early if any is missing (`bevy-traps.md` #1)
+/// so a pre-resolve event does not linger and re-fire later.
+///
+/// [`reindex_ganger_sprites_on_character_roles_change`]: super::systems::reindex_ganger_sprites_on_character_roles_change
+///
+/// Param-only (`bevy-traps.md` #7): the [`MessageReader`], the optional handle / `Assets` /
+/// [`CharacterRoles`] borrows.
+pub fn redrive_character_roles_on_asset_event(
+    mut events: MessageReader<AssetEvent<RonAsset<CharacterRoles>>>,
+    handle: Option<Res<CharacterRolesHandle>>,
+    roles_assets: Option<Res<Assets<RonAsset<CharacterRoles>>>>,
+    roles: Option<ResMut<CharacterRoles>>,
+) {
+    let (Some(handle), Some(roles_assets), Some(mut roles)) = (handle, roles_assets, roles) else {
+        // Drain the reader so a pre-resolve event does not linger and re-fire once the
+        // resources arrive; there is nothing to re-resolve yet.
+        events.clear();
+        return;
+    };
+
+    let active_id = handle.id();
+    // Act once per frame even if several Modified events arrive: a single re-resolve from
+    // the latest in-memory value covers them all.
+    let modified = events
+        .read()
+        .any(|event| matches!(event, AssetEvent::Modified { id } if *id == active_id));
+    if !modified {
+        return;
+    }
+
+    let Some(updated) = roles_assets.get(&**handle) else {
+        // Modified but not currently in the collection (a transient reload state) — leave
+        // the existing roles until it settles; the next event re-fires.
+        return;
+    };
+    // CharacterRoles derives Clone (NOT Copy), so clone the refreshed table out of the asset.
+    *roles = (**updated).clone();
+    // GTW-374 Part C convention: log EVERY hot-reload path naming what reloaded, so a live
+    // character-role edit can be traced (mirrors the tile / FX / combat / theme handlers).
+    info!("character hot-reload: re-resolved CharacterRoles from `tiles/character_roles.ron`");
+}
+
+#[cfg(test)]
+mod test {
+    use std::sync::{Arc, Mutex};
+
+    use bevy::{
+        MinimalPlugins,
+        asset::{AssetEvent, AssetPlugin, Assets, Handle},
+        ecs::system::RunSystemOnce,
+        log::{
+            tracing::{
+                Event, Subscriber,
+                field::{Field, Visit},
+                subscriber::with_default,
+            },
+            tracing_subscriber::{Layer, layer::Context, prelude::*, registry::Registry},
+        },
+        prelude::*,
+    };
+    use gdtf_assets::{RonAsset, RonAssetAppExt};
+
+    use super::{CharacterRoles, CharacterRolesHandle, redrive_character_roles_on_asset_event};
+    use crate::TileIndex;
+
+    /// A scoped `tracing` layer that records each event's `message` field — the minimal
+    /// capture needed to prove the `info!` hot-reload line fired. Mirrors the GTW-374
+    /// combat redrive test's / `terrain/roles.rs`'s `CaptureLayer` (no shared util is
+    /// reachable from this crate).
+    struct CaptureLayer {
+        /// The shared buffer captured messages append to.
+        messages: Arc<Mutex<Vec<String>>>,
+    }
+
+    /// Pulls the `message` field's debug rendering out of a `tracing` event.
+    struct MessageVisitor {
+        /// The captured message text, if a `message` field was visited.
+        message: Option<String>,
+    }
+
+    impl Visit for MessageVisitor {
+        fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+            if field.name() == "message" {
+                self.message = Some(format!("{value:?}"));
+            }
+        }
+    }
+
+    impl<S: Subscriber> Layer<S> for CaptureLayer {
+        fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+            let mut visitor = MessageVisitor { message: None };
+            event.record(&mut visitor);
+            if let Some(message) = visitor.message
+                && let Ok(mut buffer) = self.messages.lock()
+            {
+                buffer.push(message);
+            }
+        }
+    }
+
+    /// Run `body` with a scoped [`CaptureLayer`] active, returning every captured message.
+    ///
+    /// The subscriber is scoped to this call (`with_default`), so it never leaks into other
+    /// tests; the returned `Vec` is in emission order.
+    fn capture_logs(body: impl FnOnce()) -> Vec<String> {
+        let messages: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let layer = CaptureLayer {
+            messages: Arc::clone(&messages),
+        };
+        let subscriber = Registry::default().with(layer);
+        with_default(subscriber, body);
+        messages
+            .lock()
+            .map(|buffer| buffer.clone())
+            .unwrap_or_default()
+    }
+
+    /// A headless app with the real character-role hot-reload wiring: `MinimalPlugins` +
+    /// `AssetPlugin` (so `Assets<RonAsset<CharacterRoles>>` and the `AssetEvent` message
+    /// buffer exist), the `CharacterRoles` RON loader registered, and the redrive system in
+    /// `Update`.
+    fn app() -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(AssetPlugin::default())
+            .init_ron_asset::<CharacterRoles>()
+            .add_systems(Update, redrive_character_roles_on_asset_event);
+        app
+    }
+
+    /// A `CharacterRoles` whose faction-0 base is `faction_0` and faction-1 base is `9` —
+    /// the distinct fixtures the re-resolve test contrasts.
+    fn roles_with_faction_0(faction_0: usize) -> CharacterRoles {
+        CharacterRoles {
+            faction_0: TileIndex::new(faction_0),
+            faction_1: TileIndex::new(9),
+        }
+    }
+
+    /// Add a `RonAsset<CharacterRoles>` to the collection and return its handle.
+    fn add_asset(app: &mut App, roles: CharacterRoles) -> Handle<RonAsset<CharacterRoles>> {
+        app.world_mut()
+            .resource_mut::<Assets<RonAsset<CharacterRoles>>>()
+            .add(RonAsset(roles))
+    }
+
+    /// Overwrite the in-memory payload of an already-added character-role asset (the hot
+    /// edit the file-watcher would make on a `character_roles.ron` save).
+    fn hot_edit(app: &mut App, handle: &Handle<RonAsset<CharacterRoles>>, roles: CharacterRoles) {
+        let mut assets = app
+            .world_mut()
+            .resource_mut::<Assets<RonAsset<CharacterRoles>>>();
+        if let Some(mut asset) = assets.get_mut(handle) {
+            asset.0 = roles;
+        }
+    }
+
+    /// Inject an `AssetEvent::Modified` for the given handle id (standing in for the
+    /// file-watcher's reload signal).
+    fn inject_modified(app: &mut App, handle: &Handle<RonAsset<CharacterRoles>>) {
+        app.world_mut()
+            .write_message(AssetEvent::Modified { id: handle.id() });
+    }
+
+    /// C10(b): on a matching `Modified` for the active character-role handle, the redrive
+    /// system re-resolves the resident `CharacterRoles` resource to the UPDATED in-memory
+    /// payload — the live character hot-reload. Driven through the real registered system
+    /// via `app.update()`.
+    ///
+    /// Pin-discriminating: dropping the re-resolve leaves `CharacterRoles` on the OLD
+    /// faction-0 index; a wrong id filter would re-resolve on any handle's event.
+    #[test]
+    fn modified_event_reresolves_character_roles() {
+        let mut app = app();
+
+        let baseline = roles_with_faction_0(12);
+        let handle = add_asset(&mut app, baseline.clone());
+        app.world_mut().insert_resource(baseline.clone());
+        app.world_mut()
+            .insert_resource(CharacterRolesHandle::new(handle.clone()));
+
+        // First update: no event, the resource is untouched.
+        app.update();
+
+        // Hot-edit the asset to a DISTINCT table, then fire a Modified.
+        let edited = roles_with_faction_0(200);
+        assert_ne!(edited, baseline, "precondition: the edit must differ");
+        hot_edit(&mut app, &handle, edited.clone());
+        inject_modified(&mut app, &handle);
+        app.update();
+
+        assert_eq!(
+            app.world().get_resource::<CharacterRoles>(),
+            Some(&edited),
+            "a Modified for the active character-role handle must re-resolve CharacterRoles \
+             to the new values",
+        );
+    }
+
+    /// C10(b): a `Modified` for a DIFFERENT asset id leaves `CharacterRoles` untouched — the
+    /// filter is on the ACTIVE handle id only.
+    ///
+    /// Pin-discriminating: dropping the id filter re-resolves on any character-role asset's
+    /// event.
+    #[test]
+    fn modified_event_for_other_id_does_not_reresolve() {
+        let mut app = app();
+
+        let baseline = roles_with_faction_0(12);
+        let active = add_asset(&mut app, baseline.clone());
+        // A second, unrelated character-role asset whose value differs from the active one.
+        let other = add_asset(&mut app, roles_with_faction_0(99));
+        app.world_mut().insert_resource(baseline.clone());
+        app.world_mut()
+            .insert_resource(CharacterRolesHandle::new(active));
+
+        app.update();
+        // Edit the OTHER asset, fire Modified for it only.
+        hot_edit(&mut app, &other, roles_with_faction_0(33));
+        inject_modified(&mut app, &other);
+        app.update();
+
+        assert_eq!(
+            app.world().get_resource::<CharacterRoles>(),
+            Some(&baseline),
+            "a Modified for a non-active character-role id must NOT re-resolve CharacterRoles",
+        );
+    }
+
+    /// C7: the hot-reload `info!` line FIRES on the real re-resolve path, naming what
+    /// reloaded. The redrive system is run via `run_system_once` on the calling thread
+    /// (inside the scoped `tracing` subscriber) so the capture — which is thread-local —
+    /// sees the emission (GTW-374 thread-local capture lesson).
+    ///
+    /// Pin-discriminating: removing the `info!` from the redrive leaves the capture empty
+    /// and this assert fails.
+    #[test]
+    fn hot_reload_logs_an_info_line() {
+        let mut app = app();
+        let baseline = roles_with_faction_0(12);
+        let handle = add_asset(&mut app, baseline.clone());
+        app.world_mut().insert_resource(baseline);
+        app.world_mut()
+            .insert_resource(CharacterRolesHandle::new(handle.clone()));
+        // Stage the hot edit + the Modified message, then run the redrive synchronously
+        // inside the capture scope.
+        hot_edit(&mut app, &handle, roles_with_faction_0(200));
+        inject_modified(&mut app, &handle);
+
+        let captured = capture_logs(|| {
+            let result = app
+                .world_mut()
+                .run_system_once(redrive_character_roles_on_asset_event);
+            assert!(result.is_ok(), "the redrive system must run cleanly");
+        });
+
+        assert!(
+            captured.iter().any(
+                |line| line.contains("character hot-reload") && line.contains("CharacterRoles")
+            ),
+            "the character-role hot-reload must emit an info! line naming what reloaded; \
+             captured: {captured:?}",
+        );
+    }
 }

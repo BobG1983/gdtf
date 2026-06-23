@@ -75,15 +75,17 @@ pub use fx::{
     ProjectileTravel, ProjectileVelocity, ShotImpactResolved, ShotProjectile, advance_projectiles,
     animate_floating_text, animate_impact, classify_log_event, expire_flashes, load_effect_roles,
     load_fx_tuning, nearest_direction_index, read_armor_broken, read_bleeding,
-    read_consequence_fct, read_cover_destroyed, redrive_fx_tuning_on_asset_event,
-    resolve_effect_roles, resolve_fx_tuning, severity_color, spawn_shot_projectiles, valence_color,
+    read_consequence_fct, read_cover_destroyed, redrive_effect_roles_on_asset_event,
+    redrive_fx_tuning_on_asset_event, resolve_effect_roles, resolve_fx_tuning, severity_color,
+    spawn_shot_projectiles, valence_color,
 };
 pub use ganger::{
     CharacterRoles, CharacterRolesHandle, FacingFrame, GangerSprite, GangerSprites, SpriteTween,
     advance_sprite_tweens, apply_active_level_filter, despawn_killed_ganger_on_impact,
     despawn_removed_ganger_sprites, facing_frame, load_character_roles, move_ganger_sprites,
-    reframe_ganger_sprites, resolve_character_roles, spawn_ganger_sprites,
-    update_ganger_life_state,
+    redrive_character_roles_on_asset_event, reframe_ganger_sprites,
+    reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
+    spawn_ganger_sprites, update_ganger_life_state,
 };
 pub use highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request};
 pub use path_preview::{PathPreview, PathStepSprite, PathTargetLabel, draw_path_preview};
@@ -95,11 +97,12 @@ pub use targeting_gate::{CellVisibility, cell_squad_visible};
 pub use terrain::{
     ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles, TileRolesHandle,
     VerticalLinkSprite, draw_static_battlefield, draw_vertical_links, load_tile_roles,
-    resolve_tile_roles, swap_destroyed_cover,
+    redrive_tile_roles_on_asset_event, resolve_tile_roles, swap_destroyed_cover,
 };
 pub use topdown::{
     CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,
-    cell_to_world_layered, load_topdown_atlases, sim_pos_to_world,
+    cell_to_world_layered, load_topdown_atlases, redrive_sheet_images_on_asset_event,
+    sim_pos_to_world,
 };
 pub use world_camera::{
     DwellDelaySeconds, DwellElapsed, EdgeBandPx, GamepadCursorMoved, PanEdgeDwellState, PanSpeed,

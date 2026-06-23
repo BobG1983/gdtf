@@ -60,11 +60,13 @@ mod test;
 
 pub use frame::{FacingFrame, facing_frame};
 pub use roles::{
-    CharacterRoles, CharacterRolesHandle, load_character_roles, resolve_character_roles,
+    CharacterRoles, CharacterRolesHandle, load_character_roles,
+    redrive_character_roles_on_asset_event, resolve_character_roles,
 };
 pub use sprite_map::{GangerSprite, GangerSprites};
 pub use systems::{
     apply_active_level_filter, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
-    move_ganger_sprites, reframe_ganger_sprites, spawn_ganger_sprites, update_ganger_life_state,
+    move_ganger_sprites, reframe_ganger_sprites, reindex_ganger_sprites_on_character_roles_change,
+    spawn_ganger_sprites, update_ganger_life_state,
 };
 pub use tween::{SpriteTween, advance_sprite_tweens};

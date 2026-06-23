@@ -66,7 +66,8 @@ pub use projectile::{
 pub use readers::{read_armor_broken, read_bleeding, read_cover_destroyed};
 pub use roles::{
     COMPASS_DIRECTIONS, DIRECTION_COUNT, DamageTypeFx, EffectRoles, EffectRolesHandle,
-    IMPACT_FRAME_COUNT, load_effect_roles, nearest_direction_index, resolve_effect_roles,
+    IMPACT_FRAME_COUNT, load_effect_roles, nearest_direction_index,
+    redrive_effect_roles_on_asset_event, resolve_effect_roles,
 };
 pub use tuning::{
     FctRiseRate, FctTtlSeconds, FxTuning, FxTuningHandle, ImpactFrameSeconds, InterShotSeconds,

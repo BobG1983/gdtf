@@ -477,3 +477,54 @@ pub fn apply_active_level_filter(
         };
     }
 }
+
+/// `Update` (`PresenterSystems::Draw`, runs only on a [`CharacterRoles`] change):
+/// RE-INDEX every mapped ganger sprite to the freshly-reloaded atlas indices (GTW-375 C4).
+///
+/// When the GTW-375 [`redrive_character_roles_on_asset_event`](crate::redrive_character_roles_on_asset_event)
+/// hot-reloads `character_roles.ron` it overwrites the resident [`CharacterRoles`] resource
+/// (marking it changed). The atlas index a ganger draws is `faction_base + facing_frame`
+/// ([`atlas_index`]) — the `faction_base` term is read STRUCTURALLY from [`CharacterRoles`],
+/// so a re-saved table moves a faction's whole 4-frame actor run to a new base. The
+/// per-field draw systems ([`spawn_ganger_sprites`] / [`reframe_ganger_sprites`]) only
+/// re-read that base on an `Added` / `Changed` sim event, NOT on a resource change — so
+/// already-spawned, idle sprites would keep their OLD index without this system.
+///
+/// On [`CharacterRoles::is_changed`] (the resource-change witness, including the one-time
+/// initial resolve, which is harmless — it re-stamps the same index) it walks every live
+/// ganger, looks its presenter sprite up through [`GangerSprites`], and re-stamps
+/// `atlas.index = atlas_index(&roles, faction, facing)` from the CURRENT sim state — exactly
+/// the [`reframe_ganger_sprites`] index recompute, but driven by the table change rather than
+/// a facing change. It RE-INDEXES ONLY — it does NOT re-tint (the life / stance / aiming tint
+/// is owned by [`update_ganger_life_state`] / [`reframe_ganger_sprites`] and must be preserved
+/// across a character-sheet hot-reload).
+///
+/// Idempotent + battle-witness-free harmless: a re-index on an unchanged base re-stamps the
+/// same value, so it is safe to run pre-battle / on the initial resolve (the Discovery's
+/// "no battle-witness gate needed" note); the renderer registration gates it on
+/// [`CharacterRoles`] existing (`bevy-traps.md` #1) so a `MinimalPlugins` headless app
+/// without the table never runs it, and on [`CharacterRoles::is_changed`] so it does no
+/// per-frame work. A [`Dead`](LifeState::Dead) ganger's sprite is already despawned, so its
+/// lookup misses and is skipped.
+///
+/// Param-only (`bevy-traps.md` #7): [`Res<CharacterRoles>`], [`Res<GangerSprites>`], the live
+/// ganger `(Entity, &Faction, &Facing)` query, and the presenter-sprite [`Sprite`] query.
+pub fn reindex_ganger_sprites_on_character_roles_change(
+    roles: Res<CharacterRoles>,
+    sprites: Res<GangerSprites>,
+    gangers: Query<(Entity, &Faction, &Facing)>,
+    mut presenters: Query<&mut Sprite, With<GangerSprite>>,
+) {
+    for (entity, faction, facing) in &gangers {
+        let Some(presenter) = sprites.sprite_for(entity) else {
+            continue;
+        };
+        let Ok(mut sprite) = presenters.get_mut(presenter) else {
+            continue;
+        };
+        // RE-INDEX ONLY — preserve the existing tint (do NOT touch `sprite.color`).
+        if let Some(atlas) = sprite.texture_atlas.as_mut() {
+            atlas.index = atlas_index(&roles, *faction, *facing);
+        }
+    }
+}

@@ -2,11 +2,14 @@
 //! the role-keyed atlas resource, and the atlas-load system.
 
 use bevy::{
+    asset::AssetEvent,
     image::{ImageLoaderSettings, ImageSampler, TextureAtlasLayout},
     platform::collections::HashMap,
     prelude::*,
 };
 use gdtf_battle_sim::{Cell, Level, SimPos};
+
+use crate::TileRoles;
 
 /// On-screen size of one cell, in world units.
 ///
@@ -312,6 +315,22 @@ impl TopDownAtlases {
     pub fn role(&self, role: SheetRole) -> Option<&SheetAtlas> {
         self.sheets.get(&role)
     }
+
+    /// Which [`SheetRole`] (if any) the given image id belongs to.
+    ///
+    /// Scans the loaded sheets for the one whose [`SheetAtlas::image`] handle has this
+    /// id, returning its role. The inverse of [`role`](Self::role): the image hot-reload
+    /// (GTW-375 C4) reads an [`AssetEvent`](bevy::asset::AssetEvent)`<`[`Image`]`>` carrying
+    /// only an [`AssetId<Image>`] and must map it back to the sheet that reloaded so it can
+    /// log the sheet by name and (for [`Terrain`](SheetRole::Terrain)) force the terrain
+    /// redraw. Returns [`None`] for an id that is not any loaded sheet's image (a portrait
+    /// node, a one-off texture, a font atlas, …) so callers ignore unrelated reloads.
+    #[must_use]
+    pub fn sheet_role_for_image(&self, id: AssetId<Image>) -> Option<SheetRole> {
+        self.sheets
+            .iter()
+            .find_map(|(role, sheet)| (sheet.image.id() == id).then_some(*role))
+    }
 }
 
 /// Loads every sprite sheet and inserts the [`TopDownAtlases`] resource.
@@ -369,5 +388,428 @@ fn load_sheet_image(asset_server: &AssetServer, role: SheetRole) -> Handle<Image
             })
             .load(role.asset_path()),
         None => asset_server.load(role.asset_path()),
+    }
+}
+
+/// `Update` (unguarded; self-gates on its [`Option`] borrows): live-reload ANY sprite
+/// sheet registered in [`TopDownAtlases`] when its `.png` is re-saved (GTW-375 C4) —
+/// terrain, characters, effects, portraits, or any future sheet, not just terrain.
+///
+/// The image asset itself is re-decoded into the SAME [`Handle<Image>`] by Bevy's
+/// file-watcher, so the GPU texture refreshes on its own. It reads the [`MessageReader`] of
+/// [`AssetEvent`](bevy::asset::AssetEvent)`<`[`Image`]`>` — asset events are MESSAGES in Bevy
+/// 0.19, so this is a `MessageReader`, not an `EventReader` (`bevy-traps.md` #4) — and for
+/// each [`Modified`](bevy::asset::AssetEvent::Modified) maps the image id back to its sheet
+/// via [`TopDownAtlases::sheet_role_for_image`]. It collects the DISTINCT reloaded
+/// [`SheetRole`]s (ignoring events for ids that are not a loaded sheet — portrait nodes,
+/// font atlases, one-off textures) and:
+///
+/// - logs ONE `info!` per reloaded sheet, naming it by its asset path (GTW-375 C5); and
+/// - if [`Terrain`](SheetRole::Terrain) is among them, calls
+///   [`DetectChangesMut::set_changed`] on [`TileRoles`] to force
+///   `draw_static_battlefield`'s `roles.is_changed()` trigger to despawn+respawn the terrain
+///   tiles against the freshly-reloaded texture.
+///
+/// Why ONLY terrain gets the poke (the Research-phase bevy-expert finding, Bevy 0.19): the
+/// terrain draws through a custom [`Material2d`](bevy::sprite::Material2d)
+/// (`TerrainFogMaterial`), whose `PreparedMaterial2d` bind group is a SNAPSHOT of the
+/// `texture_view` baked at `as_bind_group` time — an image reload updates the `GpuImage` but
+/// the existing bind group still references the OLD view, so the only way to re-bind is to
+/// re-prepare the material, which the despawn+respawn in `draw_static_battlefield` does
+/// (`materials.add(...)` mints fresh `PreparedMaterial2d` entries against the already-updated
+/// `GpuImage`). The OTHER sheets draw as atlas SPRITES (gangers, effects, stair/ladder, and
+/// the portrait UI node): the sprite pipeline keys its image bind group by
+/// [`AssetId<Image>`] and invalidates+rebuilds it from the fresh `GpuImage` automatically on
+/// the same `AssetEvent::Modified` — so those sheets show new pixels with ZERO system action,
+/// and this system only LOGS them.
+///
+/// Guarded so it never panics. The [`MessageReader<AssetEvent<Image>>`](MessageReader) is
+/// itself wrapped in an [`Option`] because `Messages<AssetEvent<Image>>` exists only when
+/// the [`Image`] asset is registered (`ImagePlugin` / `DefaultPlugins`): a headless harness
+/// that wires the renderer with an [`AssetServer`] but no image-asset stack would otherwise
+/// trip Bevy's param validation (`Message not initialized`). When the buffer is absent the
+/// param resolves to [`None`] and the system no-ops (nothing to drain — there is no buffer).
+/// [`TopDownAtlases`] (the id→sheet map) is an [`Option`]al borrow, draining the reader and
+/// returning early when it is missing (`bevy-traps.md` #1) so a pre-resolve event does not
+/// linger and re-fire later. [`TileRoles`] is [`Option`]al too and used ONLY for the terrain
+/// poke, so a non-terrain reload still LOGS even when [`TileRoles`] is absent.
+///
+/// Param-only (`bevy-traps.md` #7): the optional [`MessageReader`], the optional
+/// [`TopDownAtlases`] / [`TileRoles`] borrows.
+pub fn redrive_sheet_images_on_asset_event(
+    events: Option<MessageReader<AssetEvent<Image>>>,
+    atlases: Option<Res<TopDownAtlases>>,
+    roles: Option<ResMut<TileRoles>>,
+) {
+    let Some(mut events) = events else {
+        // No `Messages<AssetEvent<Image>>` buffer (no image-asset stack) — nothing to read
+        // or drain; a real dev binary always has it via `ImagePlugin`/`DefaultPlugins`.
+        return;
+    };
+    let Some(atlases) = atlases else {
+        // Drain the reader so a pre-resolve event does not linger and re-fire once the
+        // atlas resource arrives; there is no id→sheet map to consult yet.
+        events.clear();
+        return;
+    };
+
+    // Map every Modified event to the sheet it reloaded, keeping the DISTINCT roles so each
+    // sheet is logged once even if several events arrive for it this frame.
+    let mut reloaded: Vec<SheetRole> = Vec::new();
+    for event in events.read() {
+        let AssetEvent::Modified { id } = event else {
+            continue;
+        };
+        let Some(role) = atlases.sheet_role_for_image(*id) else {
+            // Not a loaded sheet (a portrait node, a font atlas, a one-off texture, …) —
+            // ignore it; a non-sheet reload must not log or redraw a sheet.
+            continue;
+        };
+        if !reloaded.contains(&role) {
+            reloaded.push(role);
+        }
+    }
+
+    if reloaded.is_empty() {
+        return;
+    }
+
+    for role in &reloaded {
+        // GTW-374 Part C convention / GTW-375 C5: log EVERY hot-reload path, one line per
+        // reloaded sheet, naming it by its asset path.
+        info!(
+            "tileset hot-reload: reloaded sheet `{}`, refreshing it",
+            role.asset_path(),
+        );
+    }
+
+    // ONLY the terrain sheet needs an explicit redraw poke: it draws through the custom
+    // TerrainFogMaterial whose bind group is a snapshot, so force draw_static_battlefield's
+    // `roles.is_changed()` trigger to despawn+respawn the tiles against the fresh GPU
+    // texture. The other sheets are atlas sprites and refresh through the sprite pipeline on
+    // their own (see the system doc). The tile indices are unchanged, so this marks TileRoles
+    // changed WITHOUT mutating it — and is gated on TileRoles being present, so a non-terrain
+    // reload still LOGS above even when TileRoles is absent.
+    if reloaded.contains(&SheetRole::Terrain)
+        && let Some(mut roles) = roles
+    {
+        roles.set_changed();
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::sync::{Arc, Mutex};
+
+    use bevy::{
+        MinimalPlugins,
+        asset::{AssetApp, AssetEvent, AssetPlugin, Assets, Handle},
+        image::{Image, TextureAtlasLayout},
+        log::{
+            tracing::{
+                Event, Subscriber,
+                field::{Field, Visit},
+                subscriber::with_default,
+            },
+            tracing_subscriber::{Layer, layer::Context, prelude::*, registry::Registry},
+        },
+        platform::collections::HashMap,
+        prelude::*,
+    };
+
+    use super::{SheetAtlas, SheetRole, TopDownAtlases, redrive_sheet_images_on_asset_event};
+    use crate::{TileIndex, TileRoles};
+
+    /// A scoped `tracing` layer that records each event's `message` field — the minimal
+    /// capture needed to prove the `info!` hot-reload line fired. Mirrors the GTW-374
+    /// combat redrive test's / `roles.rs`'s `CaptureLayer` (no shared util is reachable here).
+    struct CaptureLayer {
+        /// The shared buffer captured messages append to.
+        messages: Arc<Mutex<Vec<String>>>,
+    }
+
+    /// Pulls the `message` field's debug rendering out of a `tracing` event.
+    struct MessageVisitor {
+        /// The captured message text, if a `message` field was visited.
+        message: Option<String>,
+    }
+
+    impl Visit for MessageVisitor {
+        fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+            if field.name() == "message" {
+                self.message = Some(format!("{value:?}"));
+            }
+        }
+    }
+
+    impl<S: Subscriber> Layer<S> for CaptureLayer {
+        fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+            let mut visitor = MessageVisitor { message: None };
+            event.record(&mut visitor);
+            if let Some(message) = visitor.message
+                && let Ok(mut buffer) = self.messages.lock()
+            {
+                buffer.push(message);
+            }
+        }
+    }
+
+    /// Run `body` with a scoped [`CaptureLayer`] active, returning every captured message.
+    ///
+    /// The subscriber is scoped to this call (`with_default`), so it never leaks into other
+    /// tests; the returned `Vec` is in emission order.
+    fn capture_logs(body: impl FnOnce()) -> Vec<String> {
+        let messages: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let layer = CaptureLayer {
+            messages: Arc::clone(&messages),
+        };
+        let subscriber = Registry::default().with(layer);
+        with_default(subscriber, body);
+        messages
+            .lock()
+            .map(|buffer| buffer.clone())
+            .unwrap_or_default()
+    }
+
+    /// Probe resource: the value of `TileRoles::is_changed()` observed by a downstream system
+    /// the LAST time it ran. The image-redrive test reads this to prove the terrain redraw
+    /// trigger (`set_changed()`) fired — a downstream `DetectChanges` witness, exactly the C8
+    /// "assert `TileRoles` becomes `is_changed` via a downstream system" shape.
+    #[derive(Resource, Default)]
+    struct RolesChangedWitness {
+        /// Whether `TileRoles` was `is_changed()` when the witness system last ran.
+        changed: bool,
+    }
+
+    /// Downstream witness system: records whether `TileRoles` is currently `is_changed()`.
+    ///
+    /// Ordered `.after(redrive_sheet_images_on_asset_event)` so a `set_changed()` the redrive
+    /// performs THIS frame is visible to it (change ticks compare against this system's own
+    /// last-run tick). Overwrites the witness each frame (no latching) so the read after the
+    /// event update reflects only that frame.
+    fn witness_roles_changed(roles: Res<TileRoles>, mut witness: ResMut<RolesChangedWitness>) {
+        witness.changed = roles.is_changed();
+    }
+
+    /// A headless app with the real sheet-image hot-reload wiring: `MinimalPlugins` +
+    /// `AssetPlugin`, the `Image` + `TextureAtlasLayout` asset types registered (so
+    /// `Assets<Image>` and the `AssetEvent<Image>` message buffer exist), the real
+    /// `redrive_sheet_images_on_asset_event` in `Update`, and the downstream change witness
+    /// ordered after it.
+    fn app() -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(AssetPlugin::default())
+            .init_asset::<Image>()
+            .init_asset::<TextureAtlasLayout>()
+            .init_resource::<RolesChangedWitness>()
+            .add_systems(
+                Update,
+                witness_roles_changed.after(redrive_sheet_images_on_asset_event),
+            )
+            .add_systems(Update, redrive_sheet_images_on_asset_event);
+        app
+    }
+
+    /// A `TileRoles` with every field set to the same index — a valid fixture; the image
+    /// redrive never reads the indices, only marks the resource changed.
+    fn uniform_roles() -> TileRoles {
+        let index = TileIndex::new(7);
+        TileRoles {
+            floor:           index,
+            floor_alt_panel: index,
+            wall:            index,
+            cover:           index,
+            slab:            index,
+            rubble:          index,
+            door:            index,
+            stair_up:        index,
+            stair_down:      index,
+            ladder:          index,
+        }
+    }
+
+    /// Mint a fresh `Image` handle in the app's `Assets<Image>` and return it.
+    fn add_image(app: &mut App) -> Handle<Image> {
+        app.world_mut()
+            .resource_mut::<Assets<Image>>()
+            .add(Image::default())
+    }
+
+    /// Build a `TopDownAtlases` mapping `terrain` / `characters` to freshly-minted image
+    /// handles (a shared throwaway layout per sheet) and insert it as the resource, returning
+    /// the two image handles so the test can fire `Modified` for the right sheet.
+    fn insert_atlases(app: &mut App) -> (Handle<Image>, Handle<Image>) {
+        let terrain = add_image(app);
+        let characters = add_image(app);
+        let layout = app
+            .world_mut()
+            .resource_mut::<Assets<TextureAtlasLayout>>()
+            .add(TextureAtlasLayout::new_empty(UVec2::splat(16)));
+        let mut sheets = HashMap::default();
+        sheets.insert(
+            SheetRole::Terrain,
+            SheetAtlas {
+                image:  terrain.clone(),
+                layout: layout.clone(),
+            },
+        );
+        sheets.insert(
+            SheetRole::Characters,
+            SheetAtlas {
+                image: characters.clone(),
+                layout,
+            },
+        );
+        app.world_mut().insert_resource(TopDownAtlases { sheets });
+        (terrain, characters)
+    }
+
+    /// Inject an `AssetEvent::Modified` for the given image id (standing in for the
+    /// file-watcher's reload signal).
+    fn inject_modified(app: &mut App, handle: &Handle<Image>) {
+        app.world_mut()
+            .write_message(AssetEvent::Modified { id: handle.id() });
+    }
+
+    /// Drive two settling updates so the witness's last-run tick advances PAST the
+    /// `TileRoles` / `TopDownAtlases` insert, leaving the witness reading `false` (nothing
+    /// changed) before the event under test — so a `true` afterwards is the redrive's poke.
+    fn settle(app: &mut App) {
+        app.update();
+        app.update();
+    }
+
+    /// C4/C8(b): a `Modified` for the TERRAIN sheet image triggers the terrain redraw — the
+    /// redrive calls `set_changed()` on `TileRoles`, which the downstream witness sees as
+    /// `is_changed()`. Driven through the REAL registered system via `app.update()`.
+    ///
+    /// Pin-discriminating: dropping the terrain `set_changed()` leaves the witness `false`;
+    /// a wrong id map would not fire for the terrain id.
+    #[test]
+    fn terrain_image_modified_triggers_the_terrain_redraw() {
+        let mut app = app();
+        let (terrain, _characters) = insert_atlases(&mut app);
+        app.world_mut().insert_resource(uniform_roles());
+        settle(&mut app);
+        assert!(
+            !app.world().resource::<RolesChangedWitness>().changed,
+            "precondition: after settling, TileRoles must NOT be is_changed",
+        );
+
+        inject_modified(&mut app, &terrain);
+        app.update();
+
+        assert!(
+            app.world().resource::<RolesChangedWitness>().changed,
+            "a Modified for the TERRAIN sheet image must set_changed() TileRoles \
+             (forcing the terrain re-render)",
+        );
+    }
+
+    /// C10(e): a `Modified` for a LOADED NON-terrain sheet image (characters) is handled but
+    /// does NOT trigger the terrain redraw — the redrive logs the reload yet leaves `TileRoles`
+    /// untouched, because only the terrain sheet draws through the snapshot bind group. Driven
+    /// through the REAL registered system via `app.update()`, with the downstream witness
+    /// ordered `.after` it (mirrors `terrain_image_modified_triggers_the_terrain_redraw`).
+    ///
+    /// Pin-discriminating: the `reloaded` set is NON-empty here (it contains `Characters`), so a
+    /// regression that poked terrain on ANY non-empty reload (e.g. `!reloaded.is_empty()` instead
+    /// of `reloaded.contains(&SheetRole::Terrain)`) would flip the witness `true` and FAIL this
+    /// assert — whereas the unrelated-id test below has an EMPTY `reloaded` and cannot catch it.
+    #[test]
+    fn non_terrain_sheet_image_modified_does_not_trigger_the_terrain_redraw() {
+        let mut app = app();
+        let (_terrain, characters) = insert_atlases(&mut app);
+        app.world_mut().insert_resource(uniform_roles());
+        settle(&mut app);
+        assert!(
+            !app.world().resource::<RolesChangedWitness>().changed,
+            "precondition: after settling, TileRoles must NOT be is_changed",
+        );
+
+        inject_modified(&mut app, &characters);
+        app.update();
+
+        assert!(
+            !app.world().resource::<RolesChangedWitness>().changed,
+            "a Modified for a LOADED NON-terrain sheet (characters) must be handled WITHOUT \
+             marking TileRoles changed — only the terrain sheet pokes the terrain redraw",
+        );
+    }
+
+    /// C4/C8(b): a `Modified` for a NON-sheet (unrelated) image id does NOT trigger the
+    /// terrain redraw — the id maps to no sheet, so `TileRoles` stays unchanged.
+    ///
+    /// Pin-discriminating: a redrive that poked on ANY image event (not just a loaded sheet's)
+    /// would flip the witness `true` here.
+    #[test]
+    fn unrelated_image_modified_does_not_trigger_the_terrain_redraw() {
+        let mut app = app();
+        let (_terrain, _characters) = insert_atlases(&mut app);
+        app.world_mut().insert_resource(uniform_roles());
+        // An image handle that is NOT registered in TopDownAtlases (a portrait node, a one-off
+        // texture, …).
+        let unrelated = add_image(&mut app);
+        settle(&mut app);
+
+        inject_modified(&mut app, &unrelated);
+        app.update();
+
+        assert!(
+            !app.world().resource::<RolesChangedWitness>().changed,
+            "a Modified for an id that is NOT a loaded sheet must NOT touch TileRoles",
+        );
+    }
+
+    /// C7: the redrive does NOT panic when the `AssetEvent<Image>` message buffer is ABSENT
+    /// (no image-asset stack) — the `Option<MessageReader<…>>` resolves to `None` and the
+    /// system no-ops. Built on bare `MinimalPlugins` (no `AssetPlugin`, no `init_asset`), so
+    /// there is no `Messages<AssetEvent<Image>>` buffer at all.
+    ///
+    /// Pin-discriminating: a non-`Option` `MessageReader<AssetEvent<Image>>` param would trip
+    /// Bevy's param validation here and the update would fail.
+    #[test]
+    fn redrive_does_not_panic_without_the_image_event_buffer() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_systems(Update, redrive_sheet_images_on_asset_event);
+        // No AssetPlugin / no init_asset::<Image>() ⇒ no Messages<AssetEvent<Image>> buffer.
+        app.update();
+        app.update();
+    }
+
+    /// C5/C8(b): the sheet-image hot-reload `info!` line FIRES on the real redrive path,
+    /// naming the reloaded sheet by its asset path — proven for a NON-terrain sheet
+    /// (characters) to pin the WIDENED (any-sheet) logging. Run via `run_system_once` on the
+    /// calling thread inside the scoped `tracing` subscriber so the thread-local capture sees
+    /// the emission (GTW-374 thread-local capture lesson).
+    ///
+    /// Pin-discriminating: a redrive that only logged the terrain sheet would leave the
+    /// capture without the characters path and this assert fails.
+    #[test]
+    fn non_terrain_sheet_reload_logs_an_info_line_naming_the_sheet() {
+        use bevy::ecs::system::RunSystemOnce;
+
+        let mut app = app();
+        let (_terrain, characters) = insert_atlases(&mut app);
+        app.world_mut().insert_resource(uniform_roles());
+        inject_modified(&mut app, &characters);
+
+        let captured = capture_logs(|| {
+            let result = app
+                .world_mut()
+                .run_system_once(redrive_sheet_images_on_asset_event);
+            assert!(result.is_ok(), "the redrive system must run cleanly");
+        });
+
+        assert!(
+            captured
+                .iter()
+                .any(|line| line.contains("tileset hot-reload")
+                    && line.contains(SheetRole::Characters.asset_path())),
+            "a non-terrain sheet reload must emit an info! line naming the reloaded sheet; \
+             captured: {captured:?}",
+        );
     }
 }

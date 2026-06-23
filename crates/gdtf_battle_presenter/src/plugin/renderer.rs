@@ -21,10 +21,12 @@ use crate::{
     load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
     load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
     present_fog, read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event, reframe_ganger_sprites,
-    resolve_character_roles, resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning,
-    resolve_tile_roles, spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover,
-    update_ganger_life_state,
+    redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
+    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
+    redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
+    reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
+    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
+    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -259,6 +261,24 @@ impl Plugin for TopDownRendererPlugin {
                 .in_set(PresenterSystems::Draw)
                 .run_if(gate),
         )
+        // GTW-375 (C4): RE-INDEX every mapped ganger sprite to the freshly-reloaded atlas
+        // indices when `character_roles.ron` hot-reloads (redrive_character_roles_on_asset_event
+        // above marks CharacterRoles changed). The per-field draw systems only re-read the
+        // faction base on an Added/Changed SIM event, never on a resource change, so an
+        // already-spawned idle ganger needs this dedicated re-index. Gated on `CharacterRoles`
+        // existing (so a `MinimalPlugins` app without the table never runs it — `bevy-traps.md`
+        // #1) AND `CharacterRoles.is_changed()` so it does no per-frame work; it needs NO
+        // battle-witness gate (it is idempotent and its sim/sprite queries are empty pre-battle,
+        // per the Discovery). It RE-INDEXES ONLY (it never re-tints), so it never crosses the
+        // life/stance/aiming tint writers.
+        .add_systems(
+            Update,
+            reindex_ganger_sprites_on_character_roles_change
+                .in_set(PresenterSystems::Draw)
+                .run_if(
+                    resource_exists::<CharacterRoles>.and_then(resource_changed::<CharacterRoles>),
+                ),
+        )
         // The removal-detection despawn needs NO render resource (it only despawns
         // mapped sprites + drops map entries), so it is gated on the battle witness
         // alone — it must still run when the table / atlas happen to be absent so a
@@ -409,6 +429,35 @@ fn register_ron_tables(app: &mut App) {
             ),
         )
         .add_systems(Update, redrive_fx_tuning_on_asset_event)
+        // GTW-375 (PRESENTER): hot-reload EVERY battle tile/sprite sheet on BOTH axes — its
+        // role `.ron` AND its sheet `.png`. Three role-`.ron` redrives re-resolve their resident
+        // resource LIVE on a re-save (mutating the resource): TileRoles (tile_roles.ron),
+        // CharacterRoles (character_roles.ron), and EffectRoles (effect_roles.ron). The
+        // sheet-image redrive reacts to a re-save of ANY sheet PNG (terrain, characters, effects,
+        // portraits, or any future sheet): it maps the reloaded image id back to its sheet, logs
+        // each, and `set_changed()`s TileRoles ONLY for the terrain sheet (the custom
+        // TerrainFogMaterial bind group is a snapshot and must be re-prepared via
+        // draw_static_battlefield's despawn+respawn) — the other sheets are atlas sprites that the
+        // sprite pipeline refreshes on its own.
+        //
+        // The re-render arm per axis:
+        // - tile-role + terrain-image → draw_static_battlefield's `roles.is_changed()` trigger
+        //   (despawn+respawn the terrain mesh tiles); stair/ladder link sprites rebuild from
+        //   TileRoles every frame (draw_vertical_links) and sample the same terrain handle, so
+        //   they pick up both reloads with no dedicated system.
+        // - character-role → reindex_ganger_sprites_on_character_roles_change (re-indexes each
+        //   mapped ganger sprite, registered in the PresenterSystems::Draw band below);
+        //   character-image → the sprite pipeline refreshes the texture on its own.
+        // - effect-role → future FX flashes/projectiles read the re-resolved EffectRoles on spawn
+        //   (flashes are TRANSIENT, so no existing-flash re-index is needed); effect-image → the
+        //   sprite pipeline refreshes on its own.
+        //
+        // All four redrives run every frame and self-gate on their resources being present (they
+        // Option them) so a headless app never panics.
+        .add_systems(Update, redrive_tile_roles_on_asset_event)
+        .add_systems(Update, redrive_character_roles_on_asset_event)
+        .add_systems(Update, redrive_effect_roles_on_asset_event)
+        .add_systems(Update, redrive_sheet_images_on_asset_event)
         // GTW-299 (TUNING): resolve the pan tuning ONCE, then re-derive it LIVE on every matching
         // asset Modified event so a `pan_tuning.ron` edit hot-reloads without a rebuild — the
         // exact load/resolve/redrive shape the FX tuning above uses.

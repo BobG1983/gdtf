@@ -144,8 +144,12 @@ fn terrain_material(
 /// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): the
 /// static-battlefield ONE-SHOT draw + redraw-on-level-change.
 ///
-/// Fires when EITHER a [`BattleReady`](gdtf_battle_sim::BattleReady) drained this update
-/// OR [`ActiveLevel`] `is_changed()`. It despawns ALL existing [`TerrainSprite`]
+/// Fires when ANY of: a [`BattleReady`](gdtf_battle_sim::BattleReady) drained this update,
+/// [`ActiveLevel`] `is_changed()`, OR [`TileRoles`] `is_changed()` — the GTW-375 third
+/// trigger that re-renders the terrain on a tile hot-reload. A `tile_roles.ron` re-save
+/// MUTATES [`TileRoles`] (the indices swap) and an `alt_tileset_terrain.png` re-save
+/// `set_changed()`s it (same indices, fresh GPU texture); either way the rendered tiles
+/// SWAP, live, with no restart. It despawns ALL existing [`TerrainSprite`]
 /// entities, then for the [`ActiveLevel`] ONLY scans `0..GRID_WIDTH` × `0..GRID_HEIGHT`
 /// and spawns one terrain tile per non-empty cell (every in-range cell is at least floor)
 /// as a shared unit-rect [`Mesh2d`] + [`MeshMaterial2d<TerrainFogMaterial>`] (GTW-348 — the
@@ -180,11 +184,17 @@ pub fn draw_static_battlefield(
     mut ready: MessageReader<BattleReady>,
     existing: Query<Entity, With<TerrainSprite>>,
 ) {
-    // The redraw triggers: a drained BattleReady (one-shot) OR an ActiveLevel change.
+    // The redraw triggers: a drained BattleReady (one-shot), an ActiveLevel change, OR a
+    // changed TileRoles (GTW-375). The TileRoles trigger is THE single redraw signal for a
+    // tile-appearance hot-reload — both reload paths converge on it: a `tile_roles.ron`
+    // re-save MUTATES TileRoles (redrive_tile_roles_on_asset_event), and an
+    // `alt_tileset_terrain.png` re-save `set_changed()`s it (redrive_terrain_sheet_on_asset_event)
+    // so the tiles re-render against the freshly-reloaded GPU texture. present_fog runs
+    // `.after(draw_static_battlefield)`, so the fog re-applies to the redrawn tiles.
     // Fully DRAIN the reader (`.count()`, not `.next()`) so a multi-message ready never
     // leaves an unread BattleReady to re-fire a redundant redraw next update.
     let ready_fired = ready.read().count() > 0;
-    if !ready_fired && !active.is_changed() {
+    if !ready_fired && !active.is_changed() && !roles.is_changed() {
         return;
     }
 
