@@ -4,7 +4,7 @@
 
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
 use gdtf_assets::RonAssetAppExt;
-use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, PathPreview, ReachableOverlay};
+use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, PathPreview};
 use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
     acts::{
@@ -29,8 +29,7 @@ use crate::{
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
         PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
-        populate_path_preview, populate_reachable_overlay, right_click_turn_to_face,
-        update_selection_highlight,
+        populate_path_preview, right_click_turn_to_face, update_selection_highlight,
     },
 };
 
@@ -264,10 +263,6 @@ impl Plugin for GdtfBattleInputPlugin {
         // across `add_systems` calls, so this helper's systems still order correctly.
         register_gamepad_systems(app);
 
-        // GTW-357 — the reachable-range overlay POPULATE system (extracted to keep `build`
-        // under the `too_many_lines` lint, the `register_gamepad_systems` precedent).
-        register_reachable_overlay_population(app);
-
         // GTW-358 — the route path-preview POPULATE system (calls `find_path` for the selected
         // ganger → the `PathPreviewTarget`; extracted to keep `build` under the
         // `too_many_lines` lint).
@@ -339,46 +334,6 @@ fn register_gamepad_systems(app: &mut App) {
     );
 }
 
-/// Registers the GTW-357 reachable-range overlay POPULATE system into
-/// [`InputSystems::Gather`].
-///
-/// [`populate_reachable_overlay`] reads the current [`SelectedShooter`] and fills the
-/// presenter-owned [`ReachableOverlay`](gdtf_battle_presenter::ReachableOverlay) the SAME way
-/// [`dispatch_move`](gdtf_battle_sim::acts::dispatch_move) plans a route (the visibility-gated
-/// `PlanningView` over the squad fog + `reachable_within`). Ordered `.after(left_click_act)` (so
-/// it reads the same update's selection) and `.after(auto_select_first_player_ganger)` (so the
-/// battle-start auto-select lights the overlay on the first frame, exactly as a click would).
-///
-/// Gated on the live battle WITH every grid the flood reads — the [`OccupancyGrid`], the
-/// [`VerticalLinkGraph`], the [`SquadVisibility`] fog, and the [`CombatTuning`] — so a focused
-/// headless harness that opens `BattleInProgress` WITHOUT routing through `setup_battle` (which
-/// seeds these) keeps the system inert rather than panicking the `Res` param validation
-/// (`bevy-traps.md` #1). In the real app `setup_battle` inserts all four, so the overlay
-/// populates exactly when a battle is live. Extracted from
-/// [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep `build` under the
-/// `too_many_lines` lint (the `register_gamepad_systems` precedent).
-fn register_reachable_overlay_population(app: &mut App) {
-    app.add_systems(
-        Update,
-        populate_reachable_overlay
-            .in_set(InputSystems::Gather)
-            .after(left_click_act)
-            .after(auto_select_first_player_ganger)
-            .run_if(
-                resource_exists::<BattleInProgress>
-                    .and_then(resource_exists::<OccupancyGrid>)
-                    .and_then(resource_exists::<VerticalLinkGraph>)
-                    .and_then(resource_exists::<SquadVisibility>)
-                    .and_then(resource_exists::<CombatTuning>)
-                    // The PRESENTER `init_resource`s `ReachableOverlay` (its `TopDownRendererPlugin`
-                    // build); this gate guards the `ResMut<ReachableOverlay>` param so a focused
-                    // input-only harness (no presenter plugin, so no `ReachableOverlay`) keeps the
-                    // populate system inert rather than panicking validation (`bevy-traps.md` #1).
-                    .and_then(resource_exists::<ReachableOverlay>),
-            ),
-    );
-}
-
 /// Registers the GTW-358 route path-preview POPULATE system into [`InputSystems::Gather`].
 ///
 /// [`populate_path_preview`] reads the current [`SelectedShooter`] + the [`PathPreviewTarget`]
@@ -387,15 +342,15 @@ fn register_reachable_overlay_population(app: &mut App) {
 /// visibility-gated `PlanningView` over the squad fog + `find_path`), exposing
 /// [`Path::total`](gdtf_battle_sim::Path::total) — the §48 cost GTW-355 charges. Ordered
 /// `.after(left_click_act)` (so it reads the same update's selection) and
-/// `.after(auto_select_first_player_ganger)` (the GTW-357 `populate_reachable_overlay`
-/// precedent). The TARGET itself is set by the GTW-356 two-click flow (click-1); until then it
-/// stays `None` and the preview is empty (THIS ticket only defines + wires the seam).
+/// `.after(auto_select_first_player_ganger)` (so the battle-start auto-select can preview a
+/// route on the first frame, exactly as a click would). The TARGET itself is set by the GTW-356
+/// two-click flow (click-1).
 ///
 /// Gated on the live battle WITH every grid the route reads — the [`OccupancyGrid`], the
 /// [`VerticalLinkGraph`], the [`SquadVisibility`] fog, and the [`CombatTuning`] — AND the
-/// presenter-`init_resource`-d [`PathPreview`](gdtf_battle_presenter::PathPreview): the SAME
-/// trap family as the reachable overlay — a focused input-only harness opens `BattleInProgress`
-/// WITHOUT a presenter plugin (so no `PathPreview`), so without that guard the
+/// presenter-`init_resource`-d [`PathPreview`](gdtf_battle_presenter::PathPreview): a focused
+/// input-only harness opens `BattleInProgress` WITHOUT a presenter plugin (so no `PathPreview`),
+/// so without that guard the
 /// `ResMut<PathPreview>` param would panic validation (`bevy-traps.md` #1). In the real app
 /// `setup_battle` inserts the grids + the presenter `init_resource`s `PathPreview`, so the
 /// preview populates exactly when a battle is live. Extracted from

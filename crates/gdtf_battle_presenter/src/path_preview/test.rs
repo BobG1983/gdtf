@@ -10,7 +10,7 @@
 use bevy::{platform::collections::HashSet, prelude::Alpha};
 use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility, Tu};
 
-use super::preview::{PathPreview, preview_draws};
+use super::preview::{PathPreview, label_text, preview_draws};
 
 /// A `SquadVisibility` with `visible` cells VISIBLE and `explored` cells EXPLORED-only.
 fn fog(visible: &[CellLevel], explored_only: &[CellLevel]) -> SquadVisibility {
@@ -147,4 +147,41 @@ fn empty_preview_resolves_to_no_draws() {
     let squad = fog(&[], &[]);
     let draws = preview_draws(&preview, Level::new(0), &squad);
     assert!(draws.is_empty(), "an empty preview draws nothing");
+}
+
+/// GTW-368 (C2) — the target-cell cost label reads the bare TU count followed by `" TU"` (the
+/// firemode / status-panel TU convention), so the label shows the EXACT previewed `cost()`.
+#[test]
+fn target_label_text_shows_the_tu_cost() {
+    assert_eq!(
+        label_text(Tu::new(0)),
+        "0 TU",
+        "a zero-cost route reads 0 TU"
+    );
+    assert_eq!(
+        label_text(Tu::new(12)),
+        "12 TU",
+        "a 12-TU route reads the exact cost"
+    );
+}
+
+/// GTW-368 (C2) — the previewed TARGET cell is the LAST cell of the route, so the cost label is
+/// keyed to the route destination, and the previewed cost is exposed verbatim for the label.
+#[test]
+fn target_cell_is_the_route_destination() {
+    let start = c0(3, 4);
+    let mid = c0(4, 4);
+    let goal = c0(5, 4);
+    let preview = PathPreview::new(vec![start, mid, goal], Tu::new(16));
+
+    assert_eq!(
+        preview.cells().last().copied(),
+        Some(goal),
+        "the previewed target cell is the route's last cell (the destination)",
+    );
+    assert_eq!(
+        label_text(preview.cost()),
+        "16 TU",
+        "the target-cell label shows the previewed route cost (Path::total)",
+    );
 }

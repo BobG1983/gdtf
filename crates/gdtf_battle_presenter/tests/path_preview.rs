@@ -1,21 +1,25 @@
-//! GTW-358 (C1 / C3 / C4 / C5 / C7): headless draw-LOGIC proof for the route path-preview —
-//! the POSITIVE in-engine state assertions the contract demands.
+//! GTW-358 / GTW-368 (C1 / C2 / C3 / C4 / C5 / C7): headless draw-LOGIC proof for the route
+//! path-preview — the POSITIVE in-engine state assertions the contract demands.
 //!
 //! C1 (ROUTE, positive): with a `PathPreview` route at NAMED cells, the presenter draws a
 //! `Visibility::Visible`, world-positioned `PathStepSprite` at each NAMED route cell ON the
 //! active storey. The assertion NAMES the route cells that must appear.
+//! C2 (GTW-368 COST-ON-TARGET, positive): with a previewed route, the presenter draws a SINGLE
+//! `Visibility::Visible` `PathTargetLabel` `Text2d` at the NAMED target cell (the route's last
+//! cell) reading the route cost as `"N TU"`; with NO target the label is HIDDEN.
 //! C5 (HARD CUT): an off-`ActiveLevel` route cell is NOT drawn (and the route leaving the
 //! storey draws a minimal marker at the link cell).
-//! C4 (CLEARS): clearing the preview HIDES every step (mutate-not-respawn), and a cell NOT in
-//! the route has no lit step over it.
+//! C4 (CLEARS / idle board): clearing the preview HIDES every step AND the cost label
+//! (mutate-not-respawn), and the IDLE board has NO visible overlay entity (no per-cell labels —
+//! the GTW-357 reachable overlay was removed entirely).
 //!
-//! This is the `fog_present.rs` / `reachable_overlay.rs` pattern: a `DefaultPlugins`/`no_renderer`
-//! app with the real `TopDownRendererPlugin`. The path-preview draw system gates on
-//! `BattleInProgress` + `SquadVisibility` (a solid-tint sprite, no atlas), so the headless app
-//! drives the REAL draw path. The `PathPreview` + `SquadVisibility` resources are authored
-//! DIRECTLY via `app.world_mut()` in the test body (the accepted headless idiom, `bevy-traps.md`
-//! #7 carve-out (a)) — standing in for the input crate's populate system, which is unit-tested
-//! in `gdtf_battle_input` over the same resource.
+//! This is the `fog_present.rs` pattern: a `DefaultPlugins`/`no_renderer` app with the real
+//! `TopDownRendererPlugin`. The path-preview draw system gates on `BattleInProgress` +
+//! `SquadVisibility` (a solid-tint sprite + a `Text2d`, no atlas), so the headless app drives
+//! the REAL draw path. The `PathPreview` + `SquadVisibility` resources are authored DIRECTLY via
+//! `app.world_mut()` in the test body (the accepted headless idiom, `bevy-traps.md` #7 carve-out
+//! (a)) — standing in for the input crate's populate system, which is unit-tested in
+//! `gdtf_battle_input` over the same resource.
 
 use std::path::PathBuf;
 
@@ -25,12 +29,14 @@ use bevy::{
     asset::AssetPlugin,
     ecs::error::warn,
     platform::collections::HashSet,
-    prelude::{Transform, Visibility, default},
+    prelude::{Text2d, Transform, Visibility, default},
     render::{RenderPlugin, settings::WgpuSettings},
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_battle_presenter::{PathPreview, PathStepSprite, TopDownRendererPlugin, cell_to_world};
+use gdtf_battle_presenter::{
+    PathPreview, PathStepSprite, PathTargetLabel, TopDownRendererPlugin, cell_to_world,
+};
 use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, SquadVisibility, Tu};
 
 /// Bounded settle headroom for the deferred draw (a synchronous command flush, not a load).
@@ -131,6 +137,41 @@ fn step_visible_at(app: &mut App, cell: CellLevel) -> bool {
 /// Count of `Visible` `PathStepSprite`s (so the hard cut + the surplus-hide can be pinned).
 fn visible_step_count(app: &mut App) -> usize {
     let mut q = app.world_mut().query::<(&Visibility, &PathStepSprite)>();
+    q.iter(app.world())
+        .filter(|(vis, _)| **vis == Visibility::Visible)
+        .count()
+}
+
+/// Drive bounded `update()`s until the SINGLE `PathTargetLabel` has materialized (GTW-368).
+fn settle_label(app: &mut App) -> bool {
+    for _ in 0..MAX_UPDATES {
+        let mut q = app.world_mut().query::<&PathTargetLabel>();
+        if q.iter(app.world()).next().is_some() {
+            return true;
+        }
+        app.update();
+    }
+    let mut q = app.world_mut().query::<&PathTargetLabel>();
+    q.iter(app.world()).next().is_some()
+}
+
+/// The `(text, planar-position-matches-target, visible)` of the SINGLE target-cost label, if it
+/// exists — the GTW-368 cost-on-target witness (the label is lifted ABOVE the cell, so it
+/// matches the target's planar `x` and a `y` above the cell centre).
+fn target_label_state(app: &mut App, target: CellLevel) -> Option<(String, bool, bool)> {
+    let want = cell_to_world(Cell::new(target.x, target.y), Level::new(level_u8(target)));
+    let mut q = app
+        .world_mut()
+        .query::<(&Text2d, &Transform, &Visibility, &PathTargetLabel)>();
+    q.iter(app.world()).next().map(|(text, t, vis, _)| {
+        let over_target = planar_eq(t.translation.x, want.x) && t.translation.y > want.y;
+        ((**text).clone(), over_target, *vis == Visibility::Visible)
+    })
+}
+
+/// Count of `Visible` `PathTargetLabel`s — must never exceed ONE (the single target cost label).
+fn visible_label_count(app: &mut App) -> usize {
+    let mut q = app.world_mut().query::<(&Visibility, &PathTargetLabel)>();
     q.iter(app.world())
         .filter(|(vis, _)| **vis == Visibility::Visible)
         .count()
@@ -291,5 +332,109 @@ fn shrinking_route_hides_surplus_pooled_steps() {
         visible_step_count(&mut app),
         1,
         "the shrunk route draws exactly one cell (the surplus pooled steps are hidden)",
+    );
+}
+
+/// GTW-368 C2 (COST-ON-TARGET, positive) — with a previewed route the presenter draws a SINGLE
+/// `Visible` cost label at the NAMED target cell (the route's last cell) reading the route cost
+/// as `"N TU"`. No per-cell labels (exactly one label entity).
+#[test]
+fn target_cell_cost_label_renders_at_destination() {
+    let mut app = preview_app();
+    let l0 = Level::new(0);
+    let start = CellLevel::new(Cell::new(10, 10), l0);
+    let mid = CellLevel::new(Cell::new(11, 10), l0);
+    let target = CellLevel::new(Cell::new(12, 10), l0);
+
+    set_preview(&mut app, vec![start, mid, target], Tu::new(12));
+    assert!(
+        settle_label(&mut app),
+        "the target cost label must have drawn"
+    );
+
+    // POSITIVE: exactly ONE visible label, reading the route cost, over the NAMED target cell.
+    assert_eq!(
+        visible_label_count(&mut app),
+        1,
+        "exactly ONE cost label is drawn (on the target cell only — no per-cell labels)",
+    );
+    let state = target_label_state(&mut app, target);
+    assert!(state.is_some(), "the single target cost label must exist");
+    let (text, over_target, visible) = state.unwrap_or_default();
+    assert!(
+        visible,
+        "the target cost label is Visible while a route is previewed"
+    );
+    assert!(
+        over_target,
+        "the cost label is positioned ABOVE the NAMED target cell (12,10,L0)",
+    );
+    assert_eq!(
+        text, "12 TU",
+        "the target cost label reads the route cost (PathPreview::cost) as \"12 TU\"",
+    );
+}
+
+/// GTW-368 C2 (HARD CUT) — a target cell on a DIFFERENT storey is NOT labelled on the active
+/// storey (the label hard-cuts to the active storey like the route steps).
+#[test]
+fn target_label_hard_cut_when_target_off_storey() {
+    let mut app = preview_app();
+    let l0 = Level::new(0);
+    let l1 = Level::new(1);
+    let on0 = CellLevel::new(Cell::new(5, 5), l0);
+    // The route climbs to storey 1; the destination (target) is off the active storey.
+    let target = CellLevel::new(Cell::new(8, 5), l1);
+
+    set_preview(&mut app, vec![on0, target], Tu::new(14));
+    // The active-storey step renders, so settle on the step pool.
+    assert!(
+        settle_steps(&mut app),
+        "the active-storey step must have drawn"
+    );
+
+    assert_eq!(
+        visible_label_count(&mut app),
+        0,
+        "no cost label is shown when the target cell is off the active storey (the hard cut)",
+    );
+}
+
+/// GTW-368 C2 / C4 (CLEARS + idle board) — clearing the preview HIDES the cost label (and every
+/// step), and the IDLE board (no target) has NO visible overlay entity (no per-cell labels — the
+/// GTW-357 reachable overlay was removed entirely; the only path-preview entities that can exist
+/// are the pooled step sprites + the single cost label, and both are hidden with no target).
+#[test]
+fn clearing_preview_hides_cost_label_and_idle_board_is_clean() {
+    let mut app = preview_app();
+    let l0 = Level::new(0);
+    let target = CellLevel::new(Cell::new(7, 7), l0);
+
+    set_preview(
+        &mut app,
+        vec![CellLevel::new(Cell::new(6, 7), l0), target],
+        Tu::new(8),
+    );
+    assert!(settle_label(&mut app), "the cost label must have drawn");
+    assert_eq!(
+        visible_label_count(&mut app),
+        1,
+        "the cost label is shown before clear"
+    );
+
+    // Clear (no target) — the cost label AND the steps must hide, not linger drawn.
+    app.world_mut().insert_resource(PathPreview::cleared());
+    app.update();
+
+    // The IDLE board: zero visible steps AND zero visible labels (a clean board, no overlay).
+    assert_eq!(
+        visible_label_count(&mut app),
+        0,
+        "after the preview is cleared, the cost label hides (mutate-not-respawn)",
+    );
+    assert_eq!(
+        visible_step_count(&mut app),
+        0,
+        "a cleared preview leaves zero drawn steps — the idle board is clean (no overlay)",
     );
 }

@@ -7,12 +7,11 @@
 //! [`SelectedShooter`] + [`PathPreviewTarget`] feed the route preview — keeping selection +
 //! target out of the authoritative sim model (the `input → presenter → sim` direction; the
 //! presenter DEFINES the resource, this input crate WRITES it, the
-//! [`ReachableOverlay`](gdtf_battle_presenter::ReachableOverlay) /
 //! [`HighlightRequest`](gdtf_battle_presenter::HighlightRequest) precedent).
 //!
 //! It computes the route the SAME way the move dispatch
-//! ([`dispatch_move`](gdtf_battle_sim::acts::dispatch_move)) + the GTW-357 reachable overlay
-//! plan it: it builds the GTW-353 [`PlanningView`] from the sim's [`SquadVisibility`] with an
+//! ([`dispatch_move`](gdtf_battle_sim::acts::dispatch_move)) plans it: it builds the GTW-353
+//! [`PlanningView`] from the sim's [`SquadVisibility`] with an
 //! occupant→[`FactionRelation`] resolver closed over the selected ganger's faction, then calls
 //! [`find_path`](gdtf_battle_sim::find_path) over the SAME grids — so the previewed route +
 //! cost EXACTLY match what a commit will accept (the GTW-354 / GTW-355 dependency) and the
@@ -76,11 +75,10 @@ impl PathPreviewTarget {
 /// [`FactionRelation::Other`].
 ///
 /// The [`PlanningView`] occupant→relation resolver, built per-rebuild from the selected
-/// ganger's faction and the live `&`[`Faction`] query — the SAME resolver
-/// [`populate_reachable_overlay`](crate::populate_reachable_overlay) +
-/// `dispatch_move` use, so the preview's visibility gate is identical to the commit's. A
-/// non-ganger occupant maps to [`FactionRelation::Other`] (the conservative classification:
-/// blocked only when its cell is squad-VISIBLE).
+/// ganger's faction and the live `&`[`Faction`] query — a VERBATIM mirror of `dispatch_move`'s
+/// own `relation_to` (the sim keeps that one private), so the preview's visibility gate is
+/// identical to the commit's. A non-ganger occupant maps to [`FactionRelation::Other`] (the
+/// conservative classification: blocked only when its cell is squad-VISIBLE).
 fn relation_to(
     factions: &Query<&'static Faction>,
     mover_faction: Faction,
@@ -96,7 +94,7 @@ fn relation_to(
 /// [`VerticalLinkGraph`] + [`SquadVisibility`] + [`CombatTuning`] the SAME `dispatch_move`
 /// route gate reads. Framework plumbing (a borrow bundle), exempt from no-bare-types; bundling
 /// them keeps [`populate_path_preview`] under the `too_many_arguments` / `too_many_lines`
-/// lints (the [`RouteGrids`](crate::selection::reachable) precedent).
+/// lints.
 #[derive(SystemParam)]
 pub struct PreviewGrids<'w> {
     /// The coarse occupancy grid (terrain + occupants) the route routes over.

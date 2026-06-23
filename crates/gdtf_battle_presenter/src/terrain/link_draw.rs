@@ -23,11 +23,11 @@
 //!
 //! # Mutate, never respawn (C5)
 //!
-//! Like [`draw_reachable_overlay`](crate::draw_reachable_overlay), it maintains a POOL of
+//! Like [`present_fog`](crate::present_fog), it maintains a POOL of
 //! cell-keyed [`VerticalLinkSprite`] entities: it reuses an existing sprite (re-indexing
 //! its atlas tile, moving its [`Transform`], showing it) for each link cell it now needs
 //! and HIDES surplus pooled sprites it no longer needs — it never despawn-then-respawns
-//! the set each frame (the mirror of [`draw_reachable_overlay`] / [`present_fog`](crate::present_fog)).
+//! the set each frame (the mirror of [`present_fog`](crate::present_fog)).
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::{Cell, CellLevel, Level, LinkKind, VerticalLinkGraph};
@@ -41,7 +41,7 @@ use crate::{CELL_PX, Layer, SheetRole, TopDownAtlases, WORLD_RENDER_LAYER, cell_
 /// Marker for a pooled vertical-link (stair / ladder) tile [`Sprite`].
 ///
 /// Plumbing around the framework sprite (the no-bare-types framework carve-out, the same
-/// justification the [`ReachableTint`](crate::ReachableTint) /
+/// justification the [`PathStepSprite`](crate::PathStepSprite) /
 /// [`HoverHighlight`](crate::HoverHighlight) markers use): [`draw_vertical_links`]
 /// queries `With<VerticalLinkSprite>` to find and MUTATE the pooled link sprites in place
 /// rather than despawn-respawning them each frame.

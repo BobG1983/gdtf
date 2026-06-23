@@ -14,8 +14,8 @@
 //! it when there is no target, or the target is unreachable / only-through-UNSEEN).
 //! Selection + target are NEVER pushed into the authoritative sim model, and the
 //! dependency direction stays `input → presenter → sim` — the SAME shape as the
-//! [`ReachableOverlay`](crate::ReachableOverlay) / [`HighlightRequest`](crate::HighlightRequest)
-//! seams (the presenter DEFINES the type; the input crate WRITES it). The route the
+//! [`HighlightRequest`](crate::HighlightRequest)
+//! seam (the presenter DEFINES the type; the input crate WRITES it). The route the
 //! input crate computes uses the SAME [`find_path`](gdtf_battle_sim::find_path) +
 //! `PlanningView` the move dispatch ([`dispatch_move`](gdtf_battle_sim::acts::dispatch_move))
 //! uses, so the previewed route + its cost EXACTLY match what a commit will accept
@@ -46,12 +46,12 @@
 //!
 //! # Mutate, never respawn (the UI-mutate-not-respawn convention)
 //!
-//! The system maintains a POOL of cell-keyed sprites: it reuses an existing entity for each
-//! route step it now needs (moving its [`Transform`], re-tinting it, showing it) and HIDES
-//! surplus pooled entities it no longer needs — it never despawn-then-respawns the set each
-//! frame (the [`draw_reachable_overlay`](crate::draw_reachable_overlay) precedent).
+//! The system maintains a POOL of cell-keyed sprites (and ONE pooled target-cost label): it
+//! reuses an existing entity for each route step it now needs (moving its [`Transform`],
+//! re-tinting it, showing it) and HIDES surplus pooled entities it no longer needs — it never
+//! despawn-then-respawns the set each frame (the [`present_fog`](crate::present_fog) precedent).
 
-use bevy::{camera::visibility::RenderLayers, prelude::*};
+use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
 use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility, Tu};
 
 use crate::{ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered};
@@ -66,7 +66,7 @@ use crate::{ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layer
 /// [`Path::total`](gdtf_battle_sim::Path::total) — the §48 bit-identity GTW-355 charges).
 /// OWNED BY THE PRESENTER so the `input → presenter → sim` direction holds: the draw system
 /// READS it; the input crate's `populate_path_preview` POPULATES it (the
-/// [`ReachableOverlay`](crate::ReachableOverlay) precedent). `init_resource`-d by the
+/// [`HighlightRequest`](crate::HighlightRequest) precedent). `init_resource`-d by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin), so its [`Default`] is the empty
 /// preview (no target → nothing drawn).
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
@@ -121,20 +121,82 @@ impl PathPreview {
 /// Marker for a pooled route-preview step [`Sprite`].
 ///
 /// Plumbing around the framework sprite (the no-bare-types framework carve-out, the same
-/// justification the [`ReachableTint`](crate::ReachableTint) /
-/// [`HoverHighlight`](crate::HoverHighlight) markers use): [`draw_path_preview`] queries
-/// `With<PathStepSprite>` to find and MUTATE the pooled step sprites in place rather than
-/// despawn-respawning them each frame.
+/// justification the [`HoverHighlight`](crate::HoverHighlight) marker uses):
+/// [`draw_path_preview`] queries `With<PathStepSprite>` to find and MUTATE the pooled step
+/// sprites in place rather than despawn-respawning them each frame.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct PathStepSprite;
+
+/// The pooled route-STEP sprite query for [`draw_path_preview`] — the `(Transform, Sprite,
+/// Visibility)` it mutates in place over the [`PathStepSprite`] pool, made `Without` the
+/// [`PathTargetLabel`] pool so the two pooled-entity queries are provably disjoint (no B0001
+/// query-conflict — `bevy-traps.md` #3 family). A `type` alias so the system signature stays
+/// under the `type_complexity` lint. Framework plumbing (a query alias), exempt from
+/// no-bare-types.
+type StepQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut Transform,
+        &'static mut Sprite,
+        &'static mut Visibility,
+    ),
+    (With<PathStepSprite>, Without<PathTargetLabel>),
+>;
+
+/// The pooled target-LABEL query for [`draw_path_preview`] — the `(Text2d, Transform,
+/// Visibility)` it mutates in place over the SINGLE [`PathTargetLabel`], made `Without` the
+/// [`PathStepSprite`] pool so it is provably disjoint from [`StepQuery`] (no B0001
+/// query-conflict). A `type` alias so the signature stays under the `type_complexity` lint.
+/// Framework plumbing (a query alias), exempt from no-bare-types.
+type LabelQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut Text2d,
+        &'static mut Transform,
+        &'static mut Visibility,
+    ),
+    (With<PathTargetLabel>, Without<PathStepSprite>),
+>;
+
+/// Marker for the SINGLE pooled target-cell TU-cost [`Text2d`] label (GTW-368).
+///
+/// Plumbing around the framework world-space text (the no-bare-types framework carve-out, the
+/// same justification the [`PathStepSprite`] marker uses): [`draw_path_preview`] queries
+/// `With<PathTargetLabel>` to find and MUTATE the ONE pooled label in place (rewrite its text,
+/// move its [`Transform`], show / hide it) rather than despawn-respawning it. Exactly one such
+/// entity ever exists — the cost reads on the previewed TARGET cell only, never per-cell.
+#[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct PathTargetLabel;
+
+/// The colour of the target-cell TU-cost label text — an opaque near-white so the cost reads
+/// against the amber route trail beneath it.
+///
+/// Framework plumbing — a literal [`Color`] handed straight to a [`TextColor`], not a domain
+/// quantity (the `CELL_PX`-class const carve-out).
+const LABEL_COLOR: Color = Color::srgb(0.95, 1.0, 0.95);
+
+/// The target-cell TU-cost label font size, in world-space px.
+///
+/// Framework plumbing — a layout scalar fed straight to a [`TextFont`], not a domain quantity
+/// (the `CELL_PX`-class carve-out, the FCT [`spawn_floating_text`](crate::spawn_floating_text)
+/// precedent). Small relative to [`CELL_PX`] (`16.0`) so a multi-digit cost fits over one cell.
+const LABEL_FONT_PX: f32 = 9.0;
+
+/// The world-space vertical lift of the target-cell TU-cost label ABOVE its cell centre, in
+/// world px.
+///
+/// Lifts the label by just over half a cell so it sits over the top edge of the target cell's
+/// route-trail sprite (the FCT / reticle-label "above the cell" treatment).
+const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 
 /// The translucent tint of a VISIBLE route-preview step.
 ///
 /// Framework plumbing — a literal [`Color`] handed straight to a [`Sprite`], not a domain
-/// quantity (the `CELL_PX`-class const carve-out, the [`ReachableTint`](crate::ReachableTint)
-/// precedent). A warm amber at moderate alpha so the previewed route reads as a "this is
-/// where you'd walk" trail distinct from the cool-green reachable wash and the cyan selection
-/// reticle.
+/// quantity (the `CELL_PX`-class const carve-out, the [`HoverHighlight`](crate::HoverHighlight)
+/// tint precedent). A warm amber at moderate alpha so the previewed route reads as a "this is
+/// where you'd walk" trail distinct from the cyan selection reticle.
 const PREVIEW_TINT: Color = Color::srgba(1.0, 0.75, 0.2, 0.55);
 
 /// The §53 EXPLORED (remembered, not currently visible) alpha SCALE applied to
@@ -151,13 +213,14 @@ const EXPLORED_ALPHA_SCALE: f32 = 0.45;
 const LINK_MARKER_TINT: Color = Color::srgba(0.3, 0.7, 1.0, 0.7);
 
 /// `Update` ([`PresenterSystems::Draw`](crate::PresenterSystems)): draw the route
-/// path-preview — one cell-keyed [`Sprite`] per route step on the active storey, plus a
-/// MINIMAL marker at the active-storey cell where the route leaves the storey (C1 / C3 / C5).
+/// path-preview — one cell-keyed [`Sprite`] per route step on the active storey, a MINIMAL
+/// marker at the active-storey cell where the route leaves the storey, AND the SINGLE
+/// target-cell TU-cost label (C1 / C2 / C3 / C5).
 ///
 /// Reads the presenter-owned [`PathPreview`] read-seam (populated by the input crate, C6),
 /// the [`ActiveLevel`], and the sim's [`SquadVisibility`] (the §53 VISIBLE-vs-EXPLORED read,
 /// the [`present_fog`](crate::present_fog) precedent), then maintains a POOL of
-/// [`PathStepSprite`] sprites:
+/// [`PathStepSprite`] sprites plus the ONE [`PathTargetLabel`] cost label:
 ///
 /// - for each route cell ON the active storey, it takes (or lazily spawns) a pooled sprite,
 ///   moves it to [`cell_to_world_layered`] at the [`Layer::PathPreview`] band, tints it
@@ -167,32 +230,44 @@ const LINK_MARKER_TINT: Color = Color::srgba(0.3, 0.7, 1.0, 0.7);
 ///   draws ONE extra pooled sprite at the LAST active-storey cell tinted [`LINK_MARKER_TINT`]
 ///   — the C5 minimal off-storey-continuation marker (GTW-359 soft dep);
 /// - every surplus pooled sprite is [`Visibility::Hidden`] — NEVER despawned (the
-///   UI-mutate-not-respawn convention, the [`draw_reachable_overlay`](crate::draw_reachable_overlay)
+///   UI-mutate-not-respawn convention, the [`present_fog`](crate::present_fog)
 ///   precedent).
 ///
+/// # The GTW-368 target-cell cost label (C2)
+///
+/// It then draws ONE world-space [`Text2d`] showing [`PathPreview::cost`] as `"N TU"` at the
+/// previewed TARGET cell — the LAST cell of [`PathPreview::cells`] (the route destination) —
+/// lifted [`LABEL_LIFT_PX`] ABOVE the cell ([`draw_target_label`]). The single pooled
+/// [`PathTargetLabel`] entity is mutated in place (text rewritten, [`Transform`] moved, shown)
+/// — never despawn-respawned. It is HIDDEN when the preview is empty (no target) OR when the
+/// target cell is off the active storey (the same hard cut as the steps). So a click sets a
+/// target → the route highlights + the cost reads on the destination; clearing the target →
+/// the label hides. There are NO per-cell labels (the GTW-357 per-cell labels were dropped).
+///
 /// Off-[`ActiveLevel`] cells are NOT drawn — the hard cut to the active storey (C5; the
-/// GTW-347 fog / GTW-357 overlay precedent). Sized to one cell and drawn on
+/// GTW-347 fog precedent). Sized to one cell and drawn on
 /// [`RenderLayers::layer`]`(`[`WORLD_RENDER_LAYER`]`)` so it composites with the battlefield,
 /// not the GTW-120 UI camera.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy pool growth, the
-/// [`PathPreview`] / [`ActiveLevel`] / [`SquadVisibility`] reads, and a
-/// `Query<(&mut Transform, &mut Sprite, &mut Visibility), With<PathStepSprite>>` for the
-/// in-place move + re-tint + show/hide. Battle-gated + in
-/// [`PresenterSystems::Draw`](crate::PresenterSystems) by the
+/// [`PathPreview`] / [`ActiveLevel`] / [`SquadVisibility`] reads, a [`StepQuery`] for the route
+/// steps, and a [`LabelQuery`] for the single target-cost label. The two pooled-entity queries
+/// are `Without` each other's marker so they are provably disjoint (no B0001 conflict).
+/// Battle-gated + in [`PresenterSystems::Draw`](crate::PresenterSystems) by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).
 pub fn draw_path_preview(
     mut commands: Commands,
     preview: Res<PathPreview>,
     active: Res<ActiveLevel>,
     squad: Res<SquadVisibility>,
-    mut steps: Query<(&mut Transform, &mut Sprite, &mut Visibility), With<PathStepSprite>>,
+    mut steps: StepQuery,
+    mut label: LabelQuery,
 ) {
     let active_level: Level = **active;
     let draws = preview_draws(&preview, active_level, &squad);
 
     // Reuse the pooled step sprites in iteration order: move + re-tint + show the first
-    // `draws.len()`, hide the rest (mutate, not respawn — the reachable-overlay precedent).
+    // `draws.len()`, hide the rest (mutate, not respawn — the present_fog precedent).
     let mut pooled = steps.iter_mut();
     for draw in &draws {
         let world = cell_to_world_layered(
@@ -212,6 +287,89 @@ pub fn draw_path_preview(
     for (_, _, mut visibility) in pooled {
         *visibility = Visibility::Hidden;
     }
+
+    // GTW-368 (C2) — the SINGLE target-cell TU-cost label.
+    draw_target_label(&mut commands, &preview, active_level, &mut label);
+}
+
+/// Draw (or hide) the SINGLE target-cell TU-cost label for the current preview (GTW-368, C2).
+///
+/// The target cell is the LAST cell of [`PathPreview::cells`] (the route destination). When the
+/// preview is non-empty AND that target cell is on the active storey, the one pooled
+/// [`PathTargetLabel`] is moved over it (lifted [`LABEL_LIFT_PX`] ABOVE the cell), its text
+/// rewritten to [`label_text`]`(`[`PathPreview::cost`]`)`, and shown — mutated in place (lazily
+/// spawned on first need). Otherwise (empty preview / no target, OR a target on a different
+/// storey) the label is HIDDEN. Exactly one label entity ever exists.
+fn draw_target_label(
+    commands: &mut Commands,
+    preview: &PathPreview,
+    active_level: Level,
+    label_query: &mut LabelQuery,
+) {
+    let active_z = i32::from(*active_level);
+    // The previewed target = the route destination (the last route cell), shown only when it is
+    // on the active storey (the same hard cut as the route steps).
+    let target = preview
+        .cells()
+        .last()
+        .copied()
+        .filter(|cell| cell.z == active_z);
+
+    let mut existing = label_query.iter_mut();
+    match target {
+        Some(cell) => {
+            let mut world =
+                cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::PathPreview);
+            // Above the target cell (the FCT / reticle-label "above the cell" treatment).
+            world.y += LABEL_LIFT_PX;
+            let text = label_text(preview.cost());
+            if let Some((mut label, mut transform, mut visibility)) = existing.next() {
+                // Mutate the one pooled label in place (rewrite text, move, show).
+                **label = text;
+                transform.translation = world;
+                *visibility = Visibility::Visible;
+            } else {
+                spawn_target_label(commands, text, world);
+            }
+        }
+        // No target on the active storey → hide the pooled label (never despawn).
+        None => {
+            if let Some((_, _, mut visibility)) = existing.next() {
+                *visibility = Visibility::Hidden;
+            }
+        }
+    }
+}
+
+/// The target-cell cost label text — the bare TU count followed by `" TU"` (the firemode /
+/// status-panel TU convention).
+///
+/// `pub(super)` so the sibling `path_preview::test` module can pin the label format without an
+/// app harness.
+pub(super) fn label_text(cost: Tu) -> String {
+    format!("{} TU", *cost)
+}
+
+/// Lazily spawn the ONE pooled target-cell cost label [`Text2d`] showing `text` at `world`.
+///
+/// A world-space [`Text2d`] anchored bottom-centre over the cell (so it sits ABOVE the target
+/// cell), in [`LABEL_COLOR`] at [`LABEL_FONT_PX`], on the world render layer at the
+/// [`Layer::PathPreview`] band. Pooled (kept + reused / hidden, never despawned), so this runs
+/// only ONCE — the first time a target is previewed.
+fn spawn_target_label(commands: &mut Commands, text: String, world: Vec3) {
+    commands.spawn((
+        PathTargetLabel,
+        Text2d::new(text),
+        TextFont {
+            font_size: bevy::text::FontSize::Px(LABEL_FONT_PX),
+            ..default()
+        },
+        TextColor(LABEL_COLOR),
+        bevy::sprite::Anchor::BOTTOM_CENTER,
+        Transform::from_translation(world),
+        Visibility::Visible,
+        RenderLayers::layer(WORLD_RENDER_LAYER),
+    ));
 }
 
 /// One route-preview sprite to draw this update — the active-storey [`CellLevel`] and the

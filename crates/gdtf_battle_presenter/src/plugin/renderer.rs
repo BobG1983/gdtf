@@ -12,12 +12,11 @@ use gdtf_battle_sim::{
 use crate::{
     ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle, FxTuning,
     FxTuningHandle, GamepadCursorMoved, GangerSprites, HighlightRequest, PanEdgeDwellState,
-    PanTuning, PanTuningHandle, PathPreview, PresenterSystems, ReachableOverlay,
-    ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases,
-    advance_projectiles, advance_sprite_tweens, animate_floating_text, animate_impact,
-    apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
-    despawn_removed_ganger_sprites, draw_highlight_on_request, draw_path_preview,
-    draw_reachable_labels, draw_reachable_overlay, draw_static_battlefield, draw_vertical_links,
+    PanTuning, PanTuningHandle, PathPreview, PresenterSystems, ShotImpactResolved,
+    TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases, advance_projectiles,
+    advance_sprite_tweens, animate_floating_text, animate_impact, apply_active_level_filter,
+    clamp_camera_to_bounds, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
+    draw_highlight_on_request, draw_path_preview, draw_static_battlefield, draw_vertical_links,
     expire_flashes, frame_camera_on_units, load_character_roles, load_effect_roles, load_fx_tuning,
     load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
     pan_camera_on_gamepad_cursor_edge, present_fog, read_armor_broken, read_bleeding,
@@ -140,11 +139,6 @@ impl Plugin for TopDownRendererPlugin {
         }
         app.insert_resource(TopDownRendererActive)
             .init_resource::<ActiveLevel>()
-            // GTW-357 — the reachable-range overlay read-seam (the cells the selected ganger
-            // can reach). Present for the whole battle span: the input crate POPULATES it
-            // (clearing it when no ganger is selected); the draw systems READ it. Its Default
-            // is the empty set, so a battle with nothing selected lights nothing.
-            .init_resource::<ReachableOverlay>()
             // GTW-358 — the route path-preview read-seam (the find_path route from the selected
             // ganger to the target + its §48 total cost). Present for the whole battle span: the
             // input crate POPULATES it (clearing it when there is no target or it is
@@ -323,16 +317,11 @@ impl Plugin for TopDownRendererPlugin {
         // `build` under the `too_many_lines` lint).
         register_fog_systems(app);
 
-        // GTW-357: the reachable-range move overlay DRAW (the tint sprites + the per-cell TU
-        // labels). It reads the presenter-owned `ReachableOverlay` (populated by the input
-        // crate) and hard-cuts to the active storey (extracted to keep `build` under the
-        // `too_many_lines` lint).
-        register_reachable_overlay_systems(app);
-
-        // GTW-358: the route path-preview DRAW (the per-step route sprites + the C5 off-storey
-        // link marker). It reads the presenter-owned `PathPreview` (populated by the input
-        // crate) and the sim's `SquadVisibility` (the §53 VISIBLE-vs-EXPLORED dim) and hard-cuts
-        // to the active storey (extracted to keep `build` under the `too_many_lines` lint).
+        // GTW-358 / GTW-368: the route path-preview DRAW (the per-step route sprites + the C5
+        // off-storey link marker + the GTW-368 single target-cell TU-cost label). It reads the
+        // presenter-owned `PathPreview` (populated by the input crate) and the sim's
+        // `SquadVisibility` (the §53 VISIBLE-vs-EXPLORED dim) and hard-cuts to the active storey
+        // (extracted to keep `build` under the `too_many_lines` lint).
         register_path_preview_systems(app);
     }
 }
@@ -709,67 +698,38 @@ fn register_fog_systems(app: &mut App) {
 /// Registers the GTW-357 reachable-range overlay DRAW systems into the already-defined
 /// [`PresenterSystems::Draw`] band.
 ///
-/// The PRESENTER owns the [`ReachableOverlay`] read-seam (`init_resource`-d on build above)
-/// plus these two draw systems; the INPUT crate POPULATES the resource — the
-/// [`HighlightRequest`] precedent, where the presenter DEFINES the type and input WRITES it,
-/// keeping the `input → presenter → sim` direction (never a cycle).
-///
-/// - [`draw_reachable_overlay`] tints each reachable cell on the active storey with a pooled,
-///   mutated-in-place [`Sprite`] (never despawn-respawned);
-/// - [`draw_reachable_labels`] draws the per-cell TU-cost [`Text2d`] label ABOVE each reachable
-///   cell (the user OQ-5 ruling), pooled + mutated in place.
-///
-/// Both are gated `run_if(resource_exists::<BattleInProgress>)` — the sim's live-battle
-/// witness, the same gate the highlight draw uses (the inert-pre-battle requirement,
-/// `bevy-traps.md` #1). They need NO render resource (a solid-tint sprite + a `Text2d`, not an
-/// atlas tile) and the always-present `init_resource`-d [`ReachableOverlay`] + [`ActiveLevel`]
-/// resources, so the battle gate alone is sufficient. They are ordered `.after(present_fog)`
-/// (and so transitively after the terrain / ganger / highlight draws) so the overlay
-/// composites OVER the fogged battlefield — it is the topmost within-storey band
-/// ([`Layer::ReachableOverlay`]).
-fn register_reachable_overlay_systems(app: &mut App) {
-    app.add_systems(
-        Update,
-        (draw_reachable_overlay, draw_reachable_labels)
-            .in_set(PresenterSystems::Draw)
-            .after(present_fog)
-            .run_if(resource_exists::<BattleInProgress>),
-    );
-}
-
-/// Registers the GTW-358 route path-preview DRAW system into the already-defined
+/// Registers the GTW-358 / GTW-368 route path-preview DRAW system into the already-defined
 /// [`PresenterSystems::Draw`] band.
 ///
 /// The PRESENTER owns the [`PathPreview`] read-seam (`init_resource`-d on build above) plus
 /// this draw system; the INPUT crate POPULATES the resource by calling
 /// [`find_path`](gdtf_battle_sim::find_path) for the selected ganger → the target — the
-/// [`ReachableOverlay`] precedent, where the presenter DEFINES the type and input WRITES it,
+/// [`HighlightRequest`] precedent, where the presenter DEFINES the type and input WRITES it,
 /// keeping the `input → presenter → sim` direction (never a cycle).
 ///
 /// [`draw_path_preview`] draws each route step on the active storey with a pooled,
 /// mutated-in-place [`Sprite`] (never despawn-respawned), §53-dimmed on a squad-EXPLORED
 /// (remembered) step, plus a MINIMAL marker at the cell where the route leaves the active
 /// storey (the C5 off-storey-continuation placeholder; the full cross-storey indicator is the
-/// GTW-359 soft dep).
+/// GTW-359 soft dep) AND the GTW-368 SINGLE TU-cost [`Text2d`] label at the previewed TARGET
+/// cell (the route's last cell), mutated in place + hidden when the preview is empty.
 ///
 /// Gated `run_if(resource_exists::<BattleInProgress>)` — the sim's live-battle witness, the
-/// same gate the highlight / reachable-overlay draws use (the inert-pre-battle requirement,
-/// `bevy-traps.md` #1) — AND `resource_exists::<SquadVisibility>` (the §53 VISIBLE-vs-EXPLORED
-/// read: the fog sets are inserted by the sim's `setup_battle`, absent in a focused harness
-/// that opens `BattleInProgress` directly; without this guard the `Res<SquadVisibility>` param
-/// would panic validation — the [`present_fog`] precedent). It needs NO render resource (a
-/// solid-tint sprite, not an atlas tile) and the always-present `init_resource`-d
-/// [`PathPreview`] + [`ActiveLevel`]. It is ordered `.after(present_fog)` and
-/// `.after(draw_reachable_overlay)` so the route composites OVER the fogged battlefield and
-/// beneath the reachable wash (the [`Layer::PathPreview`](crate::Layer) band sits below
-/// [`Layer::ReachableOverlay`](crate::Layer)).
+/// same gate the highlight draw uses (the inert-pre-battle requirement, `bevy-traps.md` #1) —
+/// AND `resource_exists::<SquadVisibility>` (the §53 VISIBLE-vs-EXPLORED read: the fog sets are
+/// inserted by the sim's `setup_battle`, absent in a focused harness that opens
+/// `BattleInProgress` directly; without this guard the `Res<SquadVisibility>` param would panic
+/// validation — the [`present_fog`] precedent). It needs NO render resource (a solid-tint sprite
+/// and a `Text2d`, not an atlas tile) and the always-present `init_resource`-d [`PathPreview`]
+/// and [`ActiveLevel`]. It is ordered `.after(present_fog)` so the route composites OVER the
+/// fogged battlefield — the route preview is the topmost within-storey band
+/// ([`Layer::PathPreview`](crate::Layer)).
 fn register_path_preview_systems(app: &mut App) {
     app.add_systems(
         Update,
         draw_path_preview
             .in_set(PresenterSystems::Draw)
             .after(present_fog)
-            .after(draw_reachable_overlay)
             .run_if(
                 resource_exists::<BattleInProgress>.and_then(resource_exists::<SquadVisibility>),
             ),

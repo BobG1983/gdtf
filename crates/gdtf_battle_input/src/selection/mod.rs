@@ -59,7 +59,6 @@ mod auto_select;
 mod decision;
 mod highlight;
 mod path_preview;
-mod reachable;
 mod resources;
 mod systems;
 
@@ -70,6 +69,5 @@ pub use decision::{
 };
 pub use highlight::update_selection_highlight;
 pub use path_preview::{PathPreviewTarget, PreviewGrids, populate_path_preview};
-pub use reachable::populate_reachable_overlay;
 pub use resources::{SelectedShooter, SelectionHighlight};
 pub use systems::{left_click_act, right_click_turn_to_face};

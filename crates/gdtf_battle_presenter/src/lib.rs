@@ -59,7 +59,6 @@ pub mod fx;
 pub mod ganger;
 pub mod highlight;
 pub mod path_preview;
-pub mod reachable;
 pub mod targeting_gate;
 pub mod terrain;
 pub mod topdown;
@@ -85,14 +84,10 @@ pub use ganger::{
     update_ganger_life_state,
 };
 pub use highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request};
-pub use path_preview::{PathPreview, PathStepSprite, draw_path_preview};
+pub use path_preview::{PathPreview, PathStepSprite, PathTargetLabel, draw_path_preview};
 pub use plugin::{
     BattlePresenterMode, BattlePresenterPlugin, IsoRendererPlugin, TopDownRendererActive,
     TopDownRendererPlugin,
-};
-pub use reachable::{
-    LabelPool, ReachableLabel, ReachableOverlay, ReachableTint, draw_reachable_labels,
-    draw_reachable_overlay,
 };
 pub use targeting_gate::{CellVisibility, cell_squad_visible};
 pub use terrain::{

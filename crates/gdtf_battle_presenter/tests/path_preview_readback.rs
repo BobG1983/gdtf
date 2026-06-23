@@ -1,23 +1,26 @@
-//! GTW-358 (C7, pixel proof): PIXEL-level proof that the path-preview route STEP sprite
-//! actually renders NON-DARK at a route cell and DARK where no step is drawn.
+//! GTW-358 / GTW-368 (C5 / C7, pixel proof): PIXEL-level proof that the path-preview route STEP
+//! sprite actually renders NON-DARK at a route cell and DARK where no step is drawn.
 //!
 //! The green suite + the headless `path_preview.rs` state test prove the draw LOGIC (the right
-//! entity is `Visible` at the right cell), but a `Visible`, correctly-positioned sprite can
-//! still draw ZERO pixels (`bevy-traps.md` #8). This test closes that gap the
-//! `reachable_overlay_readback.rs` way — a real-GPU headless render-to-texture readback: it
-//! renders a `PathStepSprite`-style sprite over a KNOWN dark clear colour to an offscreen
-//! `Image`, reads the centre pixel back off the GPU, and asserts:
+//! entity is `Visible` at the right cell — including the GTW-368 target-cost `Text2d` label),
+//! but a `Visible`, correctly-positioned sprite can still draw ZERO pixels (`bevy-traps.md` #8).
+//! This test closes that gap with a real-GPU headless render-to-texture readback: it renders a
+//! `PathStepSprite`-style sprite over a KNOWN dark clear colour to an offscreen `Image`, reads
+//! the centre pixel back off the GPU, and asserts:
 //!
 //! - with the step sprite present, the rendered centre is NON-DARK (the warm-amber route trail
 //!   composited over the dark clear) — a drawn route cell;
 //! - with NO step sprite (the cleared / off-route case), the rendered centre is the DARK clear
 //!   colour — an off-route cell is dark.
 //!
-//! POSITIVE — it NAMES the route-vs-off-route cases and asserts the pixel actually changes.
+//! POSITIVE — it NAMES the route-vs-off-route cases and asserts the pixel actually changes. The
+//! GTW-368 target-cost LABEL's positive in-engine proof is the headless `path_preview.rs` state
+//! test (it drives the REAL `TopDownRendererPlugin` draw path and asserts the single
+//! `PathTargetLabel` `Text2d` is `Visible` at the NAMED target cell reading the route cost, and
+//! is hidden with no target).
 //!
-//! Environment: needs a real GPU adapter (Metal on macOS). Single-threaded (a shared GPU lock,
-//! the `reachable_overlay_readback.rs` precedent). No adapter (a GPU-less CI runner) → the
-//! harness SKIPS with a logged note rather than failing.
+//! Environment: needs a real GPU adapter (Metal on macOS). Single-threaded (a shared GPU lock).
+//! No adapter (a GPU-less CI runner) → the harness SKIPS with a logged note rather than failing.
 
 use std::sync::{Mutex, MutexGuard};
 
@@ -60,7 +63,7 @@ struct CapturedPixel {
     rgba:     [u8; 4],
 }
 
-/// Serialises the real-GPU tests in this binary (the `reachable_overlay_readback.rs` precedent).
+/// Serialises the real-GPU tests in this binary (one Metal device init at a time).
 static GPU_LOCK: Mutex<()> = Mutex::new(());
 
 /// Take the process-wide GPU lock, recovering from a poisoned mutex.
