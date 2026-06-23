@@ -2,11 +2,12 @@
 // don't turn a hit harder than baseline, they simply refuse to give: by a wide margin
 // the deepest integrity on the wheel. It endures where lighter suits tear open —
 // you'll be bleeding long before the suit does.
+// GTW-374 re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
 (
-    head:      (floor: 1, protection: 6, integrity: 90,  hardness: 3, armor_type: Void),
-    torso:     (floor: 1, protection: 8, integrity: 110, hardness: 3, armor_type: Void),  // top integrity on the wheel — layered to last
-    left_arm:  (floor: 0, protection: 4, integrity: 80,  hardness: 2, armor_type: Void),
-    right_arm: (floor: 0, protection: 4, integrity: 80,  hardness: 2, armor_type: Void),
-    left_leg:  (floor: 0, protection: 5, integrity: 90,  hardness: 2, armor_type: Void),
-    right_leg: (floor: 0, protection: 5, integrity: 90,  hardness: 2, armor_type: Void),
+    head:      (floor: 0, protection: 3, integrity: 90,  hardness: 1, armor_type: Void),
+    torso:     (floor: 0, protection: 4, integrity: 110, hardness: 1, armor_type: Void),  // top integrity on the wheel — layered to last
+    left_arm:  (floor: 0, protection: 2, integrity: 80,  hardness: 1, armor_type: Void),
+    right_arm: (floor: 0, protection: 2, integrity: 80,  hardness: 1, armor_type: Void),
+    left_leg:  (floor: 0, protection: 2, integrity: 90,  hardness: 1, armor_type: Void),
+    right_leg: (floor: 0, protection: 2, integrity: 90,  hardness: 1, armor_type: Void),
 )

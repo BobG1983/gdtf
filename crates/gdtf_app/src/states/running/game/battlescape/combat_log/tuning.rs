@@ -462,6 +462,9 @@ pub(crate) fn redrive_combat_log_tuning_on_asset_event(
         return;
     };
     *tuning = **updated;
+    // GTW-374 Part C: log EVERY hot-reload path naming what reloaded, so a live edit can be
+    // traced (mirrors the theme / FX / pan / B1-B3 handlers).
+    info!("combat-log hot-reload: re-derived CombatLogTuning from `tiles/combat_log.ron`");
 }
 
 #[cfg(test)]

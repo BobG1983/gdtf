@@ -1,11 +1,12 @@
 // ceramic_insert — brittle-hard trauma plates slotted over the vitals. The
 // hardest material on the wheel turns the worst of a hit, but ceramic shatters:
 // it rides the lowest integrity by a wide margin. It bites back once, then it's gone.
+// GTW-374 re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
 (
-    head:      (floor: 1, protection: 6, integrity: 25, hardness: 6, armor_type: Ceramic),  // top hardness on the wheel — the plate blunts the hit
-    torso:     (floor: 1, protection: 8, integrity: 30, hardness: 6, armor_type: Ceramic),  // hardened trauma plate over the core
-    left_arm:  (floor: 0, protection: 4, integrity: 20, hardness: 5, armor_type: Ceramic),  // cracks fast off the core
-    right_arm: (floor: 0, protection: 4, integrity: 20, hardness: 5, armor_type: Ceramic),
-    left_leg:  (floor: 0, protection: 5, integrity: 20, hardness: 5, armor_type: Ceramic),
-    right_leg: (floor: 0, protection: 5, integrity: 20, hardness: 5, armor_type: Ceramic),
+    head:      (floor: 0, protection: 3, integrity: 25, hardness: 3, armor_type: Ceramic),  // top hardness on the wheel — the plate blunts the hit
+    torso:     (floor: 0, protection: 4, integrity: 30, hardness: 3, armor_type: Ceramic),  // hardened trauma plate over the core
+    left_arm:  (floor: 0, protection: 2, integrity: 20, hardness: 2, armor_type: Ceramic),  // cracks fast off the core
+    right_arm: (floor: 0, protection: 2, integrity: 20, hardness: 2, armor_type: Ceramic),
+    left_leg:  (floor: 0, protection: 2, integrity: 20, hardness: 2, armor_type: Ceramic),
+    right_leg: (floor: 0, protection: 2, integrity: 20, hardness: 2, armor_type: Ceramic),
 )

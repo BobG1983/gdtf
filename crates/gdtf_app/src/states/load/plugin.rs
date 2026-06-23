@@ -63,6 +63,7 @@ impl Plugin for LoadScenePlugin {
             // the weapon loader does. Registered here in `build` BEFORE the kick-off's
             // `load_folder("armor")` runs.
             app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
+            add_hot_reload_systems(app);
         }
         add_systems(app);
     }
@@ -118,4 +119,27 @@ fn add_systems(app: &mut App) {
             .chain(),
     )
     .add_systems(OnExit(AppState::Load), (print_on_exit, cleanup).chain());
+}
+
+/// GTW-374: register the three LIVE combat-data hot-reload handlers in an UNGATED
+/// `Update` so they react to a `combat/tuning.ron` / `weapons/*.weapon.ron` /
+/// `armor/*.armor.ron` file edit AFTER `Load` has exited (the data persists, the
+/// `LoadHandles` do not — hence the persistent `Active*Handle` resources each handler
+/// reads). Each handler self-guards on its `Option`al borrows (`bevy-traps.md` #1), so
+/// it is a harmless no-op until the load chain has resolved the resource it re-derives.
+///
+/// Called only inside the `AssetServer`-present guard: the
+/// `Messages<AssetEvent<RonAsset<T>>>` buffers these `MessageReader`s need are
+/// registered by `init_ron_asset` (above), so a `MinimalPlugins` headless app that
+/// skips the loader registration also skips these systems (`bevy-traps.md` #4 — a
+/// `MessageReader` panics validation without its buffer).
+fn add_hot_reload_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        (
+            redrive_combat_tuning_on_asset_event,
+            redrive_weapons_on_asset_event,
+            redrive_armor_on_asset_event,
+        ),
+    );
 }
