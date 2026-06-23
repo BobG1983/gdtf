@@ -32,12 +32,13 @@ use bevy::{
     app::App,
     camera::{
         Camera, ComputedCameraValues, OrthographicProjection, Projection, RenderTargetInfo,
-        Viewport, primitives::Frustum,
+        Viewport, primitives::Frustum, visibility::InheritedVisibility,
     },
     input::ButtonInput,
     math::{URect, UVec2, Vec2},
     prelude::*,
     transform::components::GlobalTransform,
+    ui::{ComputedNode, UiGlobalTransform},
     window::{PrimaryWindow, Window, WindowResolution},
 };
 use gdtf_app::test_support::{AppState, GameState, RunningState};
@@ -650,5 +651,95 @@ fn click_in_the_bottom_margin_resolves_none_and_does_not_move() {
     assert!(
         move_requests(&app).is_empty(),
         "a left-click in the bottom margin must emit NO MoveRequested (no move through the UI)",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-380 (panel click-through) — the UI ABSORBS clicks over its own nodes: a cursor
+// over a HUD panel (an absolute OVERLAY drawn INSIDE the world viewport, so the GTW-286
+// viewport gate does NOT exclude it) resolves `InspectTarget` to None, so the board
+// cell-picker / move never sees the click. Pin-discriminating: the SAME cursor WITHOUT a
+// panel under it still moves (proving the gate suppresses only the over-UI case, not the
+// in-viewport board click).
+// ---------------------------------------------------------------------------------
+
+/// Spawns a synthetic VISIBLE UI panel covering the screen rect `center ± size/2`
+/// (PHYSICAL px; `scale_factor` is `1.0` here so logical == physical). Under
+/// `MinimalPlugins` there is NO `ui_layout_system` to compute these, so the test body
+/// synthesizes the EXACT three components the over-UI gate hit-tests — `ComputedNode`
+/// (its `size`), `UiGlobalTransform` (its screen-space center), and `InheritedVisibility`
+/// — mirroring how `synthetic_camera` hand-builds a camera with no render pipeline (the
+/// accepted headless idiom, `bevy-traps.md` #7 carve-out (a)). It deliberately carries NO
+/// `Interaction`, exactly like the real bare-`Node` status / inspect panels, so the test
+/// proves the gate catches panels an `Interaction`-only check would MISS.
+fn spawn_ui_panel(app: &mut App, center: Vec2, size: Vec2) {
+    app.world_mut().spawn((
+        ComputedNode {
+            size,
+            ..ComputedNode::default()
+        },
+        UiGlobalTransform::from_translation(center),
+        InheritedVisibility::VISIBLE,
+    ));
+}
+
+/// GTW-380 — a TWO-CLICK over a HUD panel (an overlay INSIDE the viewport) is ABSORBED:
+/// `InspectTarget` resolves to None and NO `MoveRequested` is emitted, even though the
+/// cursor is over a valid in-grid, in-viewport cell that would otherwise MOVE. The SAME
+/// cursor with NO panel under it (the `two_click_inside_the_viewport_resolves_a_cell_and_moves`
+/// sibling) DOES move — so this is pin-discriminating: it fails (the click falls through to a
+/// MOVE) without the over-UI gate, and passes with it.
+#[test]
+fn two_click_over_a_panel_is_absorbed_and_does_not_move() {
+    let level = Level::new(0);
+    let mut app = move_path_app(level);
+
+    // The SAME in-viewport, in-grid cursor the moving sibling test uses (offset down+right
+    // of the viewport centre so it lands on a non-origin in-grid cell).
+    let viewport_centre = VIEWPORT_RECT.center().as_vec2();
+    let cursor = viewport_centre + Vec2::new(20.0, 16.0);
+
+    // Confirm the premise: this cursor IS inside the viewport rect AND its world point floors
+    // to an in-grid cell (so the GTW-286 viewport gate does NOT suppress it — only the GTW-380
+    // panel gate can). Otherwise the test would pass for the wrong reason.
+    assert!(
+        VIEWPORT_RECT.as_rect().contains(cursor),
+        "the chosen cursor must lie INSIDE the viewport rect (so only the panel gate suppresses it)",
+    );
+    let world = unproject(&mut app, cursor);
+    let Some(world) = world else {
+        unreachable!("the synthetic camera must unproject the in-viewport cursor");
+    };
+    assert!(
+        world_to_cell(world, level).is_some(),
+        "the chosen cursor's world point must floor to an IN-GRID cell (world {world:?}) — \
+         so without the panel it WOULD move",
+    );
+
+    // A VISIBLE UI panel centered on the cursor (200x120 px), covering it — the HUD overlay.
+    spawn_ui_panel(&mut app, cursor, Vec2::new(200.0, 120.0));
+
+    // Update 1: the picker must resolve the over-panel cursor to None (UI absorbs it).
+    set_cursor(&mut app, Some(cursor));
+    app.update();
+    assert_eq!(
+        hovered(&app),
+        None,
+        "a cursor over a HUD panel must resolve InspectTarget to None — the UI absorbs the \
+         click (GTW-380), even though the cell underneath is in-grid + in-viewport",
+    );
+
+    // Update 2 + 3: a two-click over the panel finds nothing hovered -> no MOVE through the UI.
+    // (GTW-356: even the two-click target-then-commit never fires, because the gate resolves the
+    // over-panel cursor to None so click-1 can never set a target.)
+    press_left(&mut app);
+    app.update();
+    clear_mouse(&mut app);
+    press_left(&mut app);
+    app.update();
+    assert!(
+        move_requests(&app).is_empty(),
+        "a left-click over a HUD panel must emit NO MoveRequested — the click must not fall \
+         through to the board (GTW-380)",
     );
 }

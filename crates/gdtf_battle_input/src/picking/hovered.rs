@@ -136,38 +136,99 @@ impl InspectTarget {
     }
 }
 
+/// A read-only view of one UI node's screen geometry — its [`ComputedNode`] (size + border
+/// radius), its [`UiGlobalTransform`] (screen-space placement), and its [`InheritedVisibility`]
+/// (whether it actually renders) — the EXACT three inputs `bevy_ui`'s own `ui_focus_system`
+/// hit-tests the cursor against (GTW-380).
+///
+/// The cursor-over-UI gate ([`cursor_over_ui`]) iterates this query and tests cursor containment
+/// with [`ComputedNode::contains_point`] (the same call `ui_focus_system` makes), skipping any
+/// node with a hidden [`InheritedVisibility`]. Grouping the three components into one
+/// [`QueryData`](bevy::ecs::query::QueryData) keeps [`pick_hovered_cell`]'s parameter list tidy
+/// and names the hit-test's inputs in one place.
+#[derive(bevy::ecs::query::QueryData)]
+pub struct UiNodeHit {
+    /// The node's computed size + border radius — the rect the cursor is tested against.
+    node:       &'static ComputedNode,
+    /// The node's screen-space placement (physical px) — the rect's position / rotation.
+    transform:  &'static UiGlobalTransform,
+    /// Whether the node actually renders — a hidden node never absorbs a click.
+    visibility: &'static InheritedVisibility,
+}
+
+/// Whether the (physical-px) `cursor` falls over ANY visible UI node — the GTW-380
+/// click-absorption gate.
+///
+/// Iterates every UI node ([`UiNodeHit`]) and returns `true` as soon as one VISIBLE node
+/// contains the cursor, using the SAME [`ComputedNode::contains_point`] test `bevy_ui`'s
+/// `ui_focus_system` uses (so a click the HUD would consume agrees with this gate). Hidden nodes
+/// (a `false` [`InheritedVisibility`]) are skipped — they draw nothing, so they absorb nothing.
+///
+/// Panel-agnostic by construction: it queries the BUILT-IN [`ComputedNode`] every UI node carries
+/// rather than any app-crate panel marker (the dep edge is `input -> presenter -> sim`, so the
+/// input crate cannot — and must not — name `gdtf_app`'s panel roots). So it catches the bare
+/// `Node` panels (the status / inspect panels, which carry NO [`Interaction`], so a
+/// `Query<&Interaction>` would MISS them) just as it catches the action-bar buttons.
+///
+/// `cursor` is PHYSICAL px to match [`ComputedNode`] / [`UiGlobalTransform`] (both physical),
+/// exactly as `ui_focus_system` feeds it `window.physical_cursor_position()`.
+fn cursor_over_ui(ui_nodes: &Query<UiNodeHit>, cursor: Vec2) -> bool {
+    ui_nodes
+        .iter()
+        .any(|hit| hit.visibility.get() && hit.node.contains_point(*hit.transform, cursor))
+}
+
 /// Writes [`InspectTarget`]'s LIVE hovered cell from the ACTIVE pointer's cursor every update
-/// (GTW-259 / GTW-300).
+/// (GTW-259 / GTW-300), UNLESS the pointer is over the HUD (GTW-380).
 ///
 /// Reads the single [`WorldCamera`](gdtf_battle_presenter::WorldCamera) (its [`Camera`] +
 /// [`GlobalTransform`]), the presenter's [`ActiveLevel`], the last-moved-wins
 /// [`ActivePointer`], the primary window (for the OS cursor in
-/// [`Mouse`](ActivePointer::Mouse) mode), and the [`GamepadCursor`] (for
-/// [`Gamepad`](ActivePointer::Gamepad) mode); CHOOSES the active cursor ([`active_cursor`]);
-/// unprojects it with [`Camera::viewport_to_world_2d`]; floors the world point into a cell
-/// via [`world_to_cell`]; and sets the hovered cell to `Some(..)` only when the cell is in `0..60`
-/// on both axes — otherwise `None`. It writes ONLY the hovered cell (via
-/// [`set_hovered`](InspectTarget::set_hovered)); the pin is never touched here.
+/// [`Mouse`](ActivePointer::Mouse) mode), the [`GamepadCursor`] (for
+/// [`Gamepad`](ActivePointer::Gamepad) mode), and EVERY UI node's [`ComputedNode`] geometry (the
+/// GTW-380 over-UI gate); CHOOSES the active cursor ([`active_cursor`]); unprojects it with
+/// [`Camera::viewport_to_world_2d`]; floors the world point into a cell via [`world_to_cell`]; and
+/// sets the hovered cell to `Some(..)` only when the cell is in `0..60` on both axes — otherwise
+/// `None`. It writes ONLY the hovered cell (via [`set_hovered`](InspectTarget::set_hovered)); the
+/// pin is never touched here.
+///
+/// GTW-380 — the UI ABSORBS clicks over its own nodes: when the active cursor is over ANY visible
+/// UI node ([`cursor_over_ui`]), the hovered cell resolves to `None`, so the board click decision
+/// (which keys off [`InspectTarget::hovered`]) and the hover reticle (which keys off the same cell)
+/// both see "nothing under the cursor" — the click NEVER reaches the board cell-picker. The bare
+/// `Node` HUD panels carry no [`Interaction`], so this hit-tests the built-in [`ComputedNode`]
+/// geometry rather than `Interaction`; it complements (does not replace) the GTW-286 map-viewport
+/// gate, which only excludes the area OUTSIDE the world viewport (the panels are absolute overlays
+/// drawn INSIDE it, so they slip through the viewport gate — this is the bug GTW-380 fixes).
 ///
 /// The GTW-251 [`emit_highlight_request`](crate::emit_highlight_request) then makes the
 /// hover-highlight follow whichever cursor is active.
 ///
 /// Fail-closed (sets the hovered cell to `None`, NEVER panics) when: there is not EXACTLY one
-/// world camera; there is no active cursor (the OS cursor is off-window in `Mouse` mode);
-/// `viewport_to_world_2d` returns [`Err`]; or the computed cell is OUTSIDE the grid. The
-/// [`Result`] / [`Option`] are handled with `let else` (`bevy-traps.md` #7 — param-only, no
-/// `&mut World`). Ordered `.after(move_gamepad_cursor)` (which writes the gamepad cursor +
-/// the active pointer) so it reads this update's resolved pointer.
+/// world camera; there is no active cursor (the OS cursor is off-window in `Mouse` mode); the
+/// cursor is over the HUD (GTW-380); `viewport_to_world_2d` returns [`Err`]; or the computed cell
+/// is OUTSIDE the grid. The [`Result`] / [`Option`] are handled with `let else` (`bevy-traps.md`
+/// #7 — param-only, no `&mut World`). Ordered `.after(move_gamepad_cursor)` (which writes the
+/// gamepad cursor + the active pointer) so it reads this update's resolved pointer; `ui_focus_system`
+/// already wrote each node's `ComputedNode` / `UiGlobalTransform` in `PreUpdate`, so the over-UI
+/// gate reads this frame's settled geometry.
 pub fn pick_hovered_cell(
     cameras: Query<(&Camera, &GlobalTransform), With<gdtf_battle_presenter::WorldCamera>>,
     windows: Query<&Window, With<PrimaryWindow>>,
+    ui_nodes: Query<UiNodeHit>,
     active_level: Res<ActiveLevel>,
     active: Res<ActivePointer>,
     gamepad_cursor: Res<GamepadCursor>,
     mut target: ResMut<InspectTarget>,
 ) {
-    let resolved =
-        resolve_hovered_cell(&cameras, &windows, **active_level, *active, *gamepad_cursor);
+    let resolved = resolve_hovered_cell(
+        &cameras,
+        &windows,
+        &ui_nodes,
+        **active_level,
+        *active,
+        *gamepad_cursor,
+    );
     // Write only on a real change so a no-op rewrite does not spuriously trip
     // `Changed<InspectTarget>`.
     if target.hovered() != resolved {
@@ -203,18 +264,27 @@ fn active_cursor(
 /// for every fail-closed case so the caller simply stores it.
 ///
 /// GTW-286 — the cursor is GATED to the map viewport BEFORE unprojection: if it is outside the
-/// [`Camera::logical_viewport_rect`] (a margin / a UI panel), or there is no viewport rect at
+/// [`Camera::logical_viewport_rect`] (a margin), or there is no viewport rect at
 /// all, the helper returns [`None`] (no hovered cell). Without this gate
 /// [`Camera::viewport_to_world_2d`] linearly EXTRAPOLATES a cursor outside the viewport into a
-/// valid in-grid world point, so a click over the action-bar margin would floor to an in-grid
+/// valid in-grid world point, so a click over the bottom-bar margin would floor to an in-grid
 /// cell and emit a MOVE/select/fire through the UI; the hover reticle keys off the SAME
-/// hovered cell, so the one gate also suppresses the reticle under panels. Mirrors the GTW-271
-/// pan-path gate (`pan.rs`), and is fail-closed the same way (no rect → `None`). The cursor and
-/// the rect are BOTH logical px (the gamepad software cursor flows through here too, also
-/// logical), so the containment test is consistent.
+/// hovered cell, so the one gate also suppresses the reticle under that margin. Mirrors the
+/// GTW-271 pan-path gate (`pan.rs`), and is fail-closed the same way (no rect → `None`). The
+/// cursor and the rect are BOTH logical px (the gamepad software cursor flows through here too,
+/// also logical), so the containment test is consistent.
+///
+/// GTW-380 — the cursor is ALSO gated on pointer-over-UI ([`cursor_over_ui`]): the GTW-286
+/// viewport gate only excludes the area OUTSIDE the world viewport, but the HUD panels are
+/// absolute OVERLAYS drawn INSIDE it (only the bottom bar reduces the viewport), so a click on a
+/// panel passes the viewport gate and would fall through to the board. This gate hit-tests the
+/// active cursor against every visible UI node's [`ComputedNode`] geometry (PHYSICAL px, so the
+/// logical cursor is scaled up by the window `scale_factor`) and returns [`None`] when the cursor
+/// is over ANY panel — so the UI absorbs the click and the board never sees it.
 fn resolve_hovered_cell(
     cameras: &Query<(&Camera, &GlobalTransform), With<gdtf_battle_presenter::WorldCamera>>,
     windows: &Query<&Window, With<PrimaryWindow>>,
+    ui_nodes: &Query<UiNodeHit>,
     level: Level,
     active: ActivePointer,
     gamepad_cursor: GamepadCursor,
@@ -228,12 +298,19 @@ fn resolve_hovered_cell(
         return None;
     };
     // The active pointer's cursor (OS cursor in Mouse mode, gamepad cursor in Gamepad mode),
-    // else fail-closed (the OS cursor is off-window).
+    // else fail-closed (the OS cursor is off-window). LOGICAL px.
     let cursor = active_cursor(window, active, gamepad_cursor)?;
-    // GTW-286 — gate to the map viewport: a cursor over a margin / UI panel (outside the
-    // viewport rect), or no rect at all, yields no hovered cell (fail-closed, matching the
-    // GTW-271 pan path). This single chokepoint stops move/select/fire AND the reticle from
-    // reaching through the UI, and covers the gamepad software cursor too (both are logical px).
+    // GTW-380 — UI ABSORBS clicks over its own nodes: if the cursor is over any visible HUD
+    // panel/button, resolve to no hovered cell so the board click + reticle never reach through
+    // it. The over-UI test uses `ComputedNode` geometry, which is PHYSICAL px, so the logical
+    // cursor is scaled to physical by the window `scale_factor` to match `ui_focus_system`.
+    if cursor_over_ui(ui_nodes, cursor * window.scale_factor()) {
+        return None;
+    }
+    // GTW-286 — gate to the map viewport: a cursor over a margin (outside the viewport rect),
+    // or no rect at all, yields no hovered cell (fail-closed, matching the GTW-271 pan path).
+    // This single chokepoint stops move/select/fire AND the reticle from reaching through the
+    // bottom-bar margin, and covers the gamepad software cursor too (both are logical px).
     // `logical_viewport_rect()` is `None` (e.g. headless before `camera_system`) -> fail-closed.
     let viewport = camera.logical_viewport_rect()?;
     if !viewport.contains(cursor) {
