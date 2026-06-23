@@ -1,0 +1,131 @@
+//! Repaints the status-panel **stability readout** bar from the selected shooter (GTW-345).
+//!
+//! [`update_stability_readout`] reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter),
+//! resolves it to the selected [`Entity`], assembles the sim [`Shooter`] borrow-view from the
+//! ganger's [`Stance`] / [`Aiming`] / [`Position`] / [`Facing`], resolves the wielded
+//! [`Stable`] tag (`ganger → Wields → the weapon entity → Stable`, the SAME resolution the
+//! sim fire path uses), reads the model [`CoverLedger`] + [`CombatTuning`], and calls the
+//! authoritative [`stability_for`] — re-deriving NONE of the §1a math. The returned
+//! [`ConeMult`] (the steadiness read) becomes a [`Steadiness`] and then a
+//! [`FillFraction`](gdtf_ui::FillFraction) at the bar boundary, fuller = steadier.
+//!
+//! Fail-closed (AC4): no selection, a selected entity lacking the shooter or weapon
+//! components, or [`CoverLedger`] / [`CombatTuning`] absent (a harness without them) →
+//! the bar shows the EMPTY state (zeroed), never stale data, never a panic.
+//!
+//! It runs in `Update` gated `run_if(resource_exists::<BattleInProgress>)`,
+//! `.after(InputSystems::Gather)` — mirroring
+//! [`update_status_panel`](super::super::update::update_status_panel) so it observes the same
+//! update's auto-select write to `SelectedShooter`.
+
+use bevy::{ecs::system::SystemParam, prelude::*};
+use gdtf_battle_input::SelectedShooter;
+use gdtf_battle_sim::{
+    Aiming, CoverLedger, Facing, Position, Shooter, Stable, Stance, Weapon, Wields, stability_for,
+    tuning::CombatTuning,
+};
+use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar};
+
+use crate::states::running::game::battlescape::status_panel::stability_readout::components::{
+    StabilityBar, Steadiness,
+};
+
+/// The selected shooter's stability-relevant ganger components, read in ONE query tuple
+/// (the `StatBlockData` wide-read precedent — keeps the read off clippy `type_complexity`).
+///
+/// These are exactly the four borrows the sim [`Shooter`] view is assembled from.
+type ShooterView<'a> = (&'a Stance, &'a Aiming, &'a Position, &'a Facing);
+
+/// The read-only queries the stability resolution touches, bundled as one [`SystemParam`]
+/// (the `StatBlockWidgets` / `RouteGrids` bundle precedent) so the system stays under clippy's
+/// argument-count gate.
+///
+/// The shooter's [`Shooter`]-view components, its [`Wields`] relationship, and the wielded
+/// weapon's [`Stable`] tag — every query disjoint (distinct component types), so they coexist
+/// with no `B0001` conflict.
+#[derive(SystemParam)]
+pub(in crate::states::running::game::battlescape::status_panel) struct ShooterReadQueries<'w, 's> {
+    /// The selected ganger's [`Shooter`]-view components (`Stance`/`Aiming`/`Position`/`Facing`).
+    shooters: Query<'w, 's, ShooterView<'static>>,
+    /// The ganger → weapon relationship (`ganger → Wields → the weapon entity`).
+    wields:   Query<'w, 's, &'static Wields>,
+    /// The wielded weapon's `stable` tag, read off the weapon entity.
+    weapons:  Query<'w, 's, &'static Stable, With<Weapon>>,
+}
+
+/// The bar-mutate queries the readout writes through, bundled as one [`SystemParam`] so the
+/// system stays under clippy's argument-count gate.
+///
+/// The single [`StabilityBar`] track, its `Children` (to find the fill child), and the
+/// [`ProgressBarFill`] width writer the `gdtf_ui` [`set_progress_bar`] helper mutates.
+#[derive(SystemParam)]
+pub(in crate::states::running::game::battlescape::status_panel) struct StabilityBarWriter<'w, 's> {
+    /// The status panel's single stability bar track.
+    bars:     Query<'w, 's, Entity, With<StabilityBar>>,
+    /// The bar track's children (its `ProgressBarFill` child).
+    children: Query<'w, 's, &'static Children>,
+    /// The `ProgressBarFill` width writer the `set_progress_bar` helper mutates.
+    fills:    Query<'w, 's, &'static mut Node, With<ProgressBarFill>>,
+}
+
+/// Repaints the stability readout bar from the current [`SelectedShooter`].
+///
+/// Assembles the [`Shooter`] borrow-view, resolves the wielded [`Stable`], reads the model
+/// [`CoverLedger`] + [`CombatTuning`], calls [`stability_for`] for the `(ConeMult, _)` pair,
+/// and mutates the [`StabilityBar`] fill to the [`Steadiness`] derived from the [`ConeMult`].
+/// Any missing piece (AC4) drives the EMPTY state. Param-only (`bevy-traps.md` #7): no
+/// `&mut World`.
+pub(in crate::states::running::game::battlescape::status_panel) fn update_stability_readout(
+    selected: Res<SelectedShooter>,
+    cover: Option<Res<CoverLedger>>,
+    tuning: Option<Res<CombatTuning>>,
+    reads: ShooterReadQueries,
+    mut writer: StabilityBarWriter,
+) {
+    // The status panel's single stability bar (exactly one in a live battle).
+    let Ok(bar) = writer.bars.single() else {
+        return;
+    };
+
+    // Fail-closed: resolve every input, defaulting to the EMPTY readout the moment any one
+    // is missing (no selection / not a shooter / unarmed / no cover ledger / no tuning).
+    let fraction = resolve_steadiness(*selected, cover.as_deref(), tuning.as_deref(), &reads)
+        .map_or(FillFraction::new(0.0), Steadiness::fill_fraction);
+
+    set_progress_bar(bar, fraction, &writer.children, &mut writer.fills);
+}
+
+/// Resolves the selected shooter's [`Steadiness`], or `None` when any input is missing.
+///
+/// The single fail-closed read path (AC4): returns the [`Steadiness`] derived from
+/// [`stability_for`]'s [`ConeMult`] only when there is a selection, it is a shooter
+/// (`Stance`/`Aiming`/`Position`/`Facing`), it wields a weapon carrying a [`Stable`] tag, and
+/// both the model [`CoverLedger`] and [`CombatTuning`] are present; any miss returns `None` so
+/// the caller paints the empty bar. Re-derives NONE of the §1a math — it only assembles the
+/// view + resolves `Stable` + reads the two resources + calls [`stability_for`].
+fn resolve_steadiness(
+    selected: SelectedShooter,
+    cover: Option<&CoverLedger>,
+    tuning: Option<&CombatTuning>,
+    reads: &ShooterReadQueries,
+) -> Option<Steadiness> {
+    let entity = (*selected)?;
+    let (stance, aiming, position, facing) = reads.shooters.get(entity).ok()?;
+    // Resolve `ganger → Wields → the weapon entity → Stable` (GTW-323, the fire path's
+    // resolution); an unarmed ganger / a weapon with no `Stable` tag fails closed here.
+    let weapon = reads.wields.get(entity).ok()?.weapon()?;
+    let stable = *reads.weapons.get(weapon).ok()?;
+    let cover = cover?;
+    let tuning = tuning?;
+
+    // Assemble the transient `Shooter` borrow-view (the `ShooterSnapshot::shooter_view`
+    // shape) and call the authoritative composer; take the `ConeMult` (the steadiness read).
+    let shooter = Shooter {
+        stance,
+        aiming,
+        position,
+        facing,
+    };
+    let (cone_mult, _recoil_growth) = stability_for(&shooter, stable, cover, tuning);
+    Some(Steadiness::from_cone_mult(cone_mult))
+}

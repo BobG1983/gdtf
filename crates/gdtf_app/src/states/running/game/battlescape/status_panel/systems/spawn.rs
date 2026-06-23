@@ -32,7 +32,10 @@ use gdtf_ui::{spawn_panel, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::{
     stat_block::spawn_stat_block,
-    status_panel::components::{StatusPanelRoot, StatusStatBlock},
+    status_panel::{
+        components::{StatusPanelRoot, StatusStatBlock},
+        stability_readout::spawn_stability_readout,
+    },
 };
 
 /// The status panel's **fixed** width as a fraction of the viewport WIDTH
@@ -106,6 +109,13 @@ pub(in crate::states::running::game::battlescape) fn spawn_status_panel(
     let block = spawn_stat_block(&mut commands, &theme, atlases.as_deref());
     commands.entity(block).insert(StatusStatBlock);
     commands.entity(root).add_children(&[block]);
+
+    // The GTW-345 stability readout: a sibling row UNDER the panel root (below the stat
+    // block), built empty — the update fills its bar from the selected shooter's steadiness.
+    // It is a SIBLING of the shared stat block (not inside it) because the stat block is
+    // reused by the inspect panel, whose hovered target is not necessarily a shooter.
+    let stability = spawn_stability_readout(&mut commands, &theme);
+    commands.entity(root).add_children(&[stability]);
 }
 
 /// Despawns the status panel on `OnExit(BattleScapeState::BattleRunning)`.

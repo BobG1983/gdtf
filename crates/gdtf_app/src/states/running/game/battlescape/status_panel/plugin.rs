@@ -29,8 +29,9 @@ use gdtf_battle_sim::BattleInProgress;
 
 use crate::states::{
     BattleScapeState,
-    running::game::battlescape::status_panel::systems::{
-        despawn_status_panel, spawn_status_panel, update_status_panel,
+    running::game::battlescape::status_panel::{
+        stability_readout::update_stability_readout,
+        systems::{despawn_status_panel, spawn_status_panel, update_status_panel},
     },
 };
 
@@ -47,12 +48,14 @@ impl Plugin for GameBattleScapeStatusPanelScenePlugin {
             )
             .add_systems(
                 Update,
-                update_status_panel
+                (update_status_panel, update_stability_readout)
                     // GTW-264 — run AFTER the input crate's `InputSystems::Gather` band, where
                     // the GTW-255 `auto_select_first_player_ganger` writes the initial
                     // `SelectedShooter`. Without this ordering the panel read `SelectedShooter`
                     // BEFORE auto-select filled it and painted the empty "no ganger selected"
-                    // state every frame (`bevy-traps.md` #3).
+                    // state every frame (`bevy-traps.md` #3). The GTW-345 stability readout
+                    // joins the same band — it reads the SAME `SelectedShooter` and repaints
+                    // its bar beside the stat block.
                     .after(InputSystems::Gather)
                     .run_if(resource_exists::<BattleInProgress>),
             );

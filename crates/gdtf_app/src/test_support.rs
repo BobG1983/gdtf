@@ -28,11 +28,12 @@ pub use crate::{
         InspectStatBlockHost, LevelDownButton, LevelUpButton, LoadedSituation, MenuTitle,
         ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
         OpenDoorButton, OptionsButton, QuitButton, ReloadButton, RunningState, ScenesPlugin,
-        StabilizeButton, StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
-        StanceStandingButton, StatFaction, StatHpBar, StatHpLabel, StatName, StatPortrait,
-        StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips,
-        TargetingHintText, WeaponContent, WeaponImage, WeaponItemButton, WeaponItemPanel,
-        WeaponMagazineText, WeaponNameText, WeaponPanelRoot, portrait_index_for_name,
+        StabilityBar, StabilizeButton, StanceControl, StanceKneelingButton, StancePanelRoot,
+        StanceProneButton, StanceStandingButton, StatFaction, StatHpBar, StatHpLabel, StatName,
+        StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
+        StatWoundsPips, TargetingHintText, WeaponContent, WeaponImage, WeaponItemButton,
+        WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+        portrait_index_for_name,
     },
 };
 

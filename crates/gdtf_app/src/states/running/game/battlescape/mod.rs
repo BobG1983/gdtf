@@ -61,6 +61,11 @@ crate::support_use! {
 
 mod status_panel;
 pub(in crate::states::running::game::battlescape) use status_panel::GameBattleScapeStatusPanelScenePlugin;
+// Test-support-only re-export of the status panel's GTW-345 stability-readout bar marker,
+// gated so the binary build is `unused`/`unreachable_pub`-clean (the stat-block marker
+// re-export chain precedent). The AC test names it through `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use!(status_panel::StabilityBar;);
 
 // The GTW-11 targeting fog HINT: a small battlescape-scoped Text node that reads the canon
 // "unseen — hold your fire" string when the targeted cell is NOT squad-VISIBLE (the VIEW arm of
