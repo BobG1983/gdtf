@@ -7,13 +7,14 @@
 // /tmp/terrain_labeled.png and confirmed before locking (DOOR + prop alts were
 // [UNVERIFIED] in the draft; DOOR 339 reads as a dark hatch/doorway panel, locked).
 (
-    floor:           144,    // default walkable ground — neutral grey plating (the S4 default floor)
+    floor:           6,     // default walkable ground — brighter grey plating (GTW-373: 144 read too dark, 6 is brighter)
     floor_alt_panel: 128,    // alt floor — bolted/riveted grey panel (future variety, matches floor 6's palette)
-    wall:            16,    // TerrainKind::Wall — solid heavy dark wall strip (blocking geometry)
+    wall:            0,     // TerrainKind::Wall — heavy dark wall strip (GTW-373: re-tiled 16 -> 0, blocking geometry)
     cover:           248,   // TerrainKind::Cover — chest-high crate/box cover prop on a floor cell
     slab:            22,    // SurfaceGrid Present slab — raised light-grey elevated deck panel
     rubble:          295,   // CoverDestroyed / damaged — sparse broken-debris scatter
     door:            339,   // doorway / hatch panel — dark hatch tile (authored for future variety)
-    stair:           77,    // VerticalLink Stair endpoint — staircase tile (LOCKED system constant, user OQ-3 ruling GTW-359)
-    ladder:          235,   // VerticalLink Ladder endpoint — ladder tile (LOCKED system constant, user OQ-3 ruling GTW-359)
+    stair_up:        29,    // VerticalLink Stair endpoint where you ASCEND (active storey is the link's LOWER cell). GTW-373 (user 2026-06-23) SUPERSEDES the GTW-359 OQ-3 single-stair:77 constant: the stair role is split into up/down, chosen by link direction
+    stair_down:      28,    // VerticalLink Stair endpoint where you DESCEND (active storey is the link's UPPER cell). GTW-373 (user 2026-06-23) SUPERSEDES the GTW-359 OQ-3 single-stair:77 constant: the stair role is split into up/down, chosen by link direction
+    ladder:          235,   // VerticalLink Ladder endpoint — ladder tile (UNCHANGED system constant, user OQ-3 ruling GTW-359)
 )

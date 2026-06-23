@@ -202,10 +202,11 @@ impl Plugin for TopDownRendererPlugin {
                     resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>),
                 ),
             )
-            // GTW-359 (AC4 / C2): the vertical-link (stair / ladder) cell draw. It reads the
-            // sim's `VerticalLinkGraph` + the presenter's `TileRoles` / `TopDownAtlases` and
-            // draws one stair (index 77) / ladder (index 235) tile per authored link endpoint
-            // on the active storey (the hard cut), pooled + mutated in place (C5). Gated on
+            // GTW-359 (AC4 / C2) + GTW-373: the vertical-link (stair / ladder) cell draw. It
+            // reads the sim's `VerticalLinkGraph` + the presenter's `TileRoles` /
+            // `TopDownAtlases` and draws one direction-keyed stair (up 29 / down 28) / ladder
+            // (235) tile per authored link endpoint on the active storey (the hard cut),
+            // pooled + mutated in place (C5). Gated on
             // `BattleInProgress` (the live-battle witness) AND on every resource it reads:
             // `VerticalLinkGraph` (inserted by the sim's setup_battle, absent in a focused
             // harness that opens BattleInProgress directly), `TileRoles`, and `TopDownAtlases`

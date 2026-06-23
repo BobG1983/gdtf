@@ -43,55 +43,109 @@ fn shipped_tile_roles_ron_parses_with_all_roles() {
     // The door role is documented; the struct parsing means it is present.
     let _ = roles.door;
     let _ = roles.floor_alt_panel;
-    // GTW-359 (C1): the stair / ladder indices are LOCKED SYSTEM CONSTANTS (user OQ-3
-    // ruling), not tunable magnitudes the engineer eyeballs — so asserting them is the
-    // locked-constant exemption, not a brittle magnitude pin. The shipped tile_roles.ron
-    // must resolve stair == 77 and ladder == 235.
+    // GTW-373 (the role -> index CONTRACT, the user's chosen mapping): floor/wall and the
+    // stair up/down split + ladder are SYSTEM CONSTANTS the user picked for this ticket
+    // (config/coordinate constants), not balance-tuning magnitudes the engineer eyeballs —
+    // so pinning them asserts the CONTRACT (the locked-constant carve-out), not a brittle
+    // tunable. The shipped tile_roles.ron must resolve these exact roles.
     assert_eq!(
-        *roles.stair, 77,
-        "the shipped tile_roles.ron must resolve the LOCKED stair index 77 (user OQ-3)",
+        *roles.floor, 6,
+        "the shipped tile_roles.ron must resolve floor == 6 (GTW-373)",
+    );
+    assert_eq!(
+        *roles.wall, 0,
+        "the shipped tile_roles.ron must resolve wall == 0 (GTW-373)",
+    );
+    assert_eq!(
+        *roles.stair_up, 29,
+        "the shipped tile_roles.ron must resolve stair_up == 29 (GTW-373, supersedes OQ-3 77)",
+    );
+    assert_eq!(
+        *roles.stair_down, 28,
+        "the shipped tile_roles.ron must resolve stair_down == 28 (GTW-373, supersedes OQ-3 77)",
     );
     assert_eq!(
         *roles.ladder, 235,
-        "the shipped tile_roles.ron must resolve the LOCKED ladder index 235 (user OQ-3)",
+        "the shipped tile_roles.ron must resolve the ladder index 235 (UNCHANGED, user OQ-3)",
     );
 }
 
-/// GTW-359 (C1) — the `TileRoles` field-set is DISCRIMINATING: a `tile_roles.ron` MISSING
-/// the new `stair` (or `ladder`) key, or RENAMING it, fails to deserialize.
+/// GTW-373 (C1) — the `TileRoles` field-set is DISCRIMINATING: a `tile_roles.ron` MISSING
+/// the new `stair_up` (or `stair_down` / `ladder`) key, or RENAMING it, fails to
+/// deserialize.
 ///
 /// This pins the struct's field-set 1:1 with the `.ron` keys (the round-trip above proves
 /// the shipped file parses; this proves the parse is not vacuous — dropping or renaming a
 /// required role IS rejected, so the field-set stays in lockstep with the data). It builds
-/// a complete authored body, then re-authors it MISSING the stair key (and separately with
-/// the stair key RENAMED) and asserts each fails.
+/// a complete authored body, then re-authors it MISSING the `stair_up` key (and separately
+/// with `stair_up` RENAMED) and asserts each fails — proving the GTW-373 split keys are
+/// each required, and that the OLD single `stair` key is no longer accepted.
 #[test]
 fn tile_roles_field_set_is_discriminating() {
-    // A complete authored body parses (the positive control).
+    // A complete authored body parses (the positive control) — the GTW-373 split keys.
     const COMPLETE: &str = "(\
-        floor: 144, floor_alt_panel: 128, wall: 16, cover: 248, slab: 22, rubble: 295, \
-        door: 339, stair: 77, ladder: 235)";
-    // MISSING the `stair` key — must fail (the field is required).
-    const MISSING_STAIR: &str = "(\
-        floor: 144, floor_alt_panel: 128, wall: 16, cover: 248, slab: 22, rubble: 295, \
-        door: 339, ladder: 235)";
-    // RENAMED `stair` -> `staircase` — must fail (the field-set is fixed, no unknown key
-    // substitutes for a required one).
-    const RENAMED_STAIR: &str = "(\
-        floor: 144, floor_alt_panel: 128, wall: 16, cover: 248, slab: 22, rubble: 295, \
-        door: 339, staircase: 77, ladder: 235)";
+        floor: 6, floor_alt_panel: 128, wall: 0, cover: 248, slab: 22, rubble: 295, \
+        door: 339, stair_up: 29, stair_down: 28, ladder: 235)";
+    // MISSING the `stair_up` key — must fail (the field is required).
+    const MISSING_STAIR_UP: &str = "(\
+        floor: 6, floor_alt_panel: 128, wall: 0, cover: 248, slab: 22, rubble: 295, \
+        door: 339, stair_down: 28, ladder: 235)";
+    // RENAMED `stair_up` -> `stair` (the OLD single-stair key) — must fail (the field-set
+    // is fixed; the superseded `stair` key no longer substitutes for the split role).
+    const RENAMED_STAIR_UP: &str = "(\
+        floor: 6, floor_alt_panel: 128, wall: 0, cover: 248, slab: 22, rubble: 295, \
+        door: 339, stair: 29, stair_down: 28, ladder: 235)";
 
     assert!(
         ron::de::from_str::<TileRoles>(COMPLETE).is_ok(),
         "a complete authored TileRoles body must parse",
     );
     assert!(
-        ron::de::from_str::<TileRoles>(MISSING_STAIR).is_err(),
-        "a TileRoles body missing the `stair` key must fail to deserialize",
+        ron::de::from_str::<TileRoles>(MISSING_STAIR_UP).is_err(),
+        "a TileRoles body missing the `stair_up` key must fail to deserialize",
     );
     assert!(
-        ron::de::from_str::<TileRoles>(RENAMED_STAIR).is_err(),
-        "a TileRoles body with `stair` renamed to `staircase` must fail to deserialize",
+        ron::de::from_str::<TileRoles>(RENAMED_STAIR_UP).is_err(),
+        "a TileRoles body with `stair_up` renamed to the old `stair` key must fail to deserialize",
+    );
+}
+
+/// GTW-373 (C4 (a)) — the shipped `tile_roles.ron` ROUND-TRIPS by IDENTITY: load ->
+/// serialize -> load yields a structurally identical `TileRoles`.
+///
+/// Proves the `Serialize`/`Deserialize` pair is a faithful inverse on the SHIPPED bytes
+/// (no field dropped, reordered into a different role, or re-typed by the re-emit), so the
+/// data table is a stable contract. Distinct from the magnitude-mapping assertions above:
+/// this checks STRUCTURE survives a serialize round-trip, those check the chosen indices.
+#[test]
+fn shipped_tile_roles_round_trips_by_identity() {
+    const SHIPPED: &str = include_str!("../../../../assets/tiles/tile_roles.ron");
+    let first: Result<TileRoles, _> = ron::de::from_str(SHIPPED);
+    assert!(
+        first.is_ok(),
+        "shipped tile_roles.ron must parse: {:?}",
+        first.as_ref().err(),
+    );
+    let Ok(first) = first else { return };
+    let reserialized = ron::ser::to_string(&first);
+    assert!(
+        reserialized.is_ok(),
+        "TileRoles must serialize back to RON: {:?}",
+        reserialized.as_ref().err(),
+    );
+    let Ok(reserialized) = reserialized else {
+        return;
+    };
+    let second: Result<TileRoles, _> = ron::de::from_str(&reserialized);
+    assert!(
+        second.is_ok(),
+        "the re-serialized TileRoles must parse back: {:?}",
+        second.as_ref().err(),
+    );
+    let Ok(second) = second else { return };
+    assert_eq!(
+        first, second,
+        "load -> serialize -> load must yield a structurally identical TileRoles",
     );
 }
 

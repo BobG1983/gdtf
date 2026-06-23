@@ -3,15 +3,16 @@
 
 use bevy::prelude::*;
 use gdtf_assets::RonAsset;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// An index into the terrain sheet's atlas layout — WHICH 16x16 tile a role draws.
 ///
 /// A named newtype over `usize` (no-bare-types: an atlas index is a domain value, not
 /// a bare `usize`), [`Deref`]ing to it so a consumer reads the index straight through.
 /// `#[serde(transparent)]` so an authored `tile_roles.ron` field parses as a bare
-/// integer (`floor: 6`), not a one-field struct.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// integer (`floor: 6`), not a one-field struct. [`Serialize`] (with the same
+/// transparency) lets the GTW-373 round-trip-identity test re-serialize a loaded table.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct TileIndex(usize);
 
@@ -36,10 +37,11 @@ impl TileIndex {
 /// index choices is hardcoded in Rust; this struct only names the ROLES.
 ///
 /// Derives [`Resource`] (the resolved runtime form), [`Deserialize`] (the authored
-/// `.ron` shape), and [`TypePath`] (the bound [`RonAsset<TileRoles>`] requires of its
-/// payload). The `floor_alt_*` / `door` fields are authored for future variety; the
-/// default S4 draw uses `floor` / `wall` / `cover` / `slab` / `rubble`.
-#[derive(Resource, Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
+/// `.ron` shape), [`Serialize`] (the GTW-373 round-trip-identity test re-emits a loaded
+/// table), and [`TypePath`] (the bound [`RonAsset<TileRoles>`] requires of its payload).
+/// The `floor_alt_*` / `door` fields are authored for future variety; the default S4 draw
+/// uses `floor` / `wall` / `cover` / `slab` / `rubble`.
+#[derive(Resource, Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct TileRoles {
     /// The default walkable-ground tile — in-range cells with no wall / cover / slab.
     pub floor:           TileIndex,
@@ -55,15 +57,27 @@ pub struct TileRoles {
     pub rubble:          TileIndex,
     /// A doorway / hatch tile (authored for future variety).
     pub door:            TileIndex,
-    /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Stair`-endpoint tile — a
-    /// staircase cell (atlas index `77`, a LOCKED system constant per the user OQ-3
-    /// ruling). Drawn at each stair link cell on the active storey by the GTW-359
-    /// link-cell draw.
-    pub stair:           TileIndex,
+    /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Stair`-endpoint tile drawn
+    /// where the active storey is the link's LOWER cell — i.e. you ASCEND from here
+    /// (atlas index `29`). GTW-373 (user ruling 2026-06-23) SUPERSEDES the GTW-359 OQ-3
+    /// single-`stair`-`77` constant: the stair role is split into [`stair_up`] /
+    /// [`stair_down`], chosen by link direction relative to the active storey (see
+    /// [`draw_vertical_links`](crate::draw_vertical_links)).
+    ///
+    /// [`stair_up`]: TileRoles::stair_up
+    /// [`stair_down`]: TileRoles::stair_down
+    pub stair_up:        TileIndex,
+    /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Stair`-endpoint tile drawn
+    /// where the active storey is the link's UPPER cell — i.e. you DESCEND from here
+    /// (atlas index `28`). The down-facing companion of [`stair_up`]; same GTW-373 split
+    /// of the former single `stair` role, chosen by link direction.
+    ///
+    /// [`stair_up`]: TileRoles::stair_up
+    pub stair_down:      TileIndex,
     /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Ladder`-endpoint tile — a
-    /// ladder cell (atlas index `235`, a LOCKED system constant per the user OQ-3
+    /// ladder cell (atlas index `235`, an UNCHANGED system constant per the user OQ-3
     /// ruling). Drawn at each ladder link cell on the active storey by the GTW-359
-    /// link-cell draw.
+    /// link-cell draw (a ladder is drawn the same tile both up and down).
     pub ladder:          TileIndex,
 }
 

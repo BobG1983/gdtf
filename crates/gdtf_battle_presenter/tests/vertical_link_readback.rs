@@ -1,6 +1,8 @@
-//! GTW-359 (C6 (a), pixel proof): PIXEL-level proof that the stair (index 77) and ladder
-//! (index 235) terrain tiles actually RENDER non-empty and DISTINCT — vs a no-link
-//! (no-sprite) baseline that renders the dark clear colour.
+//! GTW-373 (C4 (c), pixel proof): PIXEL-level proof that the stair-UP (index 29, the
+//! GTW-373 split that supersedes the OQ-3 single-stair 77) and ladder (index 235) terrain
+//! tiles actually RENDER non-empty and DISTINCT — vs a no-link (no-sprite) baseline that
+//! renders the dark clear colour. (Covering at least one stair direction — the ascend
+//! tile — proves the new split stair tile renders real pixels on the real GPU.)
 //!
 //! The green suite + the headless `vertical_link_draw.rs` state test prove the draw LOGIC
 //! (the right sprite carries the right atlas index at the right cell), but a `Visible`,
@@ -11,13 +13,13 @@
 //! ladder / NO tile over a known dark clear to an offscreen `Image`, reads the centre
 //! region back off the GPU, and asserts:
 //!
-//! - the stair tile (index 77) renders NON-EMPTY (distinctly brighter than the dark clear);
+//! - the stair-up tile (index 29) renders NON-EMPTY (distinctly brighter than the dark clear);
 //! - the ladder tile (index 235) renders NON-EMPTY (distinctly brighter than the dark clear);
 //! - the stair and ladder render DISTINCT from each other (different tiles, not the same
 //!   pixels) — so the `LinkKind`-keyed index choice (C2) is visible at the pixel level.
 //!
-//! POSITIVE — it NAMES the stair / ladder indices and the no-link baseline and asserts the
-//! pixels actually differ.
+//! POSITIVE — it NAMES the stair-up / ladder indices and the no-link baseline and asserts
+//! the pixels actually differ.
 //!
 //! Environment: needs a real GPU adapter (Metal on macOS) AND the SHIPPED terrain sheet
 //! (loaded from the workspace `assets/`, the `fog_shader_readback.rs` load-bearing
@@ -45,10 +47,12 @@ use bevy::{
     winit::WinitPlugin,
 };
 
-/// The LOCKED stair tile index (user OQ-3) into the terrain sheet's atlas.
-const STAIR_INDEX: usize = 77;
+/// The stair-UP tile index (GTW-373, supersedes the OQ-3 single-stair 77 — drawn where you
+/// ascend) into the terrain sheet's atlas. Proving this tile renders covers the new split
+/// stair (at least the ascend direction).
+const STAIR_UP_INDEX: usize = 29;
 
-/// The LOCKED ladder tile index (user OQ-3) into the terrain sheet's atlas.
+/// The ladder tile index (user OQ-3 ruling, UNCHANGED) into the terrain sheet's atlas.
 const LADDER_INDEX: usize = 235;
 
 /// The terrain sheet grid: 16 columns x 22 rows of 16-px tiles (`SheetRole::Terrain`).
@@ -258,16 +262,16 @@ fn render_tile(index: Option<usize>) -> Option<([u8; 4], u16)> {
     Some((captured.rgba, captured.max_brightness))
 }
 
-/// C6 (a) — the stair (77) and ladder (235) tiles render NON-EMPTY (each has a clearly-lit
-/// texel far above the uniform dark baseline) and DISTINCT from each other (their mean
-/// colours differ).
+/// GTW-373 (C4 (c)) — the stair-up (29) and ladder (235) tiles render NON-EMPTY (each has a
+/// clearly-lit texel far above the uniform dark baseline) and DISTINCT from each other
+/// (their mean colours differ).
 #[test]
 fn stair_and_ladder_render_nonempty_and_distinct() {
     let Some((baseline, base_max)) = render_tile(None) else {
         eprintln!("SKIP: no GPU adapter in this environment — vertical-link pixel proof not run");
         return;
     };
-    let Some((stair, stair_max)) = render_tile(Some(STAIR_INDEX)) else {
+    let Some((stair, stair_max)) = render_tile(Some(STAIR_UP_INDEX)) else {
         eprintln!("SKIP: no GPU adapter in this environment — vertical-link pixel proof not run");
         return;
     };
@@ -290,7 +294,7 @@ fn stair_and_ladder_render_nonempty_and_distinct() {
     // tile" from "drew nothing".
     assert!(
         stair_max > base_max + 60,
-        "the stair tile (index 77) must render NON-EMPTY (a lit texel far above the dark \
+        "the stair-up tile (index 29) must render NON-EMPTY (a lit texel far above the dark \
          baseline): stair max {stair_max} vs baseline max {base_max}",
     );
     assert!(
@@ -306,7 +310,7 @@ fn stair_and_ladder_render_nonempty_and_distinct() {
         + (i16::from(stair[2]) - i16::from(ladder[2])).abs();
     assert!(
         channel_diff > 5,
-        "the stair (index 77) and ladder (index 235) tiles must render DISTINCT from each \
-         other: stair mean={stair:?} vs ladder mean={ladder:?} (channel diff {channel_diff})",
+        "the stair-up (index 29) and ladder (index 235) tiles must render DISTINCT from \
+         each other: stair mean={stair:?} vs ladder mean={ladder:?} (channel diff {channel_diff})",
     );
 }
