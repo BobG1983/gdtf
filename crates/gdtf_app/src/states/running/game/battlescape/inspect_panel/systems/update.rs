@@ -22,8 +22,10 @@
 
 use bevy::{prelude::*, text::TextColor as UiTextColor, ui::Display};
 use gdtf_battle_input::{InspectMode, InspectTarget};
+use gdtf_battle_presenter::cell_squad_visible;
 use gdtf_battle_sim::{
-    CoverEntry, CoverLedger, Faction, HeightBand, OccupancyGrid, PlayerFaction, TerrainKind,
+    CellLevel, CoverEntry, CoverLedger, Faction, FactionRelation, HeightBand, OccupancyGrid,
+    PlayerFaction, SquadVisibility, TerrainKind,
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar, theme::GdtfTheme};
 
@@ -91,6 +93,15 @@ pub(in crate::states::running::game::battlescape) struct InspectReads<'w> {
     pub grid:   Option<Res<'w, OccupancyGrid>>,
     /// The cover ledger (a hovered object's seeded structural stats).
     pub ledger: Option<Res<'w, CoverLedger>>,
+    /// The squad fog (GTW-378) — the targeting-fog gate read as `Option` so the verdict FAILS
+    /// CLOSED when absent (the SAME fail-closed [`cell_squad_visible`] the reticle + the
+    /// fire-refusal use). A fog-hidden enemy occupant must NOT populate the panel (the
+    /// info-leak); a BLOCKING wall / cover still inspects (map geometry / mission memory).
+    pub squad:  Option<Res<'w, SquadVisibility>>,
+    /// The player's own faction (GTW-378) — routes a hovered occupant's
+    /// [`FactionRelation`] so [`cell_squad_visible`] decides via `is_ganger_visible`
+    /// (own-squad always visible, an enemy iff its cell is currently VISIBLE).
+    pub player: Option<Res<'w, PlayerFaction>>,
 }
 
 /// The faction-tint reads the inspect panel needs to recolor the name line by the hovered
@@ -127,6 +138,7 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
     reads: InspectReads,
     blocks: Query<&StatBlockRefs, With<InspectStatBlockHost>>,
     data: Query<StatBlockData>,
+    factions: Query<&Faction>,
     mut widgets: StatBlockWidgets,
     mut nodes: InspectNodes,
     mut tint: FactionTint,
@@ -143,7 +155,17 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
     // `Visibility`, the two SUB-BLOCKS by `Display` (None removes a hidden block from layout,
     // so the panel sizes to the visible block only — GTW-295).
     let cell = effective_cell(reads.target.effective());
-    let occupant = cell.and_then(|c| reads.grid.as_deref().and_then(|g| g.occupant(&c)));
+    // GTW-378 — a hovered occupant feeds the panel ONLY when its cell is currently
+    // squad-VISIBLE (the fog gate), so a fog-hidden enemy never populates the inspect panel
+    // (the info-leak that quietly revealed where the fog hides an enemy). A non-visible
+    // occupant resolves to `None`, falling through to the object / floor branches below — a
+    // BLOCKING wall / cover still inspects (it is map geometry / mission memory, not a hidden
+    // enemy). FAIL-CLOSED: an absent fog treats every occupant as non-visible.
+    let occupant = cell.and_then(|c| {
+        let grid = reads.grid.as_deref()?;
+        let occupant = grid.occupant(&c)?;
+        occupant_squad_visible(c, occupant, &factions, &reads).then_some(occupant)
+    });
 
     // Resolve the two sub-block entities up front (immutable Entity reads) so the per-branch
     // `Display` writes do not re-borrow `nodes` while a marker query is still borrowed.
@@ -192,6 +214,44 @@ const fn effective_cell(mode: InspectMode) -> Option<gdtf_battle_sim::CellLevel>
         // GTW-300 slice 3 — a pinned cell IS the cell the panel describes; the rest of
         // `update_inspect_panel` resolves it to an enemy / cover exactly like a hovered cell.
         InspectMode::Pinned(cell) => Some(cell),
+    }
+}
+
+/// Whether a hovered `occupant` at `cell` is currently squad-VISIBLE (GTW-378) — the
+/// targeting-fog gate that decides whether the occupant may feed the inspect panel.
+///
+/// Routes the occupant's [`Faction`] relation to the player squad through the SHARED
+/// [`cell_squad_visible`] predicate (the SAME fail-closed read the reticle + the fire-refusal
+/// use): an OWN-squad occupant is trivially visible (you always see your own); an ENEMY is
+/// visible iff its cell is currently squad-VISIBLE — the SAME read that shows / hides its
+/// sprite, so a fog-hidden enemy is treated as not-there for the panel (no info-leak).
+/// FAIL-CLOSED: an absent fog (`reads.squad` is `None`) or an absent / unknown faction yields
+/// NOT-visible, never populating the panel for a cell the squad's truth cannot vouch for.
+fn occupant_squad_visible(
+    cell: CellLevel,
+    occupant: Entity,
+    factions: &Query<&Faction>,
+    reads: &InspectReads,
+) -> bool {
+    let relation = occupant_relation(occupant, factions, reads.player.as_deref());
+    cell_squad_visible(reads.squad.as_deref(), &cell, Some(relation)).is_squad_visible()
+}
+
+/// The occupant's [`FactionRelation`] to the player squad — [`FactionRelation::OwnSquad`] when
+/// its [`Faction`] equals the [`PlayerFaction`], else [`FactionRelation::Other`] (GTW-378).
+///
+/// Fail-closed: an occupant with NO `Faction` component, or an absent `PlayerFaction`, is
+/// treated as [`FactionRelation::Other`] (the enemy / not-yours case), so the fog gate never
+/// claims a cell is yours — mirroring `gdtf_battle_input`'s `occupant_relation`.
+fn occupant_relation(
+    occupant: Entity,
+    factions: &Query<&Faction>,
+    player: Option<&PlayerFaction>,
+) -> FactionRelation {
+    let occupant_faction = factions.get(occupant).ok().copied();
+    match (occupant_faction, player) {
+        (Some(faction), Some(player)) if faction == **player => FactionRelation::OwnSquad,
+        _ => FactionRelation::Other,
     }
 }
 

@@ -29,7 +29,9 @@ use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, world_to_cell};
 use gdtf_battle_presenter::{
     ActiveLevel, HoverHighlight, TopDownRendererPlugin, WorldCamera, cell_to_world,
 };
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, OccupancyGrid, TerrainKind};
+use gdtf_battle_sim::{
+    BattleInProgress, Cell, CellLevel, Level, OccupancyGrid, SquadVisibility, TerrainKind,
+};
 
 /// The synthetic window/camera render-target size (physical px), large enough that a
 /// cursor near its centre unprojects to an in-grid cell.
@@ -267,10 +269,16 @@ fn highlight_only_on_occupied_or_blocking_cells() {
     );
 
     // PHASE 2a — an OCCUPANT (a ganger) on the cell: the highlight appears at that cell.
+    // GTW-378 — an occupant lights the reticle ONLY when its cell is squad-VISIBLE (a
+    // fog-hidden enemy is an info-leak); seed the cell as squad-VISIBLE so this occupant case
+    // holds under the new fog gate.
     let ganger = app.world_mut().spawn_empty().id();
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
         grid.set_occupant(cell, Some(ganger));
     }
+    let visible: bevy::platform::collections::HashSet<CellLevel> = core::iter::once(cell).collect();
+    app.world_mut()
+        .insert_resource(SquadVisibility::new(visible.clone(), visible));
     app.update();
     app.update();
     assert_eq!(
@@ -279,7 +287,7 @@ fn highlight_only_on_occupied_or_blocking_cells() {
             cell_to_world(Cell::new(cell.x, cell.y), level),
             Visibility::Visible,
         )),
-        "a cell holding a ganger (occupant) MUST highlight at that cell",
+        "a squad-VISIBLE cell holding a ganger (occupant) MUST highlight at that cell (GTW-378)",
     );
 
     // PHASE 2b — clear the occupant but make the cell BLOCKING (an object / cover): still
