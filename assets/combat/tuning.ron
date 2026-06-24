@@ -41,7 +41,7 @@
     wound_costs: (
         minor:    1,  // Minor wound — flesh wound, cheapest spend (starting point: 1)
         major:    2,  // Major wound — benched until healed (starting point: 2)
-        critical: 3ß,  // Critical wound — maims AND pushes toward death faster (starting point: 3)
+        critical: 3,  // Critical wound — maims AND pushes toward death faster (starting point: 3)
     ),
     // Bleed-out clock (resolution.md §9; wounds-and-roster.md §"Downed → death …"): the flat
     // number of Wounds (the life pool) each un-stabilized DOWNED ganger loses every full round
