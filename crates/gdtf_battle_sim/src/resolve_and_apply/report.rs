@@ -9,11 +9,12 @@ use crate::{
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
     matchup::Matchup,
-    metric::CellLevel,
+    metric::{Cell, CellLevel},
     resolve_coarse::ShotKind,
     resolve_hit::HitResult,
     severity::Severity,
     slab::SlabLedger,
+    surface::GroundDamage,
 };
 
 /// The **bundle of one target ganger's battle state** [`resolve_and_apply`](super::resolve_and_apply)
@@ -118,6 +119,37 @@ pub struct StruckSurfaces<'a> {
     pub slab:  &'a mut SlabLedger,
 }
 
+/// The **ground-accrual verdict** of a [`HitReport`] — the [`Cell`] a round struck the
+/// ground at and the [`GroundDamage`] it dealt there (GTW-366,
+/// `docs/combat/resolution.md` §3.2; user-ruled 2026-06-22).
+///
+/// A frozen `Copy` record of two named domain newtypes (no bare primitive, no pixel): the
+/// ground-plane [`Cell`] the round exited the bottom of the voxel column at, and the
+/// round's [`GroundDamage`] (its `weapon_damage`, NOT a constant — GTW-366 C4). The fire
+/// path's [`dispatch_fire`](crate::acts::dispatch_fire) bridges it into a buffered
+/// [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message, which
+/// [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground) ACCRUES
+/// (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). Present
+/// (`Some` in [`HitReport::ground_accrued`]) only on a
+/// [`ShotKind::Ground`](crate::resolve_coarse::ShotKind::Ground) outcome — the ground is
+/// **damaged, never destroyed**, so this records accrual, never destruction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GroundAccrual {
+    /// The ground-plane [`Cell`] the round struck — the accumulator key.
+    pub cell:   Cell,
+    /// The [`GroundDamage`] the round dealt — its `weapon_damage`, accrued onto the cell.
+    pub amount: GroundDamage,
+}
+
+impl GroundAccrual {
+    /// Build a ground-accrual verdict for the `cell` the round struck and the `amount`
+    /// of [`GroundDamage`] it dealt (the round's `weapon_damage`).
+    #[must_use]
+    pub const fn new(cell: Cell, amount: GroundDamage) -> Self {
+        Self { cell, amount }
+    }
+}
+
 /// The **applied-damage block** of a [`HitReport`] — the resolved damage of a hit
 /// that landed on a ganger (`docs/combat/resolution.md` §5 / §6).
 ///
@@ -182,6 +214,13 @@ pub struct AppliedDamage {
 ///   into a buffered [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed) message
 ///   (the slab mirror of `cover_destroyed`). `None` for every non-destroying or
 ///   non-slab outcome.
+/// - [`ground_accrued`](HitReport::ground_accrued) — `Some(`[`GroundAccrual`]`)` ONLY when
+///   this round struck the ground (GTW-366); the fire path bridges it into a buffered
+///   [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message that
+///   [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground) accrues
+///   (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). The ground is
+///   **damaged, never destroyed**, so this records accrual, never destruction. `None`
+///   for every non-ground outcome.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HitReport {
     /// What the shot struck — the [`ShotOutcome`](crate::resolve_coarse::ShotOutcome)'s [`ShotKind`].
@@ -201,12 +240,19 @@ pub struct HitReport {
     /// fire path bridges it to a [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed)
     /// message. `None` for a non-destroying or non-slab outcome.
     pub slab_destroyed:  Option<CellLevel>,
+    /// The ground-accrual verdict of a round that struck the GROUND (GTW-366) — `Some`
+    /// only on a [`ShotKind::Ground`](crate::resolve_coarse::ShotKind::Ground) outcome,
+    /// carrying the struck [`Cell`] + the round's [`GroundDamage`]; the fire path bridges
+    /// it to a [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message that accrues
+    /// (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). `None` for a
+    /// non-ground outcome. The ground is damaged, never destroyed (purely cosmetic).
+    pub ground_accrued:  Option<GroundAccrual>,
 }
 
 impl HitReport {
     /// Build a **no-effect** report for `kind` — no part struck, no damage applied,
-    /// and no cover / slab destroyed (the non-ganger non-cover non-slab, corpse-skip,
-    /// and defensive-no-part folds).
+    /// no cover / slab destroyed, and no ground accrued (the non-ganger non-cover
+    /// non-slab non-ground, corpse-skip, and defensive-no-part folds).
     ///
     /// `pub` so the E4.5 `fire()` act (GTW-198) can fold a non-ganger / corpse-skip
     /// round to a no-effect report cross-module without re-deriving the shape.
@@ -218,6 +264,7 @@ impl HitReport {
             applied: None,
             cover_destroyed: None,
             slab_destroyed: None,
+            ground_accrued: None,
         }
     }
 }

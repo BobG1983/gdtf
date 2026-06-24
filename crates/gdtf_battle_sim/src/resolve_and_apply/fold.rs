@@ -11,15 +11,16 @@ use crate::{
     cover::{CoverDamage, CoverEntry, CoverEvent, CoverLedger},
     ganger::{LifeState, Luck},
     matchup::{Matchup, matchup},
-    metric::CellLevel,
+    metric::{Cell, CellLevel},
     resolve_and_apply::report::{
-        AppliedDamage, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
+        AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::resolve_hit,
     rng::SimRng,
     severity::{SeverityInputs, part_severity_mod, roll_severity},
     slab::{SlabDamage, SlabEntry, SlabEvent, SlabLedger},
+    surface::GroundDamage,
     tuning::CombatTuning,
     weapon::WeaponStats,
 };
@@ -218,6 +219,36 @@ fn apply_slab_hit(
     slab.deplete_slab(at, removed, *entry)
 }
 
+/// Build the **ground-accrual verdict** for a round that struck the ground at `at` —
+/// the `apply_ground_hit` bridge (`docs/combat/resolution.md` §3.2; user-ruled
+/// 2026-06-22; the ground-accrual mirror of [`apply_cover_hit`] / [`apply_slab_hit`]).
+///
+/// The ground is **damaged, never destroyed**, so there is NO armor / HP / depletion
+/// math here — the accrued amount is simply the round's `weapon_damage` (GTW-366 C4,
+/// NOT a constant and NOT a tuning leaf — the ground has no HP/armor defaults), recorded
+/// against the ground-plane [`Cell`] the round exited through. [`WeaponDamage`](crate::weapon::WeaponDamage)
+/// is a signed `i32` (it carries a `Default` spawn sentinel that can read `0`/negative
+/// before the real value seeds); a negative value clamps to zero, mirroring the
+/// cover / slab `u32::try_from(... .max(0))` conversion (ground damage is a non-negative
+/// pool). Takes **no** RNG draw — the ground path is deterministic (replay-safe). The
+/// caller bridges the returned [`GroundAccrual`] into the buffered
+/// [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message, which
+/// [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground) accrues
+/// (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). It mutates
+/// NOTHING (no ledger, no grid, no ganger) — purely a frozen verdict.
+fn apply_ground_hit(at: CellLevel, weapon: WeaponStats<'_>) -> GroundAccrual {
+    // The ground-plane (x, y) the round exited through — the accumulator key (a Cell,
+    // never the storey z). CellLevel derefs to its inner IVec3 (the `actor_cell` split
+    // precedent).
+    let cell = Cell::new(at.x, at.y);
+    // C4: the accrued amount is the round's weapon_damage — NOT a hardcoded constant and
+    // NOT a tuning leaf. WeaponDamage is a signed i32; a negative / sentinel value clamps
+    // to zero (ground damage is a non-negative pool), the same conversion the cover / slab
+    // HP-loss takes.
+    let amount = GroundDamage::new(u32::try_from((**weapon.damage).max(0)).unwrap_or(0));
+    GroundAccrual::new(cell, amount)
+}
+
 /// Fold **one [`ShotOutcome`]** through damage → severity → application into ONE
 /// frozen [`HitReport`] — the E3.9 capstone integrator (`docs/combat/resolution.md`
 /// §5 / §6 / §3).
@@ -245,7 +276,16 @@ fn apply_slab_hit(
 ///   `(cell, level)` in [`HitReport::slab_destroyed`] (the fire path bridges it to a
 ///   buffered [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed) message). Takes
 ///   **no** RNG draw — the slab-vs-armor formula is deterministic. See [`apply_slab_hit`].
-/// - **ground / miss** — a no-effect report (no draw, no mutation).
+/// - **[`ShotKind::Ground`]** — the ground-accrual path (GTW-366, resolution.md §3.2,
+///   user-ruled 2026-06-22): a round that exits the bottom of the voxel column strikes the
+///   ground, which is **damaged, never destroyed** — so this records the round's
+///   `weapon_damage` against the struck [`Cell`] in [`HitReport::ground_accrued`] (the fire
+///   path bridges it to a buffered
+///   [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message that accrues
+///   monotonically onto the [`SurfaceGrid`](crate::surface::SurfaceGrid)). Mutates NOTHING
+///   here (no ganger / cover / slab / grid) and takes **no** RNG draw — purely cosmetic
+///   bookkeeping (crater FX is a later ticket). See [`apply_ground_hit`].
+/// - **miss** — a no-effect report (no draw, no mutation).
 ///
 /// `target` is `Some` only when the struck object is a queryable target ganger; a
 /// [`ShotKind::Cover`] / [`ShotKind::Slab`] / ground / miss carries `None` (there is no
@@ -258,11 +298,13 @@ fn apply_slab_hit(
 /// Pure, render-free model logic. On a ganger hit it mutates the target ganger's
 /// battle state in place and advances the injected [`SimRng`] by **exactly one**
 /// severity draw; on a cover / slab hit it spends the respective ledger's HP and takes
-/// no draw; otherwise it mutates nothing and takes no draw. It **owns no mutation after
-/// return**. Same [`BattleSeed`](crate::rng::BattleSeed) → identical report for
-/// identical inputs (the seeded-replay property — the cover / slab paths are RNG-free, so
-/// they cannot perturb the stream). Charging TU and looping the burst is the E4 `fire()`
-/// act — **out of scope** here.
+/// no draw; on a ground hit it records the accrual in the report and mutates NOTHING
+/// (the accrual reaches the [`SurfaceGrid`](crate::surface::SurfaceGrid) via the fire
+/// path's message bridge, never the fold); otherwise it mutates nothing and takes no
+/// draw. It **owns no mutation after return**. Same [`BattleSeed`](crate::rng::BattleSeed)
+/// → identical report for identical inputs (the seeded-replay property — the cover / slab /
+/// ground paths are RNG-free, so they cannot perturb the stream). Charging TU and looping
+/// the burst is the E4 `fire()` act — **out of scope** here.
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
@@ -314,6 +356,7 @@ pub fn resolve_and_apply(
                 applied: None,
                 cover_destroyed,
                 slab_destroyed: None,
+                ground_accrued: None,
             }
         }
         // The slab-hit path (GTW-365): a slab has its OWN HP + armor; reuse the ganger
@@ -336,11 +379,25 @@ pub fn resolve_and_apply(
                 applied: None,
                 cover_destroyed: None,
                 slab_destroyed,
+                ground_accrued: None,
             }
         }
-        // A ground / miss strikes neither a ganger nor a structural surface with HP —
-        // no draw, no mutation (the round hit the ground / nothing).
-        ShotKind::Ground(_) | ShotKind::Miss => HitReport::no_effect(outcome.kind),
+        // The ground-accrual path (GTW-366): a round that exits the bottom of the voxel
+        // column strikes the GROUND, which is damaged-never-destroyed — record the round's
+        // weapon_damage against the struck cell in the report (bridged to a GroundAccrued
+        // message by dispatch_fire, then accrued monotonically onto the SurfaceGrid). No
+        // draw, and NOTHING is mutated here — purely cosmetic (the ground arm of the cover /
+        // slab mirror; crater FX is a later ticket).
+        ShotKind::Ground(at) => HitReport {
+            kind:            outcome.kind,
+            part:            None,
+            applied:         None,
+            cover_destroyed: None,
+            slab_destroyed:  None,
+            ground_accrued:  Some(apply_ground_hit(at, weapon)),
+        },
+        // A clean miss strikes nothing — no draw, no mutation, no accrual.
+        ShotKind::Miss => HitReport::no_effect(outcome.kind),
     }
 }
 
@@ -464,5 +521,8 @@ fn fold_ganger(
         // A ganger hit destroys no slab (a slab hit takes the slab arm in
         // `resolve_and_apply`, never this ganger fold).
         slab_destroyed:  None,
+        // A ganger hit accrues no ground damage (a ground hit takes the ground arm in
+        // `resolve_and_apply`, never this ganger fold).
+        ground_accrued:  None,
     }
 }

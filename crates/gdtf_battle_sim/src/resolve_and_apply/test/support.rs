@@ -21,7 +21,8 @@ pub(super) use crate::{
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel, Level, SimPos},
     resolve_and_apply::{
-        AppliedDamage, HitReport, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply,
+        AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
+        resolve_and_apply,
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::{HitResult, resolve_hit},
@@ -30,6 +31,7 @@ pub(super) use crate::{
     severity::{Severity, SeverityInputs, part_severity_mod, roll_severity},
     slab::{SlabEntry, SlabHp, SlabLedger},
     stability::RecoilGrowth,
+    surface::GroundDamage,
     tuning::{CombatTuning, RecoilClimb},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
@@ -258,6 +260,31 @@ pub(super) fn slab_outcome() -> ShotOutcome {
     let at = slab_cell_level();
     ShotOutcome {
         kind:       ShotKind::Slab(at),
+        cell:       Cell::new(at.x, at.y),
+        level:      Level::new(u8::try_from(at.z).unwrap_or(0)),
+        body_part:  None,
+        band:       HeightBand::Low,
+        muzzle:     SimPos::new(0.5, 0.5, 0.5),
+        trajectory: a_trajectory(),
+    }
+}
+
+/// The `(cell, level)` a ground-hit fixture exits the bottom of the column through
+/// (GTW-366) — a fixed arbitrary surface key. The ground accumulator keys on the
+/// ground-plane [`Cell`] (its `x`/`y`), so the test reads the accrued total at
+/// `Cell::new(at.x, at.y)`.
+pub(super) fn ground_cell_level() -> CellLevel {
+    CellLevel::new(Cell::new(2, 9), Level::new(0))
+}
+
+/// A [`ShotKind::Ground`] outcome struck at [`ground_cell_level`] — the surface cell the
+/// ground-accrual path records the round's `weapon_damage` against. `ShotKind::Ground`
+/// carries the surface `(cell, level)` it exited through; no body part (the §4 roll never
+/// runs on the ground).
+pub(super) fn ground_outcome() -> ShotOutcome {
+    let at = ground_cell_level();
+    ShotOutcome {
+        kind:       ShotKind::Ground(at),
         cell:       Cell::new(at.x, at.y),
         level:      Level::new(u8::try_from(at.z).unwrap_or(0)),
         body_part:  None,

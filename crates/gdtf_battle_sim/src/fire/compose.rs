@@ -285,9 +285,12 @@ pub(super) struct RoundSetup<'a> {
 /// [`concentration_p`], `recoil_climb` = the `tuning.cone_stability.recoil_climb`
 /// leaf, and `recoil_growth` from [`stability_for`]. A [`ShotKind::Ganger`] outcome
 /// folds via [`resolve_and_apply`] onto the struck target (got from the TARGET query
-/// — a struck entity that is not a queryable target, or any non-ganger kind, folds to
-/// [`HitReport::no_effect`], never a panic). Every draw is from the injected
-/// [`SimRng`].
+/// — a struck entity that is not a queryable target folds to [`HitReport::no_effect`],
+/// never a panic); a [`ShotKind::Cover`] / [`ShotKind::Slab`] / [`ShotKind::Ground`]
+/// outcome ALSO folds through [`resolve_and_apply`] (the cover/slab arms spend their
+/// ledger HP, the ground arm — GTW-366 — records the round's `weapon_damage` accrual in
+/// the report); only a clean [`ShotKind::Miss`] short-circuits to
+/// [`HitReport::no_effect`]. Every draw is from the injected [`SimRng`].
 ///
 /// Returns BOTH the frozen [`HitReport`] **and** the round's
 /// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) — the already-computed E2
@@ -381,7 +384,11 @@ pub(super) fn resolve_round(
         // GTW-365: a round that strikes a SLAB takes the same path — it spends the SLAB
         // ledger's HP instead (the StruckSurfaces bundle carries both; the fold's
         // ShotKind selects which one is touched).
-        ShotKind::Cover(_) | ShotKind::Slab(_) => resolve_and_apply(
+        // GTW-366: a round that strikes the GROUND ALSO folds through resolve_and_apply —
+        // its Ground arm records the round's weapon_damage in the report's `ground_accrued`
+        // (bridged to a GroundAccrued message by dispatch_fire). It touches NEITHER ledger,
+        // but routing it through the fold is the production seam the accrual lives on.
+        ShotKind::Cover(_) | ShotKind::Slab(_) | ShotKind::Ground(_) => resolve_and_apply(
             &outcome,
             snapshot.weapon_stats(),
             snapshot.luck,
@@ -394,8 +401,8 @@ pub(super) fn resolve_round(
             tuning,
             rng,
         ),
-        // A ground / miss strikes neither a ganger nor a structural surface — no effect.
-        ShotKind::Ground(_) | ShotKind::Miss => HitReport::no_effect(outcome.kind),
+        // A clean miss strikes nothing — no effect.
+        ShotKind::Miss => HitReport::no_effect(outcome.kind),
     };
     // Return the resolved report PLUS the already-computed outcome geometry (verbatim,
     // not recomputed) so the volley can surface a per-round ShotFired (GTW-290).

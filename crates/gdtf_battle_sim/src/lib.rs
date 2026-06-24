@@ -318,13 +318,14 @@ pub use occupancy::{
     OccupantPlacement, TerrainKind, TerrainPlacement, pathable_neighbors,
 };
 pub use occupancy_sync::{
-    CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, SlabDestroyed, sync_dead_gangers,
-    sync_destroyed_cover, sync_destroyed_slab, sync_moved_gangers,
+    CoverDestroyed, GroundAccrued, OccupancyMaintenancePlugin, PrevSlot, SlabDestroyed,
+    sync_accrued_ground, sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab,
+    sync_moved_gangers,
 };
 pub use pathfinder::{Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within};
 pub use posture::{set_aiming, set_facing, set_stance};
 pub use resolve_and_apply::{
-    AppliedDamage, HitReport, StruckSurfaces, TargetGanger, resolve_and_apply,
+    AppliedDamage, GroundAccrual, HitReport, StruckSurfaces, TargetGanger, resolve_and_apply,
 };
 pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
 pub use resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit};

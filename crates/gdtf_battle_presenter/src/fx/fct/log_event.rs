@@ -376,6 +376,7 @@ mod test {
             }),
             cover_destroyed: None,
             slab_destroyed:  None,
+            ground_accrued:  None,
         }
     }
 

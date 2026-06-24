@@ -8,7 +8,7 @@ use crate::{
     clearance::silhouette_band,
     ganger::{LifeState, Position, Stance, StanceKind},
     occupancy::OccupancyGrid,
-    occupancy_sync::{CoverDestroyed, PrevSlot, SlabDestroyed},
+    occupancy_sync::{CoverDestroyed, GroundAccrued, PrevSlot, SlabDestroyed},
     surface::SurfaceGrid,
 };
 
@@ -167,5 +167,33 @@ pub fn sync_destroyed_slab(
 ) {
     for event in destroyed.read() {
         surface.destroy_slab(event.at);
+    }
+}
+
+/// Maintain the surface grid for **ground damage** — reads the buffered
+/// [`GroundAccrued`] message and folds each into the
+/// [`SurfaceGrid`](crate::surface::SurfaceGrid)'s per-cell ground accumulator via
+/// [`SurfaceGrid::accrue_ground_damage`](crate::surface::SurfaceGrid::accrue_ground_damage)
+/// (GTW-366; the ground-accrual mirror of [`sync_destroyed_slab`]).
+///
+/// For every [`GroundAccrued`] message buffered this frame, it calls
+/// [`SurfaceGrid::accrue_ground_damage`](crate::surface::SurfaceGrid::accrue_ground_damage)
+/// with the message's [`Cell`](crate::metric::Cell) and
+/// [`GroundDamage`](crate::surface::GroundDamage) amount, adding the round's damage onto
+/// that cell's running total — **monotonic** (the accumulator only ever grows; there is
+/// no lowering API) and **cosmetic** (the ground is damaged, never destroyed —
+/// `docs/combat/resolution.md` §3.2). It mutates ONLY the ground accumulator: it touches
+/// no slab state, no cover, no ganger — a future crater-FX reaction reads the total (the
+/// crater render is out of scope, GTW-366 C5). The [`MessageReader`] is the ONLY trigger
+/// — no polling. The grid is edited **in place**.
+///
+/// `GroundAccrued` is a buffered **message** (Bevy 0.18 — `bevy-traps.md` #4), hence
+/// [`MessageReader`], not the pre-0.18 `EventReader`.
+pub fn sync_accrued_ground(
+    mut surface: ResMut<SurfaceGrid>,
+    mut accrued: MessageReader<GroundAccrued>,
+) {
+    for event in accrued.read() {
+        surface.accrue_ground_damage(event.cell, event.amount);
     }
 }

@@ -20,7 +20,9 @@ use crate::{
     },
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     move_acts::{ReactionShotFired, advance_walk},
-    occupancy_sync::{CoverDestroyed, SimSystems, SlabDestroyed, sync_destroyed_cover},
+    occupancy_sync::{
+        CoverDestroyed, GroundAccrued, SimSystems, SlabDestroyed, sync_destroyed_cover,
+    },
     shot_fired::ShotFired,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
 };
@@ -95,6 +97,12 @@ impl Plugin for SimActsPlugin {
             // OccupancyMaintenancePlugin's own add_message::<SlabDestroyed> (the consumer side
             // — sync_destroyed_slab / should_recompute_visibility), so both name it.
             .add_message::<SlabDestroyed>()
+            // GTW-366: the ground-accrued signal dispatch_fire emits per round whose hit
+            // struck the ground (the ground-accrual mirror of CoverDestroyed/SlabDestroyed).
+            // Makes dispatch_fire's MessageWriter<GroundAccrued> param valid; IDEMPOTENT with
+            // OccupancyMaintenancePlugin's own add_message::<GroundAccrued> (the consumer side
+            // — sync_accrued_ground), so both producer (here) and consumer name it.
+            .add_message::<GroundAccrued>()
             // GTW-312: the output reload-result signal dispatch_reload emits per resolved
             // reload (the three real outcomes; presenter-visible, like ShotFired).
             .add_message::<ReloadResult>()

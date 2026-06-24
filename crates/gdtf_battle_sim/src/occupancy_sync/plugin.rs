@@ -5,8 +5,8 @@
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, SystemSet, Update};
 
 use crate::occupancy_sync::{
-    CoverDestroyed, SlabDestroyed, sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab,
-    sync_moved_gangers,
+    CoverDestroyed, GroundAccrued, SlabDestroyed, sync_accrued_ground, sync_dead_gangers,
+    sync_destroyed_cover, sync_destroyed_slab, sync_moved_gangers,
 };
 
 /// The sim's public system-ordering anchor — the band every sim-mutation system runs in.
@@ -31,10 +31,11 @@ pub enum SimSystems {
 /// [`CoverDestroyed`] message buffer into a Bevy [`App`].
 ///
 /// This is the **registration unit** for the E1.7 maintenance layer:
-/// - it registers the [`CoverDestroyed`] + [`SlabDestroyed`] message buffers
-///   ([`App::add_message`]), without which
+/// - it registers the [`CoverDestroyed`] + [`SlabDestroyed`] + [`GroundAccrued`] message
+///   buffers ([`App::add_message`]), without which
 ///   [`sync_destroyed_cover`](crate::occupancy_sync::sync_destroyed_cover)'s /
-///   [`sync_destroyed_slab`](crate::occupancy_sync::sync_destroyed_slab)'s
+///   [`sync_destroyed_slab`](crate::occupancy_sync::sync_destroyed_slab)'s /
+///   [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground)'s
 ///   [`MessageReader`](bevy::prelude::MessageReader) would fail param validation; and
 /// - it adds [`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers),
 ///   [`sync_dead_gangers`](crate::occupancy_sync::sync_dead_gangers), and
@@ -51,7 +52,14 @@ pub enum SimSystems {
 ///   (`ResMut<`[`SurfaceGrid`](crate::surface::SurfaceGrid)`>`), so it needs no
 ///   ordering against the `OccupancyGrid` chain (disjoint access — no conflict), but it
 ///   sits in the same set so the squad-fog recompute (ordered `.after` the set) sees a
-///   destroyed slab's surface edit before it re-reveals the opened sightline.
+///   destroyed slab's surface edit before it re-reveals the opened sightline; and
+/// - it adds [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground)
+///   (GTW-366) to the same [`SimSystems::Simulate`] set, chained
+///   `.after(sync_destroyed_slab)` because both write `ResMut<`[`SurfaceGrid`](crate::surface::SurfaceGrid)`>`
+///   (different inner maps — slab state vs the ground accumulator — but Bevy treats them as
+///   one resource access, so an explicit order is required, `bevy-traps.md` #3). The accrual
+///   is purely cosmetic (it touches no slab / occupancy / visibility state), so NO recompute
+///   is ordered after it.
 ///
 /// The chain is nested under the public [`SimSystems::Simulate`] set: the plugin
 /// [`configure_sets`](App::configure_sets) that set on [`Update`] ONCE, before its
@@ -76,6 +84,12 @@ impl Plugin for OccupancyMaintenancePlugin {
             // side — Bevy's add_message no-ops a second registration), so both consumer
             // (here) and producer (dispatch_fire) plugins can name it.
             .add_message::<SlabDestroyed>()
+            // GTW-366: the ground-accrued signal `sync_accrued_ground` reads. Registering
+            // the buffer here makes its MessageReader<GroundAccrued> param valid; it is
+            // IDEMPOTENT with SimActsPlugin's own add_message::<GroundAccrued> (the producer
+            // side — Bevy's add_message no-ops a second registration), so both consumer
+            // (here) and producer (dispatch_fire) plugins can name it.
+            .add_message::<GroundAccrued>()
             .configure_sets(Update, SimSystems::Simulate)
             .add_systems(
                 Update,
@@ -88,6 +102,18 @@ impl Plugin for OccupancyMaintenancePlugin {
             // so it joins the same set WITHOUT chaining into the move → die → cover order.
             // The squad-fog recompute is ordered `.after(sync_destroyed_slab)` in
             // BattleSimPlugin so a freed slab's surface edit lands before sight recomputes.
-            .add_systems(Update, sync_destroyed_slab.in_set(SimSystems::Simulate));
+            .add_systems(Update, sync_destroyed_slab.in_set(SimSystems::Simulate))
+            // GTW-366: the ground-accrual maintenance system. It also writes
+            // ResMut<SurfaceGrid> (the per-cell ground accumulator — a DIFFERENT map than
+            // the slab state `sync_destroyed_slab` writes). Two systems sharing
+            // ResMut<SurfaceGrid> must be ordered deterministically (`bevy-traps.md` #3), so
+            // it is chained `.after(sync_destroyed_slab)`. The accrual is purely cosmetic
+            // (it touches no slab state / occupancy / visibility), so NO recompute follows it.
+            .add_systems(
+                Update,
+                sync_accrued_ground
+                    .after(sync_destroyed_slab)
+                    .in_set(SimSystems::Simulate),
+            );
     }
 }

@@ -11,5 +11,6 @@ mod corpse;
 mod cover;
 mod determinism;
 mod frozen;
+mod ground;
 mod non_ganger;
 mod slab;

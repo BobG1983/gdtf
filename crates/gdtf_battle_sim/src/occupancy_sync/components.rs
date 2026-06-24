@@ -1,9 +1,12 @@
 //! The maintenance-layer bookkeeping types: the per-entity [`PrevSlot`] memory and
-//! the buffered [`CoverDestroyed`] message.
+//! the buffered [`CoverDestroyed`] / [`SlabDestroyed`] / [`GroundAccrued`] messages.
 
 use bevy::prelude::{Component, Message};
 
-use crate::metric::CellLevel;
+use crate::{
+    metric::{Cell, CellLevel},
+    surface::GroundDamage,
+};
 
 /// The `(cell, level)` slot an entity was **last synced into** the occupancy grid
 /// at — the per-entity bookkeeping
@@ -98,5 +101,46 @@ impl SlabDestroyed {
     #[must_use]
     pub const fn new(at: CellLevel) -> Self {
         Self { at }
+    }
+}
+
+/// The ground at a [`Cell`] **took damage** — the buffered message
+/// [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground) folds into the
+/// [`SurfaceGrid`](crate::surface::SurfaceGrid)'s per-cell ground accumulator via
+/// [`accrue_ground_damage`](crate::surface::SurfaceGrid::accrue_ground_damage) (GTW-366;
+/// the ground-accrual mirror of [`SlabDestroyed`]).
+///
+/// A round that exits the bottom of the voxel column strikes the ground — **damaged,
+/// never destroyed** (`docs/combat/resolution.md` §3.2; user-ruled 2026-06-22). The
+/// E3.9 fold records the struck [`Cell`] and the round's [`GroundDamage`] on
+/// [`HitReport::ground_accrued`](crate::resolve_and_apply::HitReport::ground_accrued), and
+/// the fire path's [`dispatch_fire`](crate::acts::dispatch_fire) bridges it into THIS
+/// buffered message — the same fire→message→sync shape the cover / slab destruction
+/// bridges use, except the consumer ACCRUES (monotonically, never lowers) onto the
+/// [`SurfaceGrid`](crate::surface::SurfaceGrid) the fold does not hold, rather than
+/// destroying anything. Purely cosmetic bookkeeping for a future crater-FX reaction (the
+/// crater render is out of scope — GTW-366 C5).
+///
+/// Carries the [`Cell`] hit and the [`GroundDamage`] amount (both no-bare-types; the
+/// cell is the §3 ground-plane cell, the amount the round's `weapon_damage`). A
+/// **buffered message** (Bevy 0.18 renamed buffered `Event`/`EventReader` to
+/// `Message`/`MessageReader` — `bevy-traps.md` #4), so it `#[derive(Message)]` and is
+/// read with [`MessageReader`](bevy::prelude::MessageReader).
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GroundAccrued {
+    /// The ground-plane [`Cell`] the round struck — the accumulator key
+    /// [`accrue_ground_damage`](crate::surface::SurfaceGrid::accrue_ground_damage) adds to.
+    pub cell:   Cell,
+    /// The [`GroundDamage`] the round dealt — the round's `weapon_damage`, accrued
+    /// (saturating, monotonic) onto the cell's running total.
+    pub amount: GroundDamage,
+}
+
+impl GroundAccrued {
+    /// Build a ground-accrued message for the `cell` the round struck and the
+    /// `amount` of [`GroundDamage`] it dealt (the round's `weapon_damage`).
+    #[must_use]
+    pub const fn new(cell: Cell, amount: GroundDamage) -> Self {
+        Self { cell, amount }
     }
 }

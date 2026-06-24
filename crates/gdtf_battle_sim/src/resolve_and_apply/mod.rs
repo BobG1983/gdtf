@@ -74,4 +74,6 @@ mod report;
 mod test;
 
 pub use fold::resolve_and_apply;
-pub use report::{AppliedDamage, HitReport, StruckPiece, StruckSurfaces, TargetGanger};
+pub use report::{
+    AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
+};

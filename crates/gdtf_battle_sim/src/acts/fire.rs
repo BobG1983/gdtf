@@ -23,7 +23,7 @@ use crate::{
     magazine::mode_tu_cost,
     metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
-    occupancy_sync::{CoverDestroyed, SlabDestroyed},
+    occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
     rng::SimRng,
     shot_fired::ShotFired,
     slab::SlabLedger,
@@ -136,11 +136,12 @@ impl BattleGridsParam<'_> {
 ///
 /// Grouping the cohesive output writers into one param keeps [`dispatch_fire`] under the
 /// argument-count gate: the per-round [`ShotFired`] geometry/FCT signal (GTW-290 / GTW-302),
-/// the per-request [`FireDeclaration`] combat-log signal (GTW-328), and the per-round
-/// [`CoverDestroyed`] signal (GTW-364) — the fire→deplete→message bridge a cover-destroying
-/// round emits, which the maintenance + visibility systems consume to free the smashed cell.
-/// A transparent system-param bundle of named output buffers — not itself a wrapped domain
-/// value.
+/// the per-request [`FireDeclaration`] combat-log signal (GTW-328), the per-round
+/// [`CoverDestroyed`] / [`SlabDestroyed`] destruction signals (GTW-364 / GTW-365), and the
+/// per-round [`GroundAccrued`] accrual signal (GTW-366) — the fire→message bridges a
+/// structural-hit / ground-hit round emits, which the maintenance + visibility systems
+/// consume to free the smashed cell / accrue the ground damage. A transparent system-param
+/// bundle of named output buffers — not itself a wrapped domain value.
 #[derive(SystemParam)]
 pub struct FireSignals<'w> {
     /// The per-ROUND fire-trajectory signal (one per round resolved) — the presenter's
@@ -163,6 +164,15 @@ pub struct FireSignals<'w> {
     /// `should_recompute_visibility` consume to stop blocking rounds + reopen LOS
     /// through the hole. The slab mirror of `cover_destroyed`.
     slab_destroyed:  MessageWriter<'w, SlabDestroyed>,
+    /// The per-ROUND ground-accrued signal (GTW-366) — emitted for each round whose
+    /// [`HitReport::ground_accrued`](crate::resolve_and_apply::HitReport::ground_accrued)
+    /// is `Some`, bridging the round's `weapon_damage` into the buffered
+    /// [`GroundAccrued`] message that `sync_accrued_ground` accrues (monotonically) onto
+    /// the [`SurfaceGrid`](crate::surface::SurfaceGrid)'s per-cell ground accumulator. The
+    /// ground-accrual mirror of `slab_destroyed`: the ground is damaged-never-destroyed, so
+    /// this signal carries an accrual, not a destruction (purely cosmetic — crater FX is a
+    /// later ticket).
+    ground_accrued:  MessageWriter<'w, GroundAccrued>,
 }
 
 /// The query the GTW-242 fire dispatch turns the shooter through for an out-of-arc shot —
@@ -456,6 +466,18 @@ pub fn dispatch_fire(
             //      message. No re-resolve, no extra draw.
             if let Some(at) = report.slab_destroyed {
                 signals.slab_destroyed.write(SlabDestroyed::new(at));
+            }
+            // (5d) GTW-366: the ground-accrual bridge (the cosmetic mirror of the cover /
+            //      slab destruction bridges). A round that struck the GROUND carries the
+            //      struck cell + the round's weapon_damage on its report (resolve_and_apply's
+            //      Ground arm recorded it — the ground is damaged, never destroyed); emit ONE
+            //      GroundAccrued per such round. `sync_accrued_ground` accrues it
+            //      (monotonically) onto the SurfaceGrid's per-cell ground accumulator. No
+            //      re-resolve, no extra draw — purely bookkeeping for a later crater FX.
+            if let Some(accrual) = report.ground_accrued {
+                signals
+                    .ground_accrued
+                    .write(GroundAccrued::new(accrual.cell, accrual.amount));
             }
         }
     }

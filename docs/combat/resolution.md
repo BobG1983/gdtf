@@ -82,6 +82,10 @@ A slab depletes over **multiple hits** — its HP pool is **persistent across st
 
 *(User-ruled 2026-06-22; extends the §3 cover mechanics. The presenter reaction to the slab-destroyed signal — the visual hole — lands separately.)*
 
+### 3.2 Ground is damaged, never destroyed
+
+A round that exits the **bottom** of the voxel column strikes the **ground** (§2): it **accrues** the round's `weapon_damage` onto that cell's per-cell ground-damage accumulator on the surface grid (monotonic — the total only ever grows), and changes **nothing** else — the ground has no HP/armor and is never destroyed, never made impassable, never alters cover/slab/ganger state. Purely cosmetic bookkeeping. *(User-ruled 2026-06-22; the crater render FX reads the accrued total and lands in a later ticket.)*
+
 ## 4. Hit location — weighted part roll
 
 When the march stops a round on a **ganger** (§2), a **weighted roll** picks **where on them** — one of six body parts: **Head · Torso · L-Arm · R-Arm · L-Leg · R-Leg** (`roll_body_part` over the tuning `body_part_weights`; defaults Head 6 / Torso 40 / each Arm 12 / each Leg 15 — head rare, torso the bulk). **No per-part geometry**: the coarse model decides *which* ganger by height clearance and *where* on them by chance. There is no separate "did it stay on the silhouette" test — the march's band clearance is the answer.
