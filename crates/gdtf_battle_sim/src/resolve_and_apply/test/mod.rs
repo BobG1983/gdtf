@@ -12,3 +12,4 @@ mod cover;
 mod determinism;
 mod frozen;
 mod non_ganger;
+mod slab;

@@ -34,6 +34,7 @@ fn same_seed_reproduces_byte_equal_volley() {
         occupancy.set_occupant_band(target_at, Some(HeightBand::High));
         let surface = SurfaceGrid::new();
         let mut cover = CoverLedger::new();
+        let mut slab = SlabLedger::new();
         let mut r = rng();
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
@@ -55,6 +56,7 @@ fn same_seed_reproduces_byte_equal_volley() {
                     occupancy: &occupancy,
                     surface:   &surface,
                     cover:     &mut cover,
+                    slab:      &mut slab,
                 },
                 &tuning,
                 &mut r,

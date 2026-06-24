@@ -68,6 +68,20 @@ A shot is a ray from the 3D muzzle point along its (perturbed) direction, marche
 
 Cover has a **height** and its **own armor stats + HP** — it uses the same armor/damage model as a ganger ([weapons-and-armor.md](weapons-and-armor.md)). A shot can strike cover instead of the target, **damaging and potentially destroying it**. One object per cell; it occupies its cell at its `cover_height` band (LOW / MID / HIGH) and stops any round not flying strictly higher (§2). Destroying it **frees the cell** — pathing and LOS rebuild, and the smashed cell stays clear because the destroyed-cover set excludes it from the change-driven occupancy grid (maintained in place, never rebuilt per shot). The HP lives on the **model's cover ledger** (one ledger for walls *and* props, keyed (cell, level)): `apply_cover_hit` spends it, and depletion emits a **cover-destroyed event** carrying (cell, level) for the presenter's reactions — walls are destructible cover too, on every storey. **TBD (Bevy):** the cover-destroyed signal is a Bevy `Event` (or `EntityEvent`); the exact type lands with the sim crate.
 
+### 3.1 Slabs (floors / roofs) are destructible too
+
+Floor and roof **slabs** span cells at the z-boundaries between storeys (one slab, both faces — the floor of the upper storey is the roof of the lower). Like cover, a slab has its **own HP and armor stats**, using the **same armor/damage model as a ganger and cover** — the same `resolve_hit` damage formula resolves a slab hit against the slab's own armor, and the remaining HP-loss depletes the slab's HP pool. A round crossing a z-boundary strikes the slab there (§2): an intact slab stops it; a sufficiently-damaged slab is **destroyed**.
+
+A **destroyed slab**:
+
+- **Stops blocking rounds.** An intact slab blocks the z-boundary crossing (§2); a destroyed slab lets rounds **pass through** the hole (the march honors the slab's `Destroyed` state — it stops only on an intact slab).
+- **Passes line of sight.** The LOS probe uses the **same march**, so a destroyed slab is transparent to sight too — destroying it **reopens the previously-blocked vertical sightline** (the squad fog rebuilds on the slab-destroyed signal, the same way it does for destroyed cover).
+- **Does NOT become walkable.** A destroyed slab remains **impassable to movement** — it adds no vertical link and changes no pathfinding (movement is out of scope here; vertical traversal stays exactly as authored). Smashing a floor opens a firing/sightline hole, **not** a hole you can walk or climb through.
+
+A slab depletes over **multiple hits** — its HP pool is **persistent across strikes** (a later round finishes a damaged slab), and destruction is **permanent** (a destroyed slab stays destroyed, like destroyed cover). The HP lives on the **model's slab ledger** (keyed (cell, level), mirroring the cover ledger), **lazily seeded** per slab: slabs are uniform level structure (authored as a bare (cell, level) list with no per-piece HP), so a struck slab seeds its HP + armor from the `slab_defaults` **combat-tuning** leaf on first hit. Depletion to zero emits a **slab-destroyed event** carrying (cell, level), which sets the slab `Destroyed` on the surface grid and triggers the LOS rebuild.
+
+*(User-ruled 2026-06-22; extends the §3 cover mechanics. The presenter reaction to the slab-destroyed signal — the visual hole — lands separately.)*
+
 ## 4. Hit location — weighted part roll
 
 When the march stops a round on a **ganger** (§2), a **weighted roll** picks **where on them** — one of six body parts: **Head · Torso · L-Arm · R-Arm · L-Leg · R-Leg** (`roll_body_part` over the tuning `body_part_weights`; defaults Head 6 / Torso 40 / each Arm 12 / each Leg 15 — head rare, torso the bulk). **No per-part geometry**: the coarse model decides *which* ganger by height clearance and *where* on them by chance. There is no separate "did it stay on the silhouette" test — the march's band clearance is the answer.

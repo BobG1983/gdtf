@@ -24,6 +24,7 @@ use crate::{
     inflicted_wound::InflictedWounds,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainPlacement},
     situation::{BattleSetupError, GangerSpawn, Situation},
+    slab::SlabLedger,
     surface::{SlabState, SurfaceGrid},
     vertical::build_vertical_link_graph,
     weapon::{
@@ -457,6 +458,13 @@ pub fn setup_battle(
         surface_grid.set_slab(slab, SlabState::Present);
     }
     commands.insert_resource(surface_grid);
+
+    // 3b. Insert an EMPTY slab ledger (GTW-365): slabs carry NO per-piece authored HP
+    //     (unlike cover) — a struck slab lazily seeds its HP/armor from the SlabDefaults
+    //     combat-tuning leaf on first hit, so nothing is pre-populated here. The resource
+    //     must exist for `dispatch_fire`'s ResMut<SlabLedger> read (the slab-hit
+    //     depletion path), mirroring the cover ledger insert above.
+    commands.insert_resource(SlabLedger::new());
 
     // Own the placements in the result up front, so the occupancy grid can borrow
     // them (no clone) and the same Vec is returned to the caller.

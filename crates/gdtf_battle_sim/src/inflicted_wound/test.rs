@@ -14,11 +14,12 @@ use crate::{
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, Level, SimPos},
-    resolve_and_apply::{TargetGanger, resolve_and_apply},
+    resolve_and_apply::{StruckSurfaces, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotKind, ShotOutcome},
     rng::{BattleSeed, SimRng},
     sample_cone::{ConcentrationP, ShotDir, sample_cone_vector},
     severity::Severity,
+    slab::SlabLedger,
     stability::RecoilGrowth,
     tuning::{CombatTuning, RecoilClimb},
     weapon::{
@@ -133,9 +134,11 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
     let mut life = LifeState::Alive;
     let mut inflicted = InflictedWounds::default();
     let mut r = rng();
-    // A fresh ledger threaded only to satisfy the GTW-364 signature — these ganger
-    // outcomes never strike cover, so it is never read or written.
+    // Fresh ledgers threaded only to satisfy the GTW-364 / GTW-365 StruckSurfaces
+    // signature — these ganger outcomes never strike cover or a slab, so neither ledger
+    // is read or written.
     let mut cover = CoverLedger::new();
+    let mut slab = SlabLedger::new();
 
     // The tiers the resolution rolls — collected from each report so the assertion
     // pins the record against the resolution's OWN output, never a fixture.
@@ -162,7 +165,10 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
                 luck:      Luck::new(0.0),
             }),
             entity,
-            &mut cover,
+            StruckSurfaces {
+                cover: &mut cover,
+                slab:  &mut slab,
+            },
             &tuning,
             &mut r,
         );

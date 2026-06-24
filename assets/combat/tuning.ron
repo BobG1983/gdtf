@@ -210,4 +210,20 @@
     // 0..=1: dark enough to read "memory, not live sight", bright enough to navigate by.
     // STARTING POINT (tunable).
     explored_dim: 0.55,  // EXPLORED terrain RGB modulate (alpha untouched); 0..=1
+
+    // Slab defaults (GTW-365; resolution.md §3.1, user-ruled 2026-06-22): the UNIFORM
+    // structural HP + armor every floor/roof slab lazily seeds to when first struck.
+    // Slabs are uniform level structure — a situation authors them as a bare (cell, level)
+    // list with NO per-slab HP (unlike cover's per-piece CoverSpawn) — so a struck slab's
+    // HP/armor come from HERE. GENUINELY CONSUMED: the SlabLedger lazy-seed reads this leaf
+    // (via SlabLedger::prototype_for) on the live depletion path, so it is NOT a dead leaf.
+    // A slab uses the SAME armor/damage model as a ganger and cover (resolution.md §3.1):
+    // the same resolve_hit formula soaks a slab hit against this protection/hardness, then
+    // the remaining HP-loss depletes the slab pool. STARTING POINTS (tunable): HP spans
+    // SEVERAL strikes (a structural floor breaches over multiple hits, not one shot).
+    slab_defaults: (
+        default_hp:               120,  // slab structural HP — depletes over multiple strikes (a floor is sturdy)
+        default_armor_protection: 4,    // slab damage-soak (same armor model as a ganger/cover)
+        default_armor_hardness:   2,    // penetration the slab shrugs off (same armor model)
+    ),
 )

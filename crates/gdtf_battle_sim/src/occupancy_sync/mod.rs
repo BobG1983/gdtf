@@ -11,9 +11,10 @@
 //! a ganger went down, a piece of cover was smashed — and editing the grid IN
 //! PLACE, never by re-running a full-grid rebuild per shot.
 //!
-//! This module is that maintenance layer. It is three focused Bevy systems, all
-//! sharing `ResMut<`[`OccupancyGrid`](crate::occupancy::OccupancyGrid)`>`, each
-//! driven by a SINGLE trigger:
+//! This module is that maintenance layer. It is four focused Bevy systems — three
+//! sharing `ResMut<`[`OccupancyGrid`](crate::occupancy::OccupancyGrid)`>`, plus the
+//! slab-surface one (GTW-365) on `ResMut<`[`SurfaceGrid`](crate::surface::SurfaceGrid)`>`
+//! — each driven by a SINGLE trigger:
 //!
 //! 1. [`sync_moved_gangers`] reacts to `Changed<`[`Position`](crate::ganger::Position)`>`
 //!    (Bevy change detection): it clears the entity's OLD occupancy slot and marks
@@ -31,6 +32,12 @@
 //!    folds each one's [`CellLevel`](crate::metric::CellLevel) into the grid's
 //!    append-only destroyed-cover set via
 //!    [`OccupancyGrid::mark_cover_destroyed`](crate::occupancy::OccupancyGrid::mark_cover_destroyed).
+//! 4. [`sync_destroyed_slab`] (GTW-365) reads the buffered [`SlabDestroyed`] message
+//!    and folds each one's [`CellLevel`](crate::metric::CellLevel) into the
+//!    [`SurfaceGrid`](crate::surface::SurfaceGrid) via
+//!    [`SurfaceGrid::destroy_slab`](crate::surface::SurfaceGrid::destroy_slab)
+//!    (idempotent / permanent) — the slab mirror of `sync_destroyed_cover`, on the
+//!    persistent surface grid rather than the per-shot occupancy grid.
 //!
 //! **Change detection / the message reader is the ONLY trigger.** There is no
 //! polling, no per-shot full-grid scan, and NOTHING here calls
@@ -38,13 +45,17 @@
 //! — a rebuild-per-shot is the exact anti-pattern this slice exists to replace.
 //!
 //! [`OccupancyMaintenancePlugin`] is the wiring unit: it registers the
-//! [`CoverDestroyed`] message buffer and adds the three systems to
-//! [`Update`](bevy::prelude::Update) in an EXPLICIT
-//! [`chain`](bevy::prelude::IntoScheduleConfigs::chain) order
+//! [`CoverDestroyed`] + [`SlabDestroyed`] message buffers and adds the four systems
+//! to [`Update`](bevy::prelude::Update). The three `OccupancyGrid` systems run in an
+//! EXPLICIT [`chain`](bevy::prelude::IntoScheduleConfigs::chain) order
 //! (`bevy-traps.md` #3 — three systems sharing one `ResMut` must be ordered
-//! deterministically). The production app adds this plugin when the sim is wired
-//! into the runtime (E1.8 / E5); that app-wiring is out of scope here, so the
-//! systems are exercised by this module's headless tests.
+//! deterministically); [`sync_destroyed_slab`] writes a DIFFERENT resource
+//! (`ResMut<SurfaceGrid>`), so it needs no ordering against that chain — but it is
+//! ordered alongside it in the same set so a destroyed slab's surface edit lands
+//! before the squad fog recomputes (the recompute is ordered `.after` the set). The
+//! production app adds this plugin when the sim is wired into the runtime (E1.8 / E5);
+//! that app-wiring is out of scope here, so the systems are exercised by this module's
+//! headless tests.
 
 mod components;
 mod plugin;
@@ -53,6 +64,8 @@ mod systems;
 #[cfg(test)]
 mod test;
 
-pub use components::{CoverDestroyed, PrevSlot};
+pub use components::{CoverDestroyed, PrevSlot, SlabDestroyed};
 pub use plugin::{OccupancyMaintenancePlugin, SimSystems};
-pub use systems::{sync_dead_gangers, sync_destroyed_cover, sync_moved_gangers};
+pub use systems::{
+    sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab, sync_moved_gangers,
+};

@@ -37,7 +37,7 @@ fn corpse_skip_is_inert_and_draws_nothing() {
             luck:      Luck::new(1.0),
         }),
         entity,
-        &mut ledger(),
+        surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng_used,
     );

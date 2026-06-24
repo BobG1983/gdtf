@@ -41,10 +41,10 @@ use gdtf_battle_sim::{
     DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    PieceQuery, Position, ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, Stable, Stance,
-    StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
-    Wounds, fire::FireOrder,
+    PieceQuery, Position, ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, SlabLedger, Stable,
+    Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy,
+    WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
 /// The shooter's cell.
@@ -196,6 +196,11 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .get_resource::<CoverLedger>()
         .cloned()
         .unwrap_or_default();
+    let mut slab = app
+        .world()
+        .get_resource::<SlabLedger>()
+        .cloned()
+        .unwrap_or_default();
 
     let mut state: SystemState<(
         ShooterQuery,
@@ -228,6 +233,7 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                     occupancy: &occupancy,
                     surface:   &surface,
                     cover:     &mut cover,
+                    slab:      &mut slab,
                 },
                 &tuning,
                 &mut rng,

@@ -11,12 +11,14 @@
 //! verbs** — it rebuilds none of them:
 //!
 //! 1. **Kind gate** — only a [`ShotKind::Ganger`](crate::resolve_coarse::ShotKind::Ganger)
-//!    outcome can wound. A [`ShotKind::Cover`](crate::resolve_coarse::ShotKind::Cover)
-//!    / [`ShotKind::Slab`](crate::resolve_coarse::ShotKind::Slab) /
-//!    [`ShotKind::Ground`](crate::resolve_coarse::ShotKind::Ground) /
-//!    [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss) outcome folds to a
-//!    **no-damage** report — no wound, and **no RNG draw** (a non-ganger never
-//!    touches a ganger).
+//!    outcome can WOUND. A [`ShotKind::Cover`](crate::resolve_coarse::ShotKind::Cover)
+//!    (GTW-364) or [`ShotKind::Slab`](crate::resolve_coarse::ShotKind::Slab) (GTW-365)
+//!    outcome instead spends the struck structural surface's OWN HP through the SAME
+//!    [`resolve_hit`](crate::resolve_hit::resolve_hit) damage formula (against its own
+//!    armor) and records a destroyed `(cell, level)` on depletion to zero — **no wound
+//!    and no RNG draw**. A [`ShotKind::Ground`](crate::resolve_coarse::ShotKind::Ground)
+//!    / [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss) outcome folds to a
+//!    **no-effect** report (no wound, no HP spent, no draw).
 //! 2. **Corpse-skip — BEFORE any draw** — a target already at
 //!    [`LifeState::Dead`](crate::ganger::LifeState::Dead) yields a **no-effect**
 //!    report: nothing mutates and **no draw is taken**, so a corpse can never
@@ -72,4 +74,4 @@ mod report;
 mod test;
 
 pub use fold::resolve_and_apply;
-pub use report::{AppliedDamage, HitReport, StruckPiece, TargetGanger};
+pub use report::{AppliedDamage, HitReport, StruckPiece, StruckSurfaces, TargetGanger};

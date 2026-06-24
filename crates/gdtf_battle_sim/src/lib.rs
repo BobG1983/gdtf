@@ -253,6 +253,7 @@ pub mod sample_cone;
 pub mod severity;
 pub mod shot_fired;
 pub mod situation;
+pub mod slab;
 pub mod stability;
 pub mod surface;
 #[cfg(any(test, feature = "test-support"))]
@@ -317,12 +318,14 @@ pub use occupancy::{
     OccupantPlacement, TerrainKind, TerrainPlacement, pathable_neighbors,
 };
 pub use occupancy_sync::{
-    CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, sync_dead_gangers, sync_destroyed_cover,
-    sync_moved_gangers,
+    CoverDestroyed, OccupancyMaintenancePlugin, PrevSlot, SlabDestroyed, sync_dead_gangers,
+    sync_destroyed_cover, sync_destroyed_slab, sync_moved_gangers,
 };
 pub use pathfinder::{Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within};
 pub use posture::{set_aiming, set_facing, set_stance};
-pub use resolve_and_apply::{AppliedDamage, HitReport, TargetGanger, resolve_and_apply};
+pub use resolve_and_apply::{
+    AppliedDamage, HitReport, StruckSurfaces, TargetGanger, resolve_and_apply,
+};
 pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
 pub use resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit};
 pub use rng::{BattleSeed, SimRng};
@@ -333,6 +336,7 @@ pub use situation::{
     BattleSetup, BattleSetupError, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers,
     setup_battle,
 };
+pub use slab::{SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp, SlabLedger};
 pub use stability::{ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, stability};
 pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tu::{can_spend_tu, reset_tu, spend_tu};
@@ -342,9 +346,9 @@ pub use tuning::{
     ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu, MatchupMultipliers,
     MoveCost, MoveCosts, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale,
     ProjectileBandEdges, RandomSpread, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling,
-    ShooterLuckScale, SilhouetteTop, SilhouetteTops, StabilityCurve, StabilityCurveCoord,
-    StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution,
-    StanceStability, ToughnessMitigation, TurnTu, WoundCost, WoundCosts,
+    ShooterLuckScale, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults, StabilityCurve,
+    StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu,
+    StanceContribution, StanceStability, ToughnessMitigation, TurnTu, WoundCost, WoundCosts,
 };
 pub use turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu};
 pub use vertical::{

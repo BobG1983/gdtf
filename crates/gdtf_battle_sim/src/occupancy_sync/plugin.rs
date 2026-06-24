@@ -5,7 +5,8 @@
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, SystemSet, Update};
 
 use crate::occupancy_sync::{
-    CoverDestroyed, sync_dead_gangers, sync_destroyed_cover, sync_moved_gangers,
+    CoverDestroyed, SlabDestroyed, sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab,
+    sync_moved_gangers,
 };
 
 /// The sim's public system-ordering anchor — the band every sim-mutation system runs in.
@@ -30,9 +31,10 @@ pub enum SimSystems {
 /// [`CoverDestroyed`] message buffer into a Bevy [`App`].
 ///
 /// This is the **registration unit** for the E1.7 maintenance layer:
-/// - it registers the [`CoverDestroyed`] message buffer
+/// - it registers the [`CoverDestroyed`] + [`SlabDestroyed`] message buffers
 ///   ([`App::add_message`]), without which
-///   [`sync_destroyed_cover`](crate::occupancy_sync::sync_destroyed_cover)'s
+///   [`sync_destroyed_cover`](crate::occupancy_sync::sync_destroyed_cover)'s /
+///   [`sync_destroyed_slab`](crate::occupancy_sync::sync_destroyed_slab)'s
 ///   [`MessageReader`](bevy::prelude::MessageReader) would fail param validation; and
 /// - it adds [`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers),
 ///   [`sync_dead_gangers`](crate::occupancy_sync::sync_dead_gangers), and
@@ -43,7 +45,13 @@ pub enum SimSystems {
 ///   MUST be ordered deterministically
 ///   (`bevy-traps.md` #3). The chain order (move → die → cover) is deliberate:
 ///   moves settle each entity's slot first, deaths then free a settled slot, and
-///   cover folds into the independent destroyed-cover set last.
+///   cover folds into the independent destroyed-cover set last; and
+/// - it adds [`sync_destroyed_slab`](crate::occupancy_sync::sync_destroyed_slab)
+///   (GTW-365) to the same [`SimSystems::Simulate`] set. It writes a DIFFERENT resource
+///   (`ResMut<`[`SurfaceGrid`](crate::surface::SurfaceGrid)`>`), so it needs no
+///   ordering against the `OccupancyGrid` chain (disjoint access — no conflict), but it
+///   sits in the same set so the squad-fog recompute (ordered `.after` the set) sees a
+///   destroyed slab's surface edit before it re-reveals the opened sightline.
 ///
 /// The chain is nested under the public [`SimSystems::Simulate`] set: the plugin
 /// [`configure_sets`](App::configure_sets) that set on [`Update`] ONCE, before its
@@ -62,12 +70,24 @@ pub struct OccupancyMaintenancePlugin;
 impl Plugin for OccupancyMaintenancePlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<CoverDestroyed>()
+            // GTW-365: the slab-destroyed signal `sync_destroyed_slab` reads. Registering
+            // the buffer here makes its MessageReader<SlabDestroyed> param valid; it is
+            // IDEMPOTENT with SimActsPlugin's own add_message::<SlabDestroyed> (the producer
+            // side — Bevy's add_message no-ops a second registration), so both consumer
+            // (here) and producer (dispatch_fire) plugins can name it.
+            .add_message::<SlabDestroyed>()
             .configure_sets(Update, SimSystems::Simulate)
             .add_systems(
                 Update,
                 (sync_moved_gangers, sync_dead_gangers, sync_destroyed_cover)
                     .chain()
                     .in_set(SimSystems::Simulate),
-            );
+            )
+            // GTW-365: the slab-surface maintenance system. It writes ResMut<SurfaceGrid>
+            // (disjoint from the OccupancyGrid chain above — no shared-resource conflict),
+            // so it joins the same set WITHOUT chaining into the move → die → cover order.
+            // The squad-fog recompute is ordered `.after(sync_destroyed_slab)` in
+            // BattleSimPlugin so a freed slab's surface edit lands before sight recomputes.
+            .add_systems(Update, sync_destroyed_slab.in_set(SimSystems::Simulate));
     }
 }

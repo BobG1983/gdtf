@@ -20,7 +20,7 @@ use crate::{
     magazine::Magazine,
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    resolve_and_apply::{HitReport, StruckPiece, TargetGanger, resolve_and_apply},
+    resolve_and_apply::{HitReport, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotInputs, ShotKind, resolve_coarse},
     rng::SimRng,
     sample_cone::concentration_p,
@@ -369,73 +369,106 @@ pub(super) fn resolve_round(
     );
 
     let report = match outcome.kind {
-        ShotKind::Ganger(struck) => {
-            // GTW-323 / ADR-0004: resolve the struck location's worn piece ENTITY via
-            // `ganger → Wears → the BodyPart-tagged piece`, then read its stats + wear
-            // its `&mut ArmorIntegrity` through the fold. The lookup keys on the §4
-            // struck part (carried on the outcome); a missing part / piece folds to
-            // bare flesh (StruckPiece == None). The `wears`/`pieces` queries are
-            // disjoint from `targets` (a different ganger component / a different entity
-            // set), so they coexist with the `targets.get_mut(struck)` below.
-            let struck_piece_view = outcome
-                .body_part
-                .and_then(|part| struck_piece_entity(struck, part, wears, pieces))
-                .and_then(|piece_entity| {
-                    pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
-                        floor:      *piece.floor,
-                        protection: *piece.protection,
-                        hardness:   *piece.hardness,
-                        armor_type: *piece.armor_type,
-                        integrity:  piece.integrity.into_inner(),
-                    })
-                });
-
-            match targets.get_mut(struck) {
-                Ok((mut hp, mut wounds, mut life, mut inflicted, toughness, target_luck)) => {
-                    resolve_and_apply(
-                        &outcome,
-                        snapshot.weapon_stats(),
-                        snapshot.luck,
-                        Some(TargetGanger {
-                            hp:        &mut hp,
-                            wounds:    &mut wounds,
-                            life:      &mut life,
-                            piece:     struck_piece_view,
-                            inflicted: &mut inflicted,
-                            toughness: *toughness,
-                            luck:      *target_luck,
-                        }),
-                        struck,
-                        grids.cover,
-                        tuning,
-                        rng,
-                    )
-                }
-                Err(_) => HitReport::no_effect(outcome.kind),
-            }
-        }
+        ShotKind::Ganger(struck) => fold_ganger_round(
+            &outcome, struck, snapshot, grids, targets, wears, pieces, tuning, rng,
+        ),
         // GTW-364: a round that strikes COVER folds through the SAME resolve_and_apply,
         // which reuses the ganger damage formula against the cover's own armor, spends
         // the ledger's HP via deplete_cover, and records a destroyed (cell, level) in
         // the report (bridged to a CoverDestroyed message by dispatch_fire). There is no
         // struck ganger (`None` target); the cover ledger is reborrowed `&mut` here (its
         // earlier `&` reborrow by resolve_coarse / cone_for / stability_for has ended).
-        ShotKind::Cover(_) => resolve_and_apply(
+        // GTW-365: a round that strikes a SLAB takes the same path — it spends the SLAB
+        // ledger's HP instead (the StruckSurfaces bundle carries both; the fold's
+        // ShotKind selects which one is touched).
+        ShotKind::Cover(_) | ShotKind::Slab(_) => resolve_and_apply(
             &outcome,
             snapshot.weapon_stats(),
             snapshot.luck,
             None,
             Entity::PLACEHOLDER,
-            grids.cover,
+            StruckSurfaces {
+                cover: grids.cover,
+                slab:  grids.slab,
+            },
             tuning,
             rng,
         ),
-        // A slab / ground / miss strikes neither a ganger nor cover — no effect.
-        ShotKind::Slab(_) | ShotKind::Ground(_) | ShotKind::Miss => {
-            HitReport::no_effect(outcome.kind)
-        }
+        // A ground / miss strikes neither a ganger nor a structural surface — no effect.
+        ShotKind::Ground(_) | ShotKind::Miss => HitReport::no_effect(outcome.kind),
     };
     // Return the resolved report PLUS the already-computed outcome geometry (verbatim,
     // not recomputed) so the volley can surface a per-round ShotFired (GTW-290).
     (report, outcome)
+}
+
+/// Fold a [`ShotKind::Ganger`] round onto the struck target — the wound arm of
+/// [`resolve_round`], split out (GTW-365) so the per-round verb stays under clippy's
+/// line cap once the slab arm joined the cover arm.
+///
+/// GTW-323 / ADR-0004: resolves the struck location's worn piece ENTITY via
+/// `ganger → Wears → the BodyPart-tagged piece`, reads its stats + wears its
+/// `&mut ArmorIntegrity` through the fold. The lookup keys on the §4 struck part (carried
+/// on `outcome`); a missing part / piece folds to bare flesh (`StruckPiece == None`). The
+/// `wears` / `pieces` queries are disjoint from `targets`, so they coexist with the
+/// `targets.get_mut(struck)`. A struck entity that is not a queryable target folds to
+/// [`HitReport::no_effect`] — never a panic. The [`StruckSurfaces`] bundle is threaded so
+/// the SAME [`resolve_and_apply`] signature serves both arms (a ganger hit touches
+/// neither ledger).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the ganger fold needs the outcome / struck entity / snapshot / grids plus \
+              the disjoint wears+pieces queries + tuning + rng; bundling the queries would \
+              obscure the GTW-323 disjointness the ParamSet-free coexistence relies on"
+)]
+fn fold_ganger_round(
+    outcome: &crate::resolve_coarse::ShotOutcome,
+    struck: Entity,
+    snapshot: &ShooterSnapshot,
+    grids: &mut BattleGrids,
+    targets: &mut TargetQuery,
+    wears: &WearsQuery,
+    pieces: &mut PieceQuery,
+    tuning: &CombatTuning,
+    rng: &mut SimRng,
+) -> HitReport {
+    let struck_piece_view = outcome
+        .body_part
+        .and_then(|part| struck_piece_entity(struck, part, wears, pieces))
+        .and_then(|piece_entity| {
+            pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
+                floor:      *piece.floor,
+                protection: *piece.protection,
+                hardness:   *piece.hardness,
+                armor_type: *piece.armor_type,
+                integrity:  piece.integrity.into_inner(),
+            })
+        });
+
+    match targets.get_mut(struck) {
+        Ok((mut hp, mut wounds, mut life, mut inflicted, toughness, target_luck)) => {
+            resolve_and_apply(
+                outcome,
+                snapshot.weapon_stats(),
+                snapshot.luck,
+                Some(TargetGanger {
+                    hp:        &mut hp,
+                    wounds:    &mut wounds,
+                    life:      &mut life,
+                    piece:     struck_piece_view,
+                    inflicted: &mut inflicted,
+                    toughness: *toughness,
+                    luck:      *target_luck,
+                }),
+                struck,
+                StruckSurfaces {
+                    cover: grids.cover,
+                    slab:  grids.slab,
+                },
+                tuning,
+                rng,
+            )
+        }
+        Err(_) => HitReport::no_effect(outcome.kind),
+    }
 }

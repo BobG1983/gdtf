@@ -41,7 +41,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
             luck:      Luck::new(0.0),
         }),
         entity,
-        &mut ledger(),
+        surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
     );
@@ -99,7 +99,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
             luck:      Luck::new(0.0),
         }),
         entity,
-        &mut ledger(),
+        surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
     );

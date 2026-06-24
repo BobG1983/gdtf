@@ -375,6 +375,7 @@ mod test {
                 worn: None,
             }),
             cover_destroyed: None,
+            slab_destroyed:  None,
         }
     }
 

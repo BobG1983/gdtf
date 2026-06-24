@@ -34,6 +34,7 @@ pub(super) use crate::{
     resolve_coarse::ShotKind,
     rng::{BattleSeed, SimRng},
     severity::Severity,
+    slab::SlabLedger,
     surface::SurfaceGrid,
     tuning::CombatTuning,
     weapon::{

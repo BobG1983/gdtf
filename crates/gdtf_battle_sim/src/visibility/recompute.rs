@@ -22,7 +22,7 @@ use crate::{
     cover::CoverLedger,
     ganger::{Facing, Faction, LifeState, Position, Stance},
     occupancy::OccupancyGrid,
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::{CoverDestroyed, SlabDestroyed},
     surface::SurfaceGrid,
     tuning::CombatTuning,
     visibility::{FovObserver, SquadVisibility, accrue, union_fov},
@@ -43,13 +43,16 @@ type MovedReposedOrFlipped = Or<(Changed<Position>, Changed<Stance>, Changed<Lif
 ///   matched [`MovedReposedOrFlipped`] AND belongs to the [`PlayerFaction`] (a non-player
 ///   ganger's move never re-reveals the squad's own fog, so it is filtered out here);
 /// * a [`CoverDestroyed`] message was buffered this update (a smashed wall can open a
-///   sightline); or
+///   sightline);
+/// * a [`SlabDestroyed`] message was buffered this update (GTW-365 — a smashed floor/roof
+///   slab opens a vertical sightline through the hole: the round + LOS march already fly
+///   through a `Destroyed` slab, so the recompute reflects the reopened line); or
 /// * a [`BattleReady`] message was buffered this update (the setup-spawn FOV — the first
 ///   recompute that fills the freshly-inserted [`SquadVisibility`]).
 ///
-/// Both [`MessageReader`]s are **drained fully** ([`count`](Iterator::count)`() > 0`) so a
-/// message read here is consumed and cannot re-fire the gate on a later update (clause 2 —
-/// no stale re-fire). This run-condition reads the messages with its OWN reader cursor,
+/// All three [`MessageReader`]s are **drained fully** ([`count`](Iterator::count)`() > 0`)
+/// so a message read here is consumed and cannot re-fire the gate on a later update (clause
+/// 2 — no stale re-fire). This run-condition reads the messages with its OWN reader cursor,
 /// independent of [`recompute_visibility`]'s `Changed` re-evaluation: the writer never
 /// reads these buffers, it only recomputes off the live world, so draining here is safe.
 ///
@@ -68,11 +71,16 @@ pub fn should_recompute_visibility(
     moved: Query<&Faction, MovedReposedOrFlipped>,
     player: Option<Res<PlayerFaction>>,
     mut cover_destroyed: MessageReader<CoverDestroyed>,
+    mut slab_destroyed: MessageReader<SlabDestroyed>,
     mut ready: MessageReader<BattleReady>,
 ) -> bool {
-    // Drain BOTH buffers fully every update — a count, not a take-first — so a buffered
+    // Drain ALL buffers fully every update — a count, not a take-first — so a buffered
     // message is consumed here and never re-fires the gate next update (clause 2).
     let cover_changed = cover_destroyed.read().count() > 0;
+    // GTW-365: a destroyed slab opens a sightline through the hole (the LOS march flies
+    // through a Destroyed slab the same way the round does), so a buffered SlabDestroyed
+    // re-fires the recompute — the slab mirror of the cover trigger.
+    let slab_changed = slab_destroyed.read().count() > 0;
     let battle_ready = ready.read().count() > 0;
     // A player-faction observer moved / re-posed / flipped: only the player's own gangers
     // feed the squad fog, so an enemy move is not a recompute trigger (clause 1 / 2). With
@@ -80,7 +88,7 @@ pub fn should_recompute_visibility(
     let player_observer_changed = player
         .as_deref()
         .is_some_and(|player| moved.iter().any(|faction| *faction == **player));
-    player_observer_changed || cover_changed || battle_ready
+    player_observer_changed || cover_changed || slab_changed || battle_ready
 }
 
 /// The ONE writer of [`SquadVisibility`] — recompute the squad fog from every conscious
@@ -164,7 +172,7 @@ mod test {
         battle::{BattleReady, PlayerFaction},
         ganger::{Faction, Position, Stance, StanceKind},
         metric::{Cell, CellLevel, Level},
-        occupancy_sync::CoverDestroyed,
+        occupancy_sync::{CoverDestroyed, SlabDestroyed},
         visibility::should_recompute_visibility,
     };
 
@@ -184,6 +192,7 @@ mod test {
     /// validation passes, then runs `should_recompute_visibility` once.
     fn run_predicate(world: &mut World) -> bool {
         world.init_resource::<Messages<CoverDestroyed>>();
+        world.init_resource::<Messages<SlabDestroyed>>();
         world.init_resource::<Messages<BattleReady>>();
         // RunSystemOnce returns the system's `bool` output (Err only on a param-validation
         // failure, which cannot happen here — the buffers are init'd, the query + Option<Res>
@@ -199,6 +208,7 @@ mod test {
         // gate even with no observer change and no player faction wired yet.
         let mut world = World::new();
         world.init_resource::<Messages<CoverDestroyed>>();
+        world.init_resource::<Messages<SlabDestroyed>>();
         world.init_resource::<Messages<BattleReady>>();
         world
             .resource_mut::<Messages<BattleReady>>()
@@ -214,6 +224,7 @@ mod test {
         // A smashed wall can open a sightline — a CoverDestroyed fires the gate.
         let mut world = World::new();
         world.init_resource::<Messages<CoverDestroyed>>();
+        world.init_resource::<Messages<SlabDestroyed>>();
         world.init_resource::<Messages<BattleReady>>();
         world
             .resource_mut::<Messages<CoverDestroyed>>()
@@ -221,6 +232,24 @@ mod test {
         assert!(
             run_predicate(&mut world),
             "a buffered CoverDestroyed must fire the recompute gate"
+        );
+    }
+
+    #[test]
+    fn slab_destroyed_message_fires_the_gate() {
+        // GTW-365: a smashed floor/roof slab opens a vertical sightline through the hole
+        // — a buffered SlabDestroyed fires the recompute gate (the slab mirror of the
+        // cover trigger). Mechanism, not a magnitude.
+        let mut world = World::new();
+        world.init_resource::<Messages<CoverDestroyed>>();
+        world.init_resource::<Messages<SlabDestroyed>>();
+        world.init_resource::<Messages<BattleReady>>();
+        world
+            .resource_mut::<Messages<SlabDestroyed>>()
+            .write(SlabDestroyed::new(ground(3, 3)));
+        assert!(
+            run_predicate(&mut world),
+            "a buffered SlabDestroyed must fire the recompute gate (the opened-hole sightline)"
         );
     }
 

@@ -5,6 +5,7 @@
 use crate::{
     armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart},
     armor_wear::{ArmorBroken, ArmorWorn},
+    cover::CoverLedger,
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
     matchup::Matchup,
@@ -12,6 +13,7 @@ use crate::{
     resolve_coarse::ShotKind,
     resolve_hit::HitResult,
     severity::Severity,
+    slab::SlabLedger,
 };
 
 /// The **bundle of one target ganger's battle state** [`resolve_and_apply`](super::resolve_and_apply)
@@ -94,6 +96,28 @@ impl StruckPiece<'_> {
     }
 }
 
+/// The **world surfaces a shot can deplete** — the two model HP ledgers
+/// [`resolve_and_apply`](super::resolve_and_apply) spends on a structural hit, bundled
+/// into one mutable borrow-view so the fold stays under clippy's argument-count gate
+/// (the [`TargetGanger`] / `BattleGrids` grouping precedent).
+///
+/// A [`ShotKind::Cover`](crate::resolve_coarse::ShotKind::Cover) outcome spends
+/// [`cover`](StruckSurfaces::cover); a
+/// [`ShotKind::Slab`](crate::resolve_coarse::ShotKind::Slab) outcome (GTW-365) spends
+/// [`slab`](StruckSurfaces::slab) — a hit touches **exactly one** of the two (its
+/// `ShotKind` selects it), and a ganger / ground / miss touches neither. Each field is an
+/// existing named model resource (no-bare-types); the struct is a transparent mutable
+/// borrow record, not itself a wrapped domain scalar. The caller (the E4 `fire()` path)
+/// reborrows its `&mut CoverLedger` / `&mut SlabLedger` into this each round.
+pub struct StruckSurfaces<'a> {
+    /// The model cover ledger — spent (HP depleted) on a
+    /// [`ShotKind::Cover`](crate::resolve_coarse::ShotKind::Cover) hit (GTW-364).
+    pub cover: &'a mut CoverLedger,
+    /// The model slab ledger — spent (HP depleted) on a
+    /// [`ShotKind::Slab`](crate::resolve_coarse::ShotKind::Slab) hit (GTW-365).
+    pub slab:  &'a mut SlabLedger,
+}
+
 /// The **applied-damage block** of a [`HitReport`] — the resolved damage of a hit
 /// that landed on a ganger (`docs/combat/resolution.md` §5 / §6).
 ///
@@ -153,6 +177,11 @@ pub struct AppliedDamage {
 ///   [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed) message (the
 ///   fire→deplete→message bridge). `None` for every non-destroying outcome (a ganger
 ///   hit, a non-destroying cover hit, a slab / ground / miss).
+/// - [`slab_destroyed`](HitReport::slab_destroyed) — `Some(cell, level)` ONLY when this
+///   round depleted a floor/roof slab's HP to zero (GTW-365); the fire path bridges it
+///   into a buffered [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed) message
+///   (the slab mirror of `cover_destroyed`). `None` for every non-destroying or
+///   non-slab outcome.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HitReport {
     /// What the shot struck — the [`ShotOutcome`](crate::resolve_coarse::ShotOutcome)'s [`ShotKind`].
@@ -167,12 +196,17 @@ pub struct HitReport {
     /// the fire path bridges it to a [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed)
     /// message. `None` for a non-destroying or non-cover outcome.
     pub cover_destroyed: Option<CellLevel>,
+    /// The `(cell, level)` of a floor/roof slab this round DESTROYED (GTW-365) — `Some`
+    /// only when the slab-hit pipeline depleted that slab's structural HP to zero; the
+    /// fire path bridges it to a [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed)
+    /// message. `None` for a non-destroying or non-slab outcome.
+    pub slab_destroyed:  Option<CellLevel>,
 }
 
 impl HitReport {
     /// Build a **no-effect** report for `kind` — no part struck, no damage applied,
-    /// and no cover destroyed (the non-ganger non-cover, corpse-skip, and
-    /// defensive-no-part folds).
+    /// and no cover / slab destroyed (the non-ganger non-cover non-slab, corpse-skip,
+    /// and defensive-no-part folds).
     ///
     /// `pub` so the E4.5 `fire()` act (GTW-198) can fold a non-ganger / corpse-skip
     /// round to a no-effect report cross-module without re-deriving the shape.
@@ -183,6 +217,7 @@ impl HitReport {
             part: None,
             applied: None,
             cover_destroyed: None,
+            slab_destroyed: None,
         }
     }
 }

@@ -7,6 +7,7 @@ use crate::{
     ganger::{LifeState, Position, Stance, StanceKind},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
+    surface::SurfaceGrid,
 };
 
 fn key(x: i32, y: i32, level: u8) -> CellLevel {
@@ -14,12 +15,17 @@ fn key(x: i32, y: i32, level: u8) -> CellLevel {
 }
 
 /// Build a headless app: `MinimalPlugins` (no window / renderer — C1), the
-/// full 60×60×8 [`OccupancyGrid`] resource, and the maintenance plugin (which
-/// registers the [`CoverDestroyed`] message + the three chained systems).
+/// full 60×60×8 [`OccupancyGrid`] resource, the [`SurfaceGrid`] (GTW-365 —
+/// `sync_destroyed_slab` reads it `ResMut`), and the maintenance plugin (which
+/// registers the [`CoverDestroyed`] + [`SlabDestroyed`] messages + the four systems).
 fn headless_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.insert_resource(OccupancyGrid::new());
+    // GTW-365: `sync_destroyed_slab` reads `ResMut<SurfaceGrid>` — seed it so the plugin's
+    // four-system band validates (these occupancy tests never destroy a slab, but the
+    // system's param must resolve).
+    app.insert_resource(SurfaceGrid::new());
     app.add_plugins(OccupancyMaintenancePlugin);
     app
 }

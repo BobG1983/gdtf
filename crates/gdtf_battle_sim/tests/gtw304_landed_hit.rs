@@ -34,10 +34,10 @@ use gdtf_battle_sim::{
     DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    PieceQuery, Position, ReloadTu, ShooterQuery, Shooting, SimRng, Stable, Stance, StanceKind,
-    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
-    fire::FireOrder,
+    PieceQuery, Position, ReloadTu, ShooterQuery, Shooting, SimRng, SlabLedger, Stable, Stance,
+    StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
+    Wounds, fire::FireOrder,
 };
 
 /// The faithful skirmish-style geometry the contract names: a shooter near (5,6).
@@ -192,6 +192,11 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
         .get_resource::<CoverLedger>()
         .cloned()
         .unwrap_or_default();
+    let mut slab = app
+        .world()
+        .get_resource::<SlabLedger>()
+        .cloned()
+        .unwrap_or_default();
 
     let mut state: SystemState<(
         ShooterQuery,
@@ -228,6 +233,7 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
                 occupancy: &occupancy,
                 surface:   &surface,
                 cover:     &mut cover,
+                slab:      &mut slab,
             },
             &tuning,
             &mut rng,

@@ -21,9 +21,9 @@ use gdtf_battle_sim::{
     Faction, FatalBias, FireMode, FireModeSpec, HandlingProfile, HeightBand, Hp, InflictedWounds,
     Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MarchKind, ModeConeMult, ModeKind,
     ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position,
-    ReloadTu, Shooting, SimPos, SimRng, SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid,
-    TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, WieldedBy, Wounds,
+    ReloadTu, Shooting, SimPos, SimRng, SlabLedger, SquadVisibility, Stable, Stance, StanceKind,
+    SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
     acts::{FireRequested, SimActsPlugin},
     march_vector,
 };
@@ -63,6 +63,9 @@ fn bridge_app() -> App {
     app.insert_resource(SimRng::from_seed(BattleSeed::new(0xC0BA_17C0)));
     app.insert_resource(CombatTuning::default());
     app.insert_resource(PlayerFaction::new(Faction::new(1)));
+    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` (the slab-hit depletion path) —
+    // seed an empty ledger so its param validates (this test fires at cover, not a slab).
+    app.insert_resource(SlabLedger::new());
     // The other Simulate-band dispatch systems (move / walk) read these; seed them so the
     // whole band validates (an empty graph + empty fog — this test fires, it does not move).
     app.insert_resource(VerticalLinkGraph::default());

@@ -12,6 +12,7 @@ use crate::tuning::{
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
     severity::SeverityScaling,
+    slab::SlabDefaults,
     visibility::{ExploredDim, ViewRange},
     wounds::{BleedRate, ExecuteTu, StabilizeTu, WoundCosts},
 };
@@ -102,4 +103,12 @@ pub struct CombatTuning {
     /// model + RON + the parse/default tests); a future ticket repurposes or retires it.
     /// Tunable, mirroring the other tuning leaves.
     pub explored_dim:          ExploredDim,
+    /// The slab-defaults (GTW-365) — the uniform structural HP + armor every floor/roof
+    /// slab lazily seeds to when first struck (`docs/combat/resolution.md` §3.1;
+    /// user-ruled 2026-06-22). Slabs are uniform level structure (authored as a bare
+    /// `(cell, level)` list with NO per-slab HP), so this combat-tuning leaf is the sole
+    /// HP/armor source for a struck slab — **genuinely consumed** by the
+    /// [`SlabLedger`](crate::slab::SlabLedger)'s lazy-seed (`SlabLedger::prototype_for`)
+    /// on the live depletion path (C7: no dead leaf). Tunable, mirroring the other leaves.
+    pub slab_defaults:         SlabDefaults,
 }

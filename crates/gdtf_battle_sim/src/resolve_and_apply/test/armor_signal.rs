@@ -42,7 +42,7 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
             luck:      Luck::new(0.0),
         }),
         entity,
-        &mut ledger(),
+        surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
     );
@@ -110,7 +110,7 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
             luck:      Luck::new(0.0),
         }),
         entity,
-        &mut ledger(),
+        surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
     );
@@ -171,7 +171,7 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
             luck:      Luck::new(0.0),
         }),
         entity,
-        &mut ledger(),
+        surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
     );

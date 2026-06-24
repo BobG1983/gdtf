@@ -20,12 +20,15 @@ pub(super) use crate::{
     magazine::{Magazine, ReloadTu},
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel, Level, SimPos},
-    resolve_and_apply::{AppliedDamage, HitReport, StruckPiece, TargetGanger, resolve_and_apply},
+    resolve_and_apply::{
+        AppliedDamage, HitReport, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply,
+    },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::{HitResult, resolve_hit},
     rng::{BattleSeed, SimRng},
     sample_cone::{ConcentrationP, ShotDir, sample_cone_vector},
     severity::{Severity, SeverityInputs, part_severity_mod, roll_severity},
+    slab::{SlabEntry, SlabHp, SlabLedger},
     stability::RecoilGrowth,
     tuning::{CombatTuning, RecoilClimb},
     weapon::{
@@ -207,6 +210,58 @@ pub(super) fn cover_outcome(entry: CoverEntry) -> ShotOutcome {
         level:      Level::new(u8::try_from(at.z).unwrap_or(0)),
         body_part:  None,
         band:       HeightBand::Mid,
+        muzzle:     SimPos::new(0.5, 0.5, 0.5),
+        trajectory: a_trajectory(),
+    }
+}
+
+/// A fresh, empty [`SlabLedger`] for the fold tests (GTW-365) — a struck slab lazily
+/// seeds from the `SlabDefaults` tuning leaf, so an empty ledger is the right start.
+/// Threaded only to satisfy the [`StruckSurfaces`] bundle on the ganger / cover paths
+/// (those never touch the slab ledger).
+pub(super) fn slab_ledger() -> SlabLedger {
+    SlabLedger::new()
+}
+
+/// Bundle two ledgers into the [`StruckSurfaces`] argument
+/// [`resolve_and_apply`] now takes (GTW-365) — the shared shape every fold-test call
+/// site builds. The fold's `ShotKind` selects which ledger a hit touches.
+pub(super) fn surfaces<'a>(
+    cover: &'a mut CoverLedger,
+    slab: &'a mut SlabLedger,
+) -> StruckSurfaces<'a> {
+    StruckSurfaces { cover, slab }
+}
+
+/// The `(cell, level)` the slab-hit fixtures place their struck slab at — a fixed
+/// arbitrary key, the key `deplete_slab` records on destruction.
+pub(super) fn slab_cell_level() -> CellLevel {
+    CellLevel::new(Cell::new(5, 7), Level::new(1))
+}
+
+/// A seeded full-HP [`SlabEntry`] at `max_hp` HP with the given armor stats — the
+/// prototype a fixture inserts so a low-HP slab can be breached in a single hit (the
+/// fixtures pin armor LOW so the chosen weapon damage controls destruction — the
+/// MECHANISM under test, not a balanced magnitude).
+pub(super) fn slab_entry(max_hp: u32, protection: i32, hardness: i32) -> SlabEntry {
+    SlabEntry::seeded(
+        SlabHp::new(max_hp),
+        ArmorProtection::new(protection),
+        ArmorHardness::new(hardness),
+    )
+}
+
+/// A [`ShotKind::Slab`] outcome struck at [`slab_cell_level`] (the surface cell the
+/// slab-hit path keys `deplete_slab` with). `ShotKind::Slab` carries the slab key
+/// directly (not the entry — slabs lazily seed from tuning); no body part.
+pub(super) fn slab_outcome() -> ShotOutcome {
+    let at = slab_cell_level();
+    ShotOutcome {
+        kind:       ShotKind::Slab(at),
+        cell:       Cell::new(at.x, at.y),
+        level:      Level::new(u8::try_from(at.z).unwrap_or(0)),
+        body_part:  None,
+        band:       HeightBand::Low,
         muzzle:     SimPos::new(0.5, 0.5, 0.5),
         trajectory: a_trajectory(),
     }

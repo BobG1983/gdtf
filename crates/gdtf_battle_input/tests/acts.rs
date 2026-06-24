@@ -42,7 +42,7 @@ use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
     FireMode, FireModeSpec, Level, LifeState, LinkKind, Magazine, MagazineSize, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng,
+    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng, SlabLedger,
     SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink, VerticalLinkGraph,
     WieldedBy,
     acts::{
@@ -166,6 +166,9 @@ fn acts_app() -> App {
     // `*Requested` MESSAGE — only its registered buffers / dispatch must validate.
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(CoverLedger::new());
+    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` (the slab-hit depletion path),
+    // so the harness seeds an empty ledger for the dispatch param to validate.
+    app.world_mut().insert_resource(SlabLedger::new());
     // GTW-354: the constrained `dispatch_move` reads `Res<VerticalLinkGraph>` +
     // `Res<SquadVisibility>` for its route gate, so the harness seeds them (empty link
     // graph + empty fog — these AC tests assert the input `*Requested` MESSAGE, never a

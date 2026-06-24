@@ -40,7 +40,7 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
         // No struck ganger on a cover hit.
         None,
         an_entity(),
-        &mut cover,
+        surfaces(&mut cover, &mut slab_ledger()),
         &tuning,
         &mut rng_used,
     );
@@ -108,7 +108,7 @@ fn insufficient_hit_reduces_hp_without_destroying() {
         Luck::new(0.0),
         None,
         an_entity(),
-        &mut cover,
+        surfaces(&mut cover, &mut slab_ledger()),
         &tuning,
         &mut rng_used,
     );
@@ -169,7 +169,7 @@ fn cover_hit_is_deterministic_under_seeded_rng() {
             Luck::new(0.0),
             None,
             an_entity(),
-            &mut cover,
+            surfaces(&mut cover, &mut slab_ledger()),
             &tuning,
             &mut r,
         );

@@ -28,9 +28,10 @@ use gdtf_battle_sim::{
     DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
     MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery,
-    Position, ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, Stable, Stance, StanceKind,
-    SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    Position, ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, SlabLedger, Stable, Stance,
+    StanceKind, SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
+    fire::FireOrder,
 };
 
 /// The shooter cell — well to the West so the East-facing line of occupants lies
@@ -172,6 +173,7 @@ fn fire_volley(
     let mut rng = SimRng::from_seed(BattleSeed::new(seed));
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
+    let mut slab = SlabLedger::new();
 
     let mut state: SystemState<(
         ShooterQuery,
@@ -205,6 +207,7 @@ fn fire_volley(
                     occupancy,
                     surface: &surface,
                     cover: &mut cover,
+                    slab: &mut slab,
                 },
                 &tuning,
                 &mut rng,

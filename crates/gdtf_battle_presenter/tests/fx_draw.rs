@@ -725,6 +725,7 @@ const fn ganger_hit_report(
             worn: None,
         }),
         cover_destroyed: None,
+        slab_destroyed:  None,
     }
 }
 

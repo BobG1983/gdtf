@@ -33,6 +33,7 @@ pub(super) use crate::{
     resolve_coarse::ShotKind,
     rng::{BattleSeed, SimRng},
     shot_fired::ShotFired,
+    slab::SlabLedger,
     surface::SurfaceGrid,
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
@@ -87,6 +88,8 @@ pub(super) fn insert_sim_resources(app: &mut App) {
     app.insert_resource(OccupancyGrid::new());
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(CoverLedger::new());
+    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger.
+    app.insert_resource(SlabLedger::new());
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(full_vision());
     app.insert_resource(PlayerFaction::new(Faction::new(TEST_PLAYER_GANG)));

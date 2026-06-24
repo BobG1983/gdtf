@@ -23,9 +23,10 @@ use crate::{
     magazine::mode_tu_cost,
     metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::{CoverDestroyed, SlabDestroyed},
     rng::SimRng,
     shot_fired::ShotFired,
+    slab::SlabLedger,
     surface::SurfaceGrid,
     tu::spend_tu,
     tuning::CombatTuning,
@@ -100,19 +101,24 @@ pub struct BattleGridsParam<'w> {
     /// cover band, and **spent** (write) when a round strikes cover (GTW-364), so it is
     /// a [`ResMut`] now (the cover-hit depletion path writes the ledger's HP in place).
     cover:     ResMut<'w, CoverLedger>,
+    /// The model slab ledger — **spent** (write) when a round strikes a floor/roof slab
+    /// (GTW-365), so it is a [`ResMut`] too (the slab-hit depletion path writes the
+    /// ledger's HP in place). The march reads slab *existence* from `surface` above.
+    slab:      ResMut<'w, SlabLedger>,
 }
 
 impl BattleGridsParam<'_> {
-    /// Assemble the borrow-based [`BattleGrids`] [`fire`] reads (and, GTW-364, the
-    /// cover-hit path WRITES) from these grid resources — the occupancy / surface are
-    /// read (`Res<T>` derefs to `&T`), the cover is taken `&mut` (the depletion path).
-    /// Takes `&mut self` for the mutable cover borrow; the grids are still never
-    /// rebuilt — only the struck cover's HP is spent in place.
+    /// Assemble the borrow-based [`BattleGrids`] [`fire`] reads (and, GTW-364 / GTW-365,
+    /// the cover- / slab-hit paths WRITE) from these grid resources — the occupancy /
+    /// surface are read (`Res<T>` derefs to `&T`), the cover + slab ledgers are taken
+    /// `&mut` (the depletion paths). Takes `&mut self` for the mutable ledger borrows;
+    /// the grids are still never rebuilt — only the struck surface's HP is spent in place.
     fn grids(&mut self) -> BattleGrids<'_> {
         BattleGrids {
             occupancy: &self.occupancy,
             surface:   &self.surface,
             cover:     &mut self.cover,
+            slab:      &mut self.slab,
         }
     }
 
@@ -149,6 +155,14 @@ pub struct FireSignals<'w> {
     /// [`CoverDestroyed`] message that `sync_destroyed_cover` + `should_recompute_visibility`
     /// consume to free the cell + reopen LOS.
     cover_destroyed: MessageWriter<'w, CoverDestroyed>,
+    /// The per-ROUND slab-destroyed signal (GTW-365) — emitted for each round whose
+    /// [`HitReport::slab_destroyed`](crate::resolve_and_apply::HitReport::slab_destroyed)
+    /// is `Some`, bridging the ledger's `deplete_slab` destruction into the buffered
+    /// [`SlabDestroyed`] message that `sync_destroyed_slab` (sets the slab
+    /// [`SlabState::Destroyed`](crate::surface::SlabState) on the surface grid) +
+    /// `should_recompute_visibility` consume to stop blocking rounds + reopen LOS
+    /// through the hole. The slab mirror of `cover_destroyed`.
+    slab_destroyed:  MessageWriter<'w, SlabDestroyed>,
 }
 
 /// The query the GTW-242 fire dispatch turns the shooter through for an out-of-arc shot —
@@ -431,6 +445,17 @@ pub fn dispatch_fire(
             //      — both already wired, consuming this message. No re-resolve, no extra draw.
             if let Some(at) = report.cover_destroyed {
                 signals.cover_destroyed.write(CoverDestroyed::new(at));
+            }
+            // (5c) GTW-365: the slab mirror of the cover bridge. A round that depleted a
+            //      floor/roof slab's HP to zero carries the destroyed (cell, level) on its
+            //      report (resolve_and_apply already spent the slab ledger's HP via
+            //      deplete_slab); emit ONE SlabDestroyed per such round. `sync_destroyed_slab`
+            //      sets the slab SlabState::Destroyed on the SurfaceGrid (so the round + LOS
+            //      march fly through the hole) and `should_recompute_visibility` (GTW-365)
+            //      re-reveals the opened vertical sightline — both wired, consuming this
+            //      message. No re-resolve, no extra draw.
+            if let Some(at) = report.slab_destroyed {
+                signals.slab_destroyed.write(SlabDestroyed::new(at));
             }
         }
     }

@@ -114,7 +114,7 @@ fn fold_equals_the_composed_steps() {
             luck: defender_luck,
         }),
         entity,
-        &mut ledger(),
+        surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng_a,
     );
@@ -195,7 +195,7 @@ fn armored_report_carries_the_real_matchup() {
                 luck:      Luck::new(0.0),
             }),
             entity,
-            &mut ledger(),
+            surfaces(&mut ledger(), &mut slab_ledger()),
             &tuning,
             &mut rng(),
         )

@@ -21,6 +21,7 @@ use crate::{
     ganger::{Faction, LifeState, Stabilized, Tu, TuMax, Wounds},
     occupancy::OccupancyGrid,
     rng::{BattleSeed, SimRng},
+    slab::SlabLedger,
     surface::SurfaceGrid,
     tuning::CombatTuning,
     turn::ActiveFaction,
@@ -42,6 +43,8 @@ fn seed_battle_resources(app: &mut App) {
     app.insert_resource(OccupancyGrid::new());
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(CoverLedger::new());
+    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger.
+    app.insert_resource(SlabLedger::new());
     // GTW-354: the GTW-354 constrained `dispatch_move` (bundled by `SimActsPlugin`) reads
     // `Res<VerticalLinkGraph>` + `Res<SquadVisibility>` for its route gate, so the live
     // harness seeds them (empty graph + empty fog — these bleed-clock tests never move, so

@@ -12,11 +12,14 @@ use crate::{
     ganger::{LifeState, Luck},
     matchup::{Matchup, matchup},
     metric::CellLevel,
-    resolve_and_apply::report::{AppliedDamage, HitReport, StruckPiece, TargetGanger},
+    resolve_and_apply::report::{
+        AppliedDamage, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
+    },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::resolve_hit,
     rng::SimRng,
     severity::{SeverityInputs, part_severity_mod, roll_severity},
+    slab::{SlabDamage, SlabEntry, SlabEvent, SlabLedger},
     tuning::CombatTuning,
     weapon::WeaponStats,
 };
@@ -143,6 +146,78 @@ fn apply_cover_hit(
     cover.deplete_cover(at, removed, *entry, tuning)
 }
 
+/// The bare-flesh-shaped [`ArmorPiece`] a floor/roof slab's hit resolves against — the
+/// slab's own [`ArmorProtection`] / [`ArmorHardness`] (its `floor` 0 / `integrity` 0 /
+/// type [`ArmorType::DEFAULT`] forced [`Matchup::Neutral`], the same shape
+/// [`cover_armor_piece`] builds for cover).
+///
+/// A slab uses the **same armor/damage model as a ganger and cover**
+/// (`docs/combat/resolution.md` §3.1; user-ruled 2026-06-22), so the slab hit runs the
+/// EXACT same [`resolve_hit`] formula the ganger / cover path runs — only the armor
+/// stats it resolves against come from the struck [`SlabEntry`].
+const fn slab_armor_piece(entry: &SlabEntry) -> ArmorPiece {
+    ArmorPiece::new(
+        ArmorFloor::new(0),
+        entry.armor_protection,
+        ArmorIntegrity::new(0),
+        entry.armor_hardness,
+        ArmorType::DEFAULT,
+    )
+}
+
+/// Spend a shot's damage against the struck slab and return the [`SlabEvent`] outcome
+/// — the `apply_slab_hit` bridge (the slab mirror of [`apply_cover_hit`];
+/// `docs/combat/resolution.md` §3.1, user-ruled 2026-06-22).
+///
+/// The pipeline (C2):
+///
+/// 1. **Damage** — the SAME [`resolve_hit`] formula the ganger / cover path uses, run
+///    against the slab's own armor stats ([`slab_armor_piece`]) under
+///    [`Matchup::Neutral`] (a slab has no wheel node). Its
+///    [`HpDamage`](crate::resolve_hit::HpDamage) is the HP the hit removes — reused
+///    verbatim, NOT a new parallel formula.
+/// 2. **Deplete** — that HP, converted to a [`SlabDamage`] (clamped at zero — a
+///    fully-soaked hit removes no HP), is spent via the EXISTING
+///    [`SlabLedger::deplete_slab`]. The prototype is the struck `entry` (so a
+///    never-before-hit slab lazy-seeds at its [`SlabDefaults`](crate::tuning::SlabDefaults)
+///    `max_hp`); HP bookkeeping + destruction detection are owned by `deplete_slab`,
+///    never re-implemented here.
+///
+/// Returns the [`SlabEvent`] (`Damaged` / `Destroyed`) — the caller bridges a
+/// `Destroyed` into the buffered message (C3). Takes **no** RNG draw — the slab-vs-armor
+/// formula is deterministic (replay-safe). The `at` `(cell, level)` is the struck
+/// outcome's surface cell (the slab the round stopped on).
+fn apply_slab_hit(
+    entry: &SlabEntry,
+    at: CellLevel,
+    weapon: WeaponStats<'_>,
+    slab: &mut SlabLedger,
+    tuning: &CombatTuning,
+) -> SlabEvent {
+    // (1) The per-hit damage formula, REUSED verbatim (the ganger / cover path's E3.3),
+    //     against the slab's own armor stats under Neutral (a slab has no wheel node).
+    let piece = slab_armor_piece(entry);
+    let hit = resolve_hit(
+        *weapon.damage,
+        *weapon.punch,
+        *weapon.shred,
+        &piece,
+        Matchup::Neutral,
+        tuning,
+    );
+
+    // The resolved HP-loss damage → a SlabDamage. HpDamage is a signed i32 (floor 0 keeps
+    // it ≥ 0 here); a fully-soaked hit removes no HP, so clamp the conversion at zero
+    // (slab HP is a non-negative pool).
+    let removed = SlabDamage::new(u32::try_from((*hit.hp_damage).max(0)).unwrap_or(0));
+
+    // (2) Spend it through the EXISTING ledger API (HP bookkeeping + destruction detection
+    //     owned there). The prototype is the struck entry, so a never-hit slab lazy-seeds
+    //     at its SlabDefaults max_hp before this hit deducts. PERSISTENT across strikes:
+    //     a second hit reads the reduced current_hp from the map (C4).
+    slab.deplete_slab(at, removed, *entry)
+}
+
 /// Fold **one [`ShotOutcome`]** through damage → severity → application into ONE
 /// frozen [`HitReport`] — the E3.9 capstone integrator (`docs/combat/resolution.md`
 /// §5 / §6 / §3).
@@ -161,29 +236,40 @@ fn apply_cover_hit(
 ///   [`HitReport::cover_destroyed`] (the fire path bridges it to a buffered
 ///   [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed) message). Takes **no**
 ///   RNG draw — the cover-vs-armor formula is deterministic. See [`apply_cover_hit`].
-/// - **slab / ground / miss** — a no-effect report (no draw, no mutation).
+/// - **[`ShotKind::Slab`]** — the slab-hit path (GTW-365, resolution.md §3.1, user-ruled
+///   2026-06-22): a slab has its **own HP + armor**, so the SAME [`resolve_hit`] formula
+///   resolves the hit damage against the struck slab's own armor stats (lazily seeded
+///   from the [`SlabDefaults`](crate::tuning::SlabDefaults) tuning leaf — slabs carry no
+///   per-piece authored HP), that HP is spent through the EXISTING
+///   [`SlabLedger::deplete_slab`], and a depletion to zero records the destroyed
+///   `(cell, level)` in [`HitReport::slab_destroyed`] (the fire path bridges it to a
+///   buffered [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed) message). Takes
+///   **no** RNG draw — the slab-vs-armor formula is deterministic. See [`apply_slab_hit`].
+/// - **ground / miss** — a no-effect report (no draw, no mutation).
 ///
 /// `target` is `Some` only when the struck object is a queryable target ganger; a
-/// [`ShotKind::Cover`] / slab / ground / miss carries `None` (there is no struck
-/// ganger), and a [`ShotKind::Ganger`] whose entity is not a queryable target folds
-/// defensively to no-effect. `cover` is the model ledger the cover-hit path spends —
-/// it is read+written ONLY on a [`ShotKind::Cover`] outcome and untouched otherwise.
+/// [`ShotKind::Cover`] / [`ShotKind::Slab`] / ground / miss carries `None` (there is no
+/// struck ganger), and a [`ShotKind::Ganger`] whose entity is not a queryable target
+/// folds defensively to no-effect. `surfaces` bundles the two model HP ledgers the
+/// structural-hit paths spend ([`StruckSurfaces::cover`] on a cover hit,
+/// [`StruckSurfaces::slab`] on a slab hit) — exactly one is touched per hit (its
+/// `ShotKind` selects it), both untouched on a ganger / ground / miss.
 ///
 /// Pure, render-free model logic. On a ganger hit it mutates the target ganger's
 /// battle state in place and advances the injected [`SimRng`] by **exactly one**
-/// severity draw; on a cover hit it spends the [`CoverLedger`]'s HP and takes no
-/// draw; otherwise it mutates nothing and takes no draw. It **owns no mutation after
+/// severity draw; on a cover / slab hit it spends the respective ledger's HP and takes
+/// no draw; otherwise it mutates nothing and takes no draw. It **owns no mutation after
 /// return**. Same [`BattleSeed`](crate::rng::BattleSeed) → identical report for
-/// identical inputs (the seeded-replay property — the cover path is RNG-free, so it
-/// cannot perturb the stream). Charging TU and looping the burst is the E4 `fire()`
+/// identical inputs (the seeded-replay property — the cover / slab paths are RNG-free, so
+/// they cannot perturb the stream). Charging TU and looping the burst is the E4 `fire()`
 /// act — **out of scope** here.
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-364 adds the &mut CoverLedger the cover-hit path spends to the fold's \
-              already-bundled ganger inputs; the target ganger surfaces are ALREADY grouped \
-              in the TargetGanger bundle, so the remaining args are the irreducible \
-              outcome / weapon / luck / entity / cover / tuning / rng set"
+    reason = "GTW-365 bundles the two structural HP ledgers (cover + slab) into the \
+              StruckSurfaces param, so the remaining args are the irreducible \
+              outcome / weapon / luck / target / entity / surfaces / tuning / rng set; the \
+              target ganger surfaces are ALREADY grouped in the TargetGanger bundle"
 )]
 pub fn resolve_and_apply(
     outcome: &ShotOutcome,
@@ -191,7 +277,7 @@ pub fn resolve_and_apply(
     shooter_luck: Luck,
     target: Option<TargetGanger<'_>>,
     target_entity: Entity,
-    cover: &mut CoverLedger,
+    surfaces: StruckSurfaces<'_>,
     tuning: &CombatTuning,
     rng: &mut SimRng,
 ) -> HitReport {
@@ -217,7 +303,7 @@ pub fn resolve_and_apply(
         // fire→deplete→message bridge. No RNG draw (deterministic, replay-safe).
         ShotKind::Cover(entry) => {
             let at = CellLevel::new(outcome.cell, outcome.level);
-            let event = apply_cover_hit(&entry, at, weapon, cover, tuning);
+            let event = apply_cover_hit(&entry, at, weapon, surfaces.cover, tuning);
             let cover_destroyed = match event {
                 CoverEvent::Destroyed(cell) => Some(cell),
                 CoverEvent::Damaged(_) => None,
@@ -227,13 +313,34 @@ pub fn resolve_and_apply(
                 part: None,
                 applied: None,
                 cover_destroyed,
+                slab_destroyed: None,
             }
         }
-        // A slab / ground / miss strikes neither a ganger nor cover — no draw, no
-        // mutation (the round hit a surface / nothing).
-        ShotKind::Slab(_) | ShotKind::Ground(_) | ShotKind::Miss => {
-            HitReport::no_effect(outcome.kind)
+        // The slab-hit path (GTW-365): a slab has its OWN HP + armor; reuse the ganger
+        // damage formula against the slab's own armor (lazily seeded from the
+        // SlabDefaults tuning leaf), spend the slab ledger's HP, and record a destroyed
+        // slab cell — the slab mirror of the cover bridge. No RNG draw.
+        ShotKind::Slab(cell_level) => {
+            // The struck slab's prototype is lazily seeded from the SlabDefaults tuning
+            // leaf (C7) — slabs are uniform level structure with no per-piece authored HP,
+            // so the seed magnitude is the genuinely-consumed tuning value.
+            let prototype = SlabLedger::prototype_for(cell_level, &tuning.slab_defaults);
+            let event = apply_slab_hit(&prototype, cell_level, weapon, surfaces.slab, tuning);
+            let slab_destroyed = match event {
+                SlabEvent::Destroyed(cell) => Some(cell),
+                SlabEvent::Damaged(_) => None,
+            };
+            HitReport {
+                kind: outcome.kind,
+                part: None,
+                applied: None,
+                cover_destroyed: None,
+                slab_destroyed,
+            }
         }
+        // A ground / miss strikes neither a ganger nor a structural surface with HP —
+        // no draw, no mutation (the round hit the ground / nothing).
+        ShotKind::Ground(_) | ShotKind::Miss => HitReport::no_effect(outcome.kind),
     }
 }
 
@@ -354,5 +461,8 @@ fn fold_ganger(
             worn,
         }),
         cover_destroyed: None,
+        // A ganger hit destroys no slab (a slab hit takes the slab arm in
+        // `resolve_and_apply`, never this ganger fold).
+        slab_destroyed:  None,
     }
 }

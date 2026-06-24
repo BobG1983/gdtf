@@ -26,8 +26,9 @@ use bevy::{
 use gdtf_battle_sim::{
     Aiming, ArmorIntegrity, BattleGrids, BattleSeed, BattleSetup, Cell, CombatTuning, CoverLedger,
     Direction, Facing, Faction, FireModeSpec, Level, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, PieceQuery, ShooterQuery, Shooting, ShotKind, SimRng, Stance,
-    StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears, WearsQuery, WieldsQuery,
+    ModeTuPercent, OccupancyGrid, PieceQuery, ShooterQuery, Shooting, ShotKind, SimRng, SlabLedger,
+    Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears, WearsQuery,
+    WieldsQuery,
     fire::FireOrder,
     setup_battle,
     test_support::{
@@ -124,6 +125,11 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .get_resource::<CoverLedger>()
         .cloned()
         .unwrap_or_default();
+    let mut slab = app
+        .world()
+        .get_resource::<SlabLedger>()
+        .cloned()
+        .unwrap_or_default();
     let mode = single_mode();
 
     let mut state: SystemState<(
@@ -161,6 +167,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 occupancy: &occupancy,
                 surface:   &surface,
                 cover:     &mut cover,
+                slab:      &mut slab,
             },
             &tuning,
             &mut rng,

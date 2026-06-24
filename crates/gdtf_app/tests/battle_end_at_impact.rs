@@ -128,6 +128,7 @@ const fn lethal_ganger_hit(struck: Entity) -> HitReport {
             worn:       None,
         }),
         cover_destroyed: None,
+        slab_destroyed:  None,
     }
 }
 

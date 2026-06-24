@@ -46,7 +46,7 @@ use gdtf_battle_sim::{
     DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
     MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng,
+    OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng, SlabLedger,
     SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
     VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
     Wounds, acts::SimActsPlugin, tuning::CombatTuning,
@@ -118,6 +118,9 @@ fn endtoend_app() -> App {
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(CoverLedger::new());
+    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger so the
+    // dispatch param validates.
+    app.world_mut().insert_resource(SlabLedger::new());
     // GTW-354: the constrained `dispatch_move` reads `Res<VerticalLinkGraph>` +
     // `Res<SquadVisibility>` for its route gate, so seed them (empty graph + empty fog —
     // this fire-path test never moves, so the route gate result is irrelevant; the

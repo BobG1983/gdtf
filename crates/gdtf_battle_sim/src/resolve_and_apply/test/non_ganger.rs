@@ -1,21 +1,22 @@
 use super::support::*;
 
-/// AC4 — non-ganger SURFACE outcomes are inert on a ganger: each of Slab / Ground /
-/// Miss yields a no-damage report and leaves the ganger's pools and state untouched
-/// (and takes no draw). (`ShotKind::Cover` is NO LONGER inert as of GTW-364 — it
-/// depletes cover HP through the same fold; its behavior is asserted in
-/// [`super::cover`], so it is deliberately excluded from this inert sweep.)
+/// AC4 — the truly-inert non-ganger SURFACE outcomes leave a ganger untouched: each of
+/// Ground / Miss yields a no-damage report and leaves the ganger's pools and state
+/// untouched (and takes no draw). (`ShotKind::Cover` is NO LONGER inert as of GTW-364,
+/// nor is `ShotKind::Slab` as of GTW-365 — both deplete their own structural HP through
+/// the same fold; their behavior is asserted in [`super::cover`] / [`super::slab`], so
+/// they are deliberately excluded from this inert sweep.)
 #[test]
 fn non_ganger_outcomes_are_inert() {
     let tuning = CombatTuning::default();
     let weapon = a_weapon(50, 50, 50, DamageType::Rend);
 
-    // The non-ganger, non-cover kinds: a Slab / Ground carries a struck cell, a Miss
-    // carries nothing. `resolve_and_apply`'s kind dispatch folds each of these to a
-    // no-effect report (no draw, no mutation) — they strike neither a ganger nor cover.
+    // The truly-inert non-ganger kinds: a Ground carries a struck cell, a Miss carries
+    // nothing. `resolve_and_apply`'s kind dispatch folds each of these to a no-effect
+    // report (no draw, no mutation) — they strike neither a ganger nor a structural
+    // surface with its own HP (Cover / Slab DO, so they are excluded above).
     let kinds = [
         ShotKind::Miss,
-        ShotKind::Slab(CellLevel::new(Cell::new(2, 2), Level::new(1))),
         ShotKind::Ground(CellLevel::new(Cell::new(2, 2), Level::new(0))),
     ];
 
@@ -47,7 +48,7 @@ fn non_ganger_outcomes_are_inert() {
                 luck:      Luck::new(1.0),
             }),
             an_entity(),
-            &mut cover,
+            surfaces(&mut cover, &mut slab_ledger()),
             &tuning,
             &mut rng_used,
         );
@@ -61,6 +62,10 @@ fn non_ganger_outcomes_are_inert() {
         assert_eq!(
             report.cover_destroyed, None,
             "a {kind:?} (non-cover) outcome destroys no cover",
+        );
+        assert_eq!(
+            report.slab_destroyed, None,
+            "a {kind:?} (non-slab) outcome destroys no slab",
         );
 
         assert_eq!(hp, hp_before, "{kind:?} must not change Hp");

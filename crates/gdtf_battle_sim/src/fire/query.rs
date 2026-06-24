@@ -16,6 +16,7 @@ use crate::{
     magazine::Magazine,
     metric::{Cell, Level},
     occupancy::OccupancyGrid,
+    slab::SlabLedger,
     surface::SurfaceGrid,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, Stable, WeaponDamage,
@@ -177,8 +178,11 @@ pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<
 /// [`resolve_coarse`](crate::resolve_coarse::resolve_coarse) / `cone_for` /
 /// `stability_for` — the change-driven read contract is unchanged), but a round that
 /// strikes cover SPENDS its HP through [`CoverLedger::deplete_cover`](crate::cover::CoverLedger::deplete_cover)
-/// in `resolve_and_apply` — so the one ledger reference is `&mut`. The `&mut` field
-/// also drops the `Copy` derive, so [`BattleGrids`] is passed by `&mut` into the
+/// in `resolve_and_apply` — so the one ledger reference is `&mut`. The
+/// [`slab`](BattleGrids::slab) ledger is held **mutably** for the SAME reason (GTW-365):
+/// a round that strikes a slab spends its HP through
+/// [`SlabLedger::deplete_slab`](crate::slab::SlabLedger::deplete_slab). The `&mut`
+/// fields also drop the `Copy` derive, so [`BattleGrids`] is passed by `&mut` into the
 /// per-round verb (reborrowed each round) rather than copied.
 #[derive(Debug)]
 pub struct BattleGrids<'a> {
@@ -190,6 +194,11 @@ pub struct BattleGrids<'a> {
     /// target cell's cover band (the aim point), and **spent** (write) when a round
     /// strikes a piece of cover (GTW-364: the cover-hit depletion path).
     pub cover:     &'a mut CoverLedger,
+    /// The model slab ledger — **spent** (write) when a round strikes a floor/roof slab
+    /// (GTW-365: the slab-hit depletion path). The march reads slab *existence* from the
+    /// [`SurfaceGrid`](crate::surface::SurfaceGrid) (above); this ledger holds the struck
+    /// slab's HP/armor, lazily seeded from the `SlabDefaults` tuning leaf.
+    pub slab:      &'a mut SlabLedger,
 }
 
 /// The **firing order** — what the shooter is firing and where

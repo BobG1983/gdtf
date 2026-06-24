@@ -26,6 +26,7 @@
 //! - [`matchup`] — the 7-type matchup multipliers (E3.2).
 //! - [`firing_arc`] — the GTW-242 firing arc.
 //! - [`visibility`] — the GTW-338 squad fog-of-war view range + explored dim.
+//! - [`slab`] — the GTW-365 slab-defaults (uniform HP + armor a struck slab seeds to).
 //! - [`combat_tuning`] — the top-level [`CombatTuning`] resource composing them all.
 
 mod band;
@@ -37,6 +38,7 @@ mod economy;
 mod firing_arc;
 mod matchup;
 mod severity;
+mod slab;
 mod visibility;
 mod wounds;
 
@@ -62,5 +64,6 @@ pub use severity::{
     DefenderLuckScale, PenDamageScale, RandomSpread, SeverityEdge, SeverityEdges, SeverityScaling,
     ShooterLuckScale, ToughnessMitigation,
 };
+pub use slab::{SlabDefaultHp, SlabDefaults};
 pub use visibility::{ExploredDim, ViewRange};
 pub use wounds::{BleedRate, ExecuteTu, StabilizeTu, WoundCost, WoundCosts};

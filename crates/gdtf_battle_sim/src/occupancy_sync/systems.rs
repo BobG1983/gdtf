@@ -8,7 +8,8 @@ use crate::{
     clearance::silhouette_band,
     ganger::{LifeState, Position, Stance, StanceKind},
     occupancy::OccupancyGrid,
-    occupancy_sync::{CoverDestroyed, PrevSlot},
+    occupancy_sync::{CoverDestroyed, PrevSlot, SlabDestroyed},
+    surface::SurfaceGrid,
 };
 
 /// The read-set [`sync_moved_gangers`] queries per entity: its identity, current
@@ -137,5 +138,34 @@ pub fn sync_destroyed_cover(
 ) {
     for event in destroyed.read() {
         grid.mark_cover_destroyed(event.at);
+    }
+}
+
+/// Maintain the surface grid for **destroyed slabs** — reads the buffered
+/// [`SlabDestroyed`] message and folds each into the
+/// [`SurfaceGrid`](crate::surface::SurfaceGrid) via
+/// [`SurfaceGrid::destroy_slab`](crate::surface::SurfaceGrid::destroy_slab) (GTW-365;
+/// the slab mirror of [`sync_destroyed_cover`]).
+///
+/// For every [`SlabDestroyed`] message buffered this frame, it calls
+/// [`SurfaceGrid::destroy_slab`](crate::surface::SurfaceGrid::destroy_slab) with the
+/// message's [`CellLevel`](crate::metric::CellLevel), setting that slab
+/// [`SlabState::Destroyed`](crate::surface::SlabState) — **idempotent and permanent**
+/// (a destroyed slab stays destroyed; re-receiving the message is a harmless no-op).
+/// Once destroyed the slab stops blocking rounds AND the LOS march flies through it
+/// (the march already honors `Destroyed` on BOTH the round and the sight path — it only
+/// stops on `Present`), so this one grid edit reopens the sightline; the recompute
+/// re-reveal is driven by the SAME `SlabDestroyed` message in
+/// [`should_recompute_visibility`](crate::visibility::should_recompute_visibility). The
+/// [`MessageReader`] is the ONLY trigger — no polling. The grid is edited **in place**.
+///
+/// `SlabDestroyed` is a buffered **message** (Bevy 0.18 — `bevy-traps.md` #4), hence
+/// [`MessageReader`], not the pre-0.18 `EventReader`.
+pub fn sync_destroyed_slab(
+    mut surface: ResMut<SurfaceGrid>,
+    mut destroyed: MessageReader<SlabDestroyed>,
+) {
+    for event in destroyed.read() {
+        surface.destroy_slab(event.at);
     }
 }

@@ -55,7 +55,7 @@ fn same_seed_reproduces_the_report_sequence() {
                         luck: Luck::new(2.0),
                     }),
                     entity,
-                    &mut ledger(),
+                    surfaces(&mut ledger(), &mut slab_ledger()),
                     &tuning,
                     &mut r,
                 )

@@ -67,3 +67,36 @@ impl CoverDestroyed {
         Self { at }
     }
 }
+
+/// A floor/roof **slab** was **destroyed** at a `(cell, level)` — the buffered message
+/// [`sync_destroyed_slab`](crate::occupancy_sync::sync_destroyed_slab) folds into the
+/// [`SurfaceGrid`](crate::surface::SurfaceGrid) via
+/// [`destroy_slab`](crate::surface::SurfaceGrid::destroy_slab), and which
+/// [`should_recompute_visibility`](crate::visibility::should_recompute_visibility)
+/// drains to re-reveal the opened sightline (GTW-365; the slab mirror of
+/// [`CoverDestroyed`]).
+///
+/// The sim's destroyed-slab signal is `SlabDestroyed { cell, level }` (a
+/// model-authoritative fact the view mirrors — ADR-0001,
+/// `docs/decisions/0001-rust-bevy-rewrite.md`; the presenter `SlabDestroyed` reaction is
+/// GTW-367). The [`SlabEvent::Destroyed`](crate::slab::SlabEvent::Destroyed) depletion
+/// result is what becomes this message via the fire→deplete→message bridge in
+/// `dispatch_fire`. Carries a [`CellLevel`] (no-bare-types; never a numeric id). A
+/// **buffered message** (Bevy 0.18 renamed buffered `Event`/`EventReader` to
+/// `Message`/`MessageReader` — `bevy-traps.md` #4), so it `#[derive(Message)]` and is
+/// read with [`MessageReader`](bevy::prelude::MessageReader).
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SlabDestroyed {
+    /// The `(cell, level)` whose slab was destroyed — set
+    /// [`SlabState::Destroyed`](crate::surface::SlabState) on the surface grid
+    /// (idempotent / permanent).
+    pub at: CellLevel,
+}
+
+impl SlabDestroyed {
+    /// Build a slab-destroyed message for the `(cell, level)` whose slab was smashed.
+    #[must_use]
+    pub const fn new(at: CellLevel) -> Self {
+        Self { at }
+    }
+}

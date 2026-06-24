@@ -14,7 +14,9 @@ use crate::{
         setup::{setup_battle_on_request, teardown_battle_on_request},
     },
     move_acts::advance_walk,
-    occupancy_sync::{OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover},
+    occupancy_sync::{
+        OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover, sync_destroyed_slab,
+    },
     visibility::{SquadVisibility, recompute_visibility, should_recompute_visibility},
 };
 
@@ -114,6 +116,12 @@ impl Plugin for BattleSimPlugin {
                 recompute_visibility
                     .in_set(SimSystems::Simulate)
                     .after(sync_destroyed_cover)
+                    // GTW-365: after the slab-surface maintenance too, so a destroyed slab's
+                    // SurfaceGrid edit (destroy_slab) lands BEFORE sight recomputes — the
+                    // reopened sightline (the round + LOS march already fly through a
+                    // Destroyed slab) is reflected in the squad FOV this same tick
+                    // (the cover-destroyed precedent; bevy-traps.md #3).
+                    .after(sync_destroyed_slab)
                     // GTW-355: after the committed-walk engine too, so each accepted step's
                     // new Position is reflected in the squad FOV this same tick — the next
                     // walk tick then reads the refreshed fog before stepping again (the §44

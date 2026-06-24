@@ -64,6 +64,7 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
         // the LOW occupant. The cover is LOW too, so a round that sails over the
         // LOW occupant also sails over it — no ambiguity.
         let mut cover = CoverLedger::new();
+        let mut slab = SlabLedger::new();
         cover.insert(
             target_at,
             CoverEntry::seeded(
@@ -94,6 +95,7 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
                     occupancy: &occupancy,
                     surface:   &surface,
                     cover:     &mut cover,
+                    slab:      &mut slab,
                 },
                 &tuning,
                 &mut r,
