@@ -10,7 +10,7 @@ use crate::{
     armor::BodyPart,
     central_axis::climb_aim_dir,
     cone::{ConeAngle, PriorShots},
-    cover::HeightBand,
+    cover::{CoverLedger, HeightBand},
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, Level, SimPos},
@@ -133,6 +133,9 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
     let mut life = LifeState::Alive;
     let mut inflicted = InflictedWounds::default();
     let mut r = rng();
+    // A fresh ledger threaded only to satisfy the GTW-364 signature — these ganger
+    // outcomes never strike cover, so it is never read or written.
+    let mut cover = CoverLedger::new();
 
     // The tiers the resolution rolls — collected from each report so the assertion
     // pins the record against the resolution's OWN output, never a fixture.
@@ -147,7 +150,7 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
             &ganger_outcome(entity, part),
             weapon.stats(),
             Luck::new(0.0),
-            TargetGanger {
+            Some(TargetGanger {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
                 life:      &mut life,
@@ -157,8 +160,9 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
                 inflicted: &mut inflicted,
                 toughness: Toughness::new(0.0),
                 luck:      Luck::new(0.0),
-            },
+            }),
             entity,
+            &mut cover,
             &tuning,
             &mut r,
         );

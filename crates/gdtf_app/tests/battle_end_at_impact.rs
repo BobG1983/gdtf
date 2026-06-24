@@ -113,9 +113,9 @@ fn battle_running_app() -> Option<App> {
 /// shot carries (the shot that wins / loses the battle). Mirrors `fx_draw.rs::ganger_hit_report`.
 const fn lethal_ganger_hit(struck: Entity) -> HitReport {
     HitReport {
-        kind:    ShotKind::Ganger(struck),
-        part:    Some(BodyPart::Torso),
-        applied: Some(AppliedDamage {
+        kind:            ShotKind::Ganger(struck),
+        part:            Some(BodyPart::Torso),
+        applied:         Some(AppliedDamage {
             matchup:    Matchup::Neutral,
             hit:        HitResult {
                 penetrating: PenetratingDamage::new(8),
@@ -127,6 +127,7 @@ const fn lethal_ganger_hit(struck: Entity) -> HitReport {
             broken:     None,
             worn:       None,
         }),
+        cover_destroyed: None,
     }
 }
 

@@ -25,7 +25,7 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
 
     let occupancy = OccupancyGrid::new();
     let surface = SurfaceGrid::new();
-    let cover = CoverLedger::new();
+    let mut cover = CoverLedger::new();
     let mut r = rng();
     let mut fresh = rng();
 
@@ -52,7 +52,7 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
-                cover:     &cover,
+                cover:     &mut cover,
             },
             &tuning,
             &mut r,
@@ -104,7 +104,7 @@ fn dead_shooter_fires_nothing() {
 
     let occupancy = OccupancyGrid::new();
     let surface = SurfaceGrid::new();
-    let cover = CoverLedger::new();
+    let mut cover = CoverLedger::new();
     let mut r = rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
@@ -130,7 +130,7 @@ fn dead_shooter_fires_nothing() {
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
-                cover:     &cover,
+                cover:     &mut cover,
             },
             &tuning,
             &mut r,

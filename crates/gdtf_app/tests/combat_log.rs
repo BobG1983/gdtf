@@ -134,9 +134,9 @@ fn spawn_named(app: &mut App, name: &str) -> Entity {
 /// damage line). A no-effect / `None` report would read as a miss; this proves the connecting path.
 const fn connecting_report(struck: Entity, hp: i32) -> HitReport {
     HitReport {
-        kind:    ShotKind::Ganger(struck),
-        part:    Some(BodyPart::Torso),
-        applied: Some(AppliedDamage {
+        kind:            ShotKind::Ganger(struck),
+        part:            Some(BodyPart::Torso),
+        applied:         Some(AppliedDamage {
             matchup:    Matchup::Neutral,
             hit:        HitResult {
                 penetrating: PenetratingDamage::new(0),
@@ -148,6 +148,7 @@ const fn connecting_report(struck: Entity, hp: i32) -> HitReport {
             broken:     None,
             worn:       None,
         }),
+        cover_destroyed: None,
     }
 }
 

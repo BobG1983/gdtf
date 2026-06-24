@@ -45,7 +45,7 @@ fn same_seed_reproduces_the_report_sequence() {
                     &ganger_outcome(entity, part),
                     weapon.stats(),
                     Luck::new(1.0),
-                    TargetGanger {
+                    Some(TargetGanger {
                         hp: &mut hp,
                         wounds: &mut wounds,
                         life: &mut life,
@@ -53,8 +53,9 @@ fn same_seed_reproduces_the_report_sequence() {
                         inflicted: &mut inflicted,
                         toughness: Toughness::new(2.0),
                         luck: Luck::new(2.0),
-                    },
+                    }),
                     entity,
+                    &mut ledger(),
                     &tuning,
                     &mut r,
                 )

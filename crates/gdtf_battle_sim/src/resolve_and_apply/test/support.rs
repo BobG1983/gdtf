@@ -14,7 +14,7 @@ pub(super) use crate::{
     armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn},
     central_axis::climb_aim_dir,
     cone::{ConeAngle, PriorShots},
-    cover::{CoverEntry, CoverHp, HeightBand},
+    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
     magazine::{Magazine, ReloadTu},
@@ -42,6 +42,13 @@ pub(super) const SEED: u64 = 0x05EE_D191;
 /// Build a `SimRng` from the shared fixed seed (a fresh stream per call).
 pub(super) fn rng() -> SimRng {
     SimRng::from_seed(BattleSeed::new(SEED))
+}
+
+/// A fresh, empty [`CoverLedger`] for the ganger-path fold tests — those outcomes never
+/// strike cover, so the ledger is threaded only to satisfy the `resolve_and_apply`
+/// signature (GTW-364) and is never read or written by a ganger / corpse / non-cover fold.
+pub(super) fn ledger() -> CoverLedger {
+    CoverLedger::new()
 }
 
 /// A real, valid [`Entity`] id to stand in for a ganger — spawned from a
@@ -165,6 +172,42 @@ pub(super) fn non_ganger_outcome(kind: ShotKind) -> ShotOutcome {
         body_part: None,
         band: HeightBand::Low,
         muzzle: SimPos::new(0.5, 0.5, 0.5),
+        trajectory: a_trajectory(),
+    }
+}
+
+/// The `(cell, level)` the cover-hit fixtures place their struck cover at — a fixed
+/// arbitrary key, shared by the fixture's seeded ledger entry and its outcome so
+/// `deplete_cover` keys the same cell (zero px).
+pub(super) fn cover_cell_level() -> CellLevel {
+    CellLevel::new(Cell::new(4, 6), Level::new(2))
+}
+
+/// A seeded full-HP [`CoverEntry`] at `max_hp` HP with the given armor stats (band
+/// MID — irrelevant to the damage formula). The fixtures pin armor magnitudes
+/// (protection / hardness) deliberately LOW so the chosen weapon damage controls
+/// whether the hit destroys — the MECHANISM under test, not a balanced magnitude.
+pub(super) fn cover_entry(max_hp: u32, protection: i32, hardness: i32) -> CoverEntry {
+    CoverEntry::seeded(
+        CoverHp::new(max_hp),
+        HeightBand::Mid,
+        ArmorProtection::new(protection),
+        ArmorHardness::new(hardness),
+    )
+}
+
+/// A [`ShotKind::Cover`] outcome carrying `entry`, struck at [`cover_cell_level`]
+/// (the cell/level the cover-hit path keys `deplete_cover` with). No body part (the
+/// §4 roll never runs on cover); the muzzle / trajectory are arbitrary (zero px).
+pub(super) fn cover_outcome(entry: CoverEntry) -> ShotOutcome {
+    let at = cover_cell_level();
+    ShotOutcome {
+        kind:       ShotKind::Cover(entry),
+        cell:       Cell::new(at.x, at.y),
+        level:      Level::new(u8::try_from(at.z).unwrap_or(0)),
+        body_part:  None,
+        band:       HeightBand::Mid,
+        muzzle:     SimPos::new(0.5, 0.5, 0.5),
         trajectory: a_trajectory(),
     }
 }

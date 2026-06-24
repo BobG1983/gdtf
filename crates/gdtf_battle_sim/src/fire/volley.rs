@@ -129,7 +129,7 @@ pub fn fire(
     pieces: &mut PieceQuery,
     wields: &WieldsQuery,
     weapons: &mut WeaponQuery,
-    grids: BattleGrids,
+    mut grids: BattleGrids,
     tuning: &CombatTuning,
     rng: &mut SimRng,
 ) -> Volley {
@@ -217,7 +217,7 @@ pub fn fire(
         let (report, outcome) = resolve_round(
             setup,
             crate::cone::PriorShots::new(i),
-            grids,
+            &mut grids,
             targets,
             wears,
             pieces,

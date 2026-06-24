@@ -20,7 +20,7 @@ use crate::{
     },
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     move_acts::{ReactionShotFired, advance_walk},
-    occupancy_sync::{SimSystems, sync_destroyed_cover},
+    occupancy_sync::{CoverDestroyed, SimSystems, sync_destroyed_cover},
     shot_fired::ShotFired,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
 };
@@ -82,6 +82,13 @@ impl Plugin for SimActsPlugin {
             .add_message::<EndTurnRequested>()
             // GTW-290: the output fire-trajectory signal dispatch_fire emits per round.
             .add_message::<ShotFired>()
+            // GTW-364: the cover-destroyed signal dispatch_fire emits per round whose hit
+            // depleted a piece of cover to zero (the fire→deplete→message bridge). Registering
+            // the buffer here makes dispatch_fire's MessageWriter<CoverDestroyed> param valid;
+            // it is IDEMPOTENT with OccupancyMaintenancePlugin's own add_message::<CoverDestroyed>
+            // (Bevy's add_message no-ops a second registration), so both producer (here) and
+            // consumer (sync_destroyed_cover / should_recompute_visibility) plugins can name it.
+            .add_message::<CoverDestroyed>()
             // GTW-312: the output reload-result signal dispatch_reload emits per resolved
             // reload (the three real outcomes; presenter-visible, like ShotFired).
             .add_message::<ReloadResult>()

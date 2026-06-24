@@ -32,7 +32,7 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
         &ganger_outcome(entity, part),
         weapon.stats(),
         Luck::new(0.0),
-        TargetGanger {
+        Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
@@ -40,8 +40,9 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
             inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
-        },
+        }),
         entity,
+        &mut ledger(),
         &tuning,
         &mut rng(),
     );
@@ -99,7 +100,7 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
         &ganger_outcome(entity, part),
         weapon.stats(),
         Luck::new(0.0),
-        TargetGanger {
+        Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
@@ -107,8 +108,9 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
             inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
-        },
+        }),
         entity,
+        &mut ledger(),
         &tuning,
         &mut rng(),
     );
@@ -159,7 +161,7 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
         &ganger_outcome(entity, part),
         weapon.stats(),
         Luck::new(0.0),
-        TargetGanger {
+        Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
@@ -167,8 +169,9 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
             inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
-        },
+        }),
         entity,
+        &mut ledger(),
         &tuning,
         &mut rng(),
     );

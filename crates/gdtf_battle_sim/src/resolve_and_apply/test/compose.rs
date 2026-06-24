@@ -104,7 +104,7 @@ fn fold_equals_the_composed_steps() {
         &outcome,
         weapon.stats(),
         shooter_luck,
-        TargetGanger {
+        Some(TargetGanger {
             hp: &mut hp_a,
             wounds: &mut wounds_a,
             life: &mut life_a,
@@ -112,8 +112,9 @@ fn fold_equals_the_composed_steps() {
             inflicted: &mut inflicted_a,
             toughness,
             luck: defender_luck,
-        },
+        }),
         entity,
+        &mut ledger(),
         &tuning,
         &mut rng_a,
     );
@@ -184,7 +185,7 @@ fn armored_report_carries_the_real_matchup() {
             &ganger_outcome(entity, part),
             weapon.stats(),
             Luck::new(0.0),
-            TargetGanger {
+            Some(TargetGanger {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
                 life:      &mut life,
@@ -192,8 +193,9 @@ fn armored_report_carries_the_real_matchup() {
                 inflicted: &mut inflicted,
                 toughness: Toughness::new(0.0),
                 luck:      Luck::new(0.0),
-            },
+            }),
             entity,
+            &mut ledger(),
             &tuning,
             &mut rng(),
         )

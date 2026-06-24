@@ -35,7 +35,7 @@ fn charge_is_taken_once_and_reflects_aiming() {
         );
         let occupancy = OccupancyGrid::new();
         let surface = SurfaceGrid::new();
-        let cover = CoverLedger::new();
+        let mut cover = CoverLedger::new();
         let mut r = rng();
 
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
@@ -62,7 +62,7 @@ fn charge_is_taken_once_and_reflects_aiming() {
                 BattleGrids {
                     occupancy: &occupancy,
                     surface:   &surface,
-                    cover:     &cover,
+                    cover:     &mut cover,
                 },
                 &tuning,
                 &mut r,
@@ -107,7 +107,7 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
 
     let occupancy = OccupancyGrid::new();
     let surface = SurfaceGrid::new();
-    let cover = CoverLedger::new();
+    let mut cover = CoverLedger::new();
     let mut r = rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
@@ -133,7 +133,7 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
-                cover:     &cover,
+                cover:     &mut cover,
             },
             &tuning,
             &mut r,

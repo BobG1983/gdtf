@@ -710,9 +710,9 @@ const fn ganger_hit_report(
     life_after: LifeState,
 ) -> HitReport {
     HitReport {
-        kind:    ShotKind::Ganger(struck),
-        part:    Some(part),
-        applied: Some(AppliedDamage {
+        kind:            ShotKind::Ganger(struck),
+        part:            Some(part),
+        applied:         Some(AppliedDamage {
             matchup: Matchup::Neutral,
             hit: HitResult {
                 penetrating: PenetratingDamage::new(pen),
@@ -724,6 +724,7 @@ const fn ganger_hit_report(
             broken: None,
             worn: None,
         }),
+        cover_destroyed: None,
     }
 }
 

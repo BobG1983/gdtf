@@ -23,6 +23,7 @@ use crate::{
     magazine::mode_tu_cost,
     metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
+    occupancy_sync::CoverDestroyed,
     rng::SimRng,
     shot_fired::ShotFired,
     surface::SurfaceGrid,
@@ -95,38 +96,59 @@ pub struct BattleGridsParam<'w> {
     occupancy: Res<'w, OccupancyGrid>,
     /// The persistent floor/roof-slab + ground surface grid the march flies through.
     surface:   Res<'w, SurfaceGrid>,
-    /// The model cover ledger — peeked for the faced cell + the target cell's cover band.
-    cover:     Res<'w, CoverLedger>,
+    /// The model cover ledger — peeked (read) for the faced cell + the target cell's
+    /// cover band, and **spent** (write) when a round strikes cover (GTW-364), so it is
+    /// a [`ResMut`] now (the cover-hit depletion path writes the ledger's HP in place).
+    cover:     ResMut<'w, CoverLedger>,
 }
 
 impl BattleGridsParam<'_> {
-    /// Assemble the borrow-based [`BattleGrids`] [`fire`] reads from these grid `Res`
-    /// reads (`Res<T>` derefs to `&T`) — the grids are read, never rebuilt.
-    fn grids(&self) -> BattleGrids<'_> {
+    /// Assemble the borrow-based [`BattleGrids`] [`fire`] reads (and, GTW-364, the
+    /// cover-hit path WRITES) from these grid resources — the occupancy / surface are
+    /// read (`Res<T>` derefs to `&T`), the cover is taken `&mut` (the depletion path).
+    /// Takes `&mut self` for the mutable cover borrow; the grids are still never
+    /// rebuilt — only the struck cover's HP is spent in place.
+    fn grids(&mut self) -> BattleGrids<'_> {
         BattleGrids {
             occupancy: &self.occupancy,
             surface:   &self.surface,
-            cover:     &self.cover,
+            cover:     &mut self.cover,
         }
+    }
+
+    /// The occupant entity (if any) at `at` — a single O(1) occupancy peek used for the
+    /// GTW-328 fire declaration's resolved target. Borrows only the occupancy grid, so
+    /// it does not conflict with the `&mut cover` borrow `grids` hands out.
+    fn occupant_at(&self, at: CellLevel) -> Option<Entity> {
+        self.occupancy.occupant(&at)
     }
 }
 
-/// The two output signal [`MessageWriter`]s [`dispatch_fire`] emits on, bundled into one
+/// The output signal [`MessageWriter`]s [`dispatch_fire`] emits on, bundled into one
 /// [`SystemParam`] so the system's parameter list stays under clippy's argument-count gate
 /// (the [`BattleGridsParam`] grouping precedent above).
 ///
-/// Grouping the cohesive output writers into one param keeps [`dispatch_fire`] at seven
-/// parameters: the per-round [`ShotFired`] geometry/FCT signal (GTW-290 / GTW-302) and the
-/// per-request [`FireDeclaration`] combat-log signal (GTW-328). A transparent system-param
-/// bundle of two named output buffers — not itself a wrapped domain value.
+/// Grouping the cohesive output writers into one param keeps [`dispatch_fire`] under the
+/// argument-count gate: the per-round [`ShotFired`] geometry/FCT signal (GTW-290 / GTW-302),
+/// the per-request [`FireDeclaration`] combat-log signal (GTW-328), and the per-round
+/// [`CoverDestroyed`] signal (GTW-364) — the fire→deplete→message bridge a cover-destroying
+/// round emits, which the maintenance + visibility systems consume to free the smashed cell.
+/// A transparent system-param bundle of named output buffers — not itself a wrapped domain
+/// value.
 #[derive(SystemParam)]
 pub struct FireSignals<'w> {
     /// The per-ROUND fire-trajectory signal (one per round resolved) — the presenter's
     /// muzzle / tracer / impact FX + the floating-combat-text verdict.
-    shots:        MessageWriter<'w, ShotFired>,
+    shots:           MessageWriter<'w, ShotFired>,
     /// The per-REQUEST combat-log declaration (one per proceeding shot) — "<name> fired
     /// <mode> at <target>".
-    declarations: MessageWriter<'w, FireDeclaration>,
+    declarations:    MessageWriter<'w, FireDeclaration>,
+    /// The per-ROUND cover-destroyed signal (GTW-364) — emitted for each round whose
+    /// [`HitReport::cover_destroyed`](crate::resolve_and_apply::HitReport::cover_destroyed)
+    /// is `Some`, bridging the ledger's `deplete_cover` destruction into the buffered
+    /// [`CoverDestroyed`] message that `sync_destroyed_cover` + `should_recompute_visibility`
+    /// consume to free the cell + reopen LOS.
+    cover_destroyed: MessageWriter<'w, CoverDestroyed>,
 }
 
 /// The query the GTW-242 fire dispatch turns the shooter through for an out-of-arc shot —
@@ -276,7 +298,7 @@ pub fn dispatch_fire(
     // (a different entity set) — so neither conflicts with the shooter/turn/target access.
     wields: WieldsQuery,
     mut weapons: WeaponQuery,
-    grids: BattleGridsParam,
+    mut grids: BattleGridsParam,
     tuning: Res<CombatTuning>,
     mut rng: ResMut<SimRng>,
     mut signals: FireSignals,
@@ -353,7 +375,7 @@ pub fn dispatch_fire(
         //      re-resolve), and the request's mode kind. No RNG draw, no fire-result logic
         //      — the determinism property is untouched.
         let aim_cell_level = CellLevel::new(request.target_cell, request.target_level);
-        let target = grids.occupancy.occupant(&aim_cell_level);
+        let target = grids.occupant_at(aim_cell_level);
         signals.declarations.write(FireDeclaration::new(
             request.shooter,
             target,
@@ -400,6 +422,16 @@ pub fn dispatch_fire(
                 outcome,
                 *report,
             ));
+            // (5b) GTW-364: the fire→deplete→message BRIDGE. A round that depleted a piece
+            //      of cover's HP to zero carries the destroyed (cell, level) on its report
+            //      (resolve_and_apply already spent the ledger's HP via deplete_cover); emit
+            //      ONE CoverDestroyed per such round. `sync_destroyed_cover` folds it into the
+            //      occupancy grid's append-only destroyed-cover set (the cell stops blocking)
+            //      and `should_recompute_visibility` (GTW-341) re-reveals the opened sightline
+            //      — both already wired, consuming this message. No re-resolve, no extra draw.
+            if let Some(at) = report.cover_destroyed {
+                signals.cover_destroyed.write(CoverDestroyed::new(at));
+            }
         }
     }
 }

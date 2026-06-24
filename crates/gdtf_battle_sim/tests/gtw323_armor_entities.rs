@@ -119,7 +119,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .get_resource::<SurfaceGrid>()
         .cloned()
         .unwrap_or_default();
-    let cover = app
+    let mut cover = app
         .world()
         .get_resource::<CoverLedger>()
         .cloned()
@@ -160,7 +160,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
-                cover:     &cover,
+                cover:     &mut cover,
             },
             &tuning,
             &mut rng,

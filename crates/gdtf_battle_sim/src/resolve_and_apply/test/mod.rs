@@ -8,6 +8,7 @@ mod armor_signal;
 mod bare_flesh;
 mod compose;
 mod corpse;
+mod cover;
 mod determinism;
 mod frozen;
 mod non_ganger;

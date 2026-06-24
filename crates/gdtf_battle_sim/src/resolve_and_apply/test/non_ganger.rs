@@ -1,26 +1,20 @@
 use super::support::*;
 
-/// AC4 — non-ganger outcomes are inert on a ganger: each of Cover / Slab /
-/// Ground / Miss yields a no-damage report and leaves the ganger's pools and
-/// state untouched (and takes no draw).
+/// AC4 — non-ganger SURFACE outcomes are inert on a ganger: each of Slab / Ground /
+/// Miss yields a no-damage report and leaves the ganger's pools and state untouched
+/// (and takes no draw). (`ShotKind::Cover` is NO LONGER inert as of GTW-364 — it
+/// depletes cover HP through the same fold; its behavior is asserted in
+/// [`super::cover`], so it is deliberately excluded from this inert sweep.)
 #[test]
 fn non_ganger_outcomes_are_inert() {
     let tuning = CombatTuning::default();
     let weapon = a_weapon(50, 50, 50, DamageType::Rend);
 
-    // Each non-ganger kind. AC4 enumerates Cover / Slab / Ground / Miss
-    // explicitly, so all four are swept here. Cover carries a struck
-    // CoverEntry fixture (seeded full-HP); Slab/Ground carry a struck cell;
-    // Miss carries nothing. E3.9's early-return branches only on the variant
-    // (`let ShotKind::Ganger(_) = ... else`), so every one must be inert.
+    // The non-ganger, non-cover kinds: a Slab / Ground carries a struck cell, a Miss
+    // carries nothing. `resolve_and_apply`'s kind dispatch folds each of these to a
+    // no-effect report (no draw, no mutation) — they strike neither a ganger nor cover.
     let kinds = [
         ShotKind::Miss,
-        ShotKind::Cover(CoverEntry::seeded(
-            CoverHp::new(40),
-            HeightBand::Mid,
-            ArmorProtection::new(3),
-            ArmorHardness::new(2),
-        )),
         ShotKind::Slab(CellLevel::new(Cell::new(2, 2), Level::new(1))),
         ShotKind::Ground(CellLevel::new(Cell::new(2, 2), Level::new(0))),
     ];
@@ -31,6 +25,7 @@ fn non_ganger_outcomes_are_inert() {
         let mut life = LifeState::Alive;
         let mut integrity = piece_integrity(1);
         let mut inflicted = InflictedWounds::default();
+        let mut cover = ledger();
 
         let hp_before = hp;
         let wounds_before = wounds;
@@ -42,7 +37,7 @@ fn non_ganger_outcomes_are_inert() {
             &non_ganger_outcome(kind),
             weapon.stats(),
             Luck::new(3.0),
-            TargetGanger {
+            Some(TargetGanger {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
                 life:      &mut life,
@@ -50,8 +45,9 @@ fn non_ganger_outcomes_are_inert() {
                 inflicted: &mut inflicted,
                 toughness: Toughness::new(1.0),
                 luck:      Luck::new(1.0),
-            },
+            }),
             an_entity(),
+            &mut cover,
             &tuning,
             &mut rng_used,
         );
@@ -62,6 +58,10 @@ fn non_ganger_outcomes_are_inert() {
         );
         assert_eq!(report.part, None, "a {kind:?} report carries no part");
         assert_eq!(report.kind, kind, "the report still names the struck kind");
+        assert_eq!(
+            report.cover_destroyed, None,
+            "a {kind:?} (non-cover) outcome destroys no cover",
+        );
 
         assert_eq!(hp, hp_before, "{kind:?} must not change Hp");
         assert_eq!(wounds, wounds_before, "{kind:?} must not change Wounds");

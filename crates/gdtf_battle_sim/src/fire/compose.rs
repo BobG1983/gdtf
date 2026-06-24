@@ -303,7 +303,7 @@ pub(super) struct RoundSetup<'a> {
 pub(super) fn resolve_round(
     setup: RoundSetup,
     prior_shots: crate::cone::PriorShots,
-    grids: BattleGrids,
+    grids: &mut BattleGrids,
     targets: &mut TargetQuery,
     wears: &WearsQuery,
     pieces: &mut PieceQuery,
@@ -396,7 +396,7 @@ pub(super) fn resolve_round(
                         &outcome,
                         snapshot.weapon_stats(),
                         snapshot.luck,
-                        TargetGanger {
+                        Some(TargetGanger {
                             hp:        &mut hp,
                             wounds:    &mut wounds,
                             life:      &mut life,
@@ -404,8 +404,9 @@ pub(super) fn resolve_round(
                             inflicted: &mut inflicted,
                             toughness: *toughness,
                             luck:      *target_luck,
-                        },
+                        }),
                         struck,
+                        grids.cover,
                         tuning,
                         rng,
                     )
@@ -413,7 +414,26 @@ pub(super) fn resolve_round(
                 Err(_) => HitReport::no_effect(outcome.kind),
             }
         }
-        other => HitReport::no_effect(other),
+        // GTW-364: a round that strikes COVER folds through the SAME resolve_and_apply,
+        // which reuses the ganger damage formula against the cover's own armor, spends
+        // the ledger's HP via deplete_cover, and records a destroyed (cell, level) in
+        // the report (bridged to a CoverDestroyed message by dispatch_fire). There is no
+        // struck ganger (`None` target); the cover ledger is reborrowed `&mut` here (its
+        // earlier `&` reborrow by resolve_coarse / cone_for / stability_for has ended).
+        ShotKind::Cover(_) => resolve_and_apply(
+            &outcome,
+            snapshot.weapon_stats(),
+            snapshot.luck,
+            None,
+            Entity::PLACEHOLDER,
+            grids.cover,
+            tuning,
+            rng,
+        ),
+        // A slab / ground / miss strikes neither a ganger nor cover — no effect.
+        ShotKind::Slab(_) | ShotKind::Ground(_) | ShotKind::Miss => {
+            HitReport::no_effect(outcome.kind)
+        }
     };
     // Return the resolved report PLUS the already-computed outcome geometry (verbatim,
     // not recomputed) so the volley can surface a per-round ShotFired (GTW-290).

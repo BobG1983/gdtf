@@ -360,9 +360,9 @@ mod test {
     ) -> HitReport {
         HitReport {
             // classify_report only matches the Ganger variant, never derefs the entity.
-            kind:    ShotKind::Ganger(Entity::PLACEHOLDER),
-            part:    Some(part),
-            applied: Some(AppliedDamage {
+            kind:            ShotKind::Ganger(Entity::PLACEHOLDER),
+            part:            Some(part),
+            applied:         Some(AppliedDamage {
                 matchup: Matchup::Neutral,
                 hit: HitResult {
                     penetrating: PenetratingDamage::new(pen),
@@ -374,6 +374,7 @@ mod test {
                 broken: None,
                 worn: None,
             }),
+            cover_destroyed: None,
         }
     }
 

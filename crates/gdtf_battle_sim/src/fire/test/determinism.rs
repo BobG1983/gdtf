@@ -33,7 +33,7 @@ fn same_seed_reproduces_byte_equal_volley() {
         occupancy.set_occupant(target_at, Some(target));
         occupancy.set_occupant_band(target_at, Some(HeightBand::High));
         let surface = SurfaceGrid::new();
-        let cover = CoverLedger::new();
+        let mut cover = CoverLedger::new();
         let mut r = rng();
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
@@ -54,7 +54,7 @@ fn same_seed_reproduces_byte_equal_volley() {
                 BattleGrids {
                     occupancy: &occupancy,
                     surface:   &surface,
-                    cover:     &cover,
+                    cover:     &mut cover,
                 },
                 &tuning,
                 &mut r,

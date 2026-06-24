@@ -324,9 +324,9 @@ mod test {
         HitReport {
             // The classifier only matches on the Ganger variant — it never dereferences the
             // entity — so a placeholder handle is enough to drive the Ganger branch.
-            kind:    ShotKind::Ganger(Entity::PLACEHOLDER),
-            part:    Some(part),
-            applied: Some(AppliedDamage {
+            kind:            ShotKind::Ganger(Entity::PLACEHOLDER),
+            part:            Some(part),
+            applied:         Some(AppliedDamage {
                 matchup: Matchup::Neutral,
                 hit: hit_result(hp, pen),
                 severity,
@@ -334,6 +334,7 @@ mod test {
                 broken: None,
                 worn: None,
             }),
+            cover_destroyed: None,
         }
     }
 

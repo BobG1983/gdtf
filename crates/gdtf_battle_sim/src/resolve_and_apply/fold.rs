@@ -8,8 +8,10 @@ use crate::{
     apply_hit::{GangerHitTarget, apply_hit},
     armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType},
     armor_wear::ArmorWearOutcome,
+    cover::{CoverDamage, CoverEntry, CoverEvent, CoverLedger},
     ganger::{LifeState, Luck},
     matchup::{Matchup, matchup},
+    metric::CellLevel,
     resolve_and_apply::report::{AppliedDamage, HitReport, StruckPiece, TargetGanger},
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::resolve_hit,
@@ -71,39 +73,196 @@ fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (Ar
     }
 }
 
+/// The bare-flesh-shaped [`ArmorPiece`] a piece of cover's hit resolves against —
+/// the cover's own [`ArmorProtection`] / [`ArmorHardness`] (its `floor` 0 — cover
+/// has no "still bruises" floor; its `integrity` 0 — the formula never reads it; its
+/// type [`ArmorType::DEFAULT`] — cover has no matchup-wheel node, so the matchup is
+/// forced [`Matchup::Neutral`] below).
+///
+/// Cover uses the **same armor/damage model as a ganger** (`docs/combat/resolution.md`
+/// §3), so the cover hit runs the EXACT same [`resolve_hit`] formula the ganger path
+/// runs — only the armor stats it resolves against come from the struck
+/// [`CoverEntry`] instead of a worn piece.
+const fn cover_armor_piece(entry: &CoverEntry) -> ArmorPiece {
+    ArmorPiece::new(
+        ArmorFloor::new(0),
+        entry.armor_protection,
+        ArmorIntegrity::new(0),
+        entry.armor_hardness,
+        ArmorType::DEFAULT,
+    )
+}
+
+/// Spend a shot's damage against the struck cover and return the [`CoverEvent`]
+/// outcome — the `apply_cover_hit` bridge (`docs/combat/resolution.md` §3: cover
+/// "uses the same armor/damage model as a ganger … `apply_cover_hit` spends [HP], and
+/// depletion emits a cover-destroyed event").
+///
+/// The pipeline (C1 → C2):
+///
+/// 1. **Damage (C1)** — the SAME [`resolve_hit`] formula the ganger path uses, run
+///    against the cover's own armor stats ([`cover_armor_piece`]) under
+///    [`Matchup::Neutral`] (cover has no wheel node). Its [`HpDamage`](crate::resolve_hit::HpDamage)
+///    is the HP the hit removes — reused verbatim, NOT a new parallel formula.
+/// 2. **Deplete (C2)** — that HP, converted to a [`CoverDamage`] (clamped at zero —
+///    a fully-soaked hit removes no HP), is spent via the EXISTING
+///    [`CoverLedger::deplete_cover`]. The prototype is the struck `entry` (so a
+///    never-before-hit piece lazy-seeds at its authored `max_hp`); HP bookkeeping and
+///    destruction detection are owned by `deplete_cover`, never re-implemented here.
+///
+/// Returns the [`CoverEvent`] (`Damaged` / `Destroyed`) — the caller bridges a
+/// `Destroyed` into the buffered message (C3). The `at` `(cell, level)` is the
+/// struck outcome's cell/level (the cover the round stopped on).
+fn apply_cover_hit(
+    entry: &CoverEntry,
+    at: CellLevel,
+    weapon: WeaponStats<'_>,
+    cover: &mut CoverLedger,
+    tuning: &CombatTuning,
+) -> CoverEvent {
+    // (1) C1 — the per-hit damage formula, REUSED verbatim (the ganger path's E3.3),
+    //     against the cover's own armor stats under Neutral (cover has no wheel node).
+    let piece = cover_armor_piece(entry);
+    let hit = resolve_hit(
+        *weapon.damage,
+        *weapon.punch,
+        *weapon.shred,
+        &piece,
+        Matchup::Neutral,
+        tuning,
+    );
+
+    // The resolved HP-loss damage → a CoverDamage. HpDamage is a signed i32 (it can be
+    // negative pre-floor, though floor 0 keeps it ≥ 0 here); a fully-soaked hit removes
+    // no HP, so clamp the conversion at zero (cover HP is a non-negative pool).
+    let removed = CoverDamage::new(u32::try_from((*hit.hp_damage).max(0)).unwrap_or(0));
+
+    // (2) C2 — spend it through the EXISTING ledger API (HP bookkeeping + destruction
+    //     detection owned there). The prototype is the struck entry, so a never-hit
+    //     piece lazy-seeds at its authored max_hp before this hit deducts.
+    cover.deplete_cover(at, removed, *entry, tuning)
+}
+
 /// Fold **one [`ShotOutcome`]** through damage → severity → application into ONE
 /// frozen [`HitReport`] — the E3.9 capstone integrator (`docs/combat/resolution.md`
-/// §5 / §6).
+/// §5 / §6 / §3).
 ///
-/// Composes the already-built E3 verbs (E3.2 [`matchup`] → E3.3 [`resolve_hit`] →
-/// E3.4 [`roll_severity`] → E3.6 [`apply_hit`]); it rebuilds none of them. The
-/// flow, in order:
+/// Dispatches on what the round struck ([`ShotOutcome::kind`]):
 ///
-/// 1. **Kind gate** — a non-[`ShotKind::Ganger`] outcome returns a no-effect
-///    report with **no draw and no mutation** (a non-ganger never wounds a ganger).
-/// 2. **Corpse-skip — before any draw** — a target already at [`LifeState::Dead`]
-///    returns a no-effect report with **no draw and no mutation**, so a corpse
-///    never consumes an RNG draw and determinism is preserved.
-/// 3. **Part** — the struck [`BodyPart`] is
-///    [`ShotOutcome::body_part`](crate::resolve_coarse::ShotOutcome::body_part)
-///    (drawn upstream); a defensive `None` returns a no-effect report.
-/// 4. **Armor / bare flesh** — [`struck_piece`] picks the armored piece + matchup
-///    or the zeroed bare-flesh piece under [`Matchup::Neutral`].
-/// 5. **Damage** — [`resolve_hit`] → [`HitResult`](crate::resolve_hit::HitResult).
-/// 6. **Severity (the ONE draw)** — [`roll_severity`] over the assembled
-///    [`SeverityInputs`], drawing from the injected [`SimRng`] — the single draw
-///    point (no `thread_rng`, no ad-hoc entropy).
-/// 7. **Apply** — [`apply_hit`] folds the hit onto the target in place.
-/// 8. **Freeze** — returns the [`HitReport`] of named newtypes.
+/// - **[`ShotKind::Ganger`]** — the wound path: composes the already-built E3 verbs
+///   (E3.2 [`matchup`] → E3.3 [`resolve_hit`] → E3.4 [`roll_severity`] → E3.6
+///   [`apply_hit`]) onto the [`TargetGanger`], taking the ONE severity draw. See
+///   [`fold_ganger`].
+/// - **[`ShotKind::Cover`]** — the cover-hit path (GTW-364, resolution.md §3): cover
+///   uses the **same armor/damage model as a ganger**, so the SAME [`resolve_hit`]
+///   formula resolves the hit damage against the struck cover's own armor stats, that
+///   HP is spent through the EXISTING [`CoverLedger::deplete_cover`], and a depletion
+///   to zero records the destroyed `(cell, level)` in
+///   [`HitReport::cover_destroyed`] (the fire path bridges it to a buffered
+///   [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed) message). Takes **no**
+///   RNG draw — the cover-vs-armor formula is deterministic. See [`apply_cover_hit`].
+/// - **slab / ground / miss** — a no-effect report (no draw, no mutation).
 ///
-/// Pure, render-free model logic. It mutates the target ganger's battle state in
-/// place (and advances the injected [`SimRng`] by **exactly one** severity draw,
-/// only on a ganger hit) and **owns no mutation after return**. Same
-/// [`BattleSeed`](crate::rng::BattleSeed) → identical report for identical inputs
-/// (the seeded-replay property). Charging TU and looping the burst is the E4
-/// `fire()` act — **out of scope** here.
+/// `target` is `Some` only when the struck object is a queryable target ganger; a
+/// [`ShotKind::Cover`] / slab / ground / miss carries `None` (there is no struck
+/// ganger), and a [`ShotKind::Ganger`] whose entity is not a queryable target folds
+/// defensively to no-effect. `cover` is the model ledger the cover-hit path spends —
+/// it is read+written ONLY on a [`ShotKind::Cover`] outcome and untouched otherwise.
+///
+/// Pure, render-free model logic. On a ganger hit it mutates the target ganger's
+/// battle state in place and advances the injected [`SimRng`] by **exactly one**
+/// severity draw; on a cover hit it spends the [`CoverLedger`]'s HP and takes no
+/// draw; otherwise it mutates nothing and takes no draw. It **owns no mutation after
+/// return**. Same [`BattleSeed`](crate::rng::BattleSeed) → identical report for
+/// identical inputs (the seeded-replay property — the cover path is RNG-free, so it
+/// cannot perturb the stream). Charging TU and looping the burst is the E4 `fire()`
+/// act — **out of scope** here.
 #[must_use]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "GTW-364 adds the &mut CoverLedger the cover-hit path spends to the fold's \
+              already-bundled ganger inputs; the target ganger surfaces are ALREADY grouped \
+              in the TargetGanger bundle, so the remaining args are the irreducible \
+              outcome / weapon / luck / entity / cover / tuning / rng set"
+)]
 pub fn resolve_and_apply(
+    outcome: &ShotOutcome,
+    weapon: WeaponStats<'_>,
+    shooter_luck: Luck,
+    target: Option<TargetGanger<'_>>,
+    target_entity: Entity,
+    cover: &mut CoverLedger,
+    tuning: &CombatTuning,
+    rng: &mut SimRng,
+) -> HitReport {
+    match outcome.kind {
+        // The wound path — only a Ganger outcome can wound (the ONE severity draw is
+        // taken here; a corpse / missing part folds to no-effect with no draw). A
+        // defensive `None` target (the struck entity was not a queryable ganger) folds
+        // to no-effect — never a panic.
+        ShotKind::Ganger(_) => match target {
+            Some(target) => fold_ganger(
+                outcome,
+                weapon,
+                shooter_luck,
+                target,
+                target_entity,
+                tuning,
+                rng,
+            ),
+            None => HitReport::no_effect(outcome.kind),
+        },
+        // The cover-hit path (GTW-364): reuse the ganger damage formula against the
+        // cover's own armor, spend the ledger's HP, and record a destroyed cell — the
+        // fire→deplete→message bridge. No RNG draw (deterministic, replay-safe).
+        ShotKind::Cover(entry) => {
+            let at = CellLevel::new(outcome.cell, outcome.level);
+            let event = apply_cover_hit(&entry, at, weapon, cover, tuning);
+            let cover_destroyed = match event {
+                CoverEvent::Destroyed(cell) => Some(cell),
+                CoverEvent::Damaged(_) => None,
+            };
+            HitReport {
+                kind: outcome.kind,
+                part: None,
+                applied: None,
+                cover_destroyed,
+            }
+        }
+        // A slab / ground / miss strikes neither a ganger nor cover — no draw, no
+        // mutation (the round hit a surface / nothing).
+        ShotKind::Slab(_) | ShotKind::Ground(_) | ShotKind::Miss => {
+            HitReport::no_effect(outcome.kind)
+        }
+    }
+}
+
+/// Fold a **[`ShotKind::Ganger`]** outcome onto the target ganger — the wound path of
+/// [`resolve_and_apply`] (`docs/combat/resolution.md` §5 / §6).
+///
+/// Composes the E3 verbs in order, taking the ONE severity draw:
+///
+/// 1. **Corpse-skip — before any draw** — a target already at [`LifeState::Dead`]
+///    returns a no-effect report with **no draw and no mutation**, so a corpse never
+///    consumes an RNG draw and determinism is preserved.
+/// 2. **Part** — the struck [`BodyPart`] rode along on the §4 part roll (drawn
+///    upstream); a defensive `None` returns a no-effect report (no draw).
+/// 3. **Armor / bare flesh** — [`struck_piece`] picks the armored piece + matchup or
+///    the zeroed bare-flesh piece under [`Matchup::Neutral`].
+/// 4. **Damage** — [`resolve_hit`] → [`HitResult`](crate::resolve_hit::HitResult).
+/// 5. **Severity (the ONE draw)** — [`roll_severity`] over the assembled
+///    [`SeverityInputs`], drawing from the injected [`SimRng`].
+/// 6. **Apply** — [`apply_hit`] folds the hit onto the target in place.
+/// 7. **Freeze** — returns the [`HitReport`] of named newtypes (`cover_destroyed`
+///    always `None` — a ganger hit destroys no cover).
+///
+/// Split out of [`resolve_and_apply`]'s kind dispatch (GTW-364) so the ganger and
+/// cover paths each stay a focused fold. Mutates the target ganger's battle state in
+/// place and advances the injected [`SimRng`] by exactly one severity draw on a real
+/// hit; owns no mutation after return. Exactly seven inputs (the
+/// [`TargetGanger`] bundle already groups the target's mutable surfaces), so it sits
+/// at clippy's argument-count gate without an exemption.
+fn fold_ganger(
     outcome: &ShotOutcome,
     weapon: WeaponStats<'_>,
     shooter_luck: Luck,
@@ -112,32 +271,25 @@ pub fn resolve_and_apply(
     tuning: &CombatTuning,
     rng: &mut SimRng,
 ) -> HitReport {
-    // (1) Kind gate: only a Ganger outcome can wound. Non-ganger → no draw, no
-    // mutation (the round struck cover / a slab / the ground / nothing — never a
-    // ganger).
-    let ShotKind::Ganger(_) = outcome.kind else {
-        return HitReport::no_effect(outcome.kind);
-    };
-
-    // (2) Corpse-skip BEFORE any draw: a dead target is final — no draw is taken
+    // (1) Corpse-skip BEFORE any draw: a dead target is final — no draw is taken
     // (a corpse never consumes an RNG draw), nothing mutates.
     if *target.life == LifeState::Dead {
         return HitReport::no_effect(outcome.kind);
     }
 
-    // (3) The struck part rode along on the §4 part roll (drawn upstream); a Ganger
+    // (2) The struck part rode along on the §4 part roll (drawn upstream); a Ganger
     // outcome carries Some. A defensive None folds to a no-effect report (no draw).
     let Some(part) = outcome.body_part else {
         return HitReport::no_effect(outcome.kind);
     };
 
-    // (4) Armored piece + matchup, or zeroed bare flesh under Neutral. The struck
+    // (3) Armored piece + matchup, or zeroed bare flesh under Neutral. The struck
     // piece is resolved by the caller from `ganger → Wears → the BodyPart-tagged piece`
     // (GTW-323 / ADR-0004); `struck_piece` reads its stats (the wear mutation comes
     // later in `apply_hit`, via the same piece's `&mut ArmorIntegrity`).
     let (piece, resolved_matchup) = struck_piece(target.piece.as_ref(), weapon);
 
-    // (5) The per-hit damage formula (E3.3) — pure, mutates nothing.
+    // (4) The per-hit damage formula (E3.3) — pure, mutates nothing.
     let hit = resolve_hit(
         *weapon.damage,
         *weapon.punch,
@@ -147,7 +299,7 @@ pub fn resolve_and_apply(
         tuning,
     );
 
-    // (6) The ONE RNG draw: the wound-severity roll (E3.4). Both gangers' Luck, the
+    // (5) The ONE RNG draw: the wound-severity roll (E3.4). Both gangers' Luck, the
     // defender's Toughness, the struck part's mod, and the weapon's fatal bias feed
     // it; the injected SimRng is the single draw point.
     let inputs = SeverityInputs::new(
@@ -160,7 +312,7 @@ pub fn resolve_and_apply(
     );
     let severity = roll_severity(&inputs, &tuning.severity_scaling, rng);
 
-    // (7) Apply the resolved hit onto the target in place (E3.6) — HP loss +
+    // (6) Apply the resolved hit onto the target in place (E3.6) — HP loss +
     // Wounds-by-tier + armor wear + the terminal gates; capture the per-hit
     // ArmorWearOutcome (the break crossing / a non-breaking reduction / nothing).
     let wear_outcome = apply_hit(
@@ -189,11 +341,11 @@ pub fn resolve_and_apply(
         ArmorWearOutcome::Unaffected => (None, None),
     };
 
-    // (8) Freeze the verdict — a Copy record of named newtypes, no pixel.
+    // (7) Freeze the verdict — a Copy record of named newtypes, no pixel.
     HitReport {
-        kind:    outcome.kind,
-        part:    Some(part),
-        applied: Some(AppliedDamage {
+        kind:            outcome.kind,
+        part:            Some(part),
+        applied:         Some(AppliedDamage {
             matchup: resolved_matchup,
             hit,
             severity,
@@ -201,5 +353,6 @@ pub fn resolve_and_apply(
             broken,
             worn,
         }),
+        cover_destroyed: None,
     }
 }

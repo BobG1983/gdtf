@@ -93,7 +93,7 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
                 BattleGrids {
                     occupancy: &occupancy,
                     surface:   &surface,
-                    cover:     &cover,
+                    cover:     &mut cover,
                 },
                 &tuning,
                 &mut r,

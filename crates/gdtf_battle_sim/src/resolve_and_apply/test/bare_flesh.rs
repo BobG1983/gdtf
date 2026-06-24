@@ -31,7 +31,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         &ganger_outcome(entity, part),
         weapon.stats(),
         Luck::new(0.0),
-        TargetGanger {
+        Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
@@ -39,8 +39,9 @@ fn bare_flesh_uses_no_protection_or_hardness() {
             inflicted: &mut inflicted,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
-        },
+        }),
         entity,
+        &mut ledger(),
         &tuning,
         &mut rng(),
     );
@@ -88,7 +89,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         &ganger_outcome(entity, part),
         weapon.stats(),
         Luck::new(0.0),
-        TargetGanger {
+        Some(TargetGanger {
             hp:        &mut hp2,
             wounds:    &mut wounds2,
             life:      &mut life2,
@@ -96,8 +97,9 @@ fn bare_flesh_uses_no_protection_or_hardness() {
             inflicted: &mut inflicted2,
             toughness: Toughness::new(0.0),
             luck:      Luck::new(0.0),
-        },
+        }),
         entity,
+        &mut ledger(),
         &tuning,
         &mut rng(),
     );

@@ -27,7 +27,7 @@ fn corpse_skip_is_inert_and_draws_nothing() {
         &outcome,
         weapon.stats(),
         Luck::new(5.0),
-        TargetGanger {
+        Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
             life:      &mut life,
@@ -35,8 +35,9 @@ fn corpse_skip_is_inert_and_draws_nothing() {
             inflicted: &mut inflicted,
             toughness: Toughness::new(2.0),
             luck:      Luck::new(1.0),
-        },
+        }),
         entity,
+        &mut ledger(),
         &tuning,
         &mut rng_used,
     );

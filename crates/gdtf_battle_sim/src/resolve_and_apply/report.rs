@@ -8,6 +8,7 @@ use crate::{
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
     matchup::Matchup,
+    metric::CellLevel,
     resolve_coarse::ShotKind,
     resolve_hit::HitResult,
     severity::Severity,
@@ -146,20 +147,32 @@ pub struct AppliedDamage {
 /// - [`applied`](HitReport::applied) — the [`AppliedDamage`] block, `Some` only
 ///   for a hit that landed on a ganger; `None` for a non-ganger outcome, a
 ///   corpse-skip, or a defensively-missing part (a **no-effect** report).
+/// - [`cover_destroyed`](HitReport::cover_destroyed) — `Some(cell, level)` ONLY
+///   when this round depleted a piece of cover's HP to zero (GTW-364); the fire
+///   path's [`dispatch_fire`](crate::acts::dispatch_fire) bridges it into a buffered
+///   [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed) message (the
+///   fire→deplete→message bridge). `None` for every non-destroying outcome (a ganger
+///   hit, a non-destroying cover hit, a slab / ground / miss).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HitReport {
     /// What the shot struck — the [`ShotOutcome`](crate::resolve_coarse::ShotOutcome)'s [`ShotKind`].
-    pub kind:    ShotKind,
+    pub kind:            ShotKind,
     /// The struck [`BodyPart`] — `Some` only when the hit landed on a ganger.
-    pub part:    Option<BodyPart>,
+    pub part:            Option<BodyPart>,
     /// The applied-damage block — `Some` only when the hit landed on a ganger;
     /// `None` is a no-effect report (non-ganger / corpse-skip / no-part).
-    pub applied: Option<AppliedDamage>,
+    pub applied:         Option<AppliedDamage>,
+    /// The `(cell, level)` of a piece of cover this round DESTROYED (GTW-364) — `Some`
+    /// only when the cover-hit pipeline depleted that cell's structural HP to zero;
+    /// the fire path bridges it to a [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed)
+    /// message. `None` for a non-destroying or non-cover outcome.
+    pub cover_destroyed: Option<CellLevel>,
 }
 
 impl HitReport {
-    /// Build a **no-effect** report for `kind` — no part struck and no damage
-    /// applied (the non-ganger, corpse-skip, and defensive-no-part folds).
+    /// Build a **no-effect** report for `kind` — no part struck, no damage applied,
+    /// and no cover destroyed (the non-ganger non-cover, corpse-skip, and
+    /// defensive-no-part folds).
     ///
     /// `pub` so the E4.5 `fire()` act (GTW-198) can fold a non-ganger / corpse-skip
     /// round to a no-effect report cross-module without re-deriving the shape.
@@ -169,6 +182,7 @@ impl HitReport {
             kind,
             part: None,
             applied: None,
+            cover_destroyed: None,
         }
     }
 }

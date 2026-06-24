@@ -171,7 +171,7 @@ fn fire_volley(
     let tuning = CombatTuning::default();
     let mut rng = SimRng::from_seed(BattleSeed::new(seed));
     let surface = SurfaceGrid::new();
-    let cover = CoverLedger::new();
+    let mut cover = CoverLedger::new();
 
     let mut state: SystemState<(
         ShooterQuery,
@@ -204,7 +204,7 @@ fn fire_volley(
                 BattleGrids {
                     occupancy,
                     surface: &surface,
-                    cover: &cover,
+                    cover: &mut cover,
                 },
                 &tuning,
                 &mut rng,

@@ -187,7 +187,7 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
         .get_resource::<SurfaceGrid>()
         .cloned()
         .unwrap_or_default();
-    let cover = app
+    let mut cover = app
         .world()
         .get_resource::<CoverLedger>()
         .cloned()
@@ -227,7 +227,7 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
-                cover:     &cover,
+                cover:     &mut cover,
             },
             &tuning,
             &mut rng,

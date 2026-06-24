@@ -42,7 +42,7 @@ fn fire_at_in_line_target_applies_damage() {
     occupancy.set_occupant(target_at, Some(target));
     occupancy.set_occupant_band(target_at, Some(HeightBand::High));
     let surface = SurfaceGrid::new();
-    let cover = CoverLedger::new();
+    let mut cover = CoverLedger::new();
     let mut r = rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
@@ -68,7 +68,7 @@ fn fire_at_in_line_target_applies_damage() {
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
-                cover:     &cover,
+                cover:     &mut cover,
             },
             &tuning,
             &mut r,
@@ -146,7 +146,7 @@ fn fire_into_empty_space_is_a_clean_miss() {
     );
     let occupancy = OccupancyGrid::new(); // no occupant anywhere
     let surface = SurfaceGrid::new();
-    let cover = CoverLedger::new();
+    let mut cover = CoverLedger::new();
     let mut r = rng();
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
@@ -171,7 +171,7 @@ fn fire_into_empty_space_is_a_clean_miss() {
             BattleGrids {
                 occupancy: &occupancy,
                 surface:   &surface,
-                cover:     &cover,
+                cover:     &mut cover,
             },
             &tuning,
             &mut r,

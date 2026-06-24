@@ -171,15 +171,25 @@ pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<
 /// [`fire`](super::fire)'s parameter list under the 8-arg gate. The struct is a
 /// transparent borrow record, not itself a wrapped domain scalar; every field is an
 /// existing named world-state type (no bare primitive).
-#[derive(Debug, Clone, Copy)]
+///
+/// The [`cover`](BattleGrids::cover) ledger is held **mutably** (GTW-364): the march /
+/// aim path still only *reads* it (`fire` reborrows it `&` for
+/// [`resolve_coarse`](crate::resolve_coarse::resolve_coarse) / `cone_for` /
+/// `stability_for` — the change-driven read contract is unchanged), but a round that
+/// strikes cover SPENDS its HP through [`CoverLedger::deplete_cover`](crate::cover::CoverLedger::deplete_cover)
+/// in `resolve_and_apply` — so the one ledger reference is `&mut`. The `&mut` field
+/// also drops the `Copy` derive, so [`BattleGrids`] is passed by `&mut` into the
+/// per-round verb (reborrowed each round) rather than copied.
+#[derive(Debug)]
 pub struct BattleGrids<'a> {
     /// The coarse 3D occupancy grid — the march's collision / occupant-band surface.
     pub occupancy: &'a OccupancyGrid,
     /// The persistent floor/roof-slab + ground surface grid the march flies through.
     pub surface:   &'a SurfaceGrid,
-    /// The model cover ledger — peeked for the faced cell (stability) and the target
-    /// cell's cover band (the aim point).
-    pub cover:     &'a CoverLedger,
+    /// The model cover ledger — peeked (read) for the faced cell (stability) and the
+    /// target cell's cover band (the aim point), and **spent** (write) when a round
+    /// strikes a piece of cover (GTW-364: the cover-hit depletion path).
+    pub cover:     &'a mut CoverLedger,
 }
 
 /// The **firing order** — what the shooter is firing and where
