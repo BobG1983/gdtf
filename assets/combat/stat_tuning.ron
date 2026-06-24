@@ -1,0 +1,49 @@
+// GDTF ganger stat-derivation tuning (GTW-384) — how the EIGHT direct attributes
+// (Speed/Aim/Strength/Toughness/Reflexes/Cool/Grit/Luck) combine into the COMPUTED combat
+// stats (Shooting/Fight/Reactions/Morale/TU/HP/Wounds/Bottle). This is a SEPARATE file from
+// combat/tuning.ron (the user-directed split): tuning.ron holds the resolution coefficients,
+// this holds the character-sheet derivation. The derivation FORMS live in code
+// (`derive_stats`, docs/combat/stats.md §"Computed combat stats"); these numbers are tuning
+// DATA — hot-swappable (it reloads live, GTW-374 pattern) and never hardcoded. Each leaf is a
+// `#[serde(transparent)]` newtype, written as a bare scalar. The defaults are stats.md's flat
+// ~1.0 weights (Cool ~0.5 into HP) + ~10 divisors; the values below are authored so the
+// derived stats land in a reasonable, playable range. Each line says what it tunes.
+(
+    // Shooting = aim·Aim + reflexes·Reflexes + cool·Cool  (the §1b shot-concentration skill).
+    shooting: (
+        aim:      1.0,   // i — Aim's weight (the dominant marksmanship term)
+        reflexes: 0.5,   // j — Reflexes' weight (steadiness, half-weighted)
+        cool:     0.3,   // k — Cool's weight (nerves under fire, lightest)
+    ),
+    // Fight = speed·Speed + strength·Strength + grit·Grit + cool·Cool  (melee skill — DORMANT, GTW-51).
+    fight: (
+        speed:    0.5,   // Speed's weight (closing distance)
+        strength: 1.0,   // Strength's weight (the dominant melee-force term)
+        grit:     0.5,   // Grit's weight (keeping swinging)
+        cool:     0.3,   // Cool's weight (composure in the brawl)
+    ),
+    // Reactions = speed·Speed + reflexes·Reflexes + cool·Cool  (enemy-turn responses — DORMANT, GTW-38).
+    reactions: (
+        speed:    0.5,   // Speed's weight (quick to respond)
+        reflexes: 1.0,   // Reflexes' weight (the dominant twitch term)
+        cool:     0.5,   // Cool's weight (composure to react well)
+    ),
+    // HP = grit·Grit + toughness·Toughness + cool·Cool  (the knock-down damage pool).
+    hp: (
+        grit:      1.0,  // Grit's weight (the dominant resilience term)
+        toughness: 1.0,  // Toughness's weight (raw damage resistance)
+        cool:      0.5,  // Cool's "a little" weight (stats.md: Cool ~0.5 into HP)
+    ),
+    // Morale = grit·Grit + cool·Cool  (the psychological damage pool — DORMANT, GTW-13).
+    morale: (
+        grit: 1.0,       // Grit's weight (the dominant resilience term)
+        cool: 1.0,       // Cool's weight (composure under pressure)
+    ),
+    // Wounds = round(HP / wounds_per_hp): the life pool (small, < a dozen). Dead at 0.
+    wounds_per_hp:     10.0,  // HP per Wound — a tougher ganger gets a proportionally larger life pool (~10)
+    // Bottle = round(Morale / bottle_per_morale): the psychological life pool. Bottled at 0 (DORMANT).
+    bottle_per_morale: 10.0,  // Morale per Bottle — the psychological mirror of wounds_per_hp (~10)
+    // TU = round(tu_base + tu_per_speed·Speed): the per-turn action budget.
+    tu_base:           30.0,  // base TU floor every ganger gets before the Speed term
+    tu_per_speed:      10.0,  // TU added per point of Speed (Speed 3 → 30 + 30 = ~60 TU, the ballpark)
+)

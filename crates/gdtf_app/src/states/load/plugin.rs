@@ -3,7 +3,7 @@ use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
     situation::Situation,
-    tuning::CombatTuning,
+    tuning::{CombatTuning, GangerStatTuning},
     weapon::{WeaponRegistry, WeaponSpec},
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
@@ -55,6 +55,10 @@ impl Plugin for LoadScenePlugin {
             app.init_ron_asset::<GdtfThemeSpec>();
             app.init_ron_asset::<Situation>();
             app.init_ron_asset::<CombatTuning>();
+            // GTW-384: the shipped GangerStatTuning loads through the SAME generic RON
+            // loader (a SEPARATE file from combat/tuning.ron — the user-directed split),
+            // registered here behind the one AssetServer guard alongside the others.
+            app.init_ron_asset::<GangerStatTuning>();
             app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
             // GTW-269: armor files mirror the weapon scheme — each loads as a
             // `RonAsset<ArmorSpec>` via `load_folder`, so it claims its OWN dedicated
@@ -92,6 +96,9 @@ fn add_systems(app: &mut App) {
                     .and_then(
                         not(resource_exists::<GdtfTheme>)
                             .or_else(not(resource_exists::<CombatTuning>))
+                            // GTW-384: the GangerStatTuning is a gate-blocking resource too
+                            // (the sim derives every ganger's stats from it).
+                            .or_else(not(resource_exists::<GangerStatTuning>))
                             .or_else(not(resource_exists::<WeaponRegistry>))
                             .or_else(not(resource_exists::<LoadedSituation>))
                             .or_else(not(resource_exists::<ArmorRegistry>)),
@@ -111,6 +118,9 @@ fn add_systems(app: &mut App) {
                 in_state(AppState::Load)
                     .and_then(resource_exists::<GdtfTheme>)
                     .and_then(resource_exists::<CombatTuning>)
+                    // GTW-384: the GangerStatTuning must be present before Load exits, so a
+                    // battle never starts before its stat-derivation tuning loads.
+                    .and_then(resource_exists::<GangerStatTuning>)
                     .and_then(resource_exists::<WeaponRegistry>)
                     .and_then(resource_exists::<LoadedSituation>)
                     .and_then(resource_exists::<ArmorRegistry>),
@@ -138,6 +148,10 @@ fn add_hot_reload_systems(app: &mut App) {
         Update,
         (
             redrive_combat_tuning_on_asset_event,
+            // GTW-384: the ganger stat-tuning hot-reload — overwrites the GangerStatTuning
+            // resource on a `combat/stat_tuning.ron` edit, whose Changed<GangerStatTuning>
+            // trips the sim's `rederive_stats_on_tuning_change`.
+            redrive_stat_tuning_on_asset_event,
             redrive_weapons_on_asset_event,
             redrive_armor_on_asset_event,
         ),

@@ -28,6 +28,9 @@
 //! - [`visibility`] — the GTW-338 squad fog-of-war view range + explored dim.
 //! - [`slab`] — the GTW-365 slab-defaults (uniform HP + armor a struck slab seeds to).
 //! - [`combat_tuning`] — the top-level [`CombatTuning`] resource composing them all.
+//! - [`stat_tuning`] — the GTW-384 [`GangerStatTuning`] resource: the attribute →
+//!   computed-stat derivation weights / divisors / TU params (a SEPARATE store from
+//!   `CombatTuning`, the user-directed split). Loaded from `assets/combat/stat_tuning.ron`.
 
 mod band;
 mod body_part;
@@ -39,6 +42,7 @@ mod firing_arc;
 mod matchup;
 mod severity;
 mod slab;
+mod stat_tuning;
 mod visibility;
 mod wounds;
 
@@ -65,5 +69,9 @@ pub use severity::{
     ShooterLuckScale, ToughnessMitigation,
 };
 pub use slab::{SlabDefaultHp, SlabDefaults};
+pub use stat_tuning::{
+    BottlePerMorale, FightWeights, GangerStatTuning, HpWeights, MoraleWeights, ReactionsWeights,
+    ShootingWeights, StatWeight, TuBase, TuPerSpeed, WoundsPerHp,
+};
 pub use visibility::{ExploredDim, ViewRange};
 pub use wounds::{BleedRate, ExecuteTu, StabilizeTu, WoundCost, WoundCosts};

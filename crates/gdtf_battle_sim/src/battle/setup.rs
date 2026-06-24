@@ -16,6 +16,7 @@ use crate::{
     rng::SimRng,
     situation::setup_battle,
     surface::SurfaceGrid,
+    tuning::GangerStatTuning,
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
@@ -64,6 +65,7 @@ pub fn setup_battle_on_request(
     mut ready: MessageWriter<BattleReady>,
     weapons: Option<Res<WeaponRegistry>>,
     armor: Option<Res<ArmorRegistry>>,
+    stat_tuning: Option<Res<GangerStatTuning>>,
     mut commands: Commands,
 ) {
     for request in requests.read() {
@@ -89,6 +91,14 @@ pub fn setup_battle_on_request(
             );
             continue;
         };
+        // GTW-384: the GangerStatTuning is PERSISTENT `Load` state like CombatTuning,
+        // resolved with a const-default fallback (its loader inserts a default on a
+        // failed/missing file), so a setup somehow requested before it loaded does NOT
+        // fail closed — it derives from the const-default weights (combat must never be
+        // BLOCKED by missing balance data, matching CombatTuning's defaulting). Bind the
+        // const default to a local so the borrow outlives the setup call.
+        let default_stat_tuning = GangerStatTuning::default();
+        let stat_tuning = stat_tuning.as_deref().unwrap_or(&default_stat_tuning);
 
         // 1. Seed the battle-lifetime RNG from the trigger's seed.
         commands.insert_resource(SimRng::from_seed(request.seed));
@@ -96,8 +106,15 @@ pub fn setup_battle_on_request(
         // 2. Pour the situation into the world via the authoritative setup. A bad
         //    vertical link, a missing weapon key, OR a missing armor key returns the
         //    typed error — log it (NEVER panic / unwrap) and write NO BattleReady, so
-        //    the app's gate never fires (fail-closed).
-        match setup_battle(&request.situation, weapons, armor, &mut commands) {
+        //    the app's gate never fires (fail-closed). The GangerStatTuning derives each
+        //    ganger's computed stats from its eight authored attributes (GTW-384).
+        match setup_battle(
+            &request.situation,
+            weapons,
+            armor,
+            stat_tuning,
+            &mut commands,
+        ) {
             Ok(_setup) => {
                 // The battle is live: insert the gate witness (alongside the four
                 // setup_battle grids + the seeded SimRng) so the Simulate band's bundled

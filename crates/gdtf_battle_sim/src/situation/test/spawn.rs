@@ -159,17 +159,22 @@ fn setup_seeds_ganger_name_onto_each_ganger() {
     );
 }
 
-/// GTW-291 — `setup_battle` seeds each authored `GangerSpawn.hp_max` / `wounds_max`
-/// onto the spawned ganger as queryable `HpMax` / `WoundsMax` components, looked up by
-/// the spawned `Entity` handle (never a numeric id). The fixture authors both ceilings
-/// = the authored full `hp` (40) / `wounds` (3) for every ganger (full at battle start),
-/// so a match against `HpMax::new(40)` / `WoundsMax::new(3)` proves the per-ganger seed.
-/// Pin-discriminating: dropping the `hp_max` / `wounds_max` spawn in `setup_battle` (the
-/// second `insert`) leaves no `HpMax` / `WoundsMax` and this fails. These are DISPLAY
-/// ceilings, not reset targets — the test reads them at setup, never after a round flip.
+/// GTW-291 / GTW-384 — `setup_battle` seeds each ganger's `HpMax` / `WoundsMax` as the
+/// DERIVED full capacity (no longer authored): `HpMax == derived Hp` and
+/// `WoundsMax == derived Wounds` (full at battle start, the current-pool == max
+/// contract). Asserted as the RELATION via `derive_stats` over the fixture's authored
+/// attributes × the default `GangerStatTuning` — NOT a pinned shipped magnitude.
+/// Pin-discriminating: dropping the `hp_max` / `wounds_max` spawn leaves no component
+/// and this fails; a max that does not equal the derived pool also fails. These are
+/// DISPLAY ceilings, not reset targets — read at setup, never after a round flip.
 #[test]
 fn setup_seeds_hp_max_and_wounds_max_onto_each_ganger() {
     let (situation, ..) = minimal_fixture();
+    // The expected derived caps per ganger — RELATION via the single source of truth,
+    // over the fixture's authored attributes and the default tuning the setup uses.
+    let tuning = GangerStatTuning::default();
+    let alice_derived = derive_stats(&attributes_of(&situation.gangers[0]), &tuning);
+    let bob_derived = derive_stats(&attributes_of(&situation.gangers[1]), &tuning);
     let Some((mut app, setup)) = run_setup(situation) else {
         return;
     };
@@ -179,20 +184,28 @@ fn setup_seeds_hp_max_and_wounds_max_onto_each_ganger() {
     let world: &mut World = app.world_mut();
     let mut q = world.query::<(&HpMax, &WoundsMax)>();
 
-    // Alice — the fixture's authored full capacity (HpMax = hp = 40, WoundsMax = wounds = 3).
+    // Alice — HpMax == derived Hp, WoundsMax == derived Wounds (full at battle start).
     let alice_caps = q.get(world, alice);
     assert_eq!(
         alice_caps.map(|(h, w)| (*h, *w)).ok(),
-        Some((HpMax::new(40), WoundsMax::new(3))),
-        "alice carries her authored HpMax + WoundsMax display ceilings",
+        Some((alice_derived.hp_max, alice_derived.wounds_max)),
+        "alice's HpMax/WoundsMax equal her DERIVED Hp/Wounds (full at start)",
+    );
+    assert_eq!(
+        (alice_derived.hp_max, alice_derived.wounds_max),
+        (
+            HpMax::new(*alice_derived.hp),
+            WoundsMax::new(*alice_derived.wounds)
+        ),
+        "the derived max equals the derived current pool (current == max at battle start)",
     );
 
-    // Bob — the same authored full capacity (a per-ganger seed, not a shared default).
+    // Bob — the same relation against HIS authored attributes (a distinct per-ganger derive).
     let bob_caps = q.get(world, bob);
     assert_eq!(
         bob_caps.map(|(h, w)| (*h, *w)).ok(),
-        Some((HpMax::new(40), WoundsMax::new(3))),
-        "bob carries his authored HpMax + WoundsMax display ceilings",
+        Some((bob_derived.hp_max, bob_derived.wounds_max)),
+        "bob's HpMax/WoundsMax equal his DERIVED Hp/Wounds (full at start)",
     );
 }
 
@@ -225,16 +238,23 @@ fn setup_seeds_empty_inflicted_wounds_onto_each_ganger() {
     }
 }
 
-/// GTW-182 AC #2 + AC #3 — `setup_battle` seeds the E3.0 attribute stats
-/// (`Shooting`/`Toughness`/`Luck`) onto each spawned ganger from the authored
-/// `GangerSpawn`, and they are queryable off the entity by its spawned `Entity`
-/// handle (the read shape the severity roll uses). Reads BOTH gangers — a shooter
-/// (faction 0) and a defender (faction 1) — proving the per-ganger seed, not a
-/// shared default. Magnitudes match the fixture (`faction + {2,3,1}`), per-ganger
-/// data, not pinned tuning.
+/// GTW-384 (C8(b)) — `setup_battle` seeds each ganger's EIGHT authored DIRECT
+/// ATTRIBUTES onto the entity (the raw potential, unchanged from the situation), AND the
+/// DERIVED computed stats (`Shooting` here) match the `derive_stats` RELATION over those
+/// attributes × the default tuning. Reads BOTH gangers — a shooter (faction 0) and a
+/// defender (faction 1) — proving the per-ganger seed + per-ganger derive, not a shared
+/// default. The authored attributes (`Toughness` / `Luck` the severity roll reads) match
+/// the fixture (`faction + {3,1}`, per-ganger data); the derived `Shooting` is asserted
+/// as the FORMULA, never a pinned magnitude.
 #[test]
 fn setup_seeds_attribute_stats_onto_each_ganger() {
     let (situation, ..) = minimal_fixture();
+    // The expected derived Shooting per ganger — RELATION via the single source of truth.
+    let tuning = GangerStatTuning::default();
+    let alice_attrs = attributes_of(&situation.gangers[0]);
+    let bob_attrs = attributes_of(&situation.gangers[1]);
+    let alice_derived = derive_stats(&alice_attrs, &tuning);
+    let bob_derived = derive_stats(&bob_attrs, &tuning);
     let Some((mut app, setup)) = run_setup(situation) else {
         return;
     };
@@ -242,23 +262,27 @@ fn setup_seeds_attribute_stats_onto_each_ganger() {
     let alice: Entity = setup.occupants[0].occupant;
     let bob: Entity = setup.occupants[1].occupant;
     let world: &mut World = app.world_mut();
-    // The severity-roll read shape: a tuple query over the three attribute stats.
-    let mut q = world.query::<(&Shooting, &Toughness, &Luck)>();
+    // The authored attributes the severity roll reads (Toughness/Luck) + the derived Shooting.
+    let mut q = world.query::<(&Toughness, &Luck, &Shooting)>();
 
-    // Alice — faction 0 → Shooting 2.0 / Toughness 3.0 / Luck 1.0 (the fixture).
+    // Alice — authored Toughness/Luck match the fixture; Shooting == the derived relation.
     let alice_stats = q.get(world, alice);
     assert_eq!(
-        alice_stats,
-        Ok((&Shooting::new(2.0), &Toughness::new(3.0), &Luck::new(1.0))),
-        "alice carries her authored Shooting/Toughness/Luck",
+        alice_stats.map(|(t, l, s)| (*t, *l, *s)).ok(),
+        Some((
+            alice_attrs.toughness,
+            alice_attrs.luck,
+            alice_derived.shooting
+        )),
+        "alice carries her authored Toughness/Luck + her DERIVED Shooting",
     );
 
-    // Bob — faction 1 → Shooting 3.0 / Toughness 4.0 / Luck 2.0 (distinct seed).
+    // Bob — the same relation against HIS authored attributes (a distinct per-ganger derive).
     let bob_stats = q.get(world, bob);
     assert_eq!(
-        bob_stats,
-        Ok((&Shooting::new(3.0), &Toughness::new(4.0), &Luck::new(2.0))),
-        "bob carries his authored Shooting/Toughness/Luck",
+        bob_stats.map(|(t, l, s)| (*t, *l, *s)).ok(),
+        Some((bob_attrs.toughness, bob_attrs.luck, bob_derived.shooting)),
+        "bob carries his authored Toughness/Luck + his DERIVED Shooting",
     );
 }
 
@@ -358,6 +382,12 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
     };
 
     let (situation, alice_at, ..) = minimal_fixture();
+    // The expected DERIVED stats for alice — RELATION via the single source of truth over
+    // her authored attributes × the default tuning the setup uses (GTW-384). Captured
+    // BEFORE `run_setup` moves the situation; the authored Toughness/Luck attributes are
+    // captured too (they ride through unchanged, the severity roll reads them).
+    let alice_attrs = attributes_of(&situation.gangers[0]);
+    let alice_derived = derive_stats(&alice_attrs, &GangerStatTuning::default());
     // The armor suit the TEST_ARMOR_KEY resolves to (base 1) — the expected per-piece
     // stats the related piece entities must carry, read straight off the resolved spec.
     let expected_armor = arbitrary_armor(1);
@@ -438,20 +468,40 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
         "Stance round-trips"
     );
     assert_eq!(*aiming, Aiming::new(true), "Aiming round-trips");
-    assert_eq!(*hp, Hp::new(40), "Hp round-trips");
-    assert_eq!(*hp_max, HpMax::new(40), "HpMax round-trips");
-    assert_eq!(*wounds, Wounds::new(3), "Wounds round-trips");
-    assert_eq!(*wounds_max, WoundsMax::new(3), "WoundsMax round-trips");
-    assert_eq!(*cur_tu, Tu::new(60), "Tu round-trips");
-    assert_eq!(*tu_max, TuMax::new(60), "TuMax round-trips");
+    // GTW-384: the pools/skills are DERIVED — assert each equals the derive_stats relation
+    // for alice's authored attributes (NOT a pinned shipped magnitude). Maxes == current
+    // pool (full at battle start).
+    assert_eq!(*hp, alice_derived.hp, "Hp == the derived knock-down pool");
+    assert_eq!(
+        *hp_max, alice_derived.hp_max,
+        "HpMax == the derived Hp (full at start)"
+    );
+    assert_eq!(
+        *wounds, alice_derived.wounds,
+        "Wounds == the derived life pool"
+    );
+    assert_eq!(
+        *wounds_max, alice_derived.wounds_max,
+        "WoundsMax == the derived Wounds (full at start)",
+    );
+    assert_eq!(*cur_tu, alice_derived.tu, "Tu == the derived action budget");
+    assert_eq!(
+        *tu_max, alice_derived.tu_max,
+        "TuMax == the derived Tu (full at start)"
+    );
     assert_eq!(
         *life,
         LifeState::Alive,
         "LifeState (template_value) round-trips"
     );
-    assert_eq!(*shooting, Shooting::new(2.0), "Shooting round-trips");
-    assert_eq!(*toughness, Toughness::new(3.0), "Toughness round-trips");
-    assert_eq!(*luck, Luck::new(1.0), "Luck round-trips");
+    assert_eq!(
+        *shooting, alice_derived.shooting,
+        "Shooting == the derived skill term"
+    );
+    // Toughness/Luck are AUTHORED attributes (the severity roll reads them) — they
+    // round-trip the fixture's per-ganger authored values, not a derive.
+    assert_eq!(*toughness, alice_attrs.toughness, "Toughness round-trips");
+    assert_eq!(*luck, alice_attrs.luck, "Luck round-trips");
 
     // The empty InflictedWounds rides ON THE GANGER (the GTW-279 record stays on the
     // ganger; only the equipment moved to related entities).

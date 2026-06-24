@@ -8,8 +8,8 @@ use crate::{
     armor::{ArmorHardness, ArmorName, ArmorProtection},
     cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{
-        Aiming, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Shooting, Stance,
-        Toughness, Tu, TuMax, Wounds, WoundsMax,
+        Aim, Aiming, Cool, Facing, Faction, GangerName, Grit, LifeState, Luck, Reflexes, Speed,
+        Stance, Strength, Toughness,
     },
     metric::CellLevel,
     occupancy::TerrainKind,
@@ -17,27 +17,30 @@ use crate::{
     weapon::WeaponName,
 };
 
-/// One authored ganger placement — its `(cell, level)` plus every E1.2 component
-/// VALUE, the E3.0 attribute stats, and the armor KEY whose resolved
-/// [`ArmorSpec`](crate::armor::ArmorSpec) spawns the ganger's battle-local armor-piece
-/// entities (related via [`Wears`](crate::armor::Wears)).
+/// One authored ganger placement — its `(cell, level)` plus its identity / posture
+/// fields, the EIGHT direct attributes (GTW-384, the raw authored potential), and the
+/// armor KEY whose resolved [`ArmorSpec`](crate::armor::ArmorSpec) spawns the ganger's
+/// battle-local armor-piece entities (related via [`Wears`](crate::armor::Wears)).
 ///
-/// A named struct (not a bare tuple) so the authored ganger shape is
-/// self-describing. The component fields are the E1.2 newtypes carried **by value**
-/// ([`setup_battle`](crate::situation::setup_battle) spawns an entity with each as a
-/// component) plus the E3.0 / GTW-182 attribute stats ([`Shooting`] / [`Toughness`] /
-/// [`Luck`], the substrate the severity roll reads); `armor` is the armor KEY
-/// ([`ArmorName`]) resolved at setup against the
-/// [`ArmorRegistry`](crate::armor::ArmorRegistry) into the
+/// A named struct (not a bare tuple) so the authored ganger shape is self-describing.
+/// Since GTW-384 the situation authors the EIGHT DIRECT ATTRIBUTES
+/// ([`Speed`] / [`Aim`] / [`Strength`] / [`Toughness`] / [`Reflexes`] / [`Cool`] /
+/// [`Grit`] / [`Luck`]) — NOT the computed stats. The flat computed-stat literals it
+/// used to carry (`hp` / `hp_max` / `wounds` / `wounds_max` / `tu` / `tu_max` /
+/// `shooting`) are GONE: [`setup_battle`](crate::situation::setup_battle) DERIVES them
+/// from the attributes × the
+/// [`GangerStatTuning`](crate::tuning::GangerStatTuning) weights
+/// (`docs/combat/stats.md` §"Computed combat stats", the two-layer model — fully
+/// derived, single source of truth). `armor` is the armor KEY ([`ArmorName`]) resolved
+/// at setup against the [`ArmorRegistry`](crate::armor::ArmorRegistry) into the
 /// [`ArmorSpec`](crate::armor::ArmorSpec) that the spawned ganger's battle-local
 /// armor-piece entities ([`Wears`](crate::armor::Wears)) are seeded from (GTW-269 /
 /// GTW-323 — mirroring the [`weapon`](GangerSpawn::weapon) key, whose resolved bundle
 /// spawns the related weapon entity). The grid key [`at`](GangerSpawn::at) becomes the
 /// spawned ganger's [`Position`](crate::ganger::Position).
 ///
-/// Not `Eq` / `Hash`: the E3.0 attribute stats ([`Shooting`] / [`Toughness`] /
-/// [`Luck`]) carry `f32` magnitudes (no total order), so the authored ganger is
-/// `PartialEq` only. `(cell, level)`-keyed de-duplication
+/// Not `Eq` / `Hash`: the attributes carry `f32` magnitudes (no total order), so the
+/// authored ganger is `PartialEq` only. `(cell, level)`-keyed de-duplication
 /// ([`has_stacked_gangers`](crate::situation::has_stacked_gangers)) hashes
 /// [`at`](GangerSpawn::at), never the whole struct.
 ///
@@ -49,7 +52,7 @@ use crate::{
 /// borrows each ganger, so dropping `Copy` costs nothing on the real path.
 ///
 /// Derives [`Deserialize`] so an authored situation `.ron` names each ganger's
-/// placement + every component VALUE + roster armor + its [`weapon`](GangerSpawn::weapon)
+/// placement + its eight attributes + roster armor + its [`weapon`](GangerSpawn::weapon)
 /// key (the value graph all flows through the landed newtype/enum serde derives —
 /// render-free, pixel-free).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -70,51 +73,38 @@ pub struct GangerSpawn {
     pub stance:     Stance,
     /// The ganger's aim-mode flag.
     pub aiming:     Aiming,
-    /// The ganger's hit-points pool.
-    pub hp:         Hp,
-    /// The ganger's **HP maximum** — the authored full hit-points capacity, the HP
-    /// bar's denominator (GTW-278's `ProgressBar`).
-    /// [`setup_battle`](crate::situation::setup_battle) spawns it as an [`HpMax`]
-    /// component beside [`hp`](GangerSpawn::hp). A DISPLAY/CAPACITY ceiling, NOT a
-    /// round-reset target — unlike [`tu_max`](GangerSpawn::tu_max), nothing restores
-    /// [`hp`](GangerSpawn::hp) to it; [`Hp`] is a persistent damage pool. An authored
-    /// situation supplies it (default = the authored [`hp`](GangerSpawn::hp), full at
-    /// battle start). Authored as a bare integer ([`HpMax`] is `#[serde(transparent)]`).
-    pub hp_max:     HpMax,
-    /// The ganger's Wounds (life) pool.
-    pub wounds:     Wounds,
-    /// The ganger's **Wounds maximum** — the authored full life-pool capacity, the
-    /// Wounds pip count (GTW-278's `Pips`).
-    /// [`setup_battle`](crate::situation::setup_battle) spawns it as a [`WoundsMax`]
-    /// component beside [`wounds`](GangerSpawn::wounds). A DISPLAY/CAPACITY ceiling, NOT
-    /// a round-reset target — unlike [`tu_max`](GangerSpawn::tu_max), nothing restores
-    /// [`wounds`](GangerSpawn::wounds) to it; [`Wounds`] is a persistent life pool. An
-    /// authored situation supplies it (default = the authored
-    /// [`wounds`](GangerSpawn::wounds), full at battle start). Authored as a bare
-    /// integer ([`WoundsMax`] is `#[serde(transparent)]`).
-    pub wounds_max: WoundsMax,
-    /// The ganger's Time-Unit budget.
-    pub tu:         Tu,
-    /// The ganger's **TU maximum** — the round-start Time-Unit ceiling [`Tu`] resets
-    /// to, and the GTW-38 reaction-ratio denominator (the same sibling-vitals shape as
-    /// [`tu`](GangerSpawn::tu)). [`setup_battle`](crate::situation::setup_battle) spawns
-    /// it as a [`TuMax`] component beside [`tu`](GangerSpawn::tu); the status panel's
-    /// `Vitals` read needs it (non-optional) to render the `cur/max` line, so an authored
-    /// situation MUST supply it (default = the authored [`tu`](GangerSpawn::tu), full at
-    /// battle start). Authored explicitly — `Tu` does NOT `#[require(TuMax)]` (that would
-    /// default the ceiling to `0`, painting a `cur/0` line); the ceiling comes from the
-    /// situation.
-    pub tu_max:     TuMax,
     /// The ganger's terminal life state.
     pub life_state: LifeState,
-    /// The ganger's **Shooting** combat stat — the ranged-to-hit skill term the
-    /// §1b concentration exponent reads (E3.0 / GTW-182).
-    pub shooting:   Shooting,
-    /// The ganger's **Toughness** attribute — the defender's severity-roll
-    /// mitigation (E3.0 / GTW-182).
+    /// The ganger's **Speed** direct attribute — quickness (GTW-384). Drives the
+    /// derived [`Tu`](crate::ganger::Tu) budget + Fight/Reactions terms. Authored as a
+    /// bare scalar ([`Speed`] is `#[serde(transparent)]`).
+    pub speed:      Speed,
+    /// The ganger's **Aim** direct attribute — innate marksmanship (GTW-384). The
+    /// dominant derived [`Shooting`](crate::ganger::Shooting) term. Authored as a bare
+    /// scalar ([`Aim`] is `#[serde(transparent)]`).
+    pub aim:        Aim,
+    /// The ganger's **Strength** direct attribute — physical power (GTW-384). A derived
+    /// Fight term. Authored as a bare scalar ([`Strength`] is `#[serde(transparent)]`).
+    pub strength:   Strength,
+    /// The ganger's **Toughness** direct attribute — damage resistance. REUSED (the §6
+    /// severity roll already reads it); ALSO a term in the derived
+    /// [`Hp`](crate::ganger::Hp) pool (GTW-384). Authored as a bare scalar.
     pub toughness:  Toughness,
-    /// The ganger's **Luck** attribute — directional fortune shaping the severity
-    /// roll's one-sided tail (E3.0 / GTW-182).
+    /// The ganger's **Reflexes** direct attribute — reaction speed (GTW-384). A derived
+    /// Shooting + Reactions term. Authored as a bare scalar ([`Reflexes`] is
+    /// `#[serde(transparent)]`).
+    pub reflexes:   Reflexes,
+    /// The ganger's **Cool** direct attribute — nerves under fire (GTW-384). The broad
+    /// Shooting/Fight/Reactions/HP/Morale contributor. Authored as a bare scalar
+    /// ([`Cool`] is `#[serde(transparent)]`).
+    pub cool:       Cool,
+    /// The ganger's **Grit** direct attribute — resilience (GTW-384). The dominant
+    /// derived [`Hp`](crate::ganger::Hp) + Morale term. Authored as a bare scalar
+    /// ([`Grit`] is `#[serde(transparent)]`).
+    pub grit:       Grit,
+    /// The ganger's **Luck** direct attribute — directional fortune. REUSED (the §6
+    /// severity roll reads it; feeds the severity roll ONLY, never the computed stats —
+    /// `docs/combat/stats.md`). Authored as a bare scalar.
     pub luck:       Luck,
     /// The ganger's **armor KEY** — the filename stem of an `assets/armor/*.armor.ron`
     /// (e.g. `"flak_vest"`), resolved against the

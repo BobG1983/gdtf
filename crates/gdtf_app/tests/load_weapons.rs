@@ -33,7 +33,7 @@ use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     situation::Situation,
-    tuning::CombatTuning,
+    tuning::{CombatTuning, GangerStatTuning},
     weapon::{WeaponName, WeaponRegistry},
 };
 use gdtf_test_utils::{
@@ -90,6 +90,8 @@ fn weapons_loader_no_ops_cleanly_without_asset_server() {
     // LoadedSituation too; GTW-269: the ArmorRegistry too).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-384: the GangerStatTuning is a gate-blocking resource too.
+    app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     app.world_mut()
@@ -126,6 +128,8 @@ fn load_does_not_leave_without_a_weapon_registry() {
     // Theme + tuning present, but the WeaponRegistry deliberately withheld.
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-384: the GangerStatTuning is a gate-blocking resource too.
+    app.world_mut().insert_resource(GangerStatTuning::default());
 
     let left_load = advance_until(
         &mut app,

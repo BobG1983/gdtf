@@ -23,7 +23,11 @@ use std::path::PathBuf;
 
 use bevy::{asset::Handle, state::state::State, text::Font};
 use gdtf_app::test_support::{AppState, LoadedSituation};
-use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{
+    situation::Situation,
+    tuning::{CombatTuning, GangerStatTuning},
+    weapon::WeaponRegistry,
+};
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
@@ -103,6 +107,8 @@ fn theme_present_transitions_to_intro_and_persists() {
     // required before Load transitions).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-384: the Load gate also requires a GangerStatTuning; default clears it.
+    app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
     app.world_mut()

@@ -2,12 +2,15 @@
 
 use bevy::prelude::*;
 use gdtf_assets::RonAsset;
-use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning};
+use gdtf_battle_sim::{
+    situation::Situation,
+    tuning::{CombatTuning, GangerStatTuning},
+};
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
-    ArmorsFolderHandle, FontFolderHandle, LoadHandles, SituationHandle, ThemeHandle, TuningHandle,
-    WeaponsFolderHandle,
+    ArmorsFolderHandle, FontFolderHandle, LoadHandles, SituationHandle, StatTuningHandle,
+    ThemeHandle, TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -23,6 +26,11 @@ const SITUATION_RON_PATH: &str = "situations/skirmish.ron";
 /// Path of the loose combat-tuning RON, relative to the asset source root
 /// (GTW-206 / E10.4 — the shipped balance coefficients the sim marches with).
 const TUNING_RON_PATH: &str = "combat/tuning.ron";
+
+/// Path of the loose ganger stat-tuning RON, relative to the asset source root
+/// (GTW-384 — the attribute → computed-stat derivation weights, a SEPARATE file from
+/// `combat/tuning.ron`).
+const STAT_TUNING_RON_PATH: &str = "combat/stat_tuning.ron";
 
 /// Path of the loose weapons folder, relative to the asset source root (GTW-257 —
 /// the per-weapon `assets/weapons/*.ron` files the registry is built from). Its OWN
@@ -70,6 +78,9 @@ pub(in crate::states::load) fn kick_off_loads(
     let situation =
         SituationHandle::new(asset_server.load::<RonAsset<Situation>>(SITUATION_RON_PATH));
     let tuning = TuningHandle::new(asset_server.load::<RonAsset<CombatTuning>>(TUNING_RON_PATH));
+    let stat_tuning = StatTuningHandle::new(
+        asset_server.load::<RonAsset<GangerStatTuning>>(STAT_TUNING_RON_PATH),
+    );
     let weapons = WeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
     let armor = ArmorsFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
 
@@ -78,6 +89,7 @@ pub(in crate::states::load) fn kick_off_loads(
         fonts,
         situation,
         tuning,
+        stat_tuning,
         weapons,
         armor,
     });

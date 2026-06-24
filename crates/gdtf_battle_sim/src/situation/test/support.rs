@@ -24,13 +24,14 @@ pub(super) use crate::{
     armor::{ArmorName, ArmorRegistry, ArmorSpec, BodyPart, Wears},
     cover::{CoverLedger, Destroyed},
     ganger::{
-        Aiming, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Position, Shooting,
-        Stance, Toughness, Tu, TuMax, Wounds, WoundsMax,
+        Aiming, Facing, Faction, GangerAttributes, GangerName, Hp, HpMax, LifeState, Luck,
+        Position, Shooting, Stance, Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
     },
     inflicted_wound::InflictedWounds,
     metric::CellLevel,
     occupancy::{OccupancyGrid, TerrainKind},
     surface::{SlabState, SurfaceGrid},
+    tuning::GangerStatTuning,
     vertical::{InvalidVerticalLink, LinkKind, VerticalLink, VerticalLinkGraph},
     weapon::{FireMode, Weapon, WeaponName, WeaponRegistry, WeaponSpec, WieldedBy, Wields},
 };
@@ -114,10 +115,12 @@ pub(super) fn run_setup_with(
     // infrastructure (the spike's pinned finding).
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
+    let stat_tuning = GangerStatTuning::default();
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &mut commands)
+            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
         });
     assert!(outcome.is_ok(), "the one-shot setup system must run");
     let setup = outcome.ok().and_then(Result::ok);
@@ -132,6 +135,24 @@ pub(super) fn run_setup_with(
     // the `SpawnScene` schedule that turns the queued scenes into live components.
     app.update();
     Some((app, setup))
+}
+
+/// Build a [`GangerAttributes`] record from an authored [`GangerSpawn`]'s eight
+/// attributes — the input the derivation-RELATION assertions feed to
+/// [`derive_stats`](crate::ganger::derive_stats) to compute the EXPECTED derived stats
+/// for a spawned ganger (GTW-384), so the spawn tests assert the FORMULA, never a pinned
+/// magnitude.
+pub(super) fn attributes_of(ganger: &GangerSpawn) -> GangerAttributes {
+    GangerAttributes {
+        speed:     ganger.speed,
+        aim:       ganger.aim,
+        strength:  ganger.strength,
+        toughness: ganger.toughness,
+        reflexes:  ganger.reflexes,
+        cool:      ganger.cool,
+        grit:      ganger.grit,
+        luck:      ganger.luck,
+    }
 }
 
 /// The C8 minimal fixture: 2 gangers (distinct factions + cells), 1 wall, 1
@@ -170,10 +191,12 @@ pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     // weapon + armor registries, capturing its result.
     let registry = test_registry();
     let armor = test_armor_registry();
+    // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
+    let stat_tuning = GangerStatTuning::default();
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &mut commands)
+            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
         });
 
     // The one-shot system itself must run (Ok), and the inner setup must succeed.

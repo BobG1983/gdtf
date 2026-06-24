@@ -10,7 +10,10 @@
 
 use bevy::{asset::LoadedFolder, prelude::*};
 use gdtf_assets::RonAsset;
-use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning};
+use gdtf_battle_sim::{
+    situation::Situation,
+    tuning::{CombatTuning, GangerStatTuning},
+};
 use gdtf_ui::theme::GdtfThemeSpec;
 
 /// Typed handle to the in-flight theme RON asset (`theme/grimdark.ron`).
@@ -124,6 +127,24 @@ impl TuningHandle {
     }
 }
 
+/// Typed handle to the in-flight ganger stat-tuning RON asset (`combat/stat_tuning.ron`).
+///
+/// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even for
+/// asset plumbing: a bare `Handle<RonAsset<GangerStatTuning>>` carries no domain meaning,
+/// this name says "the shipped ganger stat-derivation tuning being loaded" (GTW-384, the
+/// [`TuningHandle`] mirror). The poll/resolve system reads it to check the load's
+/// progress, then inserts the deserialized [`GangerStatTuning`] as the persistent runtime
+/// resource the sim derives each ganger's computed stats from.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct StatTuningHandle(Handle<RonAsset<GangerStatTuning>>);
+
+impl StatTuningHandle {
+    /// Wrap an in-flight ganger stat-tuning RON asset handle.
+    pub(in crate::states::load) const fn new(handle: Handle<RonAsset<GangerStatTuning>>) -> Self {
+        Self(handle)
+    }
+}
+
 /// The Load-scoped handles to the assets the [`AppState::Load`](crate::states::AppState::Load)
 /// kick-off started loading.
 ///
@@ -134,17 +155,19 @@ impl TuningHandle {
 #[derive(Resource, Clone, Debug)]
 pub(in crate::states::load) struct LoadHandles {
     /// The theme RON asset being loaded.
-    pub theme:     ThemeHandle,
+    pub theme:       ThemeHandle,
     /// The fonts folder being preloaded (all fonts up front).
-    pub fonts:     FontFolderHandle,
+    pub fonts:       FontFolderHandle,
     /// The authored situation RON asset being loaded (GTW-205 / E10.3).
-    pub situation: SituationHandle,
+    pub situation:   SituationHandle,
     /// The shipped combat-tuning RON asset being loaded (GTW-206 / E10.4).
-    pub tuning:    TuningHandle,
+    pub tuning:      TuningHandle,
+    /// The shipped ganger stat-tuning RON asset being loaded (GTW-384).
+    pub stat_tuning: StatTuningHandle,
     /// The weapons folder being preloaded (all weapon `.ron`s up front, GTW-257).
-    pub weapons:   WeaponsFolderHandle,
+    pub weapons:     WeaponsFolderHandle,
     /// The armor folder being preloaded (all armor `.ron`s up front, GTW-269).
-    pub armor:     ArmorsFolderHandle,
+    pub armor:       ArmorsFolderHandle,
 }
 
 crate::support_item! {
@@ -200,6 +223,29 @@ pub(in crate::states::load) struct ActiveTuningHandle(Handle<RonAsset<CombatTuni
 impl ActiveTuningHandle {
     /// Wrap the resolved combat-tuning RON handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<RonAsset<CombatTuning>>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the resolved ganger stat-tuning RON asset
+/// (`combat/stat_tuning.ron`).
+///
+/// A named newtype over the bevy [`Handle`] (no-bare-types) that — unlike the Load-scoped
+/// [`StatTuningHandle`] inside [`LoadHandles`], which is dropped `OnExit(Load)` —
+/// **persists** past `Load`, the GTW-384 mirror of [`ActiveTuningHandle`]. It is inserted
+/// alongside the resolved [`GangerStatTuning`] resource and kept alive so the live
+/// hot-reload handler
+/// ([`redrive_stat_tuning_on_asset_event`](super::systems::resolve::stat_tuning::redrive_stat_tuning_on_asset_event))
+/// can (1) filter incoming [`AssetEvent`](bevy::asset::AssetEvent) ids against the active
+/// stat-tuning handle and (2) re-read the refreshed asset on a hot edit. Holding the
+/// handle also keeps a strong reference so the asset stays loaded for the file-watcher.
+/// Like [`GangerStatTuning`], it is **not** removed in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveStatTuningHandle(Handle<RonAsset<GangerStatTuning>>);
+
+impl ActiveStatTuningHandle {
+    /// Wrap the resolved ganger stat-tuning RON handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<RonAsset<GangerStatTuning>>) -> Self {
         Self(handle)
     }
 }

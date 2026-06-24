@@ -2,7 +2,7 @@
 
 Two-layer model: **direct attributes** (raw potential) feed **computed combat stats** (the values actually rolled in resolution). Wounds and use-improvement act on this system; the campaign identity layer (XP → skills) sits alongside it.
 
-> The *structure* below is settled. Exact formula coefficients and numeric ranges are **TBD (tuning)**.
+> **BUILT (GTW-384).** The two-layer model now EXISTS in the sim: a ganger's situation `.ron` authors the **eight direct attributes** only, and `setup_battle` DERIVES every computed combat stat from them via a `derive_stats(attributes, &GangerStatTuning)` pure function (render-free, unit-tested). The weights / divisors / TU params live in a **hot-reloadable `assets/combat/stat_tuning.ron`** (a SEPARATE file from `combat/tuning.ron`), loaded into a `GangerStatTuning` Bevy `Resource`; editing it live re-derives every spawned ganger's stats (clamping current pools to the new maxes, never resetting). The derivation is the **single source of truth** — computed stats are never authored. Exact shipped coefficients / ranges remain **tunable data** (not pinned).
 
 ## Direct attributes (8)
 
@@ -34,13 +34,13 @@ Derived from attributes (+ gear, − wounds). These are what the game rolls. Sta
 | **Wounds** | **HP / `wounds_per_hp`** (tunable, ≈10) | life pool (small, < a dozen) — Dead at 0 |
 | **Bottle** | **Morale / `bottle_per_morale`** (tunable, ≈10) | psychological life pool — Bottled at 0 |
 
-The two **life pools** derive from their damage pools (a second derivation level): tougher/steadier gangers get a proportionally larger life pool. The derivations are **weighted attribute sums**; the weights and divisors are tuning values (a `GangerStatTuning` Bevy `Resource`, loaded from a tuning data asset; defaults are flat 1.0 weights, Cool at 0.5 into HP). `Downed` / `Dead` / `Bottled` themselves are **state components owned by the combat/death system** (which reads these pools), not stats.
+The two **life pools** derive from their damage pools (a second derivation level): tougher/steadier gangers get a proportionally larger life pool. The derivations are **weighted attribute sums** (`derive_stats`, GTW-384); the weights and divisors are tuning values (the `GangerStatTuning` Bevy `Resource`, loaded from `assets/combat/stat_tuning.ron` and hot-reloadable; defaults are flat 1.0 weights, Cool at 0.5 into HP, divisors ≈10). Rounding rule: the pools are integers, so each `f32` weighted sum rounds **to-nearest** when it lands in a pool. `Downed` / `Dead` / `Bottled` themselves are **state components owned by the combat/death system** (which reads these pools), not stats.
 
-**Live today:** TU, Shooting (feeds shot concentration, `p = Shooting × weapon accuracy`), HP, Wounds. **Designed-dormant** — computed on the sheet but with no consumer yet: **Fight** (melee, GTW-51), **Reactions** (reaction fire, not yet built), **Morale / Bottle** (the bottle/morale campaign layer, GTW-13).
+**Live today — derived + consumed (GTW-384):** TU (per-turn budget), Shooting (derived `fn(Aim, Reflexes, Cool)`, feeds shot concentration `p = Shooting × weapon accuracy`), HP (knock-down pool), Wounds (life pool, `HP / wounds_per_hp`). **Derived-but-dormant** — now COMPUTED on the sheet at setup (GTW-384) but with no consumer yet: **Fight** (`fn(Speed, Strength, Grit, Cool)` — melee, GTW-51), **Reactions** (`fn(Speed, Reflexes, Cool)` — reaction fire, not yet built), **Morale** (`fn(Grit, Cool)`) **/ Bottle** (`Morale / bottle_per_morale` — the bottle/morale campaign layer, GTW-13). The eight direct attributes (Speed / Aim / Strength / Toughness / Reflexes / Cool / Grit / Luck) all EXIST as authored ganger components; **Toughness** and **Luck** additionally feed the §6 severity roll directly (they are the two that were live before GTW-384).
 
 ## Action economy — Time Units (UFO: Enemy Unknown)
 
-A **TU pool** per turn (from Speed — `tu_base + Speed·tu_per_speed`; the over-encumbrance Strength reduction is **not yet built**). Every action — step, turn in place, snap / aimed / auto shot, kneel, etc. — costs TUs, and **unspent TUs fuel reaction fire** on the enemy turn (gated by Reactions — **reaction fire not yet built**). Live today: moves, shots (aimed pays the GTW-40 premium, base × 1.5) and stance changes (GTW-48) spend TU on the model (GTW-123). Deepest tactical texture; the heaviest to tune. (Worth a decision-log entry via `/log-decision`.)
+A **TU pool** per turn, now DERIVED from Speed at setup (`tu_base + Speed·tu_per_speed`, GTW-384 — the `tu_base` / `tu_per_speed` live in `stat_tuning.ron`; the over-encumbrance Strength reduction is **not yet built**). Every action — step, turn in place, snap / aimed / auto shot, kneel, etc. — costs TUs, and **unspent TUs fuel reaction fire** on the enemy turn (gated by Reactions — **reaction fire not yet built**). Live today: moves, shots (aimed pays the GTW-40 premium, base × 1.5) and stance changes (GTW-48) spend TU on the model (GTW-123). Deepest tactical texture; the heaviest to tune. (Worth a decision-log entry via `/log-decision`.)
 
 ## Damage model — HP and Wounds
 

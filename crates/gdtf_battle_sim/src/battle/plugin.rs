@@ -13,6 +13,7 @@ use crate::{
         resources::BattleInProgress,
         setup::{setup_battle_on_request, teardown_battle_on_request},
     },
+    ganger::rederive_stats_on_tuning_change,
     move_acts::advance_walk,
     occupancy_sync::{
         OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover, sync_destroyed_slab,
@@ -145,6 +146,21 @@ impl Plugin for BattleSimPlugin {
                     setup_battle_on_request.before(SimSystems::Simulate),
                     teardown_battle_on_request.after(SimSystems::Simulate),
                 ),
+            )
+            // GTW-384: the LIVE stat-derivation re-derive — when the GangerStatTuning
+            // resource CHANGES (the app-side hot-reload overwrites it on a
+            // `stat_tuning.ron` edit, GTW-374 pattern), re-derive every spawned ganger's
+            // computed stats + clamp its current pools to the new maxes. Runs UNGATED by
+            // BattleInProgress (it just iterates ganger entities — a no-op if none exist).
+            // The system SELF-GUARDS on the resource's presence (Option<Res>) + its
+            // `is_changed()` INSIDE the body, rather than via a `Res`-param run condition,
+            // so a harness that adds BattleSimPlugin without the persistent-Load
+            // GangerStatTuning does not panic (bevy-traps.md #1 / #3). Ordered AFTER
+            // setup_battle_on_request so a same-frame setup's freshly-spawned gangers are
+            // present before this re-derive iterates (no one-frame split).
+            .add_systems(
+                Update,
+                rederive_stats_on_tuning_change.after(setup_battle_on_request),
             );
     }
 }

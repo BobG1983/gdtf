@@ -48,7 +48,11 @@ use gdtf_app::test_support::{
     AfterMathState, AppState, BattleRunningComplete, BattleScapeState, GameState, LoadedSituation,
     RunningState,
 };
-use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{
+    situation::Situation,
+    tuning::{CombatTuning, GangerStatTuning},
+    weapon::WeaponRegistry,
+};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -77,6 +81,9 @@ fn walk_app_with_theme() -> App {
         .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-384: the Load→Intro gate also requires a GangerStatTuning (the sim derives
+    // ganger stats from it); the default clears the gate.
+    app.world_mut().insert_resource(GangerStatTuning::default());
     // GTW-257: the Load→Intro gate also requires a WeaponRegistry (the deep walk uses
     // the empty-default situation, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());

@@ -18,14 +18,16 @@ use crate::{
     clearance::silhouette_band,
     cover::CoverLedger,
     ganger::{
-        Aiming, Facing, Faction, GangerName, Hp, HpMax, Luck, Position, Shooting, Stance,
-        Toughness, Tu, TuMax, Wounds, WoundsMax,
+        Aim, Aiming, Bottle, Cool, Facing, Faction, Fight, GangerAttributes, GangerName, Grit, Hp,
+        HpMax, Luck, Morale, Position, Reactions, Reflexes, Shooting, Speed, Stance, Strength,
+        Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
     },
     inflicted_wound::InflictedWounds,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainPlacement},
     situation::{BattleSetupError, GangerSpawn, Situation},
     slab::SlabLedger,
     surface::{SlabState, SurfaceGrid},
+    tuning::GangerStatTuning,
     vertical::build_vertical_link_graph,
     weapon::{
         Accuracy, BaseSpread, FatalBias, FireMode, Kickback, Stable, Weapon, WeaponBundle,
@@ -66,13 +68,15 @@ impl BattleSetup {
 /// ganger (see [`wielded_weapon_scenes`] / [`worn_piece_scenes`]); the ganger holds
 /// the relationship, never the components. So this scene composes the per-field ganger
 /// state ([`Position`] / [`GangerName`] / [`Faction`] / [`Facing`] / [`Stance`] /
-/// [`Aiming`] / [`Hp`] / [`HpMax`] / [`Wounds`] / [`WoundsMax`] / [`Tu`] / [`TuMax`] /
-/// [`LifeState`](crate::ganger::LifeState)), the E3.0 / GTW-182 attribute stats
-/// ([`Shooting`] / [`Toughness`] / [`Luck`]), and the GTW-279 empty
-/// [`InflictedWounds`] record — and nothing else. (Slices 1 + 2 kept the equipment
-/// stats here as a TRANSIENT authoring copy until the presenter migrated to the
-/// relationships; slice 3 removed that copy, so equipment stat data is now stored
-/// nowhere on the ganger.)
+/// [`Aiming`] / [`LifeState`](crate::ganger::LifeState)), the EIGHT authored DIRECT
+/// ATTRIBUTES ([`Speed`] / [`Aim`] / [`Strength`] / [`Toughness`] / [`Reflexes`] /
+/// [`Cool`] / [`Grit`] / [`Luck`] — the raw potential), the DERIVED computed stats
+/// ([`Shooting`] / [`Tu`] / [`TuMax`] / [`Hp`] / [`HpMax`] / [`Wounds`] / [`WoundsMax`]
+/// plus the dormant [`Fight`] / [`Reactions`] / [`Morale`] / [`Bottle`]) computed at
+/// setup from the attributes × the passed [`GangerStatTuning`] (GTW-384 — fully derived,
+/// never authored: the situation authors attributes, the pools/skills are derived
+/// here, full at battle start so the current pool == max), and the GTW-279 empty
+/// [`InflictedWounds`] record — and nothing else.
 ///
 /// **The `bsn!` recipe (GTW-322 spike).** Every newtype with a `Type::new(value)`
 /// constructor is inlined in `bsn!`. The runtime-valued fieldless enum
@@ -88,7 +92,7 @@ impl BattleSetup {
 /// [`at`](crate::situation::GangerSpawn::at) value and the synchronously-reserved
 /// `Entity` id (`spawn_scene(..).id()`), never off the deferred [`Position`]
 /// component.
-fn ganger_scene(ganger: &GangerSpawn) -> impl Scene {
+fn ganger_scene(ganger: &GangerSpawn, tuning: &GangerStatTuning) -> impl Scene {
     // The `bsn!` `Type::new(expr)` form stores a DEFERRED constructor, so every value
     // it captures must be OWNED/`'static` — a borrow (`&GangerSpawn`) captured into the
     // macro would make the returned scene outlive the reference (the GTW-322 spike's
@@ -100,15 +104,42 @@ fn ganger_scene(ganger: &GangerSpawn) -> impl Scene {
     let facing = *ganger.facing;
     let stance = *ganger.stance;
     let aiming = *ganger.aiming;
-    let hp = *ganger.hp;
-    let hp_max = *ganger.hp_max;
-    let wounds = *ganger.wounds;
-    let wounds_max = *ganger.wounds_max;
-    let tu = *ganger.tu;
-    let tu_max = *ganger.tu_max;
-    let shooting = *ganger.shooting;
+    // GTW-384: DERIVE every computed stat from the eight authored attributes × the
+    // tuning (the single source of truth — `derive_stats`). The situation authors
+    // attributes only; the pools/skills are derived here, full at battle start
+    // (current pool == max).
+    let attributes = GangerAttributes {
+        speed:     ganger.speed,
+        aim:       ganger.aim,
+        strength:  ganger.strength,
+        toughness: ganger.toughness,
+        reflexes:  ganger.reflexes,
+        cool:      ganger.cool,
+        grit:      ganger.grit,
+        luck:      ganger.luck,
+    };
+    let derived = derive_stats(&attributes, tuning);
+    // The eight authored attribute magnitudes (the raw potential, carried on the ganger).
+    let speed = *ganger.speed;
+    let aim = *ganger.aim;
+    let strength = *ganger.strength;
     let toughness = *ganger.toughness;
+    let reflexes = *ganger.reflexes;
+    let cool = *ganger.cool;
+    let grit = *ganger.grit;
     let luck = *ganger.luck;
+    // The derived computed-stat magnitudes (Deref'd out of the DerivedStats record).
+    let shooting = *derived.shooting;
+    let fight = *derived.fight;
+    let reactions = *derived.reactions;
+    let morale = *derived.morale;
+    let tu = *derived.tu;
+    let tu_max = *derived.tu_max;
+    let hp = *derived.hp;
+    let hp_max = *derived.hp_max;
+    let wounds = *derived.wounds;
+    let wounds_max = *derived.wounds_max;
+    let bottle = *derived.bottle;
     // The runtime-valued leaf with no `bsn!` grammar form, owned for the
     // `template_value` tuple-composition tail (see the doc-comment recipe).
     let life_state = ganger.life_state;
@@ -120,15 +151,27 @@ fn ganger_scene(ganger: &GangerSpawn) -> impl Scene {
             Facing::new(facing)
             Stance::new(stance)
             Aiming::new(aiming)
+            // The eight authored DIRECT ATTRIBUTES (the raw potential).
+            Speed::new(speed)
+            Aim::new(aim)
+            Strength::new(strength)
+            Toughness::new(toughness)
+            Reflexes::new(reflexes)
+            Cool::new(cool)
+            Grit::new(grit)
+            Luck::new(luck)
+            // The DERIVED computed stats (attributes × GangerStatTuning, full at start).
+            Shooting::new(shooting)
+            Fight::new(fight)
+            Reactions::new(reactions)
+            Morale::new(morale)
+            Tu::new(tu)
+            TuMax::new(tu_max)
             Hp::new(hp)
             HpMax::new(hp_max)
             Wounds::new(wounds)
             WoundsMax::new(wounds_max)
-            Tu::new(tu)
-            TuMax::new(tu_max)
-            Shooting::new(shooting)
-            Toughness::new(toughness)
-            Luck::new(luck)
+            Bottle::new(bottle)
             InflictedWounds::default()
         },
         // The runtime-valued component with no `bsn!` grammar form, bridged via
@@ -330,9 +373,13 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 /// render-free and headless-driven (it touches no renderer / asset server), so a
 /// `MinimalPlugins` test can run it directly. It reads a [`WeaponRegistry`] by
 /// reference (GTW-257) to resolve each ganger's
-/// [`weapon`](crate::situation::GangerSpawn::weapon) key, and an [`ArmorRegistry`] by
+/// [`weapon`](crate::situation::GangerSpawn::weapon) key, an [`ArmorRegistry`] by
 /// reference (GTW-269) to resolve each ganger's
-/// [`armor`](crate::situation::GangerSpawn::armor) key.
+/// [`armor`](crate::situation::GangerSpawn::armor) key, and a [`GangerStatTuning`] by
+/// reference (GTW-384) to DERIVE every computed combat stat
+/// ([`Shooting`] / [`Tu`] / [`Hp`] / [`Wounds`] + the dormant [`Fight`] / [`Reactions`]
+/// / [`Morale`] / [`Bottle`]) from the ganger's eight authored attributes
+/// (`docs/combat/stats.md` — fully derived, the situation authors attributes only).
 ///
 /// # Errors
 ///
@@ -354,6 +401,7 @@ pub fn setup_battle(
     situation: &Situation,
     weapons: &WeaponRegistry,
     armor: &ArmorRegistry,
+    stat_tuning: &GangerStatTuning,
     commands: &mut Commands,
 ) -> Result<BattleSetup, BattleSetupError> {
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
@@ -409,7 +457,7 @@ pub fn setup_battle(
         // slice 3, ADR-0004). The empty InflictedWounds record (GTW-279) and the
         // GTW-291 display ceilings (HpMax / WoundsMax) ride inside `ganger_scene`; the
         // weapon + armor stats live on the related entities spawned below.
-        let entity = commands.spawn_scene(ganger_scene(ganger)).id();
+        let entity = commands.spawn_scene(ganger_scene(ganger, stat_tuning)).id();
         // GTW-323 slice 1 (ADR-0004): spawn the six worn-armor-piece entities from the
         // resolved spec and relate them to this ganger via `Wears` — using `bsn!`
         // (`queue_spawn_related_scenes::<Wears>(bsn_list!{..})`), the post-GTW-322 spawn

@@ -38,7 +38,8 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Faction, MoveRejected, MoveRejection, MovementOccurred, Position, Stance, StanceKind, Tu,
+    Faction, MoveRejected, MoveRejection, MovementOccurred, Position, Speed, Stance, StanceKind,
+    Tu,
     acts::MoveRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
     metric::{Cell, CellLevel, Level},
@@ -83,15 +84,18 @@ fn far_unseen() -> CellLevel {
     ground(40, 40)
 }
 
-/// A one-player situation: a standing player ganger (gang 0) on clear ground, the given
-/// current TU, `player_faction` defaulting to gang 0.
-fn one_player_situation(tu: u8) -> Situation {
+/// A one-player situation: a standing player ganger (gang 0) on clear ground with the
+/// given Speed (GTW-384: TU is DERIVED = `tu_base + tu_per_speed·Speed`, so a high Speed
+/// yields an ample TU pool covering an open step), `player_faction` defaulting to gang 0.
+/// The unaffordable test ZEROES the spawned `Tu` directly after setup (the headless-test
+/// world-mutation carve-out) rather than authoring an attribute that derives to 0.
+fn one_player_situation(speed: f32) -> Situation {
     SituationBuilder::new()
         .with_gangers([GangerSpawnBuilder::new()
             .at(player_at())
             .faction(Faction::new(PLAYER))
             .stance(Stance::new(StanceKind::Standing))
-            .tu(Tu::new(tu))
+            .speed(Speed::new(speed))
             .build()])
         .build()
 }
@@ -165,7 +169,7 @@ fn clear_signals(app: &mut App) {
 #[test]
 fn unreachable_teleport_is_rejected_with_no_move() {
     let mut app = battle_app();
-    drive_setup(&mut app, one_player_situation(60));
+    drive_setup(&mut app, one_player_situation(20.0));
 
     let Some((actor, before)) = player_entity_and_pos(&mut app) else {
         unreachable!("setup spawns exactly one player ganger");
@@ -207,7 +211,7 @@ fn unreachable_teleport_is_rejected_with_no_move() {
 #[test]
 fn reachable_route_is_accepted_with_move_and_log() {
     let mut app = battle_app();
-    drive_setup(&mut app, one_player_situation(60));
+    drive_setup(&mut app, one_player_situation(20.0));
 
     let Some((actor, before)) = player_entity_and_pos(&mut app) else {
         unreachable!("setup spawns exactly one player ganger");
@@ -253,13 +257,19 @@ fn reachable_route_is_accepted_with_move_and_log() {
 #[test]
 fn unaffordable_route_is_rejected_with_no_partial_move() {
     let mut app = battle_app();
-    // Zero TU: the mover can afford NO positive-cost route — but the destination is still
-    // reachable (adjacent, in-sight), so the rejection is Unaffordable, not Unreachable.
-    drive_setup(&mut app, one_player_situation(0));
+    // Spawn with an ample derived TU pool, then ZERO it directly (GTW-384: TU is now a
+    // derived pool — the headless-test world-mutation carve-out, bevy-traps #7a). The
+    // mover can then afford NO positive-cost route — but the destination is still reachable
+    // (adjacent, in-sight), so the rejection is Unaffordable, not Unreachable.
+    drive_setup(&mut app, one_player_situation(20.0));
 
     let Some((actor, before)) = player_entity_and_pos(&mut app) else {
         unreachable!("setup spawns exactly one player ganger");
     };
+    // Drain the mover's TU to zero so any positive-cost route is unaffordable.
+    if let Some(mut tu) = app.world_mut().get_mut::<Tu>(actor) {
+        *tu = Tu::new(0);
+    }
     assert_eq!(
         before,
         player_at(),

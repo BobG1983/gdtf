@@ -977,9 +977,7 @@ use gdtf_battle_sim::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
         ArmorRegistry, ArmorSpec, ArmorType,
     },
-    ganger::{
-        Aiming, Direction, Facing, GangerName, Luck, Shooting, Stance, StanceKind, Toughness,
-    },
+    ganger::{Aim, Aiming, Direction, Facing, GangerName, Luck, Stance, StanceKind, Toughness},
     magazine::{Magazine, ReloadTu},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
@@ -1061,8 +1059,9 @@ fn real_flow_armor_registry() -> ArmorRegistry {
 /// default TEST armor/weapon keys are the same `"test-weapon"` / `"test-armor"` strings as
 /// [`REAL_FLOW_WEAPON_KEY`] / [`REAL_FLOW_ARMOR_KEY`], so the existing `real_flow_registry`
 /// / `real_flow_armor_registry` still resolve. The original fixture overrides — the
-/// per-faction `"Ganger {faction}"` name, the per-faction Shooting/Toughness/Luck offsets
-/// (the auto-select tests read no values off them, but they keep the fixture's identity),
+/// per-faction `"Ganger {faction}"` name, the per-faction Aim/Toughness/Luck attribute
+/// offsets (the auto-select tests read no values off them, but they keep the fixture's
+/// identity — GTW-384: the per-ganger DATA the derived stats compute from),
 /// and the Crouching stance — are applied explicitly so the migration is value-for-value
 /// identical to the prior struct literal.
 fn real_flow_ganger(at: CellLevel, faction: u8) -> GangerSpawn {
@@ -1074,7 +1073,7 @@ fn real_flow_ganger(at: CellLevel, faction: u8) -> GangerSpawn {
         .facing(Facing::new(Direction::East))
         .stance(Stance::new(StanceKind::Crouching))
         .aiming(Aiming::new(true))
-        .shooting(Shooting::new(f32::from(faction) + 2.0))
+        .aim(Aim::new(f32::from(faction) + 2.0))
         .toughness(Toughness::new(f32::from(faction) + 3.0))
         .luck(Luck::new(f32::from(faction) + 1.0))
         .build()

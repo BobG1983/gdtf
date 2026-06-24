@@ -23,21 +23,32 @@
 //! GTW-201 code-health: this concern is a dir-module split by responsibility — the
 //! grid position ([`position`]), the 8-way [`Direction`] compass + [`Facing`]
 //! ([`direction`]), the posture / aim-mode / gang identity ([`stance`]), the
-//! numeric pools & attribute stats ([`vitals`]), and the terminal life-state
+//! numeric pools & computed combat stats ([`vitals`]), the eight raw direct
+//! [`attributes`] (GTW-384, the slowly-changing potential the computed stats derive
+//! from), the [`derive_stats`] pure derivation (GTW-384), and the terminal life-state
 //! machine ([`life`]). This `mod.rs` is wiring-only; every public path is preserved
 //! via the re-exports below.
 
+mod attributes;
+mod derive_stats;
 mod direction;
 mod life;
 mod position;
+mod rederive;
 mod stance;
 mod vitals;
 
 #[cfg(test)]
 mod test;
 
+pub use attributes::{Aim, Cool, GangerAttributes, Grit, Reflexes, Speed, Strength};
+pub use derive_stats::{DerivedStats, derive_stats};
 pub use direction::{Direction, Facing};
 pub use life::{LifeState, Stabilized};
 pub use position::Position;
+pub use rederive::rederive_stats_on_tuning_change;
 pub use stance::{Aiming, Faction, Stance, StanceKind};
-pub use vitals::{GangerName, Hp, HpMax, Luck, Shooting, Toughness, Tu, TuMax, Wounds, WoundsMax};
+pub use vitals::{
+    Bottle, Fight, GangerName, Hp, HpMax, Luck, Morale, Reactions, Shooting, Toughness, Tu, TuMax,
+    Wounds, WoundsMax,
+};

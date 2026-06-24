@@ -299,3 +299,95 @@ impl Luck {
         Self(luck)
     }
 }
+
+/// A ganger's **Fight** computed combat stat — the base melee to-hit skill term
+/// (`docs/combat/stats.md`: `fn(Speed, Strength, Grit, Cool)`).
+///
+/// DERIVED at setup from the four authored attributes × the
+/// [`GangerStatTuning`](crate::tuning::GangerStatTuning) Fight weights (GTW-384), never
+/// authored. **Designed-dormant** — the melee combat that consumes it is GTW-51, NOT
+/// YET BUILT — so this slice DERIVES and carries Fight on the sheet but no system reads
+/// it (`docs/combat/stats.md` §"Designed-dormant"). A domain stat value (no-bare-types),
+/// dimensionless — **zero pixels**. Private inner + derived [`Deref`]. A distinct
+/// component so a future melee system can query `&Fight` alone. Defaults to `0.0`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Fight(f32);
+
+impl Fight {
+    /// Build a Fight value from its magnitude (dimensionless; higher = better in
+    /// melee). The public constructor (house style) so the derivation can build it
+    /// without reaching the private field.
+    #[must_use]
+    pub const fn new(fight: f32) -> Self {
+        Self(fight)
+    }
+}
+
+/// A ganger's **Reactions** computed combat stat — the base likelihood / number of
+/// enemy-turn responses (`docs/combat/stats.md`: `fn(Speed, Reflexes, Cool)`).
+///
+/// DERIVED at setup from the three authored attributes × the
+/// [`GangerStatTuning`](crate::tuning::GangerStatTuning) Reactions weights (GTW-384),
+/// never authored. **Designed-dormant** — reaction fire (the GTW-38 `Reactions × TU_left
+/// / TU_max` score) is NOT YET BUILT, so this slice DERIVES and carries Reactions but no
+/// system reads it. A domain stat value (no-bare-types), dimensionless — **zero pixels**.
+/// Private inner + derived [`Deref`]. A distinct component so a future reaction system
+/// can query `&Reactions` alone. Defaults to `0.0`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Reactions(f32);
+
+impl Reactions {
+    /// Build a Reactions value from its magnitude (dimensionless; higher = more / likelier
+    /// enemy-turn responses). The public constructor (house style) so the derivation can
+    /// build it without reaching the private field.
+    #[must_use]
+    pub const fn new(reactions: f32) -> Self {
+        Self(reactions)
+    }
+}
+
+/// A ganger's **Morale** computed combat stat — the psychological equivalent of [`Hp`]
+/// (`docs/combat/stats.md`: `fn(Grit, Cool)`).
+///
+/// DERIVED at setup from the two authored attributes × the
+/// [`GangerStatTuning`](crate::tuning::GangerStatTuning) Morale weights (GTW-384), never
+/// authored. The derived [`Bottle`] life pool derives from it in turn (a second
+/// derivation level, mirroring [`Wounds`] ← [`Hp`]). **Designed-dormant** — the
+/// bottle/morale campaign layer (GTW-13) is NOT YET BUILT, so this slice DERIVES and
+/// carries Morale but no system reads it. A domain stat value (no-bare-types),
+/// dimensionless — **zero pixels**. Private inner + derived [`Deref`]. A distinct
+/// component so a future morale system can query `&Morale` alone. Defaults to `0.0`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Morale(f32);
+
+impl Morale {
+    /// Build a Morale value from its magnitude (dimensionless; higher = steadier psyche).
+    /// The public constructor (house style) so the derivation can build it without
+    /// reaching the private field.
+    #[must_use]
+    pub const fn new(morale: f32) -> Self {
+        Self(morale)
+    }
+}
+
+/// A ganger's **Bottle** computed life pool — the psychological life pool; `Bottle ≤ 0`
+/// → Bottled (`docs/combat/stats.md`: `Morale / bottle_per_morale`).
+///
+/// DERIVED at setup as `round(Morale / bottle_per_morale)` (the
+/// [`GangerStatTuning`](crate::tuning::GangerStatTuning) divisor, ≈10) — the
+/// psychological mirror of [`Wounds`] ← [`Hp`] (GTW-384). A `u8` count (the pool is
+/// tiny, like [`Wounds`]). **Designed-dormant** — the bottle/morale campaign layer
+/// (GTW-13) is NOT YET BUILT, so this slice DERIVES and carries Bottle but no system
+/// reads it. A distinct component so a future morale system can query `&Bottle` alone.
+/// Defaults to `0`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Bottle(u8);
+
+impl Bottle {
+    /// Build a Bottle (psychological life) pool from its count. The public constructor
+    /// (house style) so the derivation can build it without reaching the private field.
+    #[must_use]
+    pub const fn new(bottle: u8) -> Self {
+        Self(bottle)
+    }
+}

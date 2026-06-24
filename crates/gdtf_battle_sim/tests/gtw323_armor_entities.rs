@@ -24,11 +24,11 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Aiming, ArmorIntegrity, BattleGrids, BattleSeed, BattleSetup, Cell, CombatTuning, CoverLedger,
-    Direction, Facing, Faction, FireModeSpec, Level, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, PieceQuery, ShooterQuery, Shooting, ShotKind, SimRng, SlabLedger,
-    Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears, WearsQuery,
-    WieldsQuery,
+    Aim, Aiming, ArmorIntegrity, BattleGrids, BattleSeed, BattleSetup, Cell, CombatTuning,
+    CoverLedger, Direction, Facing, Faction, FireModeSpec, GangerStatTuning, Level, ModeConeMult,
+    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, ShooterQuery, ShotKind, SimRng,
+    SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears,
+    WearsQuery, WieldsQuery,
     fire::FireOrder,
     setup_battle,
     test_support::{
@@ -66,14 +66,15 @@ const fn enemy_at() -> bevy::math::IVec2 {
 fn battle_app() -> Option<(App, BattleSetup)> {
     let situation = SituationBuilder::new()
         .with_gangers([
-            // Shooter: tight cone, aiming, high Shooting — lands reliably.
+            // Shooter: tight cone, aiming, high Aim → high DERIVED Shooting (GTW-384:
+            // Shooting = aim·Aim + reflexes·Reflexes + cool·Cool) — lands reliably.
             GangerSpawnBuilder::new()
                 .at(key(shooter_at().x, shooter_at().y, 0))
                 .faction(Faction::new(0))
                 .facing(Facing::new(Direction::East))
                 .stance(Stance::new(StanceKind::Standing))
                 .aiming(Aiming::new(true))
-                .shooting(Shooting::new(6.0))
+                .aim(Aim::new(10.0))
                 .build(),
             // Enemy: standing, due East — the target the shooter aims at.
             GangerSpawnBuilder::new()
@@ -88,10 +89,12 @@ fn battle_app() -> Option<(App, BattleSetup)> {
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     let registry = test_weapon_registry();
     let armor = test_armor_registry();
+    // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
+    let stat_tuning = GangerStatTuning::default();
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &mut commands)
+            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
         });
     assert!(outcome.is_ok(), "the one-shot setup system must run");
     let setup = outcome.ok().and_then(Result::ok);

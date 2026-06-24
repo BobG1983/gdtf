@@ -24,7 +24,11 @@ use std::path::PathBuf;
 
 use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
-use gdtf_battle_sim::{situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{
+    situation::Situation,
+    tuning::{CombatTuning, GangerStatTuning},
+    weapon::WeaponRegistry,
+};
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
@@ -82,6 +86,8 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     // default itself, symmetric with the other three).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-384: the GangerStatTuning is a gate-blocking resource too.
+    app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
     app.world_mut()
@@ -230,6 +236,8 @@ fn load_does_not_leave_without_a_situation() {
     // withheld (so the situation is the ONE missing gate resource being asserted on).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    // GTW-384: the GangerStatTuning is a gate-blocking resource too.
+    app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());

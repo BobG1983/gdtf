@@ -22,9 +22,9 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
         gangers: [(
             at: (cell: (x: 0, y: 0), level: 0),
             name: \"Test Ganger\",
-            faction: 0, facing: North, stance: Standing, aiming: false,
-            hp: 10, hp_max: 10, wounds: 2, wounds_max: 2, tu: 30, tu_max: 30, life_state: Alive,
-            shooting: 1.0, toughness: 1.0, luck: 0.0,
+            faction: 0, facing: North, stance: Standing, aiming: false, life_state: Alive,
+            speed: 2.0, aim: 1.0, strength: 2.0, toughness: 1.0,
+            reflexes: 1.0, cool: 1.0, grit: 5.0, luck: 0.0,
             armor: \"flak_vest\",
             weapon: \"stub_pistol\",
         )],

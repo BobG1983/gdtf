@@ -36,7 +36,8 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Faction, Position, ReactionShotFired, SquadVisibility, Stance, StanceKind, Tu, WalkInProgress,
+    Faction, Position, ReactionShotFired, Speed, SquadVisibility, Stance, StanceKind, Tu,
+    WalkInProgress,
     acts::MoveRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
     metric::{Cell, CellLevel, Level},
@@ -153,34 +154,37 @@ fn run_until_walk_ends(app: &mut App, entity: Entity) {
 }
 
 /// A one-player situation: a standing player ganger (gang 0) at [`player_at`] with the
-/// given TU.
-fn one_player_situation(tu: u8) -> Situation {
+/// given Speed (GTW-384: the derived TU budget = `tu_base + tu_per_speed·Speed`, so a
+/// high Speed gives an ample TU pool — the absolute starting TU is read from the world,
+/// the walk tests assert TU SPENT relative to it, never a pinned start).
+fn one_player_situation(speed: f32) -> Situation {
     SituationBuilder::new()
         .with_gangers([GangerSpawnBuilder::new()
             .at(player_at())
             .faction(Faction::new(PLAYER))
             .stance(Stance::new(StanceKind::Standing))
-            .tu(Tu::new(tu))
+            .speed(Speed::new(speed))
             .build()])
         .build()
 }
 
 /// A player + a far enemy situation: the player at [`player_at`], an enemy (gang 1) at
-/// `enemy_cell` (placed beyond [`TEST_VIEW_RANGE`] so it is UNSEEN at spawn).
-fn player_and_enemy_situation(tu: u8, enemy_cell: CellLevel) -> Situation {
+/// `enemy_cell` (placed beyond [`TEST_VIEW_RANGE`] so it is UNSEEN at spawn). Both get
+/// the given Speed (→ an ample derived TU pool, GTW-384).
+fn player_and_enemy_situation(speed: f32, enemy_cell: CellLevel) -> Situation {
     SituationBuilder::new()
         .with_gangers([
             GangerSpawnBuilder::new()
                 .at(player_at())
                 .faction(Faction::new(PLAYER))
                 .stance(Stance::new(StanceKind::Standing))
-                .tu(Tu::new(tu))
+                .speed(Speed::new(speed))
                 .build(),
             GangerSpawnBuilder::new()
                 .at(enemy_cell)
                 .faction(Faction::new(ENEMY))
                 .stance(Stance::new(StanceKind::Standing))
-                .tu(Tu::new(tu))
+                .speed(Speed::new(speed))
                 .build(),
         ])
         .build()
@@ -192,7 +196,7 @@ fn player_and_enemy_situation(tu: u8, enemy_cell: CellLevel) -> Situation {
 #[test]
 fn uninterrupted_walk_charges_exactly_the_find_path_total() {
     let mut app = battle_app();
-    drive_setup(&mut app, one_player_situation(60));
+    drive_setup(&mut app, one_player_situation(20.0));
 
     let Some(actor) = player_entity(&mut app) else {
         unreachable!("setup spawns exactly one player ganger");
@@ -245,13 +249,13 @@ fn walk_bump_stops_when_next_cell_becomes_occupied() {
                 .at(player_at())
                 .faction(Faction::new(PLAYER))
                 .stance(Stance::new(StanceKind::Standing))
-                .tu(Tu::new(60))
+                .speed(Speed::new(20.0))
                 .build(),
             GangerSpawnBuilder::new()
                 .at(ground(20, 20))
                 .faction(Faction::new(PLAYER))
                 .stance(Stance::new(StanceKind::Standing))
-                .tu(Tu::new(60))
+                .speed(Speed::new(20.0))
                 .build(),
         ])
         .build();
@@ -331,7 +335,7 @@ fn walk_stops_when_a_new_enemy_is_revealed() {
     // An enemy parked east at (11,5), beyond TEST_VIEW_RANGE from the player spawn
     // (Chebyshev 6 > 4), so it is UNSEEN at walk start.
     let enemy_cell = ground(11, 5);
-    drive_setup(&mut app, player_and_enemy_situation(80, enemy_cell));
+    drive_setup(&mut app, player_and_enemy_situation(20.0, enemy_cell));
 
     let Some(actor) = player_entity(&mut app) else {
         unreachable!("setup spawns the player ganger");
@@ -394,7 +398,7 @@ fn walk_stops_when_a_new_enemy_is_revealed() {
 #[test]
 fn walk_stops_on_a_synthetic_reaction_interrupt() {
     let mut app = battle_app();
-    drive_setup(&mut app, one_player_situation(80));
+    drive_setup(&mut app, one_player_situation(20.0));
 
     let Some(actor) = player_entity(&mut app) else {
         unreachable!("setup spawns the player ganger");

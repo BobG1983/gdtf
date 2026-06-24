@@ -21,10 +21,13 @@ fn setup_aborts_on_invalid_vertical_link() {
     app.add_plugins(MinimalPlugins);
     let registry = test_registry();
     let armor = test_armor_registry();
+    // GTW-384: setup derives stats from the default stat tuning (irrelevant here — these
+    // tests abort BEFORE the spawn loop, but the signature requires the argument).
+    let stat_tuning = GangerStatTuning::default();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &mut commands)
+            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
         });
 
     // The one-shot system ran; the inner setup returned the typed error (now wrapped
@@ -75,10 +78,13 @@ fn setup_errors_on_a_missing_weapon_key() {
     app.add_plugins(MinimalPlugins);
     let registry = test_registry();
     let armor = test_armor_registry();
+    // GTW-384: setup derives stats from the default stat tuning (irrelevant here — these
+    // tests abort BEFORE the spawn loop, but the signature requires the argument).
+    let stat_tuning = GangerStatTuning::default();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &mut commands)
+            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
         });
 
     assert!(result.is_ok(), "the one-shot system must run");
@@ -129,10 +135,13 @@ fn setup_errors_on_a_missing_armor_key() {
     app.add_plugins(MinimalPlugins);
     let registry = test_registry();
     let armor = test_armor_registry();
+    // GTW-384: setup derives stats from the default stat tuning (irrelevant here — these
+    // tests abort BEFORE the spawn loop, but the signature requires the argument).
+    let stat_tuning = GangerStatTuning::default();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &mut commands)
+            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
         });
 
     assert!(result.is_ok(), "the one-shot system must run");

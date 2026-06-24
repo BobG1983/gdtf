@@ -35,7 +35,7 @@ pub(super) use crate::{
     rng::{BattleSeed, SimRng},
     situation::{BattleSetupError, Situation, setup_battle},
     surface::SurfaceGrid,
-    tuning::CombatTuning,
+    tuning::{CombatTuning, GangerStatTuning},
     vertical::{InvalidVerticalLink, LinkKind, VerticalLink, VerticalLinkGraph},
     weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };
@@ -108,6 +108,9 @@ pub(super) fn headless_app() -> App {
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     app.add_plugins(BattleSimPlugin);
     app.insert_resource(CombatTuning::default());
+    // GTW-384: the GangerStatTuning is PERSISTENT `Load` state like CombatTuning; the
+    // setup reads it to derive each ganger's computed stats.
+    app.insert_resource(GangerStatTuning::default());
     app.insert_resource(weapon_registry());
     app.insert_resource(armor_registry());
     app

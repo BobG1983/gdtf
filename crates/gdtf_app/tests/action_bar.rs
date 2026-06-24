@@ -56,11 +56,10 @@ use gdtf_app::test_support::{
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
-    Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+    Aim, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
     ArmorRegistry, ArmorSpec, ArmorType, BattleInProgress, Cell, CellLevel, Direction, Facing,
     Faction, FireMode, FireModeSpec, GangerName, Level, MAX_LEVELS, Magazine, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, ReloadTu, Shooting, Situation, Stance, StanceKind, TuMax,
-    WieldedBy,
+    ModeKind, ModeShots, ModeTuPercent, ReloadTu, Situation, Stance, StanceKind, TuMax, WieldedBy,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     mode_tu_cost,
     tuning::CombatTuning,
@@ -1718,7 +1717,7 @@ fn armed_player_situation() -> Situation {
                 .name(GangerName::new("Alex Mercer".to_owned()))
                 .faction(Faction::new(PLAYER_FACTION))
                 .aiming(Aiming::new(false))
-                .shooting(Shooting::new(3.0))
+                .aim(Aim::new(3.0))
                 .armor(ArmorName::new(PLAYER_ARMOR_KEY.to_owned()))
                 .weapon(WeaponName::new(PLAYER_WEAPON_KEY.to_owned()))
                 .build(),

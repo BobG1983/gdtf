@@ -300,8 +300,10 @@ pub use fire::{
     WieldsQuery, fire,
 };
 pub use ganger::{
-    Aiming, Direction, Facing, Faction, GangerName, Hp, HpMax, LifeState, Luck, Position, Shooting,
-    Stabilized, Stance, StanceKind, Toughness, Tu, TuMax, Wounds, WoundsMax,
+    Aim, Aiming, Bottle, Cool, DerivedStats, Direction, Facing, Faction, Fight, GangerAttributes,
+    GangerName, Grit, Hp, HpMax, LifeState, Luck, Morale, Position, Reactions, Reflexes, Shooting,
+    Speed, Stabilized, Stance, StanceKind, Strength, Toughness, Tu, TuMax, Wounds, WoundsMax,
+    derive_stats,
 };
 pub use hit_location::roll_body_part;
 pub use inflicted_wound::{InflictedWound, InflictedWounds};
@@ -343,13 +345,15 @@ pub use surface::{GroundDamage, SlabState, SurfaceGrid};
 pub use tu::{can_spend_tu, reset_tu, spend_tu};
 pub use tuning::{
     AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
-    BodyPartWeights, BraceContribution, BraceMinHeight, CombatTuning, ConcentrationCoeff,
-    ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu, MatchupMultipliers,
-    MoveCost, MoveCosts, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale,
-    ProjectileBandEdges, RandomSpread, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling,
-    ShooterLuckScale, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults, StabilityCurve,
-    StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu,
-    StanceContribution, StanceStability, ToughnessMitigation, TurnTu, WoundCost, WoundCosts,
+    BodyPartWeights, BottlePerMorale, BraceContribution, BraceMinHeight, CombatTuning,
+    ConcentrationCoeff, ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu,
+    FightWeights, GangerStatTuning, HpWeights, MatchupMultipliers, MoraleWeights, MoveCost,
+    MoveCosts, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale,
+    ProjectileBandEdges, RandomSpread, ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges,
+    SeverityScaling, ShooterLuckScale, ShootingWeights, SilhouetteTop, SilhouetteTops,
+    SlabDefaultHp, SlabDefaults, StabilityCurve, StabilityCurveCoord, StabilityCurvePoint,
+    StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution, StanceStability, StatWeight,
+    ToughnessMitigation, TuBase, TuPerSpeed, TurnTu, WoundCost, WoundCosts, WoundsPerHp,
 };
 pub use turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu};
 pub use vertical::{

@@ -10,7 +10,7 @@ use gdtf_app::test_support::{AppState, BattleScapeState, LoadedSituation, Runnin
 use gdtf_battle_sim::{
     situation::Situation,
     test_support::{fixtures, test_armor_registry, test_weapon_registry},
-    tuning::CombatTuning,
+    tuning::{CombatTuning, GangerStatTuning},
 };
 use gdtf_ui::theme::default_theme;
 
@@ -76,6 +76,8 @@ impl BattleAppBuilder {
         // a `MinimalPlugins` app has no `AssetServer` to resolve them from disk.
         app.world_mut().insert_resource(default_theme());
         app.world_mut().insert_resource(CombatTuning::default());
+        // GTW-384: the persistent stat-derivation tuning the sim derives ganger stats from.
+        app.world_mut().insert_resource(GangerStatTuning::default());
         app.world_mut().insert_resource(test_weapon_registry());
         app.world_mut().insert_resource(test_armor_registry());
         // The authored battlefield the Generation setup pours into the world.

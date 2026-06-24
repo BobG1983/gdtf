@@ -12,7 +12,7 @@ use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
     situation::Situation,
-    tuning::CombatTuning,
+    tuning::{CombatTuning, GangerStatTuning},
     weapon::{WeaponRegistry, WeaponSpec},
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
@@ -37,6 +37,8 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     pub(super) situation:    Option<Res<'w, Assets<RonAsset<Situation>>>>,
     /// The loaded combat-tuning RON collection (`combat/tuning.ron`, GTW-206).
     pub(super) tuning:       Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
+    /// The loaded ganger stat-tuning RON collection (`combat/stat_tuning.ron`, GTW-384).
+    pub(super) stat_tuning:  Option<Res<'w, Assets<RonAsset<GangerStatTuning>>>>,
     /// The loaded `LoadedFolder` collection — used to read the weapons folder's
     /// member handles when building the [`WeaponRegistry`] (GTW-257).
     pub(super) folders:      Option<Res<'w, Assets<LoadedFolder>>>,
@@ -57,13 +59,15 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
 #[derive(SystemParam)]
 pub(in crate::states::load) struct ResolvedResources<'w> {
     /// Whether the resolved [`GdtfTheme`] is already inserted.
-    pub(super) theme:     Option<Res<'w, GdtfTheme>>,
+    pub(super) theme:       Option<Res<'w, GdtfTheme>>,
     /// Whether the resolved [`CombatTuning`] is already inserted (GTW-206).
-    pub(super) tuning:    Option<Res<'w, CombatTuning>>,
+    pub(super) tuning:      Option<Res<'w, CombatTuning>>,
+    /// Whether the resolved [`GangerStatTuning`] is already inserted (GTW-384).
+    pub(super) stat_tuning: Option<Res<'w, GangerStatTuning>>,
     /// Whether the resolved [`WeaponRegistry`] is already inserted (GTW-257).
-    pub(super) weapons:   Option<Res<'w, WeaponRegistry>>,
+    pub(super) weapons:     Option<Res<'w, WeaponRegistry>>,
     /// Whether the resolved [`LoadedSituation`] is already inserted (GTW-261).
-    pub(super) situation: Option<Res<'w, LoadedSituation>>,
+    pub(super) situation:   Option<Res<'w, LoadedSituation>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).
-    pub(super) armor:     Option<Res<'w, ArmorRegistry>>,
+    pub(super) armor:       Option<Res<'w, ArmorRegistry>>,
 }

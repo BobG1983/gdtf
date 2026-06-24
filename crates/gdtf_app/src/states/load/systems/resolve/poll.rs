@@ -12,6 +12,7 @@ use crate::states::load::{
         armor::resolve_armor,
         params::{LoadAssetCollections, ResolvedResources},
         situation::resolve_situation,
+        stat_tuning::resolve_stat_tuning,
         tuning::resolve_tuning,
         weapons::resolve_weapons,
     },
@@ -103,9 +104,17 @@ pub(in crate::states::load) fn poll_and_resolve(
     resolved: ResolvedResources,
     handles: Option<Res<LoadHandles>>,
 ) {
-    let (theme_present, tuning_present, weapons_present, situation_present, armor_present) = (
+    let (
+        theme_present,
+        tuning_present,
+        stat_tuning_present,
+        weapons_present,
+        situation_present,
+        armor_present,
+    ) = (
         resolved.theme.is_some(),
         resolved.tuning.is_some(),
+        resolved.stat_tuning.is_some(),
         resolved.weapons.is_some(),
         resolved.situation.is_some(),
         resolved.armor.is_some(),
@@ -115,6 +124,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(theme_assets),
         Some(situation_assets),
         Some(tuning_assets),
+        Some(stat_tuning_assets),
         Some(folders),
         Some(weapon_specs),
         Some(armor_specs),
@@ -124,6 +134,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.theme,
         collections.situation,
         collections.tuning,
+        collections.stat_tuning,
         collections.folders,
         collections.weapon_specs,
         collections.armor_specs,
@@ -140,6 +151,15 @@ pub(in crate::states::load) fn poll_and_resolve(
     // ANY required resource is missing).
     if !tuning_present {
         resolve_tuning(&mut commands, &asset_server, &tuning_assets, &handles);
+    }
+
+    // GTW-384: resolve the shipped ganger stat tuning on its OWN absence guard, the
+    // CombatTuning mirror — so a slow theme/tuning never blocks it and vice-versa. The
+    // sim's setup + re-derive read it to derive each ganger's computed stats; it is a
+    // gate-blocking resource (see the plugin wiring) so a battle never starts before its
+    // derivation tuning loads. On failure it falls back to the const default (no strand).
+    if !stat_tuning_present {
+        resolve_stat_tuning(&mut commands, &asset_server, &stat_tuning_assets, &handles);
     }
 
     // GTW-257: resolve the weapons folder into the name-keyed WeaponRegistry on its
