@@ -6,17 +6,32 @@
 drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher"
 dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher"
 
-# Workspace-wide dev checks with dynamic linking. bevy is a single shared
-# dependency, so enabling the feature anywhere makes every bevy-linked crate
-# use the shared dylib — these cover all crates (incl. libs).
+# Workspace-wide dev checks with dynamic linking. 
 dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking"
 dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking"
 dtest = "test --workspace --features grimdark_turfwar/dynamic_linking"
 
-# Hash-based freshness (not filesystem mtime): required for SHARED-target git
-# worktrees, so a build in one worktree can't false-"fresh" against another
-# worktree's mtimes and silently run stale code (verified hazard — GTW-382).
-# This is `-Z checksum-freshness`; unstable, and this repo pins nightly
-# (rust-toolchain.toml), so it is recognized. Harmless when not using worktrees.
 [unstable]
 checksum-freshness = true
+
+[target.aarch64-apple-darwin]
+rustflags = ["-Zshare-generics=y", "-Zthreads=0"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-Zshare-generics=y", "-Zthreads=0"]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-Zshare-generics=y", "-Zthreads=0"]
+
+[target.x86_64-pc-windows-msvc]
+# LLD linker
+#
+# You may need to install it:
+#
+# ```
+# cargo install -f cargo-binutils
+# rustup component add llvm-tools
+# ```
+linker = "rust-lld.exe"
+rustdocflags = ["-Clinker=rust-lld.exe"]
+rustflags = ["-Zthreads=0"]

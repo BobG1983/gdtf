@@ -13,7 +13,8 @@ resolver = "3"
 ron = "0.12.1"
 serde = { version = "1.0.228", features = ["derive"] }
 rand = "0.10"
-bevy = "0.19.0"
+# Top-down 2D project: drop Bevy's `3d` default profile (GTW-398).
+bevy = { version = "0.19.0", default-features = false, features = ["2d", "ui"] }
 
 [workspace.lints.rust]
 missing_docs           = "deny"
