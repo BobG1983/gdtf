@@ -34,6 +34,19 @@
 //!   family — bold weight + a larger size, the contract's "RED bold"; the all-caps tag is a
 //!   complementary cue, not a substitute).
 //!
+//! A round that struck the WORLD rather than a ganger (GTW-386) reads the STRUCTURAL family
+//! instead of the flesh family above — qualitative structural feedback, never flesh damage:
+//!
+//! - **Cover / slab hit** (`ShotKind::Cover` / `ShotKind::Slab`) — `"Cover hit"` / `"Slab hit"`
+//!   drawn neutral GREY (a chip indicator: the round struck and chipped the structure). The
+//!   report carries no per-hit structural DAMAGE NUMBER, so the feedback is qualitative.
+//! - **Cover / slab DESTROYED** (`report.cover_destroyed` / `report.slab_destroyed` is `Some`)
+//!   — `"Cover Destroyed"` / `"Slab Destroyed"` drawn the lethal RED in
+//!   [`FctEmphasis::Bold`](super::text::FctEmphasis::Bold), the structural mirror of the
+//!   ganger DOWN / DEAD tag (same heaviest-pop weight, but the word reads structural).
+//! - **Ground** (`ShotKind::Ground`) — a minor neutral-GREY `"Dust"` impact cue (the ground is
+//!   damaged, never destroyed — purely cosmetic, `docs/combat/resolution.md` §3.2).
+//!
 //! The AUX slice (4) covers the rest of the contract's Phase-1 list that is NOT derivable from
 //! [`ShotFired`] alone — armor `"Armor -N"` / `"Armor Broken"`, reload `"Reloaded"` / `"Empty"`
 //! / `"No TU"`, and bleeding — from the consequence messages
@@ -47,7 +60,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    BodyPart, Cell, HitReport, Level, LifeState, Position, Severity, ShotFired, ShotKind,
+    BodyPart, Cell, CellLevel, HitReport, Level, LifeState, Position, Severity, ShotFired, ShotKind,
 };
 
 use super::{
@@ -147,12 +160,13 @@ pub(in crate::fx) fn anchor_cell(msg: &ShotFired, positions: &Query<&Position>) 
 
 /// Classify one round's [`HitReport`] into the ordered list of pops it yields.
 ///
-/// The ordering is fixed so a multi-event round reads top-to-bottom in severity order: the HP
-/// damage number first, then the wound tag, the penetration verdict, and finally the
-/// DOWN / DEAD lethal tag (the heaviest pop, lowest in the stack so it reads last). A clean
-/// miss — a non-connecting shot (or a `None` report) — yields NO pops at all. A graze (severity
-/// `None` on a ganger hit) is a CONNECTING shot and still yields a GREY `"Grazed"` instead of a
-/// wound tag.
+/// Dispatches on the report's [`ShotKind`]: a ganger hit yields the FLESH family (HP number,
+/// wound / graze tag, penetration verdict, DOWN / DEAD tag — in that fixed severity order, the
+/// lethal tag lowest so it reads last), a cover / slab / ground hit yields the STRUCTURAL family
+/// (a `"<Noun> hit"` chip indicator, a bold `"<Noun> Destroyed"` tag, or a cosmetic `"Dust"`
+/// cue — GTW-386), and ONLY a genuine clean miss — a non-connecting shot (or a `None` report) —
+/// yields NO pops at all. A graze (severity `None` on a ganger hit) is a CONNECTING shot and
+/// still yields a GREY `"Grazed"` instead of a wound tag.
 ///
 /// Split out so the event-to-pop mapping is unit-testable without an [`App`] (the test feeds a
 /// synthesized [`HitReport`] and asserts the exact pop list) AND reusable: it is the SHARED
@@ -167,9 +181,29 @@ pub(in crate::fx) fn classify_report(report: Option<&HitReport>) -> Vec<Classifi
     let Some(report) = report else {
         return Vec::new();
     };
-    // A non-ganger outcome, or a ganger hit that applied nothing, did NOT connect — a clean
-    // miss yields no floating text.
-    let (ShotKind::Ganger(_), Some(applied)) = (report.kind, report.applied.as_ref()) else {
+    // Each outcome KIND yields its own family of pops. A ganger hit reads the flesh family
+    // (HP / wound / penetration / DOWN-DEAD); a structural hit (cover / slab / ground) reads
+    // the STRUCTURAL family — a "hit" / "Destroyed" / "Dust" indicator, NOT flesh — so a shot
+    // that struck the world still pops feedback instead of falling through to a phantom miss
+    // (GTW-386). Only a genuine clean miss yields NO pops.
+    match report.kind {
+        ShotKind::Ganger(_) => ganger_pops(report),
+        ShotKind::Cover(_) => structural_pops(StructuralKind::Cover, report.cover_destroyed),
+        ShotKind::Slab(_) => structural_pops(StructuralKind::Slab, report.slab_destroyed),
+        ShotKind::Ground(_) => ground_pops(),
+        ShotKind::Miss => Vec::new(),
+    }
+}
+
+/// The flesh-family pops for a [`ShotKind::Ganger`] hit — the HP-loss number, the wound /
+/// graze tag, the penetration verdict, and the DOWN / DEAD lethal tag, in that fixed order.
+///
+/// A ganger hit that applied NOTHING (a corpse-skip / no-part `applied: None` report) did not
+/// connect — it yields no pops (a clean miss). Split out of [`classify_report`] so the
+/// per-kind dispatch reads as one branch each.
+fn ganger_pops(report: &HitReport) -> Vec<ClassifiedPop> {
+    // A ganger outcome that applied nothing did NOT connect — a clean miss yields no text.
+    let Some(applied) = report.applied.as_ref() else {
         return Vec::new();
     };
 
@@ -198,6 +232,71 @@ pub(in crate::fx) fn classify_report(report: Option<&HitReport>) -> Vec<Classifi
     }
 
     pops
+}
+
+/// Which destructible structure a structural hit struck — the noun the structural pop names
+/// (`"Cover"` / `"Slab"`).
+///
+/// A small presenter-side label enum (no bare string): [`structural_pops`] reads it for both
+/// the structural-hit indicator (`"<Noun> hit"`) and the destruction tag (`"<Noun> Destroyed"`),
+/// so the two share one spelling of the noun.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StructuralKind {
+    /// A wall / prop piece of cover (a [`ShotKind::Cover`] outcome).
+    Cover,
+    /// A floor / roof slab (a [`ShotKind::Slab`] outcome).
+    Slab,
+}
+
+impl StructuralKind {
+    /// The display noun this structure pops as — `"Cover"` / `"Slab"`.
+    const fn noun(self) -> &'static str {
+        match self {
+            Self::Cover => "Cover",
+            Self::Slab => "Slab",
+        }
+    }
+}
+
+/// The structural-family pop(s) for a cover / slab hit (GTW-386).
+///
+/// The [`HitReport`] carries NO per-hit cover/slab DAMAGE NUMBER (its `applied` block is `None` for
+/// a structural hit — the precise HP removed is computed inside the sim's deplete step and not
+/// surfaced on the report; see C5 / the report follow-up note), so this shows the QUALITATIVE
+/// structural feedback the report DOES carry: the destruction verdict. When `destroyed` is
+/// `Some` (this round depleted the structure's HP to zero) it reads the emphatic `"<Noun>
+/// Destroyed"` in the lethal RED, BOLD — the structural mirror of a ganger's DOWN / DEAD tag
+/// (consistent heaviest-pop visual language, but the word reads STRUCTURAL, not flesh).
+/// Otherwise it reads a neutral GREY `"<Noun> hit"` — a qualitative chip indicator that the
+/// round struck (and chipped) the structure, distinct from the flesh-red HP number a ganger
+/// hit leads with. Always at least one pop, so a structural hit never falls through to a
+/// phantom miss.
+fn structural_pops(kind: StructuralKind, destroyed: Option<CellLevel>) -> Vec<ClassifiedPop> {
+    let noun = kind.noun();
+    if destroyed.is_some() {
+        vec![ClassifiedPop::new_bold(
+            CombatText::new(format!("{noun} Destroyed")),
+            valence_color(FctValence::Lethal),
+        )]
+    } else {
+        vec![ClassifiedPop::new(
+            CombatText::new(format!("{noun} hit")),
+            valence_color(FctValence::Neutral),
+        )]
+    }
+}
+
+/// The structural-family pop for a [`ShotKind::Ground`] hit (GTW-386).
+///
+/// The ground is **damaged, never destroyed** — its accrual is purely cosmetic
+/// (`docs/combat/resolution.md` §3.2). So rather than a damage number this reads a single
+/// minor neutral-GREY `"Dust"` impact indicator (a kicked-up-dust cue at the ground impact),
+/// keeping the structural visual language without implying flesh damage or destruction.
+fn ground_pops() -> Vec<ClassifiedPop> {
+    vec![ClassifiedPop::new(
+        CombatText::new("Dust"),
+        valence_color(FctValence::Neutral),
+    )]
 }
 
 /// The wound / graze pop for a ganger hit's [`Severity`] + struck [`BodyPart`].
@@ -294,13 +393,54 @@ const fn severity_label(tier: Severity) -> &'static str {
 mod test {
     use bevy::ecs::entity::Entity;
     use gdtf_battle_sim::{
-        AppliedDamage, BodyPart, HitReport, HitResult, HpDamage, IntegrityWear, LifeState, Matchup,
-        PenetratingDamage, Severity, ShotKind,
+        AppliedDamage, ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry,
+        CoverHp, HeightBand, HitReport, HitResult, HpDamage, IntegrityWear, Level, LifeState,
+        Matchup, PenetratingDamage, Severity, ShotKind,
     };
 
     use super::{
         ClassifiedPop, FctEmphasis, FctValence, classify_report, severity_color, valence_color,
     };
+
+    /// An arbitrary `(cell, level)` key for a structural-hit report (the classifier reads the
+    /// `ShotKind` / the destruction flag, never the key's coords, so any value drives the path).
+    fn struck_key() -> CellLevel {
+        CellLevel::new(Cell::new(4, 5), Level::new(2))
+    }
+
+    /// An arbitrary intact `CoverEntry` for a `ShotKind::Cover` outcome — the classifier only
+    /// matches the variant, never reads the entry's HP, so a seeded prototype is enough.
+    fn cover_entry() -> CoverEntry {
+        CoverEntry::seeded(
+            CoverHp::new(10),
+            HeightBand::Mid,
+            ArmorProtection::new(0),
+            ArmorHardness::new(0),
+        )
+    }
+
+    /// A `ShotKind::Cover` report that DAMAGED but did not destroy the cover
+    /// (`cover_destroyed: None`) — the structural-hit (not-destroyed) path.
+    fn cover_damaged_report() -> HitReport {
+        HitReport::no_effect(ShotKind::Cover(cover_entry()))
+    }
+
+    /// A `ShotKind::Cover` report that DESTROYED the cover (`cover_destroyed: Some`) — the
+    /// structural-destruction path.
+    fn cover_destroyed_report() -> HitReport {
+        HitReport {
+            cover_destroyed: Some(struck_key()),
+            ..HitReport::no_effect(ShotKind::Cover(cover_entry()))
+        }
+    }
+
+    /// A `ShotKind::Slab` report that DESTROYED the slab (`slab_destroyed: Some`).
+    fn slab_destroyed_report() -> HitReport {
+        HitReport {
+            slab_destroyed: Some(struck_key()),
+            ..HitReport::no_effect(ShotKind::Slab(struck_key()))
+        }
+    }
 
     /// A `HitResult` carrying `hp` HP loss + `pen` penetrating damage (zero wear — the wear
     /// number is not an FCT input this slice).
@@ -486,6 +626,89 @@ mod test {
             has_pop(Some(&soaked), "Deflected", valence_color(FctValence::Wound)),
             "pen == 0 must yield an AMBER \"Deflected\" pop, got {:?}",
             pop_pairs(Some(&soaked)),
+        );
+    }
+
+    /// GTW-386 — a cover hit that DAMAGED (did not destroy) the cover yields a NON-EMPTY
+    /// structural pop list (the `"Cover hit"` chip indicator in neutral GREY), NOT the empty /
+    /// miss fall-through. PIN-DISCRIMINATING: reverting the classifier's `ShotKind::Cover` branch
+    /// (back to the old "non-ganger → empty vec" gate) makes this fail (the list would be empty).
+    #[test]
+    fn a_cover_damage_hit_yields_a_structural_pop_not_a_miss() {
+        let report = cover_damaged_report();
+        let pairs = pop_pairs(Some(&report));
+        assert!(
+            !pairs.is_empty(),
+            "a cover hit must yield a NON-EMPTY structural pop list (not the miss \
+             fall-through), got {pairs:?}",
+        );
+        assert!(
+            has_pop(
+                Some(&report),
+                "Cover hit",
+                valence_color(FctValence::Neutral)
+            ),
+            "a non-destroying cover hit must yield a GREY \"Cover hit\" chip pop, got {pairs:?}",
+        );
+    }
+
+    /// GTW-386 — a cover hit that DESTROYED the cover (`cover_destroyed: Some`) yields the
+    /// emphatic lethal-RED BOLD `"Cover Destroyed"` pop (the structural mirror of a ganger's
+    /// DOWN / DEAD tag), NOT a plain hit or a miss. PIN-DISCRIMINATING on both the branch and the
+    /// destruction-flag read.
+    #[test]
+    fn a_cover_destroyed_hit_yields_the_bold_destroyed_pop() {
+        let report = cover_destroyed_report();
+        let pairs = pop_pairs(Some(&report));
+        assert!(
+            has_pop(
+                Some(&report),
+                "Cover Destroyed",
+                valence_color(FctValence::Lethal)
+            ),
+            "a destroying cover hit must yield a lethal-RED \"Cover Destroyed\" pop, got {pairs:?}",
+        );
+        assert_eq!(
+            pop_emphasis(Some(&report), "Cover Destroyed"),
+            Some(FctEmphasis::Bold),
+            "the \"Cover Destroyed\" pop must be BOLD (the structural mirror of DOWN / DEAD)",
+        );
+    }
+
+    /// GTW-386 — a SLAB hit that DESTROYED the slab (`slab_destroyed: Some`) yields the lethal-RED
+    /// BOLD `"Slab Destroyed"` pop, NOT a miss — the slab mirror of the cover-destroyed case.
+    #[test]
+    fn a_slab_destroyed_hit_yields_the_bold_destroyed_pop() {
+        let report = slab_destroyed_report();
+        let pairs = pop_pairs(Some(&report));
+        assert!(
+            !pairs.is_empty(),
+            "a slab hit must yield a NON-EMPTY structural pop list, got {pairs:?}",
+        );
+        assert!(
+            has_pop(
+                Some(&report),
+                "Slab Destroyed",
+                valence_color(FctValence::Lethal)
+            ),
+            "a destroying slab hit must yield a lethal-RED \"Slab Destroyed\" pop, got {pairs:?}",
+        );
+        assert_eq!(
+            pop_emphasis(Some(&report), "Slab Destroyed"),
+            Some(FctEmphasis::Bold),
+            "the \"Slab Destroyed\" pop must be BOLD",
+        );
+    }
+
+    /// GTW-386 — a GROUND hit yields the cosmetic neutral-GREY `"Dust"` impact cue (a minor
+    /// indicator, never a damage number — the ground is damaged, never destroyed), NOT a miss.
+    #[test]
+    fn a_ground_hit_yields_the_dust_cue_not_a_miss() {
+        let report = HitReport::no_effect(ShotKind::Ground(struck_key()));
+        let pairs = pop_pairs(Some(&report));
+        assert!(
+            has_pop(Some(&report), "Dust", valence_color(FctValence::Neutral)),
+            "a ground hit must yield a GREY \"Dust\" cosmetic cue, got {pairs:?}",
         );
     }
 }

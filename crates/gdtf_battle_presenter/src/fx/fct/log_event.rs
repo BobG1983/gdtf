@@ -18,10 +18,12 @@
 //!
 //! The shot OUTCOME reuses the FCT classifier verbatim: [`classify_report`](super::reader::classify_report)
 //! already maps a [`HitReport`](gdtf_battle_sim::HitReport) to the damage / wound / DOWN / DEAD
-//! pops (GTW-302 / GTW-327), so [`CombatLogEvent::ShotOutcome`] feeds the same report through it
-//! and renders those classified pops as log lines — the HP / wound / down mapping lives in ONE
-//! place, never duplicated (its FCT callers are untouched). A clean miss (a report that yields
-//! no pops) instead reads `"<name> missed"`: the user explicitly wants misses in the log, so a
+//! flesh pops AND the cover / slab / ground STRUCTURAL pops (GTW-302 / GTW-327 / GTW-386), so
+//! [`CombatLogEvent::ShotOutcome`] feeds the same report through it and renders those classified
+//! pops as log lines — the outcome → text mapping lives in ONE place, never duplicated (its FCT
+//! callers are untouched). So a structural hit logs a real line (`"Cover hit"` / `"Slab
+//! Destroyed"` / `"Dust"` …), NOT a phantom miss. Only a GENUINE clean miss (a report that
+//! yields no pops) reads `"<name> missed"`: the user explicitly wants misses in the log, so a
 //! miss is NEVER suppressed here (unlike the floating-combat-text, which drops a clean miss).
 //!
 //! Pure VIEW (ADR-0001): these are presenter-owned phrasing + palette decisions over resolved
@@ -216,9 +218,11 @@ impl LogLine {
 ///   `"<actor> fired <Mode>"` when no named target. Neutral GREY (it is an announcement, not a
 ///   result).
 /// - **Movement** → `"<actor> moved <from> -> <to>"` (ground cell coords). Neutral GREY.
-/// - **Shot outcome** → the [`classify_report`] lines (REUSED — the HP / wound / DOWN / DEAD
-///   mapping is not duplicated), carrying each pop's color + emphasis; a clean MISS (no pops)
-///   reads `"<actor> missed"` in neutral GREY (misses are NEVER suppressed).
+/// - **Shot outcome** → the [`classify_report`] lines (REUSED — the flesh AND structural
+///   outcome mapping is not duplicated), carrying each pop's color + emphasis; a structural
+///   cover / slab / ground hit logs its real `"Cover hit"` / `"Slab Destroyed"` / `"Dust"` line
+///   (GTW-386), and only a genuine clean MISS (no pops) reads `"<actor> missed"` in neutral GREY
+///   (misses are NEVER suppressed).
 /// - **Reload** → `"<actor> reloaded"` (neutral GREY) / `"<actor>: no TU"` (a denied act —
 ///   AMBER); [`AlreadyFull`](ReloadOutcome::AlreadyFull) → no line.
 /// - **Turn** → `"— Player turn —"` / `"— Enemy turn —"`, neutral GREY.
@@ -276,13 +280,16 @@ fn movement_line(actor: &LogName, from: Cell, to: Cell) -> LogLine {
     LogLine::new(CombatText::new(text), valence_color(FctValence::Neutral))
 }
 
-/// The shot-outcome lines — the [`classify_report`] pops (REUSED) for a connecting hit, or the
-/// `"<actor> missed"` miss line for a clean miss (NEVER suppressed).
+/// The shot-outcome lines — the [`classify_report`] pops (REUSED) for any connecting hit
+/// (a flesh hit OR a structural cover / slab / ground hit), or the `"<actor> missed"` miss line
+/// for a genuine clean miss (NEVER suppressed).
 ///
 /// A connecting hit's lines come verbatim from [`classify_report`] (each pop's text + color +
-/// emphasis), so the HP / wound / DOWN-DEAD mapping is shared with the floating-combat-text and
-/// never duplicated. When the report yields NO pops (a clean miss, or a geometry-only `None`
-/// report) the log instead shows the explicit miss line the user asked for.
+/// emphasis), so the outcome → text mapping is shared with the floating-combat-text and never
+/// duplicated — a structural hit therefore logs its real `"Cover hit"` / `"Slab Destroyed"` /
+/// `"Dust"` line (GTW-386), not a phantom miss. ONLY when the report yields NO pops (a genuine
+/// clean miss, or a geometry-only `None` report) does the log instead show the explicit miss
+/// line the user asked for.
 fn shot_outcome_lines(actor: &LogName, report: Option<&HitReport>) -> Vec<LogLine> {
     let pops = classify_report(report);
     if pops.is_empty() {
@@ -340,7 +347,8 @@ fn turn_line(now_active: Faction, player: PlayerFaction) -> LogLine {
 mod test {
     use bevy::prelude::Entity;
     use gdtf_battle_sim::{
-        AppliedDamage, BodyPart, Cell, Faction, HitReport, HitResult, HpDamage, IntegrityWear,
+        AppliedDamage, ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry,
+        CoverHp, Faction, HeightBand, HitReport, HitResult, HpDamage, IntegrityWear, Level,
         LifeState, Matchup, ModeKind, PenetratingDamage, PlayerFaction, ReloadOutcome, Severity,
         ShotKind,
     };
@@ -348,6 +356,21 @@ mod test {
     use super::{
         CombatLogEvent, FctEmphasis, FctValence, LogName, classify_log_event, valence_color,
     };
+
+    /// An arbitrary `(cell, level)` key for a structural-hit report.
+    fn struck_key() -> CellLevel {
+        CellLevel::new(Cell::new(4, 5), Level::new(2))
+    }
+
+    /// An arbitrary intact `CoverEntry` for a `ShotKind::Cover` outcome.
+    fn cover_entry() -> CoverEntry {
+        CoverEntry::seeded(
+            CoverHp::new(10),
+            HeightBand::Mid,
+            ArmorProtection::new(0),
+            ArmorHardness::new(0),
+        )
+    }
 
     /// A ganger-hit `HitReport` for `part` with `hp` HP loss / `pen` penetration / `severity`
     /// tier / `life_after` state — the synthesized report a `ShotOutcome` reads.
@@ -481,6 +504,80 @@ mod test {
         let none_lines = classify_log_event(&none_event);
         assert_eq!(none_lines.len(), 1);
         assert_eq!(&**none_lines[0].text(), "Vex missed");
+    }
+
+    /// GTW-386 — a COVER hit logs a real structural line, NOT `"<actor> missed"`: a damaging hit
+    /// reads the `"Cover hit"` chip line, and a DESTROYING hit reads the lethal-RED BOLD
+    /// `"Cover Destroyed"` line. PIN-DISCRIMINATING: with the old classifier (non-ganger → empty
+    /// pop list) `shot_outcome_lines` would fall through to `"Vex missed"` and BOTH asserts fail.
+    #[test]
+    fn a_cover_hit_logs_a_structural_line_not_a_miss() {
+        // Damaged (not destroyed) — a "Cover hit" chip line, never the miss line.
+        let damaged = CombatLogEvent::ShotOutcome {
+            actor:  LogName::new("Vex"),
+            report: Some(HitReport::no_effect(ShotKind::Cover(cover_entry()))),
+        };
+        let lines = classify_log_event(&damaged);
+        assert!(
+            lines.iter().all(|line| !(**line.text()).contains("missed")),
+            "a cover hit must NOT log a \"missed\" line, got {:?}",
+            line_pairs(&damaged),
+        );
+        assert!(
+            lines.iter().any(|line| &***line.text() == "Cover hit"
+                && line.color() == valence_color(FctValence::Neutral)),
+            "a damaging cover hit must log a GREY \"Cover hit\" line, got {:?}",
+            line_pairs(&damaged),
+        );
+
+        // Destroyed — the emphatic lethal-RED BOLD "Cover Destroyed" line.
+        let destroyed_report = HitReport {
+            cover_destroyed: Some(struck_key()),
+            ..HitReport::no_effect(ShotKind::Cover(cover_entry()))
+        };
+        let destroyed = CombatLogEvent::ShotOutcome {
+            actor:  LogName::new("Vex"),
+            report: Some(destroyed_report),
+        };
+        let destroyed_lines = classify_log_event(&destroyed);
+        let line = destroyed_lines
+            .iter()
+            .find(|line| &***line.text() == "Cover Destroyed");
+        assert!(
+            line.is_some_and(|line| line.color() == valence_color(FctValence::Lethal)
+                && line.emphasis() == FctEmphasis::Bold),
+            "a destroying cover hit must log a lethal-RED BOLD \"Cover Destroyed\" line, got {:?}",
+            line_pairs(&destroyed),
+        );
+    }
+
+    /// GTW-386 — a SLAB hit that DESTROYED the slab logs the lethal-RED BOLD `"Slab Destroyed"`
+    /// line, never `"<actor> missed"` (the slab mirror of the cover-destroyed log case).
+    #[test]
+    fn a_slab_destroyed_hit_logs_the_destroyed_line_not_a_miss() {
+        let report = HitReport {
+            slab_destroyed: Some(struck_key()),
+            ..HitReport::no_effect(ShotKind::Slab(struck_key()))
+        };
+        let event = CombatLogEvent::ShotOutcome {
+            actor:  LogName::new("Vex"),
+            report: Some(report),
+        };
+        let lines = classify_log_event(&event);
+        assert!(
+            lines.iter().all(|line| !(**line.text()).contains("missed")),
+            "a slab hit must NOT log a \"missed\" line, got {:?}",
+            line_pairs(&event),
+        );
+        let line = lines
+            .iter()
+            .find(|line| &***line.text() == "Slab Destroyed");
+        assert!(
+            line.is_some_and(|line| line.color() == valence_color(FctValence::Lethal)
+                && line.emphasis() == FctEmphasis::Bold),
+            "a destroying slab hit must log a lethal-RED BOLD \"Slab Destroyed\" line, got {:?}",
+            line_pairs(&event),
+        );
     }
 
     /// A successful reload reads `"<actor> reloaded"` (neutral); a no-TU reload reads
