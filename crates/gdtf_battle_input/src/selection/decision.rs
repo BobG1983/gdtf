@@ -149,10 +149,15 @@ pub enum PinOutcome {
 ///    hint consume (FAIL-CLOSED on an absent fog), so the three never disagree. A MOVE into an
 ///    EXPLORED EMPTY cell is NOT a fire target and is unaffected (walking into remembered
 ///    territory stays allowed, `docs/combat/visibility.md` §"UX edges").
-/// 1. **FIRE** — a fire mode is selected, the hovered cell holds an ENEMY occupant
-///    (a [`Faction`] `!=` [`PlayerFaction`]), the current selection is a player-faction ganger,
-///    and the shared [`can_fire`](gdtf_battle_sim::can_fire) guard passes ([`try_fire_request`])
-///    → [`LeftClickOutcome::Fire`].
+/// 1. **FIRE** — a fire mode is selected, AND EITHER the hovered cell holds an ENEMY occupant
+///    (a [`Faction`] `!=` [`PlayerFaction`]) OR (GTW-377) it holds SHOOTABLE structure (an intact
+///    wall / cover piece: [`is_blocked`](gdtf_battle_sim::OccupancyGrid::is_blocked) AND no
+///    occupant), the current selection is a player-faction ganger, the cell is squad-VISIBLE, and
+///    the shared [`can_fire`](gdtf_battle_sim::can_fire) guard passes ([`try_fire_request`]) →
+///    [`LeftClickOutcome::Fire`]. The user ruling: cover AND walls are valid fire targets, not
+///    just gangers; the sim depletes the cover per the GTW-364 model. The enemy case uses the
+///    occupant fog relation ([`FactionRelation::Other`]); the cover case uses `relation = None`
+///    (a structural cell carries no occupant).
 /// 2. **SELECT** — the hovered cell holds one of YOUR gangers
 ///    ([`Faction`] `==` [`PlayerFaction`]) → [`LeftClickOutcome::Select`].
 /// 3. **MOVE (two-click, GTW-356 OQ-5)** — there is a player-faction selection AND the hovered
@@ -199,10 +204,12 @@ pub enum PinOutcome {
 /// (enemies are inspected via the GTW-274 hover panel, not selected/cleared as your shooter) —
 /// no clear, no transient `None`, no "No ganger selected" flash, no auto-select revert.
 ///
-/// FALL-THROUGH (the user-confirmed precedence): a fire mode over an EMPTY / your-own /
-/// non-enemy cell FAILS clause 1 (no enemy occupant) and falls through to clause 3 (MOVE) — the
-/// fire mode does NOT lock out move. An ENEMY-occupied cell you cannot fire on does NOT fall
-/// through to CLEAR (it would wipe the selection); it is the GTW-287 NO-OP rung above.
+/// FALL-THROUGH (the user-confirmed precedence): a fire mode over an EMPTY (unblocked,
+/// unoccupied) cell FAILS clause 1 (no enemy occupant) AND clause 1b (not blocked structure)
+/// and falls through to clause 3 (MOVE) — the fire mode does NOT lock out move. A fire mode over
+/// an intact wall / cover cell is the GTW-377 clause-1b FIRE-AT-COVER rung (it is blocked, so it
+/// was never a MOVE target). An ENEMY-occupied cell you cannot fire on does NOT fall through to
+/// CLEAR (it would wipe the selection); it is the GTW-287 NO-OP rung above.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + the [`InspectTarget`]
 /// AND the [`PathPreviewTarget`] (BOTH passed as a separate `&` so the caller can hold each as a
@@ -291,6 +298,34 @@ pub fn decide_left_click(
         )
     {
         return LeftClickOutcome::Fire(request); // FIRE wins this edge.
+    }
+
+    // 1b. FIRE AT COVER (GTW-377) — the hovered cell holds SHOOTABLE structure (an intact
+    //     wall / cover piece: `is_blocked` is true, and there is NO occupant so it is not a
+    //     ganger target) and the player selection can fire on it. The user ruling: cover AND
+    //     walls are VALID fire targets, not just gangers — a fire mode + a player-faction
+    //     selection + the shared `can_fire` guard fires a ray AT the cell, and the sim depletes
+    //     the cover per the GTW-364 model. The fog gate uses `relation = None` (a structural
+    //     cell carries no occupant) — you can only shoot cover the squad can currently SEE, the
+    //     SAME `cell_squad_visible` read the reticle + the enemy-fire rung share (FAIL-CLOSED on
+    //     an absent fog). Ordered AFTER the enemy-FIRE rung (an occupant always wins the cell)
+    //     and BEFORE SELECT/MOVE (a blocked cell is never a SELECT/MOVE target anyway).
+    if let Some(shooter) = **selected
+        && selection_is_player
+        && occupant.is_none()
+        && reads.occupancy.is_blocked(&target)
+        && cell_squad_visible(reads.squad_visibility.as_deref(), &target, None).is_squad_visible()
+        && let Some(request) = try_fire_request(
+            shooter,
+            target,
+            &reads.fire_mode,
+            &reads.tuning,
+            shooters,
+            wields,
+            weapons,
+        )
+    {
+        return LeftClickOutcome::Fire(request); // FIRE AT COVER wins this edge.
     }
 
     // 2. SELECT — the hovered cell holds one of YOUR gangers.

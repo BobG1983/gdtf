@@ -151,6 +151,24 @@ fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
     enemy
 }
 
+/// Marks `cell` as shootable COVER (a BLOCKING `TerrainKind::Cover` marker) and squad-VISIBLE —
+/// the GTW-377 fire-at-cover target state. No occupant is placed (cover is structure, not a
+/// ganger). Without the visible mark the new FIRE-AT-COVER rung would refuse the fire (the fog
+/// gate is fail-closed on a cell absent from the fog).
+fn place_cover(app: &mut App, cell: CellLevel) {
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_terrain(cell, gdtf_battle_sim::TerrainKind::Cover);
+    let mut visible: bevy::platform::collections::HashSet<CellLevel> = app
+        .world()
+        .get_resource::<SquadVisibility>()
+        .map(|fog| fog.visible_cells().copied().collect())
+        .unwrap_or_default();
+    visible.insert(cell);
+    app.world_mut()
+        .insert_resource(SquadVisibility::new(visible.clone(), visible));
+}
+
 /// Injects the `InspectTarget`'s live hovered cell (read by the click systems before the
 /// headless picker clobbers it).
 fn set_hovered(app: &mut App, cell: Option<CellLevel>) {
@@ -447,6 +465,62 @@ fn left_click_enemy_with_fire_mode_fires_and_is_mutually_exclusive() {
         fire[0].target_cell,
         Cell::new(6, 2),
         "the fire target = the hovered cell",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-377 — left-click SHOOTABLE COVER / WALL + fire mode -> FIRE AT COVER (the cell is a
+// valid fire target, not just gangers); the FireRequested aims at the cover cell.
+// ---------------------------------------------------------------------------------
+
+/// GTW-377 C1 / C3 / C6a / C6b (decision path) — with a fire mode selected, a player-faction
+/// selection, and a Left press on a SHOOTABLE cover/wall cell (blocking structure, NO occupant,
+/// squad-VISIBLE), exactly one `FireRequested` is emitted AIMED AT the cover cell, NO
+/// `MoveRequested` (a blocked cell is never a move target), and `SelectedShooter` is UNCHANGED.
+/// This proves the discriminator recognizes the cover cell as a valid fire target (C1) and the
+/// click ROUTES the real fire request toward that cell (C3) — the input half of the end-to-end
+/// fire-at-cover (the sim-side depletion is the bridge test).
+#[test]
+fn left_click_cover_with_fire_mode_fires_at_the_cover_cell() {
+    let mut app = control_app();
+    let shooter_cell = CellLevel::new(Cell::new(2, 2), LEVEL);
+    let ganger = spawn_player_shooter(&mut app, shooter_cell);
+    set_selection(&mut app, ganger);
+    set_fire_mode(&mut app, spec(0.2, 1));
+
+    // A cover cell straight ahead — blocking structure, NO occupant, squad-VISIBLE.
+    let cover = CellLevel::new(Cell::new(6, 2), LEVEL);
+    place_cover(&mut app, cover);
+    set_hovered(&mut app, Some(cover));
+
+    press(&mut app, MouseButton::Left);
+    app.update();
+
+    let fire = fires(&app);
+    assert_eq!(
+        fire.len(),
+        1,
+        "exactly one FireRequested on a Left press over shootable cover with a fire mode \
+         (cover/walls are valid fire targets, GTW-377)",
+    );
+    assert!(
+        moves(&app).is_empty(),
+        "a FIRE-AT-COVER edge must emit no MoveRequested (a blocked cell is never a move target)",
+    );
+    assert_eq!(
+        selected(&app),
+        Some(ganger),
+        "a FIRE-AT-COVER edge must leave SelectedShooter unchanged",
+    );
+    assert_eq!(fire[0].shooter, ganger, "the fire shooter = the selection");
+    assert_eq!(
+        fire[0].target_cell,
+        Cell::new(6, 2),
+        "the FireRequested aims at the hovered COVER cell (the click fires AT the cover)",
+    );
+    assert_eq!(
+        fire[0].target_level, LEVEL,
+        "the FireRequested carries the cover cell's storey",
     );
 }
 

@@ -25,8 +25,8 @@ use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, LifeState,
     Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    PlayerFaction, Position, ReloadTu, SquadVisibility, Tu, TuMax, VerticalLinkGraph, WieldedBy,
-    mode_tu_cost, tuning::CombatTuning,
+    PlayerFaction, Position, ReloadTu, SquadVisibility, TerrainKind, Tu, TuMax, VerticalLinkGraph,
+    WieldedBy, mode_tu_cost, tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -158,6 +158,25 @@ fn spawn_select_then_arm_late(
     app.update();
     app.update();
     (ganger, tu_max, aiming, single_tu_percent)
+}
+
+/// Marks `cell` as shootable COVER (a BLOCKING `TerrainKind::Cover` marker in the occupancy
+/// grid) and squad-VISIBLE — the GTW-377 fire-at-cover target state. No occupant is placed (a
+/// cover cell is structure, not a ganger).
+fn place_cover(app: &mut App, cell: CellLevel) {
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_terrain(cell, TerrainKind::Cover);
+    mark_visible(app, cell);
+}
+
+/// Marks `cell` as bare FLOOR (an `Open` terrain marker, the default) and squad-VISIBLE — NOT a
+/// fire target (an unoccupied, non-blocking cell is a MOVE destination, never a shot).
+fn place_floor(app: &mut App, cell: CellLevel) {
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_terrain(cell, TerrainKind::Open);
+    mark_visible(app, cell);
 }
 
 /// Places an ENEMY occupant at `cell` and marks the cell squad-VISIBLE (the realistic
@@ -416,5 +435,102 @@ fn no_selection_clears_highlight() {
     assert!(
         highlight(&app).is_empty(),
         "with NO selected shooter, hovering an enemy populates no fire target",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-377 — shootable COVER / WALL is a valid fire target: the highlight populates over a
+// hovered cover cell with the SAME treatment (cell + the shot's `mode_tu_cost`).
+// ---------------------------------------------------------------------------------
+
+/// GTW-377 C1 / C2 / C6a / C6c (positive) — hovering a SHOOTABLE cover/wall cell (no occupant,
+/// blocking, squad-VISIBLE) populates the presenter-owned highlight with the hovered cover cell
+/// and a cost EXACTLY equal to `mode_tu_cost` — the SAME treatment a fireable enemy gets (the
+/// red-tile + TU-cost highlight the presenter draws). The discriminator recognizes the cover
+/// cell as a valid fire target (C1) and the highlight read-seam is positively populated for it
+/// (C6c). No magnitude pin — the cost is computed independently in-test.
+#[test]
+fn hovering_shootable_cover_populates_cell_and_mode_tu_cost() {
+    let mut app = fire_target_app();
+    let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
+    let cover_cell = CellLevel::new(Cell::new(13, 11), LEVEL);
+    let mode = spec(0.2);
+
+    let (_shooter, tu_max, aiming) = spawn_and_select_shooter(&mut app, shooter_cell);
+    // A cover cell — blocking structure, NO occupant, squad-VISIBLE.
+    place_cover(&mut app, cover_cell);
+    set_fire_mode(&mut app, mode);
+    set_hovered(&mut app, Some(cover_cell));
+
+    // The expected cost, computed the SAME way the shot will charge it (REUSE, no magnitude pin).
+    let tuning = app.world().resource::<CombatTuning>();
+    let expected_cost = mode_tu_cost(&mode, &tu_max, &aiming, tuning);
+
+    app.update();
+
+    let h = highlight(&app);
+    assert_eq!(
+        h.cell(),
+        Some(cover_cell),
+        "hovering a shootable cover cell populates the highlight with the hovered cover cell \
+         (13,11,L0) — cover is a valid fire target (C1)",
+    );
+    assert_eq!(
+        h.cost(),
+        Some(expected_cost),
+        "the cover-target highlight cost EXACTLY equals mode_tu_cost(SelectedFireMode, TuMax, \
+         Aiming, tuning) — same TU-cost treatment as a ganger target (C2)",
+    );
+}
+
+/// GTW-377 (pin-discriminating) — a bare FLOOR cell (unoccupied, NON-blocking, squad-VISIBLE)
+/// writes NO highlight: an empty walkable cell is a MOVE destination, NEVER a fire target. This
+/// discriminates the cover rung (it must be BLOCKING structure) from any unoccupied cell — the
+/// complementary [`hovering_shootable_cover_populates_cell_and_mode_tu_cost`] proves the SAME
+/// shooter DOES highlight a BLOCKING cover cell, isolating `is_blocked` as the cause.
+#[test]
+fn bare_floor_writes_no_highlight() {
+    let mut app = fire_target_app();
+    let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
+    let floor_cell = CellLevel::new(Cell::new(13, 11), LEVEL);
+
+    spawn_and_select_shooter(&mut app, shooter_cell);
+    place_floor(&mut app, floor_cell);
+    set_fire_mode(&mut app, spec(0.2));
+    set_hovered(&mut app, Some(floor_cell));
+
+    app.update();
+
+    assert!(
+        highlight(&app).is_empty(),
+        "hovering a bare FLOOR cell writes NO fire-target highlight (it is a move destination, \
+         not shootable structure)",
+    );
+}
+
+/// GTW-377 (pin-discriminating, fog) — a cover/wall cell in FOG (blocking, but NOT squad-VISIBLE)
+/// writes NO highlight: you can only shoot cover the squad can currently SEE (the GTW-346 fog
+/// gate, `relation = None`, fail-closed). FAILS if the highlight leaks onto fog-hidden cover. The
+/// complementary visible-cover case proves the SAME shooter DOES highlight a VISIBLE cover cell,
+/// isolating the fog gate as the cause.
+#[test]
+fn fog_cover_writes_no_highlight() {
+    let mut app = fire_target_app();
+    let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
+    let cover_cell = CellLevel::new(Cell::new(30, 30), LEVEL);
+
+    spawn_and_select_shooter(&mut app, shooter_cell);
+    // Mark the cell COVER (blocking) but DO NOT mark it visible — it stays in fog.
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_terrain(cover_cell, TerrainKind::Cover);
+    set_fire_mode(&mut app, spec(0.2));
+    set_hovered(&mut app, Some(cover_cell));
+
+    app.update();
+
+    assert!(
+        highlight(&app).is_empty(),
+        "hovering cover on a NON-VISIBLE cell writes NO highlight (GTW-346 fog gate, fail-closed)",
     );
 }

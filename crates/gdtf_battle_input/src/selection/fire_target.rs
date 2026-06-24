@@ -1,26 +1,34 @@
-//! The fire-target highlight seam + POPULATE system (GTW-371 · C2): the input-crate half of
-//! the hover-on-a-fireable-enemy targeting affordance.
+//! The fire-target highlight seam + POPULATE system (GTW-371 · C2; GTW-377): the input-crate
+//! half of the hover-on-a-fireable-target affordance.
 //!
 //! The presenter owns the [`FireTargetHighlight`] read-seam + the draw system; this module
-//! POPULATES it for the SELECTED shooter hovering a FIREABLE ENEMY. It is the ONLY place
-//! [`SelectedShooter`] + [`SelectedFireMode`] + the hovered cell feed the fire-target
-//! affordance — keeping selection / fire-mode / hover out of the authoritative sim model (the
-//! `input → presenter → sim` direction; the presenter DEFINES the resource, this input crate
-//! WRITES it, the [`HighlightRequest`](gdtf_battle_presenter::HighlightRequest) precedent).
+//! POPULATES it for the SELECTED shooter hovering a FIREABLE TARGET (an ENEMY *or*, since
+//! GTW-377, a shootable COVER / WALL cell). It is the ONLY place [`SelectedShooter`] +
+//! [`SelectedFireMode`] + the hovered cell feed the fire-target affordance — keeping selection /
+//! fire-mode / hover out of the authoritative sim model (the `input → presenter → sim`
+//! direction; the presenter DEFINES the resource, this input crate WRITES it, the
+//! [`HighlightRequest`](gdtf_battle_presenter::HighlightRequest) precedent).
 //!
-//! # The fireable-enemy verdict (mirrors `decide_left_click`'s FIRE rung)
+//! # The fireable-target verdict (mirrors `decide_left_click`'s FIRE + FIRE-AT-COVER rungs)
 //!
-//! The hover is a fire target iff (the SAME conditions
-//! [`decide_left_click`](crate::selection::decide_left_click) gates the FIRE branch on):
+//! The hover is a fire target iff there IS a [`SelectedShooter`] that is a PLAYER-faction ganger,
+//! AND the hovered cell is EITHER (the SAME conditions
+//! [`decide_left_click`](crate::selection::decide_left_click) gates the FIRE branches on):
 //!
-//! - there IS a [`SelectedShooter`], and it is a PLAYER-faction ganger;
-//! - the hovered cell holds an OCCUPANT whose [`Faction`] differs from the player's (an ENEMY);
-//! - that cell is squad-VISIBLE — the GTW-346 / GTW-11 targeting-fog gate, the SAME shared
-//!   [`cell_squad_visible`](gdtf_battle_presenter::cell_squad_visible) read the reticle + the
-//!   fire-refusal consume (FAIL-CLOSED on an absent fog), so the affordance and the fire commit
-//!   never disagree.
+//! - a fireable ENEMY — the cell holds an OCCUPANT whose [`Faction`] differs from the player's,
+//!   and the cell is squad-VISIBLE under the occupant relation
+//!   ([`FactionRelation::Other`]); or
+//! - shootable COVER / WALL (GTW-377) — the cell holds NO occupant but DOES block
+//!   ([`is_blocked`](gdtf_battle_sim::OccupancyGrid::is_blocked) — an intact wall / cover piece,
+//!   `false` once GTW-364 has smashed it), and the cell is squad-VISIBLE under the empty-cell
+//!   relation (`None`).
 //!
-//! When all hold, it computes the fire TU cost the same way the shot will charge it —
+//! Both branches share the GTW-346 / GTW-11 targeting-fog gate — the SAME shared
+//! [`cell_squad_visible`](gdtf_battle_presenter::cell_squad_visible) read the reticle + the
+//! fire-refusal consume (FAIL-CLOSED on an absent fog), so the affordance and the fire commit
+//! never disagree.
+//!
+//! When the verdict holds, it computes the fire TU cost the same way the shot will charge it —
 //! [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) over the [`SelectedFireMode`] + the shooter's
 //! [`TuMax`] / [`Aiming`] + the [`CombatTuning`] — and writes [`FireTargetHighlight::new`].
 //! Otherwise (no selection, an empty / own-ganger / non-visible cell, no hover) it writes
@@ -30,8 +38,8 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::{FireTargetHighlight, cell_squad_visible};
 use gdtf_battle_sim::{
-    Aiming, CombatTuning, Faction, FactionRelation, OccupancyGrid, PlayerFaction, SquadVisibility,
-    Tu, TuMax, mode_tu_cost,
+    Aiming, CellLevel, CombatTuning, Faction, FactionRelation, OccupancyGrid, PlayerFaction,
+    SquadVisibility, Tu, TuMax, mode_tu_cost,
 };
 
 use crate::{InspectTarget, SelectedFireMode, selection::resources::SelectedShooter};
@@ -64,13 +72,14 @@ pub struct FireTargetReads<'w> {
 
 /// `Update` ([`InputSystems::Gather`](crate::InputSystems)): POPULATE the presenter-owned
 /// [`FireTargetHighlight`] when the SELECTED player-faction shooter hovers a squad-VISIBLE
-/// ENEMY it could fire on — the cell + the [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) the
-/// shot would charge (C2).
+/// fireable TARGET it could fire on — an ENEMY *or* (GTW-377) a shootable COVER / WALL cell —
+/// the cell + the [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) the shot would charge (C2).
 ///
-/// Resolves the fireable verdict via [`resolve_fire_target`] (the SAME FIRE-rung conditions
-/// [`decide_left_click`](crate::selection::decide_left_click) gates fire on, plus the GTW-346
-/// fog gate): a player-faction selection, an ENEMY occupant at the hovered cell, that cell
-/// squad-VISIBLE. When it resolves it reads the shooter's `(`[`TuMax`]`, `[`Aiming`]`)` and
+/// Resolves the fireable verdict via [`resolve_fire_target`] (the SAME FIRE + FIRE-AT-COVER
+/// conditions [`decide_left_click`](crate::selection::decide_left_click) gates fire on, plus the
+/// GTW-346 fog gate): a player-faction selection, AND either an ENEMY occupant or intact
+/// blocking cover/wall at the hovered cell, that cell squad-VISIBLE. When it resolves it reads
+/// the shooter's `(`[`TuMax`]`, `[`Aiming`]`)` and
 /// computes the cost; otherwise it clears the highlight. Writes only on a real CHANGE (the `!=`
 /// guard) so an unchanged hover / selection does not spuriously trip
 /// `Changed<FireTargetHighlight>`. REUSES `mode_tu_cost` — no re-implemented cost; selection /
@@ -90,11 +99,14 @@ pub fn populate_fire_target(
 }
 
 /// Resolve the [`FireTargetHighlight`] for the current selection + hover — the pure fireable
-/// verdict the system applies (mirrors `decide_left_click`'s FIRE rung + the GTW-346 fog gate).
+/// verdict the system applies (mirrors `decide_left_click`'s FIRE + FIRE-AT-COVER rungs + the
+/// GTW-346 fog gate).
 ///
-/// Returns [`FireTargetHighlight::new`]`(cell, cost)` when the hovered cell is a fireable enemy
-/// (player-faction selection, ENEMY occupant, squad-VISIBLE) and the shooter's TU stats resolve;
-/// otherwise [`FireTargetHighlight::cleared`].
+/// Returns [`FireTargetHighlight::new`]`(cell, cost)` when the hovered cell is a fireable target —
+/// EITHER a fireable ENEMY (player-faction selection, ENEMY occupant, squad-VISIBLE) OR a
+/// shootable COVER / WALL cell (GTW-377: player-faction selection, intact blocking structure with
+/// no occupant, squad-VISIBLE) — and the shooter's TU stats resolve; otherwise
+/// [`FireTargetHighlight::cleared`].
 fn resolve_fire_target(
     reads: &FireTargetReads,
     factions: &Query<&Faction>,
@@ -113,21 +125,9 @@ fn resolve_fire_target(
     if !selection_is_player {
         return FireTargetHighlight::cleared();
     }
-    // The hovered cell must hold an ENEMY occupant (a faction != the player's).
-    let Some(occupant) = reads.occupancy.occupant(&cell) else {
-        return FireTargetHighlight::cleared();
-    };
-    let Ok(occupant_faction) = factions.get(occupant).copied() else {
-        return FireTargetHighlight::cleared();
-    };
-    if occupant_faction == player {
-        return FireTargetHighlight::cleared();
-    }
-    // GTW-346 / GTW-11 fog gate: the enemy cell must be squad-VISIBLE (FAIL-CLOSED on absent
-    // fog) — the SAME shared read the reticle + the fire-refusal use, so they never disagree.
-    if !cell_squad_visible(reads.squad.as_deref(), &cell, Some(FactionRelation::Other))
-        .is_squad_visible()
-    {
+    // The hovered cell is a fire target iff it holds a fireable ENEMY *or* shootable COVER —
+    // both gated on squad-visibility (the SAME shared read the reticle + fire-refusal use).
+    if !cell_is_fireable_target(reads, factions, &cell, player) {
         return FireTargetHighlight::cleared();
     }
     // Fireable: compute the fire TU cost the same way the shot will charge it (REUSE).
@@ -135,6 +135,44 @@ fn resolve_fire_target(
         Some(cost) => FireTargetHighlight::new(cell, cost),
         // The shooter has no TU stats (unarmed / incomplete) → no cost → no highlight.
         None => FireTargetHighlight::cleared(),
+    }
+}
+
+/// Whether `cell` is a fireable TARGET for the player — a fireable ENEMY occupant OR shootable
+/// COVER / WALL structure, each gated on the GTW-346 / GTW-11 squad-visibility fog
+/// (FAIL-CLOSED on an absent fog) so the affordance and the fire commit never disagree.
+///
+/// - A fireable ENEMY: the cell holds an occupant whose [`Faction`] differs from the player's,
+///   and the cell is squad-VISIBLE under the occupant relation
+///   ([`FactionRelation::Other`]) — exactly `decide_left_click`'s FIRE rung.
+/// - Shootable COVER / WALL (GTW-377): the cell holds NO occupant but DOES block
+///   ([`is_blocked`](gdtf_battle_sim::OccupancyGrid::is_blocked) — an intact wall / cover piece,
+///   `false` once GTW-364 has smashed it), and the cell is squad-VISIBLE under the empty-cell
+///   relation (`None`, a structural cell carries no occupant) — `decide_left_click`'s
+///   FIRE-AT-COVER rung. The user ruling: cover AND walls are valid fire targets.
+fn cell_is_fireable_target(
+    reads: &FireTargetReads,
+    factions: &Query<&Faction>,
+    cell: &CellLevel,
+    player: Faction,
+) -> bool {
+    match reads.occupancy.occupant(cell) {
+        // An occupant cell is a fire target iff the occupant is an ENEMY on a squad-VISIBLE cell.
+        Some(occupant) => {
+            let is_enemy = factions
+                .get(occupant)
+                .copied()
+                .is_ok_and(|faction| faction != player);
+            is_enemy
+                && cell_squad_visible(reads.squad.as_deref(), cell, Some(FactionRelation::Other))
+                    .is_squad_visible()
+        }
+        // An UNOCCUPIED cell is a fire target iff it is intact blocking structure (cover / wall)
+        // on a squad-VISIBLE cell (GTW-377). A bare floor cell (`!is_blocked`) is NOT a target.
+        None => {
+            reads.occupancy.is_blocked(cell)
+                && cell_squad_visible(reads.squad.as_deref(), cell, None).is_squad_visible()
+        }
     }
 }
 
