@@ -39,9 +39,9 @@
     // ("could be 1/2/4, 1/3/5, …" — tunable). None costs 0 and Fatal EMPTIES the pool —
     // those two are STRUCTURAL (apply_hit branches them), so they are NOT listed here.
     wound_costs: (
-        minor:    0,  // Minor wound — flesh wound, cheapest spend (starting point: 1)
-        major:    1,  // Major wound — benched until healed (starting point: 2)
-        critical: 2,  // Critical wound — maims AND pushes toward death faster (starting point: 3)
+        minor:    1,  // Minor wound — flesh wound, cheapest spend (starting point: 1)
+        major:    2,  // Major wound — benched until healed (starting point: 2)
+        critical: 3ß,  // Critical wound — maims AND pushes toward death faster (starting point: 3)
     ),
     // Bleed-out clock (resolution.md §9; wounds-and-roster.md §"Downed → death …"): the flat
     // number of Wounds (the life pool) each un-stabilized DOWNED ganger loses every full round
