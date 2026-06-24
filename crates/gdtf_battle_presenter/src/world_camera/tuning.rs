@@ -55,6 +55,50 @@ impl Default for DwellDelaySeconds {
     }
 }
 
+/// How far PAST the battlefield edge the camera may pan, as a FIXED world-space distance.
+///
+/// GTW-381: the bounds clamp ([`clamp_camera_to_bounds`](super::clamp_camera_to_bounds)) no
+/// longer pins the camera AT the hard battlefield edge — it relaxes the clamp by this much,
+/// so the camera CAN pan up to this many world units past the level edge (a little breathing
+/// room around the map) and is clamped at `bounds + margin`, never further and never at the
+/// old hard bounds (bounded + padding, not unbounded).
+///
+/// A FIXED WORLD-SPACE distance, deliberately INDEPENDENT of zoom: it is fed into the existing
+/// zoom-aware clamp by GROWING the world bounds box BEFORE the clamp's per-axis math runs, so
+/// the same world-space slack is allowed at ANY zoom level — it does not scale with the
+/// viewport (the half-viewport already carries the zoom; this margin does not, by design, C3).
+/// One cell is [`CELL_PX`](crate::CELL_PX) (`16`) world units wide, so the shipped `128`
+/// default is roughly EIGHT cells of off-level slack — a comfortable, visible amount of pan
+/// headroom past the edge without letting the map drift arbitrarily far off-screen.
+///
+/// A named newtype over the `f32` world distance (`.claude/rules/no-bare-types.md`): the inner
+/// is PRIVATE, read through [`Deref`] and built through [`new`](Self::new) / [`Default`].
+/// `#[serde(transparent)]` so the `.ron` authors the inner number directly; the live consumer
+/// is [`clamp_camera_to_bounds`](super::clamp_camera_to_bounds), which reads it off
+/// [`PanTuning::bounds_margin_world`] and adds it to the world bounds — no dead leaf.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct BoundsMarginWorld(f32);
+
+impl BoundsMarginWorld {
+    /// The shipped default: `128` world units (~8 cells at the `16`-unit cell pitch) of slack
+    /// past the battlefield edge — a sensible, visible amount of off-level pan headroom that is
+    /// still bounded (the relaxed clamp pins the camera at `bounds + margin`, never further).
+    pub const DEFAULT: f32 = 128.0;
+
+    /// Build an off-level pan margin from a world-space distance (world units).
+    #[must_use]
+    pub const fn new(world_units: f32) -> Self {
+        Self(world_units)
+    }
+}
+
+impl Default for BoundsMarginWorld {
+    fn default() -> Self {
+        Self(Self::DEFAULT)
+    }
+}
+
 /// The HOT-RELOADABLE edge-pan tuning table — the GTW-250 pan speed + edge band plus the GTW-299
 /// dwell delay, loaded from `assets/tiles/pan_tuning.ron` and read live by the pan systems.
 ///
@@ -80,6 +124,8 @@ pub struct PanTuning {
     pub pan_speed:           PanSpeed,
     /// The cursor edge-band dwell before edge-pan starts (seconds).
     pub dwell_delay_seconds: DwellDelaySeconds,
+    /// How far the camera may pan PAST the battlefield edge (fixed world-space distance, GTW-381).
+    pub bounds_margin_world: BoundsMarginWorld,
 }
 
 /// The path of the loose pan-tuning RON, relative to the asset source root.
@@ -201,7 +247,7 @@ pub fn redrive_pan_tuning_on_asset_event(
 
 #[cfg(test)]
 mod test {
-    use super::{DwellDelaySeconds, PanTuning};
+    use super::{BoundsMarginWorld, DwellDelaySeconds, PanTuning};
     use crate::{EdgeBandPx, PanSpeed};
 
     /// The shipped `pan_tuning.ron` parses into `PanTuning` and carries every tuning value —
@@ -257,6 +303,20 @@ mod test {
             (*tuning.dwell_delay_seconds - DwellDelaySeconds::DEFAULT).abs() < f32::EPSILON,
             "the default dwell delay must be the user's 0.3 s",
         );
+        // GTW-381: the off-level pan margin default is the shipped BoundsMarginWorld::DEFAULT,
+        // and it is non-zero (the feature is live out of the box — the camera CAN pan past the
+        // edge by default). The exact magnitude is a tunable, so only the field == DEFAULT
+        // relation and the non-zero property are asserted, not a pinned scene value.
+        assert!(
+            (*tuning.bounds_margin_world - BoundsMarginWorld::DEFAULT).abs() < f32::EPSILON,
+            "the default off-level margin must be BoundsMarginWorld::DEFAULT",
+        );
+        const {
+            assert!(
+                BoundsMarginWorld::DEFAULT > 0.0,
+                "the shipped off-level margin must be non-zero so the relaxed clamp is live by default",
+            );
+        }
     }
 
     /// A PARTIAL `.ron` (one field authored, the rest omitted) parses, taking the authored value
@@ -287,6 +347,10 @@ mod test {
         assert!(
             (*tuning.pan_speed - PanSpeed::DEFAULT).abs() < f32::EPSILON,
             "an omitted pan speed must fall back to the default",
+        );
+        assert!(
+            (*tuning.bounds_margin_world - BoundsMarginWorld::DEFAULT).abs() < f32::EPSILON,
+            "an omitted off-level margin must fall back to the default",
         );
     }
 }

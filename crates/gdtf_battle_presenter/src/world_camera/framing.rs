@@ -4,7 +4,10 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use gdtf_battle_sim::{Cell, Faction, GRID_HEIGHT, GRID_WIDTH, Level, PlayerFaction, Position};
 
-use super::marker::WorldCamera;
+use super::{
+    marker::WorldCamera,
+    tuning::{BoundsMarginWorld, PanTuning},
+};
 use crate::cell_to_world;
 
 /// The centroid (mean) of the supplied world points, or [`None`] when empty.
@@ -200,27 +203,50 @@ pub fn frame_camera_on_units(
     *already_framed = true;
 }
 
-/// `Update` (battle-gated): clamp the [`WorldCamera`] so its viewport never shows beyond
-/// the battlefield bounds — the FINAL word on camera position each frame.
+/// `Update` (battle-gated): clamp the [`WorldCamera`] so its viewport stays within the
+/// battlefield bounds RELAXED by the off-level pan margin — the FINAL word on camera position
+/// each frame.
 ///
-/// GTW-249 AC4: whatever moves the camera (the one-shot framing above; the future pan-nav
-/// slice GTW-250 — order this `.after` both so it is the last writer), this pulls the
-/// translation back inside via [`clamp_camera`]. It reads the camera [`Camera`] (the GTW-271
-/// sub-rect [`Camera::viewport`]) + its [`Transform`] + its [`Projection`] (the orthographic
-/// visible half-extent) + the primary [`Window`] (the viewport-size fallback before
-/// `camera_system` first computes the projection area) + the battlefield world bounds
+/// GTW-249 AC4: whatever moves the camera (the one-shot framing above; the pan-nav slice
+/// GTW-250 — ordered `.after` both so this is the last writer), this pulls the translation
+/// back inside via [`clamp_camera`]. It reads the camera [`Camera`] (the GTW-271 sub-rect
+/// [`Camera::viewport`]) + its [`Transform`] + its [`Projection`] (the orthographic visible
+/// half-extent) + the primary [`Window`] (the viewport-size fallback before `camera_system`
+/// first computes the projection area) + the battlefield world bounds
 /// ([`battlefield_world_bounds`], from the grid extent via [`cell_to_world`] — never a
 /// hardcoded literal), and writes back the clamped `xy` (z is kept). With a not-yet-orthographic
 /// / zero-size viewport it leaves the camera unchanged rather than snapping it.
 ///
+/// GTW-381: the clamp is now RELAXED by a fixed world-space MARGIN
+/// ([`PanTuning::bounds_margin_world`]) so the camera CAN pan up to that many world units PAST
+/// the level edge — clamped at `bounds + margin`, never further and never at the old hard
+/// bounds (bounded + padding). The margin GROWS the world bounds box (`world_min - margin` /
+/// `world_max + margin`) BEFORE [`clamp_camera`] runs, so it feeds the SAME zoom-aware per-axis
+/// math: the half-viewport still carries the zoom, while the margin is a fixed world distance
+/// independent of zoom (the same world-space slack is allowed at any zoom level, C3). The tuning
+/// is taken as `Option<Res<PanTuning>>` so a headless app with no `AssetServer` (the resource
+/// never loads) falls back to the shipped [`BoundsMarginWorld`](crate::BoundsMarginWorld)
+/// default (`bevy-traps.md` #1).
+///
 /// Param-only (`Query` / `Res`), no `&mut World` (`bevy-traps.md` #7); battle-scoped gating
 /// is applied at registration (`bevy-traps.md` #1).
 pub fn clamp_camera_to_bounds(
+    tuning: Option<Res<PanTuning>>,
     mut cameras: Query<(&Camera, &mut Transform, &Projection), With<WorldCamera>>,
     windows: Query<&Window, With<PrimaryWindow>>,
 ) {
     let window = windows.iter().next();
-    let (world_min, world_max) = battlefield_world_bounds();
+    // The off-level pan margin (a FIXED world-space distance), or the shipped default when the
+    // hot-reloadable tuning table is absent (a headless app without an AssetServer) — GTW-381.
+    let margin = tuning
+        .as_ref()
+        .map_or_else(BoundsMarginWorld::default, |t| t.bounds_margin_world);
+    // Grow the hard battlefield bounds by the margin BEFORE clamping: the camera may pan up to
+    // `margin` world units past the level edge, and is clamped at `bounds + margin`. The margin
+    // is world-space (the half-viewport carries the zoom), so this slack is zoom-independent (C3).
+    let (hard_min, hard_max) = battlefield_world_bounds();
+    let world_min = hard_min - Vec2::splat(*margin);
+    let world_max = hard_max + Vec2::splat(*margin);
     for (camera, mut transform, projection) in &mut cameras {
         let Some(half_viewport) = viewport_half_extent(camera, projection, window) else {
             continue;

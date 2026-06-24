@@ -21,4 +21,11 @@
     // at the edge does. Bigger = the cursor must dwell longer before the camera moves.
     // Default 0.3.
     dwell_delay_seconds: 0.3,
+    // How far the camera may pan PAST the battlefield edge, as a FIXED distance in WORLD UNITS
+    // (one cell = 16 world units, so 128 is ~8 cells of off-level slack). The bounds clamp is
+    // relaxed by this much: the camera can show a little space around the map and is pinned at
+    // bounds+margin, never further. A FIXED world distance — it does NOT scale with zoom (the
+    // same slack is allowed at any zoom level). 0.0 pins the camera at the hard edge (old
+    // behaviour); bigger = more room to pan off the level. Default 128.0.
+    bounds_margin_world: 128.0,
 )

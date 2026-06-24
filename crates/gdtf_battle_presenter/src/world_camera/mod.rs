@@ -45,6 +45,6 @@ pub use pan::{
     viewport_edge_dir,
 };
 pub use tuning::{
-    DwellDelaySeconds, PanTuning, PanTuningHandle, load_pan_tuning,
+    BoundsMarginWorld, DwellDelaySeconds, PanTuning, PanTuningHandle, load_pan_tuning,
     redrive_pan_tuning_on_asset_event, resolve_pan_tuning,
 };
