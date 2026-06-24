@@ -67,7 +67,7 @@ const fn burst_mode(shots: u16) -> FireModeSpec {
 fn equip_thin_armor(world: &mut World, ganger: Entity) {
     for part in BodyPart::ALL {
         world.spawn((
-            WornBy(ganger),
+            WornBy::new(ganger),
             part,
             ArmorFloor::new(0),
             ArmorProtection::new(0),
@@ -127,7 +127,7 @@ fn spawn_shooter(world: &mut World, mode: FireModeSpec) -> Entity {
     // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`); the
     // `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
     // `World` spawn so the very next `fire()` resolves it.
-    world.spawn((WieldedBy(shooter), bundle));
+    world.spawn((WieldedBy::new(shooter), bundle));
     // GTW-323 slice 1: equip the shooter's worn-armor PIECE entities (it is a ganger too).
     equip_thin_armor(world, shooter);
     shooter

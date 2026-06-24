@@ -112,7 +112,7 @@ pub(super) fn equip_uniform_armor(
 ) {
     for part in BodyPart::ALL {
         world.spawn((
-            WornBy(ganger),
+            WornBy::new(ganger),
             part,
             ArmorFloor::new(floor),
             ArmorProtection::new(protection),
@@ -145,7 +145,7 @@ pub(super) fn weapon_rounds(world: &World, ganger: Entity) -> Option<u16> {
 /// weapon), mirroring [`equip_uniform_armor`]. The [`WeaponBundle`] (the GTW-200
 /// component set) is inserted on the weapon entity, NOT the ganger.
 pub(super) fn equip_weapon(world: &mut World, ganger: Entity, weapon: WeaponBundle) {
-    world.spawn((WieldedBy(ganger), weapon));
+    world.spawn((WieldedBy::new(ganger), weapon));
 }
 
 /// Build a test [`WeaponBundle`] from arbitrary (not-shipped) handling/spread numbers —

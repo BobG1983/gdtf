@@ -188,7 +188,7 @@ fn spawn_armed_and_select(app: &mut App, place: ShooterPlacement) -> Entity {
         ))
         .id();
     app.world_mut()
-        .spawn((WieldedBy(ganger), weapon_kit(false)));
+        .spawn((WieldedBy::new(ganger), weapon_kit(false)));
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger

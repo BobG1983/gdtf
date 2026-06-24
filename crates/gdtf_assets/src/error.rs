@@ -21,7 +21,20 @@ pub enum RonLoadError {
 /// A named newtype over [`std::io::Error`] so the domain error
 /// [`RonLoadError::Read`] carries a typed cause rather than a bare std type.
 #[derive(Debug)]
-pub struct ReadError(pub(crate) std::io::Error);
+pub struct ReadError(std::io::Error);
+
+impl ReadError {
+    /// Wrap the underlying I/O error the loader hit reading a RON file's bytes.
+    ///
+    /// The constructor for the private inner [`std::io::Error`] (no-bare-types
+    /// rule 5): the [`RonAssetLoader`](crate::RonAssetLoader) builds a
+    /// [`RonLoadError::Read`] through this rather than a `ReadError(err)` tuple
+    /// literal, so the wrapped cause is reached only through [`Deref`](core::ops::Deref).
+    #[must_use]
+    pub const fn new(cause: std::io::Error) -> Self {
+        Self(cause)
+    }
+}
 
 impl core::ops::Deref for ReadError {
     type Target = std::io::Error;
@@ -38,7 +51,21 @@ impl core::ops::Deref for ReadError {
 /// [`RonLoadError::Deserialize`] carries a typed cause rather than a bare
 /// foreign type.
 #[derive(Debug)]
-pub struct RonDeError(pub(crate) ron::error::SpannedError);
+pub struct RonDeError(ron::error::SpannedError);
+
+impl RonDeError {
+    /// Wrap the underlying RON deserialization error (with source span) the loader
+    /// hit parsing a RON file into the target type.
+    ///
+    /// The constructor for the private inner [`ron::error::SpannedError`]
+    /// (no-bare-types rule 5): the [`RonAssetLoader`](crate::RonAssetLoader) builds a
+    /// [`RonLoadError::Deserialize`] through this rather than a `RonDeError(err)` tuple
+    /// literal, so the wrapped cause is reached only through [`Deref`](core::ops::Deref).
+    #[must_use]
+    pub const fn new(cause: ron::error::SpannedError) -> Self {
+        Self(cause)
+    }
+}
 
 impl core::ops::Deref for RonDeError {
     type Target = ron::error::SpannedError;

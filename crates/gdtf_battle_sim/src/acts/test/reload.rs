@@ -26,7 +26,10 @@ fn spawn_reload_actor(
     life: LifeState,
 ) -> (Entity, Entity) {
     let actor = app.world_mut().spawn((Tu::new(tu), life)).id();
-    let weapon = app.world_mut().spawn((WieldedBy(actor), magazine)).id();
+    let weapon = app
+        .world_mut()
+        .spawn((WieldedBy::new(actor), magazine))
+        .id();
     (actor, weapon)
 }
 

@@ -116,7 +116,7 @@ fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
         ))
         .id();
     app.world_mut().spawn((
-        WieldedBy(ganger),
+        WieldedBy::new(ganger),
         FireMode::new(vec![single]),
         Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
     ));

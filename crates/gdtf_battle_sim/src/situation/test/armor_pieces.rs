@@ -6,7 +6,7 @@
 //! path (through [`run_setup`], which `app.update()`s once to materialize the deferred
 //! scene spawns), then query the world to prove the relationship + per-piece stats.
 
-use bevy::ecs::relationship::RelationshipTarget;
+use bevy::ecs::relationship::{Relationship, RelationshipTarget};
 
 use super::support::*;
 use crate::armor::{
@@ -67,7 +67,7 @@ fn setup_relates_six_body_part_tagged_pieces_to_the_ganger() {
     for &piece in &pieces {
         let worn_by = app.world().get::<WornBy>(piece);
         assert!(
-            worn_by.is_some_and(|w| w.0 == ganger),
+            worn_by.is_some_and(|w| w.get() == ganger),
             "each related piece must carry `WornBy(ganger)` pointing at the wearer",
         );
         if let Some(part) = app.world().get::<BodyPart>(piece) {

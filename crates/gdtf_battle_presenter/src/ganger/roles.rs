@@ -283,7 +283,7 @@ mod test {
     fn add_asset(app: &mut App, roles: CharacterRoles) -> Handle<RonAsset<CharacterRoles>> {
         app.world_mut()
             .resource_mut::<Assets<RonAsset<CharacterRoles>>>()
-            .add(RonAsset(roles))
+            .add(RonAsset::new(roles))
     }
 
     /// Overwrite the in-memory payload of an already-added character-role asset (the hot
@@ -293,7 +293,7 @@ mod test {
             .world_mut()
             .resource_mut::<Assets<RonAsset<CharacterRoles>>>();
         if let Some(mut asset) = assets.get_mut(handle) {
-            asset.0 = roles;
+            **asset = roles;
         }
     }
 

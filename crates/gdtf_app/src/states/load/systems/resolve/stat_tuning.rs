@@ -156,7 +156,7 @@ mod test {
     fn add_asset(app: &mut App, tuning: GangerStatTuning) -> Handle<RonAsset<GangerStatTuning>> {
         app.world_mut()
             .resource_mut::<Assets<RonAsset<GangerStatTuning>>>()
-            .add(RonAsset(tuning))
+            .add(RonAsset::new(tuning))
     }
 
     /// Overwrite the in-memory payload of an already-added stat-tuning asset (the hot edit
@@ -170,7 +170,7 @@ mod test {
             .world_mut()
             .resource_mut::<Assets<RonAsset<GangerStatTuning>>>();
         if let Some(mut asset) = assets.get_mut(handle) {
-            asset.0 = tuning;
+            **asset = tuning;
         }
     }
 

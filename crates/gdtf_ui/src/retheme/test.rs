@@ -77,7 +77,7 @@ fn app() -> App {
 fn add_theme_asset(app: &mut App, spec: GdtfThemeSpec) -> Handle<RonAsset<GdtfThemeSpec>> {
     app.world_mut()
         .resource_mut::<Assets<RonAsset<GdtfThemeSpec>>>()
-        .add(RonAsset(spec))
+        .add(RonAsset::new(spec))
 }
 
 /// Overwrites the in-memory spec of an already-added theme asset (the hot edit
@@ -89,7 +89,7 @@ fn hot_edit(app: &mut App, handle: &Handle<RonAsset<GdtfThemeSpec>>, spec: GdtfT
     // `Assets::get_mut` now hands back an `AssetMut` guard (Bevy 0.19) that
     // `DerefMut`s to the asset, so the binding must be `mut` to write through it.
     if let Some(mut asset) = assets.get_mut(handle) {
-        asset.0 = spec;
+        **asset = spec;
     }
 }
 

@@ -96,7 +96,7 @@ fn spawn_and_select_shooter(app: &mut App, cell: CellLevel) -> (Entity, TuMax, A
         ))
         .id();
     app.world_mut().spawn((
-        WieldedBy(ganger),
+        WieldedBy::new(ganger),
         Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
     ));
     app.world_mut()
@@ -149,7 +149,7 @@ fn spawn_select_then_arm_late(
     // (Single first, with the authored tu_percent) + the WieldedBy back-reference. The
     // WieldedBy hook populates the ganger's Wields collection on the next flush.
     app.world_mut().spawn((
-        WieldedBy(ganger),
+        WieldedBy::new(ganger),
         FireMode::new(vec![spec(single_tu_percent)]),
         Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
     ));

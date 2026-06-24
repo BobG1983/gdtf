@@ -260,7 +260,7 @@ mod test {
         let inserted = app
             .world_mut()
             .resource_mut::<Assets<RonAsset<ArmorSpec>>>()
-            .insert(handle.id(), RonAsset(spec));
+            .insert(handle.id(), RonAsset::new(spec));
         assert!(inserted.is_ok(), "member spec insert must succeed");
         handle
     }
@@ -299,7 +299,7 @@ mod test {
             .resource_mut::<Assets<RonAsset<ArmorSpec>>>()
             .get_mut(&member)
         {
-            asset.0 = edited;
+            **asset = edited;
         }
         app.world_mut()
             .write_message(AssetEvent::Modified { id: member.id() });

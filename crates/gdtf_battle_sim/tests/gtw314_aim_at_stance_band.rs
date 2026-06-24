@@ -75,7 +75,7 @@ const fn single_mode() -> FireModeSpec {
 fn equip_thin_armor(app: &mut App, ganger: Entity) {
     for part in BodyPart::ALL {
         app.world_mut().spawn((
-            WornBy(ganger),
+            WornBy::new(ganger),
             part,
             ArmorFloor::new(0),
             ArmorProtection::new(0),
@@ -150,7 +150,7 @@ fn spawn_standing_shooter(app: &mut App, facing: Direction) -> Entity {
     // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`); the
     // `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
     // `World` spawn so the very next `fire()` resolves it.
-    app.world_mut().spawn((WieldedBy(shooter), bundle));
+    app.world_mut().spawn((WieldedBy::new(shooter), bundle));
     shooter
 }
 

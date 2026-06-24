@@ -99,9 +99,9 @@ where
         reader
             .read_to_end(&mut bytes)
             .await
-            .map_err(|err| RonLoadError::Read(ReadError(err)))?;
+            .map_err(|err| RonLoadError::Read(ReadError::new(err)))?;
         let value = ron::de::from_bytes::<T>(&bytes)
-            .map_err(|err| RonLoadError::Deserialize(RonDeError(err)))?;
+            .map_err(|err| RonLoadError::Deserialize(RonDeError::new(err)))?;
         // GTW-146 hot-reload instrumentation: this `load` re-runs every time the
         // asset file-watcher detects an on-disk change, so a SECOND line here
         // after a save is the proof the watcher fired and the spec was rebuilt.
@@ -110,7 +110,7 @@ where
             T::short_type_path(),
             bytes.len(),
         );
-        Ok(RonAsset(value))
+        Ok(RonAsset::new(value))
     }
 
     fn extensions(&self) -> &[&str] {

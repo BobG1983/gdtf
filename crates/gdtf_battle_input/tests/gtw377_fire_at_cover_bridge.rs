@@ -131,7 +131,7 @@ fn spawn_shooter(app: &mut App) -> Entity {
         .id();
     // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`); the `WieldedBy`
     // insert hook populates the ganger's `Wields` synchronously.
-    app.world_mut().spawn((WieldedBy(shooter), bundle));
+    app.world_mut().spawn((WieldedBy::new(shooter), bundle));
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_occupant(shooter_cell(), Some(shooter));

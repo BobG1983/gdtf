@@ -37,7 +37,7 @@ fn bleeding_is_a_buffered_message_one_per_draining_ganger() {
     let captured = app
         .world()
         .get_resource::<super::support::Captured>()
-        .map_or_else(Vec::new, |c| c.0.clone());
+        .map_or_else(Vec::new, |c| c.to_vec());
 
     // Exactly one Bleeding overall — only the un-stabilized Downed ganger bled.
     assert_eq!(

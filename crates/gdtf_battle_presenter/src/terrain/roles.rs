@@ -331,7 +331,7 @@ mod test {
     fn add_asset(app: &mut App, roles: TileRoles) -> Handle<RonAsset<TileRoles>> {
         app.world_mut()
             .resource_mut::<Assets<RonAsset<TileRoles>>>()
-            .add(RonAsset(roles))
+            .add(RonAsset::new(roles))
     }
 
     /// Overwrite the in-memory payload of an already-added tile-role asset (the hot edit
@@ -341,7 +341,7 @@ mod test {
             .world_mut()
             .resource_mut::<Assets<RonAsset<TileRoles>>>();
         if let Some(mut asset) = assets.get_mut(handle) {
-            asset.0 = roles;
+            **asset = roles;
         }
     }
 

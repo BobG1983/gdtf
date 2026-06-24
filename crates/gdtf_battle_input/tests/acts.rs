@@ -233,7 +233,7 @@ fn spawn_ganger(
         ))
         .id();
     app.world_mut().spawn((
-        WieldedBy(ganger),
+        WieldedBy::new(ganger),
         selector,
         Magazine::new(10, size, ReloadTu::new(12)),
     ));

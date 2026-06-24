@@ -15,14 +15,18 @@ pub(super) use crate::{
 
 /// Captures the [`Bleeding`] messages a reader system drained, so a test can
 /// assert on them after `update()` (no `unwrap` in the test body).
-#[derive(Resource, Default)]
-pub(super) struct Captured(pub(super) Vec<Bleeding>);
+///
+/// The inner `Vec` is private (no-bare-types rule 5): the captured messages are
+/// pushed through [`DerefMut`](core::ops::DerefMut) and read through
+/// [`Deref`](core::ops::Deref), never a `.0` field access.
+#[derive(Resource, Default, bevy::prelude::Deref, bevy::prelude::DerefMut)]
+pub(super) struct Captured(Vec<Bleeding>);
 
 /// Drains the buffered [`Bleeding`] messages (a [`MessageReader`], NOT an
 /// observer) into the [`Captured`] resource for assertion.
 fn consume(mut reader: MessageReader<Bleeding>, mut captured: ResMut<Captured>) {
     for bled in reader.read() {
-        captured.0.push(*bled);
+        captured.push(*bled);
     }
 }
 
@@ -72,5 +76,5 @@ pub(super) fn life_of(app: &App, ganger: Entity) -> LifeState {
 pub(super) fn bleeding_count_for(app: &App, ganger: Entity) -> usize {
     app.world()
         .get_resource::<Captured>()
-        .map_or(0, |c| c.0.iter().filter(|b| b.ganger == ganger).count())
+        .map_or(0, |c| c.iter().filter(|b| b.ganger == ganger).count())
 }

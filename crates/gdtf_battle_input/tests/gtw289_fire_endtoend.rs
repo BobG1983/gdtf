@@ -211,7 +211,7 @@ fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Ent
     // ganger's `Wields` synchronously in a bare `World` spawn so the end-to-end fire chain
     // resolves the weapon this update (mirroring production's
     // `queue_spawn_related_scenes::<Wields>`).
-    app.world_mut().spawn((WieldedBy(shooter), bundle));
+    app.world_mut().spawn((WieldedBy::new(shooter), bundle));
     shooter
 }
 

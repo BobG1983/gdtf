@@ -184,7 +184,7 @@ fn spawn_armed_and_select(app: &mut App, weapon: WeaponBundle) -> Entity {
         ))
         .id();
     app.world_mut()
-        .spawn((gdtf_battle_sim::WieldedBy(ganger), weapon));
+        .spawn((gdtf_battle_sim::WieldedBy::new(ganger), weapon));
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger

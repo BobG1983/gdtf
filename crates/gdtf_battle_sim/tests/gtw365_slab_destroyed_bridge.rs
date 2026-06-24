@@ -142,7 +142,7 @@ fn spawn_shooter(world: &mut World) -> Entity {
         .id();
     // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`); the
     // `WieldedBy` insert hook populates the ganger's `Wields` synchronously.
-    world.spawn((WieldedBy(shooter), bundle));
+    world.spawn((WieldedBy::new(shooter), bundle));
     shooter
 }
 

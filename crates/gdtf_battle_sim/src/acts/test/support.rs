@@ -177,7 +177,7 @@ pub(super) fn spawn_shooter(
     // `dispatch_fire`/`fire()` + `dispatch_reload` through `ganger → Wields → the weapon
     // entity`. The `WieldedBy` insert hook populates the ganger's `Wields` synchronously
     // in a bare `World` spawn so the very next dispatch resolves it.
-    world.spawn((WieldedBy(shooter), bundle));
+    world.spawn((WieldedBy::new(shooter), bundle));
     shooter
 }
 

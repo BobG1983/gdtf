@@ -344,7 +344,7 @@ fn arm_and_select(
         .world_mut()
         .spawn((Stance::new(stance), Facing::new(facing), Aiming::new(false)))
         .id();
-    app.world_mut().spawn((WieldedBy(ganger), selector));
+    app.world_mut().spawn((WieldedBy::new(ganger), selector));
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger
@@ -371,7 +371,7 @@ fn arm_and_select_with_tu(
             tu_max,
         ))
         .id();
-    app.world_mut().spawn((WieldedBy(ganger), selector));
+    app.world_mut().spawn((WieldedBy::new(ganger), selector));
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger

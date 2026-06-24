@@ -132,7 +132,7 @@ fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
     // `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
     // `World` spawn, so the shared fire decision resolves the magazine off the weapon.
     app.world_mut().spawn((
-        WieldedBy(ganger),
+        WieldedBy::new(ganger),
         FireMode::new(vec![single]),
         Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
     ));

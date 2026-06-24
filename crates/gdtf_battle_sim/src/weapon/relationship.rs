@@ -44,8 +44,14 @@ use bevy::{
 /// the [`Relationship`](bevy::ecs::relationship::Relationship) trait contract
 /// (`get(&self) -> Entity` / `from(Entity)`) requires the relationship component to be
 /// a newtype over the related [`Entity`]. This is the framework carve-out the
-/// no-bare-types rule permits (an entity handle, not a wrapped scalar) — so the inner
-/// is `pub`, as the derive's trait impl reads it.
+/// no-bare-types rule permits (an entity handle, not a wrapped scalar).
+///
+/// The inner field is **private** (no-bare-types rule 5): the `#[relationship]` derive's
+/// generated trait impl reads it from inside this module, so a private field satisfies
+/// the framework without leaking `Self(x)` tuple construction to other crates. Construct
+/// it through [`WieldedBy::new`] (or let the framework's related-spawn machinery insert
+/// it via [`Relationship::from`](bevy::ecs::relationship::Relationship::from)); read the
+/// related ganger through [`Relationship::get`](bevy::ecs::relationship::Relationship::get).
 ///
 /// `Default` ([`Entity::PLACEHOLDER`]) is a **spawn-seed sentinel only** — the
 /// `bsn!`-scene spawn path seeds the component slot via `Default` before the
@@ -54,7 +60,21 @@ use bevy::{
 /// ganger back-reference.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[relationship(relationship_target = Wields)]
-pub struct WieldedBy(pub Entity);
+pub struct WieldedBy(Entity);
+
+impl WieldedBy {
+    /// A back-reference pointing at the ganger that wields this weapon entity.
+    ///
+    /// The cross-crate constructor for the private inner [`Entity`] (no-bare-types
+    /// rule 5): test and spawn sites outside this module relate a weapon to its ganger
+    /// through this rather than a `WieldedBy(entity)` tuple literal. `entity` is Bevy
+    /// framework plumbing (an entity handle), so a bare-`Entity` signature is the
+    /// no-bare-types framework carve-out.
+    #[must_use]
+    pub const fn new(entity: Entity) -> Self {
+        Self(entity)
+    }
+}
 
 impl Default for WieldedBy {
     /// The spawn-seed sentinel: [`Entity::PLACEHOLDER`] (not a live edge). `Entity`
