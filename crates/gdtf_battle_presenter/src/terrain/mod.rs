@@ -40,7 +40,9 @@ mod roles;
 mod test;
 
 pub use active_level::{ActiveLevel, PresenterSystems};
-pub use draw::{StaticMap, TerrainSprite, draw_static_battlefield, swap_destroyed_cover};
+pub use draw::{
+    StaticMap, TerrainSprite, draw_static_battlefield, swap_destroyed_cover, swap_destroyed_slab,
+};
 pub use link_draw::{VerticalLinkSprite, draw_vertical_links};
 pub use roles::{
     TileIndex, TileRoles, TileRolesHandle, load_tile_roles, redrive_tile_roles_on_asset_event,

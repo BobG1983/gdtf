@@ -82,19 +82,20 @@ fn shipped_tile_roles_ron_parses_with_all_roles() {
 /// each required, and that the OLD single `stair` key is no longer accepted.
 #[test]
 fn tile_roles_field_set_is_discriminating() {
-    // A complete authored body parses (the positive control) — the GTW-373 split keys.
+    // A complete authored body parses (the positive control) — the GTW-373 split keys plus
+    // the GTW-367 `slab_destroyed` key.
     const COMPLETE: &str = "(\
         floor: 6, floor_alt_panel: 128, wall: 0, cover: 248, slab: 22, rubble: 295, \
-        door: 339, stair_up: 29, stair_down: 28, ladder: 235)";
+        slab_destroyed: 295, door: 339, stair_up: 29, stair_down: 28, ladder: 235)";
     // MISSING the `stair_up` key — must fail (the field is required).
     const MISSING_STAIR_UP: &str = "(\
         floor: 6, floor_alt_panel: 128, wall: 0, cover: 248, slab: 22, rubble: 295, \
-        door: 339, stair_down: 28, ladder: 235)";
+        slab_destroyed: 295, door: 339, stair_down: 28, ladder: 235)";
     // RENAMED `stair_up` -> `stair` (the OLD single-stair key) — must fail (the field-set
     // is fixed; the superseded `stair` key no longer substitutes for the split role).
     const RENAMED_STAIR_UP: &str = "(\
         floor: 6, floor_alt_panel: 128, wall: 0, cover: 248, slab: 22, rubble: 295, \
-        door: 339, stair: 29, stair_down: 28, ladder: 235)";
+        slab_destroyed: 295, door: 339, stair: 29, stair_down: 28, ladder: 235)";
 
     assert!(
         ron::de::from_str::<TileRoles>(COMPLETE).is_ok(),

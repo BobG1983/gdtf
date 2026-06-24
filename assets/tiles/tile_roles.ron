@@ -13,6 +13,7 @@
     cover:           248,   // TerrainKind::Cover — chest-high crate/box cover prop on a floor cell
     slab:            22,    // SurfaceGrid Present slab — raised light-grey elevated deck panel
     rubble:          295,   // CoverDestroyed / damaged — sparse broken-debris scatter
+    slab_destroyed:  295,   // SlabDestroyed treatment (GTW-367 C3, engineer's choice) — reuses the rubble broken-debris scatter so a collapsed deck reads as rubble (a swap, never a hole). ART-REVIEW: placeholder; a destroyed slab may want a DISTINCT tile (a hole punched to the level below / cracked deck) — re-point this index when art authors one
     door:            339,   // doorway / hatch panel — dark hatch tile (authored for future variety)
     stair_up:        29,    // VerticalLink Stair endpoint where you ASCEND (active storey is the link's LOWER cell). GTW-373 (user 2026-06-23) SUPERSEDES the GTW-359 OQ-3 single-stair:77 constant: the stair role is split into up/down, chosen by link direction
     stair_down:      28,    // VerticalLink Stair endpoint where you DESCEND (active storey is the link's UPPER cell). GTW-373 (user 2026-06-23) SUPERSEDES the GTW-359 OQ-3 single-stair:77 constant: the stair role is split into up/down, chosen by link direction

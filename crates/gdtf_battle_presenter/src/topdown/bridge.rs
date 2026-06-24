@@ -622,6 +622,7 @@ mod test {
             cover:           index,
             slab:            index,
             rubble:          index,
+            slab_destroyed:  index,
             door:            index,
             stair_up:        index,
             stair_down:      index,

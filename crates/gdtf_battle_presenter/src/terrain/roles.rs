@@ -55,6 +55,25 @@ pub struct TileRoles {
     pub slab:            TileIndex,
     /// The destroyed-cover / damaged tile — broken debris scatter.
     pub rubble:          TileIndex,
+    /// The destroyed-**slab** tile — the engineer's-choice treatment for a smashed
+    /// floor/roof slab (GTW-367 C3, mirroring how [`rubble`](TileRoles::rubble) is the
+    /// destroyed-**cover** tile).
+    ///
+    /// CHOICE + WHY: a destroyed slab is rendered as the same broken-debris-scatter tile
+    /// the rest of the terrain set uses for destruction (sharing the `rubble` atlas index
+    /// `295`). A collapsed elevated deck reads as a field of rubble/debris, which keeps the
+    /// destruction vocabulary consistent (smashed cover → rubble; smashed slab → rubble),
+    /// and — crucially — keeps the cell still reading as *terrain* (a swap, never a hole)
+    /// so the in-place mutation (no despawn) preserves the sprite. It is authored as its
+    /// OWN role field (not a `rubble` alias) precisely so art can later DIVERGE it without
+    /// touching the cover path.
+    ///
+    /// ART-REVIEW: the destroyed-slab treatment is a placeholder reuse of the rubble tile.
+    /// A collapsed floor/roof slab arguably wants a DISTINCT visual — a hole punched
+    /// through to the level below, a cracked/shattered deck, or a scorch — rather than the
+    /// generic ground-debris scatter. Flag for art to author a dedicated destroyed-slab
+    /// tile and re-point this index in `assets/tiles/tile_roles.ron`.
+    pub slab_destroyed:  TileIndex,
     /// A doorway / hatch tile (authored for future variety).
     pub door:            TileIndex,
     /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Stair`-endpoint tile drawn
@@ -300,6 +319,7 @@ mod test {
             cover:           other,
             slab:            other,
             rubble:          other,
+            slab_destroyed:  other,
             door:            other,
             stair_up:        other,
             stair_down:      other,

@@ -32,8 +32,8 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::{
     ArmorHardness, ArmorProtection, BattleInProgress, BattleReady, Cell, CellLevel, CoverDestroyed,
-    CoverEntry, CoverHp, CoverLedger, HeightBand, Level, OccupancyGrid, OccupancyInput, SlabState,
-    SurfaceGrid, TerrainKind, TerrainPlacement,
+    CoverEntry, CoverHp, CoverLedger, HeightBand, Level, OccupancyGrid, OccupancyInput,
+    SlabDestroyed, SlabState, SurfaceGrid, TerrainKind, TerrainPlacement,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -152,6 +152,18 @@ fn sprite_index_at(app: &mut App, key: CellLevel) -> Option<usize> {
         .get(handle)?
         .atlas_index;
     Some(index)
+}
+
+/// Reads the [`Entity`] id of the one `TerrainSprite` at `key`, if present — the C7
+/// same-entity probe (the in-place swap must NOT despawn/respawn the tile, so the id read
+/// before the destruction message must equal the id read after).
+fn sprite_entity_at(app: &mut App, key: CellLevel) -> Option<bevy::ecs::entity::Entity> {
+    let mut q = app
+        .world_mut()
+        .query::<(bevy::ecs::entity::Entity, &TerrainSprite)>();
+    q.iter(app.world())
+        .find(|(_, t)| t.at == key)
+        .map(|(entity, _)| entity)
 }
 
 /// Reads the (material `custom_size`, entity translation) of the one `TerrainSprite` at
@@ -324,6 +336,95 @@ fn cover_destroyed_swaps_the_cover_cell_to_rubble() {
         sprite_index_at(&mut app, wall_key),
         wall_index_before,
         "the other (wall) terrain sprite must be untouched by the cover destruction",
+    );
+}
+
+/// GTW-367 C6/C7 (POSITIVE) — a `SlabDestroyed { at }` on the active level, fed through the
+/// REAL presenter plugin's `swap_destroyed_slab` reaction, swaps that slab cell's sprite to
+/// the `slab_destroyed` tile (read from `TileRoles`) IN PLACE — the SAME `Entity` persists
+/// (no despawn/respawn), the destroyed index is DISTINCT from the intact slab index, and the
+/// neighbouring slab cell is untouched.
+///
+/// Drives the production `TopDownRendererPlugin` (no hand-mutated sprite in the arrange):
+/// authors two `Present` slabs, fires `BattleReady` + `update()`s so the real draw spawns the
+/// tiles, then writes a real `SlabDestroyed` to its `Messages` buffer and `update()`s again so
+/// `swap_destroyed_slab` runs (the settle-before-read rule) before the assert reads the
+/// resulting material `atlas_index` + entity id.
+#[test]
+fn slab_destroyed_swaps_the_slab_cell_to_destroyed_in_place() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+
+    let slab_cell = Cell::new(4, 5);
+    let other_slab_cell = Cell::new(6, 7);
+    let l0 = Level::new(0);
+    let slab_key = CellLevel::new(slab_cell, l0);
+    let other_slab_key = CellLevel::new(other_slab_cell, l0);
+
+    // Author two Present slabs (no walls/cover) + the in-progress witness. The destroyed
+    // slab and an untouched neighbour, so the test proves the swap is targeted.
+    insert_occupancy(&mut app, Vec::new());
+    app.world_mut().insert_resource(CoverLedger::new());
+    let mut surface = SurfaceGrid::new();
+    surface.set_slab(slab_key, SlabState::Present);
+    surface.set_slab(other_slab_key, SlabState::Present);
+    app.world_mut().insert_resource(surface);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    // Fire the one-shot draw so the real plugin spawns the terrain tiles.
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    let roles = tile_roles(&app);
+    assert!(roles.is_some(), "TileRoles must be resident after settle");
+    let Some(roles) = roles else { return };
+
+    // Precondition: the destroyed treatment is a REAL visible swap (distinct atlas index).
+    assert_ne!(
+        *roles.slab_destroyed, *roles.slab,
+        "the slab_destroyed tile index must differ from the intact slab index (a real swap)",
+    );
+
+    // The slab cell starts on the intact slab tile, and we capture its Entity id for the C7
+    // same-entity check.
+    assert_eq!(
+        sprite_index_at(&mut app, slab_key),
+        Some(*roles.slab),
+        "the slab cell's sprite must start on the intact slab tile index",
+    );
+    let entity_before = sprite_entity_at(&mut app, slab_key);
+    assert!(
+        entity_before.is_some(),
+        "the slab cell's terrain sprite must exist before the destruction",
+    );
+    let other_index_before = sprite_index_at(&mut app, other_slab_key);
+
+    // Smash the slab — write a REAL message to the buffer the plugin registered, then settle.
+    app.world_mut()
+        .resource_mut::<Messages<SlabDestroyed>>()
+        .write(SlabDestroyed::new(slab_key));
+    app.update();
+
+    // POSITIVE: the slab cell now renders the destroyed-slab tile index (the intended content
+    // actually renders — not merely "something changed").
+    assert_eq!(
+        sprite_index_at(&mut app, slab_key),
+        Some(*roles.slab_destroyed),
+        "the destroyed slab cell's sprite must now be the slab_destroyed tile index",
+    );
+    // C7: the SAME entity persists (in-place mutation, no despawn/respawn).
+    assert_eq!(
+        sprite_entity_at(&mut app, slab_key),
+        entity_before,
+        "the destroyed slab cell must be the SAME Entity after the swap (no despawn/respawn)",
+    );
+    // The neighbouring slab cell is untouched.
+    assert_eq!(
+        sprite_index_at(&mut app, other_slab_key),
+        other_index_before,
+        "the other (intact) slab sprite must be untouched by the slab destruction",
     );
 }
 

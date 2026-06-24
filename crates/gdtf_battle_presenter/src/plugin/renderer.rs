@@ -5,8 +5,8 @@ use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
-    OccupancyGrid, PlayerFaction, ShotFired, SquadVisibility, SurfaceGrid, VerticalLinkGraph,
-    occupancy_sync::SimSystems,
+    OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed, SquadVisibility, SurfaceGrid,
+    VerticalLinkGraph, occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -26,7 +26,8 @@ use crate::{
     redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
     reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
     resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
-    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, update_ganger_life_state,
+    spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, swap_destroyed_slab,
+    update_ganger_life_state,
 };
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
@@ -119,9 +120,10 @@ pub struct TopDownRendererActive;
 /// [`AssetServer`] so a `MinimalPlugins` app no-ops rather than panicking on the asset
 /// registration), inserts the [`ActiveLevel`] default (level 0), defines the
 /// [`PresenterSystems::Draw`] set `.after(SimSystems::Simulate)`, and registers the
-/// one-shot [`draw_static_battlefield`] + the [`swap_destroyed_cover`] reaction in that
-/// set, both gated `run_if(resource_exists::<BattleInProgress>)` (the sim's
-/// battle-in-progress witness, so the draw runs only DURING a live battle).
+/// one-shot [`draw_static_battlefield`] + the [`swap_destroyed_cover`] /
+/// [`swap_destroyed_slab`] destruction reactions (GTW-367) in that set, all gated
+/// `run_if(resource_exists::<BattleInProgress>)` (the sim's battle-in-progress witness, so
+/// the draw runs only DURING a live battle).
 pub struct TopDownRendererPlugin;
 
 impl Plugin for TopDownRendererPlugin {
@@ -197,33 +199,32 @@ impl Plugin for TopDownRendererPlugin {
                             .and_then(resource_exists::<CoverLedger>)
                             .and_then(resource_exists::<SurfaceGrid>),
                     ),
-            )
-            .add_systems(
-                Update,
-                swap_destroyed_cover.in_set(PresenterSystems::Draw).run_if(
-                    resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>),
-                ),
-            )
-            // GTW-359 (AC4 / C2) + GTW-373: the vertical-link (stair / ladder) cell draw. It
-            // reads the sim's `VerticalLinkGraph` + the presenter's `TileRoles` /
-            // `TopDownAtlases` and draws one direction-keyed stair (up 29 / down 28) / ladder
-            // (235) tile per authored link endpoint on the active storey (the hard cut),
-            // pooled + mutated in place (C5). Gated on
-            // `BattleInProgress` (the live-battle witness) AND on every resource it reads:
-            // `VerticalLinkGraph` (inserted by the sim's setup_battle, absent in a focused
-            // harness that opens BattleInProgress directly), `TileRoles`, and `TopDownAtlases`
-            // (a `MinimalPlugins` headless app with no `AssetServer` never loads the latter two)
-            // — so a no-resource state simply does not draw rather than panicking param
-            // validation (`bevy-traps.md` #1).
-            .add_systems(
-                Update,
-                draw_vertical_links.in_set(PresenterSystems::Draw).run_if(
-                    resource_exists::<BattleInProgress>
-                        .and_then(resource_exists::<VerticalLinkGraph>)
-                        .and_then(resource_exists::<TileRoles>)
-                        .and_then(resource_exists::<TopDownAtlases>),
-                ),
             );
+
+        // GTW-367: the cover + slab destruction-swap reactions (extracted to keep `build`
+        // under the `too_many_lines` lint; mirrors `register_fx_flash_systems` / `register_fog_systems`).
+        register_destruction_swaps(app);
+
+        // GTW-359 (AC4 / C2) + GTW-373: the vertical-link (stair / ladder) cell draw. It
+        // reads the sim's `VerticalLinkGraph` + the presenter's `TileRoles` /
+        // `TopDownAtlases` and draws one direction-keyed stair (up 29 / down 28) / ladder
+        // (235) tile per authored link endpoint on the active storey (the hard cut),
+        // pooled + mutated in place (C5). Gated on
+        // `BattleInProgress` (the live-battle witness) AND on every resource it reads:
+        // `VerticalLinkGraph` (inserted by the sim's setup_battle, absent in a focused
+        // harness that opens BattleInProgress directly), `TileRoles`, and `TopDownAtlases`
+        // (a `MinimalPlugins` headless app with no `AssetServer` never loads the latter two)
+        // — so a no-resource state simply does not draw rather than panicking param
+        // validation (`bevy-traps.md` #1).
+        app.add_systems(
+            Update,
+            draw_vertical_links.in_set(PresenterSystems::Draw).run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<VerticalLinkGraph>)
+                    .and_then(resource_exists::<TileRoles>)
+                    .and_then(resource_exists::<TopDownAtlases>),
+            ),
+        );
 
         // GTW-219 (S5): the ganger-draw change-detection systems join the SAME
         // `PresenterSystems::Draw` band (defined once above, ordered after the sim's
@@ -470,6 +471,40 @@ fn register_ron_tables(app: &mut App) {
         .add_systems(Update, redrive_pan_tuning_on_asset_event);
 }
 
+/// Registers the GTW-367 terrain destruction-swap reactions: the S4 [`swap_destroyed_cover`]
+/// (a [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) swaps the cell's terrain sprite to the
+/// `rubble` tile) and the GTW-367 [`swap_destroyed_slab`] (a
+/// [`SlabDestroyed`](gdtf_battle_sim::SlabDestroyed) swaps it to the `slab_destroyed` tile) — both
+/// in the [`PresenterSystems::Draw`] band, MUTATING the existing tile's material in place (no
+/// despawn — the UI mutate-not-respawn rule, C7). Extracted from `build` to keep it under the
+/// `too_many_lines` lint (mirrors [`register_fx_flash_systems`] / [`register_fog_systems`]).
+///
+/// Each reaction is gated `run_if(resource_exists::<BattleInProgress>)` (the live-battle witness)
+/// AND `resource_exists::<TileRoles>` (read for the destroyed tile index). The slab reaction's
+/// [`MessageReader<SlabDestroyed>`](bevy::ecs::message::MessageReader) panics param validation
+/// without its `Messages<SlabDestroyed>` buffer (`bevy-traps.md` #4); the sim's `BattleSimPlugin`
+/// registers it in a real battle, so it is registered idempotently HERE (the `ShotFired` /
+/// `HighlightRequest` precedent — `add_message` creates the buffer if absent and is a no-op
+/// otherwise) and gated on its presence, so a focused harness that opens `BattleInProgress`
+/// directly never fails validation.
+fn register_destruction_swaps(app: &mut App) {
+    app.add_message::<SlabDestroyed>()
+        .add_systems(
+            Update,
+            swap_destroyed_cover
+                .in_set(PresenterSystems::Draw)
+                .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>)),
+        )
+        .add_systems(
+            Update,
+            swap_destroyed_slab.in_set(PresenterSystems::Draw).run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<TileRoles>)
+                    .and_then(resource_exists::<Messages<SlabDestroyed>>),
+            ),
+        );
+}
+
 /// Registers the GTW-249 camera-positioning systems plus the GTW-250 pan navigation and the
 /// GTW-259 gamepad-cursor edge-pan: the one-shot [`frame_camera_on_units`] (centre the
 /// [`WorldCamera`](crate::WorldCamera) on the player gangers at battle start), the every-frame
@@ -706,10 +741,11 @@ fn register_highlight_systems(app: &mut App) {
 ///
 /// # Ordering (the CRITICAL clause, `bevy-traps.md` #3)
 ///
-/// It is ordered strictly `.after(draw_static_battlefield)` and `.after(swap_destroyed_cover)`
-/// so it always colours LIVE, freshly-spawned / just-swapped [`TerrainSprite`](crate::TerrainSprite)
-/// entities — including after an [`ActiveLevel`] cycle, which despawns + respawns the terrain on
-/// the SAME update (so the fog re-applies to the newly drawn storey, not to stale entities). It
+/// It is ordered strictly `.after(draw_static_battlefield)`, `.after(swap_destroyed_cover)`, and
+/// `.after(swap_destroyed_slab)` (GTW-367) so it always colours LIVE, freshly-spawned /
+/// just-swapped [`TerrainSprite`](crate::TerrainSprite) entities — including after an
+/// [`ActiveLevel`] cycle, which despawns + respawns the terrain on the SAME update (so the fog
+/// re-applies to the newly drawn storey, not to stale entities). It
 /// is ALSO ordered after the ganger storey-filter writers
 /// ([`spawn_ganger_sprites`] / [`move_ganger_sprites`] / [`apply_active_level_filter`]) so it is
 /// the SINGLE FINAL writer of each actor sprite's [`Visibility`]: it composes the slice's storey
@@ -745,6 +781,7 @@ fn register_fog_systems(app: &mut App) {
             .in_set(PresenterSystems::Draw)
             .after(draw_static_battlefield)
             .after(swap_destroyed_cover)
+            .after(swap_destroyed_slab)
             .after(spawn_ganger_sprites)
             .after(move_ganger_sprites)
             .after(apply_active_level_filter)

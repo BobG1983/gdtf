@@ -11,7 +11,7 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     BattleReady, Cell, CellLevel, CoverDestroyed, CoverLedger, GRID_HEIGHT, GRID_WIDTH,
-    OccupancyGrid, SlabState, SurfaceGrid, TerrainKind,
+    OccupancyGrid, SlabDestroyed, SlabState, SurfaceGrid, TerrainKind,
 };
 
 use super::{
@@ -291,6 +291,58 @@ pub fn swap_destroyed_cover(
             // spawned) is simply not in the query; nothing to re-index.
             if let Some(mut material) = materials.get_mut(mat_handle.id()) {
                 material.atlas_index = rubble;
+            }
+        }
+    }
+}
+
+/// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): swap a
+/// destroyed-SLAB cell's sprite to the destroyed-slab tile.
+///
+/// The slab mirror of [`swap_destroyed_cover`] (GTW-367 C1/C3): it drains
+/// [`MessageReader<SlabDestroyed>`](gdtf_battle_sim::SlabDestroyed); for each
+/// `SlabDestroyed { at }` ON THE ACTIVE LEVEL it finds the [`TerrainSprite`] at `at` and
+/// swaps its texture-atlas index to the `slab_destroyed` [`TileIndex`] (read from
+/// [`TileRoles`], never a literal — the engineer's-choice destroyed-slab treatment, which
+/// the [`TileRoles::slab_destroyed`] doc-comment describes and flags for art review).
+/// Off-active-level destructions are ignored (that terrain is not drawn — the hard cut to
+/// [`ActiveLevel`], C4). Choice: SWAP (not despawn) so the cell still reads as terrain
+/// (rubble/debris) rather than a hole, and so the SAME sprite `Entity` persists across the
+/// swap (the UI mutate-not-respawn rule, C7) — exactly the cover path.
+///
+/// Param-only (`bevy-traps.md` #7): [`Res<ActiveLevel>`], [`Res<TileRoles>`],
+/// [`ResMut<Assets<TerrainFogMaterial>>`] (GTW-348 — the swap re-indexes the tile's material
+/// rather than its sprite), [`MessageReader<SlabDestroyed>`], and the [`TerrainSprite`] /
+/// [`MeshMaterial2d`] query (to find the material at `at`) — no [`Commands`] needed, the
+/// swap edits the material in place (no despawn / respawn).
+///
+/// [`TileRoles::slab_destroyed`]: super::roles::TileRoles::slab_destroyed
+pub fn swap_destroyed_slab(
+    active: Res<ActiveLevel>,
+    roles: Res<TileRoles>,
+    mut materials: ResMut<Assets<TerrainFogMaterial>>,
+    mut destroyed: MessageReader<SlabDestroyed>,
+    tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
+) {
+    let active_storey = **active;
+    let slab_destroyed = *roles.slab_destroyed;
+    for event in destroyed.read() {
+        // SlabDestroyed.at is a CellLevel; only act on cells on the active storey (C4 hard
+        // cut — an off-active-level slab is not drawn, so nothing to re-index there).
+        if event.at.z != i32::from(*active_storey) {
+            continue;
+        }
+        for (terrain, mat_handle) in &tiles {
+            if terrain.at != event.at {
+                continue;
+            }
+            // Re-index to the destroyed-slab tile — keep the entity (it still reads as
+            // terrain). get_mut marks the material asset dirty so the UV-transform uniform
+            // re-uploads next frame (mirroring swap_destroyed_cover's in-place edit). A tile
+            // whose material was dropped (the terrain sheet was absent at draw time) is simply
+            // not in the query; nothing to re-index.
+            if let Some(mut material) = materials.get_mut(mat_handle.id()) {
+                material.atlas_index = slab_destroyed;
             }
         }
     }
