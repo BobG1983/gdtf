@@ -25,8 +25,9 @@ use crate::{
     inflicted_wound::InflictedWounds,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainPlacement},
     situation::{BattleSetupError, GangerSpawn, Situation},
-    slab::SlabLedger,
+    slab::{SlabEntry, SlabLedger},
     surface::{SlabState, SurfaceGrid},
+    terrain::entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
     tuning::GangerStatTuning,
     vertical::build_vertical_link_graph,
     weapon::{
@@ -355,12 +356,35 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 ///    [`OccupantPlacement`] list — NEVER a numeric id (GTW-10 / GTW-12).
 /// 2. **Seed the [`CoverLedger`]** — insert a [`CoverEntry`](crate::cover::CoverEntry)
 ///    for every wall and scatter piece (the one unified ledger).
+///    Also spawn ONE terrain entity per cover piece (GTW-395 step 2.5) — each entity
+///    carries [`TerrainCell`](crate::terrain::entity::TerrainCell),
+///    [`TerrainPieceKind`](crate::terrain::entity::TerrainPieceKind), the piece's
+///    [`CoverHp`](crate::cover::CoverHp) max (static ceiling; the live pool stays in
+///    the ledger), [`HeightBand`](crate::cover::HeightBand),
+///    [`ArmorProtection`](crate::armor::ArmorProtection), and
+///    [`ArmorHardness`](crate::armor::ArmorHardness).
 /// 3. **Seed the [`SurfaceGrid`]** — set [`SlabState::Present`] at every authored
 ///    slab (ground damage starts at zero by lazy default).
+///    Also spawn ONE terrain entity per slab (GTW-395) — each entity carries
+///    [`TerrainCell`](crate::terrain::entity::TerrainCell),
+///    [`TerrainPieceKind::Slab`](crate::terrain::entity::TerrainPieceKind::Slab),
+///    the [`SlabHp`](crate::slab::SlabHp) max from `slab_prototype` (static ceiling;
+///    the live pool stays in the [`SlabLedger`](crate::slab::SlabLedger)),
+///    [`ArmorProtection`](crate::armor::ArmorProtection), and
+///    [`ArmorHardness`](crate::armor::ArmorHardness).
+///    **Slab entity seed contract (GTW-395→GTW-396):** `slab_prototype` is identical
+///    to the [`SlabLedger`]'s lazy-seed path
+///    ([`SlabLedger::prototype_for`](crate::slab::SlabLedger::prototype_for) ignores
+///    the cell key today). When GTW-396 adds per-slab authored HP (read from
+///    [`TerrainSpec`](crate::terrain::piece::TerrainSpec)), this seed AND
+///    `SlabLedger`'s lazy-seed path must change together — they are the same source of
+///    truth.
 /// 4. **Build the [`OccupancyGrid`]** — pour an [`OccupancyInput`] of the authored
 ///    terrain (walls + scatter → their [`TerrainKind`](crate::occupancy::TerrainKind))
 ///    and the SPAWNED occupant entities through
 ///    [`OccupancyGrid::build_from_occupancy_input`](crate::occupancy::OccupancyGrid::build_from_occupancy_input).
+///    After step 4, insert the [`TerrainIndex`](crate::terrain::entity::TerrainIndex)
+///    resource from the pairs accumulated in steps 2.5 and 3.
 /// 5. **Validate + build the [`VerticalLinkGraph`](crate::vertical::VerticalLinkGraph)** — via
 ///    [`build_vertical_link_graph`]; on success insert it, on failure return the
 ///    typed [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) (the no-panic
@@ -368,7 +392,8 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 ///    regardless — a bad vertical link does not unspawn them; the caller treats the
 ///    error as a setup abort.
 ///
-/// All four resources ([`CoverLedger`], [`SurfaceGrid`], [`OccupancyGrid`],
+/// All resources ([`CoverLedger`], [`SurfaceGrid`], [`OccupancyGrid`],
+/// [`TerrainIndex`](crate::terrain::entity::TerrainIndex),
 /// [`VerticalLinkGraph`](crate::vertical::VerticalLinkGraph)) are inserted via [`Commands`]. The function is
 /// render-free and headless-driven (it touches no renderer / asset server), so a
 /// `MinimalPlugins` test can run it directly. It reads a [`WeaponRegistry`] by
@@ -402,6 +427,7 @@ pub fn setup_battle(
     weapons: &WeaponRegistry,
     armor: &ArmorRegistry,
     stat_tuning: &GangerStatTuning,
+    slab_prototype: SlabEntry,
     commands: &mut Commands,
 ) -> Result<BattleSetup, BattleSetupError> {
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
@@ -493,17 +519,60 @@ pub fn setup_battle(
     }
 
     // 2. Seed the cover ledger from walls + scatter (the one unified ledger).
+    //    Step 2.5 (GTW-395): spawn ONE terrain entity per cover piece inline in this
+    //    loop — after the ledger entry is built (so we can copy max_hp, band, armor
+    //    from the same `cover_entry()` call) and before `insert_resource(cover_ledger)`
+    //    (because the local is moved there). Accumulate (TerrainIndexKey, Entity) pairs
+    //    for the TerrainIndex insert after step 4.
     let mut cover_ledger = CoverLedger::new();
+    let mut terrain_pairs: Vec<(TerrainIndexKey, bevy::prelude::Entity)> = Vec::new();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
-        cover_ledger.insert(cover.at, cover.cover_entry());
+        let entry = cover.cover_entry();
+        cover_ledger.insert(cover.at, entry);
+        // GTW-395 step 2.5 — spawn the terrain entity for this cover piece. The entity
+        // carries only STATIC stats (the max HP ceiling + band + armor); the live HP
+        // pool stays authoritative in the CoverLedger. Commands::spawn is the correct
+        // bevy-traps #7 form for spawning from a system (never world.spawn).
+        let kind = match cover.terrain {
+            crate::occupancy::TerrainKind::Wall => TerrainPieceKind::Wall,
+            _ => TerrainPieceKind::Cover,
+        };
+        let entity = commands
+            .spawn((
+                TerrainCell::new(cover.at),
+                kind,
+                entry.max_hp,           // CoverHp — the static max (now Component)
+                entry.height_band,      // HeightBand — the static band (now Component)
+                entry.armor_protection, // ArmorProtection — already Component
+                entry.armor_hardness,   // ArmorHardness — already Component
+            ))
+            .id();
+        terrain_pairs.push((TerrainIndexKey::Cover(cover.at), entity));
     }
     commands.insert_resource(cover_ledger);
 
     // 3. Seed the surface grid: every authored slab is Present (zero ground damage
     //    by lazy default).
+    //    Also spawn ONE terrain entity per slab (GTW-395) — carrying the STATIC max HP
+    //    from `slab_prototype` (identical to the ledger's lazy-seed; see the doc-comment
+    //    on `setup_battle` for the GTW-396 forward-contract on keeping these in sync).
     let mut surface_grid = SurfaceGrid::new();
     for &slab in &situation.slabs {
         surface_grid.set_slab(slab, SlabState::Present);
+        // GTW-395: spawn the slab entity. Slab prototype is seeded from SlabDefaults
+        // in `setup_battle_on_request`, identical to the ledger's lazy-seed path
+        // (`prototype_for` ignores the cell key today — both read from SlabDefaults).
+        // The entity carries STATIC stats only; the live pool stays in SlabLedger.
+        let slab_entity = commands
+            .spawn((
+                TerrainCell::new(slab),
+                TerrainPieceKind::Slab,
+                slab_prototype.max_hp, // SlabHp — the static max (now Component)
+                slab_prototype.armor_protection, // ArmorProtection — already Component
+                slab_prototype.armor_hardness, // ArmorHardness — already Component
+            ))
+            .id();
+        terrain_pairs.push((TerrainIndexKey::Slab(slab), slab_entity));
     }
     commands.insert_resource(surface_grid);
 
@@ -531,6 +600,12 @@ pub fn setup_battle(
         occupants: setup.occupants.clone(),
     };
     commands.insert_resource(OccupancyGrid::build_from_occupancy_input(&occupancy_input));
+
+    // GTW-395: insert the TerrainIndex after the occupancy grid is built — all terrain
+    // entities are spawned (pairs accumulated in steps 2.5 and 3), so the index is
+    // now complete. Battle-lifetime resource, removed in teardown alongside CoverLedger
+    // and SlabLedger.
+    commands.insert_resource(TerrainIndex::new(terrain_pairs));
 
     // 5. The validated vertical-link graph (validation already ran above).
     commands.insert_resource(vertical_graph);

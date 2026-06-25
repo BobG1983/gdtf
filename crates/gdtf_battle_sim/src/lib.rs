@@ -372,6 +372,8 @@ pub use terrain::{
         BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed,
         HeightBand, band_for,
     },
+    entity,
+    entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
     occupancy,
     occupancy::{
         DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,

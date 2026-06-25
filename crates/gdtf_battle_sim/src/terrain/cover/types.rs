@@ -3,7 +3,7 @@
 //! the [`CoverEvent`] depletion outcome. Every field is a named newtype
 //! (no-bare-types).
 
-use bevy::prelude::Deref;
+use bevy::prelude::{Component, Deref};
 use serde::Deserialize;
 
 use crate::{
@@ -21,7 +21,12 @@ use crate::{
 /// the cover is destroyed). Private inner + derived [`Deref`] (house style); a
 /// magnitude is per-object data (TBD tuning), not pinned here.
 /// `#[serde(transparent)]` lets an authored cover-HP parse as a bare integer.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Component` is added by GTW-395: cover entities carry `CoverHp` as a static
+/// `max_hp` component (the mutable live pool stays in the [`CoverLedger`](crate::cover::CoverLedger)).
+/// A derived `Component` impl generates no doc-requiring pub item under the workspace
+/// `missing_docs` deny (the `ArmorProtection` / `ArmorHardness` precedent, which
+/// already derive `Component` + `Deref` + `Deserialize` under the same lints cleanly).
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct CoverHp(u32);
 
@@ -51,7 +56,11 @@ impl CoverHp {
 /// [`band_for`](crate::cover::band_for), which reads the tunable
 /// [`BandEdge`](crate::tuning::BandEdge) level-fraction edges; this enum never
 /// carries a fraction itself.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Component` is added by GTW-395: cover entities carry `HeightBand` as a static
+/// component (the band is immutable at spawn; re-classification from `CombatTuning`
+/// edges happens inside [`CoverLedger::deplete_cover`](crate::cover::CoverLedger::deplete_cover)
+/// on hits, not on the entity).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum HeightBand {
     /// The lowest clearance band — a round clears it by flying MID or HIGH.
     Low,

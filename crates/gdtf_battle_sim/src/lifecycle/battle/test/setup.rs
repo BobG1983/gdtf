@@ -169,7 +169,20 @@ fn dangling_link_fixture_yields_the_typed_error() {
     let stat_tuning = GangerStatTuning::default();
     let mut world = World::new();
     let result = world.run_system_once(move |mut commands: Commands| {
-        setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
+        setup_battle(
+            &situation,
+            &registry,
+            &armor,
+            &stat_tuning,
+            crate::slab::SlabLedger::prototype_for(
+                crate::metric::CellLevel::new(
+                    crate::metric::Cell::new(0, 0),
+                    crate::metric::Level::new(0),
+                ),
+                &crate::tuning::SlabDefaults::default(),
+            ),
+            &mut commands,
+        )
     });
     assert!(result.is_ok(), "the one-shot system must run");
     let Ok(setup_result) = result else {

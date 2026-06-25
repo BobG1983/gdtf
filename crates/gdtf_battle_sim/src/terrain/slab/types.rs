@@ -2,7 +2,7 @@
 //! per-`(cell, level)` [`SlabEntry`] record, and the [`SlabEvent`] depletion outcome.
 //! Every field is a named newtype (no-bare-types), mirroring the GTW-364 cover types.
 
-use bevy::prelude::Deref;
+use bevy::prelude::{Component, Deref};
 use serde::Deserialize;
 
 use crate::armor::{ArmorHardness, ArmorProtection};
@@ -19,7 +19,11 @@ use crate::armor::{ArmorHardness, ArmorProtection};
 /// style); a magnitude is per-slab data (TBD tuning), not pinned here.
 /// `#[serde(transparent)]` lets an authored slab-HP parse as a bare integer (the
 /// [`TerrainSpec`](crate::terrain::piece::SlabPieceSpec) authoring path).
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Component` is added by GTW-395: slab entities carry `SlabHp` as a static
+/// `max_hp` component (the mutable live pool stays in the [`SlabLedger`](crate::slab::SlabLedger)).
+/// A derived `Component` impl generates no doc-requiring pub item under the workspace
+/// `missing_docs` deny (the `ArmorProtection` / `ArmorHardness` precedent).
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct SlabHp(u32);
 

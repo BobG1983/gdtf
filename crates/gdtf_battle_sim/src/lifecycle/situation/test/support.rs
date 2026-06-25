@@ -117,10 +117,23 @@ pub(super) fn run_setup_with(
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
     let stat_tuning = GangerStatTuning::default();
+    // GTW-395: resolve the slab prototype from the default SlabDefaults (uniform seed,
+    // matches the ledger's lazy-seed path; prototype_for ignores the key today).
+    let slab_prototype = crate::slab::SlabLedger::prototype_for(
+        crate::metric::CellLevel::new(crate::metric::Cell::new(0, 0), crate::metric::Level::new(0)),
+        &crate::tuning::SlabDefaults::default(),
+    );
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
+            setup_battle(
+                &situation,
+                &registry,
+                &armor,
+                &stat_tuning,
+                slab_prototype,
+                &mut commands,
+            )
         });
     assert!(outcome.is_ok(), "the one-shot setup system must run");
     let setup = outcome.ok().and_then(Result::ok);
@@ -193,10 +206,23 @@ pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     let armor = test_armor_registry();
     // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
     let stat_tuning = GangerStatTuning::default();
+    // GTW-395: resolve the slab prototype from the default SlabDefaults (uniform seed,
+    // matches the ledger's lazy-seed path; prototype_for ignores the key today).
+    let slab_prototype = crate::slab::SlabLedger::prototype_for(
+        crate::metric::CellLevel::new(crate::metric::Cell::new(0, 0), crate::metric::Level::new(0)),
+        &crate::tuning::SlabDefaults::default(),
+    );
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
+            setup_battle(
+                &situation,
+                &registry,
+                &armor,
+                &stat_tuning,
+                slab_prototype,
+                &mut commands,
+            )
         });
 
     // The one-shot system itself must run (Ok), and the inner setup must succeed.

@@ -15,8 +15,10 @@ use crate::{
     occupancy::OccupancyGrid,
     rng::SimRng,
     situation::setup_battle,
+    slab::SlabLedger,
     surface::SurfaceGrid,
-    tuning::GangerStatTuning,
+    terrain::entity::TerrainIndex,
+    tuning::{CombatTuning, GangerStatTuning, SlabDefaults},
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
@@ -60,12 +62,17 @@ use crate::{
 /// requested before EITHER loads fails closed (logged, no [`BattleReady`]).
 /// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
 /// PERSISTENT `Load` resource, present throughout the battle for the acts to read.
+/// It IS read here as `Option<Res<_>>` to resolve the [`SlabDefaults`] prototype for the
+/// GTW-395 slab terrain entities (the slab-entity seed matches the ledger's lazy-seed;
+/// absent tuning defaults to [`SlabDefaults::default`] — combat must never be blocked
+/// by missing balance data, matching the `GangerStatTuning` defaulting precedent).
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,
     mut ready: MessageWriter<BattleReady>,
     weapons: Option<Res<WeaponRegistry>>,
     armor: Option<Res<ArmorRegistry>>,
     stat_tuning: Option<Res<GangerStatTuning>>,
+    combat_tuning: Option<Res<CombatTuning>>,
     mut commands: Commands,
 ) {
     for request in requests.read() {
@@ -100,6 +107,26 @@ pub fn setup_battle_on_request(
         let default_stat_tuning = GangerStatTuning::default();
         let stat_tuning = stat_tuning.as_deref().unwrap_or(&default_stat_tuning);
 
+        // GTW-395: resolve the SlabEntry prototype from CombatTuning's SlabDefaults —
+        // the SAME seed the SlabLedger's lazy-seed path uses (`prototype_for` ignores
+        // the cell key today, so the prototype is uniform). Absent CombatTuning falls
+        // back to SlabDefaults::default() — combat must never be blocked by missing
+        // balance data (the GangerStatTuning defaulting precedent). The prototype is
+        // passed by VALUE into setup_battle so no resource read happens inside that
+        // function (signature unchanged except for the new value param).
+        let default_combat_tuning = CombatTuning::default();
+        let slab_defaults: &SlabDefaults = combat_tuning
+            .as_deref()
+            .map_or(&default_combat_tuning.slab_defaults, |ct| &ct.slab_defaults);
+        // The key is a dummy origin cell — prototype_for ignores it today (all slabs seed
+        // uniformly from SlabDefaults; the key is reserved for a future per-slab authored
+        // HP variation, GTW-396). Use the origin cell as a valid, stable dummy.
+        let dummy_key = crate::metric::CellLevel::new(
+            crate::metric::Cell::new(0, 0),
+            crate::metric::Level::new(0),
+        );
+        let slab_prototype = crate::slab::SlabLedger::prototype_for(dummy_key, slab_defaults);
+
         // 1. Seed the battle-lifetime RNG from the trigger's seed.
         commands.insert_resource(SimRng::from_seed(request.seed));
 
@@ -113,6 +140,7 @@ pub fn setup_battle_on_request(
             weapons,
             armor,
             stat_tuning,
+            slab_prototype,
             &mut commands,
         ) {
             Ok(_setup) => {
@@ -160,9 +188,10 @@ pub fn setup_battle_on_request(
 /// / GTW-212).
 ///
 /// Drains [`MessageReader<TeardownBattleRequested>`] and, when triggered, removes
-/// [`SimRng`], the four [`setup_battle`]-inserted resources ([`CoverLedger`] /
-/// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`]), the
-/// [`BattleInProgress`] witness (closing the
+/// [`SimRng`], the [`setup_battle`]-inserted resources ([`CoverLedger`] /
+/// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`] /
+/// [`SlabLedger`] / [`TerrainIndex`](crate::terrain::entity::TerrainIndex)),
+/// the [`BattleInProgress`] witness (closing the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) gate so the
 /// bundled runtime goes inert again), the [`PlayerFaction`], the [`BattleRoster`], the
 /// [`ActiveFaction`] turn-cycle resource, and the
@@ -173,12 +202,23 @@ pub fn setup_battle_on_request(
 /// so they survive the whole battle for the E10.6 acts before being cleaned
 /// (`bevy-traps.md` #1 at the correct state level).
 ///
+/// GTW-395: also despawns all [`TerrainCell`](crate::terrain::entity::TerrainCell) entities
+/// (the per-tile terrain entities spawned in `setup_battle`) and removes the pre-existing
+/// [`SlabLedger`] leak (it was inserted by `setup_battle` but never removed until this
+/// ticket — the pre-existing leak fix). Despawn is strictly cleaner than leaving entity
+/// accumulation across battles (the ganger persist-as-dead precedent does not apply to
+/// stateless terrain pieces).
+///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is deliberately NOT removed: it is
 /// E10.4's persistent `Load` resource, untouched by this plugin. A
 /// [`remove_resource`](Commands::remove_resource) on an absent resource is a no-op,
 /// so a spurious / double teardown is harmless.
 pub fn teardown_battle_on_request(
     mut requests: MessageReader<TeardownBattleRequested>,
+    terrain_entities: bevy::prelude::Query<
+        bevy::prelude::Entity,
+        bevy::prelude::With<crate::terrain::entity::TerrainCell>,
+    >,
     mut commands: Commands,
 ) {
     // Drain the buffer; act once if any teardown was requested (the removed set is
@@ -191,8 +231,21 @@ pub fn teardown_battle_on_request(
         commands.remove_resource::<SimRng>();
         commands.remove_resource::<CoverLedger>();
         commands.remove_resource::<SurfaceGrid>();
+        // GTW-395: remove the SlabLedger (pre-existing leak fix — it was inserted at
+        // setup.rs:515 in step 3b but never removed here until GTW-395. The teardown now
+        // owns it alongside TerrainIndex for a clean battle boundary).
+        commands.remove_resource::<SlabLedger>();
         commands.remove_resource::<OccupancyGrid>();
         commands.remove_resource::<VerticalLinkGraph>();
+        // GTW-395: remove the battle-lifetime TerrainIndex (spawned in setup_battle's
+        // step 4, removed here alongside the other battle-lifetime resources).
+        commands.remove_resource::<TerrainIndex>();
+        // GTW-395: despawn all terrain entities (one per authored cover / slab piece).
+        // Commands::despawn (bevy-traps #7 form — never world.spawn/despawn inside a
+        // registered system): each entity is queued for despawn at the end of this frame.
+        for entity in terrain_entities.iter() {
+            commands.entity(entity).despawn();
+        }
         // Close the gate witness alongside the battle-lifetime resources, so the
         // Simulate band goes inert (and panic-free) after the battle ends (GTW-212).
         commands.remove_resource::<BattleInProgress>();

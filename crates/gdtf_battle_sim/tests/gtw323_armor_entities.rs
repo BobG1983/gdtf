@@ -94,7 +94,20 @@ fn battle_app() -> Option<(App, BattleSetup)> {
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
+            setup_battle(
+                &situation,
+                &registry,
+                &armor,
+                &stat_tuning,
+                gdtf_battle_sim::slab::SlabLedger::prototype_for(
+                    gdtf_battle_sim::metric::CellLevel::new(
+                        gdtf_battle_sim::metric::Cell::new(0, 0),
+                        gdtf_battle_sim::metric::Level::new(0),
+                    ),
+                    &gdtf_battle_sim::tuning::SlabDefaults::default(),
+                ),
+                &mut commands,
+            )
         });
     assert!(outcome.is_ok(), "the one-shot setup system must run");
     let setup = outcome.ok().and_then(Result::ok);

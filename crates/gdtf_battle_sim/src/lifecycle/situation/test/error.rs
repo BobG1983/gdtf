@@ -27,7 +27,20 @@ fn setup_aborts_on_invalid_vertical_link() {
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
+            setup_battle(
+                &situation,
+                &registry,
+                &armor,
+                &stat_tuning,
+                crate::slab::SlabLedger::prototype_for(
+                    crate::metric::CellLevel::new(
+                        crate::metric::Cell::new(0, 0),
+                        crate::metric::Level::new(0),
+                    ),
+                    &crate::tuning::SlabDefaults::default(),
+                ),
+                &mut commands,
+            )
         });
 
     // The one-shot system ran; the inner setup returned the typed error (now wrapped
@@ -84,7 +97,20 @@ fn setup_errors_on_a_missing_weapon_key() {
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
+            setup_battle(
+                &situation,
+                &registry,
+                &armor,
+                &stat_tuning,
+                crate::slab::SlabLedger::prototype_for(
+                    crate::metric::CellLevel::new(
+                        crate::metric::Cell::new(0, 0),
+                        crate::metric::Level::new(0),
+                    ),
+                    &crate::tuning::SlabDefaults::default(),
+                ),
+                &mut commands,
+            )
         });
 
     assert!(result.is_ok(), "the one-shot system must run");
@@ -141,7 +167,20 @@ fn setup_errors_on_a_missing_armor_key() {
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
-            setup_battle(&situation, &registry, &armor, &stat_tuning, &mut commands)
+            setup_battle(
+                &situation,
+                &registry,
+                &armor,
+                &stat_tuning,
+                crate::slab::SlabLedger::prototype_for(
+                    crate::metric::CellLevel::new(
+                        crate::metric::Cell::new(0, 0),
+                        crate::metric::Level::new(0),
+                    ),
+                    &crate::tuning::SlabDefaults::default(),
+                ),
+                &mut commands,
+            )
         });
 
     assert!(result.is_ok(), "the one-shot system must run");
