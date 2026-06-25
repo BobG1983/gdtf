@@ -29,7 +29,7 @@ pub struct DisabledButton;
 /// (its `Interaction` is still driven, and the GTW-122 mouse-action layer still reads its
 /// presses). What changed in GTW-266 is purely its PAINT: active is now **sticky** over
 /// hover/press feedback. The interaction-feedback system
-/// ([`theme_interaction`](crate::interaction::theme_interaction)) EXCLUDES `ActiveButton`
+/// ([`theme_interaction`](crate::theme_interaction)) EXCLUDES `ActiveButton`
 /// (`Without<ActiveButton>`), so an active button's color comes ONLY from
 /// [`paint_active_buttons`](super::paint_active_buttons) — no hover/press swap clobbers the
 /// active fill (that one-frame flicker was the user's GTW-266 complaint, and the toggle

@@ -1,9 +1,10 @@
-//! The [`ProgressBar`] widget: a horizontal track with a smooth fill child.
+//! The `ProgressBar` widget: a horizontal track with a smooth fill child.
 //!
 //! A progress bar shows a `current/max` ratio (e.g. TU or HP in the mockup's
 //! status panel) as a colored FILL spanning a fraction of a darker TRACK. The two
 //! colors — the **remaining** fill and the **lost** track behind it — are pure UI
-//! plumbing ([`bevy::Color`]), so a caller pins HP to green/red or any other pair.
+//! plumbing ([`Color`](bevy::prelude::Color)), so a caller pins HP to green/red or
+//! any other pair.
 //!
 //! Per [[ui-mutate-not-respawn]] the bar updates by MUTATING its existing fill
 //! node's width — [`set_progress_bar`] writes [`Node::width`](bevy::ui::Node) as a
@@ -16,7 +17,7 @@ use bevy::{
     ui::{BackgroundColor, Node, Val},
 };
 
-/// The fraction `0.0..=1.0` of a [`ProgressBar`] track that the fill spans.
+/// The fraction `0.0..=1.0` of a [`ProgressBarTrack`] that the fill spans.
 ///
 /// A widget-level quantity (a normalized ratio), NOT a game-domain value: callers
 /// pass the inner value of a domain newtype (`current/max` of `Tu`, `Hp`, integrity)
@@ -57,7 +58,7 @@ impl FillFraction {
     }
 }
 
-/// Marker on the TRACK root of a [`ProgressBar`].
+/// Marker on the TRACK root of a `ProgressBar`.
 ///
 /// The track is the full-width box drawn in the **lost** color; the fill child
 /// (marked [`ProgressBarFill`]) is layered over its left edge. The caller attaches
@@ -67,7 +68,7 @@ impl FillFraction {
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct ProgressBarTrack;
 
-/// Marker on the FILL child of a [`ProgressBar`].
+/// Marker on the FILL child of a `ProgressBar`.
 ///
 /// The fill is the colored bar whose [`Node::width`](bevy::ui::Node)
 /// [`set_progress_bar`] mutates to the current fraction. It is a child of the
@@ -77,7 +78,7 @@ pub struct ProgressBarTrack;
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct ProgressBarFill;
 
-/// Spawns a [`ProgressBar`] (a [`ProgressBarTrack`] root with one
+/// Spawns a `ProgressBar` (a [`ProgressBarTrack`] root with one
 /// [`ProgressBarFill`] child) and returns the TRACK [`Entity`].
 ///
 /// `fraction` is the initial fill `0.0..=1.0`; `remaining` is the fill color and
@@ -129,7 +130,7 @@ pub fn spawn_progress_bar(
         .id()
 }
 
-/// Sets the fill of the [`ProgressBar`] rooted at `track` to `fraction` by MUTATING
+/// Sets the fill of the `ProgressBar` rooted at `track` to `fraction` by MUTATING
 /// the fill child's [`Node::width`](bevy::ui::Node) — never respawning
 /// ([[ui-mutate-not-respawn]]).
 ///

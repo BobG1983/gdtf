@@ -29,14 +29,14 @@
 //! carries the struck model object itself (the ganger [`Entity`] / the
 //! [`CoverEntry`] / the surface cell) so ids ride along for the presenter's
 //! logging and FX, while every position stays in **sim units** (a cubic-voxel
-//! [`SimPos`] / a unit-[`Vec3`](bevy::math::Vec3) direction) — never a screen
+//! [`SimPos`] / a unit-[`bevy::math::Vec3`] direction) — never a screen
 //! coordinate, no pixel of any kind.
 //!
 //! **The E3 / E4 boundary.** This is the coarse pipeline ONLY: it stops at the
 //! resolved outcome + part. It applies **no** damage / severity (E3) and runs
 //! **no** TU / ammo bookkeeping (E4) — it mutates nothing but the injected
 //! [`SimRng`]'s draw cursor. Every random draw (the cone sample and the part
-//! roll) bottoms out in that one injected RNG, so the same [`BattleSeed`]
+//! roll) bottoms out in that one injected RNG, so the same [`crate::rng::BattleSeed`]
 //! reproduces the same [`ShotOutcome`] (`docs/testing.md`'s seeded-replay
 //! property).
 
@@ -247,8 +247,8 @@ fn split_cell_level(at: CellLevel) -> (Cell, Level) {
 /// **Mutates nothing** but the injected [`SimRng`]'s draw cursor: no damage /
 /// severity (E3) and no TU / ammo bookkeeping (E4) — the target's `Hp` / `Wounds`
 /// / `WornArmor` and the shooter's `Tu` are untouched. Every position in the
-/// result is a sim-unit [`SimPos`] / unit-[`Vec3`]; **zero pixels**. Same
-/// [`BattleSeed`] → same [`ShotOutcome`] for identical inputs (the seeded-replay
+/// result is a sim-unit [`SimPos`] / unit-[`bevy::math::Vec3`]; **zero pixels**. Same
+/// [`crate::rng::BattleSeed`] → same [`ShotOutcome`] for identical inputs (the seeded-replay
 /// property).
 #[must_use]
 pub fn resolve_coarse(

@@ -68,7 +68,7 @@ impl SegmentSubLabel {
 
 /// The active/base color + font pair a [`SegmentedControl`] paints its segments with.
 ///
-/// Pure UI plumbing ([`bevy::Color`]s): the active segment gets `active_bg` +
+/// Pure UI plumbing ([`Color`](bevy::prelude::Color)s): the active segment gets `active_bg` +
 /// `active_text` (and **bold** weight), every other segment gets `base_bg` +
 /// `base_text` (normal weight). The bold weight on the active segment is the
 /// color-blind-safe second channel the contract requires (NOT color alone). Stored as

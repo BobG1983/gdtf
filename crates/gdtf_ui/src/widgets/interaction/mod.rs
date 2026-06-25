@@ -24,7 +24,7 @@
 //! It runs after the [`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme)
 //! set (bevy-traps rule 3) so it lays its swap on the freshest base, and takes
 //! the theme as `Option<Res<GdtfTheme>>` so it is inert before the resource is
-//! populated (bevy-traps rule 1). [`DisabledButton`](crate::widgets::DisabledButton)
+//! populated (bevy-traps rule 1). [`DisabledButton`](crate::DisabledButton)
 //! widgets are excluded with `Without<DisabledButton>`, so a disabled button
 //! never hover/press-swaps.
 //!
@@ -46,9 +46,9 @@
 //! ## Deactivation repaint (GTW-280)
 //!
 //! [`repaint_deactivated_buttons`] closes the gap left by the two systems above:
-//! a button that LOSES [`ActiveButton`](crate::widgets::ActiveButton) (a sibling
+//! a button that LOSES [`ActiveButton`](crate::ActiveButton) (a sibling
 //! toggle becomes active) is no longer painted by
-//! [`paint_active_buttons`](crate::widgets::paint_active_buttons), yet its
+//! [`paint_active_buttons`](crate::paint_active_buttons), yet its
 //! `Interaction` is unchanged, so [`theme_interaction`] (`Changed<Interaction>`)
 //! never fires for it. It would keep its stale active fill until hovered. Reading
 //! [`RemovedComponents`](bevy::prelude::RemovedComponents)`<ActiveButton>`, this

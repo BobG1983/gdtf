@@ -1,7 +1,7 @@
 //! The reusable theme-seam spawn helpers: [`spawn_panel`] and [`spawn_button`].
 //!
 //! The helpers build a widget's *tree* (its [`Node`](bevy::ui::Node) layout, its
-//! [`Button`](bevy::ui::Button) interaction plumbing, its text child) and attach
+//! [`Button`](bevy::ui::widget::Button) interaction plumbing, its text child) and attach
 //! the [`Themed`](crate::themed::Themed) marker (GTW-135). They write *initial*
 //! theme-derived colors so a widget is never un-themed for a frame, but those
 //! colors are **not** authoritative: the central
@@ -69,7 +69,7 @@ pub fn spawn_panel(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
 
 /// Spawns a theme-seam button and returns its [`Entity`].
 ///
-/// Builds a [`Button`](bevy::ui::Button) tree — a node with
+/// Builds a [`Button`](bevy::ui::widget::Button) tree — a node with
 /// [`Interaction`](bevy::ui::Interaction) (required by `Button`),
 /// [`BackgroundColor`](bevy::ui::BackgroundColor),
 /// [`BorderColor`](bevy::ui::BorderColor), and

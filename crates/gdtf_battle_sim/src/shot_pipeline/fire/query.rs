@@ -115,7 +115,8 @@ pub type WeaponQuery<'world, 'state> = Query<
 /// stays readable. It shares **no** mutable component with [`ShooterQuery`] (the
 /// shooter writes [`Tu`] / [`Magazine`]; the target writes [`Hp`] / [`Wounds`] /
 /// [`LifeState`] / [`InflictedWounds`]), and [`Luck`] is read-only in both — so the
-/// two queries coexist with no `B0001` conflict (AC1). It carries no [`Weapon`] filter
+/// two queries coexist with no `B0001` conflict (AC1). It carries no
+/// [`Weapon`](crate::equipment::weapon::Weapon) filter
 /// (a target need not be armed). The shooter's own liveness is read through this query
 /// too (`targets.get(shooter)`), since the shooter is also a ganger.
 ///

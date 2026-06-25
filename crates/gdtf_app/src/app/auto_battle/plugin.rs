@@ -196,7 +196,7 @@ crate::support_item! {
     /// **only when no [`AssetServer`] is present** (a headless / asset-less build). Under the
     /// real GUI launch the `Load` scene later `insert_resource`-overwrites the theme / tuning
     /// with the shipped assets (the real theme + tuning), and — crucially — its
-    /// [`poll_and_resolve`](crate::states::load) only RESOLVES the registries / situation
+    /// `poll_and_resolve` only RESOLVES the registries / situation
     /// from `assets/weapons/*.weapon.ron` + `assets/armor/*.armor.ron` +
     /// `situations/skirmish.ron` while those resources are still ABSENT, so the empty seeds
     /// must NOT be present for the real assets to win.
@@ -207,7 +207,7 @@ crate::support_item! {
     /// **A1 (GTW play-test wave 3) — and GTW-297 (`AC3b`).** The default [`LoadedSituation`]
     /// is the EMPTY situation (zero gangers) and the default [`WeaponRegistry`] holds zero
     /// weapons. Post-GTW-261 a present [`LoadedSituation`] SATISFIES the Load→Intro gate,
-    /// and per GTW-257 [`poll_and_resolve`](crate::states::load) only runs
+    /// and per GTW-257 `poll_and_resolve` only runs
     /// `resolve_weapons` / `resolve_situation` `if` the registry / situation is still
     /// ABSENT. So seeding EITHER empty fallback UNCONDITIONALLY shadowed the real load
     /// under `DefaultPlugins`: the empty situation won the GTW-261 gate race (auto-battle

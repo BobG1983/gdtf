@@ -7,7 +7,7 @@
 //! [`UiPlugin`] is the single registration seam: today it installs the
 //! [`focus_nav`] sub-plugin ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)) and
 //! nothing else. Later tickets attach further UI systems, resources, and assets
-//! to [`UiPlugin::build`].
+//! to [`UiPlugin`].
 //!
 //! The [`focus_nav`] module wires Bevy's `input_focus` framework and bridges
 //! keyboard + gamepad input onto directional focus navigation; see its docs for

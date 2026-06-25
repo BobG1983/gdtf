@@ -28,9 +28,9 @@ use crate::tuning::{
 /// overrides any of them.
 ///
 /// Derives [`TypePath`] (render-free reflection metadata, no rendering) because
-/// the GTW-206 (E10.4) `Load` scene loads it through the
-/// [`RonAsset<T>`](gdtf_assets::RonAsset) loader, whose payload bound requires
-/// `T: TypePath` — the same bound the theme spec and authored situation satisfy.
+/// the GTW-206 (E10.4) `Load` scene loads it through the `RonAsset<T>` loader,
+/// whose payload bound requires `T: TypePath` — the same bound the theme spec and
+/// authored situation satisfy.
 #[derive(Debug, Clone, PartialEq, Default, Resource, Deserialize, TypePath)]
 pub struct CombatTuning {
     /// Projectile clearance band edges (the LOW/MID/HIGH thresholds).

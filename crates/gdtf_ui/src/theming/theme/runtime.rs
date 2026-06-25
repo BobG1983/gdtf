@@ -127,7 +127,7 @@ pub struct GdtfTheme {
 /// A named [`Deref`] newtype over the `RonAsset<GdtfThemeSpec>` handle rather than
 /// a bare `Handle` (no-bare-types rule): the name says "the theme asset currently
 /// driving [`GdtfTheme`]". The retheme system
-/// ([`redrive_theme_on_asset_event`](crate::retheme::redrive_theme_on_asset_event))
+/// ([`redrive_theme_on_asset_event`](crate::theming::retheme::redrive_theme_on_asset_event))
 /// filters incoming [`AssetEvent`](bevy::asset::AssetEvent) ids against this
 /// handle's id, ignoring events for any other asset.
 ///

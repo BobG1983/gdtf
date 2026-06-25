@@ -26,7 +26,7 @@
 //!
 //! ## Live read, never a spawn snapshot
 //!
-//! [`apply_theme`] resolves its values from the [`GdtfTheme`] resource *every
+//! [`apply_theme`] resolves its values from the [`GdtfTheme`](crate::theme::GdtfTheme) resource *every
 //! run*, not at spawn time. Re-running it after the resource is mutated re-paints
 //! every [`Themed`] entity with the new palette — that is the seam the live
 //! hot-reload hangs on.

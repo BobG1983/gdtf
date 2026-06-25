@@ -25,9 +25,9 @@
 //!   tile's own colours read through), shown;
 //! - **EXPLORED** → FULL-brightness GREYSCALE (the material `saturation` is `0.0` — the
 //!   tile's BT.709 luminance with its colour removed; "memory, not live sight"), shown;
-//! - **UNSEEN** → hidden ([`Visibility::Hidden`] — the dark clear colour reads through).
+//! - **UNSEEN** → hidden (`Visibility::Hidden` — the dark clear colour reads through).
 //!
-//! Terrain tiles render through a [`Material2d`](bevy::sprite::Material2d)
+//! Terrain tiles render through a [`Material2d`](bevy::sprite_render::Material2d)
 //! ([`TerrainFogMaterial`]) rather than a [`Sprite`](bevy::prelude::Sprite), because the
 //! sprite pipeline's per-channel multiply tint cannot DESATURATE (GTW-348). Gangers stay on
 //! the sprite path — the actor arm of [`present_fog`] is a Visibility hard-cut, unchanged.
@@ -41,7 +41,7 @@
 //! actor entity's own fog flag. The design intent is "a thing draws iff fog shows its
 //! cell/entity AND the slice shows its storey". This codebase has no layer-parent
 //! hierarchy to inherit through, so the fog writer is the SINGLE FINAL writer of each
-//! actor sprite's [`Visibility`]: ordered `.after` the slice's storey-filter systems, it
+//! actor sprite's `Visibility`: ordered `.after` the slice's storey-filter systems, it
 //! re-reads the same `pos.z == active` storey fact the slice uses and ANDs it with the
 //! fog fact — so plan and render can never disagree and the two facts are composed by one
 //! writer rather than two fighting over the same component.

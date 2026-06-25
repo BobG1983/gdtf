@@ -180,7 +180,7 @@ impl ImpactAnimation {
 
 /// `Update` (`PresenterSystems::Draw`): play the 3-frame damage-type impact
 /// animation — AND spawn this shot's floating-combat-text pops (GTW-327) — at each
-/// arrived projectile's [`PendingImpact`].
+/// arrived projectile's [`PendingImpact`](super::projectile::PendingImpact).
 ///
 /// Two passes over the world, both `Commands`/`Query`-only (no `&mut World`,
 /// `bevy-traps.md` #7):

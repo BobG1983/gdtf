@@ -208,15 +208,15 @@ impl CoverSpawn {
 /// reads it to build the battle in the ECS world.
 ///
 /// Derives [`Deserialize`] (GTW-205 / E10.3) so an authored battlefield ships as a
-/// loose `.ron` file loaded through the [`RonAsset<T>`](gdtf_assets::RonAsset)
-/// loader — render-free and pixel-free, the whole value graph routed through the
-/// landed newtype/enum serde derives. `#[serde(default)]` on each list lets an
-/// authored file omit a section it does not use (an empty battlefield deserializes
-/// from `()`), matching the [`Default`] empty situation. The in-test fixture is a
-/// test helper; the shipped `.ron` source is the real input.
+/// loose `.ron` file loaded through the `RonAsset<T>` loader — render-free and
+/// pixel-free, the whole value graph routed through the landed newtype/enum serde
+/// derives. `#[serde(default)]` on each list lets an authored file omit a section it
+/// does not use (an empty battlefield deserializes from `()`), matching the [`Default`]
+/// empty situation. The in-test fixture is a test helper; the shipped `.ron` source is
+/// the real input.
 ///
 /// Derives [`TypePath`] (render-free reflection metadata, no rendering) because the
-/// [`RonAsset<Situation>`](gdtf_assets::RonAsset) the loader wraps it in requires
+/// `RonAsset<Situation>` the loader wraps it in requires
 /// its payload to be [`TypePath`] — the same bound the theme spec satisfies.
 #[derive(Debug, Clone, Default, Deserialize, TypePath)]
 #[serde(default)]

@@ -63,7 +63,7 @@ impl Severity {
 /// [`crate::tuning::BodyPartWeights`] — that decides *which* part is struck
 /// (hit-likelihood), this decides how much a hit *there* escalates severity. An
 /// `f32` so it sums directly into the `f32` score. Private inner + derived
-/// [`Deref`].
+/// [`Deref`](std::ops::Deref).
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq)]
 pub struct PartSeverityMod(f32);
 

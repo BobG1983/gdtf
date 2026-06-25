@@ -89,6 +89,9 @@ cast_sign_loss            = "allow" # Piercing charges, HP — small non-negativ
 cast_possible_truncation  = "allow" # Piercing charges, HP — small non-negative f32→u32
 implicit_hasher           = "allow" # Bevy system fns take Local<HashSet<_>> — can't be generic over BuildHasher (trait can't infer S at registration)
 
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
 [profile.dev]
 opt-level = 1
 

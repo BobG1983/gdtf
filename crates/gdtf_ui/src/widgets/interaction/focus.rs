@@ -20,10 +20,10 @@ type HoverableButton = (Changed<Interaction>, With<Button>, Without<DisabledButt
 
 /// Moves input focus onto whatever enabled button the mouse is hovering.
 ///
-/// For every [`Button`](bevy::ui::Button) whose
+/// For every [`Button`](bevy::ui::widget::Button) whose
 /// [`Interaction`](bevy::ui::Interaction) became
 /// [`Hovered`](bevy::ui::Interaction::Hovered) this frame — and which is **not** a
-/// [`DisabledButton`](crate::widgets::DisabledButton) — it points the
+/// [`DisabledButton`](crate::DisabledButton) — it points the
 /// [`InputFocus`](bevy::input_focus::InputFocus) resource at that entity. The
 /// effect is "focus follows the mouse": a pointer hover lands the same focus a
 /// keyboard / gamepad navigation would, so the two input modes stay on one

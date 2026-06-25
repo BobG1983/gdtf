@@ -11,14 +11,18 @@ observed GREEN in THIS session, after the final edit, and you saw it pass.
 
 ## The ONE definition of green (dev / gate — dynamic-linked, fast)
 
-Run from the repo root; green = ALL FOUR pass:
+Run from the repo root; green = ALL FIVE pass:
 
 ```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
 cargo test --workspace --features grimdark_turfwar/dynamic_linking
 cargo build -p grimdark_turfwar --features dynamic_linking
+cargo doc --workspace --no-deps
 ```
+
+`cargo doc` is a dev/gate-only step (not CI): the workspace `broken_intra_doc_links = "deny"` lint
+only surfaces under `cargo doc`, not under `clippy` or `build`, so it requires its own run.
 
 `cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` (aliases in
 `.cargo/config.toml`) are the shorthand for these. Dynamic linking via

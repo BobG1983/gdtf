@@ -20,7 +20,7 @@
 //!    directional.
 //! 2. The **aim mirrors the shot pipeline EXACTLY** — the
 //!    `cover.peek().or_else(occupant_band)` band derivation of
-//!    [`TargetGeometry::compose`](crate::fire) fed into
+//!    [`TargetGeometry::compose`](mod@crate::fire) fed into
 //!    [`target_aim_point`](crate::central_axis::target_aim_point), NOT a bare cover
 //!    peek (which would aim at a different z for a no-cover banded ganger).
 //!

@@ -299,8 +299,8 @@ impl Default for MoraleWeights {
 /// dead leaf (the GTW-364 C7 lesson).
 ///
 /// Derives [`TypePath`] (render-free reflection metadata, no rendering) because the
-/// loader wraps it in [`RonAsset<T>`](gdtf_assets::RonAsset), whose payload bound requires
-/// `T: TypePath` — the same bound `CombatTuning` satisfies. Defaults are the stats.md
+/// loader wraps it in `RonAsset<T>`, whose payload bound requires `T: TypePath` — the
+/// same bound `CombatTuning` satisfies. Defaults are the stats.md
 /// flat-`1.0` weights (Cool `0.5` into HP) + ≈10 divisors + a TU base/slope authored so
 /// the derived stats land near the pre-GTW-384 ballpark (see the per-leaf docs).
 #[derive(Debug, Clone, PartialEq, Default, Resource, Deserialize, TypePath)]

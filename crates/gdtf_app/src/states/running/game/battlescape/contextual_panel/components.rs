@@ -5,7 +5,7 @@
 //! `assets/ui_mockups/battlescape_mockup.png` bottom-right corner — "Contextual Buttons go
 //! Here", to the right of the Stance column). It hosts the situational acts a selected ganger
 //! can take on a DOWNED neighbour — **Execute** / **Stabilize** — plus a deferred **Open Door**
-//! act. The panel and all three buttons spawn [`Visibility::Hidden`](bevy::render::view::Visibility):
+//! act. The panel and all three buttons spawn [`Visibility::Hidden`](bevy::camera::visibility::Visibility):
 //! the spawn system only builds the tree. The live detection system fills [`ContextualTargets`]
 //! each update and toggles the Execute / Stabilize buttons' `Visibility` IN PLACE when a valid
 //! downed neighbour is in reach, and the press router routes a press onto the shared act-intent
@@ -27,7 +27,7 @@ crate::support_item! {
     ///
     /// It is a BARE [`spawn_panel`](gdtf_ui::spawn_panel) themed box (the bottom-bar precedent: a
     /// bare absolute root resolves the UI camera fine, no wrapper needed), spawned
-    /// [`Visibility::Hidden`](bevy::render::view::Visibility) and revealed IN PLACE by
+    /// [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by
     /// `detect_contextual_targets`. It carries [`GlobalZIndex`](bevy::ui::GlobalZIndex)`(`
     /// [`CONTEXTUAL_PANEL_Z`]`)` so the whole panel subtree (this box + the buttons) stacks ABOVE
     /// the opaque bottom bar it overlaps — without it the bar (a higher-z opaque panel) painted
@@ -57,7 +57,7 @@ crate::support_item! {
     /// Marks the **Execute** contextual button (GTW-294) — the coup-de-grâce act on a downed
     /// neighbour.
     ///
-    /// Spawned [`Visibility::Hidden`](bevy::render::view::Visibility) and revealed IN PLACE by the
+    /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by the
     /// detection system (which also wires its press to the `ExecuteDownedRequested` act) when
     /// [`ContextualTargets::execute`] names a target. A unit marker: presence on an entity is the
     /// whole signal (no-bare-types rule).
@@ -69,7 +69,7 @@ crate::support_item! {
     /// Marks the **Stabilize** contextual button (GTW-294) — the act that arrests a downed
     /// neighbour's bleed-out.
     ///
-    /// Spawned [`Visibility::Hidden`](bevy::render::view::Visibility) and revealed IN PLACE by the
+    /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by the
     /// detection system (which also wires its press to the `StabilizeDownedRequested` act) when
     /// [`ContextualTargets::stabilize`] names a target. A unit marker: presence on an entity is the
     /// whole signal (no-bare-types rule).
@@ -80,7 +80,7 @@ crate::support_item! {
 crate::support_item! {
     /// Marks the **Open Door** contextual button (GTW-294) — a DEFERRED interactable act.
     ///
-    /// Spawned [`Visibility::Hidden`](bevy::render::view::Visibility) by this scaffold slice and
+    /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by this scaffold slice and
     /// kept hidden: the Open-Door act needs door / interactable objects, which the sim does not
     /// model yet. A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

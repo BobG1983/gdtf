@@ -111,7 +111,7 @@ impl SlabEntry {
 ///
 /// A named domain enum (not a bare `Option`/`bool`) — the slab mirror of
 /// [`CoverEvent`](crate::cover::CoverEvent): either the hit only **damaged** the slab,
-/// or it **destroyed** it, in which case the variant carries the [`CellLevel`] for the
+/// or it **destroyed** it, in which case the variant carries the [`CellLevel`](crate::metric::CellLevel) for the
 /// fire path to bridge into a buffered
 /// [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed) message (the
 /// fire→deplete→message bridge; a model-authoritative fact the view mirrors — ADR-0001,

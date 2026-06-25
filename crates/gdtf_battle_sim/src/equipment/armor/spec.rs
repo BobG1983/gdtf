@@ -25,10 +25,10 @@ use super::stats::ArmorPiece;
 /// per-line-comment authoring convention); the authored magnitudes are tuning DATA
 /// (commented in the `.ron`), NOT pinned by tests (the brittle-test rule). Derives
 /// [`Deserialize`] so the loose `.ron` parses, and [`TypePath`] because the
-/// [`RonAsset<ArmorSpec>`](gdtf_assets::RonAsset) the loader wraps it in requires
-/// its payload to be [`TypePath`] (the same bound
-/// [`WeaponSpec`](crate::weapon::WeaponSpec) /
-/// [`Situation`](crate::situation::Situation) satisfy).
+/// `RonAsset<ArmorSpec>` the loader wraps it in requires its payload to be
+/// [`TypePath`] (the same bound
+/// [`WeaponSpec`](crate::equipment::weapon::WeaponSpec) /
+/// [`Situation`](crate::lifecycle::situation::Situation) satisfy).
 ///
 /// **`Copy`** — an [`ArmorPiece`] is `Copy` (it owns only `i32`/enum leaves), so an
 /// authored suit of six is `Copy` too, mirroring [`SourceArmor`](super::SourceArmor).

@@ -28,10 +28,10 @@ use crate::magazine::Magazine;
 /// `#[serde(transparent)]` bare RON scalar (the [`crate::tuning`] / GTW-200 house
 /// style); the authored magnitudes are tuning DATA (commented in the `.ron`), NOT
 /// pinned by tests (the brittle-test rule). Derives [`Deserialize`] so the loose
-/// `.ron` parses, and [`TypePath`] because the [`RonAsset<WeaponSpec>`](gdtf_assets::RonAsset)
-/// the loader wraps it in requires its payload to be [`TypePath`] (the same bound
-/// [`Situation`](crate::situation::Situation) / [`CombatTuning`](crate::tuning::CombatTuning)
-/// satisfy).
+/// `.ron` parses, and [`TypePath`] because the `RonAsset<WeaponSpec>` the loader wraps
+/// it in requires its payload to be [`TypePath`] (the same bound
+/// [`Situation`](crate::lifecycle::situation::Situation) /
+/// [`CombatTuning`](crate::tuning::CombatTuning) satisfy).
 ///
 /// **Not `Copy`** — it owns a [`FireMode`] (which holds a `Vec` of specs); it is
 /// `Clone`, so the registry can hold specs BY VALUE.

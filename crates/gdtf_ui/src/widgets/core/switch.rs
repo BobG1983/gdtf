@@ -54,7 +54,7 @@ impl SwitchState {
 
 /// The off-color / on-color pair a [`Switch`]'s TRACK shows, plus the knob color.
 ///
-/// Pure UI plumbing ([`bevy::Color`]s): off/on are applied to the TRACK (not the
+/// Pure UI plumbing ([`Color`](bevy::prelude::Color)s): off/on are applied to the TRACK (not the
 /// knob, per the contract), and the knob keeps its own constant color across the flip.
 /// Carried as a [`Component`] on the switch root so [`drive_switches`] can re-derive
 /// the track color from the new state without the caller re-passing colors.

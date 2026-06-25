@@ -42,7 +42,7 @@
 //! brightness-loss) / UNSEEN → hidden, and each actor sprite hard-cut by
 //! [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible) (a player ganger always shown,
 //! an enemy / corpse shown iff its cell is squad-VISIBLE). The terrain renders through a
-//! [`TerrainFogMaterial`] (a [`Material2d`](bevy::sprite::Material2d) with a `saturation`
+//! [`TerrainFogMaterial`] (a [`Material2d`](bevy::sprite_render::Material2d) with a `saturation`
 //! knob the fog writer drives per cell: `1.0` VISIBLE colour, `0.0` EXPLORED greyscale),
 //! because the [`Sprite`](bevy::prelude::Sprite) pipeline's per-channel multiply tint cannot
 //! desaturate (GTW-348); gangers stay on the sprite path. It mutates the existing material /

@@ -18,17 +18,17 @@ use crate::{
 
 /// Query filter selecting the buttons [`repaint_deactivated_buttons`] repaints:
 /// enabled, NOT-active buttons (so they are no longer painted by
-/// [`paint_active_buttons`](crate::widgets::paint_active_buttons)).
+/// [`paint_active_buttons`](crate::paint_active_buttons)).
 ///
 /// Factored into a named alias both to keep the system signature legible
 /// (clippy's `type_complexity`) and to make the exclusions explicit:
 /// `With<Button>` restricts to real buttons, `Without<DisabledButton>` leaves
-/// disabled buttons to [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons),
+/// disabled buttons to [`paint_disabled_buttons`](crate::paint_disabled_buttons),
 /// `Without<ActiveButton>` confirms the button is no longer active (the
 /// `RemovedComponents` signal fires the frame the marker is removed, by which
 /// time the component is already gone), and `Without<Segment>` leaves
-/// [`SegmentedControl`](crate::widgets::SegmentedControl) segment fills to
-/// [`repaint_segments`](crate::widgets::repaint_segments) (GTW-277 — a segment IS a
+/// [`SegmentedControl`](crate::SegmentedControl) segment fills to
+/// [`repaint_segments`](crate::repaint_segments) (GTW-277 — a segment IS a
 /// [`Button`](bevy::ui::widget::Button), so without this it would steal a segment's
 /// active highlight). A despawned entity also surfaces in
 /// [`RemovedComponents`](bevy::prelude::RemovedComponents) but misses this query,
@@ -54,20 +54,20 @@ type DeactivationVisuals = (
 /// Repaints a button the frame it LOSES [`ActiveButton`], from its CURRENT
 /// [`Interaction`](bevy::ui::Interaction) (GTW-280).
 ///
-/// Reads [`RemovedComponents`](bevy::prelude::RemovedComponents)`<`[`ActiveButton`](crate::widgets::ActiveButton)`>`
+/// Reads [`RemovedComponents`](bevy::prelude::RemovedComponents)`<`[`ActiveButton`](crate::ActiveButton)`>`
 /// and, for each just-deactivated entity that is STILL present and matches
 /// `(With<Button>, Without<DisabledButton>, Without<ActiveButton>)`, writes its
 /// [`BackgroundColor`](bevy::ui::BackgroundColor) and re-affirms its
 /// [`BorderColor`](bevy::ui::BorderColor) from its current
 /// [`Interaction`](bevy::ui::Interaction) using the SAME button-state → fill
-/// mapping as [`theme_interaction`](crate::interaction::theme_interaction) — the
+/// mapping as [`theme_interaction`](crate::theme_interaction) — the
 /// shared [`interaction_fill`] helper, so the mapping is never duplicated (AC2).
 ///
 /// ## Why this system exists
 ///
-/// [`paint_active_buttons`](crate::widgets::paint_active_buttons) writes only
+/// [`paint_active_buttons`](crate::paint_active_buttons) writes only
 /// buttons `With<ActiveButton>`, and
-/// [`theme_interaction`](crate::interaction::theme_interaction) runs only on
+/// [`theme_interaction`](crate::theme_interaction) runs only on
 /// `Changed<Interaction>`. So the deactivation transition — a sibling toggle
 /// becomes active while THIS button's `Interaction` is unchanged — was handled by
 /// NOTHING: the just-de-selected toggle kept its stale active fill until a hover
@@ -80,11 +80,11 @@ type DeactivationVisuals = (
 ///
 /// A DESPAWNED entity also fires `RemovedComponents`; it is skipped by the query
 /// miss (`get_mut` returns `Err`). A DISABLED button is left to
-/// [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons)
+/// [`paint_disabled_buttons`](crate::paint_disabled_buttons)
 /// (`Without<DisabledButton>`). A button that is somehow STILL active (e.g.
 /// removed-then-re-added the same frame) is skipped (`Without<ActiveButton>`), so
 /// this system's write set and the `With<ActiveButton>` set
-/// [`paint_active_buttons`](crate::widgets::paint_active_buttons) writes are
+/// [`paint_active_buttons`](crate::paint_active_buttons) writes are
 /// DISJOINT — there is no write conflict between them.
 ///
 /// Takes the theme as `Option<Res<GdtfTheme>>` so it is inert (rather than
@@ -124,14 +124,14 @@ pub fn repaint_deactivated_buttons(
 /// whose [`Interaction`](bevy::ui::Interaction) did NOT change at the reload frame,
 /// so it must NOT gate on `Changed<Interaction>`. `Without<DisabledButton>` leaves
 /// disabled buttons to
-/// [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons),
+/// [`paint_disabled_buttons`](crate::paint_disabled_buttons),
 /// `Without<ActiveButton>` leaves toggled-on buttons to
-/// [`paint_active_buttons`](crate::widgets::paint_active_buttons) (the GTW-266
+/// [`paint_active_buttons`](crate::paint_active_buttons) (the GTW-266
 /// active-is-sticky rule), `Without<Segment>` leaves
-/// [`SegmentedControl`](crate::widgets::SegmentedControl) segment fills to
-/// [`repaint_segments`](crate::widgets::repaint_segments) (GTW-277), and
-/// `Without<Switch>` leaves [`Switch`](crate::widgets::Switch) track fills to
-/// [`drive_switches`](crate::widgets::drive_switches) (GTW-277). Those four
+/// [`SegmentedControl`](crate::SegmentedControl) segment fills to
+/// [`repaint_segments`](crate::repaint_segments) (GTW-277), and
+/// `Without<Switch>` leaves [`Switch`](crate::Switch) track fills to
+/// [`drive_switches`](crate::drive_switches) (GTW-277). Those four
 /// exclusions also make this system's write set DISJOINT from each of those
 /// special paints, so there is no `BackgroundColor` write conflict on a theme-change
 /// frame where they all run.
@@ -162,11 +162,11 @@ type EnabledInteractiveButton = (
 ///
 /// ## What it does NOT touch (disjoint write set)
 ///
-/// Disabled buttons keep the disabled fill [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons)
+/// Disabled buttons keep the disabled fill [`paint_disabled_buttons`](crate::paint_disabled_buttons)
 /// set (`Without<DisabledButton>`); active toggles keep the active fill
-/// [`paint_active_buttons`](crate::widgets::paint_active_buttons) set
-/// (`Without<ActiveButton>`); [`SegmentedControl`](crate::widgets::SegmentedControl)
-/// segments (`Without<Segment>`) and [`Switch`](crate::widgets::Switch) tracks
+/// [`paint_active_buttons`](crate::paint_active_buttons) set
+/// (`Without<ActiveButton>`); [`SegmentedControl`](crate::SegmentedControl)
+/// segments (`Without<Segment>`) and [`Switch`](crate::Switch) tracks
 /// (`Without<Switch>`) keep their owner-painted fills. Those four exclusions mirror
 /// [`theme_interaction`](super::theme_interaction)'s filter and make this system's
 /// write set DISJOINT from each special paint, so no two systems write the same

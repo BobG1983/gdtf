@@ -8,7 +8,7 @@
 //! damage newtypes ([`crate::weapon`]: [`WeaponDamage`](crate::weapon::WeaponDamage)
 //! / [`WeaponPunch`](crate::weapon::WeaponPunch) /
 //! [`WeaponShred`](crate::weapon::WeaponShred)), and the E3.2 matchup wheel
-//! ([`crate::matchup`]: [`matchup_multiplier`](crate::matchup::matchup_multiplier))
+//! ([`mod@crate::matchup`]: [`matchup_multiplier`](crate::matchup::matchup_multiplier))
 //! into one function. It is **pure math** — it computes the [`HitResult`] and
 //! mutates nothing: no HP, no Wounds, no armor wear is applied here (that
 //! application is E3.6), and it carries no pixel.

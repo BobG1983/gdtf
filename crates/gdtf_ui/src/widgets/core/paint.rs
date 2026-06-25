@@ -50,7 +50,7 @@ pub fn paint_disabled_buttons(
 /// button stays fully interactive (clickable to toggle off).
 ///
 /// **Active is STICKY (GTW-266):** the interaction-feedback system
-/// [`theme_interaction`](crate::interaction::theme_interaction) EXCLUDES `ActiveButton`
+/// [`theme_interaction`](crate::theme_interaction) EXCLUDES `ActiveButton`
 /// (`Without<ActiveButton>`) and this paint is ordered `.after(theme_interaction)`, so an
 /// active button's `BackgroundColor` comes ONLY from here — a hover/press swap never
 /// clobbers the active fill (no flicker).

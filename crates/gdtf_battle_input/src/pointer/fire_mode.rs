@@ -29,7 +29,7 @@ use crate::SelectedShooter;
 /// `gdtf_app` popup picker (GTW-254) to a mode read back off the selected weapon.
 ///
 /// `Copy` again — it holds a [`FireModeSpec`], which regained `Copy` once the
-/// `String` mode name was dropped (GTW-260). The `Deref`-into-[`FireRequested`] read
+/// `String` mode name was dropped (GTW-260). The `Deref`-into-[`gdtf_battle_sim::acts::FireRequested`] read
 /// stays unchanged.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq)]
 pub struct SelectedFireMode(FireModeSpec);
@@ -79,7 +79,7 @@ impl Default for SelectedFireMode {
 /// ([`Added<FireMode>`](Added)). The wielded weapon entity is spawned by
 /// `setup_battle` via the framework's deferred `queue_spawn_related_scenes::<Wields>`
 /// (GTW-323 slice 2), which applies a FRAME LATER than the ganger spawn — so the
-/// GTW-255 battle-start [`auto_select_first_player_ganger`] flips
+/// GTW-255 battle-start [`auto_select_first_player_ganger`](crate::auto_select_first_player_ganger) flips
 /// [`SelectedShooter`] before the weapon's [`FireMode`] is queryable, leaving this
 /// system's `selected.is_changed()` branch to fail-close and the mode stuck at the
 /// `tu_percent: 0` [`Default`] (the fire-target highlight then reads "0 TU"). Mirroring

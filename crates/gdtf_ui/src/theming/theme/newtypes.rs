@@ -67,7 +67,7 @@ impl DisabledColor {
 
 /// The flat background fill of an **active / toggled-on** button (GTW-253).
 ///
-/// The look an [`ActiveButton`](crate::widgets::ActiveButton) shows while its
+/// The look an [`ActiveButton`](crate::ActiveButton) shows while its
 /// toggle is ON — e.g. the Aim button while the selected ganger is aiming. A
 /// distinct, data-driven value, NOT the [`PressedColor`] (which is momentary
 /// click-feedback, a different meaning) nor the [`DisabledColor`]: an active

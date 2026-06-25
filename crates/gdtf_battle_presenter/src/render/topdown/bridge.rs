@@ -411,7 +411,7 @@ fn load_sheet_image(asset_server: &AssetServer, role: SheetRole) -> Handle<Image
 ///   tiles against the freshly-reloaded texture.
 ///
 /// Why ONLY terrain gets the poke (the Research-phase bevy-expert finding, Bevy 0.19): the
-/// terrain draws through a custom [`Material2d`](bevy::sprite::Material2d)
+/// terrain draws through a custom [`Material2d`](bevy::sprite_render::Material2d)
 /// (`TerrainFogMaterial`), whose `PreparedMaterial2d` bind group is a SNAPSHOT of the
 /// `texture_view` baked at `as_bind_group` time — an image reload updates the `GpuImage` but
 /// the existing bind group still references the OLD view, so the only way to re-bind is to

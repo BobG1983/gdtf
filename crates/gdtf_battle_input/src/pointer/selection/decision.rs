@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-/// The read-only resources [`decide_left_click`] consults, grouped into ONE [`SystemParam`]
+/// The read-only resources [`decide_left_click`] consults, grouped into ONE [`bevy::ecs::system::SystemParam`]
 /// so a consuming system's parameter list stays under clippy's argument-count gate (the sim's
 /// `BattleGridsParam` / the seam's `ActWriters` precedent).
 ///
@@ -534,7 +534,7 @@ pub fn apply_pin(outcome: PinOutcome, target: &mut ResMut<InspectTarget>) {
     }
 }
 
-/// The read-only resources the turn-to-face surfaces consult, grouped into ONE [`SystemParam`]
+/// The read-only resources the turn-to-face surfaces consult, grouped into ONE [`bevy::ecs::system::SystemParam`]
 /// so each surface's parameter list stays under clippy's argument-count gate.
 ///
 /// Grouping the cohesive `Res<…>` reads (the hovered cell, the player faction, and the current

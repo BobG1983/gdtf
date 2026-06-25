@@ -294,7 +294,7 @@ pub fn reframe_ganger_sprites(
 /// body lives until the tracer reaches it, then despawns exactly once.
 ///
 /// `ShotFired` is the reliable discriminator (NOT a query of the in-flight bolt): the bolt is
-/// spawned via a deferred `commands.spawn_scene` and its [`ProjectileTravel`] materializes only on
+/// spawned via a deferred `commands.spawn_scene` and its [`ProjectileTravel`](crate::fx::ProjectileTravel) materializes only on
 /// a later schedule, so it is NOT queryable on the drain frame the life-state flips — but the
 /// `ShotFired` message IS present that exact frame (its own reader cursor, independent of the
 /// projectile spawner's). The [`GangerSprites`] entry is dropped on whichever path despawns the
@@ -302,7 +302,7 @@ pub fn reframe_ganger_sprites(
 /// has no impact to fire).
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`ResMut<GangerSprites>`], the
-/// changed-life query, the presenter-sprite [`Sprite`] query, and the
+/// changed-life query, the presenter-sprite `Sprite` query, and the
 /// [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired) the discriminator drains for this
 /// frame's killing shots.
 pub fn update_ganger_life_state(
@@ -445,7 +445,7 @@ pub fn despawn_removed_ganger_sprites(
 /// `Update` (`PresenterSystems::Draw`, runs only on an [`ActiveLevel`] change): show the
 /// ganger sprites on the new active level, hide the rest.
 ///
-/// On an [`ActiveLevel`] change ([`ActiveLevel::is_changed`]) it walks every live ganger
+/// On an [`ActiveLevel`](crate::ActiveLevel) change (`ActiveLevel::is_changed`) it walks every live ganger
 /// and sets its mapped presenter sprite's [`Visibility`] by whether the ganger's
 /// `Position` is on the new active level (the SAME `pos.z == **ActiveLevel` filter the
 /// S4 static draw uses). Off-level sprites are HIDDEN (not despawned — the move / reframe
@@ -490,7 +490,7 @@ pub fn apply_active_level_filter(
 /// re-read that base on an `Added` / `Changed` sim event, NOT on a resource change — so
 /// already-spawned, idle sprites would keep their OLD index without this system.
 ///
-/// On [`CharacterRoles::is_changed`] (the resource-change witness, including the one-time
+/// On `CharacterRoles::is_changed` (the resource-change witness, including the one-time
 /// initial resolve, which is harmless — it re-stamps the same index) it walks every live
 /// ganger, looks its presenter sprite up through [`GangerSprites`], and re-stamps
 /// `atlas.index = atlas_index(&roles, faction, facing)` from the CURRENT sim state — exactly
@@ -503,12 +503,12 @@ pub fn apply_active_level_filter(
 /// same value, so it is safe to run pre-battle / on the initial resolve (the Discovery's
 /// "no battle-witness gate needed" note); the renderer registration gates it on
 /// [`CharacterRoles`] existing (`bevy-traps.md` #1) so a `MinimalPlugins` headless app
-/// without the table never runs it, and on [`CharacterRoles::is_changed`] so it does no
+/// without the table never runs it, and on `CharacterRoles::is_changed` so it does no
 /// per-frame work. A [`Dead`](LifeState::Dead) ganger's sprite is already despawned, so its
 /// lookup misses and is skipped.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Res<CharacterRoles>`], [`Res<GangerSprites>`], the live
-/// ganger `(Entity, &Faction, &Facing)` query, and the presenter-sprite [`Sprite`] query.
+/// ganger `(Entity, &Faction, &Facing)` query, and the presenter-sprite `Sprite` query.
 pub fn reindex_ganger_sprites_on_character_roles_change(
     roles: Res<CharacterRoles>,
     sprites: Res<GangerSprites>,

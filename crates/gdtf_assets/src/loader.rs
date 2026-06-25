@@ -33,7 +33,7 @@ use crate::{
 /// loader with a DEDICATED extension via
 /// [`RonAssetAppExt::init_ron_asset_with_extensions`](crate::RonAssetAppExt::init_ron_asset_with_extensions)
 /// (e.g. `weapon.ron`) and name the files `*.weapon.ron`: Bevy's
-/// [`AssetPath::get_full_extension`] then matches the dedicated extension FIRST,
+/// `AssetPath::get_full_extension` then matches the dedicated extension FIRST,
 /// so the dispatch is unambiguous regardless of registration order.
 ///
 /// On `load`, it reads the entire file into a buffer and calls

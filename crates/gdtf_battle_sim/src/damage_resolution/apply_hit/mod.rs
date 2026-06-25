@@ -4,7 +4,7 @@
 //! (`docs/combat/resolution.md` §9; `docs/combat/wounds-and-roster.md` §"From
 //! damage to injury" / §"Severity tiers" / §"Downed → death … state machine"). It
 //! is the per-hit application primitive the E3.9 capstone (`resolve_and_apply` /
-//! `fire`) calls **after** the E3.3 damage formula ([`crate::resolve_hit`]) and the
+//! `fire`) calls **after** the E3.3 damage formula ([`mod@crate::resolve_hit`]) and the
 //! E3.4 severity roll ([`crate::severity`]) have run — it takes the frozen
 //! [`HitResult`](crate::resolve_hit::HitResult) and the rolled
 //! [`Severity`](crate::severity::Severity) as **inputs** and recomputes neither.

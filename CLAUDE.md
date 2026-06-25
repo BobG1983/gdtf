@@ -42,6 +42,7 @@ cargo fmt --check
 cargo dclippy -- -D warnings
 cargo dtest
 cargo dbuild
+cargo doc --workspace --no-deps
 ```
 
 `dclippy` / `dtest` / `dbuild` expand to the full `--workspace --all-targets --features
@@ -50,8 +51,9 @@ dynamic_linking`) builds+links the actual binary, which `clippy`/`test` never do
 step that catches an `unreachable_pub`/link error in the `grimdark_turfwar` binary. Dynamic linking
 keeps the dev/gate loop fast; `--all-features` is not used — it forces a second full bevy build for no
 lint gain. CI green is **static** (no `dynamic_linking`): fmt/clippy/test only — the release-binary
-build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a CI gate. See
-[`verification.md`](.claude/rules/verification.md).
+build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a CI gate.
+`cargo doc` is dev/gate-only (not CI): `broken_intra_doc_links = "deny"` only surfaces under `cargo doc`.
+See [`verification.md`](.claude/rules/verification.md).
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus
 `unwrap`/`expect`/`panic`/`todo`/`unimplemented` and `missing_docs`, so **lint-clean and fmt-clean

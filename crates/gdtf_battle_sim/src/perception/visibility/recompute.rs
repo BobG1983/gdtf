@@ -108,7 +108,7 @@ pub fn should_recompute_visibility(
 ///
 /// The `is_dead` corpse predicate is composed off the same observer [`Query`] (a separate
 /// READ-ONLY borrow): a `Dead` ganger is a corpse the LOS march flies THROUGH (the GTW-317
-/// pass-through-corpse rule [`can_see`] / [`has_los`](crate::los::has_los) take). An entity
+/// pass-through-corpse rule [`can_see`](crate::los::can_see) / [`has_los`](crate::los::has_los) take). An entity
 /// absent from the query (cover, surface) is never a corpse.
 ///
 /// Param-only (`Query` / `Res` / `ResMut`) — no `&mut World`, no `Commands::spawn`

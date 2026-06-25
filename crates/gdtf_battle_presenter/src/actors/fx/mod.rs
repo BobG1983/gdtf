@@ -17,7 +17,7 @@
 //!   **traveling directional projectile** that LERPS muzzle→impact then despawns
 //!   ([`spawn_shot_projectiles`] / [`advance_projectiles`]), and a **3-frame impact
 //!   animation** at its arrival point ([`animate_impact`], FX-B). The projectile + impact
-//!   tiles are PER DAMAGE TYPE (the [`ShotFired`] `damage` selects the color row; the
+//!   tiles are PER DAMAGE TYPE (the [`ShotFired`](gdtf_battle_sim::ShotFired) `damage` selects the color row; the
 //!   trajectory selects the 8-way direction). The standalone muzzle flash was REMOVED
 //!   (GTW-307): it rendered oversized at the shooter's feet and read poorly, so the
 //!   traveling projectile (departing the muzzle) IS the fire signal. It is the generic firing
@@ -27,7 +27,7 @@
 //!   shot-by-shot.
 //!
 //! Every spawned flash carries a [`FlashTtl`] lifetime + an [`FxFlash`] marker; the
-//! [`expire_flashes`] system ticks each [`FlashTtl`] with [`Res<Time>`] and despawns the
+//! [`expire_flashes`] system ticks each [`FlashTtl`] with `Res<Time>` and despawns the
 //! flash on expiry — THAT expiry is what makes the flashes one-shot / transient. Multiple
 //! messages for the same ganger/cell in one frame each spawn an INDEPENDENT short-lived
 //! sprite (NO coalescing this slice).

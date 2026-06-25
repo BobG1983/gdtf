@@ -55,7 +55,7 @@ impl TurnStarted {
 /// 3. If the newly-active team is the ENEMY (not the [`PlayerFaction`]), AUTO-PASSES: it
 ///    immediately advances [`ActiveFaction`] back to the player and runs the player's
 ///    turn-start regen, so control returns to the player. While the enemy has no AI, the
-///    enemy turn is a no-op pass; the [`TODO(AI)`] seam below marks where the enemy AI turn
+///    enemy turn is a no-op pass; the `TODO(AI)` seam below marks where the enemy AI turn
 ///    replaces it.
 ///
 /// The end state is always [`ActiveFaction`] == the [`PlayerFaction`] (control returns to

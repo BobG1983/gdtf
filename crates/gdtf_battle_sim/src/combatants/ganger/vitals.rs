@@ -14,11 +14,11 @@ use serde::Deserialize;
 /// math NEVER reads it — a name is presentation identity, not a balance magnitude.
 ///
 /// A name newtype over [`String`] (no-bare-types: a name is a domain value, not a
-/// bare `String`), the [`WeaponName`](crate::weapon::WeaponName) precedent. Private
+/// bare `String`), the [`WeaponName`](crate::equipment::weapon::WeaponName) precedent. Private
 /// inner + derived [`Deref`] (house style — never a hand-written `impl Deref`).
 /// `#[serde(transparent)]` lets an authored situation `.ron`'s `name` parse as a
 /// bare string, so it deserializes as part of
-/// [`GangerSpawn`](crate::situation::GangerSpawn) (the [`TuMax`] / [`WeaponName`]
+/// [`GangerSpawn`](crate::situation::GangerSpawn) (the [`TuMax`] / [`WeaponName`](crate::equipment::weapon::WeaponName)
 /// serde-transparent shape). A `#[derive(Component)]` so the status panel can query
 /// `&GangerName` off the selected entity.
 #[derive(Deref, Component, Debug, Clone, PartialEq, Eq, Hash, Default, Deserialize)]

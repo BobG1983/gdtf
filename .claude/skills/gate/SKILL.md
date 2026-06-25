@@ -34,10 +34,13 @@ that canon is part of the contract ALONGSIDE the ticket.
    cargo fmt --check
    cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
    cargo test --workspace --features grimdark_turfwar/dynamic_linking
+   cargo build -p grimdark_turfwar --features dynamic_linking
+   cargo doc --workspace --no-deps
    ```
 
-   (`cargo dclippy` / `cargo dtest` are the shorthand; aliases in `.cargo/config.toml`.)
-   Green = all three exit 0. The workspace `Cargo.toml` denies clippy
+   (`cargo dclippy` / `cargo dtest` / `cargo dbuild` are the shorthand; aliases in `.cargo/config.toml`.)
+   Green = all five exit 0. `cargo doc` enforces `broken_intra_doc_links = "deny"` (only surfaces
+   under `cargo doc`, not clippy/build). The workspace `Cargo.toml` denies clippy
    all/pedantic/correctness plus unwrap/expect/panic/todo/unimplemented and
    missing_docs, so fmt-clean and lint-clean ARE part of green. Red → the gate FAILS
    immediately; fix the suite before anything else.

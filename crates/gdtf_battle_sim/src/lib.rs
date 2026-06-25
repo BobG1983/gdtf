@@ -28,7 +28,7 @@
 //!   and the [`turn::dispatch_end_turn`] system that drains the
 //!   [`acts::EndTurnRequested`] signal and cycles the turn — handing off to the other team
 //!   and (while the enemy has no AI) auto-passing the enemy turn back to the player.
-//! - [`faced_cell`] — the E4.2 geometry helper [`faced_cell::faced_cell`]: shooter
+//! - [`mod@faced_cell`] — the E4.2 geometry helper [`faced_cell::faced_cell`]: shooter
 //!   [`ganger::Position`] + [`ganger::Facing`] → the faced ([`metric::Cell`],
 //!   [`metric::Level`]) one unit step along the facing (same storey). The cell whose
 //!   cover the §1a brace gate (E4.3) reads; composes only the [`metric`] sim-unit
@@ -37,7 +37,7 @@
 //!   the shared HUD + `fire()` methods that compose the stability read and
 //!   dispersion-cone WIDTH off a shooter's ganger state ([`aim::Shooter`] bundle)
 //!   and the MODEL [`cover::CoverLedger`] (peeked at the E4.2 faced cell, never
-//!   rebuilt). They WRAP the landed E2 [`stability`] / [`cone`] pipeline verbatim;
+//!   rebuilt). They WRAP the landed E2 [`mod@stability`] / [`cone`] pipeline verbatim;
 //!   the weapon's stability contribution is its [`weapon::Stable`] tag (`cone_for`
 //!   takes the weapon stats as a [`weapon::WeaponStats`] borrow-view and threads the
 //!   tag, an explicit param, to `stability_for`), which engages the §1a brace
@@ -115,7 +115,7 @@
 //!   a transient [`weapon::WeaponStats`] borrow-view (refs assembled from the
 //!   components — not a stored component); there is no packed `Weapon` data struct.
 //! - The shot pipeline ([`resolve_coarse::resolve_coarse`] composes it): [`weapon`]
-//!   stats → [`stability`] → [`cone`] (cone width) → [`central_axis`] (muzzle / aim /
+//!   stats → [`mod@stability`] → [`cone`] (cone width) → [`central_axis`] (muzzle / aim /
 //!   recoil-climb axis) → [`sample_cone`] (the in-cone shot vector) → [`clearance`] +
 //!   [`march`] (the 3-axis voxel-DDA travel) → [`hit_location`] (the part roll) →
 //!   a [`resolve_coarse::ShotOutcome`].
@@ -125,7 +125,7 @@
 //!   z-anchoring — a **facing-neutral** eye (`cell_center` + per-stance
 //!   [`tuning::MuzzleHeights`] z, no per-facing forward offset) and the EXACT
 //!   `cover.peek().or_else(occupant_band)` aim band of
-//!   [`fire`]'s `TargetGeometry::compose` fed into [`central_axis::target_aim_point`].
+//!   [`mod@fire`]'s `TargetGeometry::compose` fed into [`central_axis::target_aim_point`].
 //!   It marches the eye→aim ray ONCE and reports a [`los::Sighted`] verdict (BLOCKED iff
 //!   the march stops on a slab / cover / non-target ganger strictly before the target;
 //!   corpses do not block). Asymmetric sight falls out of eye-vs-aim anchoring. Pure,
@@ -161,10 +161,10 @@
 //!   tie-break + the pre-sorted edge enumeration make replays byte-equal (no RNG).
 //!   PURE free functions over the borrowed grids/tuning snapshot — no `&mut World`, no
 //!   per-query rebuild; it plans + totals, never charges TU.
-//! - [`matchup`] — the 7-type weapon×armor Paley-tournament lookup
+//! - [`mod@matchup`] — the 7-type weapon×armor Paley-tournament lookup
 //!   ([`matchup::matchup`] over [`weapon::DamageType`] / [`armor::ArmorType`]) and
 //!   the punch-&-shred [`matchup::MatchupMultiplier`] it yields from tuning.
-//! - [`resolve_hit`] — the per-hit damage/penetration formula
+//! - [`mod@resolve_hit`] — the per-hit damage/penetration formula
 //!   ([`resolve_hit::resolve_hit`]) that resolves weapon damage stats vs one
 //!   [`armor::ArmorPiece`] under a [`matchup::Matchup`] into a frozen
 //!   [`resolve_hit::HitResult`] (penetrating / HP-loss / integrity-wear). Pure
@@ -173,13 +173,13 @@
 //!   the penetration-gated score → [`severity::Severity`] bucket in the
 //!   floor-extend form (the defender's Luck extends the roll's floor down). Pure
 //!   seeded-RNG math; the per-tier Wounds application is a later E3 slice.
-//! - [`resolve_and_apply`] — the E3.9 capstone integrator
+//! - [`mod@resolve_and_apply`] — the E3.9 capstone integrator
 //!   ([`resolve_and_apply::resolve_and_apply`]): folds one [`resolve_coarse::ShotOutcome`]
-//!   through matchup → [`resolve_hit`] → [`severity`] → [`apply_hit`] into ONE act
+//!   through matchup → [`mod@resolve_hit`] → [`severity`] → [`mod@apply_hit`] into ONE act
 //!   and returns a FROZEN [`resolve_and_apply::HitReport`] for the presenter's FX
 //!   (corpse-skip before any draw; every draw via the injected [`rng::SimRng`]; no
 //!   pixel). Charging TU / looping the burst (`fire()`) is E4.
-//! - [`fire`] — the E4.5 capstone firing act ([`fire::fire`]): a query-based Bevy
+//! - [`mod@fire`] — the E4.5 capstone firing act ([`fire::fire`]): a query-based Bevy
 //!   function (NO `&mut World`) over two disjoint queries ([`fire::ShooterQuery`] and
 //!   [`fire::TargetQuery`]) that validates ([`magazine::can_fire`]) → charges TU once
 //!   ([`tu::spend_tu`]) → clamps the burst to ammo ([`magazine::clamp_burst`]) →
@@ -192,7 +192,7 @@
 //!   / [`acts::SetFacingRequested`] / [`acts::StabilizeDownedRequested`] /
 //!   [`acts::ExecuteDownedRequested`]) carrying [`Entity`](bevy::prelude::Entity) actor
 //!   ref(s) + owned payload, and one dispatch system per act that drains the buffered
-//!   message and calls the ALREADY-LANDED verb ([`fire`] / [`posture`] / [`downed_acts`])
+//!   message and calls the ALREADY-LANDED verb ([`mod@fire`] / [`posture`] / [`downed_acts`])
 //!   once per message — every dispatch system `.in_set(occupancy_sync::SimSystems::Simulate)`
 //!   in `Update`. No act logic is reimplemented; no `*Resolved`, no movement act (later).
 //! - [`battle`] — the E10.5 sim-owned battle-lifecycle integration: the public

@@ -22,7 +22,7 @@
 //! - [`plugin`] — the [`GdtfBattleInputPlugin`] wiring (the `add_systems` ordering) + its marker.
 //! - [`act_bus`] — the act-intent data bus and the key/binding surfaces that feed it:
 //!   [`sets`], [`intent`], [`keyboard`], [`keybinds`], [`cycle`].
-//! - [`pointer`] — the cursor->cell->selection control surface and the fire decision pair:
+//! - [`mod@pointer`] — the cursor->cell->selection control surface and the fire decision pair:
 //!   [`picking`], [`selection`], [`gamepad`], [`fire_mode`], [`fire_surface`].
 
 // ---- concern parents (GTW-385) --------------------------------------------------

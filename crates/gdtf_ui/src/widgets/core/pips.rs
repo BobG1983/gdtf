@@ -1,10 +1,10 @@
-//! The [`Pips`] widget: a row of N small circle nodes, M-of-N filled.
+//! The `Pips` widget: a row of N small circle nodes, M-of-N filled.
 //!
 //! Pips show a small discrete count (the Wounds row in the status-panel mockup) as
 //! a row of rounded nodes: the first `M` carry the **remaining** (filled) color, the
 //! rest the **lost** (empty) color. The two colors are pure UI plumbing
-//! ([`bevy::Color`]) — Wounds default yellow filled / panel-bg empty, but the widget
-//! takes any pair.
+//! ([`Color`](bevy::prelude::Color)) — Wounds default yellow filled / panel-bg empty,
+//! but the widget takes any pair.
 //!
 //! Per [[ui-mutate-not-respawn]] an update MUTATES each existing pip's
 //! [`BackgroundColor`](bevy::ui::BackgroundColor) by the M-of-N split —
@@ -17,7 +17,7 @@ use bevy::{
     ui::{BackgroundColor, BorderRadius, Node, Val},
 };
 
-/// How many pips of a [`Pips`] row are FILLED (carry the remaining color).
+/// How many pips of a [`PipsRow`] row are FILLED (carry the remaining color).
 ///
 /// A widget-level count, NOT a game-domain value: a caller passes the inner value of
 /// a domain newtype (e.g. wounds taken) in. Wrapped so the count flows through one
@@ -34,7 +34,7 @@ impl FilledPips {
     }
 }
 
-/// Marker on the ROW root of a [`Pips`] widget.
+/// Marker on the ROW root of a `Pips` widget.
 ///
 /// The row is a horizontal flex container; each pip is a child marked [`Pip`]. The
 /// caller attaches its own identity marker alongside this so it can later find the
@@ -53,7 +53,7 @@ pub struct PipsRow;
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Pip;
 
-/// Spawns a [`Pips`] row of `total` circular pips (the first `filled` in the
+/// Spawns a `Pips` row of `total` circular pips (the first `filled` in the
 /// `remaining` color, the rest in `lost`) and returns the ROW [`Entity`].
 ///
 /// `remaining` is the filled-pip color (Wounds default yellow) and `lost` the
@@ -112,7 +112,7 @@ pub fn spawn_pips(
         .id()
 }
 
-/// Re-colors the pips of the [`Pips`] row rooted at `row` to the new M-of-N split by
+/// Re-colors the pips of the `Pips` row rooted at `row` to the new M-of-N split by
 /// MUTATING each existing pip's [`BackgroundColor`](bevy::ui::BackgroundColor) —
 /// never respawning ([[ui-mutate-not-respawn]]).
 ///

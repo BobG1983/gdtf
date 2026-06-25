@@ -96,15 +96,18 @@ headless Bevy integration test that drives systems and asserts on world state.
 Richer in-engine automation is **TBD (Bevy harness)**.
 
 The ONE definition of green is the full suite, run from the repo root — green
-is ALL three passing:
+is ALL five passing:
 
 ```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
 cargo test --workspace --features grimdark_turfwar/dynamic_linking
+cargo build -p grimdark_turfwar --features dynamic_linking
+cargo doc --workspace --no-deps
 ```
 
-(`cargo dclippy` / `cargo dtest` / `cargo drun` in `.cargo/config.toml` are the shorthand.)
+(`cargo dclippy` / `cargo dtest` / `cargo dbuild` in `.cargo/config.toml` are the shorthand.
+`cargo doc` enforces `broken_intra_doc_links = "deny"` — only surfaces under `cargo doc`, not clippy/build.)
 
 The workspace denies clippy all/pedantic/correctness plus
 unwrap/expect/panic/todo/unimplemented and missing_docs, so being fmt-clean and

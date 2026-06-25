@@ -4,7 +4,7 @@
 //! Per the repo's message-driven I/O boundary (`docs/` ADR-0001 — the presenter
 //! owns ALL sim→view drawing; the sim never reads the presenter) and the user's
 //! 2026-06-16 ruling, the highlight is now request-DRIVEN: the input crate
-//! ([`gdtf_battle_input`]) EMITS a [`HighlightRequest`] reflecting the cell its
+//! (`gdtf_battle_input`) EMITS a [`HighlightRequest`] reflecting the cell its
 //! cursor picked, and THIS module LISTENS and draws — mirroring how the sim defines
 //! the `*Requested` messages that input writes. The presenter, as the CONSUMER,
 //! defines the request type (its input API), so the crate edge stays one-way

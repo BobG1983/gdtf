@@ -47,7 +47,7 @@ pub struct Observer<'a> {
 /// The **watched** entity of a sight probe — a borrow-view over the per-field ganger
 /// components the target aim anchor needs.
 ///
-/// Mirrors the shot pipeline's [`TargetGeometry`](crate::fire) borrow-view house
+/// Mirrors the shot pipeline's [`TargetGeometry`](mod@crate::fire) borrow-view house
 /// style. The aim z is resolved the EXACT way the shot pipeline resolves it (the
 /// `cover.peek().or_else(occupant_band)` band fed into
 /// [`target_aim_point`](crate::central_axis::target_aim_point)), so eye-vs-aim
@@ -102,7 +102,7 @@ impl Sighted {
 ///   sight is bounded by the Chebyshev disc elsewhere in the epic. The spec's
 ///   `_los_start` is a HEIGHT, not the offset muzzle point.
 /// * **The AIM mirrors the shot pipeline EXACTLY.** The target aim band is resolved
-///   the way [`TargetGeometry::compose`](crate::fire) does it —
+///   the way [`TargetGeometry::compose`](mod@crate::fire) does it —
 ///   `cover.peek(&target_cell_level).map(|e| e.height_band).or_else(|| occupancy.occupant_band(&target_cell_level))`
 ///   — then fed into [`target_aim_point`](crate::central_axis::target_aim_point) for
 ///   the aim z. Passing a bare `cover.peek` instead would drop a no-cover banded
