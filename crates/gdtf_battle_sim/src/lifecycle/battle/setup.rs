@@ -253,6 +253,9 @@ pub fn teardown_battle_on_request(
         // setup.rs but never removed here until GTW-395. The teardown now owns it
         // alongside TerrainIndex for a clean battle boundary).
         commands.remove_resource::<SlabLedger>();
+        // GTW-392: remove the BraceStairCells (the lower-endpoint stair-cell set
+        // inserted at setup — battle-lifetime, removed alongside the other resources).
+        commands.remove_resource::<crate::slab::BraceStairCells>();
         commands.remove_resource::<OccupancyGrid>();
         commands.remove_resource::<VerticalLinkGraph>();
         // GTW-395: remove the battle-lifetime TerrainIndex (spawned in setup_battle's

@@ -7,6 +7,7 @@ use crate::{
     cone::{PriorShots, aim_cone_mult, cone_angle},
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, StanceKind},
+    stability::TerrainBraced,
     tuning::CombatTuning,
 };
 
@@ -28,11 +29,25 @@ fn cone_for_bit_equals_a_hand_composed_cone_angle() {
     // stability term reflects a real faced lookup, not just an empty path.
     let ledger = ledger_with_faced_cover(&shooter, cover_entry(HeightBand::Mid));
 
-    let via_composer = cone_for(&shooter, wpn.stats(), &mode, prior, &ledger, &tuning);
+    let via_composer = cone_for(
+        &shooter,
+        wpn.stats(),
+        &mode,
+        prior,
+        &ledger,
+        TerrainBraced::new(false),
+        &tuning,
+    );
 
     // Hand-compose: the same stability_for pair + the same aim term + cone_angle.
     // The weapon's `stable` tag is its only stability contribution.
-    let (cone_mult, recoil_growth) = stability_for(&shooter, wpn.stable, &ledger, &tuning);
+    let (cone_mult, recoil_growth) = stability_for(
+        &shooter,
+        wpn.stable,
+        TerrainBraced::new(false),
+        &ledger,
+        &tuning,
+    );
     let aim = aim_cone_mult(*shooter.aiming, &tuning.cone_stability);
     let hand = cone_angle(
         wpn.base_spread,
@@ -71,8 +86,24 @@ fn aimed_cone_for_is_strictly_narrower_than_hip_fire() {
     // Same (empty) cover for both — the only difference is aim.
     let ledger = CoverLedger::new();
 
-    let aimed_cone = cone_for(&aimed, wpn.stats(), &mode, prior, &ledger, &tuning);
-    let hip_cone = cone_for(&hip, wpn.stats(), &mode, prior, &ledger, &tuning);
+    let aimed_cone = cone_for(
+        &aimed,
+        wpn.stats(),
+        &mode,
+        prior,
+        &ledger,
+        TerrainBraced::new(false),
+        &tuning,
+    );
+    let hip_cone = cone_for(
+        &hip,
+        wpn.stats(),
+        &mode,
+        prior,
+        &ledger,
+        TerrainBraced::new(false),
+        &tuning,
+    );
 
     assert!(
         *aimed_cone < *hip_cone,
@@ -103,6 +134,7 @@ fn each_prior_shot_widens_cone_for_monotonically() {
             &mode,
             PriorShots::new(shots),
             &ledger,
+            TerrainBraced::new(false),
             &tuning,
         );
         assert!(

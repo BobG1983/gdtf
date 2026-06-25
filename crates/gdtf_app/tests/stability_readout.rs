@@ -25,8 +25,8 @@ use gdtf_battle_sim::{
     Aiming, ArmorHardness, ArmorProtection, Cell, CellLevel, ConeMult, CoverEntry, CoverHp,
     CoverLedger, Direction, Facing, Faction, FireMode, FireModeSpec, HeightBand, Level, LifeState,
     Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, ReloadTu,
-    Shooter, Stable, Stance, StanceKind, Tu, TuMax, WeaponBundle, WieldedBy, faced_cell,
-    stability_for,
+    Shooter, Stable, Stance, StanceKind, TerrainBraced, Tu, TuMax, WeaponBundle, WieldedBy,
+    faced_cell, stability_for,
     terrain::piece::TerrainRegistry,
     tuning::CombatTuning,
     weapon::{
@@ -261,7 +261,14 @@ fn stability_readout_shows_the_stability_for_value() {
         l
     };
     let tuning = CombatTuning::default();
-    let (cone_mult, _recoil) = stability_for(&shooter, Stable::new(false), &ledger, &tuning);
+    // GTW-392: no stair-brace in this scenario (standard cover test — not a stair cell).
+    let (cone_mult, _recoil) = stability_for(
+        &shooter,
+        Stable::new(false),
+        TerrainBraced::new(false),
+        &ledger,
+        &tuning,
+    );
     let expected = expected_fill_percent(cone_mult);
 
     let fill = stability_fill(&mut app).unwrap_or(-1.0);

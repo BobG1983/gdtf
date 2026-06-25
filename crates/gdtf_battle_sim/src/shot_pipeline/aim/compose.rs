@@ -8,7 +8,7 @@ use crate::{
     cover::CoverLedger,
     faced_cell::faced_cell,
     metric::CellLevel,
-    stability::{ConeMult, EmplacementStability, RecoilGrowth, stability},
+    stability::{ConeMult, EmplacementStability, RecoilGrowth, TerrainBraced, stability},
     tuning::CombatTuning,
     weapon::{FireModeSpec, Stable, WeaponStats},
 };
@@ -23,24 +23,28 @@ use crate::{
 /// [`crate::cover::CoverEntry`] (`None` when no cover is faced — the ledger is read
 /// via [`CoverLedger::peek`](crate::cover::CoverLedger::peek), never rebuilt), and
 /// calls the landed [`stability`] verbatim with that cover, the shooter's
-/// [`crate::ganger::Stance`], the weapon's `stable` tag, and the emplacement seam
+/// [`crate::ganger::Stance`], the weapon's `stable` tag, the GTW-392
+/// [`TerrainBraced`] decision, and the emplacement seam
 /// ([`EmplacementStability::none`] — no emplacement entities exist yet). Returns
 /// the `(cone_mult, recoil_growth)` pair the §1a cone chain reads.
 ///
 /// This **wraps** [`stability`], re-deriving none of the §1a math: the brace gate
 /// engages when the faced cover's [`crate::cover::HeightBand`] satisfies the
-/// per-stance gate OR the weapon is `stable`, already inside `stability`. Angular /
-/// dimensionless — **zero pixels**.
+/// per-stance gate OR the weapon is `stable` OR the shooter is `terrain_braced`,
+/// already inside `stability`. Angular / dimensionless — **zero pixels**.
 ///
 /// `stable` is the weapon's [`Stable`] tag — a stable weapon braces
-/// unconditionally. This composer receives no [`crate::weapon::Weapon`] (only the
-/// shooter's ganger state), so the tag is an explicit param; [`cone_for`] sources
-/// it off the weapon it holds. Every coefficient and both curves come from
+/// unconditionally. `terrain_braced` is the GTW-392 [`TerrainBraced`] decision
+/// from the fire call site; the HUD passes the live value it computed from the
+/// grids. This composer receives no [`crate::weapon::Weapon`] (only the
+/// shooter's ganger state), so both tags are explicit params; [`cone_for`] sources
+/// `stable` off the weapon it holds. Every coefficient and both curves come from
 /// `tuning`'s `cone_stability` sub-field; nothing tunable is hardcoded.
 #[must_use]
 pub fn stability_for(
     shooter: &Shooter,
     stable: Stable,
+    terrain_braced: TerrainBraced,
     cover: &CoverLedger,
     tuning: &CombatTuning,
 ) -> (ConeMult, RecoilGrowth) {
@@ -49,12 +53,14 @@ pub fn stability_for(
     let (cell, level) = faced_cell(shooter.position, shooter.facing);
     // Peek the model ledger for the faced cover (read-only, never rebuilt — the
     // change-driven contract). `None` ⇒ no cover faced ⇒ the brace is withheld
-    // (unless the weapon is `stable`, which braces unconditionally inside `stability`).
+    // (unless the weapon is `stable` or the shooter is terrain-braced, both of which
+    // brace unconditionally inside `stability`).
     let faced = cover.peek(&CellLevel::new(cell, level));
     // Wrap the landed verb verbatim — no emplacements exist yet, so pass the
     // identity emplacement seam.
     stability(
         stable,
+        terrain_braced,
         *shooter.stance,
         faced,
         EmplacementStability::none(),
@@ -85,10 +91,12 @@ pub fn stability_for(
 /// The weapon's §1a stability contribution is its [`Stable`] tag, sourced off the
 /// `weapon` [`WeaponStats`] borrow-view here (GTW-200: the weapon is ECS components,
 /// read through the view) and threaded to [`stability_for`] (a stable weapon braces
-/// unconditionally) — there is no weapon-points value any more. `mode` is the
-/// selected fire mode's [`FireModeSpec`] (its [`crate::weapon::ModeConeMult`] is
-/// the firemode term); `prior_shots` is the count of rounds already fired this
-/// action (zero on the first round → the recoil term is the identity ×1).
+/// unconditionally) — there is no weapon-points value any more. `terrain_braced` is
+/// the GTW-392 [`TerrainBraced`] decision from the fire call site, threaded through
+/// so the cone reads the stair brace. `mode` is the selected fire mode's
+/// [`FireModeSpec`] (its [`crate::weapon::ModeConeMult`] is the firemode term);
+/// `prior_shots` is the count of rounds already fired this action (zero on the first
+/// round → the recoil term is the identity ×1).
 ///
 /// [`BaseSpread`]: crate::weapon::BaseSpread
 /// [`Kickback`]: crate::weapon::Kickback
@@ -100,11 +108,14 @@ pub fn cone_for(
     mode: &FireModeSpec,
     prior_shots: PriorShots,
     cover: &CoverLedger,
+    terrain_braced: TerrainBraced,
     tuning: &CombatTuning,
 ) -> ConeAngle {
-    // Step 1 — the stability read (faced cell + model cover, inside stability_for);
-    // the weapon's `stable` tag is its only stability contribution.
-    let (cone_mult, recoil_growth) = stability_for(shooter, *weapon.stable, cover, tuning);
+    // Step 1 — the stability read (faced cell + model cover + terrain brace, inside
+    // stability_for); the weapon's `stable` tag and terrain_braced are the two brace
+    // sources fed through the single OR-combined brace_engages gate.
+    let (cone_mult, recoil_growth) =
+        stability_for(shooter, *weapon.stable, terrain_braced, cover, tuning);
     // Step 2 — the aim term off the shooter's Aiming flag (read from tuning).
     let aim = aim_cone_mult(*shooter.aiming, &tuning.cone_stability);
     // Step 3 — fold the five §1a factors into θ_cone via the landed cone_angle.

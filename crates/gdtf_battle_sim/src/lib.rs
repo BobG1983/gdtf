@@ -366,7 +366,9 @@ pub use shot_pipeline::{
     shot_fired,
     shot_fired::ShotFired,
     stability,
-    stability::{ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, stability},
+    stability::{
+        ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, TerrainBraced, stability,
+    },
 };
 pub use terrain::{
     cover,
@@ -375,7 +377,7 @@ pub use terrain::{
         HeightBand, band_for,
     },
     entity,
-    entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
+    entity::{TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
     floor,
     floor::FloorCostGrid,
     occupancy,
@@ -395,7 +397,9 @@ pub use terrain::{
         TerrainKindSpec, TerrainName, TerrainRegistry, TerrainSpec,
     },
     slab,
-    slab::{SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp, SlabLedger},
+    slab::{
+        BraceStairCells, SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp, SlabLedger,
+    },
     surface,
     surface::{GroundDamage, SlabState, SurfaceGrid},
     vertical,

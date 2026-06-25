@@ -29,10 +29,10 @@ use crate::{
     inflicted_wound::InflictedWounds,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind, TerrainPlacement},
     situation::{BattleSetupError, GangerSpawn, Situation},
-    slab::{SlabEntry, SlabLedger},
+    slab::{BraceStairCells, SlabEntry, SlabLedger},
     surface::{SlabState, SurfaceGrid},
     terrain::{
-        entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
+        entity::{TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
         floor::FloorCostGrid,
         piece::TerrainRegistry,
     },
@@ -571,6 +571,42 @@ pub fn setup_battle(
     }
     commands.insert_resource(cover_ledger);
 
+    // GTW-391/392: hoist the stair-cell and brace-stair-cell computations ABOVE the slab
+    // loop so the slab loop can consult the brace set when spawning slab entities. Verified
+    // safe (Blocker-2 fix): the slab loop body reads only surface_grid / slab_ledger /
+    // commands / resolved_slabs — none of the stair state produced here.
+    //
+    // GTW-391: both endpoints of every Stair link (for LOS eye-lift + dual-cell presence).
+    // Ladders are excluded (no stair eye-lift / no dual-cell body presence).
+    let mut stair_cell_set = HashSet::new();
+    for link in &situation.vertical_links {
+        if matches!(link.kind, LinkKind::Stair { .. }) {
+            stair_cell_set.insert(link.from);
+            stair_cell_set.insert(link.to);
+        }
+    }
+
+    // GTW-392: the brace-eligible stair cells are the LOWER endpoint of each Stair link.
+    // The upper arrival cell braces against its own storey ceiling (ordinary cover, not the
+    // stair-brace slab), so it is excluded. This is a SEPARATE set from `stair_cell_set`
+    // (which keeps BOTH endpoints for GTW-391 LOS/presence and must not be narrowed).
+    // For a single-storey stair (from.z = n, to.z = n+1) the lower cell is correct.
+    // For a multi-storey span (from.z = 0, to.z = 2) only storey 0 is brace-eligible;
+    // storey 2's overhead slab at storey 3 would be a phantom brace — excluded here.
+    let mut brace_stair_cells_set: bevy::platform::collections::HashSet<crate::metric::CellLevel> =
+        bevy::platform::collections::HashSet::new();
+    for link in &situation.vertical_links {
+        if matches!(link.kind, LinkKind::Stair { .. }) {
+            let lower = if link.from.z <= link.to.z {
+                link.from
+            } else {
+                link.to
+            };
+            brace_stair_cells_set.insert(lower);
+        }
+    }
+    let brace_cells_resource = BraceStairCells::new(brace_stair_cells_set.clone());
+
     // 3. Seed the surface grid: every authored slab is Present (zero ground damage
     //    by lazy default). Eagerly seed the SlabLedger from the resolved per-slab
     //    specs (GTW-396 Decision C, major #4): `entry_seeded` returns an eagerly-inserted
@@ -611,10 +647,28 @@ pub fn setup_battle(
                 resolved.footfall.clone(), // FootfallSound — future footfall-audio pass
             ))
             .id();
+
+        // GTW-392: a slab is a stair-brace slab when the cell DIRECTLY BELOW it is a
+        // brace-eligible (LOWER-endpoint) stair cell — a kneeling occupant on that stair
+        // braces under this slab. Uses the brace-only set (lower endpoints), NOT
+        // `stair_cell_set` (which has both endpoints for GTW-391 LOS/presence).
+        //
+        // `cell_below` returns None for level 0 (no cell below ground) — a level-0 slab
+        // never becomes a brace slab (correct: ground level has no lower stair endpoint).
+        if let Some(below) = cell_below(slab_spawn.at)
+            && brace_stair_cells_set.contains(&below)
+        {
+            commands.entity(slab_entity).insert(TerrainBrace);
+        }
+
         terrain_pairs.push((TerrainIndexKey::Slab(slab_spawn.at), slab_entity));
     }
     commands.insert_resource(surface_grid);
     commands.insert_resource(slab_ledger);
+
+    // GTW-392: insert the BraceStairCells resource (the lower-endpoint stair-cell set).
+    // Removed at teardown alongside the other battle-lifetime resources.
+    commands.insert_resource(brace_cells_resource);
 
     // Own the placements in the result up front, so the occupancy grid can borrow
     // them (no clone) and the same Vec is returned to the caller.
@@ -624,19 +678,6 @@ pub fn setup_battle(
     //    spawned entities (borrowed from the result's placement list). The terrain kind
     //    is now derived from the resolved spec variant (Wall → TerrainKind::Wall;
     //    Cover/Scatter → TerrainKind::Cover).
-    //
-    //    GTW-391: compute the stair-cell set BEFORE building the grid so that
-    //    build_from_occupancy_input can register upper-cell stair presence at placement
-    //    (Blocker 2 fix — frame-0 upper presence, no first-tick gap). Ladders are
-    //    excluded (they do not share the half-level stair eye-lift or the dual-cell
-    //    body presence). This replaces the post-build mark_stair_cell loop.
-    let mut stair_cell_set = HashSet::new();
-    for link in &situation.vertical_links {
-        if matches!(link.kind, LinkKind::Stair { .. }) {
-            stair_cell_set.insert(link.from);
-            stair_cell_set.insert(link.to);
-        }
-    }
     let terrain_placements: Vec<TerrainPlacement> = situation
         .walls
         .iter()
@@ -694,4 +735,23 @@ pub fn setup_battle(
 pub fn has_stacked_gangers(situation: &Situation) -> bool {
     let mut seen = HashSet::new();
     situation.gangers.iter().any(|g| !seen.insert(g.at))
+}
+
+/// The cell directly below `cell` (`(x, y, z − 1)`), or `None` when `cell` is at
+/// level 0 (no cell below ground).
+///
+/// A private helper for GTW-392 stair-brace slab placement: a slab at `(x, y, z)`
+/// is a brace slab only when the cell at `(x, y, z − 1)` is a brace-eligible stair
+/// cell. Level-0 slabs never become brace slabs (their `z − 1` would be negative).
+fn cell_below(cell: crate::metric::CellLevel) -> Option<crate::metric::CellLevel> {
+    let below_z = cell.z.checked_sub(1)?;
+    // below_z >= 0 (checked_sub returned Some) and below_z <= MAX_LEVELS, so the
+    // u8 conversion is lossless. If it somehow overflows (impossible in a valid grid),
+    // try_from returns Err and we return None — fail-safe.
+    let storey = u8::try_from(below_z).ok()?;
+    let level = crate::metric::Level::new(storey);
+    Some(crate::metric::CellLevel::new(
+        crate::metric::Cell::new(cell.x, cell.y),
+        level,
+    ))
 }

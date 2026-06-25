@@ -6,6 +6,7 @@ use crate::{
     cover::CoverEntry,
     ganger::Stance,
     stability::{
+        TerrainBraced,
         curve::read_curve,
         gate::{brace_engages, stance_contribution},
         types::{ConeMult, EmplacementStability, RecoilGrowth, StabilityScore},
@@ -20,7 +21,8 @@ use crate::{
 ///
 /// Sums the three contributions — the per-stance contribution, the automatic
 /// brace contribution (applied when `faced`'s cover [`crate::cover::HeightBand`]
-/// satisfies `stance`'s min-height gate **OR** the weapon is `stable`), and the
+/// satisfies `stance`'s min-height gate **OR** the weapon is `stable` **OR** the
+/// shooter has a [`TerrainBraced`] stair brace, GTW-392), and the
 /// `emplacement` seam — then **clamps/normalises** the sum into the `0..=100`
 /// [`StabilityScore`] domain and reads **both** tuning curves at that score,
 /// returning the named `(cone_mult, recoil_growth)` pair. A steadier situation
@@ -30,14 +32,17 @@ use crate::{
 /// tag, which engages the brace unconditionally.
 ///
 /// `stable` is the weapon's [`crate::weapon::Stable`] tag: a stable weapon braces
-/// regardless of faced cover or stance. `faced` is the [`CoverEntry`] of the cell
-/// the shooter faces (the brace gate reads its `height_band` directly), or `None`
-/// when no cover is faced — in which case the brace contribution is withheld for a
-/// non-stable weapon. Every coefficient and both curves come from `tuning`;
+/// regardless of faced cover or stance. `terrain_braced` is the GTW-392
+/// [`TerrainBraced`] stair-brace decision computed at the fire call site from the
+/// live grids. `faced` is the [`CoverEntry`] of the cell the shooter faces (the
+/// brace gate reads its `height_band` directly), or `None` when no cover is faced
+/// — in which case the brace contribution is withheld for a non-stable,
+/// non-terrain-braced weapon. Every coefficient and both curves come from `tuning`;
 /// nothing tunable is hardcoded. Angular / dimensionless — zero pixels.
 #[must_use]
 pub fn stability(
     stable: Stable,
+    terrain_braced: TerrainBraced,
     stance: Stance,
     faced: Option<&CoverEntry>,
     emplacement: EmplacementStability,
@@ -46,8 +51,10 @@ pub fn stability(
     let posture = *stance;
 
     // Sum the three §1a contributions: per-stance + brace (when the faced cover
-    // satisfies the per-stance gate OR the weapon is stable) + the emplacement seam.
-    let brace = if brace_engages(stable, posture, faced, tuning) {
+    // satisfies the per-stance gate OR the weapon is stable OR terrain-braced) +
+    // the emplacement seam. The brace_engages bool is OR-combined so all three sources
+    // produce exactly ONE brace_contribution quantum — never a sum.
+    let brace = if brace_engages(stable, terrain_braced, posture, faced, tuning) {
         *tuning.brace_contribution
     } else {
         0.0

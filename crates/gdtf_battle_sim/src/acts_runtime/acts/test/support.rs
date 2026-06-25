@@ -33,7 +33,7 @@ pub(super) use crate::{
     resolve_coarse::ShotKind,
     rng::{BattleSeed, SimRng},
     shot_fired::ShotFired,
-    slab::SlabLedger,
+    slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
@@ -98,6 +98,9 @@ pub(super) fn insert_sim_resources(app: &mut App) {
     app.insert_resource(CoverLedger::new());
     // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger.
     app.insert_resource(SlabLedger::new());
+    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no
+    // stair links in the test arena, so no brace-stair cells are authored).
+    app.insert_resource(BraceStairCells::empty());
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(full_vision());
     app.insert_resource(PlayerFaction::new(Faction::new(TEST_PLAYER_GANG)));

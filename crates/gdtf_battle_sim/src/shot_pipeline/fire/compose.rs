@@ -24,6 +24,7 @@ use crate::{
     resolve_coarse::{ShotInputs, ShotKind, resolve_coarse},
     rng::SimRng,
     sample_cone::concentration_p,
+    stability::terrain_brace::terrain_braces,
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, Stable, WeaponDamage,
@@ -316,16 +317,33 @@ pub(super) fn resolve_round(
     let snapshot = setup.snapshot;
     let geometry = setup.geometry;
     let shooter_view = snapshot.shooter_view();
+    // GTW-392: compute the terrain brace ONCE per round from the live grids. The
+    // snapshot's position + stance were read before the burst loop — correct by design
+    // (stance cannot change mid-burst; revocation is a cross-action property). Both
+    // cone_for and stability_for receive the same terrain_braced value so cone width +
+    // recoil damping are consistent within the burst round.
+    let terrain_braced = terrain_braces(
+        snapshot.position,
+        *snapshot.stance,
+        grids.brace_cells,
+        grids.surface,
+    );
     let cone = cone_for(
         &shooter_view,
         snapshot.weapon_stats(),
         setup.mode,
         prior_shots,
         grids.cover,
+        terrain_braced,
         tuning,
     );
-    let (_cone_mult, recoil_growth) =
-        stability_for(&shooter_view, snapshot.stable, grids.cover, tuning);
+    let (_cone_mult, recoil_growth) = stability_for(
+        &shooter_view,
+        snapshot.stable,
+        terrain_braced,
+        grids.cover,
+        tuning,
+    );
     let p = concentration_p(
         snapshot.shooting,
         snapshot.accuracy,

@@ -42,12 +42,12 @@ use bevy::{
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
-    Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
-    FloorCostGrid, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState,
-    Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng, SlabLedger,
-    SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
+    Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel,
+    CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
+    FireModeSpec, FloorCostGrid, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level,
+    LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng,
+    SlabLedger, SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
     VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
     Wounds, acts::SimActsPlugin, tuning::CombatTuning,
 };
@@ -121,6 +121,9 @@ fn endtoend_app() -> App {
     // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger so the
     // dispatch param validates.
     app.world_mut().insert_resource(SlabLedger::new());
+    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no stair
+    // cells in this harness) so the terrain-brace gate param validates.
+    app.world_mut().insert_resource(BraceStairCells::empty());
     // GTW-354: the constrained `dispatch_move` reads `Res<VerticalLinkGraph>` +
     // `Res<SquadVisibility>` for its route gate, so seed them (empty graph + empty fog —
     // this fire-path test never moves, so the route gate result is irrelevant; the

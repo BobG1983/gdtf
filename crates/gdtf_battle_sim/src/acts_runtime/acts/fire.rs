@@ -26,7 +26,7 @@ use crate::{
     occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
     rng::SimRng,
     shot_fired::ShotFired,
-    slab::SlabLedger,
+    slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     tu::spend_tu,
     tuning::CombatTuning,
@@ -83,7 +83,7 @@ impl FireDeclaration {
     }
 }
 
-/// The three change-driven world-grid resources [`dispatch_fire`] reads, bundled into one
+/// The change-driven world-grid resources [`dispatch_fire`] reads, bundled into one
 /// [`SystemParam`] so the system's parameter list stays under clippy's argument-count gate
 /// (the [`BattleGrids`] / [`FireOrder`] grouping precedent in `fire.rs`).
 ///
@@ -91,20 +91,26 @@ impl FireDeclaration {
 /// seven parameters; the body assembles the borrow-based [`BattleGrids`] from these `Res`
 /// reads via [`BattleGridsParam::grids`]. A transparent system-param bundle of existing
 /// named world-state resources — not itself a wrapped domain scalar.
+///
+/// GTW-392: [`BraceStairCells`] is included so the terrain-brace gate in `resolve_round`
+/// can consult the lower-endpoint stair-cell set without an additional system param.
 #[derive(SystemParam)]
 pub struct BattleGridsParam<'w> {
     /// The coarse 3D occupancy grid — the march's collision / occupant-band surface.
-    occupancy: Res<'w, OccupancyGrid>,
+    occupancy:   Res<'w, OccupancyGrid>,
     /// The persistent floor/roof-slab + ground surface grid the march flies through.
-    surface:   Res<'w, SurfaceGrid>,
+    surface:     Res<'w, SurfaceGrid>,
     /// The model cover ledger — peeked (read) for the faced cell + the target cell's
     /// cover band, and **spent** (write) when a round strikes cover (GTW-364), so it is
     /// a [`ResMut`] now (the cover-hit depletion path writes the ledger's HP in place).
-    cover:     ResMut<'w, CoverLedger>,
+    cover:       ResMut<'w, CoverLedger>,
     /// The model slab ledger — **spent** (write) when a round strikes a floor/roof slab
     /// (GTW-365), so it is a [`ResMut`] too (the slab-hit depletion path writes the
     /// ledger's HP in place). The march reads slab *existence* from `surface` above.
-    slab:      ResMut<'w, SlabLedger>,
+    slab:        ResMut<'w, SlabLedger>,
+    /// GTW-392: the lower-endpoint brace-stair-cell set — the terrain-brace gate reads
+    /// this to decide whether a kneeling stair occupant earns the brace bonus.
+    brace_cells: Res<'w, BraceStairCells>,
 }
 
 impl BattleGridsParam<'_> {
@@ -115,10 +121,11 @@ impl BattleGridsParam<'_> {
     /// the grids are still never rebuilt — only the struck surface's HP is spent in place.
     fn grids(&mut self) -> BattleGrids<'_> {
         BattleGrids {
-            occupancy: &self.occupancy,
-            surface:   &self.surface,
-            cover:     &mut self.cover,
-            slab:      &mut self.slab,
+            occupancy:   &self.occupancy,
+            surface:     &self.surface,
+            cover:       &mut self.cover,
+            slab:        &mut self.slab,
+            brace_cells: &self.brace_cells,
         }
     }
 

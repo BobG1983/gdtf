@@ -30,6 +30,24 @@ impl TerrainCell {
     }
 }
 
+/// Marks a slab ECS entity as a **stair-brace slab** — an intact slab directly above
+/// the LOWER endpoint of an authored stair, under which a kneeling occupant braces
+/// their weapon (GTW-392; `docs/combat/resolution.md` §1a brace gate, terrain-brace
+/// clause).
+///
+/// A pure marker: it carries no data. The slab it braces is the cell directly below
+/// it (`self_cell` at storey `n` ⇒ the brace stair cell is at storey `n − 1`), which is
+/// the LOWER stair endpoint. The live [`crate::surface::SlabState::Present`] gate is
+/// read from [`crate::surface::SurfaceGrid`] at fire time, not from this marker's
+/// presence; a destroyed slab keeps its entity + marker but loses the brace.
+///
+/// Only the LOWER of a stair's two endpoints earns this: an occupant on the upper
+/// arrival cell braces against their own storey's ceiling, which is ordinary cover,
+/// not the stair-brace slab. See [`crate::terrain::slab::BraceStairCells`] for the
+/// lower-endpoint cell set and `stability::terrain_brace::terrain_braces` for the live gate.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct TerrainBrace;
+
 /// The kind of terrain piece this entity represents — `Wall`, `Cover` (scatter prop),
 /// or `Slab` (floor / roof).
 ///

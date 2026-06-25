@@ -8,6 +8,7 @@ use crate::{
     cone::PriorShots,
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, StanceKind},
+    stability::TerrainBraced,
     tuning::CombatTuning,
 };
 
@@ -37,13 +38,20 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
     let mode = wpn.fire_mode.single();
     let ledger = CoverLedger::new();
 
-    let (cone_mult, recoil_growth) = pub_stab(&shooter, wpn.stable, &ledger, &tuning);
+    let (cone_mult, recoil_growth) = pub_stab(
+        &shooter,
+        wpn.stable,
+        TerrainBraced::new(false),
+        &ledger,
+        &tuning,
+    );
     let theta = pub_cone_for(
         &shooter,
         wpn.stats(),
         &mode,
         PriorShots::first(),
         &ledger,
+        TerrainBraced::new(false),
         &tuning,
     );
 
@@ -79,8 +87,20 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
     // ---- Facing an EMPTY cell: stable braces, non-stable does not. ----
     let empty = CoverLedger::new();
 
-    let (stable_cone_mult, _) = stability_for(&shooter, stable_wpn.stable, &empty, &tuning);
-    let (plain_cone_mult, _) = stability_for(&shooter, plain_wpn.stable, &empty, &tuning);
+    let (stable_cone_mult, _) = stability_for(
+        &shooter,
+        stable_wpn.stable,
+        TerrainBraced::new(false),
+        &empty,
+        &tuning,
+    );
+    let (plain_cone_mult, _) = stability_for(
+        &shooter,
+        plain_wpn.stable,
+        TerrainBraced::new(false),
+        &empty,
+        &tuning,
+    );
     assert!(
         *stable_cone_mult < *plain_cone_mult,
         "facing an empty cell, a stable weapon must be strictly steadier (lower \
@@ -89,8 +109,24 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         *plain_cone_mult,
     );
 
-    let stable_theta = cone_for(&shooter, stable_wpn.stats(), &mode, prior, &empty, &tuning);
-    let plain_theta = cone_for(&shooter, plain_wpn.stats(), &mode, prior, &empty, &tuning);
+    let stable_theta = cone_for(
+        &shooter,
+        stable_wpn.stats(),
+        &mode,
+        prior,
+        &empty,
+        TerrainBraced::new(false),
+        &tuning,
+    );
+    let plain_theta = cone_for(
+        &shooter,
+        plain_wpn.stats(),
+        &mode,
+        prior,
+        &empty,
+        TerrainBraced::new(false),
+        &tuning,
+    );
     assert!(
         *stable_theta < *plain_theta,
         "facing an empty cell, a stable weapon must have a strictly narrower cone: \
@@ -102,8 +138,20 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
     // ---- Facing cover that SUITS the stance (HIGH wall): both brace, EQUAL. ----
     let under_cover = ledger_with_faced_cover(&shooter, cover_entry(HeightBand::High));
 
-    let (stable_braced_mult, _) = stability_for(&shooter, stable_wpn.stable, &under_cover, &tuning);
-    let (plain_braced_mult, _) = stability_for(&shooter, plain_wpn.stable, &under_cover, &tuning);
+    let (stable_braced_mult, _) = stability_for(
+        &shooter,
+        stable_wpn.stable,
+        TerrainBraced::new(false),
+        &under_cover,
+        &tuning,
+    );
+    let (plain_braced_mult, _) = stability_for(
+        &shooter,
+        plain_wpn.stable,
+        TerrainBraced::new(false),
+        &under_cover,
+        &tuning,
+    );
     assert_eq!(
         (*stable_braced_mult).to_bits(),
         (*plain_braced_mult).to_bits(),
@@ -116,6 +164,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         &mode,
         prior,
         &under_cover,
+        TerrainBraced::new(false),
         &tuning,
     );
     let plain_under = cone_for(
@@ -124,6 +173,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         &mode,
         prior,
         &under_cover,
+        TerrainBraced::new(false),
         &tuning,
     );
     assert_eq!(

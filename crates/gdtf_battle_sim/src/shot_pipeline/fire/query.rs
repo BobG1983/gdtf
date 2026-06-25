@@ -16,7 +16,7 @@ use crate::{
     magazine::Magazine,
     metric::{Cell, Level},
     occupancy::OccupancyGrid,
-    slab::SlabLedger,
+    slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, Stable, WeaponDamage,
@@ -167,7 +167,9 @@ pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<
 /// (never rebuilds — the change-driven contract; the change-driven sim↔app seam
 /// recorded in ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`): the coarse
 /// [`OccupancyGrid`], the persistent [`SurfaceGrid`], and the model [`CoverLedger`].
-/// Grouping the cohesive world-state refs into one value (the
+/// The GTW-392 [`BraceStairCells`] resource is also bundled here — the lower-endpoint
+/// stair-cell set the terrain-brace gate reads at fire time. Grouping the cohesive
+/// world-state refs into one value (the
 /// [`ShotInputs`](crate::resolve_coarse::ShotInputs) /
 /// [`TargetGanger`](crate::resolve_and_apply::TargetGanger) bundle precedent) keeps
 /// [`fire`](super::fire)'s parameter list under the 8-arg gate. The struct is a
@@ -188,18 +190,22 @@ pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<
 #[derive(Debug)]
 pub struct BattleGrids<'a> {
     /// The coarse 3D occupancy grid — the march's collision / occupant-band surface.
-    pub occupancy: &'a OccupancyGrid,
+    pub occupancy:   &'a OccupancyGrid,
     /// The persistent floor/roof-slab + ground surface grid the march flies through.
-    pub surface:   &'a SurfaceGrid,
+    pub surface:     &'a SurfaceGrid,
     /// The model cover ledger — peeked (read) for the faced cell (stability) and the
     /// target cell's cover band (the aim point), and **spent** (write) when a round
     /// strikes a piece of cover (GTW-364: the cover-hit depletion path).
-    pub cover:     &'a mut CoverLedger,
+    pub cover:       &'a mut CoverLedger,
     /// The model slab ledger — **spent** (write) when a round strikes a floor/roof slab
     /// (GTW-365: the slab-hit depletion path). The march reads slab *existence* from the
     /// [`SurfaceGrid`](crate::surface::SurfaceGrid) (above); this ledger holds the struck
     /// slab's HP/armor, lazily seeded from the `SlabDefaults` tuning leaf.
-    pub slab:      &'a mut SlabLedger,
+    pub slab:        &'a mut SlabLedger,
+    /// The GTW-392 brace-stair-cell set — the lower-endpoint stair cells whose overhead
+    /// slab grants the terrain brace. The terrain-brace gate reads this at fire time
+    /// (see [`crate::shot_pipeline::stability::terrain_brace::terrain_braces`]).
+    pub brace_cells: &'a BraceStairCells,
 }
 
 /// The **firing order** — what the shooter is firing and where

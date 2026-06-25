@@ -5,6 +5,7 @@
 use crate::{
     cover::{CoverEntry, HeightBand},
     ganger::StanceKind,
+    stability::TerrainBraced,
     tuning::{ConeStabilityTuning, StanceContribution},
     weapon::Stable,
 };
@@ -52,22 +53,30 @@ pub(super) const fn stance_contribution(
     }
 }
 
-/// Whether the **automatic brace** engages for `stance` against the `faced` cell
-/// with a weapon carrying the `stable` tag — `true` when **the weapon is `stable`**
-/// (a stable weapon braces UNCONDITIONALLY, regardless of faced cover or stance —
-/// bipod-mounted / braced-by-design) **OR** there is cover in the faced cell whose
-/// [`HeightBand`], read **directly** off the [`CoverEntry`], reaches the stance's
-/// minimum brace band from tuning (resolution.md §1a brace gate). A non-stable
-/// weapon facing no cover (`None`) never braces; [`crate::cover::band_for`] is not
-/// consulted.
+/// Whether the **automatic brace** engages for `stance` against the `faced` cell,
+/// given a weapon carrying the `stable` tag **or** a [`TerrainBraced`] stair brace —
+/// `true` when **the weapon is `stable`** (a stable weapon braces UNCONDITIONALLY,
+/// regardless of faced cover or stance — bipod-mounted / braced-by-design) **OR** the
+/// shooter is **terrain-braced** (kneeling on a lower-endpoint stair cell under an
+/// intact slab, GTW-392 — engages equally unconditionally) **OR** there is cover in
+/// the faced cell whose [`HeightBand`], read **directly** off the [`CoverEntry`],
+/// reaches the stance's minimum brace band from tuning (resolution.md §1a brace gate).
+///
+/// The three brace sources are **OR-combined** into a single `bool` and feed the SAME
+/// single `tuning.brace_contribution` addend in [`crate::shot_pipeline::stability::score`]
+/// — they can NEVER stack. A non-stable, non-terrain-braced weapon facing no cover
+/// (`None`) never braces; [`crate::cover::band_for`] is not consulted.
 pub(super) fn brace_engages(
     stable: Stable,
+    terrain_braced: TerrainBraced,
     stance: StanceKind,
     faced: Option<&CoverEntry>,
     tuning: &ConeStabilityTuning,
 ) -> bool {
-    if *stable {
-        // A stable weapon engages the brace unconditionally — no cover / stance gate.
+    if *stable || *terrain_braced {
+        // A stable weapon OR a terrain-braced stair kneel engages the brace
+        // unconditionally — no cover / stance gate needed. The || is OR-combined with
+        // the cover-height gate below so all three sources share one bool (never a sum).
         return true;
     }
     let Some(entry) = faced else {

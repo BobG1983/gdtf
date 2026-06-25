@@ -8,7 +8,7 @@ use crate::{
     faced_cell::faced_cell,
     ganger::{Direction, StanceKind},
     metric::CellLevel,
-    stability::{EmplacementStability, stability},
+    stability::{EmplacementStability, TerrainBraced, stability},
     tuning::CombatTuning,
     weapon::Stable,
 };
@@ -29,14 +29,20 @@ fn stability_for_bit_equals_a_direct_stability_call() {
     let entry = cover_entry(HeightBand::High);
     let ledger = ledger_with_faced_cover(&shooter, entry);
 
-    let (via_composer_cone, via_composer_recoil) =
-        stability_for(&shooter, stable, &ledger, &tuning);
+    let (via_composer_cone, via_composer_recoil) = stability_for(
+        &shooter,
+        stable,
+        TerrainBraced::new(false),
+        &ledger,
+        &tuning,
+    );
 
     // The direct call with the EXACT same inputs the composer fed the verb.
     let (cell, level) = faced_cell(shooter.position, shooter.facing);
     let faced = ledger.peek(&CellLevel::new(cell, level));
     let (direct_cone, direct_recoil) = stability(
         stable,
+        TerrainBraced::new(false),
         *shooter.stance,
         faced,
         EmplacementStability::none(),
@@ -71,11 +77,18 @@ fn brace_at_faced_cell_is_steadier_than_an_empty_cell() {
 
     // Braced: a HIGH wall at the faced cell satisfies the standing gate.
     let braced_ledger = ledger_with_faced_cover(&shooter, cover_entry(HeightBand::High));
-    let (braced_cone, _) = stability_for(&shooter, stable, &braced_ledger, &tuning);
+    let (braced_cone, _) = stability_for(
+        &shooter,
+        stable,
+        TerrainBraced::new(false),
+        &braced_ledger,
+        &tuning,
+    );
 
     // Unbraced: an empty ledger — no cover at the faced cell.
     let empty = CoverLedger::new();
-    let (empty_cone, _) = stability_for(&shooter, stable, &empty, &tuning);
+    let (empty_cone, _) =
+        stability_for(&shooter, stable, TerrainBraced::new(false), &empty, &tuning);
 
     assert!(
         *braced_cone < *empty_cone,

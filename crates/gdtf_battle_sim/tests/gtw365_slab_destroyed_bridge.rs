@@ -25,10 +25,10 @@ use bevy::{
     prelude::{Entity, MinimalPlugins, World},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, BaseSpread, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
-    MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
+    Accuracy, Aiming, BaseSpread, BattleSeed, BraceStairCells, Cell, CellLevel, CombatTuning,
+    CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
+    FireModeSpec, HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
+    MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
     OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimPos, SimRng,
     SlabEntry, SlabHp, SlabLedger, SlabState, SquadVisibility, Stable, Stance, StanceKind,
     SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName,
@@ -226,6 +226,9 @@ fn fired_rounds_deplete_then_destroy_slab_and_open_los_without_walkability() {
     let mut slab = SlabLedger::new();
     slab.insert(slab_key(), low_hp_slab());
     app.insert_resource(slab);
+    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no
+    // stair links in this geometry — shooter fires vertically through the slab).
+    app.insert_resource(BraceStairCells::empty());
     app.insert_resource(OccupancyGrid::new());
     // The vertical-link count BEFORE destruction — C9(c) compares against this AFTER
     // (the graph is not `PartialEq`, so the count + the slab-key departure set are the

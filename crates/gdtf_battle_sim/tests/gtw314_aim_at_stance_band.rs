@@ -37,8 +37,8 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
-    BaseSpread, BattleGrids, BattleSeed, BodyPart, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
+    BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
+    CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
     PieceQuery, Position, ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, SlabLedger, Stable,
@@ -230,10 +230,11 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 &wields,
                 &mut weapons,
                 BattleGrids {
-                    occupancy: &occupancy,
-                    surface:   &surface,
-                    cover:     &mut cover,
-                    slab:      &mut slab,
+                    occupancy:   &occupancy,
+                    surface:     &surface,
+                    cover:       &mut cover,
+                    slab:        &mut slab,
+                    brace_cells: &BraceStairCells::empty(),
                 },
                 &tuning,
                 &mut rng,

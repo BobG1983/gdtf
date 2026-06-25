@@ -32,11 +32,13 @@
 //!    The surface-grid `destroy_slab` + LOS rebuild are the fire path's bridge — this
 //!    module emits the marker ONLY.
 
+mod brace_stair_cells;
 mod ledger;
 mod types;
 
 #[cfg(test)]
 mod test;
 
+pub use brace_stair_cells::BraceStairCells;
 pub use ledger::SlabLedger;
 pub use types::{SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp};

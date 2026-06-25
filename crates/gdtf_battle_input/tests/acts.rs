@@ -40,11 +40,11 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
-    FireMode, FireModeSpec, FloorCostGrid, Level, LifeState, LinkKind, Magazine, MagazineSize,
-    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu,
-    SimRng, SlabLedger, SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink,
-    VerticalLinkGraph, WieldedBy,
+    Aiming, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel, CoverLedger, Direction,
+    Facing, Faction, FireMode, FireModeSpec, FloorCostGrid, Level, LifeState, LinkKind, Magazine,
+    MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction,
+    ReloadTu, SimRng, SlabLedger, SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax,
+    VerticalLink, VerticalLinkGraph, WieldedBy,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
         ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
@@ -169,6 +169,9 @@ fn acts_app() -> App {
     // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` (the slab-hit depletion path),
     // so the harness seeds an empty ledger for the dispatch param to validate.
     app.world_mut().insert_resource(SlabLedger::new());
+    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no
+    // stair entities in this harness) so the terrain-brace gate param validates.
+    app.world_mut().insert_resource(BraceStairCells::empty());
     // GTW-354: the constrained `dispatch_move` reads `Res<VerticalLinkGraph>` +
     // `Res<SquadVisibility>` for its route gate, so the harness seeds them (empty link
     // graph + empty fog — these AC tests assert the input `*Requested` MESSAGE, never a

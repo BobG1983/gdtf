@@ -12,7 +12,7 @@ use crate::{
     ganger::{Faction, Tu, TuMax},
     occupancy::OccupancyGrid,
     rng::{BattleSeed, SimRng},
-    slab::SlabLedger,
+    slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
@@ -52,6 +52,8 @@ fn turn_app() -> App {
     app.insert_resource(CoverLedger::new());
     // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger.
     app.insert_resource(SlabLedger::new());
+    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set.
+    app.insert_resource(BraceStairCells::empty());
     // GTW-354: this harness has no `BattleInProgress` gate (it omits the
     // `OccupancyMaintenancePlugin` that owns the Simulate `configure_sets`), so the bundled
     // `dispatch_move` runs ungated and its new route-gate reads must validate — seed an

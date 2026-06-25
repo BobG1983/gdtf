@@ -29,10 +29,10 @@ use bevy::{
     prelude::{Entity, MinimalPlugins, World},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, BaseSpread, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
-    MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
+    Accuracy, Aiming, BaseSpread, BattleSeed, BraceStairCells, Cell, CellLevel, CombatTuning,
+    CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
+    FireModeSpec, HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
+    MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
     OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimPos, SimRng,
     SlabLedger, SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
     VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
@@ -97,6 +97,8 @@ fn bridge_app() -> App {
     app.insert_resource(CoverLedger::new());
     // The slab ledger (empty — no slab in the open column). Asserted UNTOUCHED (C7(c)).
     app.insert_resource(SlabLedger::new());
+    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set.
+    app.insert_resource(BraceStairCells::empty());
     // The other Simulate-band dispatch systems (move / walk) read these.
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(SquadVisibility::default());

@@ -24,11 +24,11 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Aim, Aiming, ArmorIntegrity, BattleGrids, BattleSeed, BattleSetup, Cell, CombatTuning,
-    CoverLedger, Direction, Facing, Faction, FireModeSpec, GangerStatTuning, Level, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, ShooterQuery, ShotKind, SimRng,
-    SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears,
-    WearsQuery, WieldsQuery,
+    Aim, Aiming, ArmorIntegrity, BattleGrids, BattleSeed, BattleSetup, BraceStairCells, Cell,
+    CombatTuning, CoverLedger, Direction, Facing, Faction, FireModeSpec, GangerStatTuning, Level,
+    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, ShooterQuery,
+    ShotKind, SimRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley,
+    WeaponQuery, Wears, WearsQuery, WieldsQuery,
     fire::FireOrder,
     setup_battle,
     test_support::{
@@ -180,10 +180,11 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             &wields,
             &mut weapons,
             BattleGrids {
-                occupancy: &occupancy,
-                surface:   &surface,
-                cover:     &mut cover,
-                slab:      &mut slab,
+                occupancy:   &occupancy,
+                surface:     &surface,
+                cover:       &mut cover,
+                slab:        &mut slab,
+                brace_cells: &BraceStairCells::empty(),
             },
             &tuning,
             &mut rng,

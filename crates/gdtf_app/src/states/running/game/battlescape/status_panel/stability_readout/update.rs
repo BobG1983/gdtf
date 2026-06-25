@@ -4,14 +4,20 @@
 //! resolves it to the selected [`Entity`], assembles the sim [`Shooter`] borrow-view from the
 //! ganger's [`Stance`] / [`Aiming`] / [`Position`] / [`Facing`], resolves the wielded
 //! [`Stable`] tag (`ganger → Wields → the weapon entity → Stable`, the SAME resolution the
-//! sim fire path uses), reads the model [`CoverLedger`] + [`CombatTuning`], and calls the
-//! authoritative [`stability_for`] — re-deriving NONE of the §1a math. The returned
-//! [`ConeMult`] (the steadiness read) becomes a [`Steadiness`] and then a
-//! [`FillFraction`](gdtf_ui::FillFraction) at the bar boundary, fuller = steadier.
+//! sim fire path uses), reads the model [`CoverLedger`] + [`CombatTuning`] +
+//! [`BraceStairCells`] + [`SurfaceGrid`], calls [`terrain_braces`] then [`stability_for`] —
+//! re-deriving NONE of the §1a math. The returned [`ConeMult`] (the steadiness read) becomes a
+//! [`Steadiness`] and then a [`FillFraction`](gdtf_ui::FillFraction) at the bar boundary,
+//! fuller = steadier.
 //!
 //! Fail-closed (AC4): no selection, a selected entity lacking the shooter or weapon
-//! components, or [`CoverLedger`] / [`CombatTuning`] absent (a harness without them) →
-//! the bar shows the EMPTY state (zeroed), never stale data, never a panic.
+//! components, or any of [`CoverLedger`] / [`CombatTuning`] / [`BraceStairCells`] /
+//! [`SurfaceGrid`] absent (a harness without them) → the bar shows the EMPTY state (zeroed),
+//! never stale data, never a panic.
+//!
+//! GTW-392: [`terrain_braces`] is called with the same [`BraceStairCells`] +
+//! [`SurfaceGrid`] the fire path reads — no stub-false shortcut. The brace slab bonus is
+//! therefore visible in the HUD bar the moment it applies, matching the fire path exactly.
 //!
 //! It runs in `Update` gated `run_if(resource_exists::<BattleInProgress>)`,
 //! `.after(InputSystems::Gather)` — mirroring
@@ -21,7 +27,8 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Aiming, CoverLedger, Facing, Position, Shooter, Stable, Stance, Weapon, Wields, stability_for,
+    Aiming, BraceStairCells, CoverLedger, Facing, Position, Shooter, Stable, Stance, Weapon,
+    Wields, stability::terrain_brace::terrain_braces, stability_for, surface::SurfaceGrid,
     tuning::CombatTuning,
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar};
@@ -71,14 +78,17 @@ pub(in crate::states::running::game::battlescape::status_panel) struct Stability
 /// Repaints the stability readout bar from the current [`SelectedShooter`].
 ///
 /// Assembles the [`Shooter`] borrow-view, resolves the wielded [`Stable`], reads the model
-/// [`CoverLedger`] + [`CombatTuning`], calls [`stability_for`] for the `(ConeMult, _)` pair,
-/// and mutates the [`StabilityBar`] fill to the [`Steadiness`] derived from the [`ConeMult`].
+/// [`CoverLedger`] + [`CombatTuning`] + [`BraceStairCells`] + [`SurfaceGrid`], calls
+/// [`terrain_braces`] then [`stability_for`] for the `(ConeMult, _)` pair, and mutates the
+/// [`StabilityBar`] fill to the [`Steadiness`] derived from the [`ConeMult`].
 /// Any missing piece (AC4) drives the EMPTY state. Param-only (`bevy-traps.md` #7): no
 /// `&mut World`.
 pub(in crate::states::running::game::battlescape::status_panel) fn update_stability_readout(
     selected: Res<SelectedShooter>,
     cover: Option<Res<CoverLedger>>,
     tuning: Option<Res<CombatTuning>>,
+    brace_cells: Option<Res<BraceStairCells>>,
+    surface: Option<Res<SurfaceGrid>>,
     reads: ShooterReadQueries,
     mut writer: StabilityBarWriter,
 ) {
@@ -88,9 +98,17 @@ pub(in crate::states::running::game::battlescape::status_panel) fn update_stabil
     };
 
     // Fail-closed: resolve every input, defaulting to the EMPTY readout the moment any one
-    // is missing (no selection / not a shooter / unarmed / no cover ledger / no tuning).
-    let fraction = resolve_steadiness(*selected, cover.as_deref(), tuning.as_deref(), &reads)
-        .map_or(FillFraction::new(0.0), Steadiness::fill_fraction);
+    // is missing (no selection / not a shooter / unarmed / no cover ledger / no tuning /
+    // no brace cells / no surface grid — GTW-392 adds the last two).
+    let fraction = resolve_steadiness(
+        *selected,
+        cover.as_deref(),
+        tuning.as_deref(),
+        brace_cells.as_deref(),
+        surface.as_deref(),
+        &reads,
+    )
+    .map_or(FillFraction::new(0.0), Steadiness::fill_fraction);
 
     set_progress_bar(bar, fraction, &writer.children, &mut writer.fills);
 }
@@ -100,13 +118,20 @@ pub(in crate::states::running::game::battlescape::status_panel) fn update_stabil
 /// The single fail-closed read path (AC4): returns the [`Steadiness`] derived from
 /// [`stability_for`]'s [`ConeMult`] only when there is a selection, it is a shooter
 /// (`Stance`/`Aiming`/`Position`/`Facing`), it wields a weapon carrying a [`Stable`] tag, and
-/// both the model [`CoverLedger`] and [`CombatTuning`] are present; any miss returns `None` so
-/// the caller paints the empty bar. Re-derives NONE of the §1a math — it only assembles the
-/// view + resolves `Stable` + reads the two resources + calls [`stability_for`].
+/// the model resources ([`CoverLedger`], [`CombatTuning`], [`BraceStairCells`],
+/// [`SurfaceGrid`]) are all present; any miss returns `None` so the caller paints the empty
+/// bar. Re-derives NONE of the §1a math — it only assembles the view + resolves `Stable` +
+/// reads the resources + calls [`terrain_braces`] + [`stability_for`].
+///
+/// GTW-392: calls [`terrain_braces`] with the same [`BraceStairCells`] + [`SurfaceGrid`] the
+/// fire path reads — no stub-false shortcut. Keeping the two call sites in sync means the
+/// HUD reflects exactly what the fire path will compute.
 fn resolve_steadiness(
     selected: SelectedShooter,
     cover: Option<&CoverLedger>,
     tuning: Option<&CombatTuning>,
+    brace_cells: Option<&BraceStairCells>,
+    surface: Option<&SurfaceGrid>,
     reads: &ShooterReadQueries,
 ) -> Option<Steadiness> {
     let entity = (*selected)?;
@@ -117,6 +142,12 @@ fn resolve_steadiness(
     let stable = *reads.weapons.get(weapon).ok()?;
     let cover = cover?;
     let tuning = tuning?;
+    let brace_cells = brace_cells?;
+    let surface = surface?;
+
+    // GTW-392: compute the terrain-brace result from live grids — same call as the fire path.
+    // `*stance` dereferences Stance → StanceKind (one Deref step).
+    let terrain_braced = terrain_braces(*position, **stance, brace_cells, surface);
 
     // Assemble the transient `Shooter` borrow-view (the `ShooterSnapshot::shooter_view`
     // shape) and call the authoritative composer; take the `ConeMult` (the steadiness read).
@@ -126,6 +157,7 @@ fn resolve_steadiness(
         position,
         facing,
     };
-    let (cone_mult, _recoil_growth) = stability_for(&shooter, stable, cover, tuning);
+    let (cone_mult, _recoil_growth) =
+        stability_for(&shooter, stable, terrain_braced, cover, tuning);
     Some(Steadiness::from_cone_mult(cone_mult))
 }

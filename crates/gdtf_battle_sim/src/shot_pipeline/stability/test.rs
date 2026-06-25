@@ -3,6 +3,7 @@ use crate::{
     cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{Stance, StanceKind},
     stability::{
+        TerrainBraced,
         curve::read_curve,
         gate::brace_engages,
         score::stability,
@@ -37,6 +38,7 @@ fn stability_produces_both_named_outputs() {
     // Steadiest: prone, braced on a HIGH wall (satisfies the prone gate, LOW+).
     let (steady_cone, steady_recoil) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         Stance::new(StanceKind::Prone),
         Some(&wall),
         EmplacementStability::none(),
@@ -45,6 +47,7 @@ fn stability_produces_both_named_outputs() {
     // Shakiest: standing, no cover faced (no brace), no emplacement help.
     let (shaky_cone, shaky_recoil) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         Stance::new(StanceKind::Standing),
         None,
         EmplacementStability::none(),
@@ -90,6 +93,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
         let fail = faced_cover(failing);
         let (braced, _) = stability(
             Stable::new(false),
+            TerrainBraced::new(false),
             Stance::new(kind),
             Some(&sat),
             EmplacementStability::none(),
@@ -97,6 +101,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
         );
         let (unbraced, _) = stability(
             Stable::new(false),
+            TerrainBraced::new(false),
             Stance::new(kind),
             Some(&fail),
             EmplacementStability::none(),
@@ -112,6 +117,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
     let low = faced_cover(HeightBand::Low);
     let (prone_braced, _) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         Stance::new(StanceKind::Prone),
         Some(&low),
         EmplacementStability::none(),
@@ -119,6 +125,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
     );
     let (prone_unbraced, _) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         Stance::new(StanceKind::Prone),
         None,
         EmplacementStability::none(),
@@ -140,6 +147,7 @@ fn steadier_stance_yields_narrower_cone() {
     let cone = |kind| {
         stability(
             Stable::new(false),
+            TerrainBraced::new(false),
             Stance::new(kind),
             None,
             EmplacementStability::none(),
@@ -166,6 +174,7 @@ fn steadier_score_yields_strictly_less_recoil_growth() {
 
     let (_, braced_prone) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         Stance::new(StanceKind::Prone),
         Some(&wall),
         EmplacementStability::none(),
@@ -173,6 +182,7 @@ fn steadier_score_yields_strictly_less_recoil_growth() {
     );
     let (_, standing_unbraced) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         Stance::new(StanceKind::Standing),
         None,
         EmplacementStability::none(),
@@ -198,6 +208,7 @@ fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
     // A wildly over-100 raw sum: prone + braced + a huge emplacement term.
     let (over_cone, over_recoil) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         Stance::new(StanceKind::Prone),
         Some(&wall),
         EmplacementStability::new(10_000.0),
@@ -207,6 +218,7 @@ fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
     // ceiling by a huge emplacement term, so it too clamps to 100.
     let (ceil_cone, ceil_recoil) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         Stance::new(StanceKind::Standing),
         None,
         EmplacementStability::new(10_000.0),
@@ -302,21 +314,45 @@ fn stable_weapon_braces_unconditionally_non_stable_does_not() {
 
     // Empty cell (no faced cover): stable braces, non-stable does not.
     assert!(
-        brace_engages(Stable::new(true), stance, None, &tuning),
+        brace_engages(
+            Stable::new(true),
+            TerrainBraced::new(false),
+            stance,
+            None,
+            &tuning
+        ),
         "a stable weapon must brace even facing an EMPTY cell",
     );
     assert!(
-        !brace_engages(Stable::new(false), stance, None, &tuning),
+        !brace_engages(
+            Stable::new(false),
+            TerrainBraced::new(false),
+            stance,
+            None,
+            &tuning
+        ),
         "a non-stable weapon must NOT brace facing an empty cell",
     );
 
     // Cover present but its band does NOT suit the stance: same relation.
     assert!(
-        brace_engages(Stable::new(true), stance, Some(&unsuitable), &tuning),
+        brace_engages(
+            Stable::new(true),
+            TerrainBraced::new(false),
+            stance,
+            Some(&unsuitable),
+            &tuning
+        ),
         "a stable weapon must brace even facing cover that does not suit the stance",
     );
     assert!(
-        !brace_engages(Stable::new(false), stance, Some(&unsuitable), &tuning),
+        !brace_engages(
+            Stable::new(false),
+            TerrainBraced::new(false),
+            stance,
+            Some(&unsuitable),
+            &tuning
+        ),
         "a non-stable weapon must NOT brace facing cover that does not suit the stance",
     );
 }
@@ -337,6 +373,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
     // Empty cell: only the stable weapon braces.
     let (stable_empty, _) = stability(
         Stable::new(true),
+        TerrainBraced::new(false),
         stance,
         None,
         EmplacementStability::none(),
@@ -344,6 +381,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
     );
     let (plain_empty, _) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         stance,
         None,
         EmplacementStability::none(),
@@ -362,6 +400,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
     let wall = faced_cover(HeightBand::High);
     let (stable_braced, _) = stability(
         Stable::new(true),
+        TerrainBraced::new(false),
         stance,
         Some(&wall),
         EmplacementStability::none(),
@@ -369,6 +408,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
     );
     let (plain_braced, _) = stability(
         Stable::new(false),
+        TerrainBraced::new(false),
         stance,
         Some(&wall),
         EmplacementStability::none(),
@@ -379,5 +419,86 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         (*plain_braced).to_bits(),
         "facing suitable cover, the brace already engages for both — stable adds \
          nothing, so the scores are equal",
+    );
+}
+
+/// GTW-392 score-level parity — the terrain brace routes through the EXACT same
+/// `brace_contribution` magnitude as the weapon's `stable` tag. Driving the real
+/// [`stability`] path twice with IDENTICAL inputs (same stance / faced cover /
+/// emplacement / tuning) — once `stable`-only, once `terrain_braced`-only — must
+/// yield BIT-IDENTICAL `(cone_mult, recoil_growth)` outputs. This would FAIL the
+/// instant terrain-brace were ever wired to a different magnitude than the stable
+/// tag. A no-brace baseline (neither source on) must DIFFER, pinning that the brace
+/// actually changes the output (so the parity is not the trivial both-equal-baseline
+/// case). The faced cell is empty so NEITHER run gets the §1a cover/stance brace —
+/// each run's only brace source is its single flag.
+#[test]
+fn terrain_brace_and_stable_yield_identical_stability_output() {
+    let tuning = ConeStabilityTuning::default();
+    // Standing facing no cover: the §1a cover/stance gate never engages, so the
+    // ONLY brace source in each run is the explicit flag under test.
+    let stance = Stance::new(StanceKind::Standing);
+
+    // stable=true, terrain_braced=false.
+    let (stable_cone, stable_recoil) = stability(
+        Stable::new(true),
+        TerrainBraced::new(false),
+        stance,
+        None,
+        EmplacementStability::none(),
+        &tuning,
+    );
+    // stable=false, terrain_braced=true — every other input identical.
+    let (terrain_cone, terrain_recoil) = stability(
+        Stable::new(false),
+        TerrainBraced::new(true),
+        stance,
+        None,
+        EmplacementStability::none(),
+        &tuning,
+    );
+
+    // Bit-identical: terrain-brace routes through the SAME brace_contribution quantum.
+    assert_eq!(
+        (*stable_cone).to_bits(),
+        (*terrain_cone).to_bits(),
+        "terrain-brace must produce a bit-identical cone_mult to the stable tag \
+         (same brace_contribution magnitude): {} vs {}",
+        *stable_cone,
+        *terrain_cone,
+    );
+    assert_eq!(
+        (*stable_recoil).to_bits(),
+        (*terrain_recoil).to_bits(),
+        "terrain-brace must produce a bit-identical recoil_growth to the stable tag \
+         (same brace_contribution magnitude): {} vs {}",
+        *stable_recoil,
+        *terrain_recoil,
+    );
+
+    // No-brace baseline (neither source on): the brace withheld, so the output must
+    // DIFFER from the braced result — pinning that the brace actually moves the score.
+    let (baseline_cone, baseline_recoil) = stability(
+        Stable::new(false),
+        TerrainBraced::new(false),
+        stance,
+        None,
+        EmplacementStability::none(),
+        &tuning,
+    );
+    assert_ne!(
+        (*baseline_cone).to_bits(),
+        (*terrain_cone).to_bits(),
+        "the no-brace baseline must differ from the braced result — the brace must \
+         actually change the output: {} vs {}",
+        *baseline_cone,
+        *terrain_cone,
+    );
+    assert_ne!(
+        (*baseline_recoil).to_bits(),
+        (*terrain_recoil).to_bits(),
+        "the no-brace baseline recoil_growth must differ from the braced result: {} vs {}",
+        *baseline_recoil,
+        *terrain_recoil,
     );
 }
