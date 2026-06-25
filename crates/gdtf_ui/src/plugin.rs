@@ -5,15 +5,20 @@ use gdtf_assets::RonAsset;
 
 use crate::{
     focus_nav::FocusNavPlugin,
-    interaction::{
-        repaint_deactivated_buttons, repaint_theme_change, sync_hover_to_focus, theme_interaction,
+    theming::{
+        retheme::redrive_theme_on_asset_event,
+        theme::{GdtfTheme, GdtfThemeSpec},
+        themed::{UiSystems, any_themed_added, apply_theme},
     },
-    retheme::redrive_theme_on_asset_event,
-    theme::{GdtfTheme, GdtfThemeSpec},
-    themed::{UiSystems, any_themed_added, apply_theme},
     widgets::{
-        SegmentSelected, ToggleFlipped, drive_switches, paint_active_buttons,
-        paint_disabled_buttons, repaint_segments, select_segment_on_press,
+        core::{
+            SegmentSelected, ToggleFlipped, drive_switches, paint_active_buttons,
+            paint_disabled_buttons, repaint_segments, select_segment_on_press,
+        },
+        interaction::{
+            repaint_deactivated_buttons, repaint_theme_change, sync_hover_to_focus,
+            theme_interaction,
+        },
     },
 };
 
@@ -37,26 +42,26 @@ type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 ///
 /// It currently installs the focus-navigation layer
 /// ([`FocusNavPlugin`](crate::focus_nav::FocusNavPlugin)), the central theming pass
-/// ([`apply_theme`](crate::themed::apply_theme)), the GTW-137 live-retheme trigger
-/// ([`redrive_theme_on_asset_event`](crate::retheme::redrive_theme_on_asset_event)),
+/// ([`apply_theme`](crate::theming::themed::apply_theme)), the GTW-137 live-retheme trigger
+/// ([`redrive_theme_on_asset_event`](crate::theming::retheme::redrive_theme_on_asset_event)),
 /// the GTW-118 widget interaction layer
-/// ([`theme_interaction`](crate::interaction::theme_interaction) +
-/// [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons)), and the
+/// ([`theme_interaction`](crate::widgets::interaction::theme_interaction) +
+/// [`paint_disabled_buttons`](crate::widgets::core::paint_disabled_buttons)), and the
 /// GTW-141 mouse hover→focus bridge
-/// ([`sync_hover_to_focus`](crate::interaction::sync_hover_to_focus)).
+/// ([`sync_hover_to_focus`](crate::widgets::interaction::sync_hover_to_focus)).
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     /// Adds the focus-navigation sub-plugin, the central theming system, and the
     /// theme-derived widget interaction layer.
     ///
-    /// [`apply_theme`](crate::themed::apply_theme) runs in [`Update`] inside the named
-    /// [`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme) set. It is
+    /// [`apply_theme`](crate::theming::themed::apply_theme) runs in [`Update`] inside the named
+    /// [`UiSystems::ApplyTheme`](crate::theming::themed::UiSystems::ApplyTheme) set. It is
     /// **change-driven** (GTW-144): gated by
-    /// `resource_exists::<GdtfTheme>().and_then(resource_changed::<GdtfTheme>.or_else(`[`any_themed_added`](crate::themed::any_themed_added)`))`,
+    /// `resource_exists::<GdtfTheme>().and_then(resource_changed::<GdtfTheme>.or_else(`[`any_themed_added`](crate::theming::themed::any_themed_added)`))`,
     /// so it runs only when the theme changed (the `Load` insert, or the GTW-137
-    /// re-derive — repainting ALL [`Themed`](crate::themed::Themed) entities = the
-    /// retheme) or a new [`Themed`](crate::themed::Themed) entity appeared (so a
+    /// re-derive — repainting ALL [`Themed`](crate::theming::themed::Themed) entities = the
+    /// retheme) or a new [`Themed`](crate::theming::themed::Themed) entity appeared (so a
     /// freshly-spawned widget still gets its base look), and **never** on a
     /// steady-state frame — where re-running every frame would clobber the GTW-118
     /// hover/press feedback. The `resource_exists` arm also keeps it inert and
@@ -64,8 +69,8 @@ impl Plugin for UiPlugin {
     /// is the deterministic ordering anchor (bevy-traps rule 3).
     ///
     /// The GTW-137 live-retheme trigger
-    /// ([`redrive_theme_on_asset_event`](crate::retheme::redrive_theme_on_asset_event))
-    /// runs in [`Update`] `.before(`[`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme)`)`
+    /// ([`redrive_theme_on_asset_event`](crate::theming::retheme::redrive_theme_on_asset_event))
+    /// runs in [`Update`] `.before(`[`UiSystems::ApplyTheme`](crate::theming::themed::UiSystems::ApplyTheme)`)`
     /// so a re-derived theme repaints the same frame (bevy-traps rule 3). It
     /// reads the [`AssetEvent`](bevy::asset::AssetEvent) **message** stream
     /// (bevy-traps rule 4) and is gated on both `GdtfTheme` and the theme
@@ -75,45 +80,45 @@ impl Plugin for UiPlugin {
     /// (bevy-traps rule 1).
     ///
     /// The GTW-118 interaction layer —
-    /// [`theme_interaction`](crate::interaction::theme_interaction) (hover/press swap),
-    /// [`paint_disabled_buttons`](crate::widgets::paint_disabled_buttons) (disabled
+    /// [`theme_interaction`](crate::widgets::interaction::theme_interaction) (hover/press swap),
+    /// [`paint_disabled_buttons`](crate::widgets::core::paint_disabled_buttons) (disabled
     /// fill), and the GTW-253
-    /// [`paint_active_buttons`](crate::widgets::paint_active_buttons) (active / toggled-on
-    /// fill, skipping disabled buttons) — runs in [`Update`] `.after(`[`UiSystems::ApplyTheme`](crate::themed::UiSystems::ApplyTheme)`)`
+    /// [`paint_active_buttons`](crate::widgets::core::paint_active_buttons) (active / toggled-on
+    /// fill, skipping disabled buttons) — runs in [`Update`] `.after(`[`UiSystems::ApplyTheme`](crate::theming::themed::UiSystems::ApplyTheme)`)`
     /// so each composes on top of the freshest base look (bevy-traps rule 3);
     /// all guard the theme internally (`Option<Res<GdtfTheme>>`), so they too
     /// are inert before the resource is populated (bevy-traps rule 1).
     ///
     /// The GTW-280 deactivation repaint
-    /// ([`repaint_deactivated_buttons`](crate::interaction::repaint_deactivated_buttons))
+    /// ([`repaint_deactivated_buttons`](crate::widgets::interaction::repaint_deactivated_buttons))
     /// runs in the **same** `.after(UiSystems::ApplyTheme)` band: it reads
-    /// [`RemovedComponents`](bevy::prelude::RemovedComponents)`<`[`ActiveButton`](crate::widgets::ActiveButton)`>`
+    /// [`RemovedComponents`](bevy::prelude::RemovedComponents)`<`[`ActiveButton`](crate::widgets::core::ActiveButton)`>`
     /// and repaints a button the frame it loses `ActiveButton` from its current
     /// [`Interaction`](bevy::ui::Interaction), so a just-de-selected toggle (whose
     /// `Interaction` is unchanged) does not keep a stale active fill until hovered.
     /// Its write set (`Without<ActiveButton>`) is disjoint from
-    /// [`paint_active_buttons`](crate::widgets::paint_active_buttons)'s
+    /// [`paint_active_buttons`](crate::widgets::core::paint_active_buttons)'s
     /// (`With<ActiveButton>`), so there is no write conflict between them.
     ///
     /// The GTW-147 theme-reload repaint
-    /// ([`repaint_theme_change`](crate::interaction::repaint_theme_change)) runs in the
+    /// ([`repaint_theme_change`](crate::widgets::interaction::repaint_theme_change)) runs in the
     /// **same** `.after(UiSystems::ApplyTheme)` band but is additionally gated on
     /// `resource_changed::<GdtfTheme>`: on the frame the theme changes, it re-derives
     /// every ENABLED button's [`BackgroundColor`](bevy::ui::BackgroundColor) from its
     /// CURRENT [`Interaction`](bevy::ui::Interaction) (the shared
     /// `interaction_fill` mapping), so a button held `Hovered`/`Pressed` across a
     /// hot-reload is not left on the new theme's resting base until re-hovered —
-    /// [`apply_theme`](crate::themed::apply_theme) ignores `Interaction`, and
-    /// [`theme_interaction`](crate::interaction::theme_interaction) only fires on
+    /// [`apply_theme`](crate::theming::themed::apply_theme) ignores `Interaction`, and
+    /// [`theme_interaction`](crate::widgets::interaction::theme_interaction) only fires on
     /// `Changed<Interaction>`. Its query excludes
-    /// [`DisabledButton`](crate::widgets::DisabledButton),
-    /// [`ActiveButton`](crate::widgets::ActiveButton),
-    /// [`Segment`](crate::widgets::Segment), and [`Switch`](crate::widgets::Switch),
+    /// [`DisabledButton`](crate::widgets::core::DisabledButton),
+    /// [`ActiveButton`](crate::widgets::core::ActiveButton),
+    /// [`Segment`](crate::widgets::core::Segment), and [`Switch`](crate::widgets::core::Switch),
     /// so its write set is disjoint from the disabled/active/segment/switch paints —
     /// no two systems write the same button's fill this frame.
     ///
     /// The GTW-141 mouse hover→focus bridge
-    /// ([`sync_hover_to_focus`](crate::interaction::sync_hover_to_focus)) runs in the
+    /// ([`sync_hover_to_focus`](crate::widgets::interaction::sync_hover_to_focus)) runs in the
     /// **same** `.after(UiSystems::ApplyTheme)` band: it reads the
     /// [`Interaction`](bevy::ui::Interaction) that `bevy_ui`'s built-in
     /// `ui_focus_system` already wrote from the mouse in `PreUpdate` and moves
@@ -125,13 +130,13 @@ impl Plugin for UiPlugin {
     ///
     /// The GTW-276 generic HUD-widget drivers run in [`Update`], independent of the
     /// theming band (they carry their own colors, not the `GdtfTheme`):
-    /// [`drive_switches`](crate::widgets::drive_switches) flips a clicked
-    /// [`Switch`](crate::widgets::Switch) and writes a
-    /// [`ToggleFlipped`](crate::widgets::ToggleFlipped) message;
-    /// [`select_segment_on_press`](crate::widgets::select_segment_on_press) sets a
-    /// pressed [`SegmentedControl`](crate::widgets::SegmentedControl)'s active index
-    /// and writes a [`SegmentSelected`](crate::widgets::SegmentSelected) message, and
-    /// [`repaint_segments`](crate::widgets::repaint_segments) runs
+    /// [`drive_switches`](crate::widgets::core::drive_switches) flips a clicked
+    /// [`Switch`](crate::widgets::core::Switch) and writes a
+    /// [`ToggleFlipped`](crate::widgets::core::ToggleFlipped) message;
+    /// [`select_segment_on_press`](crate::widgets::core::select_segment_on_press) sets a
+    /// pressed [`SegmentedControl`](crate::widgets::core::SegmentedControl)'s active index
+    /// and writes a [`SegmentSelected`](crate::widgets::core::SegmentSelected) message, and
+    /// [`repaint_segments`](crate::widgets::core::repaint_segments) runs
     /// `.after(select_segment_on_press)` so it repaints ALL segments the SAME frame
     /// the active index changed (bevy-traps rule 3). Both message buffers are
     /// registered here so a downstream listener can read them.

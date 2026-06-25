@@ -17,51 +17,79 @@
 //! reads only the sim; the sim reads NEITHER. Input speaks cursor + [`Cell`](gdtf_battle_sim::Cell),
 //! not pixels — the px boundary lives in the presenter, and the world->cell inverse reuses it.
 //!
-//! # Module layout (GTW-201)
+//! # Module layout (GTW-201 / GTW-385)
 //!
 //! - [`plugin`] — the [`GdtfBattleInputPlugin`] wiring (the `add_systems` ordering) + its marker.
-//! - [`sets`] — the [`InputSystems`] ordering anchor.
-//! - [`picking`] — cursor->cell picking, the world->cell inverse, the hover-highlight emitter.
-//! - [`selection`] — ganger selection + the unified click/turn control surface.
-//! - [`gamepad`] — the gamepad software cursor + its act surfaces.
-//! - [`intent`] / [`keyboard`] / [`keybinds`] / [`cycle`] / [`fire_mode`] / [`fire_surface`] —
-//!   the shared act-intent seam, the keyboard surface, the data-driven keybinds, the cyclic
-//!   orders, the fire-mode resource, and the FIRE decision helper.
+//! - [`act_bus`] — the act-intent data bus and the key/binding surfaces that feed it:
+//!   [`sets`], [`intent`], [`keyboard`], [`keybinds`], [`cycle`].
+//! - [`pointer`] — the cursor->cell->selection control surface and the fire decision pair:
+//!   [`picking`], [`selection`], [`gamepad`], [`fire_mode`], [`fire_surface`].
 
-pub mod cycle;
-pub mod fire_mode;
-pub mod fire_surface;
-pub mod gamepad;
-pub mod intent;
-pub mod keybinds;
-pub mod keyboard;
-pub mod selection;
+// ---- concern parents (GTW-385) --------------------------------------------------
 
-mod picking;
+/// The act-intent data bus and the key/binding surfaces that feed it.
+pub mod act_bus;
+
+/// The cursor->cell->selection control surface and the fire decision pair.
+pub mod pointer;
+
+// ---- kept at root ---------------------------------------------------------------
+
 mod plugin;
-mod sets;
 
-pub use cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
-pub use fire_mode::{SelectedFireMode, sync_fire_mode_on_select};
-pub use gamepad::{
-    ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, CursorSpeed, CursorStickDeadzone,
-    GamepadCursor, emit_gamepad_cursor_move, gamepad_click_act, gamepad_turn,
-    mouse_reclaims_pointer, move_cursor, move_gamepad_cursor,
-};
-pub use intent::{
-    ActIntent, ActWriters, LevelStep, PendingActIntent, dispatch_act_intents, step_level,
-};
-pub use keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds};
-pub use keyboard::{level_keys, posture_keys, select_clear_key};
-pub use picking::{
-    InspectMode, InspectTarget, emit_highlight_request, pick_hovered_cell, world_to_cell,
+// ---- crate-root module aliases so existing `crate::<child>::` paths keep working -
+//
+// plugin/build.rs and test files use `crate::fire_mode::...`, `crate::gamepad::...`,
+// `crate::selection::...`, etc. as sub-module paths.  These re-exports preserve every
+// `crate::<child>::...` reference without touching the moved source files.
+
+/// Re-export of [`act_bus::cycle`] for intra-crate `crate::cycle::...` paths.
+pub use act_bus::cycle;
+// ---- flat item re-exports (unchanged public API surface) ------------------------
+pub use act_bus::cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
+/// Re-export of [`act_bus::intent`] for intra-crate `crate::intent::...` paths.
+pub use act_bus::intent;
+/// Re-export of [`act_bus::keybinds`] for intra-crate `crate::keybinds::...` paths.
+pub use act_bus::keybinds;
+/// Re-export of [`act_bus::keyboard`] for intra-crate `crate::keyboard::...` paths.
+pub use act_bus::keyboard;
+/// Re-export of [`act_bus::sets`] for intra-crate `crate::sets::...` paths.
+pub use act_bus::sets;
+pub use act_bus::{
+    intent::{
+        ActIntent, ActWriters, LevelStep, PendingActIntent, dispatch_act_intents, step_level,
+    },
+    keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds},
+    keyboard::{level_keys, posture_keys, select_clear_key},
+    sets::InputSystems,
 };
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
-pub use selection::{
-    FireTargetReads, LeftClickOutcome, LeftClickReads, PathPreviewTarget, PinOutcome, PreviewGrids,
-    SelectedShooter, SelectionHighlight, TurnReads, apply_left_click, apply_pin,
-    auto_select_first_player_ganger, decide_left_click, decide_pin, decide_turn, left_click_act,
-    populate_fire_target, populate_path_preview, reset_move_target_on_fire_mode_change,
-    right_click_turn_to_face, update_selection_highlight,
+/// Re-export of [`pointer::fire_mode`] for intra-crate `crate::fire_mode::...` paths.
+pub use pointer::fire_mode;
+/// Re-export of [`pointer::fire_surface`] for intra-crate `crate::fire_surface::...` paths.
+pub use pointer::fire_surface;
+/// Re-export of [`pointer::gamepad`] for intra-crate `crate::gamepad::...` paths.
+pub use pointer::gamepad;
+/// Re-export of [`pointer::picking`] for intra-crate `crate::picking::...` paths.
+pub use pointer::picking;
+/// Re-export of [`pointer::selection`] for intra-crate `crate::selection::...` paths.
+pub use pointer::selection;
+pub use pointer::{
+    fire_mode::{SelectedFireMode, sync_fire_mode_on_select},
+    gamepad::{
+        ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, CursorSpeed, CursorStickDeadzone,
+        GamepadCursor, emit_gamepad_cursor_move, gamepad_click_act, gamepad_turn,
+        mouse_reclaims_pointer, move_cursor, move_gamepad_cursor,
+    },
+    picking::{
+        InspectMode, InspectTarget, emit_highlight_request, pick_hovered_cell, world_to_cell,
+    },
+    selection::{
+        FireTargetReads, LeftClickOutcome, LeftClickReads, PathPreviewTarget, PinOutcome,
+        PreviewGrids, SelectedShooter, SelectionHighlight, TurnReads, apply_left_click, apply_pin,
+        auto_select_first_player_ganger, decide_left_click, decide_pin, decide_turn,
+        left_click_act, populate_fire_target, populate_path_preview,
+        reset_move_target_on_fire_mode_change, right_click_turn_to_face,
+        update_selection_highlight,
+    },
 };
-pub use sets::InputSystems;

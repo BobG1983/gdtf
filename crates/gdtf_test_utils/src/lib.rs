@@ -8,7 +8,7 @@
 //! - [`GdtfUiTestAppBuilder`] — a `DefaultPlugins` app in the official
 //!   `no_renderer.rs` headless configuration (no GPU, no window), for tests that
 //!   need real `bevy_ui` **layout geometry** ([`bevy::ui::ComputedNode`]) or a
-//!   live [`bevy::asset::AssetServer`]. See [`ui`](crate::GdtfUiTestAppBuilder).
+//!   live [`bevy::asset::AssetServer`]. See [`GdtfUiTestAppBuilder`].
 //!
 //! [`GdtfTestAppBuilder`] is a **type-state** builder over [`bevy::app::App`]:
 //! it wires the real GDTF state machine (via
@@ -54,14 +54,16 @@
 //! );
 //! ```
 
-mod advance;
-mod builder;
-mod builders;
-mod load;
-mod ui;
+pub mod advance;
+pub mod default_plugins_harness;
+pub mod minimal_harness;
 
 pub use advance::{advance_until, advance_until_load_state, advance_until_resource_exists};
-pub use builder::{GdtfTestAppBuilder, NoState, WithState};
-pub use builders::BattleAppBuilder;
-pub use load::GdtfLoadTestAppBuilder;
-pub use ui::{GdtfUiTestAppBuilder, NoCamera, WithCamera};
+pub use default_plugins_harness::{
+    load::GdtfLoadTestAppBuilder,
+    ui::{GdtfUiTestAppBuilder, NoCamera, WithCamera},
+};
+pub use minimal_harness::{
+    builder::{GdtfTestAppBuilder, NoState, WithState},
+    builders::BattleAppBuilder,
+};

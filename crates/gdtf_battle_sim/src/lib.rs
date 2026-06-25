@@ -217,132 +217,180 @@
 //! ADR-0001 (`docs/decisions/0001-rust-bevy-rewrite.md`) — the model/view split
 //! this crate sits inside as the authoritative, render-free model.
 
-pub mod acts;
-pub mod aim;
-pub mod apply_hit;
-pub mod armor;
-pub mod armor_wear;
-pub mod battle;
-pub mod bleed;
-pub mod central_axis;
-pub mod clearance;
-pub mod cone;
-pub mod cover;
-pub mod downed_acts;
-pub mod faced_cell;
-pub mod fire;
-pub mod firing_arc;
-pub mod ganger;
-pub mod hit_location;
-pub mod inflicted_wound;
-pub mod los;
-pub mod magazine;
-pub mod march;
-pub mod matchup;
-pub mod metric;
-pub mod move_acts;
-pub mod occupancy;
-pub mod occupancy_sync;
-pub mod pathfinder;
-pub mod posture;
-pub mod resolve_and_apply;
-pub mod resolve_coarse;
-pub mod resolve_hit;
-pub mod rng;
-pub mod sample_cone;
-pub mod severity;
-pub mod shot_fired;
-pub mod situation;
-pub mod slab;
-pub mod stability;
-pub mod surface;
+// ── Parent concern modules ───────────────────────────────────────────────────
+pub mod acts_runtime;
+pub mod combatants;
+pub mod damage_resolution;
+pub mod equipment;
+pub mod foundation;
+pub mod lifecycle;
+pub mod perception;
+pub mod shot_pipeline;
+pub mod terrain;
+
+// ── Root modules (not moved) ─────────────────────────────────────────────────
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
-pub mod tu;
 pub mod tuning;
-pub mod turn;
-pub mod vertical;
-pub mod visibility;
-pub mod weapon;
 
-pub use acts::{
-    FireDeclaration, MoveRejected, MoveRejection, MovementOccurred, ReloadOutcome, ReloadResult,
+// ── Module re-exports: preserve `gdtf_battle_sim::<child>::Item` call paths ──
+// External crates use sub-paths like `gdtf_battle_sim::acts::SimActsPlugin`;
+// these re-exports keep those paths resolving without any caller edits.
+// ── Flat item re-exports: preserve `gdtf_battle_sim::TypeName` paths ─────────
+pub use acts_runtime::{
+    acts,
+    acts::{
+        FireDeclaration, MoveRejected, MoveRejection, MovementOccurred, ReloadOutcome, ReloadResult,
+    },
+    bleed,
+    bleed::{Bleeding, enemy_phase_started, tick_bleed},
+    downed_acts,
+    downed_acts::{
+        Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
+        stabilize_downed,
+    },
+    firing_arc, move_acts,
+    move_acts::{ReactionShotFired, WalkInProgress, advance_walk},
+    turn,
+    turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu},
 };
-pub use aim::{Shooter, cone_for, stability_for};
-pub use apply_hit::{GangerHitTarget, apply_hit};
-pub use armor::{
-    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-    ArmorRegistry, ArmorSpec, ArmorType, BodyPart, PieceArmorMut, SourceArmor, Wears, WornBy,
+pub use combatants::{
+    faced_cell,
+    faced_cell::faced_cell,
+    ganger,
+    ganger::{
+        Aim, Aiming, Bottle, Cool, DerivedStats, Direction, Facing, Faction, Fight,
+        GangerAttributes, GangerName, Grit, Hp, HpMax, LifeState, Luck, Morale, Position,
+        Reactions, Reflexes, Shooting, Speed, Stabilized, Stance, StanceKind, Strength, Toughness,
+        Tu, TuMax, Wounds, WoundsMax, derive_stats,
+    },
+    posture,
+    posture::{set_aiming, set_facing, set_stance},
+    tu,
+    tu::{can_spend_tu, reset_tu, spend_tu},
 };
-pub use armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor};
-pub use battle::{
-    BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleSimPlugin, BattleWon,
-    PlayerFaction, SetupBattleRequested, TeardownBattleRequested, check_outcome,
-    setup_battle_on_request, teardown_battle_on_request,
+pub use damage_resolution::{
+    apply_hit,
+    apply_hit::{GangerHitTarget, apply_hit},
+    hit_location,
+    hit_location::roll_body_part,
+    inflicted_wound,
+    inflicted_wound::{InflictedWound, InflictedWounds},
+    matchup,
+    matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier},
+    resolve_and_apply,
+    resolve_and_apply::{
+        AppliedDamage, GroundAccrual, HitReport, StruckSurfaces, TargetGanger, resolve_and_apply,
+    },
+    resolve_hit,
+    resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit},
+    severity,
+    severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod, roll_severity},
 };
-pub use bleed::{Bleeding, enemy_phase_started, tick_bleed};
-pub use central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point};
-pub use clearance::{
-    Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant, silhouette_band,
+pub use equipment::{
+    armor,
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+        ArmorRegistry, ArmorSpec, ArmorType, BodyPart, PieceArmorMut, SourceArmor, Wears, WornBy,
+    },
+    armor_wear,
+    armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor},
+    magazine,
+    magazine::{
+        FireActor, LoadedRounds, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost,
+    },
+    weapon,
+    weapon::{
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
+        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+        Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
+        WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
+    },
 };
-pub use cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor};
-pub use cover::{
-    BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed, HeightBand,
-    band_for,
+pub use foundation::{
+    metric,
+    metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
+    rng,
+    rng::{BattleSeed, SimRng},
 };
-pub use downed_acts::{
-    Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
-    stabilize_downed,
+pub use lifecycle::{
+    battle,
+    battle::{
+        BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleSimPlugin, BattleWon,
+        PlayerFaction, SetupBattleRequested, TeardownBattleRequested, check_outcome,
+        setup_battle_on_request, teardown_battle_on_request,
+    },
+    situation,
+    situation::{
+        BattleSetup, BattleSetupError, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers,
+        setup_battle,
+    },
 };
-pub use faced_cell::faced_cell;
-pub use fire::{
-    BattleGrids, PieceQuery, ShooterQuery, TargetQuery, Volley, WeaponQuery, WearsQuery,
-    WieldsQuery, fire,
+pub use perception::{
+    los,
+    los::{CanSee, Observer, Sighted, Target, can_see, has_los},
+    pathfinder,
+    pathfinder::{Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within},
+    visibility,
+    visibility::{
+        FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible,
+        recompute_visibility, should_recompute_visibility, union_fov,
+    },
 };
-pub use ganger::{
-    Aim, Aiming, Bottle, Cool, DerivedStats, Direction, Facing, Faction, Fight, GangerAttributes,
-    GangerName, Grit, Hp, HpMax, LifeState, Luck, Morale, Position, Reactions, Reflexes, Shooting,
-    Speed, Stabilized, Stance, StanceKind, Strength, Toughness, Tu, TuMax, Wounds, WoundsMax,
-    derive_stats,
+pub use shot_pipeline::{
+    aim,
+    aim::{Shooter, cone_for, stability_for},
+    central_axis,
+    central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point},
+    clearance,
+    clearance::{
+        Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant, silhouette_band,
+    },
+    cone,
+    cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor},
+    fire,
+    fire::{
+        BattleGrids, PieceQuery, ShooterQuery, TargetQuery, Volley, WeaponQuery, WearsQuery,
+        WieldsQuery, fire,
+    },
+    march,
+    march::{MarchKind, MarchResult, march_vector},
+    resolve_coarse,
+    resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse},
+    sample_cone,
+    sample_cone::{ConcentrationP, ShotDir, concentration_p, sample_cone_vector},
+    shot_fired,
+    shot_fired::ShotFired,
+    stability,
+    stability::{ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, stability},
 };
-pub use hit_location::roll_body_part;
-pub use inflicted_wound::{InflictedWound, InflictedWounds};
-pub use los::{CanSee, Observer, Sighted, Target, can_see, has_los};
-pub use magazine::{
-    FireActor, LoadedRounds, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost,
+pub use terrain::{
+    cover,
+    cover::{
+        BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed,
+        HeightBand, band_for,
+    },
+    occupancy,
+    occupancy::{
+        DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
+        OccupantPlacement, TerrainKind, TerrainPlacement, pathable_neighbors,
+    },
+    occupancy_sync,
+    occupancy_sync::{
+        CoverDestroyed, GroundAccrued, OccupancyMaintenancePlugin, PrevSlot, SlabDestroyed,
+        sync_accrued_ground, sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab,
+        sync_moved_gangers,
+    },
+    slab,
+    slab::{SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp, SlabLedger},
+    surface,
+    surface::{GroundDamage, SlabState, SurfaceGrid},
+    vertical,
+    vertical::{
+        InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
+        build_vertical_link_graph,
+    },
 };
-pub use march::{MarchKind, MarchResult, march_vector};
-pub use matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier};
-pub use metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell};
-pub use move_acts::{ReactionShotFired, WalkInProgress, advance_walk};
-pub use occupancy::{
-    DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
-    OccupantPlacement, TerrainKind, TerrainPlacement, pathable_neighbors,
-};
-pub use occupancy_sync::{
-    CoverDestroyed, GroundAccrued, OccupancyMaintenancePlugin, PrevSlot, SlabDestroyed,
-    sync_accrued_ground, sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab,
-    sync_moved_gangers,
-};
-pub use pathfinder::{Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within};
-pub use posture::{set_aiming, set_facing, set_stance};
-pub use resolve_and_apply::{
-    AppliedDamage, GroundAccrual, HitReport, StruckSurfaces, TargetGanger, resolve_and_apply,
-};
-pub use resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse};
-pub use resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit};
-pub use rng::{BattleSeed, SimRng};
-pub use sample_cone::{ConcentrationP, ShotDir, concentration_p, sample_cone_vector};
-pub use severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod, roll_severity};
-pub use shot_fired::ShotFired;
-pub use situation::{
-    BattleSetup, BattleSetupError, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers,
-    setup_battle,
-};
-pub use slab::{SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp, SlabLedger};
-pub use stability::{ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, stability};
-pub use surface::{GroundDamage, SlabState, SurfaceGrid};
-pub use tu::{can_spend_tu, reset_tu, spend_tu};
 pub use tuning::{
     AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
     BodyPartWeights, BottlePerMorale, BraceContribution, BraceMinHeight, CombatTuning,
@@ -354,19 +402,4 @@ pub use tuning::{
     SlabDefaultHp, SlabDefaults, StabilityCurve, StabilityCurveCoord, StabilityCurvePoint,
     StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution, StanceStability, StatWeight,
     ToughnessMitigation, TuBase, TuPerSpeed, TurnTu, WoundCost, WoundCosts, WoundsPerHp,
-};
-pub use turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu};
-pub use vertical::{
-    InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
-    build_vertical_link_graph,
-};
-pub use visibility::{
-    FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible, recompute_visibility,
-    should_recompute_visibility, union_fov,
-};
-pub use weapon::{
-    Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-    WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
 };
