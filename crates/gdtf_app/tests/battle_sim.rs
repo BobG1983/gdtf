@@ -23,6 +23,7 @@ use gdtf_battle_sim::{
     rng::{BattleSeed, SimRng},
     situation::Situation,
     surface::SurfaceGrid,
+    terrain::piece::TerrainRegistry,
     test_support::{SituationBuilder, ganger_at, key, test_armor_registry, test_weapon_registry},
     tuning::CombatTuning,
     vertical::{LinkKind, VerticalLink, VerticalLinkGraph},
@@ -120,6 +121,8 @@ fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     // setup_battle resolves armor keys; the empty-default situation has zero gangers, so
     // even then this registry is harmless).
     app.world_mut().insert_resource(test_armor_registry());
+    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
+    app.world_mut().insert_resource(TerrainRegistry::default());
     // GTW-261: the Load→Intro gate now requires a LoadedSituation; seed the fixture
     // when given, else the empty default so the walk still traverses Load.
     app.world_mut()

@@ -97,7 +97,9 @@
 //! - Terrain & space: [`cover`] (the [`cover::CoverLedger`] + [`cover::HeightBand`]
 //!   banding), [`surface`] (persistent floor/roof-slab + ground grid),
 //!   [`occupancy`] + [`occupancy_sync`] (the coarse 3D occupancy grid and its
-//!   change-driven in-place maintenance), [`vertical`] (the stair/ladder link graph).
+//!   change-driven in-place maintenance), [`vertical`] (the stair/ladder link graph),
+//!   [`terrain::piece`] (the GTW-394 authored terrain-piece schema + [`piece::TerrainRegistry`];
+//!   DORMANT — nothing consumes the registry yet).
 //! - [`situation`] — the authored [`situation::Situation`] + [`situation::setup_battle`].
 //! - [`rng`] — the model-owned seeded [`rng::SimRng`] (the single draw point).
 //! - [`weapon`] — the weapon as ECS components (GTW-200): a unit [`weapon::Weapon`]
@@ -380,6 +382,11 @@ pub use terrain::{
         CoverDestroyed, GroundAccrued, OccupancyMaintenancePlugin, PrevSlot, SlabDestroyed,
         sync_accrued_ground, sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab,
         sync_moved_gangers,
+    },
+    piece,
+    piece::{
+        FloorSpec, FootfallSound, SlabPieceSpec, StructuralSpec, TerrainGraphicKey,
+        TerrainKindSpec, TerrainName, TerrainRegistry, TerrainSpec,
     },
     slab,
     slab::{SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp, SlabLedger},

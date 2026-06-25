@@ -62,6 +62,7 @@ use gdtf_battle_sim::{
     ModeKind, ModeShots, ModeTuPercent, ReloadTu, Situation, Stance, StanceKind, TuMax, WieldedBy,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     mode_tu_cost,
+    terrain::piece::TerrainRegistry,
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, Kickback, MagazineSize, Stable, WeaponDamage,
@@ -119,6 +120,8 @@ fn walk_app() -> App {
     // situation has zero gangers, so an empty registry clears the gate and the setup
     // resolves no armor keys.
     app.world_mut().insert_resource(ArmorRegistry::default());
+    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
+    app.world_mut().insert_resource(TerrainRegistry::default());
     app
 }
 

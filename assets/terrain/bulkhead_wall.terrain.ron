@@ -1,0 +1,11 @@
+// Bulkhead wall — solid blocking geometry. A destructible structural piece.
+(
+    graphic:  "wall",            // presenter TileRoles key -> alt_tileset_terrain atlas (sim never resolves it)
+    footfall: "footfall_metal",  // footfall sound key (no audio system yet; carried for the future pass)
+    kind: Wall((
+        max_hp:           40,    // structural HP pool (REUSE CoverHp; starting point, tunable)
+        armor_protection: 6,     // damage soak (REUSE ArmorProtection)
+        armor_hardness:   3,     // punch ignored (REUSE ArmorHardness)
+        height_band:      High,  // a wall fills the cell; nothing flies over it within a storey
+    )),
+)

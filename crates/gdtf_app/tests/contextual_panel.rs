@@ -27,7 +27,7 @@ use gdtf_app::test_support::{
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Cell, CellLevel, Faction, Level, LifeState, Position, Stabilized, acts::ExecuteDownedRequested,
-    tuning::CombatTuning, weapon::WeaponRegistry,
+    terrain::piece::TerrainRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -61,6 +61,8 @@ fn battle_running_app() -> App {
     // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
+    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
+    app.world_mut().insert_resource(TerrainRegistry::default());
 
     let at_menu = advance_until(
         &mut app,

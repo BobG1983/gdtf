@@ -1,0 +1,11 @@
+// Gantry slab — an elevated floor/roof deck. A destructible structural piece spanning a
+// z-boundary; it carries NO height band (a slab is not flown over, it is stood on / under).
+(
+    graphic:  "slab",            // presenter TileRoles key -> alt_tileset_terrain atlas (sim never resolves it)
+    footfall: "footfall_metal",  // footfall sound key (no audio system yet; carried for the future pass)
+    kind: Slab((
+        max_hp:           30,    // REUSE SlabHp (distinct pool from CoverHp; starting point, tunable)
+        armor_protection: 5,     // damage soak (REUSE ArmorProtection)
+        armor_hardness:   2,     // punch ignored (REUSE ArmorHardness)
+    )),
+)

@@ -27,6 +27,7 @@ use gdtf_battle_sim::{
     Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, ReloadTu,
     Shooter, Stable, Stance, StanceKind, Tu, TuMax, WeaponBundle, WieldedBy, faced_cell,
     stability_for,
+    terrain::piece::TerrainRegistry,
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, HandlingProfile, Kickback,
@@ -67,6 +68,8 @@ fn battle_running_app() -> App {
         .insert_resource(gdtf_battle_sim::weapon::WeaponRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
+    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
+    app.world_mut().insert_resource(TerrainRegistry::default());
 
     let at_menu = advance_until(
         &mut app,

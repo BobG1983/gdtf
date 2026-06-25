@@ -93,6 +93,28 @@ impl ArmorsFolderHandle {
     }
 }
 
+/// Typed handle to the in-flight **terrain folder** load (`terrain/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
+/// mirroring [`ArmorsFolderHandle`] (GTW-394). The `Load` scene preloads the whole
+/// `assets/terrain/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
+/// poll/resolve system gates on its recursive load state, then builds the
+/// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) from the
+/// loaded `RonAsset<TerrainSpec>` files (keyed by filename stem). Holding this handle
+/// keeps a strong reference to every terrain asset while the registry is built; the
+/// registry then holds the specs BY VALUE, so they survive the handle being dropped on
+/// `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct TerrainFolderHandle(Handle<LoadedFolder>);
+
+impl TerrainFolderHandle {
+    /// Wrap an in-flight terrain-folder load handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
@@ -168,6 +190,8 @@ pub(in crate::states::load) struct LoadHandles {
     pub weapons:     WeaponsFolderHandle,
     /// The armor folder being preloaded (all armor `.ron`s up front, GTW-269).
     pub armor:       ArmorsFolderHandle,
+    /// The terrain folder being preloaded (all terrain `.ron`s up front, GTW-394).
+    pub terrain:     TerrainFolderHandle,
 }
 
 crate::support_item! {
@@ -290,6 +314,29 @@ pub(in crate::states::load) struct ActiveArmorFolderHandle(Handle<LoadedFolder>)
 
 impl ActiveArmorFolderHandle {
     /// Wrap the loaded armor-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **terrain folder** (`terrain/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
+/// unlike the Load-scoped [`TerrainFolderHandle`] inside [`LoadHandles`], which is
+/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-394), the terrain mirror of
+/// [`ActiveArmorFolderHandle`]. It is inserted alongside the resolved
+/// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) and kept alive
+/// so the GTW-394 live hot-reload handler
+/// (`redrive_terrain_on_asset_event`)
+/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
+/// to ANY `assets/terrain/*.terrain.ron`. Holding the folder handle keeps every member
+/// terrain asset loaded for the file-watcher. Like the registry, it is **not** removed
+/// in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveTerrainFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveTerrainFolderHandle {
+    /// Wrap the loaded terrain-folder handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

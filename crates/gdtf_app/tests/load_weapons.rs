@@ -33,6 +33,7 @@ use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     situation::Situation,
+    terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::{WeaponName, WeaponRegistry},
 };
@@ -94,6 +95,8 @@ fn weapons_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
+    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
+    app.world_mut().insert_resource(TerrainRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 
@@ -105,8 +108,8 @@ fn weapons_loader_no_ops_cleanly_without_asset_server() {
     assert!(
         reached_intro,
         "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation + ArmorRegistry \
-         present, Load must advance to Intro within {TRANSITION_BUDGET} updates; last observed \
-         AppState was {:?}",
+         + TerrainRegistry present, Load must advance to Intro within {TRANSITION_BUDGET} \
+         updates; last observed AppState was {:?}",
         app_state(&app),
     );
 }

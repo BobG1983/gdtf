@@ -3,6 +3,7 @@ use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
     situation::Situation,
+    terrain::piece::{TerrainRegistry, TerrainSpec},
     tuning::{CombatTuning, GangerStatTuning},
     weapon::{WeaponRegistry, WeaponSpec},
 };
@@ -67,6 +68,13 @@ impl Plugin for LoadScenePlugin {
             // the weapon loader does. Registered here in `build` BEFORE the kick-off's
             // `load_folder("armor")` runs.
             app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
+            // GTW-394: terrain files mirror the armor/weapon scheme — each loads as a
+            // `RonAsset<TerrainSpec>` via `load_folder`, claiming its OWN dedicated
+            // `terrain.ron` compound extension (files are `assets/terrain/*.terrain.ron`)
+            // to keep the folder dispatch unambiguous among GDTF's many `.ron` loaders.
+            // Registered here in `build` BEFORE the kick-off's `load_folder("terrain")`
+            // runs.
+            app.init_ron_asset_with_extensions::<TerrainSpec>(vec!["terrain.ron"]);
             add_hot_reload_systems(app);
         }
         add_systems(app);
@@ -101,19 +109,25 @@ fn add_systems(app: &mut App) {
                             .or_else(not(resource_exists::<GangerStatTuning>))
                             .or_else(not(resource_exists::<WeaponRegistry>))
                             .or_else(not(resource_exists::<LoadedSituation>))
-                            .or_else(not(resource_exists::<ArmorRegistry>)),
+                            .or_else(not(resource_exists::<ArmorRegistry>))
+                            // GTW-394: the TerrainRegistry is a gate-blocking resource too
+                            // (the downstream generation epic uses it; the folder must be
+                            // verified loaded before Load exits).
+                            .or_else(not(resource_exists::<TerrainRegistry>)),
                     ),
             ),
             // Once a GdtfTheme, a CombatTuning, a WeaponRegistry, a LoadedSituation,
-            // AND an ArmorRegistry all exist, leave Load for Intro (GTW-206 / E10.4 AC5:
-            // theme + tuning required; GTW-257: the WeaponRegistry too; GTW-261: the
-            // LoadedSituation too, so a battle never starts before its real situation
-            // loads — the empty-battle race fix; GTW-269: the ArmorRegistry too, so the
-            // armor folder is verified loaded before Load exits — the registry is
-            // DORMANT this slice, consumed by slice C). On a failed situation the
-            // resolve falls back to an empty LoadedSituation, and a failed armor folder
-            // falls back to an empty ArmorRegistry, so a slow/failed asset still never
-            // strands Load (the no-strand guarantee preserved via the failure fallback).
+            // an ArmorRegistry, AND a TerrainRegistry all exist, leave Load for Intro
+            // (GTW-206 / E10.4 AC5: theme + tuning required; GTW-257: the WeaponRegistry
+            // too; GTW-261: the LoadedSituation too, so a battle never starts before its
+            // real situation loads — the empty-battle race fix; GTW-269: the ArmorRegistry
+            // too, so the armor folder is verified loaded before Load exits — the registry
+            // is DORMANT this slice, consumed by slice C; GTW-394: the TerrainRegistry
+            // too, so the terrain folder is verified loaded before Load exits — the registry
+            // is DORMANT this slice, consumed by the generation epic). On a failed situation
+            // the resolve falls back to an empty LoadedSituation, and failed folder loads
+            // fall back to empty registries, so a slow/failed asset still never strands
+            // Load (the no-strand guarantee preserved via the failure fallback).
             transition_to_intro.run_if(
                 in_state(AppState::Load)
                     .and_then(resource_exists::<GdtfTheme>)
@@ -123,7 +137,10 @@ fn add_systems(app: &mut App) {
                     .and_then(resource_exists::<GangerStatTuning>)
                     .and_then(resource_exists::<WeaponRegistry>)
                     .and_then(resource_exists::<LoadedSituation>)
-                    .and_then(resource_exists::<ArmorRegistry>),
+                    .and_then(resource_exists::<ArmorRegistry>)
+                    // GTW-394: the TerrainRegistry must be present before Load exits, so the
+                    // terrain folder is verified loaded before any downstream use.
+                    .and_then(resource_exists::<TerrainRegistry>),
             ),
         )
             .chain(),
@@ -154,6 +171,9 @@ fn add_hot_reload_systems(app: &mut App) {
             redrive_stat_tuning_on_asset_event,
             redrive_weapons_on_asset_event,
             redrive_armor_on_asset_event,
+            // GTW-394: the terrain hot-reload — overwrites the TerrainRegistry resource on
+            // a `terrain/*.terrain.ron` edit, mirroring the weapon/armor hot-reload pattern.
+            redrive_terrain_on_asset_event,
         ),
     );
 }

@@ -102,7 +102,7 @@ impl Default for TurnTu {
 /// balance data — tests assert only the relation to this value (the drop equals the
 /// looked-up terrain cost), never a pinned magnitude. `#[serde(transparent)]` lets it
 /// parse a bare RON scalar; private inner + derived [`Deref`].
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct MoveCost(u8);
 

@@ -10,7 +10,7 @@ use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
     ArmorsFolderHandle, FontFolderHandle, LoadHandles, SituationHandle, StatTuningHandle,
-    ThemeHandle, TuningHandle, WeaponsFolderHandle,
+    TerrainFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -42,6 +42,11 @@ const WEAPONS_DIR: &str = "weapons";
 /// folder so the `.ron` loader dispatch is unambiguous (armor only, no weapons).
 const ARMOR_DIR: &str = "armor";
 
+/// Path of the loose terrain folder, relative to the asset source root (GTW-394 —
+/// the per-terrain-piece `assets/terrain/*.terrain.ron` files the registry is built
+/// from). Its OWN folder so the `.ron` loader dispatch is unambiguous (terrain only).
+const TERRAIN_DIR: &str = "terrain";
+
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
 ///
@@ -57,7 +62,11 @@ const ARMOR_DIR: &str = "armor";
 /// can build the name-keyed [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry))
 /// AND preloads the entire `armor` folder via `load_folder` (GTW-269 — every
 /// `assets/armor/*.ron`, each a `RonAsset<ArmorSpec>`, so the poll/resolve system can
-/// build the name-keyed [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry)),
+/// build the name-keyed [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry))
+/// AND preloads the entire `terrain` folder via `load_folder` (GTW-394 — every
+/// `assets/terrain/*.terrain.ron`, each a `RonAsset<TerrainSpec>`, so the poll/resolve
+/// system can build the name-keyed
+/// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry)),
 /// then inserts the Load-scoped [`LoadHandles`] resource the poll/resolve system
 /// reads.
 ///
@@ -83,6 +92,7 @@ pub(in crate::states::load) fn kick_off_loads(
     );
     let weapons = WeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
     let armor = ArmorsFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
+    let terrain = TerrainFolderHandle::new(asset_server.load_folder(TERRAIN_DIR));
 
     commands.insert_resource(LoadHandles {
         theme,
@@ -92,5 +102,6 @@ pub(in crate::states::load) fn kick_off_loads(
         stat_tuning,
         weapons,
         armor,
+        terrain,
     });
 }

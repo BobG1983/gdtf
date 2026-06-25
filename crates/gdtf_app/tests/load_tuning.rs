@@ -30,6 +30,7 @@ use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     situation::Situation,
+    terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
 };
@@ -113,6 +114,8 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
     // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
+    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
+    app.world_mut().insert_resource(TerrainRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 

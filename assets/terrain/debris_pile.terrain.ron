@@ -1,0 +1,11 @@
+// Debris pile — loose scatter. A destructible structural piece (low, fragile cover).
+(
+    graphic:  "rubble",          // presenter TileRoles key -> alt_tileset_terrain atlas (sim never resolves it)
+    footfall: "footfall_rubble", // footfall sound key (no audio system yet; carried for the future pass)
+    kind: Scatter((
+        max_hp:           8,     // REUSE CoverHp (scatter shares the wall/cover/prop HP model)
+        armor_protection: 1,     // damage soak (REUSE ArmorProtection)
+        armor_hardness:   0,     // punch ignored (REUSE ArmorHardness)
+        height_band:      Low,   // low loose debris
+    )),
+)

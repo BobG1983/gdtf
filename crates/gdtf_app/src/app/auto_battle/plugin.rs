@@ -45,7 +45,10 @@
 //! gates on is removed the moment it leaves the menu, so it nudges exactly once.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{armor::ArmorRegistry, tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{
+    armor::ArmorRegistry, terrain::piece::TerrainRegistry, tuning::CombatTuning,
+    weapon::WeaponRegistry,
+};
 use gdtf_ui::theme::default_theme;
 
 use crate::states::{LoadedSituation, RunningState};
@@ -192,14 +195,14 @@ crate::support_item! {
     /// machine can traverse `Load` even without a resolved asset stack.
     ///
     /// Inserts [`default_theme`] + [`CombatTuning::default`] unconditionally, and an empty
-    /// [`WeaponRegistry`] + an empty [`ArmorRegistry`] + a default (EMPTY) [`LoadedSituation`]
-    /// **only when no [`AssetServer`] is present** (a headless / asset-less build). Under the
-    /// real GUI launch the `Load` scene later `insert_resource`-overwrites the theme / tuning
-    /// with the shipped assets (the real theme + tuning), and — crucially — its
-    /// `poll_and_resolve` only RESOLVES the registries / situation
-    /// from `assets/weapons/*.weapon.ron` + `assets/armor/*.armor.ron` +
-    /// `situations/skirmish.ron` while those resources are still ABSENT, so the empty seeds
-    /// must NOT be present for the real assets to win.
+    /// [`WeaponRegistry`] + an empty [`ArmorRegistry`] + an empty [`TerrainRegistry`] + a
+    /// default (EMPTY) [`LoadedSituation`] **only when no [`AssetServer`] is present** (a
+    /// headless / asset-less build). Under the real GUI launch the `Load` scene later
+    /// `insert_resource`-overwrites the theme / tuning with the shipped assets (the real theme
+    /// + tuning), and — crucially — its `poll_and_resolve` only RESOLVES the registries /
+    /// situation from `assets/weapons/*.weapon.ron` + `assets/armor/*.armor.ron` +
+    /// `assets/terrain/*.terrain.ron` + `situations/skirmish.ron` while those resources are
+    /// still ABSENT, so the empty seeds must NOT be present for the real assets to win.
     /// Runs once in `Startup` (before the first `Update`, hence before `Load` resolves), so
     /// the unconditional seeds are in place no matter how the assets resolve, and the
     /// gated ones are absent whenever a real asset stack can resolve the genuine articles.
@@ -218,10 +221,11 @@ crate::support_item! {
     /// `BattleRunning` (a black screen). Gating BOTH empty seeds on the [`AssetServer`]
     /// being ABSENT (SYMMETRIC seeds) means: with an asset stack present (the real GUI
     /// launch) NONE of the empty fallbacks is inserted, so `poll_and_resolve` WAITS for and
-    /// populates the real skirmish + the real weapon registry + the real armor registry;
-    /// without one (a headless asset-less drive) all empty fallbacks are still seeded so the
-    /// machine keeps traversing `Load` and the GTW-257 / GTW-269 Load→Intro gate (which
-    /// requires a [`WeaponRegistry`] and an [`ArmorRegistry`]) is satisfied. The
+    /// populates the real skirmish + the real weapon registry + the real armor registry + the
+    /// real terrain registry; without one (a headless asset-less drive) all empty fallbacks
+    /// are still seeded so the machine keeps traversing `Load` and the GTW-257 / GTW-269 /
+    /// GTW-394 Load→Intro gate (which requires a [`WeaponRegistry`], an [`ArmorRegistry`],
+    /// and a [`TerrainRegistry`]) is satisfied. The
     /// unconditional theme + tuning seeds are
     /// overwritten in place by the resolved assets (their resolve is unconditional), so
     /// they need no such gate.
@@ -246,6 +250,10 @@ crate::support_item! {
         if asset_server.is_none() {
             commands.insert_resource(WeaponRegistry::default());
             commands.insert_resource(ArmorRegistry::default());
+            // GTW-394: the TerrainRegistry is a gate-blocking resource; seed the empty
+            // fallback when there is no AssetServer so headless walks still reach Intro
+            // (the A1 / AC3b pattern for the terrain registry).
+            commands.insert_resource(TerrainRegistry::default());
             commands.insert_resource(LoadedSituation::new(
                 gdtf_battle_sim::situation::Situation::default(),
             ));

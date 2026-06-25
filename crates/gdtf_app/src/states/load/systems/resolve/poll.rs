@@ -13,6 +13,7 @@ use crate::states::load::{
         params::{LoadAssetCollections, ResolvedResources},
         situation::resolve_situation,
         stat_tuning::resolve_stat_tuning,
+        terrain::resolve_terrain,
         tuning::resolve_tuning,
         weapons::resolve_weapons,
     },
@@ -71,9 +72,9 @@ use crate::states::load::{
 /// `Resource`), so the loaded payload is inserted directly. On the failure path it
 /// `warn!`s naming `combat/tuning.ron` and inserts `CombatTuning::default`, so
 /// `Load` always exits with a tuning present. A `GdtfTheme`, a `CombatTuning`, a
-/// `WeaponRegistry`, a `LoadedSituation`, AND an `ArmorRegistry` must ALL be present
-/// before the plugin's transition leaves `Load` (see the plugin wiring); this branch
-/// makes the tuning one of those five required resources.
+/// `WeaponRegistry`, a `LoadedSituation`, an `ArmorRegistry`, AND a `TerrainRegistry`
+/// must ALL be present before the plugin's transition leaves `Load` (see the plugin
+/// wiring); this branch makes the tuning one of those six required resources.
 ///
 /// GTW-269: it ALSO resolves the loaded `assets/armor/` folder into a persistent
 /// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) (the armor mirror of the
@@ -85,11 +86,21 @@ use crate::states::load::{
 /// [`resolve_armor`] `warn!`s and inserts an empty registry, preserving the
 /// no-strand guarantee.
 ///
+/// GTW-394: it ALSO resolves the loaded `assets/terrain/` folder into a persistent
+/// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) (the terrain
+/// mirror of the `ArmorRegistry` branch). The terrain branch runs on its OWN
+/// `TerrainRegistry`-absence guard ([`resolve_terrain`]), so it neither starves nor is
+/// starved by the other branches. The registry is DORMANT after this slice — nothing
+/// consumes it yet (the downstream generation epic does); it is resolved and gated on
+/// purely so it is present (and the folder verified loaded) before `Load` exits. On the
+/// failure path [`resolve_terrain`] `warn!`s and inserts an empty registry, preserving
+/// the no-strand guarantee.
+///
 /// Guarded by `run_if(resource_exists::<LoadHandles>)` plus the
 /// `not(resource_exists::<GdtfTheme>).or(not(resource_exists::<CombatTuning>))
 /// .or(not(resource_exists::<WeaponRegistry>)).or(not(resource_exists::<LoadedSituation>))
-/// .or(not(resource_exists::<ArmorRegistry>))`
-/// gate in the plugin wiring (run while ANY of the five required resources is still
+/// .or(not(resource_exists::<ArmorRegistry>)).or(not(resource_exists::<TerrainRegistry>))`
+/// gate in the plugin wiring (run while ANY of the six required resources is still
 /// missing), and takes `Res<AssetServer>`/`Res<Assets<_>>`/`Res<LoadHandles>` —
 /// all of which are present whenever those run-conditions hold, so it never panics
 /// on a missing resource (bevy-traps rule 1). The early-`return`s on the
@@ -97,6 +108,15 @@ use crate::states::load::{
 /// is internally re-gated on its OWN resource's absence (via the
 /// [`ResolvedResources`] presence-probes) so once one resolves only the still-missing
 /// ones keep being polled.
+// GTW-394 pushed this function over the 100-line clippy limit (each branch adds ~15
+// lines of resolve work). The function is a flat, linearly-growing orchestrator whose
+// shape is self-evidently correct at a glance — splitting it would just separate the
+// closely-related branch logic without reducing conceptual load.
+#[allow(
+    clippy::too_many_lines,
+    reason = "flat per-resource branch orchestrator; each GTW adds ~15 lines of resolve \
+              work; splitting would separate closely-related logic without reducing load"
+)]
 pub(in crate::states::load) fn poll_and_resolve(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
@@ -111,6 +131,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         weapons_present,
         situation_present,
         armor_present,
+        terrain_present,
     ) = (
         resolved.theme.is_some(),
         resolved.tuning.is_some(),
@@ -118,6 +139,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.weapons.is_some(),
         resolved.situation.is_some(),
         resolved.armor.is_some(),
+        resolved.terrain.is_some(),
     );
     let (
         Some(asset_server),
@@ -128,6 +150,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(folders),
         Some(weapon_specs),
         Some(armor_specs),
+        Some(terrain_specs),
         Some(handles),
     ) = (
         asset_server,
@@ -138,6 +161,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.folders,
         collections.weapon_specs,
         collections.armor_specs,
+        collections.terrain_specs,
         handles,
     )
     else {
@@ -186,6 +210,21 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &armor_specs,
+            &handles,
+        );
+    }
+
+    // GTW-394: resolve the terrain folder into the name-keyed TerrainRegistry on its
+    // OWN absence guard, independently of all other branches — so a slow terrain folder
+    // never blocks them and vice-versa (the armor-branch precedent). The registry is
+    // DORMANT after this slice (the downstream generation epic consumes it); it is
+    // resolved here purely so it is present when the gate checks.
+    if !terrain_present {
+        resolve_terrain(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &terrain_specs,
             &handles,
         );
     }

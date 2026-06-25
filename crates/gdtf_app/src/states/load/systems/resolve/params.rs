@@ -12,6 +12,7 @@ use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
     situation::Situation,
+    terrain::piece::{TerrainRegistry, TerrainSpec},
     tuning::{CombatTuning, GangerStatTuning},
     weapon::{WeaponRegistry, WeaponSpec},
 };
@@ -19,7 +20,7 @@ use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
 use crate::states::load::resources::LoadedSituation;
 
-/// The three loaded RON asset collections [`poll_and_resolve`](super::poll_and_resolve)
+/// The loaded RON asset collections [`poll_and_resolve`](super::poll_and_resolve)
 /// reads, bundled into one [`SystemParam`] so the system's parameter list stays under
 /// clippy's argument-count gate (the [`BattleGridsParam`](gdtf_battle_sim) grouping
 /// precedent — a transparent bundle of existing world-state resources, not a
@@ -32,20 +33,22 @@ use crate::states::load::resources::LoadedSituation;
 #[derive(SystemParam)]
 pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded theme-spec RON collection (`theme/grimdark.ron`).
-    pub(super) theme:        Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
+    pub(super) theme:         Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
     /// The loaded authored-situation RON collection (`situations/skirmish.ron`).
-    pub(super) situation:    Option<Res<'w, Assets<RonAsset<Situation>>>>,
+    pub(super) situation:     Option<Res<'w, Assets<RonAsset<Situation>>>>,
     /// The loaded combat-tuning RON collection (`combat/tuning.ron`, GTW-206).
-    pub(super) tuning:       Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
+    pub(super) tuning:        Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
     /// The loaded ganger stat-tuning RON collection (`combat/stat_tuning.ron`, GTW-384).
-    pub(super) stat_tuning:  Option<Res<'w, Assets<RonAsset<GangerStatTuning>>>>,
+    pub(super) stat_tuning:   Option<Res<'w, Assets<RonAsset<GangerStatTuning>>>>,
     /// The loaded `LoadedFolder` collection — used to read the weapons folder's
     /// member handles when building the [`WeaponRegistry`] (GTW-257).
-    pub(super) folders:      Option<Res<'w, Assets<LoadedFolder>>>,
+    pub(super) folders:       Option<Res<'w, Assets<LoadedFolder>>>,
     /// The loaded per-weapon RON collection (`weapons/*.ron`, GTW-257).
-    pub(super) weapon_specs: Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
+    pub(super) weapon_specs:  Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
     /// The loaded per-armor RON collection (`armor/*.ron`, GTW-269).
-    pub(super) armor_specs:  Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
+    pub(super) armor_specs:   Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
+    /// The loaded per-terrain RON collection (`terrain/*.ron`, GTW-394).
+    pub(super) terrain_specs: Option<Res<'w, Assets<RonAsset<TerrainSpec>>>>,
 }
 
 /// The four persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -70,4 +73,6 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
     pub(super) situation:   Option<Res<'w, LoadedSituation>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).
     pub(super) armor:       Option<Res<'w, ArmorRegistry>>,
+    /// Whether the resolved [`TerrainRegistry`] is already inserted (GTW-394).
+    pub(super) terrain:     Option<Res<'w, TerrainRegistry>>,
 }

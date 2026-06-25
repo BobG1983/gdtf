@@ -1,0 +1,11 @@
+// Supply crate — chest-high cover prop. A destructible structural piece a round may clear.
+(
+    graphic:  "cover",           // presenter TileRoles key -> alt_tileset_terrain atlas (sim never resolves it)
+    footfall: "footfall_metal",  // footfall sound key (no audio system yet; carried for the future pass)
+    kind: Cover((
+        max_hp:           20,    // REUSE CoverHp (starting point, tunable)
+        armor_protection: 3,     // damage soak (REUSE ArmorProtection)
+        armor_hardness:   1,     // punch ignored (REUSE ArmorHardness)
+        height_band:      Low,   // shootable-over: a Mid/High round clears it (resolution.md §3)
+    )),
+)

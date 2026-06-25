@@ -3,6 +3,7 @@
 //! Every field is a named newtype (no-bare-types), mirroring the GTW-364 cover types.
 
 use bevy::prelude::Deref;
+use serde::Deserialize;
 
 use crate::armor::{ArmorHardness, ArmorProtection};
 
@@ -16,7 +17,10 @@ use crate::armor::{ArmorHardness, ArmorProtection};
 /// newtype from `CoverHp` (no-bare-types rule 3: a slab HP pool is not a cover HP
 /// pool, even over the same inner `u32`). Private inner + derived [`Deref`] (house
 /// style); a magnitude is per-slab data (TBD tuning), not pinned here.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// `#[serde(transparent)]` lets an authored slab-HP parse as a bare integer (the
+/// [`TerrainSpec`](crate::terrain::piece::SlabPieceSpec) authoring path).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
 pub struct SlabHp(u32);
 
 impl SlabHp {
