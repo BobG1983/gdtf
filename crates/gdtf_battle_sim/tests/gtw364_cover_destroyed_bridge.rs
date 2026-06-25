@@ -19,11 +19,12 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, BraceStairCells,
     Cell, CellLevel, CombatTuning, CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType,
     Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec, HandlingProfile, HeightBand, Hp,
-    InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MarchKind,
-    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    PlayerFaction, Position, ReloadTu, Shooting, SimPos, SimRng, SlabLedger, SquadVisibility,
-    Stable, Stance, StanceKind, SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph,
-    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
+    InflictedWounds, InjuryRng, Kickback, Level, LifeState, LootRng, Luck, Magazine, MagazineSize,
+    MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
+    OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng, ReloadTu, SeverityRng,
+    Shooting, ShotRng, SimPos, SlabLedger, SquadVisibility, Stable, Stance, StanceKind,
+    SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
     acts::{FireRequested, SimActsPlugin},
     march_vector,
 };
@@ -60,7 +61,13 @@ fn bridge_app() -> App {
         .add_plugins(SimActsPlugin)
         .add_plugins(OccupancyMaintenancePlugin);
     app.insert_resource(SurfaceGrid::new());
-    app.insert_resource(SimRng::from_seed(BattleSeed::new(0xC0BA_17C0)));
+    // GTW-14: five per-subsystem RNG streams from the battle seed.
+    let seed = BattleSeed::new(0xC0BA_17C0);
+    app.insert_resource(ShotRng::from_root(seed));
+    app.insert_resource(SeverityRng::from_root(seed));
+    app.insert_resource(LootRng::from_root(seed));
+    app.insert_resource(InjuryRng::from_root(seed));
+    app.insert_resource(ProcgenRng::from_root(seed));
     app.insert_resource(CombatTuning::default());
     app.insert_resource(PlayerFaction::new(Faction::new(1)));
     // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set.

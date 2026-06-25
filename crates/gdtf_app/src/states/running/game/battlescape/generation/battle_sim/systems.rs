@@ -28,43 +28,59 @@ use gdtf_battle_sim::{
     situation::Situation,
 };
 
+use super::seed::resolve_root_seed;
 use crate::states::{
     load::LoadedSituation, running::game::battlescape::generation::resources::GenerationComplete,
 };
-
-/// The fixed battle seed this slice threads into the setup trigger.
-///
-/// A documented PLACEHOLDER: no E10 slice yet lands a composition-root seed resource
-/// (E10.0 builds only the `SimSystems` set; nothing inserts a chosen seed for
-/// Generation to read), so the app — the composition root — owns producing one here.
-/// The menu / setup-scene seed-pick (`GDTF_BATTLE_SEED` per
-/// `docs/combat/resolution.md`, GTW-14's roster-side producer) is a LATER slice that
-/// will replace this constant with the player-chosen / env-pinned seed. It reuses the
-/// [`BattleSeed`](gdtf_battle_sim::rng::BattleSeed) newtype (no new bare domain
-/// primitive — `.claude/rules/no-bare-types.md`).
-const DEFAULT_BATTLE_SEED: BattleSeed = BattleSeed::new(0);
 
 /// `OnEnter(BattleScapeState::Generation)`: trigger the sim to build the battle.
 ///
 /// Resolves the situation — the persistent [`LoadedSituation`] resolved by the
 /// `Load` scene (E10.3) cloned by value if present, ELSE [`Situation::default()`] (an
 /// EMPTY battlefield: zero gangers / links, validates trivially) — and writes a
-/// [`SetupBattleRequested`] carrying it + [`DEFAULT_BATTLE_SEED`]. The sim's
-/// `setup_battle_on_request` system (in `SimSystems::Simulate`) consumes the trigger,
-/// seeds the [`SimRng`](gdtf_battle_sim::rng::SimRng), pours the situation into the
-/// world, and signals [`BattleReady`] on success.
+/// [`SetupBattleRequested`] carrying it + a [`BattleSeed`] from
+/// [`resolve_root_seed`] (or a pre-injected [`Res<BattleSeed>`] resource when
+/// present — the test-harness override that guarantees replay determinism without
+/// touching wall-clock entropy). The sim's `setup_battle_on_request` system (in
+/// `SimSystems::Simulate`) consumes the trigger, seeds the five per-subsystem RNG
+/// streams (GTW-14: `ShotRng` / `SeverityRng` / `LootRng` / `InjuryRng` /
+/// `ProcgenRng`), pours the situation into the world, and signals [`BattleReady`]
+/// on success.
+///
+/// Seed resolution order:
+/// 1. `Res<BattleSeed>` — pre-injected by a test harness (or a future seed-pick UI
+///    feature) for deterministic replay; absent in the production GUI path.
+/// 2. `resolve_root_seed()` — reads `GDTF_BATTLE_SEED` env var or falls back to the
+///    wall-clock microsecond timestamp.
+///
+/// Whichever branch wins, the chosen seed is logged at `info!` UNCONDITIONALLY here
+/// (GTW-14, m2) as the battle's replay handle — the override path skips
+/// `resolve_root_seed` and the log it owns, so this site is the one guaranteed to
+/// fire for every battle.
 ///
 /// The `Situation::default()` fallback keeps the headless `MinimalPlugins` deep-walk
 /// (which inserts no [`LoadedSituation`]) triggering a valid empty setup and
 /// advancing rather than hanging in Generation (AC8).
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn request_battle_setup(
     loaded: Option<Res<LoadedSituation>>,
+    seed_override: Option<Res<BattleSeed>>,
     mut setup: MessageWriter<SetupBattleRequested>,
 ) {
     // The loaded authored battlefield if the Load scene resolved one, else the empty
     // Default (keeps the headless deep-walk green).
     let situation: Situation = loaded.map_or_else(Situation::default, |loaded| (**loaded).clone());
-    setup.write(SetupBattleRequested::new(situation, DEFAULT_BATTLE_SEED));
+    // GTW-14: use the pre-injected seed override (test harness) if present, else
+    // resolve from the GDTF_BATTLE_SEED env var or wall-clock.
+    let seed = seed_override.map_or_else(resolve_root_seed, |r| *r);
+    // GTW-14 (m2): log the resolved seed UNCONDITIONALLY here so EVERY battle — both
+    // the override path (test harness / future seed-pick UI, which bypasses
+    // `resolve_root_seed` and the `info!` it owns) AND the entropy path — records its
+    // replay handle. This is the one site guaranteed to fire for every setup.
+    info!(
+        seed = *seed,
+        "battle setup: resolved BattleSeed (RNG replay handle)"
+    );
+    setup.write(SetupBattleRequested::new(situation, seed));
 }
 
 /// `Update` (presence-gated): insert [`GenerationComplete`] on a [`BattleReady`] from
@@ -94,7 +110,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn gat
 ///
 /// Writes a [`TeardownBattleRequested`] at the BATTLE boundary, NOT the
 /// `OnExit(BattleScapeState::Generation)` boundary: the sim's battle-lifetime
-/// resources ([`SimRng`](gdtf_battle_sim::rng::SimRng) + the four grids) MUST SURVIVE
+/// resources ([`ShotRng`](gdtf_battle_sim::rng::ShotRng) + the four grids) MUST SURVIVE
 /// `Generation` → `AnimateIn` → `BattleRunning` → `AnimateOut` → `AfterMath` because
 /// the E10.6 acts consume them in `BattleRunning`, so the sim cleans them only when
 /// the whole battle ends (`bevy-traps.md` #1 applied at the CORRECT — battle — level).

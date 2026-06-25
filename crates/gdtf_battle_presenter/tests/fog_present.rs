@@ -42,7 +42,7 @@ use gdtf_battle_presenter::{
 use gdtf_battle_sim::{
     Aiming, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger, Direction, Facing, Faction,
     FovObserver, GangerName, GangerSpawn, Level, LifeState, OccupancyGrid, Position,
-    SetupBattleRequested, SimRng, Situation, SquadVisibility, StairEyeOffset, Stance, StanceKind,
+    SetupBattleRequested, ShotRng, Situation, SquadVisibility, StairEyeOffset, Stance, StanceKind,
     SurfaceGrid, setup_battle_on_request,
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_weapon_registry,
@@ -142,7 +142,7 @@ fn drive_setup(app: &mut App, situation: Situation) -> bool {
         .write(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
     for _ in 0..MAX_UPDATES {
         app.update();
-        if app.world().get_resource::<SimRng>().is_some() {
+        if app.world().get_resource::<ShotRng>().is_some() {
             app.update();
             return true;
         }

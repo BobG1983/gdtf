@@ -17,7 +17,7 @@ use crate::{
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::resolve_hit,
-    rng::SimRng,
+    rng::SeverityRng,
     severity::{SeverityInputs, part_severity_mod, roll_severity},
     slab::{SlabDamage, SlabEntry, SlabEvent, SlabLedger},
     surface::GroundDamage,
@@ -296,7 +296,7 @@ fn apply_ground_hit(at: CellLevel, weapon: WeaponStats<'_>) -> GroundAccrual {
 /// `ShotKind` selects it), both untouched on a ganger / ground / miss.
 ///
 /// Pure, render-free model logic. On a ganger hit it mutates the target ganger's
-/// battle state in place and advances the injected [`SimRng`] by **exactly one**
+/// battle state in place and advances the injected [`SeverityRng`](crate::rng::SeverityRng) by **exactly one**
 /// severity draw; on a cover / slab hit it spends the respective ledger's HP and takes
 /// no draw; on a ground hit it records the accrual in the report and mutates NOTHING
 /// (the accrual reaches the [`SurfaceGrid`](crate::surface::SurfaceGrid) via the fire
@@ -321,7 +321,7 @@ pub fn resolve_and_apply(
     target_entity: Entity,
     surfaces: StruckSurfaces<'_>,
     tuning: &CombatTuning,
-    rng: &mut SimRng,
+    rng: &mut SeverityRng,
 ) -> HitReport {
     match outcome.kind {
         // The wound path — only a Ganger outcome can wound (the ONE severity draw is
@@ -422,14 +422,14 @@ pub fn resolve_and_apply(
 ///    the zeroed bare-flesh piece under [`Matchup::Neutral`].
 /// 4. **Damage** — [`resolve_hit`] → [`HitResult`](crate::resolve_hit::HitResult).
 /// 5. **Severity (the ONE draw)** — [`roll_severity`] over the assembled
-///    [`SeverityInputs`], drawing from the injected [`SimRng`].
+///    [`SeverityInputs`], drawing from the injected [`SeverityRng`](crate::rng::SeverityRng).
 /// 6. **Apply** — [`apply_hit`] folds the hit onto the target in place.
 /// 7. **Freeze** — returns the [`HitReport`] of named newtypes (`cover_destroyed`
 ///    always `None` — a ganger hit destroys no cover).
 ///
 /// Split out of [`resolve_and_apply`]'s kind dispatch (GTW-364) so the ganger and
 /// cover paths each stay a focused fold. Mutates the target ganger's battle state in
-/// place and advances the injected [`SimRng`] by exactly one severity draw on a real
+/// place and advances the injected [`SeverityRng`](crate::rng::SeverityRng) by exactly one severity draw on a real
 /// hit; owns no mutation after return. Exactly seven inputs (the
 /// [`TargetGanger`] bundle already groups the target's mutable surfaces), so it sits
 /// at clippy's argument-count gate without an exemption.
@@ -440,7 +440,7 @@ fn fold_ganger(
     target: TargetGanger<'_>,
     target_entity: Entity,
     tuning: &CombatTuning,
-    rng: &mut SimRng,
+    rng: &mut SeverityRng,
 ) -> HitReport {
     // (1) Corpse-skip BEFORE any draw: a dead target is final — no draw is taken
     // (a corpse never consumes an RNG draw), nothing mutates.
@@ -472,7 +472,7 @@ fn fold_ganger(
 
     // (5) The ONE RNG draw: the wound-severity roll (E3.4). Both gangers' Luck, the
     // defender's Toughness, the struck part's mod, and the weapon's fatal bias feed
-    // it; the injected SimRng is the single draw point.
+    // it; the injected SeverityRng is the draw point.
     let inputs = SeverityInputs::new(
         hit.penetrating,
         target.toughness,

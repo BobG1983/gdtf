@@ -2,7 +2,7 @@
 //! system — **the MODEL**.
 //!
 //! This crate owns combat truth: deterministic, unit-testable with an injected
-//! seeded RNG ([`rng::SimRng`]), and presentation-agnostic — it reasons in the
+//! seeded RNG streams ([`rng::ShotRng`] / [`rng::SeverityRng`] / [`rng::LootRng`] / [`rng::InjuryRng`] / [`rng::ProcgenRng`]), and presentation-agnostic — it reasons in the
 //! cubic-voxel sim metric ([`metric`]: cells on x/y, levels on z, over the
 //! 60×60×8 grid), **never in pixels**. It depends on Bevy only for ECS plumbing
 //! (resources, components, messages) — never a renderer, window, or asset-server.
@@ -101,7 +101,7 @@
 //!   [`terrain::piece`] (the GTW-394 authored terrain-piece schema + [`piece::TerrainRegistry`];
 //!   DORMANT — nothing consumes the registry yet).
 //! - [`situation`] — the authored [`situation::Situation`] + [`situation::setup_battle`].
-//! - [`rng`] — the model-owned seeded [`rng::SimRng`] (the single draw point).
+//! - [`rng`] — the model-owned seeded RNG streams (GTW-14: five per-subsystem streams).
 //! - [`weapon`] — the weapon as ECS components (GTW-200): a unit [`weapon::Weapon`]
 //!   MARKER plus one `#[derive(Component)]` newtype per stat
 //!   ([`weapon::WeaponName`] / [`weapon::BaseSpread`] / [`weapon::Accuracy`] /
@@ -179,7 +179,7 @@
 //!   ([`resolve_and_apply::resolve_and_apply`]): folds one [`resolve_coarse::ShotOutcome`]
 //!   through matchup → [`mod@resolve_hit`] → [`severity`] → [`mod@apply_hit`] into ONE act
 //!   and returns a FROZEN [`resolve_and_apply::HitReport`] for the presenter's FX
-//!   (corpse-skip before any draw; every draw via the injected [`rng::SimRng`]; no
+//!   (corpse-skip before any draw; every draw via the injected [`rng::ShotRng`] or [`rng::SeverityRng`]; no
 //!   pixel). Charging TU / looping the burst (`fire()`) is E4.
 //! - [`mod@fire`] — the E4.5 capstone firing act ([`fire::fire`]): a query-based Bevy
 //!   function (NO `&mut World`) over two disjoint queries ([`fire::ShooterQuery`] and
@@ -187,7 +187,7 @@
 //!   ([`tu::spend_tu`]) → clamps the burst to ammo ([`magazine::clamp_burst`]) →
 //!   per-round composes the cone ([`aim::cone_for`]), [`resolve_coarse::resolve_coarse`],
 //!   and [`resolve_and_apply::resolve_and_apply`] into a frozen `Vec<HitReport>`
-//!   volley. Every draw via the injected [`rng::SimRng`]; no LOS/fog; no pixel.
+//!   volley. Every draw via the injected [`rng::ShotRng`] or [`rng::SeverityRng`]; no LOS/fog; no pixel.
 //! - [`acts`] — the E10.2 message-driven INPUT CONTRACT + per-act dispatch + the public
 //!   [`acts::SimActsPlugin`]: six `#[derive(Message)]` `*Requested` types
 //!   ([`acts::FireRequested`] / [`acts::SetAimingRequested`] / [`acts::SetStanceRequested`]
@@ -313,7 +313,7 @@ pub use foundation::{
     metric,
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
     rng,
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
 };
 pub use lifecycle::{
     battle,

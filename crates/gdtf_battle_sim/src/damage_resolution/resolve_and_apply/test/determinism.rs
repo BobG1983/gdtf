@@ -19,7 +19,7 @@ fn same_seed_reproduces_the_report_sequence() {
     ];
 
     let run = || {
-        let mut r = SimRng::from_seed(BattleSeed::new(SEED));
+        let mut r = rng();
         // A fresh target per call so wear/state don't drift the comparison. Each part
         // has its own piece-entity integrity (keyed access — GTW-323 / ADR-0004), so the
         // repeated Torso hit wears the SAME piece across the sequence (the same

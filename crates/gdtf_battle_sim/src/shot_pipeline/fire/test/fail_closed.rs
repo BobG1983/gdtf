@@ -27,8 +27,9 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();
-    let mut r = rng();
-    let mut fresh = rng();
+    let mut shot_r = rng();
+    let mut fresh_shot = rng();
+    let mut sev_r = severity_rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
@@ -58,7 +59,8 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
                 brace_cells: &BraceStairCells::empty(),
             },
             &tuning,
-            &mut r,
+            &mut shot_r,
+            &mut sev_r,
         )
     };
 
@@ -66,10 +68,10 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
         volley.reports.is_empty() && volley.shots.is_empty(),
         "an empty magazine must fire nothing",
     );
-    // No draw was taken — the used RNG matches a fresh stream's next draw.
+    // No draw was taken — the used ShotRng matches a fresh stream's next draw.
     assert_eq!(
-        r.next_u64(),
-        fresh.next_u64(),
+        shot_r.next_u64(),
+        fresh_shot.next_u64(),
         "no draw on a fail-closed fire"
     );
     // No TU charged — the pool is unchanged.
@@ -109,7 +111,8 @@ fn dead_shooter_fires_nothing() {
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();
-    let mut r = rng();
+    let mut shot_r = rng();
+    let mut sev_r = severity_rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
@@ -139,7 +142,8 @@ fn dead_shooter_fires_nothing() {
                 brace_cells: &BraceStairCells::empty(),
             },
             &tuning,
-            &mut r,
+            &mut shot_r,
+            &mut sev_r,
         )
     };
 

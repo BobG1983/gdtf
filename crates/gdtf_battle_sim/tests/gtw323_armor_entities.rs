@@ -26,9 +26,9 @@ use bevy::{
 use gdtf_battle_sim::{
     Aim, Aiming, ArmorIntegrity, BattleGrids, BattleSeed, BattleSetup, BraceStairCells, Cell,
     CombatTuning, CoverLedger, Direction, Facing, Faction, FireModeSpec, GangerStatTuning, Level,
-    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, ShooterQuery,
-    ShotKind, SimRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley,
-    WeaponQuery, Wears, WearsQuery, WieldsQuery,
+    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, SeverityRng,
+    ShooterQuery, ShotKind, ShotRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery,
+    Volley, WeaponQuery, Wears, WearsQuery, WieldsQuery,
     fire::FireOrder,
     setup_battle,
     test_support::{
@@ -125,7 +125,8 @@ fn battle_app() -> Option<(App, BattleSetup)> {
 /// grids `setup_battle` inserted as resources. Returns the frozen `Volley`.
 fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     let tuning = CombatTuning::default();
-    let mut rng = SimRng::from_seed(BattleSeed::new(seed));
+    let mut rng = ShotRng::from_root(BattleSeed::new(seed));
+    let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
     let occupancy = app
         .world()
         .get_resource::<OccupancyGrid>()
@@ -188,6 +189,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             },
             &tuning,
             &mut rng,
+            &mut sev_rng,
         )
     };
     state.apply(app.world_mut());

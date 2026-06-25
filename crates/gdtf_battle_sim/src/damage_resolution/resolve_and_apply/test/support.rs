@@ -26,7 +26,7 @@ pub(super) use crate::{
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::{HitResult, resolve_hit},
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, SeverityRng},
     sample_cone::{ConcentrationP, ShotDir, sample_cone_vector},
     severity::{Severity, SeverityInputs, part_severity_mod, roll_severity},
     slab::{SlabEntry, SlabHp, SlabLedger},
@@ -44,9 +44,12 @@ pub(super) use crate::{
 /// same seed must reproduce the same draws (an arbitrary value, not tuned).
 pub(super) const SEED: u64 = 0x05EE_D191;
 
-/// Build a `SimRng` from the shared fixed seed (a fresh stream per call).
-pub(super) fn rng() -> SimRng {
-    SimRng::from_seed(BattleSeed::new(SEED))
+/// Build a [`SeverityRng`] from the shared fixed seed (a fresh stream per call).
+///
+/// The `resolve_and_apply` path draws from the severity stream (the §6 roll term);
+/// tests that call `resolve_and_apply` inject this stream type.
+pub(super) fn rng() -> SeverityRng {
+    SeverityRng::from_root(BattleSeed::new(SEED))
 }
 
 /// A fresh, empty [`CoverLedger`] for the ganger-path fold tests — those outcomes never

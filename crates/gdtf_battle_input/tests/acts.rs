@@ -41,10 +41,11 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel, CoverLedger, Direction,
-    Facing, Faction, FireMode, FireModeSpec, FloorCostGrid, Level, LifeState, LinkKind, Magazine,
-    MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction,
-    ReloadTu, SimRng, SlabLedger, SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax,
-    VerticalLink, VerticalLinkGraph, WieldedBy,
+    Facing, Faction, FireMode, FireModeSpec, FloorCostGrid, InjuryRng, Level, LifeState, LinkKind,
+    LootRng, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, PlayerFaction, ProcgenRng, ReloadTu, SeverityRng, ShotRng, SlabLedger,
+    SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink, VerticalLinkGraph,
+    WieldedBy,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
         ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
@@ -187,8 +188,18 @@ fn acts_app() -> App {
         app.world_mut()
             .insert_resource(FloorCostGrid::new(open, []));
     }
+    // GTW-14: five per-subsystem RNG streams from the test seed.
+    let sim_seed = BattleSeed::new(0x5A1C_AC75);
     app.world_mut()
-        .insert_resource(SimRng::from_seed(BattleSeed::new(0x5A1C_AC75)));
+        .insert_resource(ShotRng::from_root(sim_seed));
+    app.world_mut()
+        .insert_resource(SeverityRng::from_root(sim_seed));
+    app.world_mut()
+        .insert_resource(LootRng::from_root(sim_seed));
+    app.world_mut()
+        .insert_resource(InjuryRng::from_root(sim_seed));
+    app.world_mut()
+        .insert_resource(ProcgenRng::from_root(sim_seed));
     app.world_mut().insert_resource(test_keybinds());
     app.world_mut()
         .insert_resource(ButtonInput::<KeyCode>::default());

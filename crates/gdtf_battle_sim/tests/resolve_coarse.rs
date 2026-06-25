@@ -28,7 +28,7 @@ use gdtf_battle_sim::{
     Accuracy, Aim, Aiming, ArmorHardness, ArmorProtection, BattleSeed, BattleSetup, BodyPart, Cell,
     CellLevel, CombatTuning, ConcentrationP, ConeAngle, CoverEntry, CoverHp, CoverLedger,
     Direction, Facing, Faction, GangerStatTuning, HeightBand, Hp, Level, OccupancyGrid, Position,
-    PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind, ShotOutcome, SimRng,
+    PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind, ShotOutcome, ShotRng,
     Situation, Stance, StanceKind, SurfaceGrid, Tu, Wounds, concentration_p, resolve_coarse,
     setup_battle,
 };
@@ -160,7 +160,7 @@ fn resolve_coarse_yields_ganger_outcome_on_real_path() {
     grid.set_occupant_band(target_at, Some(HeightBand::High));
 
     let tuning = CombatTuning::default();
-    let mut rng = SimRng::from_seed(BattleSeed::new(0xA_11CE));
+    let mut rng = ShotRng::from_root(BattleSeed::new(0xA_11CE));
 
     let Some(occupancy) = world.get_resource::<OccupancyGrid>() else {
         return;
@@ -277,7 +277,7 @@ fn derived_shooting_and_pools_drive_combat_resolution() {
         "the derived Shooting yields a positive concentration exponent"
     );
 
-    let mut rng = SimRng::from_seed(BattleSeed::new(0xA_11CE));
+    let mut rng = ShotRng::from_root(BattleSeed::new(0xA_11CE));
     let Some(occupancy) = world.get_resource::<OccupancyGrid>() else {
         return;
     };
@@ -316,7 +316,7 @@ fn clearing_shot_returns_miss_carrying_trajectory() {
     let occupancy = OccupancyGrid::new();
     let surface = SurfaceGrid::new();
     let cover = CoverLedger::new();
-    let mut rng = SimRng::from_seed(BattleSeed::new(7));
+    let mut rng = ShotRng::from_root(BattleSeed::new(7));
 
     let shot = standing_shot(key(2, 2, 0), key(5, 2, 0), None, zero_cone());
     let outcome = resolve_coarse(
@@ -364,7 +364,7 @@ fn shot_into_cover_returns_cover_entry() {
     let mut cover = CoverLedger::new();
     cover.insert(cover_cell, entry);
 
-    let mut rng = SimRng::from_seed(BattleSeed::new(99));
+    let mut rng = ShotRng::from_root(BattleSeed::new(99));
 
     // Aim at the cover cell's own band midpoint (a deliberately-shot crate).
     let shot = standing_shot(
@@ -402,7 +402,7 @@ fn downward_shot_off_bottom_returns_ground() {
     let occupancy = OccupancyGrid::new();
     let surface = SurfaceGrid::new();
     let cover = CoverLedger::new();
-    let mut rng = SimRng::from_seed(BattleSeed::new(13));
+    let mut rng = ShotRng::from_root(BattleSeed::new(13));
     let (prior_shots, recoil_climb, recoil_growth) = no_recoil();
 
     // Target directly below the shooter so the muzzle→aim axis points down (-z).
@@ -463,7 +463,7 @@ fn same_seed_yields_same_outcome() {
     // roll draws too — both must reproduce under the same seed.
     let shot = standing_shot(key(2, 2, 0), target, None, ConeAngle::new(0.05));
     let run = |seed: u64| -> ShotOutcome {
-        let mut rng = SimRng::from_seed(BattleSeed::new(seed));
+        let mut rng = ShotRng::from_root(BattleSeed::new(seed));
         resolve_coarse(
             &shot,
             &occupancy,
@@ -554,7 +554,7 @@ fn resolve_coarse_mutates_no_combat_state() {
     // Resolve a shot at the target; assert it struck (so the no-mutation claim is
     // about a real hit) and the trajectory is a sim-space unit vector (zero px).
     let tuning = CombatTuning::default();
-    let mut rng = SimRng::from_seed(BattleSeed::new(0xBEEF));
+    let mut rng = ShotRng::from_root(BattleSeed::new(0xBEEF));
     {
         let world: &World = app.world();
         let (Some(occupancy), Some(surface), Some(cover)) = (
@@ -634,7 +634,7 @@ fn resolve_coarse_reads_the_passed_grid() {
 
     let shot = standing_shot(key(2, 2, 0), target, None, zero_cone());
     let run = |grid: &OccupancyGrid| -> ShotOutcome {
-        let mut rng = SimRng::from_seed(BattleSeed::new(1));
+        let mut rng = ShotRng::from_root(BattleSeed::new(1));
         resolve_coarse(&shot, grid, &surface, &cover, &tuning, &mut rng, no_dead())
     };
 
@@ -699,7 +699,7 @@ fn shot_outcome_variants_construct_and_inspect() {
 /// real `ShotDir` constructor rather than a hand-built private value.
 fn trajectory_unit_x() -> gdtf_battle_sim::ShotDir {
     use gdtf_battle_sim::{SimPos, climb_aim_dir, sample_cone_vector};
-    let mut rng = SimRng::from_seed(BattleSeed::new(0));
+    let mut rng = ShotRng::from_root(BattleSeed::new(0));
     let axis = climb_aim_dir(
         SimPos::new(0.0, 0.0, 0.0),
         SimPos::new(1.0, 0.0, 0.0),

@@ -8,6 +8,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, LoadedSituation, RunningState};
 use gdtf_battle_sim::{
+    rng::BattleSeed,
     situation::Situation,
     test_support::{fixtures, test_armor_registry, test_weapon_registry},
     tuning::{CombatTuning, GangerStatTuning},
@@ -36,10 +37,17 @@ const DRIVE_BUDGET: u32 = 96;
 /// [`gdtf_battle_sim::test_support`]) plus the chosen [`Situation`] (default
 /// [`fixtures::two_ganger`]) as a [`LoadedSituation`]. [`build`](BattleAppBuilder::build)
 /// then drives the real state machine to a live battle and returns the [`App`].
+///
+/// Use [`with_seed`](BattleAppBuilder::with_seed) to pin the [`BattleSeed`] for
+/// deterministic cross-run replay; without it, `Generation` uses `resolve_root_seed()`
+/// (env var or wall-clock), producing a different stream each run.
 #[derive(Debug, Clone)]
 pub struct BattleAppBuilder {
     /// The authored battlefield the Generation setup pours into the world.
     situation: Situation,
+    /// Optional fixed seed injected as a `BattleSeed` resource before Generation runs;
+    /// `None` means the normal `resolve_root_seed()` path (env var / wall-clock).
+    seed:      Option<BattleSeed>,
 }
 
 impl BattleAppBuilder {
@@ -48,6 +56,7 @@ impl BattleAppBuilder {
     pub fn new() -> Self {
         Self {
             situation: fixtures::two_ganger(),
+            seed:      None,
         }
     }
 
@@ -56,6 +65,22 @@ impl BattleAppBuilder {
     #[must_use]
     pub fn with_situation(mut self, situation: Situation) -> Self {
         self.situation = situation;
+        self
+    }
+
+    /// Pin the [`BattleSeed`] for deterministic cross-run replay.
+    ///
+    /// When set, the seed is pre-inserted as a [`BattleSeed`] resource before the
+    /// app enters `Generation`; `request_battle_setup` reads it and bypasses the
+    /// normal `resolve_root_seed()` (env var / wall-clock) path. This guarantees
+    /// that two builder runs with the same fixed seed produce the identical RNG
+    /// stream and the identical combat outcomes — required for determinism tests.
+    ///
+    /// Without this, `Generation` calls `resolve_root_seed()`, which is different
+    /// each run (unless `GDTF_BATTLE_SEED` is set in the environment).
+    #[must_use]
+    pub const fn with_seed(mut self, seed: BattleSeed) -> Self {
+        self.seed = Some(seed);
         self
     }
 
@@ -83,6 +108,12 @@ impl BattleAppBuilder {
         // The authored battlefield the Generation setup pours into the world.
         app.world_mut()
             .insert_resource(LoadedSituation::new(self.situation));
+        // If a fixed seed was requested, pre-inject it so `request_battle_setup`
+        // bypasses `resolve_root_seed()` (wall-clock) and uses this value instead —
+        // the only way to guarantee cross-run replay determinism in headless tests.
+        if let Some(seed) = self.seed {
+            app.world_mut().insert_resource(seed);
+        }
 
         // Stand in for the player at the menu (it no longer auto-advances): advance
         // until the menu rests, then queue Menu -> Options to descend toward the game.

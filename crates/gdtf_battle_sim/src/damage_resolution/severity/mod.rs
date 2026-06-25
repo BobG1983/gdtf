@@ -24,7 +24,7 @@
 //!
 //! Pure, render-free sim math: it reads its coefficients from
 //! [`crate::tuning::SeverityScaling`], draws from the injected seeded
-//! [`crate::rng::SimRng`], and carries **no pixel**. The defender's Toughness and
+//! [`crate::rng::SeverityRng`], and carries **no pixel**. The defender's Toughness and
 //! both gangers' Luck are the E3.0 ganger attribute components
 //! ([`crate::ganger::Toughness`] / [`crate::ganger::Luck`]) — sourced off the
 //! entity, not bare literals. The per-part severity mod is a **placeholder** code

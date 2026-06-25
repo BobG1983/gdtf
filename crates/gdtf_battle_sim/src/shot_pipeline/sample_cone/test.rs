@@ -9,7 +9,7 @@ use crate::{
     cone::{ConeAngle, PriorShots},
     ganger::Shooting,
     metric::SimPos,
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, ShotRng},
     sample_cone::{ConcentrationP, concentration_p, sample_cone_vector},
     stability::RecoilGrowth,
     tuning::{ConcentrationCoeff, ConcentrationCoeffs, RecoilClimb},
@@ -57,7 +57,7 @@ fn sampled_vector_is_unit_length_across_many_seeded_draws() {
     let aim = aim_dir_from(SimPos::new(0.0, 0.0, 1.0), SimPos::new(10.0, 3.0, 1.5));
     let cone = ConeAngle::new(0.30);
     let p = ConcentrationP::new(1.5);
-    let mut rng = SimRng::from_seed(BattleSeed::new(0xA11C));
+    let mut rng = ShotRng::from_root(BattleSeed::new(0xA11C));
     for _ in 0..SAMPLES {
         let shot = sample_cone_vector(aim, cone, p, rng.rng());
         assert!(
@@ -76,7 +76,7 @@ fn deviation_never_exceeds_the_cone_angle() {
     let cone = ConeAngle::new(0.25);
     // A LOW p scatters out near the edge — the worst case for the hard edge.
     let p = ConcentrationP::new(1.0);
-    let mut rng = SimRng::from_seed(BattleSeed::new(0xED6E));
+    let mut rng = ShotRng::from_root(BattleSeed::new(0xED6E));
     for _ in 0..SAMPLES {
         let shot = sample_cone_vector(axis_vec, cone, p, rng.rng());
         let dev = deviation(axis_vec.vec(), shot.vec());
@@ -97,7 +97,7 @@ fn zero_cone_returns_the_axis_exactly() {
     let p = ConcentrationP::new(2.0);
     // Even draining several draws, every result is the axis bit-for-bit — the
     // cone-0 short-circuit consumes no entropy and applies no trig.
-    let mut rng = SimRng::from_seed(BattleSeed::new(0xDEAD));
+    let mut rng = ShotRng::from_root(BattleSeed::new(0xDEAD));
     for _ in 0..16 {
         let shot = sample_cone_vector(aim, cone, p, rng.rng());
         assert_eq!(
@@ -117,7 +117,7 @@ fn same_seed_yields_the_same_sample_stream() {
     let p = ConcentrationP::new(1.2);
 
     let draw_stream = || {
-        let mut rng = SimRng::from_seed(BattleSeed::new(0x5EED));
+        let mut rng = ShotRng::from_root(BattleSeed::new(0x5EED));
         (0..SAMPLES)
             .map(|_| sample_cone_vector(aim, cone, p, rng.rng()).vec())
             .collect::<Vec<_>>()
@@ -136,7 +136,7 @@ fn scatter_is_genuinely_three_dimensional() {
     assert!(axis.z.abs() < TOL, "the test axis must be horizontal");
     let cone = ConeAngle::new(0.5);
     let p = ConcentrationP::new(1.0);
-    let mut rng = SimRng::from_seed(BattleSeed::new(0x3D3D));
+    let mut rng = ShotRng::from_root(BattleSeed::new(0x3D3D));
 
     // Track whether BOTH a lateral (in-plane, off the +x axis on the ground) and
     // a vertical (+z/-z) deviation component appear across the sample set.
@@ -189,7 +189,7 @@ fn concentration_p_rises_with_accuracy() {
 /// The mean angular deviation over a seeded batch at exponent `p`, for a fixed
 /// axis/cone — the statistic AC #5 / independence compare.
 fn mean_deviation(aim: AimDir, cone: ConeAngle, p: ConcentrationP, seed: u64) -> f32 {
-    let mut rng = SimRng::from_seed(BattleSeed::new(seed));
+    let mut rng = ShotRng::from_root(BattleSeed::new(seed));
     let axis = aim.vec();
     let total: f32 = (0..SAMPLES)
         .map(|_| deviation(axis, sample_cone_vector(aim, cone, p, rng.rng()).vec()))
@@ -237,7 +237,7 @@ fn high_p_concentrates_near_center_even_in_a_wide_cone() {
 #[test]
 fn shot_dir_derefs_to_inner() {
     let aim = aim_dir_from(SimPos::new(0.0, 0.0, 0.0), SimPos::new(1.0, 0.0, 0.0));
-    let mut rng = SimRng::from_seed(BattleSeed::new(1));
+    let mut rng = ShotRng::from_root(BattleSeed::new(1));
     let shot = sample_cone_vector(
         aim,
         ConeAngle::new(0.1),

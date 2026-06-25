@@ -56,7 +56,7 @@ use crate::{
 /// [`OccupancyMaintenancePlugin`] systems (all `.in_set(SimSystems::Simulate)`) read
 /// the battle-lifetime resources ([`OccupancyGrid`](crate::occupancy::OccupancyGrid) /
 /// [`SurfaceGrid`](crate::surface::SurfaceGrid) /
-/// [`CoverLedger`](crate::cover::CoverLedger) / [`SimRng`](crate::rng::SimRng) /
+/// [`CoverLedger`](crate::cover::CoverLedger) / [`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) /
 /// [`CombatTuning`](crate::tuning::CombatTuning))
 /// unconditionally — a Bevy `Res<T>` whose resource is absent fails param validation
 /// (`bevy-traps.md` #1). Those resources exist only between a setup and a teardown, so

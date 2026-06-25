@@ -11,7 +11,7 @@ use crate::{
     cover::CoverLedger,
     ganger::{Faction, Tu, TuMax},
     occupancy::OccupancyGrid,
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
@@ -40,7 +40,7 @@ const ENEMY: Faction = Faction::new(1);
 /// `run_if(resource_exists::<ActiveFaction>)` is the live guard (the `acts` test precedent).
 ///
 /// The shared sim resources the OTHER (ungated, in this harness) dispatch systems read —
-/// the three grids, a seeded [`SimRng`], and [`CombatTuning`] — are inserted too (mirroring
+/// the three grids, the five seeded RNG streams (GTW-14), and [`CombatTuning`] — are inserted too (mirroring
 /// the `acts` test's `insert_sim_resources`), so those systems' `Res<_>` params validate
 /// and the update runs through to `dispatch_end_turn`.
 fn turn_app() -> App {
@@ -60,7 +60,13 @@ fn turn_app() -> App {
     // empty `VerticalLinkGraph` + `SquadVisibility` (these turn-cycle tests never move).
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(SquadVisibility::default());
-    app.insert_resource(SimRng::from_seed(BattleSeed::new(SEED)));
+    // GTW-14: five per-subsystem streams from the test seed.
+    let seed = BattleSeed::new(SEED);
+    app.insert_resource(ShotRng::from_root(seed));
+    app.insert_resource(SeverityRng::from_root(seed));
+    app.insert_resource(LootRng::from_root(seed));
+    app.insert_resource(InjuryRng::from_root(seed));
+    app.insert_resource(ProcgenRng::from_root(seed));
     let tuning = CombatTuning::default();
     // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
     // default open cost so the turn-cycle tests (which never move) don't panic on a

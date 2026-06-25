@@ -21,12 +21,12 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, BraceStairCells,
     Cell, CellLevel, CombatTuning, CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType,
     Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec, FloorCostGrid, HandlingProfile,
-    HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
-    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    PlayerFaction, Position, ReloadTu, Shooting, SimRng, SlabLedger, SquadVisibility, Stable,
-    Stance, StanceKind, SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph,
-    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
-    acts::SimActsPlugin,
+    HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState, LootRng, Luck,
+    Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
+    OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng, ReloadTu, SeverityRng,
+    Shooting, ShotRng, SlabLedger, SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid,
+    TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -90,7 +90,13 @@ fn bridge_app() -> App {
     // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no stair
     // cells in this harness) so the terrain-brace gate param validates.
     app.insert_resource(BraceStairCells::empty());
-    app.insert_resource(SimRng::from_seed(BattleSeed::new(0xC0BA_17C0)));
+    // GTW-14: five per-subsystem RNG streams from the battle seed.
+    let seed = BattleSeed::new(0xC0BA_17C0);
+    app.insert_resource(ShotRng::from_root(seed));
+    app.insert_resource(SeverityRng::from_root(seed));
+    app.insert_resource(LootRng::from_root(seed));
+    app.insert_resource(InjuryRng::from_root(seed));
+    app.insert_resource(ProcgenRng::from_root(seed));
     app
 }
 

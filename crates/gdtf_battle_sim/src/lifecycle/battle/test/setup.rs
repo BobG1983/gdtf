@@ -9,8 +9,8 @@ use bevy::prelude::{Commands, World};
 
 use super::support::*;
 
-// === AC2 — SetupBattleRequested seeds SimRng (from the message's seed) + runs
-// setup_battle, emitting BattleReady on success; the seed threads through. ===
+// === AC2 — SetupBattleRequested seeds the five RNG streams (from the message's seed)
+// + runs setup_battle, emitting BattleReady on success; the seed threads through. ===
 
 #[test]
 fn setup_request_seeds_rng_inserts_resources_and_signals_ready() {
@@ -21,10 +21,10 @@ fn setup_request_seeds_rng_inserts_resources_and_signals_ready() {
     ));
     app.update();
 
-    // The battle-lifetime RNG was inserted.
+    // The five battle-lifetime RNG streams were inserted (GTW-14).
     assert!(
-        app.world().get_resource::<SimRng>().is_some(),
-        "the setup must insert a SimRng",
+        app.world().get_resource::<ShotRng>().is_some(),
+        "the setup must insert ShotRng",
     );
     // The four setup_battle resources are present.
     assert!(
@@ -65,10 +65,10 @@ fn setup_request_seeds_rng_inserts_resources_and_signals_ready() {
 }
 
 #[test]
-fn setup_threads_the_message_seed_through_sim_rng() {
-    // Two runs with the SAME seed give a SimRng whose first draw matches; a
+fn setup_threads_the_message_seed_through_rng_streams() {
+    // Two runs with the SAME seed give a ShotRng whose first draw matches; a
     // DIFFERENT seed gives a different first draw — the message's seed threads
-    // through SimRng::from_seed (a relation, never a pinned magnitude).
+    // through ShotRng::from_root (a relation, never a pinned magnitude).
     let first_draw = |seed: u64| {
         let mut app = headless_app();
         app.world_mut().write_message(SetupBattleRequested::new(
@@ -77,18 +77,18 @@ fn setup_threads_the_message_seed_through_sim_rng() {
         ));
         app.update();
         app.world_mut()
-            .get_resource_mut::<SimRng>()
+            .get_resource_mut::<ShotRng>()
             .map(|mut rng| rng.next_u64())
     };
     assert_eq!(
         first_draw(SEED),
         first_draw(SEED),
-        "the same seed must thread through to an identical SimRng first draw",
+        "the same seed must thread through to an identical ShotRng first draw",
     );
     assert_ne!(
         first_draw(SEED),
         first_draw(SEED ^ 0xFFFF),
-        "a different seed must yield a different SimRng first draw",
+        "a different seed must yield a different ShotRng first draw",
     );
 }
 
@@ -153,7 +153,7 @@ fn failed_setup_emits_no_ready_and_inserts_no_resource() {
         app.world().get_resource::<VerticalLinkGraph>().is_none(),
         "a failed setup must insert no VerticalLinkGraph",
     );
-    // The SimRng IS inserted before the setup call (seeding precedes setup), but no
+    // The RNG streams ARE inserted before the setup call (seeding precedes setup), but no
     // grid resources land — the app's gate keys off BattleReady, which is absent.
 }
 
@@ -211,8 +211,8 @@ fn teardown_removes_battle_resources_and_leaves_tuning() {
     ));
     app.update();
     assert!(
-        app.world().get_resource::<SimRng>().is_some(),
-        "precondition: setup inserted the SimRng",
+        app.world().get_resource::<ShotRng>().is_some(),
+        "precondition: setup inserted the RNG streams",
     );
     assert!(
         app.world().get_resource::<OccupancyGrid>().is_some(),
@@ -230,8 +230,8 @@ fn teardown_removes_battle_resources_and_leaves_tuning() {
     app.update();
 
     assert!(
-        app.world().get_resource::<SimRng>().is_none(),
-        "teardown must remove the SimRng",
+        app.world().get_resource::<ShotRng>().is_none(),
+        "teardown must remove the RNG streams",
     );
     assert!(
         app.world().get_resource::<CoverLedger>().is_none(),

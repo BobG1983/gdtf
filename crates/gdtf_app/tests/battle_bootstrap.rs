@@ -3,7 +3,7 @@
 //! of its own. It consumes ONLY what the prior E10 slices landed: the E10.1
 //! `gdtf_app → gdtf_battle_sim` Cargo edge (so this crate can name sim types), the
 //! E10.0 [`SimSystems::Simulate`] band, the E10.2 `*Requested` message contract +
-//! per-act dispatch, the E10.5 `BattleSimPlugin` (Generation seeds the [`SimRng`]
+//! per-act dispatch, the E10.5 `BattleSimPlugin` (Generation seeds the RNG streams
 //! from the chosen [`BattleSeed`] source + inserts [`CombatTuning`] + runs
 //! `setup_battle`), and the GTW-212 [`BattleInProgress`]-gated battle-wide dispatch
 //! that E10.6 keeps live across `BattleRunning`.
@@ -37,7 +37,7 @@ use gdtf_battle_sim::{
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    rng::SimRng,
+    rng::{BattleSeed, ShotRng},
     situation::Situation,
     surface::SurfaceGrid,
     test_support::{GangerSpawnBuilder, SituationBuilder, key},
@@ -106,12 +106,20 @@ fn bootstrap_situation() -> Situation {
         .build()
 }
 
+/// The fixed [`BattleSeed`] every bootstrap test run uses — the same as the
+/// pre-GTW-14 `DEFAULT_BATTLE_SEED = BattleSeed::new(0)` constant, kept as `0`
+/// so the seeded drive is guaranteed to land the shot at close range.
+const BOOTSTRAP_SEED: BattleSeed = BattleSeed::new(0);
+
 /// Build the bootstrap app already driven to a live battle via the shared
-/// [`BattleAppBuilder`], seeded with the bootstrap [`bootstrap_situation`]. Returns
-/// `None` if the shared drive does not reach `BattleRunning` (the caller asserts).
+/// [`BattleAppBuilder`], seeded with the bootstrap [`bootstrap_situation`] and the
+/// fixed [`BOOTSTRAP_SEED`] (guarantees the shot lands at close range and keeps
+/// every test deterministic). Returns `None` if the shared drive does not reach
+/// `BattleRunning` (the caller asserts).
 fn bootstrap_app() -> Option<bevy::app::App> {
     BattleAppBuilder::new()
         .with_situation(bootstrap_situation())
+        .with_seed(BOOTSTRAP_SEED)
         .build()
 }
 
@@ -196,7 +204,7 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
 /// driven past the menu) descends to [`GameState::BattleScape`], and once
 /// [`BattleScapeState::Generation`] has run E10.5's wired `setup_battle` the world holds
 /// the four sim resources ([`OccupancyGrid`] / [`CoverLedger`] / [`SurfaceGrid`] /
-/// [`VerticalLinkGraph`]), the seeded [`SimRng`], AND the [`CombatTuning`] present
+/// [`VerticalLinkGraph`]), the seeded RNG streams, AND the [`CombatTuning`] present
 /// through the battle — and `query::<&Wears>().count()` (the armor relationship every
 /// ganger carries since GTW-323) equals the authored ganger count (the `setup_battle`
 /// C8(a) entity-count precedent, proving the entities were spawned by the REAL setup,
@@ -236,10 +244,10 @@ fn bootstrap_reaches_battlescape_with_the_sim_constructed() {
         app.world().get_resource::<VerticalLinkGraph>().is_some(),
         "Generation's setup_battle must insert a VerticalLinkGraph",
     );
-    // The seeded SimRng E10.5 builds from the chosen BattleSeed source during Generation.
+    // The GTW-14 five-stream RNG: ShotRng is the first seeded during Generation.
     assert!(
-        app.world().get_resource::<SimRng>().is_some(),
-        "Generation must insert the seeded SimRng",
+        app.world().get_resource::<ShotRng>().is_some(),
+        "Generation must insert the seeded RNG streams",
     );
     // CombatTuning is present through the battle (E10.4's persistent Load resource).
     assert!(
@@ -406,12 +414,16 @@ fn set_stance_requested_in_battle_running_flips_the_component() {
 /// AC4 — The boundary holds: no panic and seeded determinism. The whole drive
 /// (Generation `setup_battle` + a `BattleRunning` `FireRequested` round) runs without
 /// panic, and is reproducible: two independent bootstrap apps built from the SAME inline
-/// [`bootstrap_situation`] and the SAME fixed [`BattleSeed`] source (the app's Generation
-/// seeds `SimRng::from_seed` with its fixed `DEFAULT_BATTLE_SEED`, identical across runs),
-/// driven through the identical sequence, produce the identical observable outcome. The
-/// test builds-and-drives twice and asserts the post-fire target `(Hp, Wounds,
-/// LifeState)` tuple is equal across the two runs; the run completing the full
-/// descend+emit+assert sequence without aborting is the no-panic evidence.
+/// [`bootstrap_situation`] and the SAME fixed [`BattleSeed`] (pre-injected by
+/// [`bootstrap_app`] via [`BattleAppBuilder::with_seed`] so `request_battle_setup`
+/// bypasses wall-clock entropy), driven through the identical sequence, produce the
+/// identical observable outcome. The test builds-and-drives twice and asserts the
+/// post-fire target `(Hp, Wounds, LifeState)` tuple is equal across the two runs; the
+/// run completing the full descend+emit+assert sequence without aborting is the no-panic
+/// evidence.
+///
+/// Both runs use [`BOOTSTRAP_SEED`] (via [`bootstrap_app`]): the test's concern is the
+/// RELATION (same seed → same outcome), not any specific magnitude.
 #[test]
 fn the_drive_is_panic_free_and_seed_deterministic_across_runs() {
     // Run the full descend + arm + fire sequence once and snapshot the post-fire target
@@ -419,6 +431,8 @@ fn the_drive_is_panic_free_and_seed_deterministic_across_runs() {
     // not reach BattleRunning or the setup did not spawn the gangers — the no-unwrap
     // let-else style so the test body stays panic-free.
     let post_fire_target_state = || -> Option<(Option<Hp>, Option<Wounds>, Option<LifeState>)> {
+        // bootstrap_app pins BOOTSTRAP_SEED so both calls get the same BattleSeed
+        // (bypassing wall-clock entropy in resolve_root_seed() for cross-run replay).
         let mut app = bootstrap_app()?;
         let shooter = find_ganger(&mut app, SHOOTER_FACTION)?;
         let target = find_ganger(&mut app, TARGET_FACTION)?;

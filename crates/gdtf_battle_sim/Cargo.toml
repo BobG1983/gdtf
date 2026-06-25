@@ -5,6 +5,10 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
+# GTW-14: explicit direct dep on rand_chacha so we can name ChaCha12Rng in sim source.
+# The portable rand-family ChaCha12 RNG (rand_core 0.10) — replaces the non-portable
+# `StdRng` for cross-build/cross-platform replay determinism.
+rand_chacha = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 

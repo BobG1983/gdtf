@@ -24,7 +24,7 @@ use crate::{
     metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
     occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
-    rng::SimRng,
+    rng::{SeverityRng, ShotRng},
     shot_fired::ShotFired,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
@@ -331,7 +331,13 @@ pub fn dispatch_fire(
     mut weapons: WeaponQuery,
     mut grids: BattleGridsParam,
     tuning: Res<CombatTuning>,
-    mut rng: ResMut<SimRng>,
+    // GTW-14: disjoint per-subsystem RNG resources. ShotRng drives cone-sample +
+    // body-part-roll; SeverityRng drives the §6 severity term. Two distinct
+    // ResMut<T> are disjoint Bevy params (different resource types), so the
+    // scheduler can parallelize this system against systems on other streams.
+    // No system may take Res<ShotRng> or Res<SeverityRng> — see rng::streams doc.
+    mut shot_rng: ResMut<ShotRng>,
+    mut severity_rng: ResMut<SeverityRng>,
     mut signals: FireSignals,
 ) {
     for request in requests.read() {
@@ -433,7 +439,8 @@ pub fn dispatch_fire(
             &mut weapons,
             grids.grids(),
             &tuning,
-            &mut rng,
+            &mut shot_rng,
+            &mut severity_rng,
         );
 
         // (5) GTW-290 / GTW-306 / GTW-302: emit one ShotFired per ROUND fired, sourced from

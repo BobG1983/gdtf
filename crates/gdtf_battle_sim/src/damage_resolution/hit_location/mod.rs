@@ -11,7 +11,7 @@
 //! prior on-silhouette / exposure-area model is **retired** (resolution.md §4
 //! "RETIRED — both prior models").
 //!
-//! Every draw bottoms out in the injected [`crate::rng::SimRng`] via the
+//! Every draw bottoms out in the injected [`crate::rng::ShotRng`] via the
 //! `&mut impl rand::Rng` handle (`docs/testing.md`: "anything random takes an RNG
 //! by parameter … never a global/thread RNG"), so the roll is deterministic and
 //! seed-replayable. The roll reads **only** the passed

@@ -32,7 +32,7 @@ pub(super) use crate::{
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     resolve_coarse::ShotKind,
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, SeverityRng, ShotRng},
     severity::Severity,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
@@ -61,9 +61,17 @@ pub(super) type FireQueries = (
 /// A fixed seed for the per-test RNG streams (an arbitrary value, not tuned).
 pub(super) const SEED: u64 = 0xF12E_5EED;
 
-/// Build a `SimRng` from the shared fixed seed (a fresh stream per call).
-pub(super) fn rng() -> SimRng {
-    SimRng::from_seed(BattleSeed::new(SEED))
+/// Build a [`ShotRng`] from the shared fixed seed (a fresh stream per call).
+///
+/// The `fire()` path draws from `ShotRng` for cone-sample + body-part-roll; the
+/// severity stream is `severity_rng()`. Tests that call `fire()` need both.
+pub(super) fn rng() -> ShotRng {
+    ShotRng::from_root(BattleSeed::new(SEED))
+}
+
+/// Build a [`SeverityRng`] from the shared fixed seed (a fresh stream per call).
+pub(super) fn severity_rng() -> SeverityRng {
+    SeverityRng::from_root(BattleSeed::new(SEED))
 }
 
 /// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers.

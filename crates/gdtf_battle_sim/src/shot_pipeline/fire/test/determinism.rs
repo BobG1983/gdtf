@@ -35,7 +35,8 @@ fn same_seed_reproduces_byte_equal_volley() {
         let surface = SurfaceGrid::new();
         let mut cover = CoverLedger::new();
         let mut slab = SlabLedger::new();
-        let mut r = rng();
+        let mut shot_r = rng();
+        let mut sev_r = severity_rng();
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
         match state.get_mut(&mut world) {
@@ -60,7 +61,8 @@ fn same_seed_reproduces_byte_equal_volley() {
                     brace_cells: &BraceStairCells::empty(),
                 },
                 &tuning,
-                &mut r,
+                &mut shot_r,
+                &mut sev_r,
             ),
             Err(_) => Volley::empty(),
         }

@@ -51,13 +51,13 @@
 //! witness), so the gated span — and behavior — is unchanged.
 //!
 //! The setup system drains [`SetupBattleRequested`] and per message inserts a
-//! [`SimRng`](crate::rng::SimRng) seeded from the message's
+//! [`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) seeded from the message's
 //! [`BattleSeed`](crate::rng::BattleSeed) and runs
 //! [`setup_battle`](crate::situation::setup_battle), emitting [`BattleReady`] (and
 //! inserting the [`BattleInProgress`] gate witness) only on success (`Err` is
 //! `error!`-logged with NO [`BattleReady`] / NO witness — fail-closed, no
 //! `unwrap`/`expect`/`panic`). The teardown system drains [`TeardownBattleRequested`]
-//! and removes the battle-lifetime resources ([`SimRng`](crate::rng::SimRng) + the four
+//! and removes the battle-lifetime resources ([`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) + the four
 //! [`setup_battle`](crate::situation::setup_battle)-inserted grids + the
 //! [`BattleInProgress`] witness); it NEVER touches
 //! [`CombatTuning`](crate::tuning::CombatTuning) — that is E10.4's persistent `Load`

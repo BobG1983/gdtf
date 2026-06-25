@@ -23,6 +23,11 @@ use super::support::*;
 /// proving each call starts at `prior_shots = 0` — observed across two real
 /// `fire()` invocations, not by re-evaluating one pure closure at arg 0 twice.
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "this integration test builds two full fire() scenarios with many assertions; \
+              extracting helpers would obscure the scenario structure more than the length"
+)]
 fn recoil_climbs_across_burst_and_resets_between_calls() {
     // A large recoil_climb so the per-round upward tilt is unmistakable — tests
     // are free to author arbitrary tuning (the central_axis.rs precedent).
@@ -74,7 +79,8 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
                 ArmorHardness::new(0),
             ),
         );
-        let mut r = rng();
+        let mut shot_r = rng();
+        let mut sev_r = severity_rng();
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
         let reports = match state.get_mut(&mut world) {
@@ -99,7 +105,8 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
                     brace_cells: &BraceStairCells::empty(),
                 },
                 &tuning,
-                &mut r,
+                &mut shot_r,
+                &mut sev_r,
             ),
             Err(_) => Volley::empty(),
         };

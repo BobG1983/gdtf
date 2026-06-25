@@ -16,7 +16,7 @@ use crate::{
     magazine::{FireActor, can_fire, clamp_burst, mode_tu_cost},
     resolve_and_apply::HitReport,
     resolve_coarse::ShotOutcome,
-    rng::SimRng,
+    rng::{SeverityRng, ShotRng},
     tu::spend_tu,
     tuning::CombatTuning,
 };
@@ -90,9 +90,11 @@ impl Volley {
 ///    [`HitReport::no_effect`] (AC5 / AC6). Recoil climbs across the burst
 ///    (`prior_shots = i`) and RESETS between `fire()` calls.
 ///
-/// Every draw bottoms out in the injected [`SimRng`] (no `thread_rng` / ad-hoc
-/// entropy), so the same [`BattleSeed`](crate::rng::BattleSeed) reproduces a
-/// byte-equal volley (AC7); no LOS / fog is consulted (the presenter boundary). The
+/// Every draw bottoms out in the injected [`ShotRng`](crate::rng::ShotRng) (shot
+/// geometry) or [`SeverityRng`](crate::rng::SeverityRng) (wound severity) — no
+/// `thread_rng` / ad-hoc entropy — so the same
+/// [`BattleSeed`](crate::rng::BattleSeed) reproduces a byte-equal volley (AC7); no
+/// LOS / fog is consulted (the presenter boundary). The
 /// aim cell + selected mode ride in `order` ([`FireOrder`]); the world grids in
 /// `grids` ([`BattleGrids`]). **Zero pixels** — the reports carry only damage / wound
 /// math, and the [`Volley::shots`] geometry rides in sim units (a cubic-voxel
@@ -131,7 +133,8 @@ pub fn fire(
     weapons: &mut WeaponQuery,
     mut grids: BattleGrids,
     tuning: &CombatTuning,
-    rng: &mut SimRng,
+    shot_rng: &mut ShotRng,
+    severity_rng: &mut SeverityRng,
 ) -> Volley {
     // (1) Snapshot the shooter's Copy read state up front (the immutable borrows are
     //     released before the mutable re-borrows). A shooter not in the shooter query
@@ -222,7 +225,8 @@ pub fn fire(
             wears,
             pieces,
             tuning,
-            rng,
+            shot_rng,
+            severity_rng,
         );
 
         // Decrement the magazine one round per fired iteration (saturating, AC4) —

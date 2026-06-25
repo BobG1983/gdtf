@@ -13,7 +13,7 @@ use crate::{
     },
     cover::CoverLedger,
     occupancy::OccupancyGrid,
-    rng::SimRng,
+    rng::{InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
     situation::setup_battle,
     slab::SlabLedger,
     surface::SurfaceGrid,
@@ -25,22 +25,24 @@ use crate::{
     weapon::WeaponRegistry,
 };
 
-/// **Setup** the battle on [`SetupBattleRequested`] — seed the [`SimRng`] and run
-/// [`setup_battle`], signalling [`BattleReady`] on success (E10.5).
+/// **Setup** the battle on [`SetupBattleRequested`] — seed the per-subsystem RNG
+/// streams and run [`setup_battle`], signalling [`BattleReady`] on success (E10.5).
 ///
 /// Drains [`MessageReader<SetupBattleRequested>`] and per message:
 ///
-/// 1. Inserts the battle-lifetime [`SimRng`] seeded from the message's
-///    [`BattleSeed`](crate::rng::BattleSeed) (via
-///    [`SimRng::from_seed`](crate::rng::SimRng::from_seed) — the deterministic stream the
-///    acts draw from).
-/// 2. Calls [`setup_battle`] on the REAL [`Commands`] path, resolving each ganger's
+/// 1. Calls [`setup_battle`] on the REAL [`Commands`] path, resolving each ganger's
 ///    weapon key against the [`WeaponRegistry`] (GTW-257), each ganger's armor key
 ///    against the [`ArmorRegistry`] (GTW-269), and each cover/slab/floor piece key
 ///    against the [`TerrainRegistry`] (GTW-396). On `Ok` the sim resources
 ///    ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
 ///    [`VerticalLinkGraph`] / [`FloorCostGrid`]) and the spawned ganger entities
-///    land in the world, the [`BattleInProgress`] witness is inserted (the battle-active
+///    land in the world, the five battle-lifetime per-subsystem RNG stream resources
+///    ([`ShotRng`], [`SeverityRng`], [`LootRng`], [`InjuryRng`], [`ProcgenRng`]) are
+///    inserted (derived from the message's [`BattleSeed`](crate::rng::BattleSeed) via
+///    the stable FNV-1a-64 label-hash, GTW-14; each stream independent — a draw on one
+///    cannot perturb another; all portable `ChaCha12Rng`-backed, byte-stable across
+///    builds and platforms for cross-run replay), the [`BattleInProgress`] witness is
+///    inserted (the battle-active
 ///    tag the [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) band
 ///    gates on), the [`PlayerFaction`] is inserted seeded from
 ///    [`Situation::player_faction`](crate::situation::Situation), the
@@ -52,9 +54,10 @@ use crate::{
 ///    [`BattleReady`] is written; on `Err` the typed
 ///    [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid vertical link,
 ///    an unresolved weapon/armor/terrain key, or a below-minimum floor cost) is surfaced
-///    via [`error!`] and NEITHER [`BattleInProgress`] / [`PlayerFaction`] /
-///    [`BattleRoster`] / [`ActiveFaction`] NOR [`BattleReady`] is written — the app
-///    never advances on a bad battle, and the gate never opens. NO
+///    via [`error!`] and NEITHER the five RNG streams / [`BattleInProgress`] /
+///    [`PlayerFaction`] / [`BattleRoster`] / [`ActiveFaction`] NOR [`BattleReady`] is
+///    written — the app never advances on a bad battle, the gate never opens, and a
+///    failed setup leaves NO orphaned RNG stream resources. NO
 ///    `unwrap`/`expect`/`panic`.
 ///
 /// The [`WeaponRegistry`], [`ArmorRegistry`], and [`TerrainRegistry`] are each read as
@@ -140,10 +143,7 @@ pub fn setup_battle_on_request(
         // pass `None` implicitly — they never authored terrain keys.
         let terrain_ref = terrain.as_deref();
 
-        // 1. Seed the battle-lifetime RNG from the trigger's seed.
-        commands.insert_resource(SimRng::from_seed(request.seed));
-
-        // 2. Pour the situation into the world via the authoritative setup. A bad
+        // Pour the situation into the world via the authoritative setup. A bad
         //    vertical link, a missing weapon/armor/terrain key, or a below-minimum
         //    floor cost returns the typed error — log it (NEVER panic / unwrap) and
         //    write NO BattleReady, so the app's gate never fires (fail-closed). The
@@ -160,7 +160,7 @@ pub fn setup_battle_on_request(
         ) {
             Ok(_setup) => {
                 // The battle is live: insert the gate witness (alongside the setup_battle
-                // grids + the seeded SimRng) so the Simulate band's bundled runtime turns
+                // grids + the seeded RNG streams) so the Simulate band's bundled runtime turns
                 // on, seed the PlayerFaction from the situation, capture the BattleRoster
                 // from the fielded gangers' factions (both share the BattleInProgress
                 // lifetime — same Ok path, removed together on teardown), then signal
@@ -170,6 +170,20 @@ pub fn setup_battle_on_request(
                 // Decision B — it is built from the resolved floor specs and inserted
                 // directly). This is a change from the earlier sim-slice that inserted it
                 // here: the full registry-driven grid now comes from setup_battle.
+
+                // GTW-14: derive and insert the five battle-lifetime per-subsystem RNG
+                // streams from the trigger's root seed ON THE Ok PATH ONLY, so they share
+                // exactly the BattleInProgress lifetime (removed together on teardown) and
+                // a FAILED setup_battle leaves NO orphaned RNG resources. Each stream is an
+                // independent ChaCha12Rng derived via fnv1a64(root, label); adding a draw on
+                // one stream cannot perturb any other stream's output sequence.
+                let root = request.seed;
+                commands.insert_resource(ShotRng::from_root(root));
+                commands.insert_resource(SeverityRng::from_root(root));
+                commands.insert_resource(LootRng::from_root(root));
+                commands.insert_resource(InjuryRng::from_root(root));
+                commands.insert_resource(ProcgenRng::from_root(root));
+
                 commands.insert_resource(BattleInProgress);
                 commands.insert_resource(PlayerFaction::new(request.situation.player_faction));
                 commands.insert_resource(BattleRoster::new(
@@ -204,13 +218,30 @@ pub fn setup_battle_on_request(
     }
 }
 
+/// Remove all five GTW-14 per-subsystem RNG stream resources from the world.
+///
+/// Called during [`teardown_battle_on_request`] to clean every battle-lifetime RNG
+/// stream in one place (bevy-traps.md #1 — resources must be removed on state exit).
+/// A [`remove_resource`](Commands::remove_resource) on an absent resource is a no-op,
+/// so a spurious or double call is harmless. Defined as a standalone `fn` so the
+/// teardown system body stays focused on ordering concerns and is easy to audit.
+fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
+    commands.remove_resource::<ShotRng>();
+    commands.remove_resource::<SeverityRng>();
+    commands.remove_resource::<LootRng>();
+    commands.remove_resource::<InjuryRng>();
+    commands.remove_resource::<ProcgenRng>();
+}
+
 /// **Teardown** the battle on [`TeardownBattleRequested`] — remove the
 /// battle-lifetime resources, including the [`BattleInProgress`] gate witness (E10.5
 /// / GTW-212).
 ///
 /// Drains [`MessageReader<TeardownBattleRequested>`] and, when triggered, removes
-/// [`SimRng`], the [`setup_battle`]-inserted resources ([`CoverLedger`] /
-/// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`] /
+/// the five per-subsystem RNG streams ([`ShotRng`] / [`SeverityRng`] / [`LootRng`]
+/// / [`InjuryRng`] / [`ProcgenRng`]) that GTW-14 inserted at setup, the
+/// [`setup_battle`]-inserted resources ([`CoverLedger`] / [`SurfaceGrid`] /
+/// [`OccupancyGrid`] / [`VerticalLinkGraph`] /
 /// [`SlabLedger`] / [`TerrainIndex`](crate::terrain::entity::TerrainIndex) /
 /// [`FloorCostGrid`]), the [`BattleInProgress`] witness (closing the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) gate so the
@@ -246,7 +277,10 @@ pub fn teardown_battle_on_request(
         requested = true;
     }
     if requested {
-        commands.remove_resource::<SimRng>();
+        // GTW-14: remove all five per-subsystem RNG streams (bevy-traps.md #1:
+        // resources must be removed on exit; a remove_resource on an absent resource
+        // is a no-op, so a spurious / double teardown is harmless).
+        remove_rng_streams(&mut commands);
         commands.remove_resource::<CoverLedger>();
         commands.remove_resource::<SurfaceGrid>();
         // GTW-395: remove the SlabLedger (pre-existing leak fix — it was inserted at

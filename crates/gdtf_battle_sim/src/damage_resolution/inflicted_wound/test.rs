@@ -16,7 +16,7 @@ use crate::{
     metric::{Cell, Level, SimPos},
     resolve_and_apply::{StruckSurfaces, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotKind, ShotOutcome},
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, SeverityRng},
     sample_cone::{ConcentrationP, ShotDir, sample_cone_vector},
     severity::Severity,
     slab::SlabLedger,
@@ -32,9 +32,9 @@ use crate::{
 /// A fixed seed so the rolled tier/location are deterministic to assert against.
 const SEED: u64 = 0x1FF1_1C7E;
 
-/// A fresh `SimRng` from the shared seed.
-fn rng() -> SimRng {
-    SimRng::from_seed(BattleSeed::new(SEED))
+/// A fresh [`SeverityRng`] from the shared seed — the stream `resolve_and_apply` draws from.
+fn rng() -> SeverityRng {
+    SeverityRng::from_root(BattleSeed::new(SEED))
 }
 
 /// A valid `Entity` id from a throwaway world (no hand-crafted raw id, no `unwrap`).

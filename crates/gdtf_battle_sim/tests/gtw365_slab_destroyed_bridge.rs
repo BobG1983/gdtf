@@ -27,12 +27,13 @@ use bevy::{
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleSeed, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
-    FireModeSpec, HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
-    MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimPos, SimRng,
-    SlabEntry, SlabHp, SlabLedger, SlabState, SquadVisibility, Stable, Stance, StanceKind,
-    SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, WieldedBy, Wounds,
+    FireModeSpec, HandlingProfile, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState,
+    LootRng, Luck, Magazine, MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng,
+    ReloadTu, SeverityRng, Shooting, ShotRng, SimPos, SlabEntry, SlabHp, SlabLedger, SlabState,
+    SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
+    VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+    Wounds,
     acts::{FireRequested, SimActsPlugin},
     armor::{ArmorHardness, ArmorProtection},
     march_vector,
@@ -78,7 +79,13 @@ fn bridge_app() -> App {
     app.add_plugins(MinimalPlugins)
         .add_plugins(SimActsPlugin)
         .add_plugins(OccupancyMaintenancePlugin);
-    app.insert_resource(SimRng::from_seed(BattleSeed::new(0x51AB_C0DE)));
+    // GTW-14: five per-subsystem RNG streams from the battle seed.
+    let seed = BattleSeed::new(0x51AB_C0DE);
+    app.insert_resource(ShotRng::from_root(seed));
+    app.insert_resource(SeverityRng::from_root(seed));
+    app.insert_resource(LootRng::from_root(seed));
+    app.insert_resource(InjuryRng::from_root(seed));
+    app.insert_resource(ProcgenRng::from_root(seed));
     app.insert_resource(CombatTuning::default());
     app.insert_resource(PlayerFaction::new(Faction::new(1)));
     // The cover ledger the shared aim / fire path reads (no cover here — the round

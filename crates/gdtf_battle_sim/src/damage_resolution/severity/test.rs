@@ -9,7 +9,7 @@ use crate::{
     armor::BodyPart,
     ganger::{Luck, Toughness},
     resolve_hit::PenetratingDamage,
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, SeverityRng},
     tuning::SeverityScaling,
     weapon::FatalBias,
 };
@@ -18,9 +18,9 @@ use crate::{
 /// the same seed must reproduce the same draws (an arbitrary value, not tuned).
 const SEED: u64 = 0xC0FF_EE15;
 
-/// Build a `SimRng` from the shared fixed seed (a fresh stream per call).
-fn rng() -> SimRng {
-    SimRng::from_seed(BattleSeed::new(SEED))
+/// Build a [`SeverityRng`] from the shared fixed seed (a fresh stream per call).
+fn rng() -> SeverityRng {
+    SeverityRng::from_root(BattleSeed::new(SEED))
 }
 
 /// Build a severity-input bundle from arbitrary inputs — a helper so each test
@@ -297,7 +297,7 @@ fn head_hit_outscores_leg_hit() {
 fn same_seed_reproduces_the_severity_sequence() {
     let scaling = SeverityScaling::default();
     let sequence = |seed: u64| {
-        let mut r = SimRng::from_seed(BattleSeed::new(seed));
+        let mut r = SeverityRng::from_root(BattleSeed::new(seed));
         // Varying inputs across the sequence so the stream is genuinely walked.
         (0..32)
             .map(|i| {

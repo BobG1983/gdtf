@@ -32,7 +32,7 @@ pub(super) use crate::{
     metric::{Cell, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::CoverDestroyed,
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, ShotRng},
     situation::{BattleSetupError, Situation, setup_battle},
     surface::SurfaceGrid,
     tuning::{CombatTuning, GangerStatTuning},

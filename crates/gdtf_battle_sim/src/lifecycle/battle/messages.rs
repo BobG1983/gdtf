@@ -21,8 +21,8 @@ pub struct SetupBattleRequested {
     /// The authored battlefield to pour into the ECS world — owned by value (the app
     /// clones its `LoadedSituation`, or sends [`Situation::default`] when absent).
     pub situation: Situation,
-    /// The seed the battle [`SimRng`](crate::rng::SimRng) is built from — threaded
-    /// through [`SimRng::from_seed`](crate::rng::SimRng::from_seed), so the same seed
+    /// The seed the battle [`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) is built from — threaded
+    /// through [`ShotRng::from_root`](crate::rng::ShotRng::from_root), so the same seed
     /// reproduces the same draw stream.
     pub seed:      BattleSeed,
 }
@@ -39,7 +39,7 @@ impl SetupBattleRequested {
 ///
 /// A buffered [`Message`] the app sends at the battle boundary (its
 /// `OnExit(GameState::BattleScape)`). Carries no payload: the teardown removes a
-/// fixed set of resources ([`SimRng`](crate::rng::SimRng) + the four
+/// fixed set of resources ([`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) + the four
 /// [`setup_battle`](crate::situation::setup_battle)-inserted grids). A unit-payload
 /// struct (not an enum / not a field) — the trigger's identity IS the signal.
 #[derive(Message, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]

@@ -1,11 +1,10 @@
 //! Relocated unit tests for the weighted hit-location roll (GTW-201 wave 22 — moved
 //! verbatim from the former inline `#[cfg(test)] mod tests`).
 
-use rand::{SeedableRng, rngs::StdRng};
-
 use crate::{
     armor::BodyPart,
     hit_location::roll_body_part,
+    rng::{BattleSeed, ShotRng},
     tuning::{BodyPartWeight, BodyPartWeights},
 };
 
@@ -38,10 +37,10 @@ fn weights(
 #[test]
 fn seeded_roll_is_a_deterministic_pick_on_the_real_path() {
     let w = weights(6, 40, 15, 15, 12, 12);
-    let mut a = StdRng::seed_from_u64(0xA11CE);
-    let mut b = StdRng::seed_from_u64(0xA11CE);
-    let first = roll_body_part(&w, &mut a);
-    let again = roll_body_part(&w, &mut b);
+    let mut a = ShotRng::from_root(BattleSeed::new(0xA11CE));
+    let mut b = ShotRng::from_root(BattleSeed::new(0xA11CE));
+    let first = roll_body_part(&w, a.rng());
+    let again = roll_body_part(&w, b.rng());
     assert_eq!(
         first, again,
         "same seed + same weights must give the same first pick",
@@ -54,10 +53,10 @@ fn seeded_roll_is_a_deterministic_pick_on_the_real_path() {
 #[test]
 fn same_seed_same_sequence_of_parts() {
     let w = weights(6, 40, 15, 15, 12, 12);
-    let mut a = StdRng::seed_from_u64(0xBEEF);
-    let mut b = StdRng::seed_from_u64(0xBEEF);
-    let seq_a: Vec<BodyPart> = (0..256).map(|_| roll_body_part(&w, &mut a)).collect();
-    let seq_b: Vec<BodyPart> = (0..256).map(|_| roll_body_part(&w, &mut b)).collect();
+    let mut a = ShotRng::from_root(BattleSeed::new(0xBEEF));
+    let mut b = ShotRng::from_root(BattleSeed::new(0xBEEF));
+    let seq_a: Vec<BodyPart> = (0..256).map(|_| roll_body_part(&w, a.rng())).collect();
+    let seq_b: Vec<BodyPart> = (0..256).map(|_| roll_body_part(&w, b.rng())).collect();
     assert_eq!(seq_a, seq_b, "same seed must replay the same part sequence");
 }
 
@@ -71,12 +70,12 @@ fn distribution_tracks_weight_ordering_not_exact_counts() {
     // Default-SHAPED weights (head rare, torso the bulk) — used for the
     // ordering relation only, not pinned as magnitudes.
     let w = weights(6, 40, 15, 15, 12, 12);
-    let mut rng = StdRng::seed_from_u64(0x5EED_0166);
+    let mut shot = ShotRng::from_root(BattleSeed::new(0x5EED_0166));
 
     let mut counts = [0_u32; 6];
     let samples = 60_000;
     for _ in 0..samples {
-        counts[roll_body_part(&w, &mut rng).index()] += 1;
+        counts[roll_body_part(&w, shot.rng()).index()] += 1;
     }
 
     let head = counts[BodyPart::Head.index()];
@@ -114,12 +113,12 @@ fn distribution_tracks_weight_ordering_not_exact_counts() {
 fn zero_weight_part_is_never_picked() {
     // Arbitrary weights — head zeroed, the rest non-zero (not shipped values).
     let w = weights(0, 7, 3, 3, 5, 5);
-    let mut rng = StdRng::seed_from_u64(0x0FF0);
+    let mut shot = ShotRng::from_root(BattleSeed::new(0x0FF0));
 
     let mut head_seen = false;
     let mut non_head_seen = false;
     for _ in 0..20_000 {
-        match roll_body_part(&w, &mut rng) {
+        match roll_body_part(&w, shot.rng()) {
             BodyPart::Head => head_seen = true,
             _ => non_head_seen = true,
         }
@@ -135,10 +134,10 @@ fn zero_weight_part_is_never_picked() {
 fn single_non_zero_part_is_always_picked() {
     // Only the left leg carries weight — arbitrary magnitude.
     let w = weights(0, 0, 0, 0, 9, 0);
-    let mut rng = StdRng::seed_from_u64(0xCAFE);
+    let mut shot = ShotRng::from_root(BattleSeed::new(0xCAFE));
     for _ in 0..5_000 {
         assert_eq!(
-            roll_body_part(&w, &mut rng),
+            roll_body_part(&w, shot.rng()),
             BodyPart::LeftLeg,
             "the sole non-zero part must always be picked",
         );
@@ -152,11 +151,11 @@ fn single_non_zero_part_is_always_picked() {
 #[test]
 fn all_zero_weights_fall_back_to_torso_without_panic() {
     let zero = weights(0, 0, 0, 0, 0, 0);
-    let mut rng = StdRng::seed_from_u64(0x0D15_EA5E);
+    let mut shot = ShotRng::from_root(BattleSeed::new(0x0D15_EA5E));
     // Many calls all return the deterministic central-mass fallback, no panic.
     for _ in 0..1_000 {
         assert_eq!(
-            roll_body_part(&zero, &mut rng),
+            roll_body_part(&zero, shot.rng()),
             BodyPart::Torso,
             "all-zero weights must fall back to torso, never panic",
         );
@@ -165,14 +164,14 @@ fn all_zero_weights_fall_back_to_torso_without_panic() {
     // The fallback did NOT touch the RNG: a fresh stream and a stream that was
     // first hammered with all-zero rolls produce the SAME first real pick.
     let real = weights(6, 40, 15, 15, 12, 12);
-    let mut untouched = StdRng::seed_from_u64(0x1357);
-    let mut after_zeros = StdRng::seed_from_u64(0x1357);
+    let mut untouched = ShotRng::from_root(BattleSeed::new(0x1357));
+    let mut after_zeros = ShotRng::from_root(BattleSeed::new(0x1357));
     for _ in 0..50 {
-        let _drained = roll_body_part(&zero, &mut after_zeros);
+        let _drained = roll_body_part(&zero, after_zeros.rng());
     }
     assert_eq!(
-        roll_body_part(&real, &mut untouched),
-        roll_body_part(&real, &mut after_zeros),
+        roll_body_part(&real, untouched.rng()),
+        roll_body_part(&real, after_zeros.rng()),
         "the all-zero fallback must not consume the RNG stream",
     );
 }

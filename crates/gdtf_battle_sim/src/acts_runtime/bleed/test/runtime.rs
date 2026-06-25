@@ -20,7 +20,7 @@ use crate::{
     cover::CoverLedger,
     ganger::{Faction, LifeState, Stabilized, Tu, TuMax, Wounds},
     occupancy::OccupancyGrid,
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
@@ -31,7 +31,7 @@ use crate::{
 };
 
 /// Seed the shared battle-lifetime resources a live battle has (everything BUT the
-/// [`BattleInProgress`] gate witness): the three grids, a seeded [`SimRng`],
+/// [`BattleInProgress`] gate witness): the three grids, the five seeded RNG streams (GTW-14),
 /// [`CombatTuning::default`] (persistent `Load`-tier in production), the
 /// [`BattleRoster`] the `check_outcome` census reads, and [`PlayerFaction`] +
 /// [`ActiveFaction`] on the player (the player acts first). [`BattleSimPlugin`] (added
@@ -55,7 +55,13 @@ fn seed_battle_resources(app: &mut App) {
     // `dispatch_move` params validate when the Simulate band runs).
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(SquadVisibility::default());
-    app.insert_resource(SimRng::from_seed(BattleSeed::new(SEED)));
+    // GTW-14: five per-subsystem streams from the test seed.
+    let seed = BattleSeed::new(SEED);
+    app.insert_resource(ShotRng::from_root(seed));
+    app.insert_resource(SeverityRng::from_root(seed));
+    app.insert_resource(LootRng::from_root(seed));
+    app.insert_resource(InjuryRng::from_root(seed));
+    app.insert_resource(ProcgenRng::from_root(seed));
     let tuning = CombatTuning::default();
     // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at
     // the default open cost so the bleed-clock tests (which never move) don't panic on

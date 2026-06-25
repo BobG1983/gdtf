@@ -44,7 +44,8 @@ fn fire_at_in_line_target_applies_damage() {
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();
-    let mut r = rng();
+    let mut shot_r = rng();
+    let mut sev_r = severity_rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
@@ -74,7 +75,8 @@ fn fire_at_in_line_target_applies_damage() {
                 brace_cells: &BraceStairCells::empty(),
             },
             &tuning,
-            &mut r,
+            &mut shot_r,
+            &mut sev_r,
         )
     };
 
@@ -151,7 +153,8 @@ fn fire_into_empty_space_is_a_clean_miss() {
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();
-    let mut r = rng();
+    let mut shot_r = rng();
+    let mut sev_r = severity_rng();
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
         let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
@@ -180,7 +183,8 @@ fn fire_into_empty_space_is_a_clean_miss() {
                 brace_cells: &BraceStairCells::empty(),
             },
             &tuning,
-            &mut r,
+            &mut shot_r,
+            &mut sev_r,
         )
     };
     assert_eq!(volley.reports.len(), 1, "one round fired into empty space");

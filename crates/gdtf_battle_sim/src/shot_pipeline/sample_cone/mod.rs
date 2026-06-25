@@ -24,7 +24,7 @@
 //! [`crate::central_axis::AimDir`] central axis — lateral AND vertical scatter in a
 //! single draw pair, tilted off the axis by `θ_shot` and rotated to azimuth `φ`
 //! about it. A **zero** cone returns the axis EXACTLY (dead-center). Every draw
-//! bottoms out in the injected `&mut impl rand::Rng` (the [`crate::rng::SimRng`]
+//! bottoms out in the injected `&mut impl rand::Rng` (the [`crate::rng::ShotRng`]
 //! handle), so the stream is seed-deterministic (`docs/testing.md`). Angular /
 //! dimensionless about a unit-Vec3 direction — **zero pixels**.
 

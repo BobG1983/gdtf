@@ -61,7 +61,7 @@
 //! all four queries coexist with no conflict.
 //!
 //! Render-free, deterministic model logic: every random draw bottoms out in the
-//! single injected [`SimRng`](crate::rng::SimRng) (no `thread_rng`, no ad-hoc
+//! single injected [`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) (no `thread_rng`, no ad-hoc
 //! entropy), so the same [`BattleSeed`](crate::rng::BattleSeed) reproduces a
 //! byte-equal volley (AC7); no LOS / fog input is consulted (the presenter boundary).
 //! **Zero pixels** — the reports carry only damage / wound math, never a screen

@@ -22,7 +22,7 @@ use crate::{
     occupancy::OccupancyGrid,
     resolve_and_apply::{HitReport, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotInputs, ShotKind, resolve_coarse},
-    rng::SimRng,
+    rng::{SeverityRng, ShotRng},
     sample_cone::concentration_p,
     stability::terrain_brace::terrain_braces,
     tuning::CombatTuning,
@@ -291,7 +291,8 @@ pub(super) struct RoundSetup<'a> {
 /// outcome ALSO folds through [`resolve_and_apply`] (the cover/slab arms spend their
 /// ledger HP, the ground arm — GTW-366 — records the round's `weapon_damage` accrual in
 /// the report); only a clean [`ShotKind::Miss`] short-circuits to
-/// [`HitReport::no_effect`]. Every draw is from the injected [`SimRng`].
+/// [`HitReport::no_effect`]. Shot draws come from the injected [`ShotRng`](crate::rng::ShotRng);
+/// severity draws from the injected [`SeverityRng`](crate::rng::SeverityRng).
 ///
 /// Returns BOTH the frozen [`HitReport`] **and** the round's
 /// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) — the already-computed E2
@@ -312,7 +313,8 @@ pub(super) fn resolve_round(
     wears: &WearsQuery,
     pieces: &mut PieceQuery,
     tuning: &CombatTuning,
-    rng: &mut SimRng,
+    shot_rng: &mut ShotRng,
+    severity_rng: &mut SeverityRng,
 ) -> (HitReport, crate::resolve_coarse::ShotOutcome) {
     let snapshot = setup.snapshot;
     let geometry = setup.geometry;
@@ -385,13 +387,21 @@ pub(super) fn resolve_round(
         grids.surface,
         grids.cover,
         tuning,
-        rng,
+        shot_rng,
         is_dead,
     );
 
     let report = match outcome.kind {
         ShotKind::Ganger(struck) => fold_ganger_round(
-            &outcome, struck, snapshot, grids, targets, wears, pieces, tuning, rng,
+            &outcome,
+            struck,
+            snapshot,
+            grids,
+            targets,
+            wears,
+            pieces,
+            tuning,
+            severity_rng,
         ),
         // GTW-364: a round that strikes COVER folds through the SAME resolve_and_apply,
         // which reuses the ganger damage formula against the cover's own armor, spends
@@ -406,6 +416,8 @@ pub(super) fn resolve_round(
         // its Ground arm records the round's weapon_damage in the report's `ground_accrued`
         // (bridged to a GroundAccrued message by dispatch_fire). It touches NEITHER ledger,
         // but routing it through the fold is the production seam the accrual lives on.
+        // Cover/Slab/Ground arms are RNG-free (no severity draw on a structural hit) so
+        // we pass severity_rng but it will not advance the cursor for these arms.
         ShotKind::Cover(_) | ShotKind::Slab(_) | ShotKind::Ground(_) => resolve_and_apply(
             &outcome,
             snapshot.weapon_stats(),
@@ -417,7 +429,7 @@ pub(super) fn resolve_round(
                 slab:  grids.slab,
             },
             tuning,
-            rng,
+            severity_rng,
         ),
         // A clean miss strikes nothing — no effect.
         ShotKind::Miss => HitReport::no_effect(outcome.kind),
@@ -455,7 +467,7 @@ fn fold_ganger_round(
     wears: &WearsQuery,
     pieces: &mut PieceQuery,
     tuning: &CombatTuning,
-    rng: &mut SimRng,
+    severity_rng: &mut SeverityRng,
 ) -> HitReport {
     let struck_piece_view = outcome
         .body_part
@@ -491,7 +503,7 @@ fn fold_ganger_round(
                     slab:  grids.slab,
                 },
                 tuning,
-                rng,
+                severity_rng,
             )
         }
         Err(_) => HitReport::no_effect(outcome.kind),

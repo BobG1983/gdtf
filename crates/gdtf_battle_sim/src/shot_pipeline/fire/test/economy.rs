@@ -37,7 +37,8 @@ fn charge_is_taken_once_and_reflects_aiming() {
         let surface = SurfaceGrid::new();
         let mut cover = CoverLedger::new();
         let mut slab = SlabLedger::new();
-        let mut r = rng();
+        let mut shot_r = rng();
+        let mut sev_r = severity_rng();
 
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         {
@@ -68,7 +69,8 @@ fn charge_is_taken_once_and_reflects_aiming() {
                     brace_cells: &BraceStairCells::empty(),
                 },
                 &tuning,
-                &mut r,
+                &mut shot_r,
+                &mut sev_r,
             );
             assert_eq!(volley.reports.len(), 5, "the full 5-round burst fired");
             // GTW-290: the per-round ShotOutcome geometry is parallel to the reports.
@@ -112,7 +114,8 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();
-    let mut r = rng();
+    let mut shot_r = rng();
+    let mut sev_r = severity_rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
@@ -142,7 +145,8 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
                 brace_cells: &BraceStairCells::empty(),
             },
             &tuning,
-            &mut r,
+            &mut shot_r,
+            &mut sev_r,
         )
     };
 

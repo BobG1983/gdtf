@@ -47,8 +47,8 @@
 //!   systems already in that set.
 //!
 //! Render-free, deterministic model logic: every random draw bottoms out in the single
-//! injected [`SimRng`](crate::rng::SimRng) resource (the fire dispatch system's
-//! `ResMut<SimRng>`); no renderer, no window, no presenter, no pixel.
+//! injected [`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) resource (the fire dispatch system's
+//! `ResMut<ShotRng> + ResMut<SeverityRng>`); no renderer, no window, no presenter, no pixel.
 
 mod downed;
 mod fire;

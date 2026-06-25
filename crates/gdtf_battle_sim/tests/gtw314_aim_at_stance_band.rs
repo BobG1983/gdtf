@@ -41,10 +41,10 @@ use gdtf_battle_sim::{
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    PieceQuery, Position, ReloadTu, ShooterQuery, Shooting, ShotKind, SimRng, SlabLedger, Stable,
-    Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy,
-    WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    PieceQuery, Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng,
+    SlabLedger, Stable, Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley,
+    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery,
+    WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
 /// The shooter's cell.
@@ -178,7 +178,8 @@ fn spawn_target(app: &mut App, stance: StanceKind) -> Entity {
 /// resources).
 fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     let tuning = CombatTuning::default();
-    let mut rng = SimRng::from_seed(BattleSeed::new(seed));
+    let mut rng = ShotRng::from_root(BattleSeed::new(seed));
+    let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
     let mode = single_mode();
 
     let occupancy = app
@@ -238,6 +239,7 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 },
                 &tuning,
                 &mut rng,
+                &mut sev_rng,
             )
         }
         Err(_) => Volley {

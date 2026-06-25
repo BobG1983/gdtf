@@ -138,8 +138,8 @@ fn no_lifecycle_message_means_no_setup_or_teardown() {
         app.update();
     }
     assert!(
-        app.world().get_resource::<SimRng>().is_none(),
-        "no SetupBattleRequested means no SimRng inserted",
+        app.world().get_resource::<ShotRng>().is_none(),
+        "no SetupBattleRequested means no RNG streams inserted",
     );
     assert!(
         app.world().get_resource::<OccupancyGrid>().is_none(),

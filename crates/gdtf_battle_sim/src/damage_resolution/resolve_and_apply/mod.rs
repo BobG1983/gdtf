@@ -47,7 +47,7 @@
 //!    penetrating damage, the defender's [`Toughness`](crate::ganger::Toughness),
 //!    the struck part's [`part_severity_mod`](crate::severity::part_severity_mod),
 //!    the weapon's [`FatalBias`](crate::weapon::FatalBias), and **both** gangers'
-//!    [`Luck`](crate::ganger::Luck). The injected [`SimRng`](crate::rng::SimRng) is
+//!    [`Luck`](crate::ganger::Luck). The injected [`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) is
 //!    the **single draw point** — no `thread_rng`, no ad-hoc entropy.
 //! 7. **Apply** — E3.6 [`apply_hit`](crate::apply_hit::apply_hit) folds HP loss +
 //!    Wounds-by-tier + the GTW-279 [`InflictedWounds`](crate::inflicted_wound::InflictedWounds)

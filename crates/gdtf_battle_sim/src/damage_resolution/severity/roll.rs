@@ -5,7 +5,7 @@ use super::kind::{PartSeverityMod, Severity, bucket};
 use crate::{
     ganger::{Luck, Toughness},
     resolve_hit::PenetratingDamage,
-    rng::SimRng,
+    rng::SeverityRng,
     tuning::SeverityScaling,
     weapon::FatalBias,
 };
@@ -15,7 +15,7 @@ use crate::{
 ///
 /// Groups the score's logical input set so [`roll_severity`] stays under clippy's
 /// argument-count gate (the same precedent as `ShotInputs` / `DamageProfile`
-/// — the tuning `&SeverityScaling` and the entropy `&mut SimRng` stay their own
+/// — the tuning `&SeverityScaling` and the entropy `&mut SeverityRng` stay their own
 /// params). Every field is a named domain type sourced off the resolved hit and
 /// the two gangers' entity components — none is a bare literal.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -86,7 +86,11 @@ const fn pen_to_f32(pen: i32) -> f32 {
 /// negative Luck), the term collapses to the upper bound `hi` rather than asking
 /// the RNG for an empty range (which would be invalid). Drawn from the one seeded
 /// stream, so the roll is deterministic and replayable.
-pub(super) fn roll_term(scaling: &SeverityScaling, luck_defender: Luck, rng: &mut SimRng) -> f32 {
+pub(super) fn roll_term(
+    scaling: &SeverityScaling,
+    luck_defender: Luck,
+    rng: &mut SeverityRng,
+) -> f32 {
     let lo = -*scaling.defender_luck_scale * *luck_defender;
     let hi = *scaling.random_spread;
     if lo >= hi {
@@ -107,7 +111,7 @@ pub(super) fn roll_term(scaling: &SeverityScaling, luck_defender: Luck, rng: &mu
 pub(super) fn severity_score(
     inputs: &SeverityInputs,
     scaling: &SeverityScaling,
-    rng: &mut SimRng,
+    rng: &mut SeverityRng,
 ) -> f32 {
     let pen_term = *scaling.pen_damage_scale * pen_to_f32(*inputs.pen_damage);
     let toughness_term = *scaling.toughness_mitigation * *inputs.toughness;
@@ -138,7 +142,7 @@ pub(super) fn severity_score(
 pub fn roll_severity(
     inputs: &SeverityInputs,
     scaling: &SeverityScaling,
-    rng: &mut SimRng,
+    rng: &mut SeverityRng,
 ) -> Severity {
     let score = severity_score(inputs, scaling, rng);
     bucket(score, scaling)

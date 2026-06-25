@@ -38,7 +38,7 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::{
     Aiming, BattleReady, BattleSeed, Cell, CellLevel, Direction, Facing, Faction, GangerSpawn,
-    Level, LifeState, Position, SetupBattleRequested, SimRng, Situation, Stance, StanceKind,
+    Level, LifeState, Position, SetupBattleRequested, ShotRng, Situation, Stance, StanceKind,
     setup_battle_on_request,
     test_support::{
         SituationBuilder, test_armor_registry, test_terrain_registry, test_weapon_registry,
@@ -47,7 +47,7 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::advance_until_resource_exists;
 
 /// Bounded settle headroom for the post-setup STATE / SPAWN waits (`drive_setup`'s
-/// `SimRng`-present signal, `settle_terrain_z_at`'s spawned-sprite signal). These wait on a
+/// `ShotRng`-present signal, `settle_terrain_z_at`'s spawned-sprite signal). These wait on a
 /// SYNCHRONOUS battle setup + its command flush, NOT on an async asset load, so a true small
 /// frame count is the right termination — they are out of GTW-305's async-load scope.
 const MAX_UPDATES: u32 = 128;
@@ -59,7 +59,7 @@ const MAX_UPDATES: u32 = 128;
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// A fixed seed for the deterministic `SetupBattleRequested` (the draw is RNG-free; the
-/// seed only feeds the unused battle `SimRng`).
+/// seed only feeds the unused battle RNG streams).
 const SEED: u64 = 0x0D15_EA5E;
 
 /// The workspace-root `assets/` directory (this crate's manifest -> up two -> assets),
@@ -104,8 +104,8 @@ fn headless_renderer_app() -> App {
             }),
     )
     // The real spawn path: drain SetupBattleRequested, run setup_battle, insert
-    // BattleInProgress + the four grids, write BattleReady. SimRng is inserted by
-    // setup_battle_on_request from the message seed.
+    // BattleInProgress + the four grids, write BattleReady. The five RNG streams (GTW-14)
+    // are inserted by setup_battle_on_request from the message seed.
     .add_message::<SetupBattleRequested>()
     .add_message::<BattleReady>()
     // The S4 terrain draw (also registered by TopDownRendererPlugin) reads
@@ -184,12 +184,12 @@ fn drive_setup(app: &mut App, situation: Situation) -> bool {
     // Commands, and let the draw's Added<Position> fire.
     for _ in 0..MAX_UPDATES {
         app.update();
-        // SimRng is inserted by setup_battle_on_request only on the Ok setup path. It
-        // (and the ganger spawns) land in the same end-of-update command flush, so the
-        // draw's `Added<Position>` is observable only on the NEXT update — drive one
-        // more so the spawn system catches the freshly-spawned gangers before the
-        // caller asserts on the sprites.
-        if app.world().get_resource::<SimRng>().is_some() {
+        // ShotRng (one of the five GTW-14 streams) is inserted by setup_battle_on_request
+        // only on the Ok setup path. It (and the ganger spawns) land in the same
+        // end-of-update command flush, so the draw's `Added<Position>` is observable only
+        // on the NEXT update — drive one more so the spawn system catches the
+        // freshly-spawned gangers before the caller asserts on the sprites.
+        if app.world().get_resource::<ShotRng>().is_some() {
             app.update();
             return true;
         }

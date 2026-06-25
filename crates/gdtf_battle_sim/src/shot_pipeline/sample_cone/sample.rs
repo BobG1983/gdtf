@@ -70,7 +70,7 @@ impl ShotDir {
 ///   is `aim_dir` itself, dead-center on the target (AC #3); short-circuited so no
 ///   f32 drift creeps in.
 /// * **Determinism** — both draws come from the injected `&mut impl rand::Rng`
-///   ([`crate::rng::SimRng`]'s handle), so the same seed yields the same sample
+///   ([`crate::rng::ShotRng`]'s handle), so the same seed yields the same sample
 ///   stream (AC #4, AC #6: no global/thread RNG).
 ///
 /// `aim_dir` is the E2.4 [`AimDir`] central axis (a sim-space unit-Vec3 direction —

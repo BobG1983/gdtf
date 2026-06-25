@@ -31,7 +31,7 @@ pub(super) use crate::{
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
     occupancy_sync::OccupancyMaintenancePlugin,
     resolve_coarse::ShotKind,
-    rng::{BattleSeed, SimRng},
+    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
     shot_fired::ShotFired,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
@@ -78,7 +78,7 @@ pub(super) fn full_vision() -> SquadVisibility {
 
 /// Insert the shared sim resources a dispatch system reads — the three grids, the empty
 /// [`VerticalLinkGraph`], a full-vision [`SquadVisibility`], the [`PlayerFaction`] seed,
-/// a seeded [`SimRng`], [`CombatTuning::default`], and the [`FloorCostGrid`] (GTW-396
+/// the five seeded per-subsystem RNG streams (GTW-14), [`CombatTuning::default`], and the [`FloorCostGrid`] (GTW-396
 /// Decision B — seeded uniform at the default open cost so the adjacent-cell move tests
 /// keep their existing cost semantics). The grids are inserted EMPTY by default; a test
 /// mutates them via `app.world_mut()` before the run.
@@ -104,7 +104,13 @@ pub(super) fn insert_sim_resources(app: &mut App) {
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(full_vision());
     app.insert_resource(PlayerFaction::new(Faction::new(TEST_PLAYER_GANG)));
-    app.insert_resource(SimRng::from_seed(BattleSeed::new(SEED)));
+    // GTW-14: insert the five per-subsystem RNG streams derived from the test seed.
+    let seed = BattleSeed::new(SEED);
+    app.insert_resource(ShotRng::from_root(seed));
+    app.insert_resource(SeverityRng::from_root(seed));
+    app.insert_resource(LootRng::from_root(seed));
+    app.insert_resource(InjuryRng::from_root(seed));
+    app.insert_resource(ProcgenRng::from_root(seed));
     app.insert_resource(tuning);
     app.insert_resource(floor_costs);
 }

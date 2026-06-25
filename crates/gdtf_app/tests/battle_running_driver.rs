@@ -84,7 +84,7 @@ fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
 /// directly East, built over the central
 /// [`SituationBuilder`](gdtf_battle_sim::test_support::SituationBuilder). The
 /// `SetupBattleRequested` the app sends on `OnEnter(Generation)` pours this real battle
-/// into the world before `BattleRunning` (`SimRng` / `CombatTuning` / `OccupancyGrid`
+/// into the world before `BattleRunning` (RNG streams / `CombatTuning` / `OccupancyGrid`
 /// present, both gangers spawned by `setup_battle` via `Commands`).
 fn two_ganger_situation() -> Situation {
     let (sx, sy, sl) = SHOOTER_AT;

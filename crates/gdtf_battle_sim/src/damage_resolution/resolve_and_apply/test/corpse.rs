@@ -2,7 +2,7 @@ use super::support::*;
 
 /// AC2 — corpse-skip: a `Ganger` outcome on an already-`Dead` target yields a
 /// no-effect report and mutates nothing; AND it draws nothing — proven by the
-/// `SimRng` stream being unchanged vs a fresh one after the call.
+/// `SeverityRng` stream being unchanged vs a fresh one after the call.
 #[test]
 fn corpse_skip_is_inert_and_draws_nothing() {
     let tuning = CombatTuning::default();
@@ -70,6 +70,6 @@ fn corpse_skip_is_inert_and_draws_nothing() {
     assert_eq!(
         rng_used.next_u64(),
         rng_fresh.next_u64(),
-        "corpse-skip must take NO draw — the SimRng cursor must be unadvanced",
+        "corpse-skip must take NO draw — the SeverityRng cursor must be unadvanced",
     );
 }

@@ -44,12 +44,13 @@ use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
-    FireModeSpec, FloorCostGrid, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level,
-    LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng,
-    SlabLedger, SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
-    VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
-    Wounds, acts::SimActsPlugin, tuning::CombatTuning,
+    FireModeSpec, FloorCostGrid, HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRng,
+    Kickback, Level, LifeState, LootRng, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position,
+    ProcgenRng, ReloadTu, SeverityRng, Shooting, ShotRng, SlabLedger, SquadVisibility, Stable,
+    Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
+    tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches `PlayerFaction`).
@@ -139,8 +140,14 @@ fn endtoend_app() -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
+    // GTW-14: five per-subsystem RNG streams from the test seed.
+    let seed = BattleSeed::new(0x5A1C_AC75);
+    app.world_mut().insert_resource(ShotRng::from_root(seed));
     app.world_mut()
-        .insert_resource(SimRng::from_seed(BattleSeed::new(0x5A1C_AC75)));
+        .insert_resource(SeverityRng::from_root(seed));
+    app.world_mut().insert_resource(LootRng::from_root(seed));
+    app.world_mut().insert_resource(InjuryRng::from_root(seed));
+    app.world_mut().insert_resource(ProcgenRng::from_root(seed));
     app.world_mut()
         .insert_resource(ButtonInput::<KeyCode>::default());
     app.world_mut()
