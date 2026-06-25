@@ -204,9 +204,28 @@ impl OccupancyGrid {
     /// are skipped (graceful — no panic, the bounds-check rule). The new grid's
     /// [`destroyed_cover`](OccupancyGrid::destroyed_cover) set starts empty; carrying
     /// destroyed cover across a rebuild is the caller's append (E1.7 / GTW-157).
+    ///
+    /// **GTW-391 stair cells.** `stair_cells` is the set of authored stair-tile
+    /// `(cell, level)` positions (from [`mark_stair_cell`](OccupancyGrid::mark_stair_cell)
+    /// — built by the caller before this call so the stair set is populated before
+    /// occupant pour). For each placed occupant whose cell is in `stair_cells` AND
+    /// whose band is not [`HeightBand::Low`] (non-prone — Low is the prone silhouette),
+    /// [`register_stair_presence`](OccupancyGrid::register_stair_presence) is called
+    /// instead of the plain lower-cell write: it writes the upper `(cell, level+1)`
+    /// presence synchronously, so the upper cell exists from **frame 0** (no first-tick
+    /// gap, Blocker 2 resolved). A band of `Low` at placement = prone = lower-cell only.
     #[must_use]
-    pub fn build_from_occupancy_input(input: &OccupancyInput) -> Self {
+    pub fn build_from_occupancy_input(
+        input: &OccupancyInput,
+        stair_cells: &bevy::platform::collections::HashSet<CellLevel>,
+    ) -> Self {
         let mut grid = Self::new();
+        // First, mark every authored stair cell (so is_stair_cell is populated before
+        // the occupant pour — the caller has already computed stair_cells from the
+        // vertical-link list and passes it in; we mark here to keep the grid consistent).
+        for &cell in stair_cells {
+            grid.mark_stair_cell(cell);
+        }
         for placement in &input.terrain {
             grid.set_terrain(placement.at, placement.terrain);
         }
@@ -214,8 +233,20 @@ impl OccupancyGrid {
             // Pour the occupant AND its silhouette band together (GTW-304): the march
             // only strikes a ganger when BOTH are present at a cell, so a placed
             // occupant must carry its band from the first frame.
-            grid.set_occupant(placement.at, Some(placement.occupant));
-            grid.set_occupant_band(placement.at, Some(placement.band));
+            //
+            // GTW-391: if the placement is on a stair cell AND not prone (Low band =
+            // prone silhouette), use register_stair_presence for dual-cell occupancy.
+            // The returned upper cell is intentionally dropped here (initial-placement
+            // PrevSlot will be written by the first sync_moved_gangers Changed<Position>
+            // tick — the placement feeds into the ECS occupancy sync, not directly into
+            // PrevSlot at setup time).
+            if stair_cells.contains(&placement.at) && placement.band != HeightBand::Low {
+                let _ =
+                    grid.register_stair_presence(placement.at, placement.occupant, placement.band);
+            } else {
+                grid.set_occupant(placement.at, Some(placement.occupant));
+                grid.set_occupant_band(placement.at, Some(placement.band));
+            }
         }
         grid
     }
@@ -350,6 +381,106 @@ impl OccupancyGrid {
         } else {
             StairEyeOffset::new(0.0)
         }
+    }
+
+    /// Register a ganger's **stair presence** atomically — write the lower cell and,
+    /// when safe, the upper cell — returning the upper [`CellLevel`] written so the
+    /// caller can record it in [`PrevSlot`](crate::occupancy_sync::PrevSlot) for
+    /// verbatim teardown (GTW-391).
+    ///
+    /// Writes the lower cell unconditionally: `set_occupant(lower, Some(entity))` +
+    /// `set_occupant_band(lower, Some(lower_band))`.
+    ///
+    /// Then attempts the upper cell `(cell, level+1)`:
+    ///
+    /// * Returns `None` (lower-only) when there is no upper cell (top storey —
+    ///   `level == MAX_LEVELS - 1`).
+    /// * Returns `None` (lower-only) when the upper cell is already occupied by a
+    ///   **different** entity — the **occupancy guard** (Blocker 3): the single-occupant
+    ///   slot must not be stomped. A ganger at `(cell, level+1)` as its own lower cell
+    ///   would lose its presence if we overwrote its slot here.
+    /// * Writes `set_occupant(upper, Some(entity))` + `set_occupant_band(upper,
+    ///   Some(HeightBand::Low))` and returns `Some(upper)` when the upper cell is
+    ///   unoccupied, OR already owned by the SAME entity (idempotent re-register: a
+    ///   ganger re-posing upright on the same stair just refreshes the band).
+    ///
+    /// The caller ([`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers) /
+    /// [`build_from_occupancy_input`](OccupancyGrid::build_from_occupancy_input)) stores
+    /// the returned `Option<CellLevel>` in `PrevSlot` so every teardown path can replay
+    /// the exact written set without re-derivation.
+    pub fn register_stair_presence(
+        &mut self,
+        lower: CellLevel,
+        entity: bevy::prelude::Entity,
+        lower_band: HeightBand,
+    ) -> Option<CellLevel> {
+        // Always write the lower cell.
+        self.set_occupant(lower, Some(entity));
+        self.set_occupant_band(lower, Some(lower_band));
+
+        // Compute the cell directly above — None at the top storey.
+        let upper = Self::upper_cell(&lower)?;
+
+        // OCCUPANCY GUARD (Blocker 3): never stomp a cell owned by a different entity.
+        match self.occupant(&upper) {
+            None => {
+                // Upper cell is free — claim it.
+                self.set_occupant(upper, Some(entity));
+                self.set_occupant_band(upper, Some(HeightBand::Low));
+                Some(upper)
+            }
+            Some(other) if other == entity => {
+                // Idempotent re-register: same entity already owns the upper cell.
+                // Refresh the band (e.g. upright re-pose after a stance change).
+                self.set_occupant_band(upper, Some(HeightBand::Low));
+                Some(upper)
+            }
+            Some(_) => {
+                // Upper cell owned by a different entity — lower-only (no stomp).
+                None
+            }
+        }
+    }
+
+    /// Clear `entity`'s upper-cell stair presence at `upper` (occupant + band),
+    /// guarded by ownership so it never stomps a slot another entity now owns (GTW-391).
+    ///
+    /// Only clears when `occupant(&upper) == Some(entity)` — if the cell was taken
+    /// over by a different entity in the meantime, this is a harmless no-op. Used by
+    /// [`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers) and
+    /// [`sync_dead_gangers`](crate::occupancy_sync::sync_dead_gangers) to replay the
+    /// upper-cell teardown recorded in `PrevSlot::upper`.
+    pub fn clear_stair_upper(&mut self, upper: CellLevel, entity: bevy::prelude::Entity) {
+        if self.occupant(&upper) == Some(entity) {
+            self.set_occupant(upper, None);
+            self.set_occupant_band(upper, None);
+        }
+    }
+
+    /// The `(cell, level+1)` cell directly above `lower`, or `None` when `lower` is at
+    /// the top storey (`level == MAX_LEVELS - 1`) — the upper-presence target for a
+    /// stair occupant (GTW-391).
+    ///
+    /// Private: only [`register_stair_presence`](OccupancyGrid::register_stair_presence)
+    /// calls this. The arithmetic is `level + 1` checked against `MAX_LEVELS`.
+    fn upper_cell(lower: &CellLevel) -> Option<CellLevel> {
+        // `lower.z` is a storey index stored as `i32` in `CellLevel`'s `IVec3`; cast to
+        // `u8` for the checked add (the storey index is always in `0..MAX_LEVELS`).
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "lower.z is a storey index in 0..MAX_LEVELS (8) by construction, \
+                      so the i32 -> u8 narrowing cannot truncate or sign-flip"
+        )]
+        let z = lower.z as u8;
+        let next = z.checked_add(1)?;
+        if next >= MAX_LEVELS {
+            return None;
+        }
+        Some(CellLevel::new(
+            Cell::new(lower.x, lower.y),
+            Level::new(next),
+        ))
     }
 
     /// Mark the cover at `cell_level` **destroyed**, inserting it into the

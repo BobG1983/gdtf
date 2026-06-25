@@ -47,18 +47,34 @@ type MovedOrReposed = Or<(Changed<Position>, Changed<Stance>)>;
 /// LOW); a ganger with no [`Stance`] component defaults to the structural
 /// [`StanceKind::Standing`] silhouette.
 ///
+/// **GTW-391 dual-cell stair occupancy.** For a non-prone ganger on a stair tile,
+/// [`OccupancyGrid::register_stair_presence`] is called instead of the plain
+/// `set_occupant` + `set_occupant_band` write. It atomically writes BOTH the lower
+/// cell (stance band) and the upper `(cell, level+1)` (Low band), applying the
+/// occupancy guard so it never stomps another entity's slot. The returned upper
+/// [`CellLevel`](crate::metric::CellLevel) (or `None`) is recorded in [`PrevSlot`] for verbatim teardown.
+///
+/// Teardown is EXACT: the previous [`PrevSlot::upper`] is cleared
+/// **unconditionally** (outside the `old != new` guard) so a prone re-pose in place
+/// — which keeps the lower slot unchanged but must drop the upper — is handled
+/// correctly (Test 7 in the GTW-391 stair suite).
+///
 /// Behavior per entity:
 /// - **Old slot:** if the entity has a [`PrevSlot`] AND that slot's current
 ///   occupant is this entity, clear BOTH its occupant and its band
 ///   (`set_occupant(old, None)` + `set_occupant_band(old, None)`). The occupant
 ///   guard means a move never clobbers a slot another entity has since taken.
-/// - **New slot:** mark `set_occupant(new, Some(entity))`, publish
-///   `set_occupant_band(new, Some(band))`, and write `PrevSlot(new)`.
+/// - **Old upper cell:** if the previous [`PrevSlot`] recorded an upper cell, clear
+///   it **unconditionally** (via [`OccupancyGrid::clear_stair_upper`], which
+///   applies its own ownership guard) — outside the `old != new` lower guard so
+///   a prone re-pose in place correctly drops the upper presence.
+/// - **New slot:** for a non-prone stair occupant, call
+///   [`OccupancyGrid::register_stair_presence`] (dual write); otherwise, plain
+///   `set_occupant` + `set_occupant_band`. Record the result in [`PrevSlot`].
 /// - **First sync (initial placement):** a freshly-inserted [`Position`] reads as
 ///   `Changed` on the first tick (Bevy first-run semantics) with no prior
 ///   [`PrevSlot`] — there is no old slot to clear, so the system simply marks the
-///   new slot (occupant + band) and records the [`PrevSlot`]. Initial placement is
-///   handled sanely.
+///   new slot(s) and records the [`PrevSlot`]. Initial placement is handled sanely.
 /// - **Re-pose in place:** a [`Stance`] change with no move re-publishes the band
 ///   at the (unchanged) current slot, keeping the silhouette current.
 ///
@@ -70,23 +86,44 @@ pub fn sync_moved_gangers(
     moved: Query<MovedReads, MovedOrReposed>,
 ) {
     for (entity, position, stance, prev) in &moved {
-        let new_slot = **position;
+        let new_lower = **position;
         let stance_kind = stance.map_or(StanceKind::Standing, |s| **s);
         let band = silhouette_band(stance_kind);
-        // Clear the OLD slot (occupant AND band together), but only if we still own
-        // it — a move must not stomp a slot another entity has taken since (C3:
-        // clear OLD, mark NEW).
+
+        // 1. CLEAR OLD SLOT + OLD UPPER (exact replay of what PrevSlot recorded).
         if let Some(prev) = prev {
-            let old_slot = prev.slot();
-            if old_slot != new_slot && grid.occupant(&old_slot) == Some(entity) {
-                grid.set_occupant(old_slot, None);
-                grid.set_occupant_band(old_slot, None);
+            let old_lower = prev.slot();
+            // Clear the lower slot only when the entity actually moved (guard against
+            // stomping our own slot on a re-pose in place).
+            if old_lower != new_lower && grid.occupant(&old_lower) == Some(entity) {
+                grid.set_occupant(old_lower, None);
+                grid.set_occupant_band(old_lower, None);
+            }
+            // Clear the old upper UNCONDITIONALLY — outside the `old != new` guard —
+            // so a prone re-pose in place (lower stays fixed, stance goes prone) drops
+            // the upper. The ownership guard inside clear_stair_upper keeps this safe.
+            if let Some(old_upper) = prev.upper() {
+                grid.clear_stair_upper(old_upper, entity);
             }
         }
-        // Mark the NEW slot (occupant AND band) and remember it for the next move.
-        grid.set_occupant(new_slot, Some(entity));
-        grid.set_occupant_band(new_slot, Some(band));
-        commands.entity(entity).insert(PrevSlot::new(new_slot));
+
+        // 2. REGISTER NEW SLOT(S).
+        //    Stair + non-prone → dual-cell (register_stair_presence writes both).
+        //    Otherwise        → single-cell (set_occupant + set_occupant_band).
+        let new_upper = if grid.is_stair_cell(&new_lower) && stance_kind != StanceKind::Prone {
+            grid.register_stair_presence(new_lower, entity, band)
+        } else {
+            grid.set_occupant(new_lower, Some(entity));
+            grid.set_occupant_band(new_lower, Some(band));
+            None
+        };
+
+        // 3. RECORD EXACTLY WHAT WAS WRITTEN into PrevSlot.
+        let prev_slot = match new_upper {
+            Some(upper) => PrevSlot::with_upper(new_lower, upper),
+            None => PrevSlot::new(new_lower),
+        };
+        commands.entity(entity).insert(prev_slot);
     }
 }
 
@@ -104,6 +141,11 @@ pub fn sync_moved_gangers(
 /// synced this entity into); the occupant guard ensures only this entity's own
 /// marker is cleared. The occupant's **silhouette band** is cleared in the same
 /// step, keeping occupant and band consistent (GTW-304).
+///
+/// **GTW-391 stair occupancy.** A ganger downed on a stair tile may have an upper
+/// cell presence recorded in [`PrevSlot::upper`]. This system clears the upper cell
+/// via [`OccupancyGrid::clear_stair_upper`] (ownership-guarded) so a downed
+/// stair-occupant leaves no phantom hittable upper-cell Low band.
 pub fn sync_dead_gangers(
     mut grid: ResMut<OccupancyGrid>,
     downed: Query<(Entity, &LifeState, &PrevSlot), Changed<LifeState>>,
@@ -112,10 +154,16 @@ pub fn sync_dead_gangers(
         if matches!(life, LifeState::Alive) {
             continue;
         }
+        // Clear the lower slot (occupant + band), guarded by ownership.
         let slot = prev.slot();
         if grid.occupant(&slot) == Some(entity) {
             grid.set_occupant(slot, None);
             grid.set_occupant_band(slot, None);
+        }
+        // GTW-391: clear the upper stair cell if one was recorded (a ganger downed on
+        // a stair must not leave a phantom hittable upper-cell Low band).
+        if let Some(upper) = prev.upper() {
+            grid.clear_stair_upper(upper, entity);
         }
     }
 }

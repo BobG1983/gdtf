@@ -1,4 +1,4 @@
-use bevy::ecs::world::World;
+use bevy::{ecs::world::World, platform::collections::HashSet};
 
 use super::*;
 use crate::{
@@ -8,6 +8,13 @@ use crate::{
     terrain::floor::FloorCostGrid,
     tuning::{MoveCost, MoveCosts},
 };
+
+/// An empty stair-cell set for tests that don't exercise stair occupancy — the
+/// GTW-391 `build_from_occupancy_input` signature change passes this to keep every
+/// existing test call-site unmodified in intent (no stair cells = lower-only behavior).
+fn no_stair_cells() -> HashSet<CellLevel> {
+    HashSet::default()
+}
 
 fn key(x: i32, y: i32, level: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(level))
@@ -54,7 +61,7 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
         ],
     };
 
-    let grid = OccupancyGrid::build_from_occupancy_input(&input);
+    let grid = OccupancyGrid::build_from_occupancy_input(&input, &no_stair_cells());
 
     // Terrain, cell by cell.
     assert_eq!(
@@ -126,7 +133,7 @@ fn destroyed_cover_is_excluded_from_blocking() {
         ],
         occupants: Vec::new(),
     };
-    let mut grid = OccupancyGrid::build_from_occupancy_input(&input);
+    let mut grid = OccupancyGrid::build_from_occupancy_input(&input, &no_stair_cells());
 
     let smashed = key(2, 2, 0);
     let intact = key(9, 9, 0);
@@ -158,7 +165,7 @@ fn wall_blocks_open_does_not() {
         terrain:   vec![TerrainPlacement::new(key(4, 4, 0), TerrainKind::Wall)],
         occupants: Vec::new(),
     };
-    let grid = OccupancyGrid::build_from_occupancy_input(&input);
+    let grid = OccupancyGrid::build_from_occupancy_input(&input, &no_stair_cells());
 
     assert!(grid.is_blocked(&key(4, 4, 0)), "a wall must block");
     assert!(
@@ -195,7 +202,8 @@ fn destroyed_cover_is_append_only() {
 
     // A fresh build does NOT carry the set forward (occupancy is rebuilt fresh;
     // carrying destroyed cover across a rebuild is the caller's append — E1.7).
-    let rebuilt = OccupancyGrid::build_from_occupancy_input(&OccupancyInput::new());
+    let rebuilt =
+        OccupancyGrid::build_from_occupancy_input(&OccupancyInput::new(), &no_stair_cells());
     assert!(
         rebuilt.destroyed_cover().is_empty(),
         "a rebuild starts with an empty destroyed-cover set",
@@ -270,7 +278,7 @@ fn later_occupant_placement_wins() {
             OccupantPlacement::new(at, second, HeightBand::High),
         ],
     };
-    let grid = OccupancyGrid::build_from_occupancy_input(&input);
+    let grid = OccupancyGrid::build_from_occupancy_input(&input, &no_stair_cells());
     assert_eq!(
         grid.occupant(&at),
         Some(second),

@@ -208,7 +208,10 @@ fn marches_over_real_built_grids() {
         terrain:   vec![TerrainPlacement::new(wall_at, TerrainKind::Wall)],
         occupants: Vec::<OccupantPlacement>::new(),
     };
-    let grid = OccupancyGrid::build_from_occupancy_input(&input);
+    let grid = OccupancyGrid::build_from_occupancy_input(
+        &input,
+        &bevy::platform::collections::HashSet::default(),
+    );
 
     let wall_entry = cover_entry(HeightBand::High);
     let mut cover = CoverLedger::new();

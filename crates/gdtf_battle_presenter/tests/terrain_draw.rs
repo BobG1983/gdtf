@@ -115,7 +115,12 @@ fn insert_occupancy(app: &mut App, terrain: Vec<TerrainPlacement>) {
         terrain,
         occupants: Vec::new(),
     };
-    let grid = OccupancyGrid::build_from_occupancy_input(&input);
+    // GTW-391: build_from_occupancy_input now takes a stair-cell set; pass empty
+    // (no stair tiles in these presenter tests).
+    let grid = OccupancyGrid::build_from_occupancy_input(
+        &input,
+        &bevy::platform::collections::HashSet::default(),
+    );
     app.world_mut().insert_resource(grid);
 }
 

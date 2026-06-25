@@ -624,6 +624,19 @@ pub fn setup_battle(
     //    spawned entities (borrowed from the result's placement list). The terrain kind
     //    is now derived from the resolved spec variant (Wall → TerrainKind::Wall;
     //    Cover/Scatter → TerrainKind::Cover).
+    //
+    //    GTW-391: compute the stair-cell set BEFORE building the grid so that
+    //    build_from_occupancy_input can register upper-cell stair presence at placement
+    //    (Blocker 2 fix — frame-0 upper presence, no first-tick gap). Ladders are
+    //    excluded (they do not share the half-level stair eye-lift or the dual-cell
+    //    body presence). This replaces the post-build mark_stair_cell loop.
+    let mut stair_cell_set = HashSet::new();
+    for link in &situation.vertical_links {
+        if matches!(link.kind, LinkKind::Stair { .. }) {
+            stair_cell_set.insert(link.from);
+            stair_cell_set.insert(link.to);
+        }
+    }
     let terrain_placements: Vec<TerrainPlacement> = situation
         .walls
         .iter()
@@ -647,16 +660,12 @@ pub fn setup_battle(
         terrain:   terrain_placements,
         occupants: setup.occupants.clone(),
     };
-    let mut occupancy_grid = OccupancyGrid::build_from_occupancy_input(&occupancy_input);
-    // GTW-390: mark every authored stair tile in the occupancy grid so the LOS probe
-    // can lift the eye z for observers standing on a stair endpoint. Ladders are
-    // explicitly excluded (they do not share the physical stair eye-lift).
-    for link in &situation.vertical_links {
-        if matches!(link.kind, LinkKind::Stair { .. }) {
-            occupancy_grid.mark_stair_cell(link.from);
-            occupancy_grid.mark_stair_cell(link.to);
-        }
-    }
+    // Pass the stair-cell set so build_from_occupancy_input can (a) populate the stair
+    // set on the grid AND (b) register upper-cell presence for any stair occupant from
+    // the very first frame (GTW-391 Blocker 2). The post-build mark_stair_cell loop is
+    // no longer needed — build_from_occupancy_input now handles both.
+    let occupancy_grid =
+        OccupancyGrid::build_from_occupancy_input(&occupancy_input, &stair_cell_set);
     commands.insert_resource(occupancy_grid);
 
     // GTW-395: insert the TerrainIndex after the occupancy grid is built — all terrain

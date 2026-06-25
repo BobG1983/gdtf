@@ -17,27 +17,70 @@ use crate::{
 /// *new* [`Position`](crate::ganger::Position), so the move system cannot tell where
 /// the entity *was* without remembering it. This component is that memory: the sync
 /// systems WRITE it (the maintenance layer owns it — it is not authored ganger
-/// state), and read it back to know which slot's occupant marker to clear. A named
-/// newtype over [`CellLevel`] (no-bare-types: a tracked slot is a domain value, not
-/// a bare key); private inner + a [`new`](PrevSlot::new) constructor, no public
-/// `Deref` since callers only ever compare/read the whole slot through
-/// [`slot`](PrevSlot::slot).
+/// state), and read it back to know which slot's occupant marker to clear.
+///
+/// **GTW-391 dual-cell stair occupancy.** A non-prone ganger standing on a stair tile
+/// occupies TWO grid cells — the lower `(cell, level)` where its `Position` lives, and
+/// the upper `(cell, level+1)` whose `Low` band represents the ganger's body protruding
+/// into the next storey. [`PrevSlot`] records BOTH so that every teardown path (move,
+/// prone re-pose, death) can replay exactly what was written — never re-deriving the
+/// upper cell at teardown time. The [`upper`](PrevSlot::upper) field is `None` when
+/// there is no upper presence (non-stair, prone, top storey, or upper cell already
+/// occupied by another entity — the single-occupant-slot constraint; see
+/// [`OccupancyGrid::register_stair_presence`](crate::occupancy::OccupancyGrid::register_stair_presence)).
+///
+/// The inner fields are PRIVATE (no-bare-types rule 5): always construct via
+/// [`PrevSlot::new`] or [`PrevSlot::with_upper`], read through [`slot`](PrevSlot::slot)
+/// / [`upper`](PrevSlot::upper). No public `Deref` — callers compare/read through the
+/// named accessors.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct PrevSlot(CellLevel);
+pub struct PrevSlot {
+    /// The lower `(cell, level)` this entity's [`Position`] occupies — always present.
+    lower: CellLevel,
+    /// The upper `(cell, level+1)` this entity ALSO occupies when it is a non-prone
+    /// stair occupant, or `None` (non-stair, prone, top storey, or upper cell taken).
+    /// Teardown replays this field verbatim — it never re-derives the upper cell.
+    upper: Option<CellLevel>,
+}
 
 impl PrevSlot {
-    /// Build a previously-synced-slot marker for the `(cell, level)` an entity was
-    /// last synced into.
+    /// Build a previously-synced-slot marker for `lower` with no upper stair presence.
+    ///
+    /// Signature-identical to the pre-GTW-391 `PrevSlot::new(slot)` so every existing
+    /// call site (the move system, the existing round-trip test) compiles unchanged.
     #[must_use]
-    pub const fn new(slot: CellLevel) -> Self {
-        Self(slot)
+    pub const fn new(lower: CellLevel) -> Self {
+        Self { lower, upper: None }
     }
 
-    /// The `(cell, level)` slot this marker records — the slot to clear when the
-    /// entity moves on or goes down.
+    /// Build a previously-synced-slot marker recording BOTH `lower` AND the upper stair
+    /// cell `upper` — the dual-cell form for a non-prone stair occupant.
+    ///
+    /// The caller obtains `upper` as the return value of
+    /// [`OccupancyGrid::register_stair_presence`](crate::occupancy::OccupancyGrid::register_stair_presence),
+    /// which applies the occupancy guard (so `upper` is always a real written cell).
+    #[must_use]
+    pub const fn with_upper(lower: CellLevel, upper: CellLevel) -> Self {
+        Self {
+            lower,
+            upper: Some(upper),
+        }
+    }
+
+    /// The lower `(cell, level)` slot this marker records — the slot to clear when the
+    /// entity moves on or goes down (the entity's authoritative
+    /// [`Position`](crate::ganger::Position) cell).
     #[must_use]
     pub const fn slot(self) -> CellLevel {
-        self.0
+        self.lower
+    }
+
+    /// The upper `(cell, level+1)` this entity ALSO occupies (stair, non-prone, upper
+    /// cell free at registration time), or `None`. Teardown reads this and replays it
+    /// verbatim — never re-derives the upper cell at teardown time.
+    #[must_use]
+    pub const fn upper(self) -> Option<CellLevel> {
+        self.upper
     }
 }
 

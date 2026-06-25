@@ -269,6 +269,24 @@ fn cell_and_level(position: &Position) -> (Cell, Level) {
 /// than the aim point (so a blocker the march reports *behind* the target — the march
 /// flies past the aim cell — does not count). Comparing squared distances avoids a
 /// `sqrt` and is exact enough for a strict-less comparison.
+///
+/// **GTW-391 forward-note (deferred to GTW-70 AI engagement / GTW-38 reaction fire).**
+/// A future DIRECT `has_los(observer, target_at_lower_Position)` caller (not yet built)
+/// will hit a mismatch when the target is a non-prone stair occupant: the ray strikes
+/// the upper cell first (`result.at == upper ≠ lower target_cell`) and this function's
+/// `result.at == target_cell` check returns `false` → classified BLOCKED. When GTW-70
+/// or GTW-38 land, extend the check:
+///
+/// ```rust,ignore
+/// // After fetching the target's PrevSlot from the ECS:
+/// let blocked = (result.at != target_cell)
+///     && result.kind.is_blocker()
+///     && target.upper_cell.map_or(true, |u| result.at != u)
+///     && impact_d2 < aim_d2;
+/// ```
+///
+/// The shipped `union_fov` fog-reveal consumer is NOT affected (it probes the upper
+/// cell as its own candidate, so `target_cell == upper` → `is_clear` → CLEAR → revealed).
 fn is_clear(
     result: &crate::march::MarchResult,
     target_cell: CellLevel,
