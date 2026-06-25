@@ -23,6 +23,7 @@ use crate::{
     rng::{BattleSeed, SimRng},
     slab::SlabLedger,
     surface::SurfaceGrid,
+    terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
@@ -53,7 +54,12 @@ fn seed_battle_resources(app: &mut App) {
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(SquadVisibility::default());
     app.insert_resource(SimRng::from_seed(BattleSeed::new(SEED)));
-    app.insert_resource(CombatTuning::default());
+    let tuning = CombatTuning::default();
+    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at
+    // the default open cost so the bleed-clock tests (which never move) don't panic on
+    // a missing resource when the Simulate band runs.
+    app.insert_resource(FloorCostGrid::new(tuning.move_costs.open, []));
+    app.insert_resource(tuning);
     app.insert_resource(BattleRoster::new([PLAYER, ENEMY]));
     app.insert_resource(PlayerFaction::new(PLAYER));
     app.insert_resource(ActiveFaction::new(PLAYER));

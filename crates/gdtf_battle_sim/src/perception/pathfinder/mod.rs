@@ -75,4 +75,4 @@ mod test;
 
 pub use path::{Path, PathBlocked, PathCost};
 pub use planning::PlanningView;
-pub use search::{find_path, reachable_within};
+pub use search::{MIN_MOVE_COST, find_path, reachable_within};

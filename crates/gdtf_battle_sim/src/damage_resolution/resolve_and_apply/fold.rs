@@ -359,15 +359,22 @@ pub fn resolve_and_apply(
                 ground_accrued: None,
             }
         }
-        // The slab-hit path (GTW-365): a slab has its OWN HP + armor; reuse the ganger
-        // damage formula against the slab's own armor (lazily seeded from the
-        // SlabDefaults tuning leaf), spend the slab ledger's HP, and record a destroyed
-        // slab cell — the slab mirror of the cover bridge. No RNG draw.
+        // The slab-hit path (GTW-365/396): a slab has its OWN HP + armor; reuse the
+        // ganger damage formula against the slab's own armor (eagerly seeded at setup
+        // from the per-slab TerrainSpec via SlabLedger::insert — GTW-396 Decision C).
+        // The prototype here is the NO-PANIC FALLBACK for a slab struck with no
+        // authored entry (an out-of-bounds / non-authored cell). `SlabLedger::entry_seeded`
+        // (`.entry(key).or_insert(seeded(prototype...))`) returns the eagerly-inserted
+        // entry UNCHANGED and ignores the fallback prototype — so authored HP is
+        // always honored; the fallback fires ONLY for an unauthored strike.
+        // `SLAB_FALLBACK_DEFAULTS` is a code-only const (`SlabDefaults::default()`) —
+        // NOT a `tuning.slab_defaults` read (that field was removed in GTW-396).
         ShotKind::Slab(cell_level) => {
-            // The struck slab's prototype is lazily seeded from the SlabDefaults tuning
-            // leaf (C7) — slabs are uniform level structure with no per-piece authored HP,
-            // so the seed magnitude is the genuinely-consumed tuning value.
-            let prototype = SlabLedger::prototype_for(cell_level, &tuning.slab_defaults);
+            /// Code-only fallback for an unauthored slab strike (no registry entry).
+            /// NOT the tuning leaf (removed in GTW-396) — a no-panic backstop only.
+            const SLAB_FALLBACK_DEFAULTS: crate::tuning::SlabDefaults =
+                crate::tuning::SlabDefaults::FALLBACK;
+            let prototype = SlabLedger::prototype_for(cell_level, &SLAB_FALLBACK_DEFAULTS);
             let event = apply_slab_hit(&prototype, cell_level, weapon, surfaces.slab, tuning);
             let slab_destroyed = match event {
                 SlabEvent::Destroyed(cell) => Some(cell),

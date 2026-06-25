@@ -1,0 +1,13 @@
+// Barricade — chest-high scatter prop. A destructible structural piece a round may
+// clear (a MID or HIGH round flies over LOW cover). Stats match the inline values the
+// shipped skirmish.ron used before the GTW-396 migration (behavior-preserving).
+(
+    graphic:  "cover",           // presenter TileRoles key -> alt_tileset_terrain atlas (sim never resolves it)
+    footfall: "none",            // footfall sound key — cover props have no walkable surface footfall (no audio system yet)
+    kind: Cover((
+        max_hp:           30,    // structural HP — a flimsier prop (tunable)
+        armor_protection: 2,     // damage-reduction stat — same armor model as a ganger (tunable)
+        armor_hardness:   1,     // penetration the prop shrugs off (tunable)
+        height_band:      Low,   // clearance band — LOW cover; a MID/HIGH round clears it (resolution.md §3)
+    )),
+)

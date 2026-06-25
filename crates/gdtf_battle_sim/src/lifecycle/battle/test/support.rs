@@ -18,7 +18,7 @@ pub(super) use bevy::{
 // for the concern files via the alias re-exports.
 pub(super) use crate::test_support::{
     SituationBuilder, fixtures, ganger_at, key, test_armor_registry as armor_registry,
-    test_weapon_registry as weapon_registry,
+    test_terrain_registry, test_weapon_registry as weapon_registry,
 };
 pub(super) use crate::{
     acts::FireRequested,
@@ -113,6 +113,9 @@ pub(super) fn headless_app() -> App {
     app.insert_resource(GangerStatTuning::default());
     app.insert_resource(weapon_registry());
     app.insert_resource(armor_registry());
+    // GTW-396: the terrain registry so SituationBuilder's wall_at / slab_at piece
+    // keys resolve at setup_battle_on_request.
+    app.insert_resource(test_terrain_registry());
     app
 }
 

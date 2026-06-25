@@ -43,7 +43,9 @@ use gdtf_battle_sim::{
     Aiming, BattleReady, BattleSeed, Cell, CellLevel, Direction, Facing, Faction, GangerSpawn,
     Level, LinkKind, Position, SetupBattleRequested, SimRng, Situation, VerticalLink,
     setup_battle_on_request,
-    test_support::{SituationBuilder, test_armor_registry, test_weapon_registry},
+    test_support::{
+        SituationBuilder, test_armor_registry, test_terrain_registry, test_weapon_registry,
+    },
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -111,6 +113,9 @@ fn headless_renderer_app() -> App {
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(test_weapon_registry());
     app.insert_resource(test_armor_registry());
+    // GTW-396: the TerrainRegistry — setup_battle_on_request reads it to resolve
+    // slab piece keys; the SituationBuilder's slab_at uses "test-slab".
+    app.insert_resource(test_terrain_registry());
     app.set_error_handler(warn);
     app
 }

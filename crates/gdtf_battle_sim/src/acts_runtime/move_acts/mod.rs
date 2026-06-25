@@ -13,11 +13,11 @@
 //! The walk's TU cost is NOT a flat per-cell constant — each entered cell costs its own
 //! terrain movement cost (`docs/combat/combat.md` L34: "step" costs TUs; the user ruling
 //! "the floor tile you cross — the terrain determines the cost"). The route's per-step
-//! entry costs are looked up from the destination cells' terrain in the per-`TerrainKind`
-//! [`MoveCosts`](crate::tuning::MoveCosts) table at plan time and charged atomically with
-//! each [`Position`](crate::ganger::Position) write as the walk advances. The granularity
-//! is per-`TerrainKind` (coarse — Open / Cover / Wall); richer per-floor-type costs are a
-//! follow-up.
+//! entry costs are looked up from each destination cell's
+//! [`FloorCostGrid`](crate::terrain::floor::FloorCostGrid) move cost at plan time
+//! (GTW-396: the per-tile floor cost, replacing the coarse per-`TerrainKind`
+//! `move_costs` table) and charged atomically with each
+//! [`Position`](crate::ganger::Position) write as the walk advances.
 //!
 //! ## The gates
 //!

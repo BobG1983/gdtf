@@ -33,6 +33,7 @@ use crate::{
     ganger::Tu,
     metric::CellLevel,
     occupancy::{OccupancyGrid, pathable_neighbors},
+    terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
     vertical::{VerticalLinkGraph, traversable_links},
     visibility::FactionRelation,
@@ -101,28 +102,33 @@ impl PartialOrd for FrontierNode {
 /// change-driven SNAPSHOT (C5) — bundled so the relaxation core and both entry points
 /// thread ONE param.
 ///
-/// A read-only view: the [`OccupancyGrid`] (walkable/blocked + terrain costs), the
-/// [`VerticalLinkGraph`] (cross-storey links), the [`CombatTuning`] (the
-/// [`MoveCosts`](crate::tuning::MoveCosts) table plus the flat
-/// [`LinkTu`](crate::tuning::LinkTu)), and the GTW-353 [`PlanningView`] (the squad fog
-/// with the occupant-faction resolver that gates which candidates are routable). The
-/// search NEVER rebuilds these per query — it reads the already-maintained resources
-/// (ADR-0005 / resolution.md). It is framework plumbing (a borrow bundle), not a
-/// domain value. Generic over the occupant→[`FactionRelation`] resolver `R` the
-/// planning view carries.
+/// A read-only view: the [`OccupancyGrid`] (walkable/blocked terrain), the
+/// [`VerticalLinkGraph`] (cross-storey links), the [`CombatTuning`] (the flat
+/// [`LinkTu`](crate::tuning::LinkTu)), the [`FloorCostGrid`] (per-cell floor move
+/// costs, GTW-396 Decision C1 — replaces `tuning.move_costs` in the planar edge
+/// path), and the GTW-353 [`PlanningView`] (the squad fog with the occupant-faction
+/// resolver that gates which candidates are routable). The search NEVER rebuilds
+/// these per query — it reads the already-maintained resources (ADR-0005 /
+/// resolution.md). It is framework plumbing (a borrow bundle), not a domain value.
+/// Generic over the occupant→[`FactionRelation`] resolver `R` the planning view carries.
 pub(super) struct SearchGrids<'a, R>
 where
     R: Fn(Entity) -> FactionRelation,
 {
-    /// The authoritative walkable/blocked + terrain surface.
-    pub(super) grid:     &'a OccupancyGrid,
+    /// The authoritative walkable/blocked terrain surface.
+    pub(super) grid:        &'a OccupancyGrid,
     /// The authored cross-storey stair/ladder links.
-    pub(super) links:    &'a VerticalLinkGraph,
-    /// The balance tuning — the per-terrain move costs + the flat link cost.
-    pub(super) tuning:   &'a CombatTuning,
+    pub(super) links:       &'a VerticalLinkGraph,
+    /// The balance tuning — the flat link cost + other combat coefficients.
+    /// NOTE: `move_costs` is no longer read from here for floor steps (GTW-396
+    /// Decision C1); `floor_costs` is the sole step-cost source.
+    pub(super) tuning:      &'a CombatTuning,
+    /// The per-cell floor move-cost surface (GTW-396) — read by `pathable_neighbors`
+    /// for every planar destination cell instead of `tuning.move_costs`.
+    pub(super) floor_costs: &'a FloorCostGrid,
     /// The visibility-aware planning gate — the squad fog + occupant-faction resolver
     /// deciding which candidate `(cell, level)`s are routable (C1 / C2).
-    pub(super) planning: &'a PlanningView<'a, R>,
+    pub(super) planning:    &'a PlanningView<'a, R>,
 }
 
 impl<R> SearchGrids<'_, R>
@@ -130,9 +136,10 @@ where
     R: Fn(Entity) -> FactionRelation,
 {
     /// Enumerate the outgoing edges of `origin` — the UNION of GTW-350 planar
-    /// [`pathable_neighbors`] (8-connected, octile-priced) and GTW-351 cross-storey
-    /// [`traversable_links`] (flat `link_tu`), each as a `(neighbour, step_cost)`
-    /// pair, FILTERED to the visibility-routable candidates (C1 / C2).
+    /// [`pathable_neighbors`] (8-connected, octile-priced via [`FloorCostGrid`]) and
+    /// GTW-351 cross-storey [`traversable_links`] (flat `link_tu`), each as a
+    /// `(neighbour, step_cost)` pair, FILTERED to the visibility-routable candidates
+    /// (C1 / C2).
     ///
     /// Both halves are ALREADY emitted in a fixed, deterministic order (the planar
     /// `(z, y, x)` offset table, then the graph-index link order), so the relaxation
@@ -145,7 +152,7 @@ where
     /// or alters their octile / link costs, so the C4 determinism + the cost model are
     /// untouched.
     fn edges(&self, origin: CellLevel) -> Vec<(CellLevel, Tu)> {
-        let planar = pathable_neighbors(origin, self.grid, &self.tuning.move_costs);
+        let planar = pathable_neighbors(origin, self.grid, self.floor_costs);
         let vertical = traversable_links(origin, self.links, self.tuning.link_tu);
         planar
             .chain(vertical)

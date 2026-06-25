@@ -100,6 +100,12 @@ fn bridge_app() -> App {
     // The other Simulate-band dispatch systems (move / walk) read these.
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(SquadVisibility::default());
+    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
+    // default open cost so the band validates (this test fires at the ground, never moves).
+    let default_open = gdtf_battle_sim::tuning::CombatTuning::default()
+        .move_costs
+        .open;
+    app.insert_resource(gdtf_battle_sim::FloorCostGrid::new(default_open, []));
     app
 }
 

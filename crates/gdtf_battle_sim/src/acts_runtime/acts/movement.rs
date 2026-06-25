@@ -45,6 +45,7 @@ use crate::{
     move_acts::WalkInProgress,
     occupancy::OccupancyGrid,
     pathfinder::{PlanningView, find_path},
+    terrain::floor::FloorCostGrid,
     tu::can_spend_tu,
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
@@ -176,8 +177,10 @@ fn relation_to(
 /// 2. builds the GTW-353 [`PlanningView`] from the LIVE world — the [`SquadVisibility`]
 ///    resource plus an occupant→[`FactionRelation`] resolver ([`relation_to`]) closed over
 ///    the mover's faction and the `&`[`Faction`] query (C1) — and runs [`find_path`] from
-///    the mover's cell to `request.dest` over the [`OccupancyGrid`] + [`VerticalLinkGraph`]
-///    + the [`MoveCosts`](crate::tuning::MoveCosts) table in [`CombatTuning`];
+///    the mover's cell to `request.dest` over the [`OccupancyGrid`], the
+///    [`VerticalLinkGraph`], and the per-cell [`FloorCostGrid`] (GTW-396: the per-tile
+///    floor move cost, replacing the coarse `move_costs` table; the flat
+///    [`LinkTu`](crate::tuning::LinkTu) from [`CombatTuning`] still prices a link hop);
 /// 3. on [`PathBlocked`](crate::pathfinder::PathBlocked) emits a TYPED
 ///    [`MoveRejected`]`(`[`MoveRejection::Unreachable`]`)` and starts NOTHING (this kills the
 ///    pre-GTW-354 any-empty-cell teleport — C1);
@@ -223,6 +226,7 @@ pub fn dispatch_move(
     links: Res<VerticalLinkGraph>,
     squad: Res<SquadVisibility>,
     tuning: Res<CombatTuning>,
+    floor_costs: Res<FloorCostGrid>,
     mut rejects: MessageWriter<MoveRejected>,
     mut commands: Commands,
 ) {
@@ -247,8 +251,17 @@ pub fn dispatch_move(
         });
 
         // C1: plan the route. No route → typed Unreachable reject, NO step (this kills the
-        // pre-GTW-354 any-empty-cell teleport).
-        let Ok(path) = find_path(start, request.dest, &grid, &links, &tuning, &planning) else {
+        // pre-GTW-354 any-empty-cell teleport). GTW-396: floor_costs replaces the coarse
+        // move_costs table as the per-step cost source inside find_path.
+        let Ok(path) = find_path(
+            start,
+            request.dest,
+            &grid,
+            &links,
+            &tuning,
+            &floor_costs,
+            &planning,
+        ) else {
             rejects.write(MoveRejected::new(request.actor, MoveRejection::Unreachable));
             continue;
         };

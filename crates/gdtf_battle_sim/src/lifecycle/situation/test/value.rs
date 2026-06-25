@@ -7,12 +7,10 @@ use bevy::platform::collections::HashSet;
 // the crate-central `test_support` builders directly, validating the canonical
 // builder end-to-end from inside the sim's own unit tests.
 use crate::{
-    armor::{ArmorHardness, ArmorProtection},
-    cover::{CoverHp, HeightBand},
     metric::CellLevel,
-    occupancy::TerrainKind,
     situation::{CoverSpawn, has_stacked_gangers},
-    test_support::{SituationBuilder, ganger_at, key},
+    terrain::piece::TerrainName,
+    test_support::{SituationBuilder, ganger_at, key, test_pieces},
 };
 
 /// `authored_cells` is the union of wall, scatter, and slab cells — NOT ganger
@@ -28,11 +26,9 @@ fn authored_cells_unions_walls_scatter_slabs_only() {
         .wall_at(wall)
         .with_scatter(CoverSpawn::new(
             prop,
-            TerrainKind::Cover,
-            CoverHp::new(20),
-            HeightBand::Low,
-            ArmorProtection::new(1),
-            ArmorHardness::new(0),
+            // Use the canonical test-cover piece key (resolves against the test registry
+            // to a LOW-band cover piece — the same shape the old inline stats authored).
+            TerrainName::new(test_pieces::COVER.to_owned()),
         ))
         .slab_at(slab)
         .build();

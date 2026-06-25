@@ -1,0 +1,13 @@
+// Deck slab — a floor/roof structural slab spanning a z-boundary. A destructible
+// structural piece; carries NO height band (a slab is not flown over — it is stood
+// on / under; resolution.md §2). Stats match the slab_defaults block that tuning.ron
+// carried before the GTW-396 migration (behavior-preserving: same HP / armor).
+(
+    graphic:  "slab",            // presenter TileRoles key -> alt_tileset_terrain atlas (sim never resolves it)
+    footfall: "none",            // footfall sound key — no audio system yet; carried for the future footfall-audio pass
+    kind: Slab((
+        max_hp:           120,   // structural HP — a sturdy floor; depletes over MULTIPLE strikes (tunable)
+        armor_protection: 4,     // damage-reduction stat — same armor model as a ganger and cover (tunable)
+        armor_hardness:   2,     // penetration the slab shrugs off (tunable)
+    )),
+)

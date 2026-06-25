@@ -41,10 +41,10 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger, Direction, Facing, Faction,
-    FireMode, FireModeSpec, Level, LifeState, LinkKind, Magazine, MagazineSize, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu, SimRng, SlabLedger,
-    SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink, VerticalLinkGraph,
-    WieldedBy,
+    FireMode, FireModeSpec, FloorCostGrid, Level, LifeState, LinkKind, Magazine, MagazineSize,
+    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, ReloadTu,
+    SimRng, SlabLedger, SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink,
+    VerticalLinkGraph, WieldedBy,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
         ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
@@ -176,6 +176,14 @@ fn acts_app() -> App {
     app.world_mut()
         .insert_resource(VerticalLinkGraph::default());
     app.world_mut().insert_resource(SquadVisibility::default());
+    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
+    // default open cost so the dispatch params validate (these tests assert the input
+    // *Requested MESSAGE, never a move outcome).
+    {
+        let open = CombatTuning::default().move_costs.open;
+        app.world_mut()
+            .insert_resource(FloorCostGrid::new(open, []));
+    }
     app.world_mut()
         .insert_resource(SimRng::from_seed(BattleSeed::new(0x5A1C_AC75)));
     app.world_mut().insert_resource(test_keybinds());

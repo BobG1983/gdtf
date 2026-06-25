@@ -4,27 +4,39 @@
 
 use super::{ganger::ganger_at, registries::key};
 use crate::{
-    armor::{ArmorHardness, ArmorProtection},
-    cover::{CoverHp, HeightBand},
     ganger::Faction,
     metric::CellLevel,
-    occupancy::TerrainKind,
-    situation::{CoverSpawn, GangerSpawn, Situation},
+    situation::{CoverSpawn, GangerSpawn, Situation, SlabSpawn},
+    terrain::piece::TerrainName,
     vertical::VerticalLink,
 };
 
-/// An authored wall at `at` with arbitrary cover stats (HIGH band, the §3 wall
-/// shape) — the terse cover helper the fixtures + the per-crate tests use.
+/// The canonical test terrain piece names — the string keys authored test
+/// situations use so the test registry (`test_terrain_registry()`) can resolve them.
+///
+/// These are NOT shipped to production assets — they live only in the test
+/// support layer and resolve against a registry built by the test harness
+/// (see `test_terrain_registry` in `test_support/registries.rs`).
+pub mod test_pieces {
+    /// The test wall piece key — a HIGH-band structural wall with hp=120, prot=8, hard=4.
+    pub const WALL: &str = "test-wall";
+    /// The test slab piece key — a slab with hp=120, prot=4, hard=2.
+    pub const SLAB: &str = "test-slab";
+    /// The test cover (scatter) piece key — a LOW-band cover with hp=30, prot=2, hard=1.
+    pub const COVER: &str = "test-cover";
+    /// The test floor piece key — a floor with `move_cost=4` (the A* admissibility
+    /// minimum).
+    pub const FLOOR: &str = "test-floor";
+}
+
+/// An authored wall at `at` using the standard test wall piece key — the terse
+/// cover helper the fixtures + the per-crate tests use.
+///
+/// The piece resolves against the test terrain registry (see
+/// `test_support/registries.rs` → `test_terrain_registry()`).
 #[must_use]
-pub const fn wall_at(at: CellLevel) -> CoverSpawn {
-    CoverSpawn::new(
-        at,
-        TerrainKind::Wall,
-        CoverHp::new(120),
-        HeightBand::High,
-        ArmorProtection::new(8),
-        ArmorHardness::new(4),
-    )
+pub fn wall_at(at: CellLevel) -> CoverSpawn {
+    CoverSpawn::new(at, TerrainName::new(test_pieces::WALL.to_owned()))
 }
 
 /// A fluent builder for a [`Situation`] — the canonical way every test assembles
@@ -68,18 +80,21 @@ impl SituationBuilder {
 
     /// Append one authored scatter / prop piece (a [`CoverSpawn`] — the same
     /// schema as a wall, into the `scatter` list) — for tests that author
-    /// destructible cover with explicit stats rather than the [`wall_at`] HIGH
-    /// wall shape.
+    /// destructible cover with explicit piece keys rather than the [`wall_at`] default.
     #[must_use]
     pub fn with_scatter(mut self, cover: CoverSpawn) -> Self {
         self.situation.scatter.push(cover);
         self
     }
 
-    /// Append a present floor / roof slab at `(cell, level)`.
+    /// Append a present floor / roof slab at `(cell, level)` using the standard
+    /// test slab piece key (`"test-slab"`). Resolves against the test terrain registry.
     #[must_use]
     pub fn slab_at(mut self, at: CellLevel) -> Self {
-        self.situation.slabs.push(at);
+        self.situation.slabs.push(SlabSpawn::new(
+            at,
+            TerrainName::new(test_pieces::SLAB.to_owned()),
+        ));
         self
     }
 

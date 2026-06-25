@@ -10,6 +10,7 @@ use crate::{
     metric::{Cell, CellLevel, Level, MAX_LEVELS},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, TerrainKind},
     pathfinder::{Path, PlanningView, find_path, reachable_within},
+    terrain::floor::FloorCostGrid,
     test_support::{SituationBuilder, key},
     tuning::CombatTuning,
     vertical::{VerticalLink, VerticalLinkGraph, build_vertical_link_graph},
@@ -92,14 +93,25 @@ pub(super) fn links_graph(links: &[VerticalLink]) -> Option<VerticalLinkGraph> {
     build_vertical_link_graph(&situation).ok()
 }
 
-/// The default combat tuning — the move-cost table + the flat link cost. The tests
-/// assert RELATIONS over these values (read back off `tuning`), never the shipped
-/// default magnitudes.
+/// The default combat tuning — the flat link cost + other combat coefficients.
+/// The tests assert RELATIONS over these values (read back off `tuning`), never
+/// the shipped default magnitudes.
 pub(super) fn tuning() -> CombatTuning {
     CombatTuning::default()
 }
 
-/// The orthogonal (open) step cost from the tuning — read back, not hard-coded.
+/// The default [`FloorCostGrid`] for the pathfinder tests — a uniform grid seeded
+/// from the `move_costs.open` value in the DEFAULT [`CombatTuning`] (=4), so the
+/// test arithmetic is unchanged: every Open cell costs `open`, every step is priced
+/// exactly as the pre-GTW-396 tests expected. Tests that need a different cost build
+/// their own grid with [`FloorCostGrid::new`].
+pub(super) fn default_floor_costs(tuning: &CombatTuning) -> FloorCostGrid {
+    FloorCostGrid::new(tuning.move_costs.open, [])
+}
+
+/// The orthogonal (open) step cost from the tuning — read back from the default
+/// [`FloorCostGrid`] rather than from `tuning.move_costs.open` directly, so the
+/// value tracks the LIVE cost source (GTW-396 Decision B / C1).
 pub(super) fn open_step(tuning: &CombatTuning) -> Tu {
     Tu::new(*tuning.move_costs.open)
 }
@@ -109,20 +121,24 @@ pub(super) fn link_step(tuning: &CombatTuning) -> Tu {
     Tu::new(*tuning.link_tu)
 }
 
-/// Sum the per-step edge costs along a route by re-deriving each step from `tuning`
-/// — the INDEPENDENT step-by-step total the §48 bit-identity checks the [`Path`]'s
-/// own `total` against. Each consecutive cell pair is one edge: a same-storey
-/// orthogonal/diagonal terrain step, or a cross-storey vertical-link hop.
+/// Sum the per-step edge costs along a route by re-deriving each step from
+/// `floor_costs` and `tuning` — the INDEPENDENT step-by-step total the §48
+/// bit-identity checks the [`Path`]'s own `total` against.
 ///
-/// Returns `None` if the route is empty (it never is for a search result). The sum
-/// is computed in a wide `u32` (a long route can exceed a single `u8` step), the
-/// same width the search accumulates in.
-pub(super) fn summed_step_cost(path: &Path, grid: &OccupancyGrid, tuning: &CombatTuning) -> u32 {
+/// Each consecutive cell pair is one edge: a same-storey orthogonal/diagonal terrain
+/// step (priced via [`FloorCostGrid::cost`], GTW-396), or a cross-storey
+/// vertical-link hop (flat `link_tu`). The sum is computed in a wide `u32` (a long
+/// route can exceed a single `u8` step), the same width the search accumulates in.
+pub(super) fn summed_step_cost(
+    path: &Path,
+    floor_costs: &FloorCostGrid,
+    tuning: &CombatTuning,
+) -> u32 {
     let cells = path.cells();
     let mut total = 0u32;
     for pair in cells.windows(2) {
         let [from, to] = pair else { continue };
-        let step = step_cost_between(*from, *to, grid, tuning);
+        let step = step_cost_between(*from, *to, floor_costs, tuning);
         total += u32::from(*step);
     }
     total
@@ -131,13 +147,13 @@ pub(super) fn summed_step_cost(path: &Path, grid: &OccupancyGrid, tuning: &Comba
 /// The per-step edge cost between two CONSECUTIVE route cells — the same cost the
 /// search relaxed with, re-derived independently for the §48 cross-check.
 ///
-/// A same-storey pair is a terrain step (orthogonal = entered terrain `move_cost`,
-/// diagonal = its octile); a different-storey pair is a vertical-link hop (the flat
-/// `link_tu`). The destination's terrain drives the terrain step (GTW-350).
+/// A same-storey pair is a floor step (orthogonal = `floor_costs.cost(&to)`,
+/// diagonal = its octile, GTW-396); a different-storey pair is a vertical-link hop
+/// (the flat `link_tu`). The destination's floor cost drives the terrain step.
 pub(super) fn step_cost_between(
     from: CellLevel,
     to: CellLevel,
-    grid: &OccupancyGrid,
+    floor_costs: &FloorCostGrid,
     tuning: &CombatTuning,
 ) -> Tu {
     if from.z != to.z {
@@ -145,7 +161,8 @@ pub(super) fn step_cost_between(
         return link_step(tuning);
     }
     let diagonal = from.x != to.x && from.y != to.y;
-    let move_cost = *tuning.move_costs.cost(grid.terrain(&to));
+    // GTW-396: read from FloorCostGrid instead of tuning.move_costs (the live source).
+    let move_cost = *floor_costs.cost(&to);
     if !diagonal {
         return Tu::new(move_cost);
     }
@@ -172,7 +189,8 @@ pub(super) fn ok_path(
 ) -> Option<Path> {
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
-    let result = find_path(start, goal, grid, links, tuning, &planning);
+    let floor_costs = default_floor_costs(tuning);
+    let result = find_path(start, goal, grid, links, tuning, &floor_costs, &planning);
     assert!(result.is_ok(), "expected a route, got {result:?}");
     result.ok()
 }
@@ -188,7 +206,8 @@ pub(super) fn reachable_triples(
 ) -> Vec<((i32, i32, i32), Tu)> {
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
-    reachable_within(start, budget, grid, links, tuning, &planning)
+    let floor_costs = default_floor_costs(tuning);
+    reachable_within(start, budget, grid, links, tuning, &floor_costs, &planning)
         .into_iter()
         .map(|(c, cost)| ((c.x, c.y, c.z), cost))
         .collect()
@@ -208,7 +227,8 @@ pub(super) fn reachable_triples_with<R>(
 where
     R: Fn(Entity) -> FactionRelation,
 {
-    reachable_within(start, budget, grid, links, tuning, planning)
+    let floor_costs = default_floor_costs(tuning);
+    reachable_within(start, budget, grid, links, tuning, &floor_costs, planning)
         .into_iter()
         .map(|(c, cost)| ((c.x, c.y, c.z), cost))
         .collect()

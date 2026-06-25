@@ -44,8 +44,8 @@ use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, Cell, CellLevel, CoverLedger,
     DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
-    MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
+    FloorCostGrid, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState,
+    Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
     OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu, Shooting, SimRng, SlabLedger,
     SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
     VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
@@ -128,6 +128,11 @@ fn endtoend_app() -> App {
     app.world_mut()
         .insert_resource(VerticalLinkGraph::default());
     app.world_mut().insert_resource(SquadVisibility::default());
+    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
+    // default open cost so the dispatch params validate (this test fires, never moves).
+    let default_open = CombatTuning::default().move_costs.open;
+    app.world_mut()
+        .insert_resource(FloorCostGrid::new(default_open, []));
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));

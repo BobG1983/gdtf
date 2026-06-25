@@ -12,8 +12,15 @@ use crate::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
         ArmorRegistry, ArmorSpec, ArmorType,
     },
+    cover::{CoverHp, HeightBand},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
+    slab::SlabHp,
+    terrain::piece::{
+        FloorSpec, FootfallSound, SlabPieceSpec, StructuralSpec, TerrainGraphicKey,
+        TerrainKindSpec, TerrainName, TerrainRegistry, TerrainSpec,
+    },
+    tuning::MoveCost,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
         MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
@@ -103,4 +110,79 @@ pub const fn test_armor_spec() -> ArmorSpec {
 #[must_use]
 pub fn test_armor_registry() -> ArmorRegistry {
     ArmorRegistry::new([(ArmorName::new(TEST_ARMOR_KEY.to_owned()), test_armor_spec())])
+}
+
+/// A helper for building a [`TerrainSpec`] with a `none`-keyed footfall — the
+/// canonical no-footfall pattern for test pieces (no audio system built yet).
+fn no_footfall() -> crate::terrain::piece::FootfallSound {
+    FootfallSound::new("none".to_owned())
+}
+
+/// A [`TerrainRegistry`] with the four test terrain piece keys — the test-built
+/// terrain registry `setup_battle` resolves cover/slab/floor piece keys against
+/// in the test harness (no `AssetServer`).
+///
+/// The four pieces:
+/// - `"test-wall"` — a HIGH-band structural wall (hp=120, prot=8, hard=4).
+/// - `"test-slab"` — a destructible slab (hp=120, prot=4, hard=2).
+/// - `"test-cover"` — a LOW-band cover prop (hp=30, prot=2, hard=1).
+/// - `"test-floor"` — a walkable floor tile (`move_cost=4`, the A* minimum).
+///
+/// Magnitudes are ARBITRARY test data — they exist only to let the registry resolve
+/// the four keys that `SituationBuilder::wall_at` / `slab_at` and the situation
+/// test fixtures author. Tests must not pin these magnitudes (brittle-test rule).
+#[must_use]
+pub fn test_terrain_registry() -> TerrainRegistry {
+    TerrainRegistry::new([
+        (
+            TerrainName::new("test-wall".to_owned()),
+            TerrainSpec {
+                graphic:  TerrainGraphicKey::new("wall".to_owned()),
+                footfall: no_footfall(),
+                kind:     TerrainKindSpec::Wall(StructuralSpec {
+                    max_hp:           CoverHp::new(120),
+                    armor_protection: ArmorProtection::new(8),
+                    armor_hardness:   ArmorHardness::new(4),
+                    height_band:      HeightBand::High,
+                }),
+            },
+        ),
+        (
+            TerrainName::new("test-slab".to_owned()),
+            TerrainSpec {
+                graphic:  TerrainGraphicKey::new("slab".to_owned()),
+                footfall: no_footfall(),
+                kind:     TerrainKindSpec::Slab(SlabPieceSpec {
+                    max_hp:           SlabHp::new(120),
+                    armor_protection: ArmorProtection::new(4),
+                    armor_hardness:   ArmorHardness::new(2),
+                }),
+            },
+        ),
+        (
+            TerrainName::new("test-cover".to_owned()),
+            TerrainSpec {
+                graphic:  TerrainGraphicKey::new("cover".to_owned()),
+                footfall: no_footfall(),
+                kind:     TerrainKindSpec::Cover(StructuralSpec {
+                    max_hp:           CoverHp::new(30),
+                    armor_protection: ArmorProtection::new(2),
+                    armor_hardness:   ArmorHardness::new(1),
+                    height_band:      HeightBand::Low,
+                }),
+            },
+        ),
+        (
+            TerrainName::new("test-floor".to_owned()),
+            TerrainSpec {
+                graphic:  TerrainGraphicKey::new("floor".to_owned()),
+                footfall: no_footfall(),
+                // move_cost = 4 = the A* admissibility minimum (MIN_MOVE_COST).
+                // Tests pinning floor cost against this registry use this value.
+                kind:     TerrainKindSpec::Floor(FloorSpec {
+                    move_cost: MoveCost::new(4),
+                }),
+            },
+        ),
+    ])
 }

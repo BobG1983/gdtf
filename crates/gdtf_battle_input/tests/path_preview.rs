@@ -36,9 +36,9 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, PathPreview};
 use gdtf_battle_sim::{
     BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, FireModeSpec,
-    GRID_HEIGHT, GRID_WIDTH, Level, MAX_LEVELS, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlanningView, PlayerFaction, Position, SquadVisibility, TerrainKind, Tu,
-    VerticalLinkGraph, find_path,
+    FloorCostGrid, GRID_HEIGHT, GRID_WIDTH, Level, MAX_LEVELS, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, OccupancyGrid, PlanningView, PlayerFaction, Position, SquadVisibility,
+    TerrainKind, Tu, VerticalLinkGraph, find_path,
 };
 use gdtf_test_utils::advance_until;
 
@@ -91,7 +91,13 @@ fn preview_app() -> App {
     w.insert_resource(OccupancyGrid::default());
     w.insert_resource(VerticalLinkGraph::default());
     w.insert_resource(full_vision());
-    w.insert_resource(CombatTuning::default());
+    let tuning = CombatTuning::default();
+    // GTW-396: `populate_path_preview` (and the `dispatch_move` system it mirrors) reads
+    // `Res<FloorCostGrid>` — seed a uniform grid at the default open cost so the input-
+    // plugin systems validate (the preview tests use an all-Open occupancy grid, so every
+    // step costs the default open rate).
+    w.insert_resource(FloorCostGrid::new(tuning.move_costs.open, []));
+    w.insert_resource(tuning);
     w.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     w.insert_resource(ButtonInput::<MouseButton>::default());
     w.insert_resource(ActiveLevel::new(Level::new(0)));
@@ -119,8 +125,9 @@ fn expected_route(app: &App, start: CellLevel, goal: CellLevel) -> Option<(Vec<C
     let links = app.world().resource::<VerticalLinkGraph>();
     let squad = app.world().resource::<SquadVisibility>();
     let tuning = app.world().resource::<CombatTuning>();
+    let floor_costs = app.world().resource::<FloorCostGrid>();
     let planning = PlanningView::new(squad, all_other);
-    find_path(start, goal, grid, links, tuning, &planning)
+    find_path(start, goal, grid, links, tuning, floor_costs, &planning)
         .ok()
         .map(|path| (path.cells().to_vec(), path.total()))
 }
@@ -226,9 +233,10 @@ fn unreachable_target_yields_empty_preview() {
     let links = app.world().resource::<VerticalLinkGraph>();
     let squad = app.world().resource::<SquadVisibility>();
     let tuning = app.world().resource::<CombatTuning>();
+    let floor_costs = app.world().resource::<FloorCostGrid>();
     let planning = PlanningView::new(squad, all_other);
     assert!(
-        find_path(start, goal, grid, links, tuning, &planning).is_err(),
+        find_path(start, goal, grid, links, tuning, floor_costs, &planning).is_err(),
         "the fixture must seal the goal off so find_path returns PathBlocked",
     );
 

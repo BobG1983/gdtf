@@ -70,6 +70,12 @@ fn bridge_app() -> App {
     // whole band validates (an empty graph + empty fog — this test fires, it does not move).
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(SquadVisibility::default());
+    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
+    // default open cost so the band validates (this test fires, it does not move).
+    let default_open = gdtf_battle_sim::tuning::CombatTuning::default()
+        .move_costs
+        .open;
+    app.insert_resource(gdtf_battle_sim::FloorCostGrid::new(default_open, []));
     app
 }
 

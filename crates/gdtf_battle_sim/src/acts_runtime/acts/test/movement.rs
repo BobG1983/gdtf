@@ -103,14 +103,13 @@ fn move_dispatch_steps_the_actor_and_spends_the_dest_terrain_cost() {
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
     let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); // Open, empty, in-bounds
 
-    // The looked-up cost the dispatch will charge — read off the SAME resources the
-    // dispatch reads (the dest's terrain × the move_costs table), a relation never a
-    // pinned magnitude.
-    let expected_cost = app.world().get_resource::<CombatTuning>().and_then(|t| {
-        app.world()
-            .get_resource::<OccupancyGrid>()
-            .map(|g| *t.move_costs.cost(g.terrain(&dest)))
-    });
+    // The looked-up cost the dispatch will charge — read off the SAME resource the
+    // dispatch reads (the FloorCostGrid at the destination cell, GTW-396 Decision C1),
+    // a relation never a pinned magnitude.
+    let expected_cost = app
+        .world()
+        .get_resource::<FloorCostGrid>()
+        .map(|fc| *fc.cost(&dest));
     let tu_before = app.world().get::<Tu>(actor).map(|t| **t);
 
     app.world_mut()

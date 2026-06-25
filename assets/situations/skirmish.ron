@@ -6,6 +6,11 @@
 // theme. Render-free, pixel-free: positions are (cell, level) keys (x/y cells, a
 // storey index), never pixels. Each line says what it authors — edit freely.
 //
+// GTW-396 migration: walls/scatter/slabs now reference terrain PIECE NAMES resolved
+// against the TerrainRegistry at setup (behavior-preserving — the piece files carry
+// the same stats the old inline fields held). The `default_floor` names the walkable
+// floor piece for all open cells (deck_floor, move_cost 4).
+//
 // GTW-384 (the two-layer stat model): each ganger now authors the EIGHT DIRECT
 // ATTRIBUTES (the raw potential) — NOT the computed stats. Shooting / HP / Wounds / TU
 // (and the dormant Fight / Reactions / Morale / Bottle) are DERIVED at setup from these
@@ -80,35 +85,29 @@
         ),
     ],
     // The authored walls — solid fixed geometry on the ground floor. Each is a
-    // CoverSpawn: (cell, level), terrain kind, structural HP, height band, and the
-    // cover's own armor stats (same armor model as a ganger).
+    // CoverSpawn: (cell, level) + a terrain PIECE KEY resolved against the
+    // TerrainRegistry at setup (GTW-396 migration: stats live in the piece .ron file).
     walls: [
         (
-            at:               (cell: (x: 8, y: 7), level: 0),  // the wall's (cell, level)
-            terrain:          Wall,   // terrain kind — a wall (solid, blocking)
-            cover_hp:         120,    // structural HP — how much it soaks before it is destroyed
-            height_band:      High,   // clearance band — a tall wall (nothing flies strictly higher in-storey)
-            armor_protection: 8,      // the wall's damage-reduction stat
-            armor_hardness:   4,      // the penetration the wall shrugs off
+            at:    (cell: (x: 8, y: 7), level: 0),  // the wall's (cell, level)
+            piece: "heavy_bulkhead",                  // terrain piece KEY — resolves to assets/terrain/heavy_bulkhead.terrain.ron
         ),
     ],
-    // The authored scatter / props — the SAME schema as a wall, just lighter cover.
+    // The authored scatter / props — the SAME schema as a wall (piece key, at).
     scatter: [
         (
-            at:               (cell: (x: 9, y: 8), level: 0),  // the prop's (cell, level)
-            terrain:          Cover,  // terrain kind — a piece of cover (blocking while it stands)
-            cover_hp:         30,     // structural HP — a flimsier prop
-            height_band:      Low,    // clearance band — low cover (a round clears it by flying MID or HIGH)
-            armor_protection: 2,      // the prop's damage-reduction stat
-            armor_hardness:   1,      // the penetration the prop shrugs off
+            at:    (cell: (x: 9, y: 8), level: 0),  // the prop's (cell, level)
+            piece: "barricade",                       // terrain piece KEY — resolves to assets/terrain/barricade.terrain.ron
         ),
     ],
-    // The authored floor / roof slabs — the (cell, level)s that carry a present slab.
+    // The authored floor / roof slabs — each a (cell, level) + a terrain PIECE KEY
+    // resolved against the TerrainRegistry at setup (GTW-396 migration: slab HP/armor
+    // now live in the piece .ron file, not in tuning.ron slab_defaults).
     // Two stacked slabs at the same cell on adjacent storeys give the vertical link
     // below two non-dangling endpoints to connect (it is the only way to change storey).
     slabs: [
-        (cell: (x: 2, y: 2), level: 0),  // ground-floor slab — the stair's lower endpoint
-        (cell: (x: 2, y: 2), level: 1),  // first-floor slab — the stair's upper endpoint
+        (at: (cell: (x: 2, y: 2), level: 0), piece: "deck_slab"),  // ground-floor slab — the stair's lower endpoint
+        (at: (cell: (x: 2, y: 2), level: 1), piece: "deck_slab"),  // first-floor slab — the stair's upper endpoint
     ],
     // The authored stair / ladder vertical links — the ONLY way a ganger changes
     // storey. Each: two (cell, level) endpoints + a kind. Both endpoints below are
@@ -121,4 +120,11 @@
             kind: Stair(one_way: false),                 // a normal, bidirectional staircase
         ),
     ],
+    // The default floor terrain piece for all walkable open cells — resolved against
+    // the TerrainRegistry. move_cost must be >= 4 (the A* heuristic admissibility
+    // floor; setup rejects any floor piece below this minimum).
+    default_floor: "deck_floor",                         // piece KEY — resolves to assets/terrain/deck_floor.terrain.ron (move_cost 4)
+    // Sparse per-cell floor overrides — cells with a non-default floor piece. Empty
+    // for this situation (all open cells use the default deck_floor cost).
+    floors: [],  // empty = no per-cell overrides; all open cells cost deck_floor move_cost (4 TU)
 )

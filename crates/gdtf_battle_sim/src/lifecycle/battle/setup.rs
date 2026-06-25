@@ -17,8 +17,8 @@ use crate::{
     situation::setup_battle,
     slab::SlabLedger,
     surface::SurfaceGrid,
-    terrain::entity::TerrainIndex,
-    tuning::{CombatTuning, GangerStatTuning, SlabDefaults},
+    terrain::{entity::TerrainIndex, floor::FloorCostGrid, piece::TerrainRegistry},
+    tuning::{CombatTuning, GangerStatTuning},
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
@@ -35,42 +35,51 @@ use crate::{
 ///    [`SimRng::from_seed`](crate::rng::SimRng::from_seed) — the deterministic stream the
 ///    acts draw from).
 /// 2. Calls [`setup_battle`] on the REAL [`Commands`] path, resolving each ganger's
-///    weapon key against the [`WeaponRegistry`] (GTW-257) and each ganger's armor key
-///    against the [`ArmorRegistry`] (GTW-269). On `Ok` the four sim
-///    resources ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
-///    [`VerticalLinkGraph`]) and the spawned ganger entities (each armed with its
-///    resolved [`WeaponBundle`](crate::weapon::WeaponBundle)) land in the world, the
-///    [`BattleInProgress`] witness is inserted (the battle-active tag the
-///    [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) band gates on),
-///    the [`PlayerFaction`] is inserted seeded from
+///    weapon key against the [`WeaponRegistry`] (GTW-257), each ganger's armor key
+///    against the [`ArmorRegistry`] (GTW-269), and each cover/slab/floor piece key
+///    against the [`TerrainRegistry`] (GTW-396). On `Ok` the sim resources
+///    ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
+///    [`VerticalLinkGraph`] / [`FloorCostGrid`]) and the spawned ganger entities
+///    land in the world, the [`BattleInProgress`] witness is inserted (the battle-active
+///    tag the [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) band
+///    gates on), the [`PlayerFaction`] is inserted seeded from
 ///    [`Situation::player_faction`](crate::situation::Situation), the
 ///    [`BattleRoster`] is captured from the situation's fielded gangers' factions, the
 ///    [`ActiveFaction`] turn-cycle resource is seeded to the same player faction (the
 ///    player acts first; GTW-309), an EMPTY
-///    [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog is inserted (GTW-341 —
-///    the [`BattleReady`] trigger below fills it with the spawn-time FOV on the next update)
-///    — all sharing [`BattleInProgress`]'s lifetime — and a
+///    [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog is inserted
+///    (GTW-341) — all sharing [`BattleInProgress`]'s lifetime — and a
 ///    [`BattleReady`] is written; on `Err` the typed
 ///    [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid vertical link,
-///    an unresolved weapon key, OR an unresolved armor key) is surfaced via [`error!`] and NEITHER
-///    [`BattleInProgress`] / [`PlayerFaction`] / [`BattleRoster`] / [`ActiveFaction`] NOR
-///    [`BattleReady`] is written — the app never advances on a bad battle, and the gate
-///    never opens. NO `unwrap`/`expect`/`panic`.
+///    an unresolved weapon/armor/terrain key, or a below-minimum floor cost) is surfaced
+///    via [`error!`] and NEITHER [`BattleInProgress`] / [`PlayerFaction`] /
+///    [`BattleRoster`] / [`ActiveFaction`] NOR [`BattleReady`] is written — the app
+///    never advances on a bad battle, and the gate never opens. NO
+///    `unwrap`/`expect`/`panic`.
 ///
-/// The [`WeaponRegistry`] and [`ArmorRegistry`] are each read as `Option<Res<_>>`
-/// (PERSISTENT `Load` state like [`CombatTuning`](crate::tuning::CombatTuning)); a setup
-/// requested before EITHER loads fails closed (logged, no [`BattleReady`]).
+/// The [`WeaponRegistry`], [`ArmorRegistry`], and [`TerrainRegistry`] are each read as
+/// `Option<Res<_>>` (PERSISTENT `Load` state); a setup requested before ANY loads fails
+/// closed (logged, no [`BattleReady`]).
+///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
-/// PERSISTENT `Load` resource, present throughout the battle for the acts to read.
-/// It IS read here as `Option<Res<_>>` to resolve the [`SlabDefaults`] prototype for the
-/// GTW-395 slab terrain entities (the slab-entity seed matches the ledger's lazy-seed;
-/// absent tuning defaults to [`SlabDefaults::default`] — combat must never be blocked
-/// by missing balance data, matching the `GangerStatTuning` defaulting precedent).
+/// PERSISTENT `Load` resource, present throughout the battle for the acts to read. It
+/// IS read here as `Option<Res<_>>` to supply the `fallback_floor_cost`
+/// (`CombatTuning::move_costs.open`) used when the situation omits `default_floor` or
+/// when the `TerrainRegistry` is absent — preserving pre-GTW-396 behavior for
+/// un-migrated test fixtures.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "GTW-396: eight params is one over the clippy 7-param default; the extra \
+              param is `Option<Res<TerrainRegistry>>` added for terrain key resolution — \
+              the Bevy system injection model cannot be refactored to fewer params without \
+              introducing a wrapper resource that changes the API surface"
+)]
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,
     mut ready: MessageWriter<BattleReady>,
     weapons: Option<Res<WeaponRegistry>>,
     armor: Option<Res<ArmorRegistry>>,
+    terrain: Option<Res<TerrainRegistry>>,
     stat_tuning: Option<Res<GangerStatTuning>>,
     combat_tuning: Option<Res<CombatTuning>>,
     mut commands: Commands,
@@ -107,49 +116,60 @@ pub fn setup_battle_on_request(
         let default_stat_tuning = GangerStatTuning::default();
         let stat_tuning = stat_tuning.as_deref().unwrap_or(&default_stat_tuning);
 
-        // GTW-395: resolve the SlabEntry prototype from CombatTuning's SlabDefaults —
-        // the SAME seed the SlabLedger's lazy-seed path uses (`prototype_for` ignores
-        // the cell key today, so the prototype is uniform). Absent CombatTuning falls
-        // back to SlabDefaults::default() — combat must never be blocked by missing
-        // balance data (the GangerStatTuning defaulting precedent). The prototype is
-        // passed by VALUE into setup_battle so no resource read happens inside that
-        // function (signature unchanged except for the new value param).
+        // GTW-396: the fallback floor cost — used when the situation omits
+        // `default_floor` or when no TerrainRegistry is available. Sourced from
+        // `CombatTuning::move_costs.open` (4 by default) to preserve pre-GTW-396
+        // behavior for un-migrated test fixtures. Combat must never be blocked by
+        // missing balance data.
         let default_combat_tuning = CombatTuning::default();
-        let slab_defaults: &SlabDefaults = combat_tuning
+        let fallback_floor_cost = combat_tuning
             .as_deref()
-            .map_or(&default_combat_tuning.slab_defaults, |ct| &ct.slab_defaults);
-        // The key is a dummy origin cell — prototype_for ignores it today (all slabs seed
-        // uniformly from SlabDefaults; the key is reserved for a future per-slab authored
-        // HP variation, GTW-396). Use the origin cell as a valid, stable dummy.
-        let dummy_key = crate::metric::CellLevel::new(
-            crate::metric::Cell::new(0, 0),
-            crate::metric::Level::new(0),
-        );
-        let slab_prototype = crate::slab::SlabLedger::prototype_for(dummy_key, slab_defaults);
+            .map_or(default_combat_tuning.move_costs.open, |ct| {
+                ct.move_costs.open
+            });
+
+        // GTW-396: the TerrainRegistry is PERSISTENT `Load` state (GTW-394), read as
+        // `Option<Res<_>>`. When absent, `setup_battle` is called with `terrain: None`
+        // which:
+        //  (a) makes cover/slab keys fail with TerrainNotFound (a real situation's
+        //      cover/slabs reference piece names that need the registry);
+        //  (b) skips floor resolution and uses the fallback_floor_cost (correct for
+        //      test fixtures that use SituationBuilder without a default_floor).
+        // The real app always has the registry loaded before a battle starts (GTW-394
+        // gates Load→Intro on it). Tests that use SituationBuilder without cover/slabs
+        // pass `None` implicitly — they never authored terrain keys.
+        let terrain_ref = terrain.as_deref();
 
         // 1. Seed the battle-lifetime RNG from the trigger's seed.
         commands.insert_resource(SimRng::from_seed(request.seed));
 
         // 2. Pour the situation into the world via the authoritative setup. A bad
-        //    vertical link, a missing weapon key, OR a missing armor key returns the
-        //    typed error — log it (NEVER panic / unwrap) and write NO BattleReady, so
-        //    the app's gate never fires (fail-closed). The GangerStatTuning derives each
-        //    ganger's computed stats from its eight authored attributes (GTW-384).
+        //    vertical link, a missing weapon/armor/terrain key, or a below-minimum
+        //    floor cost returns the typed error — log it (NEVER panic / unwrap) and
+        //    write NO BattleReady, so the app's gate never fires (fail-closed). The
+        //    GangerStatTuning derives each ganger's computed stats from its eight
+        //    authored attributes (GTW-384).
         match setup_battle(
             &request.situation,
             weapons,
             armor,
             stat_tuning,
-            slab_prototype,
+            terrain_ref,
+            fallback_floor_cost,
             &mut commands,
         ) {
             Ok(_setup) => {
-                // The battle is live: insert the gate witness (alongside the four
-                // setup_battle grids + the seeded SimRng) so the Simulate band's bundled
-                // runtime turns on, seed the PlayerFaction from the situation, capture the
-                // BattleRoster from the fielded gangers' factions (both share the
-                // BattleInProgress lifetime — same Ok path, removed together on teardown),
-                // then signal BattleReady. All happen ONLY on Ok.
+                // The battle is live: insert the gate witness (alongside the setup_battle
+                // grids + the seeded SimRng) so the Simulate band's bundled runtime turns
+                // on, seed the PlayerFaction from the situation, capture the BattleRoster
+                // from the fielded gangers' factions (both share the BattleInProgress
+                // lifetime — same Ok path, removed together on teardown), then signal
+                // BattleReady. All happen ONLY on Ok.
+                //
+                // NOTE: the FloorCostGrid is now inserted by setup_battle itself (GTW-396
+                // Decision B — it is built from the resolved floor specs and inserted
+                // directly). This is a change from the earlier sim-slice that inserted it
+                // here: the full registry-driven grid now comes from setup_battle.
                 commands.insert_resource(BattleInProgress);
                 commands.insert_resource(PlayerFaction::new(request.situation.player_faction));
                 commands.insert_resource(BattleRoster::new(
@@ -173,10 +193,11 @@ pub fn setup_battle_on_request(
                 commands.insert_resource(SquadVisibility::default());
                 ready.write(BattleReady);
             }
-            Err(error) => {
+            Err(e) => {
                 error!(
-                    "battle setup failed: {error:?} (an invalid vertical link, an unresolved \
-                     weapon key, or an unresolved armor key); no BattleReady will be signalled"
+                    "battle setup failed: {e:?} (an invalid vertical link, an unresolved \
+                     weapon/armor/terrain key, or a floor cost below the A* admissibility \
+                     floor); no BattleReady will be signalled"
                 );
             }
         }
@@ -190,24 +211,21 @@ pub fn setup_battle_on_request(
 /// Drains [`MessageReader<TeardownBattleRequested>`] and, when triggered, removes
 /// [`SimRng`], the [`setup_battle`]-inserted resources ([`CoverLedger`] /
 /// [`SurfaceGrid`] / [`OccupancyGrid`] / [`VerticalLinkGraph`] /
-/// [`SlabLedger`] / [`TerrainIndex`](crate::terrain::entity::TerrainIndex)),
-/// the [`BattleInProgress`] witness (closing the
+/// [`SlabLedger`] / [`TerrainIndex`](crate::terrain::entity::TerrainIndex) /
+/// [`FloorCostGrid`]), the [`BattleInProgress`] witness (closing the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) gate so the
 /// bundled runtime goes inert again), the [`PlayerFaction`], the [`BattleRoster`], the
 /// [`ActiveFaction`] turn-cycle resource, and the
-/// [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog (GTW-341) (all lifetimes
-/// track [`BattleInProgress`], so they are removed in the same teardown). These resources are
-/// BATTLE-lifetime: the app
-/// sends this trigger only at the battle boundary (its `OnExit(GameState::BattleScape)`),
-/// so they survive the whole battle for the E10.6 acts before being cleaned
-/// (`bevy-traps.md` #1 at the correct state level).
+/// [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog (GTW-341) (all
+/// lifetimes track [`BattleInProgress`], so they are removed in the same teardown).
 ///
-/// GTW-395: also despawns all [`TerrainCell`](crate::terrain::entity::TerrainCell) entities
-/// (the per-tile terrain entities spawned in `setup_battle`) and removes the pre-existing
-/// [`SlabLedger`] leak (it was inserted by `setup_battle` but never removed until this
-/// ticket — the pre-existing leak fix). Despawn is strictly cleaner than leaving entity
-/// accumulation across battles (the ganger persist-as-dead precedent does not apply to
-/// stateless terrain pieces).
+/// GTW-395: also despawns all [`TerrainCell`](crate::terrain::entity::TerrainCell)
+/// entities (the per-tile terrain entities spawned in `setup_battle`) and removes the
+/// pre-existing [`SlabLedger`] leak (it was inserted by `setup_battle` but never
+/// removed until GTW-395).
+///
+/// GTW-396: removes the [`FloorCostGrid`] alongside the other battle-lifetime
+/// resources (it is now inserted by `setup_battle` rather than by this function).
 ///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is deliberately NOT removed: it is
 /// E10.4's persistent `Load` resource, untouched by this plugin. A
@@ -232,14 +250,18 @@ pub fn teardown_battle_on_request(
         commands.remove_resource::<CoverLedger>();
         commands.remove_resource::<SurfaceGrid>();
         // GTW-395: remove the SlabLedger (pre-existing leak fix — it was inserted at
-        // setup.rs:515 in step 3b but never removed here until GTW-395. The teardown now
-        // owns it alongside TerrainIndex for a clean battle boundary).
+        // setup.rs but never removed here until GTW-395. The teardown now owns it
+        // alongside TerrainIndex for a clean battle boundary).
         commands.remove_resource::<SlabLedger>();
         commands.remove_resource::<OccupancyGrid>();
         commands.remove_resource::<VerticalLinkGraph>();
         // GTW-395: remove the battle-lifetime TerrainIndex (spawned in setup_battle's
         // step 4, removed here alongside the other battle-lifetime resources).
         commands.remove_resource::<TerrainIndex>();
+        // GTW-396: remove the battle-lifetime FloorCostGrid (now inserted by
+        // setup_battle rather than by setup_battle_on_request; same lifetime as the
+        // other battle-lifetime resources — removed alongside BattleInProgress).
+        commands.remove_resource::<FloorCostGrid>();
         // GTW-395: despawn all terrain entities (one per authored cover / slab piece).
         // Commands::despawn (bevy-traps #7 form — never world.spawn/despawn inside a
         // registered system): each entity is queued for despawn at the end of this frame.

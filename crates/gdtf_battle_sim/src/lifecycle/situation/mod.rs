@@ -53,10 +53,11 @@
 mod error;
 mod setup;
 mod spawn;
+mod terrain_resolve;
 
 #[cfg(test)]
 mod test;
 
 pub use error::BattleSetupError;
 pub use setup::{BattleSetup, has_stacked_gangers, setup_battle};
-pub use spawn::{CoverSpawn, GangerSpawn, Situation};
+pub use spawn::{CoverSpawn, FloorSpawn, GangerSpawn, Situation, SlabSpawn};

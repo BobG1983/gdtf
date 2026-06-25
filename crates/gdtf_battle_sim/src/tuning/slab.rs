@@ -91,17 +91,30 @@ impl SlabDefaults {
     }
 }
 
+impl SlabDefaults {
+    /// The code-only no-panic fallback for an unauthored slab strike — used by the
+    /// damage-resolution fold when a slab is struck that has no authored ledger entry
+    /// (an out-of-bounds or non-authored cell). NOT the removed `tuning.ron
+    /// slab_defaults` leaf (GTW-396 removed that field); the fallback fires ONLY when
+    /// `SlabLedger::entry_seeded`'s `.or_insert` path is taken (i.e., the slab was
+    /// never eagerly-inserted at setup). Authored slabs are always pre-seeded at setup
+    /// (GTW-396 Decision C eager-seed), so this constant is the "unauthored strike"
+    /// backstop.
+    ///
+    /// `const` so the fold site can declare it as a block-local `const` (no allocation,
+    /// no `Res<_>` read — zero overhead on the hot depletion path).
+    pub const FALLBACK: Self = Self {
+        default_hp:               SlabDefaultHp::new(120),
+        default_armor_protection: ArmorProtection::new(4),
+        default_armor_hardness:   ArmorHardness::new(2),
+    };
+}
+
 impl Default for SlabDefaults {
     fn default() -> Self {
-        // Value-agnostic STARTING POINTS (tunable balance data), mirroring the
-        // MoveCosts / cone-tuning pattern — slab HP/armor are flagged TBD tunables, never
-        // pinned balance numbers. A slab is sturdier than light cover (a structural floor),
-        // so the armor soaks a chunk of each hit and the HP spans several strikes (C4).
-        // Tests assert only the depletion / destruction mechanism, never these magnitudes.
-        Self {
-            default_hp:               SlabDefaultHp::default(),
-            default_armor_protection: ArmorProtection::new(4),
-            default_armor_hardness:   ArmorHardness::new(2),
-        }
+        // Value-agnostic STARTING POINTS — mirror the FALLBACK const (so `default()`
+        // and `FALLBACK` agree). Tests assert only the depletion/destruction mechanism,
+        // never these magnitudes (brittle-test rule).
+        Self::FALLBACK
     }
 }

@@ -3,8 +3,8 @@
 //! cost-accumulation check).
 
 use super::support::{
-    all_other, cell, full_vision, grid_with, link_step, links_graph, ok_path, stair,
-    summed_step_cost, tuning,
+    all_other, cell, default_floor_costs, full_vision, grid_with, link_step, links_graph, ok_path,
+    stair, summed_step_cost, tuning,
 };
 use crate::pathfinder::PlanningView;
 
@@ -67,7 +67,9 @@ fn route_traverses_vertical_link_and_accumulates_link_tu() {
 
     // And the §48 cost-accumulation: the route total equals the summed per-step
     // edge costs (link hop + terrain steps), re-derived independently.
-    let summed = summed_step_cost(&path, &grid, &tuning);
+    // GTW-396: summed_step_cost now reads from FloorCostGrid instead of the grid.
+    let floor_costs = default_floor_costs(&tuning);
+    let summed = summed_step_cost(&path, &floor_costs, &tuning);
     assert_eq!(
         u32::from(*path.total()),
         summed,
@@ -89,7 +91,9 @@ fn upper_storey_unreachable_without_a_link() {
 
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
-    let result = crate::pathfinder::find_path(start, goal, &grid, &links, &tuning, &planning);
+    let floor_costs = default_floor_costs(&tuning);
+    let result =
+        crate::pathfinder::find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
     assert!(
         result.is_err(),
         "without a vertical link, another storey is unreachable",

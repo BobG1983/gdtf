@@ -17,12 +17,22 @@ use super::{
     planning::PlanningView,
 };
 use crate::{
-    ganger::Tu, metric::CellLevel, occupancy::OccupancyGrid, tuning::CombatTuning,
-    vertical::VerticalLinkGraph, visibility::FactionRelation,
+    ganger::Tu,
+    metric::CellLevel,
+    occupancy::OccupancyGrid,
+    terrain::floor::FloorCostGrid,
+    tuning::{CombatTuning, MoveCost},
+    vertical::VerticalLinkGraph,
+    visibility::FactionRelation,
 };
 
-/// The minimum positive per-step move cost on the grid — `4`, the cheapest
-/// [`MoveCost`](crate::tuning::MoveCost) (`open`).
+/// The minimum positive per-step move cost on the grid — `4`, the A\* admissibility
+/// floor (GTW-396: also the minimum [`MoveCost`] an authored floor piece is allowed to
+/// carry; `setup_battle` rejects any floor piece below this).
+///
+/// A typed [`MoveCost`] constant — never a bare integer — so the heuristic site and the
+/// setup-validation site read the SAME single source of truth without an `as` cast at
+/// either end (GTW-396 structure pass).
 ///
 /// Load-bearing for the A\* heuristic's admissibility (ADR-0005 OQ-2 / §"Context":
 /// "The minimum positive move cost on the grid is 4"): scaling the planar
@@ -30,9 +40,13 @@ use crate::{
 /// overestimates the true cheapest route, which is what keeps A\* admissible (and so
 /// optimal). Documented as a constant rather than read from tuning because it is the
 /// FLOOR of the cost scale — the heuristic must bound from below by the cheapest
-/// possible step, never the actual (possibly dearer) authored `open` cost; using the
-/// hard floor stays admissible even if `open` is tuned upward.
-const MIN_MOVE_COST: u32 = 4;
+/// possible step, never the actual (possibly dearer) authored floor cost; using the
+/// hard floor stays admissible even if the `default_floor` cost is tuned upward.
+///
+/// Exported `pub` so [`setup_battle`](crate::situation::setup_battle) can validate
+/// floor piece costs against this same floor — ensuring the authored data and the
+/// heuristic never drift apart (GTW-396 Decision B, `FloorCostBelowMinimum` error).
+pub const MIN_MOVE_COST: MoveCost = MoveCost::new(4);
 
 /// The admissible A\* heuristic from `from` to `goal` — the planar Chebyshev
 /// step-distance times the minimum per-step cost (ADR-0005 OQ-2).
@@ -55,7 +69,9 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
     let dx = (from.x - goal.x).unsigned_abs();
     let dy = (from.y - goal.y).unsigned_abs();
     let steps = dx.max(dy);
-    PathCost::new(steps * MIN_MOVE_COST)
+    // `MIN_MOVE_COST` is a typed `MoveCost` (wrapping `u8`); deref + widen to `u32` for
+    // the planar-distance product — the single source of truth, no `as` cast.
+    PathCost::new(steps * u32::from(*MIN_MOVE_COST))
 }
 
 /// Find the cheapest legal route from `start` to `goal` over the occupancy grid +
@@ -83,10 +99,11 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 /// (8-connected, octile diagonal) and GTW-351 cross-storey
 /// [`traversable_links`](crate::vertical::traversable_links) (flat `link_tu`) — the
 /// route stitches storeys solely through the link graph (ADR-0005 "Vertical
-/// stitching"). The cost model is read from `tuning` (the per-terrain
-/// [`MoveCosts`](crate::tuning::MoveCosts) table + the flat
-/// [`LinkTu`](crate::tuning::LinkTu)); the search NEVER charges TU — it plans and
-/// totals, and the per-step writers charge at commit (§48).
+/// stitching"). The cost model is read per planar step from the
+/// [`FloorCostGrid`] (the per-cell floor move cost, GTW-396 Decision C1 — the sole
+/// step-cost source, replacing the coarse `tuning.move_costs` table) plus the flat
+/// [`LinkTu`](crate::tuning::LinkTu) from `tuning` at a link hop; the search NEVER
+/// charges TU — it plans and totals, and the per-step writers charge at commit (§48).
 ///
 /// The returned [`Path`] runs `start..=goal` in step order with a
 /// [`total`](Path::total) that equals the sum of the per-step edge costs along it
@@ -108,6 +125,7 @@ pub fn find_path<R>(
     grid: &OccupancyGrid,
     links: &VerticalLinkGraph,
     tuning: &CombatTuning,
+    floor_costs: &FloorCostGrid,
     planning: &PlanningView<'_, R>,
 ) -> Result<Path, PathBlocked>
 where
@@ -117,6 +135,7 @@ where
         grid,
         links,
         tuning,
+        floor_costs,
         planning,
     };
     let field = relax(
@@ -181,6 +200,7 @@ pub fn reachable_within<R>(
     grid: &OccupancyGrid,
     links: &VerticalLinkGraph,
     tuning: &CombatTuning,
+    floor_costs: &FloorCostGrid,
     planning: &PlanningView<'_, R>,
 ) -> Vec<(CellLevel, Tu)>
 where
@@ -190,6 +210,7 @@ where
         grid,
         links,
         tuning,
+        floor_costs,
         planning,
     };
     let budget_cost = PathCost::new(u32::from(*budget));

@@ -30,8 +30,8 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::PathPreview;
 use gdtf_battle_sim::{
-    CellLevel, CombatTuning, Faction, FactionRelation, FireMode, OccupancyGrid, PlanningView,
-    Position, SquadVisibility, VerticalLinkGraph, find_path,
+    CellLevel, CombatTuning, Faction, FactionRelation, FireMode, FloorCostGrid, OccupancyGrid,
+    PlanningView, Position, SquadVisibility, VerticalLinkGraph, find_path,
 };
 
 use crate::{SelectedFireMode, selection::resources::SelectedShooter};
@@ -160,20 +160,24 @@ fn relation_to(
 }
 
 /// The grids the route search reads, bundled as one [`SystemParam`] — the [`OccupancyGrid`] +
-/// [`VerticalLinkGraph`] + [`SquadVisibility`] + [`CombatTuning`] the SAME `dispatch_move`
-/// route gate reads. Framework plumbing (a borrow bundle), exempt from no-bare-types; bundling
-/// them keeps [`populate_path_preview`] under the `too_many_arguments` / `too_many_lines`
-/// lints.
+/// [`VerticalLinkGraph`] + [`SquadVisibility`] + [`CombatTuning`] + [`FloorCostGrid`] the SAME
+/// `dispatch_move` route gate reads. Framework plumbing (a borrow bundle), exempt from
+/// no-bare-types; bundling them keeps [`populate_path_preview`] under the `too_many_arguments` /
+/// `too_many_lines` lints. GTW-396: added `floor_costs` — `find_path` now takes a `&FloorCostGrid`
+/// instead of deriving costs from `tuning.move_costs`.
 #[derive(SystemParam)]
 pub struct PreviewGrids<'w> {
     /// The coarse occupancy grid (terrain + occupants) the route routes over.
-    grid:   Res<'w, OccupancyGrid>,
+    grid:        Res<'w, OccupancyGrid>,
     /// The vertical-link graph the route stitches storeys through.
-    links:  Res<'w, VerticalLinkGraph>,
+    links:       Res<'w, VerticalLinkGraph>,
     /// The squad fog the GTW-353 [`PlanningView`] gates routability by.
-    squad:  Res<'w, SquadVisibility>,
-    /// The combat tuning (the [`MoveCosts`](gdtf_battle_sim::MoveCosts) table + link cost).
-    tuning: Res<'w, CombatTuning>,
+    squad:       Res<'w, SquadVisibility>,
+    /// The combat tuning (the flat link cost + other combat coefficients).
+    tuning:      Res<'w, CombatTuning>,
+    /// The per-cell floor move-cost surface (GTW-396) — read by `find_path` instead
+    /// of `tuning.move_costs` for every planar step cost.
+    floor_costs: Res<'w, FloorCostGrid>,
 }
 
 /// `Update` ([`InputSystems::Gather`](crate::InputSystems)): POPULATE the presenter-owned
@@ -258,6 +262,7 @@ fn route_for(
         &grids.grid,
         &grids.links,
         &grids.tuning,
+        &grids.floor_costs,
         &planning,
     ) {
         // The route cells (start..=goal in step order) + the §48 total cost.

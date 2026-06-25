@@ -4,13 +4,19 @@
 //! and asserts it matches the search's own total, bit-for-bit.
 
 use super::support::{
-    cell, grid_with, links_graph, ok_path, stair, step_cost_between, summed_step_cost, tuning,
+    cell, default_floor_costs, grid_with, links_graph, ok_path, stair, step_cost_between,
+    summed_step_cost, tuning,
 };
 use crate::occupancy::TerrainKind;
 
 /// A same-storey route's total equals the summed per-step terrain costs — over a
 /// MIXED-terrain grid (open + a destroyed-cover cell on the path), so orthogonal,
 /// diagonal-octile, and a dearer-terrain step all contribute.
+///
+/// GTW-396: `summed_step_cost` now takes a `&FloorCostGrid`; the `default_floor_costs`
+/// fixture seeds every cell at the tuning's open cost, which is what the search uses
+/// (the grid still controls walkability via `is_blocked`, but the step cost comes from
+/// `FloorCostGrid`).
 #[test]
 fn same_storey_total_equals_summed_steps() {
     // A destroyed-cover cell on the likely path is walkable but priced at the
@@ -19,6 +25,7 @@ fn same_storey_total_equals_summed_steps() {
     grid.mark_cover_destroyed(cell(4, 3, 0));
     let links = super::support::no_links();
     let tuning = tuning();
+    let floor_costs = default_floor_costs(&tuning);
 
     let start = cell(2, 2, 0);
     let goal = cell(6, 4, 0);
@@ -27,7 +34,7 @@ fn same_storey_total_equals_summed_steps() {
         return;
     };
 
-    let summed = summed_step_cost(&path, &grid, &tuning);
+    let summed = summed_step_cost(&path, &floor_costs, &tuning);
     assert_eq!(
         u32::from(*path.total()),
         summed,
@@ -41,6 +48,7 @@ fn same_storey_total_equals_summed_steps() {
 fn cross_storey_total_equals_summed_steps_including_link() {
     let grid = grid_with(&[]);
     let tuning = tuning();
+    let floor_costs = default_floor_costs(&tuning);
     let foot = cell(5, 5, 0);
     let head = cell(5, 5, 1);
     let Some(links) = links_graph(&[stair(foot, head)]) else {
@@ -54,7 +62,7 @@ fn cross_storey_total_equals_summed_steps_including_link() {
         return;
     };
 
-    let summed = summed_step_cost(&path, &grid, &tuning);
+    let summed = summed_step_cost(&path, &floor_costs, &tuning);
     assert_eq!(
         u32::from(*path.total()),
         summed,
@@ -77,6 +85,7 @@ fn carried_per_step_costs_match_each_edge_and_sum_to_total() {
     // both edge kinds appear in `steps()`.
     let grid = grid_with(&[]);
     let tuning = tuning();
+    let floor_costs = default_floor_costs(&tuning);
     let foot = cell(5, 5, 0);
     let head = cell(5, 5, 1);
     let Some(links) = links_graph(&[stair(foot, head)]) else {
@@ -102,7 +111,7 @@ fn carried_per_step_costs_match_each_edge_and_sum_to_total() {
         let [from, to] = pair else { continue };
         assert_eq!(
             *edge,
-            step_cost_between(*from, *to, &grid, &tuning),
+            step_cost_between(*from, *to, &floor_costs, &tuning),
             "each carried per-step cost equals the edge cost between its consecutive cells",
         );
     }
@@ -117,7 +126,7 @@ fn carried_per_step_costs_match_each_edge_and_sum_to_total() {
     // And it agrees with the independent terrain/link re-derivation.
     assert_eq!(
         carried_sum,
-        summed_step_cost(&path, &grid, &tuning),
+        summed_step_cost(&path, &floor_costs, &tuning),
         "the carried steps agree with the independent per-edge re-derivation",
     );
 }

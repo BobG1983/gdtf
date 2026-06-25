@@ -36,8 +36,8 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Faction, Position, ReactionShotFired, Speed, SquadVisibility, Stance, StanceKind, Tu,
-    WalkInProgress,
+    Faction, FloorCostGrid, Position, ReactionShotFired, Speed, SquadVisibility, Stance,
+    StanceKind, Tu, WalkInProgress,
     acts::MoveRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
     metric::{Cell, CellLevel, Level},
@@ -132,10 +132,12 @@ fn plan_total(app: &App, start: CellLevel, goal: CellLevel) -> Option<u8> {
     let links = app.world().get_resource::<VerticalLinkGraph>()?;
     let squad = app.world().get_resource::<SquadVisibility>()?;
     let tuning = app.world().get_resource::<CombatTuning>()?;
+    // GTW-396: read the FloorCostGrid the dispatch uses for its per-step costs.
+    let floor_costs = app.world().get_resource::<FloorCostGrid>()?;
     // The player squad sees its own gang; any non-player occupant is Other (the
     // dispatch_move `relation_to` shape, player-relative).
     let planning = PlanningView::new(squad, |_occupant| FactionRelation::Other);
-    let path = find_path(start, goal, grid, links, tuning, &planning).ok()?;
+    let path = find_path(start, goal, grid, links, tuning, floor_costs, &planning).ok()?;
     Some(*path.total())
 }
 

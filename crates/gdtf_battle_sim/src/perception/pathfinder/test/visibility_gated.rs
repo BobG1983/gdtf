@@ -11,7 +11,9 @@
 
 use bevy::prelude::{Entity, World};
 
-use super::support::{cell, fog, grid_with, no_links, reachable_triples_with, tuning};
+use super::support::{
+    cell, default_floor_costs, fog, grid_with, no_links, reachable_triples_with, tuning,
+};
 use crate::{
     metric::CellLevel,
     occupancy::{OccupancyGrid, TerrainKind},
@@ -75,7 +77,8 @@ fn route_only_through_unseen_is_path_blocked() {
         .collect();
     let squad_gated = fog(&[], &routable);
     let gated = PlanningView::new(&squad_gated, resolve_as(occupant, FactionRelation::Other));
-    let blocked = find_path(start, goal, &grid, &links, &tuning, &gated);
+    let floor_costs = default_floor_costs(&tuning);
+    let blocked = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &gated);
     assert!(
         blocked.is_err(),
         "a route that can only reach the goal by crossing an UNSEEN cell is PathBlocked, got \
@@ -86,7 +89,7 @@ fn route_only_through_unseen_is_path_blocked() {
     // proving the rejection above was the UNSEEN cell, not the walls.
     let squad_open = fog(&[], &corridor_cells());
     let open = PlanningView::new(&squad_open, resolve_as(occupant, FactionRelation::Other));
-    let ok = find_path(start, goal, &grid, &links, &tuning, &open);
+    let ok = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &open);
     assert!(
         ok.is_ok(),
         "with the chokepoint explored the geometry has a route — the rejection was UNSEEN, got \
@@ -108,9 +111,10 @@ fn route_through_explored_is_allowed() {
     let goal = cell(4, 5, 0);
 
     // The corridor is remembered (EXPLORED) but not currently VISIBLE — the XCOM model.
+    let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&[], &corridor_cells());
     let planning = PlanningView::new(&squad, resolve_as(occupant, FactionRelation::Other));
-    let result = find_path(start, goal, &grid, &links, &tuning, &planning);
+    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
     assert!(
         result.is_ok(),
         "an EXPLORED-only route must be allowed (EXPLORED stays routable), got {result:?}",
@@ -186,9 +190,10 @@ fn visible_enemy_blocks_the_route() {
 
     // The whole corridor is VISIBLE, and the enemy's cell is VISIBLE — so the enemy
     // blocks (is_ganger_visible(Other) is true on a visible cell).
+    let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&corridor_cells(), &[]);
     let planning = PlanningView::new(&squad, resolve_as(enemy, FactionRelation::Other));
-    let result = find_path(start, goal, &grid, &links, &tuning, &planning);
+    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
     assert!(
         result.is_err(),
         "a squad-VISIBLE enemy on the only route blocks it (PathBlocked), got {result:?}",
@@ -197,7 +202,15 @@ fn visible_enemy_blocks_the_route() {
     // CONTROL: a clean corridor with NO occupant — the same fog/geometry now has a
     // route, proving the block above was the visible enemy.
     let clear_grid = corridor();
-    let open = find_path(start, goal, &clear_grid, &links, &tuning, &planning);
+    let open = find_path(
+        start,
+        goal,
+        &clear_grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        &planning,
+    );
     assert!(
         open.is_ok(),
         "with no occupant the corridor is open — the block was the visible enemy, got {open:?}",
@@ -222,9 +235,10 @@ fn invisible_enemy_does_not_block() {
 
     // The corridor is EXPLORED (routable) but NOT currently VISIBLE — so the enemy on
     // it is not squad-VISIBLE and does NOT block (is_ganger_visible(Other) is false).
+    let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&[], &corridor_cells());
     let planning = PlanningView::new(&squad, resolve_as(enemy, FactionRelation::Other));
-    let result = find_path(start, goal, &grid, &links, &tuning, &planning);
+    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
     assert!(
         result.is_ok(),
         "an enemy the squad cannot see must NOT block the route, got {result:?}",
@@ -252,9 +266,10 @@ fn own_squad_ganger_always_blocks() {
 
     // Same EXPLORED-only fog (the cell is NOT currently VISIBLE) — but an own-squad
     // ganger is trivially visible, so it blocks regardless.
+    let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&[], &corridor_cells());
     let planning = PlanningView::new(&squad, resolve_as(mate, FactionRelation::OwnSquad));
-    let result = find_path(start, goal, &grid, &links, &tuning, &planning);
+    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
     assert!(
         result.is_err(),
         "an own-squad ganger always blocks, even on an EXPLORED-only cell, got {result:?}",
@@ -284,9 +299,10 @@ fn explored_scatter_blocks_the_route() {
     let grid = grid_with(&walls);
 
     // The whole corridor is EXPLORED (routable); the Cover scatter still blocks.
+    let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&[], &corridor_cells());
     let planning = PlanningView::new(&squad, resolve_as(occupant, FactionRelation::Other));
-    let result = find_path(start, goal, &grid, &links, &tuning, &planning);
+    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
     assert!(
         result.is_err(),
         "a blocking scatter (Cover) on the only route blocks it even when explored, got \
@@ -296,7 +312,15 @@ fn explored_scatter_blocks_the_route() {
     // CONTROL: the same cell EXPLORED but OPEN (no scatter) — the route succeeds, so the
     // block was the scatter geometry, not the fog.
     let open_grid = corridor();
-    let open = find_path(start, goal, &open_grid, &links, &tuning, &planning);
+    let open = find_path(
+        start,
+        goal,
+        &open_grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        &planning,
+    );
     assert!(
         open.is_ok(),
         "with the scatter removed the explored corridor is open — the block was the Cover, got \

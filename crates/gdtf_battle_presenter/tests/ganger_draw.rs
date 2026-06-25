@@ -40,7 +40,9 @@ use gdtf_battle_sim::{
     Aiming, BattleReady, BattleSeed, Cell, CellLevel, Direction, Facing, Faction, GangerSpawn,
     Level, LifeState, Position, SetupBattleRequested, SimRng, Situation, Stance, StanceKind,
     setup_battle_on_request,
-    test_support::{SituationBuilder, test_armor_registry, test_weapon_registry},
+    test_support::{
+        SituationBuilder, test_armor_registry, test_terrain_registry, test_weapon_registry,
+    },
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -122,6 +124,11 @@ fn headless_renderer_app() -> App {
     // each spawned ganger. The canonical shared [`test_armor_registry`] (GTW-324),
     // inserted up front (the fixture gangers reference its [`TEST_ARMOR_KEY`]).
     app.insert_resource(test_armor_registry());
+    // GTW-396: the TerrainRegistry — setup_battle_on_request reads it to resolve cover,
+    // slab, and floor piece keys. The canonical test registry supplies the four
+    // `"test-wall"` / `"test-slab"` / `"test-cover"` / `"test-floor"` keys the
+    // SituationBuilder uses.
+    app.insert_resource(test_terrain_registry());
     // Bevy 0.19 routes a FAILED system-param validation to the global error handler
     // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the
     // render-provided resources some DefaultPlugins systems want (e.g. bevy_light's

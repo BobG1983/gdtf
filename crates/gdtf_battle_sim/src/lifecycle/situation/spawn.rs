@@ -1,18 +1,17 @@
-//! The authored value graph: [`GangerSpawn`], [`CoverSpawn`], and the canonical
-//! [`Situation`] — the serde-deserializable battlefield the setup is built from.
+//! The authored value graph: [`GangerSpawn`], [`CoverSpawn`], [`SlabSpawn`],
+//! [`FloorSpawn`], and the canonical [`Situation`] — the serde-deserializable
+//! battlefield the setup is built from.
 
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use crate::{
-    armor::{ArmorHardness, ArmorName, ArmorProtection},
-    cover::{CoverEntry, CoverHp, HeightBand},
     ganger::{
         Aim, Aiming, Cool, Facing, Faction, GangerName, Grit, LifeState, Luck, Reflexes, Speed,
         Stance, Strength, Toughness,
     },
     metric::CellLevel,
-    occupancy::TerrainKind,
+    terrain::piece::TerrainName,
     vertical::VerticalLink,
     weapon::WeaponName,
 };
@@ -31,8 +30,8 @@ use crate::{
 /// from the attributes × the
 /// [`GangerStatTuning`](crate::tuning::GangerStatTuning) weights
 /// (`docs/combat/stats.md` §"Computed combat stats", the two-layer model — fully
-/// derived, single source of truth). `armor` is the armor KEY ([`ArmorName`]) resolved
-/// at setup against the [`ArmorRegistry`](crate::armor::ArmorRegistry) into the
+/// derived, single source of truth). `armor` is the armor KEY ([`ArmorName`](crate::armor::ArmorName))
+/// resolved at setup against the [`ArmorRegistry`](crate::armor::ArmorRegistry) into the
 /// [`ArmorSpec`](crate::armor::ArmorSpec) that the spawned ganger's battle-local
 /// armor-piece entities ([`Wears`](crate::armor::Wears)) are seeded from (GTW-269 /
 /// GTW-323 — mirroring the [`weapon`](GangerSpawn::weapon) key, whose resolved bundle
@@ -46,10 +45,11 @@ use crate::{
 ///
 /// Not `Copy` (GTW-257 / GTW-285 / GTW-269): the [`weapon`](GangerSpawn::weapon) key
 /// is a [`WeaponName`] over a [`String`], the [`armor`](GangerSpawn::armor) key is an
-/// [`ArmorName`] over a [`String`], and the [`name`](GangerSpawn::name) is a
-/// [`GangerName`] over a [`String`] (all owned, not `Copy`), so the authored ganger
-/// is `Clone` only. The [`setup_battle`](crate::situation::setup_battle) spawn loop
-/// borrows each ganger, so dropping `Copy` costs nothing on the real path.
+/// [`ArmorName`](crate::armor::ArmorName) over a [`String`], and the
+/// [`name`](GangerSpawn::name) is a [`GangerName`] over a [`String`] (all owned, not
+/// `Copy`), so the authored ganger is `Clone` only. The
+/// [`setup_battle`](crate::situation::setup_battle) spawn loop borrows each ganger, so
+/// dropping `Copy` costs nothing on the real path.
 ///
 /// Derives [`Deserialize`] so an authored situation `.ron` names each ganger's
 /// placement + its eight attributes + roster armor + its [`weapon`](GangerSpawn::weapon)
@@ -116,7 +116,7 @@ pub struct GangerSpawn {
     /// [`weapon`](GangerSpawn::weapon) key). A key absent from the registry is a handled
     /// [`BattleSetupError::ArmorNotFound`](crate::situation::BattleSetupError::ArmorNotFound)
     /// error (no panic).
-    pub armor:      ArmorName,
+    pub armor:      crate::armor::ArmorName,
     /// The ganger's **weapon KEY** — the filename stem of an `assets/weapons/*.ron`
     /// (e.g. `"stub_pistol"`), resolved against the
     /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) at
@@ -132,80 +132,129 @@ pub struct GangerSpawn {
     pub weapon:     WeaponName,
 }
 
-/// One authored piece of cover — a wall *or* a scatter prop, the SAME schema for
-/// both (`docs/combat/resolution.md` §3: "one ledger for walls *and* props").
+/// One authored piece of cover — a wall *or* a scatter prop.
 ///
-/// A named struct carrying the authored cover facts
-/// [`setup_battle`](crate::situation::setup_battle) pours into both the
-/// [`CoverLedger`](crate::cover::CoverLedger) (its max [`CoverHp`] / [`HeightBand`] /
-/// armor) and the [`OccupancyGrid`](crate::occupancy::OccupancyGrid) terrain (its
-/// [`TerrainKind`]). Walls and scatter differ only in which [`Situation`] list they
-/// live in ([`walls`](Situation::walls) vs [`scatter`](Situation::scatter)) — the
-/// cover model treats them identically.
+/// GTW-396 migration: the old inline stat fields
+/// (`cover_hp` / `height_band` / `armor_protection` / `armor_hardness` / `terrain`)
+/// are REPLACED by a single terrain piece KEY ([`piece`](CoverSpawn::piece)) resolved
+/// against the [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at setup —
+/// exactly mirroring the weapon/armor key model. The kind
+/// ([`TerrainKind`](crate::occupancy::TerrainKind) / `TerrainPieceKind`) and structural
+/// stats ([`CoverEntry`](crate::cover::CoverEntry)) are DERIVED from the resolved spec
+/// variant at `setup_battle` time (a `Wall` spec → `TerrainKind::Wall`; a `Cover` or
+/// `Scatter` spec → `TerrainKind::Cover`).
 ///
-/// Derives [`Deserialize`] so an authored situation `.ron` names each piece's
-/// `(cell, level)` + terrain kind + cover-HP + height band + armor stats.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// A named struct (`at` + `piece`) so the authored shape is self-describing.
+/// Derives [`Deserialize`] so an authored situation `.ron` can name each piece's
+/// `(cell, level)` + its terrain piece key (round-trips through the landed newtype
+/// serde derives — render-free, pixel-free).
+///
+/// Walls and scatter differ only in which [`Situation`] list they live in
+/// ([`walls`](Situation::walls) vs [`scatter`](Situation::scatter)) — the cover model
+/// treats them identically.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct CoverSpawn {
-    /// The `(cell, level)` this cover occupies.
-    pub at:               CellLevel,
-    /// The terrain kind this cover marks in the occupancy grid (wall / cover).
-    pub terrain:          TerrainKind,
-    /// The cover's full (max) structural HP — seeds the ledger entry's
-    /// `current_hp == max_hp`.
-    pub cover_hp:         CoverHp,
-    /// The clearance band this cover occupies (LOW / MID / HIGH).
-    pub height_band:      HeightBand,
-    /// The cover's damage-reduction stat (same armor model as a ganger).
-    pub armor_protection: ArmorProtection,
-    /// The penetration this cover shrugs off (same armor model as a ganger).
-    pub armor_hardness:   ArmorHardness,
+    /// The `(cell, level)` this cover piece occupies.
+    pub at:    CellLevel,
+    /// The terrain piece KEY — the filename stem (without the `.terrain.ron` infix) of
+    /// an `assets/terrain/*.terrain.ron` (e.g. `"heavy_bulkhead"`), resolved against the
+    /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle). A key absent from the registry
+    /// is a handled
+    /// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError::TerrainNotFound)
+    /// error (no panic).
+    pub piece: TerrainName,
 }
 
 impl CoverSpawn {
-    /// Build an authored cover piece from its `(cell, level)`, terrain kind, max
-    /// HP, height band, and armor stats.
+    /// Build an authored cover piece from its `(cell, level)` and terrain piece key.
     #[must_use]
-    pub const fn new(
-        at: CellLevel,
-        terrain: TerrainKind,
-        cover_hp: CoverHp,
-        height_band: HeightBand,
-        armor_protection: ArmorProtection,
-        armor_hardness: ArmorHardness,
-    ) -> Self {
-        Self {
-            at,
-            terrain,
-            cover_hp,
-            height_band,
-            armor_protection,
-            armor_hardness,
-        }
+    pub const fn new(at: CellLevel, piece: TerrainName) -> Self {
+        Self { at, piece }
     }
+}
 
-    /// The ledger [`CoverEntry`] this authored piece seeds — `current_hp == max_hp`,
-    /// not destroyed, with this piece's band and armor stats.
+/// One authored floor / roof slab — its `(cell, level)` and a terrain piece KEY.
+///
+/// GTW-396 migration: the old `slabs: Vec<CellLevel>` (bare cell list with no
+/// per-slab authored HP) is replaced by `slabs: Vec<SlabSpawn>`, where each slab now
+/// carries a terrain piece KEY resolved against the
+/// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at setup. This brings
+/// per-slab authored HP/armor out of the uniform `slab_defaults` tuning leaf and into
+/// per-piece `assets/terrain/*.terrain.ron` data (e.g. `"deck_slab"`).
+///
+/// Derives [`Deserialize`] so an authored situation `.ron` writes each slab as
+/// `(at: (cell: …, level: …), piece: "…")` — the same shape as [`CoverSpawn`], but
+/// into the `slabs` list.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+pub struct SlabSpawn {
+    /// The `(cell, level)` this slab occupies (same meaning as the old bare entry).
+    pub at:    CellLevel,
+    /// The terrain piece KEY — the filename stem of an `assets/terrain/*.terrain.ron`
+    /// (e.g. `"deck_slab"`), resolved against the
+    /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle) into the [`SlabPieceSpec`](crate::terrain::piece::SlabPieceSpec)
+    /// that seeds this slab's structural HP/armor in both the
+    /// [`SlabLedger`](crate::slab::SlabLedger) and the spawned terrain entity
+    /// (GTW-395/396 — per-slab authored HP, not uniform tuning). A key absent from
+    /// the registry is a handled
+    /// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError::TerrainNotFound)
+    /// error (no panic).
+    pub piece: TerrainName,
+}
+
+impl SlabSpawn {
+    /// Build a slab spawn from its cell + terrain piece key.
     #[must_use]
-    pub const fn cover_entry(&self) -> CoverEntry {
-        CoverEntry::seeded(
-            self.cover_hp,
-            self.height_band,
-            self.armor_protection,
-            self.armor_hardness,
-        )
+    pub const fn new(at: CellLevel, piece: TerrainName) -> Self {
+        Self { at, piece }
+    }
+}
+
+/// One authored per-cell floor override — a `(cell, level)` paired with a terrain
+/// piece KEY that gives it a different move cost than the situation's
+/// [`default_floor`](Situation::default_floor).
+///
+/// GTW-396 Decision B: the [`Situation`] carries a sparse `floors` list for cells
+/// whose floor cost deviates from the default. An empty `floors` list (the common
+/// case — a uniform floor) is the cheapest authored state and the `#[serde(default)]`
+/// for this field.
+///
+/// Derives [`Deserialize`] so an authored situation `.ron` writes each override as
+/// `(at: (cell: …, level: …), piece: "…")`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+pub struct FloorSpawn {
+    /// The `(cell, level)` with a non-default floor cost.
+    pub at:    CellLevel,
+    /// The terrain piece KEY (must resolve to a
+    /// [`TerrainKindSpec::Floor`](crate::terrain::piece::TerrainKindSpec::Floor) variant)
+    /// giving this cell its move cost.
+    pub piece: TerrainName,
+}
+
+impl FloorSpawn {
+    /// Build a floor spawn from its cell + terrain piece key.
+    #[must_use]
+    pub const fn new(at: CellLevel, piece: TerrainName) -> Self {
+        Self { at, piece }
     }
 }
 
 /// The canonical authored **situation** — the full generated / authored
 /// battlefield the battle is built from: gangers, walls, scatter, upper-floor
-/// slabs, and stair/ladder vertical links (this [`crate::situation`] module is the
-/// setup-on-entry source of truth).
+/// slabs, stair/ladder vertical links, and the floor cost surface (this
+/// [`crate::situation`] module is the setup-on-entry source of truth).
 ///
 /// This is the ONE situation type: it supersedes the GTW-156 placeholder (now
 /// [`crate::occupancy::OccupancyInput`], the grid construction input) and GTW-160's
 /// `vertical_links` extension (moved here). [`setup_battle`](crate::situation::setup_battle)
 /// reads it to build the battle in the ECS world.
+///
+/// GTW-396 migration (schema change): `walls`/`scatter` entries now carry a terrain
+/// piece KEY ([`CoverSpawn::piece`]) instead of inline stats; `slabs` entries are now
+/// [`SlabSpawn`] structs carrying a piece KEY alongside their `at` cell (replacing the
+/// old `Vec<CellLevel>` bare list); `default_floor` names the walkable floor piece for
+/// all open cells; `floors` gives sparse per-cell floor overrides.
 ///
 /// Derives [`Deserialize`] (GTW-205 / E10.3) so an authored battlefield ships as a
 /// loose `.ron` file loaded through the `RonAsset<T>` loader — render-free and
@@ -224,12 +273,15 @@ pub struct Situation {
     /// The authored gangers, each a [`GangerSpawn`] (placement + component values +
     /// roster armor).
     pub gangers:        Vec<GangerSpawn>,
-    /// The authored walls (each a [`CoverSpawn`]).
+    /// The authored walls (each a [`CoverSpawn`] — `at` + piece KEY).
     pub walls:          Vec<CoverSpawn>,
     /// The authored scatter / props (each a [`CoverSpawn`], same schema as a wall).
     pub scatter:        Vec<CoverSpawn>,
-    /// The `(cell, level)`s that carry a present floor / roof slab.
-    pub slabs:          Vec<CellLevel>,
+    /// The authored floor / roof slabs (each a [`SlabSpawn`] — `at` + piece KEY).
+    /// GTW-396: was `Vec<CellLevel>`; now `Vec<SlabSpawn>` so each slab carries its
+    /// terrain piece KEY for per-slab HP/armor resolution against the
+    /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry).
+    pub slabs:          Vec<SlabSpawn>,
     /// The authored stair / ladder vertical links (E1.10 / GTW-160), moved here
     /// from the GTW-156 placeholder. The only way a ganger changes storey
     /// (`docs/combat/combat.md`).
@@ -243,6 +295,22 @@ pub struct Situation {
     /// authored `player_faction: 1` parses as the bare gang index
     /// ([`Faction`] is `#[serde(transparent)]`).
     pub player_faction: Faction,
+    /// The default floor terrain piece KEY — the filename stem (without the
+    /// `.terrain.ron` infix) of an `assets/terrain/*.terrain.ron` that is a
+    /// [`TerrainKindSpec::Floor`](crate::terrain::piece::TerrainKindSpec::Floor)
+    /// variant. Applied to every walkable open cell not overridden by [`floors`](Situation::floors).
+    ///
+    /// `#[serde(default)]` supplies the empty string sentinel (`TerrainName::default()`
+    /// — [`TerrainName::is_empty`]) for any authored file that omits the field, so
+    /// every EXISTING situation `.ron` remains parse-valid.  An empty default skips
+    /// `FloorCostGrid` construction from the registry (the sim falls back to seeding it
+    /// from `CombatTuning::move_costs.open`, preserving the pre-GTW-396 behavior for
+    /// test fixtures and situations that haven't migrated yet).
+    pub default_floor:  TerrainName,
+    /// Sparse per-cell floor piece overrides — cells whose floor cost differs from
+    /// [`default_floor`](Situation::default_floor).
+    /// `#[serde(default)]` gives an empty list (the common case: uniform floor).
+    pub floors:         Vec<FloorSpawn>,
 }
 
 impl Situation {
@@ -266,6 +334,6 @@ impl Situation {
             .iter()
             .map(|c| c.at)
             .chain(self.scatter.iter().map(|c| c.at))
-            .chain(self.slabs.iter().copied())
+            .chain(self.slabs.iter().map(|s| s.at))
     }
 }

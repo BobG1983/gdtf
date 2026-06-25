@@ -167,6 +167,10 @@ fn dangling_link_fixture_yields_the_typed_error() {
     let registry = weapon_registry();
     let armor = armor_registry();
     let stat_tuning = GangerStatTuning::default();
+    // GTW-396: pass `terrain: None` and the fallback floor cost — the dangling-link
+    // fixture uses SituationBuilder with no terrain keys, so no registry is needed;
+    // the terrain-registry path is exercised by the shipped-situation AC5 test.
+    let fallback_floor_cost = crate::tuning::CombatTuning::default().move_costs.open;
     let mut world = World::new();
     let result = world.run_system_once(move |mut commands: Commands| {
         setup_battle(
@@ -174,13 +178,8 @@ fn dangling_link_fixture_yields_the_typed_error() {
             &registry,
             &armor,
             &stat_tuning,
-            crate::slab::SlabLedger::prototype_for(
-                crate::metric::CellLevel::new(
-                    crate::metric::Cell::new(0, 0),
-                    crate::metric::Level::new(0),
-                ),
-                &crate::tuning::SlabDefaults::default(),
-            ),
+            None,
+            fallback_floor_cost,
             &mut commands,
         )
     });

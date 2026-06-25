@@ -3,10 +3,10 @@
 //! 8-connected planar neighbours a ganger can step to from a `(cell, level)`,
 //! each priced at its step cost.
 //!
-//! This is a PURE function over the existing grid + the move-cost table — no new
-//! traversal state, no new resource, no `&mut World`. It is one half of the
-//! neighbour model ADR-0005 (Accepted) ratifies; the cross-storey other half is
-//! GTW-351's [`traversable_links`](crate::vertical::traversable_links), and the
+//! This is a PURE function over the existing grid + the [`FloorCostGrid`] —
+//! no new traversal state, no new resource, no `&mut World`. It is one half of
+//! the neighbour model ADR-0005 (Accepted) ratifies; the cross-storey other half
+//! is GTW-351's [`traversable_links`](crate::vertical::traversable_links), and the
 //! two are deliberately shaped the same way (each yields `(CellLevel, `[`Tu`]`)`
 //! edges) so the route core (GTW-352) can consume a single edge interface.
 //!
@@ -24,14 +24,24 @@
 //!
 //! Scope: same-storey planar adjacency + step cost ONLY. Cross-storey hops are
 //! GTW-351; route assembly (search over these edges) is GTW-352.
+//!
+//! ## GTW-396 cost-seam change
+//!
+//! The step cost is now read from [`FloorCostGrid::cost`] for the DESTINATION cell
+//! instead of `move_costs.cost(grid.terrain(&neighbour))`. This replaces the coarse
+//! per-[`TerrainKind`] table (open=4, cover=6, wall=8) with the per-cell authored
+//! floor cost the situation's `default_floor` / `floors` list supplies.
+//! Walls and standing cover are still blocked by [`OccupancyGrid::is_blocked`] —
+//! their `FloorCostGrid` entries (if any) are never reached as walkable destinations.
 
 use std::f32::consts::SQRT_2;
 
 use crate::{
     ganger::Tu,
     metric::{Cell, CellLevel, Level},
-    occupancy::{OccupancyGrid, TerrainKind},
-    tuning::MoveCosts,
+    occupancy::OccupancyGrid,
+    terrain::floor::FloorCostGrid,
+    tuning::MoveCost,
 };
 
 /// The eight planar `(dx, dy)` step offsets of an 8-connected neighbourhood, in
@@ -59,54 +69,32 @@ const PLANAR_OFFSETS: [(i32, i32); 8] = [
 /// IN-BOUNDS and NOT blocked, each paired with the [`Tu`] cost of stepping ONTO it
 /// (C1).
 ///
-/// A PURE read over the [`OccupancyGrid`] (and the [`MoveCosts`] table for the
-/// step price) — no `&mut World`, no system, no RNG. It enumerates the eight
-/// orthogonal + diagonal planar offsets of `origin` (ADR-0005's ratified
-/// 8-connected adjacency), keeps the walkable ones, prices each, and yields them in
-/// the canonical `(z, y, x)` cell-key order.
+/// A PURE read over the [`OccupancyGrid`] (and the [`FloorCostGrid`] for the step
+/// price) — no `&mut World`, no system, no RNG. It enumerates the eight orthogonal +
+/// diagonal planar offsets of `origin` (ADR-0005's ratified 8-connected adjacency),
+/// keeps the walkable ones, prices each from the [`FloorCostGrid`], and yields them
+/// in the canonical `(z, y, x)` cell-key order.
 ///
-/// **Signature — AC1 vs AC5 reconciled to `(CellLevel, `[`Tu`]`)`.** The ticket's
-/// AC1 sketches `-> impl Iterator<Item = CellLevel>` while AC5 adds the octile step
-/// COST. Rather than split the cost into a sibling function, the cost is BUNDLED
-/// into each yielded edge, mirroring GTW-351's
-/// [`traversable_links`](crate::vertical::traversable_links) (which yields
-/// `(CellLevel, `[`Tu`]`)`). This gives the route core (GTW-352) ONE uniform
-/// `(neighbour, cost)` edge interface across planar steps and vertical hops, so the
-/// search relaxes both edge kinds identically — the reason the ticket prefers
-/// bundling.
+/// **Step cost (C2, GTW-396).** The price of a step is a function of the ENTERED
+/// cell's floor cost from [`FloorCostGrid::cost`] — NOT the coarse per-kind
+/// `MoveCosts` table. This is the GTW-396 Decision B / C1 rewire:
 ///
-/// **Step cost (C2).** The price of a step is a function of the ENTERED cell's
-/// terrain move cost (looked up via [`MoveCosts::cost`] on the destination's
-/// [`TerrainKind`]):
-///
-/// - **Orthogonal** (N/E/S/W) — the entered cell's `move_cost` unchanged.
+/// - **Orthogonal** (N/E/S/W) — the entered cell's `floor_costs.cost(&neighbour)` unchanged.
 /// - **Diagonal** (the four corners) — the OCTILE approximation
-///   `round(move_cost × √2)` as an integer [`Tu`] (e.g. open `4 → round(5.66) = 6`,
-///   cover `6 → round(8.49) = 8`, matching the ADR-0005 example). Derived from the
-///   existing `move_cost` and the ratified `√2` factor — NOT a new tunable. The
-///   rounding is `f32::round` (round-half-away-from-zero) on the `move_cost × √2`
-///   product, then narrowed to the `u8` [`Tu`] inner.
+///   `round(move_cost × √2)` as an integer [`Tu`] (e.g. default floor `4 → round(5.66) = 6`,
+///   matching the ADR-0005 example). The rounding is `f32::round`
+///   (round-half-away-from-zero), then narrowed to the `u8` [`Tu`] inner.
 ///
 /// **No corner-cutting (C3, `AT_LEAST_ONE_WALKABLE`).** A diagonal step is
 /// EXCLUDED if BOTH of its two shared-edge orthogonal neighbours are blocked — a
 /// unit cannot "phase" diagonally through the corner where two blocked cells meet.
-/// For a `(dx, dy)` diagonal the two shared-edge orthogonals are the `(dx, 0)` and
-/// `(0, dy)` cells; if both are [`is_blocked`](OccupancyGrid::is_blocked) the
-/// diagonal is dropped (an orthogonal step is never corner-cut, so this gate
-/// applies to diagonals only).
 ///
 /// **Walkability (C4).** A neighbour is included iff it is IN-BOUNDS and
 /// [`is_blocked`](OccupancyGrid::is_blocked) returns `false` — which already treats
-/// a DESTROYED-cover cell as walkable (the grid's destroyed-cover exclusion set) and
-/// excludes standing walls / cover. Out-of-bounds offsets are dropped (the grid's
-/// graceful bounds check: an out-of-range cell reads as un-blocked but is never
-/// in-bounds, so it is filtered out explicitly here).
+/// a DESTROYED-cover cell as walkable and excludes standing walls / cover.
 ///
 /// **Determinism (C5).** Neighbours are yielded in the canonical `(z, y, x)`
-/// cell-key order — the same total order [`auto_select`] uses — by iterating
-/// [`PLANAR_OFFSETS`] (which is pre-sorted in that order for a same-storey
-/// neighbourhood), so two replays over the same grid emit byte-identical edge
-/// sequences.
+/// cell-key order by iterating [`PLANAR_OFFSETS`] (pre-sorted).
 ///
 /// An `origin` whose neighbours are all blocked / out-of-bounds yields an empty
 /// iterator (never a panic). This is the planar GATE + cost only — it does not
@@ -116,7 +104,7 @@ const PLANAR_OFFSETS: [(i32, i32); 8] = [
 pub fn pathable_neighbors<'a>(
     origin: CellLevel,
     grid: &'a OccupancyGrid,
-    move_costs: &'a MoveCosts,
+    floor_costs: &'a FloorCostGrid,
 ) -> impl Iterator<Item = (CellLevel, Tu)> + 'a {
     // The origin's storey — every planar neighbour shares it (same-storey, dz = 0).
     let level = origin.z;
@@ -134,9 +122,9 @@ pub fn pathable_neighbors<'a>(
         if diagonal && corner_is_cut(origin, level, dx, dy, grid) {
             return None;
         }
-        // C2: the entered cell's terrain move cost; diagonals pay the octile
-        // `round(move_cost × √2)`, orthogonals pay it unchanged.
-        let cost = step_cost(grid.terrain(&neighbour), *move_costs, diagonal);
+        // C2 (GTW-396): the entered cell's floor cost from FloorCostGrid;
+        // diagonals pay the octile `round(move_cost × √2)`, orthogonals unchanged.
+        let cost = step_cost(floor_costs.cost(&neighbour), diagonal);
         Some((neighbour, cost))
     })
 }
@@ -175,18 +163,15 @@ fn corner_is_cut(origin: CellLevel, level: i32, dx: i32, dy: i32, grid: &Occupan
     grid.is_blocked(&side_a) && grid.is_blocked(&side_b)
 }
 
-/// The [`Tu`] cost of stepping onto a cell of terrain `terrain` — orthogonal pays
-/// the entered cell's [`MoveCost`](crate::tuning::MoveCost) unchanged, a `diagonal`
-/// pays the OCTILE `round(move_cost × √2)` (C2).
+/// The [`Tu`] cost of stepping onto a cell with floor cost `floor_cost` — orthogonal
+/// pays `floor_cost` unchanged; a `diagonal` pays the OCTILE `round(floor_cost × √2)`.
 ///
-/// The single cost seam: it looks the entered cell's per-terrain cost up via
-/// [`MoveCosts::cost`], then — for a diagonal — multiplies by [`SQRT_2`] and
-/// rounds. The rounding is `f32::round` (round-half-away-from-zero) on the
-/// `move_cost × √2` product, narrowed back to the `u8` the [`Tu`] inner carries
-/// (`open 4 → 6`, `cover 6 → 8`, per ADR-0005). Derived from the existing
-/// `move_cost` and the ratified `√2` factor — NOT a new tunable.
-fn step_cost(terrain: TerrainKind, move_costs: MoveCosts, diagonal: bool) -> Tu {
-    let orthogonal = *move_costs.cost(terrain);
+/// GTW-396 Decision B / C1: the cost is now fed directly as a [`MoveCost`] from
+/// [`FloorCostGrid::cost`] at the call site, rather than looked up via
+/// `move_costs.cost(terrain)` — the caller passes the resolved per-cell cost. The
+/// octile math is unchanged: `f32::round(move_cost × √2)`, narrowed to `u8`.
+fn step_cost(floor_cost: MoveCost, diagonal: bool) -> Tu {
+    let orthogonal = *floor_cost;
     if !diagonal {
         return Tu::new(orthogonal);
     }

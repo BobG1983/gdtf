@@ -18,6 +18,9 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
     // A minimal-but-complete authored situation: one of every section. The
     // single vertical link's endpoints are authored slabs on different storeys
     // (non-dangling, cross-storey), so the value is setup-able.
+    // GTW-396: walls/scatter use the new `piece` key schema (no inline stats);
+    // slabs use the new `SlabSpawn { at, piece }` schema; `default_floor` and
+    // `floors` are the new GTW-396 floor fields.
     let authored = "(
         gangers: [(
             at: (cell: (x: 0, y: 0), level: 0),
@@ -29,22 +32,22 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
             weapon: \"stub_pistol\",
         )],
         walls: [(
-            at: (cell: (x: 1, y: 1), level: 0), terrain: Wall, cover_hp: 50,
-            height_band: High, armor_protection: 4, armor_hardness: 2,
+            at: (cell: (x: 1, y: 1), level: 0), piece: \"test-wall\",
         )],
         scatter: [(
-            at: (cell: (x: 2, y: 2), level: 0), terrain: Cover, cover_hp: 10,
-            height_band: Low, armor_protection: 1, armor_hardness: 0,
+            at: (cell: (x: 2, y: 2), level: 0), piece: \"test-cover\",
         )],
         slabs: [
-            (cell: (x: 3, y: 3), level: 0),
-            (cell: (x: 3, y: 3), level: 1),
+            (at: (cell: (x: 3, y: 3), level: 0), piece: \"test-slab\"),
+            (at: (cell: (x: 3, y: 3), level: 1), piece: \"test-slab\"),
         ],
         vertical_links: [(
             from: (cell: (x: 3, y: 3), level: 0),
             to: (cell: (x: 3, y: 3), level: 1),
             kind: Stair(one_way: false),
         )],
+        default_floor: \"test-floor\",
+        floors: [],
     )";
 
     let parsed = ron::de::from_str::<Situation>(authored);
@@ -145,9 +148,14 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
     let Some(armor) = shipped_armor_registry() else {
         return;
     };
+    // GTW-396: the shipped skirmish.ron now references terrain piece keys; supply the
+    // shipped terrain registry so cover/slab/floor keys resolve correctly.
+    let Some(terrain) = shipped_terrain_registry() else {
+        return;
+    };
     let authored_ganger_count = situation.gangers.len();
 
-    let Some((mut app, setup)) = run_setup_with(situation, registry, armor) else {
+    let Some((mut app, setup)) = run_setup_with(situation, registry, armor, Some(&terrain)) else {
         return;
     };
 

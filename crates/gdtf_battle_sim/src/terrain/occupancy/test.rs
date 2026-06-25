@@ -5,6 +5,7 @@ use crate::{
     cover::HeightBand,
     ganger::Tu,
     metric::{Cell, CellLevel, Level, MAX_LEVELS},
+    terrain::floor::FloorCostGrid,
     tuning::{MoveCost, MoveCosts},
 };
 
@@ -300,27 +301,35 @@ fn grid_with(terrain: &[(CellLevel, TerrainKind)]) -> OccupancyGrid {
     grid
 }
 
+/// The default [`FloorCostGrid`] for the occupancy tests — a uniform grid seeded from
+/// the default [`MoveCosts::open`] value. Keeps the neighbour-cost tests consistent
+/// with the pre-GTW-396 `MoveCosts::default()` expectations (every cell costs `open`).
+fn default_floor_costs() -> FloorCostGrid {
+    FloorCostGrid::new(MoveCosts::default().open, [])
+}
+
 /// Collect `pathable_neighbors` into a `Vec` of `(cell, cost)` for assertions,
 /// reducing each [`CellLevel`] to its `(x, y, level)` triple so the relations
-/// read clearly.
+/// read clearly. GTW-396: takes `&FloorCostGrid` instead of `MoveCosts`.
 fn neighbours_of(
     origin: CellLevel,
     grid: &OccupancyGrid,
-    costs: MoveCosts,
+    floor_costs: &FloorCostGrid,
 ) -> Vec<((i32, i32, i32), Tu)> {
-    pathable_neighbors(origin, grid, &costs)
+    pathable_neighbors(origin, grid, floor_costs)
         .map(|(cell, cost)| ((cell.x, cell.y, cell.z), cost))
         .collect()
 }
 
 /// Whether `cell` appears among the enumerated neighbours of `origin`.
+/// GTW-396: takes `&FloorCostGrid` instead of `MoveCosts`.
 fn yields_neighbour(
     origin: CellLevel,
     target: CellLevel,
     grid: &OccupancyGrid,
-    costs: MoveCosts,
+    floor_costs: &FloorCostGrid,
 ) -> bool {
-    pathable_neighbors(origin, grid, &costs).any(|(cell, _)| cell == target)
+    pathable_neighbors(origin, grid, floor_costs).any(|(cell, _)| cell == target)
 }
 
 /// C2/C4 — on an entirely OPEN grid an interior cell has all EIGHT 8-connected
@@ -329,10 +338,10 @@ fn yields_neighbour(
 #[test]
 fn open_interior_cell_has_all_eight_planar_neighbours() {
     let grid = OccupancyGrid::new(); // all Open
-    let costs = MoveCosts::default();
+    let floor_costs = default_floor_costs();
     let origin = key(5, 5, 0);
 
-    let cells: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, costs)
+    let cells: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, &floor_costs)
         .into_iter()
         .map(|(cell, _)| cell)
         .collect();
@@ -373,15 +382,15 @@ fn open_interior_cell_has_all_eight_planar_neighbours() {
 fn blocked_neighbour_excluded_open_included() {
     let blocked = key(6, 5, 0); // due east of the origin
     let grid = grid_with(&[(blocked, TerrainKind::Wall)]);
-    let costs = MoveCosts::default();
+    let floor_costs = default_floor_costs();
     let origin = key(5, 5, 0);
 
     assert!(
-        !yields_neighbour(origin, blocked, &grid, costs),
+        !yields_neighbour(origin, blocked, &grid, &floor_costs),
         "a standing wall neighbour must be excluded (C4)",
     );
     assert!(
-        yields_neighbour(origin, key(4, 5, 0), &grid, costs),
+        yields_neighbour(origin, key(4, 5, 0), &grid, &floor_costs),
         "an open neighbour must be included (C4)",
     );
 }
@@ -393,18 +402,18 @@ fn blocked_neighbour_excluded_open_included() {
 fn destroyed_cover_neighbour_is_walkable() {
     let cover = key(6, 5, 0);
     let mut grid = grid_with(&[(cover, TerrainKind::Cover)]);
-    let costs = MoveCosts::default();
+    let floor_costs = default_floor_costs();
     let origin = key(5, 5, 0);
 
     // Standing cover blocks → excluded.
     assert!(
-        !yields_neighbour(origin, cover, &grid, costs),
+        !yields_neighbour(origin, cover, &grid, &floor_costs),
         "a standing cover neighbour must be excluded (C4)",
     );
     // Destroyed cover is walkable → included.
     grid.mark_cover_destroyed(cover);
     assert!(
-        yields_neighbour(origin, cover, &grid, costs),
+        yields_neighbour(origin, cover, &grid, &floor_costs),
         "a destroyed-cover neighbour must be walkable (C4)",
     );
 }
@@ -415,10 +424,10 @@ fn destroyed_cover_neighbour_is_walkable() {
 #[test]
 fn out_of_bounds_neighbours_excluded() {
     let grid = OccupancyGrid::new();
-    let costs = MoveCosts::default();
+    let floor_costs = default_floor_costs();
     let origin = key(0, 0, 0);
 
-    let cells: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, costs)
+    let cells: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, &floor_costs)
         .into_iter()
         .map(|(cell, _)| cell)
         .collect();
@@ -446,12 +455,12 @@ fn diagonal_present_when_one_shared_edge_walkable() {
     // Diagonal NE of the origin is (6, 6, 0); its shared-edge orthogonals are
     // (6, 5, 0) and (5, 6, 0). Block only ONE of them.
     let grid = grid_with(&[(key(6, 5, 0), TerrainKind::Wall)]);
-    let costs = MoveCosts::default();
+    let floor_costs = default_floor_costs();
     let origin = key(5, 5, 0);
     let diagonal = key(6, 6, 0);
 
     assert!(
-        yields_neighbour(origin, diagonal, &grid, costs),
+        yields_neighbour(origin, diagonal, &grid, &floor_costs),
         "a diagonal must survive when one shared-edge orthogonal is walkable (C3)",
     );
 }
@@ -466,7 +475,7 @@ fn diagonal_absent_when_both_shared_edges_blocked() {
         (key(6, 5, 0), TerrainKind::Wall),
         (key(5, 6, 0), TerrainKind::Wall),
     ]);
-    let costs = MoveCosts::default();
+    let floor_costs = default_floor_costs();
     let origin = key(5, 5, 0);
     let diagonal = key(6, 6, 0);
 
@@ -477,34 +486,35 @@ fn diagonal_absent_when_both_shared_edges_blocked() {
     );
     // … yet the step is illegal — both shared-edge orthogonals are blocked (C3).
     assert!(
-        !yields_neighbour(origin, diagonal, &grid, costs),
+        !yields_neighbour(origin, diagonal, &grid, &floor_costs),
         "no corner-cutting: a diagonal between two blocked cells is excluded (C3)",
     );
 }
 
-/// C2 — the orthogonal step cost is the ENTERED cell's terrain `move_cost`, and
-/// the diagonal step cost is the OCTILE `round(move_cost × √2)`. Asserted by the
-/// DERIVATION over ARBITRARY terrain costs (NOT the shipped defaults): build a
-/// custom [`MoveCosts`] table, then check each yielded cost against the relation.
+/// C2 — the orthogonal step cost is the ENTERED cell's floor cost, and the diagonal
+/// step cost is the OCTILE `round(floor_cost × √2)`. Asserted by the DERIVATION over
+/// ARBITRARY floor costs (NOT the shipped defaults): build a custom [`FloorCostGrid`]
+/// with the desired default, then check each yielded cost against the relation.
+///
+/// GTW-396 Decision B / C1: the cost comes from `FloorCostGrid::cost` for the ENTERED
+/// cell, NOT from `move_costs.cost(terrain)` — this test is the correctness pin for
+/// that seam.
 #[test]
 fn step_cost_orthogonal_is_terrain_diagonal_is_octile() {
     use std::f32::consts::SQRT_2;
 
-    // Arbitrary, NON-default terrain costs — the relation must hold for ANY cost,
-    // so we pin the DERIVATION, never a shipped magnitude (C6).
+    // Arbitrary, NON-default floor cost — the relation must hold for ANY cost,
+    // so we pin the DERIVATION, never a shipped magnitude (C6). Build a FloorCostGrid
+    // with that cost as the uniform default (all cells same price).
     let open_cost = 7u8;
-    let costs = MoveCosts {
-        open:  MoveCost::new(open_cost),
-        cover: MoveCost::new(11),
-        wall:  MoveCost::new(13),
-    };
-    let grid = OccupancyGrid::new(); // all Open, so every step enters Open terrain
+    let floor_costs = FloorCostGrid::new(MoveCost::new(open_cost), []);
+    let grid = OccupancyGrid::new(); // all Open, so every step enters an unoverridden cell
     let origin = key(5, 5, 0);
 
     let orthogonal = key(6, 5, 0); // due east — an orthogonal step
     let diagonal = key(6, 6, 0); // NE — a diagonal step
 
-    let edges = neighbours_of(origin, &grid, costs);
+    let edges = neighbours_of(origin, &grid, &floor_costs);
     let ortho_cost = edges
         .iter()
         .find(|(cell, _)| *cell == (orthogonal.x, orthogonal.y, orthogonal.z))
@@ -550,10 +560,10 @@ fn step_cost_orthogonal_is_terrain_diagonal_is_octile() {
 #[test]
 fn neighbour_order_is_z_y_x_sorted() {
     let grid = OccupancyGrid::new();
-    let costs = MoveCosts::default();
+    let floor_costs = default_floor_costs();
     let origin = key(5, 5, 0);
 
-    let cells: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, costs)
+    let cells: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, &floor_costs)
         .into_iter()
         .map(|(cell, _)| cell)
         .collect();
@@ -567,7 +577,7 @@ fn neighbour_order_is_z_y_x_sorted() {
     );
 
     // Replay-stable: a second enumeration is byte-identical.
-    let again: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, costs)
+    let again: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, &floor_costs)
         .into_iter()
         .map(|(cell, _)| cell)
         .collect();
@@ -593,10 +603,10 @@ fn fully_walled_origin_yields_no_neighbours() {
     .map(|(x, y)| (key(x, y, 0), TerrainKind::Wall))
     .collect();
     let grid = grid_with(&walls);
-    let costs = MoveCosts::default();
+    let floor_costs = default_floor_costs();
 
     assert_eq!(
-        neighbours_of(key(5, 5, 0), &grid, costs).len(),
+        neighbours_of(key(5, 5, 0), &grid, &floor_costs).len(),
         0,
         "an origin walled on all sides has no pathable neighbours",
     );

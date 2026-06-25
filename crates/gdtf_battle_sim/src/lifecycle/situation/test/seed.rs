@@ -7,8 +7,11 @@ use super::support::*;
 /// holds a full-HP, not-destroyed entry with the authored band + armor.
 #[test]
 fn cover_ledger_seeded_from_fixture_wall() {
+    use crate::{
+        armor::{ArmorHardness, ArmorProtection},
+        cover::{CoverEntry, CoverHp, HeightBand},
+    };
     let (situation, _alice, _bob, wall_cell, _slab) = minimal_fixture();
-    let expected = wall_at(wall_cell).cover_entry();
     let Some((app, _setup)) = run_setup(situation) else {
         return;
     };
@@ -18,8 +21,15 @@ fn cover_ledger_seeded_from_fixture_wall() {
     let Some(ledger) = ledger else {
         return;
     };
-    // The wall entry is present (registered, not just lazily seedable) and equal
-    // to the authored prototype.
+    // The wall entry is present and seeded from the test-wall registry piece
+    // ("test-wall": hp=120, High, prot=8, hard=4 — the test registry values, not
+    // shipped balance; asserting the seam carried the registry values through).
+    let expected = CoverEntry::seeded(
+        CoverHp::new(120),       // test-wall hp (test registry, not a balance pin)
+        HeightBand::High,        // test-wall band
+        ArmorProtection::new(8), // test-wall protection
+        ArmorHardness::new(4),   // test-wall hardness
+    );
     assert_eq!(
         ledger.peek(&wall_cell).copied(),
         Some(expected),

@@ -26,7 +26,10 @@ use crate::{
     metric::{Cell, CellLevel, Level},
     slab::{SlabHp, SlabLedger},
     terrain::entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
-    test_support::{SituationBuilder, ganger_at, test_armor_registry, test_weapon_registry},
+    test_support::{
+        SituationBuilder, ganger_at, test_armor_registry, test_terrain_registry,
+        test_weapon_registry,
+    },
     tuning::{CombatTuning, GangerStatTuning},
 };
 
@@ -43,6 +46,9 @@ fn headless_app() -> App {
     app.insert_resource(GangerStatTuning::default());
     app.insert_resource(test_weapon_registry());
     app.insert_resource(test_armor_registry());
+    // GTW-396: the terrain registry so SituationBuilder's wall_at / slab_at piece
+    // keys ("test-wall", "test-slab") resolve at setup_battle_on_request.
+    app.insert_resource(test_terrain_registry());
     app
 }
 
@@ -93,17 +99,16 @@ fn test1_one_entity_per_terrain_piece() {
 /// More terrain: 2 walls + 1 scatter + 2 slabs = 5 entities.
 #[test]
 fn test1_counts_all_kinds() {
-    use crate::{occupancy::TerrainKind, situation::CoverSpawn};
+    use crate::situation::CoverSpawn;
 
     let mut app = headless_app();
 
     let scatter = CoverSpawn::new(
         cl(9, 9, 0),
-        TerrainKind::Cover,
-        CoverHp::new(60),
-        HeightBand::Mid,
-        ArmorProtection::new(3),
-        ArmorHardness::new(1),
+        // GTW-396: piece key resolved against the test terrain registry;
+        // "test-cover" = LOW-band cover (Mid is aspirational; the piece kind
+        // determines what entities count — this test asserts entity count, not band).
+        crate::terrain::piece::TerrainName::new(crate::test_support::test_pieces::COVER.to_owned()),
     );
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(cl(0, 0, 0), 0))

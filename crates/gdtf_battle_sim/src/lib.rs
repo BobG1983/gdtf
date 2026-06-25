@@ -324,15 +324,17 @@ pub use lifecycle::{
     },
     situation,
     situation::{
-        BattleSetup, BattleSetupError, CoverSpawn, GangerSpawn, Situation, has_stacked_gangers,
-        setup_battle,
+        BattleSetup, BattleSetupError, CoverSpawn, FloorSpawn, GangerSpawn, Situation, SlabSpawn,
+        has_stacked_gangers, setup_battle,
     },
 };
 pub use perception::{
     los,
     los::{CanSee, Observer, Sighted, Target, can_see, has_los},
     pathfinder,
-    pathfinder::{Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within},
+    pathfinder::{
+        MIN_MOVE_COST, Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within,
+    },
     visibility,
     visibility::{
         FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible,
@@ -374,6 +376,8 @@ pub use terrain::{
     },
     entity,
     entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
+    floor,
+    floor::FloorCostGrid,
     occupancy,
     occupancy::{
         DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,

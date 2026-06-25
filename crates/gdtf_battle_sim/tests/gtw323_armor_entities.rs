@@ -89,8 +89,13 @@ fn battle_app() -> Option<(App, BattleSetup)> {
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     let registry = test_weapon_registry();
     let armor = test_armor_registry();
+    let terrain = gdtf_battle_sim::test_support::test_terrain_registry();
     // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
     let stat_tuning = GangerStatTuning::default();
+    // GTW-396: fallback floor cost (no default_floor authored in test fixtures).
+    let fallback_floor_cost = gdtf_battle_sim::tuning::CombatTuning::default()
+        .move_costs
+        .open;
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -99,13 +104,8 @@ fn battle_app() -> Option<(App, BattleSetup)> {
                 &registry,
                 &armor,
                 &stat_tuning,
-                gdtf_battle_sim::slab::SlabLedger::prototype_for(
-                    gdtf_battle_sim::metric::CellLevel::new(
-                        gdtf_battle_sim::metric::Cell::new(0, 0),
-                        gdtf_battle_sim::metric::Level::new(0),
-                    ),
-                    &gdtf_battle_sim::tuning::SlabDefaults::default(),
-                ),
+                Some(&terrain),
+                fallback_floor_cost,
                 &mut commands,
             )
         });

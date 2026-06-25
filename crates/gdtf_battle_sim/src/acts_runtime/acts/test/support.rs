@@ -35,6 +35,7 @@ pub(super) use crate::{
     shot_fired::ShotFired,
     slab::SlabLedger,
     surface::SurfaceGrid,
+    terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
@@ -77,14 +78,21 @@ pub(super) fn full_vision() -> SquadVisibility {
 
 /// Insert the shared sim resources a dispatch system reads — the three grids, the empty
 /// [`VerticalLinkGraph`], a full-vision [`SquadVisibility`], the [`PlayerFaction`] seed,
-/// a seeded [`SimRng`], and [`CombatTuning::default`]. The grids are inserted EMPTY by
-/// default; a test mutates them via `app.world_mut()` before the run.
+/// a seeded [`SimRng`], [`CombatTuning::default`], and the [`FloorCostGrid`] (GTW-396
+/// Decision B — seeded uniform at the default open cost so the adjacent-cell move tests
+/// keep their existing cost semantics). The grids are inserted EMPTY by default; a test
+/// mutates them via `app.world_mut()` before the run.
 ///
 /// GTW-354: the move dispatch now reads `Res<VerticalLinkGraph>` / `Res<SquadVisibility>`
 /// / `Res<PlayerFaction>` for its route gate, so the harness seeds them — a full-vision
 /// fog and an empty link graph keep the planar adjacent-cell move tests routing on
 /// geometry/occupancy alone.
 pub(super) fn insert_sim_resources(app: &mut App) {
+    let tuning = CombatTuning::default();
+    // GTW-396: seed a uniform FloorCostGrid at the default open cost; the test harness
+    // does not have a TerrainRegistry, so we build the grid directly with the same move
+    // cost the pre-GTW-396 tests expected. The dispatch system reads `Res<FloorCostGrid>`.
+    let floor_costs = FloorCostGrid::new(tuning.move_costs.open, []);
     app.insert_resource(OccupancyGrid::new());
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(CoverLedger::new());
@@ -94,7 +102,8 @@ pub(super) fn insert_sim_resources(app: &mut App) {
     app.insert_resource(full_vision());
     app.insert_resource(PlayerFaction::new(Faction::new(TEST_PLAYER_GANG)));
     app.insert_resource(SimRng::from_seed(BattleSeed::new(SEED)));
-    app.insert_resource(CombatTuning::default());
+    app.insert_resource(tuning);
+    app.insert_resource(floor_costs);
 }
 
 /// Build a headless app: [`MinimalPlugins`] (no window / renderer) + [`SimActsPlugin`]

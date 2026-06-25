@@ -10,25 +10,33 @@ use bevy::{
     },
 };
 
+use super::terrain_resolve::{
+    ResolvedCoverPiece, ResolvedSlabPiece, resolve_cover_spec, resolve_floor_costs,
+    resolve_slab_spec, resolve_terrain_or_err,
+};
 use crate::{
     armor::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorRegistry, ArmorSpec,
         BodyPart, Wears,
     },
     clearance::silhouette_band,
-    cover::CoverLedger,
+    cover::{CoverEntry, CoverLedger},
     ganger::{
         Aim, Aiming, Bottle, Cool, Facing, Faction, Fight, GangerAttributes, GangerName, Grit, Hp,
         HpMax, Luck, Morale, Position, Reactions, Reflexes, Shooting, Speed, Stance, Strength,
         Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
     },
     inflicted_wound::InflictedWounds,
-    occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainPlacement},
+    occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind, TerrainPlacement},
     situation::{BattleSetupError, GangerSpawn, Situation},
     slab::{SlabEntry, SlabLedger},
     surface::{SlabState, SurfaceGrid},
-    terrain::entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
-    tuning::GangerStatTuning,
+    terrain::{
+        entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
+        floor::FloorCostGrid,
+        piece::TerrainRegistry,
+    },
+    tuning::{GangerStatTuning, MoveCost},
     vertical::build_vertical_link_graph,
     weapon::{
         Accuracy, BaseSpread, FatalBias, FireMode, Kickback, Stable, Weapon, WeaponBundle,
@@ -326,108 +334,75 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 /// — the E1.8 setup: the setup system that builds the scene from the situation (see the
 /// [`crate::situation`] module doc, the setup-on-entry source of truth).
 ///
+/// GTW-396: the function now accepts `terrain: Option<&TerrainRegistry>` and resolves
+/// every authored terrain piece key (cover / slab / floor) against it BEFORE any entity
+/// is spawned (abort-first invariant). If `terrain` is `None` or a key resolves
+/// to nothing, the function returns [`BattleSetupError::TerrainNotFound`] (no panic, no
+/// partial world). If a floor piece's move cost is below
+/// [`MIN_MOVE_COST`](crate::pathfinder::MIN_MOVE_COST), it returns
+/// [`BattleSetupError::FloorCostBelowMinimum`]. The resolved specs feed:
+/// - cover pieces → `CoverEntry` + `TerrainGraphicKey` / `FootfallSound` on the entity
+/// - slab pieces → `SlabEntry` (eagerly inserted into `SlabLedger`) + the same hooks
+/// - floor pieces → `FloorCostGrid` (default + sparse overrides)
+///
+/// When `terrain` is `None` OR the situation's `default_floor` is empty (the
+/// `#[serde(default)]` sentinel), the floor cost grid falls back to the caller-supplied
+/// `fallback_floor_cost` (the `CombatTuning::move_costs.open` value), preserving
+/// pre-GTW-396 behavior for test fixtures and situations that haven't migrated.
+///
 /// Steps, in order:
 ///
-/// 1. **Spawn each ganger + relate its equipment** — for every
+/// 1. **Pre-validate** all terrain piece keys (cover + slab + floor) against the
+///    registry — abort-first (return early with `Err` before any spawn).
+/// 2. **Spawn each ganger + relate its equipment** — for every
 ///    [`GangerSpawn`](crate::situation::GangerSpawn),
 ///    `commands.spawn_scene(`[`ganger_scene`]`(..))` the ganger's OWN per-field state
-///    as a Bevy `bsn!` [`Scene`] (GTW-322) — [`Position`] from `at`,
-///    the [`GangerName`](crate::ganger::GangerName) identity,
-///    plus [`Faction`](crate::ganger::Faction) / [`Facing`](crate::ganger::Facing) /
-///    [`Stance`](crate::ganger::Stance) / [`Aiming`](crate::ganger::Aiming) /
-///    [`Hp`](crate::ganger::Hp) / [`HpMax`](crate::ganger::HpMax) /
-///    [`Wounds`](crate::ganger::Wounds) / [`WoundsMax`](crate::ganger::WoundsMax) /
-///    [`Tu`](crate::ganger::Tu) / [`TuMax`](crate::ganger::TuMax) /
-///    [`LifeState`](crate::ganger::LifeState)), the E3.0 /
-///    GTW-182 attribute stats ([`Shooting`](crate::ganger::Shooting) /
-///    [`Toughness`](crate::ganger::Toughness) / [`Luck`](crate::ganger::Luck)) the
-///    severity roll reads, and the GTW-279 [`InflictedWounds`] record seeded **empty**
-///    (the [`Default`]) so a fresh ganger starts with no recorded wounds. The
-///    equipment carries **no stat data on the ganger** (GTW-323 slice 3, ADR-0004):
-///    the [`WeaponBundle`](crate::weapon::WeaponBundle) resolved from the ganger's
-///    [`weapon`](crate::situation::GangerSpawn::weapon) key against the
-///    [`WeaponRegistry`] (GTW-257) is spawned as a **related weapon entity** via
-///    [`queue_spawn_related_scenes::<Wields>`](bevy::scene::EntityCommandsSceneExt::queue_spawn_related_scenes),
-///    and the suit resolved from the ganger's
-///    [`armor`](crate::situation::GangerSpawn::armor) key against the [`ArmorRegistry`]
-///    (GTW-269) is spawned as six **related armor-piece entities** via
-///    `queue_spawn_related_scenes::<Wears>` — the ganger holds only the relationship.
-///    The returned Bevy [`Entity`](bevy::prelude::Entity) handle is captured into the
-///    [`OccupantPlacement`] list — NEVER a numeric id (GTW-10 / GTW-12).
-/// 2. **Seed the [`CoverLedger`]** — insert a [`CoverEntry`](crate::cover::CoverEntry)
-///    for every wall and scatter piece (the one unified ledger).
-///    Also spawn ONE terrain entity per cover piece (GTW-395 step 2.5) — each entity
-///    carries [`TerrainCell`](crate::terrain::entity::TerrainCell),
-///    [`TerrainPieceKind`](crate::terrain::entity::TerrainPieceKind), the piece's
-///    [`CoverHp`](crate::cover::CoverHp) max (static ceiling; the live pool stays in
-///    the ledger), [`HeightBand`](crate::cover::HeightBand),
-///    [`ArmorProtection`](crate::armor::ArmorProtection), and
-///    [`ArmorHardness`](crate::armor::ArmorHardness).
-/// 3. **Seed the [`SurfaceGrid`]** — set [`SlabState::Present`] at every authored
-///    slab (ground damage starts at zero by lazy default).
-///    Also spawn ONE terrain entity per slab (GTW-395) — each entity carries
-///    [`TerrainCell`](crate::terrain::entity::TerrainCell),
-///    [`TerrainPieceKind::Slab`](crate::terrain::entity::TerrainPieceKind::Slab),
-///    the [`SlabHp`](crate::slab::SlabHp) max from `slab_prototype` (static ceiling;
-///    the live pool stays in the [`SlabLedger`](crate::slab::SlabLedger)),
-///    [`ArmorProtection`](crate::armor::ArmorProtection), and
-///    [`ArmorHardness`](crate::armor::ArmorHardness).
-///    **Slab entity seed contract (GTW-395→GTW-396):** `slab_prototype` is identical
-///    to the [`SlabLedger`]'s lazy-seed path
-///    ([`SlabLedger::prototype_for`](crate::slab::SlabLedger::prototype_for) ignores
-///    the cell key today). When GTW-396 adds per-slab authored HP (read from
-///    [`TerrainSpec`](crate::terrain::piece::TerrainSpec)), this seed AND
-///    `SlabLedger`'s lazy-seed path must change together — they are the same source of
-///    truth.
-/// 4. **Build the [`OccupancyGrid`]** — pour an [`OccupancyInput`] of the authored
-///    terrain (walls + scatter → their [`TerrainKind`](crate::occupancy::TerrainKind))
-///    and the SPAWNED occupant entities through
-///    [`OccupancyGrid::build_from_occupancy_input`](crate::occupancy::OccupancyGrid::build_from_occupancy_input).
-///    After step 4, insert the [`TerrainIndex`](crate::terrain::entity::TerrainIndex)
-///    resource from the pairs accumulated in steps 2.5 and 3.
-/// 5. **Validate + build the [`VerticalLinkGraph`](crate::vertical::VerticalLinkGraph)** — via
-///    [`build_vertical_link_graph`]; on success insert it, on failure return the
-///    typed [`InvalidVerticalLink`](crate::vertical::InvalidVerticalLink) (the no-panic
-///    contract). The gangers are spawned and the other three resources inserted
-///    regardless — a bad vertical link does not unspawn them; the caller treats the
-///    error as a setup abort.
+///    as a Bevy `bsn!` [`Scene`] (GTW-322).
+/// 3. **Seed the [`CoverLedger`]** — insert a [`CoverEntry`](crate::cover::CoverEntry)
+///    for every wall and scatter piece (the one unified ledger). Spawn ONE terrain entity
+///    per cover piece carrying `TerrainCell`, `TerrainPieceKind`, max `CoverHp`,
+///    `HeightBand`, `ArmorProtection`, `ArmorHardness`, `TerrainGraphicKey`, `FootfallSound`
+///    (GTW-395/396 presentation seam; audio is stubbed — `FootfallSound` is attached
+///    and doc-commented as unconsumed until a future footfall-audio ticket).
+/// 4. **Seed the [`SurfaceGrid`] + [`SlabLedger`]** — mark every authored slab
+///    `Present` and **eagerly insert** its [`SlabEntry`] (HP/armor from the resolved
+///    terrain spec). The ledger's `entry_seeded` path returns the eagerly-inserted entry
+///    unchanged (the `or_insert` wins only for absent keys), so the authored per-slab HP
+///    is honored on first strike without a new `deplete_slab` signature (verified per
+///    `ledger.rs:68-74`). Spawn ONE terrain entity per slab carrying `TerrainCell`,
+///    `TerrainPieceKind::Slab`, `SlabHp`, `ArmorProtection`, `ArmorHardness`,
+///    `TerrainGraphicKey`, `FootfallSound`.
+/// 5. **Build the [`OccupancyGrid`]** + insert [`TerrainIndex`].
+/// 6. **Build the [`FloorCostGrid`]** from resolved floor specs and insert it.
+/// 7. **Validate + build the [`crate::vertical::VerticalLinkGraph`]**.
 ///
-/// All resources ([`CoverLedger`], [`SurfaceGrid`], [`OccupancyGrid`],
-/// [`TerrainIndex`](crate::terrain::entity::TerrainIndex),
-/// [`VerticalLinkGraph`](crate::vertical::VerticalLinkGraph)) are inserted via [`Commands`]. The function is
-/// render-free and headless-driven (it touches no renderer / asset server), so a
-/// `MinimalPlugins` test can run it directly. It reads a [`WeaponRegistry`] by
-/// reference (GTW-257) to resolve each ganger's
-/// [`weapon`](crate::situation::GangerSpawn::weapon) key, an [`ArmorRegistry`] by
-/// reference (GTW-269) to resolve each ganger's
-/// [`armor`](crate::situation::GangerSpawn::armor) key, and a [`GangerStatTuning`] by
-/// reference (GTW-384) to DERIVE every computed combat stat
-/// ([`Shooting`] / [`Tu`] / [`Hp`] / [`Wounds`] + the dormant [`Fight`] / [`Reactions`]
-/// / [`Morale`] / [`Bottle`]) from the ganger's eight authored attributes
-/// (`docs/combat/stats.md` — fully derived, the situation authors attributes only).
+/// All resources are inserted via [`Commands`]. Render-free, headless-driven.
 ///
 /// # Errors
 ///
 /// Returns a [`BattleSetupError`]:
-/// - [`BattleSetupError::InvalidLink`] if any authored vertical link fails
-///   validation (level out of range, dangling endpoint, or same-storey) — see
-///   [`build_vertical_link_graph`];
-/// - [`BattleSetupError::WeaponNotFound`] if any ganger's
-///   [`weapon`](crate::situation::GangerSpawn::weapon) key is absent from `weapons`
-///   (no loaded `assets/weapons/*.ron` with that stem);
-/// - [`BattleSetupError::ArmorNotFound`] if any ganger's
-///   [`armor`](crate::situation::GangerSpawn::armor) key is absent from `armor`
-///   (no loaded `assets/armor/*.armor.ron` with that stem).
+/// - [`BattleSetupError::InvalidLink`] — bad vertical link.
+/// - [`BattleSetupError::WeaponNotFound`] — ganger weapon key absent.
+/// - [`BattleSetupError::ArmorNotFound`] — ganger armor key absent.
+/// - [`BattleSetupError::TerrainNotFound`] — cover/slab/floor piece key absent.
+/// - [`BattleSetupError::FloorCostBelowMinimum`] — floor `move_cost < MIN_MOVE_COST`.
 ///
-/// All three are validated BEFORE any entity is spawned or any resource inserted, so a
-/// failure leaves no partial, unspawnable world behind (the GTW-205 abort-first
-/// invariant, extended to the weapon + armor resolution).
+/// All five are validated BEFORE any entity is spawned (abort-first invariant).
+#[expect(
+    clippy::too_many_lines,
+    reason = "setup_battle executes 7 sequential, order-dependent phases \
+              (pre-resolve → cover spawn → slab spawn → occupancy → floor grid → \
+              link graph) that cannot be broken into smaller fns without threading \
+              partial-state through many more parameters; the 5 private helpers already \
+              extract every non-trivial sub-computation"
+)]
 pub fn setup_battle(
     situation: &Situation,
     weapons: &WeaponRegistry,
     armor: &ArmorRegistry,
     stat_tuning: &GangerStatTuning,
-    slab_prototype: SlabEntry,
+    terrain: Option<&TerrainRegistry>,
+    fallback_floor_cost: MoveCost,
     commands: &mut Commands,
 ) -> Result<BattleSetup, BattleSetupError> {
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
@@ -464,6 +439,40 @@ pub fn setup_battle(
         };
         armor_specs.push(*spec);
     }
+
+    // GTW-396: pre-resolve every terrain piece key (cover + slab + floor) against the
+    // registry BEFORE any spawn — abort-first. If the registry is absent or a key is
+    // missing, return TerrainNotFound. Validate floor costs >= MIN_MOVE_COST.
+    // Collect resolved pieces in parallel to their source lists.
+
+    // Resolve cover pieces (walls + scatter):
+    let mut resolved_covers: Vec<ResolvedCoverPiece> = Vec::new();
+    for cover in situation.walls.iter().chain(situation.scatter.iter()) {
+        let spec = resolve_terrain_or_err(terrain, &cover.piece)?;
+        let Some(resolved) = resolve_cover_spec(&cover.piece, spec) else {
+            return Err(BattleSetupError::TerrainNotFound {
+                piece: cover.piece.clone(),
+            });
+        };
+        resolved_covers.push(resolved);
+    }
+
+    // Resolve slab pieces:
+    let mut resolved_slabs: Vec<ResolvedSlabPiece> = Vec::new();
+    for slab_spawn in &situation.slabs {
+        let spec = resolve_terrain_or_err(terrain, &slab_spawn.piece)?;
+        let Some(resolved) = resolve_slab_spec(&slab_spawn.piece, spec) else {
+            return Err(BattleSetupError::TerrainNotFound {
+                piece: slab_spawn.piece.clone(),
+            });
+        };
+        resolved_slabs.push(resolved);
+    }
+
+    // Resolve floor: default_floor + per-cell overrides. If no terrain registry or
+    // empty sentinel, skip floor resolution (use fallback_floor_cost).
+    let (default_floor_cost, floor_overrides) =
+        resolve_floor_costs(terrain, situation, fallback_floor_cost)?;
 
     // 1. Spawn each ganger with its full component set + seeded worn armor + the
     //    resolved WeaponBundle as a single `bsn!` Scene (GTW-322), keeping the
@@ -519,32 +528,43 @@ pub fn setup_battle(
     }
 
     // 2. Seed the cover ledger from walls + scatter (the one unified ledger).
-    //    Step 2.5 (GTW-395): spawn ONE terrain entity per cover piece inline in this
-    //    loop — after the ledger entry is built (so we can copy max_hp, band, armor
-    //    from the same `cover_entry()` call) and before `insert_resource(cover_ledger)`
-    //    (because the local is moved there). Accumulate (TerrainIndexKey, Entity) pairs
-    //    for the TerrainIndex insert after step 4.
+    //    Step 2.5 (GTW-395/396): spawn ONE terrain entity per cover piece carrying
+    //    the static stats + presentation hooks (TerrainGraphicKey / FootfallSound).
+    //    The resolved_covers vec is in walls-then-scatter order, mirroring the
+    //    situation.walls.chain(situation.scatter) iteration order below.
     let mut cover_ledger = CoverLedger::new();
     let mut terrain_pairs: Vec<(TerrainIndexKey, bevy::prelude::Entity)> = Vec::new();
+    let mut resolved_covers_iter = resolved_covers.into_iter();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
-        let entry = cover.cover_entry();
+        let resolved = resolved_covers_iter
+            .next()
+            .unwrap_or_else(|| unreachable!("resolved_covers length matches covers length"));
+        let entry = CoverEntry::seeded(
+            resolved.max_hp,
+            resolved.height_band,
+            resolved.armor_protection,
+            resolved.armor_hardness,
+        );
         cover_ledger.insert(cover.at, entry);
-        // GTW-395 step 2.5 — spawn the terrain entity for this cover piece. The entity
-        // carries only STATIC stats (the max HP ceiling + band + armor); the live HP
-        // pool stays authoritative in the CoverLedger. Commands::spawn is the correct
-        // bevy-traps #7 form for spawning from a system (never world.spawn).
-        let kind = match cover.terrain {
-            crate::occupancy::TerrainKind::Wall => TerrainPieceKind::Wall,
-            _ => TerrainPieceKind::Cover,
-        };
+        // GTW-395/396: spawn the terrain entity for this cover piece. The entity carries
+        // STATIC stats (the max HP ceiling + band + armor) plus the GTW-396 presentation
+        // hooks (TerrainGraphicKey + FootfallSound). The live HP pool stays authoritative
+        // in the CoverLedger. Commands::spawn is the bevy-traps #7 form (never
+        // world.spawn inside a registered system).
+        //
+        // FootfallSound is attached but UNCONSUMED — no footfall-audio system is built
+        // yet (guns-only; a future ticket wires the audio system). It is carried now so
+        // authored .terrain.ron files can specify it without a schema change.
         let entity = commands
             .spawn((
                 TerrainCell::new(cover.at),
-                kind,
+                resolved.piece_kind,
                 entry.max_hp,           // CoverHp — the static max (now Component)
                 entry.height_band,      // HeightBand — the static band (now Component)
                 entry.armor_protection, // ArmorProtection — already Component
                 entry.armor_hardness,   // ArmorHardness — already Component
+                resolved.graphic,       // TerrainGraphicKey — presenter resolves to atlas entry
+                resolved.footfall, // FootfallSound — future footfall-audio pass (GTW-XXX: footfall audio system consumes this)
             ))
             .id();
         terrain_pairs.push((TerrainIndexKey::Cover(cover.at), entity));
@@ -552,51 +572,79 @@ pub fn setup_battle(
     commands.insert_resource(cover_ledger);
 
     // 3. Seed the surface grid: every authored slab is Present (zero ground damage
-    //    by lazy default).
-    //    Also spawn ONE terrain entity per slab (GTW-395) — carrying the STATIC max HP
-    //    from `slab_prototype` (identical to the ledger's lazy-seed; see the doc-comment
-    //    on `setup_battle` for the GTW-396 forward-contract on keeping these in sync).
+    //    by lazy default). Eagerly seed the SlabLedger from the resolved per-slab
+    //    specs (GTW-396 Decision C, major #4): `entry_seeded` returns an eagerly-inserted
+    //    entry unchanged on subsequent calls, so the authored per-slab HP is honored on
+    //    first strike via the normal depletion path (no deplete_slab signature change).
+    //    Also spawn ONE terrain entity per slab carrying the static stats + hooks.
     let mut surface_grid = SurfaceGrid::new();
-    for &slab in &situation.slabs {
-        surface_grid.set_slab(slab, SlabState::Present);
-        // GTW-395: spawn the slab entity. Slab prototype is seeded from SlabDefaults
-        // in `setup_battle_on_request`, identical to the ledger's lazy-seed path
-        // (`prototype_for` ignores the cell key today — both read from SlabDefaults).
-        // The entity carries STATIC stats only; the live pool stays in SlabLedger.
+    let mut slab_ledger = SlabLedger::new();
+    for (slab_spawn, resolved) in situation.slabs.iter().zip(resolved_slabs.iter()) {
+        surface_grid.set_slab(slab_spawn.at, SlabState::Present);
+
+        // GTW-396: eagerly seed the slab ledger from the per-slab authored spec.
+        // `entry_seeded` (.entry(key).or_insert(seeded(...))) returns the
+        // eagerly-inserted entry unchanged on a subsequent `deplete_slab` call, so the
+        // authored per-slab HP is honored (the fallback prototype in the fold arm is
+        // consumed ONLY for a slab that was struck with no authored entry — the no-panic
+        // contract for an unauthored / out-of-bounds strike). See ledger.rs:68-74.
+        let slab_entry = SlabEntry::seeded(
+            resolved.max_hp,
+            resolved.armor_protection,
+            resolved.armor_hardness,
+        );
+        slab_ledger.insert(slab_spawn.at, slab_entry);
+
+        // GTW-395/396: spawn the slab entity. Carries STATIC stats (max HP / armor)
+        // plus GTW-396 presentation hooks. The live pool stays in slab_ledger.
+        //
+        // FootfallSound is attached but UNCONSUMED (guns-only; future footfall-audio
+        // ticket). GTW-XXX: footfall audio system consumes this.
         let slab_entity = commands
             .spawn((
-                TerrainCell::new(slab),
+                TerrainCell::new(slab_spawn.at),
                 TerrainPieceKind::Slab,
-                slab_prototype.max_hp, // SlabHp — the static max (now Component)
-                slab_prototype.armor_protection, // ArmorProtection — already Component
-                slab_prototype.armor_hardness, // ArmorHardness — already Component
+                resolved.max_hp,           // SlabHp — the static max (now Component)
+                resolved.armor_protection, // ArmorProtection — already Component
+                resolved.armor_hardness,   // ArmorHardness — already Component
+                resolved.graphic.clone(),  // TerrainGraphicKey — presenter resolves to atlas entry
+                resolved.footfall.clone(), // FootfallSound — future footfall-audio pass
             ))
             .id();
-        terrain_pairs.push((TerrainIndexKey::Slab(slab), slab_entity));
+        terrain_pairs.push((TerrainIndexKey::Slab(slab_spawn.at), slab_entity));
     }
     commands.insert_resource(surface_grid);
-
-    // 3b. Insert an EMPTY slab ledger (GTW-365): slabs carry NO per-piece authored HP
-    //     (unlike cover) — a struck slab lazily seeds its HP/armor from the SlabDefaults
-    //     combat-tuning leaf on first hit, so nothing is pre-populated here. The resource
-    //     must exist for `dispatch_fire`'s ResMut<SlabLedger> read (the slab-hit
-    //     depletion path), mirroring the cover ledger insert above.
-    commands.insert_resource(SlabLedger::new());
+    commands.insert_resource(slab_ledger);
 
     // Own the placements in the result up front, so the occupancy grid can borrow
     // them (no clone) and the same Vec is returned to the caller.
     let setup = BattleSetup { occupants };
 
     // 4. Build the occupancy grid: terrain from walls + scatter, occupants from the
-    //    spawned entities (borrowed from the result's placement list).
-    let terrain: Vec<TerrainPlacement> = situation
+    //    spawned entities (borrowed from the result's placement list). The terrain kind
+    //    is now derived from the resolved spec variant (Wall → TerrainKind::Wall;
+    //    Cover/Scatter → TerrainKind::Cover).
+    let terrain_placements: Vec<TerrainPlacement> = situation
         .walls
         .iter()
         .chain(situation.scatter.iter())
-        .map(|c| TerrainPlacement::new(c.at, c.terrain))
+        .zip(
+            // Re-iterate resolved_covers via the indices we know we pre-resolved; the
+            // resolved_covers vec was consumed above, so we recompute the kind from the
+            // occupancy grid's terrain placements directly via the cover list order.
+            // NOTE: we need the terrain kind to build TerrainPlacement. We stored it
+            // in the CoverLedger's entry.max_hp but not as a standalone. Re-derive it:
+            // walls list → Wall kind; scatter list → Cover kind.
+            situation
+                .walls
+                .iter()
+                .map(|_| TerrainKind::Wall)
+                .chain(situation.scatter.iter().map(|_| TerrainKind::Cover)),
+        )
+        .map(|(cover, kind)| TerrainPlacement::new(cover.at, kind))
         .collect();
     let occupancy_input = OccupancyInput {
-        terrain,
+        terrain:   terrain_placements,
         occupants: setup.occupants.clone(),
     };
     commands.insert_resource(OccupancyGrid::build_from_occupancy_input(&occupancy_input));
@@ -607,7 +655,10 @@ pub fn setup_battle(
     // and SlabLedger.
     commands.insert_resource(TerrainIndex::new(terrain_pairs));
 
-    // 5. The validated vertical-link graph (validation already ran above).
+    // 6. Build and insert the FloorCostGrid from the pre-resolved floor costs.
+    commands.insert_resource(FloorCostGrid::new(default_floor_cost, floor_overrides));
+
+    // 7. The validated vertical-link graph (validation already ran above).
     commands.insert_resource(vertical_graph);
 
     Ok(setup)

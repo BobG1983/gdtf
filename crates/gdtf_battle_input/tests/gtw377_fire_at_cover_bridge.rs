@@ -20,12 +20,12 @@ use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight};
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, Cell, CellLevel,
     CombatTuning, CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType, Direction, Facing,
-    Faction, FatalBias, FireMode, FireModeSpec, HandlingProfile, HeightBand, Hp, InflictedWounds,
-    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ReloadTu,
-    Shooting, SimRng, SlabLedger, SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid,
-    TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
+    Faction, FatalBias, FireMode, FireModeSpec, FloorCostGrid, HandlingProfile, HeightBand, Hp,
+    InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult,
+    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction,
+    Position, ReloadTu, Shooting, SimRng, SlabLedger, SquadVisibility, Stable, Stance, StanceKind,
+    SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -75,6 +75,12 @@ fn bridge_app() -> App {
     app.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     app.insert_resource(ButtonInput::<MouseButton>::default());
     app.insert_resource(VerticalLinkGraph::default());
+    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid so the
+    // dispatch params validate (this test fires at cover, never moves).
+    {
+        let open = CombatTuning::default().move_costs.open;
+        app.insert_resource(FloorCostGrid::new(open, []));
+    }
     // The presenter-owned highlight seam the input populate gates on (no renderer plugin here).
     app.insert_resource(FireTargetHighlight::cleared());
     // The sim resources the fire path reads.
