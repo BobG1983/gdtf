@@ -29,10 +29,11 @@ fn flat_open_floor_reveals_own_cell_and_eight_neighbours() {
     let (ox, oy, oz) = (10, 10, 0);
     let (pos, st, fc) = alive_observer_at(ox, oy, oz);
     let observers = [FovObserver {
-        position: &pos,
-        stance:   &st,
-        facing:   &fc,
-        life:     LifeState::Alive,
+        position:         &pos,
+        stance:           &st,
+        facing:           &fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
 
     let visible = union_fov(&observers, &occupancy, &surface, &cover, &tuning, no_dead());

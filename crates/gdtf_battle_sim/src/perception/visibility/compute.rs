@@ -10,7 +10,7 @@ use crate::{
     ganger::{Facing, LifeState, Position, Stance, StanceKind},
     los::{Observer, Target, can_see},
     metric::{Cell, CellLevel, Level},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
     tuning::CombatTuning,
     visibility::SquadVisibility,
@@ -26,20 +26,26 @@ use crate::{
 /// Downed / Dead ganger (and, by the caller's own filtering, any non-player ganger)
 /// reveals nothing. Carries the eye anchor inputs ([`position`](FovObserver::position) +
 /// [`stance`](FovObserver::stance) + [`facing`](FovObserver::facing)) [`can_see`] reads
-/// per candidate.
+/// per candidate, plus the authored stair-tile eye-lift (GTW-390) for the observer's
+/// cell.
 #[derive(Debug, Clone, Copy)]
 pub struct FovObserver<'a> {
     /// The observer's `(cell, level)` grid position — the disc center + eye datum.
-    pub position: &'a Position,
+    pub position:         &'a Position,
     /// The observer's stance — selects the per-stance muzzle level-fraction the eye
     /// sits at (the same anchor [`can_see`] / [`has_los`](crate::los::has_los) use).
-    pub stance:   &'a Stance,
+    pub stance:           &'a Stance,
     /// The observer's facing — carried to build the [`Observer`] view; the
     /// facing-neutral eye does not read it (FOV is omni-directional).
-    pub facing:   &'a Facing,
+    pub facing:           &'a Facing,
     /// The observer's life state — only [`LifeState::is_active`] (Alive) contributes;
     /// an inactive observer is skipped.
-    pub life:     LifeState,
+    pub life:             LifeState,
+    /// The authored stair-tile eye-lift for the observer's cell (GTW-390) — looked
+    /// up from [`OccupancyGrid::stair_eye_offset_at`] by the caller
+    /// ([`recompute_visibility`](crate::visibility::recompute_visibility)) and
+    /// threaded in here so the pure probe stays resource-free.
+    pub stair_eye_offset: StairEyeOffset,
 }
 
 /// The squad **VISIBLE** union over a **disc-bounded DENSE scan** — every `(cell, level)`
@@ -104,9 +110,10 @@ pub fn union_fov(
             continue;
         }
         let observer = Observer {
-            position: fov.position,
-            stance:   fov.stance,
-            facing:   fov.facing,
+            position:         fov.position,
+            stance:           fov.stance,
+            facing:           fov.facing,
+            stair_eye_offset: fov.stair_eye_offset,
         };
         // Scan the observer's Chebyshev disc DENSELY over the authored level range (∪ the
         // observer's own storey), clamped to the grid extent — the dense floor the

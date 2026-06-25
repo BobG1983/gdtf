@@ -28,18 +28,20 @@ fn low_sees_tall_but_tall_blocked_by_ground_wall() {
     let tall_facing = facing(Direction::West);
 
     let low_observer = Observer {
-        position: &low_pos,
-        stance:   &low_stance,
-        facing:   &low_facing,
+        position:         &low_pos,
+        stance:           &low_stance,
+        facing:           &low_facing,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let low_target = Target {
         position: &low_pos,
         stance:   &low_stance,
     };
     let tall_observer = Observer {
-        position: &tall_pos,
-        stance:   &tall_stance,
-        facing:   &tall_facing,
+        position:         &tall_pos,
+        stance:           &tall_stance,
+        facing:           &tall_facing,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let tall_target = Target {
         position: &tall_pos,

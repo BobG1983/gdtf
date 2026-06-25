@@ -11,7 +11,7 @@ pub(super) use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Direction, Facing, LifeState, Position, Stance, StanceKind},
     metric::{Cell, CellLevel, Level},
-    occupancy::OccupancyGrid,
+    occupancy::{OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
     tuning::{CombatTuning, ViewRange},
     visibility::{

@@ -30,10 +30,11 @@ fn cell_behind_wall_is_unseen_despite_in_range() {
 
     let (pos, st, fc) = alive_observer_at(2, 5, 0);
     let observers = [FovObserver {
-        position: &pos,
-        stance:   &st,
-        facing:   &fc,
-        life:     LifeState::Alive,
+        position:         &pos,
+        stance:           &st,
+        facing:           &fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
 
     let visible = union_fov(&observers, &occupancy, &surface, &cover, &tuning, no_dead());
@@ -62,10 +63,11 @@ fn same_cell_visible_without_the_wall() {
 
     let (pos, st, fc) = alive_observer_at(2, 5, 0);
     let observers = [FovObserver {
-        position: &pos,
-        stance:   &st,
-        facing:   &fc,
-        life:     LifeState::Alive,
+        position:         &pos,
+        stance:           &st,
+        facing:           &fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
 
     let visible = union_fov(&observers, &occupancy, &surface, &cover, &tuning, no_dead());

@@ -137,6 +137,9 @@ pub fn recompute_visibility(
     // Assemble the player-faction observers' borrow-views. union_fov skips the
     // inactive (Downed / Dead) ones, so the conscious filter is split: faction here,
     // life inside union_fov (clause 1).
+    // GTW-390: look up each observer's authored stair-tile eye-lift from the
+    // OccupancyGrid (stair_eye_offset_at returns 0.0 for non-stair cells). The stance
+    // gate (Prone → 0.0) is applied inside eye_anchor, not here.
     let fov_observers: Vec<FovObserver> = observers
         .iter()
         .filter(|(.., faction)| **faction == **player)
@@ -145,6 +148,7 @@ pub fn recompute_visibility(
             stance,
             facing,
             life: *life,
+            stair_eye_offset: occupancy.stair_eye_offset_at(position),
         })
         .collect();
 

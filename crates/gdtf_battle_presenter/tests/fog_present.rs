@@ -42,8 +42,8 @@ use gdtf_battle_presenter::{
 use gdtf_battle_sim::{
     Aiming, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger, Direction, Facing, Faction,
     FovObserver, GangerName, GangerSpawn, Level, LifeState, OccupancyGrid, Position,
-    SetupBattleRequested, SimRng, Situation, SquadVisibility, Stance, StanceKind, SurfaceGrid,
-    setup_battle_on_request,
+    SetupBattleRequested, SimRng, Situation, SquadVisibility, StairEyeOffset, Stance, StanceKind,
+    SurfaceGrid, setup_battle_on_request,
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_weapon_registry,
     },
@@ -335,10 +335,11 @@ fn dense_visible_from_observer(app: &App, at: CellLevel) -> Vec<CellLevel> {
     let stance = Stance::new(StanceKind::Standing);
     let facing = Facing::new(Direction::East);
     let observers = [FovObserver {
-        position: &position,
-        stance:   &stance,
-        facing:   &facing,
-        life:     LifeState::Alive,
+        position:         &position,
+        stance:           &stance,
+        facing:           &facing,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
     let visible = union_fov(&observers, &occupancy, &surface, &cover, &tuning, |_| false);
     visible.into_iter().collect()

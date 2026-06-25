@@ -25,10 +25,11 @@ fn only_conscious_observers_contribute() {
 
     // A DOWNED observer at the same spot sees nothing — the union is empty.
     let downed = [FovObserver {
-        position: &pos,
-        stance:   &st,
-        facing:   &fc,
-        life:     LifeState::Downed,
+        position:         &pos,
+        stance:           &st,
+        facing:           &fc,
+        life:             LifeState::Downed,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
     let visible_downed = union_fov(&downed, &occupancy, &surface, &cover, &tuning, no_dead());
     assert!(
@@ -39,10 +40,11 @@ fn only_conscious_observers_contribute() {
     // The SAME observer Alive DOES reveal the cell — proving the Downed case failed on
     // the conscious gate, not the fixture geometry.
     let alive = [FovObserver {
-        position: &pos,
-        stance:   &st,
-        facing:   &fc,
-        life:     LifeState::Alive,
+        position:         &pos,
+        stance:           &st,
+        facing:           &fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
     let visible_alive = union_fov(&alive, &occupancy, &surface, &cover, &tuning, no_dead());
     assert!(
@@ -80,22 +82,25 @@ fn mixed_observers_only_alive_reveals() {
 
     let observers = [
         FovObserver {
-            position: &d_pos,
-            stance:   &d_st,
-            facing:   &d_fc,
-            life:     LifeState::Downed,
+            position:         &d_pos,
+            stance:           &d_st,
+            facing:           &d_fc,
+            life:             LifeState::Downed,
+            stair_eye_offset: StairEyeOffset::new(0.0),
         },
         FovObserver {
-            position: &x_pos,
-            stance:   &x_st,
-            facing:   &x_fc,
-            life:     LifeState::Dead,
+            position:         &x_pos,
+            stance:           &x_st,
+            facing:           &x_fc,
+            life:             LifeState::Dead,
+            stair_eye_offset: StairEyeOffset::new(0.0),
         },
         FovObserver {
-            position: &a_pos,
-            stance:   &a_st,
-            facing:   &a_fc,
-            life:     LifeState::Alive,
+            position:         &a_pos,
+            stance:           &a_st,
+            facing:           &a_fc,
+            life:             LifeState::Alive,
+            stair_eye_offset: StairEyeOffset::new(0.0),
         },
     ];
 

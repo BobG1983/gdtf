@@ -18,9 +18,10 @@ fn co_located_from_eq_to_is_sighted() {
     let to_stance = stance(StanceKind::Crouching);
 
     let observer = Observer {
-        position: &at,
-        stance:   &from_stance,
-        facing:   &from_facing,
+        position:         &at,
+        stance:           &from_stance,
+        facing:           &from_facing,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let target = Target {
         position: &at,
@@ -59,9 +60,10 @@ fn off_grid_never_panics() {
 
     // Off-grid observer → on-grid target.
     let off_observer = Observer {
-        position: &off_grid,
-        stance:   &st,
-        facing:   &look,
+        position:         &off_grid,
+        stance:           &st,
+        facing:           &look,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let on_target = Target {
         position: &on_grid,
@@ -88,9 +90,10 @@ fn off_grid_never_panics() {
 
     // On-grid observer → off-grid target.
     let on_observer = Observer {
-        position: &on_grid,
-        stance:   &st,
-        facing:   &look,
+        position:         &on_grid,
+        stance:           &st,
+        facing:           &look,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let off_target = Target {
         position: &off_grid,

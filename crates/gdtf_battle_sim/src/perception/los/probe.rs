@@ -14,10 +14,10 @@ use bevy::{
 use crate::{
     central_axis::{muzzle_height, target_aim_point},
     cover::CoverLedger,
-    ganger::{Facing, Position, Stance},
+    ganger::{Facing, Position, Stance, StanceKind},
     march::{MarchKind, march_vector},
     metric::{Cell, CellLevel, Level, SimPos, cell_center},
-    occupancy::OccupancyGrid,
+    occupancy::{OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
     tuning::CombatTuning,
 };
@@ -32,16 +32,27 @@ use crate::{
 /// [`facing`](Observer::facing) is carried for completeness (the omni-directional
 /// eye is **facing-neutral**, so the eye anchor does NOT read it — see [`has_los`]),
 /// reflecting that an observer is a directional entity even though its FOV is a disc.
+///
+/// [`stair_eye_offset`](Observer::stair_eye_offset) carries the GTW-390 authored
+/// stair-tile lift for the observer's current cell — looked up from
+/// [`OccupancyGrid::stair_eye_offset_at`] and threaded in by the caller so the
+/// pure geometry probe stays resource-free.
 #[derive(Debug, Clone, Copy)]
 pub struct Observer<'a> {
     /// The watcher's `(cell, level)` grid position — the eye's x/y/level datum.
-    pub position: &'a Position,
+    pub position:         &'a Position,
     /// The watcher's stance — selects the per-stance muzzle level-fraction the eye
     /// sits at (a prone watcher's eye is lower than a standing one's).
-    pub stance:   &'a Stance,
+    pub stance:           &'a Stance,
     /// The watcher's facing — the direction it looks along. Carried to mirror the
     /// directional shooter view; **not** read by the facing-neutral eye anchor.
-    pub facing:   &'a Facing,
+    pub facing:           &'a Facing,
+    /// The authored stair-tile eye-lift for the observer's cell (GTW-390) — looked
+    /// up from [`OccupancyGrid::stair_eye_offset_at`] at the call site and threaded
+    /// in here so the pure geometry probe never reads a resource. A non-stair cell
+    /// carries `StairEyeOffset(0.0)` (no lift). The stance gate (Prone → 0.0) is
+    /// applied inside `eye_anchor` so this field always carries the raw grid value.
+    pub stair_eye_offset: StairEyeOffset,
 }
 
 /// The **watched** entity of a sight probe — a borrow-view over the per-field ganger
@@ -168,21 +179,36 @@ pub fn has_los(
 }
 
 /// The eye-anchor [`SimPos`] for `observer` — the facing-neutral watcher eye
-/// (GTW-337 clause 3).
+/// (GTW-337 clause 3, GTW-390 stair eye-offset).
 ///
-/// x/y is the observer cell's [`cell_center`]; z is `f32::from(level) +
-/// muzzle_height(stance)` — the SAME per-stance muzzle level-fraction
+/// x/y is the observer cell's [`cell_center`]; z is
+/// `f32::from(level) + muzzle_height(stance) + stair_offset(stance, stair_eye_offset)`
+/// — the SAME per-stance muzzle level-fraction
 /// [`muzzle_position`](crate::central_axis::muzzle_position) reads, with NO per-facing
-/// forward XY offset (so the observer's facing never moves its eye). The eye is a
-/// HEIGHT atop the cell center, not the offset muzzle point.
+/// forward XY offset (so the observer's facing never moves its eye), PLUS a
+/// stance-gated authored stair-tile lift (GTW-390):
+///
+/// * **Prone** → stair offset = 0.0 (a prone ganger's eye is already at the floor).
+/// * **Standing or Crouching** → stair offset = `*observer.stair_eye_offset`
+///   (i.e. +0.5 for a stair tile, 0.0 for a flat floor).
 ///
 /// `pub(super)` so the in-crate tests can assert the facing-neutral invariant
-/// directly (rotating `facing` leaves the eye unchanged).
+/// directly (rotating `facing` leaves the eye unchanged) and the stair-offset
+/// invariants (GTW-390).
 pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
     let (cell, level) = cell_and_level(observer.position);
     let center = cell_center(cell, level);
-    let z = f32::from(*level) + *muzzle_height(**observer.stance, tuning);
-    SimPos::new(center.x, center.y, z)
+    // Base eye height: per-stance muzzle level-fraction (shared with the shot
+    // pipeline; facing-neutral — no forward XY offset applied here).
+    let base_z = f32::from(*level) + *muzzle_height(**observer.stance, tuning);
+    // Stair eye-lift (GTW-390): Prone observers stay on the floor; Standing and
+    // Crouching observers on an authored stair tile add the half-level lift so their
+    // eye clears mid-cover the way it would on a physical staircase.
+    let stair_z = match **observer.stance {
+        StanceKind::Prone => 0.0,
+        StanceKind::Standing | StanceKind::Crouching => *observer.stair_eye_offset,
+    };
+    SimPos::new(center.x, center.y, base_z + stair_z)
 }
 
 /// The target aim-anchor [`SimPos`] for `target` — resolved the EXACT way the shot

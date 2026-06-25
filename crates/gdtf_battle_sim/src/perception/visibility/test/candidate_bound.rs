@@ -30,10 +30,11 @@ fn out_of_disc_occupied_cell_is_not_visible() {
 
     let (pos, st, fc) = alive_observer_at(2, 5, 0);
     let observers = [FovObserver {
-        position: &pos,
-        stance:   &st,
-        facing:   &fc,
-        life:     LifeState::Alive,
+        position:         &pos,
+        stance:           &st,
+        facing:           &fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
 
     let visible = union_fov(&observers, &occupancy, &surface, &cover, &tuning, no_dead());
@@ -65,10 +66,11 @@ fn open_floor_cell_in_disc_with_clear_los_is_revealed() {
 
     let (pos, st, fc) = alive_observer_at(5, 5, 0);
     let observers = [FovObserver {
-        position: &pos,
-        stance:   &st,
-        facing:   &fc,
-        life:     LifeState::Alive,
+        position:         &pos,
+        stance:           &st,
+        facing:           &fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
 
     let visible = union_fov(&observers, &occupancy, &surface, &cover, &tuning, no_dead());

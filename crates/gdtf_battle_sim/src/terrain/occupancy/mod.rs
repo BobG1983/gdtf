@@ -53,7 +53,9 @@ mod neighbours;
 #[cfg(test)]
 mod test;
 
-pub use grid::{DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancySlot};
+pub use grid::{
+    DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancySlot, StairEyeOffset,
+};
 pub use input::{OccupancyInput, OccupantPlacement, TerrainPlacement};
 pub use kind::TerrainKind;
 pub use neighbours::pathable_neighbors;

@@ -381,7 +381,7 @@ pub use terrain::{
     occupancy,
     occupancy::{
         DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
-        OccupantPlacement, TerrainKind, TerrainPlacement, pathable_neighbors,
+        OccupantPlacement, StairEyeOffset, TerrainKind, TerrainPlacement, pathable_neighbors,
     },
     occupancy_sync,
     occupancy_sync::{

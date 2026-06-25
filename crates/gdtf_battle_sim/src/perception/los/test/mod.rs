@@ -13,3 +13,4 @@ mod degenerate;
 mod determinism;
 mod facing_neutral;
 mod parity;
+mod stair_eye_offset;

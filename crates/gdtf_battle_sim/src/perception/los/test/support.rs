@@ -12,7 +12,7 @@ pub(super) use crate::{
     ganger::{Direction, Facing, LifeState, Position, Stance, StanceKind},
     los::{Observer, Target, can_see, has_los},
     metric::{Cell, CellLevel, Level},
-    occupancy::OccupancyGrid,
+    occupancy::{OccupancyGrid, StairEyeOffset},
     surface::{SlabState, SurfaceGrid},
     tuning::{CombatTuning, ViewRange},
 };

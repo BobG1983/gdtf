@@ -25,10 +25,11 @@ fn single_observer_sees_in_range_occupied_cell() {
     // One conscious observer at (2, 5, 0) with a clear line and generous range.
     let (pos, st, fc) = alive_observer_at(2, 5, 0);
     let observers = [FovObserver {
-        position: &pos,
-        stance:   &st,
-        facing:   &fc,
-        life:     LifeState::Alive,
+        position:         &pos,
+        stance:           &st,
+        facing:           &fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
 
     let visible = union_fov(&observers, &occupancy, &surface, &cover, &tuning, no_dead());
@@ -61,16 +62,18 @@ fn two_observers_union_their_discs() {
     // First confirm each cell is in exactly ONE observer's solo FOV (so the union is a
     // real union, not both-see-both).
     let a_only = [FovObserver {
-        position: &a_pos,
-        stance:   &a_st,
-        facing:   &a_fc,
-        life:     LifeState::Alive,
+        position:         &a_pos,
+        stance:           &a_st,
+        facing:           &a_fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
     let b_only = [FovObserver {
-        position: &b_pos,
-        stance:   &b_st,
-        facing:   &b_fc,
-        life:     LifeState::Alive,
+        position:         &b_pos,
+        stance:           &b_st,
+        facing:           &b_fc,
+        life:             LifeState::Alive,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     }];
     let a_vis = union_fov(&a_only, &occupancy, &surface, &cover, &tuning, no_dead());
     let b_vis = union_fov(&b_only, &occupancy, &surface, &cover, &tuning, no_dead());

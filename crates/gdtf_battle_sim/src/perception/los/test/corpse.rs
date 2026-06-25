@@ -33,9 +33,10 @@ fn corpse_passes_through_living_blocks() {
     let to_pos = position(8, 5, 0);
     let to_stance = stance(StanceKind::Standing);
     let observer = Observer {
-        position: &from_pos,
-        stance:   &from_stance,
-        facing:   &from_facing,
+        position:         &from_pos,
+        stance:           &from_stance,
+        facing:           &from_facing,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let target = Target {
         position: &to_pos,

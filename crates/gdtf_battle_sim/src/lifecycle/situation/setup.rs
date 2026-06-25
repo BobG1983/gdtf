@@ -37,7 +37,7 @@ use crate::{
         piece::TerrainRegistry,
     },
     tuning::{GangerStatTuning, MoveCost},
-    vertical::build_vertical_link_graph,
+    vertical::{LinkKind, build_vertical_link_graph},
     weapon::{
         Accuracy, BaseSpread, FatalBias, FireMode, Kickback, Stable, Weapon, WeaponBundle,
         WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, Wields,
@@ -647,7 +647,17 @@ pub fn setup_battle(
         terrain:   terrain_placements,
         occupants: setup.occupants.clone(),
     };
-    commands.insert_resource(OccupancyGrid::build_from_occupancy_input(&occupancy_input));
+    let mut occupancy_grid = OccupancyGrid::build_from_occupancy_input(&occupancy_input);
+    // GTW-390: mark every authored stair tile in the occupancy grid so the LOS probe
+    // can lift the eye z for observers standing on a stair endpoint. Ladders are
+    // explicitly excluded (they do not share the physical stair eye-lift).
+    for link in &situation.vertical_links {
+        if matches!(link.kind, LinkKind::Stair { .. }) {
+            occupancy_grid.mark_stair_cell(link.from);
+            occupancy_grid.mark_stair_cell(link.to);
+        }
+    }
+    commands.insert_resource(occupancy_grid);
 
     // GTW-395: insert the TerrainIndex after the occupancy grid is built — all terrain
     // entities are spawned (pairs accumulated in steps 2.5 and 3), so the index is

@@ -17,9 +17,10 @@ fn eye_anchor_is_facing_invariant() {
     let north_facing = facing(Direction::North);
     let reference = eye_anchor(
         &Observer {
-            position: &pos,
-            stance:   &st,
-            facing:   &north_facing,
+            position:         &pos,
+            stance:           &st,
+            facing:           &north_facing,
+            stair_eye_offset: StairEyeOffset::new(0.0),
         },
         &tuning,
     );
@@ -37,9 +38,10 @@ fn eye_anchor_is_facing_invariant() {
         let f = facing(dir);
         let eye = eye_anchor(
             &Observer {
-                position: &pos,
-                stance:   &st,
-                facing:   &f,
+                position:         &pos,
+                stance:           &st,
+                facing:           &f,
+                stair_eye_offset: StairEyeOffset::new(0.0),
             },
             &tuning,
         );
@@ -84,9 +86,10 @@ fn verdict_is_facing_invariant() {
     ] {
         let f = facing(dir);
         let observer = Observer {
-            position: &from_pos,
-            stance:   &from_stance,
-            facing:   &f,
+            position:         &from_pos,
+            stance:           &from_stance,
+            facing:           &f,
+            stair_eye_offset: StairEyeOffset::new(0.0),
         };
         verdicts.push(*has_los(
             &observer,

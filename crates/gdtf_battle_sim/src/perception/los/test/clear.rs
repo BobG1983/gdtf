@@ -19,9 +19,10 @@ fn open_line_is_clear() {
     let to_stance = stance(StanceKind::Standing);
 
     let observer = Observer {
-        position: &from_pos,
-        stance:   &from_stance,
-        facing:   &from_facing,
+        position:         &from_pos,
+        stance:           &from_stance,
+        facing:           &from_facing,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let target = Target {
         position: &to_pos,
@@ -59,9 +60,10 @@ fn high_wall_between_blocks() {
     let to_stance = stance(StanceKind::Standing);
 
     let observer = Observer {
-        position: &from_pos,
-        stance:   &from_stance,
-        facing:   &from_facing,
+        position:         &from_pos,
+        stance:           &from_stance,
+        facing:           &from_facing,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let target = Target {
         position: &to_pos,
@@ -99,9 +101,10 @@ fn slab_between_levels_blocks() {
 
     // With NO slab the climb is clear; an intact slab on the crossed boundary blocks it.
     let observer = Observer {
-        position: &from_pos,
-        stance:   &from_stance,
-        facing:   &from_facing,
+        position:         &from_pos,
+        stance:           &from_stance,
+        facing:           &from_facing,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let target = Target {
         position: &to_pos,

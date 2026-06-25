@@ -76,10 +76,11 @@ fn union_verdict_depends_on_the_published_band() {
     let (pos, st, fc) = alive_observer_at(2, 5, 1);
     let make_observers = || {
         [FovObserver {
-            position: &pos,
-            stance:   &st,
-            facing:   &fc,
-            life:     LifeState::Alive,
+            position:         &pos,
+            stance:           &st,
+            facing:           &fc,
+            life:             LifeState::Alive,
+            stair_eye_offset: StairEyeOffset::new(0.0),
         }]
     };
 

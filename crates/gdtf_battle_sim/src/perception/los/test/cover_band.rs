@@ -23,9 +23,10 @@ fn mid_cover_sails_for_high_line_blocks_low_line() {
     // cover, so it sails over → CLEAR.
     let stand = stance(StanceKind::Standing);
     let high_observer = Observer {
-        position: &from_pos,
-        stance:   &stand,
-        facing:   &look,
+        position:         &from_pos,
+        stance:           &stand,
+        facing:           &look,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let high_target = Target {
         position: &to_pos,
@@ -49,9 +50,10 @@ fn mid_cover_sails_for_high_line_blocks_low_line() {
     // so it impacts it before the target → BLOCKED.
     let prone = stance(StanceKind::Prone);
     let low_observer = Observer {
-        position: &from_pos,
-        stance:   &prone,
-        facing:   &look,
+        position:         &from_pos,
+        stance:           &prone,
+        facing:           &look,
+        stair_eye_offset: StairEyeOffset::new(0.0),
     };
     let low_target = Target {
         position: &to_pos,
