@@ -60,6 +60,7 @@ mod decision;
 mod fire_target;
 mod highlight;
 mod path_preview;
+mod reachable;
 mod resources;
 mod systems;
 
@@ -73,5 +74,6 @@ pub use highlight::update_selection_highlight;
 pub use path_preview::{
     PathPreviewTarget, PreviewGrids, populate_path_preview, reset_move_target_on_fire_mode_change,
 };
+pub use reachable::{ReachableGrids, populate_reachable_overlay};
 pub use resources::{SelectedShooter, SelectionHighlight};
 pub use systems::{left_click_act, right_click_turn_to_face};

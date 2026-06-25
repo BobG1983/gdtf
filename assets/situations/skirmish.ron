@@ -107,7 +107,15 @@
     // below two non-dangling endpoints to connect (it is the only way to change storey).
     slabs: [
         (at: (cell: (x: 2, y: 2), level: 0), piece: "deck_slab"),  // ground-floor slab — the stair's lower endpoint
-        (at: (cell: (x: 2, y: 2), level: 1), piece: "deck_slab"),  // first-floor slab — the stair's upper endpoint
+        (at: (cell: (x: 2, y: 2), level: 1), piece: "deck_slab"),  // first-floor slab — the stair's upper endpoint (arrival)
+        // GTW-387: a small walkable first-floor platform east+south of the stair head, so a
+        // ganger who climbs the stair HAS reachable L1 destinations to move to (the bug was
+        // that ONLY the link tile existed on L1 — a dead-end). default_floor (deck_floor,
+        // move_cost 4) gives each open platform cell its walk cost; no `floors` override needed.
+        (at: (cell: (x: 3, y: 2), level: 1), piece: "deck_slab"),  // L1 platform — one cell east of the stair head
+        (at: (cell: (x: 4, y: 2), level: 1), piece: "deck_slab"),  // L1 platform — two cells east
+        (at: (cell: (x: 3, y: 3), level: 1), piece: "deck_slab"),  // L1 platform — diagonally SE (keeps the platform 2-wide, not a 1-line corridor)
+        (at: (cell: (x: 2, y: 3), level: 1), piece: "deck_slab"),  // L1 platform — one cell south of the stair head
     ],
     // The authored stair / ladder vertical links — the ONLY way a ganger changes
     // storey. Each: two (cell, level) endpoints + a kind. Both endpoints below are

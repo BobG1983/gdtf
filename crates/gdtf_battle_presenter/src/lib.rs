@@ -93,6 +93,7 @@ pub use overlays::{
     fire_target::{FireTargetHighlight, FireTargetLabel, FireTargetTile, draw_fire_target},
     highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request},
     path_preview::{PathPreview, PathStepSprite, PathTargetLabel, draw_path_preview},
+    reachable::{ReachableCellSprite, ReachableCells, draw_reachable_overlay},
     targeting_gate::{CellVisibility, cell_squad_visible},
 };
 pub use plugin::{

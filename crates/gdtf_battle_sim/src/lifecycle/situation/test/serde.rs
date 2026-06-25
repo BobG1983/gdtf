@@ -110,6 +110,48 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
     );
 }
 
+/// GTW-387 (C1) — the shipped `skirmish.ron` has **walkable L1 content beyond the
+/// link tile**: at least one authored slab is at level 1 AND is not the stair-link
+/// endpoint itself (i.e. NOT at the same `(x, y)` as every vertical link's `from`
+/// foot, so a ganger who reaches the stair head has real destinations to walk to on
+/// the upper floor). This is a real-path parse (the same `include_str!` path the
+/// other shipped-file tests use) — it catches a regression where the platform
+/// slabs were stripped back to a dead-end single link tile.
+///
+/// Pin-discriminating: this fails if the shipped file is missing L1 slabs beyond
+/// the link-endpoint cell (the exact pre-GTW-387 bug that stranded gangers at the
+/// stair head with nowhere to go).
+#[test]
+fn shipped_skirmish_has_walkable_l1_content_beyond_link_tile() {
+    let Some(situation) = shipped_situation() else {
+        return;
+    };
+
+    // Collect the (x, y) of every stair head (the L1 arrival endpoint of a
+    // vertical link).  We do NOT want to count those cells as "real" L1 platform
+    // content, because the pre-GTW-387 bug was that ONLY the link-head cell
+    // existed on L1 — a dead-end with no further walkable destinations.
+    let link_head_xy: HashSet<(i32, i32)> = situation
+        .vertical_links
+        .iter()
+        .map(|l| (l.to.x, l.to.y))
+        .collect();
+
+    // Count L1 slabs that are NOT on a link-head (x, y) — the platform cells.
+    let l1_platform_count = situation
+        .slabs
+        .iter()
+        .filter(|s| s.at.z == 1 && !link_head_xy.contains(&(s.at.x, s.at.y)))
+        .count();
+
+    assert!(
+        l1_platform_count >= 1,
+        "the shipped skirmish must have ≥1 L1 slab BEYOND the link-tile (walkable platform) \
+         so a ganger who climbs the stair has real destinations; found {l1_platform_count} \
+         non-link-head L1 slabs (GTW-387 C1)",
+    );
+}
+
 /// GTW-226 AC6 — the shipped `skirmish.ron` omits `player_faction`, so the
 /// struct-level `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)`
 /// (gang 0 = the player, by convention). Documents the data-driven serde seam: no

@@ -76,6 +76,11 @@ pub enum Layer {
     /// The hover / selection highlight — drawn in front of the actor so it tints the unit
     /// (documented order; wiring deferred, see the type doc).
     Highlight,
+    /// The GTW-387 reachable-range overlay — the cells the selected ganger can reach
+    /// within its remaining TU. Drawn ABOVE the highlight so the range tint reads over the
+    /// terrain and actors, but strictly BELOW the [`PathPreview`](Layer::PathPreview) so
+    /// the move-route still reads over the range highlight when both are shown.
+    ReachableRange,
     /// The GTW-358 route-preview highlight — the previewed `find_path` route from the
     /// selected ganger to the target cell (and the GTW-368 target-cell TU-cost label), drawn
     /// strictly ABOVE the highlight so the route + its cost label read over the terrain,
@@ -88,8 +93,8 @@ impl Layer {
     /// This layer's within-storey draw-z bias, added on top of the per-storey level z.
     ///
     /// Strictly increasing terrain &lt; vertical-link &lt; fire-target &lt; actor &lt;
-    /// highlight &lt; path-preview, and every value is strictly `< Z_PER_LEVEL` so a biased
-    /// sprite never sorts into the next storey's band.
+    /// highlight &lt; reachable-range &lt; path-preview, and every value is strictly `<
+    /// Z_PER_LEVEL` so a biased sprite never sorts into the next storey's band.
     #[must_use]
     const fn z_bias(self) -> f32 {
         match self {
@@ -104,8 +109,11 @@ impl Layer {
             Self::Actor => GANGER_Z_BIAS,
             // Strictly above the actor, still within the storey band (`< Z_PER_LEVEL`).
             Self::Highlight => GANGER_Z_BIAS * 2.0,
-            // Topmost within-storey band — above the highlight (the route + its cost label
-            // read over the reticle), still `< Z_PER_LEVEL`.
+            // GTW-387: above the highlight, below the route-preview so the move-route reads
+            // over the range highlight when both are shown.
+            Self::ReachableRange => GANGER_Z_BIAS * 2.5,
+            // Topmost within-storey band — above the highlight + range overlay (the route +
+            // its cost label read over the reticle and range tint), still `< Z_PER_LEVEL`.
             Self::PathPreview => GANGER_Z_BIAS * 3.0,
         }
     }

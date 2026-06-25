@@ -5,10 +5,11 @@
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_presenter::{
-    FireTargetHighlight, GamepadCursorMoved, HighlightRequest, PathPreview,
+    FireTargetHighlight, GamepadCursorMoved, HighlightRequest, PathPreview, ReachableCells,
 };
 use gdtf_battle_sim::{
-    BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
+    BattleInProgress, FloorCostGrid, OccupancyGrid, PlayerFaction, SquadVisibility,
+    VerticalLinkGraph,
     acts::{
         EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested, ReloadRequested,
         SetAimingRequested, SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
@@ -31,8 +32,9 @@ use crate::{
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
         PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
-        populate_fire_target, populate_path_preview, reset_move_target_on_fire_mode_change,
-        right_click_turn_to_face, update_selection_highlight,
+        populate_fire_target, populate_path_preview, populate_reachable_overlay,
+        reset_move_target_on_fire_mode_change, right_click_turn_to_face,
+        update_selection_highlight,
     },
 };
 
@@ -103,6 +105,10 @@ fn battle_act_gate() -> impl SystemCondition<()> {
 }
 
 impl Plugin for GdtfBattleInputPlugin {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "plugin build: each line registers a system; extracting further improves nothing"
+    )]
     fn build(&self, app: &mut App) {
         // GTW-245 — anchor the whole input band BEFORE the sim band, realizing the
         // one-way `input -> sim -> presenter` loop (ADR-0001) inside one `Update`.
@@ -270,6 +276,10 @@ impl Plugin for GdtfBattleInputPlugin {
         // ganger → the `PathPreviewTarget`; extracted to keep `build` under the
         // `too_many_lines` lint).
         register_path_preview_population(app);
+
+        // GTW-387 — the reachable-range overlay POPULATE system (calls `reachable_within` for
+        // the selected ganger; extracted to keep `build` under the `too_many_lines` lint).
+        register_reachable_overlay_population(app);
 
         // GTW-371 — the fire-target highlight POPULATE system (decides the fireable-enemy verdict
         // on the hovered cell + computes the `mode_tu_cost`; extracted to keep `build` under the
@@ -448,6 +458,46 @@ fn register_fire_target_population(app: &mut App) {
                     .and_then(resource_exists::<CombatTuning>)
                     .and_then(resource_exists::<PlayerFaction>)
                     .and_then(resource_exists::<FireTargetHighlight>),
+            ),
+    );
+}
+
+/// Registers the GTW-387 reachable-range overlay POPULATE system into
+/// [`InputSystems::Gather`].
+///
+/// [`populate_reachable_overlay`] reads the current [`SelectedShooter`] and its
+/// `(`[`Position`](gdtf_battle_sim::Position)`,` [`Tu`](gdtf_battle_sim::Tu)`,`
+/// [`Faction`](gdtf_battle_sim::Faction)`)` and fills the presenter-owned
+/// [`ReachableCells`](gdtf_battle_presenter::ReachableCells) by calling
+/// [`reachable_within`](gdtf_battle_sim::reachable_within) — the SAME visibility-gated
+/// `PlanningView` construction the path-preview and `dispatch_move` use. Ordered
+/// `.after(left_click_act)` and `.after(auto_select_first_player_ganger)` so it observes
+/// the same update's selection. It recomputes every Update; writes only on a change (the
+/// `!=` guard, the `populate_path_preview` precedent).
+///
+/// Gated on the live battle WITH every grid the flood reads (`OccupancyGrid`,
+/// `VerticalLinkGraph`, `SquadVisibility`, `CombatTuning`, `FloorCostGrid`) AND the
+/// presenter-`init_resource`-d [`ReachableCells`](gdtf_battle_presenter::ReachableCells):
+/// a focused input-only harness opens `BattleInProgress` WITHOUT a presenter plugin (so no
+/// `ReachableCells`), so without that guard the `ResMut<ReachableCells>` param would panic
+/// validation (`bevy-traps.md` #1). Extracted from
+/// [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep `build` under the
+/// `too_many_lines` lint (the `register_path_preview_population` precedent).
+fn register_reachable_overlay_population(app: &mut App) {
+    app.add_systems(
+        Update,
+        populate_reachable_overlay
+            .in_set(InputSystems::Gather)
+            .after(left_click_act)
+            .after(auto_select_first_player_ganger)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<OccupancyGrid>)
+                    .and_then(resource_exists::<VerticalLinkGraph>)
+                    .and_then(resource_exists::<SquadVisibility>)
+                    .and_then(resource_exists::<CombatTuning>)
+                    .and_then(resource_exists::<FloorCostGrid>)
+                    .and_then(resource_exists::<ReachableCells>),
             ),
     );
 }

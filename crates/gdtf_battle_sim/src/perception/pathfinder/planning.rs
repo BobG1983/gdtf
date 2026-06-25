@@ -42,6 +42,21 @@
 //!   [`FactionRelation::Other`]) — an enemy the squad cannot currently see never bends
 //!   the route (bending around an unseen body would leak its position).
 //!
+//! ## GTW-387: the scoped UNSEEN relaxation for vertical link far endpoints
+//!
+//! A cell that is UNSEEN is normally non-routable (C1). The **one exception** is a
+//! cell that is the FAR ENDPOINT of a vertical link departing the cell currently being
+//! expanded: you may plan ONTO an as-yet-unseen storey via a **known** stair or ladder,
+//! because the link was authored and validated at setup — the
+//! [`VerticalLinkGraph`](crate::vertical::VerticalLinkGraph) is the "known-link" oracle.
+//! This relaxation is applied by [`PlanningView::is_routable_link`] — a C2-only
+//! predicate used ONLY for the `traversable_links` (vertical) half of `edges()` in the
+//! search core. Planar 8-connected steps still keep the full C1+C2 gate
+//! ([`PlanningView::is_routable`]), so there is no see-through-walls or
+//! route-through-dark hole. Once the ganger arrives at the link head the FOV re-computes
+//! and the platform cells on the far storey become EXPLORED and plannable on the next
+//! tick — the OQ-5 invariant for non-link cells is unchanged.
+//!
 //! ## Purity + determinism (C4 / C5)
 //!
 //! The gate is a PURE deterministic predicate over the borrowed [`SquadVisibility`]
@@ -121,6 +136,47 @@ where
         if !self.squad.is_cell_explored(&cell) {
             return false;
         }
+        // C2 — shared blocking check (geometry + visibility-aware occupant).
+        self.is_open(cell, grid)
+    }
+
+    /// Routability for a cell reached over a **known vertical link** (GTW-387) — C2
+    /// only.
+    ///
+    /// The C1 UNSEEN gate is **lifted** for cells that arrive via the validated
+    /// [`VerticalLinkGraph`](crate::vertical::VerticalLinkGraph): a ganger may PLAN
+    /// onto an as-yet-unseen storey by following a known stair or ladder, because the
+    /// link itself was authored and validated at setup — the graph is the
+    /// "known-link" oracle. ONLY the fog-explored check (C1) is skipped; the full C2
+    /// geometry and occupant block still applies.
+    ///
+    /// **The relaxation does NOT widen to arbitrary UNSEEN cells:** it is applied
+    /// only to cells emitted by [`traversable_links`](crate::vertical::traversable_links)
+    /// (i.e. far endpoints of links departing the currently-expanded origin) — planar
+    /// 8-connected neighbours keep the full [`is_routable`](Self::is_routable) gate, so
+    /// there is no see-through-walls or route-through-dark hole. An UNSEEN floor tile
+    /// that is not a link endpoint is never enqueued. Once the ganger arrives at the
+    /// (UNSEEN) link head and FOV re-computes, the platform cells on the far storey
+    /// become EXPLORED and are plannable on the next tick — the `input → presenter → sim`
+    /// multi-tick play model (OQ-5 invariant for non-link cells is unchanged).
+    ///
+    /// PURE: grid lookups + the resolver — no RNG, no world access.
+    #[must_use]
+    pub fn is_routable_link(&self, cell: CellLevel, grid: &OccupancyGrid) -> bool {
+        // C1 — SKIPPED for a known link endpoint. The vertical graph is the oracle:
+        // if this cell came from traversable_links it IS a known stair/ladder endpoint,
+        // so planning onto an unseen storey via it is permitted.
+
+        // C2 — geometry + occupant blocking still apply unconditionally.
+        self.is_open(cell, grid)
+    }
+
+    /// The shared C2 blocking test — walls / cover geometry ALWAYS block, and an
+    /// occupant blocks per [`is_ganger_visible`] — used by both [`is_routable`] and
+    /// [`is_routable_link`] so the rule lives in ONE place and cannot drift.
+    ///
+    /// PURE: grid lookups + the resolver — no RNG, no world access.
+    fn is_open(&self, cell: CellLevel, grid: &OccupancyGrid) -> bool {
         // C2 (true geometry): walls / floor / standing cover (blocking scatter/props)
         // always block on a routable cell.
         if grid.is_blocked(&cell) {

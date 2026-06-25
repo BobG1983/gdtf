@@ -145,19 +145,43 @@ where
     /// `(z, y, x)` offset table, then the graph-index link order), so the relaxation
     /// never iterates a raw `HashMap` in the hot loop (C4). Planar edges are listed
     /// first, then vertical hops — a fixed concatenation. The GTW-353 visibility gate
-    /// then drops any neighbour that is non-routable
-    /// ([`PlanningView::is_routable`] `== false`): UNSEEN cells (C1) and cells blocked
-    /// within-routable by geometry or a blocking occupant (C2). The gate only REMOVES
-    /// edges in a deterministic, set-membership way — it never reorders the survivors
-    /// or alters their octile / link costs, so the C4 determinism + the cost model are
-    /// untouched.
+    /// then drops any neighbour that is non-routable: UNSEEN cells (C1) and cells
+    /// blocked within-routable by geometry or a blocking occupant (C2). The gate only
+    /// REMOVES edges in a deterministic, set-membership way — it never reorders the
+    /// survivors or alters their octile / link costs, so the C4 determinism + the cost
+    /// model are untouched.
+    ///
+    /// # GTW-387: per-half routing predicates
+    ///
+    /// The two halves apply DIFFERENT routability predicates:
+    ///
+    /// - **Planar** (`pathable_neighbors`) — the FULL gate
+    ///   ([`PlanningView::is_routable`]: C1 UNSEEN + C2). An ordinary 8-connected step
+    ///   to an UNSEEN floor tile stays non-routable: no fog relaxation, no
+    ///   see-through-walls hole.
+    /// - **Vertical** (`traversable_links`) — the C1-RELAXED gate
+    ///   ([`PlanningView::is_routable_link`]: C2 only). Every element is a
+    ///   setup-validated [`VerticalLinkGraph`] far endpoint — the graph is the
+    ///   "known-link" oracle, so planning onto an as-yet-unseen storey via a known
+    ///   stair or ladder is permitted. C2 (geometry + visible occupant) still applies
+    ///   unconditionally; only the C1 fog-explored check is lifted for link endpoints.
+    ///
+    /// The ELEMENT ORDER of survivors is identical to the previous single-filter form
+    /// (planar order preserved, vertical order preserved, planar-before-vertical
+    /// preserved), so C4 determinism is untouched.
     fn edges(&self, origin: CellLevel) -> Vec<(CellLevel, Tu)> {
-        let planar = pathable_neighbors(origin, self.grid, self.floor_costs);
-        let vertical = traversable_links(origin, self.links, self.tuning.link_tu);
-        planar
-            .chain(vertical)
-            .filter(|(neighbour, _)| self.planning.is_routable(*neighbour, self.grid))
-            .collect()
+        // Planar steps keep the FULL gate (C1 UNSEEN + C2). An UNSEEN floor tile
+        // reached by an ordinary step stays non-routable — no fog relaxation.
+        let planar = pathable_neighbors(origin, self.grid, self.floor_costs)
+            .filter(|(neighbour, _)| self.planning.is_routable(*neighbour, self.grid));
+        // GTW-387: a vertical hop's far endpoint comes from the VALIDATED
+        // VerticalLinkGraph (links_from(origin)) — it IS a known link. Relax C1 for
+        // it (you may plan onto an UNSEEN storey VIA a known link) but KEEP C2: the
+        // landing cell must still be geometrically open and unblocked by a visible
+        // occupant. is_routable_link skips ONLY the explored check.
+        let vertical = traversable_links(origin, self.links, self.tuning.link_tu)
+            .filter(|(neighbour, _)| self.planning.is_routable_link(*neighbour, self.grid));
+        planar.chain(vertical).collect()
     }
 }
 
