@@ -330,7 +330,7 @@ pub use lifecycle::{
 };
 pub use perception::{
     los,
-    los::{CanSee, Observer, Sighted, Target, can_see, has_los},
+    los::{CanSee, Observer, PeekOffset, Sighted, Target, can_see, has_los, has_los_peeking},
     pathfinder,
     pathfinder::{
         MIN_MOVE_COST, Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within,

@@ -32,6 +32,7 @@ fn low_sees_tall_but_tall_blocked_by_ground_wall() {
         stance:           &low_stance,
         facing:           &low_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let low_target = Target {
         position: &low_pos,
@@ -42,6 +43,7 @@ fn low_sees_tall_but_tall_blocked_by_ground_wall() {
         stance:           &tall_stance,
         facing:           &tall_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let tall_target = Target {
         position: &tall_pos,

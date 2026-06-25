@@ -41,5 +41,5 @@ mod test;
 
 pub use aim_dir::{AimDir, climb_aim_dir};
 pub use aim_point::target_aim_point;
-pub(crate) use muzzle::muzzle_height;
 pub use muzzle::muzzle_position;
+pub(crate) use muzzle::{clamp_within_cell, muzzle_height};

@@ -49,6 +49,7 @@ fn at_range_edge_with_clear_los_is_true() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,
@@ -89,6 +90,7 @@ fn beyond_range_edge_is_false() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,
@@ -129,6 +131,7 @@ fn downed_observer_sees_nothing() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,
@@ -169,6 +172,7 @@ fn dead_observer_sees_nothing() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,
@@ -209,6 +213,7 @@ fn alive_observer_in_range_with_clear_los_is_true() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,
@@ -253,6 +258,7 @@ fn blocked_los_inside_range_is_false() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,
@@ -301,6 +307,7 @@ fn chebyshev_ignores_level_axis() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,

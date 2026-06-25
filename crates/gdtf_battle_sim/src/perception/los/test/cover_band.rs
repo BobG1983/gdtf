@@ -27,6 +27,7 @@ fn mid_cover_sails_for_high_line_blocks_low_line() {
         stance:           &stand,
         facing:           &look,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let high_target = Target {
         position: &to_pos,
@@ -54,6 +55,7 @@ fn mid_cover_sails_for_high_line_blocks_low_line() {
         stance:           &prone,
         facing:           &look,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let low_target = Target {
         position: &to_pos,

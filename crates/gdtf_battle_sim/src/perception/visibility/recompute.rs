@@ -21,6 +21,7 @@ use crate::{
     battle::{BattleReady, PlayerFaction},
     cover::CoverLedger,
     ganger::{Facing, Faction, LifeState, Position, Stance},
+    los::PeekOffset,
     occupancy::OccupancyGrid,
     occupancy_sync::{CoverDestroyed, SlabDestroyed},
     surface::SurfaceGrid,
@@ -33,7 +34,12 @@ use crate::{
 /// **flipped life state** (`Changed<`[`LifeState`]`>`). Mirrors the `occupancy_sync`
 /// [`MovedOrReposed`](crate::occupancy_sync) precedent, widened with the life flip
 /// (clause 2 — a downed observer drops its FOV on the next recompute).
-type MovedReposedOrFlipped = Or<(Changed<Position>, Changed<Stance>, Changed<LifeState>)>;
+type MovedReposedOrFlipped = Or<(
+    Changed<Position>,
+    Changed<Stance>,
+    Changed<LifeState>,
+    Changed<PeekOffset>,
+)>;
 
 /// Whether the squad fog must be recomputed THIS update — the trigger gate (clause 2).
 ///
@@ -175,6 +181,7 @@ mod test {
     use crate::{
         battle::{BattleReady, PlayerFaction},
         ganger::{Faction, Position, Stance, StanceKind},
+        los::PeekOffset,
         metric::{Cell, CellLevel, Level},
         occupancy_sync::{CoverDestroyed, SlabDestroyed},
         visibility::should_recompute_visibility,
@@ -315,6 +322,48 @@ mod test {
         assert!(
             !run_predicate(&mut world),
             "with no PlayerFaction (no battle) the gate must stay closed, not panic"
+        );
+    }
+
+    /// A player-faction ganger with a freshly-set [`PeekOffset`] fires the gate
+    /// (GTW-393 C3 trigger: `Changed<PeekOffset>` is in the `Or<(…)>` alias).
+    ///
+    /// A freshly-spawned ganger reads as `Changed<PeekOffset>` on the first evaluation
+    /// (Bevy first-run change semantics — the same as `Changed<Position>` in the
+    /// `player_observer_move_fires_the_gate` test). Because the ganger belongs to the
+    /// PLAYER faction, the gate returns `true`.
+    #[test]
+    fn player_peek_change_fires_the_gate() {
+        let mut world = World::new();
+        world.insert_resource(PlayerFaction::new(PLAYER));
+        world.spawn((
+            Position::new(ground(5, 5)),
+            Stance::new(StanceKind::Standing),
+            PeekOffset::default(),
+            PLAYER,
+        ));
+        assert!(
+            run_predicate(&mut world),
+            "a player-faction observer with a Changed<PeekOffset> must fire the gate              (GTW-393 C3 trigger)"
+        );
+    }
+
+    /// An enemy-faction ganger with a `PeekOffset` does NOT fire the gate — the
+    /// faction filter in the trigger query covers the new `Or` arm (GTW-393 C3 + C4:
+    /// only player observers feed the squad fog; an enemy peek never recomputes it).
+    #[test]
+    fn enemy_peek_change_does_not_fire() {
+        let mut world = World::new();
+        world.insert_resource(PlayerFaction::new(PLAYER));
+        world.spawn((
+            Position::new(ground(9, 9)),
+            Stance::new(StanceKind::Standing),
+            PeekOffset::default(),
+            ENEMY,
+        ));
+        assert!(
+            !run_predicate(&mut world),
+            "an enemy-faction observer with a Changed<PeekOffset> must NOT fire the gate              (only player observers feed the squad fog — GTW-393 C3 faction filter)"
         );
     }
 }

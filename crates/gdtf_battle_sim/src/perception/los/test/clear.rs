@@ -23,6 +23,7 @@ fn open_line_is_clear() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,
@@ -64,6 +65,7 @@ fn high_wall_between_blocks() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,
@@ -105,6 +107,7 @@ fn slab_between_levels_blocks() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,

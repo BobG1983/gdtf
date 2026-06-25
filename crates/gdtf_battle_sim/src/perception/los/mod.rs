@@ -41,4 +41,4 @@ mod probe;
 mod test;
 
 pub use engagement::{CanSee, can_see};
-pub use probe::{Observer, Sighted, Target, has_los};
+pub use probe::{Observer, PeekOffset, Sighted, Target, has_los, has_los_peeking};

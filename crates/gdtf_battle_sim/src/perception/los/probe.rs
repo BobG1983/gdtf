@@ -7,12 +7,12 @@
 //! (the facing-neutral eye + the exact compose-derived target aim band).
 
 use bevy::{
-    math::Vec3,
-    prelude::{Deref, Entity},
+    math::{Vec2, Vec3},
+    prelude::{Component, Deref, Entity},
 };
 
 use crate::{
-    central_axis::{muzzle_height, target_aim_point},
+    central_axis::{clamp_within_cell, muzzle_height, target_aim_point},
     cover::CoverLedger,
     ganger::{Facing, Position, Stance, StanceKind},
     march::{MarchKind, march_vector},
@@ -21,6 +21,30 @@ use crate::{
     surface::SurfaceGrid,
     tuning::CombatTuning,
 };
+
+/// A sub-cell XY displacement of the observer's eye toward a cell edge — the wall-peek
+/// offset (GTW-393).
+///
+/// Nudging the eye toward a cell edge lets an observer peer around a corner that
+/// its cell-centre eye cannot clear. `Default` = `Vec2::ZERO` (no peek; the standard
+/// centred eye). The XY analogue of [`StairEyeOffset`]'s z-lift. The inner `Vec2` is
+/// **private** (no-bare-types rule): construct through [`PeekOffset::new`], read through
+/// the derived [`Deref`].
+///
+/// **No automatic populator is built in GTW-393** — the component is non-zero only in
+/// direct-set tests and under a future automatic positional populator (deferred, filed
+/// as a follow-up ticket blocked-by GTW-393).
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Default)]
+pub struct PeekOffset(Vec2);
+
+impl PeekOffset {
+    /// Build a wall-peek eye displacement — a sub-cell XY offset toward a cell edge.
+    /// `Vec2::ZERO` is the identity (no peek); `Default` constructs it too.
+    #[must_use]
+    pub const fn new(displacement: Vec2) -> Self {
+        Self(displacement)
+    }
+}
 
 /// The **watcher** of a sight probe — a facing-aware borrow-view over the per-field
 /// ganger components the eye anchor needs (`docs/combat/resolution.md` §1 muzzle;
@@ -53,6 +77,10 @@ pub struct Observer<'a> {
     /// carries `StairEyeOffset(0.0)` (no lift). The stance gate (Prone → 0.0) is
     /// applied inside `eye_anchor` so this field always carries the raw grid value.
     pub stair_eye_offset: StairEyeOffset,
+    /// The wall-peek XY eye displacement (GTW-393) — a sub-cell nudge toward a cell
+    /// edge, clamped inside `eye_anchor` so the eye stays within the observer's own
+    /// cell. `PeekOffset::default()` (= `Vec2::ZERO`) is the centred, no-peek eye.
+    pub peek_offset:      PeekOffset,
 }
 
 /// The **watched** entity of a sight probe — a borrow-view over the per-field ganger
@@ -178,10 +206,49 @@ pub fn has_los(
     Sighted::new(is_clear(&result, target_cell, eye, aim))
 }
 
-/// The eye-anchor [`SimPos`] for `observer` — the facing-neutral watcher eye
-/// (GTW-337 clause 3, GTW-390 stair eye-offset).
+/// A convenience wrapper over [`has_los`] that probes with a peeked eye — the
+/// observer's eye is nudged by `peek` toward a cell edge before the LOS march
+/// (GTW-393 wall-peek).
 ///
-/// x/y is the observer cell's [`cell_center`]; z is
+/// Constructs `Observer { peek_offset: peek, ..*from }` (valid because
+/// `Observer: Copy`) and calls [`has_los`] on the single geometry path — no
+/// second geometry implementation. The clamp in [`eye_anchor`] guarantees the
+/// peeked eye stays within the observer's own cell regardless of the displacement
+/// magnitude.
+///
+/// The squad fog union ([`union_fov`](crate::visibility::union_fov)) uses the
+/// centred eye (`PeekOffset::default()`) — peek only enters a targeted,
+/// per-shot query such as this one.
+#[must_use]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "has_los_peeking forwards every argument has_los needs plus the explicit \
+              peek displacement — the same arity justification as has_los and can_see; \
+              bundling into a struct would only hide the arity without reducing it"
+)]
+pub fn has_los_peeking(
+    from: &Observer,
+    to: &Target,
+    peek: PeekOffset,
+    occupancy: &OccupancyGrid,
+    surface: &SurfaceGrid,
+    cover: &CoverLedger,
+    tuning: &CombatTuning,
+    is_dead: impl Fn(Entity) -> bool,
+) -> Sighted {
+    let peeking = Observer {
+        peek_offset: peek,
+        ..*from
+    };
+    has_los(&peeking, to, occupancy, surface, cover, tuning, is_dead)
+}
+
+/// The eye-anchor [`SimPos`] for `observer` — the facing-neutral watcher eye
+/// (GTW-337 clause 3, GTW-390 stair eye-offset, GTW-393 wall-peek XY offset).
+///
+/// x/y is the observer cell's [`cell_center`] nudged by the wall-peek XY displacement
+/// ([`PeekOffset`]) and clamped so the eye can never leave the observer's own cell
+/// (AC #2 of `clamp_within_cell`); z is
 /// `f32::from(level) + muzzle_height(stance) + stair_offset(stance, stair_eye_offset)`
 /// — the SAME per-stance muzzle level-fraction
 /// [`muzzle_position`](crate::central_axis::muzzle_position) reads, with NO per-facing
@@ -192,9 +259,13 @@ pub fn has_los(
 /// * **Standing or Crouching** → stair offset = `*observer.stair_eye_offset`
 ///   (i.e. +0.5 for a stair tile, 0.0 for a flat floor).
 ///
+/// The wall-peek clamp invariant: `pos_to_cell(peeked_eye).cell == observer_cell`
+/// for ANY peek displacement, including absurd values — the clamp proof holds because
+/// the clamped coordinate floors to the same cell corner under `pos_to_cell`.
+///
 /// `pub(super)` so the in-crate tests can assert the facing-neutral invariant
-/// directly (rotating `facing` leaves the eye unchanged) and the stair-offset
-/// invariants (GTW-390).
+/// directly (rotating `facing` leaves the eye unchanged), the stair-offset
+/// invariants (GTW-390), and the peek clamp invariants (GTW-393).
 pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
     let (cell, level) = cell_and_level(observer.position);
     let center = cell_center(cell, level);
@@ -208,7 +279,23 @@ pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
         StanceKind::Prone => 0.0,
         StanceKind::Standing | StanceKind::Crouching => *observer.stair_eye_offset,
     };
-    SimPos::new(center.x, center.y, base_z + stair_z)
+    // Wall-peek XY offset (GTW-393): nudge the eye toward a cell edge by the
+    // authored PeekOffset, then clamp each axis so the eye can never floor into a
+    // neighbouring cell (AC #2: `pos_to_cell(peeked_eye).cell == observer_cell`).
+    let peek = *observer.peek_offset;
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "grid coords are tiny (0..60); the f32 conversion of the integer \
+                  corner is exact for this range"
+    )]
+    let eye_x = clamp_within_cell(center.x + peek.x, cell.x as f32);
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "grid coords are tiny (0..60); the f32 conversion of the integer \
+                  corner is exact for this range"
+    )]
+    let eye_y = clamp_within_cell(center.y + peek.y, cell.y as f32);
+    SimPos::new(eye_x, eye_y, base_z + stair_z)
 }
 
 /// The target aim-anchor [`SimPos`] for `target` — resolved the EXACT way the shot

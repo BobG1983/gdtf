@@ -55,6 +55,7 @@ fn stair_kneel_clears_mid_cover_ground_kneel_blocks() {
         stance:           &obs_stance,
         facing:           &obs_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let ground_sighted = has_los(
         &ground_kneel,
@@ -81,6 +82,7 @@ fn stair_kneel_clears_mid_cover_ground_kneel_blocks() {
         stance:           &obs_stance,
         facing:           &obs_facing,
         stair_eye_offset: stair_offset,
+        peek_offset:      PeekOffset::default(),
     };
     let stair_sighted = has_los(
         &stair_kneel,
@@ -122,6 +124,7 @@ fn stair_facing_invariant() {
             stance:           &st,
             facing:           &north_facing,
             stair_eye_offset: stair_off,
+            peek_offset:      PeekOffset::default(),
         },
         &tuning,
     );
@@ -143,6 +146,7 @@ fn stair_facing_invariant() {
                 stance:           &st,
                 facing:           &f,
                 stair_eye_offset: stair_off,
+                peek_offset:      PeekOffset::default(),
             },
             &tuning,
         );
@@ -195,6 +199,7 @@ fn non_stair_cell_yields_zero_offset() {
             stance:           &st,
             facing:           &f,
             stair_eye_offset: StairEyeOffset::new(0.0),
+            peek_offset:      PeekOffset::default(),
         },
         &tuning,
     );
@@ -204,6 +209,7 @@ fn non_stair_cell_yields_zero_offset() {
             stance:           &st,
             facing:           &f,
             stair_eye_offset: offset,
+            peek_offset:      PeekOffset::default(),
         },
         &tuning,
     );
@@ -242,6 +248,7 @@ fn prone_stair_no_lift() {
             stance:           &prone_st,
             facing:           &f,
             stair_eye_offset: StairEyeOffset::new(0.0),
+            peek_offset:      PeekOffset::default(),
         },
         &tuning,
     );
@@ -251,6 +258,7 @@ fn prone_stair_no_lift() {
             stance:           &prone_st,
             facing:           &f,
             stair_eye_offset: StairEyeOffset::new(0.5),
+            peek_offset:      PeekOffset::default(),
         },
         &tuning,
     );

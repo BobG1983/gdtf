@@ -32,7 +32,7 @@ pub(crate) const fn muzzle_height(stance: StanceKind, tuning: &CombatTuning) -> 
 /// below `corner + 1.0` (so a point clamped to the top edge still buckets to this
 /// cell under [`crate::metric::pos_to_cell`], which floors). No pixel — this is a
 /// sim-unit (cell-unit) clamp.
-fn clamp_within_cell(coord: f32, corner: f32) -> f32 {
+pub(crate) fn clamp_within_cell(coord: f32, corner: f32) -> f32 {
     let upper = (corner + 1.0).next_down();
     coord.clamp(corner, upper)
 }

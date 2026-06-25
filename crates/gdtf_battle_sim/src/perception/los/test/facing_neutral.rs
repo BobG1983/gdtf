@@ -21,6 +21,7 @@ fn eye_anchor_is_facing_invariant() {
             stance:           &st,
             facing:           &north_facing,
             stair_eye_offset: StairEyeOffset::new(0.0),
+            peek_offset:      PeekOffset::default(),
         },
         &tuning,
     );
@@ -42,6 +43,7 @@ fn eye_anchor_is_facing_invariant() {
                 stance:           &st,
                 facing:           &f,
                 stair_eye_offset: StairEyeOffset::new(0.0),
+                peek_offset:      PeekOffset::default(),
             },
             &tuning,
         );
@@ -90,6 +92,7 @@ fn verdict_is_facing_invariant() {
             stance:           &from_stance,
             facing:           &f,
             stair_eye_offset: StairEyeOffset::new(0.0),
+            peek_offset:      PeekOffset::default(),
         };
         verdicts.push(*has_los(
             &observer,

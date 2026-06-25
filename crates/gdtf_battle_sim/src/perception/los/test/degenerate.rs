@@ -22,6 +22,7 @@ fn co_located_from_eq_to_is_sighted() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &at,
@@ -64,6 +65,7 @@ fn off_grid_never_panics() {
         stance:           &st,
         facing:           &look,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let on_target = Target {
         position: &on_grid,
@@ -94,6 +96,7 @@ fn off_grid_never_panics() {
         stance:           &st,
         facing:           &look,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let off_target = Target {
         position: &off_grid,

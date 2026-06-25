@@ -20,6 +20,7 @@ fn repeat_calls_are_identical() {
         stance:           &from_stance,
         facing:           &from_facing,
         stair_eye_offset: StairEyeOffset::new(0.0),
+        peek_offset:      PeekOffset::default(),
     };
     let target = Target {
         position: &to_pos,

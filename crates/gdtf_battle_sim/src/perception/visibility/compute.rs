@@ -8,7 +8,7 @@ use bevy::platform::collections::HashSet;
 use crate::{
     cover::CoverLedger,
     ganger::{Facing, LifeState, Position, Stance, StanceKind},
-    los::{Observer, Target, can_see},
+    los::{Observer, PeekOffset, Target, can_see},
     metric::{Cell, CellLevel, Level},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
@@ -114,6 +114,10 @@ pub fn union_fov(
             stance:           fov.stance,
             facing:           fov.facing,
             stair_eye_offset: fov.stair_eye_offset,
+            // C4 union-peek-free invariant (GTW-393): the squad fog union always
+            // uses the centred eye — peek only enters a targeted per-shot query.
+            // This literal MUST NOT gain a `peek_offset: fov.peek_offset` binding.
+            peek_offset:      PeekOffset::default(),
         };
         // Scan the observer's Chebyshev disc DENSELY over the authored level range (∪ the
         // observer's own storey), clamped to the grid extent — the dense floor the

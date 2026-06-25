@@ -10,7 +10,7 @@ pub(super) use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Direction, Facing, LifeState, Position, Stance, StanceKind},
-    los::{Observer, Target, can_see, has_los},
+    los::{Observer, PeekOffset, Target, can_see, has_los, has_los_peeking},
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, StairEyeOffset},
     surface::{SlabState, SurfaceGrid},
