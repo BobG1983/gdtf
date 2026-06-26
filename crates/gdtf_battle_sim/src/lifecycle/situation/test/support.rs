@@ -50,11 +50,11 @@ pub(super) use crate::{
 /// turns the shipped-setup test red.
 const SHIPPED_STUB_PISTOL_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/weapons/stub_pistol.weapon.ron"
+    "/../../assets/content/weapons/stub_pistol.weapon.ron"
 ));
 const SHIPPED_LAS_CARBINE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/weapons/las_carbine.weapon.ron"
+    "/../../assets/content/weapons/las_carbine.weapon.ron"
 ));
 
 /// Build a registry from the shipped weapon files, keyed by their filename stems —
@@ -82,11 +82,11 @@ pub(super) fn shipped_registry() -> Option<WeaponRegistry> {
 /// regression in either file turns the shipped-setup test red.
 const SHIPPED_FLAK_VEST_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/armor/flak_vest.armor.ron"
+    "/../../assets/content/armor/flak_vest.armor.ron"
 ));
 const SHIPPED_CARAPACE_PLATE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/armor/carapace_plate.armor.ron"
+    "/../../assets/content/armor/carapace_plate.armor.ron"
 ));
 
 /// Build an armor registry from the shipped armor files, keyed by their filename stems
@@ -115,19 +115,19 @@ pub(super) fn shipped_armor_registry() -> Option<ArmorRegistry> {
 /// regression in any of these files turns the shipped-setup test red.
 const SHIPPED_HEAVY_BULKHEAD_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/terrain/heavy_bulkhead.terrain.ron"
+    "/../../assets/content/terrain/heavy_bulkhead.terrain.ron"
 ));
 const SHIPPED_BARRICADE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/terrain/barricade.terrain.ron"
+    "/../../assets/content/terrain/barricade.terrain.ron"
 ));
 const SHIPPED_DECK_SLAB_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/terrain/deck_slab.terrain.ron"
+    "/../../assets/content/terrain/deck_slab.terrain.ron"
 ));
 const SHIPPED_DECK_FLOOR_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/terrain/deck_floor.terrain.ron"
+    "/../../assets/content/terrain/deck_floor.terrain.ron"
 ));
 
 /// Build a terrain registry from the shipped terrain piece files — the four

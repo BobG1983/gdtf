@@ -33,26 +33,26 @@ const TUNING_RON_PATH: &str = "combat/tuning.ron";
 const STAT_TUNING_RON_PATH: &str = "combat/stat_tuning.ron";
 
 /// Path of the loose weapons folder, relative to the asset source root (GTW-257 —
-/// the per-weapon `assets/weapons/*.ron` files the registry is built from). Its OWN
+/// the per-weapon `assets/content/weapons/*.ron` files the registry is built from). Its OWN
 /// folder so the `.ron` loader dispatch is unambiguous (weapons only, no armour).
-const WEAPONS_DIR: &str = "weapons";
+const WEAPONS_DIR: &str = "content/weapons";
 
 /// Path of the loose armor folder, relative to the asset source root (GTW-269 —
-/// the per-armor `assets/armor/*.ron` files the registry is built from). Its OWN
+/// the per-armor `assets/content/armor/*.ron` files the registry is built from). Its OWN
 /// folder so the `.ron` loader dispatch is unambiguous (armor only, no weapons).
-const ARMOR_DIR: &str = "armor";
+const ARMOR_DIR: &str = "content/armor";
 
 /// Path of the loose terrain folder, relative to the asset source root (GTW-394 —
-/// the per-terrain-piece `assets/terrain/*.terrain.ron` files the registry is built
-/// from). Its OWN folder so the `.ron` loader dispatch is unambiguous (terrain only).
-const TERRAIN_DIR: &str = "terrain";
+/// the per-terrain-piece `assets/content/terrain/*.terrain.ron` files the registry is
+/// built from). Its OWN folder so the `.ron` loader dispatch is unambiguous (terrain only).
+const TERRAIN_DIR: &str = "content/terrain";
 
 /// Path of the loose injuries folder, relative to the asset source root (GTW-437 —
-/// the per-injury `assets/injuries/**/*.injury.ron` files + the per-part
-/// `injuries/weighting/*.weighting.ron` files the registry + tables are built from).
-/// One recursive folder carrying both asset types; the dedicated compound extensions
-/// (`injury.ron` / `weighting.ron`) keep the `.ron` loader dispatch unambiguous.
-const INJURIES_DIR: &str = "injuries";
+/// the per-injury `assets/content/injuries/**/*.injury.ron` files + the per-part
+/// `content/injuries/weighting/*.weighting.ron` files the registry + tables are built
+/// from). One recursive folder carrying both asset types; the dedicated compound
+/// extensions (`injury.ron` / `weighting.ron`) keep the `.ron` loader dispatch unambiguous.
+const INJURIES_DIR: &str = "content/injuries";
 
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
@@ -64,15 +64,16 @@ const INJURIES_DIR: &str = "injuries";
 /// is resident), AND loads `situations/skirmish.ron` as a `RonAsset<Situation>`
 /// (GTW-205 / E10.3 — through the same generic loader) AND `combat/tuning.ron` as
 /// a `RonAsset<CombatTuning>` (GTW-206 / E10.4 — through the same generic loader)
-/// AND preloads the entire `weapons` folder via `load_folder` (GTW-257 — every
-/// `assets/weapons/*.ron`, each a `RonAsset<WeaponSpec>`, so the poll/resolve system
-/// can build the name-keyed [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry))
-/// AND preloads the entire `armor` folder via `load_folder` (GTW-269 — every
-/// `assets/armor/*.ron`, each a `RonAsset<ArmorSpec>`, so the poll/resolve system can
-/// build the name-keyed [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry))
-/// AND preloads the entire `terrain` folder via `load_folder` (GTW-394 — every
-/// `assets/terrain/*.terrain.ron`, each a `RonAsset<TerrainSpec>`, so the poll/resolve
+/// AND preloads the entire `content/weapons` folder via `load_folder` (GTW-257 — every
+/// `assets/content/weapons/*.ron`, each a `RonAsset<WeaponSpec>`, so the poll/resolve
 /// system can build the name-keyed
+/// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry))
+/// AND preloads the entire `content/armor` folder via `load_folder` (GTW-269 — every
+/// `assets/content/armor/*.ron`, each a `RonAsset<ArmorSpec>`, so the poll/resolve
+/// system can build the name-keyed [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry))
+/// AND preloads the entire `content/terrain` folder via `load_folder` (GTW-394 — every
+/// `assets/content/terrain/*.terrain.ron`, each a `RonAsset<TerrainSpec>`, so the
+/// poll/resolve system can build the name-keyed
 /// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry)),
 /// then inserts the Load-scoped [`LoadHandles`] resource the poll/resolve system
 /// reads.

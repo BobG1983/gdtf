@@ -1,5 +1,5 @@
 //! The **injury registry** — the name→def map the folder loader builds from
-//! `assets/injuries/**/*.injury.ron` and the roll resolves a rolled
+//! `assets/content/injuries/**/*.injury.ron` and the roll resolves a rolled
 //! [`InjuryName`] key against (GTW-437).
 
 use bevy::{platform::collections::HashMap, prelude::Resource};
@@ -7,7 +7,7 @@ use bevy::{platform::collections::HashMap, prelude::Resource};
 use super::{InjuryDef, InjuryName};
 
 /// The **injury registry** — a name→def map the GTW-437 folder loader builds from
-/// every loaded `assets/injuries/**/*.injury.ron` (keyed by each file's stem minus
+/// every loaded `assets/content/injuries/**/*.injury.ron` (keyed by each file's stem minus
 /// the `.injury` infix) and the GTW-438 roll resolves a rolled
 /// [`InjuryName`] key against.
 ///

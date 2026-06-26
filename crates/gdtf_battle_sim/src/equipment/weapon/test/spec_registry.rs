@@ -9,14 +9,14 @@ use super::support::*;
 /// turns this red.
 const SHIPPED_STUB_PISTOL_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/weapons/stub_pistol.weapon.ron"
+    "/../../assets/content/weapons/stub_pistol.weapon.ron"
 ));
 
 /// A shipped TWO-handed long-arm `.weapon.ron` — the GTW-443 `handedness:` regression
 /// witness (the real on-disk `las_carbine`, authored `TwoHanded`).
 const SHIPPED_LAS_CARBINE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/weapons/las_carbine.weapon.ron"
+    "/../../assets/content/weapons/las_carbine.weapon.ron"
 ));
 
 /// GTW-257 AC1 — the shipped `assets/weapons/stub_pistol.weapon.ron` parses into a

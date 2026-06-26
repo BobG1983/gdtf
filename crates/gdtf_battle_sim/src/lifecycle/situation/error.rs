@@ -37,14 +37,14 @@ pub enum BattleSetupError {
     /// endpoint, or same-storey) — the prior `Err(InvalidVerticalLink)`, now wrapped.
     InvalidLink(InvalidVerticalLink),
     /// A ganger's [`weapon`](crate::situation::GangerSpawn::weapon) key was not in the
-    /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) — no `assets/weapons/*.ron`
+    /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) — no `assets/content/weapons/*.ron`
     /// with that filename stem loaded.
     WeaponNotFound {
         /// The unresolved weapon key (the missing file's stem).
         weapon: WeaponName,
     },
     /// A ganger's [`armor`](crate::situation::GangerSpawn::armor) key was not in the
-    /// [`ArmorRegistry`](crate::armor::ArmorRegistry) — no `assets/armor/*.armor.ron`
+    /// [`ArmorRegistry`](crate::armor::ArmorRegistry) — no `assets/content/armor/*.armor.ron`
     /// with that filename stem loaded (the armor mirror of
     /// [`WeaponNotFound`](BattleSetupError::WeaponNotFound)).
     ArmorNotFound {
@@ -53,7 +53,7 @@ pub enum BattleSetupError {
     },
     /// A cover, slab, or floor piece KEY was not in the
     /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) — no
-    /// `assets/terrain/*.terrain.ron` with that filename stem loaded (GTW-396).
+    /// `assets/content/terrain/*.terrain.ron` with that filename stem loaded (GTW-396).
     ///
     /// Validated BEFORE any entity is spawned (abort-first invariant), so a missing
     /// terrain key aborts the whole setup with no partial world behind.
@@ -66,7 +66,7 @@ pub enum BattleSetupError {
     /// make the heuristic inadmissible and produce silently wrong paths (GTW-396
     /// Decision B). Validated BEFORE any entity is spawned (abort-first).
     ///
-    /// Fix: raise the floor piece's `move_cost` in its `assets/terrain/*.terrain.ron`
+    /// Fix: raise the floor piece's `move_cost` in its `assets/content/terrain/*.terrain.ron`
     /// to at least `MIN_MOVE_COST` (4). The `.ron` comment documents this constraint.
     FloorCostBelowMinimum {
         /// The terrain piece whose `move_cost` is too low.

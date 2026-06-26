@@ -1,4 +1,4 @@
-//! GTW-269: builds the name-keyed [`ArmorRegistry`] from the loaded `assets/armor/`
+//! GTW-269: builds the name-keyed [`ArmorRegistry`] from the loaded `assets/content/armor/`
 //! folder, plus the GTW-374 LIVE hot-reload that rebuilds it on a `*.armor.ron` edit.
 
 use bevy::{
@@ -11,7 +11,7 @@ use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry, ArmorSpec};
 use crate::states::load::resources::{ActiveArmorFolderHandle, LoadHandles};
 
 /// GTW-269: builds the name-keyed [`ArmorRegistry`] from the loaded
-/// `assets/armor/` folder, mirroring the GTW-257 weapons resolve shape exactly
+/// `assets/content/armor/` folder, mirroring the GTW-257 weapons resolve shape exactly
 /// (the armor mirror of [`resolve_weapons`](super::weapons::resolve_weapons)).
 ///
 /// Called only while no [`ArmorRegistry`] resource exists yet (the caller's
@@ -124,7 +124,7 @@ fn build_armor_registry(
 
 /// `Update`: rebuild the [`ArmorRegistry`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
-/// `assets/armor/*.armor.ron` — the GTW-374 LIVE armor hot-reload, the armor mirror of
+/// `assets/content/armor/*.armor.ron` — the GTW-374 LIVE armor hot-reload, the armor mirror of
 /// `redrive_weapons_on_asset_event` (in the sibling `weapons` module).
 ///
 /// A folder load fans out into one `RonAsset<ArmorSpec>` asset PER file, and a hot edit
@@ -182,7 +182,7 @@ pub(in crate::states::load) fn redrive_armor_on_asset_event(
     };
     *registry = rebuilt;
     info!(
-        "armor hot-reload: rebuilt ArmorRegistry from `assets/armor/` ({} armor suits)",
+        "armor hot-reload: rebuilt ArmorRegistry from `assets/content/armor/` ({} armor suits)",
         registry.len(),
     );
 }
@@ -285,7 +285,7 @@ mod test {
         let Some(original) = armor_spec(8) else {
             return;
         };
-        let member = add_member(&mut app, "armor/flak_vest.armor.ron", original);
+        let member = add_member(&mut app, "content/armor/flak_vest.armor.ron", original);
         let folder = add_folder(&mut app, std::slice::from_ref(&member));
         app.world_mut()
             .insert_resource(ActiveArmorFolderHandle::new(folder));
@@ -327,7 +327,7 @@ mod test {
     fn armor_hot_reload_logs_an_info_line() {
         let mut app = app();
         let Some(spec) = armor_spec(8) else { return };
-        let member = add_member(&mut app, "armor/flak_vest.armor.ron", spec);
+        let member = add_member(&mut app, "content/armor/flak_vest.armor.ron", spec);
         let folder = add_folder(&mut app, std::slice::from_ref(&member));
         app.world_mut()
             .insert_resource(ActiveArmorFolderHandle::new(folder));

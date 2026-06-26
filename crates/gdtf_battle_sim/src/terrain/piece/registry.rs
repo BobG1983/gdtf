@@ -7,12 +7,12 @@ use bevy::{platform::collections::HashMap, prelude::Resource};
 use super::{TerrainName, TerrainSpec};
 
 /// The **terrain registry** — a name→spec map the folder loader builds from
-/// `assets/terrain/*.terrain.ron` (GTW-394).
+/// `assets/content/terrain/*.terrain.ron` (GTW-394).
 ///
 /// A named newtype [`Resource`] over a [`HashMap`]`<`[`TerrainName`]`,
 /// `[`TerrainSpec`]`>` (no-bare-types: a registry is a domain value, not a bare
 /// `HashMap`). The sim OWNS the terrain model, so the type lives here; the app's
-/// `Load` flow POPULATES it from the loaded `assets/terrain/*.terrain.ron` folder
+/// `Load` flow POPULATES it from the loaded `assets/content/terrain/*.terrain.ron` folder
 /// (keyed by each file's stem) and inserts it as a resource. It holds the specs
 /// BY VALUE ([`TerrainSpec`] is `Clone`), so they survive even if the
 /// loaded-folder asset handle is dropped.

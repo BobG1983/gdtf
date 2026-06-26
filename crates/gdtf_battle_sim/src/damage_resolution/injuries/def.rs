@@ -42,7 +42,7 @@ impl PostHeal {
 }
 
 /// One authored **injury definition** — the named condition a non-graze, non-fatal
-/// wound can inflict, loaded from `assets/injuries/<part>/<key>.injury.ron`
+/// wound can inflict, loaded from `assets/content/injuries/<part>/<key>.injury.ron`
 /// (`docs/combat/resolution.md` injury tables; GTW-405).
 ///
 /// The de-serialization target of the `.injury.ron` schema (the file stem minus

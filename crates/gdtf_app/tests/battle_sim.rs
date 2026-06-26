@@ -119,7 +119,7 @@ fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     // The Load-built WeaponRegistry (GTW-257): persistent `Load` state the real app
-    // resolves from assets/weapons/, injected here for the MinimalPlugins deep-walk
+    // resolves from assets/content/weapons/, injected here for the MinimalPlugins deep-walk
     // (no AssetServer) so the Generation setup arms each ganger from it — the canonical
     // `test_weapon_registry` (GTW-324), which holds the `test-weapon` key every fixture
     // ganger references.

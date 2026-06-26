@@ -1,4 +1,4 @@
-//! GTW-394 (slice B): `AppState::Load` preloads the `assets/terrain/` folder through
+//! GTW-394 (slice B): `AppState::Load` preloads the `assets/content/terrain/` folder through
 //! the `RonAsset<TerrainSpec>` loader (guarded for headless), builds a name-keyed
 //! `TerrainRegistry` from the loaded terrain files (keyed by filename stem), and gates
 //! the Load→Intro transition on it — so the machine never leaves `Load` before the
@@ -17,7 +17,7 @@
 //!     and no registry is RESOLVED from disk (nothing to load).
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace
-//!   `assets/`. The good path loads `assets/terrain/*.terrain.ron` into a
+//!   `assets/`. The good path loads `assets/content/terrain/*.terrain.ron` into a
 //!   `TerrainRegistry` keyed by file stem (`deck_floor`, `supply_crate`, etc.).
 //!
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance criterion
@@ -27,7 +27,7 @@
 //! (the brittle-test rule; see [`TerrainSpec`](gdtf_battle_sim::terrain::piece::TerrainSpec)).
 //! The field-to-variant routing MECHANISM is covered by the fixture-based sim round-trip
 //! (`terrain::piece::test::spec_registry`); this harness proves the REAL
-//! `assets/terrain/` folder loads through the Load code path and that its authored
+//! `assets/content/terrain/` folder loads through the Load code path and that its authored
 //! KEYS resolve.
 
 use gdtf_app::test_support::{AppState, LoadedSituation};
@@ -166,7 +166,7 @@ fn load_does_not_leave_without_a_terrain_registry() {
 }
 
 /// AC (tier b) / GTW-394 AC — with a real `AssetServer` rooted at the workspace
-/// `assets/`, entering `Load` loads `assets/terrain/*.terrain.ron` and builds a
+/// `assets/`, entering `Load` loads `assets/content/terrain/*.terrain.ron` and builds a
 /// `TerrainRegistry` keyed by each terrain file's filename stem (with the `.terrain`
 /// infix stripped). Proves the folder loaded into the registry keyed by filename (the
 /// canonical `deck_floor` / `supply_crate` keys resolve), and that the Load gate

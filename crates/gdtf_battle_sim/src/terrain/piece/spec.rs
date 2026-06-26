@@ -1,4 +1,4 @@
-//! The **authoring spec** — the `TerrainSpec` a `assets/terrain/*.terrain.ron`
+//! The **authoring spec** — the `TerrainSpec` a `assets/content/terrain/*.terrain.ron`
 //! deserializes into (GTW-394), the terrain mirror of
 //! [`WeaponSpec`](crate::weapon::WeaponSpec) / [`ArmorSpec`](crate::armor::ArmorSpec).
 
@@ -13,7 +13,7 @@ use crate::{
     tuning::MoveCost,
 };
 
-/// The **authoring struct** a `assets/terrain/*.terrain.ron` deserializes into —
+/// The **authoring struct** a `assets/content/terrain/*.terrain.ron` deserializes into —
 /// every terrain piece stat the sim model carries, MINUS the
 /// [`TerrainName`](super::TerrainName) (the name is the FILE KEY, supplied by the
 /// loader from the file's stem, exactly as [`WeaponSpec`](crate::weapon::WeaponSpec)

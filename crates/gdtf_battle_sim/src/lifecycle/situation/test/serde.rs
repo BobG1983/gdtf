@@ -233,7 +233,7 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
 
 /// GTW-257 AC5 (companion) — every shipped ganger's authored `weapon` key is a valid
 /// stem present in the shipped-weapons registry. A pure-data check (no spawn): proves
-/// the `skirmish.ron` ↔ `assets/weapons/*.ron` references are consistent, so the
+/// the `skirmish.ron` ↔ `assets/content/weapons/*.ron` references are consistent, so the
 /// setup never hits `WeaponNotFound`.
 #[test]
 fn every_shipped_ganger_references_a_loaded_weapon() {
@@ -254,7 +254,7 @@ fn every_shipped_ganger_references_a_loaded_weapon() {
 
 /// GTW-269 (companion) — every shipped ganger's authored `armor` key is a valid stem
 /// present in the shipped-armor registry. A pure-data check (no spawn): proves the
-/// `skirmish.ron` ↔ `assets/armor/*.armor.ron` references are consistent, so the setup
+/// `skirmish.ron` ↔ `assets/content/armor/*.armor.ron` references are consistent, so the setup
 /// never hits `ArmorNotFound` (the armor mirror of the weapon-key consistency check).
 #[test]
 fn every_shipped_ganger_references_a_loaded_armor() {

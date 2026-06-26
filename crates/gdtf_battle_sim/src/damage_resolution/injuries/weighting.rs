@@ -55,7 +55,7 @@ impl WeightedInjuryEntry {
 }
 
 /// The authored **per-body-part weighting file** — one per part, loaded from
-/// `assets/injuries/weighting/<part>.weighting.ron` (`docs/combat/resolution.md`
+/// `assets/content/injuries/weighting/<part>.weighting.ron` (`docs/combat/resolution.md`
 /// injury tables; GTW-405).
 ///
 /// The de-serialization target of the `.weighting.ron` schema: the

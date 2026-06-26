@@ -53,7 +53,7 @@ impl FontFolderHandle {
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
 /// mirroring [`FontFolderHandle`] (GTW-257). The `Load` scene preloads the whole
-/// `assets/weapons/` folder up front via
+/// `assets/content/weapons/` folder up front via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
 /// poll/resolve system gates on its recursive load state, then builds the
 /// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) from the loaded
@@ -75,7 +75,7 @@ impl WeaponsFolderHandle {
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
 /// mirroring [`WeaponsFolderHandle`] (GTW-269). The `Load` scene preloads the whole
-/// `assets/armor/` folder up front via
+/// `assets/content/armor/` folder up front via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
 /// poll/resolve system gates on its recursive load state, then builds the
 /// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) from the loaded
@@ -97,7 +97,7 @@ impl ArmorsFolderHandle {
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
 /// mirroring [`ArmorsFolderHandle`] (GTW-394). The `Load` scene preloads the whole
-/// `assets/terrain/` folder up front via
+/// `assets/content/terrain/` folder up front via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
 /// poll/resolve system gates on its recursive load state, then builds the
 /// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) from the
@@ -119,7 +119,7 @@ impl TerrainFolderHandle {
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
 /// mirroring [`WeaponsFolderHandle`] (GTW-437). The `Load` scene preloads the whole
-/// `assets/injuries/` folder up front via
+/// `assets/content/injuries/` folder up front via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) (recursive,
 /// so the per-part subfolders + the `weighting/` subfolder are all covered); the
 /// poll/resolve system gates on its recursive load state, then builds BOTH the
@@ -311,7 +311,7 @@ impl ActiveStatTuningHandle {
 /// and kept alive so the GTW-374 live hot-reload handler
 /// (`redrive_weapons_on_asset_event`)
 /// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
-/// to ANY `assets/weapons/*.weapon.ron`. Holding the folder handle keeps every member
+/// to ANY `assets/content/weapons/*.weapon.ron`. Holding the folder handle keeps every member
 /// weapon asset loaded for the file-watcher. Like the registry, it is **not** removed
 /// in `cleanup`.
 #[derive(Resource, Deref, Clone, Debug)]
@@ -334,7 +334,7 @@ impl ActiveWeaponsFolderHandle {
 /// GTW-374 live hot-reload handler
 /// (`redrive_armor_on_asset_event`)
 /// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
-/// to ANY `assets/armor/*.armor.ron`. Holding the folder handle keeps every member
+/// to ANY `assets/content/armor/*.armor.ron`. Holding the folder handle keeps every member
 /// armor asset loaded for the file-watcher. Like the registry, it is **not** removed
 /// in `cleanup`.
 #[derive(Resource, Deref, Clone, Debug)]
@@ -357,7 +357,7 @@ impl ActiveArmorFolderHandle {
 /// so the GTW-394 live hot-reload handler
 /// (`redrive_terrain_on_asset_event`)
 /// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
-/// to ANY `assets/terrain/*.terrain.ron`. Holding the folder handle keeps every member
+/// to ANY `assets/content/terrain/*.terrain.ron`. Holding the folder handle keeps every member
 /// terrain asset loaded for the file-watcher. Like the registry, it is **not** removed
 /// in `cleanup`.
 #[derive(Resource, Deref, Clone, Debug)]
@@ -381,7 +381,7 @@ impl ActiveTerrainFolderHandle {
 /// GTW-437 live hot-reload handler
 /// (`redrive_injuries_on_asset_event`)
 /// can re-enumerate the folder's member handles to rebuild BOTH resources on a hot edit
-/// to ANY `assets/injuries/**/*.injury.ron` OR `*.weighting.ron`. Holding the folder
+/// to ANY `assets/content/injuries/**/*.injury.ron` OR `*.weighting.ron`. Holding the folder
 /// handle keeps every member injury asset loaded for the file-watcher. Like the
 /// resources, it is **not** removed in `cleanup`.
 #[derive(Resource, Deref, Clone, Debug)]

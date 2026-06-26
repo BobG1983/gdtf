@@ -1,4 +1,4 @@
-//! GTW-269 (slice B): `AppState::Load` preloads the `assets/armor/` folder through
+//! GTW-269 (slice B): `AppState::Load` preloads the `assets/content/armor/` folder through
 //! the `RonAsset<ArmorSpec>` loader (guarded for headless), builds a name-keyed
 //! `ArmorRegistry` from the loaded armor files (keyed by filename stem), and gates the
 //! Load->Intro transition on it — so the machine never leaves `Load` before the armor
@@ -16,7 +16,7 @@
 //!   RESOLVED from disk (nothing to load).
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace
-//!   `assets/`. The good path loads `assets/armor/*.armor.ron` into an `ArmorRegistry`
+//!   `assets/`. The good path loads `assets/content/armor/*.armor.ron` into an `ArmorRegistry`
 //!   keyed by file stem (`flak_vest`, `carapace_plate`).
 //!
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance criterion
@@ -26,7 +26,7 @@
 //! (the brittle-test rule; see [`ArmorSpec`](gdtf_battle_sim::armor::ArmorSpec)). The
 //! field-to-slot conversion MECHANISM is covered by the fixture-based sim round-trip
 //! (`armor::test::armor_spec_round_trips_and_registry_resolves_by_name`); this harness
-//! proves the REAL `assets/armor/` folder loads through the Load code path and that its
+//! proves the REAL `assets/content/armor/` folder loads through the Load code path and that its
 //! authored KEYS resolve.
 
 use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
@@ -165,7 +165,7 @@ fn load_does_not_leave_without_an_armor_registry() {
 }
 
 /// AC (tier b) / GTW-270 AC — with a real `AssetServer` rooted at the workspace
-/// `assets/`, entering `Load` loads `assets/armor/*.armor.ron` and builds an
+/// `assets/`, entering `Load` loads `assets/content/armor/*.armor.ron` and builds an
 /// `ArmorRegistry` keyed by each armor file's filename stem (with the `.armor` infix
 /// stripped). Proves the folder loaded into the registry keyed by filename (the
 /// canonical `flak_vest` / `carapace_plate` keys resolve), and that the Load gate
@@ -237,7 +237,7 @@ fn real_asset_resolves_armor_registry_keyed_by_filename() {
 /// `ArmorRegistry::default()` seed must NOT shadow the real folder resolve: with an
 /// `AssetServer` present the seed must NOT insert an empty registry, so
 /// `poll_and_resolve` (which only runs `resolve_armor` while the registry is ABSENT)
-/// populates it from `assets/armor/*.armor.ron`.
+/// populates it from `assets/content/armor/*.armor.ron`.
 ///
 /// This reproduces the bug's exact preconditions on the real code path: a
 /// `GdtfLoadTestAppBuilder` app (live `AssetServer` rooted at the workspace `assets/`)

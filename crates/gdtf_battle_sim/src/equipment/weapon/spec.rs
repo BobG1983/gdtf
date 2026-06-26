@@ -1,4 +1,4 @@
-//! The **authoring spec** — the `WeaponSpec` an `assets/weapons/*.weapon.ron`
+//! The **authoring spec** — the `WeaponSpec` an `assets/content/weapons/*.weapon.ron`
 //! deserializes into, plus [`into_bundle`](WeaponSpec::into_bundle) which resolves
 //! it into a spawnable [`WeaponBundle`] (GTW-257).
 
@@ -12,7 +12,7 @@ use super::{
 };
 use crate::magazine::Magazine;
 
-/// The **authoring struct** an `assets/weapons/*.ron` deserializes into — every
+/// The **authoring struct** an `assets/content/weapons/*.ron` deserializes into — every
 /// weapon NUMBER the §1/§6 math reads, MINUS the [`WeaponName`] (the name is the
 /// FILE KEY, supplied by the loader from the file's stem) and MINUS the
 /// [`Weapon`](super::Weapon) marker (that is added by [`WeaponBundle::new`]).

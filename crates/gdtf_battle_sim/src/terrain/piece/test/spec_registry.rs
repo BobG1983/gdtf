@@ -11,24 +11,25 @@ use super::super::*;
 // a regression in an authored file immediately turns this red.
 const SHIPPED_DECK_FLOOR_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/terrain/deck_floor.terrain.ron"
+    "/../../assets/content/terrain/deck_floor.terrain.ron"
 ));
 
 const SHIPPED_BULKHEAD_WALL_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/terrain/bulkhead_wall.terrain.ron"
+    "/../../assets/content/terrain/bulkhead_wall.terrain.ron"
 ));
 
-/// GTW-394 AC1 (parse + variant routing) — the shipped `assets/terrain/deck_floor.terrain.ron`
-/// parses into a `TerrainSpec` with `kind == Floor(_)`, and the shipped
-/// `assets/terrain/bulkhead_wall.terrain.ron` parses as `Wall(_)`. No magnitude
-/// assertions — structure/variant only.
+/// GTW-394 AC1 (parse + variant routing) — the shipped
+/// `assets/content/terrain/deck_floor.terrain.ron` parses into a `TerrainSpec` with
+/// `kind == Floor(_)`, and the shipped
+/// `assets/content/terrain/bulkhead_wall.terrain.ron` parses as `Wall(_)`. No
+/// magnitude assertions — structure/variant only.
 #[test]
 fn shipped_terrain_spec_parses_and_keys() {
     let floor_parsed = ron::de::from_str::<TerrainSpec>(SHIPPED_DECK_FLOOR_RON);
     assert!(
         floor_parsed.is_ok(),
-        "the shipped assets/terrain/deck_floor.terrain.ron must parse into a TerrainSpec: \
+        "the shipped assets/content/terrain/deck_floor.terrain.ron must parse into a TerrainSpec: \
          {floor_parsed:?}",
     );
     if let Ok(spec) = floor_parsed {
@@ -42,7 +43,7 @@ fn shipped_terrain_spec_parses_and_keys() {
     let wall_parsed = ron::de::from_str::<TerrainSpec>(SHIPPED_BULKHEAD_WALL_RON);
     assert!(
         wall_parsed.is_ok(),
-        "the shipped assets/terrain/bulkhead_wall.terrain.ron must parse into a TerrainSpec: \
+        "the shipped assets/content/terrain/bulkhead_wall.terrain.ron must parse into a TerrainSpec: \
          {wall_parsed:?}",
     );
     if let Ok(spec) = wall_parsed {

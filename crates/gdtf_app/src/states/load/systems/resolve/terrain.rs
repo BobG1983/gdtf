@@ -1,4 +1,4 @@
-//! GTW-394: builds the name-keyed [`TerrainRegistry`] from the loaded `assets/terrain/`
+//! GTW-394: builds the name-keyed [`TerrainRegistry`] from the loaded `assets/content/terrain/`
 //! folder, plus the LIVE hot-reload that rebuilds it on a `*.terrain.ron` edit.
 
 use bevy::{
@@ -11,7 +11,7 @@ use gdtf_battle_sim::terrain::piece::{TerrainName, TerrainRegistry, TerrainSpec}
 use crate::states::load::resources::{ActiveTerrainFolderHandle, LoadHandles};
 
 /// GTW-394: builds the name-keyed [`TerrainRegistry`] from the loaded
-/// `assets/terrain/` folder, mirroring the GTW-269 armor resolve shape exactly
+/// `assets/content/terrain/` folder, mirroring the GTW-269 armor resolve shape exactly
 /// (the terrain mirror of [`resolve_armor`](super::armor::resolve_armor)).
 ///
 /// Called only while no [`TerrainRegistry`] resource exists yet (the caller's
@@ -126,7 +126,7 @@ fn build_terrain_registry(
 
 /// `Update`: rebuild the [`TerrainRegistry`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
-/// `assets/terrain/*.terrain.ron` — the GTW-394 LIVE terrain hot-reload, the terrain
+/// `assets/content/terrain/*.terrain.ron` — the GTW-394 LIVE terrain hot-reload, the terrain
 /// mirror of `redrive_armor_on_asset_event`.
 ///
 /// A folder load fans out into one `RonAsset<TerrainSpec>` asset PER file, and a hot
@@ -191,7 +191,7 @@ pub(in crate::states::load) fn redrive_terrain_on_asset_event(
     };
     *registry = rebuilt;
     info!(
-        "terrain hot-reload: rebuilt TerrainRegistry from `assets/terrain/` ({} pieces)",
+        "terrain hot-reload: rebuilt TerrainRegistry from `assets/content/terrain/` ({} pieces)",
         registry.len(),
     );
 }
@@ -303,7 +303,7 @@ mod test {
         let Some(original) = floor_spec(4) else {
             return;
         };
-        let member = add_member(&mut app, "terrain/deck_floor.terrain.ron", original);
+        let member = add_member(&mut app, "content/terrain/deck_floor.terrain.ron", original);
         let folder = add_folder(&mut app, std::slice::from_ref(&member));
         app.world_mut()
             .insert_resource(ActiveTerrainFolderHandle::new(folder));
@@ -352,7 +352,7 @@ mod test {
     fn terrain_hot_reload_logs_an_info_line() {
         let mut app = app();
         let Some(spec) = floor_spec(4) else { return };
-        let member = add_member(&mut app, "terrain/deck_floor.terrain.ron", spec);
+        let member = add_member(&mut app, "content/terrain/deck_floor.terrain.ron", spec);
         let folder = add_folder(&mut app, std::slice::from_ref(&member));
         app.world_mut()
             .insert_resource(ActiveTerrainFolderHandle::new(folder));

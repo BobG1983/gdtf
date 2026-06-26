@@ -36,7 +36,7 @@ impl ArmorName {
 /// A named newtype [`Resource`] over a [`HashMap`]`<`[`ArmorName`]`, `[`ArmorSpec`]`>`
 /// (no-bare-types: a registry is a domain value, not a bare `HashMap`). The sim OWNS
 /// the armor model, so the type lives here; the app's `Load` flow POPULATES it from
-/// the loaded `assets/armor/*.ron` folder (keyed by each file's stem) and inserts it
+/// the loaded `assets/content/armor/*.ron` folder (keyed by each file's stem) and inserts it
 /// as a resource. It holds the specs BY VALUE ([`ArmorSpec`] is `Copy`), so they
 /// survive even if the loaded-folder asset handle is dropped.
 ///

@@ -106,7 +106,7 @@ pub struct GangerSpawn {
     /// severity roll reads it; feeds the severity roll ONLY, never the computed stats —
     /// `docs/combat/stats.md`). Authored as a bare scalar.
     pub luck:       Luck,
-    /// The ganger's **armor KEY** — the filename stem of an `assets/armor/*.armor.ron`
+    /// The ganger's **armor KEY** — the filename stem of an `assets/content/armor/*.armor.ron`
     /// (e.g. `"flak_vest"`), resolved against the
     /// [`ArmorRegistry`](crate::armor::ArmorRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) into the
@@ -117,7 +117,7 @@ pub struct GangerSpawn {
     /// [`BattleSetupError::ArmorNotFound`](crate::situation::BattleSetupError::ArmorNotFound)
     /// error (no panic).
     pub armor:      crate::armor::ArmorName,
-    /// The ganger's **weapon KEY** — the filename stem of an `assets/weapons/*.ron`
+    /// The ganger's **weapon KEY** — the filename stem of an `assets/content/weapons/*.ron`
     /// (e.g. `"stub_pistol"`), resolved against the
     /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) into the
@@ -157,7 +157,7 @@ pub struct CoverSpawn {
     /// The `(cell, level)` this cover piece occupies.
     pub at:    CellLevel,
     /// The terrain piece KEY — the filename stem (without the `.terrain.ron` infix) of
-    /// an `assets/terrain/*.terrain.ron` (e.g. `"heavy_bulkhead"`), resolved against the
+    /// an `assets/content/terrain/*.terrain.ron` (e.g. `"heavy_bulkhead"`), resolved against the
     /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle). A key absent from the registry
     /// is a handled
@@ -181,7 +181,7 @@ impl CoverSpawn {
 /// carries a terrain piece KEY resolved against the
 /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at setup. This brings
 /// per-slab authored HP/armor out of the uniform `slab_defaults` tuning leaf and into
-/// per-piece `assets/terrain/*.terrain.ron` data (e.g. `"deck_slab"`).
+/// per-piece `assets/content/terrain/*.terrain.ron` data (e.g. `"deck_slab"`).
 ///
 /// Derives [`Deserialize`] so an authored situation `.ron` writes each slab as
 /// `(at: (cell: …, level: …), piece: "…")` — the same shape as [`CoverSpawn`], but
@@ -190,7 +190,7 @@ impl CoverSpawn {
 pub struct SlabSpawn {
     /// The `(cell, level)` this slab occupies (same meaning as the old bare entry).
     pub at:    CellLevel,
-    /// The terrain piece KEY — the filename stem of an `assets/terrain/*.terrain.ron`
+    /// The terrain piece KEY — the filename stem of an `assets/content/terrain/*.terrain.ron`
     /// (e.g. `"deck_slab"`), resolved against the
     /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) into the [`SlabPieceSpec`](crate::terrain::piece::SlabPieceSpec)
@@ -296,7 +296,7 @@ pub struct Situation {
     /// ([`Faction`] is `#[serde(transparent)]`).
     pub player_faction: Faction,
     /// The default floor terrain piece KEY — the filename stem (without the
-    /// `.terrain.ron` infix) of an `assets/terrain/*.terrain.ron` that is a
+    /// `.terrain.ron` infix) of an `assets/content/terrain/*.terrain.ron` that is a
     /// [`TerrainKindSpec::Floor`](crate::terrain::piece::TerrainKindSpec::Floor)
     /// variant. Applied to every walkable open cell not overridden by [`floors`](Situation::floors).
     ///

@@ -1,4 +1,4 @@
-//! The **authoring spec** — the `ArmorSpec` an `assets/armor/*.armor.ron`
+//! The **authoring spec** — the `ArmorSpec` an `assets/content/armor/*.armor.ron`
 //! deserializes into (GTW-269), the armor mirror of
 //! [`WeaponSpec`](crate::weapon::WeaponSpec).
 
@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use super::stats::ArmorPiece;
 
-/// The **authoring struct** an `assets/armor/*.ron` deserializes into — the six
+/// The **authoring struct** an `assets/content/armor/*.ron` deserializes into — the six
 /// per-location [`ArmorPiece`]s a suit carries, as named fields, MINUS the
 /// [`ArmorName`](super::ArmorName) (the name is the FILE KEY, supplied by the
 /// loader from the file's stem).

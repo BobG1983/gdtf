@@ -1,9 +1,9 @@
 //! GTW-437: builds the [`InjuryRegistry`] (name→def) AND the [`InjuryTables`]
-//! (per-`(body_part, severity)` weighted table) from the loaded `assets/injuries/`
+//! (per-`(body_part, severity)` weighted table) from the loaded `assets/content/injuries/`
 //! folder, plus the GTW-374 LIVE hot-reload that rebuilds BOTH on an edit to ANY
 //! member `*.injury.ron` OR `*.weighting.ron`.
 //!
-//! One recursive [`LoadedFolder`] over `assets/injuries/` carries TWO asset types,
+//! One recursive [`LoadedFolder`] over `assets/content/injuries/` carries TWO asset types,
 //! discriminated by their compound extension infix: the per-injury `*.injury.ron`
 //! files (each a `RonAsset<InjuryDef>`, scattered across the six per-part subfolders)
 //! and the per-part `weighting/*.weighting.ron` files (each a
@@ -30,7 +30,7 @@ use gdtf_battle_sim::{
 use crate::states::load::resources::{ActiveInjuriesFolderHandle, LoadHandles};
 
 /// GTW-437: builds the [`InjuryRegistry`] + [`InjuryTables`] from the loaded
-/// `assets/injuries/` folder, mirroring the GTW-257 weapons resolve shape
+/// `assets/content/injuries/` folder, mirroring the GTW-257 weapons resolve shape
 /// ([`resolve_weapons`](super::weapons::resolve_weapons)) — one folder, two resources.
 ///
 /// Called only while no [`InjuryRegistry`] resource exists yet (the caller's
@@ -335,7 +335,7 @@ pub(in crate::states::load) fn redrive_injuries_on_asset_event(
     *registry = rebuilt_registry;
     *tables = rebuilt_tables;
     info!(
-        "injury hot-reload: rebuilt InjuryRegistry + InjuryTables from `assets/injuries/` \
+        "injury hot-reload: rebuilt InjuryRegistry + InjuryTables from `assets/content/injuries/` \
          ({} injuries, {} weighting buckets)",
         registry.len(),
         tables.len(),

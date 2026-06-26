@@ -1,5 +1,5 @@
 //! The **injury tables** — the per-`(body_part, severity)` weighted roll tables the
-//! GTW-437 loader builds from the `assets/injuries/weighting/*.weighting.ron` files
+//! GTW-437 loader builds from the `assets/content/injuries/weighting/*.weighting.ron` files
 //! and the GTW-438 roll picks an injury from.
 
 use bevy::{platform::collections::HashMap, prelude::Resource};
@@ -9,7 +9,7 @@ use crate::{armor::BodyPart, severity::Severity};
 
 /// The **injury tables** — a `(`[`BodyPart`]`, `[`Severity`]`)`→[`WeightedInjuryTable`]
 /// map the GTW-437 loader builds by folding the authored per-part
-/// `assets/injuries/weighting/*.weighting.ron` files, and the GTW-438 roll picks an
+/// `assets/content/injuries/weighting/*.weighting.ron` files, and the GTW-438 roll picks an
 /// injury from on a non-graze, non-fatal wound.
 ///
 /// A named newtype [`Resource`] over a [`HashMap`] keyed by the struck part and the

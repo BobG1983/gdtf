@@ -1,4 +1,4 @@
-//! GTW-437: `AppState::Load` preloads the `assets/injuries/` folder through ONE
+//! GTW-437: `AppState::Load` preloads the `assets/content/injuries/` folder through ONE
 //! recursive `LoadedFolder` carrying TWO `RonAsset` types — the per-injury
 //! `*.injury.ron` (`RonAsset<InjuryDef>`) and the per-part `weighting/*.weighting.ron`
 //! (`RonAsset<InjuryWeighting>`) — builds BOTH an [`InjuryRegistry`] (name→def, keyed by
@@ -17,9 +17,9 @@
 //!   advances past `Load`, and no registry is RESOLVED from disk (nothing to load).
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace `assets/`.
-//!   The good path loads `assets/injuries/**/*.injury.ron` into an [`InjuryRegistry`]
+//!   The good path loads `assets/content/injuries/**/*.injury.ron` into an [`InjuryRegistry`]
 //!   keyed by file stem (`scalp_graze`, `lost_eye`) AND folds
-//!   `assets/injuries/weighting/*.weighting.ron` into the [`InjuryTables`] (the
+//!   `assets/content/injuries/weighting/*.weighting.ron` into the [`InjuryTables`] (the
 //!   `(Head, Minor)` + `(Head, Critical)` buckets the authored head weighting populates).
 //!
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance criterion so
@@ -30,7 +30,7 @@
 //! brittle-test rule; see [`InjuryDef`](gdtf_battle_sim::injuries::InjuryDef)). The
 //! field-level parse + build-table MECHANISM is covered by the resolve module's unit
 //! tests (`states::load::systems::resolve::injuries::test`); this harness proves the REAL
-//! `assets/injuries/` folder builds BOTH resources through the production
+//! `assets/content/injuries/` folder builds BOTH resources through the production
 //! `resolve_injuries` Load code path and that its authored KEYS / BUCKETS resolve.
 //!
 //! ROBUST TO GTW-440: the real-asset test asserts only against what IS authored today
@@ -175,9 +175,9 @@ fn load_does_not_leave_without_an_injury_registry() {
 }
 
 /// AC (tier b) — with a real `AssetServer` rooted at the workspace `assets/`, entering
-/// `Load` loads `assets/injuries/**/*.injury.ron` into an [`InjuryRegistry`] keyed by each
+/// `Load` loads `assets/content/injuries/**/*.injury.ron` into an [`InjuryRegistry`] keyed by each
 /// injury file's stem (minus the `.injury` infix) AND folds
-/// `assets/injuries/weighting/*.weighting.ron` into the [`InjuryTables`] — BOTH built
+/// `assets/content/injuries/weighting/*.weighting.ron` into the [`InjuryTables`] — BOTH built
 /// through the production [`resolve_injuries`] path. Proves the folder loaded into the
 /// registry keyed by filename (the canonical `scalp_graze` / `lost_eye` keys resolve), the
 /// authored head weighting populated the `(Head, Minor)` + `(Head, Critical)` buckets, and

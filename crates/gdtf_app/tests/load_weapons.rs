@@ -1,4 +1,4 @@
-//! GTW-257: `AppState::Load` preloads the `assets/weapons/` folder through the
+//! GTW-257: `AppState::Load` preloads the `assets/content/weapons/` folder through the
 //! `RonAsset<WeaponSpec>` loader (guarded for headless), builds a name-keyed
 //! `WeaponRegistry` from the loaded weapon files (keyed by filename stem), and
 //! gates the Load->Intro transition on it — so a battle never starts before weapons
@@ -14,7 +14,7 @@
 //!   disk (nothing to load).
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace
-//!   `assets/`. The good path loads `assets/weapons/*.ron` into a `WeaponRegistry`
+//!   `assets/`. The good path loads `assets/content/weapons/*.ron` into a `WeaponRegistry`
 //!   keyed by file stem (`stub_pistol`, `las_carbine`).
 //!
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance
@@ -25,7 +25,7 @@
 //! [`WeaponSpec`](gdtf_battle_sim::weapon::WeaponSpec)). The field-to-bundle
 //! conversion MECHANISM is covered by the fixture-based sim round-trip
 //! (`weapon::test::weapon_spec_round_trips_and_into_bundle_groups_faithfully`); this
-//! harness proves the REAL `assets/weapons/` folder loads through the Load code path
+//! harness proves the REAL `assets/content/weapons/` folder loads through the Load code path
 //! and that its authored KEYS resolve.
 
 use bevy::{app::Startup, state::state::State};
@@ -156,7 +156,7 @@ fn load_does_not_leave_without_a_weapon_registry() {
 }
 
 /// AC4 (tier b) / GTW-270 AC — with a real `AssetServer` rooted at the workspace
-/// `assets/`, entering `Load` loads `assets/weapons/*.weapon.ron` and builds a
+/// `assets/`, entering `Load` loads `assets/content/weapons/*.weapon.ron` and builds a
 /// `WeaponRegistry` keyed by each weapon's filename stem. Proves the folder loaded
 /// into the registry keyed by filename (the canonical `stub_pistol` / `las_carbine`
 /// keys resolve), and that the Load gate waited for it (the machine reaches Intro with
@@ -227,7 +227,7 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
 /// (the GUI auto-battle launch). The empty `WeaponRegistry::default()` seed must NOT
 /// shadow the real folder resolve: with an `AssetServer` present the seed must NOT
 /// insert an empty registry, so `poll_and_resolve` (which only runs `resolve_weapons`
-/// while the registry is ABSENT) populates it from `assets/weapons/*.weapon.ron`.
+/// while the registry is ABSENT) populates it from `assets/content/weapons/*.weapon.ron`.
 ///
 /// This reproduces the bug's exact preconditions on the real code path: a
 /// `GdtfLoadTestAppBuilder` app (live `AssetServer` rooted at the workspace `assets/`)

@@ -48,7 +48,7 @@ impl Plugin for LoadScenePlugin {
         // extension. GDTF registers many `ron` loaders (theme / situation / tuning /
         // keybinds / tile-roles / …), so a `load_folder` of plain `.ron` weapon files
         // would be typed non-deterministically. The weapon loader therefore claims a
-        // DEDICATED `weapon.ron` extension (the files are `assets/weapons/*.weapon.ron`),
+        // DEDICATED `weapon.ron` extension (the files are `assets/content/weapons/*.weapon.ron`),
         // making the folder dispatch unambiguous regardless of registration order (the
         // contract's "unambiguous .ron loader dispatch" goal). Registered here in
         // `build` BEFORE the `kick_off_loads` `load_folder("weapons")` runs — 0.18
@@ -64,14 +64,14 @@ impl Plugin for LoadScenePlugin {
             app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
             // GTW-269: armor files mirror the weapon scheme — each loads as a
             // `RonAsset<ArmorSpec>` via `load_folder`, so it claims its OWN dedicated
-            // `armor.ron` extension (files are `assets/armor/*.armor.ron`) to keep the
+            // `armor.ron` extension (files are `assets/content/armor/*.armor.ron`) to keep the
             // folder dispatch unambiguous among GDTF's many `.ron` loaders, exactly as
             // the weapon loader does. Registered here in `build` BEFORE the kick-off's
             // `load_folder("armor")` runs.
             app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
             // GTW-394: terrain files mirror the armor/weapon scheme — each loads as a
             // `RonAsset<TerrainSpec>` via `load_folder`, claiming its OWN dedicated
-            // `terrain.ron` compound extension (files are `assets/terrain/*.terrain.ron`)
+            // `terrain.ron` compound extension (files are `assets/content/terrain/*.terrain.ron`)
             // to keep the folder dispatch unambiguous among GDTF's many `.ron` loaders.
             // Registered here in `build` BEFORE the kick-off's `load_folder("terrain")`
             // runs.
@@ -79,8 +79,8 @@ impl Plugin for LoadScenePlugin {
             // GTW-437: the injuries folder carries TWO asset types, each via the SAME
             // generic RON loader but loaded by `load_folder` (extension dispatch). Each
             // claims its OWN dedicated compound extension — `injury.ron` for the per-injury
-            // defs (files are `assets/injuries/<part>/*.injury.ron`) and `weighting.ron`
-            // for the per-part weighting tables (`assets/injuries/weighting/*.weighting.ron`)
+            // defs (files are `assets/content/injuries/<part>/*.injury.ron`) and `weighting.ron`
+            // for the per-part weighting tables (`assets/content/injuries/weighting/*.weighting.ron`)
             // — so the recursive folder dispatch is unambiguous among GDTF's many `.ron`
             // loaders. Registered here in `build` BEFORE the kick-off's
             // `load_folder("injuries")` runs.

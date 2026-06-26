@@ -50,7 +50,7 @@ fn construction_records_the_gate() {
 /// is no [`AssetServer`]: with one present (the real GUI launch) it must NOT seed EITHER,
 /// so the Load scene's `poll_and_resolve` — which only RESOLVES the situation / registry
 /// while those resources are ABSENT — WAITS for and populates the real
-/// `situations/skirmish.ron` + `assets/weapons/*.weapon.ron` instead of an empty seed
+/// `situations/skirmish.ron` + `assets/content/weapons/*.weapon.ron` instead of an empty seed
 /// winning the race (the empty registry shadow is the `AC3b` `WeaponNotFound` black-screen
 /// bug). The two seeds are SYMMETRIC.
 ///

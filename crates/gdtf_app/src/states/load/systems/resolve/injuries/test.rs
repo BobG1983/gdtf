@@ -158,8 +158,8 @@ fn builds_registry_and_tables_keyed_by_stem() {
     let Some(w) = weighting(BodyPart::Head, &[], &[], &[("lost_eye", 4)]) else {
         return;
     };
-    let def_handle = add_def(&mut app, "injuries/head/lost_eye.injury.ron", eye);
-    let w_handle = add_weighting(&mut app, "injuries/weighting/head.weighting.ron", w);
+    let def_handle = add_def(&mut app, "content/injuries/head/lost_eye.injury.ron", eye);
+    let w_handle = add_weighting(&mut app, "content/injuries/weighting/head.weighting.ron", w);
     let folder = add_folder(&mut app, &[def_handle.untyped(), w_handle.untyped()]);
 
     let built = build(&app, &folder);
@@ -200,8 +200,8 @@ fn canonical_sort_makes_the_seeded_pick_order_independent() {
         // Two injuries in the same bucket, authored in OPPOSITE orders across the runs.
         let a = injury_def("Alpha", BodyPart::Torso, Severity::Major)?;
         let b = injury_def("Bravo", BodyPart::Torso, Severity::Major)?;
-        let a_h = add_def(&mut app, "injuries/torso/alpha.injury.ron", a);
-        let b_h = add_def(&mut app, "injuries/torso/bravo.injury.ron", b);
+        let a_h = add_def(&mut app, "content/injuries/torso/alpha.injury.ron", a);
+        let b_h = add_def(&mut app, "content/injuries/torso/bravo.injury.ron", b);
         // The weighting lists the rows in opposite orders depending on the flag.
         let rows: &[(&str, u32)] = if entries_first {
             &[("alpha", 3), ("bravo", 7)]
@@ -209,7 +209,11 @@ fn canonical_sort_makes_the_seeded_pick_order_independent() {
             &[("bravo", 7), ("alpha", 3)]
         };
         let w = weighting(BodyPart::Torso, &[], rows, &[])?;
-        let w_h = add_weighting(&mut app, "injuries/weighting/torso.weighting.ron", w);
+        let w_h = add_weighting(
+            &mut app,
+            "content/injuries/weighting/torso.weighting.ron",
+            w,
+        );
         let folder = add_folder(&mut app, &[a_h.untyped(), b_h.untyped(), w_h.untyped()]);
         let (_registry, tables) = build(&app, &folder)?;
         let table = tables.table(BodyPart::Torso, Severity::Major)?;
@@ -251,8 +255,8 @@ fn unknown_weighting_key_is_skipped_not_failed() {
     let Some(w) = weighting(BodyPart::Head, &[], &[], &[("lost_eye", 4), ("ghost", 9)]) else {
         return;
     };
-    let def_h = add_def(&mut app, "injuries/head/lost_eye.injury.ron", eye);
-    let w_h = add_weighting(&mut app, "injuries/weighting/head.weighting.ron", w);
+    let def_h = add_def(&mut app, "content/injuries/head/lost_eye.injury.ron", eye);
+    let w_h = add_weighting(&mut app, "content/injuries/weighting/head.weighting.ron", w);
     let folder = add_folder(&mut app, &[def_h.untyped(), w_h.untyped()]);
 
     // Build UNDER the log capture so the unknown-key skip WARN is observed too.
@@ -297,7 +301,11 @@ fn registry_injury_with_no_weighting_does_not_fail() {
         return;
     };
     // A def with NO weighting file at all.
-    let def_h = add_def(&mut app, "injuries/left_arm/orphan.injury.ron", orphan);
+    let def_h = add_def(
+        &mut app,
+        "content/injuries/left_arm/orphan.injury.ron",
+        orphan,
+    );
     let folder = add_folder(&mut app, &[def_h.untyped()]);
 
     // Build UNDER the log capture so the audit's unweighted-injury WARN is observed too.
@@ -347,8 +355,12 @@ fn subfolder_mismatch_warns_but_loads_authoritative_body_part() {
     let Some(w) = weighting(BodyPart::Head, &[], &[("misfiled", 5)], &[]) else {
         return;
     };
-    let def_h = add_def(&mut app, "injuries/torso/misfiled.injury.ron", misfiled);
-    let w_h = add_weighting(&mut app, "injuries/weighting/head.weighting.ron", w);
+    let def_h = add_def(
+        &mut app,
+        "content/injuries/torso/misfiled.injury.ron",
+        misfiled,
+    );
+    let w_h = add_weighting(&mut app, "content/injuries/weighting/head.weighting.ron", w);
     let folder = add_folder(&mut app, &[def_h.untyped(), w_h.untyped()]);
 
     // Build UNDER the log capture so the mismatch WARN is observed.
@@ -409,8 +421,8 @@ fn modified_member_rebuilds_both_resources() {
     let Some(w) = weighting(BodyPart::Head, &[], &[], &[("lost_eye", 4)]) else {
         return;
     };
-    let def_h = add_def(&mut app, "injuries/head/lost_eye.injury.ron", eye);
-    let w_h = add_weighting(&mut app, "injuries/weighting/head.weighting.ron", w);
+    let def_h = add_def(&mut app, "content/injuries/head/lost_eye.injury.ron", eye);
+    let w_h = add_weighting(&mut app, "content/injuries/weighting/head.weighting.ron", w);
     let w_id = w_h.id();
     let folder = add_folder(&mut app, &[def_h.untyped(), w_h.untyped()]);
     app.world_mut()
@@ -455,7 +467,7 @@ fn injury_hot_reload_logs_an_info_line() {
     let Some(eye) = injury_def("Lost Eye", BodyPart::Head, Severity::Critical) else {
         return;
     };
-    let def_h = add_def(&mut app, "injuries/head/lost_eye.injury.ron", eye);
+    let def_h = add_def(&mut app, "content/injuries/head/lost_eye.injury.ron", eye);
     let def_id = def_h.id();
     let folder = add_folder(&mut app, &[def_h.untyped()]);
     app.world_mut()
