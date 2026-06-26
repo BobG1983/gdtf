@@ -51,6 +51,9 @@ fn non_ganger_outcomes_are_inert() {
             surfaces(&mut cover, &mut slab_ledger()),
             &tuning,
             &mut rng_used,
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         );
 
         assert_eq!(

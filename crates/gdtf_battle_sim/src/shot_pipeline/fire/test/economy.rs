@@ -71,6 +71,9 @@ fn charge_is_taken_once_and_reflects_aiming() {
                 &tuning,
                 &mut shot_r,
                 &mut sev_r,
+                &injury_tables(),
+                &injury_registry(),
+                &mut injury_rng(),
             );
             assert_eq!(volley.reports.len(), 5, "the full 5-round burst fired");
             // GTW-290: the per-round ShotOutcome geometry is parallel to the reports.
@@ -147,6 +150,9 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
             &tuning,
             &mut shot_r,
             &mut sev_r,
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         )
     };
 

@@ -26,6 +26,7 @@ pub(super) use crate::{
         Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
+    injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu, mode_tu_cost},
     metric::{Cell, CellLevel, Level, MAX_LEVELS},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
@@ -111,6 +112,12 @@ pub(super) fn insert_sim_resources(app: &mut App) {
     app.insert_resource(LootRng::from_root(seed));
     app.insert_resource(InjuryRng::from_root(seed));
     app.insert_resource(ProcgenRng::from_root(seed));
+    // GTW-438: `dispatch_fire` reads `Res<InjuryTables>` + `Res<InjuryRegistry>` (the
+    // `roll_injury` inputs). Seed EMPTY ones so the fire path runs (the roll finds no
+    // bucket and takes-then-discards its one InjuryRng draw); a test that pins an injury
+    // overwrites them with populated resources before its run.
+    app.insert_resource(InjuryTables::default());
+    app.insert_resource(InjuryRegistry::default());
     app.insert_resource(tuning);
     app.insert_resource(floor_costs);
 }

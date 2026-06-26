@@ -9,6 +9,7 @@ use crate::{
     acts::{
         downed::{dispatch_execute_downed, dispatch_stabilize_downed},
         fire::{FireDeclaration, dispatch_fire},
+        injury::{InjuryInflicted, apply_injury},
         movement::{MoveRejected, MovementOccurred, dispatch_move},
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
         reload::{ReloadResult, dispatch_reload},
@@ -126,6 +127,13 @@ impl Plugin for SimActsPlugin {
             // creates the Messages<Bleeding> resource the presenter's consequence reader is
             // gated on (bevy-traps.md #4 / #5).
             .add_message::<Bleeding>()
+            // GTW-438: the injury signal `dispatch_fire` emits per round whose wound
+            // rolled a named injury (the in-fold `roll_injury` froze it onto the report).
+            // Registering the buffer here makes `dispatch_fire`'s
+            // MessageWriter<InjuryInflicted> + `apply_injury`'s MessageReader valid and
+            // creates the Messages<InjuryInflicted> buffer the presenter's GTW-439 FCT/log
+            // reader will drain (bevy-traps.md #4 / #5).
+            .add_message::<InjuryInflicted>()
             // GTW-355: the typed reaction-shot interrupt the committed walk (`advance_walk`)
             // stops on (C5(b)). Registering the buffer here makes `advance_walk`'s
             // MessageReader<ReactionShotFired> param valid. NOTHING in the sim emits it yet —
@@ -220,6 +228,23 @@ impl Plugin for SimActsPlugin {
                 tick_bleed
                     .after(dispatch_end_turn)
                     .run_if(enemy_phase_started)
+                    .in_set(SimSystems::Simulate),
+            )
+            // GTW-438: the injury applier — drains the InjuryInflicted buffer and folds
+            // each rolled injury into its target's InflictedInjuries (via `gain`, tripping
+            // Changed) + syncs the standalone BleedAfflicted component. Ordered
+            // `.after(dispatch_fire)` so a SAME-FRAME injury (the fire act emitted it this
+            // frame) is applied this tick — the resulting Changed<InflictedInjuries> is
+            // then projected by `rederive_stats_on_injury_change`, which is ordered
+            // `.after(SimSystems::Simulate)` in BattleSimPlugin (so the ledger gain →
+            // projector re-derive settles within the frame, before the next tick's stat
+            // reads; bevy-traps.md #3 / #7 — query/Commands/MessageReader, no &mut World).
+            // It joins the gated Simulate band (no resource it reads is battle-lifetime —
+            // the Query + Commands are always valid — so it needs no extra run_if).
+            .add_systems(
+                Update,
+                apply_injury
+                    .after(dispatch_fire)
                     .in_set(SimSystems::Simulate),
             );
     }

@@ -12,5 +12,6 @@ mod cover;
 mod determinism;
 mod frozen;
 mod ground;
+mod injury_draw;
 mod non_ganger;
 mod slab;

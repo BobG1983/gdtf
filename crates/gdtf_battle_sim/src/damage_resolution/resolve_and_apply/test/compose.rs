@@ -117,6 +117,9 @@ fn fold_equals_the_composed_steps() {
         surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng_a,
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     // --- The composed steps, BY HAND, on a clone with the same seed ---
@@ -198,6 +201,9 @@ fn armored_report_carries_the_real_matchup() {
             surfaces(&mut ledger(), &mut slab_ledger()),
             &tuning,
             &mut rng(),
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         )
     };
 

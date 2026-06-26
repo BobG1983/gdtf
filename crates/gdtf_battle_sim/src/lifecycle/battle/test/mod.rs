@@ -5,6 +5,7 @@
 
 mod support;
 
+mod injury;
 mod outcome;
 mod plugin;
 mod resources;

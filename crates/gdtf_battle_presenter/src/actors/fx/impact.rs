@@ -54,7 +54,7 @@ use crate::TopDownAtlases;
 /// The [`shooter`](ShotImpactResolved::shooter) [`Entity`] is framework plumbing (the
 /// no-bare-types carve-out), and [`report`](ShotImpactResolved::report) is the sim's own value type
 /// — the consumer resolves the entity to a name + reuses the report through the shared classifier.
-#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub struct ShotImpactResolved {
     /// The firing entity whose shot just impacted — the consumer resolves it to a display name.
     pub shooter: Entity,
@@ -275,7 +275,9 @@ pub fn animate_impact(
         // of the effects atlas, like the pops).
         impact_resolved.write(ShotImpactResolved {
             shooter: impact.shooter,
-            report:  impact.report,
+            // HitReport is non-`Copy` since GTW-438 (it carries the rolled injury), so the
+            // report is cloned out of the impact-seed component into the signal.
+            report:  impact.report.clone(),
         });
         // Consume the seed whether or not the sheet was loaded (no re-attempt pile-up).
         commands.entity(seed_entity).despawn();

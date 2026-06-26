@@ -1,17 +1,21 @@
 use super::support::*;
 
-/// AC6 (no-bare-types / frozen) — the report and its block are `Copy` records of
-/// named domain newtypes (no bare primitive), and the report is freely copyable.
-/// Pins the frozen-record shape (mechanism), never a tuning magnitude.
+/// AC6 (no-bare-types / frozen) — the report and its block are frozen records of
+/// named domain newtypes (no bare primitive). The report is [`Clone`] + `PartialEq`
+/// (NOT `Copy` since GTW-438: it carries the rolled `Option<RolledInjury>`, an owned
+/// `Vec` + texts); its [`AppliedDamage`] block stays `Copy`. Pins the frozen-record
+/// shape (mechanism), never a tuning magnitude.
 #[test]
 fn report_is_a_frozen_record_of_named_newtypes() {
     let entity = an_entity();
-    // A no-effect report copies and compares by value.
+    // A no-effect report clones and compares by value (Clone, not Copy since GTW-438).
     let report = HitReport::no_effect(ShotKind::Miss);
-    let copied = report; // Copy, not a move
-    assert_eq!(report, copied, "HitReport must be Copy + PartialEq");
+    let cloned = report.clone();
+    assert_eq!(report, cloned, "HitReport must be Clone + PartialEq");
     assert_eq!(report.applied, None);
     assert_eq!(report.part, None);
+    // GTW-438: a no-effect report rolled no injury.
+    assert_eq!(report.injury, None, "a no-effect report carries no injury");
 
     // An applied block is a Copy record of named newtypes.
     let applied = AppliedDamage {

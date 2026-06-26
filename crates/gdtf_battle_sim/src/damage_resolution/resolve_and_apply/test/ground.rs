@@ -42,6 +42,9 @@ fn ground_hit_accrues_weapon_damage_on_the_correct_cell() {
         surfaces(&mut cover, &mut slab),
         &tuning,
         &mut rng_used,
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     // The fold must record a ground-accrual verdict (the Some-arm carries the cell +
@@ -95,6 +98,9 @@ fn ground_hit_touches_no_ganger_cover_or_slab_state() {
         surfaces(&mut cover, &mut slab),
         &tuning,
         &mut rng_used,
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     // The report carries ONLY the accrual — no applied damage, no struck part, no
@@ -145,6 +151,9 @@ fn ground_hit_takes_no_rng_draw_and_is_deterministic() {
             surfaces(&mut cover, &mut slab),
             &tuning,
             &mut r,
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         );
         report.ground_accrued
     };
@@ -163,7 +172,9 @@ fn ground_hit_takes_no_rng_draw_and_is_deterministic() {
     let mut cover = ledger();
     let mut slab = slab_ledger();
     let mut rng_used = rng();
-    let _ = resolve_and_apply(
+    // Bind the report (HitReport has a destructor since GTW-438 — it owns the rolled
+    // injury — so `let _ =` is flagged); the test asserts the RNG state, not the report.
+    let _report = resolve_and_apply(
         &ground_outcome(),
         weapon.stats(),
         Luck::new(0.0),
@@ -172,6 +183,9 @@ fn ground_hit_takes_no_rng_draw_and_is_deterministic() {
         surfaces(&mut cover, &mut slab),
         &tuning,
         &mut rng_used,
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
     let mut rng_fresh = rng();
     assert_eq!(

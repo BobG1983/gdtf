@@ -8,6 +8,12 @@ use super::support::*;
 /// Hp/Wounds changed in the world; while a fire into empty space yields only
 /// `no_effect` reports and the (absent) target is untouched.
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "this integration test drives two full fire() scenarios (hit + miss) with \
+              many assertions; the GTW-438 injury-arg threading pushes it one line over \
+              the 100 gate — splitting it would obscure the hit-vs-miss comparison"
+)]
 fn fire_at_in_line_target_applies_damage() {
     let mut world = World::new();
     let tuning = CombatTuning::default();
@@ -77,6 +83,9 @@ fn fire_at_in_line_target_applies_damage() {
             &tuning,
             &mut shot_r,
             &mut sev_r,
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         )
     };
 
@@ -185,6 +194,9 @@ fn fire_into_empty_space_is_a_clean_miss() {
             &tuning,
             &mut shot_r,
             &mut sev_r,
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         )
     };
     assert_eq!(volley.reports.len(), 1, "one round fired into empty space");

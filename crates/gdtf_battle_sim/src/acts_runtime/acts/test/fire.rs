@@ -417,7 +417,7 @@ fn landed_ganger_hit_carries_some_report_matching_the_round() {
         shot.report.is_some(),
         "a fired round must carry its parallel HitReport (Some), got None: {shot:?}",
     );
-    let Some(report) = shot.report else {
+    let Some(report) = shot.report.clone() else {
         return;
     };
     // The report rides the SAME resolved round: its kind equals the message's kind
@@ -476,7 +476,7 @@ fn clean_miss_carries_some_report_with_no_applied_damage() {
         shot.report.is_some(),
         "even a clean miss carries its parallel HitReport (Some), got None: {shot:?}",
     );
-    let Some(report) = shot.report else {
+    let Some(report) = shot.report.clone() else {
         return;
     };
     // The report reflects the miss: same non-ganger kind as the message, and NO applied
@@ -511,7 +511,9 @@ fn shot_fired_report_is_deterministic_for_the_same_seed() {
             Level::new(0),
         ));
         app.update();
-        drain_shots_fired(&mut app).first().and_then(|s| s.report)
+        drain_shots_fired(&mut app)
+            .first()
+            .and_then(|s| s.report.clone())
     };
     assert_eq!(
         dispatched_report(),

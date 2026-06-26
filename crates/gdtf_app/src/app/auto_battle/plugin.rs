@@ -46,8 +46,11 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    armor::ArmorRegistry, injuries::InjuryRegistry, terrain::piece::TerrainRegistry,
-    tuning::CombatTuning, weapon::WeaponRegistry,
+    armor::ArmorRegistry,
+    injuries::{InjuryRegistry, InjuryTables},
+    terrain::piece::TerrainRegistry,
+    tuning::CombatTuning,
+    weapon::WeaponRegistry,
 };
 use gdtf_ui::theme::default_theme;
 
@@ -258,6 +261,12 @@ crate::support_item! {
             // fallback when there is no AssetServer so headless walks still reach Intro
             // (the A1 / AC3b pattern for the injury registry).
             commands.insert_resource(InjuryRegistry::default());
+            // GTW-438: the InjuryTables is read by the fire path's `roll_injury` (the
+            // first reader), so seed the empty fallback alongside the registry for parity
+            // with the resolve path — else `dispatch_fire`'s `Res<InjuryTables>` would
+            // panic on a missing resource in an asset-less headless drive. An empty table
+            // means the roll finds no bucket and still takes-then-discards its one draw.
+            commands.insert_resource(InjuryTables::default());
             commands.insert_resource(LoadedSituation::new(
                 gdtf_battle_sim::situation::Situation::default(),
             ));

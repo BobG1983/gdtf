@@ -13,10 +13,11 @@ use super::{
     },
 };
 use crate::{
+    injuries::{InjuryRegistry, InjuryTables},
     magazine::{FireActor, can_fire, clamp_burst, mode_tu_cost},
     resolve_and_apply::HitReport,
     resolve_coarse::ShotOutcome,
-    rng::{SeverityRng, ShotRng},
+    rng::{InjuryRng, SeverityRng, ShotRng},
     tu::spend_tu,
     tuning::CombatTuning,
 };
@@ -119,8 +120,10 @@ impl Volley {
 #[expect(
     clippy::too_many_arguments,
     reason = "the GTW-323 armor + weapon relationships add the disjoint wears/pieces + \
-              wields/weapons queries to the fire() signature; bundling them would \
-              obscure the query-disjointness the signature documents"
+              wields/weapons queries to the fire() signature, and GTW-438 adds the \
+              injury-roll inputs (InjuryTables + InjuryRegistry reads + the &mut InjuryRng \
+              draw stream); bundling them would obscure the query-disjointness + the \
+              distinct RNG streams the signature documents"
 )]
 pub fn fire(
     shooter: Entity,
@@ -135,6 +138,11 @@ pub fn fire(
     tuning: &CombatTuning,
     shot_rng: &mut ShotRng,
     severity_rng: &mut SeverityRng,
+    // GTW-438: the injury-roll inputs, threaded down to the per-round ganger fold (the
+    // first InjuryRng draw site lives in `roll_injury` inside `fold_ganger`).
+    tables: &InjuryTables,
+    registry: &InjuryRegistry,
+    injury_rng: &mut InjuryRng,
 ) -> Volley {
     // (1) Snapshot the shooter's Copy read state up front (the immutable borrows are
     //     released before the mutable re-borrows). A shooter not in the shooter query
@@ -227,6 +235,9 @@ pub fn fire(
             tuning,
             shot_rng,
             severity_rng,
+            tables,
+            registry,
+            injury_rng,
         );
 
         // Decrement the magazine one round per fired iteration (saturating, AC4) —

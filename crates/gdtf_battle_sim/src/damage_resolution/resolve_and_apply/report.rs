@@ -8,6 +8,7 @@ use crate::{
     cover::CoverLedger,
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
+    injuries::RolledInjury,
     matchup::Matchup,
     metric::{Cell, CellLevel},
     resolve_coarse::ShotKind,
@@ -221,7 +222,20 @@ pub struct AppliedDamage {
 ///   (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). The ground is
 ///   **damaged, never destroyed**, so this records accrual, never destruction. `None`
 ///   for every non-ground outcome.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// - [`injury`](HitReport::injury) — `Some(`[`RolledInjury`]`)` ONLY when this round
+///   wounded a ganger with a non-graze, non-fatal [`Severity`] AND the
+///   `(part, severity)` injury table rolled a named injury (GTW-438); the fire path
+///   bridges it into an [`InjuryInflicted`](crate::acts::InjuryInflicted) message the
+///   [`apply_injury`](crate::acts::apply_injury) boundary system drains. `None` for a
+///   graze / `Fatal` / corpse-skip / non-ganger outcome, or an empty/missing table (the
+///   roll still took its one [`InjuryRng`](crate::rng::InjuryRng) draw — see
+///   [`roll_injury`](crate::injuries::roll_injury)).
+///
+/// NOTE — [`HitReport`] is [`Clone`] but NOT `Copy`: the [`injury`](HitReport::injury)
+/// field carries a [`RolledInjury`] (an owned `Vec` of effects + three texts), so the
+/// report is cloned (not bit-copied) where it is forwarded (the fire path's per-round
+/// emission clones it once into `InjuryInflicted` / `ShotFired`).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HitReport {
     /// What the shot struck — the [`ShotOutcome`](crate::resolve_coarse::ShotOutcome)'s [`ShotKind`].
     pub kind:            ShotKind,
@@ -247,15 +261,26 @@ pub struct HitReport {
     /// (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). `None` for a
     /// non-ground outcome. The ground is damaged, never destroyed (purely cosmetic).
     pub ground_accrued:  Option<GroundAccrual>,
+    /// The injury this round rolled (GTW-438) — `Some(`[`RolledInjury`]`)` ONLY on a
+    /// ganger wound whose non-graze, non-fatal [`Severity`] rolled a named injury from
+    /// the `(part, severity)` table; the fire path bridges it to an
+    /// [`InjuryInflicted`](crate::acts::InjuryInflicted) message. `None` for a graze /
+    /// `Fatal` / corpse-skip / non-ganger outcome, or an empty/missing table (where the
+    /// roll still took its one [`InjuryRng`](crate::rng::InjuryRng) draw, then discarded
+    /// it — the content-independent stream-alignment property).
+    pub injury:          Option<RolledInjury>,
 }
 
 impl HitReport {
     /// Build a **no-effect** report for `kind` — no part struck, no damage applied,
-    /// no cover / slab destroyed, and no ground accrued (the non-ganger non-cover
-    /// non-slab non-ground, corpse-skip, and defensive-no-part folds).
+    /// no cover / slab destroyed, no ground accrued, and no injury rolled (the
+    /// non-ganger non-cover non-slab non-ground, corpse-skip, and defensive-no-part
+    /// folds).
     ///
     /// `pub` so the E4.5 `fire()` act (GTW-198) can fold a non-ganger / corpse-skip
-    /// round to a no-effect report cross-module without re-deriving the shape.
+    /// round to a no-effect report cross-module without re-deriving the shape. Stays
+    /// `const` (every field is a `None` / the `Copy` `kind`), even though the struct now
+    /// carries the non-`Copy` [`injury`](HitReport::injury) (a `None` literal is const-OK).
     #[must_use]
     pub const fn no_effect(kind: ShotKind) -> Self {
         Self {
@@ -265,6 +290,7 @@ impl HitReport {
             cover_destroyed: None,
             slab_destroyed: None,
             ground_accrued: None,
+            injury: None,
         }
     }
 }

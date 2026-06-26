@@ -13,6 +13,7 @@ pub(super) use crate::{
         StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
+    injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
@@ -76,6 +77,10 @@ pub(super) fn brain_app() -> App {
     app.insert_resource(LootRng::from_root(seed));
     app.insert_resource(InjuryRng::from_root(seed));
     app.insert_resource(ProcgenRng::from_root(seed));
+    // GTW-438: `dispatch_fire` reads `Res<InjuryTables>` + `Res<InjuryRegistry>` — seed
+    // empty ones (the AI fire path rolls no asserted injury; the roll still draws).
+    app.insert_resource(InjuryTables::default());
+    app.insert_resource(InjuryRegistry::default());
     let tuning = CombatTuning::default();
     app.insert_resource(FloorCostGrid::new(tuning.move_costs.open, []));
     app.insert_resource(tuning);

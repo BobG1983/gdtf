@@ -17,6 +17,7 @@ pub(super) use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
+    injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu},
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel, Level, SimPos},
@@ -26,7 +27,7 @@ pub(super) use crate::{
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::{HitResult, resolve_hit},
-    rng::{BattleSeed, SeverityRng},
+    rng::{BattleSeed, InjuryRng, SeverityRng},
     sample_cone::{ConcentrationP, ShotDir, sample_cone_vector},
     severity::{Severity, SeverityInputs, part_severity_mod, roll_severity},
     slab::{SlabEntry, SlabHp, SlabLedger},
@@ -57,6 +58,23 @@ pub(super) fn rng() -> SeverityRng {
 /// signature (GTW-364) and is never read or written by a ganger / corpse / non-cover fold.
 pub(super) fn ledger() -> CoverLedger {
     CoverLedger::new()
+}
+
+/// Build an [`InjuryRng`] from the shared fixed seed (a fresh stream per call) — the
+/// GTW-438 injury-roll draw stream `resolve_and_apply` threads to `roll_injury`.
+pub(super) fn injury_rng() -> InjuryRng {
+    InjuryRng::from_root(BattleSeed::new(SEED))
+}
+
+/// An EMPTY [`InjuryTables`] — the default for fold tests that do not assert an injury
+/// (an empty table means the roll finds no bucket and takes-then-discards its one draw).
+pub(super) fn injury_tables() -> InjuryTables {
+    InjuryTables::default()
+}
+
+/// An EMPTY [`InjuryRegistry`] — the default for fold tests that do not assert an injury.
+pub(super) fn injury_registry() -> InjuryRegistry {
+    InjuryRegistry::default()
 }
 
 /// A real, valid [`Entity`] id to stand in for a ganger — spawned from a

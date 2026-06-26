@@ -107,6 +107,9 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
                 &tuning,
                 &mut shot_r,
                 &mut sev_r,
+                &injury_tables(),
+                &injury_registry(),
+                &mut injury_rng(),
             ),
             Err(_) => Volley::empty(),
         };

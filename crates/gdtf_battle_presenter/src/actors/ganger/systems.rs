@@ -354,7 +354,7 @@ pub fn update_ganger_life_state(
 /// deaths pending a tracer; it delegates to [`report_kill_victim`] so the fire-frame guard and the
 /// impact-frame despawn ([`despawn_killed_ganger_on_impact`]) classify a kill IDENTICALLY.
 fn shot_kill_victim(shot: &ShotFired) -> Option<Entity> {
-    report_kill_victim(shot.report)
+    report_kill_victim(shot.report.as_ref())
 }
 
 /// The sim ganger [`Entity`] a shot's [`HitReport`](gdtf_battle_sim::HitReport) KILLED, if it
@@ -367,7 +367,7 @@ fn shot_kill_victim(shot: &ShotFired) -> Option<Entity> {
 /// [`ShotImpactResolved`](crate::ShotImpactResolved)'s threaded report — so a kill is the same
 /// kill on both ends (the deferral and the despawn never disagree). The [`Entity`] is framework
 /// plumbing (the no-bare-types carve-out).
-fn report_kill_victim(report: Option<HitReport>) -> Option<Entity> {
+fn report_kill_victim(report: Option<&HitReport>) -> Option<Entity> {
     let report = report?;
     let ShotKind::Ganger(victim) = report.kind else {
         return None;
@@ -409,7 +409,7 @@ pub fn despawn_killed_ganger_on_impact(
         // Classify the resolved impact with the SAME kill-classifier the fire-frame guard uses
         // (`report_kill_victim`): a non-ganger / non-lethal / miss / geometry-only round yields
         // no victim and is skipped.
-        let Some(victim) = report_kill_victim(impact.report) else {
+        let Some(victim) = report_kill_victim(impact.report.as_ref()) else {
             continue;
         };
         // The killing tracer has landed: despawn the struck ganger's sprite + drop its map entry

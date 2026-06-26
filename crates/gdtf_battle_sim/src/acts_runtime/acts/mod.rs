@@ -52,6 +52,7 @@
 
 mod downed;
 mod fire;
+mod injury;
 mod movement;
 mod plugin;
 mod posture;
@@ -65,6 +66,7 @@ pub use downed::{dispatch_execute_downed, dispatch_stabilize_downed};
 pub use fire::{
     BattleGridsParam, FireArcDecision, FireDeclaration, can_engage, decide_fire_arc, dispatch_fire,
 };
+pub use injury::{InjuryInflicted, apply_injury};
 pub use movement::{MoveRejected, MoveRejection, MovementOccurred, dispatch_move};
 pub use plugin::SimActsPlugin;
 pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance};

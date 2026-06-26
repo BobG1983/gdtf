@@ -12,7 +12,7 @@ use bevy::{
 };
 
 use crate::{
-    acts::request::FireRequested,
+    acts::{injury::InjuryInflicted, request::FireRequested},
     cover::CoverLedger,
     fire::{
         BattleGrids, FireOrder, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery,
@@ -20,11 +20,13 @@ use crate::{
     },
     firing_arc::target_in_arc,
     ganger::{Aiming, Direction, Facing, Position, Tu, TuMax},
+    injuries::{InjuryRegistry, InjuryTables},
     magazine::mode_tu_cost,
     metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
     occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
-    rng::{SeverityRng, ShotRng},
+    resolve_coarse::ShotKind,
+    rng::{InjuryRng, SeverityRng, ShotRng},
     shot_fired::ShotFired,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
@@ -180,6 +182,13 @@ pub struct FireSignals<'w> {
     /// this signal carries an accrual, not a destruction (purely cosmetic — crater FX is a
     /// later ticket).
     ground_accrued:  MessageWriter<'w, GroundAccrued>,
+    /// The per-ROUND injury signal (GTW-438) — emitted for each round whose
+    /// [`HitReport::injury`](crate::resolve_and_apply::HitReport::injury) is `Some`,
+    /// bridging the in-fold injury roll into the buffered [`InjuryInflicted`] message
+    /// [`apply_injury`](crate::acts::apply_injury) drains (and the presenter — GTW-439 —
+    /// reads for the FCT / log flash). The injury-table mirror of the cover/slab/ground
+    /// bridges: a structural hit destroys/accrues, a ganger wound INJURES.
+    injuries:        MessageWriter<'w, InjuryInflicted>,
 }
 
 /// The query the GTW-242 fire dispatch turns the shooter through for an out-of-arc shot —
@@ -374,8 +383,29 @@ pub fn dispatch_fire(
     // No system may take Res<ShotRng> or Res<SeverityRng> — see rng::streams doc.
     mut shot_rng: ResMut<ShotRng>,
     mut severity_rng: ResMut<SeverityRng>,
+    // GTW-438: the injury-roll inputs threaded into `fire()`. `InjuryTables` /
+    // `InjuryRegistry` are read (the weighted-pick table + the name→def resolution); they
+    // are app/Load-OWNED resources (NOT inserted by the sim's `setup_battle`, unlike the
+    // RNG streams), so a sim-only headless harness that opens a battle WITHOUT the Load
+    // flow has neither — hence `Option<Res<…>>` + an empty-default fallback (bevy-traps.md
+    // #1: a missing battle-lifetime resource must not panic a runtime system). With them
+    // absent the roll finds no bucket and inflicts no injury, but STILL takes its one
+    // InjuryRng draw (content-independent stream alignment). `InjuryRng` itself IS sim-set
+    // (inserted by `setup_battle` alongside the other four streams), so it is a required
+    // `ResMut`.
+    injury_tables: Option<Res<InjuryTables>>,
+    injury_registry: Option<Res<InjuryRegistry>>,
+    mut injury_rng: ResMut<InjuryRng>,
     mut signals: FireSignals,
 ) {
+    // Empty fallbacks for an asset-less harness (no Load flow → no InjuryTables/Registry).
+    // A `Res` derefs to `&T`; an absent one falls back to a freshly-built empty default,
+    // so `fire()` always gets a valid `&InjuryTables` / `&InjuryRegistry` to roll against
+    // (the roll then finds no bucket but still takes its one draw).
+    let empty_tables = InjuryTables::default();
+    let empty_registry = InjuryRegistry::default();
+    let tables: &InjuryTables = injury_tables.as_deref().unwrap_or(&empty_tables);
+    let registry: &InjuryRegistry = injury_registry.as_deref().unwrap_or(&empty_registry);
     for request in requests.read() {
         // (1) READ the arc-relevant shooter state through the ShooterQuery half, copying
         //     every Copy value out so the query borrow ends at the block boundary (freeing
@@ -478,58 +508,74 @@ pub fn dispatch_fire(
             &tuning,
             &mut shot_rng,
             &mut severity_rng,
+            tables,
+            registry,
+            &mut injury_rng,
         );
 
-        // (5) GTW-290 / GTW-306 / GTW-302: emit one ShotFired per ROUND fired, sourced from
-        //     the round's already-computed ShotOutcome plus the weapon's DamageType read in
-        //     step (1) AND the PARALLEL HitReport the volley already produced (no recompute,
-        //     no fire-result change) — so a burst draws a tracer per round, each carrying
-        //     the per-type FX selector and the round's damage/wound/severity/armor verdict
-        //     the floating-combat-text presenter reads. `Volley::reports` and
-        //     `Volley::shots` are parallel (`reports[i]`/`shots[i]` are the same fired
-        //     round, both the clamped-burst length), so the zip pairs each round's geometry
-        //     with its own report — every fired round therefore carries `Some(report)`. An
-        //     empty (fail-closed) volley emits none.
-        for (outcome, report) in volley.shots.iter().zip(volley.reports.iter()) {
-            signals.shots.write(ShotFired::from_round(
-                request.shooter,
-                damage,
-                outcome,
-                *report,
-            ));
-            // (5b) GTW-364: the fire→deplete→message BRIDGE. A round that depleted a piece
-            //      of cover's HP to zero carries the destroyed (cell, level) on its report
-            //      (resolve_and_apply already spent the ledger's HP via deplete_cover); emit
-            //      ONE CoverDestroyed per such round. `sync_destroyed_cover` folds it into the
-            //      occupancy grid's append-only destroyed-cover set (the cell stops blocking)
-            //      and `should_recompute_visibility` (GTW-341) re-reveals the opened sightline
-            //      — both already wired, consuming this message. No re-resolve, no extra draw.
-            if let Some(at) = report.cover_destroyed {
-                signals.cover_destroyed.write(CoverDestroyed::new(at));
-            }
-            // (5c) GTW-365: the slab mirror of the cover bridge. A round that depleted a
-            //      floor/roof slab's HP to zero carries the destroyed (cell, level) on its
-            //      report (resolve_and_apply already spent the slab ledger's HP via
-            //      deplete_slab); emit ONE SlabDestroyed per such round. `sync_destroyed_slab`
-            //      sets the slab SlabState::Destroyed on the SurfaceGrid (so the round + LOS
-            //      march fly through the hole) and `should_recompute_visibility` (GTW-365)
-            //      re-reveals the opened vertical sightline — both wired, consuming this
-            //      message. No re-resolve, no extra draw.
-            if let Some(at) = report.slab_destroyed {
-                signals.slab_destroyed.write(SlabDestroyed::new(at));
-            }
-            // (5d) GTW-366: the ground-accrual bridge (the cosmetic mirror of the cover /
-            //      slab destruction bridges). A round that struck the GROUND carries the
-            //      struck cell + the round's weapon_damage on its report (resolve_and_apply's
-            //      Ground arm recorded it — the ground is damaged, never destroyed); emit ONE
-            //      GroundAccrued per such round. `sync_accrued_ground` accrues it
-            //      (monotonically) onto the SurfaceGrid's per-cell ground accumulator. No
-            //      re-resolve, no extra draw — purely bookkeeping for a later crater FX.
-            if let Some(accrual) = report.ground_accrued {
-                signals
-                    .ground_accrued
-                    .write(GroundAccrued::new(accrual.cell, accrual.amount));
-            }
+        // (5) Emit the per-round output signals — the ShotFired FX/FCT, the injury bridge
+        //     (GTW-438), and the structural cover/slab/ground bridges (GTW-364/365/366) —
+        //     all PURE EXPOSURE of the volley the fire already produced (no recompute, no
+        //     extra draw). Extracted to keep dispatch_fire under clippy's line gate.
+        emit_round_signals(request.shooter, damage, &volley, &mut signals);
+    }
+}
+
+/// Emit the per-ROUND output signals for a resolved `volley` — the GTW-290/302 [`ShotFired`]
+/// FX/FCT, the GTW-438 injury bridge, and the GTW-364/365/366 cover/slab/ground bridges.
+///
+/// One signal set per fired round, zipping the parallel
+/// [`Volley::shots`](crate::fire::Volley::shots) geometry with the
+/// [`Volley::reports`](crate::fire::Volley::reports) verdicts (`shots[i]`/`reports[i]` are
+/// the same round). Every emission is PURE EXPOSURE of what the volley already computed —
+/// no recompute, no fire-result change, no extra RNG draw (the injury roll happened in-fold,
+/// frozen on `report.injury`). Extracted from [`dispatch_fire`] so that system stays under
+/// clippy's line-count gate; takes the writer bundle by `&mut` (the [`MessageWriter`]s).
+fn emit_round_signals(
+    shooter: Entity,
+    damage: DamageType,
+    volley: &crate::fire::Volley,
+    signals: &mut FireSignals,
+) {
+    for (outcome, report) in volley.shots.iter().zip(volley.reports.iter()) {
+        // (5a) GTW-438: the injury bridge — a round that wounded a ganger with a non-graze,
+        //      non-fatal severity AND rolled a named injury carries it on `report.injury`
+        //      (the in-fold `roll_injury` already took its ONE InjuryRng draw); emit ONE
+        //      InjuryInflicted per such round, addressed to the struck ganger entity on
+        //      `report.kind`. `apply_injury` drains it (folds the GainedInjury into the
+        //      target's InflictedInjuries + syncs the bleed); the presenter (GTW-439) reads
+        //      it for the FCT/log flash. Cloned out BEFORE the ShotFired clone below.
+        if let (Some(rolled), ShotKind::Ganger(target)) = (&report.injury, report.kind) {
+            signals
+                .injuries
+                .write(InjuryInflicted::from_rolled(target, rolled.clone()));
+        }
+        // The HitReport is non-`Copy` (it carries the rolled injury); clone it into the
+        // per-round ShotFired (the FCT presenter reads the damage/wound/severity verdict —
+        // the injury rides the separate InjuryInflicted).
+        signals.shots.write(ShotFired::from_round(
+            shooter,
+            damage,
+            outcome,
+            report.clone(),
+        ));
+        // (5b) GTW-364: the cover fire→deplete→message bridge — a round that depleted cover
+        //      to zero carries the destroyed (cell, level); emit one CoverDestroyed.
+        if let Some(at) = report.cover_destroyed {
+            signals.cover_destroyed.write(CoverDestroyed::new(at));
+        }
+        // (5c) GTW-365: the slab mirror — a round that depleted a slab to zero carries the
+        //      destroyed (cell, level); emit one SlabDestroyed.
+        if let Some(at) = report.slab_destroyed {
+            signals.slab_destroyed.write(SlabDestroyed::new(at));
+        }
+        // (5d) GTW-366: the ground-accrual bridge — a round that struck the ground carries
+        //      its cell + weapon_damage; emit one GroundAccrued (the ground is
+        //      damaged-never-destroyed — accrual, not destruction).
+        if let Some(accrual) = report.ground_accrued {
+            signals
+                .ground_accrued
+                .write(GroundAccrued::new(accrual.cell, accrual.amount));
         }
     }
 }

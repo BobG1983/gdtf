@@ -61,6 +61,9 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
             &tuning,
             &mut shot_r,
             &mut sev_r,
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         )
     };
 
@@ -144,6 +147,9 @@ fn dead_shooter_fires_nothing() {
             &tuning,
             &mut shot_r,
             &mut sev_r,
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         )
     };
 

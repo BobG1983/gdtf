@@ -17,12 +17,13 @@ use crate::{
     armor::BodyPart,
     cover::CoverLedger,
     ganger::{Aiming, Facing, LifeState, Luck, Position, Shooting, Stance, StanceKind, Tu, TuMax},
+    injuries::{InjuryRegistry, InjuryTables},
     magazine::Magazine,
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     resolve_and_apply::{HitReport, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotInputs, ShotKind, resolve_coarse},
-    rng::{SeverityRng, ShotRng},
+    rng::{InjuryRng, SeverityRng, ShotRng},
     sample_cone::concentration_p,
     stability::terrain_brace::terrain_braces,
     tuning::CombatTuning,
@@ -310,7 +311,10 @@ pub(super) struct RoundSetup<'a> {
 #[expect(
     clippy::too_many_arguments,
     reason = "the GTW-323 armor-relationship adds the disjoint wears/pieces queries to \
-              the per-round verb; bundling them would obscure the query-disjointness"
+              the per-round verb, and GTW-438 adds the injury-roll inputs (InjuryTables + \
+              InjuryRegistry reads + the &mut InjuryRng draw stream); bundling them would \
+              obscure the query-disjointness + the distinct RNG streams the signature \
+              documents"
 )]
 pub(super) fn resolve_round(
     setup: RoundSetup,
@@ -322,6 +326,11 @@ pub(super) fn resolve_round(
     tuning: &CombatTuning,
     shot_rng: &mut ShotRng,
     severity_rng: &mut SeverityRng,
+    // GTW-438: the injury-roll inputs, threaded down to the ganger fold (the cover /
+    // slab / ground arms ignore them — a structural hit rolls no injury).
+    tables: &InjuryTables,
+    registry: &InjuryRegistry,
+    injury_rng: &mut InjuryRng,
 ) -> (HitReport, crate::resolve_coarse::ShotOutcome) {
     let snapshot = setup.snapshot;
     let geometry = setup.geometry;
@@ -409,6 +418,9 @@ pub(super) fn resolve_round(
             pieces,
             tuning,
             severity_rng,
+            tables,
+            registry,
+            injury_rng,
         ),
         // GTW-364: a round that strikes COVER folds through the SAME resolve_and_apply,
         // which reuses the ganger damage formula against the cover's own armor, spends
@@ -437,6 +449,12 @@ pub(super) fn resolve_round(
             },
             tuning,
             severity_rng,
+            // GTW-438: a structural (cover/slab/ground) hit rolls NO injury — the
+            // tables/registry are unread and the InjuryRng cursor never advances for
+            // these arms (the `None` target short-circuits the wound path).
+            tables,
+            registry,
+            injury_rng,
         ),
         // A clean miss strikes nothing — no effect.
         ShotKind::Miss => HitReport::no_effect(outcome.kind),
@@ -462,8 +480,10 @@ pub(super) fn resolve_round(
 #[expect(
     clippy::too_many_arguments,
     reason = "the ganger fold needs the outcome / struck entity / snapshot / grids plus \
-              the disjoint wears+pieces queries + tuning + rng; bundling the queries would \
-              obscure the GTW-323 disjointness the ParamSet-free coexistence relies on"
+              the disjoint wears+pieces queries + tuning + severity-rng, and GTW-438 adds \
+              the injury-roll inputs (InjuryTables + InjuryRegistry + the &mut InjuryRng \
+              draw stream); bundling the queries would obscure the GTW-323 disjointness \
+              the ParamSet-free coexistence relies on"
 )]
 fn fold_ganger_round(
     outcome: &crate::resolve_coarse::ShotOutcome,
@@ -475,6 +495,9 @@ fn fold_ganger_round(
     pieces: &mut PieceQuery,
     tuning: &CombatTuning,
     severity_rng: &mut SeverityRng,
+    tables: &InjuryTables,
+    registry: &InjuryRegistry,
+    injury_rng: &mut InjuryRng,
 ) -> HitReport {
     let struck_piece_view = outcome
         .body_part
@@ -523,6 +546,9 @@ fn fold_ganger_round(
                 },
                 tuning,
                 severity_rng,
+                tables,
+                registry,
+                injury_rng,
             )
         }
         Err(_) => HitReport::no_effect(outcome.kind),

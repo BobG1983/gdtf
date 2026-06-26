@@ -85,6 +85,8 @@ fn bridge_app() -> App {
     app.insert_resource(SeverityRng::from_root(seed));
     app.insert_resource(LootRng::from_root(seed));
     app.insert_resource(InjuryRng::from_root(seed));
+    app.insert_resource(gdtf_battle_sim::InjuryTables::default());
+    app.insert_resource(gdtf_battle_sim::InjuryRegistry::default());
     app.insert_resource(ProcgenRng::from_root(seed));
     app.insert_resource(CombatTuning::default());
     app.insert_resource(PlayerFaction::new(Faction::new(1)));

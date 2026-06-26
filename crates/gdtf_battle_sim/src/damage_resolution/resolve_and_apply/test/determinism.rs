@@ -58,6 +58,9 @@ fn same_seed_reproduces_the_report_sequence() {
                     surfaces(&mut ledger(), &mut slab_ledger()),
                     &tuning,
                     &mut r,
+                    &injury_tables(),
+                    &injury_registry(),
+                    &mut injury_rng(),
                 )
             })
             .collect::<Vec<_>>()

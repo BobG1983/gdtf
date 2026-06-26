@@ -63,6 +63,9 @@ fn same_seed_reproduces_byte_equal_volley() {
                 &tuning,
                 &mut shot_r,
                 &mut sev_r,
+                &injury_tables(),
+                &injury_registry(),
+                &mut injury_rng(),
             ),
             Err(_) => Volley::empty(),
         }

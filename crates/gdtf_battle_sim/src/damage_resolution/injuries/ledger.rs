@@ -79,7 +79,15 @@ impl StatDeltaLedger {
 /// [`accumulate`](BleedAfflicted::accumulate) saturates beyond that). A no-bare-types
 /// newtype: private inner + derived [`Deref`]; defaults to `0` (no bleed). Distinct
 /// from the Downed Wounds bleed-out: this drains HP and can down but never kill.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
+///
+/// GTW-438: ALSO a [`Component`] — the standalone per-ganger accrual the bleed runtime
+/// ([`tick_bleed`](crate::bleed::tick_bleed)) queries to drain HP each round. The
+/// [`apply_injury`](crate::acts::apply_injury) boundary keeps it in sync with the
+/// owning [`InflictedInjuries`] ledger's [`bleed`](InflictedInjuries::bleed) (the SINGLE
+/// source: the ledger's `gain` is the only accrual point; this component MIRRORS it so a
+/// `Query<&BleedAfflicted>` can read it without the whole ledger). Derives the sentinel
+/// [`Default`] the `bsn!` spawn seed needs (bsn-sentinel-defaults convention).
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BleedAfflicted(u16);
 
 impl BleedAfflicted {

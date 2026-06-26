@@ -40,6 +40,9 @@ fn corpse_skip_is_inert_and_draws_nothing() {
         surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng_used,
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     // No-effect report.

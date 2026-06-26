@@ -12,11 +12,12 @@ use crate::{
     cone::{ConeAngle, PriorShots},
     cover::{CoverLedger, HeightBand},
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
+    injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, Level, SimPos},
     resolve_and_apply::{StruckSurfaces, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotKind, ShotOutcome},
-    rng::{BattleSeed, SeverityRng},
+    rng::{BattleSeed, InjuryRng, SeverityRng},
     sample_cone::{ConcentrationP, ShotDir, sample_cone_vector},
     severity::Severity,
     slab::SlabLedger,
@@ -171,6 +172,9 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
             },
             &tuning,
             &mut r,
+            &InjuryTables::default(),
+            &InjuryRegistry::default(),
+            &mut InjuryRng::from_root(BattleSeed::new(SEED)),
         );
 
         let Some(applied) = report.applied else {

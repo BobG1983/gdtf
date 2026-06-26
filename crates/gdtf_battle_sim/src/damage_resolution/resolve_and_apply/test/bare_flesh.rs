@@ -6,6 +6,12 @@ use super::support::*;
 /// AND the HP-loss equals the FULL weapon damage (zeroed soak) — distinct from
 /// the armored case on the same weapon, where protection soaks.
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "the two-call armored-vs-bare comparison + the GTW-438 injury-arg threading \
+              push this single integration test one line over the 100 gate; splitting it \
+              would obscure the side-by-side comparison it exists to make"
+)]
 fn bare_flesh_uses_no_protection_or_hardness() {
     let tuning = CombatTuning::default();
     let entity = an_entity();
@@ -44,6 +50,9 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     assert!(
@@ -102,6 +111,9 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
     assert!(
         report2.applied.is_some(),

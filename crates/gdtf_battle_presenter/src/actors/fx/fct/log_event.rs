@@ -114,8 +114,11 @@ pub enum CombatLogEvent {
         /// connecting hit's lines come straight from [`classify_report`], no name).
         actor:  LogName,
         /// The round's already-computed hit report (the sim's verdict) — reused through
-        /// [`classify_report`]; [`None`] (a geometry-only round) reads as a miss.
-        report: Option<HitReport>,
+        /// [`classify_report`]; [`None`] (a geometry-only round) reads as a miss. BOXED
+        /// (GTW-438): the [`HitReport`] grew to carry the rolled injury (an owned `Vec` +
+        /// texts), so it is the heaviest variant payload — boxing keeps the enum small
+        /// (clippy `large_enum_variant`), the report living behind one heap pointer.
+        report: Option<Box<HitReport>>,
     },
     /// A reload RESOLVED — `"<actor> reloaded"` / `"<actor>: no TU"`; an already-full reload
     /// logs NOTHING. From a [`ReloadResult`](gdtf_battle_sim::ReloadResult).
@@ -239,7 +242,9 @@ pub fn classify_log_event(event: &CombatLogEvent) -> Vec<LogLine> {
         CombatLogEvent::MovementOccurred { actor, from, to } => {
             vec![movement_line(actor, *from, *to)]
         }
-        CombatLogEvent::ShotOutcome { actor, report } => shot_outcome_lines(actor, report.as_ref()),
+        CombatLogEvent::ShotOutcome { actor, report } => {
+            shot_outcome_lines(actor, report.as_deref())
+        }
         CombatLogEvent::ReloadResult { actor, outcome } => reload_lines(actor, *outcome),
         CombatLogEvent::TurnStarted { now_active, player } => {
             vec![turn_line(*now_active, *player)]
@@ -400,6 +405,7 @@ mod test {
             cover_destroyed: None,
             slab_destroyed:  None,
             ground_accrued:  None,
+            injury:          None,
         }
     }
 
@@ -464,7 +470,7 @@ mod test {
         let report = ganger_report(BodyPart::Torso, 9, 6, Severity::Critical, LifeState::Downed);
         let event = CombatLogEvent::ShotOutcome {
             actor:  LogName::new("Vex"),
-            report: Some(report),
+            report: Some(Box::new(report)),
         };
         let pairs = line_pairs(&event);
         assert!(
@@ -489,7 +495,7 @@ mod test {
     fn a_clean_miss_yields_the_explicit_missed_line() {
         let event = CombatLogEvent::ShotOutcome {
             actor:  LogName::new("Vex"),
-            report: Some(HitReport::no_effect(ShotKind::Miss)),
+            report: Some(Box::new(HitReport::no_effect(ShotKind::Miss))),
         };
         let lines = classify_log_event(&event);
         assert_eq!(lines.len(), 1, "a clean miss is exactly one log line");
@@ -515,7 +521,9 @@ mod test {
         // Damaged (not destroyed) — a "Cover hit" chip line, never the miss line.
         let damaged = CombatLogEvent::ShotOutcome {
             actor:  LogName::new("Vex"),
-            report: Some(HitReport::no_effect(ShotKind::Cover(cover_entry()))),
+            report: Some(Box::new(HitReport::no_effect(ShotKind::Cover(
+                cover_entry(),
+            )))),
         };
         let lines = classify_log_event(&damaged);
         assert!(
@@ -537,7 +545,7 @@ mod test {
         };
         let destroyed = CombatLogEvent::ShotOutcome {
             actor:  LogName::new("Vex"),
-            report: Some(destroyed_report),
+            report: Some(Box::new(destroyed_report)),
         };
         let destroyed_lines = classify_log_event(&destroyed);
         let line = destroyed_lines
@@ -561,7 +569,7 @@ mod test {
         };
         let event = CombatLogEvent::ShotOutcome {
             actor:  LogName::new("Vex"),
-            report: Some(report),
+            report: Some(Box::new(report)),
         };
         let lines = classify_log_event(&event);
         assert!(

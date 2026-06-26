@@ -284,10 +284,11 @@ impl ProjectileTravel {
     }
 
     /// This shot's hit report (GTW-328) — handed to the arrival [`PendingImpact`] so the
-    /// impact-resolved signal carries the verdict the combat log classifies.
+    /// impact-resolved signal carries the verdict the combat log classifies. Cloned (the
+    /// [`HitReport`] is non-`Copy` since GTW-438 — it carries the rolled injury).
     #[must_use]
-    const fn report(&self) -> Option<HitReport> {
-        self.report
+    fn report(&self) -> Option<HitReport> {
+        self.report.clone()
     }
 }
 
@@ -468,7 +469,9 @@ pub fn spawn_shot_projectiles(
             pops,
             anchor,
             msg.shooter,
-            msg.report,
+            // HitReport is non-`Copy` since GTW-438 (it carries the rolled injury) — clone
+            // it off the `&ShotFired` into the owned flight component.
+            msg.report.clone(),
         );
         let transform = Transform::from_translation(muzzle_world);
         let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);

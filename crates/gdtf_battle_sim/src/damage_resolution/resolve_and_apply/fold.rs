@@ -10,6 +10,7 @@ use crate::{
     armor_wear::ArmorWearOutcome,
     cover::{CoverDamage, CoverEntry, CoverEvent, CoverLedger},
     ganger::{LifeState, Luck},
+    injuries::{InjuryRegistry, InjuryTables, roll_injury},
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel},
     resolve_and_apply::report::{
@@ -17,7 +18,7 @@ use crate::{
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::resolve_hit,
-    rng::SeverityRng,
+    rng::{InjuryRng, SeverityRng},
     severity::{SeverityInputs, part_severity_mod, roll_severity},
     slab::{SlabDamage, SlabEntry, SlabEvent, SlabLedger},
     surface::GroundDamage,
@@ -309,9 +310,12 @@ fn apply_ground_hit(at: CellLevel, weapon: WeaponStats<'_>) -> GroundAccrual {
 #[expect(
     clippy::too_many_arguments,
     reason = "GTW-365 bundles the two structural HP ledgers (cover + slab) into the \
-              StruckSurfaces param, so the remaining args are the irreducible \
-              outcome / weapon / luck / target / entity / surfaces / tuning / rng set; the \
-              target ganger surfaces are ALREADY grouped in the TargetGanger bundle"
+              StruckSurfaces param, and GTW-438 threads the injury-roll inputs (the \
+              InjuryTables + InjuryRegistry reads + the &mut InjuryRng draw stream) onto \
+              the wound path; the remaining args are the irreducible \
+              outcome / weapon / luck / target / entity / surfaces / tuning / severity-rng \
+              / injury-tables / injury-registry / injury-rng set; the target ganger \
+              surfaces are ALREADY grouped in the TargetGanger bundle"
 )]
 pub fn resolve_and_apply(
     outcome: &ShotOutcome,
@@ -322,12 +326,19 @@ pub fn resolve_and_apply(
     surfaces: StruckSurfaces<'_>,
     tuning: &CombatTuning,
     rng: &mut SeverityRng,
+    // GTW-438: the injury-roll inputs, threaded onto the wound path. The cover / slab /
+    // ground / miss arms ignore them (a structural hit rolls no injury and takes no
+    // InjuryRng draw); only `fold_ganger` consults them.
+    tables: &InjuryTables,
+    registry: &InjuryRegistry,
+    injury_rng: &mut InjuryRng,
 ) -> HitReport {
     match outcome.kind {
         // The wound path — only a Ganger outcome can wound (the ONE severity draw is
         // taken here; a corpse / missing part folds to no-effect with no draw). A
         // defensive `None` target (the struck entity was not a queryable ganger) folds
-        // to no-effect — never a panic.
+        // to no-effect — never a panic. GTW-438: the injury roll's one InjuryRng draw is
+        // taken inside `fold_ganger` AFTER apply_hit, gated on the rolled severity.
         ShotKind::Ganger(_) => match target {
             Some(target) => fold_ganger(
                 outcome,
@@ -337,6 +348,9 @@ pub fn resolve_and_apply(
                 target_entity,
                 tuning,
                 rng,
+                tables,
+                registry,
+                injury_rng,
             ),
             None => HitReport::no_effect(outcome.kind),
         },
@@ -357,6 +371,8 @@ pub fn resolve_and_apply(
                 cover_destroyed,
                 slab_destroyed: None,
                 ground_accrued: None,
+                // A cover hit never wounds a ganger, so it rolls no injury (no draw).
+                injury: None,
             }
         }
         // The slab-hit path (GTW-365/396): a slab has its OWN HP + armor; reuse the
@@ -387,6 +403,8 @@ pub fn resolve_and_apply(
                 cover_destroyed: None,
                 slab_destroyed,
                 ground_accrued: None,
+                // A slab hit never wounds a ganger, so it rolls no injury (no draw).
+                injury: None,
             }
         }
         // The ground-accrual path (GTW-366): a round that exits the bottom of the voxel
@@ -402,6 +420,8 @@ pub fn resolve_and_apply(
             cover_destroyed: None,
             slab_destroyed:  None,
             ground_accrued:  Some(apply_ground_hit(at, weapon)),
+            // A ground hit never wounds a ganger, so it rolls no injury (no draw).
+            injury:          None,
         },
         // A clean miss strikes nothing — no draw, no mutation, no accrual.
         ShotKind::Miss => HitReport::no_effect(outcome.kind),
@@ -429,10 +449,27 @@ pub fn resolve_and_apply(
 ///
 /// Split out of [`resolve_and_apply`]'s kind dispatch (GTW-364) so the ganger and
 /// cover paths each stay a focused fold. Mutates the target ganger's battle state in
-/// place and advances the injected [`SeverityRng`](crate::rng::SeverityRng) by exactly one severity draw on a real
-/// hit; owns no mutation after return. Exactly seven inputs (the
-/// [`TargetGanger`] bundle already groups the target's mutable surfaces), so it sits
-/// at clippy's argument-count gate without an exemption.
+/// place and advances the injected [`SeverityRng`](crate::rng::SeverityRng) by exactly
+/// one severity draw on a real hit; owns no mutation after return.
+///
+/// GTW-438 — the injury roll. AFTER [`apply_hit`] (the wound's Wounds already spent),
+/// gated on the rolled [`Severity`](crate::severity::Severity), it calls
+/// [`roll_injury`] over the injected [`InjuryTables`] / [`InjuryRegistry`] / `&mut`
+/// [`InjuryRng`](crate::rng::InjuryRng): a [`None`](crate::severity::Severity::None)
+/// (graze) / [`Fatal`](crate::severity::Severity::Fatal) takes NO injury draw; a
+/// `Minor`/`Major`/`Critical` ALWAYS takes EXACTLY ONE [`InjuryRng`] draw (even on an
+/// empty/missing table — then discards it, for content-independent stream alignment).
+/// The corpse-skip short-circuits BEFORE any draw, so a corpse takes neither the
+/// severity nor the injury draw. The rolled `Option<RolledInjury>` freezes onto
+/// [`HitReport::injury`].
+#[expect(
+    clippy::too_many_arguments,
+    reason = "GTW-438 threads the injury-roll inputs (the InjuryTables + InjuryRegistry \
+              reads + the &mut InjuryRng draw stream) onto the wound fold alongside the \
+              irreducible outcome / weapon / luck / target / entity / tuning / severity-rng \
+              set; the target ganger surfaces are ALREADY grouped in the TargetGanger \
+              bundle"
+)]
 fn fold_ganger(
     outcome: &ShotOutcome,
     weapon: WeaponStats<'_>,
@@ -441,6 +478,9 @@ fn fold_ganger(
     target_entity: Entity,
     tuning: &CombatTuning,
     rng: &mut SeverityRng,
+    tables: &InjuryTables,
+    registry: &InjuryRegistry,
+    injury_rng: &mut InjuryRng,
 ) -> HitReport {
     // (1) Corpse-skip BEFORE any draw: a dead target is final — no draw is taken
     // (a corpse never consumes an RNG draw), nothing mutates.
@@ -512,11 +552,20 @@ fn fold_ganger(
         ArmorWearOutcome::Unaffected => (None, None),
     };
 
-    // (7) Freeze the verdict — a Copy record of named newtypes, no pixel.
+    // (6b) GTW-438 — the injury roll, AFTER apply_hit (Wounds already spent) and gated
+    // on the rolled `severity` (the ticket's "after wounds-spend, before terminal
+    // gates"). `roll_injury` takes EXACTLY ONE InjuryRng draw for a Minor/Major/Critical
+    // wound (even on an empty/missing table — content-independent stream alignment) and
+    // ZERO for a None (graze) / Fatal. It is recorded even on a corpse-MAKING hit (the
+    // gate is on the rolled severity, not the post-gate life state); a hit on an already
+    // dead target short-circuited at step (1) BEFORE any draw.
+    let injury = roll_injury(part, severity, tables, registry, injury_rng);
+
+    // (7) Freeze the verdict — named newtypes + the rolled injury, no pixel.
     HitReport {
-        kind:            outcome.kind,
-        part:            Some(part),
-        applied:         Some(AppliedDamage {
+        kind: outcome.kind,
+        part: Some(part),
+        applied: Some(AppliedDamage {
             matchup: resolved_matchup,
             hit,
             severity,
@@ -527,9 +576,12 @@ fn fold_ganger(
         cover_destroyed: None,
         // A ganger hit destroys no slab (a slab hit takes the slab arm in
         // `resolve_and_apply`, never this ganger fold).
-        slab_destroyed:  None,
+        slab_destroyed: None,
         // A ganger hit accrues no ground damage (a ground hit takes the ground arm in
         // `resolve_and_apply`, never this ganger fold).
-        ground_accrued:  None,
+        ground_accrued: None,
+        // The GTW-438 injury verdict (Some only on a Minor/Major/Critical wound that
+        // rolled a named injury; None on a graze / Fatal / empty-table).
+        injury,
     }
 }

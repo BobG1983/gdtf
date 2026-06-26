@@ -39,12 +39,12 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
-    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    PieceQuery, Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng,
-    SlabLedger, Stable, Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley,
-    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery,
-    WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables, Kickback, Level,
+    LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu, SeverityRng,
+    ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid,
+    TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
 /// The shooter's cell.
@@ -180,6 +180,7 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     let tuning = CombatTuning::default();
     let mut rng = ShotRng::from_root(BattleSeed::new(seed));
     let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
+    let mut injury_rng = InjuryRng::from_root(BattleSeed::new(seed));
     let mode = single_mode();
 
     let occupancy = app
@@ -240,6 +241,9 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 &tuning,
                 &mut rng,
                 &mut sev_rng,
+                &InjuryTables::default(),
+                &InjuryRegistry::default(),
+                &mut injury_rng,
             )
         }
         Err(_) => Volley {

@@ -61,7 +61,14 @@ use crate::{
 /// only bare type the no-bare-types rule permits in a payload. Derives [`PartialEq`] (NOT
 /// [`Eq`]: the [`SimPos`] / [`ShotDir`] hold `f32`, so equality is bit-wise, the
 /// seeded-replay property).
-#[derive(Message, Debug, Clone, Copy, PartialEq)]
+///
+/// GTW-438: [`ShotFired`] is [`Clone`] but NOT `Copy` — its [`report`](ShotFired::report)
+/// carries a [`HitReport`], which since GTW-438 holds the rolled
+/// [`RolledInjury`](crate::injuries::RolledInjury) (an owned `Vec` of effects + texts).
+/// The per-round emission clones the report into the message (the FCT presenter reads the
+/// verdict; the injury rides the separate
+/// [`InjuryInflicted`](crate::acts::InjuryInflicted)).
+#[derive(Message, Debug, Clone, PartialEq)]
 pub struct ShotFired {
     /// The firing entity (the armed shooter the round left).
     pub shooter:      Entity,

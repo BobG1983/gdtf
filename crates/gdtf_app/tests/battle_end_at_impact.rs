@@ -130,6 +130,7 @@ const fn lethal_ganger_hit(struck: Entity) -> HitReport {
         cover_destroyed: None,
         slab_destroyed:  None,
         ground_accrued:  None,
+        injury:          None,
     }
 }
 

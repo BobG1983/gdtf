@@ -27,6 +27,7 @@ use crate::{
         Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
     },
     inflicted_wound::InflictedWounds,
+    injuries::{BleedAfflicted, InflictedInjuries},
     los::PeekOffset,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind, TerrainPlacement},
     situation::{BattleSetupError, GangerSpawn, Situation},
@@ -183,6 +184,16 @@ fn ganger_scene(ganger: &GangerSpawn, tuning: &GangerStatTuning) -> impl Scene {
             WoundsMax::new(wounds_max)
             Bottle::new(bottle)
             InflictedWounds::default()
+            // GTW-438: seed the EMPTY injury ledger so every ganger carries
+            // InflictedInjuries from frame 0 — the `apply_injury` boundary needs it
+            // present to `gain` into, and the GTW-436 projector / inspect read it. It
+            // derives Default + Clone + Component (the bsn! sentinel-Default requirement,
+            // bsn-sentinel-defaults convention), starting at the zero-delta empty ledger.
+            InflictedInjuries::default()
+            // GTW-438: seed the EMPTY injury-bleed accrual so the bleed runtime's
+            // `Option<&BleedAfflicted>` query matches every ganger; `apply_injury` keeps it
+            // in sync with the ledger's accrued bleed. Starts at the no-bleed `0`.
+            BleedAfflicted::default()
             // GTW-406: seed the wall-peek offset so the automatic positional populator's
             // `&mut PeekOffset` query matches every ganger from frame 0 (a correctness
             // prerequisite — the populator skips a ganger that lacks the component). It

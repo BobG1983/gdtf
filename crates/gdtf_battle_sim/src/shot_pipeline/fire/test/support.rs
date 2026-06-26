@@ -28,11 +28,12 @@ pub(super) use crate::{
         Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::{InflictedWound, InflictedWounds},
+    injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     resolve_coarse::ShotKind,
-    rng::{BattleSeed, SeverityRng, ShotRng},
+    rng::{BattleSeed, InjuryRng, SeverityRng, ShotRng},
     severity::Severity,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
@@ -72,6 +73,25 @@ pub(super) fn rng() -> ShotRng {
 /// Build a [`SeverityRng`] from the shared fixed seed (a fresh stream per call).
 pub(super) fn severity_rng() -> SeverityRng {
     SeverityRng::from_root(BattleSeed::new(SEED))
+}
+
+/// Build an [`InjuryRng`] from the shared fixed seed (a fresh stream per call) — the
+/// GTW-438 injury-roll draw stream the `fire()` path threads to `roll_injury`.
+pub(super) fn injury_rng() -> InjuryRng {
+    InjuryRng::from_root(BattleSeed::new(SEED))
+}
+
+/// An EMPTY [`InjuryTables`] — the default for `fire()` tests that do not assert an
+/// injury (the roll finds no bucket and takes-then-discards its one draw). A test that
+/// pins an injury builds a populated table instead.
+pub(super) fn injury_tables() -> InjuryTables {
+    InjuryTables::default()
+}
+
+/// An EMPTY [`InjuryRegistry`] — the default for `fire()` tests that do not assert an
+/// injury. A test that pins an injury builds a populated registry instead.
+pub(super) fn injury_registry() -> InjuryRegistry {
+    InjuryRegistry::default()
 }
 
 /// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers.

@@ -43,6 +43,9 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
         surfaces(&mut cover, &mut slab_ledger()),
         &tuning,
         &mut rng_used,
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     // The report records the destroyed cell (the bridge dispatch_fire turns into a
@@ -111,6 +114,9 @@ fn insufficient_hit_reduces_hp_without_destroying() {
         surfaces(&mut cover, &mut slab_ledger()),
         &tuning,
         &mut rng_used,
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     // No destroyed cell recorded — the piece still stands.
@@ -172,6 +178,9 @@ fn cover_hit_is_deterministic_under_seeded_rng() {
             surfaces(&mut cover, &mut slab_ledger()),
             &tuning,
             &mut r,
+            &injury_tables(),
+            &injury_registry(),
+            &mut injury_rng(),
         );
         (report, cover.peek(&at).copied())
     };

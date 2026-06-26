@@ -147,7 +147,10 @@ pub(in crate::states::running::game::battlescape) fn update_combat_log(
         // `ShotFired` drain, so a burst's lines appear one-per-impact in cadence.
         events.push(CombatLogEvent::ShotOutcome {
             actor:  name_of(impact.shooter, &names),
-            report: impact.report,
+            // HitReport is non-`Copy` since GTW-438 (it carries the rolled injury) — clone
+            // it off the `&ShotImpactResolved` and BOX it into the owned log event (the
+            // variant boxes the report to stay small, clippy `large_enum_variant`).
+            report: impact.report.clone().map(Box::new),
         });
     }
     for reload in readers.reload.read() {

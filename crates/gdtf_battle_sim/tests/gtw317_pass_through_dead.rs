@@ -26,12 +26,12 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine,
-    MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery,
-    Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable,
-    Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
-    Wounds, fire::FireOrder,
+    HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
+    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, OccupancyGrid, PieceQuery, Position, ReloadTu, SeverityRng, ShooterQuery,
+    Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid, Toughness,
+    Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery,
+    WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
 /// The shooter cell — well to the West so the East-facing line of occupants lies
@@ -172,6 +172,7 @@ fn fire_volley(
     let tuning = CombatTuning::default();
     let mut rng = ShotRng::from_root(BattleSeed::new(seed));
     let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
+    let mut injury_rng = InjuryRng::from_root(BattleSeed::new(seed));
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();
@@ -214,6 +215,9 @@ fn fire_volley(
                 &tuning,
                 &mut rng,
                 &mut sev_rng,
+                &InjuryTables::default(),
+                &InjuryRegistry::default(),
+                &mut injury_rng,
             )
         }
         Err(_) => Volley {

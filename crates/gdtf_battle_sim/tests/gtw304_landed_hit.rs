@@ -32,12 +32,12 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Hp, InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize,
-    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
-    PieceQuery, Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotRng, SlabLedger,
-    Stable, Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy,
-    WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables, Kickback, Level,
+    LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu, SeverityRng,
+    ShooterQuery, Shooting, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid,
+    TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
 /// The faithful skirmish-style geometry the contract names: a shooter near (5,6).
@@ -174,6 +174,7 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
     let tuning = CombatTuning::default();
     let mut shot_rng = ShotRng::from_root(BattleSeed::new(seed));
     let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
+    let mut injury_rng = InjuryRng::from_root(BattleSeed::new(seed));
     let mode = single_mode();
 
     // Snapshot the maintained grids (cloned read views) so the fire's two disjoint
@@ -240,6 +241,9 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
             &tuning,
             &mut shot_rng,
             &mut sev_rng,
+            &InjuryTables::default(),
+            &InjuryRegistry::default(),
+            &mut injury_rng,
         );
     }
     state.apply(app.world_mut());

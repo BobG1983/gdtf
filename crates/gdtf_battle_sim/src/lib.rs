@@ -243,8 +243,8 @@ pub mod tuning;
 pub use acts_runtime::{
     acts,
     acts::{
-        FireArcDecision, FireDeclaration, MoveRejected, MoveRejection, MovementOccurred,
-        ReloadOutcome, ReloadResult, can_engage, decide_fire_arc,
+        FireArcDecision, FireDeclaration, InjuryInflicted, MoveRejected, MoveRejection,
+        MovementOccurred, ReloadOutcome, ReloadResult, apply_injury, can_engage, decide_fire_arc,
     },
     ai,
     ai::{AiTarget, enemy_ai_turn, pick_nearest, plan_advance},
@@ -287,7 +287,7 @@ pub use damage_resolution::{
         BleedAfflicted, BleedAmount, GainedInjury, InflictedInjuries, InjuryDef, InjuryEffect,
         InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, InjuryWeighting, InspectText,
         LogText, PopupText, PostHeal, RolledInjury, StatDelta, StatDeltaLedger, StatDeltaSum,
-        StatKind, StatTarget, WeightedInjuryEntry, WeightedInjuryTable,
+        StatKind, StatTarget, WeightedInjuryEntry, WeightedInjuryTable, roll_injury,
     },
     matchup,
     matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier},

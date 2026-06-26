@@ -45,6 +45,9 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
         surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     assert!(
@@ -113,6 +116,9 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
         surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     assert!(
@@ -174,6 +180,9 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
         surfaces(&mut ledger(), &mut slab_ledger()),
         &tuning,
         &mut rng(),
+        &injury_tables(),
+        &injury_registry(),
+        &mut injury_rng(),
     );
 
     assert!(
