@@ -29,10 +29,11 @@ pub use crate::{
         ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
         OpenDoorButton, OptionsButton, QuitButton, ReloadButton, RunningState, ScenesPlugin,
         StabilityBar, StabilizeButton, StanceControl, StanceKneelingButton, StancePanelRoot,
-        StanceProneButton, StanceStandingButton, StatFaction, StatHpBar, StatHpLabel, StatName,
-        StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
-        StatWoundsPips, WeaponContent, WeaponImage, WeaponItemButton, WeaponItemPanel,
-        WeaponMagazineText, WeaponNameText, WeaponPanelRoot, portrait_index_for_name,
+        StanceProneButton, StanceStandingButton, StatFaction, StatHpBar, StatHpLabel,
+        StatInjuryLine, StatInjuryList, StatName, StatPortrait, StatStance, StatTuBar, StatTuLabel,
+        StatWoundLine, StatWoundList, StatWoundsPips, WeaponContent, WeaponImage, WeaponItemButton,
+        WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
+        portrait_index_for_name,
     },
 };
 

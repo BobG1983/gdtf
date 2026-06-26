@@ -34,6 +34,13 @@
 //!   [`LogLine`](log_event::LogLine)s the bottom-left HUD log renders. The shot outcome REUSES
 //!   [`classify_report`](reader::classify_report) (its FCT callers untouched); a clean miss is
 //!   shown (`"<name> missed"`), NOT suppressed.
+//! - [`injury`] — the GTW-439 slice-C1 INJURY FCT READER ([`read_injury_fct`]): the
+//!   transient flash for a freshly-inflicted named injury, routed off the GTW-438
+//!   [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted) message — its `popup_text` drawn
+//!   in a VALENCE BY SEVERITY (the [`severity_color`] wound ramp scaled by the rolled tier,
+//!   so a worse injury reads hotter). The durable per-ganger injury LIST is driven by the
+//!   [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger in the inspect panel,
+//!   NOT by this one-shot pop.
 //! - [`consequence`] — the GTW-302 slice-4 AUXILIARY-SIGNAL READER ([`read_consequence_fct`]):
 //!   the Phase-1 pops NOT derivable from [`ShotFired`] alone but riding the dedicated
 //!   consequence messages — `"Bleeding"` (AMBER) from [`Bleeding`](gdtf_battle_sim::Bleeding),
@@ -48,6 +55,7 @@
 //! [`animate_impact`](super::animate_impact) off the classification this module provides.
 
 mod consequence;
+mod injury;
 mod log_event;
 mod palette;
 mod reader;
@@ -57,7 +65,8 @@ mod text;
 mod test;
 
 pub use consequence::read_consequence_fct;
-pub use log_event::{CombatLogEvent, LogLine, LogName, classify_log_event};
+pub use injury::read_injury_fct;
+pub use log_event::{CombatLogEvent, InjuryLogText, LogLine, LogName, classify_log_event};
 pub use palette::{FctValence, severity_color, valence_color};
 pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};
 pub use text::{

@@ -26,16 +26,18 @@ use bevy::{
 use gdtf_app::test_support::{
     AppState, BattleScapeState, InspectObjectBar, InspectObjectBlock, InspectObjectHardness,
     InspectObjectHeight, InspectObjectProtection, InspectObjectText, InspectPanelRoot,
-    InspectStatBlockHost, RunningState, StatHpBar, StatHpLabel, StatName, StatPortrait, StatTuBar,
-    StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips, portrait_index_for_name,
+    InspectStatBlockHost, RunningState, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList,
+    StatName, StatPortrait, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips,
+    portrait_index_for_name,
 };
 use gdtf_battle_input::{InputSystems, InspectTarget, SelectedShooter, pick_hovered_cell};
 use gdtf_battle_sim::{
     ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry, CoverHp, CoverLedger,
-    Destroyed, Faction, GangerName, HeightBand, Hp, HpMax, InflictedWound, InflictedWounds, Level,
-    LifeState, OccupancyGrid, PlayerFaction, Position, Severity, SquadVisibility, Stance,
-    StanceKind, TerrainKind, Tu, TuMax, Wounds, WoundsMax, injuries::InjuryRegistry,
-    terrain::piece::TerrainRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
+    Destroyed, Faction, GainedInjury, GangerName, HeightBand, Hp, HpMax, InflictedInjuries,
+    InflictedWound, InflictedWounds, InjuryName, InspectText, Level, LifeState, OccupancyGrid,
+    PlayerFaction, Position, Severity, SquadVisibility, Stance, StanceKind, TerrainKind, Tu, TuMax,
+    Wounds, WoundsMax, injuries::InjuryRegistry, terrain::piece::TerrainRegistry,
+    tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{
@@ -310,6 +312,7 @@ struct GangerSetup {
     wounds_max: WoundsMax,
     life:       LifeState,
     inflicted:  InflictedWounds,
+    injuries:   InflictedInjuries,
 }
 
 /// Spawns a ganger with the components the stat block reads, SELECTS it, and returns its
@@ -331,6 +334,7 @@ fn spawn_and_select(app: &mut App, setup: GangerSetup) -> Entity {
             setup.wounds_max,
             setup.life,
             setup.inflicted,
+            setup.injuries,
         ))
         .id();
     app.world_mut()
@@ -354,6 +358,7 @@ fn default_setup() -> GangerSetup {
         wounds_max: WoundsMax::new(3),
         life:       LifeState::Alive,
         inflicted:  InflictedWounds::default(),
+        injuries:   InflictedInjuries::default(),
     }
 }
 
@@ -495,6 +500,64 @@ fn wound_list_reflects_inflicted_wounds() {
             .iter()
             .any(|l| l.contains("Minor") && l.contains("Left Arm")),
         "a wound line must read the inflicted wound (lines: {lines:?})",
+    );
+}
+
+/// GTW-439 (C3) — the injury-name list is driven by the DURABLE `InflictedInjuries` ledger
+/// (the persistent per-ganger list), NOT the transient `InjuryInflicted` message: an
+/// uninjured ganger HIDES the list; a ganger whose ledger carries a `GainedInjury` SHOWS it
+/// with a line reading that injury's authored `inspect_text`. PIN-DISCRIMINATING — the line
+/// must read the exact authored text (a list driven by the wrong source, or not driven at
+/// all, fails the content + visibility asserts).
+#[test]
+fn injury_list_reflects_inflicted_injuries() {
+    let mut app = battle_running_app();
+
+    // No injuries -> the list container is Hidden.
+    spawn_and_select(&mut app, default_setup());
+    app.update();
+    let list = single_with::<StatInjuryList>(&mut app);
+    assert!(list.is_some(), "the stat block carries an injury list");
+    if let Some(list) = list {
+        assert_eq!(
+            app.world().get::<Visibility>(list),
+            Some(&Visibility::Hidden),
+            "an uninjured ganger hides the injury-name list",
+        );
+    }
+
+    // Injured -> the list is shown and a line reads the durable inspect_text.
+    let mut injured = default_setup();
+    injured.name = GangerName::new("Alex Mercer".to_owned());
+    let mut ledger = InflictedInjuries::default();
+    ledger.gain(GainedInjury::new(
+        InjuryName::new("Lost Eye".to_owned()),
+        BodyPart::Head,
+        Severity::Critical,
+        Vec::new(),
+        InspectText::new("Lost Eye -- -2 Aim, -1 Cool".to_owned()),
+    ));
+    injured.injuries = ledger;
+    spawn_and_select(&mut app, injured);
+    app.update();
+
+    if let Some(list) = single_with::<StatInjuryList>(&mut app) {
+        assert_ne!(
+            app.world().get::<Visibility>(list),
+            Some(&Visibility::Hidden),
+            "an injured ganger shows the injury-name list",
+        );
+    }
+    // Some injury line reads the authored inspect_text verbatim (the persistent ledger source).
+    let lines: Vec<String> = {
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&Text, With<StatInjuryLine>>();
+        q.iter(app.world()).map(|t| t.as_str().to_owned()).collect()
+    };
+    assert!(
+        lines.iter().any(|l| l == "Lost Eye -- -2 Aim, -1 Cool"),
+        "an injury line must read the gained injury's authored inspect_text (lines: {lines:?})",
     );
 }
 

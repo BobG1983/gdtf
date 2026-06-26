@@ -32,25 +32,30 @@ use bevy::prelude::*;
 pub(in crate::states::running::game::battlescape) struct StatBlockRefs {
     /// The portrait [`ImageNode`](bevy::ui::widget::ImageNode) whose atlas index the
     /// update mutates to the ganger's deterministic face.
-    pub portrait:   Entity,
+    pub portrait:    Entity,
     /// The name-title `Text`.
-    pub name:       Entity,
+    pub name:        Entity,
     /// The faction `Text`.
-    pub faction:    Entity,
+    pub faction:     Entity,
     /// The stance `Text`.
-    pub stance:     Entity,
+    pub stance:      Entity,
     /// The TU `ProgressBar` track (its fill width is mutated).
-    pub tu_bar:     Entity,
+    pub tu_bar:      Entity,
     /// The TU `cur/max` numeric `Text` sitting above the TU bar (its content is mutated).
-    pub tu_label:   Entity,
+    pub tu_label:    Entity,
     /// The HP `ProgressBar` track (its fill width is mutated).
-    pub hp_bar:     Entity,
+    pub hp_bar:      Entity,
     /// The HP `cur/max` numeric `Text` sitting above the HP bar (its content is mutated).
-    pub hp_label:   Entity,
+    pub hp_label:    Entity,
     /// The Wounds `Pips` row (its pip colors are mutated).
-    pub wounds:     Entity,
+    pub wounds:      Entity,
     /// The wound-name list container (its line children + its visibility are mutated).
-    pub wound_list: Entity,
+    pub wound_list:  Entity,
+    /// The injury-name list container (GTW-439) — its line children + its visibility are
+    /// mutated from the durable [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries)
+    /// ledger (the persistent per-ganger injury list, driven by the COMPONENT not the
+    /// transient `InjuryInflicted` message).
+    pub injury_list: Entity,
 }
 
 crate::support_item! {
@@ -149,4 +154,28 @@ crate::support_item! {
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct StatWoundLine;
+}
+
+crate::support_item! {
+    /// Marks the **injury-name list** container of a stat block (GTW-439) — the vertical
+    /// list of each [`GainedInjury`](gdtf_battle_sim::GainedInjury)'s authored
+    /// `inspect_text`, hidden when the ganger has no inflicted injuries. Driven by the
+    /// DURABLE [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger (the
+    /// persistent list), distinct from the transient FCT flash the
+    /// [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted) message drives.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct StatInjuryList;
+}
+
+crate::support_item! {
+    /// Marks one **injury-name line** `Text` inside the injury-name list (GTW-439) — a
+    /// pooled line whose content + visibility the update sets from a
+    /// [`GainedInjury`](gdtf_battle_sim::GainedInjury)'s `inspect_text`, so the list
+    /// mutates in place rather than respawning per injury ([[ui-mutate-not-respawn]]).
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct StatInjuryLine;
 }

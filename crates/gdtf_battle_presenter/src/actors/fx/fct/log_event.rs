@@ -31,11 +31,11 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Cell, Faction, GangerName, HitReport, ModeKind, PlayerFaction, ReloadOutcome,
+    Cell, Faction, GangerName, HitReport, ModeKind, PlayerFaction, ReloadOutcome, Severity,
 };
 
 use super::{
-    palette::{FctValence, valence_color},
+    palette::{FctValence, severity_color, valence_color},
     reader::classify_report,
     text::{CombatText, FctEmphasis},
 };
@@ -137,6 +137,46 @@ pub enum CombatLogEvent {
         /// player's own turn) vs `Enemy` (any other).
         player:     PlayerFaction,
     },
+    /// An INJURY was inflicted (GTW-439) — `"<actor> <log_text>"` (e.g. `"Vex loses an eye"`),
+    /// drawn in the severity-scaled wound AMBER ramp ([`severity_color`]). From a
+    /// [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted) (its
+    /// [`log_text`](gdtf_battle_sim::InjuryInflicted::log_text) +
+    /// [`severity`](gdtf_battle_sim::InjuryInflicted::severity)); the wounded ganger's
+    /// [`Entity`](bevy::prelude::Entity) is ALREADY resolved to its [`LogName`] by the slice-3
+    /// reader, so this variant carries no raw entity (the classifier stays World-free).
+    InjuryInflicted {
+        /// The wounded ganger's resolved name (the log clause's subject).
+        actor:    LogName,
+        /// The injury's authored combat-log clause (the predicate — e.g. `"loses an eye"`),
+        /// already resolved off the message; rendered as `"<actor> <log_text>"`.
+        log_text: InjuryLogText,
+        /// The rolled severity bucket — scales the line's wound-AMBER swatch (a worse injury
+        /// reads hotter), via [`severity_color`].
+        severity: Severity,
+    },
+}
+
+/// A resolved INJURY combat-log clause — the authored
+/// [`log_text`](gdtf_battle_sim::InjuryInflicted::log_text), cloned off the message into the
+/// log layer's own vocabulary (GTW-439).
+///
+/// A NAMED newtype over the displayed [`String`] (no-bare-types: the injury clause shown in
+/// the log is a domain value, not a bare `String`), [`Deref`]ing to `str` so the phrasing
+/// reads it straight through. The slice-3 reader builds it from the sim's
+/// [`LogText`](gdtf_battle_sim::LogText); the classifier only ever READS it, so the classifier
+/// stays World-free (it is a presenter-owned phrasing input, distinct from the sim type so the
+/// presenter never re-imports the sim newtype into its enum payload).
+#[derive(Debug, Clone, PartialEq, Eq, Deref)]
+pub struct InjuryLogText(String);
+
+impl InjuryLogText {
+    /// Build an injury log clause from anything string-like — the reader hands in the
+    /// resolved [`LogText`](gdtf_battle_sim::LogText) string off the
+    /// [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted) message.
+    #[must_use]
+    pub fn new(text: impl Into<String>) -> Self {
+        Self(text.into())
+    }
 }
 
 /// One rendered combat-log line — its text, its valence color, and its emphasis weight.
@@ -229,6 +269,8 @@ impl LogLine {
 /// - **Reload** → `"<actor> reloaded"` (neutral GREY) / `"<actor>: no TU"` (a denied act —
 ///   AMBER); [`AlreadyFull`](ReloadOutcome::AlreadyFull) → no line.
 /// - **Turn** → `"— Player turn —"` / `"— Enemy turn —"`, neutral GREY.
+/// - **Injury** (GTW-439) → `"<actor> <log_text>"` (e.g. `"Vex loses an eye"`), in the
+///   severity-scaled wound AMBER ([`severity_color`], a worse injury reads hotter).
 ///
 /// `pub`: the slice-4 log presenter calls it on each freshly-built [`CombatLogEvent`].
 #[must_use]
@@ -249,7 +291,21 @@ pub fn classify_log_event(event: &CombatLogEvent) -> Vec<LogLine> {
         CombatLogEvent::TurnStarted { now_active, player } => {
             vec![turn_line(*now_active, *player)]
         }
+        CombatLogEvent::InjuryInflicted {
+            actor,
+            log_text,
+            severity,
+        } => vec![injury_line(actor, log_text, *severity)],
     }
+}
+
+/// The injury line — `"<actor> <log_text>"` (e.g. `"Vex loses an eye"`), drawn in the
+/// severity-scaled wound AMBER ramp ([`severity_color`]) so a worse injury reads hotter
+/// (GTW-439). The authored `log_text` is the clause's predicate; the actor name is its
+/// subject.
+fn injury_line(actor: &LogName, log_text: &InjuryLogText, severity: Severity) -> LogLine {
+    let text = format!("{} {}", **actor, **log_text);
+    LogLine::new(CombatText::new(text), severity_color(severity))
 }
 
 /// The title-cased fire-mode label for the log (`"Single"` / `"Burst"` / `"Full"`).
@@ -359,7 +415,8 @@ mod test {
     };
 
     use super::{
-        CombatLogEvent, FctEmphasis, FctValence, LogName, classify_log_event, valence_color,
+        CombatLogEvent, FctEmphasis, FctValence, InjuryLogText, LogName, classify_log_event,
+        severity_color, valence_color,
     };
 
     /// An arbitrary `(cell, level)` key for a structural-hit report.
@@ -642,5 +699,55 @@ mod test {
         let enemy_lines = classify_log_event(&enemy_turn);
         assert_eq!(enemy_lines.len(), 1);
         assert_eq!(&**enemy_lines[0].text(), "— Enemy turn —");
+    }
+
+    /// GTW-439 — an inflicted injury logs ONE line `"<actor> <log_text>"`, drawn in the
+    /// severity-scaled wound AMBER ([`severity_color`]) and body weight (not bold). PINS both
+    /// the phrasing (actor + the authored clause) and the severity → color routing.
+    #[test]
+    fn an_injury_logs_the_actor_and_authored_clause_in_the_severity_color() {
+        let event = CombatLogEvent::InjuryInflicted {
+            actor:    LogName::new("Vex"),
+            log_text: InjuryLogText::new("loses an eye"),
+            severity: Severity::Critical,
+        };
+        let lines = classify_log_event(&event);
+        assert_eq!(
+            lines.len(),
+            1,
+            "an inflicted injury is exactly one log line"
+        );
+        assert_eq!(&**lines[0].text(), "Vex loses an eye");
+        assert_eq!(
+            lines[0].color(),
+            severity_color(Severity::Critical),
+            "the injury line is drawn the Critical-scaled wound amber",
+        );
+        assert_eq!(lines[0].emphasis(), FctEmphasis::Normal);
+    }
+
+    /// GTW-439 — PIN-DISCRIMINATING: the injury line's color TRACKS the rolled tier — a Minor
+    /// injury reads a DIFFERENT swatch than a Critical one (each its own
+    /// [`severity_color`]), so a flat-valence routing (or the wrong tier) fails this.
+    #[test]
+    fn the_injury_log_color_scales_with_severity() {
+        let minor = CombatLogEvent::InjuryInflicted {
+            actor:    LogName::new("Vex"),
+            log_text: InjuryLogText::new("twists an ankle"),
+            severity: Severity::Minor,
+        };
+        let critical = CombatLogEvent::InjuryInflicted {
+            actor:    LogName::new("Vex"),
+            log_text: InjuryLogText::new("loses an eye"),
+            severity: Severity::Critical,
+        };
+        let minor_color = classify_log_event(&minor)[0].color();
+        let critical_color = classify_log_event(&critical)[0].color();
+        assert_eq!(minor_color, severity_color(Severity::Minor));
+        assert_eq!(critical_color, severity_color(Severity::Critical));
+        assert_ne!(
+            minor_color, critical_color,
+            "a Critical injury must log a hotter swatch than a Minor one (color by severity)",
+        );
     }
 }

@@ -54,8 +54,9 @@ mod stat_block;
 #[cfg(feature = "test-support")]
 crate::support_use! {
     stat_block::{
-        StatFaction, StatHpBar, StatHpLabel, StatName, StatPortrait, StatStance, StatTuBar,
-        StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips, portrait_index_for_name,
+        StatFaction, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList, StatName,
+        StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
+        StatWoundsPips, portrait_index_for_name,
     };
 }
 

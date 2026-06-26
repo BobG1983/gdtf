@@ -55,8 +55,8 @@ mod test;
 
 pub use fct::{
     CombatLogEvent, CombatText, FctEmphasis, FctStackIndex, FctValence, FloatingCombatText,
-    LogLine, LogName, animate_floating_text, classify_log_event, read_consequence_fct,
-    severity_color, spawn_floating_text, valence_color,
+    InjuryLogText, LogLine, LogName, animate_floating_text, classify_log_event,
+    read_consequence_fct, read_injury_fct, severity_color, spawn_floating_text, valence_color,
 };
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
 pub use impact::{ShotImpactResolved, animate_impact};

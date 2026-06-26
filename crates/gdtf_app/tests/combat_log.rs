@@ -23,11 +23,12 @@ use bevy::{
 use gdtf_app::test_support::{
     AppState, BattleScapeState, CombatLogLine, CombatLogRoot, RunningState,
 };
-use gdtf_battle_presenter::ShotImpactResolved;
+use gdtf_battle_presenter::{ShotImpactResolved, severity_color};
 use gdtf_battle_sim::{
-    AppliedDamage, BodyPart, Cell, GangerName, HitReport, HitResult, HpDamage, IntegrityWear,
-    LifeState, Matchup, MovementOccurred, PenetratingDamage, Severity, ShotFired, ShotKind,
-    TurnStarted, injuries::InjuryRegistry, terrain::piece::TerrainRegistry, tuning::CombatTuning,
+    AppliedDamage, BodyPart, Cell, GainedInjury, GangerName, HitReport, HitResult, HpDamage,
+    InjuryInflicted, InjuryName, InspectText, IntegrityWear, LifeState, LogText, Matchup,
+    MovementOccurred, PenetratingDamage, PopupText, Severity, ShotFired, ShotKind, TurnStarted,
+    injuries::InjuryRegistry, terrain::piece::TerrainRegistry, tuning::CombatTuning,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -112,6 +113,33 @@ fn line_texts<M: Component>(app: &mut App) -> Vec<String> {
         .into_iter()
         .filter_map(|e| app.world().get::<Text>(e).map(|t| t.as_str().to_owned()))
         .collect()
+}
+
+/// The (rendered `Text`, `TextColor`) of every combat-log line. The line spawns at `alpha 0`
+/// (its fade-in ramps it on), so callers compare the COLOR alpha-agnostically (RGB only).
+fn line_texts_and_colors(app: &mut App) -> Vec<(String, Color)> {
+    let entities = all_with::<CombatLogLine>(app);
+    entities
+        .into_iter()
+        .filter_map(|e| {
+            let text = app.world().get::<Text>(e)?.as_str().to_owned();
+            let color = app.world().get::<TextColor>(e)?.0;
+            Some((text, color))
+        })
+        .collect()
+}
+
+/// Whether some combat-log line reads exactly `text` AND is drawn in `color` (RGB-only, since a
+/// freshly appended line spawns transparent and fades in — the hue, not the alpha, is the signal).
+fn has_log_line(lines: &[(String, Color)], text: &str, color: Color) -> bool {
+    let want = color.to_srgba();
+    lines.iter().any(|(t, c)| {
+        let got = c.to_srgba();
+        t == text
+            && (got.red - want.red).abs() < 0.001
+            && (got.green - want.green).abs() < 0.001
+            && (got.blue - want.blue).abs() < 0.001
+    })
 }
 
 /// The greatest rendered alpha across every combat-log line — the brightest line on screen.
@@ -208,6 +236,67 @@ fn a_movement_message_appends_a_line_with_the_classified_text() {
     assert_eq!(
         texts[0], "Vex moved (3, 4) -> (3, 6)",
         "the line carries the resolved name + the classified movement phrasing",
+    );
+}
+
+/// GTW-439, QA-gap remediation — the REAL system path: a genuine `InjuryInflicted` MESSAGE
+/// written to the live buffer drives the registered `update_combat_log` system to APPEND one
+/// combat-log line reading `"<name> <log_text>"` (the wounded target resolved to its
+/// `GangerName`, the authored log clause as the predicate) in the severity-scaled wound amber
+/// (`severity_color`). NOT the pure `classify_log_event` classifier (covered by its own unit
+/// test) — this drives the actual `CombatLogReaders.injury` drain in a live battle and asserts
+/// the appended line entity.
+///
+/// Pin-discriminating: it FAILS if the `InjuryInflicted` → `CombatLogEvent::InjuryInflicted`
+/// arm were removed from `update_combat_log` (no line would be appended, failing the content
+/// assertion), and it FAILS if the line were drawn a flat (non-severity) color, since the
+/// assertion pins the EXACT `severity_color(Critical)` swatch (RGB) — distinct from a milder
+/// tier's swatch.
+#[test]
+fn an_injury_message_appends_a_line_in_the_severity_colour() {
+    let mut app = battle_running_app();
+    let ganger = spawn_named(&mut app, "Vex");
+    app.update();
+
+    // The log starts empty (no events drained yet).
+    assert!(
+        all_with::<CombatLogLine>(&mut app).is_empty(),
+        "the log starts empty",
+    );
+
+    // A REAL InjuryInflicted on the named ganger (the buffer is registered by the sim's acts
+    // plugin in a live battle). The combat log reads only the target (→ LogName), log_text, and
+    // severity; the gained ledger + popup / inspect texts are filler (they drive other surfaces).
+    let name = InjuryName::new("Lost Eye".to_owned());
+    app.world_mut().write_message(InjuryInflicted {
+        target: ganger,
+        gained: GainedInjury::new(
+            name.clone(),
+            BodyPart::Head,
+            Severity::Critical,
+            Vec::new(),
+            InspectText::new("Lost Eye -- -2 Aim".to_owned()),
+        ),
+        name,
+        part: BodyPart::Head,
+        severity: Severity::Critical,
+        popup_text: PopupText::new("LOST EYE".to_owned()),
+        log_text: LogText::new("loses an eye".to_owned()),
+        inspect_text: InspectText::new("Lost Eye -- -2 Aim".to_owned()),
+    });
+    app.update();
+
+    // POSITIVE assertion: the registered drain appended one line reading "<name> <log_text>" in
+    // the Critical severity_color (RGB-only — the line spawns transparent and fades in).
+    let lines = line_texts_and_colors(&mut app);
+    assert!(
+        has_log_line(
+            &lines,
+            "Vex loses an eye",
+            severity_color(Severity::Critical)
+        ),
+        "an InjuryInflicted must append a \"Vex loses an eye\" line in the Critical \
+         severity_color, got {lines:?}",
     );
 }
 

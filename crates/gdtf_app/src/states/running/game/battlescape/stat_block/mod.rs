@@ -37,8 +37,9 @@ pub(in crate::states::running::game::battlescape) use update::{
 #[cfg(feature = "test-support")]
 crate::support_use! {
     components::{
-        StatFaction, StatHpBar, StatHpLabel, StatName, StatPortrait, StatStance, StatTuBar,
-        StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips,
+        StatFaction, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList, StatName,
+        StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
+        StatWoundsPips,
     };
 }
 // Test-support-only re-export of the deterministic portrait derivation, so the integration

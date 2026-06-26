@@ -36,7 +36,7 @@
 use bevy::{asset::AssetServer, prelude::*};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_presenter::ShotImpactResolved;
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::{BattleInProgress, InjuryInflicted};
 
 use crate::states::{
     BattleScapeState,
@@ -94,6 +94,12 @@ fn add_systems(app: &mut App) {
     // MessageReader panics validation without its buffer; `add_message` is idempotent, the
     // presenter registers the same buffer).
     app.add_message::<ShotImpactResolved>();
+    // GTW-439: `update_combat_log` ALSO drains the GTW-438 `InjuryInflicted` message for the
+    // injury log lines. Register its buffer idempotently here so the `MessageReader` param is
+    // always valid even if this plugin builds before the sim's acts plugin registers it
+    // (`bevy-traps.md` #4 — a MessageReader panics validation without its buffer; `add_message`
+    // is idempotent, the sim registers the same buffer).
+    app.add_message::<InjuryInflicted>();
     app.add_systems(OnEnter(BattleScapeState::BattleRunning), spawn_combat_log)
         .add_systems(OnExit(BattleScapeState::BattleRunning), despawn_combat_log)
         .add_systems(

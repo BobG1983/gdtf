@@ -25,8 +25,9 @@ use gdtf_ui::{
 use crate::states::running::game::battlescape::stat_block::{
     colors::{HP_LOST, HP_REMAINING, TU_LOST, TU_REMAINING, WOUNDS_LOST, WOUNDS_REMAINING},
     components::{
-        StatBlockRefs, StatFaction, StatHpBar, StatHpLabel, StatName, StatPortrait, StatStance,
-        StatTuBar, StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips,
+        StatBlockRefs, StatFaction, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList,
+        StatName, StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
+        StatWoundsPips,
     },
     portrait::{PortraitIndex, portrait_node},
     update::MAX_WOUND_PIPS,
@@ -50,6 +51,17 @@ const BAR_LABEL_FONT_PT: f32 = 12.0;
 /// scrolling list is later polish). A `const`, not a domain newtype — a pool size fed to
 /// a loop (`.claude/rules/no-bare-types.md` clause 4).
 const WOUND_LINE_POOL: usize = 8;
+
+/// The maximum number of injury-name lines a stat block renders (GTW-439).
+///
+/// The injury-name list pre-spawns this many [`Text`] lines once and the update shows the
+/// first N (one per inflicted injury) / hides the rest, so the list mutates in place rather
+/// than spawning a line per injury ([[ui-mutate-not-respawn]]) — the [`WOUND_LINE_POOL`]
+/// precedent. A ganger with more than this many injuries shows the first
+/// [`INJURY_LINE_POOL`] (a reasonable display cap; a scrolling list is later polish). A
+/// `const`, not a domain newtype — a pool size fed to a loop
+/// (`.claude/rules/no-bare-types.md` clause 4).
+const INJURY_LINE_POOL: usize = 8;
 
 /// The vertical gap between stat-block rows, as a fraction of the viewport HEIGHT
 /// ([`Val::Vh`](bevy::ui::Val::Vh)).
@@ -119,6 +131,7 @@ pub(in crate::states::running::game::battlescape) fn spawn_stat_block(
         StatWoundsPips,
     );
     let wound_list = spawn_wound_list(commands, theme);
+    let injury_list = spawn_injury_list(commands, theme);
 
     // GTW-322 — authored via `spawn_scene`. The root's only components are the
     // runtime-valued column `Node` (composed with `template_value`) and the
@@ -144,10 +157,19 @@ pub(in crate::states::running::game::battlescape) fn spawn_stat_block(
             hp_label,
             wounds,
             wound_list,
+            injury_list,
         })
         .id();
     commands.entity(root).add_children(&[
-        portrait, name, faction, stance, tu_group, hp_group, wounds, wound_list,
+        portrait,
+        name,
+        faction,
+        stance,
+        tu_group,
+        hp_group,
+        wounds,
+        wound_list,
+        injury_list,
     ]);
     root
 }
@@ -343,6 +365,61 @@ fn spawn_wound_list(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
                 .spawn_scene((
                     bsn! {
                         StatWoundLine
+                        Themed::new(ThemeRole::Text)
+                        Text::new("")
+                        UiTextColor(text_color)
+                        template(move |_| Ok(text_font.clone()))
+                    },
+                    template_value(Visibility::Hidden),
+                ))
+                .id()
+        })
+        .collect();
+    commands.entity(container).add_children(&lines);
+    container
+}
+
+/// Spawns the injury-name list container (hidden) with [`INJURY_LINE_POOL`] pooled, hidden
+/// line children, and returns the container [`Entity`] (GTW-439).
+///
+/// The structural twin of [`spawn_wound_list`]: a vertical column marked [`StatInjuryList`];
+/// each pooled line is a themed [`Text`](bevy::prelude::Text) marked [`StatInjuryLine`],
+/// started empty and [`Visibility::Hidden`]. The update shows the first N lines (one per
+/// inflicted injury) with each [`GainedInjury`](gdtf_battle_sim::GainedInjury)'s authored
+/// `inspect_text`, hides the rest, and shows/hides the container — all mutate-in-place
+/// ([[ui-mutate-not-respawn]]). Driven by the DURABLE
+/// [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger, so the list persists
+/// while the ganger is inspected/selected (the transient FCT flash is a separate concern).
+fn spawn_injury_list(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
+    // GTW-322 — the container authors `StatInjuryList` via `bsn!`; its runtime-valued `Node`
+    // + `Visibility::Hidden` ride `template_value`. Each pooled line authors `StatInjuryLine`
+    // + `Themed` + `Text::new` + `UiTextColor` inline, with `TextFont` (not `Unpin`) on the
+    // `template(|_| ..)` closure and `Visibility::Hidden` composed with `template_value` (the
+    // `spawn_wound_list` precedent).
+    let container_node = Node {
+        flex_direction: FlexDirection::Column,
+        ..default()
+    };
+    let container = commands
+        .spawn_scene((
+            bsn! { StatInjuryList },
+            template_value(container_node),
+            // Hidden until the ganger has ≥1 inflicted injury.
+            template_value(Visibility::Hidden),
+        ))
+        .id();
+    let text_color = *theme.text.text_color;
+    let lines: Vec<Entity> = (0..INJURY_LINE_POOL)
+        .map(|_| {
+            let text_font = TextFont {
+                font: theme.text.font.clone().into(),
+                font_size: FontSize::Px(*theme.text.font_size_pt),
+                ..default()
+            };
+            commands
+                .spawn_scene((
+                    bsn! {
+                        StatInjuryLine
                         Themed::new(ThemeRole::Text)
                         Text::new("")
                         UiTextColor(text_color)

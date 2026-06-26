@@ -5,8 +5,8 @@ use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
-    OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed, SquadVisibility, SurfaceGrid,
-    VerticalLinkGraph, occupancy_sync::SimSystems,
+    InjuryInflicted, OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed, SquadVisibility,
+    SurfaceGrid, VerticalLinkGraph, occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
     draw_vertical_links, expire_flashes, frame_camera_on_units, load_character_roles,
     load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
     move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
-    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
+    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed, read_injury_fct,
     redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
     redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
     redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
@@ -679,6 +679,24 @@ fn register_fx_flash_systems(app: &mut App) {
             resource_exists::<BattleInProgress>
                 .and_then(resource_exists::<Messages<Bleeding>>)
                 .and_then(resource_exists::<Messages<ArmorBroken>>)
+                .and_then(resource_exists::<FxTuning>),
+        ),
+    )
+    // GTW-439 (slice C1): the INJURY floating-combat-text reader. Drains the GTW-438
+    // InjuryInflicted message (the buffer the sim's acts plugin registers) and spawns one
+    // rise/fade Text2d pop per inflicted injury — its popup_text in a VALENCE BY SEVERITY
+    // (the severity_color wound ramp scaled by the rolled tier). The transient flash is the
+    // message's ONLY presenter job; the persistent per-ganger injury LIST is driven by the
+    // durable InflictedInjuries ledger in the inspect panel, NOT this pop. Spawns Text2d (no
+    // effects sprite), so it needs NO render resource. Gated on BattleInProgress (pops belong
+    // to a live battle), the InjuryInflicted message buffer its MessageReader drains (a
+    // MessageReader param panics validation without its buffer — bevy-traps.md #1 / #4), AND
+    // the hot-reloadable FxTuning it reads for the pop lifetime + rise.
+    .add_systems(
+        Update,
+        read_injury_fct.in_set(PresenterSystems::Draw).run_if(
+            resource_exists::<BattleInProgress>
+                .and_then(resource_exists::<Messages<InjuryInflicted>>)
                 .and_then(resource_exists::<FxTuning>),
         ),
     )

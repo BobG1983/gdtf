@@ -15,7 +15,8 @@ use bevy::{
     ui::widget::ImageNode,
 };
 use gdtf_battle_sim::{
-    Faction, GangerName, Hp, HpMax, InflictedWounds, Stance, Tu, TuMax, Wounds, WoundsMax,
+    Faction, GangerName, Hp, HpMax, InflictedInjuries, InflictedWounds, Stance, Tu, TuMax, Wounds,
+    WoundsMax,
 };
 use gdtf_ui::{FillFraction, Pip, ProgressBarFill, set_progress_bar};
 
@@ -66,6 +67,10 @@ pub(in crate::states::running::game::battlescape) struct StatBlockData {
     pub wounds_max: Option<&'static WoundsMax>,
     /// The ganger's inflicted-wound list (GTW-279), if present.
     pub inflicted:  Option<&'static InflictedWounds>,
+    /// The ganger's inflicted-injury ledger (GTW-439), if present — the DURABLE source of
+    /// the persistent injury-name list (read defensively as [`Option`] so a target missing
+    /// it still renders the rest of the block).
+    pub injuries:   Option<&'static InflictedInjuries>,
 }
 
 /// The shared widget-write queries a stat-block update touches, bundled as a
@@ -101,7 +106,9 @@ pub(in crate::states::running::game::battlescape) struct StatBlockWidgets<'w, 's
 /// `Wounds` filled, [`update_pips`]), the portrait's atlas index
 /// ([`PortraitIndex::for_name`]), and the wound-name list (the first N pooled lines set to
 /// `"{tier} — {location}"` and shown, the rest hidden, the container shown only when
-/// N ≥ 1). Every write is a mutate of the stored widget entity ([[ui-mutate-not-respawn]]).
+/// N ≥ 1), AND the injury-name list (GTW-439 — the first N pooled lines set to each inflicted
+/// injury's authored `inspect_text`, driven by the durable `InflictedInjuries` ledger). Every
+/// write is a mutate of the stored widget entity ([[ui-mutate-not-respawn]]).
 /// Param-only (`bevy-traps.md` #7): the [`StatBlockWidgets`] query bundle, no `&mut World`.
 pub(in crate::states::running::game::battlescape) fn update_stat_block(
     refs: StatBlockRefs,
@@ -159,6 +166,7 @@ pub(in crate::states::running::game::battlescape) fn update_stat_block(
     update_pips(refs.wounds, wounds_max, filled, widgets);
 
     update_wound_list(refs.wound_list, data.inflicted, widgets);
+    update_injury_list(refs.injury_list, data.injuries, widgets);
     update_portrait(refs.portrait, data.name, &mut widgets.images);
 }
 
@@ -246,6 +254,58 @@ fn update_wound_list(
     }
 }
 
+/// Mutates the injury-name list (GTW-439): shows the first N pooled lines (one per inflicted
+/// injury) with their authored
+/// [`inspect_text`](gdtf_battle_sim::GainedInjury::inspect_text) content, hides the rest, and
+/// shows the container only when N ≥ 1 — all in place ([[ui-mutate-not-respawn]]).
+///
+/// Driven by the DURABLE [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger
+/// (read through [`gained`](gdtf_battle_sim::InflictedInjuries::gained)), so the list PERSISTS
+/// while the ganger is inspected/selected — distinct from the transient FCT flash the
+/// `InjuryInflicted` message drives (the message routes the one-shot pop; the ledger routes
+/// this list). A `None`/absent ledger is treated as an empty list (container hidden). More
+/// injuries than the pooled line count render the first pool's worth (the `INJURY_LINE_POOL`
+/// display cap), the wound-list precedent.
+fn update_injury_list(
+    container: Entity,
+    injuries: Option<&InflictedInjuries>,
+    widgets: &mut StatBlockWidgets,
+) {
+    let empty: &[gdtf_battle_sim::GainedInjury] = &[];
+    let gained = injuries.map_or(empty, InflictedInjuries::gained);
+
+    // Show/hide the container.
+    let want = if gained.is_empty() {
+        Visibility::Hidden
+    } else {
+        Visibility::Inherited
+    };
+    if let Ok(mut vis) = widgets.visibility.get_mut(container)
+        && *vis != want
+    {
+        *vis = want;
+    }
+
+    // Collect the pooled line entities in order, then set the first N + hide the rest.
+    let Ok(lines) = widgets.children.get(container) else {
+        return;
+    };
+    let line_ids: Vec<Entity> = lines.iter().collect();
+    for (index, &line) in line_ids.iter().enumerate() {
+        match gained.get(index) {
+            Some(injury) => {
+                // The authored, durable inspect text (e.g. "Lost Eye -- -2 Aim, -1 Cool") —
+                // rendered verbatim (no presenter re-formatting; the sim authored it).
+                write_text(&mut widgets.texts, line, &injury.inspect_text);
+                set_visible(&mut widgets.visibility, line, Visibility::Inherited);
+            }
+            None => {
+                set_visible(&mut widgets.visibility, line, Visibility::Hidden);
+            }
+        }
+    }
+}
+
 /// Sets `entity`'s [`Visibility`] to `want`, only when it differs.
 fn set_visible(visibility: &mut Query<&mut Visibility>, entity: Entity, want: Visibility) {
     if let Ok(mut vis) = visibility.get_mut(entity)
@@ -310,7 +370,8 @@ pub(in crate::states::running::game::battlescape) fn clear_stat_block(
         &mut widgets.fills,
     );
     write_text(&mut widgets.texts, refs.hp_label, "");
-    // Hide every pip and the wound list.
+    // Hide every pip, the wound list, and the injury list.
     update_pips(refs.wounds, 0, 0, widgets);
     update_wound_list(refs.wound_list, None, widgets);
+    update_injury_list(refs.injury_list, None, widgets);
 }

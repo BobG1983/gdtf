@@ -32,10 +32,12 @@ use bevy::{
     ui::{ComputedNode, Node, PositionType, Val},
 };
 use gdtf_battle_presenter::{
-    CombatLogEvent, FctEmphasis, LogLine, LogName, ShotImpactResolved, classify_log_event,
+    CombatLogEvent, FctEmphasis, InjuryLogText, LogLine, LogName, ShotImpactResolved,
+    classify_log_event,
 };
 use gdtf_battle_sim::{
-    FireDeclaration, GangerName, MovementOccurred, PlayerFaction, ReloadResult, TurnStarted,
+    FireDeclaration, GangerName, InjuryInflicted, MovementOccurred, PlayerFaction, ReloadResult,
+    TurnStarted,
 };
 use gdtf_ui::theme::GdtfTheme;
 
@@ -67,6 +69,10 @@ pub(in crate::states::running::game::battlescape) struct CombatLogReaders<'w, 's
     /// own (staggered) impact (GTW-328), NOT the fire-frame `ShotFired` drain. So a burst yields
     /// its damage/miss/wound/down lines ONE PER IMPACT, in cadence, instead of all at once.
     impact:   MessageReader<'w, 's, ShotImpactResolved>,
+    /// The injury infliction (GTW-439) — `"<name> <log_text>"` in the severity-scaled wound
+    /// amber. The GTW-438 `InjuryInflicted` message; this reader resolves its wounded target
+    /// to a `LogName` + carries the authored log clause + rolled tier into the log event.
+    injury:   MessageReader<'w, 's, InjuryInflicted>,
 }
 
 /// Resolve an [`Entity`] to a [`LogName`] via the ganger-name query, falling back to a generic
@@ -117,6 +123,7 @@ pub(in crate::states::running::game::battlescape) fn update_combat_log(
         readers.turn.clear();
         readers.reload.clear();
         readers.impact.clear();
+        readers.injury.clear();
         return;
     };
     // The tuning's RON resolve is async; default it (TTL / fade / cap) if it has not resolved yet
@@ -157,6 +164,16 @@ pub(in crate::states::running::game::battlescape) fn update_combat_log(
         events.push(CombatLogEvent::ReloadResult {
             actor:   name_of(reload.actor, &names),
             outcome: reload.outcome,
+        });
+    }
+    for injury in readers.injury.read() {
+        // GTW-439: resolve the wounded target to a LogName and carry the authored log clause
+        // + rolled tier into the presenter event; the shared classifier renders
+        // "<name> <log_text>" in the severity-scaled wound amber.
+        events.push(CombatLogEvent::InjuryInflicted {
+            actor:    name_of(injury.target, &names),
+            log_text: InjuryLogText::new((*injury.log_text).clone()),
+            severity: injury.severity,
         });
     }
     if let Some(player) = player {
