@@ -1,0 +1,18 @@
+// GTW-440 LEG-pool standin injury. A Critical leg wound — a mangled leg, barely able to
+// drag itself forward. Leg injuries key to the Speed / MovementCostMul stat map
+// (resolution.md injury tables); a Critical is a lost-limb-level debuff (a heavy
+// movement multiplier). Side-agnostic (both legs share the Leg pool). KEY = stem =>
+// `mangled_leg`.
+(
+    name:         "Mangled Leg",                             // display InjuryName (inspect-panel label; side-agnostic)
+    body_part:    LeftLeg,                                   // routes into the shared Leg pool (LeftLeg -> Leg category)
+    severity:     Critical,                                  // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "LEG MANGLED",                             // -> floating combat text (FCT)
+    log_text:     "has a leg mangled",                       // -> combat log line ("<name> has a leg mangled")
+    inspect_text: "Mangled Leg -- Hampered (crawling), -3 Speed", // -> inspect panel (per-ganger injury list)
+    effects: [
+        MovementCostMul(2.5),                                // GTW-444: each movement step costs 2.5x TU (Critical crawl)
+        Modify(stat: Speed, amount: -3),                     // leg -> Speed; Critical lost-level attribute debuff
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

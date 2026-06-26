@@ -1,0 +1,17 @@
+// GTW-440 TORSO-pool standin injury. A Major torso wound — a punctured lung: failing
+// wind and a steady internal bleed. Torso injuries key to the Toughness / Hp stat map
+// (resolution.md injury tables); a Major is a -1/broken-level debuff plus a bleed.
+// KEY = file stem minus `.injury` => `punctured_lung`.
+(
+    name:         "Punctured Lung",                          // display InjuryName (inspect-panel label)
+    body_part:    Torso,                                     // routes into the Torso category pool
+    severity:     Major,                                     // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "LUNG PUNCTURED",                          // -> floating combat text (FCT)
+    log_text:     "takes a punctured lung",                  // -> combat log line
+    inspect_text: "Punctured Lung -- -2 Toughness, bleeding", // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Toughness, amount: -2),                 // torso -> Toughness; Major-level debuff
+        Bleeding(amount: 2),                                 // torso -> Hp drain; steady internal bleed
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

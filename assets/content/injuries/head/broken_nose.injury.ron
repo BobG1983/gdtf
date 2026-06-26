@@ -1,0 +1,15 @@
+// GTW-440 HEAD-pool standin injury. A Minor head wound — streaming blood, watering
+// eyes spoiling the aim. Head injuries key to the Aim / Cool stat map (resolution.md
+// injury tables); a Minor is a LIGHT debuff. KEY = stem minus `.injury` => `broken_nose`.
+(
+    name:         "Broken Nose",                 // display InjuryName (inspect-panel label)
+    body_part:    Head,                          // routes into the Head category pool
+    severity:     Minor,                         // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "NOSE BROKEN",                 // -> floating combat text (FCT)
+    log_text:     "takes a broken nose",         // -> combat log line ("<name> takes a broken nose")
+    inspect_text: "Broken Nose -- -1 Aim",       // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Aim, amount: -1),           // head -> Aim; light Minor debuff (watering eyes)
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

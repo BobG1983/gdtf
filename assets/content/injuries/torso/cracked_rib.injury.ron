@@ -1,0 +1,15 @@
+// GTW-440 TORSO-pool standin injury. A Minor torso wound — a cracked rib, sharp on
+// every breath. Torso injuries key to the Toughness / Hp stat map (resolution.md injury
+// tables); a Minor is a LIGHT debuff. KEY = stem minus `.injury` => `cracked_rib`.
+(
+    name:         "Cracked Rib",                 // display InjuryName (inspect-panel label)
+    body_part:    Torso,                         // routes into the Torso category pool
+    severity:     Minor,                         // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "RIB CRACKED",                 // -> floating combat text (FCT)
+    log_text:     "cracks a rib",                // -> combat log line ("<name> cracks a rib")
+    inspect_text: "Cracked Rib -- -1 Toughness", // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Toughness, amount: -1),     // torso -> Toughness; light Minor debuff
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

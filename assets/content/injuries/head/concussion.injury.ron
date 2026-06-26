@@ -1,0 +1,15 @@
+// GTW-440 HEAD-pool standin injury. A Minor head wound — rattled wits, transient
+// disorientation. Head injuries key to the Aim / Cool stat map (resolution.md injury
+// tables); a Minor is a LIGHT debuff. KEY = file stem minus `.injury` => `concussion`.
+(
+    name:         "Concussion",                  // display InjuryName (inspect-panel label)
+    body_part:    Head,                          // routes into the Head category pool
+    severity:     Minor,                         // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "CONCUSSED",                   // -> floating combat text (FCT)
+    log_text:     "is concussed",                // -> combat log line ("<name> is concussed")
+    inspect_text: "Concussion -- -1 Cool",       // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Cool, amount: -1),          // head -> Cool; light Minor debuff (rattled nerves)
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

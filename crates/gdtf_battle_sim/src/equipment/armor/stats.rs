@@ -162,6 +162,63 @@ impl BodyPart {
             Self::RightLeg => 5,
         }
     }
+
+    /// The **injury-pool category** this struck part draws its weighted injury table
+    /// from (GTW-440) — the per-SIDE part collapsed to its shared CATEGORY:
+    /// [`LeftArm`](BodyPart::LeftArm) / [`RightArm`](BodyPart::RightArm) →
+    /// [`Arm`](InjuryCategory::Arm); [`LeftLeg`](BodyPart::LeftLeg) /
+    /// [`RightLeg`](BodyPart::RightLeg) → [`Leg`](InjuryCategory::Leg);
+    /// [`Head`](BodyPart::Head) → [`Head`](InjuryCategory::Head);
+    /// [`Torso`](BodyPart::Torso) → [`Torso`](InjuryCategory::Torso).
+    ///
+    /// The hit/severity model keeps the full per-side [`BodyPart`] (left vs right is the
+    /// authoritative struck location, and the side-from-part `DisableHand` mapping reads
+    /// it). ONLY the injury content pool + weighting resolution collapses to the
+    /// category, so the two arms (and the two legs) share ONE weighting file + ONE
+    /// content pool (GTW-440 C1 / C6).
+    #[must_use]
+    pub const fn injury_category(self) -> InjuryCategory {
+        match self {
+            Self::Head => InjuryCategory::Head,
+            Self::Torso => InjuryCategory::Torso,
+            Self::LeftArm | Self::RightArm => InjuryCategory::Arm,
+            Self::LeftLeg | Self::RightLeg => InjuryCategory::Leg,
+        }
+    }
+}
+
+/// The **injury-pool category** a struck [`BodyPart`] resolves to (GTW-440) — the
+/// per-SIDE body part collapsed into its shared injury content pool.
+///
+/// There are FOUR categories (one per authored weighting file +
+/// `assets/content/injuries/<category>/` pool): [`Head`](InjuryCategory::Head),
+/// [`Torso`](InjuryCategory::Torso), [`Arm`](InjuryCategory::Arm) (both arms share it),
+/// [`Leg`](InjuryCategory::Leg) (both legs share it). The injury roll keys its
+/// [`InjuryTables`](crate::injuries::InjuryTables) bucket by `(`category`, severity)`, so
+/// a wound on either side of a limb samples the SAME pool — while the rolled
+/// [`BodyPart`] still records the exact struck side (the side-from-part `DisableHand`
+/// design, GTW-443).
+///
+/// A pure value enum (no bare integer / string for the pool axis). [`Deserialize`] is
+/// NOT derived — a category is never authored directly; it is always DERIVED from a
+/// [`BodyPart`] via [`injury_category`](BodyPart::injury_category) (the weighting file
+/// still authors a per-side `body_part:`, which the loader maps to its category).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InjuryCategory {
+    /// The head pool — `head` injuries (Aim / Cool effects).
+    Head,
+    /// The torso pool — `torso` injuries (Toughness / Hp effects).
+    Torso,
+    /// The shared arm pool — BOTH arms draw from it (Strength / Aim / `DisableHand`).
+    Arm,
+    /// The shared leg pool — BOTH legs draw from it (Speed / `MovementCostMul`).
+    Leg,
+}
+
+impl InjuryCategory {
+    /// The four injury-pool categories in canonical order — the iteration order the
+    /// GTW-440 content-floor / WARN-clean audit walks (every category non-empty).
+    pub const ALL: [Self; 4] = [Self::Head, Self::Torso, Self::Arm, Self::Leg];
 }
 
 /// The **armor type** a piece is — one of the seven shared wheel nodes

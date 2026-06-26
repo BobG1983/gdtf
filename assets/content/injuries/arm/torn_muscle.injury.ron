@@ -1,0 +1,16 @@
+// GTW-440 ARM-pool standin injury. A Minor arm wound — a torn muscle that throws off
+// the aim. Arm injuries key to the Strength / Aim / DisableHand stat map (resolution.md
+// injury tables); a Minor is a LIGHT debuff. Side-agnostic (both arms share the Arm
+// pool); the rolled struck part records which arm. KEY = stem => `torn_muscle`.
+(
+    name:         "Torn Arm Muscle",             // display InjuryName (inspect-panel label; side-agnostic)
+    body_part:    LeftArm,                        // routes into the shared Arm pool (LeftArm -> Arm category)
+    severity:     Minor,                          // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "MUSCLE TORN",                  // -> floating combat text (FCT)
+    log_text:     "tears an arm muscle",          // -> combat log line ("<name> tears an arm muscle")
+    inspect_text: "Torn Arm Muscle -- -1 Aim",    // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Aim, amount: -1),            // arm -> Aim; light Minor debuff (unsteady hold)
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

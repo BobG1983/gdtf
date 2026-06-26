@@ -305,7 +305,8 @@ pub use equipment::{
     armor,
     armor::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-        ArmorRegistry, ArmorSpec, ArmorType, BodyPart, PieceArmorMut, SourceArmor, Wears, WornBy,
+        ArmorRegistry, ArmorSpec, ArmorType, BodyPart, InjuryCategory, PieceArmorMut, SourceArmor,
+        Wears, WornBy,
     },
     armor_wear,
     armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor},

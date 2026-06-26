@@ -5,8 +5,9 @@
 //!
 //! One recursive [`LoadedFolder`] over `assets/content/injuries/` carries TWO asset types,
 //! discriminated by their compound extension infix: the per-injury `*.injury.ron`
-//! files (each a `RonAsset<InjuryDef>`, scattered across the six per-part subfolders)
-//! and the per-part `weighting/*.weighting.ron` files (each a
+//! files (each a `RonAsset<InjuryDef>`, scattered across the four per-CATEGORY subfolders
+//! `head` / `torso` / `arm` / `leg`, GTW-440) and the per-category
+//! `weighting/*.weighting.ron` files (each a
 //! `RonAsset<InjuryWeighting>`). The shared [`build_injury_data`] partitions the
 //! folder's member handles by extension, keys the injuries by file stem into the
 //! [`InjuryRegistry`], and folds the weighting files into the [`InjuryTables`] with
@@ -115,8 +116,9 @@ pub(super) fn resolve_injuries(
 ///   skipped defensively.
 /// - **Key** each injury by its file STEM minus the `.injury` infix (so
 ///   `head/lost_eye.injury.ron` keys `lost_eye`), into the [`InjuryRegistry`].
-/// - **Validate** each def's authoritative [`body_part`](InjuryDef::body_part) against
-///   the owning subfolder name (`injuries/<part>/…`): a mismatch only `warn!`s — the
+/// - **Validate** each def's authoritative [`body_part`](InjuryDef::body_part) category
+///   against the owning per-category subfolder name (`injuries/<category>/…`, GTW-440): a
+///   cross-category mismatch only `warn!`s — the
 ///   injury is STILL loaded using its own `body_part` field (the def is authoritative,
 ///   the subfolder is organizational, design fork #10).
 /// - **Fold** every weighting file's three severity lists into the [`InjuryTables`],
@@ -354,46 +356,52 @@ fn injury_key_from_stem(stem: &str) -> String {
     stem.strip_suffix(".injury").unwrap_or(stem).to_owned()
 }
 
-/// `warn!` if a loaded injury's authoritative [`body_part`](InjuryDef::body_part) does
-/// not match the per-part subfolder it lives in (`injuries/<part>/<key>.injury.ron`).
+/// `warn!` if a loaded injury's authoritative [`body_part`](InjuryDef::body_part)
+/// resolves to a DIFFERENT [`InjuryCategory`](gdtf_battle_sim::armor::InjuryCategory)
+/// than the per-category subfolder it lives in (`injuries/<category>/<key>.injury.ron`,
+/// GTW-440).
 ///
 /// The subfolder is ORGANIZATIONAL only — the def's own `body_part` field is
 /// authoritative (design fork #10) — so a mismatch is a content-authoring smell worth a
-/// warning, NEVER a load failure: the injury is still loaded using its own field.
+/// warning, NEVER a load failure: the injury is still loaded using its own field. Since
+/// GTW-440 the folders are per-CATEGORY (`head` / `torso` / `arm` / `leg`), so the
+/// comparison is against the def's category — a `LeftArm`-declared injury living under
+/// `arm/` is consistent (both resolve to `Arm`), only a cross-category misfile WARNs.
 fn warn_on_subfolder_mismatch(path_str: &str, key: &str, def: &InjuryDef) {
-    let Some(subfolder) = subfolder_body_part(path_str) else {
-        // No recognised per-part subfolder (e.g. a flat layout) — nothing to compare.
+    let Some(subfolder) = subfolder_injury_category(path_str) else {
+        // No recognised per-category subfolder (e.g. a flat layout) — nothing to compare.
         return;
     };
-    if subfolder != def.body_part {
+    let def_category = def.body_part.injury_category();
+    if subfolder != def_category {
         warn!(
-            "GDTF Load: injury {key:?} declares body_part {:?} but lives in the {:?} \
-             subfolder; loading it under its authoritative field ({:?})",
-            def.body_part, subfolder, def.body_part,
+            "GDTF Load: injury {key:?} declares body_part {:?} (category {:?}) but lives in \
+             the {:?} subfolder; loading it under its authoritative field ({:?})",
+            def.body_part, def_category, subfolder, def.body_part,
         );
     }
 }
 
-/// The [`BodyPart`](gdtf_battle_sim::armor::BodyPart) a `injuries/<part>/…` path's
-/// per-part subfolder names, or [`None`] if the path names no recognised part
-/// subfolder.
+/// The [`InjuryCategory`](gdtf_battle_sim::armor::InjuryCategory) a
+/// `injuries/<category>/…` path's per-category subfolder names, or [`None`] if the path
+/// names no recognised category subfolder (GTW-440).
 ///
-/// Maps the canonical subfolder names (`head` / `torso` / `left_arm` / `right_arm` /
-/// `left_leg` / `right_leg`) to their [`BodyPart`](gdtf_battle_sim::armor::BodyPart).
-fn subfolder_body_part(path_str: &str) -> Option<gdtf_battle_sim::armor::BodyPart> {
-    use gdtf_battle_sim::armor::BodyPart;
+/// Maps the canonical per-category subfolder names (`head` / `torso` / `arm` / `leg`) to
+/// their [`InjuryCategory`](gdtf_battle_sim::armor::InjuryCategory). The two arms / the
+/// two legs share ONE folder each (the shared-pool restructure), so there is no
+/// per-side subfolder anymore.
+fn subfolder_injury_category(path_str: &str) -> Option<gdtf_battle_sim::armor::InjuryCategory> {
+    use gdtf_battle_sim::armor::InjuryCategory;
     // Normalise to forward slashes so the match works on every platform.
     let normalised = path_str.replace('\\', "/");
     [
-        ("/head/", BodyPart::Head),
-        ("/torso/", BodyPart::Torso),
-        ("/left_arm/", BodyPart::LeftArm),
-        ("/right_arm/", BodyPart::RightArm),
-        ("/left_leg/", BodyPart::LeftLeg),
-        ("/right_leg/", BodyPart::RightLeg),
+        ("/head/", InjuryCategory::Head),
+        ("/torso/", InjuryCategory::Torso),
+        ("/arm/", InjuryCategory::Arm),
+        ("/leg/", InjuryCategory::Leg),
     ]
     .into_iter()
-    .find_map(|(needle, part)| normalised.contains(needle).then_some(part))
+    .find_map(|(needle, category)| normalised.contains(needle).then_some(category))
 }
 
 #[cfg(test)]

@@ -1,11 +1,19 @@
-// GTW-437 SAMPLE weighting (loader fixture) for the Head. The full >=6-entries-per-
-// severity content floor is GTW-440 — this references only the two sample head injuries
-// so they resolve + can be rolled. `injury:` is an InjuryName KEY (the `.injury.ron`
-// file stem); an unknown key WARNs + is skipped at table-build. Authored order does NOT
-// affect determinism (entries are canonically sorted at build).
+// GTW-440 per-CATEGORY weighting for the HEAD pool (one weighting file per category;
+// the Head category = the Head body part). Every `injury:` is an InjuryName KEY (the
+// `.injury.ron` file stem under head/); an unknown key WARNs + is skipped at table-build.
+// Authored order does NOT affect determinism (entries are canonically sorted at build).
+// Head injuries key to the Aim / Cool stat map (resolution.md injury tables).
 (
-    body_part: Head,                                       // the part this table weights
-    minor:    [ (injury: "scalp_graze", weight: 10) ],     // Minor bucket
-    major:    [],                                          // Major bucket (GTW-440 fills the floor)
-    critical: [ (injury: "lost_eye",    weight: 4) ],      // Critical bucket
+    body_part: Head,                                       // routes into the Head category pool
+    minor:    [                                            // Minor bucket (light debuffs)
+        (injury: "scalp_graze", weight: 10),               // -1 Cool
+        (injury: "broken_nose", weight: 8),                // -1 Aim
+        (injury: "concussion",  weight: 6),                // -1 Cool
+    ],
+    major:    [                                            // Major bucket (-1/-2 broken-level)
+        (injury: "shattered_jaw", weight: 5),              // -2 Cool, -1 Aim
+    ],
+    critical: [                                            // Critical bucket (lost-level)
+        (injury: "lost_eye", weight: 4),                   // -2 Aim, -1 Cool
+    ],
 )

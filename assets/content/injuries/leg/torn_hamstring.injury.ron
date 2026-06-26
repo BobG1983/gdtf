@@ -1,0 +1,16 @@
+// GTW-440 LEG-pool standin injury. A Minor leg wound — a torn hamstring that saps the
+// quickness. Leg injuries key to the Speed / MovementCostMul stat map (resolution.md
+// injury tables); a Minor is a LIGHT debuff. Side-agnostic (both legs share the Leg
+// pool); the rolled struck part records which leg. KEY = stem => `torn_hamstring`.
+(
+    name:         "Torn Hamstring",                          // display InjuryName (inspect-panel label; side-agnostic)
+    body_part:    LeftLeg,                                   // routes into the shared Leg pool (LeftLeg -> Leg category)
+    severity:     Minor,                                     // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "HAMSTRING TORN",                          // -> floating combat text (FCT)
+    log_text:     "tears a hamstring",                       // -> combat log line ("<name> tears a hamstring")
+    inspect_text: "Torn Hamstring -- -1 Speed",              // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Speed, amount: -1),                     // leg -> Speed; light Minor debuff (sapped quickness)
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

@@ -42,8 +42,10 @@ use crate::{armor::BodyPart, injuries::InjuryRegistry, rng::InjuryRng, severity:
 ///   + [`warn_once!`](bevy::log::warn_once)) so the stream stays content-independent.
 ///
 /// Returns [`Some`](Option::Some) the rolled injury (a snapshot of the picked
-/// [`InjuryDef`](super::InjuryDef)'s name / part / severity / frozen effects / three
-/// texts) when the bucket has content AND the picked key resolves in `registry`;
+/// [`InjuryDef`](super::InjuryDef)'s name / severity / frozen effects / three texts,
+/// stamped with the STRUCK `part` — NOT the def's side-agnostic `body_part`, so a
+/// shared-pool `DisableHand` disables the hand on the struck side, GTW-440 C3) when the
+/// bucket has content AND the picked key resolves in `registry`;
 /// [`None`](Option::None) when the severity is not tabled, the bucket is empty/missing,
 /// or the picked key is unknown (each of the latter two STILL having taken the one draw).
 /// Pure given the [`InjuryRng`] state — the same cursor position yields the same pick.
@@ -98,11 +100,17 @@ pub fn roll_injury(
         return None;
     };
 
-    // (5) Freeze the verdict — a snapshot of the def's applied state (name / part /
-    //     severity / the frozen effects + the three routed texts) for HitReport.injury.
+    // (5) Freeze the verdict — a snapshot of the def's applied state (name / severity /
+    //     the frozen effects + the three routed texts) for HitReport.injury, stamped with
+    //     the STRUCK `part`, NOT the def's `body_part`. Since GTW-440 the per-side parts
+    //     share one CATEGORY pool (a single `shattered_hand` is rolled for either arm), so
+    //     the struck side is the authoritative location — this is what makes a
+    //     `DisableHand` rolled on `RightArm` disable the RIGHT hand even though the def is
+    //     side-agnostic (the side-from-part design, GTW-443 / GTW-440 C3). The def's own
+    //     `body_part` only routes which category POOL it was authored into.
     Some(RolledInjury::new(
         def.name.clone(),
-        def.body_part,
+        part,
         def.severity,
         def.effects.clone(),
         def.popup_text.clone(),

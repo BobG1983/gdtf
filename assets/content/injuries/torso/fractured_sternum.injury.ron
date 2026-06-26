@@ -1,0 +1,17 @@
+// GTW-440 TORSO-pool standin injury. A Major torso wound — a fractured sternum that
+// caves the chest's resilience. Torso injuries key to the Toughness / Hp stat map
+// (resolution.md injury tables). A Modify on the derived Hp pool docks its MAX (the
+// projector clamps current via min). KEY = stem minus `.injury` => `fractured_sternum`.
+(
+    name:         "Fractured Sternum",                       // display InjuryName (inspect-panel label)
+    body_part:    Torso,                                     // routes into the Torso category pool
+    severity:     Major,                                     // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "STERNUM FRACTURED",                       // -> floating combat text (FCT)
+    log_text:     "fractures its sternum",                   // -> combat log line
+    inspect_text: "Fractured Sternum -- -2 Hp, -1 Toughness", // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Hp,        amount: -2),                 // torso -> Hp; docks the derived Hp pool MAX
+        Modify(stat: Toughness, amount: -1),                 // torso -> Toughness; an injury MAY carry more than one effect
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

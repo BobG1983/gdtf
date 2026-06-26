@@ -248,6 +248,42 @@ fn real_asset_resolves_injury_registry_and_tables() {
             "the (Head, Critical) bucket must be populated from head.weighting.ron's `critical` \
              list (the lost_eye row)",
         );
+
+        // GTW-440 C4 — WARN-CLEAN / EVERY CATEGORY NON-EMPTY: each of the four injury-pool
+        // categories (Head / Torso / Arm / Leg) must have at least one tabled (rollable)
+        // bucket across the three tabled severities. The two arms (and the two legs) share
+        // ONE category pool, so a `LeftArm` and a `RightArm` lookup resolve the SAME bucket.
+        // Pin-discriminating: an empty category (a missing/typo'd weighting file or an
+        // all-unknown-key bucket) would leave its category with NO bucket and fail here.
+        for part in [
+            BodyPart::Head,
+            BodyPart::Torso,
+            BodyPart::LeftArm,
+            BodyPart::RightArm,
+            BodyPart::LeftLeg,
+            BodyPart::RightLeg,
+        ] {
+            let any_bucket = [Severity::Minor, Severity::Major, Severity::Critical]
+                .into_iter()
+                .any(|sev| tables.table(part, sev).is_some());
+            assert!(
+                any_bucket,
+                "the {part:?} category pool must have at least one rollable bucket (GTW-440 \
+                 content floor — every category non-empty)",
+            );
+        }
+        // The shared-pool identity: LeftArm and RightArm resolve the SAME Arm Major bucket,
+        // LeftLeg and RightLeg the SAME Leg Major bucket (the per-category restructure).
+        assert_eq!(
+            tables.table(BodyPart::LeftArm, Severity::Major),
+            tables.table(BodyPart::RightArm, Severity::Major),
+            "both arms must resolve the IDENTICAL shared Arm (Major) bucket (GTW-440 C1)",
+        );
+        assert_eq!(
+            tables.table(BodyPart::LeftLeg, Severity::Major),
+            tables.table(BodyPart::RightLeg, Severity::Major),
+            "both legs must resolve the IDENTICAL shared Leg (Major) bucket (GTW-440 C1)",
+        );
     }
 
     // The Load gate WAITED for the registry: the machine reaches Intro, and an

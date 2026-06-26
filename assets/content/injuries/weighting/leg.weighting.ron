@@ -1,0 +1,20 @@
+// GTW-440 per-CATEGORY weighting for the LEG pool — the SHARED pool BOTH legs draw from
+// (replaces the per-side left_leg / right_leg weighting files; the rolled struck part
+// records which leg, the pool is one). Every `injury:` is an InjuryName KEY (the
+// `.injury.ron` file stem under leg/); an unknown key WARNs + is skipped at table-build.
+// Authored order does NOT affect determinism (canonically sorted at build). Leg injuries
+// key to the Speed / MovementCostMul stat map (resolution.md injury tables).
+(
+    body_part: LeftLeg,                                    // routes into the shared Leg category pool (LeftLeg -> Leg)
+    minor:    [                                            // Minor bucket (light debuffs)
+        (injury: "twisted_ankle",  weight: 10),            // MovementCostMul 1.25 (Hampered)
+        (injury: "torn_hamstring", weight: 8),             // -1 Speed
+    ],
+    major:    [                                            // Major bucket (-1/-2 broken-level)
+        (injury: "shattered_knee",  weight: 6),            // MovementCostMul 1.5 (Hampered) + -1 Speed
+        (injury: "shattered_femur", weight: 5),            // MovementCostMul 1.75 (Hampered) + -2 Speed
+    ],
+    critical: [                                            // Critical bucket (lost-limb-level)
+        (injury: "mangled_leg", weight: 3),                // MovementCostMul 2.5 (crawl) + -3 Speed
+    ],
+)
