@@ -13,6 +13,7 @@ use crate::{
         Wounds,
     },
     inflicted_wound::InflictedWounds,
+    injuries::InflictedInjuries,
     magazine::Magazine,
     metric::{Cell, Level},
     occupancy::OccupancyGrid,
@@ -60,6 +61,12 @@ pub type ShooterQuery<'world, 'state> = Query<
             &'static Luck,
             &'static TuMax,
         ),
+        // The shooter's injury ledger (GTW-436), read OPTIONALLY: the shooter's Luck —
+        // the §6 score's nasty-wound term — is read through
+        // [`effective_luck`](crate::ganger::effective_luck) over this ledger, so a
+        // `Modify(Luck)` injury shifts the wounds the shooter deals. `Option` because a
+        // ganger need not carry the ledger (an absent ledger = the zero-delta identity).
+        Option<&'static InflictedInjuries>,
         // The mutable firing economy — the up-front TU charge. The per-round ammo
         // decrement now lives on the weapon entity (the `WeaponQuery`'s `&mut Magazine`).
         &'static mut Tu,
@@ -135,6 +142,13 @@ pub type TargetQuery<'world, 'state> = Query<
         &'static mut InflictedWounds,
         &'static Toughness,
         &'static Luck,
+        // The target's injury ledger (GTW-436), read OPTIONALLY: the defender's
+        // Toughness (mitigation) + Luck (floor-extend) enter the §6 severity roll
+        // through [`effective_toughness`](crate::ganger::effective_toughness) /
+        // [`effective_luck`](crate::ganger::effective_luck) over this ledger, so a
+        // `Modify(Toughness)` / `Modify(Luck)` injury shifts the roll. `Option` because a
+        // ganger need not carry the ledger (an absent ledger = the zero-delta identity).
+        Option<&'static InflictedInjuries>,
     ),
 >;
 

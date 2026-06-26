@@ -217,8 +217,15 @@ pub(super) fn read_shooter(
     wields: &WieldsQuery,
     weapons: &WeaponQuery,
 ) -> Option<ShooterReads> {
-    let ((position, facing, stance, aiming, shooting, luck, tu_max), tu) =
+    let ((position, facing, stance, aiming, shooting, luck, tu_max), injuries, tu) =
         shooters.get(shooter).ok()?;
+    // GTW-436: read the shooter's Luck through the gate-enforced effective accessor over
+    // its injury ledger (an absent ledger = the zero-delta identity), so a `Modify(Luck)`
+    // injury shifts the wounds it deals. This is the SINGLE direct-read path for Luck.
+    let effective_shooter_luck = match injuries {
+        Some(ledger) => crate::ganger::effective_luck(*luck, ledger),
+        None => *luck,
+    };
     // Resolve `ganger → Wields → the weapon entity` (GTW-323 slice 2), then read the
     // GTW-200 weapon stats + magazine off that weapon entity (a different entity than
     // the ganger, so the borrow is disjoint).
@@ -241,7 +248,7 @@ pub(super) fn read_shooter(
         stance:      *stance,
         aiming:      *aiming,
         shooting:    *shooting,
-        luck:        *luck,
+        luck:        effective_shooter_luck,
         base_spread: *base_spread,
         accuracy:    *accuracy,
         kickback:    *kickback,
@@ -483,7 +490,19 @@ fn fold_ganger_round(
         });
 
     match targets.get_mut(struck) {
-        Ok((mut hp, mut wounds, mut life, mut inflicted, toughness, target_luck)) => {
+        Ok((mut hp, mut wounds, mut life, mut inflicted, toughness, target_luck, injuries)) => {
+            // GTW-436: route the defender's Toughness + Luck through the gate-enforced
+            // effective accessors over its injury ledger (an absent ledger = the
+            // zero-delta identity), so a `Modify(Toughness)` / `Modify(Luck)` injury
+            // shifts the §6 severity roll in step with the derived stats. This is the
+            // SINGLE direct-read path for the defender's Toughness / Luck.
+            let (effective_toughness, effective_luck) = match injuries {
+                Some(ledger) => (
+                    crate::ganger::effective_toughness(*toughness, ledger),
+                    crate::ganger::effective_luck(*target_luck, ledger),
+                ),
+                None => (*toughness, *target_luck),
+            };
             resolve_and_apply(
                 outcome,
                 snapshot.weapon_stats(),
@@ -494,8 +513,8 @@ fn fold_ganger_round(
                     life:      &mut life,
                     piece:     struck_piece_view,
                     inflicted: &mut inflicted,
-                    toughness: *toughness,
-                    luck:      *target_luck,
+                    toughness: effective_toughness,
+                    luck:      effective_luck,
                 }),
                 struck,
                 StruckSurfaces {

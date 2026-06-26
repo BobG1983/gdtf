@@ -382,7 +382,8 @@ pub fn dispatch_fire(
         //     the ParamSet to lend p1 below). A shooter not in the query (despawned) fires
         //     nothing (fail-closed).
         let shooters = shooter_set.p0();
-        let Ok(((position, facing, _, aiming, _, _, tu_max), tu)) = shooters.get(request.shooter)
+        let Ok(((position, facing, _, aiming, _, _, tu_max), _, tu)) =
+            shooters.get(request.shooter)
         else {
             continue;
         };

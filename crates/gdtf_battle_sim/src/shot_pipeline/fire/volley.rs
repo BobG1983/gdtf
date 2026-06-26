@@ -184,7 +184,7 @@ pub fn fire(
     // (2) CHARGE the full mode TU ONCE up front (AC3) — debit the shooter's Tu via
     //     the shared mode_tu_cost (the same source can_fire's affordability read).
     let charge = mode_tu_cost(order.mode, &shooter_tu_max, &shooter_aiming, tuning);
-    if let Ok((_, mut tu_mut)) = shooters.get_mut(shooter) {
+    if let Ok((_, _, mut tu_mut)) = shooters.get_mut(shooter) {
         spend_tu(&mut tu_mut, charge);
     } else {
         // Unreachable after the get() above succeeded, but stay panic-free.

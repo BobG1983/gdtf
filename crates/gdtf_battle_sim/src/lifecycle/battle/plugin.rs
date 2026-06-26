@@ -13,7 +13,7 @@ use crate::{
         resources::BattleInProgress,
         setup::{setup_battle_on_request, teardown_battle_on_request},
     },
-    ganger::rederive_stats_on_tuning_change,
+    ganger::{rederive_stats_on_injury_change, rederive_stats_on_tuning_change},
     move_acts::advance_walk,
     occupancy_sync::{
         OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover, sync_destroyed_slab,
@@ -180,6 +180,21 @@ impl Plugin for BattleSimPlugin {
             .add_systems(
                 Update,
                 rederive_stats_on_tuning_change.after(setup_battle_on_request),
+            )
+            // GTW-436: the injury-ledger re-derive — when a ganger's InflictedInjuries
+            // ledger CHANGES (a freshly-inflicted injury, GTW-437), re-project THAT
+            // ganger's computed stats so the injury's modifier-layer deltas land
+            // immediately. Same shared `rederive_one` projection as the tuning path; the
+            // only difference is the trigger (Changed<InflictedInjuries> query filter).
+            // Runs UNGATED by BattleInProgress (it iterates ganger entities — a no-op if
+            // none changed) and self-guards on the Option<Res<GangerStatTuning>> presence
+            // (bevy-traps.md #1 / #7 — no &mut World). Ordered AFTER the SimSystems::Simulate
+            // band so a SAME-FRAME injury inflicted by the bundled fire runtime (the
+            // GTW-437 apply boundary, in the Simulate band) is settled onto the derived
+            // stats this tick, before the next tick's stat reads (bevy-traps.md #3).
+            .add_systems(
+                Update,
+                rederive_stats_on_injury_change.after(SimSystems::Simulate),
             );
     }
 }
