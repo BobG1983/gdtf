@@ -27,6 +27,7 @@ use crate::{
         Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
     },
     inflicted_wound::InflictedWounds,
+    los::PeekOffset,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind, TerrainPlacement},
     situation::{BattleSetupError, GangerSpawn, Situation},
     slab::{BraceStairCells, SlabEntry, SlabLedger},
@@ -182,6 +183,12 @@ fn ganger_scene(ganger: &GangerSpawn, tuning: &GangerStatTuning) -> impl Scene {
             WoundsMax::new(wounds_max)
             Bottle::new(bottle)
             InflictedWounds::default()
+            // GTW-406: seed the wall-peek offset so the automatic positional populator's
+            // `&mut PeekOffset` query matches every ganger from frame 0 (a correctness
+            // prerequisite — the populator skips a ganger that lacks the component). It
+            // derives Default + Clone + Component (the bsn! sentinel-Default requirement),
+            // and starts at the centred, no-peek `Vec2::ZERO`.
+            PeekOffset::default()
         },
         // The runtime-valued component with no `bsn!` grammar form, bridged via
         // `template_value` and tuple-composed onto the SAME root entity (the GTW-322

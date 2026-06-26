@@ -335,6 +335,8 @@ pub use perception::{
     pathfinder::{
         MIN_MOVE_COST, Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within,
     },
+    peek_sync,
+    peek_sync::{peek_population_needed, sync_peek_offsets},
     visibility,
     visibility::{
         FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible,

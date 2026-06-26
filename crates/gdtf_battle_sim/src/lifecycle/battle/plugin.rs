@@ -18,6 +18,7 @@ use crate::{
     occupancy_sync::{
         OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover, sync_destroyed_slab,
     },
+    peek_sync::{peek_population_needed, sync_peek_offsets},
     visibility::{SquadVisibility, recompute_visibility, should_recompute_visibility},
 };
 
@@ -104,6 +105,24 @@ impl Plugin for BattleSimPlugin {
             // a live battle — same window as BattleInProgress (GTW-237). No configure_sets
             // (the set is owned upstream by OccupancyMaintenancePlugin).
             .add_systems(Update, check_outcome.in_set(SimSystems::Simulate))
+            // GTW-406: the automatic positional PeekOffset populator, joining the gated
+            // Simulate band. Ordered `.after(advance_walk)` (read each accepted step's
+            // settled Position — walk.rs writes *position directly, same-frame) and
+            // `.after(sync_destroyed_cover)` (read the updated destroyed-cover set before
+            // is_blocked), and `.before(recompute_visibility)` so the peek it writes IN
+            // PLACE this tick (direct &mut → same-frame Changed<PeekOffset>) is consumed by
+            // THIS tick's recompute — no spurious next-tick recompute (bevy-traps.md #3).
+            // Gated on its own trigger predicate so the full-scan runs only on a
+            // move/spawn or a wall/cover destruction (the corner-changing signals).
+            .add_systems(
+                Update,
+                sync_peek_offsets
+                    .in_set(SimSystems::Simulate)
+                    .after(advance_walk)
+                    .after(sync_destroyed_cover)
+                    .before(recompute_visibility)
+                    .run_if(peek_population_needed),
+            )
             // The squad-fog writer (GTW-341): the SOLE SquadVisibility mutator, joining the
             // gated Simulate band so its grid/tuning/SquadVisibility reads stay panic-free
             // in the battle-active window (bevy-traps.md #1). Ordered `.after`
