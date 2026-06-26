@@ -7,6 +7,7 @@
 //! The `params` module holds the two `SystemParam` bundles the orchestrator reads.
 
 pub(in crate::states::load) mod armor;
+pub(in crate::states::load) mod injuries;
 mod params;
 mod poll;
 mod situation;
@@ -16,6 +17,7 @@ pub(in crate::states::load) mod tuning;
 pub(in crate::states::load) mod weapons;
 
 pub(in crate::states::load) use armor::redrive_armor_on_asset_event;
+pub(in crate::states::load) use injuries::redrive_injuries_on_asset_event;
 pub(in crate::states::load) use poll::poll_and_resolve;
 pub(in crate::states::load) use stat_tuning::redrive_stat_tuning_on_asset_event;
 pub(in crate::states::load) use terrain::redrive_terrain_on_asset_event;

@@ -33,8 +33,8 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
-    situation::Situation, terrain::piece::TerrainRegistry, tuning::CombatTuning,
-    weapon::WeaponRegistry,
+    injuries::InjuryRegistry, situation::Situation, terrain::piece::TerrainRegistry,
+    tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -92,6 +92,7 @@ fn walk_app() -> bevy::app::App {
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-261: the Load->Intro gate now also requires a LoadedSituation (the
     // empty-battle-race fix); seed the empty default beside the other three.
     app.world_mut()

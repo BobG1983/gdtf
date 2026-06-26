@@ -285,9 +285,9 @@ pub use damage_resolution::{
     injuries,
     injuries::{
         BleedAfflicted, BleedAmount, GainedInjury, InflictedInjuries, InjuryDef, InjuryEffect,
-        InjuryName, InjuryWeight, InjuryWeighting, InspectText, LogText, PopupText, PostHeal,
-        RolledInjury, StatDelta, StatDeltaLedger, StatDeltaSum, StatKind, StatTarget,
-        WeightedInjuryEntry, WeightedInjuryTable,
+        InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, InjuryWeighting, InspectText,
+        LogText, PopupText, PostHeal, RolledInjury, StatDelta, StatDeltaLedger, StatDeltaSum,
+        StatKind, StatTarget, WeightedInjuryEntry, WeightedInjuryTable,
     },
     matchup,
     matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier},

@@ -2,7 +2,7 @@
 //! its [`WeightedInjuryEntry`] rows, the [`InjuryWeight`] newtype, and the BUILT
 //! per-bucket [`WeightedInjuryTable`].
 
-use bevy::prelude::Deref;
+use bevy::{prelude::Deref, reflect::TypePath};
 use serde::Deserialize;
 
 use super::InjuryName;
@@ -16,7 +16,7 @@ use crate::armor::BodyPart;
 /// integer; `u32` so a bucket's summed weights never overflow a realistic roll):
 /// private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON
 /// number (`weight: 10`).
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 #[serde(transparent)]
 pub struct InjuryWeight(u32);
 
@@ -65,7 +65,7 @@ impl WeightedInjuryEntry {
 /// **sorting** entries, into the per-`(part, severity)` [`WeightedInjuryTable`]s —
 /// so the authored Vec order never affects the deterministic roll. THIS slice only
 /// names the schema. Public fields (a value-object record).
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct InjuryWeighting {
     /// The body part this file weights (one weighting file per part).
     pub body_part: BodyPart,

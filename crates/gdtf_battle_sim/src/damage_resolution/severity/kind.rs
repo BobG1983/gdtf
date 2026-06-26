@@ -12,7 +12,7 @@ use crate::{armor::BodyPart, tuning::SeverityScaling};
 /// harmless graze ([`None`](Severity::None)) to death
 /// ([`Fatal`](Severity::Fatal)); each non-`None` bucket costs the defender Wounds
 /// (the per-tier Wounds cost is a later E3 slice).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum Severity {
     /// A **graze** (`< e0`): HP loss only, **no Wound** is spent — the
     /// penetration-gated floor of the ladder.

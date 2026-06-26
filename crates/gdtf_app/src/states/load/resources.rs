@@ -115,6 +115,30 @@ impl TerrainFolderHandle {
     }
 }
 
+/// Typed handle to the in-flight **injuries folder** load (`injuries/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
+/// mirroring [`WeaponsFolderHandle`] (GTW-437). The `Load` scene preloads the whole
+/// `assets/injuries/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) (recursive,
+/// so the per-part subfolders + the `weighting/` subfolder are all covered); the
+/// poll/resolve system gates on its recursive load state, then builds BOTH the
+/// [`InjuryRegistry`](gdtf_battle_sim::injuries::InjuryRegistry) (from the loaded
+/// `RonAsset<InjuryDef>` files, keyed by stem) and the
+/// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) (from the loaded
+/// `RonAsset<InjuryWeighting>` files). Holding this handle keeps a strong reference to
+/// every injury asset while the resources are built; they then hold their data BY VALUE,
+/// so they survive the handle being dropped on `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct InjuriesFolderHandle(Handle<LoadedFolder>);
+
+impl InjuriesFolderHandle {
+    /// Wrap an in-flight injuries-folder load handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
@@ -171,7 +195,8 @@ impl StatTuningHandle {
 /// kick-off started loading.
 ///
 /// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], [`SituationHandle`],
-/// [`TuningHandle`], [`WeaponsFolderHandle`], and [`ArmorsFolderHandle`] the
+/// [`TuningHandle`], [`StatTuningHandle`], [`WeaponsFolderHandle`],
+/// [`ArmorsFolderHandle`], [`TerrainFolderHandle`], and [`InjuriesFolderHandle`] the
 /// poll/resolve system reads each frame to check load progress. Inserted
 /// `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning outside `Load`).
 #[derive(Resource, Clone, Debug)]
@@ -192,6 +217,9 @@ pub(in crate::states::load) struct LoadHandles {
     pub armor:       ArmorsFolderHandle,
     /// The terrain folder being preloaded (all terrain `.ron`s up front, GTW-394).
     pub terrain:     TerrainFolderHandle,
+    /// The injuries folder being preloaded (all `*.injury.ron` + `*.weighting.ron`
+    /// up front, GTW-437).
+    pub injuries:    InjuriesFolderHandle,
 }
 
 crate::support_item! {
@@ -337,6 +365,30 @@ pub(in crate::states::load) struct ActiveTerrainFolderHandle(Handle<LoadedFolder
 
 impl ActiveTerrainFolderHandle {
     /// Wrap the loaded terrain-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **injuries folder** (`injuries/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
+/// unlike the Load-scoped [`InjuriesFolderHandle`] inside [`LoadHandles`], which is
+/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-437), the injuries mirror of
+/// [`ActiveWeaponsFolderHandle`]. It is inserted alongside the resolved
+/// [`InjuryRegistry`](gdtf_battle_sim::injuries::InjuryRegistry) and
+/// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) and kept alive so the
+/// GTW-437 live hot-reload handler
+/// (`redrive_injuries_on_asset_event`)
+/// can re-enumerate the folder's member handles to rebuild BOTH resources on a hot edit
+/// to ANY `assets/injuries/**/*.injury.ron` OR `*.weighting.ron`. Holding the folder
+/// handle keeps every member injury asset loaded for the file-watcher. Like the
+/// resources, it is **not** removed in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveInjuriesFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveInjuriesFolderHandle {
+    /// Wrap the loaded injuries-folder handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

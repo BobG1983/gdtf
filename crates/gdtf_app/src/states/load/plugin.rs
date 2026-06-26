@@ -2,6 +2,7 @@ use bevy::{asset::AssetServer, prelude::*};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
+    injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     situation::Situation,
     terrain::piece::{TerrainRegistry, TerrainSpec},
     tuning::{CombatTuning, GangerStatTuning},
@@ -75,6 +76,16 @@ impl Plugin for LoadScenePlugin {
             // Registered here in `build` BEFORE the kick-off's `load_folder("terrain")`
             // runs.
             app.init_ron_asset_with_extensions::<TerrainSpec>(vec!["terrain.ron"]);
+            // GTW-437: the injuries folder carries TWO asset types, each via the SAME
+            // generic RON loader but loaded by `load_folder` (extension dispatch). Each
+            // claims its OWN dedicated compound extension — `injury.ron` for the per-injury
+            // defs (files are `assets/injuries/<part>/*.injury.ron`) and `weighting.ron`
+            // for the per-part weighting tables (`assets/injuries/weighting/*.weighting.ron`)
+            // — so the recursive folder dispatch is unambiguous among GDTF's many `.ron`
+            // loaders. Registered here in `build` BEFORE the kick-off's
+            // `load_folder("injuries")` runs.
+            app.init_ron_asset_with_extensions::<InjuryDef>(vec!["injury.ron"]);
+            app.init_ron_asset_with_extensions::<InjuryWeighting>(vec!["weighting.ron"]);
             add_hot_reload_systems(app);
         }
         add_systems(app);
@@ -113,7 +124,11 @@ fn add_systems(app: &mut App) {
                             // GTW-394: the TerrainRegistry is a gate-blocking resource too
                             // (the downstream generation epic uses it; the folder must be
                             // verified loaded before Load exits).
-                            .or_else(not(resource_exists::<TerrainRegistry>)),
+                            .or_else(not(resource_exists::<TerrainRegistry>))
+                            // GTW-437: the InjuryRegistry is a gate-blocking resource too
+                            // (the GTW-438 roll uses it + the InjuryTables; the injuries
+                            // folder must be verified loaded before Load exits).
+                            .or_else(not(resource_exists::<InjuryRegistry>)),
                     ),
             ),
             // Once a GdtfTheme, a CombatTuning, a WeaponRegistry, a LoadedSituation,
@@ -140,7 +155,10 @@ fn add_systems(app: &mut App) {
                     .and_then(resource_exists::<ArmorRegistry>)
                     // GTW-394: the TerrainRegistry must be present before Load exits, so the
                     // terrain folder is verified loaded before any downstream use.
-                    .and_then(resource_exists::<TerrainRegistry>),
+                    .and_then(resource_exists::<TerrainRegistry>)
+                    // GTW-437: the InjuryRegistry must be present before Load exits, so the
+                    // injuries folder is verified loaded before the GTW-438 roll uses it.
+                    .and_then(resource_exists::<InjuryRegistry>),
             ),
         )
             .chain(),
@@ -174,6 +192,10 @@ fn add_hot_reload_systems(app: &mut App) {
             // GTW-394: the terrain hot-reload — overwrites the TerrainRegistry resource on
             // a `terrain/*.terrain.ron` edit, mirroring the weapon/armor hot-reload pattern.
             redrive_terrain_on_asset_event,
+            // GTW-437: the injury hot-reload — rebuilds BOTH the InjuryRegistry and the
+            // InjuryTables on an edit to ANY `injuries/**/*.injury.ron` OR `*.weighting.ron`,
+            // mirroring the weapon/armor hot-reload pattern (one folder, two resources).
+            redrive_injuries_on_asset_event,
         ),
     );
 }

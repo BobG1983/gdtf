@@ -16,8 +16,10 @@ use serde::Deserialize;
 /// stem-`InjuryName` and the panel can read the display-`InjuryName` without a
 /// second vocabulary. A no-bare-types newtype over [`String`] (a name is a domain
 /// value): private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare
-/// RON string. [`Eq`] / [`Hash`] so it can key the GTW-437 injury registry.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+/// RON string. [`Eq`] / [`Hash`] so it can key the GTW-437 injury registry, and
+/// [`Ord`] so the loader can canonically sort a bucket's weighting rows by key (making
+/// the cumulative-weight pick folder-enumeration-order-independent).
+#[derive(Deref, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct InjuryName(String);
 

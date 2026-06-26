@@ -49,6 +49,7 @@ use gdtf_app::test_support::{
     RunningState,
 };
 use gdtf_battle_sim::{
+    injuries::InjuryRegistry,
     situation::Situation,
     terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
@@ -95,6 +96,7 @@ fn walk_app_with_theme() -> App {
     // GTW-394: the Load→Intro gate also requires a TerrainRegistry; empty clears it (the
     // registry is dormant this slice — the generation epic consumes it).
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-261: the Load→Intro gate now also requires a LoadedSituation (the
     // empty-battle-race fix). The headless walk has no AssetServer to resolve one, so
     // seed the empty default beside the other three — symmetric with theme/tuning/weapons.

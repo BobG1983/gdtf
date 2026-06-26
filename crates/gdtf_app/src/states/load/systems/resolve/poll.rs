@@ -10,6 +10,7 @@ use crate::states::load::{
     resources::{FailedAssetPath, LoadFailed, LoadHandles},
     systems::resolve::{
         armor::resolve_armor,
+        injuries::resolve_injuries,
         params::{LoadAssetCollections, ResolvedResources},
         situation::resolve_situation,
         stat_tuning::resolve_stat_tuning,
@@ -132,6 +133,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         situation_present,
         armor_present,
         terrain_present,
+        injuries_present,
     ) = (
         resolved.theme.is_some(),
         resolved.tuning.is_some(),
@@ -140,6 +142,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.situation.is_some(),
         resolved.armor.is_some(),
         resolved.terrain.is_some(),
+        resolved.injuries.is_some(),
     );
     let (
         Some(asset_server),
@@ -151,6 +154,8 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(weapon_specs),
         Some(armor_specs),
         Some(terrain_specs),
+        Some(injury_defs),
+        Some(weightings),
         Some(handles),
     ) = (
         asset_server,
@@ -162,6 +167,8 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.weapon_specs,
         collections.armor_specs,
         collections.terrain_specs,
+        collections.injury_defs,
+        collections.weightings,
         handles,
     )
     else {
@@ -225,6 +232,23 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &terrain_specs,
+            &handles,
+        );
+    }
+
+    // GTW-437: resolve the injuries folder into the InjuryRegistry + InjuryTables on
+    // its OWN absence guard (the registry's presence is the branch done-probe; the
+    // tables are inserted in the same branch), independently of all other branches —
+    // so a slow injuries folder never blocks them and vice-versa (the armor-branch
+    // precedent). The resources are DORMANT after this slice (the GTW-438 roll consumes
+    // them); they are resolved here purely so they are present when the gate checks.
+    if !injuries_present {
+        resolve_injuries(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &injury_defs,
+            &weightings,
             &handles,
         );
     }

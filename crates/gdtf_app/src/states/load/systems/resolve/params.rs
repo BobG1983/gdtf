@@ -11,6 +11,7 @@ use bevy::{
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
+    injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     situation::Situation,
     terrain::piece::{TerrainRegistry, TerrainSpec},
     tuning::{CombatTuning, GangerStatTuning},
@@ -49,6 +50,11 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     pub(super) armor_specs:   Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
     /// The loaded per-terrain RON collection (`terrain/*.ron`, GTW-394).
     pub(super) terrain_specs: Option<Res<'w, Assets<RonAsset<TerrainSpec>>>>,
+    /// The loaded per-injury RON collection (`injuries/**/*.injury.ron`, GTW-437).
+    pub(super) injury_defs:   Option<Res<'w, Assets<RonAsset<InjuryDef>>>>,
+    /// The loaded per-part injury-weighting RON collection
+    /// (`injuries/weighting/*.weighting.ron`, GTW-437).
+    pub(super) weightings:    Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
 }
 
 /// The four persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -75,4 +81,8 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
     pub(super) armor:       Option<Res<'w, ArmorRegistry>>,
     /// Whether the resolved [`TerrainRegistry`] is already inserted (GTW-394).
     pub(super) terrain:     Option<Res<'w, TerrainRegistry>>,
+    /// Whether the resolved [`InjuryRegistry`] is already inserted (GTW-437). The
+    /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) is built and inserted
+    /// in the SAME branch, so the registry's presence is the branch's done-probe.
+    pub(super) injuries:    Option<Res<'w, InjuryRegistry>>,
 }

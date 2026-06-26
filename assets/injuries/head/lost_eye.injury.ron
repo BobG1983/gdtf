@@ -1,0 +1,16 @@
+// GTW-437 SAMPLE injury (loader fixture). The full >=6-per-severity-per-part content
+// floor is GTW-440 — this file exists only to exercise the loader / tables build.
+// KEY = file stem minus `.injury` => `lost_eye`.
+(
+    name:         "Lost Eye",                     // display InjuryName (inspect-panel label)
+    body_part:    Head,                           // authoritative; must match the owning subfolder
+    severity:     Critical,                       // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "LOST EYE",                     // -> floating combat text (FCT)
+    log_text:     "loses an eye",                 // -> combat log line ("<name> loses an eye")
+    inspect_text: "Lost Eye -- -2 Aim, -1 Cool",  // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Aim,  amount: -2),           // direct attribute; ripples through Shooting
+        Modify(stat: Cool, amount: -1),           // an injury MAY carry more than one effect
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)

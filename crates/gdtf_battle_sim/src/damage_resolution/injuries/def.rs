@@ -1,6 +1,7 @@
 //! The authored per-injury record [`InjuryDef`] and its parsed-but-unread
 //! [`PostHeal`] placeholder.
 
+use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use super::{InjuryEffect, InjuryName, InspectText, LogText, PopupText};
@@ -58,7 +59,7 @@ impl PostHeal {
 /// Public fields (a value-object record, mirroring
 /// [`InflictedWound`](crate::inflicted_wound::InflictedWound)) — every field is a
 /// named domain type, so a literal is self-documenting.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct InjuryDef {
     /// The display name of the condition (e.g. `"Lost Eye"`) — the inspect-panel
     /// label.

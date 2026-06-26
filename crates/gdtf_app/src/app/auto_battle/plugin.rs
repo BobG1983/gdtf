@@ -46,8 +46,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    armor::ArmorRegistry, terrain::piece::TerrainRegistry, tuning::CombatTuning,
-    weapon::WeaponRegistry,
+    armor::ArmorRegistry, injuries::InjuryRegistry, terrain::piece::TerrainRegistry,
+    tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_ui::theme::default_theme;
 
@@ -254,6 +254,10 @@ crate::support_item! {
             // fallback when there is no AssetServer so headless walks still reach Intro
             // (the A1 / AC3b pattern for the terrain registry).
             commands.insert_resource(TerrainRegistry::default());
+            // GTW-437: the InjuryRegistry is a gate-blocking resource too; seed the empty
+            // fallback when there is no AssetServer so headless walks still reach Intro
+            // (the A1 / AC3b pattern for the injury registry).
+            commands.insert_resource(InjuryRegistry::default());
             commands.insert_resource(LoadedSituation::new(
                 gdtf_battle_sim::situation::Situation::default(),
             ));

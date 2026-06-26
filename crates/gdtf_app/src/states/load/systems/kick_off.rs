@@ -9,8 +9,8 @@ use gdtf_battle_sim::{
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
-    ArmorsFolderHandle, FontFolderHandle, LoadHandles, SituationHandle, StatTuningHandle,
-    TerrainFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
+    ArmorsFolderHandle, FontFolderHandle, InjuriesFolderHandle, LoadHandles, SituationHandle,
+    StatTuningHandle, TerrainFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -46,6 +46,13 @@ const ARMOR_DIR: &str = "armor";
 /// the per-terrain-piece `assets/terrain/*.terrain.ron` files the registry is built
 /// from). Its OWN folder so the `.ron` loader dispatch is unambiguous (terrain only).
 const TERRAIN_DIR: &str = "terrain";
+
+/// Path of the loose injuries folder, relative to the asset source root (GTW-437 —
+/// the per-injury `assets/injuries/**/*.injury.ron` files + the per-part
+/// `injuries/weighting/*.weighting.ron` files the registry + tables are built from).
+/// One recursive folder carrying both asset types; the dedicated compound extensions
+/// (`injury.ron` / `weighting.ron`) keep the `.ron` loader dispatch unambiguous.
+const INJURIES_DIR: &str = "injuries";
 
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
@@ -93,6 +100,7 @@ pub(in crate::states::load) fn kick_off_loads(
     let weapons = WeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
     let armor = ArmorsFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
     let terrain = TerrainFolderHandle::new(asset_server.load_folder(TERRAIN_DIR));
+    let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
 
     commands.insert_resource(LoadHandles {
         theme,
@@ -103,5 +111,6 @@ pub(in crate::states::load) fn kick_off_loads(
         weapons,
         armor,
         terrain,
+        injuries,
     });
 }

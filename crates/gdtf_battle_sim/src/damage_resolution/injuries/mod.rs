@@ -27,6 +27,11 @@
 //! - [`InflictedInjuries`] / [`StatDeltaLedger`] / [`StatDeltaSum`] /
 //!   [`BleedAfflicted`] ([`ledger`]) — the per-ganger ledger (the SOLE delta source),
 //!   its per-stat summed-delta store, and its bleed accrual.
+//! - [`InjuryRegistry`] ([`registry`]) — the name→[`InjuryDef`] map the GTW-437 loader
+//!   builds from the loaded `*.injury.ron` files.
+//! - [`InjuryTables`] ([`tables`]) — the per-`(body_part, severity)`
+//!   [`WeightedInjuryTable`] map the GTW-437 loader builds from the `*.weighting.ron`
+//!   files (canonically sorted, so the roll is enumeration-order-independent).
 //!
 //! **The modifier-layer invariant** (`docs/combat/resolution.md`): base attributes
 //! stay authoritative and are NEVER mutated by an injury; the per-ganger
@@ -38,16 +43,20 @@
 pub mod def;
 pub mod effect;
 pub mod ledger;
+pub mod registry;
 pub mod rolled;
 pub mod stat_target;
+pub mod tables;
 pub mod text;
 pub mod weighting;
 
 pub use def::{InjuryDef, PostHeal};
 pub use effect::{BleedAmount, InjuryEffect, StatDelta};
 pub use ledger::{BleedAfflicted, InflictedInjuries, StatDeltaLedger, StatDeltaSum};
+pub use registry::InjuryRegistry;
 pub use rolled::{GainedInjury, RolledInjury};
 pub use stat_target::{StatKind, StatTarget};
+pub use tables::InjuryTables;
 pub use text::{InjuryName, InspectText, LogText, PopupText};
 pub use weighting::{InjuryWeight, InjuryWeighting, WeightedInjuryEntry, WeightedInjuryTable};
 

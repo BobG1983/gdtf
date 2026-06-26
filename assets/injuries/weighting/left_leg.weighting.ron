@@ -1,0 +1,9 @@
+// GTW-437 SAMPLE weighting (loader fixture) for the LeftLeg. The >=6-entries-per-
+// severity content floor + this part's injuries are GTW-440 — empty buckets are valid
+// (they build no table; the GTW-438 roll then finds no table and inflicts no injury).
+(
+    body_part: LeftLeg,   // the part this table weights
+    minor:    [],            // Minor bucket    (GTW-440 fills the floor)
+    major:    [],            // Major bucket    (GTW-440 fills the floor)
+    critical: [],            // Critical bucket (GTW-440 fills the floor)
+)

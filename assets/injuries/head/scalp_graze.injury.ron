@@ -1,0 +1,15 @@
+// GTW-437 SAMPLE injury (loader fixture). The full >=6-per-severity-per-part content
+// floor is GTW-440 — this file exists only to exercise the loader / tables build.
+// KEY = file stem minus `.injury` => `scalp_graze`.
+(
+    name:         "Scalp Graze",                 // display InjuryName (inspect-panel label)
+    body_part:    Head,                          // authoritative; must match the owning subfolder
+    severity:     Minor,                         // Minor | Major | Critical (None/Fatal never tabled)
+    popup_text:   "SCALP GRAZE",                 // -> floating combat text (FCT)
+    log_text:     "is grazed across the scalp",  // -> combat log line
+    inspect_text: "Scalp Graze -- -1 Cool",       // -> inspect panel (per-ganger injury list)
+    effects: [
+        Modify(stat: Cool, amount: -1),           // direct attribute; ripples through Shooting
+    ],
+    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+)
