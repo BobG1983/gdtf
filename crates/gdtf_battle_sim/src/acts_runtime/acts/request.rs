@@ -274,7 +274,9 @@ impl ReloadRequested {
 /// domain value, so the no-bare-types rule — which wraps *values* — does not apply; the
 /// type's identity IS the signal. [`dispatch_end_turn`](crate::turn::dispatch_end_turn)
 /// drains this and advances the turn cycle: it hands the turn to the other team (running
-/// that team's turn-start TU regen), and — while the enemy has no AI — immediately
-/// auto-passes the enemy turn back to the player.
+/// that team's turn-start TU regen) and STOPS there (GTW-70 removed the auto-pass). The
+/// enemy turn is then driven by the GTW-70 enemy-AI brain
+/// ([`enemy_ai_turn`](crate::ai::enemy_ai_turn)), which emits its OWN `EndTurnRequested` to
+/// hand control back to the player.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EndTurnRequested;

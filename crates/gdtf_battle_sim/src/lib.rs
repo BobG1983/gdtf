@@ -27,7 +27,8 @@
 //!   helper (resets one team's [`ganger::Tu`] to [`ganger::TuMax`] via [`tu::reset_tu`]),
 //!   and the [`turn::dispatch_end_turn`] system that drains the
 //!   [`acts::EndTurnRequested`] signal and cycles the turn — handing off to the other team
-//!   and (while the enemy has no AI) auto-passing the enemy turn back to the player.
+//!   and STOPPING there (GTW-70 removed the auto-pass; the enemy turn is driven by the
+//!   [`ai::enemy_ai_turn`] brain, which ends it back to the player).
 //! - [`mod@faced_cell`] — the E4.2 geometry helper [`faced_cell::faced_cell`]: shooter
 //!   [`ganger::Position`] + [`ganger::Facing`] → the faced ([`metric::Cell`],
 //!   [`metric::Level`]) one unit step along the facing (same storey). The cell whose
@@ -242,8 +243,11 @@ pub mod tuning;
 pub use acts_runtime::{
     acts,
     acts::{
-        FireDeclaration, MoveRejected, MoveRejection, MovementOccurred, ReloadOutcome, ReloadResult,
+        FireArcDecision, FireDeclaration, MoveRejected, MoveRejection, MovementOccurred,
+        ReloadOutcome, ReloadResult, can_engage, decide_fire_arc,
     },
+    ai,
+    ai::{AiTarget, enemy_ai_turn, pick_nearest, plan_advance},
     bleed,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     downed_acts,
@@ -339,8 +343,8 @@ pub use perception::{
     peek_sync::{peek_population_needed, sync_peek_offsets},
     visibility,
     visibility::{
-        FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible,
-        recompute_visibility, should_recompute_visibility, union_fov,
+        FactionRelation, FovObserver, OmniscientFog, SquadVisibility, accrue, is_ganger_visible,
+        move_fog, recompute_visibility, should_recompute_visibility, union_fov,
     },
 };
 pub use shot_pipeline::{

@@ -21,7 +21,7 @@ use crate::{
     tuning::{CombatTuning, GangerStatTuning},
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
-    visibility::SquadVisibility,
+    visibility::{OmniscientFog, SquadVisibility},
     weapon::WeaponRegistry,
 };
 
@@ -50,7 +50,9 @@ use crate::{
 ///    [`ActiveFaction`] turn-cycle resource is seeded to the same player faction (the
 ///    player acts first; GTW-309), an EMPTY
 ///    [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog is inserted
-///    (GTW-341) — all sharing [`BattleInProgress`]'s lifetime — and a
+///    (GTW-341), the [`OmniscientFog`](crate::visibility::OmniscientFog) AI move fog is
+///    inserted (GTW-70 — every in-bounds cell visible+explored) — all sharing
+///    [`BattleInProgress`]'s lifetime — and a
 ///    [`BattleReady`] is written; on `Err` the typed
 ///    [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid vertical link,
 ///    an unresolved weapon/armor/terrain key, or a below-minimum floor cost) is surfaced
@@ -205,6 +207,17 @@ pub fn setup_battle_on_request(
                 // makes the ResMut<SquadVisibility> read panic-free the moment the gated
                 // Simulate band can run (bevy-traps.md #1).
                 commands.insert_resource(SquadVisibility::default());
+                // GTW-70: insert the AI's OMNISCIENT move fog on this same Ok path, sharing
+                // the BattleInProgress lifetime. It is the enemy AI's move-planning fog
+                // (every in-bounds cell visible+explored) AND the fog `dispatch_move`'s
+                // `move_fog` selects for any non-player mover — one shared resource, so
+                // planner and executor can never drift. The omniscient set is the FIXED
+                // 60×60×8 grid extent (independent of slot contents), so a fresh default
+                // grid yields the identical full cell set without needing the
+                // Commands-queued battle grid to have been applied yet.
+                commands.insert_resource(OmniscientFog::new(SquadVisibility::omniscient(
+                    &OccupancyGrid::new(),
+                )));
                 ready.write(BattleReady);
             }
             Err(e) => {
@@ -246,8 +259,9 @@ fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
 /// [`FloorCostGrid`]), the [`BattleInProgress`] witness (closing the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) gate so the
 /// bundled runtime goes inert again), the [`PlayerFaction`], the [`BattleRoster`], the
-/// [`ActiveFaction`] turn-cycle resource, and the
-/// [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog (GTW-341) (all
+/// [`ActiveFaction`] turn-cycle resource, the
+/// [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog (GTW-341), and the
+/// [`OmniscientFog`](crate::visibility::OmniscientFog) AI move fog (GTW-70) (all
 /// lifetimes track [`BattleInProgress`], so they are removed in the same teardown).
 ///
 /// GTW-395: also despawns all [`TerrainCell`](crate::terrain::entity::TerrainCell)
@@ -321,5 +335,9 @@ pub fn teardown_battle_on_request(
         // to BattleInProgress (recompute_visibility — the sole writer — reads its
         // ResMut within that window; GTW-341).
         commands.remove_resource::<SquadVisibility>();
+        // GTW-70: remove the AI's OmniscientFog alongside, so the move-planning fog's
+        // lifetime stays identical to BattleInProgress (the enemy brain + the faction-aware
+        // dispatch_move read it within that window).
+        commands.remove_resource::<OmniscientFog>();
     }
 }

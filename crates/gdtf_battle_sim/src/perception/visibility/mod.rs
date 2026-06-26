@@ -41,6 +41,7 @@
 //! the GTW-341 writer is param-only (`Query` / `Res` / `ResMut`), no `&mut World`.
 
 mod compute;
+mod fog_select;
 mod recompute;
 mod squad;
 
@@ -48,5 +49,6 @@ mod squad;
 mod test;
 
 pub use compute::{FovObserver, accrue, union_fov};
+pub use fog_select::{OmniscientFog, move_fog};
 pub use recompute::{recompute_visibility, should_recompute_visibility};
 pub use squad::{FactionRelation, SquadVisibility, is_ganger_visible};

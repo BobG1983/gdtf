@@ -8,7 +8,7 @@
 
 use bevy::{platform::collections::HashSet, prelude::Resource};
 
-use crate::metric::CellLevel;
+use crate::{metric::CellLevel, occupancy::OccupancyGrid};
 
 /// Whether a `(cell, level)` is the **player squad's**: own-squad (always shown) or
 /// an other-faction relation (shown only when the cell is squad-VISIBLE) — the
@@ -72,6 +72,27 @@ impl SquadVisibility {
     #[must_use]
     pub const fn new(visible: HashSet<CellLevel>, explored: HashSet<CellLevel>) -> Self {
         Self { visible, explored }
+    }
+
+    /// An **omniscient** fog over `grid` — every in-bounds `(cell, level)` of the grid's
+    /// fixed extent both VISIBLE and EXPLORED (GTW-70).
+    ///
+    /// The AI's MOVE-planning fog: a [`SquadVisibility`] whose VISIBLE and EXPLORED sets
+    /// are the WHOLE `GRID_WIDTH × GRID_HEIGHT × MAX_LEVELS` cell set
+    /// ([`OccupancyGrid::all_cells`]). Under it the [`PlanningView`](crate::pathfinder::PlanningView)
+    /// gate is a no-op on routability — every cell is EXPLORED (so non-UNSEEN → routable)
+    /// AND VISIBLE (so every occupant blocks) — which is exactly what lets the enemy AI
+    /// navigate toward the player's TRUE cell while still colliding correctly. It does NOT
+    /// let the AI SHOOT: firing gates on the real per-pair `can_see`, not this fog (GTW-70
+    /// §D.1; the symmetric enemy fog-of-war is deferred to GTW-71). Built once at battle
+    /// setup and held in the [`OmniscientFog`](crate::visibility::OmniscientFog) resource.
+    ///
+    /// `grid`'s extent is fixed once built, so this depends only on the grid's structural
+    /// dimensions, never its terrain/occupant contents.
+    #[must_use]
+    pub fn omniscient(grid: &OccupancyGrid) -> Self {
+        let all: HashSet<CellLevel> = grid.all_cells().collect();
+        Self::new(all.clone(), all)
     }
 
     /// Whether `cell` is **squad-VISIBLE** — some conscious player-faction ganger sees

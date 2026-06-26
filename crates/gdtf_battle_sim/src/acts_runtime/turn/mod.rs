@@ -7,12 +7,13 @@
 //! turn to the other team, regenerates that team's TU at its turn-start
 //! ([`regen_team_tu`] — resetting [`Tu`](crate::ganger::Tu) to
 //! [`TuMax`](crate::ganger::TuMax) for that team only, via the landed
-//! [`reset_tu`](crate::tu::reset_tu) verb), and — while the enemy has no AI — auto-passes
-//! the enemy turn straight back to the player, so [`ActiveFaction`] ends each cycle on the
-//! [`PlayerFaction`](crate::battle::PlayerFaction). The turn-start budget refill is design
-//! canon (resolution.md §"What's pure math vs sim"; stats.md "A TU pool per turn"); the
-//! `TODO(AI)` seam in [`dispatch_end_turn`] marks where the enemy AI turn replaces the
-//! auto-pass.
+//! [`reset_tu`](crate::tu::reset_tu) verb), and STOPS — exactly one advance per request
+//! (GTW-70 removed the enemy auto-pass). When the player ends its turn, control genuinely
+//! passes to the enemy and stays there: the GTW-70 enemy-AI brain
+//! ([`enemy_ai_turn`](crate::ai::enemy_ai_turn)) drives the enemy turn and emits its OWN
+//! [`EndTurnRequested`](crate::acts::EndTurnRequested) to hand control back to the player.
+//! The turn-start budget refill is design canon (resolution.md §"What's pure math vs sim";
+//! stats.md "A TU pool per turn").
 //!
 //! ## Module map
 //!

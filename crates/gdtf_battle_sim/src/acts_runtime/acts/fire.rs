@@ -201,8 +201,13 @@ type TurnQuery<'world, 'state> = Query<'world, 'state, (&'static mut Facing, &'s
 /// shooter affords BOTH the turn-into-arc AND the shot — else the shot is REJECTED (no TU
 /// spent, no facing change, no shot). This enum carries the pre-computed verdict so the
 /// dispatch performs exactly the mutations the verdict allows.
+///
+/// GTW-70: made `pub` (with its decider [`decide_fire_arc`] and the [`can_engage`]
+/// boolean wrapper) so the enemy-AI engagement gate and [`dispatch_fire`] share the ONE
+/// arc verdict — neither re-derives it. The AI consults [`can_engage`] (the `¬Reject`
+/// boolean) to decide whether a target is shootable; the dispatcher matches the full enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum FireArcDecision {
+pub enum FireArcDecision {
     /// In-arc — fire directly (no turn). [`fire`]'s own [`crate::magazine::can_fire`] gate
     /// handles fire-TU affordability (an in-arc shot the shooter cannot afford resolves to
     /// nothing inside [`fire`], mutating nothing).
@@ -231,7 +236,12 @@ enum FireArcDecision {
 /// fire_cost` ([`FireArcDecision::TurnThenFire`]), else [`FireArcDecision::Reject`]. The
 /// `fire_cost`/`turn_cost` arithmetic is **saturating** on the `u8` pool (no overflow, no
 /// panic). Pure, total.
-fn decide_fire_arc(
+///
+/// GTW-70: `pub` so the enemy-AI engagement gate ([`crate::ai`]) and [`dispatch_fire`]
+/// share the ONE arc verdict. The AI usually calls the [`can_engage`] boolean wrapper; the
+/// dispatcher matches the full [`FireArcDecision`] (it needs the turn cost / facing).
+#[must_use]
+pub fn decide_fire_arc(
     facing: Direction,
     actor_cell: Cell,
     target_cell: Cell,
@@ -267,6 +277,32 @@ fn decide_fire_arc(
     } else {
         FireArcDecision::Reject
     }
+}
+
+/// Whether a shooter at `actor_cell` (facing `facing`, pool `tu`) can **engage** a target
+/// at `target_cell` under the GTW-242 firing-arc gate — `true` iff the arc verdict is NOT
+/// [`FireArcDecision::Reject`] (GTW-70).
+///
+/// The boolean shape of [`decide_fire_arc`] the enemy-AI engagement gate ([`crate::ai`])
+/// shares with [`dispatch_fire`]: an in-arc shot ([`FireArcDecision::FireInArc`]) and an
+/// out-of-arc-but-affordable shot ([`FireArcDecision::TurnThenFire`]) both return `true`;
+/// only the unaffordable out-of-arc reject returns `false`. Load-bearing for the AI's
+/// turn-termination guarantee: the AI emits a `FireRequested` ONLY when this is `true`, so
+/// the dispatcher can never silently reject the shot (spend no TU) and let the AI re-emit
+/// it forever. Pure, total — a thin `matches!` over the SAME verdict the dispatcher runs.
+#[must_use]
+pub fn can_engage(
+    facing: Direction,
+    actor_cell: Cell,
+    target_cell: Cell,
+    tu: Tu,
+    fire_cost: Tu,
+    tuning: &CombatTuning,
+) -> bool {
+    !matches!(
+        decide_fire_arc(facing, actor_cell, target_cell, tu, fire_cost, tuning),
+        FireArcDecision::Reject
+    )
 }
 
 /// **Dispatch** buffered [`FireRequested`] messages with the GTW-242 **firing-arc +

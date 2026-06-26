@@ -18,6 +18,7 @@ use crate::{
             StabilizeDownedRequested,
         },
     },
+    ai::enemy_ai_turn,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     move_acts::{ReactionShotFired, advance_walk},
     occupancy_sync::{
@@ -182,6 +183,25 @@ impl Plugin for SimActsPlugin {
                 Update,
                 dispatch_end_turn
                     .run_if(resource_exists::<ActiveFaction>)
+                    .in_set(SimSystems::Simulate),
+            )
+            // GTW-70: the minimal enemy-AI brain. It joins the gated Simulate band and is
+            // ordered `.after(dispatch_end_turn)` (so it sees the freshly-handed-off
+            // ActiveFaction + the enemy team's regenerated TU this frame) and
+            // `.before(dispatch_fire)` / `.before(dispatch_move)` (so the REAL FireRequested
+            // / MoveRequested it emits dispatch the SAME frame — and the pre-checked accept
+            // guarantee holds against the same-frame world). It carries its OWN
+            // `run_if(resource_exists::<ActiveFaction>)` so its read stays panic-free
+            // outside a live battle (bevy-traps.md #1), and reads no SquadVisibility (it
+            // plans on the immutable OmniscientFog), so it adds no ordering ambiguity with
+            // the recompute_visibility writer.
+            .add_systems(
+                Update,
+                enemy_ai_turn
+                    .run_if(resource_exists::<ActiveFaction>)
+                    .after(dispatch_end_turn)
+                    .before(dispatch_fire)
+                    .before(dispatch_move)
                     .in_set(SimSystems::Simulate),
             )
             // GTW-336: wire the §9 bleed-out clock into the live runtime. `tick_bleed`

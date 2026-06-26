@@ -16,12 +16,13 @@
 //!
 //! The turn-cycle engine ([`dispatch_end_turn`](crate::turn::dispatch_end_turn),
 //! GTW-309) processes one [`EndTurnRequested`](crate::acts::EndTurnRequested) by handing
-//! the turn off the ending team to the OTHER team (the enemy, while it has no AI) and
-//! immediately auto-passing back to the player — emitting a
-//! [`TurnStarted`](crate::turn::TurnStarted) at EACH advance. So a full round is exactly
-//! one player → enemy → player cycle, and the **enemy** `TurnStarted` (the
-//! `now_active != PlayerFaction` boundary) marks its start — emitted exactly once per
-//! full round. [`enemy_phase_started`] keys the bleed-out drain off that boundary.
+//! the turn off the ending team to the OTHER team, emitting one
+//! [`TurnStarted`](crate::turn::TurnStarted) for the now-active team. A full round is one
+//! player → enemy → player cycle, now spanning TWO end-turn signals (the player's, then the
+//! GTW-70 enemy-AI brain's), so the **enemy** `TurnStarted` (the `now_active !=
+//! PlayerFaction` boundary) is emitted exactly once per full round — when the player ends
+//! its turn and control hands off to the enemy. [`enemy_phase_started`] keys the bleed-out
+//! drain off that boundary.
 
 use bevy::prelude::{MessageReader, Res};
 
@@ -34,10 +35,11 @@ use crate::{battle::PlayerFaction, turn::TurnStarted};
 /// [`PlayerFaction`](crate::battle::PlayerFaction) — the enemy-phase boundary
 /// `docs/combat/resolution.md` §9 names as the once-per-full-round bleed tick. The
 /// turn-cycle engine ([`dispatch_end_turn`](crate::turn::dispatch_end_turn)) advances the
-/// active faction off the ending team to the enemy (then auto-passes back to the player),
-/// emitting a `TurnStarted` per advance; the enemy one fires exactly once per full round,
-/// so gating [`tick_bleed`](crate::bleed::tick_bleed) on this condition drains the
-/// bleed-out clock once per full round.
+/// active faction off the ending team to the other team, emitting one `TurnStarted` per
+/// advance; the enemy one fires exactly once per full round (when the player ends its turn
+/// and control hands off to the enemy), so gating
+/// [`tick_bleed`](crate::bleed::tick_bleed) on this condition drains the bleed-out clock
+/// once per full round.
 ///
 /// It owns its OWN independent [`MessageReader`](bevy::prelude::MessageReader) cursor, so
 /// reading the buffer here does NOT consume the `TurnStarted` messages from the other

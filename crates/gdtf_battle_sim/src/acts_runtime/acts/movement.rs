@@ -40,6 +40,7 @@ use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Que
 
 use crate::{
     acts::request::MoveRequested,
+    battle::PlayerFaction,
     ganger::{Faction, Position, Tu},
     metric::{Cell, CellLevel},
     move_acts::WalkInProgress,
@@ -49,7 +50,7 @@ use crate::{
     tu::can_spend_tu,
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
-    visibility::{FactionRelation, SquadVisibility},
+    visibility::{FactionRelation, OmniscientFog, SquadVisibility, move_fog},
 };
 
 /// Why a [`MoveRequested`] commit was **rejected** — the two no-step outcomes of the
@@ -212,9 +213,10 @@ fn relation_to(
 #[expect(
     clippy::too_many_arguments,
     reason = "the constrained move dispatch genuinely needs the actor query + the disjoint \
-              faction query + the four route-gate resources (grid / links / squad fog / \
-              tuning) + the reject writer + Commands (to start the walk); bundling them into \
-              an opaque SystemParam struct would hide the system's real reads (the \
+              faction query + the route-gate resources (grid / links / squad fog / tuning / \
+              floor costs) + the GTW-70 faction-aware fog selection inputs (player faction + \
+              omniscient fog) + the reject writer + Commands (to start the walk); bundling \
+              them into an opaque SystemParam struct would hide the system's real reads (the \
               dispatch_fire BattleGridsParam precedent applies only when a bundle is reused \
               across systems)"
 )]
@@ -227,6 +229,13 @@ pub fn dispatch_move(
     squad: Res<SquadVisibility>,
     tuning: Res<CombatTuning>,
     floor_costs: Res<FloorCostGrid>,
+    // GTW-70: the faction-aware move-gate inputs. The player faction (to know if the mover
+    // IS the player) and the AI's omniscient move fog, both battle-lifetime — taken as
+    // `Option<Res<_>>` so a harness without them (no live battle) falls back to the player
+    // fog, keeping player movement byte-identical to the pre-GTW-70 single-fog gate
+    // (`bevy-traps.md` #1).
+    player: Option<Res<PlayerFaction>>,
+    omniscient: Option<Res<OmniscientFog>>,
     mut rejects: MessageWriter<MoveRejected>,
     mut commands: Commands,
 ) {
@@ -242,11 +251,27 @@ pub fn dispatch_move(
         // expects (one deref — NOT the inner `IVec3`).
         let start: CellLevel = **position;
 
+        // GTW-70: select the planning fog by MOVER FACTION through the shared `move_fog`
+        // selector — the player moves on the squad fog (byte-identical to GTW-353), a
+        // non-player mover (the AI) on the omniscient fog so it routes toward the player's
+        // true cell without being gated by the *player's* fog (the reposition-soft-lock
+        // fix). The enemy AI pre-checks against the IDENTICAL `move_fog` selection, so
+        // planner and executor share ONE fog and cannot drift. A harness without the
+        // player faction / omniscient fog (no live battle) falls back to the squad fog,
+        // preserving the pre-GTW-70 gate exactly.
+        let player_fog: &SquadVisibility = &squad;
+        let planning_fog: &SquadVisibility = match (player.as_deref(), omniscient.as_deref()) {
+            (Some(player), Some(omniscient)) => {
+                move_fog(mover_faction, **player, player_fog, omniscient)
+            }
+            _ => player_fog,
+        };
+
         // C1: build the GTW-353 visibility-gated planning view from the LIVE world — the
-        // squad fog + the per-commit occupant→relation resolver (closed over the mover's
+        // selected fog + the per-commit occupant→relation resolver (closed over the mover's
         // faction and the disjoint `&Faction` query). UNSEEN cells are non-routable; a
         // visible enemy / own-squad ganger blocks; EXPLORED stays routable.
-        let planning = PlanningView::new(&squad, |occupant| {
+        let planning = PlanningView::new(planning_fog, |occupant| {
             relation_to(&factions, mover_faction, occupant)
         });
 

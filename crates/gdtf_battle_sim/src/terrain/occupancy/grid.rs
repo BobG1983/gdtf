@@ -583,6 +583,22 @@ impl OccupancyGrid {
         })
     }
 
+    /// Every in-bounds `(cell, level)` of the grid's fixed extent — the full
+    /// `GRID_WIDTH × GRID_HEIGHT × MAX_LEVELS` (60 × 60 × 8) cell set, in flat-buffer
+    /// (`x + y·WIDTH + level·WIDTH·HEIGHT`) order.
+    ///
+    /// Walks the buffer's index space `0..SLOT_COUNT` (NOT the slots' contents), so it
+    /// yields EVERY structural cell regardless of terrain/occupant — the grid's extent is
+    /// fixed once built. This is what
+    /// [`SquadVisibility::omniscient`](crate::visibility::SquadVisibility::omniscient)
+    /// (GTW-70) materialises into the AI's "every cell visible+explored" move fog. A
+    /// read-only iterator that borrows nothing of the grid's contents (the mapping is a
+    /// pure index→key function), so the dense `28_800`-cell walk is allocation-free until
+    /// the caller collects it.
+    pub fn all_cells(&self) -> impl Iterator<Item = CellLevel> {
+        (0..SLOT_COUNT).map(Self::cell_level_of_index)
+    }
+
     /// The `(cell, level)` key the flat-buffer slot at `index` represents — the inverse
     /// of [`slot_index`](OccupancyGrid::slot_index) for an in-bounds index.
     ///

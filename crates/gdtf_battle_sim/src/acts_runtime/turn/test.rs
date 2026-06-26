@@ -1,7 +1,9 @@
-//! Headless turn-cycle tests (GTW-309) — the contract's three cases: player End Turn
-//! auto-passes the enemy back to the player; the player team's TU resets to max at its
-//! turn-start; the enemy team's TU is untouched when the player's turn starts (and vice
-//! versa).
+//! Headless turn-cycle tests (GTW-309; GTW-70 removed the enemy auto-pass) — the new
+//! contract's cases: a player End Turn hands off to the enemy and STOPS (no auto-pass);
+//! it emits ONE `TurnStarted` for the now-active team; the now-active team's TU resets to
+//! max while the other team's is untouched; and the enemy turn returns to the player once
+//! the enemy is done (the GTW-70 brain ends an empty enemy turn). The pure `regen_team_tu`
+//! one-team isolation is asserted directly on the helper.
 
 use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 
@@ -31,18 +33,21 @@ const ENEMY: Faction = Faction::new(1);
 
 /// Build a headless turn-cycle app: [`MinimalPlugins`] + [`SimActsPlugin`] (registers the
 /// [`EndTurnRequested`] buffer + the [`dispatch_end_turn`](crate::turn::dispatch_end_turn)
-/// system), seeded with the battle-lifetime turn resources ([`ActiveFaction`] on the
-/// player, [`PlayerFaction`] = the player). No [`BattleInProgress`](crate::battle::BattleInProgress)
-/// is inserted: this harness adds only [`SimActsPlugin`] (not the
+/// engine AND the GTW-70 [`enemy_ai_turn`](crate::ai::enemy_ai_turn) brain), seeded with the
+/// battle-lifetime turn resources ([`ActiveFaction`] on the player, [`PlayerFaction`] = the
+/// player). No [`BattleInProgress`](crate::battle::BattleInProgress) is inserted: this
+/// harness adds only [`SimActsPlugin`] (not the
 /// [`OccupancyMaintenancePlugin`](crate::occupancy_sync::OccupancyMaintenancePlugin) that
 /// owns the `SimSystems::Simulate` `configure_sets`), so the set carries no
-/// `BattleInProgress` gate here and `dispatch_end_turn`'s own
+/// `BattleInProgress` gate here and `dispatch_end_turn`'s / `enemy_ai_turn`'s own
 /// `run_if(resource_exists::<ActiveFaction>)` is the live guard (the `acts` test precedent).
 ///
 /// The shared sim resources the OTHER (ungated, in this harness) dispatch systems read —
-/// the three grids, the five seeded RNG streams (GTW-14), and [`CombatTuning`] — are inserted too (mirroring
-/// the `acts` test's `insert_sim_resources`), so those systems' `Res<_>` params validate
-/// and the update runs through to `dispatch_end_turn`.
+/// the grids, the five seeded RNG streams (GTW-14), and [`CombatTuning`] — are inserted too,
+/// so those systems' `Res<_>` params validate and the update runs through. No
+/// `OmniscientFog` is seeded: the bare turn-test gangers carry no [`Position`](crate::ganger::Position),
+/// so the brain sees no actable enemy and simply ends an enemy turn — exactly the empty-enemy
+/// pass these tests exercise.
 fn turn_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
@@ -56,8 +61,8 @@ fn turn_app() -> App {
     app.insert_resource(BraceStairCells::empty());
     // GTW-354: this harness has no `BattleInProgress` gate (it omits the
     // `OccupancyMaintenancePlugin` that owns the Simulate `configure_sets`), so the bundled
-    // `dispatch_move` runs ungated and its new route-gate reads must validate — seed an
-    // empty `VerticalLinkGraph` + `SquadVisibility` (these turn-cycle tests never move).
+    // `dispatch_move` runs ungated and its route-gate reads must validate — seed an empty
+    // `VerticalLinkGraph` + `SquadVisibility` (these turn-cycle tests never move).
     app.insert_resource(VerticalLinkGraph::default());
     app.insert_resource(SquadVisibility::default());
     // GTW-14: five per-subsystem streams from the test seed.
@@ -98,41 +103,11 @@ fn drain_turns_started(app: &mut App) -> Vec<TurnStarted> {
         .collect()
 }
 
-/// (GTW-328) A player End Turn emits TWO [`TurnStarted`] in order — the ENEMY turn start
-/// (the hand-off), then the PLAYER turn start (the enemy auto-pass) — each carrying the
-/// faction the cycle just made active. This pins the per-advance combat-log boundary signal.
+/// (GTW-70) A player End Turn hands control to the ENEMY and STOPS there — there is no
+/// auto-pass back to the player. After one update the active faction is the enemy; the
+/// GTW-70 brain (not `dispatch_end_turn`) is what later returns control to the player.
 #[test]
-fn end_turn_emits_turn_started_per_active_faction_advance() {
-    let mut app = turn_app();
-    spawn_drained(app.world_mut(), PLAYER, 100);
-    spawn_drained(app.world_mut(), ENEMY, 100);
-
-    app.world_mut().write_message(EndTurnRequested);
-    app.update();
-
-    let turns = drain_turns_started(&mut app);
-    assert_eq!(
-        turns.len(),
-        2,
-        "a player End Turn crosses two turn boundaries (enemy hand-off + player \
-         auto-pass): {turns:?}",
-    );
-    assert_eq!(
-        turns.first().map(|t| t.now_active),
-        Some(ENEMY),
-        "the first TurnStarted announces the enemy's turn (the hand-off)",
-    );
-    assert_eq!(
-        turns.get(1).map(|t| t.now_active),
-        Some(PLAYER),
-        "the second TurnStarted announces the player's turn (the auto-pass back)",
-    );
-}
-
-/// (a) A player End Turn auto-passes the enemy turn straight back to the player — the
-/// active faction ends the cycle back on the player.
-#[test]
-fn player_end_turn_returns_control_to_player() {
+fn player_end_turn_hands_off_to_enemy_and_stops() {
     let mut app = turn_app();
     spawn_drained(app.world_mut(), PLAYER, 100);
     spawn_drained(app.world_mut(), ENEMY, 100);
@@ -143,52 +118,102 @@ fn player_end_turn_returns_control_to_player() {
     app.world_mut().write_message(EndTurnRequested);
     app.update();
 
-    // Player ended → enemy → (no AI) auto-pass → player. Control is back on the player.
-    assert_eq!(**app.world().resource::<ActiveFaction>(), PLAYER);
+    // Player ended → enemy, and the cycle STOPS on the enemy (no auto-pass back).
+    assert_eq!(
+        **app.world().resource::<ActiveFaction>(),
+        ENEMY,
+        "a player End Turn hands off to the enemy and stops there (GTW-70 removed the \
+         auto-pass); control returns to the player only once the enemy turn ends",
+    );
 }
 
-/// (b) The player team's TU resets to its [`TuMax`] at its turn-start — every player
-/// ganger's drained pool is restored after the cycle returns control to the player.
+/// (GTW-70) A player End Turn emits EXACTLY ONE [`TurnStarted`] — the enemy turn start (the
+/// hand-off) — and no more, since the cycle no longer double-advances back to the player in
+/// the same request. This pins the per-advance combat-log boundary signal under the new
+/// single-advance contract.
 #[test]
-fn player_team_tu_resets_to_max_at_turn_start() {
+fn end_turn_emits_one_turn_started_for_the_now_active_team() {
     let mut app = turn_app();
-    let player_a = spawn_drained(app.world_mut(), PLAYER, 100);
-    let player_b = spawn_drained(app.world_mut(), PLAYER, 80);
+    spawn_drained(app.world_mut(), PLAYER, 100);
+    spawn_drained(app.world_mut(), ENEMY, 100);
 
     app.world_mut().write_message(EndTurnRequested);
     app.update();
 
-    // Both player gangers' pools are restored to their own TuMax at the player's
-    // turn-start (the auto-pass returns control + regens the player team).
-    assert_eq!(*tu_of(app.world(), player_a), 100);
-    assert_eq!(*tu_of(app.world(), player_b), 80);
+    let turns = drain_turns_started(&mut app);
+    assert_eq!(
+        turns.len(),
+        1,
+        "a single End Turn now crosses exactly ONE turn boundary (the hand-off), not two: \
+         {turns:?}",
+    );
+    assert_eq!(
+        turns.first().map(|t| t.now_active),
+        Some(ENEMY),
+        "the one TurnStarted announces the enemy's turn (the hand-off)",
+    );
 }
 
-/// (c) The enemy team's TU is UNTOUCHED when the player's turn starts (and the player's is
-/// untouched when only the enemy regens) — TU regenerates for exactly the team whose turn
-/// is starting.
+/// (GTW-70) TU regenerates for exactly the team whose turn is STARTING — the now-active
+/// (enemy) team's drained pool resets to its [`TuMax`], while the player team's pool is left
+/// untouched (it regenerates only when control returns to it). The asymmetry is the contract.
 #[test]
-fn other_team_tu_is_untouched_at_a_teams_turn_start() {
+fn now_active_team_regens_its_tu_other_team_untouched() {
     let mut app = turn_app();
-    // The enemy starts with SOME TU it should keep across the player's turn-start.
-    let enemy = app
-        .world_mut()
-        .spawn((ENEMY, Tu::new(33), TuMax::new(100)))
-        .id();
     let player = spawn_drained(app.world_mut(), PLAYER, 100);
+    let enemy = spawn_drained(app.world_mut(), ENEMY, 80);
 
     app.world_mut().write_message(EndTurnRequested);
     app.update();
 
-    // The cycle regens enemy-then-player; the FINAL player regen does NOT touch the enemy,
-    // and the enemy's own regen earlier set it to 100, then it stays — so what matters for
-    // the contract is the asymmetry: the player's turn-start regen leaves the enemy as the
-    // enemy regen left it, never re-touched by the player pass.
-    // Player pool is restored at its turn-start.
-    assert_eq!(*tu_of(app.world(), player), 100);
+    // The enemy's turn started → its pool is restored to its own TuMax.
+    assert_eq!(
+        *tu_of(app.world(), enemy),
+        80,
+        "the now-active (enemy) team's TU resets to its own TuMax at its turn-start",
+    );
+    // The player's pool is NOT touched — it regenerates only at its own next turn-start.
+    assert_eq!(
+        *tu_of(app.world(), player),
+        0,
+        "the player team's TU is untouched at the enemy's turn-start (no auto-pass regen)",
+    );
+}
 
-    // Now drive the PURE helper directly to prove the one-team isolation precisely: a
-    // player regen leaves the enemy's pool exactly as-is.
+/// (GTW-70) The enemy turn RETURNS to the player once the enemy is done — with no actable
+/// enemy ganger (these bare fixtures carry no `Position`), the GTW-70 brain immediately ends
+/// the empty enemy turn, so a second update hands control back to the player and regenerates
+/// the player's TU. This proves the brain — not `dispatch_end_turn` — now closes the cycle.
+#[test]
+fn enemy_turn_returns_to_player_when_the_enemy_is_done() {
+    let mut app = turn_app();
+    let player = spawn_drained(app.world_mut(), PLAYER, 100);
+    spawn_drained(app.world_mut(), ENEMY, 80);
+
+    app.world_mut().write_message(EndTurnRequested);
+    // Update 1: player → enemy (the brain emits its own EndTurnRequested for the empty
+    // enemy turn). Update 2: that EndTurnRequested cycles enemy → player.
+    app.update();
+    app.update();
+
+    assert_eq!(
+        **app.world().resource::<ActiveFaction>(),
+        PLAYER,
+        "the empty enemy turn ends via the GTW-70 brain, returning control to the player",
+    );
+    assert_eq!(
+        *tu_of(app.world(), player),
+        100,
+        "control returning to the player regenerates the player team's TU at its turn-start",
+    );
+}
+
+/// The pure [`regen_team_tu`] helper resets ONLY the named team — a player regen leaves the
+/// enemy's pool exactly as-is, and the symmetric enemy regen leaves the player's untouched.
+/// Driven directly on the helper (no `App`), the one-team isolation the cycle relies on.
+#[test]
+fn regen_team_tu_resets_only_the_named_team() {
+    // A player regen leaves the enemy's pool exactly as-is.
     let mut enemy_tu = Tu::new(7);
     let enemy_faction = ENEMY;
     let enemy_max = TuMax::new(100);
@@ -202,9 +227,8 @@ fn other_team_tu_is_untouched_at_a_teams_turn_start() {
         ],
         PLAYER,
     );
-    // The player team reset to max; the enemy team's pool is UNTOUCHED.
-    assert_eq!(*player_tu, 100);
-    assert_eq!(*enemy_tu, 7);
+    assert_eq!(*player_tu, 100, "the player team reset to its max");
+    assert_eq!(*enemy_tu, 7, "the enemy team's pool is UNTOUCHED");
 
     // ... and the symmetric direction: an enemy regen leaves the player untouched.
     let mut enemy_tu2 = Tu::new(0);
@@ -216,10 +240,6 @@ fn other_team_tu_is_untouched_at_a_teams_turn_start() {
         ],
         ENEMY,
     );
-    assert_eq!(*enemy_tu2, 100);
-    assert_eq!(*player_tu2, 42);
-
-    // The earlier app-driven enemy-then-player cycle left the enemy at its OWN max (its
-    // turn-start regen ran), confirming the enemy DID regen on its (auto-passed) turn.
-    assert_eq!(*tu_of(app.world(), enemy), 100);
+    assert_eq!(*enemy_tu2, 100, "the enemy team reset to its max");
+    assert_eq!(*player_tu2, 42, "the player team's pool is UNTOUCHED");
 }
