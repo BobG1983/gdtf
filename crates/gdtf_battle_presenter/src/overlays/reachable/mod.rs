@@ -5,9 +5,11 @@
 //! `input → presenter → sim` dependency direction, the overlay is split — the SAME
 //! split as the [`PathPreview`](crate::PathPreview) seam:
 //!
-//! - the PRESENTER (this module) DEFINES the read-seam [`ReachableCells`] resource
+//! - the PRESENTER (this module) DEFINES the read-seam
+//!   [`ReachableCells`](crate::ReachableCells) resource
 //!   (the cells the selected ganger can reach within its remaining TU, each with its
-//!   cheapest accumulated cost) and the draw system [`draw_reachable_overlay`] (the
+//!   cheapest accumulated cost) and the draw system
+//!   [`draw_reachable_overlay`](crate::draw_reachable_overlay) (the
 //!   per-cell hard-cut-to-active-storey sprites);
 //! - the INPUT crate calls [`reachable_within`](gdtf_battle_sim::reachable_within) for
 //!   the selected ganger and POPULATES the resource — the
@@ -24,4 +26,7 @@ mod overlay;
 #[cfg(test)]
 mod test;
 
-pub use overlay::{ReachableCellSprite, ReachableCells, draw_reachable_overlay};
+pub use overlay::{
+    REACHABLE_OVERLAY_ENV, ReachableCellSprite, ReachableCells, ReachableOverlayEnabled,
+    draw_reachable_overlay,
+};

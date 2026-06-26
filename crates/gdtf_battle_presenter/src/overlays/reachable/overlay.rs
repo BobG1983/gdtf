@@ -36,6 +36,57 @@ use gdtf_battle_sim::{Cell, CellLevel, Level, Tu};
 
 use crate::{ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered};
 
+/// The environment variable that opts the reachable-range debug overlay IN
+/// (GTW-450 C3): set truthy (`1` / `true` / `yes` / `on`, case-insensitive) to
+/// render the overlay in a debug build. Unset / empty / any other value leaves it
+/// off — the shipping default (the click-to-target route preview is the only move
+/// feedback).
+///
+/// Read ONCE at startup into [`ReachableOverlayEnabled`] by
+/// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin); the overlay systems
+/// `run_if` that resource's value, so tests set the RESOURCE directly and never
+/// touch process-global env (the flaky-tests rule).
+#[cfg(debug_assertions)]
+pub const REACHABLE_OVERLAY_ENV: &str = "GDTF_DEBUG_REACHABLE_OVERLAY";
+
+/// Whether the reachable-range DEBUG overlay renders this process (GTW-450 C3).
+///
+/// A named domain flag (no-bare-types: a `bool` carrying the "render the debug
+/// overlay" meaning, private inner, read through the derived [`Deref`]). Seeded ONCE
+/// at startup from [`REACHABLE_OVERLAY_ENV`] by
+/// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin); both the input-crate
+/// populate system and the presenter draw system `run_if` `**flag` is `true`. Its
+/// [`Default`] is `false` (overlay off) so a focused harness that omits the seed
+/// gets the shipping behaviour.
+///
+/// Lives behind `#[cfg(debug_assertions)]` — the overlay it gates is debug-only, so
+/// in a release build neither the flag nor the systems that read it compile (C1).
+#[cfg(debug_assertions)]
+#[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq, Deref)]
+pub struct ReachableOverlayEnabled(bool);
+
+#[cfg(debug_assertions)]
+impl ReachableOverlayEnabled {
+    /// Build the flag from a raw enabled `bool` (the env-seed / test path).
+    #[must_use]
+    pub const fn new(enabled: bool) -> Self {
+        Self(enabled)
+    }
+
+    /// Read [`REACHABLE_OVERLAY_ENV`] into the flag: truthy (`1` / `true` / `yes` /
+    /// `on`, case-insensitive, trimmed) → enabled; unset / empty / anything else →
+    /// disabled. Called ONCE at startup (NOT per-frame).
+    #[must_use]
+    pub fn from_env() -> Self {
+        Self(std::env::var(REACHABLE_OVERLAY_ENV).is_ok_and(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        }))
+    }
+}
+
 /// The presenter-owned reachable-range overlay read-seam — the cells the SELECTED
 /// ganger can reach within its remaining TU, each with its cheapest accumulated cost
 /// (GTW-387 C3, the `input → presenter → sim` seam).

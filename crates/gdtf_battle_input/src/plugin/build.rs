@@ -5,11 +5,17 @@
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_presenter::{
-    FireTargetHighlight, GamepadCursorMoved, HighlightRequest, PathPreview, ReachableCells,
+    FireTargetHighlight, GamepadCursorMoved, HighlightRequest, PathPreview,
 };
+#[cfg(debug_assertions)]
+use gdtf_battle_presenter::{ReachableCells, ReachableOverlayEnabled};
+// GTW-450 — FloorCostGrid is consumed ONLY by the DEBUG-gated reachable-overlay populate fn
+// (`register_reachable_overlay_population`), so import it only under `#[cfg(debug_assertions)]`
+// to keep the release build from naming an unused symbol.
+#[cfg(debug_assertions)]
+use gdtf_battle_sim::FloorCostGrid;
 use gdtf_battle_sim::{
-    BattleInProgress, FloorCostGrid, OccupancyGrid, PlayerFaction, SquadVisibility,
-    VerticalLinkGraph,
+    BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
     acts::{
         EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested, ReloadRequested,
         SetAimingRequested, SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
@@ -19,6 +25,10 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
 };
 
+// GTW-450 — the reachable-overlay POPULATE system + its presenter-owned flag are DEBUG-only
+// (C1); imported only under `#[cfg(debug_assertions)]` so the release build never names them.
+#[cfg(debug_assertions)]
+use crate::selection::populate_reachable_overlay;
 use crate::{
     InputSystems,
     fire_mode::{SelectedFireMode, sync_fire_mode_on_select},
@@ -32,9 +42,8 @@ use crate::{
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
         PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
-        populate_fire_target, populate_path_preview, populate_reachable_overlay,
-        reset_move_target_on_fire_mode_change, right_click_turn_to_face,
-        update_selection_highlight,
+        populate_fire_target, populate_path_preview, reset_move_target_on_fire_mode_change,
+        right_click_turn_to_face, update_selection_highlight,
     },
 };
 
@@ -277,8 +286,12 @@ impl Plugin for GdtfBattleInputPlugin {
         // `too_many_lines` lint).
         register_path_preview_population(app);
 
-        // GTW-387 — the reachable-range overlay POPULATE system (calls `reachable_within` for
-        // the selected ganger; extracted to keep `build` under the `too_many_lines` lint).
+        // GTW-450 — the reachable-range overlay POPULATE system is DEBUG-only (C1): it exists
+        // solely to fill the debug overlay's read-seam, so it compiles only under
+        // `#[cfg(debug_assertions)]`. A release build excludes it (the move feedback is the
+        // click-to-target route preview alone, C4). Calls `reachable_within` for the selected
+        // ganger; extracted to keep `build` under the `too_many_lines` lint.
+        #[cfg(debug_assertions)]
         register_reachable_overlay_population(app);
 
         // GTW-371 — the fire-target highlight POPULATE system (decides the fireable-enemy verdict
@@ -462,8 +475,14 @@ fn register_fire_target_population(app: &mut App) {
     );
 }
 
-/// Registers the GTW-387 reachable-range overlay POPULATE system into
+/// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay POPULATE system into
 /// [`InputSystems::Gather`].
+///
+/// DEBUG-ONLY (GTW-450 C1): this fn — and every item it names — compiles only under
+/// `#[cfg(debug_assertions)]`; a release build excludes it. The system additionally
+/// `run_if`s the presenter-owned [`ReachableOverlayEnabled`] flag VALUE (the C3 runtime
+/// opt-in), so even in a debug build it is INERT unless `GDTF_DEBUG_REACHABLE_OVERLAY` was
+/// set truthy at startup — no overlay populates by default (C3 / C4).
 ///
 /// [`populate_reachable_overlay`] reads the current [`SelectedShooter`] and its
 /// `(`[`Position`](gdtf_battle_sim::Position)`,` [`Tu`](gdtf_battle_sim::Tu)`,`
@@ -483,6 +502,7 @@ fn register_fire_target_population(app: &mut App) {
 /// validation (`bevy-traps.md` #1). Extracted from
 /// [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep `build` under the
 /// `too_many_lines` lint (the `register_path_preview_population` precedent).
+#[cfg(debug_assertions)]
 fn register_reachable_overlay_population(app: &mut App) {
     app.add_systems(
         Update,
@@ -497,7 +517,22 @@ fn register_reachable_overlay_population(app: &mut App) {
                     .and_then(resource_exists::<SquadVisibility>)
                     .and_then(resource_exists::<CombatTuning>)
                     .and_then(resource_exists::<FloorCostGrid>)
-                    .and_then(resource_exists::<ReachableCells>),
+                    .and_then(resource_exists::<ReachableCells>)
+                    // GTW-450 C3 — the runtime opt-in: populate only when the flag is true.
+                    .and_then(reachable_overlay_enabled),
             ),
     );
+}
+
+/// Run-condition: whether the reachable-range DEBUG overlay is enabled this process
+/// (GTW-450 C3) — reads the presenter-owned [`ReachableOverlayEnabled`] flag VALUE.
+/// DEBUG-only.
+///
+/// `Option<Res<…>>` (fail-closed if absent) so the populate system stays inert unless the
+/// presenter seeded the flag AND it is `true`. The presenter's `build` inserts it; a
+/// focused input-only harness sets the RESOURCE directly to exercise on/off (it must never
+/// touch process-global env — the flaky-tests rule).
+#[cfg(debug_assertions)]
+fn reachable_overlay_enabled(flag: Option<Res<ReachableOverlayEnabled>>) -> bool {
+    flag.is_some_and(|flag| **flag)
 }

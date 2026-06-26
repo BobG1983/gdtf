@@ -30,8 +30,8 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    ActiveLevel, Layer, ReachableCellSprite, ReachableCells, TopDownRendererPlugin,
-    cell_to_world_layered,
+    ActiveLevel, Layer, ReachableCellSprite, ReachableCells, ReachableOverlayEnabled,
+    TopDownRendererPlugin, cell_to_world_layered,
 };
 use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, SquadVisibility, Tu};
 
@@ -87,6 +87,10 @@ fn overlay_app() -> App {
     )
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(BattleInProgress);
+    // GTW-450 — the draw system `run_if`s the `ReachableOverlayEnabled` flag VALUE; the
+    // plugin seeds it from the env var (default OFF). Force it ON via the RESOURCE directly
+    // (NEVER process-global env, the flaky-tests rule) so this in-engine draw proof runs.
+    app.insert_resource(ReachableOverlayEnabled::new(true));
     // Warn-not-panic on a transient missing-resource gate race (the path_preview.rs
     // precedent): the focused harness opens `BattleInProgress` WITHOUT the full
     // `setup_battle`, so other battle-gated draw systems warn-skip rather than panicking.

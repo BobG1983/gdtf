@@ -20,8 +20,8 @@ use bevy::{
     asset::AssetPlugin, input::ButtonInput, platform::collections::HashSet, prelude::*,
     scene::ScenePlugin,
 };
-use gdtf_battle_input::{GdtfBattleInputPlugin, SelectedShooter};
-use gdtf_battle_presenter::{ActiveLevel, ReachableCells};
+use gdtf_battle_input::{GdtfBattleInputPlugin, PathPreviewTarget, SelectedShooter};
+use gdtf_battle_presenter::{ActiveLevel, PathPreview, ReachableCells, ReachableOverlayEnabled};
 use gdtf_battle_sim::{
     BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, FloorCostGrid,
     GRID_HEIGHT, GRID_WIDTH, Level, MAX_LEVELS, OccupancyGrid, PlanningView, PlayerFaction,
@@ -85,7 +85,12 @@ fn stair_graph(foot: CellLevel, head: CellLevel) -> Option<VerticalLinkGraph> {
 /// plus the grids `populate_reachable_overlay` reads and the presenter-owned
 /// `ReachableCells` + `ActiveLevel` (which the presenter plugin would normally init —
 /// inserted here since this focused harness adds no renderer plugin).
-fn reachable_app(links: VerticalLinkGraph) -> App {
+///
+/// GTW-450 — `overlay_enabled` seeds the `ReachableOverlayEnabled` flag RESOURCE directly
+/// (NEVER via process-global `std::env`, the flaky-tests rule): the populate system's
+/// `run_if` reads this resource's VALUE, so `false` keeps the producer inert (the shipping
+/// default) and `true` opts it in.
+fn reachable_app(links: VerticalLinkGraph, overlay_enabled: bool) -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
         .add_plugins(GdtfBattleInputPlugin);
@@ -101,14 +106,20 @@ fn reachable_app(links: VerticalLinkGraph) -> App {
     w.insert_resource(ButtonInput::<MouseButton>::default());
     w.insert_resource(ActiveLevel::new(Level::new(0)));
     w.insert_resource(ReachableCells::cleared());
+    w.insert_resource(ReachableOverlayEnabled::new(overlay_enabled));
+    // GTW-450 C5(b) — the click-to-target route preview is the ONLY move feedback by default
+    // and MUST stay working REGARDLESS of the overlay gating. Seed the presenter-owned
+    // `PathPreview` so the always-on `populate_path_preview` system validates + runs here.
+    w.insert_resource(PathPreview::cleared());
     app
 }
 
-/// C3 (no selection → cleared) — with no ganger selected the resource stays empty.
+/// C3 (no selection → cleared) — with no ganger selected the resource stays empty
+/// (overlay flag ON so the producer actually runs; it still clears with no selection).
 #[test]
 fn clears_reachable_when_no_selection() {
     let links = VerticalLinkGraph::default();
-    let mut app = reachable_app(links);
+    let mut app = reachable_app(links, true);
 
     // Seed a stale non-empty set, then leave SelectedShooter at its default (None).
     app.world_mut()
@@ -122,9 +133,52 @@ fn clears_reachable_when_no_selection() {
     );
 }
 
-/// C3 (the producer) — with a selected ganger the populate system fills `ReachableCells`
-/// with EXACTLY the `reachable_within` set and the set contains L1 cells (the stair head
-/// and beyond). This exercises the GTW-387 B cross-storey link-endpoint relaxation.
+/// GTW-450 C5(a) — flag OFF (the default): selecting a unit yields ZERO overlay cells.
+/// The populate system `run_if`s the `ReachableOverlayEnabled` flag VALUE, so with the
+/// flag `false` it NEVER runs and the read-seam stays empty even though a player ganger
+/// IS selected with TU budget over a reachable grid.
+///
+/// PIN-DISCRIMINATION: this goes RED if the C3 flag `run_if` were dropped — then the
+/// populate system would run regardless and fill the set, breaking the "no overlay by
+/// default" contract. (Mirror of the flag-ON test below, which fills it.)
+#[test]
+fn no_overlay_cells_when_flag_off() {
+    let foot = cell(5, 5, 0);
+    let head = cell(5, 5, 1);
+    let Some(links) = stair_graph(foot, head) else {
+        return; // test-author wiring error — guard without unwrap
+    };
+
+    // Flag OFF — the shipping default.
+    let mut app = reachable_app(links, false);
+
+    // Select a player ganger at the stair foot with a generous TU budget.
+    let ganger = app
+        .world_mut()
+        .spawn((Position::new(foot), BUDGET, PLAYER_FACTION))
+        .id();
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+
+    // Settle several updates so a (wrongly-running) populate system would have fired.
+    for _ in 0..8 {
+        app.update();
+    }
+
+    assert!(
+        app.world().resource::<ReachableCells>().is_empty(),
+        "with the overlay flag OFF (the default) a selected unit must yield ZERO overlay \
+         cells (C5a: no overlay by default — the populate system is gated on the flag)",
+    );
+}
+
+/// C3 / GTW-450 C5(c) — flag ON, the producer fills `ReachableCells` with EXACTLY the
+/// `reachable_within` set and the set contains L1 cells (the stair head and beyond). This
+/// exercises the GTW-387 B cross-storey link-endpoint relaxation.
+///
+/// PIN-DISCRIMINATION: this goes RED if `populate_reachable_overlay` stopped running (e.g.
+/// the registration were dropped or the flag `run_if` inverted) — the set would stay empty
+/// and the `advance_until` would time out. The flag is set ON via the RESOURCE directly.
 #[test]
 fn populates_reachable_cells_matching_reachable_within_including_l1() {
     let foot = cell(5, 5, 0);
@@ -133,7 +187,8 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
         return; // test-author wiring error — guard without unwrap
     };
 
-    let mut app = reachable_app(links);
+    // Flag ON — opt the debug overlay producer in.
+    let mut app = reachable_app(links, true);
 
     // Select the player ganger at the stair foot.
     let ganger = app
@@ -192,5 +247,64 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
         "the populated ReachableCells cells MUST exactly match a direct reachable_within call \
          (the populate system reuses the sim search); populated={populated_cells:?}, \
          expected={expected_cells:?}",
+    );
+}
+
+/// GTW-450 C5(b) — the click-to-target route preview STILL works and is UNAFFECTED by the
+/// overlay gating. With the overlay flag OFF (the default — no reachable overlay), selecting
+/// a ganger and setting a move TARGET (the two-click flow's click-1) populates the
+/// presenter-owned `PathPreview` with a route — the ONLY move highlight in shipping play (C4).
+///
+/// PIN-DISCRIMINATION: this goes RED if `populate_path_preview` / `PathPreview` broke (e.g. if
+/// gating the overlay accidentally disturbed the always-on preview path) — the preview would
+/// stay empty and the `advance_until` would time out. It uses the OFF flag precisely to prove
+/// the preview is independent of the overlay opt-in.
+#[test]
+fn click_to_target_path_preview_still_works_with_overlay_off() {
+    let links = VerticalLinkGraph::default();
+    // Flag OFF — the shipping default; the route preview must still populate.
+    let mut app = reachable_app(links, false);
+
+    let start = cell(10, 10, 0);
+    let goal = cell(14, 12, 0);
+
+    // Select a player ganger and set the move target (the GTW-356 two-click click-1).
+    let ganger = app
+        .world_mut()
+        .spawn((Position::new(start), BUDGET, PLAYER_FACTION))
+        .id();
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+    app.world_mut()
+        .insert_resource(PathPreviewTarget::new(goal));
+
+    // Settle: the always-on `populate_path_preview` runs every Update.
+    assert!(
+        advance_until(
+            &mut app,
+            |app| !app.world().resource::<PathPreview>().is_empty(),
+            8,
+        ),
+        "the click-to-target route preview must populate within 8 updates (C5b: it is the only \
+         move feedback by default and stays working regardless of the overlay gating)",
+    );
+
+    let preview = app.world().resource::<PathPreview>();
+    // POSITIVE: the route runs start..=goal — a real planned path, not an incidental cell.
+    assert_eq!(
+        preview.cells().first(),
+        Some(&start),
+        "the previewed route must start at the ganger's cell",
+    );
+    assert_eq!(
+        preview.cells().last(),
+        Some(&goal),
+        "the previewed route must reach the clicked target",
+    );
+
+    // And the overlay itself stays EMPTY (flag OFF) — the two seams are independent.
+    assert!(
+        app.world().resource::<ReachableCells>().is_empty(),
+        "the reachable overlay stays empty with the flag OFF even while the preview is shown",
     );
 }

@@ -13,16 +13,15 @@ use crate::{
     ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle,
     FireTargetHighlight, FxTuning, FxTuningHandle, GamepadCursorMoved, GangerSprites,
     HighlightRequest, PanEdgeDwellState, PanTuning, PanTuningHandle, PathPreview, PresenterSystems,
-    ReachableCells, ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle,
-    TopDownAtlases, advance_projectiles, advance_sprite_tweens, animate_floating_text,
-    animate_impact, apply_active_level_filter, clamp_camera_to_bounds,
-    despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites, draw_fire_target,
-    draw_highlight_on_request, draw_path_preview, draw_reachable_overlay, draw_static_battlefield,
-    draw_vertical_links, expire_flashes, frame_camera_on_units, load_character_roles,
-    load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
-    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
-    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed, read_injury_fct,
-    redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
+    ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases,
+    advance_projectiles, advance_sprite_tweens, animate_floating_text, animate_impact,
+    apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
+    despawn_removed_ganger_sprites, draw_fire_target, draw_highlight_on_request, draw_path_preview,
+    draw_static_battlefield, draw_vertical_links, expire_flashes, frame_camera_on_units,
+    load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
+    load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
+    present_fog, read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
+    read_injury_fct, redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
     redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
     redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
     reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
@@ -30,6 +29,10 @@ use crate::{
     spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, swap_destroyed_slab,
     update_ganger_life_state,
 };
+// GTW-450 — the reachable-range overlay items are DEBUG-only (C1); imported via a
+// separate `#[cfg(debug_assertions)]` `use` below so the release build never names them.
+#[cfg(debug_assertions)]
+use crate::{ReachableCells, ReachableOverlayEnabled, draw_reachable_overlay};
 
 /// Which battle renderer the [`BattlePresenterPlugin`] builds.
 ///
@@ -156,11 +159,6 @@ impl Plugin for TopDownRendererPlugin {
             // (clearing it off any non-fireable hover); the draw system READS it. Its Default is
             // the empty highlight, so a battle with no fireable hover draws no fire target.
             .init_resource::<FireTargetHighlight>()
-            // GTW-387 — the reachable-range overlay read-seam (the cells the selected ganger
-            // can reach within its remaining TU). Present for the whole battle span: the input
-            // crate POPULATES it (clearing it when no ganger is selected); the draw system READS
-            // it. Its Default is the empty set, so a battle with no selection draws nothing.
-            .init_resource::<ReachableCells>()
             // The S5 ganger-sprite map (sim Entity -> presenter Entity), present for the
             // whole battle span so the spawn / move / reframe / death / removal systems
             // share one mapping.
@@ -358,9 +356,14 @@ impl Plugin for TopDownRendererPlugin {
         // (extracted to keep `build` under the `too_many_lines` lint).
         register_path_preview_systems(app);
 
-        // GTW-387: the reachable-range overlay DRAW (the per-cell green tint). It reads the
-        // presenter-owned `ReachableCells` (populated by the input crate) and hard-cuts to
-        // the active storey (extracted to keep `build` under the `too_many_lines` lint).
+        // GTW-450: the reachable-range overlay is the DEBUG-only overlay (visual noise in
+        // normal play). EVERY overlay-render-only item — the `ReachableCells` read-seam, the
+        // `ReachableOverlayEnabled` flag (seeded ONCE here from the env var), and the DRAW
+        // system (`run_if` the flag) — compiles ONLY under `#[cfg(debug_assertions)]` (C1).
+        // A release build (debug_assertions=false) excludes all of it; the move feedback is
+        // then the click-to-target route preview alone (C4). Extracted to keep `build` under
+        // the `too_many_lines` lint.
+        #[cfg(debug_assertions)]
         register_reachable_overlay_systems(app);
 
         // GTW-371: the fire-target highlight DRAW (the red under-actor tile + the opaque TU-cost
@@ -898,11 +901,16 @@ fn register_fire_target_systems(app: &mut App) {
     );
 }
 
-/// Registers the GTW-387 reachable-range overlay DRAW system into the already-defined
-/// [`PresenterSystems::Draw`] band.
+/// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay: the [`ReachableCells`]
+/// read-seam, the [`ReachableOverlayEnabled`] flag (seeded from the env var), and the DRAW
+/// system into the already-defined [`PresenterSystems::Draw`] band.
 ///
-/// The PRESENTER owns the [`ReachableCells`] read-seam (`init_resource`-d on build above)
-/// plus this draw system; the INPUT crate POPULATES the resource by calling
+/// DEBUG-ONLY (GTW-450 C1): this whole fn — and every item it names — compiles only under
+/// `#[cfg(debug_assertions)]`. A release build excludes it, so the overlay never renders
+/// in shipping play (it washes the FOV green — visual noise the user ruled out).
+///
+/// The PRESENTER owns the [`ReachableCells`] read-seam (`init_resource`-d here) plus this
+/// draw system; the INPUT crate POPULATES the resource by calling
 /// [`reachable_within`](gdtf_battle_sim::reachable_within) for the selected ganger — the
 /// [`PathPreview`](crate::PathPreview) precedent, where the presenter DEFINES the type
 /// and input WRITES it, keeping the `input → presenter → sim` direction.
@@ -912,23 +920,50 @@ fn register_fire_target_systems(app: &mut App) {
 /// storey. The overlay follows `PageUp` with NO extra wiring: it reads `Res<ActiveLevel>`
 /// live every frame.
 ///
-/// Gated `run_if(resource_exists::<BattleInProgress>)` — the sim's live-battle witness
-/// — AND `resource_exists::<SquadVisibility>` so the resource is present (inserted by
-/// the sim's `setup_battle`; without this guard a focused harness that opens
-/// `BattleInProgress` directly could miss it). It needs NO render resource (solid-tint
-/// sprites, not atlas tiles) and the always-present `init_resource`-d [`ReachableCells`]
-/// and [`ActiveLevel`]. Ordered `.after(present_fog)` so the range tint composites OVER
-/// the fogged battlefield, consistent with the path-preview placement.
+/// The [`ReachableOverlayEnabled`] flag is inserted ONCE here from
+/// [`ReachableOverlayEnabled::from_env`] (reading [`REACHABLE_OVERLAY_ENV`] —
+/// `GDTF_DEBUG_REACHABLE_OVERLAY`); UNSET → `false` → the draw system's `run_if` is false
+/// → NO overlay renders by default (GTW-450 C3 / C4).
+///
+/// Gated `run_if(resource_exists::<BattleInProgress>)` — the sim's live-battle witness —
+/// AND `resource_exists::<SquadVisibility>` so the resource is present (inserted by the
+/// sim's `setup_battle`) AND the [`ReachableOverlayEnabled`] flag VALUE (the C3 runtime
+/// opt-in; the flag is always present here, so the gate reads its value, not its
+/// existence). It needs NO render resource (solid-tint sprites, not atlas tiles) and the
+/// always-present `init_resource`-d [`ReachableCells`] and [`ActiveLevel`]. Ordered
+/// `.after(present_fog)` so the range tint composites OVER the fogged battlefield,
+/// consistent with the path-preview placement.
+#[cfg(debug_assertions)]
 fn register_reachable_overlay_systems(app: &mut App) {
-    app.add_systems(
-        Update,
-        draw_reachable_overlay
-            .in_set(PresenterSystems::Draw)
-            .after(present_fog)
-            .run_if(
-                resource_exists::<BattleInProgress>.and_then(resource_exists::<SquadVisibility>),
-            ),
-    );
+    // GTW-450 C3 — read the env var ONCE at startup (NOT per-frame) into the flag resource.
+    app.insert_resource(ReachableOverlayEnabled::from_env())
+        // GTW-387 — the reachable-range overlay read-seam (the cells the selected ganger can
+        // reach within its remaining TU). Its Default is the empty set; the input crate
+        // POPULATES it (clearing it when no ganger is selected).
+        .init_resource::<ReachableCells>()
+        .add_systems(
+            Update,
+            draw_reachable_overlay
+                .in_set(PresenterSystems::Draw)
+                .after(present_fog)
+                .run_if(
+                    resource_exists::<BattleInProgress>
+                        .and_then(resource_exists::<SquadVisibility>)
+                        // GTW-450 C3 — the runtime opt-in: render only when the flag is true.
+                        .and_then(reachable_overlay_enabled),
+                ),
+        );
+}
+
+/// Run-condition: whether the reachable-range DEBUG overlay is enabled this process
+/// (GTW-450 C3) — reads the [`ReachableOverlayEnabled`] flag VALUE. DEBUG-only.
+///
+/// `Option<Res<…>>` (fail-closed if absent: the focused presenter `build` always inserts
+/// it, but a harness might not) so the draw/populate systems stay inert unless the flag is
+/// present AND `true`.
+#[cfg(debug_assertions)]
+fn reachable_overlay_enabled(flag: Option<Res<ReachableOverlayEnabled>>) -> bool {
+    flag.is_some_and(|flag| **flag)
 }
 
 /// The isometric renderer plugin — a no-op stub for the whole of GTW-48.

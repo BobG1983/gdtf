@@ -89,11 +89,18 @@ pub use actors::{
         resolve_character_roles, spawn_ganger_sprites, update_ganger_life_state,
     },
 };
+// GTW-450 — the reachable-range overlay is the DEBUG-only overlay: every public item
+// (the read-seam, the flag, the draw system) compiles only under `#[cfg(debug_assertions)]`
+// (C1), so the re-export is debug-gated too — in release nothing references these.
+#[cfg(debug_assertions)]
+pub use overlays::reachable::{
+    REACHABLE_OVERLAY_ENV, ReachableCellSprite, ReachableCells, ReachableOverlayEnabled,
+    draw_reachable_overlay,
+};
 pub use overlays::{
     fire_target::{FireTargetHighlight, FireTargetLabel, FireTargetTile, draw_fire_target},
     highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request},
     path_preview::{PathPreview, PathStepSprite, PathTargetLabel, draw_path_preview},
-    reachable::{ReachableCellSprite, ReachableCells, draw_reachable_overlay},
     targeting_gate::{CellVisibility, cell_squad_visible},
 };
 pub use plugin::{
