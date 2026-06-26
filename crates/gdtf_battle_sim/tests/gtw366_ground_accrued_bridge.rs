@@ -31,8 +31,8 @@ use bevy::{
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleSeed, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
-    FireModeSpec, HandlingProfile, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState,
-    LootRng, Luck, Magazine, MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots,
+    FireModeSpec, Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRng, Kickback, Level,
+    LifeState, LootRng, Luck, Magazine, MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots,
     ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng,
     ReloadTu, SeverityRng, Shooting, ShotRng, SimPos, SlabLedger, SquadVisibility, Stable, Stance,
     StanceKind, SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage,
@@ -144,6 +144,7 @@ fn spawn_shooter(world: &mut World) -> Entity {
             Magazine::new(30, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     let shooter = world

@@ -20,13 +20,13 @@ use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight};
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, BraceStairCells,
     Cell, CellLevel, CombatTuning, CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType,
-    Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec, FloorCostGrid, HandlingProfile,
-    HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState, LootRng, Luck,
-    Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng, ReloadTu, SeverityRng,
-    Shooting, ShotRng, SlabLedger, SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid,
-    TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
+    Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec, FloorCostGrid, Handedness,
+    HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState,
+    LootRng, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng, ReloadTu,
+    SeverityRng, Shooting, ShotRng, SlabLedger, SquadVisibility, Stable, Stance, StanceKind,
+    SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -122,6 +122,7 @@ fn spawn_shooter(app: &mut App) -> Entity {
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     let shooter = app

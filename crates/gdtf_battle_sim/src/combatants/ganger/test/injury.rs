@@ -23,7 +23,9 @@ use crate::{
         GainedInjury, InflictedInjuries, InjuryEffect, InjuryName, InspectText, StatDelta,
         StatTarget,
     },
-    tuning::{GangerStatTuning, StatWeight},
+    sample_cone::concentration_p,
+    tuning::{ConcentrationCoeffs, GangerStatTuning, StatWeight},
+    weapon::Accuracy,
 };
 
 /// An arbitrary (NOT shipped) set of distinct attribute magnitudes, so each derived
@@ -238,6 +240,80 @@ fn tuning_hot_reload_reapplies_injury_deltas() {
         after,
         Some(*wiped),
         "the re-derived stat must NOT equal the no-injury value (the delta was not wiped)",
+    );
+}
+
+/// GTW-443 C8 — the 1H aim penalty composes through the cached `Shooting` with ZERO new
+/// plumbing: a `[DisableHand, Modify(Shooting, -N)]` injury drops the live `Shooting`
+/// component by EXACTLY `N` after ONE rederive tick, and the resulting §1b concentration
+/// exponent is measurably LOOSER (less centered → a SMALLER `p`) than the uninjured
+/// baseline at a fixed weapon accuracy.
+///
+/// MUST settle one schedule tick between gaining the injury and reading (the
+/// `Changed<InflictedInjuries>` rederive runs in `Update`), per the settle-before-read
+/// rule — reading the same tick would race the projection.
+///
+/// Pin-discriminating: the `DisableHand` sibling effect is INERT for the stat layer, so the
+/// drop is EXACTLY `N` (a leak from `DisableHand` would over/under-shoot); and a smaller
+/// `Shooting` yields a strictly smaller `concentration_p` (the looser cone), so an
+/// accidental always-on or absent penalty would break the inequality.
+#[test]
+fn one_handed_aim_penalty_composes_through_shooting_and_loosens_the_cone() {
+    let mut app = rederive_app();
+    let attrs = sample_attributes();
+    let tuning = GangerStatTuning::default();
+    app.world_mut().insert_resource(tuning.clone());
+    // Spawn uninjured first (the baseline cached Shooting), then inflict the hand injury.
+    let entity = spawn_injured_ganger(
+        app.world_mut(),
+        &attrs,
+        &tuning,
+        InflictedInjuries::default(),
+    );
+    app.update();
+    let baseline_shooting = app.world().get::<Shooting>(entity).map(|s| **s);
+    let Some(baseline_shooting) = baseline_shooting else {
+        return;
+    };
+
+    // Inflict the hand-disabling injury: BOTH a DisableHand (inert for the stat layer) AND
+    // the always-on Modify(Shooting, -N) aim penalty in ONE effects Vec (the GTW-443 F3
+    // shape). N is arbitrary here (a tunable per-injury authored magnitude, not pinned).
+    let penalty: i8 = -2;
+    if let Some(mut led) = app.world_mut().get_mut::<InflictedInjuries>(entity) {
+        led.gain(injury(vec![
+            InjuryEffect::DisableHand,
+            InjuryEffect::Modify {
+                stat:   StatTarget::Shooting,
+                amount: StatDelta::new(penalty),
+            },
+        ]));
+    }
+    // SETTLE ONE TICK so the Changed<InflictedInjuries> rederive projects the delta.
+    app.update();
+
+    let injured_shooting = app.world().get::<Shooting>(entity).map(|s| **s);
+    assert_eq!(
+        injured_shooting,
+        Some(baseline_shooting + f32::from(penalty)),
+        "the cached Shooting drops by EXACTLY N (the DisableHand sibling is inert for the stat layer)",
+    );
+    let Some(injured_shooting) = injured_shooting else {
+        return;
+    };
+
+    // The §1b concentration exponent is LOOSER (smaller p) for the injured Shooting — a
+    // less-centered cone — at a fixed weapon accuracy. Coefficients from default tuning
+    // (none hardcoded); the RELATION is asserted, never a magnitude.
+    let accuracy = Accuracy::new(1.0);
+    let coeffs = ConcentrationCoeffs::default();
+    let baseline_p = concentration_p(Shooting::new(baseline_shooting), accuracy, coeffs);
+    let injured_p = concentration_p(Shooting::new(injured_shooting), accuracy, coeffs);
+    assert!(
+        *injured_p < *baseline_p,
+        "a lower Shooting must loosen the cone (a smaller concentration_p): injured {} < baseline {}",
+        *injured_p,
+        *baseline_p,
     );
 }
 

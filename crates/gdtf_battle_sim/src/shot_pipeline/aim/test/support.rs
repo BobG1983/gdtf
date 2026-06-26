@@ -11,8 +11,8 @@ use crate::{
     metric::{Cell, CellLevel, Level},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 
@@ -93,6 +93,7 @@ pub(super) fn weapon_tagged(base: f32, kick: f32, stable: bool) -> WeaponBundle 
                 ModeShots::new(1),
             )]),
             Stable::new(stable),
+            Handedness::OneHanded,
         ),
     )
 }

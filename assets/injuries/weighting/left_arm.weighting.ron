@@ -1,9 +1,12 @@
-// GTW-437 SAMPLE weighting (loader fixture) for the LeftArm. The >=6-entries-per-
-// severity content floor + this part's injuries are GTW-440 — empty buckets are valid
-// (they build no table; the GTW-438 roll then finds no table and inflicts no injury).
+// GTW-437 SAMPLE weighting for the LeftArm; GTW-443 references the hand-disabling
+// injury so it can be rolled on a Major left-arm wound. The full >=6-entries-per-
+// severity content floor is GTW-440 — empty buckets are valid (they build no table; the
+// GTW-438 roll then finds no table and inflicts no injury). `injury:` is an InjuryName
+// KEY (the `.injury.ron` file stem); an unknown key WARNs + is skipped at table-build.
+// Authored order does NOT affect determinism (entries are canonically sorted at build).
 (
-    body_part: LeftArm,   // the part this table weights
-    minor:    [],            // Minor bucket    (GTW-440 fills the floor)
-    major:    [],            // Major bucket    (GTW-440 fills the floor)
-    critical: [],            // Critical bucket (GTW-440 fills the floor)
+    body_part: LeftArm,                                            // the part this table weights
+    minor:    [],                                                  // Minor bucket    (GTW-440 fills the floor)
+    major:    [ (injury: "shattered_left_hand", weight: 6) ],      // GTW-443 hand-disable + 1H aim penalty
+    critical: [],                                                  // Critical bucket (GTW-440 fills the floor)
 )

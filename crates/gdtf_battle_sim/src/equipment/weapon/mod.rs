@@ -59,8 +59,8 @@ mod test;
 
 pub use bundle::{DamageProfile, HandlingProfile, WeaponBundle, WeaponStats};
 pub use components::{
-    Accuracy, BaseSpread, DamageType, FatalBias, Kickback, MagazineSize, Stable, Weapon,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Stable,
+    Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 pub use fire_mode::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent};
 pub use registry::WeaponRegistry;

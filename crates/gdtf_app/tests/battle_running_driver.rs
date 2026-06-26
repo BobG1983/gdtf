@@ -43,8 +43,8 @@ use gdtf_battle_sim::{
     test_support::{GangerSpawnBuilder, SituationBuilder, key},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::{BattleAppBuilder, advance_until};
@@ -138,6 +138,7 @@ fn shooter_weapon_kit(mode: FireModeSpec) -> impl bevy::prelude::Bundle {
                 Magazine::new(10, mag_size, ReloadTu::new(12)),
                 FireMode::new(vec![mode]),
                 Stable::new(true),
+                Handedness::OneHanded,
             ),
         ),
         // The shooter query also reads TuMax — not authored by `setup_battle` — so the

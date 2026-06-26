@@ -3,11 +3,14 @@
 
 use crate::{
     ganger::{Aiming, LifeState, Tu, TuMax},
+    injuries::HandsAvailable,
     magazine::{FireActor, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost},
     metric::{Cell, Level, MAX_LEVELS},
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
     tuning::CombatTuning,
-    weapon::{FireModeSpec, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
+    weapon::{
+        FireModeSpec, Handedness, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    },
 };
 
 /// An arbitrary per-weapon reload cost the magazine fixtures carry — the magnitude is
@@ -26,7 +29,9 @@ const fn mode(tu_percent: f32, shots: u16) -> FireModeSpec {
 }
 
 /// A loaded, affordable, alive, aim-flag-controllable actor over borrowed state
-/// — the shared fixture the `can_fire` cases vary one field at a time.
+/// — the shared fixture the `can_fire` cases vary one field at a time. Wields a
+/// `OneHanded` weapon with the uninjured two-hands default, so the GTW-443 hand-count
+/// clause always passes here (the hand-count cases use [`hand_actor`] to vary it).
 fn actor<'a>(
     life: &'a LifeState,
     tu: &'a Tu,
@@ -40,6 +45,31 @@ fn actor<'a>(
         tu_max,
         aiming,
         magazine,
+        handedness: Handedness::OneHanded,
+        hands_available: HandsAvailable::default(),
+    }
+}
+
+/// An alive, affordable, loaded actor with a chosen [`Handedness`] +
+/// [`HandsAvailable`] — the GTW-443 hand-count fixture, varying only the two hand fields
+/// (everything else passes `can_fire`).
+fn hand_actor<'a>(
+    life: &'a LifeState,
+    tu: &'a Tu,
+    tu_max: &'a TuMax,
+    aiming: &'a Aiming,
+    magazine: &'a Magazine,
+    handedness: Handedness,
+    hands_available: HandsAvailable,
+) -> FireActor<'a> {
+    FireActor {
+        life,
+        tu,
+        tu_max,
+        aiming,
+        magazine,
+        handedness,
+        hands_available,
     }
 }
 
@@ -356,6 +386,134 @@ fn in_bounds_uses_grid_width_height_and_max_levels() {
     assert!(
         !in_bounds(Cell::new(0, -1), Level::new(0)),
         "negative y is out of bounds"
+    );
+}
+
+// ── GTW-443: the can_fire hand-count clause (C4 / C5 / C6 / C9) ───────────────
+
+#[test]
+fn two_handed_weapon_refused_below_two_hands() {
+    // C4 (guard half): a TwoHanded weapon at 1 hand fails can_fire even when alive,
+    // affordable, loaded, and in-bounds. (The fire()/no-mutation half is C4's act test.)
+    let tuning = CombatTuning::default();
+    let size = MagazineSize::new(30);
+    let m = mode(0.2, 1);
+    let life = LifeState::Alive;
+    let tu = Tu::new(255);
+    let tu_max = TuMax::new(100);
+    let aiming = Aiming::new(false);
+    let magazine = Magazine::new(10, size, RELOAD_TU);
+
+    for hands in [HandsAvailable::new(1), HandsAvailable::new(0)] {
+        let a = hand_actor(
+            &life,
+            &tu,
+            &tu_max,
+            &aiming,
+            &magazine,
+            Handedness::TwoHanded,
+            hands,
+        );
+        assert!(
+            !can_fire(&a, &m, Cell::new(10, 10), Level::new(0), &tuning),
+            "a TwoHanded weapon must be refused at {hands:?} (needs two hands)"
+        );
+    }
+}
+
+#[test]
+fn one_handed_weapon_usable_at_one_hand() {
+    // C5 (guard half): a OneHanded weapon stays usable at 1 hand (a one-armed ganger
+    // keeps a pistol). It only fails at 0 hands.
+    let tuning = CombatTuning::default();
+    let size = MagazineSize::new(30);
+    let m = mode(0.2, 1);
+    let life = LifeState::Alive;
+    let tu = Tu::new(255);
+    let tu_max = TuMax::new(100);
+    let aiming = Aiming::new(false);
+    let magazine = Magazine::new(10, size, RELOAD_TU);
+
+    let one_hand = hand_actor(
+        &life,
+        &tu,
+        &tu_max,
+        &aiming,
+        &magazine,
+        Handedness::OneHanded,
+        HandsAvailable::new(1),
+    );
+    assert!(
+        can_fire(&one_hand, &m, Cell::new(10, 10), Level::new(0), &tuning),
+        "a OneHanded weapon stays usable with one working hand"
+    );
+    let no_hands = hand_actor(
+        &life,
+        &tu,
+        &tu_max,
+        &aiming,
+        &magazine,
+        Handedness::OneHanded,
+        HandsAvailable::new(0),
+    );
+    assert!(
+        !can_fire(&no_hands, &m, Cell::new(10, 10), Level::new(0), &tuning),
+        "even a OneHanded weapon needs at least one hand"
+    );
+}
+
+#[test]
+fn two_handed_weapon_fires_at_two_hands() {
+    // C6: the gate is CONDITIONAL, not a blanket 2H ban — a TwoHanded weapon fires
+    // normally at the uninjured two-hands default.
+    let tuning = CombatTuning::default();
+    let size = MagazineSize::new(30);
+    let m = mode(0.2, 1);
+    let life = LifeState::Alive;
+    let tu = Tu::new(255);
+    let tu_max = TuMax::new(100);
+    let aiming = Aiming::new(false);
+    let magazine = Magazine::new(10, size, RELOAD_TU);
+
+    let a = hand_actor(
+        &life,
+        &tu,
+        &tu_max,
+        &aiming,
+        &magazine,
+        Handedness::TwoHanded,
+        HandsAvailable::new(2),
+    );
+    assert!(
+        can_fire(&a, &m, Cell::new(10, 10), Level::new(0), &tuning),
+        "a TwoHanded weapon fires normally at two hands"
+    );
+}
+
+#[test]
+fn uninjured_default_actor_fires_both_handedness() {
+    // C9 (guard half): the default `actor` helper (OneHanded, two hands) passes — and a
+    // TwoHanded actor at the same default two hands also passes — so the hand-count clause
+    // never spuriously gates an uninjured shooter.
+    let tuning = CombatTuning::default();
+    let size = MagazineSize::new(30);
+    let m = mode(0.2, 1);
+    let life = LifeState::Alive;
+    let tu = Tu::new(255);
+    let tu_max = TuMax::new(100);
+    let aiming = Aiming::new(false);
+    let magazine = Magazine::new(10, size, RELOAD_TU);
+
+    let default_actor = actor(&life, &tu, &tu_max, &aiming, &magazine);
+    assert!(
+        can_fire(
+            &default_actor,
+            &m,
+            Cell::new(10, 10),
+            Level::new(0),
+            &tuning
+        ),
+        "an uninjured (OneHanded, two-hands) actor passes the hand-count clause"
     );
 }
 

@@ -32,6 +32,7 @@ use crate::{
     cover::CoverLedger,
     fire::WieldsQuery,
     ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Tu, TuMax},
+    injuries::{HandsAvailable, InflictedInjuries},
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
@@ -44,7 +45,7 @@ use crate::{
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
     visibility::{FactionRelation, OmniscientFog},
-    weapon::{FireMode, Wields},
+    weapon::{FireMode, Handedness, Wields},
 };
 
 /// The brain's read-only ganger snapshot query shape — every ganger's brain-relevant
@@ -65,6 +66,11 @@ type EnemyTurnGangers<'world, 'state> = Query<
         &'static TuMax,
         &'static Faction,
         Has<WalkInProgress>,
+        // GTW-443: the enemy's injury ledger, read OPTIONALLY (an absent ledger = the
+        // uninjured two-hands default), folded into the row's `hands` for the SHARED
+        // can_fire hand-count gate — so the AI is refused a TwoHanded weapon below two
+        // hands exactly as the player path is.
+        Option<&'static InflictedInjuries>,
     ),
 >;
 
@@ -94,6 +100,10 @@ struct GangerRow {
     /// Whether it is mid-walk (`Has<WalkInProgress>`) — skipped while busy, but it keeps
     /// the turn open (the §D.3 `busy` measure).
     walking:  bool,
+    /// Its available hand count (GTW-443) — folded from its injury ledger at snapshot
+    /// time (an absent ledger = the uninjured two-hands default), fed to the SHARED
+    /// `can_fire` hand-count gate.
+    hands:    HandsAvailable,
 }
 
 /// The ground cell `(x, y)` of a [`Position`] — the z storey dropped (the `fire.rs`
@@ -187,7 +197,7 @@ pub fn enemy_ai_turn(
     omniscient: Option<Res<OmniscientFog>>,
     gangers: EnemyTurnGangers,
     wields: WieldsQuery,
-    weapons: Query<(&Magazine, &FireMode)>,
+    weapons: Query<(&Magazine, &FireMode, &Handedness)>,
     mut fire_writer: MessageWriter<FireRequested>,
     mut move_writer: MessageWriter<MoveRequested>,
     mut end_turn_writer: MessageWriter<EndTurnRequested>,
@@ -207,7 +217,19 @@ pub fn enemy_ai_turn(
     let rows: Vec<GangerRow> = gangers
         .iter()
         .map(
-            |(entity, position, stance, facing, aiming, life, tu, tu_max, faction, walking)| {
+            |(
+                entity,
+                position,
+                stance,
+                facing,
+                aiming,
+                life,
+                tu,
+                tu_max,
+                faction,
+                walking,
+                injuries,
+            )| {
                 GangerRow {
                     entity,
                     position: *position,
@@ -219,6 +241,10 @@ pub fn enemy_ai_turn(
                     tu_max: *tu_max,
                     faction: *faction,
                     walking,
+                    // GTW-443: fold the available hand count from the ledger now (an
+                    // absent ledger = the uninjured two-hands default).
+                    hands: injuries
+                        .map_or_else(HandsAvailable::default, InflictedInjuries::hands_available),
                 }
             },
         )
@@ -273,17 +299,20 @@ pub fn enemy_ai_turn(
         let enemy_level = row_level(&enemy.position);
         let enemy_cell_level = row_cell_level(&enemy.position);
 
-        // (1) ENGAGE — resolve the enemy's weapon (Magazine + single-shot FireModeSpec off
-        //     the related weapon entity, exactly as dispatch_fire reads it), then engage iff
-        //     some opposing ganger passes the SHARED gate: can_see ∧ can_fire ∧ ¬Reject arc.
+        // (1) ENGAGE — resolve the enemy's weapon (Magazine + single-shot FireModeSpec +
+        //     Handedness off the related weapon entity, exactly as dispatch_fire reads it),
+        //     then engage iff some opposing ganger passes the SHARED gate: can_see ∧ can_fire
+        //     (incl. the GTW-443 hand-count clause folded from the enemy's injury ledger) ∧
+        //     ¬Reject arc.
         let weapon_data = wields
             .get(enemy.entity)
             .ok()
             .and_then(Wields::weapon)
             .and_then(|weapon| weapons.get(weapon).ok());
-        if let Some((magazine, fire_mode)) = weapon_data {
+        if let Some((magazine, fire_mode, handedness)) = weapon_data {
             let mode = fire_mode.single();
             let magazine: Magazine = *magazine;
+            let handedness: Handedness = *handedness;
             let fire_cost = mode_tu_cost(&mode, &enemy.tu_max, &enemy.aiming, &tuning);
             let observer = Observer {
                 position:         &enemy.position,
@@ -316,11 +345,13 @@ pub fn enemy_ai_turn(
                 }
                 // can_fire (the shared fire guard) — alive, affordable, loaded, in-bounds.
                 let actor = FireActor {
-                    life:     &enemy.life,
-                    tu:       &enemy.tu,
-                    tu_max:   &enemy.tu_max,
-                    aiming:   &enemy.aiming,
+                    life: &enemy.life,
+                    tu: &enemy.tu,
+                    tu_max: &enemy.tu_max,
+                    aiming: &enemy.aiming,
                     magazine: &magazine,
+                    handedness,
+                    hands_available: enemy.hands,
                 };
                 if !can_fire(&actor, &mode, target_cell, target_level, &tuning) {
                     continue;

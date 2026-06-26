@@ -42,5 +42,6 @@ new ADRs here from the 0000 template.
 | [0003](0003-hand-rolled-data-driven-ui.md) | Hand-rolled, data-driven UI on first-party `bevy_ui` | Accepted |
 | [0004](0004-equipment-as-entities-relationships.md) | Equipment as entities related to the ganger | Proposed |
 | [0005](0005-pathfinding-adjacency-and-search.md) | Grid pathfinding — adjacency, search, and vertical stitching | Accepted |
+| [0006](0006-handedness-always-on-aim-penalty.md) | Hand-disabling injury carries an always-on aim penalty | Accepted |
 
 Template: [0000-template.md](0000-template.md).

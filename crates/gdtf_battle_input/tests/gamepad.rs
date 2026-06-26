@@ -41,10 +41,10 @@ use gdtf_battle_presenter::{
     ActiveLevel, CellVisibility, HighlightRequest, WorldCamera, cell_to_world,
 };
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec, Level,
-    LifeState, LinkKind, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, ReloadTu, SquadVisibility, TerrainKind, Tu, TuMax,
-    VerticalLink, VerticalLinkGraph, WieldedBy, Wields,
+    Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec,
+    Handedness, Level, LifeState, LinkKind, Magazine, MagazineSize, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, Position, ReloadTu, SquadVisibility,
+    TerrainKind, Tu, TuMax, VerticalLink, VerticalLinkGraph, WieldedBy, Wields,
     acts::{MoveRequested, SetFacingRequested},
     build_vertical_link_graph,
     test_support::SituationBuilder,
@@ -135,6 +135,8 @@ fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
         WieldedBy::new(ganger),
         FireMode::new(vec![single]),
         Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+        // GTW-443: the fire surface's WeaponMagazine query reads `(&Magazine, &Handedness)`.
+        Handedness::OneHanded,
     ));
     app.world_mut()
         .resource_mut::<OccupancyGrid>()

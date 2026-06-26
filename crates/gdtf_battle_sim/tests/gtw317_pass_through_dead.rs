@@ -26,11 +26,11 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
-    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, PieceQuery, Position, ReloadTu, SeverityRng, ShooterQuery,
-    Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid, Toughness,
-    Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery,
+    Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryRng,
+    InjuryTables, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, Position, ReloadTu, SeverityRng,
+    ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid,
+    Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery,
     WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
@@ -103,6 +103,7 @@ fn spawn_shooter(world: &mut World, mode: FireModeSpec) -> Entity {
             FireMode::new(vec![mode]),
             // Braced so recoil-climb does not walk later rounds off the line.
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     let shooter = world

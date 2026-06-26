@@ -44,11 +44,11 @@ use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
-    FireModeSpec, FloorCostGrid, HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRng,
-    Kickback, Level, LifeState, LootRng, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position,
-    ProcgenRng, ReloadTu, SeverityRng, Shooting, ShotRng, SlabLedger, SquadVisibility, Stable,
-    Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle,
+    FireModeSpec, FloorCostGrid, Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds,
+    InjuryRng, Kickback, Level, LifeState, LootRng, Luck, Magazine, MagazineSize, ModeConeMult,
+    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction,
+    Position, ProcgenRng, ReloadTu, SeverityRng, Shooting, ShotRng, SlabLedger, SquadVisibility,
+    Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle,
     WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
     tuning::CombatTuning,
 };
@@ -193,6 +193,7 @@ fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Ent
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     // The ganger carries its OWN state only — no weapon stat data (GTW-323 slice 3). The

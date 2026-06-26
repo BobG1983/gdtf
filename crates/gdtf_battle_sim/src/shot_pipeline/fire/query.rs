@@ -20,8 +20,8 @@ use crate::{
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, Stable, WeaponDamage,
-        WeaponPunch, WeaponShred, WieldedBy, Wields,
+        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback, Stable,
+        WeaponDamage, WeaponPunch, WeaponShred, WieldedBy, Wields,
     },
 };
 
@@ -109,6 +109,9 @@ pub type WeaponQuery<'world, 'state> = Query<
         &'static WeaponShred,
         &'static DamageType,
         &'static Stable,
+        // GTW-443: the weapon's Handedness — read into the FireActor's can_fire gate
+        // (a TwoHanded weapon is refused below two available hands).
+        &'static Handedness,
         &'static mut Magazine,
     ),
     With<WieldedBy>,

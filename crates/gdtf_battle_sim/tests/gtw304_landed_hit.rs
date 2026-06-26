@@ -32,12 +32,13 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables, Kickback, Level,
-    LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu, SeverityRng,
-    ShooterQuery, Shooting, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid,
-    TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
+    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu,
+    SeverityRng, ShooterQuery, Shooting, ShotRng, SlabLedger, Stable, Stance, StanceKind,
+    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
+    fire::FireOrder,
 };
 
 /// The faithful skirmish-style geometry the contract names: a shooter near (5,6).
@@ -114,6 +115,7 @@ fn spawn_shooter(app: &mut App, facing: Direction) -> Entity {
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     let shooter = app

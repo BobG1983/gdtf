@@ -284,10 +284,10 @@ pub use damage_resolution::{
     inflicted_wound::{InflictedWound, InflictedWounds},
     injuries,
     injuries::{
-        BleedAfflicted, BleedAmount, GainedInjury, InflictedInjuries, InjuryDef, InjuryEffect,
-        InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, InjuryWeighting, InspectText,
-        LogText, PopupText, PostHeal, RolledInjury, StatDelta, StatDeltaLedger, StatDeltaSum,
-        StatKind, StatTarget, WeightedInjuryEntry, WeightedInjuryTable, roll_injury,
+        BleedAfflicted, BleedAmount, GainedInjury, HandsAvailable, InflictedInjuries, InjuryDef,
+        InjuryEffect, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, InjuryWeighting,
+        InspectText, LogText, PopupText, PostHeal, RolledInjury, StatDelta, StatDeltaLedger,
+        StatDeltaSum, StatKind, StatTarget, WeightedInjuryEntry, WeightedInjuryTable, roll_injury,
     },
     matchup,
     matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier},
@@ -315,9 +315,9 @@ pub use equipment::{
     weapon,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-        WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
     },
 };
 pub use foundation::{

@@ -53,7 +53,9 @@ pub mod weighting;
 
 pub use def::{InjuryDef, PostHeal};
 pub use effect::{BleedAmount, InjuryEffect, StatDelta};
-pub use ledger::{BleedAfflicted, InflictedInjuries, StatDeltaLedger, StatDeltaSum};
+pub use ledger::{
+    BleedAfflicted, HandsAvailable, InflictedInjuries, StatDeltaLedger, StatDeltaSum,
+};
 pub use registry::InjuryRegistry;
 pub use roll::roll_injury;
 pub use rolled::{GainedInjury, RolledInjury};

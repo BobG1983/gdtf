@@ -40,8 +40,9 @@ pub(super) use crate::{
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        WieldedBy,
     },
 };
 
@@ -209,8 +210,55 @@ fn test_weapon(
             Magazine::new(ammo, mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(stable),
+            Handedness::OneHanded,
         ),
     )
+}
+
+/// Spawn + relate a wielded weapon of the given [`Handedness`] on `ganger` (GTW-443) —
+/// the hand-count `fire()` tests' equivalent of [`equip_weapon`], differing only in the
+/// weapon's handedness (arbitrary ammo / non-zero spread, braced). The
+/// `ganger → Wields → weapon` relationship is populated synchronously.
+pub(super) fn equip_handed_weapon(world: &mut World, ganger: Entity, handedness: Handedness) {
+    let mode = single_mode(0.2, 1);
+    let weapon = WeaponBundle::new(
+        WeaponName::new("test-weapon".to_owned()),
+        BaseSpread::new(0.05),
+        Accuracy::new(2.0),
+        Kickback::new(0.2),
+        FatalBias::new(0.0),
+        DamageProfile::new(
+            WeaponDamage::new(40),
+            WeaponPunch::new(20),
+            WeaponShred::new(10),
+            DamageType::Kinetic,
+        ),
+        HandlingProfile::new(
+            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            FireMode::new(vec![mode]),
+            Stable::new(true),
+            handedness,
+        ),
+    );
+    world.spawn((WieldedBy::new(ganger), weapon));
+}
+
+/// Insert an [`InflictedInjuries`](crate::injuries::InflictedInjuries) ledger on `ganger`
+/// carrying ONE [`DisableHand`](crate::injuries::InjuryEffect::DisableHand) injury keyed
+/// to `part` (GTW-443) — so its derived [`HandsAvailable`](crate::injuries::HandsAvailable)
+/// drops the matching hand. The ledger is the SOLE hand-count source the `fire()` path
+/// folds (an absent ledger = the uninjured two-hands default).
+pub(super) fn give_disabled_hand(world: &mut World, ganger: Entity, part: BodyPart) {
+    use crate::injuries::{GainedInjury, InflictedInjuries, InjuryEffect, InjuryName, InspectText};
+    let mut ledger = InflictedInjuries::default();
+    ledger.gain(GainedInjury::new(
+        InjuryName::new("disabled-hand".to_owned()),
+        part,
+        Severity::Major,
+        vec![InjuryEffect::DisableHand],
+        InspectText::new("a disabled hand".to_owned()),
+    ));
+    world.entity_mut(ganger).insert(ledger);
 }
 
 /// The arbitrary spawn config for a test shooter — its cell, TU pool / max, ammo,

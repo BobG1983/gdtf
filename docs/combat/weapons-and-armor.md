@@ -15,6 +15,7 @@ One shared wheel — armor types **Plated, Refractive, Flak, Void, Hazard, Reinf
 - **damage** — base damage of a hit.
 - **punch** — armor protection it ignores (penetration).
 - **shred** — extra **integrity** damage per hit, on top of the normal soak/penetration wear. Shred attacks armor **durability** (breaks it sooner), not hardness.
+- **handedness** — `OneHanded` or `TwoHanded` (GTW-443). A one-handed weapon (a pistol) can be fired with a single working hand; a two-handed weapon (a long-arm or heavy piece) needs **both** hands. The shared firing guard (`can_fire`) refuses a two-handed weapon once a hand-disabling injury leaves the shooter with fewer than two hands — see the **Hand count** note in [stats.md](stats.md) and the always-on 1H aim penalty in [resolution.md](resolution.md). Handedness gates **fire only** — it never touches the `Wields` relationship (a one-armed ganger keeps the long-arm slung, just can't fire it).
 
 ## Armor stats
 

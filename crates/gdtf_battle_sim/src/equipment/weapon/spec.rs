@@ -6,8 +6,9 @@ use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use super::{
-    Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, HandlingProfile,
-    Kickback, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, Handedness,
+    HandlingProfile, Kickback, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponShred,
 };
 use crate::magazine::Magazine;
 
@@ -64,6 +65,11 @@ pub struct WeaponSpec {
     pub fire_mode:   FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
     pub stable:      Stable,
+    /// The weapon's [`Handedness`] (GTW-443) — `OneHanded` (a pistol) or `TwoHanded`
+    /// (a long-arm / heavy piece); authored as the `handedness:` field of the
+    /// `.weapon.ron`. The shared `can_fire` guard refuses a `TwoHanded` weapon below two
+    /// available hands.
+    pub handedness:  Handedness,
 }
 
 impl WeaponSpec {
@@ -88,7 +94,7 @@ impl WeaponSpec {
             self.kickback,
             self.fatal_bias,
             DamageProfile::new(self.damage, self.punch, self.shred, self.damage_type),
-            HandlingProfile::new(magazine, self.fire_mode, self.stable),
+            HandlingProfile::new(magazine, self.fire_mode, self.stable, self.handedness),
         )
     }
 }

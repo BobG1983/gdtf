@@ -36,8 +36,8 @@ pub(super) use crate::{
     tuning::{CombatTuning, RecoilClimb},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 
@@ -116,6 +116,7 @@ pub(super) fn a_weapon(
             Magazine::loaded(MagazineSize::new(10), ReloadTu::new(10)),
             FireMode::new(vec![spec]),
             Stable::new(false),
+            Handedness::OneHanded,
         ),
     )
 }

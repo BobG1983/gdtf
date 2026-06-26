@@ -42,9 +42,9 @@ pub(super) use crate::{
     visibility::SquadVisibility,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
-        Wields,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        WieldedBy, Wields,
     },
 };
 
@@ -174,6 +174,7 @@ pub(super) fn spawn_shooter(
             Magazine::new(10, mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     let shooter = world

@@ -39,12 +39,13 @@ use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
-    HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables, Kickback, Level,
-    LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu, SeverityRng,
-    ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid,
-    TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
+    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu,
+    SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind,
+    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
+    fire::FireOrder,
 };
 
 /// The shooter's cell.
@@ -125,6 +126,7 @@ fn spawn_standing_shooter(app: &mut App, facing: Direction) -> Entity {
             // `stable` so the brace engages unconditionally — keeps the cone tight,
             // though the ZERO base spread already collapses it to the axis.
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     let shooter = app

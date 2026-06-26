@@ -75,10 +75,12 @@ impl BleedAmount {
 /// collapsed into that one match; reintroduce it only when a third effect needs a
 /// genuinely new mutation kind.
 ///
-/// Two effects exist today: [`Modify`](InjuryEffect::Modify) (a modifier-layer
-/// delta re-summed by the projector, hitting BOTH attributes and derived stats) and
+/// Three effects exist today: [`Modify`](InjuryEffect::Modify) (a modifier-layer
+/// delta re-summed by the projector, hitting BOTH attributes and derived stats),
 /// [`Bleeding`](InjuryEffect::Bleeding) (a separate per-turn HP drain, NOT a
-/// `Modify`). Future variants (Stun / Knockback / `MoraleHit` / Disarm) are each a
+/// `Modify`), and [`DisableHand`](InjuryEffect::DisableHand) (GTW-443 — disables the
+/// hand on the injury's struck arm, folded into the read-derived hand count, NOT a
+/// stored delta). Future variants (Stun / Knockback / `MoraleHit` / Disarm) are each a
 /// new variant plus one match arm.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Deserialize)]
 pub enum InjuryEffect {
@@ -100,4 +102,23 @@ pub enum InjuryEffect {
         /// The per-turn HP drained while this injury persists.
         amount: BleedAmount,
     },
+    /// **Disable the hand** on the injury's struck arm (GTW-443) — a FIELDLESS variant.
+    ///
+    /// The disabled SIDE is NOT carried here; it is derived from the
+    /// [`GainedInjury::part`](super::GainedInjury::part) already on each ledger entry
+    /// ([`LeftArm`](crate::armor::BodyPart::LeftArm) → the left hand,
+    /// [`RightArm`](crate::armor::BodyPart::RightArm) → the right hand; a
+    /// `DisableHand` carried by a Head / Torso / Leg injury is INERT — there is no hand
+    /// to disable). Unlike [`Modify`](InjuryEffect::Modify) / [`Bleeding`](InjuryEffect::Bleeding),
+    /// the ledger's `gain` accumulates NOTHING for this variant: the hand count is read
+    /// by FOLDING [`gained`](super::InflictedInjuries::gained) on demand
+    /// ([`InflictedInjuries::hands_available`](super::InflictedInjuries::hands_available)),
+    /// not by docking a stored stat — so two same-side `DisableHand` injuries still
+    /// disable exactly ONE hand (a set over distinct arm-sides, not a count), the
+    /// single-source-of-truth that a stored counter could not give without de-duping.
+    /// The 1H aim PENALTY a hand-disabling injury also carries rides as a SEPARATE
+    /// [`Modify`](InjuryEffect::Modify)`(Shooting, -N)` effect in the same injury's
+    /// effects `Vec` — so the penalty flows through the normal modifier layer while this
+    /// variant only gates two-handed fire.
+    DisableHand,
 }

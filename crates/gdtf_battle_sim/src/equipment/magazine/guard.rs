@@ -5,11 +5,12 @@
 use super::ammo::Magazine;
 use crate::{
     ganger::{Aiming, LifeState, Tu, TuMax},
+    injuries::HandsAvailable,
     metric::{Cell, Level, MAX_LEVELS},
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
     tu::can_spend_tu,
     tuning::CombatTuning,
-    weapon::FireModeSpec,
+    weapon::{FireModeSpec, Handedness},
 };
 
 /// Round a non-negative `f32` TU charge into the unsigned [`Tu`] inner type
@@ -89,28 +90,37 @@ pub fn in_bounds(cell: Cell, level: Level) -> bool {
 /// The shooter read-state [`can_fire`] reasons over — the ganger components a
 /// firing decision depends on, bundled into one named record.
 ///
-/// Grouping these five borrowed components keeps [`can_fire`] under clippy's
+/// Grouping these borrowed components keeps [`can_fire`] under clippy's
 /// argument-count gate (the [`crate::aim::Shooter`] /
 /// [`crate::resolve_coarse::ShotInputs`] bundle precedent), and states the
-/// shooter's contribution to the firing guard as one value rather than five loose
-/// params. Every field is a borrowed named domain newtype (no bare primitive); the
-/// bundle is a transparent borrow record, not itself a wrapped domain scalar.
+/// shooter's contribution to the firing guard as one value rather than many loose
+/// params. The borrowed fields are named domain newtypes (no bare primitive); the two
+/// GTW-443 hand fields are small `Copy` value newtypes carried BY VALUE (so the bundle
+/// keeps its `Copy`/`Hash`/`Eq` derives). The bundle is a transparent borrow record,
+/// not itself a wrapped domain scalar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FireActor<'a> {
     /// The shooter's [`LifeState`] — `can_fire` requires
     /// [`Alive`](crate::ganger::LifeState::Alive) (a Downed/Dead ganger cannot
     /// fire).
-    pub life:     &'a LifeState,
+    pub life:            &'a LifeState,
     /// The shooter's current [`Tu`] pool — must afford the mode's TU charge.
-    pub tu:       &'a Tu,
+    pub tu:              &'a Tu,
     /// The shooter's [`TuMax`] — the round-start ceiling the per-shot charge is a
     /// percentage of.
-    pub tu_max:   &'a TuMax,
+    pub tu_max:          &'a TuMax,
     /// The shooter's [`Aiming`] flag — selects whether the aim TU premium applies
     /// to the charge.
-    pub aiming:   &'a Aiming,
+    pub aiming:          &'a Aiming,
     /// The shooter's [`Magazine`] — must hold at least one round.
-    pub magazine: &'a Magazine,
+    pub magazine:        &'a Magazine,
+    /// The wielded weapon's [`Handedness`] (GTW-443) — a
+    /// [`TwoHanded`](crate::weapon::Handedness::TwoHanded) weapon is refused below two
+    /// available hands. Read off the weapon entity; carried by value.
+    pub handedness:      Handedness,
+    /// The shooter's [`HandsAvailable`] (GTW-443) — folded from the shooter's injury
+    /// ledger (an absent ledger = the uninjured two-hands default). Carried by value.
+    pub hands_available: HandsAvailable,
 }
 
 /// Whether a shooter **can fire** the selected mode at a target — the guard set the
@@ -122,13 +132,18 @@ pub struct FireActor<'a> {
 /// the mode's TU charge ([`mode_tu_cost`], via E4.0
 /// [`can_spend_tu`](crate::tu::can_spend_tu) — AC5, and the aiming case costs
 /// strictly more by the [`AimTuPremium`](crate::tuning::AimTuPremium)); has at
-/// least one round loaded (AC6 — an empty [`Magazine`] fails); and the target
-/// `(target_cell, target_level)` is [`in_bounds`] (AC7).
+/// least one round loaded (AC6 — an empty [`Magazine`] fails); the target
+/// `(target_cell, target_level)` is [`in_bounds`] (AC7); and the weapon's
+/// [`Handedness`] is satisfiable by the shooter's
+/// [`HandsAvailable`](crate::injuries::HandsAvailable) (GTW-443 — a
+/// [`TwoHanded`](Handedness::TwoHanded) weapon needs two hands; a
+/// [`OneHanded`](Handedness::OneHanded) weapon needs one).
 ///
 /// **It takes NO `has_los`/visibility input** (AC8): LOS/fog is PLAYER POLICY in
 /// the presenter (resolution.md §"What's pure math vs sim": fog "never enters the
-/// shared act"), so an alive, affordable, loaded, in-bounds shooter passes here
-/// regardless of any LOS state — the presenter applies its own fog gate on top.
+/// shared act"), so an alive, affordable, loaded, in-bounds, two-handed-capable shooter
+/// passes here regardless of any LOS state — the presenter applies its own fog gate on
+/// top.
 #[must_use]
 pub fn can_fire(
     actor: &FireActor,
@@ -144,4 +159,20 @@ pub fn can_fire(
         )
         && !actor.magazine.is_empty()
         && in_bounds(target_cell, target_level)
+        && has_enough_hands(actor.handedness, actor.hands_available)
+}
+
+/// Whether the shooter has enough working hands for the weapon's [`Handedness`]
+/// (GTW-443) — the hand-count clause of [`can_fire`].
+///
+/// A [`OneHanded`](Handedness::OneHanded) weapon needs `≥ 1` hand; a
+/// [`TwoHanded`](Handedness::TwoHanded) weapon needs both (`= 2`). So a one-armed
+/// shooter keeps a pistol but loses a long-arm (the GTW-443 hand-disabling injury
+/// model).
+fn has_enough_hands(handedness: Handedness, hands: HandsAvailable) -> bool {
+    let needed = match handedness {
+        Handedness::OneHanded => 1,
+        Handedness::TwoHanded => HandsAvailable::MAX,
+    };
+    *hands >= needed
 }

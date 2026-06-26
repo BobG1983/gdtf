@@ -18,13 +18,13 @@ use bevy::{
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, BraceStairCells,
     Cell, CellLevel, CombatTuning, CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType,
-    Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec, HandlingProfile, HeightBand, Hp,
-    InflictedWounds, InjuryRng, Kickback, Level, LifeState, LootRng, Luck, Magazine, MagazineSize,
-    MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng, ReloadTu, SeverityRng,
-    Shooting, ShotRng, SimPos, SlabLedger, SquadVisibility, Stable, Stance, StanceKind,
-    SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
+    Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec, Handedness, HandlingProfile,
+    HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState, LootRng, Luck,
+    Magazine, MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng, ReloadTu,
+    SeverityRng, Shooting, ShotRng, SimPos, SlabLedger, SquadVisibility, Stable, Stance,
+    StanceKind, SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
     acts::{FireRequested, SimActsPlugin},
     march_vector,
 };
@@ -113,6 +113,7 @@ fn spawn_shooter(world: &mut World) -> Entity {
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     let shooter = world

@@ -147,6 +147,7 @@ fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
             ModeShots::new(1),
         )]),
         stable:      crate::weapon::Stable::new(true),
+        handedness:  crate::weapon::Handedness::OneHanded,
     };
     WeaponRegistry::new([(WeaponName::new("test-weapon".to_owned()), spec)])
 }

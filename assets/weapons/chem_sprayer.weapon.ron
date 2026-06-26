@@ -18,4 +18,5 @@
         (kind: Burst,  cone_mult: 1.3, tu_percent: 0.50, shots: 3),
     ],
     stable: false,
+    handedness:    TwoHanded,  // GTW-443: a two-handed long-arm - refused below two working hands
 )

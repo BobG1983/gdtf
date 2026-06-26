@@ -23,10 +23,10 @@ use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, LifeState,
-    Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    PlayerFaction, Position, ReloadTu, SquadVisibility, TerrainKind, Tu, TuMax, VerticalLinkGraph,
-    WieldedBy, mode_tu_cost, tuning::CombatTuning,
+    Aiming, BattleInProgress, Cell, CellLevel, Faction, FireMode, FireModeSpec, Handedness, Level,
+    LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    OccupancyGrid, PlayerFaction, Position, ReloadTu, SquadVisibility, TerrainKind, Tu, TuMax,
+    VerticalLinkGraph, WieldedBy, mode_tu_cost, tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -98,6 +98,8 @@ fn spawn_and_select_shooter(app: &mut App, cell: CellLevel) -> (Entity, TuMax, A
     app.world_mut().spawn((
         WieldedBy::new(ganger),
         Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+        // GTW-443: the fire surface's WeaponMagazine query reads `(&Magazine, &Handedness)`.
+        Handedness::OneHanded,
     ));
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
@@ -152,6 +154,8 @@ fn spawn_select_then_arm_late(
         WieldedBy::new(ganger),
         FireMode::new(vec![spec(single_tu_percent)]),
         Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+        // GTW-443: the fire surface's WeaponMagazine query reads `(&Magazine, &Handedness)`.
+        Handedness::OneHanded,
     ));
     // One update for the WieldedBy hook + the GTW-376 Added<FireMode> re-trigger to resolve the
     // mode off the now-present weapon.

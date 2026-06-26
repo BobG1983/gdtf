@@ -25,8 +25,8 @@ use crate::{
     tuning::{CombatTuning, RecoilClimb},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 
@@ -67,6 +67,7 @@ fn a_weapon() -> WeaponBundle {
                 ModeShots::new(1),
             )]),
             Stable::new(false),
+            Handedness::OneHanded,
         ),
     )
 }

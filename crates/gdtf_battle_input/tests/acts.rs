@@ -41,11 +41,11 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel, CoverLedger, Direction,
-    Facing, Faction, FireMode, FireModeSpec, FloorCostGrid, InjuryRng, Level, LifeState, LinkKind,
-    LootRng, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, ProcgenRng, ReloadTu, SeverityRng, ShotRng, SlabLedger,
-    SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink, VerticalLinkGraph,
-    WieldedBy,
+    Facing, Faction, FireMode, FireModeSpec, FloorCostGrid, Handedness, InjuryRng, Level,
+    LifeState, LinkKind, LootRng, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, OccupancyGrid, PlayerFaction, ProcgenRng, ReloadTu, SeverityRng, ShotRng,
+    SlabLedger, SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink,
+    VerticalLinkGraph, WieldedBy,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
         ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
@@ -258,6 +258,10 @@ fn spawn_ganger(
         WieldedBy::new(ganger),
         selector,
         Magazine::new(10, size, ReloadTu::new(12)),
+        // GTW-443: the wielded-weapon entity carries Handedness — the fire surface's
+        // WeaponMagazine query reads `(&Magazine, &Handedness)`, so without it the query
+        // would not match and the click would fire nothing.
+        Handedness::OneHanded,
     ));
     ganger
 }

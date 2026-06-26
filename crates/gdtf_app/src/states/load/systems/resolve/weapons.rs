@@ -227,7 +227,7 @@ mod test {
              damage: {damage}, punch: 2, shred: 1, damage_type: Kinetic, \
              magazine: (size: 12, reload_tu: 12), \
              fire_mode: [(kind: Single, cone_mult: 1.0, tu_percent: 0.30, shots: 1)], \
-             stable: false)",
+             stable: false, handedness: OneHanded)",
         );
         let parsed = ron::de::from_str::<WeaponSpec>(&ron);
         assert!(

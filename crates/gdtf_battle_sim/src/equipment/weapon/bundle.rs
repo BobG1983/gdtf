@@ -6,8 +6,8 @@
 use bevy::prelude::Bundle;
 
 use super::{
-    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Kickback, Stable, Weapon, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Handedness, Kickback, Stable, Weapon,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 use crate::magazine::Magazine;
 
@@ -92,6 +92,9 @@ pub struct WeaponBundle {
     pub fire_mode:   FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
     pub stable:      Stable,
+    /// The weapon's [`Handedness`] (GTW-443) — `OneHanded` / `TwoHanded`; the shared
+    /// `can_fire` guard refuses a `TwoHanded` weapon below two available hands.
+    pub handedness:  Handedness,
 }
 
 /// A weapon's **damage block** for spawning — the three per-hit damage numbers plus
@@ -151,22 +154,30 @@ impl DamageProfile {
 pub struct HandlingProfile {
     /// The ammo state — the [`Magazine`] grouping (capacity + reload cost + loaded
     /// count).
-    pub magazine:  Magazine,
+    pub magazine:   Magazine,
     /// The authored fire-mode selector and its per-mode numbers.
-    pub fire_mode: FireMode,
+    pub fire_mode:  FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
-    pub stable:    Stable,
+    pub stable:     Stable,
+    /// The weapon's [`Handedness`] (GTW-443).
+    pub handedness: Handedness,
 }
 
 impl HandlingProfile {
     /// Build a handling block from a weapon's [`Magazine`] grouping, fire-mode
-    /// selector, and `stable` tag.
+    /// selector, `stable` tag, and [`Handedness`] (GTW-443).
     #[must_use]
-    pub const fn new(magazine: Magazine, fire_mode: FireMode, stable: Stable) -> Self {
+    pub const fn new(
+        magazine: Magazine,
+        fire_mode: FireMode,
+        stable: Stable,
+        handedness: Handedness,
+    ) -> Self {
         Self {
             magazine,
             fire_mode,
             stable,
+            handedness,
         }
     }
 }
@@ -205,6 +216,7 @@ impl WeaponBundle {
             magazine: handling.magazine,
             fire_mode: handling.fire_mode,
             stable: handling.stable,
+            handedness: handling.handedness,
         }
     }
 

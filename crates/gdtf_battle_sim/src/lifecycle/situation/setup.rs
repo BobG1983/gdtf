@@ -324,9 +324,13 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
     let fire_mode = (*weapon.fire_mode).clone();
     let stable = *weapon.stable;
     // The runtime-valued / value-typed leaves with no `bsn!` grammar form, owned for the
-    // `template_value` tuple-composition tail (the GTW-322 runtime-value path).
+    // `template_value` tuple-composition tail (the GTW-322 runtime-value path). The GTW-443
+    // `Handedness` is a runtime-valued enum (like `DamageType`), so it bridges the same way
+    // — WITHOUT it the GTW-443 `WeaponQuery`'s `&Handedness` column would not match the
+    // spawned weapon entity and `fire()` would fail closed (an empty volley).
     let damage_type = weapon.damage_type;
     let magazine = weapon.magazine;
+    let handedness = weapon.handedness;
     (
         bsn! {
             Weapon
@@ -345,6 +349,7 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
         // bridged via `template_value` and tuple-composed onto the SAME weapon entity.
         template_value(damage_type),
         template_value(magazine),
+        template_value(handedness),
     )
 }
 

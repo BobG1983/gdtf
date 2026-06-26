@@ -17,7 +17,7 @@ use crate::{
     armor::BodyPart,
     cover::CoverLedger,
     ganger::{Aiming, Facing, LifeState, Luck, Position, Shooting, Stance, StanceKind, Tu, TuMax},
-    injuries::{InjuryRegistry, InjuryTables},
+    injuries::{HandsAvailable, InflictedInjuries, InjuryRegistry, InjuryTables},
     magazine::Magazine,
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
@@ -28,8 +28,8 @@ use crate::{
     stability::terrain_brace::terrain_braces,
     tuning::CombatTuning,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Kickback, Stable, WeaponDamage,
-        WeaponPunch, WeaponShred, WeaponStats,
+        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback, Stable,
+        WeaponDamage, WeaponPunch, WeaponShred, WeaponStats,
     },
 };
 
@@ -185,17 +185,24 @@ impl TargetGeometry {
 /// wrapped domain scalar.
 pub(super) struct ShooterReads {
     /// The shooter's `Copy` ganger-state + weapon-stat snapshot.
-    pub(super) snapshot: ShooterSnapshot,
+    pub(super) snapshot:        ShooterSnapshot,
     /// The wielded weapon entity — the burst re-borrows its [`Magazine`] per round.
-    pub(super) weapon:   Entity,
+    pub(super) weapon:          Entity,
     /// The shooter's current TU pool ([`can_fire`](crate::magazine::can_fire) reads it).
-    pub(super) tu:       Tu,
+    pub(super) tu:              Tu,
     /// The shooter's TU ceiling ([`mode_tu_cost`](crate::magazine::mode_tu_cost) reads it).
-    pub(super) tu_max:   TuMax,
+    pub(super) tu_max:          TuMax,
     /// Whether the shooter is aiming (the ×1.5 TU premium toggle).
-    pub(super) aiming:   Aiming,
+    pub(super) aiming:          Aiming,
     /// The weapon's ammo state, snapshotted for the affordability / burst-clamp reads.
-    pub(super) magazine: Magazine,
+    pub(super) magazine:        Magazine,
+    /// The wielded weapon's [`Handedness`] (GTW-443) — fed to the [`FireActor`](crate::magazine::FireActor)
+    /// hand-count gate.
+    pub(super) handedness:      Handedness,
+    /// The shooter's [`HandsAvailable`] (GTW-443), FOLDED from its injury ledger (an
+    /// absent ledger = the uninjured two-hands default) — fed to the
+    /// [`FireActor`](crate::magazine::FireActor) hand-count gate.
+    pub(super) hands_available: HandsAvailable,
 }
 
 /// Read the shooter's `Copy` state into a [`ShooterSnapshot`] — its ganger state off the
@@ -227,6 +234,10 @@ pub(super) fn read_shooter(
         Some(ledger) => crate::ganger::effective_luck(*luck, ledger),
         None => *luck,
     };
+    // GTW-443: fold the shooter's available hand count from its injury ledger (an absent
+    // ledger = the uninjured two-hands default) for the FireActor hand-count gate.
+    let hands_available =
+        injuries.map_or_else(HandsAvailable::default, InflictedInjuries::hands_available);
     // Resolve `ganger → Wields → the weapon entity` (GTW-323 slice 2), then read the
     // GTW-200 weapon stats + magazine off that weapon entity (a different entity than
     // the ganger, so the borrow is disjoint).
@@ -241,6 +252,7 @@ pub(super) fn read_shooter(
         shred,
         damage_type,
         stable,
+        handedness,
         magazine,
     ) = weapons.get(weapon).ok()?;
     let snapshot = ShooterSnapshot {
@@ -267,6 +279,8 @@ pub(super) fn read_shooter(
         tu_max: *tu_max,
         aiming: *aiming,
         magazine: *magazine,
+        handedness: *handedness,
+        hands_available,
     })
 }
 

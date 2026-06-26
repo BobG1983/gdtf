@@ -66,8 +66,8 @@ use gdtf_battle_sim::{
     terrain::piece::TerrainRegistry,
     tuning::CombatTuning,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, Kickback, MagazineSize, Stable, WeaponDamage,
-        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Stable,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -1673,6 +1673,7 @@ fn armed_registry() -> WeaponRegistry {
             magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
             fire_mode:   FireMode::new(vec![spec(ModeKind::Single, 0.5, 1)]),
             stable:      Stable::new(false),
+            handedness:  Handedness::OneHanded,
         },
     )])
 }

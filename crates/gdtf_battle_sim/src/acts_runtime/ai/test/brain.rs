@@ -5,10 +5,10 @@
 //! always terminates within a bounded number of frames, spending TU within budget.
 
 use super::support::{
-    ENEMY, PLAYER, active_of, brain_app, drain_fires, drain_moves, ground, place_occupant,
-    spawn_combatant, tu_of,
+    ENEMY, PLAYER, active_of, brain_app, drain_fires, drain_moves, give_disabled_hand, ground,
+    place_occupant, spawn_combatant, spawn_combatant_handed, tu_of,
 };
-use crate::{ganger::Direction, metric::Cell};
+use crate::{armor::BodyPart, ganger::Direction, metric::Cell, weapon::Handedness};
 
 /// A generous frame cap — the enemy turn is finite (TU + ammo are finite, every act spends
 /// TU or attaches a bounded walk), so it must return control to the player well within this.
@@ -260,5 +260,108 @@ fn enemy_brain_never_drives_a_player_unit() {
             && f.target_cell == Cell::new(6, 5)
             && *f.target_level == 0),
         "the enemy must engage the nearer player at (6,5,0): {fires:?}",
+    );
+}
+
+/// GTW-443 C7 — AI PARITY: the AI brain (which runs the SHARED `can_fire`) does NOT
+/// engage with a `TwoHanded` weapon when the shooter has fewer than two hands. The enemy at
+/// (2,5) faces East at a player occupant at (8,5) — clear LOS, in arc + range, the IDENTICAL
+/// geometry that fires in the positive control below — but wields a `TwoHanded` weapon AND
+/// carries a hand-disabling injury (one hand left), so the shared fire guard refuses it and
+/// the brain NEVER emits a `FireRequested` at the player.
+///
+/// This sits on the BRAIN path (not the player surface) on purpose: it distinguishes the
+/// shared-guard siting (a single gate the AI and player both fold their hand count into)
+/// from a player-only gate that would leave the AI ungated. Pin-discriminating: the
+/// `two_handed_at_two_hands` control proves the same geometry DOES fire, so the absence of
+/// fire here is the hand-count gate, not a dead scenario.
+#[test]
+fn ai_does_not_engage_two_handed_weapon_below_two_hands() {
+    let mut app = brain_app();
+    let player_at = ground(8, 5);
+    let enemy = spawn_combatant_handed(
+        app.world_mut(),
+        ground(2, 5),
+        ENEMY,
+        Direction::East,
+        Handedness::TwoHanded,
+    );
+    // A hand-disabling injury drops the enemy to one hand → the 2H weapon is refused.
+    give_disabled_hand(app.world_mut(), enemy, BodyPart::RightArm);
+    let player = spawn_combatant_handed(
+        app.world_mut(),
+        player_at,
+        PLAYER,
+        Direction::West,
+        Handedness::OneHanded,
+    );
+    place_occupant(&mut app, player_at, player);
+
+    let mut fires = Vec::new();
+    let mut returned = false;
+    for _ in 0..FRAME_CAP {
+        app.update();
+        fires.extend(drain_fires(&mut app));
+        if active_of(&app) == PLAYER {
+            returned = true;
+            break;
+        }
+    }
+
+    // The AI never fires the two-handed weapon at one hand (the shared can_fire refuses it).
+    assert!(
+        fires.is_empty(),
+        "the AI must NOT engage a TwoHanded weapon below two hands (shared can_fire gate): {fires:?}",
+    );
+    // The turn still terminates (the brain advances/holds, then ends the turn).
+    assert!(
+        returned,
+        "the enemy turn must still terminate within the cap (advance/hold, then end-turn)",
+    );
+}
+
+/// GTW-443 C7 positive control — the SAME engagement geometry DOES fire when the enemy
+/// has both hands for its `TwoHanded` weapon, proving the no-fire above is the hand-count
+/// gate and not an inert scenario (the gate is conditional, not a blanket 2H ban).
+#[test]
+fn ai_engages_two_handed_weapon_with_two_hands() {
+    let mut app = brain_app();
+    let player_at = ground(8, 5);
+    let enemy = spawn_combatant_handed(
+        app.world_mut(),
+        ground(2, 5),
+        ENEMY,
+        Direction::East,
+        Handedness::TwoHanded,
+    );
+    // No disabling injury → both hands → the 2H weapon is usable.
+    let player = spawn_combatant_handed(
+        app.world_mut(),
+        player_at,
+        PLAYER,
+        Direction::West,
+        Handedness::OneHanded,
+    );
+    place_occupant(&mut app, player_at, player);
+
+    let mut fires = Vec::new();
+    for _ in 0..FRAME_CAP {
+        app.update();
+        fires.extend(drain_fires(&mut app));
+        if active_of(&app) == PLAYER {
+            break;
+        }
+    }
+
+    assert!(
+        fires.iter().any(|f| f.shooter == enemy
+            && f.target_cell == Cell::new(8, 5)
+            && *f.target_level == 0),
+        "with two hands the AI engages the TwoHanded weapon at the player's (8,5,0) cell: {fires:?}",
+    );
+    assert!(
+        tu_of(&app, enemy) < 100,
+        "the enemy spent TU firing: {}",
+        tu_of(&app, enemy),
     );
 }

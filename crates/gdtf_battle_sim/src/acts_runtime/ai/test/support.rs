@@ -27,8 +27,9 @@ pub(super) use crate::{
     visibility::{OmniscientFog, SquadVisibility},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        WieldedBy,
     },
 };
 
@@ -134,6 +135,7 @@ pub(super) fn spawn_combatant(
             Magazine::new(ammo, mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(true),
+            Handedness::OneHanded,
         ),
     );
     let ganger = world
@@ -158,6 +160,81 @@ pub(super) fn spawn_combatant(
         .id();
     world.spawn((WieldedBy::new(ganger), bundle));
     ganger
+}
+
+/// Spawn a combatant exactly as [`spawn_combatant`], but wielding a weapon of the given
+/// [`Handedness`] (GTW-443 C7) — the only difference is the weapon's handedness, so the
+/// AI's shared `can_fire` hand-count gate can be exercised on the brain path.
+pub(super) fn spawn_combatant_handed(
+    world: &mut World,
+    at: CellLevel,
+    faction: Faction,
+    facing: Direction,
+    handedness: Handedness,
+) -> Entity {
+    let mode = FireModeSpec::new(
+        ModeKind::Single,
+        ModeConeMult::new(1.0),
+        ModeTuPercent::new(MODE_TU_PERCENT),
+        ModeShots::new(1),
+    );
+    let bundle = WeaponBundle::new(
+        WeaponName::new("test-weapon".to_owned()),
+        BaseSpread::new(0.05),
+        Accuracy::new(2.0),
+        Kickback::new(0.2),
+        FatalBias::new(0.0),
+        DamageProfile::new(
+            WeaponDamage::new(40),
+            WeaponPunch::new(20),
+            WeaponShred::new(10),
+            DamageType::Kinetic,
+        ),
+        HandlingProfile::new(
+            Magazine::new(6, MagazineSize::new(30), ReloadTu::new(12)),
+            FireMode::new(vec![mode]),
+            Stable::new(true),
+            handedness,
+        ),
+    );
+    let ganger = world
+        .spawn((
+            Position::new(at),
+            Facing::new(facing),
+            Stance::new(StanceKind::Standing),
+            Aiming::new(false),
+            Shooting::new(1.0),
+            Tu::new(100),
+            TuMax::new(100),
+            faction,
+            (
+                Hp::new(50),
+                Wounds::new(10),
+                LifeState::Alive,
+                InflictedWounds::default(),
+                Toughness::new(1.0),
+                Luck::new(0.0),
+            ),
+        ))
+        .id();
+    world.spawn((WieldedBy::new(ganger), bundle));
+    ganger
+}
+
+/// Insert an [`InflictedInjuries`](crate::injuries::InflictedInjuries) ledger disabling
+/// one hand (a `DisableHand` keyed to `part`) on `ganger` (GTW-443 C7) — so its derived
+/// hand count drops, and the shared `can_fire` refuses a two-handed weapon.
+pub(super) fn give_disabled_hand(world: &mut World, ganger: Entity, part: crate::armor::BodyPart) {
+    use crate::injuries::{GainedInjury, InflictedInjuries, InjuryEffect, InjuryName, InspectText};
+    let mut ledger = InflictedInjuries::default();
+    ledger.gain(GainedInjury::new(
+        InjuryName::new("disabled-hand".to_owned()),
+        part,
+        crate::severity::Severity::Major,
+        vec![InjuryEffect::DisableHand],
+        InspectText::new("a disabled hand".to_owned()),
+    ));
+    world.entity_mut(ganger).insert(ledger);
 }
 
 /// Register `entity` as a grid occupant at `at` with a HIGH silhouette band — so the LOS

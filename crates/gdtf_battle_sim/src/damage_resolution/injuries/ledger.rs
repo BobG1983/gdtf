@@ -5,6 +5,45 @@
 use bevy::prelude::{Component, Deref};
 
 use super::{BleedAmount, GainedInjury, InjuryEffect, StatDelta, StatTarget};
+use crate::armor::BodyPart;
+
+/// A ganger's **available hand count** — how many working hands it currently has
+/// (`0..=2`), the read-derived input the shared `can_fire` guard checks a
+/// [`TwoHanded`](crate::weapon::Handedness::TwoHanded) weapon against (GTW-443).
+///
+/// DERIVED-ON-READ from the [`InflictedInjuries`] ledger via
+/// [`hands_available`](InflictedInjuries::hands_available) — NOT a stored component and
+/// NOT a [`StatTarget`] slot: a hand-disabling injury surfaces here by folding the
+/// ledger's [`gained`](InflictedInjuries::gained) entries (the single-source-of-truth,
+/// so a content hot-edit re-derives it rather than wiping an applied-once counter).
+/// Default = `HandsAvailable(2)` (no injuries, both hands working).
+///
+/// A no-bare-types newtype (a hand count is a domain value): private inner + derived
+/// [`Deref`]; the constructor [`new`](HandsAvailable::new) clamps into `0..=2`, so an
+/// out-of-range count can never exist. Derives [`Hash`] / [`Eq`] / [`Copy`] so it can be
+/// a value field of the [`FireActor`](crate::magazine::FireActor) read-bundle.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct HandsAvailable(u8);
+
+impl HandsAvailable {
+    /// The maximum hand count — a ganger has two hands. Reused by the `can_fire`
+    /// hand-count clause as the [`TwoHanded`](crate::weapon::Handedness::TwoHanded) need.
+    pub(crate) const MAX: u8 = 2;
+
+    /// Build a hand count, **clamping** into `0..=2` (a ganger can never have more than
+    /// two working hands, nor a negative count).
+    #[must_use]
+    pub const fn new(hands: u8) -> Self {
+        Self(if hands > Self::MAX { Self::MAX } else { hands })
+    }
+}
+
+impl Default for HandsAvailable {
+    /// Two working hands — the uninjured default (no ledger / no arm injury).
+    fn default() -> Self {
+        Self(Self::MAX)
+    }
+}
 
 /// The running **summed delta** for one [`StatTarget`] across every injury on a
 /// ganger's ledger — the modifier-layer total the GTW-436 projector adds to that
@@ -151,6 +190,14 @@ impl InflictedInjuries {
             match *effect {
                 InjuryEffect::Modify { stat, amount } => self.deltas.add_delta(stat, amount),
                 InjuryEffect::Bleeding { amount } => self.bleed = self.bleed.accumulate(amount),
+                // GTW-443: DisableHand is INERT at gain — it accumulates NO stat delta and
+                // NO bleed. The disabled hand is surfaced by folding `gained` on demand
+                // (`hands_available`), keyed on each entry's struck `part`, NOT by docking a
+                // stored counter. Read-fold (not stored) because the count is a SET over
+                // distinct arm-sides: two same-side DisableHand injuries must still disable
+                // exactly one hand, which a per-injury counter could not give without
+                // de-duping — folding the parts into a set is the single-source-of-truth.
+                InjuryEffect::DisableHand => {}
             }
         }
         self.gained.push(record);
@@ -174,5 +221,45 @@ impl InflictedInjuries {
     #[must_use]
     pub const fn bleed(&self) -> BleedAfflicted {
         self.bleed
+    }
+
+    /// The ganger's **available hand count** ([`HandsAvailable`]), DERIVED on read by
+    /// folding the ledger's [`gained`](InflictedInjuries::gained) entries (GTW-443).
+    ///
+    /// Folds every [`GainedInjury`] carrying an [`InjuryEffect::DisableHand`] effect into
+    /// a SET of distinct disabled arm-sides — its struck
+    /// [`part`](GainedInjury::part) maps [`LeftArm`](crate::armor::BodyPart::LeftArm) → the
+    /// left side and [`RightArm`](crate::armor::BodyPart::RightArm) → the right side; a
+    /// `DisableHand` carried by a Head / Torso / Leg injury is INERT (no arm to disable).
+    /// The count is `2 − (left disabled) − (right disabled)`, so:
+    /// - no arm injury → `2`;
+    /// - one arm side disabled → `1`;
+    /// - TWO same-side `DisableHand` injuries → still `1` (the set holds one side), never
+    ///   `0` — the property a per-injury counter could not give without de-duping;
+    /// - both sides disabled → `0`.
+    ///
+    /// Order-independent and deterministic (set membership over sides, not a count over
+    /// entries). The result is clamped into `0..=2` by [`HandsAvailable::new`].
+    #[must_use]
+    pub fn hands_available(&self) -> HandsAvailable {
+        let mut left_disabled = false;
+        let mut right_disabled = false;
+        for record in &self.gained {
+            let disables = record
+                .effects
+                .iter()
+                .any(|effect| matches!(effect, InjuryEffect::DisableHand));
+            if !disables {
+                continue;
+            }
+            match record.part {
+                BodyPart::LeftArm => left_disabled = true,
+                BodyPart::RightArm => right_disabled = true,
+                // A DisableHand on a non-arm part is inert (no hand to disable).
+                BodyPart::Head | BodyPart::Torso | BodyPart::LeftLeg | BodyPart::RightLeg => {}
+            }
+        }
+        let disabled = u8::from(left_disabled) + u8::from(right_disabled);
+        HandsAvailable::new(HandsAvailable::MAX - disabled)
     }
 }

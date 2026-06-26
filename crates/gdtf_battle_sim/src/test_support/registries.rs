@@ -22,7 +22,7 @@ use crate::{
     },
     tuning::MoveCost,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
+        Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Handedness, Kickback,
         MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
         WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
     },
@@ -68,6 +68,7 @@ pub fn test_weapon_spec() -> WeaponSpec {
             ModeShots::new(1),
         )]),
         stable:      Stable::new(false),
+        handedness:  Handedness::OneHanded,
     }
 }
 

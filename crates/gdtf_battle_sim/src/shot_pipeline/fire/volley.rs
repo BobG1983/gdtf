@@ -156,6 +156,8 @@ pub fn fire(
         tu_max: shooter_tu_max,
         aiming: shooter_aiming,
         magazine: magazine_now,
+        handedness: shooter_handedness,
+        hands_available: shooter_hands,
     }) = read_shooter(shooter, shooters, wields, weapons)
     else {
         return Volley::empty();
@@ -173,11 +175,13 @@ pub fn fire(
     // (1) VALIDATE via the shared can_fire guard (AC2). On failure, return an empty
     //     volley having mutated NOTHING — no TU charge, no draw (fail-closed).
     let actor = FireActor {
-        life:     &shooter_life,
-        tu:       &shooter_tu,
-        tu_max:   &shooter_tu_max,
-        aiming:   &shooter_aiming,
-        magazine: &magazine_now,
+        life:            &shooter_life,
+        tu:              &shooter_tu,
+        tu_max:          &shooter_tu_max,
+        aiming:          &shooter_aiming,
+        magazine:        &magazine_now,
+        handedness:      shooter_handedness,
+        hands_available: shooter_hands,
     };
     if !can_fire(
         &actor,

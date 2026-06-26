@@ -325,6 +325,33 @@ impl WeaponName {
     }
 }
 
+/// A weapon's **handedness** — how many hands it takes to fire (GTW-443). A
+/// [`OneHanded`](Handedness::OneHanded) weapon (a pistol) can be fired with a single
+/// working hand; a [`TwoHanded`](Handedness::TwoHanded) weapon (a long-arm or heavy
+/// piece) needs BOTH hands and is refused once a hand-disabling injury leaves the
+/// shooter with fewer than two (see [`HandsAvailable`](crate::injuries::HandsAvailable)
+/// and the shared `can_fire` guard).
+///
+/// A named domain enum (no-bare-types-exempt: an enum carries its meaning in its
+/// variants, not a wrapped primitive). It lives as its OWN sibling
+/// `#[derive(Component)]` newtype on the armed entity (GTW-200), parsed from the
+/// `handedness:` field of a weapon's `.weapon.ron`. `Copy` + `Hash` + `Eq` so it can be
+/// a value field of the [`FireActor`](crate::magazine::FireActor) read-bundle.
+/// `Default` ([`OneHanded`](Handedness::OneHanded)) is a **spawn-seed sentinel only** —
+/// the `bsn!` spawn path seeds the slot via `Default` before the authored
+/// `Handedness::<Variant>` patch overwrites it (GTW-322). It carries no special meaning
+/// as the default; `OneHanded` is chosen as the least-restrictive node so an
+/// un-authored weapon never spuriously gates on hand count.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+pub enum Handedness {
+    /// A one-handed weapon — fires with a single working hand (a pistol).
+    #[default]
+    OneHanded,
+    /// A two-handed weapon — needs BOTH hands; refused at fewer than two available
+    /// hands (a long-arm or heavy piece).
+    TwoHanded,
+}
+
 /// The **`Weapon` MARKER** — a unit `#[derive(Component)]` tag (no data) marking an
 /// entity as armed (GTW-200's user-corrected model).
 ///

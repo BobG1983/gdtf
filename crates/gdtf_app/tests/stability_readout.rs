@@ -32,8 +32,8 @@ use gdtf_battle_sim::{
     terrain::piece::TerrainRegistry,
     tuning::CombatTuning,
     weapon::{
-        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, HandlingProfile, Kickback,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, Handedness, HandlingProfile,
+        Kickback, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -172,6 +172,7 @@ fn weapon_kit(stable: bool) -> WeaponBundle {
                 ModeShots::new(1),
             )]),
             Stable::new(stable),
+            Handedness::OneHanded,
         ),
     )
 }
