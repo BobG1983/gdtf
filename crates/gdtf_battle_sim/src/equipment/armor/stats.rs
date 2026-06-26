@@ -119,7 +119,7 @@ impl ArmorHardness {
 /// first canonical part) is the GTW-322 `bsn!` spawn-seed sentinel — the
 /// `template_value` spawn path seeds the slot via `Default` before the authored
 /// per-piece tag overwrites it; it is never a meaningful default location.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum BodyPart {
     /// The head — rarely struck, but severity-amplifying when it is.
     #[default]

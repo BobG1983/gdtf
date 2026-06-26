@@ -282,6 +282,13 @@ pub use damage_resolution::{
     hit_location::roll_body_part,
     inflicted_wound,
     inflicted_wound::{InflictedWound, InflictedWounds},
+    injuries,
+    injuries::{
+        BleedAfflicted, BleedAmount, GainedInjury, InflictedInjuries, InjuryDef, InjuryEffect,
+        InjuryName, InjuryWeight, InjuryWeighting, InspectText, LogText, PopupText, PostHeal,
+        RolledInjury, StatDelta, StatDeltaLedger, StatDeltaSum, StatKind, StatTarget,
+        WeightedInjuryEntry, WeightedInjuryTable,
+    },
     matchup,
     matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier},
     resolve_and_apply,
