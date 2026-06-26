@@ -54,7 +54,11 @@ use crate::TopDownAtlases;
 /// The [`shooter`](ShotImpactResolved::shooter) [`Entity`] is framework plumbing (the
 /// no-bare-types carve-out), and [`report`](ShotImpactResolved::report) is the sim's own value type
 /// — the consumer resolves the entity to a name + reuses the report through the shared classifier.
-#[derive(Message, Debug, Clone, PartialEq, Eq)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): the [`HitReport`]'s rolled-injury effects
+/// may include a `MovementCostMul` `f32` payload (not `Eq`). A buffered message is read in
+/// order, never keyed in a hashed/ordered set.
+#[derive(Message, Debug, Clone, PartialEq)]
 pub struct ShotImpactResolved {
     /// The firing entity whose shot just impacted — the consumer resolves it to a display name.
     pub shooter: Entity,

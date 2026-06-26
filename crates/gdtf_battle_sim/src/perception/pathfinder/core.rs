@@ -31,6 +31,7 @@ use bevy::{platform::collections::HashMap, prelude::Entity};
 use super::{path::PathCost, planning::PlanningView};
 use crate::{
     ganger::Tu,
+    injuries::MovementCostFactor,
     metric::CellLevel,
     occupancy::{OccupancyGrid, pathable_neighbors},
     terrain::floor::FloorCostGrid,
@@ -126,6 +127,12 @@ where
     /// The per-cell floor move-cost surface (GTW-396) — read by `pathable_neighbors`
     /// for every planar destination cell instead of `tuning.move_costs`.
     pub(super) floor_costs: &'a FloorCostGrid,
+    /// The MOVER'S movement-cost factor (GTW-444) — the per-ganger "Hampered" slowdown,
+    /// read from the mover's [`InflictedInjuries`](crate::injuries::InflictedInjuries)
+    /// ledger by the caller and applied to EVERY planar step cost (the preview side of the
+    /// preview==charge identity, C3). [`MovementCostFactor::IDENTITY`] for an uninjured
+    /// mover (no scaling).
+    pub(super) factor:      MovementCostFactor,
     /// The visibility-aware planning gate — the squad fog + occupant-faction resolver
     /// deciding which candidate `(cell, level)`s are routable (C1 / C2).
     pub(super) planning:    &'a PlanningView<'a, R>,
@@ -172,7 +179,7 @@ where
     fn edges(&self, origin: CellLevel) -> Vec<(CellLevel, Tu)> {
         // Planar steps keep the FULL gate (C1 UNSEEN + C2). An UNSEEN floor tile
         // reached by an ordinary step stays non-routable — no fog relaxation.
-        let planar = pathable_neighbors(origin, self.grid, self.floor_costs)
+        let planar = pathable_neighbors(origin, self.grid, self.floor_costs, self.factor)
             .filter(|(neighbour, _)| self.planning.is_routable(*neighbour, self.grid));
         // GTW-387: a vertical hop's far endpoint comes from the VALIDATED
         // VerticalLinkGraph (links_from(origin)) — it IS a known link. Relax C1 for

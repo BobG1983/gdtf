@@ -35,6 +35,18 @@
 //!
 //! It fetches the actor's components + reads the grids via Bevy queries / `Res`
 //! (`bevy-traps.md` #7 — no `&mut World`); it only READS the grids + the squad fog.
+//!
+//! ## GTW-444 — "Hampered" movement-cost factor
+//!
+//! The dispatch reads the mover's
+//! [`MovementCostFactor`](crate::injuries::MovementCostFactor) from its
+//! [`InflictedInjuries`](crate::injuries::InflictedInjuries) ledger and passes it to
+//! [`find_path`], which scales EVERY planar per-step floor cost by it. Because the
+//! accepted [`WalkInProgress`] holds the planned [`Path::steps`](crate::pathfinder::Path::steps)
+//! VERBATIM and [`advance_walk`](crate::move_acts::advance_walk) charges those steps, the
+//! factor flows through to the actual per-step TU charge with NO second application — so a
+//! Hampered unit's previewed path cost equals the TU it is charged (preview==charge, C3).
+//! An uninjured mover passes the IDENTITY factor (`1.0`), leaving the cost unchanged.
 
 use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query, Res};
 
@@ -42,6 +54,7 @@ use crate::{
     acts::request::MoveRequested,
     battle::PlayerFaction,
     ganger::{Faction, Position, Tu},
+    injuries::{InflictedInjuries, MovementCostFactor},
     metric::{Cell, CellLevel},
     move_acts::WalkInProgress,
     occupancy::OccupancyGrid,
@@ -222,7 +235,12 @@ fn relation_to(
 )]
 pub fn dispatch_move(
     mut requests: MessageReader<MoveRequested>,
-    actors: Query<(&'static Position, &'static Tu, &'static Faction)>,
+    actors: Query<(
+        &'static Position,
+        &'static Tu,
+        &'static Faction,
+        Option<&'static InflictedInjuries>,
+    )>,
     factions: Query<&'static Faction>,
     grid: Res<OccupancyGrid>,
     links: Res<VerticalLinkGraph>,
@@ -240,11 +258,21 @@ pub fn dispatch_move(
     mut commands: Commands,
 ) {
     for request in requests.read() {
-        let Ok((position, tu, &mover_faction)) = actors.get(request.actor) else {
+        let Ok((position, tu, &mover_faction, injuries)) = actors.get(request.actor) else {
             // Fail-closed guard skip (no MoveRejected): a message for an actor missing a
             // queried component is silently dropped, the `dispatch_*` precedent.
             continue;
         };
+
+        // GTW-444: the mover's per-ganger movement-cost factor (the "Hampered" slowdown),
+        // read from its InflictedInjuries ledger — IDENTITY (1.0, no scaling) when the
+        // ganger has no injury ledger or no MovementCostMul. The SAME factor scales
+        // find_path's per-step costs AND (via the planned Path::steps the walk charges
+        // verbatim) advance_walk's per-step TU charge, so preview == charge (C3).
+        let factor = injuries.map_or(
+            MovementCostFactor::IDENTITY,
+            InflictedInjuries::movement_cost_factor,
+        );
 
         // The mover's current cell — the route's start. (Routing is from where the mover
         // STANDS, so it keeps the storey.) `Position` derefs to the `CellLevel` `find_path`
@@ -285,6 +313,7 @@ pub fn dispatch_move(
             &links,
             &tuning,
             &floor_costs,
+            factor,
             &planning,
         ) else {
             rejects.write(MoveRejected::new(request.actor, MoveRejection::Unreachable));

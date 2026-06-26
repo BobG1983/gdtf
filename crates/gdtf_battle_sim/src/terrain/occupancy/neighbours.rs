@@ -38,6 +38,7 @@ use std::f32::consts::SQRT_2;
 
 use crate::{
     ganger::Tu,
+    injuries::MovementCostFactor,
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     terrain::floor::FloorCostGrid,
@@ -85,7 +86,16 @@ const PLANAR_OFFSETS: [(i32, i32); 8] = [
 ///   matching the ADR-0005 example). The rounding is `f32::round`
 ///   (round-half-away-from-zero), then narrowed to the `u8` [`Tu`] inner.
 ///
-/// **No corner-cutting (C3, `AT_LEAST_ONE_WALKABLE`).** A diagonal step is
+/// **Movement-cost factor (GTW-444 C3).** The base step cost (orthogonal or octile) is
+/// then scaled by the mover's `factor` ([`MovementCostFactor`] — the "Hampered"
+/// slowdown) and rounded UP (`ceil`): a factor `>= 1.0` NEVER reduces a step below its
+/// base terrain cost. The factor is PER-GANGER (passed in by the caller, read from the
+/// mover's [`InflictedInjuries`](crate::injuries::InflictedInjuries)), NOT per-tile — the
+/// SAME scaling the committed walk's per-step charge applies, so a previewed path cost
+/// equals the TU actually charged (preview==charge). An uninjured mover passes
+/// [`MovementCostFactor::IDENTITY`] (`1.0`), leaving the cost at the base terrain cost.
+///
+/// **No corner-cutting (C3 GTW-396, `AT_LEAST_ONE_WALKABLE`).** A diagonal step is
 /// EXCLUDED if BOTH of its two shared-edge orthogonal neighbours are blocked — a
 /// unit cannot "phase" diagonally through the corner where two blocked cells meet.
 ///
@@ -94,7 +104,8 @@ const PLANAR_OFFSETS: [(i32, i32); 8] = [
 /// a DESTROYED-cover cell as walkable and excludes standing walls / cover.
 ///
 /// **Determinism (C5).** Neighbours are yielded in the canonical `(z, y, x)`
-/// cell-key order by iterating [`PLANAR_OFFSETS`] (pre-sorted).
+/// cell-key order by iterating [`PLANAR_OFFSETS`] (pre-sorted); the factor scaling is a
+/// pure `ceil(cost × factor)`, deterministic for a fixed `(cost, factor)`.
 ///
 /// An `origin` whose neighbours are all blocked / out-of-bounds yields an empty
 /// iterator (never a panic). This is the planar GATE + cost only — it does not
@@ -105,6 +116,7 @@ pub fn pathable_neighbors<'a>(
     origin: CellLevel,
     grid: &'a OccupancyGrid,
     floor_costs: &'a FloorCostGrid,
+    factor: MovementCostFactor,
 ) -> impl Iterator<Item = (CellLevel, Tu)> + 'a {
     // The origin's storey — every planar neighbour shares it (same-storey, dz = 0).
     let level = origin.z;
@@ -124,7 +136,9 @@ pub fn pathable_neighbors<'a>(
         }
         // C2 (GTW-396): the entered cell's floor cost from FloorCostGrid;
         // diagonals pay the octile `round(move_cost × √2)`, orthogonals unchanged.
-        let cost = step_cost(floor_costs.cost(&neighbour), diagonal);
+        // GTW-444: then scale by the mover's MovementCostFactor (ceil, never below base).
+        let base = step_cost(floor_costs.cost(&neighbour), diagonal);
+        let cost = scale_by_factor(base, factor);
         Some((neighbour, cost))
     })
 }
@@ -184,4 +198,39 @@ fn step_cost(floor_cost: MoveCost, diagonal: bool) -> Tu {
     )]
     let octile = (f32::from(orthogonal) * SQRT_2).round() as u8;
     Tu::new(octile)
+}
+
+/// Scale a base per-step [`Tu`] cost by the mover's [`MovementCostFactor`] — the GTW-444
+/// "Hampered" slowdown — rounding UP (`ceil`).
+///
+/// `out = ceil(base × factor)`. The rounding is DETERMINISTIC `ceil` (the documented C3
+/// choice — picked over round-half-up because it guarantees a factor `>= 1.0` can NEVER
+/// reduce a step below its base terrain cost: `ceil(base × 1.0) == base`, and any factor
+/// `> 1.0` rounds up, so the floor of the scaled cost is always `>= base`). The IDENTITY
+/// factor (`1.0`) returns the base unchanged. The SAME helper is the single scaling rule
+/// the committed walk reuses, so preview == charge (C3). Saturates at `u8::MAX` rather
+/// than wrapping for an absurd factor (such a route is unaffordable and never committed).
+fn scale_by_factor(base: Tu, factor: MovementCostFactor) -> Tu {
+    // The IDENTITY factor (1.0) is a no-op fast path — and keeps an uninjured mover's cost
+    // bit-identical to the pre-GTW-444 base, with no float round-trip (C6 identity).
+    if factor == MovementCostFactor::IDENTITY {
+        return base;
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "base is a u8 Tu (<= 255) and an authored MovementCostFactor is >= 1.0; the \
+                  product is clamped to u8::MAX before the cast (so it cannot truncate or \
+                  wrap) and is non-negative (so the u8 cast cannot sign-flip); `.ceil()` has \
+                  already discarded the fractional part"
+    )]
+    let scaled = {
+        let raw = (f32::from(*base) * factor.raw()).ceil();
+        if raw > f32::from(u8::MAX) {
+            u8::MAX
+        } else {
+            raw as u8
+        }
+    };
+    Tu::new(scaled)
 }

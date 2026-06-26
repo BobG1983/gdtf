@@ -4,7 +4,7 @@
 
 use bevy::prelude::{Component, Deref};
 
-use super::{BleedAmount, GainedInjury, InjuryEffect, StatDelta, StatTarget};
+use super::{BleedAmount, GainedInjury, InjuryEffect, MovementCostFactor, StatDelta, StatTarget};
 use crate::armor::BodyPart;
 
 /// A ganger's **available hand count** — how many working hands it currently has
@@ -162,23 +162,37 @@ impl BleedAfflicted {
 /// [`gain`](InflictedInjuries::gain)); seeded empty ([`Default`]) on every spawned
 /// ganger. THIS slice owns the ledger + folding; the projector that READS the deltas
 /// is GTW-436, and the loader/roll/apply wiring is GTW-437/438.
-#[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): the `movement` accumulator is a
+/// [`MovementCostFactor`] over `f32`, which is not `Eq`. Nothing keys this ledger in a
+/// `HashSet`/`BTreeMap`; it is read through queries and the `Changed<InflictedInjuries>`
+/// change-detection filter (tick-based, not `Eq`-based), so dropping `Eq` is safe and
+/// keeps the multiply exact + deterministic (a fixed-point rep would forfeit that).
+#[derive(Component, Debug, Clone, PartialEq, Default)]
 pub struct InflictedInjuries {
     /// The ordered named-condition list, in infliction order (additive — only grows
     /// until a future GTW-23 heal removes an entry).
-    gained: Vec<GainedInjury>,
+    gained:   Vec<GainedInjury>,
     /// The per-stat summed deltas — the modifier-layer delta source.
-    deltas: StatDeltaLedger,
+    deltas:   StatDeltaLedger,
     /// The accrued per-turn HP bleed.
-    bleed:  BleedAfflicted,
+    bleed:    BleedAfflicted,
+    /// The accumulated MULTIPLICATIVE movement-cost factor (GTW-444) — the PRODUCT of
+    /// every [`MovementCostMul`](InjuryEffect::MovementCostMul) gained, defaulting to
+    /// [`MovementCostFactor::IDENTITY`] (`1.0`). DEDICATED + MULTIPLICATIVE: separate from
+    /// the summed `deltas` arrays and the summed `bleed` accrual because it MULTIPLIES, it
+    /// does not sum (two `MovementCostMul` factors of `1.5` and `2.0` fold to `3.0`).
+    movement: MovementCostFactor,
 }
 
 impl InflictedInjuries {
     /// **Gain** one injury: append its [`GainedInjury`] to the ordered ledger AND
     /// fold each of its effects into the accumulators — a [`Modify`](InjuryEffect::Modify)
     /// adds its [`StatDelta`] to the named stat's running sum, a
-    /// [`Bleeding`](InjuryEffect::Bleeding) adds its [`BleedAmount`] to the bleed
-    /// accrual.
+    /// [`Bleeding`](InjuryEffect::Bleeding) adds its [`BleedAmount`] to the bleed accrual,
+    /// and a [`MovementCostMul`](InjuryEffect::MovementCostMul) MULTIPLIES its
+    /// [`MovementCostFactor`] into the dedicated `movement`
+    /// accumulator (GTW-444 C2 — multiplicative, not additive).
     ///
     /// The sole mutator of the ledger (the GTW-437 apply boundary calls this once per
     /// inflicted injury). Folding the effects here keeps the summed-delta store
@@ -198,6 +212,12 @@ impl InflictedInjuries {
                 // exactly one hand, which a per-injury counter could not give without
                 // de-duping — folding the parts into a set is the single-source-of-truth.
                 InjuryEffect::DisableHand => {}
+                // GTW-444: MovementCostMul folds MULTIPLICATIVELY into the dedicated
+                // `movement` accumulator — NOT into the summed `deltas`/`bleed`. Two
+                // stacked factors MULTIPLY (1.5 × 2.0 = 3.0), the locked stacking rule (C4).
+                InjuryEffect::MovementCostMul(factor) => {
+                    self.movement = self.movement.times(factor);
+                }
             }
         }
         self.gained.push(record);
@@ -221,6 +241,22 @@ impl InflictedInjuries {
     #[must_use]
     pub const fn bleed(&self) -> BleedAfflicted {
         self.bleed
+    }
+
+    /// The ganger's accumulated **movement-cost factor** ([`MovementCostFactor`], GTW-444)
+    /// — the PRODUCT of every [`MovementCostMul`](InjuryEffect::MovementCostMul) gained,
+    /// or [`MovementCostFactor::IDENTITY`] (`1.0`) when none.
+    ///
+    /// The per-step movement TU cost = the GTW-396 terrain per-step floor cost MULTIPLIED
+    /// by this factor (rounded UP — see the pathfinder cost-scale). A factor `>= 1.0`
+    /// slows the ganger ("Hampered"); `1.0` is the uninjured identity (no slowdown). The
+    /// pathfinder (move-range / path preview) and the committed walk's per-step charge
+    /// BOTH read this and scale identically, so preview == charge (C3). STACKING
+    /// MULTIPLIES (C4): the value is the running product the `gain` fold builds, so it is
+    /// order-independent and deterministic.
+    #[must_use]
+    pub const fn movement_cost_factor(&self) -> MovementCostFactor {
+        self.movement
     }
 
     /// The ganger's **available hand count** ([`HandsAvailable`]), DERIVED on read by

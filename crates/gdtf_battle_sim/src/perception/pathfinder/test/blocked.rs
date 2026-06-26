@@ -37,7 +37,16 @@ fn goal_walled_in_is_path_blocked() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
-    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert_eq!(
         result,
         Err(PathBlocked),
@@ -59,7 +68,16 @@ fn other_storey_without_link_is_path_blocked() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
-    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert_eq!(
         result,
         Err(PathBlocked),
@@ -81,6 +99,15 @@ fn out_of_grid_goal_is_path_blocked() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
-    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert_eq!(result, Err(PathBlocked), "an off-grid goal is PathBlocked");
 }

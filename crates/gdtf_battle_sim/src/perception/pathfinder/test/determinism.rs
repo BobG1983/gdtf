@@ -5,11 +5,12 @@
 //! pre-sorted GTW-350/351 edge enumeration pin the result.
 
 use super::support::{
-    all_other, cell, default_floor_costs, full_vision, grid_with, links_graph, reachable_triples,
-    stair, tuning,
+    all_other, cell, default_floor_costs, full_vision, grid_with, links_graph, open_step,
+    reachable_triples, stair, tuning,
 };
 use crate::{
     ganger::Tu,
+    injuries::MovementCostFactor,
     occupancy::TerrainKind,
     pathfinder::{PlanningView, find_path, reachable_within},
 };
@@ -36,9 +37,36 @@ fn find_path_is_byte_identical_across_replays() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
-    let first = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
-    let second = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
-    let third = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let first = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    let second = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    let third = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
 
     assert!(first.is_ok(), "the fixture has a route: {first:?}");
     // Byte-identical across all three replays (the whole Path: cells + total).
@@ -74,6 +102,7 @@ fn reachable_within_is_byte_identical_across_replays() {
         &links,
         &tuning,
         &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
     let second = reachable_within(
@@ -83,6 +112,7 @@ fn reachable_within_is_byte_identical_across_replays() {
         &links,
         &tuning,
         &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
 
@@ -100,5 +130,89 @@ fn reachable_within_is_byte_identical_across_replays() {
     assert_eq!(
         triples, sorted,
         "the reachable set is emitted in (z, y, x) cell-key order",
+    );
+}
+
+// ── GTW-444: the MovementCostFactor preview==charge identity (C3 / C5) ────────────────
+
+/// A Hampered mover's planned route is BOTH scaled per step AND keeps the §48 bit-identity
+/// (`total == sum of steps`) — which is what makes preview == charge: the committed walk
+/// (`advance_walk`) charges the planned `Path::steps()` VERBATIM, so if `find_path` returns
+/// scaled steps that sum to `total`, the TU charged equals the previewed total. This test
+/// PINS that the SAME `find_path` cost the preview shows is the cost the walk will charge —
+/// it would FAIL if only one site scaled, or if the steps no longer summed to the total.
+#[test]
+fn hampered_route_steps_are_scaled_and_sum_to_total() {
+    let grid = grid_with(&[]); // all Open, one storey — a pure orthogonal corridor
+    let tuning = tuning();
+    let Some(links) = links_graph(&[]) else {
+        return;
+    };
+    let floor_costs = default_floor_costs(&tuning);
+    let squad = full_vision();
+    let planning = PlanningView::new(&squad, all_other);
+
+    // A 4-step orthogonal route (no diagonals → every step is the base open cost).
+    let start = cell(2, 2, 0);
+    let goal = cell(6, 2, 0);
+    let base = u32::from(*open_step(&tuning));
+
+    // Uninjured (IDENTITY) baseline: every step == base, total == 4 × base.
+    let id = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    let Ok(id) = id else {
+        return;
+    };
+    assert!(
+        id.steps().iter().all(|s| u32::from(**s) == base),
+        "uninjured: each orthogonal step is the base open cost"
+    );
+
+    // Hampered (2.0): every step DOUBLES (ceil(base × 2.0) = 2 × base), the total doubles,
+    // and the per-step costs STILL sum to the total (the §48 identity the walk relies on).
+    let factor = MovementCostFactor::new(2.0);
+    let hampered = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        factor,
+        &planning,
+    );
+    let Ok(hampered) = hampered else {
+        return;
+    };
+    // Same route cells (the slowdown does not reroute — every cell scales equally).
+    assert_eq!(
+        hampered.cells(),
+        id.cells(),
+        "the factor scales costs, it does not change the route"
+    );
+    // Each step is scaled to 2 × base.
+    assert!(
+        hampered.steps().iter().all(|s| u32::from(**s) == 2 * base),
+        "hampered (2.0): each step is ceil(base × 2.0) = 2 × base"
+    );
+    // PREVIEW==CHARGE: the steps the walk will charge sum to the previewed total.
+    let summed: u32 = hampered.steps().iter().map(|s| u32::from(**s)).sum();
+    assert_eq!(
+        summed,
+        u32::from(*hampered.total()),
+        "the per-step charges (what advance_walk charges) sum to the previewed total"
+    );
+    // The Hampered total is strictly greater than the uninjured total (a real slowdown).
+    assert!(
+        *hampered.total() > *id.total(),
+        "a Hampered route costs MORE TU than the same uninjured route"
     );
 }

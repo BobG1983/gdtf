@@ -80,7 +80,11 @@ impl LogName {
 /// [`TurnStarted`](gdtf_battle_sim::TurnStarted) — but holds RESOLVED display data, NOT raw
 /// entities, so [`classify_log_event`] is pure and World-free (the slice-3 reader does the
 /// `Entity` → name resolution). Exhaustive: exactly the events the combat log shows.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): a variant carries a
+/// [`HitReport`] whose rolled-injury effects may include a `MovementCostMul` `f32` payload
+/// (not `Eq`). Log events are compared with `==` / matched, never keyed in a set.
+#[derive(Debug, Clone, PartialEq)]
 pub enum CombatLogEvent {
     /// A shot was DECLARED — `"<actor> fired <Mode> at <target>"` (or `"<actor> fired <Mode>"`
     /// when the shot was aimed at no named occupant). From a

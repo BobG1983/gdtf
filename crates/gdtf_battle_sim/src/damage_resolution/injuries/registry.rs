@@ -21,7 +21,12 @@ use super::{InjuryDef, InjuryName};
 ///
 /// Private inner with small accessors (the registry answers an injury LOOKUP, not a
 /// raw-map question — so no derived [`Deref`](bevy::prelude::Deref)).
-#[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): its [`InjuryDef`] values may carry a
+/// [`MovementCostMul`](super::InjuryEffect::MovementCostMul) whose `f32` payload is not
+/// `Eq`. The registry is read by `InjuryName` lookup, never compared as a whole in a
+/// hashed/ordered set.
+#[derive(Resource, Debug, Clone, Default, PartialEq)]
 pub struct InjuryRegistry(HashMap<InjuryName, InjuryDef>);
 
 impl InjuryRegistry {

@@ -137,7 +137,17 @@ fn plan_total(app: &App, start: CellLevel, goal: CellLevel) -> Option<u8> {
     // The player squad sees its own gang; any non-player occupant is Other (the
     // dispatch_move `relation_to` shape, player-relative).
     let planning = PlanningView::new(squad, |_occupant| FactionRelation::Other);
-    let path = find_path(start, goal, grid, links, tuning, floor_costs, &planning).ok()?;
+    let path = find_path(
+        start,
+        goal,
+        grid,
+        links,
+        tuning,
+        floor_costs,
+        gdtf_battle_sim::MovementCostFactor::IDENTITY,
+        &planning,
+    )
+    .ok()?;
     Some(*path.total())
 }
 

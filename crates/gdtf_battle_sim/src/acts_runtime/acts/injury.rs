@@ -49,7 +49,11 @@ use crate::{
 /// the only bare type the no-bare-types rule permits in a payload); every other field is
 /// a named domain value. NOT `Copy` — the [`gained`](InjuryInflicted::gained) entry holds
 /// an owned `Vec` of effects + texts.
-#[derive(Message, Debug, Clone, PartialEq, Eq)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): its [`GainedInjury`] effects may carry a
+/// [`MovementCostMul`](crate::injuries::InjuryEffect::MovementCostMul) whose `f32` payload
+/// is not `Eq`. A buffered message is read in order, never compared in a hashed/ordered set.
+#[derive(Message, Debug, Clone, PartialEq)]
 pub struct InjuryInflicted {
     /// The wounded ganger — the entity whose [`InflictedInjuries`] gains the injury.
     pub target:       Entity,

@@ -213,6 +213,7 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
             &links,
             &tuning,
             &floor_costs,
+            gdtf_battle_sim::MovementCostFactor::IDENTITY,
             &planning,
         )
     };

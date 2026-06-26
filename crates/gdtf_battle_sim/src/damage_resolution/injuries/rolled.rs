@@ -16,7 +16,11 @@ use crate::{armor::BodyPart, severity::Severity};
 /// The fire-act bridge (GTW-437) turns this into an `InjuryInflicted` message and a
 /// [`GainedInjury`] ledger entry. Public fields (a value-object record). THIS slice
 /// only names the type — no roll site exists yet.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): its `effects` may carry a
+/// [`MovementCostMul`](InjuryEffect::MovementCostMul) whose `f32` payload is not `Eq`.
+/// Nothing keys a `RolledInjury` in a hashed/ordered set; tests compare with `==`.
+#[derive(Debug, Clone, PartialEq)]
 pub struct RolledInjury {
     /// The display name of the rolled condition.
     pub name:         InjuryName,
@@ -83,7 +87,12 @@ impl RolledInjury {
 /// [`inspect_text`](GainedInjury::inspect_text) (the inspect-panel list source),
 /// dropping the transient FCT/log texts. Public fields (a value-object record). The
 /// sole mutator of the ledger is [`InflictedInjuries::gain`](super::InflictedInjuries::gain).
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): its `effects` may carry a
+/// [`MovementCostMul`](InjuryEffect::MovementCostMul) whose `f32` payload is not `Eq`.
+/// Nothing keys a `GainedInjury` in a hashed/ordered set; the ledger compares its
+/// `gained` list with `==`.
+#[derive(Debug, Clone, PartialEq)]
 pub struct GainedInjury {
     /// The display name of the suffered condition.
     pub name:         InjuryName,

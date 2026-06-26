@@ -52,7 +52,7 @@ pub mod text;
 pub mod weighting;
 
 pub use def::{InjuryDef, PostHeal};
-pub use effect::{BleedAmount, InjuryEffect, StatDelta};
+pub use effect::{BleedAmount, InjuryEffect, MovementCostFactor, StatDelta};
 pub use ledger::{
     BleedAfflicted, HandsAvailable, InflictedInjuries, StatDeltaLedger, StatDeltaSum,
 };

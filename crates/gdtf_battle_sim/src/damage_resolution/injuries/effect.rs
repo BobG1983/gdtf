@@ -1,5 +1,5 @@
 //! The [`InjuryEffect`] vocabulary — one authored effect of an injury — and its
-//! two payload newtypes ([`StatDelta`] / [`BleedAmount`]).
+//! three payload newtypes ([`StatDelta`] / [`BleedAmount`] / [`MovementCostFactor`]).
 
 use bevy::prelude::Deref;
 use serde::Deserialize;
@@ -64,6 +64,74 @@ impl BleedAmount {
     }
 }
 
+/// The **per-step movement TU-cost multiplier** one [`InjuryEffect::MovementCostMul`]
+/// applies (GTW-444 — the "Hampered" effect; `docs/combat/resolution.md` injury tables).
+///
+/// A factor `>= 1.0` means SLOWER (it MULTIPLIES the GTW-396 terrain per-step floor cost
+/// up): `1.0` = no effect (the uninjured identity), `1.5` = each step costs 50 % more TU,
+/// `2.0` = double. A no-bare-types newtype (a movement multiplier is a domain value,
+/// distinct from any other `f32`): private inner + derived [`Deref`];
+/// `#[serde(transparent)]` lets an authored effect name it as a bare RON number
+/// (`MovementCostMul(1.5)`).
+///
+/// Inner `f32` (a continuous multiplier, not an integer count). It derives [`PartialEq`]
+/// but NOT [`Eq`] / [`Hash`] (an `f32` has neither) — the same reason
+/// [`InflictedInjuries`](super::InflictedInjuries), which now folds these into a
+/// multiplicative accumulator field, drops its own `Eq` derive (the `f32` cannot be `Eq`;
+/// a fixed-point rep would forfeit the exact, deterministic multiply this needs, so the
+/// model keeps the `f32` and the `PartialEq`-only derive). The accumulated product folds
+/// through [`InflictedInjuries::movement_cost_factor`](super::InflictedInjuries::movement_cost_factor),
+/// and the pathfinder + the committed walk both scale each per-step cost by it (the
+/// preview==charge consistency, GTW-444 C3).
+#[derive(Deref, Clone, Copy, PartialEq, Debug, Deserialize)]
+#[serde(transparent)]
+pub struct MovementCostFactor(f32);
+
+impl MovementCostFactor {
+    /// The identity factor (`1.0`) — no slowdown. The default a ledger with no
+    /// [`MovementCostMul`](InjuryEffect::MovementCostMul) reports, and the neutral element
+    /// of the multiplicative fold.
+    pub const IDENTITY: Self = Self(1.0);
+
+    /// Build a movement-cost factor from its raw multiplier (`>= 1.0` = slower; `1.0` =
+    /// no effect). A factor below `1.0` would speed the ganger up, which the "Hampered"
+    /// semantics never author, but the type does not clamp — the authored data is
+    /// expected to keep it `>= 1.0` (the `.injury.ron` convention).
+    #[must_use]
+    pub const fn new(factor: f32) -> Self {
+        Self(factor)
+    }
+
+    /// The product of this factor and `other` — the multiplicative fold of two stacked
+    /// [`MovementCostMul`](InjuryEffect::MovementCostMul) effects (GTW-444 C4).
+    ///
+    /// STACKING MULTIPLIES (the locked default — NOT additive, NOT capped): two leg
+    /// injuries of `1.5` and `2.0` combine to `3.0`, NOT `3.5`. Multiplication is
+    /// commutative and associative over `f32`, so the fold is order-independent and
+    /// deterministic for a fixed set of factors (the GTW-441 authoring guide owes this
+    /// rule to authors).
+    #[must_use]
+    pub fn times(self, other: Self) -> Self {
+        Self(self.0 * other.0)
+    }
+
+    /// The raw multiplier as a bare `f32` — the accessor the per-step cost scaling reads
+    /// (the derived [`Deref`] also yields it; this is the explicit form the cost-scale
+    /// helper uses).
+    #[must_use]
+    pub const fn raw(self) -> f32 {
+        self.0
+    }
+}
+
+impl Default for MovementCostFactor {
+    /// The identity factor (`1.0`) — no slowdown (an uninjured mover, or a ledger with no
+    /// [`MovementCostMul`](InjuryEffect::MovementCostMul)).
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}
+
 /// One **effect** of an injury — the atomic, authored mutation an injury carries
 /// (`docs/combat/resolution.md` injury tables). An [`InjuryDef`](super::InjuryDef)
 /// carries a `Vec<InjuryEffect>` (≥ 1; an injury MAY carry more than one).
@@ -75,14 +143,21 @@ impl BleedAmount {
 /// collapsed into that one match; reintroduce it only when a third effect needs a
 /// genuinely new mutation kind.
 ///
-/// Three effects exist today: [`Modify`](InjuryEffect::Modify) (a modifier-layer
+/// Four effects exist today: [`Modify`](InjuryEffect::Modify) (a modifier-layer
 /// delta re-summed by the projector, hitting BOTH attributes and derived stats),
 /// [`Bleeding`](InjuryEffect::Bleeding) (a separate per-turn HP drain, NOT a
-/// `Modify`), and [`DisableHand`](InjuryEffect::DisableHand) (GTW-443 — disables the
+/// `Modify`), [`DisableHand`](InjuryEffect::DisableHand) (GTW-443 — disables the
 /// hand on the injury's struck arm, folded into the read-derived hand count, NOT a
-/// stored delta). Future variants (Stun / Knockback / `MoraleHit` / Disarm) are each a
-/// new variant plus one match arm.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Deserialize)]
+/// stored delta), and [`MovementCostMul`](InjuryEffect::MovementCostMul) (GTW-444 — the
+/// "Hampered" per-step movement-TU multiplier, folded into a dedicated MULTIPLICATIVE
+/// accumulator, NOT a summed delta). Future variants (Stun / Knockback / `MoraleHit` /
+/// Disarm) are each a new variant plus one match arm.
+///
+/// This enum derives [`PartialEq`] but NOT [`Eq`] — the
+/// [`MovementCostMul`](InjuryEffect::MovementCostMul) payload is an `f32`
+/// ([`MovementCostFactor`]), which is not `Eq`. Tests compare effects with `matches!` /
+/// `==` (`PartialEq`), never as a `HashSet`/`BTreeSet` key.
+#[derive(Clone, Copy, PartialEq, Debug, Deserialize)]
 pub enum InjuryEffect {
     /// Shift a stat by a signed [`StatDelta`] — a modifier-layer delta the projector
     /// re-sums every projection (so a `stat_tuning.ron` hot-reload re-applies it
@@ -121,4 +196,24 @@ pub enum InjuryEffect {
     /// effects `Vec` — so the penalty flows through the normal modifier layer while this
     /// variant only gates two-handed fire.
     DisableHand,
+    /// **Multiply the per-step movement TU cost** by a [`MovementCostFactor`] (GTW-444 —
+    /// the "Hampered" effect). A factor `>= 1.0` SLOWS the ganger (each step costs more
+    /// TU); `1.0` is no effect.
+    ///
+    /// Unlike [`Modify`](InjuryEffect::Modify) (which SUMS into the per-stat delta store)
+    /// and [`Bleeding`](InjuryEffect::Bleeding) (which SUMS into the bleed accrual), this
+    /// folds MULTIPLICATIVELY into the ledger's dedicated
+    /// [`movement`](super::InflictedInjuries) accumulator field — two stacked factors
+    /// MULTIPLY (`1.5 × 2.0 = 3.0`), they do NOT add. The accumulated product is read by
+    /// [`InflictedInjuries::movement_cost_factor`](super::InflictedInjuries::movement_cost_factor),
+    /// and BOTH the pathfinder cost-function (move-range / path preview) and the committed
+    /// walk's per-step TU charge scale each step by it — so a Hampered unit's previewed
+    /// path cost equals the TU actually charged (GTW-444 C3, preview==charge).
+    ///
+    /// "Hampered" is the player-facing status term; the authored injury's wound NAME
+    /// (e.g. "Shattered Knee") carries the flavor, while `MovementCostMul` is the neutral
+    /// code name. A `MovementCostMul` is part-agnostic — it slows the ganger regardless of
+    /// which body part the injury struck (a Leg injury is the natural author, but the
+    /// fold does not key on the part).
+    MovementCostMul(MovementCostFactor),
 }

@@ -26,8 +26,9 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::ReachableCells;
 use gdtf_battle_sim::{
-    CellLevel, CombatTuning, Faction, FactionRelation, FloorCostGrid, OccupancyGrid, PlanningView,
-    Position, SquadVisibility, Tu, VerticalLinkGraph, reachable_within,
+    CellLevel, CombatTuning, Faction, FactionRelation, FloorCostGrid, InflictedInjuries,
+    MovementCostFactor, OccupancyGrid, PlanningView, Position, SquadVisibility, Tu,
+    VerticalLinkGraph, reachable_within,
 };
 
 use crate::selection::resources::SelectedShooter;
@@ -50,14 +51,14 @@ use crate::selection::resources::SelectedShooter;
 /// storey and renders only the active level's members.
 pub fn populate_reachable_overlay(
     selected: Res<SelectedShooter>,
-    actors: Query<(&Position, &Tu, &Faction)>,
+    actors: Query<(&Position, &Tu, &Faction, Option<&InflictedInjuries>)>,
     factions: Query<&'static Faction>,
     grids: ReachableGrids,
     mut overlay: ResMut<ReachableCells>,
 ) {
     let next = match resolve_selected(*selected, &actors) {
-        Some((start, budget, mover_faction)) => {
-            reachable_for(start, budget, mover_faction, &factions, &grids)
+        Some((start, budget, mover_faction, factor)) => {
+            reachable_for(start, budget, mover_faction, factor, &factions, &grids)
         }
         None => ReachableCells::cleared(),
     };
@@ -67,15 +68,24 @@ pub fn populate_reachable_overlay(
     }
 }
 
-/// Resolve the `(start, budget, mover_faction)` from the current selection, or [`None`]
-/// if nothing is selected or components are missing.
+/// Resolve the `(start, budget, mover_faction, factor)` from the current selection, or
+/// [`None`] if nothing is selected or components are missing.
+///
+/// GTW-444: the `factor` is the selected ganger's
+/// [`MovementCostFactor`] (the "Hampered" slowdown), read from its
+/// [`InflictedInjuries`] ledger — [`MovementCostFactor::IDENTITY`] (`1.0`) when the
+/// ganger has no ledger or no slowdown, so the overlay matches the commit's factor.
 fn resolve_selected(
     selected: SelectedShooter,
-    actors: &Query<(&Position, &Tu, &Faction)>,
-) -> Option<(CellLevel, Tu, Faction)> {
+    actors: &Query<(&Position, &Tu, &Faction, Option<&InflictedInjuries>)>,
+) -> Option<(CellLevel, Tu, Faction, MovementCostFactor)> {
     let entity = (*selected)?;
-    let (position, &budget, &mover_faction) = actors.get(entity).ok()?;
-    Some((**position, budget, mover_faction))
+    let (position, &budget, &mover_faction, injuries) = actors.get(entity).ok()?;
+    let factor = injuries.map_or(
+        MovementCostFactor::IDENTITY,
+        InflictedInjuries::movement_cost_factor,
+    );
+    Some((**position, budget, mover_faction, factor))
 }
 
 /// The reachable set for `start` within `budget` TU — the same [`PlanningView`] +
@@ -86,6 +96,7 @@ fn reachable_for(
     start: CellLevel,
     budget: Tu,
     mover_faction: Faction,
+    factor: MovementCostFactor,
     factions: &Query<&'static Faction>,
     grids: &ReachableGrids,
 ) -> ReachableCells {
@@ -99,6 +110,7 @@ fn reachable_for(
         &grids.links,
         &grids.tuning,
         &grids.floor_costs,
+        factor,
         &planning,
     );
     ReachableCells::new(raw)

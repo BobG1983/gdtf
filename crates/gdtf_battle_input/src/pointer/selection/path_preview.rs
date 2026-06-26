@@ -30,8 +30,9 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::PathPreview;
 use gdtf_battle_sim::{
-    CellLevel, CombatTuning, Faction, FactionRelation, FireMode, FloorCostGrid, OccupancyGrid,
-    PlanningView, Position, SquadVisibility, VerticalLinkGraph, find_path,
+    CellLevel, CombatTuning, Faction, FactionRelation, FireMode, FloorCostGrid, InflictedInjuries,
+    MovementCostFactor, OccupancyGrid, PlanningView, Position, SquadVisibility, VerticalLinkGraph,
+    find_path,
 };
 
 use crate::{SelectedFireMode, selection::resources::SelectedShooter};
@@ -197,14 +198,14 @@ pub struct PreviewGrids<'w> {
 pub fn populate_path_preview(
     selected: Res<SelectedShooter>,
     target: Res<PathPreviewTarget>,
-    actors: Query<(&Position, &Faction)>,
+    actors: Query<(&Position, &Faction, Option<&InflictedInjuries>)>,
     factions: Query<&'static Faction>,
     grids: PreviewGrids,
     mut preview: ResMut<PathPreview>,
 ) {
     let next = match resolve_inputs(*selected, *target, &actors) {
-        Some((start, goal, mover_faction)) => {
-            route_for(start, goal, mover_faction, &factions, &grids)
+        Some((start, goal, mover_faction, factor)) => {
+            route_for(start, goal, mover_faction, factor, &factions, &grids)
         }
         // Nothing selected, no target, or a missing component → clear the preview.
         None => PathPreview::cleared(),
@@ -224,12 +225,18 @@ pub fn populate_path_preview(
 fn resolve_inputs(
     selected: SelectedShooter,
     target: PathPreviewTarget,
-    actors: &Query<(&Position, &Faction)>,
-) -> Option<(CellLevel, CellLevel, Faction)> {
+    actors: &Query<(&Position, &Faction, Option<&InflictedInjuries>)>,
+) -> Option<(CellLevel, CellLevel, Faction, MovementCostFactor)> {
     let entity = (*selected)?;
     let goal = (*target)?;
-    let (position, &mover_faction) = actors.get(entity).ok()?;
-    Some((**position, goal, mover_faction))
+    let (position, &mover_faction, injuries) = actors.get(entity).ok()?;
+    // GTW-444: the selected ganger's "Hampered" movement-cost factor (IDENTITY when none),
+    // so the previewed route cost matches the commit's per-step charge (preview==charge).
+    let factor = injuries.map_or(
+        MovementCostFactor::IDENTITY,
+        InflictedInjuries::movement_cost_factor,
+    );
+    Some((**position, goal, mover_faction, factor))
 }
 
 /// The path preview for a ganger at `start` routing to `goal` with `mover_faction` — the SAME
@@ -248,6 +255,7 @@ fn route_for(
     start: CellLevel,
     goal: CellLevel,
     mover_faction: Faction,
+    factor: MovementCostFactor,
     factions: &Query<&'static Faction>,
     grids: &PreviewGrids,
 ) -> PathPreview {
@@ -263,6 +271,7 @@ fn route_for(
         &grids.links,
         &grids.tuning,
         &grids.floor_costs,
+        factor,
         &planning,
     ) {
         // The route cells (start..=goal in step order) + the §48 total cost.

@@ -7,6 +7,7 @@ use bevy::{platform::collections::HashSet, prelude::Entity};
 
 use crate::{
     ganger::Tu,
+    injuries::MovementCostFactor,
     metric::{Cell, CellLevel, Level, MAX_LEVELS},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, TerrainKind},
     pathfinder::{Path, PlanningView, find_path, reachable_within},
@@ -190,7 +191,16 @@ pub(super) fn ok_path(
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
     let floor_costs = default_floor_costs(tuning);
-    let result = find_path(start, goal, grid, links, tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        grid,
+        links,
+        tuning,
+        &floor_costs,
+        MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert!(result.is_ok(), "expected a route, got {result:?}");
     result.ok()
 }
@@ -207,10 +217,19 @@ pub(super) fn reachable_triples(
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
     let floor_costs = default_floor_costs(tuning);
-    reachable_within(start, budget, grid, links, tuning, &floor_costs, &planning)
-        .into_iter()
-        .map(|(c, cost)| ((c.x, c.y, c.z), cost))
-        .collect()
+    reachable_within(
+        start,
+        budget,
+        grid,
+        links,
+        tuning,
+        &floor_costs,
+        MovementCostFactor::IDENTITY,
+        &planning,
+    )
+    .into_iter()
+    .map(|(c, cost)| ((c.x, c.y, c.z), cost))
+    .collect()
 }
 
 /// Reduce a `reachable_within` result to `Vec<((x, y, z), Tu)>` — the same projection
@@ -228,10 +247,19 @@ where
     R: Fn(Entity) -> FactionRelation,
 {
     let floor_costs = default_floor_costs(tuning);
-    reachable_within(start, budget, grid, links, tuning, &floor_costs, planning)
-        .into_iter()
-        .map(|(c, cost)| ((c.x, c.y, c.z), cost))
-        .collect()
+    reachable_within(
+        start,
+        budget,
+        grid,
+        links,
+        tuning,
+        &floor_costs,
+        MovementCostFactor::IDENTITY,
+        planning,
+    )
+    .into_iter()
+    .map(|(c, cost)| ((c.x, c.y, c.z), cost))
+    .collect()
 }
 
 /// Whether a `(x, y, z)` cell appears in a reachable-triples set.

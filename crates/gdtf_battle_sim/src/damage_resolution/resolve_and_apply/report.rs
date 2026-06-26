@@ -235,7 +235,12 @@ pub struct AppliedDamage {
 /// field carries a [`RolledInjury`] (an owned `Vec` of effects + three texts), so the
 /// report is cloned (not bit-copied) where it is forwarded (the fire path's per-round
 /// emission clones it once into `InjuryInflicted` / `ShotFired`).
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): the [`injury`](HitReport::injury)
+/// [`RolledInjury`] effects may carry a
+/// [`MovementCostMul`](crate::injuries::InjuryEffect::MovementCostMul) whose `f32` payload
+/// is not `Eq`. A report is compared with `==` in tests, never keyed in a set.
+#[derive(Debug, Clone, PartialEq)]
 pub struct HitReport {
     /// What the shot struck — the [`ShotOutcome`](crate::resolve_coarse::ShotOutcome)'s [`ShotKind`].
     pub kind:            ShotKind,

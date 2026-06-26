@@ -59,7 +59,12 @@ impl PostHeal {
 /// Public fields (a value-object record, mirroring
 /// [`InflictedWound`](crate::inflicted_wound::InflictedWound)) — every field is a
 /// named domain type, so a literal is self-documenting.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): its `effects` may carry a
+/// [`MovementCostMul`](super::InjuryEffect::MovementCostMul) whose `f32` payload is not
+/// `Eq`. The registry keys defs by [`InjuryName`] (a `String` newtype), never by the
+/// whole def, so no `Eq`/`Hash` on `InjuryDef` is needed.
+#[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
 pub struct InjuryDef {
     /// The display name of the condition (e.g. `"Lost Eye"`) — the inspect-panel
     /// label.

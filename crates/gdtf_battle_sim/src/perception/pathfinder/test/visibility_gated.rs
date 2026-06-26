@@ -79,7 +79,16 @@ fn route_only_through_unseen_is_path_blocked() {
     let squad_gated = fog(&[], &routable);
     let gated = PlanningView::new(&squad_gated, resolve_as(occupant, FactionRelation::Other));
     let floor_costs = default_floor_costs(&tuning);
-    let blocked = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &gated);
+    let blocked = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &gated,
+    );
     assert!(
         blocked.is_err(),
         "a route that can only reach the goal by crossing an UNSEEN cell is PathBlocked, got \
@@ -90,7 +99,16 @@ fn route_only_through_unseen_is_path_blocked() {
     // proving the rejection above was the UNSEEN cell, not the walls.
     let squad_open = fog(&[], &corridor_cells());
     let open = PlanningView::new(&squad_open, resolve_as(occupant, FactionRelation::Other));
-    let ok = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &open);
+    let ok = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &open,
+    );
     assert!(
         ok.is_ok(),
         "with the chokepoint explored the geometry has a route — the rejection was UNSEEN, got \
@@ -115,7 +133,16 @@ fn route_through_explored_is_allowed() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&[], &corridor_cells());
     let planning = PlanningView::new(&squad, resolve_as(occupant, FactionRelation::Other));
-    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert!(
         result.is_ok(),
         "an EXPLORED-only route must be allowed (EXPLORED stays routable), got {result:?}",
@@ -194,7 +221,16 @@ fn visible_enemy_blocks_the_route() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&corridor_cells(), &[]);
     let planning = PlanningView::new(&squad, resolve_as(enemy, FactionRelation::Other));
-    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert!(
         result.is_err(),
         "a squad-VISIBLE enemy on the only route blocks it (PathBlocked), got {result:?}",
@@ -210,6 +246,7 @@ fn visible_enemy_blocks_the_route() {
         &links,
         &tuning,
         &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
     assert!(
@@ -239,7 +276,16 @@ fn invisible_enemy_does_not_block() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&[], &corridor_cells());
     let planning = PlanningView::new(&squad, resolve_as(enemy, FactionRelation::Other));
-    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert!(
         result.is_ok(),
         "an enemy the squad cannot see must NOT block the route, got {result:?}",
@@ -270,7 +316,16 @@ fn own_squad_ganger_always_blocks() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&[], &corridor_cells());
     let planning = PlanningView::new(&squad, resolve_as(mate, FactionRelation::OwnSquad));
-    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert!(
         result.is_err(),
         "an own-squad ganger always blocks, even on an EXPLORED-only cell, got {result:?}",
@@ -309,7 +364,16 @@ fn routing_onto_known_link_far_endpoint_is_allowed_when_unseen() {
     // WITH the relaxation it MUST be reached (the link-endpoint gate is C2-only).
     let squad_gated = fog(&[], &explored_on_l0);
     let gated = PlanningView::new(&squad_gated, resolve_as(occupant, FactionRelation::Other));
-    let result_gated = find_path(foot, head, &grid, &links, &tuning, &floor_costs, &gated);
+    let result_gated = find_path(
+        foot,
+        head,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &gated,
+    );
     assert!(
         result_gated.is_ok(),
         "planning onto a known link's far endpoint MUST succeed even when the cell is UNSEEN \
@@ -328,7 +392,16 @@ fn routing_onto_known_link_far_endpoint_is_allowed_when_unseen() {
     explored_with_head.push(head);
     let squad_open = fog(&[], &explored_with_head);
     let open = PlanningView::new(&squad_open, resolve_as(occupant, FactionRelation::Other));
-    let result_open = find_path(foot, head, &grid, &links, &tuning, &floor_costs, &open);
+    let result_open = find_path(
+        foot,
+        head,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &open,
+    );
     assert!(
         result_open.is_ok(),
         "with the head EXPLORED the same geometry also has a route (CONTROL); got {result_open:?}",
@@ -378,7 +451,16 @@ fn unseen_non_link_cell_is_still_non_routable() {
         .collect();
     let squad_gated = fog(&[], &explored_without_chokepoint);
     let gated = PlanningView::new(&squad_gated, resolve_as(occupant, FactionRelation::Other));
-    let result_gated = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &gated);
+    let result_gated = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &gated,
+    );
     assert!(
         result_gated.is_err(),
         "an UNSEEN non-link cell on the only planar route MUST remain non-routable after \
@@ -389,7 +471,16 @@ fn unseen_non_link_cell_is_still_non_routable() {
     // failure was the fog (not the topology).
     let squad_open = fog(&[], &corridor_cells_l0);
     let open = PlanningView::new(&squad_open, resolve_as(occupant, FactionRelation::Other));
-    let result_open = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &open);
+    let result_open = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &open,
+    );
     assert!(
         result_open.is_ok(),
         "with the chokepoint explored the corridor is open (CONTROL — the failure was the fog); \
@@ -423,7 +514,16 @@ fn explored_scatter_blocks_the_route() {
     let floor_costs = default_floor_costs(&tuning);
     let squad = fog(&[], &corridor_cells());
     let planning = PlanningView::new(&squad, resolve_as(occupant, FactionRelation::Other));
-    let result = find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert!(
         result.is_err(),
         "a blocking scatter (Cover) on the only route blocks it even when explored, got \
@@ -440,6 +540,7 @@ fn explored_scatter_blocks_the_route() {
         &links,
         &tuning,
         &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
     assert!(

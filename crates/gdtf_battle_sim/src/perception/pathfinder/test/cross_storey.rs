@@ -92,8 +92,16 @@ fn upper_storey_unreachable_without_a_link() {
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
     let floor_costs = default_floor_costs(&tuning);
-    let result =
-        crate::pathfinder::find_path(start, goal, &grid, &links, &tuning, &floor_costs, &planning);
+    let result = crate::pathfinder::find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
     assert!(
         result.is_err(),
         "without a vertical link, another storey is unreachable",

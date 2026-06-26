@@ -32,7 +32,7 @@ use crate::{
     cover::CoverLedger,
     fire::WieldsQuery,
     ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Tu, TuMax},
-    injuries::{HandsAvailable, InflictedInjuries},
+    injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
@@ -104,6 +104,11 @@ struct GangerRow {
     /// time (an absent ledger = the uninjured two-hands default), fed to the SHARED
     /// `can_fire` hand-count gate.
     hands:    HandsAvailable,
+    /// Its movement-cost factor (GTW-444) — the "Hampered" slowdown folded from its injury
+    /// ledger at snapshot time (an absent ledger = [`MovementCostFactor::IDENTITY`], `1.0`),
+    /// fed to [`reachable_within`] so a Hampered enemy's advance plan respects the SAME
+    /// per-step slowdown the move dispatch will charge it.
+    factor:   MovementCostFactor,
 }
 
 /// The ground cell `(x, y)` of a [`Position`] — the z storey dropped (the `fire.rs`
@@ -245,6 +250,12 @@ pub fn enemy_ai_turn(
                     // absent ledger = the uninjured two-hands default).
                     hands: injuries
                         .map_or_else(HandsAvailable::default, InflictedInjuries::hands_available),
+                    // GTW-444: fold the movement-cost factor from the ledger now (an absent
+                    // ledger = IDENTITY, 1.0 — no slowdown).
+                    factor: injuries.map_or(
+                        MovementCostFactor::IDENTITY,
+                        InflictedInjuries::movement_cost_factor,
+                    ),
                 }
             },
         )
@@ -414,6 +425,7 @@ pub fn enemy_ai_turn(
                 &links,
                 &tuning,
                 &floor_costs,
+                enemy.factor,
                 &planning,
             );
             if let Some(dest) = plan_advance(enemy_cell_level, goal.cell, &reachable) {

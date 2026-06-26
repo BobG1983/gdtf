@@ -18,6 +18,7 @@ use super::{
 };
 use crate::{
     ganger::Tu,
+    injuries::MovementCostFactor,
     metric::CellLevel,
     occupancy::OccupancyGrid,
     terrain::floor::FloorCostGrid,
@@ -110,6 +111,18 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 /// (the §48 bit-identity). The degenerate `start == goal` is the one-cell route
 /// `[start]` at total `0`.
 ///
+/// **Movement-cost factor (GTW-444 C3).** `factor` is the MOVER'S
+/// [`MovementCostFactor`] (the per-ganger "Hampered" slowdown read from its
+/// [`InflictedInjuries`](crate::injuries::InflictedInjuries) ledger). Every PLANAR step
+/// cost is scaled by it (`ceil(base × factor)`, never below the base terrain cost) inside
+/// [`pathable_neighbors`](crate::occupancy::pathable_neighbors); cross-storey link hops
+/// charge the flat [`LinkTu`](crate::tuning::LinkTu) UNSCALED (a link cost is not a
+/// terrain floor cost). The SAME scaling the committed walk applies per step, so the
+/// returned [`Path::total`] / [`Path::steps`] (which the walk charges verbatim) make the
+/// previewed cost equal the TU actually charged (preview==charge). An uninjured mover
+/// passes [`MovementCostFactor::IDENTITY`] (`1.0`) — the route is byte-identical to the
+/// pre-GTW-444 cost.
+///
 /// PURE (`bevy-traps.md` #7): a free function over the borrowed snapshot — no
 /// `&mut World`, no system, no RNG, and it never rebuilds the grids per query (C5).
 ///
@@ -119,6 +132,14 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 /// walkable, visibility-routable grid + links (a typed no-route result — never a
 /// panic, never an empty [`Path`]) — including when every route to `goal` must cross
 /// an UNSEEN cell (C1).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the route search reads five borrowed grids (occupancy / links / tuning / floor \
+              costs / the visibility planning view) plus its start + goal endpoints and the \
+              GTW-444 per-mover MovementCostFactor; each is a distinct read the search genuinely \
+              needs, and bundling them into an opaque struct would hide the real inputs (the \
+              SearchGrids bundle is the internal form; the public entry point lists its reads)"
+)]
 pub fn find_path<R>(
     start: CellLevel,
     goal: CellLevel,
@@ -126,6 +147,7 @@ pub fn find_path<R>(
     links: &VerticalLinkGraph,
     tuning: &CombatTuning,
     floor_costs: &FloorCostGrid,
+    factor: MovementCostFactor,
     planning: &PlanningView<'_, R>,
 ) -> Result<Path, PathBlocked>
 where
@@ -136,6 +158,7 @@ where
         links,
         tuning,
         floor_costs,
+        factor,
         planning,
     };
     let field = relax(
@@ -191,9 +214,23 @@ where
 /// budget yield a byte-identical reachable set. This is what the GTW-357
 /// reachable-range / move-preview overlay consumes.
 ///
+/// **Movement-cost factor (GTW-444 C3).** `factor` is the MOVER'S
+/// [`MovementCostFactor`] (the per-ganger "Hampered" slowdown). Every PLANAR step cost is
+/// scaled by it (`ceil(base × factor)`, never below the base terrain cost), exactly as in
+/// [`find_path`], so the reachable SET a Hampered mover gets is correctly shrunk for the
+/// move-range overlay (a slower mover reaches fewer cells within the same TU budget). The
+/// IDENTITY factor (`1.0`) leaves the flood byte-identical to the pre-GTW-444 reach.
+///
 /// PURE (`bevy-traps.md` #7): a free function over the borrowed snapshot — no
 /// `&mut World`, no system, no RNG, no per-query rebuild (C5).
 #[must_use]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the bounded flood reads five borrowed grids (occupancy / links / tuning / floor \
+              costs / the visibility planning view) plus its start cell + TU budget and the \
+              GTW-444 per-mover MovementCostFactor; each is a distinct read it genuinely needs, \
+              mirroring find_path's own carve-out (one SearchGrids bundle is the internal form)"
+)]
 pub fn reachable_within<R>(
     start: CellLevel,
     budget: Tu,
@@ -201,6 +238,7 @@ pub fn reachable_within<R>(
     links: &VerticalLinkGraph,
     tuning: &CombatTuning,
     floor_costs: &FloorCostGrid,
+    factor: MovementCostFactor,
     planning: &PlanningView<'_, R>,
 ) -> Vec<(CellLevel, Tu)>
 where
@@ -211,6 +249,7 @@ where
         links,
         tuning,
         floor_costs,
+        factor,
         planning,
     };
     let budget_cost = PathCost::new(u32::from(*budget));

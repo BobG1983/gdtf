@@ -127,9 +127,18 @@ fn expected_route(app: &App, start: CellLevel, goal: CellLevel) -> Option<(Vec<C
     let tuning = app.world().resource::<CombatTuning>();
     let floor_costs = app.world().resource::<FloorCostGrid>();
     let planning = PlanningView::new(squad, all_other);
-    find_path(start, goal, grid, links, tuning, floor_costs, &planning)
-        .ok()
-        .map(|path| (path.cells().to_vec(), path.total()))
+    find_path(
+        start,
+        goal,
+        grid,
+        links,
+        tuning,
+        floor_costs,
+        gdtf_battle_sim::MovementCostFactor::IDENTITY,
+        &planning,
+    )
+    .ok()
+    .map(|path| (path.cells().to_vec(), path.total()))
 }
 
 /// C1 / C6 — with a selected ganger + a target the populate system fills `PathPreview` with
@@ -236,7 +245,17 @@ fn unreachable_target_yields_empty_preview() {
     let floor_costs = app.world().resource::<FloorCostGrid>();
     let planning = PlanningView::new(squad, all_other);
     assert!(
-        find_path(start, goal, grid, links, tuning, floor_costs, &planning).is_err(),
+        find_path(
+            start,
+            goal,
+            grid,
+            links,
+            tuning,
+            floor_costs,
+            gdtf_battle_sim::MovementCostFactor::IDENTITY,
+            &planning
+        )
+        .is_err(),
         "the fixture must seal the goal off so find_path returns PathBlocked",
     );
 
