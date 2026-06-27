@@ -133,30 +133,6 @@ impl From<EdgeOpeningDef> for EdgeOpening {
     }
 }
 
-/// The **reserved** AI route-node list — the navigation waypoints the canceled GTW-86
-/// epic was to author, absorbed into the prefab schema as a reserved field (GTW-418
-/// C1 / C5).
-///
-/// A named newtype over a `Vec<`[`CellLevel`]`>` (no-bare-types: a route-node set is a
-/// domain value). RESERVED: nothing consumes it yet — it is present in the schema so a
-/// prefab `.ron` MAY author route nodes today (and the assembler/AI epic can read them
-/// later) but it may be empty / unauthored for now. The field is `#[serde(default)]` on
-/// the spec so an authored file omits it freely. Private inner + derived
-/// [`Deref`](bevy::prelude::Deref); `#[serde(transparent)]` parses the bare RON sequence
-/// of `(cell, level)` keys (each a [`CellLevel`], which routes through its own
-/// `CellLevelDef` authoring shape).
-#[derive(bevy::prelude::Deref, Debug, Clone, Default, PartialEq, Eq, Deserialize)]
-#[serde(transparent)]
-pub struct RouteNodes(Vec<CellLevel>);
-
-impl RouteNodes {
-    /// Build a route-node list from its waypoints (the loader / authoring helper).
-    #[must_use]
-    pub const fn new(nodes: Vec<CellLevel>) -> Self {
-        Self(nodes)
-    }
-}
-
 /// The **authoring struct** a `assets/content/maps/<theme>/<size>/<prefab>.ron`
 /// deserializes into — one reusable level fragment (GTW-418).
 ///
@@ -165,8 +141,7 @@ impl RouteNodes {
 /// ([`CoverSpawn`] for walls + scatter, [`SlabSpawn`] for slabs, [`FloorSpawn`] for
 /// per-cell floor overrides, [`VerticalLink`] for ladders/stairs, [`TerrainName`] for the
 /// default floor), so a fragment is authored exactly like a small standalone situation —
-/// plus three prefab-specific fields: the [`spawn_role`](PrefabSpec::spawn_role), the
-/// reserved [`ai_route_nodes`](PrefabSpec::ai_route_nodes), and the
+/// plus two prefab-specific fields: the [`spawn_role`](PrefabSpec::spawn_role) and the
 /// [`edge_openings`](PrefabSpec::edge_openings) the seam connects through.
 ///
 /// Every authored magnitude (terrain HP / move cost behind each [`TerrainName`] key) is
@@ -219,10 +194,6 @@ pub struct PrefabSpec {
     /// which the loader then REJECTS — the empty-but-present case is the fail-closed one,
     /// not a parse error.
     pub edge_openings:  Vec<EdgeOpening>,
-    /// The RESERVED AI route nodes (the absorbed GTW-86 authoring, C1 / C5). May be empty
-    /// / unauthored for now — nothing consumes it yet. `#[serde(default)]` gives an empty
-    /// list.
-    pub ai_route_nodes: RouteNodes,
 }
 
 impl Default for PrefabSpec {
@@ -242,7 +213,6 @@ impl Default for PrefabSpec {
             floors:         Vec::new(),
             vertical_links: Vec::new(),
             edge_openings:  Vec::new(),
-            ai_route_nodes: RouteNodes::default(),
         }
     }
 }
@@ -438,11 +408,9 @@ impl PrefabRegistry {
 
 #[cfg(test)]
 mod test {
-    use bevy::math::IVec2;
-
     use super::{
         EdgeOpening, Prefab, PrefabKey, PrefabLoadError, PrefabName, PrefabRegistry, PrefabSpec,
-        RouteNodes, SpawnRole,
+        SpawnRole,
     };
     use crate::{
         level::{GridHeight, GridLevels, GridSize, GridWidth, LevelTheme},
@@ -457,61 +425,6 @@ mod test {
     /// A 3x3x1 footprint (a valid small prefab size).
     fn small_size() -> Option<GridSize> {
         GridSize::new(GridWidth::new(3), GridHeight::new(3), GridLevels::new(1)).ok()
-    }
-
-    /// T3: a `PrefabSpec` round-trips through RON — parse a fragment naming a role, a
-    /// default floor, a wall, an edge opening, AND a reserved `ai_route_nodes` entry, and
-    /// assert the reserved field carries the authored node (value-agnostic on magnitudes).
-    #[test]
-    fn prefab_spec_parses_with_reserved_route_nodes() {
-        let ron = "(theme: IndustrialHive, size: (width: 3, height: 3, levels: 1), \
-                   spawn_role: Fill, default_floor: \"deck\", \
-                   walls: [(at: (cell: (x: 0, y: 0), level: 0), piece: \"bulkhead\")], \
-                   edge_openings: [(at: (cell: (x: 2, y: 1), level: 0))], \
-                   ai_route_nodes: [(cell: (x: 1, y: 1), level: 0)])";
-        let parsed = ron::de::from_str::<PrefabSpec>(ron);
-        assert!(
-            parsed.is_ok(),
-            "the prefab fixture must parse: {:?}",
-            parsed.as_ref().err(),
-        );
-        let Some(spec) = parsed.ok() else { return };
-
-        assert_eq!(spec.spawn_role, SpawnRole::Fill);
-        assert_eq!(spec.theme, LevelTheme::IndustrialHive);
-        assert_eq!(
-            spec.edge_opening_count(),
-            1,
-            "the authored opening must parse"
-        );
-        // C1 / C5: the RESERVED ai_route_nodes field carries the authored waypoint (value-
-        // agnostic: it parsed into the reserved Vec, proving the field is present + typed).
-        assert_eq!(
-            spec.ai_route_nodes.len(),
-            1,
-            "the reserved ai_route_nodes field must carry the authored node",
-        );
-        assert_eq!(
-            spec.ai_route_nodes.first().map(|n| **n),
-            Some(IVec2::new(1, 1).extend(0))
-        );
-    }
-
-    /// T3 (cont.): the reserved field defaults to empty when omitted — a prefab need not
-    /// author route nodes today (C1: "may be empty / unauthored for now").
-    #[test]
-    fn prefab_spec_omitting_route_nodes_defaults_empty() {
-        let ron = "(theme: Underhive, size: (width: 3, height: 3, levels: 1), \
-                   spawn_role: Player, default_floor: \"dirt\", \
-                   edge_openings: [(at: (cell: (x: 0, y: 1), level: 0))])";
-        let parsed = ron::de::from_str::<PrefabSpec>(ron);
-        assert!(parsed.is_ok(), "parse: {:?}", parsed.as_ref().err());
-        let Some(spec) = parsed.ok() else { return };
-        assert!(
-            spec.ai_route_nodes.is_empty(),
-            "an omitted ai_route_nodes must default to empty (the reserved field is optional)",
-        );
-        assert_eq!(spec.spawn_role, SpawnRole::Player);
     }
 
     /// T2: a prefab with >= 1 edge opening PASSES validation and becomes a `Prefab`.
@@ -606,13 +519,5 @@ mod test {
             Some("player_pad".to_owned()),
             "the Player bucket holds the player_pad prefab",
         );
-    }
-
-    /// A `RouteNodes` round-trips its waypoints through the constructor (the reserved
-    /// field's newtype behaves, value-agnostic).
-    #[test]
-    fn route_nodes_construct_and_read() {
-        let nodes = RouteNodes::new(vec![at(1, 1), at(2, 2)]);
-        assert_eq!(nodes.len(), 2);
     }
 }

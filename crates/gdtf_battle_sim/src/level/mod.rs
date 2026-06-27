@@ -14,10 +14,9 @@
 //!   app's `Load` flow populates from the loaded themes folder.
 //! - `prefab` — the canonical level-fragment [`PrefabSpec`] a
 //!   `assets/content/maps/<theme>/<size>/*.ron` deserializes into (read by both the
-//!   GTW-424 assembler and the GTW-432 editor), the
-//!   [`SpawnRole`]/[`EdgeOpening`]/[`RouteNodes`] schema fields, and the
-//!   per-`(theme, size, role)` [`PrefabRegistry`] resource the game `Load` flow populates
-//!   from the loaded maps folder (GTW-418).
+//!   GTW-424 assembler and the GTW-432 editor), the [`SpawnRole`]/[`EdgeOpening`] schema
+//!   fields, and the per-`(theme, size, role)` [`PrefabRegistry`] resource the game `Load`
+//!   flow populates from the loaded maps folder (GTW-418).
 //!
 //! Mirrors the `terrain/piece` dir-module layout (memory: *code-health-module-layout*):
 //! `mod.rs` is wiring-only; per-concern files carry the types; `test/` houses the unit
@@ -34,7 +33,7 @@ mod test;
 
 pub use prefab::{
     EdgeOpening, Prefab, PrefabKey, PrefabLoadError, PrefabName, PrefabRegistry, PrefabSpec,
-    RouteNodes, SpawnRole,
+    SpawnRole,
 };
 pub use registry::{ThemeCatalogRegistry, ThemeTileCatalog};
 pub use spec::{ThemeSpec, TileKey};

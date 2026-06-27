@@ -6,8 +6,7 @@
 //     enumeration keys),
 //   - a default floor + one wall (reusing the situation value-graph terrain piece keys),
 //   - >= 1 edge opening (the C6 connectivity-by-construction seam — a prefab with ZERO is
-//     rejected fail-closed at load),
-//   - the RESERVED ai_route_nodes field (the absorbed GTW-86 authoring; may be empty).
+//     rejected fail-closed at load).
 //
 // Authored magnitudes (terrain HP / move cost) live in the referenced
 // assets/content/terrain/*.terrain.ron pieces, not here — this fragment only places keys.
@@ -30,10 +29,5 @@
     // far edge) at mid-height.
     edge_openings: [
         (at: (cell: (x: 2, y: 1), level: 0)),
-    ],
-    // RESERVED (C1 / C5, absorbed GTW-86): one AI navigation waypoint at the fragment
-    // centre. Nothing consumes this yet; it demonstrates the field is authorable today.
-    ai_route_nodes: [
-        (cell: (x: 1, y: 1), level: 0),
     ],
 )

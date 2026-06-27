@@ -341,8 +341,8 @@ pub use foundation::{
 pub use level::{
     CatalogTile, CatalogTileKind, EdgeOpening, GridHeight, GridLevels, GridSize, GridSizeError,
     GridWidth, LevelTheme, MAX_GRID_SPAN, Prefab, PrefabKey, PrefabLoadError, PrefabName,
-    PrefabRegistry, PrefabSpec, RouteNodes, SpawnRole, StructuralStats, ThemeCatalogRegistry,
-    ThemeSpec, ThemeTileCatalog, TileAtlasIndex, TileDisplayName, TileKey,
+    PrefabRegistry, PrefabSpec, SpawnRole, StructuralStats, ThemeCatalogRegistry, ThemeSpec,
+    ThemeTileCatalog, TileAtlasIndex, TileDisplayName, TileKey,
 };
 pub use lifecycle::{
     battle,

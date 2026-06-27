@@ -5,15 +5,15 @@
 //!
 //! This is the MANDATORY real-asset Tier (b) test (the GTW-409/417 lesson): it does NOT
 //! seed [`PrefabRegistry::default()`] — it drives the REAL `resolve_prefabs` code path over
-//! the real `assets/content/maps/` folder and asserts the registry POPULATES (non-empty),
-//! that enumeration by `(theme, size, spawn-role)` returns the authored sample prefab, and
-//! that the authored prefab's name + reserved field resolve. It MUST FAIL if the loader is
-//! broken (the empty-default fallback => empty registry => the assert reddens).
+//! the real `assets/content/maps/` folder and asserts the registry POPULATES (non-empty)
+//! and that enumeration by `(theme, size, spawn-role)` returns the authored sample prefab.
+//! It MUST FAIL if the loader is broken (the empty-default fallback => empty registry =>
+//! the assert reddens).
 //!
 //! **Additive only** — no production code is changed.
 //!
 //! VALUE-AGNOSTIC (gate 4a): asserts presence / count / enumeration-routing / the authored
-//! name + reserved-field presence ONLY — no authored terrain magnitudes (HP / move cost)
+//! name + C6 edge-opening invariant ONLY — no authored terrain magnitudes (HP / move cost)
 //! pinned. Mirrors the themes test's style (`real_asset_resolves_theme_catalog_registry`).
 //!
 //! ROBUST: asserts only against what IS authored today (the one shipped sample prefab), so
@@ -48,8 +48,7 @@ fn app_state(app: &bevy::app::App) -> AppState {
 /// - The registry RESOLVES POPULATED: non-empty (`len() >= 1`).
 /// - Enumeration by `(theme, size, spawn-role)` returns the authored sample prefab: the
 ///   `(IndustrialHive, 3x3x1, Fill)` bucket holds the `entry_room` fragment.
-/// - The authored sample resolves its name + the C6 invariant (>= 1 edge opening) + the
-///   reserved `ai_route_nodes` field carries the authored waypoint.
+/// - The authored sample resolves its name + the C6 invariant (>= 1 edge opening).
 /// - The Load gate WAITED for the registry: the machine reaches Intro with the registry
 ///   present, proving the gate clause fired on a real registry.
 ///
@@ -110,12 +109,6 @@ fn real_asset_resolves_prefab_registry() {
                 prefab.spec().edge_opening_count() != 0,
                 "a registered prefab must author >= 1 edge opening (C6 — the loader rejects \
                  zero-opening prefabs fail-closed, so any registered one has a seam)",
-            );
-            // C1 / C5: the reserved ai_route_nodes field carries the authored waypoint
-            // (value-agnostic — its mere presence proves the reserved field round-tripped).
-            assert!(
-                !prefab.spec().ai_route_nodes.is_empty(),
-                "the sample prefab's reserved ai_route_nodes must carry its authored waypoint",
             );
         }
     }
