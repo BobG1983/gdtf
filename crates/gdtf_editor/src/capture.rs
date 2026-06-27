@@ -8,9 +8,11 @@
 //! reachable-overlay debug-gating precedent: an env-gated, inert-by-default affordance).
 //!
 //! Before the shot the capture drives the shell into a legible state: it shrinks the canvas to a
-//! modest `8 × 8` grid (the full `60 × 60` is too dense to read — GTW-423 C5) and selects the first
-//! palette tile (GTW-422 C5), so the captured frame shows the populated palette, a highlighted row,
-//! the bottom-right stats, and the dashed canvas boundary + per-cell dashes + default-floor fill.
+//! modest `16 × 16` grid (the full `60 × 60` is too dense to read — GTW-423 C5; `16` is the
+//! smallest size that exposes the GTW-463 box-model wrap bug pre-fix) and selects the first
+//! palette tile (GTW-422 C5), so the captured frame shows the populated palette, a highlighted
+//! row, the bottom-right stats, and the dashed canvas boundary + per-cell dashes + default-floor
+//! fill.
 //!
 //! It mirrors the `gdtf_ui` `scroll_list_demo` capture mechanism: a
 //! [`Screenshot::primary_window`] spawned with a [`save_to_disk`] observer, then a poll for
@@ -29,11 +31,18 @@ use gdtf_ui::ActiveButton;
 
 use crate::{EditorState, PaletteRow, session::MapEditorSession};
 
-/// The modest, legible grid edge the capture shrinks the canvas to before the shot — an `8 × 8`
+/// The modest, legible grid edge the capture shrinks the canvas to before the shot — a `16 × 16`
 /// (× 1 level) drawable area, so the dashed boundary + per-cell dashes + the default-floor fill
 /// read CLEARLY in the screenshot (the full `60 × 60` grid is too dense to make out — GTW-423 C5).
+///
+/// `16` is the smallest power-of-two where the old box-model bug manifests: the pre-fix formula
+/// packed `floor(26 × 16 / 24) = 17` cells per row at width 16 instead of 16, producing right-
+/// overflow and a ragged bottom-right. Post-fix (`BorderBox` footprint = 24 px), the formula packs
+/// exactly 16 cells per row. The previous value of `8` was a "lucky fit" (`floor(26 × 8 / 24) = 8`
+/// — the same result) and therefore masked the bug in prior QA captures.
+///
 /// A framework layout const for the capture drive (clause-4 plumbing carve-out).
-const SHOT_GRID_EDGE: u8 = 8;
+const SHOT_GRID_EDGE: u8 = 16;
 
 /// The env var that opts the capture affordance IN. Set it to an absolute PNG path; leave
 /// it unset for a normal interactive launch.
@@ -178,7 +187,10 @@ fn drive_capture_selection(
 
 /// `Update` (in `Editing`, capture-only): shrink the canvas to a legible [`SHOT_GRID_EDGE`]-square
 /// grid before the shot so the dashed boundary + per-cell dashes + default-floor fill are clearly
-/// visible (GTW-423 C5 — the full `60 × 60` grid is too dense to read).
+/// visible (GTW-423 C5 — the full `60 × 60` grid is too dense to read). At `16 × 16` the old
+/// box-model bug (GTW-463) was detectable (`floor(26 × 16 / 24) = 17 ≠ 16`); at the old `8 × 8`
+/// it was not (`floor(26 × 8 / 24) = 8` — a lucky fit). The capture now validates at a
+/// bug-exposing size.
 ///
 /// Runs every frame until the grid is already at the shot size: rebuilds the session's
 /// [`GridSize`] to `SHOT_GRID_EDGE × SHOT_GRID_EDGE × 1` via the validated [`GridSize::new`]
