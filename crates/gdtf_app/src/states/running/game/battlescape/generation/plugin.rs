@@ -3,7 +3,8 @@ use bevy::prelude::*;
 use crate::states::{
     BattleScapeState,
     running::game::battlescape::generation::{
-        battle_sim::BattleSimPlugin, resources::GenerationComplete, systems::*,
+        battle_sim::BattleSimPlugin, loading_screen::LoadingScreenPlugin,
+        resources::GenerationComplete, systems::*,
     },
 };
 
@@ -16,6 +17,11 @@ impl Plugin for GameBattleScapeGenerationScenePlugin {
         // gates `GenerationComplete` on REAL setup success (its presence-gated poll
         // replaces the previous unconditional no-op insert).
         app.add_plugins(BattleSimPlugin);
+        // GTW-419: the LOADING SCREEN view — the themed full-viewport overlay shown while the
+        // sim assembles the level + builds the battle, removed exactly on the transition to
+        // `AnimateIn`. The `BattleReady`-gated `Generation → AnimateIn` transition below is
+        // UNCHANGED; the screen only COVERS that phase so no partial-level frame is shown (AC2).
+        app.add_plugins(LoadingScreenPlugin);
         add_systems(app);
     }
 }

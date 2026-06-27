@@ -10,6 +10,11 @@ crate::support_use!(battlescape_state::BattleScapeState;);
 
 mod generation;
 pub(in crate::states::running::game::battlescape) use generation::GameBattleScapeGenerationScenePlugin;
+// Test-support-only re-export of the GTW-419 loading-screen root marker, gated so the binary
+// build stays `unused`/`unreachable_pub`-clean (the battle-running marker re-export chain
+// precedent). Carries `LoadingScreenRoot` up toward `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use!(generation::LoadingScreenRoot;);
 
 mod animate_in;
 pub(in crate::states::running::game::battlescape) use animate_in::GameBattleScapeAnimateInScenePlugin;
