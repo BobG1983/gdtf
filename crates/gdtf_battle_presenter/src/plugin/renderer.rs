@@ -433,7 +433,7 @@ fn register_ron_tables(app: &mut App) {
             ),
         )
         // GTW-306 (TUNING): resolve the FX tuning ONCE, then re-derive it LIVE on every matching
-        // asset Modified event so an `fx_tuning.ron` edit hot-reloads without a rebuild (mirrors
+        // asset Modified event so an `fx.tuning.ron` edit hot-reloads without a rebuild (mirrors
         // the UI theme's redrive-on-AssetEvent). The resolve is gated like the others (handle
         // present, resource not yet resolved); the redrive runs every frame and self-gates on the
         // resources being present (it Options them).
@@ -474,7 +474,7 @@ fn register_ron_tables(app: &mut App) {
         .add_systems(Update, redrive_effect_roles_on_asset_event)
         .add_systems(Update, redrive_sheet_images_on_asset_event)
         // GTW-299 (TUNING): resolve the pan tuning ONCE, then re-derive it LIVE on every matching
-        // asset Modified event so a `pan_tuning.ron` edit hot-reloads without a rebuild — the
+        // asset Modified event so a `pan.tuning.ron` edit hot-reloads without a rebuild — the
         // exact load/resolve/redrive shape the FX tuning above uses.
         .add_systems(
             Update,

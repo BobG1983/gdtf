@@ -1,6 +1,6 @@
 //! GTW-206 (E10.4): resolves the shipped [`CombatTuning`] into the persistent runtime
 //! [`CombatTuning`] resource, plus the GTW-374 LIVE hot-reload that re-derives it on a
-//! `combat/tuning.ron` edit.
+//! `core_tuning/combat.tuning.ron` edit.
 
 use bevy::{
     asset::{AssetEvent, LoadState},
@@ -20,7 +20,7 @@ use crate::states::load::resources::{ActiveTuningHandle, LoadHandles};
 /// own-absence guard), independently of the theme branch:
 ///
 /// - If the tuning RON reached [`LoadState::Failed`], `warn!`s naming
-///   `combat/tuning.ron` and inserts [`CombatTuning::default`] — the ADR-0003
+///   `core_tuning/combat.tuning.ron` and inserts [`CombatTuning::default`] — the ADR-0003
 ///   sanctioned error-path safety-net — so `Load` always exits with a tuning
 ///   present and never hangs on a bad tuning file.
 /// - Else once the tuning RON is [`LoadState::Loaded`], reads the deserialized
@@ -42,7 +42,7 @@ pub(super) fn resolve_tuning(
     // fall back to the const-default tuning so Load always exits with one present.
     if tuning_state.is_failed() {
         warn!(
-            "GDTF Load: asset `combat/tuning.ron` failed to load; falling back to the const \
+            "GDTF Load: asset `core_tuning/combat.tuning.ron` failed to load; falling back to the const \
              default combat tuning",
         );
         commands.insert_resource(CombatTuning::default());
@@ -62,13 +62,13 @@ pub(super) fn resolve_tuning(
         // GTW-374: insert the PERSISTENT tuning handle alongside the resource — like
         // the theme's ActiveThemeHandle it survives OnExit(Load), so the live
         // hot-reload handler can filter AssetEvents against it AND re-read the
-        // refreshed asset on a `combat/tuning.ron` edit.
+        // refreshed asset on a `core_tuning/combat.tuning.ron` edit.
         commands.insert_resource(ActiveTuningHandle::new((*handles.tuning).clone()));
     }
 }
 
 /// `Update`: re-derive the [`CombatTuning`] resource in place on a matching
-/// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for `combat/tuning.ron`
+/// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for `core_tuning/combat.tuning.ron`
 /// — the GTW-374 LIVE combat-balance hot-reload, modelled on the presenter's
 /// `redrive_fx_tuning_on_asset_event` and the UI theme's `redrive_theme_on_asset_event`.
 ///
@@ -122,7 +122,7 @@ pub(in crate::states::load) fn redrive_combat_tuning_on_asset_event(
         return;
     };
     *tuning = (**updated).clone();
-    info!("combat hot-reload: re-derived CombatTuning from `combat/tuning.ron`");
+    info!("combat hot-reload: re-derived CombatTuning from `core_tuning/combat.tuning.ron`");
 }
 
 #[cfg(test)]

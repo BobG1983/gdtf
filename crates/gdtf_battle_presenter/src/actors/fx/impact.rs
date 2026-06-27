@@ -211,7 +211,7 @@ impl ImpactAnimation {
 ///    out-of-range frame skips the redraw, the animation still despawns on finish).
 ///
 /// The per-impact-frame hold AND the pop lifetime / rise (GTW-327) are READ from the
-/// hot-reloadable [`FxTuning`] resource, so a live edit to `assets/tiles/fx_tuning.ron`
+/// hot-reloadable [`FxTuning`] resource, so a live edit to `assets/core_tuning/fx.tuning.ron`
 /// re-tunes the next impact's pacing + the next pop's lifetime without a rebuild.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the spawn / sprite swap /

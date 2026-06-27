@@ -12,10 +12,10 @@
 //!
 //! The asset source root is configurable: [`new`](GdtfLoadTestAppBuilder::new)
 //! points it at the workspace-root `assets/` (the same root the running app
-//! uses, so the good path loads the shipped `theme/grimdark.ron`), while
-//! [`with_asset_root`](GdtfLoadTestAppBuilder::with_asset_root) points it at an
-//! arbitrary directory — used by the failure-path test to point at a fixtures
-//! directory whose `theme/grimdark.ron` is malformed, so the load reaches
+//! uses, so the good path loads the shipped `core_tuning/ui_theme.tuning.ron`),
+//! while [`with_asset_root`](GdtfLoadTestAppBuilder::with_asset_root) points it
+//! at an arbitrary directory — used by the failure-path test to point at a
+//! fixtures directory whose `core_tuning/ui_theme.tuning.ron` is malformed, so the load reaches
 //! `Failed` and the const-fallback path is exercised.
 //!
 //! Like the sibling builders this is `DefaultPlugins`-based; the doctest stays
@@ -85,7 +85,7 @@ impl GdtfLoadTestAppBuilder {
     /// directory.
     ///
     /// Used by the failure-path test to point at a fixtures directory whose
-    /// `theme/grimdark.ron` is malformed, so the theme load reaches
+    /// `core_tuning/ui_theme.tuning.ron` is malformed, so the theme load reaches
     /// [`Failed`](bevy::asset::LoadState::Failed) and the const-fallback path
     /// runs. `root` is handed straight to
     /// [`AssetPlugin::file_path`](bevy::asset::AssetPlugin::file_path).

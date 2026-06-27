@@ -2,7 +2,7 @@
 //!
 //! GTW-250 baked the camera pan speed + the mouse-edge band thickness as Rust `const`s
 //! (`PAN_SPEED` / `EDGE_BAND_PX`). GTW-299 migrates them — plus a NEW dwell-delay knob — into
-//! a loose, per-line commented `assets/tiles/pan_tuning.ron`, loaded through the SAME generic
+//! a loose, per-line commented `assets/core_tuning/pan.tuning.ron`, loaded through the SAME generic
 //! [`RonAsset<T>`](gdtf_assets::RonAsset) loader the theme / situation / tile-roles /
 //! effect-roles / FX-tuning tables use, so the user tunes pan speed / edge band / dwell delay
 //! WITHOUT a rebuild. This module mirrors the FX-tuning template (`crate::fx::tuning`) EXACTLY:
@@ -29,7 +29,7 @@ use super::pan::{EdgeBandPx, PanSpeed};
 /// click-release near the map border) does NOT yank the camera; only a deliberate rest at the edge
 /// pans. The default `0.3` s is the user's explicit dwell choice — long enough to ignore an
 /// incidental graze, short enough that an intentional edge-rest pans promptly — and is live-tunable
-/// through `assets/tiles/pan_tuning.ron`.
+/// through `assets/core_tuning/pan.tuning.ron`.
 ///
 /// A named newtype over the `f32` seconds (`.claude/rules/no-bare-types.md`): the inner is PRIVATE,
 /// read through [`Deref`] and built through [`new`](Self::new) / [`Default`].
@@ -100,9 +100,9 @@ impl Default for BoundsMarginWorld {
 }
 
 /// The HOT-RELOADABLE edge-pan tuning table — the GTW-250 pan speed + edge band plus the GTW-299
-/// dwell delay, loaded from `assets/tiles/pan_tuning.ron` and read live by the pan systems.
+/// dwell delay, loaded from `assets/core_tuning/pan.tuning.ron` and read live by the pan systems.
 ///
-/// Loaded from the loose `assets/tiles/pan_tuning.ron` through the generic
+/// Loaded from the loose `assets/core_tuning/pan.tuning.ron` through the generic
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned [`PanTuning`]
 /// resource ([`resolve_pan_tuning`]), then re-derived in place on a hot edit
 /// ([`redrive_pan_tuning_on_asset_event`]) — the SAME dual-role spec-IS-the-resolved-resource
@@ -129,7 +129,7 @@ pub struct PanTuning {
 }
 
 /// The path of the loose pan-tuning RON, relative to the asset source root.
-const PAN_TUNING_RON_PATH: &str = "tiles/pan_tuning.ron";
+const PAN_TUNING_RON_PATH: &str = "core_tuning/pan.tuning.ron";
 
 /// The in-flight handle to the pan-tuning RON, held until it resolves into [`PanTuning`].
 ///
@@ -148,9 +148,9 @@ impl PanTuningHandle {
     }
 }
 
-/// `Startup`: kick off the `pan_tuning.ron` load, storing its typed handle.
+/// `Startup`: kick off the `pan.tuning.ron` load, storing its typed handle.
 ///
-/// Loads `tiles/pan_tuning.ron` as a [`RonAsset<PanTuning>`](gdtf_assets::RonAsset) through the
+/// Loads `core_tuning/pan.tuning.ron` as a [`RonAsset<PanTuning>`](gdtf_assets::RonAsset) through the
 /// generic loader and inserts the [`PanTuningHandle`] the [`resolve_pan_tuning`] poll +
 /// [`redrive_pan_tuning_on_asset_event`] hot-reload systems read. Takes `Option<Res<AssetServer>>`
 /// so a `MinimalPlugins` headless app with no [`AssetServer`] no-ops rather than panicking
@@ -242,7 +242,7 @@ pub fn redrive_pan_tuning_on_asset_event(
     *tuning = **updated;
     // GTW-374 Part C: log EVERY hot-reload path naming what reloaded, so a live edit can
     // be traced (mirrors the theme / combat-log / B1-B3 handlers).
-    info!("pan hot-reload: re-derived PanTuning from `tiles/pan_tuning.ron`");
+    info!("pan hot-reload: re-derived PanTuning from `core_tuning/pan.tuning.ron`");
 }
 
 #[cfg(test)]
@@ -250,16 +250,16 @@ mod test {
     use super::{BoundsMarginWorld, DwellDelaySeconds, PanTuning};
     use crate::{EdgeBandPx, PanSpeed};
 
-    /// The shipped `pan_tuning.ron` parses into `PanTuning` and carries every tuning value —
+    /// The shipped `pan.tuning.ron` parses into `PanTuning` and carries every tuning value —
     /// a `ron::de` round-trip of the SHIPPED bytes (a missing-but-required field would be a
     /// deserialize error; an absent field falls back to its `Default`).
     #[test]
     fn shipped_pan_tuning_ron_parses() {
-        const SHIPPED: &str = include_str!("../../../../../assets/tiles/pan_tuning.ron");
+        const SHIPPED: &str = include_str!("../../../../../assets/core_tuning/pan.tuning.ron");
         let parsed: Result<PanTuning, _> = ron::de::from_str(SHIPPED);
         assert!(
             parsed.is_ok(),
-            "shipped pan_tuning.ron must parse into PanTuning, got: {:?}",
+            "shipped pan.tuning.ron must parse into PanTuning, got: {:?}",
             parsed.as_ref().err(),
         );
     }
@@ -330,7 +330,7 @@ mod test {
         let parsed: Result<PanTuning, _> = ron::de::from_str("(dwell_delay_seconds: 0.75)");
         assert!(
             parsed.is_ok(),
-            "a partial pan_tuning.ron must parse, got: {:?}",
+            "a partial pan.tuning.ron must parse, got: {:?}",
             parsed.as_ref().err(),
         );
         let Ok(tuning) = parsed else {

@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 bevy = { workspace = true }
 # The loose-file RON asset loader (GTW-136): `Load` registers
-# `init_ron_asset::<GdtfThemeSpec>()` and loads `theme/grimdark.ron` through it.
+# `init_ron_asset::<GdtfThemeSpec>()` and loads `core_tuning/ui_theme.tuning.ron` through it.
 gdtf_assets = { path = "../gdtf_assets" }
 gdtf_ui = { path = "../gdtf_ui" }
 # The E10 sim-wiring edge (GTW-203): opens the compile-time boundary so later E10
@@ -29,7 +29,7 @@ gdtf_battle_input = { path = "../gdtf_battle_input" }
 serde = { workspace = true }
 
 [dev-dependencies]
-# The GTW-328 combat-log tuning test parses the shipped `combat_log.ron` bytes with
+# The GTW-328 combat-log tuning test parses the shipped `combat_log.tuning.ron` bytes with
 # `ron::de::from_str` (the FX-tuning `shipped_fx_tuning_ron_parses` precedent).
 ron = { workspace = true }
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo
@@ -67,7 +67,7 @@ dev_capture = []
 # default `AssetPlugin { watch_for_changes_override: None, .. }`, Bevy starts the
 # watcher iff its internal `watch` cfg is set, which `bevy/file_watcher` activates
 # transitively (bevy -> bevy_internal -> bevy_asset/file_watcher -> bevy_asset/watch).
-# Effect: saving a loose asset on disk (e.g. assets/theme/grimdark.ron) makes the
+# Effect: saving a loose asset on disk (e.g. assets/core_tuning/ui_theme.tuning.ron) makes the
 # AssetServer reload it and emit AssetEvent::Modified, which GTW-137's reader turns
 # into a live restyle — NO source change to the AssetPlugin construction is needed.
 #

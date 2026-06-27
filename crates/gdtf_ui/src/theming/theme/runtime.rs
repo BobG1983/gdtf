@@ -121,7 +121,7 @@ pub struct GdtfTheme {
     pub text:         TextTheme,
 }
 
-/// The handle to the **active** theme RON asset (`theme/grimdark.ron`), held as a
+/// The handle to the **active** theme RON asset (`core_tuning/ui_theme.tuning.ron`), held as a
 /// persistent resource so the live-retheme layer can react to its changes.
 ///
 /// A named [`Deref`] newtype over the `RonAsset<GdtfThemeSpec>` handle rather than

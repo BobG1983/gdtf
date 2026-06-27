@@ -18,7 +18,7 @@ use super::{
 /// loose asset.
 ///
 /// This is the **same authoritative file** the success path loads through the
-/// `AssetServer` (`assets/theme/grimdark.ron`) — embedding it here lets the
+/// `AssetServer` (`assets/core_tuning/ui_theme.tuning.ron`) — embedding it here lets the
 /// error-path fallback ([`default_theme`]) reuse the authoritative grimdark
 /// values rather than a divergent hand-written palette, so the safety-net looks
 /// like the real theme. It is *not* an `embedded_asset!` (ADR 0003 bans those):
@@ -26,13 +26,13 @@ use super::{
 /// load failed.
 pub(super) const SHIPPED_GRIMDARK_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/theme/grimdark.ron"
+    "/../../assets/core_tuning/ui_theme.tuning.ron"
 ));
 
 /// The last-resort, code-level default [`GdtfTheme`].
 ///
 /// **ADR-0003 sanctioned exception (GTW-143):** ADR 0003 clause 4 forbids
-/// hardcoding theme *values* as `const Color`s — `assets/theme/grimdark.ron`
+/// hardcoding theme *values* as `const Color`s — `assets/core_tuning/ui_theme.tuning.ron`
 /// remains the single styling source of truth on the success path. This function
 /// is the deliberately-narrow exception: it is the error-path safety-net the
 /// `Load` scene falls back to **only** when the loose theme RON (or its fonts)
@@ -67,7 +67,7 @@ pub(super) fn const_fallback_theme() -> GdtfTheme {
     let font = Handle::<Font>::default();
     // GTW-296: relative-length insets calibrated to the 1280x720 reference window —
     // L/R as `Vw` (12px / 1280 = 0.9375), T/B as `Vh` (6px / 720 = 0.83333) — mirroring
-    // the shipped `grimdark.ron` margin so the const safety-net matches the real theme.
+    // the shipped `ui_theme.tuning.ron` margin so the const safety-net matches the real theme.
     let margin = ContentMargin {
         l: MarginVw::new(0.9375),
         r: MarginVw::new(0.9375),

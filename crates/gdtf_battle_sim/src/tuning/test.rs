@@ -125,7 +125,7 @@ fn cone_stability_parses_from_ron_with_bare_scalar_leaves() {
     );
 }
 
-/// The shipped `assets/combat/tuning.ron` deserializes into a
+/// The shipped `assets/core_tuning/combat.tuning.ron` deserializes into a
 /// [`CombatTuning`] on the **real** path (the same file the data-driven
 /// tuning store loads).
 ///
@@ -139,13 +139,13 @@ fn cone_stability_parses_from_ron_with_bare_scalar_leaves() {
 fn shipped_tuning_ron_deserializes() {
     const SHIPPED_TUNING_RON: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../assets/combat/tuning.ron"
+        "/../../assets/core_tuning/combat.tuning.ron"
     ));
 
     let parsed = ron::from_str::<CombatTuning>(SHIPPED_TUNING_RON);
     assert!(
         parsed.is_ok(),
-        "shipped assets/combat/tuning.ron must deserialize into CombatTuning: {parsed:?}",
+        "shipped assets/core_tuning/combat.tuning.ron must deserialize into CombatTuning: {parsed:?}",
     );
 
     // AC4 — the E3.2 matchup-multiplier leaves are PRESENT in the shipped file

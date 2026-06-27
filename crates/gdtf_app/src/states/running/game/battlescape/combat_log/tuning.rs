@@ -3,7 +3,7 @@
 //!
 //! The combat log's FEEL — how many lines stay on screen, how long each lives, how much of
 //! that life is spent fading, and how wide the panel is — lives in a loose, per-line commented
-//! `assets/tiles/combat_log.ron`, loaded through the SAME generic
+//! `assets/core_tuning/combat_log.tuning.ron`, loaded through the SAME generic
 //! [`RonAsset<T>`](gdtf_assets::RonAsset) loader the theme / FX-tuning / pan-tuning tables use,
 //! so the user tunes the log WITHOUT a rebuild.
 //!
@@ -304,9 +304,9 @@ impl Default for PanelWidthVw {
 }
 
 /// The HOT-RELOADABLE combat-log tuning table — the four feel numbers, loaded from
-/// `assets/tiles/combat_log.ron` and read live by the combat-log spawn + update systems.
+/// `assets/core_tuning/combat_log.tuning.ron` and read live by the combat-log spawn + update systems.
 ///
-/// Loaded from the loose `assets/tiles/combat_log.ron` through the generic
+/// Loaded from the loose `assets/core_tuning/combat_log.tuning.ron` through the generic
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into this
 /// [`CombatLogTuning`] resource ([`resolve_combat_log_tuning`]), then re-derived in place on a
 /// hot edit ([`redrive_combat_log_tuning_on_asset_event`]) — the SAME dual-role
@@ -349,7 +349,7 @@ pub(crate) struct CombatLogTuning {
 }
 
 /// The path of the loose combat-log RON, relative to the asset source root.
-const COMBAT_LOG_RON_PATH: &str = "tiles/combat_log.ron";
+const COMBAT_LOG_RON_PATH: &str = "core_tuning/combat_log.tuning.ron";
 
 /// The in-flight handle to the combat-log RON, held until it resolves into [`CombatLogTuning`].
 ///
@@ -369,9 +369,9 @@ impl CombatLogTuningHandle {
     }
 }
 
-/// `Startup`: kick off the `combat_log.ron` load, storing its typed handle.
+/// `Startup`: kick off the `combat_log.tuning.ron` load, storing its typed handle.
 ///
-/// Loads `tiles/combat_log.ron` as a [`RonAsset<CombatLogTuning>`](gdtf_assets::RonAsset)
+/// Loads `core_tuning/combat_log.tuning.ron` as a [`RonAsset<CombatLogTuning>`](gdtf_assets::RonAsset)
 /// through the generic loader and inserts the [`CombatLogTuningHandle`] the
 /// [`resolve_combat_log_tuning`] poll + [`redrive_combat_log_tuning_on_asset_event`] hot-reload
 /// systems read. Takes `Option<Res<AssetServer>>` so a `MinimalPlugins` headless app with no
@@ -422,7 +422,7 @@ pub(crate) fn resolve_combat_log_tuning(
 ///
 /// Reads the [`MessageReader`] of [`AssetEvent<RonAsset<CombatLogTuning>>`] and, on a `Modified`
 /// event for the loaded handle, overwrites the resident [`CombatLogTuning`] with the latest
-/// in-memory value so a `combat_log.ron` edit re-tunes the log THIS frame — WITHOUT a rebuild.
+/// in-memory value so a `combat_log.tuning.ron` edit re-tunes the log THIS frame — WITHOUT a rebuild.
 /// Mirrors the presenter's `redrive_fx_tuning_on_asset_event`.
 ///
 /// Guarded so it never panics before the load chain has run (pre-resolve): it takes the handle
@@ -464,7 +464,9 @@ pub(crate) fn redrive_combat_log_tuning_on_asset_event(
     *tuning = **updated;
     // GTW-374 Part C: log EVERY hot-reload path naming what reloaded, so a live edit can be
     // traced (mirrors the theme / FX / pan / B1-B3 handlers).
-    info!("combat-log hot-reload: re-derived CombatLogTuning from `tiles/combat_log.ron`");
+    info!(
+        "combat-log hot-reload: re-derived CombatLogTuning from `core_tuning/combat_log.tuning.ron`"
+    );
 }
 
 #[cfg(test)]
@@ -474,16 +476,17 @@ mod test {
         HeightLerpRate, LineFontPt, LineLerpRate, LineTtlSeconds, MaxVisibleLines, PanelWidthVw,
     };
 
-    /// The shipped `combat_log.ron` parses into `CombatLogTuning` and carries every tuning
+    /// The shipped `combat_log.tuning.ron` parses into `CombatLogTuning` and carries every tuning
     /// value — a `ron::de` round-trip of the SHIPPED bytes (a missing-but-required field would
     /// be a deserialize error; an absent field falls back to its `Default`).
     #[test]
     fn shipped_combat_log_ron_parses() {
-        const SHIPPED: &str = include_str!("../../../../../../../../assets/tiles/combat_log.ron");
+        const SHIPPED: &str =
+            include_str!("../../../../../../../../assets/core_tuning/combat_log.tuning.ron");
         let parsed: Result<CombatLogTuning, _> = ron::de::from_str(SHIPPED);
         assert!(
             parsed.is_ok(),
-            "shipped combat_log.ron must parse into CombatLogTuning, got: {:?}",
+            "shipped combat_log.tuning.ron must parse into CombatLogTuning, got: {:?}",
             parsed.as_ref().err(),
         );
     }

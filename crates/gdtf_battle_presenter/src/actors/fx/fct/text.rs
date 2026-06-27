@@ -216,7 +216,7 @@ impl FloatingCombatText {
 ///
 /// `ttl` / `rise` are the pop's lifetime + ascent speed, passed in by the caller from the
 /// hot-reloadable [`FxTuning`](super::super::FxTuning) (GTW-327) rather than read from a
-/// `const`, so a live `fx_tuning.ron` edit re-tunes the very next pop.
+/// `const`, so a live `fx.tuning.ron` edit re-tunes the very next pop.
 ///
 /// `emphasis` is the styling WEIGHT ([`FctEmphasis`]): a [`Bold`](FctEmphasis::Bold) pop (the
 /// lethal DOWN / DEAD) is drawn in [`FontWeight::BOLD`] at a larger [`FctEmphasis::font_size`],

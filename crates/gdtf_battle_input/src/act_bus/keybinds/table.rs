@@ -5,7 +5,7 @@ use gdtf_assets::RonAsset;
 use serde::Deserialize;
 
 /// The path of the loose keybind RON, relative to the asset source root.
-const KEYBINDS_RON_PATH: &str = "input/keybinds.ron";
+const KEYBINDS_RON_PATH: &str = "core_tuning/keybinds.tuning.ron";
 
 /// The authored key vocabulary — the named keys a [`Keybinds`] leaf can bind.
 ///
@@ -67,7 +67,7 @@ impl BoundKey {
 
 /// The DATA-DRIVEN keybind table — every bound act → the [`BoundKey`] it is on.
 ///
-/// Loaded from the loose `assets/input/keybinds.ron` through the generic GTW-136
+/// Loaded from the loose `assets/core_tuning/keybinds.tuning.ron` through the generic GTW-136
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-side
 /// resident [`Keybinds`] resource before battle time (see [`resolve_keybinds`]).
 /// Every binding is data the engineer edits — nothing about the key choices is
@@ -142,16 +142,16 @@ impl Keybinds {
 pub struct KeybindsHandle(Handle<RonAsset<Keybinds>>);
 
 impl KeybindsHandle {
-    /// Wrap the in-flight `keybinds.ron` handle.
+    /// Wrap the in-flight `keybinds.tuning.ron` handle.
     #[must_use]
     pub const fn new(handle: Handle<RonAsset<Keybinds>>) -> Self {
         Self(handle)
     }
 }
 
-/// `Startup`: kick off the `keybinds.ron` load, storing its typed handle.
+/// `Startup`: kick off the `keybinds.tuning.ron` load, storing its typed handle.
 ///
-/// Loads `input/keybinds.ron` as a [`RonAsset<Keybinds>`](gdtf_assets::RonAsset)
+/// Loads `core_tuning/keybinds.tuning.ron` as a [`RonAsset<Keybinds>`](gdtf_assets::RonAsset)
 /// through the generic GTW-136 loader and inserts the [`KeybindsHandle`] the
 /// [`resolve_keybinds`] poll system reads. Takes `Option<Res<AssetServer>>` so a
 /// `MinimalPlugins` headless app with no [`AssetServer`] no-ops rather than

@@ -1,6 +1,6 @@
 //! GTW-384: resolves the shipped [`GangerStatTuning`] into the persistent runtime
 //! [`GangerStatTuning`] resource, plus the LIVE hot-reload that re-derives it on a
-//! `combat/stat_tuning.ron` edit — the GTW-374 combat-tuning loader + hot-reload mirror.
+//! `core_tuning/stat.tuning.ron` edit — the GTW-374 combat-tuning loader + hot-reload mirror.
 
 use bevy::{
     asset::{AssetEvent, LoadState},
@@ -20,7 +20,7 @@ use crate::states::load::resources::{ActiveStatTuningHandle, LoadHandles};
 /// own-absence guard), independently of the other resolve branches:
 ///
 /// - If the stat-tuning RON reached [`LoadState::Failed`], `warn!`s naming
-///   `combat/stat_tuning.ron` and inserts [`GangerStatTuning::default`] — the
+///   `core_tuning/stat.tuning.ron` and inserts [`GangerStatTuning::default`] — the
 ///   ADR-0003 error-path safety-net — so `Load` always exits with a stat tuning present
 ///   and never hangs on a bad file. The default carries the stats.md flat-`1.0` weights
 ///   (Cool `0.5` into HP) + `~10` divisors, so the derivation still produces sensible
@@ -43,7 +43,7 @@ pub(super) fn resolve_stat_tuning(
     // fall back to the const-default tuning so Load always exits with one present.
     if state.is_failed() {
         warn!(
-            "GDTF Load: asset `combat/stat_tuning.ron` failed to load; falling back to the const \
+            "GDTF Load: asset `core_tuning/stat.tuning.ron` failed to load; falling back to the const \
              default ganger stat tuning",
         );
         commands.insert_resource(GangerStatTuning::default());
@@ -62,14 +62,14 @@ pub(super) fn resolve_stat_tuning(
         commands.insert_resource((**tuning).clone());
         // Insert the PERSISTENT handle alongside the resource — like ActiveTuningHandle it
         // survives OnExit(Load), so the live hot-reload handler can filter AssetEvents
-        // against it AND re-read the refreshed asset on a `combat/stat_tuning.ron` edit.
+        // against it AND re-read the refreshed asset on a `core_tuning/stat.tuning.ron` edit.
         commands.insert_resource(ActiveStatTuningHandle::new((*handles.stat_tuning).clone()));
     }
 }
 
 /// `Update`: re-derive the [`GangerStatTuning`] resource in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for
-/// `combat/stat_tuning.ron` — the GTW-384 LIVE stat-derivation hot-reload, modelled on
+/// `core_tuning/stat.tuning.ron` — the GTW-384 LIVE stat-derivation hot-reload, modelled on
 /// `redrive_combat_tuning_on_asset_event` (GTW-374).
 ///
 /// Reads the [`MessageReader`] of
@@ -121,7 +121,7 @@ pub(in crate::states::load) fn redrive_stat_tuning_on_asset_event(
         return;
     };
     *tuning = (**updated).clone();
-    info!("combat hot-reload: re-derived GangerStatTuning from `combat/stat_tuning.ron`");
+    info!("combat hot-reload: re-derived GangerStatTuning from `core_tuning/stat.tuning.ron`");
 }
 
 #[cfg(test)]

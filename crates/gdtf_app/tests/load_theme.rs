@@ -10,7 +10,7 @@
 //!   and the machine moves `Load -> Intro`.
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   `gdtf_test_utils::GdtfLoadTestAppBuilder`: a real `AssetServer` pointed at
-//!   the workspace `assets/`. The good path resolves `theme/grimdark.ron` to a
+//!   the workspace `assets/`. The good path resolves `core_tuning/ui_theme.tuning.ron` to a
 //!   `GdtfTheme`; a deliberately-bad theme path drives the failure branch — it
 //!   does not hang, records `LoadFailed`, and still leaves a (default)
 //!   `GdtfTheme` present.
@@ -167,7 +167,7 @@ fn load_does_not_leave_without_a_theme() {
 }
 
 /// Absolute path to the malformed-theme fixtures root
-/// (`tests/fixtures/bad_theme_root`), whose `theme/grimdark.ron` is deliberately
+/// (`tests/fixtures/bad_theme_root`), whose `core_tuning/ui_theme.tuning.ron` is deliberately
 /// unparseable so the real loader reaches `Failed`.
 fn bad_theme_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -177,7 +177,7 @@ fn bad_theme_root() -> PathBuf {
 }
 
 /// Tier (b) good path: with a real `AssetServer` rooted at the workspace
-/// `assets/`, entering `Load` loads and resolves `theme/grimdark.ron` (and
+/// `assets/`, entering `Load` loads and resolves `core_tuning/ui_theme.tuning.ron` (and
 /// preloads the fonts folder) into a [`GdtfTheme`] whose text-bearing sub-themes
 /// carry **real** (non-default) font handles, and the machine leaves `Load` for
 /// `Intro`.
@@ -273,7 +273,7 @@ fn real_asset_multi_font_load_resolves_distinct_title_font() {
 }
 
 /// Tier (b) failure path: with the asset root pointed at a malformed
-/// `theme/grimdark.ron`, the load reaches `Failed`. The app must NOT hang — it
+/// `core_tuning/ui_theme.tuning.ron`, the load reaches `Failed`. The app must NOT hang — it
 /// records the failure, falls back to the const-default [`GdtfTheme`], and leaves
 /// `Load` within the bounded budget.
 ///

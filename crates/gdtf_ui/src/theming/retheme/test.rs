@@ -19,7 +19,7 @@ use crate::{
 /// Builds a nested [`GdtfThemeSpec`] from caller-chosen body-text + panel
 /// colors plus a button hover color (the button resting fill tracks the panel
 /// color so the existing `Themed(Panel)` repaint asserts still read it),
-/// mirroring the shipped `grimdark.ron` shape. Returns the `ron` error so a
+/// mirroring the shipped `ui_theme.tuning.ron` shape. Returns the `ron` error so a
 /// malformed literal surfaces via `?` rather than a denied `unwrap`/`panic`.
 fn spec(
     text: [f32; 3],

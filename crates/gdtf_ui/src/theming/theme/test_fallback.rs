@@ -13,7 +13,7 @@ use super::{
 ///
 /// **Not brittle to tuning:** it re-parses the embedded shipped RON and
 /// asserts equality, so it auto-follows whatever the user tunes
-/// `grimdark.ron` to — it pins no specific value.
+/// `ui_theme.tuning.ron` to — it pins no specific value.
 #[test]
 fn default_theme_matches_shipped_grimdark() -> Result<(), ron::error::SpannedError> {
     let from_ron: GdtfThemeSpec = ron::from_str(SHIPPED_GRIMDARK_RON)?;
@@ -34,7 +34,7 @@ fn default_theme_matches_shipped_grimdark() -> Result<(), ron::error::SpannedErr
 /// carries the default font handle and the `default_font` is the expected
 /// loose path.
 ///
-/// Decoupled from `grimdark.ron`'s tunable values: it only guards that the
+/// Decoupled from `ui_theme.tuning.ron`'s tunable values: it only guards that the
 /// const safety-net is itself whole and legible, so the error path can always
 /// hand back *some* usable theme.
 #[test]

@@ -11,7 +11,7 @@ use crate::keybinds::table::{BoundKey, Keybinds};
 /// rejects a missing field, so a successful parse proves all six bound acts
 /// are present and each resolves through [`BoundKey::key_code`].
 ///
-/// It does NOT pin the six authored `KeyCode` MAGNITUDES — `keybinds.ron` is
+/// It does NOT pin the six authored `KeyCode` MAGNITUDES — `keybinds.tuning.ron` is
 /// editable, hot-swappable tuning data ("edit freely — every binding is data"),
 /// so locking the file's chosen keys would be a brittle test on editable data
 /// (the metric-constant exemption does not apply to keybinds). The non-brittle
@@ -21,13 +21,13 @@ use crate::keybinds::table::{BoundKey, Keybinds};
 /// the blind cycle.)
 #[test]
 fn shipped_keybinds_ron_deserializes_and_every_act_resolves() {
-    // The exact bytes the loose `assets/input/keybinds.ron` ships, parsed the
+    // The exact bytes the loose `assets/core_tuning/keybinds.tuning.ron` ships, parsed the
     // same way `RonAssetLoader` parses them (`ron::de::from_bytes`).
-    const RON: &str = include_str!("../../../../../assets/input/keybinds.ron");
+    const RON: &str = include_str!("../../../../../assets/core_tuning/keybinds.tuning.ron");
     let parsed: Result<Keybinds, _> = ron::from_str(RON);
     assert!(
         parsed.is_ok(),
-        "the shipped keybinds.ron must deserialize into Keybinds: {:?}",
+        "the shipped keybinds.tuning.ron must deserialize into Keybinds: {:?}",
         parsed.err(),
     );
     let Ok(binds) = parsed else { return };
@@ -46,7 +46,7 @@ fn shipped_keybinds_ron_deserializes_and_every_act_resolves() {
         for rhs in &bound[i + 1..] {
             assert_ne!(
                 lhs, rhs,
-                "no two bound acts may share a key (shipped keybinds.ron has a collision)",
+                "no two bound acts may share a key (shipped keybinds.tuning.ron has a collision)",
             );
         }
     }

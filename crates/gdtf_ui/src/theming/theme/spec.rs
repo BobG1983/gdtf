@@ -177,7 +177,7 @@ impl TextThemeSpec {
 ///
 /// It derives [`TypePath`] so it can be the payload of a
 /// `RonAsset<GdtfThemeSpec>` (the generic GTW-136 loader requires `T: TypePath`):
-/// the `Load` scene loads `theme/grimdark.ron` as that asset, then resolves the
+/// the `Load` scene loads `core_tuning/ui_theme.tuning.ron` as that asset, then resolves the
 /// deserialized spec into a [`GdtfTheme`].
 #[derive(Deserialize, TypePath, Clone, PartialEq, Debug)]
 pub struct GdtfThemeSpec {

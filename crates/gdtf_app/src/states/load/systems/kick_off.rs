@@ -14,7 +14,7 @@ use crate::states::load::resources::{
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
-const THEME_RON_PATH: &str = "theme/grimdark.ron";
+const THEME_RON_PATH: &str = "core_tuning/ui_theme.tuning.ron";
 
 /// Path of the loose fonts folder, relative to the asset source root.
 const FONTS_FOLDER_PATH: &str = "fonts";
@@ -24,13 +24,14 @@ const FONTS_FOLDER_PATH: &str = "fonts";
 const SITUATION_RON_PATH: &str = "situations/skirmish.ron";
 
 /// Path of the loose combat-tuning RON, relative to the asset source root
-/// (GTW-206 / E10.4 — the shipped balance coefficients the sim marches with).
-const TUNING_RON_PATH: &str = "combat/tuning.ron";
+/// (GTW-206 / E10.4 — the shipped balance coefficients the sim marches with;
+/// `core_tuning/combat.tuning.ron`).
+const TUNING_RON_PATH: &str = "core_tuning/combat.tuning.ron";
 
 /// Path of the loose ganger stat-tuning RON, relative to the asset source root
 /// (GTW-384 — the attribute → computed-stat derivation weights, a SEPARATE file from
-/// `combat/tuning.ron`).
-const STAT_TUNING_RON_PATH: &str = "combat/stat_tuning.ron";
+/// `core_tuning/combat.tuning.ron`).
+const STAT_TUNING_RON_PATH: &str = "core_tuning/stat.tuning.ron";
 
 /// Path of the loose weapons folder, relative to the asset source root (GTW-257 —
 /// the per-weapon `assets/content/weapons/*.ron` files the registry is built from). Its OWN
@@ -57,13 +58,14 @@ const INJURIES_DIR: &str = "content/injuries";
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
 ///
-/// Loads `theme/grimdark.ron` as a `RonAsset<GdtfThemeSpec>` (through the GTW-136
-/// loader) and preloads the entire `fonts` folder via
+/// Loads `core_tuning/ui_theme.tuning.ron` as a `RonAsset<GdtfThemeSpec>` (through
+/// the GTW-136 loader) and preloads the entire `fonts` folder via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) (GTW-149 —
 /// loads ALL fonts up front so any font a sub-theme selects, override or default,
 /// is resident), AND loads `situations/skirmish.ron` as a `RonAsset<Situation>`
-/// (GTW-205 / E10.3 — through the same generic loader) AND `combat/tuning.ron` as
-/// a `RonAsset<CombatTuning>` (GTW-206 / E10.4 — through the same generic loader)
+/// (GTW-205 / E10.3 — through the same generic loader) AND
+/// `core_tuning/combat.tuning.ron` as a `RonAsset<CombatTuning>` (GTW-206 / E10.4
+/// — through the same generic loader)
 /// AND preloads the entire `content/weapons` folder via `load_folder` (GTW-257 — every
 /// `assets/content/weapons/*.ron`, each a `RonAsset<WeaponSpec>`, so the poll/resolve
 /// system can build the name-keyed

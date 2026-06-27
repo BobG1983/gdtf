@@ -22,7 +22,7 @@ use super::{
 ///
 /// A VIEW tunable (how fast the camera glides under player navigation), now MIGRATED into
 /// the hot-reloadable [`PanTuning`] table (GTW-299): the shipped value lives as the
-/// [`DEFAULT`](Self::DEFAULT) const here AND in `assets/tiles/pan_tuning.ron`, so editing
+/// [`DEFAULT`](Self::DEFAULT) const here AND in `assets/core_tuning/pan.tuning.ron`, so editing
 /// the `.ron` retunes the camera glide WITHOUT a rebuild. A newtype with a private inner
 /// `f32` + derived [`Deref`](std::ops::Deref) (the house style for a domain value,
 /// `no-bare-types.md`): the speed is a domain quantity (world-units/sec), never a bare `f32`.
@@ -58,7 +58,7 @@ impl Default for PanSpeed {
 /// The cursor is "at an edge" (and pans the camera that way) when it sits within this many
 /// logical pixels of a window edge. A VIEW tunable, now MIGRATED into the hot-reloadable
 /// [`PanTuning`] table (GTW-299): the shipped value lives as the [`DEFAULT`](Self::DEFAULT)
-/// const here AND in `assets/tiles/pan_tuning.ron`, so editing the `.ron` retunes the band
+/// const here AND in `assets/core_tuning/pan.tuning.ron`, so editing the `.ron` retunes the band
 /// WITHOUT a rebuild. A newtype over a private `f32` ([`Deref`](std::ops::Deref)) per
 /// `no-bare-types.md`. `#[serde(transparent)]` + [`Deserialize`] so the `.ron` authors the
 /// inner number directly; [`Default`] carries the shipped value so a missing `.ron` field
@@ -292,7 +292,7 @@ impl GamepadCursorMoved {
 ///
 /// GTW-299: the pan speed + edge band are now READ from the hot-reloadable [`PanTuning`]
 /// resource ([`PanTuning::pan_speed`] / [`PanTuning::edge_band_px`]) rather than the old
-/// `PAN_SPEED` / `EDGE_BAND_PX` consts, so editing `assets/tiles/pan_tuning.ron` retunes them
+/// `PAN_SPEED` / `EDGE_BAND_PX` consts, so editing `assets/core_tuning/pan.tuning.ron` retunes them
 /// live. The resource is taken as `Option<Res<PanTuning>>` so a headless app with no
 /// `AssetServer` (the resource never loads) falls back to the newtype [`Default`]s — the
 /// shipped 400 / 24 — and behaves exactly as before (`bevy-traps.md` #1).

@@ -13,7 +13,7 @@
 //!   and no `CombatTuning` is inserted from the load path (AC2/AC3).
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   `GdtfLoadTestAppBuilder`: a real `AssetServer` pointed at the workspace
-//!   `assets/`. The good path resolves `combat/tuning.ron` into a persistent
+//!   `assets/`. The good path resolves `core_tuning/combat.tuning.ron` into a persistent
 //!   `CombatTuning` that survives `OnExit(Load)` (AC4/AC5); a deliberately-bad
 //!   tuning path drives the failure branch — it warns, falls back to
 //!   `CombatTuning::default()`, and `Load` still transitions (AC6).
@@ -59,8 +59,8 @@ fn app_state(app: &bevy::app::App) -> AppState {
 }
 
 /// Absolute path to the malformed-tuning fixtures root
-/// (`tests/fixtures/bad_tuning_root`), whose `combat/tuning.ron` is deliberately
-/// unparseable so the real loader reaches `Failed`, while its `theme/grimdark.ron`
+/// (`tests/fixtures/bad_tuning_root`), whose `core_tuning/combat.tuning.ron` is deliberately
+/// unparseable so the real loader reaches `Failed`, while its `core_tuning/ui_theme.tuning.ron`
 /// (and the symlinked `fonts/`) stay VALID so ONLY the tuning branch fails.
 fn bad_tuning_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -191,7 +191,7 @@ fn load_does_not_leave_on_theme_only() {
 }
 
 /// AC4 / AC5 — tier (b): with a real `AssetServer` rooted at the workspace
-/// `assets/`, entering `Load` loads and deserializes the SHIPPED `combat/tuning.ron`
+/// `assets/`, entering `Load` loads and deserializes the SHIPPED `core_tuning/combat.tuning.ron`
 /// into a PERSISTENT [`CombatTuning`] resource that survives `OnExit(Load)` and
 /// composes correctly with the theme branch (both present before `Load` leaves).
 ///
@@ -251,7 +251,7 @@ fn real_asset_resolves_persistent_combat_tuning() {
 }
 
 /// AC6 — tier (b) failure path: with the asset root pointed at a malformed
-/// `combat/tuning.ron` (but a VALID `theme/grimdark.ron` + fonts, so ONLY the
+/// `core_tuning/combat.tuning.ron` (but a VALID `core_tuning/ui_theme.tuning.ron` + fonts, so ONLY the
 /// tuning branch fails), the tuning load reaches `Failed`. The app must NOT hang
 /// — it warns naming the path, falls back to exactly `CombatTuning::default()`,
 /// and `Load` still transitions to `Intro` within the bounded budget.

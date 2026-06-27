@@ -1,6 +1,6 @@
 //! The LIVE re-derivation systems — the ONE projector helper [`rederive_one`] and the
 //! two systems that drive it: [`rederive_stats_on_tuning_change`] (the GTW-384
-//! `stat_tuning.ron` hot-reload path) and [`rederive_stats_on_injury_change`] (the
+//! `stat.tuning.ron` hot-reload path) and [`rederive_stats_on_injury_change`] (the
 //! GTW-436 injury-ledger path).
 //!
 //! Both systems re-derive a spawned ganger's computed stats from its eight authored
@@ -12,7 +12,7 @@
 //! The two systems differ ONLY in their trigger (one on `resource_changed::<GangerStatTuning>`,
 //! the other on `Changed<InflictedInjuries>`); they share the [`rederive_one`]
 //! projection so the two paths can never diverge. The projection RE-SUMS the ledger's
-//! deltas every time it runs (never applied-once), so a `stat_tuning.ron` hot-reload
+//! deltas every time it runs (never applied-once), so a `stat.tuning.ron` hot-reload
 //! RE-APPLIES the injury deltas by construction rather than wiping them — the GTW-405
 //! single-source-of-truth invariant.
 //!
@@ -142,7 +142,7 @@ const fn attributes_of(read: &AttributeRead) -> GangerAttributes {
 }
 
 /// `Update`: when the [`GangerStatTuning`] resource CHANGES (the app-side hot-reload
-/// overwrites it on a `stat_tuning.ron` edit, GTW-374 pattern), re-derive EVERY spawned
+/// overwrites it on a `stat.tuning.ron` edit, GTW-374 pattern), re-derive EVERY spawned
 /// ganger's computed stats from its eight authored attributes × the NEW tuning × its
 /// injury ledger (GTW-384 + GTW-436), via the shared `rederive_one` projection.
 ///

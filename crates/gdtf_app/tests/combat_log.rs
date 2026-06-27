@@ -37,7 +37,7 @@ use gdtf_ui::theme::default_theme;
 /// never reaches the predicate fails instead of hanging.
 const BUDGET: u32 = 96;
 
-/// The shipped default visible-line cap (`combat_log.ron` / `MaxVisibleLines::DEFAULT`) — the
+/// The shipped default visible-line cap (`combat_log.tuning.ron` / `MaxVisibleLines::DEFAULT`) — the
 /// FIFO trim target this test asserts against. Mirrors the tuning default so the overflow test
 /// is independent of the (unloaded, defaulted) RON in the headless harness.
 const DEFAULT_MAX_VISIBLE: usize = 6;
@@ -342,12 +342,12 @@ fn a_fresh_line_fades_in_rather_than_snapping_to_full_opacity() {
     );
 }
 
-/// The shipped default combat-log line size (`combat_log.ron` / `LineFontPt::DEFAULT`) — the size
+/// The shipped default combat-log line size (`combat_log.tuning.ron` / `LineFontPt::DEFAULT`) — the size
 /// the headless harness (no RON, defaulted tuning) draws each line at. Mirrors the tuning default
 /// so the readability test is independent of the (unloaded) RON.
 const DEFAULT_LINE_FONT_PT: f32 = 20.0;
 
-/// The theme's body text size (`assets/theme/grimdark.ron` / fallback) — the size the log USED to
+/// The theme's body text size (`assets/core_tuning/ui_theme.tuning.ron` / fallback) — the size the log USED to
 /// (too-small-ly) render at before the fix. The log line size must be clearly LARGER than this.
 const THEME_BODY_FONT_PT: f32 = 18.0;
 

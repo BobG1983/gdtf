@@ -3,7 +3,7 @@
 //!
 //! Edge-pan no longer fires the instant the cursor crosses into the edge band — the cursor must
 //! REST there continuously for at least [`DwellDelaySeconds`](super::tuning::DwellDelaySeconds)
-//! first (the user's `0.3` s default, live-tunable through `assets/tiles/pan_tuning.ron`). So a
+//! first (the user's `0.3` s default, live-tunable through `assets/core_tuning/pan.tuning.ron`). So a
 //! click-release near the border, or a cursor that brushes the edge while travelling elsewhere,
 //! never yanks the camera; only a deliberate edge-rest pans.
 //!

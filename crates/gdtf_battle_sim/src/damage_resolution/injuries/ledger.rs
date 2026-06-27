@@ -155,7 +155,7 @@ impl BleedAfflicted {
 /// GTW-436 projector re-sums every projection), and the [`BleedAfflicted`] accrual
 /// (drained by the bleed runtime). It enforces the single-source-of-truth invariant:
 /// every injury delta lives in exactly ONE place — this ledger — and is RE-SUMMED on
-/// every projection, never applied-once, so a `stat_tuning.ron` hot-reload re-applies
+/// every projection, never applied-once, so a `stat.tuning.ron` hot-reload re-applies
 /// deltas by construction rather than wiping them.
 ///
 /// Private fields with named accessors (the sole mutator is

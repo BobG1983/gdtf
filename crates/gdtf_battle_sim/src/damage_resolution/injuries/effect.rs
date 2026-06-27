@@ -160,7 +160,7 @@ impl Default for MovementCostFactor {
 #[derive(Clone, Copy, PartialEq, Debug, Deserialize)]
 pub enum InjuryEffect {
     /// Shift a stat by a signed [`StatDelta`] — a modifier-layer delta the projector
-    /// re-sums every projection (so a `stat_tuning.ron` hot-reload re-applies it
+    /// re-sums every projection (so a `stat.tuning.ron` hot-reload re-applies it
     /// rather than wiping it). Applies to BOTH the eight attributes and the eight
     /// derived stats; for a pool target it docks the MAX.
     Modify {

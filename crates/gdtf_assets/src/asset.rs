@@ -12,7 +12,7 @@ use bevy::reflect::TypePath;
 /// `T` must be a `serde`-`Deserialize` value that is also `TypePath`, `Send`,
 /// `Sync`, and `'static` (the bounds Bevy's asset system requires of any asset
 /// payload). The loose-file path the asset was loaded from (e.g.
-/// `theme/grimdark.ron`) is resolved by the host app's
+/// `core_tuning/ui_theme.tuning.ron`) is resolved by the host app's
 /// `AssetServer` against its configured source root.
 #[derive(bevy::asset::Asset, TypePath)]
 pub struct RonAsset<T>(T)

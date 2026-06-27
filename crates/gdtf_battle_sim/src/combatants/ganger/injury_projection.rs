@@ -9,7 +9,7 @@
 //! the per-ganger [`InflictedInjuries`] ledger is the SOLE source of every injury
 //! stat delta; this projector RE-SUMS those deltas on every projection (never
 //! applied-once), so every stored derived stat is `f(BaseAttributes,
-//! GangerStatTuning, InflictedInjuries)` and a `stat_tuning.ron` hot-reload
+//! GangerStatTuning, InflictedInjuries)` and a `stat.tuning.ron` hot-reload
 //! re-applies the deltas by construction rather than wiping them.
 //!
 //! The three delta layers, in order (`docs/combat/resolution.md`; the GTW-405 design):

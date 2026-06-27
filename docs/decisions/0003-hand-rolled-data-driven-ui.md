@@ -66,7 +66,7 @@ hot-reload policy. Specifically:
    discipline of ADR 0001 to the UI layer, enforced by the crate graph rather
    than by convention.
 4. **Data-driven theming.** Theme VALUES — colours, the type scale, spacing — are
-   authored in RON at `assets/theme/grimdark.ron` and deserialized into a typed
+   authored in RON at `assets/core_tuning/ui_theme.tuning.ron` and deserialized into a typed
    theme schema. They are NOT hardcoded as `const Color`s in Rust. The resolved
    theme is a single `GdtfTheme` **Resource** that is the one styling source of
    truth, read by a central `apply_theme` system; styling flows from that
@@ -101,7 +101,7 @@ hot-reload policy. Specifically:
   the app or the sim. The one-way discipline of ADR 0001 now covers the UI layer
   by construction.
 - **Retheming is a data edit, not a recompile.** Colours and the type scale live
-  in `assets/theme/grimdark.ron` behind the typed `GdtfTheme` resource; tuning
+  in `assets/core_tuning/ui_theme.tuning.ron` behind the typed `GdtfTheme` resource; tuning
   the look is editing data, and with hot-reload it is observable live in a dev
   build. The single-source-of-truth resource keeps styling legible and central.
 - **Packaging is left open on purpose.** Loose assets keep iteration simple now;

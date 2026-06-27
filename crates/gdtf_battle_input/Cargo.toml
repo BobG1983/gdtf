@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 # The camera / window / sprite / system params the picking + highlight systems use.
 bevy = { workspace = true }
-# The GTW-136 loose-RON loader: the data-driven keybind table (`assets/input/keybinds.ron`,
+# The GTW-136 loose-RON loader: the data-driven keybind table (`assets/core_tuning/keybinds.tuning.ron`,
 # the first keybind file in the repo) loads through the same generic `RonAsset<T>` path
 # the theme / tiles / tuning use — `init_ron_asset::<Keybinds>()` + the load/resolve chain.
 gdtf_assets = { path = "../gdtf_assets" }
@@ -39,7 +39,7 @@ bevy = { workspace = true }
 # so tests name `gdtf_battle_sim::test_support`. Test/dev only — the binary enables it
 # nowhere.
 gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
-# The S8 keybind test parses the shipped `keybinds.ron` the same way the loader does
+# The S8 keybind test parses the shipped `keybinds.tuning.ron` the same way the loader does
 # (`ron::from_str`) to prove the schema + the file agree and every act resolves.
 ron = { workspace = true }
 # AC1: the "plugin build ran inside the REAL scene stack" test reuses the

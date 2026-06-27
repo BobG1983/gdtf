@@ -3,7 +3,7 @@
 //! GTW-306's TRAVEL slice baked four firing-FX tuning numbers as Rust `const`s
 //! (the projectile draw scale, its flight velocity, the burst stagger step, and
 //! the per-impact-frame hold). This slice migrates them into a loose, per-line
-//! commented `assets/tiles/fx_tuning.ron`, loaded through the SAME generic
+//! commented `assets/core_tuning/fx.tuning.ron`, loaded through the SAME generic
 //! [`RonAsset<T>`](gdtf_assets::RonAsset) loader the theme / situation / tile-roles
 //! / effect-roles tables use, so the user tunes size / velocity / stagger /
 //! impact-timing WITHOUT a rebuild.
@@ -158,7 +158,7 @@ impl Default for ImpactFrameSeconds {
 /// A pop rises + fades across this whole window and despawns the moment its clock
 /// finishes. GTW-327 RE-TUNE: the migrated default is `1.5` s — a readable window
 /// (the original `0.6` s faded too fast to read) — and, now that it is a hot-reloadable
-/// [`FxTuning`] field, the user dials it live in `fx_tuning.ron` without a rebuild. The
+/// [`FxTuning`] field, the user dials it live in `fx.tuning.ron` without a rebuild. The
 /// live per-pop clock is a separate concern
 /// ([`FloatingCombatText`](super::fct::FloatingCombatText)); this is the tunable lifetime
 /// it runs for.
@@ -222,10 +222,10 @@ impl Default for FctRiseRate {
 }
 
 /// The HOT-RELOADABLE firing-FX tuning table — the four TRAVEL-slice tuning numbers,
-/// loaded from `assets/tiles/fx_tuning.ron` and read live by the projectile + impact
+/// loaded from `assets/core_tuning/fx.tuning.ron` and read live by the projectile + impact
 /// systems.
 ///
-/// Loaded from the loose `assets/tiles/fx_tuning.ron` through the generic
+/// Loaded from the loose `assets/core_tuning/fx.tuning.ron` through the generic
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned
 /// [`FxTuning`] resource ([`resolve_fx_tuning`]), then re-derived in place on a hot
 /// edit ([`redrive_fx_tuning_on_asset_event`]) — the SAME dual-role
@@ -258,7 +258,7 @@ pub struct FxTuning {
 }
 
 /// The path of the loose FX-tuning RON, relative to the asset source root.
-const FX_TUNING_RON_PATH: &str = "tiles/fx_tuning.ron";
+const FX_TUNING_RON_PATH: &str = "core_tuning/fx.tuning.ron";
 
 /// The in-flight handle to the FX-tuning RON, held until it resolves into [`FxTuning`].
 ///
@@ -278,9 +278,9 @@ impl FxTuningHandle {
     }
 }
 
-/// `Startup`: kick off the `fx_tuning.ron` load, storing its typed handle.
+/// `Startup`: kick off the `fx.tuning.ron` load, storing its typed handle.
 ///
-/// Loads `tiles/fx_tuning.ron` as a [`RonAsset<FxTuning>`](gdtf_assets::RonAsset)
+/// Loads `core_tuning/fx.tuning.ron` as a [`RonAsset<FxTuning>`](gdtf_assets::RonAsset)
 /// through the generic loader and inserts the [`FxTuningHandle`] the
 /// [`resolve_fx_tuning`] poll + [`redrive_fx_tuning_on_asset_event`] hot-reload
 /// systems read. Takes `Option<Res<AssetServer>>` so a `MinimalPlugins` headless app
@@ -377,7 +377,7 @@ pub fn redrive_fx_tuning_on_asset_event(
     *tuning = **updated;
     // GTW-374 Part C: log EVERY hot-reload path naming what reloaded, so a live edit can
     // be traced (mirrors the theme / combat-log / B1-B3 handlers).
-    info!("FX hot-reload: re-derived FxTuning from `tiles/fx_tuning.ron`");
+    info!("FX hot-reload: re-derived FxTuning from `core_tuning/fx.tuning.ron`");
 }
 
 #[cfg(test)]
@@ -387,16 +387,16 @@ mod test {
         ProjectileDrawScale, ProjectileVelocity,
     };
 
-    /// The shipped `fx_tuning.ron` parses into `FxTuning` and carries every tuning value —
+    /// The shipped `fx.tuning.ron` parses into `FxTuning` and carries every tuning value —
     /// a `ron::de` round-trip of the SHIPPED bytes (a missing-but-required field would be a
     /// deserialize error; an absent field falls back to its `Default`).
     #[test]
     fn shipped_fx_tuning_ron_parses() {
-        const SHIPPED: &str = include_str!("../../../../../assets/tiles/fx_tuning.ron");
+        const SHIPPED: &str = include_str!("../../../../../assets/core_tuning/fx.tuning.ron");
         let parsed: Result<FxTuning, _> = ron::de::from_str(SHIPPED);
         assert!(
             parsed.is_ok(),
-            "shipped fx_tuning.ron must parse into FxTuning, got: {:?}",
+            "shipped fx.tuning.ron must parse into FxTuning, got: {:?}",
             parsed.as_ref().err(),
         );
     }
@@ -443,7 +443,7 @@ mod test {
         let parsed: Result<FxTuning, _> = ron::de::from_str("(projectile_velocity: 1234.0)");
         assert!(
             parsed.is_ok(),
-            "a partial fx_tuning.ron must parse, got: {:?}",
+            "a partial fx.tuning.ron must parse, got: {:?}",
             parsed.as_ref().err(),
         );
         let Ok(tuning) = parsed else {

@@ -33,13 +33,13 @@ use crate::states::load::resources::LoadedSituation;
 /// rule 1).
 #[derive(SystemParam)]
 pub(in crate::states::load) struct LoadAssetCollections<'w> {
-    /// The loaded theme-spec RON collection (`theme/grimdark.ron`).
+    /// The loaded theme-spec RON collection (`core_tuning/ui_theme.tuning.ron`).
     pub(super) theme:         Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
     /// The loaded authored-situation RON collection (`situations/skirmish.ron`).
     pub(super) situation:     Option<Res<'w, Assets<RonAsset<Situation>>>>,
-    /// The loaded combat-tuning RON collection (`combat/tuning.ron`, GTW-206).
+    /// The loaded combat-tuning RON collection (`core_tuning/combat.tuning.ron`, GTW-206).
     pub(super) tuning:        Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
-    /// The loaded ganger stat-tuning RON collection (`combat/stat_tuning.ron`, GTW-384).
+    /// The loaded ganger stat-tuning RON collection (`core_tuning/stat.tuning.ron`, GTW-384).
     pub(super) stat_tuning:   Option<Res<'w, Assets<RonAsset<GangerStatTuning>>>>,
     /// The loaded `LoadedFolder` collection — used to read the weapons folder's
     /// member handles when building the [`WeaponRegistry`] (GTW-257).

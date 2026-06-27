@@ -30,7 +30,7 @@
 //! - [`combat_tuning`] — the top-level [`CombatTuning`] resource composing them all.
 //! - [`stat_tuning`] — the GTW-384 [`GangerStatTuning`] resource: the attribute →
 //!   computed-stat derivation weights / divisors / TU params (a SEPARATE store from
-//!   `CombatTuning`, the user-directed split). Loaded from `assets/combat/stat_tuning.ron`.
+//!   `CombatTuning`, the user-directed split). Loaded from `assets/core_tuning/stat.tuning.ron`.
 
 mod band;
 mod body_part;

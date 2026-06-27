@@ -16,7 +16,7 @@
 //!   [`metric::Cell`] / [`metric::Level`] / [`metric::CellLevel`],
 //!   [`metric::cell_center`] / [`metric::pos_to_cell`]).
 //! - [`tuning`] — the [`tuning::CombatTuning`] resource: every balance
-//!   coefficient, serde-loaded from `assets/combat/tuning.ron`.
+//!   coefficient, serde-loaded from `assets/core_tuning/combat.tuning.ron`.
 //! - [`tu`] — the TU-economy primitives the E4 acts spend through:
 //!   [`tu::can_spend_tu`] / [`tu::spend_tu`] (saturating) / [`tu::reset_tu`] over a
 //!   ganger's [`ganger::Tu`] (current pool) and [`ganger::TuMax`] (round-start max —

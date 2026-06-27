@@ -16,7 +16,7 @@ use gdtf_battle_sim::{
 };
 use gdtf_ui::theme::GdtfThemeSpec;
 
-/// Typed handle to the in-flight theme RON asset (`theme/grimdark.ron`).
+/// Typed handle to the in-flight theme RON asset (`core_tuning/ui_theme.tuning.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
 /// for asset plumbing: a bare `Handle<RonAsset<GdtfThemeSpec>>` carries no domain
@@ -156,7 +156,7 @@ impl SituationHandle {
     }
 }
 
-/// Typed handle to the in-flight combat-tuning RON asset (`combat/tuning.ron`).
+/// Typed handle to the in-flight combat-tuning RON asset (`core_tuning/combat.tuning.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
 /// for asset plumbing: a bare `Handle<RonAsset<CombatTuning>>` carries no domain
@@ -173,7 +173,7 @@ impl TuningHandle {
     }
 }
 
-/// Typed handle to the in-flight ganger stat-tuning RON asset (`combat/stat_tuning.ron`).
+/// Typed handle to the in-flight ganger stat-tuning RON asset (`core_tuning/stat.tuning.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even for
 /// asset plumbing: a bare `Handle<RonAsset<GangerStatTuning>>` carries no domain meaning,
@@ -255,7 +255,7 @@ impl LoadedSituation {
     }
 }
 
-/// The PERSISTENT handle to the resolved combat-tuning RON asset (`combat/tuning.ron`).
+/// The PERSISTENT handle to the resolved combat-tuning RON asset (`core_tuning/combat.tuning.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] (no-bare-types) that — unlike the
 /// Load-scoped [`TuningHandle`] inside [`LoadHandles`], which is dropped
@@ -280,7 +280,7 @@ impl ActiveTuningHandle {
 }
 
 /// The PERSISTENT handle to the resolved ganger stat-tuning RON asset
-/// (`combat/stat_tuning.ron`).
+/// (`core_tuning/stat.tuning.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] (no-bare-types) that — unlike the Load-scoped
 /// [`StatTuningHandle`] inside [`LoadHandles`], which is dropped `OnExit(Load)` —

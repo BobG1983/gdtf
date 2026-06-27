@@ -1,7 +1,7 @@
 // GDTF ganger stat-derivation tuning (GTW-384) — how the EIGHT direct attributes
 // (Speed/Aim/Strength/Toughness/Reflexes/Cool/Grit/Luck) combine into the COMPUTED combat
 // stats (Shooting/Fight/Reactions/Morale/TU/HP/Wounds/Bottle). This is a SEPARATE file from
-// combat/tuning.ron (the user-directed split): tuning.ron holds the resolution coefficients,
+// core_tuning/combat.tuning.ron (the user-directed split): combat.tuning.ron holds the resolution coefficients,
 // this holds the character-sheet derivation. The derivation FORMS live in code
 // (`derive_stats`, docs/combat/stats.md §"Computed combat stats"); these numbers are tuning
 // DATA — hot-swappable (it reloads live, GTW-374 pattern) and never hardcoded. Each leaf is a

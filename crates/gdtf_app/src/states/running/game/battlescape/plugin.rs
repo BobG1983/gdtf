@@ -122,7 +122,7 @@ fn add_plugins(app: &mut App) {
         .add_plugins(ContextualPanelPlugin)
         // The GTW-328 COMBAT-TEXT LOG (bottom-left, ABOVE the weapon panel): the scroll-up-and-
         // fade strip of recent combat events. Same `BattleRunning` lifecycle as the panels; it
-        // loads its hot-reloadable `combat_log.ron` tuning (the FX-tuning RON precedent), and its
+        // loads its hot-reloadable `combat_log.tuning.ron` tuning (the FX-tuning RON precedent), and its
         // update system drains the sim's five combat-event messages
         // (FireDeclaration/MovementOccurred/TurnStarted/ReloadResult/ShotFired), resolves each
         // Entity to a ganger name, classifies them via the shared presenter `classify_log_event`,

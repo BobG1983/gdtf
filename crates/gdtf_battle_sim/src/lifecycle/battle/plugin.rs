@@ -168,7 +168,7 @@ impl Plugin for BattleSimPlugin {
             )
             // GTW-384: the LIVE stat-derivation re-derive — when the GangerStatTuning
             // resource CHANGES (the app-side hot-reload overwrites it on a
-            // `stat_tuning.ron` edit, GTW-374 pattern), re-derive every spawned ganger's
+            // `stat.tuning.ron` edit, GTW-374 pattern), re-derive every spawned ganger's
             // computed stats + clamp its current pools to the new maxes. Runs UNGATED by
             // BattleInProgress (it just iterates ganger entities — a no-op if none exist).
             // The system SELF-GUARDS on the resource's presence (Option<Res>) + its

@@ -71,7 +71,7 @@ use crate::states::load::{
 /// the theme and a slow theme never blocks the tuning. Unlike the theme it has no
 /// `resolve()` step (`CombatTuning` IS both the `Deserialize` payload and the
 /// `Resource`), so the loaded payload is inserted directly. On the failure path it
-/// `warn!`s naming `combat/tuning.ron` and inserts `CombatTuning::default`, so
+/// `warn!`s naming `core_tuning/combat.tuning.ron` and inserts `CombatTuning::default`, so
 /// `Load` always exits with a tuning present. A `GdtfTheme`, a `CombatTuning`, a
 /// `WeaponRegistry`, a `LoadedSituation`, an `ArmorRegistry`, AND a `TerrainRegistry`
 /// must ALL be present before the plugin's transition leaves `Load` (see the plugin
@@ -280,7 +280,7 @@ pub(in crate::states::load) fn poll_and_resolve(
     if theme_state.is_failed() {
         fall_back(
             &mut commands,
-            FailedAssetPath::new("theme/grimdark.ron"),
+            FailedAssetPath::new("core_tuning/ui_theme.tuning.ron"),
             &handles,
         );
         return;

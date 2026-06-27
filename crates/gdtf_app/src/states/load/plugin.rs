@@ -58,7 +58,7 @@ impl Plugin for LoadScenePlugin {
             app.init_ron_asset::<Situation>();
             app.init_ron_asset::<CombatTuning>();
             // GTW-384: the shipped GangerStatTuning loads through the SAME generic RON
-            // loader (a SEPARATE file from combat/tuning.ron — the user-directed split),
+            // loader (a SEPARATE file from core_tuning/combat.tuning.ron — the user-directed split),
             // registered here behind the one AssetServer guard alongside the others.
             app.init_ron_asset::<GangerStatTuning>();
             app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
@@ -167,7 +167,7 @@ fn add_systems(app: &mut App) {
 }
 
 /// GTW-374: register the three LIVE combat-data hot-reload handlers in an UNGATED
-/// `Update` so they react to a `combat/tuning.ron` / `weapons/*.weapon.ron` /
+/// `Update` so they react to a `core_tuning/combat.tuning.ron` / `weapons/*.weapon.ron` /
 /// `armor/*.armor.ron` file edit AFTER `Load` has exited (the data persists, the
 /// `LoadHandles` do not — hence the persistent `Active*Handle` resources each handler
 /// reads). Each handler self-guards on its `Option`al borrows (`bevy-traps.md` #1), so
@@ -184,7 +184,7 @@ fn add_hot_reload_systems(app: &mut App) {
         (
             redrive_combat_tuning_on_asset_event,
             // GTW-384: the ganger stat-tuning hot-reload — overwrites the GangerStatTuning
-            // resource on a `combat/stat_tuning.ron` edit, whose Changed<GangerStatTuning>
+            // resource on a `core_tuning/stat.tuning.ron` edit, whose Changed<GangerStatTuning>
             // trips the sim's `rederive_stats_on_tuning_change`.
             redrive_stat_tuning_on_asset_event,
             redrive_weapons_on_asset_event,

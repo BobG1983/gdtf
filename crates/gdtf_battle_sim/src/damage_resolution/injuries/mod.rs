@@ -37,7 +37,7 @@
 //! stay authoritative and are NEVER mutated by an injury; the per-ganger
 //! [`InflictedInjuries`] ledger is the SOLE source of every injury stat delta and
 //! bleed accrual; the GTW-436 projector re-sums those deltas on every projection
-//! (never applied-once), so a `stat_tuning.ron` hot-reload re-applies them by
+//! (never applied-once), so a `stat.tuning.ron` hot-reload re-applies them by
 //! construction rather than wiping them.
 
 pub mod def;

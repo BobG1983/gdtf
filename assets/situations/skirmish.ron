@@ -14,7 +14,7 @@
 // GTW-384 (the two-layer stat model): each ganger now authors the EIGHT DIRECT
 // ATTRIBUTES (the raw potential) — NOT the computed stats. Shooting / HP / Wounds / TU
 // (and the dormant Fight / Reactions / Morale / Bottle) are DERIVED at setup from these
-// attributes × the assets/combat/stat_tuning.ron weights (the single source of truth,
+// attributes × the assets/core_tuning/stat.tuning.ron weights (the single source of truth,
 // docs/combat/stats.md). Attribute magnitudes here are per-ganger DATA (a generated
 // roster), authored so the derived stats land near a playable range — not pinned tuning.
 (

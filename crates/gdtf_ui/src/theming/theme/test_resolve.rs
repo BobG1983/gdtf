@@ -11,11 +11,11 @@ use super::{
     },
 };
 
-/// **Structure / smoke:** the shipped `grimdark.ron` deserializes into a
+/// **Structure / smoke:** the shipped `ui_theme.tuning.ron` deserializes into a
 /// [`GdtfThemeSpec`] and `resolve()` yields a complete [`GdtfTheme`] — every
 /// text-bearing sub-theme carries exactly the handle the resolver returned.
 ///
-/// Deliberately value-agnostic: `grimdark.ron` is the **tunable**,
+/// Deliberately value-agnostic: `ui_theme.tuning.ron` is the **tunable**,
 /// data-driven styling source of truth, so this pins only that the shipped
 /// file parses and fully resolves — never a specific color or scalar. The `?`
 /// turns a deserialization failure into a test failure without a denied

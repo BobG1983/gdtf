@@ -2,7 +2,7 @@
 //! the theme asset changes.
 //!
 //! GTW-137 makes the data-driven theme **hot-reloadable** in memory. When the
-//! loose `assets/theme/grimdark.ron` asset is modified — by the OS file-watcher
+//! loose `assets/core_tuning/ui_theme.tuning.ron` asset is modified — by the OS file-watcher
 //! in dev (GTW-138), or by a test injecting the message — Bevy emits an
 //! [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for the theme
 //! `RonAsset`. [`redrive_theme_on_asset_event`] reacts to that message,

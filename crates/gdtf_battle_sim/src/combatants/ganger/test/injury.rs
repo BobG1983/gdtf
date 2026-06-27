@@ -200,7 +200,7 @@ fn spawn_injured_ganger(
         .id()
 }
 
-/// Test (3) — the HOT-RELOAD-SURVIVAL invariant: a `stat_tuning.ron` re-derive
+/// Test (3) — the HOT-RELOAD-SURVIVAL invariant: a `stat.tuning.ron` re-derive
 /// RE-APPLIES (does NOT wipe) the injury deltas. Drive the REAL
 /// `rederive_stats_on_tuning_change` with a NON-EMPTY ledger, then assert the
 /// re-derived stat equals `f(base, NEW tuning, ledger)` — the deltas survive by

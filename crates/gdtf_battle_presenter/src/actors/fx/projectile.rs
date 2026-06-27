@@ -373,7 +373,7 @@ pub struct PendingImpact {
 /// The draw scale, the constant flight [`ProjectileVelocity`] each [`ProjectileTravel`]
 /// captures, and the inter-shot stagger are ALL read here from the resident [`FxTuning`]
 /// resource (the migrated-from-`const`, hot-reloadable `.ron` table), so a live edit to
-/// `assets/tiles/fx_tuning.ron` re-tunes the next shot's size / speed / spacing without a
+/// `assets/core_tuning/fx.tuning.ron` re-tunes the next shot's size / speed / spacing without a
 /// rebuild.
 ///
 /// GTW-327 (slice 2): each round's classified floating-combat-text pops are computed HERE

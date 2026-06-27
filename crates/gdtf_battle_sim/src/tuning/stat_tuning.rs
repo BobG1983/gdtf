@@ -4,7 +4,7 @@
 //! A SEPARATE tuning store from [`CombatTuning`](crate::tuning::CombatTuning) (the
 //! user-directed split): combat tuning holds the *resolution* coefficients, this holds
 //! the *character-sheet* derivation. It is its own Bevy [`Resource`], serde-loaded from
-//! `assets/combat/stat_tuning.ron` and hot-reloadable exactly like `CombatTuning`
+//! `assets/core_tuning/stat.tuning.ron` and hot-reloadable exactly like `CombatTuning`
 //! (GTW-374 pattern, GTW-384).
 //!
 //! Every numeric leaf is a named newtype with a PRIVATE inner (no-bare-types rule 5):
@@ -292,8 +292,8 @@ impl Default for MoraleWeights {
 /// The ganger stat-derivation tuning resource — every weight / divisor / TU param the
 /// attribute → computed-stat derivation marches with (`docs/combat/stats.md`).
 ///
-/// A Bevy [`Resource`] deserializable from `assets/combat/stat_tuning.ron` — a SEPARATE
-/// file from `combat/tuning.ron` (the user-directed split), loaded + hot-reloaded
+/// A Bevy [`Resource`] deserializable from `assets/core_tuning/stat.tuning.ron` — a SEPARATE
+/// file from `core_tuning/combat.tuning.ron` (the user-directed split), loaded + hot-reloaded
 /// MIRRORING [`CombatTuning`](crate::tuning::CombatTuning) (GTW-374 pattern, GTW-384).
 /// Every leaf is GENUINELY CONSUMED by [`derive_stats`](crate::ganger::derive_stats) — no
 /// dead leaf (the GTW-364 C7 lesson).

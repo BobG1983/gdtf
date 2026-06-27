@@ -10,7 +10,7 @@
 //!   [`RonAsset<T>`](gdtf_assets::RonAsset) loader the FX-tuning / pan-tuning tables use: a
 //!   `Startup` [`load_combat_log_tuning`], an `Update` [`resolve_combat_log_tuning`] gated until
 //!   it resolves once, and an unguarded `Update` [`redrive_combat_log_tuning_on_asset_event`] so
-//!   a `combat_log.ron` edit re-tunes the log live. The whole RON block is gated on an
+//!   a `combat_log.tuning.ron` edit re-tunes the log live. The whole RON block is gated on an
 //!   [`AssetServer`] existing — `init_ron_asset` PANICS at registration without the asset stack,
 //!   so a `MinimalPlugins` headless app skips it (`bevy-traps.md` #1), falling back to
 //!   [`CombatLogTuning::default`].
