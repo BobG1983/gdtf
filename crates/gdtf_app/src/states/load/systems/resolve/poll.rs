@@ -13,6 +13,7 @@ use crate::states::load::{
         gangs::resolve_gangs,
         injuries::resolve_injuries,
         params::{LoadAssetCollections, ResolvedResources},
+        prefabs::resolve_prefabs,
         situation::resolve_situation,
         stat_tuning::resolve_stat_tuning,
         terrain::resolve_terrain,
@@ -148,6 +149,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         theme_catalog_present,
         injuries_present,
         gangs_present,
+        prefabs_present,
     ) = (
         resolved.theme.is_some(),
         resolved.tuning.is_some(),
@@ -159,6 +161,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.themes.is_some(),
         resolved.injuries.is_some(),
         resolved.gangs.is_some(),
+        resolved.prefabs.is_some(),
     );
     let (
         Some(asset_server),
@@ -174,6 +177,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(injury_defs),
         Some(weightings),
         Some(gang_rosters),
+        Some(prefab_specs),
         Some(handles),
     ) = (
         asset_server,
@@ -189,6 +193,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.injury_defs,
         collections.weightings,
         collections.gang_rosters,
+        collections.prefab_specs,
         handles,
     )
     else {
@@ -302,6 +307,24 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &gang_rosters,
+            &handles,
+        );
+    }
+
+    // GTW-418: resolve the nested `assets/content/maps/` folder into the bucketed
+    // PrefabRegistry on its OWN absence guard, independently of all other branches — so a
+    // slow maps folder never blocks them and vice-versa (the gangs-branch precedent). The
+    // registry is DORMANT after this slice — nothing consumes it yet (the GTW-424
+    // space-packing assembler does); it is resolved and gated on purely so it is present
+    // (and the folder verified loaded) before `Load` exits. A prefab authoring zero edge
+    // openings is EXCLUDED fail-closed (C6); on a failed folder resolve_prefabs warn!s and
+    // inserts an empty registry, preserving the no-strand guarantee.
+    if !prefabs_present {
+        resolve_prefabs(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &prefab_specs,
             &handles,
         );
     }

@@ -109,6 +109,9 @@ fn armor_loader_no_ops_cleanly_without_asset_server() {
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
+    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 
@@ -153,6 +156,9 @@ fn load_does_not_leave_without_an_armor_registry() {
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
+    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 

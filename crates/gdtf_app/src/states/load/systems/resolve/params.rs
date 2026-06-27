@@ -13,7 +13,7 @@ use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
-    level::{ThemeCatalogRegistry, ThemeSpec},
+    level::{PrefabRegistry, PrefabSpec, ThemeCatalogRegistry, ThemeSpec},
     situation::Situation,
     terrain::piece::{TerrainRegistry, TerrainSpec},
     tuning::{CombatTuning, GangerStatTuning},
@@ -61,6 +61,8 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     pub(super) weightings:    Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
     /// The loaded per-gang roster RON collection (`gangs/*.gang.ron`, GTW-415).
     pub(super) gang_rosters:  Option<Res<'w, Assets<RonAsset<GangRoster>>>>,
+    /// The loaded per-prefab RON collection (`maps/**/*.prefab.ron`, GTW-418).
+    pub(super) prefab_specs:  Option<Res<'w, Assets<RonAsset<PrefabSpec>>>>,
 }
 
 /// The four persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -95,4 +97,6 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
     pub(super) injuries:    Option<Res<'w, InjuryRegistry>>,
     /// Whether the resolved [`GangRegistry`] is already inserted (GTW-415).
     pub(super) gangs:       Option<Res<'w, GangRegistry>>,
+    /// Whether the resolved [`PrefabRegistry`] is already inserted (GTW-418).
+    pub(super) prefabs:     Option<Res<'w, PrefabRegistry>>,
 }

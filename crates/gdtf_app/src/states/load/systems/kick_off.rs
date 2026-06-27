@@ -10,8 +10,8 @@ use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
     ArmorsFolderHandle, FontFolderHandle, GangsFolderHandle, InjuriesFolderHandle, LoadHandles,
-    SituationHandle, StatTuningHandle, TerrainFolderHandle, ThemeHandle, ThemesFolderHandle,
-    TuningHandle, WeaponsFolderHandle,
+    PrefabsFolderHandle, SituationHandle, StatTuningHandle, TerrainFolderHandle, ThemeHandle,
+    ThemesFolderHandle, TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -70,6 +70,14 @@ const INJURIES_DIR: &str = "content/injuries";
 /// loader dispatch unambiguous (gangs only) — the weapons/armor/terrain precedent.
 const GANGS_DIR: &str = "content/gangs";
 
+/// Path of the loose maps (prefab) folder, relative to the asset source root (GTW-418 —
+/// the per-prefab `assets/content/maps/<theme>/<size>/*.prefab.ron` fragments the
+/// `PrefabRegistry` is built from). NESTED by theme + size (the user-locked path); a
+/// recursive `load_folder` walks the whole tree, and the dedicated `prefab.ron` compound
+/// extension keeps the `.ron` loader dispatch unambiguous (prefabs only) — the
+/// weapons/armor/terrain/gangs precedent.
+const MAPS_DIR: &str = "content/maps";
+
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
 ///
@@ -125,6 +133,7 @@ pub(in crate::states::load) fn kick_off_loads(
     let themes = ThemesFolderHandle::new(asset_server.load_folder(THEMES_DIR));
     let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
     let gangs = GangsFolderHandle::new(asset_server.load_folder(GANGS_DIR));
+    let prefabs = PrefabsFolderHandle::new(asset_server.load_folder(MAPS_DIR));
 
     commands.insert_resource(LoadHandles {
         theme,
@@ -138,5 +147,6 @@ pub(in crate::states::load) fn kick_off_loads(
         themes,
         injuries,
         gangs,
+        prefabs,
     });
 }

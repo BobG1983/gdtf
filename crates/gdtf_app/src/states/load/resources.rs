@@ -183,6 +183,29 @@ impl GangsFolderHandle {
     }
 }
 
+/// Typed handle to the in-flight **maps (prefab) folder** load (`maps/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
+/// mirroring [`GangsFolderHandle`] (GTW-418). The `Load` scene preloads the whole NESTED
+/// `assets/content/maps/<theme>/<size>/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) (recursive, so
+/// every prefab `.ron` under every theme/size subfolder is covered); the poll/resolve
+/// system gates on its recursive load state, then builds the
+/// [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) from the loaded
+/// `RonAsset<PrefabSpec>` files (validated for >= 1 edge opening, bucketed by each spec's
+/// `(theme, size, spawn_role)`). Holding this handle keeps a strong reference to every
+/// prefab asset while the registry is built; the registry then holds the prefabs BY VALUE,
+/// so they survive the handle being dropped on `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct PrefabsFolderHandle(Handle<LoadedFolder>);
+
+impl PrefabsFolderHandle {
+    /// Wrap an in-flight maps-folder load handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
@@ -269,6 +292,9 @@ pub(in crate::states::load) struct LoadHandles {
     pub injuries:    InjuriesFolderHandle,
     /// The gangs folder being preloaded (all `*.gang.ron` rosters up front, GTW-415).
     pub gangs:       GangsFolderHandle,
+    /// The maps (prefab) folder being preloaded (all `*.prefab.ron` fragments up front,
+    /// recursively under `<theme>/<size>/`, GTW-418).
+    pub prefabs:     PrefabsFolderHandle,
 }
 
 crate::support_item! {
@@ -484,6 +510,29 @@ pub(in crate::states::load) struct ActiveGangsFolderHandle(Handle<LoadedFolder>)
 
 impl ActiveGangsFolderHandle {
     /// Wrap the loaded gangs-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **maps (prefab) folder** (`maps/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
+/// unlike the Load-scoped [`PrefabsFolderHandle`] inside [`LoadHandles`], which is
+/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-418), the prefab mirror of
+/// [`ActiveGangsFolderHandle`]. It is inserted alongside the resolved
+/// [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) and kept alive so the
+/// GTW-418 live hot-reload handler
+/// (`redrive_prefabs_on_asset_event`)
+/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
+/// to ANY `assets/content/maps/**/*.prefab.ron`. Holding the folder handle keeps every
+/// member prefab asset loaded for the file-watcher. Like the registry, it is **not**
+/// removed in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActivePrefabsFolderHandle(Handle<LoadedFolder>);
+
+impl ActivePrefabsFolderHandle {
+    /// Wrap the loaded maps-folder handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

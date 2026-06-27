@@ -339,9 +339,10 @@ pub use foundation::{
     rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
 };
 pub use level::{
-    CatalogTile, CatalogTileKind, GridHeight, GridLevels, GridSize, GridSizeError, GridWidth,
-    LevelTheme, MAX_GRID_SPAN, StructuralStats, ThemeCatalogRegistry, ThemeSpec, ThemeTileCatalog,
-    TileAtlasIndex, TileDisplayName, TileKey,
+    CatalogTile, CatalogTileKind, EdgeOpening, GridHeight, GridLevels, GridSize, GridSizeError,
+    GridWidth, LevelTheme, MAX_GRID_SPAN, Prefab, PrefabKey, PrefabLoadError, PrefabName,
+    PrefabRegistry, PrefabSpec, RouteNodes, SpawnRole, StructuralStats, ThemeCatalogRegistry,
+    ThemeSpec, ThemeTileCatalog, TileAtlasIndex, TileDisplayName, TileKey,
 };
 pub use lifecycle::{
     battle,

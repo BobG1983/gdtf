@@ -92,6 +92,9 @@ fn battle_running_app() -> App {
     // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
+    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
 
     let at_menu = advance_until(
         &mut app,

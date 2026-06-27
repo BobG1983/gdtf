@@ -124,6 +124,9 @@ fn theme_present_transitions_to_intro_and_persists() {
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
+    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 

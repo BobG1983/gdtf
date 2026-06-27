@@ -11,7 +11,9 @@
 use std::sync::{Arc, Mutex};
 
 use bevy::log::{
-    tracing::{Event, Subscriber, field::Visit, subscriber::with_default},
+    tracing::{
+        Event, Subscriber, callsite::rebuild_interest_cache, field::Visit, subscriber::with_default,
+    },
     tracing_subscriber::{Layer, layer::Context, prelude::*, registry::Registry},
 };
 
@@ -64,13 +66,30 @@ impl<S: Subscriber> Layer<S> for CaptureLayer {
 /// The subscriber is scoped to this call (`with_default`), so it never leaks into
 /// other tests. The returned `Vec` is in emission order; a test asserts it CONTAINS
 /// the expected hot-reload line.
+///
+/// GTW-455: rebuild the `tracing` callsite-interest cache from INSIDE the
+/// `with_default` scope before running `body`. `tracing-core` caches per-callsite
+/// `Interest` GLOBALLY (shared across threads). `with_default(subscriber, f)` builds
+/// the `Dispatch` (which rebuilds interest) BEFORE it installs the subscriber as the
+/// thread-local default, so when `tracing`'s `has_just_one` fast path is active that
+/// rebuild evaluates a hot-reload `info!` callsite against the still-current
+/// `NoSubscriber` and can cache it `Interest::never()` — globally. A FIRST emission of
+/// that callsite (cold start, e.g. the first multi-threaded run after a rebuild) then
+/// short-circuits and the capture comes back EMPTY (the GTW-455 flake). Forcing a
+/// rebuild here — now that the capture subscriber IS the thread-local default —
+/// re-evaluates the callsite against the live capture subscriber, so the emission is
+/// never spuriously elided. Deterministic, no sleeps/retries; fixes every
+/// `*_hot_reload_logs_an_info_line` test that shares this helper.
 pub(in crate::states::load) fn capture_logs(body: impl FnOnce()) -> Vec<String> {
     let messages: CapturedMessages = Arc::new(Mutex::new(Vec::new()));
     let layer = CaptureLayer {
         messages: Arc::clone(&messages),
     };
     let subscriber = Registry::default().with(layer);
-    with_default(subscriber, body);
+    with_default(subscriber, || {
+        rebuild_interest_cache();
+        body();
+    });
     let captured = messages.lock().map(|buffer| buffer.clone());
     captured.unwrap_or_default()
 }

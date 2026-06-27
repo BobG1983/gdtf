@@ -98,6 +98,9 @@ fn walk_app() -> bevy::app::App {
     // GTW-415: the Load->Intro gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
+    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-261: the Load->Intro gate now also requires a LoadedSituation (the
     // empty-battle-race fix); seed the empty default beside the other three.
     app.world_mut()

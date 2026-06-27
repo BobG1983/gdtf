@@ -4,7 +4,7 @@ use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
-    level::{ThemeCatalogRegistry, ThemeSpec},
+    level::{PrefabRegistry, PrefabSpec, ThemeCatalogRegistry, ThemeSpec},
     situation::Situation,
     terrain::piece::{TerrainRegistry, TerrainSpec},
     tuning::{CombatTuning, GangerStatTuning},
@@ -100,6 +100,14 @@ impl Plugin for LoadScenePlugin {
             // keep the folder dispatch unambiguous among GDTF's many `.ron` loaders.
             // Registered here in `build` BEFORE the kick-off's `load_folder("gangs")` runs.
             app.init_ron_asset_with_extensions::<GangRoster>(vec!["gang.ron"]);
+            // GTW-418: prefab fragments mirror the gangs/weapon/armor/terrain scheme —
+            // each loads as a `RonAsset<PrefabSpec>` via `load_folder` (recursive, over the
+            // NESTED `assets/content/maps/<theme>/<size>/` tree), claiming its OWN dedicated
+            // `prefab.ron` compound extension (files are
+            // `assets/content/maps/<theme>/<size>/*.prefab.ron`) to keep the folder dispatch
+            // unambiguous among GDTF's many `.ron` loaders. Registered here in `build`
+            // BEFORE the kick-off's `load_folder("content/maps")` runs.
+            app.init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"]);
             add_hot_reload_systems(app);
         }
         add_systems(app);
@@ -152,7 +160,11 @@ fn add_systems(app: &mut App) {
                             // (gang, member) ref against it; the gangs folder must be
                             // verified loaded before Load exits, or a real battle fails
                             // closed with GangNotFound).
-                            .or_else(not(resource_exists::<GangRegistry>)),
+                            .or_else(not(resource_exists::<GangRegistry>))
+                            // GTW-418: the PrefabRegistry is a gate-blocking resource too
+                            // (the GTW-424 assembler packs its fragments; the maps folder
+                            // must be verified loaded before Load exits).
+                            .or_else(not(resource_exists::<PrefabRegistry>)),
                     ),
             ),
             // Once a GdtfTheme, a CombatTuning, a WeaponRegistry, a LoadedSituation,
@@ -189,7 +201,10 @@ fn add_systems(app: &mut App) {
                     // GTW-415: the GangRegistry must be present before Load exits, so the
                     // gangs folder is verified loaded before any battle resolves a placed
                     // ganger's (gang, member) ref against it.
-                    .and_then(resource_exists::<GangRegistry>),
+                    .and_then(resource_exists::<GangRegistry>)
+                    // GTW-418: the PrefabRegistry must be present before Load exits, so the
+                    // maps folder is verified loaded before the GTW-424 assembler uses it.
+                    .and_then(resource_exists::<PrefabRegistry>),
             ),
         )
             .chain(),
@@ -233,6 +248,10 @@ fn add_hot_reload_systems(app: &mut App) {
             // GTW-415: the gang hot-reload — rebuilds the GangRegistry on a
             // `gangs/*.gang.ron` edit, mirroring the weapon/armor hot-reload pattern.
             redrive_gangs_on_asset_event,
+            // GTW-418: the prefab hot-reload — rebuilds the PrefabRegistry on a
+            // `maps/**/*.prefab.ron` edit (re-running the C6 edge-opening validation),
+            // mirroring the gang hot-reload pattern.
+            redrive_prefabs_on_asset_event,
         ),
     );
 }

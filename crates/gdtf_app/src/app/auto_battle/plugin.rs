@@ -49,7 +49,7 @@ use gdtf_battle_sim::{
     armor::ArmorRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
-    level::ThemeCatalogRegistry,
+    level::{PrefabRegistry, ThemeCatalogRegistry},
     terrain::piece::TerrainRegistry,
     tuning::CombatTuning,
     weapon::WeaponRegistry,
@@ -281,6 +281,13 @@ crate::support_item! {
             // empty seed would shadow `resolve_gangs`, which only runs while the registry
             // is ABSENT — the AC3b shadow class).
             commands.insert_resource(GangRegistry::default());
+            // GTW-418: the PrefabRegistry is a gate-blocking resource too; seed the empty
+            // fallback when there is no AssetServer so headless walks still reach Intro
+            // (the A1 / AC3b pattern for the prefab registry). With an AssetServer present
+            // the real `assets/content/maps/**/*.prefab.ron` registry must win — so this is
+            // gated on `is_none()` exactly like the other registries (else the empty seed
+            // would shadow `resolve_prefabs`, which only runs while the registry is ABSENT).
+            commands.insert_resource(PrefabRegistry::default());
             commands.insert_resource(LoadedSituation::new(
                 gdtf_battle_sim::situation::Situation::default(),
             ));
