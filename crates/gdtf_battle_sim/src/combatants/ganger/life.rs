@@ -10,8 +10,13 @@ use serde::Deserialize;
 /// `HP ≤ 0` → [`Downed`](LifeState::Downed) (alive, incapacitated, dying),
 /// `Wounds ≤ 0` → [`Dead`](LifeState::Dead) (Dead trumps Downed). It drives
 /// occupancy updates in E1.7 (a corpse / downed body frees or holds its cell
-/// differently). A standalone named enum component (wounds-and-roster.md state
-/// machine). Defaults to [`Alive`](LifeState::Alive).
+/// differently): a [`Downed`](LifeState::Downed) ganger is a body still on the
+/// field — it HOLDS its cell (it keeps its `Position`, blocks movement, and
+/// occludes fire); only a [`Dead`](LifeState::Dead) ganger FREES its cell (the
+/// corpse is cleared from the occupancy grid by
+/// [`sync_dead_gangers`](crate::occupancy_sync::sync_dead_gangers), then despawned).
+/// GTW-459. A standalone named enum component (wounds-and-roster.md state machine).
+/// Defaults to [`Alive`](LifeState::Alive).
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum LifeState {
     /// Up and fighting — full agency.

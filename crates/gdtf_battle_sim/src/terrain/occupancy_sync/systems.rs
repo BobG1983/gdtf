@@ -127,31 +127,55 @@ pub fn sync_moved_gangers(
     }
 }
 
-/// Maintain the occupancy grid for **downed / dead** gangers —
-/// `Changed<`[`LifeState`]`>` filtered to non-[`LifeState::Alive`].
+/// Maintain the occupancy grid for **dead** gangers —
+/// `Changed<`[`LifeState`]`>` filtered to ONLY [`LifeState::Dead`].
 ///
 /// Reacts to Bevy change detection on [`LifeState`]: when an entity's life state
-/// changes to [`LifeState::Downed`] or [`LifeState::Dead`], its occupant marker is
-/// cleared from the slot it last synced to (read from [`PrevSlot`]). An entity
-/// whose [`LifeState`] changed but is still [`LifeState::Alive`] is left alone (no
-/// slot edit) — only going OUT frees the cell (C4). The grid is edited **in
-/// place**; it is never rebuilt.
+/// becomes [`LifeState::Dead`] (Wounds gone — a corpse, despawned soon), its
+/// occupant marker is cleared from the slot it last synced to (read from
+/// [`PrevSlot`]). An entity whose [`LifeState`] changed to anything OTHER than
+/// `Dead` — [`LifeState::Alive`] OR [`LifeState::Downed`] — is left alone (no slot
+/// edit). The grid is edited **in place**; it is never rebuilt.
+///
+/// **GTW-459 — a downed body HOLDS its cell, only Dead frees it.** A
+/// [`LifeState::Downed`] ganger is NOT despawned (it keeps its `Position`, can be
+/// stabilized / executed / recovered) and is a physical body still on the field, so
+/// its cell stays BLOCKED for movement: the path planner
+/// ([`is_open`](crate::pathfinder::PlanningView)) and the
+/// [`advance_walk`](crate::move_acts) bump-stop both refuse a cell whose occupant
+/// marker is set, so retaining the marker keeps an enemy from routing onto / through
+/// a downed friendly (the live-play bug: a unit walked through a downed body because
+/// its slot had been freed). Only a truly Dead ganger frees its cell; the previous
+/// behavior — which freed the slot for Downed too — was the defect (GTW-459 C1). The
+/// [`LifeState`] doc anticipated Downed and Dead differing for occupancy.
 ///
 /// The slot cleared is the one in [`PrevSlot`] (the slot the move system last
 /// synced this entity into); the occupant guard ensures only this entity's own
 /// marker is cleared. The occupant's **silhouette band** is cleared in the same
 /// step, keeping occupant and band consistent (GTW-304).
 ///
-/// **GTW-391 stair occupancy.** A ganger downed on a stair tile may have an upper
+/// **GTW-459 fire-occlusion.** A Downed body retains BOTH its occupant marker AND
+/// its silhouette band (this system never touches a non-Dead ganger), so it still
+/// OCCLUDES fire — a body on the field blocks the march exactly as it blocks
+/// movement (`docs/combat/resolution.md` §2: the march strikes / stops on a cell
+/// carrying both an occupant and a band). Only the corpse (Dead → cleared here, then
+/// despawned) leaves the line of fire.
+///
+/// **GTW-391 stair occupancy.** A ganger killed on a stair tile may have an upper
 /// cell presence recorded in [`PrevSlot::upper`]. This system clears the upper cell
-/// via [`OccupancyGrid::clear_stair_upper`] (ownership-guarded) so a downed
-/// stair-occupant leaves no phantom hittable upper-cell Low band.
+/// via [`OccupancyGrid::clear_stair_upper`] (ownership-guarded) so a dead
+/// stair-occupant leaves no phantom hittable upper-cell Low band. A DOWNED
+/// stair-occupant likewise RETAINS its upper-cell band (it is never reached here),
+/// so it keeps blocking movement and occluding fire on both cells (GTW-459 C2).
 pub fn sync_dead_gangers(
     mut grid: ResMut<OccupancyGrid>,
     downed: Query<(Entity, &LifeState, &PrevSlot), Changed<LifeState>>,
 ) {
     for (entity, life, prev) in &downed {
-        if matches!(life, LifeState::Alive) {
+        // GTW-459: free the cell ONLY for a truly Dead ganger. A non-Dead ganger —
+        // Alive (maintained by `sync_moved_gangers`, never freed here) OR Downed (a
+        // body that HOLDS its cell) — retains both its occupant marker and its band.
+        if !matches!(life, LifeState::Dead) {
             continue;
         }
         // Clear the lower slot (occupant + band), guarded by ownership.
@@ -160,7 +184,7 @@ pub fn sync_dead_gangers(
             grid.set_occupant(slot, None);
             grid.set_occupant_band(slot, None);
         }
-        // GTW-391: clear the upper stair cell if one was recorded (a ganger downed on
+        // GTW-391: clear the upper stair cell if one was recorded (a ganger killed on
         // a stair must not leave a phantom hittable upper-cell Low band).
         if let Some(upper) = prev.upper() {
             grid.clear_stair_upper(upper, entity);

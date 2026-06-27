@@ -235,16 +235,23 @@ fn dead_ganger_clears_its_slot() {
     );
 }
 
-/// A DOWNED ganger frees its slot too — C4 covers Downed and Dead alike (only
-/// non-Alive frees the cell).
+/// GTW-459 — a DOWNED ganger RETAINS its slot AND its band: a downed body is still
+/// on the field (it keeps its `Position`, can be stabilized / executed) so its cell
+/// stays BLOCKED for movement and OCCLUDES fire. Only a truly Dead ganger frees the
+/// cell. Flipped from the pre-GTW-459 behavior, which freed the slot for Downed too
+/// (the live-play bug: an enemy routed onto / through a downed friendly).
 #[test]
-fn downed_ganger_clears_its_slot() {
+fn downed_ganger_retains_its_slot() {
     let mut app = headless_app();
     let at = key(20, 20, 0);
 
     let ganger = app
         .world_mut()
-        .spawn((Position::new(at), LifeState::Alive))
+        .spawn((
+            Position::new(at),
+            Stance::new(StanceKind::Standing),
+            LifeState::Alive,
+        ))
         .id();
     app.update();
 
@@ -255,13 +262,19 @@ fn downed_ganger_clears_its_slot() {
 
     assert_eq!(
         grid_occupant(&app, at),
-        None,
-        "a downed ganger's occupant slot must be cleared (C4)",
+        Some(ganger),
+        "a downed ganger HOLDS its occupant slot — only Dead frees it (GTW-459 C1)",
+    );
+    // GTW-459 C2/C5: the band is retained too, so the downed body keeps occluding fire.
+    assert_eq!(
+        grid_band(&app, at),
+        Some(HeightBand::High),
+        "a downed ganger retains its silhouette band, still occluding fire (GTW-459 C2/C5)",
     );
 }
 
 /// A `LifeState` change that stays [`LifeState::Alive`] does NOT free the slot —
-/// only going OUT (Downed / Dead) clears it (C4).
+/// the slot is freed ONLY by a transition to [`LifeState::Dead`] (GTW-459 C1).
 #[test]
 fn still_alive_change_keeps_slot() {
     let mut app = headless_app();
@@ -282,7 +295,7 @@ fn still_alive_change_keeps_slot() {
     assert_eq!(
         grid_occupant(&app, at),
         Some(ganger),
-        "an Alive LifeState change must NOT free the slot (C4)",
+        "an Alive LifeState change must NOT free the slot (GTW-459 C1)",
     );
 }
 
@@ -697,7 +710,9 @@ fn stair_to_stair_move_relocates_upper() {
     assert_eq!(grid_band(&app, upper_b), Some(HeightBand::Low));
 }
 
-/// GTW-391 Test 9: a ganger downed on a stair clears BOTH lower AND upper cells.
+/// GTW-391 Test 9: a ganger KILLED (Dead) on a stair clears BOTH lower AND upper
+/// cells. GTW-459: only Dead frees the cells — a Downed stair-occupant retains both
+/// (covered by [`downed_on_stair_retains_both_cells`]), so this test uses `Dead`.
 #[test]
 fn dead_on_stair_clears_upper_presence() {
     let mut app = headless_app();
@@ -723,21 +738,77 @@ fn dead_on_stair_clears_upper_presence() {
     );
 
     if let Some(mut life) = app.world_mut().get_mut::<LifeState>(ganger) {
-        *life = LifeState::Downed;
+        *life = LifeState::Dead;
     }
     app.update();
 
     assert_eq!(
         grid_occupant(&app, stair),
         None,
-        "lower slot must be cleared on death (C4)",
+        "lower slot must be cleared when DEAD (GTW-459 C1)",
     );
     assert_eq!(
         grid_occupant(&app, upper),
         None,
-        "upper slot must also be cleared when downed on a stair (GTW-391 Test 9)",
+        "upper slot must also be cleared when killed on a stair (GTW-391 Test 9)",
     );
     assert_eq!(grid_band(&app, upper), None);
+}
+
+/// GTW-459 C2 — a ganger DOWNED on a stair RETAINS BOTH the lower AND the upper
+/// cell (occupant + band), the stair mirror of [`downed_ganger_retains_its_slot`]:
+/// a downed body holds both cells so it keeps blocking movement and occluding fire
+/// on the dual-cell stair presence. Only Dead clears them
+/// ([`dead_on_stair_clears_upper_presence`]).
+#[test]
+fn downed_on_stair_retains_both_cells() {
+    let mut app = headless_app();
+    let stair = key(7, 7, 3);
+    let upper = key(7, 7, 4);
+
+    mark_stair(&mut app, stair);
+
+    let ganger = app
+        .world_mut()
+        .spawn((
+            Position::new(stair),
+            Stance::new(StanceKind::Standing),
+            LifeState::Alive,
+        ))
+        .id();
+
+    app.update();
+    assert_eq!(
+        grid_occupant(&app, upper),
+        Some(ganger),
+        "upper presence before going down",
+    );
+
+    if let Some(mut life) = app.world_mut().get_mut::<LifeState>(ganger) {
+        *life = LifeState::Downed;
+    }
+    app.update();
+
+    assert_eq!(
+        grid_occupant(&app, stair),
+        Some(ganger),
+        "a downed stair-occupant HOLDS its lower cell (GTW-459 C2)",
+    );
+    assert_eq!(
+        grid_band(&app, stair),
+        Some(HeightBand::High),
+        "the downed lower cell keeps its stance band, still occluding fire (GTW-459 C2/C5)",
+    );
+    assert_eq!(
+        grid_occupant(&app, upper),
+        Some(ganger),
+        "a downed stair-occupant HOLDS its upper cell too (GTW-459 C2)",
+    );
+    assert_eq!(
+        grid_band(&app, upper),
+        Some(HeightBand::Low),
+        "the downed upper cell keeps its Low band, still occluding fire (GTW-459 C2/C5)",
+    );
 }
 
 /// GTW-391 Test 10: a stair tile at the top storey (`MAX_LEVELS - 1`) writes no

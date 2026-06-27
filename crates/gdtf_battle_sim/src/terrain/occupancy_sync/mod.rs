@@ -25,9 +25,11 @@
 //!    how it knows which old slot to clear (the ticket-sanctioned "track the
 //!    previous slot" approach).
 //! 2. [`sync_dead_gangers`] reacts to `Changed<`[`LifeState`](crate::ganger::LifeState)`>`
-//!    filtered to a non-[`LifeState::Alive`](crate::ganger::LifeState::Alive) state
-//!    (Downed / Dead): it clears that entity's occupant marker from the slot it last
-//!    synced to.
+//!    filtered to ONLY [`LifeState::Dead`](crate::ganger::LifeState::Dead): it clears
+//!    that (corpse) entity's occupant marker from the slot it last synced to. A
+//!    [`LifeState::Downed`](crate::ganger::LifeState::Downed) ganger is a body still on
+//!    the field — it HOLDS its cell (blocks movement, occludes fire); only Dead frees
+//!    it (GTW-459).
 //! 3. [`sync_destroyed_cover`] reads the buffered [`CoverDestroyed`] **message**
 //!    (Bevy 0.18 renamed buffered events to messages — `bevy-traps.md` #4) and
 //!    folds each one's [`CellLevel`](crate::metric::CellLevel) into the grid's

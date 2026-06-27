@@ -249,35 +249,38 @@ fn vacated_cell_reads_none_after_move() {
 /// `sync_dead_gangers` clears the band (and the occupant marker) when the slot frees.
 ///
 /// Arrange: a STANDING target spawns at `start_cell`; one `update()` publishes its
-/// HIGH band there. Act: transition its `LifeState` to `Downed` (`Changed<LifeState>`),
+/// HIGH band there. Act: transition its `LifeState` to `Dead` (`Changed<LifeState>`),
 /// `update()`. Assert via the real `march_vector`: a MID round through `start_cell` no
 /// longer finds a ganger — the freed slot's band is cleared, so the round passes
 /// through.
 ///
-/// (The contract says "down / dead": a `Downed` ganger frees the slot in
-/// `sync_dead_gangers` exactly as a `Dead` one does — only `LifeState::Alive` keeps
-/// the cell. Testing the `Downed` arm proves the non-Alive clear; the same code path
-/// handles `Dead`.)
+/// GTW-459: only a `Dead` ganger frees its slot (occupant + band) in
+/// `sync_dead_gangers` — a `Downed` ganger HOLDS its cell (a body still on the field,
+/// blocking movement and OCCLUDING fire; `docs/combat/resolution.md` §9: a live
+/// occupant, INCLUDING a downed one, still stops the round). This test therefore
+/// exercises the `Dead` arm — the corpse path that genuinely clears the band. The
+/// `Downed`-retains-its-band invariant is pinned in the `occupancy_sync` suite
+/// (`downed_ganger_retains_its_slot`) and the GTW-317 pass-through-dead suite.
 ///
-/// Pin-discrimination: had the publisher NOT cleared the cell on down, the band would
+/// Pin-discrimination: had the publisher NOT cleared the cell on death, the band would
 /// remain STANDING-HIGH and the MID round would still IMPACT — flipping this red. A
-/// pass-through after down is reachable ONLY if the freed cell's band was cleared.
+/// pass-through after death is reachable ONLY if the freed cell's band was cleared.
 #[test]
-fn downed_occupant_cell_reads_none() {
+fn dead_occupant_cell_reads_none() {
     let mut app = publisher_app();
     let target = spawn_target(&mut app, start_cell(), StanceKind::Standing);
     app.update(); // HIGH band published at start_cell
 
-    // Before down: the MID round impacts the HIGH occupant.
+    // Before death: the MID round impacts the HIGH occupant.
     assert_eq!(
         march_mid_round_through(&app, start_cell()),
         MarchKind::Ganger(target),
-        "pre-down: a MID round impacts the live standing occupant",
+        "pre-death: a MID round impacts the live standing occupant",
     );
 
-    // Act: the ganger goes DOWN. `sync_dead_gangers` frees its slot (occupant + band).
+    // Act: the ganger DIES. `sync_dead_gangers` frees its slot (occupant + band).
     if let Some(mut life) = app.world_mut().get_mut::<LifeState>(target) {
-        *life = LifeState::Downed;
+        *life = LifeState::Dead;
     }
     app.update();
 
@@ -286,8 +289,8 @@ fn downed_occupant_cell_reads_none() {
     assert_ne!(
         verdict,
         MarchKind::Ganger(target),
-        "on DOWN the occupied cell must read None — a MID round must NOT impact the \
-         downed ganger's vacated cell (got {verdict:?})",
+        "on DEATH the occupied cell must read None — a MID round must NOT impact the \
+         dead ganger's vacated cell (got {verdict:?})",
     );
     let band = app
         .world()
@@ -295,6 +298,6 @@ fn downed_occupant_cell_reads_none() {
         .and_then(|g| g.occupant_band(&start_cell()));
     assert_eq!(
         band, None,
-        "the publisher cleared the freed cell's band when the ganger went down",
+        "the publisher cleared the freed cell's band when the ganger died (GTW-459)",
     );
 }
