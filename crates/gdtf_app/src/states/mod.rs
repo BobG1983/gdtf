@@ -116,8 +116,10 @@ crate::support_use! {
 #[cfg(feature = "test-support")]
 crate::support_use! {
     running::{
-        AddMemberButton, EditableGang, EditableMember, EditorScreenRoot, GangNameField,
-        MemberListHost, MemberRow,
+        AddMemberButton, DeleteMemberButton, EditableGang, EditableMember, EditorScreenRoot,
+        ExpandPip, GangNameField, MemberArmorDropdown, MemberArmorText, MemberListHost,
+        MemberNameField, MemberNameText, MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef,
+        MemberWeaponDropdown, MemberWeaponText, PipExpanded,
     };
 }
 mod teardown;

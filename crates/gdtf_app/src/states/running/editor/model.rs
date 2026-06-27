@@ -9,10 +9,10 @@
 //! state-scoped-resource convention (`bevy-traps.md` #1) — so every system reading it guards
 //! with `run_if(resource_exists::<EditableGang>)` / `Option<Res<…>>`.
 //!
-//! The SCAFFOLD scope (GTW-420): a member is a minimal DEFAULT record — a name plus the eight
-//! direct attributes and the weapon / armor keys, all at their defaults. The rich
-//! per-member inline editing is GTW-425 (a later child); this model only needs to HOLD the
-//! members so the list shell can show one row each.
+//! Member shape: a name plus the eight direct attributes and the weapon / armor keys. The
+//! GTW-420 scaffold seeded each as a minimal DEFAULT record so the list shell could show one row
+//! per member; GTW-425 adds the per-member inline editing on top — the name field, weapon / armor
+//! dropdowns, and delete all mutate THIS model (the EXPANDED per-member stat table is GTW-428).
 //!
 //! Both types are declared through [`crate::support_item!`] (and their inherent methods too),
 //! so they are `pub` under the `test-support` feature — the headless tests name them through
@@ -39,9 +39,10 @@ crate::support_item! {
     /// attributes, and the weapon / armor KEY newtypes. It is a NEW editor-side type (not the sim
     /// asset record) because the editor needs an owned, mutable working copy the screen can edit.
     ///
-    /// The SCAFFOLD's "Add member" appends [`EditableMember::default_member`] — a default record.
-    /// The rich per-field inline editing is GTW-425; here a member only needs to EXIST so the
-    /// list shell shows a row per member.
+    /// "Add member" appends [`EditableMember::default_member`] — a default record. GTW-425's
+    /// per-field inline editing (name field, weapon / armor dropdowns) then mutates the member in
+    /// place through the named setters below ([`set_name`](EditableMember::set_name) /
+    /// [`set_weapon`](EditableMember::set_weapon) / [`set_armor`](EditableMember::set_armor)).
     #[derive(Clone, PartialEq, Debug)]
     struct EditableMember {
         /// The member's display identity ([`GangerName`]).
@@ -115,6 +116,39 @@ impl EditableMember {
         const fn name(&self) -> &GangerName {
             &self.name
         }
+    }
+
+    crate::support_item! {
+        /// The member's current **weapon KEY** ([`WeaponName`]) — the text the collapsed row's
+        /// weapon node shows (GTW-425 C1).
+        #[must_use]
+        const fn weapon(&self) -> &WeaponName {
+            &self.weapon
+        }
+    }
+
+    crate::support_item! {
+        /// The member's current **armor KEY** ([`ArmorName`]) — the text the collapsed row's
+        /// armor node shows (GTW-425 C1).
+        #[must_use]
+        const fn armor(&self) -> &ArmorName {
+            &self.armor
+        }
+    }
+
+    /// Set the member's display name — the inline name field's commit path (GTW-425 C3).
+    fn set_name(&mut self, name: GangerName) {
+        self.name = name;
+    }
+
+    /// Set the member's weapon KEY — the weapon dropdown's commit path (GTW-425 C2).
+    fn set_weapon(&mut self, weapon: WeaponName) {
+        self.weapon = weapon;
+    }
+
+    /// Set the member's armor KEY — the armor dropdown's commit path (GTW-425 C2).
+    fn set_armor(&mut self, armor: ArmorName) {
+        self.armor = armor;
     }
 }
 
@@ -197,6 +231,72 @@ impl EditableGang {
         fn add_default_member(&mut self) -> usize {
             self.members.push(EditableMember::default_member());
             self.members.len() - 1
+        }
+    }
+
+    crate::support_item! {
+        /// The member at `index`, if it exists — the row keys its controls by this index so a
+        /// commit / selection can read back the just-edited member (GTW-425). [`None`] for an
+        /// out-of-range index (degraded, never panics).
+        #[must_use]
+        fn member_at(&self, index: usize) -> Option<&EditableMember> {
+            self.members.get(index)
+        }
+    }
+
+    /// Set the name of the member at `index` — the inline name field's commit path
+    /// (GTW-425 C3). A no-op for an out-of-range index (degraded, never panics).
+    pub(in crate::states::running::editor) fn set_member_name(
+        &mut self,
+        index: usize,
+        name: GangerName,
+    ) {
+        if let Some(member) = self.members.get_mut(index) {
+            member.set_name(name);
+        }
+    }
+
+    /// Set the weapon KEY of the member at `index` — the weapon dropdown's commit path
+    /// (GTW-425 C2). A no-op for an out-of-range index (degraded, never panics).
+    pub(in crate::states::running::editor) fn set_member_weapon(
+        &mut self,
+        index: usize,
+        weapon: WeaponName,
+    ) {
+        if let Some(member) = self.members.get_mut(index) {
+            member.set_weapon(weapon);
+        }
+    }
+
+    /// Set the armor KEY of the member at `index` — the armor dropdown's commit path
+    /// (GTW-425 C2). A no-op for an out-of-range index (degraded, never panics).
+    pub(in crate::states::running::editor) fn set_member_armor(
+        &mut self,
+        index: usize,
+        armor: ArmorName,
+    ) {
+        if let Some(member) = self.members.get_mut(index) {
+            member.set_armor(armor);
+        }
+    }
+
+    crate::support_item! {
+        /// Remove the member at `index` from the model — the delete button's model effect
+        /// (GTW-425 C4) — returning `true` when a member was actually removed (so the caller
+        /// despawns exactly that row). A no-op returning `false` for an out-of-range index.
+        ///
+        /// NOTE: removing a member SHIFTS the indices of every later member down by one. The
+        /// delete system
+        /// ([`delete_member_on_press`](super::systems::delete_member_on_press)) re-keys the
+        /// surviving rows' carried index after the removal so they stay in step with the model —
+        /// the rows are MUTATED in place, never rebuilt (C5).
+        fn remove_member(&mut self, index: usize) -> bool {
+            if index < self.members.len() {
+                self.members.remove(index);
+                true
+            } else {
+                false
+            }
         }
     }
 }

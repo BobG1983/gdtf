@@ -22,7 +22,12 @@ crate::support_use!(model::{EditableGang, EditableMember};);
 mod components;
 #[cfg(feature = "test-support")]
 crate::support_use! {
-    components::{AddMemberButton, EditorScreenRoot, GangNameField, MemberListHost, MemberRow};
+    components::{
+        AddMemberButton, DeleteMemberButton, EditorScreenRoot, ExpandPip, GangNameField,
+        MemberArmorDropdown, MemberArmorText, MemberListHost, MemberNameField, MemberNameText,
+        MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef, MemberWeaponDropdown,
+        MemberWeaponText, PipExpanded,
+    };
 }
 
 // DEV-ONLY editor self-screenshot QA hook (C6), double-gated on the dev cfg + its own env var

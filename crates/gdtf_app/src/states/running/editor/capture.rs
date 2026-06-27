@@ -28,17 +28,24 @@ use std::path::PathBuf;
 use bevy::{
     prelude::*,
     render::view::window::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk},
+    ui::Interaction,
 };
 
-use crate::states::{RunningState, running::editor::components::EditorScreenRoot};
+use crate::states::{
+    RunningState,
+    running::editor::components::{AddMemberButton, EditorScreenRoot, MemberRow},
+};
 
 /// The `GDTF_EDITOR_SCREEN_SHOT` env var: the absolute path of the output PNG. Setting it (in a
 /// `dev_capture` debug build) opts into the editor capture hook.
 const EDITOR_SHOT_ENV: &str = "GDTF_EDITOR_SCREEN_SHOT";
 
 /// How many `DebugEditor` frames to wait before capturing, so the UI layout has flushed and the
-/// editor screen is settled rather than mid-layout (the GTW-419 settle precedent).
-const SETTLE_FRAMES: u32 = 4;
+/// editor screen is settled rather than mid-layout (the GTW-419 settle precedent). Bumped over the
+/// scaffold's 4 so the capture-driven "Add member" press (a frame to fire `add_member_on_press`, a
+/// frame for the deferred parent-into-area command) is fully applied before the shot — the
+/// captured frame shows at least one populated member row + its dropdowns (GTW-425 C6).
+const SETTLE_FRAMES: u32 = 8;
 
 /// Whether the editor capture hook is enabled, and where it writes.
 ///
@@ -88,6 +95,32 @@ impl EditorShotConfig {
 /// Param-only (`bevy-traps.md` #7).
 fn drive_into_editor(mut next: ResMut<NextState<RunningState>>) {
     next.set(RunningState::DebugEditor);
+}
+
+/// Ensures the captured editor frame shows at least one POPULATED member row + its dropdowns
+/// (GTW-425 C6): once in `DebugEditor`, if the list has no rows yet it presses "Add member" ONCE
+/// by setting the button's [`Interaction::Pressed`] directly — the real
+/// [`add_member_on_press`](super::systems::add_member_on_press) system then appends a member +
+/// spawns the row on the next frame.
+///
+/// Sets the interaction directly (not via a synthesized pointer) because the windowed
+/// `ui_focus_system` would clear a synthesized `Pressed` before the driver reads it (the GTW-422
+/// `drive_capture_selection` precedent — bevy-traps #6). A [`Local<bool>`] makes it fire ONCE, so
+/// it does not spam members every frame. Runs in `Update`, gated on `DebugEditor` + the config
+/// resource. Param-only (`bevy-traps.md` #7).
+fn drive_capture_add_member(
+    rows: Query<(), With<MemberRow>>,
+    mut buttons: Query<&mut Interaction, With<AddMemberButton>>,
+    mut pressed_once: Local<bool>,
+) {
+    if *pressed_once || rows.iter().next().is_some() {
+        // Already pressed (or a loaded gang already has rows) — leave the list alone.
+        return;
+    }
+    if let Some(mut interaction) = buttons.iter_mut().next() {
+        *interaction = Interaction::Pressed;
+        *pressed_once = true;
+    }
 }
 
 /// Captures the rendered editor-screen frame to disk after a brief settle, then exits the app via
@@ -146,9 +179,14 @@ pub(in crate::states::running::editor) fn register_editor_capture(app: &mut App)
         )
         .add_systems(
             Update,
-            capture_editor_screen.run_if(
-                in_state(RunningState::DebugEditor).and_then(resource_exists::<EditorShotConfig>),
-            ),
+            // Press "Add member" before the settle-capture so the shot shows a populated row +
+            // dropdowns; ordered before the capture so the row exists by the settle frame.
+            (drive_capture_add_member, capture_editor_screen)
+                .chain()
+                .run_if(
+                    in_state(RunningState::DebugEditor)
+                        .and_then(resource_exists::<EditorShotConfig>),
+                ),
         );
 }
 
