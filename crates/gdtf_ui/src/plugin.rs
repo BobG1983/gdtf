@@ -1,6 +1,9 @@
 //! The [`UiPlugin`] registration seam and its theme-asset message-buffer gate.
 
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    ui_widgets::{ScrollAreaPlugin, ScrollbarPlugin},
+};
 use gdtf_assets::RonAsset;
 
 use crate::{
@@ -59,6 +62,11 @@ type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 /// positioner [`position_dropdown_popups`](crate::position_dropdown_popups)); a dropdown is
 /// generic over its option identity, so each caller registers its concrete option-id type's
 /// drivers + message via [`register_dropdown::<T>`](register_dropdown).
+///
+/// For the GTW-412 [`ScrollList`](crate::ScrollList) it ensures the built-in scroll widgets'
+/// plugins ([`ScrollAreaPlugin`] + [`ScrollbarPlugin`]) are present — added only if a
+/// `DefaultPlugins` app (whose `UiWidgetsPlugins` already supply them) has not registered
+/// them, since a unique plugin re-add panics.
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -154,6 +162,25 @@ impl Plugin for UiPlugin {
     /// Later tickets hang further UI systems/resources here; the layer stays
     /// bevy-only (no ecosystem crate).
     fn build(&self, app: &mut App) {
+        // GTW-412 — the built-in scroll widgets the `ScrollList` container relies on:
+        // `ScrollAreaPlugin` registers the `Pointer<Scroll>` observer that clamps
+        // `ScrollPosition` to the overflow, and `ScrollbarPlugin` registers
+        // `update_scrollbar_thumb` (in `PostUpdate`, after `ui_layout_system`) that sizes +
+        // positions the thumb from the content/viewport ratio. These ride
+        // `DefaultPlugins`' `UiWidgetsPlugins` (the workspace `ui` feature pulls
+        // `bevy_ui_widgets`), so under the real app + the `DefaultPlugins` test harness they
+        // are ALREADY present — re-adding a unique plugin panics. The `is_plugin_added`
+        // guard keeps `UiPlugin` correct under BOTH a `DefaultPlugins` app (present → skip)
+        // and a bare app that wired `UiPlugin` without the widget group (absent → add), so
+        // the `ScrollList` scroll mechanism is never silently missing. (This deviates from
+        // the ticket's literal "always add" wording, which would panic here — the intent,
+        // "wire the engine scroll widgets, don't hand-roll", is met.)
+        if !app.is_plugin_added::<ScrollAreaPlugin>() {
+            app.add_plugins(ScrollAreaPlugin);
+        }
+        if !app.is_plugin_added::<ScrollbarPlugin>() {
+            app.add_plugins(ScrollbarPlugin);
+        }
         app.add_message::<ToggleFlipped>()
             .add_message::<SegmentSelected>()
             // GTW-410 — the dropdown's ONE type-agnostic message (the Esc-close request);

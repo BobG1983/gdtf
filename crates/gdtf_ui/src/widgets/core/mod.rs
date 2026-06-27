@@ -85,6 +85,19 @@
 //!
 //! The type-agnostic pieces ride [`register_text_field`]; each numeric `N` registers via
 //! [`register_numeric_field::<N>`].
+//!
+//! ## Scrollable list container (GTW-412)
+//!
+//! - [`ScrollList`](scroll_list::ScrollList) ([`spawn_scroll_list`]): a themed frame that
+//!   CLIPS + SCROLLS a vertical stack of caller-supplied rows taller than it, with a
+//!   draggable / wheel-driven scrollbar. Rows are OPAQUE to the list — the caller parents
+//!   its own row bundles onto the returned [`ScrollListArea`](scroll_list::ScrollListArea)
+//!   entity and the list only stacks + clips them. Built on Bevy's built-in
+//!   [`ScrollArea`](bevy::ui_widgets::ScrollArea) /
+//!   [`Scrollbar`](bevy::ui_widgets::Scrollbar) (the scroll mechanism is NOT hand-rolled);
+//!   their plugins ride [`UiPlugin`](crate::UiPlugin). All sizing is relative bar the two
+//!   API-forced scrollbar-chrome px the engine defines as pixels. The expand/collapse lerp
+//!   accordion is explicitly OUT of scope (GTW-403 child / GTW-416).
 
 mod builders;
 mod dropdown;
@@ -93,6 +106,7 @@ mod orientation;
 mod paint;
 mod pips;
 mod progress_bar;
+mod scroll_list;
 mod segmented_control;
 mod switch;
 #[cfg(test)]
@@ -116,6 +130,9 @@ pub use paint::{paint_active_buttons, paint_disabled_buttons};
 pub use pips::{FilledPips, Pip, PipsRow, set_pips, spawn_pips};
 pub use progress_bar::{
     FillFraction, ProgressBarFill, ProgressBarTrack, set_progress_bar, spawn_progress_bar,
+};
+pub use scroll_list::{
+    ScrollList, ScrollListArea, ScrollListBar, ScrollListColors, spawn_scroll_list,
 };
 pub use segmented_control::{
     ActiveSegment, Segment, SegmentColors, SegmentIndex, SegmentLabel, SegmentSelected,
