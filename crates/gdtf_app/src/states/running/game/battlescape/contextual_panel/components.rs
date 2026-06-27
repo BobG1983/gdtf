@@ -2,7 +2,7 @@
 //! (GTW-294).
 //!
 //! The contextual panel is the bottom-RIGHT cluster of the HUD (per the
-//! `assets/ui_mockups/battlescape_mockup.png` bottom-right corner — "Contextual Buttons go
+//! `docs/ui_mockups/battlescape_mockup.png` bottom-right corner — "Contextual Buttons go
 //! Here", to the right of the Stance column). It hosts the situational acts a selected ganger
 //! can take on a DOWNED neighbour — **Execute** / **Stabilize** — plus a deferred **Open Door**
 //! act. The panel and all three buttons spawn [`Visibility::Hidden`](bevy::camera::visibility::Visibility):

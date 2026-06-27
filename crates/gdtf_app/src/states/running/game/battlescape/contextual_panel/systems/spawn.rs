@@ -1,7 +1,7 @@
 //! Spawns + despawns the battlescape CONTEXTUAL PANEL (GTW-294).
 //!
 //! [`spawn_contextual_panel`] runs `OnEnter(BattleScapeState::BattleRunning)` and builds the
-//! bottom-RIGHT contextual cluster (per the `assets/ui_mockups/battlescape_mockup.png`
+//! bottom-RIGHT contextual cluster (per the `docs/ui_mockups/battlescape_mockup.png`
 //! bottom-right corner — "Contextual Buttons go Here", to the right of the Stance column). It
 //! spawns a BARE themed [`spawn_panel`] box ([`ContextualPanelRoot`]) anchored to the window's
 //! bottom-right corner with responsive units, holding three themed [`spawn_button`] buttons

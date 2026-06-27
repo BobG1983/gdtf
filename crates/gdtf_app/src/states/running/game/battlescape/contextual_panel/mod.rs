@@ -1,7 +1,7 @@
 //! The battlescape CONTEXTUAL PANEL (GTW-294): the bottom-RIGHT cluster of the HUD that hosts
 //! the situational acts on a downed neighbour.
 //!
-//! Per the `assets/ui_mockups/battlescape_mockup.png` bottom-right corner ("Contextual Buttons
+//! Per the `docs/ui_mockups/battlescape_mockup.png` bottom-right corner ("Contextual Buttons
 //! go Here", to the right of the Stance column), this panel holds three themed buttons —
 //! **Execute** / **Stabilize** / **Open Door**. The panel + all three buttons spawn
 //! `Visibility::Hidden`; the live `detect_contextual_targets` system fills the
