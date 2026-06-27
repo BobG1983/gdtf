@@ -5,7 +5,7 @@
 // `mangled_leg`.
 (
     name:         "Mangled Leg",                             // display InjuryName (inspect-panel label; side-agnostic)
-    body_part:    LeftLeg,                                   // routes into the shared Leg pool (LeftLeg -> Leg category)
+    category:     Leg,                                       // routes into the shared Leg category pool; matches the owning subfolder
     severity:     Critical,                                  // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "LEG MANGLED",                             // -> floating combat text (FCT)
     log_text:     "has a leg mangled",                       // -> combat log line ("<name> has a leg mangled")

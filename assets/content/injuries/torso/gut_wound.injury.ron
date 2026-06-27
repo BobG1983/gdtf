@@ -4,7 +4,7 @@
 // debuff plus a heavy bleed. KEY = file stem minus `.injury` => `gut_wound`.
 (
     name:         "Gut Wound",                               // display InjuryName (inspect-panel label)
-    body_part:    Torso,                                     // routes into the Torso category pool
+    category:     Torso,                                     // routes into the Torso category pool; matches the owning subfolder
     severity:     Critical,                                  // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "GUT WOUND",                               // -> floating combat text (FCT)
     log_text:     "takes a gut wound",                       // -> combat log line ("<name> takes a gut wound")

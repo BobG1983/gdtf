@@ -4,7 +4,7 @@
 // table-build. Authored order does NOT affect determinism (canonically sorted at build).
 // Torso injuries key to the Toughness / Hp stat map (resolution.md injury tables).
 (
-    body_part: Torso,                                      // routes into the Torso category pool
+    category: Torso,                                       // the Torso category this file weights
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "cracked_rib",     weight: 10),           // -1 Toughness
         (injury: "deep_laceration", weight: 7),            // bleeding (Hp drain)

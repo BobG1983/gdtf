@@ -4,12 +4,12 @@
 // two-handed long-arm, and its aim suffers while the hand is ruined.
 // SIDE-AGNOSTIC: the disabled side is derived from the ROLLED struck part (LeftArm ->
 // the left hand, RightArm -> the right), NOT this file — both arms share this one Arm
-// pool, so a single file serves either side (GTW-440 C3). The `body_part:` below only
+// pool, so a single file serves either side (GTW-440 C3). The `category:` below only
 // routes this injury into the shared Arm CATEGORY pool.
 // KEY = file stem minus `.injury` => `shattered_hand`.
 (
     name:         "Shattered Hand",                 // display InjuryName (inspect-panel label; side-agnostic)
-    body_part:    LeftArm,                          // routes into the shared Arm pool (LeftArm -> Arm category)
+    category:     Arm,                              // routes into the shared Arm category pool; matches the owning subfolder
     severity:     Major,                            // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "HAND SHATTERED",                 // -> floating combat text (FCT)
     log_text:     "shatters a hand",                // -> combat log line ("<name> shatters a hand")

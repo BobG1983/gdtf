@@ -5,7 +5,7 @@ use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use super::{InjuryEffect, InjuryName, InspectText, LogText, PopupText};
-use crate::{armor::BodyPart, severity::Severity};
+use crate::{armor::InjuryCategory, severity::Severity};
 
 /// The **post-heal disposition** of an injury (GTW-23 Healing — **NOT yet built**).
 ///
@@ -53,9 +53,10 @@ impl PostHeal {
 /// The de-serialization target of the `.injury.ron` schema (the file stem minus
 /// `.injury` is the table-build key — an [`InjuryName`] the loader captures, GTW-437).
 /// Its fields are ALL typed domain values (no bare string / int / enum): the display
-/// [`name`](InjuryDef::name), the struck [`body_part`](InjuryDef::body_part) (the
-/// REUSED [`BodyPart`] — the def's own field is authoritative; the owning subfolder
-/// is only organizational), the rolled [`severity`](InjuryDef::severity) (the REUSED
+/// [`name`](InjuryDef::name), the injury-pool [`category`](InjuryDef::category) (the
+/// shared [`InjuryCategory`] this def is authored into — the table-key axis; the owning
+/// subfolder must match it but is only organizational), the rolled
+/// [`severity`](InjuryDef::severity) (the REUSED
 /// [`Severity`] — only `Minor` / `Major` / `Critical` are tabled; `None` is a graze
 /// and `Fatal` is death via the existing gate), the three routed texts, and the
 /// `≥ 1` [`effects`](InjuryDef::effects). The [`post_heal`](InjuryDef::post_heal)
@@ -74,8 +75,9 @@ pub struct InjuryDef {
     /// The display name of the condition (e.g. `"Lost Eye"`) — the inspect-panel
     /// label.
     pub name:         InjuryName,
-    /// The struck body part — authoritative; a subfolder mismatch only WARNs (GTW-437).
-    pub body_part:    BodyPart,
+    /// The injury-pool [`InjuryCategory`] this def routes into — the table-KEY axis
+    /// (GTW-453). A cross-category subfolder mismatch only WARNs (GTW-437).
+    pub category:     InjuryCategory,
     /// The severity bucket this injury belongs to (`Minor` / `Major` / `Critical`).
     pub severity:     Severity,
     /// The FCT popup line shown on infliction.

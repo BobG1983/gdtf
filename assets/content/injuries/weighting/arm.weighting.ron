@@ -5,7 +5,7 @@
 // Authored order does NOT affect determinism (canonically sorted at build). Arm injuries
 // key to the Strength / Aim / DisableHand stat map (resolution.md injury tables).
 (
-    body_part: LeftArm,                                    // routes into the shared Arm category pool (LeftArm -> Arm)
+    category: Arm,                                         // the shared Arm category this file weights (both arms)
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "bruised_forearm", weight: 10),           // -1 Strength
         (injury: "torn_muscle",     weight: 8),            // -1 Aim

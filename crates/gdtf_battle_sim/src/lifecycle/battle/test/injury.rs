@@ -13,7 +13,7 @@ use bevy::prelude::{App, Entity, Messages};
 use super::support::*;
 use crate::{
     acts::InjuryInflicted,
-    armor::BodyPart,
+    armor::InjuryCategory,
     ganger::{Aiming, Direction, Facing, Position, Shooting, Toughness},
     injuries::{
         InflictedInjuries, InjuryDef, InjuryEffect, InjuryName, InjuryRegistry, InjuryTables,
@@ -26,7 +26,7 @@ use crate::{
     test_support::GangerSpawnBuilder,
 };
 
-/// Build a one-injury catalog covering EVERY `(BodyPart, Minor/Major/Critical)` bucket
+/// Build a one-injury catalog covering EVERY `(InjuryCategory, Minor/Major/Critical)` bucket
 /// with the SAME injury (a `Modify(Aim, -2)`), so ANY non-graze, non-fatal wound — on any
 /// part, at any tabled severity — rolls a known, stat-shifting injury. The shared key
 /// resolves to one [`InjuryDef`] in the registry.
@@ -34,7 +34,7 @@ fn aim_debuff_catalog() -> (InjuryRegistry, InjuryTables) {
     let key = InjuryName::new("aim_debuff".to_owned());
     let def = InjuryDef {
         name:         key.clone(),
-        body_part:    BodyPart::Torso,
+        category:     InjuryCategory::Torso,
         severity:     Severity::Minor,
         popup_text:   PopupText::new("AIM HURT".to_owned()),
         log_text:     LogText::new("takes an aim-fouling wound".to_owned()),
@@ -47,10 +47,12 @@ fn aim_debuff_catalog() -> (InjuryRegistry, InjuryTables) {
     };
     let registry = InjuryRegistry::new([(key.clone(), def)]);
     let mut tables = InjuryTables::default();
-    for part in BodyPart::ALL {
+    // Cover EVERY injury category (the two arms / two legs already share one), so a wound
+    // on ANY struck part — which resolves to its category at the lookup — rolls the key.
+    for category in InjuryCategory::ALL {
         for severity in [Severity::Minor, Severity::Major, Severity::Critical] {
             tables.insert(
-                part,
+                category,
                 severity,
                 WeightedInjuryTable::new(vec![WeightedInjuryEntry::new(
                     key.clone(),

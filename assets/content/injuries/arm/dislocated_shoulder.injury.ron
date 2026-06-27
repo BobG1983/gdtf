@@ -4,7 +4,7 @@
 // agnostic (both arms share the Arm pool). KEY = stem => `dislocated_shoulder`.
 (
     name:         "Dislocated Shoulder",                     // display InjuryName (inspect-panel label; side-agnostic)
-    body_part:    LeftArm,                                   // routes into the shared Arm pool (LeftArm -> Arm category)
+    category:     Arm,                                       // routes into the shared Arm category pool; matches the owning subfolder
     severity:     Major,                                     // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "SHOULDER DISLOCATED",                     // -> floating combat text (FCT)
     log_text:     "dislocates a shoulder",                   // -> combat log line

@@ -6,9 +6,9 @@ use bevy::{prelude::Deref, reflect::TypePath};
 use serde::Deserialize;
 
 use super::InjuryName;
-use crate::armor::BodyPart;
+use crate::armor::InjuryCategory;
 
-/// The **pick weight** of one injury within its `(body_part, severity)` bucket
+/// The **pick weight** of one injury within its `(category, severity)` bucket
 /// (`docs/combat/resolution.md` injury tables) — its relative share of the
 /// cumulative-weight roll (a higher weight = more likely rolled).
 ///
@@ -54,30 +54,31 @@ impl WeightedInjuryEntry {
     }
 }
 
-/// The authored **per-body-part weighting file** — one per part, loaded from
-/// `assets/content/injuries/weighting/<part>.weighting.ron` (`docs/combat/resolution.md`
+/// The authored **per-category weighting file** — one per category, loaded from
+/// `assets/content/injuries/weighting/<category>.weighting.ron` (`docs/combat/resolution.md`
 /// injury tables; GTW-405).
 ///
 /// The de-serialization target of the `.weighting.ron` schema: the
-/// [`body_part`](InjuryWeighting::body_part) this table weights, plus the three
+/// [`category`](InjuryWeighting::category) this table weights, plus the three
 /// tabled severity lists (`None` graze and `Fatal` death are never tabled). The
 /// loader (GTW-437) folds these three lists, resolving keys and canonically
-/// **sorting** entries, into the per-`(part, severity)` [`WeightedInjuryTable`]s —
+/// **sorting** entries, into the per-`(category, severity)` [`WeightedInjuryTable`]s —
 /// so the authored Vec order never affects the deterministic roll. THIS slice only
 /// names the schema. Public fields (a value-object record).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct InjuryWeighting {
-    /// The body part this file weights (one weighting file per part).
-    pub body_part: BodyPart,
+    /// The injury-pool [`InjuryCategory`] this file weights (one weighting file per
+    /// category — both arms / both legs share one, GTW-453).
+    pub category: InjuryCategory,
     /// The `Minor`-bucket weighting rows.
-    pub minor:     Vec<WeightedInjuryEntry>,
+    pub minor:    Vec<WeightedInjuryEntry>,
     /// The `Major`-bucket weighting rows.
-    pub major:     Vec<WeightedInjuryEntry>,
+    pub major:    Vec<WeightedInjuryEntry>,
     /// The `Critical`-bucket weighting rows.
-    pub critical:  Vec<WeightedInjuryEntry>,
+    pub critical: Vec<WeightedInjuryEntry>,
 }
 
-/// A BUILT, canonically-sorted weighted table for ONE `(body_part, severity)`
+/// A BUILT, canonically-sorted weighted table for ONE `(category, severity)`
 /// bucket — the resolved, roll-ready form (`docs/combat/resolution.md` injury
 /// tables; GTW-405).
 ///

@@ -4,7 +4,7 @@
 // pool); the rolled struck part records which arm. KEY = stem => `bruised_forearm`.
 (
     name:         "Bruised Forearm",             // display InjuryName (inspect-panel label; side-agnostic)
-    body_part:    LeftArm,                        // routes into the shared Arm pool (LeftArm -> Arm category)
+    category:     Arm,                            // routes into the shared Arm category pool; matches the owning subfolder
     severity:     Minor,                          // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "FOREARM BRUISED",              // -> floating combat text (FCT)
     log_text:     "bruises a forearm",            // -> combat log line ("<name> bruises a forearm")

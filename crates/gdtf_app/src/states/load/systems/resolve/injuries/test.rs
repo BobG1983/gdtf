@@ -17,7 +17,7 @@ use bevy::{
 };
 use gdtf_assets::{RonAsset, RonAssetAppExt};
 use gdtf_battle_sim::{
-    armor::BodyPart,
+    armor::{BodyPart, InjuryCategory},
     injuries::{InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeighting},
     rng::{BattleSeed, InjuryRng},
     severity::Severity,
@@ -29,10 +29,11 @@ use crate::states::load::{
 };
 
 /// Parse a sample-shaped `InjuryDef` from inline RON (the schema the loader reads),
-/// asserting it parses rather than a denied `unwrap`.
-fn injury_def(name: &str, part: BodyPart, severity: Severity) -> Option<InjuryDef> {
+/// asserting it parses rather than a denied `unwrap`. The `category:` field names the
+/// shared injury pool (GTW-453).
+fn injury_def(name: &str, category: InjuryCategory, severity: Severity) -> Option<InjuryDef> {
     let ron = format!(
-        "(name: \"{name}\", body_part: {part:?}, severity: {severity:?}, \
+        "(name: \"{name}\", category: {category:?}, severity: {severity:?}, \
          popup_text: \"{name}\", log_text: \"is hurt\", inspect_text: \"{name} -- -1 Aim\", \
          effects: [Modify(stat: Aim, amount: -1)])",
     );
@@ -45,10 +46,11 @@ fn injury_def(name: &str, part: BodyPart, severity: Severity) -> Option<InjuryDe
     parsed.ok()
 }
 
-/// Parse a sample-shaped `InjuryWeighting` from inline RON, asserting it parses.
-/// `minor` / `major` / `critical` are `(key, weight)` row lists.
+/// Parse a sample-shaped `InjuryWeighting` from inline RON, asserting it parses. The
+/// `category:` field names the shared injury pool (GTW-453); `minor` / `major` /
+/// `critical` are `(key, weight)` row lists.
 fn weighting(
-    part: BodyPart,
+    category: InjuryCategory,
     minor: &[(&str, u32)],
     major: &[(&str, u32)],
     critical: &[(&str, u32)],
@@ -60,7 +62,7 @@ fn weighting(
             .join(", ")
     };
     let ron = format!(
-        "(body_part: {part:?}, minor: [{}], major: [{}], critical: [{}])",
+        "(category: {category:?}, minor: [{}], major: [{}], critical: [{}])",
         rows(minor),
         rows(major),
         rows(critical),
@@ -152,10 +154,10 @@ fn build(app: &App, folder: &Handle<LoadedFolder>) -> Option<(InjuryRegistry, In
 #[test]
 fn builds_registry_and_tables_keyed_by_stem() {
     let mut app = app();
-    let Some(eye) = injury_def("Lost Eye", BodyPart::Head, Severity::Critical) else {
+    let Some(eye) = injury_def("Lost Eye", InjuryCategory::Head, Severity::Critical) else {
         return;
     };
-    let Some(w) = weighting(BodyPart::Head, &[], &[], &[("lost_eye", 4)]) else {
+    let Some(w) = weighting(InjuryCategory::Head, &[], &[], &[("lost_eye", 4)]) else {
         return;
     };
     let def_handle = add_def(&mut app, "content/injuries/head/lost_eye.injury.ron", eye);
@@ -198,8 +200,8 @@ fn canonical_sort_makes_the_seeded_pick_order_independent() {
     let pick = |entries_first: bool| -> Option<InjuryName> {
         let mut app = app();
         // Two injuries in the same bucket, authored in OPPOSITE orders across the runs.
-        let a = injury_def("Alpha", BodyPart::Torso, Severity::Major)?;
-        let b = injury_def("Bravo", BodyPart::Torso, Severity::Major)?;
+        let a = injury_def("Alpha", InjuryCategory::Torso, Severity::Major)?;
+        let b = injury_def("Bravo", InjuryCategory::Torso, Severity::Major)?;
         let a_h = add_def(&mut app, "content/injuries/torso/alpha.injury.ron", a);
         let b_h = add_def(&mut app, "content/injuries/torso/bravo.injury.ron", b);
         // The weighting lists the rows in opposite orders depending on the flag.
@@ -208,7 +210,7 @@ fn canonical_sort_makes_the_seeded_pick_order_independent() {
         } else {
             &[("bravo", 7), ("alpha", 3)]
         };
-        let w = weighting(BodyPart::Torso, &[], rows, &[])?;
+        let w = weighting(InjuryCategory::Torso, &[], rows, &[])?;
         let w_h = add_weighting(
             &mut app,
             "content/injuries/weighting/torso.weighting.ron",
@@ -248,11 +250,16 @@ fn canonical_sort_makes_the_seeded_pick_order_independent() {
 #[test]
 fn unknown_weighting_key_is_skipped_not_failed() {
     let mut app = app();
-    let Some(eye) = injury_def("Lost Eye", BodyPart::Head, Severity::Critical) else {
+    let Some(eye) = injury_def("Lost Eye", InjuryCategory::Head, Severity::Critical) else {
         return;
     };
     // The weighting references the real `lost_eye` PLUS a `ghost` that has no def.
-    let Some(w) = weighting(BodyPart::Head, &[], &[], &[("lost_eye", 4), ("ghost", 9)]) else {
+    let Some(w) = weighting(
+        InjuryCategory::Head,
+        &[],
+        &[],
+        &[("lost_eye", 4), ("ghost", 9)],
+    ) else {
         return;
     };
     let def_h = add_def(&mut app, "content/injuries/head/lost_eye.injury.ron", eye);
@@ -297,15 +304,11 @@ fn unknown_weighting_key_is_skipped_not_failed() {
 #[test]
 fn registry_injury_with_no_weighting_does_not_fail() {
     let mut app = app();
-    let Some(orphan) = injury_def("Orphan", BodyPart::LeftArm, Severity::Minor) else {
+    let Some(orphan) = injury_def("Orphan", InjuryCategory::Arm, Severity::Minor) else {
         return;
     };
     // A def with NO weighting file at all.
-    let def_h = add_def(
-        &mut app,
-        "content/injuries/left_arm/orphan.injury.ron",
-        orphan,
-    );
+    let def_h = add_def(&mut app, "content/injuries/arm/orphan.injury.ron", orphan);
     let folder = add_folder(&mut app, &[def_h.untyped()]);
 
     // Build UNDER the log capture so the audit's unweighted-injury WARN is observed too.
@@ -335,24 +338,24 @@ fn registry_injury_with_no_weighting_does_not_fail() {
     );
 }
 
-/// C4 (mismatch clause): a def whose authoritative `body_part` does NOT match its owning
-/// per-part subfolder is loaded under ITS OWN field (the def is authoritative, the
+/// C4 (mismatch clause): a def whose authored `category` does NOT match its owning
+/// per-category subfolder is loaded under ITS OWN field (the def is authoritative, the
 /// subfolder is organizational, design fork #10) AND a WARN is emitted — proving the
-/// `subfolder != def.body_part` branch in `warn_on_subfolder_mismatch` is traversed.
+/// `subfolder != def.category` branch in `warn_on_subfolder_mismatch` is traversed.
 ///
 /// Pin-discriminating: neutralizing the mismatch branch (so the warn never fires) empties
 /// the WARN capture; mis-handling the authoritative field (filing under the subfolder
-/// `Torso`) fails the exact-equality `body_part` + bucket assertions.
+/// `Torso`) fails the exact-equality `category` + bucket assertions.
 #[test]
-fn subfolder_mismatch_warns_but_loads_authoritative_body_part() {
+fn subfolder_mismatch_warns_but_loads_authoritative_category() {
     let mut app = app();
-    // A Head injury authored into the `torso/` subfolder — body_part != subfolder.
-    let Some(misfiled) = injury_def("Misfiled", BodyPart::Head, Severity::Major) else {
+    // A Head-category injury authored into the `torso/` subfolder — category != subfolder.
+    let Some(misfiled) = injury_def("Misfiled", InjuryCategory::Head, Severity::Major) else {
         return;
     };
-    // A weighting for the def's AUTHORITATIVE part (Head) so it lands in a table; were the
-    // def mis-filed under Torso, this row would resolve to no bucket.
-    let Some(w) = weighting(BodyPart::Head, &[], &[("misfiled", 5)], &[]) else {
+    // A weighting for the def's AUTHORITATIVE category (Head) so it lands in a table; were
+    // the def mis-filed under Torso, this row would resolve to no bucket.
+    let Some(w) = weighting(InjuryCategory::Head, &[], &[("misfiled", 5)], &[]) else {
         return;
     };
     let def_h = add_def(
@@ -375,7 +378,7 @@ fn subfolder_mismatch_warns_but_loads_authoritative_body_part() {
     };
 
     // (a) AUTHORITATIVE-FIELD-WINS: the injury is registered, and its registered
-    // body_part is Head (its own field), NEVER Torso (the subfolder). Exact equality.
+    // category is Head (its own field), NEVER Torso (the subfolder). Exact equality.
     let key = InjuryName::new("misfiled".to_owned());
     let def = registry.def(&key);
     assert!(
@@ -383,9 +386,9 @@ fn subfolder_mismatch_warns_but_loads_authoritative_body_part() {
         "the misfiled injury must still be registered"
     );
     assert_eq!(
-        def.map(|d| d.body_part),
-        Some(BodyPart::Head),
-        "the registered body_part must be the def's own Head, NOT the Torso subfolder",
+        def.map(|d| d.category),
+        Some(InjuryCategory::Head),
+        "the registered category must be the def's own Head, NOT the Torso subfolder",
     );
     // It tables into the (Head, Major) bucket, NEVER the (Torso, Major) bucket.
     let head_bucket = tables.table(BodyPart::Head, Severity::Major);
@@ -415,10 +418,10 @@ fn subfolder_mismatch_warns_but_loads_authoritative_body_part() {
 #[test]
 fn modified_member_rebuilds_both_resources() {
     let mut app = app();
-    let Some(eye) = injury_def("Lost Eye", BodyPart::Head, Severity::Critical) else {
+    let Some(eye) = injury_def("Lost Eye", InjuryCategory::Head, Severity::Critical) else {
         return;
     };
-    let Some(w) = weighting(BodyPart::Head, &[], &[], &[("lost_eye", 4)]) else {
+    let Some(w) = weighting(InjuryCategory::Head, &[], &[], &[("lost_eye", 4)]) else {
         return;
     };
     let def_h = add_def(&mut app, "content/injuries/head/lost_eye.injury.ron", eye);
@@ -464,7 +467,7 @@ fn modified_member_rebuilds_both_resources() {
 #[test]
 fn injury_hot_reload_logs_an_info_line() {
     let mut app = app();
-    let Some(eye) = injury_def("Lost Eye", BodyPart::Head, Severity::Critical) else {
+    let Some(eye) = injury_def("Lost Eye", InjuryCategory::Head, Severity::Critical) else {
         return;
     };
     let def_h = add_def(&mut app, "content/injuries/head/lost_eye.injury.ron", eye);

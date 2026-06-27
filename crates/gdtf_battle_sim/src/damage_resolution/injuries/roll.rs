@@ -2,8 +2,9 @@
 //! site on the [`InjuryRng`] stream.
 //!
 //! When a non-graze, non-fatal wound lands on a ganger, the damage fold calls
-//! [`roll_injury`] to pick a named injury from the weighted `(body_part, severity)`
-//! table and freeze the verdict onto the [`HitReport`](crate::resolve_and_apply::HitReport).
+//! [`roll_injury`] to pick a named injury from the weighted `(category, severity)`
+//! table (the struck per-side [`BodyPart`] resolved to its category at the lookup) and
+//! freeze the verdict onto the [`HitReport`](crate::resolve_and_apply::HitReport).
 //!
 //! ## Draw discipline (the GTW-405 §"Determinism / replay" contract)
 //!
@@ -43,7 +44,7 @@ use crate::{armor::BodyPart, injuries::InjuryRegistry, rng::InjuryRng, severity:
 ///
 /// Returns `Some` the rolled injury (a snapshot of the picked
 /// [`InjuryDef`](super::InjuryDef)'s name / severity / frozen effects / three texts,
-/// stamped with the STRUCK `part` — NOT the def's side-agnostic `body_part`, so a
+/// stamped with the STRUCK `part` — NOT the def's side-agnostic `category`, so a
 /// shared-pool `DisableHand` disables the hand on the struck side, GTW-440 C3) when the
 /// bucket has content AND the picked key resolves in `registry`;
 /// `None` when the severity is not tabled, the bucket is empty/missing,
@@ -102,12 +103,12 @@ pub fn roll_injury(
 
     // (5) Freeze the verdict — a snapshot of the def's applied state (name / severity /
     //     the frozen effects + the three routed texts) for HitReport.injury, stamped with
-    //     the STRUCK `part`, NOT the def's `body_part`. Since GTW-440 the per-side parts
+    //     the STRUCK `part`, NOT the def's `category`. Since GTW-440 the per-side parts
     //     share one CATEGORY pool (a single `shattered_hand` is rolled for either arm), so
     //     the struck side is the authoritative location — this is what makes a
     //     `DisableHand` rolled on `RightArm` disable the RIGHT hand even though the def is
     //     side-agnostic (the side-from-part design, GTW-443 / GTW-440 C3). The def's own
-    //     `body_part` only routes which category POOL it was authored into.
+    //     `category` only names which shared POOL it was authored into.
     Some(RolledInjury::new(
         def.name.clone(),
         part,

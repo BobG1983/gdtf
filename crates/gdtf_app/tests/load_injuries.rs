@@ -3,7 +3,7 @@
 //! `*.injury.ron` (`RonAsset<InjuryDef>`) and the per-part `weighting/*.weighting.ron`
 //! (`RonAsset<InjuryWeighting>`) — builds BOTH an [`InjuryRegistry`] (name→def, keyed by
 //! each injury file's stem minus the `.injury` infix) AND the [`InjuryTables`]
-//! (per-`(body_part, severity)` weighted roll table), and GATES the Load->Intro
+//! (per-`(category, severity)` weighted roll table), and GATES the Load->Intro
 //! transition on the registry — so a battle never starts before injuries load. This
 //! mirrors the GTW-257 weapons / GTW-269 armor load-and-build path exactly, generalised
 //! to one folder → two resources.

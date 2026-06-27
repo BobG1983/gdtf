@@ -5,7 +5,7 @@
 // NOT this file — both arms share the Arm pool (GTW-440 C3). KEY = stem => `mangled_arm`.
 (
     name:         "Mangled Arm",                             // display InjuryName (inspect-panel label; side-agnostic)
-    body_part:    LeftArm,                                   // routes into the shared Arm pool (LeftArm -> Arm category)
+    category:     Arm,                                       // routes into the shared Arm category pool; matches the owning subfolder
     severity:     Critical,                                  // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "ARM MANGLED",                             // -> floating combat text (FCT)
     log_text:     "has an arm mangled",                      // -> combat log line ("<name> has an arm mangled")

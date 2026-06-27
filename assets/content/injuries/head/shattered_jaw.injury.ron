@@ -4,7 +4,7 @@
 // stats). KEY = file stem minus `.injury` => `shattered_jaw`.
 (
     name:         "Shattered Jaw",                       // display InjuryName (inspect-panel label)
-    body_part:    Head,                                  // routes into the Head category pool
+    category:     Head,                                  // routes into the Head category pool; matches the owning subfolder
     severity:     Major,                                 // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "JAW SHATTERED",                       // -> floating combat text (FCT)
     log_text:     "has its jaw shattered",               // -> combat log line

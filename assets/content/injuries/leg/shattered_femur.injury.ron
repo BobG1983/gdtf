@@ -4,7 +4,7 @@
 // the Leg pool). KEY = file stem minus `.injury` => `shattered_femur`.
 (
     name:         "Shattered Femur",                         // display InjuryName (inspect-panel label; side-agnostic)
-    body_part:    LeftLeg,                                   // routes into the shared Leg pool (LeftLeg -> Leg category)
+    category:     Leg,                                       // routes into the shared Leg category pool; matches the owning subfolder
     severity:     Major,                                     // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "FEMUR SHATTERED",                         // -> floating combat text (FCT)
     log_text:     "shatters a femur",                        // -> combat log line ("<name> shatters a femur")

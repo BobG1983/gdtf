@@ -4,7 +4,7 @@
 // KEY = file stem minus `.injury` => `punctured_lung`.
 (
     name:         "Punctured Lung",                          // display InjuryName (inspect-panel label)
-    body_part:    Torso,                                     // routes into the Torso category pool
+    category:     Torso,                                     // routes into the Torso category pool; matches the owning subfolder
     severity:     Major,                                     // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "LUNG PUNCTURED",                          // -> floating combat text (FCT)
     log_text:     "takes a punctured lung",                  // -> combat log line

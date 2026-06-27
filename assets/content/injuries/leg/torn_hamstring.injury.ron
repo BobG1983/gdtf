@@ -4,7 +4,7 @@
 // pool); the rolled struck part records which leg. KEY = stem => `torn_hamstring`.
 (
     name:         "Torn Hamstring",                          // display InjuryName (inspect-panel label; side-agnostic)
-    body_part:    LeftLeg,                                   // routes into the shared Leg pool (LeftLeg -> Leg category)
+    category:     Leg,                                       // routes into the shared Leg category pool; matches the owning subfolder
     severity:     Minor,                                     // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "HAMSTRING TORN",                          // -> floating combat text (FCT)
     log_text:     "tears a hamstring",                       // -> combat log line ("<name> tears a hamstring")

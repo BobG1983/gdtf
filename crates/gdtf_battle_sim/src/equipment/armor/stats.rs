@@ -200,10 +200,11 @@ impl BodyPart {
 /// design, GTW-443).
 ///
 /// A pure value enum (no bare integer / string for the pool axis). [`Deserialize`] is
-/// NOT derived — a category is never authored directly; it is always DERIVED from a
-/// [`BodyPart`] via [`injury_category`](BodyPart::injury_category) (the weighting file
-/// still authors a per-side `body_part:`, which the loader maps to its category).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// derived (GTW-453) — a category is now AUTHORED directly as the `category:` field of an
+/// `.injury.ron` / `.weighting.ron` file, naming the shared pool the def / weighting
+/// routes into. A struck per-side [`BodyPart`] is still resolved to its category at the
+/// roll's lookup boundary via [`injury_category`](BodyPart::injury_category).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum InjuryCategory {
     /// The head pool — `head` injuries (Aim / Cool effects).
     Head,

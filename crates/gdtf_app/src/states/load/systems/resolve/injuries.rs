@@ -1,5 +1,5 @@
 //! GTW-437: builds the [`InjuryRegistry`] (name→def) AND the [`InjuryTables`]
-//! (per-`(body_part, severity)` weighted table) from the loaded `assets/content/injuries/`
+//! (per-`(category, severity)` weighted table) from the loaded `assets/content/injuries/`
 //! folder, plus the GTW-374 LIVE hot-reload that rebuilds BOTH on an edit to ANY
 //! member `*.injury.ron` OR `*.weighting.ron`.
 //!
@@ -116,10 +116,10 @@ pub(super) fn resolve_injuries(
 ///   skipped defensively.
 /// - **Key** each injury by its file STEM minus the `.injury` infix (so
 ///   `head/lost_eye.injury.ron` keys `lost_eye`), into the [`InjuryRegistry`].
-/// - **Validate** each def's authoritative [`body_part`](InjuryDef::body_part) category
-///   against the owning per-category subfolder name (`injuries/<category>/…`, GTW-440): a
+/// - **Validate** each def's authored [`category`](InjuryDef::category) against the owning
+///   per-category subfolder name (`injuries/<category>/…`, GTW-440 / GTW-453): a
 ///   cross-category mismatch only `warn!`s — the
-///   injury is STILL loaded using its own `body_part` field (the def is authoritative,
+///   injury is STILL loaded using its own `category` field (the def is authoritative,
 ///   the subfolder is organizational, design fork #10).
 /// - **Fold** every weighting file's three severity lists into the [`InjuryTables`],
 ///   resolving each row's key against the registry: an UNKNOWN key `warn!`s + is
@@ -164,7 +164,7 @@ fn build_injury_data(
             else {
                 continue;
             };
-            // Validate the def's authoritative body_part against the owning subfolder
+            // Validate the def's authored category against the owning subfolder
             // (organizational only): a mismatch WARNs but the injury is still loaded.
             warn_on_subfolder_mismatch(&path_str, &stem, def);
             registry.insert(InjuryName::new(stem), (**def).clone());
@@ -184,7 +184,7 @@ fn build_injury_data(
     Some((registry, tables))
 }
 
-/// Fold the authored per-part [`InjuryWeighting`]s into the [`InjuryTables`], resolving
+/// Fold the authored per-category [`InjuryWeighting`]s into the [`InjuryTables`], resolving
 /// each row's key against the registry (unknown → WARN + skip) and canonically sorting
 /// the surviving rows so folder-enumeration order can never change the roll (GTW-437).
 fn build_tables(registry: &InjuryRegistry, weightings: &[InjuryWeighting]) -> InjuryTables {
@@ -223,7 +223,7 @@ fn build_tables(registry: &InjuryRegistry, weightings: &[InjuryWeighting]) -> In
             });
             if !resolved.is_empty() {
                 tables.insert(
-                    weighting.body_part,
+                    weighting.category,
                     severity,
                     WeightedInjuryTable::new(resolved),
                 );
@@ -238,13 +238,13 @@ fn build_tables(registry: &InjuryRegistry, weightings: &[InjuryWeighting]) -> In
 fn audit_unweighted_injuries(registry: &InjuryRegistry, tables: &InjuryTables) {
     for (key, def) in registry.iter() {
         let weighted = tables
-            .table(def.body_part, def.severity)
+            .table_for_category(def.category, def.severity)
             .is_some_and(|table| table.iter().any(|row| row.injury == *key));
         if !weighted {
             warn!(
                 "GDTF Load: injury {:?} ({:?}/{:?}) is in no weighting table; it can \
                  never be rolled",
-                &**key, def.body_part, def.severity,
+                &**key, def.category, def.severity,
             );
         }
     }
@@ -356,28 +356,26 @@ fn injury_key_from_stem(stem: &str) -> String {
     stem.strip_suffix(".injury").unwrap_or(stem).to_owned()
 }
 
-/// `warn!` if a loaded injury's authoritative [`body_part`](InjuryDef::body_part)
-/// resolves to a DIFFERENT [`InjuryCategory`](gdtf_battle_sim::armor::InjuryCategory)
-/// than the per-category subfolder it lives in (`injuries/<category>/<key>.injury.ron`,
-/// GTW-440).
+/// `warn!` if a loaded injury's authored [`category`](InjuryDef::category) differs from
+/// the [`InjuryCategory`](gdtf_battle_sim::armor::InjuryCategory) the per-category
+/// subfolder it lives in names (`injuries/<category>/<key>.injury.ron`, GTW-440 / GTW-453).
 ///
-/// The subfolder is ORGANIZATIONAL only — the def's own `body_part` field is
-/// authoritative (design fork #10) — so a mismatch is a content-authoring smell worth a
-/// warning, NEVER a load failure: the injury is still loaded using its own field. Since
-/// GTW-440 the folders are per-CATEGORY (`head` / `torso` / `arm` / `leg`), so the
-/// comparison is against the def's category — a `LeftArm`-declared injury living under
-/// `arm/` is consistent (both resolve to `Arm`), only a cross-category misfile WARNs.
+/// The subfolder is ORGANIZATIONAL only — the def's own `category` field is authoritative
+/// (design fork #10) — so a mismatch is a content-authoring smell worth a warning, NEVER a
+/// load failure: the injury is still loaded under its own field. Since GTW-440 the folders
+/// are per-CATEGORY (`head` / `torso` / `arm` / `leg`); GTW-453 authors the category
+/// DIRECTLY, so the comparison is the def's `category` against the subfolder's — an
+/// `Arm`-declared injury under `arm/` is consistent, only a cross-category misfile WARNs.
 fn warn_on_subfolder_mismatch(path_str: &str, key: &str, def: &InjuryDef) {
     let Some(subfolder) = subfolder_injury_category(path_str) else {
         // No recognised per-category subfolder (e.g. a flat layout) — nothing to compare.
         return;
     };
-    let def_category = def.body_part.injury_category();
-    if subfolder != def_category {
+    if subfolder != def.category {
         warn!(
-            "GDTF Load: injury {key:?} declares body_part {:?} (category {:?}) but lives in \
-             the {:?} subfolder; loading it under its authoritative field ({:?})",
-            def.body_part, def_category, subfolder, def.body_part,
+            "GDTF Load: injury {key:?} declares category {:?} but lives in the {:?} \
+             subfolder; loading it under its authoritative field ({:?})",
+            def.category, subfolder, def.category,
         );
     }
 }

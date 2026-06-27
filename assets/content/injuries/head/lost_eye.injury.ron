@@ -3,7 +3,7 @@
 // KEY = file stem minus `.injury` => `lost_eye`.
 (
     name:         "Lost Eye",                     // display InjuryName (inspect-panel label)
-    body_part:    Head,                           // authoritative; must match the owning subfolder
+    category:     Head,                           // routes into the Head category pool; matches the owning subfolder
     severity:     Critical,                       // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "LOST EYE",                     // -> floating combat text (FCT)
     log_text:     "loses an eye",                 // -> combat log line ("<name> loses an eye")

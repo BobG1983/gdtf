@@ -4,7 +4,7 @@
 // projector clamps current via min). KEY = stem minus `.injury` => `fractured_sternum`.
 (
     name:         "Fractured Sternum",                       // display InjuryName (inspect-panel label)
-    body_part:    Torso,                                     // routes into the Torso category pool
+    category:     Torso,                                     // routes into the Torso category pool; matches the owning subfolder
     severity:     Major,                                     // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "STERNUM FRACTURED",                       // -> floating combat text (FCT)
     log_text:     "fractures its sternum",                   // -> combat log line

@@ -4,7 +4,7 @@
 // Authored order does NOT affect determinism (entries are canonically sorted at build).
 // Head injuries key to the Aim / Cool stat map (resolution.md injury tables).
 (
-    body_part: Head,                                       // routes into the Head category pool
+    category: Head,                                        // the Head category this file weights
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "scalp_graze", weight: 10),               // -1 Cool
         (injury: "broken_nose", weight: 8),                // -1 Aim

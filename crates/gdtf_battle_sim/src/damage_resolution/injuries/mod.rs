@@ -2,7 +2,7 @@
 //! (`docs/combat/resolution.md` injury tables).
 //!
 //! When a ganger takes a non-graze, non-fatal wound, the game rolls a named
-//! **injury** from a weighted per-`(body_part, severity)` table and applies its
+//! **injury** from a weighted per-`(category, severity)` table and applies its
 //! effects for the rest of the battle (carried forward on the roster). THIS slice
 //! (GTW-435) is **only the types** — the vocabulary every later slice builds on; it
 //! adds NO loader, NO runtime system, NO RNG draw, NO presenter (those are
@@ -20,7 +20,7 @@
 //! - [`InjuryDef`] / [`PostHeal`] ([`def`]) — the authored per-injury record and its
 //!   parsed-but-unread post-heal placeholder.
 //! - [`InjuryWeighting`] / [`WeightedInjuryEntry`] / [`InjuryWeight`] /
-//!   [`WeightedInjuryTable`] ([`weighting`]) — the authored per-part weighting file
+//!   [`WeightedInjuryTable`] ([`weighting`]) — the authored per-category weighting file
 //!   and the built per-bucket table.
 //! - [`RolledInjury`] / [`GainedInjury`] ([`rolled`]) — the in-fold roll verdict and
 //!   the persistent ledger entry.
@@ -29,7 +29,7 @@
 //!   its per-stat summed-delta store, and its bleed accrual.
 //! - [`InjuryRegistry`] ([`registry`]) — the name→[`InjuryDef`] map the GTW-437 loader
 //!   builds from the loaded `*.injury.ron` files.
-//! - [`InjuryTables`] ([`tables`]) — the per-`(body_part, severity)`
+//! - [`InjuryTables`] ([`tables`]) — the per-`(category, severity)`
 //!   [`WeightedInjuryTable`] map the GTW-437 loader builds from the `*.weighting.ron`
 //!   files (canonically sorted, so the roll is enumeration-order-independent).
 //!

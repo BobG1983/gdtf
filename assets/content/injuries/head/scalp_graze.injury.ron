@@ -3,7 +3,7 @@
 // KEY = file stem minus `.injury` => `scalp_graze`.
 (
     name:         "Scalp Graze",                 // display InjuryName (inspect-panel label)
-    body_part:    Head,                          // authoritative; must match the owning subfolder
+    category:     Head,                          // routes into the Head category pool; matches the owning subfolder
     severity:     Minor,                         // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "SCALP GRAZE",                 // -> floating combat text (FCT)
     log_text:     "is grazed across the scalp",  // -> combat log line

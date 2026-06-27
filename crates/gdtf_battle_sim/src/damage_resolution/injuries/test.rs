@@ -14,7 +14,7 @@ use super::{
     WeightedInjuryEntry, WeightedInjuryTable, roll_injury,
 };
 use crate::{
-    armor::BodyPart,
+    armor::{BodyPart, InjuryCategory},
     rng::{BattleSeed, InjuryRng},
     severity::Severity,
 };
@@ -149,7 +149,7 @@ fn disable_hand_effect_deserializes_from_ron() {
     // from the same effects Vec — the .injury.ron shape the hand-disabling injuries use.
     let ron = r#"(
         name:         "Shattered Left Hand",
-        body_part:    LeftArm,
+        category:     Arm,
         severity:     Major,
         popup_text:   "LEFT HAND SHATTERED",
         log_text:     "shatters a hand",
@@ -167,7 +167,7 @@ fn disable_hand_effect_deserializes_from_ron() {
     let Ok(def) = parsed else {
         return;
     };
-    assert_eq!(def.body_part, BodyPart::LeftArm);
+    assert_eq!(def.category, InjuryCategory::Arm);
     assert!(matches!(def.effects[0], InjuryEffect::DisableHand));
     assert!(matches!(
         def.effects[1],
@@ -286,7 +286,7 @@ fn movement_cost_mul_deserializes_from_ron() {
     // shape the Hampered leg injuries use (the authored factor is a bare RON number).
     let ron = r#"(
         name:         "Shattered Knee",
-        body_part:    LeftLeg,
+        category:     Leg,
         severity:     Major,
         popup_text:   "KNEE SHATTERED",
         log_text:     "shatters a knee",
@@ -304,7 +304,7 @@ fn movement_cost_mul_deserializes_from_ron() {
     let Ok(def) = parsed else {
         return;
     };
-    assert_eq!(def.body_part, BodyPart::LeftLeg);
+    assert_eq!(def.category, InjuryCategory::Leg);
     assert!(matches!(def.effects[0], InjuryEffect::MovementCostMul(_)));
 }
 
@@ -439,7 +439,7 @@ fn injury_def_deserializes_from_the_schema_ron() {
     // no pinned tunable magnitudes — assert the SHAPE, not specific weights/amounts).
     let ron = r#"(
         name:         "Lost Eye",
-        body_part:    Head,
+        category:     Head,
         severity:     Critical,
         popup_text:   "LOST EYE",
         log_text:     "loses an eye",
@@ -460,7 +460,7 @@ fn injury_def_deserializes_from_the_schema_ron() {
         return;
     };
 
-    assert_eq!(def.body_part, BodyPart::Head);
+    assert_eq!(def.category, InjuryCategory::Head);
     assert_eq!(def.severity, Severity::Critical);
     assert_eq!(def.post_heal, PostHeal::Deferred);
     assert_eq!(def.effects.len(), 2);
@@ -486,7 +486,7 @@ fn injury_def_post_heal_defaults_to_deferred_when_omitted() {
     // post_heal is parsed-but-unread (C4): a floor file may omit it entirely.
     let ron = r#"(
         name:         "Scalp Graze",
-        body_part:    Head,
+        category:     Head,
         severity:     Minor,
         popup_text:   "SCALP GRAZE",
         log_text:     "is grazed across the scalp",
@@ -527,7 +527,7 @@ fn one_injury_table(
     let name = InjuryName::new(key.to_owned());
     let def = InjuryDef {
         name: name.clone(),
-        body_part: part,
+        category: part.injury_category(),
         severity,
         popup_text: PopupText::new("HURT".to_owned()),
         log_text: LogText::new("is hurt".to_owned()),
@@ -541,7 +541,7 @@ fn one_injury_table(
     let registry = InjuryRegistry::new([(name.clone(), def)]);
     let mut tables = InjuryTables::default();
     tables.insert(
-        part,
+        part.injury_category(),
         severity,
         WeightedInjuryTable::new(vec![WeightedInjuryEntry::new(name, InjuryWeight::new(10))]),
     );
@@ -678,16 +678,16 @@ fn roll_injury_is_deterministic_for_a_fixed_seed() {
 // ── GTW-440: per-CATEGORY pool resolution (C1 / C5a) + side-from-part (C3 / C5b) ──
 
 /// Build a single-entry catalog whose ONE injury key is authored into the ARM category
-/// (its def's `body_part` is `LeftArm`, which collapses to the `Arm` pool) — so a roll
-/// keyed by EITHER arm must resolve this same shared entry. The injury carries a
-/// `DisableHand` so the rolled verdict can be folded to prove the side-from-part mapping.
+/// (its def's `category` is `Arm`) — so a roll keyed by EITHER arm must resolve this same
+/// shared entry. The injury carries a `DisableHand` so the rolled verdict can be folded to
+/// prove the side-from-part mapping.
 fn shared_arm_table(key: &str) -> (InjuryRegistry, InjuryTables) {
     let name = InjuryName::new(key.to_owned());
     let def = InjuryDef {
         name:         name.clone(),
-        // Authored on ONE side; the pool is the shared Arm category, and the rolled
-        // verdict's `part` comes from the STRUCK side, not this field (GTW-440 C3).
-        body_part:    BodyPart::LeftArm,
+        // Authored into the shared Arm category (NOT a side); the rolled verdict's `part`
+        // comes from the STRUCK side, not this field (GTW-440 C3 / GTW-453).
+        category:     InjuryCategory::Arm,
         severity:     Severity::Major,
         popup_text:   PopupText::new("HAND SHATTERED".to_owned()),
         log_text:     LogText::new("shatters a hand".to_owned()),
@@ -697,10 +697,10 @@ fn shared_arm_table(key: &str) -> (InjuryRegistry, InjuryTables) {
     };
     let registry = InjuryRegistry::new([(name.clone(), def)]);
     let mut tables = InjuryTables::default();
-    // Insert keyed by ONE arm side; `InjuryTables::insert` collapses it to the Arm
-    // category bucket, so a `RightArm` lookup resolves the SAME table.
+    // Insert keyed by the shared Arm category bucket, so a lookup from EITHER arm side
+    // (`LeftArm` / `RightArm`) resolves the SAME table.
     tables.insert(
-        BodyPart::LeftArm,
+        InjuryCategory::Arm,
         Severity::Major,
         WeightedInjuryTable::new(vec![WeightedInjuryEntry::new(name, InjuryWeight::new(10))]),
     );
@@ -757,11 +757,11 @@ fn left_and_right_arm_sample_the_same_shared_arm_pool() {
 fn disable_hand_side_comes_from_struck_part_not_the_file() {
     // C5(b) — THE SIDE-FROM-PART PIN: a `DisableHand` rolled on LeftArm disables the LEFT
     // hand, the SAME def rolled on RightArm disables the RIGHT hand — even though BOTH draw
-    // from the ONE shared Arm pool whose def authors `body_part: LeftArm`. The rolled
-    // verdict's `part` is the STRUCK side, so folding it disables the correct hand.
-    // Pin-discriminating: if the side were taken from the file/def's `body_part` (LeftArm)
-    // instead of the struck part, the RightArm roll would still disable the LEFT hand and
-    // the two ledgers below would be identical — this test would FAIL.
+    // from the ONE shared Arm pool whose def authors `category: Arm` (side-agnostic). The
+    // rolled verdict's `part` is the STRUCK side, so folding it disables the correct hand.
+    // Pin-discriminating: if the side were taken from the def's authored `category` (Arm,
+    // which has no side) instead of the struck part, neither roll could distinguish left
+    // from right and the two ledgers below would be identical — this test would FAIL.
     let (registry, tables) = shared_arm_table("shattered_hand");
 
     // Roll on the LEFT arm, fold the verdict, then roll on the RIGHT arm and fold it onto a
@@ -790,7 +790,7 @@ fn disable_hand_side_comes_from_struck_part_not_the_file() {
         return;
     };
 
-    // The rolled verdict records the STRUCK side, not the def's `body_part`.
+    // The rolled verdict records the STRUCK side, not the def's `category`.
     assert_eq!(
         left_rolled.part,
         BodyPart::LeftArm,
@@ -799,7 +799,7 @@ fn disable_hand_side_comes_from_struck_part_not_the_file() {
     assert_eq!(
         right_rolled.part,
         BodyPart::RightArm,
-        "the rolled verdict's part is the struck RIGHT arm (not the def's LeftArm body_part)",
+        "the rolled verdict's part is the struck RIGHT arm (not the def's side-agnostic Arm category)",
     );
 
     // Fold ONLY the left-arm injury onto one ledger: the LEFT hand is disabled, the right
@@ -838,7 +838,7 @@ fn leg_movement_cost_mul_yields_a_hampered_factor_above_one() {
     let name = InjuryName::new("hampered_leg".to_owned());
     let def = InjuryDef {
         name:         name.clone(),
-        body_part:    BodyPart::LeftLeg,
+        category:     InjuryCategory::Leg,
         severity:     Severity::Major,
         popup_text:   PopupText::new("HAMPERED".to_owned()),
         log_text:     LogText::new("is hampered".to_owned()),
@@ -849,7 +849,7 @@ fn leg_movement_cost_mul_yields_a_hampered_factor_above_one() {
     let registry = InjuryRegistry::new([(name.clone(), def)]);
     let mut tables = InjuryTables::default();
     tables.insert(
-        BodyPart::LeftLeg,
+        InjuryCategory::Leg,
         Severity::Major,
         WeightedInjuryTable::new(vec![WeightedInjuryEntry::new(name, InjuryWeight::new(10))]),
     );

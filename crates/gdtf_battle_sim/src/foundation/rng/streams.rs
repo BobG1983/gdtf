@@ -272,7 +272,7 @@ impl_sim_stream!(
     /// The **in-battle injury-roll** RNG stream.
     ///
     /// Draw site: the `fold_ganger` damage fold calls `roll_injury` to pick a named
-    /// condition from the weighted `(body_part, severity)` table once per non-graze,
+    /// condition from the weighted `(category, severity)` table once per non-graze,
     /// non-fatal wound (GTW-437 / GTW-438). The stream is labelled `injury.v1` and
     /// seeded at battle setup alongside the other streams so its cursor is pinned from
     /// frame 0 — adding or reordering other streams cannot perturb its seed (the

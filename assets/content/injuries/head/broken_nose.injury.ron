@@ -3,7 +3,7 @@
 // injury tables); a Minor is a LIGHT debuff. KEY = stem minus `.injury` => `broken_nose`.
 (
     name:         "Broken Nose",                 // display InjuryName (inspect-panel label)
-    body_part:    Head,                          // routes into the Head category pool
+    category:     Head,                          // routes into the Head category pool; matches the owning subfolder
     severity:     Minor,                         // Minor | Major | Critical (None/Fatal never tabled)
     popup_text:   "NOSE BROKEN",                 // -> floating combat text (FCT)
     log_text:     "takes a broken nose",         // -> combat log line ("<name> takes a broken nose")

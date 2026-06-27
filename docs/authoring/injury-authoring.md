@@ -33,12 +33,12 @@ the category via `BodyPart::injury_category()`.
 `arm/shattered_hand.injury.ron` → key `"shattered_hand"`. The key must be
 unique across ALL four category folders (the registry is flat).
 
-**`body_part:` field vs. subfolder:** the `body_part:` authored in the file is
-AUTHORITATIVE — the subfolder is only organizational. A mismatch between the def's
-category and the subfolder produces a `warn!` at load time but does not fail the load.
-Use a `LeftArm` / `RightArm` part to route into the `arm/` pool, and a `LeftLeg` /
-`RightLeg` part to route into the `leg/` pool (the loader maps each to its category
-via `injury_category()`).
+**`category:` field vs. subfolder:** the `category:` authored in the file EQUALS the
+subfolder name by construction — `arm/` → `Arm`, `leg/` → `Leg`, `head/` → `Head`,
+`torso/` → `Torso`. A mismatch between the def's category and its subfolder produces
+a `warn!` at load time but does not fail the load. Authors set the category directly
+(e.g. `category: Leg`) — there is no per-side routing (`LeftLeg` / `RightLeg`) in
+the authored field.
 
 ### 1b. The `.injury.ron` schema — every field with per-line comments
 
@@ -49,7 +49,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 // KEY = file stem minus `.injury` => `twisted_ankle`
 (
     name:         "Twisted Ankle",                              // display InjuryName (inspect-panel label)
-    body_part:    LeftLeg,                                      // routes into the shared Leg pool (LeftLeg or RightLeg -> Leg category)
+    category:     Leg,                                          // routes into the Leg category pool; matches the owning subfolder
     severity:     Minor,                                        // Minor | Major | Critical  (None/Fatal are never tabled)
     popup_text:   "ANKLE TWISTED",                             // floating combat text (FCT) shown on infliction
     log_text:     "twists an ankle",                           // combat-log clause ("<name> twists an ankle")
@@ -67,7 +67,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 | Field | Type | Notes |
 |-------|------|-------|
 | `name` | `InjuryName` (quoted string) | Display label; side-agnostic for shared-pool injuries |
-| `body_part` | `BodyPart` enum | Authoritative pool routing: `Head`, `Torso`, `LeftArm`, `RightArm`, `LeftLeg`, `RightLeg` |
+| `category` | `InjuryCategory` enum | Authoritative pool routing — must match the owning subfolder: `Head`, `Torso`, `Arm`, `Leg` |
 | `severity` | `Severity` enum | `Minor` / `Major` / `Critical` only — `None` and `Fatal` are never authored |
 | `popup_text` | `PopupText` (quoted string) | FCT line shown on infliction |
 | `log_text` | `LogText` (quoted string) | Combat-log clause |
@@ -98,7 +98,7 @@ rollable, add it to the appropriate bucket in the matching file:
 ```ron
 // assets/content/injuries/weighting/leg.weighting.ron (abbreviated)
 (
-    body_part: LeftLeg,            // routes into the Leg category pool
+    category: Leg,                 // routes into the Leg category pool; matches the owning subfolder
     minor: [
         (injury: "twisted_ankle",  weight: 8),   // ADD your new injury here
         // ... other minor entries
@@ -118,8 +118,10 @@ rollable, add it to the appropriate bucket in the matching file:
 - An injury registered but unreferenced by any bucket `warn!`s (it can never be
   rolled) — also never a crash.
 
-**How a per-side part maps to the category pool:**
-`BodyPart::injury_category()` in `crates/gdtf_battle_sim/src/equipment/armor/stats.rs`:
+**How the struck part maps to the category pool (roll lookup boundary):**
+`BodyPart::injury_category()` in `crates/gdtf_battle_sim/src/equipment/armor/stats.rs`
+maps the per-side struck part (recorded on the `GainedInjury`) to the shared category
+bucket used for the table lookup:
 
 ```
 LeftArm  / RightArm  -> InjuryCategory::Arm
@@ -128,9 +130,10 @@ Head                 -> InjuryCategory::Head
 Torso                -> InjuryCategory::Torso
 ```
 
-The weighting file authors a `body_part:` (`LeftArm` or `LeftLeg` conventionally) that
-the loader maps to its category. Both arms / both legs then draw from the same built
-`(Arm, severity)` / `(Leg, severity)` bucket.
+This is the struck-part → category mapping used at roll time, not the authored field.
+Both arms / both legs draw from the same built `(Arm, severity)` / `(Leg, severity)`
+bucket. The weighting file authors a `category: (Head/Torso/Arm/Leg)` directly — no
+per-side `BodyPart` is needed in the authored schema.
 
 ---
 
@@ -264,10 +267,11 @@ with one arm disabled cannot fire a two-handed weapon.
 flows through the normal modifier layer while `DisableHand` only gates two-handed fire.
 
 **Side-from-part (GTW-440 C3):** the def at `arm/shattered_hand.injury.ron` is
-side-agnostic (`body_part: LeftArm` routes it into the Arm pool). When a wound rolls
+side-agnostic (`category: Arm` routes it into the Arm pool). When a wound rolls
 `RightArm`, `RolledInjury` is stamped with `part: RightArm` — so the `DisableHand`
-disables the RIGHT hand, even though the def was authored with `LeftArm`. The def's
-`body_part` only routes the pool; the struck side is authoritative.
+disables the RIGHT hand, even though the def was authored with `category: Arm`. The
+def's `category` only routes the pool; the struck side (a per-side `BodyPart` on the
+gained injury) is authoritative.
 
 ---
 
