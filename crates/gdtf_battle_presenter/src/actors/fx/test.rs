@@ -54,7 +54,7 @@ fn test_shooter() -> bevy::ecs::entity::Entity {
 /// damage-type rows must not share one directional strip.
 #[test]
 fn shipped_effect_roles_ron_parses_with_all_roles() {
-    const SHIPPED: &str = include_str!("../../../../../assets/tiles/effect_roles.ron");
+    const SHIPPED: &str = include_str!("../../../../../assets/sprites/effect_roles.spritedef.ron");
     let parsed: Result<EffectRoles, _> = ron::de::from_str(SHIPPED);
     assert!(
         parsed.is_ok(),
@@ -94,7 +94,7 @@ fn shipped_effect_roles_ron_parses_with_all_roles() {
 /// MECHANISM the contract requires built across the enum (only Kinetic ships in data today).
 #[test]
 fn fx_for_resolves_every_damage_type_to_a_full_row() {
-    const SHIPPED: &str = include_str!("../../../../../assets/tiles/effect_roles.ron");
+    const SHIPPED: &str = include_str!("../../../../../assets/sprites/effect_roles.spritedef.ron");
     let parsed: Result<EffectRoles, _> = ron::de::from_str(SHIPPED);
     assert!(
         parsed.is_ok(),

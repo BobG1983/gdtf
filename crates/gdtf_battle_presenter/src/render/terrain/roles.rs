@@ -30,7 +30,7 @@ impl TileIndex {
 
 /// The DATA-DRIVEN terrain tile-role table — each terrain ROLE → its [`TileIndex`].
 ///
-/// Loaded from the loose `assets/tiles/tile_roles.ron` through the generic
+/// Loaded from the loose `assets/sprites/tile_roles.spritedef.ron` through the generic
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned
 /// [`TileRoles`] resource before battle time (see [`resolve_tile_roles`]). Every index
 /// is data the engineer eyeballs against the sheet and may adjust — nothing about the
@@ -72,7 +72,7 @@ pub struct TileRoles {
     /// A collapsed floor/roof slab arguably wants a DISTINCT visual — a hole punched
     /// through to the level below, a cracked/shattered deck, or a scorch — rather than the
     /// generic ground-debris scatter. Flag for art to author a dedicated destroyed-slab
-    /// tile and re-point this index in `assets/tiles/tile_roles.ron`.
+    /// tile and re-point this index in `assets/sprites/tile_roles.spritedef.ron`.
     pub slab_destroyed:  TileIndex,
     /// A doorway / hatch tile (authored for future variety).
     pub door:            TileIndex,
@@ -101,7 +101,7 @@ pub struct TileRoles {
 }
 
 /// The path of the loose tile-role RON, relative to the asset source root.
-const TILE_ROLES_RON_PATH: &str = "tiles/tile_roles.ron";
+const TILE_ROLES_RON_PATH: &str = "sprites/tile_roles.spritedef.ron";
 
 /// The in-flight handle to the tile-role RON, held until it resolves into [`TileRoles`].
 ///
@@ -121,7 +121,7 @@ impl TileRolesHandle {
 
 /// `Startup`: kick off the `tile_roles.ron` load, storing its typed handle.
 ///
-/// Loads `tiles/tile_roles.ron` as a [`RonAsset<TileRoles>`](gdtf_assets::RonAsset)
+/// Loads `sprites/tile_roles.spritedef.ron` as a [`RonAsset<TileRoles>`](gdtf_assets::RonAsset)
 /// through the generic GTW-136 loader and inserts the [`TileRolesHandle`] the
 /// [`resolve_tile_roles`] poll system reads. Takes `Option<Res<AssetServer>>` so a
 /// `MinimalPlugins` headless app with no [`AssetServer`] no-ops rather than panicking
@@ -220,7 +220,7 @@ pub fn redrive_tile_roles_on_asset_event(
     *roles = (**updated).clone();
     // GTW-374 Part C convention: log EVERY hot-reload path naming what reloaded, so a live
     // tile-role edit can be traced (mirrors the FX / combat / theme handlers).
-    info!("tile hot-reload: re-resolved TileRoles from `tiles/tile_roles.ron`");
+    info!("tile hot-reload: re-resolved TileRoles from `sprites/tile_roles.spritedef.ron`");
 }
 
 #[cfg(test)]

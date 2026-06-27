@@ -13,7 +13,7 @@ use super::{active_level::ActiveLevel, draw::i32_extent, roles::TileRoles};
 /// distinctness check is a light structural guard, not a magnitude pin.
 #[test]
 fn shipped_tile_roles_ron_parses_with_all_roles() {
-    const SHIPPED: &str = include_str!("../../../../../assets/tiles/tile_roles.ron");
+    const SHIPPED: &str = include_str!("../../../../../assets/sprites/tile_roles.spritedef.ron");
     let parsed: Result<TileRoles, _> = ron::de::from_str(SHIPPED);
     // Parsing into TileRoles proves every documented role is present (a missing
     // field would be a deserialize error). Assert the parse succeeded; if not,
@@ -120,7 +120,7 @@ fn tile_roles_field_set_is_discriminating() {
 /// this checks STRUCTURE survives a serialize round-trip, those check the chosen indices.
 #[test]
 fn shipped_tile_roles_round_trips_by_identity() {
-    const SHIPPED: &str = include_str!("../../../../../assets/tiles/tile_roles.ron");
+    const SHIPPED: &str = include_str!("../../../../../assets/sprites/tile_roles.spritedef.ron");
     let first: Result<TileRoles, _> = ron::de::from_str(SHIPPED);
     assert!(
         first.is_ok(),

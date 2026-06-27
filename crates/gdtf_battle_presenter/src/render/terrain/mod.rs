@@ -6,7 +6,7 @@
 //! [`SurfaceGrid`](gdtf_battle_sim::SurfaceGrid) slabs — for the presenter-owned
 //! [`ActiveLevel`] and spawns one 16x16 top-down terrain [`Sprite`](bevy::sprite::Sprite) per non-empty
 //! `(cell, level)`, choosing each tile's atlas index from a DATA-DRIVEN role table
-//! ([`TileRoles`], loaded from `assets/tiles/tile_roles.ron`). It positions each
+//! ([`TileRoles`], loaded from `assets/sprites/tile_roles.spritedef.ron`). It positions each
 //! sprite via the S3 [`cell_to_world`](crate::cell_to_world) projection through the
 //! S3 sprite-sizing recipe (`custom_size: Some(Vec2::splat(CELL_PX))`).
 //!

@@ -1,6 +1,6 @@
 // GDTF terrain tile-role table — DATA-DRIVEN atlas indices for the GTW-48 top-down
 // battlefield draw (S4 / GTW-218). Maps each terrain ROLE to a TileIndex into
-// assets/tiles/alt_tileset_terrain.png (16x22 = 352 tiles; index = row*16 + col,
+// assets/sprites/alt_tileset_terrain.png (16x22 = 352 tiles; index = row*16 + col,
 // 0-based row-major). Edit freely — every field is a tunable index, hot-swappable
 // through the same RonAsset<T> loader the theme / situation / tuning use; nothing
 // about the index choices is hardcoded in Rust. Indices eyeballed against

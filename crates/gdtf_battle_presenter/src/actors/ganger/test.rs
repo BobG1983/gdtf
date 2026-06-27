@@ -108,7 +108,8 @@ fn base_for_resolves_factions_and_falls_back() {
 /// visibly-distinct-actors guarantee, asserted structurally (not a magnitude pin).
 #[test]
 fn shipped_character_roles_ron_parses_with_distinct_factions() {
-    const SHIPPED: &str = include_str!("../../../../../assets/tiles/character_roles.ron");
+    const SHIPPED: &str =
+        include_str!("../../../../../assets/sprites/character_roles.spritedef.ron");
     let parsed: Result<CharacterRoles, _> = ron::de::from_str(SHIPPED);
     assert!(
         parsed.is_ok(),

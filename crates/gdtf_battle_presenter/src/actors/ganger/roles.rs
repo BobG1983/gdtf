@@ -10,7 +10,7 @@ use crate::TileIndex;
 /// The DATA-DRIVEN per-faction base actor table — each faction (gang) -> its base
 /// [`TileIndex`] into the character sheet.
 ///
-/// Loaded from the loose `assets/tiles/character_roles.ron` through the generic
+/// Loaded from the loose `assets/sprites/character_roles.spritedef.ron` through the generic
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned
 /// [`CharacterRoles`] resource before battle time (see [`resolve_character_roles`]),
 /// exactly mirroring the S4 `tile_roles.ron` / `load_tile_roles` / `resolve_tile_roles`
@@ -52,7 +52,7 @@ impl CharacterRoles {
 }
 
 /// The path of the loose character-role RON, relative to the asset source root.
-const CHARACTER_ROLES_RON_PATH: &str = "tiles/character_roles.ron";
+const CHARACTER_ROLES_RON_PATH: &str = "sprites/character_roles.spritedef.ron";
 
 /// The in-flight handle to the character-role RON, held until it resolves into
 /// [`CharacterRoles`].
@@ -74,7 +74,7 @@ impl CharacterRolesHandle {
 
 /// `Startup`: kick off the `character_roles.ron` load, storing its typed handle.
 ///
-/// Loads `tiles/character_roles.ron` as a
+/// Loads `sprites/character_roles.spritedef.ron` as a
 /// [`RonAsset<CharacterRoles>`](gdtf_assets::RonAsset) through the generic GTW-136 loader
 /// and inserts the [`CharacterRolesHandle`] the [`resolve_character_roles`] poll system
 /// reads — the S4 [`load_tile_roles`](crate::load_tile_roles) precedent. Takes
@@ -179,7 +179,9 @@ pub fn redrive_character_roles_on_asset_event(
     *roles = (**updated).clone();
     // GTW-374 Part C convention: log EVERY hot-reload path naming what reloaded, so a live
     // character-role edit can be traced (mirrors the tile / FX / combat / theme handlers).
-    info!("character hot-reload: re-resolved CharacterRoles from `tiles/character_roles.ron`");
+    info!(
+        "character hot-reload: re-resolved CharacterRoles from `sprites/character_roles.spritedef.ron`"
+    );
 }
 
 #[cfg(test)]

@@ -2,7 +2,7 @@
 //!
 //! This module turns the three already-landed sim FX MESSAGES into short-lived 16x16
 //! FX sprites drawn from the effects sheet ([`SheetRole::Effects`](crate::SheetRole),
-//! `assets/tiles/alt_tileset_effects.png`):
+//! `assets/sprites/alt_tileset_effects.png`):
 //!
 //! - [`Bleeding`](gdtf_battle_sim::Bleeding) `{ ganger }` -> a blood/hit FLASH sprite at
 //!   the ganger's cell ([`read_bleeding`]); the flash's intensity is a RELATION to the
@@ -33,7 +33,7 @@
 //! sprite (NO coalescing this slice).
 //!
 //! WHICH effect tile each FX draws is DATA-DRIVEN: a per-line-commented
-//! `assets/tiles/effect_roles.ron`, loaded through the SAME generic
+//! `assets/sprites/effect_roles.spritedef.ron`, loaded through the SAME generic
 //! [`RonAsset<T>`](gdtf_assets::RonAsset) loader S4's `tile_roles.ron` uses, mapping each FX
 //! to a [`TileIndex`](crate::TileIndex). Nothing about the index choices is hardcoded in
 //! Rust.

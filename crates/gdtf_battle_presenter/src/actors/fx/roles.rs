@@ -8,7 +8,7 @@ use serde::Deserialize;
 use crate::TileIndex;
 
 /// How many compass directions the directional-shot strip carries — the 8-way
-/// rose `assets/tiles/alt_tileset_effects.png` authors per damage-type row.
+/// rose `assets/sprites/alt_tileset_effects.png` authors per damage-type row.
 ///
 /// A `const`, NOT a domain newtype (the framework-plumbing carve-out,
 /// `.claude/rules/no-bare-types.md` clause 4): a fixed array LENGTH, the same
@@ -63,7 +63,7 @@ pub const COMPASS_DIRECTIONS: [Vec2; DIRECTION_COUNT] = {
 /// One damage type's directional-shot + impact FX tiles — the per-row payload of
 /// the per-damage-type FX model.
 ///
-/// Each authored row of `assets/tiles/alt_tileset_effects.png` (cols 0..8 the
+/// Each authored row of `assets/sprites/alt_tileset_effects.png` (cols 0..8 the
 /// 8-way directional projectile rose, cols 8..11 the 3-frame impact animation)
 /// resolves into one of these: [`directions`](DamageTypeFx::directions) indexes
 /// the directional projectile tile by [`COMPASS_DIRECTIONS`] column, and
@@ -88,7 +88,7 @@ pub struct DamageTypeFx {
 /// The DATA-DRIVEN FX tile-role table — the per-damage-type projectile/impact FX
 /// plus the three legacy consequence-flash tiles.
 ///
-/// Loaded from the loose `assets/tiles/effect_roles.ron` through the generic
+/// Loaded from the loose `assets/sprites/effect_roles.spritedef.ron` through the generic
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned
 /// [`EffectRoles`] resource before battle time (see [`resolve_effect_roles`]),
 /// mirroring S4's `tile_roles.ron` / `load_tile_roles` / `resolve_tile_roles`.
@@ -196,7 +196,7 @@ pub fn nearest_direction_index(trajectory: Vec3) -> usize {
 }
 
 /// The path of the loose FX-role RON, relative to the asset source root.
-const EFFECT_ROLES_RON_PATH: &str = "tiles/effect_roles.ron";
+const EFFECT_ROLES_RON_PATH: &str = "sprites/effect_roles.spritedef.ron";
 
 /// The in-flight handle to the FX-role RON, held until it resolves into [`EffectRoles`].
 ///
@@ -217,7 +217,7 @@ impl EffectRolesHandle {
 
 /// `Startup`: kick off the `effect_roles.ron` load, storing its typed handle.
 ///
-/// Loads `tiles/effect_roles.ron` as a [`RonAsset<EffectRoles>`](gdtf_assets::RonAsset)
+/// Loads `sprites/effect_roles.spritedef.ron` as a [`RonAsset<EffectRoles>`](gdtf_assets::RonAsset)
 /// through the generic GTW-136 loader and inserts the [`EffectRolesHandle`] the
 /// [`resolve_effect_roles`] poll system reads. Takes `Option<Res<AssetServer>>` so a
 /// `MinimalPlugins` headless app with no [`AssetServer`] no-ops rather than panicking
@@ -328,7 +328,7 @@ pub fn redrive_effect_roles_on_asset_event(
     *roles = (**updated).clone();
     // GTW-374 Part C convention: log EVERY hot-reload path naming what reloaded, so a live
     // effect-role edit can be traced (mirrors the tile / character / combat / theme handlers).
-    info!("effect hot-reload: re-resolved EffectRoles from `tiles/effect_roles.ron`");
+    info!("effect hot-reload: re-resolved EffectRoles from `sprites/effect_roles.spritedef.ron`");
 }
 
 #[cfg(test)]

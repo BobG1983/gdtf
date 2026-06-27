@@ -1,6 +1,6 @@
 // GDTF character tile-role table — DATA-DRIVEN per-faction base actor indices for the
 // GTW-48 top-down ganger draw (S5 / GTW-219). Maps each faction (gang) to the BASE
-// TileIndex of its 4-frame actor in assets/tiles/alt_tileset_characters.png (16x18 =
+// TileIndex of its 4-frame actor in assets/sprites/alt_tileset_characters.png (16x18 =
 // 288 tiles; index = row*16 + col, 0-based row-major). Each actor is a contiguous run
 // of 4 cells (one 16-wide row = 4 actors); the drawn index is `base + facing_frame`,
 // where facing_frame is the 0..=3 column offset from the 8->4 facing map (col+0 LEFT/W,

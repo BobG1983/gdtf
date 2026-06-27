@@ -4,12 +4,12 @@
 //! This module reads the sim's per-field ganger components — [`Position`](gdtf_battle_sim::Position), [`Faction`](gdtf_battle_sim::Faction),
 //! [`Facing`](gdtf_battle_sim::Facing), [`Stance`](gdtf_battle_sim::Stance), [`Aiming`](gdtf_battle_sim::Aiming), [`LifeState`](gdtf_battle_sim::LifeState) — and mirrors each ganger as one
 //! 16x16 character [`Sprite`](bevy::sprite::Sprite) from the role-separated character sheet
-//! ([`SheetRole::Characters`](crate::SheetRole::Characters), `assets/tiles/alt_tileset_characters.png`). It is the
+//! ([`SheetRole::Characters`](crate::SheetRole::Characters), `assets/sprites/alt_tileset_characters.png`). It is the
 //! ganger arm of the change-driven sim->view mirror (ADR-0001): the presenter READS the
 //! sim and renders it, the sim never reads the presenter.
 //!
 //! WHICH actor tile a faction draws is DATA-DRIVEN — a per-faction base actor
-//! [`TileIndex`](crate::TileIndex) authored in `assets/tiles/character_roles.ron` and resolved into the
+//! [`TileIndex`](crate::TileIndex) authored in `assets/sprites/character_roles.spritedef.ron` and resolved into the
 //! [`CharacterRoles`] resource. HOW the sim's 8 facings collapse to the sheet's 4
 //! sprite frames is a pure, documented mapping ([`facing_frame`]) — the sheet ships 4
 //! frames per actor, not 8, so 8-direction sprite generation is not viable. The drawn

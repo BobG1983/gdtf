@@ -189,13 +189,13 @@ pub(super) fn z_for(level: Level) -> f32 {
 /// (the render sheets stay 16, the portrait sheet is 32).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SheetRole {
-    /// Terrain tiles — `tiles/alt_tileset_terrain.png` (the S4 draw sheet).
+    /// Terrain tiles — `sprites/alt_tileset_terrain.png` (the S4 draw sheet).
     Terrain,
-    /// Character tiles — `tiles/alt_tileset_characters.png` (the S5 draw sheet).
+    /// Character tiles — `sprites/alt_tileset_characters.png` (the S5 draw sheet).
     Characters,
-    /// Effect tiles — `tiles/alt_tileset_effects.png` (the S6 draw sheet).
+    /// Effect tiles — `sprites/alt_tileset_effects.png` (the S6 draw sheet).
     Effects,
-    /// Portrait faces — `tiles/alt_tileset_portraits.png` (the GTW-278 HUD sheet): a
+    /// Portrait faces — `sprites/alt_tileset_portraits.png` (the GTW-278 HUD sheet): a
     /// 10×10 grid of 32×32-px faces, indices `0..=99`. Read as a `bevy_ui` `ImageNode`
     /// atlas variant by the status / hover panels' shared stat block, NOT a world
     /// sprite (the UI layer, not the map). Unlike the render sheets its cells are 32 px
@@ -218,13 +218,17 @@ impl SheetRole {
     /// Loose-file path (relative to the asset source root) of this sheet's PNG.
     ///
     /// The path a working-dir-at-workspace-root app and a workspace-rooted test
-    /// both resolve to the shipped sheet.
-    const fn asset_path(self) -> &'static str {
+    /// both resolve to the shipped sheet. `pub` so integration tests can call the
+    /// SAME path the runtime `load_topdown_atlases` uses — the GTW-447 load-state
+    /// proof uses this to assert the new `sprites/` paths resolve to
+    /// `LoadState::Loaded`.
+    #[must_use]
+    pub const fn asset_path(self) -> &'static str {
         match self {
-            Self::Terrain => "tiles/alt_tileset_terrain.png",
-            Self::Characters => "tiles/alt_tileset_characters.png",
-            Self::Effects => "tiles/alt_tileset_effects.png",
-            Self::Portraits => "tiles/alt_tileset_portraits.png",
+            Self::Terrain => "sprites/alt_tileset_terrain.png",
+            Self::Characters => "sprites/alt_tileset_characters.png",
+            Self::Effects => "sprites/alt_tileset_effects.png",
+            Self::Portraits => "sprites/alt_tileset_portraits.png",
         }
     }
 

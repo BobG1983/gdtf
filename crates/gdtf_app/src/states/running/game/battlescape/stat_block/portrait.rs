@@ -27,7 +27,7 @@ use gdtf_battle_sim::GangerName;
 /// The number of distinct portrait faces in the
 /// [`SheetRole::Portraits`](gdtf_battle_presenter::SheetRole) sheet.
 ///
-/// The portrait atlas (`assets/tiles/alt_tileset_portraits.png`) is a 10×10 grid of
+/// The portrait atlas (`assets/sprites/alt_tileset_portraits.png`) is a 10×10 grid of
 /// 32×32-px faces — 100 indices, `0..=99`. The deterministic name → face mapping reduces
 /// modulo this count. A `const` (the layout fact, not a domain newtype — the
 /// framework-plumbing carve-out, `.claude/rules/no-bare-types.md` clause 4): it pairs the

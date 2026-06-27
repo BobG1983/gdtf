@@ -12,7 +12,7 @@ bevy = { workspace = true }
 # only lands the edge, mirroring the GTW-203 `gdtf_app -> gdtf_battle_sim`
 # "land the edge now, consume later" precedent.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
-# GTW-218 (S4): the DATA-DRIVEN tile-role table (`assets/tiles/tile_roles.ron`)
+# GTW-218 (S4): the DATA-DRIVEN tile-role table (`assets/sprites/tile_roles.spritedef.ron`)
 # loads through the generic `RonAsset<T>` loader, the same mechanism the theme /
 # situation / tuning use.
 gdtf_assets = { path = "../gdtf_assets" }

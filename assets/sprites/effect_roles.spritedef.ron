@@ -1,7 +1,7 @@
 // GDTF transient-FX tile-role table — DATA-DRIVEN atlas indices for the GTW-48
 // top-down FX draw (S6 / GTW-220), reshaped to the PER-DAMAGE-TYPE projectile +
 // 3-frame impact model in GTW-306. Maps each FX role to a TileIndex into
-// assets/tiles/alt_tileset_effects.png (the role-separated 16x8 = 128-tile effects
+// assets/sprites/alt_tileset_effects.png (the role-separated 16x8 = 128-tile effects
 // sheet; index = row*16 + col, 0-based row-major). Edit freely — every field is a
 // tunable index, hot-swappable through the same RonAsset<T> loader the theme /
 // situation / tuning / tile-roles use; nothing about the index choices is hardcoded

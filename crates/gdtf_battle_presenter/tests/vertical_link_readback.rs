@@ -172,7 +172,7 @@ fn render_tile(index: Option<usize>) -> Option<([u8; 4], u16)> {
         let image: Handle<Image> = app
             .world()
             .resource::<AssetServer>()
-            .load("tiles/alt_tileset_terrain.png");
+            .load("sprites/alt_tileset_terrain.png");
         let layout = TextureAtlasLayout::from_grid(
             UVec2::splat(TERRAIN_TILE_PX),
             TERRAIN_COLS,

@@ -25,7 +25,7 @@
 //! (the link's `from`/`to` order is authoring order, NOT a level ordering).
 //!
 //! Which kind maps to which ROLE is owned HERE; which atlas INDEX a role resolves to is
-//! data, read from the [`TileRoles`] resource (`assets/tiles/tile_roles.ron`) at draw
+//! data, read from the [`TileRoles`] resource (`assets/sprites/tile_roles.spritedef.ron`) at draw
 //! time — never a hardcoded literal. The model never reads the presenter (ADR-0001).
 //!
 //! # Hard-cut to the active storey (AC4)
@@ -216,7 +216,8 @@ mod tests {
     /// reads (the GTW-373 contract data), so a swapped up/down arm fails against the real
     /// `stair_up` `29` / `stair_down` `28`.
     fn shipped_roles() -> Option<TileRoles> {
-        const SHIPPED: &str = include_str!("../../../../../assets/tiles/tile_roles.ron");
+        const SHIPPED: &str =
+            include_str!("../../../../../assets/sprites/tile_roles.spritedef.ron");
         let parsed: Result<TileRoles, _> = ron::de::from_str(SHIPPED);
         assert!(
             parsed.is_ok(),

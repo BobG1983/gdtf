@@ -28,7 +28,7 @@
 //! GTW-218 (the S4 slice) adds the first VISUAL draw in [`mod@render::terrain`]: the static
 //! battlefield drawn as 16x16 terrain sprites from the three sim-owned static-map
 //! resources for the presenter-owned [`ActiveLevel`], choosing each tile via the
-//! DATA-DRIVEN [`TileRoles`] table (`assets/tiles/tile_roles.ron`). The
+//! DATA-DRIVEN [`TileRoles`] table (`assets/sprites/tile_roles.spritedef.ron`). The
 //! [`TopDownRendererPlugin`] loads + resolves that table, inserts the [`ActiveLevel`]
 //! default, defines the [`PresenterSystems::Draw`] set after
 //! `SimSystems::Simulate`, and registers the one-shot [`draw_static_battlefield`] +
