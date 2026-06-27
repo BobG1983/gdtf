@@ -40,7 +40,11 @@
 //! owns the GTW-276 generic HUD widgets — [`ProgressBar`](widgets::core::spawn_progress_bar),
 //! [`Pips`](widgets::core::spawn_pips), [`Switch`](widgets::core::Switch), and
 //! [`SegmentedControl`](widgets::core::SegmentedControl) — the color-parameterized,
-//! mutate-in-place building blocks the status / hover panels and the action bar reuse.
+//! mutate-in-place building blocks the status / hover panels and the action bar reuse, plus
+//! the GTW-410 [`Dropdown<T>`](widgets::core::Dropdown) combobox (a floating, above-panels
+//! option list generic over the option identity). The dropdown's per-option-id drivers are
+//! wired by [`register_dropdown::<T>`](register_dropdown); its type-agnostic systems ride
+//! [`UiPlugin`].
 //!
 //! The [`UiPlugin`] registration seam itself lives in the private `plugin`
 //! submodule and is re-exported here unchanged.
@@ -54,17 +58,23 @@ mod plugin;
 // Module re-exports — preserve `gdtf_ui::theme::*` and `gdtf_ui::themed::*`
 // sub-paths for the 27+ external callers that reach `GdtfTheme`, `default_theme`,
 // `UiSystems`, etc. via the old root-level module path (GTW-385).
-pub use plugin::UiPlugin;
+pub use plugin::{UiPlugin, register_dropdown};
 pub use theming::{retheme::redrive_theme_on_asset_event, theme, themed, themed::any_themed_added};
 pub use widgets::{
     core::{
-        ActiveButton, ActiveSegment, ButtonLabel, DisabledButton, FillFraction, FilledPips,
-        Orientation, Pip, PipsRow, ProgressBarFill, ProgressBarTrack, Segment, SegmentColors,
-        SegmentIndex, SegmentLabel, SegmentSelected, SegmentSubLabel, SegmentSubText, SegmentText,
-        SegmentedControl, Switch, SwitchColors, SwitchKnob, SwitchOrientation, SwitchState,
-        ToggleFlipped, drive_switches, paint_active_buttons, paint_disabled_buttons,
-        repaint_segments, select_segment_on_press, set_pips, set_progress_bar,
-        set_segment_sub_line, set_segment_visible, spawn_button, spawn_panel, spawn_pips,
+        ActiveButton, ActiveSegment, ButtonLabel, DisabledButton, Dropdown, DropdownAnchor,
+        DropdownBackdrop, DropdownColors, DropdownDismissRequest, DropdownItem, DropdownLabel,
+        DropdownOption, DropdownOptionLabel, DropdownOptions, DropdownPopup,
+        DropdownSelectionChanged, DropdownState, FillFraction, FilledPips, OptionId, Orientation,
+        Pip, PipsRow, ProgressBarFill, ProgressBarTrack, Segment, SegmentColors, SegmentIndex,
+        SegmentLabel, SegmentSelected, SegmentSubLabel, SegmentSubText, SegmentText,
+        SegmentedControl, SelectedIndex, Switch, SwitchColors, SwitchKnob, SwitchOrientation,
+        SwitchState, ToggleFlipped, activate_focused_option, any_dropdown_open,
+        close_dropdowns_on_dismiss_request, dismiss_dropdowns_on_escape, dismiss_on_backdrop_press,
+        drive_switches, open_dropdown, paint_active_buttons, paint_disabled_buttons,
+        position_dropdown_popups, repaint_segments, select_option_on_press,
+        select_segment_on_press, set_pips, set_progress_bar, set_segment_sub_line,
+        set_segment_visible, spawn_button, spawn_dropdown, spawn_panel, spawn_pips,
         spawn_progress_bar, spawn_segmented_control, spawn_switch,
     },
     interaction::{repaint_deactivated_buttons, sync_hover_to_focus, theme_interaction},

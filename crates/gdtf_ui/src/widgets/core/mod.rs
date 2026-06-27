@@ -55,8 +55,21 @@
 //! [`Switch`] and [`SegmentedControl`] each have a driver system registered by
 //! [`UiPlugin`](crate::UiPlugin); the bar and pips have no per-frame system (they are
 //! updated by the caller through their `set_*` helpers).
+//!
+//! ## Dropdown / combobox (GTW-410)
+//!
+//! - [`Dropdown<T>`](dropdown::Dropdown): a themed closed control showing the current
+//!   selection; clicking opens a FLOATING option list ABOVE sibling panels (via
+//!   [`GlobalZIndex`](bevy::ui::GlobalZIndex) strictly above the contextual panel — the
+//!   bevy-traps #8 occlusion guard). Selecting an option closes the list, mutates the shown
+//!   label in place, and emits a typed [`DropdownSelectionChanged<T>`](dropdown::DropdownSelectionChanged);
+//!   an outside click (a full-screen backdrop) dismisses without changing the selection.
+//!   Generic over the option IDENTITY; keyboard focus / arrow-nav / Enter / Esc all reuse the
+//!   existing [`focus_nav`](crate::focus_nav) helpers. Its open / select / dismiss / position
+//!   drivers are registered by [`UiPlugin`](crate::UiPlugin) per option-id type.
 
 mod builders;
+mod dropdown;
 mod markers;
 mod orientation;
 mod paint;
@@ -70,6 +83,14 @@ mod test;
 mod test_hud;
 
 pub use builders::{spawn_button, spawn_panel};
+pub use dropdown::{
+    Dropdown, DropdownAnchor, DropdownBackdrop, DropdownColors, DropdownDismissRequest,
+    DropdownItem, DropdownLabel, DropdownOption, DropdownOptionLabel, DropdownOptions,
+    DropdownPopup, DropdownSelectionChanged, DropdownState, OptionId, SelectedIndex,
+    activate_focused_option, any_dropdown_open, close_dropdowns_on_dismiss_request,
+    dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, open_dropdown,
+    position_dropdown_popups, select_option_on_press, spawn_dropdown,
+};
 pub use markers::{ActiveButton, ButtonLabel, DisabledButton};
 pub use orientation::Orientation;
 pub use paint::{paint_active_buttons, paint_disabled_buttons};
