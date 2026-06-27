@@ -11,77 +11,63 @@
 // the same stats the old inline fields held). The `default_floor` names the walkable
 // floor piece for all open cells (deck_floor, move_cost 4).
 //
-// GTW-384 (the two-layer stat model): each ganger now authors the EIGHT DIRECT
-// ATTRIBUTES (the raw potential) — NOT the computed stats. Shooting / HP / Wounds / TU
-// (and the dormant Fight / Reactions / Morale / Bottle) are DERIVED at setup from these
-// attributes × the assets/core_tuning/stat.tuning.ron weights (the single source of truth,
-// docs/combat/stats.md). Attribute magnitudes here are per-ganger DATA (a generated
-// roster), authored so the derived stats land near a playable range — not pinned tuning.
+// GTW-384 (the two-layer stat model): each gang ROSTER member authors the EIGHT DIRECT
+// ATTRIBUTES (the raw potential) — NOT the computed stats. Those, plus identity + weapon
+// + armor, now live in the gang roster files (assets/content/gangs/*.gang.ron), NOT here.
+//
+// GTW-414 (schema v2): each placed ganger is a REFERENCE — it names its `gang` (a gang
+// roster file stem) and the `member` within it (by name), then carries only the PLACEMENT
+// (cell / facing / stance / aiming / life_state) and the `faction` the situation assigns
+// for THIS battle. The roster (identity + 8 attributes + weapon + armor) is resolved at
+// setup against the GangRegistry built from the gangs folder. So the gang rosters are
+// faction-agnostic + reusable; the situation says WHERE and WHICH SIDE. Migration:
+// "Alex Mercer" → gang_0; "Vex 1"/"Vex 2" → gang_1 (grouped by their original faction).
 (
-    // The authored gangers — two gangs (faction 0 and faction 1) facing off. Each
-    // carries its full identity/posture + its EIGHT attributes + an armor KEY (resolved
-    // against the ArmorRegistry into the battle-local worn armor at setup, GTW-269) + a
-    // weapon KEY. Magnitudes here are per-ganger DATA, not pinned tuning.
+    // The level THEME (GTW-414) — the visual + content family this battlefield draws from
+    // (the GTW-409 ThemeCatalogRegistry key). IndustrialHive = the manufactorum decking /
+    // bulkheads of the hive proper, matching this skirmish's deck/bulkhead terrain.
+    theme: IndustrialHive,  // level theme — the IndustrialHive manufactorum/bulkhead family
+    // The coarse GRID dimensions (GTW-414) — width × height × storey-count, each validated
+    // to the sim's coarse-grid maxima (60 / 60 / 8). This skirmish places cells within a
+    // 20×20 footprint up to level 1; a 30×30×4 grid comfortably contains it (well under the
+    // 60×60×8 ceiling, and the omitted-field default would be the full 60×60×8 extent).
+    grid_size: (width: 30, height: 30, levels: 4),  // coarse grid extent (w × h × storeys)
+    // The placed gangers (GTW-414 schema v2) — each REFERENCES a gang + member by name and
+    // supplies its placement + faction. The roster (attributes / weapon / armor) is resolved
+    // against the gangs folder at setup. Two gangs (faction 0 and faction 1) face off.
     gangers: [
         // --- Gang 0: a standing rifleman on the ground floor, facing east. ---
         (
+            gang:       "gang_0",      // gang ROSTER ref — resolves to assets/content/gangs/gang_0.gang.ron
+            member:     "Alex Mercer", // member within gang_0 — its identity + 8 attributes + weapon + armor come from there
             at:         (cell: (x: 5, y: 6), level: 0),  // (cell, level) it spawns at — its Position
-            name:       "Alex Mercer",  // display name — the status panel's identity line shows this
-            faction:    0,            // gang identity — gang 0 (one of the two sides)
+            faction:    0,            // SIDE assignment for this battle — gang 0 (placement, not roster)
             facing:     East,         // which of the 8 grid directions it faces
             stance:     Standing,     // posture — upright (full silhouette, full stability gate)
             aiming:     false,        // aim-mode flag — hip-firing, not aimed
             life_state: Alive,        // terminal life state — up and fighting
-            speed:      3.0,          // Speed attribute — quickness; drives the derived TU budget (→ ~60 TU)
-            aim:        3.0,          // Aim attribute — marksmanship; the dominant derived Shooting term
-            strength:   4.0,          // Strength attribute — physical power; a derived Fight term
-            toughness:  12.0,         // Toughness attribute — damage resistance; a derived HP term + severity mitigation
-            reflexes:   3.0,          // Reflexes attribute — reaction speed; a derived Shooting + Reactions term
-            cool:       6.0,          // Cool attribute — nerves; feeds derived Shooting/Fight/Reactions/HP/Morale
-            grit:       19.0,         // Grit attribute — resilience; the dominant derived HP + Morale term (→ HP ~34)
-            luck:       1.0,          // Luck attribute — directional fortune; the severity-roll tail (not a computed stat)
-            armor:      "flak_vest",  // armor KEY — resolves to assets/armor/flak_vest.armor.ron at setup (pieces authored there, GTW-269)
-            weapon:     "stub_pistol", // weapon KEY — resolves to assets/weapons/stub_pistol.weapon.ron at setup
         ),
         // --- Gang 1: a crouching, aimed defender across the floor, facing west. ---
         (
+            gang:       "gang_1",      // gang ROSTER ref — resolves to assets/content/gangs/gang_1.gang.ron
+            member:     "Vex 1",       // member within gang_1
             at:         (cell: (x: 12, y: 9), level: 0),  // (cell, level) it spawns at
-            name:       "Vex 1",  // display name — the status panel's identity line shows this
-            faction:    1,            // gang identity — gang 1 (the opposing side)
+            faction:    1,            // SIDE assignment — gang 1 (the opposing side)
             facing:     West,         // faces back toward gang 0
             stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)
             aiming:     true,         // aim-mode flag — aimed shot (narrows the cone at a TU premium)
             life_state: Alive,        // terminal life state — up and fighting
-            speed:      3.0,          // Speed attribute — quickness (→ ~58-60 TU)
-            aim:        4.0,          // Aim attribute — a sharper shot than gang 0 (higher derived Shooting)
-            strength:   3.0,          // Strength attribute — a derived Fight term
-            toughness:  13.0,         // Toughness attribute — slightly hardier (a derived HP term + severity mitigation)
-            reflexes:   3.0,          // Reflexes attribute — reaction speed
-            cool:       6.0,          // Cool attribute — nerves under fire
-            grit:       18.0,         // Grit attribute — resilience (→ HP ~36)
-            luck:       2.0,          // Luck attribute — luckier than gang 0 (severity-roll tail)
-            armor:      "carapace_plate", // armor KEY — resolves to assets/armor/carapace_plate.armor.ron at setup (pieces authored there, GTW-269)
-            weapon:     "las_carbine", // weapon KEY — resolves to assets/weapons/las_carbine.weapon.ron at setup
         ),
         // --- Gang 1: a second crouching, aimed defender, facing west. ---
         (
+            gang:       "gang_1",      // gang ROSTER ref — the SAME gang_1 roster as Vex 1
+            member:     "Vex 2",       // member within gang_1
             at:         (cell: (x: 12, y: 12), level: 0),  // (cell, level) it spawns at
-            name:       "Vex 2",  // display name — the status panel's identity line shows this
-            faction:    1,            // gang identity — gang 1 (the opposing side)
+            faction:    1,            // SIDE assignment — gang 1 (the opposing side)
             facing:     West,         // faces back toward gang 0
             stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)
             aiming:     true,         // aim-mode flag — aimed shot (narrows the cone at a TU premium)
             life_state: Alive,        // terminal life state — up and fighting
-            speed:      3.0,          // Speed attribute — quickness (→ ~58-60 TU)
-            aim:        4.0,          // Aim attribute — a sharper shot (higher derived Shooting)
-            strength:   3.0,          // Strength attribute — a derived Fight term
-            toughness:  13.0,         // Toughness attribute — hardy (a derived HP term + severity mitigation)
-            reflexes:   3.0,          // Reflexes attribute — reaction speed
-            cool:       6.0,          // Cool attribute — nerves under fire
-            grit:       18.0,         // Grit attribute — resilience (→ HP ~36)
-            luck:       2.0,          // Luck attribute — luckier than gang 0 (severity-roll tail)
-            armor:      "carapace_plate", // armor KEY — resolves to assets/armor/carapace_plate.armor.ron at setup (pieces authored there, GTW-269)
-            weapon:     "las_carbine", // weapon KEY — resolves to assets/weapons/las_carbine.weapon.ron at setup
         ),
     ],
     // The authored walls — solid fixed geometry on the ground floor. Each is a

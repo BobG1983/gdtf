@@ -47,6 +47,7 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
     level::ThemeCatalogRegistry,
     terrain::piece::TerrainRegistry,
@@ -272,6 +273,14 @@ crate::support_item! {
             // panic on a missing resource in an asset-less headless drive. An empty table
             // means the roll finds no bucket and still takes-then-discards its one draw.
             commands.insert_resource(InjuryTables::default());
+            // GTW-415: the GangRegistry is a gate-blocking resource too; seed the empty
+            // fallback when there is no AssetServer so headless walks still reach Intro
+            // (the A1 / AC3b pattern for the gang registry). With an AssetServer present
+            // the real `assets/content/gangs/*.gang.ron` registry must win — so this is
+            // gated on `is_none()` exactly like the weapon/armor registries (else the
+            // empty seed would shadow `resolve_gangs`, which only runs while the registry
+            // is ABSENT — the AC3b shadow class).
+            commands.insert_resource(GangRegistry::default());
             commands.insert_resource(LoadedSituation::new(
                 gdtf_battle_sim::situation::Situation::default(),
             ));

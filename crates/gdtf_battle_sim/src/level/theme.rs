@@ -40,10 +40,16 @@ pub const MAX_GRID_SPAN: u8 = 60;
 /// key the registry hashes on) + [`Deserialize`] (it is authored in RON, both as a
 /// catalog file's declared theme and — GTW-414 — as a [`Situation`](crate::situation::Situation)
 /// field).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum LevelTheme {
     /// The manufactorum decking and bulkheads of the hive proper — metal plating,
     /// heavy walls, supply crates.
+    ///
+    /// The `#[default]` (GTW-414): the [`Situation::theme`](crate::situation::Situation)
+    /// field is `#[serde(default)]`, so a situation `.ron` that omits `theme` (every
+    /// pre-GTW-414 file) gets this — the manufactorum-hive family is the canonical
+    /// "default battlescape" the shipped `skirmish.ron` already reads as.
+    #[default]
     IndustrialHive,
     /// The lawless tunnels and rockcrete warrens beneath the hive — rubble, scrap
     /// barricades, broken ground.
@@ -261,6 +267,28 @@ impl GridSize {
     #[must_use]
     pub const fn levels(&self) -> GridLevels {
         self.levels
+    }
+}
+
+impl Default for GridSize {
+    /// The default coarse grid — the FULL documented `60×60×8` extent
+    /// (`docs/combat/battle-space.md`: 60 cells on x AND y, [`MAX_LEVELS`] storeys on z).
+    ///
+    /// The chosen default (GTW-414): the [`Situation::grid_size`](crate::situation::Situation)
+    /// field is `#[serde(default)]`, so a situation `.ron` that omits `grid_size` (every
+    /// pre-GTW-414 file, incl. the shipped `skirmish.ron`) gets the full sim extent — the
+    /// widest valid grid, the safe superset of any cell a pre-GTW-414 file authored (its
+    /// gangers / cover / slabs already place within `1..=`[`MAX_GRID_SPAN`] /
+    /// `1..=`[`MAX_LEVELS`]). Every axis is at its in-bounds maximum, so the value is
+    /// always valid (it equals the bound [`GridSize::new`] validates against). A direct
+    /// struct literal (not `GridSize::new`) so the impl is `const` — the magnitudes are
+    /// the fixed sim maxima, never re-validated.
+    fn default() -> Self {
+        Self {
+            width:  GridWidth::new(MAX_GRID_SPAN),
+            height: GridHeight::new(MAX_GRID_SPAN),
+            levels: GridLevels::new(MAX_LEVELS),
+        }
     }
 }
 

@@ -67,6 +67,9 @@ fn battle_running_app() -> App {
     app.world_mut()
         .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
+    // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
 
     let at_menu = advance_until(
         &mut app,

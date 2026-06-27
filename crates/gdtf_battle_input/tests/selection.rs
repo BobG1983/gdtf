@@ -1121,6 +1121,13 @@ fn real_flow_app() -> App {
     // The Load-built ArmorRegistry (GTW-269) so the real setup armors each spawned
     // ganger (its key is present in this registry); without it setup fails closed.
     app.world_mut().insert_resource(real_flow_armor_registry());
+    // GTW-414/415: the GangRegistry the v2 setup_battle resolves each placed ganger's
+    // (gang, member) ref against. `real_flow_situation` references "Ganger {faction}"
+    // members (the `ganger_at` convention) carrying the test weapon/armor keys, which the
+    // canonical `test_gang_registry` holds — without it setup fails closed (GangNotFound)
+    // and no ganger spawns to auto-select.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::test_support::test_gang_registry());
     // An empty mouse buffer so the input band's click systems pass param validation.
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());

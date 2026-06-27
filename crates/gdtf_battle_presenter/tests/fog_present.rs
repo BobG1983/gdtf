@@ -45,7 +45,8 @@ use gdtf_battle_sim::{
     SetupBattleRequested, ShotRng, Situation, SquadVisibility, StairEyeOffset, Stance, StanceKind,
     SurfaceGrid, setup_battle_on_request,
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_gang_registry,
+        test_weapon_registry,
     },
     union_fov,
 };
@@ -107,6 +108,9 @@ fn headless_renderer_app() -> App {
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(test_weapon_registry());
     app.insert_resource(test_armor_registry());
+    // GTW-414/415: the GangRegistry the v2 setup_battle resolves each placed ganger's
+    // (gang, member) ref against (without it setup fails closed and no ganger spawns).
+    app.insert_resource(test_gang_registry());
     // The dense-FOV helper (dense_visible_from_observer -> union_fov) reads CombatTuning for
     // view_range (a Load-state resource the focused setup path does NOT insert); author the
     // Default. GTW-348: the fog WRITER itself no longer reads CombatTuning (EXPLORED is

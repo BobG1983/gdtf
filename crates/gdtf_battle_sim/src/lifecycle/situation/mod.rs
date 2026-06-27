@@ -59,5 +59,7 @@ mod terrain_resolve;
 mod test;
 
 pub use error::BattleSetupError;
-pub use setup::{BattleSetup, has_stacked_gangers, setup_battle};
-pub use spawn::{CoverSpawn, FloorSpawn, GangerSpawn, Situation, SlabSpawn};
+pub use setup::{BattleRegistries, BattleSetup, has_stacked_gangers, setup_battle};
+pub use spawn::{
+    CoverSpawn, FloorSpawn, GangerSpawn, PlacedGanger, Placement, Situation, SlabSpawn,
+};

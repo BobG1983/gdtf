@@ -44,7 +44,8 @@ use gdtf_battle_sim::{
     Level, LinkKind, Position, SetupBattleRequested, ShotRng, Situation, VerticalLink,
     setup_battle_on_request,
     test_support::{
-        SituationBuilder, test_armor_registry, test_terrain_registry, test_weapon_registry,
+        SituationBuilder, test_armor_registry, test_gang_registry, test_terrain_registry,
+        test_weapon_registry,
     },
 };
 use gdtf_test_utils::advance_until_resource_exists;
@@ -116,6 +117,9 @@ fn headless_renderer_app() -> App {
     // GTW-396: the TerrainRegistry — setup_battle_on_request reads it to resolve
     // slab piece keys; the SituationBuilder's slab_at uses "test-slab".
     app.insert_resource(test_terrain_registry());
+    // GTW-414/415: the GangRegistry the v2 setup_battle resolves each placed ganger's
+    // (gang, member) ref against (without it setup fails closed and no ganger spawns).
+    app.insert_resource(test_gang_registry());
     app.set_error_handler(warn);
     app
 }

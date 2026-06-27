@@ -40,6 +40,7 @@ use gdtf_battle_sim::{
     StanceKind, Tu, WalkInProgress,
     acts::MoveRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
+    ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     pathfinder::{PlanningView, find_path},
@@ -94,7 +95,11 @@ fn battle_app() -> App {
 
 /// Drive a setup through the REAL `setup_battle_on_request` Ok path and settle it (the
 /// deferred `bsn!` ganger scenes materialize and the first-run recompute fills the fog).
-fn drive_setup(app: &mut App, situation: Situation) {
+fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
+    let (situation, gangs) = situation_and_gangs;
+    // GTW-414: insert the synthesized GangRegistry so setup_battle_on_request resolves
+    // the PlacedGanger (gang, member) refs (the weapon/armor registries' precedent).
+    app.world_mut().insert_resource(gangs);
     app.world_mut()
         .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
     app.update();
@@ -169,7 +174,7 @@ fn run_until_walk_ends(app: &mut App, entity: Entity) {
 /// given Speed (GTW-384: the derived TU budget = `tu_base + tu_per_speed·Speed`, so a
 /// high Speed gives an ample TU pool — the absolute starting TU is read from the world,
 /// the walk tests assert TU SPENT relative to it, never a pinned start).
-fn one_player_situation(speed: f32) -> Situation {
+fn one_player_situation(speed: f32) -> (Situation, GangRegistry) {
     SituationBuilder::new()
         .with_gangers([GangerSpawnBuilder::new()
             .at(player_at())
@@ -177,13 +182,13 @@ fn one_player_situation(speed: f32) -> Situation {
             .stance(Stance::new(StanceKind::Standing))
             .speed(Speed::new(speed))
             .build()])
-        .build()
+        .build_with_gangs()
 }
 
 /// A player + a far enemy situation: the player at [`player_at`], an enemy (gang 1) at
 /// `enemy_cell` (placed beyond [`TEST_VIEW_RANGE`] so it is UNSEEN at spawn). Both get
 /// the given Speed (→ an ample derived TU pool, GTW-384).
-fn player_and_enemy_situation(speed: f32, enemy_cell: CellLevel) -> Situation {
+fn player_and_enemy_situation(speed: f32, enemy_cell: CellLevel) -> (Situation, GangRegistry) {
     SituationBuilder::new()
         .with_gangers([
             GangerSpawnBuilder::new()
@@ -199,7 +204,7 @@ fn player_and_enemy_situation(speed: f32, enemy_cell: CellLevel) -> Situation {
                 .speed(Speed::new(speed))
                 .build(),
         ])
-        .build()
+        .build_with_gangs()
 }
 
 // === C7(b) — an UNINTERRUPTED multi-step walk charges EXACTLY the find_path total
@@ -270,7 +275,7 @@ fn walk_bump_stops_when_next_cell_becomes_occupied() {
                 .speed(Speed::new(20.0))
                 .build(),
         ])
-        .build();
+        .build_with_gangs();
     drive_setup(&mut app, situation);
 
     let Some(actor) = player_entity(&mut app) else {

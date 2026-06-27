@@ -35,4 +35,4 @@ pub use registries::{
     TEST_ARMOR_KEY, TEST_WEAPON_KEY, arbitrary_armor, key, test_armor_registry, test_armor_spec,
     test_terrain_registry, test_weapon_registry, test_weapon_spec,
 };
-pub use situation::{SituationBuilder, fixtures, test_pieces, wall_at};
+pub use situation::{SituationBuilder, fixtures, test_gang_registry, test_pieces, wall_at};

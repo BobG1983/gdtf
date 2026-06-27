@@ -42,6 +42,7 @@ use gdtf_battle_sim::{
     Tu,
     acts::MoveRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
+    ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
     rng::BattleSeed,
     situation::Situation,
@@ -89,7 +90,7 @@ fn far_unseen() -> CellLevel {
 /// yields an ample TU pool covering an open step), `player_faction` defaulting to gang 0.
 /// The unaffordable test ZEROES the spawned `Tu` directly after setup (the headless-test
 /// world-mutation carve-out) rather than authoring an attribute that derives to 0.
-fn one_player_situation(speed: f32) -> Situation {
+fn one_player_situation(speed: f32) -> (Situation, GangRegistry) {
     SituationBuilder::new()
         .with_gangers([GangerSpawnBuilder::new()
             .at(player_at())
@@ -97,7 +98,7 @@ fn one_player_situation(speed: f32) -> Situation {
             .stance(Stance::new(StanceKind::Standing))
             .speed(Speed::new(speed))
             .build()])
-        .build()
+        .build_with_gangs()
 }
 
 /// Build the FULL live-runtime harness: `MinimalPlugins` + `AssetPlugin` + `ScenePlugin`
@@ -120,7 +121,11 @@ fn battle_app() -> App {
 
 /// Drive a setup through the REAL `setup_battle_on_request` Ok path and settle it (the
 /// deferred `bsn!` ganger scenes materialize and the first-run recompute fills the fog).
-fn drive_setup(app: &mut App, situation: Situation) {
+fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
+    let (situation, gangs) = situation_and_gangs;
+    // GTW-414: insert the synthesized GangRegistry so setup_battle_on_request resolves
+    // the PlacedGanger (gang, member) refs (the weapon/armor registries' precedent).
+    app.world_mut().insert_resource(gangs);
     app.world_mut()
         .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
     app.update();

@@ -76,6 +76,9 @@ fn presenter_app() -> bevy::app::App {
     app.world_mut()
         .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
+    // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
     app
 }
 

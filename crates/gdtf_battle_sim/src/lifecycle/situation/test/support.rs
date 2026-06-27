@@ -18,14 +18,16 @@ pub(super) use super::super::*;
 // helper (consolidated out of this file's former local copies).
 pub(super) use crate::test_support::{
     GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, arbitrary_armor, ganger_at, key,
-    test_armor_registry, test_terrain_registry, test_weapon_registry as test_registry,
+    test_armor_registry, test_gang_registry, test_terrain_registry,
+    test_weapon_registry as test_registry,
 };
 pub(super) use crate::{
     armor::{ArmorHardness, ArmorName, ArmorProtection, ArmorRegistry, ArmorSpec, BodyPart, Wears},
     cover::{CoverHp, CoverLedger, Destroyed, HeightBand},
     ganger::{
-        Aiming, Facing, Faction, GangerAttributes, GangerName, Hp, HpMax, LifeState, Luck,
-        Position, Shooting, Stance, Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
+        Aiming, Facing, Faction, GangName, GangRegistry, GangRoster, GangerAttributes, GangerName,
+        Hp, HpMax, LifeState, Luck, Position, Shooting, Stance, Toughness, Tu, TuMax, Wounds,
+        WoundsMax, derive_stats,
     },
     inflicted_wound::InflictedWounds,
     metric::CellLevel,
@@ -160,6 +162,40 @@ pub(super) fn shipped_terrain_registry() -> Option<TerrainRegistry> {
     ]))
 }
 
+/// The two shipped gang `.gang.ron` roster files, read at compile time via the same
+/// `include_str!` pattern the shipped weapons/armor/terrain use — the REAL on-disk
+/// authored gang rosters (keyed by their filename stems, minus the `.gang` infix), so a
+/// GTW-414/415 regression in either file turns the shipped-setup test red.
+const SHIPPED_GANG_0_RON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/content/gangs/gang_0.gang.ron"
+));
+const SHIPPED_GANG_1_RON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/content/gangs/gang_1.gang.ron"
+));
+
+/// Build a gang registry from the shipped `assets/content/gangs/*.gang.ron` files, keyed
+/// by their filename stems (minus the `.gang` infix) — the real-asset gang registry the
+/// shipped `skirmish.ron` setup resolves each placed ganger's `(gang, member)` ref against
+/// (GTW-414/415, the gang mirror of [`shipped_terrain_registry`]). Returns `None`
+/// (assert-fail) if either file fails to parse (no panic in tests).
+pub(super) fn shipped_gang_registry() -> Option<GangRegistry> {
+    let gang_0 = ron::de::from_str::<GangRoster>(SHIPPED_GANG_0_RON);
+    let gang_1 = ron::de::from_str::<GangRoster>(SHIPPED_GANG_1_RON);
+    assert!(
+        gang_0.is_ok() && gang_1.is_ok(),
+        "both shipped gang files must parse: gang_0={gang_0:?} gang_1={gang_1:?}",
+    );
+    let (Ok(gang_0), Ok(gang_1)) = (gang_0, gang_1) else {
+        return None;
+    };
+    Some(GangRegistry::new([
+        (GangName::new("gang_0".to_owned()), gang_0),
+        (GangName::new("gang_1".to_owned()), gang_1),
+    ]))
+}
+
 /// Run [`setup_battle`] on a fresh `MinimalPlugins` app against the GIVEN registry
 /// (the [`run_setup`] variant for the shipped-weapons AC5 path), returning the app +
 /// [`BattleSetup`] on success, else assert-failing and returning `None`.
@@ -168,6 +204,7 @@ pub(super) fn shipped_terrain_registry() -> Option<TerrainRegistry> {
 /// fallback floor cost from `CombatTuning::default().move_costs.open`.
 pub(super) fn run_setup_with(
     situation: Situation,
+    gangs: GangRegistry,
     registry: WeaponRegistry,
     armor: ArmorRegistry,
     terrain: Option<&TerrainRegistry>,
@@ -188,10 +225,13 @@ pub(super) fn run_setup_with(
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
                 &situation,
-                &registry,
-                &armor,
-                &stat_tuning,
-                terrain_clone.as_ref(),
+                BattleRegistries::new(
+                    &gangs,
+                    &registry,
+                    &armor,
+                    &stat_tuning,
+                    terrain_clone.as_ref(),
+                ),
                 fallback_floor_cost,
                 &mut commands,
             )
@@ -240,22 +280,38 @@ pub(super) fn cover_spec() -> TerrainSpec {
     }
 }
 
-/// Build a [`GangerAttributes`] record from an authored [`GangerSpawn`]'s eight
-/// attributes — the input the derivation-RELATION assertions feed to
+/// Build a [`GangerAttributes`] record for a [`PlacedGanger`](crate::situation::PlacedGanger)
+/// by resolving its `(gang, member)` ref against the canonical
+/// [`test_gang_registry`](crate::test_support::test_gang_registry) (GTW-414) — the input
+/// the derivation-RELATION assertions feed to
 /// [`derive_stats`](crate::ganger::derive_stats) to compute the EXPECTED derived stats
 /// for a spawned ganger (GTW-384), so the spawn tests assert the FORMULA, never a pinned
 /// magnitude.
-pub(super) fn attributes_of(ganger: &GangerSpawn) -> GangerAttributes {
-    GangerAttributes {
-        speed:     ganger.speed,
-        aim:       ganger.aim,
-        strength:  ganger.strength,
-        toughness: ganger.toughness,
-        reflexes:  ganger.reflexes,
-        cool:      ganger.cool,
-        grit:      ganger.grit,
-        luck:      ganger.luck,
-    }
+///
+/// Falls back to a zero-attribute record (assert-fail caught downstream) if the placement
+/// does not resolve — every fixture placement IS in the canonical registry, so this
+/// never happens on a valid fixture; the explicit fallback keeps the helper
+/// `unwrap`/`expect`-free (all denied in tests too).
+pub(super) fn attributes_of(placed: &crate::situation::PlacedGanger) -> GangerAttributes {
+    let gangs = test_gang_registry();
+    let Some(member) = gangs
+        .roster(&placed.gang)
+        .and_then(|roster| roster.member(&placed.member))
+    else {
+        // Unreachable for a valid fixture (every placement is in the canonical registry);
+        // a zero-attribute fallback keeps the helper panic-free if a test ever drifts.
+        return GangerAttributes {
+            speed:     crate::ganger::Speed::new(0.0),
+            aim:       crate::ganger::Aim::new(0.0),
+            strength:  crate::ganger::Strength::new(0.0),
+            toughness: Toughness::new(0.0),
+            reflexes:  crate::ganger::Reflexes::new(0.0),
+            cool:      crate::ganger::Cool::new(0.0),
+            grit:      crate::ganger::Grit::new(0.0),
+            luck:      Luck::new(0.0),
+        };
+    };
+    member.attributes()
 }
 
 /// The C8 minimal fixture: 2 gangers (distinct factions + cells), 1 wall, 1
@@ -291,6 +347,7 @@ pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     let terrain = test_terrain_registry();
     run_setup_with(
         situation,
+        test_gang_registry(),
         test_registry(),
         test_armor_registry(),
         Some(&terrain),

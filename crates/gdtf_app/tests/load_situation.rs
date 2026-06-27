@@ -100,6 +100,9 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut()
         .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
+    // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 
@@ -254,6 +257,10 @@ fn load_does_not_leave_without_a_situation() {
     app.world_mut()
         .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
+    // GTW-415: the Load gate also requires a GangRegistry; seed it so the situation is
+    // the ONE missing gate resource being asserted on.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
 
     let left_load = advance_until(
         &mut app,

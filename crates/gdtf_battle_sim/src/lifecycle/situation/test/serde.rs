@@ -21,15 +21,15 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
     // GTW-396: walls/scatter use the new `piece` key schema (no inline stats);
     // slabs use the new `SlabSpawn { at, piece }` schema; `default_floor` and
     // `floors` are the new GTW-396 floor fields.
+    // GTW-414 schema v2: a placed ganger is a REFERENCE (gang + member) plus placement +
+    // faction — the roster (identity / attributes / weapon / armor) lives in a gang file,
+    // resolved against the GangRegistry at setup (not authored inline here).
     let authored = "(
         gangers: [(
+            gang: \"gang_0\",
+            member: \"Test Ganger\",
             at: (cell: (x: 0, y: 0), level: 0),
-            name: \"Test Ganger\",
             faction: 0, facing: North, stance: Standing, aiming: false, life_state: Alive,
-            speed: 2.0, aim: 1.0, strength: 2.0, toughness: 1.0,
-            reflexes: 1.0, cool: 1.0, grit: 5.0, luck: 0.0,
-            armor: \"flak_vest\",
-            weapon: \"stub_pistol\",
         )],
         walls: [(
             at: (cell: (x: 1, y: 1), level: 0), piece: \"test-wall\",
@@ -184,6 +184,12 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
     let Some(situation) = shipped_situation() else {
         return;
     };
+    // GTW-414/415: the shipped skirmish.ron now REFERENCES gangs (gang_0 / gang_1) by
+    // name; supply the gang registry built from the shipped `assets/content/gangs/`
+    // files so each placed ganger's (gang, member) ref resolves to its roster.
+    let Some(gangs) = shipped_gang_registry() else {
+        return;
+    };
     let Some(registry) = shipped_registry() else {
         return;
     };
@@ -197,7 +203,8 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
     };
     let authored_ganger_count = situation.gangers.len();
 
-    let Some((mut app, setup)) = run_setup_with(situation, registry, armor, Some(&terrain)) else {
+    let Some((mut app, setup)) = run_setup_with(situation, gangs, registry, armor, Some(&terrain))
+    else {
         return;
     };
 
@@ -231,44 +238,79 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
     );
 }
 
-/// GTW-257 AC5 (companion) — every shipped ganger's authored `weapon` key is a valid
-/// stem present in the shipped-weapons registry. A pure-data check (no spawn): proves
-/// the `skirmish.ron` ↔ `assets/content/weapons/*.ron` references are consistent, so the
-/// setup never hits `WeaponNotFound`.
+/// GTW-257 AC5 (companion) — every shipped ganger's weapon key is a valid stem present
+/// in the shipped-weapons registry. A pure-data check (no spawn): proves the
+/// `skirmish.ron` ↔ `assets/content/gangs/*.gang.ron` ↔ `assets/content/weapons/*.ron`
+/// references are consistent, so the setup never hits `WeaponNotFound`.
+///
+/// GTW-414/415: the weapon key now lives on the gang-ROSTER member, not the placement.
+/// Each placed ganger's `(gang, member)` ref is resolved against the shipped gang
+/// registry to its [`GangMember`](crate::ganger::GangMember), whose `weapon` key is then
+/// checked — proving the full placement → roster → weapon chain resolves.
 #[test]
 fn every_shipped_ganger_references_a_loaded_weapon() {
     let Some(situation) = shipped_situation() else {
         return;
     };
+    let Some(gangs) = shipped_gang_registry() else {
+        return;
+    };
     let Some(registry) = shipped_registry() else {
         return;
     };
-    for ganger in &situation.gangers {
-        assert!(
-            registry.spec(&ganger.weapon).is_some(),
-            "shipped ganger weapon key {:?} must resolve against the shipped registry",
-            ganger.weapon,
+    for placed in &situation.gangers {
+        // Resolve placement → roster member → its weapon key against the shipped registry,
+        // in one chain. `Some(true)` means the full chain resolved AND the weapon key is
+        // present; anything else (member missing, or weapon key absent) is the failure.
+        let weapon_resolves = gangs
+            .roster(&placed.gang)
+            .and_then(|roster| roster.member(&placed.member))
+            .map(|member| registry.spec(&member.weapon).is_some());
+        assert_eq!(
+            weapon_resolves,
+            Some(true),
+            "shipped placed ganger {:?}/{:?} must resolve its roster member AND that member's \
+             weapon key against the shipped registry",
+            placed.gang,
+            placed.member,
         );
     }
 }
 
-/// GTW-269 (companion) — every shipped ganger's authored `armor` key is a valid stem
-/// present in the shipped-armor registry. A pure-data check (no spawn): proves the
-/// `skirmish.ron` ↔ `assets/content/armor/*.armor.ron` references are consistent, so the setup
-/// never hits `ArmorNotFound` (the armor mirror of the weapon-key consistency check).
+/// GTW-269 (companion) — every shipped ganger's armor key is a valid stem present in the
+/// shipped-armor registry. A pure-data check (no spawn): proves the `skirmish.ron` ↔
+/// `assets/content/gangs/*.gang.ron` ↔ `assets/content/armor/*.armor.ron` references are
+/// consistent, so the setup never hits `ArmorNotFound` (the armor mirror of the weapon-key
+/// consistency check).
+///
+/// GTW-414/415: the armor key now lives on the gang-ROSTER member, not the placement — so
+/// each placed ganger's `(gang, member)` ref is resolved against the shipped gang registry
+/// to its [`GangMember`](crate::ganger::GangMember), whose `armor` key is then checked.
 #[test]
 fn every_shipped_ganger_references_a_loaded_armor() {
     let Some(situation) = shipped_situation() else {
         return;
     };
+    let Some(gangs) = shipped_gang_registry() else {
+        return;
+    };
     let Some(armor) = shipped_armor_registry() else {
         return;
     };
-    for ganger in &situation.gangers {
-        assert!(
-            armor.spec(&ganger.armor).is_some(),
-            "shipped ganger armor key {:?} must resolve against the shipped armor registry",
-            ganger.armor,
+    for placed in &situation.gangers {
+        // Resolve placement → roster member → its armor key against the shipped registry,
+        // in one chain (the armor mirror of the weapon check above).
+        let armor_resolves = gangs
+            .roster(&placed.gang)
+            .and_then(|roster| roster.member(&placed.member))
+            .map(|member| armor.spec(&member.armor).is_some());
+        assert_eq!(
+            armor_resolves,
+            Some(true),
+            "shipped placed ganger {:?}/{:?} must resolve its roster member AND that member's \
+             armor key against the shipped armor registry",
+            placed.gang,
+            placed.member,
         );
     }
 }

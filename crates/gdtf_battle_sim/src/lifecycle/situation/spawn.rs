@@ -1,25 +1,164 @@
-//! The authored value graph: [`GangerSpawn`], [`CoverSpawn`], [`SlabSpawn`],
-//! [`FloorSpawn`], and the canonical [`Situation`] — the serde-deserializable
-//! battlefield the setup is built from.
+//! The authored value graph: [`PlacedGanger`], [`GangerSpawn`], [`CoverSpawn`],
+//! [`SlabSpawn`], [`FloorSpawn`], and the canonical [`Situation`] — the
+//! serde-deserializable battlefield the setup is built from.
 
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use crate::{
     ganger::{
-        Aim, Aiming, Cool, Facing, Faction, GangerName, Grit, LifeState, Luck, Reflexes, Speed,
-        Stance, Strength, Toughness,
+        Aim, Aiming, Cool, Facing, Faction, GangMember, GangName, GangerName, Grit, LifeState,
+        Luck, Reflexes, Speed, Stance, Strength, Toughness,
     },
+    level::{GridSize, LevelTheme},
     metric::CellLevel,
     terrain::piece::TerrainName,
     vertical::VerticalLink,
     weapon::WeaponName,
 };
 
-/// One authored ganger placement — its `(cell, level)` plus its identity / posture
-/// fields, the EIGHT direct attributes (GTW-384, the raw authored potential), and the
-/// armor KEY whose resolved [`ArmorSpec`](crate::armor::ArmorSpec) spawns the ganger's
-/// battle-local armor-piece entities (related via [`Wears`](crate::armor::Wears)).
+/// One **placed ganger** — the GTW-414 v2 `Situation`-side ganger reference: WHICH
+/// roster member fights, WHERE, and on WHICH side.
+///
+/// The placement half of the schema-v2 split (GTW-414). It carries NO identity /
+/// attributes / equipment of its own — those come from the gang roster: it references
+/// its [`gang`](PlacedGanger::gang) ([`GangName`], a [`GangRegistry`](crate::ganger::GangRegistry)
+/// key) and the [`member`](PlacedGanger::member) within it (by [`GangerName`]), and
+/// [`setup_battle`](crate::situation::setup_battle) resolves `(gang, member)` to a
+/// [`GangMember`](crate::ganger::GangMember) (eight attributes + weapon + armor keys). The
+/// `Situation` supplies the rest: the `(cell, level)` placement
+/// ([`at`](PlacedGanger::at)), the posture / facing / aim / life fields, and the
+/// [`faction`](PlacedGanger::faction) the ganger fights for in THIS battle — so the same
+/// faction-agnostic gang roster can be fielded on any side at any position.
+///
+/// `PartialEq` + `Eq` (every field — the gang/member names, the `(cell, level)`, and the
+/// fieldless posture enums — has a total `Eq`, unlike the f32-bearing roster
+/// [`GangMember`](crate::ganger::GangMember)). Not `Hash`: `(cell, level)`-keyed
+/// de-duplication ([`has_stacked_gangers`](crate::situation::has_stacked_gangers)) hashes
+/// [`at`](PlacedGanger::at), never the whole struct. `Clone` (owned `String`-backed
+/// names). Derives [`Deserialize`] so an authored situation `.ron` names
+/// each placement as a self-describing record (the value graph all flows through the
+/// landed newtype/enum serde derives — render-free, pixel-free).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct PlacedGanger {
+    /// The **gang** this ganger's roster comes from — a [`GangName`] resolved against the
+    /// [`GangRegistry`](crate::ganger::GangRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle). A gang absent from the registry
+    /// is a handled
+    /// [`BattleSetupError::GangNotFound`](crate::situation::BattleSetupError::GangNotFound)
+    /// error (no panic). Authored as a bare string ([`GangName`] is `#[serde(transparent)]`).
+    pub gang:       GangName,
+    /// The **member** within the gang this ganger IS — a [`GangerName`] resolved against
+    /// the gang's roster at setup (`gang.member(member)`). A member absent from the gang
+    /// is a handled
+    /// [`BattleSetupError::GangMemberNotFound`](crate::situation::BattleSetupError::GangMemberNotFound)
+    /// error (no panic). Authored as a bare string ([`GangerName`] is `#[serde(transparent)]`).
+    pub member:     GangerName,
+    /// The `(cell, level)` the ganger spawns at — its [`Position`](crate::ganger::Position).
+    pub at:         CellLevel,
+    /// The ganger's gang (faction) identity for THIS battle — the side assignment the
+    /// situation makes (NOT part of the roster; the roster is faction-agnostic).
+    pub faction:    Faction,
+    /// The ganger's facing.
+    pub facing:     Facing,
+    /// The ganger's stance (posture).
+    pub stance:     Stance,
+    /// The ganger's aim-mode flag.
+    pub aiming:     Aiming,
+    /// The ganger's terminal life state.
+    pub life_state: LifeState,
+}
+
+impl PlacedGanger {
+    /// Build a placed ganger from its gang/member refs and a [`Placement`] — the public
+    /// constructor (house style) so the setup, the test builders, and the presenter can
+    /// build one without reaching the fields piecemeal.
+    ///
+    /// The six situation-supplied placement fields (`at` / `faction` / `facing` / `stance`
+    /// / `aiming` / `life_state`) are grouped into the named [`Placement`] argument (a real
+    /// named type per no-bare-types, NOT a tuple), keeping the constructor's parameter list
+    /// under clippy's argument-count gate while the struct itself stays flat for serde.
+    #[must_use]
+    pub const fn new(gang: GangName, member: GangerName, placement: Placement) -> Self {
+        Self {
+            gang,
+            member,
+            at: placement.at,
+            faction: placement.faction,
+            facing: placement.facing,
+            stance: placement.stance,
+            aiming: placement.aiming,
+            life_state: placement.life_state,
+        }
+    }
+}
+
+/// The six **situation-supplied placement fields** a [`PlacedGanger`] carries — grouped
+/// into one named type so [`PlacedGanger::new`] takes a single placement argument instead
+/// of six positional ones (no-bare-types: a real named grouping struct, never a tuple).
+///
+/// This is the WHERE + WHICH-SIDE half of the GTW-414 schema-v2 split: the cell/level the
+/// ganger spawns at, the [`faction`](Placement::faction) it fights for THIS battle, and its
+/// posture / facing / aim / life fields. The roster half (identity + attributes + weapon /
+/// armor) comes from the gang [`GangMember`](crate::ganger::GangMember), not here. A pure
+/// in-code constructor helper — it is NOT itself authored: the situation `.ron` authors
+/// these as flat fields on the [`PlacedGanger`] record, and the test builders /
+/// [`GangerSpawn::split`] assemble a `Placement` to call the constructor.
+///
+/// All fields are `Copy`, so the struct is `Copy` (a cheap by-value placement bundle).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Placement {
+    /// The `(cell, level)` the ganger spawns at — its [`Position`](crate::ganger::Position).
+    pub at:         CellLevel,
+    /// The faction (side) the ganger fights for in THIS battle (placement, not roster).
+    pub faction:    Faction,
+    /// The ganger's facing.
+    pub facing:     Facing,
+    /// The ganger's stance (posture).
+    pub stance:     Stance,
+    /// The ganger's aim-mode flag.
+    pub aiming:     Aiming,
+    /// The ganger's terminal life state.
+    pub life_state: LifeState,
+}
+
+impl Placement {
+    /// Build a placement bundle from its six situation-supplied fields — the shape
+    /// [`GangerSpawn::split`] and the test builders assemble to call
+    /// [`PlacedGanger::new`].
+    #[must_use]
+    pub const fn new(
+        at: CellLevel,
+        faction: Faction,
+        facing: Facing,
+        stance: Stance,
+        aiming: Aiming,
+        life_state: LifeState,
+    ) -> Self {
+        Self {
+            at,
+            faction,
+            facing,
+            stance,
+            aiming,
+            life_state,
+        }
+    }
+}
+
+/// A combined **roster-plus-placement** authoring record — the GTW-414 schema-v2
+/// authoring HELPER that the test builders and the migration assemble, then SPLIT into a
+/// [`PlacedGanger`] (the `Situation`-side placement + faction) and a
+/// [`GangMember`](crate::ganger::GangMember) (the gang-roster identity + attributes +
+/// equipment) via [`split`](GangerSpawn::split).
+///
+/// Before GTW-414 this WAS the `Situation.gangers` element (roster + placement + faction
+/// in one struct). The v2 schema splits roster (the reusable, faction-agnostic gang
+/// member) from placement (where + which side the situation assigns), so the canonical
+/// `Situation` now holds [`PlacedGanger`]s and the gang rosters live in a
+/// [`GangRegistry`](crate::ganger::GangRegistry). This combined record survives ONLY as
+/// the ergonomic authoring shape (one literal carries everything about one fielded
+/// ganger), and [`split`](GangerSpawn::split) decomposes it into the two v2 halves.
 ///
 /// A named struct (not a bare tuple) so the authored ganger shape is self-describing.
 /// Since GTW-384 the situation authors the EIGHT DIRECT ATTRIBUTES
@@ -130,6 +269,48 @@ pub struct GangerSpawn {
     /// [`BattleSetupError::WeaponNotFound`](crate::situation::BattleSetupError::WeaponNotFound)
     /// error (no panic).
     pub weapon:     WeaponName,
+}
+
+impl GangerSpawn {
+    /// Split this combined authoring record into its GTW-414 schema-v2 halves: a
+    /// [`PlacedGanger`] (the `Situation`-side placement + faction) referencing the given
+    /// `gang`, paired with the [`GangMember`](crate::ganger::GangMember) (the gang-roster
+    /// identity + eight attributes + weapon / armor keys) it points at.
+    ///
+    /// The placement's [`member`](PlacedGanger::member) is this ganger's
+    /// [`name`](GangerSpawn::name), so the returned `PlacedGanger.member` resolves against
+    /// the returned `GangMember` in the registry. The test builders and the migration use
+    /// this to assemble a v2 [`Situation`] + [`GangRegistry`](crate::ganger::GangRegistry)
+    /// pair from the ergonomic combined literal.
+    #[must_use]
+    pub fn split(&self, gang: GangName) -> (PlacedGanger, GangMember) {
+        let placed = PlacedGanger::new(
+            gang,
+            self.name.clone(),
+            Placement::new(
+                self.at,
+                self.faction,
+                self.facing,
+                self.stance,
+                self.aiming,
+                self.life_state,
+            ),
+        );
+        let member = GangMember {
+            name:      self.name.clone(),
+            speed:     self.speed,
+            aim:       self.aim,
+            strength:  self.strength,
+            toughness: self.toughness,
+            reflexes:  self.reflexes,
+            cool:      self.cool,
+            grit:      self.grit,
+            luck:      self.luck,
+            armor:     self.armor.clone(),
+            weapon:    self.weapon.clone(),
+        };
+        (placed, member)
+    }
 }
 
 /// One authored piece of cover — a wall *or* a scatter prop.
@@ -256,6 +437,31 @@ impl FloorSpawn {
 /// old `Vec<CellLevel>` bare list); `default_floor` names the walkable floor piece for
 /// all open cells; `floors` gives sparse per-cell floor overrides.
 ///
+/// # The roster-vs-placement contract (GTW-414 schema v2)
+///
+/// The v2 schema SPLITS what an authored ganger carries between the **gang roster** (the
+/// reusable, faction-agnostic identity + abilities + equipment) and the **situation**
+/// (where + which side it fights on):
+///
+/// - **Lives in the gang roster** ([`GangMember`](crate::ganger::GangMember), in a
+///   `*.gang.ron`, resolved via the [`GangRegistry`](crate::ganger::GangRegistry)): the
+///   member's [`GangerName`] identity, its EIGHT direct attributes (Speed / Aim /
+///   Strength / Toughness / Reflexes / Cool / Grit / Luck), its weapon KEY, and its armor
+///   KEY. A gang roster says NOTHING about position or faction, so the SAME roster is
+///   reusable in any battle, on any side, at any cell.
+/// - **The situation assigns** ([`PlacedGanger`], in this `Situation`): WHICH gang +
+///   member fights ([`gang`](PlacedGanger::gang) + [`member`](PlacedGanger::member)
+///   refs), WHERE ([`at`](PlacedGanger::at) + [`facing`](PlacedGanger::facing) /
+///   [`stance`](PlacedGanger::stance) / [`aiming`](PlacedGanger::aiming) /
+///   [`life_state`](PlacedGanger::life_state)), and WHICH SIDE
+///   ([`faction`](PlacedGanger::faction) — faction is placement/assignment, NOT roster).
+///
+/// [`setup_battle`](crate::situation::setup_battle) joins the two: for each
+/// [`PlacedGanger`] it resolves `(gang, member)` against the
+/// [`GangRegistry`](crate::ganger::GangRegistry) to get the roster member, derives the
+/// computed combat stats from its eight attributes, resolves its weapon / armor keys, and
+/// spawns the ganger at the situation-supplied placement + faction.
+///
 /// Derives [`Deserialize`] (GTW-205 / E10.3) so an authored battlefield ships as a
 /// loose `.ron` file loaded through the `RonAsset<T>` loader — render-free and
 /// pixel-free, the whole value graph routed through the landed newtype/enum serde
@@ -270,9 +476,32 @@ impl FloorSpawn {
 #[derive(Debug, Clone, Default, Deserialize, TypePath)]
 #[serde(default)]
 pub struct Situation {
-    /// The authored gangers, each a [`GangerSpawn`] (placement + component values +
-    /// roster armor).
-    pub gangers:        Vec<GangerSpawn>,
+    /// The authored placed gangers (GTW-414 schema v2), each a [`PlacedGanger`]: a gang +
+    /// member REF (resolved against the [`GangRegistry`](crate::ganger::GangRegistry) at
+    /// setup for identity / attributes / equipment) plus the situation-supplied placement
+    /// (`at` / `facing` / `stance` / `aiming` / `life_state`) and `faction`.
+    pub gangers:        Vec<PlacedGanger>,
+    /// The level THEME this battlefield draws from (GTW-414) — the visual + content family
+    /// the GTW-409 [`ThemeCatalogRegistry`](crate::level::ThemeCatalogRegistry) keys on.
+    ///
+    /// `#[serde(default)]` supplies [`LevelTheme::default`] = [`IndustrialHive`](crate::level::LevelTheme::IndustrialHive)
+    /// for any authored file that omits the field, so every PRE-GTW-414 situation `.ron`
+    /// (incl. the shipped `skirmish.ron` before its migration) stays parse-valid — the
+    /// manufactorum-hive family is the canonical default battlescape. An authored
+    /// `theme: Underhive` parses as the bare variant name ([`LevelTheme`] derives
+    /// [`Deserialize`]).
+    pub theme:          LevelTheme,
+    /// The coarse GRID dimensions of this battlefield (GTW-414) — width × height ×
+    /// storey-count, each axis validated to the sim's coarse-grid maximum (GTW-409
+    /// [`GridSize`]).
+    ///
+    /// `#[serde(default)]` supplies [`GridSize::default`] = the FULL documented `60×60×8`
+    /// extent for any authored file that omits the field, so every PRE-GTW-414 situation
+    /// `.ron` stays parse-valid — the full sim extent is the safe superset of any cell a
+    /// pre-GTW-414 file authored. An authored
+    /// `grid_size: (width: N, height: N, levels: N)` flows through the bounds-checked
+    /// [`GridSize`] serde intermediate, so an over-max / empty grid can never deserialize.
+    pub grid_size:      GridSize,
     /// The authored walls (each a [`CoverSpawn`] — `at` + piece KEY).
     pub walls:          Vec<CoverSpawn>,
     /// The authored scatter / props (each a [`CoverSpawn`], same schema as a wall).

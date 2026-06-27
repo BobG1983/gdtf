@@ -1,0 +1,48 @@
+// GDTF gang roster — "gang_1" (GTW-414/415). A faction-agnostic, reusable roster: a
+// list of MEMBERS, each carrying identity + the eight direct attributes + a weapon KEY +
+// an armor KEY. NO faction, NO placement — those are assigned per-battle by the situation
+// (assets/situations/*.ron), so this roster can be fielded on any side at any position.
+//
+// The gang's NAME is the file STEM (gang_1), NOT a field. It loads as a loose
+// `.gang.ron` through the RonAsset<GangRoster> folder loader, keyed into the GangRegistry
+// by `gang_1`. Render-free, pixel-free.
+//
+// GTW-414 migration: the TWO faction-1 gangers that used to be inlined in skirmish.ron —
+// "Vex 1" and "Vex 2" — carried over here VERBATIM (same eight attributes, same
+// carapace_plate armor, same las_carbine weapon each). The situation now references this
+// gang + each member by name and supplies the placement + faction.
+//
+// Attribute magnitudes here are per-ganger DATA (a generated roster), authored so the
+// derived stats land near a playable range — NOT pinned tuning.
+(
+    members: [
+        // The first crouching defender.
+        (
+            name:      "Vex 1",          // member identity — the situation references this name
+            speed:     3.0,              // Speed attribute — quickness (→ ~58-60 TU)
+            aim:       4.0,              // Aim attribute — a sharper shot than gang 0 (higher derived Shooting)
+            strength:  3.0,              // Strength attribute — a derived Fight term
+            toughness: 13.0,             // Toughness attribute — slightly hardier (a derived HP term + severity mitigation)
+            reflexes:  3.0,              // Reflexes attribute — reaction speed
+            cool:      6.0,              // Cool attribute — nerves under fire
+            grit:      18.0,             // Grit attribute — resilience (→ HP ~36)
+            luck:      2.0,              // Luck attribute — luckier than gang 0 (severity-roll tail)
+            armor:     "carapace_plate", // armor KEY — resolves to assets/content/armor/carapace_plate.armor.ron at setup
+            weapon:    "las_carbine",    // weapon KEY — resolves to assets/content/weapons/las_carbine.weapon.ron at setup
+        ),
+        // The second crouching defender — identical roster stats to Vex 1.
+        (
+            name:      "Vex 2",          // member identity — the situation references this name
+            speed:     3.0,              // Speed attribute — quickness (→ ~58-60 TU)
+            aim:       4.0,              // Aim attribute — a sharper shot (higher derived Shooting)
+            strength:  3.0,              // Strength attribute — a derived Fight term
+            toughness: 13.0,             // Toughness attribute — hardy (a derived HP term + severity mitigation)
+            reflexes:  3.0,              // Reflexes attribute — reaction speed
+            cool:      6.0,              // Cool attribute — nerves under fire
+            grit:      18.0,             // Grit attribute — resilience (→ HP ~36)
+            luck:      2.0,              // Luck attribute — luckier than gang 0 (severity-roll tail)
+            armor:     "carapace_plate", // armor KEY — resolves to assets/content/armor/carapace_plate.armor.ron at setup
+            weapon:    "las_carbine",    // weapon KEY — resolves to assets/content/weapons/las_carbine.weapon.ron at setup
+        ),
+    ],
+)

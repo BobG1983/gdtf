@@ -10,7 +10,7 @@ use gdtf_app::test_support::{AppState, BattleScapeState, LoadedSituation, Runnin
 use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::Situation,
-    test_support::{fixtures, test_armor_registry, test_weapon_registry},
+    test_support::{fixtures, test_armor_registry, test_gang_registry, test_weapon_registry},
     tuning::{CombatTuning, GangerStatTuning},
 };
 use gdtf_ui::theme::default_theme;
@@ -105,6 +105,12 @@ impl BattleAppBuilder {
         app.world_mut().insert_resource(GangerStatTuning::default());
         app.world_mut().insert_resource(test_weapon_registry());
         app.world_mut().insert_resource(test_armor_registry());
+        // GTW-414/415: the canonical test gang registry every standard fixture's placed
+        // gangers resolve their (gang, member) refs against. Built from the SAME
+        // `build_with_gangs` split the fixtures use, so it can never drift from what
+        // `ganger_at` / the default builder produce; without it the v2
+        // `setup_battle_on_request` fails closed with GangNotFound and spawns no gangers.
+        app.world_mut().insert_resource(test_gang_registry());
         // The authored battlefield the Generation setup pours into the world.
         app.world_mut()
             .insert_resource(LoadedSituation::new(self.situation));

@@ -72,6 +72,9 @@ fn seed_load(app: &mut App) {
     app.world_mut()
         .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
+    // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
     // GTW-261: the Load→Intro gate now also requires a LoadedSituation (the empty-battle-
     // race fix). The headless walk has no AssetServer to resolve one, so seed the empty
     // default beside the other three — symmetric with theme/tuning/weapons.

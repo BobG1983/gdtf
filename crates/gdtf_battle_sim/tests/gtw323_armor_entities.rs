@@ -24,11 +24,11 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Aim, Aiming, ArmorIntegrity, BattleGrids, BattleSeed, BattleSetup, BraceStairCells, Cell,
-    CombatTuning, CoverLedger, Direction, Facing, Faction, FireModeSpec, GangerStatTuning,
-    InjuryRegistry, InjuryRng, InjuryTables, Level, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, PieceQuery, SeverityRng, ShooterQuery, ShotKind, ShotRng,
-    SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears,
+    Aim, Aiming, ArmorIntegrity, BattleGrids, BattleRegistries, BattleSeed, BattleSetup,
+    BraceStairCells, Cell, CombatTuning, CoverLedger, Direction, Facing, Faction, FireModeSpec,
+    GangerStatTuning, InjuryRegistry, InjuryRng, InjuryTables, Level, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, SeverityRng, ShooterQuery, ShotKind,
+    ShotRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears,
     WearsQuery, WieldsQuery,
     fire::FireOrder,
     setup_battle,
@@ -65,7 +65,7 @@ const fn enemy_at() -> bevy::math::IVec2 {
 /// resolve the central test weapon + armor keys (a paper-thin suit, so a landed round
 /// reliably wears the struck piece).
 fn battle_app() -> Option<(App, BattleSetup)> {
-    let situation = SituationBuilder::new()
+    let (situation, gangs) = SituationBuilder::new()
         .with_gangers([
             // Shooter: tight cone, aiming, high Aim → high DERIVED Shooting (GTW-384:
             // Shooting = aim·Aim + reflexes·Reflexes + cool·Cool) — lands reliably.
@@ -84,7 +84,7 @@ fn battle_app() -> Option<(App, BattleSetup)> {
                 .stance(Stance::new(StanceKind::Standing))
                 .build(),
         ])
-        .build();
+        .build_with_gangs();
 
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
@@ -102,10 +102,7 @@ fn battle_app() -> Option<(App, BattleSetup)> {
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
                 &situation,
-                &registry,
-                &armor,
-                &stat_tuning,
-                Some(&terrain),
+                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, Some(&terrain)),
                 fallback_floor_cost,
                 &mut commands,
             )

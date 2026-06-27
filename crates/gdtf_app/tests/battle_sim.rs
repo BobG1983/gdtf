@@ -136,6 +136,12 @@ fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     app.world_mut()
         .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
+    // GTW-415: the Load→Intro gate also requires a GangRegistry, AND the v2 setup_battle
+    // resolves each fixture ganger's (gang, member) ref against it — so seed the canonical
+    // `test_gang_registry` (which holds every `ganger_at` / default-builder member), NOT an
+    // empty registry (an empty one would fail closed with GangNotFound and spawn nothing).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::test_support::test_gang_registry());
     // GTW-261: the Load→Intro gate now requires a LoadedSituation; seed the fixture
     // when given, else the empty default so the walk still traverses Load.
     app.world_mut()

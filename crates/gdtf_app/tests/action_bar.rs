@@ -127,6 +127,9 @@ fn walk_app() -> App {
     app.world_mut()
         .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
+    // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
     app
 }
 
@@ -1709,7 +1712,7 @@ fn armed_armor_registry() -> ArmorRegistry {
 /// `auto_select_first_player_ganger` then selects through the REAL flow — NO hand-inserted
 /// `SelectedShooter`. Its weapon key is present in [`armed_registry`], so setup arms it
 /// with a `FireMode`, which `rebuild_mode_buttons` reads to show the Mode panel.
-fn armed_player_situation() -> Situation {
+fn armed_player_situation() -> (Situation, gdtf_battle_sim::ganger::GangRegistry) {
     use gdtf_battle_sim::test_support::{GangerSpawnBuilder, SituationBuilder};
     // Routed through the canonical shared builders (GTW-324) — value-for-value identical to
     // the prior 18-field `GangerSpawn` struct literal. Every field whose value differs from a
@@ -1719,6 +1722,11 @@ fn armed_player_situation() -> Situation {
     // (so `armed_registry` / `armed_armor_registry` still resolve). The remaining fields —
     // facing East, Standing, full vitals (HP 40, Wounds 3, TU 60), Alive, Toughness 3.0, Luck
     // 1.0 — are the builder defaults already.
+    //
+    // GTW-414/415: build the situation AND its synthesized GangRegistry together — the v2
+    // `setup_battle` resolves the placed ganger's `(gang, member)` ref against the registry
+    // (which carries this member's PLAYER_WEAPON_KEY / PLAYER_ARMOR_KEY), so the walk must
+    // seed it or setup fails closed and no player ganger spawns.
     SituationBuilder::new()
         .with_ganger(
             GangerSpawnBuilder::new()
@@ -1731,14 +1739,19 @@ fn armed_player_situation() -> Situation {
                 .weapon(WeaponName::new(PLAYER_WEAPON_KEY.to_owned()))
                 .build(),
         )
-        .build()
+        .build_with_gangs()
 }
 
 /// Builds the headless walk app exactly like [`walk_app`], but with a real
 /// [`LoadedSituation`] for the Generation setup to pour into the world (so a real player
-/// ganger is spawned + auto-selected) and the matching [`armed_registry`] so setup can arm
-/// it. Mirrors the `battle_running_driver.rs` real-flow harness.
-fn walk_app_with_situation(situation: Situation) -> App {
+/// ganger is spawned + auto-selected), the matching [`armed_registry`] so setup can arm
+/// it, AND the synthesized [`GangRegistry`](gdtf_battle_sim::ganger::GangRegistry) the v2
+/// setup resolves the placed ganger's `(gang, member)` ref against (GTW-414/415). Mirrors
+/// the `battle_running_driver.rs` real-flow harness.
+fn walk_app_with_situation(
+    situation: Situation,
+    gangs: gdtf_battle_sim::ganger::GangRegistry,
+) -> App {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
@@ -1748,6 +1761,8 @@ fn walk_app_with_situation(situation: Situation) -> App {
     // The Load-built ArmorRegistry (GTW-269) so the Generation setup armors the player
     // ganger: it references PLAYER_ARMOR_KEY, which this registry holds.
     app.world_mut().insert_resource(armed_armor_registry());
+    // GTW-414/415: the synthesized gang registry the placed ganger resolves against.
+    app.world_mut().insert_resource(gangs);
     app.world_mut()
         .insert_resource(LoadedSituation::new(situation));
     app
@@ -1756,8 +1771,11 @@ fn walk_app_with_situation(situation: Situation) -> App {
 /// Drives the real-situation walk to `BattleRunning` and returns the app, asserting the
 /// descent succeeded — the live battle where the bar is spawned AND the real auto-select
 /// has run on the spawned player ganger.
-fn battle_running_app_with_situation(situation: Situation) -> App {
-    let mut app = walk_app_with_situation(situation);
+fn battle_running_app_with_situation(
+    situation: Situation,
+    gangs: gdtf_battle_sim::ganger::GangRegistry,
+) -> App {
+    let mut app = walk_app_with_situation(situation, gangs);
     assert!(
         drive_to_battle_running(&mut app),
         "the real-situation walk should reach BattleScapeState::BattleRunning within {BUDGET} \
@@ -1804,7 +1822,8 @@ fn mode_panel_hidden_when_nothing_armed_selected() {
 /// visibility toggle (leaving it Hidden) fails this.
 #[test]
 fn mode_panel_visible_when_armed_player_ganger_selected() {
-    let mut app = battle_running_app_with_situation(armed_player_situation());
+    let (situation, gangs) = armed_player_situation();
+    let mut app = battle_running_app_with_situation(situation, gangs);
     // Settle the real auto-select (fills SelectedShooter with the player ganger) + the
     // rebuild (.after ApplyTheme) which, for an armed selection with modes, sets Visible.
     app.update();

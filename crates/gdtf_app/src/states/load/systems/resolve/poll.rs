@@ -10,6 +10,7 @@ use crate::states::load::{
     resources::{FailedAssetPath, LoadFailed, LoadHandles},
     systems::resolve::{
         armor::resolve_armor,
+        gangs::resolve_gangs,
         injuries::resolve_injuries,
         params::{LoadAssetCollections, ResolvedResources},
         situation::resolve_situation,
@@ -146,6 +147,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         terrain_present,
         theme_catalog_present,
         injuries_present,
+        gangs_present,
     ) = (
         resolved.theme.is_some(),
         resolved.tuning.is_some(),
@@ -156,6 +158,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.terrain.is_some(),
         resolved.themes.is_some(),
         resolved.injuries.is_some(),
+        resolved.gangs.is_some(),
     );
     let (
         Some(asset_server),
@@ -170,6 +173,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(theme_specs),
         Some(injury_defs),
         Some(weightings),
+        Some(gang_rosters),
         Some(handles),
     ) = (
         asset_server,
@@ -184,6 +188,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.theme_specs,
         collections.injury_defs,
         collections.weightings,
+        collections.gang_rosters,
         handles,
     )
     else {
@@ -279,6 +284,24 @@ pub(in crate::states::load) fn poll_and_resolve(
             &folders,
             &injury_defs,
             &weightings,
+            &handles,
+        );
+    }
+
+    // GTW-415: resolve the gangs folder into the name-keyed GangRegistry on its OWN
+    // absence guard, independently of all other branches — so a slow gangs folder never
+    // blocks them and vice-versa (the weapons-branch precedent). This is the GTW-414/415
+    // feature-completeness piece: WITHOUT it the GangRegistry is never populated from the
+    // shipped `assets/content/gangs/` files, and every real battle fails closed with
+    // GangNotFound (the placed-ganger gang/member refs cannot resolve). On the failure
+    // path resolve_gangs warn!s and inserts an empty registry, preserving the no-strand
+    // guarantee.
+    if !gangs_present {
+        resolve_gangs(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &gang_rosters,
             &handles,
         );
     }

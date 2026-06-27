@@ -2,6 +2,7 @@ use bevy::{asset::AssetServer, prelude::*};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
+    ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     level::{ThemeCatalogRegistry, ThemeSpec},
     situation::Situation,
@@ -93,6 +94,12 @@ impl Plugin for LoadScenePlugin {
             // `load_folder("injuries")` runs.
             app.init_ron_asset_with_extensions::<InjuryDef>(vec!["injury.ron"]);
             app.init_ron_asset_with_extensions::<InjuryWeighting>(vec!["weighting.ron"]);
+            // GTW-415: gang rosters mirror the weapon/armor/terrain scheme — each loads as
+            // a `RonAsset<GangRoster>` via `load_folder`, claiming its OWN dedicated
+            // `gang.ron` compound extension (files are `assets/content/gangs/*.gang.ron`) to
+            // keep the folder dispatch unambiguous among GDTF's many `.ron` loaders.
+            // Registered here in `build` BEFORE the kick-off's `load_folder("gangs")` runs.
+            app.init_ron_asset_with_extensions::<GangRoster>(vec!["gang.ron"]);
             add_hot_reload_systems(app);
         }
         add_systems(app);
@@ -139,7 +146,13 @@ fn add_systems(app: &mut App) {
                             // GTW-437: the InjuryRegistry is a gate-blocking resource too
                             // (the GTW-438 roll uses it + the InjuryTables; the injuries
                             // folder must be verified loaded before Load exits).
-                            .or_else(not(resource_exists::<InjuryRegistry>)),
+                            .or_else(not(resource_exists::<InjuryRegistry>))
+                            // GTW-415: the GangRegistry is a gate-blocking resource too
+                            // (the v2 setup_battle resolves every placed ganger's
+                            // (gang, member) ref against it; the gangs folder must be
+                            // verified loaded before Load exits, or a real battle fails
+                            // closed with GangNotFound).
+                            .or_else(not(resource_exists::<GangRegistry>)),
                     ),
             ),
             // Once a GdtfTheme, a CombatTuning, a WeaponRegistry, a LoadedSituation,
@@ -172,7 +185,11 @@ fn add_systems(app: &mut App) {
                     .and_then(resource_exists::<ThemeCatalogRegistry>)
                     // GTW-437: the InjuryRegistry must be present before Load exits, so the
                     // injuries folder is verified loaded before the GTW-438 roll uses it.
-                    .and_then(resource_exists::<InjuryRegistry>),
+                    .and_then(resource_exists::<InjuryRegistry>)
+                    // GTW-415: the GangRegistry must be present before Load exits, so the
+                    // gangs folder is verified loaded before any battle resolves a placed
+                    // ganger's (gang, member) ref against it.
+                    .and_then(resource_exists::<GangRegistry>),
             ),
         )
             .chain(),
@@ -213,6 +230,9 @@ fn add_hot_reload_systems(app: &mut App) {
             // InjuryTables on an edit to ANY `injuries/**/*.injury.ron` OR `*.weighting.ron`,
             // mirroring the weapon/armor hot-reload pattern (one folder, two resources).
             redrive_injuries_on_asset_event,
+            // GTW-415: the gang hot-reload — rebuilds the GangRegistry on a
+            // `gangs/*.gang.ron` edit, mirroring the weapon/armor hot-reload pattern.
+            redrive_gangs_on_asset_event,
         ),
     );
 }

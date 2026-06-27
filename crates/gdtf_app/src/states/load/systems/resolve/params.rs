@@ -11,6 +11,7 @@ use bevy::{
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
+    ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     level::{ThemeCatalogRegistry, ThemeSpec},
     situation::Situation,
@@ -58,6 +59,8 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded per-part injury-weighting RON collection
     /// (`injuries/weighting/*.weighting.ron`, GTW-437).
     pub(super) weightings:    Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
+    /// The loaded per-gang roster RON collection (`gangs/*.gang.ron`, GTW-415).
+    pub(super) gang_rosters:  Option<Res<'w, Assets<RonAsset<GangRoster>>>>,
 }
 
 /// The four persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -90,4 +93,6 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
     /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) is built and inserted
     /// in the SAME branch, so the registry's presence is the branch's done-probe.
     pub(super) injuries:    Option<Res<'w, InjuryRegistry>>,
+    /// Whether the resolved [`GangRegistry`] is already inserted (GTW-415).
+    pub(super) gangs:       Option<Res<'w, GangRegistry>>,
 }

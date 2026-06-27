@@ -22,15 +22,15 @@ use crate::{
     clearance::silhouette_band,
     cover::{CoverEntry, CoverLedger},
     ganger::{
-        Aim, Aiming, Bottle, Cool, Facing, Faction, Fight, GangerAttributes, GangerName, Grit, Hp,
-        HpMax, Luck, Morale, Position, Reactions, Reflexes, Shooting, Speed, Stance, Strength,
-        Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
+        Aim, Aiming, Bottle, Cool, Facing, Faction, Fight, GangMember, GangRegistry, GangerName,
+        Grit, Hp, HpMax, Luck, Morale, Position, Reactions, Reflexes, Shooting, Speed, Stance,
+        Strength, Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
     },
     inflicted_wound::InflictedWounds,
     injuries::{BleedAfflicted, InflictedInjuries},
     los::PeekOffset,
     occupancy::{OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind, TerrainPlacement},
-    situation::{BattleSetupError, GangerSpawn, Situation},
+    situation::{BattleSetupError, PlacedGanger, Situation},
     slab::{BraceStairCells, SlabEntry, SlabLedger},
     surface::{SlabState, SurfaceGrid},
     terrain::{
@@ -69,6 +69,60 @@ impl BattleSetup {
     }
 }
 
+/// The read-only content registries [`setup_battle`] resolves a
+/// [`Situation`](crate::situation::Situation)'s authored references against — grouped into
+/// one borrow-bundle so the setup's parameter list stays under clippy's argument-count gate
+/// (the GTW-414 gang registry was the 8th argument; bundling the resolution sources keeps
+/// the signature small).
+///
+/// A named borrow-bundle (no-bare-types: the setup's resolution sources are a domain
+/// grouping, not a bare tuple of refs), the `gdtf_app` `LoadAssetCollections`-style
+/// transparent-bundle precedent — it wraps existing world-state by reference, never a
+/// domain scalar. Each field is the registry / tuning a setup phase looks an authored key
+/// up in:
+///
+/// - `gangs` — resolve each [`PlacedGanger`]'s `(gang, member)` ref to a
+///   [`GangMember`](crate::ganger::GangMember) (GTW-414).
+/// - `weapons` / `armor` — resolve the resolved member's weapon / armor keys.
+/// - `stat_tuning` — derive each ganger's computed stats from its eight attributes.
+/// - `terrain` — resolve cover / slab / floor piece keys (`None` ⇒ the floor falls back to
+///   `fallback_floor_cost`; cover / slab keys then fail with `TerrainNotFound`).
+#[derive(Clone, Copy)]
+pub struct BattleRegistries<'a> {
+    /// The gang rosters each placed ganger's `(gang, member)` ref resolves against (GTW-414).
+    pub gangs:       &'a GangRegistry,
+    /// The weapon registry each resolved roster member's weapon key resolves against.
+    pub weapons:     &'a WeaponRegistry,
+    /// The armor registry each resolved roster member's armor key resolves against.
+    pub armor:       &'a ArmorRegistry,
+    /// The stat tuning each ganger's computed stats are derived with (GTW-384).
+    pub stat_tuning: &'a GangerStatTuning,
+    /// The terrain registry cover / slab / floor piece keys resolve against (GTW-396);
+    /// `None` skips floor resolution (the [`fallback_floor_cost`](setup_battle) is used).
+    pub terrain:     Option<&'a TerrainRegistry>,
+}
+
+impl<'a> BattleRegistries<'a> {
+    /// Build the resolution borrow-bundle from its five registry / tuning refs — the shape
+    /// every [`setup_battle`] caller assembles.
+    #[must_use]
+    pub const fn new(
+        gangs: &'a GangRegistry,
+        weapons: &'a WeaponRegistry,
+        armor: &'a ArmorRegistry,
+        stat_tuning: &'a GangerStatTuning,
+        terrain: Option<&'a TerrainRegistry>,
+    ) -> Self {
+        Self {
+            gangs,
+            weapons,
+            armor,
+            stat_tuning,
+            terrain,
+        }
+    }
+}
+
 /// Compose ONE ganger as a Bevy `bsn!` [`Scene`] — the per-field component tree
 /// [`setup_battle`] spawns for each [`GangerSpawn`](crate::situation::GangerSpawn)
 /// (GTW-322).
@@ -103,42 +157,41 @@ impl BattleSetup {
 /// [`at`](crate::situation::GangerSpawn::at) value and the synchronously-reserved
 /// `Entity` id (`spawn_scene(..).id()`), never off the deferred [`Position`]
 /// component.
-fn ganger_scene(ganger: &GangerSpawn, tuning: &GangerStatTuning) -> impl Scene {
+fn ganger_scene(
+    placed: &PlacedGanger,
+    member: &GangMember,
+    tuning: &GangerStatTuning,
+) -> impl Scene {
     // The `bsn!` `Type::new(expr)` form stores a DEFERRED constructor, so every value
-    // it captures must be OWNED/`'static` — a borrow (`&GangerSpawn`) captured into the
-    // macro would make the returned scene outlive the reference (the GTW-322 spike's
-    // `'static` finding). So bind every inline value to an owned local FIRST, and let
-    // the macro capture those owned locals (never the `&` param).
-    let at = ganger.at;
-    let name = (*ganger.name).clone();
-    let faction = *ganger.faction;
-    let facing = *ganger.facing;
-    let stance = *ganger.stance;
-    let aiming = *ganger.aiming;
-    // GTW-384: DERIVE every computed stat from the eight authored attributes × the
-    // tuning (the single source of truth — `derive_stats`). The situation authors
+    // it captures must be OWNED/`'static` — a borrow (`&PlacedGanger` / `&GangMember`)
+    // captured into the macro would make the returned scene outlive the reference (the
+    // GTW-322 spike's `'static` finding). So bind every inline value to an owned local
+    // FIRST, and let the macro capture those owned locals (never the `&` param).
+    //
+    // GTW-414 schema v2: the placement fields (`at` / `faction` / `facing` / `stance` /
+    // `aiming` / `life_state`) come from the situation-side `PlacedGanger`; the identity
+    // (`name`) and the eight direct attributes come from the gang-roster `GangMember`.
+    let at = placed.at;
+    let name = (*member.name).clone();
+    let faction = *placed.faction;
+    let facing = *placed.facing;
+    let stance = *placed.stance;
+    let aiming = *placed.aiming;
+    // GTW-384: DERIVE every computed stat from the eight roster attributes × the
+    // tuning (the single source of truth — `derive_stats`). The gang roster carries the
     // attributes only; the pools/skills are derived here, full at battle start
     // (current pool == max).
-    let attributes = GangerAttributes {
-        speed:     ganger.speed,
-        aim:       ganger.aim,
-        strength:  ganger.strength,
-        toughness: ganger.toughness,
-        reflexes:  ganger.reflexes,
-        cool:      ganger.cool,
-        grit:      ganger.grit,
-        luck:      ganger.luck,
-    };
+    let attributes = member.attributes();
     let derived = derive_stats(&attributes, tuning);
-    // The eight authored attribute magnitudes (the raw potential, carried on the ganger).
-    let speed = *ganger.speed;
-    let aim = *ganger.aim;
-    let strength = *ganger.strength;
-    let toughness = *ganger.toughness;
-    let reflexes = *ganger.reflexes;
-    let cool = *ganger.cool;
-    let grit = *ganger.grit;
-    let luck = *ganger.luck;
+    // The eight roster attribute magnitudes (the raw potential, carried on the ganger).
+    let speed = *member.speed;
+    let aim = *member.aim;
+    let strength = *member.strength;
+    let toughness = *member.toughness;
+    let reflexes = *member.reflexes;
+    let cool = *member.cool;
+    let grit = *member.grit;
+    let luck = *member.luck;
     // The derived computed-stat magnitudes (Deref'd out of the DerivedStats record).
     let shooting = *derived.shooting;
     let fight = *derived.fight;
@@ -153,7 +206,7 @@ fn ganger_scene(ganger: &GangerSpawn, tuning: &GangerStatTuning) -> impl Scene {
     let bottle = *derived.bottle;
     // The runtime-valued leaf with no `bsn!` grammar form, owned for the
     // `template_value` tuple-composition tail (see the doc-comment recipe).
-    let life_state = ganger.life_state;
+    let life_state = placed.life_state;
     (
         bsn! {
             Position::new(at)
@@ -357,7 +410,14 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 /// — the E1.8 setup: the setup system that builds the scene from the situation (see the
 /// [`crate::situation`] module doc, the setup-on-entry source of truth).
 ///
-/// GTW-396: the function now accepts `terrain: Option<&TerrainRegistry>` and resolves
+/// GTW-414 schema v2: the function accepts `gangs: &GangRegistry` and resolves every
+/// [`PlacedGanger`]'s `(gang, member)` ref against it BEFORE any entity is spawned
+/// (abort-first invariant) — the resolved [`GangMember`] supplies the ganger's identity,
+/// eight attributes, and weapon / armor keys (the old `GangerSpawn` fields, now sourced
+/// from the reusable gang roster). A missing gang / member returns
+/// [`BattleSetupError::GangNotFound`] / [`BattleSetupError::GangMemberNotFound`] (no panic).
+///
+/// GTW-396: the function also accepts `terrain: Option<&TerrainRegistry>` and resolves
 /// every authored terrain piece key (cover / slab / floor) against it BEFORE any entity
 /// is spawned (abort-first invariant). If `terrain` is `None` or a key resolves
 /// to nothing, the function returns [`BattleSetupError::TerrainNotFound`] (no panic, no
@@ -405,12 +465,15 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 ///
 /// Returns a [`BattleSetupError`]:
 /// - [`BattleSetupError::InvalidLink`] — bad vertical link.
-/// - [`BattleSetupError::WeaponNotFound`] — ganger weapon key absent.
-/// - [`BattleSetupError::ArmorNotFound`] — ganger armor key absent.
+/// - [`BattleSetupError::GangNotFound`] — a placed ganger's gang ref is absent (GTW-414).
+/// - [`BattleSetupError::GangMemberNotFound`] — its member ref is absent from that gang
+///   (GTW-414).
+/// - [`BattleSetupError::WeaponNotFound`] — the resolved roster member's weapon key absent.
+/// - [`BattleSetupError::ArmorNotFound`] — the resolved roster member's armor key absent.
 /// - [`BattleSetupError::TerrainNotFound`] — cover/slab/floor piece key absent.
 /// - [`BattleSetupError::FloorCostBelowMinimum`] — floor `move_cost < MIN_MOVE_COST`.
 ///
-/// All five are validated BEFORE any entity is spawned (abort-first invariant).
+/// All are validated BEFORE any entity is spawned (abort-first invariant).
 #[expect(
     clippy::too_many_lines,
     reason = "setup_battle executes 7 sequential, order-dependent phases \
@@ -421,43 +484,76 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 )]
 pub fn setup_battle(
     situation: &Situation,
-    weapons: &WeaponRegistry,
-    armor: &ArmorRegistry,
-    stat_tuning: &GangerStatTuning,
-    terrain: Option<&TerrainRegistry>,
+    registries: BattleRegistries<'_>,
     fallback_floor_cost: MoveCost,
     commands: &mut Commands,
 ) -> Result<BattleSetup, BattleSetupError> {
+    // Destructure the borrow-bundle into the named registry refs the phases read. The
+    // bundle exists only to keep setup_battle under clippy's argument-count gate (the
+    // GTW-414 `gangs` ref pushed the flat list to 8); the phases below are unchanged.
+    let BattleRegistries {
+        gangs,
+        weapons,
+        armor,
+        stat_tuning,
+        terrain,
+    } = registries;
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
     // setup before any entity is spawned or any resource inserted (no partial,
     // unspawnable world left behind on a validation failure).
     let vertical_graph = build_vertical_link_graph(situation)?;
 
-    // Resolve every ganger's weapon key against the registry up front — BEFORE the
-    // spawn loop — so a missing key aborts setup with WeaponNotFound (no panic) with
-    // no partial world spawned (the abort-first invariant). The resolved bundles are
-    // cloned by value (the registry's specs are Clone) and consumed by the spawn loop.
-    let mut weapon_bundles = Vec::with_capacity(situation.gangers.len());
-    for ganger in &situation.gangers {
-        let Some(spec) = weapons.spec(&ganger.weapon) else {
-            return Err(BattleSetupError::WeaponNotFound {
-                weapon: ganger.weapon.clone(),
+    // GTW-414 schema v2: resolve every PlacedGanger's (gang, member) ref against the
+    // GangRegistry up front — BEFORE any spawn — so a missing gang/member aborts setup
+    // with the typed error (no panic) with no partial world spawned (the abort-first
+    // invariant). The resolved roster member supplies the identity + eight attributes +
+    // weapon/armor keys the rest of the setup reads (the old GangerSpawn fields, now
+    // sourced from the gang roster). Each (placed, member) borrow is held in
+    // PlacedGanger order, parallel to situation.gangers.
+    let mut resolved_members: Vec<(&PlacedGanger, &GangMember)> =
+        Vec::with_capacity(situation.gangers.len());
+    for placed in &situation.gangers {
+        let Some(roster) = gangs.roster(&placed.gang) else {
+            return Err(BattleSetupError::GangNotFound {
+                gang: placed.gang.clone(),
             });
         };
-        weapon_bundles.push(spec.clone().into_bundle(ganger.weapon.clone()));
+        let Some(member) = roster.member(&placed.member) else {
+            return Err(BattleSetupError::GangMemberNotFound {
+                gang:   placed.gang.clone(),
+                member: placed.member.clone(),
+            });
+        };
+        resolved_members.push((placed, member));
+    }
+
+    // Resolve every ganger's weapon key against the registry up front — BEFORE the
+    // spawn loop — so a missing key aborts setup with WeaponNotFound (no panic) with
+    // no partial world spawned (the abort-first invariant). The weapon KEY now comes
+    // from the resolved gang-roster member (GTW-414). The resolved bundles are cloned
+    // by value (the registry's specs are Clone) and consumed by the spawn loop.
+    let mut weapon_bundles = Vec::with_capacity(resolved_members.len());
+    for (_placed, member) in &resolved_members {
+        let Some(spec) = weapons.spec(&member.weapon) else {
+            return Err(BattleSetupError::WeaponNotFound {
+                weapon: member.weapon.clone(),
+            });
+        };
+        weapon_bundles.push(spec.clone().into_bundle(member.weapon.clone()));
     }
 
     // Resolve every ganger's armor key against the armor registry the same way —
     // BEFORE the spawn loop — so a missing key aborts setup with ArmorNotFound (no
     // panic) with no partial world spawned (the abort-first invariant, mirroring the
-    // weapon resolution; GTW-269). The resolved specs are copied by value (ArmorSpec is
-    // Copy) and the spawn loop spawns each ganger's worn-armor-piece entities from its
-    // spec (related via `Wears`; GTW-323 slice 3 — no on-ganger `WornArmor`).
-    let mut armor_specs = Vec::with_capacity(situation.gangers.len());
-    for ganger in &situation.gangers {
-        let Some(spec) = armor.spec(&ganger.armor) else {
+    // weapon resolution; GTW-269). The armor KEY now comes from the resolved gang-roster
+    // member (GTW-414). The resolved specs are copied by value (ArmorSpec is Copy) and the
+    // spawn loop spawns each ganger's worn-armor-piece entities from its spec (related via
+    // `Wears`; GTW-323 slice 3 — no on-ganger `WornArmor`).
+    let mut armor_specs = Vec::with_capacity(resolved_members.len());
+    for (_placed, member) in &resolved_members {
+        let Some(spec) = armor.spec(&member.armor) else {
             return Err(BattleSetupError::ArmorNotFound {
-                armor: ganger.armor.clone(),
+                armor: member.armor.clone(),
             });
         };
         armor_specs.push(*spec);
@@ -504,18 +600,22 @@ pub fn setup_battle(
     //    occupancy), but the scene's COMPONENTS materialize a frame later on the
     //    `SpawnScene` schedule — so occupancy is keyed off the ganger's authored `at`
     //    value + the reserved id, never off the deferred `Position` component.
-    let mut occupants = Vec::with_capacity(situation.gangers.len());
-    for ((ganger, weapon_bundle), armor_spec) in situation
-        .gangers
+    let mut occupants = Vec::with_capacity(resolved_members.len());
+    for (((placed, member), weapon_bundle), armor_spec) in resolved_members
         .iter()
+        .copied()
         .zip(weapon_bundles)
         .zip(armor_specs)
     {
         // The ganger carries its OWN state only — NO equipment stat data (GTW-323
         // slice 3, ADR-0004). The empty InflictedWounds record (GTW-279) and the
         // GTW-291 display ceilings (HpMax / WoundsMax) ride inside `ganger_scene`; the
-        // weapon + armor stats live on the related entities spawned below.
-        let entity = commands.spawn_scene(ganger_scene(ganger, stat_tuning)).id();
+        // weapon + armor stats live on the related entities spawned below. GTW-414: the
+        // ganger's identity + attributes come from the resolved gang-roster `member`, its
+        // placement + faction from the situation-side `placed`.
+        let entity = commands
+            .spawn_scene(ganger_scene(placed, member, stat_tuning))
+            .id();
         // GTW-323 slice 1 (ADR-0004): spawn the six worn-armor-piece entities from the
         // resolved spec and relate them to this ganger via `Wears` — using `bsn!`
         // (`queue_spawn_related_scenes::<Wears>(bsn_list!{..})`), the post-GTW-322 spawn
@@ -544,9 +644,9 @@ pub fn setup_battle(
         // occupant AND its band together (GTW-304). Keyed off the authored `at` value
         // (NOT the deferred Position component) and the reserved Entity id.
         occupants.push(OccupantPlacement::new(
-            ganger.at,
+            placed.at,
             entity,
-            silhouette_band(*ganger.stance),
+            silhouette_band(*placed.stance),
         ));
     }
 

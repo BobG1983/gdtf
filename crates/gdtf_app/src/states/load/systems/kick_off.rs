@@ -9,9 +9,9 @@ use gdtf_battle_sim::{
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
-    ArmorsFolderHandle, FontFolderHandle, InjuriesFolderHandle, LoadHandles, SituationHandle,
-    StatTuningHandle, TerrainFolderHandle, ThemeHandle, ThemesFolderHandle, TuningHandle,
-    WeaponsFolderHandle,
+    ArmorsFolderHandle, FontFolderHandle, GangsFolderHandle, InjuriesFolderHandle, LoadHandles,
+    SituationHandle, StatTuningHandle, TerrainFolderHandle, ThemeHandle, ThemesFolderHandle,
+    TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -63,6 +63,12 @@ const THEMES_DIR: &str = "content/themes";
 /// from). One recursive folder carrying both asset types; the dedicated compound
 /// extensions (`injury.ron` / `weighting.ron`) keep the `.ron` loader dispatch unambiguous.
 const INJURIES_DIR: &str = "content/injuries";
+
+/// Path of the loose gangs folder, relative to the asset source root (GTW-415 —
+/// the per-gang `assets/content/gangs/*.gang.ron` rosters the `GangRegistry` is built
+/// from). Its OWN folder + the dedicated `gang.ron` compound extension keep the `.ron`
+/// loader dispatch unambiguous (gangs only) — the weapons/armor/terrain precedent.
+const GANGS_DIR: &str = "content/gangs";
 
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
@@ -118,6 +124,7 @@ pub(in crate::states::load) fn kick_off_loads(
     let terrain = TerrainFolderHandle::new(asset_server.load_folder(TERRAIN_DIR));
     let themes = ThemesFolderHandle::new(asset_server.load_folder(THEMES_DIR));
     let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
+    let gangs = GangsFolderHandle::new(asset_server.load_folder(GANGS_DIR));
 
     commands.insert_resource(LoadHandles {
         theme,
@@ -130,5 +137,6 @@ pub(in crate::states::load) fn kick_off_loads(
         terrain,
         themes,
         injuries,
+        gangs,
     });
 }

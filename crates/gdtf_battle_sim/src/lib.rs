@@ -275,10 +275,10 @@ pub use combatants::{
     faced_cell::faced_cell,
     ganger,
     ganger::{
-        Aim, Aiming, Bottle, Cool, DerivedStats, Direction, Facing, Faction, Fight,
-        GangerAttributes, GangerName, Grit, Hp, HpMax, LifeState, Luck, Morale, Position,
-        Reactions, Reflexes, Shooting, Speed, Stabilized, Stance, StanceKind, Strength, Toughness,
-        Tu, TuMax, Wounds, WoundsMax, derive_stats,
+        Aim, Aiming, Bottle, Cool, DerivedStats, Direction, Facing, Faction, Fight, GangMember,
+        GangName, GangRegistry, GangRoster, GangerAttributes, GangerName, Grit, Hp, HpMax,
+        LifeState, Luck, Morale, Position, Reactions, Reflexes, Shooting, Speed, Stabilized,
+        Stance, StanceKind, Strength, Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
     },
     posture,
     posture::{set_aiming, set_facing, set_stance},
@@ -352,8 +352,8 @@ pub use lifecycle::{
     },
     situation,
     situation::{
-        BattleSetup, BattleSetupError, CoverSpawn, FloorSpawn, GangerSpawn, Situation, SlabSpawn,
-        has_stacked_gangers, setup_battle,
+        BattleRegistries, BattleSetup, BattleSetupError, CoverSpawn, FloorSpawn, GangerSpawn,
+        PlacedGanger, Placement, Situation, SlabSpawn, has_stacked_gangers, setup_battle,
     },
 };
 pub use perception::{

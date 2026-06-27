@@ -25,12 +25,12 @@ use gdtf_battle_sim::test_support::{
     GangerSpawnBuilder, SituationBuilder, ganger_at, key, test_armor_registry, test_weapon_registry,
 };
 use gdtf_battle_sim::{
-    Accuracy, Aim, Aiming, ArmorHardness, ArmorProtection, BattleSeed, BattleSetup, BodyPart, Cell,
-    CellLevel, CombatTuning, ConcentrationP, ConeAngle, CoverEntry, CoverHp, CoverLedger,
-    Direction, Facing, Faction, GangerStatTuning, HeightBand, Hp, Level, OccupancyGrid, Position,
-    PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind, ShotOutcome, ShotRng,
-    Situation, Stance, StanceKind, SurfaceGrid, Tu, Wounds, concentration_p, resolve_coarse,
-    setup_battle,
+    Accuracy, Aim, Aiming, ArmorHardness, ArmorProtection, BattleRegistries, BattleSeed,
+    BattleSetup, BodyPart, Cell, CellLevel, CombatTuning, ConcentrationP, ConeAngle, CoverEntry,
+    CoverHp, CoverLedger, Direction, Facing, Faction, GangerStatTuning, HeightBand, Hp, Level,
+    OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, Shooting, ShotInputs, ShotKind,
+    ShotOutcome, ShotRng, Situation, Stance, StanceKind, SurfaceGrid, Tu, Wounds, concentration_p,
+    resolve_coarse, setup_battle,
 };
 
 /// Run `setup_battle` on a fresh app, drive the `SpawnScene` schedule so the deferred
@@ -44,6 +44,7 @@ fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
 
+    let gangs = gdtf_battle_sim::test_support::test_gang_registry();
     let registry = test_weapon_registry();
     let armor = test_armor_registry();
     let terrain = gdtf_battle_sim::test_support::test_terrain_registry();
@@ -58,10 +59,7 @@ fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
                 &situation,
-                &registry,
-                &armor,
-                &stat_tuning,
-                Some(&terrain),
+                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, Some(&terrain)),
                 fallback_floor_cost,
                 &mut commands,
             )

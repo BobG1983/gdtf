@@ -1,0 +1,35 @@
+// GDTF gang roster — "gang_0" (GTW-414/415). A faction-agnostic, reusable roster: a
+// list of MEMBERS, each carrying identity + the eight direct attributes + a weapon KEY +
+// an armor KEY. NO faction, NO placement — those are assigned per-battle by the situation
+// (assets/situations/*.ron), so this roster can be fielded on any side at any position.
+//
+// The gang's NAME is the file STEM (gang_0), NOT a field — exactly as a weapon's name is
+// its file stem. It loads as a loose `.gang.ron` through the RonAsset<GangRoster> folder
+// loader, keyed into the GangRegistry by `gang_0`. Render-free, pixel-free.
+//
+// GTW-414 migration: the SINGLE faction-0 ganger that used to be inlined in
+// skirmish.ron — "Alex Mercer" — carried over here VERBATIM (same eight attributes, same
+// flak_vest armor, same stub_pistol weapon). The situation now references this gang +
+// member by name and supplies the placement (cell / facing / stance) + faction.
+//
+// Attribute magnitudes here are per-ganger DATA (a generated roster), authored so the
+// derived stats (Shooting / HP / Wounds / TU, derived at setup from these attributes ×
+// assets/core_tuning/stat.tuning.ron) land near a playable range — NOT pinned tuning.
+(
+    members: [
+        // A standing rifleman — the lone member of gang 0.
+        (
+            name:      "Alex Mercer",  // member identity — the situation references this name to field this member
+            speed:     3.0,            // Speed attribute — quickness; drives the derived TU budget (→ ~60 TU)
+            aim:       3.0,            // Aim attribute — marksmanship; the dominant derived Shooting term
+            strength:  4.0,            // Strength attribute — physical power; a derived Fight term
+            toughness: 12.0,           // Toughness attribute — damage resistance; a derived HP term + severity mitigation
+            reflexes:  3.0,            // Reflexes attribute — reaction speed; a derived Shooting + Reactions term
+            cool:      6.0,            // Cool attribute — nerves; feeds derived Shooting/Fight/Reactions/HP/Morale
+            grit:      19.0,           // Grit attribute — resilience; the dominant derived HP + Morale term (→ HP ~34)
+            luck:      1.0,            // Luck attribute — directional fortune; the severity-roll tail (not a computed stat)
+            armor:     "flak_vest",    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
+            weapon:    "stub_pistol",  // weapon KEY — resolves to assets/content/weapons/stub_pistol.weapon.ron at setup
+        ),
+    ],
+)

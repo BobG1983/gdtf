@@ -27,8 +27,8 @@ use crate::{
     slab::{SlabHp, SlabLedger},
     terrain::entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
     test_support::{
-        SituationBuilder, ganger_at, test_armor_registry, test_terrain_registry,
-        test_weapon_registry,
+        SituationBuilder, ganger_at, test_armor_registry, test_gang_registry,
+        test_terrain_registry, test_weapon_registry,
     },
     tuning::{CombatTuning, GangerStatTuning},
 };
@@ -49,6 +49,10 @@ fn headless_app() -> App {
     // GTW-396: the terrain registry so SituationBuilder's wall_at / slab_at piece
     // keys ("test-wall", "test-slab") resolve at setup_battle_on_request.
     app.insert_resource(test_terrain_registry());
+    // GTW-414/415: the GangRegistry the v2 setup_battle resolves each placed ganger's
+    // (gang, member) ref against (the fixtures use `ganger_at`, whose members the canonical
+    // `test_gang_registry` holds); without it setup fails closed and no ganger spawns.
+    app.insert_resource(test_gang_registry());
     app
 }
 

@@ -161,6 +161,28 @@ impl InjuriesFolderHandle {
     }
 }
 
+/// Typed handle to the in-flight **gangs folder** load (`gangs/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
+/// mirroring [`WeaponsFolderHandle`] (GTW-415). The `Load` scene preloads the whole
+/// `assets/content/gangs/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
+/// poll/resolve system gates on its recursive load state, then builds the
+/// [`GangRegistry`](gdtf_battle_sim::ganger::GangRegistry) from the loaded
+/// `RonAsset<GangRoster>` files (keyed by each file's stem, minus the `.gang` infix).
+/// Holding this handle keeps a strong reference to every gang asset while the registry
+/// is built; the registry then holds the rosters BY VALUE, so they survive the handle
+/// being dropped on `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct GangsFolderHandle(Handle<LoadedFolder>);
+
+impl GangsFolderHandle {
+    /// Wrap an in-flight gangs-folder load handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
@@ -245,6 +267,8 @@ pub(in crate::states::load) struct LoadHandles {
     /// The injuries folder being preloaded (all `*.injury.ron` + `*.weighting.ron`
     /// up front, GTW-437).
     pub injuries:    InjuriesFolderHandle,
+    /// The gangs folder being preloaded (all `*.gang.ron` rosters up front, GTW-415).
+    pub gangs:       GangsFolderHandle,
 }
 
 crate::support_item! {
@@ -437,6 +461,29 @@ pub(in crate::states::load) struct ActiveInjuriesFolderHandle(Handle<LoadedFolde
 
 impl ActiveInjuriesFolderHandle {
     /// Wrap the loaded injuries-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **gangs folder** (`gangs/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
+/// unlike the Load-scoped [`GangsFolderHandle`] inside [`LoadHandles`], which is
+/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-415), the gang mirror of
+/// [`ActiveWeaponsFolderHandle`]. It is inserted alongside the resolved
+/// [`GangRegistry`](gdtf_battle_sim::ganger::GangRegistry) and kept alive so the GTW-415
+/// live hot-reload handler
+/// (`redrive_gangs_on_asset_event`)
+/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
+/// to ANY `assets/content/gangs/*.gang.ron`. Holding the folder handle keeps every member
+/// gang asset loaded for the file-watcher. Like the registry, it is **not** removed
+/// in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveGangsFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveGangsFolderHandle {
+    /// Wrap the loaded gangs-folder handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

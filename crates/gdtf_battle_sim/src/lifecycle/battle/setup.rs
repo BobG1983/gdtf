@@ -12,9 +12,10 @@ use crate::{
         resources::{BattleInProgress, BattleRoster, PlayerFaction},
     },
     cover::CoverLedger,
+    ganger::GangRegistry,
     occupancy::OccupancyGrid,
     rng::{InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
-    situation::setup_battle,
+    situation::{BattleRegistries, setup_battle},
     slab::SlabLedger,
     surface::SurfaceGrid,
     terrain::{entity::TerrainIndex, floor::FloorCostGrid, piece::TerrainRegistry},
@@ -62,9 +63,11 @@ use crate::{
 ///    failed setup leaves NO orphaned RNG stream resources. NO
 ///    `unwrap`/`expect`/`panic`.
 ///
-/// The [`WeaponRegistry`], [`ArmorRegistry`], and [`TerrainRegistry`] are each read as
-/// `Option<Res<_>>` (PERSISTENT `Load` state); a setup requested before ANY loads fails
-/// closed (logged, no [`BattleReady`]).
+/// The [`GangRegistry`] (GTW-414), [`WeaponRegistry`], [`ArmorRegistry`], and
+/// [`TerrainRegistry`] are each read as `Option<Res<_>>` (PERSISTENT `Load` state); a setup
+/// requested before ANY loads fails closed (logged, no [`BattleReady`]). The
+/// [`GangRegistry`] resolves each [`PlacedGanger`](crate::situation::PlacedGanger)'s
+/// `(gang, member)` ref into the roster member `setup_battle` derives the ganger from.
 ///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
 /// PERSISTENT `Load` resource, present throughout the battle for the acts to read. It
@@ -74,14 +77,16 @@ use crate::{
 /// un-migrated test fixtures.
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-396: eight params is one over the clippy 7-param default; the extra \
-              param is `Option<Res<TerrainRegistry>>` added for terrain key resolution — \
-              the Bevy system injection model cannot be refactored to fewer params without \
+    reason = "GTW-414: nine params is two over the clippy 7-param default; the extra params \
+              are `Option<Res<TerrainRegistry>>` (GTW-396 terrain key resolution) and \
+              `Option<Res<GangRegistry>>` (GTW-414 gang/member ref resolution) — the Bevy \
+              system injection model cannot be refactored to fewer params without \
               introducing a wrapper resource that changes the API surface"
 )]
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,
     mut ready: MessageWriter<BattleReady>,
+    gangs: Option<Res<GangRegistry>>,
     weapons: Option<Res<WeaponRegistry>>,
     armor: Option<Res<ArmorRegistry>>,
     terrain: Option<Res<TerrainRegistry>>,
@@ -95,6 +100,17 @@ pub fn setup_battle_on_request(
         // BattleInProgress-gated Simulate band), so it takes `Option<Res<_>>` to stay
         // panic-free if a setup is somehow requested before the registry loaded
         // (bevy-traps #1): a missing registry fails closed — no setup, no BattleReady.
+        // GTW-414: the gang registry is the same PERSISTENT `Load` state, read as
+        // `Option<Res<_>>` so a setup somehow requested before the gangs folder loaded
+        // fails closed — no setup, no BattleReady (bevy-traps #1, mirroring the weapon
+        // registry guard). Without it the PlacedGanger gang/member refs cannot resolve.
+        let Some(gangs) = gangs.as_deref() else {
+            error!(
+                "battle setup requested but no GangRegistry is loaded; no BattleReady will be \
+                 signalled (the gangs folder must load before a battle starts)"
+            );
+            continue;
+        };
         let Some(weapons) = weapons.as_deref() else {
             error!(
                 "battle setup requested but no WeaponRegistry is loaded; no BattleReady will be \
@@ -153,10 +169,7 @@ pub fn setup_battle_on_request(
         //    authored attributes (GTW-384).
         match setup_battle(
             &request.situation,
-            weapons,
-            armor,
-            stat_tuning,
-            terrain_ref,
+            BattleRegistries::new(gangs, weapons, armor, stat_tuning, terrain_ref),
             fallback_floor_cost,
             &mut commands,
         ) {

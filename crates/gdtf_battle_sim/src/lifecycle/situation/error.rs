@@ -1,7 +1,11 @@
 //! The typed [`BattleSetupError`] — the no-panic setup-abort contract.
 
 use crate::{
-    armor::ArmorName, terrain::piece::TerrainName, tuning::MoveCost, vertical::InvalidVerticalLink,
+    armor::ArmorName,
+    ganger::{GangName, GangerName},
+    terrain::piece::TerrainName,
+    tuning::MoveCost,
+    vertical::InvalidVerticalLink,
     weapon::WeaponName,
 };
 
@@ -36,7 +40,27 @@ pub enum BattleSetupError {
     /// An authored vertical link failed validation (level out of range, dangling
     /// endpoint, or same-storey) — the prior `Err(InvalidVerticalLink)`, now wrapped.
     InvalidLink(InvalidVerticalLink),
-    /// A ganger's [`weapon`](crate::situation::GangerSpawn::weapon) key was not in the
+    /// A [`PlacedGanger`](crate::situation::PlacedGanger)'s
+    /// [`gang`](crate::situation::PlacedGanger::gang) ref was not in the
+    /// [`GangRegistry`](crate::ganger::GangRegistry) — no `assets/content/gangs/*.gang.ron`
+    /// with that filename stem loaded (GTW-414/415). Validated BEFORE any entity is
+    /// spawned (abort-first invariant).
+    GangNotFound {
+        /// The unresolved gang ref (the missing gang file's stem).
+        gang: GangName,
+    },
+    /// A [`PlacedGanger`](crate::situation::PlacedGanger)'s
+    /// [`member`](crate::situation::PlacedGanger::member) ref was not in its (resolved)
+    /// gang's roster — the gang loaded, but no [`GangMember`](crate::ganger::GangMember)
+    /// in it carries that [`GangerName`] (GTW-414/415). Validated BEFORE any entity is
+    /// spawned (abort-first invariant).
+    GangMemberNotFound {
+        /// The gang the member was sought in (it DID resolve — only the member is missing).
+        gang:   GangName,
+        /// The unresolved member name (no roster member of `gang` carries it).
+        member: GangerName,
+    },
+    /// A ganger's weapon key was not in the
     /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) — no `assets/content/weapons/*.ron`
     /// with that filename stem loaded.
     WeaponNotFound {

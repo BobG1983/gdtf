@@ -41,7 +41,8 @@ use gdtf_battle_sim::{
     Level, LifeState, Position, SetupBattleRequested, ShotRng, Situation, Stance, StanceKind,
     setup_battle_on_request,
     test_support::{
-        SituationBuilder, test_armor_registry, test_terrain_registry, test_weapon_registry,
+        SituationBuilder, test_armor_registry, test_gang_registry, test_terrain_registry,
+        test_weapon_registry,
     },
 };
 use gdtf_test_utils::advance_until_resource_exists;
@@ -129,6 +130,11 @@ fn headless_renderer_app() -> App {
     // `"test-wall"` / `"test-slab"` / `"test-cover"` / `"test-floor"` keys the
     // SituationBuilder uses.
     app.insert_resource(test_terrain_registry());
+    // GTW-414/415: the GangRegistry — setup_battle_on_request resolves each placed
+    // ganger's (gang, member) ref against it. The canonical `test_gang_registry` holds
+    // every fixture member (the `ganger_at` / default-builder gangs); without it setup
+    // fails closed (GangNotFound) and no ganger spawns.
+    app.insert_resource(test_gang_registry());
     // Bevy 0.19 routes a FAILED system-param validation to the global error handler
     // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the
     // render-provided resources some DefaultPlugins systems want (e.g. bevy_light's

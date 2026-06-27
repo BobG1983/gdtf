@@ -164,6 +164,7 @@ fn dangling_link_fixture_yields_the_typed_error() {
     use bevy::ecs::system::RunSystemOnce as _;
 
     let (situation, link) = dangling_link_situation();
+    let gangs = test_gang_registry();
     let registry = weapon_registry();
     let armor = armor_registry();
     let stat_tuning = GangerStatTuning::default();
@@ -175,10 +176,7 @@ fn dangling_link_fixture_yields_the_typed_error() {
     let result = world.run_system_once(move |mut commands: Commands| {
         setup_battle(
             &situation,
-            &registry,
-            &armor,
-            &stat_tuning,
-            None,
+            BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, None),
             fallback_floor_cost,
             &mut commands,
         )

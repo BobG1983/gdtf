@@ -36,6 +36,7 @@ use bevy::{app::App, asset::AssetPlugin, prelude::MinimalPlugins, scene::ScenePl
 use gdtf_battle_sim::{
     Faction, LifeState, Position, SquadVisibility, Stance, StanceKind,
     battle::{BattleInProgress, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested},
+    ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
     occupancy_sync::CoverDestroyed,
     rng::BattleSeed,
@@ -78,7 +79,7 @@ fn enemy_at() -> CellLevel {
 /// A two-ganger situation: a standing player ganger (gang 0) and a standing enemy
 /// ganger (gang 1) on clear ground, the player's view-range apart, `player_faction`
 /// defaulting to gang 0.
-fn two_ganger_situation() -> Situation {
+fn two_ganger_situation() -> (Situation, GangRegistry) {
     SituationBuilder::new()
         .with_gangers([
             GangerSpawnBuilder::new()
@@ -92,7 +93,7 @@ fn two_ganger_situation() -> Situation {
                 .stance(Stance::new(StanceKind::Standing))
                 .build(),
         ])
-        .build()
+        .build_with_gangs()
 }
 
 /// Build the FULL live-runtime harness: `MinimalPlugins` + `AssetPlugin` + `ScenePlugin`
@@ -116,7 +117,11 @@ fn battle_app() -> App {
 /// Drive a setup through the REAL `setup_battle_on_request` Ok path and settle it: send
 /// the `SetupBattleRequested`, then `update()` enough that the deferred `bsn!` ganger
 /// scenes materialize and the `Changed<Position>`-triggered recompute fills the fog.
-fn drive_setup(app: &mut App, situation: Situation) {
+fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
+    let (situation, gangs) = situation_and_gangs;
+    // GTW-414: insert the synthesized GangRegistry so setup_battle_on_request resolves
+    // the PlacedGanger (gang, member) refs (the weapon/armor registries' precedent).
+    app.world_mut().insert_resource(gangs);
     app.world_mut()
         .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
     // Update 1: setup runs (inserts grids + BattleInProgress + an empty SquadVisibility +
@@ -270,7 +275,7 @@ fn downing_player_drops_its_fov() {
                 .stance(Stance::new(StanceKind::Standing))
                 .build(),
         ])
-        .build();
+        .build_with_gangs();
 
     let mut app = battle_app();
     drive_setup(&mut app, situation);

@@ -2,14 +2,26 @@
 //! every test assembles a [`Situation`], plus the named multi-ganger fixtures the
 //! sim's own tests and the downstream crates' battle tests both reach for.
 
-use super::{ganger::ganger_at, registries::key};
+use super::{
+    ganger::{GangerSpawnBuilder, ganger_at},
+    registries::key,
+};
 use crate::{
-    ganger::Faction,
+    ganger::{Faction, GangName, GangRegistry, GangRoster},
     metric::CellLevel,
     situation::{CoverSpawn, GangerSpawn, Situation, SlabSpawn},
     terrain::piece::TerrainName,
     vertical::VerticalLink,
 };
+
+/// The GTW-414 gang NAME a test builder assigns a ganger to, derived from its faction
+/// (`gang_{faction}`) — so the v2 split groups same-faction gangers into one reusable
+/// gang roster while keeping per-faction rosters distinct. Test-only convention; shipped
+/// content names its gangs by the file stem.
+#[must_use]
+fn gang_name_for(faction: Faction) -> GangName {
+    GangName::new(format!("gang_{}", *faction))
+}
 
 /// The canonical test terrain piece names — the string keys authored test
 /// situations use so the test registry (`test_terrain_registry()`) can resolve them.
@@ -43,10 +55,24 @@ pub fn wall_at(at: CellLevel) -> CoverSpawn {
 /// a battlefield, replacing the hand-rolled `Situation { .. ..Situation::new() }`
 /// struct-update literals. Starts empty (no gangers / cover / slabs / links,
 /// `player_faction` = [`Faction::default`] = gang 0) and accretes via the `with_*`
-/// / `*_at` methods; [`build`](SituationBuilder::build) yields the [`Situation`].
+/// / `*_at` methods.
+///
+/// GTW-414 schema v2: the builder accepts the ergonomic combined [`GangerSpawn`]
+/// authoring records and SPLITS them on build — each becomes a
+/// [`PlacedGanger`](crate::situation::PlacedGanger) (into the [`Situation`]) plus a
+/// [`GangMember`](crate::ganger::GangMember) (into a synthesized [`GangRegistry`], keyed
+/// by a per-faction [`GangName`] via [`gang_name_for`]). [`build`](SituationBuilder::build)
+/// yields the [`Situation`] alone (for tests that don't run setup);
+/// [`build_with_gangs`](SituationBuilder::build_with_gangs) yields the
+/// `(Situation, GangRegistry)` pair the v2 [`setup_battle`](crate::situation::setup_battle)
+/// resolves against.
 #[derive(Debug, Clone, Default)]
 pub struct SituationBuilder {
+    /// The non-ganger situation fields (walls / scatter / slabs / links / player faction
+    /// / floors / theme / `grid_size`) — accreted directly.
     situation: Situation,
+    /// The combined ganger authoring records, accreted and split on build (GTW-414).
+    gangers:   Vec<GangerSpawn>,
 }
 
 impl SituationBuilder {
@@ -57,17 +83,17 @@ impl SituationBuilder {
         Self::default()
     }
 
-    /// Append one authored ganger.
+    /// Append one authored ganger (a combined [`GangerSpawn`] record, split on build).
     #[must_use]
     pub fn with_ganger(mut self, ganger: GangerSpawn) -> Self {
-        self.situation.gangers.push(ganger);
+        self.gangers.push(ganger);
         self
     }
 
-    /// Append a batch of authored gangers (authored order preserved).
+    /// Append a batch of authored gangers (authored order preserved; split on build).
     #[must_use]
     pub fn with_gangers(mut self, gangers: impl IntoIterator<Item = GangerSpawn>) -> Self {
-        self.situation.gangers.extend(gangers);
+        self.gangers.extend(gangers);
         self
     }
 
@@ -116,11 +142,86 @@ impl SituationBuilder {
         self
     }
 
-    /// Consume the builder and yield the configured [`Situation`].
+    /// Consume the builder and yield the configured [`Situation`] alone — the v2
+    /// placements (each combined ganger split into a
+    /// [`PlacedGanger`](crate::situation::PlacedGanger)), discarding the synthesized
+    /// [`GangRegistry`]. For tests that inspect the situation but don't run
+    /// [`setup_battle`](crate::situation::setup_battle); use
+    /// [`build_with_gangs`](SituationBuilder::build_with_gangs) when running a setup.
     #[must_use]
     pub fn build(self) -> Situation {
-        self.situation
+        self.build_with_gangs().0
     }
+
+    /// Consume the builder and yield the `(Situation, GangRegistry)` pair (GTW-414): the
+    /// v2 placements plus the synthesized gang registry the placements resolve against.
+    ///
+    /// Each accumulated combined [`GangerSpawn`] is `split` against a per-faction
+    /// [`GangName`] ([`gang_name_for`]): its [`PlacedGanger`](crate::situation::PlacedGanger)
+    /// goes into the situation (authored order preserved) and its
+    /// [`GangMember`](crate::ganger::GangMember) into the gang's roster (deduped by member
+    /// name — two same-faction gangers sharing a name share one roster member, which is
+    /// fine since they then carry identical attributes).
+    #[must_use]
+    pub fn build_with_gangs(mut self) -> (Situation, GangRegistry) {
+        let mut rosters: std::collections::BTreeMap<String, GangRoster> =
+            std::collections::BTreeMap::new();
+        for ganger in &self.gangers {
+            let gang = gang_name_for(ganger.faction);
+            let (placed, member) = ganger.split(gang.clone());
+            self.situation.gangers.push(placed);
+            let roster = rosters.entry((*gang).clone()).or_default();
+            // Dedup by member name (the gang's roster is name-keyed at lookup): only the
+            // first member of a given name is inserted; a same-name placement reuses it.
+            if roster.member(&member.name).is_none() {
+                roster.members.push(member);
+            }
+        }
+        let registry = GangRegistry::new(
+            rosters
+                .into_iter()
+                .map(|(name, roster)| (GangName::new(name), roster)),
+        );
+        (self.situation, registry)
+    }
+}
+
+/// The canonical TEST [`GangRegistry`] — the union of every standard fixture's
+/// synthesized gangs, so a harness that fields any of the canonical fixtures (or any
+/// `ganger_at(_, f)`-built situation for `f ∈ {0, 1, 2}`) has the gangs its placements
+/// resolve against (GTW-414).
+///
+/// Built from the fixtures via [`build_with_gangs`](SituationBuilder::build_with_gangs)
+/// — the SAME split the situations use — so it can never drift from what
+/// [`ganger_at`] produces. The downstream battle harnesses (`gdtf_test_utils`'s
+/// `BattleAppBuilder`, the per-app / presenter / input integration tests) insert THIS
+/// alongside [`test_weapon_registry`](super::registries::test_weapon_registry) /
+/// [`test_armor_registry`](super::registries::test_armor_registry), exactly as they
+/// already insert those, so `setup_battle` resolves every fielded ganger.
+#[must_use]
+pub fn test_gang_registry() -> GangRegistry {
+    // Build one situation that fields every canonical test ganger, then take its
+    // synthesized registry. Because every member of a gang is merged into ONE roster by
+    // `build_with_gangs`, this single pass yields a registry holding all the gangs +
+    // members any canonical fixture references — no manual unioning, no drift from
+    // `ganger_at` (the SAME split produces it). Two member families are covered, each on
+    // EVERY canonical faction (0 / 1 / 2):
+    //
+    // - "Test Ganger" — the DEFAULT `GangerSpawnBuilder` name (faction-independent), which
+    //   harnesses field on either side via `.faction(_)` (e.g. the battle-bootstrap shooter
+    //   / target). It must therefore exist in gang_0/gang_1/gang_2, not just gang_0.
+    // - "Ganger {f}" — what `ganger_at(_, f)` produces (one per faction).
+    SituationBuilder::new()
+        .with_gangers([
+            GangerSpawnBuilder::new().faction(Faction::new(0)).build(), // gang_0 ⇐ "Test Ganger"
+            GangerSpawnBuilder::new().faction(Faction::new(1)).build(), // gang_1 ⇐ "Test Ganger"
+            GangerSpawnBuilder::new().faction(Faction::new(2)).build(), // gang_2 ⇐ "Test Ganger"
+            ganger_at(key(0, 0, 0), 0),                                 // gang_0 ⇐ "Ganger 0"
+            ganger_at(key(0, 0, 0), 1),                                 // gang_1 ⇐ "Ganger 1"
+            ganger_at(key(0, 0, 0), 2),                                 // gang_2 ⇐ "Ganger 2"
+        ])
+        .build_with_gangs()
+        .1
 }
 
 /// The canonical named [`Situation`] fixtures — the shared multi-ganger
