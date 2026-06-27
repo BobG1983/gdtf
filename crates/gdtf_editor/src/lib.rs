@@ -16,16 +16,23 @@
 //!   [`CanvasRegion`], [`StatRegion`] — let later children and the GTW-417 test find each
 //!   empty container.
 //! - [`EditorCapturePlugin`] is the OFF-by-default QA hook for the AC4 screenshot.
+//! - [`MapEditorSession`] is the shared theme/default-floor/grid-size selection state the
+//!   GTW-421 right-panel controls write and later canvas children read; the `right_panel`
+//!   module spawns the theme dropdown + size selector and drives it.
 
 mod app;
 mod capture;
 mod load;
 mod plugin;
 mod regions;
+mod right_panel;
+mod session;
 mod state;
 
 pub use app::MapEditorApp;
 pub use capture::EditorCapturePlugin;
 pub use plugin::MapEditorPlugin;
 pub use regions::{CanvasRegion, EditorShellRoot, LeftPaletteRegion, RightPanelRegion, StatRegion};
+pub use right_panel::{GridSpanInput, SizeFieldAxis, ThemeDropdown};
+pub use session::MapEditorSession;
 pub use state::EditorState;

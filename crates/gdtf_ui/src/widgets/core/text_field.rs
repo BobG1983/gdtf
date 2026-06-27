@@ -313,6 +313,15 @@ pub struct NumericFieldCommitted<N: NumericValue> {
 }
 
 impl<N: NumericValue> NumericFieldCommitted<N> {
+    /// Build a commit message naming the field that committed and its (already-clamped)
+    /// [`CommittedNumericValue`] — the producer-side constructor (symmetric with
+    /// [`TextFieldCommitted::new`]), so a caller that drives a commit (or a test exercising a
+    /// commit listener's real code path) can raise one without reaching the private fields.
+    #[must_use]
+    pub const fn new(field: Entity, value: CommittedNumericValue<N>) -> Self {
+        Self { field, value }
+    }
+
     /// The numeric-field entity whose value committed.
     #[must_use]
     pub const fn field(&self) -> Entity {

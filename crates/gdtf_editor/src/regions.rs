@@ -13,7 +13,7 @@
 
 use bevy::{
     prelude::*,
-    ui::{FlexDirection, PositionType, Val},
+    ui::{FlexDirection, JustifyContent, PositionType, Val},
 };
 use gdtf_ui::{ScrollListColors, spawn_panel, spawn_scroll_list, theme::GdtfTheme};
 
@@ -54,7 +54,11 @@ pub struct EditorShellRoot;
 const LEFT_PALETTE_WIDTH_PCT: f32 = 18.0;
 
 /// Fraction of viewport WIDTH the right column (right panel + stat region) occupies.
-const RIGHT_COLUMN_WIDTH_PCT: f32 = 24.0;
+///
+/// Wide enough that the GTW-421 right-panel theme-dropdown label (the longest is
+/// "Industrial Hive") renders on ONE line inside the panel without clipping or wrapping —
+/// the prior `24%` was too narrow and the label left-truncated (GTW-421 layout fix).
+const RIGHT_COLUMN_WIDTH_PCT: f32 = 30.0;
 
 /// Fraction of the right column's HEIGHT the bottom-right stat region occupies (the right
 /// panel takes the remaining flex space above it).
@@ -130,11 +134,20 @@ pub(crate) fn spawn_editor_shell(mut commands: Commands, theme: Res<GdtfTheme>) 
         Some(FlexDirection::Column),
     );
 
-    // RIGHT panel — a scrollable region filling the top of the right column.
+    // RIGHT panel — a scrollable region filling the top of the right column. An explicit
+    // COLUMN with `min_height: 0`: a flex item's default `min-height` is `auto` (its content
+    // height), so a child taller than the spare main-axis space (the scroll list + its
+    // content) refuses to shrink and overflows; with the cell laid out as a column whose
+    // cross axis `stretch`es the scroll list to full width, the missing `min_height: 0` let
+    // the over-tall content settle against the BOTTOM of the cell — the GTW-421 bottom-cramp.
+    // `min_height: 0` lets the cell shrink to its flex-allocated box so the scroll list fills
+    // it from the TOP and scrolls the overflow instead of bottom-anchoring it.
     let right_panel_cell = commands
         .spawn(Node {
             width: Val::Percent(100.0),
             flex_grow: 1.0,
+            flex_direction: FlexDirection::Column,
+            min_height: Val::Px(0.0),
             ..default()
         })
         .id();
@@ -162,12 +175,18 @@ pub(crate) fn spawn_editor_shell(mut commands: Commands, theme: Res<GdtfTheme>) 
 /// Spawns a sized column-cell [`Node`] of the given relative `width` and full height, with
 /// an optional [`FlexDirection`] (defaulting to a column when `dir` is given). Used to wrap
 /// the scroll lists and to build the right column.
+///
+/// `justify_content: Start` pins the cell's children to the TOP of its main axis: the right
+/// column must stack the right panel above the stat region from the top, never centre/end-
+/// distribute them (the GTW-421 bottom-cramp guard — an end/centre default here pushed the
+/// panel's content to the bottom of the column).
 fn spawn_column_cell(commands: &mut Commands, width: Val, dir: Option<FlexDirection>) -> Entity {
     commands
         .spawn(Node {
             width,
             height: Val::Percent(100.0),
             flex_direction: dir.unwrap_or(FlexDirection::Column),
+            justify_content: JustifyContent::Start,
             ..default()
         })
         .id()

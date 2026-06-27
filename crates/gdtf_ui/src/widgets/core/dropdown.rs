@@ -327,6 +327,15 @@ pub struct DropdownSelectionChanged<T: OptionId> {
 }
 
 impl<T: OptionId> DropdownSelectionChanged<T> {
+    /// Build a selection-changed message naming the control [`Entity`] and the chosen `T`
+    /// id — the producer-side constructor (symmetric with the field commits' `new`), so a
+    /// caller that drives a selection (or a test exercising a selection listener's real code
+    /// path) can raise one without reaching the private fields.
+    #[must_use]
+    pub const fn new(control: Entity, id: T) -> Self {
+        Self { control, id }
+    }
+
     /// The dropdown control entity whose selection changed.
     #[must_use]
     pub const fn control(&self) -> Entity {
