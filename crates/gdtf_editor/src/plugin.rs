@@ -15,6 +15,7 @@ use gdtf_ui::{register_dropdown, register_numeric_field, register_text_field};
 
 use crate::{
     EditorState,
+    canvas::{spawn_canvas_scroll, sync_canvas},
     load::register_load,
     palette::{refresh_stat_region, select_palette_tile, spawn_stat_text, sync_palette},
     regions::spawn_editor_shell,
@@ -56,7 +57,12 @@ use crate::{
 ///   [`refresh_stat_region`](crate::palette::refresh_stat_region) (C3 — the bottom-right tile
 ///   stats). The GTW-422 `OnEnter` adds [`load_tile_atlas`](crate::tile_atlas::load_tile_atlas)
 ///   (the terrain sheet the rows draw from) and [`spawn_stat_text`](crate::palette::spawn_stat_text)
-///   (the stat region's text node).
+///   (the stat region's text node). The GTW-423 central canvas adds the
+///   [`spawn_canvas_scroll`](crate::canvas::spawn_canvas_scroll) `OnEnter` (wraps the
+///   [`CanvasRegion`](crate::CanvasRegion) in a scroll list) and the
+///   [`sync_canvas`](crate::canvas::sync_canvas) `Update` (the dashed boundary, per-cell dashes,
+///   and default-floor cell fill, rebuilt on a theme / size change — C1-C4), running LAST so a
+///   theme/size change has already folded into the session.
 pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
@@ -79,6 +85,7 @@ impl Plugin for MapEditorPlugin {
                 spawn_editor_shell,
                 spawn_right_panel_controls,
                 spawn_stat_text,
+                spawn_canvas_scroll,
             )
                 .chain()
                 .run_if(resource_exists::<gdtf_ui::theme::GdtfTheme>),
@@ -96,6 +103,11 @@ impl Plugin for MapEditorPlugin {
                 select_palette_tile,
                 sync_palette,
                 refresh_stat_region,
+                // The canvas syncs LAST: after a theme switch has folded into the session
+                // (apply_theme_selection) so a theme change re-fills the cells with the NEW
+                // default floor, and after a size commit (apply_size_commit) so a size change
+                // re-extents the grid (C4).
+                sync_canvas,
             )
                 .chain()
                 .run_if(in_state(EditorState::Editing)),

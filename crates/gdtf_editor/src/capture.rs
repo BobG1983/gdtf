@@ -7,6 +7,11 @@
 //! capture the empty shell unattended (AC4) while keeping the SHIPPED editor clean (the
 //! reachable-overlay debug-gating precedent: an env-gated, inert-by-default affordance).
 //!
+//! Before the shot the capture drives the shell into a legible state: it shrinks the canvas to a
+//! modest `8 × 8` grid (the full `60 × 60` is too dense to read — GTW-423 C5) and selects the first
+//! palette tile (GTW-422 C5), so the captured frame shows the populated palette, a highlighted row,
+//! the bottom-right stats, and the dashed canvas boundary + per-cell dashes + default-floor fill.
+//!
 //! It mirrors the `gdtf_ui` `scroll_list_demo` capture mechanism: a
 //! [`Screenshot::primary_window`] spawned with a [`save_to_disk`] observer, then a poll for
 //! the PNG (the GPU readback is async) before writing [`AppExit`], with a frame cap so a
@@ -19,9 +24,16 @@ use bevy::{
     render::view::window::screenshot::{Screenshot, save_to_disk},
     state::state::OnEnter,
 };
+use gdtf_battle_sim::level::{GridHeight, GridLevels, GridSize, GridWidth};
 use gdtf_ui::ActiveButton;
 
 use crate::{EditorState, PaletteRow, session::MapEditorSession};
+
+/// The modest, legible grid edge the capture shrinks the canvas to before the shot — an `8 × 8`
+/// (× 1 level) drawable area, so the dashed boundary + per-cell dashes + the default-floor fill
+/// read CLEARLY in the screenshot (the full `60 × 60` grid is too dense to make out — GTW-423 C5).
+/// A framework layout const for the capture drive (clause-4 plumbing carve-out).
+const SHOT_GRID_EDGE: u8 = 8;
 
 /// The env var that opts the capture affordance IN. Set it to an absolute PNG path; leave
 /// it unset for a normal interactive launch.
@@ -116,7 +128,12 @@ impl Plugin for EditorCapturePlugin {
             .add_systems(OnEnter(EditorState::Editing), reset_progress)
             .add_systems(
                 Update,
-                (drive_capture_selection, settle_then_capture, poll_then_exit)
+                (
+                    drive_capture_grid_size,
+                    drive_capture_selection,
+                    settle_then_capture,
+                    poll_then_exit,
+                )
                     .chain()
                     .run_if(in_state(EditorState::Editing)),
             );
@@ -157,6 +174,32 @@ fn drive_capture_selection(
     };
     session.select_tile(row.tile().clone());
     commands.entity(entity).insert(ActiveButton);
+}
+
+/// `Update` (in `Editing`, capture-only): shrink the canvas to a legible [`SHOT_GRID_EDGE`]-square
+/// grid before the shot so the dashed boundary + per-cell dashes + default-floor fill are clearly
+/// visible (GTW-423 C5 — the full `60 × 60` grid is too dense to read).
+///
+/// Runs every frame until the grid is already at the shot size: rebuilds the session's
+/// [`GridSize`] to `SHOT_GRID_EDGE × SHOT_GRID_EDGE × 1` via the validated [`GridSize::new`]
+/// (fail-closed — a build error leaves the grid unchanged, never a panic). Drives the session
+/// directly (the same path the GTW-421 size fields commit through), so [`sync_canvas`] re-extents
+/// the canvas on the next frame. Idempotent: once the grid matches the shot size it no-ops.
+fn drive_capture_grid_size(session: Option<ResMut<MapEditorSession>>) {
+    let Some(mut session) = session else {
+        return;
+    };
+    let current = session.grid_size();
+    if *current.width() == SHOT_GRID_EDGE && *current.height() == SHOT_GRID_EDGE {
+        return;
+    }
+    if let Ok(size) = GridSize::new(
+        GridWidth::new(SHOT_GRID_EDGE),
+        GridHeight::new(SHOT_GRID_EDGE),
+        GridLevels::new(1),
+    ) {
+        session.set_grid_size(size);
+    }
 }
 
 /// `Update` (in `Editing`): after [`SETTLE_FRAMES`], requests one primary-window screenshot

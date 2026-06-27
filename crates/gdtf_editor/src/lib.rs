@@ -23,8 +23,14 @@
 //! - The GTW-422 `palette` module lists every tile of the active theme (sprite + name) in the
 //!   [`LeftPaletteRegion`], writes the clicked tile into the session, and shows its catalog
 //!   stats in the [`StatRegion`]; [`PaletteRow`] / [`StatText`] are its markers.
+//! - The GTW-423 `canvas` module fills the [`CanvasRegion`] with the drawable cell grid — a
+//!   dashed boundary + per-cell dimmed dashes around `width × height` cells each pre-filled with
+//!   the theme's default-floor sprite, live-rebuilt on a theme / size change (2D x/y plane only;
+//!   z is out of scope). [`CanvasRoot`] / [`CanvasCell`] / [`CanvasScroll`] / [`CanvasExtent`]
+//!   are its markers.
 
 mod app;
+mod canvas;
 mod capture;
 mod load;
 mod palette;
@@ -36,6 +42,7 @@ mod state;
 mod tile_atlas;
 
 pub use app::MapEditorApp;
+pub use canvas::{CanvasCell, CanvasExtent, CanvasRoot, CanvasScroll};
 pub use capture::EditorCapturePlugin;
 pub use palette::{PaletteRow, StatText};
 pub use plugin::MapEditorPlugin;
