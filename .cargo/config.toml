@@ -6,6 +6,10 @@
 drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher"
 dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher"
 
+# Run / build the map editor (bins/map_editor) with dynamic linking.
+edrun = "run -p map_editor --features dynamic_linking"
+edbuild = "build -p map_editor --features dynamic_linking"
+
 # Workspace-wide dev checks with dynamic linking. 
 dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking"
 dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking"
