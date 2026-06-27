@@ -16,11 +16,13 @@ use gdtf_ui::{register_dropdown, register_numeric_field, register_text_field};
 use crate::{
     EditorState,
     load::register_load,
+    palette::{refresh_stat_region, select_palette_tile, spawn_stat_text, sync_palette},
     regions::spawn_editor_shell,
     right_panel::{
         GridSpanInput, apply_size_commit, apply_theme_selection, spawn_right_panel_controls,
     },
     session::MapEditorSession,
+    tile_atlas::load_tile_atlas,
 };
 
 /// The map editor's single plugin: state machine + `Load` pass + `Editing` scene + right
@@ -45,8 +47,16 @@ use crate::{
 /// - `OnExit(Editing)` → remove the [`MapEditorSession`] (the state-scoped-resource pattern,
 ///   bevy-traps #1).
 /// - `Update` (in `Editing`) →
-///   [`apply_theme_selection`](crate::right_panel::apply_theme_selection) (C2) +
-///   [`apply_size_commit`](crate::right_panel::apply_size_commit) (C3).
+///   [`apply_theme_selection`](crate::right_panel::apply_theme_selection) (GTW-421 C2) +
+///   [`apply_size_commit`](crate::right_panel::apply_size_commit) (GTW-421 C3), then the
+///   GTW-422 left-palette trio:
+///   [`select_palette_tile`](crate::palette::select_palette_tile) (C2 — a row click sets the
+///   active paint tile + highlight), [`sync_palette`](crate::palette::sync_palette) (C1 + C4 —
+///   populate / repopulate the rows from the active theme's catalog), and
+///   [`refresh_stat_region`](crate::palette::refresh_stat_region) (C3 — the bottom-right tile
+///   stats). The GTW-422 `OnEnter` adds [`load_tile_atlas`](crate::tile_atlas::load_tile_atlas)
+///   (the terrain sheet the rows draw from) and [`spawn_stat_text`](crate::palette::spawn_stat_text)
+///   (the stat region's text node).
 pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
@@ -65,8 +75,10 @@ impl Plugin for MapEditorPlugin {
             OnEnter(EditorState::Editing),
             (
                 insert_session,
+                load_tile_atlas,
                 spawn_editor_shell,
                 spawn_right_panel_controls,
+                spawn_stat_text,
             )
                 .chain()
                 .run_if(resource_exists::<gdtf_ui::theme::GdtfTheme>),
@@ -74,7 +86,19 @@ impl Plugin for MapEditorPlugin {
         app.add_systems(OnExit(EditorState::Editing), remove_session);
         app.add_systems(
             Update,
-            (apply_theme_selection, apply_size_commit).run_if(in_state(EditorState::Editing)),
+            (
+                apply_theme_selection,
+                apply_size_commit,
+                // The palette sync + select run AFTER the theme dropdown folds its selection into
+                // the session, so a theme switch this frame repopulates the palette (C4); a row
+                // click updates the selection + highlight (C2). The stat refresh runs LAST so it
+                // observes the selection write this frame (C3).
+                select_palette_tile,
+                sync_palette,
+                refresh_stat_region,
+            )
+                .chain()
+                .run_if(in_state(EditorState::Editing)),
         );
     }
 }

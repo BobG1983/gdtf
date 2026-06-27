@@ -19,8 +19,9 @@ use bevy::{
     render::view::window::screenshot::{Screenshot, save_to_disk},
     state::state::OnEnter,
 };
+use gdtf_ui::ActiveButton;
 
-use crate::EditorState;
+use crate::{EditorState, PaletteRow, session::MapEditorSession};
 
 /// The env var that opts the capture affordance IN. Set it to an absolute PNG path; leave
 /// it unset for a normal interactive launch.
@@ -115,7 +116,7 @@ impl Plugin for EditorCapturePlugin {
             .add_systems(OnEnter(EditorState::Editing), reset_progress)
             .add_systems(
                 Update,
-                (settle_then_capture, poll_then_exit)
+                (drive_capture_selection, settle_then_capture, poll_then_exit)
                     .chain()
                     .run_if(in_state(EditorState::Editing)),
             );
@@ -126,6 +127,36 @@ impl Plugin for EditorCapturePlugin {
 /// from the moment the shell scene comes up.
 fn reset_progress(mut progress: ResMut<CaptureProgress>) {
     *progress = CaptureProgress::default();
+}
+
+/// `Update` (in `Editing`, capture-only): drive a tile SELECTION before the shot so the
+/// captured frame shows the left palette POPULATED, a row HIGHLIGHTED, and the bottom-right
+/// stats POPULATED (GTW-422 C5).
+///
+/// Runs every frame until a selection exists: once the palette rows are built (the `Update`
+/// `sync_palette` has run), it picks the first [`PaletteRow`], writes its
+/// [`TileKey`](gdtf_battle_sim::level::TileKey) into the session
+/// ([`MapEditorSession::select_tile`]) and adds the [`ActiveButton`] highlight marker — exactly
+/// what a real click does, but driven directly (the windowed `ui_focus_system` would clear a
+/// synthesized `Interaction::Pressed` before the click handler sees it, so this writes the
+/// selection state itself). The stat-region refresh then fires on the `is_changed` session.
+/// Idempotent: once the session has a selected tile it no-ops.
+fn drive_capture_selection(
+    mut commands: Commands,
+    rows: Query<(Entity, &PaletteRow)>,
+    session: Option<ResMut<MapEditorSession>>,
+) {
+    let Some(mut session) = session else {
+        return;
+    };
+    if session.selected_tile().is_some() {
+        return;
+    }
+    let Some((entity, row)) = rows.iter().next() else {
+        return;
+    };
+    session.select_tile(row.tile().clone());
+    commands.entity(entity).insert(ActiveButton);
 }
 
 /// `Update` (in `Editing`): after [`SETTLE_FRAMES`], requests one primary-window screenshot

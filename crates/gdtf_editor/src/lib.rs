@@ -16,21 +16,28 @@
 //!   [`CanvasRegion`], [`StatRegion`] — let later children and the GTW-417 test find each
 //!   empty container.
 //! - [`EditorCapturePlugin`] is the OFF-by-default QA hook for the AC4 screenshot.
-//! - [`MapEditorSession`] is the shared theme/default-floor/grid-size selection state the
-//!   GTW-421 right-panel controls write and later canvas children read; the `right_panel`
-//!   module spawns the theme dropdown + size selector and drives it.
+//! - [`MapEditorSession`] is the shared theme/default-floor/grid-size/selected-tile selection
+//!   state the GTW-421 right-panel controls + the GTW-422 left palette write and later canvas
+//!   children read; the `right_panel` module spawns the theme dropdown + size selector and the
+//!   `palette` module spawns the left tile palette + the bottom-right stat region.
+//! - The GTW-422 `palette` module lists every tile of the active theme (sprite + name) in the
+//!   [`LeftPaletteRegion`], writes the clicked tile into the session, and shows its catalog
+//!   stats in the [`StatRegion`]; [`PaletteRow`] / [`StatText`] are its markers.
 
 mod app;
 mod capture;
 mod load;
+mod palette;
 mod plugin;
 mod regions;
 mod right_panel;
 mod session;
 mod state;
+mod tile_atlas;
 
 pub use app::MapEditorApp;
 pub use capture::EditorCapturePlugin;
+pub use palette::{PaletteRow, StatText};
 pub use plugin::MapEditorPlugin;
 pub use regions::{CanvasRegion, EditorShellRoot, LeftPaletteRegion, RightPanelRegion, StatRegion};
 pub use right_panel::{GridSpanInput, SizeFieldAxis, ThemeDropdown};

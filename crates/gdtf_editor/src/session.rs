@@ -32,6 +32,10 @@ use gdtf_battle_sim::level::{GridSize, LevelTheme, TileKey};
 ///   catalog resolves it (an empty / absent registry leaves it unset rather than panicking).
 /// - [`grid_size`](MapEditorSession::grid_size) — the drawable-area [`GridSize`] (C3),
 ///   always a validated, in-bounds value (every mutation flows through [`GridSize::new`]).
+/// - [`selected_tile`](MapEditorSession::selected_tile) — the active PAINT tile's
+///   [`TileKey`] (GTW-422 C2), the palette row the author last clicked. `None` until a row
+///   is selected; the canvas paints with it and the bottom-right stat region shows its
+///   catalog stats (C3).
 ///
 /// Every field is read through an accessor and mutated through a named setter, so the
 /// catalog-resolve and clamp invariants live in one place.
@@ -44,11 +48,16 @@ pub struct MapEditorSession {
     default_floor: Option<TileKey>,
     /// The drawable-area dimensions, validated to `1..=60` on x/y and `1..=8` on z.
     grid_size:     GridSize,
+    /// The active PAINT tile — the [`TileKey`] of the palette row the author last clicked
+    /// (GTW-422 C2). `None` until a palette row is selected; the canvas paints with this
+    /// tile and the bottom-right stat region shows its catalog stats (C3).
+    selected_tile: Option<TileKey>,
 }
 
 impl MapEditorSession {
     /// Build a session from an initial theme, default-floor key, and grid size — used by the
-    /// `OnEnter(Editing)` seed and by tests.
+    /// `OnEnter(Editing)` seed and by tests. The active paint tile starts unset (no palette
+    /// row has been clicked yet).
     #[must_use]
     pub const fn new(
         theme: LevelTheme,
@@ -59,6 +68,7 @@ impl MapEditorSession {
             theme,
             default_floor,
             grid_size,
+            selected_tile: None,
         }
     }
 
@@ -93,6 +103,19 @@ impl MapEditorSession {
     pub const fn set_grid_size(&mut self, grid_size: GridSize) {
         self.grid_size = grid_size;
     }
+
+    /// The active PAINT tile's [`TileKey`] — the palette row the author last selected (C2),
+    /// or `None` if no row has been clicked yet.
+    #[must_use]
+    pub const fn selected_tile(&self) -> Option<&TileKey> {
+        self.selected_tile.as_ref()
+    }
+
+    /// Set the active paint tile to the clicked palette row's [`TileKey`] (GTW-422 C2). The
+    /// canvas paints with this tile and the bottom-right stat region shows its stats (C3).
+    pub fn select_tile(&mut self, tile: TileKey) {
+        self.selected_tile = Some(tile);
+    }
 }
 
 impl Default for MapEditorSession {
@@ -104,6 +127,7 @@ impl Default for MapEditorSession {
             theme:         LevelTheme::default(),
             default_floor: None,
             grid_size:     GridSize::default(),
+            selected_tile: None,
         }
     }
 }
