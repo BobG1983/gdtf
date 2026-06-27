@@ -1,0 +1,34 @@
+[package]
+name = "gdtf_editor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+# The hand-rolled UI layer (UiPlugin, GdtfTheme, spawn_panel, spawn_scroll_list).
+# The editor's four region panels are themed gdtf_ui widgets.
+gdtf_ui = { path = "../gdtf_ui" }
+# The generic loose-file RON asset loader (RonAsset<T> + init_ron_asset). The editor's
+# slim Load pass registers + loads the theme spec, the theme-tile catalogs, and the
+# weapon/armor specs through it, exactly as gdtf_app's game Load does.
+gdtf_assets = { path = "../gdtf_assets" }
+# The authoritative sim owns the registry domain types the editor loads + holds:
+# WeaponRegistry / ArmorRegistry / ThemeCatalogRegistry (+ their specs). The editor
+# depends on the sim ONLY for these data types — it wires NONE of the sim's runtime.
+gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+
+[dev-dependencies]
+# The headless integration test drives the REAL editor plugin on a no-renderer
+# DefaultPlugins app with a live AssetServer (the gdtf_test_utils UI-harness config),
+# so the test exercises the editor's actual Load pass + region spawn, not a copy.
+gdtf_test_utils = { path = "../gdtf_test_utils" }
+
+[features]
+# Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled for
+# release artifacts. Propagated from the `map_editor` binary crate (binary ->
+# gdtf_editor -> bevy/dynamic_linking), mirroring the grimdark_turfwar -> gdtf_app
+# chain. Keeps the dev/QA build+link loop fast.
+dynamic_linking = ["bevy/dynamic_linking"]
+
+[lints]
+workspace = true
