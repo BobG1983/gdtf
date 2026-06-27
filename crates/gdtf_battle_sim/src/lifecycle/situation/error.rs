@@ -3,6 +3,7 @@
 use crate::{
     armor::ArmorName,
     ganger::{GangName, GangerName},
+    metric::CellLevel,
     terrain::piece::TerrainName,
     tuning::MoveCost,
     vertical::InvalidVerticalLink,
@@ -26,7 +27,9 @@ use crate::{
 /// [`TerrainNotFound`](BattleSetupError::TerrainNotFound) (for a cover/slab/floor
 /// key absent from the [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry))
 /// and [`FloorCostBelowMinimum`](BattleSetupError::FloorCostBelowMinimum) (for a
-/// floor piece whose move cost is below the A\* heuristic admissibility floor).
+/// floor piece whose move cost is below the A\* heuristic admissibility floor),
+/// and the GTW-457 [`StackedGangers`](BattleSetupError::StackedGangers) variant
+/// (for two authored gangers sharing one `(cell, level)` spawn slot).
 /// The caller
 /// ([`setup_battle_on_request`](crate::battle::setup_battle_on_request)) matches on
 /// it and fails closed (logs, no [`BattleReady`](crate::battle::BattleReady)) — it
@@ -100,6 +103,25 @@ pub enum BattleSetupError {
         /// The minimum admissible cost (always [`MIN_MOVE_COST`](crate::pathfinder::MIN_MOVE_COST)).
         minimum: MoveCost,
     },
+    /// Two or more authored gangers share the SAME `(cell, level)` spawn slot
+    /// (GTW-457). In-battle movement enforces single-occupancy
+    /// (`docs/combat/resolution.md`: one object per cell), but the GTW-156
+    /// occupancy pour is last-write-wins, so a duplicated authored cell would
+    /// silently overwrite the first ganger's occupancy slot while BOTH entities
+    /// survive standing on the same cell — a stacked, invalid world.
+    ///
+    /// This fails CLOSED before any ganger entity is spawned (abort-first): a
+    /// trusted authored situation with stacked spawns is a DATA bug to be fixed,
+    /// not auto-relocated (auto-relocation belongs in the GTW-424 procgen
+    /// assembler, not here).
+    ///
+    /// Fix: give each ganger a distinct `at` `(cell, level)` in the authored
+    /// situation `.ron`.
+    StackedGangers {
+        /// The `(cell, level)` two or more gangers were authored to share (the
+        /// first duplicate detected).
+        at: CellLevel,
+    },
 }
 
 impl From<InvalidVerticalLink> for BattleSetupError {
@@ -109,5 +131,47 @@ impl From<InvalidVerticalLink> for BattleSetupError {
     /// error straight into its own [`BattleSetupError`] result.
     fn from(invalid: InvalidVerticalLink) -> Self {
         Self::InvalidLink(invalid)
+    }
+}
+
+impl std::fmt::Display for BattleSetupError {
+    /// Render a human-readable, fail-closed setup error for the
+    /// [`setup_battle_on_request`](crate::battle::setup_battle_on_request)
+    /// `error!` log — each arm names the offending authored value so the bad
+    /// situation `.ron` can be fixed. The [`InvalidLink`](BattleSetupError::InvalidLink)
+    /// arm renders its `InvalidVerticalLink` via `Debug` (that type carries no
+    /// `Display`), all other arms are bespoke messages.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidLink(invalid) => write!(f, "invalid vertical link: {invalid:?}"),
+            Self::GangNotFound { gang } => {
+                write!(f, "no gang `{}` is loaded (missing gang file)", **gang)
+            }
+            Self::GangMemberNotFound { gang, member } => {
+                write!(f, "gang `{}` has no member `{}`", **gang, **member)
+            }
+            Self::WeaponNotFound { weapon } => {
+                write!(f, "no weapon `{}` is loaded", **weapon)
+            }
+            Self::ArmorNotFound { armor } => write!(f, "no armor `{}` is loaded", **armor),
+            Self::TerrainNotFound { piece } => {
+                write!(f, "no terrain piece `{}` is loaded", **piece)
+            }
+            Self::FloorCostBelowMinimum {
+                piece,
+                cost,
+                minimum,
+            } => write!(
+                f,
+                "floor piece `{}` move cost {} is below the minimum {}",
+                **piece, **cost, **minimum
+            ),
+            Self::StackedGangers { at } => write!(
+                f,
+                "two or more gangers are authored on the same spawn cell {:?} \
+                 (each ganger needs a distinct (cell, level))",
+                **at
+            ),
+        }
     }
 }

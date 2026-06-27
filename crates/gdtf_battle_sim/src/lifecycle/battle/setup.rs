@@ -246,9 +246,10 @@ pub fn setup_battle_on_request(
             }
             Err(e) => {
                 error!(
-                    "battle setup failed: {e:?} (an invalid vertical link, an unresolved \
-                     weapon/armor/terrain key, or a floor cost below the A* admissibility \
-                     floor); no BattleReady will be signalled"
+                    "battle setup failed: {e} (an invalid vertical link, an unresolved \
+                     weapon/armor/terrain key, a floor cost below the A* admissibility \
+                     floor, or two gangers stacked on one spawn cell); no BattleReady \
+                     will be signalled"
                 );
             }
         }

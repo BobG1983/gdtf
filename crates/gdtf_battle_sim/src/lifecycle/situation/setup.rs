@@ -468,6 +468,8 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 /// - [`BattleSetupError::GangNotFound`] — a placed ganger's gang ref is absent (GTW-414).
 /// - [`BattleSetupError::GangMemberNotFound`] — its member ref is absent from that gang
 ///   (GTW-414).
+/// - [`BattleSetupError::StackedGangers`] — two gangers share one `(cell, level)` spawn
+///   slot (GTW-457).
 /// - [`BattleSetupError::WeaponNotFound`] — the resolved roster member's weapon key absent.
 /// - [`BattleSetupError::ArmorNotFound`] — the resolved roster member's armor key absent.
 /// - [`BattleSetupError::TerrainNotFound`] — cover/slab/floor piece key absent.
@@ -525,6 +527,17 @@ pub fn setup_battle(
             });
         };
         resolved_members.push((placed, member));
+    }
+
+    // GTW-457: reject a situation that authors two gangers on the SAME (cell, level)
+    // — BEFORE any ganger entity is spawned (abort-first, mirroring the gang/member
+    // ref checks above). The GTW-156 occupancy pour is last-write-wins, so a duplicate
+    // would silently overwrite the first ganger's occupancy slot while BOTH entities
+    // survive stacked on one cell (`docs/combat/resolution.md`: one object per cell).
+    // A trusted authored situation with stacked spawns is a DATA bug to fail LOUDLY on,
+    // not auto-relocate (auto-relocation belongs in the GTW-424 procgen assembler).
+    if let Some(at) = first_stacked_cell(situation) {
+        return Err(BattleSetupError::StackedGangers { at });
     }
 
     // Resolve every ganger's weapon key against the registry up front — BEFORE the
@@ -850,14 +863,32 @@ pub fn setup_battle(
 /// Whether `situation`'s authored ganger cells contain a duplicate — two gangers
 /// spawned on the SAME `(cell, level)`.
 ///
-/// A setup-time sanity helper (not an error in [`setup_battle`] — the occupancy
-/// pour keeps the last write, matching the GTW-156 contract — but useful for a
-/// caller / test to detect an over-stacked situation). Returns `true` if any
-/// `(cell, level)` is authored for more than one ganger.
+/// A thin `bool` wrapper over the private `first_stacked_cell` detection — `true`
+/// iff some `(cell, level)` is authored for more than one ganger. [`setup_battle`] ENFORCES
+/// this invariant (GTW-457): a duplicate aborts setup with
+/// [`BattleSetupError::StackedGangers`] before any entity is spawned, since the
+/// GTW-156 occupancy pour is last-write-wins and would otherwise silently overwrite
+/// the first ganger's slot while both entities survive stacked on one cell.
 #[must_use]
 pub fn has_stacked_gangers(situation: &Situation) -> bool {
+    first_stacked_cell(situation).is_some()
+}
+
+/// The first `(cell, level)` two or more authored gangers share, in
+/// [`Situation::gangers`](crate::situation::Situation) order — or `None` when every
+/// ganger has a distinct spawn cell.
+///
+/// The single HashSet-over-`at` detection both [`has_stacked_gangers`] (the `bool`
+/// view) and the [`setup_battle`] pre-spawn gate (GTW-457 — the ENFORCED view that
+/// needs the offending cell for [`BattleSetupError::StackedGangers`]) read.
+#[must_use]
+fn first_stacked_cell(situation: &Situation) -> Option<crate::metric::CellLevel> {
     let mut seen = HashSet::new();
-    situation.gangers.iter().any(|g| !seen.insert(g.at))
+    situation
+        .gangers
+        .iter()
+        .find(|g| !seen.insert(g.at))
+        .map(|g| g.at)
 }
 
 /// The cell directly below `cell` (`(x, y, z − 1)`), or `None` when `cell` is at
