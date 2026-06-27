@@ -257,7 +257,10 @@ pub use acts_runtime::{
         MovementOccurred, ReloadOutcome, ReloadResult, apply_injury, can_engage, decide_fire_arc,
     },
     ai,
-    ai::{AiTarget, enemy_ai_turn, pick_nearest, plan_advance},
+    ai::{
+        ActCadence, ActPacing, AiTarget, EnemyActCooldown, enemy_ai_turn, pick_nearest,
+        plan_advance,
+    },
     bleed,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     downed_acts,

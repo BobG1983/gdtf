@@ -6,6 +6,7 @@ pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 
 pub(super) use crate::{
     acts::{FireRequested, MoveRequested, SimActsPlugin},
+    ai::{ActCadence, EnemyActCooldown},
     battle::PlayerFaction,
     cover::{CoverLedger, HeightBand},
     ganger::{
@@ -87,7 +88,29 @@ pub(super) fn brain_app() -> App {
     app.insert_resource(tuning);
     app.insert_resource(PlayerFaction::new(PLAYER));
     app.insert_resource(ActiveFaction::new(ENEMY));
+    // GTW-461: seed the act cooldown ready-to-act, with a ZERO cadence — so the existing
+    // per-tick brain scenarios behave EXACTLY as before (recharge-to-0 = ready next tick =
+    // the act-every-tick path). The dedicated cadence test (`cadence.rs`) overrides
+    // ActCadence to a real positive value via `set_cadence` to prove the one-act-per-step
+    // pacing.
+    app.insert_resource(EnemyActCooldown::ready());
+    app.insert_resource(ActCadence::new(0));
     app
+}
+
+/// Override the brain's [`ActCadence`] — the number of ticks the brain waits between enemy
+/// acts (GTW-461). Used by the cadence test to set a real positive cadence on a
+/// [`brain_app`]; the default harness seeds `0` (act-every-tick, the prior behaviour).
+pub(super) fn set_cadence(app: &mut App, ticks: u32) {
+    app.insert_resource(ActCadence::new(ticks));
+}
+
+/// The number of ticks remaining on the enemy-act cooldown (GTW-461) — `0` if the resource
+/// is absent (no `unwrap`).
+pub(super) fn cooldown_ticks(app: &App) -> u32 {
+    app.world()
+        .get_resource::<EnemyActCooldown>()
+        .map_or(0, |cooldown| **cooldown)
 }
 
 /// A `(cell, level)` key on the ground floor.

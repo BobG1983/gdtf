@@ -6,6 +6,7 @@
 use bevy::prelude::{Commands, MessageReader, MessageWriter, Res, error};
 
 use crate::{
+    ai::{ActCadence, EnemyActCooldown},
     armor::ArmorRegistry,
     battle::{
         messages::{BattleReady, SetupBattleRequested, TeardownBattleRequested},
@@ -49,7 +50,9 @@ use crate::{
 ///    [`Situation::player_faction`](crate::situation::Situation), the
 ///    [`BattleRoster`] is captured from the situation's fielded gangers' factions, the
 ///    [`ActiveFaction`] turn-cycle resource is seeded to the same player faction (the
-///    player acts first; GTW-309), an EMPTY
+///    player acts first; GTW-309), the [`EnemyActCooldown`] (ready-to-act) + the default
+///    [`ActCadence`] AI-pacing resources are inserted (GTW-461 — the brain emits at most
+///    one enemy act per cadence-step), an EMPTY
 ///    [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog is inserted
 ///    (GTW-341), the [`OmniscientFog`](crate::visibility::OmniscientFog) AI move fog is
 ///    inserted (GTW-70 — every in-bounds cell visible+explored) — all sharing
@@ -212,6 +215,14 @@ pub fn setup_battle_on_request(
                 // first), sharing the BattleInProgress lifetime (removed together on
                 // teardown) so the turn-cycle engine's ActiveFaction read is panic-free.
                 commands.insert_resource(ActiveFaction::new(request.situation.player_faction));
+                // GTW-461: insert the enemy-act COOLDOWN ready-to-act (0 ticks) + the default
+                // ActCadence on this same Ok path, sharing the BattleInProgress lifetime
+                // (removed together on teardown). The cooldown paces `enemy_ai_turn` to at
+                // most one enemy act per cadence-step, so the enemy turn resolves act-by-act
+                // on screen instead of as a one-frame volley. Seeded `ready()` (0) so the
+                // enemy's FIRST act is immediate — the dwell only applies BETWEEN acts.
+                commands.insert_resource(EnemyActCooldown::ready());
+                commands.insert_resource(ActCadence::default());
                 // GTW-341: insert an EMPTY SquadVisibility on this same Ok path, sharing
                 // the BattleInProgress lifetime. It starts empty; the BattleReady we write
                 // below trips recompute_visibility (the SOLE writer) on the next update,
@@ -272,7 +283,8 @@ fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
 /// [`FloorCostGrid`]), the [`BattleInProgress`] witness (closing the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) gate so the
 /// bundled runtime goes inert again), the [`PlayerFaction`], the [`BattleRoster`], the
-/// [`ActiveFaction`] turn-cycle resource, the
+/// [`ActiveFaction`] turn-cycle resource, the [`EnemyActCooldown`] + [`ActCadence`]
+/// AI-pacing resources (GTW-461), the
 /// [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog (GTW-341), and the
 /// [`OmniscientFog`](crate::visibility::OmniscientFog) AI move fog (GTW-70) (all
 /// lifetimes track [`BattleInProgress`], so they are removed in the same teardown).
@@ -344,6 +356,11 @@ pub fn teardown_battle_on_request(
         // Remove the ActiveFaction alongside, so the turn cycle's lifetime stays identical
         // to BattleInProgress (the turn-cycle engine reads it within that window; GTW-309).
         commands.remove_resource::<ActiveFaction>();
+        // GTW-461: remove the enemy-act cooldown + cadence alongside, so the AI-pacing
+        // resources' lifetime stays identical to BattleInProgress (the brain reads them
+        // within that window).
+        commands.remove_resource::<EnemyActCooldown>();
+        commands.remove_resource::<ActCadence>();
         // Remove the SquadVisibility alongside, so the squad fog's lifetime stays identical
         // to BattleInProgress (recompute_visibility — the sole writer — reads its
         // ResMut within that window; GTW-341).

@@ -25,7 +25,10 @@ use bevy::{
     prelude::{Entity, MessageWriter, Query, Res},
 };
 
-use super::decide::{AiTarget, pick_nearest, plan_advance};
+use super::{
+    cadence::ActPacing,
+    decide::{AiTarget, pick_nearest, plan_advance},
+};
 use crate::{
     acts::{EndTurnRequested, FireRequested, MoveRequested, can_engage},
     battle::PlayerFaction,
@@ -147,14 +150,24 @@ fn cell_order(position: &Position) -> (i32, i32, i32) {
 /// pass over each enemy ganger and end the turn back to the player when the enemy is done
 /// (GTW-70 §A / §B / §C / §D).
 ///
-/// Per FRAME (the brain is stateless across frames — it re-derives everything from current
-/// world state):
+/// Per FRAME (the brain is stateless across frames EXCEPT for the GTW-461 act-cadence
+/// cooldown — it re-derives everything else from current world state):
 ///
 /// 1. If [`ActiveFaction`] is the player's, return (the human's turn).
-/// 2. Snapshot every ganger as a Copy `GangerRow`; the acting enemies (`faction ==
+/// 2. **Cadence gate (GTW-461)** — if the
+///    [`EnemyActCooldown`](super::cadence::EnemyActCooldown) has NOT elapsed, count it down
+///    one tick and return WITHOUT emitting an act: this paces the brain to AT MOST ONE enemy
+///    act per [`ActCadence`](super::cadence::ActCadence)-step, so the enemy turn resolves
+///    act-by-act on screen rather than as a one-frame volley (the
+///    [`advance_walk`](crate::move_acts::advance_walk) one-step-per-tick model extended to
+///    the fire/turn path). The turn-end check below is NOT gated — once the enemy has nothing
+///    left to do, control returns promptly.
+/// 3. Snapshot every ganger as a Copy `GangerRow`; the acting enemies (`faction ==
 ///    active`) are visited in `(level, y, x)` order, the opposing gangers (`faction !=
 ///    active`) are the FIRE targets + advance goals.
-/// 3. For each conscious, not-mid-walk enemy, in order:
+/// 4. For each conscious, not-mid-walk enemy, in order — STOPPING at the FIRST that acts
+///    (GTW-461: one act per cadence-step, then recharge the cooldown to the
+///    [`ActCadence`](super::cadence::ActCadence)):
 ///    - **ENGAGE** (§B clause 1 + §C): resolve its weapon (the [`Magazine`] + single-shot
 ///      [`FireModeSpec`](crate::weapon::FireModeSpec) off the related weapon entity, exactly
 ///      as `dispatch_fire` does); a target is engageable iff [`can_see`] (real per-pair LOS)
@@ -165,7 +178,7 @@ fn cell_order(position: &Position) -> (i32, i32, i32) {
 ///      opposing ganger's actual cell over the [`OmniscientFog`] move fog
 ///      ([`reachable_within`] + [`plan_advance`]) and emit the REAL [`MoveRequested`].
 ///    - **HOLD**: emit nothing.
-/// 4. End-turn, decoupled from emission (§D.3): emit [`EndTurnRequested`] ONLY when no enemy
+/// 5. End-turn, decoupled from emission (§D.3): emit [`EndTurnRequested`] ONLY when no enemy
 ///    acted this frame AND none is mid-walk — so the turn always terminates (the fire path's
 ///    `can_engage` pre-check and the move path's shared-fog `reachable_within` make every
 ///    emitted act dispatcher-accepted, so each act spends TU or attaches a walk, the
@@ -178,9 +191,10 @@ fn cell_order(position: &Position) -> (i32, i32, i32) {
     clippy::too_many_arguments,
     reason = "the enemy brain reads the active/player factions, the combat tuning, the five \
               read grids (occupancy / surface / cover / links / floor costs) + the AI move \
-              fog, the ganger + wielded-weapon + weapon-entity queries, and the three act \
-              MessageWriters; each is a distinct Bevy SystemParam, mirroring dispatch_fire's \
-              own argument-count carve-out, and bundling them would only hide the real reads"
+              fog, the GTW-461 act cadence + cooldown, the ganger + wielded-weapon + \
+              weapon-entity queries, and the three act MessageWriters; each is a distinct \
+              Bevy SystemParam, mirroring dispatch_fire's own argument-count carve-out, and \
+              bundling them would only hide the real reads"
 )]
 #[expect(
     clippy::too_many_lines,
@@ -200,6 +214,11 @@ pub fn enemy_ai_turn(
     links: Res<VerticalLinkGraph>,
     floor_costs: Res<FloorCostGrid>,
     omniscient: Option<Res<OmniscientFog>>,
+    // GTW-461: the act-cadence pacing reads (the cooldown counted DOWN each gated tick +
+    // recharged after each emission, plus the cadence ticks), bundled into one SystemParam
+    // so the brain stays under Bevy's 16-param arity. Read as `Option` internally so the
+    // brain's access stays panic-free outside a live battle (un-paced fallback).
+    mut pacing: ActPacing,
     gangers: EnemyTurnGangers,
     wields: WieldsQuery,
     weapons: Query<(&Magazine, &FireMode, &Handedness)>,
@@ -214,6 +233,15 @@ pub fn enemy_ai_turn(
     };
     let active_faction = **active;
     if active_faction == player_faction {
+        return;
+    }
+
+    // GTW-461 cadence gate: while the cooldown has NOT elapsed, `gate()` counts it down one
+    // tick and returns false — the brain emits NOTHING this tick, pacing it to at most one
+    // act per ActCadence-step (the advance_walk one-step-per-tick model). The turn-end check
+    // below is intentionally OUTSIDE this gate, so a finished enemy turn still hands control
+    // back promptly. An absent cooldown (lean harness) returns true (act-every-tick fallback).
+    if !pacing.gate() {
         return;
     }
 
@@ -389,7 +417,7 @@ pub fn enemy_ai_turn(
                     target.level,
                 ));
                 acted = true;
-                continue; // ONE act per ganger per frame.
+                break; // GTW-461: ONE act per cadence-step — stop at the first enemy to act.
             }
         }
 
@@ -431,9 +459,18 @@ pub fn enemy_ai_turn(
             if let Some(dest) = plan_advance(enemy_cell_level, goal.cell, &reachable) {
                 move_writer.write(MoveRequested::new(enemy.entity, dest));
                 acted = true;
+                break; // GTW-461: ONE act per cadence-step — stop at the first enemy to act.
             }
         }
-        // (3) HOLD — emit nothing.
+        // (3) HOLD — try the NEXT enemy this same step (a held enemy consumes no cadence).
+    }
+
+    // GTW-461: an enemy acted this cadence-step → recharge the cooldown so the NEXT act
+    // waits a full ActCadence-step. (A held / no-act step leaves the cooldown ready, so the
+    // brain re-evaluates next tick without an artificial dwell — the turn ends promptly once
+    // nothing can act.)
+    if acted {
+        pacing.recharge();
     }
 
     // Turn-end, decoupled from emission (§D.3): end the turn ONLY when no enemy acted this

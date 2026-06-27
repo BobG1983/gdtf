@@ -23,6 +23,9 @@
 //!   the engage/advance/hold pass and ends the turn back to the player when done. Param-only
 //!   (no `&mut World`, `bevy-traps.md` #7); wired into the sim by
 //!   [`SimActsPlugin`](crate::acts::SimActsPlugin).
+//! - `cadence` — the GTW-461 tick-count act cadence ([`ActCadence`] / [`EnemyActCooldown`])
+//!   that paces the brain to AT MOST ONE act per cadence-step, so the enemy turn resolves
+//!   act-by-act on screen instead of as a one-frame volley.
 //!
 //! **Scope (minimal, GTW-70 §F).** Cover-seeking, target *scoring* (lowest-HP /
 //! best-hit-chance), a symmetric enemy fog-of-war (planning on last-seen positions, not the
@@ -30,10 +33,12 @@
 //! to GTW-71 / GTW-84 — flagged, never silently dropped.
 
 mod brain;
+mod cadence;
 mod decide;
 
 #[cfg(test)]
 mod test;
 
 pub use brain::enemy_ai_turn;
+pub use cadence::{ActCadence, ActPacing, EnemyActCooldown};
 pub use decide::{AiTarget, pick_nearest, plan_advance};
