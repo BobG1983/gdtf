@@ -62,6 +62,7 @@ use gdtf_battle_sim::{
     ModeKind, ModeShots, ModeTuPercent, ReloadTu, Situation, Stance, StanceKind, TuMax, WieldedBy,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     injuries::InjuryRegistry,
+    level::ThemeCatalogRegistry,
     mode_tu_cost,
     terrain::piece::TerrainRegistry,
     tuning::CombatTuning,
@@ -123,6 +124,8 @@ fn walk_app() -> App {
     app.world_mut().insert_resource(ArmorRegistry::default());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app
 }

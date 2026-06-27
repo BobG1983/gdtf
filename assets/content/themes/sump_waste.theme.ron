@@ -1,0 +1,46 @@
+// Sump Waste theme — the toxic sump at the hive's base: waste, sludge, corroded
+// gantries. A per-theme NAMED-TILE catalog (GTW-409). Every magnitude is tunable DATA —
+// NOT pinned by tests. The atlas index is the OPAQUE row-major index into
+// assets/sprites/alt_tileset_terrain.png the PRESENTER resolves; the sim never renders it.
+(
+    theme:         SumpWaste,
+    default_floor: "sludge_floor",   // the tile a generated level fills empty ground with (C3)
+    tiles: {
+        "sludge_floor": (
+            display_name: "Sludge Floor",
+            atlas_index:  6,             // toxic walkable sludge plating
+            kind: Floor(
+                move_cost: 6,            // wading through sludge — dearest step (tunable)
+            ),
+        ),
+        "corroded_bulkhead": (
+            display_name: "Corroded Bulkhead",
+            atlas_index:  0,             // rust-eaten blocking wall
+            kind: Wall((
+                max_hp:           45,    // weakened by corrosion (tunable)
+                armor_protection: 5,     // damage-reduction (tunable)
+                armor_hardness:   2,     // penetration shrugged off (tunable)
+                height_band:      High,  // full-height blocking geometry
+            )),
+        ),
+        "gantry_slab": (
+            display_name: "Gantry Slab",
+            atlas_index:  22,            // corroded elevated walkway slab
+            kind: Slab(
+                max_hp:           35,    // weakened gantry HP (REUSE SlabHp; tunable)
+                armor_protection: 4,     // damage-reduction (tunable)
+                armor_hardness:   2,     // penetration shrugged off (tunable)
+            ),
+        ),
+        "waste_drum": (
+            display_name: "Waste Drum",
+            atlas_index:  248,           // chest-high toxic-waste drum cover
+            kind: Cover((
+                max_hp:           22,    // drum HP (tunable)
+                armor_protection: 2,     // damage-reduction (tunable)
+                armor_hardness:   1,     // penetration shrugged off (tunable)
+                height_band:      Low,   // LOW cover; a MID/HIGH round clears it
+            )),
+        ),
+    },
+)

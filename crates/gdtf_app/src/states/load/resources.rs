@@ -115,6 +115,28 @@ impl TerrainFolderHandle {
     }
 }
 
+/// Typed handle to the in-flight **themes folder** load (`themes/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
+/// mirroring [`TerrainFolderHandle`] (GTW-409). The `Load` scene preloads the whole
+/// `assets/content/themes/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
+/// poll/resolve system gates on its recursive load state, then builds the
+/// [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry) from the
+/// loaded `RonAsset<ThemeSpec>` files (keyed by each file's DECLARED `LevelTheme`).
+/// Holding this handle keeps a strong reference to every theme asset while the registry
+/// is built; the registry then holds the catalogs BY VALUE, so they survive the handle
+/// being dropped on `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct ThemesFolderHandle(Handle<LoadedFolder>);
+
+impl ThemesFolderHandle {
+    /// Wrap an in-flight themes-folder load handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// Typed handle to the in-flight **injuries folder** load (`injuries/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
@@ -196,9 +218,10 @@ impl StatTuningHandle {
 ///
 /// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], [`SituationHandle`],
 /// [`TuningHandle`], [`StatTuningHandle`], [`WeaponsFolderHandle`],
-/// [`ArmorsFolderHandle`], [`TerrainFolderHandle`], and [`InjuriesFolderHandle`] the
-/// poll/resolve system reads each frame to check load progress. Inserted
-/// `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning outside `Load`).
+/// [`ArmorsFolderHandle`], [`TerrainFolderHandle`], [`ThemesFolderHandle`], and
+/// [`InjuriesFolderHandle`] the poll/resolve system reads each frame to check load
+/// progress. Inserted `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning
+/// outside `Load`).
 #[derive(Resource, Clone, Debug)]
 pub(in crate::states::load) struct LoadHandles {
     /// The theme RON asset being loaded.
@@ -217,6 +240,8 @@ pub(in crate::states::load) struct LoadHandles {
     pub armor:       ArmorsFolderHandle,
     /// The terrain folder being preloaded (all terrain `.ron`s up front, GTW-394).
     pub terrain:     TerrainFolderHandle,
+    /// The themes folder being preloaded (all `*.theme.ron`s up front, GTW-409).
+    pub themes:      ThemesFolderHandle,
     /// The injuries folder being preloaded (all `*.injury.ron` + `*.weighting.ron`
     /// up front, GTW-437).
     pub injuries:    InjuriesFolderHandle,
@@ -365,6 +390,29 @@ pub(in crate::states::load) struct ActiveTerrainFolderHandle(Handle<LoadedFolder
 
 impl ActiveTerrainFolderHandle {
     /// Wrap the loaded terrain-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **themes folder** (`themes/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
+/// unlike the Load-scoped [`ThemesFolderHandle`] inside [`LoadHandles`], which is
+/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-409), the theme mirror of
+/// [`ActiveTerrainFolderHandle`]. It is inserted alongside the resolved
+/// [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry) and kept alive
+/// so the GTW-409 live hot-reload handler
+/// (`redrive_themes_on_asset_event`)
+/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
+/// to ANY `assets/content/themes/*.theme.ron`. Holding the folder handle keeps every member
+/// theme asset loaded for the file-watcher. Like the registry, it is **not** removed
+/// in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveThemesFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveThemesFolderHandle {
+    /// Wrap the loaded themes-folder handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

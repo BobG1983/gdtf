@@ -1,0 +1,48 @@
+// Industrial Hive theme — the manufactorum decking and bulkheads of the hive proper.
+// A per-theme NAMED-TILE catalog (GTW-409): the map-editor palette lists each tile by
+// display name + atlas index + the gameplay stats below; the procgen assembly places
+// them. Every magnitude here is tunable DATA (atlas index, HP, armor, move cost) — NOT
+// pinned by tests. The atlas index is the OPAQUE row-major index into
+// assets/sprites/alt_tileset_terrain.png the PRESENTER resolves; the sim never renders it.
+(
+    theme:         IndustrialHive,
+    default_floor: "deck_plating",   // the tile a generated level fills empty ground with (C3)
+    tiles: {
+        "deck_plating": (
+            display_name: "Deck Plating",
+            atlas_index:  6,             // brighter grey plating (matches tile_roles floor)
+            kind: Floor(
+                move_cost: 4,            // TU to step onto this floor (REUSE MoveCost; tunable)
+            ),
+        ),
+        "bulkhead_wall": (
+            display_name: "Bulkhead Wall",
+            atlas_index:  0,             // heavy dark blocking wall strip
+            kind: Wall((
+                max_hp:           60,    // structural HP (tunable)
+                armor_protection: 8,     // damage-reduction (tunable)
+                armor_hardness:   4,     // penetration shrugged off (tunable)
+                height_band:      High,  // full-height blocking geometry
+            )),
+        ),
+        "supply_crate": (
+            display_name: "Supply Crate",
+            atlas_index:  248,           // chest-high crate cover prop
+            kind: Cover((
+                max_hp:           30,    // flimsier prop HP (tunable)
+                armor_protection: 2,     // damage-reduction (tunable)
+                armor_hardness:   1,     // penetration shrugged off (tunable)
+                height_band:      Low,   // LOW cover; a MID/HIGH round clears it
+            )),
+        ),
+        "deck_slab": (
+            display_name: "Deck Slab",
+            atlas_index:  22,            // raised elevated deck panel
+            kind: Slab(
+                max_hp:           50,    // slab structural HP (REUSE SlabHp; tunable)
+                armor_protection: 6,     // damage-reduction (tunable)
+                armor_hardness:   3,     // penetration shrugged off (tunable)
+            ),
+        ),
+    },
+)

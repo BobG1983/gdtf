@@ -33,6 +33,7 @@ use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     injuries::InjuryRegistry,
+    level::ThemeCatalogRegistry,
     situation::Situation,
     terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
@@ -98,6 +99,8 @@ fn weapons_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut().insert_resource(ArmorRegistry::default());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));

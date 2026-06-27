@@ -17,6 +17,15 @@
 //!   [`metric::cell_center`] / [`metric::pos_to_cell`]).
 //! - [`tuning`] — the [`tuning::CombatTuning`] resource: every balance
 //!   coefficient, serde-loaded from `assets/core_tuning/combat.tuning.ron`.
+//! - [`level`] — the GTW-409 map-editor / procgen foundations: the
+//!   [`level::LevelTheme`] closed set + the [`level::GridSize`] dimension newtypes
+//!   (each axis validated against [`metric::MAX_LEVELS`] / [`level::MAX_GRID_SPAN`]),
+//!   and the per-theme named-tile catalog ([`level::CatalogTile`] /
+//!   [`level::ThemeTileCatalog`]) keyed in the persistent
+//!   [`level::ThemeCatalogRegistry`] the app's `Load` flow builds from
+//!   `assets/content/themes/*.theme.ron`. Render-free (the tile atlas index is opaque
+//!   data — [`level::TileAtlasIndex`]); the registry is DORMANT (GTW-414/417/418/421+
+//!   consume it).
 //! - [`tu`] — the TU-economy primitives the E4 acts spend through:
 //!   [`tu::can_spend_tu`] / [`tu::spend_tu`] (saturating) / [`tu::reset_tu`] over a
 //!   ganger's [`ganger::Tu`] (current pool) and [`ganger::TuMax`] (round-start max —
@@ -226,6 +235,7 @@ pub mod combatants;
 pub mod damage_resolution;
 pub mod equipment;
 pub mod foundation;
+pub mod level;
 pub mod lifecycle;
 pub mod perception;
 pub mod shot_pipeline;
@@ -327,6 +337,11 @@ pub use foundation::{
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
     rng,
     rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
+};
+pub use level::{
+    CatalogTile, CatalogTileKind, GridHeight, GridLevels, GridSize, GridSizeError, GridWidth,
+    LevelTheme, MAX_GRID_SPAN, StructuralStats, ThemeCatalogRegistry, ThemeSpec, ThemeTileCatalog,
+    TileAtlasIndex, TileDisplayName, TileKey,
 };
 pub use lifecycle::{
     battle,

@@ -42,6 +42,7 @@ use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, BodyPart},
     injuries::{InjuryName, InjuryRegistry, InjuryTables},
+    level::ThemeCatalogRegistry,
     severity::Severity,
     situation::Situation,
     terrain::piece::TerrainRegistry,
@@ -111,6 +112,8 @@ fn injuries_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
@@ -152,6 +155,8 @@ fn load_does_not_leave_without_an_injury_registry() {
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 

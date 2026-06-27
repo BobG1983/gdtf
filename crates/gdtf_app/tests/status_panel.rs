@@ -36,8 +36,8 @@ use gdtf_battle_sim::{
     Destroyed, Faction, GainedInjury, GangerName, HeightBand, Hp, HpMax, InflictedInjuries,
     InflictedWound, InflictedWounds, InjuryName, InspectText, Level, LifeState, OccupancyGrid,
     PlayerFaction, Position, Severity, SquadVisibility, Stance, StanceKind, TerrainKind, Tu, TuMax,
-    Wounds, WoundsMax, injuries::InjuryRegistry, terrain::piece::TerrainRegistry,
-    tuning::CombatTuning, weapon::WeaponRegistry,
+    Wounds, WoundsMax, injuries::InjuryRegistry, level::ThemeCatalogRegistry,
+    terrain::piece::TerrainRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{
@@ -83,6 +83,8 @@ fn walk_app() -> App {
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app
 }

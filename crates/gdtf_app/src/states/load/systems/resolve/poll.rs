@@ -15,6 +15,7 @@ use crate::states::load::{
         situation::resolve_situation,
         stat_tuning::resolve_stat_tuning,
         terrain::resolve_terrain,
+        themes::resolve_themes,
         tuning::resolve_tuning,
         weapons::resolve_weapons,
     },
@@ -97,6 +98,16 @@ use crate::states::load::{
 /// failure path [`resolve_terrain`] `warn!`s and inserts an empty registry, preserving
 /// the no-strand guarantee.
 ///
+/// GTW-409: it ALSO resolves the loaded `assets/content/themes/` folder into a persistent
+/// [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry) (the theme
+/// mirror of the `TerrainRegistry` branch, keyed by each file's DECLARED `LevelTheme`).
+/// The themes branch runs on its OWN `ThemeCatalogRegistry`-absence guard
+/// ([`resolve_themes`]), so it neither starves nor is starved by the other branches. The
+/// registry is DORMANT after this slice — nothing consumes it yet (the GTW-414/417/418/421+
+/// editor/procgen children do); it is resolved and gated on purely so it is present (and
+/// the folder verified loaded) before `Load` exits. On the failure path [`resolve_themes`]
+/// `warn!`s and inserts an empty registry, preserving the no-strand guarantee.
+///
 /// Guarded by `run_if(resource_exists::<LoadHandles>)` plus the
 /// `not(resource_exists::<GdtfTheme>).or(not(resource_exists::<CombatTuning>))
 /// .or(not(resource_exists::<WeaponRegistry>)).or(not(resource_exists::<LoadedSituation>))
@@ -133,6 +144,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         situation_present,
         armor_present,
         terrain_present,
+        theme_catalog_present,
         injuries_present,
     ) = (
         resolved.theme.is_some(),
@@ -142,6 +154,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.situation.is_some(),
         resolved.armor.is_some(),
         resolved.terrain.is_some(),
+        resolved.themes.is_some(),
         resolved.injuries.is_some(),
     );
     let (
@@ -154,6 +167,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(weapon_specs),
         Some(armor_specs),
         Some(terrain_specs),
+        Some(theme_specs),
         Some(injury_defs),
         Some(weightings),
         Some(handles),
@@ -167,6 +181,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.weapon_specs,
         collections.armor_specs,
         collections.terrain_specs,
+        collections.theme_specs,
         collections.injury_defs,
         collections.weightings,
         handles,
@@ -232,6 +247,21 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &terrain_specs,
+            &handles,
+        );
+    }
+
+    // GTW-409: resolve the themes folder into the theme-keyed ThemeCatalogRegistry on its
+    // OWN absence guard, independently of all other branches — so a slow themes folder
+    // never blocks them and vice-versa (the terrain-branch precedent). The registry is
+    // DORMANT after this slice (the GTW-414/417/418/421+ editor/procgen children consume
+    // it); it is resolved here purely so it is present when the gate checks.
+    if !theme_catalog_present {
+        resolve_themes(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &theme_specs,
             &handles,
         );
     }

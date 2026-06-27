@@ -25,6 +25,7 @@ use bevy::{asset::Handle, state::state::State, text::Font};
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
+    level::ThemeCatalogRegistry,
     situation::Situation,
     terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
@@ -117,6 +118,8 @@ fn theme_present_transitions_to_intro_and_persists() {
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));

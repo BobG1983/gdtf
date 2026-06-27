@@ -26,8 +26,8 @@
 use gdtf_app::test_support::{AppState, GameState, RunningState};
 use gdtf_battle_presenter::TopDownRendererActive;
 use gdtf_battle_sim::{
-    injuries::InjuryRegistry, terrain::piece::TerrainRegistry, tuning::CombatTuning,
-    weapon::WeaponRegistry,
+    injuries::InjuryRegistry, level::ThemeCatalogRegistry, terrain::piece::TerrainRegistry,
+    tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -73,6 +73,8 @@ fn presenter_app() -> bevy::app::App {
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app
 }

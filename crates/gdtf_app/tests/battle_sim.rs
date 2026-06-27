@@ -28,6 +28,7 @@ use gdtf_battle_sim::{
     battle::BattleInProgress,
     cover::CoverLedger,
     injuries::InjuryRegistry,
+    level::ThemeCatalogRegistry,
     occupancy::OccupancyGrid,
     rng::{BattleSeed, ShotRng},
     situation::Situation,
@@ -132,6 +133,8 @@ fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     app.world_mut().insert_resource(test_armor_registry());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-261: the Load→Intro gate now requires a LoadedSituation; seed the fixture
     // when given, else the empty default so the walk still traverses Load.

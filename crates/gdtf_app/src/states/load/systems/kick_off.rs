@@ -10,7 +10,8 @@ use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
     ArmorsFolderHandle, FontFolderHandle, InjuriesFolderHandle, LoadHandles, SituationHandle,
-    StatTuningHandle, TerrainFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
+    StatTuningHandle, TerrainFolderHandle, ThemeHandle, ThemesFolderHandle, TuningHandle,
+    WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -48,6 +49,14 @@ const ARMOR_DIR: &str = "content/armor";
 /// built from). Its OWN folder so the `.ron` loader dispatch is unambiguous (terrain only).
 const TERRAIN_DIR: &str = "content/terrain";
 
+/// Path of the loose themes folder, relative to the asset source root (GTW-409 —
+/// the per-theme `assets/content/themes/*.theme.ron` named-tile catalogs the
+/// `ThemeCatalogRegistry` is built from). A NEW content category parallel to
+/// terrain/weapons/armor/injuries (USER DIRECTION 2026-06-26: content under
+/// `assets/content/<x>/`); its OWN folder + the dedicated `theme.ron` compound
+/// extension keep the `.ron` loader dispatch unambiguous (themes only).
+const THEMES_DIR: &str = "content/themes";
+
 /// Path of the loose injuries folder, relative to the asset source root (GTW-437 —
 /// the per-injury `assets/content/injuries/**/*.injury.ron` files + the per-part
 /// `content/injuries/weighting/*.weighting.ron` files the registry + tables are built
@@ -76,7 +85,11 @@ const INJURIES_DIR: &str = "content/injuries";
 /// AND preloads the entire `content/terrain` folder via `load_folder` (GTW-394 — every
 /// `assets/content/terrain/*.terrain.ron`, each a `RonAsset<TerrainSpec>`, so the
 /// poll/resolve system can build the name-keyed
-/// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry)),
+/// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry))
+/// AND preloads the entire `content/themes` folder via `load_folder` (GTW-409 — every
+/// `assets/content/themes/*.theme.ron`, each a `RonAsset<ThemeSpec>`, so the
+/// poll/resolve system can build the theme-keyed
+/// [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry)),
 /// then inserts the Load-scoped [`LoadHandles`] resource the poll/resolve system
 /// reads.
 ///
@@ -103,6 +116,7 @@ pub(in crate::states::load) fn kick_off_loads(
     let weapons = WeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
     let armor = ArmorsFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
     let terrain = TerrainFolderHandle::new(asset_server.load_folder(TERRAIN_DIR));
+    let themes = ThemesFolderHandle::new(asset_server.load_folder(THEMES_DIR));
     let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
 
     commands.insert_resource(LoadHandles {
@@ -114,6 +128,7 @@ pub(in crate::states::load) fn kick_off_loads(
         weapons,
         armor,
         terrain,
+        themes,
         injuries,
     });
 }

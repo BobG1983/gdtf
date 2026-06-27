@@ -26,6 +26,7 @@ use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
+    level::ThemeCatalogRegistry,
     situation::Situation,
     terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
@@ -96,6 +97,8 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
@@ -248,6 +251,8 @@ fn load_does_not_leave_without_a_situation() {
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
     app.world_mut().insert_resource(TerrainRegistry::default());
+    app.world_mut()
+        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
 
     let left_load = advance_until(
