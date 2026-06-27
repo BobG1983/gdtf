@@ -250,6 +250,81 @@ fn expected_round_trip_pieces() -> [ArmorPiece; 6] {
     ]
 }
 
+/// GTW-413 AC2 — `ArmorRegistry::keys` and `ArmorRegistry::iter` enumerate
+/// exactly the keys and (key, spec) pairs that were inserted. Three distinct
+/// [`ArmorName`]s with an arbitrary uniform [`ArmorSpec`] (mechanism, not pinned
+/// magnitudes): asserts count == 3 AND each expected key is present via
+/// `keys()`; asserts `iter()` yields the same 3 key-spec pairs by key
+/// membership (value-agnostic on the spec side). `HashMap` order is unspecified
+/// — membership is the assertion, not position.
+#[test]
+fn armor_registry_keys_and_iter_enumerate_all_entries() {
+    // A uniform ArmorSpec built from arbitrary magnitudes (not shipped tuning
+    // values) — we only need distinct ArmorName keys; the spec value is incidental.
+    let piece = ArmorPiece::new(
+        ArmorFloor::new(1),
+        ArmorProtection::new(2),
+        ArmorIntegrity::new(3),
+        ArmorHardness::new(4),
+        crate::armor::ArmorType::Plated,
+    );
+    let spec = ArmorSpec::uniform(piece);
+
+    let name_a = ArmorName::new("aegis".to_owned());
+    let name_b = ArmorName::new("bastion".to_owned());
+    let name_c = ArmorName::new("carapace".to_owned());
+
+    let registry = ArmorRegistry::new([
+        (name_a.clone(), spec),
+        (name_b.clone(), spec),
+        (name_c.clone(), spec),
+    ]);
+
+    // keys() — count + membership (order unspecified).
+    let all_keys: Vec<&ArmorName> = registry.keys().collect();
+    assert_eq!(all_keys.len(), 3, "keys() must yield exactly 3 entries");
+    assert!(
+        all_keys.contains(&&name_a),
+        "keys() must include name_a (\"aegis\")"
+    );
+    assert!(
+        all_keys.contains(&&name_b),
+        "keys() must include name_b (\"bastion\")"
+    );
+    assert!(
+        all_keys.contains(&&name_c),
+        "keys() must include name_c (\"carapace\")"
+    );
+
+    // iter() — same count, key membership (value-agnostic on the spec side).
+    let all_pairs: Vec<(&ArmorName, &ArmorSpec)> = registry.iter().collect();
+    assert_eq!(
+        all_pairs.len(),
+        3,
+        "iter() must yield exactly 3 (key, spec) pairs"
+    );
+    let iter_keys: Vec<&ArmorName> = all_pairs.iter().map(|(k, _)| *k).collect();
+    assert!(
+        iter_keys.contains(&&name_a),
+        "iter() must include (name_a, _)"
+    );
+    assert!(
+        iter_keys.contains(&&name_b),
+        "iter() must include (name_b, _)"
+    );
+    assert!(
+        iter_keys.contains(&&name_c),
+        "iter() must include (name_c, _)"
+    );
+
+    // IntoIterator for &ArmorRegistry must yield the same count (trait impl proof).
+    assert_eq!(
+        (&registry).into_iter().count(),
+        3,
+        "IntoIterator for &ArmorRegistry must yield 3 pairs"
+    );
+}
+
 /// GTW-269 (the ticket-required round-trip, mirroring
 /// `weapon_spec_round_trips_and_into_bundle_groups_faithfully`): an authored
 /// 6-piece [`ArmorSpec`] parses from inline RON, an [`ArmorRegistry`] keys it by

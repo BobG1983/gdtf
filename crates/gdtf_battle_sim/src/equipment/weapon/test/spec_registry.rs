@@ -150,6 +150,90 @@ fn weapon_spec_round_trips_and_into_bundle_groups_faithfully() {
     assert_eq!(kinds, vec![ModeKind::Single, ModeKind::Burst]);
 }
 
+/// GTW-413 AC2 — `WeaponRegistry::keys` and `WeaponRegistry::iter` enumerate
+/// exactly the keys and (key, spec) pairs that were inserted. Three distinct
+/// [`WeaponName`]s built from arbitrary RON (mechanism, not pinned magnitudes):
+/// asserts count == 3 AND each expected key is present via `keys()`; asserts
+/// `iter()` yields the same 3 key-spec pairs by key membership (value-agnostic).
+/// `HashMap` order is unspecified — membership is the assertion, not position.
+#[test]
+fn weapon_registry_keys_and_iter_enumerate_all_entries() {
+    // Three minimal WeaponSpecs from the same inline RON (arbitrary, not shipped
+    // magnitudes) — we only need distinct WeaponName keys; the spec values are
+    // incidental (value-agnostic per the loader-tests rule).
+    let minimal_ron = r"(
+        base_spread: 0.1, accuracy: 1.0, kickback: 0.1, fatal_bias: 1.0,
+        damage: 1, punch: 1, shred: 0, damage_type: Kinetic,
+        magazine: ( size: 8, reload_tu: 10 ),
+        fire_mode: [ ( kind: Single, cone_mult: 1.0, tu_percent: 0.5, shots: 1 ) ],
+        stable: false,
+        handedness: OneHanded,
+    )";
+    let Ok(spec_a) = ron::de::from_str::<WeaponSpec>(minimal_ron) else {
+        return;
+    };
+    let Ok(spec_b) = ron::de::from_str::<WeaponSpec>(minimal_ron) else {
+        return;
+    };
+    let Ok(spec_c) = ron::de::from_str::<WeaponSpec>(minimal_ron) else {
+        return;
+    };
+
+    let name_a = WeaponName::new("alpha".to_owned());
+    let name_b = WeaponName::new("bravo".to_owned());
+    let name_c = WeaponName::new("charlie".to_owned());
+
+    let registry = WeaponRegistry::new([
+        (name_a.clone(), spec_a),
+        (name_b.clone(), spec_b),
+        (name_c.clone(), spec_c),
+    ]);
+
+    // keys() — count + membership (order unspecified).
+    let all_keys: Vec<&WeaponName> = registry.keys().collect();
+    assert_eq!(all_keys.len(), 3, "keys() must yield exactly 3 entries");
+    assert!(
+        all_keys.contains(&&name_a),
+        "keys() must include name_a (\"alpha\")"
+    );
+    assert!(
+        all_keys.contains(&&name_b),
+        "keys() must include name_b (\"bravo\")"
+    );
+    assert!(
+        all_keys.contains(&&name_c),
+        "keys() must include name_c (\"charlie\")"
+    );
+
+    // iter() — same count, key membership (value-agnostic on the spec side).
+    let all_pairs: Vec<(&WeaponName, &WeaponSpec)> = registry.iter().collect();
+    assert_eq!(
+        all_pairs.len(),
+        3,
+        "iter() must yield exactly 3 (key, spec) pairs"
+    );
+    let iter_keys: Vec<&WeaponName> = all_pairs.iter().map(|(k, _)| *k).collect();
+    assert!(
+        iter_keys.contains(&&name_a),
+        "iter() must include (name_a, _)"
+    );
+    assert!(
+        iter_keys.contains(&&name_b),
+        "iter() must include (name_b, _)"
+    );
+    assert!(
+        iter_keys.contains(&&name_c),
+        "iter() must include (name_c, _)"
+    );
+
+    // IntoIterator for &WeaponRegistry must yield the same count (trait impl proof).
+    assert_eq!(
+        (&registry).into_iter().count(),
+        3,
+        "IntoIterator for &WeaponRegistry must yield 3 pairs"
+    );
+}
+
 /// GTW-257 — a `WeaponRegistry` keys specs by `WeaponName` and resolves a lookup:
 /// a present key returns the spec, an absent key returns `None`. Built directly
 /// from `WeaponRegistry::new` (no `AssetServer` — the sim-unit shape AC2/AC3 use).

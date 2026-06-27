@@ -57,4 +57,37 @@ impl WeaponRegistry {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    /// Iterate over every [`WeaponName`] key in the registry — **for editor
+    /// dropdown enumeration (GTW-413/GTW-425)**, so the weapon-selector UI can
+    /// list all loaded weapons without exposing the inner map.
+    ///
+    /// [`HashMap`] iteration order is unspecified; callers that need a stable,
+    /// reproducible order (e.g. a sorted dropdown) must collect and sort.
+    pub fn keys(&self) -> impl Iterator<Item = &WeaponName> {
+        self.0.keys()
+    }
+
+    /// Iterate over every `(`[`WeaponName`]`,` [`WeaponSpec`]`)` pair in the
+    /// registry — **for editor dropdown enumeration (GTW-413/GTW-425)**, so the
+    /// weapon-selector UI can display each weapon's name alongside its spec.
+    ///
+    /// [`HashMap`] iteration order is unspecified; callers that need a stable,
+    /// reproducible order must collect and sort by name.
+    pub fn iter(&self) -> impl Iterator<Item = (&WeaponName, &WeaponSpec)> {
+        self.0.iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a WeaponRegistry {
+    type Item = (&'a WeaponName, &'a WeaponSpec);
+    type IntoIter = bevy::platform::collections::hash_map::Iter<'a, WeaponName, WeaponSpec>;
+
+    /// Iterate over `(`[`WeaponName`]`,` [`WeaponSpec`]`)` pairs via the
+    /// [`IntoIterator`] trait — satisfies the `iter_without_into_iter` pedantic
+    /// lint that requires a matching trait impl alongside an inherent `iter(&self)`.
+    /// Delegates to the inner [`HashMap`]'s owned iterator; order is unspecified.
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
 }
