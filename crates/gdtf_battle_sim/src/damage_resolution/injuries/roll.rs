@@ -7,13 +7,13 @@
 //!
 //! ## Draw discipline (the GTW-405 §"Determinism / replay" contract)
 //!
-//! - A [`Severity::None`](crate::severity::Severity::None) (graze) and a
-//!   [`Severity::Fatal`](crate::severity::Severity::Fatal) (death via the existing
+//! - A [`Severity::None`] (graze) and a
+//!   [`Severity::Fatal`] (death via the existing
 //!   terminal gate) are **never tabled** — [`roll_injury`] returns
-//!   [`None`](Option::None) with **no draw and no side effect**.
-//! - A [`Minor`](crate::severity::Severity::Minor) /
-//!   [`Major`](crate::severity::Severity::Major) /
-//!   [`Critical`](crate::severity::Severity::Critical) wound **always takes EXACTLY
+//!   `None` with **no draw and no side effect**.
+//! - A [`Severity::Minor`] /
+//!   [`Severity::Major`] /
+//!   [`Severity::Critical`] wound **always takes EXACTLY
 //!   ONE** [`InjuryRng`] sample — even when the `(part, severity)` table is
 //!   empty/missing (then the sample is drawn-then-discarded and a
 //!   [`warn_once!`](bevy::log::warn_once) fires). This makes the stream
@@ -34,19 +34,19 @@ use crate::{armor::BodyPart, injuries::InjuryRegistry, rng::InjuryRng, severity:
 /// replay" contract — see the module docs):
 ///
 /// - [`Severity::None`] / [`Severity::Fatal`] are NOT tabled → returns
-///   [`None`](Option::None) with **no draw** and no side effect.
+///   `None` with **no draw** and no side effect.
 /// - [`Severity::Minor`] / [`Severity::Major`] / [`Severity::Critical`] **always draw
 ///   EXACTLY ONE** [`InjuryRng`] sample (a cumulative-weight pick over the
 ///   canonically-sorted bucket, the [`roll_body_part`](crate::hit_location::roll_body_part)
 ///   precedent). An **empty / missing** bucket STILL draws one sample (then discards it
 ///   + [`warn_once!`](bevy::log::warn_once)) so the stream stays content-independent.
 ///
-/// Returns [`Some`](Option::Some) the rolled injury (a snapshot of the picked
+/// Returns `Some` the rolled injury (a snapshot of the picked
 /// [`InjuryDef`](super::InjuryDef)'s name / severity / frozen effects / three texts,
 /// stamped with the STRUCK `part` — NOT the def's side-agnostic `body_part`, so a
 /// shared-pool `DisableHand` disables the hand on the struck side, GTW-440 C3) when the
 /// bucket has content AND the picked key resolves in `registry`;
-/// [`None`](Option::None) when the severity is not tabled, the bucket is empty/missing,
+/// `None` when the severity is not tabled, the bucket is empty/missing,
 /// or the picked key is unknown (each of the latter two STILL having taken the one draw).
 /// Pure given the [`InjuryRng`] state — the same cursor position yields the same pick.
 #[must_use]

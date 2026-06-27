@@ -23,6 +23,10 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 - [combat/weapons-and-armor.md](combat/weapons-and-armor.md) — weapon & armor stats, the per-hit damage/penetration formula, and how the matchup wheel hooks in.
 - [combat/wounds-and-roster.md](combat/wounds-and-roster.md) — the wound table and roster persistence (the heart of the generator).
 
+## Authoring
+
+- [authoring/injury-authoring.md](authoring/injury-authoring.md) — step-by-step guide: creating a new `.injury.ron`, the weighting table, how a per-side `BodyPart` maps to the category pool, how to add a new `InjuryEffect` variant end-to-end, and worked examples (`DisableHand` / `MovementCostMul`).
+
 ## Engineering
 
 - [decisions/0001-rust-bevy-rewrite.md](decisions/0001-rust-bevy-rewrite.md) — the model / view split: the render-free authoritative sim (`gdtf_battle_sim`), the landed top-down 16×16 sprite battle presenter that mirrors it (`gdtf_battle_presenter`, with the iso renderer deferred behind `BattlePresenterMode`), the one-way `gdtf_battle_input → gdtf_battle_presenter → gdtf_battle_sim` chain, and the message-driven sim↔app boundary (recorded in the ADR's Decision / Consequences).

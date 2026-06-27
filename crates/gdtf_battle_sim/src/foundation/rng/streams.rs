@@ -11,7 +11,7 @@
 //! | [`ShotRng`] | cone sample (§1 trajectory) + §4 body-part roll |
 //! | [`SeverityRng`] | §6 roll term (the ONE draw per hit) |
 //! | [`LootRng`] | reserved — loot generation (no draw sites yet) |
-//! | [`InjuryRng`] | reserved — post-battle injury rolls (no draw sites yet) |
+//! | [`InjuryRng`] | in-battle injury roll — one draw per non-graze, non-fatal wound (GTW-438) |
 //! | [`ProcgenRng`] | reserved — procedural level generation (no draw sites yet) |
 //!
 //! ## Derivation — the crux
@@ -269,10 +269,14 @@ impl_sim_stream!(
 );
 
 impl_sim_stream!(
-    /// The **post-battle injury** RNG stream (reserved — no draw sites yet).
+    /// The **in-battle injury-roll** RNG stream.
     ///
-    /// Inserted at battle setup alongside the other streams so its label and initial
-    /// state are fixed at GTW-14 boundary.
+    /// Draw site: the `fold_ganger` damage fold calls `roll_injury` to pick a named
+    /// condition from the weighted `(body_part, severity)` table once per non-graze,
+    /// non-fatal wound (GTW-437 / GTW-438). The stream is labelled `injury.v1` and
+    /// seeded at battle setup alongside the other streams so its cursor is pinned from
+    /// frame 0 — adding or reordering other streams cannot perturb its seed (the
+    /// independence guarantee in the module doc).
     ///
     /// No system may take `Res<InjuryRng>` — see the module binding constraint.
     InjuryRng,

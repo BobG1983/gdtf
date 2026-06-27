@@ -13,15 +13,30 @@ One roll yields a mechanical consequence (a stat hit *felt* next fight) **and** 
 ## From damage to injury (the flow)
 
 - In battle, damage depletes **HP**. **Every hit rolls for a Wound** — one severity bucket roll per hit (the sim's `roll_severity`), gated by **penetrating damage** (post-armor, so a weak hit can't reach the severe buckets) and mitigated by **Toughness**; some weapons bias toward severe/Fatal wounds (a chainsaw is hard to shrug off — a weapon's `fatal_bias`). A roll under the first bucket edge is a **graze**: HP loss only, no Wound. Full damage model: [stats.md](stats.md).
-- A Wound **lands immediately** — location (the struck part) × severity (the bucket roll), logged on the ganger (a `wounds_taken` list on its sim state). The named-condition Injury table itself is **not yet built** (a Wound carries tier + location + Wounds cost); when it lands, the injury applies for the **rest of this battle** *and* is recorded as a campaign consequence — **even if the ganger finishes the fight standing**. A won fight can still cost you: every wound counts.
+- A Wound **lands immediately** — location (the struck part) × severity (the bucket roll). The named-condition **Injury table is BUILT** (GTW-405 / GTW-437 / GTW-438): a non-graze, non-fatal wound draws one named injury from the weighted `(body_part, severity)` table and freezes it onto the `HitReport`; the `apply_injury` boundary then inflicts it — stat deltas land on the modifier layer, bleed accrues, hands or movement may be affected. The injury applies for the **rest of this battle** *and* is recorded as a campaign consequence — **even if the ganger finishes the fight standing**. A won fight can still cost you: every wound counts.
 - Each injury **spends the ganger's Wounds budget by its severity** (below). **Wounds is the *life* pool — when it hits 0 the ganger is DEAD**, whether from stacked injuries or one **Fatal** hit, **even at full HP**.
 - **HP and Wounds have different terminal states: HP ≤ 0 → Downed (alive); Wounds ≤ 0 → Dead.** HP damage never kills directly — it downs (see the state machine below).
+
+### Injury asset and authoring surface (BUILT — GTW-405/437/440)
+
+Injuries are authored as `.ron` files loaded from `assets/content/injuries/<category>/` — one file per named condition. Four **category pools** match the four body-part groups:
+
+| Category folder | Draws from |
+|-----------------|-----------|
+| `head/` | head injuries (Aim / Cool effects) |
+| `torso/` | torso injuries (Toughness / HP effects) |
+| `arm/` | **both** arms share this pool (Strength / Aim / DisableHand) |
+| `leg/` | **both** legs share this pool (Speed / MovementCostMul) |
+
+A **per-side** `BodyPart` (`LeftArm` / `RightArm` / `LeftLeg` / `RightLeg`) maps to its shared category via `BodyPart::injury_category()` — the exact struck side is still recorded (e.g. for `DisableHand`), but the injury is drawn from the shared pool.
+
+**Weighting files** live at `assets/content/injuries/weighting/<category>.weighting.ron` — one per category, authoring which named injuries appear in each severity bucket (`minor` / `major` / `critical`) and at what relative weight. An unknown injury key in a weighting file `warn!`s at load time and is skipped. An injury registered but referenced by no weighting bucket `warn!`s — it can never be rolled. **The missing-weighting `WARN` is a content authoring signal, never a crash.** See the full authoring guide: [authoring/injury-authoring.md](../authoring/injury-authoring.md).
 
 ## Rolling an injury — location × severity
 
 - A Wound's **body location is the struck part** — the hit's weighted location roll (head / torso / each arm / each leg; the sim's `roll_body_part` over the tuning-config `body_part_weights`) — and its **severity** is rolled per hit.
 - **Severity** is a **bucket roll** (`roll_severity`): **penetrating damage** drives the score, **Toughness** mitigates, the **struck part** nudges it (head/torso wound worse than limbs), the weapon's **fatal-bias** pushes up the table, and **Luck is directional fortune** — the shooter's Luck adds to the score, the defender's Luck shrinks the one-sided random spread. The gate is penetration, not a Toughness threshold: a graze **can't** crit (no 1-damage amputations) — a low score is **no wound at all**.
-- Location × severity resolves to a **named condition + stat hit** — e.g. eye/head → Aim or Cool; leg → Speed; arm → Strength or Aim; torso → Toughness or HP. The condition carries its own rule AND docks the relevant **attribute**, which ripples through the computed stats (see [stats.md](stats.md)). **Not yet built** — the table content is the TBD below.
+- Location × severity resolves to a **named condition + stat hit** — e.g. head → Aim or Cool; leg → Speed; arm → Strength or Aim; torso → Toughness or HP. The condition carries its own rule AND docks the relevant **attribute**, which ripples through the computed stats (see [stats.md](stats.md)). **BUILT** (GTW-405 / GTW-437 / GTW-438) — the injury table draws from RON assets at `assets/content/injuries/<category>/`; the weighting files at `assets/content/injuries/weighting/` control bucket membership and relative probability.
 
 ### Severity tiers — acute + residual + wound-budget cost
 

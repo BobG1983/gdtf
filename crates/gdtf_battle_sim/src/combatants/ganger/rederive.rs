@@ -144,7 +144,7 @@ const fn attributes_of(read: &AttributeRead) -> GangerAttributes {
 /// `Update`: when the [`GangerStatTuning`] resource CHANGES (the app-side hot-reload
 /// overwrites it on a `stat_tuning.ron` edit, GTW-374 pattern), re-derive EVERY spawned
 /// ganger's computed stats from its eight authored attributes × the NEW tuning × its
-/// injury ledger (GTW-384 + GTW-436), via the shared [`rederive_one`] projection.
+/// injury ledger (GTW-384 + GTW-436), via the shared `rederive_one` projection.
 ///
 /// The attributes are the slowly-changing raw potential — they are NOT touched here
 /// (only an authored situation / use-improvement edits them). The injury `ledger` is
@@ -196,7 +196,7 @@ pub fn rederive_stats_on_tuning_change(
 /// `Update`: when a ganger's [`InflictedInjuries`] ledger CHANGES (a new injury was
 /// inflicted — the GTW-437 apply boundary appends a `GainedInjury`, tripping
 /// `Changed`), re-derive THAT ganger's computed stats from its base attributes × the
-/// tuning × its NOW-updated ledger (GTW-436), via the shared [`rederive_one`]
+/// tuning × its NOW-updated ledger (GTW-436), via the shared `rederive_one`
 /// projection — so a freshly-inflicted injury's deltas land on the derived stats
 /// immediately.
 ///

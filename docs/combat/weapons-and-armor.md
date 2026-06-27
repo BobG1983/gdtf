@@ -49,7 +49,7 @@ The swing is **asymmetric** — the resisted penalty (−66%) is double the favo
 
 ## Weapons — identity, fire modes, and authoring
 
-A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto the armed ganger entity (GTW-200). Every weapon is **authored data**: a loose per-file `assets/weapons/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/weapons/` folder loads into a name-keyed `WeaponRegistry`; each `GangerSpawn` references a weapon **by key**, and `setup_battle` resolves the key → inserts the `WeaponBundle` onto the ganger (mirroring how `WornArmor` is seeded) — a missing key is a handled error, never a panic (GTW-257). The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
+A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto the armed ganger entity (GTW-200). Every weapon is **authored data**: a loose per-file `assets/content/weapons/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/content/weapons/` folder loads into a name-keyed `WeaponRegistry`; each `GangerSpawn` references a weapon **by key**, and `setup_battle` resolves the key → inserts the `WeaponBundle` onto the ganger (mirroring how `WornArmor` is seeded) — a missing key is a handled error, never a panic (GTW-257). The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
 
 ### Weapon name
 

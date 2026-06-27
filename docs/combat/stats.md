@@ -48,14 +48,30 @@ A **TU pool** per turn, now DERIVED from Speed at setup (`tu_base + Speed·tu_pe
 
 - **HP** is the in-battle raw-damage pool.
 - Every hit **rolls wound severity** (`roll_severity` in the combat sim — the old hard `dmg > Toughness` gate is gone): a **penetration-gated score** — penetrating damage drives it, **Toughness mitigates**, the struck part and the weapon's **fatal-bias** push it up, both **Luck** stats shape a one-sided random tail — bucketed by tunable edges into **None / Minor / Major / Critical / Fatal**. Some weapons bias toward severe / Fatal wounds — it's hard to be hit by a chainsword and *not* take serious wound damage.
-- A Wound applies **immediately** — tier + struck location, spending the life pool even if the ganger stays standing. The named-condition **Injury table** (location × severity → condition + stat dock) and the campaign record are **not yet built** (the Injury Tables card).
+- A Wound applies **immediately** — tier + struck location, spending the life pool even if the ganger stays standing. The named-condition **Injury table** (category × severity → condition + stat dock) is **BUILT** (GTW-405 — see [How wounds apply](#how-wounds-apply--conditions--stat-hits) below); only the campaign **record** of carried injuries across battles is still campaign-scope (not yet built).
 - **Two pools, two terminal states:** **HP ≤ 0 → Downed** (incapacitated, alive); **Wounds ≤ 0 → Dead**. HP is the knock-down pool; **Wounds is the life pool**.
 - **Wounds** is spent by injuries **by severity** (Minor / Major / Critical ≈ 1 / 2 / 3; a **Fatal** injury empties it outright). Stacked injuries or one Fatal hit → Wounds ≤ 0 → **dead — even at full HP**. **HP damage never kills directly; it downs.**
 - A **Downed** ganger (HP gone, Wounds remaining) is alive but dying — **bleed-out / stabilize / execute are live** (a flat per-round `bleed_rate` Wounds drain; an adjacent ally's `stabilize_tu` dressing that halts it; an adjacent `execute_tu` finisher — GTW-53 / GTW-52); recover / capture at battle-end stay campaign scope. Full model: [wounds-and-roster.md](wounds-and-roster.md).
 
 ## How wounds apply — conditions + stat hits
 
-An Injury is a **named condition** ("Lost Eye", "Limp", "Bleeds", "Shaken") that carries its own special rule **and usually docks an attribute**. This is the most generative model and the highest-ROI content in the game — the table is where the stories come from. **Not yet built** — today a Wound carries only tier + location. Full design: [wounds-and-roster.md](wounds-and-roster.md).
+An Injury is a **named condition** ("Lost Eye", "Limp", "Bleeds", "Shaken") that carries its own special rule **and usually docks an attribute**. This is the most generative model and the highest-ROI content in the game — the table is where the stories come from. **BUILT** (GTW-405 / GTW-436 / GTW-437 / GTW-438) — the full injury pipeline now exists.
+
+### Modifier-layer mechanism (GTW-436)
+
+Every injury's effects land on a **per-ganger `InflictedInjuries` ledger** — the single source of truth. The ledger holds three accumulators:
+
+- **`StatDeltaLedger`** — a per-[`StatTarget`] summed-delta store (16 stats: 8 attributes + 8 derived). A `Modify(stat, amount)` injury effect adds its signed `i8` delta to the running sum for that stat. The projector (`rederive_one`) re-sums the entire ledger every derivation — never applied-once — so a `stat_tuning.ron` hot-reload automatically re-applies injury deltas.
+- **`BleedAfflicted`** — the accrued per-turn HP bleed (widened to `u16`). A `Bleeding { amount }` injury effect accumulates its per-turn drain here.
+- **`movement` accumulator** — the MULTIPLICATIVE product of every `MovementCostMul` factor (a dedicated `f32` field, NOT summed). Two `MovementCostMul` factors of `1.5` and `2.0` yield `3.0`, never `3.5`.
+
+**Single-source-of-truth invariant:** every stored stat is `f(BaseAttributes, GangerStatTuning, InflictedInjuries)` — the projector recomputes it, never "applies once and mutates". This means a content hot-edit (a `.injury.ron` edit, a `stat_tuning.ron` edit) re-derives correctly without stale applied-once state.
+
+**Pool `Modify` rule:** a `Modify` targeting a pool (`Tu` / `Hp` / `Wounds` / `Bottle`) docks the **MAX** and clamps the current pool to the new max (`min`) — never resets to full mid-battle, never self-kills (the pool floor is `1`). The HP-bleed (`Bleeding`) effect drains the CURRENT pool separately through the bleed runtime — it can down but never kill directly.
+
+**Effective attribute accessor:** the projector's output (the effective derived value for a given ganger) is read off the ECS components after `rederive_one` runs — `Shooting`, `Hp`, `HpMax`, etc. are all components on the ganger entity, rewritten by the re-derive systems (`rederive_stats_on_injury_change` / `rederive_stats_on_tuning_change` in `combatants/ganger/rederive.rs`). There is no separate "effective attribute" accessor — read the component directly.
+
+Full authoring guide: [authoring/injury-authoring.md](../authoring/injury-authoring.md). Full design: [wounds-and-roster.md](wounds-and-roster.md).
 
 ## Improvement & the campaign layer
 

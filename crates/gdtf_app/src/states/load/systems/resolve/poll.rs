@@ -77,7 +77,7 @@ use crate::states::load::{
 /// must ALL be present before the plugin's transition leaves `Load` (see the plugin
 /// wiring); this branch makes the tuning one of those six required resources.
 ///
-/// GTW-269: it ALSO resolves the loaded `assets/armor/` folder into a persistent
+/// GTW-269: it ALSO resolves the loaded `assets/content/armor/` folder into a persistent
 /// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) (the armor mirror of the
 /// `WeaponRegistry` branch). The armor branch runs on its OWN `ArmorRegistry`-absence
 /// guard ([`resolve_armor`]), so it neither starves nor is starved by the other
@@ -87,7 +87,7 @@ use crate::states::load::{
 /// [`resolve_armor`] `warn!`s and inserts an empty registry, preserving the
 /// no-strand guarantee.
 ///
-/// GTW-394: it ALSO resolves the loaded `assets/terrain/` folder into a persistent
+/// GTW-394: it ALSO resolves the loaded `assets/content/terrain/` folder into a persistent
 /// [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) (the terrain
 /// mirror of the `ArmorRegistry` branch). The terrain branch runs on its OWN
 /// `TerrainRegistry`-absence guard ([`resolve_terrain`]), so it neither starves nor is

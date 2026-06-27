@@ -7,13 +7,18 @@ use serde::Deserialize;
 use super::{InjuryEffect, InjuryName, InspectText, LogText, PopupText};
 use crate::{armor::BodyPart, severity::Severity};
 
-/// The **post-heal disposition** of an injury (GTW-23 Healing — NOT yet built).
+/// The **post-heal disposition** of an injury (GTW-23 Healing — **NOT yet built**).
 ///
 /// The schema CARRIES this slot for forward compatibility; the GTW-405 vocabulary
 /// **parses it and never reads it** (the projector and runtime ignore it). Its only
 /// live variant is [`Deferred`](PostHeal::Deferred). GTW-23 will add the reserved
 /// shapes — documented here, deliberately NOT yet declared as variants so they
-/// carry no dead, untested code:
+/// carry no dead, untested code.
+///
+/// **Authoring note (GTW-23):** omitting `post_heal:` from an `.injury.ron` file is
+/// the correct and expected pattern — the field defaults to `Deferred` automatically.
+/// When GTW-23 Healing lands it will add `Clean` and `Partial` variants here and the
+/// runtime will begin reading this field; until then the authored value is schema-only.
 ///
 /// - `Clean(..)` — a clean heal that fully clears the injury (often no residual
 ///   effect).
@@ -81,8 +86,9 @@ pub struct InjuryDef {
     pub inspect_text: InspectText,
     /// The one-or-more effects this injury applies (`≥ 1`).
     pub effects:      Vec<InjuryEffect>,
-    /// The post-heal disposition (parsed but unread in GTW-405). Defaults to
-    /// [`PostHeal::Deferred`].
+    /// The post-heal disposition (parsed but **unread** in GTW-405 — GTW-23 Healing owns
+    /// the semantics). Defaults to [`PostHeal::Deferred`]; omitting it from an authored
+    /// `.injury.ron` is the correct pattern — the field is schema-forward-compat only.
     #[serde(default = "PostHeal::deferred")]
     pub post_heal:    PostHeal,
 }
