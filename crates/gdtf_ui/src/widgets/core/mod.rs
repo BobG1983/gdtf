@@ -67,6 +67,24 @@
 //!   Generic over the option IDENTITY; keyboard focus / arrow-nav / Enter / Esc all reuse the
 //!   existing [`focus_nav`](crate::focus_nav) helpers. Its open / select / dismiss / position
 //!   drivers are registered by [`UiPlugin`](crate::UiPlugin) per option-id type.
+//!
+//! ## Editable text / numeric fields (GTW-411)
+//!
+//! - [`TextField`](text_field::TextField) ([`spawn_text_field`]): a themed, focus-driven
+//!   editable text box assembled from the [`bevy_input_focus`](bevy::input_focus) primitives
+//!   (Bevy 0.19 has no built-in text input). Pressing it captures focus; typed characters
+//!   APPEND to its [`EditBuffer`](text_field::EditBuffer), Backspace pops, a rendered
+//!   [`Caret`](text_field::Caret) sits at the text END. Enter / blur commit a typed
+//!   [`CommittedTextValue`](text_field::CommittedTextValue) in a
+//!   [`TextFieldCommitted`](text_field::TextFieldCommitted) message; Escape reverts.
+//! - [`NumericField`](text_field::NumericField) ([`spawn_numeric_field`]): the same editing
+//!   model, but it CLAMPS the parsed buffer to a [`NumericRange`](text_field::NumericRange) and
+//!   commits a typed [`CommittedNumericValue`](text_field::CommittedNumericValue) in a
+//!   [`NumericFieldCommitted`](text_field::NumericFieldCommitted) message; invalid / empty
+//!   input reverts to the last-good value (never panics).
+//!
+//! The type-agnostic pieces ride [`register_text_field`]; each numeric `N` registers via
+//! [`register_numeric_field::<N>`].
 
 mod builders;
 mod dropdown;
@@ -81,6 +99,7 @@ mod switch;
 mod test;
 #[cfg(test)]
 mod test_hud;
+mod text_field;
 
 pub use builders::{spawn_button, spawn_panel};
 pub use dropdown::{
@@ -106,4 +125,10 @@ pub use segmented_control::{
 pub use switch::{
     Switch, SwitchColors, SwitchKnob, SwitchOrientation, SwitchState, ToggleFlipped,
     drive_switches, spawn_switch,
+};
+pub use text_field::{
+    Caret, CommittedNumericValue, CommittedTextValue, EditBuffer, FieldColors, FieldText,
+    NumericField, NumericFieldCommitted, NumericRange, NumericValue, TextField, TextFieldCommitted,
+    commit_on_focus_lost, focus_field_on_press, handle_text_field_key, register_numeric_field,
+    register_text_field, spawn_numeric_field, spawn_text_field, sync_edit_buffer_to_text,
 };
