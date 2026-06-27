@@ -96,9 +96,22 @@
 //!   [`ScrollArea`](bevy::ui_widgets::ScrollArea) /
 //!   [`Scrollbar`](bevy::ui_widgets::Scrollbar) (the scroll mechanism is NOT hand-rolled);
 //!   their plugins ride [`UiPlugin`](crate::UiPlugin). All sizing is relative bar the two
-//!   API-forced scrollbar-chrome px the engine defines as pixels. The expand/collapse lerp
-//!   accordion is explicitly OUT of scope (GTW-403 child / GTW-416).
+//!   API-forced scrollbar-chrome px the engine defines as pixels.
+//!
+//! ## Expand/collapse lerp accordion (GTW-416)
+//!
+//! - [`Accordion`](accordion::Accordion) ([`spawn_accordion`]): a vertical stack of
+//!   expand/collapse rows INSIDE a [`spawn_scroll_list`], built for the gang-member rows
+//!   (GTW-425/428) to reveal/hide a stat table. Each row ([`spawn_accordion_row`]) is a
+//!   clickable [`AccordionHeader`](accordion::AccordionHeader) over an
+//!   [`AccordionContent`](accordion::AccordionContent) section whose RELATIVE (`Vh`) height
+//!   LERPS open and closed — a visible animation over several frames, never a snap — while
+//!   the flex column repositions the sibling rows below it automatically. The
+//!   [`drive_accordions`] system advances each row's [`AccordionProgress`](accordion::AccordionProgress)
+//!   by `Time::delta` toward its target and SNAPS to the exact endpoint within an epsilon so
+//!   it settles deterministically; it is registered by [`UiPlugin`](crate::UiPlugin).
 
+mod accordion;
 mod builders;
 mod dropdown;
 mod markers;
@@ -115,6 +128,11 @@ mod test;
 mod test_hud;
 mod text_field;
 
+pub use accordion::{
+    Accordion, AccordionAnim, AccordionColors, AccordionContent, AccordionHeader,
+    AccordionProgress, AccordionRow, AccordionTarget, drive_accordions, spawn_accordion,
+    spawn_accordion_row,
+};
 pub use builders::{spawn_button, spawn_panel};
 pub use dropdown::{
     Dropdown, DropdownAnchor, DropdownBackdrop, DropdownColors, DropdownDismissRequest,

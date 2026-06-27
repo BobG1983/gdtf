@@ -17,9 +17,10 @@ use crate::{
         core::{
             DropdownDismissRequest, DropdownSelectionChanged, OptionId, SegmentSelected,
             ToggleFlipped, activate_focused_option, close_dropdowns_on_dismiss_request,
-            dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, drive_switches, open_dropdown,
-            paint_active_buttons, paint_disabled_buttons, position_dropdown_popups,
-            repaint_segments, select_option_on_press, select_segment_on_press,
+            dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, drive_accordions,
+            drive_switches, open_dropdown, paint_active_buttons, paint_disabled_buttons,
+            position_dropdown_popups, repaint_segments, select_option_on_press,
+            select_segment_on_press,
         },
         interaction::{
             repaint_deactivated_buttons, repaint_theme_change, sync_hover_to_focus,
@@ -67,6 +68,11 @@ type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 /// plugins ([`ScrollAreaPlugin`] + [`ScrollbarPlugin`]) are present — added only if a
 /// `DefaultPlugins` app (whose `UiWidgetsPlugins` already supply them) has not registered
 /// them, since a unique plugin re-add panics.
+///
+/// For the GTW-416 [`Accordion`](crate::Accordion) it registers
+/// [`drive_accordions`](crate::widgets::core::drive_accordions) in [`Update`] (in the
+/// theming-independent widget-driver band): it toggles a pressed row's content animation and
+/// advances every animating row's content-height lerp each frame.
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -196,6 +202,12 @@ impl Plugin for UiPlugin {
                     // the active index changes (active-driven, never hover — the
                     // GTW-280/284 lesson; bevy-traps rule 3).
                     drive_switches,
+                    // GTW-416 — the accordion driver: it both toggles a pressed row's
+                    // content animation state and advances every animating content's
+                    // height lerp each frame (one system so the flip + advance never
+                    // race; bevy-traps rule 3). It carries its own colors / `Time`,
+                    // independent of the theming band like the other widget drivers.
+                    drive_accordions,
                     select_segment_on_press,
                     repaint_segments.after(select_segment_on_press),
                     // GTW-410 — the type-agnostic dropdown systems: the `Escape`-press emitter
