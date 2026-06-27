@@ -57,6 +57,11 @@ impl MenuActionTarget {
     const OPTIONS: Self = Self(RunningState::Options);
     /// Quit exits the game → [`RunningState::Quit`].
     const QUIT: Self = Self(RunningState::Quit);
+    /// DEV-ONLY: the Gang Editor opens the in-app editor → [`RunningState::DebugEditor`]
+    /// (GTW-420). `cfg(debug_assertions)`-gated so this mapping never compiles into a release
+    /// binary.
+    #[cfg(debug_assertions)]
+    const GANG_EDITOR: Self = Self(RunningState::DebugEditor);
 }
 
 /// Query filter selecting the enabled button carrying marker `M` whose
@@ -96,6 +101,10 @@ pub(in crate::states::running::menu) fn mouse_button_actions(
     battlescape: Query<&Interaction, PressedButton<BattlescapeButton>>,
     options: Query<&Interaction, PressedButton<OptionsButton>>,
     quit: Query<&Interaction, PressedButton<QuitButton>>,
+    #[cfg(debug_assertions)] gang_editor: Query<
+        &Interaction,
+        PressedButton<super::super::components::GangEditorButton>,
+    >,
 ) {
     if battlescape.iter().copied().any(is_press) {
         next.set(*MenuActionTarget::BATTLESCAPE);
@@ -105,6 +114,11 @@ pub(in crate::states::running::menu) fn mouse_button_actions(
     }
     if quit.iter().copied().any(is_press) {
         next.set(*MenuActionTarget::QUIT);
+    }
+    // DEV-ONLY: the Gang Editor button (GTW-420), cfg-gated so it never compiles into release.
+    #[cfg(debug_assertions)]
+    if gang_editor.iter().copied().any(is_press) {
+        next.set(*MenuActionTarget::GANG_EDITOR);
     }
 }
 
@@ -129,6 +143,13 @@ pub(in crate::states::running::menu) fn focus_activated_actions(
     battlescape: Query<(), (With<BattlescapeButton>, Without<DisabledButton>)>,
     options: Query<(), (With<OptionsButton>, Without<DisabledButton>)>,
     quit: Query<(), (With<QuitButton>, Without<DisabledButton>)>,
+    #[cfg(debug_assertions)] gang_editor: Query<
+        (),
+        (
+            With<super::super::components::GangEditorButton>,
+            Without<DisabledButton>,
+        ),
+    >,
 ) {
     for activated in activations.read() {
         let entity = **activated;
@@ -138,6 +159,13 @@ pub(in crate::states::running::menu) fn focus_activated_actions(
             next.set(*MenuActionTarget::OPTIONS);
         } else if quit.contains(entity) {
             next.set(*MenuActionTarget::QUIT);
+        }
+        // DEV-ONLY: the Gang Editor button (GTW-420), cfg-gated so it never compiles into
+        // release. Checked after the enabled buttons; an activation aimed at it requests the
+        // editor transition.
+        #[cfg(debug_assertions)]
+        if gang_editor.contains(entity) {
+            next.set(*MenuActionTarget::GANG_EDITOR);
         }
         // Any other entity (notably the disabled `HiveScape`, which carries
         // `DisabledButton` and so matches none of the filtered queries) is

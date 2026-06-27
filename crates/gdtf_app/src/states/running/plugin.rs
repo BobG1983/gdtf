@@ -2,7 +2,10 @@ use bevy::prelude::*;
 
 use crate::states::{
     AppState, RunningState,
-    running::{GameScenePlugin, MenuScenePlugin, OptionsScenePlugin, QuitScenePlugin, systems::*},
+    running::{
+        EditorScenePlugin, GameScenePlugin, MenuScenePlugin, OptionsScenePlugin, QuitScenePlugin,
+        systems::*,
+    },
 };
 
 pub(in crate::states) struct RunningScenePlugin;
@@ -33,7 +36,12 @@ fn add_plugins(app: &mut App) {
     app.add_plugins(MenuScenePlugin)
         .add_plugins(GameScenePlugin)
         .add_plugins(OptionsScenePlugin)
-        .add_plugins(QuitScenePlugin);
+        .add_plugins(QuitScenePlugin)
+        // The DEV-ONLY gang editor (GTW-420). Its scene plugin is always registered (the
+        // `DebugEditor` state variant always exists), but the only entry point — the
+        // `cfg(debug_assertions)`-gated "Gang Editor" menu button — never compiles into a
+        // release binary, so the editor is unreachable in release.
+        .add_plugins(EditorScenePlugin);
 }
 
 fn add_states(app: &mut App) {

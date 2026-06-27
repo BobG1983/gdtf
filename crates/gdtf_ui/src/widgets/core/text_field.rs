@@ -275,6 +275,16 @@ pub struct TextFieldCommitted {
 }
 
 impl TextFieldCommitted {
+    /// Build a commit message naming the field that committed and its
+    /// [`CommittedTextValue`] — the producer-side constructor (symmetric with
+    /// [`FocusActivated::new`](crate::focus_nav::FocusActivated)), so a caller that drives a
+    /// commit (or a test exercising a commit listener's real code path) can raise one without
+    /// reaching the private fields.
+    #[must_use]
+    pub const fn new(field: Entity, value: CommittedTextValue) -> Self {
+        Self { field, value }
+    }
+
     /// The text-field entity whose value committed.
     #[must_use]
     pub const fn field(&self) -> Entity {

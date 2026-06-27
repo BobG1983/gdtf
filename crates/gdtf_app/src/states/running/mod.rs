@@ -79,6 +79,18 @@ crate::support_use! {
 crate::support_use! {
     game::{CombatLogLine, CombatLogRoot};
 }
+mod editor;
+pub(in crate::states::running) use editor::EditorScenePlugin;
+// Test-support-only re-export of the GTW-420 gang-editor model + markers, gated so the binary
+// build is `unreachable_pub`-clean. Carries them up toward `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    editor::{
+        AddMemberButton, EditableGang, EditableMember, EditorScreenRoot, GangNameField,
+        MemberListHost, MemberRow,
+    };
+}
+
 mod options;
 pub(in crate::states::running) use options::OptionsScenePlugin;
 

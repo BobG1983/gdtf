@@ -1,0 +1,167 @@
+//! DEV-ONLY gang-editor self-screenshot QA hook (GTW-420, C6).
+//!
+//! This is **not shipping behavior**. It exists so QA (or a coding agent) can drive the app into
+//! the gang editor and capture the rendered editor screen — proving C6 visually, which the
+//! headless tests structurally cannot observe. It mirrors the GTW-419 loading-screen capture /
+//! GTW-297 [`DevCapturePlugin`](crate::app::capture) gating discipline.
+//!
+//! ## Two gates, both must hold to activate
+//!
+//! 1. **Dev cfg.** Wired into [`EditorScenePlugin`](super::plugin::EditorScenePlugin) only under
+//!    `cfg!(all(debug_assertions, feature = "dev_capture"))`; a release / default build never
+//!    compiles it.
+//! 2. **Opt-in env var.** Even when compiled in it is inert until `GDTF_EDITOR_SCREEN_SHOT=/abs/out.png`
+//!    is set: with it unset the hook registers nothing.
+//!
+//! ## How it drives + captures
+//!
+//! When active it (a) drives the menu into [`RunningState::DebugEditor`] the moment the menu
+//! rests (the only non-automatic transition from launch — the editor screen then spawns
+//! `OnEnter`), then (b) once in `DebugEditor`, waits a brief settle so the UI layout flushes,
+//! captures the editor screen, and (c) rides the shared shutdown cascade by setting
+//! [`RunningState::Quit`] (NOT writing `AppExit` — the macOS winit hang, Bevy #23313). The
+//! captured PNG shows the gang-name field + the "Add member" button + the member-list shell,
+//! themed.
+
+use std::path::PathBuf;
+
+use bevy::{
+    prelude::*,
+    render::view::window::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk},
+};
+
+use crate::states::{RunningState, running::editor::components::EditorScreenRoot};
+
+/// The `GDTF_EDITOR_SCREEN_SHOT` env var: the absolute path of the output PNG. Setting it (in a
+/// `dev_capture` debug build) opts into the editor capture hook.
+const EDITOR_SHOT_ENV: &str = "GDTF_EDITOR_SCREEN_SHOT";
+
+/// How many `DebugEditor` frames to wait before capturing, so the UI layout has flushed and the
+/// editor screen is settled rather than mid-layout (the GTW-419 settle precedent).
+const SETTLE_FRAMES: u32 = 4;
+
+/// Whether the editor capture hook is enabled, and where it writes.
+///
+/// `Some(path)` when [`EDITOR_SHOT_ENV`] is set to a non-empty (trimmed) value; `None` (the hook
+/// stays inert) otherwise. The path is framework plumbing handed straight to
+/// [`save_to_disk`](bevy::render::view::window::screenshot::save_to_disk) — not a domain value.
+///
+/// Pure (no `World`); delegates the gate to [`parse_editor_shot_path`] so the config test can
+/// drive the SAME logic without mutating the process-global env var.
+#[must_use]
+pub(in crate::states::running::editor) fn editor_shot_path() -> Option<PathBuf> {
+    parse_editor_shot_path(std::env::var(EDITOR_SHOT_ENV).ok().as_deref())
+}
+
+/// Apply the path gate to a raw env-var value: `Some(path)` when non-empty (trimmed), `None`
+/// (hook inert) when absent / empty / all-whitespace. The pure core of [`editor_shot_path`].
+#[must_use]
+fn parse_editor_shot_path(value: Option<&str>) -> Option<PathBuf> {
+    value
+        .map(|raw| raw.trim().to_owned())
+        .filter(|trimmed| !trimmed.is_empty())
+        .map(PathBuf::from)
+}
+
+/// The resolved editor-shot configuration: where to write the captured PNG.
+///
+/// Inserted as a [`Resource`] when the hook is enabled, so the capture system can read its path.
+/// Framework-plumbing config (a path), not a domain value.
+#[derive(Resource, Debug, Clone)]
+pub(in crate::states::running::editor) struct EditorShotConfig {
+    /// Absolute path of the output PNG, handed to
+    /// [`save_to_disk`](bevy::render::view::window::screenshot::save_to_disk).
+    path: PathBuf,
+}
+
+impl EditorShotConfig {
+    /// Build the config from the resolved output path.
+    pub(in crate::states::running::editor) const fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+/// Drives the menu into [`RunningState::DebugEditor`] once the menu rests (the only non-automatic
+/// launch transition), so the capture run reaches the editor unattended.
+///
+/// Runs in `Update`, gated `run_if(in_state(RunningState::Menu))` + the config resource existing.
+/// Param-only (`bevy-traps.md` #7).
+fn drive_into_editor(mut next: ResMut<NextState<RunningState>>) {
+    next.set(RunningState::DebugEditor);
+}
+
+/// Captures the rendered editor-screen frame to disk after a brief settle, then exits the app via
+/// the shared shutdown cascade.
+///
+/// Runs in `Update`, gated `run_if(in_state(RunningState::DebugEditor))` + the config resource
+/// existing. Its [`Local<u32>`] counter increments each `DebugEditor` frame; on the settle frame
+/// ([`SETTLE_FRAMES`]) it spawns a [`Screenshot::primary_window`] entity with an observer that
+/// saves the PNG synchronously and then sets [`RunningState::Quit`] (the shared cascade — NOT
+/// `AppExit`, the macOS hang #23313). Guards on the editor root being present so it never captures
+/// a blank screen if the theme was absent. Param-only (`bevy-traps.md` #7).
+///
+/// The actual screenshot needs a real render device, so it CANNOT be headless-tested — it is
+/// verified by RUNNING the app (QA), then `Read`ing the PNG.
+fn capture_editor_screen(
+    mut commands: Commands,
+    config: Res<EditorShotConfig>,
+    screens: Query<(), With<EditorScreenRoot>>,
+    mut frames: Local<u32>,
+) {
+    *frames += 1;
+    if *frames != SETTLE_FRAMES {
+        // Before the settle frame: wait. After it: already captured, do nothing.
+        return;
+    }
+    if screens.iter().next().is_none() {
+        // No editor screen yet (theme absent at spawn) — skip rather than capture a blank frame.
+        return;
+    }
+    let path = config.path.clone();
+    commands.spawn(Screenshot::primary_window()).observe(
+        move |captured: On<ScreenshotCaptured>, mut next: ResMut<NextState<RunningState>>| {
+            // Flush the PNG synchronously, then ride the shared shutdown cascade (Quit ->
+            // AppState::Teardown), not a direct AppExit (Bevy #23313 macOS hang).
+            save_to_disk(&path)(captured);
+            next.set(RunningState::Quit);
+        },
+    );
+}
+
+/// Register the editor capture hook IF its env-var gate is set.
+///
+/// Called by [`EditorScenePlugin`](super::plugin::EditorScenePlugin) only under
+/// `cfg!(all(debug_assertions, feature = "dev_capture"))`. When [`editor_shot_path`] returns
+/// `None` it registers nothing (the hook is fully inert).
+pub(in crate::states::running::editor) fn register_editor_capture(app: &mut App) {
+    let Some(path) = editor_shot_path() else {
+        return;
+    };
+    info!("gang-editor capture: ON (dev) -> {}", path.display());
+    app.insert_resource(EditorShotConfig::new(path))
+        .add_systems(
+            Update,
+            drive_into_editor
+                .run_if(in_state(RunningState::Menu).and_then(resource_exists::<EditorShotConfig>)),
+        )
+        .add_systems(
+            Update,
+            capture_editor_screen.run_if(
+                in_state(RunningState::DebugEditor).and_then(resource_exists::<EditorShotConfig>),
+            ),
+        );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_editor_shot_path;
+
+    #[test]
+    fn path_gate_accepts_non_empty_and_rejects_blank() {
+        assert!(parse_editor_shot_path(Some("/abs/out.png")).is_some());
+        assert!(parse_editor_shot_path(Some("  /trim/out.png  ")).is_some());
+        assert!(parse_editor_shot_path(Some("")).is_none());
+        assert!(parse_editor_shot_path(Some("   ")).is_none());
+        assert!(parse_editor_shot_path(None).is_none());
+    }
+}

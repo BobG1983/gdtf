@@ -111,5 +111,14 @@ crate::support_use! {
 crate::support_use! {
     running::{CombatLogLine, CombatLogRoot};
 }
+// Test-support-only re-export of the GTW-420 gang-editor model + screen markers, gated so the
+// binary build is `unused`/`unreachable_pub`-clean. The final hop before `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    running::{
+        AddMemberButton, EditableGang, EditableMember, EditorScreenRoot, GangNameField,
+        MemberListHost, MemberRow,
+    };
+}
 mod teardown;
 pub(in crate::states) use teardown::TeardownScenePlugin;

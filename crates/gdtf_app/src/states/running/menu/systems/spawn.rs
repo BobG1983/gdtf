@@ -197,6 +197,19 @@ pub(in crate::states::running::menu) fn spawn_menu(
         (QuitButton, DespawnOnExit(RunningState::Menu)),
     );
 
+    // DEV-ONLY "Gang Editor" button (GTW-420), cfg(debug_assertions)-gated so it never compiles
+    // into a release binary. Spawned LAST so it sits below Quit, and only in a debug build.
+    #[cfg(debug_assertions)]
+    let gang_editor = spawn_button(
+        &mut commands,
+        &theme,
+        ButtonLabel::new("Gang Editor"),
+        (
+            crate::states::running::menu::components::GangEditorButton,
+            DespawnOnExit(RunningState::Menu),
+        ),
+    );
+
     // Each button stretches to the panel content width (equal-width buttons).
     for button in [battlescape, options, hivescape, quit] {
         commands.entity(button).insert(Node {
@@ -204,13 +217,21 @@ pub(in crate::states::running::menu) fn spawn_menu(
             ..default()
         });
     }
+    #[cfg(debug_assertions)]
+    commands.entity(gang_editor).insert(Node {
+        width: Val::Percent(100.0),
+        ..default()
+    });
 
     // Order under root: [title, panel-box]; order under panel-box: the four
-    // buttons top→bottom (Battlescape, Options, HiveScape, Quit).
+    // buttons top→bottom (Battlescape, Options, HiveScape, Quit), plus the dev-only
+    // Gang Editor button below Quit in a debug build.
     commands.entity(root).add_children(&[title, panel]);
     commands
         .entity(panel)
         .add_children(&[battlescape, options, hivescape, quit]);
+    #[cfg(debug_assertions)]
+    commands.entity(panel).add_child(gang_editor);
 
     // Battlescape grabs initial focus (Godot `%BattlescapeButton.grab_focus()`).
     set_initial_focus(&mut commands, battlescape);
