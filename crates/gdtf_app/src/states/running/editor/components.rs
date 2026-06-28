@@ -126,10 +126,25 @@ crate::support_item! {
     /// row's LEFT (C1).
     ///
     /// Carries a [`PipExpanded`] (its open/closed state) + the row's [`MemberRowIndex`]. Pressing
-    /// it flips the state and re-glyphs the pip (`+` collapsed, `-` expanded). GTW-425 renders the
-    /// pip + its toggle; the expanded per-member stat table it would reveal is GTW-428.
+    /// it flips the state, re-glyphs the pip (`+` collapsed, `-` expanded), AND drives the matching
+    /// [`MemberStatPanel`]'s GTW-416 [`AccordionContent`](gdtf_ui::AccordionContent) toggle so the
+    /// per-member stat table lerps open / closed (GTW-428 C1).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ExpandPip;
+}
+
+crate::support_item! {
+    /// Marks a member row's **expanded stat panel** — the GTW-416
+    /// [`AccordionContent`](gdtf_ui::AccordionContent) the pip lerps open / closed (GTW-428 C1).
+    ///
+    /// It IS the accordion content node (it also carries
+    /// [`AccordionAnim`](gdtf_ui::AccordionAnim) / [`AccordionProgress`](gdtf_ui::AccordionProgress)
+    /// so the shared `drive_accordions` lerps its height), plus this marker + the row's
+    /// [`MemberRowIndex`] so a pip press drives the panel for the SAME member. It hosts the eight
+    /// editable [`AttributeField`] numeric fields and the readonly [`DerivedStatText`] displays.
+    /// The headless test asserts a pip press flips this panel's accordion target / progress.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct MemberStatPanel;
 }
 
 crate::support_item! {
@@ -231,4 +246,158 @@ impl MemberRowRef {
             Self(row)
         }
     }
+}
+
+crate::support_item! {
+    /// Which of a ganger's eight EDITABLE direct attributes one
+    /// [`AttributeField`] numeric field edits (GTW-428 C2).
+    ///
+    /// A closed named vocabulary (an enum IS a named domain type — no-bare-types) over the eight
+    /// `docs/combat/stats.md` direct attributes the editor exposes as numeric fields. The
+    /// attribute-edit system reads it off a committed field to route the new value to the right
+    /// [`EditableMember`](super::model::EditableMember) attribute, then re-derives. Carried on each
+    /// attribute field alongside the row's [`MemberRowIndex`].
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+    enum BaseAttribute {
+        /// **Speed** — quickness; drives the derived TU budget + Fight / Reactions.
+        Speed,
+        /// **Aim** — marksmanship; the dominant Shooting term.
+        Aim,
+        /// **Strength** — physical power; a Fight term.
+        Strength,
+        /// **Toughness** — damage resistance; an HP-derivation + severity term.
+        Toughness,
+        /// **Reflexes** — reaction speed; a Shooting + Reactions term.
+        Reflexes,
+        /// **Cool** — nerves; the broad Shooting / Fight / Reactions / HP / Morale contributor.
+        Cool,
+        /// **Grit** — resilience; the dominant HP + Morale term, and a Fight term.
+        Grit,
+        /// **Luck** — directional fortune; feeds the severity roll only, never the computed stats.
+        Luck,
+    }
+}
+
+impl BaseAttribute {
+    crate::support_item! {
+        /// The eight editable attributes in display order (Speed → Luck) — the order the expanded
+        /// panel lays its numeric fields, and the order the attribute-edit system iterates. Widened
+        /// for the external GTW-428 test to iterate the full attribute set.
+        const ALL: [Self; 8] = [
+            Self::Speed,
+            Self::Aim,
+            Self::Strength,
+            Self::Toughness,
+            Self::Reflexes,
+            Self::Cool,
+            Self::Grit,
+            Self::Luck,
+        ];
+    }
+
+    crate::support_item! {
+        /// The attribute's short display label — the text beside its numeric field.
+        #[must_use]
+        const fn label(self) -> &'static str {
+            match self {
+                Self::Speed => "Speed",
+                Self::Aim => "Aim",
+                Self::Strength => "Strength",
+                Self::Toughness => "Toughness",
+                Self::Reflexes => "Reflexes",
+                Self::Cool => "Cool",
+                Self::Grit => "Grit",
+                Self::Luck => "Luck",
+            }
+        }
+    }
+}
+
+crate::support_item! {
+    /// Marks one EDITABLE base-attribute numeric field in a member's expanded stat panel
+    /// (GTW-428 C2) — a [`spawn_numeric_field`](gdtf_ui::spawn_numeric_field) widget root.
+    ///
+    /// Carries the row's [`MemberRowIndex`] + a [`BaseAttribute`] so a
+    /// [`NumericFieldCommitted`](gdtf_ui::NumericFieldCommitted)`<f32>` on THIS field maps to the
+    /// right member's right attribute. Its value is clamped via the field's
+    /// [`NumericRange`](gdtf_ui::NumericRange) (C2).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct AttributeField;
+}
+
+crate::support_item! {
+    /// Which READONLY derived combat stat one [`DerivedStatText`] node displays (GTW-428 C2 / C3).
+    ///
+    /// A closed named vocabulary (an enum IS a named domain type — no-bare-types) over the
+    /// `docs/combat/stats.md` computed stats the GTW-384 [`derive_stats`](gdtf_battle_sim::derive_stats)
+    /// pipeline yields. The recompute system formats the matching
+    /// [`DerivedStats`](gdtf_battle_sim::DerivedStats) field into the node carrying this kind +
+    /// the row's [`MemberRowIndex`], so the shown value equals the pipeline output for the live
+    /// attributes (C3).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+    enum DerivedStat {
+        /// `Shooting` — the ranged-to-hit skill (live).
+        Shooting,
+        /// `Fight` — the melee skill (dormant).
+        Fight,
+        /// `Reactions` — enemy-turn responses (dormant).
+        Reactions,
+        /// `Morale` — the psychological damage pool (dormant).
+        Morale,
+        /// `Tu` — the per-turn action budget (live).
+        Tu,
+        /// `Hp` — the in-battle knock-down pool (live).
+        Hp,
+        /// `Wounds` — the life pool (live).
+        Wounds,
+        /// `Bottle` — the psychological life pool (dormant).
+        Bottle,
+    }
+}
+
+impl DerivedStat {
+    crate::support_item! {
+        /// The eight derived stats in display order — the order the expanded panel lays its
+        /// readonly displays, and the order the recompute system iterates. Widened for the external
+        /// GTW-428 test to iterate the full derived-stat set.
+        const ALL: [Self; 8] = [
+            Self::Shooting,
+            Self::Fight,
+            Self::Reactions,
+            Self::Morale,
+            Self::Tu,
+            Self::Hp,
+            Self::Wounds,
+            Self::Bottle,
+        ];
+    }
+
+    crate::support_item! {
+        /// The stat's short display label — the text beside its readonly value.
+        #[must_use]
+        const fn label(self) -> &'static str {
+            match self {
+                Self::Shooting => "Shooting",
+                Self::Fight => "Fight",
+                Self::Reactions => "Reactions",
+                Self::Morale => "Morale",
+                Self::Tu => "TU",
+                Self::Hp => "HP",
+                Self::Wounds => "Wounds",
+                Self::Bottle => "Bottle",
+            }
+        }
+    }
+}
+
+crate::support_item! {
+    /// Marks one READONLY derived-stat display in a member's expanded stat panel (GTW-428 C2 /
+    /// C3) — a [`Text`](bevy::prelude::Text) node the recompute MUTATES in place.
+    ///
+    /// Carries the row's [`MemberRowIndex`] + a [`DerivedStat`] so the recompute system finds the
+    /// matching node and writes the live pipeline output (the ui-mutate rule — never a respawn).
+    /// The headless test reads this node and asserts it equals the GTW-384 pipeline output for the
+    /// current attributes (C3).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct DerivedStatText;
 }

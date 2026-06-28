@@ -92,9 +92,10 @@ pub(in crate::states::running) use editor::EditorScenePlugin;
 #[cfg(feature = "test-support")]
 crate::support_use! {
     editor::{
-        AddMemberButton, DeleteMemberButton, EditableGang, EditableMember, EditorScreenRoot,
-        ExpandPip, GangNameField, MemberArmorDropdown, MemberArmorText, MemberListHost,
-        MemberNameField, MemberNameText, MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef,
+        AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
+        DerivedStatText, EditableGang, EditableMember, EditorScreenRoot, ExpandPip, GangNameField,
+        MemberArmorDropdown, MemberArmorText, MemberListHost, MemberNameField, MemberNameText,
+        MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef, MemberStatPanel,
         MemberWeaponDropdown, MemberWeaponText, PipExpanded,
     };
 }

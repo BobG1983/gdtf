@@ -22,9 +22,11 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Aim, ArmorName, Cool, GangMember, GangName, GangRegistry, GangerName, Grit, Reflexes, Speed,
-    Strength, Toughness, WeaponName, ganger::Luck,
+    Aim, ArmorName, Cool, GangMember, GangName, GangRegistry, GangerAttributes, GangerName, Grit,
+    Reflexes, Speed, Strength, Toughness, WeaponName, ganger::Luck,
 };
+
+use crate::states::running::editor::components::BaseAttribute;
 
 /// The default new-member display name the SCAFFOLD's "Add member" stamps onto a fresh
 /// [`EditableMember`]. A named placeholder so a freshly-added row reads as a member rather
@@ -149,6 +151,60 @@ impl EditableMember {
     /// Set the member's armor KEY — the armor dropdown's commit path (GTW-425 C2).
     fn set_armor(&mut self, armor: ArmorName) {
         self.armor = armor;
+    }
+
+    crate::support_item! {
+        /// The current magnitude of one of the member's eight editable
+        /// [`BaseAttribute`]s, as a bare `f32` — the value the expanded panel's matching numeric
+        /// field is SEEDED with (GTW-428 C2). Each attribute newtype `Deref`s to its private `f32`.
+        #[must_use]
+        fn attribute(&self, attribute: BaseAttribute) -> f32 {
+            match attribute {
+                BaseAttribute::Speed => *self.speed,
+                BaseAttribute::Aim => *self.aim,
+                BaseAttribute::Strength => *self.strength,
+                BaseAttribute::Toughness => *self.toughness,
+                BaseAttribute::Reflexes => *self.reflexes,
+                BaseAttribute::Cool => *self.cool,
+                BaseAttribute::Grit => *self.grit,
+                BaseAttribute::Luck => *self.luck,
+            }
+        }
+    }
+
+    /// Set one of the member's eight editable [`BaseAttribute`]s from a numeric-field commit's
+    /// `f32` value (GTW-428 C3). Wraps the value in the matching attribute newtype.
+    const fn set_attribute(&mut self, attribute: BaseAttribute, value: f32) {
+        match attribute {
+            BaseAttribute::Speed => self.speed = Speed::new(value),
+            BaseAttribute::Aim => self.aim = Aim::new(value),
+            BaseAttribute::Strength => self.strength = Strength::new(value),
+            BaseAttribute::Toughness => self.toughness = Toughness::new(value),
+            BaseAttribute::Reflexes => self.reflexes = Reflexes::new(value),
+            BaseAttribute::Cool => self.cool = Cool::new(value),
+            BaseAttribute::Grit => self.grit = Grit::new(value),
+            BaseAttribute::Luck => self.luck = Luck::new(value),
+        }
+    }
+
+    crate::support_item! {
+        /// The member's eight attributes grouped as the sim's [`GangerAttributes`] input record —
+        /// the EXACT shape the GTW-384 [`derive_stats`](gdtf_battle_sim::derive_stats) pipeline
+        /// consumes (GTW-428 C3). The editor feeds this straight to the real pipeline rather than
+        /// reimplementing the derivation.
+        #[must_use]
+        const fn attributes(&self) -> GangerAttributes {
+            GangerAttributes {
+                speed:     self.speed,
+                aim:       self.aim,
+                strength:  self.strength,
+                toughness: self.toughness,
+                reflexes:  self.reflexes,
+                cool:      self.cool,
+                grit:      self.grit,
+                luck:      self.luck,
+            }
+        }
     }
 }
 
@@ -277,6 +333,20 @@ impl EditableGang {
     ) {
         if let Some(member) = self.members.get_mut(index) {
             member.set_armor(armor);
+        }
+    }
+
+    /// Set one of the member-at-`index`'s editable base attributes — the expanded panel's
+    /// numeric-field commit path (GTW-428 C3). A no-op for an out-of-range index (degraded, never
+    /// panics).
+    pub(in crate::states::running::editor) fn set_member_attribute(
+        &mut self,
+        index: usize,
+        attribute: BaseAttribute,
+        value: f32,
+    ) {
+        if let Some(member) = self.members.get_mut(index) {
+            member.set_attribute(attribute, value);
         }
     }
 

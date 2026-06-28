@@ -12,20 +12,25 @@
 //!   [`spawn_text_field`](gdtf_ui::spawn_text_field), the "Add member" button, the member-list
 //!   shell).
 //! - `Update` (gated `in_state(DebugEditor)`): [`commit_gang_name`] (AC3), [`add_member_on_press`]
-//!   (AC4), the per-member inline edits [`commit_member_name`] (C3) / [`commit_member_weapon`] /
-//!   [`commit_member_armor`] (C2), [`delete_member_on_press`] (C4), and [`toggle_expand_pip`] (C1).
+//!   (AC4), the per-member inline edits [`commit_member_name`] (GTW-425 C3) /
+//!   [`commit_member_weapon`] / [`commit_member_armor`] (GTW-425 C2), the base-attribute edit +
+//!   live derived recompute [`commit_member_attribute`] (GTW-428 C2/C3),
+//!   [`delete_member_on_press`] (C4), and the expand-pip→accordion [`toggle_expand_pip`]
+//!   (GTW-428 C1). The GTW-416 accordion height-lerp itself rides `UiPlugin`'s `drive_accordions`.
 //! - `OnExit(DebugEditor)`: [`remove_editable_gang`] removes the model resource (C1); the screen
 //!   entities tear down via their own `DespawnOnExit` markers.
 //!
 //! It ALSO calls [`register_text_field`](gdtf_ui::register_text_field) once (the GTW-411 text-field
-//! widget's type-agnostic systems + commit observers, for the gang-name + per-member name fields)
-//! and [`register_dropdown`](gdtf_ui::register_dropdown)`::<WeaponName>` /
+//! widget's type-agnostic systems + commit observers, for the gang-name + per-member name fields),
+//! [`register_numeric_field`](gdtf_ui::register_numeric_field)`::<f32>` once (the GTW-411 numeric
+//! field's f32 commit / revert handlers + message, for the eight editable base-attribute fields —
+//! GTW-428 C2), and [`register_dropdown`](gdtf_ui::register_dropdown)`::<WeaponName>` /
 //! `::<ArmorName>` once each (the GTW-410 dropdown drivers + selection messages for the per-member
-//! weapon / armor selectors — C2). The editor is the first consumer of both widgets in the app.
+//! weapon / armor selectors — C2). The editor is the first consumer of all three widgets in the app.
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{ArmorName, WeaponName};
-use gdtf_ui::{register_dropdown, register_text_field};
+use gdtf_ui::{register_dropdown, register_numeric_field, register_text_field};
 
 use crate::states::{RunningState, running::editor::systems::*};
 
@@ -38,6 +43,11 @@ impl Plugin for EditorScenePlugin {
         // field + per-member name fields). The editor is the only consumer of the text field
         // today, so it owns this one-time registration.
         register_text_field(app);
+        // The GTW-411 NUMERIC-field's per-`N` pieces for the eight editable base-attribute fields
+        // (GTW-428 C2): the `NumericFieldCommitted<f32>` message + the f32-typed commit / revert
+        // handlers the type-erased keyboard observer dispatches to. Without this the attribute
+        // fields' Enter / blur commits never fire (an unregistered numeric `N` is a dead feature).
+        register_numeric_field::<f32>(app);
         // The GTW-410 dropdown drivers + selection messages for the per-member weapon / armor
         // selectors (one registration per option-identity type — C2). Without these the dropdown
         // open/select systems never run (an unregistered widget is a dead feature).
@@ -51,7 +61,8 @@ impl Plugin for EditorScenePlugin {
         );
 
         // Update: the gang-name edit (AC3), add-member (AC4), the per-member inline edits
-        // (name / weapon / armor — C2/C3), delete (C4), and the expand-pip toggle (C1) — all gated
+        // (name / weapon / armor — GTW-425 C2/C3), the base-attribute edit + live derived recompute
+        // (GTW-428 C2/C3), delete (C4), and the expand-pip→accordion toggle (GTW-428 C1) — all gated
         // on the editor state and (within each system) the model's presence.
         app.add_systems(
             Update,
@@ -61,6 +72,7 @@ impl Plugin for EditorScenePlugin {
                 commit_member_name,
                 commit_member_weapon,
                 commit_member_armor,
+                commit_member_attribute,
                 delete_member_on_press,
                 toggle_expand_pip,
             )

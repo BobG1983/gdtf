@@ -16,8 +16,9 @@ use bevy::{
 };
 
 use super::{
-    Accordion, AccordionAnim, AccordionColors, AccordionContent, AccordionHeader,
-    AccordionProgress, drive_accordions, spawn_accordion, spawn_accordion_row,
+    Accordion, AccordionAnim, AccordionColors, AccordionContent, AccordionContentFit,
+    AccordionExpandedVh, AccordionHeader, AccordionProgress, drive_accordions, spawn_accordion,
+    spawn_accordion_row,
 };
 
 /// A fixed per-update time step. Chosen so ONE update advances the lerp PARTWAY (not to
@@ -257,6 +258,58 @@ fn spawn_builds_header_over_targeted_content() {
     );
 }
 
+/// GTW-428 generalization — a `spawn_accordion_row` row carries the SHARED-DEFAULT
+/// [`AccordionExpandedVh`] (so existing callers open to the 18vh default unchanged), and
+/// `drive_accordions` lerps a content with a LARGER per-instance [`AccordionExpandedVh`] to
+/// THAT taller target, not the default.
+///
+/// Pin-discriminating: a `drive_accordions` that ignored the per-instance target (reverting
+/// to the hardcoded default) would settle the taller row at the default height, failing the
+/// strict `> default` assert; a `spawn_accordion_row` that dropped the default-target seed
+/// would change every existing caller's expanded height, failing the default-equality assert.
+#[test]
+fn per_instance_expanded_target_overrides_the_shared_default() {
+    let mut app = lerp_app();
+    let (header, content) = spawn_one_row(&mut app);
+
+    // The row spawned by `spawn_accordion_row` carries the shared default target.
+    assert_eq!(
+        app.world().get::<AccordionExpandedVh>(content).copied(),
+        Some(AccordionExpandedVh::default()),
+        "a spawn_accordion_row row carries the shared-default expanded target (existing callers \
+         unchanged)",
+    );
+    let default_expanded = AccordionProgress::new(1.0).height_vh();
+
+    // Override THIS content with a taller per-instance target, then open + settle it.
+    let taller = default_expanded + 20.0;
+    if let Some(mut target) = app.world_mut().get_mut::<AccordionExpandedVh>(content) {
+        *target = AccordionExpandedVh::new(taller);
+    }
+    press_and_tick(&mut app, header);
+    for _ in 0..80 {
+        app.update();
+    }
+
+    let settled = content_height_vh(&app, content);
+    assert!(
+        settled.is_some_and(|h| h > default_expanded),
+        "the lerp must open the row to its taller PER-INSTANCE target, above the {default_expanded}vh \
+         shared default (got {settled:?})",
+    );
+    // It reached the per-instance target exactly (the lerp snaps at the end).
+    assert_eq!(
+        settled,
+        Some(taller),
+        "the settled height must equal the per-instance expanded target",
+    );
+    assert_eq!(
+        app.world().get::<AccordionAnim>(content),
+        Some(&AccordionAnim::Expanded),
+        "the per-instance-target row settles Expanded like any other",
+    );
+}
+
 /// Color application (AC4 root cause) — a row's HEADER node paints
 /// [`AccordionColors::header`] and its CONTENT node paints
 /// [`AccordionColors::content`] as their [`BackgroundColor`], so the caller-supplied
@@ -288,5 +341,81 @@ fn rows_paint_header_and_content_from_colors() {
     assert_ne!(
         COLORS.header, COLORS.content,
         "the test's header/content colors are distinct (so a mix-up would fail above)",
+    );
+}
+
+/// GTW-428 round-2 content-fit — a content carrying [`AccordionContentFit`] LERPS open through `Vh`
+/// (a partway `Vh` mid-flight, never a snap) but, once it SETTLES fully open, adopts a
+/// [`Val::Auto`] height so the rest-open section sizes to its exact content (rather than clipping to
+/// a fixed `Vh` ceiling). Toggling it CLOSED leaves the `Auto` rest state and lerps back through
+/// `Vh` to the collapsed height.
+///
+/// Pin-discriminating: a `drive_accordions` that ignored the content-fit marker would settle the
+/// row at a `Val::Vh` height (the per-instance target) and fail the `is Auto` assert; one that set
+/// `Auto` mid-flight (not only on settle) would fail the strict-partway `Vh` assert; one that left
+/// `Auto` stuck on collapse would fail the collapsed-`Vh` assert.
+#[test]
+fn content_fit_settles_open_to_auto_then_lerps_back_on_collapse() {
+    let mut app = lerp_app();
+    let (header, content) = spawn_one_row(&mut app);
+    let (collapsed, _expanded) = endpoints();
+
+    // Opt this content into content-fit.
+    app.world_mut()
+        .entity_mut(content)
+        .insert(AccordionContentFit);
+
+    // Toggle open: the FIRST lerp step is a partway `Vh` (a visible animation, not a snap to Auto).
+    press_and_tick(&mut app, header);
+    let partway = content_height_vh(&app, content);
+    assert!(
+        partway.is_some_and(|h| h > collapsed),
+        "while OPENING, a content-fit row's height is still a partway Vh (lerp, not an instant \
+         Auto): {partway:?}",
+    );
+    assert_eq!(
+        app.world().get::<AccordionAnim>(content),
+        Some(&AccordionAnim::Expanding),
+        "a freshly-toggled-open content-fit row is Expanding",
+    );
+
+    // Settle fully open — the rest-open height switches to content-fit Auto.
+    for _ in 0..80 {
+        app.update();
+    }
+    assert_eq!(
+        app.world().get::<AccordionAnim>(content),
+        Some(&AccordionAnim::Expanded),
+        "the content-fit row settles Expanded",
+    );
+    assert!(
+        matches!(
+            app.world().get::<Node>(content).map(|n| n.height),
+            Some(Val::Auto)
+        ),
+        "a SETTLED content-fit row adopts a Val::Auto content-fit height (got {:?})",
+        app.world().get::<Node>(content).map(|n| n.height),
+    );
+
+    // Toggle CLOSED: it leaves Auto and lerps back through Vh to the collapsed height.
+    press_and_tick(&mut app, header);
+    let closing = content_height_vh(&app, content);
+    assert!(
+        closing.is_some(),
+        "on collapse the height returns to a lerped Vh (it leaves the rest-open Auto): {:?}",
+        app.world().get::<Node>(content).map(|n| n.height),
+    );
+    for _ in 0..80 {
+        app.update();
+    }
+    assert_eq!(
+        content_height_vh(&app, content),
+        Some(collapsed),
+        "the content-fit row lerps back to the exact collapsed Vh height",
+    );
+    assert_eq!(
+        app.world().get::<AccordionAnim>(content),
+        Some(&AccordionAnim::Collapsed),
+        "the collapsed content-fit row settles Collapsed",
     );
 }

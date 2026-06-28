@@ -23,9 +23,10 @@ mod components;
 #[cfg(feature = "test-support")]
 crate::support_use! {
     components::{
-        AddMemberButton, DeleteMemberButton, EditorScreenRoot, ExpandPip, GangNameField,
-        MemberArmorDropdown, MemberArmorText, MemberListHost, MemberNameField, MemberNameText,
-        MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef, MemberWeaponDropdown,
+        AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
+        DerivedStatText, EditorScreenRoot, ExpandPip, GangNameField, MemberArmorDropdown,
+        MemberArmorText, MemberListHost, MemberNameField, MemberNameText, MemberPortrait,
+        MemberRow, MemberRowIndex, MemberRowRef, MemberStatPanel, MemberWeaponDropdown,
         MemberWeaponText, PipExpanded,
     };
 }

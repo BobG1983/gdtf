@@ -15,6 +15,13 @@ dynamic_linking = ["gdtf_app/dynamic_linking"]
 # Enable locally (e.g. `cargo run --features dynamic_linking,file_watcher`) to make
 # editing a loose asset on disk live-reload it; never enabled for release/CI.
 file_watcher = ["gdtf_app/file_watcher"]
+# DEV / LOCAL-only screenshot / visual-QA capture (GTW-297); chains through to
+# gdtf_app -> dev_capture. The capture affordances are ADDITIONALLY double-gated on
+# `cfg!(debug_assertions)` at their wiring sites and stay inert until their env var
+# (e.g. `GDTF_CAPTURE_PATH` / `GDTF_EDITOR_SCREEN_SHOT`) is set, so a release binary
+# never sees them even with the feature on. Enable locally to run a QA capture
+# (e.g. `cargo run --features dynamic_linking,dev_capture`); never enabled for release/CI.
+dev_capture = ["gdtf_app/dev_capture"]
 
 [lints]
 workspace = true

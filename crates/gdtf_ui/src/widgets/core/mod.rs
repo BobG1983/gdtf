@@ -129,9 +129,9 @@ mod test_hud;
 mod text_field;
 
 pub use accordion::{
-    Accordion, AccordionAnim, AccordionColors, AccordionContent, AccordionHeader,
-    AccordionProgress, AccordionRow, AccordionTarget, drive_accordions, spawn_accordion,
-    spawn_accordion_row,
+    Accordion, AccordionAnim, AccordionColors, AccordionContent, AccordionContentFit,
+    AccordionExpandedVh, AccordionHeader, AccordionProgress, AccordionRow, AccordionTarget,
+    drive_accordions, spawn_accordion, spawn_accordion_row,
 };
 pub use builders::{spawn_button, spawn_panel};
 pub use dropdown::{

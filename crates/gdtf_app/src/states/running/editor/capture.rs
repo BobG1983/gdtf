@@ -17,11 +17,13 @@
 //!
 //! When active it (a) drives the menu into [`RunningState::DebugEditor`] the moment the menu
 //! rests (the only non-automatic transition from launch — the editor screen then spawns
-//! `OnEnter`), then (b) once in `DebugEditor`, waits a brief settle so the UI layout flushes,
-//! captures the editor screen, and (c) rides the shared shutdown cascade by setting
-//! [`RunningState::Quit`] (NOT writing `AppExit` — the macOS winit hang, Bevy #23313). The
-//! captured PNG shows the gang-name field + the "Add member" button + the member-list shell,
-//! themed.
+//! `OnEnter`), (b) once in `DebugEditor` presses "Add member" (a populated row), then EXPANDS that
+//! row's pip + commits a Grit attribute edit (so the GTW-428 stat table is open via the accordion
+//! lerp and the readonly derived stats have visibly recomputed), (c) waits a settle so the
+//! accordion has fully lerped open + the layout flushed, captures the editor screen, and (d) rides
+//! the shared shutdown cascade by setting [`RunningState::Quit`] (NOT writing `AppExit` — the macOS
+//! winit hang, Bevy #23313). The captured PNG shows the expanded per-member stat table: the eight
+//! editable attribute fields + the readonly derived displays recomputed off the edited Grit.
 
 use std::path::PathBuf;
 
@@ -30,10 +32,14 @@ use bevy::{
     render::view::window::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk},
     ui::Interaction,
 };
+use gdtf_ui::{AccordionAnim, CommittedNumericValue, NumericFieldCommitted};
 
 use crate::states::{
     RunningState,
-    running::editor::components::{AddMemberButton, EditorScreenRoot, MemberRow},
+    running::editor::components::{
+        AddMemberButton, AttributeField, BaseAttribute, EditorScreenRoot, ExpandPip, MemberRow,
+        MemberRowIndex, MemberStatPanel, PipExpanded,
+    },
 };
 
 /// The `GDTF_EDITOR_SCREEN_SHOT` env var: the absolute path of the output PNG. Setting it (in a
@@ -41,11 +47,22 @@ use crate::states::{
 const EDITOR_SHOT_ENV: &str = "GDTF_EDITOR_SCREEN_SHOT";
 
 /// How many `DebugEditor` frames to wait before capturing, so the UI layout has flushed and the
-/// editor screen is settled rather than mid-layout (the GTW-419 settle precedent). Bumped over the
-/// scaffold's 4 so the capture-driven "Add member" press (a frame to fire `add_member_on_press`, a
-/// frame for the deferred parent-into-area command) is fully applied before the shot — the
-/// captured frame shows at least one populated member row + its dropdowns (GTW-425 C6).
-const SETTLE_FRAMES: u32 = 8;
+/// editor screen is settled rather than mid-layout (the GTW-419 settle precedent). Bumped well over
+/// the GTW-425 row-only capture so the full GTW-428 drive applies before the shot — the "Add
+/// member" press, then the pip-expand + attribute-edit (so the accordion has FULLY LERPED open and
+/// the live derived recompute has run), are all settled by the captured frame (GTW-428 C4). The
+/// accordion full open is `~0.25 s` at the default frame rate, so a generous margin is used.
+const SETTLE_FRAMES: u32 = 90;
+
+/// The Grit value the capture drive commits into the expanded panel, so the shot's readonly derived
+/// stats (HP / Wounds / Morale …) visibly move off their all-default values — proving the live
+/// recompute on screen (GTW-428 C4). A framework-plumbing capture magnitude, not a domain value.
+const CAPTURE_GRIT: f32 = 8.0;
+
+/// The expanded-state glyph the capture drive writes onto the row-0 pip when it opens the panel
+/// DIRECTLY — the exact `-` glyph
+/// [`toggle_expand_pip`](super::systems::toggle_expand_pip) would write on a real press.
+const EXPANDED_PIP_GLYPH: &str = "-";
 
 /// Whether the editor capture hook is enabled, and where it writes.
 ///
@@ -123,6 +140,72 @@ fn drive_capture_add_member(
     }
 }
 
+/// Expands the first member's stat panel AND commits a Grit attribute edit, so the captured frame
+/// shows the EXPANDED stat table + the LIVE derived recompute + an open accordion (GTW-428 C4).
+///
+/// Runs in `Update`, gated on `DebugEditor` + the config resource, ordered AFTER
+/// [`drive_capture_add_member`]. The member row is spawned by a DEFERRED `commands.queue` in
+/// [`add_member_on_press`](super::systems::add_member_on_press), so the row + its pip + its
+/// [`MemberStatPanel`] do NOT exist the same frame the add-member press fires — this driver GATES on
+/// the row-0 panel actually being present (across frames) and does nothing until it is.
+///
+/// It then opens the panel by DRIVING THE EXPAND STATE DIRECTLY rather than faking an
+/// [`Interaction::Pressed`] on the pip: a synthesized `Pressed` is unreliable under the ambiguous
+/// ordering between this driver and the [`toggle_expand_pip`](super::systems::toggle_expand_pip)
+/// reader (`bevy-traps.md` #3 / #6 — the GTW-416 capture/demo precedent drives `AccordionAnim`
+/// directly for exactly this reason). Concretely it applies the EXACT state a real pip click would
+/// produce: (1) sets the row-0 [`ExpandPip`]'s [`PipExpanded`] to `true` and re-glyphs its [`Text`]
+/// to `-`, and (2) sets the row-0 [`MemberStatPanel`]'s
+/// [`AccordionAnim`](gdtf_ui::AccordionAnim) to [`Expanding`](gdtf_ui::AccordionAnim::Expanding) (=
+/// `Collapsed.toggled()`) so the shared `drive_accordions` lerps the panel open over the settle
+/// window. (3) It writes a real [`NumericFieldCommitted`]`<f32>` for the row-0 Grit
+/// [`AttributeField`] so the real [`commit_member_attribute`](super::systems::commit_member_attribute)
+/// re-derives + mutates the readonly displays. A [`Local<bool>`] makes it fire ONCE — set only once
+/// the panel was found and driven. Param-only (`bevy-traps.md` #7).
+fn drive_capture_expand_and_edit(
+    mut pips: Query<(&MemberRowIndex, &mut PipExpanded, &mut Text), With<ExpandPip>>,
+    mut panels: Query<(&MemberRowIndex, &mut AccordionAnim), With<MemberStatPanel>>,
+    fields: Query<(Entity, &MemberRowIndex, &BaseAttribute), With<AttributeField>>,
+    mut commits: MessageWriter<NumericFieldCommitted<f32>>,
+    mut done: Local<bool>,
+) {
+    if *done {
+        return;
+    }
+    // Gate on the row-0 panel existing: the member row + its pip + panel are spawned by a DEFERRED
+    // command, so they are absent for the frame(s) after the add-member press. Drive nothing — and
+    // do NOT mark done — until the panel is actually present.
+    let Some(()) = panels
+        .iter_mut()
+        .find(|(index, _)| ***index == 0)
+        .map(|(_, mut anim)| {
+            // Set the panel to the exact state a real click produces (`Collapsed.toggled()` =
+            // `Expanding`) so the shared `drive_accordions` lerps it open over the settle window.
+            *anim = AccordionAnim::Expanding;
+        })
+    else {
+        return;
+    };
+    // Apply the matching pip state a real toggle would write: PipExpanded(true) + the `-` glyph.
+    if let Some((_, mut expanded, mut text)) = pips.iter_mut().find(|(index, ..)| ***index == 0) {
+        *expanded = PipExpanded::new(true);
+        if text.0 != EXPANDED_PIP_GLYPH {
+            EXPANDED_PIP_GLYPH.clone_into(&mut text.0);
+        }
+    }
+    // Commit a Grit edit on the row-0 attribute field so the readonly derived displays recompute.
+    if let Some((field, ..)) = fields
+        .iter()
+        .find(|(_, index, attribute)| ***index == 0 && **attribute == BaseAttribute::Grit)
+    {
+        commits.write(NumericFieldCommitted::new(
+            field,
+            CommittedNumericValue::new(CAPTURE_GRIT),
+        ));
+    }
+    *done = true;
+}
+
 /// Captures the rendered editor-screen frame to disk after a brief settle, then exits the app via
 /// the shared shutdown cascade.
 ///
@@ -179,9 +262,15 @@ pub(in crate::states::running::editor) fn register_editor_capture(app: &mut App)
         )
         .add_systems(
             Update,
-            // Press "Add member" before the settle-capture so the shot shows a populated row +
-            // dropdowns; ordered before the capture so the row exists by the settle frame.
-            (drive_capture_add_member, capture_editor_screen)
+            // Drive the full GTW-428 demo before the settle-capture: press "Add member" (a
+            // populated row), then expand its pip + commit a Grit edit (the open accordion stat
+            // table + the live recompute), THEN capture. Chained so each step's effect is applied
+            // before the next reads it and the capture frame is fully settled.
+            (
+                drive_capture_add_member,
+                drive_capture_expand_and_edit,
+                capture_editor_screen,
+            )
                 .chain()
                 .run_if(
                     in_state(RunningState::DebugEditor)

@@ -122,9 +122,10 @@ crate::support_use! {
 #[cfg(feature = "test-support")]
 crate::support_use! {
     running::{
-        AddMemberButton, DeleteMemberButton, EditableGang, EditableMember, EditorScreenRoot,
-        ExpandPip, GangNameField, MemberArmorDropdown, MemberArmorText, MemberListHost,
-        MemberNameField, MemberNameText, MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef,
+        AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
+        DerivedStatText, EditableGang, EditableMember, EditorScreenRoot, ExpandPip, GangNameField,
+        MemberArmorDropdown, MemberArmorText, MemberListHost, MemberNameField, MemberNameText,
+        MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef, MemberStatPanel,
         MemberWeaponDropdown, MemberWeaponText, PipExpanded,
     };
 }

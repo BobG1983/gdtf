@@ -10,7 +10,7 @@
 //! with the model — one row per member.
 
 use bevy::{prelude::*, ui::Interaction};
-use gdtf_battle_sim::{ArmorRegistry, WeaponRegistry};
+use gdtf_battle_sim::{ArmorRegistry, GangerStatTuning, WeaponRegistry};
 use gdtf_ui::{ScrollListArea, theme::GdtfTheme};
 
 use crate::states::running::editor::{
@@ -25,8 +25,10 @@ use crate::states::running::editor::{
 /// once per press edge (the menu-action precedent), appends [`EditableMember::default_member`] to
 /// the model (capturing the new member's index), and spawns a collapsed row keyed to that index
 /// into the scroll-list AREA. The dropdown options come from the global [`WeaponRegistry`] /
-/// [`ArmorRegistry`] (all loaded keys — C2). Guarded on the model + theme presence (state-scoped
-/// resource — `bevy-traps.md` #1) and registered `run_if(in_state(RunningState::DebugEditor))`.
+/// [`ArmorRegistry`] (all loaded keys — C2); the new row's readonly derived-stat displays are
+/// seeded from the GTW-384 [`GangerStatTuning`] derivation (C3). Guarded on the model + theme
+/// presence (state-scoped resource — `bevy-traps.md` #1) and registered
+/// `run_if(in_state(RunningState::DebugEditor))`.
 /// The row is parented into the [`ScrollListArea`] via a deferred command (it queries the
 /// [`MemberListHost`] frame for its area child, the GTW-422 palette precedent).
 pub(in crate::states::running::editor) fn add_member_on_press(
@@ -35,6 +37,7 @@ pub(in crate::states::running::editor) fn add_member_on_press(
     theme: Option<Res<GdtfTheme>>,
     weapons: Option<Res<WeaponRegistry>>,
     armor: Option<Res<ArmorRegistry>>,
+    tuning: Option<Res<GangerStatTuning>>,
     model: Option<ResMut<EditableGang>>,
 ) {
     let pressed = buttons
@@ -49,6 +52,9 @@ pub(in crate::states::running::editor) fn add_member_on_press(
     let index = model.add_default_member();
     let weapon_options = sorted_weapon_options(weapons.as_deref());
     let armor_options = sorted_armor_options(armor.as_deref());
+    // The GTW-384 derivation weights the new row's readonly stat displays seed from; an absent
+    // resource falls back to the const-default weights (C3).
+    let tuning = tuning.as_deref().cloned().unwrap_or_default();
     let Some(member) = model.member_at(index) else {
         return;
     };
@@ -59,6 +65,7 @@ pub(in crate::states::running::editor) fn add_member_on_press(
         member,
         &weapon_options,
         &armor_options,
+        &tuning,
     );
     // Parent the new row into the scroll list's AREA (the clipping viewport), found via the
     // MemberListHost frame's ScrollListArea child — NOT the frame itself (the parenting rule).

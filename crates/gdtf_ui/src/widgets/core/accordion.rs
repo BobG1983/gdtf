@@ -24,7 +24,10 @@
 //! progress each frame by `Time::delta * `[`ACCORDION_LERP_PER_SEC`] toward the
 //! target (1.0 expanded / 0.0 collapsed) and writes the content node's
 //! [`height`](bevy::ui::Node::height) to the interpolated RELATIVE value between
-//! [`ACCORDION_COLLAPSED_VH`] and [`ACCORDION_EXPANDED_VH`]. A float lerp does NOT
+//! [`ACCORDION_COLLAPSED_VH`] and the row's expanded target — a PER-INSTANCE
+//! [`AccordionExpandedVh`] when present, else the shared default [`ACCORDION_EXPANDED_VH`].
+//! A row that hosts tall content (the GTW-428 stat table) opts into a larger target so its
+//! content fits the open height; every other row keeps the default. A float lerp does NOT
 //! land on its endpoint exactly (bevy-ui-render-and-test-gotchas), so when the
 //! progress comes within [`ACCORDION_SETTLE_EPSILON`] of an end it SNAPS to the exact
 //! `0.0`/`1.0` and the animation is marked settled — it stops deterministically at the
@@ -114,8 +117,10 @@ pub struct AccordionHeader;
 ///
 /// It carries an [`AccordionAnim`] (its toggle state / target) and an
 /// [`AccordionProgress`] (the `0.0..=1.0` lerp parameter) that [`drive_accordions`]
-/// advances. A unit marker (no-bare-types rule); the caller parents its own revealed
-/// content (e.g. a stat table) under it.
+/// advances, and OPTIONALLY an [`AccordionExpandedVh`] naming a per-instance expanded
+/// height (the shared [`ACCORDION_EXPANDED_VH`] default when absent). A unit marker
+/// (no-bare-types rule); the caller parents its own revealed content (e.g. a stat table)
+/// under it.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct AccordionContent;
 
@@ -190,6 +195,13 @@ impl AccordionAnim {
         matches!(self, Self::Expanding | Self::Collapsing)
     }
 
+    /// Whether this state is animating OPEN (toward expanded) — the direction a content-fit
+    /// section settles to a [`Val::Auto`](bevy::ui::Val::Auto) height rather than a fixed `Vh`.
+    #[must_use]
+    const fn is_expanding(self) -> bool {
+        matches!(self, Self::Expanding)
+    }
+
     /// The REST state this animating state settles into once it reaches its target.
     #[must_use]
     const fn settled(self) -> Self {
@@ -242,16 +254,81 @@ impl AccordionProgress {
     }
 
     /// The interpolated content height in viewport-height units (`Vh`): a linear blend
-    /// between [`ACCORDION_COLLAPSED_VH`] (at `0.0`) and [`ACCORDION_EXPANDED_VH`] (at
-    /// `1.0`). A RELATIVE value (C3) — never a fixed pixel.
+    /// between [`ACCORDION_COLLAPSED_VH`] (at `0.0`) and the DEFAULT expanded target
+    /// [`ACCORDION_EXPANDED_VH`] (at `1.0`). A RELATIVE value (C3) — never a fixed pixel.
+    ///
+    /// The default-target convenience over [`height_vh_to`](AccordionProgress::height_vh_to):
+    /// a row with no per-instance [`AccordionExpandedVh`] opens to the shared default.
     #[must_use]
     pub fn height_vh(self) -> f32 {
-        self.0.mul_add(
-            ACCORDION_EXPANDED_VH - ACCORDION_COLLAPSED_VH,
-            ACCORDION_COLLAPSED_VH,
-        )
+        self.height_vh_to(ACCORDION_EXPANDED_VH)
+    }
+
+    /// The interpolated content height in viewport-height units (`Vh`): a linear blend
+    /// between [`ACCORDION_COLLAPSED_VH`] (at `0.0`) and a PER-INSTANCE `expanded` target
+    /// (at `1.0`). A RELATIVE value (C3) — never a fixed pixel.
+    ///
+    /// [`drive_accordions`] reads each content's [`AccordionExpandedVh`] (defaulting to
+    /// [`ACCORDION_EXPANDED_VH`] when absent) and lerps toward it through this, so a row
+    /// that holds taller content (the GTW-428 stat table) opens to a height that fits it
+    /// while every existing caller keeps the shared default (GTW-428 layout fix).
+    #[must_use]
+    pub fn height_vh_to(self, expanded: f32) -> f32 {
+        self.0
+            .mul_add(expanded - ACCORDION_COLLAPSED_VH, ACCORDION_COLLAPSED_VH)
     }
 }
+
+/// The fully-expanded content height TARGET of one accordion row, in viewport-height units
+/// (`Vh`) — the per-instance ceiling the row's height lerps TO when expanded (GTW-428
+/// layout fix).
+///
+/// A newtype over `f32` (no-bare-types rule): [`drive_accordions`] reads it off the
+/// [`AccordionContent`] (defaulting to [`ACCORDION_EXPANDED_VH`] when absent) and feeds it
+/// to [`height_vh_to`](AccordionProgress::height_vh_to). A row with no per-instance target
+/// opens to the shared default ([`spawn_accordion_row`] seeds exactly the default, so every
+/// existing caller is unchanged); a caller that hosts taller content (e.g. the GTW-428
+/// 2-column per-member stat table) inserts a larger value so its content fits the open
+/// height. The inner is private; build it via [`new`](AccordionExpandedVh::new) and read it
+/// through the derived [`Deref`]. A RELATIVE value (C3) — never a fixed pixel.
+#[derive(Component, Deref, Clone, Copy, PartialEq, Debug)]
+pub struct AccordionExpandedVh(f32);
+
+impl AccordionExpandedVh {
+    /// Build a per-instance expanded-height target (`Vh`).
+    #[must_use]
+    pub const fn new(vh: f32) -> Self {
+        Self(vh)
+    }
+}
+
+impl Default for AccordionExpandedVh {
+    /// The shared default target ([`ACCORDION_EXPANDED_VH`]) — so a row that does not opt
+    /// into a per-instance height behaves exactly as before the GTW-428 generalization.
+    fn default() -> Self {
+        Self(ACCORDION_EXPANDED_VH)
+    }
+}
+
+/// Opt-in marker on an [`AccordionContent`] whose REST-OPEN height should FIT ITS CONTENT
+/// rather than clip to a fixed [`AccordionExpandedVh`] (the GTW-428 round-2 layout fix).
+///
+/// A fixed `Vh` expanded ceiling cannot reliably fit a content section whose natural height
+/// depends on the rendered font / padding (the GTW-428 per-member stat table holds eight
+/// editable attribute fields in its taller column, ~45vh at the editor's text size — a guessed
+/// `Vh` clipped the bottom lines at the real window size). When this marker is present,
+/// [`drive_accordions`] still LERPS the height up through `Vh` toward the per-instance target
+/// (so the open is a visible animation, never a snap), but on SETTLING fully open it sets the
+/// content height to [`Val::Auto`](bevy::ui::Val::Auto) so the rest-open section sizes to its
+/// EXACT content — every line visible regardless of font metrics, no magnitude to guess. On
+/// collapse the lerp returns through `Vh` to the collapsed height as usual. A taller rest-open
+/// section simply makes the enclosing scroll list scroll.
+///
+/// A unit marker (no-bare-types rule); absence preserves the fixed-`Vh` behavior, so every
+/// existing caller (the GTW-416 demo, the integration tests, [`spawn_accordion_row`] rows) is
+/// unchanged.
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct AccordionContentFit;
 
 /// Spawns an [`Accordion`] inside a [`spawn_scroll_list`](super::spawn_scroll_list) and
 /// returns the ROW-STACK [`Entity`] the caller adds rows to (via
@@ -299,6 +376,10 @@ pub fn spawn_accordion_row(
             AccordionContent,
             AccordionAnim::Collapsed,
             AccordionProgress(0.0),
+            // Seed the shared-default expanded target so an `spawn_accordion_row` caller (the
+            // GTW-416 demo, the integration tests) opens to the 18vh default exactly as before
+            // the GTW-428 per-instance generalization.
+            AccordionExpandedVh::default(),
             BackgroundColor(colors.content),
             accordion_content_node(),
         ))
@@ -332,6 +413,20 @@ pub fn spawn_accordion_row(
 /// is read + flipped through `contents.get_mut` in phase 1).
 type HeaderData = (&'static Interaction, &'static AccordionTarget);
 
+/// Read-write [`Query`] data for one [`AccordionContent`] the lerp advances: its mutable
+/// animation state + progress + [`Node`] (the height the lerp writes), its optional
+/// per-instance [`AccordionExpandedVh`] target, and whether it opts into content-fit
+/// ([`AccordionContentFit`]) so a settled-open section adopts a [`Val::Auto`] height.
+///
+/// Named to keep [`drive_accordions`]'s signature legible (clippy `type_complexity`).
+type ContentData = (
+    &'static mut AccordionAnim,
+    &'static mut AccordionProgress,
+    &'static mut Node,
+    Option<&'static AccordionExpandedVh>,
+    Has<AccordionContentFit>,
+);
+
 /// Drives every accordion: flips a header's content toward expanded/collapsed on a
 /// press edge, then LERPS each animating content's height toward its target each frame.
 ///
@@ -349,36 +444,48 @@ type HeaderData = (&'static Interaction, &'static AccordionTarget);
 ///    write the interpolated [`height_vh`](AccordionProgress::height_vh) onto the
 ///    content [`Node`]'s [`height`](bevy::ui::Node::height) as a [`Val::Vh`], and once
 ///    the progress SNAPS to the target settle the [`AccordionAnim`] to its rest state
-///    so it stops advancing (no creep, no sleep).
+///    so it stops advancing (no creep, no sleep). A content carrying
+///    [`AccordionContentFit`] that SETTLES fully open is given a
+///    [`Val::Auto`](bevy::ui::Val::Auto) height instead of the fixed `Vh` target, so its
+///    rest-open section sizes to its EXACT content (the GTW-428 round-2 fix — a guessed
+///    `Vh` could not fit a font-dependent content height).
 ///
 /// Param-only — no `&mut World` (bevy-traps rule 7). Registered by
 /// [`UiPlugin`](crate::UiPlugin) in [`Update`].
 pub fn drive_accordions(
     time: Res<Time>,
     headers: Query<HeaderData, (Changed<Interaction>, With<AccordionHeader>)>,
-    mut contents: Query<
-        (&mut AccordionAnim, &mut AccordionProgress, &mut Node),
-        With<AccordionContent>,
-    >,
+    mut contents: Query<ContentData, With<AccordionContent>>,
 ) {
     // Phase 1 — apply press toggles to the targeted content's animation state.
     for (interaction, target) in &headers {
         if *interaction != Interaction::Pressed {
             continue;
         }
-        if let Ok((mut anim, _progress, _node)) = contents.get_mut(target.content()) {
+        if let Ok((mut anim, ..)) = contents.get_mut(target.content()) {
             *anim = anim.toggled();
         }
     }
 
-    // Phase 2 — advance every animating content's height lerp.
+    // Phase 2 — advance every animating content's height lerp toward its per-instance
+    // expanded target (or the shared default when absent), so a taller-content row opens
+    // to a height that fits it (GTW-428) while every default-target row is unchanged.
     let step = time.delta_secs() * ACCORDION_LERP_PER_SEC;
-    for (mut anim, mut progress, mut node) in &mut contents {
+    for (mut anim, mut progress, mut node, expanded, content_fit) in &mut contents {
         if !anim.is_animating() {
             continue;
         }
+        let expanded_vh = expanded.map_or(ACCORDION_EXPANDED_VH, |target| **target);
+        let opening = anim.is_expanding();
         let settled = progress.advance_toward(anim.target(), step);
-        node.height = Val::Vh(progress.height_vh());
+        // While animating, the height is the interpolated relative `Vh` (a visible lerp). On
+        // SETTLING fully OPEN, a content-fit section switches to `Auto` so its rest-open height
+        // is its exact content — every line shows regardless of font metrics (GTW-428 round-2).
+        node.height = if settled && content_fit && opening {
+            Val::Auto
+        } else {
+            Val::Vh(progress.height_vh_to(expanded_vh))
+        };
         if settled {
             *anim = anim.settled();
         }

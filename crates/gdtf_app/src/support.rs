@@ -15,16 +15,20 @@
 /// to *name* them through [`test_support`](crate::test_support), so their definitions
 /// widen to `pub`. Wrapping each definition in this macro keeps the visibility flip in
 /// one place and lets `unreachable_pub` stay satisfied in both configurations. It wraps
-/// `enum` / `struct` item definitions and free / inherent `fn` items (the GTW-223
+/// `enum` / `struct` item definitions, free / inherent `fn` items (the GTW-223
 /// auto-battle affordance widens its `auto_battle_enabled` gate + its `from_env`
-/// constructor this way). The `const fn` arm exists because clippy
-/// `missing_const_for_fn` (denied) forces a const-eligible constructor to be
-/// `const` — a plain `fn` arm cannot express that (e.g. `LoadedSituation::new`).
+/// constructor this way), and associated `const` items (the GTW-428 `BaseAttribute::ALL`
+/// / `DerivedStat::ALL` display-order arrays an external test iterates). The `const fn`
+/// arm exists because clippy `missing_const_for_fn` (denied) forces a const-eligible
+/// constructor to be `const` — a plain `fn` arm cannot express that (e.g.
+/// `LoadedSituation::new`); the bare `const` arm follows it so `const fn` is matched
+/// first.
 #[cfg(feature = "test-support")]
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => { $(#[$meta])* pub enum $($rest)* };
     ($(#[$meta:meta])* struct $($rest:tt)*) => { $(#[$meta])* pub struct $($rest)* };
     ($(#[$meta:meta])* const fn $($rest:tt)*) => { $(#[$meta])* pub const fn $($rest)* };
+    ($(#[$meta:meta])* const $($rest:tt)*) => { $(#[$meta])* pub const $($rest)* };
     ($(#[$meta:meta])* fn $($rest:tt)*) => { $(#[$meta])* pub fn $($rest)* };
 }
 
@@ -36,6 +40,7 @@ macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => { $(#[$meta])* pub(crate) enum $($rest)* };
     ($(#[$meta:meta])* struct $($rest:tt)*) => { $(#[$meta])* pub(crate) struct $($rest)* };
     ($(#[$meta:meta])* const fn $($rest:tt)*) => { $(#[$meta])* pub(crate) const fn $($rest)* };
+    ($(#[$meta:meta])* const $($rest:tt)*) => { $(#[$meta])* pub(crate) const $($rest)* };
     ($(#[$meta:meta])* fn $($rest:tt)*) => { $(#[$meta])* pub(crate) fn $($rest)* };
 }
 
