@@ -1,0 +1,27 @@
+// GDTF procgen FILL tuning — the HOT-RELOADABLE knobs that drive the GTW-427 random
+// same-theme fill pass of the space-packing assembler (OQ-6). Migrated out of Rust consts
+// so the fill density / large-prefab threshold / dead-rect scatter cap tune WITHOUT a
+// rebuild: edit a value, save, and the running game re-derives it live through the same
+// RonAsset<T> loader the combat / pan / fx tuning tables use.
+//
+// EVERY field is OPTIONAL (serde default): omit one and it falls back to the shipped
+// default shown below, so you can tune a single number without restating the rest. All
+// values are TUNABLE balance data — defaults are defensible starting points, not pins.
+(
+    // The minimum cell-COVERAGE FRACTION (placed-prefab cells over total board cells) the
+    // fill pass aims to reach before it stops drawing more fill prefabs. A SOFT target: the
+    // pass also stops if no more prefab fits, whichever comes first. 0.0 = no fill at all,
+    // 1.0 = pack until nothing more fits. Bigger = a denser, more built-up level with fewer
+    // open lanes. Default 0.45.
+    min_density_floor:           0.45,
+    // The footprint AREA (in cells, width × height) at/above which a fill prefab is "large"
+    // and placed in the FillLarge pass FIRST (before the big contiguous free rectangles get
+    // fragmented), ahead of the smaller-prefab fill. 64 ≈ an 8x8 footprint. Bigger = fewer
+    // prefabs count as "large". Default 64.
+    large_prefab_area_threshold: 64,
+    // The MAXIMUM number of micro-piece scatter prefabs the pass may drop into any one
+    // leftover "dead" free rectangle of >= 4x4 cells — breaking up big empty halls without
+    // clogging them. The rest stays open default_floor lanes (the no-fit fallback never
+    // shrinks the playable area). 0 = no scatter. Bigger = busier dead rects. Default 3.
+    dead_rect_scatter_count_k:   3,
+)

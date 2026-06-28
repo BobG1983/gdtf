@@ -90,6 +90,14 @@ impl Footprint {
             self.0.y
         }
     }
+
+    /// This footprint's AREA in cells (`width * height`) — the GTW-427 fill pass measures a
+    /// prefab against the [`LargePrefabAreaThreshold`](super::tuning::LargePrefabAreaThreshold)
+    /// by area. Widened to `i64` so a max-board footprint (60×60) cannot overflow.
+    #[must_use]
+    pub const fn area(self) -> i64 {
+        self.0.x as i64 * self.0.y as i64
+    }
 }
 
 /// An axis-aligned **rectangle of cells** — an origin (its min-corner cell) plus a
@@ -152,6 +160,25 @@ impl RegionRect {
     #[must_use]
     pub const fn is_non_empty(self) -> bool {
         self.footprint.width() > 0 && self.footprint.height() > 0
+    }
+
+    /// This rectangle's cell COUNT (`width * height`) — the GTW-427 fill pass sums placed
+    /// regions' counts over the board's count to measure coverage against the
+    /// [`MinDensityFloor`](super::tuning::MinDensityFloor). Negative extents (an empty
+    /// intersection) clamp to `0`.
+    #[must_use]
+    pub const fn cell_count(self) -> i64 {
+        let w = if self.footprint.width() > 0 {
+            self.footprint.width()
+        } else {
+            0
+        };
+        let h = if self.footprint.height() > 0 {
+            self.footprint.height()
+        } else {
+            0
+        };
+        w as i64 * h as i64
     }
 
     /// Whether `other`'s cells are wholly contained in this rectangle (used by the

@@ -11,10 +11,11 @@
 //! GTW-424 placement  ->  GTW-427 fill  ->  GTW-431 emit/trigger
 //! ```
 //!
-//! GTW-424 (here) covers only the FIRST stage — a tested core with no live trigger yet is
-//! the intended staged build, NOT a dead-feature split. NOTHING here wires
-//! `BattleScapeState::Generation` (the loading-state driver is GTW-431; the debug
-//! visualizer is GTW-434).
+//! GTW-424 covered the FIRST stage (anchor + opposite placement); GTW-427 adds the SECOND
+//! ([`fill`] — random same-theme fill + the no-fit pad-`default_floor` fallback + the OQ-6
+//! [`ProcgenTuning`] knobs). A tested core with no live trigger yet is the intended staged
+//! build, NOT a dead-feature split. NOTHING here wires `BattleScapeState::Generation` (the
+//! loading-state driver is GTW-431; the debug visualizer is GTW-434).
 //!
 //! # The locked design (the GTW-424 rulings + authorized defaults — see the concern docs)
 //!
@@ -39,8 +40,10 @@
 mod anchor;
 mod assembler;
 mod error;
+mod fill;
 mod geometry;
 mod packer;
+mod tuning;
 
 #[cfg(test)]
 mod test;
@@ -50,5 +53,7 @@ pub use assembler::{
     PlacedPrefab, Placement, assemble_placement, assemble_placement_with, count_seam_reachable,
 };
 pub use error::PackingError;
+pub use fill::{FilledPlacement, fill_placement, fill_placement_with};
 pub use geometry::{Footprint, Margin, MinPlayerSide, RegionCount, RegionRect};
 pub use packer::{MaxRectsPacker, SplitMode};
+pub use tuning::{DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenTuning};
