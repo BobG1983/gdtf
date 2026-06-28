@@ -22,8 +22,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Aim, ArmorName, Cool, GangMember, GangName, GangRegistry, GangerAttributes, GangerName, Grit,
-    Reflexes, Speed, Strength, Toughness, WeaponName, ganger::Luck,
+    Aim, ArmorName, Cool, GangMember, GangName, GangRegistry, GangRoster, GangerAttributes,
+    GangerName, Grit, Reflexes, Speed, Strength, Toughness, WeaponName, ganger::Luck,
 };
 
 use crate::states::running::editor::components::BaseAttribute;
@@ -109,6 +109,31 @@ impl EditableMember {
             luck:      member.luck,
             armor:     member.armor.clone(),
             weapon:    member.weapon.clone(),
+        }
+    }
+
+    crate::support_item! {
+        /// Project this editable member back into the sim's serializable [`GangMember`] record —
+        /// the EXACT inverse of [`from_sim`](EditableMember::from_sim) (GTW-429 C1). Every edited
+        /// field maps to its sim counterpart (name + the eight attributes + weapon + armor keys),
+        /// so the written `*.gang.ron` carries the full edited member and round-trips through the
+        /// GTW-415 loader (C2). Declared through [`crate::support_item!`] so the round-trip test
+        /// can name it.
+        #[must_use]
+        fn to_sim(&self) -> GangMember {
+            GangMember {
+                name:      self.name.clone(),
+                speed:     self.speed,
+                aim:       self.aim,
+                strength:  self.strength,
+                toughness: self.toughness,
+                reflexes:  self.reflexes,
+                cool:      self.cool,
+                grit:      self.grit,
+                luck:      self.luck,
+                armor:     self.armor.clone(),
+                weapon:    self.weapon.clone(),
+            }
         }
     }
 
@@ -257,6 +282,23 @@ impl EditableGang {
         Self {
             name: name.clone(),
             members,
+        }
+    }
+
+    crate::support_item! {
+        /// Project the editable model into the sim's serializable `(`[`GangName`]`,
+        /// `[`GangRoster`]`)` pair — the EXACT def the GTW-415 loader reads (GTW-429 C1).
+        ///
+        /// The gang's [`name`](EditableGang::name) becomes the registry KEY (the file stem, NOT a
+        /// field of the roster — the GTW-415 key model), and each [`EditableMember`] projects to a
+        /// sim [`GangMember`] via [`to_sim`](EditableMember::to_sim). The save path serializes the
+        /// returned [`GangRoster`] to `assets/content/gangs/<gang_name>.ron`, and the round-trip
+        /// test reloads it through the same loader and asserts structural equality (C2). Declared
+        /// through [`crate::support_item!`] so the round-trip test can name it.
+        #[must_use]
+        fn to_roster(&self) -> (GangName, GangRoster) {
+            let roster = GangRoster::new(self.members.iter().map(EditableMember::to_sim));
+            (self.name.clone(), roster)
         }
     }
 

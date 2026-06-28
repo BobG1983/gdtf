@@ -47,6 +47,9 @@ use gdtf_ui::{
     themed::{ThemeRole, Themed},
 };
 
+// The GTW-429 Save-gang button marker — spawned only in a debug build (C3/C4).
+#[cfg(debug_assertions)]
+use crate::states::running::editor::components::SaveGangButton;
 use crate::states::{
     RunningState,
     running::editor::{
@@ -232,6 +235,10 @@ pub(in crate::states::running::editor) fn spawn_editor_screen(
     commands
         .entity(panel)
         .add_children(&[name_field, add_button]);
+    // Spawn + parent the debug-only "Save gang" button into the panel beside Add member (GTW-429
+    // C4); a release build never compiles it (matching the debug-only save system — C3).
+    #[cfg(debug_assertions)]
+    spawn_save_button(&mut commands, &theme, panel);
     commands.entity(root).add_children(&[title, panel]);
 
     // Parent the scroll-list FRAME (the MemberListHost) under the panel and flex-size it, after
@@ -255,6 +262,23 @@ pub(in crate::states::running::editor) fn spawn_editor_screen(
             panel_entity.add_child(frame);
         }
     });
+}
+
+/// Spawns the "Save gang" button and parents it into the editor `panel` beside "Add member"
+/// (GTW-429 C4) — `#[cfg(debug_assertions)]` ONLY, matching the debug-only save system (C3).
+///
+/// Extracted from [`spawn_editor_screen`] so that function stays under the `too_many_lines` lint;
+/// it carries the [`SaveGangButton`] marker the [`save_gang_on_press`](super::save::save_gang_on_press)
+/// system reads, plus [`DespawnOnExit`] so it tears down with the rest of the screen on leave.
+#[cfg(debug_assertions)]
+fn spawn_save_button(commands: &mut Commands, theme: &GdtfTheme, panel: Entity) {
+    let save_button = spawn_button(
+        commands,
+        theme,
+        ButtonLabel::new("Save gang"),
+        (SaveGangButton, DespawnOnExit(RunningState::DebugEditor)),
+    );
+    commands.entity(panel).add_child(save_button);
 }
 
 /// Spawns ONE member ROW (GTW-425 collapsed row + GTW-428 expanded stat panel) and returns its

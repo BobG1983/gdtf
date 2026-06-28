@@ -27,11 +27,14 @@ gdtf_battle_input = { path = "../gdtf_battle_input" }
 # loaded through the generic `gdtf_assets` loader, so the payload derives `serde::Deserialize`
 # (the FX-tuning / pan-tuning `RonAsset` payload precedent).
 serde = { workspace = true }
+# The GTW-429 gang-editor SAVE path serializes the edited `EditableGang` into the GTW-415
+# `GangRoster` schema via `ron::ser::to_string_pretty` — a normal-dependency use, NOT test-only —
+# so `ron` is a regular dependency. (It is ALSO the parser the GTW-328 combat-log tuning test + the
+# GTW-429 round-trip test use, via `ron::de::from_str`.) The save fs-write itself is
+# `cfg(debug_assertions)`-gated (C3); the serialize helper compiles in any build.
+ron = { workspace = true }
 
 [dev-dependencies]
-# The GTW-328 combat-log tuning test parses the shipped `combat_log.tuning.ron` bytes with
-# `ron::de::from_str` (the FX-tuning `shipped_fx_tuning_ron_parses` precedent).
-ron = { workspace = true }
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo
 # (dev-dependencies are not part of the normal build graph). The harness pulls
 # in gdtf_app with `test-support`, which unifies that feature on for this

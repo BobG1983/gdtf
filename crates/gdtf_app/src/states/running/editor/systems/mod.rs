@@ -35,3 +35,11 @@ pub(in crate::states::running::editor) use delete_member::delete_member_on_press
 
 mod pip_toggle;
 pub(in crate::states::running::editor) use pip_toggle::toggle_expand_pip;
+
+// The GTW-429 gang SAVE-to-disk system + its serialize helpers. `#[cfg(debug_assertions)]`-gated
+// (C3): the filesystem write is never compiled into a release binary. The round-trip test names
+// the serialize / path helpers through this module.
+#[cfg(debug_assertions)]
+pub(in crate::states::running::editor) mod save;
+#[cfg(debug_assertions)]
+pub(in crate::states::running::editor) use save::save_gang_on_press;

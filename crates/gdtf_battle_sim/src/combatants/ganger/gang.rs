@@ -27,7 +27,7 @@ use bevy::{
     prelude::{Deref, Resource},
     reflect::TypePath,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     attributes::{Aim, Cool, Grit, Reflexes, Speed, Strength},
@@ -49,7 +49,7 @@ use crate::{armor::ArmorName, weapon::WeaponName};
 /// [`Deref`] (house style — never a hand-written `impl Deref`). `#[serde(transparent)]`
 /// lets an authored situation `.ron`'s `gang` ref parse as a bare string. `Eq` + `Hash`
 /// so it keys the [`GangRegistry`]'s [`HashMap`].
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct GangName(String);
 
@@ -83,11 +83,12 @@ impl GangName {
 ///
 /// Not `Eq` / `Hash` / `Copy`: the attributes carry `f32` magnitudes (no total order),
 /// and the name / weapon / armor keys are owned [`String`]-backed newtypes — so a member
-/// is `Clone` + `PartialEq` only. Derives [`Deserialize`] so an authored
+/// is `Clone` + `PartialEq` only. Derives [`Serialize`] + [`Deserialize`] so an authored
 /// `*.gang.ron` names each member's identity + eight attributes + weapon + armor as a
 /// self-describing record (the whole value graph flows through the landed newtype serde
-/// derives — render-free, pixel-free).
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+/// derives — render-free, pixel-free), AND the GTW-429 in-app gang editor can WRITE an
+/// edited member back to the SAME schema the loader reads (the round-trip contract).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GangMember {
     /// The member's **name** — its human-facing display identity (the
     /// [`PlacedGanger`](crate::situation::PlacedGanger) references it by this name to
@@ -161,13 +162,14 @@ impl GangMember {
 /// So a roster asset is purely its member list; the [`GangRegistry`] keys it by the
 /// loaded file's stem.
 ///
-/// Derives [`Deserialize`] (an authored `*.gang.ron` is a `(members: [ … ])` record) +
-/// [`TypePath`] (render-free reflection metadata, no rendering) because the
-/// `RonAsset<GangRoster>` the GTW-415 folder loader wraps it in requires its payload to
-/// be [`TypePath`] — the same bound [`WeaponSpec`](crate::weapon::WeaponSpec) /
-/// [`Situation`](crate::situation::Situation) satisfy. `#[serde(default)]` on `members`
-/// lets an authored file omit an empty member list.
-#[derive(Debug, Clone, Default, PartialEq, Deserialize, TypePath)]
+/// Derives [`Serialize`] + [`Deserialize`] (an authored `*.gang.ron` is a
+/// `(members: [ … ])` record; the GTW-429 editor WRITES an edited roster back into this
+/// exact schema, so it round-trips through the GTW-415 loader) + [`TypePath`] (render-free
+/// reflection metadata, no rendering) because the `RonAsset<GangRoster>` the GTW-415 folder
+/// loader wraps it in requires its payload to be [`TypePath`] — the same bound
+/// [`WeaponSpec`](crate::weapon::WeaponSpec) / [`Situation`](crate::situation::Situation)
+/// satisfy. `#[serde(default)]` on `members` lets an authored file omit an empty member list.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TypePath)]
 pub struct GangRoster {
     /// The gang's roster members (each a [`GangMember`] — identity + eight attributes +
     /// weapon + armor keys). `#[serde(default)]` gives an empty roster for a file that

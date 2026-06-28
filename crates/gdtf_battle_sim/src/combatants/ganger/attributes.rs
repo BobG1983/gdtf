@@ -21,7 +21,7 @@
 //! spawn default; the per-ganger value comes from the situation).
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::ganger::vitals::{Luck, Toughness};
 
@@ -34,7 +34,7 @@ use crate::ganger::vitals::{Luck, Toughness};
 /// A raw authored potential (slowly-changing). A distinct component so the
 /// derivation can query `&Speed` alone. Defaults to `0.0`. `#[serde(transparent)]`
 /// lets an authored Speed parse as a bare scalar.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Speed(f32);
 
@@ -54,7 +54,7 @@ impl Speed {
 /// concentration. A raw authored potential. A distinct component so the derivation
 /// can query `&Aim` alone. Defaults to `0.0`. `#[serde(transparent)]` lets an
 /// authored Aim parse as a bare scalar.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Aim(f32);
 
@@ -74,7 +74,7 @@ impl Aim {
 /// only in the Fight derivation.) A raw authored potential. A distinct component so
 /// the derivation can query `&Strength` alone. Defaults to `0.0`.
 /// `#[serde(transparent)]` lets an authored Strength parse as a bare scalar.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Strength(f32);
 
@@ -94,7 +94,7 @@ impl Strength {
 /// [`Reactions`](crate::ganger::Reactions) stats. A raw authored potential. A
 /// distinct component so the derivation can query `&Reflexes` alone. Defaults to
 /// `0.0`. `#[serde(transparent)]` lets an authored Reflexes parse as a bare scalar.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Reflexes(f32);
 
@@ -117,7 +117,7 @@ impl Reflexes {
 /// raw authored potential. A distinct component so the derivation can query `&Cool`
 /// alone. Defaults to `0.0`. `#[serde(transparent)]` lets an authored Cool parse as
 /// a bare scalar.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Cool(f32);
 
@@ -138,7 +138,7 @@ impl Cool {
 /// term in [`Fight`](crate::ganger::Fight). A raw authored potential. A distinct
 /// component so the derivation can query `&Grit` alone. Defaults to `0.0`.
 /// `#[serde(transparent)]` lets an authored Grit parse as a bare scalar.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Grit(f32);
 

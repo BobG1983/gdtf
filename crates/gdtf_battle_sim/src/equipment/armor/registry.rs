@@ -6,7 +6,7 @@ use bevy::{
     platform::collections::HashMap,
     prelude::{Deref, Resource},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::ArmorSpec;
 
@@ -17,7 +17,7 @@ use super::ArmorSpec;
 /// An armor-identity newtype over [`String`] (no-bare-types: a name is a domain
 /// value), mirroring [`WeaponName`](crate::weapon::WeaponName) exactly. Private
 /// inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON string.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ArmorName(String);
 

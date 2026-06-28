@@ -3,7 +3,7 @@
 //! combat attributes, and the ganger's [`GangerName`] identity.
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A ganger's **name** — its human-facing identity (e.g. "Alex Mercer").
 ///
@@ -21,7 +21,7 @@ use serde::Deserialize;
 /// [`GangerSpawn`](crate::situation::GangerSpawn) (the [`TuMax`] / [`WeaponName`](crate::equipment::weapon::WeaponName)
 /// serde-transparent shape). A `#[derive(Component)]` so the status panel can query
 /// `&GangerName` off the selected entity.
-#[derive(Deref, Component, Debug, Clone, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct GangerName(String);
 
@@ -254,7 +254,7 @@ impl Shooting {
 /// inner with a derived [`Deref`]. A distinct component so the severity path (E3.4)
 /// can query `&Toughness` alone. Defaults to `0.0`. `#[serde(transparent)]` lets
 /// an authored Toughness stat parse as a bare scalar.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Toughness(f32);
 
@@ -284,7 +284,7 @@ impl Toughness {
 /// dimensionless — **zero pixels**. Private inner + derived [`Deref`]. A distinct
 /// component so the severity path can query `&Luck` alone. Defaults to `0.0`.
 /// `#[serde(transparent)]` lets an authored Luck stat parse as a bare scalar.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Luck(f32);
 
