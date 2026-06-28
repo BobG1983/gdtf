@@ -4,26 +4,10 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{Faction, PlayerFaction, Position};
 
-use crate::selection::resources::{SelectedShooter, set_selection};
-
-/// The total-ordering key a player-faction ganger sorts by for the deterministic auto-select
-/// (GTW-255): `(level, y, x)` of its [`Position`] cell.
-///
-/// A `(i32, i32, i32)` tuple — the framework carve-out for an ordering key over the
-/// already-typed [`Position`] coordinates (a sort key is plumbing, not a fresh domain scalar).
-/// Ordered `(z = storey level, then y = row, then x = column)` so the comparison is a TOTAL
-/// order over distinct cells, reproducible across runs for the same situation (unlike the
-/// allocation-order [`Entity`] id). See [`auto_select_first_player_ganger`].
-type CellOrderKey = (i32, i32, i32);
-
-/// The `(level, y, x)` total-ordering key of a ganger's [`Position`] cell.
-///
-/// Reads the cell coordinates through [`Position`]'s [`Deref`] to its `CellLevel`/`IVec3`
-/// (`z` = storey level, `y` = row, `x` = column) and orders them level-major so two gangers on
-/// the same storey break ties by row then column.
-fn cell_order_key(position: &Position) -> CellOrderKey {
-    (position.z, position.y, position.x)
-}
+use crate::selection::{
+    order::cell_order_key,
+    resources::{SelectedShooter, set_selection},
+};
 
 /// Sets the INITIAL [`SelectedShooter`] to the deterministic player-faction ganger when the
 /// battle becomes live with nothing selected yet (GTW-255).

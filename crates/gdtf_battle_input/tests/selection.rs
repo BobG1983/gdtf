@@ -117,6 +117,9 @@ const fn test_keybinds() -> Keybinds {
         stance_cycle: BoundKey::KeyC,
         aim_toggle:   BoundKey::KeyF,
         facing_cycle: BoundKey::KeyR,
+        // GTW-458 — the Tab/Shift+Tab Prev/Next cycle chord (both bind to Tab).
+        select_next:  BoundKey::KeyTab,
+        select_prev:  BoundKey::KeyTab,
     }
 }
 

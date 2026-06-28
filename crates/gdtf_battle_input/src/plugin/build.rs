@@ -38,7 +38,7 @@ use crate::{
     },
     intent::{PendingActIntent, dispatch_act_intents},
     keybinds::{Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds},
-    keyboard::{level_keys, posture_keys, select_clear_key},
+    keyboard::{cycle_selection_keys, level_keys, posture_keys, select_clear_key},
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
         PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
@@ -249,10 +249,18 @@ impl Plugin for GdtfBattleInputPlugin {
         )
         // S8 + 222b keyboard press surface: reads the loaded `Keybinds` (so it is gated on
         // that resource existing too) and pushes intents. (The blind fire-mode-cycle key
-        // was REMOVED in GTW-254 — the `gdtf_app` popup picker replaced it.)
+        // was REMOVED in GTW-254 — the `gdtf_app` popup picker replaced it.) GTW-458 adds
+        // `cycle_selection_keys` (the `Tab` / `Shift+Tab` Prev/Next cycle) to the same band —
+        // it is NOT gated on a selection (cycling makes a first selection), unlike
+        // `posture_keys`.
         .add_systems(
             Update,
-            (level_keys, select_clear_key, posture_keys)
+            (
+                level_keys,
+                select_clear_key,
+                posture_keys,
+                cycle_selection_keys,
+            )
                 .in_set(InputSystems::Gather)
                 .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<Keybinds>)),
         )
@@ -266,6 +274,9 @@ impl Plugin for GdtfBattleInputPlugin {
                 .after(level_keys)
                 .after(select_clear_key)
                 .after(posture_keys)
+                // GTW-458 — after the Tab/Shift+Tab cycle key so a cycle queued this update is
+                // drained this update (the same-frame guarantee, `bevy-traps.md` #3).
+                .after(cycle_selection_keys)
                 .after(left_click_act)
                 .after(right_click_turn_to_face)
                 // GTW-259 — also after the gamepad act writers so the drain sees a

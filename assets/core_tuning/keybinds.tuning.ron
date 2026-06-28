@@ -10,6 +10,12 @@
 // the keyboard act surface (GTW-222b) over the shared intent seam — so the act keys
 // live in ONE authoritative table from the start. (The `fire_mode_cycle` binding was
 // REMOVED in GTW-254 — the blind cycle was replaced by the popup fire-mode picker.)
+//
+// `select_next` / `select_prev` (GTW-458) cycle the SelectedShooter through the player
+// gang in (z,y,x) order. They bind to the SAME key (Tab): the keyboard surface reads
+// `select_next` and pushes SelectPrev when Shift is held, else SelectNext — so Tab = Next,
+// Shift+Tab = Prev are ONE physical chord. The on-bar Prev/Next buttons push the same two
+// intents through the same seam (ADR-0001 — keys + buttons share one dispatch).
 (
     select_clear: KeyEscape,    // clear the current ganger selection
     level_up:     KeyPageUp,    // raise the active storey by one level (clamped to the top)
@@ -17,4 +23,6 @@
     stance_cycle: KeyC,         // step the selected ganger's stance (Standing->Crouching->Prone->wrap) [222b]
     aim_toggle:   KeyF,         // toggle the selected ganger's aim mode [222b]
     facing_cycle: KeyR,         // step the selected ganger's facing (N->NE->...->NW->wrap) [222b]
+    select_next:  KeyTab,       // cycle selection to the NEXT player ganger in (z,y,x) order [458]
+    select_prev:  KeyTab,       // cycle to PREVIOUS — same key as select_next under Shift (Shift+Tab) [458]
 )

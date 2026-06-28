@@ -57,10 +57,11 @@ pub use act_bus::keyboard;
 pub use act_bus::sets;
 pub use act_bus::{
     intent::{
-        ActIntent, ActWriters, LevelStep, PendingActIntent, dispatch_act_intents, step_level,
+        ActIntent, ActWriters, LevelStep, PendingActIntent, SelectionCycleReads,
+        dispatch_act_intents, step_level,
     },
     keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds},
-    keyboard::{level_keys, posture_keys, select_clear_key},
+    keyboard::{cycle_selection_keys, level_keys, posture_keys, select_clear_key},
     sets::InputSystems,
 };
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
@@ -85,11 +86,11 @@ pub use pointer::{
         InspectMode, InspectTarget, emit_highlight_request, pick_hovered_cell, world_to_cell,
     },
     selection::{
-        FireTargetReads, LeftClickOutcome, LeftClickReads, PathPreviewTarget, PinOutcome,
-        PreviewGrids, SelectedShooter, SelectionHighlight, TurnReads, apply_left_click, apply_pin,
-        auto_select_first_player_ganger, decide_left_click, decide_pin, decide_turn,
-        left_click_act, populate_fire_target, populate_path_preview,
-        reset_move_target_on_fire_mode_change, right_click_turn_to_face,
-        update_selection_highlight,
+        CellOrderKey, CycleDirection, FireTargetReads, LeftClickOutcome, LeftClickReads,
+        PathPreviewTarget, PinOutcome, PreviewGrids, SelectedShooter, SelectionHighlight,
+        TurnReads, apply_left_click, apply_pin, auto_select_first_player_ganger, cell_order_key,
+        cycle_player_selection, decide_left_click, decide_pin, decide_turn, left_click_act,
+        populate_fire_target, populate_path_preview, reset_move_target_on_fire_mode_change,
+        right_click_turn_to_face, update_selection_highlight,
     },
 };

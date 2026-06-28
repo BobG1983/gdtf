@@ -9,7 +9,8 @@ use crate::states::{
         GameBattleScapeAnimateOutScenePlugin, GameBattleScapeBattleRunningScenePlugin,
         GameBattleScapeBottomBarScenePlugin, GameBattleScapeCombatLogScenePlugin,
         GameBattleScapeGenerationScenePlugin, GameBattleScapeInspectPanelScenePlugin,
-        GameBattleScapeStatusPanelScenePlugin, GameBattleScapeWeaponPanelScenePlugin, systems::*,
+        GameBattleScapeSelectCycleScenePlugin, GameBattleScapeStatusPanelScenePlugin,
+        GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
 };
 
@@ -111,6 +112,15 @@ fn add_plugins(app: &mut App) {
         // the sim's `dispatch_reload`). It deps `gdtf_ui` (spawn helpers) + `gdtf_battle_input`
         // (selection + intent seam), both already on the app's edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeWeaponPanelScenePlugin)
+        // The GTW-458 SELECTION-CYCLE cluster (bottom-bar far RIGHT): the vertical Prev/Next
+        // button pair that cycles the SelectedShooter through the player gang in (z,y,x) order,
+        // wrapping. Same `BattleRunning` lifecycle as the panels (spawned `.after` the bottom
+        // bar so it parents inside it); its press router writes the SAME `PendingActIntent`
+        // seam the input crate's `Tab` / `Shift+Tab` keyboard surface writes (ADR-0001 — one
+        // dispatch). View-only — no sim/input change beyond the shared intent seam. It deps
+        // `gdtf_ui` (spawn helpers) + `gdtf_battle_input` (the intent seam), both already on
+        // the app's edge; the chain stays acyclic.
+        .add_plugins(GameBattleScapeSelectCycleScenePlugin)
         // The GTW-294 CONTEXTUAL PANEL (bottom-right): the cluster of situational acts on a
         // downed neighbour (Execute / Stabilize / Open Door). Same `BattleRunning` lifecycle as
         // the panels; it inits the `ContextualTargets` seam, runs `detect_contextual_targets`

@@ -59,6 +59,9 @@ mod auto_select;
 mod decision;
 mod fire_target;
 mod highlight;
+/// The SHARED player-faction selection ordering + the GTW-458 Prev/Next cycle decision —
+/// the one `(z, y, x)` order the auto-select and the cycle both step.
+mod order;
 mod path_preview;
 /// The reachable-range DEBUG overlay POPULATE half (GTW-450) — render-only, so the
 /// whole module compiles ONLY in a debug build (`#[cfg(debug_assertions)]`, C1). In a
@@ -75,6 +78,7 @@ pub use decision::{
 };
 pub use fire_target::{FireTargetReads, populate_fire_target};
 pub use highlight::update_selection_highlight;
+pub use order::{CellOrderKey, CycleDirection, cell_order_key, cycle_player_selection};
 pub use path_preview::{
     PathPreviewTarget, PreviewGrids, populate_path_preview, reset_move_target_on_fire_mode_change,
 };

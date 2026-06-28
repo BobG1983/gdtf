@@ -114,6 +114,20 @@ crate::support_use! {
     };
 }
 
+// The GTW-458 SELECTION-CYCLE cluster (bottom-bar far RIGHT): the vertical Prev/Next button
+// pair that cycles the SelectedShooter through the player gang in (z,y,x) order (the SAME seam
+// Tab / Shift+Tab push — ADR-0001). It sits INSIDE the bottom bar's padding (does not change the
+// bar height); its root + button markers climb so the AC tests can assert its presence + width.
+mod select_cycle;
+pub(in crate::states::running::game::battlescape) use select_cycle::GameBattleScapeSelectCycleScenePlugin;
+// Test-support-only re-export of the cluster root + the Next / Prev button markers (GTW-458),
+// gated so the binary build is `unused`/`unreachable_pub`-clean (the weapon-panel marker
+// re-export chain precedent). The AC tests name these through `crate::test_support`.
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    select_cycle::{SelectCycleRoot, SelectNextButton, SelectPrevButton};
+}
+
 // The GTW-328 COMBAT-TEXT LOG (bottom-left, ABOVE the weapon panel): the strip of recent combat
 // events (movement, shot declarations, hit/miss outcomes, damage/wounds, reloads, turn
 // boundaries) that scroll up and fade. It drains the sim combat-event messages + classifies them

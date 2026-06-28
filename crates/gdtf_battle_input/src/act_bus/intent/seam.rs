@@ -3,7 +3,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
-    Aiming, Facing, Stance, StanceKind,
+    Aiming, Facing, Faction, PlayerFaction, Position, Stance, StanceKind,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
         ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
@@ -14,6 +14,7 @@ use gdtf_battle_sim::{
 use crate::{
     SelectedShooter, cycle,
     intent::level::{LevelStep, step_level},
+    selection::{CycleDirection, cell_order_key, cycle_player_selection},
 };
 
 /// One queued battle intent — the act a press (key OR button) asked for.
@@ -111,6 +112,21 @@ pub enum ActIntent {
     /// [`stabilize_downed`](gdtf_battle_sim::stabilize_downed) faction gate (an 8-adjacent
     /// alive ALLY) is the authoritative check, not this layer's.
     Stabilize(Entity),
+    /// CYCLE the [`SelectedShooter`] to the NEXT player ganger in `(z, y, x)` order, wrapping
+    /// (GTW-458). A SELECTION-layer intent (no sim act), drained directly in
+    /// [`dispatch_act_intents`] via [`cycle_player_selection`]: it collects the player-faction
+    /// gangers (enemies excluded), sorts them by the SAME [`cell_order_key`] the battle-start
+    /// auto-select uses, finds the current selection's index, and `set_selection`s the wrapping
+    /// `(i + 1) % n` neighbour. With NO selection it makes the FIRST; an EMPTY player gang is a
+    /// no-op. Both the `Tab` key and the on-bar Next button push this through the ONE seam
+    /// (ADR-0001 — keys + buttons share one dispatch).
+    SelectNext,
+    /// CYCLE the [`SelectedShooter`] to the PREVIOUS player ganger in `(z, y, x)` order,
+    /// wrapping (GTW-458). The [`SelectNext`](Self::SelectNext) twin in reverse: it
+    /// `set_selection`s the wrapping `(i + n - 1) % n` neighbour; with NO selection it makes
+    /// the LAST; an EMPTY player gang is a no-op. `Shift+Tab` and the on-bar Prev button push
+    /// this through the ONE seam.
+    SelectPrev,
 }
 
 /// The shared intent QUEUE — the buffered seam both input surfaces write.
@@ -190,6 +206,49 @@ pub struct ActWriters<'w> {
     stabilize: MessageWriter<'w, StabilizeDownedRequested>,
 }
 
+/// The READ-ONLY world the [`ActIntent::SelectNext`] / [`ActIntent::SelectPrev`] cycle arms
+/// read, grouped into ONE [`SystemParam`] so [`dispatch_act_intents`] stays under clippy's
+/// argument-count gate (GTW-458 — the [`ActWriters`] precedent).
+///
+/// Bundles the player faction the cycle gates on and the read-only
+/// `Query<(`[`Entity`]`, &`[`Faction`]`, &`[`Position`]`)>` over every ganger, so the drain
+/// can build the deterministic player-faction order on demand. Optional reads
+/// (`Option<Res<PlayerFaction>>`) so the drain stays valid when no battle has inserted the
+/// faction yet — the cycle arms then no-op (`bevy-traps.md` #1). A transparent system-param
+/// bundle, not itself a wrapped domain scalar.
+#[derive(SystemParam)]
+pub struct SelectionCycleReads<'w, 's> {
+    /// The faction the player controls — the cycle considers ONLY gangers whose own
+    /// [`Faction`] equals this (enemies excluded). `Option` so the arm no-ops pre-battle.
+    player:  Option<Res<'w, PlayerFaction>>,
+    /// Every ganger's `(`[`Entity`]`, &`[`Faction`]`, &`[`Position`]`)` — read-only, the
+    /// cycle filters to the player faction and sorts by [`cell_order_key`].
+    gangers: Query<'w, 's, (Entity, &'static Faction, &'static Position)>,
+}
+
+impl SelectionCycleReads<'_, '_> {
+    /// The player-faction gangers SORTED ascending by the deterministic [`cell_order_key`]
+    /// `(z, y, x)` order — the exact order the battle-start auto-select picks the first of, so
+    /// `Next`/`Prev` step ONE shared order (GTW-458). Enemies are excluded. Returns an empty
+    /// vec when the player faction is absent (pre-battle) or the player has no gangers.
+    fn ordered_player_gangers(&self) -> Vec<Entity> {
+        let Some(player) = self.player.as_ref() else {
+            return Vec::new();
+        };
+        // `***player`: `&Res` → `Res<PlayerFaction>` → `PlayerFaction` → `Faction` (its inner).
+        let player_faction: Faction = ***player;
+        let mut ordered: Vec<(Entity, Position)> = self
+            .gangers
+            .iter()
+            // `**faction` reads the ganger's `Faction` through `&&Faction`.
+            .filter(|(_, faction, _)| **faction == player_faction)
+            .map(|(entity, _, position)| (entity, *position))
+            .collect();
+        ordered.sort_by_key(|(_, position)| cell_order_key(position));
+        ordered.into_iter().map(|(entity, _)| entity).collect()
+    }
+}
+
 /// **Dispatch** the queued [`ActIntent`]s — the ONE drain system over the shared seam.
 ///
 /// Drains the [`PendingActIntent`] queue every update (gated on `BattleInProgress` by
@@ -233,19 +292,35 @@ pub struct ActWriters<'w> {
 ///   as the actor and the carried downed target (GTW-294) — a no-op with no selection; the
 ///   sim's `stabilize_downed` faction gate (an 8-adjacent alive ALLY) is authoritative.
 ///
-/// With NO [`SelectedShooter`] the cycle intents are no-ops (nothing to act on); a
+/// The GTW-458 SELECTION-CYCLE intents step the [`SelectedShooter`] through the player gang
+/// in the shared `(z, y, x)` order ([`cell_order_key`] — the exact order the auto-select
+/// picks the first of), WRAPPING, ignoring enemy gangers, and MAKING a first selection from
+/// `None`:
+///
+/// - [`ActIntent::SelectNext`] sets the WRAPPING `(i + 1) % n` neighbour (or the FIRST from
+///   no selection); an EMPTY player gang is a no-op.
+/// - [`ActIntent::SelectPrev`] sets the WRAPPING `(i + n - 1) % n` neighbour (or the LAST
+///   from no selection); an EMPTY player gang is a no-op.
+///
+/// Both are resolved directly in the drain via [`cycle_player_selection`] over the
+/// [`SelectionCycleReads`] bundle, writing [`SelectedShooter`] only on a real change
+/// (change-detection hygiene — the `set_selection` precedent).
+///
+/// With NO [`SelectedShooter`] the posture cycle intents are no-ops (nothing to act on); a
 /// cycle intent for a selected entity that lacks the relevant component is skipped
 /// (fail-closed, no panic) via the query lookup. Param-only (`bevy-traps.md` #7):
 /// [`ResMut`] over the queue + the presenter [`ActiveLevel`], a read-only `actors`
-/// [`Query`], and the [`ActWriters`] message-writer bundle (`bevy-traps.md` #4 —
-/// buffered messages). Registered `.after` the intent WRITERS (`bevy-traps.md` #3) so
-/// it drains the same update's pushes.
+/// [`Query`], the [`ActWriters`] message-writer bundle (`bevy-traps.md` #4 — buffered
+/// messages), and the [`SelectionCycleReads`] read bundle for the Prev/Next cycle.
+/// Registered `.after` the intent WRITERS (`bevy-traps.md` #3) so it drains the same
+/// update's pushes.
 pub fn dispatch_act_intents(
     mut pending: ResMut<PendingActIntent>,
     mut selected: ResMut<SelectedShooter>,
     mut active_level: ResMut<ActiveLevel>,
     actors: Query<(&Stance, &Facing, &Aiming)>,
     mut acts: ActWriters,
+    cycle_reads: SelectionCycleReads,
 ) {
     for intent in pending.drain() {
         match intent {
@@ -334,6 +409,41 @@ pub fn dispatch_act_intents(
                 acts.stabilize
                     .write(StabilizeDownedRequested::new(actor, target));
             }
+            ActIntent::SelectNext => {
+                cycle_selection(&mut selected, &cycle_reads, CycleDirection::Next);
+            }
+            ActIntent::SelectPrev => {
+                cycle_selection(&mut selected, &cycle_reads, CycleDirection::Prev);
+            }
         }
+    }
+}
+
+/// Steps the [`SelectedShooter`] to the `direction` neighbour in the shared `(z, y, x)`
+/// player-gang order (GTW-458), writing only on a real change.
+///
+/// Collects the deterministic player-faction order from `reads`
+/// ([`SelectionCycleReads::ordered_player_gangers`]) and picks the wrapping neighbour with
+/// [`cycle_player_selection`] (enemies excluded; first/last-from-`None`; empty gang →
+/// no-op). Mirrors the `set_selection` change-detection hygiene — it writes the new
+/// selection ONLY when it differs from the current one, so a redundant cycle on a one-ganger
+/// gang does not spuriously trip `Changed<SelectedShooter>`.
+fn cycle_selection(
+    selected: &mut ResMut<SelectedShooter>,
+    reads: &SelectionCycleReads,
+    direction: CycleDirection,
+) {
+    let ordered = reads.ordered_player_gangers();
+    // `***selected` reads the inner `Option<Entity>` through the Deref chain
+    // (`&mut ResMut` → `ResMut` → `SelectedShooter` → `Option<Entity>`).
+    let Some(next) = cycle_player_selection(&ordered, ***selected, direction) else {
+        // Empty player gang — nothing to cycle to; leave the selection untouched.
+        return;
+    };
+    let next = SelectedShooter::new(next);
+    // `**selected` is the whole `SelectedShooter` (one deref for `&mut`, one for `ResMut`'s
+    // `DerefMut`). Write only on a real change (the `set_selection` change-detection hygiene).
+    if **selected != next {
+        **selected = next;
     }
 }

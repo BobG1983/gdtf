@@ -14,7 +14,7 @@ mod plugin;
 mod systems;
 
 pub(in crate::states::running::game::battlescape) use components::{
-    BOTTOM_BAR_H_VH, BOTTOM_BAR_PAD_Y_VH,
+    BOTTOM_BAR_H_VH, BOTTOM_BAR_PAD_X_VW, BOTTOM_BAR_PAD_Y_VH,
 };
 pub(in crate::states::running::game::battlescape) use plugin::GameBattleScapeBottomBarScenePlugin;
 // Re-exported so the sibling weapon-panel plugin can order `spawn_weapon_panel`

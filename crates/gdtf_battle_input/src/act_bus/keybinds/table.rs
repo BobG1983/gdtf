@@ -92,6 +92,17 @@ pub struct Keybinds {
     pub aim_toggle:   BoundKey,
     /// Step the selected ganger's facing through the cyclic order (consumed in 222b).
     pub facing_cycle: BoundKey,
+    /// Cycle the [`SelectedShooter`](crate::SelectedShooter) to the NEXT player ganger
+    /// (GTW-458). The `Tab` key: `cycle_selection_keys` reads this and pushes
+    /// [`ActIntent::SelectNext`](crate::ActIntent::SelectNext) (or
+    /// [`SelectPrev`](crate::ActIntent::SelectPrev) when `Shift` is held).
+    pub select_next:  BoundKey,
+    /// Cycle the [`SelectedShooter`](crate::SelectedShooter) to the PREVIOUS player ganger
+    /// (GTW-458). The Prev half of the cycle chord — bound to the SAME key as
+    /// [`select_next`](Self::select_next), differentiated by the held `Shift` modifier
+    /// (`Tab` = Next, `Shift+Tab` = Prev). The on-bar Prev BUTTON pushes
+    /// [`ActIntent::SelectPrev`](crate::ActIntent::SelectPrev) through the same seam.
+    pub select_prev:  BoundKey,
 }
 
 impl Keybinds {
@@ -129,6 +140,19 @@ impl Keybinds {
     #[must_use]
     pub const fn facing_cycle(&self) -> KeyCode {
         self.facing_cycle.key_code()
+    }
+
+    /// The [`KeyCode`] bound to select-next (the `Tab` cycle key — GTW-458).
+    #[must_use]
+    pub const fn select_next(&self) -> KeyCode {
+        self.select_next.key_code()
+    }
+
+    /// The [`KeyCode`] bound to select-prev (the Prev half of the `Shift+Tab` cycle chord —
+    /// GTW-458). Same key as [`select_next`](Self::select_next), differentiated by `Shift`.
+    #[must_use]
+    pub const fn select_prev(&self) -> KeyCode {
+        self.select_prev.key_code()
     }
 }
 

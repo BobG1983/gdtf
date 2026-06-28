@@ -32,8 +32,12 @@ fn shipped_keybinds_ron_deserializes_and_every_act_resolves() {
     );
     let Ok(binds) = parsed else { return };
 
-    // Non-brittle invariant: the six bound keys are mutually distinct (no two
-    // acts collide on the same key), independent of which keys the author chose.
+    // Non-brittle invariant: the distinctly-keyed bound acts are mutually distinct (no two
+    // collide on the same key), independent of which keys the author chose. GTW-458's
+    // `select_next` / `select_prev` are DELIBERATELY the same key (Tab), differentiated by the
+    // held Shift modifier (Tab = Next, Shift+Tab = Prev — one physical chord), so they are
+    // EXCLUDED from this mutual-distinctness set; the dedicated check below pins their shared
+    // binding instead.
     let bound = [
         binds.select_clear(),
         binds.level_up(),
@@ -49,6 +53,23 @@ fn shipped_keybinds_ron_deserializes_and_every_act_resolves() {
                 "no two bound acts may share a key (shipped keybinds.tuning.ron has a collision)",
             );
         }
+    }
+
+    // GTW-458 — the Prev/Next cycle is ONE chord: `select_next` and `select_prev` bind to the
+    // SAME key, differentiated by Shift. The keyboard surface reads `select_next` + the Shift
+    // modifier, so this shared binding is the authored intent (not a collision). It must ALSO
+    // not collide with any other act key (else Tab would fire two acts at once).
+    assert_eq!(
+        binds.select_next(),
+        binds.select_prev(),
+        "select_next / select_prev are one Shift-modified chord — they bind to the same key",
+    );
+    for other in &bound {
+        assert_ne!(
+            *other,
+            binds.select_next(),
+            "the cycle key must not collide with another bound act (shipped keybinds.tuning.ron)",
+        );
     }
 }
 

@@ -95,3 +95,35 @@ pub fn posture_keys(
         pending.push(ActIntent::FacingCycle);
     }
 }
+
+/// Reads the SELECTION-CYCLE key (`Tab`) and PUSHES the matching cycle [`ActIntent`]
+/// (GTW-458): [`ActIntent::SelectPrev`] when `Shift` is held, else [`ActIntent::SelectNext`].
+///
+/// On a `just_pressed` of the [`Keybinds::select_next`] key the cycle direction is the held
+/// `Shift` modifier: `Shift+Tab` → [`ActIntent::SelectPrev`], plain `Tab` →
+/// [`ActIntent::SelectNext`]. The ONE [`dispatch_act_intents`](crate::dispatch_act_intents)
+/// drain steps the [`SelectedShooter`](crate::SelectedShooter) through the player gang in the
+/// shared `(z, y, x)` order, wrapping (the same seam the on-bar Prev/Next buttons write —
+/// ADR-0001).
+///
+/// Unlike [`posture_keys`], this key is NOT gated on an existing selection: cycling must be
+/// able to MAKE a first selection (the drain's cycle arms select the first/last player ganger
+/// from `None`). No `KeyCode` literal for the bound cycle key — it is read off the loaded
+/// [`Keybinds`] resource; reading [`KeyCode::ShiftLeft`] / [`KeyCode::ShiftRight`] DIRECTLY is
+/// acceptable framework modifier input (not a bound act). Param-only (`bevy-traps.md` #7).
+pub fn cycle_selection_keys(
+    keys: Res<ButtonInput<KeyCode>>,
+    binds: Res<Keybinds>,
+    mut pending: ResMut<PendingActIntent>,
+) {
+    if keys.just_pressed(binds.select_next()) {
+        // Shift (either side) selects PREVIOUS; otherwise NEXT. Modifier keys are framework
+        // input read directly, not a bound act.
+        let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+        pending.push(if shift {
+            ActIntent::SelectPrev
+        } else {
+            ActIntent::SelectNext
+        });
+    }
+}
