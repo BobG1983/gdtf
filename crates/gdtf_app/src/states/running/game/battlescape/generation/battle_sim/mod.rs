@@ -5,5 +5,6 @@
 mod plugin;
 pub(in crate::states::running::game::battlescape::generation) use plugin::BattleSimPlugin;
 
+mod procgen;
 mod seed;
 mod systems;

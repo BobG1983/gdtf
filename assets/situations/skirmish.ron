@@ -1,15 +1,8 @@
 // GDTF authored situation — "skirmish": a small, valid battlefield the setup pours
 // into the battle ECS (GTW-205 / E10.3). This is AUTHORED CONTENT (a generated /
-// hand-built battlefield), not balance tuning: gangers, cover, slabs, and the
-// stair/ladder vertical links that are the only way a ganger changes storey. It
-// loads as a loose `.ron` through the RonAsset<Situation> loader, exactly like the
-// theme. Render-free, pixel-free: positions are (cell, level) keys (x/y cells, a
-// storey index), never pixels. Each line says what it authors — edit freely.
-//
-// GTW-396 migration: walls/scatter/slabs now reference terrain PIECE NAMES resolved
-// against the TerrainRegistry at setup (behavior-preserving — the piece files carry
-// the same stats the old inline fields held). The `default_floor` names the walkable
-// floor piece for all open cells (deck_floor, move_cost 4).
+// hand-built battlefield), not balance tuning. It loads as a loose `.ron` through the
+// RonAsset<Situation> loader, exactly like the theme. Render-free, pixel-free:
+// positions are (cell, level) keys (x/y cells, a storey index), never pixels.
 //
 // GTW-384 (the two-layer stat model): each gang ROSTER member authors the EIGHT DIRECT
 // ATTRIBUTES (the raw potential) — NOT the computed stats. Those, plus identity + weapon
@@ -19,22 +12,31 @@
 // roster file stem) and the `member` within it (by name), then carries only the PLACEMENT
 // (cell / facing / stance / aiming / life_state) and the `faction` the situation assigns
 // for THIS battle. The roster (identity + 8 attributes + weapon + armor) is resolved at
-// setup against the GangRegistry built from the gangs folder. So the gang rosters are
-// faction-agnostic + reusable; the situation says WHERE and WHICH SIDE. Migration:
-// "Alex Mercer" → gang_0; "Vex 1"/"Vex 2" → gang_1 (grouped by their original faction).
+// setup against the GangRegistry built from the gangs folder.
+//
+// GTW-433 (theme+size procgen migration): this situation authors ONLY the THEME + the
+// coarse GRID SIZE + the placed gangers. It NO LONGER authors inline terrain (walls /
+// scatter / slabs / default_floor / floors / vertical_links): the TERRAIN is PROCGEN-
+// generated at BattleScapeState::Generation from `theme` + `grid_size` against the loaded
+// prefab library (the sim's `generate_level`, GTW-431), driven by the battle's deterministic
+// seed. The authored gangers are merged over that generated terrain. The Situation schema's
+// terrain fields are `#[serde(default)]` (GTW-414 v2), so omitting them parses to empty —
+// the procgen step fills them in.
 (
     // The level THEME (GTW-414) — the visual + content family this battlefield draws from
-    // (the GTW-409 ThemeCatalogRegistry key). IndustrialHive = the manufactorum decking /
-    // bulkheads of the hive proper, matching this skirmish's deck/bulkhead terrain.
-    theme: IndustrialHive,  // level theme — the IndustrialHive manufactorum/bulkhead family
+    // (the GTW-409 ThemeCatalogRegistry key) AND the prefab family procgen assembles from
+    // (the GTW-418 PrefabRegistry `(theme, …)` key). IndustrialHive = the manufactorum
+    // decking / bulkheads of the hive proper.
+    theme: IndustrialHive,  // level theme — drives both the tile catalog and the procgen prefab family
     // The coarse GRID dimensions (GTW-414) — width × height × storey-count, each validated
-    // to the sim's coarse-grid maxima (60 / 60 / 8). This skirmish places cells within a
-    // 20×20 footprint up to level 1; a 30×30×4 grid comfortably contains it (well under the
-    // 60×60×8 ceiling, and the omitted-field default would be the full 60×60×8 extent).
-    grid_size: (width: 30, height: 30, levels: 4),  // coarse grid extent (w × h × storeys)
+    // to the sim's coarse-grid maxima (60 / 60 / 8). This is the BOARD procgen packs the
+    // theme's prefab fragments into (a 30×30×4 board comfortably holds the IndustrialHive
+    // player + enemy deployment prefabs at opposite corners with the inter-prefab seam).
+    grid_size: (width: 30, height: 30, levels: 4),  // coarse grid extent (w × h × storeys) — the procgen board
     // The placed gangers (GTW-414 schema v2) — each REFERENCES a gang + member by name and
     // supplies its placement + faction. The roster (attributes / weapon / armor) is resolved
-    // against the gangs folder at setup. Two gangs (faction 0 and faction 1) face off.
+    // against the gangs folder at setup. Two gangs (faction 0 and faction 1) face off. These
+    // placements survive procgen (the generated terrain is merged OVER them — GTW-433).
     gangers: [
         // --- Gang 0: a standing rifleman on the ground floor, facing east. ---
         (
@@ -70,55 +72,7 @@
             life_state: Alive,        // terminal life state — up and fighting
         ),
     ],
-    // The authored walls — solid fixed geometry on the ground floor. Each is a
-    // CoverSpawn: (cell, level) + a terrain PIECE KEY resolved against the
-    // TerrainRegistry at setup (GTW-396 migration: stats live in the piece .ron file).
-    walls: [
-        (
-            at:    (cell: (x: 8, y: 7), level: 0),  // the wall's (cell, level)
-            piece: "heavy_bulkhead",                  // terrain piece KEY — resolves to assets/terrain/heavy_bulkhead.terrain.ron
-        ),
-    ],
-    // The authored scatter / props — the SAME schema as a wall (piece key, at).
-    scatter: [
-        (
-            at:    (cell: (x: 9, y: 8), level: 0),  // the prop's (cell, level)
-            piece: "barricade",                       // terrain piece KEY — resolves to assets/terrain/barricade.terrain.ron
-        ),
-    ],
-    // The authored floor / roof slabs — each a (cell, level) + a terrain PIECE KEY
-    // resolved against the TerrainRegistry at setup (GTW-396 migration: slab HP/armor
-    // now live in the piece .ron file, not in tuning.ron slab_defaults).
-    // Two stacked slabs at the same cell on adjacent storeys give the vertical link
-    // below two non-dangling endpoints to connect (it is the only way to change storey).
-    slabs: [
-        (at: (cell: (x: 2, y: 2), level: 0), piece: "deck_slab"),  // ground-floor slab — the stair's lower endpoint
-        (at: (cell: (x: 2, y: 2), level: 1), piece: "deck_slab"),  // first-floor slab — the stair's upper endpoint (arrival)
-        // GTW-387: a small walkable first-floor platform east+south of the stair head, so a
-        // ganger who climbs the stair HAS reachable L1 destinations to move to (the bug was
-        // that ONLY the link tile existed on L1 — a dead-end). default_floor (deck_floor,
-        // move_cost 4) gives each open platform cell its walk cost; no `floors` override needed.
-        (at: (cell: (x: 3, y: 2), level: 1), piece: "deck_slab"),  // L1 platform — one cell east of the stair head
-        (at: (cell: (x: 4, y: 2), level: 1), piece: "deck_slab"),  // L1 platform — two cells east
-        (at: (cell: (x: 3, y: 3), level: 1), piece: "deck_slab"),  // L1 platform — diagonally SE (keeps the platform 2-wide, not a 1-line corridor)
-        (at: (cell: (x: 2, y: 3), level: 1), piece: "deck_slab"),  // L1 platform — one cell south of the stair head
-    ],
-    // The authored stair / ladder vertical links — the ONLY way a ganger changes
-    // storey. Each: two (cell, level) endpoints + a kind. Both endpoints below are
-    // authored slabs (non-dangling) on DIFFERENT storeys (cross-storey), so the link
-    // validates and the file drives the real setup path.
-    vertical_links: [
-        (
-            from: (cell: (x: 2, y: 2), level: 0),       // departure endpoint — the ground-floor slab
-            to:   (cell: (x: 2, y: 2), level: 1),       // arrival endpoint — the first-floor slab
-            kind: Stair(one_way: false),                 // a normal, bidirectional staircase
-        ),
-    ],
-    // The default floor terrain piece for all walkable open cells — resolved against
-    // the TerrainRegistry. move_cost must be >= 4 (the A* heuristic admissibility
-    // floor; setup rejects any floor piece below this minimum).
-    default_floor: "deck_floor",                         // piece KEY — resolves to assets/terrain/deck_floor.terrain.ron (move_cost 4)
-    // Sparse per-cell floor overrides — cells with a non-default floor piece. Empty
-    // for this situation (all open cells use the default deck_floor cost).
-    floors: [],  // empty = no per-cell overrides; all open cells cost deck_floor move_cost (4 TU)
+    // NOTE (GTW-433): NO terrain fields are authored here. walls / scatter / slabs /
+    // default_floor / floors / vertical_links are GENERATED by procgen at Generation from
+    // the theme + grid_size above; the Situation schema defaults them to empty when omitted.
 )

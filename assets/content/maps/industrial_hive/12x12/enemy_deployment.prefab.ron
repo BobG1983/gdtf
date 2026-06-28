@@ -1,0 +1,40 @@
+// IndustrialHive ENEMY deployment prefab (GTW-433).
+//
+// The strict-opposite (OQ-2) deployment fragment the assembler places against the enemy
+// anchor (the geometric mirror of the chosen player anchor). Pairs with
+// player_deployment.prefab.ron to let the live IndustrialHive skirmish procgen a playable
+// level (see that file's header for the GTW-433 context).
+//
+// Footprint-local cells (origin 0,0); the assembler translates them onto the board by the
+// placed region origin. Authored magnitudes live in the referenced terrain piece .ron files.
+(
+    // The level theme this fragment belongs to (a registry enumeration key).
+    theme: IndustrialHive,
+    // The footprint: 12 cells wide, 12 deep, 1 storey — matches the player fragment so the
+    // two deployment zones are symmetric, and fits the strict-opposite board corner with the
+    // inter-prefab seam on a 30x30 board.
+    size: (width: 12, height: 12, levels: 1),
+    // The deployment role this fragment plays — the opposing gang's spawn zone.
+    spawn_role: Enemy,
+    // The walkable floor filling every open cell (and the seam cells at the edge openings).
+    default_floor: "deck_floor",
+    // A short L of bulkhead cover near the back corner, mirroring the player zone.
+    walls: [
+        (at: (cell: (x: 10, y: 10), level: 0), piece: "bulkhead_wall"),
+        (at: (cell: (x: 9, y: 10), level: 0), piece: "bulkhead_wall"),
+        (at: (cell: (x: 10, y: 9), level: 0), piece: "bulkhead_wall"),
+    ],
+    // A barricade prop mid-zone for forward cover.
+    scatter: [
+        (at: (cell: (x: 5, y: 5), level: 0), piece: "barricade"),
+    ],
+    // C6 — the boundary-edge cells the inter-prefab 1-cell seam connects through. Openings
+    // on all four mid-edges keep the zone connectable whichever opposite anchor procgen
+    // places it at.
+    edge_openings: [
+        (at: (cell: (x: 0, y: 6), level: 0)),   // west edge (toward board interior from a right/corner anchor)
+        (at: (cell: (x: 11, y: 6), level: 0)),  // east edge
+        (at: (cell: (x: 6, y: 0), level: 0)),   // south edge
+        (at: (cell: (x: 6, y: 11), level: 0)),  // north edge
+    ],
+)

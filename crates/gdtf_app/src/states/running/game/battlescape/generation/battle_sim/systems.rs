@@ -10,10 +10,14 @@
 //!
 //! Three systems, each in a different schedule slot:
 //!
-//! - [`request_battle_setup`] (`OnEnter(BattleScapeState::Generation)`): writes a
-//!   [`SetupBattleRequested`] carrying the authored [`Situation`] (the persistent
-//!   [`LoadedSituation`] clone if present, else [`Situation::default`]) + a fixed
-//!   placeholder [`BattleSeed`].
+//! - [`request_battle_setup`] (`OnEnter(BattleScapeState::Generation)`): RUNS PROCGEN
+//!   (GTW-433) — it generates the battle's terrain from the authored situation's
+//!   `theme` + `grid_size` via the sim-owned
+//!   [`generate_level`](gdtf_battle_sim::procgen::generate_level) (driven through
+//!   [`procgen_battle_situation`](super::procgen::procgen_battle_situation)), merges that
+//!   terrain over the authored gangers, and writes a [`SetupBattleRequested`] carrying the
+//!   merged [`Situation`] + the per-battle [`BattleSeed`]. The authored situation is the
+//!   persistent [`LoadedSituation`] clone if present, else [`Situation::default`].
 //! - [`gate_generation_complete`] (`Update`, presence-gated): inserts
 //!   [`GenerationComplete`] only on a [`BattleReady`] from the sim, so `move_on`
 //!   advances strictly after a successful setup.
@@ -24,28 +28,41 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     battle::{BattleReady, SetupBattleRequested, TeardownBattleRequested},
+    level::PrefabRegistry,
     rng::BattleSeed,
     situation::Situation,
 };
 
-use super::seed::resolve_root_seed;
+use super::{procgen::procgen_battle_situation, seed::resolve_root_seed};
 use crate::states::{
     load::LoadedSituation, running::game::battlescape::generation::resources::GenerationComplete,
 };
 
-/// `OnEnter(BattleScapeState::Generation)`: trigger the sim to build the battle.
+/// `OnEnter(BattleScapeState::Generation)`: PROCGEN the terrain, then trigger the sim to
+/// build the battle (GTW-433).
 ///
-/// Resolves the situation — the persistent [`LoadedSituation`] resolved by the
+/// Resolves the authored situation — the persistent [`LoadedSituation`] resolved by the
 /// `Load` scene (E10.3) cloned by value if present, ELSE [`Situation::default()`] (an
-/// EMPTY battlefield: zero gangers / links, validates trivially) — and writes a
-/// [`SetupBattleRequested`] carrying it + a [`BattleSeed`] from
-/// [`resolve_root_seed`] (or a pre-injected [`Res<BattleSeed>`] resource when
-/// present — the test-harness override that guarantees replay determinism without
-/// touching wall-clock entropy). The sim's `setup_battle_on_request` system (in
-/// `SimSystems::Simulate`) consumes the trigger, seeds the five per-subsystem RNG
-/// streams (GTW-14: `ShotRng` / `SeverityRng` / `LootRng` / `InjuryRng` /
-/// `ProcgenRng`), pours the situation into the world, and signals [`BattleReady`]
-/// on success.
+/// EMPTY battlefield: zero gangers / links, validates trivially) — which now carries only
+/// `theme` + `grid_size` + the placed gangers (GTW-433 C1: the authored situation no longer
+/// holds inline terrain). It then RUNS PROCGEN via
+/// [`procgen_battle_situation`](super::procgen::procgen_battle_situation): generate the
+/// terrain from the authored `theme` + `grid_size` against the loaded
+/// [`PrefabRegistry`] using a [`ProcgenRng`](gdtf_battle_sim::rng::ProcgenRng) derived from
+/// the resolved [`BattleSeed`], and merge that terrain over the authored gangers. The merged
+/// [`Situation`] (`{authored gangers/spawn} + {procgen terrain}`) is written in a
+/// [`SetupBattleRequested`] with the [`BattleSeed`] from [`resolve_root_seed`] (or a
+/// pre-injected [`Res<BattleSeed>`] resource when present — the test-harness override that
+/// guarantees replay determinism without touching wall-clock entropy). The sim's
+/// `setup_battle_on_request` system (in `SimSystems::Simulate`) consumes the trigger, seeds
+/// the five per-subsystem RNG streams (GTW-14: `ShotRng` / `SeverityRng` / `LootRng` /
+/// `InjuryRng` / `ProcgenRng`), pours the situation into the world, and signals
+/// [`BattleReady`] on success.
+///
+/// When the [`PrefabRegistry`] is absent or procgen fails closed (e.g. an EMPTY registry in
+/// a headless harness), [`procgen_battle_situation`](super::procgen::procgen_battle_situation)
+/// returns the authored situation UNCHANGED, so a battle with authored (or empty) terrain
+/// still sets up and reaches `BattleRunning` (C4 — the existing state-walk keeps passing).
 ///
 /// Seed resolution order:
 /// 1. `Res<BattleSeed>` — pre-injected by a test harness (or a future seed-pick UI
@@ -64,13 +81,16 @@ use crate::states::{
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn request_battle_setup(
     loaded: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
+    prefabs: Option<Res<PrefabRegistry>>,
     mut setup: MessageWriter<SetupBattleRequested>,
 ) {
     // The loaded authored battlefield if the Load scene resolved one, else the empty
-    // Default (keeps the headless deep-walk green).
-    let situation: Situation = loaded.map_or_else(Situation::default, |loaded| (**loaded).clone());
+    // Default (keeps the headless deep-walk green). Carries only theme + grid_size +
+    // gangers now (GTW-433 C1: no inline terrain) — the terrain is GENERATED below.
+    let authored: Situation = loaded.map_or_else(Situation::default, |loaded| (**loaded).clone());
     // GTW-14: use the pre-injected seed override (test harness) if present, else
-    // resolve from the GDTF_BATTLE_SEED env var or wall-clock.
+    // resolve from the GDTF_BATTLE_SEED env var or wall-clock. The same injected,
+    // deterministic per-battle seed drives procgen below (GTW-433 C2).
     let seed = seed_override.map_or_else(resolve_root_seed, |r| *r);
     // GTW-14 (m2): log the resolved seed UNCONDITIONALLY here so EVERY battle — both
     // the override path (test harness / future seed-pick UI, which bypasses
@@ -80,6 +100,12 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
         seed = *seed,
         "battle setup: resolved BattleSeed (RNG replay handle)"
     );
+    // GTW-433: RUN PROCGEN. Generate the terrain from the authored theme + grid_size
+    // against the loaded PrefabRegistry (deterministic in `seed`) and merge it over the
+    // authored gangers; falls back to the authored terrain when no registry is present or
+    // procgen fails closed (the headless empty-registry harness). This is the LIVE trigger
+    // that makes procgen drive real battles.
+    let situation = procgen_battle_situation(authored, prefabs.as_deref(), seed);
     setup.write(SetupBattleRequested::new(situation, seed));
 }
 

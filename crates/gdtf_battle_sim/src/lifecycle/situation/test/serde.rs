@@ -70,11 +70,14 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
     );
 }
 
-/// GTW-205 AC3 — the shipped situation file parses back into a `Situation`
-/// (value-agnostic round-trip). Asserts only STRUCTURAL relations: gangers
-/// non-empty, ≥2 distinct factions present, ≥1 wall, ≥1 scatter, ≥1 slab, ≥1
-/// vertical link — NEVER a specific hp/tu/armor magnitude (authored data, not
-/// pinned by the test).
+/// GTW-205 AC3 / GTW-433 C1 — the shipped situation file parses back into a `Situation`
+/// (value-agnostic round-trip). Since the GTW-433 theme+size procgen migration the shipped
+/// `skirmish.ron` authors ONLY `theme` + `grid_size` + the placed gangers and NO inline
+/// terrain (the walls / scatter / slabs / vertical links / `default_floor` / floors are now
+/// PROCGEN-generated at Generation, not authored). So the structural assertions are:
+/// gangers non-empty, ≥2 distinct factions present, a real (non-empty) theme catalog key, a
+/// validated `grid_size`, and ZERO inline terrain entries — NEVER a pinned magnitude (authored
+/// data, not pinned by the test).
 #[test]
 fn shipped_situation_ron_deserializes_with_required_structure() {
     let Some(situation) = shipped_situation() else {
@@ -92,65 +95,52 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
         "the shipped file must author at least two distinct factions, found {}",
         distinct_factions.len(),
     );
+    // GTW-433 C1: the shipped file authors NO inline terrain — it is procgen-generated from
+    // theme + grid_size at Generation. Each terrain list must be empty (un-migrating the file
+    // by re-authoring any terrain entry turns this red).
     assert!(
-        !situation.walls.is_empty(),
-        "the shipped file must author at least one wall",
+        situation.walls.is_empty(),
+        "the migrated shipped file must author NO walls (procgen generates them); found {}",
+        situation.walls.len(),
     );
     assert!(
-        !situation.scatter.is_empty(),
-        "the shipped file must author at least one scatter piece",
+        situation.scatter.is_empty(),
+        "the migrated shipped file must author NO scatter (procgen generates it); found {}",
+        situation.scatter.len(),
     );
     assert!(
-        !situation.slabs.is_empty(),
-        "the shipped file must author at least one slab",
+        situation.slabs.is_empty(),
+        "the migrated shipped file must author NO slabs (procgen generates them); found {}",
+        situation.slabs.len(),
     );
     assert!(
-        !situation.vertical_links.is_empty(),
-        "the shipped file must author at least one vertical link",
+        situation.vertical_links.is_empty(),
+        "the migrated shipped file must author NO vertical links (terrain — procgen generates \
+         them); found {}",
+        situation.vertical_links.len(),
     );
-}
-
-/// GTW-387 (C1) — the shipped `skirmish.ron` has **walkable L1 content beyond the
-/// link tile**: at least one authored slab is at level 1 AND is not the stair-link
-/// endpoint itself (i.e. NOT at the same `(x, y)` as every vertical link's `from`
-/// foot, so a ganger who reaches the stair head has real destinations to walk to on
-/// the upper floor). This is a real-path parse (the same `include_str!` path the
-/// other shipped-file tests use) — it catches a regression where the platform
-/// slabs were stripped back to a dead-end single link tile.
-///
-/// Pin-discriminating: this fails if the shipped file is missing L1 slabs beyond
-/// the link-endpoint cell (the exact pre-GTW-387 bug that stranded gangers at the
-/// stair head with nowhere to go).
-#[test]
-fn shipped_skirmish_has_walkable_l1_content_beyond_link_tile() {
-    let Some(situation) = shipped_situation() else {
-        return;
-    };
-
-    // Collect the (x, y) of every stair head (the L1 arrival endpoint of a
-    // vertical link).  We do NOT want to count those cells as "real" L1 platform
-    // content, because the pre-GTW-387 bug was that ONLY the link-head cell
-    // existed on L1 — a dead-end with no further walkable destinations.
-    let link_head_xy: HashSet<(i32, i32)> = situation
-        .vertical_links
-        .iter()
-        .map(|l| (l.to.x, l.to.y))
-        .collect();
-
-    // Count L1 slabs that are NOT on a link-head (x, y) — the platform cells.
-    let l1_platform_count = situation
-        .slabs
-        .iter()
-        .filter(|s| s.at.z == 1 && !link_head_xy.contains(&(s.at.x, s.at.y)))
-        .count();
-
     assert!(
-        l1_platform_count >= 1,
-        "the shipped skirmish must have ≥1 L1 slab BEYOND the link-tile (walkable platform) \
-         so a ganger who climbs the stair has real destinations; found {l1_platform_count} \
-         non-link-head L1 slabs (GTW-387 C1)",
+        situation.floors.is_empty(),
+        "the migrated shipped file must author NO floor overrides (procgen generates them); \
+         found {}",
+        situation.floors.len(),
+    );
+    assert!(
+        situation.default_floor.is_empty(),
+        "the migrated shipped file must author NO default_floor (procgen supplies it)",
     );
 }
+
+// GTW-387 (C1)'s `shipped_skirmish_has_walkable_l1_content_beyond_link_tile` test was
+// REMOVED by the GTW-433 theme+size procgen migration: the shipped `skirmish.ron` no longer
+// authors ANY terrain (slabs / vertical links included) — the level (and thus its multi-
+// storey walkable platforms) is now PROCGEN-generated at Generation, so an authored-L1-
+// content invariant no longer applies to the situation file. The "no inline terrain"
+// invariant the migration DOES require is asserted by
+// `shipped_situation_ron_deserializes_with_required_structure` above (it pins every terrain
+// list, slabs included, to empty). Ensuring procgen-generated multi-storey levels have
+// reachable upper-floor destinations is the procgen pipeline's connectivity concern (the
+// GTW-431 emit-step OQ-4 assertion), not the authored file's.
 
 /// GTW-226 AC6 — the shipped `skirmish.ron` omits `player_faction`, so the
 /// struct-level `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)`
