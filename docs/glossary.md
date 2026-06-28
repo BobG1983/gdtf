@@ -27,5 +27,7 @@ Necromunda vocabulary is the house style. **Code identifiers must follow it** �
 | **HiveScape** | The strategic layer — managing the gang and its turf in the hive between fights (the campaign / turf-war layer; the project's name for the "geoscape"-equivalent). Sub-state `GameState::HiveScape`. |
 | **BattleScape** | The tactical layer — a single fight resolved on the battle grid. Sub-state `GameState::BattleScape`, with its own `BattleScapeState` flow: generation -> animate-in -> running -> animate-out -> aftermath. |
 | **AfterMath** | The post-fight phase that surfaces a battle's results and consequences on the survivors before returning to the HiveScape (pillar: every fight leaves a mark). Sub-state `BattleScapeState::AfterMath`, with its own `AfterMathState` flow. |
+| **Armor pierced** | The FCT/combat-log verdict when a hit's penetrating damage is `> 0` — the round punched through the target's armor. Displayed in neutral GREY (a status note, not a damage number). Contrast: **Armor held**. |
+| **Armor held** | The FCT/combat-log verdict when a hit's penetrating damage is `<= 0` — the target's armor absorbed the round. Displayed in AMBER (a favorable defensive outcome). Contrast: **Armor pierced**. |
 
 **TBD (design):** the Serious Injury table entries and any meta-currency name.

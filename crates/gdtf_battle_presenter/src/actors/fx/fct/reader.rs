@@ -27,8 +27,8 @@
 //! - **Graze** (`report.applied.severity == Severity::None` on a ganger hit) — `"Grazed"`,
 //!   drawn GREY ([`FctValence::Neutral`](super::palette::FctValence::Neutral)): HP loss but no
 //!   Wound spent (resolution.md §6).
-//! - **Penetration verdict** (`report.applied.hit.penetrating`) — `"Penetrated"` (GREY, it
-//!   went through the armor) when `> 0`, else `"Deflected"` (AMBER, the armor soaked it).
+//! - **Penetration verdict** (`report.applied.hit.penetrating`) — `"Armor pierced"` (GREY, it
+//!   went through the armor) when `> 0`, else `"Armor held"` (AMBER, the armor soaked it).
 //! - **DOWN / DEAD** (`report.applied.life_after`) — `"DOWN"` / `"DEAD"` drawn the lethal RED
 //!   in [`FctEmphasis::Bold`](super::text::FctEmphasis::Bold) (the heaviest pop in the blood
 //!   family — bold weight + a larger size, the contract's "RED bold"; the all-caps tag is a
@@ -225,8 +225,8 @@ fn ganger_pops(report: &HitReport) -> Vec<ClassifiedPop> {
     //    graze (severity None) reads GREY "Grazed" (HP loss, no Wound spent — resolution.md §6).
     pops.push(wound_or_graze_pop(applied.severity, report.part));
 
-    // 3. Penetration verdict — "Penetrated" (GREY, it went through) vs "Deflected" (AMBER, the
-    //    armor soaked it). penetrating > 0 = the hit punched through.
+    // 3. Penetration verdict — "Armor pierced" (GREY, it went through) vs "Armor held" (AMBER,
+    //    the armor soaked it). penetrating > 0 = the hit punched through.
     pops.push(penetration_pop(*applied.hit.penetrating));
 
     // 4. DOWN / DEAD (lethal RED, BOLD + uppercased) on a life-state transition.
@@ -327,19 +327,19 @@ fn wound_or_graze_pop(severity: Severity, part: Option<BodyPart>) -> ClassifiedP
 
 /// The penetration-verdict pop for a hit's penetrating-damage magnitude.
 ///
-/// `> 0` = the hit PENETRATED the armor — a neutral GREY `"Penetrated"` (the bad news for the
-/// defender, but a status note, not a damage number). `<= 0` = the armor DEFLECTED / absorbed
-/// it — an AMBER `"Deflected"` (the armor did its job). The damage number itself is a separate
-/// pop; this one reports the armor verdict.
+/// `> 0` = the hit punched through the armor — a neutral GREY `"Armor pierced"` (the bad news
+/// for the defender, but a status note, not a damage number). `<= 0` = the armor held — an
+/// AMBER `"Armor held"` (the armor did its job). The damage number itself is a separate pop;
+/// this one reports the armor verdict.
 fn penetration_pop(penetrating: i32) -> ClassifiedPop {
     if penetrating > 0 {
         ClassifiedPop::new(
-            CombatText::new("Penetrated"),
+            CombatText::new("Armor pierced"),
             valence_color(FctValence::Neutral),
         )
     } else {
         ClassifiedPop::new(
-            CombatText::new("Deflected"),
+            CombatText::new("Armor held"),
             valence_color(FctValence::Wound),
         )
     }
@@ -611,24 +611,28 @@ mod test {
     }
 
     /// The penetration verdict pin-discriminates: a penetrating hit (`pen > 0`) yields the GREY
-    /// `"Penetrated"` pop; a deflected hit (`pen <= 0`) yields the AMBER `"Deflected"` pop.
+    /// `"Armor pierced"` pop; a soaked hit (`pen <= 0`) yields the AMBER `"Armor held"` pop.
     #[test]
-    fn the_penetration_verdict_discriminates_penetrated_from_deflected() {
+    fn the_penetration_verdict_discriminates_armor_pierced_from_armor_held() {
         let through = ganger_report(BodyPart::Torso, 5, 4, Severity::Minor, LifeState::Alive);
         assert!(
             has_pop(
                 Some(&through),
-                "Penetrated",
+                "Armor pierced",
                 valence_color(FctValence::Neutral)
             ),
-            "pen > 0 must yield a GREY \"Penetrated\" pop, got {:?}",
+            "pen > 0 must yield a GREY \"Armor pierced\" pop, got {:?}",
             pop_pairs(Some(&through)),
         );
 
         let soaked = ganger_report(BodyPart::Torso, 1, 0, Severity::None, LifeState::Alive);
         assert!(
-            has_pop(Some(&soaked), "Deflected", valence_color(FctValence::Wound)),
-            "pen == 0 must yield an AMBER \"Deflected\" pop, got {:?}",
+            has_pop(
+                Some(&soaked),
+                "Armor held",
+                valence_color(FctValence::Wound)
+            ),
+            "pen == 0 must yield an AMBER \"Armor held\" pop, got {:?}",
             pop_pairs(Some(&soaked)),
         );
     }

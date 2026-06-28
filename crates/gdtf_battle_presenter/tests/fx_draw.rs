@@ -830,7 +830,7 @@ fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
     step_app(&mut app, std::time::Duration::from_millis(50), 8);
 
     let pops = fct_pops(&mut app);
-    // HP number (RED), wound (Critical amber), penetration verdict (GREY "Penetrated"), DEAD
+    // HP number (RED), wound (Critical amber), penetration verdict (GREY "Armor pierced"), DEAD
     // (lethal RED) — four distinct pops.
     assert!(
         has_fct_pop(&pops, "-9", valence_color(FctValence::Damage)),
@@ -841,8 +841,8 @@ fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
         "a Critical torso wound must pop \"Torso Critical\" in the Critical amber, got {pops:?}",
     );
     assert!(
-        has_fct_pop(&pops, "Penetrated", valence_color(FctValence::Neutral)),
-        "a penetrating hit must pop a GREY \"Penetrated\", got {pops:?}",
+        has_fct_pop(&pops, "Armor pierced", valence_color(FctValence::Neutral)),
+        "a penetrating hit must pop a GREY \"Armor pierced\", got {pops:?}",
     );
     assert!(
         has_fct_pop(&pops, "DEAD", valence_color(FctValence::Lethal)),
