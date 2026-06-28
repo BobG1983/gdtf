@@ -1,0 +1,54 @@
+//! The **space-packing assembler core** — the procgen packer that places deployment
+//! prefabs into a battlefield (GTW-424, the FIRST half: anchor selection + opposite-side
+//! enemy placement).
+//!
+//! This module is render-free and deterministic (the *behavioral* render-free constraint —
+//! it lives here, beside [`ProcgenRng`](crate::rng::ProcgenRng) and
+//! [`Situation`](crate::situation::Situation), because it is sim MODEL logic). It is the
+//! UNIT-TESTED packer core of the staged assembler:
+//!
+//! ```text
+//! GTW-424 placement  ->  GTW-427 fill  ->  GTW-431 emit/trigger
+//! ```
+//!
+//! GTW-424 (here) covers only the FIRST stage — a tested core with no live trigger yet is
+//! the intended staged build, NOT a dead-feature split. NOTHING here wires
+//! `BattleScapeState::Generation` (the loading-state driver is GTW-431; the debug
+//! visualizer is GTW-434).
+//!
+//! # The locked design (the GTW-424 rulings + authorized defaults — see the concern docs)
+//!
+//! - **OQ-7 (packer):** [`MaxRectsPacker`] is the shipped, denser packer; a
+//!   [`SplitMode::Guillotine`] alternative is INCLUDED behind a flag for A/B comparison.
+//! - **OQ-3 (seam):** a 1-cell [`Margin::DEFAULT`] `default_floor` seam is reserved around
+//!   every placed prefab — NO abutting prefabs.
+//! - **OQ-4 (connectivity):** connectivity is BY CONSTRUCTION (the seam lattice + each
+//!   prefab's `>= 1` edge opening). The assembler runs a fail-closed connectivity
+//!   ASSERTION ([`PackingError::Disconnected`]) — it NEVER carves doorways / self-repairs.
+//! - **OQ-2 (opposite):** the enemy anchor is the STRICT geometric [`Anchor::opposite`] of
+//!   the player anchor, with ZERO RNG draw (fairness is structural). The PLAYER anchor is
+//!   the one RNG choice ([`Anchor::choose`], from [`ProcgenRng`](crate::rng::ProcgenRng)).
+//! - **OQ-5 (size + cap):** a `~10x10` minimum player-spawn footprint ([`MinPlayerSide`]);
+//!   the player footprint is capped so the opposite enemy region always fits (enforced via
+//!   the packer fit check + the preferred GTW-418 load-time rejection).
+//!
+//! Mirrors the `level` / `situation` dir-module layout (memory: *code-health-module-layout*):
+//! `mod.rs` is wiring-only; per-concern files carry the types; `test/` houses the unit
+//! tests.
+
+mod anchor;
+mod assembler;
+mod error;
+mod geometry;
+mod packer;
+
+#[cfg(test)]
+mod test;
+
+pub use anchor::Anchor;
+pub use assembler::{
+    PlacedPrefab, Placement, assemble_placement, assemble_placement_with, count_seam_reachable,
+};
+pub use error::PackingError;
+pub use geometry::{Footprint, Margin, MinPlayerSide, RegionCount, RegionRect};
+pub use packer::{MaxRectsPacker, SplitMode};

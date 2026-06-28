@@ -354,6 +354,12 @@ pub use lifecycle::{
         PlayerFaction, SetupBattleRequested, TeardownBattleRequested, check_outcome,
         setup_battle_on_request, teardown_battle_on_request,
     },
+    procgen,
+    procgen::{
+        Anchor, Footprint, Margin, MaxRectsPacker, MinPlayerSide, PackingError, PlacedPrefab,
+        Placement as PrefabPlacement, RegionCount, RegionRect, SplitMode, assemble_placement,
+        assemble_placement_with, count_seam_reachable,
+    },
     situation,
     situation::{
         BattleRegistries, BattleSetup, BattleSetupError, CoverSpawn, FloorSpawn, GangerSpawn,
