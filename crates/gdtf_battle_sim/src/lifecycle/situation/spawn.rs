@@ -3,7 +3,7 @@
 //! serde-deserializable battlefield the setup is built from.
 
 use bevy::reflect::TypePath;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     ganger::{
@@ -333,7 +333,7 @@ impl GangerSpawn {
 /// Walls and scatter differ only in which [`Situation`] list they live in
 /// ([`walls`](Situation::walls) vs [`scatter`](Situation::scatter)) — the cover model
 /// treats them identically.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct CoverSpawn {
     /// The `(cell, level)` this cover piece occupies.
     pub at:    CellLevel,
@@ -367,7 +367,7 @@ impl CoverSpawn {
 /// Derives [`Deserialize`] so an authored situation `.ron` writes each slab as
 /// `(at: (cell: …, level: …), piece: "…")` — the same shape as [`CoverSpawn`], but
 /// into the `slabs` list.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct SlabSpawn {
     /// The `(cell, level)` this slab occupies (same meaning as the old bare entry).
     pub at:    CellLevel,
@@ -403,7 +403,7 @@ impl SlabSpawn {
 ///
 /// Derives [`Deserialize`] so an authored situation `.ron` writes each override as
 /// `(at: (cell: …, level: …), piece: "…")`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct FloorSpawn {
     /// The `(cell, level)` with a non-default floor cost.
     pub at:    CellLevel,

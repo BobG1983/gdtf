@@ -16,6 +16,10 @@ gdtf_assets = { path = "../gdtf_assets" }
 # WeaponRegistry / ArmorRegistry / ThemeCatalogRegistry (+ their specs). The editor
 # depends on the sim ONLY for these data types — it wires NONE of the sim's runtime.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+# GTW-432: the (debug-only) save-prefab path serializes a PrefabSpec to RON and writes it
+# to assets/content/maps/. The serialize is non-test code, so ron is a normal dependency
+# (the GTW-429 gang-save precedent moved ron from a dev-dependency to a normal one).
+ron = { workspace = true }
 
 [dev-dependencies]
 # The headless integration test drives the REAL editor plugin on a no-renderer

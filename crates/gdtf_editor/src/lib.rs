@@ -40,6 +40,11 @@
 //!   above it (C1), and a slab over an existing ladder is rejected (C2). An illegal placement
 //!   tints the target cell partial-transparent RED in the ghost preview and is rejected by the
 //!   commit ([`PlacementVerdict`] / [`ProposedPlacement`]).
+//! - The GTW-432 `save` module (debug-only) projects the [`EditorMap`] into the canonical GTW-418
+//!   `PrefabSpec` schema and WRITES it to `assets/content/maps/<theme>/<size>/<name>.prefab.ron`,
+//!   so a saved prefab round-trips through the GTW-418 folder loader. A prefab-name text field +
+//!   a "Save prefab" button under the right panel are the live trigger; the save re-checks every
+//!   painted cell through [`evaluate_placement`] so a saved prefab never contains an illegal cell.
 
 mod app;
 mod canvas;
@@ -51,6 +56,11 @@ mod placement;
 mod plugin;
 mod regions;
 mod right_panel;
+// The GTW-432 save-prefab path is debug-only (the GTW-429 gang-save precedent): the whole module
+// — the EditorMap → PrefabSpec projection, the RON serialize, the fs-write, and the press trigger
+// — is gated `#[cfg(debug_assertions)]` so it never compiles into a release binary.
+#[cfg(debug_assertions)]
+mod save;
 mod session;
 mod state;
 mod tile_atlas;

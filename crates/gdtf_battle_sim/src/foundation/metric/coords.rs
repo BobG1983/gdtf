@@ -6,7 +6,7 @@ use bevy::{
     math::{IVec2, IVec3, Vec3},
     prelude::Deref,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Number of storeys in the coarse grid — valid [`Level`] values are
 /// `0..MAX_LEVELS`.
@@ -26,8 +26,14 @@ pub const MAX_LEVELS: u8 = 8;
 /// Deserializes through an `(x, y)` authoring shape ([`CellDef`]) that routes the
 /// pair through [`Cell::new`] — so authored RON writes `(x: .., y: ..)` rather
 /// than reaching the inner glam `IVec2` directly.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
-#[serde(from = "CellDef")]
+///
+/// Serializes through the SAME [`CellDef`] shape (`#[serde(into = "CellDef")]`), so a
+/// written cell round-trips byte-for-byte back through the `from = "CellDef"` reader
+/// (the editor prefab saver — GTW-432). A *derived* `Serialize` would instead emit the
+/// raw private `IVec2`, which the `(x, y)` reader could not parse — the `into`/`from`
+/// pair keeps both directions on the one authoring shape.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(from = "CellDef", into = "CellDef")]
 pub struct Cell(IVec2);
 
 impl Cell {
@@ -42,11 +48,11 @@ impl Cell {
 /// coordinates as a named pair, routed through [`Cell::new`] (never the raw
 /// `IVec2`).
 ///
-/// A serde intermediate (`#[serde(from = "CellDef")]` on [`Cell`]) so an authored
-/// situation writes a cell as `(x: 5, y: 6)` and the value flows through the typed
-/// constructor — keeping the inner `IVec2` private and the no-bare-types contract
-/// intact.
-#[derive(Deserialize)]
+/// A serde intermediate (`#[serde(from = "CellDef", into = "CellDef")]` on [`Cell`]) so
+/// an authored situation writes a cell as `(x: 5, y: 6)` and the value flows through the
+/// typed constructor on read AND back out through the same shape on write — keeping the
+/// inner `IVec2` private and the no-bare-types contract intact in both directions.
+#[derive(Deserialize, Serialize)]
 pub struct CellDef {
     /// The cell's ground-plane `x` grid coordinate (cell units).
     x: i32,
@@ -60,13 +66,24 @@ impl From<CellDef> for Cell {
     }
 }
 
+impl From<Cell> for CellDef {
+    fn from(cell: Cell) -> Self {
+        Self {
+            x: cell.x,
+            y: cell.y,
+        }
+    }
+}
+
 /// A 0-based storey index — which floor of the coarse grid, valid `0..`[`MAX_LEVELS`].
 ///
 /// Distinct from a raw coordinate axis: it indexes storeys (each one level = 1.0
 /// sim unit on z). Wraps `u8` so a storey can never be confused with a cell
 /// coordinate. `#[serde(transparent)]` lets an authored RON storey index parse as
 /// a bare integer (the tuning-leaf precedent).
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize)]
+#[derive(
+    Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct Level(u8);
 
@@ -91,8 +108,14 @@ impl Level {
 /// invariant `#[serde(from = "CellLevelDef")]` protects (unlike [`SimPos`], which
 /// is deliberately NOT `Deserialize` — its continuous `z` must never be authorable
 /// as a storey).
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
-#[serde(from = "CellLevelDef")]
+///
+/// Serializes through the SAME [`CellLevelDef`] shape (`#[serde(into = "CellLevelDef")]`)
+/// — its `z` storey index written back as a typed [`Cell`] + [`Level`] pair, so a written
+/// `(cell, level)` round-trips byte-for-byte through the `from = "CellLevelDef"` reader
+/// (the editor prefab saver — GTW-432). A *derived* `Serialize` would emit the raw private
+/// `IVec3`, which the reader could not parse.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(from = "CellLevelDef", into = "CellLevelDef")]
 pub struct CellLevel(IVec3);
 
 impl CellLevel {
@@ -112,13 +135,14 @@ impl CellLevel {
 /// The authored RON shape a [`CellLevel`] deserializes from — a typed [`Cell`]
 /// plus a typed [`Level`], routed through [`CellLevel::new`].
 ///
-/// A serde intermediate (`#[serde(from = "CellLevelDef")]` on [`CellLevel`]) so an
-/// authored situation names the `(cell, level)` pair and the value flows through
-/// the typed constructor. This is the AC2 guarantee: the storey-index `z` is
-/// always *constructed* from a [`Level`], never authored as a raw continuous
-/// height in the inner `IVec3` — so the no-bare-types / storey-not-height
-/// invariant survives deserialization.
-#[derive(Deserialize)]
+/// A serde intermediate (`#[serde(from = "CellLevelDef", into = "CellLevelDef")]` on
+/// [`CellLevel`]) so an authored situation names the `(cell, level)` pair and the value
+/// flows through the typed constructor on read AND back out through the same shape on
+/// write. This is the AC2 guarantee: the storey-index `z` is always *constructed* from a
+/// [`Level`], never authored as a raw continuous height in the inner `IVec3` — so the
+/// no-bare-types / storey-not-height invariant survives both deserialization and
+/// serialization (the GTW-432 editor saver round-trips through this shape).
+#[derive(Deserialize, Serialize)]
 pub struct CellLevelDef {
     /// The ground-plane cell of the key.
     cell:  Cell,
@@ -129,6 +153,27 @@ pub struct CellLevelDef {
 impl From<CellLevelDef> for CellLevel {
     fn from(def: CellLevelDef) -> Self {
         Self::new(def.cell, def.level)
+    }
+}
+
+impl From<CellLevel> for CellLevelDef {
+    fn from(key: CellLevel) -> Self {
+        // The inner `IVec3` carries `(cell.x, cell.y, storey)`; recover the typed
+        // `(Cell, Level)` pair the authoring shape names. The `z` is a 0-based storey
+        // index (`0..MAX_LEVELS`), so the `u8` conversion is in range for every
+        // constructed key; an out-of-`u8` value (impossible for a real key) clamps
+        // rather than panicking (the no-panic contract).
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "z is a 0-based storey index in 0..MAX_LEVELS; clamped to u8 below so the \
+                      cast cannot wrap or sign-flip"
+        )]
+        let storey = key.z.clamp(0, i32::from(u8::MAX)) as u8;
+        Self {
+            cell:  Cell::new(key.x, key.y),
+            level: Level::new(storey),
+        }
     }
 }
 

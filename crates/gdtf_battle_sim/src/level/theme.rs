@@ -9,7 +9,7 @@
 //! maximum ([`MAX_GRID_SPAN`] on x/y, [`MAX_LEVELS`](crate::metric::MAX_LEVELS) on z).
 
 use bevy::prelude::Deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::metric::MAX_LEVELS;
 
@@ -40,7 +40,7 @@ pub const MAX_GRID_SPAN: u8 = 60;
 /// key the registry hashes on) + [`Deserialize`] (it is authored in RON, both as a
 /// catalog file's declared theme and — GTW-414 — as a [`Situation`](crate::situation::Situation)
 /// field).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 pub enum LevelTheme {
     /// The manufactorum decking and bulkheads of the hive proper — metal plating,
     /// heavy walls, supply crates.
@@ -65,7 +65,9 @@ pub enum LevelTheme {
 /// [`GridSize::new`], which validates it against [`MAX_GRID_SPAN`] — so a `GridWidth`
 /// inside a [`GridSize`] is always in `1..=MAX_GRID_SPAN`. `#[serde(transparent)]`
 /// parses a bare RON scalar.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize)]
+#[derive(
+    Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct GridWidth(u8);
 
@@ -84,7 +86,9 @@ impl GridWidth {
 /// [`GridWidth`] even over the same inner — a width is never a height). Private inner +
 /// derived [`Deref`]; validated against [`MAX_GRID_SPAN`] in [`GridSize::new`].
 /// `#[serde(transparent)]` parses a bare RON scalar.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize)]
+#[derive(
+    Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct GridHeight(u8);
 
@@ -105,7 +109,9 @@ impl GridHeight {
 /// Private inner + derived [`Deref`]; validated against
 /// [`MAX_LEVELS`](crate::metric::MAX_LEVELS) in [`GridSize::new`]. `#[serde(transparent)]`
 /// parses a bare RON scalar.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize)]
+#[derive(
+    Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct GridLevels(u8);
 
@@ -198,9 +204,12 @@ impl std::error::Error for GridSizeError {}
 /// [`Deserialize`] so a future authored situation (GTW-414) can carry it; the
 /// deserialized value still flows through [`GridSize::new`] via the `GridSizeDef`
 /// serde intermediate, so the bounds hold across deserialization too (the
-/// [`CellDef`](crate::metric::CellDef) precedent).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
-#[serde(try_from = "GridSizeDef")]
+/// [`CellDef`](crate::metric::CellDef) precedent). Derives [`Serialize`] (via the SAME
+/// `GridSizeDef` shape, `#[serde(into = "GridSizeDef")]`) so the editor prefab saver
+/// (GTW-432) writes a grid size that round-trips byte-for-byte back through the
+/// `try_from` reader.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(try_from = "GridSizeDef", into = "GridSizeDef")]
 pub struct GridSize {
     /// The grid's x span in cells (validated `1..=`[`MAX_GRID_SPAN`]).
     width:  GridWidth,
@@ -295,13 +304,15 @@ impl Default for GridSize {
 /// The authored RON shape a [`GridSize`] deserializes from — its three axis spans as a
 /// named triple, routed through the validating [`GridSize::new`] (GTW-409).
 ///
-/// A serde intermediate (`#[serde(try_from = "GridSizeDef")]` on [`GridSize`]) so an
-/// authored value writes `(width: .., height: .., levels: ..)` and the value flows
-/// through the bounds-checked constructor — keeping every axis newtype's inner private
-/// and the over-max/empty invariant intact across deserialization (the
-/// [`CellDef`](crate::metric::CellDef) precedent, with `try_from` because the
-/// conversion is fallible).
-#[derive(Deserialize)]
+/// A serde intermediate (`#[serde(try_from = "GridSizeDef", into = "GridSizeDef")]` on
+/// [`GridSize`]) so an authored value writes `(width: .., height: .., levels: ..)` and
+/// the value flows through the bounds-checked constructor on read AND back out through
+/// the same shape on write — keeping every axis newtype's inner private and the
+/// over-max/empty invariant intact across (de)serialization (the
+/// [`CellDef`](crate::metric::CellDef) precedent, with `try_from` because the read
+/// conversion is fallible; the write direction is infallible — a valid `GridSize`
+/// always produces a valid `GridSizeDef`).
+#[derive(Deserialize, Serialize)]
 pub struct GridSizeDef {
     /// The grid's x span in cells.
     width:  GridWidth,
@@ -316,5 +327,15 @@ impl TryFrom<GridSizeDef> for GridSize {
 
     fn try_from(def: GridSizeDef) -> Result<Self, Self::Error> {
         Self::new(def.width, def.height, def.levels)
+    }
+}
+
+impl From<GridSize> for GridSizeDef {
+    fn from(size: GridSize) -> Self {
+        Self {
+            width:  size.width,
+            height: size.height,
+            levels: size.levels,
+        }
     }
 }

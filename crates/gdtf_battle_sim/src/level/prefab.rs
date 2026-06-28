@@ -38,7 +38,7 @@
 //! typed [`PrefabLoadError::NoEdgeOpening`] (no panic — fail-closed exclusion + a warn).
 
 use bevy::{platform::collections::HashMap, prelude::Resource, reflect::TypePath};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{GridSize, LevelTheme};
 use crate::{
@@ -57,7 +57,7 @@ use crate::{
 /// opposing one, and [`Fill`](SpawnRole::Fill) fragments for the connective interior.
 /// Derives [`Deserialize`] so a prefab `.ron` names its role as a bare variant
 /// (`spawn_role: Fill`), and [`Hash`]/[`Eq`] so the [`PrefabRegistry`] can key on it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum SpawnRole {
     /// A fragment that hosts the human player's deployment zone.
     Player,
@@ -95,10 +95,12 @@ impl PrefabName {
 /// The assembler joins a neighbouring fragment's seam to this cell; a prefab with ZERO
 /// openings cannot connect and is rejected at load ([`PrefabLoadError::NoEdgeOpening`]).
 /// Private inner + derived [`Deref`](bevy::prelude::Deref); deserializes through the
-/// [`CellLevel`] `(cell, level)` authoring shape via the
-/// [`EdgeOpeningDef`] intermediate.
-#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
-#[serde(from = "EdgeOpeningDef")]
+/// [`CellLevel`] `(cell, level)` authoring shape via the [`EdgeOpeningDef`] intermediate,
+/// and serializes back out through the SAME shape (`#[serde(into = "EdgeOpeningDef")]`),
+/// so the editor prefab saver (GTW-432) writes an opening that round-trips byte-for-byte
+/// through the `from = "EdgeOpeningDef"` reader.
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(from = "EdgeOpeningDef", into = "EdgeOpeningDef")]
 pub struct EdgeOpening(CellLevel);
 
 impl EdgeOpening {
@@ -120,8 +122,8 @@ impl EdgeOpening {
 ///
 /// A serde intermediate (the [`CellLevelDef`](crate::metric) precedent) so an authored
 /// opening writes `(at: (cell: .., level: ..))` and keeps the newtype inner private
-/// across deserialization.
-#[derive(Deserialize)]
+/// across (de)serialization — read in through `from`, written back out through `into`.
+#[derive(Deserialize, Serialize)]
 pub struct EdgeOpeningDef {
     /// The `(cell, level)` boundary cell the opening sits on.
     at: CellLevel,
@@ -130,6 +132,12 @@ pub struct EdgeOpeningDef {
 impl From<EdgeOpeningDef> for EdgeOpening {
     fn from(def: EdgeOpeningDef) -> Self {
         Self::new(def.at)
+    }
+}
+
+impl From<EdgeOpening> for EdgeOpeningDef {
+    fn from(opening: EdgeOpening) -> Self {
+        Self { at: opening.at() }
     }
 }
 
@@ -152,7 +160,14 @@ impl From<EdgeOpeningDef> for EdgeOpening {
 ///
 /// **Not `Copy`** — it owns several `Vec`s + `String`-backed [`TerrainName`]; it is
 /// `Clone` so the registry can hold prefabs by value.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
+///
+/// Derives [`Serialize`] (GTW-432) so the editor saver writes a `.prefab.ron` in EXACTLY
+/// this schema — the same type the GTW-418 loader deserializes — so `load(save(grid))`
+/// round-trips with no data loss. Every leaf in the value graph
+/// ([`LevelTheme`] / [`GridSize`] / [`SpawnRole`] / [`TerrainName`] / [`CoverSpawn`] /
+/// [`SlabSpawn`] / [`FloorSpawn`] / [`VerticalLink`] / [`EdgeOpening`]) serializes through
+/// the same authoring shape it deserializes from, so a written prefab parses straight back.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 #[serde(default)]
 pub struct PrefabSpec {
     /// The [`LevelTheme`] this fragment draws from — the registry's primary enumeration

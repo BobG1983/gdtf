@@ -99,6 +99,26 @@ impl Plugin for MapEditorPlugin {
                 .run_if(resource_exists::<gdtf_ui::theme::GdtfTheme>),
         );
         app.add_systems(OnExit(EditorState::Editing), (remove_session, remove_map));
+
+        // GTW-432: the debug-only save-prefab controls (the prefab-name text field + the "Save
+        // prefab" button, under the right panel) and the press trigger. Registered in their OWN
+        // `#[cfg(debug_assertions)]` block so the always-compiled Update tuple below stays
+        // release-buildable (the GTW-429 gang-save precedent). The spawn runs in the same gated,
+        // theme-guarded `OnEnter` slot as the other right-panel controls.
+        #[cfg(debug_assertions)]
+        {
+            use crate::save::{save_prefab_on_press, spawn_save_controls};
+
+            app.add_systems(
+                OnEnter(EditorState::Editing),
+                spawn_save_controls.run_if(resource_exists::<gdtf_ui::theme::GdtfTheme>),
+            );
+            app.add_systems(
+                Update,
+                save_prefab_on_press.run_if(in_state(EditorState::Editing)),
+            );
+        }
+
         app.add_systems(
             Update,
             (

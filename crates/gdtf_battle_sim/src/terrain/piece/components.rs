@@ -9,7 +9,7 @@
 //! the presenter's concern.
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A terrain piece's **name** — the registry key / filename stem.
 ///
@@ -26,7 +26,7 @@ use serde::Deserialize;
 /// can use `#[serde(default)]` on its [`default_floor`](crate::situation::Situation::default_floor)
 /// field — an omitted field parses as an empty name, which the setup treats as
 /// "no authored floor piece; fall back to `CombatTuning::move_costs.open`".
-#[derive(Deref, Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Deref, Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct TerrainName(String);
 

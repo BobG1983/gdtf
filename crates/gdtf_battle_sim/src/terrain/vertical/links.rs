@@ -3,7 +3,7 @@
 //! an authored situation deserialises.
 
 use bevy::prelude::Deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::metric::CellLevel;
 
@@ -17,7 +17,7 @@ use crate::metric::CellLevel;
 /// (the default) means bidirectional (climbed both up and down). Private inner +
 /// derived [`Deref`] (house style, matching `Aiming`/`Destroyed`).
 /// `#[serde(transparent)]` lets an authored directionality parse as a bare boolean.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct OneWay(bool);
 
@@ -59,7 +59,7 @@ impl OneWay {
 /// traversable only from its lower-listed endpoint to its higher-listed one (the
 /// authored `(from → to)` direction). Derives [`Deserialize`] so an authored
 /// situation names its links' kinds (`Stair`/`Ladder`) and one-way flags.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum LinkKind {
     /// A staircase between storeys.
     Stair {
@@ -112,7 +112,7 @@ impl LinkKind {
 /// bidirectional kind the link is traversable both ways; for a
 /// [`one-way`](LinkKind::is_one_way) kind only `from → to`. Derives
 /// [`Deserialize`] so an authored situation names each link's two endpoints + kind.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct VerticalLink {
     /// The authored departure endpoint — `(cell, level_from)`.
     pub from: CellLevel,
