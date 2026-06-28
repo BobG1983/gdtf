@@ -129,5 +129,15 @@ crate::support_use! {
         MemberWeaponDropdown, MemberWeaponText, PipExpanded,
     };
 }
+// Test-support-only re-export of the GTW-434 procgen-visualizer model + markers, gated so the
+// binary build is `unused`/`unreachable_pub`-clean. ALSO `debug_assertions`-gated — the whole
+// visualizer module compiles out of release (C4), so these items only exist in a debug build.
+// The final hop before `crate::test_support`.
+#[cfg(all(feature = "test-support", debug_assertions))]
+crate::support_use! {
+    running::{
+        AutoButton, BoardQuad, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, StepButton,
+    };
+}
 mod teardown;
 pub(in crate::states) use teardown::TeardownScenePlugin;

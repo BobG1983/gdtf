@@ -15,6 +15,12 @@ use bevy::{
 };
 pub use gdtf_ui::UiPlugin;
 
+// The GTW-434 procgen-visualizer model + markers — `debug_assertions`-gated because the whole
+// visualizer module compiles out of release (C4), so these items only exist in a debug build.
+#[cfg(debug_assertions)]
+pub use crate::states::{
+    AutoButton, BoardQuad, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, StepButton,
+};
 pub use crate::{
     app::auto_battle::{
         AutoBattleActive, AutoBattlePlugin, auto_battle_enabled, seed_load_fallbacks,

@@ -76,6 +76,18 @@ crate::support_item! {
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(in crate::states::running::menu) struct GangEditorButton;
 
+/// Marks the DEV-ONLY **Procgen Viz** menu button (GTW-434) — transitions to
+/// [`RunningState::DebugProcgenVisualizer`](crate::states::RunningState).
+///
+/// `cfg(debug_assertions)`-gated: the button (and this marker) never compile into a release
+/// binary, so the visualizer entry point ships only in dev builds. A unit marker (no-bare-types
+/// rule). Named only IN-CRATE (the menu spawn + action systems), never by an external test —
+/// the C5 test drives the `DebugProcgenVisualizer` transition via `NextState` directly — so it
+/// stays a plain `pub(in …menu)` marker rather than a `support_item!`-widened one.
+#[cfg(debug_assertions)]
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub(in crate::states::running::menu) struct ProcgenVizButton;
+
 crate::support_item! {
     /// Marks the menu **title** text node ("GRIMDARK TURFWAR").
     ///

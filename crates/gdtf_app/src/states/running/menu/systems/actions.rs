@@ -62,6 +62,11 @@ impl MenuActionTarget {
     /// binary.
     #[cfg(debug_assertions)]
     const GANG_EDITOR: Self = Self(RunningState::DebugEditor);
+    /// DEV-ONLY: the Procgen Viz opens the procgen visualizer →
+    /// [`RunningState::DebugProcgenVisualizer`] (GTW-434). `cfg(debug_assertions)`-gated so this
+    /// mapping never compiles into a release binary.
+    #[cfg(debug_assertions)]
+    const PROCGEN_VIZ: Self = Self(RunningState::DebugProcgenVisualizer);
 }
 
 /// Query filter selecting the enabled button carrying marker `M` whose
@@ -105,6 +110,10 @@ pub(in crate::states::running::menu) fn mouse_button_actions(
         &Interaction,
         PressedButton<super::super::components::GangEditorButton>,
     >,
+    #[cfg(debug_assertions)] procgen_viz: Query<
+        &Interaction,
+        PressedButton<super::super::components::ProcgenVizButton>,
+    >,
 ) {
     if battlescape.iter().copied().any(is_press) {
         next.set(*MenuActionTarget::BATTLESCAPE);
@@ -119,6 +128,11 @@ pub(in crate::states::running::menu) fn mouse_button_actions(
     #[cfg(debug_assertions)]
     if gang_editor.iter().copied().any(is_press) {
         next.set(*MenuActionTarget::GANG_EDITOR);
+    }
+    // DEV-ONLY: the Procgen Viz button (GTW-434), cfg-gated so it never compiles into release.
+    #[cfg(debug_assertions)]
+    if procgen_viz.iter().copied().any(is_press) {
+        next.set(*MenuActionTarget::PROCGEN_VIZ);
     }
 }
 
@@ -150,6 +164,13 @@ pub(in crate::states::running::menu) fn focus_activated_actions(
             Without<DisabledButton>,
         ),
     >,
+    #[cfg(debug_assertions)] procgen_viz: Query<
+        (),
+        (
+            With<super::super::components::ProcgenVizButton>,
+            Without<DisabledButton>,
+        ),
+    >,
 ) {
     for activated in activations.read() {
         let entity = **activated;
@@ -166,6 +187,12 @@ pub(in crate::states::running::menu) fn focus_activated_actions(
         #[cfg(debug_assertions)]
         if gang_editor.contains(entity) {
             next.set(*MenuActionTarget::GANG_EDITOR);
+        }
+        // DEV-ONLY: the Procgen Viz button (GTW-434), cfg-gated so it never compiles into
+        // release. An activation aimed at it requests the visualizer transition.
+        #[cfg(debug_assertions)]
+        if procgen_viz.contains(entity) {
+            next.set(*MenuActionTarget::PROCGEN_VIZ);
         }
         // Any other entity (notably the disabled `HiveScape`, which carries
         // `DisabledButton` and so matches none of the filtered queries) is

@@ -42,6 +42,13 @@ fn add_plugins(app: &mut App) {
         // `cfg(debug_assertions)`-gated "Gang Editor" menu button — never compiles into a
         // release binary, so the editor is unreachable in release.
         .add_plugins(EditorScenePlugin);
+
+    // The DEV-ONLY procgen STEP/AUTO visualizer (GTW-434). Its whole module — including this
+    // plugin — is `#[cfg(debug_assertions)]`-gated, so a release build neither registers nor
+    // compiles it (C4). Like the gang editor, its only entry point is the
+    // `cfg(debug_assertions)`-gated "Procgen Viz" menu button.
+    #[cfg(debug_assertions)]
+    app.add_plugins(crate::states::running::ProcgenVizScenePlugin);
 }
 
 fn add_states(app: &mut App) {

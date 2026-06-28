@@ -100,6 +100,22 @@ crate::support_use! {
     };
 }
 
+// The DEV-ONLY procgen STEP/AUTO visualizer (GTW-434). The WHOLE module — model, components,
+// systems, and scene plugin — is `#[cfg(debug_assertions)]`-gated so it compiles out of a
+// release build entirely (C4); a release build never sees it.
+#[cfg(debug_assertions)]
+mod procgen_viz;
+#[cfg(debug_assertions)]
+pub(in crate::states::running) use procgen_viz::ProcgenVizScenePlugin;
+// Test-support-only re-export of the GTW-434 visualizer model + markers, gated so the binary
+// build is `unreachable_pub`-clean. Carries them up toward `crate::test_support`.
+#[cfg(all(debug_assertions, feature = "test-support"))]
+crate::support_use! {
+    procgen_viz::{
+        AutoButton, BoardQuad, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, StepButton,
+    };
+}
+
 mod options;
 pub(in crate::states::running) use options::OptionsScenePlugin;
 

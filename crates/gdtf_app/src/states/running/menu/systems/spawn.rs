@@ -197,19 +197,6 @@ pub(in crate::states::running::menu) fn spawn_menu(
         (QuitButton, DespawnOnExit(RunningState::Menu)),
     );
 
-    // DEV-ONLY "Gang Editor" button (GTW-420), cfg(debug_assertions)-gated so it never compiles
-    // into a release binary. Spawned LAST so it sits below Quit, and only in a debug build.
-    #[cfg(debug_assertions)]
-    let gang_editor = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Gang Editor"),
-        (
-            crate::states::running::menu::components::GangEditorButton,
-            DespawnOnExit(RunningState::Menu),
-        ),
-    );
-
     // Each button stretches to the panel content width (equal-width buttons).
     for button in [battlescape, options, hivescape, quit] {
         commands.entity(button).insert(Node {
@@ -217,21 +204,18 @@ pub(in crate::states::running::menu) fn spawn_menu(
             ..default()
         });
     }
-    #[cfg(debug_assertions)]
-    commands.entity(gang_editor).insert(Node {
-        width: Val::Percent(100.0),
-        ..default()
-    });
 
     // Order under root: [title, panel-box]; order under panel-box: the four
     // buttons top→bottom (Battlescape, Options, HiveScape, Quit), plus the dev-only
-    // Gang Editor button below Quit in a debug build.
+    // Gang Editor + Procgen Viz buttons below Quit in a debug build.
     commands.entity(root).add_children(&[title, panel]);
     commands
         .entity(panel)
         .add_children(&[battlescape, options, hivescape, quit]);
+    // DEV-ONLY menu buttons (GTW-420 Gang Editor + GTW-434 Procgen Viz), cfg(debug_assertions)-
+    // gated so they never compile into a release binary. Spawned + parented below Quit.
     #[cfg(debug_assertions)]
-    commands.entity(panel).add_child(gang_editor);
+    spawn_dev_menu_buttons(&mut commands, &theme, panel);
 
     // Battlescape grabs initial focus (Godot `%BattlescapeButton.grab_focus()`).
     set_initial_focus(&mut commands, battlescape);
@@ -241,4 +225,41 @@ pub(in crate::states::running::menu) fn spawn_menu(
     // NOT loop, matching the Godot menu's non-wrapping focus. The disabled
     // HiveScape is omitted (0.18.1 has no built-in skip-disabled).
     nav_map.add_edges(&[battlescape, options, quit], CompassOctant::South);
+}
+
+/// Spawns the DEV-ONLY menu buttons (the GTW-420 "Gang Editor" + the GTW-434 "Procgen Viz"),
+/// each full-width, and parents them under `panel` below Quit — `#[cfg(debug_assertions)]` ONLY,
+/// so neither the buttons nor their entry points compile into a release binary.
+///
+/// Extracted from [`spawn_menu`] so that function stays under the `too_many_lines` lint; each
+/// button carries its dev-only marker ([`GangEditorButton`](super::super::components::GangEditorButton)
+/// / [`ProcgenVizButton`](super::super::components::ProcgenVizButton)) the GTW-122 action layer
+/// maps to its `RunningState` transition, plus [`DespawnOnExit(RunningState::Menu)`] so they tear
+/// down with the rest of the menu. They are deliberately NOT wired into the focus-nav chain
+/// (dev affordances), matching the prior single-button form.
+#[cfg(debug_assertions)]
+fn spawn_dev_menu_buttons(commands: &mut Commands, theme: &GdtfTheme, panel: Entity) {
+    use crate::states::running::menu::components::{GangEditorButton, ProcgenVizButton};
+
+    let full_width = Node {
+        width: Val::Percent(100.0),
+        ..default()
+    };
+    let gang_editor = spawn_button(
+        commands,
+        theme,
+        ButtonLabel::new("Gang Editor"),
+        (GangEditorButton, DespawnOnExit(RunningState::Menu)),
+    );
+    let procgen_viz = spawn_button(
+        commands,
+        theme,
+        ButtonLabel::new("Procgen Viz"),
+        (ProcgenVizButton, DespawnOnExit(RunningState::Menu)),
+    );
+    commands.entity(gang_editor).insert(full_width.clone());
+    commands.entity(procgen_viz).insert(full_width);
+    commands
+        .entity(panel)
+        .add_children(&[gang_editor, procgen_viz]);
 }
