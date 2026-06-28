@@ -15,7 +15,7 @@ use crate::{
     cover::CoverLedger,
     ganger::GangRegistry,
     occupancy::OccupancyGrid,
-    rng::{InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
+    rng::{InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng},
     situation::{BattleRegistries, setup_battle},
     slab::SlabLedger,
     surface::SurfaceGrid,
@@ -38,13 +38,13 @@ use crate::{
 ///    against the [`TerrainRegistry`] (GTW-396). On `Ok` the sim resources
 ///    ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
 ///    [`VerticalLinkGraph`] / [`FloorCostGrid`]) and the spawned ganger entities
-///    land in the world, the five battle-lifetime per-subsystem RNG stream resources
-///    ([`ShotRng`], [`SeverityRng`], [`LootRng`], [`InjuryRng`], [`ProcgenRng`]) are
-///    inserted (derived from the message's [`BattleSeed`](crate::rng::BattleSeed) via
-///    the stable FNV-1a-64 label-hash, GTW-14; each stream independent — a draw on one
-///    cannot perturb another; all portable `ChaCha12Rng`-backed, byte-stable across
-///    builds and platforms for cross-run replay), the [`BattleInProgress`] witness is
-///    inserted (the battle-active
+///    land in the world, the six battle-lifetime per-subsystem RNG stream resources
+///    ([`ShotRng`], [`SeverityRng`], [`LootRng`], [`InjuryRng`], [`ProcgenRng`],
+///    [`ReactionRng`]) are inserted (derived from the message's
+///    [`BattleSeed`](crate::rng::BattleSeed) via the stable FNV-1a-64 label-hash,
+///    GTW-14; each stream independent — a draw on one cannot perturb another; all
+///    portable `ChaCha12Rng`-backed, byte-stable across builds and platforms for
+///    cross-run replay), the [`BattleInProgress`] witness is inserted (the battle-active
 ///    tag the [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) band
 ///    gates on), the [`PlayerFaction`] is inserted seeded from
 ///    [`Situation::player_faction`](crate::situation::Situation), the
@@ -60,7 +60,7 @@ use crate::{
 ///    [`BattleReady`] is written; on `Err` the typed
 ///    [`BattleSetupError`](crate::situation::BattleSetupError) (an invalid vertical link,
 ///    an unresolved weapon/armor/terrain key, or a below-minimum floor cost) is surfaced
-///    via [`error!`] and NEITHER the five RNG streams / [`BattleInProgress`] /
+///    via [`error!`] and NEITHER the six RNG streams / [`BattleInProgress`] /
 ///    [`PlayerFaction`] / [`BattleRoster`] / [`ActiveFaction`] NOR [`BattleReady`] is
 ///    written — the app never advances on a bad battle, the gate never opens, and a
 ///    failed setup leaves NO orphaned RNG stream resources. NO
@@ -189,8 +189,8 @@ pub fn setup_battle_on_request(
                 // directly). This is a change from the earlier sim-slice that inserted it
                 // here: the full registry-driven grid now comes from setup_battle.
 
-                // GTW-14: derive and insert the five battle-lifetime per-subsystem RNG
-                // streams from the trigger's root seed ON THE Ok PATH ONLY, so they share
+                // GTW-14 / GTW-466: derive and insert the six battle-lifetime per-subsystem
+                // RNG streams from the trigger's root seed ON THE Ok PATH ONLY, so they share
                 // exactly the BattleInProgress lifetime (removed together on teardown) and
                 // a FAILED setup_battle leaves NO orphaned RNG resources. Each stream is an
                 // independent ChaCha12Rng derived via fnv1a64(root, label); adding a draw on
@@ -201,6 +201,10 @@ pub fn setup_battle_on_request(
                 commands.insert_resource(LootRng::from_root(root));
                 commands.insert_resource(InjuryRng::from_root(root));
                 commands.insert_resource(ProcgenRng::from_root(root));
+                // GTW-466: reaction-fire RNG stream (data substrate — no draw sites yet;
+                // pinned here so its seed is fixed from the GTW-466 boundary and a future
+                // first draw replays correctly with no migration).
+                commands.insert_resource(ReactionRng::from_root(root));
 
                 commands.insert_resource(BattleInProgress);
                 commands.insert_resource(PlayerFaction::new(request.situation.player_faction));
@@ -256,19 +260,23 @@ pub fn setup_battle_on_request(
     }
 }
 
-/// Remove all five GTW-14 per-subsystem RNG stream resources from the world.
+/// Remove all six per-subsystem RNG stream resources from the world.
 ///
 /// Called during [`teardown_battle_on_request`] to clean every battle-lifetime RNG
 /// stream in one place (bevy-traps.md #1 — resources must be removed on state exit).
 /// A [`remove_resource`](Commands::remove_resource) on an absent resource is a no-op,
 /// so a spurious or double call is harmless. Defined as a standalone `fn` so the
 /// teardown system body stays focused on ordering concerns and is easy to audit.
+///
+/// GTW-466 adds [`ReactionRng`] as the sixth stream (data substrate — no draw sites
+/// yet; pinned here so its seed is fixed from the GTW-466 boundary).
 fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
     commands.remove_resource::<ShotRng>();
     commands.remove_resource::<SeverityRng>();
     commands.remove_resource::<LootRng>();
     commands.remove_resource::<InjuryRng>();
     commands.remove_resource::<ProcgenRng>();
+    commands.remove_resource::<ReactionRng>();
 }
 
 /// **Teardown** the battle on [`TeardownBattleRequested`] — remove the
@@ -276,8 +284,9 @@ fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
 /// / GTW-212).
 ///
 /// Drains [`MessageReader<TeardownBattleRequested>`] and, when triggered, removes
-/// the five per-subsystem RNG streams ([`ShotRng`] / [`SeverityRng`] / [`LootRng`]
-/// / [`InjuryRng`] / [`ProcgenRng`]) that GTW-14 inserted at setup, the
+/// the six per-subsystem RNG streams ([`ShotRng`] / [`SeverityRng`] / [`LootRng`]
+/// / [`InjuryRng`] / [`ProcgenRng`] / [`ReactionRng`]) that GTW-14 / GTW-466
+/// inserted at setup, the
 /// [`setup_battle`]-inserted resources ([`CoverLedger`] / [`SurfaceGrid`] /
 /// [`OccupancyGrid`] / [`VerticalLinkGraph`] /
 /// [`SlabLedger`] / [`TerrainIndex`](crate::terrain::entity::TerrainIndex) /

@@ -1,11 +1,11 @@
-//! Tests for the GTW-14 per-subsystem RNG streams: stream independence, replay
-//! determinism, pinned-output regression, FNV-1a-64 stability, and the entropy
-//! source scan.
+//! Tests for the GTW-14 / GTW-466 per-subsystem RNG streams: stream
+//! independence, replay determinism, pinned-output regression, FNV-1a-64
+//! stability, and the entropy source scan.
 
 use std::{fs, path::Path};
 
 use crate::rng::{
-    BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng, streams::fnv1a64,
+    BattleSeed, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng, streams::fnv1a64,
 };
 
 /// Number of consecutive draws compared when asserting stream equality or
@@ -112,8 +112,8 @@ fn streams_produce_different_sequences_from_same_root() {
 }
 
 #[test]
-fn all_five_streams_produce_distinct_sequences() {
-    // All five stream types from the same root must be pairwise distinct.
+fn all_six_streams_produce_distinct_sequences() {
+    // All six stream types from the same root must be pairwise distinct.
     let root = BattleSeed::new(0x1234_5678_9ABC_DEF0);
     let shot: Vec<u64> = {
         let mut r = ShotRng::from_root(root);
@@ -135,13 +135,18 @@ fn all_five_streams_produce_distinct_sequences() {
         let mut r = ProcgenRng::from_root(root);
         (0..STREAM_LEN).map(|_| r.next_u64()).collect()
     };
-    // Pairwise distinctness (10 pairs).
+    let reaction: Vec<u64> = {
+        let mut r = ReactionRng::from_root(root);
+        (0..STREAM_LEN).map(|_| r.next_u64()).collect()
+    };
+    // Pairwise distinctness (15 pairs for 6 streams).
     let streams = [
         ("ShotRng", &shot),
         ("SeverityRng", &sev),
         ("LootRng", &loot),
         ("InjuryRng", &injury),
         ("ProcgenRng", &procgen),
+        ("ReactionRng", &reaction),
     ];
     for i in 0..streams.len() {
         for j in (i + 1)..streams.len() {

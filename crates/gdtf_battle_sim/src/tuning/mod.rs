@@ -27,6 +27,9 @@
 //! - [`firing_arc`] — the GTW-242 firing arc.
 //! - [`visibility`] — the GTW-338 squad fog-of-war view range + explored dim.
 //! - [`slab`] — the GTW-365 slab-defaults (uniform HP + armor a struck slab seeds to).
+//! - [`reaction`] — the GTW-466 §8 reaction-fire tuning group
+//!   ([`ReactionTuning`] + four leaves + pure functions [`reaction_cap`] /
+//!   [`clamp_probability`]).
 //! - [`combat_tuning`] — the top-level [`CombatTuning`] resource composing them all.
 //! - [`stat_tuning`] — the GTW-384 [`GangerStatTuning`] resource: the attribute →
 //!   computed-stat derivation weights / divisors / TU params (a SEPARATE store from
@@ -40,6 +43,7 @@ mod cone_groups;
 mod economy;
 mod firing_arc;
 mod matchup;
+mod reaction;
 mod severity;
 mod slab;
 mod stat_tuning;
@@ -64,6 +68,10 @@ pub use cone_groups::{
 pub use economy::{LinkTu, MoveCost, MoveCosts, StanceChangeTu, TurnTu};
 pub use firing_arc::FiringArc;
 pub use matchup::MatchupMultipliers;
+pub use reaction::{
+    ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin, ReactionTuning,
+    clamp_probability, reaction_cap,
+};
 pub use severity::{
     DefenderLuckScale, PenDamageScale, RandomSpread, SeverityEdge, SeverityEdges, SeverityScaling,
     ShooterLuckScale, ToughnessMitigation,

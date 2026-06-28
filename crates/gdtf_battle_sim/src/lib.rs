@@ -2,7 +2,7 @@
 //! system — **the MODEL**.
 //!
 //! This crate owns combat truth: deterministic, unit-testable with an injected
-//! seeded RNG streams ([`rng::ShotRng`] / [`rng::SeverityRng`] / [`rng::LootRng`] / [`rng::InjuryRng`] / [`rng::ProcgenRng`]), and presentation-agnostic — it reasons in the
+//! seeded RNG streams ([`rng::ShotRng`] / [`rng::SeverityRng`] / [`rng::LootRng`] / [`rng::InjuryRng`] / [`rng::ProcgenRng`] / [`rng::ReactionRng`]), and presentation-agnostic — it reasons in the
 //! cubic-voxel sim metric ([`metric`]: cells on x/y, levels on z, over the
 //! 60×60×8 grid), **never in pixels**. It depends on Bevy only for ECS plumbing
 //! (resources, components, messages) — never a renderer, window, or asset-server.
@@ -339,7 +339,7 @@ pub use foundation::{
     metric,
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
     rng,
-    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
+    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng},
 };
 pub use level::{
     CatalogTile, CatalogTileKind, EdgeOpening, GridHeight, GridLevels, GridSize, GridSizeError,
@@ -456,9 +456,11 @@ pub use tuning::{
     ConcentrationCoeff, ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu,
     FightWeights, GangerStatTuning, HpWeights, MatchupMultipliers, MoraleWeights, MoveCost,
     MoveCosts, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale,
-    ProjectileBandEdges, RandomSpread, ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges,
+    ProjectileBandEdges, RandomSpread, ReactionCapBase, ReactionCapPerReactions, ReactionPMax,
+    ReactionPMin, ReactionTuning, ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges,
     SeverityScaling, ShooterLuckScale, ShootingWeights, SilhouetteTop, SilhouetteTops,
     SlabDefaultHp, SlabDefaults, StabilityCurve, StabilityCurveCoord, StabilityCurvePoint,
     StabilityCurves, StabilizeTu, StanceChangeTu, StanceContribution, StanceStability, StatWeight,
     ToughnessMitigation, TuBase, TuPerSpeed, TurnTu, WoundCost, WoundCosts, WoundsPerHp,
+    clamp_probability, reaction_cap,
 };

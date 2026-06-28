@@ -4,7 +4,7 @@
 //! `docs/combat/resolution.md` is unambiguous — the resolution math is
 //! **deterministic** and "**every draw comes from the model-owned seeded RNG,
 //! injected once at setup**". GTW-14 replaces the former single `SimRng` with
-//! five INDEPENDENT per-subsystem stream [`Resource`](bevy::prelude::Resource)s,
+//! INDEPENDENT per-subsystem stream [`Resource`](bevy::prelude::Resource)s,
 //! each derived from the same [`BattleSeed`] root via a stable label-hash:
 //!
 //! ```text
@@ -24,10 +24,11 @@
 //! | [`ShotRng`] | §1 trajectory sample + §4 body-part roll |
 //! | [`SeverityRng`] | §6 roll term |
 //! | [`LootRng`] | reserved |
-//! | [`InjuryRng`] | reserved |
+//! | [`InjuryRng`] | in-battle injury roll (GTW-438) |
 //! | [`ProcgenRng`] | reserved |
+//! | [`ReactionRng`] | reserved — reaction-fire (GTW-466 substrate) |
 //!
-//! All five are inserted at battle setup (from [`BattleSeed`]) and removed at
+//! All six are inserted at battle setup (from [`BattleSeed`]) and removed at
 //! teardown. Reserved streams draw nothing and cannot perturb active streams.
 //!
 //! ## Draw surface — `impl_sim_stream!`
@@ -48,4 +49,4 @@ pub(super) mod streams;
 mod test;
 
 pub use seeded::BattleSeed;
-pub use streams::{InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng};
+pub use streams::{InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng};

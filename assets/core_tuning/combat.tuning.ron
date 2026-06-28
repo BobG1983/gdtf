@@ -211,4 +211,17 @@
     // STARTING POINT (tunable).
     explored_dim: 0.55,  // EXPLORED terrain RGB modulate (alpha untouched); 0..=1
 
+    // §8 Reaction-fire tuning (GTW-466 data substrate; resolution.md §8). No system
+    // reads these yet — the opposed-check core is GTW-467 and the live trigger GTW-468.
+    // cap formula: floor(cap_base + cap_per_reactions × Reactions)
+    // DESIGN FORK: cap formula TBD (resolution.md §8 line 192) — defaults are
+    // defensible-but-arbitrary starting points, never pinned by magnitude tests.
+    // p_min / p_max: resolution.md §8 example values (0.05 / 0.95).
+    reaction: (
+        cap_base:          1.0,  // additive floor of the interrupt cap; even zero-Reactions gangers get floor(1.0) = 1 interrupt
+        cap_per_reactions: 0.5,  // per-Reactions slope; each whole unit of Reactions adds 0.5 before floor
+        p_min:             0.05, // probability floor: P(interrupt) is never below this (resolution.md §8)
+        p_max:             0.95, // probability ceiling: P(interrupt) is never above this (resolution.md §8)
+    ),
+
 )

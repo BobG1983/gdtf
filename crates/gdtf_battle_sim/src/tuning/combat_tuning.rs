@@ -11,6 +11,7 @@ use crate::tuning::{
     economy::{LinkTu, MoveCosts, StanceChangeTu, TurnTu},
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
+    reaction::ReactionTuning,
     severity::SeverityScaling,
     visibility::{ExploredDim, ViewRange},
     wounds::{BleedRate, ExecuteTu, StabilizeTu, WoundCosts},
@@ -102,4 +103,15 @@ pub struct CombatTuning {
     /// model + RON + the parse/default tests); a future ticket repurposes or retires it.
     /// Tunable, mirroring the other tuning leaves.
     pub explored_dim:          ExploredDim,
+    /// The §8 reaction-fire tuning group (GTW-466) — the cap formula inputs
+    /// ([`ReactionCapBase`](crate::tuning::ReactionCapBase) /
+    /// [`ReactionCapPerReactions`](crate::tuning::ReactionCapPerReactions)) and the
+    /// probability clamp
+    /// ([`ReactionPMin`](crate::tuning::ReactionPMin) /
+    /// [`ReactionPMax`](crate::tuning::ReactionPMax)) from `docs/combat/resolution.md` §8.
+    ///
+    /// **Data substrate only** (GTW-466 child A) — no system reads these leaves yet;
+    /// the opposed-check core is GTW-467 and the live trigger is GTW-468.
+    /// Authored in `assets/core_tuning/combat.tuning.ron` under `reaction:`.
+    pub reaction:              ReactionTuning,
 }

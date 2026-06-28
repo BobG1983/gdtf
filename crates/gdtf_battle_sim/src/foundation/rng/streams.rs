@@ -293,3 +293,17 @@ impl_sim_stream!(
     ProcgenRng,
     b"gdtf.rng.procgen.v1"
 );
+
+impl_sim_stream!(
+    /// The **reaction-fire** RNG stream (GTW-466 data substrate — reserved).
+    ///
+    /// Inserted at battle setup alongside the other streams so its label and initial
+    /// state are pinned from the GTW-466 boundary. No draw sites exist yet — the
+    /// opposed-check core is GTW-467, the live trigger GTW-468. Adding this stream
+    /// does NOT perturb any existing stream's seed (each depends only on its own
+    /// label via the FNV-1a-64 derivation).
+    ///
+    /// No system may take `Res<ReactionRng>` — see the module binding constraint.
+    ReactionRng,
+    b"gdtf.rng.reaction.v1"
+);

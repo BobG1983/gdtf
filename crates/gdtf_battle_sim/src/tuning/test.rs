@@ -5,6 +5,60 @@
 use super::*;
 use crate::{cover::HeightBand, occupancy::TerrainKind};
 
+// ── GTW-466 reaction-tuning leaf tests ───────────────────────────────────────
+
+/// GTW-466 C2 — the §8 reaction-fire tuning leaves parse from the shipped
+/// `assets/core_tuning/combat.tuning.ron` (real-path parse-OK test).
+///
+/// Value-agnostic: asserts only that the four reaction leaves are PRESENT and
+/// parse deterministically across two parses (never the exact magnitudes — the
+/// cap inputs and probability clamp are tunable balance data). The `p_min < p_max`
+/// ordering invariant is the ONE structural relation that the shipped values
+/// must satisfy (no ganger can be both floored and ceilinged; `p_min >= p_max`
+/// would make `clamp_probability` pathological).
+#[test]
+fn shipped_reaction_leaves_parse_and_satisfy_ordering_invariant() {
+    const SHIPPED_TUNING_RON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/core_tuning/combat.tuning.ron"
+    ));
+
+    let Ok(tuning) = ron::from_str::<CombatTuning>(SHIPPED_TUNING_RON) else {
+        // The parent `shipped_tuning_ron_deserializes` test already guards the
+        // parse-OK path; if we are here a prior test failure will catch it.
+        return;
+    };
+    let Ok(reparsed) = ron::from_str::<CombatTuning>(SHIPPED_TUNING_RON) else {
+        return;
+    };
+
+    // The four reaction leaves parse deterministically (present + stable).
+    assert_eq!(
+        tuning.reaction.cap_base, reparsed.reaction.cap_base,
+        "shipped reaction.cap_base must be present and parse deterministically",
+    );
+    assert_eq!(
+        tuning.reaction.cap_per_reactions, reparsed.reaction.cap_per_reactions,
+        "shipped reaction.cap_per_reactions must be present and parse deterministically",
+    );
+    assert_eq!(
+        tuning.reaction.p_min, reparsed.reaction.p_min,
+        "shipped reaction.p_min must be present and parse deterministically",
+    );
+    assert_eq!(
+        tuning.reaction.p_max, reparsed.reaction.p_max,
+        "shipped reaction.p_max must be present and parse deterministically",
+    );
+
+    // The ONE structural ordering invariant: p_min < p_max (the clamp is
+    // well-defined — value-agnostic, never the exact 0.05 / 0.95 magnitudes).
+    assert!(
+        *tuning.reaction.p_min < *tuning.reaction.p_max,
+        "shipped reaction.p_min must be strictly less than reaction.p_max so the \
+         probability clamp is well-defined",
+    );
+}
+
 /// Each tuning newtype wraps the right inner type and its derived [`Deref`]
 /// reaches that inner value (C9/C10/C11 mandate a derived `Deref` on every
 /// tuning newtype; this exercises that surface so dropping the derive would

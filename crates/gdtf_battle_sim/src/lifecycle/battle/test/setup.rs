@@ -8,6 +8,7 @@
 use bevy::prelude::{Commands, World};
 
 use super::support::*;
+use crate::rng::ReactionRng;
 
 // === AC2 — SetupBattleRequested seeds the five RNG streams (from the message's seed)
 // + runs setup_battle, emitting BattleReady on success; the seed threads through. ===
@@ -327,5 +328,58 @@ fn failed_setup_inserts_no_battle_in_progress() {
     assert!(
         app.world().get_resource::<PlayerFaction>().is_none(),
         "a FAILED setup must NOT insert PlayerFaction (the Ok-only seed)",
+    );
+}
+
+// === GTW-466 C3 — ReactionRng shares the BattleInProgress lifetime: PRESENT after
+// a successful setup, ABSENT after teardown. ===
+
+/// GTW-466 C3 — [`ReactionRng`] is PRESENT after a successful battle setup and
+/// ABSENT after teardown, sharing the [`BattleInProgress`] lifetime exactly.
+///
+/// The headless app mirrors the real path (the same `BattleSimPlugin` the game
+/// uses); no mock, no stub — `setup_battle_on_request` runs on the real
+/// [`Commands`] path.
+#[test]
+fn reaction_rng_present_after_setup_and_absent_after_teardown() {
+    let mut app = headless_app();
+
+    // ABSENT before any setup.
+    assert!(
+        app.world().get_resource::<ReactionRng>().is_none(),
+        "GTW-466: ReactionRng must be absent before any battle setup",
+    );
+
+    // PRESENT after a successful setup.
+    app.world_mut().write_message(SetupBattleRequested::new(
+        two_ganger_situation(),
+        BattleSeed::new(SEED),
+    ));
+    app.update();
+    assert_eq!(
+        drain_battle_ready(&mut app),
+        1,
+        "the fixture setup must succeed (one BattleReady) — precondition for GTW-466 C3",
+    );
+    assert!(
+        app.world().get_resource::<ReactionRng>().is_some(),
+        "GTW-466 C3: ReactionRng must be PRESENT after a successful battle setup",
+    );
+    // Also verify BattleInProgress is present (the witness we share a lifetime with).
+    assert!(
+        app.world().get_resource::<BattleInProgress>().is_some(),
+        "GTW-466 C3 precondition: BattleInProgress must be present alongside ReactionRng",
+    );
+
+    // ABSENT after teardown.
+    app.world_mut().write_message(TeardownBattleRequested);
+    app.update();
+    assert!(
+        app.world().get_resource::<ReactionRng>().is_none(),
+        "GTW-466 C3: ReactionRng must be ABSENT after teardown (same lifetime as BattleInProgress)",
+    );
+    assert!(
+        app.world().get_resource::<BattleInProgress>().is_none(),
+        "GTW-466 C3: BattleInProgress must be absent alongside ReactionRng after teardown",
     );
 }
