@@ -9,10 +9,12 @@
 //!
 //! Before the shot the capture drives the shell into a legible state: it shrinks the canvas to a
 //! modest `16 × 16` grid (the full `60 × 60` is too dense to read — GTW-423 C5; `16` is the
-//! smallest size that exposes the GTW-463 box-model wrap bug pre-fix) and selects the first
-//! palette tile (GTW-422 C5), so the captured frame shows the populated palette, a highlighted
-//! row, the bottom-right stats, and the dashed canvas boundary + per-cell dashes + default-floor
-//! fill.
+//! smallest size that exposes the GTW-463 box-model wrap bug pre-fix), selects the first palette
+//! tile (GTW-422 C5), PAINTS a small block of cells with a tile distinct from the default-floor,
+//! and hovers a cell so the translucent ghost shows over it (GTW-426 C4) — so the captured frame
+//! shows the populated palette, a highlighted row, the bottom-right stats, the dashed canvas
+//! boundary + per-cell dashes + default-floor fill, AND a painted (non-default) block beside the
+//! hover ghost.
 //!
 //! It mirrors the `gdtf_ui` `scroll_list_demo` capture mechanism: a
 //! [`Screenshot::primary_window`] spawned with a [`save_to_disk`] observer, then a poll for
@@ -25,11 +27,18 @@ use bevy::{
     prelude::*,
     render::view::window::screenshot::{Screenshot, save_to_disk},
     state::state::OnEnter,
+    ui::widget::ImageNode,
 };
-use gdtf_battle_sim::level::{GridHeight, GridLevels, GridSize, GridWidth};
+use gdtf_battle_sim::{
+    Cell,
+    level::{GridHeight, GridLevels, GridSize, GridWidth, ThemeCatalogRegistry, TileKey},
+};
 use gdtf_ui::ActiveButton;
 
-use crate::{EditorState, PaletteRow, session::MapEditorSession};
+use crate::{
+    CanvasCell, EditorMap, EditorState, PaletteRow, canvas::follow_hover_ghost,
+    session::MapEditorSession,
+};
 
 /// The modest, legible grid edge the capture shrinks the canvas to before the shot — a `16 × 16`
 /// (× 1 level) drawable area, so the dashed boundary + per-cell dashes + the default-floor fill
@@ -140,6 +149,10 @@ impl Plugin for EditorCapturePlugin {
                 (
                     drive_capture_grid_size,
                     drive_capture_selection,
+                    // Paint + write the hover BEFORE the live `follow_hover_ghost` reads it, so the
+                    // manual `Interaction::Hovered` drives the real ghost-snap (the windowed
+                    // `ui_focus_system` clears it each PreUpdate, so this re-asserts it every frame).
+                    drive_capture_paint_and_ghost.before(follow_hover_ghost),
                     settle_then_capture,
                     poll_then_exit,
                 )
@@ -211,6 +224,101 @@ fn drive_capture_grid_size(session: Option<ResMut<MapEditorSession>>) {
         GridLevels::new(1),
     ) {
         session.set_grid_size(size);
+    }
+}
+
+/// `Update` (in `Editing`, capture-only): PAINT a few cells + hover a cell so the captured frame
+/// demonstrates the GTW-426 interactivity — at least one painted (non-default) cell AND the
+/// translucent ghost over a hovered cell (GTW-426 C4).
+///
+/// Two halves:
+///
+/// 1. PAINT (once): resolves a paint tile DISTINCT from the theme default-floor (so the painted
+///    cells read clearly), records a small block of cells in the [`EditorMap`] (clamped — C3), and
+///    rewrites those cells' [`ImageNode`] atlas indices to the painted tile — the same effect the
+///    live [`paint_cell`](crate::canvas::paint_cell) produces, driven directly (the windowed
+///    `ui_focus_system` would clear a synthesized `Interaction::Pressed`, the
+///    `drive_capture_selection` precedent). Idempotent (no-ops once the model holds paints).
+/// 2. HOVER (every frame): writes [`Interaction::Hovered`] on a cell adjacent to the painted block
+///    AND sets it as the session's selected tile, so the REAL
+///    [`follow_hover_ghost`](crate::canvas::follow_hover_ghost) — ordered AFTER this — shows + snaps
+///    the ghost. This drives the live ghost path rather than poking the ghost directly: it is
+///    ordered before `follow_hover_ghost` (which runs in PreUpdate-fed `Update`), so the manual
+///    `Hovered` survives into the follow read. Running it every frame re-asserts the hover after
+///    the windowed `ui_focus_system` clears it each `PreUpdate`.
+fn drive_capture_paint_and_ghost(
+    registry: Option<Res<ThemeCatalogRegistry>>,
+    mut session: Option<ResMut<MapEditorSession>>,
+    mut map: Option<ResMut<EditorMap>>,
+    mut cells: Query<(&CanvasCell, &mut ImageNode, &mut Interaction)>,
+) {
+    let (Some(registry), Some(session), Some(map)) = (registry, session.as_mut(), map.as_mut())
+    else {
+        return;
+    };
+    // A tile distinct from the theme default-floor, so the painted cells read as different.
+    let Some((paint_key, paint_index)) = distinct_paint_tile(&registry, session) else {
+        return;
+    };
+    // Keep that tile selected so the ghost previews it (and the palette stat region matches).
+    session.select_tile(paint_key.clone());
+    let size = session.grid_size();
+
+    // PAINT a small block once (idempotent — skip if the model already holds paints).
+    if map.painted_count() == 0 {
+        paint_block(map, &mut cells, &paint_key, paint_index, size);
+    }
+
+    // HOVER a cell adjacent to the painted block so the live follow shows the ghost there.
+    let hover = Cell::new(BLOCK, 1);
+    for (canvas_cell, _, mut interaction) in &mut cells {
+        if canvas_cell.cell() == hover {
+            *interaction = Interaction::Hovered;
+        }
+    }
+}
+
+/// The painted block edge for the capture — a `BLOCK × BLOCK` square of painted cells near the
+/// canvas top-left, large enough to read clearly in the shot. A framework plumbing const.
+const BLOCK: i32 = 3;
+
+/// Resolve a catalog tile of the session's theme whose atlas index DIFFERS from the default-floor,
+/// returning its key + index — so a painted cell reads visibly different in the capture.
+fn distinct_paint_tile(
+    registry: &ThemeCatalogRegistry,
+    session: &MapEditorSession,
+) -> Option<(TileKey, usize)> {
+    let catalog = registry.catalog(session.theme())?;
+    let default_index = catalog.default_floor().map(|tile| *tile.atlas_index)?;
+    catalog.tiles().find_map(|(key, tile)| {
+        (*tile.atlas_index != default_index).then(|| (key.clone(), *tile.atlas_index))
+    })
+}
+
+/// Paint a `BLOCK × BLOCK` block of cells into the model + redraw their sprites. Mirrors the live
+/// `paint_cell` effect (model write + in-place sprite redraw) for each cell in the block, driven
+/// directly (no `Interaction`).
+fn paint_block(
+    map: &mut EditorMap,
+    cells: &mut Query<(&CanvasCell, &mut ImageNode, &mut Interaction)>,
+    paint_key: &TileKey,
+    paint_index: usize,
+    size: GridSize,
+) {
+    let block: Vec<Cell> = (0..BLOCK)
+        .flat_map(|x| (0..BLOCK).map(move |y| Cell::new(x, y)))
+        .collect();
+    for cell in block {
+        if !map.paint(cell, paint_key.clone(), size) {
+            continue;
+        }
+        for (canvas_cell, mut node, _) in cells.iter_mut() {
+            if canvas_cell.cell() == cell
+                && let Some(atlas) = node.texture_atlas.as_mut()
+            {
+                atlas.index = paint_index;
+            }
+        }
     }
 }
 

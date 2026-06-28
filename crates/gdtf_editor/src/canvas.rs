@@ -43,14 +43,19 @@
 
 use bevy::{
     prelude::*,
-    ui::{BorderColor, FlexDirection, FlexWrap, Val, widget::ImageNode},
+    ui::{BorderColor, FlexDirection, FlexWrap, PositionType, Val, widget::ImageNode},
 };
-use gdtf_battle_sim::level::{
-    GridHeight, GridSize, GridWidth, LevelTheme, ThemeCatalogRegistry, TileAtlasIndex,
+use gdtf_battle_sim::{
+    Cell,
+    level::{
+        GridHeight, GridSize, GridWidth, LevelTheme, ThemeCatalogRegistry, TileAtlasIndex, TileKey,
+    },
 };
 use gdtf_ui::{ScrollListArea, ScrollListColors, spawn_scroll_list, theme::GdtfTheme};
 
-use crate::{CanvasRegion, session::MapEditorSession, tile_atlas::TileAtlas};
+use crate::{
+    CanvasRegion, editor_map::EditorMap, session::MapEditorSession, tile_atlas::TileAtlas,
+};
 
 /// One drawable cell's square edge, in screen pixels — the chosen canvas SCALE (the GTW-423
 /// open design decision).
@@ -128,10 +133,46 @@ impl CanvasExtent {
 }
 
 /// Marker on one drawable CELL — a pre-filled [`ImageNode`] carrying the theme's default-floor
-/// tile sprite (C3) and its own per-cell dimmed-dash border (C2). A unit marker (no-bare-types);
-/// the test counts these to assert one fill per `width × height` cell.
+/// tile sprite (C3) and its own per-cell dimmed-dash border (C2). The test counts these to
+/// assert one fill per `width × height` cell.
+///
+/// Carries the cell's ground-plane [`Cell`] coordinate (GTW-426): the canvas spawns cells in
+/// row-major order, so cell index `i` is `(x = i % width, y = i / width)`. Storing the [`Cell`]
+/// (the sim's coordinate newtype — no-bare-types, NOT a bare index) lets the hover-ghost and the
+/// click-to-paint flow speak the same coordinate vocabulary as the [`EditorMap`] model. A
+/// `Button` is `#[require]`d on the cell so the engine's `ui_focus_system` drives its
+/// [`Interaction`] (hover + click) under `DefaultPlugins` (bevy-traps #6).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct CanvasCell;
+pub struct CanvasCell {
+    /// The cell's ground-plane coordinate (`x` in `0..width`, `y` in `0..height`). The key the
+    /// hover-ghost snaps to and the click-to-paint flow writes into the [`EditorMap`].
+    cell: Cell,
+}
+
+impl CanvasCell {
+    /// Build a canvas-cell marker for a ground-plane [`Cell`] coordinate.
+    #[must_use]
+    const fn new(cell: Cell) -> Self {
+        Self { cell }
+    }
+
+    /// The cell's ground-plane coordinate — the key the ghost snaps to and the paint flow writes.
+    #[must_use]
+    pub const fn cell(&self) -> Cell {
+        self.cell
+    }
+}
+
+/// Marker on the single overlay **hover ghost** — a translucent preview [`ImageNode`] of the
+/// selected tile that snaps to the hovered cell (GTW-426 C1).
+///
+/// A unit marker (no-bare-types). ONE persistent ghost entity (the ui-mutate rule: it is
+/// re-parented + retinted in place, never respawned per hover). It is re-parented under the
+/// hovered [`CanvasCell`] (so it tracks that cell's layout for free — the snap) and shown only
+/// while a [`CanvasCell`] is [`Interaction::Hovered`] AND a tile is selected; otherwise hidden.
+/// Its reduced-alpha tint reads it as a PREVIEW, distinct from a painted cell.
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+pub struct CanvasGhost;
 
 /// The grid + theme a [`CanvasRoot`] was last built for — the [`sync_canvas`] rebuild tracker.
 ///
@@ -164,16 +205,30 @@ pub(crate) struct CanvasBuiltFor {
 /// new root under the [`CanvasRegion`]'s [`ScrollListArea`] (the GTW-421 parenting rule). The
 /// last-built `(size, theme)` is tracked in a [`Local`] so an unrelated session mutation (a
 /// palette selection) never triggers a needless rebuild.
+///
+/// PAINT PERSISTENCE across a rebuild (GTW-426 C2): the authoritative paints live in the
+/// [`EditorMap`] model, NOT on the cell entities — so a size/theme rebuild that despawns + respawns
+/// the cells does NOT lose them. As each cell is respawned its fill is taken from the model first
+/// (a painted cell shows its painted tile) and falls back to the theme default-floor only where the
+/// model has no entry. So a paint survives an unrelated rebuild rather than being silently wiped.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a Bevy system's params are framework plumbing, not a wide function signature; the \
+              canvas sync legitimately reads theme + atlas + the two catalog sources + the paint \
+              model + the existing roots + the rebuild tracker"
+)]
 pub(crate) fn sync_canvas(
     mut commands: Commands,
     theme: Res<GdtfTheme>,
     atlas: Option<Res<TileAtlas>>,
     registry: Option<Res<ThemeCatalogRegistry>>,
     session: Option<Res<MapEditorSession>>,
+    map: Option<Res<EditorMap>>,
     roots: Query<Entity, With<CanvasRoot>>,
     mut built_for: Local<Option<CanvasBuiltFor>>,
 ) {
-    let (Some(atlas), Some(registry), Some(session)) = (atlas, registry, session) else {
+    let (Some(atlas), Some(registry), Some(session), Some(map)) = (atlas, registry, session, map)
+    else {
         return;
     };
     let current = CanvasBuiltFor {
@@ -195,7 +250,16 @@ pub(crate) fn sync_canvas(
         commands.entity(root).despawn();
     }
     let extent = CanvasExtent::from_grid(current.size);
-    spawn_canvas(&mut commands, &theme, &atlas, extent, fill_index);
+    spawn_canvas(
+        &mut commands,
+        &theme,
+        &atlas,
+        &registry,
+        &session,
+        &map,
+        extent,
+        fill_index,
+    );
     *built_for = Some(current);
 }
 
@@ -220,22 +284,232 @@ fn resolve_default_floor_index(
     Some(tile.atlas_index)
 }
 
+/// Resolve a PAINTED tile's atlas index — the index a painted cell's fill sprite shows (C2).
+///
+/// Looks the painted [`TileKey`] up in the active `theme`'s catalog and returns its
+/// [`CatalogTile`](gdtf_battle_sim::level::CatalogTile)'s
+/// [`TileAtlasIndex`](gdtf_battle_sim::level::TileAtlasIndex), or [`None`] if the theme has no
+/// catalog / the key names no tile (a stale paint after a theme switch — the cell then falls back
+/// to the default-floor fill rather than panicking).
+fn paint_index(
+    registry: &ThemeCatalogRegistry,
+    theme: LevelTheme,
+    key: &TileKey,
+) -> Option<TileAtlasIndex> {
+    registry
+        .catalog(theme)
+        .and_then(|catalog| catalog.tile(key))
+        .map(|tile| tile.atlas_index)
+}
+
+/// The press-edge query filter [`paint_cell`] reads — a [`CanvasCell`] whose [`Interaction`]
+/// changed this frame. A named alias to keep the system signature under clippy's
+/// `type_complexity` gate (the `palette::PressedRow` precedent).
+type PressedCell = (Changed<Interaction>, With<CanvasCell>);
+
+/// `Update` (in `Editing`): a clicked canvas cell PAINTS it with the active palette tile — writes
+/// the [`EditorMap`] model AND redraws the cell's fill sprite (GTW-426 C2 + C3).
+///
+/// Reads `Changed<Interaction> == Pressed` on the [`CanvasCell`] buttons (the engine's
+/// `ui_focus_system` drives [`Interaction`] under `DefaultPlugins`; headless tests set it directly
+/// then run `Update` — the GTW-422 `select_palette_tile` / dropdown-widget `press` precedent). On
+/// a press, when a tile is SELECTED ([`MapEditorSession::selected_tile`]), it:
+///
+/// 1. records the paint in the [`EditorMap`] (clamped to the drawable extent — C3; a click on a
+///    cell outside the grid never spawns a [`CanvasCell`] anyway, so in normal play every painted
+///    cell is in-bounds, but the model clamp is the authoritative backstop), and
+/// 2. mutates that cell's [`ImageNode`] atlas index IN PLACE to the painted tile's index (the
+///    ui-mutate-not-respawn rule — never rebuild the whole grid for one paint), so the cell
+///    immediately reflects the painted tile.
+///
+/// With no selected tile a click is a no-op (the contract: the ghost is hidden, nothing paints).
+pub(crate) fn paint_cell(
+    pressed: Query<(Entity, &Interaction, &CanvasCell), PressedCell>,
+    registry: Option<Res<ThemeCatalogRegistry>>,
+    session: Option<Res<MapEditorSession>>,
+    map: Option<ResMut<EditorMap>>,
+    mut cells: Query<&mut ImageNode, With<CanvasCell>>,
+) {
+    let (Some(registry), Some(session), Some(mut map)) = (registry, session, map) else {
+        return;
+    };
+    let Some(selected) = session.selected_tile() else {
+        // No active paint tile — a click paints nothing (the ghost is also hidden).
+        return;
+    };
+    let Some(index) = paint_index(&registry, session.theme(), selected) else {
+        // The selected tile has no resolvable sprite in the active theme — do not paint.
+        return;
+    };
+    for (entity, interaction, cell) in &pressed {
+        if !matches!(interaction, Interaction::Pressed) {
+            continue;
+        }
+        // Record the paint (clamped to the drawable extent — C3); only redraw if it took.
+        if map.paint(cell.cell(), selected.clone(), session.grid_size())
+            && let Ok(mut node) = cells.get_mut(entity)
+            && let Some(atlas) = node.texture_atlas.as_mut()
+        {
+            atlas.index = *index;
+        }
+    }
+}
+
+/// The reduced alpha a [`CanvasGhost`]'s preview sprite is tinted to, so it reads as a PREVIEW
+/// distinct from a painted cell (GTW-426 C1). A framework presentation magnitude (the clause-4
+/// plumbing carve-out, the `canvas::dimmed` alpha-halving precedent), fed to the ghost
+/// [`ImageNode`]'s color.
+const GHOST_ALPHA: f32 = 0.55;
+
+/// `Update` (in `Editing`): spawn the single persistent hover-ghost overlay node (hidden) once,
+/// the preview sprite the hover-ghost flow snaps to the hovered cell (GTW-426 C1).
+///
+/// An `Update` system (not `OnEnter`) because it reads the [`TileAtlas`], inserted via deferred
+/// `Commands` on `OnEnter(Editing)` — an `OnEnter` spawn chained after the atlas insert would NOT
+/// see it (the GTW-421 / GTW-422 command-flush race; the `sync_canvas` / `sync_palette` precedent).
+/// Idempotent: it no-ops once a [`CanvasGhost`] exists, so it spawns exactly one ghost the first
+/// frame the atlas is present.
+///
+/// ONE [`CanvasGhost`] entity (the ui-mutate rule: re-parented + retinted in place per hover,
+/// never respawned). It starts [`Visibility::Hidden`] — [`follow_hover_ghost`] shows it, sets its
+/// sprite to the selected tile, and re-parents it under the hovered cell. A [`GlobalZIndex`]
+/// strictly above the cells (bevy-traps #8) so the translucent preview paints OVER the cell fill
+/// rather than behind it. Spawned detached (no parent); the follow system parents it under the
+/// hovered cell each frame.
+pub(crate) fn spawn_hover_ghost(
+    mut commands: Commands,
+    atlas: Option<Res<TileAtlas>>,
+    existing: Query<(), With<CanvasGhost>>,
+) {
+    let Some(atlas) = atlas else {
+        return;
+    };
+    if !existing.is_empty() {
+        // The ghost already exists — spawn exactly one (the ui-mutate rule).
+        return;
+    }
+    commands.spawn((
+        CanvasGhost,
+        ImageNode::from_atlas_image(
+            atlas.image(),
+            TextureAtlas {
+                layout: atlas.layout(),
+                index:  0,
+            },
+        )
+        .with_color(Color::srgba(1.0, 1.0, 1.0, GHOST_ALPHA)),
+        ghost_node(),
+        // Above the cells (bevy-traps #8) so the preview paints over the cell fill.
+        GlobalZIndex(1),
+        Visibility::Hidden,
+    ));
+}
+
+/// `Update` (in `Editing`): snap the hover-ghost to the hovered cell, or hide it (GTW-426 C1).
+///
+/// Drives the ghost off the [`CanvasCell`] the engine's `ui_focus_system` marked
+/// [`Interaction::Hovered`] (bevy-traps #6 — under `DefaultPlugins` real mouse hover already sets
+/// this; headless tests set it directly + run `Update`). When a cell is hovered AND a tile is
+/// selected, it:
+///
+/// 1. sets the ghost sprite to the SELECTED tile's atlas index (so the preview shows what would be
+///    painted), and
+/// 2. re-parents the ghost under the hovered cell — an absolute-positioned node filling the cell,
+///    so it SNAPS to (and tracks the layout of) the hovered cell for free — and shows it.
+///
+/// When NO cell is hovered, or NO tile is selected, the ghost is hidden (C1). Mutates the one
+/// persistent ghost in place (the ui-mutate rule); never respawns it.
+pub(crate) fn follow_hover_ghost(
+    mut commands: Commands,
+    registry: Option<Res<ThemeCatalogRegistry>>,
+    session: Option<Res<MapEditorSession>>,
+    cells: Query<(Entity, &Interaction), With<CanvasCell>>,
+    mut ghost: Query<(Entity, &mut ImageNode, &mut Visibility), With<CanvasGhost>>,
+) {
+    let Ok((ghost_entity, mut ghost_node, mut visibility)) = ghost.single_mut() else {
+        return;
+    };
+    let hovered = cells.iter().find_map(|(entity, interaction)| {
+        matches!(interaction, Interaction::Hovered).then_some(entity)
+    });
+    let selected_index = match (registry, session) {
+        (Some(registry), Some(session)) => session
+            .selected_tile()
+            .and_then(|key| paint_index(&registry, session.theme(), key)),
+        _ => None,
+    };
+    let (Some(hovered), Some(index)) = (hovered, selected_index) else {
+        // Not over a cell, or no tile selected — hide the ghost (C1).
+        *visibility = Visibility::Hidden;
+        return;
+    };
+    if let Some(atlas) = ghost_node.texture_atlas.as_mut() {
+        atlas.index = *index;
+    }
+    *visibility = Visibility::Visible;
+    // Re-parent under the hovered cell so the absolute-positioned ghost snaps to it.
+    commands.entity(ghost_entity).insert(ChildOf(hovered));
+}
+
+/// The hover-ghost overlay's [`Node`]: absolutely positioned to FILL its parent cell (inset 0 on
+/// every edge), so once parented under the hovered [`CanvasCell`] it covers exactly that cell —
+/// the snap. Absolute so it sits over the cell's content without disturbing the grid flex layout.
+fn ghost_node() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(0.0),
+        top: Val::Px(0.0),
+        right: Val::Px(0.0),
+        bottom: Val::Px(0.0),
+        ..default()
+    }
+}
+
 /// Build the canvas: the [`CanvasRoot`] grid container (carrying the C1 dashed boundary + the
-/// [`CanvasExtent`]) holding one [`CanvasCell`] per `width × height` cell, each pre-filled with
-/// the default-floor sprite (C3) and bordered with a per-cell dimmed dash (C2). The root is
-/// deferred-parented under the [`CanvasRegion`]'s [`ScrollListArea`] (the GTW-421 parenting
-/// rule).
+/// [`CanvasExtent`]) holding one [`CanvasCell`] per `width × height` cell, each filled with its
+/// PAINTED tile from the [`EditorMap`] model where painted (C2) and the theme default-floor sprite
+/// otherwise (C3), and bordered with a per-cell dimmed dash (C2). The root is deferred-parented
+/// under the [`CanvasRegion`]'s [`ScrollListArea`] (the GTW-421 parenting rule).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the canvas build threads theme + atlas + the two catalog sources (registry/session) \
+              + the paint model + extent + the resolved default-floor index; each is a distinct \
+              concern and collapsing them into a struct would not reduce coupling"
+)]
 fn spawn_canvas(
     commands: &mut Commands,
     theme: &GdtfTheme,
     atlas: &TileAtlas,
+    registry: &ThemeCatalogRegistry,
+    session: &MapEditorSession,
+    map: &EditorMap,
     extent: CanvasExtent,
     fill_index: Option<TileAtlasIndex>,
 ) {
     let boundary_color = *theme.panel.border_color;
     let dash_color = dimmed(*theme.panel.border_color);
+    let width = i32::from(*extent.width());
     let cells: Vec<Entity> = (0..extent.cell_count())
-        .map(|_| spawn_cell(commands, atlas, fill_index, dash_color))
+        .map(|index| {
+            // Row-major: cell `index` is the ground-plane cell `(x = index % width, y = index /
+            // width)`. The grid container is a `flex_wrap` row of exactly `width` cells, so the
+            // spawn order matches the on-screen layout order — the cell carries this coordinate so
+            // the hover-ghost + paint flow can resolve it without re-deriving from layout.
+            #[expect(
+                clippy::cast_possible_wrap,
+                clippy::cast_possible_truncation,
+                reason = "index < cell_count = width*height <= 60*60 = 3600, well within i32"
+            )]
+            let i = index as i32;
+            let cell = Cell::new(i % width, i / width);
+            // A painted cell (in the model) shows its painted tile's atlas index (C2 persistence
+            // across rebuild); an unpainted cell falls back to the theme default-floor (C3).
+            let cell_index = map
+                .tile_at(cell)
+                .and_then(|key| paint_index(registry, session.theme(), key))
+                .or(fill_index);
+            spawn_cell(commands, atlas, cell_index, dash_color, cell)
+        })
         .collect();
     let root = commands
         .spawn((
@@ -258,21 +532,30 @@ fn spawn_canvas(
     });
 }
 
-/// Spawn one drawable cell: a fixed-[`CANVAS_CELL_PX`] [`ImageNode`] pre-filled with the
-/// default-floor tile sprite (C3) and ruled with a per-cell dimmed-dash border (C2).
+/// Spawn one drawable cell at ground-plane coordinate `cell`: a fixed-[`CANVAS_CELL_PX`]
+/// clickable [`Button`] [`ImageNode`] pre-filled with the default-floor tile sprite (C3) and
+/// ruled with a per-cell dimmed-dash border (C2).
 ///
-/// When the default floor resolves, the cell is an [`ImageNode::from_atlas_image`] over the
-/// terrain sheet at the tile's atlas index (the palette-row precedent). When it does not (a
-/// theme with no catalog), the cell is a plain bordered box — boundary + dashes still render.
+/// A [`Button`] so the engine's `ui_focus_system` drives its [`Interaction`] (hover for the
+/// ghost — C1, press for the paint — C2) under `DefaultPlugins` (bevy-traps #6). When the default
+/// floor resolves, the cell is an [`ImageNode::from_atlas_image`] over the terrain sheet at the
+/// tile's atlas index (the palette-row precedent); when it does not (a theme with no catalog) the
+/// cell is a plain bordered box — boundary + dashes still render.
 fn spawn_cell(
     commands: &mut Commands,
     atlas: &TileAtlas,
     fill_index: Option<TileAtlasIndex>,
     dash_color: Color,
+    cell: Cell,
 ) -> Entity {
-    let mut cell = commands.spawn((CanvasCell, cell_node(), BorderColor::all(dash_color)));
+    let mut entity = commands.spawn((
+        CanvasCell::new(cell),
+        Button,
+        cell_node(),
+        BorderColor::all(dash_color),
+    ));
     if let Some(index) = fill_index {
-        cell.insert(ImageNode::from_atlas_image(
+        entity.insert(ImageNode::from_atlas_image(
             atlas.image(),
             TextureAtlas {
                 layout: atlas.layout(),
@@ -280,7 +563,7 @@ fn spawn_cell(
             },
         ));
     }
-    cell.id()
+    entity.id()
 }
 
 /// Find the [`CanvasRegion`]'s [`ScrollListArea`] — the clipping, scrolling viewport child of

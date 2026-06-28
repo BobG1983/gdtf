@@ -15,7 +15,8 @@ use gdtf_ui::{register_dropdown, register_numeric_field, register_text_field};
 
 use crate::{
     EditorState,
-    canvas::{spawn_canvas_scroll, sync_canvas},
+    canvas::{follow_hover_ghost, paint_cell, spawn_canvas_scroll, spawn_hover_ghost, sync_canvas},
+    editor_map::EditorMap,
     load::register_load,
     palette::{refresh_stat_region, select_palette_tile, spawn_stat_text, sync_palette},
     regions::spawn_editor_shell,
@@ -61,8 +62,14 @@ use crate::{
 ///   [`spawn_canvas_scroll`](crate::canvas::spawn_canvas_scroll) `OnEnter` (wraps the
 ///   [`CanvasRegion`](crate::CanvasRegion) in a scroll list) and the
 ///   [`sync_canvas`](crate::canvas::sync_canvas) `Update` (the dashed boundary, per-cell dashes,
-///   and default-floor cell fill, rebuilt on a theme / size change — C1-C4), running LAST so a
-///   theme/size change has already folded into the session.
+///   and default-floor cell fill, rebuilt on a theme / size change — C1-C4), running after a
+///   theme/size change has already folded into the session. The GTW-426 canvas interactivity then
+///   runs after `sync_canvas`: [`paint_cell`](crate::canvas::paint_cell) (a cell click paints the
+///   selected tile into the [`EditorMap`] + redraws the cell — C2/C3),
+///   [`spawn_hover_ghost`](crate::canvas::spawn_hover_ghost) (the one persistent ghost overlay),
+///   and [`follow_hover_ghost`](crate::canvas::follow_hover_ghost) (the ghost snaps to the hovered
+///   cell — C1). `OnEnter` inserts the [`EditorMap`] paintable model; `OnExit` removes it (the
+///   state-scoped-resource pattern).
 pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
@@ -81,6 +88,7 @@ impl Plugin for MapEditorPlugin {
             OnEnter(EditorState::Editing),
             (
                 insert_session,
+                insert_map,
                 load_tile_atlas,
                 spawn_editor_shell,
                 spawn_right_panel_controls,
@@ -90,7 +98,7 @@ impl Plugin for MapEditorPlugin {
                 .chain()
                 .run_if(resource_exists::<gdtf_ui::theme::GdtfTheme>),
         );
-        app.add_systems(OnExit(EditorState::Editing), remove_session);
+        app.add_systems(OnExit(EditorState::Editing), (remove_session, remove_map));
         app.add_systems(
             Update,
             (
@@ -103,11 +111,15 @@ impl Plugin for MapEditorPlugin {
                 select_palette_tile,
                 sync_palette,
                 refresh_stat_region,
-                // The canvas syncs LAST: after a theme switch has folded into the session
-                // (apply_theme_selection) so a theme change re-fills the cells with the NEW
-                // default floor, and after a size commit (apply_size_commit) so a size change
-                // re-extents the grid (C4).
+                // The canvas syncs after a theme switch / size commit has folded into the session
+                // (apply_theme_selection / apply_size_commit) so the grid re-fills / re-extents
+                // (C4). The GTW-426 interactivity then runs AFTER the canvas exists this frame:
+                // `paint_cell` reads a cell press (C2/C3), `spawn_hover_ghost` ensures the one ghost
+                // exists, and `follow_hover_ghost` snaps it to the hovered cell (C1).
                 sync_canvas,
+                paint_cell,
+                spawn_hover_ghost,
+                follow_hover_ghost,
             )
                 .chain()
                 .run_if(in_state(EditorState::Editing)),
@@ -128,4 +140,17 @@ fn insert_session(mut commands: Commands) {
 /// scene (the state-scoped-resource pattern — bevy-traps #1).
 fn remove_session(mut commands: Commands) {
     commands.remove_resource::<MapEditorSession>();
+}
+
+/// `OnEnter(Editing)`: insert the empty [`EditorMap`] paintable model (the state-scoped
+/// click-to-paint store — bevy-traps #1, GTW-426). Starts empty (nothing painted; every cell
+/// renders the theme default-floor); the click-to-paint flow ([`paint_cell`]) writes it.
+fn insert_map(mut commands: Commands) {
+    commands.insert_resource(EditorMap::new());
+}
+
+/// `OnExit(Editing)`: remove the [`EditorMap`] so the painted map never lingers past the editing
+/// scene (the state-scoped-resource pattern — bevy-traps #1).
+fn remove_map(mut commands: Commands) {
+    commands.remove_resource::<EditorMap>();
 }

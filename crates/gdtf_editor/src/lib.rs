@@ -27,11 +27,18 @@
 //!   dashed boundary + per-cell dimmed dashes around `width × height` cells each pre-filled with
 //!   the theme's default-floor sprite, live-rebuilt on a theme / size change (2D x/y plane only;
 //!   z is out of scope). [`CanvasRoot`] / [`CanvasCell`] / [`CanvasScroll`] / [`CanvasExtent`]
-//!   are its markers.
+//!   are its markers. GTW-426 makes the canvas INTERACTIVE: a translucent [`CanvasGhost`] preview
+//!   of the selected tile snaps to the hovered cell, and clicking a cell PAINTS it — writing the
+//!   [`EditorMap`] model and redrawing the cell's sprite.
+//! - The GTW-426 `editor_map` module owns [`EditorMap`] — the in-memory, state-scoped paintable
+//!   map model (a sparse `Cell → TileKey` store of painted cells). It is the authoritative
+//!   record the click-to-paint flow writes and the FOUNDATION the save/emit tickets (GTW-429 /
+//!   GTW-431 / GTW-432) will read.
 
 mod app;
 mod canvas;
 mod capture;
+mod editor_map;
 mod load;
 mod palette;
 mod plugin;
@@ -42,8 +49,9 @@ mod state;
 mod tile_atlas;
 
 pub use app::MapEditorApp;
-pub use canvas::{CanvasCell, CanvasExtent, CanvasRoot, CanvasScroll};
+pub use canvas::{CanvasCell, CanvasExtent, CanvasGhost, CanvasRoot, CanvasScroll};
 pub use capture::EditorCapturePlugin;
+pub use editor_map::EditorMap;
 pub use palette::{PaletteRow, StatText};
 pub use plugin::MapEditorPlugin;
 pub use regions::{CanvasRegion, EditorShellRoot, LeftPaletteRegion, RightPanelRegion, StatRegion};

@@ -116,6 +116,13 @@ impl MapEditorSession {
     pub fn select_tile(&mut self, tile: TileKey) {
         self.selected_tile = Some(tile);
     }
+
+    /// Clear the active paint tile (no tile selected) — the hover ghost then hides and a canvas
+    /// click paints nothing (GTW-426 C1). The deselect counterpart of
+    /// [`select_tile`](MapEditorSession::select_tile).
+    pub fn clear_selected_tile(&mut self) {
+        self.selected_tile = None;
+    }
 }
 
 impl Default for MapEditorSession {
