@@ -670,11 +670,19 @@ pub fn setup_battle(
     //    situation.walls.chain(situation.scatter) iteration order below.
     let mut cover_ledger = CoverLedger::new();
     let mut terrain_pairs: Vec<(TerrainIndexKey, bevy::prelude::Entity)> = Vec::new();
+    // GTW-483: capture each cover piece's occupancy TerrainKind here — derived from the
+    // resolved SPEC VARIANT (`resolved.piece_kind`), NOT from which authoring list the
+    // piece sat in. A Cover/Scatter spec authored in the `walls` list (or a Wall spec in
+    // `scatter`) therefore reads its DEF's own kind into the occupancy grid. In
+    // walls-then-scatter order, mirroring the placement-build zip below.
+    let mut occupancy_kinds: Vec<TerrainKind> =
+        Vec::with_capacity(situation.walls.len() + situation.scatter.len());
     let mut resolved_covers_iter = resolved_covers.into_iter();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
         let resolved = resolved_covers_iter
             .next()
             .unwrap_or_else(|| unreachable!("resolved_covers length matches covers length"));
+        occupancy_kinds.push(TerrainKind::from(resolved.piece_kind));
         let entry = CoverEntry::seeded(
             resolved.max_hp,
             resolved.height_band,
@@ -812,25 +820,18 @@ pub fn setup_battle(
 
     // 4. Build the occupancy grid: terrain from walls + scatter, occupants from the
     //    spawned entities (borrowed from the result's placement list). The terrain kind
-    //    is now derived from the resolved spec variant (Wall → TerrainKind::Wall;
-    //    Cover/Scatter → TerrainKind::Cover).
+    //    is derived from the resolved spec VARIANT — captured into `occupancy_kinds`
+    //    (walls-then-scatter order) during the cover-ledger loop above as
+    //    `TerrainKind::from(resolved.piece_kind)` (Wall spec → TerrainKind::Wall;
+    //    Cover/Scatter spec → TerrainKind::Cover). GTW-483: this replaces the former
+    //    list-membership re-derive, so a Cover/Scatter piece authored in the `walls`
+    //    list (or a Wall in `scatter`) reads its DEF's own kind, not the kind implied
+    //    by which list it sat in.
     let terrain_placements: Vec<TerrainPlacement> = situation
         .walls
         .iter()
         .chain(situation.scatter.iter())
-        .zip(
-            // Re-iterate resolved_covers via the indices we know we pre-resolved; the
-            // resolved_covers vec was consumed above, so we recompute the kind from the
-            // occupancy grid's terrain placements directly via the cover list order.
-            // NOTE: we need the terrain kind to build TerrainPlacement. We stored it
-            // in the CoverLedger's entry.max_hp but not as a standalone. Re-derive it:
-            // walls list → Wall kind; scatter list → Cover kind.
-            situation
-                .walls
-                .iter()
-                .map(|_| TerrainKind::Wall)
-                .chain(situation.scatter.iter().map(|_| TerrainKind::Cover)),
-        )
+        .zip(occupancy_kinds)
         .map(|(cover, kind)| TerrainPlacement::new(cover.at, kind))
         .collect();
     let occupancy_input = OccupancyInput {

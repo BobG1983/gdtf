@@ -2,6 +2,8 @@
 
 use serde::Deserialize;
 
+use crate::terrain::entity::TerrainPieceKind;
+
 /// The static-terrain marker for one `(cell, level)` slot — what kind of fixed
 /// terrain occupies it, and therefore whether it **blocks** (collision / LOS /
 /// cover).
@@ -47,5 +49,31 @@ impl TerrainKind {
     #[must_use]
     pub const fn blocks(self) -> bool {
         matches!(self, Self::Wall | Self::Cover)
+    }
+}
+
+impl From<TerrainPieceKind> for TerrainKind {
+    /// Map a terrain ENTITY's [`TerrainPieceKind`] (the spec-variant-derived kind a
+    /// resolved cover/slab piece carries) to the occupancy-grid [`TerrainKind`] marker
+    /// for its `(cell, level)` slot.
+    ///
+    /// The two enums are distinct concerns — [`TerrainPieceKind`] tags the spawned
+    /// terrain entity (`Wall` / `Cover` / `Slab`), while [`TerrainKind`] is the coarse
+    /// occupancy slot marker the collision / LOS / cover queries read. This is the one
+    /// authoritative bridge so a piece's occupancy is derived from the def's OWN kind
+    /// (GTW-483) rather than from which authoring list it happened to sit in:
+    ///
+    /// - [`Wall`](TerrainPieceKind::Wall) → [`Wall`](TerrainKind::Wall).
+    /// - [`Cover`](TerrainPieceKind::Cover) → [`Cover`](TerrainKind::Cover).
+    /// - [`Slab`](TerrainPieceKind::Slab) → [`Open`](TerrainKind::Open): a slab is a
+    ///   floor / roof z-boundary tracked by the [`SurfaceGrid`](crate::surface::SurfaceGrid),
+    ///   not a blocking marker in the `(cell, level)` occupancy slot, so it leaves the
+    ///   slot open.
+    fn from(kind: TerrainPieceKind) -> Self {
+        match kind {
+            TerrainPieceKind::Wall => Self::Wall,
+            TerrainPieceKind::Cover => Self::Cover,
+            TerrainPieceKind::Slab => Self::Open,
+        }
     }
 }

@@ -3,6 +3,7 @@
 
 mod armor_pieces;
 mod error;
+mod occupancy_kind;
 mod seed;
 mod serde;
 mod spawn;
