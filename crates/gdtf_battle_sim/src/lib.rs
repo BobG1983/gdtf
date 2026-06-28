@@ -359,8 +359,8 @@ pub use lifecycle::{
         Anchor, DeadRectScatterCount, FilledPlacement, Footprint, LargePrefabAreaThreshold, Margin,
         MaxRectsPacker, MinDensityFloor, MinPlayerSide, PackingError, PlacedPrefab,
         Placement as PrefabPlacement, ProcgenTuning, RegionCount, RegionRect, SplitMode,
-        assemble_placement, assemble_placement_with, count_seam_reachable, fill_placement,
-        fill_placement_with,
+        assemble_placement, assemble_placement_with, count_seam_reachable, emit_level,
+        fill_placement, fill_placement_with, generate_level,
     },
     situation,
     situation::{

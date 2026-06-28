@@ -11,11 +11,14 @@
 //! GTW-424 placement  ->  GTW-427 fill  ->  GTW-431 emit/trigger
 //! ```
 //!
-//! GTW-424 covered the FIRST stage (anchor + opposite placement); GTW-427 adds the SECOND
+//! GTW-424 covered the FIRST stage (anchor + opposite placement); GTW-427 added the SECOND
 //! ([`fill`] — random same-theme fill + the no-fit pad-`default_floor` fallback + the OQ-6
-//! [`ProcgenTuning`] knobs). A tested core with no live trigger yet is the intended staged
-//! build, NOT a dead-feature split. NOTHING here wires `BattleScapeState::Generation` (the
-//! loading-state driver is GTW-431; the debug visualizer is GTW-434).
+//! [`ProcgenTuning`] knobs); GTW-431 adds the THIRD ([`emit`] — the deterministic seed
+//! harness [`generate_level`] + [`emit_level`], which pours a [`FilledPlacement`] into the
+//! sim's canonical [`Situation`](crate::situation::Situation) as the terrain entries it
+//! holds inline, fail-closed connectivity-asserted). A tested core with no live trigger yet
+//! is the intended staged build, NOT a dead-feature split. NOTHING here wires a live battle
+//! request (the loading-state driver is GTW-433; the debug visualizer is GTW-434).
 //!
 //! # The locked design (the GTW-424 rulings + authorized defaults — see the concern docs)
 //!
@@ -39,6 +42,7 @@
 
 mod anchor;
 mod assembler;
+mod emit;
 mod error;
 mod fill;
 mod geometry;
@@ -52,6 +56,7 @@ pub use anchor::Anchor;
 pub use assembler::{
     PlacedPrefab, Placement, assemble_placement, assemble_placement_with, count_seam_reachable,
 };
+pub use emit::{emit_level, generate_level};
 pub use error::PackingError;
 pub use fill::{FilledPlacement, fill_placement, fill_placement_with};
 pub use geometry::{Footprint, Margin, MinPlayerSide, RegionCount, RegionRect};
