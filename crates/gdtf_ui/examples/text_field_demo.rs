@@ -24,6 +24,14 @@
 //! the text end, and the numeric field shows its (clamped) value. The capture path is purely a
 //! dev affordance — it is NOT compiled into any shipped binary.
 //!
+//! ## GTW-454 single-caret evidence (C4)
+//!
+//! The demo has TWO fields on screen but auto-focuses only the text field, and the screenshot
+//! is taken (at [`SHOT_FRAME`]) BEFORE the commit drive moves focus. With the GTW-454
+//! focus-gate (`gate_caret_visibility`, registered by `register_text_field`), the PNG therefore
+//! shows EXACTLY ONE caret — the focused text field's; the unfocused numeric field's caret is
+//! hidden. That is the in-engine single-caret confirmation: two fields, one caret.
+//!
 //! ## The AC4 commit drive (the in-engine VALUE-COMMIT evidence)
 //!
 //! The screenshot is captured FIRST (render evidence of the edited/seeded state). THEN, on a

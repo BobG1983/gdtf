@@ -129,8 +129,12 @@ pub struct FieldText;
 /// Marker on the thin CARET child of a field — a solid sliver drawn AFTER the text child so it
 /// sits at the text END (the end-only editing model).
 ///
-/// A unit marker (no-bare-types rule). A static visible caret satisfies AC4; no blink timer is
-/// added (it is explicitly optional and out of the AC set).
+/// A unit marker (no-bare-types rule). The caret is FOCUS-GATED (GTW-454): only the field that
+/// owns the [`InputFocus`](bevy::input_focus::InputFocus)ed root shows its caret
+/// ([`Visibility::Visible`]); every other field's caret is [`Visibility::Hidden`]. The caret
+/// entity is NEVER despawned — [`gate_caret_visibility`] only toggles its
+/// [`Visibility`](bevy::prelude::Visibility) in place ([[ui-mutate-not-respawn]]). No blink timer
+/// is added (it is explicitly optional and out of the AC set).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Caret;
 
@@ -409,12 +413,21 @@ pub fn spawn_numeric_field<N: NumericValue>(
 ///
 /// The text child mirrors the buffer; the caret is a thin solid sliver placed AFTER the text
 /// (in the row's flex order) so it reads as an end-of-text cursor.
+///
+/// The caret is spawned [`Visibility::Hidden`] (GTW-454, C1): a freshly-spawned field is NOT
+/// focused, so its caret stays hidden until [`gate_caret_visibility`] shows it when the field
+/// gains [`InputFocus`](bevy::input_focus::InputFocus).
 fn spawn_field_children(commands: &mut Commands, field: Entity, colors: FieldColors) {
     let text = commands
         .spawn((FieldText, Text::new(String::new()), TextColor(colors.text)))
         .id();
     let caret = commands
-        .spawn((Caret, BackgroundColor(colors.caret), caret_node()))
+        .spawn((
+            Caret,
+            BackgroundColor(colors.caret),
+            caret_node(),
+            Visibility::Hidden,
+        ))
         .id();
     commands.entity(field).add_children(&[text, caret]);
 }
@@ -693,9 +706,44 @@ pub fn focus_field_on_press(
     }
 }
 
+/// FOCUS-GATES every field's [`Caret`] visibility (GTW-454): the caret of the field that owns
+/// the [`InputFocus`](bevy::input_focus::InputFocus)ed root is [`Visibility::Visible`]; every
+/// other field's caret is [`Visibility::Hidden`] — so only ONE caret is ever shown (C1), and a
+/// focus transfer (Tab / click) moves the visible caret to the newly-focused field and hides
+/// the previously-focused one (C2).
+///
+/// A caret is a CHILD of its field root, so it reaches its owning field through
+/// [`ChildOf`](bevy::prelude::ChildOf); the field root is what
+/// [`InputFocus`](bevy::input_focus::InputFocus) names (the press / Tab capture sets focus to the
+/// root — [`focus_field_on_press`]). When no field is focused, EVERY caret is hidden (the
+/// spawn-time default in [`spawn_field_children`]).
+///
+/// CHANGE-driven, not a per-frame poll (bevy-traps rule 3): gated on
+/// `resource_changed::<`[`InputFocus`](bevy::input_focus::InputFocus)`>` so it only re-evaluates
+/// when focus actually moved — [`InputFocus::set`](bevy::input_focus::InputFocus::set) /
+/// [`clear`](bevy::input_focus::InputFocus::clear) mark the resource changed. It MUTATES each
+/// caret's [`Visibility`](bevy::prelude::Visibility) in place ([[ui-mutate-not-respawn]]) via
+/// [`set_if_neq`](bevy::prelude::DetectChangesMut::set_if_neq), so the caret entity is never
+/// despawned and an unchanged caret is not re-marked. Registered in [`Update`] by
+/// [`register_text_field`].
+pub fn gate_caret_visibility(
+    focus: Res<InputFocus>,
+    mut carets: Query<(&ChildOf, &mut Visibility), With<Caret>>,
+) {
+    let focused = focus.get();
+    for (parent, mut visibility) in &mut carets {
+        let shown = if Some(parent.parent()) == focused {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+        visibility.set_if_neq(shown);
+    }
+}
+
 /// Registers the field widgets' TYPE-AGNOSTIC pieces (mirrors the dropdown's split): the
 /// [`TextFieldCommitted`] message, the keyboard / blur OBSERVERS, and the [`Update`] systems
-/// ([`sync_edit_buffer_to_text`], [`focus_field_on_press`]).
+/// ([`sync_edit_buffer_to_text`], [`focus_field_on_press`], [`gate_caret_visibility`]).
 ///
 /// Call this ONCE per app. The per-`N` numeric pieces (the
 /// [`NumericFieldCommitted<N>`] message + the concrete commit/revert handlers) are registered
@@ -708,7 +756,20 @@ pub fn register_text_field(app: &mut App) {
         .init_resource::<NumericFieldRegistry>()
         .add_observer(handle_text_field_key)
         .add_observer(commit_on_focus_lost)
-        .add_systems(Update, (sync_edit_buffer_to_text, focus_field_on_press));
+        .add_systems(
+            Update,
+            (
+                sync_edit_buffer_to_text,
+                focus_field_on_press,
+                // GTW-454 — focus-gate the caret: only the focused field shows its caret. It
+                // is change-driven on `InputFocus` and runs AFTER `focus_field_on_press` (the
+                // click-to-focus capture) so a press in the SAME frame moves the visible caret
+                // to the just-pressed field rather than lagging a frame (bevy-traps rule 3).
+                gate_caret_visibility
+                    .after(focus_field_on_press)
+                    .run_if(resource_changed::<InputFocus>),
+            ),
+        );
 }
 
 /// Registers ONE concrete numeric value type `N` for [`NumericField`] (mirrors
@@ -770,7 +831,157 @@ const CARET_HEIGHT_PCT: f32 = 60.0;
 
 #[cfg(test)]
 mod tests {
+    use bevy::{MinimalPlugins, input_focus::FocusCause};
+
     use super::*;
+
+    /// Builds a headless app with the field widgets' real wiring — `InputFocus` (the focus
+    /// source the gate reads) and the type-agnostic `register_text_field` systems (the REAL
+    /// `gate_caret_visibility`). `spawn_text_field` spawns with plain `Commands::spawn` (no
+    /// `bsn!`/scene), so `MinimalPlugins` + `InputFocus` is the full requirement — no
+    /// `AssetPlugin`/`ScenePlugin` needed.
+    fn field_app() -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .init_resource::<InputFocus>();
+        register_text_field(&mut app);
+        app
+    }
+
+    /// Finds the [`Caret`] child entity of `field`, asserting the field has exactly one (the
+    /// widget always spawns one — a missing caret is a real failure, never a happy-path
+    /// `Option`). Returns it for the visibility assertions.
+    fn caret_of(world: &World, field: Entity) -> Entity {
+        let carets: Vec<Entity> = world
+            .get::<Children>(field)
+            .map(|children| {
+                children
+                    .iter()
+                    .filter(|&child| world.get::<Caret>(child).is_some())
+                    .collect()
+            })
+            .unwrap_or_default();
+        assert_eq!(carets.len(), 1, "a field must have exactly one Caret child");
+        carets[0]
+    }
+
+    /// The [`Visibility`] of `entity`, or [`None`] if it has none.
+    fn visibility_of(world: &World, entity: Entity) -> Option<Visibility> {
+        world.get::<Visibility>(entity).copied()
+    }
+
+    /// Spawns two text fields and returns each field's `(field_root, caret_child)` pair.
+    fn spawn_two_fields(app: &mut App) -> ((Entity, Entity), (Entity, Entity)) {
+        let colors = FieldColors::default();
+        let (field_a, field_b) = {
+            let mut commands = app.world_mut().commands();
+            let a = spawn_text_field(&mut commands, CommittedTextValue::new("a"), colors, ());
+            let b = spawn_text_field(&mut commands, CommittedTextValue::new("b"), colors, ());
+            (a, b)
+        };
+        app.world_mut().flush();
+        let world = app.world();
+        let caret_a = caret_of(world, field_a);
+        let caret_b = caret_of(world, field_b);
+        ((field_a, caret_a), (field_b, caret_b))
+    }
+
+    /// C1 / C3 — with TWO fields and ONE focused, only the focused field's caret is
+    /// [`Visibility::Visible`]; the other is [`Visibility::Hidden`].
+    ///
+    /// Drives the REAL `gate_caret_visibility` registered by `register_text_field`. Pin-
+    /// discriminating: if the gate did not run (or showed both carets), the unfocused field's
+    /// caret would be `Visible` and the second assert would fail.
+    #[test]
+    fn only_focused_field_shows_caret() {
+        let mut app = field_app();
+        let ((field_a, caret_a), (_field_b, caret_b)) = spawn_two_fields(&mut app);
+
+        // Focus field A. `set` marks `InputFocus` changed, so the change-gated system runs.
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(field_a, FocusCause::Navigated);
+        app.update();
+
+        let world = app.world();
+        assert_eq!(
+            visibility_of(world, caret_a),
+            Some(Visibility::Visible),
+            "the FOCUSED field's caret must be Visible",
+        );
+        assert_eq!(
+            visibility_of(world, caret_b),
+            Some(Visibility::Hidden),
+            "an UNFOCUSED field's caret must be Hidden",
+        );
+    }
+
+    /// C2 — transferring focus from field A to field B moves the visible caret: B's caret
+    /// becomes [`Visibility::Visible`] and A's becomes [`Visibility::Hidden`].
+    ///
+    /// Pin-discriminating: if the gate did not re-evaluate on the focus transfer (or left both
+    /// shown), A's caret would stay `Visible` after the move and that assert would fail.
+    #[test]
+    fn focus_transfer_moves_the_caret() {
+        let mut app = field_app();
+        let ((field_a, caret_a), (field_b, caret_b)) = spawn_two_fields(&mut app);
+
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(field_a, FocusCause::Navigated);
+        app.update();
+        assert_eq!(
+            visibility_of(app.world(), caret_a),
+            Some(Visibility::Visible),
+            "precondition: A is focused, so A's caret is shown",
+        );
+
+        // Transfer focus to B (the Tab / click path both route through `InputFocus::set`).
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(field_b, FocusCause::Navigated);
+        app.update();
+
+        let world = app.world();
+        assert_eq!(
+            visibility_of(world, caret_b),
+            Some(Visibility::Visible),
+            "after the transfer the NEWLY-focused field's caret must be Visible",
+        );
+        assert_eq!(
+            visibility_of(world, caret_a),
+            Some(Visibility::Hidden),
+            "after the transfer the PREVIOUSLY-focused field's caret must be Hidden",
+        );
+    }
+
+    /// With NO field focused, EVERY caret is hidden — the documented default (the spawn-time
+    /// `Visibility::Hidden` plus the gate hiding all carets when `InputFocus` names nothing).
+    #[test]
+    fn no_focus_hides_every_caret() {
+        let mut app = field_app();
+        let ((field_a, caret_a), (_field_b, caret_b)) = spawn_two_fields(&mut app);
+
+        // Focus one then clear it, so the gate runs the "no focus" path (clearing marks changed).
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(field_a, FocusCause::Navigated);
+        app.update();
+        app.world_mut().resource_mut::<InputFocus>().clear();
+        app.update();
+
+        let world = app.world();
+        assert_eq!(
+            visibility_of(world, caret_a),
+            Some(Visibility::Hidden),
+            "with no field focused, every caret is Hidden",
+        );
+        assert_eq!(
+            visibility_of(world, caret_b),
+            Some(Visibility::Hidden),
+            "with no field focused, every caret is Hidden",
+        );
+    }
 
     #[test]
     fn numeric_range_clamps_below_and_above() {

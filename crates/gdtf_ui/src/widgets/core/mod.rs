@@ -164,6 +164,7 @@ pub use switch::{
 pub use text_field::{
     Caret, CommittedNumericValue, CommittedTextValue, EditBuffer, FieldColors, FieldText,
     NumericField, NumericFieldCommitted, NumericRange, NumericValue, TextField, TextFieldCommitted,
-    commit_on_focus_lost, focus_field_on_press, handle_text_field_key, register_numeric_field,
-    register_text_field, spawn_numeric_field, spawn_text_field, sync_edit_buffer_to_text,
+    commit_on_focus_lost, focus_field_on_press, gate_caret_visibility, handle_text_field_key,
+    register_numeric_field, register_text_field, spawn_numeric_field, spawn_text_field,
+    sync_edit_buffer_to_text,
 };
