@@ -9,16 +9,58 @@ use bevy::{
     prelude::*,
     ui::{PositionType, Val, widget::ImageNode},
 };
-use gdtf_battle_sim::level::ThemeCatalogRegistry;
+use gdtf_battle_sim::{level::ThemeCatalogRegistry, metric::CellLevel};
 
 use super::types::{CanvasCell, CanvasGhost, paint_index_for};
-use crate::{session::MapEditorSession, tile_atlas::TileAtlas};
+use crate::{
+    editor_map::{EditorMap, GROUND_LEVEL},
+    placement::{ProposedPlacement, evaluate_placement},
+    session::MapEditorSession,
+    tile_atlas::TileAtlas,
+};
 
 /// The reduced alpha a [`CanvasGhost`]'s preview sprite is tinted to, so it reads as a PREVIEW
 /// distinct from a painted cell (GTW-426 C1). A framework presentation magnitude (the clause-4
 /// plumbing carve-out, the `canvas::dimmed` alpha-halving precedent), fed to the ghost
 /// [`ImageNode`]'s color.
 const GHOST_ALPHA: f32 = 0.55;
+
+/// The partial-transparent RED a [`CanvasGhost`] is tinted when the hovered placement is ILLEGAL
+/// (GTW-430 C2) — the visual reject signal the author sees before committing.
+///
+/// A named domain newtype (no-bare-types: a tint colour is a domain value, not a bare [`Color`]):
+/// a saturated red at the preview [`GHOST_ALPHA`] so the cell reads as "this paint is rejected"
+/// while still showing the cell underneath. Both the LEGAL preview tint
+/// ([`GhostTint::legal`]) and this illegal tint flow through the one type so the ghost never sets a
+/// bare colour.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct GhostTint(Color);
+
+impl GhostTint {
+    /// The normal LEGAL preview tint — white at the reduced [`GHOST_ALPHA`] (the GTW-426 preview).
+    const fn legal() -> Self {
+        Self(Color::srgba(1.0, 1.0, 1.0, GHOST_ALPHA))
+    }
+
+    /// The ILLEGAL tint — partial-transparent RED (GTW-430 C2): the cell reads as rejected.
+    const fn illegal() -> Self {
+        Self(Color::srgba(1.0, 0.2, 0.2, GHOST_ALPHA))
+    }
+
+    /// The tint for a placement, RED when illegal and the normal preview when legal.
+    const fn for_illegal(is_illegal: bool) -> Self {
+        if is_illegal {
+            Self::illegal()
+        } else {
+            Self::legal()
+        }
+    }
+
+    /// The wrapped [`Color`] to write onto the ghost [`ImageNode`].
+    const fn color(self) -> Color {
+        self.0
+    }
+}
 
 /// `Update` (in `Editing`): spawn the single persistent hover-ghost overlay node (hidden) once,
 /// the preview sprite the hover-ghost flow snaps to the hovered cell (GTW-426 C1).
@@ -56,7 +98,7 @@ pub(crate) fn spawn_hover_ghost(
                 index:  0,
             },
         )
-        .with_color(Color::srgba(1.0, 1.0, 1.0, GHOST_ALPHA)),
+        .with_color(GhostTint::legal().color()),
         ghost_node(),
         // Above the cells (bevy-traps #8) so the preview paints over the cell fill.
         GlobalZIndex(1),
@@ -78,36 +120,60 @@ pub(crate) fn spawn_hover_ghost(
 ///
 /// When NO cell is hovered, or NO tile is selected, the ghost is hidden (C1). Mutates the one
 /// persistent ghost in place (the ui-mutate rule); never respawns it.
+///
+/// GTW-430: before showing the preview it runs the SINGLE SHARED legality predicate
+/// ([`evaluate_placement`]) for the hovered cell + selected tile. When the placement is ILLEGAL
+/// the ghost is tinted partial-transparent RED ([`GhostTint::illegal`]) — the same verdict the
+/// click-commit ([`super::paint::paint_cell`]) rejects on, so the preview and the commit can never
+/// disagree (one source of truth, C3). The canvas draws only the ground plane, so the previewed
+/// slot is `(hovered cell, L0)`.
 pub(crate) fn follow_hover_ghost(
     mut commands: Commands,
     registry: Option<Res<ThemeCatalogRegistry>>,
     session: Option<Res<MapEditorSession>>,
-    cells: Query<(Entity, &Interaction), With<CanvasCell>>,
+    map: Option<Res<EditorMap>>,
+    cells: Query<(Entity, &Interaction, &CanvasCell)>,
     mut ghost: Query<(Entity, &mut ImageNode, &mut Visibility), With<CanvasGhost>>,
 ) {
     let Ok((ghost_entity, mut ghost_node, mut visibility)) = ghost.single_mut() else {
         return;
     };
-    let hovered = cells.iter().find_map(|(entity, interaction)| {
-        matches!(interaction, Interaction::Hovered).then_some(entity)
+    let hovered = cells.iter().find_map(|(entity, interaction, cell)| {
+        matches!(interaction, Interaction::Hovered).then_some((entity, cell.cell()))
     });
-    let selected_index = match (registry, session) {
-        (Some(registry), Some(session)) => session
-            .selected_tile()
-            .and_then(|key| paint_index_for(&registry, session.theme(), key)),
-        _ => None,
+    let (Some(registry), Some(session), Some(map)) = (registry, session, map) else {
+        *visibility = Visibility::Hidden;
+        return;
     };
-    let (Some(hovered), Some(index)) = (hovered, selected_index) else {
+    let selected = session.selected_tile();
+    let selected_index = selected.and_then(|key| paint_index_for(&registry, session.theme(), key));
+    let (Some((hovered_entity, hovered_cell)), Some(selected_key), Some(index)) =
+        (hovered, selected, selected_index)
+    else {
         // Not over a cell, or no tile selected — hide the ghost (C1).
         *visibility = Visibility::Hidden;
         return;
     };
+    // The same predicate the commit uses (C3): preview the ground-plane slot for the hovered cell.
+    let slot = CellLevel::new(hovered_cell, GROUND_LEVEL);
+    let placement = ProposedPlacement::new(slot, selected_key.clone());
+    let verdict = evaluate_placement(
+        &map,
+        &registry,
+        session.theme(),
+        &placement,
+        session.grid_size(),
+    );
     if let Some(atlas) = ghost_node.texture_atlas.as_mut() {
         atlas.index = *index;
     }
+    // Tint RED when the placement is illegal (C2), the normal preview when legal.
+    ghost_node.color = GhostTint::for_illegal(verdict.is_illegal()).color();
     *visibility = Visibility::Visible;
     // Re-parent under the hovered cell so the absolute-positioned ghost snaps to it.
-    commands.entity(ghost_entity).insert(ChildOf(hovered));
+    commands
+        .entity(ghost_entity)
+        .insert(ChildOf(hovered_entity));
 }
 
 /// The hover-ghost overlay's [`Node`]: absolutely positioned to FILL its parent cell (inset 0 on

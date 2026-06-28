@@ -31,9 +31,15 @@
 //!   of the selected tile snaps to the hovered cell, and clicking a cell PAINTS it — writing the
 //!   [`EditorMap`] model and redrawing the cell's sprite.
 //! - The GTW-426 `editor_map` module owns [`EditorMap`] — the in-memory, state-scoped paintable
-//!   map model (a sparse `Cell → TileKey` store of painted cells). It is the authoritative
-//!   record the click-to-paint flow writes and the FOUNDATION the save/emit tickets (GTW-429 /
-//!   GTW-431 / GTW-432) will read.
+//!   map model (a sparse `CellLevel → TileKey` store of painted cells, level-aware since GTW-430).
+//!   It is the authoritative record the click-to-paint flow writes and the FOUNDATION the
+//!   save/emit tickets (GTW-429 / GTW-431 / GTW-432) will read.
+//! - The GTW-430 `placement` module owns the SINGLE SHARED placement-legality predicate
+//!   ([`evaluate_placement`]) both the hover-ghost preview and the click-commit run, plus the
+//!   vertical auto-handling for multi-level tiles: placing a ladder auto-clears a slab directly
+//!   above it (C1), and a slab over an existing ladder is rejected (C2). An illegal placement
+//!   tints the target cell partial-transparent RED in the ghost preview and is rejected by the
+//!   commit ([`PlacementVerdict`] / [`ProposedPlacement`]).
 
 mod app;
 mod canvas;
@@ -41,6 +47,7 @@ mod capture;
 mod editor_map;
 mod load;
 mod palette;
+mod placement;
 mod plugin;
 mod regions;
 mod right_panel;
@@ -53,6 +60,10 @@ pub use canvas::{CanvasCell, CanvasExtent, CanvasGhost, CanvasRoot, CanvasScroll
 pub use capture::EditorCapturePlugin;
 pub use editor_map::EditorMap;
 pub use palette::{PaletteRow, StatText};
+pub use placement::{
+    EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
+    evaluate_placement, names_a_ladder,
+};
 pub use plugin::MapEditorPlugin;
 pub use regions::{CanvasRegion, EditorShellRoot, LeftPaletteRegion, RightPanelRegion, StatRegion};
 pub use right_panel::{GridSpanInput, SizeFieldAxis, ThemeDropdown};

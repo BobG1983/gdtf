@@ -227,25 +227,27 @@ fn drive_capture_grid_size(session: Option<ResMut<MapEditorSession>>) {
     }
 }
 
-/// `Update` (in `Editing`, capture-only): PAINT a few cells + hover a cell so the captured frame
-/// demonstrates the GTW-426 interactivity — at least one painted (non-default) cell AND the
-/// translucent ghost over a hovered cell (GTW-426 C4).
+/// `Update` (in `Editing`, capture-only): PAINT a few cells + drive an ILLEGAL hover so the
+/// captured frame demonstrates BOTH the GTW-426 interactivity (a painted non-default block) AND the
+/// GTW-430 red tint (the ghost over an illegal placement renders partial-transparent RED — C5).
 ///
-/// Two halves:
+/// Three halves:
 ///
-/// 1. PAINT (once): resolves a paint tile DISTINCT from the theme default-floor (so the painted
-///    cells read clearly), records a small block of cells in the [`EditorMap`] (clamped — C3), and
-///    rewrites those cells' [`ImageNode`] atlas indices to the painted tile — the same effect the
-///    live [`paint_cell`](crate::canvas::paint_cell) produces, driven directly (the windowed
-///    `ui_focus_system` would clear a synthesized `Interaction::Pressed`, the
-///    `drive_capture_selection` precedent). Idempotent (no-ops once the model holds paints).
-/// 2. HOVER (every frame): writes [`Interaction::Hovered`] on a cell adjacent to the painted block
-///    AND sets it as the session's selected tile, so the REAL
-///    [`follow_hover_ghost`](crate::canvas::follow_hover_ghost) — ordered AFTER this — shows + snaps
-///    the ghost. This drives the live ghost path rather than poking the ghost directly: it is
-///    ordered before `follow_hover_ghost` (which runs in PreUpdate-fed `Update`), so the manual
-///    `Hovered` survives into the follow read. Running it every frame re-asserts the hover after
-///    the windowed `ui_focus_system` clears it each `PreUpdate`.
+/// 1. PAINT (once): resolves a paint tile DISTINCT from the theme default-floor, records a small
+///    block of cells in the [`EditorMap`] (clamped — C3), and rewrites those cells' [`ImageNode`]
+///    atlas indices — the same effect the live [`paint_cell`](crate::canvas::paint_cell) produces,
+///    driven directly (the windowed `ui_focus_system` clears a synthesized `Interaction::Pressed`,
+///    the `drive_capture_selection` precedent). Idempotent.
+/// 2. SEED A LADDER (once): paints a ladder-keyed tile into the model at the [`LADDER_CELL`] (a
+///    cell the placement rules classify as a ladder by NAME — the catalog ships no ladder tile, so
+///    the capture seeds the model directly to make the GTW-430 illegal case reachable in-engine).
+/// 3. ILLEGAL HOVER (every frame): when the theme has a SLAB tile, selects it and writes
+///    [`Interaction::Hovered`] on the ladder cell, so the REAL
+///    [`follow_hover_ghost`](crate::canvas::follow_hover_ghost) — ordered AFTER this — runs the
+///    SHARED legality predicate, finds the slab-over-ladder illegal, and tints the ghost RED (C5).
+///    When the theme has no slab it FALLS BACK to a legal hover beside the block (the GTW-426
+///    preview). Re-asserted every frame because the windowed `ui_focus_system` clears `Hovered`
+///    each `PreUpdate`.
 fn drive_capture_paint_and_ghost(
     registry: Option<Res<ThemeCatalogRegistry>>,
     mut session: Option<ResMut<MapEditorSession>>,
@@ -260,17 +262,25 @@ fn drive_capture_paint_and_ghost(
     let Some((paint_key, paint_index)) = distinct_paint_tile(&registry, session) else {
         return;
     };
-    // Keep that tile selected so the ghost previews it (and the palette stat region matches).
-    session.select_tile(paint_key.clone());
     let size = session.grid_size();
 
-    // PAINT a small block once (idempotent — skip if the model already holds paints).
+    // PAINT a small block + SEED a ladder once (idempotent — skip if the model already holds paints).
     if map.painted_count() == 0 {
         paint_block(map, &mut cells, &paint_key, paint_index, size);
+        // Seed a ladder into the model at the dedicated cell so the illegal slab-over-ladder hover
+        // is reachable in-engine (no ladder tile ships in the catalog — see the module docs).
+        map.paint(LADDER_CELL, TileKey::new("ladder".to_owned()), size);
     }
 
-    // HOVER a cell adjacent to the painted block so the live follow shows the ghost there.
-    let hover = Cell::new(BLOCK, 1);
+    // Prefer driving the GTW-430 RED tint (C5): select a SLAB tile and hover the seeded ladder cell
+    // so the live `follow_hover_ghost` finds the illegal placement and tints the ghost red. Fall
+    // back to the legal GTW-426 preview (the paint tile, hovered beside the block) when the theme
+    // has no slab.
+    let (selected, hover) = match slab_tile_key(&registry, session) {
+        Some(slab) => (slab, LADDER_CELL),
+        None => (paint_key, Cell::new(BLOCK, 1)),
+    };
+    session.select_tile(selected);
     for (canvas_cell, _, mut interaction) in &mut cells {
         if canvas_cell.cell() == hover {
             *interaction = Interaction::Hovered;
@@ -278,9 +288,28 @@ fn drive_capture_paint_and_ghost(
     }
 }
 
+/// The cell the capture seeds a ladder into so the GTW-430 illegal slab-over-ladder hover is
+/// reachable in-engine (C5) — clear of the [`BLOCK`]-square painted block. A framework plumbing
+/// const.
+const LADDER_CELL: Cell = Cell::new(BLOCK + 2, 1);
+
 /// The painted block edge for the capture — a `BLOCK × BLOCK` square of painted cells near the
 /// canvas top-left, large enough to read clearly in the shot. A framework plumbing const.
 const BLOCK: i32 = 3;
+
+/// Resolve the [`TileKey`] of a SLAB tile in the session's theme (a [`CatalogTileKind::Slab`]),
+/// or [`None`] if the theme has none — the slab the capture selects to drive the GTW-430 illegal
+/// slab-over-ladder hover (C5).
+fn slab_tile_key(registry: &ThemeCatalogRegistry, session: &MapEditorSession) -> Option<TileKey> {
+    let catalog = registry.catalog(session.theme())?;
+    catalog.tiles().find_map(|(key, tile)| {
+        matches!(
+            tile.kind,
+            gdtf_battle_sim::level::CatalogTileKind::Slab { .. }
+        )
+        .then(|| key.clone())
+    })
+}
 
 /// Resolve a catalog tile of the session's theme whose atlas index DIFFERS from the default-floor,
 /// returning its key + index — so a painted cell reads visibly different in the capture.

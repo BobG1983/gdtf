@@ -1,22 +1,32 @@
 //! The editor's **in-memory paintable map model** — the authoritative store of painted
-//! cells the click-to-paint flow writes (GTW-426 C2/C3).
+//! cells the click-to-paint flow writes (GTW-426 C2/C3), extended to be **level-aware** so the
+//! vertical placement rules can reason about a cell's neighbour one storey up (GTW-430 C1).
 //!
 //! GTW-423 drew the canvas as a `width × height` grid of cells PRE-FILLED with the theme's
 //! default-floor sprite; that fill is purely a default. GTW-426 lets the author PAINT a cell
 //! with the active palette tile. This module owns the persistent record of those paints —
-//! a sparse [`HashMap`] keyed by the sim's [`Cell`] ground-plane coordinate, valued by the
-//! painted [`TileKey`]. An unpainted cell holds NO entry and renders the theme default-floor;
+//! a sparse [`HashMap`] keyed by the sim's [`CellLevel`] `(cell, storey)` coordinate, valued by
+//! the painted [`TileKey`]. An unpainted cell holds NO entry and renders the theme default-floor;
 //! a painted cell holds its [`TileKey`] and renders that tile (C2).
 //!
-//! ## Why a sparse map keyed by [`Cell`]
+//! ## Why a sparse map keyed by [`CellLevel`]
 //!
 //! The model is sparse (only painted cells are stored) so the common case — a freshly-extented
-//! grid the author has not yet touched — costs nothing, and it scales to the full `60 × 60`
-//! drawable area without a dense per-cell allocation. Keying by the sim's own [`Cell`] newtype
-//! (no-bare-types: the cell key is a domain coordinate, not a bare `IVec2` / index) makes the
-//! model speak the SAME coordinate vocabulary the procgen assembly and the save/emit paths
+//! grid the author has not yet touched — costs nothing, and it scales to the full `60 × 60 × 8`
+//! drawable volume without a dense per-cell allocation. Keying by the sim's own [`CellLevel`]
+//! newtype (no-bare-types: the cell key is a domain coordinate, not a bare `IVec3` / index) makes
+//! the model speak the SAME coordinate vocabulary the procgen assembly and the save/emit paths
 //! (GTW-429 save gang / GTW-431 emit to sim / GTW-432 save `.prefab.ron`) read — it is the
 //! reusable FOUNDATION those later tickets layer on, not a throwaway.
+//!
+//! ## Ground-plane (`L0`) conveniences
+//!
+//! The GTW-423 canvas draws only the x/y GROUND plane (no storey selector — z is out of the
+//! canvas's scope), so it paints/reads at [`Level`]`(0)`. The [`EditorMap::paint`] /
+//! [`EditorMap::tile_at`] / [`EditorMap::painted`] methods keep their `Cell` signatures and
+//! operate on `L0` so the canvas and capture callers are unchanged; the level-aware
+//! [`EditorMap::paint_at`] / [`EditorMap::tile_at_level`] / [`EditorMap::clear`] methods are what
+//! the GTW-430 vertical placement rule uses to read/clear the cell one storey up (C1).
 //!
 //! ## State-scoped
 //!
@@ -26,35 +36,46 @@
 //!
 //! ## Clamp (C3)
 //!
-//! A paint is only recorded for a cell INSIDE the current drawable extent — [`EditorMap::paint`]
-//! takes the active [`GridSize`] and silently ignores an out-of-bounds cell, so a click off the
-//! grid never writes the model. The canvas only spawns cells inside the extent, so in normal
-//! play every paintable cell is in-bounds; the clamp is the model-level backstop that keeps the
-//! stored set honest (the save/emit paths can trust every key is in the drawable area).
+//! A paint is only recorded for a cell INSIDE the current drawable extent — [`EditorMap::paint_at`]
+//! takes the active [`GridSize`] and silently ignores an out-of-bounds `(cell, level)`, so a click
+//! off the grid (or a level past the extent) never writes the model. The canvas only spawns cells
+//! inside the extent, so in normal play every paintable cell is in-bounds; the clamp is the
+//! model-level backstop that keeps the stored set honest (the save/emit paths can trust every key
+//! is in the drawable volume).
 
 use bevy::{platform::collections::HashMap, prelude::*};
 use gdtf_battle_sim::{
     Cell,
     level::{GridSize, TileKey},
+    metric::{CellLevel, Level},
 };
 
-/// The editor's **paintable map model** — the persistent record of which cells the author has
-/// painted, keyed by the sim's [`Cell`] ground-plane coordinate (GTW-426 C2/C3).
+/// The ground storey index (`L0`) — the storey the GTW-423 canvas draws and the
+/// [`EditorMap`]'s `Cell`-keyed conveniences operate on.
+///
+/// A named constant (not a magic `0`) so the ground-plane assumption the canvas encodes is
+/// readable at every call site; the canvas has no storey selector, so it always paints `L0`.
+pub(crate) const GROUND_LEVEL: Level = Level::new(0);
+
+/// The editor's **paintable map model** — the persistent record of which `(cell, storey)` the
+/// author has painted, keyed by the sim's [`CellLevel`] coordinate (GTW-426 C2/C3; GTW-430 made
+/// it level-aware).
 ///
 /// A state-scoped [`Resource`] (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1). Sparse: only PAINTED cells hold an entry (an unpainted cell renders the
 /// theme default-floor). The authoritative editor paintable map — the FOUNDATION GTW-429 /
 /// GTW-431 / GTW-432 read to save the gang / emit the assembled level / write the `.prefab.ron`.
 ///
-/// The inner map is PRIVATE (no-bare-types rule 5): paints flow through [`EditorMap::paint`]
-/// (which clamps to the drawable extent — C3) and are read through [`EditorMap::tile_at`] /
+/// The inner map is PRIVATE (no-bare-types rule 5): paints flow through [`EditorMap::paint_at`]
+/// (which clamps to the drawable extent — C3) and are read through [`EditorMap::tile_at_level`] /
 /// [`EditorMap::painted`], so the in-bounds invariant lives in one place and can never be
-/// sidestepped by a direct map write.
+/// sidestepped by a direct map write. The `Cell`-signature [`EditorMap::paint`] /
+/// [`EditorMap::tile_at`] are ground-plane (`L0`) conveniences for the canvas.
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct EditorMap {
-    /// The painted cells: each entry maps a drawable-area [`Cell`] to the [`TileKey`] the
+    /// The painted cells: each entry maps a drawable-volume [`CellLevel`] to the [`TileKey`] the
     /// author painted there. Cells with no entry render the theme default-floor.
-    painted: HashMap<Cell, TileKey>,
+    painted: HashMap<CellLevel, TileKey>,
 }
 
 impl EditorMap {
@@ -67,52 +88,84 @@ impl EditorMap {
         }
     }
 
-    /// Paint `cell` with `tile`, IF the cell is inside the current drawable extent (C2 + C3).
+    /// Paint the GROUND cell `(cell, L0)` with `tile`, IF in bounds — the canvas's ground-plane
+    /// convenience (the GTW-423 canvas has no storey selector, so it always paints `L0`).
+    ///
+    /// Delegates to [`EditorMap::paint_at`] at `GROUND_LEVEL`; returns `true` iff the paint was
+    /// recorded (the cell was in-bounds).
+    pub fn paint(&mut self, cell: Cell, tile: TileKey, size: GridSize) -> bool {
+        self.paint_at(CellLevel::new(cell, GROUND_LEVEL), tile, size)
+    }
+
+    /// Paint the `(cell, level)` slot with `tile`, IF the slot is inside the current drawable
+    /// volume (C2 + C3) — the level-aware write the placement rule (GTW-430) uses.
     ///
     /// Records the paint in the sparse model so it PERSISTS (survives a later read and the
-    /// save/emit paths — C2). Clamped to the drawable area (C3): a cell whose x/y falls outside
-    /// `0..width` / `0..height` is silently ignored, so a click off the grid never writes the
-    /// model. Returns `true` iff the paint was recorded (the cell was in-bounds) — the caller
-    /// uses this to decide whether to redraw the cell sprite.
-    pub fn paint(&mut self, cell: Cell, tile: TileKey, size: GridSize) -> bool {
-        if !cell_in_bounds(cell, size) {
+    /// save/emit paths — C2). Clamped to the drawable volume (C3): a slot whose x/y/level falls
+    /// outside `0..width` / `0..height` / `0..levels` is silently ignored, so a write off the grid
+    /// never enters the model. Returns `true` iff the paint was recorded (the slot was in-bounds) —
+    /// the caller uses this to decide whether to redraw the cell sprite.
+    pub fn paint_at(&mut self, slot: CellLevel, tile: TileKey, size: GridSize) -> bool {
+        if !slot_in_bounds(slot, size) {
             return false;
         }
-        self.painted.insert(cell, tile);
+        self.painted.insert(slot, tile);
         true
     }
 
-    /// The [`TileKey`] painted at `cell`, or [`None`] if the cell is unpainted (it renders the
-    /// theme default-floor). The read the canvas redraw + the save/emit paths use.
-    #[must_use]
-    pub fn tile_at(&self, cell: Cell) -> Option<&TileKey> {
-        self.painted.get(&cell)
+    /// Remove any paint at the `(cell, level)` slot, returning the [`TileKey`] that was there (if
+    /// any) — the level-aware clear the GTW-430 ladder rule uses to AUTO-CLEAR a slab one storey
+    /// up (C1). A no-op on an already-unpainted slot.
+    pub fn clear(&mut self, slot: CellLevel) -> Option<TileKey> {
+        self.painted.remove(&slot)
     }
 
-    /// Every painted `(cell, tile)` in the model — the enumeration the save/emit paths (GTW-429
+    /// The [`TileKey`] painted at the GROUND cell `(cell, L0)`, or [`None`] if unpainted (it
+    /// renders the theme default-floor) — the canvas redraw + save/emit ground-plane read.
+    ///
+    /// Delegates to [`EditorMap::tile_at_level`] at `GROUND_LEVEL`.
+    #[must_use]
+    pub fn tile_at(&self, cell: Cell) -> Option<&TileKey> {
+        self.tile_at_level(CellLevel::new(cell, GROUND_LEVEL))
+    }
+
+    /// The [`TileKey`] painted at the `(cell, level)` slot, or [`None`] if the slot is unpainted —
+    /// the level-aware read the GTW-430 placement rule uses to inspect the cell one storey up.
+    #[must_use]
+    pub fn tile_at_level(&self, slot: CellLevel) -> Option<&TileKey> {
+        self.painted.get(&slot)
+    }
+
+    /// Every painted `(slot, tile)` in the model — the enumeration the save/emit paths (GTW-429
     /// / GTW-431 / GTW-432) read to serialise the authored map. Iteration order is unspecified
-    /// (a [`HashMap`]); the model is a SET of painted cells, not an ordered list.
-    pub fn painted(&self) -> impl Iterator<Item = (&Cell, &TileKey)> {
+    /// (a [`HashMap`]); the model is a SET of painted slots, not an ordered list.
+    pub fn painted(&self) -> impl Iterator<Item = (&CellLevel, &TileKey)> {
         self.painted.iter()
     }
 
-    /// How many cells the author has painted — `0` for a fresh (untouched) map. The count the
-    /// paint/clamp test asserts.
+    /// How many slots the author has painted — `0` for a fresh (untouched) map. The count the
+    /// paint/clamp tests assert.
     #[must_use]
     pub fn painted_count(&self) -> usize {
         self.painted.len()
     }
 }
 
-/// Whether `cell` falls inside the drawable extent `0..width` × `0..height` (C3).
+/// Whether `slot` falls inside the drawable volume `0..width` × `0..height` × `0..levels` (C3).
 ///
-/// The drawable area is the ground plane the canvas draws — cells `(0, 0)` through
-/// `(width - 1, height - 1)`. A negative or over-extent coordinate is out of bounds (a click off
-/// the grid). The 2D x/y plane only — z (levels) is out of the canvas's scope (GTW-423).
-fn cell_in_bounds(cell: Cell, size: GridSize) -> bool {
+/// The drawable volume is the cells the canvas (ground plane) + the vertical rules address —
+/// `(0, 0, 0)` through `(width - 1, height - 1, levels - 1)`. A negative or over-extent
+/// coordinate on any axis is out of bounds (a write off the grid or past the storey ceiling).
+fn slot_in_bounds(slot: CellLevel, size: GridSize) -> bool {
     let width = i32::from(*size.width());
     let height = i32::from(*size.height());
-    cell.x >= 0 && cell.x < width && cell.y >= 0 && cell.y < height
+    let levels = i32::from(*size.levels());
+    slot.x >= 0
+        && slot.x < width
+        && slot.y >= 0
+        && slot.y < height
+        && slot.z >= 0
+        && slot.z < levels
 }
 
 #[cfg(test)]
@@ -120,14 +173,15 @@ mod tests {
     use gdtf_battle_sim::{
         Cell,
         level::{GridHeight, GridLevels, GridSize, GridWidth, TileKey},
+        metric::{CellLevel, Level},
     };
 
     use super::EditorMap;
 
-    /// A small `4 × 4 × 1` drawable extent for the clamp tests, or a `1 × 1 × 1` fallback (the
+    /// A small `4 × 4 × 2` drawable volume for the clamp tests, or a `1 × 1 × 1` fallback (the
     /// constructor is fallible; the fallback keeps the test panic-free per the workspace lints).
     fn small_size() -> GridSize {
-        GridSize::new(GridWidth::new(4), GridHeight::new(4), GridLevels::new(1))
+        GridSize::new(GridWidth::new(4), GridHeight::new(4), GridLevels::new(2))
             .unwrap_or_else(|_| GridSize::default())
     }
 
@@ -136,7 +190,7 @@ mod tests {
         TileKey::new(id.to_owned())
     }
 
-    /// An in-bounds paint is recorded and read back by its [`Cell`]; a fresh model is empty.
+    /// An in-bounds GROUND paint is recorded and read back by its [`Cell`]; a fresh model is empty.
     #[test]
     fn in_bounds_paint_is_recorded_and_read_back() {
         let mut map = EditorMap::new();
@@ -180,8 +234,8 @@ mod tests {
         );
     }
 
-    /// Out-of-bounds cells (negative or past the extent on either axis) are rejected by the clamp
-    /// — the model only ever holds in-bounds cells (C3).
+    /// Out-of-bounds cells (negative or past the extent on either ground axis) are rejected by the
+    /// clamp — the model only ever holds in-bounds cells (C3).
     #[test]
     fn out_of_bounds_paint_is_clamped_out() {
         let mut map = EditorMap::new();
@@ -204,6 +258,51 @@ mod tests {
             map.painted_count(),
             0,
             "no out-of-bounds cell may enter the model (C3)"
+        );
+    }
+
+    /// A level-aware paint/read round-trips on its own storey, distinct from the ground plane;
+    /// a level PAST the extent is clamped out (C3).
+    #[test]
+    fn level_aware_paint_is_storey_scoped_and_clamped() {
+        let mut map = EditorMap::new();
+        let size = small_size(); // 4 x 4 x 2 -> valid levels are 0 and 1.
+        let ground = CellLevel::new(Cell::new(1, 1), Level::new(0));
+        let above = CellLevel::new(Cell::new(1, 1), Level::new(1));
+
+        assert!(map.paint_at(ground, key("floor"), size), "L0 paint records");
+        assert!(map.paint_at(above, key("slab"), size), "L1 paint records");
+        assert_eq!(
+            map.painted_count(),
+            2,
+            "the same x/y on two storeys are two distinct slots",
+        );
+        assert_eq!(map.tile_at_level(ground), Some(&key("floor")));
+        assert_eq!(map.tile_at_level(above), Some(&key("slab")));
+
+        // A storey past the 2-level extent is out of bounds (C3).
+        let over = CellLevel::new(Cell::new(1, 1), Level::new(2));
+        assert!(!map.paint_at(over, key("x"), size), "L2 is past the extent");
+        assert_eq!(
+            map.painted_count(),
+            2,
+            "no over-extent storey enters the model"
+        );
+
+        // Clearing a slot removes exactly it.
+        assert_eq!(
+            map.clear(above),
+            Some(key("slab")),
+            "clear returns the removed tile"
+        );
+        assert_eq!(map.painted_count(), 1, "clear removes one entry");
+        assert!(
+            map.tile_at_level(above).is_none(),
+            "the cleared slot reads None"
+        );
+        assert!(
+            map.clear(above).is_none(),
+            "clearing an empty slot is a no-op"
         );
     }
 }

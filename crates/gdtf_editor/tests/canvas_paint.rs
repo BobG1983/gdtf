@@ -22,6 +22,17 @@
 //! - T3 (C1): the hover ghost appears at the hovered cell (it is parented under the hovered
 //!   [`CanvasCell`] and is [`Visibility::Visible`]) and is HIDDEN when no cell is hovered or no
 //!   tile is selected.
+//! - T4/T5 (GTW-430 C2/C3): the hover-ghost preview tints RED over an ILLEGAL placement and the
+//!   normal preview over a LEGAL one — the VIEW half of the red-tint acceptance, driven through the
+//!   live [`follow_hover_ghost`] + the SHARED `evaluate_placement` predicate (not a copy). T4 seeds
+//!   a ladder into the [`EditorMap`], selects a SLAB tile, hovers the ladder cell, and asserts the
+//!   ghost's [`ImageNode`] color reads RED (red channel strictly dominant) and DIFFERS from the
+//!   legal preview; T5 hovers an empty in-bounds cell with the same slab and asserts the ghost reads
+//!   the legal (non-red) preview. Pin-discriminating: if `ghost.rs`'s `for_illegal(verdict.…)`
+//!   were reverted to always-legal, T4's red-dominance + difference assertions would FAIL (the ghost
+//!   would stay the white legal preview). Value-agnostic: it asserts the RED PROPERTY (channel
+//!   dominance + legal/illegal divergence), never the literal `srgba(1.0, 0.2, 0.2, 0.55)` tuple,
+//!   which is a tunable view constant.
 //!
 //! Panic/expect-free per the workspace lints (the GTW-417 precedent: `assert!` + `if let Some`
 //! guards, never `unwrap`/`expect`/`panic`).
@@ -29,7 +40,9 @@
 use bevy::{prelude::*, ui::widget::ImageNode};
 use gdtf_battle_sim::{
     Cell,
-    level::{GridHeight, GridLevels, GridSize, GridWidth, ThemeCatalogRegistry, TileKey},
+    level::{
+        CatalogTileKind, GridHeight, GridLevels, GridSize, GridWidth, ThemeCatalogRegistry, TileKey,
+    },
 };
 use gdtf_editor::{
     CanvasCell, CanvasGhost, EditorMap, EditorState, MapEditorPlugin, MapEditorSession,
@@ -138,6 +151,57 @@ fn cell_entity_at(app: &mut App, cell: Cell) -> Option<Entity> {
     let mut q = world.query::<(Entity, &CanvasCell)>();
     q.iter(world)
         .find_map(|(entity, canvas_cell)| (canvas_cell.cell() == cell).then_some(entity))
+}
+
+/// The [`TileKey`] of a SLAB tile in the active theme (a [`CatalogTileKind::Slab`]), if any —
+/// the tile the GTW-430 illegal-hover test selects (a slab over a ladder is rejected). Resolved
+/// from the live registry the same way the capture's `slab_tile_key` does, so the test is
+/// value-agnostic about WHICH slab key the theme ships.
+fn slab_tile_key(app: &App) -> Option<TileKey> {
+    let session = app.world().get_resource::<MapEditorSession>()?;
+    let registry = app.world().get_resource::<ThemeCatalogRegistry>()?;
+    let catalog = registry.catalog(session.theme())?;
+    catalog.tiles().find_map(|(key, tile)| {
+        matches!(tile.kind, CatalogTileKind::Slab { .. }).then(|| key.clone())
+    })
+}
+
+/// The single [`CanvasGhost`] entity, if it exists.
+fn cell_ghost_entity(app: &mut App) -> Option<Entity> {
+    let world = app.world_mut();
+    let mut q = world.query_filtered::<Entity, With<CanvasGhost>>();
+    q.iter(world).next()
+}
+
+/// The [`CanvasGhost`]'s [`ImageNode`] color, if the single ghost exists. The tint
+/// [`follow_hover_ghost`] writes — RED over an illegal placement, the normal preview over a legal
+/// one (GTW-430 C2).
+fn ghost_color(app: &mut App) -> Option<Color> {
+    let world = app.world_mut();
+    let mut q = world.query_filtered::<&ImageNode, With<CanvasGhost>>();
+    q.iter(world).next().map(|node| node.color)
+}
+
+/// Whether `color` reads as RED — its red channel is strictly greater than BOTH its green and its
+/// blue (the defining property of the illegal tint). Value-agnostic: it asserts the RED PROPERTY,
+/// never the tunable literal `srgba(1.0, 0.2, 0.2, 0.55)` magnitudes.
+fn is_red_dominant(color: Color) -> bool {
+    let rgba = color.to_srgba();
+    rgba.red > rgba.green && rgba.red > rgba.blue
+}
+
+/// Seed a ladder into the [`EditorMap`] at `cell` (ground plane), recognised by the GTW-430
+/// ladder-naming convention. The shipped catalog has no ladder tile, so the test seeds the model
+/// directly — `evaluate_placement` classifies a ladder-named key without a catalog entry (the
+/// capture's seeding precedent). Returns whether the seed landed (the cell was in-bounds).
+fn seed_ladder(app: &mut App, cell: Cell) -> bool {
+    let Some(size) = grid_size(app) else {
+        return false;
+    };
+    let Some(mut map) = app.world_mut().get_resource_mut::<EditorMap>() else {
+        return false;
+    };
+    map.paint(cell, TileKey::new("steel_ladder".to_owned()), size)
 }
 
 /// T1 (C2/C3): pressing a canvas cell with a SELECTED tile records that cell in the [`EditorMap`]
@@ -370,4 +434,148 @@ fn hover_ghost_follows_the_hovered_cell_and_hides_otherwise() {
         Some(&Visibility::Hidden),
         "the ghost must stay hidden when no tile is selected, even while hovering (C1)",
     );
+}
+
+/// T4 (GTW-430 C2/C3): hovering an ILLEGAL placement tints the hover-ghost preview RED — the VIEW
+/// half of the red-tint acceptance, through the LIVE [`follow_hover_ghost`] + the SHARED
+/// `evaluate_placement` predicate.
+///
+/// Seeds a ladder into the [`EditorMap`] at a cell, selects a SLAB tile, and hovers that ladder
+/// cell — a slab over a ladder (SAME slot, the case the single-plane L0 canvas reaches) is illegal
+/// (`IllegalReason::SlabSealsLadder`). The real `follow_hover_ghost` runs the shared predicate,
+/// finds it illegal, and tints the ghost's [`ImageNode`] color. Asserts the ghost color reads RED
+/// (red channel strictly dominant).
+///
+/// Pin-discriminating: if `ghost.rs`'s `for_illegal(verdict.is_illegal())` were reverted to always
+/// `GhostTint::legal()`, the ghost would stay the WHITE legal preview (red == green == blue), so
+/// `is_red_dominant` would be `false` and this assertion would FAIL. The symmetric legal-hover tint
+/// (T5) is captured here too and the illegal tint asserted DISTINCT from it — so the test also
+/// proves the tint actually FLIPPED on the illegal verdict, not merely that some red is present.
+///
+/// Value-agnostic: it asserts the RED PROPERTY (channel dominance + legal/illegal divergence),
+/// never the tunable literal `srgba(1.0, 0.2, 0.2, 0.55)` magnitudes the view constant carries.
+#[test]
+fn illegal_hover_tints_the_ghost_red() {
+    let mut app = editor_in_editing();
+
+    // The theme must ship a slab tile for the slab-over-ladder illegal case (IndustrialHive's
+    // deck_slab) — resolved value-agnostically from the live registry.
+    let slab = slab_tile_key(&app);
+    assert!(
+        slab.is_some(),
+        "the active theme must have a slab tile to drive the illegal slab-over-ladder hover (C2)",
+    );
+    let Some(slab) = slab else {
+        return;
+    };
+
+    // Seed a ladder on the ground plane (recognised by name; the catalog ships no ladder tile).
+    let ladder_cell = Cell::new(5, 5);
+    assert!(
+        seed_ladder(&mut app, ladder_cell),
+        "the ladder seed must land in-bounds on the model",
+    );
+
+    // Select the slab and hover the ladder cell: a slab over a ladder is illegal (C2).
+    if let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>() {
+        session.select_tile(slab);
+    }
+    let cell = cell_entity_at(&mut app, ladder_cell);
+    assert!(
+        cell.is_some(),
+        "the canvas must have a cell at the seeded ladder coordinate to hover",
+    );
+    let Some(cell) = cell else {
+        return;
+    };
+    set_interaction(&mut app, cell, Interaction::Hovered);
+
+    // The ghost is visible and tinted RED — the illegal verdict flowed through the shared predicate.
+    if let Some(ghost) = cell_ghost_entity(&mut app) {
+        assert_eq!(
+            app.world().get::<Visibility>(ghost),
+            Some(&Visibility::Visible),
+            "the ghost must be visible while previewing the (illegal) placement (C2)",
+        );
+    }
+    let illegal = ghost_color(&mut app);
+    assert!(illegal.is_some(), "the ghost must exist to read its tint");
+    if let Some(illegal) = illegal {
+        assert!(
+            is_red_dominant(illegal),
+            "the ghost over an illegal slab-over-ladder placement must tint RED — red channel \
+             strictly dominant (GTW-430 C2); got {illegal:?}",
+        );
+
+        // Distinct from the LEGAL preview: re-hover a clear cell with the same slab (a slab on
+        // empty ground is legal) and confirm the tint FLIPPED, not merely that red is present.
+        let clear_cell = Cell::new(8, 8);
+        if let Some(clear) = cell_entity_at(&mut app, clear_cell) {
+            set_interaction(&mut app, clear, Interaction::Hovered);
+        }
+        let legal = ghost_color(&mut app);
+        if let Some(legal) = legal {
+            assert_ne!(
+                illegal, legal,
+                "the illegal tint must DIFFER from the legal preview — the verdict flipped it (C2)",
+            );
+            assert!(
+                !is_red_dominant(legal),
+                "the legal preview must NOT be red-dominant (it is the white preview); got {legal:?}",
+            );
+        }
+    }
+}
+
+/// T5 (GTW-430 C2): hovering a LEGAL placement tints the hover-ghost preview the NORMAL (non-red)
+/// preview — the symmetric counterpart of T4.
+///
+/// Selects a slab tile and hovers an EMPTY in-bounds cell (a slab on empty ground is plainly legal
+/// — no ladder to seal). The real `follow_hover_ghost` runs the shared predicate, finds it legal,
+/// and leaves the normal preview tint. Asserts the ghost is visible and NOT red-dominant.
+///
+/// Pin-discriminating in concert with T4: if the tint logic were broken to ALWAYS tint red, this
+/// legal-hover assertion would FAIL; if it were reverted to always-legal, T4 fails. Together they
+/// pin the verdict-driven flip in both directions.
+#[test]
+fn legal_hover_tints_the_ghost_the_normal_preview() {
+    let mut app = editor_in_editing();
+
+    let slab = slab_tile_key(&app);
+    assert!(slab.is_some(), "the active theme must have a slab tile");
+    let Some(slab) = slab else {
+        return;
+    };
+    if let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>() {
+        session.select_tile(slab);
+    }
+
+    // Hover an EMPTY in-bounds cell — a slab on empty ground is plainly legal (no ladder to seal).
+    let target = Cell::new(7, 7);
+    let cell = cell_entity_at(&mut app, target);
+    assert!(
+        cell.is_some(),
+        "the canvas must have an empty cell to hover"
+    );
+    let Some(cell) = cell else {
+        return;
+    };
+    set_interaction(&mut app, cell, Interaction::Hovered);
+
+    if let Some(ghost) = cell_ghost_entity(&mut app) {
+        assert_eq!(
+            app.world().get::<Visibility>(ghost),
+            Some(&Visibility::Visible),
+            "the ghost must be visible while previewing the legal placement (C2)",
+        );
+    }
+    let legal = ghost_color(&mut app);
+    assert!(legal.is_some(), "the ghost must exist to read its tint");
+    if let Some(legal) = legal {
+        assert!(
+            !is_red_dominant(legal),
+            "the ghost over a LEGAL placement must NOT be red-dominant (it is the normal preview \
+             tint, GTW-430 C2); got {legal:?}",
+        );
+    }
 }
