@@ -37,7 +37,7 @@ use gdtf_battle_sim::{
         piece::TerrainGraphicKey,
     },
 };
-use gdtf_editor::{
+use gdtf_content_editor::{
     CanvasCell, CanvasGhost, EditorMap, EditorState, MapEditorPlugin, MapEditorSession,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};

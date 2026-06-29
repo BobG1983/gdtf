@@ -26,7 +26,7 @@ use gdtf_battle_sim::{
     level::{GridSize, ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDef, TerrainDefRegistry, TerrainPresenterKind},
 };
-use gdtf_editor::{
+use gdtf_content_editor::{
     CanvasCell, CanvasExtent, CanvasRoot, EditorState, GridSpanInput, MapEditorPlugin,
     MapEditorSession, SizeFieldAxis, ThemeDropdown,
 };

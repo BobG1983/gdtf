@@ -380,13 +380,16 @@ fn poll_then_exit(
     }
     *poll_frames += 1;
     if std::path::Path::new(&**shot).exists() {
-        info!("map_editor: shell screenshot written to {}", shot.display());
+        info!(
+            "gdtf_content_editor: shell screenshot written to {}",
+            shot.display()
+        );
         exit.write(AppExit::Success);
         return;
     }
     if *poll_frames >= POLL_CAP {
         warn!(
-            "map_editor: screenshot PNG not found after {POLL_CAP} poll frames; giving up. Was \
+            "gdtf_content_editor: screenshot PNG not found after {POLL_CAP} poll frames; giving up. Was \
              GDTF_EDITOR_SHOT set to a writable path?",
         );
         exit.write(AppExit::Success);

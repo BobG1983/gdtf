@@ -20,7 +20,7 @@ use gdtf_battle_sim::{
     terrain::def::{TerrainDefRegistry, TerrainUuid},
     weapon::{WeaponName, WeaponRegistry},
 };
-use gdtf_editor::{
+use gdtf_content_editor::{
     CanvasRegion, EditorState, LeftPaletteRegion, MapEditorPlugin, RightPanelRegion, StatRegion,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};

@@ -1,0 +1,21 @@
+[package]
+name = "gdtf_content_editor_bin"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "gdtf_content_editor"
+path = "src/main.rs"
+
+[dependencies]
+gdtf_content_editor = { path = "../../crates/gdtf_content_editor" }
+
+[features]
+# Bevy dynamic linking for fast dev / QA builds; chains through to gdtf_content_editor -> bevy.
+# Enable for non-release builds (e.g. `cargo run -p gdtf_content_editor_bin --features dynamic_linking`);
+# leave off for `--release` so it never ships in release artifacts. Mirrors the
+# grimdark_turfwar binary's dynamic_linking feature wiring.
+dynamic_linking = ["gdtf_content_editor/dynamic_linking"]
+
+[lints]
+workspace = true

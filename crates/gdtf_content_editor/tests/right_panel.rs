@@ -23,7 +23,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::level::{GridWidth, MAX_GRID_SPAN, ThemeUuid, UuidThemeRegistry};
-use gdtf_editor::{
+use gdtf_content_editor::{
     EditorState, GridSpanInput, MapEditorPlugin, MapEditorSession, SizeFieldAxis, ThemeDropdown,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};

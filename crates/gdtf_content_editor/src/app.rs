@@ -15,10 +15,10 @@ use crate::{capture::EditorCapturePlugin, plugin::MapEditorPlugin};
 ///
 /// Identical rationale to `gdtf_app`'s `GdtfApp`: Bevy's default file asset reader resolves
 /// its base from `BEVY_ASSET_ROOT`, else `CARGO_MANIFEST_DIR`, else the executable dir.
-/// Under `cargo run -p map_editor`, `CARGO_MANIFEST_DIR` is the `bins/map_editor` package,
-/// so the default would look under `bins/map_editor/assets`. We therefore point
+/// Under `cargo run -p gdtf_content_editor_bin`, `CARGO_MANIFEST_DIR` is the `bins/gdtf_content_editor` package,
+/// so the default would look under `bins/gdtf_content_editor/assets`. We therefore point
 /// [`AssetPlugin::file_path`] at the workspace root, computed at compile time relative to
-/// THIS crate's manifest (`crates/gdtf_editor` → up two levels → `assets`). This matches
+/// THIS crate's manifest (`crates/gdtf_content_editor` → up two levels → `assets`). This matches
 /// both `gdtf_app` and the headless test harness, so a path that loads in one loads in all.
 const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
 

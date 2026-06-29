@@ -1,5 +1,5 @@
 [package]
-name = "gdtf_editor"
+name = "gdtf_content_editor"
 version = "0.1.0"
 edition = "2024"
 
@@ -36,8 +36,8 @@ gdtf_test_utils = { path = "../gdtf_test_utils" }
 
 [features]
 # Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled for
-# release artifacts. Propagated from the `map_editor` binary crate (binary ->
-# gdtf_editor -> bevy/dynamic_linking), mirroring the grimdark_turfwar -> gdtf_app
+# release artifacts. Propagated from the `gdtf_content_editor` binary crate (binary ->
+# gdtf_content_editor -> bevy/dynamic_linking), mirroring the grimdark_turfwar -> gdtf_app
 # chain. Keeps the dev/QA build+link loop fast.
 dynamic_linking = ["bevy/dynamic_linking"]
 

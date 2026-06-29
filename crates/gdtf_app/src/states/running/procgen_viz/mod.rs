@@ -6,7 +6,7 @@
 //!
 //! It lives in the MAIN GAME (`gdtf_app`, the `grimdark_turfwar` binary) as a
 //! [`RunningState::DebugProcgenVisualizer`](crate::states::RunningState) scene — NOT in
-//! `gdtf_editor` / the map-editor binary. It is reached ONLY from the
+//! `gdtf_content_editor` / the content-editor binary. It is reached ONLY from the
 //! `cfg(debug_assertions)`-gated "Procgen Viz" main-menu button (the GTW-420 gang-editor
 //! precedent), so the entry point never compiles into a release binary. The whole module —
 //! the model, the components, the systems, the scene plugin, and its registration — is itself

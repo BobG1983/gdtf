@@ -26,7 +26,7 @@ use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
-use gdtf_editor::{
+use gdtf_content_editor::{
     EditorState, LeftPaletteRegion, MapEditorPlugin, MapEditorSession, PaletteRow, StatText,
     ThemeDropdown,
 };

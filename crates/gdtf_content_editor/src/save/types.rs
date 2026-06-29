@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
 };
 
 /// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
-/// (`crates/gdtf_editor` → up two levels → `assets`), computed at compile time relative to THIS
+/// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time relative to THIS
 /// crate's manifest. So a prefab the editor SAVES lands exactly where the running game (and the
 /// GTW-489 v2 folder loader) READS v2 prefabs from — `assets/maps/<theme>/<size>/`.
 pub(super) const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
