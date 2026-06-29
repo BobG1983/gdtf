@@ -6,12 +6,14 @@ use bevy::{
     ecs::{system::SystemParam, template::template},
     image::TextureAtlasLayout,
     math::primitives::Rectangle,
+    platform::collections::HashMap,
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
 use gdtf_battle_sim::{
-    BattleReady, Cell, CellLevel, CoverDestroyed, CoverLedger, GRID_HEIGHT, GRID_WIDTH,
-    OccupancyGrid, SlabDestroyed, SlabState, SurfaceGrid, TerrainKind,
+    BattleReady, Cell, CellLevel, CoverDestroyed, CoverLedger, FootfallSound, GRID_HEIGHT,
+    GRID_WIDTH, OccupancyGrid, SlabDestroyed, SlabState, SurfaceGrid, TerrainCell,
+    TerrainGraphicKey, TerrainKind,
 };
 
 use super::{
@@ -66,25 +68,42 @@ impl TileRole {
     }
 }
 
-/// The three sim-owned static-map resources the terrain draw reads, bundled so the draw
-/// system stays under the `too_many_arguments` clippy gate.
+/// The sim-owned static-map state the terrain draw reads, bundled so the draw system
+/// stays under the `too_many_arguments` clippy gate.
 ///
 /// A `#[derive(SystemParam)]` borrow-bundle (the system-analogue of a cohesive ctor
-/// struct): it groups the read-only sim grids the draw scans per `(cell, level)`. It is
-/// gated at the system level by `run_if(resource_exists::<BattleInProgress>)`, so the
-/// three resources are guaranteed present when the system runs (they are inserted by
-/// the sim's `setup_battle` alongside `BattleInProgress`).
+/// struct): it groups the read-only sim grids the draw scans per `(cell, level)` PLUS the
+/// per-terrain-entity presentation-fact query (GTW-493). The three GRIDS are gated at the
+/// system level by `run_if(resource_exists::<BattleInProgress>)`, so they are guaranteed
+/// present when the system runs (they are inserted by the sim's `setup_battle` alongside
+/// `BattleInProgress`). The terrain-entity query (GTW-493) reads the
+/// [`TerrainGraphicKey`] the sim spawns on every terrain entity (ALL kinds incl. `Wall`)
+/// plus the OPTIONAL slab-only [`FootfallSound`] — the per-def presentation facts.
 #[derive(SystemParam)]
-pub struct StaticMap<'w> {
+pub struct StaticMap<'w, 's> {
     /// The static-terrain grid (wall / cover / open per `(cell, level)`).
     occupancy: Res<'w, OccupancyGrid>,
     /// The cover-HP ledger (peeked read-only to corroborate a cover cell).
     cover:     Res<'w, CoverLedger>,
     /// The surface grid (slab presence per `(cell, level)`).
     surface:   Res<'w, SurfaceGrid>,
+    /// The per-terrain-entity presentation facts the sim spawns (GTW-493): every terrain
+    /// entity's `(cell, level)` ([`TerrainCell`]), its per-def graphic key
+    /// ([`TerrainGraphicKey`], ALL kinds incl. `Wall`), and the OPTIONAL slab-only
+    /// footfall ([`FootfallSound`]). The presenter reads these facts ONLY — never the
+    /// sim-owned `TerrainTag` (the one-way sim→presenter dependency forbids it).
+    terrain: Query<
+        'w,
+        's,
+        (
+            &'static TerrainCell,
+            &'static TerrainGraphicKey,
+            Option<&'static FootfallSound>,
+        ),
+    >,
 }
 
-impl StaticMap<'_> {
+impl StaticMap<'_, '_> {
     /// The [`TileRole`] for the in-range `key` on the active level.
     ///
     /// The presenter-owned mapping (`docs/combat/resolution.md` §3 cover / slab
@@ -95,6 +114,12 @@ impl StaticMap<'_> {
     /// floor, so this always yields a role — the caller scans only in-range cells, so the
     /// out-of-range `Open` default of [`OccupancyGrid::terrain`] (FLOOR) never spawns a
     /// stray off-grid sprite.
+    ///
+    /// This is the FALLBACK keyed only on [`TerrainKind`] — the GTW-493 per-def
+    /// graphic-key resolution (the private `resolve_index` helper →
+    /// [`TileRoles::index_for_key`]) is tried FIRST; this role default applies only to a
+    /// cell with no spawned terrain entity (the floor field) or an out-of-vocabulary
+    /// graphic key.
     fn role_at(&self, key: &CellLevel) -> TileRole {
         // A present slab tile sits on the active level (slab_state is CellLevel-keyed).
         if matches!(self.surface.slab_state(key), SlabState::Present) {
@@ -111,11 +136,30 @@ impl StaticMap<'_> {
             TerrainKind::Open => TileRole::Floor,
         }
     }
+
+    /// Build the per-cell terrain presentation-fact map (GTW-493) from the spawned
+    /// terrain entities: `(cell, level)` → (per-def [`TerrainGraphicKey`], OPTIONAL slab
+    /// [`FootfallSound`]).
+    ///
+    /// One pass over the terrain-entity query, built ONCE per draw and consulted per
+    /// cell. The sim spawns at most one terrain entity per `(cell, level)`
+    /// (`setup_battle`'s walls/scatter/slab loops), so a later insert merely overwrites —
+    /// no terrain stacks. A cell with no spawned entity (the floor field) is absent from
+    /// the map and falls back to the [`role_at`](Self::role_at) `TerrainKind` default.
+    fn graphic_facts(&self) -> HashMap<CellLevel, (&TerrainGraphicKey, Option<&FootfallSound>)> {
+        self.terrain
+            .iter()
+            .map(|(cell, graphic, footfall)| (**cell, (graphic, footfall)))
+            .collect()
+    }
 }
 
-/// Builds one terrain [`TerrainFogMaterial`] for `role` on the terrain sheet (GTW-348).
+/// Builds one terrain [`TerrainFogMaterial`] for the resolved `index` on the terrain
+/// sheet (GTW-348).
 ///
-/// Resolves the role's [`TileIndex`] from [`TileRoles`] and the terrain sheet's RESOLVED
+/// Takes the already-resolved [`TileIndex`] (GTW-493 — the caller resolves it from the
+/// cell's per-def [`TerrainGraphicKey`] first, falling back to the
+/// [`TileRole`]-table default keyed on [`TerrainKind`]) and the terrain sheet's RESOLVED
 /// [`TextureAtlasLayout`] (looked up from the handle via
 /// [`Assets<TextureAtlasLayout>::get`](bevy::asset::Assets::get) — the material holds the
 /// layout STRUCT, not the handle, so its [`AsBindGroupShaderType`](bevy::render::render_resource::AsBindGroupShaderType)
@@ -124,8 +168,7 @@ impl StaticMap<'_> {
 /// Returns [`None`] if the terrain sheet OR its layout was not loaded (so the caller skips
 /// the spawn rather than panic).
 fn terrain_material(
-    role: TileRole,
-    roles: &TileRoles,
+    index: TileIndex,
     atlases: &TopDownAtlases,
     layouts: &Assets<TextureAtlasLayout>,
 ) -> Option<TerrainFogMaterial> {
@@ -134,11 +177,41 @@ fn terrain_material(
     Some(TerrainFogMaterial {
         image:        terrain.image.clone(),
         atlas_layout: Some(atlas_layout),
-        atlas_index:  *role.index(roles),
+        atlas_index:  *index,
         custom_size:  Some(Vec2::splat(CELL_PX)),
         // Seed VISIBLE (full colour); present_fog drives it to 0.0 on EXPLORED cells.
         saturation:   1.0,
     })
+}
+
+/// Resolve the atlas [`TileIndex`] for an in-range cell (GTW-493) — the per-def
+/// [`TerrainGraphicKey`] FIRST, the [`TileRole`]-table default LAST.
+///
+/// The GTW-493 seam: the sim spawns a [`TerrainGraphicKey`] on every terrain entity (ALL
+/// kinds incl. `Wall`), keyed in the [`TileRoles`] vocabulary. If a terrain entity sits at
+/// `key`, its graphic key resolves through [`TileRoles::index_for_key`] — so two `Cover`
+/// defs whose `graphic_name`s differ (e.g. `"cover"` vs `"rubble"`) draw DISTINCT sprites
+/// (the per-def graphic the ticket requires; the role-table default, keyed only on the
+/// shared [`TerrainKind::Cover`], could not). A cell with no spawned terrain entity (the
+/// floor field) or an out-of-vocabulary graphic key falls back to the
+/// [`StaticMap::role_at`] default keyed on [`TerrainKind`] / slab presence — so an
+/// unrecognized key still draws (no panic) rather than vanishing.
+fn resolve_index(
+    key: &CellLevel,
+    facts: &HashMap<CellLevel, (&TerrainGraphicKey, Option<&FootfallSound>)>,
+    map: &StaticMap,
+    roles: &TileRoles,
+) -> TileIndex {
+    // GTW-493: per-def graphic FIRST. A spawned terrain entity carries the def's
+    // graphic_name; resolve it against the TileRoles vocabulary. Falls through to the
+    // TerrainKind-keyed role default for the floor field (no entity) or an
+    // out-of-vocabulary key (index_for_key -> None).
+    if let Some((graphic, _footfall)) = facts.get(key)
+        && let Some(index) = roles.index_for_key(graphic)
+    {
+        return index;
+    }
+    map.role_at(key).index(roles)
 }
 
 /// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): the
@@ -158,6 +231,17 @@ fn terrain_material(
 /// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`TerrainSprite`] marker.
 /// The despawn-first step makes the first-ready double-fire (a `BattleReady` on the same
 /// update `ActiveLevel` first reads `is_changed`) idempotent.
+///
+/// GTW-493 (T07c — the per-def presenter seam): each cell's atlas index is resolved from
+/// the SIM-SPAWNED terrain entity's per-def [`TerrainGraphicKey`] FIRST (via the private
+/// `resolve_index` helper → [`TileRoles::index_for_key`]), falling back to the
+/// `TileRole`-table default keyed on [`TerrainKind`] only for the floor field (no spawned
+/// entity) or an out-of-vocabulary key. So two `Cover` defs whose `graphic_name`s differ
+/// (e.g. `"cover"` vs `"rubble"`) draw DISTINCT sprites — the per-def graphic the role
+/// table (keyed only on the shared [`TerrainKind`]) cannot express. The slab-only OPTIONAL
+/// [`FootfallSound`] is also read here from the def's presenter facts; an absent footfall is
+/// handled (no panic) with a documented silent default — there is no footfall-audio system
+/// yet (guns-only).
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], the [`StaticMap`] sim-grid bundle,
 /// [`Res<TopDownAtlases>`], [`Res<TileRoles>`], [`Res<ActiveLevel>`], the asset stores it
@@ -212,13 +296,36 @@ pub fn draw_static_battlefield(
         .get_or_insert_with(|| meshes.add(Rectangle::from_size(Vec2::ONE)))
         .clone();
 
+    // GTW-493: build the per-cell terrain presentation-fact map ONCE per draw — the
+    // sim-spawned `(cell, level)` -> (per-def TerrainGraphicKey, optional slab FootfallSound).
+    // Each cell then resolves its atlas index from its OWN def's graphic (resolve_index),
+    // not solely from the TerrainKind-keyed TileRole default.
+    let graphic_facts = map.graphic_facts();
+
     let level = **active;
     for y in 0..i32_extent(GRID_HEIGHT) {
         for x in 0..i32_extent(GRID_WIDTH) {
             let cell = Cell::new(x, y);
             let key = CellLevel::new(cell, level);
-            let role = map.role_at(&key);
-            let Some(material) = terrain_material(role, &roles, &atlases, &layouts) else {
+            // GTW-493: read the slab footfall from the def's presenter_kind for this cell.
+            // It is Slab-ONLY and OPTIONAL: a Wall/Cover entity carries no FootfallSound, and
+            // a Slab def may omit it. ABSENT footfall is handled here with NO panic and a
+            // DOCUMENTED default — there is NO footfall-audio system yet (the sim stays
+            // guns-only), so a present key is logged at `debug` (so a future footfall pass has
+            // a wired seam to consume) and an absent one is the SILENT default (no clip).
+            if let Some((_graphic, Some(footfall))) = graphic_facts.get(&key) {
+                let footfall_key: &str = footfall;
+                debug!(
+                    "terrain footfall present at {key:?}: `{footfall_key}` (no footfall-audio \
+                     system yet — default: silent)",
+                );
+            }
+            // GTW-493: resolve the atlas index from this cell's per-def TerrainGraphicKey
+            // FIRST (so two same-TerrainKind defs with distinct graphic_names draw distinct
+            // sprites), falling back to the TerrainKind-keyed TileRole default for the floor
+            // field / an out-of-vocabulary key.
+            let index = resolve_index(&key, &graphic_facts, &map, &roles);
+            let Some(material) = terrain_material(index, &atlases, &layouts) else {
                 continue;
             };
             let mesh2d = Mesh2d(mesh.clone());

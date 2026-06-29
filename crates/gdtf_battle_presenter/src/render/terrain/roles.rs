@@ -28,6 +28,43 @@ impl TileIndex {
     }
 }
 
+impl TileRoles {
+    /// Resolve a per-def terrain GRAPHIC-key string to its [`TileIndex`] in this table —
+    /// the GTW-493 presenter seam (the sim spawns a
+    /// [`TerrainGraphicKey`](gdtf_battle_sim::TerrainGraphicKey) on every terrain entity,
+    /// keyed in THIS `TileRoles` vocabulary; the presenter resolves it here).
+    ///
+    /// The authored `graphic_name` follows the `tile_roles.ron` vocabulary
+    /// (`"floor"` / `"wall"` / `"cover"` / `"slab"` / `"rubble"` / …), so this maps the
+    /// key string onto the matching role field. Returns [`None`] for an unrecognized key
+    /// — the caller then FALLS BACK to its presenter-owned `TileRole`-table default keyed on
+    /// the cell's [`TerrainKind`](gdtf_battle_sim::TerrainKind), so an out-of-vocabulary
+    /// def still draws (no panic) rather than vanishing.
+    ///
+    /// Two `Cover` defs whose `graphic_name`s differ (e.g. `"cover"` vs `"rubble"`)
+    /// therefore resolve to DISTINCT indices through this method — the per-def graphic the
+    /// ticket requires, which the role-table default (keyed only on the shared
+    /// [`TerrainKind::Cover`](gdtf_battle_sim::TerrainKind)) cannot express.
+    #[must_use]
+    pub fn index_for_key(&self, key: &str) -> Option<TileIndex> {
+        let index = match key {
+            "floor" => self.floor,
+            "floor_alt_panel" => self.floor_alt_panel,
+            "wall" => self.wall,
+            "cover" => self.cover,
+            "slab" => self.slab,
+            "rubble" => self.rubble,
+            "slab_destroyed" => self.slab_destroyed,
+            "door" => self.door,
+            "stair_up" => self.stair_up,
+            "stair_down" => self.stair_down,
+            "ladder" => self.ladder,
+            _ => return None,
+        };
+        Some(index)
+    }
+}
+
 /// The DATA-DRIVEN terrain tile-role table — each terrain ROLE → its [`TileIndex`].
 ///
 /// Loaded from the loose `assets/sprites/tile_roles.spritedef.ron` through the generic
