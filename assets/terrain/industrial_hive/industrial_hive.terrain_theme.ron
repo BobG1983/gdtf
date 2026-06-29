@@ -24,5 +24,11 @@
         "00000000-0000-0000-0000-01840a910008",  // supply_crate
         "00000000-0000-0000-0000-01840a910009",  // bulkhead_wall_ew   (GTW-469 EW orientation)
         "00000000-0000-0000-0000-01840a91000a",  // heavy_bulkhead_ew  (GTW-469 EW orientation)
+        "00000000-0000-0000-0000-01840a91000b",  // door_ns        (GTW-470 NS door, Wall+Openable)
+        "00000000-0000-0000-0000-01840a91000c",  // door_ew        (GTW-470 EW door, Wall+Openable)
+        "00000000-0000-0000-0000-01840a91000d",  // stair_ns_up    (GTW-470 NS stair up,   Slab)
+        "00000000-0000-0000-0000-01840a91000e",  // stair_ns_down  (GTW-470 NS stair down, Slab)
+        "00000000-0000-0000-0000-01840a91000f",  // stair_ew_up    (GTW-470 EW stair up,   Slab)
+        "00000000-0000-0000-0000-01840a910010",  // stair_ew_down  (GTW-470 EW stair down, Slab)
     ],
 )

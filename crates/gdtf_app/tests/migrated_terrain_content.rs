@@ -37,9 +37,10 @@ const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// The total number of migrated terrain defs across all three themes: the reconciled flat 8
 /// (`industrial_hive`) + 4 (`underhive`) + 4 (`sump_waste`) = 16, PLUS the GTW-469 EW-wall
-/// companions (2 `industrial_hive` + 1 `underhive` + 1 `sump_waste` = 4) = 20. A COUNT, not a
-/// magnitude — it proves no migrated piece was dropped (C2), not any balance value.
-const MIGRATED_TERRAIN_DEF_COUNT: usize = 20;
+/// companions (2 `industrial_hive` + 1 `underhive` + 1 `sump_waste` = 4) = 20, PLUS the GTW-470
+/// orientation/direction door + stair tiles in `industrial_hive` (2 doors + 4 stairs = 6) = 26. A
+/// COUNT, not a magnitude — it proves no terrain def was dropped (C2), not any balance value.
+const MIGRATED_TERRAIN_DEF_COUNT: usize = 26;
 
 /// The number of migrated themes (`industrial_hive`, `underhive`, `sump_waste`).
 const MIGRATED_THEME_COUNT: usize = 3;

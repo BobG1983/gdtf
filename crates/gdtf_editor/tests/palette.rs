@@ -423,6 +423,79 @@ fn palette_lists_both_ns_and_ew_wall_orientations() {
     );
 }
 
+/// The 6 GTW-470 orientation/direction door + stair [`TerrainUuid`]s authored in the
+/// `industrial_hive` theme (`terrain/industrial_hive/*.terrain_def.ron`): `door_ns`, `door_ew`,
+/// `stair_ns_up`, `stair_ns_down`, `stair_ew_up`, `stair_ew_down`.
+const fn door_stair_uuids() -> [TerrainUuid; 6] {
+    [
+        TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_000b)), // door_ns
+        TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_000c)), // door_ew
+        TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_000d)), // stair_ns_up
+        TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_000e)), // stair_ns_down
+        TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_000f)), // stair_ew_up
+        TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_0010)), // stair_ew_down
+    ]
+}
+
+/// GTW-470 C4 — all 6 orientation/direction door + stair tiles appear in the editor palette for the
+/// `industrial_hive` theme: the editor lists every `TerrainDef` in the theme's palette, so each new
+/// door/stair tile is a placeable, selectable palette entry.
+///
+/// Value-agnostic: it asserts the PRESENCE of the 6 known door/stair UUIDs as palette rows
+/// (membership / identity), never an authored magnitude. Driven through the REAL editor plugin (the
+/// same `DropdownSelectionChanged<ThemeUuid>` switch the other tests use) so the rows are spawned by
+/// the actual `sync_palette` over the shipped registries — not a copy.
+#[test]
+fn palette_lists_door_and_stair_orientation_tiles() {
+    let mut app = editor_in_editing();
+
+    // Switch the active theme to industrial_hive (which authors the door/stair tiles).
+    let ih = industrial_hive_theme();
+    let world = app.world_mut();
+    let mut dd = world.query_filtered::<Entity, With<ThemeDropdown>>();
+    let control = dd.iter(world).next();
+    assert!(control.is_some(), "the theme dropdown must exist");
+    if let Some(control) = control {
+        app.world_mut()
+            .write_message(DropdownSelectionChanged::new(control, ih));
+    }
+    for _ in 0..4 {
+        app.update();
+    }
+
+    // Precondition: industrial_hive is active.
+    let theme_now = app
+        .world()
+        .get_resource::<MapEditorSession>()
+        .map(MapEditorSession::theme);
+    assert_eq!(
+        theme_now,
+        Some(ih),
+        "the editor must be on the industrial_hive theme for this door/stair coverage check",
+    );
+
+    // Every door/stair tile resolves in the registry (proving the defs loaded) AND appears as a
+    // palette row (proving each is a placeable, selectable palette entry).
+    for uuid in door_stair_uuids() {
+        let resolvable = app
+            .world()
+            .get_resource::<TerrainDefRegistry>()
+            .map(|reg| reg.def(&uuid).is_some());
+        assert_eq!(
+            resolvable,
+            Some(true),
+            "the door/stair TerrainDef {uuid:?} must resolve in the registry (C4)",
+        );
+    }
+    let keys = palette_row_keys(&mut app);
+    for uuid in door_stair_uuids() {
+        assert!(
+            keys.contains(&uuid),
+            "the door/stair tile {uuid:?} must appear as a palette row (C4)",
+        );
+    }
+}
+
 /// T5 (scroll-parenting guard): a [`ScrollListArea`] must be an ANCESTOR of a palette row.
 #[test]
 fn palette_rows_live_inside_the_scroll_area_not_the_grid_frame() {

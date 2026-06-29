@@ -450,6 +450,12 @@ const fn default_tile_roles() -> TileRoles {
         stair_up:        zero,
         stair_down:      zero,
         ladder:          zero,
+        door_ns:         zero,
+        door_ew:         zero,
+        stair_ns_up:     zero,
+        stair_ns_down:   zero,
+        stair_ew_up:     zero,
+        stair_ew_down:   zero,
     }
 }
 

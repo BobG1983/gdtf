@@ -57,8 +57,14 @@ impl TileRoles {
             "rubble" => self.rubble,
             "slab_destroyed" => self.slab_destroyed,
             "door" => self.door,
+            "door_ns" => self.door_ns,
+            "door_ew" => self.door_ew,
             "stair_up" => self.stair_up,
             "stair_down" => self.stair_down,
+            "stair_ns_up" => self.stair_ns_up,
+            "stair_ns_down" => self.stair_ns_down,
+            "stair_ew_up" => self.stair_ew_up,
+            "stair_ew_down" => self.stair_ew_down,
             "ladder" => self.ladder,
             _ => return None,
         };
@@ -145,6 +151,33 @@ pub struct TileRoles {
     /// ruling). Drawn at each ladder link cell on the active storey by the GTW-359
     /// link-cell draw (a ladder is drawn the same tile both up and down).
     pub ladder:          TileIndex,
+    /// The **north-south-running** door tile (GTW-470) — a distinct AUTHORED orientation
+    /// variant of the doorway hatch. A door [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef)
+    /// is `sim_kind = Wall` carrying the sim-owned `Openable` tag (a closed door blocks like a
+    /// wall; functional open/close is GTW-315) and names `graphic_name = "door_ns"`, which resolves
+    /// here. The companion EW orientation is [`door_ew`](TileRoles::door_ew), the same sprite rotated
+    /// 90°. The author places the correct orientation in a prefab; it is never presenter-inferred.
+    pub door_ns:         TileIndex,
+    /// The **east-west-running** door tile (GTW-470) — the [`door_ns`](TileRoles::door_ns) sprite
+    /// rotated 90°. Same sim semantics as the NS door (`sim_kind = Wall` + `Openable`); orientation
+    /// is presentation-only.
+    pub door_ew:         TileIndex,
+    /// The **north-south-running** stair tile you ASCEND (GTW-470) — a distinct AUTHORED
+    /// orientation/direction variant. A stair [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef)
+    /// is `sim_kind = Slab` (a walkable surface; the vertical link is GTW-388, NOT modelled here) and
+    /// names `graphic_name = "stair_ns_up"`. Up and down are DISTINCT sprites (not a pure rotation);
+    /// the EW companion is [`stair_ew_up`](TileRoles::stair_ew_up), the same sprite rotated 90°.
+    pub stair_ns_up:     TileIndex,
+    /// The **north-south-running** stair tile you DESCEND (GTW-470) — the down-direction companion
+    /// of [`stair_ns_up`](TileRoles::stair_ns_up), a DISTINCT sprite. `sim_kind = Slab`; the EW
+    /// companion is [`stair_ew_down`](TileRoles::stair_ew_down).
+    pub stair_ns_down:   TileIndex,
+    /// The **east-west-running** stair tile you ASCEND (GTW-470) — the [`stair_ns_up`](TileRoles::stair_ns_up)
+    /// sprite rotated 90°. Same `sim_kind = Slab` semantics; orientation is presentation-only.
+    pub stair_ew_up:     TileIndex,
+    /// The **east-west-running** stair tile you DESCEND (GTW-470) — the [`stair_ns_down`](TileRoles::stair_ns_down)
+    /// sprite rotated 90°. Same `sim_kind = Slab` semantics; orientation is presentation-only.
+    pub stair_ew_down:   TileIndex,
 }
 
 /// The path of the loose tile-role RON, relative to the asset source root.
@@ -372,6 +405,12 @@ mod test {
             stair_up:        other,
             stair_down:      other,
             ladder:          other,
+            door_ns:         other,
+            door_ew:         other,
+            stair_ns_up:     other,
+            stair_ns_down:   other,
+            stair_ew_up:     other,
+            stair_ew_down:   other,
         }
     }
 

@@ -640,6 +640,12 @@ mod test {
             stair_up:        index,
             stair_down:      index,
             ladder:          index,
+            door_ns:         index,
+            door_ew:         index,
+            stair_ns_up:     index,
+            stair_ns_down:   index,
+            stair_ew_up:     index,
+            stair_ew_down:   index,
         }
     }
 

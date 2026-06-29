@@ -83,19 +83,27 @@ fn shipped_tile_roles_ron_parses_with_all_roles() {
 #[test]
 fn tile_roles_field_set_is_discriminating() {
     // A complete authored body parses (the positive control) — the GTW-373 split keys plus
-    // the GTW-367 `slab_destroyed` key plus the GTW-469 `wall_ew` (EW-wall orientation) key.
+    // the GTW-367 `slab_destroyed` key plus the GTW-469 `wall_ew` key plus the GTW-470
+    // orientation/direction door + stair keys (door_ns/door_ew/stair_ns_up/stair_ns_down/
+    // stair_ew_up/stair_ew_down).
     const COMPLETE: &str = "(\
         floor: 6, floor_alt_panel: 128, wall: 0, wall_ew: 16, cover: 248, slab: 22, rubble: 295, \
-        slab_destroyed: 295, door: 339, stair_up: 29, stair_down: 28, ladder: 235)";
+        slab_destroyed: 295, door: 339, stair_up: 29, stair_down: 28, ladder: 235, \
+        door_ns: 340, door_ew: 341, stair_ns_up: 342, stair_ns_down: 343, stair_ew_up: 344, \
+        stair_ew_down: 345)";
     // MISSING the `stair_up` key — must fail (the field is required).
     const MISSING_STAIR_UP: &str = "(\
         floor: 6, floor_alt_panel: 128, wall: 0, wall_ew: 16, cover: 248, slab: 22, rubble: 295, \
-        slab_destroyed: 295, door: 339, stair_down: 28, ladder: 235)";
+        slab_destroyed: 295, door: 339, stair_down: 28, ladder: 235, \
+        door_ns: 340, door_ew: 341, stair_ns_up: 342, stair_ns_down: 343, stair_ew_up: 344, \
+        stair_ew_down: 345)";
     // RENAMED `stair_up` -> `stair` (the OLD single-stair key) — must fail (the field-set
     // is fixed; the superseded `stair` key no longer substitutes for the split role).
     const RENAMED_STAIR_UP: &str = "(\
         floor: 6, floor_alt_panel: 128, wall: 0, wall_ew: 16, cover: 248, slab: 22, rubble: 295, \
-        slab_destroyed: 295, door: 339, stair: 29, stair_down: 28, ladder: 235)";
+        slab_destroyed: 295, door: 339, stair: 29, stair_down: 28, ladder: 235, \
+        door_ns: 340, door_ew: 341, stair_ns_up: 342, stair_ns_down: 343, stair_ew_up: 344, \
+        stair_ew_down: 345)";
 
     assert!(
         ron::de::from_str::<TileRoles>(COMPLETE).is_ok(),

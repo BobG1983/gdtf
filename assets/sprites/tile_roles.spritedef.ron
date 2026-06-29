@@ -19,4 +19,28 @@
     stair_up:        29,    // VerticalLink Stair endpoint where you ASCEND (active storey is the link's LOWER cell). GTW-373 (user 2026-06-23) SUPERSEDES the GTW-359 OQ-3 single-stair:77 constant: the stair role is split into up/down, chosen by link direction
     stair_down:      28,    // VerticalLink Stair endpoint where you DESCEND (active storey is the link's UPPER cell). GTW-373 (user 2026-06-23) SUPERSEDES the GTW-359 OQ-3 single-stair:77 constant: the stair role is split into up/down, chosen by link direction
     ladder:          235,   // VerticalLink Ladder endpoint — ladder tile (UNCHANGED system constant, user OQ-3 ruling GTW-359)
+    // GTW-470 ORIENTATION/DIRECTION door + stair tiles — each a DISTINCT AUTHORED tile the author
+    // places explicitly in a prefab (orientation/direction is never presenter-inferred). The 6 new
+    // indices were authored into previously-unused row-21 cells (cols 4..9, indices 340..345) by a
+    // DETERMINISTIC, REPRODUCIBLE transform recorded below. PLACEHOLDER ART (derived/rotated from the
+    // existing generic door 339 + stair 29/28 tiles) — flagged refinable; the user authors final art.
+    //
+    // Reproducible derivation (ImageMagick `magick`, sheet = assets/sprites/alt_tileset_terrain.png):
+    //   door_ns  (340) = door  base 339 (col3,row21,x48,y336) as-is (the NS-running hatch).
+    //   door_ew  (341) = door  base 339 rotated 90deg: `magick SHEET -crop 16x16+48+336 +repage -background none -rotate 90 door_ew.png`.
+    //   stair_ns_up   (342) = stair_up   base 29 (col13,row1,x208,y16) as-is.
+    //   stair_ns_down (343) = stair_down base 28 (col12,row1,x192,y16) as-is (up vs down are the two
+    //                          DISTINCT existing stair tiles, not a pure rotation — ticket OQ (b)).
+    //   stair_ew_up   (344) = stair_up   base 29 rotated 90deg.
+    //   stair_ew_down (345) = stair_down base 28 rotated 90deg.
+    //   Each target cell (340..345) was first cleared to transparent (Copy of a 16x16 xc:none patch)
+    //   then the derived tile composited Over it, then `cp` over the asset (dims preserved 256x352).
+    // Sim semantics: doors are sim_kind=Wall+Openable (block like a wall when closed; functional
+    // open/close is GTW-315); stairs are sim_kind=Slab (walkable; vertical traversal is GTW-388).
+    door_ns:         340,   // GTW-470 NS-orientation door (the dark hatch, NS-running)
+    door_ew:         341,   // GTW-470 EW-orientation door (the NS hatch rotated 90deg)
+    stair_ns_up:     342,   // GTW-470 NS-orientation stair you ASCEND (derived from stair_up 29)
+    stair_ns_down:   343,   // GTW-470 NS-orientation stair you DESCEND (derived from stair_down 28)
+    stair_ew_up:     344,   // GTW-470 EW-orientation stair you ASCEND (NS up rotated 90deg)
+    stair_ew_down:   345,   // GTW-470 EW-orientation stair you DESCEND (NS down rotated 90deg)
 )

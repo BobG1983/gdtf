@@ -1,0 +1,20 @@
+// GTW-470 NS-orientation STAIR you ASCEND — a distinct AUTHORED visual tile the author places
+// explicitly in a prefab. VISUAL TILE DEFINITION ONLY: a stair is a walkable surface, so sim_kind =
+// Slab (it carries the slab structural model + optional footfall). The actual vertical traversal /
+// storey link is GTW-388 (NOT modelled here) — this ticket adds NO traversal logic. Up vs down are
+// DISTINCT sprites (not a pure rotation); the EW companion (stair_ew_up) is this sprite rotated 90deg.
+(
+    // Stable authored key — the industrial_hive NS ascending-stair TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a91000d",
+    display_name: "Deck Stair Up (NS)",
+    sim_kind: Slab(
+        hp:               120,   // structural HP — a sturdy stepped deck (matches deck_slab)
+        armor_protection: 4,     // damage soak (matches deck_slab)
+        armor_hardness:   2,     // punch ignored
+    ),
+    presenter_kind: Slab(
+        graphic_name: "stair_ns_up", // the NS ascending-stair sprite (TileRoles index 342)
+        footfall:     None,          // no authored footfall (the slab footfall seam is optional)
+    ),
+    tags: [],
+)
