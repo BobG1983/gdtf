@@ -41,12 +41,7 @@ use bevy::{platform::collections::HashMap, prelude::Resource, reflect::TypePath}
 use serde::{Deserialize, Serialize};
 
 use super::{GridSize, LevelTheme};
-use crate::{
-    metric::CellLevel,
-    situation::{CoverSpawn, FloorSpawn, SlabSpawn},
-    terrain::piece::TerrainName,
-    vertical::VerticalLink,
-};
+use crate::{metric::CellLevel, terrain::piece::TerrainName, vertical::VerticalLink};
 
 /// The **role** a prefab plays in an assembled level — a closed `PlayerEnemyFill`-style
 /// set the assembler buckets prefabs by (GTW-418 C3).
@@ -141,16 +136,62 @@ impl From<EdgeOpening> for EdgeOpeningDef {
     }
 }
 
+/// One authored terrain piece of a legacy prefab fragment — a `(cell, level)` paired with a
+/// filename-stem [`TerrainName`] key.
+///
+/// GTW-491 SHIM (T07a): the legacy [`PrefabSpec`] fragment schema stays
+/// [`TerrainName`]-keyed (its walls / scatter / slabs / floor overrides) while the canonical
+/// [`Situation`](crate::situation::Situation) terrain references switched to the UUID-keyed
+/// [`TerrainUuid`](crate::terrain::def::TerrainUuid). Before GTW-491 a prefab reused the
+/// situation's [`CoverSpawn`](crate::situation::CoverSpawn) /
+/// [`SlabSpawn`](crate::situation::SlabSpawn) /
+/// [`FloorSpawn`](crate::situation::FloorSpawn) leaves verbatim; now those leaves carry a
+/// `TerrainUuid`, so the prefab schema owns this DEDICATED `TerrainName`-keyed leaf instead —
+/// one shape for all four lists (they shared it). The procgen
+/// [`emit_level`](crate::procgen::emit_level) bridges each `TerrainName` into a
+/// [`TerrainUuid`](crate::terrain::def::TerrainUuid) when it pours a fragment into a
+/// `Situation`. GTW-492 (T07b) is the full procgen switch onto UUID-keyed v2 prefabs, which
+/// retires this shim type.
+///
+/// Derives [`Deserialize`] / [`Serialize`] so a `.prefab.ron` reads/writes each piece as
+/// `(at: (cell: …, level: …), piece: "…")` — the SAME wire shape the pre-GTW-491
+/// `CoverSpawn` / `SlabSpawn` / `FloorSpawn` produced, so existing prefab files (and the
+/// editor saver) round-trip unchanged.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct PrefabPiece {
+    /// The `(cell, level)` this piece occupies.
+    pub at:    CellLevel,
+    /// The legacy filename-stem terrain piece KEY (a [`TerrainName`]).
+    pub piece: TerrainName,
+}
+
+impl PrefabPiece {
+    /// Build a prefab terrain piece from its `(cell, level)` and terrain piece key.
+    #[must_use]
+    pub const fn new(at: CellLevel, piece: TerrainName) -> Self {
+        Self { at, piece }
+    }
+}
+
 /// The **authoring struct** a `assets/content/maps/<theme>/<size>/<prefab>.ron`
 /// deserializes into — one reusable level fragment (GTW-418).
 ///
 /// The canonical prefab schema BOTH the GTW-424 assembler and the GTW-432 editor saver
-/// consume. It reuses the situation value-graph leaves verbatim
-/// ([`CoverSpawn`] for walls + scatter, [`SlabSpawn`] for slabs, [`FloorSpawn`] for
-/// per-cell floor overrides, [`VerticalLink`] for ladders/stairs, [`TerrainName`] for the
-/// default floor), so a fragment is authored exactly like a small standalone situation —
-/// plus two prefab-specific fields: the [`spawn_role`](PrefabSpec::spawn_role) and the
-/// [`edge_openings`](PrefabSpec::edge_openings) the seam connects through.
+/// consume. It authors its terrain as the [`TerrainName`]-keyed [`PrefabPiece`] leaf
+/// ([`PrefabPiece`] for walls + scatter + slabs + floor overrides, [`VerticalLink`] for
+/// ladders/stairs, [`TerrainName`] for the default floor), so a fragment is authored exactly
+/// like a small standalone situation was before GTW-491 — plus two prefab-specific fields: the
+/// [`spawn_role`](PrefabSpec::spawn_role) and the [`edge_openings`](PrefabSpec::edge_openings)
+/// the seam connects through.
+///
+/// GTW-491 SHIM (T07a): the canonical [`Situation`](crate::situation::Situation) terrain
+/// references switched to the UUID-keyed [`TerrainUuid`](crate::terrain::def::TerrainUuid), so
+/// this fragment schema no longer reuses the situation's `CoverSpawn` / `SlabSpawn` /
+/// `FloorSpawn` leaves (they are now UUID-keyed); it owns the dedicated [`PrefabPiece`]
+/// [`TerrainName`] leaf instead. The procgen [`emit_level`](crate::procgen::emit_level)
+/// bridges each `TerrainName` into a [`TerrainUuid`](crate::terrain::def::TerrainUuid) when it
+/// pours a fragment into a `Situation`. GTW-492 (T07b) is the full procgen switch onto
+/// UUID-keyed v2 prefabs, which retires this shim.
 ///
 /// Every authored magnitude (terrain HP / move cost behind each [`TerrainName`] key) is
 /// tuning DATA resolved later against the registries — NOT pinned by tests
@@ -164,9 +205,9 @@ impl From<EdgeOpening> for EdgeOpeningDef {
 /// Derives [`Serialize`] (GTW-432) so the editor saver writes a `.prefab.ron` in EXACTLY
 /// this schema — the same type the GTW-418 loader deserializes — so `load(save(grid))`
 /// round-trips with no data loss. Every leaf in the value graph
-/// ([`LevelTheme`] / [`GridSize`] / [`SpawnRole`] / [`TerrainName`] / [`CoverSpawn`] /
-/// [`SlabSpawn`] / [`FloorSpawn`] / [`VerticalLink`] / [`EdgeOpening`]) serializes through
-/// the same authoring shape it deserializes from, so a written prefab parses straight back.
+/// ([`LevelTheme`] / [`GridSize`] / [`SpawnRole`] / [`TerrainName`] / [`PrefabPiece`] /
+/// [`VerticalLink`] / [`EdgeOpening`]) serializes through the same authoring shape it
+/// deserializes from, so a written prefab parses straight back.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 #[serde(default)]
 pub struct PrefabSpec {
@@ -190,16 +231,16 @@ pub struct PrefabSpec {
     /// precedent — the seam cells are this floor). `#[serde(default)]` supplies the empty
     /// sentinel.
     pub default_floor:  TerrainName,
-    /// The authored walls (each a [`CoverSpawn`] — `at` + terrain piece KEY).
-    pub walls:          Vec<CoverSpawn>,
-    /// The authored scatter / props (each a [`CoverSpawn`], same schema as a wall).
-    pub scatter:        Vec<CoverSpawn>,
-    /// The authored floor / roof slabs (each a [`SlabSpawn`] — `at` + terrain piece KEY,
+    /// The authored walls (each a [`PrefabPiece`] — `at` + terrain piece KEY).
+    pub walls:          Vec<PrefabPiece>,
+    /// The authored scatter / props (each a [`PrefabPiece`], same schema as a wall).
+    pub scatter:        Vec<PrefabPiece>,
+    /// The authored floor / roof slabs (each a [`PrefabPiece`] — `at` + terrain piece KEY,
     /// for multi-level fragments).
-    pub slabs:          Vec<SlabSpawn>,
+    pub slabs:          Vec<PrefabPiece>,
     /// Sparse per-cell floor overrides (cells whose floor differs from
     /// [`default_floor`](PrefabSpec::default_floor)).
-    pub floors:         Vec<FloorSpawn>,
+    pub floors:         Vec<PrefabPiece>,
     /// The authored stair / ladder vertical links (multi-level fragments) — the only way
     /// a ganger changes storey within the fragment.
     pub vertical_links: Vec<VerticalLink>,

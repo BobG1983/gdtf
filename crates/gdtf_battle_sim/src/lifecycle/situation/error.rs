@@ -4,7 +4,7 @@ use crate::{
     armor::ArmorName,
     ganger::{GangName, GangerName},
     metric::CellLevel,
-    terrain::piece::TerrainName,
+    terrain::def::TerrainUuid,
     tuning::MoveCost,
     vertical::InvalidVerticalLink,
     weapon::WeaponName,
@@ -23,11 +23,12 @@ use crate::{
 /// weapon file supplies, the GTW-269
 /// [`ArmorNotFound`](BattleSetupError::ArmorNotFound) variant for a
 /// [`GangerSpawn::armor`](crate::situation::GangerSpawn::armor) key that no loaded
-/// armor file supplies, and the GTW-396 variants
-/// [`TerrainNotFound`](BattleSetupError::TerrainNotFound) (for a cover/slab/floor
-/// key absent from the [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry))
-/// and [`FloorCostBelowMinimum`](BattleSetupError::FloorCostBelowMinimum) (for a
-/// floor piece whose move cost is below the A\* heuristic admissibility floor),
+/// armor file supplies, the GTW-396 / GTW-491 variants
+/// [`TerrainNotFound`](BattleSetupError::TerrainNotFound) (for a cover/slab terrain
+/// definition UUID absent from the
+/// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry))
+/// and [`FloorCostBelowMinimum`](BattleSetupError::FloorCostBelowMinimum) (the GTW-482-bound
+/// floor-cost-validation variant, not produced this slice),
 /// and the GTW-457 [`StackedGangers`](BattleSetupError::StackedGangers) variant
 /// (for two authored gangers sharing one `(cell, level)` spawn slot).
 /// The caller
@@ -78,26 +79,30 @@ pub enum BattleSetupError {
         /// The unresolved armor key (the missing file's stem).
         armor: ArmorName,
     },
-    /// A cover, slab, or floor piece KEY was not in the
-    /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) — no
-    /// `assets/content/terrain/*.terrain.ron` with that filename stem loaded (GTW-396).
+    /// A cover or slab terrain definition UUID was not in the
+    /// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) — no migrated
+    /// [`TerrainDef`](crate::terrain::def::TerrainDef) with that
+    /// [`TerrainUuid`] key loaded (GTW-491 — keyed by `TerrainUuid`, the successor to
+    /// the GTW-396 filename-stem key).
     ///
     /// Validated BEFORE any entity is spawned (abort-first invariant), so a missing
-    /// terrain key aborts the whole setup with no partial world behind.
+    /// terrain UUID aborts the whole setup with no partial world behind.
     TerrainNotFound {
-        /// The unresolved terrain key (the missing file's stem).
-        piece: TerrainName,
+        /// The unresolved terrain definition UUID (no `TerrainDef` carries this key).
+        piece: TerrainUuid,
     },
     /// An authored floor piece's move cost is below the A\* heuristic admissibility
     /// floor ([`MIN_MOVE_COST`](crate::pathfinder::MIN_MOVE_COST) = 4) — which would
     /// make the heuristic inadmissible and produce silently wrong paths (GTW-396
     /// Decision B). Validated BEFORE any entity is spawned (abort-first).
     ///
-    /// Fix: raise the floor piece's `move_cost` in its `assets/content/terrain/*.terrain.ron`
-    /// to at least `MIN_MOVE_COST` (4). The `.ron` comment documents this constraint.
+    /// GTW-491: NOT produced this slice — the new [`TerrainSimKind`](crate::terrain::def::TerrainSimKind)
+    /// model carries no per-piece floor move cost (the move-cost-from-`default_floor` seam is
+    /// GTW-482), so floor cost is the uniform `fallback_floor_cost`. The variant is retained for
+    /// the GTW-482 seam that will re-introduce per-floor move-cost validation.
     FloorCostBelowMinimum {
         /// The terrain piece whose `move_cost` is too low.
-        piece:   TerrainName,
+        piece:   TerrainUuid,
         /// The authored `move_cost` that was rejected.
         cost:    MoveCost,
         /// The minimum admissible cost (always [`MIN_MOVE_COST`](crate::pathfinder::MIN_MOVE_COST)).

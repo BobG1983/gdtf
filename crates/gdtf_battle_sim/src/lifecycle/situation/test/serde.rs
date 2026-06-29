@@ -18,9 +18,8 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
     // A minimal-but-complete authored situation: one of every section. The
     // single vertical link's endpoints are authored slabs on different storeys
     // (non-dangling, cross-storey), so the value is setup-able.
-    // GTW-396: walls/scatter use the new `piece` key schema (no inline stats);
-    // slabs use the new `SlabSpawn { at, piece }` schema; `default_floor` and
-    // `floors` are the new GTW-396 floor fields.
+    // GTW-491 schema: walls/scatter/slabs/floors `piece` keys + `default_floor` are now
+    // UUID-keyed `TerrainUuid` strings (the migration from filename-stem `TerrainName`).
     // GTW-414 schema v2: a placed ganger is a REFERENCE (gang + member) plus placement +
     // faction — the roster (identity / attributes / weapon / armor) lives in a gang file,
     // resolved against the GangRegistry at setup (not authored inline here).
@@ -32,21 +31,21 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
             faction: 0, facing: North, stance: Standing, aiming: false, life_state: Alive,
         )],
         walls: [(
-            at: (cell: (x: 1, y: 1), level: 0), piece: \"test-wall\",
+            at: (cell: (x: 1, y: 1), level: 0), piece: \"01491491-0000-0001-0000-000000000000\",
         )],
         scatter: [(
-            at: (cell: (x: 2, y: 2), level: 0), piece: \"test-cover\",
+            at: (cell: (x: 2, y: 2), level: 0), piece: \"01491491-0000-0003-0000-000000000000\",
         )],
         slabs: [
-            (at: (cell: (x: 3, y: 3), level: 0), piece: \"test-slab\"),
-            (at: (cell: (x: 3, y: 3), level: 1), piece: \"test-slab\"),
+            (at: (cell: (x: 3, y: 3), level: 0), piece: \"01491491-0000-0002-0000-000000000000\"),
+            (at: (cell: (x: 3, y: 3), level: 1), piece: \"01491491-0000-0002-0000-000000000000\"),
         ],
         vertical_links: [(
             from: (cell: (x: 3, y: 3), level: 0),
             to: (cell: (x: 3, y: 3), level: 1),
             kind: Stair(one_way: false),
         )],
-        default_floor: \"test-floor\",
+        default_floor: \"01491491-0000-0004-0000-000000000000\",
         floors: [],
     )";
 
@@ -126,7 +125,7 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
         situation.floors.len(),
     );
     assert!(
-        situation.default_floor.is_empty(),
+        situation.default_floor.is_nil(),
         "the migrated shipped file must author NO default_floor (procgen supplies it)",
     );
 }
@@ -186,11 +185,10 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
     let Some(armor) = shipped_armor_registry() else {
         return;
     };
-    // GTW-396: the shipped skirmish.ron now references terrain piece keys; supply the
-    // shipped terrain registry so cover/slab/floor keys resolve correctly.
-    let Some(terrain) = shipped_terrain_registry() else {
-        return;
-    };
+    // GTW-491: the shipped skirmish.ron authors NO inline terrain, so the (empty) UUID-keyed
+    // terrain registry is never actually resolved against; supply it to satisfy the setup
+    // signature.
+    let terrain = shipped_terrain_registry();
     let authored_ganger_count = situation.gangers.len();
 
     let Some((mut app, setup)) = run_setup_with(situation, gangs, registry, armor, Some(&terrain))

@@ -9,11 +9,10 @@ use std::path::{Path, PathBuf};
 use gdtf_battle_sim::{
     Cell,
     level::{
-        CatalogTileKind, EdgeOpening, GridSize, LevelTheme, PrefabSpec, ThemeCatalogRegistry,
-        TileKey,
+        CatalogTileKind, EdgeOpening, GridSize, LevelTheme, PrefabPiece, PrefabSpec,
+        ThemeCatalogRegistry, TileKey,
     },
     metric::{CellLevel, Level},
-    situation::{CoverSpawn, FloorSpawn, SlabSpawn},
     terrain::piece::TerrainName,
     vertical::{LinkKind, VerticalLink},
 };
@@ -104,7 +103,7 @@ pub(crate) fn editor_map_to_prefab(
 
         let piece = TerrainName::new((**tile).clone());
         match classify(registry, theme, tile) {
-            EditorTileClass::Slab => spec.slabs.push(SlabSpawn::new(*slot, piece)),
+            EditorTileClass::Slab => spec.slabs.push(PrefabPiece::new(*slot, piece)),
             EditorTileClass::Ladder => {
                 // A ladder rises one storey: author a bidirectional vertical link from this slot
                 // to the slot directly above (the only authored way a ganger changes storey).
@@ -148,15 +147,15 @@ fn route_other_tile(
         .and_then(|catalog| catalog.tile(tile))
         .map(|catalog_tile| catalog_tile.kind);
     match kind {
-        Some(CatalogTileKind::Wall(_)) => spec.walls.push(CoverSpawn::new(slot, piece)),
+        Some(CatalogTileKind::Wall(_)) => spec.walls.push(PrefabPiece::new(slot, piece)),
         Some(CatalogTileKind::Cover(_) | CatalogTileKind::Scatter(_)) => {
-            spec.scatter.push(CoverSpawn::new(slot, piece));
+            spec.scatter.push(PrefabPiece::new(slot, piece));
         }
         // A Floor tile, or an unresolved key, becomes a per-cell floor override. (A Slab kind is
         // routed by the EditorTileClass::Slab arm before this fn is called, so it cannot reach
         // here; it is listed for exhaustiveness only.)
         Some(CatalogTileKind::Floor { .. } | CatalogTileKind::Slab { .. }) | None => {
-            spec.floors.push(FloorSpawn::new(slot, piece));
+            spec.floors.push(PrefabPiece::new(slot, piece));
         }
     }
 }
@@ -164,7 +163,7 @@ fn route_other_tile(
 /// Derive the C6 [`EdgeOpening`]s for a built [`PrefabSpec`] — every walkable floor cell on a
 /// footprint BOUNDARY edge (GTW-432).
 ///
-/// A cell is "walkable" if it carries a per-cell floor override (a [`FloorSpawn`]) OR the prefab
+/// A cell is "walkable" if it carries a per-cell floor override (a [`PrefabPiece`]) OR the prefab
 /// has a non-empty default floor (so every open ground-level cell is walkable). A cell is on a
 /// boundary edge when its x / y sits on the footprint's perimeter (`0` or `width-1` / `height-1`).
 /// The inter-prefab 1-cell seam connects through such cells. Deduplicated + order-stable so the

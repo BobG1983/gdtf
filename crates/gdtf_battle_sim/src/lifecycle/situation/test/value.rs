@@ -9,7 +9,6 @@ use bevy::platform::collections::HashSet;
 use crate::{
     metric::CellLevel,
     situation::{CoverSpawn, has_stacked_gangers},
-    terrain::piece::TerrainName,
     test_support::{SituationBuilder, ganger_at, key, test_pieces},
 };
 
@@ -26,9 +25,9 @@ fn authored_cells_unions_walls_scatter_slabs_only() {
         .wall_at(wall)
         .with_scatter(CoverSpawn::new(
             prop,
-            // Use the canonical test-cover piece key (resolves against the test registry
-            // to a LOW-band cover piece — the same shape the old inline stats authored).
-            TerrainName::new(test_pieces::COVER.to_owned()),
+            // Use the canonical test-cover def UUID (resolves against the test registry
+            // to a LOW-band Cover def).
+            test_pieces::COVER,
         ))
         .slab_at(slab)
         .build();

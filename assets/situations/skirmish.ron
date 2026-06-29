@@ -23,17 +23,13 @@
 // terrain fields are `#[serde(default)]` (GTW-414 v2), so omitting them parses to empty —
 // the procgen step fills them in.
 (
-    // The level THEME (GTW-414) — the visual + content family this battlefield draws from
-    // (the GTW-409 ThemeCatalogRegistry key) AND the prefab family procgen assembles from
-    // (the GTW-418 PrefabRegistry `(theme, …)` key). IndustrialHive = the manufactorum
-    // decking / bulkheads of the hive proper.
-    theme: IndustrialHive,  // level theme — drives both the tile catalog and the procgen prefab family
-    // GTW-490 migration: the NEW UUID-keyed theme reference, ADDITIVE alongside the legacy
-    // `theme` enum above. This is the IndustrialHive ThemeUuid that resolves in the migrated
-    // UuidThemeRegistry (assets/terrain/industrial_hive/industrial_hive.terrain_theme.ron). The
-    // live battle path still reads `theme` (the consumer switch to the UUID model is T07+); this
-    // field only proves the new theme model resolves end-to-end through the situation loader.
-    theme_uuid: Some("00000000-0000-0000-0000-01840a900001"),  // GTW-490 migrated IndustrialHive ThemeUuid (additive; resolves in UuidThemeRegistry)
+    // The level THEME (GTW-491) — now the UUID-keyed reference to the migrated IndustrialHive
+    // UuidThemeDef (assets/terrain/industrial_hive/industrial_hive.terrain_theme.ron), resolvable
+    // in the UuidThemeRegistry. GTW-491 reconciled the GTW-490 additive `theme_uuid` field into
+    // this canonical `theme` (the sim theme is now this one ThemeUuid; the legacy LevelTheme enum
+    // is no longer authored here). IndustrialHive = the manufactorum decking / bulkheads of the
+    // hive proper — the visual + content family this battlefield draws from.
+    theme: "00000000-0000-0000-0000-01840a900001",  // migrated IndustrialHive ThemeUuid — resolves in UuidThemeRegistry
     // The coarse GRID dimensions (GTW-414) — width × height × storey-count, each validated
     // to the sim's coarse-grid maxima (60 / 60 / 8). This is the BOARD procgen packs the
     // theme's prefab fragments into (a 30×30×4 board comfortably holds the IndustrialHive

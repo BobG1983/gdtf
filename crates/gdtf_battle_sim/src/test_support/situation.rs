@@ -10,7 +10,6 @@ use crate::{
     ganger::{Faction, GangName, GangRegistry, GangRoster},
     metric::CellLevel,
     situation::{CoverSpawn, GangerSpawn, Situation, SlabSpawn},
-    terrain::piece::TerrainName,
     vertical::VerticalLink,
 };
 
@@ -23,32 +22,38 @@ fn gang_name_for(faction: Faction) -> GangName {
     GangName::new(format!("gang_{}", *faction))
 }
 
-/// The canonical test terrain piece names — the string keys authored test
-/// situations use so the test registry (`test_terrain_registry()`) can resolve them.
+/// The canonical test terrain definition UUIDs — the
+/// [`TerrainUuid`](crate::terrain::def::TerrainUuid) keys authored test situations use so the
+/// test registry (`test_terrain_registry()`) can resolve them (GTW-491: switched from
+/// filename-stem strings to stable UUIDs).
 ///
-/// These are NOT shipped to production assets — they live only in the test
-/// support layer and resolve against a registry built by the test harness
-/// (see `test_terrain_registry` in `test_support/registries.rs`).
+/// These are NOT shipped to production assets — they live only in the test support layer and
+/// resolve against a [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) built by
+/// the test harness (see `test_terrain_registry` in `test_support/registries.rs`). The UUIDs
+/// are fixed `from_u128` constants so a test can assert a resolved kind discriminatingly.
 pub mod test_pieces {
-    /// The test wall piece key — a HIGH-band structural wall with hp=120, prot=8, hard=4.
-    pub const WALL: &str = "test-wall";
-    /// The test slab piece key — a slab with hp=120, prot=4, hard=2.
-    pub const SLAB: &str = "test-slab";
-    /// The test cover (scatter) piece key — a LOW-band cover with hp=30, prot=2, hard=1.
-    pub const COVER: &str = "test-cover";
-    /// The test floor piece key — a floor with `move_cost=4` (the A* admissibility
-    /// minimum).
-    pub const FLOOR: &str = "test-floor";
+    use bevy::asset::uuid::Uuid;
+
+    use crate::terrain::def::TerrainUuid;
+
+    /// The test WALL def UUID — a HIGH-band structural wall (`Wall` sim-kind).
+    pub const WALL: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0001));
+    /// The test SLAB def UUID — a destructible slab (`Slab` sim-kind).
+    pub const SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0002));
+    /// The test COVER (scatter) def UUID — a LOW-band cover prop (`Cover` sim-kind).
+    pub const COVER: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0003));
+    /// The test FLOOR def UUID — a walkable floor (`Slab` sim-kind in the GTW-491 model).
+    pub const FLOOR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0004));
 }
 
-/// An authored wall at `at` using the standard test wall piece key — the terse
-/// cover helper the fixtures + the per-crate tests use.
+/// An authored wall at `at` using the standard test wall def UUID — the terse cover helper
+/// the fixtures + the per-crate tests use.
 ///
 /// The piece resolves against the test terrain registry (see
 /// `test_support/registries.rs` → `test_terrain_registry()`).
 #[must_use]
-pub fn wall_at(at: CellLevel) -> CoverSpawn {
-    CoverSpawn::new(at, TerrainName::new(test_pieces::WALL.to_owned()))
+pub const fn wall_at(at: CellLevel) -> CoverSpawn {
+    CoverSpawn::new(at, test_pieces::WALL)
 }
 
 /// A fluent builder for a [`Situation`] — the canonical way every test assembles
@@ -114,13 +119,12 @@ impl SituationBuilder {
     }
 
     /// Append a present floor / roof slab at `(cell, level)` using the standard
-    /// test slab piece key (`"test-slab"`). Resolves against the test terrain registry.
+    /// test slab def UUID. Resolves against the test terrain registry.
     #[must_use]
     pub fn slab_at(mut self, at: CellLevel) -> Self {
-        self.situation.slabs.push(SlabSpawn::new(
-            at,
-            TerrainName::new(test_pieces::SLAB.to_owned()),
-        ));
+        self.situation
+            .slabs
+            .push(SlabSpawn::new(at, test_pieces::SLAB));
         self
     }
 

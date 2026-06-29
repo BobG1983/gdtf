@@ -8,7 +8,7 @@
 use crate::{
     level::{
         EdgeOpening, GridHeight, GridLevels, GridSize, GridWidth, LevelTheme, Prefab, PrefabName,
-        PrefabRegistry, PrefabSpec, SpawnRole,
+        PrefabPiece, PrefabRegistry, PrefabSpec, SpawnRole,
     },
     metric::{Cell, CellLevel, Level},
     procgen::{
@@ -16,7 +16,7 @@ use crate::{
         generate_level,
     },
     rng::{BattleSeed, ProcgenRng},
-    situation::{CoverSpawn, Situation},
+    situation::Situation,
     terrain::piece::TerrainName,
 };
 
@@ -41,8 +41,9 @@ fn prefab(theme: LevelTheme, fp: GridSize, role: SpawnRole, stem: &str) -> Optio
         spawn_role: role,
         default_floor: TerrainName::new("deck_floor".to_owned()),
         // A wall at the footprint-local cell (1, 1) — translated onto the board by the
-        // placed region origin during emit.
-        walls: vec![CoverSpawn::new(
+        // placed region origin during emit (GTW-491: the legacy prefab fragment stays
+        // `TerrainName`-keyed via `PrefabPiece`; emit bridges it to the UUID-keyed situation).
+        walls: vec![PrefabPiece::new(
             at(1, 1),
             TerrainName::new("bulkhead".to_owned()),
         )],
@@ -231,7 +232,7 @@ fn emitted_level_is_in_bounds_and_connected() {
         "the leftover dead space must be FLOORED with explicit default_floor entries (C3)",
     );
     assert!(
-        !situation.default_floor.is_empty(),
+        !situation.default_floor.is_nil(),
         "the emitted level must carry a default_floor (the seam-lattice floor)",
     );
 }

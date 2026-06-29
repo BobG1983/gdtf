@@ -38,7 +38,7 @@ use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     Aim, Aiming, ArmorRegistry, BattleRegistries, Cell, CellLevel, Cool, Direction, Facing,
     Faction, GangName, GangRegistry, GangerName, Grit, Level, LifeState, Luck, Position, Reflexes,
-    Speed, Stance, StanceKind, Strength, TerrainRegistry, Toughness, WeaponName, WeaponRegistry,
+    Speed, Stance, StanceKind, Strength, TerrainDefRegistry, Toughness, WeaponName, WeaponRegistry,
     Wields, setup_battle,
     situation::Situation,
     tuning::{CombatTuning, GangerStatTuning},
@@ -157,7 +157,7 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
     advance_until_resource_exists::<LoadedSituation>(&mut app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<ArmorRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TerrainRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<TerrainDefRegistry>(&mut app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<GangerStatTuning>(&mut app, LOAD_SAFETY_NET);
 
     // 2. Read the resolved-from-disk resources out of the loaded world (all Clone), so a
@@ -170,7 +170,7 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
     let gangs = world.get_resource::<GangRegistry>().cloned();
     let weapons = world.get_resource::<WeaponRegistry>().cloned();
     let armor = world.get_resource::<ArmorRegistry>().cloned();
-    let terrain = world.get_resource::<TerrainRegistry>().cloned();
+    let terrain = world.get_resource::<TerrainDefRegistry>().cloned();
     let stat_tuning = world.get_resource::<GangerStatTuning>().cloned();
     let all_present = situation.is_some()
         && gangs.is_some()
@@ -236,7 +236,7 @@ fn run_real_setup(
     gangs: &GangRegistry,
     weapons: WeaponRegistry,
     armor: ArmorRegistry,
-    terrain: TerrainRegistry,
+    terrain: TerrainDefRegistry,
     stat_tuning: GangerStatTuning,
 ) -> Option<App> {
     let fallback_floor_cost = CombatTuning::default().move_costs.open;

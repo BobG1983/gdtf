@@ -19,7 +19,7 @@ use crate::{
     situation::{BattleRegistries, setup_battle},
     slab::SlabLedger,
     surface::SurfaceGrid,
-    terrain::{entity::TerrainIndex, floor::FloorCostGrid, piece::TerrainRegistry},
+    terrain::{def::TerrainDefRegistry, entity::TerrainIndex, floor::FloorCostGrid},
     tuning::{CombatTuning, GangerStatTuning},
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
@@ -34,8 +34,8 @@ use crate::{
 ///
 /// 1. Calls [`setup_battle`] on the REAL [`Commands`] path, resolving each ganger's
 ///    weapon key against the [`WeaponRegistry`] (GTW-257), each ganger's armor key
-///    against the [`ArmorRegistry`] (GTW-269), and each cover/slab/floor piece key
-///    against the [`TerrainRegistry`] (GTW-396). On `Ok` the sim resources
+///    against the [`ArmorRegistry`] (GTW-269), and each cover/slab terrain definition
+///    UUID against the [`TerrainDefRegistry`] (GTW-491). On `Ok` the sim resources
 ///    ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
 ///    [`VerticalLinkGraph`] / [`FloorCostGrid`]) and the spawned ganger entities
 ///    land in the world, the six battle-lifetime per-subsystem RNG stream resources
@@ -67,21 +67,21 @@ use crate::{
 ///    `unwrap`/`expect`/`panic`.
 ///
 /// The [`GangRegistry`] (GTW-414), [`WeaponRegistry`], [`ArmorRegistry`], and
-/// [`TerrainRegistry`] are each read as `Option<Res<_>>` (PERSISTENT `Load` state); a setup
-/// requested before ANY loads fails closed (logged, no [`BattleReady`]). The
+/// [`TerrainDefRegistry`] (GTW-491) are each read as `Option<Res<_>>` (PERSISTENT `Load`
+/// state); a setup requested before ANY loads fails closed (logged, no [`BattleReady`]). The
 /// [`GangRegistry`] resolves each [`PlacedGanger`](crate::situation::PlacedGanger)'s
 /// `(gang, member)` ref into the roster member `setup_battle` derives the ganger from.
 ///
 /// [`CombatTuning`](crate::tuning::CombatTuning) is NOT inserted here: it is E10.4's
 /// PERSISTENT `Load` resource, present throughout the battle for the acts to read. It
 /// IS read here as `Option<Res<_>>` to supply the `fallback_floor_cost`
-/// (`CombatTuning::move_costs.open`) used when the situation omits `default_floor` or
-/// when the `TerrainRegistry` is absent — preserving pre-GTW-396 behavior for
-/// un-migrated test fixtures.
+/// (`CombatTuning::move_costs.open`) used as the uniform floor cost (GTW-491 retires the
+/// per-floor registry move-cost resolution; the move-cost-from-`default_floor` seam is
+/// GTW-482).
 #[expect(
     clippy::too_many_arguments,
     reason = "GTW-414: nine params is two over the clippy 7-param default; the extra params \
-              are `Option<Res<TerrainRegistry>>` (GTW-396 terrain key resolution) and \
+              are `Option<Res<TerrainDefRegistry>>` (GTW-491 terrain UUID resolution) and \
               `Option<Res<GangRegistry>>` (GTW-414 gang/member ref resolution) — the Bevy \
               system injection model cannot be refactored to fewer params without \
               introducing a wrapper resource that changes the API surface"
@@ -92,7 +92,7 @@ pub fn setup_battle_on_request(
     gangs: Option<Res<GangRegistry>>,
     weapons: Option<Res<WeaponRegistry>>,
     armor: Option<Res<ArmorRegistry>>,
-    terrain: Option<Res<TerrainRegistry>>,
+    terrain: Option<Res<TerrainDefRegistry>>,
     stat_tuning: Option<Res<GangerStatTuning>>,
     combat_tuning: Option<Res<CombatTuning>>,
     mut commands: Commands,
@@ -152,16 +152,16 @@ pub fn setup_battle_on_request(
                 ct.move_costs.open
             });
 
-        // GTW-396: the TerrainRegistry is PERSISTENT `Load` state (GTW-394), read as
-        // `Option<Res<_>>`. When absent, `setup_battle` is called with `terrain: None`
-        // which:
-        //  (a) makes cover/slab keys fail with TerrainNotFound (a real situation's
-        //      cover/slabs reference piece names that need the registry);
-        //  (b) skips floor resolution and uses the fallback_floor_cost (correct for
-        //      test fixtures that use SituationBuilder without a default_floor).
-        // The real app always has the registry loaded before a battle starts (GTW-394
-        // gates Load→Intro on it). Tests that use SituationBuilder without cover/slabs
-        // pass `None` implicitly — they never authored terrain keys.
+        // GTW-491: the TerrainDefRegistry is PERSISTENT `Load` state (GTW-487, the UUID-keyed
+        // successor to the legacy TerrainRegistry), read as `Option<Res<_>>`. When absent,
+        // `setup_battle` is called with `terrain: None` which:
+        //  (a) makes cover/slab UUIDs fail with TerrainNotFound (a real situation's
+        //      cover/slabs reference def UUIDs that need the registry);
+        //  (b) uses the fallback_floor_cost for the floor grid (correct for test fixtures
+        //      that use SituationBuilder without authored terrain).
+        // The real app always has the registry loaded before a battle starts. Tests that use
+        // SituationBuilder without cover/slabs pass `None` implicitly — they never authored
+        // terrain UUIDs.
         let terrain_ref = terrain.as_deref();
 
         // Pour the situation into the world via the authoritative setup. A bad

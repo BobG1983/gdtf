@@ -46,8 +46,8 @@ mod tile;
 mod test;
 
 pub use prefab::{
-    EdgeOpening, Prefab, PrefabKey, PrefabLoadError, PrefabName, PrefabRegistry, PrefabSpec,
-    SpawnRole,
+    EdgeOpening, Prefab, PrefabKey, PrefabLoadError, PrefabName, PrefabPiece, PrefabRegistry,
+    PrefabSpec, SpawnRole,
 };
 pub use prefab_v2::{Prefab2, PrefabKey2, PrefabRegistry2, PrefabSpecV2, TerrainPlacementEntry};
 pub use registry::{ThemeCatalogRegistry, ThemeTileCatalog};

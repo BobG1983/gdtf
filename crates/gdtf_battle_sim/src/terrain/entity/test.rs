@@ -109,10 +109,10 @@ fn test1_counts_all_kinds() {
 
     let scatter = CoverSpawn::new(
         cl(9, 9, 0),
-        // GTW-396: piece key resolved against the test terrain registry;
-        // "test-cover" = LOW-band cover (Mid is aspirational; the piece kind
-        // determines what entities count — this test asserts entity count, not band).
-        crate::terrain::piece::TerrainName::new(crate::test_support::test_pieces::COVER.to_owned()),
+        // GTW-491: def UUID resolved against the test terrain registry; COVER = LOW-band
+        // Cover (the def's sim-kind determines what entities count — this test asserts
+        // entity count, not band).
+        crate::test_support::test_pieces::COVER,
     );
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(cl(0, 0, 0), 0))

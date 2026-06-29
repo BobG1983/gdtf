@@ -7,7 +7,7 @@
 //! model. The whole module is `#[cfg(debug_assertions)]`-gated by its parent.
 
 use bevy::{prelude::*, ui::Val};
-use gdtf_battle_sim::{PrefabRegistry, rng::BattleSeed};
+use gdtf_battle_sim::{PrefabRegistry, level::LevelTheme, rng::BattleSeed};
 use gdtf_ui::{
     ButtonLabel, spawn_button, spawn_panel,
     theme::GdtfTheme,
@@ -56,12 +56,18 @@ pub(in crate::states::running::procgen_viz) fn insert_viz_model(
     situation: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
 ) {
-    // Theme + grid-size come from the loaded situation; absent it, the default sim extent +
-    // the default theme (so the visualizer is still reachable on a no-content harness).
-    let (theme, grid_size) = situation
+    // Grid-size comes from the loaded situation; absent it, the default sim extent (so the
+    // visualizer is still reachable on a no-content harness).
+    let grid_size = situation
         .as_deref()
-        .map(|s| (s.theme, s.grid_size))
+        .map(|s| s.grid_size)
         .unwrap_or_default();
+    // GTW-491 SHIM: `Situation.theme` switched to a UUID-keyed `ThemeUuid`, but the legacy
+    // procgen pipeline this visualizer drives is keyed by the closed `LevelTheme` enum. Until
+    // the procgen switch onto UUID-keyed v2 prefabs (GTW-492), the viz uses the default
+    // `LevelTheme` (IndustrialHive — the shipped prefab family); the no-content harness takes
+    // the empty-model fallback inside `build`, so the shimmed theme never matters there.
+    let theme = LevelTheme::default();
     let seed = seed_override
         .as_deref()
         .copied()

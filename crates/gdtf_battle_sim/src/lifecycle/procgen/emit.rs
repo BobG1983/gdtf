@@ -73,11 +73,11 @@ use super::{
     tuning::ProcgenTuning,
 };
 use crate::{
-    level::{GridSize, LevelTheme, PrefabRegistry},
+    level::{GridSize, LevelTheme, PrefabRegistry, ThemeUuid},
     metric::{Cell, CellLevel, Level},
     rng::ProcgenRng,
     situation::{CoverSpawn, FloorSpawn, Situation, SlabSpawn},
-    terrain::piece::TerrainName,
+    terrain::{def::TerrainUuid, piece::TerrainName},
     vertical::VerticalLink,
 };
 
@@ -160,12 +160,17 @@ pub fn emit_level(
 
     // The level-wide default floor: the player-spawn prefab's `default_floor` (the seam
     // lattice is this floor). Every open cell — incl. the floored dead space — is this.
+    // GTW-491 SHIM (T07a): the legacy prefab fragment is still TerrainName-keyed, but a
+    // `Situation` now references terrain by TerrainUuid — so the legacy default-floor name is
+    // bridged into a stable TerrainUuid via the deterministic procgen shim (GTW-492 retires
+    // this once procgen reads UUID-keyed v2 prefabs).
     let default_floor = placement.player().prefab().spec().default_floor.clone();
 
     let mut situation = Situation::new();
-    situation.theme = theme;
+    // SHIM: bridge the legacy LevelTheme enum into the UUID-keyed Situation.theme (GTW-492).
+    situation.theme = theme_uuid(theme);
     situation.grid_size = grid_size;
-    situation.default_floor = default_floor.clone();
+    situation.default_floor = piece_uuid(&default_floor);
 
     // Pour every placed prefab (player, enemy, then fill in placement order) — a FIXED
     // order, so the emit is deterministic (C1/C2). Each prefab's footprint-local cells are
@@ -192,28 +197,31 @@ fn pour_prefab(placed: &PlacedPrefab, situation: &mut Situation) {
     let origin = placed.region().origin();
     let spec = placed.prefab().spec();
 
+    // GTW-491 SHIM (T07a): each legacy prefab piece is TerrainName-keyed; bridge its name into
+    // the UUID-keyed Situation leaf via the deterministic procgen `piece_uuid` shim (GTW-492
+    // retires this once procgen reads UUID-keyed v2 prefabs).
     for wall in &spec.walls {
         situation.walls.push(CoverSpawn::new(
             translate(wall.at, origin),
-            wall.piece.clone(),
+            piece_uuid(&wall.piece),
         ));
     }
     for prop in &spec.scatter {
         situation.scatter.push(CoverSpawn::new(
             translate(prop.at, origin),
-            prop.piece.clone(),
+            piece_uuid(&prop.piece),
         ));
     }
     for slab in &spec.slabs {
         situation.slabs.push(SlabSpawn::new(
             translate(slab.at, origin),
-            slab.piece.clone(),
+            piece_uuid(&slab.piece),
         ));
     }
     for floor in &spec.floors {
         situation.floors.push(FloorSpawn::new(
             translate(floor.at, origin),
-            floor.piece.clone(),
+            piece_uuid(&floor.piece),
         ));
     }
     for link in &spec.vertical_links {
@@ -231,15 +239,46 @@ fn pour_prefab(placed: &PlacedPrefab, situation: &mut Situation) {
 fn floor_region(rect: RegionRect, default_floor: &TerrainName, situation: &mut Situation) {
     let origin = rect.origin();
     let footprint = rect.footprint();
+    // GTW-491 SHIM (T07a): bridge the legacy default-floor name into the UUID-keyed
+    // FloorSpawn (GTW-492 retires this once procgen reads UUID-keyed v2 prefabs).
+    let piece = piece_uuid(default_floor);
     for dy in 0..footprint.height() {
         for dx in 0..footprint.width() {
             let cell = Cell::new(origin.x + dx, origin.y + dy);
-            situation.floors.push(FloorSpawn::new(
-                CellLevel::new(cell, Level::new(0)),
-                default_floor.clone(),
-            ));
+            situation
+                .floors
+                .push(FloorSpawn::new(CellLevel::new(cell, Level::new(0)), piece));
         }
     }
+}
+
+/// The GTW-491 procgen SHIM bridge: a legacy [`TerrainName`] piece key → its deterministic
+/// [`TerrainUuid`].
+///
+/// The legacy procgen path ([`emit_level`]) still reads `TerrainName`-keyed prefab fragments
+/// but pours them into a now-UUID-keyed [`Situation`](crate::situation::Situation); this folds
+/// each name into a stable [`TerrainUuid`] via [`TerrainUuid::from_legacy_name`], so the
+/// emit stays deterministic. The minted UUIDs do NOT match migrated
+/// [`TerrainDef`](crate::terrain::def::TerrainDef) keys — the full procgen switch onto
+/// UUID-keyed v2 prefabs (so procgen terrain resolves against the real registry) is GTW-492
+/// (T07b), which removes this shim.
+fn piece_uuid(name: &TerrainName) -> TerrainUuid {
+    TerrainUuid::from_legacy_name(name)
+}
+
+/// The GTW-491 procgen SHIM bridge: a legacy [`LevelTheme`] → its deterministic [`ThemeUuid`].
+///
+/// The legacy procgen path is keyed by the closed [`LevelTheme`] enum yet must populate the
+/// UUID-keyed [`Situation::theme`](crate::situation::Situation); this folds the theme's stable
+/// variant identifier into a [`ThemeUuid`] via [`ThemeUuid::from_legacy_theme`]. Like
+/// [`piece_uuid`] it is a SHIM removed by GTW-492.
+fn theme_uuid(theme: LevelTheme) -> ThemeUuid {
+    let id = match theme {
+        LevelTheme::IndustrialHive => "industrial_hive",
+        LevelTheme::Underhive => "underhive",
+        LevelTheme::SumpWaste => "sump_waste",
+    };
+    ThemeUuid::from_legacy_theme(id)
 }
 
 /// Translate a footprint-local `(cell, level)` by a placed region `origin` onto the board —

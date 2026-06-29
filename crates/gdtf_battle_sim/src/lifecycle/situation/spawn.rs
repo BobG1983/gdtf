@@ -10,9 +10,9 @@ use crate::{
         Aim, Aiming, Cool, Facing, Faction, GangMember, GangName, GangerName, Grit, LifeState,
         Luck, Reflexes, Speed, Stance, Strength, Toughness,
     },
-    level::{GridSize, LevelTheme, ThemeUuid},
+    level::{GridSize, ThemeUuid},
     metric::CellLevel,
-    terrain::piece::TerrainName,
+    terrain::def::TerrainUuid,
     vertical::VerticalLink,
     weapon::WeaponName,
 };
@@ -315,19 +315,20 @@ impl GangerSpawn {
 
 /// One authored piece of cover — a wall *or* a scatter prop.
 ///
-/// GTW-396 migration: the old inline stat fields
-/// (`cover_hp` / `height_band` / `armor_protection` / `armor_hardness` / `terrain`)
-/// are REPLACED by a single terrain piece KEY ([`piece`](CoverSpawn::piece)) resolved
-/// against the [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at setup —
-/// exactly mirroring the weapon/armor key model. The kind
+/// GTW-491 migration (child T07a of the GTW-476 data-model refactor): the
+/// [`piece`](CoverSpawn::piece) field switches from the legacy filename-stem
+/// [`TerrainName`](crate::terrain::piece::TerrainName) key to the UUID-keyed
+/// [`TerrainUuid`], resolved against the
+/// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) at setup. The kind
 /// ([`TerrainKind`](crate::occupancy::TerrainKind) / `TerrainPieceKind`) and structural
-/// stats ([`CoverEntry`](crate::cover::CoverEntry)) are DERIVED from the resolved spec
-/// variant at `setup_battle` time (a `Wall` spec → `TerrainKind::Wall`; a `Cover` or
-/// `Scatter` spec → `TerrainKind::Cover`).
+/// stats ([`CoverEntry`](crate::cover::CoverEntry)) are DERIVED from the resolved
+/// definition's [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) variant at
+/// `setup_battle` time (a `Wall` def → `TerrainKind::Wall`; a `Cover` def →
+/// `TerrainKind::Cover`).
 ///
 /// A named struct (`at` + `piece`) so the authored shape is self-describing.
 /// Derives [`Deserialize`] so an authored situation `.ron` can name each piece's
-/// `(cell, level)` + its terrain piece key (round-trips through the landed newtype
+/// `(cell, level)` + its terrain UUID (round-trips through the landed newtype
 /// serde derives — render-free, pixel-free).
 ///
 /// Walls and scatter differ only in which [`Situation`] list they live in
@@ -337,32 +338,32 @@ impl GangerSpawn {
 pub struct CoverSpawn {
     /// The `(cell, level)` this cover piece occupies.
     pub at:    CellLevel,
-    /// The terrain piece KEY — the filename stem (without the `.terrain.ron` infix) of
-    /// an `assets/content/terrain/*.terrain.ron` (e.g. `"heavy_bulkhead"`), resolved against the
-    /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at
+    /// The terrain definition KEY — the stable [`TerrainUuid`] of a migrated
+    /// [`TerrainDef`](crate::terrain::def::TerrainDef), resolved against the
+    /// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle). A key absent from the registry
     /// is a handled
     /// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError::TerrainNotFound)
     /// error (no panic).
-    pub piece: TerrainName,
+    pub piece: TerrainUuid,
 }
 
 impl CoverSpawn {
-    /// Build an authored cover piece from its `(cell, level)` and terrain piece key.
+    /// Build an authored cover piece from its `(cell, level)` and terrain UUID key.
     #[must_use]
-    pub const fn new(at: CellLevel, piece: TerrainName) -> Self {
+    pub const fn new(at: CellLevel, piece: TerrainUuid) -> Self {
         Self { at, piece }
     }
 }
 
-/// One authored floor / roof slab — its `(cell, level)` and a terrain piece KEY.
+/// One authored floor / roof slab — its `(cell, level)` and a terrain definition KEY.
 ///
-/// GTW-396 migration: the old `slabs: Vec<CellLevel>` (bare cell list with no
-/// per-slab authored HP) is replaced by `slabs: Vec<SlabSpawn>`, where each slab now
-/// carries a terrain piece KEY resolved against the
-/// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at setup. This brings
-/// per-slab authored HP/armor out of the uniform `slab_defaults` tuning leaf and into
-/// per-piece `assets/content/terrain/*.terrain.ron` data (e.g. `"deck_slab"`).
+/// GTW-491 migration (T07a): the [`piece`](SlabSpawn::piece) field switches from the
+/// legacy filename-stem [`TerrainName`](crate::terrain::piece::TerrainName) key to the
+/// UUID-keyed [`TerrainUuid`], resolved against the
+/// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) at setup. The slab's
+/// per-slab structural HP/armor are seeded from the resolved definition's
+/// [`TerrainSimKind::Slab`](crate::terrain::def::TerrainSimKind::Slab) variant.
 ///
 /// Derives [`Deserialize`] so an authored situation `.ron` writes each slab as
 /// `(at: (cell: …, level: …), piece: "…")` — the same shape as [`CoverSpawn`], but
@@ -371,29 +372,30 @@ impl CoverSpawn {
 pub struct SlabSpawn {
     /// The `(cell, level)` this slab occupies (same meaning as the old bare entry).
     pub at:    CellLevel,
-    /// The terrain piece KEY — the filename stem of an `assets/content/terrain/*.terrain.ron`
-    /// (e.g. `"deck_slab"`), resolved against the
-    /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) at
-    /// [`setup_battle`](crate::situation::setup_battle) into the [`SlabPieceSpec`](crate::terrain::piece::SlabPieceSpec)
-    /// that seeds this slab's structural HP/armor in both the
+    /// The terrain definition KEY — the stable [`TerrainUuid`] of a migrated
+    /// [`TerrainDef`](crate::terrain::def::TerrainDef), resolved against the
+    /// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle) into the
+    /// [`TerrainSimKind::Slab`](crate::terrain::def::TerrainSimKind::Slab) stats that seed
+    /// this slab's structural HP/armor in both the
     /// [`SlabLedger`](crate::slab::SlabLedger) and the spawned terrain entity
     /// (GTW-395/396 — per-slab authored HP, not uniform tuning). A key absent from
     /// the registry is a handled
     /// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError::TerrainNotFound)
     /// error (no panic).
-    pub piece: TerrainName,
+    pub piece: TerrainUuid,
 }
 
 impl SlabSpawn {
-    /// Build a slab spawn from its cell + terrain piece key.
+    /// Build a slab spawn from its cell + terrain UUID key.
     #[must_use]
-    pub const fn new(at: CellLevel, piece: TerrainName) -> Self {
+    pub const fn new(at: CellLevel, piece: TerrainUuid) -> Self {
         Self { at, piece }
     }
 }
 
 /// One authored per-cell floor override — a `(cell, level)` paired with a terrain
-/// piece KEY that gives it a different move cost than the situation's
+/// definition KEY that gives it a different floor than the situation's
 /// [`default_floor`](Situation::default_floor).
 ///
 /// GTW-396 Decision B: the [`Situation`] carries a sparse `floors` list for cells
@@ -401,22 +403,26 @@ impl SlabSpawn {
 /// case — a uniform floor) is the cheapest authored state and the `#[serde(default)]`
 /// for this field.
 ///
+/// GTW-491 migration (T07a): the [`piece`](FloorSpawn::piece) field switches from the
+/// legacy [`TerrainName`](crate::terrain::piece::TerrainName) key to the UUID-keyed
+/// [`TerrainUuid`]. (The new [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) model
+/// has no `Floor` variant — a walkable floor is a `Slab` def; the per-cell move-cost seam is
+/// GTW-482, so this slice carries the reference forward without resolving its move cost.)
+///
 /// Derives [`Deserialize`] so an authored situation `.ron` writes each override as
 /// `(at: (cell: …, level: …), piece: "…")`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct FloorSpawn {
-    /// The `(cell, level)` with a non-default floor cost.
+    /// The `(cell, level)` with a non-default floor.
     pub at:    CellLevel,
-    /// The terrain piece KEY (must resolve to a
-    /// [`TerrainKindSpec::Floor`](crate::terrain::piece::TerrainKindSpec::Floor) variant)
-    /// giving this cell its move cost.
-    pub piece: TerrainName,
+    /// The terrain definition KEY — the stable [`TerrainUuid`] giving this cell its floor.
+    pub piece: TerrainUuid,
 }
 
 impl FloorSpawn {
-    /// Build a floor spawn from its cell + terrain piece key.
+    /// Build a floor spawn from its cell + terrain UUID key.
     #[must_use]
-    pub const fn new(at: CellLevel, piece: TerrainName) -> Self {
+    pub const fn new(at: CellLevel, piece: TerrainUuid) -> Self {
         Self { at, piece }
     }
 }
@@ -481,16 +487,17 @@ pub struct Situation {
     /// setup for identity / attributes / equipment) plus the situation-supplied placement
     /// (`at` / `facing` / `stance` / `aiming` / `life_state`) and `faction`.
     pub gangers:        Vec<PlacedGanger>,
-    /// The level THEME this battlefield draws from (GTW-414) — the visual + content family
-    /// the GTW-409 [`ThemeCatalogRegistry`](crate::level::ThemeCatalogRegistry) keys on.
+    /// The level THEME this battlefield draws from — the stable UUID-keyed reference to a
+    /// migrated [`UuidThemeDef`](crate::level::UuidThemeDef), resolvable in the
+    /// [`UuidThemeRegistry`](crate::level::UuidThemeRegistry).
     ///
-    /// `#[serde(default)]` supplies [`LevelTheme::default`] = [`IndustrialHive`](crate::level::LevelTheme::IndustrialHive)
-    /// for any authored file that omits the field, so every PRE-GTW-414 situation `.ron`
-    /// (incl. the shipped `skirmish.ron` before its migration) stays parse-valid — the
-    /// manufactorum-hive family is the canonical default battlescape. An authored
-    /// `theme: Underhive` parses as the bare variant name ([`LevelTheme`] derives
-    /// [`Deserialize`]).
-    pub theme:          LevelTheme,
+    /// GTW-491 migration (T07a): switched from the closed [`LevelTheme`](crate::level::LevelTheme)
+    /// enum to the UUID-keyed [`ThemeUuid`] (reconciling the GTW-490 additive
+    /// `theme_uuid` field — the canonical sim theme is now this one `theme`). `#[serde(default)]`
+    /// supplies [`ThemeUuid::default`] (the nil sentinel) for any authored file that omits the
+    /// field. An authored `theme: "<uuid>"` parses the `#[serde(transparent)]` [`ThemeUuid`]
+    /// string wire form.
+    pub theme:          ThemeUuid,
     /// The coarse GRID dimensions of this battlefield (GTW-414) — width × height ×
     /// storey-count, each axis validated to the sim's coarse-grid maximum (GTW-409
     /// [`GridSize`]).
@@ -524,37 +531,23 @@ pub struct Situation {
     /// authored `player_faction: 1` parses as the bare gang index
     /// ([`Faction`] is `#[serde(transparent)]`).
     pub player_faction: Faction,
-    /// The default floor terrain piece KEY — the filename stem (without the
-    /// `.terrain.ron` infix) of an `assets/content/terrain/*.terrain.ron` that is a
-    /// [`TerrainKindSpec::Floor`](crate::terrain::piece::TerrainKindSpec::Floor)
-    /// variant. Applied to every walkable open cell not overridden by [`floors`](Situation::floors).
+    /// The default floor terrain definition KEY — the stable [`TerrainUuid`] of a migrated
+    /// walkable [`TerrainDef`](crate::terrain::def::TerrainDef) (a `Slab`-kind floor in the new
+    /// model). Applied to every walkable open cell not overridden by [`floors`](Situation::floors).
     ///
-    /// `#[serde(default)]` supplies the empty string sentinel (`TerrainName::default()`
-    /// — [`TerrainName::is_empty`]) for any authored file that omits the field, so
-    /// every EXISTING situation `.ron` remains parse-valid.  An empty default skips
-    /// `FloorCostGrid` construction from the registry (the sim falls back to seeding it
-    /// from `CombatTuning::move_costs.open`, preserving the pre-GTW-396 behavior for
-    /// test fixtures and situations that haven't migrated yet).
-    pub default_floor:  TerrainName,
-    /// Sparse per-cell floor piece overrides — cells whose floor cost differs from
+    /// GTW-491 migration (T07a): switched from the legacy filename-stem
+    /// [`TerrainName`](crate::terrain::piece::TerrainName) key to the UUID-keyed [`TerrainUuid`].
+    /// `#[serde(default)]` supplies the NIL sentinel ([`TerrainUuid::default`] —
+    /// [`TerrainUuid::is_nil`]) for any authored file that omits the field, so every EXISTING
+    /// situation `.ron` remains parse-valid. A nil default skips registry floor resolution (the
+    /// sim falls back to seeding the [`FloorCostGrid`](crate::terrain::floor::FloorCostGrid) from
+    /// `CombatTuning::move_costs.open`, preserving the pre-GTW-396 behavior for test fixtures and
+    /// un-migrated situations).
+    pub default_floor:  TerrainUuid,
+    /// Sparse per-cell floor piece overrides — cells whose floor differs from
     /// [`default_floor`](Situation::default_floor).
     /// `#[serde(default)]` gives an empty list (the common case: uniform floor).
     pub floors:         Vec<FloorSpawn>,
-    /// The NEW UUID-keyed theme reference (GTW-490) — the stable [`ThemeUuid`] of the
-    /// migrated [`UuidThemeDef`](crate::level::UuidThemeDef) this battlefield draws from,
-    /// resolvable in the [`UuidThemeRegistry`](crate::level::UuidThemeRegistry).
-    ///
-    /// ADDITIVE alongside the legacy closed-enum [`theme`](Situation::theme): the live battle
-    /// path still reads `theme` (the [`LevelTheme`] driving the GTW-409 tile catalog + the
-    /// procgen prefab family), so this field switches NO consumer (that is T07+). An authored
-    /// situation that omits it parses to [`None`]; `skirmish.ron` authors BOTH so the new
-    /// theme model resolves while the old path is untouched.
-    ///
-    /// `#[serde(default)]` supplies [`None`] for every pre-GTW-490 situation `.ron`, so they
-    /// stay parse-valid. An authored `theme_uuid: Some("…")` parses the
-    /// `#[serde(transparent)]` [`ThemeUuid`] string wire form.
-    #[serde(default)]
-    pub theme_uuid:     Option<ThemeUuid>,
 }
 
 impl Situation {

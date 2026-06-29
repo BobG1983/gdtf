@@ -11,8 +11,8 @@ use bevy::{
 };
 
 use super::terrain_resolve::{
-    ResolvedCoverPiece, ResolvedSlabPiece, resolve_cover_spec, resolve_floor_costs,
-    resolve_slab_spec, resolve_terrain_or_err,
+    ResolvedCoverPiece, ResolvedSlabPiece, resolve_cover_def, resolve_slab_def,
+    resolve_terrain_or_err,
 };
 use crate::{
     armor::{
@@ -34,9 +34,9 @@ use crate::{
     slab::{BraceStairCells, SlabEntry, SlabLedger},
     surface::{SlabState, SurfaceGrid},
     terrain::{
+        def::TerrainDefRegistry,
         entity::{TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
         floor::FloorCostGrid,
-        piece::TerrainRegistry,
     },
     tuning::{GangerStatTuning, MoveCost},
     vertical::{LinkKind, build_vertical_link_graph},
@@ -85,8 +85,9 @@ impl BattleSetup {
 ///   [`GangMember`](crate::ganger::GangMember) (GTW-414).
 /// - `weapons` / `armor` — resolve the resolved member's weapon / armor keys.
 /// - `stat_tuning` — derive each ganger's computed stats from its eight attributes.
-/// - `terrain` — resolve cover / slab / floor piece keys (`None` ⇒ the floor falls back to
-///   `fallback_floor_cost`; cover / slab keys then fail with `TerrainNotFound`).
+/// - `terrain` — resolve cover / slab terrain definition UUIDs against the
+///   [`TerrainDefRegistry`] (GTW-491); `None` ⇒ cover / slab keys fail with `TerrainNotFound`
+///   and the floor falls back to `fallback_floor_cost`.
 #[derive(Clone, Copy)]
 pub struct BattleRegistries<'a> {
     /// The gang rosters each placed ganger's `(gang, member)` ref resolves against (GTW-414).
@@ -97,9 +98,11 @@ pub struct BattleRegistries<'a> {
     pub armor:       &'a ArmorRegistry,
     /// The stat tuning each ganger's computed stats are derived with (GTW-384).
     pub stat_tuning: &'a GangerStatTuning,
-    /// The terrain registry cover / slab / floor piece keys resolve against (GTW-396);
-    /// `None` skips floor resolution (the [`fallback_floor_cost`](setup_battle) is used).
-    pub terrain:     Option<&'a TerrainRegistry>,
+    /// The UUID-keyed terrain-definition registry cover / slab piece UUIDs resolve against
+    /// (GTW-491 — the successor to the legacy `TerrainRegistry`); `None` skips terrain
+    /// resolution (cover / slab keys then fail with `TerrainNotFound`, and the floor uses
+    /// the [`fallback_floor_cost`](setup_battle)).
+    pub terrain:     Option<&'a TerrainDefRegistry>,
 }
 
 impl<'a> BattleRegistries<'a> {
@@ -111,7 +114,7 @@ impl<'a> BattleRegistries<'a> {
         weapons: &'a WeaponRegistry,
         armor: &'a ArmorRegistry,
         stat_tuning: &'a GangerStatTuning,
-        terrain: Option<&'a TerrainRegistry>,
+        terrain: Option<&'a TerrainDefRegistry>,
     ) -> Self {
         Self {
             gangs,
@@ -417,46 +420,49 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 /// from the reusable gang roster). A missing gang / member returns
 /// [`BattleSetupError::GangNotFound`] / [`BattleSetupError::GangMemberNotFound`] (no panic).
 ///
-/// GTW-396: the function also accepts `terrain: Option<&TerrainRegistry>` and resolves
-/// every authored terrain piece key (cover / slab / floor) against it BEFORE any entity
-/// is spawned (abort-first invariant). If `terrain` is `None` or a key resolves
-/// to nothing, the function returns [`BattleSetupError::TerrainNotFound`] (no panic, no
-/// partial world). If a floor piece's move cost is below
-/// [`MIN_MOVE_COST`](crate::pathfinder::MIN_MOVE_COST), it returns
-/// [`BattleSetupError::FloorCostBelowMinimum`]. The resolved specs feed:
-/// - cover pieces → `CoverEntry` + `TerrainGraphicKey` / `FootfallSound` on the entity
-/// - slab pieces → `SlabEntry` (eagerly inserted into `SlabLedger`) + the same hooks
-/// - floor pieces → `FloorCostGrid` (default + sparse overrides)
+/// GTW-491 (T07a): the function accepts `terrain: Option<&TerrainDefRegistry>` and resolves
+/// every authored terrain DEFINITION UUID (cover / slab) against it BEFORE any entity is
+/// spawned (abort-first invariant). If `terrain` is `None` or a UUID resolves to nothing,
+/// the function returns [`BattleSetupError::TerrainNotFound`] (no panic, no partial world).
+/// Each resolved [`TerrainDef`](crate::terrain::def::TerrainDef)'s
+/// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) supplies the structural stats +
+/// entity [`TerrainPieceKind`], and its
+/// [`TerrainPresenterKind`](crate::terrain::def::TerrainPresenterKind) supplies the graphic
+/// (ALL kinds incl. `Wall`) + optional slab footfall. The resolved defs feed:
+/// - cover pieces → `CoverEntry` + a `TerrainGraphicKey` on the entity (NET-NEW for `Wall`)
+/// - slab pieces → `SlabEntry` (eagerly inserted into `SlabLedger`) + a `TerrainGraphicKey`
+///   + an OPTIONAL `FootfallSound`
 ///
-/// When `terrain` is `None` OR the situation's `default_floor` is empty (the
-/// `#[serde(default)]` sentinel), the floor cost grid falls back to the caller-supplied
-/// `fallback_floor_cost` (the `CombatTuning::move_costs.open` value), preserving
-/// pre-GTW-396 behavior for test fixtures and situations that haven't migrated.
+/// The floor cost grid uses the caller-supplied `fallback_floor_cost` uniformly: the new
+/// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) model has no `Floor` variant and
+/// carries no per-piece move cost this slice (the move-cost-from-`default_floor` seam is
+/// GTW-482), so the legacy registry-driven floor-cost path is retired. The situation's
+/// `default_floor` / `floors` UUID references are carried forward but their move cost is not
+/// resolved here.
 ///
 /// Steps, in order:
 ///
-/// 1. **Pre-validate** all terrain piece keys (cover + slab + floor) against the
-///    registry — abort-first (return early with `Err` before any spawn).
+/// 1. **Pre-validate** all terrain definition UUIDs (cover + slab) against the registry —
+///    abort-first (return early with `Err` before any spawn).
 /// 2. **Spawn each ganger + relate its equipment** — for every
 ///    [`GangerSpawn`](crate::situation::GangerSpawn),
 ///    `commands.spawn_scene(`[`ganger_scene`]`(..))` the ganger's OWN per-field state
 ///    as a Bevy `bsn!` [`Scene`] (GTW-322).
 /// 3. **Seed the [`CoverLedger`]** — insert a [`CoverEntry`](crate::cover::CoverEntry)
 ///    for every wall and scatter piece (the one unified ledger). Spawn ONE terrain entity
-///    per cover piece carrying `TerrainCell`, `TerrainPieceKind`, max `CoverHp`,
-///    `HeightBand`, `ArmorProtection`, `ArmorHardness`, `TerrainGraphicKey`, `FootfallSound`
-///    (GTW-395/396 presentation seam; audio is stubbed — `FootfallSound` is attached
-///    and doc-commented as unconsumed until a future footfall-audio ticket).
+///    per cover piece carrying `TerrainCell`, `TerrainPieceKind` (derived from the def's
+///    sim-kind VARIANT, the T01 invariant), max `CoverHp`, `HeightBand`, `ArmorProtection`,
+///    `ArmorHardness`, and a `TerrainGraphicKey` (GTW-491 — NET-NEW on `Wall` entities).
 /// 4. **Seed the [`SurfaceGrid`] + [`SlabLedger`]** — mark every authored slab
 ///    `Present` and **eagerly insert** its [`SlabEntry`] (HP/armor from the resolved
-///    terrain spec). The ledger's `entry_seeded` path returns the eagerly-inserted entry
-///    unchanged (the `or_insert` wins only for absent keys), so the authored per-slab HP
-///    is honored on first strike without a new `deplete_slab` signature (verified per
+///    def's `Slab` sim-kind). The ledger's `entry_seeded` path returns the eagerly-inserted
+///    entry unchanged (the `or_insert` wins only for absent keys), so the authored per-slab
+///    HP is honored on first strike without a new `deplete_slab` signature (verified per
 ///    `ledger.rs:68-74`). Spawn ONE terrain entity per slab carrying `TerrainCell`,
 ///    `TerrainPieceKind::Slab`, `SlabHp`, `ArmorProtection`, `ArmorHardness`,
-///    `TerrainGraphicKey`, `FootfallSound`.
+///    `TerrainGraphicKey`, and (when the def names one) `FootfallSound`.
 /// 5. **Build the [`OccupancyGrid`]** + insert [`TerrainIndex`].
-/// 6. **Build the [`FloorCostGrid`]** from resolved floor specs and insert it.
+/// 6. **Build the [`FloorCostGrid`]** from the uniform fallback floor cost and insert it.
 /// 7. **Validate + build the [`crate::vertical::VerticalLinkGraph`]**.
 ///
 /// All resources are inserted via [`Commands`]. Render-free, headless-driven.
@@ -472,8 +478,8 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 ///   slot (GTW-457).
 /// - [`BattleSetupError::WeaponNotFound`] — the resolved roster member's weapon key absent.
 /// - [`BattleSetupError::ArmorNotFound`] — the resolved roster member's armor key absent.
-/// - [`BattleSetupError::TerrainNotFound`] — cover/slab/floor piece key absent.
-/// - [`BattleSetupError::FloorCostBelowMinimum`] — floor `move_cost < MIN_MOVE_COST`.
+/// - [`BattleSetupError::TerrainNotFound`] — a cover/slab terrain definition UUID absent
+///   (GTW-491).
 ///
 /// All are validated BEFORE any entity is spawned (abort-first invariant).
 #[expect(
@@ -572,19 +578,17 @@ pub fn setup_battle(
         armor_specs.push(*spec);
     }
 
-    // GTW-396: pre-resolve every terrain piece key (cover + slab + floor) against the
-    // registry BEFORE any spawn — abort-first. If the registry is absent or a key is
-    // missing, return TerrainNotFound. Validate floor costs >= MIN_MOVE_COST.
+    // GTW-491: pre-resolve every terrain definition UUID (cover + slab) against the
+    // TerrainDefRegistry BEFORE any spawn — abort-first. If the registry is absent or a
+    // key is missing, return TerrainNotFound keyed by the unresolved TerrainUuid.
     // Collect resolved pieces in parallel to their source lists.
 
     // Resolve cover pieces (walls + scatter):
     let mut resolved_covers: Vec<ResolvedCoverPiece> = Vec::new();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
-        let spec = resolve_terrain_or_err(terrain, &cover.piece)?;
-        let Some(resolved) = resolve_cover_spec(&cover.piece, spec) else {
-            return Err(BattleSetupError::TerrainNotFound {
-                piece: cover.piece.clone(),
-            });
+        let def = resolve_terrain_or_err(terrain, &cover.piece)?;
+        let Some(resolved) = resolve_cover_def(&cover.piece, def) else {
+            return Err(BattleSetupError::TerrainNotFound { piece: cover.piece });
         };
         resolved_covers.push(resolved);
     }
@@ -592,19 +596,23 @@ pub fn setup_battle(
     // Resolve slab pieces:
     let mut resolved_slabs: Vec<ResolvedSlabPiece> = Vec::new();
     for slab_spawn in &situation.slabs {
-        let spec = resolve_terrain_or_err(terrain, &slab_spawn.piece)?;
-        let Some(resolved) = resolve_slab_spec(&slab_spawn.piece, spec) else {
+        let def = resolve_terrain_or_err(terrain, &slab_spawn.piece)?;
+        let Some(resolved) = resolve_slab_def(&slab_spawn.piece, def) else {
             return Err(BattleSetupError::TerrainNotFound {
-                piece: slab_spawn.piece.clone(),
+                piece: slab_spawn.piece,
             });
         };
         resolved_slabs.push(resolved);
     }
 
-    // Resolve floor: default_floor + per-cell overrides. If no terrain registry or
-    // empty sentinel, skip floor resolution (use fallback_floor_cost).
-    let (default_floor_cost, floor_overrides) =
-        resolve_floor_costs(terrain, situation, fallback_floor_cost)?;
+    // GTW-491: the new `TerrainSimKind` model has no `Floor` variant (a walkable floor is a
+    // `Slab` def) and `TerrainDef` carries no move cost this slice — the per-cell
+    // move-cost-from-default-floor seam is GTW-482. So the floor cost grid uses the
+    // caller-supplied `fallback_floor_cost` uniformly; the situation's `floors`/`default_floor`
+    // terrain references are carried forward but their move cost is NOT resolved here (the
+    // legacy `resolve_floor_costs` registry path is retired with the `TerrainKindSpec::Floor`
+    // variant it read).
+    let (default_floor_cost, floor_overrides) = (fallback_floor_cost, Vec::new());
 
     // 1. Spawn each ganger with its full component set + seeded worn armor + the
     //    resolved WeaponBundle as a single `bsn!` Scene (GTW-322), keeping the
@@ -690,15 +698,16 @@ pub fn setup_battle(
             resolved.armor_hardness,
         );
         cover_ledger.insert(cover.at, entry);
-        // GTW-395/396: spawn the terrain entity for this cover piece. The entity carries
-        // STATIC stats (the max HP ceiling + band + armor) plus the GTW-396 presentation
-        // hooks (TerrainGraphicKey + FootfallSound). The live HP pool stays authoritative
-        // in the CoverLedger. Commands::spawn is the bevy-traps #7 form (never
-        // world.spawn inside a registered system).
+        // GTW-491: spawn the terrain entity for this cover piece. The entity carries STATIC
+        // stats (the max HP ceiling + band + armor) plus the presentation graphic. The live
+        // HP pool stays authoritative in the CoverLedger. Commands::spawn is the bevy-traps #7
+        // form (never world.spawn inside a registered system).
         //
-        // FootfallSound is attached but UNCONSUMED — no footfall-audio system is built
-        // yet (guns-only; a future ticket wires the audio system). It is carried now so
-        // authored .terrain.ron files can specify it without a schema change.
+        // NET-NEW (GTW-491): `resolved.graphic` (a TerrainGraphicKey) is now attached to
+        // cover entities for ALL kinds — INCLUDING Wall (a wall carried NO graphic on the old
+        // model). GTW-493 (T07c presenter) reads it. Footfall is no longer attached to a
+        // cover/wall entity (it is Slab-only in the new model — the def's presenter Wall/Cover
+        // variants carry no footfall field).
         let entity = commands
             .spawn((
                 TerrainCell::new(cover.at),
@@ -707,8 +716,7 @@ pub fn setup_battle(
                 entry.height_band,      // HeightBand — the static band (now Component)
                 entry.armor_protection, // ArmorProtection — already Component
                 entry.armor_hardness,   // ArmorHardness — already Component
-                resolved.graphic,       // TerrainGraphicKey — presenter resolves to atlas entry
-                resolved.footfall, // FootfallSound — future footfall-audio pass (GTW-XXX: footfall audio system consumes this)
+                resolved.graphic, // TerrainGraphicKey — presenter resolves to atlas entry (NET-NEW for Wall)
             ))
             .id();
         terrain_pairs.push((TerrainIndexKey::Cover(cover.at), entity));
@@ -775,11 +783,9 @@ pub fn setup_battle(
         );
         slab_ledger.insert(slab_spawn.at, slab_entry);
 
-        // GTW-395/396: spawn the slab entity. Carries STATIC stats (max HP / armor)
-        // plus GTW-396 presentation hooks. The live pool stays in slab_ledger.
-        //
-        // FootfallSound is attached but UNCONSUMED (guns-only; future footfall-audio
-        // ticket). GTW-XXX: footfall audio system consumes this.
+        // GTW-491: spawn the slab entity. Carries STATIC stats (max HP / armor) plus the
+        // presentation graphic and — slab-ONLY — the OPTIONAL footfall. The live pool stays in
+        // slab_ledger.
         let slab_entity = commands
             .spawn((
                 TerrainCell::new(slab_spawn.at),
@@ -788,9 +794,14 @@ pub fn setup_battle(
                 resolved.armor_protection, // ArmorProtection — already Component
                 resolved.armor_hardness,   // ArmorHardness — already Component
                 resolved.graphic.clone(),  // TerrainGraphicKey — presenter resolves to atlas entry
-                resolved.footfall.clone(), // FootfallSound — future footfall-audio pass
             ))
             .id();
+        // The OPTIONAL footfall (slab-only in the GTW-491 model): inserted only when the def
+        // names one (`Bevy 0.19`'s `Option<C>` is NOT a Bundle, so insert it conditionally
+        // rather than tupling). UNCONSUMED — no footfall-audio system is built yet (guns-only).
+        if let Some(footfall) = resolved.footfall.clone() {
+            commands.entity(slab_entity).insert(footfall);
+        }
 
         // GTW-392: a slab is a stair-brace slab when the cell DIRECTLY BELOW it is a
         // brace-eligible (LOWER-endpoint) stair cell — a kneeling occupant on that stair

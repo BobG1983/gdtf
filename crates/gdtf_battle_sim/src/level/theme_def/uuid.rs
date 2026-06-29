@@ -26,7 +26,14 @@ use serde::{Deserialize, Serialize};
 /// `#[serde(transparent)]` round-trips it as the bare `Uuid` wire form (a string in RON's
 /// human-readable encoding), and [`TypePath`] lets it ride a reflected payload the way the
 /// sibling def types do.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
+///
+/// Implements [`Default`] (the NIL-UUID sentinel) so
+/// [`Situation`](crate::situation::Situation) can use `#[serde(default)]` on its
+/// [`theme`](crate::situation::Situation) field — an omitted theme parses as the nil key
+/// (GTW-491).
+#[derive(
+    Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize, TypePath,
+)]
 #[serde(transparent)]
 pub struct ThemeUuid(Uuid);
 
@@ -38,10 +45,41 @@ impl ThemeUuid {
         Self(uuid)
     }
 
+    /// The **nil** theme key — the [`Default`] sentinel (an all-zero UUID) signalling "no
+    /// authored theme" (the GTW-491 successor to the omitted-`LevelTheme` default).
+    #[must_use]
+    pub const fn nil() -> Self {
+        Self(Uuid::nil())
+    }
+
+    /// Whether this key is the [`nil`](ThemeUuid::nil) sentinel.
+    #[must_use]
+    pub const fn is_nil(&self) -> bool {
+        self.0.is_nil()
+    }
+
     /// Mint a **fresh, random** theme key (UUID v4) — used when authoring a new theme
     /// definition that has no key yet.
     #[must_use]
     pub fn generate() -> Self {
         Self(Uuid::new_v4())
+    }
+
+    /// A **deterministic** theme key derived from a legacy
+    /// [`LevelTheme`](crate::level::LevelTheme)'s identifier string — the GTW-491 procgen
+    /// SHIM bridge.
+    ///
+    /// The legacy procgen path ([`emit_level`](crate::procgen::emit_level)) is still keyed by
+    /// the closed [`LevelTheme`](crate::level::LevelTheme) enum yet must populate the
+    /// now-UUID-keyed [`Situation::theme`](crate::situation::Situation); this folds a theme
+    /// identifier into a stable v8-shaped UUID via the same FNV-1a hash the terrain shim uses,
+    /// so the same theme always yields the same key. It does NOT match a migrated
+    /// [`UuidThemeDef`](super::UuidThemeDef)'s authored key — the full procgen switch onto real
+    /// UUID-keyed themes is GTW-492 (T07b), which removes this shim.
+    #[must_use]
+    pub fn from_legacy_theme(name: &str) -> Self {
+        Self(Uuid::from_u128(crate::terrain::def::fnv1a64_u128(
+            name.as_bytes(),
+        )))
     }
 }

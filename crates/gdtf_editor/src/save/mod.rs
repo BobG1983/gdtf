@@ -10,12 +10,12 @@
 //! (including multi-level cells) is routed into the matching prefab list by its editor tile
 //! class + catalog kind:
 //!
-//! - a SLAB tile → a [`SlabSpawn`](gdtf_battle_sim::situation::SlabSpawn) in [`PrefabSpec::slabs`](gdtf_battle_sim::level::PrefabSpec::slabs),
+//! - a SLAB tile → a [`PrefabPiece`](gdtf_battle_sim::level::PrefabPiece) in [`PrefabSpec::slabs`](gdtf_battle_sim::level::PrefabSpec::slabs),
 //! - a LADDER tile → a [`VerticalLink`](gdtf_battle_sim::vertical::VerticalLink) in [`PrefabSpec::vertical_links`](gdtf_battle_sim::level::PrefabSpec::vertical_links) (a bidirectional
 //!   ladder rising to the storey above — the only authored way a ganger changes storey),
-//! - a WALL catalog tile → a [`CoverSpawn`](gdtf_battle_sim::situation::CoverSpawn) in [`PrefabSpec::walls`](gdtf_battle_sim::level::PrefabSpec::walls),
-//! - a COVER / SCATTER catalog tile → a [`CoverSpawn`](gdtf_battle_sim::situation::CoverSpawn) in [`PrefabSpec::scatter`](gdtf_battle_sim::level::PrefabSpec::scatter),
-//! - a FLOOR catalog tile → a [`FloorSpawn`](gdtf_battle_sim::situation::FloorSpawn) per-cell override in [`PrefabSpec::floors`](gdtf_battle_sim::level::PrefabSpec::floors).
+//! - a WALL catalog tile → a [`PrefabPiece`](gdtf_battle_sim::level::PrefabPiece) in [`PrefabSpec::walls`](gdtf_battle_sim::level::PrefabSpec::walls),
+//! - a COVER / SCATTER catalog tile → a [`PrefabPiece`](gdtf_battle_sim::level::PrefabPiece) in [`PrefabSpec::scatter`](gdtf_battle_sim::level::PrefabSpec::scatter),
+//! - a FLOOR catalog tile → a [`PrefabPiece`](gdtf_battle_sim::level::PrefabPiece) per-cell override in [`PrefabSpec::floors`](gdtf_battle_sim::level::PrefabSpec::floors).
 //!
 //! The prefab's [`theme`](gdtf_battle_sim::level::PrefabSpec::theme) + [`size`](gdtf_battle_sim::level::PrefabSpec::size) come from the
 //! authoring [`MapEditorSession`](crate::MapEditorSession), and the [`spawn_role`](gdtf_battle_sim::level::PrefabSpec::spawn_role) defaults to

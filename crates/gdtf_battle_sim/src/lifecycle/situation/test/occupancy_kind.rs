@@ -26,18 +26,16 @@ fn crossed_terrain_fixture() -> (Situation, CellLevel, CellLevel) {
         .with_gangers([ganger_at(key(10, 10, 0), 0), ganger_at(key(12, 12, 0), 1)])
         .build();
 
-    // A Cover/Scatter spec KEY in the `walls` list — list membership says "Wall",
-    // the def's own variant says "Cover".
-    situation.walls.push(CoverSpawn::new(
-        cover_in_walls_cell,
-        TerrainName::new(test_pieces::COVER.to_owned()),
-    ));
-    // A Wall spec KEY in the `scatter` list — list membership says "Cover", the def's
-    // own variant says "Wall".
-    situation.scatter.push(CoverSpawn::new(
-        wall_in_scatter_cell,
-        TerrainName::new(test_pieces::WALL.to_owned()),
-    ));
+    // A Cover def UUID in the `walls` list — list membership says "Wall",
+    // the def's own sim-kind variant says "Cover".
+    situation
+        .walls
+        .push(CoverSpawn::new(cover_in_walls_cell, test_pieces::COVER));
+    // A Wall def UUID in the `scatter` list — list membership says "Cover", the def's
+    // own sim-kind variant says "Wall".
+    situation
+        .scatter
+        .push(CoverSpawn::new(wall_in_scatter_cell, test_pieces::WALL));
 
     (situation, cover_in_walls_cell, wall_in_scatter_cell)
 }

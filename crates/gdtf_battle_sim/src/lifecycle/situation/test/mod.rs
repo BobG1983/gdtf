@@ -8,4 +8,5 @@ mod seed;
 mod serde;
 mod spawn;
 mod support;
+mod terrain_uuid;
 mod value;

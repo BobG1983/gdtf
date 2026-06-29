@@ -31,9 +31,13 @@ use gdtf_battle_sim::{
     level::PrefabRegistry,
     rng::BattleSeed,
     situation::Situation,
+    terrain::{def::TerrainDefRegistry, piece::TerrainRegistry},
 };
 
-use super::{procgen::procgen_battle_situation, seed::resolve_root_seed};
+use super::{
+    procgen::{procgen_battle_situation, shim_legacy_terrain_into_def_registry},
+    seed::resolve_root_seed,
+};
 use crate::states::{
     load::LoadedSituation, running::game::battlescape::generation::resources::GenerationComplete,
 };
@@ -82,6 +86,8 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
     loaded: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
     prefabs: Option<Res<PrefabRegistry>>,
+    legacy_terrain: Option<Res<TerrainRegistry>>,
+    def_registry: Option<ResMut<TerrainDefRegistry>>,
     mut setup: MessageWriter<SetupBattleRequested>,
 ) {
     // The loaded authored battlefield if the Load scene resolved one, else the empty
@@ -106,6 +112,16 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
     // procgen fails closed (the headless empty-registry harness). This is the LIVE trigger
     // that makes procgen drive real battles.
     let situation = procgen_battle_situation(authored, prefabs.as_deref(), seed);
+    // GTW-491 SHIM ADAPTER: the procgen-emitted terrain references its pieces by the legacy
+    // `TerrainName`-derived `TerrainUuid` shim (`emit_level` is still `TerrainName`-keyed). Re-key
+    // every legacy `TerrainRegistry` piece into the UUID-keyed `TerrainDefRegistry` under the SAME
+    // `from_legacy_name` bridge so `setup_battle` resolves the procgen terrain (it would otherwise
+    // fail closed with `TerrainNotFound`, since the migrated registry is keyed by AUTHORED UUIDs).
+    // Only inserts MISSING keys (a real migrated def always wins). GTW-492 (T07b) switches procgen
+    // onto UUID-keyed v2 prefabs and removes this adapter + the emit shim.
+    if let (Some(legacy), Some(mut def_registry)) = (legacy_terrain, def_registry) {
+        shim_legacy_terrain_into_def_registry(&legacy, &mut def_registry);
+    }
     setup.write(SetupBattleRequested::new(situation, seed));
 }
 

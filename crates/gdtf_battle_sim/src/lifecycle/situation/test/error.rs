@@ -202,20 +202,21 @@ fn setup_errors_on_a_missing_armor_key() {
     );
 }
 
-/// GTW-396 (gate clause A1) — a `walls` entry referencing a terrain piece KEY that is
-/// ABSENT from the registry makes `setup_battle` return
-/// `Err(BattleSetupError::TerrainNotFound)` and spawn NOTHING (terrain resolution runs
-/// before the spawn loop) — the abort-first contract, the terrain mirror of
-/// `setup_errors_on_a_missing_weapon_key`.
+/// GTW-491 (C1, pin-discriminating) — a `scatter` entry referencing a terrain definition
+/// UUID that is ABSENT from the [`TerrainDefRegistry`] makes `setup_battle` return
+/// `Err(BattleSetupError::TerrainNotFound)` (now keyed by the unresolved [`TerrainUuid`])
+/// and spawn NOTHING (terrain resolution runs before the spawn loop) — the abort-first
+/// contract, the terrain mirror of `setup_errors_on_a_missing_weapon_key`. A wrong/missing
+/// UUID yielding anything but `TerrainNotFound` reddens this (the C1 pin).
 #[test]
 fn setup_errors_on_a_missing_terrain_key() {
     // A ganger with the default (valid) weapon + armor keys, so the weapon + armor
-    // resolution passes and the GTW-396 terrain resolution is reached. The wall names a
-    // piece key that the test terrain registry does NOT hold.
-    let missing = TerrainName::new("no-such-piece".to_owned());
+    // resolution passes and the GTW-491 terrain resolution is reached. The scatter piece
+    // names a def UUID that the test terrain registry does NOT hold.
+    let missing = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0149_dead_0000_0001));
     let (situation, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
-        .with_scatter(CoverSpawn::new(key(2, 2, 0), missing.clone()))
+        .with_scatter(CoverSpawn::new(key(2, 2, 0), missing))
         .build_with_gangs();
 
     let mut app = App::new();
@@ -413,189 +414,14 @@ fn setup_errors_on_a_missing_member_key() {
     );
 }
 
-/// GTW-396 (gate clause A2) — a `default_floor` piece whose `move_cost` is BELOW
-/// [`MIN_MOVE_COST`](crate::pathfinder::MIN_MOVE_COST) (the A\* admissibility floor)
-/// makes `setup_battle` return `Err(BattleSetupError::FloorCostBelowMinimum)` and spawn
-/// NOTHING. A reverted / wrong-direction guard (`> minimum` instead of `< minimum`)
-/// would let this through and fail the test.
-#[test]
-fn setup_errors_on_a_floor_cost_below_minimum() {
-    // A registry whose ONE floor piece is authored below the admissibility floor. The
-    // chosen cost (1) is an arbitrary discriminator strictly under MIN_MOVE_COST (4),
-    // never a shipped magnitude.
-    let too_cheap = TerrainName::new("too-cheap-floor".to_owned());
-    let terrain = TerrainRegistry::new([(too_cheap.clone(), floor_spec(1))]);
-
-    let (mut situation, gangs) = SituationBuilder::new()
-        .with_ganger(ganger_at(key(0, 0, 0), 0))
-        .build_with_gangs();
-    situation.default_floor = too_cheap;
-
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    let registry = test_registry();
-    let armor = test_armor_registry();
-    let stat_tuning = GangerStatTuning::default();
-    let result = app
-        .world_mut()
-        .run_system_once(move |mut commands: Commands| {
-            setup_battle(
-                &situation,
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, Some(&terrain)),
-                crate::tuning::CombatTuning::default().move_costs.open,
-                &mut commands,
-            )
-        });
-
-    assert!(result.is_ok(), "the one-shot system must run");
-    let Ok(setup_result) = result else {
-        return;
-    };
-    // Assert ONLY the variant (the magnitudes are arbitrary test data; the brittle-test
-    // rule forbids pinning them): a too-cheap floor must abort with FloorCostBelowMinimum.
-    assert!(
-        matches!(
-            setup_result.err(),
-            Some(BattleSetupError::FloorCostBelowMinimum { .. })
-        ),
-        "a floor cost below MIN_MOVE_COST must abort with FloorCostBelowMinimum (no panic)",
-    );
-
-    // Nothing was spawned (the validation aborted before the spawn loop).
-    app.world_mut().flush();
-    let world = app.world_mut();
-    let mut q = world.query::<&Wears>();
-    assert_eq!(
-        q.iter(world).count(),
-        0,
-        "a below-minimum floor abort must spawn no gangers",
-    );
-    assert!(
-        world.get_resource::<FloorCostGrid>().is_none(),
-        "a below-minimum floor abort must insert no FloorCostGrid",
-    );
-}
-
-/// GTW-396 (gate clause A3) — a `default_floor` KEY that resolves to a NON-`Floor`
-/// terrain spec (a Cover/Wall/Slab piece) makes `setup_battle` return
-/// `Err(BattleSetupError::TerrainNotFound)` — the `resolve_floor_piece_cost` rejection
-/// branch (the spec is present but the wrong KIND).
-#[test]
-fn setup_errors_when_floor_key_is_not_a_floor_spec() {
-    // A registry whose key resolves to a COVER spec, not a Floor. Pointing `default_floor`
-    // at it exercises the wrong-kind rejection branch.
-    let not_a_floor = TerrainName::new("actually-cover".to_owned());
-    let terrain = TerrainRegistry::new([(not_a_floor.clone(), cover_spec())]);
-
-    let (mut situation, gangs) = SituationBuilder::new()
-        .with_ganger(ganger_at(key(0, 0, 0), 0))
-        .build_with_gangs();
-    situation.default_floor = not_a_floor.clone();
-
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    let registry = test_registry();
-    let armor = test_armor_registry();
-    let stat_tuning = GangerStatTuning::default();
-    let result = app
-        .world_mut()
-        .run_system_once(move |mut commands: Commands| {
-            setup_battle(
-                &situation,
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, Some(&terrain)),
-                crate::tuning::CombatTuning::default().move_costs.open,
-                &mut commands,
-            )
-        });
-
-    assert!(result.is_ok(), "the one-shot system must run");
-    let Ok(setup_result) = result else {
-        return;
-    };
-    assert_eq!(
-        setup_result.err(),
-        Some(BattleSetupError::TerrainNotFound { piece: not_a_floor }),
-        "a floor key pointing at a non-Floor spec must abort with TerrainNotFound",
-    );
-
-    // Nothing was spawned (the validation aborted before the spawn loop).
-    app.world_mut().flush();
-    let world = app.world_mut();
-    let mut q = world.query::<&Wears>();
-    assert_eq!(
-        q.iter(world).count(),
-        0,
-        "a wrong-kind floor abort must spawn no gangers",
-    );
-    assert!(
-        world.get_resource::<FloorCostGrid>().is_none(),
-        "a wrong-kind floor abort must insert no FloorCostGrid",
-    );
-}
-
-/// GTW-396 (gate clause A4) — a non-empty `floors` OVERRIDE list makes the resulting
-/// [`FloorCostGrid`] return the OVERRIDE cost for the overridden cell (not the default),
-/// exercising the `overrides` map + `resolve_floor_costs` building `floor_overrides`.
-/// The default and override costs are distinct arbitrary discriminators (each ≥
-/// `MIN_MOVE_COST`), never shipped magnitudes.
-#[test]
-fn floor_override_cost_wins_over_default() {
-    // Two distinct floor pieces, both ≥ MIN_MOVE_COST (4): a cheaper default (5) and a
-    // dearer override (9). Arbitrary discriminators — the test asserts the OVERRIDE wins,
-    // never a balance magnitude.
-    let default_key = TerrainName::new("default-floor".to_owned());
-    let override_key = TerrainName::new("override-floor".to_owned());
-    let terrain = TerrainRegistry::new([
-        (default_key.clone(), floor_spec(5)),
-        (override_key.clone(), floor_spec(9)),
-    ]);
-
-    let overridden_cell = key(3, 3, 0);
-    let plain_cell = key(8, 8, 0);
-    let (mut situation, gangs) = SituationBuilder::new()
-        .with_ganger(ganger_at(key(0, 0, 0), 0))
-        .build_with_gangs();
-    situation.default_floor = default_key;
-    situation.floors = vec![FloorSpawn::new(overridden_cell, override_key)];
-
-    let Some((mut app, _setup)) = run_setup_with(
-        situation,
-        gangs,
-        test_registry(),
-        test_armor_registry(),
-        Some(&terrain),
-    ) else {
-        return;
-    };
-
-    let world = app.world_mut();
-    let grid_present = world.get_resource::<FloorCostGrid>().is_some();
-    assert!(
-        grid_present,
-        "a successful setup must insert a FloorCostGrid"
-    );
-    let Some(grid) = world.get_resource::<FloorCostGrid>() else {
-        return;
-    };
-    // The overridden cell reads the OVERRIDE cost (9), NOT the default (5); a cell with
-    // no override falls back to the default. The two differ, so a build that dropped the
-    // override map (used the default everywhere) would fail this assertion.
-    assert_eq!(
-        grid.cost(&overridden_cell),
-        MoveCost::new(9),
-        "the overridden cell must read the override cost, not the default",
-    );
-    assert_eq!(
-        grid.cost(&plain_cell),
-        MoveCost::new(5),
-        "a non-overridden cell must read the default cost",
-    );
-    assert_ne!(
-        grid.cost(&overridden_cell),
-        grid.cost(&plain_cell),
-        "the override and default costs must differ (the override is observable)",
-    );
-}
+// GTW-491 (T07a) RETIRED three GTW-396 floor-resolution-against-registry tests
+// (`setup_errors_on_a_floor_cost_below_minimum`, `setup_errors_when_floor_key_is_not_a_floor_spec`,
+// `floor_override_cost_wins_over_default`): the new `TerrainSimKind` model has no `Floor`
+// variant and `TerrainDef` carries no per-piece move cost, so `setup_battle` no longer
+// resolves floor move costs against the registry (the floor grid is the uniform
+// `fallback_floor_cost`; per-floor move-cost validation returns with the GTW-482
+// move-cost-from-`default_floor` seam). The behaviour those tests pinned no longer exists in
+// this slice, so they were removed rather than left asserting a retired path.
 
 /// GTW-457 — TWO authored gangers on the SAME `(cell, level)` make `setup_battle`
 /// return `Err(BattleSetupError::StackedGangers { at })` naming the shared cell, and

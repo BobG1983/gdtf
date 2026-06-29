@@ -28,15 +28,19 @@ use gdtf_app::test_support::{BattleScapeState, LoadedSituation, RunningState};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, LevelTheme, Prefab, PrefabName,
-        PrefabRegistry, PrefabSpec, ThemeCatalogRegistry,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry,
+        PrefabSpec, ThemeCatalogRegistry, ThemeUuid,
     },
     metric::{Cell, CellLevel, Level},
     rng::BattleSeed,
     situation::Situation,
     terrain::{
+        def::{
+            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            TerrainSimKind, TerrainUuid,
+        },
         entity::TerrainIndex,
-        piece::{TerrainName, TerrainRegistry, TerrainSpec},
+        piece::TerrainGraphicKey,
     },
     test_support::{ganger_at, test_armor_registry, test_weapon_registry},
     tuning::CombatTuning,
@@ -56,6 +60,12 @@ const TEST_SEED: u64 = 0x600D_5EED;
 /// A `(cell, level)` on level 0.
 fn at(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
+}
+
+/// The migrated `IndustrialHive` [`ThemeUuid`] the shipped `skirmish.ron` authors in its
+/// `theme` field (GTW-490 migrated key, reconciled into the canonical `theme` by GTW-491).
+const fn industrial_hive_theme() -> ThemeUuid {
+    ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
 }
 
 /// The 30x30x4 skirmish board `GridSize` (the migrated `skirmish.ron` extent). Falls back to
@@ -101,36 +111,84 @@ fn real_prefab_registry() -> PrefabRegistry {
     registry
 }
 
-/// A `TerrainRegistry` holding the three pieces the GTW-433 deployment prefabs reference
-/// (`deck_floor` / `bulkhead_wall` / `barricade`), deserialised from the SHIPPED
-/// `assets/content/terrain/*.terrain.ron` so the procgen-generated terrain resolves at setup
-/// (the real app builds the same registry from the terrain folder).
+/// A [`TerrainDefRegistry`] holding the three pieces the GTW-433 deployment prefabs reference
+/// (`deck_floor` / `bulkhead_wall` / `barricade`), keyed by the GTW-491 procgen SHIM UUIDs
+/// ([`TerrainUuid::from_legacy_name`]) — so the procgen-emitted terrain (whose `TerrainName`
+/// keys the emit shim bridges into those same deterministic UUIDs) RESOLVES at setup.
 ///
-/// A piece that fails to parse is skipped (no-panic); a missing piece would make
-/// `setup_battle` fail closed with `TerrainNotFound`, so the walk would not reach
-/// `BattleRunning` and the test would fail loudly.
-fn prefab_terrain_registry() -> TerrainRegistry {
-    let mut registry = TerrainRegistry::default();
-    let pieces = [
+/// GTW-491 (T07a): `setup_battle` resolves UUID-keyed `TerrainDefRegistry` defs now, and the
+/// procgen emit shim mints each legacy `TerrainName`'s key via `from_legacy_name`. This test
+/// registry mirrors that shim exactly (the SAME `from_legacy_name` call), so the live
+/// procgen → merge → setup chain reaches `BattleRunning` with resolvable terrain. When procgen
+/// switches onto UUID-keyed v2 prefabs (GTW-492), this becomes the real shipped registry.
+///
+/// A def's sim-kind matches how the deployment prefabs use it: `bulkhead_wall` → `Wall`,
+/// `barricade` → `Cover`, `deck_floor` → a walkable `Slab` floor. Magnitudes are arbitrary
+/// test data (the brittle-test rule).
+fn prefab_terrain_registry() -> TerrainDefRegistry {
+    use gdtf_battle_sim::{
+        armor::{ArmorHardness, ArmorProtection},
+        cover::{CoverHp, HeightBand},
+        slab::SlabHp,
+    };
+
+    let wall_key = TerrainUuid::from_legacy_name("bulkhead_wall");
+    let cover_key = TerrainUuid::from_legacy_name("barricade");
+    let floor_key = TerrainUuid::from_legacy_name("deck_floor");
+
+    TerrainDefRegistry::new([
         (
-            "deck_floor",
-            include_str!("../../../assets/content/terrain/deck_floor.terrain.ron"),
+            wall_key,
+            TerrainDef {
+                key:            wall_key,
+                display_name:   TerrainDisplayName::new("Bulkhead Wall".to_owned()),
+                sim_kind:       TerrainSimKind::Wall {
+                    hp:               CoverHp::new(120),
+                    armor_protection: ArmorProtection::new(8),
+                    armor_hardness:   ArmorHardness::new(4),
+                    height_band:      HeightBand::High,
+                },
+                presenter_kind: TerrainPresenterKind::Wall {
+                    graphic_name: TerrainGraphicKey::new("wall".to_owned()),
+                },
+                tags:           Vec::new(),
+            },
         ),
         (
-            "bulkhead_wall",
-            include_str!("../../../assets/content/terrain/bulkhead_wall.terrain.ron"),
+            cover_key,
+            TerrainDef {
+                key:            cover_key,
+                display_name:   TerrainDisplayName::new("Barricade".to_owned()),
+                sim_kind:       TerrainSimKind::Cover {
+                    hp:               CoverHp::new(40),
+                    armor_protection: ArmorProtection::new(2),
+                    armor_hardness:   ArmorHardness::new(1),
+                    height_band:      HeightBand::Low,
+                },
+                presenter_kind: TerrainPresenterKind::Cover {
+                    graphic_name: TerrainGraphicKey::new("cover".to_owned()),
+                },
+                tags:           Vec::new(),
+            },
         ),
         (
-            "barricade",
-            include_str!("../../../assets/content/terrain/barricade.terrain.ron"),
+            floor_key,
+            TerrainDef {
+                key:            floor_key,
+                display_name:   TerrainDisplayName::new("Deck Floor".to_owned()),
+                sim_kind:       TerrainSimKind::Slab {
+                    hp:               SlabHp::new(80),
+                    armor_protection: ArmorProtection::new(1),
+                    armor_hardness:   ArmorHardness::new(0),
+                },
+                presenter_kind: TerrainPresenterKind::Slab {
+                    graphic_name: TerrainGraphicKey::new("floor".to_owned()),
+                    footfall:     None,
+                },
+                tags:           Vec::new(),
+            },
         ),
-    ];
-    for (name, ron) in pieces {
-        if let Ok(spec) = ron::from_str::<TerrainSpec>(ron) {
-            registry.insert(TerrainName::new(name.to_owned()), spec);
-        }
-    }
-    registry
+    ])
 }
 
 /// A theme+size-only [`Situation`] mirroring the migrated `skirmish.ron`: `IndustrialHive`,
@@ -140,9 +198,10 @@ fn theme_size_only_situation() -> (Situation, gdtf_battle_sim::ganger::GangRegis
     let (mut situation, gangs) = gdtf_battle_sim::test_support::SituationBuilder::new()
         .with_gangers([ganger_at(at(5, 6), 0), ganger_at(at(12, 9), 1)])
         .build_with_gangs();
-    // Mirror the migrated skirmish.ron: explicit theme + 30x30x4 board, no inline terrain
-    // (the builder leaves walls/scatter/slabs/floors/links empty). Procgen fills the terrain.
-    situation.theme = LevelTheme::IndustrialHive;
+    // Mirror the migrated skirmish.ron: explicit theme (the UUID-keyed IndustrialHive ThemeUuid
+    // — GTW-491) + 30x30x4 board, no inline terrain (the builder leaves
+    // walls/scatter/slabs/floors/links empty). Procgen fills the terrain.
+    situation.theme = industrial_hive_theme();
     situation.grid_size = skirmish_board();
     (situation, gangs)
 }
@@ -231,11 +290,12 @@ fn skirmish_ron_authors_no_terrain() {
         return;
     };
 
-    // Theme + size + gangers are authored (the kept fields).
+    // Theme + size + gangers are authored (the kept fields). GTW-491: `theme` is now the
+    // UUID-keyed IndustrialHive ThemeUuid (reconciled from the GTW-490 `theme_uuid`).
     assert_eq!(
         situation.theme,
-        LevelTheme::IndustrialHive,
-        "skirmish.ron must author its theme (IndustrialHive)",
+        industrial_hive_theme(),
+        "skirmish.ron must author its theme (the IndustrialHive ThemeUuid)",
     );
     assert_eq!(
         situation.grid_size,
@@ -270,7 +330,7 @@ fn skirmish_ron_authors_no_terrain() {
         "skirmish.ron must author no vertical_links (they are terrain)",
     );
     assert!(
-        situation.default_floor.is_empty(),
+        situation.default_floor.is_nil(),
         "skirmish.ron must author no default_floor (procgen supplies it)",
     );
 }

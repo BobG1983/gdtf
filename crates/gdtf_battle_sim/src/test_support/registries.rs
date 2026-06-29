@@ -16,11 +16,13 @@ use crate::{
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     slab::SlabHp,
-    terrain::piece::{
-        FloorSpec, FootfallSound, SlabPieceSpec, StructuralSpec, TerrainGraphicKey,
-        TerrainKindSpec, TerrainName, TerrainRegistry, TerrainSpec,
+    terrain::{
+        def::{
+            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            TerrainSimKind,
+        },
+        piece::{FootfallSound, TerrainGraphicKey},
     },
-    tuning::MoveCost,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Handedness, Kickback,
         MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
@@ -113,76 +115,99 @@ pub fn test_armor_registry() -> ArmorRegistry {
     ArmorRegistry::new([(ArmorName::new(TEST_ARMOR_KEY.to_owned()), test_armor_spec())])
 }
 
-/// A helper for building a [`TerrainSpec`] with a `none`-keyed footfall — the
-/// canonical no-footfall pattern for test pieces (no audio system built yet).
-fn no_footfall() -> crate::terrain::piece::FootfallSound {
-    FootfallSound::new("none".to_owned())
-}
-
-/// A [`TerrainRegistry`] with the four test terrain piece keys — the test-built
-/// terrain registry `setup_battle` resolves cover/slab/floor piece keys against
-/// in the test harness (no `AssetServer`).
+/// A [`TerrainDefRegistry`] with the four test terrain definition UUIDs (GTW-491) — the
+/// test-built UUID-keyed registry `setup_battle` resolves cover/slab piece UUIDs against in
+/// the test harness (no `AssetServer`), the successor to the legacy `TerrainRegistry`.
 ///
-/// The four pieces:
-/// - `"test-wall"` — a HIGH-band structural wall (hp=120, prot=8, hard=4).
-/// - `"test-slab"` — a destructible slab (hp=120, prot=4, hard=2).
-/// - `"test-cover"` — a LOW-band cover prop (hp=30, prot=2, hard=1).
-/// - `"test-floor"` — a walkable floor tile (`move_cost=4`, the A* minimum).
+/// The four defs, keyed by the `test_pieces` UUID consts:
+/// - `WALL` — a HIGH-band structural `Wall` sim-kind, presenter `Wall { graphic_name }`
+///   (carries a graphic — the GTW-491 NET-NEW wall-graphic fact — and NO footfall).
+/// - `SLAB` — a destructible `Slab` sim-kind, presenter `Slab { graphic_name, footfall:
+///   Some(..) }` (a NAMED footfall, so the optional-footfall fact is exercised).
+/// - `COVER` — a LOW-band `Cover` sim-kind, presenter `Cover { graphic_name }`.
+/// - `FLOOR` — a `Slab`-kind walkable floor (no `Floor` variant in the new model), presenter
+///   `Slab { graphic_name, footfall: None }`.
 ///
-/// Magnitudes are ARBITRARY test data — they exist only to let the registry resolve
-/// the four keys that `SituationBuilder::wall_at` / `slab_at` and the situation
-/// test fixtures author. Tests must not pin these magnitudes (brittle-test rule).
+/// Magnitudes are ARBITRARY test data — they exist only to let the registry resolve the four
+/// UUIDs that `SituationBuilder::wall_at` / `slab_at` and the situation test fixtures author.
+/// Tests must not pin these magnitudes (brittle-test rule).
 #[must_use]
-pub fn test_terrain_registry() -> TerrainRegistry {
-    TerrainRegistry::new([
+pub fn test_terrain_registry() -> TerrainDefRegistry {
+    use super::situation::test_pieces;
+
+    let display = |name: &str| TerrainDisplayName::new(name.to_owned());
+    let graphic = |role: &str| TerrainGraphicKey::new(role.to_owned());
+
+    TerrainDefRegistry::new([
         (
-            TerrainName::new("test-wall".to_owned()),
-            TerrainSpec {
-                graphic:  TerrainGraphicKey::new("wall".to_owned()),
-                footfall: no_footfall(),
-                kind:     TerrainKindSpec::Wall(StructuralSpec {
-                    max_hp:           CoverHp::new(120),
+            test_pieces::WALL,
+            TerrainDef {
+                key:            test_pieces::WALL,
+                display_name:   display("Test Wall"),
+                sim_kind:       TerrainSimKind::Wall {
+                    hp:               CoverHp::new(120),
                     armor_protection: ArmorProtection::new(8),
                     armor_hardness:   ArmorHardness::new(4),
                     height_band:      HeightBand::High,
-                }),
+                },
+                presenter_kind: TerrainPresenterKind::Wall {
+                    graphic_name: graphic("wall"),
+                },
+                tags:           Vec::new(),
             },
         ),
         (
-            TerrainName::new("test-slab".to_owned()),
-            TerrainSpec {
-                graphic:  TerrainGraphicKey::new("slab".to_owned()),
-                footfall: no_footfall(),
-                kind:     TerrainKindSpec::Slab(SlabPieceSpec {
-                    max_hp:           SlabHp::new(120),
+            test_pieces::SLAB,
+            TerrainDef {
+                key:            test_pieces::SLAB,
+                display_name:   display("Test Slab"),
+                sim_kind:       TerrainSimKind::Slab {
+                    hp:               SlabHp::new(120),
                     armor_protection: ArmorProtection::new(4),
                     armor_hardness:   ArmorHardness::new(2),
-                }),
+                },
+                presenter_kind: TerrainPresenterKind::Slab {
+                    graphic_name: graphic("slab"),
+                    // A NAMED footfall, so the GTW-491 optional-footfall-on-slab fact (C4) is
+                    // exercised by the standard fixture slab.
+                    footfall:     Some(FootfallSound::new("test-step".to_owned())),
+                },
+                tags:           Vec::new(),
             },
         ),
         (
-            TerrainName::new("test-cover".to_owned()),
-            TerrainSpec {
-                graphic:  TerrainGraphicKey::new("cover".to_owned()),
-                footfall: no_footfall(),
-                kind:     TerrainKindSpec::Cover(StructuralSpec {
-                    max_hp:           CoverHp::new(30),
+            test_pieces::COVER,
+            TerrainDef {
+                key:            test_pieces::COVER,
+                display_name:   display("Test Cover"),
+                sim_kind:       TerrainSimKind::Cover {
+                    hp:               CoverHp::new(30),
                     armor_protection: ArmorProtection::new(2),
                     armor_hardness:   ArmorHardness::new(1),
                     height_band:      HeightBand::Low,
-                }),
+                },
+                presenter_kind: TerrainPresenterKind::Cover {
+                    graphic_name: graphic("cover"),
+                },
+                tags:           Vec::new(),
             },
         ),
         (
-            TerrainName::new("test-floor".to_owned()),
-            TerrainSpec {
-                graphic:  TerrainGraphicKey::new("floor".to_owned()),
-                footfall: no_footfall(),
-                // move_cost = 4 = the A* admissibility minimum (MIN_MOVE_COST).
-                // Tests pinning floor cost against this registry use this value.
-                kind:     TerrainKindSpec::Floor(FloorSpec {
-                    move_cost: MoveCost::new(4),
-                }),
+            test_pieces::FLOOR,
+            TerrainDef {
+                key:            test_pieces::FLOOR,
+                display_name:   display("Test Floor"),
+                // The new model has no Floor sim-kind — a walkable floor is a Slab def.
+                sim_kind:       TerrainSimKind::Slab {
+                    hp:               SlabHp::new(60),
+                    armor_protection: ArmorProtection::new(1),
+                    armor_hardness:   ArmorHardness::new(0),
+                },
+                presenter_kind: TerrainPresenterKind::Slab {
+                    graphic_name: graphic("floor"),
+                    footfall:     None,
+                },
+                tags:           Vec::new(),
             },
         ),
     ])

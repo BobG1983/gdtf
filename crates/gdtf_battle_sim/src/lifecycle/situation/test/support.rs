@@ -32,16 +32,18 @@ pub(super) use crate::{
     inflicted_wound::InflictedWounds,
     metric::CellLevel,
     occupancy::{OccupancyGrid, TerrainKind},
-    situation::{CoverSpawn, FloorSpawn},
+    situation::CoverSpawn,
     surface::{SlabState, SurfaceGrid},
     terrain::{
-        floor::FloorCostGrid,
-        piece::{
-            FloorSpec, FootfallSound, StructuralSpec, TerrainGraphicKey, TerrainKindSpec,
-            TerrainName, TerrainRegistry, TerrainSpec,
+        def::{
+            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            TerrainSimKind, TerrainUuid,
         },
+        entity::{TerrainCell, TerrainPieceKind},
+        floor::FloorCostGrid,
+        piece::{FootfallSound, TerrainGraphicKey},
     },
-    tuning::{GangerStatTuning, MoveCost},
+    tuning::GangerStatTuning,
     vertical::{InvalidVerticalLink, LinkKind, VerticalLink, VerticalLinkGraph},
     weapon::{FireMode, Weapon, WeaponName, WeaponRegistry, WeaponSpec, WieldedBy, Wields},
 };
@@ -115,51 +117,19 @@ pub(super) fn shipped_armor_registry() -> Option<ArmorRegistry> {
 /// The three shipped terrain `.terrain.ron` files for the migrated
 /// `skirmish.ron` (GTW-396) — the REAL on-disk authored terrain pieces, so a
 /// regression in any of these files turns the shipped-setup test red.
-const SHIPPED_HEAVY_BULKHEAD_RON: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/content/terrain/heavy_bulkhead.terrain.ron"
-));
-const SHIPPED_BARRICADE_RON: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/content/terrain/barricade.terrain.ron"
-));
-const SHIPPED_DECK_SLAB_RON: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/content/terrain/deck_slab.terrain.ron"
-));
-const SHIPPED_DECK_FLOOR_RON: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/content/terrain/deck_floor.terrain.ron"
-));
-
-/// Build a terrain registry from the shipped terrain piece files — the four
-/// pieces `skirmish.ron` now references (`heavy_bulkhead`, `barricade`,
-/// `deck_slab`, `deck_floor`), keyed by their filename stems. Returns `None`
-/// (assert-fail) if any file fails to parse (no panic in tests).
-pub(super) fn shipped_terrain_registry() -> Option<TerrainRegistry> {
-    let heavy_bulkhead = ron::de::from_str::<TerrainSpec>(SHIPPED_HEAVY_BULKHEAD_RON);
-    let barricade = ron::de::from_str::<TerrainSpec>(SHIPPED_BARRICADE_RON);
-    let deck_slab = ron::de::from_str::<TerrainSpec>(SHIPPED_DECK_SLAB_RON);
-    let deck_floor = ron::de::from_str::<TerrainSpec>(SHIPPED_DECK_FLOOR_RON);
-    assert!(
-        heavy_bulkhead.is_ok() && barricade.is_ok() && deck_slab.is_ok() && deck_floor.is_ok(),
-        "all shipped terrain files must parse: heavy_bulkhead={heavy_bulkhead:?} \
-         barricade={barricade:?} deck_slab={deck_slab:?} deck_floor={deck_floor:?}",
-    );
-    let (Ok(heavy_bulkhead), Ok(barricade), Ok(deck_slab), Ok(deck_floor)) =
-        (heavy_bulkhead, barricade, deck_slab, deck_floor)
-    else {
-        return None;
-    };
-    Some(TerrainRegistry::new([
-        (
-            TerrainName::new("heavy_bulkhead".to_owned()),
-            heavy_bulkhead,
-        ),
-        (TerrainName::new("barricade".to_owned()), barricade),
-        (TerrainName::new("deck_slab".to_owned()), deck_slab),
-        (TerrainName::new("deck_floor".to_owned()), deck_floor),
-    ]))
+/// The UUID-keyed terrain-definition registry the shipped-`skirmish.ron` setup resolves
+/// cover/slab UUIDs against (GTW-491 — the successor to the legacy filename-stem
+/// `TerrainRegistry`).
+///
+/// The shipped `skirmish.ron` authors NO inline terrain (the GTW-433 procgen migration — its
+/// walls / scatter / slabs / floors are all empty), so the setup never RESOLVES a terrain
+/// UUID; an EMPTY registry is therefore correct and faithful (it satisfies the
+/// `run_setup_with` signature without inventing terrain the shipped file does not author).
+/// When procgen drives real terrain (GTW-492+) the registry comes from the shipped UUID-keyed
+/// `assets/terrain/<theme>/*.terrain_def.ron` content (GTW-490), resolved by the loader.
+#[must_use]
+pub(super) fn shipped_terrain_registry() -> TerrainDefRegistry {
+    TerrainDefRegistry::default()
 }
 
 /// The two shipped gang `.gang.ron` roster files, read at compile time via the same
@@ -200,14 +170,15 @@ pub(super) fn shipped_gang_registry() -> Option<GangRegistry> {
 /// (the [`run_setup`] variant for the shipped-weapons AC5 path), returning the app +
 /// [`BattleSetup`] on success, else assert-failing and returning `None`.
 ///
-/// GTW-396: now also accepts a `terrain: Option<&TerrainRegistry>` and uses the
-/// fallback floor cost from `CombatTuning::default().move_costs.open`.
+/// GTW-491: accepts a `terrain: Option<&TerrainDefRegistry>` (the UUID-keyed successor to
+/// the legacy `TerrainRegistry`) and uses the fallback floor cost from
+/// `CombatTuning::default().move_costs.open`.
 pub(super) fn run_setup_with(
     situation: Situation,
     gangs: GangRegistry,
     registry: WeaponRegistry,
     armor: ArmorRegistry,
-    terrain: Option<&TerrainRegistry>,
+    terrain: Option<&TerrainDefRegistry>,
 ) -> Option<(App, BattleSetup)> {
     // `AssetPlugin` + `ScenePlugin` are required: `setup_battle` now spawns each ganger
     // as a `bsn!` Scene (GTW-322), whose deferred materialization needs the scene/asset
@@ -251,33 +222,12 @@ pub(super) fn run_setup_with(
     Some((app, setup))
 }
 
-/// Build a `Floor`-kind [`TerrainSpec`] carrying the given move cost — the terse
-/// fixture the GTW-396 floor-resolution tests use to author a floor piece at a chosen
-/// cost (an arbitrary discriminator, never a shipped magnitude).
-pub(super) fn floor_spec(cost: u8) -> TerrainSpec {
-    TerrainSpec {
-        graphic:  TerrainGraphicKey::new("floor".to_owned()),
-        footfall: FootfallSound::new("none".to_owned()),
-        kind:     TerrainKindSpec::Floor(FloorSpec {
-            move_cost: MoveCost::new(cost),
-        }),
-    }
-}
-
-/// Build a `Cover`-kind [`TerrainSpec`] — a LOW-band structural prop with arbitrary
-/// stats. Used by the GTW-396 floor-resolution test that points a floor KEY at a
-/// NON-`Floor` spec (the `resolve_floor_piece_cost` rejection branch).
-pub(super) fn cover_spec() -> TerrainSpec {
-    TerrainSpec {
-        graphic:  TerrainGraphicKey::new("cover".to_owned()),
-        footfall: FootfallSound::new("none".to_owned()),
-        kind:     TerrainKindSpec::Cover(StructuralSpec {
-            max_hp:           CoverHp::new(30),
-            armor_protection: ArmorProtection::new(2),
-            armor_hardness:   ArmorHardness::new(1),
-            height_band:      HeightBand::Low,
-        }),
-    }
+/// Build a single-def [`TerrainDefRegistry`] holding the given [`TerrainDef`] under its own
+/// key — the terse fixture the GTW-491 net-new presenter-fact tests use to author a wall /
+/// slab def with a chosen graphic / footfall (arbitrary discriminators, never a shipped
+/// magnitude). The situation's piece UUID is the def's `key`.
+pub(super) fn single_def_registry(def: TerrainDef) -> TerrainDefRegistry {
+    TerrainDefRegistry::new([(def.key, def)])
 }
 
 /// Build a [`GangerAttributes`] record for a [`PlacedGanger`](crate::situation::PlacedGanger)

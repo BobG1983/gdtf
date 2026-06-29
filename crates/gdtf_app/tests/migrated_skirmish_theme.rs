@@ -44,18 +44,19 @@ fn shipped_skirmish_names_a_migrated_theme_uuid_that_resolves() {
     advance_until_resource_exists::<LoadedSituation>(&mut app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<UuidThemeRegistry>(&mut app, LOAD_SAFETY_NET);
 
-    // The migrated theme UUID skirmish.ron's `theme_uuid` field carries — read off the resolved
-    // situation (the situation loader path), defaulting None had it not been authored.
+    // GTW-491: the canonical `theme` field IS the migrated IndustrialHive `ThemeUuid` now (the
+    // GTW-490 additive `theme_uuid` was reconciled into `theme`). Read it off the resolved
+    // situation (the situation loader path).
     let authored_theme_uuid = app
         .world()
         .get_resource::<LoadedSituation>()
-        .and_then(|loaded| loaded.theme_uuid);
+        .map(|loaded| loaded.theme);
 
     assert_eq!(
         authored_theme_uuid,
         Some(industrial_hive_theme()),
-        "skirmish.ron must author the migrated IndustrialHive theme_uuid, resolved through the \
-         situation loader path (C5)",
+        "skirmish.ron must author the migrated IndustrialHive theme (a ThemeUuid), resolved \
+         through the situation loader path (C5)",
     );
 
     // That authored UUID must resolve in the migrated theme registry — the round-trip C5 proves.
@@ -65,8 +66,7 @@ fn shipped_skirmish_names_a_migrated_theme_uuid_that_resolves() {
     ) {
         assert!(
             registry.def(&theme_uuid).is_some(),
-            "the migrated theme_uuid skirmish.ron names must resolve in the UuidThemeRegistry \
-             (C5)",
+            "the migrated theme skirmish.ron names must resolve in the UuidThemeRegistry (C5)",
         );
     }
 

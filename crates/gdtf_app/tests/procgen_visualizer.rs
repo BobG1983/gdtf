@@ -35,8 +35,7 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_sim::{
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, LevelTheme, Prefab, PrefabName,
-        PrefabRegistry, PrefabSpec,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry, PrefabSpec,
     },
     rng::BattleSeed,
     situation::Situation,
@@ -88,12 +87,15 @@ fn real_prefab_registry() -> PrefabRegistry {
     registry
 }
 
-/// A theme+size-only [`Situation`] the visualizer reads for its theme + grid-size:
-/// `IndustrialHive` on the 30x30x4 board, no terrain / gangers (the visualizer never reads
-/// those — it only runs the space packer).
+/// A size-only [`Situation`] the visualizer reads for its grid-size: the 30x30x4 board, no
+/// terrain / gangers (the visualizer never reads those — it only runs the space packer).
+///
+/// GTW-491: the visualizer's `build` no longer reads `Situation.theme` (it switched to a
+/// UUID-keyed `ThemeUuid`, but the legacy procgen this viz drives is keyed by `LevelTheme`, so
+/// `build` shims to the default theme — GTW-492 removes that). So this fixture only sets the
+/// board size; `theme` stays the nil default.
 fn viz_situation() -> Situation {
     let mut situation = Situation::new();
-    situation.theme = LevelTheme::IndustrialHive;
     situation.grid_size = viz_board();
     situation
 }

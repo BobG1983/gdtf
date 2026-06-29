@@ -33,3 +33,4 @@ pub use definition::{TerrainDef, TerrainDisplayName};
 pub use kind::{TerrainPresenterKind, TerrainSimKind, TerrainTag};
 pub use registry::TerrainDefRegistry;
 pub use uuid::TerrainUuid;
+pub(crate) use uuid::fnv1a64_u128;

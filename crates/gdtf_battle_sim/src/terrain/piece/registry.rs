@@ -49,6 +49,15 @@ impl TerrainRegistry {
         self.0.get(name)
     }
 
+    /// Iterate every `(name, spec)` the registry holds — the enumeration the GTW-491
+    /// app-side procgen SHIM reads to re-key each legacy piece into a UUID-keyed
+    /// [`TerrainDef`](crate::terrain::def::TerrainDef) (the GTW-492-bound adapter that lets the
+    /// still-`TerrainName`-keyed procgen prefabs resolve against the UUID
+    /// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry)).
+    pub fn iter(&self) -> impl Iterator<Item = (&TerrainName, &TerrainSpec)> {
+        self.0.iter()
+    }
+
     /// How many terrain pieces the registry holds — the count the folder-load test
     /// asserts.
     #[must_use]
