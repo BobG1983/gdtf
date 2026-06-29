@@ -119,10 +119,12 @@ fn setup(mut commands: Commands) {
         DropdownOption::new(DemoChoice::new("shotgun"), "Shotgun"),
     ];
     let colors = DropdownColors {
-        control_bg: Color::srgb(0.18, 0.18, 0.22),
-        text:       Color::srgb(0.92, 0.92, 0.86),
-        popup_bg:   Color::srgb(0.10, 0.10, 0.14),
-        option_bg:  Color::srgb(0.16, 0.16, 0.20),
+        control_bg:          Color::srgb(0.18, 0.18, 0.22),
+        text:                Color::srgb(0.92, 0.92, 0.86),
+        popup_bg:            Color::srgb(0.10, 0.10, 0.14),
+        option_bg:           Color::srgb(0.16, 0.16, 0.20),
+        // A bright highlight so the hovered / focused / selected row is clearly visible (GTW-499).
+        option_highlight_bg: Color::srgb(0.45, 0.62, 0.30),
     };
     let dropdown = spawn_dropdown(&mut commands, options, 0, colors, DemoDropdown);
     commands.entity(dropdown).insert(Node {

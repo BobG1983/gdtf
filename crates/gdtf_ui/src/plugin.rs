@@ -19,8 +19,8 @@ use crate::{
             ToggleFlipped, activate_focused_option, close_dropdowns_on_dismiss_request,
             dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, drive_accordions,
             drive_switches, open_dropdown, paint_active_buttons, paint_disabled_buttons,
-            position_dropdown_popups, repaint_segments, select_option_on_press,
-            select_segment_on_press,
+            paint_dropdown_option_highlight, position_dropdown_popups, repaint_segments,
+            select_option_on_press, select_segment_on_press,
         },
         interaction::{
             repaint_deactivated_buttons, repaint_theme_change, sync_hover_to_focus,
@@ -329,6 +329,10 @@ impl Plugin for UiPlugin {
 /// - [`dismiss_on_backdrop_press::<T>`](crate::dismiss_on_backdrop_press) — outside-click dismiss.
 /// - [`close_dropdowns_on_dismiss_request::<T>`](crate::close_dropdowns_on_dismiss_request) — the
 ///   `Escape` consumer (a no-op when nothing is open).
+/// - [`paint_dropdown_option_highlight::<T>`](crate::paint_dropdown_option_highlight) — the
+///   GTW-499 option-row highlight painter (the hovered / focused / selected row takes the
+///   dropdown's `option_highlight_bg`, every other row its `option_bg`); the option-row look is
+///   OWNED here, not by the shared `theme_interaction` painter (which excludes option rows).
 pub fn register_dropdown<T: OptionId>(app: &mut App) {
     app.add_message::<DropdownSelectionChanged<T>>()
         .add_systems(
@@ -339,6 +343,7 @@ pub fn register_dropdown<T: OptionId>(app: &mut App) {
                 activate_focused_option::<T>.after(FocusNavSystems::Bridge),
                 dismiss_on_backdrop_press::<T>,
                 close_dropdowns_on_dismiss_request::<T>,
+                paint_dropdown_option_highlight::<T>,
             ),
         );
 }

@@ -19,11 +19,12 @@
 //!
 //! - [`add_member_appears_inside_scroll_area`] — add a member → a row appears, parented INSIDE the
 //!   member-list `ScrollListArea` (C1 + GOTCHA 1).
-//! - [`commit_member_name_updates_model_and_row`] — a real `TextFieldCommitted` on a member's name
-//!   field edits the model name AND mutates the row name echo text (C3).
-//! - [`commit_member_weapon_updates_model_and_row`] /
-//!   [`commit_member_armor_updates_model_and_row`] — a real `DropdownSelectionChanged` edits the
-//!   model loadout AND mutates the row weapon / armor echo text (C2).
+//! - [`member_row_has_exactly_one_control_per_field`] — a row carries EXACTLY ONE control per
+//!   field (name / weapon / armor): the redundant doubled echo labels are gone (GTW-499 C1).
+//! - [`commit_member_name_updates_model`] — a real `TextFieldCommitted` on a member's name
+//!   field edits the model name (C3).
+//! - [`commit_member_weapon_updates_model`] / [`commit_member_armor_updates_model`] — a real
+//!   `DropdownSelectionChanged` edits the model loadout (C2).
 //! - [`delete_member_removes_from_model_and_list`] — a delete press removes the member from the
 //!   model AND despawns its row (C4).
 //! - [`editing_one_member_leaves_other_rows_untouched`] — after editing ONE member, the OTHER
@@ -31,15 +32,18 @@
 
 use bevy::{
     app::App,
-    ecs::{component::Component, entity::Entity, hierarchy::ChildOf},
-    prelude::{Text, With},
+    ecs::{
+        component::Component,
+        entity::Entity,
+        hierarchy::{ChildOf, Children},
+    },
+    prelude::With,
     state::state::NextState,
     ui::Interaction,
 };
 use gdtf_app::test_support::{
     AddMemberButton, AppState, DeleteMemberButton, EditableGang, MemberArmorDropdown,
-    MemberArmorText, MemberNameField, MemberNameText, MemberRow, MemberRowIndex,
-    MemberWeaponDropdown, MemberWeaponText, RunningState,
+    MemberNameField, MemberRow, MemberRowIndex, MemberWeaponDropdown, RunningState,
 };
 use gdtf_battle_sim::{
     Accuracy, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
@@ -174,10 +178,35 @@ fn control_for_row<M: Component>(app: &mut App, index: usize) -> Option<Entity> 
         .map(|(entity, _)| entity)
 }
 
-/// The [`Text`] string of the first node carrying BOTH marker `M` and `MemberRowIndex == index`.
-fn row_text<M: Component>(app: &mut App, index: usize) -> Option<String> {
-    let entity = control_for_row::<M>(app, index)?;
-    app.world().get::<Text>(entity).map(|text| text.0.clone())
+/// How many entities carry BOTH marker `M` and a [`MemberRowIndex`] equal to `index` — the count
+/// of THAT field's controls in row `index` (GTW-499 C1: must be exactly one per field).
+fn count_controls_for_row<M: Component>(app: &mut App, index: usize) -> usize {
+    let mut q = app.world_mut().query_filtered::<&MemberRowIndex, With<M>>();
+    q.iter(app.world())
+        .filter(|row_index| ***row_index == index)
+        .count()
+}
+
+/// The number of DIRECT children of row `index`'s collapsed HEADER node — the `+` pip, the portrait
+/// placeholder, the inline name field, the weapon dropdown, the armor dropdown, and the delete
+/// button: SIX controls after the GTW-499 C1 fix.
+///
+/// The header carries no marker of its own, so it is located as the common parent of the row's
+/// [`MemberNameField`] (a direct child the row builder `add_children`s onto the header). This is the
+/// structural pin for C1: the OLD doubled layout `add_children`d THREE extra static echo `Text`
+/// nodes (one beside each editable control), so its header held NINE children — re-introducing any
+/// echo pushes this count above six and fails the assert.
+fn header_child_count(app: &mut App, index: usize) -> usize {
+    let Some(field) = control_for_row::<MemberNameField>(app, index) else {
+        return 0;
+    };
+    let Some(header) = app.world().get::<ChildOf>(field).map(ChildOf::parent) else {
+        return 0;
+    };
+    app.world()
+        .get::<Children>(header)
+        .map(|children| children.len())
+        .unwrap_or_default()
 }
 
 /// Whether `descendant` has `ancestor` somewhere up its `ChildOf` chain.
@@ -221,14 +250,61 @@ fn add_member_appears_inside_scroll_area() {
     );
 }
 
-/// C3: a real `TextFieldCommitted` on a member's name field edits the model name AND mutates the
-/// row's name echo text in place.
+/// GTW-499 C1: a member row carries EXACTLY ONE control per field — the redundant doubled echo
+/// labels are gone. For row 0 the editor must render exactly one name control ([`MemberNameField`]),
+/// one weapon control ([`MemberWeaponDropdown`]), and one armor control ([`MemberArmorDropdown`]),
+/// AND no extra static echo node beside any of them.
+///
+/// Pin-discriminating against the actual defect — the structural [`header_child_count`] assert: the
+/// OLD doubled layout `add_children`d a static echo `Text` node BESIDE each editable control (a
+/// SEPARATE entity carrying its OWN echo marker, not the editable marker), so its header held NINE
+/// children; the fixed layout holds exactly SIX (pip, portrait, name field, weapon dropdown, armor
+/// dropdown, delete). Re-introducing any of the three echo nodes (reverting the C1 fix) pushes the
+/// header child count back above six and fails this assert — whereas the per-field control counts
+/// alone stayed at 1 in BOTH layouts (the echo carried a distinct marker), so they cannot catch the
+/// regression on their own.
+#[test]
+fn member_row_has_exactly_one_control_per_field() {
+    let mut app = editor_app();
+    press_add_member(&mut app);
+
+    // One editable control per field (documents the per-field intent — but NOT the discriminating
+    // assert: the old echo carried a distinct marker, so these counts were 1 in the doubled layout
+    // too).
+    assert_eq!(
+        count_controls_for_row::<MemberNameField>(&mut app, 0),
+        1,
+        "row 0 must have exactly ONE name control (no redundant echo label — GTW-499 C1)",
+    );
+    assert_eq!(
+        count_controls_for_row::<MemberWeaponDropdown>(&mut app, 0),
+        1,
+        "row 0 must have exactly ONE weapon control (no redundant echo label — GTW-499 C1)",
+    );
+    assert_eq!(
+        count_controls_for_row::<MemberArmorDropdown>(&mut app, 0),
+        1,
+        "row 0 must have exactly ONE armor control (no redundant echo label — GTW-499 C1)",
+    );
+
+    // The discriminating pin: the header holds exactly the six controls — NOT the nine of the old
+    // doubled layout (six + three static echo `Text` nodes). Re-adding any echo fails this.
+    assert_eq!(
+        header_child_count(&mut app, 0),
+        6,
+        "row 0's header must hold EXACTLY the six controls (pip, portrait, name field, weapon \
+         dropdown, armor dropdown, delete) — the three redundant echo labels are gone; the old \
+         doubled layout held nine, so re-adding any echo fails this (GTW-499 C1)",
+    );
+}
+
+/// C3: a real `TextFieldCommitted` on a member's name field edits the model name.
 ///
 /// Pin: if the commit listener drops the row-index mapping or never sets the name, the model name
-/// stays at the default and the assert fails; if it edits the model but not the echo text, the row
-/// assert fails.
+/// stays at the default and the assert fails. The name field itself shows the committed value
+/// (there is no separate echo node anymore — GTW-499 C1).
 #[test]
-fn commit_member_name_updates_model_and_row() {
+fn commit_member_name_updates_model() {
     let mut app = editor_app();
     press_add_member(&mut app);
     let field = control_for_row::<MemberNameField>(&mut app, 0).unwrap_or(Entity::PLACEHOLDER);
@@ -249,20 +325,14 @@ fn commit_member_name_updates_model_and_row() {
         Some(committed),
         "a commit on a member's name field must set THAT member's name in the model (C3)",
     );
-    assert_eq!(
-        row_text::<MemberNameText>(&mut app, 0).as_deref(),
-        Some(committed),
-        "the commit must MUTATE the row's name echo text in place to the committed value (C3/C5)",
-    );
 }
 
-/// C2: a real weapon `DropdownSelectionChanged` edits the model weapon AND mutates the row weapon
-/// echo text.
+/// C2: a real weapon `DropdownSelectionChanged` edits the model weapon.
 ///
-/// Pin: a dropped selection leaves the model weapon unchanged (default empty) and the row text
-/// empty — either fails.
+/// Pin: a dropped selection leaves the model weapon unchanged (default empty) — fails the assert.
+/// The dropdown's own label shows the chosen key (there is no separate echo node — GTW-499 C1).
 #[test]
-fn commit_member_weapon_updates_model_and_row() {
+fn commit_member_weapon_updates_model() {
     let mut app = editor_app();
     press_add_member(&mut app);
     let control =
@@ -282,17 +352,12 @@ fn commit_member_weapon_updates_model_and_row() {
         Some(WEAPON_B),
         "a weapon dropdown selection must set THAT member's weapon key in the model (C2)",
     );
-    assert_eq!(
-        row_text::<MemberWeaponText>(&mut app, 0).as_deref(),
-        Some(WEAPON_B),
-        "the selection must MUTATE the row's weapon echo text in place to the chosen key (C2/C5)",
-    );
 }
 
-/// C2: a real armor `DropdownSelectionChanged` edits the model armor AND mutates the row armor echo
-/// text (the armor mirror of [`commit_member_weapon_updates_model_and_row`]).
+/// C2: a real armor `DropdownSelectionChanged` edits the model armor (the armor mirror of
+/// [`commit_member_weapon_updates_model`]).
 #[test]
-fn commit_member_armor_updates_model_and_row() {
+fn commit_member_armor_updates_model() {
     let mut app = editor_app();
     press_add_member(&mut app);
     let control =
@@ -311,11 +376,6 @@ fn commit_member_armor_updates_model_and_row() {
         model_armor.as_deref(),
         Some(ARMOR_B),
         "an armor dropdown selection must set THAT member's armor key in the model (C2)",
-    );
-    assert_eq!(
-        row_text::<MemberArmorText>(&mut app, 0).as_deref(),
-        Some(ARMOR_B),
-        "the selection must MUTATE the row's armor echo text in place to the chosen key (C2/C5)",
     );
 }
 

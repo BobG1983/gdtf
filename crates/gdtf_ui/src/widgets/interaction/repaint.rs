@@ -13,7 +13,7 @@ use bevy::{
 use super::theme::interaction_fill;
 use crate::{
     theme::GdtfTheme,
-    widgets::core::{ActiveButton, DisabledButton, Segment, Switch},
+    widgets::core::{ActiveButton, DisabledButton, DropdownItemMarker, Segment, Switch},
 };
 
 /// Query filter selecting the buttons [`repaint_deactivated_buttons`] repaints:
@@ -131,16 +131,20 @@ pub fn repaint_deactivated_buttons(
 /// [`SegmentedControl`](crate::SegmentedControl) segment fills to
 /// [`repaint_segments`](crate::repaint_segments) (GTW-277), and
 /// `Without<Switch>` leaves [`Switch`](crate::Switch) track fills to
-/// [`drive_switches`](crate::drive_switches) (GTW-277). Those four
-/// exclusions also make this system's write set DISJOINT from each of those
-/// special paints, so there is no `BackgroundColor` write conflict on a theme-change
-/// frame where they all run.
+/// [`drive_switches`](crate::drive_switches) (GTW-277), and
+/// `Without<DropdownItemMarker>` leaves [`Dropdown`](crate::Dropdown) option-row fills to
+/// [`paint_dropdown_option_highlight`](crate::paint_dropdown_option_highlight) (GTW-499 — an
+/// option row is a [`Button`](bevy::ui::widget::Button), so without this a theme reload would
+/// clobber the dropdown highlight). Those exclusions also make this system's write set
+/// DISJOINT from each of those special paints, so there is no `BackgroundColor` write conflict
+/// on a theme-change frame where they all run.
 type EnabledInteractiveButton = (
     With<Button>,
     Without<DisabledButton>,
     Without<ActiveButton>,
     Without<Segment>,
     Without<Switch>,
+    Without<DropdownItemMarker>,
 );
 
 /// Repaints every ENABLED interactive button to its CURRENT-[`Interaction`]-correct

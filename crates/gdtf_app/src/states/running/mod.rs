@@ -94,9 +94,8 @@ crate::support_use! {
     editor::{
         AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
         DerivedStatText, EditableGang, EditableMember, EditorScreenRoot, ExpandPip, GangNameField,
-        MemberArmorDropdown, MemberArmorText, MemberListHost, MemberNameField, MemberNameText,
-        MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef, MemberStatPanel,
-        MemberWeaponDropdown, MemberWeaponText, PipExpanded,
+        MemberArmorDropdown, MemberListHost, MemberNameField, MemberPortrait, MemberRow,
+        MemberRowIndex, MemberRowRef, MemberStatPanel, MemberWeaponDropdown, PipExpanded,
     };
 }
 

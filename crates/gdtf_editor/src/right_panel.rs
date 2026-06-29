@@ -108,10 +108,13 @@ pub struct ThemeDropdown;
 /// the grid frame dropped them into an off-screen implicit grid row (the GTW-421 bottom-cramp).
 pub(crate) fn spawn_right_panel_controls(mut commands: Commands, theme: Res<GdtfTheme>) {
     let dropdown_colors = DropdownColors {
-        control_bg: *theme.panel.color,
-        text:       *theme.text.text_color,
-        popup_bg:   *theme.panel.color,
-        option_bg:  *theme.panel.border_color,
+        control_bg:          *theme.panel.color,
+        text:                *theme.text.text_color,
+        popup_bg:            *theme.panel.color,
+        option_bg:           *theme.panel.border_color,
+        // The hovered / focused / selected option's highlight — the theme's hover fill, distinct
+        // from the resting `option_bg` so the active row reads as highlighted (GTW-499).
+        option_highlight_bg: *theme.button.hover,
     };
     let field_colors = FieldColors {
         background: *theme.panel.color,

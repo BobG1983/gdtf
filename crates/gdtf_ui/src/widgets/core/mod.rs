@@ -136,11 +136,12 @@ pub use accordion::{
 pub use builders::{spawn_button, spawn_panel};
 pub use dropdown::{
     Dropdown, DropdownAnchor, DropdownBackdrop, DropdownColors, DropdownDismissRequest,
-    DropdownItem, DropdownLabel, DropdownOption, DropdownOptionLabel, DropdownOptions,
-    DropdownPopup, DropdownSelectionChanged, DropdownState, OptionId, SelectedIndex,
-    activate_focused_option, any_dropdown_open, close_dropdowns_on_dismiss_request,
+    DropdownItem, DropdownItemMarker, DropdownLabel, DropdownOption, DropdownOptionLabel,
+    DropdownOptions, DropdownPopup, DropdownSelectionChanged, DropdownState, OptionId,
+    SelectedIndex, activate_focused_option, any_dropdown_open, close_dropdowns_on_dismiss_request,
     dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, open_dropdown,
-    position_dropdown_popups, select_option_on_press, spawn_dropdown,
+    paint_dropdown_option_highlight, position_dropdown_popups, select_option_on_press,
+    spawn_dropdown,
 };
 pub use markers::{ActiveButton, ButtonLabel, DisabledButton};
 pub use orientation::Orientation;

@@ -25,9 +25,8 @@ crate::support_use! {
     components::{
         AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
         DerivedStatText, EditorScreenRoot, ExpandPip, GangNameField, MemberArmorDropdown,
-        MemberArmorText, MemberListHost, MemberNameField, MemberNameText, MemberPortrait,
-        MemberRow, MemberRowIndex, MemberRowRef, MemberStatPanel, MemberWeaponDropdown,
-        MemberWeaponText, PipExpanded,
+        MemberListHost, MemberNameField, MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef,
+        MemberStatPanel, MemberWeaponDropdown, PipExpanded,
     };
 }
 

@@ -74,9 +74,9 @@ crate::support_item! {
     ///
     /// One row per model member, carrying its [`MemberRowIndex`] so a commit / selection / delete
     /// maps back to the right member. The row holds (left→right) an [`ExpandPip`] toggle, a
-    /// [`MemberPortrait`] placeholder, the inline [`MemberNameField`] beside a [`MemberNameText`]
-    /// echo, the [`MemberWeaponText`] + [`MemberWeaponDropdown`], the [`MemberArmorText`] +
-    /// [`MemberArmorDropdown`], and a [`DeleteMemberButton`].
+    /// [`MemberPortrait`] placeholder, the inline [`MemberNameField`], the [`MemberWeaponDropdown`],
+    /// the [`MemberArmorDropdown`], and a [`DeleteMemberButton`] — exactly ONE editable control per
+    /// field (GTW-499 C1: the redundant static echo labels were removed).
     ///
     /// The headless test counts these rows and asserts the count grows by one per "Add member"
     /// and shrinks by one per delete.
@@ -164,36 +164,6 @@ crate::support_item! {
     /// exists yet, C1).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct MemberPortrait;
-}
-
-crate::support_item! {
-    /// Marks the [`Text`](bevy::prelude::Text) node showing a member's NAME in its collapsed row
-    /// (C1).
-    ///
-    /// The inline name field's commit MUTATES this text in place (C3/C5) — never a respawn. The
-    /// test reads this node's text to confirm the row reflects the edited model name.
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct MemberNameText;
-}
-
-crate::support_item! {
-    /// Marks the [`Text`](bevy::prelude::Text) node showing a member's WEAPON key in its collapsed
-    /// row (C1).
-    ///
-    /// The weapon dropdown's commit MUTATES this text in place (C2/C5). The test reads it to
-    /// confirm the row reflects the edited model weapon.
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct MemberWeaponText;
-}
-
-crate::support_item! {
-    /// Marks the [`Text`](bevy::prelude::Text) node showing a member's ARMOR key in its collapsed
-    /// row (C1).
-    ///
-    /// The armor dropdown's commit MUTATES this text in place (C2/C5). The test reads it to
-    /// confirm the row reflects the edited model armor.
-    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-    struct MemberArmorText;
 }
 
 crate::support_item! {

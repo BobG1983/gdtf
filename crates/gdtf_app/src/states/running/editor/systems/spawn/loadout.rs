@@ -10,10 +10,7 @@ use gdtf_ui::{DropdownColors, DropdownOption, spawn_dropdown, theme::GdtfTheme};
 
 use crate::states::{
     RunningState,
-    running::editor::components::{
-        MemberArmorDropdown, MemberArmorText, MemberRowIndex, MemberWeaponDropdown,
-        MemberWeaponText,
-    },
+    running::editor::components::{MemberArmorDropdown, MemberRowIndex, MemberWeaponDropdown},
 };
 
 /// Build the pre-sorted weapon dropdown option list — ALL loaded
@@ -61,27 +58,18 @@ pub(super) fn option_index_of<T: gdtf_ui::OptionId>(
         .unwrap_or_default()
 }
 
-/// Spawn one row's WEAPON loadout column: the [`MemberWeaponText`] echo (the member's current
-/// weapon key) beside the [`MemberWeaponDropdown`] over ALL loaded keys (C1/C2). Both carry the
-/// row's [`MemberRowIndex`]; the dropdown opens on the member's current key (or the first option if
-/// it is not a loaded key). Returns `(text, dropdown)`.
+/// Spawn one row's WEAPON loadout control: the [`MemberWeaponDropdown`] over ALL loaded keys
+/// (C1/C2). It carries the row's [`MemberRowIndex`] and opens on the member's current key (or the
+/// first option if it is not a loaded key). The dropdown's own label shows the current key — there
+/// is no separate echo text (GTW-499 C1: exactly one control per field). Returns the dropdown.
 pub(super) fn spawn_weapon_loadout(
     commands: &mut Commands,
     theme: &GdtfTheme,
     row_index: MemberRowIndex,
     current: &WeaponName,
     options: &[DropdownOption<WeaponName>],
-) -> (Entity, Entity) {
-    let text = commands
-        .spawn((
-            MemberWeaponText,
-            row_index,
-            Text::new((**current).clone()),
-            TextColor(*theme.text.text_color),
-            DespawnOnExit(RunningState::DebugEditor),
-        ))
-        .id();
-    let dropdown = spawn_dropdown(
+) -> Entity {
+    spawn_dropdown(
         commands,
         options.to_vec(),
         option_index_of(options, current),
@@ -91,30 +79,20 @@ pub(super) fn spawn_weapon_loadout(
             row_index,
             DespawnOnExit(RunningState::DebugEditor),
         ),
-    );
-    (text, dropdown)
+    )
 }
 
-/// Spawn one row's ARMOR loadout column: the [`MemberArmorText`] echo beside the
-/// [`MemberArmorDropdown`] over ALL loaded armor keys (C1/C2). The armor mirror of
-/// [`spawn_weapon_loadout`]. Returns `(text, dropdown)`.
+/// Spawn one row's ARMOR loadout control: the [`MemberArmorDropdown`] over ALL loaded armor keys
+/// (C1/C2). The armor mirror of [`spawn_weapon_loadout`] — the single armor control (GTW-499 C1).
+/// Returns the dropdown.
 pub(super) fn spawn_armor_loadout(
     commands: &mut Commands,
     theme: &GdtfTheme,
     row_index: MemberRowIndex,
     current: &ArmorName,
     options: &[DropdownOption<ArmorName>],
-) -> (Entity, Entity) {
-    let text = commands
-        .spawn((
-            MemberArmorText,
-            row_index,
-            Text::new((**current).clone()),
-            TextColor(*theme.text.text_color),
-            DespawnOnExit(RunningState::DebugEditor),
-        ))
-        .id();
-    let dropdown = spawn_dropdown(
+) -> Entity {
+    spawn_dropdown(
         commands,
         options.to_vec(),
         option_index_of(options, current),
@@ -124,16 +102,18 @@ pub(super) fn spawn_armor_loadout(
             row_index,
             DespawnOnExit(RunningState::DebugEditor),
         ),
-    );
-    (text, dropdown)
+    )
 }
 
 /// The [`DropdownColors`] a member-row dropdown paints with, from the theme. Pure UI plumbing.
 pub(super) fn dropdown_colors(theme: &GdtfTheme) -> DropdownColors {
     DropdownColors {
-        control_bg: *theme.button.color,
-        text:       *theme.text.text_color,
-        popup_bg:   *theme.panel.color,
-        option_bg:  *theme.button.color,
+        control_bg:          *theme.button.color,
+        text:                *theme.text.text_color,
+        popup_bg:            *theme.panel.color,
+        option_bg:           *theme.button.color,
+        // The hovered / focused / selected option's highlight — the theme's hover fill, distinct
+        // from the resting `option_bg` so the active row reads as highlighted (GTW-499).
+        option_highlight_bg: *theme.button.hover,
     }
 }

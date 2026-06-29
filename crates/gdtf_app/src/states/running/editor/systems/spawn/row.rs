@@ -18,8 +18,8 @@ use crate::states::{
     RunningState,
     running::editor::{
         components::{
-            DeleteMemberButton, ExpandPip, MemberNameField, MemberNameText, MemberPortrait,
-            MemberRow, MemberRowIndex, MemberRowRef, PipExpanded,
+            DeleteMemberButton, ExpandPip, MemberNameField, MemberPortrait, MemberRow,
+            MemberRowIndex, MemberRowRef, PipExpanded,
         },
         model::EditableMember,
     },
@@ -39,9 +39,10 @@ const PORTRAIT_SIDE_VW: f32 = 2.0;
 /// The row is a flex COLUMN: a collapsed HEADER row (the GTW-425 controls) above the GTW-428
 /// expanded [`MemberStatPanel`]. The header row carries its [`MemberRow`] marker + [`MemberRowIndex`]
 /// and holds (in order): the [`ExpandPip`] toggle, the [`MemberPortrait`] placeholder, the inline
-/// [`MemberNameField`] + a [`MemberNameText`] echo, the [`MemberWeaponText`] + the
-/// [`MemberWeaponDropdown`], the [`MemberArmorText`] + the [`MemberArmorDropdown`], and the
-/// [`DeleteMemberButton`]. BELOW it sits the collapsed-by-default stat panel (C1) holding the eight
+/// [`MemberNameField`], the [`MemberWeaponDropdown`], the [`MemberArmorDropdown`], and the
+/// [`DeleteMemberButton`] — exactly ONE editable control per field (GTW-499 C1: the redundant
+/// static echo labels were removed; each editable control shows its own value). BELOW it sits the
+/// collapsed-by-default stat panel (C1) holding the eight
 /// editable [`AttributeField`](crate::states::running::editor::components::AttributeField)s + the
 /// readonly [`DerivedStatText`](crate::states::running::editor::components::DerivedStatText)
 /// displays. Every control carries the same [`MemberRowIndex`] so a commit / selection / press maps
@@ -101,7 +102,8 @@ pub(in crate::states::running::editor) fn spawn_member_row(
         ))
         .id();
 
-    // Inline name field (C3), seeded with the member's current name, carrying the row index.
+    // Inline name field (C3), seeded with the member's current name, carrying the row index. It
+    // shows + edits the name itself — the single name control (GTW-499 C1: no separate echo).
     let name_field = spawn_text_field(
         commands,
         CommittedTextValue::new(member.name().as_str().to_owned()),
@@ -112,24 +114,14 @@ pub(in crate::states::running::editor) fn spawn_member_row(
             DespawnOnExit(RunningState::DebugEditor),
         ),
     );
-    // Name echo text (C1) — what the dropdown/field commits MUTATE in place (C5). Carries the row
-    // index so the commit system finds it.
-    let name_text = commands
-        .spawn((
-            MemberNameText,
-            row_index,
-            Text::new(member.name().as_str().to_owned()),
-            TextColor(text_color),
-            DespawnOnExit(RunningState::DebugEditor),
-        ))
-        .id();
 
-    // Weapon name echo text + weapon dropdown over all loaded keys (C1/C2).
-    let (weapon_text, weapon_dropdown) =
+    // Weapon dropdown over all loaded keys — the single weapon control (GTW-499 C1: its own label
+    // shows the current key; no separate echo text).
+    let weapon_dropdown =
         spawn_weapon_loadout(commands, theme, row_index, member.weapon(), weapon_options);
 
-    // Armor name echo text + armor dropdown over all loaded keys (C1/C2).
-    let (armor_text, armor_dropdown) =
+    // Armor dropdown over all loaded keys — the single armor control (GTW-499 C1).
+    let armor_dropdown =
         spawn_armor_loadout(commands, theme, row_index, member.armor(), armor_options);
 
     // Delete button (C4) — carries the row index AND the row root so its press removes the right
@@ -150,10 +142,7 @@ pub(in crate::states::running::editor) fn spawn_member_row(
         pip,
         portrait,
         name_field,
-        name_text,
-        weapon_text,
         weapon_dropdown,
-        armor_text,
         armor_dropdown,
         delete,
     ]);

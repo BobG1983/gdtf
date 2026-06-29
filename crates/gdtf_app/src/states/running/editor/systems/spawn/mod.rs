@@ -13,11 +13,12 @@
 //!
 //! Each member ROW is a flex column: a collapsed HEADER row above the GTW-428 expandable
 //! [`MemberStatPanel`](crate::states::running::editor::components::MemberStatPanel). The header row (GTW-425 C1) contains, left→right: an [`ExpandPip`](crate::states::running::editor::components::ExpandPip) `+`/`-`
-//! toggle, a [`MemberPortrait`](crate::states::running::editor::components::MemberPortrait) placeholder, the inline [`MemberNameField`](crate::states::running::editor::components::MemberNameField) beside a
-//! [`MemberNameText`](crate::states::running::editor::components::MemberNameText) echo, a [`MemberWeaponText`](crate::states::running::editor::components::MemberWeaponText) + a [`MemberWeaponDropdown`](crate::states::running::editor::components::MemberWeaponDropdown) over all loaded
-//! [`WeaponName`](gdtf_battle_sim::WeaponName) keys, a [`MemberArmorText`](crate::states::running::editor::components::MemberArmorText) + a
+//! toggle, a [`MemberPortrait`](crate::states::running::editor::components::MemberPortrait) placeholder, the inline [`MemberNameField`](crate::states::running::editor::components::MemberNameField), a
+//! [`MemberWeaponDropdown`](crate::states::running::editor::components::MemberWeaponDropdown) over all loaded
+//! [`WeaponName`](gdtf_battle_sim::WeaponName) keys, a
 //! [`MemberArmorDropdown`](crate::states::running::editor::components::MemberArmorDropdown) over all loaded [`ArmorName`](gdtf_battle_sim::ArmorName) keys, and a
-//! [`DeleteMemberButton`](crate::states::running::editor::components::DeleteMemberButton). BELOW it the GTW-428 stat panel lerps open on a pip press to show the
+//! [`DeleteMemberButton`](crate::states::running::editor::components::DeleteMemberButton) — exactly ONE editable control per field (GTW-499 C1: the
+//! redundant static echo labels were removed). BELOW it the GTW-428 stat panel lerps open on a pip press to show the
 //! eight editable [`AttributeField`](crate::states::running::editor::components::AttributeField) numeric fields and the eight readonly [`DerivedStatText`](crate::states::running::editor::components::DerivedStatText)
 //! displays in TWO COLUMNS — the panel animates open to a per-instance height waypoint then settles
 //! to a CONTENT-FIT ([`Val::Auto`](bevy::ui::Val)) height (the GTW-428 layout fix, opting the panel

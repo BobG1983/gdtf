@@ -40,7 +40,7 @@
 //! dropdown-owned [`DropdownDismissRequest`].
 
 use bevy::{
-    input_focus::directional_navigation::DirectionalNavigationMap,
+    input_focus::{InputFocus, directional_navigation::DirectionalNavigationMap},
     math::CompassOctant,
     prelude::*,
     ui::{
@@ -243,14 +243,29 @@ impl DropdownAnchor {
     }
 }
 
+/// Non-generic marker on EVERY option row (a [`Button`]) inside a [`DropdownPopup`].
+///
+/// Spawned alongside the generic [`DropdownItem<T>`] on each option row. It exists so the
+/// NON-generic [`theme_interaction`](crate::theme_interaction) painter can EXCLUDE option
+/// rows (`Without<DropdownItemMarker>`) — the generic `DropdownItem<T>` cannot appear in a
+/// non-generic query filter. Without this exclusion the shared button painter would clobber
+/// the dropdown-owned `option_bg` / `option_highlight_bg` fills with the global theme's
+/// hover/press colors, leaving a stray highlight bar and no per-option highlight (GTW-499).
+/// The option-row look is OWNED by [`paint_dropdown_option_highlight`], the
+/// [`ActiveButton`](crate::ActiveButton) / [`Segment`](crate::Segment) exclusion precedent.
+/// A unit marker — presence alone is the signal (no-bare-types rule).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct DropdownItemMarker;
+
 /// Marker on one OPTION row (a [`Button`]) inside a [`DropdownPopup`].
 ///
 /// Generic over the identity. Carries the option's [`id`](DropdownItem::id), its
 /// [`index`](DropdownItem::index) into [`DropdownOptions`], and the owning
 /// [`DropdownAnchor`] root, so [`select_option_on_press`] / [`activate_focused_option`] can
 /// report the chosen option back to its control. The option button is EXCLUDED from the
-/// generic button-interaction painter via [`DropdownItem`] so its look is not clobbered
-/// (the segment-exclusion precedent).
+/// generic button-interaction painter via the sibling [`DropdownItemMarker`] so its look is
+/// not clobbered (the segment-exclusion precedent), and painted by
+/// [`paint_dropdown_option_highlight`] instead.
 #[expect(
     clippy::derive_partial_eq_without_eq,
     reason = "T: OptionId is only PartialEq-bound, so Eq cannot be derived without \
@@ -290,20 +305,25 @@ impl<T: OptionId> DropdownItem<T> {
 /// The color set a [`Dropdown<T>`] paints itself with.
 ///
 /// Pure UI plumbing ([`Color`](bevy::prelude::Color)s): the closed control's fill + text,
-/// the popup's fill, and each option row's fill + text. Stored as a [`Component`] on the
-/// root so [`open_dropdown`] can re-derive the popup look from it without the caller
-/// re-passing colors. The derived [`Default`] (all-transparent) is a spawn-seed sentinel
-/// only — a builder always supplies real colors.
+/// the popup's fill, each option row's resting fill + text, and the option row HIGHLIGHT
+/// fill. Stored as a [`Component`] on the root so [`open_dropdown`] can re-derive the popup
+/// look from it without the caller re-passing colors. The derived [`Default`]
+/// (all-transparent) is a spawn-seed sentinel only — a builder always supplies real colors.
 #[derive(Component, Clone, Copy, PartialEq, Debug, Default)]
 pub struct DropdownColors {
     /// The closed control's background fill.
-    pub control_bg: Color,
+    pub control_bg:          Color,
     /// The closed control's (and option rows') text color.
-    pub text:       Color,
+    pub text:                Color,
     /// The floating popup's background fill.
-    pub popup_bg:   Color,
-    /// Each option row's background fill.
-    pub option_bg:  Color,
+    pub popup_bg:            Color,
+    /// Each option row's RESTING background fill (when neither hovered/pressed nor selected).
+    pub option_bg:           Color,
+    /// The background fill of the option row that is HOVERED / focused / pressed, or is the
+    /// currently-selected option — a DISTINCT highlight color so the active row reads as
+    /// highlighted (GTW-499). [`paint_dropdown_option_highlight`] writes this onto the
+    /// matching row and `option_bg` onto every other row, each frame an open list exists.
+    pub option_highlight_bg: Color,
 }
 
 /// A buffered Bevy **message** emitted when a [`Dropdown<T>`] selection changes
@@ -512,6 +532,7 @@ fn spawn_open_list<T: OptionId>(
         let row = commands
             .spawn((
                 DropdownItem::new(option.id().clone(), index),
+                DropdownItemMarker,
                 DropdownAnchor::new(control),
                 Button,
                 BackgroundColor(colors.option_bg),
@@ -684,6 +705,63 @@ fn select_dropdown_option<T: OptionId>(
         }
     }
     changed.write(DropdownSelectionChanged { control, id });
+}
+
+/// Read-only [`Query`] data for one option row's highlight paint: its
+/// [`DropdownItem<T>`] (for the option index), its owning [`DropdownAnchor`] (to read the
+/// control's selected index), its [`Interaction`](bevy::ui::Interaction) (hover / press),
+/// its [`Entity`] (to compare against [`InputFocus`]), and its mutable
+/// [`BackgroundColor`](bevy::ui::BackgroundColor) (the fill it writes).
+type OptionHighlight<T> = (
+    &'static DropdownItem<T>,
+    &'static DropdownAnchor,
+    &'static Interaction,
+    Entity,
+    &'static mut BackgroundColor,
+);
+
+/// Paints every open [`Dropdown<T>`] option row from the dropdown's OWN
+/// [`DropdownColors`] each frame: the HIGHLIGHTED row gets
+/// [`option_highlight_bg`](DropdownColors::option_highlight_bg), every other row gets
+/// [`option_bg`](DropdownColors::option_bg) (GTW-499).
+///
+/// A row is HIGHLIGHTED when it is hovered / pressed ([`Interaction`](bevy::ui::Interaction)
+/// is not [`None`](bevy::ui::Interaction::None)), OR it is the
+/// [`InputFocus`](bevy::input_focus::InputFocus) target (keyboard / hover-driven focus — the
+/// existing arrow-nav pipeline moves this), OR it is the control's currently-selected option
+/// ([`SelectedIndex`]). This is the dropdown-OWNED look the shared
+/// [`theme_interaction`](crate::theme_interaction) painter no longer touches (it excludes
+/// [`DropdownItemMarker`]), so the highlight is a styled, dropdown-defined color — never the
+/// global theme fill and never absent. Rows that are not part of an open list have no
+/// `DropdownItem`, so they are untouched (a CLOSED control shows no option rows at all, so no
+/// stray highlight leaks into the collapsed row).
+///
+/// Param-only — no `&mut World` (bevy-traps rule 7). Registered per option-id type by
+/// [`register_dropdown`](crate::register_dropdown) in [`Update`]. It runs each frame (not
+/// change-gated) so a freshly-spawned popup, an arrow-nav focus move, and a re-layout all repaint
+/// deterministically.
+pub fn paint_dropdown_option_highlight<T: OptionId>(
+    mut rows: Query<OptionHighlight<T>, With<DropdownItemMarker>>,
+    controls: Query<(&SelectedIndex, &DropdownColors), With<Dropdown<T>>>,
+    focus: Option<Res<InputFocus>>,
+) {
+    let focused = focus.and_then(|f| f.get());
+    for (item, anchor, interaction, entity, mut background) in &mut rows {
+        let Ok((selected, colors)) = controls.get(anchor.trigger()) else {
+            continue;
+        };
+        let highlighted = *interaction != Interaction::None
+            || focused == Some(entity)
+            || *item.index() == **selected;
+        let want = if highlighted {
+            colors.option_highlight_bg
+        } else {
+            colors.option_bg
+        };
+        if background.0 != want {
+            background.0 = want;
+        }
+    }
 }
 
 /// Read-only [`Query`] data for one pressed dismiss backdrop: its owning [`DropdownAnchor`]
