@@ -19,19 +19,25 @@
 //!   is by-construction in the v2 assembler (a later child), not authored per-prefab and
 //!   validated fail-closed (the GTW-473 walls/scatter merge + serde-default-`Fill` direction).
 //!
-//! This module is PURELY ADDITIVE (GTW-486): it adds the SPEC TYPES ONLY. The v2 registry
-//! / key (T05b), the v2 loader (T05c), and any assembler change are out of scope here — the
-//! legacy [`PrefabSpec`](super::PrefabSpec) / [`PrefabRegistry`](super::PrefabRegistry) /
-//! [`PrefabKey`](super::PrefabKey) / loader / assembler stay live and untouched.
+//! This module is ADDITIVE alongside the legacy types. GTW-486 added the SPEC TYPES
+//! ([`PrefabSpecV2`] / [`TerrainPlacementEntry`]); GTW-488 (child T05b) adds the re-keyed
+//! REGISTRY ([`PrefabRegistry2`] / [`PrefabKey2`] / [`Prefab2`]) — keyed by the stable
+//! [`ThemeUuid`](super::ThemeUuid) rather than the closed
+//! [`LevelTheme`](super::LevelTheme). The v2 loader (T05c) and any assembler change are
+//! still out of scope here — the legacy [`PrefabSpec`](super::PrefabSpec) /
+//! [`PrefabRegistry`](super::PrefabRegistry) / [`PrefabKey`](super::PrefabKey) /
+//! [`Prefab`](super::Prefab) / loader / assembler stay live and untouched.
 //!
 //! Mirrors the sibling dir-module layout (memory: *code-health-module-layout*): this
 //! `mod.rs` is wiring-only; per-concern files carry the types; `test` houses the unit tests.
 
 mod placement;
+mod registry;
 mod spec;
 
 #[cfg(test)]
 mod test;
 
 pub use placement::TerrainPlacementEntry;
+pub use registry::{Prefab2, PrefabKey2, PrefabRegistry2};
 pub use spec::PrefabSpecV2;

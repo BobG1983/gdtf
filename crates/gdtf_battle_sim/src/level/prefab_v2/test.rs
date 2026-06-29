@@ -5,12 +5,17 @@
 //! tests assert the RON SHAPE parses and routes into the right fields, and that a spec
 //! survives a serialize → deserialize round-trip identically (the brittle-test rule).
 
-use super::{PrefabSpecV2, TerrainPlacementEntry};
+use super::{Prefab2, PrefabKey2, PrefabRegistry2, PrefabSpecV2, TerrainPlacementEntry};
 use crate::{
-    level::{GridHeight, GridLevels, GridSize, GridWidth, SpawnRole, ThemeUuid},
+    level::{GridHeight, GridLevels, GridSize, GridWidth, PrefabName, SpawnRole, ThemeUuid},
     metric::{Cell, CellLevel, Level},
     terrain::def::TerrainUuid,
 };
+
+/// A stable [`ThemeUuid`] fixture (a fixed v4 UUID) — mechanism, not balance.
+fn theme_uuid() -> ThemeUuid {
+    ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_00a1))
+}
 
 /// A 3x3x1 footprint (a valid small prefab size).
 fn small_size() -> Option<GridSize> {
@@ -103,6 +108,75 @@ fn round_trips_through_ron() {
         reparsed.ok(),
         Some(spec),
         "a v2 prefab spec must survive a serialize -> deserialize round-trip identically",
+    );
+}
+
+/// GTW-488 C1 — the re-keyed [`PrefabRegistry2`] inserts a [`Prefab2`] under a
+/// [`PrefabKey2`], then [`prefabs_for`](PrefabRegistry2::prefabs_for) returns it. Exercises
+/// the REAL registry (insert -> lookup -> name match), not dead code, and confirms a
+/// non-matching key is empty.
+#[test]
+fn registry2_inserts_and_retrieves_by_key() {
+    let Some(size) = small_size() else { return };
+    let theme = theme_uuid();
+    let placements = vec![TerrainPlacementEntry::new(
+        TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_00b1)),
+        CellLevel::new(Cell::new(1, 1), Level::new(0)),
+    )];
+    let spec = PrefabSpecV2::new(theme, size, SpawnRole::Player, placements);
+    let prefab = Prefab2::new(PrefabName::new("entry_pad".to_owned()), spec);
+
+    let mut registry = PrefabRegistry2::default();
+    registry.insert(prefab);
+
+    let player_key = PrefabKey2::new(theme, size, SpawnRole::Player);
+    let enemy_key = PrefabKey2::new(theme, size, SpawnRole::Enemy);
+
+    assert_eq!(
+        registry.prefabs_for(&player_key).len(),
+        1,
+        "the inserted Prefab2 is listed under its (theme, size, role) key",
+    );
+    assert_eq!(
+        registry
+            .prefabs_for(&player_key)
+            .first()
+            .map(|p| (**p.name()).clone()),
+        Some("entry_pad".to_owned()),
+        "prefabs_for returns the prefab that was inserted",
+    );
+    assert!(
+        registry.prefabs_for(&enemy_key).is_empty(),
+        "a key with no inserted prefab returns the empty slice",
+    );
+    assert_eq!(registry.len(), 1, "one prefab total across keys");
+}
+
+/// GTW-488 C2 — [`Prefab2::new`] constructs from a [`PrefabSpecV2`] carrying ZERO
+/// placements (an openingless fragment) and SUCCEEDS infallibly. Pin-discriminating: the
+/// constructor returns a plain `Prefab2` (no `Result`), so there is NO
+/// `NoEdgeOpening` / edge-opening validation path on the v2 prefab — an openingless prefab
+/// is valid.
+#[test]
+fn prefab2_new_accepts_zero_placement_spec_infallibly() {
+    let Some(size) = small_size() else { return };
+    // Openingless: zero placements (the v2 schema has no edge_openings to author at all).
+    let spec = PrefabSpecV2::new(theme_uuid(), size, SpawnRole::Fill, Vec::new());
+    assert!(
+        spec.placements.is_empty(),
+        "the fixture spec is openingless (zero placements)",
+    );
+
+    // `Prefab2::new` is infallible (no Result, no validation) — it constructs directly.
+    let prefab = Prefab2::new(PrefabName::new("sealed_box".to_owned()), spec);
+    assert!(
+        prefab.spec().placements.is_empty(),
+        "an openingless (zero-placement) spec yields a valid Prefab2 with no validation",
+    );
+    assert_eq!(
+        **prefab.name(),
+        "sealed_box".to_owned(),
+        "the constructed prefab carries its name",
     );
 }
 

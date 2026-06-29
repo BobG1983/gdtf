@@ -23,9 +23,12 @@
 //!   flow populates from the loaded maps folder (GTW-418).
 //! - `prefab_v2` — the NEW UUID-keyed level-fragment [`PrefabSpecV2`] (theme by
 //!   [`ThemeUuid`], every placed piece by `TerrainUuid` in ONE
-//!   [`placements`](PrefabSpecV2::placements) list, no `edge_openings` / validation), and
-//!   its [`TerrainPlacementEntry`] (GTW-486). Purely ADDITIVE: it lives alongside the
-//!   legacy [`PrefabSpec`] / [`PrefabRegistry`], wiring no registry / loader / assembler.
+//!   [`placements`](PrefabSpecV2::placements) list, no `edge_openings` / validation) + its
+//!   [`TerrainPlacementEntry`] (GTW-486), and the re-keyed [`PrefabRegistry2`] of
+//!   [`Prefab2`]s bucketed by the stable [`ThemeUuid`]-keyed [`PrefabKey2`] (GTW-488 — no
+//!   edge-opening validation; an openingless prefab is valid). Purely ADDITIVE: it lives
+//!   alongside the legacy [`PrefabSpec`] / [`PrefabKey`] / [`PrefabRegistry`], wiring no
+//!   loader / assembler.
 //!
 //! Mirrors the `terrain/piece` dir-module layout (memory: *code-health-module-layout*):
 //! `mod.rs` is wiring-only; per-concern files carry the types; `test/` houses the unit
@@ -46,7 +49,7 @@ pub use prefab::{
     EdgeOpening, Prefab, PrefabKey, PrefabLoadError, PrefabName, PrefabRegistry, PrefabSpec,
     SpawnRole,
 };
-pub use prefab_v2::{PrefabSpecV2, TerrainPlacementEntry};
+pub use prefab_v2::{Prefab2, PrefabKey2, PrefabRegistry2, PrefabSpecV2, TerrainPlacementEntry};
 pub use registry::{ThemeCatalogRegistry, ThemeTileCatalog};
 pub use spec::{ThemeSpec, TileKey};
 pub use theme::{
