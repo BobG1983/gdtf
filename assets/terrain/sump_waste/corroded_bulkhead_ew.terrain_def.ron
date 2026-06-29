@@ -1,0 +1,20 @@
+// GTW-469 EW-orientation companion of corroded_bulkhead.terrain_def.ron. A distinct AUTHORED tile:
+// SAME sim semantics as the NS corroded_bulkhead (sim_kind = Wall — LOS + pathfinding blocking is
+// IDENTICAL), magnitudes COPIED verbatim from the NS def. The ONLY difference is
+// presenter_kind.graphic_name = "wall_ew" (the row-2 east-west sprite, the NS `wall` rotated 90deg).
+// Orientation is PRESENTATION-ONLY — the author places the correct orientation in a prefab.
+(
+    // Stable authored key — the sump_waste `corroded_bulkhead` EW companion TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a930005",
+    display_name: "Corroded Bulkhead (EW)",
+    sim_kind: Wall(
+        hp:               45,    // weakened by corrosion (copied from the NS corroded_bulkhead)
+        armor_protection: 5,     // damage-reduction (copied)
+        armor_hardness:   2,     // penetration shrugged off (copied)
+        height_band:      High,  // full-height blocking geometry
+    ),
+    presenter_kind: Wall(
+        graphic_name: "wall_ew", // the EW (row-2) sprite — the NS `wall` rotated 90deg
+    ),
+    tags: [BlocksVision, BlocksPathfinding],
+)

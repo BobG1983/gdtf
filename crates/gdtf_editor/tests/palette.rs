@@ -340,6 +340,89 @@ fn switching_theme_repopulates_palette() {
     );
 }
 
+/// The `industrial_hive` [`ThemeUuid`] (`terrain/industrial_hive/industrial_hive.terrain_theme.ron`).
+const fn industrial_hive_theme() -> ThemeUuid {
+    ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
+}
+
+/// The NS `bulkhead_wall` [`TerrainUuid`] (`terrain/industrial_hive/bulkhead_wall.terrain_def.ron`).
+const fn bulkhead_wall_ns() -> TerrainUuid {
+    TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_0002))
+}
+
+/// The GTW-469 EW companion `bulkhead_wall_ew` [`TerrainUuid`]
+/// (`terrain/industrial_hive/bulkhead_wall_ew.terrain_def.ron`).
+const fn bulkhead_wall_ew() -> TerrainUuid {
+    TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_0009))
+}
+
+/// The set of [`TerrainUuid`]s carried by the current [`PaletteRow`] entities.
+fn palette_row_keys(app: &mut App) -> Vec<TerrainUuid> {
+    let world = app.world_mut();
+    let mut q = world.query::<&PaletteRow>();
+    q.iter(world).map(PaletteRow::tile).collect()
+}
+
+/// GTW-469 C4 — BOTH the NS and the EW `bulkhead_wall` orientations appear in the editor palette
+/// for the `industrial_hive` theme: the editor lists every `TerrainDef` in the theme's palette, so
+/// the new EW-wall companion is a placeable, selectable palette entry beside its NS counterpart.
+///
+/// Value-agnostic: it asserts the PRESENCE of the two known orientation UUIDs as palette rows
+/// (membership / identity), never an authored magnitude. Driven through the REAL editor plugin
+/// (the same `DropdownSelectionChanged<ThemeUuid>` switch the repopulate test uses) so the rows
+/// are spawned by the actual `sync_palette` over the shipped registries — not a copy.
+#[test]
+fn palette_lists_both_ns_and_ew_wall_orientations() {
+    let mut app = editor_in_editing();
+
+    // Switch the active theme to industrial_hive (which authors both bulkhead_wall orientations),
+    // independent of whichever theme the session seeded to by display-name sort.
+    let ih = industrial_hive_theme();
+    let world = app.world_mut();
+    let mut dd = world.query_filtered::<Entity, With<ThemeDropdown>>();
+    let control = dd.iter(world).next();
+    assert!(control.is_some(), "the theme dropdown must exist");
+    if let Some(control) = control {
+        app.world_mut()
+            .write_message(DropdownSelectionChanged::new(control, ih));
+    }
+    for _ in 0..4 {
+        app.update();
+    }
+
+    // Precondition: the industrial_hive theme is now active (so the rows are its palette).
+    let theme_now = app
+        .world()
+        .get_resource::<MapEditorSession>()
+        .map(MapEditorSession::theme);
+    assert_eq!(
+        theme_now,
+        Some(ih),
+        "the editor must be on the industrial_hive theme for this orientation-coverage check",
+    );
+
+    // Both orientations resolve in the terrain registry (proving the EW def loaded), AND both
+    // appear as palette rows (proving the EW def is a placeable, selectable palette entry).
+    let resolvable = app.world().get_resource::<TerrainDefRegistry>().map(|reg| {
+        reg.def(&bulkhead_wall_ns()).is_some() && reg.def(&bulkhead_wall_ew()).is_some()
+    });
+    assert_eq!(
+        resolvable,
+        Some(true),
+        "both the NS and EW bulkhead_wall TerrainDefs must resolve in the registry (C4)",
+    );
+
+    let keys = palette_row_keys(&mut app);
+    assert!(
+        keys.contains(&bulkhead_wall_ns()),
+        "the NS bulkhead_wall must appear as a palette row (C4)",
+    );
+    assert!(
+        keys.contains(&bulkhead_wall_ew()),
+        "the EW bulkhead_wall companion must appear as a palette row beside the NS one (C4)",
+    );
+}
+
 /// T5 (scroll-parenting guard): a [`ScrollListArea`] must be an ANCESTOR of a palette row.
 #[test]
 fn palette_rows_live_inside_the_scroll_area_not_the_grid_frame() {

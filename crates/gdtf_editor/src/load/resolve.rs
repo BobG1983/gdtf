@@ -441,6 +441,7 @@ const fn default_tile_roles() -> TileRoles {
         floor:           zero,
         floor_alt_panel: zero,
         wall:            zero,
+        wall_ew:         zero,
         cover:           zero,
         slab:            zero,
         rubble:          zero,

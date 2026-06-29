@@ -616,6 +616,90 @@ fn per_def_graphic_distinguishes_same_kind_cells() {
     );
 }
 
+/// GTW-469 C3 (PIN-DISCRIMINATING, the in-engine evidence) — an NS-wall cell and an EW-wall
+/// cell, BOTH `TerrainKind::Wall` but DIFFERENT `presenter_kind.graphic_name` (`"wall"` vs
+/// `"wall_ew"`), resolve to DISTINCT atlas indices, driven through the REAL
+/// `draw_static_battlefield` system.
+///
+/// Both cells are authored `TerrainKind::Wall` in the occupancy grid, so the
+/// `TileRoles`-table-only resolution (keyed solely on `TerrainKind`) would draw them
+/// IDENTICALLY at `roles.wall` — orientation is presentation-only, so the sim semantics ARE
+/// identical (C5). The sim-spawned per-def `TerrainGraphicKey` (`"wall"` vs `"wall_ew"`) is what
+/// makes the SPRITES differ: the NS cell resolves to `roles.wall`, the EW cell to `roles.wall_ew`
+/// (the row-2 rotated tile). Reverting the presenter to role-table-only resolution makes both
+/// `roles.wall` — identical — and this test FAILS.
+///
+/// Occlusion-aware (a visible+laid-out node can still draw nothing): the assertion reads the
+/// resolved material `atlas_index` actually carried by the spawned sprite at each cell
+/// (`sprite_index_at`), and settles a frame (the one-shot draw) before reading.
+#[test]
+fn ns_and_ew_wall_resolve_to_distinct_sprites() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+
+    let l0 = Level::new(0);
+    let wall_ns = CellLevel::new(Cell::new(8, 7), l0);
+    let wall_ew = CellLevel::new(Cell::new(9, 8), l0);
+
+    // Both cells are the SAME TerrainKind::Wall in the occupancy grid — so the role-table
+    // default keyed on TerrainKind would draw both at roles.wall (identical LOS/move blocking).
+    insert_occupancy(
+        &mut app,
+        vec![
+            TerrainPlacement::new(wall_ns, TerrainKind::Wall),
+            TerrainPlacement::new(wall_ew, TerrainKind::Wall),
+        ],
+    );
+    app.world_mut().insert_resource(CoverLedger::new());
+    app.world_mut().insert_resource(SurfaceGrid::new());
+    app.world_mut().insert_resource(BattleInProgress);
+
+    // The per-def facts the sim would spawn: SAME TerrainKind::Wall, DISTINCT graphic_names —
+    // the NS def's "wall" vs the GTW-469 EW def's "wall_ew".
+    spawn_terrain_entity(&mut app, wall_ns, "wall", None);
+    spawn_terrain_entity(&mut app, wall_ew, "wall_ew", None);
+
+    // Fire the one-shot draw and settle.
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    let roles = tile_roles(&app);
+    assert!(roles.is_some(), "TileRoles must be resident after settle");
+    let Some(roles) = roles else { return };
+
+    // Precondition: the two wall-orientation roles are DISTINCT indices in the shipped table
+    // (so a "different" assertion is meaningful rather than vacuously true).
+    assert_ne!(
+        *roles.wall, *roles.wall_ew,
+        "the `wall` (NS) and `wall_ew` (EW) role indices must differ (else the pin is vacuous)",
+    );
+
+    let index_ns = sprite_index_at(&mut app, wall_ns);
+    let index_ew = sprite_index_at(&mut app, wall_ew);
+
+    // POSITIVE: each cell resolves to ITS OWN orientation graphic, not the shared Wall default.
+    assert_eq!(
+        index_ns,
+        Some(*roles.wall),
+        "the NS-wall cell (graphic_name \"wall\") must resolve to the `wall` atlas index",
+    );
+    assert_eq!(
+        index_ew,
+        Some(*roles.wall_ew),
+        "the EW-wall cell (graphic_name \"wall_ew\") must resolve to the `wall_ew` atlas index, \
+         NOT the shared TerrainKind::Wall default",
+    );
+    // The DISCRIMINATING clause: two same-TerrainKind::Wall cells draw DIFFERENT (perpendicular)
+    // sprites — exactly what role-table-only resolution (keyed on TerrainKind) could not do.
+    assert_ne!(
+        index_ns, index_ew,
+        "an NS-wall cell and an EW-wall cell (SAME TerrainKind::Wall, DIFFERENT graphic_name) \
+         must draw DIFFERENT sprites (role-table-only resolution would make them identical)",
+    );
+}
+
 /// GTW-493 C2 — a `Slab` cell's footfall is read from the def's `presenter_kind` (an
 /// OPTIONAL `FootfallSound`), and an ABSENT footfall is handled with NO panic and a
 /// documented default.

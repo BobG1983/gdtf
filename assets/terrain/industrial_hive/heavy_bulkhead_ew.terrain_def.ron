@@ -1,0 +1,21 @@
+// GTW-469 EW-orientation companion of heavy_bulkhead.terrain_def.ron. A distinct AUTHORED tile:
+// SAME sim semantics as the NS heavy_bulkhead (sim_kind = Wall — LOS + pathfinding blocking is
+// IDENTICAL), magnitudes COPIED verbatim from the NS def. The ONLY difference is
+// presenter_kind.graphic_name = "wall_ew" (the row-2 east-west sprite, the NS `wall` rotated 90deg).
+// Orientation is PRESENTATION-ONLY — the author places the correct orientation in a prefab.
+(
+    // Stable authored key — the industrial_hive `heavy_bulkhead` EW companion TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a91000a",
+    display_name: "Heavy Bulkhead (EW)",
+    sim_kind: Wall(
+        hp:               120,   // structural HP (copied from the NS heavy_bulkhead)
+        armor_protection: 8,     // damage-reduction stat (copied)
+        armor_hardness:   4,     // penetration shrugged off (copied)
+        height_band:      High,  // a tall wall; nothing flies strictly over it within a storey
+    ),
+    presenter_kind: Wall(
+        graphic_name: "wall_ew", // the EW (row-2) sprite — the NS `wall` rotated 90deg
+    ),
+    // SIM-OWNED tags: a heavy wall blocks both line-of-sight and pathfinding (identical to NS).
+    tags: [BlocksVision, BlocksPathfinding],
+)

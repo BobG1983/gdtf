@@ -631,6 +631,7 @@ mod test {
             floor:           index,
             floor_alt_panel: index,
             wall:            index,
+            wall_ew:         index,
             cover:           index,
             slab:            index,
             rubble:          index,

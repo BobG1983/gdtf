@@ -35,8 +35,8 @@ impl TileRoles {
     /// keyed in THIS `TileRoles` vocabulary; the presenter resolves it here).
     ///
     /// The authored `graphic_name` follows the `tile_roles.ron` vocabulary
-    /// (`"floor"` / `"wall"` / `"cover"` / `"slab"` / `"rubble"` / …), so this maps the
-    /// key string onto the matching role field. Returns [`None`] for an unrecognized key
+    /// (`"floor"` / `"wall"` / `"wall_ew"` / `"cover"` / `"slab"` / `"rubble"` / …), so this
+    /// maps the key string onto the matching role field. Returns [`None`] for an unrecognized key
     /// — the caller then FALLS BACK to its presenter-owned `TileRole`-table default keyed on
     /// the cell's [`TerrainKind`](gdtf_battle_sim::TerrainKind), so an out-of-vocabulary
     /// def still draws (no panic) rather than vanishing.
@@ -51,6 +51,7 @@ impl TileRoles {
             "floor" => self.floor,
             "floor_alt_panel" => self.floor_alt_panel,
             "wall" => self.wall,
+            "wall_ew" => self.wall_ew,
             "cover" => self.cover,
             "slab" => self.slab,
             "rubble" => self.rubble,
@@ -84,8 +85,17 @@ pub struct TileRoles {
     pub floor:           TileIndex,
     /// A bolted/riveted grey-panel floor alternate (future variety).
     pub floor_alt_panel: TileIndex,
-    /// The [`TerrainKind::Wall`](gdtf_battle_sim::TerrainKind::Wall) tile — solid fixed geometry.
+    /// The default (NS-orientation) [`TerrainKind::Wall`](gdtf_battle_sim::TerrainKind::Wall)
+    /// tile — solid fixed geometry, the north-south-running wall strip.
     pub wall:            TileIndex,
+    /// The **east-west-running** wall tile (GTW-469) — the [`wall`](TileRoles::wall) NS sprite
+    /// rotated 90° (its row-2 counterpart on the terrain sheet). A distinct AUTHORED orientation:
+    /// an EW-wall [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef) is `sim_kind = Wall`
+    /// just like the NS one (LOS / movement blocking is IDENTICAL — orientation is
+    /// presentation-only) but names `graphic_name = "wall_ew"`, which resolves here so the two
+    /// orientations draw perpendicular sprites. The author places the correct orientation in a
+    /// prefab; orientation is never presenter-inferred.
+    pub wall_ew:         TileIndex,
     /// The [`TerrainKind::Cover`](gdtf_battle_sim::TerrainKind::Cover) tile — a chest-high cover prop.
     pub cover:           TileIndex,
     /// The [`SurfaceGrid`](gdtf_battle_sim::SurfaceGrid) `Present`-slab tile — a raised elevated deck.
@@ -353,6 +363,7 @@ mod test {
             floor:           TileIndex::new(floor),
             floor_alt_panel: other,
             wall:            other,
+            wall_ew:         other,
             cover:           other,
             slab:            other,
             rubble:          other,

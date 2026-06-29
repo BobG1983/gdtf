@@ -1,0 +1,22 @@
+// GTW-469 EW-orientation companion of bulkhead_wall.terrain_def.ron. A distinct AUTHORED tile:
+// SAME sim semantics as the NS bulkhead_wall (sim_kind = Wall — LOS + pathfinding blocking is
+// IDENTICAL), magnitudes COPIED verbatim from the NS def. The ONLY difference is
+// presenter_kind.graphic_name = "wall_ew" (the row-2 east-west sprite, the NS `wall` rotated 90deg),
+// so the two orientations draw perpendicular sprites. Orientation is PRESENTATION-ONLY — the author
+// places the correct orientation in a prefab; it is never presenter-inferred.
+(
+    // Stable authored key — the industrial_hive `bulkhead_wall` EW companion TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a910009",
+    display_name: "Bulkhead Wall (EW)",
+    sim_kind: Wall(
+        hp:               40,    // structural HP (copied from the NS bulkhead_wall)
+        armor_protection: 6,     // damage soak (copied)
+        armor_hardness:   3,     // punch ignored (copied)
+        height_band:      High,  // a wall fills the cell; nothing flies over it within a storey
+    ),
+    presenter_kind: Wall(
+        graphic_name: "wall_ew", // the EW (row-2) sprite — the NS `wall` rotated 90deg
+    ),
+    // SIM-OWNED tags: a solid wall blocks both line-of-sight and pathfinding (identical to NS).
+    tags: [BlocksVision, BlocksPathfinding],
+)

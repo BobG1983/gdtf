@@ -9,7 +9,8 @@
 (
     floor:           6,     // default walkable ground — brighter grey plating (GTW-373: 144 read too dark, 6 is brighter)
     floor_alt_panel: 128,    // alt floor — bolted/riveted grey panel (future variety, matches floor 6's palette)
-    wall:            0,     // TerrainKind::Wall — heavy dark wall strip (GTW-373: re-tiled 16 -> 0, blocking geometry)
+    wall:            0,     // TerrainKind::Wall — heavy dark wall strip, NS orientation (GTW-373: re-tiled 16 -> 0, blocking geometry)
+    wall_ew:         16,    // GTW-469 EW-orientation wall — row 0 col 0 (the NS `wall` at index 0) rotated 90deg into row 1 col 0 (index 16). Reproducible transform (ImageMagick): `magick alt_tileset_terrain.png -crop 16x16+0+0 +repage -background none -rotate 90 ew_wall.png` then `magick alt_tileset_terrain.png ew_wall.png -geometry +0+16 -composite alt_tileset_terrain.png`. Sim semantics identical to `wall` (Wall, LOS/move blocking); orientation is presentation-only.
     cover:           248,   // TerrainKind::Cover — chest-high crate/box cover prop on a floor cell
     slab:            22,    // SurfaceGrid Present slab — raised light-grey elevated deck panel
     rubble:          295,   // CoverDestroyed / damaged — sparse broken-debris scatter

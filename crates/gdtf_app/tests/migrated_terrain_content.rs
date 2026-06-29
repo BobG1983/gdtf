@@ -36,9 +36,10 @@ use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resou
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// The total number of migrated terrain defs across all three themes: the reconciled flat 8
-/// (`industrial_hive`) + 4 (`underhive`) + 4 (`sump_waste`). A COUNT, not a magnitude — it
-/// proves no migrated piece was dropped (C2), not any balance value.
-const MIGRATED_TERRAIN_DEF_COUNT: usize = 16;
+/// (`industrial_hive`) + 4 (`underhive`) + 4 (`sump_waste`) = 16, PLUS the GTW-469 EW-wall
+/// companions (2 `industrial_hive` + 1 `underhive` + 1 `sump_waste` = 4) = 20. A COUNT, not a
+/// magnitude — it proves no migrated piece was dropped (C2), not any balance value.
+const MIGRATED_TERRAIN_DEF_COUNT: usize = 20;
 
 /// The number of migrated themes (`industrial_hive`, `underhive`, `sump_waste`).
 const MIGRATED_THEME_COUNT: usize = 3;
@@ -117,8 +118,9 @@ fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
         assert_eq!(
             registry.len(),
             MIGRATED_TERRAIN_DEF_COUNT,
-            "the registry must hold every migrated terrain def (reconciled flat 8 + 4 + 4) — a \
-             count mismatch means a piece was silently dropped (C2)",
+            "the registry must hold every migrated terrain def (reconciled flat 8 + 4 + 4, plus \
+             the GTW-469 EW-wall companions 2 + 1 + 1) — a count mismatch means a piece was \
+             silently dropped (C2)",
         );
         for uuid in industrial_hive_flat_eight() {
             assert!(
