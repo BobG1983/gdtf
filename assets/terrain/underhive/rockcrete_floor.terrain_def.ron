@@ -1,0 +1,25 @@
+// GTW-490 migration of the `rockcrete_floor` tile from assets/content/themes/underhive.theme.ron
+// to the NEW UUID-keyed per-theme TerrainDef model (GTW-484/487). The underhive theme has NO
+// flat counterpart (only its own ThemeTileCatalog tiles), so its tiles migrate from the theme
+// catalog. SUB-DECISION (docs/authoring/terrain-content-migration.md): the OLD `Floor` kind is RETIRED; a walkable
+// floor migrates to a `Slab` sim_kind (the GTW-487 default-floor precedent). The catalog tile
+// authored only move_cost (5), carried FORWARD as this note until the T07 move-cost seam (no
+// field yet); the structural toughness is COPIED from this theme's structural slab (gantry_slab
+// 35 / 4 / 2). The old atlas_index (128) is DROPPED and mapped to its matching TileRoles key
+// `floor_alt_panel`.
+(
+    // Stable authored key — the underhive `rockcrete_floor` TerrainUuid (the theme default floor).
+    key: "00000000-0000-0000-0000-01840a920001",
+    display_name: "Rockcrete Floor",
+    sim_kind: Slab(
+        hp:               35,    // structural toughness (copied from sibling gantry_slab; see header)
+        armor_protection: 4,     // damage soak (copied from sibling gantry_slab)
+        armor_hardness:   2,     // punch ignored (copied from sibling gantry_slab)
+        // catalog move_cost was 5 — carried forward in the header until the T07 move-cost seam.
+    ),
+    presenter_kind: Slab(
+        graphic_name: "floor_alt_panel",  // old atlas_index 128 -> matching TileRoles key
+        footfall:     None,               // no authored footfall in the catalog tile
+    ),
+    tags: [],
+)

@@ -1,0 +1,19 @@
+// GTW-490 migration of the `rubble_pile` tile from assets/content/themes/underhive.theme.ron
+// to the NEW UUID-keyed per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim
+// from the catalog tile. Scatter FOLDS INTO Cover (the new model has no Scatter kind). The old
+// atlas_index (295) is DROPPED and mapped to its matching TileRoles key `rubble`.
+(
+    // Stable authored key — the underhive `rubble_pile` TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a920004",
+    display_name: "Rubble Pile",
+    sim_kind: Cover(
+        hp:               10,    // very fragile rubble (copied)
+        armor_protection: 0,     // damage-reduction (copied)
+        armor_hardness:   0,     // penetration shrugged off (copied)
+        height_band:      Low,   // LOW scatter
+    ),
+    presenter_kind: Cover(
+        graphic_name: "rubble",  // old atlas_index 295 -> matching TileRoles key
+    ),
+    tags: [],
+)

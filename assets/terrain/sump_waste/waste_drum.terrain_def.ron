@@ -1,0 +1,19 @@
+// GTW-490 migration of the `waste_drum` tile from assets/content/themes/sump_waste.theme.ron
+// to the NEW UUID-keyed per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim
+// from the catalog tile. The old atlas_index (248) is DROPPED and mapped to its matching
+// TileRoles key `cover`.
+(
+    // Stable authored key — the sump_waste `waste_drum` TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a930004",
+    display_name: "Waste Drum",
+    sim_kind: Cover(
+        hp:               22,    // drum HP (copied)
+        armor_protection: 2,     // damage-reduction (copied)
+        armor_hardness:   1,     // penetration shrugged off (copied)
+        height_band:      Low,   // LOW cover; a MID/HIGH round clears it
+    ),
+    presenter_kind: Cover(
+        graphic_name: "cover",   // old atlas_index 248 -> matching TileRoles key
+    ),
+    tags: [],
+)

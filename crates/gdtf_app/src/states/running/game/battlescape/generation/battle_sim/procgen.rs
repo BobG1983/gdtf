@@ -127,6 +127,9 @@ fn merge_procgen_terrain(authored: Situation, generated: Situation) -> Situation
         // Theme / grid_size are identical on both (generate_level was given the authored
         // ones); keep the authored values as the single source.
         theme:          authored.theme,
+        // GTW-490: the NEW UUID-keyed theme ref is authored metadata (like `theme`), so it
+        // carries through from the authored situation; procgen does not generate it.
+        theme_uuid:     authored.theme_uuid,
         grid_size:      authored.grid_size,
         // Procgen-generated terrain — the assembled level.
         default_floor:  generated.default_floor,

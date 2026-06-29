@@ -1,0 +1,20 @@
+// GTW-490 migration of the `corroded_bulkhead` tile from
+// assets/content/themes/sump_waste.theme.ron to the NEW UUID-keyed per-theme TerrainDef model
+// (GTW-484/487). Magnitudes COPIED verbatim from the catalog tile. The old atlas_index (0) is
+// DROPPED and mapped to its matching TileRoles key `wall`. A solid wall blocks vision +
+// pathfinding — sim-side tags (GTW-482).
+(
+    // Stable authored key — the sump_waste `corroded_bulkhead` TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a930002",
+    display_name: "Corroded Bulkhead",
+    sim_kind: Wall(
+        hp:               45,    // weakened by corrosion (copied)
+        armor_protection: 5,     // damage-reduction (copied)
+        armor_hardness:   2,     // penetration shrugged off (copied)
+        height_band:      High,  // full-height blocking geometry
+    ),
+    presenter_kind: Wall(
+        graphic_name: "wall",    // old atlas_index 0 -> matching TileRoles key
+    ),
+    tags: [BlocksVision, BlocksPathfinding],
+)

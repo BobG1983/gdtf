@@ -1,0 +1,22 @@
+// GTW-490 migration of assets/content/terrain/barricade.terrain.ron to the NEW UUID-keyed
+// per-theme TerrainDef model (GTW-484/487). SOURCE OF TRUTH = the flat 8 pieces (see
+// docs/authoring/terrain-content-migration.md). Stat magnitudes COPIED verbatim from the flat file (behavior-
+// preserving — no re-tune). Scatter folds into Cover (the new model has no Scatter kind);
+// barricade was already flat-Cover. presenter_kind.graphic_name = the flat file's `graphic`
+// TileRoles key ("cover"); the old atlas index is INTENTIONALLY DROPPED (the presenter
+// resolves the index via TileRoles, never a per-def index).
+(
+    // Stable authored key — the industrial_hive `barricade` TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a910001",
+    display_name: "Barricade",
+    sim_kind: Cover(
+        hp:               30,    // structural HP (copied from the flat file)
+        armor_protection: 2,     // damage-reduction stat (copied)
+        armor_hardness:   1,     // penetration shrugged off (copied)
+        height_band:      Low,   // LOW cover; a MID/HIGH round clears it
+    ),
+    presenter_kind: Cover(
+        graphic_name: "cover",   // flat file's `graphic` TileRoles key
+    ),
+    tags: [],
+)

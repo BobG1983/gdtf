@@ -1,0 +1,20 @@
+// GTW-490 migration of the `gantry_slab` tile from assets/content/themes/sump_waste.theme.ron
+// to the NEW UUID-keyed per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim
+// from the catalog tile. A slab carries NO height band. The old atlas_index (22) is DROPPED and
+// mapped to its matching TileRoles key `slab`. (Distinct from the industrial_hive gantry_slab —
+// a different theme's tile with its own UUID and its own corroded magnitudes.)
+(
+    // Stable authored key — the sump_waste `gantry_slab` TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a930003",
+    display_name: "Gantry Slab",
+    sim_kind: Slab(
+        hp:               35,    // weakened gantry HP (copied)
+        armor_protection: 4,     // damage-reduction (copied)
+        armor_hardness:   2,     // penetration shrugged off (copied)
+    ),
+    presenter_kind: Slab(
+        graphic_name: "slab",    // old atlas_index 22 -> matching TileRoles key
+        footfall:     None,      // no authored footfall in the catalog tile
+    ),
+    tags: [],
+)

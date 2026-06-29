@@ -28,6 +28,12 @@
     // (the GTW-418 PrefabRegistry `(theme, …)` key). IndustrialHive = the manufactorum
     // decking / bulkheads of the hive proper.
     theme: IndustrialHive,  // level theme — drives both the tile catalog and the procgen prefab family
+    // GTW-490 migration: the NEW UUID-keyed theme reference, ADDITIVE alongside the legacy
+    // `theme` enum above. This is the IndustrialHive ThemeUuid that resolves in the migrated
+    // UuidThemeRegistry (assets/terrain/industrial_hive/industrial_hive.terrain_theme.ron). The
+    // live battle path still reads `theme` (the consumer switch to the UUID model is T07+); this
+    // field only proves the new theme model resolves end-to-end through the situation loader.
+    theme_uuid: Some("00000000-0000-0000-0000-01840a900001"),  // GTW-490 migrated IndustrialHive ThemeUuid (additive; resolves in UuidThemeRegistry)
     // The coarse GRID dimensions (GTW-414) — width × height × storey-count, each validated
     // to the sim's coarse-grid maxima (60 / 60 / 8). This is the BOARD procgen packs the
     // theme's prefab fragments into (a 30×30×4 board comfortably holds the IndustrialHive

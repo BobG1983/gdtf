@@ -1,0 +1,19 @@
+// GTW-490 migration of the `scrap_barricade` tile from assets/content/themes/underhive.theme.ron
+// to the NEW UUID-keyed per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim
+// from the catalog tile. Scatter FOLDS INTO Cover (the new model has no Scatter kind). The old
+// atlas_index (248) is DROPPED and mapped to its matching TileRoles key `cover`.
+(
+    // Stable authored key — the underhive `scrap_barricade` TerrainUuid.
+    key: "00000000-0000-0000-0000-01840a920003",
+    display_name: "Scrap Barricade",
+    sim_kind: Cover(
+        hp:               18,    // fragile scrap (copied)
+        armor_protection: 1,     // damage-reduction (copied)
+        armor_hardness:   0,     // penetration shrugged off (copied)
+        height_band:      Low,   // LOW scatter; a MID/HIGH round clears it
+    ),
+    presenter_kind: Cover(
+        graphic_name: "cover",   // old atlas_index 248 -> matching TileRoles key
+    ),
+    tags: [],
+)

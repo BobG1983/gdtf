@@ -10,7 +10,7 @@ use crate::{
         Aim, Aiming, Cool, Facing, Faction, GangMember, GangName, GangerName, Grit, LifeState,
         Luck, Reflexes, Speed, Stance, Strength, Toughness,
     },
-    level::{GridSize, LevelTheme},
+    level::{GridSize, LevelTheme, ThemeUuid},
     metric::CellLevel,
     terrain::piece::TerrainName,
     vertical::VerticalLink,
@@ -540,6 +540,21 @@ pub struct Situation {
     /// [`default_floor`](Situation::default_floor).
     /// `#[serde(default)]` gives an empty list (the common case: uniform floor).
     pub floors:         Vec<FloorSpawn>,
+    /// The NEW UUID-keyed theme reference (GTW-490) — the stable [`ThemeUuid`] of the
+    /// migrated [`UuidThemeDef`](crate::level::UuidThemeDef) this battlefield draws from,
+    /// resolvable in the [`UuidThemeRegistry`](crate::level::UuidThemeRegistry).
+    ///
+    /// ADDITIVE alongside the legacy closed-enum [`theme`](Situation::theme): the live battle
+    /// path still reads `theme` (the [`LevelTheme`] driving the GTW-409 tile catalog + the
+    /// procgen prefab family), so this field switches NO consumer (that is T07+). An authored
+    /// situation that omits it parses to [`None`]; `skirmish.ron` authors BOTH so the new
+    /// theme model resolves while the old path is untouched.
+    ///
+    /// `#[serde(default)]` supplies [`None`] for every pre-GTW-490 situation `.ron`, so they
+    /// stay parse-valid. An authored `theme_uuid: Some("…")` parses the
+    /// `#[serde(transparent)]` [`ThemeUuid`] string wire form.
+    #[serde(default)]
+    pub theme_uuid:     Option<ThemeUuid>,
 }
 
 impl Situation {
