@@ -28,9 +28,7 @@ use gdtf_battle_sim::{
     Shooter, Stable, Stance, StanceKind, TerrainBraced, Tu, TuMax, WeaponBundle, WieldedBy,
     faced_cell,
     injuries::InjuryRegistry,
-    level::ThemeCatalogRegistry,
     stability_for,
-    terrain::piece::TerrainRegistry,
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, Handedness, HandlingProfile,
@@ -71,17 +69,10 @@ fn battle_running_app() -> App {
         .insert_resource(gdtf_battle_sim::weapon::WeaponRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
-    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());

@@ -377,7 +377,7 @@ pub fn resolve_and_apply(
         }
         // The slab-hit path (GTW-365/396): a slab has its OWN HP + armor; reuse the
         // ganger damage formula against the slab's own armor (eagerly seeded at setup
-        // from the per-slab TerrainSpec via SlabLedger::insert — GTW-396 Decision C).
+        // from the per-slab terrain definition via SlabLedger::insert — GTW-396 Decision C).
         // The prototype here is the NO-PANIC FALLBACK for a slab struck with no
         // authored entry (an out-of-bounds / non-authored cell). `SlabLedger::entry_seeded`
         // (`.entry(key).or_insert(seeded(prototype...))`) returns the eagerly-inserted

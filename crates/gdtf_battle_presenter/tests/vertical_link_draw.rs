@@ -114,8 +114,8 @@ fn headless_renderer_app() -> App {
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(test_weapon_registry());
     app.insert_resource(test_armor_registry());
-    // GTW-396: the TerrainRegistry — setup_battle_on_request reads it to resolve
-    // slab piece keys; the SituationBuilder's slab_at uses "test-slab".
+    // GTW-396/491: the TerrainDefRegistry — setup_battle_on_request reads it to resolve
+    // each slab's UUID to its def; the SituationBuilder's slab_at uses the test slab def.
     app.insert_resource(test_terrain_registry());
     // GTW-414/415: the GangRegistry the v2 setup_battle resolves each placed ganger's
     // (gang, member) ref against (without it setup fails closed and no ganger spawns).

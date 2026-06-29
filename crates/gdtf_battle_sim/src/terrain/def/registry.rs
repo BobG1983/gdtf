@@ -1,15 +1,12 @@
 //! The **unified terrain-definition registry** — the [`TerrainUuid`]→[`TerrainDef`]
-//! map (GTW-484), the UUID-keyed successor to the legacy
-//! [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry).
+//! map (GTW-484), the sole terrain registry after GTW-496.
 
 use bevy::{platform::collections::HashMap, prelude::Resource};
 
 use super::{TerrainDef, TerrainUuid};
 
 /// The **unified terrain-definition registry** — a [`TerrainUuid`]→[`TerrainDef`]
-/// map (GTW-484), mirroring the legacy
-/// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry) shape but keyed by the
-/// stable UUID instead of a filename stem.
+/// map (GTW-484), keyed by the stable terrain UUID.
 ///
 /// A named newtype [`Resource`] over a [`HashMap`]`<`[`TerrainUuid`]`,
 /// `[`TerrainDef`]`>` (no-bare-types: a registry is a domain value, not a bare
@@ -19,11 +16,7 @@ use super::{TerrainDef, TerrainUuid};
 ///
 /// Private inner with small accessors (a registry answers a terrain LOOKUP, not a
 /// raw-map question — so no derived [`Deref`](bevy::prelude::Deref), the
-/// `TerrainRegistry` / `WeaponRegistry` / `ArmorRegistry` pattern).
-///
-/// **Purely additive (GTW-484)** — nothing consumes this registry yet; no loader
-/// populates it. It is exercised only by this ticket's unit tests. Wiring a loader and
-/// binding consumers are downstream slices of the GTW-476 refactor.
+/// `WeaponRegistry` / `ArmorRegistry` pattern).
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct TerrainDefRegistry(HashMap<TerrainUuid, TerrainDef>);
 

@@ -10,8 +10,7 @@
 //! screenshot, C5, is the QA stage).
 //!
 //! GTW-492 (T07b): the visualizer drives the UUID-keyed v2 procgen pipeline, so the fixture
-//! seeds a [`PrefabRegistry2`] of [`Prefab2`] (keyed by the situation's [`ThemeUuid`]) rather
-//! than the legacy `PrefabRegistry`.
+//! seeds a [`PrefabRegistry2`] of [`Prefab2`] (keyed by the situation's [`ThemeUuid`]).
 //!
 //! Coverage (C1/C2/C3):
 //!

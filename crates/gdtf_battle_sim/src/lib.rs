@@ -18,14 +18,11 @@
 //! - [`tuning`] — the [`tuning::CombatTuning`] resource: every balance
 //!   coefficient, serde-loaded from `assets/core_tuning/combat.tuning.ron`.
 //! - [`level`] — the GTW-409 map-editor / procgen foundations: the
-//!   [`level::LevelTheme`] closed set + the [`level::GridSize`] dimension newtypes
-//!   (each axis validated against [`metric::MAX_LEVELS`] / [`level::MAX_GRID_SPAN`]),
-//!   and the per-theme named-tile catalog ([`level::CatalogTile`] /
-//!   [`level::ThemeTileCatalog`]) keyed in the persistent
-//!   [`level::ThemeCatalogRegistry`] the app's `Load` flow builds from
-//!   `assets/content/themes/*.theme.ron`. Render-free (the tile atlas index is opaque
-//!   data — [`level::TileAtlasIndex`]); the registry is DORMANT (GTW-414/417/418/421+
-//!   consume it).
+//!   [`level::GridSize`] dimension newtypes (each axis validated against
+//!   [`metric::MAX_LEVELS`] / [`level::MAX_GRID_SPAN`]), the UUID-keyed theme model
+//!   ([`level::UuidThemeDef`] keyed in [`level::UuidThemeRegistry`]), and the UUID-keyed
+//!   level-fragment model ([`level::PrefabSpecV2`] / [`level::PrefabRegistry2`]) the
+//!   app's `Load` flow builds. Render-free.
 //! - [`tu`] — the TU-economy primitives the E4 acts spend through:
 //!   [`tu::can_spend_tu`] / [`tu::spend_tu`] (saturating) / [`tu::reset_tu`] over a
 //!   ganger's [`ganger::Tu`] (current pool) and [`ganger::TuMax`] (round-start max —
@@ -108,8 +105,9 @@
 //!   banding), [`surface`] (persistent floor/roof-slab + ground grid),
 //!   [`occupancy`] + [`occupancy_sync`] (the coarse 3D occupancy grid and its
 //!   change-driven in-place maintenance), [`vertical`] (the stair/ladder link graph),
-//!   [`terrain::piece`] (the GTW-394 authored terrain-piece schema + [`piece::TerrainRegistry`];
-//!   DORMANT — nothing consumes the registry yet).
+//!   [`terrain::piece`] (the shared terrain-piece identity newtypes — [`piece::TerrainName`]
+//!   / [`piece::TerrainGraphicKey`] / [`piece::FootfallSound`] — reused by the UUID terrain
+//!   model and the presenter).
 //! - [`situation`] — the authored [`situation::Situation`] + [`situation::setup_battle`].
 //! - [`rng`] — the model-owned seeded RNG streams (GTW-14: five per-subsystem streams).
 //! - [`weapon`] — the weapon as ECS components (GTW-200): a unit [`weapon::Weapon`]
@@ -342,12 +340,9 @@ pub use foundation::{
     rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng},
 };
 pub use level::{
-    CatalogTile, CatalogTileKind, EdgeOpening, GridHeight, GridLevels, GridSize, GridSizeError,
-    GridWidth, LevelTheme, MAX_GRID_SPAN, Prefab, Prefab2, PrefabKey, PrefabKey2, PrefabLoadError,
-    PrefabName, PrefabRegistry, PrefabRegistry2, PrefabSpec, PrefabSpecV2, SpawnRole,
-    StructuralStats, TerrainPlacementEntry, ThemeCatalogRegistry, ThemeDisplayName, ThemeSpec,
-    ThemeTileCatalog, ThemeUuid, TileAtlasIndex, TileDisplayName, TileKey, UuidThemeDef,
-    UuidThemeRegistry,
+    EdgeOpening, GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN,
+    Prefab2, PrefabKey2, PrefabLoadError, PrefabName, PrefabRegistry2, PrefabSpecV2, SpawnRole,
+    TerrainPlacementEntry, ThemeDisplayName, ThemeUuid, UuidThemeDef, UuidThemeRegistry,
 };
 pub use lifecycle::{
     battle,
@@ -441,10 +436,7 @@ pub use terrain::{
         sync_moved_gangers,
     },
     piece,
-    piece::{
-        FloorSpec, FootfallSound, SlabPieceSpec, StructuralSpec, TerrainGraphicKey,
-        TerrainKindSpec, TerrainName, TerrainRegistry, TerrainSpec,
-    },
+    piece::{FootfallSound, TerrainGraphicKey, TerrainName},
     slab,
     slab::{
         BraceStairCells, SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp, SlabLedger,

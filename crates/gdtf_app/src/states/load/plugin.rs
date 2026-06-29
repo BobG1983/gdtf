@@ -71,12 +71,12 @@ impl Plugin for LoadScenePlugin {
             // the weapon loader does. Registered here in `build` BEFORE the kick-off's
             // `load_folder("armor")` runs.
             app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
-            // GTW-494 (child T08 of GTW-476): the OLD flat-dir `TerrainSpec` (`terrain.ron`)
-            // and `ThemeSpec` (`theme.ron`) loaders are RETIRED. Their UUID-model successors
-            // — the GTW-487 `TerrainDef` (`terrain_def.ron`) + `UuidThemeDef`
-            // (`terrain_theme.ron`) loaders registered below — are now the ONLY terrain / theme
-            // resolvers in the Load flow (the sim + procgen + presenter consume the new
-            // registries as of GTW-491/492/493). The legacy `terrain.ron` / `theme.ron`
+            // GTW-494 (child T08 of GTW-476): the OLD flat-dir per-file `terrain.ron`
+            // and `theme.ron` loaders are RETIRED (and GTW-496 deleted their types). The
+            // UUID-model successors — the GTW-487 `TerrainDef` (`terrain_def.ron`) +
+            // `UuidThemeDef` (`terrain_theme.ron`) loaders registered below — are now the ONLY
+            // terrain / theme resolvers in the Load flow (the sim + procgen + presenter consume
+            // the new registries as of GTW-491/492/493). The legacy `terrain.ron` / `theme.ron`
             // extensions are now free for the new model to reclaim in a later slice.
             // GTW-437: the injuries folder carries TWO asset types, each via the SAME
             // generic RON loader but loaded by `load_folder` (extension dispatch). Each
@@ -98,9 +98,10 @@ impl Plugin for LoadScenePlugin {
             // the SAME generic RON loader via `load_folder` of the NEW `maps/<theme>/<size>/`
             // tree, claiming the dedicated `prefab_v2.ron` compound extension (files are
             // `assets/maps/<theme>/<size>/*.prefab_v2.ron`). GTW-494 (child T08): the OLD
-            // flat-dir `PrefabSpec` (`prefab.ron`) loader over `content/maps/` is RETIRED — the
-            // v2 loader registered here is now the ONLY prefab resolver in the Load flow (the
-            // procgen pipeline consumes `PrefabRegistry2` as of GTW-492). Registered here in
+            // flat-dir per-file `prefab.ron` loader over `content/maps/` is RETIRED (and GTW-496
+            // deleted its types) — the v2 loader registered here is now the ONLY prefab resolver
+            // in the Load flow (the procgen pipeline consumes `PrefabRegistry2` as of GTW-492).
+            // Registered here in
             // `build` BEFORE the kick-off's `load_folder("maps")` runs.
             app.init_ron_asset_with_extensions::<PrefabSpecV2>(vec!["prefab_v2.ron"]);
             // GTW-487 (child T05a of GTW-476): the NEW UUID-keyed terrain + theme models load

@@ -3,9 +3,8 @@
 //! loader, builds the UUID-keyed [`UuidThemeRegistry`] from them, and gates the Load→Intro
 //! transition on it.
 //!
-//! This file was MIGRATED off the retired flat-dir `resolve_themes` /
-//! [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry) (the GTW-409
-//! model) onto the UUID model: GTW-494 removed the old game-side loader, so the
+//! This file was MIGRATED off the retired flat-dir `resolve_themes` per-file theme model
+//! (GTW-409) onto the UUID model: GTW-494 removed the old game-side loader, so the
 //! `UuidThemeRegistry` is now the ONLY theme resolver in the Load flow. It does NOT seed the
 //! registry — it drives the REAL Load branch over the shipped `assets/terrain/` content and
 //! asserts the registry POPULATES (not-empty) and a KNOWN authored [`ThemeUuid`] resolves

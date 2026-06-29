@@ -65,7 +65,7 @@ mod plugin;
 mod regions;
 mod right_panel;
 // The GTW-432 save-prefab path is debug-only (the GTW-429 gang-save precedent): the whole module
-// — the EditorMap → PrefabSpec projection, the RON serialize, the fs-write, and the press trigger
+// — the EditorMap → PrefabSpecV2 projection, the RON serialize, the fs-write, and the press trigger
 // — is gated `#[cfg(debug_assertions)]` so it never compiles into a release binary.
 #[cfg(debug_assertions)]
 mod save;

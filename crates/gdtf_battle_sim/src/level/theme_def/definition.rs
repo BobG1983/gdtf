@@ -25,10 +25,8 @@ impl ThemeDisplayName {
     }
 }
 
-/// The **unified theme definition** — the NEW UUID-keyed theme model that will replace
-/// the closed [`LevelTheme`](crate::level::LevelTheme) enum + its
-/// [`ThemeSpec`](crate::level::ThemeSpec) catalog (GTW-485, child T03 of the GTW-476
-/// refactor).
+/// The **unified theme definition** — the UUID-keyed theme model (GTW-485, child T03 of
+/// the GTW-476 refactor) and the SOLE theme model after GTW-496.
 ///
 /// A theme names a stable key, a human label, its default floor terrain, and the terrain
 /// palette it draws from — all by UUID into the unified terrain model:
@@ -47,11 +45,6 @@ impl ThemeDisplayName {
 ///
 /// **Not `Copy`** — [`ThemeDisplayName`] and the `terrain` [`Vec`] own heap data; it is
 /// `Clone` so the registry can hold definitions by value.
-///
-/// **Purely additive (GTW-485)** — it lives ALONGSIDE the existing
-/// [`LevelTheme`](crate::level::LevelTheme) / [`ThemeSpec`](crate::level::ThemeSpec) /
-/// [`ThemeCatalogRegistry`](crate::level::ThemeCatalogRegistry); consumers switch over in
-/// later tickets, NOT here.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct UuidThemeDef {
     /// The stable UUID key the registry (and, later, consumers) reference this theme by.

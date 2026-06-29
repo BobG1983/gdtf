@@ -1,5 +1,5 @@
-//! The terrain-piece **identity newtypes** — [`TerrainName`] (the registry key /
-//! file stem), [`TerrainGraphicKey`] (the opaque presenter-resolved graphic role),
+//! The terrain-piece **identity newtypes** — [`TerrainName`] (a terrain file's
+//! filename stem), [`TerrainGraphicKey`] (the opaque presenter-resolved graphic role),
 //! and [`FootfallSound`] (the opaque presenter-resolved footfall sound key).
 //!
 //! Every newtype here is a `String`-newtype (no-bare-types rule 1 covers `String`
@@ -11,11 +11,10 @@
 use bevy::prelude::{Component, Deref};
 use serde::{Deserialize, Serialize};
 
-/// A terrain piece's **name** — the registry key / filename stem.
+/// A terrain piece's **name** — a terrain file's filename stem.
 ///
-/// The [`TerrainRegistry`](super::TerrainRegistry) keys specs by it (the terrain
-/// file's filename stem, e.g. `"deck_floor"` from `deck_floor.terrain.ron`); the
-/// combat path never reads it. Mirrors [`WeaponName`](crate::weapon::WeaponName) /
+/// A terrain file's filename stem, e.g. `"deck_floor"` from `deck_floor.terrain.ron`;
+/// the combat path never reads it. Mirrors [`WeaponName`](crate::weapon::WeaponName) /
 /// [`ArmorName`](crate::armor::ArmorName) exactly.
 ///
 /// A terrain-identity newtype over [`String`] (no-bare-types: a name is a domain

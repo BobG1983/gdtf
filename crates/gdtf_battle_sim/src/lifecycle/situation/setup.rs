@@ -99,9 +99,8 @@ pub struct BattleRegistries<'a> {
     /// The stat tuning each ganger's computed stats are derived with (GTW-384).
     pub stat_tuning: &'a GangerStatTuning,
     /// The UUID-keyed terrain-definition registry cover / slab piece UUIDs resolve against
-    /// (GTW-491 — the successor to the legacy `TerrainRegistry`); `None` skips terrain
-    /// resolution (cover / slab keys then fail with `TerrainNotFound`, and the floor uses
-    /// the [`fallback_floor_cost`](setup_battle)).
+    /// (GTW-491); `None` skips terrain resolution (cover / slab keys then fail with
+    /// `TerrainNotFound`, and the floor uses the [`fallback_floor_cost`](setup_battle)).
     pub terrain:     Option<&'a TerrainDefRegistry>,
 }
 
@@ -610,8 +609,8 @@ pub fn setup_battle(
     // move-cost-from-default-floor seam is GTW-482. So the floor cost grid uses the
     // caller-supplied `fallback_floor_cost` uniformly; the situation's `floors`/`default_floor`
     // terrain references are carried forward but their move cost is NOT resolved here (the
-    // legacy `resolve_floor_costs` registry path is retired with the `TerrainKindSpec::Floor`
-    // variant it read).
+    // legacy `resolve_floor_costs` registry path is retired with the per-file floor-kind
+    // authoring variant it read).
     let (default_floor_cost, floor_overrides) = (fallback_floor_cost, Vec::new());
 
     // 1. Spawn each ganger with its full component set + seeded worn armor + the

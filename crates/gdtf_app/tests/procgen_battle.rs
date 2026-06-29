@@ -133,8 +133,8 @@ fn prefab_v2_len(app: &App) -> Option<usize> {
 ///
 /// Pin: the shipped `skirmish.ron` has ZERO inline terrain, so a non-empty `TerrainIndex` proves
 /// the terrain came from the LIVE procgen path on the v2 model (`generate_level` → merge →
-/// `setup_battle`), not from the authored situation. If procgen still read the old
-/// `PrefabRegistry` / `LevelTheme`, or the v2 registry resolved empty, the battle would build
+/// `setup_battle`), not from the authored situation. If procgen still read the old per-file
+/// prefab / theme model, or the v2 registry resolved empty, the battle would build
 /// empty terrain and the count assertion would fail.
 #[test]
 fn procgen_battle_reaches_running_with_populated_terrain() {

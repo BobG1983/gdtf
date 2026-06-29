@@ -125,7 +125,7 @@ fn editor_reaches_editing_with_registries_loaded() {
 
     // UuidThemeRegistry: present, non-empty, and the shipped IndustrialHive theme resolves by
     // its authored ThemeUuid (terrain/industrial_hive/industrial_hive.terrain_theme.ron). The
-    // GTW-495 successor to the retired ThemeCatalogRegistry.
+    // GTW-495 UUID-keyed theme registry.
     let themes = world.get_resource::<UuidThemeRegistry>();
     assert!(
         themes.is_some(),

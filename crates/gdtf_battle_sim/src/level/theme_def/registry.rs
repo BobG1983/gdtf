@@ -1,6 +1,5 @@
 //! The **unified theme-definition registry** — the [`ThemeUuid`]→[`UuidThemeDef`] map
-//! (GTW-485), the UUID-keyed successor to the legacy
-//! [`ThemeCatalogRegistry`](crate::level::ThemeCatalogRegistry).
+//! (GTW-485), the sole theme registry after GTW-496.
 
 use bevy::{platform::collections::HashMap, prelude::Resource};
 
@@ -8,9 +7,7 @@ use super::{ThemeUuid, UuidThemeDef};
 use crate::terrain::def::TerrainUuid;
 
 /// The **unified theme-definition registry** — a [`ThemeUuid`]→[`UuidThemeDef`] map
-/// (GTW-485), mirroring the legacy
-/// [`ThemeCatalogRegistry`](crate::level::ThemeCatalogRegistry) shape but keyed by the
-/// stable UUID instead of the closed [`LevelTheme`](crate::level::LevelTheme) enum.
+/// (GTW-485), keyed by the stable theme UUID.
 ///
 /// A named newtype [`Resource`] over a [`HashMap`]`<`[`ThemeUuid`]`, `[`UuidThemeDef`]`>`
 /// (no-bare-types: a registry is a domain value, not a bare `HashMap`), the theme mirror of
@@ -20,12 +17,7 @@ use crate::terrain::def::TerrainUuid;
 ///
 /// Private inner with small accessors (a registry answers a theme LOOKUP / resolve /
 /// enumeration, not a raw-map question — so no derived [`Deref`](bevy::prelude::Deref), the
-/// [`ThemeCatalogRegistry`](crate::level::ThemeCatalogRegistry) /
 /// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) no-`Deref` precedent).
-///
-/// **Purely additive (GTW-485)** — nothing consumes this registry yet; no loader populates
-/// it. It is exercised only by this ticket's unit tests. Wiring a loader and binding
-/// consumers are downstream slices of the GTW-476 refactor.
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct UuidThemeRegistry(HashMap<ThemeUuid, UuidThemeDef>);
 

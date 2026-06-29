@@ -24,8 +24,8 @@ use crate::{
 ///   move cost will live on the theme `default_floor` seam, NOT on a terrain kind.
 ///
 /// Every variant is a **STRUCT variant** so RON serialises as the named-struct form
-/// (`Slab(hp: 120, ...)`), never the double-paren tuple form `Slab((...))` the legacy
-/// [`TerrainKindSpec`](crate::terrain::piece::TerrainKindSpec) produced.
+/// (`Slab(hp: 120, ...)`), never the double-paren tuple form `Slab((...))` a payload-struct
+/// enum would produce.
 ///
 /// Each field REUSES an existing sim newtype (no-bare-types; no parallels invented):
 /// [`CoverHp`] / [`SlabHp`] for the HP pools, [`ArmorProtection`] / [`ArmorHardness`]

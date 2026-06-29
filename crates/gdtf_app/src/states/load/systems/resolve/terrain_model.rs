@@ -5,11 +5,10 @@
 //!
 //! **GTW-494 (child T08): the SOLE terrain / theme loaders.** These loaders were introduced
 //! beside the legacy flat-dir `resolve_terrain` / `resolve_themes` (the GTW-394 / GTW-409
-//! [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) /
-//! [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry) model); GTW-494
-//! RETIRED those legacy loaders, so these are now the ONLY terrain / theme resolvers in the
-//! Load flow (the sim + procgen + presenter consume the new registries as of
-//! GTW-491/492/493). The per-theme folder carries BOTH new asset types (one recursive
+//! per-file terrain / theme model); GTW-494
+//! RETIRED those legacy loaders (GTW-496 deleted their types), so these are now the ONLY
+//! terrain / theme resolvers in the Load flow (the sim + procgen + presenter consume the new
+//! registries as of GTW-491/492/493). The per-theme folder carries BOTH new asset types (one recursive
 //! `load_folder` of `terrain/` fans every member out to the matching dedicated-extension
 //! loader), so a single [`TerrainModelFolderHandle`] feeds both resolves and both redrives.
 //!

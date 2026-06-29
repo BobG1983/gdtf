@@ -25,8 +25,7 @@ use gdtf_app::test_support::{
 use gdtf_battle_input::InspectTarget;
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
-    injuries::InjuryRegistry, level::ThemeCatalogRegistry, situation::Situation,
-    terrain::piece::TerrainRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
+    injuries::InjuryRegistry, situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -67,17 +66,10 @@ fn seed_load(app: &mut App) {
     // registry is dormant this slice — the setup does not read it yet).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
-    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());

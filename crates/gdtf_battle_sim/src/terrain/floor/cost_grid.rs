@@ -40,7 +40,7 @@ pub struct FloorCostGrid {
 impl FloorCostGrid {
     /// Build a floor-cost grid from its default cost and an iterator of per-cell
     /// overrides — the constructor `setup_battle` calls after resolving the situation's
-    /// `default_floor` and `floors` lists against the [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry).
+    /// `default_floor` and `floors` lists against the terrain-definition registry.
     #[must_use]
     pub fn new(
         default: MoveCost,

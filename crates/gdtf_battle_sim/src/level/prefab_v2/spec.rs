@@ -20,13 +20,12 @@ const fn default_role() -> SpawnRole {
 /// The **v2 authoring struct** a UUID-keyed level-fragment `.ron` deserializes into — one
 /// reusable level fragment (GTW-486).
 ///
-/// The next-generation prefab schema introduced by the GTW-476 data-model refactor, living
-/// ALONGSIDE the legacy [`PrefabSpec`](crate::level::PrefabSpec). It references its theme by
-/// the stable [`ThemeUuid`] (GTW-485) and every placed piece by the stable
-/// [`TerrainUuid`](crate::terrain::def::TerrainUuid) (GTW-484), and collapses the legacy
-/// schema's four split geometry lists (walls / scatter / slabs / floors) into ONE
+/// The prefab schema introduced by the GTW-476 data-model refactor and the SOLE prefab
+/// schema after GTW-496. It references its theme by the stable [`ThemeUuid`] (GTW-485) and
+/// every placed piece by the stable [`TerrainUuid`](crate::terrain::def::TerrainUuid)
+/// (GTW-484), and authors all geometry as ONE
 /// [`placements`](PrefabSpecV2::placements) list of [`TerrainPlacementEntry`] — the
-/// per-piece behaviour now lives in the referenced
+/// per-piece behaviour lives in the referenced
 /// [`TerrainDef`](crate::terrain::def::TerrainDef).
 ///
 /// There is NO `edge_openings` field and NO `validate` / connectivity path: inter-fragment
@@ -37,7 +36,7 @@ const fn default_role() -> SpawnRole {
 /// fragments by value (the registry itself is out of scope here — T05b). Derives
 /// [`Deserialize`] so the `.ron` parses, [`Serialize`] so a fragment round-trips through its
 /// authoring shape, and [`TypePath`] because a reflected `RonAsset<PrefabSpecV2>` payload
-/// would require it (the [`PrefabSpec`](crate::level::PrefabSpec) precedent).
+/// requires it.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct PrefabSpecV2 {
     /// The stable [`ThemeUuid`] this fragment draws its terrain from (GTW-485).

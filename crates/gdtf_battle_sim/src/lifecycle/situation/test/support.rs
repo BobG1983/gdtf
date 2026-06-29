@@ -118,8 +118,7 @@ pub(super) fn shipped_armor_registry() -> Option<ArmorRegistry> {
 /// `skirmish.ron` (GTW-396) — the REAL on-disk authored terrain pieces, so a
 /// regression in any of these files turns the shipped-setup test red.
 /// The UUID-keyed terrain-definition registry the shipped-`skirmish.ron` setup resolves
-/// cover/slab UUIDs against (GTW-491 — the successor to the legacy filename-stem
-/// `TerrainRegistry`).
+/// cover/slab UUIDs against (GTW-491).
 ///
 /// The shipped `skirmish.ron` authors NO inline terrain (the GTW-433 procgen migration — its
 /// walls / scatter / slabs / floors are all empty), so the setup never RESOLVES a terrain
@@ -170,9 +169,8 @@ pub(super) fn shipped_gang_registry() -> Option<GangRegistry> {
 /// (the [`run_setup`] variant for the shipped-weapons AC5 path), returning the app +
 /// [`BattleSetup`] on success, else assert-failing and returning `None`.
 ///
-/// GTW-491: accepts a `terrain: Option<&TerrainDefRegistry>` (the UUID-keyed successor to
-/// the legacy `TerrainRegistry`) and uses the fallback floor cost from
-/// `CombatTuning::default().move_costs.open`.
+/// GTW-491: accepts a `terrain: Option<&TerrainDefRegistry>` and uses the fallback floor
+/// cost from `CombatTuning::default().move_costs.open`.
 pub(super) fn run_setup_with(
     situation: Situation,
     gangs: GangRegistry,

@@ -141,7 +141,7 @@ pub fn setup_battle_on_request(
         let stat_tuning = stat_tuning.as_deref().unwrap_or(&default_stat_tuning);
 
         // GTW-396: the fallback floor cost — used when the situation omits
-        // `default_floor` or when no TerrainRegistry is available. Sourced from
+        // `default_floor` or when no terrain-definition registry is available. Sourced from
         // `CombatTuning::move_costs.open` (4 by default) to preserve pre-GTW-396
         // behavior for un-migrated test fixtures. Combat must never be blocked by
         // missing balance data.
@@ -153,7 +153,7 @@ pub fn setup_battle_on_request(
             });
 
         // GTW-491: the TerrainDefRegistry is PERSISTENT `Load` state (GTW-487, the UUID-keyed
-        // successor to the legacy TerrainRegistry), read as `Option<Res<_>>`. When absent,
+        // terrain model), read as `Option<Res<_>>`. When absent,
         // `setup_battle` is called with `terrain: None` which:
         //  (a) makes cover/slab UUIDs fail with TerrainNotFound (a real situation's
         //      cover/slabs reference def UUIDs that need the registry);

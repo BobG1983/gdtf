@@ -1,12 +1,9 @@
-//! The **level-theme** closed set and the **grid-size** dimension newtypes — the
-//! foundational typed data the map-editor palette and the procgen assembly both read
-//! (GTW-409).
+//! The **grid-size** dimension newtypes — the foundational typed data the map-editor
+//! palette and the procgen assembly both read (GTW-409).
 //!
-//! [`LevelTheme`] is the closed set of battlescape themes (industrial hive / underhive
-//! / sump-waste); GTW-414 adds it to [`Situation`](crate::situation::Situation), so it
-//! lives sim-side. [`GridSize`] is the chosen coarse-grid dimensions, every axis a
-//! named, validated, private-inner newtype, constrained to the sim's coarse-grid
-//! maximum ([`MAX_GRID_SPAN`] on x/y, [`MAX_LEVELS`](crate::metric::MAX_LEVELS) on z).
+//! [`GridSize`] is the chosen coarse-grid dimensions, every axis a named, validated,
+//! private-inner newtype, constrained to the sim's coarse-grid maximum
+//! ([`MAX_GRID_SPAN`] on x/y, [`MAX_LEVELS`](crate::metric::MAX_LEVELS) on z).
 
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
@@ -22,41 +19,6 @@ use crate::metric::MAX_LEVELS;
 /// A `u8` because 60 fits a tiny non-negative integer (the same reasoning
 /// [`MAX_LEVELS`](crate::metric::MAX_LEVELS) is a `u8`).
 pub const MAX_GRID_SPAN: u8 = 60;
-
-/// The closed set of battlescape **level themes** — the visual + content family a
-/// generated level draws from (GTW-409).
-///
-/// A theme keys the per-theme named-tile catalog ([`ThemeCatalogRegistry`](super::ThemeCatalogRegistry))
-/// the editor palette and the procgen assembly read. GTW-414 adds it to
-/// [`Situation`](crate::situation::Situation) — so it is authored in RON and lives
-/// sim-side. The INITIAL set is the three the ticket names (logged design choice,
-/// GTW-409): an [`IndustrialHive`](LevelTheme::IndustrialHive) (manufactorum decking /
-/// bulkheads), an [`Underhive`](LevelTheme::Underhive) (the lawless tunnels beneath),
-/// and a [`SumpWaste`](LevelTheme::SumpWaste) (the toxic sump at the hive's base) —
-/// the Necromunda-canon vertical slice. New themes are added as variants (closed set:
-/// the catalog loader and the procgen assembler exhaustively match it).
-///
-/// Derives [`Debug`]/[`Clone`]/[`Copy`]/[`PartialEq`]/[`Eq`]/[`Hash`] (a tiny copyable
-/// key the registry hashes on) + [`Deserialize`] (it is authored in RON, both as a
-/// catalog file's declared theme and — GTW-414 — as a [`Situation`](crate::situation::Situation)
-/// field).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
-pub enum LevelTheme {
-    /// The manufactorum decking and bulkheads of the hive proper — metal plating,
-    /// heavy walls, supply crates.
-    ///
-    /// The `#[default]` (GTW-414): the [`Situation::theme`](crate::situation::Situation)
-    /// field is `#[serde(default)]`, so a situation `.ron` that omits `theme` (every
-    /// pre-GTW-414 file) gets this — the manufactorum-hive family is the canonical
-    /// "default battlescape" the shipped `skirmish.ron` already reads as.
-    #[default]
-    IndustrialHive,
-    /// The lawless tunnels and rockcrete warrens beneath the hive — rubble, scrap
-    /// barricades, broken ground.
-    Underhive,
-    /// The toxic sump at the hive's base — waste, sludge, corroded gantries.
-    SumpWaste,
-}
 
 /// The **width** of the coarse grid in cells (its x span).
 ///

@@ -1,4 +1,4 @@
-//! Tests for [`LevelTheme`] + the [`GridSize`] dimension newtypes (GTW-409 AC1).
+//! Tests for the [`GridSize`] dimension newtypes (GTW-409 AC1).
 //! Structure / validation only — no shipped magnitudes pinned.
 
 use super::super::*;
@@ -90,23 +90,4 @@ fn grid_size_deserializes_through_validation() {
         "an over-max authored GridSize fails deserialization (validation runs through \
          try_from), got {bad:?}",
     );
-}
-
-/// AC1 — `LevelTheme` is a closed set whose variants deserialize from their authored RON
-/// names. Asserts the three initial themes round-trip (the logged GTW-409 set), not a
-/// magnitude.
-#[test]
-fn level_theme_deserializes_each_variant() {
-    for (ron_name, expected) in [
-        ("IndustrialHive", LevelTheme::IndustrialHive),
-        ("Underhive", LevelTheme::Underhive),
-        ("SumpWaste", LevelTheme::SumpWaste),
-    ] {
-        let parsed = ron::de::from_str::<LevelTheme>(ron_name);
-        assert_eq!(
-            parsed.ok(),
-            Some(expected),
-            "LevelTheme::{ron_name} must deserialize from its authored name",
-        );
-    }
 }

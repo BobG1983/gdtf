@@ -23,8 +23,8 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 # ONLY the presenter's TileRoles / TileIndex data types + its load/resolve seam; it wires
 # NONE of the presenter's render runtime (no BattlePresenterPlugin).
 gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
-# GTW-432: the (debug-only) save-prefab path serializes a PrefabSpec to RON and writes it
-# to assets/content/maps/. The serialize is non-test code, so ron is a normal dependency
+# GTW-432: the (debug-only) save-prefab path serializes a PrefabSpecV2 to RON and writes it
+# to assets/maps/. The serialize is non-test code, so ron is a normal dependency
 # (the GTW-429 gang-save precedent moved ron from a dev-dependency to a normal one).
 ron = { workspace = true }
 

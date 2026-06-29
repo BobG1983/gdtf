@@ -5,9 +5,8 @@
 //! transition on it — so the machine never leaves `Load` before the per-theme terrain
 //! folder is verified loaded.
 //!
-//! This file was MIGRATED off the retired flat-dir `resolve_terrain` /
-//! [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) (the GTW-394 model)
-//! onto the UUID model: GTW-494 removed the old game-side loader, so the
+//! This file was MIGRATED off the retired flat-dir `resolve_terrain` per-file terrain model
+//! (GTW-394) onto the UUID model: GTW-494 removed the old game-side loader, so the
 //! [`TerrainDefRegistry`] is now the ONLY terrain resolver in the Load flow (the sim +
 //! procgen + presenter consume it as of GTW-491/492/493).
 //!

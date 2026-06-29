@@ -282,7 +282,7 @@ crate::support_item! {
             // `assets/maps/**/*.prefab_v2.ron` resolve must win — so this is gated on
             // `is_none()` exactly like the other registries (else the empty seed would shadow
             // resolve_prefabs_v2, which only runs while the registry is ABSENT). GTW-494: this
-            // is the ONLY prefab registry (the legacy PrefabRegistry seed was retired).
+            // is the ONLY prefab registry (the legacy prefab-registry seed was retired).
             commands.insert_resource(PrefabRegistry2::default());
             // GTW-487: the UUID-keyed TerrainDefRegistry + UuidThemeRegistry are gate-blocking
             // too; seed the empty fallbacks when there is no AssetServer so headless walks still
@@ -290,8 +290,8 @@ crate::support_item! {
             // per-theme `terrain/` resolve must win — so this is gated on `is_none()` exactly
             // like the other registries (else the empty seed would shadow resolve_terrain_defs /
             // resolve_theme_defs, which only run while their registry is ABSENT). GTW-494: these
-            // are the ONLY terrain / theme registries (the legacy TerrainRegistry +
-            // ThemeCatalogRegistry seeds were retired).
+            // are the ONLY terrain / theme registries (the legacy terrain / theme registry
+            // seeds were retired).
             commands.insert_resource(TerrainDefRegistry::default());
             commands.insert_resource(UuidThemeRegistry::default());
             commands.insert_resource(LoadedSituation::new(

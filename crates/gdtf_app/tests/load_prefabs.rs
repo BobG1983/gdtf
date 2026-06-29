@@ -3,8 +3,8 @@
 //! `resolve_prefabs_v2` loader, builds the UUID-keyed [`PrefabRegistry2`] from them, and
 //! gates the Load→Intro transition on it.
 //!
-//! This file was MIGRATED off the retired flat-dir `resolve_prefabs` /
-//! [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) (the GTW-418 model) onto the
+//! This file was MIGRATED off the retired flat-dir `resolve_prefabs` per-file prefab model
+//! (GTW-418) onto the
 //! UUID v2 model: GTW-494 removed the old game-side loader, so the `PrefabRegistry2` is now
 //! the ONLY prefab resolver in the Load flow (the procgen pipeline consumes it, GTW-492). It
 //! does NOT seed the registry — it drives the REAL Load branch over the shipped

@@ -5,8 +5,7 @@
 //!
 //! GTW-491 migration (child T07a of the GTW-476 data-model refactor): each authored
 //! [`TerrainUuid`] is resolved against the
-//! [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) (the UUID-keyed successor
-//! to the legacy [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry)). The resolved
+//! [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry). The resolved
 //! definition's [`TerrainSimKind`] supplies the structural stats + entity
 //! [`TerrainPieceKind`], and its [`TerrainPresenterKind`] supplies the presentation hooks
 //! ([`TerrainGraphicKey`] for ALL kinds incl. `Wall`, an optional [`FootfallSound`] for

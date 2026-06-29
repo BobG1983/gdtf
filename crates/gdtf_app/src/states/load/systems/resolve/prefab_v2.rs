@@ -3,10 +3,10 @@
 //! rebuilds it on a `*.prefab_v2.ron` edit.
 //!
 //! **GTW-494 (child T08): the SOLE prefab loader.** This loader was introduced beside the
-//! legacy flat-dir `resolve_prefabs` (the GTW-418
-//! [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) model); GTW-494 RETIRED that
-//! legacy loader, so this is now the ONLY prefab resolver in the Load flow (the procgen
-//! pipeline consumes [`PrefabRegistry2`] as of GTW-492). The v2 fragments live under the
+//! legacy flat-dir `resolve_prefabs` (the GTW-418 per-file prefab model); GTW-494 RETIRED
+//! that legacy loader (GTW-496 deleted its types), so this is now the ONLY prefab resolver
+//! in the Load flow (the procgen pipeline consumes [`PrefabRegistry2`] as of GTW-492). The
+//! v2 fragments live under the
 //! `maps/` root: a recursive `load_folder` of `maps/` fans every `*.prefab_v2.ron` member to
 //! the dedicated-extension [`RonAsset<PrefabSpecV2>`](gdtf_assets::RonAsset) loader, and a
 //! [`PrefabsV2FolderHandle`](crate::states::load::resources::PrefabsV2FolderHandle) feeds

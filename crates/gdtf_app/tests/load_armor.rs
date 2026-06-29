@@ -33,9 +33,7 @@ use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry},
     injuries::InjuryRegistry,
-    level::ThemeCatalogRegistry,
     situation::Situation,
-    terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
 };
@@ -101,17 +99,10 @@ fn armor_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
-    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
@@ -131,7 +122,7 @@ fn armor_loader_no_ops_cleanly_without_asset_server() {
     assert!(
         reached_intro,
         "with a GdtfTheme + CombatTuning + GangerStatTuning + WeaponRegistry + LoadedSituation \
-         + ArmorRegistry + TerrainRegistry present, Load must advance to Intro within \
+         + ArmorRegistry present, Load must advance to Intro within \
          {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
@@ -156,17 +147,10 @@ fn load_does_not_leave_without_an_armor_registry() {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
-    // GTW-394: also seed TerrainRegistry so the armor gate is the only missing one.
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());

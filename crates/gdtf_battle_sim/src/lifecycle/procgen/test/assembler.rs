@@ -127,8 +127,8 @@ fn placement_is_deterministic_under_a_seed() {
 /// Discriminating: the SAME registry under the AUTHORED theme places a valid level
 /// (`places_player_and_opposite_enemy`); switching ONLY the requested `ThemeUuid` to an
 /// unregistered key turns that into a no-candidate fail-closed — so the test pins that the
-/// assembler keys on the `ThemeUuid` (a stale `LevelTheme`-keyed lookup or one ignoring the
-/// theme would still find the player prefab and succeed).
+/// assembler keys on the `ThemeUuid` (a lookup ignoring the theme would still find the
+/// player prefab and succeed).
 #[test]
 fn absent_theme_uuid_yields_no_candidate() {
     let authored = theme();

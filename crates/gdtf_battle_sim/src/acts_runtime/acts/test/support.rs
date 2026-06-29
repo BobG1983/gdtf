@@ -91,7 +91,7 @@ pub(super) fn full_vision() -> SquadVisibility {
 pub(super) fn insert_sim_resources(app: &mut App) {
     let tuning = CombatTuning::default();
     // GTW-396: seed a uniform FloorCostGrid at the default open cost; the test harness
-    // does not have a TerrainRegistry, so we build the grid directly with the same move
+    // resolves no terrain registry, so we build the grid directly with the same move
     // cost the pre-GTW-396 tests expected. The dispatch system reads `Res<FloorCostGrid>`.
     let floor_costs = FloorCostGrid::new(tuning.move_costs.open, []);
     app.insert_resource(OccupancyGrid::new());

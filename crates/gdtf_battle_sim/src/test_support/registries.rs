@@ -117,7 +117,7 @@ pub fn test_armor_registry() -> ArmorRegistry {
 
 /// A [`TerrainDefRegistry`] with the four test terrain definition UUIDs (GTW-491) — the
 /// test-built UUID-keyed registry `setup_battle` resolves cover/slab piece UUIDs against in
-/// the test harness (no `AssetServer`), the successor to the legacy `TerrainRegistry`.
+/// the test harness (no `AssetServer`).
 ///
 /// The four defs, keyed by the `test_pieces` UUID consts:
 /// - `WALL` — a HIGH-band structural `Wall` sim-kind, presenter `Wall { graphic_name }`

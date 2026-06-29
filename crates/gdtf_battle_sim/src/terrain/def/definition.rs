@@ -25,9 +25,8 @@ impl TerrainDisplayName {
     }
 }
 
-/// The **unified terrain definition** — the NEW UUID-keyed terrain model that will
-/// replace the legacy [`TerrainSpec`](crate::terrain::piece::TerrainSpec) /
-/// `CatalogTile` pair (GTW-484, child T02 of the GTW-476 refactor).
+/// The **unified terrain definition** — the UUID-keyed terrain model (GTW-484, child T02
+/// of the GTW-476 refactor) and the SOLE terrain model after GTW-496.
 ///
 /// One definition splits cleanly into a SIM half and a PRESENTER half, plus the
 /// sim-owned tags:

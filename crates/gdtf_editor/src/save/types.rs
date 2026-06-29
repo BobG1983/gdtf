@@ -89,7 +89,7 @@ impl std::error::Error for SavePrefabError {}
 /// theme DISPLAY NAME (e.g. `"Industrial Hive"` → `industrial_hive`), matching the shipped
 /// per-theme layout. The save path resolves the theme's display name from the
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry); this folds it to the
-/// directory convention. NOT a closed-enum match (the UUID model has no closed `LevelTheme`):
+/// directory convention. NOT a closed-enum match (the UUID model has no closed theme enum):
 /// lowercase, spaces / dashes → underscores, anything outside `[a-z0-9_]` dropped. An empty
 /// result falls back to the (still-unique) nil/unknown bucket name so a save never targets the
 /// assets root.

@@ -18,7 +18,7 @@ use crate::armor::{ArmorHardness, ArmorProtection};
 /// pool, even over the same inner `u32`). Private inner + derived [`Deref`] (house
 /// style); a magnitude is per-slab data (TBD tuning), not pinned here.
 /// `#[serde(transparent)]` lets an authored slab-HP parse as a bare integer (the
-/// [`TerrainSpec`](crate::terrain::piece::SlabPieceSpec) authoring path).
+/// terrain-definition authoring path).
 /// `Component` is added by GTW-395: slab entities carry `SlabHp` as a static
 /// `max_hp` component (the mutable live pool stays in the [`SlabLedger`](crate::slab::SlabLedger)).
 /// A derived `Component` impl generates no doc-requiring pub item under the workspace

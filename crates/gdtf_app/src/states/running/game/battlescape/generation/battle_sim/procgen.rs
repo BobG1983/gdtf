@@ -15,9 +15,8 @@
 //! UUID-keyed [`PrefabRegistry2`] of [`Prefab2`](gdtf_battle_sim::level::Prefab2) fragments
 //! (populated by the GTW-489 Load resolve from the GTW-490 migrated content), the
 //! [`UuidThemeRegistry`] (the theme's default floor), the [`TerrainDefRegistry`] (classifying
-//! each placed piece), and the authored situation's [`ThemeUuid`] theme directly — NO
-//! [`LevelTheme`](gdtf_battle_sim::level::LevelTheme) shim, NO legacy
-//! [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry). The GTW-491 (T07a) terrain shim
+//! each placed piece), and the authored situation's [`ThemeUuid`] theme directly — no
+//! legacy theme-enum or prefab-registry shim. The GTW-491 (T07a) terrain shim
 //! adapter is REMOVED: procgen now emits terrain referencing the migrated AUTHORED UUIDs, so
 //! `setup_battle` resolves it against the real `TerrainDefRegistry` directly.
 //!
@@ -123,7 +122,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn pro
     let tuning = ProcgenTuning::default();
 
     // GTW-492: generate against the authored situation's UUID-keyed theme DIRECTLY — no
-    // LevelTheme shim. The migrated v2 prefabs author this theme's ThemeUuid, so the
+    // theme-enum shim. The migrated v2 prefabs author this theme's ThemeUuid, so the
     // theme-keyed candidate lookup resolves them; the emitted terrain references the migrated
     // AUTHORED terrain UUIDs, so setup resolves it against the real TerrainDefRegistry (no
     // legacy from_legacy_name shim adapter).

@@ -125,10 +125,9 @@ fn headless_renderer_app() -> App {
     // each spawned ganger. The canonical shared [`test_armor_registry`] (GTW-324),
     // inserted up front (the fixture gangers reference its [`TEST_ARMOR_KEY`]).
     app.insert_resource(test_armor_registry());
-    // GTW-396: the TerrainRegistry — setup_battle_on_request reads it to resolve cover,
-    // slab, and floor piece keys. The canonical test registry supplies the four
-    // `"test-wall"` / `"test-slab"` / `"test-cover"` / `"test-floor"` keys the
-    // SituationBuilder uses.
+    // GTW-396/491: the TerrainDefRegistry — setup_battle_on_request reads it to resolve
+    // each terrain piece's UUID to its sim/presenter def. The canonical test registry
+    // supplies the wall / slab / cover / floor defs the SituationBuilder uses.
     app.insert_resource(test_terrain_registry());
     // GTW-414/415: the GangRegistry — setup_battle_on_request resolves each placed
     // ganger's (gang, member) ref against it. The canonical `test_gang_registry` holds

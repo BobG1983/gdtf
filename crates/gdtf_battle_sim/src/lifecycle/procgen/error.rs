@@ -30,8 +30,7 @@ pub enum PackingError {
     /// size). Fail-closed: generation cannot proceed without a player-spawn and an
     /// enemy-spawn prefab.
     NoPrefabForRole {
-        /// The stable [`ThemeUuid`] that had no candidate for `role` (GTW-492 — switched
-        /// from the legacy [`LevelTheme`](crate::level::LevelTheme) enum).
+        /// The stable [`ThemeUuid`] that had no candidate for `role` (GTW-492).
         theme: ThemeUuid,
         /// The deployment role that had no candidate.
         role:  SpawnRole,

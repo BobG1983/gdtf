@@ -1,18 +1,11 @@
-//! The **v2 prefab registry** — the [`ThemeUuid`]-keyed counterpart of the legacy
-//! [`PrefabRegistry`](crate::level::PrefabRegistry), introduced by the GTW-476 data-model
-//! refactor (child T05b), living ALONGSIDE the legacy types rather than replacing them.
+//! The **v2 prefab registry** — the [`ThemeUuid`]-keyed prefab bucket store introduced by
+//! the GTW-476 data-model refactor (child T05b) and the SOLE prefab registry after GTW-496
+//! retired the legacy theme-enum-keyed one.
 //!
-//! Where the legacy [`PrefabRegistry`](crate::level::PrefabRegistry) keys its buckets on the
-//! closed [`LevelTheme`](crate::level::LevelTheme) enum (via [`PrefabKey`](crate::level::PrefabKey)),
-//! this v2 registry keys on the stable [`ThemeUuid`] (GTW-485) — so a theme can be renamed
-//! or moved without breaking the prefab buckets that reference it. It holds validated
+//! It keys its buckets on the stable [`ThemeUuid`] (GTW-485) — so a theme can be renamed or
+//! moved without breaking the prefab buckets that reference it. It holds validated
 //! [`Prefab2`]s — each a [`PrefabName`] paired with a [`PrefabSpecV2`] (GTW-486) — and the v2
-//! loader (T05c) populates it while the v2 assembler (T07b) reads it.
-//!
-//! This module is PURELY ADDITIVE (GTW-488): it adds the v2 KEY / PREFAB / REGISTRY ONLY —
-//! the v2 loader (T05c) and assembler (T07b) are out of scope. The legacy
-//! [`PrefabRegistry`](crate::level::PrefabRegistry) / [`PrefabKey`](crate::level::PrefabKey) /
-//! [`Prefab`](crate::level::Prefab) / loader / assembler stay live and untouched.
+//! loader populates it while the assembler reads it.
 
 use bevy::{platform::collections::HashMap, prelude::Resource};
 
@@ -22,9 +15,8 @@ use crate::level::{GridSize, PrefabName, SpawnRole, ThemeUuid};
 /// One **validated** v2 prefab the [`PrefabRegistry2`] holds — its [`PrefabName`] paired
 /// with a [`PrefabSpecV2`] (GTW-488).
 ///
-/// The v2 counterpart of the legacy [`Prefab`](crate::level::Prefab), built through
-/// [`Prefab2::new`]. Unlike the legacy constructor, [`Prefab2::new`] runs **NO**
-/// edge-opening validation — the v2 schema carries no `edge_openings` field and no
+/// Built through [`Prefab2::new`], which runs **NO** edge-opening validation — the v2
+/// schema carries no `edge_openings` field and no
 /// [`NoEdgeOpening`](crate::level::PrefabLoadError::NoEdgeOpening) rejection path, because
 /// inter-fragment connectivity is by-construction in the v2 assembler (T07b), not authored
 /// per-prefab and validated fail-closed. An openingless prefab (a [`PrefabSpecV2`] carrying
@@ -43,8 +35,7 @@ impl Prefab2 {
     ///
     /// Runs NO edge-opening / connectivity validation (there is no such path in the v2
     /// schema), so this is INFALLIBLE — an openingless spec (zero placements) is a valid
-    /// `Prefab2`. Contrast the legacy [`Prefab::new`](crate::level::Prefab::new), which
-    /// runs the C6 [`validate`](crate::level::PrefabSpec::validate) and can reject.
+    /// `Prefab2`.
     #[must_use]
     pub const fn new(name: PrefabName, spec: PrefabSpecV2) -> Self {
         Self { name, spec }
@@ -66,11 +57,9 @@ impl Prefab2 {
 /// The v2 registry **enumeration key** — the `(theme, size, role)` triple the v2 assembler
 /// (T07b) lists prefabs by, keyed on the stable [`ThemeUuid`] (GTW-488).
 ///
-/// The v2 counterpart of the legacy [`PrefabKey`](crate::level::PrefabKey): a named struct
-/// (no-bare-types: the lookup key is a domain value, not a bare tuple) whose `theme` field
-/// is a stable [`ThemeUuid`] (GTW-485) rather than the legacy key's closed
-/// [`LevelTheme`](crate::level::LevelTheme). All three leaf fields are NAMED newtypes
-/// reused verbatim ([`ThemeUuid`] / [`GridSize`] / [`SpawnRole`]), each `Copy` + `Hash` +
+/// A named struct (no-bare-types: the lookup key is a domain value, not a bare tuple)
+/// whose `theme` field is a stable [`ThemeUuid`] (GTW-485). All three leaf fields are
+/// NAMED newtypes ([`ThemeUuid`] / [`GridSize`] / [`SpawnRole`]), each `Copy` + `Hash` +
 /// `Eq`, so the key is a cheap copyable `HashMap` key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PrefabKey2 {
@@ -94,8 +83,8 @@ impl PrefabKey2 {
 /// [`Prefab2`]s, keyed on the stable [`ThemeUuid`] (GTW-488).
 ///
 /// A named newtype [`Resource`] over a [`HashMap`]`<`[`PrefabKey2`]`, Vec<`[`Prefab2`]`>>`
-/// (no-bare-types: a registry is a domain value, not a bare `HashMap`), mirroring the legacy
-/// [`PrefabRegistry`](crate::level::PrefabRegistry) shape but re-keyed by [`ThemeUuid`].
+/// (no-bare-types: a registry is a domain value, not a bare `HashMap`), keyed by
+/// [`ThemeUuid`].
 /// Multiple prefabs can share one `(theme, size, role)` key (the assembler picks among
 /// them), so each key maps to a `Vec`. The v2 loader (T05c) POPULATES it from the loaded
 /// maps folder and inserts it as a resource; the v2 assembler (T07b) enumerates it. It holds

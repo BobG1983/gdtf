@@ -12,9 +12,7 @@
 //!
 //! GTW-492 (child T07b of the GTW-476 data-model refactor): the assembler reads the
 //! UUID-keyed [`PrefabRegistry2`] of [`Prefab2`] fragments, keyed by a stable
-//! [`ThemeUuid`] (GTW-485 / GTW-488), in place of the legacy
-//! [`LevelTheme`](crate::level::LevelTheme)-keyed
-//! [`PrefabRegistry`](crate::level::PrefabRegistry) of [`Prefab`](crate::level::Prefab).
+//! [`ThemeUuid`] (GTW-485 / GTW-488).
 
 use super::{
     anchor::Anchor,

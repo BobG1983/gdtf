@@ -42,10 +42,8 @@ use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, BodyPart},
     injuries::{InjuryName, InjuryRegistry, InjuryTables},
-    level::ThemeCatalogRegistry,
     severity::Severity,
     situation::Situation,
-    terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
 };
@@ -105,22 +103,16 @@ fn injuries_loader_no_ops_cleanly_without_asset_server() {
     // resolves completing (no AssetServer under MinimalPlugins), driving the real gated
     // transition (GTW-437: the InjuryRegistry is a gate-blocking resource too, alongside
     // the GTW-257 WeaponRegistry / GTW-269 ArmorRegistry / GTW-261 LoadedSituation /
-    // GTW-394 TerrainRegistry / GTW-384 GangerStatTuning).
+    // GTW-384 GangerStatTuning).
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
@@ -140,7 +132,7 @@ fn injuries_loader_no_ops_cleanly_without_asset_server() {
     assert!(
         reached_intro,
         "with a GdtfTheme + CombatTuning + GangerStatTuning + WeaponRegistry + ArmorRegistry \
-         + TerrainRegistry + InjuryRegistry + LoadedSituation present, Load must advance to \
+         + InjuryRegistry + LoadedSituation present, Load must advance to \
          Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
@@ -168,9 +160,6 @@ fn load_does_not_leave_without_an_injury_registry() {
     app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 

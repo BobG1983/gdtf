@@ -50,9 +50,7 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
-    level::ThemeCatalogRegistry,
     situation::Situation,
-    terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
 };
@@ -94,19 +92,11 @@ fn walk_app_with_theme() -> App {
     // registry is dormant this slice — the setup does not read it yet).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
-    // GTW-394: the Load→Intro gate also requires a TerrainRegistry; empty clears it (the
-    // registry is dormant this slice — the generation epic consumes it).
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it (a
     // real battle would resolve placed gangers against the loaded gangs folder).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());

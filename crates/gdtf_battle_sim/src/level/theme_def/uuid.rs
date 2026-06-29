@@ -8,9 +8,8 @@ use serde::{Deserialize, Serialize};
 /// [`UuidThemeDef`](super::UuidThemeDef) across the registry and (later) the consumers
 /// that reference a theme.
 ///
-/// Per the GTW-476 redesign, a theme is referenced by a stable UUID rather than the
-/// closed [`LevelTheme`](crate::level::LevelTheme) enum it will eventually replace — so a
-/// theme can be renamed or moved without breaking references. The
+/// Per the GTW-476 redesign, a theme is referenced by a stable UUID — so a theme can be
+/// renamed or moved without breaking references. The
 /// [`UuidThemeRegistry`](super::UuidThemeRegistry) keys definitions by this value.
 ///
 /// A UUID newtype (no-bare-types rule 1: a key is a domain value, not a bare `Uuid`) and
@@ -46,7 +45,7 @@ impl ThemeUuid {
     }
 
     /// The **nil** theme key — the [`Default`] sentinel (an all-zero UUID) signalling "no
-    /// authored theme" (the GTW-491 successor to the omitted-`LevelTheme` default).
+    /// authored theme" (GTW-491).
     #[must_use]
     pub const fn nil() -> Self {
         Self(Uuid::nil())
@@ -65,17 +64,12 @@ impl ThemeUuid {
         Self(Uuid::new_v4())
     }
 
-    /// A **deterministic** theme key derived from a legacy
-    /// [`LevelTheme`](crate::level::LevelTheme)'s identifier string — the GTW-491 procgen
-    /// SHIM bridge.
+    /// A **deterministic** theme key derived from a legacy theme-identifier string — the
+    /// GTW-491 procgen SHIM bridge (now caller-less; GTW-492 retired the shim caller).
     ///
-    /// The legacy procgen path ([`emit_level`](crate::procgen::emit_level)) is still keyed by
-    /// the closed [`LevelTheme`](crate::level::LevelTheme) enum yet must populate the
-    /// now-UUID-keyed [`Situation::theme`](crate::situation::Situation); this folds a theme
-    /// identifier into a stable v8-shaped UUID via the same FNV-1a hash the terrain shim uses,
-    /// so the same theme always yields the same key. It does NOT match a migrated
-    /// [`UuidThemeDef`](super::UuidThemeDef)'s authored key — the full procgen switch onto real
-    /// UUID-keyed themes is GTW-492 (T07b), which removes this shim.
+    /// This folds a theme identifier into a stable v8-shaped UUID via the same FNV-1a hash
+    /// the terrain shim uses, so the same theme always yields the same key. It does NOT match
+    /// a migrated [`UuidThemeDef`](super::UuidThemeDef)'s authored key.
     #[must_use]
     pub fn from_legacy_theme(name: &str) -> Self {
         Self(Uuid::from_u128(crate::terrain::def::fnv1a64_u128(

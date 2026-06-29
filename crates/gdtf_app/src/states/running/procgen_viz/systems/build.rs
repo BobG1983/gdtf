@@ -61,7 +61,7 @@ pub(in crate::states::running::procgen_viz) fn insert_viz_model(
     // the nil theme (so the visualizer is still reachable on a no-content harness — the v2
     // registry is then empty and `build` takes the empty-model fallback). GTW-492: the
     // visualizer drives the UUID-keyed v2 pipeline, so the theme is the situation's `ThemeUuid`
-    // DIRECTLY (no `LevelTheme` shim) — the same key the migrated v2 prefabs author.
+    // DIRECTLY (no theme-enum shim) — the same key the migrated v2 prefabs author.
     let (grid_size, theme) = situation
         .as_deref()
         .map_or_else(Default::default, |s| (s.grid_size, s.theme));

@@ -491,8 +491,8 @@ pub struct Situation {
     /// migrated [`UuidThemeDef`](crate::level::UuidThemeDef), resolvable in the
     /// [`UuidThemeRegistry`](crate::level::UuidThemeRegistry).
     ///
-    /// GTW-491 migration (T07a): switched from the closed [`LevelTheme`](crate::level::LevelTheme)
-    /// enum to the UUID-keyed [`ThemeUuid`] (reconciling the GTW-490 additive
+    /// GTW-491 migration (T07a): switched from the closed-enum theme model to the UUID-keyed
+    /// [`ThemeUuid`] (reconciling the GTW-490 additive
     /// `theme_uuid` field — the canonical sim theme is now this one `theme`). `#[serde(default)]`
     /// supplies [`ThemeUuid::default`] (the nil sentinel) for any authored file that omits the
     /// field. An authored `theme: "<uuid>"` parses the `#[serde(transparent)]` [`ThemeUuid`]
@@ -516,7 +516,7 @@ pub struct Situation {
     /// The authored floor / roof slabs (each a [`SlabSpawn`] — `at` + piece KEY).
     /// GTW-396: was `Vec<CellLevel>`; now `Vec<SlabSpawn>` so each slab carries its
     /// terrain piece KEY for per-slab HP/armor resolution against the
-    /// [`TerrainRegistry`](crate::terrain::piece::TerrainRegistry).
+    /// terrain-definition registry.
     pub slabs:          Vec<SlabSpawn>,
     /// The authored stair / ladder vertical links (E1.10 / GTW-160), moved here
     /// from the GTW-156 placeholder. The only way a ganger changes storey

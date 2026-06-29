@@ -20,10 +20,7 @@ use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::GlobalZInde
 use gdtf_app::test_support::{
     AppState, BattleScapeState, GameState, LoadingScreenRoot, RunningState,
 };
-use gdtf_battle_sim::{
-    injuries::InjuryRegistry, level::ThemeCatalogRegistry, terrain::piece::TerrainRegistry,
-    tuning::CombatTuning, weapon::WeaponRegistry,
-};
+use gdtf_battle_sim::{injuries::InjuryRegistry, tuning::CombatTuning, weapon::WeaponRegistry};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -77,14 +74,9 @@ fn app_driven_into_game() -> App {
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
