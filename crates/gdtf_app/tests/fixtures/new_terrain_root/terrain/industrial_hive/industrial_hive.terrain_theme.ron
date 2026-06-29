@@ -1,0 +1,13 @@
+// GTW-487 C1 test fixture — a NEW UUID-keyed UuidThemeDef under the per-theme directory
+// layout `terrain/<theme>/<theme>.terrain_theme.ron`. NOT shipped game content; exists only
+// to exercise the new theme-def folder loader (the migration of real content is T06). Its
+// `default_floor` + `terrain` palette reference the sibling deck.terrain_def.ron by its
+// stable UUID.
+(
+    key: "00000000-0000-0000-0000-01840a3e08a1",
+    display_name: "Industrial Hive",
+    default_floor: "00000000-0000-0000-0000-01840a3e0801",
+    terrain: [
+        "00000000-0000-0000-0000-01840a3e0801",
+    ],
+)

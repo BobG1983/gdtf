@@ -206,6 +206,39 @@ impl PrefabsFolderHandle {
     }
 }
 
+/// Typed handle to the in-flight **new per-theme terrain-model folder** load (`terrain/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
+/// mirroring [`TerrainFolderHandle`] (GTW-487). The NEW UUID-keyed terrain + theme models
+/// ([`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef), GTW-484, and
+/// [`UuidThemeDef`](gdtf_battle_sim::level::UuidThemeDef), GTW-485) live under ONE per-theme
+/// directory layout — `terrain/<theme>/<tile>.terrain_def.ron` (defs) +
+/// `terrain/<theme>/<theme>.terrain_theme.ron` (themes) — so a single recursive
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) of `terrain/` fans out
+/// every member to the matching dedicated-extension loader (`terrain_def.ron` →
+/// `RonAsset<TerrainDef>`, `terrain_theme.ron` → `RonAsset<UuidThemeDef>`). The poll/resolve
+/// systems gate on this folder's recursive load state, then build BOTH the
+/// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) (keyed by each
+/// def's OWN [`TerrainUuid`]) and the
+/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) (keyed by each def's OWN
+/// [`ThemeUuid`]) from its members. Holding this handle keeps a strong reference to every
+/// member asset while the registries are built; the registries then hold the defs BY VALUE,
+/// so they survive the handle being dropped on `OnExit(Load)`.
+///
+/// **Additive (GTW-487)** — this loads the NEW per-theme layout ALONGSIDE the legacy
+/// [`TerrainFolderHandle`]'s `content/terrain/` + [`ThemesFolderHandle`]'s `content/themes/`
+/// loads; nothing consumes the new registries yet (an empty resolve against un-migrated
+/// shipped content is the designed fail-closed state).
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct TerrainModelFolderHandle(Handle<LoadedFolder>);
+
+impl TerrainModelFolderHandle {
+    /// Wrap an in-flight new per-theme terrain-model-folder load handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
@@ -270,31 +303,36 @@ impl StatTuningHandle {
 #[derive(Resource, Clone, Debug)]
 pub(in crate::states::load) struct LoadHandles {
     /// The theme RON asset being loaded.
-    pub theme:       ThemeHandle,
+    pub theme:         ThemeHandle,
     /// The fonts folder being preloaded (all fonts up front).
-    pub fonts:       FontFolderHandle,
+    pub fonts:         FontFolderHandle,
     /// The authored situation RON asset being loaded (GTW-205 / E10.3).
-    pub situation:   SituationHandle,
+    pub situation:     SituationHandle,
     /// The shipped combat-tuning RON asset being loaded (GTW-206 / E10.4).
-    pub tuning:      TuningHandle,
+    pub tuning:        TuningHandle,
     /// The shipped ganger stat-tuning RON asset being loaded (GTW-384).
-    pub stat_tuning: StatTuningHandle,
+    pub stat_tuning:   StatTuningHandle,
     /// The weapons folder being preloaded (all weapon `.ron`s up front, GTW-257).
-    pub weapons:     WeaponsFolderHandle,
+    pub weapons:       WeaponsFolderHandle,
     /// The armor folder being preloaded (all armor `.ron`s up front, GTW-269).
-    pub armor:       ArmorsFolderHandle,
+    pub armor:         ArmorsFolderHandle,
     /// The terrain folder being preloaded (all terrain `.ron`s up front, GTW-394).
-    pub terrain:     TerrainFolderHandle,
+    pub terrain:       TerrainFolderHandle,
     /// The themes folder being preloaded (all `*.theme.ron`s up front, GTW-409).
-    pub themes:      ThemesFolderHandle,
+    pub themes:        ThemesFolderHandle,
     /// The injuries folder being preloaded (all `*.injury.ron` + `*.weighting.ron`
     /// up front, GTW-437).
-    pub injuries:    InjuriesFolderHandle,
+    pub injuries:      InjuriesFolderHandle,
     /// The gangs folder being preloaded (all `*.gang.ron` rosters up front, GTW-415).
-    pub gangs:       GangsFolderHandle,
+    pub gangs:         GangsFolderHandle,
     /// The maps (prefab) folder being preloaded (all `*.prefab.ron` fragments up front,
     /// recursively under `<theme>/<size>/`, GTW-418).
-    pub prefabs:     PrefabsFolderHandle,
+    pub prefabs:       PrefabsFolderHandle,
+    /// The NEW per-theme terrain-model folder being preloaded (all `*.terrain_def.ron`
+    /// and `*.terrain_theme.ron` files up front, recursively under `terrain/<theme>/`,
+    /// GTW-487 — the GTW-484/485 UUID-keyed models, loaded BESIDE the legacy `terrain`
+    /// and `themes` folders).
+    pub terrain_model: TerrainModelFolderHandle,
 }
 
 crate::support_item! {
@@ -533,6 +571,30 @@ pub(in crate::states::load) struct ActivePrefabsFolderHandle(Handle<LoadedFolder
 
 impl ActivePrefabsFolderHandle {
     /// Wrap the loaded maps-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **new per-theme terrain-model folder** (`terrain/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
+/// Load-scoped [`TerrainModelFolderHandle`] inside [`LoadHandles`], which is dropped
+/// `OnExit(Load)` — **persists** past `Load` (GTW-487), the new-model mirror of
+/// [`ActiveTerrainFolderHandle`]. It is inserted alongside the resolved
+/// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
+/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) and kept alive so the
+/// GTW-487 live hot-reload handlers (`redrive_terrain_defs_on_asset_event` /
+/// `redrive_theme_defs_on_asset_event`) can re-enumerate the folder's member handles to
+/// rebuild each registry on a hot edit to ANY `assets/terrain/**/*.terrain_def.ron` OR
+/// `*.terrain_theme.ron`. Holding the folder handle keeps every member asset loaded for the
+/// file-watcher. Like the registries, it is **not** removed in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveTerrainModelFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveTerrainModelFolderHandle {
+    /// Wrap the loaded new per-theme terrain-model-folder handle as the persistent
+    /// hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

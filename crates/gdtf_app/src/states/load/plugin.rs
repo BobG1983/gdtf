@@ -4,9 +4,15 @@ use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
-    level::{PrefabRegistry, PrefabSpec, ThemeCatalogRegistry, ThemeSpec},
+    level::{
+        PrefabRegistry, PrefabSpec, ThemeCatalogRegistry, ThemeSpec, UuidThemeDef,
+        UuidThemeRegistry,
+    },
     situation::Situation,
-    terrain::piece::{TerrainRegistry, TerrainSpec},
+    terrain::{
+        def::{TerrainDef, TerrainDefRegistry},
+        piece::{TerrainRegistry, TerrainSpec},
+    },
     tuning::{CombatTuning, GangerStatTuning},
     weapon::{WeaponRegistry, WeaponSpec},
 };
@@ -108,6 +114,19 @@ impl Plugin for LoadScenePlugin {
             // unambiguous among GDTF's many `.ron` loaders. Registered here in `build`
             // BEFORE the kick-off's `load_folder("content/maps")` runs.
             app.init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"]);
+            // GTW-487 (child T05a of GTW-476): the NEW UUID-keyed terrain + theme models load
+            // through the SAME generic RON loader via `load_folder` of the per-theme `terrain/`
+            // tree, each claiming its OWN dedicated compound extension — `terrain_def.ron` for
+            // a `RonAsset<TerrainDef>` (files `terrain/<theme>/<tile>.terrain_def.ron`) and
+            // `terrain_theme.ron` for a `RonAsset<UuidThemeDef>` (files
+            // `terrain/<theme>/<theme>.terrain_theme.ron`). DISTINCT from the legacy
+            // `terrain.ron` / `theme.ron` extensions so a second loader on either does NOT
+            // clobber the still-live legacy `content/terrain` / `content/themes` folder loads
+            // (Bevy dispatches a `load_folder` member by extension alone — see terrain_model's
+            // module doc + the C5 constraint). Registered here in `build` BEFORE the kick-off's
+            // `load_folder("terrain")` runs.
+            app.init_ron_asset_with_extensions::<TerrainDef>(vec!["terrain_def.ron"]);
+            app.init_ron_asset_with_extensions::<UuidThemeDef>(vec!["terrain_theme.ron"]);
             add_hot_reload_systems(app);
         }
         add_systems(app);
@@ -164,7 +183,15 @@ fn add_systems(app: &mut App) {
                             // GTW-418: the PrefabRegistry is a gate-blocking resource too
                             // (the GTW-424 assembler packs its fragments; the maps folder
                             // must be verified loaded before Load exits).
-                            .or_else(not(resource_exists::<PrefabRegistry>)),
+                            .or_else(not(resource_exists::<PrefabRegistry>))
+                            // GTW-487: the NEW UUID-keyed TerrainDefRegistry +
+                            // UuidThemeRegistry are gate-blocking too — the new per-theme
+                            // `terrain/` folder must be verified loaded before Load exits.
+                            // They resolve EMPTY against un-migrated shipped content (the
+                            // designed fail-closed state); the gate only verifies the folder
+                            // was walked (the registries are inserted on success OR failure).
+                            .or_else(not(resource_exists::<TerrainDefRegistry>))
+                            .or_else(not(resource_exists::<UuidThemeRegistry>)),
                     ),
             ),
             // Once a GdtfTheme, a CombatTuning, a WeaponRegistry, a LoadedSituation,
@@ -204,7 +231,12 @@ fn add_systems(app: &mut App) {
                     .and_then(resource_exists::<GangRegistry>)
                     // GTW-418: the PrefabRegistry must be present before Load exits, so the
                     // maps folder is verified loaded before the GTW-424 assembler uses it.
-                    .and_then(resource_exists::<PrefabRegistry>),
+                    .and_then(resource_exists::<PrefabRegistry>)
+                    // GTW-487: the NEW TerrainDefRegistry + UuidThemeRegistry must be present
+                    // before Load exits, so the new per-theme `terrain/` folder is verified
+                    // loaded before any later GTW-476 consumer reads them.
+                    .and_then(resource_exists::<TerrainDefRegistry>)
+                    .and_then(resource_exists::<UuidThemeRegistry>),
             ),
         )
             .chain(),
@@ -252,6 +284,12 @@ fn add_hot_reload_systems(app: &mut App) {
             // `maps/**/*.prefab.ron` edit (re-running the C6 edge-opening validation),
             // mirroring the gang hot-reload pattern.
             redrive_prefabs_on_asset_event,
+            // GTW-487: the NEW terrain-def + theme-def hot-reloads — rebuild the UUID-keyed
+            // TerrainDefRegistry / UuidThemeRegistry on an edit to ANY
+            // `terrain/**/*.terrain_def.ron` / `*.terrain_theme.ron`, mirroring the legacy
+            // terrain/theme hot-reload pattern (one folder, two registries).
+            redrive_terrain_defs_on_asset_event,
+            redrive_theme_defs_on_asset_event,
         ),
     );
 }

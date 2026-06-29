@@ -13,9 +13,15 @@ use gdtf_battle_sim::{
     armor::{ArmorRegistry, ArmorSpec},
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
-    level::{PrefabRegistry, PrefabSpec, ThemeCatalogRegistry, ThemeSpec},
+    level::{
+        PrefabRegistry, PrefabSpec, ThemeCatalogRegistry, ThemeSpec, UuidThemeDef,
+        UuidThemeRegistry,
+    },
     situation::Situation,
-    terrain::piece::{TerrainRegistry, TerrainSpec},
+    terrain::{
+        def::{TerrainDef, TerrainDefRegistry},
+        piece::{TerrainRegistry, TerrainSpec},
+    },
     tuning::{CombatTuning, GangerStatTuning},
     weapon::{WeaponRegistry, WeaponSpec},
 };
@@ -63,6 +69,12 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     pub(super) gang_rosters:  Option<Res<'w, Assets<RonAsset<GangRoster>>>>,
     /// The loaded per-prefab RON collection (`maps/**/*.prefab.ron`, GTW-418).
     pub(super) prefab_specs:  Option<Res<'w, Assets<RonAsset<PrefabSpec>>>>,
+    /// The loaded NEW per-theme terrain-def RON collection
+    /// (`terrain/<theme>/*.terrain_def.ron`, GTW-487).
+    pub(super) terrain_defs:  Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
+    /// The loaded NEW per-theme theme-def RON collection
+    /// (`terrain/<theme>/*.terrain_theme.ron`, GTW-487).
+    pub(super) theme_defs:    Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
 }
 
 /// The four persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -76,27 +88,31 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
 #[derive(SystemParam)]
 pub(in crate::states::load) struct ResolvedResources<'w> {
     /// Whether the resolved [`GdtfTheme`] is already inserted.
-    pub(super) theme:       Option<Res<'w, GdtfTheme>>,
+    pub(super) theme:        Option<Res<'w, GdtfTheme>>,
     /// Whether the resolved [`CombatTuning`] is already inserted (GTW-206).
-    pub(super) tuning:      Option<Res<'w, CombatTuning>>,
+    pub(super) tuning:       Option<Res<'w, CombatTuning>>,
     /// Whether the resolved [`GangerStatTuning`] is already inserted (GTW-384).
-    pub(super) stat_tuning: Option<Res<'w, GangerStatTuning>>,
+    pub(super) stat_tuning:  Option<Res<'w, GangerStatTuning>>,
     /// Whether the resolved [`WeaponRegistry`] is already inserted (GTW-257).
-    pub(super) weapons:     Option<Res<'w, WeaponRegistry>>,
+    pub(super) weapons:      Option<Res<'w, WeaponRegistry>>,
     /// Whether the resolved [`LoadedSituation`] is already inserted (GTW-261).
-    pub(super) situation:   Option<Res<'w, LoadedSituation>>,
+    pub(super) situation:    Option<Res<'w, LoadedSituation>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).
-    pub(super) armor:       Option<Res<'w, ArmorRegistry>>,
+    pub(super) armor:        Option<Res<'w, ArmorRegistry>>,
     /// Whether the resolved [`TerrainRegistry`] is already inserted (GTW-394).
-    pub(super) terrain:     Option<Res<'w, TerrainRegistry>>,
+    pub(super) terrain:      Option<Res<'w, TerrainRegistry>>,
     /// Whether the resolved [`ThemeCatalogRegistry`] is already inserted (GTW-409).
-    pub(super) themes:      Option<Res<'w, ThemeCatalogRegistry>>,
+    pub(super) themes:       Option<Res<'w, ThemeCatalogRegistry>>,
     /// Whether the resolved [`InjuryRegistry`] is already inserted (GTW-437). The
     /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) is built and inserted
     /// in the SAME branch, so the registry's presence is the branch's done-probe.
-    pub(super) injuries:    Option<Res<'w, InjuryRegistry>>,
+    pub(super) injuries:     Option<Res<'w, InjuryRegistry>>,
     /// Whether the resolved [`GangRegistry`] is already inserted (GTW-415).
-    pub(super) gangs:       Option<Res<'w, GangRegistry>>,
+    pub(super) gangs:        Option<Res<'w, GangRegistry>>,
     /// Whether the resolved [`PrefabRegistry`] is already inserted (GTW-418).
-    pub(super) prefabs:     Option<Res<'w, PrefabRegistry>>,
+    pub(super) prefabs:      Option<Res<'w, PrefabRegistry>>,
+    /// Whether the resolved NEW [`TerrainDefRegistry`] is already inserted (GTW-487).
+    pub(super) terrain_defs: Option<Res<'w, TerrainDefRegistry>>,
+    /// Whether the resolved NEW [`UuidThemeRegistry`] is already inserted (GTW-487).
+    pub(super) theme_defs:   Option<Res<'w, UuidThemeRegistry>>,
 }

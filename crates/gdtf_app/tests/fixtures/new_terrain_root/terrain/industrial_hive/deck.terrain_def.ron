@@ -1,0 +1,18 @@
+// GTW-487 C1 test fixture — a NEW UUID-keyed TerrainDef under the per-theme directory
+// layout `terrain/<theme>/<tile>.terrain_def.ron`. NOT shipped game content; exists only to
+// exercise the new terrain-def folder loader (the migration of real content is T06). Slab
+// kind so the theme's default-floor terrain resolves to something walkable.
+(
+    key: "00000000-0000-0000-0000-01840a3e0801",
+    display_name: "Deck",
+    sim_kind: Slab(
+        hp: 120,
+        armor_protection: 5,
+        armor_hardness: 2,
+    ),
+    presenter_kind: Slab(
+        graphic_name: "slab",
+        footfall: Some("footfall_metal"),
+    ),
+    tags: [],
+)

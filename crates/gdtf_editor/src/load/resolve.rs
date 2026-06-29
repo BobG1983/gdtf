@@ -1,13 +1,18 @@
 //! `Update` (during [`EditorState::Load`](crate::EditorState)): poll the in-flight loads
 //! and insert the resolved resources.
 //!
-//! A slim mirror of `gdtf_app`'s `poll_and_resolve`, trimmed to the editor's four loads:
-//! the [`GdtfTheme`] and the [`WeaponRegistry`] / [`ArmorRegistry`] /
-//! [`ThemeCatalogRegistry`]. Each branch re-gates on its OWN resource's absence so none
-//! starves another (`bevy-traps.md` #3), and EVERY branch is fail-safe: a failed asset
-//! falls back to a const default (the ADR-0003 error-path safety-net) so the editor never
-//! hangs in `Load` on a bad asset folder. Once all four resources exist, the plugin's
-//! transition leaves `Load` for [`Editing`](crate::EditorState::Editing).
+//! A slim mirror of `gdtf_app`'s `poll_and_resolve`, trimmed to the editor's loads: the
+//! [`GdtfTheme`], the legacy [`WeaponRegistry`] / [`ArmorRegistry`] /
+//! [`ThemeCatalogRegistry`], and (GTW-487) the NEW UUID-keyed
+//! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
+//! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) built from the per-theme
+//! `terrain/` folder. Each branch re-gates on its OWN resource's absence so none starves
+//! another (`bevy-traps.md` #3), and EVERY branch is fail-safe: a failed asset falls back to
+//! a const default (the ADR-0003 error-path safety-net) so the editor never hangs in `Load`
+//! on a bad asset folder. Once all the resources exist, the plugin's transition leaves
+//! `Load` for [`Editing`](crate::EditorState::Editing).
+
+use core::any::TypeId;
 
 use bevy::{
     asset::{AssetServer, Assets, LoadState, LoadedFolder, RecursiveDependencyLoadState},
@@ -17,7 +22,8 @@ use bevy::{
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry, ArmorSpec},
-    level::{ThemeCatalogRegistry, ThemeSpec, ThemeTileCatalog},
+    level::{ThemeCatalogRegistry, ThemeSpec, ThemeTileCatalog, UuidThemeDef, UuidThemeRegistry},
+    terrain::def::{TerrainDef, TerrainDefRegistry},
     weapon::{WeaponName, WeaponRegistry, WeaponSpec},
 };
 use gdtf_ui::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec, default_theme};
@@ -43,6 +49,12 @@ pub(crate) struct EditorLoadCollections<'w> {
     armor_specs:   Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
     /// The loaded per-theme RON collection (`content/themes/*.theme.ron`).
     catalog_specs: Option<Res<'w, Assets<RonAsset<ThemeSpec>>>>,
+    /// The loaded NEW per-theme terrain-def RON collection
+    /// (`terrain/<theme>/*.terrain_def.ron`, GTW-487).
+    terrain_defs:  Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
+    /// The loaded NEW per-theme theme-def RON collection
+    /// (`terrain/<theme>/*.terrain_theme.ron`, GTW-487).
+    theme_defs:    Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
 }
 
 /// The four persistent resources [`poll_and_resolve_editor`] resolves, each as an
@@ -53,24 +65,29 @@ pub(crate) struct EditorLoadCollections<'w> {
 #[derive(SystemParam)]
 pub(crate) struct EditorResolved<'w> {
     /// Whether the resolved [`GdtfTheme`] is already inserted.
-    theme:    Option<Res<'w, GdtfTheme>>,
+    theme:        Option<Res<'w, GdtfTheme>>,
     /// Whether the resolved [`WeaponRegistry`] is already inserted.
-    weapons:  Option<Res<'w, WeaponRegistry>>,
+    weapons:      Option<Res<'w, WeaponRegistry>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted.
-    armor:    Option<Res<'w, ArmorRegistry>>,
+    armor:        Option<Res<'w, ArmorRegistry>>,
     /// Whether the resolved [`ThemeCatalogRegistry`] is already inserted.
-    catalogs: Option<Res<'w, ThemeCatalogRegistry>>,
+    catalogs:     Option<Res<'w, ThemeCatalogRegistry>>,
+    /// Whether the resolved NEW [`TerrainDefRegistry`] is already inserted (GTW-487).
+    terrain_defs: Option<Res<'w, TerrainDefRegistry>>,
+    /// Whether the resolved NEW [`UuidThemeRegistry`] is already inserted (GTW-487).
+    theme_defs:   Option<Res<'w, UuidThemeRegistry>>,
 }
 
 /// Polls the editor's in-flight loads and inserts each resolved resource on its OWN
 /// absence guard.
 ///
-/// Runs while [`EditorLoadHandles`] exists and ANY of the four target resources
-/// ([`GdtfTheme`], [`WeaponRegistry`], [`ArmorRegistry`], [`ThemeCatalogRegistry`]) is
-/// still missing. Each branch resolves independently and falls back to a const default on
-/// a failed load, so a slow/bad asset never strands the editor. Takes its borrows as
-/// `Option<…>` so a headless app without the asset stack no-ops rather than panics
-/// (`bevy-traps.md` #1); under `DefaultPlugins` (the real editor) they are always present.
+/// Runs while [`EditorLoadHandles`] exists and ANY of the target resources ([`GdtfTheme`],
+/// [`WeaponRegistry`], [`ArmorRegistry`], [`ThemeCatalogRegistry`], and — GTW-487 — the NEW
+/// [`TerrainDefRegistry`] + [`UuidThemeRegistry`]) is still missing. Each branch resolves
+/// independently and falls back to a const default / empty registry on a failed load, so a
+/// slow/bad asset never strands the editor. Takes its borrows as `Option<…>` so a headless
+/// app without the asset stack no-ops rather than panics (`bevy-traps.md` #1); under
+/// `DefaultPlugins` (the real editor) they are always present.
 pub(crate) fn poll_and_resolve_editor(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
@@ -78,11 +95,13 @@ pub(crate) fn poll_and_resolve_editor(
     resolved: EditorResolved,
     handles: Option<Res<EditorLoadHandles>>,
 ) {
-    let (theme_done, weapons_done, armor_done, catalogs_done) = (
+    let (theme_done, weapons_done, armor_done, catalogs_done, terrain_defs_done, theme_defs_done) = (
         resolved.theme.is_some(),
         resolved.weapons.is_some(),
         resolved.armor.is_some(),
         resolved.catalogs.is_some(),
+        resolved.terrain_defs.is_some(),
+        resolved.theme_defs.is_some(),
     );
     let (
         Some(asset_server),
@@ -91,6 +110,8 @@ pub(crate) fn poll_and_resolve_editor(
         Some(weapon_specs),
         Some(armor_specs),
         Some(catalog_specs),
+        Some(terrain_defs),
+        Some(theme_defs),
         Some(handles),
     ) = (
         asset_server,
@@ -99,6 +120,8 @@ pub(crate) fn poll_and_resolve_editor(
         collections.weapon_specs,
         collections.armor_specs,
         collections.catalog_specs,
+        collections.terrain_defs,
+        collections.theme_defs,
         handles,
     )
     else {
@@ -132,6 +155,28 @@ pub(crate) fn poll_and_resolve_editor(
             &asset_server,
             &folders,
             &catalog_specs,
+            &handles,
+        );
+    }
+    // GTW-487: the NEW UUID-keyed terrain + theme registries, built from the per-theme
+    // `terrain/` folder (the editor mirror of the game's resolve_terrain_defs /
+    // resolve_theme_defs). Empty against un-migrated shipped content (the designed
+    // fail-closed state).
+    if !terrain_defs_done {
+        resolve_terrain_defs(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &terrain_defs,
+            &handles,
+        );
+    }
+    if !theme_defs_done {
+        resolve_theme_defs(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &theme_defs,
             &handles,
         );
     }
@@ -303,6 +348,105 @@ fn resolve_themes(
             // filename stem — the game's resolve_themes contract.
             let spec = (**spec).clone();
             registry.insert(spec.theme, ThemeTileCatalog::from_spec(spec));
+        }
+        commands.insert_resource(registry);
+    }
+}
+
+/// Resolve the loaded NEW per-theme `terrain/` folder into the UUID-keyed
+/// [`TerrainDefRegistry`], or fall back to an empty registry on a failed folder — the editor
+/// mirror of the game's `resolve_terrain_defs` (GTW-487). Keyed by each def's OWN
+/// [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid), not the filename. A folder
+/// member that is NOT a `RonAsset<TerrainDef>` (a theme-def member) yields no entry in this
+/// collection and is skipped — the recursive `Loaded` gate guarantees every member has
+/// landed, so a miss is a non-terrain member, not a pending def.
+fn resolve_terrain_defs(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    folders: &Assets<LoadedFolder>,
+    terrain_defs: &Assets<RonAsset<TerrainDef>>,
+    handles: &EditorLoadHandles,
+) {
+    let folder_state = asset_server.recursive_dependency_load_state(&*handles.terrain_model);
+
+    if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
+        warn!(
+            "GDTF editor Load: the new per-theme `terrain` folder failed to load; inserting an \
+             empty TerrainDefRegistry",
+        );
+        commands.insert_resource(TerrainDefRegistry::default());
+        return;
+    }
+
+    if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
+        let Some(folder) = folders.get(&*handles.terrain_model) else {
+            return;
+        };
+        let mut registry = TerrainDefRegistry::default();
+        for untyped in &folder.handles {
+            // Skip non-terrain members (theme defs live in a different collection) — the
+            // TypeId filter FIRST avoids the debug-assert panic a blind typed_debug_checked
+            // on a theme member would trip (the mixed-folder hazard the game side shares).
+            if untyped.type_id() != TypeId::of::<RonAsset<TerrainDef>>() {
+                continue;
+            }
+            let handle = untyped
+                .clone()
+                .typed_debug_checked::<RonAsset<TerrainDef>>();
+            let Some(def) = terrain_defs.get(&handle) else {
+                // A terrain-def member mid-load — retry next frame (do NOT publish a partial).
+                return;
+            };
+            let def = (**def).clone();
+            registry.insert(def.key, def);
+        }
+        commands.insert_resource(registry);
+    }
+}
+
+/// Resolve the loaded NEW per-theme `terrain/` folder into the UUID-keyed
+/// [`UuidThemeRegistry`], or fall back to an empty registry on a failed folder — the editor
+/// mirror of the game's `resolve_theme_defs` (GTW-487). Keyed by each def's OWN
+/// [`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid). A non-theme member (a terrain def) is
+/// skipped (no entry in this collection).
+fn resolve_theme_defs(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    folders: &Assets<LoadedFolder>,
+    theme_defs: &Assets<RonAsset<UuidThemeDef>>,
+    handles: &EditorLoadHandles,
+) {
+    let folder_state = asset_server.recursive_dependency_load_state(&*handles.terrain_model);
+
+    if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
+        warn!(
+            "GDTF editor Load: the new per-theme `terrain` folder failed to load; inserting an \
+             empty UuidThemeRegistry",
+        );
+        commands.insert_resource(UuidThemeRegistry::default());
+        return;
+    }
+
+    if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
+        let Some(folder) = folders.get(&*handles.terrain_model) else {
+            return;
+        };
+        let mut registry = UuidThemeRegistry::default();
+        for untyped in &folder.handles {
+            // Skip non-theme members (terrain defs live in a different collection) — TypeId
+            // filter FIRST to avoid the debug-assert panic on a wrong-type typed_debug_checked.
+            if untyped.type_id() != TypeId::of::<RonAsset<UuidThemeDef>>() {
+                continue;
+            }
+            let handle = untyped
+                .clone()
+                .typed_debug_checked::<RonAsset<UuidThemeDef>>();
+            let Some(def) = theme_defs.get(&handle) else {
+                // A theme member mid-load — retry next frame (do NOT publish a partial).
+                return;
+            };
+            let def = (**def).clone();
+            registry.insert(def.key, def);
         }
         commands.insert_resource(registry);
     }

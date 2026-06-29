@@ -17,6 +17,7 @@ use crate::states::load::{
         situation::resolve_situation,
         stat_tuning::resolve_stat_tuning,
         terrain::resolve_terrain,
+        terrain_model::{resolve_terrain_defs, resolve_theme_defs},
         themes::resolve_themes,
         tuning::resolve_tuning,
         weapons::resolve_weapons,
@@ -150,6 +151,8 @@ pub(in crate::states::load) fn poll_and_resolve(
         injuries_present,
         gangs_present,
         prefabs_present,
+        terrain_defs_present,
+        theme_defs_present,
     ) = (
         resolved.theme.is_some(),
         resolved.tuning.is_some(),
@@ -162,6 +165,8 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.injuries.is_some(),
         resolved.gangs.is_some(),
         resolved.prefabs.is_some(),
+        resolved.terrain_defs.is_some(),
+        resolved.theme_defs.is_some(),
     );
     let (
         Some(asset_server),
@@ -178,6 +183,8 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(weightings),
         Some(gang_rosters),
         Some(prefab_specs),
+        Some(terrain_defs),
+        Some(theme_defs),
         Some(handles),
     ) = (
         asset_server,
@@ -194,6 +201,8 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.weightings,
         collections.gang_rosters,
         collections.prefab_specs,
+        collections.terrain_defs,
+        collections.theme_defs,
         handles,
     )
     else {
@@ -325,6 +334,36 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &prefab_specs,
+            &handles,
+        );
+    }
+
+    // GTW-487: resolve the NEW per-theme `terrain/` folder into the UUID-keyed
+    // TerrainDefRegistry + UuidThemeRegistry, each on its OWN absence guard, independently
+    // of all other branches (the terrain/themes-branch precedent). These run BESIDE the
+    // legacy terrain/themes branches above — the new model loads from a DISTINCT
+    // `terrain/<theme>/` layout via dedicated `terrain_def.ron` / `terrain_theme.ron`
+    // extensions, so neither collides with the legacy `terrain.ron` / `theme.ron` loaders.
+    // Both registries are DORMANT after this slice — nothing consumes them yet (later
+    // GTW-476 switch tickets do); they are resolved and gated on purely so the new folder
+    // is verified loaded before `Load` exits. They resolve EMPTY against un-migrated
+    // shipped content (the designed fail-closed state, not a failure); a failed folder
+    // resolve falls back to empty registries, preserving the no-strand guarantee.
+    if !terrain_defs_present {
+        resolve_terrain_defs(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &terrain_defs,
+            &handles,
+        );
+    }
+    if !theme_defs_present {
+        resolve_theme_defs(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &theme_defs,
             &handles,
         );
     }

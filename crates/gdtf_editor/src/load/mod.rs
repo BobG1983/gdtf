@@ -13,7 +13,12 @@ mod transition;
 
 use bevy::{asset::AssetServer, prelude::*};
 use gdtf_assets::RonAssetAppExt;
-use gdtf_battle_sim::{armor::ArmorSpec, level::ThemeSpec, weapon::WeaponSpec};
+use gdtf_battle_sim::{
+    armor::ArmorSpec,
+    level::{ThemeSpec, UuidThemeDef},
+    terrain::def::TerrainDef,
+    weapon::WeaponSpec,
+};
 use gdtf_ui::theme::GdtfThemeSpec;
 pub(crate) use transition::transition_to_editing;
 
@@ -40,6 +45,12 @@ pub(crate) fn register_load(app: &mut App) {
         app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
         app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
         app.init_ron_asset_with_extensions::<ThemeSpec>(vec!["theme.ron"]);
+        // GTW-487: the NEW UUID-keyed terrain + theme models, each via its OWN dedicated
+        // compound extension so the per-theme `terrain/` folder dispatch is unambiguous and
+        // does NOT collide with the legacy `terrain.ron` / `theme.ron` loaders (the game's
+        // loader scheme — see the game LoadScenePlugin's terrain_model registration).
+        app.init_ron_asset_with_extensions::<TerrainDef>(vec!["terrain_def.ron"]);
+        app.init_ron_asset_with_extensions::<UuidThemeDef>(vec!["terrain_theme.ron"]);
     }
 
     app.add_systems(OnEnter(EditorState::Load), kick_off_editor_loads);

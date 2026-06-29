@@ -11,8 +11,8 @@ use gdtf_assets::RonAsset;
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::load::handles::{
-    EditorArmorFolderHandle, EditorLoadHandles, EditorThemeHandle, EditorThemesFolderHandle,
-    EditorWeaponsFolderHandle,
+    EditorArmorFolderHandle, EditorLoadHandles, EditorTerrainModelFolderHandle, EditorThemeHandle,
+    EditorThemesFolderHandle, EditorWeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root (the same shipped
@@ -35,6 +35,15 @@ const ARMOR_DIR: &str = "content/armor";
 /// GTW-409 theme tile catalog the palette/canvas children consume).
 const THEMES_DIR: &str = "content/themes";
 
+/// Path of the loose NEW per-theme terrain-model folder, relative to the asset source root
+/// (GTW-487) — its members are `*.terrain_def.ron` (`RonAsset<TerrainDef>`) +
+/// `*.terrain_theme.ron` (`RonAsset<UuidThemeDef>`) the resolve pass builds the UUID-keyed
+/// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
+/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) from. A NEW root DISTINCT
+/// from the legacy `content/themes`, with dedicated extensions that do not collide with the
+/// legacy `theme.ron` / `terrain.ron` loaders.
+const TERRAIN_MODEL_DIR: &str = "terrain";
+
 /// Kicks off the editor's theme-RON load and the weapon / armor / themes folder loads,
 /// storing their typed handles in [`EditorLoadHandles`].
 ///
@@ -56,11 +65,14 @@ pub(crate) fn kick_off_editor_loads(
     let weapons = EditorWeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
     let armor = EditorArmorFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
     let themes = EditorThemesFolderHandle::new(asset_server.load_folder(THEMES_DIR));
+    let terrain_model =
+        EditorTerrainModelFolderHandle::new(asset_server.load_folder(TERRAIN_MODEL_DIR));
 
     commands.insert_resource(EditorLoadHandles {
         theme,
         weapons,
         armor,
         themes,
+        terrain_model,
     });
 }

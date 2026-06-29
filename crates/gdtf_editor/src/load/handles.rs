@@ -72,19 +72,42 @@ impl EditorThemesFolderHandle {
     }
 }
 
+/// Typed handle to the loaded NEW per-theme `terrain/` folder (GTW-487) — its members are
+/// `RonAsset<TerrainDef>` (`*.terrain_def.ron`) + `RonAsset<UuidThemeDef>`
+/// (`*.terrain_theme.ron`) the poll/resolve pass builds the UUID-keyed
+/// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
+/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) from. ONE recursive
+/// `load_folder` of `terrain/` feeds both — the new UUID-keyed models load BESIDE the legacy
+/// `content/themes` catalog above.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(crate) struct EditorTerrainModelFolderHandle(Handle<LoadedFolder>);
+
+impl EditorTerrainModelFolderHandle {
+    /// Wrap the new per-theme terrain-model-folder handle the
+    /// [`AssetServer`](bevy::asset::AssetServer) returns.
+    #[must_use]
+    pub(crate) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// The editor's `Load`-scoped asset handles, inserted by the kick-off system and read by
 /// the poll/resolve system. Removed `OnExit(EditorState::Load)`.
 #[derive(Resource)]
 pub(crate) struct EditorLoadHandles {
     /// The theme-RON handle (resolves to [`GdtfTheme`](gdtf_ui::theme::GdtfTheme)).
-    pub(crate) theme:   EditorThemeHandle,
+    pub(crate) theme:         EditorThemeHandle,
     /// The weapons-folder handle (resolves to the
     /// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry)).
-    pub(crate) weapons: EditorWeaponsFolderHandle,
+    pub(crate) weapons:       EditorWeaponsFolderHandle,
     /// The armor-folder handle (resolves to the
     /// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry)).
-    pub(crate) armor:   EditorArmorFolderHandle,
+    pub(crate) armor:         EditorArmorFolderHandle,
     /// The themes-folder handle (resolves to the
     /// [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry)).
-    pub(crate) themes:  EditorThemesFolderHandle,
+    pub(crate) themes:        EditorThemesFolderHandle,
+    /// The NEW per-theme `terrain/` folder handle (GTW-487 — resolves to the UUID-keyed
+    /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
+    /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry)).
+    pub(crate) terrain_model: EditorTerrainModelFolderHandle,
 }

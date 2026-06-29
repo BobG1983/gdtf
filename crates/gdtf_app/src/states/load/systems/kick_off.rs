@@ -10,8 +10,8 @@ use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
     ArmorsFolderHandle, FontFolderHandle, GangsFolderHandle, InjuriesFolderHandle, LoadHandles,
-    PrefabsFolderHandle, SituationHandle, StatTuningHandle, TerrainFolderHandle, ThemeHandle,
-    ThemesFolderHandle, TuningHandle, WeaponsFolderHandle,
+    PrefabsFolderHandle, SituationHandle, StatTuningHandle, TerrainFolderHandle,
+    TerrainModelFolderHandle, ThemeHandle, ThemesFolderHandle, TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -78,6 +78,16 @@ const GANGS_DIR: &str = "content/gangs";
 /// weapons/armor/terrain/gangs precedent.
 const MAPS_DIR: &str = "content/maps";
 
+/// Path of the loose NEW per-theme terrain-model folder, relative to the asset source root
+/// (GTW-487 — the GTW-484/485 UUID-keyed terrain + theme defs under the per-theme layout
+/// `terrain/<theme>/<tile>.terrain_def.ron` + `terrain/<theme>/<theme>.terrain_theme.ron`).
+/// A NEW root directory DISTINCT from the legacy `content/terrain` + `content/themes`
+/// folders; one recursive `load_folder` walks every `<theme>/` subfolder, and the dedicated
+/// compound extensions (`terrain_def.ron` / `terrain_theme.ron`) keep the `.ron` loader
+/// dispatch unambiguous — crucially WITHOUT colliding with the legacy `terrain.ron` /
+/// `theme.ron` loaders, which stay live (the C5 constraint).
+const TERRAIN_MODEL_DIR: &str = "terrain";
+
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
 ///
@@ -134,6 +144,7 @@ pub(in crate::states::load) fn kick_off_loads(
     let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
     let gangs = GangsFolderHandle::new(asset_server.load_folder(GANGS_DIR));
     let prefabs = PrefabsFolderHandle::new(asset_server.load_folder(MAPS_DIR));
+    let terrain_model = TerrainModelFolderHandle::new(asset_server.load_folder(TERRAIN_MODEL_DIR));
 
     commands.insert_resource(LoadHandles {
         theme,
@@ -148,5 +159,6 @@ pub(in crate::states::load) fn kick_off_loads(
         injuries,
         gangs,
         prefabs,
+        terrain_model,
     });
 }

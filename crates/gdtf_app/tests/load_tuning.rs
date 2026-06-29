@@ -127,6 +127,11 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
     // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
+    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
 

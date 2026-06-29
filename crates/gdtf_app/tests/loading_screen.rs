@@ -85,6 +85,11 @@ fn app_driven_into_game() -> App {
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
+    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
 
     let at_menu = advance_until(
         &mut app,

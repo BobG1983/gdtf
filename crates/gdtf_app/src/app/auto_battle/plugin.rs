@@ -49,8 +49,8 @@ use gdtf_battle_sim::{
     armor::ArmorRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
-    level::{PrefabRegistry, ThemeCatalogRegistry},
-    terrain::piece::TerrainRegistry,
+    level::{PrefabRegistry, ThemeCatalogRegistry, UuidThemeRegistry},
+    terrain::{def::TerrainDefRegistry, piece::TerrainRegistry},
     tuning::CombatTuning,
     weapon::WeaponRegistry,
 };
@@ -288,6 +288,15 @@ crate::support_item! {
             // gated on `is_none()` exactly like the other registries (else the empty seed
             // would shadow `resolve_prefabs`, which only runs while the registry is ABSENT).
             commands.insert_resource(PrefabRegistry::default());
+            // GTW-487: the NEW UUID-keyed TerrainDefRegistry + UuidThemeRegistry are
+            // gate-blocking too; seed the empty fallbacks when there is no AssetServer so
+            // headless walks still reach Intro (the A1 / AC3b pattern). With an AssetServer
+            // present the real per-theme `terrain/` resolve must win — so this is gated on
+            // `is_none()` exactly like the other registries (else the empty seed would shadow
+            // resolve_terrain_defs / resolve_theme_defs, which only run while their registry
+            // is ABSENT). They resolve EMPTY against un-migrated shipped content either way.
+            commands.insert_resource(TerrainDefRegistry::default());
+            commands.insert_resource(UuidThemeRegistry::default());
             commands.insert_resource(LoadedSituation::new(
                 gdtf_battle_sim::situation::Situation::default(),
             ));
