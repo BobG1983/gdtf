@@ -17,7 +17,7 @@
 //! `OnEnter` it runs the sim's space-packing pipeline
 //! ([`assemble_placement`](gdtf_battle_sim::procgen::assemble_placement) +
 //! [`fill_placement`](gdtf_battle_sim::procgen::fill_placement)) against the loaded
-//! [`PrefabRegistry`](gdtf_battle_sim::PrefabRegistry) for the loaded situation's theme +
+//! [`PrefabRegistry2`](gdtf_battle_sim::PrefabRegistry2) for the loaded situation's theme +
 //! grid-size + a seed, and holds the ordered placement (player, enemy, then fill) in the
 //! state-scoped [`ProcgenViz`](model::ProcgenViz) model. STEP reveals the next prefab quad;
 //! AUTO reveals them all. The player-spawn quad is tinted GREEN, the enemy-spawn quad RED, and

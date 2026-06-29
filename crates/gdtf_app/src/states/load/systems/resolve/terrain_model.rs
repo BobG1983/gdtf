@@ -1,28 +1,27 @@
-//! GTW-487 (child T05a of the GTW-476 data-model refactor): builds the NEW UUID-keyed
+//! GTW-487 (child T05a of the GTW-476 data-model refactor): builds the UUID-keyed
 //! [`TerrainDefRegistry`] + [`UuidThemeRegistry`] from the per-theme directory layout
 //! `assets/terrain/<theme>/`, plus the LIVE hot-reload that rebuilds each on a
 //! `*.terrain_def.ron` / `*.terrain_theme.ron` edit.
 //!
-//! These loaders run BESIDE the legacy [`resolve_terrain`](super::terrain::resolve_terrain)
-//! / [`resolve_themes`](super::themes::resolve_themes) — they do NOT replace them. The new
-//! per-theme folder carries BOTH new asset types (one recursive `load_folder` of `terrain/`
-//! fans every member out to the matching dedicated-extension loader), so a single
-//! [`TerrainModelFolderHandle`] feeds both resolves and both redrives.
+//! **GTW-494 (child T08): the SOLE terrain / theme loaders.** These loaders were introduced
+//! beside the legacy flat-dir `resolve_terrain` / `resolve_themes` (the GTW-394 / GTW-409
+//! [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) /
+//! [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry) model); GTW-494
+//! RETIRED those legacy loaders, so these are now the ONLY terrain / theme resolvers in the
+//! Load flow (the sim + procgen + presenter consume the new registries as of
+//! GTW-491/492/493). The per-theme folder carries BOTH new asset types (one recursive
+//! `load_folder` of `terrain/` fans every member out to the matching dedicated-extension
+//! loader), so a single [`TerrainModelFolderHandle`] feeds both resolves and both redrives.
 //!
-//! **Why a distinct `terrain_def.ron` extension (not the ticket's literal `terrain.ron`):**
+//! **The dedicated `terrain_def.ron` / `terrain_theme.ron` extensions + the `TypeId` filter:**
 //! Bevy 0.19 dispatches a `load_folder` member PURELY by extension
 //! (`bevy_asset::server::loaders::get_by_path` → last loader registered for that extension,
-//! directory-agnostic). The legacy `TerrainSpec` loader already claims `terrain.ron`, so a
-//! second `terrain.ron` loader for [`TerrainDef`] would clobber EVERY `.terrain.ron` load —
-//! including the legacy `content/terrain/` folder — and resolve the OLD `TerrainRegistry`
-//! empty, violating the C5 "old loaders unchanged + live" constraint. The new model
-//! therefore claims the DISTINCT, unambiguous `terrain_def.ron`; the theme side's
-//! `terrain_theme.ron` is already unique. When a later switch ticket (T06) retires the
-//! legacy loader, the new one can reclaim `terrain.ron`.
+//! directory-agnostic). The dedicated extensions keep dispatch unambiguous; ONE recursive
+//! `load_folder("terrain")` fans out BOTH `RonAsset<TerrainDef>` and `RonAsset<UuidThemeDef>`
+//! members, so each build helper filters by [`TypeId`] before typing the member.
 //!
-//! Unlike the legacy loaders (which key by stripped filename stem), each new def carries its
-//! OWN UUID inside ([`TerrainDef::key`] / [`UuidThemeDef::key`]), so the registries key by
-//! that def-owned UUID — the filename is irrelevant to the key.
+//! Each def carries its OWN UUID inside ([`TerrainDef::key`] / [`UuidThemeDef::key`]), so the
+//! registries key by that def-owned UUID — the filename is irrelevant to the key.
 
 use core::any::TypeId;
 
@@ -39,9 +38,9 @@ use gdtf_battle_sim::{
 use crate::states::load::resources::{ActiveTerrainModelFolderHandle, LoadHandles};
 
 /// GTW-487: builds the UUID-keyed [`TerrainDefRegistry`] from the loaded per-theme
-/// `assets/terrain/` folder, mirroring the GTW-394 terrain resolve shape
-/// ([`resolve_terrain`](super::terrain::resolve_terrain)) but keying by each def's OWN
-/// [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid) instead of the filename stem.
+/// `assets/terrain/` folder, keying by each def's OWN
+/// [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid) (the filename is irrelevant).
+/// GTW-494: the SOLE terrain resolve (the legacy flat-dir `resolve_terrain` was retired).
 ///
 /// Called only while no [`TerrainDefRegistry`] resource exists yet (the caller's own-absence
 /// guard), independently of the other load branches:
@@ -90,7 +89,7 @@ pub(super) fn resolve_terrain_defs(
             return;
         };
 
-        // Insert the built registry — like the legacy TerrainRegistry it persists past
+        // Insert the built registry — like the other Load registries it persists past
         // OnExit(Load) (it is NOT removed in cleanup).
         commands.insert_resource(registry);
         // Insert the PERSISTENT folder handle alongside the registries (idempotent — the
@@ -230,8 +229,8 @@ fn build_theme_def_registry(
 
 /// `Update`: rebuild the [`TerrainDefRegistry`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
-/// `assets/terrain/**/*.terrain_def.ron` — the GTW-487 LIVE new-terrain-def hot-reload, the
-/// new-model mirror of [`redrive_terrain_on_asset_event`](super::terrain::redrive_terrain_on_asset_event).
+/// `assets/terrain/**/*.terrain_def.ron` — the GTW-487 LIVE terrain-def hot-reload, mirroring
+/// the gang hot-reload pattern ([`redrive_gangs_on_asset_event`](super::gangs::redrive_gangs_on_asset_event)).
 ///
 /// A folder load fans out into one `RonAsset<TerrainDef>` asset PER def file, and a hot edit
 /// fires an [`AssetEvent`](bevy::asset::AssetEvent)`::Modified` for THAT member asset (not

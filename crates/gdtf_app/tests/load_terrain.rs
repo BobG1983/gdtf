@@ -1,42 +1,38 @@
-//! GTW-394 (slice B): `AppState::Load` preloads the `assets/content/terrain/` folder through
-//! the `RonAsset<TerrainSpec>` loader (guarded for headless), builds a name-keyed
-//! `TerrainRegistry` from the loaded terrain files (keyed by filename stem), and gates
-//! the Load→Intro transition on it — so the machine never leaves `Load` before the
-//! terrain folder is verified loaded. This mirrors the GTW-269 armor load-and-build
-//! path exactly. The registry is DORMANT after this slice (nothing consumes it yet —
-//! the downstream generation epic does); it is resolved and gated on purely so it is
-//! present when `Load` exits.
+//! GTW-494 (child T08 of the GTW-476 refactor): `AppState::Load` preloads the per-theme
+//! `assets/terrain/<theme>/` folder through the GTW-487 `RonAsset<TerrainDef>` loader
+//! (guarded for headless), builds the UUID-keyed [`TerrainDefRegistry`] from the loaded
+//! `*.terrain_def.ron` files (keyed by each def's OWN UUID), and gates the Load→Intro
+//! transition on it — so the machine never leaves `Load` before the per-theme terrain
+//! folder is verified loaded.
 //!
-//! Two tiers (mirroring the armor harness split, `load_armor.rs`):
+//! This file was MIGRATED off the retired flat-dir `resolve_terrain` /
+//! [`TerrainRegistry`](gdtf_battle_sim::terrain::piece::TerrainRegistry) (the GTW-394 model)
+//! onto the UUID model: GTW-494 removed the old game-side loader, so the
+//! [`TerrainDefRegistry`] is now the ONLY terrain resolver in the Load flow (the sim +
+//! procgen + presenter consume it as of GTW-491/492/493).
 //!
-//! - **Tier (a)** — `MinimalPlugins` via [`GdtfTestAppBuilder`]: there is no
-//!   `AssetServer`, so the terrain-loader registration + folder kick-off must no-op
-//!   without panicking (the `asset_server.is_some()` guard, bevy-traps rule 1).
-//!   Injecting all gate resources (theme + tuning + stat-tuning + weapons + situation
-//!   + armor + terrain) drives the real gated transition; the app advances past `Load`,
-//!     and no registry is RESOLVED from disk (nothing to load).
+//! Two tiers:
+//!
+//! - **Tier (a)** — `MinimalPlugins` via [`GdtfTestAppBuilder`]: there is no `AssetServer`,
+//!   so the loader registration + folder kick-off must no-op without panicking (the
+//!   `asset_server.is_some()` guard, bevy-traps rule 1). Injecting all gate resources drives
+//!   the real gated transition; a companion test withholds the new terrain registry to prove
+//!   it is a genuine gate-blocking resource.
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
-//!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace
-//!   `assets/`. The good path loads `assets/content/terrain/*.terrain.ron` into a
-//!   `TerrainRegistry` keyed by file stem (`deck_floor`, `supply_crate`, etc.).
+//!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace `assets/`. The
+//!   good path loads `assets/terrain/<theme>/*.terrain_def.ron` into a [`TerrainDefRegistry`]
+//!   keyed by each def's OWN UUID, and a KNOWN authored UUID resolves.
 //!
-//! These are *pin-discriminating*: each assertion re-encodes one acceptance criterion
-//! so a regression turns the test red. They are VALUE-AGNOSTIC (only the registry's
-//! PRESENCE + that it is keyed by the authored filename stems), so a tuning edit never
-//! reddens them — the authored terrain magnitudes are tuning DATA, NOT pinned by tests
-//! (the brittle-test rule; see [`TerrainSpec`](gdtf_battle_sim::terrain::piece::TerrainSpec)).
-//! The field-to-variant routing MECHANISM is covered by the fixture-based sim round-trip
-//! (`terrain::piece::test::spec_registry`); this harness proves the REAL
-//! `assets/content/terrain/` folder loads through the Load code path and that its authored
-//! KEYS resolve.
+//! VALUE-AGNOSTIC (gate 4a): asserts presence / known-UUID resolution / gate-blocking ONLY —
+//! no authored terrain magnitudes pinned.
 
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     injuries::InjuryRegistry,
-    level::ThemeCatalogRegistry,
+    level::UuidThemeRegistry,
     situation::Situation,
-    terrain::piece::{TerrainName, TerrainRegistry},
+    terrain::def::{TerrainDefRegistry, TerrainUuid},
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
 };
@@ -51,13 +47,24 @@ use gdtf_ui::theme::{GdtfTheme, default_theme};
 const TRANSITION_BUDGET: u32 = 32;
 
 /// Generous SAFETY-NET cap for the real-asset (Tier b) `advance_until` waits gated
-/// on an async asset load resolving. The terrain folder load shares the `AssetServer`
-/// with the theme / situation / tuning / weapons / armor + the presenter's startup
-/// tile-sheet loads (the full scene stack is registered in this harness), so under
-/// parallel `cargo` contention the async resolve has NO fixed frame count. These waits
-/// key off the resolved SIGNAL; the cap is a safety net against a genuine never-resolve
-/// hang, not a timing budget (GTW-305).
+/// on an async asset load resolving. The per-theme `terrain/` folder load shares the
+/// `AssetServer` with the theme / situation / tuning / weapons / armor + the presenter's
+/// startup tile-sheet loads (the full scene stack is registered in this harness), so under
+/// parallel `cargo` contention the async resolve has NO fixed frame count. These waits key
+/// off the resolved SIGNAL; the cap is a safety net against a genuine never-resolve hang, not
+/// a timing budget (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
+
+/// The migrated `industrial_hive` `deck_floor` [`TerrainUuid`] (`Uuid::from_u128(0x0184_0a91_0004)`).
+const fn deck_floor_uuid() -> TerrainUuid {
+    TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_0004))
+}
+
+/// The migrated `industrial_hive` `bulkhead_wall` [`TerrainUuid`]
+/// (`Uuid::from_u128(0x0184_0a91_0002)`).
+const fn bulkhead_wall_uuid() -> TerrainUuid {
+    TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_0002))
+}
 
 /// Reads the current [`AppState`].
 fn app_state(app: &bevy::app::App) -> AppState {
@@ -67,15 +74,42 @@ fn app_state(app: &bevy::app::App) -> AppState {
         .clone()
 }
 
-/// AC (tier a) — under `MinimalPlugins` there is no `AssetServer`, so entering `Load`
-/// must not panic: the terrain-loader registration (`init_ron_asset_with_extensions::<TerrainSpec>`)
-/// and the `load_folder("terrain")` kick-off both guard on a missing server and no-op.
-/// The machine still advances past `Load` once all gate resources are injected
-/// (standing in for all resolves completing), proving the guard holds.
+/// Seeds every gate-blocking resource EXCEPT the one the caller withholds via `seed_terrain`
+/// — the tier (a) harness helper standing in for all resolves completing under
+/// `MinimalPlugins` (no `AssetServer`).
+fn seed_gate_resources(app: &mut bevy::app::App, seed_terrain: bool) {
+    app.world_mut().insert_resource(default_theme());
+    app.world_mut().insert_resource(CombatTuning::default());
+    app.world_mut().insert_resource(GangerStatTuning::default());
+    app.world_mut().insert_resource(WeaponRegistry::default());
+    app.world_mut().insert_resource(ArmorRegistry::default());
+    app.world_mut().insert_resource(InjuryRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
+    // GTW-489: the gate-blocking UUID-keyed PrefabRegistry2.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
+    // GTW-487: the gate-blocking UUID-keyed UuidThemeRegistry.
+    app.world_mut()
+        .insert_resource(UuidThemeRegistry::default());
+    app.world_mut()
+        .insert_resource(LoadedSituation::new(Situation::default()));
+    if seed_terrain {
+        // GTW-487 / GTW-494: the gate-blocking UUID-keyed TerrainDefRegistry.
+        app.world_mut()
+            .insert_resource(TerrainDefRegistry::default());
+    }
+}
+
+/// AC (tier a) — under `MinimalPlugins` there is no `AssetServer`, so entering `Load` must
+/// not panic: the loader registration (`init_ron_asset_with_extensions::<TerrainDef>`) and
+/// the `load_folder("terrain")` kick-off both guard on a missing server and no-op. The
+/// machine still advances past `Load` once all gate resources are injected (standing in for
+/// all resolves completing), proving the guard holds.
 ///
-/// Pin: if the terrain-loader registration or the `load_folder` kick-off ever ran
-/// without the `asset_server.is_some()` / `Option<Res<AssetServer>>` guard, entering
-/// `Load` would panic instead of resting / advancing (bevy-traps rule 1).
+/// Pin: if the loader registration or the `load_folder` kick-off ever ran without the
+/// `asset_server.is_some()` / `Option<Res<AssetServer>>` guard, entering `Load` would panic
+/// instead of resting / advancing (bevy-traps rule 1).
 #[test]
 fn terrain_loader_no_ops_cleanly_without_asset_server() {
     let mut app = GdtfTestAppBuilder::new()
@@ -91,37 +125,9 @@ fn terrain_loader_no_ops_cleanly_without_asset_server() {
         "with no AssetServer the kick-off must no-op and the machine rests in Load, not panic",
     );
 
-    // Stand in for the theme + tuning + weapons + situation + armor + terrain resolves
-    // completing (no AssetServer under MinimalPlugins), driving the real gated transition
-    // (GTW-394: the TerrainRegistry is required before Load transitions, alongside the
-    // GTW-257 WeaponRegistry, GTW-269 ArmorRegistry, and GTW-261 LoadedSituation).
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-384: the GangerStatTuning is a gate-blocking resource too (the sim derives
-    // ganger stats from it), so seed it alongside the others to reach Intro.
-    app.world_mut().insert_resource(GangerStatTuning::default());
-    app.world_mut().insert_resource(WeaponRegistry::default());
-    app.world_mut().insert_resource(ArmorRegistry::default());
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
-    app.world_mut().insert_resource(InjuryRegistry::default());
-    // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
-    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
-    app.world_mut()
-        .insert_resource(LoadedSituation::new(Situation::default()));
+    // Stand in for every resolve completing (no AssetServer under MinimalPlugins), driving the
+    // real gated transition (GTW-487: the TerrainDefRegistry is required before Load exits).
+    seed_gate_resources(&mut app, true);
 
     let reached_intro = advance_until(
         &mut app,
@@ -130,38 +136,28 @@ fn terrain_loader_no_ops_cleanly_without_asset_server() {
     );
     assert!(
         reached_intro,
-        "with a GdtfTheme + CombatTuning + GangerStatTuning + WeaponRegistry + ArmorRegistry \
-         + TerrainRegistry + LoadedSituation present, Load must advance to Intro within \
-         {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
+        "with every gate resource (incl. the UUID-keyed TerrainDefRegistry) present, Load must \
+         advance to Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 }
 
-/// AC (companion, tier a) — the Load→Intro transition GATES on the `TerrainRegistry`:
-/// with all other gate resources present but NO terrain registry (and no `AssetServer`
-/// to resolve one), the machine must stay in `Load` for the whole budget. Proves the
-/// terrain registry is a genuine gate-blocking resource (the machine never leaves `Load`
-/// before the terrain folder is verified loaded).
+/// AC (companion, tier a) — the Load→Intro transition GATES on the [`TerrainDefRegistry`]:
+/// with all other gate resources present but NO terrain registry (and no `AssetServer` to
+/// resolve one), the machine must stay in `Load` for the whole budget. Proves the UUID-keyed
+/// terrain registry is a genuine gate-blocking resource.
 ///
 /// Pin: this fails if the transition ever fired without the terrain registry present
-/// (regressing the GTW-394 gate clause), which would let `Load` exit before the terrain
-/// folder resolved.
+/// (regressing the GTW-487 gate clause), which would let `Load` exit before the per-theme
+/// terrain folder resolved.
 #[test]
-fn load_does_not_leave_without_a_terrain_registry() {
+fn load_does_not_leave_without_a_terrain_def_registry() {
     let mut app = GdtfTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    // All other gate resources present, but the TerrainRegistry deliberately withheld.
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-384: seed GangerStatTuning alongside others so terrain is the ONLY gate missing.
-    app.world_mut().insert_resource(GangerStatTuning::default());
-    app.world_mut().insert_resource(WeaponRegistry::default());
-    app.world_mut().insert_resource(ArmorRegistry::default());
-    // TerrainRegistry deliberately ABSENT — the gate being tested.
-    app.world_mut()
-        .insert_resource(LoadedSituation::new(Situation::default()));
+    // All other gate resources present, but the TerrainDefRegistry deliberately withheld.
+    seed_gate_resources(&mut app, false);
 
     let left_load = advance_until(
         &mut app,
@@ -171,61 +167,56 @@ fn load_does_not_leave_without_a_terrain_registry() {
 
     assert!(
         !left_load,
-        "Load must NOT leave while the TerrainRegistry is absent; it left to {:?}",
+        "Load must NOT leave while the TerrainDefRegistry is absent; it left to {:?}",
         app_state(&app),
     );
     assert_eq!(
         app_state(&app),
         AppState::Load,
-        "with no TerrainRegistry present, the machine stays in Load (the terrain folder must be \
-         verified loaded before Load exits)",
+        "with no TerrainDefRegistry present, the machine stays in Load (the per-theme terrain \
+         folder must be verified loaded before Load exits)",
     );
 }
 
-/// AC (tier b) / GTW-394 AC — with a real `AssetServer` rooted at the workspace
-/// `assets/`, entering `Load` loads `assets/content/terrain/*.terrain.ron` and builds a
-/// `TerrainRegistry` keyed by each terrain file's filename stem (with the `.terrain`
-/// infix stripped). Proves the folder loaded into the registry keyed by filename (the
-/// canonical `deck_floor` / `supply_crate` keys resolve), and that the Load gate
-/// waited for it (the machine reaches Intro with a registry present).
+/// AC (tier b) / GTW-494 C2 — with a real `AssetServer` rooted at the workspace `assets/`,
+/// entering `Load` loads `assets/terrain/<theme>/*.terrain_def.ron` and builds a
+/// [`TerrainDefRegistry`] keyed by each def's OWN UUID through the ACTUAL `resolve_terrain_defs`
+/// branch. Proves the folder loaded into the registry (non-empty + known authored UUIDs
+/// resolve), and that the Load gate waited for it (the machine reaches Intro with a registry
+/// present).
 ///
-/// Does NOT pin any authored magnitude — those are tuning DATA (the brittle-test rule);
-/// the field-to-variant routing mechanism is covered by the fixture-based sim round-trip
-/// (`terrain::piece::test::spec_registry`).
+/// Does NOT seed [`TerrainDefRegistry::default()`] — seeding would mask the very regression
+/// under test. Existence of the resource here proves `resolve_terrain_defs` published it from
+/// the real folder (not a hand-seeded default). VALUE-AGNOSTIC: presence + known-UUID
+/// resolution only.
 #[test]
-fn real_asset_resolves_terrain_registry_keyed_by_filename() {
+fn real_asset_resolves_terrain_def_registry_by_uuid() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    // Signal-poll the async terrain folder load: wait until the TerrainRegistry is
-    // inserted, not a fixed frame count. Cap is a safety net (GTW-305).
-    advance_until_resource_exists::<TerrainRegistry>(&mut app, LOAD_SAFETY_NET);
+    // Signal-poll the async per-theme terrain folder load: wait until the TerrainDefRegistry
+    // is inserted, not a fixed frame count. Cap is a safety net (GTW-305).
+    advance_until_resource_exists::<TerrainDefRegistry>(&mut app, LOAD_SAFETY_NET);
 
-    // The registry is keyed by the authored filename stems (with the `.terrain` infix
-    // stripped): `deck_floor.terrain.ron` keys `deck_floor`; `supply_crate.terrain.ron`
-    // keys `supply_crate`. Each authored key resolves to its loaded spec.
-    if let Some(registry) = app.world().get_resource::<TerrainRegistry>() {
+    if let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() {
         assert!(
             !registry.is_empty(),
-            "the resolved TerrainRegistry must carry the authored (non-empty) terrain pieces",
+            "the resolved TerrainDefRegistry must carry the migrated (non-empty) terrain defs",
         );
         assert!(
-            registry
-                .spec(&TerrainName::new("deck_floor".to_owned()))
-                .is_some(),
-            "the registry must hold the `deck_floor` piece (keyed by deck_floor.terrain.ron's stem)",
+            registry.def(&deck_floor_uuid()).is_some(),
+            "the registry must resolve the known authored `deck_floor` TerrainUuid (keyed by the \
+             def's own UUID, not the filename) — the C2 known-UUID-resolves contract",
         );
         assert!(
-            registry
-                .spec(&TerrainName::new("supply_crate".to_owned()))
-                .is_some(),
-            "the registry must hold the `supply_crate` piece (keyed by supply_crate.terrain.ron's stem)",
+            registry.def(&bulkhead_wall_uuid()).is_some(),
+            "the registry must resolve the known authored `bulkhead_wall` TerrainUuid",
         );
     }
 
     // The Load gate WAITED for the registry: the machine reaches Intro, and a
-    // TerrainRegistry is present when it does (GTW-394 gate clause).
+    // TerrainDefRegistry is present when it does (GTW-487 gate clause).
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
@@ -233,13 +224,13 @@ fn real_asset_resolves_terrain_registry_keyed_by_filename() {
     );
     assert!(
         reached_intro,
-        "with a real AssetServer, Load must reach Intro once theme + tuning + weapons + armor \
-         + terrain resolve; last AppState was {:?}",
+        "with a real AssetServer, Load must reach Intro once every folder (incl. the per-theme \
+         terrain/) resolves; last AppState was {:?}",
         app_state(&app),
     );
     assert!(
-        app.world().get_resource::<TerrainRegistry>().is_some(),
-        "a TerrainRegistry must be present when Load reaches Intro (the gate waited for it)",
+        app.world().get_resource::<TerrainDefRegistry>().is_some(),
+        "a TerrainDefRegistry must be present when Load reaches Intro (the gate waited for it)",
     );
     assert!(
         app.world().get_resource::<GdtfTheme>().is_some(),

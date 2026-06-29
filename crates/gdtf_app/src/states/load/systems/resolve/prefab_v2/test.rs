@@ -1,7 +1,8 @@
 //! GTW-489 hot-reload + C2 tests for the NEW UUID-keyed v2 prefab redrive, mirroring the
-//! legacy prefab redrive tests ([`prefabs::test`](super::super::prefabs)): a `Modified`
+//! surviving gang redrive tests ([`gangs::test`](super::super::gangs)): a `Modified`
 //! `AssetEvent` for a member of the persistent maps folder rebuilds the
 //! [`PrefabRegistry2`] from the folder handle and emits the pin-discriminating `info!` line.
+//! (GTW-494 retired the legacy `resolve::prefabs` loader these once mirrored.)
 //!
 //! Crucially these tests exercise the C2 contract — an openingless (ZERO-placement)
 //! [`PrefabSpecV2`] is INCLUDED in the registry (the v2 schema has no edge-opening

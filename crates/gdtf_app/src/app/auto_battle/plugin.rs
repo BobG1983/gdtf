@@ -49,8 +49,8 @@ use gdtf_battle_sim::{
     armor::ArmorRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
-    level::{PrefabRegistry, PrefabRegistry2, ThemeCatalogRegistry, UuidThemeRegistry},
-    terrain::{def::TerrainDefRegistry, piece::TerrainRegistry},
+    level::{PrefabRegistry2, UuidThemeRegistry},
+    terrain::def::TerrainDefRegistry,
     tuning::CombatTuning,
     weapon::WeaponRegistry,
 };
@@ -200,14 +200,16 @@ crate::support_item! {
     /// machine can traverse `Load` even without a resolved asset stack.
     ///
     /// Inserts [`default_theme`] + [`CombatTuning::default`] unconditionally, and an empty
-    /// [`WeaponRegistry`] + an empty [`ArmorRegistry`] + an empty [`TerrainRegistry`] + a
-    /// default (EMPTY) [`LoadedSituation`] **only when no [`AssetServer`] is present** (a
-    /// headless / asset-less build). Under the real GUI launch the `Load` scene later
-    /// `insert_resource`-overwrites the theme / tuning with the shipped assets (the real theme
-    /// + tuning), and — crucially — its `poll_and_resolve` only RESOLVES the registries /
-    /// situation from `assets/content/weapons/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
-    /// `assets/content/terrain/*.terrain.ron` + `situations/skirmish.ron` while those resources are
-    /// still ABSENT, so the empty seeds must NOT be present for the real assets to win.
+    /// [`WeaponRegistry`] + an empty [`ArmorRegistry`] + the empty UUID-keyed
+    /// [`TerrainDefRegistry`] / [`UuidThemeRegistry`] / [`PrefabRegistry2`] + a default (EMPTY)
+    /// [`LoadedSituation`] **only when no [`AssetServer`] is present** (a headless / asset-less
+    /// build). Under the real GUI launch the `Load` scene later `insert_resource`-overwrites
+    /// the theme / tuning with the shipped assets (the real theme + tuning), and — crucially —
+    /// its `poll_and_resolve` only RESOLVES the registries / situation from
+    /// `assets/content/weapons/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
+    /// `assets/terrain/<theme>/*.terrain_def.ron` + `situations/skirmish.ron` while those
+    /// resources are still ABSENT, so the empty seeds must NOT be present for the real assets
+    /// to win.
     /// Runs once in `Startup` (before the first `Update`, hence before `Load` resolves), so
     /// the unconditional seeds are in place no matter how the assets resolve, and the
     /// gated ones are absent whenever a real asset stack can resolve the genuine articles.
@@ -227,10 +229,11 @@ crate::support_item! {
     /// being ABSENT (SYMMETRIC seeds) means: with an asset stack present (the real GUI
     /// launch) NONE of the empty fallbacks is inserted, so `poll_and_resolve` WAITS for and
     /// populates the real skirmish + the real weapon registry + the real armor registry + the
-    /// real terrain registry; without one (a headless asset-less drive) all empty fallbacks
-    /// are still seeded so the machine keeps traversing `Load` and the GTW-257 / GTW-269 /
-    /// GTW-394 Load→Intro gate (which requires a [`WeaponRegistry`], an [`ArmorRegistry`],
-    /// and a [`TerrainRegistry`]) is satisfied. The
+    /// real UUID-keyed terrain / theme / prefab registries; without one (a headless asset-less
+    /// drive) all empty fallbacks are still seeded so the machine keeps traversing `Load` and
+    /// the GTW-257 / GTW-269 / GTW-487 / GTW-489 Load→Intro gate (which requires a
+    /// [`WeaponRegistry`], an [`ArmorRegistry`], a [`TerrainDefRegistry`], a
+    /// [`UuidThemeRegistry`], and a [`PrefabRegistry2`]) is satisfied. The
     /// unconditional theme + tuning seeds are
     /// overwritten in place by the resolved assets (their resolve is unconditional), so
     /// they need no such gate.
@@ -255,14 +258,6 @@ crate::support_item! {
         if asset_server.is_none() {
             commands.insert_resource(WeaponRegistry::default());
             commands.insert_resource(ArmorRegistry::default());
-            // GTW-394: the TerrainRegistry is a gate-blocking resource; seed the empty
-            // fallback when there is no AssetServer so headless walks still reach Intro
-            // (the A1 / AC3b pattern for the terrain registry).
-            commands.insert_resource(TerrainRegistry::default());
-            // GTW-409: the ThemeCatalogRegistry is a gate-blocking resource too; seed the
-            // empty fallback when there is no AssetServer so headless walks still reach
-            // Intro (the A1 / AC3b pattern for the theme-catalog registry).
-            commands.insert_resource(ThemeCatalogRegistry::default());
             // GTW-437: the InjuryRegistry is a gate-blocking resource too; seed the empty
             // fallback when there is no AssetServer so headless walks still reach Intro
             // (the A1 / AC3b pattern for the injury registry).
@@ -281,28 +276,22 @@ crate::support_item! {
             // empty seed would shadow `resolve_gangs`, which only runs while the registry
             // is ABSENT — the AC3b shadow class).
             commands.insert_resource(GangRegistry::default());
-            // GTW-418: the PrefabRegistry is a gate-blocking resource too; seed the empty
-            // fallback when there is no AssetServer so headless walks still reach Intro
-            // (the A1 / AC3b pattern for the prefab registry). With an AssetServer present
-            // the real `assets/content/maps/**/*.prefab.ron` registry must win — so this is
-            // gated on `is_none()` exactly like the other registries (else the empty seed
-            // would shadow `resolve_prefabs`, which only runs while the registry is ABSENT).
-            commands.insert_resource(PrefabRegistry::default());
-            // GTW-489: the NEW UUID-keyed PrefabRegistry2 is a gate-blocking resource too;
-            // seed the empty fallback when there is no AssetServer so headless walks still
-            // reach Intro (the A1 / AC3b pattern). With an AssetServer present the real
-            // `assets/content/maps/**/*.prefab_v2.ron` resolve must win — so this is gated on
+            // GTW-489: the UUID-keyed PrefabRegistry2 is a gate-blocking resource; seed the
+            // empty fallback when there is no AssetServer so headless walks still reach Intro
+            // (the A1 / AC3b pattern). With an AssetServer present the real
+            // `assets/maps/**/*.prefab_v2.ron` resolve must win — so this is gated on
             // `is_none()` exactly like the other registries (else the empty seed would shadow
-            // resolve_prefabs_v2, which only runs while the registry is ABSENT). It resolves
-            // EMPTY against un-migrated shipped content either way.
+            // resolve_prefabs_v2, which only runs while the registry is ABSENT). GTW-494: this
+            // is the ONLY prefab registry (the legacy PrefabRegistry seed was retired).
             commands.insert_resource(PrefabRegistry2::default());
-            // GTW-487: the NEW UUID-keyed TerrainDefRegistry + UuidThemeRegistry are
-            // gate-blocking too; seed the empty fallbacks when there is no AssetServer so
-            // headless walks still reach Intro (the A1 / AC3b pattern). With an AssetServer
-            // present the real per-theme `terrain/` resolve must win — so this is gated on
-            // `is_none()` exactly like the other registries (else the empty seed would shadow
-            // resolve_terrain_defs / resolve_theme_defs, which only run while their registry
-            // is ABSENT). They resolve EMPTY against un-migrated shipped content either way.
+            // GTW-487: the UUID-keyed TerrainDefRegistry + UuidThemeRegistry are gate-blocking
+            // too; seed the empty fallbacks when there is no AssetServer so headless walks still
+            // reach Intro (the A1 / AC3b pattern). With an AssetServer present the real
+            // per-theme `terrain/` resolve must win — so this is gated on `is_none()` exactly
+            // like the other registries (else the empty seed would shadow resolve_terrain_defs /
+            // resolve_theme_defs, which only run while their registry is ABSENT). GTW-494: these
+            // are the ONLY terrain / theme registries (the legacy TerrainRegistry +
+            // ThemeCatalogRegistry seeds were retired).
             commands.insert_resource(TerrainDefRegistry::default());
             commands.insert_resource(UuidThemeRegistry::default());
             commands.insert_resource(LoadedSituation::new(

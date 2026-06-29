@@ -1,8 +1,9 @@
 //! GTW-487 C2 hot-reload tests for the NEW UUID-keyed terrain-def + theme-def redrives,
-//! mirroring the legacy terrain/theme redrive tests
-//! ([`terrain::test`](super::super::terrain)): a `Modified` `AssetEvent` for a member of the
+//! mirroring the surviving gang redrive tests
+//! ([`gangs::test`](super::super::gangs)): a `Modified` `AssetEvent` for a member of the
 //! persistent per-theme folder rebuilds the matching registry from the folder handle and
-//! emits the pin-discriminating `info!` line.
+//! emits the pin-discriminating `info!` line. (GTW-494 retired the legacy `resolve::terrain` /
+//! `resolve::themes` loaders these once mirrored.)
 
 use bevy::{
     MinimalPlugins,

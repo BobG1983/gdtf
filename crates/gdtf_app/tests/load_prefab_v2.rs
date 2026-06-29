@@ -5,16 +5,15 @@
 //! [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2), bucketed by each spec's
 //! `(theme, size, role)` — keyed on the stable [`ThemeUuid`].
 //!
-//! This NEW loader runs BESIDE the legacy `resolve_prefabs` (which stays live + unchanged —
-//! C5); the v2 fragments live under their OWN `maps/` root, SEPARATE from the legacy
-//! `content/maps/` tree, and the shipped game carries NO `maps/` root yet, so the registry
-//! resolves EMPTY there (the designed fail-closed state until the T06 content migration).
-//! This test therefore points a real `AssetServer` at a TEST fixture root
-//! (`tests/fixtures/prefab_v2_root/`) whose NEW top-level `maps/industrial_hive/3x3/` holds
-//! one `*.prefab_v2.ron`, with the shipped `content/` (incl. the legacy `content/maps/`
-//! `*.prefab.ron` fragments) and the other dirs symlinked to the real `assets/` — so the
-//! still-live legacy `PrefabRegistry` ALSO resolves populated (proving coexistence — C5), the
-//! rest of the Load gate clears, and the new resolve branch actually runs end-to-end.
+//! GTW-494 (T08) RETIRED the legacy game-side `resolve_prefabs` from the app Load flow, so the
+//! `resolve_prefabs_v2` branch this test drives is now the ONLY live prefab resolver in the app.
+//! The v2 fragments live under their OWN `maps/` root, SEPARATE from the legacy `content/maps/`
+//! tree, and the shipped game carries NO `maps/` root yet, so the registry resolves EMPTY there
+//! (the designed fail-closed state until the T06 content migration). This test therefore points
+//! a real `AssetServer` at a TEST fixture root (`tests/fixtures/prefab_v2_root/`) whose NEW
+//! top-level `maps/industrial_hive/3x3/` holds one `*.prefab_v2.ron`, with the shipped
+//! `content/` and the other dirs symlinked to the real `assets/` — so the rest of the Load gate
+//! clears and the new resolve branch actually runs end-to-end.
 //!
 //! VALUE-AGNOSTIC (gate 4a): asserts the registry POPULATES and buckets under the expected
 //! key + carries placements only — no authored magnitudes pinned. Mirrors `load_prefabs.rs` /
@@ -24,8 +23,7 @@ use std::path::PathBuf;
 
 use gdtf_app::test_support::AppState;
 use gdtf_battle_sim::level::{
-    GridHeight, GridLevels, GridSize, GridWidth, PrefabKey2, PrefabRegistry, PrefabRegistry2,
-    SpawnRole, ThemeUuid,
+    GridHeight, GridLevels, GridSize, GridWidth, PrefabKey2, PrefabRegistry2, SpawnRole, ThemeUuid,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
@@ -74,8 +72,6 @@ fn app_state(app: &bevy::app::App) -> AppState {
 ///   the 3x3x1 footprint + the role-default [`SpawnRole::Fill`] (the v2 file OMITS `role`).
 /// - `prefabs_for` returns `>= 1` [`Prefab2`](gdtf_battle_sim::level::Prefab2) carrying
 ///   placements (the v2 spec's one authored placement).
-/// - The legacy [`PrefabRegistry`] ALSO resolves populated from the symlinked shipped
-///   `*.prefab.ron` — proving the new loader coexists with the still-live legacy one (C5).
 /// - The Load gate WAITED for the new registry: the machine reaches `Intro` with it present,
 ///   proving the GTW-489 gate clause fired on a real registry (not a hand-seeded default).
 ///
@@ -119,17 +115,6 @@ fn real_asset_resolves_prefab_v2_registry_by_theme_uuid() {
         assert!(
             carries_placements,
             "the resolved v2 prefab must carry its authored placement(s)",
-        );
-    }
-
-    // --- Legacy PrefabRegistry ALSO resolved populated (C5 coexistence) -------------------
-    // The fixture symlinks the shipped `entry_room.prefab.ron`, so the still-live legacy
-    // resolve_prefabs must build its registry from it unaffected by the new v2 loader.
-    if let Some(legacy) = app.world().get_resource::<PrefabRegistry>() {
-        assert!(
-            !legacy.is_empty(),
-            "the legacy PrefabRegistry must STILL resolve populated from the symlinked shipped \
-             *.prefab.ron — the new v2 loader must not clobber the still-live legacy one (C5)",
         );
     }
 

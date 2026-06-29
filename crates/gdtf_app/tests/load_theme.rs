@@ -25,9 +25,7 @@ use bevy::{asset::Handle, state::state::State, text::Font};
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
-    level::ThemeCatalogRegistry,
     situation::Situation,
-    terrain::piece::TerrainRegistry,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
 };
@@ -116,21 +114,16 @@ fn theme_present_transitions_to_intro_and_persists() {
     // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
-    // GTW-394: the Load gate also requires a TerrainRegistry; empty clears it.
-    app.world_mut().insert_resource(TerrainRegistry::default());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
+    // GTW-489: the gate-blocking UUID-keyed PrefabRegistry2; empty clears it (GTW-494 retired
+    // the legacy PrefabRegistry gate).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
-    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
+    // GTW-487: the gate-blocking UUID-keyed TerrainDefRegistry + UuidThemeRegistry (GTW-494
+    // retired the legacy TerrainRegistry + ThemeCatalogRegistry gates).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
     app.world_mut()
