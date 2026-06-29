@@ -12,6 +12,10 @@
 //! - `registry` — the per-theme [`ThemeTileCatalog`] (default-floor resolve + the
 //!   enumerable tile list) and the theme-keyed [`ThemeCatalogRegistry`] resource the
 //!   app's `Load` flow populates from the loaded themes folder.
+//! - `theme_def` — the NEW UUID-keyed [`UuidThemeDef`] (keyed by a stable [`ThemeUuid`],
+//!   referencing the unified terrain model by `TerrainUuid`) and its [`UuidThemeRegistry`]
+//!   resource (GTW-485). Purely ADDITIVE: it lives alongside the closed [`LevelTheme`] /
+//!   [`ThemeSpec`] / [`ThemeCatalogRegistry`], wiring no loader and touching no consumer.
 //! - `prefab` — the canonical level-fragment [`PrefabSpec`] a
 //!   `assets/content/maps/<theme>/<size>/*.ron` deserializes into (read by both the
 //!   GTW-424 assembler and the GTW-432 editor), the [`SpawnRole`]/[`EdgeOpening`] schema
@@ -26,6 +30,7 @@ mod prefab;
 mod registry;
 mod spec;
 mod theme;
+mod theme_def;
 mod tile;
 
 #[cfg(test)]
@@ -40,4 +45,5 @@ pub use spec::{ThemeSpec, TileKey};
 pub use theme::{
     GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, LevelTheme, MAX_GRID_SPAN,
 };
+pub use theme_def::{ThemeDisplayName, ThemeUuid, UuidThemeDef, UuidThemeRegistry};
 pub use tile::{CatalogTile, CatalogTileKind, StructuralStats, TileAtlasIndex, TileDisplayName};

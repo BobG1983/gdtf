@@ -1,0 +1,47 @@
+//! The **theme-definition key** — [`ThemeUuid`], a stable UUID the unified theme
+//! model ([`UuidThemeDef`](super::UuidThemeDef)) is keyed by (GTW-485).
+
+use bevy::{asset::uuid::Uuid, prelude::Deref, reflect::TypePath};
+use serde::{Deserialize, Serialize};
+
+/// A theme definition's **stable key** — the UUID that identifies one
+/// [`UuidThemeDef`](super::UuidThemeDef) across the registry and (later) the consumers
+/// that reference a theme.
+///
+/// Per the GTW-476 redesign, a theme is referenced by a stable UUID rather than the
+/// closed [`LevelTheme`](crate::level::LevelTheme) enum it will eventually replace — so a
+/// theme can be renamed or moved without breaking references. The
+/// [`UuidThemeRegistry`](super::UuidThemeRegistry) keys definitions by this value.
+///
+/// A UUID newtype (no-bare-types rule 1: a key is a domain value, not a bare `Uuid`) and
+/// — per rule 3 — a DISTINCT type from [`TerrainUuid`](crate::terrain::def::TerrainUuid): both
+/// wrap the same inner `Uuid`, but a theme key is never a terrain key. The inner is the
+/// [`Uuid`] **re-exported by Bevy** at `bevy::asset::uuid` — gdtf depends on the `uuid`
+/// crate ONLY through Bevy (no-bare-types: no direct dep on a crate Bevy re-exports), the
+/// same path [`TerrainUuid`](crate::terrain::def::TerrainUuid) uses. Private inner + **derived**
+/// [`Deref`] (house style — the `Deref` is the derive, never hand-written); construct it
+/// via [`new`](ThemeUuid::new) (wrap an existing `Uuid`) or
+/// [`generate`](ThemeUuid::generate) (mint a fresh one).
+///
+/// `#[serde(transparent)]` round-trips it as the bare `Uuid` wire form (a string in RON's
+/// human-readable encoding), and [`TypePath`] lets it ride a reflected payload the way the
+/// sibling def types do.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
+#[serde(transparent)]
+pub struct ThemeUuid(Uuid);
+
+impl ThemeUuid {
+    /// Wrap an existing [`Uuid`] as a theme key — used when the UUID is supplied (an
+    /// authored definition's key, or a reconstructed one).
+    #[must_use]
+    pub const fn new(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+
+    /// Mint a **fresh, random** theme key (UUID v4) — used when authoring a new theme
+    /// definition that has no key yet.
+    #[must_use]
+    pub fn generate() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
