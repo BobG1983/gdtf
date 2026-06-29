@@ -6,11 +6,13 @@
 //! `unwrap`/`expect`/`panic`s. OQ-5 prefers REJECTING an over-large player footprint at
 //! GTW-418 load time so runtime is always valid; these variants are the runtime
 //! fail-closed backstop for the cases load-time rejection cannot cover (e.g. an empty
-//! prefab registry, or — the OQ-4 assertion — a placement that somehow lands disconnected).
+//! prefab registry, or a chosen footprint that does not fit). GTW-497 removed the OQ-4
+//! disconnection variant: connectivity is by-construction via the 1-cell `default_floor`
+//! seam, so there is no disconnection to report.
 
 use super::{
     anchor::Anchor,
-    geometry::{Footprint, MinPlayerSide, RegionCount, RegionRect},
+    geometry::{Footprint, MinPlayerSide, RegionRect},
 };
 use crate::level::{SpawnRole, ThemeUuid};
 
@@ -56,18 +58,6 @@ pub enum PackingError {
         /// The minimum side it failed to clear (the OQ-5 floor, in cells).
         min_side:  MinPlayerSide,
     },
-    /// The placed prefabs are NOT connected by construction — the OQ-4 connectivity
-    /// ASSERTION failed (the seam lattice + edge-opening invariant did not hold). This is
-    /// a fail-closed assertion, NEVER a repair step (OQ-4 RULED: no doorway carving): if
-    /// it ever fires, the placement is rejected, not patched.
-    Disconnected {
-        /// How many placed regions could be reached from the player-spawn region through
-        /// the seam lattice.
-        reached: RegionCount,
-        /// How many placed regions there are in total (a connected placement has
-        /// `reached == placed`).
-        placed:  RegionCount,
-    },
 }
 
 impl std::fmt::Display for PackingError {
@@ -97,12 +87,6 @@ impl std::fmt::Display for PackingError {
                 footprint.width(),
                 footprint.height(),
                 min_side.cells(),
-            ),
-            Self::Disconnected { reached, placed } => write!(
-                f,
-                "placement is disconnected: only {} of {} placed regions are reachable through \
-                 the seam lattice (connectivity-by-construction violated)",
-                **reached, **placed,
             ),
         }
     }

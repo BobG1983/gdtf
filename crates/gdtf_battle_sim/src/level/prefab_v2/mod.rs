@@ -12,9 +12,10 @@
 //!   (each a [`TerrainPlacementEntry`]) — the per-piece sim/presenter behaviour lives in
 //!   the referenced [`TerrainDef`](crate::terrain::def::TerrainDef), so a placement carries
 //!   only *which* piece goes *where*;
-//! - carries NO `edge_openings` field and NO per-prefab validation path — inter-fragment
-//!   connectivity is by-construction in the assembler, not authored per-prefab and validated
-//!   fail-closed (the GTW-473 walls/scatter merge + serde-default-`Fill` direction).
+//! - carries NO authored-opening field and NO per-prefab validation path — inter-fragment
+//!   connectivity is by-construction in the assembler (the 1-cell `default_floor` seam every
+//!   placement reserves; the old per-prefab opening machinery was removed in GTW-497), not
+//!   authored per-prefab and validated fail-closed.
 //!
 //! GTW-486 added the SPEC TYPES ([`PrefabSpecV2`] / [`TerrainPlacementEntry`]); GTW-488
 //! (child T05b) added the re-keyed REGISTRY ([`PrefabRegistry2`] / [`PrefabKey2`] /

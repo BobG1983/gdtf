@@ -340,9 +340,9 @@ pub use foundation::{
     rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng},
 };
 pub use level::{
-    EdgeOpening, GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN,
-    Prefab2, PrefabKey2, PrefabLoadError, PrefabName, PrefabRegistry2, PrefabSpecV2, SpawnRole,
-    TerrainPlacementEntry, ThemeDisplayName, ThemeUuid, UuidThemeDef, UuidThemeRegistry,
+    GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN, Prefab2, PrefabKey2,
+    PrefabName, PrefabRegistry2, PrefabSpecV2, SpawnRole, TerrainPlacementEntry, ThemeDisplayName,
+    ThemeUuid, UuidThemeDef, UuidThemeRegistry,
 };
 pub use lifecycle::{
     battle,
@@ -355,9 +355,8 @@ pub use lifecycle::{
     procgen::{
         Anchor, DeadRectScatterCount, FilledPlacement, Footprint, LargePrefabAreaThreshold, Margin,
         MaxRectsPacker, MinDensityFloor, MinPlayerSide, PackingError, PlacedPrefab,
-        Placement as PrefabPlacement, ProcgenTuning, RegionCount, RegionRect, SplitMode,
-        assemble_placement, assemble_placement_with, count_seam_reachable, emit_level,
-        fill_placement, fill_placement_with, generate_level,
+        Placement as PrefabPlacement, ProcgenTuning, RegionRect, SplitMode, assemble_placement,
+        assemble_placement_with, emit_level, fill_placement, fill_placement_with, generate_level,
     },
     situation,
     situation::{

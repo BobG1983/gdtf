@@ -9,20 +9,15 @@
 //!   the third enumeration key of [`PrefabKey2`](super::PrefabKey2).
 //! - [`PrefabName`] — the stable fragment identifier the loader derives from each prefab
 //!   file's stem.
-//! - [`EdgeOpening`] / [`EdgeOpeningDef`] / [`PrefabLoadError`] — the seam / connectivity
-//!   types (GTW-497-bound; not removed here).
 //!
-//! # The edge-opening encoding
-//!
-//! An [`EdgeOpening`] is a walkable cell on a footprint boundary edge through which an
-//! inter-prefab seam connects. The typed [`PrefabLoadError::NoEdgeOpening`] is the
-//! fail-closed rejection of a fragment that authors zero of them (no panic — fail-closed
-//! exclusion + a warn).
+//! GTW-497 (the FINAL child of the GTW-476 data-model refactor) removed the per-prefab
+//! opening connectivity machinery: the v2 schema authors no per-prefab openings and the
+//! migrated content carries none, so inter-fragment connectivity is now by-construction via
+//! the 1-cell `default_floor` seam every placement reserves — never an authored, validated
+//! per-prefab opening.
 
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
-
-use crate::metric::CellLevel;
 
 /// The **role** a prefab plays in an assembled level — a closed `PlayerEnemyFill`-style
 /// set the assembler buckets prefabs by (GTW-418 C3).
@@ -62,86 +57,3 @@ impl PrefabName {
         Self(name)
     }
 }
-
-/// One **edge opening** — a walkable cell on a prefab footprint's boundary edge through
-/// which the inter-prefab 1-cell `default_floor` seam connects (GTW-418 C6).
-///
-/// A named newtype over a [`CellLevel`] (no-bare-types: a seam doorway is a domain value,
-/// not a bare grid key) so an opening is never confused with an arbitrary authored cell.
-/// The assembler joins a neighbouring fragment's seam to this cell; a prefab with ZERO
-/// openings cannot connect and is rejected at load ([`PrefabLoadError::NoEdgeOpening`]).
-/// Private inner + derived [`Deref`]; deserializes through the [`CellLevel`]
-/// `(cell, level)` authoring shape via the [`EdgeOpeningDef`] intermediate, and
-/// serializes back out through the SAME shape (`#[serde(into = "EdgeOpeningDef")]`),
-/// so the editor prefab saver (GTW-432) writes an opening that round-trips byte-for-byte
-/// through the `from = "EdgeOpeningDef"` reader.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-#[serde(from = "EdgeOpeningDef", into = "EdgeOpeningDef")]
-pub struct EdgeOpening(CellLevel);
-
-impl EdgeOpening {
-    /// Build an edge opening at a `(cell, level)` boundary cell.
-    #[must_use]
-    pub const fn new(at: CellLevel) -> Self {
-        Self(at)
-    }
-
-    /// The `(cell, level)` boundary cell this opening sits on.
-    #[must_use]
-    pub const fn at(self) -> CellLevel {
-        self.0
-    }
-}
-
-/// The authored RON shape an [`EdgeOpening`] deserializes from — a single `at`
-/// `(cell, level)`, routed through [`EdgeOpening::new`] (GTW-418).
-///
-/// A serde intermediate (the [`CellLevelDef`](crate::metric) precedent) so an authored
-/// opening writes `(at: (cell: .., level: ..))` and keeps the newtype inner private
-/// across (de)serialization — read in through `from`, written back out through `into`.
-#[derive(Deserialize, Serialize)]
-pub struct EdgeOpeningDef {
-    /// The `(cell, level)` boundary cell the opening sits on.
-    at: CellLevel,
-}
-
-impl From<EdgeOpeningDef> for EdgeOpening {
-    fn from(def: EdgeOpeningDef) -> Self {
-        Self::new(def.at)
-    }
-}
-
-impl From<EdgeOpening> for EdgeOpeningDef {
-    fn from(opening: EdgeOpening) -> Self {
-        Self { at: opening.at() }
-    }
-}
-
-/// Why a prefab `.ron` was rejected at load — the fail-closed, no-panic error of the
-/// prefab validation (GTW-418 C6).
-///
-/// The handled rejection reason (no-bare-types: the failure is a domain value, not a bare
-/// `()`/`bool`; the no-panic contract — the loader excludes the prefab + warns rather than
-/// `unwrap`/`panic`). The [`GridSizeError`](super::GridSizeError) precedent: each variant
-/// names what was wrong so a caller can log exactly which prefab failed and why.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PrefabLoadError {
-    /// The prefab authored ZERO [`EdgeOpening`]s, so the inter-prefab seam cannot connect
-    /// to it — connectivity-by-construction violated (C6). Names the rejected prefab.
-    NoEdgeOpening(PrefabName),
-}
-
-impl std::fmt::Display for PrefabLoadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::NoEdgeOpening(name) => write!(
-                f,
-                "prefab `{}` has zero edge openings; every prefab must author at least one \
-                 walkable boundary-edge cell for the inter-prefab seam to connect to",
-                **name,
-            ),
-        }
-    }
-}
-
-impl std::error::Error for PrefabLoadError {}

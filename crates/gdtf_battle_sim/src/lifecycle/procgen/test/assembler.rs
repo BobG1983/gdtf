@@ -1,8 +1,10 @@
 //! End-to-end assembler tests (GTW-424 C1/C2/C3; GTW-492 v2 model): anchor selection,
-//! opposite-side fit, determinism, the OQ-5 minimum size, the OQ-4 connectivity assertion
-//! (holds for a valid placement; fails closed on an impossible one), and the fail-closed
-//! errors — all over the UUID-keyed [`PrefabRegistry2`] of [`Prefab2`], keyed by a stable
-//! [`ThemeUuid`] (GTW-492 C2/C5).
+//! opposite-side fit, determinism, the OQ-5 minimum size, and the fail-closed errors — all
+//! over the UUID-keyed [`PrefabRegistry2`] of [`Prefab2`], keyed by a stable [`ThemeUuid`]
+//! (GTW-492 C2/C5). Connectivity is by-construction via the 1-cell `default_floor` seam
+//! (GTW-497 removed the old connectivity flood / fail-closed assertion), so the
+//! by-construction invariant is exercised end-to-end by the emit test
+//! (`emitted_level_is_in_bounds_and_fully_connected`), not by a flood here.
 
 use bevy::asset::uuid::Uuid;
 
@@ -11,10 +13,9 @@ use crate::{
         GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
         PrefabSpecV2, SpawnRole, ThemeUuid,
     },
-    metric::Cell,
     procgen::{
-        Anchor, Footprint, MinPlayerSide, PackingError, RegionCount, RegionRect, SplitMode,
-        assemble_placement, assemble_placement_with, count_seam_reachable,
+        Anchor, Footprint, MinPlayerSide, PackingError, SplitMode, assemble_placement,
+        assemble_placement_with,
     },
     rng::{BattleSeed, ProcgenRng},
 };
@@ -253,52 +254,5 @@ fn enemy_footprint_that_does_not_fit_is_rejected() {
         matches!(result, Err(PackingError::FootprintDoesNotFit { .. })),
         "an enemy fragment too large for the opposite region must fail closed with \
          FootprintDoesNotFit, got {result:?}",
-    );
-}
-
-/// C3 (connectivity HOLDS): two seam-separated opposite-corner regions on a board are all
-/// seam-reachable from the player region (`reached == total`).
-///
-/// Discriminating sibling of the fail-closed test below: a valid pair reaches 2 of 2.
-#[test]
-fn connectivity_holds_for_valid_opposite_placement() {
-    let Some(board_size) = size(40, 40) else {
-        return;
-    };
-    let board = RegionRect::board(board_size);
-    let player = board.place_at_anchor(Anchor::BottomLeft, Footprint::new(12, 12));
-    let enemy = board.place_at_anchor(Anchor::TopRight, Footprint::new(12, 12));
-    let (reached, total) = count_seam_reachable(&[player, enemy], board);
-    assert_eq!(
-        (reached, total),
-        (RegionCount::new(2), RegionCount::new(2)),
-        "both opposite-corner regions must be seam-reachable (connectivity holds)",
-    );
-}
-
-/// C3 (connectivity FAILS CLOSED): a full-board-width wall region strictly between the
-/// player region and another walls them apart — the connectivity flood reaches only 1 of
-/// 3, so the OQ-4 assertion would reject it (NEVER repair).
-///
-/// Discriminating: the wall region spans the full board width at mid-height, so no floor
-/// corridor joins the bottom region to the top region. Removing the full-axis wall check
-/// in `seam_adjacent` would make this reach 3 of 3 and the test fail — pinning the
-/// assertion's honesty.
-#[test]
-fn connectivity_fails_closed_for_walled_off_placement() {
-    let Some(board_size) = size(40, 40) else {
-        return;
-    };
-    let board = RegionRect::board(board_size);
-    // region 0: a 12x12 in the bottom-left (the player region, the flood root).
-    let bottom = RegionRect::new(Cell::new(0, 0), Footprint::new(12, 12));
-    // region 1: a FULL-WIDTH wall band across the middle (y 18..20), separating top/bottom.
-    let wall = RegionRect::new(Cell::new(0, 18), Footprint::new(40, 2));
-    // region 2: a 12x12 in the top-left, on the far side of the wall.
-    let top = RegionRect::new(Cell::new(0, 28), Footprint::new(12, 12));
-    let (reached, total) = count_seam_reachable(&[bottom, wall, top], board);
-    assert!(
-        reached < total,
-        "a full-width wall must disconnect the top region — reached {reached:?} of {total:?}",
     );
 }

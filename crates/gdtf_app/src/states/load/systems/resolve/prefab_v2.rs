@@ -19,11 +19,12 @@
 //! [`TypeId`] filter in [`build_prefab_v2_registry`] is DEFENSIVE only now (the `maps/` folder
 //! is single-type after GTW-494), guarding against any future mixed-type member.
 //!
-//! **No edge-opening (C6) validation:** this loader builds through the INFALLIBLE
-//! [`Prefab2::new`] — the v2 schema carries no `edge_openings` field and no rejection path,
-//! because inter-fragment connectivity is by-construction in the v2 assembler (GTW-492), not
-//! authored per-prefab. An openingless (zero-placement) v2 prefab is therefore INCLUDED in
-//! the registry (the GTW-488 design).
+//! **No opening validation:** this loader builds through the INFALLIBLE [`Prefab2::new`] —
+//! the v2 schema carries no authored-opening field and no rejection path, because
+//! inter-fragment connectivity is by-construction in the v2 assembler (the 1-cell
+//! `default_floor` seam every placement reserves; the old per-prefab opening machinery was
+//! removed in GTW-497), not authored per-prefab. An openingless (zero-placement) v2 prefab
+//! is therefore INCLUDED in the registry (the GTW-488 design).
 
 use core::any::TypeId;
 

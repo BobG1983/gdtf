@@ -1,11 +1,10 @@
-// GTW-490 migration of assets/content/maps/industrial_hive/3x3/entry_room.prefab.ron to the
-// NEW UUID-keyed PrefabSpecV2 model (GTW-486/489), under the NEW `maps/<theme>/<size>/` root
-// (SEPARATE from the legacy content/maps/ tree so the still-live legacy loader is untouched).
-// The legacy schema's four split lists collapse into ONE `placements` list, each mapping an
-// old stem ref to the migrated industrial_hive TerrainUuid. The old `default_floor` is a theme
-// concern now (the theme's default_floor), NOT a prefab placement; the old `edge_openings` has
-// no field in v2 (connectivity is by-construction in the v2 assembler, T07b). `role` is OMITTED
-// -> serde-default SpawnRole::Fill (GTW-490 migration recipe step 3 / C3 "role defaults applied").
+// An IndustrialHive 3x3 level-fragment prefab in the UUID-keyed PrefabSpecV2 model
+// (GTW-486/489), under the `maps/<theme>/<size>/` root. The schema's ONE `placements` list maps
+// each placed piece to a migrated industrial_hive TerrainUuid. The level-wide default floor is a
+// theme concern now (the theme's default_floor), NOT a prefab placement; the v2 schema authors
+// no per-prefab openings (connectivity is by-construction in the v2 assembler — the 1-cell
+// default_floor seam every placement reserves). `role` is OMITTED -> serde-default
+// SpawnRole::Fill (GTW-490 migration recipe step 3 / C3 "role defaults applied").
 (
     // The IndustrialHive ThemeUuid (must match the migrated terrain_theme.ron key).
     theme: "00000000-0000-0000-0000-01840a900001",

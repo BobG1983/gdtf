@@ -16,9 +16,10 @@
 //! [`ProcgenTuning`] knobs); GTW-431 adds the THIRD ([`emit`] — the deterministic seed
 //! harness [`generate_level`] + [`emit_level`], which pours a [`FilledPlacement`] into the
 //! sim's canonical [`Situation`](crate::situation::Situation) as the terrain entries it
-//! holds inline, fail-closed connectivity-asserted). A tested core with no live trigger yet
-//! is the intended staged build, NOT a dead-feature split. NOTHING here wires a live battle
-//! request (the loading-state driver is GTW-433; the debug visualizer is GTW-434).
+//! holds inline, connectivity by-construction via the seam lattice). A tested core with no
+//! live trigger yet is the intended staged build, NOT a dead-feature split. NOTHING here
+//! wires a live battle request (the loading-state driver is GTW-433; the debug visualizer
+//! is GTW-434).
 //!
 //! # The locked design (the GTW-424 rulings + authorized defaults — see the concern docs)
 //!
@@ -26,9 +27,11 @@
 //!   [`SplitMode::Guillotine`] alternative is INCLUDED behind a flag for A/B comparison.
 //! - **OQ-3 (seam):** a 1-cell [`Margin::DEFAULT`] `default_floor` seam is reserved around
 //!   every placed prefab — NO abutting prefabs.
-//! - **OQ-4 (connectivity):** connectivity is BY CONSTRUCTION (the seam lattice + each
-//!   prefab's `>= 1` edge opening). The assembler runs a fail-closed connectivity
-//!   ASSERTION ([`PackingError::Disconnected`]) — it NEVER carves doorways / self-repairs.
+//! - **OQ-4 (connectivity):** connectivity is BY CONSTRUCTION — the 1-cell `default_floor`
+//!   seam every placement reserves leaves a walkable corridor lattice around every placed
+//!   region, so every open board cell is reachable. GTW-497 removed the old fail-closed
+//!   connectivity flood / rejection (and the per-prefab opening machinery): there is nothing
+//!   to assert or repair — the seam guarantees it structurally.
 //! - **OQ-2 (opposite):** the enemy anchor is the STRICT geometric [`Anchor::opposite`] of
 //!   the player anchor, with ZERO RNG draw (fairness is structural). The PLAYER anchor is
 //!   the one RNG choice ([`Anchor::choose`], from [`ProcgenRng`](crate::rng::ProcgenRng)).
@@ -53,12 +56,10 @@ mod tuning;
 mod test;
 
 pub use anchor::Anchor;
-pub use assembler::{
-    PlacedPrefab, Placement, assemble_placement, assemble_placement_with, count_seam_reachable,
-};
+pub use assembler::{PlacedPrefab, Placement, assemble_placement, assemble_placement_with};
 pub use emit::{emit_level, generate_level};
 pub use error::PackingError;
 pub use fill::{FilledPlacement, fill_placement, fill_placement_with};
-pub use geometry::{Footprint, Margin, MinPlayerSide, RegionCount, RegionRect};
+pub use geometry::{Footprint, Margin, MinPlayerSide, RegionRect};
 pub use packer::{MaxRectsPacker, SplitMode};
 pub use tuning::{DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenTuning};

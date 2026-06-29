@@ -46,7 +46,8 @@
 //! - The GTW-432 `save` module (debug-only) projects the [`EditorMap`] into the v2
 //!   `PrefabSpecV2` schema and WRITES it to `assets/maps/<theme>/<size>/<name>.prefab_v2.ron`, so
 //!   a saved prefab round-trips through the GTW-489 v2 folder loader (swept onto the v2 schema in
-//!   GTW-495 — no edge openings, one `placements` list of `TerrainUuid` references). A prefab-name
+//!   GTW-495 — one `placements` list of `TerrainUuid` references, no per-prefab boundary
+//!   openings). A prefab-name
 //!   text field + a "Save prefab" button under the right panel are the live trigger; the save
 //!   re-checks every painted cell through [`evaluate_placement`] so a saved prefab never contains
 //!   an illegal cell.

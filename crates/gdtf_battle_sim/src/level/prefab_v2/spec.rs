@@ -28,9 +28,9 @@ const fn default_role() -> SpawnRole {
 /// per-piece behaviour lives in the referenced
 /// [`TerrainDef`](crate::terrain::def::TerrainDef).
 ///
-/// There is NO `edge_openings` field and NO `validate` / connectivity path: inter-fragment
-/// connectivity is by-construction in the v2 assembler (a later child), not authored
-/// per-prefab and validated fail-closed.
+/// There is NO authored-opening field and NO `validate` / connectivity path: inter-fragment
+/// connectivity is by-construction in the v2 assembler (the 1-cell `default_floor` seam
+/// every placement reserves), not authored per-prefab and validated fail-closed.
 ///
 /// **Not `Copy`** — it owns a `Vec` of placements; it is `Clone` so a registry could hold
 /// fragments by value (the registry itself is out of scope here — T05b). Derives

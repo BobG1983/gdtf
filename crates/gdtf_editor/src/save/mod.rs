@@ -22,11 +22,12 @@
 //! [`SpawnRole::Fill`](gdtf_battle_sim::level::SpawnRole::Fill) — the connective default (the
 //! editor has no spawn-role control yet).
 //!
-//! ## No edge openings (GTW-495)
+//! ## No authored openings (GTW-495)
 //!
-//! The v2 schema carries NO `edge_openings` field — inter-fragment connectivity is by-construction
-//! in the v2 assembler, not authored per-prefab — so the saver derives NONE (the legacy
-//! `derive_edge_openings` + `SavePrefabError::NoEdgeOpening` are GONE). A zero-placement prefab is
+//! The v2 schema carries NO authored-opening field — inter-fragment connectivity is
+//! by-construction in the v2 assembler (the 1-cell `default_floor` seam every placement reserves),
+//! not authored per-prefab — so the saver derives NONE (the legacy opening-derivation + zero-opening
+//! rejection are GONE; the underlying machinery was removed in GTW-497). A zero-placement prefab is
 //! a valid v2 prefab (the infallible `Prefab2::new`).
 //!
 //! ## Illegal-cell guard (C3)

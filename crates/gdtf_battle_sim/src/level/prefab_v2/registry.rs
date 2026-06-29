@@ -15,13 +15,14 @@ use crate::level::{GridSize, PrefabName, SpawnRole, ThemeUuid};
 /// One **validated** v2 prefab the [`PrefabRegistry2`] holds — its [`PrefabName`] paired
 /// with a [`PrefabSpecV2`] (GTW-488).
 ///
-/// Built through [`Prefab2::new`], which runs **NO** edge-opening validation — the v2
-/// schema carries no `edge_openings` field and no
-/// [`NoEdgeOpening`](crate::level::PrefabLoadError::NoEdgeOpening) rejection path, because
-/// inter-fragment connectivity is by-construction in the v2 assembler (T07b), not authored
-/// per-prefab and validated fail-closed. An openingless prefab (a [`PrefabSpecV2`] carrying
-/// zero placements) is therefore a VALID `Prefab2`. Holds the spec BY VALUE so it survives
-/// the loaded folder handle being dropped. `Clone` (it owns the spec); not `Copy`.
+/// Built through [`Prefab2::new`], which runs **NO** opening validation — the v2 schema
+/// carries no authored-opening field and no opening-rejection path, because
+/// inter-fragment connectivity is by-construction in the v2 assembler (the 1-cell
+/// `default_floor` seam every placement reserves), not authored per-prefab and validated
+/// fail-closed (the old machinery was removed in GTW-497). An openingless prefab (a
+/// [`PrefabSpecV2`] carrying zero placements) is therefore a VALID `Prefab2`. Holds the spec
+/// BY VALUE so it survives the loaded folder handle being dropped. `Clone` (it owns the
+/// spec); not `Copy`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Prefab2 {
     /// The prefab's name (the file stem the loader keyed it by).

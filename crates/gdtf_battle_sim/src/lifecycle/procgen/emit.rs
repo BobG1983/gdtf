@@ -67,15 +67,13 @@
 //! braces; emitting the explicit entries makes the "dead space is floored" contract a
 //! concrete, testable terrain entry rather than an implicit consequence.)
 //!
-//! # Connectivity (fail-closed, C3)
+//! # Connectivity (by construction)
 //!
-//! Before returning, [`emit_level`] re-runs the OQ-4 [`count_seam_reachable`] flood over the
-//! player + enemy + every fill region. A disconnected level returns
-//! [`PackingError::Disconnected`] — it NEVER silently emits a broken level (the fail-closed
-//! assertion, NEVER a repair). By construction the 1-cell seam every placement reserves keeps
-//! it connected, so this never fires in practice; it is the contract backstop. (The v2 model
-//! authors no per-prefab `edge_openings` — connectivity is the seam lattice alone; removing
-//! this connectivity flood entirely is GTW-497 / T11.)
+//! Connectivity is BY CONSTRUCTION: the 1-cell `default_floor` seam every placement reserves
+//! leaves a walkable corridor lattice around every placed region, so every open board cell is
+//! reachable. GTW-497 removed the old fail-closed connectivity flood / rejection (and the
+//! per-prefab opening machinery) — the v2 model authors no per-prefab openings, so the seam
+//! lattice alone guarantees connectivity and there is nothing to re-flood or assert here.
 //!
 //! # Determinism (C1/C2)
 //!
@@ -86,7 +84,7 @@
 //! [`ProcgenRng`](crate::rng::ProcgenRng) seed, the whole pipeline is deterministic (C1).
 
 use super::{
-    assembler::{PlacedPrefab, assemble_placement_with, count_seam_reachable},
+    assembler::{PlacedPrefab, assemble_placement_with},
     error::PackingError,
     fill::{FilledPlacement, fill_placement_with},
     geometry::{MinPlayerSide, RegionRect},
@@ -121,9 +119,10 @@ use crate::{
 ///
 /// # Errors
 ///
-/// Propagates every [`PackingError`] the assembler / fill / emit can raise (no prefab for a
-/// role at the theme, a footprint that does not fit, a too-small player footprint, or — the
-/// fail-closed backstop — a disconnected emitted level). It NEVER `unwrap`/`expect`/`panic`s.
+/// Propagates every [`PackingError`] the assembler / fill can raise (no prefab for a role at
+/// the theme, a footprint that does not fit, or a too-small player footprint). The emit step
+/// itself is infallible (connectivity is by-construction — GTW-497). It NEVER
+/// `unwrap`/`expect`/`panic`s.
 pub fn generate_level(
     prefabs: &PrefabRegistry2,
     themes: &UuidThemeRegistry,
@@ -150,7 +149,7 @@ pub fn generate_level(
         rng,
         SplitMode::default(),
     )?;
-    emit_level(&filled, theme, grid_size, themes, terrain_defs)
+    Ok(emit_level(&filled, theme, grid_size, themes, terrain_defs))
 }
 
 /// Emit a GTW-427 [`FilledPlacement`] into the sim's canonical
@@ -158,11 +157,15 @@ pub fn generate_level(
 ///
 /// Translates every placed prefab's footprint-local geometry onto the board (shifted by its
 /// placed region origin), resolves the level-wide `default_floor` from the `themes` registry
-/// (the theme nominates its ground terrain), floors the
-/// [`dead_space`](FilledPlacement::dead_space) cells with that `default_floor`, and re-runs
-/// the OQ-4 connectivity flood as a fail-closed assertion. The returned `Situation` has empty
-/// `gangers` (rosters are placed by GTW-433, not by this terrain emit); its `theme` is the
-/// UUID-keyed [`ThemeUuid`] directly, its `grid_size` the assembled level's.
+/// (the theme nominates its ground terrain), and floors the
+/// [`dead_space`](FilledPlacement::dead_space) cells with that `default_floor`. The returned
+/// `Situation` has empty `gangers` (rosters are placed by GTW-433, not by this terrain emit);
+/// its `theme` is the UUID-keyed [`ThemeUuid`] directly, its `grid_size` the assembled
+/// level's.
+///
+/// Connectivity is by-construction via the 1-cell `default_floor` seam every placement
+/// reserves (GTW-497 removed the old fail-closed connectivity flood), so the emit is
+/// infallible — it returns a `Situation` directly, never a `Result`.
 ///
 /// GTW-492: iterates each fragment's SINGLE
 /// [`placements`](crate::level::PrefabSpecV2::placements) list (not four split lists) and
@@ -174,32 +177,15 @@ pub fn generate_level(
 /// `terrain_defs` is poured into `walls` as a fail-OPEN fallback so it surfaces as a
 /// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError) at setup rather
 /// than being silently dropped.
-///
-/// # Errors
-///
-/// [`PackingError::Disconnected`] if the connectivity flood finds a placed region
-/// unreachable from the player region (the fail-closed backstop — by construction the seam
-/// lattice keeps the level connected, so this never fires in practice). It NEVER panics.
+#[must_use]
 pub fn emit_level(
     filled: &FilledPlacement,
     theme: ThemeUuid,
     grid_size: GridSize,
     themes: &UuidThemeRegistry,
     terrain_defs: &TerrainDefRegistry,
-) -> Result<Situation, PackingError> {
+) -> Situation {
     let placement = filled.placement();
-
-    // Fail-closed connectivity assertion (C3): the player + enemy + every fill region must
-    // be seam-reachable from the player region. NEVER a repair — a disconnected level is
-    // rejected, it does not silently ship.
-    let mut regions: Vec<RegionRect> =
-        vec![placement.player().region(), placement.enemy().region()];
-    regions.extend(filled.fill().iter().map(PlacedPrefab::region));
-    let board = RegionRect::board(grid_size);
-    let (reached, placed) = count_seam_reachable(&regions, board);
-    if reached != placed {
-        return Err(PackingError::Disconnected { reached, placed });
-    }
 
     // The level-wide default floor: the THEME's nominated ground terrain (GTW-492 — the seam
     // lattice is this floor). Every open cell — incl. the floored dead space — is this. A
@@ -227,7 +213,7 @@ pub fn emit_level(
         floor_region(*rect, default_floor, &mut situation);
     }
 
-    Ok(situation)
+    situation
 }
 
 /// Translate one placed prefab's footprint-local geometry onto the board and append it to

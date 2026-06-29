@@ -2,7 +2,7 @@
 // to the NEW UUID-keyed PrefabSpecV2 model (GTW-486/489), under the NEW `maps/<theme>/<size>/`
 // root. The legacy `walls` + `scatter` lists collapse into ONE `placements` list, each mapping
 // an old stem ref to the migrated industrial_hive TerrainUuid. The old `default_floor` (a theme
-// concern) and `edge_openings` (no v2 field) are dropped.
+// concern) and the old per-prefab openings (no v2 field) are dropped.
 //
 // GTW-492 (T07b): the v2 procgen assembler now CONSUMES this fragment — it must carry the
 // legacy fragment's `Player` deployment role (the assembler anchors the human spawn zone on a

@@ -5,8 +5,8 @@
 //! (GTW-494 retired the legacy `resolve::prefabs` loader these once mirrored.)
 //!
 //! Crucially these tests exercise the C2 contract — an openingless (ZERO-placement)
-//! [`PrefabSpecV2`] is INCLUDED in the registry (the v2 schema has no edge-opening
-//! validation, so the old C6 `NoEdgeOpening` exclusion is NOT applied on this path).
+//! [`PrefabSpecV2`] is INCLUDED in the registry (the v2 schema has no opening validation, so
+//! no zero-opening exclusion is applied on this path).
 //!
 //! No magnitude assertions — the UUID / grid fixtures are mechanism, not balance.
 
@@ -138,17 +138,17 @@ fn modified_member_rebuilds_prefab_v2_registry() {
 }
 
 /// GTW-489 C2 — a v2 prefab with ZERO placements (an openingless fragment) is INCLUDED in the
-/// rebuilt [`PrefabRegistry2`] (the v2 schema has no edge-opening validation, so the old C6
-/// `NoEdgeOpening` exclusion is NOT applied on this path).
+/// rebuilt [`PrefabRegistry2`] (the v2 schema has no opening validation, so no zero-opening
+/// exclusion is applied on this path).
 ///
-/// Pin-discriminating: were the legacy C6 gate applied here, the zero-placement prefab would
+/// Pin-discriminating: were a zero-opening gate applied here, the zero-placement prefab would
 /// be EXCLUDED and the bucket empty — this test asserts it is PRESENT.
 #[test]
-fn zero_placement_prefab_is_included_no_c6_exclusion() {
+fn zero_placement_prefab_is_included_no_opening_exclusion() {
     let mut app = app();
     let theme = theme_uuid();
     let Some(size) = small_size() else { return };
-    // Openingless: zero placements (the v2 schema has no edge_openings to author at all).
+    // Openingless: zero placements (the v2 schema has no authored openings at all).
     let member = add_member(
         &mut app,
         "content/maps/hive/3x3/sealed.prefab_v2.ron",

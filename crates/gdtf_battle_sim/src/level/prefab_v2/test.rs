@@ -154,13 +154,12 @@ fn registry2_inserts_and_retrieves_by_key() {
 
 /// GTW-488 C2 — [`Prefab2::new`] constructs from a [`PrefabSpecV2`] carrying ZERO
 /// placements (an openingless fragment) and SUCCEEDS infallibly. Pin-discriminating: the
-/// constructor returns a plain `Prefab2` (no `Result`), so there is NO
-/// `NoEdgeOpening` / edge-opening validation path on the v2 prefab — an openingless prefab
-/// is valid.
+/// constructor returns a plain `Prefab2` (no `Result`), so there is NO opening-validation
+/// path on the v2 prefab — an openingless prefab is valid.
 #[test]
 fn prefab2_new_accepts_zero_placement_spec_infallibly() {
     let Some(size) = small_size() else { return };
-    // Openingless: zero placements (the v2 schema has no edge_openings to author at all).
+    // Openingless: zero placements (the v2 schema has no authored openings at all).
     let spec = PrefabSpecV2::new(theme_uuid(), size, SpawnRole::Fill, Vec::new());
     assert!(
         spec.placements.is_empty(),

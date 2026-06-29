@@ -18,10 +18,10 @@ use crate::{
 /// A named newtype over [`u8`] (no-bare-types: a seam width is a domain value, not a bare
 /// integer) with a private inner. NO abutting prefabs: every placed footprint reserves at
 /// least this many `default_floor` cells of clear space on every side, and that seam
-/// lattice — plus each prefab's `>= 1` edge opening onto its boundary — is what makes the
-/// level connected BY CONSTRUCTION (OQ-4: no doorway carving, no self-repair). The default
-/// is one cell ([`Margin::DEFAULT`]); the type exists so the value is named and a future
-/// tune is a single edit, not a scattered magic `1`.
+/// lattice is what makes the level connected BY CONSTRUCTION (OQ-4: no doorway carving, no
+/// self-repair — the seam lattice alone joins every open cell). The default is one cell
+/// ([`Margin::DEFAULT`]); the type exists so the value is named and a future tune is a
+/// single edit, not a scattered magic `1`.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Margin(u8);
 
@@ -273,27 +273,6 @@ impl RegionRect {
         };
         let origin = Cell::new(self.origin.x + ox, self.origin.y + oy);
         Self::new(origin, footprint)
-    }
-}
-
-/// A **count of placed regions** — how many prefab footprints the assembler placed, or how
-/// many of them the OQ-4 connectivity flood could reach (GTW-424).
-///
-/// A named newtype over [`usize`] (no-bare-types: a region tally is a domain value, not a
-/// bare index/length) with a private inner. It rides in [`PackingError::Disconnected`]
-/// (`reached` vs `placed`): a connected placement has `reached == placed`, a walled-off one
-/// has `reached < placed`. It exists so the fail-closed connectivity diagnostic names what
-/// the two numbers MEAN rather than carrying two anonymous `usize`s.
-///
-/// [`PackingError::Disconnected`]: super::PackingError::Disconnected
-#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct RegionCount(usize);
-
-impl RegionCount {
-    /// Build a region count from a raw tally.
-    #[must_use]
-    pub const fn new(count: usize) -> Self {
-        Self(count)
     }
 }
 

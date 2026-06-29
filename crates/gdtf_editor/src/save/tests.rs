@@ -161,7 +161,7 @@ fn save_path_is_themed_sized_and_dot_prefab_v2_ron() {
 /// [`editor_map_to_prefab`] + [`serialize_prefab`], deserialize via the SAME parser the GTW-489
 /// loader uses (`ron::de::from_str::<PrefabSpecV2>`), validate via the SAME (infallible)
 /// [`Prefab2::new`] the loader runs, and assert the reloaded spec EQUALS the saved one — every
-/// cell, level, theme, and size survives, with NO `edge_openings` in the schema.
+/// cell, level, theme, and size survives, with NO authored openings in the schema.
 ///
 /// Pin-discriminating: if a placement were dropped (a level, a cell, theme, or size) the reloaded
 /// spec would differ and the `assert_eq!` would fail. The multi-level ladder placement pins the
@@ -226,7 +226,7 @@ fn editor_map_round_trips_through_the_loader() {
          survives the v2 round-trip (C2)",
     );
     // Every painted cell appears as a placement (4 painted cells -> 4 placements), and there are
-    // no edge_openings to lose (the v2 schema has none).
+    // no authored openings to lose (the v2 schema has none).
     assert_eq!(
         saved.placements.len(),
         4,

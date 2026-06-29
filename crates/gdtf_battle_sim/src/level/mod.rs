@@ -8,8 +8,9 @@
 //!   resource (GTW-485) — the sole theme model after the GTW-496 deletion of the legacy
 //!   closed-enum theme types.
 //! - `prefab` — the shared prefab schema vocabulary still referenced by `prefab_v2`: the
-//!   [`SpawnRole`] deployment role, the [`PrefabName`] key, the [`EdgeOpening`] /
-//!   [`PrefabLoadError`] connectivity types (GTW-497-bound).
+//!   [`SpawnRole`] deployment role and the [`PrefabName`] key. (The edge-opening
+//!   connectivity types were removed in GTW-497 — connectivity is by-construction via the
+//!   1-cell `default_floor` seam, no authored per-prefab openings.)
 //! - `prefab_v2` — the UUID-keyed level-fragment [`PrefabSpecV2`] (theme by
 //!   [`ThemeUuid`], every placed piece by `TerrainUuid` in ONE
 //!   [`placements`](PrefabSpecV2::placements) list) + its [`TerrainPlacementEntry`]
@@ -30,7 +31,7 @@ mod theme_def;
 #[cfg(test)]
 mod test;
 
-pub use prefab::{EdgeOpening, PrefabLoadError, PrefabName, SpawnRole};
+pub use prefab::{PrefabName, SpawnRole};
 pub use prefab_v2::{Prefab2, PrefabKey2, PrefabRegistry2, PrefabSpecV2, TerrainPlacementEntry};
 pub use theme::{GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN};
 pub use theme_def::{ThemeDisplayName, ThemeUuid, UuidThemeDef, UuidThemeRegistry};

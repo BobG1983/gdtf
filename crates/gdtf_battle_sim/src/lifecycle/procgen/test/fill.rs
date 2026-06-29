@@ -1,8 +1,11 @@
 //! End-to-end fill-pass tests (GTW-427 C1/C2/C3): random same-theme fill draws from the
 //! `Fill` bucket and packs into the free space (C1), the loop TERMINATES when no more
 //! prefab fits (C2 — no infinite loop), the no-fit fallback PADS dead space with
-//! `default_floor` rather than shrinking the playable area (C3), the fill is DETERMINISTIC
-//! under a seed, and the assembled+filled level still passes the OQ-4 connectivity flood.
+//! `default_floor` rather than shrinking the playable area (C3), and the fill is
+//! DETERMINISTIC under a seed. Connectivity-by-construction (the 1-cell seam every fill
+//! placement reserves) is exercised end-to-end by the emit test
+//! (`emitted_level_is_in_bounds_and_fully_connected`); GTW-497 removed the old connectivity
+//! flood, so this module no longer re-floods the filled placement.
 
 use bevy::asset::uuid::Uuid;
 
@@ -13,8 +16,7 @@ use crate::{
     },
     procgen::{
         DeadRectScatterCount, FilledPlacement, LargePrefabAreaThreshold, MinDensityFloor,
-        PlacedPrefab, ProcgenTuning, RegionRect, assemble_placement, count_seam_reachable,
-        fill_placement,
+        ProcgenTuning, RegionRect, assemble_placement, fill_placement,
     },
     rng::{BattleSeed, ProcgenRng},
 };
@@ -309,58 +311,5 @@ fn fill_is_deterministic_under_a_seed() {
     assert_eq!(
         a, b,
         "the same seed must produce an identical filled placement (determinism)",
-    );
-}
-
-/// CONNECTIVITY (OQ-4 still holds): the assembled+filled level is still fully connected —
-/// the player + enemy + every fill prefab region is seam-reachable from the player region
-/// (`reached == total`). The 1-cell seam every fill placement reserves preserves
-/// connectivity-by-construction.
-///
-/// Discriminating: a fill that abutted prefabs (no seam) or walled a region off would make
-/// `reached < total`; the seam keeps all regions reachable.
-#[test]
-fn filled_level_stays_connected() {
-    let theme = theme();
-    let (Some(board_size), Some(player_fp), Some(enemy_fp)) =
-        (size(40, 40), size(12, 12), size(12, 12))
-    else {
-        return;
-    };
-    let Some(registry) = registry_with_fill(
-        theme,
-        player_fp,
-        enemy_fp,
-        &[("hall", 8, 8), ("nook", 4, 4), ("room", 6, 6)],
-    ) else {
-        return;
-    };
-    let mut rng = ProcgenRng::from_root(BattleSeed::new(101));
-    let Ok(placement) = assemble_placement(&registry, theme, board_size, &mut rng) else {
-        return;
-    };
-    let knobs = tuning(0.8, 49, 2);
-    let result = fill_placement(placement, &registry, theme, board_size, &knobs, &mut rng);
-    assert!(
-        result.is_ok(),
-        "the fill must succeed: {:?}",
-        result.as_ref().err(),
-    );
-    let Ok(filled) = result else {
-        return;
-    };
-
-    let board = RegionRect::board(board_size);
-    // Region 0 is the player region (the flood root); then enemy, then every fill region.
-    let mut regions: Vec<RegionRect> = vec![
-        filled.placement().player().region(),
-        filled.placement().enemy().region(),
-    ];
-    regions.extend(filled.fill().iter().map(PlacedPrefab::region));
-    let (reached, total) = count_seam_reachable(&regions, board);
-    assert_eq!(
-        reached, total,
-        "every placed + filled region must stay seam-reachable from the player region \
-         (OQ-4 connectivity-by-construction must still HOLD after fill)",
     );
 }

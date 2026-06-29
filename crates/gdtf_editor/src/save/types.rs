@@ -46,7 +46,8 @@ pub(crate) struct PrefabNameField;
 pub(crate) struct SavePrefabButton;
 
 /// Why a prefab save was REJECTED — the handled, no-panic failure of the save path (GTW-432;
-/// the `NoEdgeOpening` variant DROPPED in GTW-495, the v2 schema has no edge openings).
+/// the old zero-opening rejection variant was DROPPED in GTW-495, the v2 schema authors no
+/// openings).
 ///
 /// A named domain enum (no-bare-types: the rejection reason is a domain value). Each variant names
 /// what was wrong so the `error!` line is precise.

@@ -27,7 +27,7 @@
 //! returned in [`FilledPlacement::dead_space`] so the GTW-431 emit step pours them as
 //! `default_floor`; the fill never carves doorways, never walls anything off (OQ-4
 //! connectivity-by-construction is preserved by the 1-cell seam every placement still
-//! reserves, plus each fill prefab's `>= 1` edge opening). This is the "chosen no-fit
+//! reserves — that seam lattice alone joins every open cell). This is the "chosen no-fit
 //! fallback" the AC references.
 //!
 //! # Determinism
