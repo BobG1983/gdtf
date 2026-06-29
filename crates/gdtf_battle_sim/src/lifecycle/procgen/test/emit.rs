@@ -1,14 +1,20 @@
-//! End-to-end emit-step tests (GTW-431 C2/C3): the full space-packing pipeline
-//! (assemble -> fill -> emit) is DETERMINISTIC under a fixed [`ProcgenRng`] seed (same seed
-//! -> identical emitted terrain; different seeds -> different terrain, so the determinism
-//! pin is not vacuous), and the emitted [`Situation`] is a VALID assembled level — connected
-//! (seam-reachable) and in-bounds. The REAL pipeline is driven with an injected seeded RNG;
-//! the assertions are on the EMITTED output, never on a reimplementation.
+//! End-to-end emit-step tests (GTW-431 C2/C3; GTW-492 v2 model): the full space-packing
+//! pipeline (assemble -> fill -> emit) is DETERMINISTIC under a fixed [`ProcgenRng`] seed
+//! (same seed -> identical emitted terrain; different seeds -> different terrain, so the
+//! determinism pin is not vacuous), and the emitted [`Situation`] is a VALID assembled level
+//! — connected (seam-reachable) and in-bounds. The REAL pipeline is driven with an injected
+//! seeded RNG over the UUID-keyed v2 prefab model ([`PrefabRegistry2`] of [`Prefab2`]) +
+//! the [`UuidThemeRegistry`] (for the theme's default floor) + the [`TerrainDefRegistry`]
+//! (classifying each placed piece); the assertions are on the EMITTED output, never on a
+//! reimplementation.
+
+use bevy::asset::uuid::Uuid;
 
 use crate::{
     level::{
-        EdgeOpening, GridHeight, GridLevels, GridSize, GridWidth, LevelTheme, Prefab, PrefabName,
-        PrefabPiece, PrefabRegistry, PrefabSpec, SpawnRole,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
+        PrefabSpecV2, SpawnRole, TerrainPlacementEntry, ThemeDisplayName, ThemeUuid, UuidThemeDef,
+        UuidThemeRegistry,
     },
     metric::{Cell, CellLevel, Level},
     procgen::{
@@ -17,7 +23,7 @@ use crate::{
     },
     rng::{BattleSeed, ProcgenRng},
     situation::Situation,
-    terrain::piece::TerrainName,
+    terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 
 /// A `(cell, level)` on level 0 (a tiny helper).
@@ -30,45 +36,76 @@ fn size(w: u8, h: u8) -> Option<GridSize> {
     GridSize::new(GridWidth::new(w), GridHeight::new(h), GridLevels::new(1)).ok()
 }
 
-/// One validated prefab of `role` at footprint `fp` that AUTHORS a wall cell + the level
-/// `default_floor` — so the emit has real terrain to translate (and so different anchors,
-/// i.e. different placed origins, produce different translated cells: the determinism pin
-/// is then discriminating). `None` if the size is invalid or the prefab fails validation.
-fn prefab(theme: LevelTheme, fp: GridSize, role: SpawnRole, stem: &str) -> Option<Prefab> {
-    let spec = PrefabSpec {
-        theme,
-        size: fp,
-        spawn_role: role,
-        default_floor: TerrainName::new("deck_floor".to_owned()),
-        // A wall at the footprint-local cell (1, 1) — translated onto the board by the
-        // placed region origin during emit (GTW-491: the legacy prefab fragment stays
-        // `TerrainName`-keyed via `PrefabPiece`; emit bridges it to the UUID-keyed situation).
-        walls: vec![PrefabPiece::new(
-            at(1, 1),
-            TerrainName::new("bulkhead".to_owned()),
-        )],
-        edge_openings: vec![EdgeOpening::new(at(0, 0))],
-        ..PrefabSpec::default()
-    };
-    Prefab::new(PrefabName::new(stem.to_owned()), spec).ok()
+/// The canonical test theme key — a fixed `from_u128` [`ThemeUuid`] every prefab + the
+/// `UuidThemeRegistry` author, so the generated level's theme resolves to its default floor.
+fn theme() -> ThemeUuid {
+    ThemeUuid::new(Uuid::from_u128(0x0149_2431_0000_0001))
+}
+
+/// The test WALL terrain def UUID a prefab places (the canonical sim test-support `WALL`
+/// piece, a `Wall` sim-kind — so the emit classifies it into the `walls` list).
+fn wall_piece() -> TerrainUuid {
+    crate::test_support::test_pieces::WALL
+}
+
+/// The test FLOOR terrain def UUID the theme nominates as its default floor (the
+/// canonical sim test-support `FLOOR` piece).
+fn floor_piece() -> TerrainUuid {
+    crate::test_support::test_pieces::FLOOR
+}
+
+/// A v2 prefab of `role` at footprint `fp` that AUTHORS a wall placement at the
+/// footprint-local cell `(1, 1)` — so the emit has real terrain to translate (and so
+/// different anchors, i.e. different placed origins, produce different translated cells: the
+/// determinism pin is then discriminating).
+fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab2 {
+    Prefab2::new(
+        PrefabName::new(stem.to_owned()),
+        PrefabSpecV2::new(
+            theme,
+            fp,
+            role,
+            vec![TerrainPlacementEntry::new(wall_piece(), at(1, 1))],
+        ),
+    )
 }
 
 /// A registry with a player + enemy deployment prefab and the given `Fill` prefabs (each
 /// `(stem, w, h)`), every prefab authoring a wall so the emit produces real terrain.
 fn registry_with_fill(
-    theme: LevelTheme,
+    theme: ThemeUuid,
     player_fp: GridSize,
     enemy_fp: GridSize,
     fills: &[(&str, u8, u8)],
-) -> Option<PrefabRegistry> {
-    let mut r = PrefabRegistry::default();
-    r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad")?);
-    r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad")?);
+) -> Option<PrefabRegistry2> {
+    let mut r = PrefabRegistry2::default();
+    r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad"));
+    r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad"));
     for (stem, w, h) in fills {
         let fp = size(*w, *h)?;
-        r.insert(prefab(theme, fp, SpawnRole::Fill, stem)?);
+        r.insert(prefab(theme, fp, SpawnRole::Fill, stem));
     }
     Some(r)
+}
+
+/// A theme registry naming `theme()` with the test FLOOR piece as its default floor — so the
+/// emitted level's `default_floor` resolves to a real (non-nil) terrain UUID (GTW-492).
+fn theme_registry(theme: ThemeUuid) -> UuidThemeRegistry {
+    UuidThemeRegistry::new([(
+        theme,
+        UuidThemeDef {
+            key:           theme,
+            display_name:  ThemeDisplayName::new("Test Theme".to_owned()),
+            default_floor: floor_piece(),
+            terrain:       vec![wall_piece(), floor_piece()],
+        },
+    )])
+}
+
+/// The canonical test terrain-def registry (WALL / SLAB / COVER / FLOOR) the emit classifies
+/// placed pieces against (`wall_piece()` resolves to a `Wall` sim-kind → the walls list).
+fn terrain_defs() -> TerrainDefRegistry {
+    crate::test_support::test_terrain_registry()
 }
 
 /// A tuning with explicit knob values (the unit tests drive the knobs directly).
@@ -104,12 +141,12 @@ fn terrain_eq(a: &Situation, b: &Situation) -> bool {
 /// different-seed runs identical. The test fails either way.
 #[test]
 fn pipeline_emit_is_deterministic_under_a_seed() {
-    let theme = LevelTheme::IndustrialHive;
+    let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
     };
-    let Some(registry) = registry_with_fill(
+    let Some(prefabs) = registry_with_fill(
         theme,
         player_fp,
         enemy_fp,
@@ -117,11 +154,22 @@ fn pipeline_emit_is_deterministic_under_a_seed() {
     ) else {
         return;
     };
+    let themes = theme_registry(theme);
+    let terrain_defs = terrain_defs();
     let knobs = tuning(0.9, 49, 2);
 
     let run = |seed: BattleSeed| -> Option<Situation> {
         let mut rng = ProcgenRng::from_root(seed);
-        generate_level(&registry, theme, board, &mut rng, &knobs).ok()
+        generate_level(
+            &prefabs,
+            &themes,
+            &terrain_defs,
+            theme,
+            board,
+            &mut rng,
+            &knobs,
+        )
+        .ok()
     };
 
     let seed = BattleSeed::new(0x5EED_4311);
@@ -155,21 +203,24 @@ fn pipeline_emit_is_deterministic_under_a_seed() {
 
 /// C3 (validity): the emitted level is a VALID assembled level — every authored terrain
 /// cell is IN-BOUNDS (within the board footprint, non-negative), it carries the
-/// translated prefab walls, and it is CONNECTED (the player + enemy + fill regions are all
-/// seam-reachable from the player region; a disconnected level would have returned a
-/// fail-closed `Disconnected` error instead of `Ok`).
+/// translated prefab walls (poured into the `walls` list by the def's `Wall` sim-kind), and
+/// it is CONNECTED (the player + enemy + fill regions are all seam-reachable from the player
+/// region; a disconnected level would have returned a fail-closed `Disconnected` error
+/// instead of `Ok`).
 ///
 /// Discriminating: an emit that forgot to translate footprint-local cells onto the board
 /// (or shipped a disconnected level) would fail the in-bounds / connectivity checks; a
-/// no-op emit would carry no walls.
+/// no-op emit would carry no walls. An emit that iterated four split lists (the legacy
+/// schema) would carry NO walls (a v2 prefab has none), so a non-empty `walls` list also
+/// pins that the single placements list was poured (C1).
 #[test]
 fn emitted_level_is_in_bounds_and_connected() {
-    let theme = LevelTheme::Underhive;
+    let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
     };
-    let Some(registry) = registry_with_fill(
+    let Some(prefabs) = registry_with_fill(
         theme,
         player_fp,
         enemy_fp,
@@ -177,10 +228,20 @@ fn emitted_level_is_in_bounds_and_connected() {
     ) else {
         return;
     };
+    let themes = theme_registry(theme);
+    let terrain_defs = terrain_defs();
     let knobs = tuning(0.8, 49, 2);
 
     let mut rng = ProcgenRng::from_root(BattleSeed::new(0xB0_1234));
-    let result = generate_level(&registry, theme, board, &mut rng, &knobs);
+    let result = generate_level(
+        &prefabs,
+        &themes,
+        &terrain_defs,
+        theme,
+        board,
+        &mut rng,
+        &knobs,
+    );
     assert!(
         result.is_ok(),
         "the emit must succeed (a connected level): {:?}",
@@ -190,12 +251,20 @@ fn emitted_level_is_in_bounds_and_connected() {
         return;
     };
 
+    // GTW-492: the theme is the UUID-keyed key directly (no shim), and the default_floor
+    // resolved from the theme registry (the test FLOOR piece).
+    assert_eq!(
+        situation.theme, theme,
+        "the emitted level's theme must be the requested ThemeUuid (no shim)",
+    );
+
     // The emit reached the connectivity assertion and returned Ok, so the level is connected
-    // by that fail-closed check. The emitted level carries the translated prefab walls.
+    // by that fail-closed check. The emitted level carries the translated prefab walls (the
+    // single v2 placements list poured into `walls` by the Wall def classification).
     assert!(
         !situation.walls.is_empty(),
-        "the emitted level must carry the translated prefab walls (C3 — the prefab geometry \
-         was poured into the situation)",
+        "the emitted level must carry the translated prefab walls (C1/C3 — the v2 placements \
+         list was poured into the situation, classified into the walls list)",
     );
 
     // Every authored terrain cell must be in-bounds: 0 <= x < board_w, 0 <= y < board_h.
@@ -233,6 +302,11 @@ fn emitted_level_is_in_bounds_and_connected() {
     );
     assert!(
         !situation.default_floor.is_nil(),
-        "the emitted level must carry a default_floor (the seam-lattice floor)",
+        "the emitted level must carry a default_floor (the theme's nominated ground terrain)",
+    );
+    assert_eq!(
+        situation.default_floor,
+        floor_piece(),
+        "the default_floor must resolve from the theme registry's nominated terrain (GTW-492)",
     );
 }

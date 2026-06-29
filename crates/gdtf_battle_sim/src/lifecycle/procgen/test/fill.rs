@@ -4,12 +4,13 @@
 //! `default_floor` rather than shrinking the playable area (C3), the fill is DETERMINISTIC
 //! under a seed, and the assembled+filled level still passes the OQ-4 connectivity flood.
 
+use bevy::asset::uuid::Uuid;
+
 use crate::{
     level::{
-        EdgeOpening, GridHeight, GridLevels, GridSize, GridWidth, LevelTheme, Prefab, PrefabName,
-        PrefabRegistry, PrefabSpec, SpawnRole,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
+        PrefabSpecV2, SpawnRole, ThemeUuid,
     },
-    metric::{Cell, CellLevel, Level},
     procgen::{
         DeadRectScatterCount, FilledPlacement, LargePrefabAreaThreshold, MinDensityFloor,
         PlacedPrefab, ProcgenTuning, RegionRect, assemble_placement, count_seam_reachable,
@@ -18,42 +19,40 @@ use crate::{
     rng::{BattleSeed, ProcgenRng},
 };
 
-/// A `(cell, level)` on level 0 (a tiny helper).
-fn at(x: i32, y: i32) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(0))
-}
-
 /// A footprint / board `GridSize` (clamped; `None` returns early — never panics).
 fn size(w: u8, h: u8) -> Option<GridSize> {
     GridSize::new(GridWidth::new(w), GridHeight::new(h), GridLevels::new(1)).ok()
 }
 
-/// One validated prefab of `role` at footprint `fp`, with one edge opening so it validates.
-fn prefab(theme: LevelTheme, fp: GridSize, role: SpawnRole, stem: &str) -> Option<Prefab> {
-    let spec = PrefabSpec {
-        theme,
-        size: fp,
-        spawn_role: role,
-        edge_openings: vec![EdgeOpening::new(at(0, 0))],
-        ..PrefabSpec::default()
-    };
-    Prefab::new(PrefabName::new(stem.to_owned()), spec).ok()
+/// The canonical test theme key — a fixed `from_u128` [`ThemeUuid`] every test prefab
+/// authors so the fill's theme-keyed candidate lookup resolves them.
+fn theme() -> ThemeUuid {
+    ThemeUuid::new(Uuid::from_u128(0x0149_2427_0000_0001))
+}
+
+/// A v2 prefab of `role` at footprint `fp` under `theme`, authoring no placements (the fill
+/// pass cares only about footprint + role + theme — the geometry is the emit step's concern).
+fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab2 {
+    Prefab2::new(
+        PrefabName::new(stem.to_owned()),
+        PrefabSpecV2::new(theme, fp, role, Vec::new()),
+    )
 }
 
 /// A registry with a player + enemy deployment prefab and the given list of `Fill`
-/// prefabs (each `(stem, w, h)`). `None` if any size is invalid.
+/// prefabs (each `(stem, w, h)`) under `theme`. `None` if any fill size is invalid.
 fn registry_with_fill(
-    theme: LevelTheme,
+    theme: ThemeUuid,
     player_fp: GridSize,
     enemy_fp: GridSize,
     fills: &[(&str, u8, u8)],
-) -> Option<PrefabRegistry> {
-    let mut r = PrefabRegistry::default();
-    r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad")?);
-    r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad")?);
+) -> Option<PrefabRegistry2> {
+    let mut r = PrefabRegistry2::default();
+    r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad"));
+    r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad"));
     for (stem, w, h) in fills {
         let fp = size(*w, *h)?;
-        r.insert(prefab(theme, fp, SpawnRole::Fill, stem)?);
+        r.insert(prefab(theme, fp, SpawnRole::Fill, stem));
     }
     Some(r)
 }
@@ -91,7 +90,7 @@ fn covered_plus_dead(filled: &FilledPlacement) -> i64 {
 /// MUST place at least one; a no-op fill (the bug) would place zero.
 #[test]
 fn fill_places_random_same_theme_prefabs() {
-    let theme = LevelTheme::IndustrialHive;
+    let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
@@ -132,7 +131,7 @@ fn fill_places_random_same_theme_prefabs() {
             "every fill prefab must match the level theme (C1: same-theme fill)",
         );
         assert_eq!(
-            placed.prefab().spec().spawn_role,
+            placed.prefab().spec().role,
             SpawnRole::Fill,
             "every fill prefab must be the Fill role (C1)",
         );
@@ -147,7 +146,7 @@ fn fill_places_random_same_theme_prefabs() {
 /// assertion proves termination. The fill bucket is non-empty but nothing fits.
 #[test]
 fn fill_terminates_when_nothing_fits() {
-    let theme = LevelTheme::Underhive;
+    let theme = theme();
     // A 24x24 board with 10x10 deployment pads at opposite corners. The only Fill prefab is
     // a 20x20 — padded with its 1-cell seam it is 22x22, which cannot fit any free rectangle
     // left once the two pads occupy opposite corners. So the fill places nothing and must
@@ -187,7 +186,7 @@ fn fill_terminates_when_nothing_fits() {
 /// the pass returns with no fill and the whole free space as dead-space `default_floor`.
 #[test]
 fn fill_terminates_with_no_fill_prefabs() {
-    let theme = LevelTheme::SumpWaste;
+    let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
@@ -229,7 +228,7 @@ fn fill_terminates_with_no_fill_prefabs() {
 /// the uncovered cells, so the sum would be LESS than the board; padding keeps them.
 #[test]
 fn dead_space_is_padded_with_default_floor_not_shrunk() {
-    let theme = LevelTheme::IndustrialHive;
+    let theme = theme();
     let (Some(board_size), Some(player_fp), Some(enemy_fp)) =
         (size(40, 40), size(12, 12), size(12, 12))
     else {
@@ -282,7 +281,7 @@ fn dead_space_is_padded_with_default_floor_not_shrunk() {
 /// or a non-seeded draw) would make the two runs differ.
 #[test]
 fn fill_is_deterministic_under_a_seed() {
-    let theme = LevelTheme::Underhive;
+    let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
@@ -322,7 +321,7 @@ fn fill_is_deterministic_under_a_seed() {
 /// `reached < total`; the seam keeps all regions reachable.
 #[test]
 fn filled_level_stays_connected() {
-    let theme = LevelTheme::IndustrialHive;
+    let theme = theme();
     let (Some(board_size), Some(player_fp), Some(enemy_fp)) =
         (size(40, 40), size(12, 12), size(12, 12))
     else {

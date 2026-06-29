@@ -12,7 +12,7 @@ use super::{
     anchor::Anchor,
     geometry::{Footprint, MinPlayerSide, RegionCount, RegionRect},
 };
-use crate::level::{LevelTheme, SpawnRole};
+use crate::level::{SpawnRole, ThemeUuid};
 
 /// The typed ways the GTW-424 packer can fail — the no-panic, fail-closed procgen-abort
 /// contract.
@@ -30,8 +30,9 @@ pub enum PackingError {
     /// size). Fail-closed: generation cannot proceed without a player-spawn and an
     /// enemy-spawn prefab.
     NoPrefabForRole {
-        /// The theme that had no candidate for `role`.
-        theme: LevelTheme,
+        /// The stable [`ThemeUuid`] that had no candidate for `role` (GTW-492 — switched
+        /// from the legacy [`LevelTheme`](crate::level::LevelTheme) enum).
+        theme: ThemeUuid,
         /// The deployment role that had no candidate.
         role:  SpawnRole,
     },

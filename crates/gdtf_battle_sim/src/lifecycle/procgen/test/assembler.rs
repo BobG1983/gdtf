@@ -1,13 +1,17 @@
-//! End-to-end assembler tests (GTW-424 C1/C2/C3): anchor selection, opposite-side fit,
-//! determinism, the OQ-5 minimum size, the OQ-4 connectivity assertion (holds for a valid
-//! placement; fails closed on an impossible one), and the fail-closed errors.
+//! End-to-end assembler tests (GTW-424 C1/C2/C3; GTW-492 v2 model): anchor selection,
+//! opposite-side fit, determinism, the OQ-5 minimum size, the OQ-4 connectivity assertion
+//! (holds for a valid placement; fails closed on an impossible one), and the fail-closed
+//! errors — all over the UUID-keyed [`PrefabRegistry2`] of [`Prefab2`], keyed by a stable
+//! [`ThemeUuid`] (GTW-492 C2/C5).
+
+use bevy::asset::uuid::Uuid;
 
 use crate::{
     level::{
-        EdgeOpening, GridHeight, GridLevels, GridSize, GridWidth, LevelTheme, Prefab, PrefabName,
-        PrefabRegistry, PrefabSpec, SpawnRole,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
+        PrefabSpecV2, SpawnRole, ThemeUuid,
     },
-    metric::{Cell, CellLevel, Level},
+    metric::Cell,
     procgen::{
         Anchor, Footprint, MinPlayerSide, PackingError, RegionCount, RegionRect, SplitMode,
         assemble_placement, assemble_placement_with, count_seam_reachable,
@@ -15,52 +19,48 @@ use crate::{
     rng::{BattleSeed, ProcgenRng},
 };
 
-/// A `(cell, level)` on level 0 (a tiny helper).
-fn at(x: i32, y: i32) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(0))
-}
-
 /// A footprint / board `GridSize` (clamped; `None` returns early — never panics).
 fn size(w: u8, h: u8) -> Option<GridSize> {
     GridSize::new(GridWidth::new(w), GridHeight::new(h), GridLevels::new(1)).ok()
 }
 
-/// One validated prefab of `role` at footprint `fp`, with one edge opening (so it
-/// validates). `None` if the spec is invalid.
-fn prefab(theme: LevelTheme, fp: GridSize, role: SpawnRole, stem: &str) -> Option<Prefab> {
-    let spec = PrefabSpec {
-        theme,
-        size: fp,
-        spawn_role: role,
-        edge_openings: vec![EdgeOpening::new(at(0, 0))],
-        ..PrefabSpec::default()
-    };
-    Prefab::new(PrefabName::new(stem.to_owned()), spec).ok()
+/// The canonical test theme key — a fixed `from_u128` [`ThemeUuid`] the test prefabs author
+/// (so the assembler's theme-keyed candidate lookup resolves them).
+fn theme() -> ThemeUuid {
+    ThemeUuid::new(Uuid::from_u128(0x0149_2492_0000_0001))
 }
 
-/// A registry with one player + one enemy prefab at the given fragment footprints. `None`
-/// if any size is invalid.
-fn registry(theme: LevelTheme, player_fp: GridSize, enemy_fp: GridSize) -> Option<PrefabRegistry> {
-    let mut r = PrefabRegistry::default();
-    r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad")?);
-    r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad")?);
-    Some(r)
+/// A v2 prefab of `role` at footprint `fp` authoring NO placements (the assembler cares only
+/// about footprint + role + theme — the geometry is the emit step's concern). `None` if the
+/// size is invalid (it cannot be, but the no-panic contract is honoured upstream).
+fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab2 {
+    Prefab2::new(
+        PrefabName::new(stem.to_owned()),
+        PrefabSpecV2::new(theme, fp, role, Vec::new()),
+    )
+}
+
+/// A registry with one player + one enemy prefab at the given fragment footprints under
+/// `theme`. `None` if any size is invalid.
+fn registry(theme: ThemeUuid, player_fp: GridSize, enemy_fp: GridSize) -> PrefabRegistry2 {
+    let mut r = PrefabRegistry2::default();
+    r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad"));
+    r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad"));
+    r
 }
 
 /// C1/C2: a valid registry places a `>= 10x10` player-spawn at one of the four anchors and
 /// an enemy-spawn at the strict opposite that FITS, connectivity assertion holding.
 #[test]
 fn places_player_and_opposite_enemy() {
-    let theme = LevelTheme::IndustrialHive;
+    let theme = theme();
     // A 40x40 board with 12x12 deployment fragments — both fit at opposite anchors with a
     // seam, with plenty of floor between.
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
     };
-    let Some(registry) = registry(theme, player_fp, enemy_fp) else {
-        return;
-    };
+    let registry = registry(theme, player_fp, enemy_fp);
 
     let mut rng = ProcgenRng::from_root(BattleSeed::new(11));
     let result = assemble_placement(&registry, theme, board, &mut rng);
@@ -102,14 +102,12 @@ fn places_player_and_opposite_enemy() {
 /// fixed (one player-anchor draw; no draw for the enemy side or prefab choice).
 #[test]
 fn placement_is_deterministic_under_a_seed() {
-    let theme = LevelTheme::Underhive;
+    let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
     };
-    let Some(registry) = registry(theme, player_fp, enemy_fp) else {
-        return;
-    };
+    let registry = registry(theme, player_fp, enemy_fp);
 
     let seed = BattleSeed::new(0xABCD_1234);
     let mut a = ProcgenRng::from_root(seed);
@@ -122,6 +120,46 @@ fn placement_is_deterministic_under_a_seed() {
     );
 }
 
+/// C2 (pin-discriminating, GTW-492): an ABSENT `ThemeUuid` key yields NO candidate — the
+/// theme-keyed candidate lookup matches nothing, so `assemble_placement` fails closed with
+/// `NoPrefabForRole(Player)`.
+///
+/// Discriminating: the SAME registry under the AUTHORED theme places a valid level
+/// (`places_player_and_opposite_enemy`); switching ONLY the requested `ThemeUuid` to an
+/// unregistered key turns that into a no-candidate fail-closed — so the test pins that the
+/// assembler keys on the `ThemeUuid` (a stale `LevelTheme`-keyed lookup or one ignoring the
+/// theme would still find the player prefab and succeed).
+#[test]
+fn absent_theme_uuid_yields_no_candidate() {
+    let authored = theme();
+    let absent = ThemeUuid::new(Uuid::from_u128(0x0149_2492_0000_00FF));
+    let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
+    else {
+        return;
+    };
+    // The registry's prefabs are authored under `authored`; we request `absent`.
+    let registry = registry(authored, player_fp, enemy_fp);
+    let mut rng = ProcgenRng::from_root(BattleSeed::new(42));
+    let result = assemble_placement(&registry, absent, board, &mut rng);
+    assert!(
+        matches!(
+            result,
+            Err(PackingError::NoPrefabForRole {
+                role: SpawnRole::Player,
+                ..
+            })
+        ),
+        "an absent ThemeUuid key must yield no candidate (fail-closed NoPrefabForRole), \
+         got {result:?}",
+    );
+    if let Err(PackingError::NoPrefabForRole { theme, .. }) = result {
+        assert_eq!(
+            theme, absent,
+            "the error must name the requested (absent) theme"
+        );
+    }
+}
+
 /// OQ-5: with ONLY an undersize player prefab (below `~10x10`), the assembler rejects fail
 /// closed with the typed error.
 ///
@@ -129,14 +167,12 @@ fn placement_is_deterministic_under_a_seed() {
 /// the success test above is accepted. The pair pins the floor both ways.
 #[test]
 fn undersize_player_footprint_is_rejected_fail_closed() {
-    let theme = LevelTheme::IndustrialHive;
+    let theme = theme();
     let (Some(board), Some(small), Some(enemy_fp)) = (size(40, 40), size(8, 8), size(12, 12))
     else {
         return;
     };
-    let Some(registry) = registry(theme, small, enemy_fp) else {
-        return;
-    };
+    let registry = registry(theme, small, enemy_fp);
     let mut rng = ProcgenRng::from_root(BattleSeed::new(3));
     let result = assemble_placement(&registry, theme, board, &mut rng);
     assert!(
@@ -152,11 +188,11 @@ fn undersize_player_footprint_is_rejected_fail_closed() {
 /// rather than panicking.
 #[test]
 fn missing_prefab_is_rejected_fail_closed() {
-    let theme = LevelTheme::SumpWaste;
+    let theme = theme();
     let Some(board) = size(40, 40) else {
         return;
     };
-    let registry = PrefabRegistry::default();
+    let registry = PrefabRegistry2::default();
     let mut rng = ProcgenRng::from_root(BattleSeed::new(99));
     let result = assemble_placement(&registry, theme, board, &mut rng);
     assert!(
@@ -175,14 +211,12 @@ fn missing_prefab_is_rejected_fail_closed() {
 /// under the guillotine split too (the assertion is split-mode independent).
 #[test]
 fn connectivity_holds_under_guillotine_split() {
-    let theme = LevelTheme::IndustrialHive;
+    let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
     };
-    let Some(registry) = registry(theme, player_fp, enemy_fp) else {
-        return;
-    };
+    let registry = registry(theme, player_fp, enemy_fp);
     let mut rng = ProcgenRng::from_root(BattleSeed::new(5));
     let result = assemble_placement_with(
         &registry,
@@ -207,14 +241,12 @@ fn connectivity_holds_under_guillotine_split() {
 /// fragment at the opposite anchor (12 + seam + 12 > 20), so the enemy fails to fit.
 #[test]
 fn enemy_footprint_that_does_not_fit_is_rejected() {
-    let theme = LevelTheme::IndustrialHive;
+    let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(20, 20), size(12, 12), size(12, 12))
     else {
         return;
     };
-    let Some(registry) = registry(theme, player_fp, enemy_fp) else {
-        return;
-    };
+    let registry = registry(theme, player_fp, enemy_fp);
     let mut rng = ProcgenRng::from_root(BattleSeed::new(1));
     let result = assemble_placement(&registry, theme, board, &mut rng);
     assert!(

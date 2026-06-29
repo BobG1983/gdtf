@@ -2,14 +2,19 @@
 // to the NEW UUID-keyed PrefabSpecV2 model (GTW-486/489), under the NEW `maps/<theme>/<size>/`
 // root. The legacy `walls` + `scatter` lists collapse into ONE `placements` list, each mapping
 // an old stem ref to the migrated industrial_hive TerrainUuid. The old `default_floor` (a theme
-// concern) and `edge_openings` (no v2 field) are dropped. `role` is OMITTED -> serde-default
-// SpawnRole::Fill (GTW-490 migration recipe step 3 / C3 "role defaults applied"); the legacy
-// Player role intent is re-keyed by the v2 assembler (T07b), which does not yet consume this.
+// concern) and `edge_openings` (no v2 field) are dropped.
+//
+// GTW-492 (T07b): the v2 procgen assembler now CONSUMES this fragment — it must carry the
+// legacy fragment's `Player` deployment role (the assembler anchors the human spawn zone on a
+// `Player`-role fragment of at least the OQ-5 minimum side). The migration had deferred the role
+// to "the v2 assembler"; the assembler is here, so the role is authored.
 (
     // The IndustrialHive ThemeUuid (must match the migrated terrain_theme.ron key).
     theme: "00000000-0000-0000-0000-01840a900001",
     // The 12x12x1 footprint (unchanged from the legacy fragment).
     size: (width: 12, height: 12, levels: 1),
+    // The deployment role this fragment plays — the human player's spawn zone (GTW-492).
+    role: Player,
     // The placed pieces — the legacy `walls` (bulkhead L) + `scatter` (barricade), by migrated UUID.
     placements: [
         // old `walls` — a short L of bulkhead cover near the back corner.

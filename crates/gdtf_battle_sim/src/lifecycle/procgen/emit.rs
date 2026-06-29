@@ -23,18 +23,38 @@
 //! whose terrain is the assembled level. GTW-432/GTW-433 source THIS `Situation`'s terrain
 //! to replace the inline-authored terrain.
 //!
+//! # The v2 model (GTW-492)
+//!
+//! GTW-492 (child T07b of the GTW-476 data-model refactor) switches the procgen pipeline onto
+//! the UUID-keyed v2 prefab model: the assembler / fill read the
+//! [`PrefabRegistry2`](crate::level::PrefabRegistry2) of [`Prefab2`](crate::level::Prefab2)
+//! fragments, and each fragment carries ONE
+//! [`placements`](crate::level::PrefabSpecV2::placements) list of
+//! [`TerrainPlacementEntry`](crate::level::TerrainPlacementEntry) (a `(piece: TerrainUuid, at:
+//! CellLevel)` pair) in place of the legacy schema's FOUR split lists
+//! (walls / scatter / slabs / floors). The emit therefore iterates that SINGLE list and
+//! CLASSIFIES each placement by its referenced
+//! [`TerrainDef`](crate::terrain::def::TerrainDef)'s
+//! [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) (resolved against the
+//! [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry)): a `Wall`/`Cover` piece
+//! pours into the [`walls`](crate::situation::Situation::walls) list, a `Slab` piece into the
+//! [`slabs`](crate::situation::Situation::slabs) list — the routing the legacy four-list
+//! schema authored explicitly is now DERIVED from the def. The level's `theme` is the
+//! UUID-keyed [`ThemeUuid`] directly, and its `default_floor` is resolved from the
+//! [`UuidThemeRegistry`] (the theme nominates its ground terrain). The GTW-491 (T07a) thin
+//! shim (`piece_uuid` / `theme_uuid` minting synthetic legacy UUIDs) is REMOVED — the emit
+//! produces the UUID-typed `Situation` directly.
+//!
 //! # The translation (footprint-local -> board cells)
 //!
-//! A [`Prefab`](crate::level::Prefab) authors its geometry in FOOTPRINT-LOCAL cells (origin
+//! A [`Prefab2`](crate::level::Prefab2) authors its geometry in FOOTPRINT-LOCAL cells (origin
 //! at `(0, 0)`); the packer placed it at a [`RegionRect`] whose [`origin`](RegionRect::origin)
-//! is its min-corner on the board. So every authored cell — each
-//! [`CoverSpawn`](crate::situation::CoverSpawn) wall/scatter, each
-//! [`SlabSpawn`](crate::situation::SlabSpawn), each
-//! [`FloorSpawn`](crate::situation::FloorSpawn) override, each
-//! [`VerticalLink`](crate::vertical::VerticalLink) endpoint — is shifted by the region
-//! origin onto the board. The storey index (`z`) rides along unchanged: the packer
-//! space-packs on the ground plane only, so a fragment's own slabs / links keep their
-//! authored storeys.
+//! is its min-corner on the board. So every authored placement cell — each
+//! [`TerrainPlacementEntry`](crate::level::TerrainPlacementEntry), poured into a
+//! [`CoverSpawn`](crate::situation::CoverSpawn) or [`SlabSpawn`](crate::situation::SlabSpawn) by
+//! its classified kind — is shifted by the region origin onto the board. The storey index
+//! (`z`) rides along unchanged: the packer space-packs on the ground plane only, so a
+//! fragment's own slabs keep their authored storeys.
 //!
 //! # The floored dead space (C3)
 //!
@@ -52,9 +72,10 @@
 //! Before returning, [`emit_level`] re-runs the OQ-4 [`count_seam_reachable`] flood over the
 //! player + enemy + every fill region. A disconnected level returns
 //! [`PackingError::Disconnected`] — it NEVER silently emits a broken level (the fail-closed
-//! assertion, NEVER a repair). By construction the 1-cell seam every placement reserves plus
-//! each prefab's `>= 1` edge opening keeps it connected, so this never fires in practice; it
-//! is the contract backstop.
+//! assertion, NEVER a repair). By construction the 1-cell seam every placement reserves keeps
+//! it connected, so this never fires in practice; it is the contract backstop. (The v2 model
+//! authors no per-prefab `edge_openings` — connectivity is the seam lattice alone; removing
+//! this connectivity flood entirely is GTW-497 / T11.)
 //!
 //! # Determinism (C1/C2)
 //!
@@ -73,39 +94,47 @@ use super::{
     tuning::ProcgenTuning,
 };
 use crate::{
-    level::{GridSize, LevelTheme, PrefabRegistry, ThemeUuid},
+    level::{GridSize, PrefabRegistry2, ThemeUuid, UuidThemeRegistry},
     metric::{Cell, CellLevel, Level},
     rng::ProcgenRng,
     situation::{CoverSpawn, FloorSpawn, Situation, SlabSpawn},
-    terrain::{def::TerrainUuid, piece::TerrainName},
-    vertical::VerticalLink,
+    terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainUuid},
 };
 
 /// Run the WHOLE space-packing pipeline from one injected seed and emit the assembled
-/// level as a [`Situation`](crate::situation::Situation) (GTW-431 C1/C2): assemble the
-/// GTW-424 placement, run the GTW-427 fill, then [`emit_level`] the result.
+/// level as a [`Situation`](crate::situation::Situation) (GTW-431 C1/C2; GTW-492 v2 model):
+/// assemble the GTW-424 placement, run the GTW-427 fill, then [`emit_level`] the result.
 ///
 /// This is the deterministic SEED HARNESS the determinism test drives twice: given the
-/// same `registry` / `theme` / `grid_size` and the SAME `rng` seed state, it returns an
-/// IDENTICAL `Situation` (its terrain entries are equal). The RULED defaults
-/// ([`SplitMode::default`], [`MinPlayerSide::DEFAULT`](super::geometry::MinPlayerSide::DEFAULT)
-/// inside the assembler) are used; the unit tests drive the explicit-split form via the
-/// staged functions directly when they need to.
+/// same `prefabs` / `themes` / `terrain_defs` / `theme` / `grid_size` and the SAME `rng`
+/// seed state, it returns an IDENTICAL `Situation` (its terrain entries are equal). The
+/// RULED defaults ([`SplitMode::default`],
+/// [`MinPlayerSide::DEFAULT`](super::geometry::MinPlayerSide::DEFAULT) inside the assembler)
+/// are used; the unit tests drive the explicit-split form via the staged functions directly
+/// when they need to.
+///
+/// GTW-492: `prefabs` is the UUID-keyed [`PrefabRegistry2`], `theme` the stable
+/// [`ThemeUuid`]; `themes` ([`UuidThemeRegistry`]) supplies the theme's `default_floor`, and
+/// `terrain_defs` ([`TerrainDefRegistry`]) classifies each placed piece's
+/// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) so [`emit_level`] routes it into
+/// the right `Situation` terrain list.
 ///
 /// # Errors
 ///
 /// Propagates every [`PackingError`] the assembler / fill / emit can raise (no prefab for a
-/// role, a footprint that does not fit, a too-small player footprint, or — the fail-closed
-/// backstop — a disconnected emitted level). It NEVER `unwrap`/`expect`/`panic`s.
+/// role at the theme, a footprint that does not fit, a too-small player footprint, or — the
+/// fail-closed backstop — a disconnected emitted level). It NEVER `unwrap`/`expect`/`panic`s.
 pub fn generate_level(
-    registry: &PrefabRegistry,
-    theme: LevelTheme,
+    prefabs: &PrefabRegistry2,
+    themes: &UuidThemeRegistry,
+    terrain_defs: &TerrainDefRegistry,
+    theme: ThemeUuid,
     grid_size: GridSize,
     rng: &mut ProcgenRng,
     tuning: &ProcgenTuning,
 ) -> Result<Situation, PackingError> {
     let placement = assemble_placement_with(
-        registry,
+        prefabs,
         theme,
         grid_size,
         rng,
@@ -114,25 +143,37 @@ pub fn generate_level(
     )?;
     let filled = fill_placement_with(
         placement,
-        registry,
+        prefabs,
         theme,
         grid_size,
         tuning,
         rng,
         SplitMode::default(),
     )?;
-    emit_level(&filled, theme, grid_size)
+    emit_level(&filled, theme, grid_size, themes, terrain_defs)
 }
 
 /// Emit a GTW-427 [`FilledPlacement`] into the sim's canonical
-/// [`Situation`](crate::situation::Situation) — the GTW-431 emit step (C3).
+/// [`Situation`](crate::situation::Situation) — the GTW-431 emit step (C3); GTW-492 v2 model.
 ///
 /// Translates every placed prefab's footprint-local geometry onto the board (shifted by its
-/// placed region origin), pours each prefab's `default_floor` choice (the player prefab's is
-/// the level-wide one), floors the [`dead_space`](FilledPlacement::dead_space) cells with
-/// the level `default_floor`, and re-runs the OQ-4 connectivity flood as a fail-closed
-/// assertion. The returned `Situation` has empty `gangers` (rosters are placed by GTW-433,
-/// not by this terrain emit); its `theme` / `grid_size` are the assembled level's.
+/// placed region origin), resolves the level-wide `default_floor` from the `themes` registry
+/// (the theme nominates its ground terrain), floors the
+/// [`dead_space`](FilledPlacement::dead_space) cells with that `default_floor`, and re-runs
+/// the OQ-4 connectivity flood as a fail-closed assertion. The returned `Situation` has empty
+/// `gangers` (rosters are placed by GTW-433, not by this terrain emit); its `theme` is the
+/// UUID-keyed [`ThemeUuid`] directly, its `grid_size` the assembled level's.
+///
+/// GTW-492: iterates each fragment's SINGLE
+/// [`placements`](crate::level::PrefabSpecV2::placements) list (not four split lists) and
+/// CLASSIFIES each placement by its referenced
+/// [`TerrainDef`](crate::terrain::def::TerrainDef)'s
+/// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) (resolved against `terrain_defs`):
+/// a `Wall`/`Cover` piece pours into [`walls`](crate::situation::Situation::walls), a `Slab`
+/// piece into [`slabs`](crate::situation::Situation::slabs). A piece whose UUID is NOT in
+/// `terrain_defs` is poured into `walls` as a fail-OPEN fallback so it surfaces as a
+/// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError) at setup rather
+/// than being silently dropped.
 ///
 /// # Errors
 ///
@@ -141,8 +182,10 @@ pub fn generate_level(
 /// lattice keeps the level connected, so this never fires in practice). It NEVER panics.
 pub fn emit_level(
     filled: &FilledPlacement,
-    theme: LevelTheme,
+    theme: ThemeUuid,
     grid_size: GridSize,
+    themes: &UuidThemeRegistry,
+    terrain_defs: &TerrainDefRegistry,
 ) -> Result<Situation, PackingError> {
     let placement = filled.placement();
 
@@ -158,127 +201,106 @@ pub fn emit_level(
         return Err(PackingError::Disconnected { reached, placed });
     }
 
-    // The level-wide default floor: the player-spawn prefab's `default_floor` (the seam
-    // lattice is this floor). Every open cell — incl. the floored dead space — is this.
-    // GTW-491 SHIM (T07a): the legacy prefab fragment is still TerrainName-keyed, but a
-    // `Situation` now references terrain by TerrainUuid — so the legacy default-floor name is
-    // bridged into a stable TerrainUuid via the deterministic procgen shim (GTW-492 retires
-    // this once procgen reads UUID-keyed v2 prefabs).
-    let default_floor = placement.player().prefab().spec().default_floor.clone();
+    // The level-wide default floor: the THEME's nominated ground terrain (GTW-492 — the seam
+    // lattice is this floor). Every open cell — incl. the floored dead space — is this. A
+    // theme absent from `themes` (the headless empty-registry harness) yields the nil
+    // sentinel, which skips registry floor resolution at setup (the documented fallback).
+    let default_floor = themes.default_floor(&theme).unwrap_or_default();
 
     let mut situation = Situation::new();
-    // SHIM: bridge the legacy LevelTheme enum into the UUID-keyed Situation.theme (GTW-492).
-    situation.theme = theme_uuid(theme);
+    situation.theme = theme;
     situation.grid_size = grid_size;
-    situation.default_floor = piece_uuid(&default_floor);
+    situation.default_floor = default_floor;
 
     // Pour every placed prefab (player, enemy, then fill in placement order) — a FIXED
-    // order, so the emit is deterministic (C1/C2). Each prefab's footprint-local cells are
-    // translated by its placed region origin onto the board.
-    pour_prefab(placement.player(), &mut situation);
-    pour_prefab(placement.enemy(), &mut situation);
+    // order, so the emit is deterministic (C1/C2). Each prefab's footprint-local placements
+    // are translated by its placed region origin onto the board and classified by kind.
+    pour_prefab(placement.player(), &mut situation, terrain_defs);
+    pour_prefab(placement.enemy(), &mut situation, terrain_defs);
     for placed in filled.fill() {
-        pour_prefab(placed, &mut situation);
+        pour_prefab(placed, &mut situation, terrain_defs);
     }
 
     // Floor the dead space (C3): each leftover free-rect cell is emitted as an explicit
     // `default_floor` override, so the dead space is concretely floored (never dropped).
     for rect in filled.dead_space() {
-        floor_region(*rect, &default_floor, &mut situation);
+        floor_region(*rect, default_floor, &mut situation);
     }
 
     Ok(situation)
 }
 
 /// Translate one placed prefab's footprint-local geometry onto the board and append it to
-/// `situation` — walls / scatter / slabs / floor overrides / vertical links, each cell
-/// shifted by the prefab's placed region origin.
-fn pour_prefab(placed: &PlacedPrefab, situation: &mut Situation) {
+/// `situation` — the SINGLE GTW-486 [`placements`](crate::level::PrefabSpecV2::placements)
+/// list, each cell shifted by the prefab's placed region origin and CLASSIFIED by kind.
+///
+/// GTW-492: a v2 fragment carries ONE placements list (not four split lists). Each placement
+/// is routed into the right `Situation` terrain list by its referenced
+/// [`TerrainDef`](crate::terrain::def::TerrainDef)'s
+/// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) (resolved against `terrain_defs`):
+/// `Wall`/`Cover` → [`walls`](crate::situation::Situation::walls), `Slab` →
+/// [`slabs`](crate::situation::Situation::slabs). An UNRESOLVABLE piece falls open into
+/// `walls` (so it surfaces at setup, never silently dropped — see [`emit_level`]).
+fn pour_prefab(
+    placed: &PlacedPrefab,
+    situation: &mut Situation,
+    terrain_defs: &TerrainDefRegistry,
+) {
     let origin = placed.region().origin();
     let spec = placed.prefab().spec();
 
-    // GTW-491 SHIM (T07a): each legacy prefab piece is TerrainName-keyed; bridge its name into
-    // the UUID-keyed Situation leaf via the deterministic procgen `piece_uuid` shim (GTW-492
-    // retires this once procgen reads UUID-keyed v2 prefabs).
-    for wall in &spec.walls {
-        situation.walls.push(CoverSpawn::new(
-            translate(wall.at, origin),
-            piece_uuid(&wall.piece),
-        ));
+    for placement in &spec.placements {
+        let at = translate(placement.at, origin);
+        match classify(placement.piece, terrain_defs) {
+            // Slab → the slabs list (the per-slab structural HP resolves from the def).
+            PlacedKind::Slab => situation.slabs.push(SlabSpawn::new(at, placement.piece)),
+            // Wall / Cover (and the fail-open unresolved fallback) → the walls list.
+            PlacedKind::Cover => situation.walls.push(CoverSpawn::new(at, placement.piece)),
+        }
     }
-    for prop in &spec.scatter {
-        situation.scatter.push(CoverSpawn::new(
-            translate(prop.at, origin),
-            piece_uuid(&prop.piece),
-        ));
-    }
-    for slab in &spec.slabs {
-        situation.slabs.push(SlabSpawn::new(
-            translate(slab.at, origin),
-            piece_uuid(&slab.piece),
-        ));
-    }
-    for floor in &spec.floors {
-        situation.floors.push(FloorSpawn::new(
-            translate(floor.at, origin),
-            piece_uuid(&floor.piece),
-        ));
-    }
-    for link in &spec.vertical_links {
-        situation.vertical_links.push(VerticalLink::new(
-            translate(link.from, origin),
-            translate(link.to, origin),
-            link.kind,
-        ));
+}
+
+/// Which `Situation` terrain list a v2 placement pours into — derived from its referenced
+/// [`TerrainDef`](crate::terrain::def::TerrainDef)'s
+/// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) (GTW-492).
+enum PlacedKind {
+    /// A `Wall`/`Cover` piece — pours into [`Situation::walls`](crate::situation::Situation).
+    Cover,
+    /// A `Slab` piece — pours into [`Situation::slabs`](crate::situation::Situation).
+    Slab,
+}
+
+/// Classify a placed piece by its [`TerrainSimKind`] in `terrain_defs` — `Slab` defs route to
+/// the slabs list, everything else (incl. an UNRESOLVABLE UUID) routes to the walls list.
+///
+/// The fail-OPEN fallback for an unresolved UUID keeps the piece in the emitted level (poured
+/// into `walls`) so it surfaces as a
+/// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError) at setup, rather
+/// than being silently dropped from the procgen-generated terrain.
+fn classify(piece: TerrainUuid, terrain_defs: &TerrainDefRegistry) -> PlacedKind {
+    match terrain_defs.def(&piece).map(|def| &def.sim_kind) {
+        Some(TerrainSimKind::Slab { .. }) => PlacedKind::Slab,
+        Some(TerrainSimKind::Wall { .. } | TerrainSimKind::Cover { .. }) | None => {
+            PlacedKind::Cover
+        }
     }
 }
 
 /// Emit every cell of a dead-space `rect` as an explicit `default_floor`
 /// [`FloorSpawn`](crate::situation::FloorSpawn) override on level `0` (the ground plane the
 /// packer reasons on), so the floored dead space is a concrete terrain entry (C3).
-fn floor_region(rect: RegionRect, default_floor: &TerrainName, situation: &mut Situation) {
+fn floor_region(rect: RegionRect, default_floor: TerrainUuid, situation: &mut Situation) {
     let origin = rect.origin();
     let footprint = rect.footprint();
-    // GTW-491 SHIM (T07a): bridge the legacy default-floor name into the UUID-keyed
-    // FloorSpawn (GTW-492 retires this once procgen reads UUID-keyed v2 prefabs).
-    let piece = piece_uuid(default_floor);
     for dy in 0..footprint.height() {
         for dx in 0..footprint.width() {
             let cell = Cell::new(origin.x + dx, origin.y + dy);
-            situation
-                .floors
-                .push(FloorSpawn::new(CellLevel::new(cell, Level::new(0)), piece));
+            situation.floors.push(FloorSpawn::new(
+                CellLevel::new(cell, Level::new(0)),
+                default_floor,
+            ));
         }
     }
-}
-
-/// The GTW-491 procgen SHIM bridge: a legacy [`TerrainName`] piece key → its deterministic
-/// [`TerrainUuid`].
-///
-/// The legacy procgen path ([`emit_level`]) still reads `TerrainName`-keyed prefab fragments
-/// but pours them into a now-UUID-keyed [`Situation`](crate::situation::Situation); this folds
-/// each name into a stable [`TerrainUuid`] via [`TerrainUuid::from_legacy_name`], so the
-/// emit stays deterministic. The minted UUIDs do NOT match migrated
-/// [`TerrainDef`](crate::terrain::def::TerrainDef) keys — the full procgen switch onto
-/// UUID-keyed v2 prefabs (so procgen terrain resolves against the real registry) is GTW-492
-/// (T07b), which removes this shim.
-fn piece_uuid(name: &TerrainName) -> TerrainUuid {
-    TerrainUuid::from_legacy_name(name)
-}
-
-/// The GTW-491 procgen SHIM bridge: a legacy [`LevelTheme`] → its deterministic [`ThemeUuid`].
-///
-/// The legacy procgen path is keyed by the closed [`LevelTheme`] enum yet must populate the
-/// UUID-keyed [`Situation::theme`](crate::situation::Situation); this folds the theme's stable
-/// variant identifier into a [`ThemeUuid`] via [`ThemeUuid::from_legacy_theme`]. Like
-/// [`piece_uuid`] it is a SHIM removed by GTW-492.
-fn theme_uuid(theme: LevelTheme) -> ThemeUuid {
-    let id = match theme {
-        LevelTheme::IndustrialHive => "industrial_hive",
-        LevelTheme::Underhive => "underhive",
-        LevelTheme::SumpWaste => "sump_waste",
-    };
-    ThemeUuid::from_legacy_theme(id)
 }
 
 /// Translate a footprint-local `(cell, level)` by a placed region `origin` onto the board —

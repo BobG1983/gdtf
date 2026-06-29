@@ -47,7 +47,7 @@ use super::{
     tuning::ProcgenTuning,
 };
 use crate::{
-    level::{GridSize, LevelTheme, Prefab, PrefabRegistry, SpawnRole},
+    level::{GridSize, Prefab2, PrefabKey2, PrefabRegistry2, SpawnRole, ThemeUuid},
     rng::ProcgenRng,
 };
 
@@ -109,8 +109,8 @@ impl FilledPlacement {
 /// refuses to proceed from an inconsistent state rather than panic).
 pub fn fill_placement(
     placement: Placement,
-    registry: &PrefabRegistry,
-    theme: LevelTheme,
+    registry: &PrefabRegistry2,
+    theme: ThemeUuid,
     grid_size: GridSize,
     tuning: &ProcgenTuning,
     rng: &mut ProcgenRng,
@@ -139,8 +139,8 @@ pub fn fill_placement(
 /// Same as [`fill_placement`].
 pub fn fill_placement_with(
     placement: Placement,
-    registry: &PrefabRegistry,
-    theme: LevelTheme,
+    registry: &PrefabRegistry2,
+    theme: ThemeUuid,
     grid_size: GridSize,
     tuning: &ProcgenTuning,
     rng: &mut ProcgenRng,
@@ -221,17 +221,17 @@ pub fn fill_placement_with(
 /// a DETERMINISTIC order (footprint area DESC then name) so the RNG draw index is
 /// reproducible (the determinism contract).
 fn partition_fill_candidates(
-    registry: &PrefabRegistry,
-    theme: LevelTheme,
+    registry: &PrefabRegistry2,
+    theme: ThemeUuid,
     tuning: &ProcgenTuning,
-) -> (Vec<Prefab>, Vec<Prefab>) {
-    let mut all: Vec<Prefab> = registry
+) -> (Vec<Prefab2>, Vec<Prefab2>) {
+    let mut all: Vec<Prefab2> = registry
         .keys()
-        .filter(|k| k.theme == theme && k.spawn_role == SpawnRole::Fill)
-        .flat_map(|k| registry.prefabs_for(k).iter().cloned())
+        .filter(|k| k.theme == theme && k.role == SpawnRole::Fill)
+        .flat_map(|k: &PrefabKey2| registry.prefabs_for(k).iter().cloned())
         .collect();
     all.sort_by(|a, b| {
-        let area = |p: &Prefab| Footprint::of(p.spec().size).area();
+        let area = |p: &Prefab2| Footprint::of(p.spec().size).area();
         area(b)
             .cmp(&area(a))
             .then_with(|| (**a.name()).cmp(&**b.name()))
@@ -257,7 +257,7 @@ fn partition_fill_candidates(
 /// BOUNDED: each iteration either places a prefab (strictly consuming free space and
 /// advancing `covered`) or finds nothing fits and breaks — so the loop always terminates.
 fn run_fill_pass(
-    bucket: &[Prefab],
+    bucket: &[Prefab2],
     packer: &mut MaxRectsPacker,
     fill: &mut Vec<PlacedPrefab>,
     covered: &mut i64,
@@ -299,7 +299,7 @@ fn run_fill_pass(
 /// This is the bounded "nothing fits" probe: it makes a single deterministic sweep, so it
 /// adds at most `bucket.len()` work per outer iteration and cannot loop forever.
 fn try_any_other(
-    bucket: &[Prefab],
+    bucket: &[Prefab2],
     skip: usize,
     packer: &mut MaxRectsPacker,
     fill: &mut Vec<PlacedPrefab>,
@@ -325,7 +325,7 @@ fn try_any_other(
 /// list, then drops up to `k` random small prefabs into the corner of each. BOUNDED: at
 /// most `k` placements per dead rect, over a fixed snapshot — always terminates.
 fn scatter_dead_rects(
-    bucket: &[Prefab],
+    bucket: &[Prefab2],
     packer: &mut MaxRectsPacker,
     fill: &mut Vec<PlacedPrefab>,
     covered: &mut i64,
@@ -375,7 +375,7 @@ fn scatter_dead_rects(
 /// rect's min-corner anchored [`BottomLeft`](Anchor::BottomLeft) — fill prefabs have no
 /// deployment anchor, so the field names the corner the fragment was packed against and the
 /// GTW-431 emit step reads the region's raw origin.
-fn place_in_largest_free(packer: &mut MaxRectsPacker, prefab: &Prefab) -> Option<PlacedPrefab> {
+fn place_in_largest_free(packer: &mut MaxRectsPacker, prefab: &Prefab2) -> Option<PlacedPrefab> {
     let footprint = Footprint::of(prefab.spec().size);
     // Find the largest free rect the (seam-padded) footprint fits in, deterministically.
     let mut targets: Vec<RegionRect> = packer.free_rects().to_vec();

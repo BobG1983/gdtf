@@ -4,8 +4,8 @@
 //! The visualizer is a pure VIEW onto the sim's space-packing placement (the one-way
 //! sim→presenter boundary): it RUNS the sim's
 //! [`assemble_placement`](gdtf_battle_sim::procgen::assemble_placement) and
-//! [`fill_placement`](gdtf_battle_sim::procgen::fill_placement) against the loaded
-//! [`PrefabRegistry`](gdtf_battle_sim::PrefabRegistry) for a theme + grid-size + seed, then
+//! [`fill_placement`](gdtf_battle_sim::procgen::fill_placement) against the loaded UUID-keyed
+//! [`PrefabRegistry2`](gdtf_battle_sim::PrefabRegistry2) for a theme + grid-size + seed, then
 //! projects the resulting [`FilledPlacement`](gdtf_battle_sim::FilledPlacement) into an
 //! ORDERED list of [`VizQuad`]s — player, enemy, then every fill prefab in placement order.
 //! It never mutates combat/sim state; it only reads the placement.
@@ -21,8 +21,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    FilledPlacement, GridSize, LevelTheme, PlacedPrefab, PrefabName, PrefabRegistry, ProcgenRng,
-    ProcgenTuning, SpawnRole, assemble_placement, fill_placement, rng::BattleSeed,
+    FilledPlacement, GridSize, PlacedPrefab, PrefabName, PrefabRegistry2, ProcgenRng,
+    ProcgenTuning, SpawnRole, ThemeUuid, assemble_placement, fill_placement, rng::BattleSeed,
 };
 
 /// The fixed default root seed the visualizer assembles a level from when no
@@ -482,8 +482,8 @@ impl ProcgenViz {
     /// GTW-433 live-trigger fallback (fail-open, never panic).
     #[must_use]
     pub(in crate::states::running::procgen_viz) fn build(
-        registry: Option<&PrefabRegistry>,
-        theme: LevelTheme,
+        registry: Option<&PrefabRegistry2>,
+        theme: ThemeUuid,
         grid_size: GridSize,
         seed: BattleSeed,
     ) -> Self {
@@ -531,8 +531,8 @@ fn board_extent(grid_size: GridSize) -> BoardExtent {
 /// grid-size + seed, returning the [`FilledPlacement`] — or `None` on a missing registry /
 /// any procgen failure (fail-open, never panic; the visualizer then shows an empty board).
 fn assemble_filled(
-    registry: Option<&PrefabRegistry>,
-    theme: LevelTheme,
+    registry: Option<&PrefabRegistry2>,
+    theme: ThemeUuid,
     grid_size: GridSize,
     seed: BattleSeed,
 ) -> Option<FilledPlacement> {

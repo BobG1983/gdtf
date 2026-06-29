@@ -3,11 +3,15 @@
 //! These run on the `MinimalPlugins` [`GdtfTestAppBuilder`] (the real state stack, `UiPlugin`,
 //! and — in a debug build — the real `ProcgenVizScenePlugin` wired through `ScenesPlugin`).
 //! They seed the persistent `Load` resources the visualizer reads (a theme, a theme+size-only
-//! `LoadedSituation`, the REAL `PrefabRegistry` built from the shipped 12x12 deployment
-//! prefabs, and a FIXED `BattleSeed` so the assembled level is reproducible), drive into
-//! [`RunningState::DebugProcgenVisualizer`](gdtf_app::test_support::RunningState), and assert on
-//! the WORLD + the real visualizer model / entities — never on rendering (the screenshot, C5,
-//! is the QA stage).
+//! `LoadedSituation`, a [`PrefabRegistry2`] with a player + enemy v2 prefab under the
+//! situation's [`ThemeUuid`], and a FIXED `BattleSeed` so the assembled level is reproducible),
+//! drive into [`RunningState::DebugProcgenVisualizer`](gdtf_app::test_support::RunningState), and
+//! assert on the WORLD + the real visualizer model / entities — never on rendering (the
+//! screenshot, C5, is the QA stage).
+//!
+//! GTW-492 (T07b): the visualizer drives the UUID-keyed v2 procgen pipeline, so the fixture
+//! seeds a [`PrefabRegistry2`] of [`Prefab2`] (keyed by the situation's [`ThemeUuid`]) rather
+//! than the legacy `PrefabRegistry`.
 //!
 //! Coverage (C1/C2/C3):
 //!
@@ -35,7 +39,8 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_sim::{
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry, PrefabSpec,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
+        PrefabSpecV2, SpawnRole, ThemeUuid,
     },
     rng::BattleSeed,
     situation::Situation,
@@ -50,53 +55,52 @@ const BUDGET: u32 = 64;
 /// across runs — the visualizer reads a `Res<BattleSeed>` override when present.
 const TEST_SEED: u64 = 0x600D_5EED;
 
-/// The 30x30x4 board the visualizer assembles into — large enough to fit the shipped 12x12
-/// player + enemy deployment fragments at opposite corners (the `procgen_battle` precedent).
+/// The canonical test theme key the seeded situation + v2 prefabs share, so the visualizer's
+/// theme-keyed candidate lookup resolves the player + enemy prefabs (GTW-492).
+const fn viz_theme() -> ThemeUuid {
+    ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0149_2434_0000_0001))
+}
+
+/// The 30x30x4 board the visualizer assembles into — large enough to fit the 12x12 player +
+/// enemy deployment fragments at opposite corners (the `procgen_battle` precedent).
 fn viz_board() -> GridSize {
     GridSize::new(GridWidth::new(30), GridHeight::new(30), GridLevels::new(4)).unwrap_or_default()
 }
 
-/// Build the REAL `PrefabRegistry` from the two shipped `IndustrialHive` 12x12 deployment
-/// prefabs (the player + enemy fragments), so the visualizer's `assemble_placement` has a real
-/// player- and enemy-role prefab to place. A parse / validation failure yields an EMPTY
-/// registry — the visualizer would then show zero quads and the assertions would fail loudly.
-fn real_prefab_registry() -> PrefabRegistry {
-    let mut registry = PrefabRegistry::default();
-    let prefabs = [
-        (
-            "player_deployment",
-            include_str!(
-                "../../../assets/content/maps/industrial_hive/12x12/player_deployment.prefab.ron"
-            ),
-        ),
-        (
-            "enemy_deployment",
-            include_str!(
-                "../../../assets/content/maps/industrial_hive/12x12/enemy_deployment.prefab.ron"
-            ),
-        ),
-    ];
-    for (stem, ron) in prefabs {
-        let Ok(spec) = ron::from_str::<PrefabSpec>(ron) else {
-            continue;
-        };
-        if let Ok(prefab) = Prefab::new(PrefabName::new(stem.to_owned()), spec) {
-            registry.insert(prefab);
-        }
-    }
+/// A `12x12x1` fragment footprint (the deployment-zone size). Falls back to the default extent
+/// on a bad span (it cannot be bad — 12/12/1 are under the maxima).
+fn fragment() -> GridSize {
+    GridSize::new(GridWidth::new(12), GridHeight::new(12), GridLevels::new(1)).unwrap_or_default()
+}
+
+/// Build a [`PrefabRegistry2`] with a player + enemy v2 prefab (each a 12x12 fragment under
+/// [`viz_theme`], authoring no placements — the visualizer reads only the placement-quad
+/// SEQUENCE, never the per-piece geometry), so the visualizer's `assemble_placement` has a real
+/// player- and enemy-role prefab to place. An empty registry would show zero quads and redden
+/// the assertions loudly.
+fn viz_prefab_registry() -> PrefabRegistry2 {
+    let theme = viz_theme();
+    let fp = fragment();
+    let mut registry = PrefabRegistry2::default();
+    registry.insert(Prefab2::new(
+        PrefabName::new("player_deployment".to_owned()),
+        PrefabSpecV2::new(theme, fp, SpawnRole::Player, Vec::new()),
+    ));
+    registry.insert(Prefab2::new(
+        PrefabName::new("enemy_deployment".to_owned()),
+        PrefabSpecV2::new(theme, fp, SpawnRole::Enemy, Vec::new()),
+    ));
     registry
 }
 
-/// A size-only [`Situation`] the visualizer reads for its grid-size: the 30x30x4 board, no
-/// terrain / gangers (the visualizer never reads those — it only runs the space packer).
-///
-/// GTW-491: the visualizer's `build` no longer reads `Situation.theme` (it switched to a
-/// UUID-keyed `ThemeUuid`, but the legacy procgen this viz drives is keyed by `LevelTheme`, so
-/// `build` shims to the default theme — GTW-492 removes that). So this fixture only sets the
-/// board size; `theme` stays the nil default.
+/// A theme+size [`Situation`] the visualizer reads for its theme + grid-size: the 30x30x4 board
+/// under [`viz_theme`], no terrain / gangers (the visualizer never reads those — it only runs
+/// the space packer). GTW-492: the visualizer's `build` reads `Situation.theme` (the
+/// UUID-keyed `ThemeUuid`) directly, so the theme MUST match the seeded prefabs' theme.
 fn viz_situation() -> Situation {
     let mut situation = Situation::new();
     situation.grid_size = viz_board();
+    situation.theme = viz_theme();
     situation
 }
 
@@ -117,7 +121,7 @@ fn viz_app() -> bevy::app::App {
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(real_prefab_registry());
+    app.world_mut().insert_resource(viz_prefab_registry());
     // The visualizer reads theme + grid-size from the loaded situation; insert it directly as
     // the persistent resource (the procgen_battle harness precedent).
     app.world_mut()

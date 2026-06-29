@@ -28,14 +28,14 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     battle::{BattleReady, SetupBattleRequested, TeardownBattleRequested},
-    level::PrefabRegistry,
+    level::{PrefabRegistry2, UuidThemeRegistry},
     rng::BattleSeed,
     situation::Situation,
-    terrain::{def::TerrainDefRegistry, piece::TerrainRegistry},
+    terrain::def::TerrainDefRegistry,
 };
 
 use super::{
-    procgen::{procgen_battle_situation, shim_legacy_terrain_into_def_registry},
+    procgen::{ProcgenRegistries, procgen_battle_situation},
     seed::resolve_root_seed,
 };
 use crate::states::{
@@ -51,8 +51,10 @@ use crate::states::{
 /// `theme` + `grid_size` + the placed gangers (GTW-433 C1: the authored situation no longer
 /// holds inline terrain). It then RUNS PROCGEN via
 /// [`procgen_battle_situation`](super::procgen::procgen_battle_situation): generate the
-/// terrain from the authored `theme` + `grid_size` against the loaded
-/// [`PrefabRegistry`] using a [`ProcgenRng`](gdtf_battle_sim::rng::ProcgenRng) derived from
+/// terrain from the authored `theme` ([`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid)) +
+/// `grid_size` against the loaded UUID-keyed registries
+/// ([`PrefabRegistry2`] + [`UuidThemeRegistry`] + [`TerrainDefRegistry`], GTW-492) using a
+/// [`ProcgenRng`](gdtf_battle_sim::rng::ProcgenRng) derived from
 /// the resolved [`BattleSeed`], and merge that terrain over the authored gangers. The merged
 /// [`Situation`] (`{authored gangers/spawn} + {procgen terrain}`) is written in a
 /// [`SetupBattleRequested`] with the [`BattleSeed`] from [`resolve_root_seed`] (or a
@@ -63,10 +65,11 @@ use crate::states::{
 /// `InjuryRng` / `ProcgenRng`), pours the situation into the world, and signals
 /// [`BattleReady`] on success.
 ///
-/// When the [`PrefabRegistry`] is absent or procgen fails closed (e.g. an EMPTY registry in
-/// a headless harness), [`procgen_battle_situation`](super::procgen::procgen_battle_situation)
-/// returns the authored situation UNCHANGED, so a battle with authored (or empty) terrain
-/// still sets up and reaches `BattleRunning` (C4 — the existing state-walk keeps passing).
+/// When any of the UUID-keyed registries is absent or procgen fails closed (e.g. an EMPTY
+/// registry in a headless harness),
+/// [`procgen_battle_situation`](super::procgen::procgen_battle_situation) returns the authored
+/// situation UNCHANGED, so a battle with authored (or empty) terrain still sets up and
+/// reaches `BattleRunning` (C4 — the existing state-walk keeps passing).
 ///
 /// Seed resolution order:
 /// 1. `Res<BattleSeed>` — pre-injected by a test harness (or a future seed-pick UI
@@ -85,9 +88,9 @@ use crate::states::{
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn request_battle_setup(
     loaded: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
-    prefabs: Option<Res<PrefabRegistry>>,
-    legacy_terrain: Option<Res<TerrainRegistry>>,
-    def_registry: Option<ResMut<TerrainDefRegistry>>,
+    prefabs: Option<Res<PrefabRegistry2>>,
+    themes: Option<Res<UuidThemeRegistry>>,
+    def_registry: Option<Res<TerrainDefRegistry>>,
     mut setup: MessageWriter<SetupBattleRequested>,
 ) {
     // The loaded authored battlefield if the Load scene resolved one, else the empty
@@ -106,22 +109,21 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
         seed = *seed,
         "battle setup: resolved BattleSeed (RNG replay handle)"
     );
-    // GTW-433: RUN PROCGEN. Generate the terrain from the authored theme + grid_size
-    // against the loaded PrefabRegistry (deterministic in `seed`) and merge it over the
-    // authored gangers; falls back to the authored terrain when no registry is present or
-    // procgen fails closed (the headless empty-registry harness). This is the LIVE trigger
-    // that makes procgen drive real battles.
-    let situation = procgen_battle_situation(authored, prefabs.as_deref(), seed);
-    // GTW-491 SHIM ADAPTER: the procgen-emitted terrain references its pieces by the legacy
-    // `TerrainName`-derived `TerrainUuid` shim (`emit_level` is still `TerrainName`-keyed). Re-key
-    // every legacy `TerrainRegistry` piece into the UUID-keyed `TerrainDefRegistry` under the SAME
-    // `from_legacy_name` bridge so `setup_battle` resolves the procgen terrain (it would otherwise
-    // fail closed with `TerrainNotFound`, since the migrated registry is keyed by AUTHORED UUIDs).
-    // Only inserts MISSING keys (a real migrated def always wins). GTW-492 (T07b) switches procgen
-    // onto UUID-keyed v2 prefabs and removes this adapter + the emit shim.
-    if let (Some(legacy), Some(mut def_registry)) = (legacy_terrain, def_registry) {
-        shim_legacy_terrain_into_def_registry(&legacy, &mut def_registry);
-    }
+    // GTW-433 / GTW-492: RUN PROCGEN. Generate the terrain from the authored theme
+    // (ThemeUuid) + grid_size against the loaded UUID-keyed registries (PrefabRegistry2 +
+    // UuidThemeRegistry + TerrainDefRegistry — populated by the GTW-489 Load resolve from the
+    // GTW-490 migrated content, deterministic in `seed`) and merge it over the authored
+    // gangers; falls back to the authored terrain when any registry is absent or procgen
+    // fails closed (the headless empty-registry harness). This is the LIVE trigger that makes
+    // procgen drive real battles. The procgen-emitted terrain references the migrated AUTHORED
+    // terrain UUIDs, so `setup_battle` resolves it against the same `TerrainDefRegistry`
+    // directly — the GTW-491 (T07a) `from_legacy_name` shim adapter is REMOVED.
+    let registries = ProcgenRegistries {
+        prefabs: prefabs.as_deref(),
+        themes:  themes.as_deref(),
+        terrain: def_registry.as_deref(),
+    };
+    let situation = procgen_battle_situation(authored, registries, seed);
     setup.write(SetupBattleRequested::new(situation, seed));
 }
 

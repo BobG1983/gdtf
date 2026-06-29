@@ -7,7 +7,7 @@
 //! model. The whole module is `#[cfg(debug_assertions)]`-gated by its parent.
 
 use bevy::{prelude::*, ui::Val};
-use gdtf_battle_sim::{PrefabRegistry, level::LevelTheme, rng::BattleSeed};
+use gdtf_battle_sim::{level::PrefabRegistry2, rng::BattleSeed};
 use gdtf_ui::{
     ButtonLabel, spawn_button, spawn_panel,
     theme::GdtfTheme,
@@ -43,31 +43,28 @@ const BOARD_COLOR: Color = Color::srgb(0.08, 0.08, 0.10);
 const BAR_GAP_VH: f32 = 1.388_89;
 
 /// Insert the [`ProcgenViz`] model `OnEnter(DebugProcgenVisualizer)` — built by running the
-/// sim space-packing pipeline against the loaded [`PrefabRegistry`] for the loaded
-/// situation's theme + grid-size + a seed (the [`BattleSeed`] override resource if a test
-/// injected one, else the deterministic [`default_viz_seed`]).
+/// sim space-packing pipeline against the loaded UUID-keyed [`PrefabRegistry2`] for the
+/// loaded situation's theme ([`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid)) + grid-size + a
+/// seed (the [`BattleSeed`] override resource if a test injected one, else the deterministic
+/// [`default_viz_seed`]).
 ///
 /// Reads everything as `Option<Res<…>>` (the state-scoped-resource convention): an absent
 /// registry / situation yields an EMPTY model (board extent only, no quads) rather than a
 /// panic (fail-open). Param-only (`bevy-traps.md` #7). Ordered BEFORE [`spawn_viz_screen`].
 pub(in crate::states::running::procgen_viz) fn insert_viz_model(
     mut commands: Commands,
-    registry: Option<Res<PrefabRegistry>>,
+    registry: Option<Res<PrefabRegistry2>>,
     situation: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
 ) {
-    // Grid-size comes from the loaded situation; absent it, the default sim extent (so the
-    // visualizer is still reachable on a no-content harness).
-    let grid_size = situation
+    // Grid-size + theme come from the loaded situation; absent it, the default sim extent +
+    // the nil theme (so the visualizer is still reachable on a no-content harness — the v2
+    // registry is then empty and `build` takes the empty-model fallback). GTW-492: the
+    // visualizer drives the UUID-keyed v2 pipeline, so the theme is the situation's `ThemeUuid`
+    // DIRECTLY (no `LevelTheme` shim) — the same key the migrated v2 prefabs author.
+    let (grid_size, theme) = situation
         .as_deref()
-        .map(|s| s.grid_size)
-        .unwrap_or_default();
-    // GTW-491 SHIM: `Situation.theme` switched to a UUID-keyed `ThemeUuid`, but the legacy
-    // procgen pipeline this visualizer drives is keyed by the closed `LevelTheme` enum. Until
-    // the procgen switch onto UUID-keyed v2 prefabs (GTW-492), the viz uses the default
-    // `LevelTheme` (IndustrialHive — the shipped prefab family); the no-content harness takes
-    // the empty-model fallback inside `build`, so the shimmed theme never matters there.
-    let theme = LevelTheme::default();
+        .map_or_else(Default::default, |s| (s.grid_size, s.theme));
     let seed = seed_override
         .as_deref()
         .copied()

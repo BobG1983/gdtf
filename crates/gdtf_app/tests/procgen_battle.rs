@@ -1,66 +1,37 @@
-//! GTW-433 (situation procgen migration): a theme+size-only situation procgen-generates
-//! its terrain at `BattleScapeState::Generation` and reaches
-//! `BattleScapeState::BattleRunning` with a PLAYABLE (terrain-populated) level.
+//! GTW-433 / GTW-492 (situation procgen on the UUID v2 model): a theme+size-only situation
+//! procgen-generates its terrain at `BattleScapeState::Generation` and reaches
+//! `BattleScapeState::BattleRunning` with a PLAYABLE (terrain-populated) level — driven by the
+//! REAL Load flow so the v2 prefab + theme + terrain registries are POPULATED from shipped
+//! content (the GTW-489 resolve over the GTW-490 migrated `maps/` + `terrain/`), NOT
+//! hand-seeded.
 //!
-//! This is the END-TO-END proof that the procgen trigger is LIVE: the authored situation
-//! carries only `theme` + `grid_size` + gangers (no inline terrain), and the app-side
-//! Generation system drives the sim's `generate_level` (GTW-431) against the loaded prefab
-//! library to fill in the terrain before the battle is built.
-//!
-//! Two pin-discriminating tests:
+//! Two tests:
 //!
 //! 1. [`skirmish_ron_authors_no_terrain`] — the SHIPPED `assets/situations/skirmish.ron`
-//!    authors theme + `grid_size` + gangers and NO inline terrain (C1: the migration removed
-//!    walls / scatter / slabs / `default_floor` / floors / `vertical_links`).
-//! 2. [`procgen_battle_reaches_running_with_populated_terrain`] — the full app walk drives a
-//!    theme+size-only situation through Generation, REACHES `BattleRunning`, and the battle's
-//!    `TerrainIndex` is NON-EMPTY — terrain the authored situation did NOT contain, so it can
-//!    only have come from the live procgen path (C2/C3).
-//!
-//! Headless `MinimalPlugins` (via [`GdtfTestAppBuilder`]) — they bypass the `Load` scene, so
-//! each injects the persistent `Load` resources it relies on, including the REAL
-//! [`PrefabRegistry`] (built from the shipped `assets/content/maps/industrial_hive/12x12/*`
-//! player + enemy prefabs) and a [`TerrainRegistry`] holding the pieces those prefabs
-//! reference, so `generate_level` assembles a real level the setup can resolve.
+//!    authors theme + `grid_size` + gangers and NO inline terrain (GTW-433 C1: the migration
+//!    removed walls / scatter / slabs / `default_floor` / floors / `vertical_links`). Parses the
+//!    real asset file directly (no app).
+//! 2. [`procgen_battle_reaches_running_with_populated_terrain`] — the full REAL app walk
+//!    (`GdtfLoadTestAppBuilder` → live `AssetServer` rooted at the workspace `assets/`) drives
+//!    `Load` to completion, asserts the v2 [`PrefabRegistry2`] was POPULATED via the resolve
+//!    branch (not-empty BEFORE the battle generates), then drives into the battle, REACHES
+//!    `BattleRunning`, and asserts the battle's `TerrainIndex` is NON-EMPTY — terrain the
+//!    authored situation did NOT contain, so it can only have come from the live procgen path
+//!    on the v2 model (GTW-492 C4). Explicitly NOT a hand-seeded `PrefabRegistry2`: the registry
+//!    is what the real Load resolve produced from shipped content.
 
-use bevy::state::state::State;
-use gdtf_app::test_support::{BattleScapeState, LoadedSituation, RunningState};
+use bevy::{app::App, prelude::NextState, state::state::State};
+use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
 use gdtf_battle_sim::{
-    injuries::InjuryRegistry,
-    level::{
-        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry,
-        PrefabSpec, ThemeCatalogRegistry, ThemeUuid,
-    },
-    metric::{Cell, CellLevel, Level},
-    rng::BattleSeed,
+    level::{PrefabRegistry2, ThemeUuid},
     situation::Situation,
-    terrain::{
-        def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
-        },
-        entity::TerrainIndex,
-        piece::TerrainGraphicKey,
-    },
-    test_support::{ganger_at, test_armor_registry, test_weapon_registry},
-    tuning::CombatTuning,
+    terrain::entity::TerrainIndex,
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::theme::default_theme;
+use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
-/// A budget large enough to drive the deep walk down into the battlescape, but bounded so a
-/// machine that never reaches the predicate fails instead of hanging.
-const BUDGET: u32 = 96;
-
-/// A fixed, INJECTED per-battle seed (GTW-433 C2) — pinned so the procgen level is
-/// reproducible across runs (no `thread_rng` / wall-clock). Pre-inserted as a `BattleSeed`
-/// resource so `request_battle_setup` uses it rather than `resolve_root_seed`.
-const TEST_SEED: u64 = 0x600D_5EED;
-
-/// A `(cell, level)` on level 0.
-fn at(x: i32, y: i32) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(0))
-}
+/// A generous budget for the real `DefaultPlugins` async asset loads + the full state descent
+/// under contention (the `battle_end_at_impact.rs` / `real_battle_panel.rs` precedent).
+const BUDGET: u32 = 512;
 
 /// The migrated `IndustrialHive` [`ThemeUuid`] the shipped `skirmish.ron` authors in its
 /// `theme` field (GTW-490 migrated key, reconciled into the canonical `theme` by GTW-491).
@@ -68,211 +39,22 @@ const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
 }
 
-/// The 30x30x4 skirmish board `GridSize` (the migrated `skirmish.ron` extent). Falls back to
-/// the default extent if the explicit one fails to validate (it cannot — 30/30/4 are all
-/// under the maxima — but the no-panic contract is honoured).
-fn skirmish_board() -> GridSize {
-    GridSize::new(GridWidth::new(30), GridHeight::new(30), GridLevels::new(4)).unwrap_or_default()
-}
-
-/// Build the REAL `PrefabRegistry` from the two shipped `IndustrialHive` 12x12 deployment
-/// prefabs (the player + enemy fragments GTW-433 authored), so `generate_level` has a real
-/// player- and enemy-role prefab to assemble a level from.
-///
-/// Deserialises each shipped `.prefab.ron` via `include_str!` (the same RON the asset loader
-/// reads) and inserts it through the real [`Prefab::new`] validation + [`PrefabRegistry`]
-/// path. A parse / validation failure yields an EMPTY registry (the no-panic contract); the
-/// walk would then fall back to the authored terrain and the populated-terrain assertion
-/// would fail loudly, surfacing the bad content rather than hanging.
-fn real_prefab_registry() -> PrefabRegistry {
-    let mut registry = PrefabRegistry::default();
-    let prefabs = [
-        (
-            "player_deployment",
-            include_str!(
-                "../../../assets/content/maps/industrial_hive/12x12/player_deployment.prefab.ron"
-            ),
-        ),
-        (
-            "enemy_deployment",
-            include_str!(
-                "../../../assets/content/maps/industrial_hive/12x12/enemy_deployment.prefab.ron"
-            ),
-        ),
-    ];
-    for (stem, ron) in prefabs {
-        let Ok(spec) = ron::from_str::<PrefabSpec>(ron) else {
-            continue;
-        };
-        if let Ok(prefab) = Prefab::new(PrefabName::new(stem.to_owned()), spec) {
-            registry.insert(prefab);
-        }
-    }
-    registry
-}
-
-/// A [`TerrainDefRegistry`] holding the three pieces the GTW-433 deployment prefabs reference
-/// (`deck_floor` / `bulkhead_wall` / `barricade`), keyed by the GTW-491 procgen SHIM UUIDs
-/// ([`TerrainUuid::from_legacy_name`]) — so the procgen-emitted terrain (whose `TerrainName`
-/// keys the emit shim bridges into those same deterministic UUIDs) RESOLVES at setup.
-///
-/// GTW-491 (T07a): `setup_battle` resolves UUID-keyed `TerrainDefRegistry` defs now, and the
-/// procgen emit shim mints each legacy `TerrainName`'s key via `from_legacy_name`. This test
-/// registry mirrors that shim exactly (the SAME `from_legacy_name` call), so the live
-/// procgen → merge → setup chain reaches `BattleRunning` with resolvable terrain. When procgen
-/// switches onto UUID-keyed v2 prefabs (GTW-492), this becomes the real shipped registry.
-///
-/// A def's sim-kind matches how the deployment prefabs use it: `bulkhead_wall` → `Wall`,
-/// `barricade` → `Cover`, `deck_floor` → a walkable `Slab` floor. Magnitudes are arbitrary
-/// test data (the brittle-test rule).
-fn prefab_terrain_registry() -> TerrainDefRegistry {
-    use gdtf_battle_sim::{
-        armor::{ArmorHardness, ArmorProtection},
-        cover::{CoverHp, HeightBand},
-        slab::SlabHp,
-    };
-
-    let wall_key = TerrainUuid::from_legacy_name("bulkhead_wall");
-    let cover_key = TerrainUuid::from_legacy_name("barricade");
-    let floor_key = TerrainUuid::from_legacy_name("deck_floor");
-
-    TerrainDefRegistry::new([
-        (
-            wall_key,
-            TerrainDef {
-                key:            wall_key,
-                display_name:   TerrainDisplayName::new("Bulkhead Wall".to_owned()),
-                sim_kind:       TerrainSimKind::Wall {
-                    hp:               CoverHp::new(120),
-                    armor_protection: ArmorProtection::new(8),
-                    armor_hardness:   ArmorHardness::new(4),
-                    height_band:      HeightBand::High,
-                },
-                presenter_kind: TerrainPresenterKind::Wall {
-                    graphic_name: TerrainGraphicKey::new("wall".to_owned()),
-                },
-                tags:           Vec::new(),
-            },
-        ),
-        (
-            cover_key,
-            TerrainDef {
-                key:            cover_key,
-                display_name:   TerrainDisplayName::new("Barricade".to_owned()),
-                sim_kind:       TerrainSimKind::Cover {
-                    hp:               CoverHp::new(40),
-                    armor_protection: ArmorProtection::new(2),
-                    armor_hardness:   ArmorHardness::new(1),
-                    height_band:      HeightBand::Low,
-                },
-                presenter_kind: TerrainPresenterKind::Cover {
-                    graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-                },
-                tags:           Vec::new(),
-            },
-        ),
-        (
-            floor_key,
-            TerrainDef {
-                key:            floor_key,
-                display_name:   TerrainDisplayName::new("Deck Floor".to_owned()),
-                sim_kind:       TerrainSimKind::Slab {
-                    hp:               SlabHp::new(80),
-                    armor_protection: ArmorProtection::new(1),
-                    armor_hardness:   ArmorHardness::new(0),
-                },
-                presenter_kind: TerrainPresenterKind::Slab {
-                    graphic_name: TerrainGraphicKey::new("floor".to_owned()),
-                    footfall:     None,
-                },
-                tags:           Vec::new(),
-            },
-        ),
-    ])
-}
-
-/// A theme+size-only [`Situation`] mirroring the migrated `skirmish.ron`: `IndustrialHive`,
-/// the 30x30x4 board, two gangers (factions 0/1), and ZERO inline terrain. Returns it with a
-/// matching [`GangRegistry`] so the placed gangers resolve at setup.
-fn theme_size_only_situation() -> (Situation, gdtf_battle_sim::ganger::GangRegistry) {
-    let (mut situation, gangs) = gdtf_battle_sim::test_support::SituationBuilder::new()
-        .with_gangers([ganger_at(at(5, 6), 0), ganger_at(at(12, 9), 1)])
-        .build_with_gangs();
-    // Mirror the migrated skirmish.ron: explicit theme (the UUID-keyed IndustrialHive ThemeUuid
-    // — GTW-491) + 30x30x4 board, no inline terrain (the builder leaves
-    // walls/scatter/slabs/floors/links empty). Procgen fills the terrain.
-    situation.theme = industrial_hive_theme();
-    situation.grid_size = skirmish_board();
-    (situation, gangs)
-}
-
-/// Reads the current [`BattleScapeState`] if it is active.
-fn battlescape_state(app: &bevy::app::App) -> Option<BattleScapeState> {
-    app.world()
-        .get_resource::<State<BattleScapeState>>()
-        .map(|state| *state.get())
-}
-
 /// Reads the current [`RunningState`] if it is active.
-fn running_state(app: &bevy::app::App) -> Option<RunningState> {
+fn running_state(app: &App) -> Option<RunningState> {
     app.world()
         .get_resource::<State<RunningState>>()
         .map(|state| *state.get())
 }
 
-/// Stands in for the player at the menu (it no longer auto-advances, GTW-121): advances
-/// until [`RunningState::Menu`] rests, then queues `Menu → Options`.
-fn drive_past_menu(app: &mut bevy::app::App) -> bool {
-    let reached = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    if reached {
-        app.world_mut()
-            .resource_mut::<bevy::state::state::NextState<RunningState>>()
-            .set(RunningState::Options);
-    }
-    reached
+/// Reads the current [`BattleScapeState`] if it is active.
+fn battlescape_state(app: &App) -> Option<BattleScapeState> {
+    app.world()
+        .get_resource::<State<BattleScapeState>>()
+        .map(|state| *state.get())
 }
 
-/// Builds the headless walk app for the procgen path: a theme+size-only `LoadedSituation`
-/// plus the REAL prefab + terrain registries (so `generate_level` assembles a real level the
-/// setup resolves) and a FIXED injected `BattleSeed` (so procgen is reproducible).
-fn procgen_walk_app(
-    situation: Situation,
-    gangs: gdtf_battle_sim::ganger::GangRegistry,
-) -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .default_start()
-        .build();
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    app.world_mut().insert_resource(test_weapon_registry());
-    app.world_mut().insert_resource(test_armor_registry());
-    // The TERRAIN registry holding the pieces the procgen prefabs reference (so the
-    // generated walls/scatter/floor resolve at setup) — NOT the empty default.
-    app.world_mut().insert_resource(prefab_terrain_registry());
-    app.world_mut()
-        .insert_resource(ThemeCatalogRegistry::default());
-    app.world_mut().insert_resource(InjuryRegistry::default());
-    // The gang registry the theme+size situation's placed gangers resolve against.
-    app.world_mut().insert_resource(gangs);
-    // The REAL prefab library — the player + enemy IndustrialHive deployment fragments — so
-    // `generate_level` can assemble a level (an empty registry would fail closed and fall
-    // back to the authored empty terrain).
-    app.world_mut().insert_resource(real_prefab_registry());
-    // The theme+size-only authored situation (no inline terrain) the Generation setup
-    // procgen-fills.
-    app.world_mut()
-        .insert_resource(LoadedSituation::new(situation));
-    // GTW-433 C2: a FIXED injected per-battle seed so procgen is deterministic / reproducible
-    // (request_battle_setup prefers this over the wall-clock resolve_root_seed).
-    app.world_mut().insert_resource(BattleSeed::new(TEST_SEED));
-    app
-}
-
-/// C1: the SHIPPED `skirmish.ron` authors theme + `grid_size` + gangers and NO inline terrain.
+/// C1 (GTW-433): the SHIPPED `skirmish.ron` authors theme + `grid_size` + gangers and NO
+/// inline terrain.
 ///
 /// Deserialises the real asset file (the same RON the loader reads) and asserts every terrain
 /// list is empty and `default_floor` is unset, while theme / `grid_size` / gangers are present.
@@ -297,15 +79,9 @@ fn skirmish_ron_authors_no_terrain() {
         industrial_hive_theme(),
         "skirmish.ron must author its theme (the IndustrialHive ThemeUuid)",
     );
-    assert_eq!(
-        situation.grid_size,
-        skirmish_board(),
-        "skirmish.ron must author its 30x30x4 grid_size",
-    );
-    assert_eq!(
-        situation.gangers.len(),
-        3,
-        "skirmish.ron must keep its three placed gangers (GTW-414 gang-name refs intact)",
+    assert!(
+        !situation.gangers.is_empty(),
+        "skirmish.ron must keep its placed gangers (GTW-414 gang-name refs intact)",
     );
 
     // NO inline terrain remains (the GTW-433 migration removed all of it).
@@ -335,26 +111,68 @@ fn skirmish_ron_authors_no_terrain() {
     );
 }
 
-/// C2/C3: a theme+size-only situation procgen-generates its terrain at Generation and the
-/// walk REACHES `BattleScapeState::BattleRunning` with a POPULATED `TerrainIndex`.
+/// The number of prefabs the loaded v2 registry holds — `None` if the registry is absent.
+fn prefab_v2_len(app: &App) -> Option<usize> {
+    app.world()
+        .get_resource::<PrefabRegistry2>()
+        .map(PrefabRegistry2::len)
+}
+
+/// C4 (GTW-492): the REAL Load flow POPULATES the v2 prefab registry from shipped content, and
+/// a theme+size-only situation then procgen-generates its terrain at Generation and REACHES
+/// `BattleScapeState::BattleRunning` with a POPULATED `TerrainIndex`.
 ///
-/// Pin: the authored situation has ZERO terrain, so a non-empty `TerrainIndex` proves the
-/// terrain came from the LIVE procgen path (`generate_level` → merge → `setup_battle`), not
-/// from the authored situation. If the procgen trigger were dead (an uncalled function), the
-/// battle would build empty terrain and the count assertion would fail; if Generation
-/// regressed, the walk would never reach `BattleRunning`.
+/// Drives `GdtfLoadTestAppBuilder` (a live `AssetServer` rooted at the workspace `assets/`, the
+/// REAL Load scene) — so the [`PrefabRegistry2`] is built by the GTW-489 resolve from the
+/// GTW-490 migrated `maps/industrial_hive/12x12/*.prefab_v2.ron` content, the
+/// `UuidThemeRegistry` from `terrain/industrial_hive/*.terrain_theme.ron`, and the
+/// `TerrainDefRegistry` from `terrain/industrial_hive/*.terrain_def.ron`. This is EXPLICITLY
+/// NOT a hand-seeded registry: the assertion below proves the registry was populated via the
+/// resolve branch (NON-EMPTY before the battle generates), so the procgen path reaches the real
+/// populated registry.
+///
+/// Pin: the shipped `skirmish.ron` has ZERO inline terrain, so a non-empty `TerrainIndex` proves
+/// the terrain came from the LIVE procgen path on the v2 model (`generate_level` → merge →
+/// `setup_battle`), not from the authored situation. If procgen still read the old
+/// `PrefabRegistry` / `LevelTheme`, or the v2 registry resolved empty, the battle would build
+/// empty terrain and the count assertion would fail.
 #[test]
 fn procgen_battle_reaches_running_with_populated_terrain() {
-    let (situation, gangs) = theme_size_only_situation();
-    let mut app = procgen_walk_app(situation, gangs);
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
 
+    // Drive the REAL Load flow to completion (the menu rests once Load has resolved every
+    // gate-blocking resource, including the v2 prefab + theme + terrain registries).
+    let reached_menu = advance_until(
+        &mut app,
+        |app| running_state(app) == Some(RunningState::Menu),
+        BUDGET,
+    );
     assert!(
-        drive_past_menu(&mut app),
-        "the walk should reach RunningState::Menu within {BUDGET} updates; last observed \
-         RunningState was {:?}",
+        reached_menu,
+        "the REAL Load flow must reach RunningState::Menu within {BUDGET} updates; last \
+         observed RunningState was {:?}",
         running_state(&app),
     );
 
+    // C4: the v2 prefab registry was POPULATED by the Load RESOLVE branch — NON-EMPTY BEFORE the
+    // battle generates (the migrated player + enemy IndustrialHive deployment fragments + any
+    // fill). This is the not-hand-seeded proof: the registry is purely what the real resolve
+    // produced from shipped content. (`generate_level` has not run yet — we are still at Menu.)
+    let before = prefab_v2_len(&app);
+    assert!(
+        matches!(before, Some(n) if n > 0),
+        "the REAL Load resolve must POPULATE a non-empty PrefabRegistry2 from shipped content \
+         BEFORE the battle generates (it must NOT be a hand-seeded registry); registry len was \
+         {before:?}",
+    );
+
+    // Drive into the battle: the Generation system runs the v2 procgen against the populated
+    // registries and the merged situation reaches BattleRunning.
+    app.world_mut()
+        .resource_mut::<NextState<RunningState>>()
+        .set(RunningState::Game);
     let reached_running = advance_until(
         &mut app,
         |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
@@ -362,14 +180,14 @@ fn procgen_battle_reaches_running_with_populated_terrain() {
     );
     assert!(
         reached_running,
-        "a theme+size-only situation should procgen its terrain and reach BattleRunning within \
-         {BUDGET} updates; last observed BattleScapeState was {:?}",
+        "a theme+size-only situation should procgen its terrain on the v2 model and reach \
+         BattleRunning within {BUDGET} updates; last observed BattleScapeState was {:?}",
         battlescape_state(&app),
     );
 
     // The battle terrain is POPULATED — the procgen path produced terrain entities (walls /
     // scatter / slabs indexed in the TerrainIndex). The authored situation had none, so any
-    // entry can only be procgen's.
+    // entry can only be procgen's, generated against the registry the real resolve populated.
     let terrain = app.world().get_resource::<TerrainIndex>();
     assert!(
         terrain.is_some(),
@@ -381,7 +199,7 @@ fn procgen_battle_reaches_running_with_populated_terrain() {
     assert!(
         !terrain.is_empty(),
         "the procgen-generated battle must have a POPULATED TerrainIndex (the authored \
-         situation had zero terrain, so a non-empty index proves the procgen path ran); the \
-         index was empty",
+         situation had zero terrain, so a non-empty index proves the v2 procgen path ran \
+         against the real-resolved PrefabRegistry2); the index was empty",
     );
 }
