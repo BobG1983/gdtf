@@ -5,8 +5,8 @@ use gdtf_battle_sim::{
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     level::{
-        PrefabRegistry, PrefabSpec, ThemeCatalogRegistry, ThemeSpec, UuidThemeDef,
-        UuidThemeRegistry,
+        PrefabRegistry, PrefabRegistry2, PrefabSpec, PrefabSpecV2, ThemeCatalogRegistry, ThemeSpec,
+        UuidThemeDef, UuidThemeRegistry,
     },
     situation::Situation,
     terrain::{
@@ -114,6 +114,16 @@ impl Plugin for LoadScenePlugin {
             // unambiguous among GDTF's many `.ron` loaders. Registered here in `build`
             // BEFORE the kick-off's `load_folder("content/maps")` runs.
             app.init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"]);
+            // GTW-489 (child T05c of GTW-476): the NEW UUID-keyed v2 prefab fragments load
+            // through the SAME generic RON loader via `load_folder` of the SAME nested
+            // `content/maps/<theme>/<size>/` tree as the legacy `*.prefab.ron` files, claiming
+            // their OWN dedicated `prefab_v2.ron` compound extension (files are
+            // `assets/content/maps/<theme>/<size>/*.prefab_v2.ron`). DISTINCT from the legacy
+            // `prefab.ron` extension so a second loader does NOT clobber the still-live legacy
+            // `content/maps` `*.prefab.ron` load (Bevy dispatches a `load_folder` member by
+            // extension alone — see prefab_v2's module doc + the C5 constraint). Registered
+            // here in `build` BEFORE the kick-off's `load_folder(content/maps)` runs.
+            app.init_ron_asset_with_extensions::<PrefabSpecV2>(vec!["prefab_v2.ron"]);
             // GTW-487 (child T05a of GTW-476): the NEW UUID-keyed terrain + theme models load
             // through the SAME generic RON loader via `load_folder` of the per-theme `terrain/`
             // tree, each claiming its OWN dedicated compound extension — `terrain_def.ron` for
@@ -184,6 +194,12 @@ fn add_systems(app: &mut App) {
                             // (the GTW-424 assembler packs its fragments; the maps folder
                             // must be verified loaded before Load exits).
                             .or_else(not(resource_exists::<PrefabRegistry>))
+                            // GTW-489: the NEW UUID-keyed PrefabRegistry2 is gate-blocking too
+                            // — the v2 prefab fragments must be verified loaded before Load
+                            // exits. It resolves EMPTY against un-migrated shipped content (the
+                            // designed fail-closed state); the gate only verifies the folder
+                            // was walked (the registry is inserted on success OR failure).
+                            .or_else(not(resource_exists::<PrefabRegistry2>))
                             // GTW-487: the NEW UUID-keyed TerrainDefRegistry +
                             // UuidThemeRegistry are gate-blocking too — the new per-theme
                             // `terrain/` folder must be verified loaded before Load exits.
@@ -232,6 +248,10 @@ fn add_systems(app: &mut App) {
                     // GTW-418: the PrefabRegistry must be present before Load exits, so the
                     // maps folder is verified loaded before the GTW-424 assembler uses it.
                     .and_then(resource_exists::<PrefabRegistry>)
+                    // GTW-489: the NEW PrefabRegistry2 must be present before Load exits, so
+                    // the v2 prefab fragments are verified loaded before the GTW-476 T07b v2
+                    // assembler reads them.
+                    .and_then(resource_exists::<PrefabRegistry2>)
                     // GTW-487: the NEW TerrainDefRegistry + UuidThemeRegistry must be present
                     // before Load exits, so the new per-theme `terrain/` folder is verified
                     // loaded before any later GTW-476 consumer reads them.
@@ -284,6 +304,10 @@ fn add_hot_reload_systems(app: &mut App) {
             // `maps/**/*.prefab.ron` edit (re-running the C6 edge-opening validation),
             // mirroring the gang hot-reload pattern.
             redrive_prefabs_on_asset_event,
+            // GTW-489: the NEW v2 prefab hot-reload — rebuilds the UUID-keyed PrefabRegistry2
+            // on a `maps/**/*.prefab_v2.ron` edit (NO edge-opening validation — the v2 schema
+            // has none), mirroring the legacy prefab hot-reload pattern.
+            redrive_prefabs_v2_on_asset_event,
             // GTW-487: the NEW terrain-def + theme-def hot-reloads — rebuild the UUID-keyed
             // TerrainDefRegistry / UuidThemeRegistry on an edit to ANY
             // `terrain/**/*.terrain_def.ron` / `*.terrain_theme.ron`, mirroring the legacy

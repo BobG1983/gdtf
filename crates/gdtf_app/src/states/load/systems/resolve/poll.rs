@@ -13,6 +13,7 @@ use crate::states::load::{
         gangs::resolve_gangs,
         injuries::resolve_injuries,
         params::{LoadAssetCollections, ResolvedResources},
+        prefab_v2::resolve_prefabs_v2,
         prefabs::resolve_prefabs,
         situation::resolve_situation,
         stat_tuning::resolve_stat_tuning,
@@ -151,6 +152,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         injuries_present,
         gangs_present,
         prefabs_present,
+        prefabs_v2_present,
         terrain_defs_present,
         theme_defs_present,
     ) = (
@@ -165,6 +167,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.injuries.is_some(),
         resolved.gangs.is_some(),
         resolved.prefabs.is_some(),
+        resolved.prefabs_v2.is_some(),
         resolved.terrain_defs.is_some(),
         resolved.theme_defs.is_some(),
     );
@@ -183,6 +186,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(weightings),
         Some(gang_rosters),
         Some(prefab_specs),
+        Some(prefab_v2_specs),
         Some(terrain_defs),
         Some(theme_defs),
         Some(handles),
@@ -201,6 +205,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.weightings,
         collections.gang_rosters,
         collections.prefab_specs,
+        collections.prefab_v2_specs,
         collections.terrain_defs,
         collections.theme_defs,
         handles,
@@ -334,6 +339,28 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &prefab_specs,
+            &handles,
+        );
+    }
+
+    // GTW-489: resolve the SAME nested `assets/content/maps/` folder into the bucketed
+    // PrefabRegistry2 on its OWN absence guard, independently of all other branches (the
+    // legacy prefab-branch precedent). This runs BESIDE the legacy prefab branch above — the
+    // v2 fragments load from the same `content/maps/<theme>/<size>/` tree via the dedicated
+    // `prefab_v2.ron` extension, so neither collides with the still-live legacy `prefab.ron`
+    // loader. UNLIKE the legacy resolve, the v2 build runs NO C6 edge-opening validation — an
+    // openingless (zero-placement) v2 prefab is INCLUDED (the GTW-488 design). The registry is
+    // DORMANT after this slice — nothing consumes it yet (the GTW-476 T07b v2 assembler does);
+    // it is resolved and gated on purely so the folder is verified loaded before `Load` exits.
+    // It resolves EMPTY against un-migrated shipped content (the designed fail-closed state,
+    // not a failure — no `*.prefab_v2.ron` files exist yet); a failed folder resolve falls
+    // back to an empty registry, preserving the no-strand guarantee.
+    if !prefabs_v2_present {
+        resolve_prefabs_v2(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &prefab_v2_specs,
             &handles,
         );
     }

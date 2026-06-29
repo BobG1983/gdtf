@@ -10,8 +10,9 @@ use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
     ArmorsFolderHandle, FontFolderHandle, GangsFolderHandle, InjuriesFolderHandle, LoadHandles,
-    PrefabsFolderHandle, SituationHandle, StatTuningHandle, TerrainFolderHandle,
-    TerrainModelFolderHandle, ThemeHandle, ThemesFolderHandle, TuningHandle, WeaponsFolderHandle,
+    PrefabsFolderHandle, PrefabsV2FolderHandle, SituationHandle, StatTuningHandle,
+    TerrainFolderHandle, TerrainModelFolderHandle, ThemeHandle, ThemesFolderHandle, TuningHandle,
+    WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -77,6 +78,19 @@ const GANGS_DIR: &str = "content/gangs";
 /// extension keeps the `.ron` loader dispatch unambiguous (prefabs only) — the
 /// weapons/armor/terrain/gangs precedent.
 const MAPS_DIR: &str = "content/maps";
+
+/// Path of the loose NEW v2 maps (prefab) folder, relative to the asset source root (GTW-489 —
+/// child T05c of the GTW-476 data-model refactor; the per-prefab
+/// `assets/maps/<theme>/<size>/*.prefab_v2.ron` fragments the `PrefabRegistry2` is built
+/// from). A NEW root directory DISTINCT from the legacy `content/maps` folder — crucially
+/// SEPARATE so the legacy `resolve_prefabs` loader keeps loading a SINGLE-TYPE
+/// `content/maps` folder (only `*.prefab.ron`) and stays UNCHANGED, while this new folder
+/// carries only `*.prefab_v2.ron` (the GTW-487 terrain-model precedent: the new UUID-keyed
+/// model lives under its OWN root, never mixed into the legacy single-type folder). One
+/// recursive `load_folder` walks the whole `<theme>/<size>/` tree, and the dedicated
+/// `prefab_v2.ron` compound extension keeps the `.ron` loader dispatch unambiguous (v2
+/// prefabs only) — without colliding with the still-live legacy `prefab.ron` loader.
+const MAPS_V2_DIR: &str = "maps";
 
 /// Path of the loose NEW per-theme terrain-model folder, relative to the asset source root
 /// (GTW-487 — the GTW-484/485 UUID-keyed terrain + theme defs under the per-theme layout
@@ -144,6 +158,13 @@ pub(in crate::states::load) fn kick_off_loads(
     let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
     let gangs = GangsFolderHandle::new(asset_server.load_folder(GANGS_DIR));
     let prefabs = PrefabsFolderHandle::new(asset_server.load_folder(MAPS_DIR));
+    // GTW-489: the NEW v2 prefab fragments live under their OWN `maps/` root, SEPARATE from
+    // the legacy `content/maps/` tree — so the legacy `resolve_prefabs` keeps loading a
+    // SINGLE-TYPE `content/maps` folder and stays UNCHANGED (mixing the v2 files into it would
+    // trip the legacy loader's blind `typed_debug_checked`). One recursive `load_folder` of
+    // the new `maps/` tree fans every `*.prefab_v2.ron` member to the dedicated-extension
+    // `RonAsset<PrefabSpecV2>` loader — the per-theme `terrain/` model precedent (its own root).
+    let prefabs_v2 = PrefabsV2FolderHandle::new(asset_server.load_folder(MAPS_V2_DIR));
     let terrain_model = TerrainModelFolderHandle::new(asset_server.load_folder(TERRAIN_MODEL_DIR));
 
     commands.insert_resource(LoadHandles {
@@ -159,6 +180,7 @@ pub(in crate::states::load) fn kick_off_loads(
         injuries,
         gangs,
         prefabs,
+        prefabs_v2,
         terrain_model,
     });
 }

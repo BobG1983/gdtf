@@ -49,7 +49,7 @@ use gdtf_battle_sim::{
     armor::ArmorRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
-    level::{PrefabRegistry, ThemeCatalogRegistry, UuidThemeRegistry},
+    level::{PrefabRegistry, PrefabRegistry2, ThemeCatalogRegistry, UuidThemeRegistry},
     terrain::{def::TerrainDefRegistry, piece::TerrainRegistry},
     tuning::CombatTuning,
     weapon::WeaponRegistry,
@@ -288,6 +288,14 @@ crate::support_item! {
             // gated on `is_none()` exactly like the other registries (else the empty seed
             // would shadow `resolve_prefabs`, which only runs while the registry is ABSENT).
             commands.insert_resource(PrefabRegistry::default());
+            // GTW-489: the NEW UUID-keyed PrefabRegistry2 is a gate-blocking resource too;
+            // seed the empty fallback when there is no AssetServer so headless walks still
+            // reach Intro (the A1 / AC3b pattern). With an AssetServer present the real
+            // `assets/content/maps/**/*.prefab_v2.ron` resolve must win — so this is gated on
+            // `is_none()` exactly like the other registries (else the empty seed would shadow
+            // resolve_prefabs_v2, which only runs while the registry is ABSENT). It resolves
+            // EMPTY against un-migrated shipped content either way.
+            commands.insert_resource(PrefabRegistry2::default());
             // GTW-487: the NEW UUID-keyed TerrainDefRegistry + UuidThemeRegistry are
             // gate-blocking too; seed the empty fallbacks when there is no AssetServer so
             // headless walks still reach Intro (the A1 / AC3b pattern). With an AssetServer

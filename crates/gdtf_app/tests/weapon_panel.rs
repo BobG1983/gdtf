@@ -95,6 +95,9 @@ fn battle_running_app() -> App {
     // GTW-418: the Load gate also requires a PrefabRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
+    // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
     // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());

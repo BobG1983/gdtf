@@ -1,0 +1,14 @@
+// GTW-489 C1 test fixture — a NEW UUID-keyed PrefabSpecV2 v2 level-fragment under the NEW
+// `maps/<theme>/<size>/` root, SEPARATE from the legacy `content/maps/` tree (so the still-live
+// legacy `resolve_prefabs` keeps loading a single-type `content/maps` folder unchanged). The
+// dedicated `prefab_v2.ron` compound extension dispatches it to the NEW RonAsset<PrefabSpecV2>
+// loader. NOT shipped game content; exists only to exercise the new v2 prefab folder loader
+// (the migration of real content is T06). One placement so C1 can assert the prefab carries
+// placements. `role` is OMITTED to exercise the serde-default Fill (GTW-486).
+(
+    theme: "00000000-0000-0000-0000-01840a3e0901",
+    size: (width: 3, height: 3, levels: 1),
+    placements: [
+        (piece: "00000000-0000-0000-0000-01840a3e09b1", at: (cell: (x: 1, y: 1), level: 0)),
+    ],
+)
