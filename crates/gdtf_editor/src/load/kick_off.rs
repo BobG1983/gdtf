@@ -1,18 +1,19 @@
 //! `OnEnter(EditorState::Load)`: start the editor's async asset loads.
 //!
 //! A slim mirror of `gdtf_app`'s `kick_off_loads`, trimmed to the editor's needs: the
-//! theme RON plus the weapon / armor / theme-catalog content folders. The editor does
-//! NOT load the situation, combat/stat tuning, terrain, injuries, or gangs — those drive
-//! the GAME's battle sim, which the editor does not run (the GTW-417 housing constraint:
-//! the procgen assembly + debug visualizer stay in the main game, not the editor).
+//! theme RON, the weapon / armor content folders, the NEW UUID-keyed per-theme `terrain/`
+//! folder (GTW-487), and the presenter's tile-role RON (GTW-495 — the per-def graphic
+//! resolution table). The editor does NOT load the situation, combat/stat tuning,
+//! injuries, or gangs — those drive the GAME's battle sim, which the editor does not run.
 
 use bevy::{asset::AssetServer, prelude::*};
 use gdtf_assets::RonAsset;
+use gdtf_battle_presenter::TileRoles;
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::load::handles::{
     EditorArmorFolderHandle, EditorLoadHandles, EditorTerrainModelFolderHandle, EditorThemeHandle,
-    EditorThemesFolderHandle, EditorWeaponsFolderHandle,
+    EditorTileRolesHandle, EditorWeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root (the same shipped
@@ -29,23 +30,22 @@ const WEAPONS_DIR: &str = "content/weapons";
 /// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) from.
 const ARMOR_DIR: &str = "content/armor";
 
-/// Path of the loose themes folder, relative to the asset source root — each
-/// `*.theme.ron` is a `RonAsset<ThemeSpec>` the resolve pass builds the
-/// [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry) from (the
-/// GTW-409 theme tile catalog the palette/canvas children consume).
-const THEMES_DIR: &str = "content/themes";
-
 /// Path of the loose NEW per-theme terrain-model folder, relative to the asset source root
 /// (GTW-487) — its members are `*.terrain_def.ron` (`RonAsset<TerrainDef>`) +
 /// `*.terrain_theme.ron` (`RonAsset<UuidThemeDef>`) the resolve pass builds the UUID-keyed
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
-/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) from. A NEW root DISTINCT
-/// from the legacy `content/themes`, with dedicated extensions that do not collide with the
-/// legacy `theme.ron` / `terrain.ron` loaders.
+/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) from — the editor's SOLE
+/// terrain/theme source after GTW-495 (the legacy `content/themes` catalog is retired).
 const TERRAIN_MODEL_DIR: &str = "terrain";
 
-/// Kicks off the editor's theme-RON load and the weapon / armor / themes folder loads,
-/// storing their typed handles in [`EditorLoadHandles`].
+/// Path of the loose tile-role RON, relative to the asset source root (GTW-495) — the SAME
+/// `sprites/tile_roles.spritedef.ron` the presenter loads. The editor resolves a terrain
+/// def's `presenter_kind.graphic_name` to a terrain atlas index through the resolved
+/// [`TileRoles`](gdtf_battle_presenter::TileRoles), so its sprites match the battlescape's.
+const TILE_ROLES_RON_PATH: &str = "sprites/tile_roles.spritedef.ron";
+
+/// Kicks off the editor's theme-RON load, the weapon / armor / terrain-model folder loads,
+/// and the tile-role RON load, storing their typed handles in [`EditorLoadHandles`].
 ///
 /// Takes `Option<Res<AssetServer>>` so a headless `MinimalPlugins` app with no
 /// [`AssetServer`] no-ops rather than panics (`bevy-traps.md` #1) — though the editor
@@ -64,15 +64,16 @@ pub(crate) fn kick_off_editor_loads(
         EditorThemeHandle::new(asset_server.load::<RonAsset<GdtfThemeSpec>>(THEME_RON_PATH));
     let weapons = EditorWeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
     let armor = EditorArmorFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
-    let themes = EditorThemesFolderHandle::new(asset_server.load_folder(THEMES_DIR));
     let terrain_model =
         EditorTerrainModelFolderHandle::new(asset_server.load_folder(TERRAIN_MODEL_DIR));
+    let tile_roles =
+        EditorTileRolesHandle::new(asset_server.load::<RonAsset<TileRoles>>(TILE_ROLES_RON_PATH));
 
     commands.insert_resource(EditorLoadHandles {
         theme,
         weapons,
         armor,
-        themes,
         terrain_model,
+        tile_roles,
     });
 }

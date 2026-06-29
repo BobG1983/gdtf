@@ -13,9 +13,16 @@ gdtf_ui = { path = "../gdtf_ui" }
 # weapon/armor specs through it, exactly as gdtf_app's game Load does.
 gdtf_assets = { path = "../gdtf_assets" }
 # The authoritative sim owns the registry domain types the editor loads + holds:
-# WeaponRegistry / ArmorRegistry / ThemeCatalogRegistry (+ their specs). The editor
-# depends on the sim ONLY for these data types — it wires NONE of the sim's runtime.
+# WeaponRegistry / ArmorRegistry / TerrainDefRegistry / UuidThemeRegistry (+ their
+# defs). The editor depends on the sim ONLY for these data types — it wires NONE of the
+# sim's runtime.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+# GTW-495: the editor resolves a TerrainDef's presenter_kind.graphic_name to a terrain
+# atlas index THE WAY THE PRESENTER DOES — through the presenter's data-driven `TileRoles`
+# table (TileRoles::index_for_key) — rather than duplicating the role vocabulary. It uses
+# ONLY the presenter's TileRoles / TileIndex data types + its load/resolve seam; it wires
+# NONE of the presenter's render runtime (no BattlePresenterPlugin).
+gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 # GTW-432: the (debug-only) save-prefab path serializes a PrefabSpec to RON and writes it
 # to assets/content/maps/. The serialize is non-test code, so ron is a normal dependency
 # (the GTW-429 gang-save precedent moved ron from a dev-dependency to a normal one).

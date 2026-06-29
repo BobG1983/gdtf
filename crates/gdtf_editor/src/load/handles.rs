@@ -1,18 +1,19 @@
 //! The editor's `Load`-scoped asset handles.
 //!
 //! Mirrors `gdtf_app`'s `LoadHandles` shape, trimmed to exactly what the editor shell
-//! needs: the theme RON, plus the weapon / armor / theme-catalog folders. Each is a
-//! named newtype over its Bevy handle (no-bare-types rule 5: private inner, derived
-//! [`Deref`], a `new` constructor) so a folder handle can never be mixed up with the
-//! theme handle. The resource lives only during [`EditorState::Load`](crate::EditorState)
-//! — it is removed `OnExit(Load)` once the registries are built (the handles are no
-//! longer needed; the registries hold their data BY VALUE).
+//! needs: the theme RON, the weapon / armor folders, the NEW UUID-keyed per-theme
+//! `terrain/` folder (GTW-487), and the presenter's tile-role RON (GTW-495 — the per-def
+//! graphic resolution the editor mirrors). Each is a named newtype over its Bevy handle
+//! (no-bare-types rule 5: private inner, derived [`Deref`], a `new` constructor). The
+//! resource lives only during [`EditorState::Load`](crate::EditorState) — it is removed
+//! `OnExit(Load)` once the registries are built (the registries hold their data BY VALUE).
 
 use bevy::{
     asset::{Handle, LoadedFolder},
     prelude::{Deref, Resource},
 };
 use gdtf_assets::RonAsset;
+use gdtf_battle_presenter::TileRoles;
 use gdtf_ui::theme::GdtfThemeSpec;
 
 /// Typed handle to the loose theme RON (`core_tuning/ui_theme.tuning.ron`), loaded as a
@@ -57,28 +58,13 @@ impl EditorArmorFolderHandle {
     }
 }
 
-/// Typed handle to the loaded `content/themes/` folder — every member is a
-/// `RonAsset<ThemeSpec>` the poll/resolve pass builds the
-/// [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry) from (the
-/// GTW-409 theme tile catalog).
-#[derive(Resource, Deref, Clone, Debug)]
-pub(crate) struct EditorThemesFolderHandle(Handle<LoadedFolder>);
-
-impl EditorThemesFolderHandle {
-    /// Wrap the themes-folder handle the [`AssetServer`](bevy::asset::AssetServer) returns.
-    #[must_use]
-    pub(crate) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// Typed handle to the loaded NEW per-theme `terrain/` folder (GTW-487) — its members are
 /// `RonAsset<TerrainDef>` (`*.terrain_def.ron`) + `RonAsset<UuidThemeDef>`
 /// (`*.terrain_theme.ron`) the poll/resolve pass builds the UUID-keyed
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) from. ONE recursive
-/// `load_folder` of `terrain/` feeds both — the new UUID-keyed models load BESIDE the legacy
-/// `content/themes` catalog above.
+/// `load_folder` of `terrain/` feeds both — the UUID-keyed models are the editor's SOLE
+/// terrain/theme source after GTW-495 (the legacy `content/themes` catalog is retired).
 #[derive(Resource, Deref, Clone, Debug)]
 pub(crate) struct EditorTerrainModelFolderHandle(Handle<LoadedFolder>);
 
@@ -87,6 +73,23 @@ impl EditorTerrainModelFolderHandle {
     /// [`AssetServer`](bevy::asset::AssetServer) returns.
     #[must_use]
     pub(crate) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// Typed handle to the loose tile-role RON (`sprites/tile_roles.spritedef.ron`), loaded as a
+/// `RonAsset<TileRoles>` (GTW-495). The editor resolves a [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef)'s
+/// `presenter_kind.graphic_name` to a terrain atlas index THROUGH this presenter-owned
+/// [`TileRoles`] table (`TileRoles::index_for_key`) — the SAME role vocabulary the battlescape
+/// presenter resolves graphics by (GTW-493), so the editor's palette / canvas sprites match the
+/// game's.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(crate) struct EditorTileRolesHandle(Handle<RonAsset<TileRoles>>);
+
+impl EditorTileRolesHandle {
+    /// Wrap the tile-role RON handle the [`AssetServer`](bevy::asset::AssetServer) returns.
+    #[must_use]
+    pub(crate) const fn new(handle: Handle<RonAsset<TileRoles>>) -> Self {
         Self(handle)
     }
 }
@@ -103,11 +106,12 @@ pub(crate) struct EditorLoadHandles {
     /// The armor-folder handle (resolves to the
     /// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry)).
     pub(crate) armor:         EditorArmorFolderHandle,
-    /// The themes-folder handle (resolves to the
-    /// [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry)).
-    pub(crate) themes:        EditorThemesFolderHandle,
     /// The NEW per-theme `terrain/` folder handle (GTW-487 — resolves to the UUID-keyed
     /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
     /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry)).
     pub(crate) terrain_model: EditorTerrainModelFolderHandle,
+    /// The tile-role RON handle (GTW-495 — resolves to the presenter's
+    /// [`TileRoles`](gdtf_battle_presenter::TileRoles) table the editor resolves per-def
+    /// graphics through).
+    pub(crate) tile_roles:    EditorTileRolesHandle,
 }

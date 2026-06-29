@@ -1,4 +1,5 @@
-//! The **Bevy systems** and **filesystem writer** for the GTW-432 save path.
+//! The **Bevy systems** and **filesystem writer** for the save path (GTW-432; swept onto the v2
+//! UUID schema in GTW-495).
 //!
 //! - [`write_prefab`] — the pure IO layer: sanitize name → project → serialize → `fs::write`.
 //! - [`spawn_save_controls`] — `OnEnter(Editing)` system: spawns the prefab-name text field +
@@ -8,7 +9,7 @@
 use std::path::PathBuf;
 
 use bevy::{prelude::*, ui::Interaction};
-use gdtf_battle_sim::level::ThemeCatalogRegistry;
+use gdtf_battle_sim::{level::UuidThemeRegistry, terrain::def::TerrainDefRegistry};
 use gdtf_ui::{
     ActiveButton, CommittedTextValue, FieldColors, ScrollListArea, spawn_text_field,
     theme::GdtfTheme,
@@ -21,13 +22,14 @@ use super::{
 use crate::{EditorMap, regions::RightPanelRegion, session::MapEditorSession};
 
 /// Build + serialize + WRITE the prefab to
-/// `assets/content/maps/<theme>/<size>/<stem>.prefab.ron` (C1), or return the typed
+/// `assets/maps/<theme>/<size>/<stem>.prefab_v2.ron` (C1), or return the typed
 /// [`SavePrefabError`] (never a panic).
 ///
-/// Sanitizes the entered name, projects the map to a [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec) (C3 illegal-cell guard +
-/// C6 edge-opening derivation inside [`editor_map_to_prefab`]), serializes it, creates the themed
-/// / sized directory if absent, and writes the file. Returns the resolved [`PathBuf`] on success
-/// so the caller can log it; a test reuses this whole path against a temp assets root.
+/// Sanitizes the entered name, projects the map to a [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2)
+/// (C3 illegal-cell guard inside [`editor_map_to_prefab`]), serializes it, resolves the theme's
+/// directory from its display name in the [`UuidThemeRegistry`], creates the themed / sized
+/// directory if absent, and writes the file. Returns the resolved [`PathBuf`] on success so the
+/// caller can log it; a test reuses this whole path.
 ///
 /// # Errors
 ///
@@ -36,7 +38,8 @@ use crate::{EditorMap, regions::RightPanelRegion, session::MapEditorSession};
 pub(crate) fn write_prefab(
     raw_name: &str,
     map: &EditorMap,
-    registry: &ThemeCatalogRegistry,
+    registry: &TerrainDefRegistry,
+    themes: &UuidThemeRegistry,
     session: &MapEditorSession,
 ) -> Result<PathBuf, SavePrefabError> {
     let stem = sanitize_name(raw_name);
@@ -45,7 +48,10 @@ pub(crate) fn write_prefab(
     }
     let spec = editor_map_to_prefab(map, registry, session)?;
     let serialized = serialize_prefab(&spec)?;
-    let path = prefab_save_path(session.theme(), session.grid_size(), &stem);
+    let theme_display = themes
+        .def(&session.theme())
+        .map_or_else(String::new, |def| (*def.display_name).clone());
+    let path = prefab_save_path(&theme_display, session.grid_size(), &stem);
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|err| SavePrefabError::Write(err.to_string()))?;
     }
@@ -55,13 +61,6 @@ pub(crate) fn write_prefab(
 
 /// `OnEnter(Editing)`: spawn the prefab-NAME text field + the "Save prefab" button under the
 /// right panel (the GTW-411 widget + the GTW-432 save trigger).
-///
-/// Parents both under the [`RightPanelRegion`]'s [`ScrollListArea`] — the
-/// CLIPPING, SCROLLING viewport child (the GTW-421 parenting rule, the
-/// `spawn_right_panel_controls` precedent) — via a deferred command so the scroll list (spawned in
-/// the same buffer by the shell) exists by then. Gated on the live [`GdtfTheme`] for the field /
-/// button colors. The text field's one-time [`register_text_field`](gdtf_ui::register_text_field)
-/// seam is already wired by [`MapEditorPlugin`](crate::MapEditorPlugin).
 pub(crate) fn spawn_save_controls(mut commands: Commands, theme: Res<GdtfTheme>) {
     let field_colors = FieldColors {
         background: *theme.panel.color,
@@ -142,23 +141,21 @@ pub(crate) fn spawn_save_controls(mut commands: Commands, theme: Res<GdtfTheme>)
 type ChangedSaveButtons<'w, 's> =
     Query<'w, 's, (Entity, &'static Interaction), (Changed<Interaction>, With<SavePrefabButton>)>;
 
-/// `Update` (in `Editing`): WRITE the prefab on a "Save prefab" press (C1 / C4 — the live trigger).
+/// `Update` (in `Editing`): WRITE the prefab on a "Save prefab" press (C1 — the live trigger).
 ///
-/// Reads the [`SavePrefabButton`]'s [`Interaction`] edge (the GTW-429 `save_gang_on_press`
-/// precedent), reads the entered name from the [`PrefabNameField`]'s last-committed
-/// [`CommittedTextValue`], and calls [`write_prefab`] with the current map / registry / session.
-/// On success it adds the [`ActiveButton`] highlight (the press feedback) and logs the written
-/// path; on a typed [`SavePrefabError`] it logs an `error!` and writes nothing (C3). All borrows
-/// are `Option` (the map / session are state-scoped resources — `bevy-traps.md` #1).
-///
-/// Param-only (`bevy-traps.md` #7): the button + name-field queries + the optional resource
-/// borrows.
+/// Reads the [`SavePrefabButton`]'s [`Interaction`] edge, reads the entered name from the
+/// [`PrefabNameField`]'s last-committed [`CommittedTextValue`], and calls [`write_prefab`] with
+/// the current map / registry / theme registry / session. On success it adds the [`ActiveButton`]
+/// highlight and logs the written path; on a typed [`SavePrefabError`] it logs an `error!` and
+/// writes nothing (C3). All borrows are `Option` (the map / session are state-scoped resources —
+/// `bevy-traps.md` #1).
 pub(crate) fn save_prefab_on_press(
     mut commands: Commands,
     buttons: ChangedSaveButtons,
     name_fields: Query<&CommittedTextValue, With<PrefabNameField>>,
     map: Option<Res<EditorMap>>,
-    registry: Option<Res<ThemeCatalogRegistry>>,
+    registry: Option<Res<TerrainDefRegistry>>,
+    themes: Option<Res<UuidThemeRegistry>>,
     session: Option<Res<MapEditorSession>>,
 ) {
     let Some((button, _)) = buttons
@@ -167,7 +164,8 @@ pub(crate) fn save_prefab_on_press(
     else {
         return;
     };
-    let (Some(map), Some(registry), Some(session)) = (map, registry, session) else {
+    let (Some(map), Some(registry), Some(themes), Some(session)) = (map, registry, themes, session)
+    else {
         return;
     };
     let name = name_fields
@@ -175,7 +173,7 @@ pub(crate) fn save_prefab_on_press(
         .next()
         .map_or_else(String::new, |value| value.value().to_owned());
 
-    match write_prefab(&name, &map, &registry, &session) {
+    match write_prefab(&name, &map, &registry, &themes, &session) {
         Ok(path) => {
             info!("prefab save: wrote prefab to `{}`", path.display());
             commands.entity(button).insert(ActiveButton);

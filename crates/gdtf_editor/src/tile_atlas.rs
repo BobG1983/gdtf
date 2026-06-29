@@ -1,20 +1,20 @@
 //! The editor's **terrain tile atlas** — the loaded sprite sheet + grid layout the palette
 //! rows draw their tile sprites from (GTW-422 C1).
 //!
-//! The map editor lists every catalog tile of the active theme, each row showing the tile's
-//! real SPRITE beside its name (C1). A [`CatalogTile`](gdtf_battle_sim::level::CatalogTile)
-//! carries only an OPAQUE [`TileAtlasIndex`](gdtf_battle_sim::level::TileAtlasIndex) (the sim
-//! is render-free — it never resolves the index to a pixel); the PRESENTER resolves it to a
-//! sprite from the terrain sheet. The editor mirrors that resolution here.
+//! The map editor lists every terrain of the active theme's palette, each row showing the
+//! terrain's real SPRITE beside its name (C1). A [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef)
+//! carries NO per-def atlas index (the sim is render-free); its
+//! [`presenter_kind`](gdtf_battle_sim::terrain::def::TerrainDef::presenter_kind) names a GRAPHIC
+//! ROLE KEY the PRESENTER resolves to an atlas index through its
+//! [`TileRoles`](gdtf_battle_presenter::TileRoles) table. The editor mirrors that resolution (see
+//! [`terrain_graphics`](crate::terrain_graphics)) and draws the resolved index over this sheet.
 //!
-//! The editor shares NONE of the game's scene graph or battle-sim runtime (the GTW-417
-//! housing constraint), so rather than depend on `gdtf_battle_presenter` (which would drag in
-//! the whole presenter + sim runtime), this loads the SAME terrain sheet the presenter loads
+//! This loads the SAME terrain sheet the presenter draws
 //! — `sprites/alt_tileset_terrain.png`, a 16×22 grid of 16-px cells (the
 //! `gdtf_battle_presenter` `SheetRole::Terrain` shape) — via [`AssetServer::load`] +
-//! [`TextureAtlasLayout::from_grid`], the `load_topdown_atlases` recipe. A palette row then
-//! builds an [`ImageNode::from_atlas_image`] over this sheet at the tile's atlas index (the
-//! `gdtf_app` portrait-node precedent: a UI atlas image node, NOT a world sprite).
+//! [`TextureAtlasLayout::from_grid`], the `load_topdown_atlases` recipe. A palette / canvas cell
+//! then builds an [`ImageNode::from_atlas_image`] over this sheet at the resolved atlas index (a
+//! UI atlas image node, NOT a world sprite).
 
 use bevy::{image::TextureAtlasLayout, prelude::*};
 
@@ -44,9 +44,10 @@ const TERRAIN_TILE_PX: u32 = 16;
 ///
 /// A named [`Resource`] (a framework type, exempt from `no-bare-types`; the handles it holds
 /// are framework plumbing). Loaded ONCE on `OnEnter(Editing)` by [`load_tile_atlas`] and read
-/// by the palette spawn to build each row's [`ImageNode::from_atlas_image`] at the tile's
-/// [`TileAtlasIndex`](gdtf_battle_sim::level::TileAtlasIndex). Mirrors the presenter's
-/// `SheetAtlas` (image + layout pair) but editor-local and terrain-only.
+/// by the palette / canvas spawn to build each cell's [`ImageNode::from_atlas_image`] at the
+/// graphic index resolved THE WAY THE PRESENTER DOES (see
+/// [`terrain_graphics`](crate::terrain_graphics)). Mirrors the presenter's `SheetAtlas`
+/// (image + layout pair) but editor-local and terrain-only.
 #[derive(Resource, Debug, Clone)]
 pub(crate) struct TileAtlas {
     /// The terrain sheet image handle (loaded via [`AssetServer::load`]).

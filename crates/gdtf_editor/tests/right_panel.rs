@@ -1,39 +1,35 @@
-//! Headless integration test for the GTW-421 map-editor right panel (theme dropdown + size
-//! selector).
+//! Headless integration test for the map-editor right panel (theme dropdown + size selector),
+//! swept onto the UUID-keyed terrain/theme model (GTW-495).
 //!
-//! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI harness (the
-//! same harness the GTW-417 `editor_shell` test uses), so the editor's actual `Load` pass
-//! resolves the shipped theme + catalog registries and its real `Editing` scene spawns the
-//! right-panel controls + the shared [`MapEditorSession`] — not a copy.
+//! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI harness, so the
+//! editor's actual `Load` pass resolves the shipped theme + terrain registries and its real
+//! `Editing` scene spawns the right-panel controls + the shared [`MapEditorSession`] — not a copy.
 //!
 //! Asserts the contract end-to-end and pin-discriminatingly:
 //!
-//! - T1 (C1): the theme dropdown exists with all THREE [`LevelTheme`] options and its
-//!   [`SelectedIndex`] points at the default theme.
-//! - T2 (C2): a real [`DropdownSelectionChanged<LevelTheme>`] for a NON-default theme updates
-//!   the session theme AND resolves that theme's catalog default-floor key (driving the real
+//! - T1 (C1): the theme dropdown lists every theme the [`UuidThemeRegistry`] holds (one option
+//!   per registered theme), and the session seeds to the dropdown's pre-selected default theme
+//!   (a real, non-nil [`ThemeUuid`]) with that theme's default-floor resolved.
+//! - T2 (C2): a real [`DropdownSelectionChanged<ThemeUuid>`] for a different theme updates the
+//!   session theme AND resolves that theme's default-floor [`TerrainUuid`] (driving the real
 //!   `apply_theme_selection` system).
 //! - T3 (C3): real [`NumericFieldCommitted<GridSpanInput>`] commits store an in-bounds width
-//!   and keep the stored [`GridSize`] clamped within `60×60×8` when an over-60 value is
-//!   committed (driving the real `apply_size_commit` system).
-//! - T4 (layout regression): the controls hang inside the right panel's [`ScrollListArea`]
-//!   (the clipping, scrolling viewport) — not the scroll-list grid root frame — so they
-//!   top-anchor and scroll instead of dropping into an off-screen implicit grid row (the
-//!   GTW-421 bottom-cramp).
+//!   and keep the stored [`GridSize`] clamped within `60×60×8` (driving the real
+//!   `apply_size_commit`).
+//! - T4 (layout regression): the controls hang inside the right panel's [`ScrollListArea`].
 //!
-//! Value-agnostic: it asserts the clamp CEILING and the catalog-RESOLVED floor key, never an
-//! authored magnitude. Panic/expect-free per the workspace lints (the GTW-417 `editor_shell`
-//! precedent: `assert!` + `if let Some` guards, never `unwrap`/`expect`/`panic`).
+//! Value-agnostic: it asserts COUNTS / the clamp CEILING / the registry-RESOLVED floor key, never
+//! an authored magnitude. Panic/expect-free per the workspace lints.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::level::{GridWidth, LevelTheme, MAX_GRID_SPAN, ThemeCatalogRegistry};
+use gdtf_battle_sim::level::{GridWidth, MAX_GRID_SPAN, ThemeUuid, UuidThemeRegistry};
 use gdtf_editor::{
     EditorState, GridSpanInput, MapEditorPlugin, MapEditorSession, SizeFieldAxis, ThemeDropdown,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 use gdtf_ui::{
     CommittedNumericValue, DropdownOptions, DropdownSelectionChanged, NumericFieldCommitted,
-    ScrollListArea, SelectedIndex, UiPlugin,
+    ScrollListArea, UiPlugin,
 };
 
 /// A generous frame cap: the async asset loads under parallel `cargo` contention take a
@@ -62,9 +58,10 @@ fn editor_in_editing() -> App {
         "the editor never reached EditorState::Editing — its Load pass did not resolve the \
          theme + registries (a genuine load failure, not a frame-budget shortfall)",
     );
-    // The OnEnter spawn + its deferred re-parent / control-spawn commands apply across a few
-    // frames; advance so the dropdown + fields + session are present before we query.
-    for _ in 0..4 {
+    // The OnEnter spawn + its deferred re-parent / control-spawn commands + the seed_default_theme
+    // Update apply across a few frames; advance so the dropdown + fields + seeded session are
+    // present before we query.
+    for _ in 0..6 {
         app.update();
     }
     app
@@ -94,82 +91,93 @@ fn session_width(app: &App) -> Option<GridWidth> {
         .map(|session| session.grid_size().width())
 }
 
-/// T1 (C1): the theme dropdown exists, lists all three [`LevelTheme`] options, and its
-/// [`SelectedIndex`] points at the default theme's slot.
+/// The number of themes the registry holds — the count the dropdown must list.
+fn registered_theme_count(app: &App) -> Option<usize> {
+    app.world()
+        .get_resource::<UuidThemeRegistry>()
+        .map(UuidThemeRegistry::len)
+}
+
+/// T1 (C1): the theme dropdown lists one option per registered theme, and the session seeds to a
+/// real (non-nil) theme with its default-floor resolved.
 #[test]
-fn theme_dropdown_lists_all_themes_with_default_selected() {
+fn theme_dropdown_lists_registered_themes_and_seeds_session() {
     let mut app = editor_in_editing();
 
+    let expected = registered_theme_count(&app);
+    assert!(
+        expected.is_some_and(|n| n > 0),
+        "the UuidThemeRegistry must hold at least one theme (a real folder resolve)",
+    );
+
     let world = app.world_mut();
-    let mut query = world
-        .query_filtered::<(&DropdownOptions<LevelTheme>, &SelectedIndex), With<ThemeDropdown>>();
+    let mut query = world.query_filtered::<&DropdownOptions<ThemeUuid>, With<ThemeDropdown>>();
     let dropdowns: Vec<_> = query.iter(world).collect();
     assert_eq!(
         dropdowns.len(),
         1,
         "exactly one theme dropdown must be spawned in the right panel",
     );
-
-    if let Some((options, selected)) = dropdowns.into_iter().next() {
-        // All three closed-set LevelTheme variants are offered (C1).
-        let offered: Vec<LevelTheme> = options.options().iter().map(|opt| *opt.id()).collect();
+    if let Some(options) = dropdowns.into_iter().next() {
         assert_eq!(
-            offered.len(),
-            3,
-            "the theme dropdown must list all three LevelTheme variants, got {offered:?}",
+            Some(options.options().len()),
+            expected,
+            "the theme dropdown must list one option per registered theme (C1)",
         );
-        for variant in [
-            LevelTheme::IndustrialHive,
-            LevelTheme::Underhive,
-            LevelTheme::SumpWaste,
-        ] {
-            assert!(
-                offered.contains(&variant),
-                "the theme dropdown must offer {variant:?}",
-            );
-        }
+    }
 
-        // The default theme is pre-selected on open (C1): the SelectedIndex points at the
-        // option whose id is LevelTheme::default.
-        let selected_id = options.options().get(**selected).map(|opt| *opt.id());
-        assert_eq!(
-            selected_id,
-            Some(LevelTheme::default()),
-            "the dropdown must pre-select the default LevelTheme on open",
+    // The session seeded to a real (non-nil) theme with a resolved default floor (C1).
+    let session = app.world().get_resource::<MapEditorSession>();
+    assert!(session.is_some(), "the MapEditorSession must exist");
+    if let Some(session) = session {
+        assert!(
+            !session.theme().is_nil(),
+            "the session must seed to a real (non-nil) theme once the registry resolves (C1)",
+        );
+        assert!(
+            session.default_floor().is_some(),
+            "the seeded theme's default floor must resolve (C1)",
         );
     }
 }
 
-/// T2 (C2): selecting a NON-default theme updates the session theme AND resolves that theme's
-/// catalog default-floor key — driving the real `apply_theme_selection` system via a
-/// synthesized selection message.
+/// T2 (C2): selecting a DIFFERENT theme updates the session theme AND resolves that theme's
+/// default-floor key — driving the real `apply_theme_selection` system via a synthesized message.
 #[test]
 fn selecting_a_theme_updates_session_theme_and_default_floor() {
     let mut app = editor_in_editing();
 
-    // Pick a NON-default theme that has a shipped catalog (so the default-floor key resolves).
-    let target = LevelTheme::Underhive;
-    assert_ne!(
-        target,
-        LevelTheme::default(),
-        "the test must select a non-default theme to prove the update path runs",
+    // Pick a theme DIFFERENT from the session's currently-seeded one (the registry holds >1).
+    let start_theme = app
+        .world()
+        .get_resource::<MapEditorSession>()
+        .map(MapEditorSession::theme);
+    let target: Option<ThemeUuid> = app
+        .world()
+        .get_resource::<UuidThemeRegistry>()
+        .and_then(|r| {
+            r.defs()
+                .map(|(key, _)| *key)
+                .find(|key| Some(*key) != start_theme)
+        });
+    assert!(
+        target.is_some(),
+        "the registry must hold a second theme to switch to (the C2 target)",
     );
+    let Some(target) = target else {
+        return;
+    };
 
-    // The expected resolved default-floor key, read straight from the registry the editor
-    // loaded — value-agnostic (we assert it MATCHES the catalog, not a hard-coded string).
+    // The expected resolved default-floor key, read straight from the registry — value-agnostic.
     let expected_floor = app
         .world()
-        .get_resource::<ThemeCatalogRegistry>()
-        .and_then(|reg| reg.catalog(target))
-        .map(|cat| cat.default_floor_key().clone());
+        .get_resource::<UuidThemeRegistry>()
+        .and_then(|r| r.default_floor(&target));
     assert!(
         expected_floor.is_some(),
-        "the shipped ThemeCatalogRegistry must hold an Underhive catalog with a default-floor \
-         key — the C2 resolve target",
+        "the target theme must declare a default-floor TerrainUuid — the C2 resolve target",
     );
 
-    // Find the dropdown control entity, synthesize the real selection message the widget would
-    // emit, and let the registered `apply_theme_selection` system consume it.
     let control = theme_dropdown(&mut app);
     assert!(control.is_some(), "the theme dropdown control must exist");
     if let Some(control) = control {
@@ -179,29 +187,24 @@ fn selecting_a_theme_updates_session_theme_and_default_floor() {
     }
 
     let session = app.world().get_resource::<MapEditorSession>();
-    assert!(
-        session.is_some(),
-        "the MapEditorSession must exist in Editing"
-    );
+    assert!(session.is_some(), "the MapEditorSession must exist");
     if let Some(session) = session {
         assert_eq!(
             session.theme(),
             target,
-            "selecting a theme must update the session theme",
+            "selecting a theme must update the session theme (C2)",
         );
         assert_eq!(
-            session.default_floor().cloned(),
+            session.default_floor(),
             expected_floor,
-            "selecting a theme must resolve + store that theme's catalog default-floor key (C2)",
+            "selecting a theme must resolve + store that theme's default-floor TerrainUuid (C2)",
         );
     }
 }
 
-/// T3 (C3): the size-commit path stores an in-bounds width AND keeps the stored
-/// [`GridSize`] clamped within `60×60×8` when an OVER-60 value is committed — driving the
-/// real `apply_size_commit` system via synthesized commit messages. Pin-discriminating: it
-/// commits a known in-bounds width (stored) then an over-ceiling width (rejected fail-closed,
-/// never stored, never panicking), so a missing clamp/validation would redden it.
+/// T3 (C3): the size-commit path stores an in-bounds width AND keeps the stored [`GridSize`]
+/// clamped within `60×60×8` when an OVER-60 value is committed — driving the real
+/// `apply_size_commit` system.
 #[test]
 fn committing_width_stores_in_bounds_and_clamps_over_max() {
     let mut app = editor_in_editing();
@@ -215,7 +218,6 @@ fn committing_width_stores_in_bounds_and_clamps_over_max() {
         return;
     };
 
-    // First commit a KNOWN in-bounds width — proves the width axis updates the stored size.
     let in_bounds: u8 = 40;
     assert!(
         in_bounds < MAX_GRID_SPAN,
@@ -232,9 +234,6 @@ fn committing_width_stores_in_bounds_and_clamps_over_max() {
         "committing an in-bounds width must store it on the session GridSize",
     );
 
-    // Now commit an OVER-ceiling width — the size must stay CLAMPED within 60×60×8: the
-    // fail-closed `GridSize::new` rejects it, so the previous in-bounds width is kept (never
-    // the over-max value, never a panic).
     let over_max: u8 = MAX_GRID_SPAN.saturating_add(100);
     app.world_mut().write_message(NumericFieldCommitted::new(
         field,
@@ -256,13 +255,9 @@ fn committing_width_stores_in_bounds_and_clamps_over_max() {
     }
 }
 
-/// T4 (layout regression — GTW-421 bottom-cramp): the size-field controls must hang inside
-/// the right panel's [`ScrollListArea`] — the frame's clipping, scrolling viewport — NOT
-/// under the scroll-list grid ROOT FRAME. The earlier bug parented the controls onto the
-/// frame (the entity carrying [`RightPanelRegion`]), which dropped them into an off-screen
-/// implicit grid row below the scroll area; this walks the width field's ancestry and asserts
-/// a [`ScrollListArea`] is one of its ancestors. Pre-fix this FAILS (no `ScrollListArea`
-/// ancestor — the controls sat under the bare grid frame).
+/// T4 (layout regression — GTW-421 bottom-cramp): the size-field controls must hang inside the
+/// right panel's [`ScrollListArea`] — the frame's clipping, scrolling viewport — NOT under the
+/// scroll-list grid ROOT FRAME.
 #[test]
 fn controls_live_inside_the_scroll_area_not_the_grid_frame() {
     let mut app = editor_in_editing();
@@ -276,7 +271,6 @@ fn controls_live_inside_the_scroll_area_not_the_grid_frame() {
         return;
     };
 
-    // Walk up the ChildOf chain from the width field; a ScrollListArea must be an ancestor.
     let world = app.world_mut();
     let mut areas = world.query_filtered::<Entity, With<ScrollListArea>>();
     let area_set: Vec<Entity> = areas.iter(world).collect();
@@ -284,7 +278,6 @@ fn controls_live_inside_the_scroll_area_not_the_grid_frame() {
 
     let mut cursor = Some(field);
     let mut found_in_area = false;
-    // Bounded walk (the panel subtree is shallow) so a cycle can never hang the test.
     for _ in 0..64 {
         let Some(current) = cursor else {
             break;

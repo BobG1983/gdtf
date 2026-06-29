@@ -2,15 +2,14 @@
 //! and insert the resolved resources.
 //!
 //! A slim mirror of `gdtf_app`'s `poll_and_resolve`, trimmed to the editor's loads: the
-//! [`GdtfTheme`], the legacy [`WeaponRegistry`] / [`ArmorRegistry`] /
-//! [`ThemeCatalogRegistry`], and (GTW-487) the NEW UUID-keyed
-//! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
+//! [`GdtfTheme`], the legacy [`WeaponRegistry`] / [`ArmorRegistry`], the (GTW-487) NEW
+//! UUID-keyed [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 //! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) built from the per-theme
-//! `terrain/` folder. Each branch re-gates on its OWN resource's absence so none starves
-//! another (`bevy-traps.md` #3), and EVERY branch is fail-safe: a failed asset falls back to
-//! a const default (the ADR-0003 error-path safety-net) so the editor never hangs in `Load`
-//! on a bad asset folder. Once all the resources exist, the plugin's transition leaves
-//! `Load` for [`Editing`](crate::EditorState::Editing).
+//! `terrain/` folder, and the (GTW-495) presenter [`TileRoles`] table. Each branch re-gates on
+//! its OWN resource's absence so none starves another (`bevy-traps.md` #3), and EVERY branch is
+//! fail-safe: a failed asset falls back to a const default (the ADR-0003 error-path safety-net)
+//! so the editor never hangs in `Load`. Once all the resources exist, the plugin's transition
+//! leaves `Load` for [`Editing`](crate::EditorState::Editing).
 
 use core::any::TypeId;
 
@@ -20,9 +19,10 @@ use bevy::{
     prelude::*,
 };
 use gdtf_assets::RonAsset;
+use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry, ArmorSpec},
-    level::{ThemeCatalogRegistry, ThemeSpec, ThemeTileCatalog, UuidThemeDef, UuidThemeRegistry},
+    level::{UuidThemeDef, UuidThemeRegistry},
     terrain::def::{TerrainDef, TerrainDefRegistry},
     weapon::{WeaponName, WeaponRegistry, WeaponSpec},
 };
@@ -40,24 +40,24 @@ use crate::load::handles::EditorLoadHandles;
 #[derive(SystemParam)]
 pub(crate) struct EditorLoadCollections<'w> {
     /// The loaded theme-spec RON collection (`core_tuning/ui_theme.tuning.ron`).
-    theme_specs:   Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
+    theme_specs:  Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
     /// The loaded `LoadedFolder` collection — used to read each content folder's members.
-    folders:       Option<Res<'w, Assets<LoadedFolder>>>,
+    folders:      Option<Res<'w, Assets<LoadedFolder>>>,
     /// The loaded per-weapon RON collection (`content/weapons/*.weapon.ron`).
-    weapon_specs:  Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
+    weapon_specs: Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
     /// The loaded per-armor RON collection (`content/armor/*.armor.ron`).
-    armor_specs:   Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
-    /// The loaded per-theme RON collection (`content/themes/*.theme.ron`).
-    catalog_specs: Option<Res<'w, Assets<RonAsset<ThemeSpec>>>>,
+    armor_specs:  Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
     /// The loaded NEW per-theme terrain-def RON collection
     /// (`terrain/<theme>/*.terrain_def.ron`, GTW-487).
-    terrain_defs:  Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
+    terrain_defs: Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
     /// The loaded NEW per-theme theme-def RON collection
     /// (`terrain/<theme>/*.terrain_theme.ron`, GTW-487).
-    theme_defs:    Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
+    theme_defs:   Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
+    /// The loaded tile-role RON collection (`sprites/tile_roles.spritedef.ron`, GTW-495).
+    tile_roles:   Option<Res<'w, Assets<RonAsset<TileRoles>>>>,
 }
 
-/// The four persistent resources [`poll_and_resolve_editor`] resolves, each as an
+/// The persistent resources [`poll_and_resolve_editor`] resolves, each as an
 /// `Option<Res<…>>` presence-probe, bundled into one [`SystemParam`] so the system's
 /// parameter list stays under clippy's argument-count gate (the game's `ResolvedResources`
 /// grouping precedent). Each branch resolves on its OWN resource's absence so none starves
@@ -70,24 +70,23 @@ pub(crate) struct EditorResolved<'w> {
     weapons:      Option<Res<'w, WeaponRegistry>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted.
     armor:        Option<Res<'w, ArmorRegistry>>,
-    /// Whether the resolved [`ThemeCatalogRegistry`] is already inserted.
-    catalogs:     Option<Res<'w, ThemeCatalogRegistry>>,
     /// Whether the resolved NEW [`TerrainDefRegistry`] is already inserted (GTW-487).
     terrain_defs: Option<Res<'w, TerrainDefRegistry>>,
     /// Whether the resolved NEW [`UuidThemeRegistry`] is already inserted (GTW-487).
     theme_defs:   Option<Res<'w, UuidThemeRegistry>>,
+    /// Whether the resolved [`TileRoles`] table is already inserted (GTW-495).
+    tile_roles:   Option<Res<'w, TileRoles>>,
 }
 
 /// Polls the editor's in-flight loads and inserts each resolved resource on its OWN
 /// absence guard.
 ///
 /// Runs while [`EditorLoadHandles`] exists and ANY of the target resources ([`GdtfTheme`],
-/// [`WeaponRegistry`], [`ArmorRegistry`], [`ThemeCatalogRegistry`], and — GTW-487 — the NEW
-/// [`TerrainDefRegistry`] + [`UuidThemeRegistry`]) is still missing. Each branch resolves
+/// [`WeaponRegistry`], [`ArmorRegistry`], the GTW-487 [`TerrainDefRegistry`] +
+/// [`UuidThemeRegistry`], and the GTW-495 [`TileRoles`]) is still missing. Each branch resolves
 /// independently and falls back to a const default / empty registry on a failed load, so a
-/// slow/bad asset never strands the editor. Takes its borrows as `Option<…>` so a headless
-/// app without the asset stack no-ops rather than panics (`bevy-traps.md` #1); under
-/// `DefaultPlugins` (the real editor) they are always present.
+/// slow/bad asset never strands the editor. Takes its borrows as `Option<…>` so a headless app
+/// without the asset stack no-ops rather than panics (`bevy-traps.md` #1).
 pub(crate) fn poll_and_resolve_editor(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
@@ -95,13 +94,13 @@ pub(crate) fn poll_and_resolve_editor(
     resolved: EditorResolved,
     handles: Option<Res<EditorLoadHandles>>,
 ) {
-    let (theme_done, weapons_done, armor_done, catalogs_done, terrain_defs_done, theme_defs_done) = (
+    let (theme_done, weapons_done, armor_done, terrain_defs_done, theme_defs_done, roles_done) = (
         resolved.theme.is_some(),
         resolved.weapons.is_some(),
         resolved.armor.is_some(),
-        resolved.catalogs.is_some(),
         resolved.terrain_defs.is_some(),
         resolved.theme_defs.is_some(),
+        resolved.tile_roles.is_some(),
     );
     let (
         Some(asset_server),
@@ -109,9 +108,9 @@ pub(crate) fn poll_and_resolve_editor(
         Some(folders),
         Some(weapon_specs),
         Some(armor_specs),
-        Some(catalog_specs),
         Some(terrain_defs),
         Some(theme_defs),
+        Some(roles_assets),
         Some(handles),
     ) = (
         asset_server,
@@ -119,9 +118,9 @@ pub(crate) fn poll_and_resolve_editor(
         collections.folders,
         collections.weapon_specs,
         collections.armor_specs,
-        collections.catalog_specs,
         collections.terrain_defs,
         collections.theme_defs,
+        collections.tile_roles,
         handles,
     )
     else {
@@ -149,19 +148,8 @@ pub(crate) fn poll_and_resolve_editor(
             &handles,
         );
     }
-    if !catalogs_done {
-        resolve_themes(
-            &mut commands,
-            &asset_server,
-            &folders,
-            &catalog_specs,
-            &handles,
-        );
-    }
     // GTW-487: the NEW UUID-keyed terrain + theme registries, built from the per-theme
-    // `terrain/` folder (the editor mirror of the game's resolve_terrain_defs /
-    // resolve_theme_defs). Empty against un-migrated shipped content (the designed
-    // fail-closed state).
+    // `terrain/` folder. EMPTY against un-migrated content is the designed fail-closed state.
     if !terrain_defs_done {
         resolve_terrain_defs(
             &mut commands,
@@ -179,6 +167,10 @@ pub(crate) fn poll_and_resolve_editor(
             &theme_defs,
             &handles,
         );
+    }
+    // GTW-495: the presenter's tile-role table (the per-def graphic resolution seam).
+    if !roles_done {
+        resolve_tile_roles(&mut commands, &asset_server, &roles_assets, &handles);
     }
 }
 
@@ -312,54 +304,12 @@ fn resolve_armor(
     }
 }
 
-/// Resolve the loaded `content/themes/` folder into the theme-keyed
-/// [`ThemeCatalogRegistry`], or fall back to an empty registry on a failed folder — the
-/// editor mirror of the game's `resolve_themes`. Keyed by each spec's DECLARED
-/// [`LevelTheme`](gdtf_battle_sim::level::LevelTheme), not the filename stem.
-fn resolve_themes(
-    commands: &mut Commands,
-    asset_server: &AssetServer,
-    folders: &Assets<LoadedFolder>,
-    theme_specs: &Assets<RonAsset<ThemeSpec>>,
-    handles: &EditorLoadHandles,
-) {
-    let folder_state = asset_server.recursive_dependency_load_state(&*handles.themes);
-
-    if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
-        warn!(
-            "GDTF editor Load: the `themes` folder failed to load; inserting an empty \
-             ThemeCatalogRegistry",
-        );
-        commands.insert_resource(ThemeCatalogRegistry::default());
-        return;
-    }
-
-    if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
-        let Some(folder) = folders.get(&*handles.themes) else {
-            return;
-        };
-        let mut registry = ThemeCatalogRegistry::default();
-        for untyped in &folder.handles {
-            let handle = untyped.clone().typed_debug_checked::<RonAsset<ThemeSpec>>();
-            let Some(spec) = theme_specs.get(&handle) else {
-                return;
-            };
-            // Key by the spec's DECLARED LevelTheme (the editor/procgen lookup key), not the
-            // filename stem — the game's resolve_themes contract.
-            let spec = (**spec).clone();
-            registry.insert(spec.theme, ThemeTileCatalog::from_spec(spec));
-        }
-        commands.insert_resource(registry);
-    }
-}
-
 /// Resolve the loaded NEW per-theme `terrain/` folder into the UUID-keyed
 /// [`TerrainDefRegistry`], or fall back to an empty registry on a failed folder — the editor
 /// mirror of the game's `resolve_terrain_defs` (GTW-487). Keyed by each def's OWN
-/// [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid), not the filename. A folder
-/// member that is NOT a `RonAsset<TerrainDef>` (a theme-def member) yields no entry in this
-/// collection and is skipped — the recursive `Loaded` gate guarantees every member has
-/// landed, so a miss is a non-terrain member, not a pending def.
+/// [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid). A folder member that is NOT a
+/// `RonAsset<TerrainDef>` (a theme-def member) is skipped — the recursive `Loaded` gate
+/// guarantees every member has landed, so a miss is a non-terrain member, not a pending def.
 fn resolve_terrain_defs(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -384,9 +334,9 @@ fn resolve_terrain_defs(
         };
         let mut registry = TerrainDefRegistry::default();
         for untyped in &folder.handles {
-            // Skip non-terrain members (theme defs live in a different collection) — the
-            // TypeId filter FIRST avoids the debug-assert panic a blind typed_debug_checked
-            // on a theme member would trip (the mixed-folder hazard the game side shares).
+            // Skip non-terrain members (theme defs live in a different collection) — the TypeId
+            // filter FIRST avoids the debug-assert panic a blind typed_debug_checked on a theme
+            // member would trip (the mixed-folder hazard the game side shares).
             if untyped.type_id() != TypeId::of::<RonAsset<TerrainDef>>() {
                 continue;
             }
@@ -449,6 +399,56 @@ fn resolve_theme_defs(
             registry.insert(def.key, def);
         }
         commands.insert_resource(registry);
+    }
+}
+
+/// Resolve the loaded tile-role RON into the presenter's [`TileRoles`] table, or fall back to
+/// the presenter's const default table on a failed load (GTW-495). The editor resolves a
+/// terrain def's `presenter_kind.graphic_name` to an atlas index through this table
+/// ([`TileRoles::index_for_key`]), so its palette / canvas sprites match the battlescape.
+fn resolve_tile_roles(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    roles_assets: &Assets<RonAsset<TileRoles>>,
+    handles: &EditorLoadHandles,
+) {
+    let state = asset_server.load_state(&*handles.tile_roles);
+
+    if state.is_failed() {
+        warn!(
+            "GDTF editor Load: `sprites/tile_roles.spritedef.ron` failed to load; inserting the \
+             default TileRoles table",
+        );
+        commands.insert_resource(default_tile_roles());
+        return;
+    }
+
+    if matches!(state, LoadState::Loaded) {
+        let Some(loaded) = roles_assets.get(&*handles.tile_roles) else {
+            // Loaded-but-not-yet-in-collection: a transient one-frame state; retry next frame.
+            return;
+        };
+        commands.insert_resource((**loaded).clone());
+    }
+}
+
+/// The fallback [`TileRoles`] table — every role at index `0` — used only when the
+/// `tile_roles.ron` fails to load, so a bad asset never strands the editor in `Load`. A
+/// degraded but non-panicking table (every terrain then draws the sheet's first tile).
+const fn default_tile_roles() -> TileRoles {
+    let zero = gdtf_battle_presenter::TileIndex::new(0);
+    TileRoles {
+        floor:           zero,
+        floor_alt_panel: zero,
+        wall:            zero,
+        cover:           zero,
+        slab:            zero,
+        rubble:          zero,
+        slab_destroyed:  zero,
+        door:            zero,
+        stair_up:        zero,
+        stair_down:      zero,
+        ladder:          zero,
     }
 }
 

@@ -1,47 +1,40 @@
-//! Headless integration test for the GTW-426 map-editor canvas interactivity — the in-memory
-//! paintable map model, click-to-paint, and the hover ghost.
+//! Headless integration test for the map-editor canvas interactivity — the in-memory paintable
+//! map model, click-to-paint, and the hover ghost — swept onto the UUID-keyed terrain model
+//! (GTW-495).
 //!
-//! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI harness (the same
-//! harness the GTW-417 `editor_shell` / GTW-421 `right_panel` / GTW-422 `palette` / GTW-423
-//! `canvas` tests use), so the editor's actual `Load` pass resolves the shipped theme + catalog
-//! registries and its real `Editing` scene builds the canvas, the paint model, and the ghost —
-//! not a copy.
+//! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI harness, so the
+//! editor's actual `Load` pass resolves the shipped UUID-keyed registries and its real `Editing`
+//! scene builds the canvas, the paint model, and the ghost — not a copy.
 //!
-//! Asserts the contract end-to-end, pin-discriminatingly (each test would FAIL if the paint /
-//! ghost logic were absent), and value-agnostically (the painted index is the SELECTED tile's
-//! catalog index, never a pinned magnitude):
+//! Asserts the contract end-to-end, pin-discriminatingly, and value-agnostically (the painted
+//! index is the SELECTED terrain's resolved index, never a pinned magnitude):
 //!
 //! - T1 (C2/C3): pressing a canvas cell with a selected tile records that cell in the
-//!   [`EditorMap`] model AND mutates that cell's [`ImageNode`] atlas index to the selected tile's
-//!   index. Pin-discriminating: the model holds the painted cell keyed by its [`Cell`], the
-//!   cell's atlas index changed from the default-floor index to the selected index.
-//! - T2 (C3 clamp): the model only ever holds IN-BOUNDS cells — painting a cell records it, and
-//!   the recorded key is inside the drawable extent; an out-of-bounds paint is rejected by the
-//!   model (asserted directly on [`EditorMap::paint`]'s clamp, since the canvas never spawns an
-//!   out-of-bounds cell to press).
-//! - T3 (C1): the hover ghost appears at the hovered cell (it is parented under the hovered
-//!   [`CanvasCell`] and is [`Visibility::Visible`]) and is HIDDEN when no cell is hovered or no
-//!   tile is selected.
-//! - T4/T5 (GTW-430 C2/C3): the hover-ghost preview tints RED over an ILLEGAL placement and the
-//!   normal preview over a LEGAL one — the VIEW half of the red-tint acceptance, driven through the
-//!   live [`follow_hover_ghost`] + the SHARED `evaluate_placement` predicate (not a copy). T4 seeds
-//!   a ladder into the [`EditorMap`], selects a SLAB tile, hovers the ladder cell, and asserts the
-//!   ghost's [`ImageNode`] color reads RED (red channel strictly dominant) and DIFFERS from the
-//!   legal preview; T5 hovers an empty in-bounds cell with the same slab and asserts the ghost reads
-//!   the legal (non-red) preview. Pin-discriminating: if `ghost.rs`'s `for_illegal(verdict.…)`
-//!   were reverted to always-legal, T4's red-dominance + difference assertions would FAIL (the ghost
-//!   would stay the white legal preview). Value-agnostic: it asserts the RED PROPERTY (channel
-//!   dominance + legal/illegal divergence), never the literal `srgba(1.0, 0.2, 0.2, 0.55)` tuple,
-//!   which is a tunable view constant.
+//!   [`EditorMap`] model AND mutates that cell's [`ImageNode`] atlas index to the selected
+//!   terrain's resolved index.
+//! - T2 (C3 clamp): the model only ever holds IN-BOUNDS cells.
+//! - T3 (C1): the hover ghost appears at the hovered cell and is HIDDEN otherwise.
+//! - T4/T5 (GTW-430 C2/C3): the hover-ghost preview tints RED over an ILLEGAL placement (a slab
+//!   over a ladder) and the normal preview over a LEGAL one — driven through the live
+//!   [`follow_hover_ghost`] + the SHARED `evaluate_placement`. T4 SEEDS a ladder def into the live
+//!   [`TerrainDefRegistry`] (shipped content authors none) and a ladder cell into the model, then
+//!   hovers it with a slab selected.
 //!
-//! Panic/expect-free per the workspace lints (the GTW-417 precedent: `assert!` + `if let Some`
-//! guards, never `unwrap`/`expect`/`panic`).
+//! Panic/expect-free per the workspace lints.
 
 use bevy::{prelude::*, ui::widget::ImageNode};
+use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     Cell,
-    level::{
-        CatalogTileKind, GridHeight, GridLevels, GridSize, GridWidth, ThemeCatalogRegistry, TileKey,
+    armor::{ArmorHardness, ArmorProtection},
+    cover::{CoverHp, HeightBand},
+    level::{GridHeight, GridLevels, GridSize, GridWidth, UuidThemeRegistry},
+    terrain::{
+        def::{
+            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            TerrainSimKind, TerrainUuid,
+        },
+        piece::TerrainGraphicKey,
     },
 };
 use gdtf_editor::{
@@ -76,14 +69,12 @@ fn editor_in_editing() -> App {
         "the editor never reached EditorState::Editing — its Load pass did not resolve the theme \
          + registries (a genuine load failure, not a frame-budget shortfall)",
     );
-    // The OnEnter spawn + the Update `sync_canvas` build the cells + ghost across a few frames
-    // (deferred re-parent commands); advance so they are present before we query.
     settle(&mut app);
     app
 }
 
-/// Advance a handful of frames so the deferred scroll-list re-parent + the `sync_canvas` build +
-/// its deferred grid re-parent + the ghost spawn have all applied.
+/// Advance a handful of frames so the deferred re-parent + the `sync_canvas` build + the ghost
+/// spawn have all applied.
 fn settle(app: &mut App) {
     for _ in 0..8 {
         app.update();
@@ -92,11 +83,6 @@ fn settle(app: &mut App) {
 
 /// Sets `entity`'s [`Interaction`] to `state` and runs ONLY the `Update` schedule so the
 /// `Changed<Interaction>` driver fires on the edge.
-///
-/// Runs `Update` directly rather than `app.update()`: under the `DefaultPlugins` headless harness
-/// the primary window is absent, so `bevy_ui`'s `ui_focus_system` (in `PreUpdate`) `set_if_neq`s
-/// every node's [`Interaction`] back to `None` (no cursor) — a full `app.update()` would clobber
-/// the manual value BEFORE the canvas drivers read it. The GTW-422 `palette::press` precedent.
 fn set_interaction(app: &mut App, entity: Entity, state: Interaction) {
     if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(entity) {
         *interaction = state;
@@ -111,26 +97,41 @@ fn grid_size(app: &App) -> Option<GridSize> {
         .map(MapEditorSession::grid_size)
 }
 
-/// The active theme's catalog's default-floor tile key + atlas index (the fill every unpainted
-/// cell shows), if resolvable.
-fn default_floor_index(app: &App) -> Option<usize> {
-    let session = app.world().get_resource::<MapEditorSession>()?;
-    let registry = app.world().get_resource::<ThemeCatalogRegistry>()?;
-    registry
-        .catalog(session.theme())
-        .and_then(|cat| cat.default_floor())
-        .map(|tile| *tile.atlas_index)
+/// The graphic role key of a presenter kind (every variant carries it).
+fn graphic_role(def: &TerrainDef) -> &str {
+    match &def.presenter_kind {
+        TerrainPresenterKind::Wall { graphic_name }
+        | TerrainPresenterKind::Cover { graphic_name }
+        | TerrainPresenterKind::Slab { graphic_name, .. } => graphic_name,
+    }
 }
 
-/// Pick a catalog tile of the active theme whose atlas index DIFFERS from the default-floor's, so
-/// painting it produces a visibly different cell sprite. Returns the tile key + its atlas index.
-fn distinct_paint_tile(app: &App) -> Option<(TileKey, usize)> {
+/// The active theme's resolved default-floor atlas index (the fill every unpainted cell shows).
+fn default_floor_index(app: &App) -> Option<usize> {
     let session = app.world().get_resource::<MapEditorSession>()?;
-    let registry = app.world().get_resource::<ThemeCatalogRegistry>()?;
+    let themes = app.world().get_resource::<UuidThemeRegistry>()?;
+    let terrain = app.world().get_resource::<TerrainDefRegistry>()?;
+    let roles = app.world().get_resource::<TileRoles>()?;
+    let floor = session
+        .default_floor()
+        .or_else(|| themes.default_floor(&session.theme()))?;
+    let def = terrain.def(&floor)?;
+    roles.index_for_key(graphic_role(def)).map(|i| *i)
+}
+
+/// Pick a terrain in the active theme's palette whose resolved atlas index DIFFERS from the
+/// default-floor's. Returns the terrain key + its resolved index.
+fn distinct_paint_tile(app: &App) -> Option<(TerrainUuid, usize)> {
+    let session = app.world().get_resource::<MapEditorSession>()?;
+    let themes = app.world().get_resource::<UuidThemeRegistry>()?;
+    let terrain = app.world().get_resource::<TerrainDefRegistry>()?;
+    let roles = app.world().get_resource::<TileRoles>()?;
     let default_index = default_floor_index(app)?;
-    let catalog = registry.catalog(session.theme())?;
-    catalog.tiles().find_map(|(key, tile)| {
-        (*tile.atlas_index != default_index).then(|| (key.clone(), *tile.atlas_index))
+    let palette = themes.terrain(&session.theme())?;
+    palette.iter().find_map(|key| {
+        let def = terrain.def(key)?;
+        let index = *roles.index_for_key(graphic_role(def))?;
+        (index != default_index).then_some((*key, index))
     })
 }
 
@@ -153,16 +154,17 @@ fn cell_entity_at(app: &mut App, cell: Cell) -> Option<Entity> {
         .find_map(|(entity, canvas_cell)| (canvas_cell.cell() == cell).then_some(entity))
 }
 
-/// The [`TileKey`] of a SLAB tile in the active theme (a [`CatalogTileKind::Slab`]), if any —
-/// the tile the GTW-430 illegal-hover test selects (a slab over a ladder is rejected). Resolved
-/// from the live registry the same way the capture's `slab_tile_key` does, so the test is
-/// value-agnostic about WHICH slab key the theme ships.
-fn slab_tile_key(app: &App) -> Option<TileKey> {
+/// The [`TerrainUuid`] of a SLAB terrain in the active theme's palette, if any.
+fn slab_tile_key(app: &App) -> Option<TerrainUuid> {
     let session = app.world().get_resource::<MapEditorSession>()?;
-    let registry = app.world().get_resource::<ThemeCatalogRegistry>()?;
-    let catalog = registry.catalog(session.theme())?;
-    catalog.tiles().find_map(|(key, tile)| {
-        matches!(tile.kind, CatalogTileKind::Slab { .. }).then(|| key.clone())
+    let themes = app.world().get_resource::<UuidThemeRegistry>()?;
+    let terrain = app.world().get_resource::<TerrainDefRegistry>()?;
+    let palette = themes.terrain(&session.theme())?;
+    palette.iter().find_map(|key| {
+        terrain
+            .def(key)
+            .filter(|def| matches!(def.sim_kind, TerrainSimKind::Slab { .. }))
+            .map(|_| *key)
     })
 }
 
@@ -173,54 +175,64 @@ fn cell_ghost_entity(app: &mut App) -> Option<Entity> {
     q.iter(world).next()
 }
 
-/// The [`CanvasGhost`]'s [`ImageNode`] color, if the single ghost exists. The tint
-/// [`follow_hover_ghost`] writes — RED over an illegal placement, the normal preview over a legal
-/// one (GTW-430 C2).
+/// The [`CanvasGhost`]'s [`ImageNode`] color, if the single ghost exists.
 fn ghost_color(app: &mut App) -> Option<Color> {
     let world = app.world_mut();
     let mut q = world.query_filtered::<&ImageNode, With<CanvasGhost>>();
     q.iter(world).next().map(|node| node.color)
 }
 
-/// Whether `color` reads as RED — its red channel is strictly greater than BOTH its green and its
-/// blue (the defining property of the illegal tint). Value-agnostic: it asserts the RED PROPERTY,
-/// never the tunable literal `srgba(1.0, 0.2, 0.2, 0.55)` magnitudes.
+/// Whether `color` reads as RED — its red channel strictly greater than BOTH green and blue.
 fn is_red_dominant(color: Color) -> bool {
     let rgba = color.to_srgba();
     rgba.red > rgba.green && rgba.red > rgba.blue
 }
 
-/// Seed a ladder into the [`EditorMap`] at `cell` (ground plane), recognised by the GTW-430
-/// ladder-naming convention. The shipped catalog has no ladder tile, so the test seeds the model
-/// directly — `evaluate_placement` classifies a ladder-named key without a catalog entry (the
-/// capture's seeding precedent). Returns whether the seed landed (the cell was in-bounds).
+/// The synthetic ladder terrain key the test seeds (shipped content authors no ladder terrain).
+const LADDER_KEY: TerrainUuid =
+    TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0EDD_0000_0000_0001));
+
+/// Seed a LADDER terrain def (display name "Steel Ladder", recognised by the GTW-430 ladder-naming
+/// convention) into the live [`TerrainDefRegistry`] AND paint it into the [`EditorMap`] at `cell`.
+/// The shipped content authors no ladder terrain, so the test seeds one directly so the GTW-430
+/// illegal slab-over-ladder case is reachable. Returns whether the model seed landed.
 fn seed_ladder(app: &mut App, cell: Cell) -> bool {
+    let ladder = TerrainDef {
+        key:            LADDER_KEY,
+        display_name:   TerrainDisplayName::new("Steel Ladder".to_owned()),
+        sim_kind:       TerrainSimKind::Cover {
+            hp:               CoverHp::new(10),
+            armor_protection: ArmorProtection::new(0),
+            armor_hardness:   ArmorHardness::new(0),
+            height_band:      HeightBand::Low,
+        },
+        presenter_kind: TerrainPresenterKind::Cover {
+            graphic_name: TerrainGraphicKey::new("ladder".to_owned()),
+        },
+        tags:           Vec::new(),
+    };
+    if let Some(mut registry) = app.world_mut().get_resource_mut::<TerrainDefRegistry>() {
+        registry.insert(LADDER_KEY, ladder);
+    }
     let Some(size) = grid_size(app) else {
         return false;
     };
     let Some(mut map) = app.world_mut().get_resource_mut::<EditorMap>() else {
         return false;
     };
-    map.paint(cell, TileKey::new("steel_ladder".to_owned()), size)
+    map.paint(cell, LADDER_KEY, size)
 }
 
 /// T1 (C2/C3): pressing a canvas cell with a SELECTED tile records that cell in the [`EditorMap`]
-/// model AND redraws the cell's [`ImageNode`] atlas index to the selected tile's index.
-///
-/// Pin-discriminating: before the press the model is empty and the cell shows the default-floor
-/// index; after the press the model holds exactly the painted cell keyed by its [`Cell`], and the
-/// cell's atlas index equals the selected tile's index (which differs from the default). Without
-/// the paint system both the model and the sprite would be unchanged.
+/// model AND redraws the cell's [`ImageNode`] atlas index to the selected terrain's resolved index.
 #[test]
 fn pressing_a_cell_paints_the_model_and_redraws_the_sprite() {
     let mut app = editor_in_editing();
 
-    // A selected tile whose sprite differs from the default-floor fill, set via the session (the
-    // palette's job, tested separately) — paint then drives the REAL Interaction::Pressed path.
     let pick = distinct_paint_tile(&app);
     assert!(
         pick.is_some(),
-        "the active theme must have a tile distinct from its default floor to paint with (C2)",
+        "the active theme must have a terrain distinct from its default floor to paint with (C2)",
     );
     let Some((paint_key, paint_index)) = pick else {
         return;
@@ -232,10 +244,9 @@ fn pressing_a_cell_paints_the_model_and_redraws_the_sprite() {
     );
 
     if let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>() {
-        session.select_tile(paint_key.clone());
+        session.select_tile(paint_key);
     }
 
-    // The cell we will paint: a real, in-bounds canvas cell.
     let target = Cell::new(2, 3);
     let entity = cell_entity_at(&mut app, target);
     assert!(
@@ -243,7 +254,6 @@ fn pressing_a_cell_paints_the_model_and_redraws_the_sprite() {
         "the canvas must have a CanvasCell at (2, 3) to paint (the grid is at least 16×16)",
     );
 
-    // Before the paint: model empty, cell shows the default-floor index.
     let painted_before = app
         .world()
         .get_resource::<EditorMap>()
@@ -259,8 +269,6 @@ fn pressing_a_cell_paints_the_model_and_redraws_the_sprite() {
         set_interaction(&mut app, entity, Interaction::Pressed);
     }
 
-    // After the paint: the model holds exactly the painted cell keyed by its Cell, with the
-    // selected key; the cell's sprite is the selected index.
     let map = app.world().get_resource::<EditorMap>();
     if let Some(map) = map {
         assert_eq!(
@@ -270,24 +278,18 @@ fn pressing_a_cell_paints_the_model_and_redraws_the_sprite() {
         );
         assert_eq!(
             map.tile_at(target),
-            Some(&paint_key),
+            Some(paint_key),
             "the model must hold the painted cell keyed by its Cell, with the selected tile (C2)",
         );
     }
     assert_eq!(
         cell_index_at(&mut app, target),
         Some(paint_index),
-        "the painted cell's sprite must redraw to the selected tile's atlas index (C2/C3)",
+        "the painted cell's sprite must redraw to the selected terrain's resolved index (C2/C3)",
     );
 }
 
-/// T2 (C3 clamp): the model only ever holds IN-BOUNDS cells. A press on a real (in-bounds) cell
-/// records it; an out-of-bounds paint is rejected by the model's clamp.
-///
-/// The canvas never spawns a cell outside the drawable extent, so the live press path can only
-/// ever target in-bounds cells — the clamp is the model-level backstop the save/emit paths trust.
-/// This drives [`EditorMap::paint`] directly for the out-of-bounds case (there is no out-of-bounds
-/// cell entity to press) and asserts the live in-bounds press is recorded.
+/// T2 (C3 clamp): the model only ever holds IN-BOUNDS cells.
 #[test]
 fn paint_is_clamped_to_the_drawable_extent() {
     let mut app = editor_in_editing();
@@ -298,11 +300,10 @@ fn paint_is_clamped_to_the_drawable_extent() {
         return;
     };
 
-    // The model's clamp: an in-bounds cell records; an out-of-bounds one does not.
     let mut model = EditorMap::new();
     let in_bounds = Cell::new(0, 0);
-    let key = TileKey::new("test".to_owned());
-    let recorded_in = model.paint(in_bounds, key.clone(), size);
+    let key = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x1234));
+    let recorded_in = model.paint(in_bounds, key, size);
     assert!(
         recorded_in,
         "painting an in-bounds cell must record it (C3)"
@@ -316,7 +317,7 @@ fn paint_is_clamped_to_the_drawable_extent() {
         Cell::new(width, 0),
         Cell::new(0, height),
     ] {
-        let recorded_out = model.paint(out, key.clone(), size);
+        let recorded_out = model.paint(out, key, size);
         assert!(
             !recorded_out,
             "painting an out-of-bounds cell {out:?} must be rejected by the clamp (C3)",
@@ -328,9 +329,7 @@ fn paint_is_clamped_to_the_drawable_extent() {
         "the clamped model must hold only the one in-bounds cell (C3)",
     );
 
-    // The live press path also only ever records in-bounds cells (the canvas spawns only
-    // in-bounds cells). Shrink the grid small, paint a cell, and confirm the recorded key is
-    // inside the new extent.
+    // The live press path also only ever records in-bounds cells.
     if let Ok(small) = GridSize::new(GridWidth::new(4), GridHeight::new(4), GridLevels::new(1))
         && let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>()
     {
@@ -359,18 +358,12 @@ fn paint_is_clamped_to_the_drawable_extent() {
     }
 }
 
-/// T3 (C1): the hover ghost appears at the hovered cell (parented under it + visible) when a tile
-/// is selected, and is HIDDEN when no cell is hovered or no tile is selected.
-///
-/// Pin-discriminating: with a selection + a hovered cell the ghost is `Visibility::Visible` and
-/// its parent (`ChildOf`) is the hovered cell entity (the snap); clearing the hover hides it; and
-/// with NO selection a hovered cell still leaves the ghost hidden. Without the follow logic the
-/// ghost would stay hidden / unparented.
+/// T3 (C1): the hover ghost appears at the hovered cell when a tile is selected, and is HIDDEN
+/// when no cell is hovered or no tile is selected.
 #[test]
 fn hover_ghost_follows_the_hovered_cell_and_hides_otherwise() {
     let mut app = editor_in_editing();
 
-    // The single persistent ghost must exist.
     let ghost = {
         let world = app.world_mut();
         let mut q = world.query_filtered::<Entity, With<CanvasGhost>>();
@@ -386,7 +379,6 @@ fn hover_ghost_follows_the_hovered_cell_and_hides_otherwise() {
         return;
     };
 
-    // Select a tile (so the ghost has something to preview) and hover a cell.
     if let Some((paint_key, _)) = distinct_paint_tile(&app)
         && let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>()
     {
@@ -404,7 +396,6 @@ fn hover_ghost_follows_the_hovered_cell_and_hides_otherwise() {
 
     set_interaction(&mut app, cell, Interaction::Hovered);
 
-    // Visible + parented under the hovered cell (the snap).
     assert_eq!(
         app.world().get::<Visibility>(ghost),
         Some(&Visibility::Visible),
@@ -416,7 +407,6 @@ fn hover_ghost_follows_the_hovered_cell_and_hides_otherwise() {
         "the ghost must be parented under the hovered cell — the snap (C1)",
     );
 
-    // Clear the hover -> hidden.
     set_interaction(&mut app, cell, Interaction::None);
     assert_eq!(
         app.world().get::<Visibility>(ghost),
@@ -424,7 +414,6 @@ fn hover_ghost_follows_the_hovered_cell_and_hides_otherwise() {
         "the ghost must hide when no cell is hovered (C1)",
     );
 
-    // No selection -> hidden even while hovering.
     if let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>() {
         session.clear_selected_tile();
     }
@@ -436,30 +425,12 @@ fn hover_ghost_follows_the_hovered_cell_and_hides_otherwise() {
     );
 }
 
-/// T4 (GTW-430 C2/C3): hovering an ILLEGAL placement tints the hover-ghost preview RED — the VIEW
-/// half of the red-tint acceptance, through the LIVE [`follow_hover_ghost`] + the SHARED
-/// `evaluate_placement` predicate.
-///
-/// Seeds a ladder into the [`EditorMap`] at a cell, selects a SLAB tile, and hovers that ladder
-/// cell — a slab over a ladder (SAME slot, the case the single-plane L0 canvas reaches) is illegal
-/// (`IllegalReason::SlabSealsLadder`). The real `follow_hover_ghost` runs the shared predicate,
-/// finds it illegal, and tints the ghost's [`ImageNode`] color. Asserts the ghost color reads RED
-/// (red channel strictly dominant).
-///
-/// Pin-discriminating: if `ghost.rs`'s `for_illegal(verdict.is_illegal())` were reverted to always
-/// `GhostTint::legal()`, the ghost would stay the WHITE legal preview (red == green == blue), so
-/// `is_red_dominant` would be `false` and this assertion would FAIL. The symmetric legal-hover tint
-/// (T5) is captured here too and the illegal tint asserted DISTINCT from it — so the test also
-/// proves the tint actually FLIPPED on the illegal verdict, not merely that some red is present.
-///
-/// Value-agnostic: it asserts the RED PROPERTY (channel dominance + legal/illegal divergence),
-/// never the tunable literal `srgba(1.0, 0.2, 0.2, 0.55)` magnitudes the view constant carries.
+/// T4 (GTW-430 C2/C3): hovering an ILLEGAL placement tints the hover-ghost preview RED — through
+/// the LIVE [`follow_hover_ghost`] + the SHARED `evaluate_placement`.
 #[test]
 fn illegal_hover_tints_the_ghost_red() {
     let mut app = editor_in_editing();
 
-    // The theme must ship a slab tile for the slab-over-ladder illegal case (IndustrialHive's
-    // deck_slab) — resolved value-agnostically from the live registry.
     let slab = slab_tile_key(&app);
     assert!(
         slab.is_some(),
@@ -469,14 +440,13 @@ fn illegal_hover_tints_the_ghost_red() {
         return;
     };
 
-    // Seed a ladder on the ground plane (recognised by name; the catalog ships no ladder tile).
+    // Seed a ladder def + a ladder cell on the ground plane (shipped content ships no ladder).
     let ladder_cell = Cell::new(5, 5);
     assert!(
         seed_ladder(&mut app, ladder_cell),
         "the ladder seed must land in-bounds on the model",
     );
 
-    // Select the slab and hover the ladder cell: a slab over a ladder is illegal (C2).
     if let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>() {
         session.select_tile(slab);
     }
@@ -490,7 +460,6 @@ fn illegal_hover_tints_the_ghost_red() {
     };
     set_interaction(&mut app, cell, Interaction::Hovered);
 
-    // The ghost is visible and tinted RED — the illegal verdict flowed through the shared predicate.
     if let Some(ghost) = cell_ghost_entity(&mut app) {
         assert_eq!(
             app.world().get::<Visibility>(ghost),
@@ -507,8 +476,6 @@ fn illegal_hover_tints_the_ghost_red() {
              strictly dominant (GTW-430 C2); got {illegal:?}",
         );
 
-        // Distinct from the LEGAL preview: re-hover a clear cell with the same slab (a slab on
-        // empty ground is legal) and confirm the tint FLIPPED, not merely that red is present.
         let clear_cell = Cell::new(8, 8);
         if let Some(clear) = cell_entity_at(&mut app, clear_cell) {
             set_interaction(&mut app, clear, Interaction::Hovered);
@@ -529,14 +496,6 @@ fn illegal_hover_tints_the_ghost_red() {
 
 /// T5 (GTW-430 C2): hovering a LEGAL placement tints the hover-ghost preview the NORMAL (non-red)
 /// preview — the symmetric counterpart of T4.
-///
-/// Selects a slab tile and hovers an EMPTY in-bounds cell (a slab on empty ground is plainly legal
-/// — no ladder to seal). The real `follow_hover_ghost` runs the shared predicate, finds it legal,
-/// and leaves the normal preview tint. Asserts the ghost is visible and NOT red-dominant.
-///
-/// Pin-discriminating in concert with T4: if the tint logic were broken to ALWAYS tint red, this
-/// legal-hover assertion would FAIL; if it were reverted to always-legal, T4 fails. Together they
-/// pin the verdict-driven flip in both directions.
 #[test]
 fn legal_hover_tints_the_ghost_the_normal_preview() {
     let mut app = editor_in_editing();
@@ -550,7 +509,6 @@ fn legal_hover_tints_the_ghost_the_normal_preview() {
         session.select_tile(slab);
     }
 
-    // Hover an EMPTY in-bounds cell — a slab on empty ground is plainly legal (no ladder to seal).
     let target = Cell::new(7, 7);
     let cell = cell_entity_at(&mut app, target);
     assert!(

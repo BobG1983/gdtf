@@ -18,11 +18,14 @@
 //! - [`EditorCapturePlugin`] is the OFF-by-default QA hook for the AC4 screenshot.
 //! - [`MapEditorSession`] is the shared theme/default-floor/grid-size/selected-tile selection
 //!   state the GTW-421 right-panel controls + the GTW-422 left palette write and later canvas
-//!   children read; the `right_panel` module spawns the theme dropdown + size selector and the
-//!   `palette` module spawns the left tile palette + the bottom-right stat region.
-//! - The GTW-422 `palette` module lists every tile of the active theme (sprite + name) in the
-//!   [`LeftPaletteRegion`], writes the clicked tile into the session, and shows its catalog
-//!   stats in the [`StatRegion`]; [`PaletteRow`] / [`StatText`] are its markers.
+//!   children read. Swept onto the UUID model (GTW-495): the theme is a `ThemeUuid` and the
+//!   default-floor / paint tile are `TerrainUuid`s. The `right_panel` module spawns the theme
+//!   dropdown (over `UuidThemeRegistry` display names) + size selector and the `palette` module
+//!   spawns the left tile palette + the bottom-right stat region.
+//! - The GTW-422 `palette` module lists every terrain of the active theme's palette (sprite +
+//!   name, resolved from `UuidThemeRegistry` + `TerrainDefRegistry`) in the [`LeftPaletteRegion`],
+//!   writes the clicked `TerrainUuid` into the session, and shows its `TerrainDef` stats in the
+//!   [`StatRegion`]; [`PaletteRow`] / [`StatText`] are its markers.
 //! - The GTW-423 `canvas` module fills the [`CanvasRegion`] with the drawable cell grid — a
 //!   dashed boundary + per-cell dimmed dashes around `width × height` cells each pre-filled with
 //!   the theme's default-floor sprite, live-rebuilt on a theme / size change (2D x/y plane only;
@@ -31,20 +34,25 @@
 //!   of the selected tile snaps to the hovered cell, and clicking a cell PAINTS it — writing the
 //!   [`EditorMap`] model and redrawing the cell's sprite.
 //! - The GTW-426 `editor_map` module owns [`EditorMap`] — the in-memory, state-scoped paintable
-//!   map model (a sparse `CellLevel → TileKey` store of painted cells, level-aware since GTW-430).
-//!   It is the authoritative record the click-to-paint flow writes and the FOUNDATION the
-//!   save/emit tickets (GTW-429 / GTW-431 / GTW-432) will read.
+//!   map model (a sparse `CellLevel → TerrainUuid` store of painted cells, level-aware since
+//!   GTW-430, UUID-keyed since GTW-495). It is the authoritative record the click-to-paint flow
+//!   writes and the FOUNDATION the save path (GTW-432) reads.
 //! - The GTW-430 `placement` module owns the SINGLE SHARED placement-legality predicate
 //!   ([`evaluate_placement`]) both the hover-ghost preview and the click-commit run, plus the
 //!   vertical auto-handling for multi-level tiles: placing a ladder auto-clears a slab directly
 //!   above it (C1), and a slab over an existing ladder is rejected (C2). An illegal placement
 //!   tints the target cell partial-transparent RED in the ghost preview and is rejected by the
 //!   commit ([`PlacementVerdict`] / [`ProposedPlacement`]).
-//! - The GTW-432 `save` module (debug-only) projects the [`EditorMap`] into the canonical GTW-418
-//!   `PrefabSpec` schema and WRITES it to `assets/content/maps/<theme>/<size>/<name>.prefab.ron`,
-//!   so a saved prefab round-trips through the GTW-418 folder loader. A prefab-name text field +
-//!   a "Save prefab" button under the right panel are the live trigger; the save re-checks every
-//!   painted cell through [`evaluate_placement`] so a saved prefab never contains an illegal cell.
+//! - The GTW-432 `save` module (debug-only) projects the [`EditorMap`] into the v2
+//!   `PrefabSpecV2` schema and WRITES it to `assets/maps/<theme>/<size>/<name>.prefab_v2.ron`, so
+//!   a saved prefab round-trips through the GTW-489 v2 folder loader (swept onto the v2 schema in
+//!   GTW-495 — no edge openings, one `placements` list of `TerrainUuid` references). A prefab-name
+//!   text field + a "Save prefab" button under the right panel are the live trigger; the save
+//!   re-checks every painted cell through [`evaluate_placement`] so a saved prefab never contains
+//!   an illegal cell.
+//! - The GTW-495 `terrain_graphics` module resolves a `TerrainDef`'s `presenter_kind.graphic_name`
+//!   to a terrain atlas index THE WAY THE PRESENTER DOES (through the presenter's `TileRoles`
+//!   table), so the palette / canvas sprites match the battlescape's.
 
 mod app;
 mod canvas;
@@ -63,6 +71,9 @@ mod right_panel;
 mod save;
 mod session;
 mod state;
+// GTW-495: resolve a TerrainDef's presenter_kind.graphic_name to a terrain atlas index THE WAY
+// THE PRESENTER DOES (via the presenter's TileRoles table) — shared by the palette + canvas.
+mod terrain_graphics;
 mod tile_atlas;
 
 pub use app::MapEditorApp;

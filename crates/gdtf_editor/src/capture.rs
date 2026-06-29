@@ -16,6 +16,16 @@
 //! boundary + per-cell dashes + default-floor fill, AND a painted (non-default) block beside the
 //! hover ghost.
 //!
+//! GTW-495: swept onto the UUID-keyed terrain model. The palette / paint tiles are now
+//! [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid)s resolved from the active theme's
+//! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) palette, and the per-def
+//! sprite index is resolved THE WAY THE PRESENTER DOES (via [`TileRoles`]). The legacy
+//! ladder-seed + illegal-hover demo is DROPPED here: ladder classification now requires a
+//! REGISTERED ladder def (the UUID key is opaque, so the old by-name-on-the-key recognition is
+//! gone) and shipped content authors no ladder terrain — so the capture demonstrates the LEGAL
+//! GTW-426 preview over the painted block. The red-tint (GTW-430) logic remains fully exercised
+//! by the `canvas_paint` integration test, which seeds a ladder def directly.
+//!
 //! It mirrors the `gdtf_ui` `scroll_list_demo` capture mechanism: a
 //! [`Screenshot::primary_window`] spawned with a [`save_to_disk`] observer, then a poll for
 //! the PNG (the GPU readback is async) before writing [`AppExit`], with a frame cap so a
@@ -29,15 +39,17 @@ use bevy::{
     state::state::OnEnter,
     ui::widget::ImageNode,
 };
+use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     Cell,
-    level::{GridHeight, GridLevels, GridSize, GridWidth, ThemeCatalogRegistry, TileKey},
+    level::{GridHeight, GridLevels, GridSize, GridWidth, UuidThemeRegistry},
+    terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 use gdtf_ui::ActiveButton;
 
 use crate::{
     CanvasCell, EditorMap, EditorState, PaletteRow, canvas::follow_hover_ghost,
-    session::MapEditorSession,
+    session::MapEditorSession, terrain_graphics::terrain_atlas_index,
 };
 
 /// The modest, legible grid edge the capture shrinks the canvas to before the shot — a `16 × 16`
@@ -174,12 +186,10 @@ fn reset_progress(mut progress: ResMut<CaptureProgress>) {
 ///
 /// Runs every frame until a selection exists: once the palette rows are built (the `Update`
 /// `sync_palette` has run), it picks the first [`PaletteRow`], writes its
-/// [`TileKey`](gdtf_battle_sim::level::TileKey) into the session
+/// [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid) into the session
 /// ([`MapEditorSession::select_tile`]) and adds the [`ActiveButton`] highlight marker — exactly
-/// what a real click does, but driven directly (the windowed `ui_focus_system` would clear a
-/// synthesized `Interaction::Pressed` before the click handler sees it, so this writes the
-/// selection state itself). The stat-region refresh then fires on the `is_changed` session.
-/// Idempotent: once the session has a selected tile it no-ops.
+/// what a real click does, but driven directly. The stat-region refresh then fires on the
+/// `is_changed` session. Idempotent: once the session has a selected tile it no-ops.
 fn drive_capture_selection(
     mut commands: Commands,
     rows: Query<(Entity, &PaletteRow)>,
@@ -194,7 +204,7 @@ fn drive_capture_selection(
     let Some((entity, row)) = rows.iter().next() else {
         return;
     };
-    session.select_tile(row.tile().clone());
+    session.select_tile(row.tile());
     commands.entity(entity).insert(ActiveButton);
 }
 
@@ -227,60 +237,53 @@ fn drive_capture_grid_size(session: Option<ResMut<MapEditorSession>>) {
     }
 }
 
-/// `Update` (in `Editing`, capture-only): PAINT a few cells + drive an ILLEGAL hover so the
-/// captured frame demonstrates BOTH the GTW-426 interactivity (a painted non-default block) AND the
-/// GTW-430 red tint (the ghost over an illegal placement renders partial-transparent RED — C5).
+/// `Update` (in `Editing`, capture-only): PAINT a few cells + drive a legal hover so the captured
+/// frame demonstrates the GTW-426 interactivity (a painted non-default block + the translucent
+/// preview ghost — C5).
 ///
-/// Three halves:
+/// Two halves:
 ///
 /// 1. PAINT (once): resolves a paint tile DISTINCT from the theme default-floor, records a small
 ///    block of cells in the [`EditorMap`] (clamped — C3), and rewrites those cells' [`ImageNode`]
 ///    atlas indices — the same effect the live [`paint_cell`](crate::canvas::paint_cell) produces,
 ///    driven directly (the windowed `ui_focus_system` clears a synthesized `Interaction::Pressed`,
 ///    the `drive_capture_selection` precedent). Idempotent.
-/// 2. SEED A LADDER (once): paints a ladder-keyed tile into the model at the [`LADDER_CELL`] (a
-///    cell the placement rules classify as a ladder by NAME — the catalog ships no ladder tile, so
-///    the capture seeds the model directly to make the GTW-430 illegal case reachable in-engine).
-/// 3. ILLEGAL HOVER (every frame): when the theme has a SLAB tile, selects it and writes
-///    [`Interaction::Hovered`] on the ladder cell, so the REAL
-///    [`follow_hover_ghost`](crate::canvas::follow_hover_ghost) — ordered AFTER this — runs the
-///    SHARED legality predicate, finds the slab-over-ladder illegal, and tints the ghost RED (C5).
-///    When the theme has no slab it FALLS BACK to a legal hover beside the block (the GTW-426
-///    preview). Re-asserted every frame because the windowed `ui_focus_system` clears `Hovered`
-///    each `PreUpdate`.
+/// 2. LEGAL HOVER (every frame): selects the paint tile and writes [`Interaction::Hovered`] on a
+///    cell beside the block, so the REAL [`follow_hover_ghost`](crate::canvas::follow_hover_ghost)
+///    — ordered AFTER this — shows the translucent preview ghost (C5). Re-asserted every frame
+///    because the windowed `ui_focus_system` clears `Hovered` each `PreUpdate`. (The GTW-430 red
+///    tint is no longer driven here — see the module docs — because ladder classification now needs
+///    a registered ladder def, which shipped content has none of; the red-tint logic is exercised
+///    by the `canvas_paint` integration test instead.)
 fn drive_capture_paint_and_ghost(
-    registry: Option<Res<ThemeCatalogRegistry>>,
+    registry: Option<Res<TerrainDefRegistry>>,
+    themes: Option<Res<UuidThemeRegistry>>,
+    roles: Option<Res<TileRoles>>,
     mut session: Option<ResMut<MapEditorSession>>,
     mut map: Option<ResMut<EditorMap>>,
     mut cells: Query<(&CanvasCell, &mut ImageNode, &mut Interaction)>,
 ) {
-    let (Some(registry), Some(session), Some(map)) = (registry, session.as_mut(), map.as_mut())
+    let (Some(registry), Some(themes), Some(roles), Some(session), Some(map)) =
+        (registry, themes, roles, session.as_mut(), map.as_mut())
     else {
         return;
     };
     // A tile distinct from the theme default-floor, so the painted cells read as different.
-    let Some((paint_key, paint_index)) = distinct_paint_tile(&registry, session) else {
+    let Some((paint_key, paint_index)) = distinct_paint_tile(&registry, &themes, &roles, session)
+    else {
         return;
     };
     let size = session.grid_size();
 
-    // PAINT a small block + SEED a ladder once (idempotent — skip if the model already holds paints).
+    // PAINT a small block once (idempotent — skip if the model already holds paints).
     if map.painted_count() == 0 {
-        paint_block(map, &mut cells, &paint_key, paint_index, size);
-        // Seed a ladder into the model at the dedicated cell so the illegal slab-over-ladder hover
-        // is reachable in-engine (no ladder tile ships in the catalog — see the module docs).
-        map.paint(LADDER_CELL, TileKey::new("ladder".to_owned()), size);
+        paint_block(map, &mut cells, paint_key, paint_index, size);
     }
 
-    // Prefer driving the GTW-430 RED tint (C5): select a SLAB tile and hover the seeded ladder cell
-    // so the live `follow_hover_ghost` finds the illegal placement and tints the ghost red. Fall
-    // back to the legal GTW-426 preview (the paint tile, hovered beside the block) when the theme
-    // has no slab.
-    let (selected, hover) = match slab_tile_key(&registry, session) {
-        Some(slab) => (slab, LADDER_CELL),
-        None => (paint_key, Cell::new(BLOCK, 1)),
-    };
-    session.select_tile(selected);
+    // Drive the legal GTW-426 preview: select the paint tile and hover a cell beside the block so
+    // the live `follow_hover_ghost` shows the translucent preview ghost (C5).
+    session.select_tile(paint_key);
+    let hover = Cell::new(BLOCK, 1);
     for (canvas_cell, _, mut interaction) in &mut cells {
         if canvas_cell.cell() == hover {
             *interaction = Interaction::Hovered;
@@ -288,39 +291,30 @@ fn drive_capture_paint_and_ghost(
     }
 }
 
-/// The cell the capture seeds a ladder into so the GTW-430 illegal slab-over-ladder hover is
-/// reachable in-engine (C5) — clear of the [`BLOCK`]-square painted block. A framework plumbing
-/// const.
-const LADDER_CELL: Cell = Cell::new(BLOCK + 2, 1);
-
 /// The painted block edge for the capture — a `BLOCK × BLOCK` square of painted cells near the
 /// canvas top-left, large enough to read clearly in the shot. A framework plumbing const.
 const BLOCK: i32 = 3;
 
-/// Resolve the [`TileKey`] of a SLAB tile in the session's theme (a [`CatalogTileKind::Slab`]),
-/// or [`None`] if the theme has none — the slab the capture selects to drive the GTW-430 illegal
-/// slab-over-ladder hover (C5).
-fn slab_tile_key(registry: &ThemeCatalogRegistry, session: &MapEditorSession) -> Option<TileKey> {
-    let catalog = registry.catalog(session.theme())?;
-    catalog.tiles().find_map(|(key, tile)| {
-        matches!(
-            tile.kind,
-            gdtf_battle_sim::level::CatalogTileKind::Slab { .. }
-        )
-        .then(|| key.clone())
-    })
-}
-
-/// Resolve a catalog tile of the session's theme whose atlas index DIFFERS from the default-floor,
-/// returning its key + index — so a painted cell reads visibly different in the capture.
+/// Resolve a terrain of the session's theme palette whose resolved atlas index DIFFERS from the
+/// default-floor's, returning its [`TerrainUuid`] + index — so a painted cell reads visibly
+/// different in the capture. The index resolution mirrors the presenter (via [`TileRoles`]).
 fn distinct_paint_tile(
-    registry: &ThemeCatalogRegistry,
+    registry: &TerrainDefRegistry,
+    themes: &UuidThemeRegistry,
+    roles: &TileRoles,
     session: &MapEditorSession,
-) -> Option<(TileKey, usize)> {
-    let catalog = registry.catalog(session.theme())?;
-    let default_index = catalog.default_floor().map(|tile| *tile.atlas_index)?;
-    catalog.tiles().find_map(|(key, tile)| {
-        (*tile.atlas_index != default_index).then(|| (key.clone(), *tile.atlas_index))
+) -> Option<(TerrainUuid, usize)> {
+    let theme = session.theme();
+    let default_index = session
+        .default_floor()
+        .or_else(|| themes.default_floor(&theme))
+        .and_then(|key| terrain_atlas_index(registry, roles, &key))
+        .map(|index| *index)?;
+    themes.terrain(&theme)?.iter().find_map(|key| {
+        terrain_atlas_index(registry, roles, key)
+            .map(|index| *index)
+            .filter(|index| *index != default_index)
+            .map(|index| (*key, index))
     })
 }
 
@@ -330,7 +324,7 @@ fn distinct_paint_tile(
 fn paint_block(
     map: &mut EditorMap,
     cells: &mut Query<(&CanvasCell, &mut ImageNode, &mut Interaction)>,
-    paint_key: &TileKey,
+    paint_key: TerrainUuid,
     paint_index: usize,
     size: GridSize,
 ) {
@@ -338,7 +332,7 @@ fn paint_block(
         .flat_map(|x| (0..BLOCK).map(move |y| Cell::new(x, y)))
         .collect();
     for cell in block {
-        if !map.paint(cell, paint_key.clone(), size) {
+        if !map.paint(cell, paint_key, size) {
             continue;
         }
         for (canvas_cell, mut node, _) in cells.iter_mut() {

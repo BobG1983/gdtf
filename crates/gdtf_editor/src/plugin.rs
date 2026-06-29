@@ -10,7 +10,7 @@
 //! GTW-417 housing constraint).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::level::LevelTheme;
+use gdtf_battle_sim::level::ThemeUuid;
 use gdtf_ui::{register_dropdown, register_numeric_field, register_text_field};
 
 use crate::{
@@ -21,7 +21,8 @@ use crate::{
     palette::{refresh_stat_region, select_palette_tile, spawn_stat_text, sync_palette},
     regions::spawn_editor_shell,
     right_panel::{
-        GridSpanInput, apply_size_commit, apply_theme_selection, spawn_right_panel_controls,
+        GridSpanInput, apply_size_commit, apply_theme_selection, seed_default_theme,
+        spawn_right_panel_controls,
     },
     session::MapEditorSession,
     tile_atlas::load_tile_atlas,
@@ -34,12 +35,13 @@ use crate::{
 /// that already has `DefaultPlugins` + the `gdtf_ui` `UiPlugin`. It owns:
 ///
 /// - `init_state::<EditorState>()` — the editor's own two-state lifecycle.
-/// - the slim `Load` pass (theme + weapon/armor/theme-catalog registries) — mirrors the
-///   game's `resolve_*` loaders WITHOUT pulling the game scene graph.
+/// - the slim `Load` pass (theme + weapon/armor + the UUID-keyed terrain/theme registries +
+///   the presenter tile-role table) — mirrors the game's `resolve_*` loaders WITHOUT pulling the
+///   game scene graph.
 /// - the GTW-410 dropdown + GTW-411 numeric-field widget wiring for the editor's own option /
-///   value types: [`register_dropdown::<LevelTheme>`], plus [`register_text_field`] (the
-///   one-time text-field seam [`register_numeric_field`] requires) and
-///   [`register_numeric_field::<GridSpanInput>`] for the three size fields (gate 4b — no
+///   value types: `register_dropdown::<ThemeUuid>` (the theme dropdown's option id), plus
+///   [`register_text_field`] (the one-time text-field seam [`register_numeric_field`] requires)
+///   and `register_numeric_field::<GridSpanInput>` for the three size fields (gate 4b — no
 ///   unwired per-type system).
 /// - `OnEnter(Editing)` → [`spawn_editor_shell`](crate::regions::spawn_editor_shell) (the
 ///   four empty themed regions) then
@@ -80,7 +82,7 @@ impl Plugin for MapEditorPlugin {
         // The editor's own dropdown / numeric-field per-type wiring (gate 4b). The numeric
         // field's register requires the one-time `register_text_field` seam to run first
         // (it initializes the handler registry `register_numeric_field` pushes into).
-        register_dropdown::<LevelTheme>(app);
+        register_dropdown::<ThemeUuid>(app);
         register_text_field(app);
         register_numeric_field::<GridSpanInput>(app);
 
@@ -122,6 +124,10 @@ impl Plugin for MapEditorPlugin {
         app.add_systems(
             Update,
             (
+                // Seed the session theme to the dropdown's pre-selected default once the
+                // UuidThemeRegistry resolves (the session opens on the nil theme), BEFORE the
+                // theme-driven systems read it (C1).
+                seed_default_theme,
                 apply_theme_selection,
                 apply_size_commit,
                 // The palette sync + select run AFTER the theme dropdown folds its selection into

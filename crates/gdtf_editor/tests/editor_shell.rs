@@ -16,7 +16,8 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry},
-    level::{LevelTheme, ThemeCatalogRegistry},
+    level::{ThemeUuid, UuidThemeRegistry},
+    terrain::def::{TerrainDefRegistry, TerrainUuid},
     weapon::{WeaponName, WeaponRegistry},
 };
 use gdtf_editor::{
@@ -122,24 +123,48 @@ fn editor_reaches_editing_with_registries_loaded() {
         );
     }
 
-    // ThemeCatalogRegistry: present, non-empty, and the shipped `IndustrialHive` catalog
-    // resolves (declared by industrial_hive.theme.ron). Mirrors load_themes.rs.
-    let catalogs = world.get_resource::<ThemeCatalogRegistry>();
+    // UuidThemeRegistry: present, non-empty, and the shipped IndustrialHive theme resolves by
+    // its authored ThemeUuid (terrain/industrial_hive/industrial_hive.terrain_theme.ron). The
+    // GTW-495 successor to the retired ThemeCatalogRegistry.
+    let themes = world.get_resource::<UuidThemeRegistry>();
     assert!(
-        catalogs.is_some(),
-        "the ThemeCatalogRegistry (GTW-409 theme tile catalog) must be inserted by the editor \
+        themes.is_some(),
+        "the UuidThemeRegistry (GTW-487 UUID-keyed theme model) must be inserted by the editor \
          Load pass",
     );
-    if let Some(catalogs) = catalogs {
+    if let Some(themes) = themes {
         assert!(
-            !catalogs.is_empty(),
-            "the editor's ThemeCatalogRegistry must be POPULATED from assets/content/themes/, \
+            !themes.is_empty(),
+            "the editor's UuidThemeRegistry must be POPULATED from the per-theme terrain/ folder, \
              not an empty default fallback (a broken loader must redden this, not slip through)",
         );
+        let ih_theme = ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001));
         assert!(
-            catalogs.catalog(LevelTheme::IndustrialHive).is_some(),
-            "the ThemeCatalogRegistry must hold the shipped `IndustrialHive` catalog \
-             (declared by industrial_hive.theme.ron) — proves a real folder resolve",
+            themes.def(&ih_theme).is_some(),
+            "the UuidThemeRegistry must hold the shipped IndustrialHive theme (its authored \
+             ThemeUuid) — proves a real per-theme folder resolve",
+        );
+    }
+
+    // TerrainDefRegistry: present, non-empty, and the shipped IndustrialHive deck_floor terrain
+    // resolves by its authored TerrainUuid. The GTW-487 UUID-keyed terrain model.
+    let terrain = world.get_resource::<TerrainDefRegistry>();
+    assert!(
+        terrain.is_some(),
+        "the TerrainDefRegistry (GTW-487 UUID-keyed terrain model) must be inserted by the editor \
+         Load pass",
+    );
+    if let Some(terrain) = terrain {
+        assert!(
+            !terrain.is_empty(),
+            "the editor's TerrainDefRegistry must be POPULATED from the per-theme terrain/ folder, \
+             not an empty default fallback (a broken loader must redden this, not slip through)",
+        );
+        let deck_floor = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_0004));
+        assert!(
+            terrain.def(&deck_floor).is_some(),
+            "the TerrainDefRegistry must hold the shipped IndustrialHive deck_floor terrain \
+             (its authored TerrainUuid) — proves a real per-theme folder resolve",
         );
     }
 }

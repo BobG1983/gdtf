@@ -1,102 +1,103 @@
-//! The map-editor **left tile palette** + the **bottom-right stat region** (GTW-422).
+//! The map-editor **left tile palette** + the **bottom-right stat region** (GTW-422; swept onto
+//! the UUID-keyed terrain model in GTW-495).
 //!
 //! Populates the GTW-417 [`LeftPaletteRegion`](crate::LeftPaletteRegion) scroll list with one
-//! WHOLE-TILE row per tile of the ACTIVE theme — each row a tile SPRITE (an
-//! [`ImageNode`](bevy::ui::widget::ImageNode) over the terrain sheet at the tile's atlas
-//! index) beside its display NAME (C1) — and drives the selection / stats flow:
+//! WHOLE-TILE row per terrain definition in the ACTIVE theme's palette — each row a tile SPRITE
+//! (an [`ImageNode`](bevy::ui::widget::ImageNode) over the terrain sheet at the def's resolved
+//! graphic index) beside its display NAME (C1) — and drives the selection / stats flow:
 //!
-//! - C1 + C4 — [`sync_palette`] lists every catalog tile of the session's
-//!   [`theme`](crate::MapEditorSession::theme), from the GTW-409
-//!   [`ThemeCatalogRegistry`](gdtf_battle_sim::level::ThemeCatalogRegistry), and rebuilds the
-//!   rows when the theme changes (despawn the old rows, re-list from the new theme's catalog).
-//!   The rows hang in the [`LeftPaletteRegion`]'s [`ScrollListArea`](gdtf_ui::ScrollListArea)
-//!   (the clipping, scrolling viewport — NOT the grid root frame the marker rides — the GTW-421
-//!   parenting rule) so they top-anchor and scroll on overflow.
-//! - C2 — [`select_palette_tile`] reads a clicked row
-//!   (`Changed<Interaction> == Pressed`), writes its [`TileKey`](gdtf_battle_sim::level::TileKey)
-//!   into [`MapEditorSession::select_tile`](crate::MapEditorSession::select_tile) and toggles the
-//!   [`ActiveButton`](gdtf_ui::ActiveButton) highlight marker onto it (clearing the other rows').
+//! - C1 + C4 — [`sync_palette`] lists every terrain of the session's
+//!   [`theme`](crate::MapEditorSession::theme), enumerated from the GTW-487
+//!   [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry)'s terrain palette and
+//!   resolved against the [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry),
+//!   and rebuilds the rows when the theme changes.
+//! - C2 — [`select_palette_tile`] reads a clicked row, writes its
+//!   [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid) into
+//!   [`MapEditorSession::select_tile`](crate::MapEditorSession::select_tile) and toggles the
+//!   [`ActiveButton`](gdtf_ui::ActiveButton) highlight marker onto it.
 //! - C3 — [`refresh_stat_region`] fills the [`StatRegion`](crate::StatRegion) with the SELECTED
-//!   tile's catalog fields (role / name + cover/slab HP, armor, height band, move cost).
+//!   def's [`sim_kind`](gdtf_battle_sim::terrain::def::TerrainDef::sim_kind) /
+//!   [`presenter_kind`](gdtf_battle_sim::terrain::def::TerrainDef::presenter_kind) fields.
 
 use bevy::{
     prelude::*,
     ui::{FlexDirection, widget::ImageNode},
 };
-use gdtf_battle_sim::level::{
-    CatalogTile, CatalogTileKind, LevelTheme, StructuralStats, ThemeCatalogRegistry,
-    ThemeTileCatalog, TileKey,
+use gdtf_battle_presenter::TileRoles;
+use gdtf_battle_sim::{
+    level::{ThemeUuid, UuidThemeRegistry},
+    terrain::def::{TerrainDef, TerrainDefRegistry, TerrainSimKind, TerrainUuid},
 };
 use gdtf_ui::{ActiveButton, ScrollListArea, theme::GdtfTheme};
 
-use crate::{LeftPaletteRegion, StatRegion, session::MapEditorSession, tile_atlas::TileAtlas};
+use crate::{
+    LeftPaletteRegion, StatRegion, session::MapEditorSession, terrain_graphics::graphic_key,
+    tile_atlas::TileAtlas,
+};
 
 /// One **palette row** — a clickable whole-tile entry (sprite + name) in the left palette
-/// (GTW-422 C1/C2).
+/// (GTW-422 C1/C2; UUID-keyed in GTW-495).
 ///
-/// A [`Component`] carrying the row's [`TileKey`] so the click handler
-/// (`select_palette_tile`) knows which tile to make active. NOT a bare `String` field — the
-/// key is the sim's [`TileKey`] domain value (no-bare-types). The row entity is a
-/// [`Button`](bevy::ui::widget::Button) (so it `#[require]`s [`Interaction`] and the engine's
-/// focus system drives click state); the SELECTED row carries the
+/// A [`Component`] carrying the row's [`TerrainUuid`] so the click handler
+/// (`select_palette_tile`) knows which terrain to make active. NOT a bare `Uuid` field — the
+/// key is the sim's [`TerrainUuid`] domain value (no-bare-types). The row entity is a
+/// [`Button`](bevy::ui::widget::Button); the SELECTED row carries the
 /// [`ActiveButton`](gdtf_ui::ActiveButton) marker so `gdtf_ui`'s `paint_active_buttons` paints
-/// it the theme's active color (the sanctioned selected-button highlight — never fight the
-/// interaction-repaint system by writing `BackgroundColor` directly).
-#[derive(Component, Clone, Debug, PartialEq, Eq)]
+/// it the theme's active color (never write `BackgroundColor` directly).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct PaletteRow {
-    /// The catalog [`TileKey`] this row represents — written into the session on click (C2).
-    tile: TileKey,
+    /// The [`TerrainUuid`] this row represents — written into the session on click (C2).
+    tile: TerrainUuid,
 }
 
 impl PaletteRow {
-    /// Build a palette row for a catalog tile key.
+    /// Build a palette row for a terrain key.
     #[must_use]
-    pub const fn new(tile: TileKey) -> Self {
+    pub const fn new(tile: TerrainUuid) -> Self {
         Self { tile }
     }
 
-    /// The catalog [`TileKey`] this row represents.
+    /// The [`TerrainUuid`] this row represents.
     #[must_use]
-    pub const fn tile(&self) -> &TileKey {
-        &self.tile
+    pub const fn tile(&self) -> TerrainUuid {
+        self.tile
     }
 }
 
 /// Marker on the [`StatRegion`](crate::StatRegion)'s text node — the single child whose
-/// [`Text`] `refresh_stat_region` rewrites with the selected tile's stats (C3).
-///
-/// A unit marker (no-bare-types). Lets the refresh find the stat text without depending on the
-/// region's tree shape.
+/// [`Text`] `refresh_stat_region` rewrites with the selected def's stats (C3).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct StatText;
 
 /// `Update` (in `Editing`): keep the left palette in sync with the session's active theme —
 /// the INITIAL populate (C1) AND the theme-change repopulate (C4), in ONE system.
 ///
-/// A single `Update` system (rather than an `OnEnter` populate + an `Update` repopulate)
-/// because the palette reads both the [`TileAtlas`] and the [`MapEditorSession`], BOTH inserted
-/// via deferred `Commands` on `OnEnter(Editing)` — so an `OnEnter` populate chained after their
-/// inserts would NOT see them (no command-flush sync between chained `OnEnter` systems — the
-/// GTW-421 `insert_session` race). Running in `Update` sidesteps that: the resources are present
-/// the first frame in `Editing`.
-///
-/// It (re)builds the rows when the theme the rows were last built for differs from the session's
-/// current theme — covering BOTH the first build (tracked theme is `None`) and a later switch
-/// (the GTW-421 dropdown writes `MapEditorSession::theme`). It despawns the existing
-/// [`PaletteRow`] entities first, then re-lists from the active theme's catalog, parenting the
-/// new rows under the palette's [`ScrollListArea`] (the clipping, scrolling viewport — the
-/// GTW-421 parenting rule). The last-built theme is tracked in a [`Local`] so an unrelated
-/// session mutation (grid-size / selected-tile) never triggers a needless rebuild.
+/// A single `Update` system because the palette reads the [`TileAtlas`] and the
+/// [`MapEditorSession`], BOTH inserted via deferred `Commands` on `OnEnter(Editing)` — so an
+/// `OnEnter` populate chained after their inserts would NOT see them (the GTW-421 command-flush
+/// race). It (re)builds the rows when the theme the rows were last built for differs from the
+/// session's current theme, despawning the existing [`PaletteRow`] entities first, then
+/// re-listing from the new theme's terrain palette.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a Bevy system's params are framework plumbing, not a wide function signature; the \
+              palette sync legitimately reads theme + atlas + the theme registry + the terrain \
+              registry + the role table + the session + the existing rows + the rebuild tracker"
+)]
 pub(crate) fn sync_palette(
     mut commands: Commands,
     theme: Res<GdtfTheme>,
     atlas: Option<Res<TileAtlas>>,
-    registry: Option<Res<ThemeCatalogRegistry>>,
+    themes: Option<Res<UuidThemeRegistry>>,
+    terrain: Option<Res<TerrainDefRegistry>>,
+    roles: Option<Res<TileRoles>>,
     session: Option<Res<MapEditorSession>>,
     rows: Query<Entity, With<PaletteRow>>,
-    mut last_theme: Local<Option<LevelTheme>>,
+    mut last_theme: Local<Option<ThemeUuid>>,
 ) {
-    let (Some(atlas), Some(registry), Some(session)) = (atlas, registry, session) else {
+    let (Some(atlas), Some(themes), Some(terrain), Some(roles), Some(session)) =
+        (atlas, themes, terrain, roles, session)
+    else {
         return;
     };
     let current = session.theme();
@@ -104,34 +105,36 @@ pub(crate) fn sync_palette(
         // Already built for this theme — nothing changed.
         return;
     }
-    let Some(catalog) = registry.catalog(current) else {
-        return;
-    };
+    // The active theme's terrain palette (the UUIDs it draws from). An unknown / nil theme has
+    // no palette — clear the rows and remember the (empty) build.
+    let palette: Vec<TerrainUuid> = themes
+        .terrain(&current)
+        .map(<[TerrainUuid]>::to_vec)
+        .unwrap_or_default();
     for row in &rows {
         commands.entity(row).despawn();
     }
-    spawn_palette_rows(&mut commands, &theme, &atlas, catalog);
+    spawn_palette_rows(&mut commands, &theme, &atlas, &terrain, &roles, &palette);
     *last_theme = Some(current);
 }
 
-/// Build + parent one [`PaletteRow`] per tile in `catalog`, deferred-parented under the
-/// [`LeftPaletteRegion`]'s [`ScrollListArea`] (the GTW-421 parenting rule). Shared by the
-/// `OnEnter` populate (C1) and the theme-change repopulate (C4).
-///
-/// The tile order is the catalog's iteration order (a `HashMap` — unordered, but the editor
-/// lists a SET of tiles, no order contract). Each row carries its [`TileKey`] (for the click
-/// handler) and renders the tile sprite + name.
+/// Build + parent one [`PaletteRow`] per terrain in `palette`, deferred-parented under the
+/// [`LeftPaletteRegion`]'s [`ScrollListArea`] (the GTW-421 parenting rule). Each row carries its
+/// [`TerrainUuid`] (for the click handler) and renders the resolved tile sprite + display name.
 fn spawn_palette_rows(
     commands: &mut Commands,
     theme: &GdtfTheme,
     atlas: &TileAtlas,
-    catalog: &ThemeTileCatalog,
+    terrain: &TerrainDefRegistry,
+    roles: &TileRoles,
+    palette: &[TerrainUuid],
 ) {
     let row_bg = *theme.panel.color;
     let text_color = *theme.text.text_color;
-    let rows: Vec<Entity> = catalog
-        .tiles()
-        .map(|(key, tile)| spawn_palette_row(commands, key, tile, atlas, row_bg, text_color))
+    let rows: Vec<Entity> = palette
+        .iter()
+        .filter_map(|key| terrain.def(key).map(|def| (key, def)))
+        .map(|(key, def)| spawn_palette_row(commands, *key, def, atlas, roles, row_bg, text_color))
         .collect();
 
     commands.queue(move |world: &mut World| {
@@ -148,11 +151,6 @@ fn spawn_palette_rows(
 
 /// Find the [`LeftPaletteRegion`]'s [`ScrollListArea`] — the clipping, scrolling viewport child
 /// of the region's scroll-list grid root frame (the GTW-421 parenting rule).
-///
-/// The [`LeftPaletteRegion`] marker rides the scroll-list ROOT FRAME; the rows must hang on the
-/// area among its children, not the frame itself. Returns [`None`] if the frame or its area is
-/// not yet present (the deferred command runs after the shell spawn applied the scroll list, so
-/// the area exists by then).
 fn palette_scroll_area(world: &mut World) -> Option<Entity> {
     let frame = world
         .query_filtered::<Entity, With<LeftPaletteRegion>>()
@@ -167,31 +165,38 @@ fn palette_scroll_area(world: &mut World) -> Option<Entity> {
 }
 
 /// Spawn one whole-tile palette row: a clickable [`Button`](bevy::ui::widget::Button) holding
-/// the tile SPRITE (an [`ImageNode`] over the terrain sheet at the tile's atlas index) beside
-/// its display NAME (C1). Carries the [`PaletteRow`] (its [`TileKey`]) for the click handler.
+/// the tile SPRITE (an [`ImageNode`] over the terrain sheet at the def's resolved graphic index)
+/// beside its display NAME (C1). Carries the [`PaletteRow`] (its [`TerrainUuid`]) for the click
+/// handler. The graphic index is resolved THE WAY THE PRESENTER DOES (via the def's
+/// `presenter_kind.graphic_name` against [`TileRoles`]); a def whose role is out of vocabulary
+/// gets no sprite (the row still shows its name).
 fn spawn_palette_row(
     commands: &mut Commands,
-    key: &TileKey,
-    tile: &CatalogTile,
+    key: TerrainUuid,
+    def: &TerrainDef,
     atlas: &TileAtlas,
+    roles: &TileRoles,
     row_bg: Color,
     text_color: Color,
 ) -> Entity {
-    let sprite = commands
-        .spawn((
-            ImageNode::from_atlas_image(
-                atlas.image(),
-                TextureAtlas {
-                    layout: atlas.layout(),
-                    index:  *tile.atlas_index,
-                },
-            ),
-            tile_sprite_node(),
-        ))
-        .id();
+    let sprite = match roles.index_for_key(graphic_key(def)) {
+        Some(index) => commands
+            .spawn((
+                ImageNode::from_atlas_image(
+                    atlas.image(),
+                    TextureAtlas {
+                        layout: atlas.layout(),
+                        index:  *index,
+                    },
+                ),
+                tile_sprite_node(),
+            ))
+            .id(),
+        None => commands.spawn(tile_sprite_node()).id(),
+    };
     let label = commands
         .spawn((
-            Text::new((*tile.display_name).clone()),
+            Text::new((*def.display_name).clone()),
             TextColor(text_color),
             label_node(),
         ))
@@ -199,7 +204,7 @@ fn spawn_palette_row(
     commands
         .spawn((
             Button,
-            PaletteRow::new(key.clone()),
+            PaletteRow::new(key),
             BackgroundColor(row_bg),
             palette_row_node(),
         ))
@@ -209,20 +214,11 @@ fn spawn_palette_row(
 
 /// The press-edge query filter [`select_palette_tile`] reads — a [`PaletteRow`] whose
 /// [`Interaction`] changed this frame. A named alias to keep the system signature under
-/// clippy's `type_complexity` gate (the `gdtf_ui` widget-driver precedent).
+/// clippy's `type_complexity` gate.
 type PressedRow = (Changed<Interaction>, With<PaletteRow>);
 
 /// `Update` (in `Editing`): a clicked palette row sets the active paint tile + highlights it
 /// (C2).
-///
-/// Reads `Changed<Interaction> == Pressed` on the [`PaletteRow`] buttons (the engine's focus
-/// system drives [`Interaction`] under `DefaultPlugins`; headless tests set it directly + run
-/// `Update` — the dropdown-widget `press` precedent). On a press it writes the row's [`TileKey`]
-/// into the session via [`MapEditorSession::select_tile`] and toggles the
-/// [`ActiveButton`](gdtf_ui::ActiveButton) marker — ADD it to the clicked row, REMOVE it from
-/// every other row — so `gdtf_ui`'s `paint_active_buttons` paints exactly the selected row the
-/// theme's active color (the sanctioned selected-button highlight; the interaction-repaint
-/// system skips `ActiveButton` rows, so the highlight is sticky and flicker-free).
 pub(crate) fn select_palette_tile(
     mut commands: Commands,
     pressed: Query<(Entity, &Interaction), PressedRow>,
@@ -240,7 +236,7 @@ pub(crate) fn select_palette_tile(
         return;
     };
     if let Ok(row) = clicked_row.get(clicked) {
-        session.select_tile(row.tile().clone());
+        session.select_tile(row.tile());
     }
     for entity in &rows {
         if entity == clicked {
@@ -251,21 +247,18 @@ pub(crate) fn select_palette_tile(
     }
 }
 
-/// `Update` (in `Editing`): refresh the bottom-right stat region with the selected tile's
-/// catalog stats (C3).
+/// `Update` (in `Editing`): refresh the bottom-right stat region with the selected def's stats
+/// (C3).
 ///
-/// Runs when [`MapEditorSession`] is `is_changed()` (a selection writes it), resolves the
-/// selected [`TileKey`] in the active theme's catalog, and rewrites the [`StatText`] node's
-/// [`Text`] with the tile's catalog fields — role + name + the kind-specific gameplay stats
-/// (move cost for a floor; HP / armor / height band for a wall / cover / scatter; HP + armor
-/// for a slab). Mutates the text IN PLACE (the ui-mutate-not-respawn rule). With no selection
-/// the region shows a placeholder prompt.
+/// Runs when [`MapEditorSession`] is `is_changed()`, resolves the selected [`TerrainUuid`] in the
+/// [`TerrainDefRegistry`], and rewrites the [`StatText`] node's [`Text`] with the def's display
+/// name + its kind-specific structural stats. With no selection the region shows a placeholder.
 pub(crate) fn refresh_stat_region(
-    registry: Option<Res<ThemeCatalogRegistry>>,
+    terrain: Option<Res<TerrainDefRegistry>>,
     session: Option<Res<MapEditorSession>>,
     mut stat_text: Query<&mut Text, With<StatText>>,
 ) {
-    let (Some(registry), Some(session)) = (registry, session) else {
+    let (Some(terrain), Some(session)) = (terrain, session) else {
         return;
     };
     if !session.is_changed() {
@@ -276,20 +269,12 @@ pub(crate) fn refresh_stat_region(
     };
     let summary = session
         .selected_tile()
-        .and_then(|key| {
-            registry
-                .catalog(session.theme())
-                .and_then(|catalog| catalog.tile(key).map(|tile| stat_summary(key, tile)))
-        })
+        .and_then(|key| terrain.def(&key).map(stat_summary))
         .unwrap_or_else(|| "Select a tile to see its stats.".to_owned());
     *text = Text::new(summary);
 }
 
 /// `OnEnter(Editing)`: spawn the [`StatText`] node inside the [`StatRegion`] (C3).
-///
-/// The stat region is a themed panel spawned empty by `spawn_editor_shell`; this hangs one
-/// [`StatText`] node under it (deferred, so the panel exists) seeded with the no-selection
-/// placeholder. [`refresh_stat_region`] rewrites its [`Text`] on each selection.
 pub(crate) fn spawn_stat_text(mut commands: Commands, theme: Res<GdtfTheme>) {
     let text_color = *theme.text.text_color;
     let text = commands
@@ -314,40 +299,45 @@ pub(crate) fn spawn_stat_text(mut commands: Commands, theme: Res<GdtfTheme>) {
     });
 }
 
-/// Render a catalog tile's stats into a multi-line human summary (C3) — its role + name plus
-/// the kind-specific gameplay fields, each reusing the sim stat newtypes' `Deref`'d value.
-fn stat_summary(key: &TileKey, tile: &CatalogTile) -> String {
-    let name = (*tile.display_name).clone();
-    let kind = match &tile.kind {
-        CatalogTileKind::Floor { move_cost } => {
-            format!("Floor\nMove cost: {}", **move_cost)
-        }
-        CatalogTileKind::Wall(stats) => format!("Wall\n{}", structural_lines(stats)),
-        CatalogTileKind::Cover(stats) => format!("Cover\n{}", structural_lines(stats)),
-        CatalogTileKind::Scatter(stats) => format!("Scatter\n{}", structural_lines(stats)),
-        CatalogTileKind::Slab {
-            max_hp,
+/// Render a terrain def's stats into a multi-line human summary (C3) — its display name plus the
+/// kind-specific structural fields from its [`sim_kind`](TerrainDef::sim_kind) and the graphic
+/// role from its [`presenter_kind`](TerrainDef::presenter_kind), each reusing the sim newtypes'
+/// `Deref`'d value.
+fn stat_summary(def: &TerrainDef) -> String {
+    let name = (*def.display_name).clone();
+    let kind = match &def.sim_kind {
+        TerrainSimKind::Wall {
+            hp,
+            armor_protection,
+            armor_hardness,
+            height_band,
+        } => format!(
+            "Wall\nHP: {}\nArmor: {}\nHardness: {}\nBand: {height_band:?}",
+            **hp, **armor_protection, **armor_hardness,
+        ),
+        TerrainSimKind::Cover {
+            hp,
+            armor_protection,
+            armor_hardness,
+            height_band,
+        } => format!(
+            "Cover\nHP: {}\nArmor: {}\nHardness: {}\nBand: {height_band:?}",
+            **hp, **armor_protection, **armor_hardness,
+        ),
+        TerrainSimKind::Slab {
+            hp,
             armor_protection,
             armor_hardness,
         } => format!(
             "Slab\nHP: {}\nArmor: {}\nHardness: {}",
-            **max_hp, **armor_protection, **armor_hardness
+            **hp, **armor_protection, **armor_hardness,
         ),
     };
-    format!("{name}\nKey: {}\n{kind}", **key)
+    let graphic = (**graphic_key(def)).clone();
+    format!("{name}\n{kind}\nGraphic: {graphic}")
 }
 
-/// Render the wall/cover/scatter structural stat lines (HP / armor / hardness / band) shared by
-/// the three structural [`CatalogTileKind`] variants.
-fn structural_lines(stats: &StructuralStats) -> String {
-    format!(
-        "HP: {}\nArmor: {}\nHardness: {}\nBand: {:?}",
-        *stats.max_hp, *stats.armor_protection, *stats.armor_hardness, stats.height_band,
-    )
-}
-
-/// One palette row's [`Node`]: a full-width flex ROW (sprite left, name right), centred on the
-/// cross axis, with a little padding + gap so the rows read as distinct entries. Relative units
+/// One palette row's [`Node`]: a full-width flex ROW (sprite left, name right). Relative units
 /// (no fixed `Px`) per the responsive-UI rule.
 fn palette_row_node() -> Node {
     Node {
@@ -361,7 +351,7 @@ fn palette_row_node() -> Node {
 }
 
 /// The tile-sprite [`Node`] inside a palette row: a small square, sized in viewport-relative
-/// units so it scales with the window (the portrait-node responsive precedent).
+/// units so it scales with the window.
 fn tile_sprite_node() -> Node {
     Node {
         width: Val::Vw(2.5),
@@ -378,8 +368,7 @@ fn label_node() -> Node {
     }
 }
 
-/// The [`StatText`] node's [`Node`]: full-width with a little padding so the stat lines don't
-/// touch the panel edge. Relative units (no fixed `Px`).
+/// The [`StatText`] node's [`Node`]: full-width with a little padding. Relative units.
 fn stat_text_node() -> Node {
     Node {
         width: Val::Percent(100.0),

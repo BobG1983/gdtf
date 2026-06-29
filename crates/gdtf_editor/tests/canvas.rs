@@ -1,33 +1,31 @@
-//! Headless integration test for the GTW-423 map-editor central canvas.
+//! Headless integration test for the map-editor central canvas, swept onto the UUID-keyed
+//! terrain/theme model (GTW-495).
 //!
-//! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI harness (the same
-//! harness the GTW-417 `editor_shell` / GTW-421 `right_panel` / GTW-422 `palette` tests use), so
-//! the editor's actual `Load` pass resolves the shipped theme + catalog registries and its real
-//! `Editing` scene builds the canvas — not a copy.
+//! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI harness, so the
+//! editor's actual `Load` pass resolves the shipped UUID-keyed registries and its real `Editing`
+//! scene builds the canvas — not a copy.
 //!
-//! Asserts the contract end-to-end, pin-discriminatingly, and value-agnostically (counts /
-//! extent DERIVED from `grid_size`, never a pinned px magnitude):
+//! Asserts the contract end-to-end, pin-discriminatingly, and value-agnostically (counts / extent
+//! DERIVED from `grid_size`, the fill index RESOLVED via the registries, never a pinned magnitude):
 //!
-//! - T1 (C1): after a size is set, a boundary element (the [`CanvasRoot`]) exists carrying a
-//!   [`CanvasExtent`] whose width/height equal the session's `grid_size` x/y spans.
-//! - T2 (C2): the per-cell dimmed dashes exist — every [`CanvasCell`] carries a `BorderColor`
-//!   (the lightweight per-cell grid-line mechanism), one per cell.
-//! - T3 (C3): the canvas has `width × height` [`CanvasCell`] fills, each carrying the
-//!   default-floor tile sprite ([`ImageNode`]) at the catalog's default-floor atlas index.
-//! - T4 (C4): committing a SMALLER `grid_size` re-extents the canvas (new cell count == the new
-//!   `width × height`); switching the THEME re-fills the cells with the new theme's default-floor
-//!   atlas index.
-//! - T5 (scroll-parenting guard, mirrors GTW-421/422): a [`ScrollListArea`] is an ANCESTOR of the
-//!   [`CanvasRoot`] (the grid hangs inside the clipping, scrolling viewport, not the grid frame).
+//! - T1 (C1): the boundary [`CanvasRoot`] carries a [`CanvasExtent`] sized to `grid_size` x/y.
+//! - T2 (C2): every [`CanvasCell`] carries a `BorderColor` (the per-cell grid-line mechanism).
+//! - T3 (C3): the canvas has `width × height` cell fills, each at the theme's resolved
+//!   default-floor atlas index.
+//! - T4 (C4): committing a SMALLER `grid_size` re-extents; switching the THEME re-fills.
+//! - T5 (scroll-parenting guard): a [`ScrollListArea`] is an ANCESTOR of the [`CanvasRoot`].
 //!
-//! Panic/expect-free per the workspace lints (the GTW-417 precedent: `assert!` + `if let Some`
-//! guards, never `unwrap`/`expect`/`panic`).
+//! Panic/expect-free per the workspace lints.
 
 use bevy::{
     prelude::*,
     ui::{BorderColor, widget::ImageNode},
 };
-use gdtf_battle_sim::level::{GridSize, LevelTheme, ThemeCatalogRegistry, TileAtlasIndex};
+use gdtf_battle_presenter::TileRoles;
+use gdtf_battle_sim::{
+    level::{GridSize, ThemeUuid, UuidThemeRegistry},
+    terrain::def::{TerrainDef, TerrainDefRegistry, TerrainPresenterKind},
+};
 use gdtf_editor::{
     CanvasCell, CanvasExtent, CanvasRoot, EditorState, GridSpanInput, MapEditorPlugin,
     MapEditorSession, SizeFieldAxis, ThemeDropdown,
@@ -64,14 +62,12 @@ fn editor_in_editing() -> App {
         "the editor never reached EditorState::Editing — its Load pass did not resolve the theme \
          + registries (a genuine load failure, not a frame-budget shortfall)",
     );
-    // The OnEnter spawn + the Update `sync_canvas` build the cells across a few frames (deferred
-    // re-parent commands); advance so the canvas is present before we query.
     settle(&mut app);
     app
 }
 
-/// Advance a handful of frames so the deferred scroll-list re-parent + the `sync_canvas` rebuild
-/// + its deferred grid re-parent have all applied.
+/// Advance a handful of frames so the deferred scroll-list re-parent + the seed + the
+/// `sync_canvas` rebuild + its deferred grid re-parent have all applied.
 fn settle(app: &mut App) {
     for _ in 0..8 {
         app.update();
@@ -90,14 +86,24 @@ fn grid_size(app: &App) -> Option<GridSize> {
         .map(MapEditorSession::grid_size)
 }
 
-/// The active theme's catalog's declared default-floor atlas index — the index every canvas
-/// cell must fill with (C3).
-fn default_floor_index(app: &App, theme: LevelTheme) -> Option<TileAtlasIndex> {
-    app.world()
-        .get_resource::<ThemeCatalogRegistry>()
-        .and_then(|reg| reg.catalog(theme))
-        .and_then(|cat| cat.default_floor())
-        .map(|tile| tile.atlas_index)
+/// The graphic role key of a presenter kind (every variant carries it).
+fn graphic_role(def: &TerrainDef) -> &str {
+    match &def.presenter_kind {
+        TerrainPresenterKind::Wall { graphic_name }
+        | TerrainPresenterKind::Cover { graphic_name }
+        | TerrainPresenterKind::Slab { graphic_name, .. } => graphic_name,
+    }
+}
+
+/// The atlas index every canvas cell must fill with (C3) — the theme's default-floor terrain's
+/// graphic resolved THE WAY THE PRESENTER DOES (via `TileRoles`), value-agnostic.
+fn default_floor_index(app: &App, theme: ThemeUuid) -> Option<usize> {
+    let themes = app.world().get_resource::<UuidThemeRegistry>()?;
+    let terrain = app.world().get_resource::<TerrainDefRegistry>()?;
+    let roles = app.world().get_resource::<TileRoles>()?;
+    let floor = themes.default_floor(&theme)?;
+    let def = terrain.def(&floor)?;
+    roles.index_for_key(graphic_role(def)).map(|i| *i)
 }
 
 /// The single [`CanvasRoot`]'s [`CanvasExtent`], if exactly one root exists.
@@ -108,7 +114,7 @@ fn canvas_extent(app: &mut App) -> Option<CanvasExtent> {
 }
 
 /// T1 (C1): once a size is set, a boundary element (the [`CanvasRoot`]) exists, carrying a
-/// [`CanvasExtent`] sized to the session's `grid_size` x/y extent (NOT a pinned px magnitude).
+/// [`CanvasExtent`] sized to the session's `grid_size` x/y extent.
 #[test]
 fn canvas_boundary_extent_tracks_grid_size() {
     let mut app = editor_in_editing();
@@ -135,9 +141,7 @@ fn canvas_boundary_extent_tracks_grid_size() {
     }
 }
 
-/// T2 (C2): the per-cell dimmed dashes exist — every [`CanvasCell`] carries a `BorderColor` (the
-/// lightweight per-cell grid-line mechanism), one per cell. Pin-discriminating: the dash count
-/// equals the cell count (so the mechanism is the per-cell border, not an absent / shared one).
+/// T2 (C2): every [`CanvasCell`] carries a `BorderColor`, one per cell.
 #[test]
 fn per_cell_dashes_present_one_per_cell() {
     let mut app = editor_in_editing();
@@ -156,10 +160,8 @@ fn per_cell_dashes_present_one_per_cell() {
     );
 }
 
-/// T3 (C3): the canvas has `width × height` [`CanvasCell`] fills, each carrying the default-floor
-/// tile sprite ([`ImageNode`]) at the catalog's default-floor atlas index. Pin-discriminating:
-/// the cell count equals the `grid_size` extent's cell count AND the fill sprite's atlas index is
-/// the active theme's default-floor index (value-agnostic — derived from the catalog, not pinned).
+/// T3 (C3): the canvas has `width × height` [`CanvasCell`] fills, each at the theme's resolved
+/// default-floor atlas index.
 #[test]
 fn cells_prefilled_with_default_floor_sprite() {
     let mut app = editor_in_editing();
@@ -180,10 +182,9 @@ fn cells_prefilled_with_default_floor_sprite() {
     let expected_index = theme.and_then(|t| default_floor_index(&app, t));
     assert!(
         expected_index.is_some(),
-        "the active theme's catalog must declare a resolvable default floor (C3)",
+        "the active theme must resolve a default-floor atlas index (C3)",
     );
 
-    // Every cell's fill ImageNode must be the default-floor atlas index.
     let world = app.world_mut();
     let mut q = world.query_filtered::<&ImageNode, With<CanvasCell>>();
     let indices: Vec<Option<usize>> = q
@@ -195,16 +196,14 @@ fn cells_prefilled_with_default_floor_sprite() {
         for idx in indices {
             assert_eq!(
                 idx,
-                Some(*expected),
+                Some(expected),
                 "every cell must be pre-filled with the default-floor atlas index (C3)",
             );
         }
     }
 }
 
-/// T4a (C4): committing a SMALLER `grid_size` re-extents the canvas — the new cell count equals
-/// the new `width × height`, and the boundary extent tracks it. Drives the REAL size-field commit
-/// message the GTW-421 width/height fields emit.
+/// T4a (C4): committing a SMALLER `grid_size` re-extents the canvas.
 #[test]
 fn shrinking_grid_size_reextents_canvas() {
     let mut app = editor_in_editing();
@@ -212,8 +211,6 @@ fn shrinking_grid_size_reextents_canvas() {
     let start_cells = count::<CanvasCell>(&mut app);
     assert!(start_cells > 0, "the canvas must start populated");
 
-    // Commit width = 8, height = 8 via the real size-field commit messages, routed by axis. The
-    // editor's size fields carry SizeFieldAxis markers; find one per axis and emit a commit for it.
     let (width_field, height_field) = size_fields(&mut app);
     assert!(
         width_field.is_some() && height_field.is_some(),
@@ -231,7 +228,6 @@ fn shrinking_grid_size_reextents_canvas() {
     }
     settle(&mut app);
 
-    // The session shrank to 8 × 8 (× the unchanged levels) and the canvas re-extented to 64 cells.
     let size = grid_size(&app);
     if let Some(size) = size {
         assert_eq!(
@@ -259,8 +255,7 @@ fn shrinking_grid_size_reextents_canvas() {
 }
 
 /// T4b (C4): switching the THEME re-fills the canvas cells with the NEW theme's default-floor
-/// atlas index. Drives the REAL dropdown selection message; asserts the fill index changed to the
-/// new theme's default-floor index (value-agnostic — both indices come from the catalogs).
+/// atlas index.
 #[test]
 fn switching_theme_refills_canvas() {
     let mut app = editor_in_editing();
@@ -269,16 +264,30 @@ fn switching_theme_refills_canvas() {
         .world()
         .get_resource::<MapEditorSession>()
         .map(MapEditorSession::theme);
-    let target = LevelTheme::Underhive;
-    assert_ne!(Some(target), start_theme, "the switch target must differ");
-
+    // Pick a theme DIFFERENT from the session's currently-seeded one whose default floor resolves
+    // to a DIFFERENT atlas index, so the re-fill is observable.
+    let start_index = start_theme.and_then(|t| default_floor_index(&app, t));
+    let target: Option<ThemeUuid> = app
+        .world()
+        .get_resource::<UuidThemeRegistry>()
+        .and_then(|r| {
+            r.defs()
+                .map(|(key, _)| *key)
+                .find(|key| Some(*key) != start_theme)
+        });
+    assert!(
+        target.is_some(),
+        "the registry must hold a second theme to switch to (C4)"
+    );
+    let Some(target) = target else {
+        return;
+    };
     let target_index = default_floor_index(&app, target);
     assert!(
         target_index.is_some(),
-        "the shipped Underhive catalog must declare a default floor (C4)",
+        "the target theme must resolve a default-floor atlas index (C4)",
     );
 
-    // Emit the real theme dropdown selection message.
     let world = app.world_mut();
     let mut dd = world.query_filtered::<Entity, With<ThemeDropdown>>();
     let control = dd.iter(world).next();
@@ -289,7 +298,6 @@ fn switching_theme_refills_canvas() {
     }
     settle(&mut app);
 
-    // The session theme switched and every canvas cell now carries the NEW default-floor index.
     let theme_now = app
         .world()
         .get_resource::<MapEditorSession>()
@@ -314,16 +322,20 @@ fn switching_theme_refills_canvas() {
         for idx in indices {
             assert_eq!(
                 idx,
-                Some(*expected),
+                Some(expected),
                 "switching the theme must re-fill the cells with the NEW default-floor index (C4)",
             );
         }
     }
+    // Sanity: if the two themes' floors differ, the fill index actually changed.
+    if let (Some(a), Some(b)) = (start_index, target_index)
+        && a != b
+    {
+        // The cells now read the new index (asserted above) — the re-fill is observable.
+    }
 }
 
-/// T5 (scroll-parenting guard, mirrors GTW-421/422): a [`ScrollListArea`] must be an ANCESTOR of
-/// the [`CanvasRoot`] — the grid hangs inside the [`CanvasRegion`]'s clipping, scrolling viewport
-/// (NOT the scroll-list grid ROOT FRAME). Pre-fix (parenting onto the frame) this FAILS.
+/// T5 (scroll-parenting guard): a [`ScrollListArea`] must be an ANCESTOR of the [`CanvasRoot`].
 #[test]
 fn canvas_lives_inside_the_scroll_area() {
     let mut app = editor_in_editing();

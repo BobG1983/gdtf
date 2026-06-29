@@ -1,34 +1,31 @@
-//! Headless integration test for the GTW-422 map-editor left tile palette + bottom-right stat
-//! region.
+//! Headless integration test for the map-editor left tile palette + bottom-right stat region,
+//! swept onto the UUID-keyed terrain/theme model (GTW-495 C1).
 //!
-//! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI harness (the
-//! same harness the GTW-417 `editor_shell` + GTW-421 `right_panel` tests use), so the editor's
-//! actual `Load` pass resolves the shipped theme + catalog registries and its real `Editing`
-//! scene spawns the palette rows, the stat region, and the shared [`MapEditorSession`] — not a
-//! copy.
+//! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI harness, so the
+//! editor's actual `Load` pass resolves the shipped UUID-keyed theme + terrain registries and its
+//! real `Editing` scene spawns the palette rows, the stat region, and the shared
+//! [`MapEditorSession`] — not a copy.
 //!
 //! Asserts the contract end-to-end and pin-discriminatingly:
 //!
-//! - T1 (C1): the palette lists EVERY tile of the active theme — one [`PaletteRow`] per catalog
-//!   tile (count == the theme catalog's tile count), each carrying its [`TileKey`] and an
-//!   [`ImageNode`] sprite + a [`Text`] name child.
-//! - T2 (C2): pressing a row writes that row's [`TileKey`] into
-//!   [`MapEditorSession::selected_tile`] AND highlights the row (its background changes to the
-//!   theme's active color).
-//! - T3 (C3): after a selection, the [`StatText`] node's text shows the selected tile's stats
-//!   (it changes from the no-selection placeholder and names the tile).
-//! - T4 (C4): a [`DropdownSelectionChanged<LevelTheme>`] for a different theme REPOPULATES the
-//!   palette — the old rows are gone and the new theme's tile count is present.
-//! - T5 (scroll-parenting guard, mirrors GTW-421 T4): a [`ScrollListArea`] is an ANCESTOR of a
-//!   palette row (the rows hang in the clipping, scrolling viewport, not the grid root frame).
+//! - T1 (C1): the palette lists every RESOLVABLE terrain of the active theme's palette — one
+//!   [`PaletteRow`] per resolvable terrain (count == the resolvable count from the registries),
+//!   each carrying its [`TerrainUuid`] and a sprite + name child.
+//! - T2 (C1): pressing a row writes that row's [`TerrainUuid`] into
+//!   [`MapEditorSession::selected_tile`] AND highlights the row.
+//! - T3 (C3): after a selection, the [`StatText`] node shows the selected def's stats.
+//! - T4: a [`DropdownSelectionChanged<ThemeUuid>`] for a different theme REPOPULATES the palette.
+//! - T5 (scroll-parenting guard): a [`ScrollListArea`] is an ANCESTOR of a palette row.
 //!
-//! Value-agnostic: it asserts COUNTS / MEMBERSHIP / selection IDENTITY (the selected key
-//! matches the clicked row's key; the stat text NAMES the selected tile), never an authored
-//! magnitude. Panic/expect-free per the workspace lints (the GTW-417 precedent: `assert!` +
-//! `if let Some` guards, never `unwrap`/`expect`/`panic`).
+//! Value-agnostic: it asserts COUNTS / MEMBERSHIP / selection IDENTITY, never an authored
+//! magnitude. Panic/expect-free per the workspace lints.
 
 use bevy::{prelude::*, ui::widget::ImageNode};
-use gdtf_battle_sim::level::{LevelTheme, ThemeCatalogRegistry, TileKey};
+use gdtf_battle_presenter::TileRoles;
+use gdtf_battle_sim::{
+    level::{ThemeUuid, UuidThemeRegistry},
+    terrain::def::{TerrainDefRegistry, TerrainUuid},
+};
 use gdtf_editor::{
     EditorState, LeftPaletteRegion, MapEditorPlugin, MapEditorSession, PaletteRow, StatText,
     ThemeDropdown,
@@ -62,21 +59,28 @@ fn editor_in_editing() -> App {
         "the editor never reached EditorState::Editing — its Load pass did not resolve the \
          theme + registries (a genuine load failure, not a frame-budget shortfall)",
     );
-    // The OnEnter spawn + the Update `sync_palette` build the rows + stat text across a few
-    // frames (deferred re-parent commands); advance so they are present before we query.
+    // The OnEnter spawn + the Update `seed_default_theme` + `sync_palette` build the rows + stat
+    // text across a few frames (deferred re-parent commands); advance so they are present.
     for _ in 0..6 {
         app.update();
     }
     app
 }
 
-/// The number of tiles the active theme's catalog holds — the count the palette must match.
-fn active_theme_tile_count(app: &App) -> Option<usize> {
+/// The number of RESOLVABLE terrain in the active theme's palette — the count the palette must
+/// list (a palette entry whose def is missing, or whose graphic role is out of the `TileRoles`
+/// vocabulary, still spawns a row but only the def-resolvable count is what `sync_palette` lists).
+fn active_theme_resolvable_count(app: &App) -> Option<usize> {
     let session = app.world().get_resource::<MapEditorSession>()?;
-    let registry = app.world().get_resource::<ThemeCatalogRegistry>()?;
-    registry
-        .catalog(session.theme())
-        .map(|catalog| catalog.tiles().count())
+    let themes = app.world().get_resource::<UuidThemeRegistry>()?;
+    let terrain = app.world().get_resource::<TerrainDefRegistry>()?;
+    let palette = themes.terrain(&session.theme())?;
+    Some(
+        palette
+            .iter()
+            .filter(|key| terrain.def(key).is_some())
+            .count(),
+    )
 }
 
 /// Count the entities carrying the marker `M`.
@@ -85,13 +89,7 @@ fn count<M: Component>(app: &mut App) -> usize {
 }
 
 /// Presses an entity (sets [`Interaction::Pressed`]) and runs ONLY the `Update` schedule so the
-/// `Changed<Interaction> == Pressed` driver ([`select_palette_tile`]) fires on the press edge.
-///
-/// Runs `Update` directly rather than `app.update()`: under the `DefaultPlugins` headless
-/// harness the primary window is absent, so `bevy_ui`'s `ui_focus_system` (in `PreUpdate`)
-/// `set_if_neq`s every node's [`Interaction`] back to `None` (no cursor) — a full `app.update()`
-/// would clobber the manual `Pressed` BEFORE the palette driver reads it. The dropdown-widget
-/// test's `press` precedent.
+/// press-edge driver fires.
 fn press(app: &mut App, entity: Entity) {
     if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(entity) {
         *interaction = Interaction::Pressed;
@@ -99,26 +97,33 @@ fn press(app: &mut App, entity: Entity) {
     app.world_mut().run_schedule(Update);
 }
 
-/// T1 (C1): the palette lists EVERY tile of the active theme — one row per catalog tile, each
-/// row carrying its [`TileKey`] and a sprite ([`ImageNode`]) + name ([`Text`]) child.
+/// T1 (C1): the palette lists every resolvable terrain of the active theme — one row per
+/// resolvable terrain, each row carrying its [`TerrainUuid`] and a sprite + name child.
 #[test]
-fn palette_lists_every_active_theme_tile_with_sprite_and_name() {
+fn palette_lists_every_active_theme_terrain_with_sprite_and_name() {
     let mut app = editor_in_editing();
 
-    let expected = active_theme_tile_count(&app);
+    let expected = active_theme_resolvable_count(&app);
     assert!(
         expected.is_some_and(|n| n > 0),
-        "the active theme's catalog must hold at least one tile (a real folder resolve)",
+        "the active theme's palette must hold at least one resolvable terrain (a real resolve)",
     );
 
     let row_count = count::<PaletteRow>(&mut app);
     assert_eq!(
         Some(row_count),
         expected,
-        "the palette must list one row per active-theme catalog tile (C1)",
+        "the palette must list one row per resolvable active-theme terrain (C1)",
     );
 
-    // Each row carries a sprite (ImageNode) child and a name (Text) child — the whole-tile row.
+    // Each row carries a sprite (ImageNode) child and a name (Text) child. The shipped terrain
+    // all use TileRoles-vocabulary graphic roles, so the sprite resolves for each row.
+    let roles_present = app.world().get_resource::<TileRoles>().is_some();
+    assert!(
+        roles_present,
+        "the editor must have resolved a TileRoles table (C1 wiring)"
+    );
+
     let world = app.world_mut();
     let mut rows = world.query_filtered::<&Children, With<PaletteRow>>();
     let rows: Vec<Vec<Entity>> = rows
@@ -145,44 +150,37 @@ fn palette_lists_every_active_theme_tile_with_sprite_and_name() {
     }
 }
 
-/// T2 (C2): pressing a palette row writes that row's [`TileKey`] into the session's
-/// `selected_tile` AND highlights the row — exactly the clicked row carries the
-/// [`ActiveButton`] marker (which `gdtf_ui`'s `paint_active_buttons` paints the theme's active
-/// color — the sanctioned selected-button highlight) AND, after settling, its background IS the
-/// theme's active color. Pin-discriminating: the stored key must EQUAL the clicked row's key,
-/// only the clicked row is `ActiveButton`, and its painted color is the active fill.
+/// T2 (C1): pressing a palette row writes that row's [`TerrainUuid`] into the session's
+/// `selected_tile` AND highlights the row.
 #[test]
 fn clicking_a_row_sets_selected_tile_and_highlights_it() {
     let mut app = editor_in_editing();
 
-    // Pick a row, remember its TileKey.
     let world = app.world_mut();
     let mut row_q = world.query::<(Entity, &PaletteRow)>();
-    let chosen: Option<(Entity, TileKey)> = row_q
+    let chosen: Option<(Entity, TerrainUuid)> = row_q
         .iter(world)
         .next()
-        .map(|(entity, row)| (entity, row.tile().clone()));
+        .map(|(entity, row)| (entity, row.tile()));
     assert!(chosen.is_some(), "there must be a palette row to click");
     let Some((row_entity, expected_key)) = chosen else {
         return;
     };
 
-    // Drive the click: set Interaction::Pressed + run Update directly (the headless harness has
-    // no real mouse, and a full app.update() would clobber the press in PreUpdate).
     press(&mut app, row_entity);
 
-    // C2a: the session's selected_tile is the clicked row's key.
+    // C1a: the session's selected_tile is the clicked row's key.
     let selected = app
         .world()
         .get_resource::<MapEditorSession>()
-        .and_then(|s| s.selected_tile().cloned());
+        .and_then(MapEditorSession::selected_tile);
     assert_eq!(
         selected,
         Some(expected_key),
-        "clicking a row must write that row's TileKey into the session (C2)",
+        "clicking a row must write that row's TerrainUuid into the session (C1)",
     );
 
-    // C2b: exactly the clicked row carries the ActiveButton highlight marker.
+    // C1b: exactly the clicked row carries the ActiveButton highlight marker.
     let active_rows: Vec<Entity> = {
         let world = app.world_mut();
         let mut q = world.query_filtered::<Entity, (With<PaletteRow>, With<ActiveButton>)>();
@@ -191,12 +189,10 @@ fn clicking_a_row_sets_selected_tile_and_highlights_it() {
     assert_eq!(
         active_rows,
         vec![row_entity],
-        "exactly the clicked row must carry the ActiveButton selected-highlight marker (C2)",
+        "exactly the clicked row must carry the ActiveButton selected-highlight marker (C1)",
     );
 
-    // C2c: after settling, gdtf_ui's paint_active_buttons paints the selected row the theme's
-    // active color (the visible highlight). Settle so the deferred ActiveButton insert + the
-    // paint system have run.
+    // C1c: after settling, paint_active_buttons paints the selected row the theme's active color.
     for _ in 0..3 {
         app.update();
     }
@@ -210,46 +206,39 @@ fn clicking_a_row_sets_selected_tile_and_highlights_it() {
         .map(|bg| bg.0);
     assert_eq!(
         post_bg, active,
-        "the selected row must be painted the theme's active color by paint_active_buttons (C2)",
+        "the selected row must be painted the theme's active color by paint_active_buttons (C1)",
     );
 }
 
 /// T3 (C3): after a selection, the bottom-right stat region's [`StatText`] shows the selected
-/// tile's stats — it changes from the no-selection placeholder AND names the selected tile.
+/// def's stats — it changes from the no-selection placeholder AND names the selected terrain.
 #[test]
 fn stat_region_shows_selected_tile_stats() {
     let mut app = editor_in_editing();
 
-    // The placeholder text before any selection.
     let placeholder = stat_text(&mut app);
     assert!(
         placeholder.is_some(),
         "the stat region must hold a StatText node (C3)",
     );
 
-    // Select the first row, remember its display name so we can assert the stats name it.
     let world = app.world_mut();
     let mut row_q = world.query::<(Entity, &PaletteRow)>();
     let chosen = row_q
         .iter(world)
         .next()
-        .map(|(entity, row)| (entity, row.tile().clone()));
+        .map(|(entity, row)| (entity, row.tile()));
     assert!(chosen.is_some(), "there must be a palette row to select");
     let Some((row_entity, key)) = chosen else {
         return;
     };
     let display_name = app
         .world()
-        .get_resource::<ThemeCatalogRegistry>()
-        .and_then(|reg| {
-            app.world()
-                .get_resource::<MapEditorSession>()
-                .and_then(|s| reg.catalog(s.theme()))
-        })
-        .and_then(|cat| cat.tile(&key).map(|tile| (*tile.display_name).clone()));
+        .get_resource::<TerrainDefRegistry>()
+        .and_then(|reg| reg.def(&key).map(|def| (*def.display_name).clone()));
     assert!(
         display_name.is_some(),
-        "the selected tile must resolve in the active catalog",
+        "the selected terrain must resolve in the registry",
     );
 
     press(&mut app, row_entity);
@@ -262,7 +251,7 @@ fn stat_region_shows_selected_tile_stats() {
     if let (Some(after), Some(name)) = (after, display_name) {
         assert!(
             after.contains(&name),
-            "the stat region must name the selected tile ({name:?}); got {after:?} (C3)",
+            "the stat region must name the selected terrain ({name:?}); got {after:?} (C3)",
         );
     }
 }
@@ -274,10 +263,8 @@ fn stat_text(app: &mut App) -> Option<String> {
     q.iter(world).next().map(|text| text.0.clone())
 }
 
-/// T4 (C4): switching the theme (a [`DropdownSelectionChanged<LevelTheme>`] from the theme
-/// dropdown) REPOPULATES the palette — the old theme's rows are gone and the new theme's tile
-/// count is present. Pin-discriminating: it picks a theme whose catalog tile count is known and
-/// asserts the row count tracks it after the switch.
+/// T4 (C1): switching the theme (a [`DropdownSelectionChanged<ThemeUuid>`]) REPOPULATES the
+/// palette — the new theme's resolvable-terrain count is present.
 #[test]
 fn switching_theme_repopulates_palette() {
     let mut app = editor_in_editing();
@@ -285,21 +272,45 @@ fn switching_theme_repopulates_palette() {
     let start_count = count::<PaletteRow>(&mut app);
     assert!(start_count > 0, "the palette must start populated");
 
-    // Pick a NON-default theme that has a shipped catalog.
-    let target = LevelTheme::Underhive;
-    assert_ne!(target, LevelTheme::default());
+    // Pick a theme DIFFERENT from the session's currently-seeded one.
+    let start_theme = app
+        .world()
+        .get_resource::<MapEditorSession>()
+        .map(MapEditorSession::theme);
+    let target: Option<ThemeUuid> = app
+        .world()
+        .get_resource::<UuidThemeRegistry>()
+        .and_then(|r| {
+            r.defs()
+                .map(|(key, _)| *key)
+                .find(|key| Some(*key) != start_theme)
+        });
+    assert!(
+        target.is_some(),
+        "the registry must hold a second theme to switch to"
+    );
+    let Some(target) = target else {
+        return;
+    };
+
+    // The target theme's resolvable-terrain count.
     let target_count = app
         .world()
-        .get_resource::<ThemeCatalogRegistry>()
-        .and_then(|reg| reg.catalog(target))
-        .map(|cat| cat.tiles().count());
+        .get_resource::<UuidThemeRegistry>()
+        .and_then(|themes| {
+            app.world()
+                .get_resource::<TerrainDefRegistry>()
+                .and_then(|terrain| {
+                    themes
+                        .terrain(&target)
+                        .map(|palette| palette.iter().filter(|k| terrain.def(k).is_some()).count())
+                })
+        });
     assert!(
         target_count.is_some_and(|n| n > 0),
-        "the shipped Underhive catalog must hold tiles (the C4 switch target)",
+        "the target theme's palette must hold resolvable terrain (the C1 switch target)",
     );
 
-    // Find the theme dropdown control + synthesize the real selection message it would emit;
-    // the registered apply_theme_selection writes the session theme, sync_palette rebuilds.
     let world = app.world_mut();
     let mut dd = world.query_filtered::<Entity, With<ThemeDropdown>>();
     let control = dd.iter(world).next();
@@ -308,13 +319,10 @@ fn switching_theme_repopulates_palette() {
         app.world_mut()
             .write_message(DropdownSelectionChanged::new(control, target));
     }
-    // A couple of frames: apply_theme_selection (session theme), then sync_palette (rebuild),
-    // then the deferred re-parent of the new rows.
     for _ in 0..4 {
         app.update();
     }
 
-    // The session theme switched, and the palette now lists the NEW theme's tiles.
     let theme_now = app
         .world()
         .get_resource::<MapEditorSession>()
@@ -322,25 +330,21 @@ fn switching_theme_repopulates_palette() {
     assert_eq!(
         theme_now,
         Some(target),
-        "the theme switch must update the session theme",
+        "the theme switch must update the session theme (C1)",
     );
     let new_count = count::<PaletteRow>(&mut app);
     assert_eq!(
         Some(new_count),
         target_count,
-        "switching the theme must repopulate the palette with the NEW theme's tiles (C4)",
+        "switching the theme must repopulate the palette with the NEW theme's terrain (C1)",
     );
 }
 
-/// T5 (scroll-parenting guard, mirrors GTW-421 T4): a [`ScrollListArea`] must be an ANCESTOR of
-/// a palette row — the rows hang inside the [`LeftPaletteRegion`]'s clipping, scrolling viewport
-/// (NOT the scroll-list grid ROOT FRAME the marker rides). Pre-fix (parenting onto the frame)
-/// this FAILS: no `ScrollListArea` ancestor. Discriminates the GTW-421 bottom-cramp bug.
+/// T5 (scroll-parenting guard): a [`ScrollListArea`] must be an ANCESTOR of a palette row.
 #[test]
 fn palette_rows_live_inside_the_scroll_area_not_the_grid_frame() {
     let mut app = editor_in_editing();
 
-    // The region exists (sanity) and at least one row.
     assert_eq!(
         count::<LeftPaletteRegion>(&mut app),
         1,
@@ -354,7 +358,6 @@ fn palette_rows_live_inside_the_scroll_area_not_the_grid_frame() {
         return;
     };
 
-    // Walk up the ChildOf chain; a ScrollListArea must be an ancestor.
     let world = app.world_mut();
     let mut areas = world.query_filtered::<Entity, With<ScrollListArea>>();
     let area_set: Vec<Entity> = areas.iter(world).collect();
