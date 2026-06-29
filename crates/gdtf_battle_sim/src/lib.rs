@@ -418,6 +418,11 @@ pub use terrain::{
         BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed,
         HeightBand, band_for,
     },
+    def,
+    def::{
+        TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
+        TerrainTag, TerrainUuid,
+    },
     entity,
     entity::{TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
     floor,

@@ -2,7 +2,7 @@
 //! key, the [`ArmorType`] wheel node, and the [`ArmorPiece`] that bundles them.
 
 use bevy::prelude::{Component, Deref, DerefMut};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// The minimum damage a landing hit deals through this armor — "a vest still
 /// bruises" (`weapons-and-armor.md` §"Armor stats": `floor`).
@@ -39,7 +39,13 @@ impl ArmorFloor {
 /// `Default` (`ArmorProtection(0)`) is a **spawn-seed sentinel only** — seeded by
 /// the `bsn!` spawn path before the authored value overwrites it (GTW-322). NOT a
 /// valid authored armor stat.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+/// `Serialize` is added (GTW-484) so the unified terrain-definition model
+/// ([`TerrainDef`](crate::terrain::def::TerrainDef)) can round-trip the reused
+/// armor-protection stat (terrain reuses the ganger armor model); it serialises as a
+/// bare integer via `#[serde(transparent)]`.
+#[derive(
+    Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default,
+)]
 #[serde(transparent)]
 pub struct ArmorProtection(i32);
 
@@ -92,7 +98,13 @@ impl ArmorIntegrity {
 /// `Default` (`ArmorHardness(0)`) is a **spawn-seed sentinel only** — seeded by
 /// the `bsn!` spawn path before the authored value overwrites it (GTW-322). NOT a
 /// valid authored armor stat.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+/// `Serialize` is added (GTW-484) so the unified terrain-definition model
+/// ([`TerrainDef`](crate::terrain::def::TerrainDef)) can round-trip the reused
+/// armor-hardness stat (terrain reuses the ganger armor model); it serialises as a
+/// bare integer via `#[serde(transparent)]`.
+#[derive(
+    Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default,
+)]
 #[serde(transparent)]
 pub struct ArmorHardness(i32);
 

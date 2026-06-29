@@ -60,8 +60,11 @@ impl TerrainName {
 ///
 /// A presentation-hook newtype over [`String`] (no-bare-types rule 1: a domain key
 /// string is wrapped). Private inner + derived [`Deref`];
-/// `#[serde(transparent)]` parses a bare RON string.
-#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+/// `#[serde(transparent)]` round-trips a bare RON string. `Serialize` is added
+/// (GTW-484) so the unified terrain-definition model
+/// ([`TerrainPresenterKind`](crate::terrain::def::TerrainPresenterKind)) can reuse
+/// this graphic key and round-trip it through serde.
+#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct TerrainGraphicKey(String);
 
@@ -86,8 +89,11 @@ impl TerrainGraphicKey {
 /// steps on the cell (stubbed — no audio system yet; see GTW-XXX: footfall audio).
 ///
 /// A presentation-hook newtype over [`String`] (no-bare-types rule 1). Private
-/// inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON string.
-#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+/// inner + derived [`Deref`]; `#[serde(transparent)]` round-trips a bare RON string.
+/// `Serialize` is added (GTW-484) so the unified terrain-definition model
+/// ([`TerrainPresenterKind`](crate::terrain::def::TerrainPresenterKind)) can reuse
+/// this slab footfall key and round-trip it through serde.
+#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct FootfallSound(String);
 

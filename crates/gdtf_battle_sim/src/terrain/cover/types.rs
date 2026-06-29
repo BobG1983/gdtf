@@ -4,7 +4,7 @@
 //! (no-bare-types).
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -26,7 +26,11 @@ use crate::{
 /// A derived `Component` impl generates no doc-requiring pub item under the workspace
 /// `missing_docs` deny (the `ArmorProtection` / `ArmorHardness` precedent, which
 /// already derive `Component` + `Deref` + `Deserialize` under the same lints cleanly).
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Serialize` is added (GTW-484) so the unified terrain-definition model
+/// ([`TerrainDef`](crate::terrain::def::TerrainDef)) can round-trip the reused
+/// cover-HP stat through serde without inventing a parallel newtype; it serialises
+/// as a bare integer via `#[serde(transparent)]`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct CoverHp(u32);
 
@@ -60,7 +64,10 @@ impl CoverHp {
 /// component (the band is immutable at spawn; re-classification from `CombatTuning`
 /// edges happens inside [`CoverLedger::deplete_cover`](crate::cover::CoverLedger::deplete_cover)
 /// on hits, not on the entity).
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Serialize` is added (GTW-484) so the unified terrain-definition model
+/// ([`TerrainDef`](crate::terrain::def::TerrainDef)) can round-trip the reused
+/// clearance band through serde; it serialises as its named variant (`Low`/`Mid`/`High`).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum HeightBand {
     /// The lowest clearance band — a round clears it by flying MID or HIGH.
     Low,

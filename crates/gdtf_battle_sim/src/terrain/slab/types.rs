@@ -3,7 +3,7 @@
 //! Every field is a named newtype (no-bare-types), mirroring the GTW-364 cover types.
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::armor::{ArmorHardness, ArmorProtection};
 
@@ -23,7 +23,11 @@ use crate::armor::{ArmorHardness, ArmorProtection};
 /// `max_hp` component (the mutable live pool stays in the [`SlabLedger`](crate::slab::SlabLedger)).
 /// A derived `Component` impl generates no doc-requiring pub item under the workspace
 /// `missing_docs` deny (the `ArmorProtection` / `ArmorHardness` precedent).
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Serialize` is added (GTW-484) so the unified terrain-definition model
+/// ([`TerrainDef`](crate::terrain::def::TerrainDef)) can round-trip the reused
+/// slab-HP stat through serde without a parallel newtype; it serialises as a bare
+/// integer via `#[serde(transparent)]`.
+#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct SlabHp(u32);
 
