@@ -143,7 +143,7 @@ pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
 ///
 /// Any [`SaveThemeError`] from validation, serialization, or the file write.
 #[cfg(debug_assertions)]
-pub(crate) fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveThemeError> {
+pub fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveThemeError> {
     validate_for_save(draft)?;
     let slug = slugify(draft.display_name());
     if slug.is_empty() {

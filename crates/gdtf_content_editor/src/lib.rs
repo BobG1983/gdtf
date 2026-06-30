@@ -1,78 +1,74 @@
 //! The GDTF **map editor** — a SEPARATE windowed binary from the game (GTW-417).
 //!
-//! This crate is the FOUNDATION of the GTW-404 map-editor track: an app shell that
-//! launches a windowed editor with the theme + content registries loaded, and renders the
-//! four empty themed layout regions later children populate (GTW-421 right panel, GTW-422
-//! left palette, GTW-423 canvas). It mirrors `gdtf_app`'s shape — a [`MapEditorApp`]
-//! wrapper over a Bevy `App` — but runs its OWN minimal [`EditorState`] machine and shares
-//! NONE of the game's scene graph or battle sim (the housing constraint: the procgen
-//! assembly + debug visualizer live in the main game, not the editor).
+//! This crate is the FOUNDATION of the GTW-404 map-editor track: an app shell that launches a
+//! windowed editor with the theme + content registries loaded. It mirrors `gdtf_app`'s shape — a
+//! [`MapEditorApp`] wrapper over a Bevy `App` — but runs its OWN minimal [`EditorState`] machine and
+//! shares NONE of the game's scene graph or battle sim (the housing constraint: the procgen assembly
+//! + debug visualizer live in the main game, not the editor).
 //!
-//! - [`MapEditorApp`] composes `DefaultPlugins` + `gdtf_ui::UiPlugin` + [`MapEditorPlugin`]
-//!   + the env-gated QA capture affordance.
-//! - [`MapEditorPlugin`] wires the [`EditorState`] machine, the slim `Load` asset pass, and
-//!   the [`Editing`](EditorState::Editing) scene that spawns the four regions.
-//! - The four region markers — [`RightPanelRegion`], [`LeftPaletteRegion`],
-//!   [`CanvasRegion`], [`StatRegion`] — let later children and the GTW-417 test find each
-//!   empty container.
-//! - [`EditorCapturePlugin`] is the OFF-by-default QA hook for the AC4 screenshot.
-//! - [`MapEditorSession`] is the shared theme/default-floor/grid-size/selected-tile selection
-//!   state the GTW-421 right-panel controls + the GTW-422 left palette write and later canvas
-//!   children read. Swept onto the UUID model (GTW-495): the theme is a `ThemeUuid` and the
-//!   default-floor / paint tile are `TerrainUuid`s. The `right_panel` module spawns the theme
-//!   dropdown (over `UuidThemeRegistry` display names) + size selector and the `palette` module
-//!   spawns the left tile palette + the bottom-right stat region.
-//! - The GTW-422 `palette` module lists every terrain of the active theme's palette (sprite +
-//!   name, resolved from `UuidThemeRegistry` + `TerrainDefRegistry`) in the [`LeftPaletteRegion`],
-//!   writes the clicked `TerrainUuid` into the session, and shows its `TerrainDef` stats in the
-//!   [`StatRegion`]; [`PaletteRow`] / [`StatText`] are its markers.
-//! - The GTW-423 `canvas` module fills the [`CanvasRegion`] with the drawable cell grid — a
-//!   dashed boundary + per-cell dimmed dashes around `width × height` cells each pre-filled with
-//!   the theme's default-floor sprite, live-rebuilt on a theme / size change. [`CanvasRoot`] /
-//!   [`CanvasCell`] / [`CanvasScroll`] / [`CanvasExtent`] are its markers. GTW-426 makes the canvas
-//!   INTERACTIVE: a translucent [`CanvasGhost`] preview of the selected tile snaps to the hovered
-//!   cell, and clicking a cell PAINTS it — writing the [`EditorMap`] model and redrawing the cell's
-//!   sprite. GTW-500 adds the canvas UX: a [`CurrentEditLevel`] storey SELECTOR (keyboard + chrome
-//!   up/down buttons + a level readout) so the canvas navigates up/down storeys (the render / paint
-//!   / ghost all read it); centring of the grid in the edit viewport when it fits; and
-//!   mouse-wheel ZOOM ([`CanvasZoom`], cursor-anchored, cell-size re-layout).
-//! - The GTW-426 `editor_map` module owns [`EditorMap`] — the in-memory, state-scoped paintable
-//!   map model (a sparse `CellLevel → TerrainUuid` store of painted cells, level-aware since
-//!   GTW-430, UUID-keyed since GTW-495). It is the authoritative record the click-to-paint flow
-//!   writes and the FOUNDATION the save path (GTW-432) reads.
+//! ## GTW-512: the egui Workbench shell (C1 of the GTW-511 migration)
+//!
+//! The editor's UI is `bevy_egui` (GTW-512) — a CLEAN SWAP off the hand-rolled `gdtf_ui` shell (the
+//! four `bevy_ui` regions + the segmented-control mode tabs + the dropdown/numeric-field widgets +
+//! the palette / canvas / right-panel drive systems are GONE). The egui shell draws the WHOLE
+//! editor in ONE system in the [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule
+//! (mode tabs + global theme `ComboBox`, a status line, a palette/stats placeholder, the active mode's
+//! form, and a viewport placeholder), reading the kept MODEL resources. C1 is the SHELL + the capture
+//! re-point; the three per-mode FORMS are stubbed minimally (the full TERRAIN / THEME / PREFAB forms +
+//! the texture viewport are the later children C2 / C3 / C4).
+//!
+//! - [`MapEditorApp`] composes `DefaultPlugins` + [`EguiPlugin`](bevy_egui::EguiPlugin) +
+//!   [`MapEditorPlugin`] + the env-gated QA capture affordance.
+//! - [`MapEditorPlugin`] wires the [`EditorState`] machine, the slim `Load` asset pass, the
+//!   [`Editing`](EditorState::Editing) scene's state-scoped model lifecycle + the standalone camera,
+//!   and the egui shell UI system.
+//! - [`EditorCapturePlugin`] is the OFF-by-default QA hook for the screenshot (re-pointed in GTW-512
+//!   to drive the MODEL resources directly + the new [`HoveredCell`], so it stays QA-able under egui).
+//! - [`MapEditorSession`] is the shared theme/default-floor/grid-size/selected-tile selection state
+//!   the egui shell writes and the (kept) model reads. Swept onto the UUID model (GTW-495): the theme
+//!   is a `ThemeUuid` and the default-floor / paint tile are `TerrainUuid`s.
+//! - [`EditorMode`] is the state-scoped active-mode resource the egui mode tabs + the `1`/`2`/`3`
+//!   hotkeys ([`mode`]) drive; the egui shell branches its right panel on it.
+//! - [`HoveredCell`] is the hovered-cell MODEL the live egui hover (C4) + the QA capture both write,
+//!   so the preview ghost is QA-able headlessly (GTW-512 C1.5).
+//! - The `canvas` module keeps the two MODEL resources the editor's lifecycle inserts —
+//!   [`CurrentEditLevel`] (the storey selector — GTW-500 C1) + [`CanvasZoom`] (the viewport zoom —
+//!   GTW-500 C3); the egui viewport (C4) reads them. The `bevy_ui` cell-grid render is gone.
+//! - The GTW-426 `editor_map` module owns [`EditorMap`] — the in-memory, state-scoped paintable map
+//!   model (a sparse `CellLevel → TerrainUuid` store of painted cells, level-aware since GTW-430,
+//!   UUID-keyed since GTW-495). The authoritative record the paint flow writes + the save path reads.
 //! - The GTW-430 `placement` module owns the SINGLE SHARED placement-legality predicate
-//!   ([`evaluate_placement`]) both the hover-ghost preview and the click-commit run, plus the
-//!   vertical auto-handling for multi-level tiles: placing a ladder auto-clears a slab directly
-//!   above it (C1), and a slab over an existing ladder is rejected (C2). An illegal placement
-//!   tints the target cell partial-transparent RED in the ghost preview and is rejected by the
-//!   commit ([`PlacementVerdict`] / [`ProposedPlacement`]).
-//! - The GTW-432 `save` module (debug-only) projects the [`EditorMap`] into the v2
-//!   `PrefabSpecV2` schema and WRITES it to `assets/maps/<theme>/<size>/<name>.prefab_v2.ron`, so
-//!   a saved prefab round-trips through the GTW-489 v2 folder loader (swept onto the v2 schema in
-//!   GTW-495 — one `placements` list of `TerrainUuid` references, no per-prefab boundary
-//!   openings). A prefab-name
-//!   text field + a "Save prefab" button under the right panel are the live trigger; the save
-//!   re-checks every painted cell through [`evaluate_placement`] so a saved prefab never contains
-//!   an illegal cell.
+//!   ([`evaluate_placement`]) the preview + the commit run, plus the multi-level auto-handling
+//!   ([`PlacementVerdict`] / [`ProposedPlacement`]).
+//! - The GTW-432 `save` module (debug-only) keeps the pure PROJECTION of the [`EditorMap`] into the
+//!   v2 `PrefabSpecV2` schema + the RON serialize + the path resolution (the egui save controls + the
+//!   fs-write press are deferred to the C4 child); the projection re-checks every painted cell through
+//!   [`evaluate_placement`] so a saved prefab never contains an illegal cell.
+//! - The `right_panel` module keeps the size-selector / theme-dropdown model TYPES
+//!   ([`GridSpanInput`] / [`SizeFieldAxis`] / [`ThemeDropdown`]) + [`seed_default_theme`](right_panel)
+//!   for the children to rebuild the controls in egui.
 //! - The GTW-495 `terrain_graphics` module resolves a `TerrainDef`'s `presenter_kind.graphic_name`
-//!   to a terrain atlas index THE WAY THE PRESENTER DOES (through the presenter's `TileRoles`
-//!   table), so the palette / canvas sprites match the battlescape's.
+//!   to a terrain atlas index THE WAY THE PRESENTER DOES (through the presenter's `TileRoles` table).
 
 mod app;
+// GTW-512 C1.2: the editor's standalone 2D camera (the `bevy_ui` shell used to spawn it).
+mod camera;
 mod canvas;
 mod capture;
+// GTW-512 C1: the egui Workbench shell — the CLEAN SWAP off the hand-rolled `bevy_ui` shell.
 mod editor_map;
 mod editor_resources;
+mod egui_shell;
+// GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture both write.
+mod hovered_cell;
 mod load;
-// GTW-474: the Workbench mode machine (the EditorMode resource + the top-bar tabs + the
-// per-mode content-subtree toggle) and the status-bar refresh.
+// GTW-474: the Workbench mode machine (the EditorMode resource) — GTW-512 trimmed it to the enum +
+// the `1`/`2`/`3` hotkeys (the egui shell draws the tabs + branches the right panel in-UI).
 mod mode;
-mod mode_host;
-mod mode_status;
-mod palette;
 mod placement;
 mod plugin;
-mod regions;
+// GTW-421 size-selector / theme-dropdown model TYPES + the `seed_default_theme` drive, kept across
+// the egui swap (GTW-512); the `bevy_ui` spawn + the gdtf_ui-widget commit drives were dropped.
 mod right_panel;
 // The GTW-432 save-prefab path is debug-only (the GTW-429 gang-save precedent): the whole module
 // — the EditorMap → PrefabSpecV2 projection, the RON serialize, the fs-write, and the press trigger
@@ -94,34 +90,39 @@ mod terrain_graphics;
 mod tile_atlas;
 
 pub use app::MapEditorApp;
-pub use canvas::{
-    CanvasCell, CanvasExtent, CanvasGhost, CanvasRoot, CanvasScroll, CanvasZoom, CurrentEditLevel,
-    LevelNavButton, LevelReadout, ZoomReadout,
-};
+// GTW-512: the `bevy_ui` canvas render markers are GONE (the egui viewport is C4); only the two
+// model resources the editor's lifecycle inserts survive (the egui viewport reads them in C4).
+pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};
 pub use capture::EditorCapturePlugin;
 pub use editor_map::EditorMap;
-pub use mode::{
-    EditorMode, EditorModeTabs, PrefabModeContent, TerrainModeContent, ThemeModeContent,
-};
-pub use palette::{PaletteRow, StatText};
+pub use hovered_cell::HoveredCell;
+// GTW-512: only the `EditorMode` enum survives the egui swap (the `bevy_ui` tab / content markers
+// are gone — the egui shell draws the tabs + branches the right panel in-UI).
+pub use mode::EditorMode;
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
     evaluate_placement, names_a_ladder,
 };
 pub use plugin::MapEditorPlugin;
-pub use regions::{
-    CanvasRegion, EditorShellRoot, EditorStatusBar, EditorTopBar, LeftPaletteRegion,
-    RightPanelRegion, StatRegion, StatusText,
-};
 pub use right_panel::{GridSpanInput, SizeFieldAxis, ThemeDropdown};
+// GTW-512: the save PROJECTION surface (debug-only, the v2 save path) — kept for the C4 save-control
+// re-point + the in-crate save tests. The `bevy_ui` save controls themselves are the C4 child.
+#[cfg(debug_assertions)]
+pub use save::{
+    SavePrefabError, editor_map_to_prefab, prefab_save_path, sanitize_name, serialize_prefab,
+};
 pub use session::MapEditorSession;
 pub use state::EditorState;
+// The debug-only TERRAIN / THEME fs-write surface — kept for the C2 / C3 egui save-press re-point.
+#[cfg(debug_assertions)]
+pub use terrain_form::write_terrain;
 pub use terrain_form::{
-    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainFootfallPicker,
-    TerrainGraphicChoice, TerrainKindChoice, TerrainKindTabs, draft_to_terrain_def,
-    serialize_terrain_def,
+    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainGraphicChoice,
+    TerrainKindChoice, draft_to_terrain_def, serialize_terrain_def,
 };
+#[cfg(debug_assertions)]
+pub use theme_form::write_theme;
 pub use theme_form::{
-    SaveThemeError, ThemeDefaultFloorPicker, ThemeDraft, ThemeResolvedStatsText, ThemeTerrainRow,
-    draft_to_theme_def, serialize_theme_def, validate_for_save,
+    SaveThemeError, ThemeDraft, draft_to_theme_def, floor_candidates, resolved_stats,
+    serialize_theme_def, validate_for_save,
 };

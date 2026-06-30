@@ -1,48 +1,46 @@
-//! The TERRAIN authoring mode of the Workbench editor (GTW-474) — author a terrain definition
-//! (`*.terrain_def.ron`) in-editor on the UUID model.
+//! The TERRAIN authoring mode of the Workbench editor (GTW-474) — the MODEL + SAVE for authoring a
+//! terrain definition (`*.terrain_def.ron`) on the UUID model.
 //!
 //! The form captures the full [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef) shape:
 //! `display_name` + `sim_kind` (Wall / Cover / Slab ONLY) + the per-kind sim stats
 //! (`CoverHp` / `SlabHp` / `ArmorProtection` / `ArmorHardness` / `HeightBand`) +
-//! `presenter_kind.graphic_name` (a per-`TileRoles`-role picker, NOT a raw atlas index) +
-//! `footfall` (offered ONLY when the kind is Slab — C2 gate) + the multi-select `tags`
-//! (`Openable` / `BlocksVision` / `BlocksPathfinding` / `Indestructible`). The UUID is
-//! editor-generated
-//! on the first save (shown read-only).
+//! `presenter_kind.graphic_name` + `footfall` (Slab only) + the multi-select `tags`. The UUID is
+//! editor-generated on the first save.
 //!
 //! SAVE projects the in-progress [`TerrainDraft`](types::TerrainDraft) into a real `TerrainDef`,
 //! serializes it to RON, and writes it to `assets/terrain/<theme>/<name>.terrain_def.ron` so the
 //! GTW-487 terrain loader resolves it into the
 //! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) (hot-reload).
 //!
-//! ## Module layout
+//! ## GTW-512: the egui swap — MODEL kept, the `bevy_ui` form deferred to C2
 //!
-//! | Submodule    | Concern |
-//! |--------------|---------|
-//! | [`types`]    | The [`TerrainDraft`](types::TerrainDraft), the kind / graphic / footfall pick enums, the field markers, the numeric-input newtypes, and [`SaveTerrainError`](types::SaveTerrainError) |
-//! | [`spawn`]    | `OnEnter(Editing)` layout: the form's widgets into the three regions' TERRAIN containers |
-//! | [`systems`]  | The `Update` drive systems: commit capture, the kind reflow + footfall gate, the live RON preview, and the save press |
-//! | [`save`]     | The pure projection + serialization + the debug-only fs write |
-//! | [`tests`]    | In-crate tests (the C2 footfall gate + the C3 round-trip) |
+//! The egui migration (GTW-512 C1) keeps the MODEL + SAVE (the [`types`] draft / pick enums /
+//! markers / input newtypes + [`save`]'s pure projection + serialization + the debug-only fs write)
+//! — the contract every later child builds on — and DROPS the `bevy_ui` form: the GTW-474 `spawn`
+//! layout + the `systems` commit / reflow / RON-preview drive systems are GONE from the module tree.
+//! The TERRAIN egui form (the full re-point of the drive systems onto egui widgets) is the C2 child
+//! (GTW-513); the right [`SidePanel`](bevy_egui::egui::SidePanel) shows a stub until then.
+//!
+//! ## Module layout (post-egui-swap)
+//!
+//! | Submodule | Concern |
+//! |-----------|---------|
+//! | [`types`] | The [`TerrainDraft`](types::TerrainDraft), the kind / graphic / footfall pick enums, the field markers, the numeric-input newtypes, and [`SaveTerrainError`](types::SaveTerrainError) |
+//! | [`save`]  | The pure projection + serialization + the debug-only fs write |
+//! | [`tests`] | In-crate tests (the C2 footfall gate + the C3 round-trip) |
 
 mod save;
-mod spawn;
-mod systems;
 mod types;
 
 #[cfg(test)]
 mod tests;
 
-pub use save::{draft_to_terrain_def, serialize_terrain_def};
-pub(crate) use spawn::spawn_terrain_form;
+// The debug-only fs write (projects + serializes + writes the `.terrain_def.ron`) — kept for the C2
+// child's egui save-press re-point (GTW-512). Re-exporting it keeps its path helpers reachable.
 #[cfg(debug_assertions)]
-pub(crate) use systems::save_terrain_on_press;
-pub(crate) use systems::{
-    apply_terrain_band, apply_terrain_footfall, apply_terrain_kind, commit_terrain_armor,
-    commit_terrain_hp, commit_terrain_name, gate_footfall_field, reflow_band_field,
-    refresh_ron_preview, select_terrain_graphic, toggle_terrain_tag,
-};
+pub use save::write_terrain;
+pub use save::{draft_to_terrain_def, serialize_terrain_def};
 pub use types::{
-    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainFootfallPicker,
-    TerrainGraphicChoice, TerrainKindChoice, TerrainKindTabs,
+    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainGraphicChoice,
+    TerrainKindChoice,
 };

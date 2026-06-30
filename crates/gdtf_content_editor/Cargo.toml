@@ -5,8 +5,16 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
-# The hand-rolled UI layer (UiPlugin, GdtfTheme, spawn_panel, spawn_scroll_list).
-# The editor's four region panels are themed gdtf_ui widgets.
+# GTW-512 (C1 of the GTW-511 egui migration): the editor's UI is now bevy_egui (an immediate-mode
+# egui layer wired into Bevy), a CLEAN SWAP off the hand-rolled gdtf_ui shell. bevy_egui 0.41
+# bundles + re-exports egui 0.35 and depends on bevy ^0.19. Its UI systems run in the
+# `EguiPrimaryContextPass` schedule (NOT `Update`) — a `Update` system calling `ctx_mut()` fights
+# the begin/end-pass plumbing.
+bevy_egui = "0.41"
+# The hand-rolled UI layer — RETAINED ONLY for `GdtfTheme` (the data-driven, hot-reloadable theme
+# colors the editor's own Load pass resolves; the egui shell reads them for its panel/text colors).
+# The egui swap (GTW-512) DROPPED the gdtf_ui `UiPlugin` + every `spawn_panel` / `spawn_scroll_list`
+# / dropdown / numeric-field widget the old bevy_ui shell drove.
 gdtf_ui = { path = "../gdtf_ui" }
 # The generic loose-file RON asset loader (RonAsset<T> + init_ron_asset). The editor's
 # slim Load pass registers + loads the theme spec, the theme-tile catalogs, and the

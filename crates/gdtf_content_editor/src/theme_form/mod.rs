@@ -1,52 +1,47 @@
-//! The THEME authoring mode of the Workbench editor (GTW-475) — author a
-//! [`UuidThemeDef`](gdtf_battle_sim::level::UuidThemeDef) in-editor on the UUID model.
+//! The THEME authoring mode of the Workbench editor (GTW-475) — the MODEL + SAVE for authoring a
+//! [`UuidThemeDef`](gdtf_battle_sim::level::UuidThemeDef) on the UUID model.
 //!
 //! The form captures the full theme shape BY REFERENCE: a `display_name`, a multi-selected
 //! `terrain: Vec<TerrainUuid>` chosen from the loaded
-//! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) library (C2), and one
-//! of those terrain as the `default_floor` (Slab-kind preferred — C6). The theme stores
-//! references ONLY — never inlined stats (C3); a read-only RESOLVED-STATS readout proves it by
-//! resolving the selected default-floor UUID against the registry. The [`ThemeUuid`] is
-//! editor-minted (a fresh one for a New theme, or loaded from the
-//! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) when editing — C4) and shown
-//! read-only.
+//! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) library, and one of
+//! those terrain as the `default_floor`. The theme stores references ONLY — never inlined stats.
 //!
 //! SAVE projects the in-progress [`ThemeDraft`](types::ThemeDraft) into a real `UuidThemeDef`,
 //! serializes it to RON, and writes it to `assets/terrain/<slug>/<slug>.terrain_theme.ron` so the
-//! GTW-487 theme loader (`resolve_theme_defs`) resolves it into the `UuidThemeRegistry`
-//! (hot-reload). The save honors the C6 default-floor-must-be-own-terrain rule.
+//! GTW-487 theme loader resolves it into the
+//! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) (hot-reload). The save honors the
+//! default-floor-must-be-own-terrain rule.
 //!
-//! ## Module layout
+//! ## GTW-512: the egui swap — MODEL kept, the `bevy_ui` form deferred to C3
 //!
-//! | Submodule    | Concern |
-//! |--------------|---------|
-//! | [`types`]    | The [`ThemeDraft`](types::ThemeDraft), the field / identity markers, and [`SaveThemeError`](types::SaveThemeError) |
-//! | [`spawn`]    | `OnEnter(Editing)` layout: the form's widgets into the four regions' THEME containers + the terrain-library row builder |
-//! | [`systems`]  | The `Update` drive systems: name commit, the terrain multi-select, the library + default-floor sync, and the C4 load / new-theme |
-//! | [`render`]   | The read-only render systems: the C3 resolved-stats readout + HP bar, the read-only KEY text, the live RON preview, and the debug-only save press |
-//! | [`save`]     | The pure projection + serialization + the C6 validation + the debug-only fs write |
-//! | [`tests`]    | In-crate tests (the C7 projection + round-trip, the C6 default-floor rule, the C3 resolution) |
+//! The egui migration (GTW-512 C1) keeps the MODEL + SAVE (the [`types`] draft / markers + [`save`]'s
+//! pure projection + serialization + validation + the debug-only fs write) — the contract the C3
+//! child builds on — and DROPS the `bevy_ui` form: the GTW-475 `spawn` layout, the `systems` drive,
+//! and the `render` read-only systems are GONE from the module tree. The THEME egui form (the full
+//! re-point of the drive + the resolved-stats readout onto egui widgets) is the C3 child (GTW-514);
+//! the right [`SidePanel`](bevy_egui::egui::SidePanel) shows a stub until then.
+//!
+//! ## Module layout (post-egui-swap)
+//!
+//! | Submodule | Concern |
+//! |-----------|---------|
+//! | [`types`]   | The [`ThemeDraft`](types::ThemeDraft), the field / identity markers, and [`SaveThemeError`](types::SaveThemeError) |
+//! | [`save`]    | The pure projection + serialization + the validation + the debug-only fs write |
+//! | [`resolve`] | Pure resolution helpers ([`resolved_stats`](resolve::resolved_stats) / [`floor_candidates`](resolve::floor_candidates) / `sim_kind_label`) the C3 form + the tests reuse |
+//! | [`tests`]   | In-crate tests (the projection + round-trip, the default-floor rule, the resolution) |
 
-mod render;
+mod resolve;
 mod save;
-mod spawn;
-mod systems;
 mod types;
 
 #[cfg(test)]
 mod tests;
 
+pub use resolve::{floor_candidates, resolved_stats};
+// The debug-only fs write (validates + projects + serializes + writes the `.terrain_theme.ron`) —
+// kept for the C3 child's egui save-press re-point (GTW-512). Re-exporting it keeps its path helpers
+// reachable.
 #[cfg(debug_assertions)]
-pub(crate) use render::save_theme_on_press;
-pub(crate) use render::{
-    refresh_resolved_stats, refresh_theme_key_text, refresh_theme_ron_preview,
-};
+pub use save::write_theme;
 pub use save::{draft_to_theme_def, serialize_theme_def, validate_for_save};
-pub(crate) use spawn::spawn_theme_form;
-pub(crate) use systems::{
-    apply_default_floor, commit_theme_name, load_theme_into_form, reset_theme_form_on_new,
-    sync_default_floor_options, sync_theme_library, toggle_theme_terrain,
-};
-pub use types::{
-    SaveThemeError, ThemeDefaultFloorPicker, ThemeDraft, ThemeResolvedStatsText, ThemeTerrainRow,
-};
+pub use types::{SaveThemeError, ThemeDraft};

@@ -28,7 +28,7 @@ use crate::{
 /// Returns the empty string for a name that sanitizes to nothing, which the caller treats as
 /// [`SavePrefabError::EmptyName`].
 #[must_use]
-pub(super) fn sanitize_name(raw: &str) -> String {
+pub fn sanitize_name(raw: &str) -> String {
     raw.trim()
         .to_ascii_lowercase()
         .chars()
@@ -44,7 +44,7 @@ pub(super) fn sanitize_name(raw: &str) -> String {
 /// `theme_display` is the slugified theme directory's source (the theme's display name), `size`
 /// comes from the prefab being authored, `stem` is the sanitized prefab name.
 #[must_use]
-pub(crate) fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> PathBuf {
+pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> PathBuf {
     Path::new(WORKSPACE_ASSETS_ROOT)
         .join(MAPS_SUBDIR)
         .join(theme_dir(theme_display))
@@ -67,7 +67,7 @@ pub(crate) fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) 
 /// # Errors
 ///
 /// [`SavePrefabError::IllegalCell`] if any painted cell is an illegal placement.
-pub(crate) fn editor_map_to_prefab(
+pub fn editor_map_to_prefab(
     map: &EditorMap,
     registry: &TerrainDefRegistry,
     session: &MapEditorSession,
@@ -104,7 +104,7 @@ pub(crate) fn editor_map_to_prefab(
 /// # Errors
 ///
 /// [`SavePrefabError::Serialize`] wrapping the underlying RON serialization error.
-pub(crate) fn serialize_prefab(spec: &PrefabSpecV2) -> Result<String, SavePrefabError> {
+pub fn serialize_prefab(spec: &PrefabSpecV2) -> Result<String, SavePrefabError> {
     ron::ser::to_string_pretty(spec, ron::ser::PrettyConfig::default())
         .map_err(|err| SavePrefabError::Serialize(err.to_string()))
 }

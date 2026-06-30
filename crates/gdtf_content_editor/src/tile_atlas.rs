@@ -49,6 +49,12 @@ const TERRAIN_TILE_PX: u32 = 16;
 /// [`terrain_graphics`](crate::terrain_graphics)). Mirrors the presenter's `SheetAtlas`
 /// (image + layout pair) but editor-local and terrain-only.
 #[derive(Resource, Debug, Clone)]
+#[expect(
+    dead_code,
+    reason = "GTW-512: `load_tile_atlas` inserts this resource in C1, but nothing READS it until \
+              the egui texture viewport (C4 / GTW-515) draws cell sprites via image()/layout(); the \
+              atlas is loaded now so the viewport child has it ready"
+)]
 pub(crate) struct TileAtlas {
     /// The terrain sheet image handle (loaded via [`AssetServer::load`]).
     image:  Handle<Image>,
@@ -58,11 +64,19 @@ pub(crate) struct TileAtlas {
 
 impl TileAtlas {
     /// The terrain sheet image handle.
+    #[expect(
+        dead_code,
+        reason = "GTW-512: read by the egui texture viewport in C4 (GTW-515); unread in C1"
+    )]
     pub(crate) fn image(&self) -> Handle<Image> {
         self.image.clone()
     }
 
     /// The terrain sheet's grid-layout handle.
+    #[expect(
+        dead_code,
+        reason = "GTW-512: read by the egui texture viewport in C4 (GTW-515); unread in C1"
+    )]
     pub(crate) fn layout(&self) -> Handle<TextureAtlasLayout> {
         self.layout.clone()
     }

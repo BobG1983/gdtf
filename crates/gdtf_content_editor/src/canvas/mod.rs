@@ -1,92 +1,156 @@
-//! The map-editor **central canvas** — the drawable cell grid that fills the GTW-417
-//! [`CanvasRegion`](crate::CanvasRegion) (GTW-423).
+//! The map-editor **central-canvas MODEL** — the state-scoped storey + zoom selectors the editor
+//! holds while editing (GTW-423 canvas; GTW-500 selectors; egui-swept GTW-512).
 //!
-//! Once a size is set (the GTW-421 [`MapEditorSession::grid_size`]), the canvas draws the
-//! drawable area as a `width × height` grid of cells, each PRE-FILLED with the current
-//! theme's default-floor tile SPRITE (C3), bounded by a DASHED boundary (C1) and ruled with
-//! PER-CELL dimmed dashes (C2). It LIVE-updates on theme / size change (C4): a theme switch
-//! repaints every cell with the new default floor, a size change re-extents the grid.
+//! ## GTW-512: the clean swap off `bevy_ui`
 //!
-//! ## Scope: one x/y storey at a time, with a level selector (GTW-500)
+//! The pre-egui canvas was a `bevy_ui` flex-wrapped grid of fixed-px cell nodes inside a `gdtf_ui`
+//! scroll list, with a swarm of drive systems (sync / paint / hover-ghost / centre / mouse-wheel
+//! zoom / level-nav chrome). The egui swap REPLACES that whole render path with the
+//! egui CENTRAL panel (the viewport — stubbed in C1, drawn in C4 / GTW-515). So the `bevy_ui` canvas
+//! render machinery is GONE; this module keeps ONLY the two pure MODEL resources the editor's
+//! state-scoped lifecycle inserts and the egui viewport (C4) will read:
 //!
-//! The canvas draws ONE x/y storey slice at a time — the grid's
-//! [`width`](gdtf_battle_sim::level::GridSize::width) ×
-//! [`height`](gdtf_battle_sim::level::GridSize::height) at the
-//! [`CurrentEditLevel`](level_nav::CurrentEditLevel) storey. GTW-500 added the storey SELECTOR the
-//! GTW-423 canvas lacked: the [`level_nav`] submodule steps [`CurrentEditLevel`] up/down via the
-//! keyboard and chrome buttons, clamped to the prefab's `[0, levels-1]` range, and the render /
-//! paint / ghost all read it, so stepping the level changes the drawn slice live.
+//! - [`CurrentEditLevel`] — the storey the canvas edits (the GTW-500 C1 level selector),
+//! - [`CanvasZoom`] — the viewport zoom factor (the GTW-500 C3 zoom).
 //!
-//! ## Chosen scale model (the GTW-423 open design decision)
-//!
-//! Each cell is rendered as a UI [`ImageNode`](bevy::ui::widget::ImageNode) of fixed edge
-//! [`CANVAS_CELL_PX`](types::CANVAS_CELL_PX) inside the [`CanvasRegion`](crate::CanvasRegion).
-//! Because the full `60 × 60` grid (1440 px at that constant) far exceeds the centre column,
-//! the canvas grid is WRAPPED in a `gdtf_ui`
-//! [`spawn_scroll_list`](gdtf_ui::spawn_scroll_list) — so it SCROLLS rather than squeezing.
-//! The grid hangs in the returned [`ScrollListArea`](gdtf_ui::ScrollListArea) (the clipping,
-//! scrolling viewport — NOT the scroll-list grid root frame the marker rides — the GTW-421
-//! parenting rule).
-//!
-//! ## Lightweight dash mechanism (the C1/C2 perf clause)
-//!
-//! No extra nodes per cell: the per-cell dimmed dashes (C2) are each cell's own thin
-//! [`Node::border`](bevy::ui::Node::border) painted a dimmed [`BorderColor`](bevy::ui::BorderColor);
-//! the dashed boundary (C1) is a SINGLE thicker border on the grid container node. So a `w × h`
-//! grid is exactly `w × h` cell [`ImageNode`](bevy::ui::widget::ImageNode)s plus one container —
-//! never 2+ extra nodes per cell.
-//!
-//! ## Rebuild model (the ui-mutate-not-respawn carve-out)
-//!
-//! A theme/size change DESPAWNS the [`CanvasRoot`] subtree and rebuilds it. A full rebuild
-//! (rather than a per-cell mutate) is the logged choice for the canvas: a size change alters
-//! the cell COUNT (entities must be added/removed), and a full teardown keeps the boundary +
-//! per-cell-dash + fill invariants in one builder. The rebuild is gated on a [`Local`](bevy::prelude::Local)
-//! tracker of the `(grid_size, theme)` it was last built for, so an unrelated session mutation
-//! (a palette selection) never triggers a needless rebuild.
-//!
-//! ## Module layout
-//!
-//! | Submodule | Concern |
-//! |-----------|---------|
-//! | [`types`] | Component markers, value types, layout consts, node builders, cell spawner, shared tile-index resolver |
-//! | [`sync`]  | `sync_canvas` — initial build + theme/size-change rebuild |
-//! | [`scroll`]| `spawn_canvas_scroll` — wraps the [`CanvasRegion`](crate::CanvasRegion) in a scroll list |
-//! | [`paint`] | `paint_cell` — click-to-paint, writes [`EditorMap`](crate::EditorMap) + redraws sprite |
-//! | [`ghost`] | `spawn_hover_ghost` / `follow_hover_ghost` — translucent preview ghost |
-//! | [`level_nav`] | `CurrentEditLevel` + level up/down nav (keys + chrome buttons + readout) — GTW-500 C1 |
-//! | [`center`] | `center_canvas` — centres the grid in the viewport when it fits — GTW-500 C2 |
-//! | [`zoom`]  | `CanvasZoom` + mouse-wheel zoom (cell-size re-layout, cursor-anchored) — GTW-500 C3 |
-//! | [`zoom_chrome`] | The clickable `Zoom n%` readout + its refresh + the zoom reset — GTW-500 C3 |
-//! | [`tests`] | In-crate layout-guard unit tests |
+//! Both are state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` — bevy-traps #1).
 
-mod center;
-mod ghost;
-mod level_nav;
-mod paint;
-mod scroll;
-mod sync;
-mod types;
-mod zoom;
-mod zoom_chrome;
+use bevy::prelude::*;
+use gdtf_battle_sim::{level::GridSize, metric::Level};
 
-#[cfg(test)]
-mod tests;
+/// One drawable cell's square edge, in logical pixels, at the base (unzoomed) scale — the GTW-423
+/// canvas scale the egui viewport (C4) re-applies. A documented framework layout const (the
+/// no-bare-types clause-4 plumbing carve-out), not a domain value.
+pub(crate) const CANVAS_CELL_PX: f32 = 24.0;
 
-// Public re-exports consumed by lib.rs (the external surface is unchanged).
-// Crate-internal re-exports consumed by plugin.rs (system references).
-pub(crate) use center::center_canvas;
-pub(crate) use ghost::{follow_hover_ghost, spawn_hover_ghost};
-pub use level_nav::{CurrentEditLevel, LevelNavButton, LevelReadout};
-pub(crate) use level_nav::{
-    clamp_level_to_grid, level_nav_buttons, level_nav_hotkeys, refresh_level_readout,
-    spawn_level_nav,
-};
-pub(crate) use paint::paint_cell;
-pub(crate) use scroll::spawn_canvas_scroll;
-pub(crate) use sync::sync_canvas;
-pub use types::{CanvasCell, CanvasExtent, CanvasGhost, CanvasRoot, CanvasScroll};
-pub use zoom::CanvasZoom;
-pub(crate) use zoom::{apply_canvas_zoom, read_zoom_wheel};
-pub use zoom_chrome::ZoomReadout;
-pub(crate) use zoom_chrome::{refresh_zoom_readout, reset_zoom_button, spawn_zoom_chrome};
+/// The minimum canvas zoom factor — cells shrink to a quarter of their base edge. A framework
+/// layout const.
+const MIN_ZOOM: f32 = 0.25;
+
+/// The maximum canvas zoom factor — cells grow to four times their base edge. A framework layout
+/// const.
+const MAX_ZOOM: f32 = 4.0;
+
+/// The storey the canvas is currently editing (GTW-500 C1) — the x/y slice the egui viewport draws,
+/// paints, and previews the hover ghost on.
+///
+/// A named newtype over the sim's [`Level`] storey index (no-bare-types: the edited storey is a
+/// domain coordinate). PRIVATE inner, derived [`Deref`] to the wrapped [`Level`]; mutated through
+/// [`stepped`](CurrentEditLevel::stepped) / [`clamped`](CurrentEditLevel::clamped), which keep the
+/// value inside the prefab's storey range so the canvas can never read a slice past the drawable
+/// volume. A state-scoped [`Resource`] (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
+/// bevy-traps #1), seeded to the ground storey.
+#[derive(Resource, Deref, Clone, Copy, PartialEq, Eq, Debug)]
+pub struct CurrentEditLevel(Level);
+
+impl CurrentEditLevel {
+    /// The ground storey (`L0`) — the level the editor opens on (the GTW-423 canvas's old hardcoded
+    /// plane, now the seed of the selector).
+    #[must_use]
+    pub const fn ground() -> Self {
+        Self(Level::new(0))
+    }
+
+    /// This level stepped by `delta` storeys, CLAMPED to the prefab's `[0, levels-1]` range so the
+    /// result is always inside the drawable volume (C1). A step that would leave the range saturates
+    /// at the nearest end.
+    #[must_use]
+    pub fn stepped(self, delta: LevelStep, size: GridSize) -> Self {
+        let current = i32::from(*self.0);
+        let max = i32::from(*size.levels()).saturating_sub(1);
+        let next = (current + delta.delta()).clamp(0, max);
+        // `next` is clamped into `[0, max]` where `max < levels <= MAX_LEVELS` (a `u8`), so the
+        // `u8` conversion is always in range — no panic, no truncation in practice.
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "next is clamped to [0, levels-1] with levels <= MAX_LEVELS (u8), so it fits \
+                      a u8 without wrap or sign-flip"
+        )]
+        let storey = next as u8;
+        Self(Level::new(storey))
+    }
+
+    /// This level CLAMPED to the prefab's `[0, levels-1]` range — used when the grid shrinks below
+    /// the current storey (a size change must never leave the selector pointing past the new
+    /// volume).
+    #[must_use]
+    pub fn clamped(self, size: GridSize) -> Self {
+        self.stepped(LevelStep::none(), size)
+    }
+
+    /// The wrapped storey index — the [`Level`] the canvas render / paint / ghost read.
+    #[must_use]
+    pub const fn level(self) -> Level {
+        self.0
+    }
+}
+
+/// A signed level-navigation step in storeys (no-bare-types: a step is a domain delta). `+1` steps
+/// up one storey, `-1` down; `0` is the identity used for a re-clamp.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct LevelStep(i32);
+
+impl LevelStep {
+    /// Step UP one storey (toward the ceiling).
+    #[must_use]
+    pub const fn up() -> Self {
+        Self(1)
+    }
+
+    /// Step DOWN one storey (toward the ground).
+    #[must_use]
+    pub const fn down() -> Self {
+        Self(-1)
+    }
+
+    /// No step — the identity used to re-clamp the current level after a grid shrink.
+    #[must_use]
+    pub const fn none() -> Self {
+        Self(0)
+    }
+
+    /// The signed storey delta.
+    const fn delta(self) -> i32 {
+        self.0
+    }
+}
+
+/// The canvas **zoom factor** (GTW-500 C3) — the multiplier on the base cell edge
+/// [`CANVAS_CELL_PX`] the egui viewport (C4) re-applies.
+///
+/// A named newtype over the bare `f32` factor (no-bare-types: a zoom factor is a domain value).
+/// PRIVATE inner, derived [`Deref`]; mutated through [`scaled`](CanvasZoom::scaled) /
+/// [`reset`](CanvasZoom::reset), which CLAMP the factor to `[MIN_ZOOM, MAX_ZOOM]` so the cells can
+/// never be sized to zero or absurdly large. A state-scoped [`Resource`] (inserted
+/// `OnEnter(Editing)`, removed `OnExit(Editing)` — bevy-traps #1), seeded to `1.0` (the GTW-423
+/// base scale).
+#[derive(Resource, Deref, Clone, Copy, PartialEq, Debug)]
+pub struct CanvasZoom(f32);
+
+impl CanvasZoom {
+    /// The unzoomed factor — cells at their base [`CANVAS_CELL_PX`] edge (the editor's open state).
+    #[must_use]
+    pub const fn identity() -> Self {
+        Self(1.0)
+    }
+
+    /// This factor MULTIPLIED by `factor`, CLAMPED to `[MIN_ZOOM, MAX_ZOOM]` (C3). A multiply (not
+    /// an add) makes each wheel notch a constant proportional step.
+    #[must_use]
+    pub fn scaled(self, factor: f32) -> Self {
+        Self((self.0 * factor).clamp(MIN_ZOOM, MAX_ZOOM))
+    }
+
+    /// Reset to the unzoomed factor — the zoom-reset target (C3).
+    #[must_use]
+    pub const fn reset() -> Self {
+        Self::identity()
+    }
+
+    /// The cell EDGE in logical pixels at this zoom — [`CANVAS_CELL_PX`] times the factor.
+    #[must_use]
+    pub fn cell_px(self) -> f32 {
+        CANVAS_CELL_PX * self.0
+    }
+}

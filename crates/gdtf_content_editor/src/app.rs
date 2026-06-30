@@ -2,12 +2,13 @@
 //!
 //! Mirrors `gdtf_app`'s `GdtfApp`: a thin newtype over a Bevy [`App`] that composes
 //! `DefaultPlugins` (with the asset source root pointed at the workspace `assets/`), the
-//! `gdtf_ui` [`UiPlugin`](gdtf_ui::UiPlugin), the editor's own [`MapEditorPlugin`], and the
-//! env-gated QA capture affordance. It is a SEPARATE binary from the game — it shares no
-//! scene graph and runs no battle sim (the GTW-417 housing constraint).
+//! [`EguiPlugin`](bevy_egui::EguiPlugin) (GTW-512: the editor's UI is now egui — a CLEAN SWAP off
+//! the hand-rolled `gdtf_ui::UiPlugin`), the editor's own [`MapEditorPlugin`], and the env-gated
+//! QA capture affordance. It is a SEPARATE binary from the game — it shares no scene graph and runs
+//! no battle sim (the GTW-417 housing constraint).
 
 use bevy::{asset::AssetPlugin, prelude::*};
-use gdtf_ui::UiPlugin;
+use bevy_egui::EguiPlugin;
 
 use crate::{capture::EditorCapturePlugin, plugin::MapEditorPlugin};
 
@@ -34,7 +35,10 @@ impl MapEditorApp {
             file_path: WORKSPACE_ASSETS_ROOT.to_owned(),
             ..default()
         }));
-        app.add_plugins(UiPlugin);
+        // GTW-512 C1.1: the egui plugin. `EguiPlugin::default()` is the recommended multipass-aware
+        // wiring (the option to disable multipass is deprecated); the editor's UI systems live in
+        // the `EguiPrimaryContextPass` schedule so they work under both single- and multi-pass.
+        app.add_plugins(EguiPlugin::default());
         app.add_plugins(MapEditorPlugin);
         // QA / debug-only screenshot-then-exit (AC4). Inert by default — wires nothing
         // unless GDTF_EDITOR_SHOT is set (the env read happens in `from_env`).

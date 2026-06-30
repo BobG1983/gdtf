@@ -1,8 +1,8 @@
 //! The **type vocabulary** of the save path (GTW-432; swept onto the v2 UUID schema in
-//! GTW-495): compile-time path constants, the component markers on the save UI widgets, the
-//! [`SavePrefabError`] failure enum, and the theme/size directory helpers.
+//! GTW-495): compile-time path constants, the [`SavePrefabError`] failure enum, and the theme/size
+//! directory helpers. (GTW-512: the `bevy_ui` save-widget markers were dropped — the egui save
+//! controls are the C4 child.)
 
-use bevy::prelude::*;
 use gdtf_battle_sim::{
     level::{GridSize, SpawnRole},
     metric::CellLevel,
@@ -34,16 +34,9 @@ pub(super) const PREFAB_EXTENSION: &str = "prefab_v2.ron";
 /// default.
 pub(super) const SAVED_SPAWN_ROLE: SpawnRole = SpawnRole::Fill;
 
-/// Marker on the prefab-NAME `TextField` (the GTW-411 widget) the author types the prefab name
-/// into. A unit marker (no-bare-types rule).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct PrefabNameField;
-
-/// Marker on the "Save prefab" [`Button`] (the GTW-432 save TRIGGER). A unit marker (no-bare-types
-/// rule). A PLAIN marker (NOT re-exported / not a `support_item!`) — no external test names it, so
-/// it stays `pub(crate)` to dodge the `unreachable_pub` the test-support feature would trip.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct SavePrefabButton;
+// GTW-512: the prefab-NAME field + "Save prefab" button markers were DROPPED here — they only ever
+// marked the deleted `bevy_ui` save controls. The C4 child (GTW-515) re-adds the egui save controls
+// + their markers when it re-points the save trigger.
 
 /// Why a prefab save was REJECTED — the handled, no-panic failure of the save path (GTW-432;
 /// the old zero-opening rejection variant was DROPPED in GTW-495, the v2 schema authors no
@@ -52,11 +45,11 @@ pub(crate) struct SavePrefabButton;
 /// A named domain enum (no-bare-types: the rejection reason is a domain value). Each variant names
 /// what was wrong so the `error!` line is precise.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum SavePrefabError {
+pub enum SavePrefabError {
     /// The author entered no prefab name (an empty / whitespace-only field) — there is no file
     /// name to write to.
     EmptyName,
-    /// A painted cell is an ILLEGAL placement per the GTW-430 [`evaluate_placement`] predicate
+    /// A painted cell is an ILLEGAL placement per the GTW-430 [`evaluate_placement`](crate::evaluate_placement) predicate
     /// (C3) — the save is rejected so a written prefab never contains an illegal cell. Names the
     /// offending slot.
     IllegalCell(CellLevel),

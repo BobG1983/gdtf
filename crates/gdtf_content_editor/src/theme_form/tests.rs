@@ -21,9 +21,8 @@ use gdtf_battle_sim::{
 };
 
 use super::{
-    render::resolved_stats,
+    resolve::{floor_candidates, resolved_stats},
     save::{draft_to_theme_def, serialize_theme_def, validate_for_save},
-    systems::floor_candidates,
     types::{SaveThemeError, ThemeDraft},
 };
 

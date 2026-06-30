@@ -11,6 +11,7 @@ use bevy::prelude::*;
 use crate::{
     canvas::{CanvasZoom, CurrentEditLevel},
     editor_map::EditorMap,
+    hovered_cell::HoveredCell,
     mode::EditorMode,
     session::MapEditorSession,
     terrain_form::TerrainDraft,
@@ -58,9 +59,9 @@ pub(crate) fn remove_theme_draft(mut commands: Commands) {
 
 /// `OnEnter(Editing)`: insert the shared [`MapEditorSession`] (the state-scoped selection
 /// state — bevy-traps #1), seeded to the default theme + the full `60×60×8` grid. The
-/// default-floor key resolves on the first theme selection; the
-/// [`apply_theme_selection`](crate::right_panel::apply_theme_selection) drive could also seed
-/// it eagerly, but the dropdown's pre-selected default already matches the seed theme.
+/// default-floor key resolves on the first theme selection;
+/// [`seed_default_theme`](crate::right_panel::seed_default_theme) seeds it eagerly once the registry
+/// resolves, and the egui theme `ComboBox` re-resolves it on a pick.
 pub(crate) fn insert_session(mut commands: Commands) {
     commands.insert_resource(MapEditorSession::default());
 }
@@ -73,8 +74,7 @@ pub(crate) fn remove_session(mut commands: Commands) {
 
 /// `OnEnter(Editing)`: insert the empty [`EditorMap`] paintable model (the state-scoped
 /// click-to-paint store — bevy-traps #1, GTW-426). Starts empty (nothing painted; every cell
-/// renders the theme default-floor); the click-to-paint flow ([`paint_cell`](crate::canvas::paint_cell))
-/// writes it.
+/// renders the theme default-floor); the click-to-paint flow writes it.
 pub(crate) fn insert_map(mut commands: Commands) {
     commands.insert_resource(EditorMap::new());
 }
@@ -109,4 +109,17 @@ pub(crate) fn insert_canvas_zoom(mut commands: Commands) {
 /// bevy-traps #1).
 pub(crate) fn remove_canvas_zoom(mut commands: Commands) {
     commands.remove_resource::<CanvasZoom>();
+}
+
+/// `OnEnter(Editing)`: insert the [`HoveredCell`] model (state-scoped — bevy-traps #1, GTW-512
+/// C1.5), seeded empty (nothing hovered). The live egui viewport hover (C4) and the QA capture
+/// drive both write it; the preview ghost reads it.
+pub(crate) fn insert_hovered_cell(mut commands: Commands) {
+    commands.insert_resource(HoveredCell::new());
+}
+
+/// `OnExit(Editing)`: remove the [`HoveredCell`] model (the state-scoped-resource pattern —
+/// bevy-traps #1).
+pub(crate) fn remove_hovered_cell(mut commands: Commands) {
+    commands.remove_resource::<HoveredCell>();
 }

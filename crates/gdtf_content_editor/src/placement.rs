@@ -4,11 +4,11 @@
 //!
 //! ## One source of truth (C3)
 //!
-//! [`evaluate_placement`] is the ONE legality function. The hover-ghost ([`super::canvas::ghost`])
-//! calls it to decide whether to tint the preview RED (an illegal placement) and the click-commit
-//! ([`super::canvas::paint`]) calls it to decide whether to REJECT the paint — there is no second
-//! copy of the rule. Both consume the same `(map, registry, theme, placement)` inputs and the same
-//! [`PlacementVerdict`].
+//! [`evaluate_placement`] is the ONE legality function. The hover-ghost preview calls it to decide
+//! whether to tint the preview RED (an illegal placement) and the click-commit calls it to decide
+//! whether to REJECT the paint — there is no second copy of the rule. (The egui viewport that
+//! consumes both is the GTW-512 C4 child; the predicate is the shared FOUNDATION it builds on.) Both
+//! consume the same `(map, registry, theme, placement)` inputs and the same [`PlacementVerdict`].
 //!
 //! ## The vertical rules
 //!

@@ -135,69 +135,11 @@ impl Default for ThemeDraft {
     }
 }
 
-/// Identity marker on the THEME form's display-name text field (no-bare-types unit marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct ThemeNameField;
-
-/// Identity marker on the THEME form's default-floor dropdown root (no-bare-types unit marker).
-/// `pub` (re-exported) so the C-tests can assert the picker exists / drive a selection.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ThemeDefaultFloorPicker;
-
-/// Identity marker on ONE terrain-library multi-select row, carrying which [`TerrainUuid`] it
-/// toggles (C2). NOT a bare `Uuid` — the key is the sim domain value (no-bare-types). `pub`
-/// (re-exported) so the integration test can find / count the library rows.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ThemeTerrainRow {
-    /// The terrain UUID this row toggles in/out of the theme palette.
-    terrain: TerrainUuid,
-}
-
-impl ThemeTerrainRow {
-    /// Build a terrain-library row marker for a terrain key.
-    #[must_use]
-    pub(crate) const fn new(terrain: TerrainUuid) -> Self {
-        Self { terrain }
-    }
-
-    /// The terrain UUID this row toggles.
-    #[must_use]
-    pub(crate) const fn terrain(self) -> TerrainUuid {
-        self.terrain
-    }
-}
-
-/// Identity marker on the "Save theme" button (no-bare-types unit marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct SaveThemeButton;
-
-/// Identity marker on the "New theme" button (no-bare-types unit marker) — the C4 affordance
-/// that mints a fresh key + clears the form.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct NewThemeButton;
-
-/// Marker on the THEME form's read-only KEY text node — rewritten with the draft's key on a
-/// load / new-theme reset (C4). A unit marker (no-bare-types).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct ThemeKeyText;
-
-/// Marker on the THEME form's RESOLVED-STATS readout text node — rewritten when the
-/// default-floor selection changes, showing the resolved terrain's sim kind + HP/armor
-/// (C3 — single-source-of-truth proof: the theme stores a UUID, the stats are RESOLVED). A
-/// unit marker (no-bare-types). `pub` (re-exported) so the integration test can read it.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ThemeResolvedStatsText;
-
-/// Marker on the THEME form's resolved-stats HP [`ProgressBar`](gdtf_ui::ProgressBarTrack) track
-/// — the bar's fill is mutated to the resolved terrain's HP fraction (C3 — reuse the
-/// progress-bar widget the way the TERRAIN STAT preview does). A unit marker (no-bare-types).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct ThemeResolvedHpBar;
-
-/// Marker on the THEME form's read-only `.terrain_theme.ron` PREVIEW text node — rewritten each
-/// draft change with the serialized theme def (the live preview, C3). A unit marker.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct ThemeRonPreview;
+// GTW-512: the THEME form's `bevy_ui` WIDGET MARKERS (the name field, the default-floor picker
+// root, the per-terrain library row, the save / new-theme buttons, the read-only key / resolved-stats
+// / HP-bar / RON-preview text markers) were DROPPED in the egui swap — they marked `bevy_ui` entities
+// that no longer exist. The C3 child (GTW-514) re-creates egui-native equivalents; this file keeps the
+// MODEL (the draft + the error enum) and the pure resolution lives in `resolve.rs`.
 
 /// Why a theme save was REJECTED — the handled, no-panic failure of the theme save path
 /// (GTW-475). A named domain enum (no-bare-types). `pub` because the `pub`

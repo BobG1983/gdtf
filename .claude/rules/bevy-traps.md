@@ -87,30 +87,30 @@ session, so the next session pays the toll once.
    structure + Bevy lens) ENFORCES this: a registered system or helper fn taking
    exclusive World access without a doc-comment justification FAILS the gate. [codified
    GTW-213, generalizing the GTW-198 / GTW-208 build direction]
-8. A `bevy_ui` node can be `Visibility::Visible` AND correctly laid out yet draw
-   ZERO pixels — and the green suite, ALL headless tests, AND the `design-gate`
-   can ALL pass it; only an in-engine capture catches it. Two parts. (a) DEBUG
-   METHOD for "UI node visible but not drawn": do NOT theorize — add a one-shot
-   diagnostic system and probe, IN ONE RUN, on the broken node AND a sibling that
-   renders: `ChildOf` (parent), `ComputedUiTargetCamera` (resolved camera vs the
-   working node's), `UiGlobalTransform` (actual screen xy), `ComputedNode` (size),
-   own `Visibility` + `InheritedVisibility`, and `ComputedNode.stack_index` /
-   `GlobalZIndex` + `BackgroundColor` (occlusion / transparency). The
-   broken-vs-working diff IS the answer. Do NOT probe `GlobalTransform` — 0.19 UI
-   positions via `UiGlobalTransform` / `ComputedNode`, NOT `Transform` /
-   `GlobalTransform` (that absence is NORMAL for a UI node; a rendering sibling
-   lacks it too). (b) The GTW-294 root cause was OCCLUSION: a panel anchored
-   inside an opaque, full-width sibling's footprint (the bottom bar —
-   `GlobalZIndex(10)`, opaque fill) with NO `GlobalZIndex` (default 0) is painted
-   OVER, drawing nothing despite resolving the right camera + an on-screen
-   position + a non-zero size + Visible. FIX: give the panel a `GlobalZIndex`
-   strictly ABOVE the occluder (the bottom-bar precedent: a bare absolute root +
-   `GlobalZIndex` + opaque fill renders fine; `GlobalZIndex` propagates to
-   children). Z map: bottom_bar=10, on-bar weapon/stance cluster=11, contextual
-   panel=20. Symptom: a correctly-built, Visible, on-screen, sized panel draws
-   nothing — the real cause was a higher-`GlobalZIndex` opaque sibling painting
-   over it. [burned a long GTW-294 session — headless + gate + design-gate ALL
-   passed it; only the in-engine capture caught it]
+8. `bevy_egui` 0.41 — egui UI systems MUST run in the `EguiPrimaryContextPass`
+   schedule, NOT `Update`. The plugin is `EguiPlugin::default()` (the
+   `enable_multipass_for_primary_context` field is DEPRECATED — `default` is the
+   recommended multipass-aware wiring). A UI system that calls
+   `EguiContexts::ctx_mut()` from `Update` fights the begin/end-pass plumbing the
+   plugin runs around `EguiPrimaryContextPass` — the frame's egui state is opened
+   and closed in that pass, so a `Update` draw lands outside the open pass and
+   misbehaves (stale / missing UI, or a borrow against a closed context).
+   Register every egui draw system with `app.add_systems(EguiPrimaryContextPass,
+   …)`; that one schedule works under BOTH single-pass and multi-pass, so it is
+   the unconditional home. `ctx_mut()` returns a `Result` (no primary context yet
+   / multiple contexts) — take `-> Result` on the system and `?` it; never
+   `unwrap`. The egui crate is re-exported as `bevy_egui::egui` (0.41 bundles egui
+   0.35). Two more load-bearing facts: (a) egui panel ORDER is significant and
+   panels CANNOT overlap — declare them OUTERMOST-FIRST (`TopBottomPanel::top` /
+   `::bottom`, then `SidePanel::left` / `::right`) with `CentralPanel` LAST; the
+   central panel claims whatever residual rectangle the side/top/bottom panels
+   leave, so a wrong order steals its space. (b) MULTIPASS runs the UI closure up
+   to TWICE per frame (it re-runs to settle first-frame widget sizing), so ANY
+   per-frame side effect inside the egui system — especially a camera / world
+   mutation (e.g. a later viewport-pan or zoom in C4) — MUST be IDEMPOTENT, or it
+   applies twice on a multi-pass frame. [GTW-512 — the editor's clean swap onto
+   bevy_egui; the headless test asserts the model resources, the egui DRAW is
+   screenshot-QA'd because the closure never runs without a primary egui context]
 
 ## wgpu / cargo
 

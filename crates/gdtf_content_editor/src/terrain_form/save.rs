@@ -169,7 +169,7 @@ pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainErro
 ///
 /// Any [`SaveTerrainError`] from name validation, serialization, or the file write.
 #[cfg(debug_assertions)]
-pub(crate) fn write_terrain(
+pub fn write_terrain(
     draft: &TerrainDraft,
     uuid: TerrainUuid,
     theme_display: &str,

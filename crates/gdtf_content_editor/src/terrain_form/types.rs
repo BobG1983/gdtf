@@ -466,82 +466,12 @@ impl core::str::FromStr for ArmorInput {
     }
 }
 
-/// Identity marker on the TERRAIN form's KIND segmented control root (no-bare-types unit
-/// marker), so the form's drive system filters a [`SegmentSelected`](gdtf_ui::SegmentSelected) to
-/// the kind control. `pub` (re-exported) so the C4 integration test can drive a kind
-/// `SegmentSelected` to it on the real code path.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct TerrainKindTabs;
-
-/// Identity marker on the TERRAIN form's HEIGHT-BAND segmented control root (no-bare-types unit
-/// marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainBandTabs;
-
-/// Identity marker on the TERRAIN form's display-name text field (no-bare-types unit marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainNameField;
-
-/// Identity marker on the TERRAIN form's HP numeric field (no-bare-types unit marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainHpField;
-
-/// Identity marker on the TERRAIN form's armor-protection numeric field (no-bare-types unit
-/// marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainArmorProtField;
-
-/// Identity marker on the TERRAIN form's armor-hardness numeric field (no-bare-types unit
-/// marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainArmorHardField;
-
-/// Identity marker on the TERRAIN form's graphic-role dropdown root (no-bare-types unit marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainGraphicPicker;
-
-/// Identity marker on the TERRAIN form's footfall dropdown root (no-bare-types unit marker). The
-/// footfall gate adds/removes `DisabledButton` on it (C2 Slab-only). `pub` (re-exported) so the
-/// C4 integration test can assert the `DisabledButton` gate flips with the kind.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct TerrainFootfallPicker;
-
-/// Identity marker on ONE tag toggle button, carrying which [`TerrainTag`] it toggles (C2
-/// multi-select). NOT a bare tag — the tag is the sim domain value (no-bare-types).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainTagToggle {
-    /// The tag this button toggles.
-    tag: TerrainTag,
-}
-
-impl TerrainTagToggle {
-    /// Build a tag-toggle marker for a tag.
-    #[must_use]
-    pub(crate) const fn new(tag: TerrainTag) -> Self {
-        Self { tag }
-    }
-
-    /// The tag this button toggles.
-    #[must_use]
-    pub(crate) const fn tag(self) -> TerrainTag {
-        self.tag
-    }
-}
-
-/// Identity marker on the "Save terrain" button (no-bare-types unit marker). A PLAIN marker
-/// (`pub(crate)` — no external test names it).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct SaveTerrainButton;
-
-/// Marker on the TERRAIN form's read-only UUID text node — rewritten with the minted UUID after
-/// the first save (C2). A unit marker (no-bare-types).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainUuidText;
-
-/// Marker on the TERRAIN form's read-only `.terrain_def.ron` PREVIEW text node — rewritten each
-/// draft change with the serialized def (the live preview). A unit marker (no-bare-types).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct TerrainRonPreview;
+// GTW-512: the TERRAIN form's `bevy_ui` WIDGET MARKERS (the kind/band segmented-control roots, the
+// name/HP/armor field markers, the graphic/footfall picker roots, the per-tag toggle, the save
+// button, the read-only UUID + RON-preview text markers) were DROPPED in the egui swap — they
+// marked `bevy_ui` entities that no longer exist. The C2 child (GTW-513) re-creates egui-native
+// equivalents; this file keeps the MODEL (the draft, the kind/graphic/footfall pick enums, the
+// input newtypes, the error enum).
 
 /// Why a terrain save was REJECTED — the handled, no-panic failure of the terrain save path
 /// (GTW-474). A named domain enum (no-bare-types). `pub` because the `pub`

@@ -44,21 +44,31 @@
 //! a release binary. Every fallible step is handled by LOGGING + early-return — never
 //! `unwrap`/`expect`/`panic`.
 //!
-//! ## Module layout
+//! ## GTW-512: the egui swap — projection kept, the `bevy_ui` controls deferred to C4
+//!
+//! The egui migration (GTW-512 C1) keeps the pure PROJECTION + serialization (the [`types`] consts /
+//! markers / errors + [`project`]'s `EditorMap` → `PrefabSpecV2` projection + RON serialize + path
+//! resolution) — the contract the C4 child builds on — and DROPS the `bevy_ui` save controls: the
+//! `systems` module (the filesystem writer + the prefab-name field / "Save prefab" button spawn +
+//! the press trigger) is GONE from the module tree. The egui save controls + the fs-write press
+//! re-point are the C4 child (GTW-515).
+//!
+//! ## Module layout (post-egui-swap)
 //!
 //! | Submodule    | Concern |
 //! |--------------|---------|
-//! | [`types`]    | Path consts, component markers ([`PrefabNameField`], [`SavePrefabButton`]), [`SavePrefabError`], theme/size dir helpers |
-//! | [`project`]  | Pure projection + serialization: [`editor_map_to_prefab`](project::editor_map_to_prefab), [`serialize_prefab`](project::serialize_prefab), [`prefab_save_path`](project::prefab_save_path) |
-//! | [`systems`]  | Filesystem writer ([`write_prefab`](systems::write_prefab)) + Bevy systems ([`spawn_save_controls`](systems::spawn_save_controls), [`save_prefab_on_press`](systems::save_prefab_on_press)) |
+//! | [`types`]    | Path consts, component markers ([`PrefabNameField`](types::PrefabNameField), [`SavePrefabButton`](types::SavePrefabButton)), [`SavePrefabError`](types::SavePrefabError), theme/size dir helpers |
+//! | [`project`]  | Pure projection + serialization: [`editor_map_to_prefab`](project::editor_map_to_prefab), [`serialize_prefab`](project::serialize_prefab), [`prefab_save_path`](project::prefab_save_path), [`sanitize_name`](project::sanitize_name) |
 //! | [`tests`]    | In-crate tests (the contract-clause tests) |
 
 mod project;
-mod systems;
 mod types;
 
 #[cfg(test)]
 mod tests;
 
-// Re-export the `pub(crate)` surface consumed by `plugin.rs` (the only external caller).
-pub(crate) use systems::{save_prefab_on_press, spawn_save_controls};
+// The pure projection + serialization + path-resolution surface, re-exported for the crate root
+// (`lib.rs`) so the C4 save-control re-point + the in-crate save tests reach it (GTW-512). The
+// `bevy_ui` save controls themselves are the C4 child.
+pub use project::{editor_map_to_prefab, prefab_save_path, sanitize_name, serialize_prefab};
+pub use types::SavePrefabError;
