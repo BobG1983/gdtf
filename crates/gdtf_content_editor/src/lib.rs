@@ -80,6 +80,10 @@ mod state;
 // GTW-474: the TERRAIN authoring mode of the Workbench — the form that captures a TerrainDef and
 // saves it to a per-theme `.terrain_def.ron` the GTW-487 loader resolves.
 mod terrain_form;
+// GTW-475: the THEME authoring mode of the Workbench — the form that assembles a UuidThemeDef BY
+// REFERENCE (terrain UUIDs + a default floor) and saves it to a per-theme `.terrain_theme.ron`
+// the GTW-487 theme loader resolves.
+mod theme_form;
 // GTW-495: resolve a TerrainDef's presenter_kind.graphic_name to a terrain atlas index THE WAY
 // THE PRESENTER DOES (via the presenter's TileRoles table) — shared by the palette + canvas.
 mod terrain_graphics;
@@ -89,7 +93,9 @@ pub use app::MapEditorApp;
 pub use canvas::{CanvasCell, CanvasExtent, CanvasGhost, CanvasRoot, CanvasScroll};
 pub use capture::EditorCapturePlugin;
 pub use editor_map::EditorMap;
-pub use mode::{EditorMode, EditorModeTabs, PrefabModeContent, TerrainModeContent};
+pub use mode::{
+    EditorMode, EditorModeTabs, PrefabModeContent, TerrainModeContent, ThemeModeContent,
+};
 pub use palette::{PaletteRow, StatText};
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
@@ -107,4 +113,8 @@ pub use terrain_form::{
     ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainFootfallPicker,
     TerrainGraphicChoice, TerrainKindChoice, TerrainKindTabs, draft_to_terrain_def,
     serialize_terrain_def,
+};
+pub use theme_form::{
+    SaveThemeError, ThemeDefaultFloorPicker, ThemeDraft, ThemeResolvedStatsText, ThemeTerrainRow,
+    draft_to_theme_def, serialize_theme_def, validate_for_save,
 };

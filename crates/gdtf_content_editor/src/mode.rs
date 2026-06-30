@@ -11,12 +11,13 @@
 //!
 //! - [`apply_mode_switch`] — a [`SegmentSelected`] from the [`EditorModeTabs`] segmented
 //!   control maps the chosen index to the [`EditorMode`].
-//! - [`mode_hotkeys`] — number keys (`1` = Terrain, `2` = Prefab) set the [`EditorMode`].
+//! - [`mode_hotkeys`] — number keys (`1` = Terrain, `2` = Theme, `3` = Prefab) set the
+//!   [`EditorMode`].
 //! - [`toggle_mode_content`] — on a [`EditorMode`] change, flips [`Visibility`] on every
 //!   per-mode content container so only the active mode's subtrees show (mutate-in-place).
 //!
-//! For THIS ticket the tabs are `[TERRAIN | PREFAB]`, both fully functional (the THEME mode is
-//! GTW-475 — no dead tab is shipped).
+//! Since GTW-475 the tabs are `[TERRAIN | THEME | PREFAB]`, all three fully functional (TERRAIN
+//! is GTW-474, THEME is GTW-475, PREFAB is the original painter).
 
 use bevy::prelude::*;
 use gdtf_ui::{SegmentLabel, SegmentSelected};
@@ -38,6 +39,9 @@ use gdtf_ui::{SegmentLabel, SegmentSelected};
 pub enum EditorMode {
     /// TERRAIN authoring — create a terrain definition (`*.terrain_def.ron`).
     Terrain,
+    /// THEME authoring — assemble a theme definition (`*.terrain_theme.ron`) from the loaded
+    /// terrain library (GTW-475).
+    Theme,
     /// PREFAB authoring — paint a prefab with the selected theme (the original editor).
     #[default]
     Prefab,
@@ -45,9 +49,9 @@ pub enum EditorMode {
 
 impl EditorMode {
     /// The mode-tab order, left to right — the labels the [`EditorModeTabs`] segmented control
-    /// renders and the index order [`from_tab_index`](EditorMode::from_tab_index) maps. THEME is
-    /// deliberately ABSENT (GTW-475) so no dead tab ships.
-    pub const TAB_ORDER: [Self; 2] = [Self::Terrain, Self::Prefab];
+    /// renders and the index order [`from_tab_index`](EditorMode::from_tab_index) maps. THEME
+    /// sits BETWEEN Terrain and Prefab (GTW-475): `[TERRAIN | THEME | PREFAB]`.
+    pub const TAB_ORDER: [Self; 3] = [Self::Terrain, Self::Theme, Self::Prefab];
 
     /// The mode at top-bar tab `index`, or [`None`] if the index is out of range — the inverse
     /// of [`tab_index`](EditorMode::tab_index). Used by [`apply_mode_switch`] to map a
@@ -72,6 +76,7 @@ impl EditorMode {
     pub const fn tab_label(self) -> &'static str {
         match self {
             Self::Terrain => "TERRAIN",
+            Self::Theme => "THEME",
             Self::Prefab => "PREFAB",
         }
     }
@@ -104,6 +109,15 @@ pub struct EditorModeTabs;
 /// root the mockup specifies).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct TerrainModeContent;
+
+/// Marker on a THEME-mode content container — a subtree shown only while [`EditorMode::Theme`]
+/// is active (GTW-475). [`toggle_mode_content`] sets its [`Visibility`].
+///
+/// A unit marker — presence alone is the signal (no-bare-types rule). One per region the THEME
+/// form fills; the GTW-475 theme form parents its content into these containers, so toggling the
+/// container's visibility hides/shows the whole theme UI at once (mutate-in-place, never despawn).
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+pub struct ThemeModeContent;
 
 /// Marker on a PREFAB-mode content container — a subtree shown only while
 /// [`EditorMode::Prefab`] is active (GTW-474). [`toggle_mode_content`] sets its
@@ -142,9 +156,10 @@ pub(crate) fn apply_mode_switch(
 
 /// `Update` (in `Editing`): number-key hotkeys set the [`EditorMode`] (C1).
 ///
-/// `1` → [`Terrain`](EditorMode::Terrain), `2` → [`Prefab`](EditorMode::Prefab) — the tab order.
-/// Writes with [`set_if_neq`](DetectChangesMut::set_if_neq) so an unchanged key-press neither
-/// re-toggles nor re-syncs the tabs. Guarded on the optional [`EditorMode`] (bevy-traps #1).
+/// `1` → [`Terrain`](EditorMode::Terrain), `2` → [`Theme`](EditorMode::Theme), `3` →
+/// [`Prefab`](EditorMode::Prefab) — the `[TERRAIN | THEME | PREFAB]` tab order (GTW-475). Writes
+/// with [`set_if_neq`](DetectChangesMut::set_if_neq) so an unchanged key-press neither re-toggles
+/// nor re-syncs the tabs. Guarded on the optional [`EditorMode`] (bevy-traps #1).
 pub(crate) fn mode_hotkeys(keys: Res<ButtonInput<KeyCode>>, mode: Option<ResMut<EditorMode>>) {
     let Some(mut mode) = mode else {
         return;
@@ -152,6 +167,8 @@ pub(crate) fn mode_hotkeys(keys: Res<ButtonInput<KeyCode>>, mode: Option<ResMut<
     let pressed = if keys.just_pressed(KeyCode::Digit1) {
         Some(EditorMode::Terrain)
     } else if keys.just_pressed(KeyCode::Digit2) {
+        Some(EditorMode::Theme)
+    } else if keys.just_pressed(KeyCode::Digit3) {
         Some(EditorMode::Prefab)
     } else {
         None
@@ -161,20 +178,41 @@ pub(crate) fn mode_hotkeys(keys: Res<ButtonInput<KeyCode>>, mode: Option<ResMut<
     }
 }
 
-/// `Update` (in `Editing`): show the active mode's content containers and hide the others —
+/// `Update` (in `Editing`): show the active mode's content containers and hide the OTHER TWO —
 /// MUTATING [`Visibility`] in place, never despawning (C1, the ui-mutate-in-place rule).
 ///
-/// Runs whenever the [`EditorMode`] changed this frame (a `Changed`-style `is_changed()` gate
-/// covers the first insert too, so the initial mode is applied once). Sets every
-/// [`TerrainModeContent`] container to [`Visible`](Visibility::Inherited) /
-/// [`Hidden`](Visibility::Hidden) by whether [`Terrain`](EditorMode::Terrain) is active, and the
-/// [`PrefabModeContent`] containers by the inverse, with [`set_if_neq`] hygiene. Visibility
-/// INHERITS to each container's children, so content spawned into a container later (e.g. the
-/// palette rows a theme switch rebuilds) tracks the container's visibility automatically.
+/// A 3-WAY toggle since GTW-475: exactly one of [`Terrain`](EditorMode::Terrain) /
+/// [`Theme`](EditorMode::Theme) / [`Prefab`](EditorMode::Prefab) is active, so the matching
+/// containers go [`Visible`](Visibility::Inherited) and the other two go
+/// [`Hidden`](Visibility::Hidden), with [`set_if_neq`] hygiene. Runs whenever the [`EditorMode`]
+/// changed this frame (`is_changed()` covers the first insert too, so the initial mode is applied
+/// once). The three marker queries are mutually DISJOINT (each excludes the other two markers via
+/// `Without`) so Bevy can borrow all three `&mut Visibility` queries at once (bevy-traps #7 query
+/// disjointness). Visibility INHERITS to each container's children, so content spawned into a
+/// container later (e.g. the theme library rows a rebuild adds) tracks the container's visibility
+/// automatically.
+type TerrainOnly = (
+    With<TerrainModeContent>,
+    Without<ThemeModeContent>,
+    Without<PrefabModeContent>,
+);
+type ThemeOnly = (
+    With<ThemeModeContent>,
+    Without<TerrainModeContent>,
+    Without<PrefabModeContent>,
+);
+type PrefabOnly = (
+    With<PrefabModeContent>,
+    Without<TerrainModeContent>,
+    Without<ThemeModeContent>,
+);
+
+/// See the type aliases above this function for the disjoint-query rationale.
 pub(crate) fn toggle_mode_content(
     mode: Option<Res<EditorMode>>,
-    mut terrain: Query<&mut Visibility, (With<TerrainModeContent>, Without<PrefabModeContent>)>,
-    mut prefab: Query<&mut Visibility, (With<PrefabModeContent>, Without<TerrainModeContent>)>,
+    mut terrain: Query<&mut Visibility, TerrainOnly>,
+    mut theme: Query<&mut Visibility, ThemeOnly>,
+    mut prefab: Query<&mut Visibility, PrefabOnly>,
 ) {
     let Some(mode) = mode else {
         return;
@@ -182,14 +220,18 @@ pub(crate) fn toggle_mode_content(
     if !mode.is_changed() {
         return;
     }
-    let terrain_active = matches!(*mode, EditorMode::Terrain);
-    let (terrain_vis, prefab_vis) = if terrain_active {
-        (Visibility::Inherited, Visibility::Hidden)
-    } else {
-        (Visibility::Hidden, Visibility::Inherited)
+    let shown = Visibility::Inherited;
+    let hidden = Visibility::Hidden;
+    let (terrain_vis, theme_vis, prefab_vis) = match *mode {
+        EditorMode::Terrain => (shown, hidden, hidden),
+        EditorMode::Theme => (hidden, shown, hidden),
+        EditorMode::Prefab => (hidden, hidden, shown),
     };
     for mut vis in &mut terrain {
         vis.set_if_neq(terrain_vis);
+    }
+    for mut vis in &mut theme {
+        vis.set_if_neq(theme_vis);
     }
     for mut vis in &mut prefab {
         vis.set_if_neq(prefab_vis);

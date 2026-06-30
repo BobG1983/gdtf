@@ -41,6 +41,14 @@ impl TerrainDefRegistry {
         self.0.get(key)
     }
 
+    /// An ENUMERABLE iterator over every `(key, def)` the registry holds — so a consumer
+    /// can list the whole loaded terrain LIBRARY (the GTW-475 theme-authoring multi-select
+    /// picks from this), mirroring
+    /// [`UuidThemeRegistry::defs`](crate::level::UuidThemeRegistry::defs).
+    pub fn defs(&self) -> impl Iterator<Item = (&TerrainUuid, &TerrainDef)> {
+        self.0.iter()
+    }
+
     /// How many definitions the registry holds.
     #[must_use]
     pub fn len(&self) -> usize {

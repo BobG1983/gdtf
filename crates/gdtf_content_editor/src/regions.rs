@@ -30,7 +30,7 @@ use gdtf_ui::{
 };
 
 use crate::{
-    mode::{EditorMode, EditorModeTabs, PrefabModeContent, TerrainModeContent},
+    mode::{EditorMode, EditorModeTabs, PrefabModeContent, TerrainModeContent, ThemeModeContent},
     right_panel::ThemeDropdown,
 };
 
@@ -335,16 +335,17 @@ fn spawn_status_bar(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
         .id()
 }
 
-/// Spawn the two per-mode content containers ([`PrefabModeContent`] +
-/// [`TerrainModeContent`]) as children of a region's content `host` (the scroll AREA for the
-/// scrollable regions, the panel for the static ones), each a full-size flex column.
+/// Spawn the THREE per-mode content containers ([`PrefabModeContent`] +
+/// [`TerrainModeContent`] + [`ThemeModeContent`]) as children of a region's content `host` (the
+/// scroll AREA for the scrollable regions, the panel for the static ones), each a full-size flex
+/// column (GTW-474 two modes; GTW-475 adds the THEME container).
 ///
-/// Both are spawned once with explicit [`Visibility`]: the PREFAB container is
-/// [`Visible`](Visibility::Inherited) (the default [`EditorMode::Prefab`]) and the TERRAIN one
-/// [`Hidden`](Visibility::Hidden), so the editor opens in the prefab painter and
+/// All three are spawned once with explicit [`Visibility`]: the PREFAB container is
+/// [`Visible`](Visibility::Inherited) (the default [`EditorMode::Prefab`]) and the TERRAIN +
+/// THEME ones [`Hidden`](Visibility::Hidden), so the editor opens in the prefab painter and
 /// [`toggle_mode_content`](crate::mode::toggle_mode_content) flips them on a mode switch
-/// (mutate-in-place, never despawn). Content the existing painter / the terrain form spawns
-/// parents into the matching container, so it inherits the container's visibility.
+/// (mutate-in-place, never despawn). Content the existing painter / the terrain form / the theme
+/// form spawns parents into the matching container, so it inherits the container's visibility.
 fn spawn_mode_hosts_under(commands: &mut Commands, host: Entity) {
     let prefab = commands
         .spawn((PrefabModeContent, Visibility::Inherited, mode_host_node()))
@@ -352,7 +353,12 @@ fn spawn_mode_hosts_under(commands: &mut Commands, host: Entity) {
     let terrain = commands
         .spawn((TerrainModeContent, Visibility::Hidden, mode_host_node()))
         .id();
-    commands.entity(host).add_children(&[prefab, terrain]);
+    let theme = commands
+        .spawn((ThemeModeContent, Visibility::Hidden, mode_host_node()))
+        .id();
+    commands
+        .entity(host)
+        .add_children(&[prefab, terrain, theme]);
 }
 
 /// One per-mode content container's [`Node`]: a full-width, top-aligned flex COLUMN that holds a

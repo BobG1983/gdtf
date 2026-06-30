@@ -10,7 +10,7 @@
 //! GTW-417 housing constraint).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::level::ThemeUuid;
+use gdtf_battle_sim::{level::ThemeUuid, terrain::def::TerrainUuid};
 use gdtf_ui::{register_dropdown, register_numeric_field, register_text_field};
 
 use crate::{
@@ -32,6 +32,12 @@ use crate::{
         apply_terrain_footfall, apply_terrain_kind, commit_terrain_armor, commit_terrain_hp,
         commit_terrain_name, gate_footfall_field, reflow_band_field, refresh_ron_preview,
         select_terrain_graphic, spawn_terrain_form, toggle_terrain_tag,
+    },
+    theme_form::{
+        ThemeDraft, apply_default_floor, commit_theme_name, load_theme_into_form,
+        refresh_resolved_stats, refresh_theme_key_text, refresh_theme_ron_preview,
+        reset_theme_form_on_new, spawn_theme_form, sync_default_floor_options, sync_theme_library,
+        toggle_theme_terrain,
     },
     tile_atlas::load_tile_atlas,
 };
@@ -98,16 +104,20 @@ impl Plugin for MapEditorPlugin {
         register_dropdown::<FootfallChoice>(app);
         register_numeric_field::<HpInput>(app);
         register_numeric_field::<ArmorInput>(app);
+        // GTW-475: the THEME form's own dropdown wiring — the default-floor dropdown is over the
+        // sim's TerrainUuid (the theme references terrain by UUID).
+        register_dropdown::<TerrainUuid>(app);
 
         app.add_systems(
             OnEnter(EditorState::Editing),
             (
-                // GTW-474: the Workbench mode resource + the TERRAIN draft inserted FIRST so the
-                // mode toggle + the form seed from them (the state-scoped-resource pattern).
+                // GTW-474/475: the Workbench mode resource + the TERRAIN + THEME drafts inserted
+                // FIRST so the mode toggle + the forms seed from them (state-scoped-resource).
                 insert_mode,
                 insert_session,
                 insert_map,
                 insert_terrain_draft,
+                insert_theme_draft,
                 load_tile_atlas,
                 // The shell spawns the four regions + the per-mode content containers + the top
                 // bar (mode tabs + the promoted theme dropdown) + the status bar.
@@ -118,6 +128,8 @@ impl Plugin for MapEditorPlugin {
                 spawn_canvas_scroll,
                 // TERRAIN-mode content (parents into the regions' TerrainModeContent containers).
                 spawn_terrain_form,
+                // THEME-mode content (parents into the regions' ThemeModeContent containers).
+                spawn_theme_form,
             )
                 .chain()
                 .run_if(resource_exists::<gdtf_ui::theme::GdtfTheme>),
@@ -129,6 +141,7 @@ impl Plugin for MapEditorPlugin {
                 remove_session,
                 remove_map,
                 remove_terrain_draft,
+                remove_theme_draft,
             ),
         );
 
@@ -241,6 +254,41 @@ fn register_workbench_systems(app: &mut App) {
             save_terrain_on_press.run_if(in_state(EditorState::Editing)),
         );
     }
+
+    // GTW-475: the THEME form's drive systems. A top-bar dropdown change LOADS a theme (C4) +
+    // the New-theme press RESETS the form (C4) run FIRST (they replace the draft), then the name
+    // commit + the terrain multi-select toggle, then the library / default-floor option sync
+    // (which depend on the draft + the registry), the default-floor pick, the key text, and the
+    // resolved-stats + RON preview LAST so they reflect this frame's edits (C2/C3).
+    app.add_systems(
+        Update,
+        (
+            load_theme_into_form,
+            reset_theme_form_on_new,
+            commit_theme_name,
+            toggle_theme_terrain,
+            sync_theme_library,
+            sync_default_floor_options,
+            apply_default_floor,
+            refresh_theme_key_text,
+            refresh_resolved_stats,
+            refresh_theme_ron_preview,
+        )
+            .chain()
+            .run_if(in_state(EditorState::Editing)),
+    );
+
+    // The debug-only theme SAVE trigger (the fs-write press) — its own `#[cfg(debug_assertions)]`
+    // block so the always-compiled tuple above stays release-buildable (the GTW-474 precedent).
+    #[cfg(debug_assertions)]
+    {
+        use crate::theme_form::save_theme_on_press;
+
+        app.add_systems(
+            Update,
+            save_theme_on_press.run_if(in_state(EditorState::Editing)),
+        );
+    }
 }
 
 /// `OnEnter(Editing)`: insert the [`EditorMode`] resource (the state-scoped Workbench mode —
@@ -267,6 +315,19 @@ fn insert_terrain_draft(mut commands: Commands) {
 /// bevy-traps #1).
 fn remove_terrain_draft(mut commands: Commands) {
     commands.remove_resource::<TerrainDraft>();
+}
+
+/// `OnEnter(Editing)`: insert the [`ThemeDraft`] (the state-scoped THEME-mode authoring draft —
+/// bevy-traps #1), seeded to a fresh NEW-theme draft (a minted key, an empty form — C4) the
+/// form's controls seed their initial values from (GTW-475).
+fn insert_theme_draft(mut commands: Commands) {
+    commands.insert_resource(ThemeDraft::default());
+}
+
+/// `OnExit(Editing)`: remove the [`ThemeDraft`] (the state-scoped-resource pattern —
+/// bevy-traps #1).
+fn remove_theme_draft(mut commands: Commands) {
+    commands.remove_resource::<ThemeDraft>();
 }
 
 /// `OnEnter(Editing)`: insert the shared [`MapEditorSession`] (the state-scoped selection
