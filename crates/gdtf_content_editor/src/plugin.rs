@@ -15,10 +15,19 @@ use gdtf_ui::{register_dropdown, register_numeric_field, register_text_field};
 
 use crate::{
     EditorState,
-    canvas::{follow_hover_ghost, paint_cell, spawn_canvas_scroll, spawn_hover_ghost, sync_canvas},
-    editor_map::EditorMap,
+    canvas::{
+        apply_canvas_zoom, center_canvas, clamp_level_to_grid, follow_hover_ghost,
+        level_nav_buttons, level_nav_hotkeys, paint_cell, read_zoom_wheel, refresh_level_readout,
+        refresh_zoom_readout, reset_zoom_button, spawn_canvas_scroll, spawn_hover_ghost,
+        spawn_level_nav, spawn_zoom_chrome, sync_canvas,
+    },
+    editor_resources::{
+        insert_canvas_zoom, insert_edit_level, insert_map, insert_mode, insert_session,
+        insert_terrain_draft, insert_theme_draft, remove_canvas_zoom, remove_edit_level,
+        remove_map, remove_mode, remove_session, remove_terrain_draft, remove_theme_draft,
+    },
     load::register_load,
-    mode::{EditorMode, apply_mode_switch, mode_hotkeys, sync_tabs_to_mode, toggle_mode_content},
+    mode::{apply_mode_switch, mode_hotkeys, sync_tabs_to_mode, toggle_mode_content},
     mode_status::refresh_status_bar,
     palette::{refresh_stat_region, select_palette_tile, spawn_stat_text, sync_palette},
     regions::spawn_editor_shell,
@@ -26,18 +35,16 @@ use crate::{
         GridSpanInput, apply_size_commit, apply_theme_selection, seed_default_theme,
         spawn_right_panel_controls,
     },
-    session::MapEditorSession,
     terrain_form::{
-        ArmorInput, FootfallChoice, HpInput, TerrainDraft, apply_terrain_band,
-        apply_terrain_footfall, apply_terrain_kind, commit_terrain_armor, commit_terrain_hp,
-        commit_terrain_name, gate_footfall_field, reflow_band_field, refresh_ron_preview,
-        select_terrain_graphic, spawn_terrain_form, toggle_terrain_tag,
+        ArmorInput, FootfallChoice, HpInput, apply_terrain_band, apply_terrain_footfall,
+        apply_terrain_kind, commit_terrain_armor, commit_terrain_hp, commit_terrain_name,
+        gate_footfall_field, reflow_band_field, refresh_ron_preview, select_terrain_graphic,
+        spawn_terrain_form, toggle_terrain_tag,
     },
     theme_form::{
-        ThemeDraft, apply_default_floor, commit_theme_name, load_theme_into_form,
-        refresh_resolved_stats, refresh_theme_key_text, refresh_theme_ron_preview,
-        reset_theme_form_on_new, spawn_theme_form, sync_default_floor_options, sync_theme_library,
-        toggle_theme_terrain,
+        apply_default_floor, commit_theme_name, load_theme_into_form, refresh_resolved_stats,
+        refresh_theme_key_text, refresh_theme_ron_preview, reset_theme_form_on_new,
+        spawn_theme_form, sync_default_floor_options, sync_theme_library, toggle_theme_terrain,
     },
     tile_atlas::load_tile_atlas,
 };
@@ -60,10 +67,11 @@ use crate::{
 /// - `OnEnter(Editing)` → [`spawn_editor_shell`](crate::regions::spawn_editor_shell) (the
 ///   four empty themed regions) then
 ///   [`spawn_right_panel_controls`](crate::right_panel::spawn_right_panel_controls) (the theme
-///   dropdown + size selector, parented under the right panel), with the [`MapEditorSession`]
-///   inserted FIRST so the controls seed from it.
-/// - `OnExit(Editing)` → remove the [`MapEditorSession`] (the state-scoped-resource pattern,
-///   bevy-traps #1).
+///   dropdown + size selector, parented under the right panel), with the
+///   [`MapEditorSession`](crate::session::MapEditorSession) inserted FIRST so the controls seed
+///   from it.
+/// - `OnExit(Editing)` → remove the [`MapEditorSession`](crate::session::MapEditorSession) (the
+///   state-scoped-resource pattern, bevy-traps #1).
 /// - `Update` (in `Editing`) →
 ///   [`apply_theme_selection`](crate::right_panel::apply_theme_selection) (GTW-421 C2) +
 ///   [`apply_size_commit`](crate::right_panel::apply_size_commit) (GTW-421 C3), then the
@@ -81,11 +89,11 @@ use crate::{
 ///   and default-floor cell fill, rebuilt on a theme / size change — C1-C4), running after a
 ///   theme/size change has already folded into the session. The GTW-426 canvas interactivity then
 ///   runs after `sync_canvas`: [`paint_cell`](crate::canvas::paint_cell) (a cell click paints the
-///   selected tile into the [`EditorMap`] + redraws the cell — C2/C3),
+///   selected tile into the [`EditorMap`](crate::editor_map::EditorMap) + redraws the cell — C2/C3),
 ///   [`spawn_hover_ghost`](crate::canvas::spawn_hover_ghost) (the one persistent ghost overlay),
 ///   and [`follow_hover_ghost`](crate::canvas::follow_hover_ghost) (the ghost snaps to the hovered
-///   cell — C1). `OnEnter` inserts the [`EditorMap`] paintable model; `OnExit` removes it (the
-///   state-scoped-resource pattern).
+///   cell — C1). `OnEnter` inserts the [`EditorMap`](crate::editor_map::EditorMap) paintable
+///   model; `OnExit` removes it (the state-scoped-resource pattern).
 pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
@@ -116,6 +124,10 @@ impl Plugin for MapEditorPlugin {
                 insert_mode,
                 insert_session,
                 insert_map,
+                // GTW-500: the canvas level selector + zoom factor (state-scoped — bevy-traps #1),
+                // inserted before the canvas systems read them.
+                insert_edit_level,
+                insert_canvas_zoom,
                 insert_terrain_draft,
                 insert_theme_draft,
                 load_tile_atlas,
@@ -126,6 +138,10 @@ impl Plugin for MapEditorPlugin {
                 spawn_right_panel_controls,
                 spawn_stat_text,
                 spawn_canvas_scroll,
+                // GTW-500: the canvas level-nav bar + zoom readout chrome (parent into the canvas
+                // region's PrefabModeContent host, so they hide in TERRAIN / THEME mode).
+                spawn_level_nav,
+                spawn_zoom_chrome,
                 // TERRAIN-mode content (parents into the regions' TerrainModeContent containers).
                 spawn_terrain_form,
                 // THEME-mode content (parents into the regions' ThemeModeContent containers).
@@ -140,6 +156,8 @@ impl Plugin for MapEditorPlugin {
                 remove_mode,
                 remove_session,
                 remove_map,
+                remove_edit_level,
+                remove_canvas_zoom,
                 remove_terrain_draft,
                 remove_theme_draft,
             ),
@@ -180,11 +198,11 @@ impl Plugin for MapEditorPlugin {
                 select_palette_tile,
                 sync_palette,
                 refresh_stat_region,
-                // The canvas syncs after a theme switch / size commit has folded into the session
-                // (apply_theme_selection / apply_size_commit) so the grid re-fills / re-extents
-                // (C4). The GTW-426 interactivity then runs AFTER the canvas exists this frame:
-                // `paint_cell` reads a cell press (C2/C3), `spawn_hover_ghost` ensures the one ghost
-                // exists, and `follow_hover_ghost` snaps it to the hovered cell (C1).
+                // The canvas syncs after a theme switch / size commit / level step has folded in so
+                // the grid re-fills / re-extents / re-slices (C4 + GTW-500 C1). The GTW-426
+                // interactivity then runs AFTER the canvas exists this frame: `paint_cell` reads a
+                // cell press (C2/C3, on the CURRENT storey), `spawn_hover_ghost` ensures the one
+                // ghost exists, and `follow_hover_ghost` snaps it to the hovered cell (C1).
                 sync_canvas,
                 paint_cell,
                 spawn_hover_ghost,
@@ -194,8 +212,56 @@ impl Plugin for MapEditorPlugin {
                 .run_if(in_state(EditorState::Editing)),
         );
 
+        register_canvas_nav_systems(app);
+
         register_workbench_systems(app);
     }
+}
+
+/// Registers the GTW-500 canvas navigation / centring / zoom `Update` systems. Factored out of
+/// [`MapEditorPlugin::build`] (the `register_workbench_systems` precedent) so the always-compiled
+/// `Update` tuple stays under Bevy's system-tuple arity and the clippy line gate.
+///
+/// Ordering is explicit relative to [`sync_canvas`] (the canvas (re)builder): the level WRITES run
+/// BEFORE `sync_canvas` so a step / clamp re-slices the rendered storey THIS frame (C1), and the
+/// zoom WRITES run before the zoom re-layout; the zoom re-layout + centring + readouts run AFTER
+/// `sync_canvas` so they see the (possibly just-rebuilt) cells (C2/C3). All guard the state-scoped
+/// resources (bevy-traps #1) and gate to `Editing`.
+fn register_canvas_nav_systems(app: &mut App) {
+    // C1: write `CurrentEditLevel` (keys + chrome buttons), then re-clamp it on a grid shrink —
+    // BEFORE `sync_canvas` reads it, so the rendered storey slice re-extents this frame. C3: write
+    // `CanvasZoom` (wheel + reset) before the zoom re-layout reads it.
+    app.add_systems(
+        Update,
+        (
+            level_nav_hotkeys,
+            level_nav_buttons,
+            clamp_level_to_grid,
+            read_zoom_wheel,
+            reset_zoom_button,
+        )
+            .chain()
+            .before(sync_canvas)
+            .run_if(in_state(EditorState::Editing)),
+    );
+
+    // C3: re-apply the zoom to the (possibly just-rebuilt) cells, then C2: centre the grid in the
+    // viewport when it fits, then refresh the C1 / C3 chrome readouts — all AFTER `sync_canvas`.
+    // `apply_canvas_zoom` runs after `sync_canvas` so a rebuilt grid keeps the current zoom;
+    // `center_canvas` runs after the zoom re-layout so it sees the latest sizes (it re-runs each
+    // frame, so a one-frame layout lag self-corrects).
+    app.add_systems(
+        Update,
+        (
+            apply_canvas_zoom,
+            center_canvas,
+            refresh_level_readout,
+            refresh_zoom_readout,
+        )
+            .chain()
+            .after(sync_canvas)
+            .run_if(in_state(EditorState::Editing)),
+    );
 }
 
 /// Registers the GTW-474 Workbench `Update` systems: the MODE machine + the TERRAIN form drive
@@ -289,71 +355,4 @@ fn register_workbench_systems(app: &mut App) {
             save_theme_on_press.run_if(in_state(EditorState::Editing)),
         );
     }
-}
-
-/// `OnEnter(Editing)`: insert the [`EditorMode`] resource (the state-scoped Workbench mode —
-/// bevy-traps #1), seeded to the default [`Prefab`](EditorMode::Prefab) mode so the editor opens
-/// in the existing painter (GTW-474).
-fn insert_mode(mut commands: Commands) {
-    commands.insert_resource(EditorMode::default());
-}
-
-/// `OnExit(Editing)`: remove the [`EditorMode`] resource (the state-scoped-resource pattern —
-/// bevy-traps #1).
-fn remove_mode(mut commands: Commands) {
-    commands.remove_resource::<EditorMode>();
-}
-
-/// `OnEnter(Editing)`: insert the [`TerrainDraft`] (the state-scoped TERRAIN-mode authoring draft
-/// — bevy-traps #1), seeded to a fresh default the form's controls seed their initial values from
-/// (GTW-474).
-fn insert_terrain_draft(mut commands: Commands) {
-    commands.insert_resource(TerrainDraft::default());
-}
-
-/// `OnExit(Editing)`: remove the [`TerrainDraft`] (the state-scoped-resource pattern —
-/// bevy-traps #1).
-fn remove_terrain_draft(mut commands: Commands) {
-    commands.remove_resource::<TerrainDraft>();
-}
-
-/// `OnEnter(Editing)`: insert the [`ThemeDraft`] (the state-scoped THEME-mode authoring draft —
-/// bevy-traps #1), seeded to a fresh NEW-theme draft (a minted key, an empty form — C4) the
-/// form's controls seed their initial values from (GTW-475).
-fn insert_theme_draft(mut commands: Commands) {
-    commands.insert_resource(ThemeDraft::default());
-}
-
-/// `OnExit(Editing)`: remove the [`ThemeDraft`] (the state-scoped-resource pattern —
-/// bevy-traps #1).
-fn remove_theme_draft(mut commands: Commands) {
-    commands.remove_resource::<ThemeDraft>();
-}
-
-/// `OnEnter(Editing)`: insert the shared [`MapEditorSession`] (the state-scoped selection
-/// state — bevy-traps #1), seeded to the default theme + the full `60×60×8` grid. The
-/// default-floor key resolves on the first theme selection; the
-/// [`apply_theme_selection`](crate::right_panel::apply_theme_selection) drive could also seed
-/// it eagerly, but the dropdown's pre-selected default already matches the seed theme.
-fn insert_session(mut commands: Commands) {
-    commands.insert_resource(MapEditorSession::default());
-}
-
-/// `OnExit(Editing)`: remove the [`MapEditorSession`] so it never lingers past the editing
-/// scene (the state-scoped-resource pattern — bevy-traps #1).
-fn remove_session(mut commands: Commands) {
-    commands.remove_resource::<MapEditorSession>();
-}
-
-/// `OnEnter(Editing)`: insert the empty [`EditorMap`] paintable model (the state-scoped
-/// click-to-paint store — bevy-traps #1, GTW-426). Starts empty (nothing painted; every cell
-/// renders the theme default-floor); the click-to-paint flow ([`paint_cell`]) writes it.
-fn insert_map(mut commands: Commands) {
-    commands.insert_resource(EditorMap::new());
-}
-
-/// `OnExit(Editing)`: remove the [`EditorMap`] so the painted map never lingers past the editing
-/// scene (the state-scoped-resource pattern — bevy-traps #1).
-fn remove_map(mut commands: Commands) {
-    commands.remove_resource::<EditorMap>();
 }

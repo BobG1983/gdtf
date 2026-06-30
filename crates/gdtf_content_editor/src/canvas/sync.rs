@@ -12,7 +12,10 @@ use gdtf_battle_sim::{
 };
 use gdtf_ui::theme::GdtfTheme;
 
-use super::types::{CanvasBuiltFor, CanvasExtent, CanvasRoot, spawn_canvas};
+use super::{
+    level_nav::CurrentEditLevel,
+    types::{CanvasBuiltFor, CanvasExtent, CanvasRoot, spawn_canvas},
+};
 use crate::{
     editor_map::EditorMap, session::MapEditorSession, terrain_graphics::terrain_atlas_index,
     tile_atlas::TileAtlas,
@@ -27,17 +30,19 @@ use crate::{
 /// `OnEnter` build chained after those inserts would NOT see them (the GTW-421 command-flush
 /// race). Running in `Update` sidesteps it.
 ///
-/// It (re)builds when the `(grid_size, theme)` the canvas was last built for differs from the
-/// session's current values — covering the first build, a size change (new extent + cell count —
-/// C4), and a theme change (new default-floor fill — C4). PAINT PERSISTENCE across a rebuild
-/// (GTW-426 C2): the authoritative paints live in the [`EditorMap`] model, NOT on the cell
-/// entities, so a rebuild that respawns the cells does NOT lose them.
+/// It (re)builds when the `(grid_size, theme, level)` the canvas was last built for differs from
+/// the session's + selector's current values — covering the first build, a size change (a new
+/// extent and cell count — C4), a theme change (new default-floor fill — C4), and a LEVEL STEP (the
+/// current-storey slice changes — GTW-500 C1). PAINT PERSISTENCE across a rebuild (GTW-426 C2): the
+/// authoritative paints live in the [`EditorMap`] model, NOT on the cell entities, so a rebuild
+/// that respawns the cells does NOT lose them — and the cells fill from the painted tile ON THE
+/// CURRENT STOREY, so stepping levels shows each storey's own paints.
 #[expect(
     clippy::too_many_arguments,
     reason = "a Bevy system's params are framework plumbing, not a wide function signature; the \
               canvas sync legitimately reads theme + atlas + the terrain registry + the theme \
-              registry + the role table + the paint model + the existing roots + the rebuild \
-              tracker"
+              registry + the role table + the paint model + the current level + the existing roots \
+              + the rebuild tracker"
 )]
 pub(crate) fn sync_canvas(
     mut commands: Commands,
@@ -48,17 +53,26 @@ pub(crate) fn sync_canvas(
     roles: Option<Res<TileRoles>>,
     session: Option<Res<MapEditorSession>>,
     map: Option<Res<EditorMap>>,
+    level: Option<Res<CurrentEditLevel>>,
     roots: Query<Entity, With<CanvasRoot>>,
     mut built_for: Local<Option<CanvasBuiltFor>>,
 ) {
-    let (Some(atlas), Some(registry), Some(themes), Some(roles), Some(session), Some(map)) =
-        (atlas, registry, themes, roles, session, map)
+    let (
+        Some(atlas),
+        Some(registry),
+        Some(themes),
+        Some(roles),
+        Some(session),
+        Some(map),
+        Some(level),
+    ) = (atlas, registry, themes, roles, session, map, level)
     else {
         return;
     };
     let current = CanvasBuiltFor {
         size:  session.grid_size(),
         theme: session.theme(),
+        level: level.level(),
     };
     if *built_for == Some(current) {
         // Already built for this size + theme — nothing relevant changed.
@@ -83,6 +97,7 @@ pub(crate) fn sync_canvas(
         &session,
         &map,
         extent,
+        current.level,
         fill_index,
     );
     *built_for = Some(current);

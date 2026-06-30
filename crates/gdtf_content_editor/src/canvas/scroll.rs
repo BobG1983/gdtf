@@ -7,7 +7,7 @@
 use bevy::prelude::*;
 use gdtf_ui::{ScrollListColors, spawn_scroll_list, theme::GdtfTheme};
 
-use super::types::CanvasScroll;
+use super::types::{CanvasScroll, CanvasScrollArea};
 use crate::{CanvasRegion, mode::PrefabModeContent, mode_host::mode_host_under_region};
 
 /// `OnEnter(Editing)`: wrap the [`CanvasRegion`] panel in a `gdtf_ui`
@@ -25,6 +25,11 @@ pub(crate) fn spawn_canvas_scroll(mut commands: Commands, theme: Res<GdtfTheme>)
         thumb: *theme.panel.border_color,
     };
     let area = spawn_scroll_list(&mut commands, colors, CanvasScroll);
+    // Tag the AREA cell (not just the root frame's `CanvasScroll` marker) so the GTW-500 centring /
+    // zoom-gate / zoom-relayout systems act on THE CANVAS viewport alone — the editor's two OTHER
+    // ScrollListAreas (palette / right panel) carry the bare `ScrollListArea` marker too, and zooming
+    // or re-scrolling them on a canvas wheel tick would be a defect.
+    commands.entity(area).insert(CanvasScrollArea);
     commands.queue(move |world: &mut World| {
         // The canvas is PREFAB-mode content; hang its scroll-list root on the canvas region's
         // PREFAB-mode container so the whole paint canvas hides in TERRAIN mode (GTW-474).

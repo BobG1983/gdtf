@@ -11,9 +11,12 @@ use bevy::{
 use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{metric::CellLevel, terrain::def::TerrainDefRegistry};
 
-use super::types::{CanvasCell, CanvasGhost, paint_index_for};
+use super::{
+    level_nav::CurrentEditLevel,
+    types::{CanvasCell, CanvasGhost, paint_index_for},
+};
 use crate::{
-    editor_map::{EditorMap, GROUND_LEVEL},
+    editor_map::EditorMap,
     placement::{ProposedPlacement, evaluate_placement},
     session::MapEditorSession,
     tile_atlas::TileAtlas,
@@ -97,11 +100,18 @@ pub(crate) fn spawn_hover_ghost(
 /// legality predicate ([`evaluate_placement`]) for the hovered cell + selected tile; an ILLEGAL
 /// verdict tints the ghost partial-transparent RED ([`GhostTint::illegal`]) — the same verdict the
 /// click-commit rejects on (one source of truth, C3).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a Bevy system's params are framework plumbing, not a wide function signature; the \
+              ghost legitimately reads the terrain registry + the role table + the session + the \
+              current level + the paint model + the cells + the ghost"
+)]
 pub(crate) fn follow_hover_ghost(
     mut commands: Commands,
     registry: Option<Res<TerrainDefRegistry>>,
     roles: Option<Res<TileRoles>>,
     session: Option<Res<MapEditorSession>>,
+    level: Option<Res<CurrentEditLevel>>,
     map: Option<Res<EditorMap>>,
     cells: Query<(Entity, &Interaction, &CanvasCell)>,
     mut ghost: Query<(Entity, &mut ImageNode, &mut Visibility), With<CanvasGhost>>,
@@ -112,7 +122,8 @@ pub(crate) fn follow_hover_ghost(
     let hovered = cells.iter().find_map(|(entity, interaction, cell)| {
         matches!(interaction, Interaction::Hovered).then_some((entity, cell.cell()))
     });
-    let (Some(registry), Some(roles), Some(session), Some(map)) = (registry, roles, session, map)
+    let (Some(registry), Some(roles), Some(session), Some(level), Some(map)) =
+        (registry, roles, session, level, map)
     else {
         *visibility = Visibility::Hidden;
         return;
@@ -127,8 +138,9 @@ pub(crate) fn follow_hover_ghost(
         *visibility = Visibility::Hidden;
         return;
     };
-    // The same predicate the commit uses (C3): preview the ground-plane slot for the hovered cell.
-    let slot = CellLevel::new(hovered_cell, GROUND_LEVEL);
+    // The same predicate the commit uses (C3): preview the CURRENT-STOREY slot for the hovered
+    // cell (GTW-500 C1 — the ghost targets the level the author is editing, not a hardcoded plane).
+    let slot = CellLevel::new(hovered_cell, level.level());
     let placement = ProposedPlacement::new(slot, selected_key);
     let verdict = evaluate_placement(
         &map,

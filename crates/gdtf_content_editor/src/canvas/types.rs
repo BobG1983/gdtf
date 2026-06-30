@@ -9,12 +9,13 @@
 
 use bevy::{
     prelude::*,
-    ui::{BorderColor, FlexDirection, FlexWrap, Val, widget::ImageNode},
+    ui::{BorderColor, FlexDirection, FlexWrap, UiTransform, Val, widget::ImageNode},
 };
 use gdtf_battle_presenter::{TileIndex, TileRoles};
 use gdtf_battle_sim::{
     Cell,
     level::{GridHeight, GridSize, GridWidth, ThemeUuid},
+    metric::{CellLevel, Level},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 
@@ -121,21 +122,37 @@ pub struct CanvasGhost;
 /// The grid + theme a [`CanvasRoot`] was last built for — the [`sync_canvas`](super::sync::sync_canvas)
 /// rebuild tracker.
 ///
-/// A named [`Local`]-state newtype (no-bare-types): pairs the [`GridSize`] and [`ThemeUuid`] the
-/// canvas last drew, so the rebuild fires on EITHER a size change or a theme change (C4) — and on
-/// neither for an unrelated session mutation. `None` before the first build.
+/// A named [`Local`]-state newtype (no-bare-types): pairs the [`GridSize`], the [`ThemeUuid`], and
+/// the [`Level`] storey the canvas last drew, so the rebuild fires on a size change, a theme change
+/// (C4), OR a level step (GTW-500 C1) — and on none for an unrelated session mutation. `None`
+/// before the first build.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct CanvasBuiltFor {
     /// The grid size the canvas was last built for.
     pub(crate) size:  GridSize,
     /// The theme whose default floor the cells were last filled with.
     pub(crate) theme: ThemeUuid,
+    /// The storey the cells were last drawn for (GTW-500 C1).
+    pub(crate) level: Level,
 }
 
 /// Marker on the canvas's wrapping scroll-list ROOT FRAME. A unit marker (no-bare-types) so a
 /// test can find the scroll list.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct CanvasScroll;
+
+/// Marker on the CANVAS's [`ScrollListArea`](gdtf_ui::ScrollListArea) cell — the clipping,
+/// scrolling viewport the cell grid hangs inside (GTW-500).
+///
+/// The editor spawns THREE [`ScrollListArea`](gdtf_ui::ScrollListArea)s (the left palette, the
+/// canvas, the right panel) and that marker is identical across all three; the per-region
+/// discriminator ([`CanvasScroll`] / `LeftPaletteRegion` / `RightPanelRegion`) rides the scroll-list
+/// ROOT FRAME, NOT the area cell. So the centring / zoom-gate / zoom-relayout systems — which must
+/// act on the canvas's viewport and NO other — discriminate it by THIS marker, inserted on the
+/// returned area entity in [`spawn_canvas_scroll`](super::scroll::spawn_canvas_scroll). A unit
+/// marker (no-bare-types). Crate-internal — only the editor's own canvas systems discriminate on it.
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct CanvasScrollArea;
 
 /// The grid CONTAINER [`Node`] (C1/C2): a flex-WRAP row sized to exactly `width` cells across so
 /// the cells wrap into `height` rows, carrying the thick C1 boundary border. Fixed-px sizing
@@ -237,6 +254,7 @@ pub(super) fn spawn_canvas(
     session: &MapEditorSession,
     map: &EditorMap,
     extent: CanvasExtent,
+    level: Level,
     fill_index: Option<TileIndex>,
 ) {
     let boundary_color = *theme.panel.border_color;
@@ -244,8 +262,8 @@ pub(super) fn spawn_canvas(
     let width = i32::from(*extent.width());
     let cells: Vec<Entity> = (0..extent.cell_count())
         .map(|index| {
-            // Row-major: cell `index` is the ground-plane cell `(x = index % width, y = index /
-            // width)`. The grid container is a `flex_wrap` row of exactly `width` cells.
+            // Row-major: cell `index` is the cell `(x = index % width, y = index / width)` on the
+            // current storey. The grid container is a `flex_wrap` row of exactly `width` cells.
             #[expect(
                 clippy::cast_possible_wrap,
                 clippy::cast_possible_truncation,
@@ -253,10 +271,11 @@ pub(super) fn spawn_canvas(
             )]
             let i = index as i32;
             let cell = Cell::new(i % width, i / width);
-            // A painted cell (in the model) shows its painted terrain's atlas index (C2
-            // persistence across rebuild); an unpainted cell falls back to the default-floor (C3).
+            // A painted cell ON THE CURRENT STOREY (in the model) shows its painted terrain's atlas
+            // index (C2 persistence across rebuild; GTW-500 C1 level-aware); an unpainted slot falls
+            // back to the default-floor (C3).
             let cell_index = map
-                .tile_at(cell)
+                .tile_at_level(CellLevel::new(cell, level))
                 .and_then(|key| paint_index_for(registry, roles, session.theme(), key))
                 .or(fill_index);
             spawn_cell(commands, atlas, cell_index, dash_color, cell)
@@ -266,6 +285,13 @@ pub(super) fn spawn_canvas(
         .spawn((
             CanvasRoot,
             extent,
+            // GTW-500 C2: the centring lever. The grid starts at IDENTITY (flex-start, reachable by
+            // scroll on overflow — the GTW-421 trap); `center_canvas` nudges the translation to
+            // centre it WHEN it is smaller than the viewport (never `justify`/`align: Center`).
+            UiTransform::IDENTITY,
+            // GTW-500 C3: the x cell-count the zoom re-layout multiplies by the new cell edge to
+            // recompute the row width, without re-reading `CanvasExtent` (a disjoint root query).
+            super::zoom::CanvasExtentSpan::new(u16::from(*extent.width())),
             grid_container_node(extent),
             BorderColor::all(boundary_color),
             BackgroundColor(*theme.panel.color),

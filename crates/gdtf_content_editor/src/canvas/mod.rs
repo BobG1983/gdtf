@@ -7,13 +7,15 @@
 //! PER-CELL dimmed dashes (C2). It LIVE-updates on theme / size change (C4): a theme switch
 //! repaints every cell with the new default floor, a size change re-extents the grid.
 //!
-//! ## Scope: 2D x/y ground plane only
+//! ## Scope: one x/y storey at a time, with a level selector (GTW-500)
 //!
-//! The canvas draws ONLY the x/y ground plane — the grid's [`width`](gdtf_battle_sim::level::GridSize::width) ×
-//! [`height`](gdtf_battle_sim::level::GridSize::height). The z axis ([`levels`](gdtf_battle_sim::level::GridSize::levels)) is OUT of scope:
-//! no level (storey) SELECTION control exists yet, so there is no way to choose which storey
-//! to draw. When level selection lands the canvas will draw the chosen storey's x/y plane;
-//! until then it draws the single ground plane.
+//! The canvas draws ONE x/y storey slice at a time — the grid's
+//! [`width`](gdtf_battle_sim::level::GridSize::width) ×
+//! [`height`](gdtf_battle_sim::level::GridSize::height) at the
+//! [`CurrentEditLevel`](level_nav::CurrentEditLevel) storey. GTW-500 added the storey SELECTOR the
+//! GTW-423 canvas lacked: the [`level_nav`] submodule steps [`CurrentEditLevel`] up/down via the
+//! keyboard and chrome buttons, clamped to the prefab's `[0, levels-1]` range, and the render /
+//! paint / ghost all read it, so stepping the level changes the drawn slice live.
 //!
 //! ## Chosen scale model (the GTW-423 open design decision)
 //!
@@ -52,21 +54,39 @@
 //! | [`scroll`]| `spawn_canvas_scroll` — wraps the [`CanvasRegion`](crate::CanvasRegion) in a scroll list |
 //! | [`paint`] | `paint_cell` — click-to-paint, writes [`EditorMap`](crate::EditorMap) + redraws sprite |
 //! | [`ghost`] | `spawn_hover_ghost` / `follow_hover_ghost` — translucent preview ghost |
+//! | [`level_nav`] | `CurrentEditLevel` + level up/down nav (keys + chrome buttons + readout) — GTW-500 C1 |
+//! | [`center`] | `center_canvas` — centres the grid in the viewport when it fits — GTW-500 C2 |
+//! | [`zoom`]  | `CanvasZoom` + mouse-wheel zoom (cell-size re-layout, cursor-anchored) — GTW-500 C3 |
+//! | [`zoom_chrome`] | The clickable `Zoom n%` readout + its refresh + the zoom reset — GTW-500 C3 |
 //! | [`tests`] | In-crate layout-guard unit tests |
 
+mod center;
 mod ghost;
+mod level_nav;
 mod paint;
 mod scroll;
 mod sync;
 mod types;
+mod zoom;
+mod zoom_chrome;
 
 #[cfg(test)]
 mod tests;
 
 // Public re-exports consumed by lib.rs (the external surface is unchanged).
 // Crate-internal re-exports consumed by plugin.rs (system references).
+pub(crate) use center::center_canvas;
 pub(crate) use ghost::{follow_hover_ghost, spawn_hover_ghost};
+pub use level_nav::{CurrentEditLevel, LevelNavButton, LevelReadout};
+pub(crate) use level_nav::{
+    clamp_level_to_grid, level_nav_buttons, level_nav_hotkeys, refresh_level_readout,
+    spawn_level_nav,
+};
 pub(crate) use paint::paint_cell;
 pub(crate) use scroll::spawn_canvas_scroll;
 pub(crate) use sync::sync_canvas;
 pub use types::{CanvasCell, CanvasExtent, CanvasGhost, CanvasRoot, CanvasScroll};
+pub use zoom::CanvasZoom;
+pub(crate) use zoom::{apply_canvas_zoom, read_zoom_wheel};
+pub use zoom_chrome::ZoomReadout;
+pub(crate) use zoom_chrome::{refresh_zoom_readout, reset_zoom_button, spawn_zoom_chrome};

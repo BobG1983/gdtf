@@ -5,9 +5,12 @@ use bevy::{prelude::*, ui::widget::ImageNode};
 use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{metric::CellLevel, terrain::def::TerrainDefRegistry};
 
-use super::types::{CanvasCell, paint_index_for};
+use super::{
+    level_nav::CurrentEditLevel,
+    types::{CanvasCell, paint_index_for},
+};
 use crate::{
-    editor_map::{EditorMap, GROUND_LEVEL},
+    editor_map::EditorMap,
     placement::{ProposedPlacement, apply_placement},
     session::MapEditorSession,
 };
@@ -34,11 +37,12 @@ pub(crate) fn paint_cell(
     registry: Option<Res<TerrainDefRegistry>>,
     roles: Option<Res<TileRoles>>,
     session: Option<Res<MapEditorSession>>,
+    level: Option<Res<CurrentEditLevel>>,
     map: Option<ResMut<EditorMap>>,
     mut cells: Query<&mut ImageNode, With<CanvasCell>>,
 ) {
-    let (Some(registry), Some(roles), Some(session), Some(mut map)) =
-        (registry, roles, session, map)
+    let (Some(registry), Some(roles), Some(session), Some(level), Some(mut map)) =
+        (registry, roles, session, level, map)
     else {
         return;
     };
@@ -55,8 +59,9 @@ pub(crate) fn paint_cell(
             continue;
         }
         // Commit through the shared predicate (C3): rejects an illegal placement (C2), auto-clears
-        // a slab above a placed ladder (C1), else records the paint. Only redraw on a commit.
-        let slot = CellLevel::new(cell.cell(), GROUND_LEVEL);
+        // a slab above a placed ladder (C1), else records the paint. The slot is on the CURRENT
+        // STOREY (GTW-500 C1), not a hardcoded ground plane. Only redraw on a commit.
+        let slot = CellLevel::new(cell.cell(), level.level());
         let placement = ProposedPlacement::new(slot, selected);
         if apply_placement(
             &mut map,
