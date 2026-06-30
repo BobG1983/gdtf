@@ -224,4 +224,16 @@
         p_max:             0.95, // probability ceiling: P(interrupt) is never above this (resolution.md §8)
     ),
 
+    // §7 Melee opposed-Fight tuning (GTW-506; resolution.md §7 lines 146-150). The §7
+    // damage_mult = clamp(mult_min + k_margin × margin, mult_min, mult_max), where
+    // margin = atk/def − 1 is the relative dominance of the opposed Fight roll.
+    // Defaults are DEFENSIBLE-BUT-ARBITRARY starting points (forks the user may tune,
+    // flagged on GTW-37), never pinned by a magnitude test (value-agnostic tests only).
+    melee: (
+        k_margin: 1.0,  // margin → damage-mult slope; 1.0 = a +50% Fight margin adds 0.5 to the multiplier
+        mult_min: 0.5,  // the clamp floor — BELOW 1 so a barely-connecting hit GLANCES (resolution.md §7: "may be below 1")
+        mult_max: 3.0,  // the clamp ceiling — set generously so real skill gaps are felt before the clamp (resolution.md §7)
+        variance: 0.2,  // the roll spread v: each side's roll is uniform in [1−v, 1+v] = [0.8, 1.2]
+    ),
+
 )

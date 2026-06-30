@@ -33,6 +33,11 @@
 //!   (output newtypes [`ReactionScore`] / [`ReactionProbability`] /
 //!   [`ReactionsUsed`] + pure functions [`reaction_score`] /
 //!   [`interrupt_probability`] / [`rolls_interrupt`] / [`may_interrupt`]).
+//! - [`melee`] — the §7 melee opposed-Fight layer: the GTW-506 tuning group
+//!   ([`MeleeTuning`] + four leaves [`MeleeKMargin`] / [`MeleeMultMin`] /
+//!   [`MeleeMultMax`] / [`FightVariance`]). The pure §7 functions that consume it
+//!   ([`opposed_fight`](crate::melee::opposed_fight) /
+//!   [`melee_damage_mult`](crate::melee::melee_damage_mult)) live in [`crate::melee`].
 //! - [`combat_tuning`] — the top-level [`CombatTuning`] resource composing them all.
 //! - [`stat_tuning`] — the GTW-384 [`GangerStatTuning`] resource: the attribute →
 //!   computed-stat derivation weights / divisors / TU params (a SEPARATE store from
@@ -46,6 +51,7 @@ mod cone_groups;
 mod economy;
 mod firing_arc;
 mod matchup;
+mod melee;
 mod reaction;
 mod severity;
 mod slab;
@@ -71,6 +77,7 @@ pub use cone_groups::{
 pub use economy::{LinkTu, MoveCost, MoveCosts, StanceChangeTu, TurnTu};
 pub use firing_arc::FiringArc;
 pub use matchup::MatchupMultipliers;
+pub use melee::{FightVariance, MeleeKMargin, MeleeMultMax, MeleeMultMin, MeleeTuning};
 pub use reaction::{
     ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin, ReactionProbability,
     ReactionScore, ReactionTuning, ReactionsUsed, clamp_probability, interrupt_probability,

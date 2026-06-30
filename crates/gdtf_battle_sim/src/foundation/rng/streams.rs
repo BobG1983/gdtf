@@ -307,3 +307,26 @@ impl_sim_stream!(
     ReactionRng,
     b"gdtf.rng.reaction.v1"
 );
+
+impl_sim_stream!(
+    /// The **melee opposed-Fight** RNG stream (GTW-506 data substrate).
+    ///
+    /// Draw site: the §7 opposed-Fight roll
+    /// ([`opposed_fight`](crate::melee::opposed_fight)) takes TWO uniform draws per
+    /// resolve — the attacker's roll then the defender's roll, in that deterministic
+    /// order. Inserted at battle setup alongside the other streams so its cursor is
+    /// pinned from the GTW-506 boundary. No ECS system draws from it yet — the live
+    /// melee ACT that owns the `ResMut<FightRng>` is GTW-507.
+    ///
+    /// **Determinism isolation (the binding orchestrator decision):** melee uses its
+    /// OWN stream, NOT [`ReactionRng`]. Sharing a stream would entangle melee and
+    /// reaction-fire determinism — a melee draw would shift the reaction stream's
+    /// cursor and vice versa. Per-concern stream isolation is the established pattern
+    /// (`ShotRng` / `SeverityRng` / `InjuryRng` / `ReactionRng` each independent).
+    /// Adding this stream does NOT perturb any existing stream's seed (each depends
+    /// only on its own label via the FNV-1a-64 derivation).
+    ///
+    /// No system may take `Res<FightRng>` — see the module binding constraint.
+    FightRng,
+    b"gdtf.rng.fight.v1"
+);

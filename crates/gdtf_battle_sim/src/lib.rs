@@ -189,6 +189,13 @@
 //!   and returns a FROZEN [`resolve_and_apply::HitReport`] for the presenter's FX
 //!   (corpse-skip before any draw; every draw via the injected [`rng::ShotRng`] or [`rng::SeverityRng`]; no
 //!   pixel). Charging TU / looping the burst (`fire()`) is E4.
+//! - [`mod@melee`] — the §7 opposed-Fight resolution CORE (GTW-506):
+//!   [`melee::opposed_fight`] (two [`rng::FightRng`] draws → a [`melee::FightOutcome`]
+//!   of `connect` + [`melee::FightMargin`]), [`melee::melee_damage_mult`] (the
+//!   margin → clamped [`melee::MeleeDamageMult`] curve), and [`melee::apply_melee_multiplier`]
+//!   (the PURE seam scaling a [`resolve_hit::HitResult`] by the multiplier between
+//!   [`mod@resolve_hit`] and the §6 wound step). Pure functions + a dedicated seeded
+//!   stream; the live melee ACT is GTW-507.
 //! - [`mod@fire`] — the E4.5 capstone firing act ([`fire::fire`]): a query-based Bevy
 //!   function (NO `&mut World`) over two disjoint queries ([`fire::ShooterQuery`] and
 //!   [`fire::TargetQuery`]) that validates ([`magazine::can_fire`]) → charges TU once
@@ -235,6 +242,7 @@ pub mod equipment;
 pub mod foundation;
 pub mod level;
 pub mod lifecycle;
+pub mod melee;
 pub mod perception;
 pub mod shot_pipeline;
 pub mod terrain;
@@ -341,7 +349,9 @@ pub use foundation::{
     metric,
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
     rng,
-    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng},
+    rng::{
+        BattleSeed, FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng,
+    },
 };
 pub use level::{
     GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN, Prefab2, PrefabKey2,
@@ -367,6 +377,10 @@ pub use lifecycle::{
         BattleRegistries, BattleSetup, BattleSetupError, CoverSpawn, FloorSpawn, GangerSpawn,
         PlacedGanger, Placement, Situation, SlabSpawn, has_stacked_gangers, setup_battle,
     },
+};
+pub use melee::{
+    FightMargin, FightOutcome, MeleeDamageMult, apply_melee_multiplier, melee_damage_mult,
+    opposed_fight,
 };
 pub use perception::{
     los,
@@ -463,12 +477,13 @@ pub use tuning::{
     AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
     BodyPartWeights, BottlePerMorale, BraceContribution, BraceMinHeight, CombatTuning,
     ConcentrationCoeff, ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu,
-    FightWeights, GangerStatTuning, HpWeights, MatchupMultipliers, MoraleWeights, MoveCost,
-    MoveCosts, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale,
-    ProjectileBandEdges, RandomSpread, ReactionCapBase, ReactionCapPerReactions, ReactionPMax,
-    ReactionPMin, ReactionProbability, ReactionScore, ReactionTuning, ReactionsUsed,
-    ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
-    ShootingWeights, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults, StabilityCurve,
+    FightVariance, FightWeights, GangerStatTuning, HpWeights, MatchupMultipliers, MeleeKMargin,
+    MeleeMultMax, MeleeMultMin, MeleeTuning, MoraleWeights, MoveCost, MoveCosts,
+    MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale, ProjectileBandEdges,
+    RandomSpread, ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin,
+    ReactionProbability, ReactionScore, ReactionTuning, ReactionsUsed, ReactionsWeights,
+    RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale, ShootingWeights,
+    SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults, StabilityCurve,
     StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu,
     StanceContribution, StanceStability, StatWeight, ToughnessMitigation, TuBase, TuPerSpeed,
     TurnTu, WoundCost, WoundCosts, WoundsPerHp, clamp_probability, interrupt_probability,

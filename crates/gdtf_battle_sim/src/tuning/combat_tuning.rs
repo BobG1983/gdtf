@@ -11,6 +11,7 @@ use crate::tuning::{
     economy::{LinkTu, MoveCosts, StanceChangeTu, TurnTu},
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
+    melee::MeleeTuning,
     reaction::ReactionTuning,
     severity::SeverityScaling,
     visibility::{ExploredDim, ViewRange},
@@ -114,4 +115,15 @@ pub struct CombatTuning {
     /// the opposed-check core is GTW-467 and the live trigger is GTW-468.
     /// Authored in `assets/core_tuning/combat.tuning.ron` under `reaction:`.
     pub reaction:              ReactionTuning,
+    /// The §7 melee opposed-Fight tuning group (GTW-506) — the per-side roll variance
+    /// ([`FightVariance`](crate::tuning::FightVariance)) and the
+    /// `clamp(mult_min + k_margin × margin, mult_min, mult_max)` damage-multiplier curve
+    /// ([`MeleeKMargin`](crate::tuning::MeleeKMargin) /
+    /// [`MeleeMultMin`](crate::tuning::MeleeMultMin) /
+    /// [`MeleeMultMax`](crate::tuning::MeleeMultMax)) from `docs/combat/resolution.md` §7.
+    ///
+    /// The §7 pure functions [`opposed_fight`](crate::melee::opposed_fight) and
+    /// [`melee_damage_mult`](crate::melee::melee_damage_mult) read these leaves; the live
+    /// melee ACT is GTW-507. Authored in `assets/core_tuning/combat.tuning.ron` under `melee:`.
+    pub melee:                 MeleeTuning,
 }

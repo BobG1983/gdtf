@@ -27,8 +27,9 @@
 //! | [`InjuryRng`] | in-battle injury roll (GTW-438) |
 //! | [`ProcgenRng`] | reserved |
 //! | [`ReactionRng`] | reserved — reaction-fire (GTW-466 substrate) |
+//! | [`FightRng`] | melee opposed-Fight roll — two draws per resolve (GTW-506) |
 //!
-//! All six are inserted at battle setup (from [`BattleSeed`]) and removed at
+//! All seven are inserted at battle setup (from [`BattleSeed`]) and removed at
 //! teardown. Reserved streams draw nothing and cannot perturb active streams.
 //!
 //! ## Draw surface — `impl_sim_stream!`
@@ -49,4 +50,4 @@ pub(super) mod streams;
 mod test;
 
 pub use seeded::BattleSeed;
-pub use streams::{InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng};
+pub use streams::{FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng};

@@ -15,7 +15,7 @@ use crate::{
     cover::CoverLedger,
     ganger::GangRegistry,
     occupancy::OccupancyGrid,
-    rng::{InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng},
+    rng::{FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng},
     situation::{BattleRegistries, setup_battle},
     slab::SlabLedger,
     surface::SurfaceGrid,
@@ -38,9 +38,9 @@ use crate::{
 ///    UUID against the [`TerrainDefRegistry`] (GTW-491). On `Ok` the sim resources
 ///    ([`CoverLedger`] / [`SurfaceGrid`] / [`OccupancyGrid`] /
 ///    [`VerticalLinkGraph`] / [`FloorCostGrid`]) and the spawned ganger entities
-///    land in the world, the six battle-lifetime per-subsystem RNG stream resources
+///    land in the world, the seven battle-lifetime per-subsystem RNG stream resources
 ///    ([`ShotRng`], [`SeverityRng`], [`LootRng`], [`InjuryRng`], [`ProcgenRng`],
-///    [`ReactionRng`]) are inserted (derived from the message's
+///    [`ReactionRng`], [`FightRng`]) are inserted (derived from the message's
 ///    [`BattleSeed`](crate::rng::BattleSeed) via the stable FNV-1a-64 label-hash,
 ///    GTW-14; each stream independent — a draw on one cannot perturb another; all
 ///    portable `ChaCha12Rng`-backed, byte-stable across builds and platforms for
@@ -209,9 +209,10 @@ pub fn setup_battle_on_request(
                 // directly). This is a change from the earlier sim-slice that inserted it
                 // here: the full registry-driven grid now comes from setup_battle.
 
-                // GTW-14 / GTW-466: derive and insert the six battle-lifetime per-subsystem
-                // RNG streams from the trigger's root seed ON THE Ok PATH ONLY, so they share
-                // exactly the BattleInProgress lifetime (removed together on teardown) and
+                // GTW-14 / GTW-466 / GTW-506: derive and insert the seven battle-lifetime
+                // per-subsystem RNG streams from the trigger's root seed ON THE Ok PATH ONLY,
+                // so they share exactly the BattleInProgress lifetime (removed together on
+                // teardown) and
                 // a FAILED setup_battle leaves NO orphaned RNG resources. Each stream is an
                 // independent ChaCha12Rng derived via fnv1a64(root, label); adding a draw on
                 // one stream cannot perturb any other stream's output sequence.
@@ -225,6 +226,11 @@ pub fn setup_battle_on_request(
                 // pinned here so its seed is fixed from the GTW-466 boundary and a future
                 // first draw replays correctly with no migration).
                 commands.insert_resource(ReactionRng::from_root(root));
+                // GTW-506: melee opposed-Fight RNG stream (data substrate — the §7
+                // opposed_fight core draws from it, but no ECS system does yet; the live
+                // melee ACT that owns the ResMut<FightRng> is GTW-507). A DEDICATED stream
+                // (NOT ReactionRng) so melee and reaction-fire determinism stay isolated.
+                commands.insert_resource(FightRng::from_root(root));
 
                 commands.insert_resource(BattleInProgress);
                 commands.insert_resource(PlayerFaction::new(request.situation.player_faction));
@@ -280,7 +286,7 @@ pub fn setup_battle_on_request(
     }
 }
 
-/// Remove all six per-subsystem RNG stream resources from the world.
+/// Remove all seven per-subsystem RNG stream resources from the world.
 ///
 /// Called during [`teardown_battle_on_request`] to clean every battle-lifetime RNG
 /// stream in one place (bevy-traps.md #1 — resources must be removed on state exit).
@@ -288,8 +294,9 @@ pub fn setup_battle_on_request(
 /// so a spurious or double call is harmless. Defined as a standalone `fn` so the
 /// teardown system body stays focused on ordering concerns and is easy to audit.
 ///
-/// GTW-466 adds [`ReactionRng`] as the sixth stream (data substrate — no draw sites
-/// yet; pinned here so its seed is fixed from the GTW-466 boundary).
+/// GTW-466 adds [`ReactionRng`] as the sixth stream and GTW-506 adds [`FightRng`] as
+/// the seventh (each a data substrate — pinned at setup so its seed is fixed from the
+/// adding ticket's boundary).
 fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
     commands.remove_resource::<ShotRng>();
     commands.remove_resource::<SeverityRng>();
@@ -297,6 +304,7 @@ fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
     commands.remove_resource::<InjuryRng>();
     commands.remove_resource::<ProcgenRng>();
     commands.remove_resource::<ReactionRng>();
+    commands.remove_resource::<FightRng>();
 }
 
 /// **Teardown** the battle on [`TeardownBattleRequested`] — remove the
@@ -304,9 +312,9 @@ fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
 /// / GTW-212).
 ///
 /// Drains [`MessageReader<TeardownBattleRequested>`] and, when triggered, removes
-/// the six per-subsystem RNG streams ([`ShotRng`] / [`SeverityRng`] / [`LootRng`]
-/// / [`InjuryRng`] / [`ProcgenRng`] / [`ReactionRng`]) that GTW-14 / GTW-466
-/// inserted at setup, the
+/// the seven per-subsystem RNG streams ([`ShotRng`] / [`SeverityRng`] / [`LootRng`]
+/// / [`InjuryRng`] / [`ProcgenRng`] / [`ReactionRng`] / [`FightRng`]) that GTW-14 /
+/// GTW-466 / GTW-506 inserted at setup, the
 /// [`setup_battle`]-inserted resources ([`CoverLedger`] / [`SurfaceGrid`] /
 /// [`OccupancyGrid`] / [`VerticalLinkGraph`] /
 /// [`SlabLedger`] / [`TerrainIndex`](crate::terrain::entity::TerrainIndex) /

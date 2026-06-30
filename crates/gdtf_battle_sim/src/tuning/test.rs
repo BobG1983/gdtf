@@ -59,6 +59,65 @@ fn shipped_reaction_leaves_parse_and_satisfy_ordering_invariant() {
     );
 }
 
+/// GTW-506 C3 — the §7 melee opposed-Fight tuning leaves parse from the shipped
+/// `assets/core_tuning/combat.tuning.ron` (real-path parse-OK test).
+///
+/// Value-agnostic: asserts only that the four melee leaves are PRESENT and parse
+/// deterministically across two parses (never the exact magnitudes — `k_margin` /
+/// `mult_min` / `mult_max` / `variance` are tunable balance data). The structural
+/// invariants the shipped values MUST satisfy: `mult_min <= mult_max` (the clamp is
+/// well-defined) and `0 <= variance < 1` (a roll never reaches 0, which would
+/// collapse the `atk/def` margin).
+#[test]
+fn shipped_melee_leaves_parse_and_satisfy_structural_invariants() {
+    const SHIPPED_TUNING_RON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../assets/core_tuning/combat.tuning.ron"
+    ));
+
+    let Ok(tuning) = ron::from_str::<CombatTuning>(SHIPPED_TUNING_RON) else {
+        // The parent `shipped_tuning_ron_deserializes` test already guards parse-OK.
+        return;
+    };
+    let Ok(reparsed) = ron::from_str::<CombatTuning>(SHIPPED_TUNING_RON) else {
+        return;
+    };
+
+    // The four melee leaves parse deterministically (present + stable).
+    assert_eq!(
+        tuning.melee.k_margin, reparsed.melee.k_margin,
+        "shipped melee.k_margin must be present and parse deterministically",
+    );
+    assert_eq!(
+        tuning.melee.mult_min, reparsed.melee.mult_min,
+        "shipped melee.mult_min must be present and parse deterministically",
+    );
+    assert_eq!(
+        tuning.melee.mult_max, reparsed.melee.mult_max,
+        "shipped melee.mult_max must be present and parse deterministically",
+    );
+    assert_eq!(
+        tuning.melee.variance, reparsed.melee.variance,
+        "shipped melee.variance must be present and parse deterministically",
+    );
+
+    // Structural invariant 1: mult_min <= mult_max (the damage-mult clamp is
+    // well-defined — value-agnostic, never the exact magnitudes).
+    assert!(
+        *tuning.melee.mult_min <= *tuning.melee.mult_max,
+        "shipped melee.mult_min must be <= melee.mult_max so the damage-mult clamp \
+         is well-defined",
+    );
+    // Structural invariant 2: 0 <= variance < 1 (a roll [1-v, 1+v] never reaches 0,
+    // which would collapse the atk/def margin to a div-by-zero).
+    assert!(
+        *tuning.melee.variance >= 0.0 && *tuning.melee.variance < 1.0,
+        "shipped melee.variance must satisfy 0 <= v < 1 so the per-side roll never \
+         reaches 0 (got {})",
+        *tuning.melee.variance,
+    );
+}
+
 /// Each tuning newtype wraps the right inner type and its derived [`Deref`]
 /// reaches that inner value (C9/C10/C11 mandate a derived `Deref` on every
 /// tuning newtype; this exercises that surface so dropping the derive would
