@@ -8,6 +8,15 @@
 //! egui shell unattended while keeping the SHIPPED editor clean (the env-gated, inert-by-default
 //! affordance precedent).
 //!
+//! ## GTW-513 C2.4: capture mode-force
+//!
+//! A second, optional env var — `GDTF_EDITOR_MODE` (`terrain` | `theme` | `prefab`,
+//! case-insensitive) — FORCES the [`EditorMode`](crate::EditorMode) before the settle / screenshot,
+//! so a QA run can capture a SPECIFIC Workbench mode (e.g. the TERRAIN form). It is honored ONLY
+//! when the capture affordance itself is enabled (`GDTF_EDITOR_SHOT` set); unset or an unrecognized
+//! value keeps the editor's default mode (the pre-C2.4 behavior). Example:
+//! `GDTF_EDITOR_SHOT=/abs/terrain.png GDTF_EDITOR_MODE=terrain cargo run -p gdtf_content_editor_bin`.
+//!
 //! ## GTW-512 C1.5: re-pointed onto the model
 //!
 //! The capture CORE is Bevy-native + UI-agnostic — [`Screenshot::primary_window`] +
@@ -40,7 +49,7 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
-    EditorMap, EditorState, hovered_cell::HoveredCell, session::MapEditorSession,
+    EditorMap, EditorMode, EditorState, hovered_cell::HoveredCell, session::MapEditorSession,
     terrain_graphics::terrain_atlas_index,
 };
 
@@ -53,6 +62,12 @@ const SHOT_GRID_EDGE: u8 = 16;
 /// The env var that opts the capture affordance IN. Set it to an absolute PNG path; leave it unset
 /// for a normal interactive launch.
 const SHOT_ENV_VAR: &str = "GDTF_EDITOR_SHOT";
+
+/// The env var that FORCES the [`EditorMode`] before the capture (C2.4) — so the Screenshot-QA can
+/// capture a SPECIFIC Workbench mode (`terrain` | `theme` | `prefab`, case-insensitive). Unset (or
+/// an unrecognized value) keeps the default mode the editor opened in. Honored only when the
+/// capture affordance itself is enabled (`GDTF_EDITOR_SHOT` set).
+const MODE_ENV_VAR: &str = "GDTF_EDITOR_MODE";
 
 /// Frames to wait after entering [`Editing`](crate::EditorState) before requesting the screenshot,
 /// so the egui shell has laid out + drawn first.
@@ -75,6 +90,26 @@ impl ShotPath {
     /// Wrap the resolved capture path.
     const fn new(path: PathBuf) -> Self {
         Self(path)
+    }
+}
+
+/// The capture's FORCED [`EditorMode`] (C2.4 — from `GDTF_EDITOR_MODE`), inserted only when the
+/// env var named a recognized mode. A named wrapper (no-bare-types) so the forced mode reads as a
+/// domain value rather than a bare `EditorMode` resource colliding with the editor's own one.
+#[derive(Resource, Clone, Copy, Deref)]
+struct ForcedMode(EditorMode);
+
+impl ForcedMode {
+    /// Parse a `GDTF_EDITOR_MODE` value (case-insensitive `terrain` | `theme` | `prefab`) into a
+    /// forced mode, or [`None`] for an unset / unrecognized value (the capture keeps the editor's
+    /// default mode).
+    fn from_env_value(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "terrain" => Some(Self(EditorMode::Terrain)),
+            "theme" => Some(Self(EditorMode::Theme)),
+            "prefab" => Some(Self(EditorMode::Prefab)),
+            _ => None,
+        }
     }
 }
 
@@ -122,16 +157,25 @@ struct CaptureProgress {
 /// capture → poll-then-exit systems and inserts the [`ShotPath`].
 pub struct EditorCapturePlugin {
     /// The resolved capture path, or `None` when the env var was unset (plugin inert).
-    path: Option<PathBuf>,
+    path:        Option<PathBuf>,
+    /// The forced capture mode (C2.4 — from `GDTF_EDITOR_MODE`), or `None` to keep the editor's
+    /// default mode. Read once at construction.
+    forced_mode: Option<ForcedMode>,
 }
 
 impl EditorCapturePlugin {
-    /// Reads `GDTF_EDITOR_SHOT` once and builds the plugin. When the var is unset the plugin is
-    /// inert (registers nothing); when set the value is the PNG output path.
+    /// Reads `GDTF_EDITOR_SHOT` (+ the optional `GDTF_EDITOR_MODE`) once and builds the plugin. When
+    /// `GDTF_EDITOR_SHOT` is unset the plugin is inert (registers nothing); when set the value is the
+    /// PNG output path, and `GDTF_EDITOR_MODE` (if a recognized `terrain` | `theme` | `prefab`)
+    /// forces the captured Workbench mode (C2.4).
     #[must_use]
     pub fn from_env() -> Self {
         Self {
-            path: env::var(SHOT_ENV_VAR).ok().map(PathBuf::from),
+            path:        env::var(SHOT_ENV_VAR).ok().map(PathBuf::from),
+            forced_mode: env::var(MODE_ENV_VAR)
+                .ok()
+                .as_deref()
+                .and_then(ForcedMode::from_env_value),
         }
     }
 }
@@ -144,20 +188,39 @@ impl Plugin for EditorCapturePlugin {
         };
         app.insert_resource(ShotPath::new(path))
             .init_resource::<CaptureProgress>()
-            .add_systems(OnEnter(EditorState::Editing), reset_progress)
-            .add_systems(
-                Update,
-                (
-                    drive_capture_grid_size,
-                    drive_capture_selection,
-                    drive_capture_paint_and_hover,
-                    settle_then_capture,
-                    poll_then_exit,
-                )
-                    .chain()
-                    .run_if(in_state(EditorState::Editing)),
-            );
+            .add_systems(OnEnter(EditorState::Editing), reset_progress);
+        // C2.4: insert the forced-mode resource (so a QA run can capture a SPECIFIC mode) only when
+        // GDTF_EDITOR_MODE named a recognized mode; unset keeps the editor's default mode.
+        if let Some(forced) = self.forced_mode {
+            app.insert_resource(forced);
+        }
+        app.add_systems(
+            Update,
+            (
+                force_capture_mode,
+                drive_capture_grid_size,
+                drive_capture_selection,
+                drive_capture_paint_and_hover,
+                settle_then_capture,
+                poll_then_exit,
+            )
+                .chain()
+                .run_if(in_state(EditorState::Editing)),
+        );
     }
+}
+
+/// `Update` (in `Editing`, capture-only): FORCE the [`EditorMode`] to the C2.4 [`ForcedMode`]
+/// before the settle / screenshot — so the Screenshot-QA can capture a specific Workbench mode
+/// (`GDTF_EDITOR_MODE=terrain|theme|prefab`). No-ops when no mode was forced (the resource is
+/// absent) or the editor's mode already matches. Both borrows are `Option` (state-scoped —
+/// bevy-traps #1); [`set_if_neq`](DetectChangesMut::set_if_neq) keeps an already-matching mode a
+/// no-op (idempotent under the egui multipass re-run).
+fn force_capture_mode(forced: Option<Res<ForcedMode>>, mode: Option<ResMut<EditorMode>>) {
+    let (Some(forced), Some(mut mode)) = (forced, mode) else {
+        return;
+    };
+    mode.set_if_neq(**forced);
 }
 
 /// `OnEnter(Editing)`: reset the per-run capture counters so the settle window is measured from the

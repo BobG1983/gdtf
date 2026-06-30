@@ -26,15 +26,17 @@
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
+use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 
 use crate::{
     egui_shell::{
-        forms,
+        forms, terrain_form_ui,
         theme_combo::{ThemeOption, theme_options},
     },
     mode::EditorMode,
     session::MapEditorSession,
+    terrain_form::TerrainDraft,
 };
 
 /// The placeholder label shown when no theme is selected (the [`ThemeUuid::nil`] sentinel) — the
@@ -47,17 +49,23 @@ const NO_THEME: &str = "—";
 /// central panel last (C1.3 — the load-bearing egui panel order).
 ///
 /// Every editor resource is state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
-/// bevy-traps #1), so the mode + session are taken as `Option<ResMut<…>>` and the system no-ops
-/// until they exist; the theme registry is likewise `Option<Res<…>>` (the empty-registry `ComboBox`
-/// then offers nothing). Returns a `Result` so a missing primary egui context (`ctx_mut()?`) is
-/// handled, never unwrapped (the workspace lints deny `unwrap`/`expect`).
+/// bevy-traps #1), so the mode + session + the TERRAIN draft are taken as `Option<ResMut<…>>` and
+/// the system no-ops until they exist; the theme registry + the presenter tile-role table are
+/// likewise `Option<Res<…>>` (the empty-registry `ComboBox` then offers nothing; an unresolved
+/// `TileRoles` leaves the graphic picker fully enabled). Returns a `Result` so a missing primary
+/// egui context (`ctx_mut()?`) is handled, never unwrapped (the workspace lints deny
+/// `unwrap`/`expect`).
 pub(crate) fn editor_egui_ui(
     mut contexts: EguiContexts,
     mode: Option<ResMut<EditorMode>>,
     session: Option<ResMut<MapEditorSession>>,
     themes: Option<Res<UuidThemeRegistry>>,
+    terrain_draft: Option<ResMut<TerrainDraft>>,
+    roles: Option<Res<TileRoles>>,
 ) -> Result {
-    let (Some(mut mode), Some(mut session)) = (mode, session) else {
+    let (Some(mut mode), Some(mut session), Some(mut terrain_draft)) =
+        (mode, session, terrain_draft)
+    else {
         return Ok(());
     };
     let ctx = contexts.ctx_mut()?;
@@ -88,24 +96,38 @@ pub(crate) fn editor_egui_ui(
         ui.label(status_line(*mode, &session, themes.as_deref()));
     });
 
-    // 3. LEFT — the palette / stats placeholder.
+    // 3. LEFT — the palette / stats region. In TERRAIN mode (C2) it hosts the graphic-role picker
+    //    (the 10 `TileRoles` keys, active highlighted); other modes keep the palette placeholder.
     egui::Panel::left("editor_palette").show(&mut viewport_ui, |ui| {
-        ui.heading("Palette");
-        ui.separator();
-        ui.label("Tile palette + selected-tile stats.");
+        if *mode == EditorMode::Terrain {
+            terrain_form_ui::graphic_picker(ui, &mut terrain_draft, roles.as_deref());
+        } else {
+            ui.heading("Palette");
+            ui.separator();
+            ui.label("Tile palette + selected-tile stats.");
+        }
     });
 
-    // 4. RIGHT — the ACTIVE mode's form (an in-UI branch; the three forms are stubbed in C1).
+    // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN is the real form (C2 / GTW-513);
+    //    THEME / PREFAB are still stubbed (C3 / C4).
     egui::Panel::right("editor_mode_form").show(&mut viewport_ui, |ui| match *mode {
-        EditorMode::Terrain => forms::terrain_form(ui),
+        EditorMode::Terrain => {
+            terrain_form_ui::field_stack(ui, &mut terrain_draft, &session, themes.as_deref());
+        }
         EditorMode::Theme => forms::theme_form(ui),
         EditorMode::Prefab => forms::prefab_form(ui),
     });
 
-    // 5. CENTRAL — the viewport placeholder (LAST: egui fills the residual space with it).
+    // 5. CENTRAL — the viewport / preview (LAST: egui fills the residual space with it). In TERRAIN
+    //    mode (C2) it shows the live `.terrain_def.ron` preview; other modes keep the viewport
+    //    placeholder (the texture viewport is C4 / GTW-515).
     egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
-        ui.heading("Viewport");
-        ui.label("Canvas / texture viewport (C4 / GTW-515).");
+        if *mode == EditorMode::Terrain {
+            terrain_form_ui::ron_preview(ui, &terrain_draft);
+        } else {
+            ui.heading("Viewport");
+            ui.label("Canvas / texture viewport (C4 / GTW-515).");
+        }
     });
 
     Ok(())

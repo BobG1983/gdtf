@@ -1,23 +1,15 @@
-//! The three minimally-stubbed per-mode forms (GTW-512 C1) — TERRAIN / THEME / PREFAB.
+//! The remaining minimally-stubbed per-mode forms (GTW-512 C1) — THEME / PREFAB.
 //!
-//! C1 is the SHELL only: the right [`SidePanel`](bevy_egui::egui::SidePanel) shows the ACTIVE
-//! mode's form, and all three are stubbed minimally — a labeled panel per mode — so NO mode looks
-//! inert in a screenshot (the gate's Screenshot-QA phase reads the captured PNG). The full forms
-//! are the later children: TERRAIN is C2 (GTW-513), THEME is C3 (GTW-514), PREFAB + the texture
-//! viewport is C4 (GTW-515).
+//! C1 stood up the SHELL only: the right panel shows the ACTIVE mode's form, and all three were
+//! stubbed minimally — a labeled panel per mode — so NO mode looks inert in a screenshot (the
+//! gate's Screenshot-QA phase reads the captured PNG). GTW-513 (C2) replaced the TERRAIN stub with
+//! the real egui form ([`terrain_form_ui`](super::terrain_form_ui)); THEME (C3 / GTW-514) and
+//! PREFAB + the texture viewport (C4 / GTW-515) are still stubbed here.
 //!
 //! Each stub takes the live [`egui::Ui`](bevy_egui::egui::Ui) of the right panel and the active
 //! [`EditorMode`](crate::mode::EditorMode); the caller branches on the mode and calls exactly one.
 
 use bevy_egui::egui;
-
-/// Draw the TERRAIN-mode form stub (GTW-512 C1; the full form is C2 / GTW-513).
-pub(crate) fn terrain_form(ui: &mut egui::Ui) {
-    ui.heading("Terrain");
-    ui.separator();
-    ui.label("Terrain definition authoring.");
-    ui.label("Full form lands in C2 (GTW-513).");
-}
 
 /// Draw the THEME-mode form stub (GTW-512 C1; the full form is C3 / GTW-514).
 pub(crate) fn theme_form(ui: &mut egui::Ui) {
