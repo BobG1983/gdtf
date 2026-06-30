@@ -44,6 +44,18 @@ pub mod test_pieces {
     pub const COVER: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0003));
     /// The test FLOOR def UUID — a walkable floor (`Slab` sim-kind in the GTW-491 model).
     pub const FLOOR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0004));
+    /// The test VISION-SLAB def UUID (GTW-502) — a `Slab` sim-kind carrying an explicit
+    /// `BlocksVision` tag (so it occludes LoS/FoV at HIGH despite being a slab — the
+    /// tag-driven gap-closer). Used by the GTW-502 discriminating pair against [`SLAB`].
+    pub const VISION_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0005));
+    /// The test PATH-SLAB def UUID (GTW-502 C7 independence) — a `Slab` sim-kind carrying ONLY
+    /// a `BlocksPathfinding` tag (and NOT `BlocksVision`): it blocks a path but does NOT
+    /// occlude vision.
+    pub const PATH_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0006));
+    /// The test LOW-VISION-COVER def UUID (GTW-502 height-awareness) — a `Cover` sim-kind at
+    /// the LOW band (occludes a LOW sightline, a HIGH one clears it).
+    pub const LOW_VISION_COVER: TerrainUuid =
+        TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0007));
 }
 
 /// An authored wall at `at` using the standard test wall def UUID — the terse cover helper
@@ -125,6 +137,16 @@ impl SituationBuilder {
         self.situation
             .slabs
             .push(SlabSpawn::new(at, test_pieces::SLAB));
+        self
+    }
+
+    /// Append a present slab at `(cell, level)` using an EXPLICIT terrain def UUID — for tests
+    /// (e.g. GTW-502) that author a tagged slab (`VISION_SLAB` / `PATH_SLAB`) rather than the
+    /// untagged [`slab_at`](SituationBuilder::slab_at) default. Resolves against the test
+    /// terrain registry.
+    #[must_use]
+    pub fn slab_piece_at(mut self, at: CellLevel, piece: crate::terrain::def::TerrainUuid) -> Self {
+        self.situation.slabs.push(SlabSpawn::new(at, piece));
         self
     }
 

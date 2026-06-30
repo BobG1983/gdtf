@@ -420,13 +420,16 @@ pub use terrain::{
         TerrainTag, TerrainUuid,
     },
     entity,
-    entity::{TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
+    entity::{
+        BlocksVision, TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind,
+    },
     floor,
     floor::FloorCostGrid,
     occupancy,
     occupancy::{
         DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
-        OccupantPlacement, StairEyeOffset, TerrainKind, TerrainPlacement, pathable_neighbors,
+        OccupantPlacement, StairEyeOffset, TerrainKind, TerrainPlacement, VisionBlocking,
+        pathable_neighbors, project_vision_blocking,
     },
     occupancy_sync,
     occupancy_sync::{

@@ -15,6 +15,7 @@ use crate::{
     },
     ganger::{rederive_stats_on_injury_change, rederive_stats_on_tuning_change},
     move_acts::advance_walk,
+    occupancy::project_vision_blocking,
     occupancy_sync::{
         OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover, sync_destroyed_slab,
     },
@@ -148,6 +149,13 @@ impl Plugin for BattleSimPlugin {
                     // ambush invariant: revealed iff the mover's sight reaches it from where
                     // it stopped; bevy-traps.md #3).
                     .after(advance_walk)
+                    // GTW-502 C4/C6: after the tag-derived VISION-occluder projection, so a
+                    // BlocksVision component added/retuned/removed THIS tick is reflected in
+                    // the VisionBlocking surface BEFORE the LoS/FoV march reads it — the
+                    // occluder's reveal/conceal lands the same tick (the cover/slab-destroyed
+                    // precedent; the LoS march reads OccupancyGrid::vision_occluder_at,
+                    // bevy-traps.md #3).
+                    .after(project_vision_blocking)
                     // Guard the ResMut<SquadVisibility> read on the resource's presence
                     // (bevy-traps.md #1): setup inserts it on the Ok path, so it shares the
                     // BattleInProgress window — but a headless harness can open the

@@ -24,7 +24,7 @@ use crate::{
     terrain::{
         def::{
             TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainUuid,
-            derives_path_blocking,
+            derives_path_blocking, derives_vision_occlusion,
         },
         entity::TerrainPieceKind,
         piece::{FootfallSound, TerrainGraphicKey},
@@ -63,6 +63,13 @@ pub(super) struct ResolvedCoverPiece {
     /// `Wall`/`Cover` sim-kind default. Carried forward so the spawn loop attaches the marker
     /// without re-reading the registry.
     pub(super) blocks_path:      bool,
+    /// The [`HeightBand`] this piece occludes vision at, or `None` if it derives no
+    /// [`BlocksVision`](crate::terrain::entity::BlocksVision) component (GTW-502 C1) — per
+    /// [`derives_vision_occlusion`]: a `Wall`/`Cover` occludes at its own band by default
+    /// (so existing walls/cover keep occluding with no content migration, zero regression),
+    /// and an explicit `BlocksVision` tag can only add/retune it. Carried forward so the spawn
+    /// loop attaches the component (at this band) without re-reading the registry.
+    pub(super) occludes_vision:  Option<HeightBand>,
 }
 
 /// A pre-resolved slab piece — the structural stats and presentation hooks extracted
@@ -89,6 +96,13 @@ pub(super) struct ResolvedSlabPiece {
     /// an explicit `BlocksPathfinding` tag (the C1 opt-in, e.g. a barricade slab). Carried
     /// forward so the spawn loop attaches the marker without re-reading the registry.
     pub(super) blocks_path:      bool,
+    /// The [`HeightBand`] this slab occludes vision at, or `None` (GTW-502 C1) — per
+    /// [`derives_vision_occlusion`]: a `Slab` does NOT occlude vision by default (the SLAB
+    /// march already stops sight at a z-boundary), so this is `Some(HeightBand::High)` ONLY
+    /// when the def carries an explicit `BlocksVision` tag (the C1 opt-in for an opaque
+    /// screen/blast-wall slab — banded HIGH because a slab spans the storey). Carried forward
+    /// so the spawn loop attaches the component without re-reading the registry.
+    pub(super) occludes_vision:  Option<HeightBand>,
 }
 
 /// Resolve a [`TerrainDef`] as a **cover** piece (wall / cover) — extract the
@@ -151,6 +165,11 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
         // default makes this `true` (existing walls/cover keep blocking, zero regression);
         // an explicit BlocksPathfinding tag can only add to that.
         blocks_path: derives_path_blocking(def),
+        // GTW-502 C1: derive the vision-occlusion band from the def — for a Wall/Cover the
+        // kind default returns Some(its height_band) (existing walls/cover keep occluding
+        // sight at the SAME band their CoverLedger entry already does, zero regression /
+        // idempotent); an explicit BlocksVision tag can only add/retune it.
+        occludes_vision: derives_vision_occlusion(def),
     })
 }
 
@@ -188,6 +207,10 @@ pub(super) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<Re
         // GTW-501 C1/D2: a slab does NOT block path by default, so this is `true` only when
         // the def carries an explicit BlocksPathfinding tag (a barricade/lip slab).
         blocks_path:      derives_path_blocking(def),
+        // GTW-502 C1: a slab does NOT occlude vision by default (the slab march already
+        // stops sight at the z-boundary), so this is Some(HeightBand::High) only when the def
+        // carries an explicit BlocksVision tag (an opaque screen/blast-wall slab).
+        occludes_vision:  derives_vision_occlusion(def),
     })
 }
 

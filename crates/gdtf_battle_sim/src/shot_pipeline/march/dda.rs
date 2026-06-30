@@ -87,10 +87,20 @@ enum SteppedAxis {
 
 /// The occupant impact at one crossed voxel, or `None` if the round clears
 /// everything there — a ganger ([`MarchKind::Ganger`]) checked first, then standing
-/// cover ([`MarchKind::Cover`], destroyed cover excluded). The clearance is
-/// band-vs-band ([`round_clears_occupant`]): equal-or-lower impacts, strictly-higher
-/// clears. **Any** actor impacts, including the shooter's own gang (true friendly
-/// fire — AC #2, #6).
+/// cover ([`MarchKind::Cover`], destroyed cover excluded), then a tag-derived VISION
+/// occluder ([`MarchKind::Slab`], GTW-502 — a `BlocksVision`-tagged piece off the
+/// grid's [`VisionBlocking`](crate::occupancy::VisionBlocking) surface, destroyed
+/// cells excluded). The clearance is band-vs-band ([`round_clears_occupant`]):
+/// equal-or-lower impacts, strictly-higher clears. **Any** actor impacts, including
+/// the shooter's own gang (true friendly fire — AC #2, #6).
+///
+/// **Zero-regression + no-double-count (GTW-502).** The occupant + cover clauses are
+/// UNCHANGED and run FIRST; the occluder clause is purely additive. A `Wall`/`Cover`
+/// already occludes via its [`CoverLedger`](crate::cover::CoverLedger) entry (clause 2),
+/// so the occluder clause is reached only when no occupant/cover stopped the round —
+/// where its NET-NEW effect is occluding an explicitly-`BlocksVision`-tagged `Slab` (a
+/// gap the cover ledger never held). For a `Wall`/`Cover` the occluder band is identical
+/// to the cover entry's, so the additional clause can only agree (idempotent).
 ///
 /// `here_point` is the round's position at the voxel ENTRY (the reported impact
 /// point, recorded on the [`MarchResult`]). `test_band` is the band the clearance
@@ -140,6 +150,29 @@ pub(super) fn impact_at(
     {
         return Some(MarchResult {
             kind:   MarchKind::Cover(*entry),
+            at:     here,
+            band:   test_band,
+            impact: here_point,
+        });
+    }
+    // 3. A tag-derived VISION occluder (GTW-502 C5), banded by its `BlocksVision` band off the
+    //    grid's `VisionBlocking` surface, height-aware via the SAME `round_clears_occupant`
+    //    gate and excluded when destroyed (the surface reader already drops destroyed-cover
+    //    cells). This clause runs AFTER the occupant + cover checks, which are UNCHANGED — so
+    //    there is ZERO regression and NO double-count: an intact `Wall`/`Cover` already
+    //    returned via clause 2 above (its CoverLedger entry), so this clause is reached only
+    //    when no occupant/cover stopped the round, where it occludes an explicitly-tagged
+    //    `Slab` (the NET-NEW gap-closer the cover ledger never held) — and even for a
+    //    `Wall`/`Cover` the band it derives is IDENTICAL to the cover entry's, so it could
+    //    only agree. The occluder is reported as a `MarchKind::Slab` blocker: a tag-driven
+    //    vision occluder is a same-storey opaque surface, and `Slab` is the existing
+    //    impassable-geometry blocker kind `is_clear` already classifies as occluding (it is
+    //    NOT a `CoverEntry`, so it cannot borrow `MarchKind::Cover`'s payload).
+    if let Some(occluder_band) = occupancy.vision_occluder_at(&here)
+        && round_clears_occupant(test_band, occluder_band) == Clearance::Impacts
+    {
+        return Some(MarchResult {
+            kind:   MarchKind::Slab,
             at:     here,
             band:   test_band,
             impact: here_point,

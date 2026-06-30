@@ -28,7 +28,9 @@ mod uuid;
 #[cfg(test)]
 mod test;
 
-pub use blocking::{derives_path_blocking, sim_kind_blocks_path};
+pub use blocking::{
+    derives_path_blocking, derives_vision_occlusion, sim_kind_blocks_path, sim_kind_occludes_vision,
+};
 pub use definition::{TerrainDef, TerrainDisplayName};
 pub use kind::{TerrainPresenterKind, TerrainSimKind, TerrainTag};
 pub use registry::TerrainDefRegistry;

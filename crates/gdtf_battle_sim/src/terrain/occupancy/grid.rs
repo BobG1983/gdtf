@@ -10,7 +10,7 @@ use bevy::{
 use crate::{
     cover::HeightBand,
     metric::{Cell, CellLevel, Level, MAX_LEVELS},
-    occupancy::{OccupancyInput, PathBlocking, TerrainKind},
+    occupancy::{OccupancyInput, PathBlocking, TerrainKind, VisionBlocking},
 };
 
 /// The **eye z-lift** applied to an observer standing on an authored stair tile
@@ -181,6 +181,28 @@ pub struct OccupancyGrid {
     /// projection (e.g. `OccupancyGrid::new()` in a unit test) simply reads every cell as
     /// non-path-blocking.
     path_blocking:   PathBlocking,
+    /// The **tag-derived vision-blocking** surface (GTW-502) — the projected snapshot of the
+    /// [`BlocksVision`](crate::terrain::entity::BlocksVision) components that the LoS/FoV
+    /// march ([`impact_at`](crate::march)) reads via
+    /// [`vision_occluder_at`](OccupancyGrid::vision_occluder_at) /
+    /// [`occludes_vision`](OccupancyGrid::occludes_vision).
+    ///
+    /// A `(cell, level) → `[`HeightBand`] MAP (not a set like `path_blocking`): vision
+    /// occlusion is HEIGHT-AWARE, so the surface records WHICH band each cell occludes (a
+    /// sightline must fly strictly higher than the band to clear it). SEPARATE from BOTH the
+    /// kind-based [`is_blocked`](OccupancyGrid::is_blocked) (a movement-collision query the
+    /// vision march does NOT read) and the GTW-501 path-blocking surface (the two are
+    /// independent — GTW-502 C7). It is ADDITIVE to the existing occupant + cover occlusion
+    /// `impact_at` already performs: an intact `Wall`/`Cover` still occludes via its
+    /// [`CoverLedger`](crate::cover::CoverLedger) entry (the cover clause fires first), so this
+    /// surface re-derives the SAME band for them (idempotent, no double-count) and ADDS
+    /// occlusion only for an explicitly-`BlocksVision`-tagged `Slab` (the gap-closer). Kept in
+    /// sync by [`project_vision_blocking`](crate::occupancy::project_vision_blocking) via
+    /// `Added`/`Changed`/`RemovedComponents` change detection. A lazily-populated side map
+    /// (like [`destroyed_cover`](OccupancyGrid::destroyed_cover)), so a grid built without the
+    /// projection (e.g. `OccupancyGrid::new()` in a unit test) reads every cell as
+    /// non-occluding.
+    vision_blocking: VisionBlocking,
 }
 
 impl Default for OccupancyGrid {
@@ -194,6 +216,7 @@ impl Default for OccupancyGrid {
             occupant_bands:  HashMap::default(),
             stair_cells:     HashSet::default(),
             path_blocking:   PathBlocking::new(),
+            vision_blocking: VisionBlocking::new(),
         }
     }
 }
@@ -594,6 +617,74 @@ impl OccupancyGrid {
     /// query reads. Clearing an unmarked cell is a harmless no-op. Edits IN PLACE.
     pub fn clear_path_blocking(&mut self, cell_level: CellLevel) {
         self.path_blocking.remove(&cell_level);
+    }
+
+    /// The **vision-occluder band** at `cell_level` — `Some(band)` iff its tag-derived
+    /// [`VisionBlocking`] occluder is present AND the cell is NOT in the destroyed-cover set,
+    /// else `None` (GTW-502 C3).
+    ///
+    /// This is the height-aware VISION query the GTW-502 occluder introduces — it reads the
+    /// tag-derived [`VisionBlocking`] surface PROJECTED from the
+    /// [`BlocksVision`](crate::terrain::entity::BlocksVision) components, NOT the kind-based
+    /// [`terrain`](OccupancyGrid::terrain) marker or the GTW-501 path surface. The band is the
+    /// one a sightline must fly STRICTLY HIGHER than to clear the occluder (the
+    /// [`round_clears_occupant`](crate::clearance::round_clears_occupant) gate, the same the
+    /// occupant + cover clauses use).
+    ///
+    /// The destroyed-cover exclusion MIRRORS [`is_path_blocked`](OccupancyGrid::is_path_blocked)
+    /// / [`is_blocked`](OccupancyGrid::is_blocked): a `(cell, level)` in
+    /// [`destroyed_cover`](OccupancyGrid::destroyed_cover) reads `None` even if it carries an
+    /// occluder — a destroyed wall opens the sightline, exactly as it stops occluding via its
+    /// `CoverLedger` entry, so the new surface never re-blocks a sightline the cover destruction
+    /// already opened (zero-regression, no double-count). An out-of-range or unmarked
+    /// `cell_level` reads `None` (graceful — no panic).
+    #[must_use]
+    pub fn vision_occluder_at(&self, cell_level: &CellLevel) -> Option<HeightBand> {
+        if self.is_cover_destroyed(cell_level) {
+            return None;
+        }
+        self.vision_blocking.get(cell_level).copied()
+    }
+
+    /// Whether a sightline at `test_band` is OCCLUDED at `cell_level` — `true` iff the cell
+    /// carries a vision occluder (via [`vision_occluder_at`](OccupancyGrid::vision_occluder_at))
+    /// AND the sightline does not fly strictly higher than the occluder's band (GTW-502 C5).
+    ///
+    /// The height-aware gate the LoS/FoV march reads: it REUSES
+    /// [`round_clears_occupant`](crate::clearance::round_clears_occupant) — equal-or-lower
+    /// [`Clearance::Impacts`](crate::clearance::Clearance::Impacts) (occluded), strictly-higher
+    /// clears (not occluded) — so a LOW occluder blocks a LOW sightline but a HIGH one sails
+    /// over it, identically to how cover bands gate the march. A destroyed-cover or unmarked
+    /// cell reads `false` (graceful — no panic).
+    #[must_use]
+    pub fn occludes_vision(&self, cell_level: &CellLevel, test_band: HeightBand) -> bool {
+        self.vision_occluder_at(cell_level).is_some_and(|band| {
+            crate::clearance::round_clears_occupant(test_band, band)
+                == crate::clearance::Clearance::Impacts
+        })
+    }
+
+    /// Mark `cell_level` as **vision-occluding** at `band` — insert it into the tag-derived
+    /// [`VisionBlocking`] surface read by
+    /// [`vision_occluder_at`](OccupancyGrid::vision_occluder_at) (GTW-502 C4).
+    ///
+    /// The write [`project_vision_blocking`](crate::occupancy::project_vision_blocking) makes
+    /// for an `Added`/`Changed`<`BlocksVision`> component (the setup-spawn insert, a later
+    /// runtime add, AND a band re-tune). Re-inserting OVERWRITES the band (a retuned occluder
+    /// updates the cell in place). Edits the surface IN PLACE — it never rebuilds the grid.
+    pub fn set_vision_blocking(&mut self, cell_level: CellLevel, band: HeightBand) {
+        self.vision_blocking.insert(cell_level, band);
+    }
+
+    /// Clear `cell_level`'s **vision-occlusion** — remove it from the tag-derived
+    /// [`VisionBlocking`] surface read by
+    /// [`vision_occluder_at`](OccupancyGrid::vision_occluder_at) (GTW-502 C4).
+    ///
+    /// The write [`project_vision_blocking`](crate::occupancy::project_vision_blocking) makes
+    /// for a `RemovedComponents<BlocksVision>` component — re-opening the sightline the next
+    /// LoS/FoV query reads. Clearing an unmarked cell is a harmless no-op. Edits IN PLACE.
+    pub fn clear_vision_blocking(&mut self, cell_level: CellLevel) {
+        self.vision_blocking.remove(&cell_level);
     }
 
     /// Iterate the grid's **authored / occupied** `(cell, level)` keys — every slot

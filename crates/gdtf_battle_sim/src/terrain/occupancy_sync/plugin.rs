@@ -5,7 +5,7 @@
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, SystemSet, Update};
 
 use crate::{
-    occupancy::project_path_blocking,
+    occupancy::{project_path_blocking, project_vision_blocking},
     occupancy_sync::{
         CoverDestroyed, GroundAccrued, SlabDestroyed, sync_accrued_ground, sync_dead_gangers,
         sync_destroyed_cover, sync_destroyed_slab, sync_moved_gangers,
@@ -97,16 +97,21 @@ impl Plugin for OccupancyMaintenancePlugin {
             // (here) and producer (dispatch_fire) plugins can name it.
             .add_message::<GroundAccrued>()
             .configure_sets(Update, SimSystems::Simulate)
-            // GTW-501 C3: `project_path_blocking` is APPENDED to the OccupancyGrid chain
-            // (move → die → cover → PROJECT). It also takes `ResMut<OccupancyGrid>`, so it
-            // MUST be ordered against the three that share it (`bevy-traps.md` #3); chaining
-            // it LAST means the tag-derived path-blocking surface is re-synced after the
-            // frame's occupant/destroyed-cover maintenance settles, and BEFORE the
-            // pathfinding consumers (`dispatch_move` / `advance_walk` / `enemy_ai_turn` are
-            // ordered `.after(project_path_blocking)` in SimActsPlugin). It drains
-            // `RemovedComponents<BlocksPathfinding>` every run (the special-SystemParam
-            // contract) and applies `Added` inserts (incl. the setup-spawn insert, visible
-            // this tick because setup runs `.before(SimSystems::Simulate)`).
+            // GTW-501 C3 / GTW-502 C4: `project_path_blocking` then `project_vision_blocking`
+            // are APPENDED to the OccupancyGrid chain (move → die → cover → PATH → VISION).
+            // BOTH take `ResMut<OccupancyGrid>`, so they MUST be ordered against the three
+            // that share it AND each other (`bevy-traps.md` #3); chaining them LAST means the
+            // tag-derived path + vision surfaces are re-synced after the frame's
+            // occupant/destroyed-cover maintenance settles, and BEFORE their consumers — the
+            // pathfinding ones (`dispatch_move` / `advance_walk` / `enemy_ai_turn` ordered
+            // `.after(project_path_blocking)` in SimActsPlugin) and the vision one
+            // (`recompute_visibility` ordered `.after(project_vision_blocking)` in
+            // BattleSimPlugin). Each drains its `RemovedComponents` reader every run (the
+            // special-SystemParam contract, never under a skipping `run_if`) and applies its
+            // `Added`/`Changed` inserts (incl. the setup-spawn insert, visible this tick
+            // because setup runs `.before(SimSystems::Simulate)`). The two surfaces are
+            // INDEPENDENT (GTW-502 C7) — path and vision do not cross — but they share the one
+            // `OccupancyGrid` resource, so the chain just orders the writes deterministically.
             .add_systems(
                 Update,
                 (
@@ -114,6 +119,7 @@ impl Plugin for OccupancyMaintenancePlugin {
                     sync_dead_gangers,
                     sync_destroyed_cover,
                     project_path_blocking,
+                    project_vision_blocking,
                 )
                     .chain()
                     .in_set(SimSystems::Simulate),

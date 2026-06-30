@@ -1,13 +1,15 @@
-//! The **path-blocking derivation rule** — the pure function that decides, from a
-//! [`TerrainDef`], whether a spawned terrain entity carries the
+//! The **path-blocking + vision-occlusion derivation rules** — the pure functions that
+//! decide, from a [`TerrainDef`], whether a spawned terrain entity carries the
 //! [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) marker (GTW-501,
-//! child 482a of the tag-driven-terrain epic GTW-482).
+//! child 482a) and the [`BlocksVision`](crate::terrain::entity::BlocksVision) component
+//! (GTW-502, child 482b of the tag-driven-terrain epic GTW-482).
 //!
-//! This is the FIRST consumer of the formerly-inert sim-owned [`TerrainTag`]s. It is the
-//! single authority for the GTW-501 D2 **zero-regression** rule, so the spawn loop, the
-//! tests, and any future reader all agree on one definition.
+//! These are the consumers of the formerly-inert sim-owned [`TerrainTag`]s. They are the
+//! single authority for the **zero-regression** rules (GTW-501 D2 / GTW-502), so the spawn
+//! loop, the tests, and any future reader all agree on one definition.
 
 use super::{TerrainDef, TerrainSimKind, TerrainTag};
+use crate::cover::HeightBand;
 
 /// Whether a [`TerrainDef`] derives **path-blocking** — the rule that decides whether a
 /// spawned terrain entity gets the
@@ -55,4 +57,95 @@ pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> bool {
         sim_kind,
         TerrainSimKind::Wall { .. } | TerrainSimKind::Cover { .. }
     )
+}
+
+/// Whether a [`TerrainDef`] derives **vision occlusion**, and at WHICH [`HeightBand`] it
+/// occludes — the rule that decides whether a spawned terrain entity gets the
+/// [`BlocksVision`](crate::terrain::entity::BlocksVision) component and what band it carries
+/// (GTW-502 C1, the LoS/FoV mirror of [`derives_path_blocking`]).
+///
+/// Vision occlusion is **height-aware** (per the user-pinned GTW-482 refinement): an
+/// occluder does not block sight uniformly — it occludes the band it physically fills, so a
+/// LOW occluder blocks a LOW sightline but a round/eye-line one band HIGHER sails over it,
+/// EXACTLY as a [`CoverEntry`](crate::cover::CoverEntry)'s band already gates the march
+/// (`docs/combat/resolution.md` §3). The function therefore returns the OCCLUDING BAND, not
+/// a bare `bool`:
+///
+/// 1. **Explicit [`BlocksVision`](TerrainTag::BlocksVision) tag.** The def's
+///    [`tags`](TerrainDef::tags) contains [`TerrainTag::BlocksVision`] — an authored opt-IN
+///    that ADDS vision occlusion to a kind that would not occlude by default (e.g. a
+///    [`Slab`](TerrainSimKind::Slab) tagged `BlocksVision` — an opaque screen / blast wall a
+///    slab def authors). The occluding band is the `sim_kind`'s own
+///    [`height_band`](TerrainSimKind) when it has one (`Wall`/`Cover`), else
+///    [`HeightBand::High`] for a tagged `Slab` (a slab has no band; a deliberately-opaque
+///    slab fills the storey, so it occludes the tallest band — nothing within the storey
+///    sees over it).
+/// 2. **Per-kind default** ([`sim_kind_occludes_vision`]). [`Wall`](TerrainSimKind::Wall)
+///    and [`Cover`](TerrainSimKind::Cover) occlude vision by default at their authored
+///    `height_band`; [`Slab`](TerrainSimKind::Slab) does NOT (a slab is a horizontal
+///    z-boundary the SLAB march already stops sight at via the `SurfaceGrid` — it is not a
+///    same-storey occluder, so it gets no `BlocksVision` band unless explicitly tagged).
+///
+/// **Zero-regression reconciliation (GTW-502 D-CRITICAL).** A `Wall`/`Cover` is ALREADY
+/// seeded into the [`CoverLedger`](crate::cover::CoverLedger) at setup carrying this same
+/// `height_band`, and [`impact_at`](crate::march) ALREADY occludes vision on it via that
+/// ledger entry — so walls/cover occlude sight TODAY, height-aware. Deriving the SAME band
+/// here means the new tag-derived occluder reproduces a Wall/Cover's existing occlusion
+/// EXACTLY (same band gate, same destroyed-cover exclusion) — an idempotent re-block that
+/// never changes their behaviour and never double-counts (the cover-ledger clause fires
+/// first in `impact_at` for an intact `Wall`/`Cover`, and the new clause uses an identical
+/// band test, so it can only agree). The NET-NEW behaviour is the explicit-tag opt-in for a
+/// `Slab`, which the cover ledger never held — a desirable gap-closer, not a regression.
+///
+/// Returns `None` when the def derives NO vision occlusion (an untagged `Slab`).
+///
+/// PURE: a read over the borrowed def — no world access, no RNG, no side effects.
+#[must_use]
+pub fn derives_vision_occlusion(def: &TerrainDef) -> Option<HeightBand> {
+    if def.tags.contains(&TerrainTag::BlocksVision) {
+        // The explicit opt-in: occlude at the sim_kind's own band, or HIGH for a tagged Slab
+        // (a slab has no band; an opaque slab fills the storey, so it occludes the tallest).
+        return Some(sim_kind_band(&def.sim_kind).unwrap_or(HeightBand::High));
+    }
+    // The per-kind default: a Wall/Cover occludes at its authored band, a Slab does not.
+    sim_kind_band_when_occludes(&def.sim_kind)
+}
+
+/// Whether a [`TerrainSimKind`] occludes vision **by default** — `true` for
+/// [`Wall`](TerrainSimKind::Wall) and [`Cover`](TerrainSimKind::Cover), `false` for
+/// [`Slab`](TerrainSimKind::Slab) (GTW-502 C1).
+///
+/// The per-kind half of [`derives_vision_occlusion`], exposed as a `bool` predicate (the
+/// [`sim_kind_blocks_path`] mirror) for readers/tests that want the kind-default flag without
+/// the band. A wall fills the cell and standing cover obstructs it, so both occlude a
+/// same-storey sightline by default — the same kinds already seeded into the
+/// [`CoverLedger`](crate::cover::CoverLedger) (so deriving the occluder from this default
+/// reproduces the existing `LoS` exactly, zero regression). A slab is a horizontal z-boundary
+/// the slab march already handles, not a same-storey occluder, so it does not occlude by
+/// default — only an explicit [`BlocksVision`](TerrainTag::BlocksVision) tag makes one.
+#[must_use]
+pub const fn sim_kind_occludes_vision(sim_kind: &TerrainSimKind) -> bool {
+    matches!(
+        sim_kind,
+        TerrainSimKind::Wall { .. } | TerrainSimKind::Cover { .. }
+    )
+}
+
+/// The occluding [`HeightBand`] of a `Wall`/`Cover` `sim_kind`, or `None` for a `Slab` — the
+/// per-kind-default arm of [`derives_vision_occlusion`].
+const fn sim_kind_band_when_occludes(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
+    match sim_kind {
+        TerrainSimKind::Wall { height_band, .. } | TerrainSimKind::Cover { height_band, .. } => {
+            Some(*height_band)
+        }
+        TerrainSimKind::Slab { .. } => None,
+    }
+}
+
+/// The authored [`HeightBand`] a `sim_kind` carries, or `None` for a [`Slab`] (which has no
+/// band — it spans the whole z-boundary, `docs/combat/resolution.md` §2). The explicit-tag
+/// arm of [`derives_vision_occlusion`] reads this to band a tagged `Wall`/`Cover` at its own
+/// band and falls back to [`HeightBand::High`] for a tagged `Slab`.
+const fn sim_kind_band(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
+    sim_kind_band_when_occludes(sim_kind)
 }

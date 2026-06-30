@@ -19,7 +19,7 @@ use crate::{
     terrain::{
         def::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind,
+            TerrainSimKind, TerrainTag,
         },
         piece::{FootfallSound, TerrainGraphicKey},
     },
@@ -132,6 +132,12 @@ pub fn test_armor_registry() -> ArmorRegistry {
 /// UUIDs that `SituationBuilder::wall_at` / `slab_at` and the situation test fixtures author.
 /// Tests must not pin these magnitudes (brittle-test rule).
 #[must_use]
+#[expect(
+    clippy::too_many_lines,
+    reason = "a flat table of named TerrainDef literals (one per test piece UUID) — the length \
+              is the literal count, not branching complexity; splitting it into per-def helpers \
+              would only scatter the single shared registry definition with no clarity gain"
+)]
 pub fn test_terrain_registry() -> TerrainDefRegistry {
     use super::situation::test_pieces;
 
@@ -206,6 +212,63 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                 presenter_kind: TerrainPresenterKind::Slab {
                     graphic_name: graphic("floor"),
                     footfall:     None,
+                },
+                tags:           Vec::new(),
+            },
+        ),
+        (
+            // GTW-502: a Slab carrying an explicit BlocksVision tag — occludes LoS/FoV at HIGH
+            // despite being a slab (the tag-driven gap-closer the cover ledger never held).
+            test_pieces::VISION_SLAB,
+            TerrainDef {
+                key:            test_pieces::VISION_SLAB,
+                display_name:   display("Test Vision Slab"),
+                sim_kind:       TerrainSimKind::Slab {
+                    hp:               SlabHp::new(120),
+                    armor_protection: ArmorProtection::new(4),
+                    armor_hardness:   ArmorHardness::new(2),
+                },
+                presenter_kind: TerrainPresenterKind::Slab {
+                    graphic_name: graphic("vision-slab"),
+                    footfall:     None,
+                },
+                tags:           vec![TerrainTag::BlocksVision],
+            },
+        ),
+        (
+            // GTW-502 C7 independence: a Slab carrying ONLY a BlocksPathfinding tag — blocks a
+            // path but does NOT occlude vision.
+            test_pieces::PATH_SLAB,
+            TerrainDef {
+                key:            test_pieces::PATH_SLAB,
+                display_name:   display("Test Path Slab"),
+                sim_kind:       TerrainSimKind::Slab {
+                    hp:               SlabHp::new(120),
+                    armor_protection: ArmorProtection::new(4),
+                    armor_hardness:   ArmorHardness::new(2),
+                },
+                presenter_kind: TerrainPresenterKind::Slab {
+                    graphic_name: graphic("path-slab"),
+                    footfall:     None,
+                },
+                tags:           vec![TerrainTag::BlocksPathfinding],
+            },
+        ),
+        (
+            // GTW-502 height-awareness: a LOW-band Cover — occludes a LOW sightline, a HIGH
+            // one clears it.
+            test_pieces::LOW_VISION_COVER,
+            TerrainDef {
+                key:            test_pieces::LOW_VISION_COVER,
+                display_name:   display("Test Low Cover"),
+                sim_kind:       TerrainSimKind::Cover {
+                    hp:               CoverHp::new(30),
+                    armor_protection: ArmorProtection::new(2),
+                    armor_hardness:   ArmorHardness::new(1),
+                    height_band:      HeightBand::Low,
+                },
+                presenter_kind: TerrainPresenterKind::Cover {
+                    graphic_name: graphic("low-cover"),
                 },
                 tags:           Vec::new(),
             },

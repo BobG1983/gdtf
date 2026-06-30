@@ -5,7 +5,7 @@
 
 use bevy::prelude::{Component, Deref};
 
-use crate::metric::CellLevel;
+use crate::{cover::HeightBand, metric::CellLevel};
 
 /// The `(cell, level)` position component on every terrain entity — the ECS side
 /// of the cell-to-entity mapping, complementing the [`TerrainIndex`](super::index::TerrainIndex)
@@ -74,6 +74,53 @@ pub struct TerrainBrace;
 /// (the split is GTW-501 D1; vision's own occluder is GTW-502).
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BlocksPathfinding;
+
+/// Marks a terrain ECS entity as **vision-occluding**, carrying the [`HeightBand`] at which
+/// it occludes line-of-sight / field-of-view (GTW-502, child 482b of the tag-driven-terrain
+/// epic GTW-482).
+///
+/// NOT a bare marker — per the user-pinned GTW-482 refinement, LoS/FoV blocking is
+/// **height-aware**: a component carrying a HEIGHT enum (the band it occludes), consistent
+/// with the existing height-aware band-LoS model. So this is a single-field tuple
+/// [`Component`] wrapping a [`HeightBand`] (no-bare-types: the band IS the domain value the
+/// component exists to carry, exposed read-only through the derived [`Deref`] — the inner is
+/// private, constructed via [`new`](BlocksVision::new)). A LOW occluder blocks a LOW eye-line
+/// but a round/eye-line one band HIGHER sails over it, exactly as a
+/// [`CoverEntry`](crate::cover::CoverEntry)'s band gates the march.
+///
+/// It is the SOURCE OF TRUTH for vision occlusion: attached at terrain-entity spawn, derived
+/// from the piece's [`TerrainDef`](crate::terrain::def::TerrainDef) by
+/// [`derives_vision_occlusion`](crate::terrain::def::derives_vision_occlusion) — present iff
+/// the def carries an explicit [`BlocksVision`](crate::terrain::def::TerrainTag::BlocksVision)
+/// tag OR its [`sim_kind`](crate::terrain::def::TerrainSimKind) occludes by default
+/// (`Wall`/`Cover` occlude at their band; `Slab` does not). An explicit tag therefore ADDS
+/// vision occlusion to an otherwise-transparent `Slab`, and existing walls/cover keep
+/// occluding with no content migration (the GTW-502 zero-regression rule — a `Wall`/`Cover`
+/// already occludes sight via its [`CoverLedger`](crate::cover::CoverLedger) entry, and this
+/// derives the SAME band, an idempotent re-block, never a double-count).
+///
+/// The [`OccupancyGrid`](crate::occupancy::OccupancyGrid)'s tag-derived vision-blocking
+/// surface ([`VisionBlocking`](crate::occupancy::VisionBlocking)) is the PROJECTED snapshot
+/// of these components:
+/// [`project_vision_blocking`](crate::occupancy::project_vision_blocking) folds the
+/// components into the grid at setup and keeps them in sync via
+/// `Added<BlocksVision>` / `Changed<BlocksVision>` / `RemovedComponents<BlocksVision>` change
+/// detection. [`impact_at`](crate::march) reads that surface alongside the occupant + cover
+/// checks (height-aware). This is VISION occlusion ONLY: the GTW-501 path-blocking
+/// ([`BlocksPathfinding`]) surface is INDEPENDENT — a path-only blocker does not occlude
+/// vision and a vision-only occluder does not block a path.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BlocksVision(HeightBand);
+
+impl BlocksVision {
+    /// Build a vision-occluder marker that occludes at `band` — the band derived from the
+    /// piece's def by
+    /// [`derives_vision_occlusion`](crate::terrain::def::derives_vision_occlusion).
+    #[must_use]
+    pub const fn new(band: HeightBand) -> Self {
+        Self(band)
+    }
+}
 
 /// The kind of terrain piece this entity represents — `Wall`, `Cover` (scatter prop),
 /// or `Slab` (floor / roof).

@@ -15,16 +15,19 @@
 //! mover's own sight reaches it from where it stopped** — the per-trigger recompute IS
 //! the reveal mechanic; there is NO separate per-step reveal system.
 
-use bevy::prelude::{Changed, Entity, MessageReader, Or, Query, Res, ResMut};
+use bevy::prelude::{
+    Changed, Entity, MessageReader, Or, Query, RemovedComponents, Res, ResMut, With,
+};
 
 use crate::{
     battle::{BattleReady, PlayerFaction},
     cover::CoverLedger,
     ganger::{Facing, Faction, LifeState, Position, Stance},
     los::PeekOffset,
-    occupancy::OccupancyGrid,
+    occupancy::{OccupancyGrid, VisionOccluderChanged},
     occupancy_sync::{CoverDestroyed, SlabDestroyed},
     surface::SurfaceGrid,
+    terrain::entity::{BlocksVision, TerrainCell},
     tuning::CombatTuning,
     visibility::{FovObserver, SquadVisibility, accrue, union_fov},
 };
@@ -52,15 +55,25 @@ type MovedReposedOrFlipped = Or<(
 ///   sightline);
 /// * a [`SlabDestroyed`] message was buffered this update (GTW-365 — a smashed floor/roof
 ///   slab opens a vertical sightline through the hole: the round + LOS march already fly
-///   through a `Destroyed` slab, so the recompute reflects the reopened line); or
+///   through a `Destroyed` slab, so the recompute reflects the reopened line);
+/// * a tag-derived VISION occluder changed this update (GTW-502 C6) — a terrain entity
+///   GAINED or RETUNED a [`BlocksVision`](crate::terrain::entity::BlocksVision) component
+///   (`Or<(Added, Changed)>`) OR LOST one (`RemovedComponents<BlocksVision>`). Adding /
+///   retuning / removing an occluder changes the [`VisionBlocking`](crate::occupancy::VisionBlocking)
+///   surface the LoS/FoV march reads, so the precomputed squad FOV must re-fire (the
+///   cover/slab-destroyed mirror, but driven by the component itself rather than a message —
+///   the occluder has no destruction message of its own); or
 /// * a [`BattleReady`] message was buffered this update (the setup-spawn FOV — the first
 ///   recompute that fills the freshly-inserted [`SquadVisibility`]).
 ///
-/// All three [`MessageReader`]s are **drained fully** ([`count`](Iterator::count)`() > 0`)
-/// so a message read here is consumed and cannot re-fire the gate on a later update (clause
-/// 2 — no stale re-fire). This run-condition reads the messages with its OWN reader cursor,
-/// independent of [`recompute_visibility`]'s `Changed` re-evaluation: the writer never
-/// reads these buffers, it only recomputes off the live world, so draining here is safe.
+/// All [`MessageReader`]s AND the [`RemovedComponents`] reader are **drained fully**
+/// ([`count`](Iterator::count)`() > 0`) so a signal read here is consumed and cannot re-fire
+/// the gate on a later update (clause 2 — no stale re-fire). `RemovedComponents` MUST be
+/// drained every run (`bevy-traps.md` #4) — a `run_if` predicate is evaluated each tick the
+/// set is checked, so reading it here keeps its cursor advancing. This run-condition reads
+/// the signals with its OWN reader cursor, independent of [`recompute_visibility`]'s `Changed`
+/// re-evaluation: the writer never reads these buffers, it only recomputes off the live world,
+/// so draining here is safe.
 ///
 /// A `run_if` gate (not a body early-return) so the writer's expensive
 /// [`union_fov`](crate::visibility::union_fov) candidate scan is skipped entirely on a
@@ -76,6 +89,8 @@ type MovedReposedOrFlipped = Or<(
 pub fn should_recompute_visibility(
     moved: Query<&Faction, MovedReposedOrFlipped>,
     player: Option<Res<PlayerFaction>>,
+    occluder_changed: Query<(), (With<TerrainCell>, VisionOccluderChanged)>,
+    mut occluder_removed: RemovedComponents<BlocksVision>,
     mut cover_destroyed: MessageReader<CoverDestroyed>,
     mut slab_destroyed: MessageReader<SlabDestroyed>,
     mut ready: MessageReader<BattleReady>,
@@ -88,13 +103,25 @@ pub fn should_recompute_visibility(
     // re-fires the recompute — the slab mirror of the cover trigger.
     let slab_changed = slab_destroyed.read().count() > 0;
     let battle_ready = ready.read().count() > 0;
+    // GTW-502 C6: a tag-derived VISION occluder was added/retuned (Added|Changed) OR removed
+    // (RemovedComponents) this tick — the VisionBlocking surface the LoS/FoV march reads
+    // changed, so the squad FOV must re-fire. RemovedComponents is drained EVERY run
+    // (`.read().count()`, bevy-traps.md #4) so its cursor advances and a removal cannot
+    // re-fire next tick. Added implies Changed, so the query's Or is read as "added-or-retuned".
+    let occluder_added_or_retuned = !occluder_changed.is_empty();
+    let occluder_removed = occluder_removed.read().count() > 0;
+    let vision_occluder_changed = occluder_added_or_retuned || occluder_removed;
     // A player-faction observer moved / re-posed / flipped: only the player's own gangers
     // feed the squad fog, so an enemy move is not a recompute trigger (clause 1 / 2). With
     // no player faction (no live battle) there is no squad to re-reveal.
     let player_observer_changed = player
         .as_deref()
         .is_some_and(|player| moved.iter().any(|faction| *faction == **player));
-    player_observer_changed || cover_changed || slab_changed || battle_ready
+    player_observer_changed
+        || cover_changed
+        || slab_changed
+        || battle_ready
+        || vision_occluder_changed
 }
 
 /// The ONE writer of [`SquadVisibility`] — recompute the squad fog from every conscious

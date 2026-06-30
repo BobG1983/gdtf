@@ -36,8 +36,8 @@ use crate::{
     terrain::{
         def::TerrainDefRegistry,
         entity::{
-            BlocksPathfinding, TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey,
-            TerrainPieceKind,
+            BlocksPathfinding, BlocksVision, TerrainBrace, TerrainCell, TerrainIndex,
+            TerrainIndexKey, TerrainPieceKind,
         },
         floor::FloorCostGrid,
     },
@@ -729,6 +729,16 @@ pub fn setup_battle(
         if resolved.blocks_path {
             commands.entity(entity).insert(BlocksPathfinding);
         }
+        // GTW-502 C1/C2: attach the BlocksVision component (carrying its height-aware band)
+        // when the def derives vision occlusion — for a Wall/Cover the kind default makes this
+        // Some(its band), so existing walls/cover keep occluding sight at the SAME band their
+        // CoverLedger entry already does (zero regression / idempotent re-block). `Added` fires
+        // on this insert, so the GTW-502 projection picks it up the next time it runs (a band
+        // payload makes BlocksVision a single-component, not a Bundle, so insert it
+        // conditionally rather than tupling).
+        if let Some(band) = resolved.occludes_vision {
+            commands.entity(entity).insert(BlocksVision::new(band));
+        }
         terrain_pairs.push((TerrainIndexKey::Cover(cover.at), entity));
     }
     commands.insert_resource(cover_ledger);
@@ -819,6 +829,14 @@ pub fn setup_battle(
         // fires on insert so the GTW-501 projection blocks the cell.
         if resolved.blocks_path {
             commands.entity(slab_entity).insert(BlocksPathfinding);
+        }
+        // GTW-502 C1/C2: a slab does NOT occlude vision by default (the slab march already
+        // stops sight at its z-boundary) — attach BlocksVision (banded HIGH) ONLY when the def
+        // carries an explicit BlocksVision tag (`resolved.occludes_vision`), the C1 opt-in for
+        // an opaque screen/blast-wall slab. `Added` fires on insert so the GTW-502 projection
+        // occludes the cell at that band.
+        if let Some(band) = resolved.occludes_vision {
+            commands.entity(slab_entity).insert(BlocksVision::new(band));
         }
 
         // GTW-392: a slab is a stair-brace slab when the cell DIRECTLY BELOW it is a

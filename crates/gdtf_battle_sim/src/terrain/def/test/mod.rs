@@ -8,8 +8,11 @@
 //! - [`registry`] — insert-by-key + lookup-by-`TerrainUuid` (C7).
 //! - [`derive_blocking`] — GTW-501: the path-blocking DERIVATION rule (Wall/Cover block by
 //!   default, Slab does not, an explicit `BlocksPathfinding` tag adds blocking).
+//! - [`derive_vision`] — GTW-502: the vision-occlusion DERIVATION rule (Wall/Cover occlude at
+//!   their band by default, Slab does not, an explicit `BlocksVision` tag adds occlusion).
 
 mod derive_blocking;
+mod derive_vision;
 mod parse;
 mod registry;
 mod round_trip;
