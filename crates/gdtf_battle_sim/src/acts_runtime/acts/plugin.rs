@@ -26,6 +26,7 @@ use crate::{
     occupancy_sync::{
         CoverDestroyed, GroundAccrued, SimSystems, SlabDestroyed, sync_destroyed_cover,
     },
+    reaction::{reaction_trigger, reset_reactions_used},
     shot_fired::ShotFired,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
 };
@@ -262,6 +263,46 @@ impl Plugin for SimActsPlugin {
                 Update,
                 apply_injury
                     .after(dispatch_fire)
+                    .in_set(SimSystems::Simulate),
+            )
+            // GTW-468 (C5/C8): the LIVE reaction-fire trigger. When a ganger ACTS in an
+            // opposing reactor's LOS (a completed movement STEP via Changed<Position> OR a
+            // completed FIRE act via the FireDeclaration buffer), it runs the §8 opposed
+            // check and, on success, emits a REAL FireRequested (the interrupt shot,
+            // consumed by `dispatch_fire`) + a ReactionShotFired (halting a walking actor,
+            // consumed by `advance_walk`) and increments the reactor's per-turn cap.
+            //
+            // THE C5 CYCLE CONSTRAINT (bevy-traps.md #3): a single system cannot be both
+            // `.after(advance_walk)` AND `.before(dispatch_fire)` in one frame — dispatch_fire
+            // is EARLY, advance_walk is LATE (`.after(dispatch_move)`). Resolution: the trigger
+            // detects the COMPLETED act from the PRIOR tick's settled change-detection /
+            // buffered declaration and is ordered `.before(dispatch_fire)` AND
+            // `.before(advance_walk)`, so BOTH messages it writes are consumed the SAME tick —
+            // a documented one-tick cadence between an act and its interrupt (the AC1 shot-fires
+            // + AC2 walk-halts tests are the proof it dispatches coherently). It joins the gated
+            // Simulate band (its Res grids/tuning + ResMut<ReactionRng> reads are battle-lifetime
+            // — the run_if skips it outside a live battle, bevy-traps.md #1). Param-only, no
+            // &mut World (bevy-traps.md #7).
+            .add_systems(
+                Update,
+                reaction_trigger
+                    .before(dispatch_fire)
+                    .before(advance_walk)
+                    .in_set(SimSystems::Simulate),
+            )
+            // GTW-468 (C6): the turn-boundary cap reset. `dispatch_end_turn` emits a
+            // TurnStarted at each advance; this zeroes every watcher's ReactionsUsed so the §8
+            // per-turn cap applies AFRESH each turn (generalizing "this enemy turn" to "this
+            // turn relative to the watcher" — reset every boundary is the defensible default,
+            // documented on the system). Ordered `.after(dispatch_end_turn)` so the boundary's
+            // TurnStarted is buffered (its own independent reader, so it never steals the
+            // boundary from the combat-log / bleed readers — the `tick_bleed` precedent). It
+            // joins the gated Simulate band; its Query + MessageReader are always valid, so it
+            // needs no extra run_if. Param-only, no &mut World (bevy-traps.md #7).
+            .add_systems(
+                Update,
+                reset_reactions_used
+                    .after(dispatch_end_turn)
                     .in_set(SimSystems::Simulate),
             );
     }

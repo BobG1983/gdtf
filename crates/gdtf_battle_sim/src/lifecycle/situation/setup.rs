@@ -42,7 +42,7 @@ use crate::{
         floor::FloorCostGrid,
         openable::{OpenState, OpenableBlocking},
     },
-    tuning::{GangerStatTuning, MoveCost},
+    tuning::{GangerStatTuning, MoveCost, ReactionsUsed},
     vertical::{LinkKind, build_vertical_link_graph},
     weapon::{
         Accuracy, BaseSpread, FatalBias, FireMode, Kickback, Stable, Weapon, WeaponBundle,
@@ -259,6 +259,13 @@ fn ganger_scene(
             // derives Default + Clone + Component (the bsn! sentinel-Default requirement),
             // and starts at the centred, no-peek `Vec2::ZERO`.
             PeekOffset::default()
+            // GTW-468: seed the per-turn reaction-interrupt counter so the live reaction
+            // trigger's `&mut ReactionsUsed` query (and the §8 `may_interrupt` cap gate)
+            // matches every ganger from frame 0 — a ganger lacking it could never react and
+            // could never be cap-gated. It derives Default + Component (the bsn!
+            // sentinel-Default requirement), starting at `0` (a fresh turn, no interrupts
+            // used). The turn-boundary `reset_reactions_used` zeroes it each turn (C6).
+            ReactionsUsed::default()
         },
         // The runtime-valued component with no `bsn!` grammar form, bridged via
         // `template_value` and tuple-composed onto the SAME root entity (the GTW-322

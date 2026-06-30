@@ -49,7 +49,7 @@ use gdtf_battle_sim::{
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_weapon_registry,
     },
-    tuning::{CombatTuning, ViewRange},
+    tuning::{CombatTuning, ReactionCapBase, ReactionCapPerReactions, ReactionTuning, ViewRange},
     vertical::VerticalLinkGraph,
     visibility::FactionRelation,
 };
@@ -86,6 +86,19 @@ fn battle_app() -> App {
     app.add_plugins(BattleSimPlugin);
     app.insert_resource(CombatTuning {
         view_range: ViewRange::new(TEST_VIEW_RANGE),
+        // GTW-468: the LIVE reaction-fire trigger now interrupts a walking actor that steps
+        // into an opposing watcher's LOS. These walk tests ISOLATE the GTW-355 stop-on-reveal
+        // / bump-stop / §48 mechanics, so reaction fire is DISABLED here (a zero cap →
+        // `may_interrupt` is always false → no interrupt ever fires) to keep them testing
+        // exactly the walk mechanic they were written for. The reaction trigger's own
+        // end-to-end coverage is `tests/gtw468_reaction_trigger.rs`. (The stop-on-interrupt
+        // test still drives a SYNTHETIC ReactionShotFired, which the disabled trigger does not
+        // affect.)
+        reaction: ReactionTuning {
+            cap_base: ReactionCapBase::new(0.0),
+            cap_per_reactions: ReactionCapPerReactions::new(0.0),
+            ..Default::default()
+        },
         ..Default::default()
     });
     app.insert_resource(test_weapon_registry());

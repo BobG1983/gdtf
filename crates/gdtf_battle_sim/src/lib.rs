@@ -268,6 +268,8 @@ pub use acts_runtime::{
     },
     firing_arc, move_acts,
     move_acts::{ReactionShotFired, WalkInProgress, advance_walk},
+    reaction,
+    reaction::{reaction_trigger, reset_reactions_used},
     turn,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu},
 };
