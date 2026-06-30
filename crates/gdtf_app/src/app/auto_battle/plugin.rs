@@ -31,7 +31,7 @@
 //!   those seeds, and — because its `poll_and_resolve` only RESOLVES the weapon /
 //!   armor registries / `situations/skirmish.ron` while those resources are ABSENT —
 //!   the registry + situation seeds are deliberately withheld when an `AssetServer` is
-//!   present so the real `assets/content/weapons/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
+//!   present so the real `assets/content/weapons/ranged/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
 //!   skirmish win (the asset versions are the QA battlefield). With no `AssetServer` /
 //!   a failed asset the empty fallbacks still keep the machine traversing `Load`. See
 //!   [`seed_load_fallbacks`] for the full rationale (A1 + GTW-297 `AC3b`).
@@ -52,7 +52,7 @@ use gdtf_battle_sim::{
     level::{PrefabRegistry2, UuidThemeRegistry},
     terrain::def::TerrainDefRegistry,
     tuning::CombatTuning,
-    weapon::WeaponRegistry,
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 use gdtf_ui::theme::default_theme;
 
@@ -206,7 +206,7 @@ crate::support_item! {
     /// build). Under the real GUI launch the `Load` scene later `insert_resource`-overwrites
     /// the theme / tuning with the shipped assets (the real theme + tuning), and — crucially —
     /// its `poll_and_resolve` only RESOLVES the registries / situation from
-    /// `assets/content/weapons/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
+    /// `assets/content/weapons/ranged/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
     /// `assets/terrain/<theme>/*.terrain_def.ron` + `situations/skirmish.ron` while those
     /// resources are still ABSENT, so the empty seeds must NOT be present for the real assets
     /// to win.
@@ -222,7 +222,7 @@ crate::support_item! {
     /// ABSENT. So seeding EITHER empty fallback UNCONDITIONALLY shadowed the real load
     /// under `DefaultPlugins`: the empty situation won the GTW-261 gate race (auto-battle
     /// dropped into an empty battlefield), and the empty registry made `resolve_weapons`
-    /// skip loading `assets/content/weapons/*.weapon.ron` entirely — so battle setup's
+    /// skip loading `assets/content/weapons/ranged/*.weapon.ron` entirely — so battle setup's
     /// `weapons.spec("stub_pistol")` returned `None` and aborted with
     /// [`WeaponNotFound`](gdtf_battle_sim::situation::BattleSetupError), never reaching
     /// `BattleRunning` (a black screen). Gating BOTH empty seeds on the [`AssetServer`]
@@ -250,13 +250,20 @@ crate::support_item! {
         commands.insert_resource(default_theme());
         commands.insert_resource(CombatTuning::default());
         // A1 / AC3b — only seed the empty fallback registries + situation when there is NO
-        // AssetServer. With one present the real `assets/content/weapons/*.weapon.ron` +
+        // AssetServer. With one present the real `assets/content/weapons/ranged/*.weapon.ron` +
         // `assets/content/armor/*.armor.ron` registries and `situations/skirmish.ron` must win:
         // `poll_and_resolve` only resolves them while ABSENT, so a pre-seeded empty resource
         // would shadow the real load (the registry shadow is the AC3b WeaponNotFound bug).
         // The three seeds are SYMMETRIC (GTW-269 adds the armor registry to the set).
         if asset_server.is_none() {
             commands.insert_resource(WeaponRegistry::default());
+            // GTW-505: the MeleeWeaponRegistry is a gate-blocking resource too; seed the
+            // empty fallback when there is no AssetServer so headless walks still reach Intro
+            // (the A1 / AC3b pattern). With an AssetServer present the real
+            // `assets/content/weapons/melee/*.melee_weapon.ron` resolve must win — gated on
+            // `is_none()` exactly like the ranged weapon registry (else the empty seed would
+            // shadow `resolve_melee_weapons`, which only runs while the registry is ABSENT).
+            commands.insert_resource(MeleeWeaponRegistry::default());
             commands.insert_resource(ArmorRegistry::default());
             // GTW-437: the InjuryRegistry is a gate-blocking resource too; seed the empty
             // fallback when there is no AssetServer so headless walks still reach Intro

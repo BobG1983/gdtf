@@ -72,8 +72,8 @@ mod query;
 mod volley;
 
 pub use query::{
-    BattleGrids, FireOrder, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery,
-    WieldsQuery,
+    BattleGrids, FireOrder, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery,
+    WearsQuery, WieldsQuery,
 };
 pub use volley::{Volley, fire};
 

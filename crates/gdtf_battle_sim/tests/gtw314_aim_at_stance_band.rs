@@ -40,12 +40,12 @@ use gdtf_battle_sim::{
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
-    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu,
-    SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind,
-    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
-    fire::FireOrder,
+    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position,
+    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance,
+    StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
+    Wounds, fire::FireOrder,
 };
 
 /// The shooter's cell.
@@ -213,13 +213,14 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         PieceQuery,
         WieldsQuery,
         WeaponQuery,
+        MeleeQuery,
     )> = SystemState::new(app.world_mut());
     // `get_mut` now returns a `Result` (Bevy 0.19); the params always validate, so
     // an `Err` is structurally impossible — assert loudly rather than firing nothing.
     let access = state.get_mut(app.world_mut());
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
-        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) => {
+        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) => {
             gdtf_battle_sim::fire(
                 shooter,
                 FireOrder {
@@ -233,6 +234,7 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 &mut pieces,
                 &wields,
                 &mut weapons,
+                &melee,
                 BattleGrids {
                     occupancy:   &occupancy,
                     surface:     &surface,

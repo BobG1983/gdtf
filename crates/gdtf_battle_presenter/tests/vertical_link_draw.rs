@@ -44,8 +44,8 @@ use gdtf_battle_sim::{
     Level, LinkKind, Position, SetupBattleRequested, ShotRng, Situation, VerticalLink,
     setup_battle_on_request,
     test_support::{
-        SituationBuilder, test_armor_registry, test_gang_registry, test_terrain_registry,
-        test_weapon_registry,
+        SituationBuilder, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
+        test_terrain_registry, test_weapon_registry,
     },
 };
 use gdtf_test_utils::advance_until_resource_exists;
@@ -113,6 +113,9 @@ fn headless_renderer_app() -> App {
     .add_systems(bevy::app::Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(test_weapon_registry());
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
+    // weapon resolves at setup (fixture gangers author none -> `fists`).
+    app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
     // GTW-396/491: the TerrainDefRegistry — setup_battle_on_request reads it to resolve
     // each slab's UUID to its def; the SituationBuilder's slab_at uses the test slab def.

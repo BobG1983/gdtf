@@ -18,7 +18,7 @@
 
 use bevy::{prelude::*, ui::Display};
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{Magazine, WeaponName, WieldedBy, Wields};
+use gdtf_battle_sim::{Magazine, MeleeWeapon, WeaponName, WieldedBy, Wields};
 
 use crate::states::running::game::battlescape::weapon_panel::components::{
     ReloadButton, WeaponContent, WeaponMagazineText, WeaponNameText,
@@ -139,18 +139,24 @@ fn set_content_shown(visibility: &mut Visibility, node: &mut Node, shown: bool) 
 /// Mutates in place ([[ui-mutate-not-respawn]]); never panics on a missing widget /
 /// component (a `let else` / `Option` everywhere — AC9). Param-only (`bevy-traps.md` #7):
 /// [`Res<SelectedShooter>`] + the read-only `Query<&Wields>` (the relationship) + the
-/// read-only [`WeaponData`] weapon-entity query + the [`WeaponWidgets`] write bundle.
+/// read-only [`WeaponData`] weapon-entity query + a [`MeleeWeapon`] marker probe (GTW-505 C5
+/// — so the panel shows the RANGED weapon, never the melee one the ganger also wields) + the
+/// [`WeaponWidgets`] write bundle.
 pub(in crate::states::running::game::battlescape) fn update_weapon_panel(
     selected: Res<SelectedShooter>,
     wields: Query<&Wields>,
     data: Query<WeaponData, With<WieldedBy>>,
+    melee: Query<(), With<MeleeWeapon>>,
     mut widgets: WeaponWidgets,
 ) {
-    // Resolve `ganger → Wields → the weapon entity`, then read the weapon's WeaponData
-    // off that entity. No selection, no Wields, or an unarmed ganger → no weapon.
+    // Resolve `ganger → Wields → the RANGED weapon entity`, then read the weapon's WeaponData
+    // off that entity. GTW-505 C5: a ganger wields BOTH a ranged AND a melee weapon, so resolve
+    // through `Wields::ranged_weapon` (excluding the `MeleeWeapon`-marked entity) — NOT
+    // `Wields::weapon` (the spawn-order fragile first entity) — so the panel never shows the
+    // melee weapon's name/magazine. No selection, no Wields, or no ranged weapon → no weapon.
     let selection = (**selected)
         .and_then(|ganger| wields.get(ganger).ok())
-        .and_then(Wields::weapon)
+        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
         .and_then(|weapon| data.get(weapon).ok());
 
     // The weapon name (None when unarmed / no selection) and whether the weapon has a

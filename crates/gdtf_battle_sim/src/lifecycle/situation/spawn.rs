@@ -256,7 +256,7 @@ pub struct GangerSpawn {
     /// [`BattleSetupError::ArmorNotFound`](crate::situation::BattleSetupError::ArmorNotFound)
     /// error (no panic).
     pub armor:      crate::armor::ArmorName,
-    /// The ganger's **weapon KEY** — the filename stem of an `assets/content/weapons/*.ron`
+    /// The ganger's **weapon KEY** — the filename stem of an `assets/content/weapons/ranged/*.ron`
     /// (e.g. `"stub_pistol"`), resolved against the
     /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) into the
@@ -297,17 +297,21 @@ impl GangerSpawn {
             ),
         );
         let member = GangMember {
-            name:      self.name.clone(),
-            speed:     self.speed,
-            aim:       self.aim,
-            strength:  self.strength,
-            toughness: self.toughness,
-            reflexes:  self.reflexes,
-            cool:      self.cool,
-            grit:      self.grit,
-            luck:      self.luck,
-            armor:     self.armor.clone(),
-            weapon:    self.weapon.clone(),
+            name:         self.name.clone(),
+            speed:        self.speed,
+            aim:          self.aim,
+            strength:     self.strength,
+            toughness:    self.toughness,
+            reflexes:     self.reflexes,
+            cool:         self.cool,
+            grit:         self.grit,
+            luck:         self.luck,
+            armor:        self.armor.clone(),
+            weapon:       self.weapon.clone(),
+            // GTW-505: the combined `GangerSpawn` authors no melee weapon — the split
+            // member gets `None`, which `setup_battle` resolves to the shipped `fists`
+            // default (every ganger can melee). A future builder method can override it.
+            melee_weapon: None,
         };
         (placed, member)
     }

@@ -10,7 +10,10 @@ use gdtf_app::test_support::{AppState, BattleScapeState, LoadedSituation, Runnin
 use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::Situation,
-    test_support::{fixtures, test_armor_registry, test_gang_registry, test_weapon_registry},
+    test_support::{
+        fixtures, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
+        test_weapon_registry,
+    },
     tuning::{CombatTuning, GangerStatTuning},
 };
 use gdtf_ui::theme::default_theme;
@@ -104,6 +107,11 @@ impl BattleAppBuilder {
         // GTW-384: the persistent stat-derivation tuning the sim derives ganger stats from.
         app.world_mut().insert_resource(GangerStatTuning::default());
         app.world_mut().insert_resource(test_weapon_registry());
+        // GTW-505: the melee weapon registry (with the `fists` default) — without it
+        // `setup_battle_on_request` fails closed (no MeleeWeaponRegistry) and spawns no
+        // gangers; fixture gangers author no melee weapon, so each resolves to `fists`.
+        app.world_mut()
+            .insert_resource(test_melee_weapon_registry());
         app.world_mut().insert_resource(test_armor_registry());
         // GTW-414/415: the canonical test gang registry every standard fixture's placed
         // gangers resolve their (gang, member) refs against. Built from the SAME

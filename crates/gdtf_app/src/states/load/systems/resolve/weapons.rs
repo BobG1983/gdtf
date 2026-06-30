@@ -1,4 +1,4 @@
-//! GTW-257: builds the name-keyed [`WeaponRegistry`] from the loaded `assets/content/weapons/`
+//! GTW-257: builds the name-keyed [`WeaponRegistry`] from the loaded `assets/content/weapons/ranged/`
 //! folder, plus the GTW-374 LIVE hot-reload that rebuilds it on a `*.weapon.ron` edit.
 
 use bevy::{
@@ -11,7 +11,7 @@ use gdtf_battle_sim::weapon::{WeaponName, WeaponRegistry, WeaponSpec};
 use crate::states::load::resources::{ActiveWeaponsFolderHandle, LoadHandles};
 
 /// GTW-257: builds the name-keyed [`WeaponRegistry`] from the loaded
-/// `assets/content/weapons/` folder, mirroring the fonts folder-load gating + the situation
+/// `assets/content/weapons/ranged/` folder, mirroring the fonts folder-load gating + the situation
 /// resolve shape.
 ///
 /// Called only while no [`WeaponRegistry`] resource exists yet (the caller's
@@ -125,7 +125,7 @@ fn build_weapon_registry(
 
 /// `Update`: rebuild the [`WeaponRegistry`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
-/// `assets/content/weapons/*.weapon.ron` — the GTW-374 LIVE weapon hot-reload, modelled on the
+/// `assets/content/weapons/ranged/*.weapon.ron` — the GTW-374 LIVE weapon hot-reload, modelled on the
 /// presenter's `redrive_fx_tuning_on_asset_event`.
 ///
 /// A folder load fans out into one `RonAsset<WeaponSpec>` asset PER file, and a hot edit
@@ -185,7 +185,7 @@ pub(in crate::states::load) fn redrive_weapons_on_asset_event(
     };
     *registry = rebuilt;
     info!(
-        "weapon hot-reload: rebuilt WeaponRegistry from `assets/content/weapons/` ({} weapons)",
+        "weapon hot-reload: rebuilt WeaponRegistry from `assets/content/weapons/ranged/` ({} weapons)",
         registry.len(),
     );
 }
@@ -293,7 +293,11 @@ mod test {
         let Some(original) = weapon_spec(12) else {
             return;
         };
-        let member = add_member(&mut app, "content/weapons/stub_pistol.weapon.ron", original);
+        let member = add_member(
+            &mut app,
+            "content/weapons/ranged/stub_pistol.weapon.ron",
+            original,
+        );
         let folder = add_folder(&mut app, std::slice::from_ref(&member));
         app.world_mut()
             .insert_resource(ActiveWeaponsFolderHandle::new(folder));
@@ -336,7 +340,11 @@ mod test {
     fn weapon_hot_reload_logs_an_info_line() {
         let mut app = app();
         let Some(spec) = weapon_spec(12) else { return };
-        let member = add_member(&mut app, "content/weapons/stub_pistol.weapon.ron", spec);
+        let member = add_member(
+            &mut app,
+            "content/weapons/ranged/stub_pistol.weapon.ron",
+            spec,
+        );
         let folder = add_folder(&mut app, std::slice::from_ref(&member));
         app.world_mut()
             .insert_resource(ActiveWeaponsFolderHandle::new(folder));

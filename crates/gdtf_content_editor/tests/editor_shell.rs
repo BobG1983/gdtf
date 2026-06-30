@@ -80,7 +80,7 @@ fn editor_reaches_editing_with_registries_loaded() {
     );
 
     // WeaponRegistry: present, non-empty, and the shipped `stub_pistol` key resolves
-    // (assets/content/weapons/stub_pistol.weapon.ron). Mirrors load_weapons.rs.
+    // (assets/content/weapons/ranged/stub_pistol.weapon.ron). Mirrors load_weapons.rs.
     let weapons = world.get_resource::<WeaponRegistry>();
     assert!(
         weapons.is_some(),
@@ -89,7 +89,7 @@ fn editor_reaches_editing_with_registries_loaded() {
     if let Some(weapons) = weapons {
         assert!(
             !weapons.is_empty(),
-            "the editor's WeaponRegistry must be POPULATED from assets/content/weapons/, not \
+            "the editor's WeaponRegistry must be POPULATED from assets/content/weapons/ranged/, not \
              an empty default fallback (a broken loader must redden this, not slip through)",
         );
         assert!(

@@ -17,7 +17,7 @@ use gdtf_battle_sim::{
     situation::Situation,
     terrain::def::{TerrainDef, TerrainDefRegistry},
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{WeaponRegistry, WeaponSpec},
+    weapon::{MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry, WeaponSpec},
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -46,8 +46,11 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded `LoadedFolder` collection — used to read the weapons folder's
     /// member handles when building the [`WeaponRegistry`] (GTW-257).
     pub(super) folders:         Option<Res<'w, Assets<LoadedFolder>>>,
-    /// The loaded per-weapon RON collection (`weapons/*.ron`, GTW-257).
+    /// The loaded per-RANGED-weapon RON collection (`weapons/ranged/*.weapon.ron`, GTW-257).
     pub(super) weapon_specs:    Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
+    /// The loaded per-MELEE-weapon RON collection (`weapons/melee/*.melee_weapon.ron`,
+    /// GTW-505).
+    pub(super) melee_specs:     Option<Res<'w, Assets<RonAsset<MeleeWeaponSpec>>>>,
     /// The loaded per-armor RON collection (`armor/*.ron`, GTW-269).
     pub(super) armor_specs:     Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
     /// The loaded per-injury RON collection (`injuries/**/*.injury.ron`, GTW-437).
@@ -78,27 +81,29 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
 #[derive(SystemParam)]
 pub(in crate::states::load) struct ResolvedResources<'w> {
     /// Whether the resolved [`GdtfTheme`] is already inserted.
-    pub(super) theme:        Option<Res<'w, GdtfTheme>>,
+    pub(super) theme:         Option<Res<'w, GdtfTheme>>,
     /// Whether the resolved [`CombatTuning`] is already inserted (GTW-206).
-    pub(super) tuning:       Option<Res<'w, CombatTuning>>,
+    pub(super) tuning:        Option<Res<'w, CombatTuning>>,
     /// Whether the resolved [`GangerStatTuning`] is already inserted (GTW-384).
-    pub(super) stat_tuning:  Option<Res<'w, GangerStatTuning>>,
+    pub(super) stat_tuning:   Option<Res<'w, GangerStatTuning>>,
     /// Whether the resolved [`WeaponRegistry`] is already inserted (GTW-257).
-    pub(super) weapons:      Option<Res<'w, WeaponRegistry>>,
+    pub(super) weapons:       Option<Res<'w, WeaponRegistry>>,
+    /// Whether the resolved [`MeleeWeaponRegistry`] is already inserted (GTW-505).
+    pub(super) melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
     /// Whether the resolved [`LoadedSituation`] is already inserted (GTW-261).
-    pub(super) situation:    Option<Res<'w, LoadedSituation>>,
+    pub(super) situation:     Option<Res<'w, LoadedSituation>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).
-    pub(super) armor:        Option<Res<'w, ArmorRegistry>>,
+    pub(super) armor:         Option<Res<'w, ArmorRegistry>>,
     /// Whether the resolved [`InjuryRegistry`] is already inserted (GTW-437). The
     /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) is built and inserted
     /// in the SAME branch, so the registry's presence is the branch's done-probe.
-    pub(super) injuries:     Option<Res<'w, InjuryRegistry>>,
+    pub(super) injuries:      Option<Res<'w, InjuryRegistry>>,
     /// Whether the resolved [`GangRegistry`] is already inserted (GTW-415).
-    pub(super) gangs:        Option<Res<'w, GangRegistry>>,
+    pub(super) gangs:         Option<Res<'w, GangRegistry>>,
     /// Whether the resolved [`PrefabRegistry2`] is already inserted (GTW-489).
-    pub(super) prefabs_v2:   Option<Res<'w, PrefabRegistry2>>,
+    pub(super) prefabs_v2:    Option<Res<'w, PrefabRegistry2>>,
     /// Whether the resolved [`TerrainDefRegistry`] is already inserted (GTW-487).
-    pub(super) terrain_defs: Option<Res<'w, TerrainDefRegistry>>,
+    pub(super) terrain_defs:  Option<Res<'w, TerrainDefRegistry>>,
     /// Whether the resolved [`UuidThemeRegistry`] is already inserted (GTW-487).
-    pub(super) theme_defs:   Option<Res<'w, UuidThemeRegistry>>,
+    pub(super) theme_defs:    Option<Res<'w, UuidThemeRegistry>>,
 }

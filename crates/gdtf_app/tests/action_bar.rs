@@ -116,6 +116,10 @@ fn walk_app() -> App {
     // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
     // situation here, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
+    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     // GTW-269: the Load->Intro gate also requires an ArmorRegistry; the empty-default
     // situation has zero gangers, so an empty registry clears the gate and the setup
     // resolves no armor keys.
@@ -1760,6 +1764,12 @@ fn walk_app_with_situation(
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(armed_registry());
+    // GTW-505: the MeleeWeaponRegistry (with the `fists` default) so the Generation setup
+    // arms the player ganger's melee weapon — the placed ganger authors none, so it
+    // resolves to `fists`; without it `setup_battle_on_request` fails closed and the walk
+    // never reaches BattleRunning.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::test_support::test_melee_weapon_registry());
     // The Load-built ArmorRegistry (GTW-269) so the Generation setup armors the player
     // ganger: it references PLAYER_ARMOR_KEY, which this registry holds.
     app.world_mut().insert_resource(armed_armor_registry());

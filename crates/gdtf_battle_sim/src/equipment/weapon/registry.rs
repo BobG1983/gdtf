@@ -12,7 +12,7 @@ use super::{WeaponName, WeaponSpec};
 /// A named newtype [`Resource`] over a [`HashMap`]`<`[`WeaponName`]`,
 /// `[`WeaponSpec`]`>` (no-bare-types: a registry is a domain value, not a bare
 /// `HashMap`). The sim OWNS the weapon model, so the type lives here; the app's
-/// `Load` flow POPULATES it from the loaded `assets/content/weapons/*.ron` folder (keyed by
+/// `Load` flow POPULATES it from the loaded `assets/content/weapons/ranged/*.ron` folder (keyed by
 /// each file's stem) and inserts it as a resource. It holds the specs BY VALUE
 /// ([`WeaponSpec`] is `Clone`), so they survive even if the loaded-folder asset
 /// handle is dropped.

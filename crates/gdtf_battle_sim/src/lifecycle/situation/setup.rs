@@ -45,8 +45,9 @@ use crate::{
     tuning::{GangerStatTuning, MoveCost, ReactionsUsed},
     vertical::{LinkKind, build_vertical_link_graph},
     weapon::{
-        Accuracy, BaseSpread, FatalBias, FireMode, Kickback, Stable, Weapon, WeaponBundle,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, Wields,
+        Accuracy, BaseSpread, FISTS_KEY, FatalBias, FightMode, FireMode, Kickback, MeleeWeapon,
+        MeleeWeaponBundle, MeleeWeaponRegistry, Reach, Stable, Weapon, WeaponBundle, WeaponDamage,
+        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, Wields,
     },
 };
 
@@ -95,26 +96,31 @@ impl BattleSetup {
 #[derive(Clone, Copy)]
 pub struct BattleRegistries<'a> {
     /// The gang rosters each placed ganger's `(gang, member)` ref resolves against (GTW-414).
-    pub gangs:       &'a GangRegistry,
-    /// The weapon registry each resolved roster member's weapon key resolves against.
-    pub weapons:     &'a WeaponRegistry,
+    pub gangs:         &'a GangRegistry,
+    /// The (ranged) weapon registry each resolved roster member's weapon key resolves against.
+    pub weapons:       &'a WeaponRegistry,
+    /// The MELEE weapon registry each resolved roster member's melee weapon key resolves
+    /// against (GTW-505) — an authored key, or the [`fists`](crate::weapon::FISTS_KEY)
+    /// default when the member authored none, so every ganger gets a melee weapon.
+    pub melee_weapons: &'a MeleeWeaponRegistry,
     /// The armor registry each resolved roster member's armor key resolves against.
-    pub armor:       &'a ArmorRegistry,
+    pub armor:         &'a ArmorRegistry,
     /// The stat tuning each ganger's computed stats are derived with (GTW-384).
-    pub stat_tuning: &'a GangerStatTuning,
+    pub stat_tuning:   &'a GangerStatTuning,
     /// The UUID-keyed terrain-definition registry cover / slab piece UUIDs resolve against
     /// (GTW-491); `None` skips terrain resolution (cover / slab keys then fail with
     /// `TerrainNotFound`, and the floor uses the [`fallback_floor_cost`](setup_battle)).
-    pub terrain:     Option<&'a TerrainDefRegistry>,
+    pub terrain:       Option<&'a TerrainDefRegistry>,
 }
 
 impl<'a> BattleRegistries<'a> {
-    /// Build the resolution borrow-bundle from its five registry / tuning refs — the shape
-    /// every [`setup_battle`] caller assembles.
+    /// Build the resolution borrow-bundle from its six registry / tuning refs — the shape
+    /// every [`setup_battle`] caller assembles (GTW-505 added `melee_weapons`).
     #[must_use]
     pub const fn new(
         gangs: &'a GangRegistry,
         weapons: &'a WeaponRegistry,
+        melee_weapons: &'a MeleeWeaponRegistry,
         armor: &'a ArmorRegistry,
         stat_tuning: &'a GangerStatTuning,
         terrain: Option<&'a TerrainDefRegistry>,
@@ -122,6 +128,7 @@ impl<'a> BattleRegistries<'a> {
         Self {
             gangs,
             weapons,
+            melee_weapons,
             armor,
             stat_tuning,
             terrain,
@@ -419,6 +426,70 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
     )
 }
 
+/// Compose the wielded MELEE-weapon **related scene list** for a ganger as a
+/// [`SceneList`] — the single melee weapon entity carrying the GTW-505 decomposed
+/// melee-weapon-stat component set, read by value from the resolved
+/// [`MeleeWeaponBundle`], to spawn-and-relate via [`Wields`] (GTW-505, the
+/// [`wielded_weapon_scenes`] mirror).
+///
+/// The [`setup_battle`] spawn loop hands this list to
+/// [`queue_spawn_related_scenes::<Wields>`](bevy::scene::EntityCommandsSceneExt::queue_spawn_related_scenes)
+/// on the freshly-spawned ganger entity — exactly as the ranged weapon spawn does — so
+/// the framework spawns the melee weapon entity, applies the scene's components, and
+/// inserts [`WieldedBy`](crate::weapon::WieldedBy)`(ganger)` on it, populating the same
+/// [`Wields`] collection the ranged weapon is in. The melee entity carries the GTW-505
+/// [`MeleeWeapon`] marker, so the ranged-firing path EXCLUDES it (GTW-505 C5). The list
+/// holds ONE entry (a ganger wields a single melee weapon), wrapped in a one-element
+/// `bsn_list!` like the ranged side.
+fn wielded_melee_weapon_scenes(weapon: &MeleeWeaponBundle) -> impl SceneList {
+    bsn_list! { wielded_melee_weapon_scene(weapon) }
+}
+
+/// Compose ONE wielded MELEE-weapon entity as a `bsn!` [`Scene`] — the [`MeleeWeapon`]
+/// marker plus the GTW-505 decomposed melee-weapon-stat component set, read by value
+/// from the resolved [`MeleeWeaponBundle`] (the [`wielded_weapon_scene`] mirror).
+///
+/// The [`MeleeWeapon`] marker, the shared [`WeaponName`] / [`WeaponDamage`] /
+/// [`WeaponPunch`] / [`WeaponShred`] / [`FatalBias`] newtypes, the melee [`Reach`], and
+/// the [`FightMode`] selector inline via their `Type::new(value)` `bsn!` form; the
+/// runtime-valued [`DamageType`](crate::weapon::DamageType) and [`Handedness`] (fieldless
+/// enums with no `bsn!` grammar form) bridge via [`template_value`] and tuple-compose
+/// onto the same melee weapon entity (the GTW-322 runtime-value path). The
+/// [`WieldedBy`](crate::weapon::WieldedBy) back-reference is inserted by the framework's
+/// `queue_spawn_related_scenes::<Wields>` wiring, NOT here.
+fn wielded_melee_weapon_scene(weapon: &MeleeWeaponBundle) -> impl Scene {
+    // bsn! `Type::new(expr)` stores a DEFERRED constructor, so every captured value must
+    // be OWNED (the GTW-322 `'static` finding). Read each stat by value out of the bundle
+    // FIRST, then let the macro capture the owned locals (never the `&` param).
+    let weapon_name = (*weapon.name).clone();
+    let weapon_damage = *weapon.damage;
+    let weapon_punch = *weapon.punch;
+    let weapon_shred = *weapon.shred;
+    let fatal_bias = *weapon.fatal_bias;
+    let reach = *weapon.reach;
+    let fight_mode = (*weapon.fight_mode).clone();
+    // The runtime-valued enums with no `bsn!` grammar form, owned for the
+    // `template_value` tuple-composition tail (the GTW-322 runtime-value path).
+    let damage_type = weapon.damage_type;
+    let handedness = weapon.handedness;
+    (
+        bsn! {
+            MeleeWeapon
+            WeaponName::new(weapon_name)
+            WeaponDamage::new(weapon_damage)
+            WeaponPunch::new(weapon_punch)
+            WeaponShred::new(weapon_shred)
+            FatalBias::new(fatal_bias)
+            Reach::new(reach)
+            FightMode::new(fight_mode)
+        },
+        // The runtime-valued components with no `bsn!` grammar form, bridged via
+        // `template_value` and tuple-composed onto the SAME melee weapon entity.
+        template_value(damage_type),
+        template_value(handedness),
+    )
+}
+
 /// Build the battle in the ECS world from a [`Situation`](crate::situation::Situation)
 /// — the E1.8 setup: the setup system that builds the scene from the situation (see the
 /// [`crate::situation`] module doc, the setup-on-entry source of truth).
@@ -487,6 +558,8 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
 /// - [`BattleSetupError::StackedGangers`] — two gangers share one `(cell, level)` spawn
 ///   slot (GTW-457).
 /// - [`BattleSetupError::WeaponNotFound`] — the resolved roster member's weapon key absent.
+/// - [`BattleSetupError::MeleeWeaponNotFound`] — the resolved roster member's melee weapon
+///   key (or the `fists` default) absent (GTW-505).
 /// - [`BattleSetupError::ArmorNotFound`] — the resolved roster member's armor key absent.
 /// - [`BattleSetupError::TerrainNotFound`] — a cover/slab terrain definition UUID absent
 ///   (GTW-491).
@@ -512,6 +585,7 @@ pub fn setup_battle(
     let BattleRegistries {
         gangs,
         weapons,
+        melee_weapons,
         armor,
         stat_tuning,
         terrain,
@@ -569,6 +643,26 @@ pub fn setup_battle(
             });
         };
         weapon_bundles.push(spec.clone().into_bundle(member.weapon.clone()));
+    }
+
+    // GTW-505: resolve every ganger's MELEE weapon BEFORE the spawn loop too (abort-first,
+    // mirroring the ranged path). The key is the member's authored `melee_weapon` key, OR
+    // — when it authored none — the shipped `fists` default, so EVERY ganger gets a melee
+    // weapon and any ganger can melee (the GTW-37 D3 ruling). A missing key (incl. a
+    // missing `fists.melee_weapon.ron`) aborts with MeleeWeaponNotFound (no panic, no
+    // partial world). The resolved bundles are cloned by value (the registry's specs are
+    // Clone) and consumed by the spawn loop alongside the ranged bundle.
+    let mut melee_bundles = Vec::with_capacity(resolved_members.len());
+    for (_placed, member) in &resolved_members {
+        // The melee KEY: the member's authored key, else the `fists` default.
+        let melee_key = member
+            .melee_weapon
+            .clone()
+            .unwrap_or_else(|| WeaponName::new(FISTS_KEY.to_owned()));
+        let Some(spec) = melee_weapons.spec(&melee_key) else {
+            return Err(BattleSetupError::MeleeWeaponNotFound { weapon: melee_key });
+        };
+        melee_bundles.push(spec.clone().into_bundle(melee_key));
     }
 
     // Resolve every ganger's armor key against the armor registry the same way —
@@ -632,10 +726,11 @@ pub fn setup_battle(
     //    `SpawnScene` schedule — so occupancy is keyed off the ganger's authored `at`
     //    value + the reserved id, never off the deferred `Position` component.
     let mut occupants = Vec::with_capacity(resolved_members.len());
-    for (((placed, member), weapon_bundle), armor_spec) in resolved_members
+    for ((((placed, member), weapon_bundle), melee_bundle), armor_spec) in resolved_members
         .iter()
         .copied()
         .zip(weapon_bundles)
+        .zip(melee_bundles)
         .zip(armor_specs)
     {
         // The ganger carries its OWN state only — NO equipment stat data (GTW-323
@@ -670,6 +765,18 @@ pub fn setup_battle(
         commands
             .entity(entity)
             .queue_spawn_related_scenes::<Wields>(wielded_weapon_scenes(&weapon_bundle));
+        // GTW-505: spawn the wielded MELEE weapon entity from the resolved
+        // `MeleeWeaponBundle` and relate it to this ganger via the SAME `Wields`
+        // relationship (the ranged weapon spawn above). The framework inserts
+        // `WieldedBy(entity)` on the spawned melee weapon, adding it to the ganger's
+        // `Wields` collection ALONGSIDE the ranged weapon. The melee entity carries the
+        // `MeleeWeapon` marker, so the ranged-firing path resolves the GUN via
+        // `Wields::ranged_weapon` (which excludes it) — relating it never regresses ranged
+        // firing (GTW-505 C5). RESULT: every spawned ganger wields BOTH a ranged and a
+        // melee weapon (the GTW-37 D3 ruling — any ganger can melee).
+        commands
+            .entity(entity)
+            .queue_spawn_related_scenes::<Wields>(wielded_melee_weapon_scenes(&melee_bundle));
         // The occupant's silhouette band is derived from its authored stance
         // (standing → HIGH, kneeling → MID, prone → LOW) so the grid pour places the
         // occupant AND its band together (GTW-304). Keyed off the authored `at` value

@@ -243,12 +243,22 @@ fn run_real_setup(
     let mut battle = App::new();
     battle.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     let gangs = gangs.clone();
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee weapon
+    // resolves at setup (these gangers author none → `fists`).
+    let melee = gdtf_battle_sim::test_support::test_melee_weapon_registry();
     let outcome = battle
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
                 &situation,
-                BattleRegistries::new(&gangs, &weapons, &armor, &stat_tuning, Some(&terrain)),
+                BattleRegistries::new(
+                    &gangs,
+                    &weapons,
+                    &melee,
+                    &armor,
+                    &stat_tuning,
+                    Some(&terrain),
+                ),
                 fallback_floor_cost,
                 &mut commands,
             )

@@ -122,17 +122,20 @@ impl EditableMember {
         #[must_use]
         fn to_sim(&self) -> GangMember {
             GangMember {
-                name:      self.name.clone(),
-                speed:     self.speed,
-                aim:       self.aim,
-                strength:  self.strength,
-                toughness: self.toughness,
-                reflexes:  self.reflexes,
-                cool:      self.cool,
-                grit:      self.grit,
-                luck:      self.luck,
-                armor:     self.armor.clone(),
-                weapon:    self.weapon.clone(),
+                name:         self.name.clone(),
+                speed:        self.speed,
+                aim:          self.aim,
+                strength:     self.strength,
+                toughness:    self.toughness,
+                reflexes:     self.reflexes,
+                cool:         self.cool,
+                grit:         self.grit,
+                luck:         self.luck,
+                armor:        self.armor.clone(),
+                weapon:       self.weapon.clone(),
+                // GTW-505: the gang editor does not edit melee weapons yet (GTW-507+), so a
+                // written member authors none — it resolves to the `fists` default in-game.
+                melee_weapon: None,
             }
         }
     }

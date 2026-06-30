@@ -158,17 +158,18 @@ fn enemy_gang_name() -> GangName {
 /// the visualizer — only the gang NAME + member COUNT label the deployment quad, C4).
 fn member(name: &str) -> GangMember {
     GangMember {
-        name:      GangerName::new(name.to_owned()),
-        speed:     Speed::new(3.0),
-        aim:       Aim::new(3.0),
-        strength:  Strength::new(3.0),
-        toughness: Toughness::new(3.0),
-        reflexes:  Reflexes::new(3.0),
-        cool:      Cool::new(3.0),
-        grit:      Grit::new(3.0),
-        luck:      Luck::new(3.0),
-        armor:     ArmorName::new("flak".to_owned()),
-        weapon:    WeaponName::new("autopistol".to_owned()),
+        name:         GangerName::new(name.to_owned()),
+        speed:        Speed::new(3.0),
+        aim:          Aim::new(3.0),
+        strength:     Strength::new(3.0),
+        toughness:    Toughness::new(3.0),
+        reflexes:     Reflexes::new(3.0),
+        cool:         Cool::new(3.0),
+        grit:         Grit::new(3.0),
+        luck:         Luck::new(3.0),
+        armor:        ArmorName::new("flak".to_owned()),
+        weapon:       WeaponName::new("autopistol".to_owned()),
+        melee_weapon: None,
     }
 }
 

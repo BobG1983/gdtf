@@ -18,7 +18,8 @@ pub(super) use bevy::{
 // for the concern files via the alias re-exports.
 pub(super) use crate::test_support::{
     SituationBuilder, fixtures, ganger_at, key, test_armor_registry as armor_registry,
-    test_gang_registry, test_terrain_registry, test_weapon_registry as weapon_registry,
+    test_gang_registry, test_melee_weapon_registry as melee_weapon_registry, test_terrain_registry,
+    test_weapon_registry as weapon_registry,
 };
 pub(super) use crate::{
     acts::FireRequested,
@@ -112,6 +113,10 @@ pub(super) fn headless_app() -> App {
     // setup reads it to derive each ganger's computed stats.
     app.insert_resource(GangerStatTuning::default());
     app.insert_resource(weapon_registry());
+    // GTW-505: the MELEE weapon registry is PERSISTENT `Load` state like the ranged
+    // registry; `setup_battle_on_request` reads it to arm each ganger's melee weapon
+    // (`None`-authored fixture gangers resolve to the `fists` default it holds).
+    app.insert_resource(melee_weapon_registry());
     app.insert_resource(armor_registry());
     // GTW-414: the GangRegistry is PERSISTENT `Load` state like the weapon/armor
     // registries; `setup_battle_on_request` reads it to resolve each PlacedGanger's

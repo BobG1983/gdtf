@@ -108,6 +108,10 @@ fn injuries_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
+    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
@@ -159,6 +163,10 @@ fn load_does_not_leave_without_an_injury_registry() {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(GangerStatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
+    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));

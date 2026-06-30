@@ -64,6 +64,10 @@ fn presenter_app() -> bevy::app::App {
     // GTW-257: the Load→Intro gate also requires a WeaponRegistry (no LoadedSituation
     // here, so the empty-default setup needs no weapons — an empty registry clears it).
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
+    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it (the
     // registry is dormant this slice — the setup does not read it yet).
     app.world_mut()

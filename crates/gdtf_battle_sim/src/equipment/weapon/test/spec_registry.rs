@@ -5,21 +5,21 @@ use super::support::*;
 
 /// A shipped weapon `.ron`, read at compile time via the same `include_str!`
 /// pattern `tuning.rs` / `situation.rs` use — the REAL on-disk authored file
-/// (`assets/content/weapons/stub_pistol.weapon.ron`), so a regression in the authored file
+/// (`assets/content/weapons/ranged/stub_pistol.weapon.ron`), so a regression in the authored file
 /// turns this red.
 const SHIPPED_STUB_PISTOL_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/content/weapons/stub_pistol.weapon.ron"
+    "/../../assets/content/weapons/ranged/stub_pistol.weapon.ron"
 ));
 
 /// A shipped TWO-handed long-arm `.weapon.ron` — the GTW-443 `handedness:` regression
 /// witness (the real on-disk `las_carbine`, authored `TwoHanded`).
 const SHIPPED_LAS_CARBINE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/content/weapons/las_carbine.weapon.ron"
+    "/../../assets/content/weapons/ranged/las_carbine.weapon.ron"
 ));
 
-/// GTW-257 AC1 — the shipped `assets/content/weapons/stub_pistol.weapon.ron` parses into a
+/// GTW-257 AC1 — the shipped `assets/content/weapons/ranged/stub_pistol.weapon.ron` parses into a
 /// `WeaponSpec`, and `into_bundle(name)` yields a `WeaponBundle` carrying that
 /// `WeaponName` + a `FireMode` list whose modes carry their `ModeKind`.
 /// Value-agnostic on the tunable cone/TU/damage magnitudes (the authored numbers
@@ -31,7 +31,7 @@ fn shipped_weapon_spec_parses_and_converts_to_a_bundle() {
     let parsed = ron::de::from_str::<WeaponSpec>(SHIPPED_STUB_PISTOL_RON);
     assert!(
         parsed.is_ok(),
-        "the shipped assets/content/weapons/stub_pistol.weapon.ron must parse into a WeaponSpec: {parsed:?}",
+        "the shipped assets/content/weapons/ranged/stub_pistol.weapon.ron must parse into a WeaponSpec: {parsed:?}",
     );
     let Ok(spec) = parsed else {
         return;

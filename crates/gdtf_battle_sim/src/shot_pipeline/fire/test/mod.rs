@@ -11,4 +11,5 @@ mod determinism;
 mod economy;
 mod fail_closed;
 mod handedness;
+mod melee_regression;
 mod recoil;

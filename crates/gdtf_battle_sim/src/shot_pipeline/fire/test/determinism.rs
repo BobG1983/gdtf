@@ -40,7 +40,7 @@ fn same_seed_reproduces_byte_equal_volley() {
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
         match state.get_mut(&mut world) {
-            Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) => fire(
+            Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) => fire(
                 shooter,
                 FireOrder {
                     mode:         &mode,
@@ -53,6 +53,7 @@ fn same_seed_reproduces_byte_equal_volley() {
                 &mut pieces,
                 &wields,
                 &mut weapons,
+                &melee,
                 BattleGrids {
                     occupancy:   &occupancy,
                     surface:     &surface,

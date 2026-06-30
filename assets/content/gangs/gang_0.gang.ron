@@ -29,7 +29,7 @@
             grit:      19.0,           // Grit attribute — resilience; the dominant derived HP + Morale term (→ HP ~34)
             luck:      1.0,            // Luck attribute — directional fortune; the severity-roll tail (not a computed stat)
             armor:     "flak_vest",    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
-            weapon:    "stub_pistol",  // weapon KEY — resolves to assets/content/weapons/stub_pistol.weapon.ron at setup
+            weapon:    "stub_pistol",  // weapon KEY — resolves to assets/content/weapons/ranged/stub_pistol.weapon.ron at setup
         ),
     ],
 )

@@ -30,7 +30,7 @@ impl EditorThemeHandle {
     }
 }
 
-/// Typed handle to the loaded `content/weapons/` folder — every member is a
+/// Typed handle to the loaded `content/weapons/ranged/` folder — every member is a
 /// `RonAsset<WeaponSpec>` the poll/resolve pass builds the
 /// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) from.
 #[derive(Resource, Deref, Clone, Debug)]

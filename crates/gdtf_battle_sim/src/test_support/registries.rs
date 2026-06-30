@@ -24,9 +24,11 @@ use crate::{
         piece::{FootfallSound, TerrainGraphicKey},
     },
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Handedness, Kickback,
-        MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
-        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        Accuracy, BaseSpread, DamageType, FISTS_KEY, FatalBias, FightMode, FightModeKind,
+        FightModeSpec, FireMode, FireModeSpec, Handedness, Kickback, MagazineSize,
+        MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+        Reach, Stable, Strikes, TuCost, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
+        WeaponShred, WeaponSpec,
     },
 };
 
@@ -38,6 +40,10 @@ pub const TEST_WEAPON_KEY: &str = "test-weapon";
 /// The armor KEY every test ganger references — present in
 /// [`test_armor_registry`] (the armor mirror of [`TEST_WEAPON_KEY`]).
 pub const TEST_ARMOR_KEY: &str = "test-armor";
+
+/// The MELEE weapon KEY a test ganger that authors one references (GTW-505) — present
+/// in [`test_melee_weapon_registry`] (the melee mirror of [`TEST_WEAPON_KEY`]).
+pub const TEST_MELEE_WEAPON_KEY: &str = "test-melee";
 
 /// Build a `(cell, level)` key from raw coordinates — the terse fixture helper
 /// the situation builders + the per-crate tests use to place gangers and cover.
@@ -83,6 +89,50 @@ pub fn test_weapon_registry() -> WeaponRegistry {
         WeaponName::new(TEST_WEAPON_KEY.to_owned()),
         test_weapon_spec(),
     )])
+}
+
+/// An arbitrary [`MeleeWeaponSpec`] (NOT shipped magnitudes — mechanism only) carrying a
+/// single `Swing`-kind fight mode, so a resolved bundle proves the
+/// [`MeleeWeapon`](crate::weapon::MeleeWeapon) marker + [`FightMode`] landed (GTW-505).
+/// SHARES the ranged damage newtypes; drops the ranged-only handling fields.
+#[must_use]
+pub fn test_melee_weapon_spec() -> MeleeWeaponSpec {
+    MeleeWeaponSpec {
+        damage:      WeaponDamage::new(9),
+        punch:       WeaponPunch::new(3),
+        shred:       WeaponShred::new(2),
+        damage_type: DamageType::Rend,
+        fatal_bias:  FatalBias::new(4.0),
+        handedness:  Handedness::OneHanded,
+        reach:       Reach::new(1),
+        fight_mode:  FightMode::new(vec![FightModeSpec::new(
+            FightModeKind::Swing,
+            TuCost::new(20),
+            Strikes::new(1),
+        )]),
+    }
+}
+
+/// A [`MeleeWeaponRegistry`] holding the [`fists`](crate::weapon::FISTS_KEY) default
+/// (under [`FISTS_KEY`]) AND the [`TEST_MELEE_WEAPON_KEY`] authored melee weapon — the
+/// test-built registry a setup resolves each ganger's melee weapon against (GTW-505).
+/// The `fists` entry makes a ganger that authors NO melee weapon resolve cleanly (the
+/// `None → fists` default path); the `test-melee` entry exercises an authored key. Stands
+/// in for the app's `Load`-built registry.
+#[must_use]
+pub fn test_melee_weapon_registry() -> MeleeWeaponRegistry {
+    MeleeWeaponRegistry::new([
+        // The fists default — `None`-authored gangers resolve to this.
+        (
+            WeaponName::new(FISTS_KEY.to_owned()),
+            test_melee_weapon_spec(),
+        ),
+        // An authored melee weapon under the test key — a member that names it resolves here.
+        (
+            WeaponName::new(TEST_MELEE_WEAPON_KEY.to_owned()),
+            test_melee_weapon_spec(),
+        ),
+    ])
 }
 
 /// An arbitrary armor SPEC — distinct per-part magnitudes (NOT shipped tuning) so a

@@ -21,7 +21,7 @@
 //! order — replay-stable (GTW-70 §E).
 
 use bevy::{
-    ecs::query::Has,
+    ecs::{query::Has, system::SystemParam},
     prelude::{Entity, MessageWriter, Query, Res},
 };
 
@@ -33,7 +33,7 @@ use crate::{
     acts::{EndTurnRequested, FireRequested, MoveRequested, can_engage},
     battle::PlayerFaction,
     cover::CoverLedger,
-    fire::WieldsQuery,
+    fire::{MeleeQuery, WieldsQuery},
     ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Tu, TuMax},
     injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
     los::{Observer, PeekOffset, Target, can_see},
@@ -48,7 +48,7 @@ use crate::{
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
     visibility::{FactionRelation, OmniscientFog},
-    weapon::{FireMode, Handedness, Wields},
+    weapon::{FireMode, Handedness},
 };
 
 /// The brain's read-only ganger snapshot query shape — every ganger's brain-relevant
@@ -146,6 +146,41 @@ fn cell_order(position: &Position) -> (i32, i32, i32) {
     (key.z, key.y, key.x)
 }
 
+/// The brain's **weapon-resolution** [`SystemParam`] bundle — the three queries the
+/// engage path keys `enemy → Wields → the RANGED weapon entity` through, grouped into
+/// one param so [`enemy_ai_turn`] stays under Bevy's 16-param `SystemParam`-tuple arity
+/// (GTW-505 added the `melee` probe, which pushed the flat list to 17 — the GTW-461
+/// `ActPacing` bundling precedent).
+///
+/// Each is the existing query type ([`WieldsQuery`] / the weapon-stat query / the GTW-505
+/// [`MeleeQuery`] marker probe); the bundle is a transparent grouping of existing
+/// world-state queries, not a wrapped domain scalar.
+#[derive(SystemParam)]
+pub struct WeaponLookup<'w, 's> {
+    /// The wielded-weapon relationship — `&Wields` on the enemy ganger.
+    wields:  WieldsQuery<'w, 's>,
+    /// The ranged weapon-stat columns read off the resolved weapon entity.
+    weapons: Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
+    /// GTW-505 C5: the melee-weapon marker probe — `ranged_weapon` filters the wielded
+    /// weapon against it so the enemy's melee weapon is never engaged as its gun.
+    melee:   MeleeQuery<'w, 's>,
+}
+
+impl WeaponLookup<'_, '_> {
+    /// Resolve `enemy → Wields → the RANGED weapon entity` and read its `(Magazine,
+    /// FireMode, Handedness)` — excluding the melee weapon the enemy also wields (GTW-505
+    /// C5), the same ranged-filtered resolution `dispatch_fire` / `fire()` use. `None`
+    /// when the enemy wields no ranged weapon or its weapon entity is missing.
+    fn ranged(&self, enemy: Entity) -> Option<(&Magazine, &FireMode, &Handedness)> {
+        let weapon = self
+            .wields
+            .get(enemy)
+            .ok()?
+            .ranged_weapon(|entity| self.melee.get(entity).is_ok())?;
+        self.weapons.get(weapon).ok()
+    }
+}
+
 /// The **enemy-turn brain** — on the enemy faction's turn, run one engage-or-advance-or-hold
 /// pass over each enemy ganger and end the turn back to the player when the enemy is done
 /// (GTW-70 §A / §B / §C / §D).
@@ -220,8 +255,9 @@ pub fn enemy_ai_turn(
     // brain's access stays panic-free outside a live battle (un-paced fallback).
     mut pacing: ActPacing,
     gangers: EnemyTurnGangers,
-    wields: WieldsQuery,
-    weapons: Query<(&Magazine, &FireMode, &Handedness)>,
+    // GTW-505: the weapon-resolution bundle (wields + weapon-stat query + the melee-marker
+    // probe), grouped so the brain stays under Bevy's 16-param SystemParam-tuple arity.
+    weapon_lookup: WeaponLookup,
     mut fire_writer: MessageWriter<FireRequested>,
     mut move_writer: MessageWriter<MoveRequested>,
     mut end_turn_writer: MessageWriter<EndTurnRequested>,
@@ -343,11 +379,9 @@ pub fn enemy_ai_turn(
         //     then engage iff some opposing ganger passes the SHARED gate: can_see ∧ can_fire
         //     (incl. the GTW-443 hand-count clause folded from the enemy's injury ledger) ∧
         //     ¬Reject arc.
-        let weapon_data = wields
-            .get(enemy.entity)
-            .ok()
-            .and_then(Wields::weapon)
-            .and_then(|weapon| weapons.get(weapon).ok());
+        // GTW-505 C5: resolve the RANGED weapon (excluding the melee weapon the enemy also
+        // wields) so the brain engages with the gun, never the melee weapon.
+        let weapon_data = weapon_lookup.ranged(enemy.entity);
         if let Some((magazine, fire_mode, handedness)) = weapon_data {
             let mode = fire_mode.single();
             let magazine: Magazine = *magazine;

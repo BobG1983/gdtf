@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
     situation::Situation,
     terrain::def::{TerrainDef, TerrainDefRegistry},
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{WeaponRegistry, WeaponSpec},
+    weapon::{MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry, WeaponSpec},
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -50,7 +50,7 @@ impl Plugin for LoadScenePlugin {
         // extension. GDTF registers many `ron` loaders (theme / situation / tuning /
         // keybinds / tile-roles / …), so a `load_folder` of plain `.ron` weapon files
         // would be typed non-deterministically. The weapon loader therefore claims a
-        // DEDICATED `weapon.ron` extension (the files are `assets/content/weapons/*.weapon.ron`),
+        // DEDICATED `weapon.ron` extension (the files are `assets/content/weapons/ranged/*.weapon.ron`),
         // making the folder dispatch unambiguous regardless of registration order (the
         // contract's "unambiguous .ron loader dispatch" goal). Registered here in
         // `build` BEFORE the `kick_off_loads` `load_folder("weapons")` runs — 0.18
@@ -64,6 +64,13 @@ impl Plugin for LoadScenePlugin {
             // registered here behind the one AssetServer guard alongside the others.
             app.init_ron_asset::<GangerStatTuning>();
             app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
+            // GTW-505: the MELEE weapon files mirror the ranged scheme — each loads as a
+            // `RonAsset<MeleeWeaponSpec>` via `load_folder`, so it claims its OWN dedicated
+            // `melee_weapon.ron` compound extension (files are
+            // `assets/content/weapons/melee/*.melee_weapon.ron`), keeping the folder dispatch
+            // unambiguous among GDTF's many `.ron` loaders. Registered here in `build` BEFORE the
+            // kick-off's `load_folder("content/weapons/melee")` runs.
+            app.init_ron_asset_with_extensions::<MeleeWeaponSpec>(vec!["melee_weapon.ron"]);
             // GTW-269: armor files mirror the weapon scheme — each loads as a
             // `RonAsset<ArmorSpec>` via `load_folder`, so it claims its OWN dedicated
             // `armor.ron` extension (files are `assets/content/armor/*.armor.ron`) to keep the
@@ -150,6 +157,10 @@ fn add_systems(app: &mut App) {
                             // (the sim derives every ganger's stats from it).
                             .or_else(not(resource_exists::<GangerStatTuning>))
                             .or_else(not(resource_exists::<WeaponRegistry>))
+                            // GTW-505: the MeleeWeaponRegistry is a gate-blocking resource too
+                            // (every ganger gets a melee weapon; the melee folder must be
+                            // verified loaded before Load exits, or a battle fails closed).
+                            .or_else(not(resource_exists::<MeleeWeaponRegistry>))
                             .or_else(not(resource_exists::<LoadedSituation>))
                             .or_else(not(resource_exists::<ArmorRegistry>))
                             // GTW-437: the InjuryRegistry is a gate-blocking resource too
@@ -196,6 +207,9 @@ fn add_systems(app: &mut App) {
                     // battle never starts before its stat-derivation tuning loads.
                     .and_then(resource_exists::<GangerStatTuning>)
                     .and_then(resource_exists::<WeaponRegistry>)
+                    // GTW-505: the MeleeWeaponRegistry must be present before Load exits, so the
+                    // melee weapons folder is verified loaded before any battle arms melee.
+                    .and_then(resource_exists::<MeleeWeaponRegistry>)
                     .and_then(resource_exists::<LoadedSituation>)
                     .and_then(resource_exists::<ArmorRegistry>)
                     // GTW-437: the InjuryRegistry must be present before Load exits, so the
@@ -243,6 +257,9 @@ fn add_hot_reload_systems(app: &mut App) {
             // trips the sim's `rederive_stats_on_tuning_change`.
             redrive_stat_tuning_on_asset_event,
             redrive_weapons_on_asset_event,
+            // GTW-505: the melee weapon hot-reload — rebuilds the MeleeWeaponRegistry on a
+            // `weapons/melee/*.melee_weapon.ron` edit, mirroring the ranged hot-reload.
+            redrive_melee_weapons_on_asset_event,
             redrive_armor_on_asset_event,
             // GTW-437: the injury hot-reload — rebuilds BOTH the InjuryRegistry and the
             // InjuryTables on an edit to ANY `injuries/**/*.injury.ron` OR `*.weighting.ron`,

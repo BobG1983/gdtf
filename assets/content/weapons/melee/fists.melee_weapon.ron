@@ -1,0 +1,22 @@
+// Fists — the unarmed default. EVERY ganger that authors no melee weapon falls back
+// to this (the `None -> fists` resolution at setup), so any ganger can throw a punch
+// (GTW-505 / GTW-37 D3). Modest blunt damage, near-zero penetration, reach 1. The file
+// stem `fists` is the registry KEY the fallback resolves (see weapon::FISTS_KEY).
+(
+    // SHARED ranged damage model — a melee strike resolves through the SAME per-hit
+    // formula (damage/punch/shred vs armor; weapons-and-armor.md §"Per-hit resolution").
+    damage:        4,        // modest blunt damage (tuning DATA, not pinned by tests)
+    punch:         0,        // bare knuckles ignore no armor
+    shred:         0,        // fists do not chew armor durability
+    damage_type:   Kinetic,  // blunt impact — the Kinetic wheel node
+    fatal_bias:    0.0,      // no severity push (the §6 score addend)
+    handedness:    OneHanded,// a punch needs one working hand
+    // MELEE-ONLY mechanics (GTW-505):
+    reach:         1,        // strikes the adjacent cell only (the default reach)
+    fight_mode: [
+        // ONE fight mode this first slice (the GTW-37 first-slice ruling). A swing is the
+        // flat-TU-costed, single-strike baseline; the opposed-Fight resolution (GTW-506)
+        // will consume the TU cost + strike count.
+        (kind: Swing, tu_cost: 20, strikes: 1),
+    ],
+)

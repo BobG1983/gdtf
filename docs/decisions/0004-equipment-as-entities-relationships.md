@@ -39,7 +39,9 @@ ganger, copied as blobs.
 
 The data-driven loaders for both already landed:
 [GTW-257](https://linear.app/robert-gardner/issue/GTW-257) (`WeaponRegistry` +
-`WeaponSpec` from `assets/content/weapons/*.weapon.ron`) and
+`WeaponSpec` from `assets/content/weapons/ranged/*.weapon.ron`; melee weapons are the
+GTW-505 sibling — `MeleeWeaponRegistry` + `MeleeWeaponSpec` from
+`assets/content/weapons/melee/*.melee_weapon.ron`, related via the SAME `Wields`) and
 [GTW-269](https://linear.app/robert-gardner/issue/GTW-269) (`ArmorRegistry` +
 `ArmorSpec` from `assets/content/armor/*.armor.ron`). `setup_battle` currently resolves a
 ganger's weapon/armor *keys* against those registries and **seeds the resolved

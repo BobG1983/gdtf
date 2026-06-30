@@ -24,6 +24,9 @@ fn setup_aborts_on_invalid_vertical_link() {
     // GTW-384: setup derives stats from the default stat tuning (irrelevant here — these
     // tests abort BEFORE the spawn loop, but the signature requires the argument).
     let stat_tuning = GangerStatTuning::default();
+    // GTW-505: the melee registry holds the `fists` default, so an un-authored ganger's
+    // melee weapon resolves (these tests assert the OTHER abort, not MeleeWeaponNotFound).
+    let melee = test_melee_weapon_registry();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -33,7 +36,7 @@ fn setup_aborts_on_invalid_vertical_link() {
                 // (vertical-link / weapon / armor errors fire first). Pass terrain: None
                 // and the fallback floor cost — no terrain keys are authored in these
                 // fixtures, so no registry is needed.
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, None),
+                BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
             )
@@ -92,6 +95,9 @@ fn setup_errors_on_a_missing_weapon_key() {
     // GTW-384: setup derives stats from the default stat tuning (irrelevant here — these
     // tests abort BEFORE the spawn loop, but the signature requires the argument).
     let stat_tuning = GangerStatTuning::default();
+    // GTW-505: the melee registry holds the `fists` default, so an un-authored ganger's
+    // melee weapon resolves (these tests assert the OTHER abort, not MeleeWeaponNotFound).
+    let melee = test_melee_weapon_registry();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -101,7 +107,7 @@ fn setup_errors_on_a_missing_weapon_key() {
                 // (vertical-link / weapon / armor errors fire first). Pass terrain: None
                 // and the fallback floor cost — no terrain keys are authored in these
                 // fixtures, so no registry is needed.
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, None),
+                BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
             )
@@ -160,6 +166,9 @@ fn setup_errors_on_a_missing_armor_key() {
     // GTW-384: setup derives stats from the default stat tuning (irrelevant here — these
     // tests abort BEFORE the spawn loop, but the signature requires the argument).
     let stat_tuning = GangerStatTuning::default();
+    // GTW-505: the melee registry holds the `fists` default, so an un-authored ganger's
+    // melee weapon resolves (these tests assert the OTHER abort, not MeleeWeaponNotFound).
+    let melee = test_melee_weapon_registry();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -169,7 +178,7 @@ fn setup_errors_on_a_missing_armor_key() {
                 // (vertical-link / weapon / armor errors fire first). Pass terrain: None
                 // and the fallback floor cost — no terrain keys are authored in these
                 // fixtures, so no registry is needed.
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, None),
+                BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
             )
@@ -224,6 +233,9 @@ fn setup_errors_on_a_missing_terrain_key() {
     let registry = test_registry();
     let armor = test_armor_registry();
     let stat_tuning = GangerStatTuning::default();
+    // GTW-505: the melee registry holds the `fists` default, so an un-authored ganger's
+    // melee weapon resolves (these tests assert the OTHER abort, not MeleeWeaponNotFound).
+    let melee = test_melee_weapon_registry();
     // The registry DOES exist (so we reach key resolution) but lacks the authored key.
     let terrain = test_terrain_registry();
     let result = app
@@ -231,7 +243,14 @@ fn setup_errors_on_a_missing_terrain_key() {
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
                 &situation,
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, Some(&terrain)),
+                BattleRegistries::new(
+                    &gangs,
+                    &registry,
+                    &melee,
+                    &armor,
+                    &stat_tuning,
+                    Some(&terrain),
+                ),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
             )
@@ -301,6 +320,9 @@ fn setup_errors_on_a_missing_gang_key() {
     // GTW-384: setup derives stats from the default stat tuning (irrelevant here — this
     // test aborts BEFORE the spawn loop, but the signature requires the argument).
     let stat_tuning = GangerStatTuning::default();
+    // GTW-505: the melee registry holds the `fists` default, so an un-authored ganger's
+    // melee weapon resolves (these tests assert the OTHER abort, not MeleeWeaponNotFound).
+    let melee = test_melee_weapon_registry();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -308,7 +330,7 @@ fn setup_errors_on_a_missing_gang_key() {
                 &situation,
                 // No terrain authored in this fixture (the gang resolution fires first),
                 // so terrain: None + the fallback floor cost suffices.
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, None),
+                BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
             )
@@ -375,12 +397,15 @@ fn setup_errors_on_a_missing_member_key() {
     let registry = test_registry();
     let armor = test_armor_registry();
     let stat_tuning = GangerStatTuning::default();
+    // GTW-505: the melee registry holds the `fists` default, so an un-authored ganger's
+    // melee weapon resolves (these tests assert the OTHER abort, not MeleeWeaponNotFound).
+    let melee = test_melee_weapon_registry();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
                 &situation,
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, None),
+                BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
             )
@@ -457,6 +482,9 @@ fn setup_errors_on_stacked_gangers() {
     // GTW-384: setup derives stats from the default stat tuning (irrelevant here — this
     // test aborts BEFORE the spawn loop, but the signature requires the argument).
     let stat_tuning = GangerStatTuning::default();
+    // GTW-505: the melee registry holds the `fists` default, so an un-authored ganger's
+    // melee weapon resolves (these tests assert the OTHER abort, not MeleeWeaponNotFound).
+    let melee = test_melee_weapon_registry();
     let result = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -464,7 +492,7 @@ fn setup_errors_on_stacked_gangers() {
                 &situation,
                 // No terrain authored (the dedup gate fires before terrain resolution),
                 // so terrain: None + the fallback floor cost suffices.
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, None),
+                BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
             )

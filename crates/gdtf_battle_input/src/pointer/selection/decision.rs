@@ -5,15 +5,15 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::cell_squad_visible;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Faction, FactionRelation, OccupancyGrid, PlayerFaction, Position,
-    SquadVisibility, VerticalLinkGraph, WieldedBy, Wields,
+    Cell, CellLevel, Direction, Faction, FactionRelation, MeleeWeapon, OccupancyGrid,
+    PlayerFaction, Position, SquadVisibility, VerticalLinkGraph, WieldedBy, Wields,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent, SelectedFireMode,
-    fire_surface::{ShooterFireData, WeaponMagazine, try_fire_request},
+    fire_surface::{MeleeWeaponMarker, ShooterFireData, WeaponMagazine, try_fire_request},
     selection::{
         path_preview::PathPreviewTarget,
         resources::{SelectedShooter, set_selection},
@@ -217,10 +217,12 @@ pub enum PinOutcome {
 /// [`PathPreviewTarget`] — without a `Res` + `ResMut` aliasing conflict on the SAME resource
 /// (B0002); the [`InspectTarget`] precedent, GTW-300) + read-only `Query<&Faction>` /
 /// `Query<ShooterFireData>` / `Query<&Wields>` / the weapon-[`Magazine`](gdtf_battle_sim::Magazine)
-/// query + the current [`SelectedShooter`], no `&mut World`. The `Wields` + weapon-magazine queries
-/// resolve the fire guard's magazine off the related weapon entity (`ganger → Wields → the weapon
-/// entity`, GTW-323 slice 3). It does NOT read the mouse button (the caller gates on its own press
-/// edge), so the gamepad surface reuses it without a `ButtonInput<MouseButton>`.
+/// query + the [`MeleeWeapon`] marker probe + the current [`SelectedShooter`], no `&mut World`. The
+/// `Wields` + weapon-magazine + melee-marker queries resolve the fire guard's magazine off the
+/// RANGED weapon entity (`ganger → Wields → the ranged weapon entity`, GTW-323 slice 3; GTW-505 C5
+/// excludes the melee weapon the ganger also wields via [`Wields::ranged_weapon`](gdtf_battle_sim::Wields::ranged_weapon)).
+/// It does NOT read the mouse button (the caller gates on its own press edge), so the gamepad surface
+/// reuses it without a `ButtonInput<MouseButton>`.
 #[expect(
     clippy::too_many_arguments,
     reason = "GTW-356: the two-click move state machine reads the current PathPreviewTarget, which \
@@ -237,6 +239,7 @@ pub fn decide_left_click(
     shooters: &Query<ShooterFireData>,
     wields: &Query<&Wields>,
     weapons: &Query<WeaponMagazine, With<WieldedBy>>,
+    melee: &Query<MeleeWeaponMarker, With<MeleeWeapon>>,
     selected: &SelectedShooter,
 ) -> LeftClickOutcome {
     // Nothing hovered -> no cell to act on -> NO-OP (GTW-288): the GTW-286 viewport gate
@@ -295,6 +298,7 @@ pub fn decide_left_click(
             shooters,
             wields,
             weapons,
+            melee,
         )
     {
         return LeftClickOutcome::Fire(request); // FIRE wins this edge.
@@ -323,6 +327,7 @@ pub fn decide_left_click(
             shooters,
             wields,
             weapons,
+            melee,
         )
     {
         return LeftClickOutcome::Fire(request); // FIRE AT COVER wins this edge.

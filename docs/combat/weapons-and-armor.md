@@ -49,7 +49,9 @@ The swing is **asymmetric** — the resisted penalty (−66%) is double the favo
 
 ## Weapons — identity, fire modes, and authoring
 
-A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto the armed ganger entity (GTW-200). Every weapon is **authored data**: a loose per-file `assets/content/weapons/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/content/weapons/` folder loads into a name-keyed `WeaponRegistry`; each `GangerSpawn` references a weapon **by key**, and `setup_battle` resolves the key → inserts the `WeaponBundle` onto the ganger (mirroring how `WornArmor` is seeded) — a missing key is a handled error, never a panic (GTW-257). The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
+A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto its own related **weapon entity** (`Wields`, ADR 0004 / GTW-200). Every weapon is **authored data**: a loose per-file `assets/content/weapons/ranged/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/content/weapons/ranged/` folder loads into a name-keyed `WeaponRegistry`; each roster member references a weapon **by key**, and `setup_battle` resolves the key → spawns-and-relates the `WeaponBundle` via `Wields` — a missing key is a handled error, never a panic (GTW-257). The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
+
+> **Ranged / melee asset split (GTW-505).** Ranged weapons live under `assets/content/weapons/ranged/` (the `.weapon.ron` extension above); melee weapons live in the sibling `assets/content/weapons/melee/` (the `.melee_weapon.ron` extension — see the **Melee weapons** section below). Each loader points at its own leaf folder, so the two never cross-contaminate.
 
 ### Weapon name
 
@@ -82,9 +84,23 @@ fire_mode: [
 ]
 ```
 
+## Melee weapons
+
+A melee weapon is the **sibling** of the ranged model above (GTW-505, child GTW-37a of the GTW-37 melee epic): another ECS component bundle on its OWN related weapon entity (`Wields`, ADR 0004), but tagged with a **`MeleeWeapon`** marker instead of the ranged `Weapon` marker. It **shares the ranged damage model verbatim** and **drops** the ranged-only handling, **adding** melee-only mechanics.
+
+- **Shared with ranged** (the SAME newtypes): `WeaponName`, the damage group (`damage` / `punch` / `shred` / `damage_type`), `fatal_bias`, and `handedness`. A melee strike resolves through the **same per-hit formula** above (`damage`/`punch`/`shred` vs armor) and the **same matchup wheel**. The weapon **multiplies damage only** — no Fight-roll bonus (the GTW-37 first-slice ruling).
+- **Dropped** (no melee analog): `base_spread`, `accuracy`, `kickback`, the `Magazine`, and the `stable` tag — a melee strike has no dispersion cone, no ammo, no brace.
+- **Added** (melee-only):
+  - **`reach: Reach`** — how many cells away a strike can land (default `1`, the adjacent cell). The GTW-506 opposed-Fight resolution will read it; this slice carries it as data.
+  - **`fight_mode: FightMode(Vec<FightModeSpec>)`** — the melee mirror of the ranged `FireMode` selector, **minus the dispersion `cone_mult`**. Each `FightModeSpec` carries a closed **`kind: FightModeKind`** (`Swing` / `Thrust`, its `Display` the human label), a **flat `tu_cost: TuCost`** (a fixed TU charge, **not** a pool-fraction percent), and a **`strikes: Strikes`** count. The first slice ships **one** fight mode per weapon.
+
+**Every ganger gets a melee weapon** so any ganger can melee (the GTW-37 D3 ruling): a roster member's optional `melee_weapon` key resolves to its authored weapon, OR — when omitted — to the shipped **`fists`** default (`assets/content/weapons/melee/fists.melee_weapon.ron`). The `fists` default is modest blunt Kinetic damage at reach 1; a `chainsword` (high `shred`, Rend) is the archetypal authored melee weapon. Melee files load from `assets/content/weapons/melee/` into a name-keyed **`MeleeWeaponRegistry`** (the ranged-loader mirror — folder-loaded, hot-reloadable, fail-safe-empty); `setup_battle` resolves each ganger's melee key and spawns-and-relates the `MeleeWeaponBundle` via the SAME `Wields` relationship the ranged weapon uses. A missing key (including a missing `fists`) is a handled `MeleeWeaponNotFound` error, never a panic.
+
+The two markers keep the paths apart: the ranged-firing path (`fire()` / `can_fire` / reactions / AI) resolves the gun via `Wields::ranged_weapon` (which **excludes** `MeleeWeapon`), so relating a melee weapon never regresses ranged firing. The opposed-Fight resolution math is **GTW-506**; the melee ACT / input / presenter is **GTW-507** — GTW-505 ships only the model, the asset layout, and the spawn.
+
 ## TBD (tuning / design)
 
-- All numbers (weapon damage/punch/shred; armor floor/protection/integrity/hardness; the matchup swing).
+- All numbers (weapon damage/punch/shred; armor floor/protection/integrity/hardness; the matchup swing; melee `reach` / `tu_cost` / `strikes`).
 - Weapon archetypes / profiles (autogun, lasgun, **plasma cannon** = high damage + high punch + **Fatal-bias**, chainsword = high shred, …).
 - **Fatal-bias:** how specific weapons push the severity roll toward **Fatal** (a plasma cannon to an unarmored chest).
 - Whether `integrity` / `hardness` repair between missions (armor maintenance) or degrade for good — cross-battle carry of mid-battle wear is open.

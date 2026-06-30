@@ -1121,6 +1121,11 @@ fn real_flow_app() -> App {
         .insert_resource(ActiveLevel::new(Level::new(0)));
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(real_flow_registry());
+    // GTW-505: the MeleeWeaponRegistry (with the `fists` default) so the real setup arms
+    // each spawned ganger's melee weapon — the placed gangers author none, so each resolves
+    // to `fists`; without it setup_battle_on_request fails closed and no ganger spawns.
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::test_support::test_melee_weapon_registry());
     // The Load-built ArmorRegistry (GTW-269) so the real setup armors each spawned
     // ganger (its key is present in this registry); without it setup fails closed.
     app.world_mut().insert_resource(real_flow_armor_registry());

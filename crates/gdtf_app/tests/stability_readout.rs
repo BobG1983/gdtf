@@ -67,6 +67,10 @@ fn battle_running_app() -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::WeaponRegistry::default());
+    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
+    // seed for this ganger-free / hand-seeded harness, mirroring the WeaponRegistry seed).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());

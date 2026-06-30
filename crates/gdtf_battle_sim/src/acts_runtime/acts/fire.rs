@@ -15,8 +15,8 @@ use crate::{
     acts::{injury::InjuryInflicted, request::FireRequested},
     cover::CoverLedger,
     fire::{
-        BattleGrids, FireOrder, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery,
-        WieldsQuery, fire,
+        BattleGrids, FireOrder, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery,
+        WearsQuery, WieldsQuery, fire,
     },
     firing_arc::target_in_arc,
     ganger::{Aiming, Direction, Facing, Position, Tu, TuMax},
@@ -32,7 +32,7 @@ use crate::{
     surface::SurfaceGrid,
     tu::spend_tu,
     tuning::CombatTuning,
-    weapon::{DamageType, ModeKind, Wields},
+    weapon::{DamageType, ModeKind},
 };
 
 /// A **fire was declared** — the combat-log signal that `shooter` fired `mode` at
@@ -374,6 +374,12 @@ pub fn dispatch_fire(
     // (a different entity set) — so neither conflicts with the shooter/turn/target access.
     wields: WieldsQuery,
     mut weapons: WeaponQuery,
+    // GTW-505 C5: the melee-weapon marker probe — used to EXCLUDE the melee weapon the
+    // shooter also wields from the ranged weapon resolution (`Wields::ranged_weapon`), so
+    // a melee weapon is never fired as a gun. A `Query<(), With<MeleeWeapon>>` over the
+    // weapon entities — disjoint from `weapons` (which filters `With<WieldedBy>` and reads
+    // the ranged stat columns), so no ParamSet needed.
+    melee: MeleeQuery,
     mut grids: BattleGridsParam,
     tuning: Res<CombatTuning>,
     // GTW-14: disjoint per-subsystem RNG resources. ShotRng drives cone-sample +
@@ -428,7 +434,14 @@ pub fn dispatch_fire(
         // per-round ShotFired can carry it (pure exposure; no fire-result change). A
         // shooter wielding no weapon — or whose weapon entity is not in the weapon query
         // — fires nothing (fail-closed, the same outcome `fire()` reaches internally).
-        let Some(weapon_entity) = wields.get(request.shooter).ok().and_then(Wields::weapon) else {
+        // GTW-505 C5: resolve the RANGED weapon (excluding the melee weapon the ganger
+        // also wields) so the ShotFired carries the GUN's DamageType, never the melee
+        // weapon's — the same ranged-filtered resolution `fire()` does internally.
+        let Some(weapon_entity) = wields
+            .get(request.shooter)
+            .ok()
+            .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
+        else {
             continue;
         };
         // The WeaponQuery row is (base_spread, accuracy, kickback, fatal_bias, damage,
@@ -504,6 +517,7 @@ pub fn dispatch_fire(
             &mut pieces,
             &wields,
             &mut weapons,
+            &melee,
             grids.grids(),
             &tuning,
             &mut shot_rng,

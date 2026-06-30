@@ -10,7 +10,8 @@
 use bevy::prelude::Entity;
 
 use super::query::{
-    BattleGrids, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery, WieldsQuery,
+    BattleGrids, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery,
+    WieldsQuery,
 };
 use crate::{
     aim::{Shooter, cone_for, stability_for},
@@ -212,18 +213,24 @@ pub(super) struct ShooterReads {
 /// borrows before [`fire`](super::fire)'s mutable re-borrows.
 ///
 /// Returns `None` when the shooter is not in the shooter query (despawned), wields no
-/// weapon (no [`Wields`](crate::weapon::Wields) collection / it is empty), or the
-/// resolved weapon entity is not in the weapon query — so [`fire`](super::fire) fails
-/// closed in every unarmed/missing case. The economy reads
+/// RANGED weapon (no [`Wields`](crate::weapon::Wields) collection / it holds only a
+/// melee weapon), or the resolved ranged weapon entity is not in the weapon query — so
+/// [`fire`](super::fire) fails closed in every unarmed/missing case. The economy reads
 /// `(Tu, TuMax, Aiming, Magazine)` are what [`can_fire`](crate::magazine::can_fire) /
 /// [`mode_tu_cost`](crate::magazine::mode_tu_cost) / [`resolve_and_apply`] consume; the
 /// returned [`weapon`](ShooterReads::weapon) entity is the one the burst loop re-borrows
 /// to decrement the [`Magazine`] per fired round.
+///
+/// GTW-505 C5: the ranged weapon is resolved via
+/// [`Wields::ranged_weapon`](crate::weapon::Wields::ranged_weapon) over the `melee`
+/// [`MeleeQuery`] probe — EXCLUDING the melee weapon the same ganger also wields — so
+/// relating a melee weapon never regresses ranged firing.
 pub(super) fn read_shooter(
     shooter: Entity,
     shooters: &ShooterQuery,
     wields: &WieldsQuery,
     weapons: &WeaponQuery,
+    melee: &MeleeQuery,
 ) -> Option<ShooterReads> {
     let ((position, facing, stance, aiming, shooting, luck, tu_max), injuries, tu) =
         shooters.get(shooter).ok()?;
@@ -238,10 +245,15 @@ pub(super) fn read_shooter(
     // ledger = the uninjured two-hands default) for the FireActor hand-count gate.
     let hands_available =
         injuries.map_or_else(HandsAvailable::default, InflictedInjuries::hands_available);
-    // Resolve `ganger → Wields → the weapon entity` (GTW-323 slice 2), then read the
-    // GTW-200 weapon stats + magazine off that weapon entity (a different entity than
-    // the ganger, so the borrow is disjoint).
-    let weapon = wields.get(shooter).ok()?.weapon()?;
+    // Resolve `ganger → Wields → the RANGED weapon entity` (GTW-323 slice 2 / GTW-505
+    // C5), then read the GTW-200 weapon stats + magazine off that weapon entity (a
+    // different entity than the ganger, so the borrow is disjoint). `ranged_weapon`
+    // EXCLUDES the melee weapon the ganger also wields (the `melee` marker probe) so the
+    // melee entity is never mistaken for the gun.
+    let weapon = wields
+        .get(shooter)
+        .ok()?
+        .ranged_weapon(|entity| melee.get(entity).is_ok())?;
     let (
         base_spread,
         accuracy,

@@ -41,8 +41,8 @@ use gdtf_battle_sim::{
     Level, LifeState, Position, SetupBattleRequested, ShotRng, Situation, Stance, StanceKind,
     setup_battle_on_request,
     test_support::{
-        SituationBuilder, test_armor_registry, test_gang_registry, test_terrain_registry,
-        test_weapon_registry,
+        SituationBuilder, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
+        test_terrain_registry, test_weapon_registry,
     },
 };
 use gdtf_test_utils::advance_until_resource_exists;
@@ -121,6 +121,9 @@ fn headless_renderer_app() -> App {
     // each spawned ganger. The canonical shared [`test_weapon_registry`] (GTW-324),
     // inserted up front (the fixture gangers reference its [`TEST_WEAPON_KEY`]).
     app.insert_resource(test_weapon_registry());
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
+    // weapon resolves at setup (fixture gangers author none -> `fists`).
+    app.insert_resource(test_melee_weapon_registry());
     // The Load-built ArmorRegistry (GTW-269): setup_battle_on_request reads it to armor
     // each spawned ganger. The canonical shared [`test_armor_registry`] (GTW-324),
     // inserted up front (the fixture gangers reference its [`TEST_ARMOR_KEY`]).

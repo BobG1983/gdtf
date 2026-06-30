@@ -39,7 +39,7 @@ use gdtf_battle_sim::{
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryRng,
-    InjuryTables, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MarchKind,
+    InjuryTables, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MarchKind, MeleeQuery,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
     PieceQuery, Position, PriorShots, RecoilClimb, RecoilGrowth, ReloadTu, SeverityRng,
     ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid,
@@ -319,11 +319,12 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         PieceQuery,
         WieldsQuery,
         WeaponQuery,
+        MeleeQuery,
     )> = SystemState::new(app.world_mut());
     let access = state.get_mut(app.world_mut());
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
-        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) => {
+        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) => {
             gdtf_battle_sim::fire(
                 shooter,
                 FireOrder {
@@ -337,6 +338,7 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 &mut pieces,
                 &wields,
                 &mut weapons,
+                &melee,
                 BattleGrids {
                     occupancy:   &occupancy,
                     surface:     &surface,

@@ -50,6 +50,7 @@
 mod bundle;
 mod components;
 mod fire_mode;
+mod melee;
 mod registry;
 mod relationship;
 mod spec;
@@ -63,6 +64,13 @@ pub use components::{
     Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 pub use fire_mode::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent};
+// GTW-505 (child GTW-37a): the melee weapon model — the sibling to the ranged model
+// above, sharing the ranged damage newtypes (re-exported here) while adding the
+// melee-only Reach / FightMode + the MeleeWeapon marker. See the `melee` module doc.
+pub use melee::{
+    FISTS_KEY, FightMode, FightModeKind, FightModeSpec, MeleeDamageProfile, MeleeWeapon,
+    MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec, Reach, Strikes, TuCost,
+};
 pub use registry::WeaponRegistry;
 pub use relationship::{WieldedBy, Wields};
 pub use spec::WeaponSpec;

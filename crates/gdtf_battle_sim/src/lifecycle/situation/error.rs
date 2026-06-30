@@ -65,7 +65,7 @@ pub enum BattleSetupError {
         member: GangerName,
     },
     /// A ganger's weapon key was not in the
-    /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) — no `assets/content/weapons/*.ron`
+    /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) — no `assets/content/weapons/ranged/*.ron`
     /// with that filename stem loaded.
     WeaponNotFound {
         /// The unresolved weapon key (the missing file's stem).
@@ -78,6 +78,19 @@ pub enum BattleSetupError {
     ArmorNotFound {
         /// The unresolved armor key (the missing file's stem).
         armor: ArmorName,
+    },
+    /// A ganger's MELEE weapon key — its authored
+    /// [`melee_weapon`](crate::ganger::GangMember::melee_weapon) key, or (when it authored
+    /// none) the [`fists`](crate::weapon::FISTS_KEY) default — was not in the
+    /// [`MeleeWeaponRegistry`](crate::weapon::MeleeWeaponRegistry): no
+    /// `assets/content/weapons/melee/*.melee_weapon.ron` with that filename stem loaded
+    /// (GTW-505, the melee mirror of [`WeaponNotFound`](BattleSetupError::WeaponNotFound)).
+    /// Since EVERY ganger gets a melee weapon (an authored one OR `fists`), a missing
+    /// `fists.melee_weapon.ron` would surface here for an un-authored ganger — fail-closed,
+    /// exactly like the ranged path.
+    MeleeWeaponNotFound {
+        /// The unresolved melee weapon key (the missing file's stem, or `fists`).
+        weapon: WeaponName,
     },
     /// A cover or slab terrain definition UUID was not in the
     /// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) — no migrated
@@ -159,6 +172,9 @@ impl std::fmt::Display for BattleSetupError {
                 write!(f, "no weapon `{}` is loaded", **weapon)
             }
             Self::ArmorNotFound { armor } => write!(f, "no armor `{}` is loaded", **armor),
+            Self::MeleeWeaponNotFound { weapon } => {
+                write!(f, "no melee weapon `{}` is loaded", **weapon)
+            }
             Self::TerrainNotFound { piece } => {
                 write!(f, "no terrain piece `{}` is loaded", **piece)
             }

@@ -46,7 +46,7 @@ use gdtf_battle_sim::{
     SurfaceGrid, setup_battle_on_request,
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_gang_registry,
-        test_weapon_registry,
+        test_melee_weapon_registry, test_weapon_registry,
     },
     union_fov,
 };
@@ -107,6 +107,9 @@ fn headless_renderer_app() -> App {
     .add_systems(Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(test_weapon_registry());
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
+    // weapon resolves at setup (fixture gangers author none -> `fists`).
+    app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
     // GTW-414/415: the GangRegistry the v2 setup_battle resolves each placed ganger's
     // (gang, member) ref against (without it setup fails closed and no ganger spawns).

@@ -31,7 +31,7 @@ use crate::{
     },
     test_support::{
         SituationBuilder, ganger_at, test_armor_registry, test_gang_registry,
-        test_terrain_registry, test_weapon_registry,
+        test_melee_weapon_registry, test_terrain_registry, test_weapon_registry,
     },
     tuning::{CombatTuning, GangerStatTuning},
 };
@@ -48,6 +48,9 @@ fn headless_app() -> App {
     app.insert_resource(CombatTuning::default());
     app.insert_resource(GangerStatTuning::default());
     app.insert_resource(test_weapon_registry());
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
+    // weapon resolves at setup (fixture gangers author none -> `fists`).
+    app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
     // GTW-396: the terrain registry so SituationBuilder's wall_at / slab_at piece
     // keys ("test-wall", "test-slab") resolve at setup_battle_on_request.

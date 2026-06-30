@@ -33,9 +33,9 @@ use gdtf_battle_sim::{
     BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
-    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu,
-    SeverityRng, ShooterQuery, Shooting, ShotRng, SlabLedger, Stable, Stance, StanceKind,
+    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position,
+    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotRng, SlabLedger, Stable, Stance, StanceKind,
     SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
     WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
     fire::FireOrder,
@@ -209,13 +209,14 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
         PieceQuery,
         WieldsQuery,
         WeaponQuery,
+        MeleeQuery,
     )> = SystemState::new(app.world_mut());
     {
         let world = app.world_mut();
         // `get_mut` returns a `Result` (Bevy 0.19); the params always validate, so
         // `Err` is structurally impossible — returning `false` would fail the
         // calling assertion loudly rather than silently skip the fire.
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
             state.get_mut(world)
         else {
             return false;
@@ -233,6 +234,7 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
             &mut pieces,
             &wields,
             &mut weapons,
+            &melee,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,

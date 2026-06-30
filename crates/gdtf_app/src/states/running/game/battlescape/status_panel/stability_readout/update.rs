@@ -2,9 +2,10 @@
 //!
 //! [`update_stability_readout`] reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter),
 //! resolves it to the selected [`Entity`], assembles the sim [`Shooter`] borrow-view from the
-//! ganger's [`Stance`] / [`Aiming`] / [`Position`] / [`Facing`], resolves the wielded
-//! [`Stable`] tag (`ganger → Wields → the weapon entity → Stable`, the SAME resolution the
-//! sim fire path uses), reads the model [`CoverLedger`] + [`CombatTuning`] +
+//! ganger's [`Stance`] / [`Aiming`] / [`Position`] / [`Facing`], resolves the wielded RANGED
+//! weapon's [`Stable`] tag (`ganger → Wields → the ranged weapon entity → Stable`, the SAME
+//! ranged-filtered resolution the sim fire path uses — GTW-505 C5), reads the model
+//! [`CoverLedger`] + [`CombatTuning`] +
 //! [`BraceStairCells`] + [`SurfaceGrid`], calls [`terrain_braces`] then [`stability_for`] —
 //! re-deriving NONE of the §1a math. The returned [`ConeMult`] (the steadiness read) becomes a
 //! [`Steadiness`] and then a [`FillFraction`](gdtf_ui::FillFraction) at the bar boundary,
@@ -27,8 +28,8 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Aiming, BraceStairCells, CoverLedger, Facing, Position, Shooter, Stable, Stance, Weapon,
-    Wields, stability::terrain_brace::terrain_braces, stability_for, surface::SurfaceGrid,
+    Aiming, BraceStairCells, CoverLedger, Facing, MeleeWeapon, Position, Shooter, Stable, Stance,
+    Weapon, Wields, stability::terrain_brace::terrain_braces, stability_for, surface::SurfaceGrid,
     tuning::CombatTuning,
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar};
@@ -47,17 +48,20 @@ type ShooterView<'a> = (&'a Stance, &'a Aiming, &'a Position, &'a Facing);
 /// (the `StatBlockWidgets` / `RouteGrids` bundle precedent) so the system stays under clippy's
 /// argument-count gate.
 ///
-/// The shooter's [`Shooter`]-view components, its [`Wields`] relationship, and the wielded
-/// weapon's [`Stable`] tag — every query disjoint (distinct component types), so they coexist
-/// with no `B0001` conflict.
+/// The shooter's [`Shooter`]-view components, its [`Wields`] relationship, the wielded
+/// RANGED weapon's [`Stable`] tag, and the [`MeleeWeapon`] marker probe — every query disjoint
+/// (distinct component types), so they coexist with no `B0001` conflict.
 #[derive(SystemParam)]
 pub(in crate::states::running::game::battlescape::status_panel) struct ShooterReadQueries<'w, 's> {
     /// The selected ganger's [`Shooter`]-view components (`Stance`/`Aiming`/`Position`/`Facing`).
     shooters: Query<'w, 's, ShooterView<'static>>,
-    /// The ganger → weapon relationship (`ganger → Wields → the weapon entity`).
+    /// The ganger → weapon relationship (`ganger → Wields → the ranged weapon entity`).
     wields:   Query<'w, 's, &'static Wields>,
-    /// The wielded weapon's `stable` tag, read off the weapon entity.
+    /// The wielded RANGED weapon's `stable` tag, read off the weapon entity.
     weapons:  Query<'w, 's, &'static Stable, With<Weapon>>,
+    /// The [`MeleeWeapon`] marker probe (GTW-505 C5) — so the RANGED weapon resolves excluding
+    /// the melee weapon the ganger also wields, rather than relying on relate order.
+    melee:    Query<'w, 's, (), With<MeleeWeapon>>,
 }
 
 /// The bar-mutate queries the readout writes through, bundled as one [`SystemParam`] so the
@@ -136,9 +140,16 @@ fn resolve_steadiness(
 ) -> Option<Steadiness> {
     let entity = (*selected)?;
     let (stance, aiming, position, facing) = reads.shooters.get(entity).ok()?;
-    // Resolve `ganger → Wields → the weapon entity → Stable` (GTW-323, the fire path's
-    // resolution); an unarmed ganger / a weapon with no `Stable` tag fails closed here.
-    let weapon = reads.wields.get(entity).ok()?.weapon()?;
+    // Resolve `ganger → Wields → the RANGED weapon entity → Stable` (GTW-323, the fire path's
+    // resolution). GTW-505 C5: a ganger wields BOTH a ranged AND a melee weapon, so resolve
+    // through `Wields::ranged_weapon` (excluding the `MeleeWeapon`-marked entity) — NOT
+    // `Wields::weapon` (the spawn-order fragile first entity) — so the steadiness reads the
+    // GUN's `Stable` tag. An unarmed ganger / a ranged weapon with no `Stable` tag fails closed.
+    let weapon = reads
+        .wields
+        .get(entity)
+        .ok()?
+        .ranged_weapon(|e| reads.melee.get(e).is_ok())?;
     let stable = *reads.weapons.get(weapon).ok()?;
     let cover = cover?;
     let tuning = tuning?;

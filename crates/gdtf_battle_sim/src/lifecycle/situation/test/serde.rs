@@ -228,7 +228,7 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
 
 /// GTW-257 AC5 (companion) — every shipped ganger's weapon key is a valid stem present
 /// in the shipped-weapons registry. A pure-data check (no spawn): proves the
-/// `skirmish.ron` ↔ `assets/content/gangs/*.gang.ron` ↔ `assets/content/weapons/*.ron`
+/// `skirmish.ron` ↔ `assets/content/gangs/*.gang.ron` ↔ `assets/content/weapons/ranged/*.ron`
 /// references are consistent, so the setup never hits `WeaponNotFound`.
 ///
 /// GTW-414/415: the weapon key now lives on the gang-ROSTER member, not the placement.

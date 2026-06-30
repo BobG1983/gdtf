@@ -3,11 +3,11 @@
 
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::GamepadCursorMoved;
-use gdtf_battle_sim::{Faction, Position, WieldedBy, Wields};
+use gdtf_battle_sim::{Faction, MeleeWeapon, Position, WieldedBy, Wields};
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent,
-    fire_surface::{ShooterFireData, WeaponMagazine},
+    fire_surface::{MeleeWeaponMarker, ShooterFireData, WeaponMagazine},
     gamepad::cursor::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, GamepadCursor, move_cursor,
     },
@@ -98,8 +98,9 @@ pub fn mouse_reclaims_pointer(
 /// clicking cover / an enemy PINS the panel, an empty tile UNPINS, a SELECT / FIRE keeps the pin.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
-/// `Query<&Faction>` / `Query<ShooterFireData>` / `Query<&Wields>` + the weapon-magazine query
-/// (the fire guard's magazine lives on the related weapon entity since GTW-323 slice 3) + the
+/// `Query<&Faction>` / `Query<ShooterFireData>` / `Query<&Wields>` + the weapon-magazine query +
+/// the [`MeleeWeapon`] marker probe (the fire guard's magazine lives on the related RANGED weapon
+/// entity since GTW-323 slice 3, resolved excluding the melee weapon since GTW-505 C5) + the
 /// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] /
 /// [`ResMut<PathPreviewTarget>`](crate::selection::PathPreviewTarget) (GTW-356 two-click target)
 /// writes + the [`Gamepad`] query; no `&mut World`. Runs `.before(pick_hovered_cell)` and
@@ -111,7 +112,8 @@ pub fn mouse_reclaims_pointer(
     clippy::too_many_arguments,
     reason = "GTW-323 slice 3: mirrors left_click_act — the fire guard's magazine moved to the \
               related weapon entity, so the shared decision needs the extra Wields + weapon-magazine \
-              queries on top of the gamepad + reads/writes; GTW-356 adds the PathPreviewTarget write"
+              queries on top of the gamepad + reads/writes; GTW-356 adds the PathPreviewTarget write; \
+              GTW-505 C5 adds the MeleeWeapon marker probe for ranged-weapon resolution"
 )]
 pub fn gamepad_click_act(
     gamepads: Query<&Gamepad>,
@@ -120,6 +122,7 @@ pub fn gamepad_click_act(
     shooters: Query<ShooterFireData>,
     wields: Query<&Wields>,
     weapons: Query<WeaponMagazine, With<WieldedBy>>,
+    melee: Query<MeleeWeaponMarker, With<MeleeWeapon>>,
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
     mut inspect: ResMut<InspectTarget>,
@@ -136,7 +139,7 @@ pub fn gamepad_click_act(
     // must finish before them — the GTW-300 InspectTarget precedent + the GTW-356 two-click
     // PathPreviewTarget state machine).
     let outcome = decide_left_click(
-        &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &selected,
+        &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &melee, &selected,
     );
     let pin = decide_pin(&reads, &inspect, &factions);
     // GTW-356 — the SAME two-click move-target commit the mouse path runs (set/commit/clear of

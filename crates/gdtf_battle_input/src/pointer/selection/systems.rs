@@ -2,11 +2,11 @@
 //! MOVE → CLEAR decision) and [`right_click_turn_to_face`], both gated to the player's faction.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Faction, PlayerFaction, Position, WieldedBy, Wields};
+use gdtf_battle_sim::{Faction, MeleeWeapon, PlayerFaction, Position, WieldedBy, Wields};
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent,
-    fire_surface::{ShooterFireData, WeaponMagazine},
+    fire_surface::{MeleeWeaponMarker, ShooterFireData, WeaponMagazine},
     selection::{
         PathPreviewTarget,
         decision::{
@@ -60,8 +60,9 @@ use crate::{
 /// [`InspectTarget`]), so both effects compose on one click with no double-dispatch.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
-/// `Query<&Faction>` + `Query<ShooterFireData>` + `Query<&Wields>` + the weapon-magazine query
-/// (the fire guard's magazine lives on the related weapon entity since GTW-323 slice 3), the
+/// `Query<&Faction>` + `Query<ShooterFireData>` + `Query<&Wields>` + the weapon-magazine query +
+/// the [`MeleeWeapon`] marker probe (the fire guard's magazine lives on the related RANGED weapon
+/// entity since GTW-323 slice 3, resolved excluding the melee weapon since GTW-505 C5), the
 /// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes —
 /// no `&mut World`. Runs `.before(pick_hovered_cell)` (`bevy-traps.md` #3) so it reads the cell
 /// resolved last update, and `.before(dispatch_act_intents)` so the drain sees this update's
@@ -71,7 +72,8 @@ use crate::{
     reason = "GTW-323 slice 3: the fire guard's magazine moved to the related weapon entity, so the \
               shared decision needs the extra Wields + weapon-magazine queries on top of the existing \
               reads/writes; GTW-356 adds the PathPreviewTarget write for the two-click move target; \
-              LeftClickReads already bundles the Res-only reads"
+              GTW-505 C5 adds the MeleeWeapon marker probe so the ranged weapon resolves excluding \
+              the melee one; LeftClickReads already bundles the Res-only reads"
 )]
 pub fn left_click_act(
     reads: LeftClickReads,
@@ -79,6 +81,7 @@ pub fn left_click_act(
     shooters: Query<ShooterFireData>,
     wields: Query<&Wields>,
     weapons: Query<WeaponMagazine, With<WieldedBy>>,
+    melee: Query<MeleeWeaponMarker, With<MeleeWeapon>>,
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
     mut inspect: ResMut<InspectTarget>,
@@ -93,7 +96,7 @@ pub fn left_click_act(
     // must finish before them — the GTW-300 InspectTarget precedent, now also for the GTW-356
     // PathPreviewTarget two-click state machine).
     let outcome = decide_left_click(
-        &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &selected,
+        &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &melee, &selected,
     );
     let pin = decide_pin(&reads, &inspect, &factions);
     // GTW-356 — `apply_left_click` ALSO commits the two-click move target (set on click-1,

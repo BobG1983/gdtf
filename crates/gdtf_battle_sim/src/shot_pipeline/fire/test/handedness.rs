@@ -47,7 +47,7 @@ fn run_fire(world: &mut World, shooter: Entity, mode: &FireModeSpec) -> Volley {
     let mut sev_r = severity_rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(world);
-    let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+    let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
         state.get_mut(world)
     else {
         return Volley::empty();
@@ -65,6 +65,7 @@ fn run_fire(world: &mut World, shooter: Entity, mode: &FireModeSpec) -> Volley {
         &mut pieces,
         &wields,
         &mut weapons,
+        &melee,
         BattleGrids {
             occupancy:   &occupancy,
             surface:     &surface,

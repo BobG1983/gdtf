@@ -20,10 +20,14 @@ use crate::load::handles::{
 /// theme the game loads, so the editor's themed regions match the game's look).
 const THEME_RON_PATH: &str = "core_tuning/ui_theme.tuning.ron";
 
-/// Path of the loose weapons folder, relative to the asset source root — each
-/// `*.weapon.ron` is a `RonAsset<WeaponSpec>` the resolve pass builds the
-/// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) from.
-const WEAPONS_DIR: &str = "content/weapons";
+/// Path of the loose RANGED-weapons folder, relative to the asset source root — each
+/// `ranged/*.weapon.ron` is a `RonAsset<WeaponSpec>` the resolve pass builds the
+/// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) from. GTW-505 split the
+/// weapons tree into `ranged/` + `melee/`; the editor's `WeaponRegistry` build loads ONLY
+/// the `ranged/` leaf (the editor has no melee registry yet), so the recursive
+/// `load_folder` never hits the sibling `melee/` `.melee_weapon.ron` members it does not
+/// register a loader for.
+const WEAPONS_DIR: &str = "content/weapons/ranged";
 
 /// Path of the loose armor folder, relative to the asset source root — each
 /// `*.armor.ron` is a `RonAsset<ArmorSpec>` the resolve pass builds the

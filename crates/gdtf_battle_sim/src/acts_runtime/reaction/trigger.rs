@@ -18,7 +18,7 @@ use bevy::{
 use crate::{
     acts::{FireDeclaration, FireRequested, can_engage},
     cover::CoverLedger,
-    fire::WieldsQuery,
+    fire::{MeleeQuery, WieldsQuery},
     ganger::{Aiming, Facing, Faction, LifeState, Position, Reactions, Stance, Tu, TuMax},
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
@@ -32,7 +32,7 @@ use crate::{
         CombatTuning, ReactionsUsed, interrupt_probability, may_interrupt, reaction_score,
         rolls_interrupt,
     },
-    weapon::{FireMode, Handedness, Wields},
+    weapon::{FireMode, Handedness},
 };
 
 /// One ganger's reaction-relevant snapshot — the Copy row [`reaction_trigger`] reads out of
@@ -226,6 +226,10 @@ pub fn reaction_trigger(
     // Magazine + Handedness the can_fire gate + the FireRequested need.
     wields: WieldsQuery,
     weapons: Query<(&Magazine, &FireMode, &Handedness)>,
+    // GTW-505 C5: the melee-weapon marker probe — `reactor_weapon` resolves the RANGED
+    // weapon (excluding the melee weapon the reactor also wields) so an interrupt fires the
+    // reactor's GUN, never its melee weapon (a `Query<(), With<MeleeWeapon>>`, disjoint).
+    melee: MeleeQuery,
     // C4: the per-turn interrupt counter, mutated through its own `increment` (a different
     // component than the read snapshot, so this &mut query is disjoint — no ParamSet).
     mut used: Query<&mut ReactionsUsed>,
@@ -348,7 +352,7 @@ pub fn reaction_trigger(
             // Handedness the can_fire gate + the FireRequested need. A reactor wielding no
             // weapon (or whose weapon entity is missing) cannot react — fail closed.
             let Some((mode, magazine, handedness)) =
-                reactor_weapon(reactor.entity, &wields, &weapons)
+                reactor_weapon(reactor.entity, &wields, &weapons, &melee)
             else {
                 continue;
             };
@@ -449,8 +453,15 @@ fn reactor_weapon(
     reactor: Entity,
     wields: &WieldsQuery,
     weapons: &Query<(&Magazine, &FireMode, &Handedness)>,
+    melee: &MeleeQuery,
 ) -> Option<(crate::weapon::FireModeSpec, Magazine, Handedness)> {
-    let weapon_entity = wields.get(reactor).ok().and_then(Wields::weapon)?;
+    // GTW-505 C5: resolve the RANGED weapon (excluding the melee weapon the reactor also
+    // wields) so the interrupt fires the gun, never the melee weapon — the same
+    // ranged-filtered resolution `dispatch_fire` / `fire()` use.
+    let weapon_entity = wields
+        .get(reactor)
+        .ok()
+        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))?;
     let (magazine, fire_mode, handedness) = weapons.get(weapon_entity).ok()?;
     Some((fire_mode.single(), *magazine, *handedness))
 }

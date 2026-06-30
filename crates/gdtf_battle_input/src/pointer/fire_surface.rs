@@ -23,7 +23,7 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     Aiming, Cell, CellLevel, FireActor, Handedness, HandsAvailable, InflictedInjuries, Level,
-    LifeState, Magazine, Tu, TuMax, WieldedBy, Wields, acts::FireRequested, can_fire,
+    LifeState, Magazine, MeleeWeapon, Tu, TuMax, WieldedBy, Wields, acts::FireRequested, can_fire,
     tuning::CombatTuning,
 };
 
@@ -57,6 +57,17 @@ pub type ShooterFireData<'a> = (
 /// entities so it never collides with the ganger-vitals [`ShooterFireData`] query.
 pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
 
+/// The [`MeleeWeapon`]-marker probe query (GTW-505 C5) — a marker-only
+/// `Query<(), With<MeleeWeapon>>` the FIRE surface uses to EXCLUDE the melee weapon a
+/// ganger also wields when resolving its RANGED weapon. Mirrors the sim's `MeleeQuery`:
+/// every ganger wields BOTH a ranged AND a melee weapon entity (GTW-37 D3), so the FIRST
+/// related entity is no longer guaranteed ranged. The `can_fire` guard MUST read the
+/// magazine off the RANGED weapon, so `try_fire_request` resolves through
+/// [`Wields::ranged_weapon`](gdtf_battle_sim::Wields::ranged_weapon) backed by this probe
+/// (`|e| melee.get(e).is_ok()`) — never `Wields::weapon` (the spawn-order-fragile first
+/// entity). `QueryFilter` plumbing, not a domain value.
+pub type MeleeWeaponMarker<'a> = ();
+
 /// Assemble a [`FireRequested`] for `shooter` against `target`, or [`None`] when the
 /// shared `can_fire` guard fails (GTW-227's guard, folded verbatim for GTW-238).
 ///
@@ -72,10 +83,16 @@ pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
 ///    [`ActIntent::Fire`](crate::ActIntent::Fire).
 ///
 /// Returns [`None`] (no fire) when: the shooter has no firing components / wields no
-/// weapon; or `can_fire` is `false` (a Downed/Dead shooter, an empty magazine,
+/// ranged weapon; or `can_fire` is `false` (a Downed/Dead shooter, an empty magazine,
 /// insufficient TU, or an out-of-bounds target — AC3's `can_fire` rung). A read-only
-/// helper borrowing the caller's `shooters` / `wields` / `weapons` queries
+/// helper borrowing the caller's `shooters` / `wields` / `weapons` / `melee` queries
 /// (`bevy-traps.md` #7 — no `&mut World`).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "GTW-505 C5: the ranged-weapon resolution adds the MeleeWeapon marker probe on top of \
+              the GTW-323 slice-3 Wields + weapon-magazine queries, so the gun's magazine resolves \
+              excluding the melee weapon the ganger also wields"
+)]
 #[must_use]
 pub(crate) fn try_fire_request(
     shooter: Entity,
@@ -85,19 +102,24 @@ pub(crate) fn try_fire_request(
     shooters: &Query<ShooterFireData>,
     wields: &Query<&Wields>,
     weapons: &Query<WeaponMagazine, With<WieldedBy>>,
+    melee: &Query<MeleeWeaponMarker, With<MeleeWeapon>>,
 ) -> Option<FireRequested> {
     // The shooter must carry the firing VITALS, else fail-closed (no fire).
     let Ok((life, tu, tu_max, aiming, injuries)) = shooters.get(shooter) else {
         return None;
     };
     // The magazine + handedness live on the wielded WEAPON entity (GTW-323 slice 3 /
-    // GTW-443): resolve `ganger → Wields → the weapon entity → (Magazine, Handedness)`.
-    // An unarmed shooter (no `Wields`, no weapon, or no `Magazine` on the weapon) fails
-    // closed (the `?` short-circuits to `None`).
+    // GTW-443): resolve `ganger → Wields → the RANGED weapon entity → (Magazine, Handedness)`.
+    // GTW-505 C5: a ganger wields BOTH a ranged AND a melee weapon, so resolve through
+    // `Wields::ranged_weapon` (which EXCLUDES the `MeleeWeapon`-marked entity via the `melee`
+    // probe) — NOT `Wields::weapon` (the FIRST related entity, which is spawn-order fragile).
+    // This is the same marker-filtered resolution the sim's `fire()` / `can_fire` use, so the
+    // input fire-guard reads the GUN's magazine regardless of relate order. An unarmed shooter
+    // (no `Wields`, no ranged weapon, or no `Magazine` on it) fails closed (`?` -> `None`).
     let (magazine, handedness) = wields
         .get(shooter)
         .ok()
-        .and_then(Wields::weapon)
+        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
         .and_then(|weapon| weapons.get(weapon).ok())?;
     // GTW-443: fold the shooter's available hand count from its injury ledger (an absent
     // ledger = the uninjured two-hands default) so the shared can_fire hand-count gate

@@ -72,6 +72,10 @@ fn app_driven_into_game() -> App {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
+    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());

@@ -94,45 +94,54 @@ pub struct GangMember {
     /// [`PlacedGanger`](crate::situation::PlacedGanger) references it by this name to
     /// pick a member out of the gang). Authored as a bare string ([`GangerName`] is
     /// `#[serde(transparent)]`).
-    pub name:      GangerName,
+    pub name:         GangerName,
     /// The member's **Speed** direct attribute — quickness (GTW-384). Drives the derived
     /// [`Tu`](crate::ganger::Tu) budget + Fight/Reactions terms. Authored as a bare
     /// scalar ([`Speed`] is `#[serde(transparent)]`).
-    pub speed:     Speed,
+    pub speed:        Speed,
     /// The member's **Aim** direct attribute — innate marksmanship (GTW-384). The
     /// dominant derived [`Shooting`](crate::ganger::Shooting) term. Authored as a bare
     /// scalar.
-    pub aim:       Aim,
+    pub aim:          Aim,
     /// The member's **Strength** direct attribute — physical power (GTW-384). A derived
     /// Fight term. Authored as a bare scalar.
-    pub strength:  Strength,
+    pub strength:     Strength,
     /// The member's **Toughness** direct attribute — damage resistance. A (reused)
     /// severity-roll term + a derived [`Hp`](crate::ganger::Hp) term. Authored as a bare
     /// scalar.
-    pub toughness: Toughness,
+    pub toughness:    Toughness,
     /// The member's **Reflexes** direct attribute — reaction speed (GTW-384). A derived
     /// Shooting + Reactions term. Authored as a bare scalar.
-    pub reflexes:  Reflexes,
+    pub reflexes:     Reflexes,
     /// The member's **Cool** direct attribute — nerves under fire (GTW-384). The broad
     /// Shooting/Fight/Reactions/HP/Morale contributor. Authored as a bare scalar.
-    pub cool:      Cool,
+    pub cool:         Cool,
     /// The member's **Grit** direct attribute — resilience (GTW-384). The dominant
     /// derived [`Hp`](crate::ganger::Hp) + Morale term. Authored as a bare scalar.
-    pub grit:      Grit,
+    pub grit:         Grit,
     /// The member's **Luck** direct attribute — directional fortune. The (reused)
     /// severity-roll tail (feeds the severity roll ONLY, never the computed stats). Authored
     /// as a bare scalar.
-    pub luck:      Luck,
+    pub luck:         Luck,
     /// The member's **armor KEY** — the filename stem of an
     /// `assets/content/armor/*.armor.ron`, resolved against the
     /// [`ArmorRegistry`](crate::armor::ArmorRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle).
-    pub armor:     ArmorName,
-    /// The member's **weapon KEY** — the filename stem of an
-    /// `assets/content/weapons/*.weapon.ron`, resolved against the
+    pub armor:        ArmorName,
+    /// The member's **(ranged) weapon KEY** — the filename stem of an
+    /// `assets/content/weapons/ranged/*.weapon.ron`, resolved against the
     /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle).
-    pub weapon:    WeaponName,
+    pub weapon:       WeaponName,
+    /// The member's **melee weapon KEY** (GTW-505) — the filename stem of an
+    /// `assets/content/weapons/melee/*.melee_weapon.ron`, resolved against the
+    /// [`MeleeWeaponRegistry`](crate::weapon::MeleeWeaponRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle). `#[serde(default)]` ⇒ an
+    /// authored member that omits the field gets `None`, which the setup resolves to the
+    /// shipped [`fists`](crate::weapon::FISTS_KEY) default — so EVERY ganger gets a melee
+    /// weapon and any ganger can melee (the GTW-37 D3 ruling).
+    #[serde(default)]
+    pub melee_weapon: Option<WeaponName>,
 }
 
 impl GangMember {

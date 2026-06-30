@@ -10,8 +10,8 @@ use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
     ArmorsFolderHandle, FontFolderHandle, GangsFolderHandle, InjuriesFolderHandle, LoadHandles,
-    PrefabsV2FolderHandle, SituationHandle, StatTuningHandle, TerrainModelFolderHandle,
-    ThemeHandle, TuningHandle, WeaponsFolderHandle,
+    MeleeWeaponsFolderHandle, PrefabsV2FolderHandle, SituationHandle, StatTuningHandle,
+    TerrainModelFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -34,10 +34,19 @@ const TUNING_RON_PATH: &str = "core_tuning/combat.tuning.ron";
 /// `core_tuning/combat.tuning.ron`).
 const STAT_TUNING_RON_PATH: &str = "core_tuning/stat.tuning.ron";
 
-/// Path of the loose weapons folder, relative to the asset source root (GTW-257 —
-/// the per-weapon `assets/content/weapons/*.ron` files the registry is built from). Its OWN
-/// folder so the `.ron` loader dispatch is unambiguous (weapons only, no armour).
-const WEAPONS_DIR: &str = "content/weapons";
+/// Path of the loose RANGED-weapons folder, relative to the asset source root (GTW-257;
+/// GTW-505 split it into `ranged/`) — the per-weapon
+/// `assets/content/weapons/ranged/*.weapon.ron` files the [`WeaponRegistry`] is built from.
+/// Its OWN leaf folder so a recursive `load_folder` walks ONLY `.weapon.ron` members (the
+/// sibling `melee/` folder is loaded separately), keeping the registry build clean.
+const WEAPONS_DIR: &str = "content/weapons/ranged";
+
+/// Path of the loose MELEE-weapons folder, relative to the asset source root (GTW-505) —
+/// the per-weapon `assets/content/weapons/melee/*.melee_weapon.ron` files the
+/// [`MeleeWeaponRegistry`](gdtf_battle_sim::weapon::MeleeWeaponRegistry) is built from. Its
+/// OWN leaf folder (sibling of `ranged/`) so a recursive `load_folder` walks ONLY
+/// `.melee_weapon.ron` members, the ranged-folder precedent.
+const MELEE_WEAPONS_DIR: &str = "content/weapons/melee";
 
 /// Path of the loose armor folder, relative to the asset source root (GTW-269 —
 /// the per-armor `assets/content/armor/*.ron` files the registry is built from). Its OWN
@@ -86,8 +95,9 @@ const TERRAIN_MODEL_DIR: &str = "terrain";
 /// (GTW-205 / E10.3 — through the same generic loader) AND
 /// `core_tuning/combat.tuning.ron` as a `RonAsset<CombatTuning>` (GTW-206 / E10.4
 /// — through the same generic loader)
-/// AND preloads the entire `content/weapons` folder via `load_folder` (GTW-257 — every
-/// `assets/content/weapons/*.ron`, each a `RonAsset<WeaponSpec>`, so the poll/resolve
+/// AND preloads the `content/weapons/ranged` leaf folder via `load_folder` (GTW-257; GTW-505
+/// split the tree into `ranged/` + `melee/` — every
+/// `assets/content/weapons/ranged/*.weapon.ron`, each a `RonAsset<WeaponSpec>`, so the poll/resolve
 /// system can build the name-keyed
 /// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry))
 /// AND preloads the entire `content/armor` folder via `load_folder` (GTW-269 — every
@@ -128,6 +138,9 @@ pub(in crate::states::load) fn kick_off_loads(
         asset_server.load::<RonAsset<GangerStatTuning>>(STAT_TUNING_RON_PATH),
     );
     let weapons = WeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
+    // GTW-505: the sibling melee-weapons folder loads through its OWN folder handle so the
+    // `MeleeWeaponRegistry` builds from the `.melee_weapon.ron` members only.
+    let melee_weapons = MeleeWeaponsFolderHandle::new(asset_server.load_folder(MELEE_WEAPONS_DIR));
     let armor = ArmorsFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
     let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
     let gangs = GangsFolderHandle::new(asset_server.load_folder(GANGS_DIR));
@@ -145,6 +158,7 @@ pub(in crate::states::load) fn kick_off_loads(
         tuning,
         stat_tuning,
         weapons,
+        melee_weapons,
         armor,
         injuries,
         gangs,

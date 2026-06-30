@@ -43,14 +43,15 @@ use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel,
-    CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
-    FireModeSpec, FloorCostGrid, Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds,
-    InjuryRng, Kickback, Level, LifeState, LootRng, Luck, Magazine, MagazineSize, ModeConeMult,
+    CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FightMode,
+    FightModeKind, FightModeSpec, FireMode, FireModeSpec, FloorCostGrid, Handedness,
+    HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState,
+    LootRng, Luck, Magazine, MagazineSize, MeleeDamageProfile, MeleeWeaponBundle, ModeConeMult,
     ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction,
-    Position, ProcgenRng, ReloadTu, SeverityRng, Shooting, ShotRng, SlabLedger, SquadVisibility,
-    Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
-    tuning::CombatTuning,
+    Position, ProcgenRng, Reach, ReloadTu, SeverityRng, Shooting, ShotRng, SlabLedger,
+    SquadVisibility, Stable, Stance, StanceKind, Strikes, SurfaceGrid, Toughness, Tu, TuCost,
+    TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    WieldedBy, Wounds, acts::SimActsPlugin, tuning::CombatTuning,
 };
 
 /// The faction the player controls (matches `PlayerFaction`).
@@ -177,6 +178,26 @@ fn endtoend_app() -> App {
 /// query) component set. Position matches the occupancy cell so `dispatch_fire`'s arc reads
 /// the right actor cell. Ample TU (200) so even an out-of-arc turn-then-fire is affordable.
 fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Entity {
+    spawn_armed_shooter_inner(app, cell, facing, false)
+}
+
+/// As [`spawn_armed_shooter`], but relates a MELEE weapon to the ganger BEFORE the ranged
+/// weapon (GTW-505 C5) — so the FIRST entity in the ganger's `Wields` collection is the melee
+/// weapon, NOT the gun. The input fire chain must STILL resolve the ranged weapon (via the
+/// `MeleeWeapon`-marker filter, not relate order); a regression to the order-dependent
+/// `Wields::weapon()` would resolve the magazine-less melee weapon and silently refuse the fire.
+fn spawn_armed_shooter_melee_first(app: &mut App, cell: CellLevel, facing: Direction) -> Entity {
+    spawn_armed_shooter_inner(app, cell, facing, true)
+}
+
+/// Spawns the armed PLAYER-faction shooter + relates its ranged weapon; when `melee_first` it
+/// ALSO relates a melee weapon BEFORE the ranged one so the melee entity is FIRST in `Wields`.
+fn spawn_armed_shooter_inner(
+    app: &mut App,
+    cell: CellLevel,
+    facing: Direction,
+    melee_first: bool,
+) -> Entity {
     let bundle = WeaponBundle::new(
         WeaponName::new("probe-weapon".to_owned()),
         BaseSpread::new(0.05),
@@ -221,6 +242,29 @@ fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Ent
             ),
         ))
         .id();
+    // GTW-505 C5: optionally relate the MELEE weapon FIRST, so the gun is NOT the first entity
+    // in `Wields` — proving the input fire chain resolves the ranged weapon by the MeleeWeapon
+    // marker filter, not by insertion order.
+    if melee_first {
+        let melee = MeleeWeaponBundle::new(
+            WeaponName::new("probe-melee".to_owned()),
+            MeleeDamageProfile::new(
+                WeaponDamage::new(9),
+                WeaponPunch::new(3),
+                WeaponShred::new(8),
+                DamageType::Rend,
+            ),
+            FatalBias::new(4.0),
+            Handedness::OneHanded,
+            Reach::new(1),
+            FightMode::new(vec![FightModeSpec::new(
+                FightModeKind::Swing,
+                TuCost::new(20),
+                Strikes::new(1),
+            )]),
+        );
+        app.world_mut().spawn((WieldedBy::new(shooter), melee));
+    }
     // GTW-323: the AUTHORITATIVE weapon rides on a related weapon entity (`Wields`), read
     // by the input `can_fire` precheck AND `dispatch_fire`/`fire()` through
     // `ganger → Wields → the weapon entity`. The `WieldedBy` insert hook populates the
@@ -367,4 +411,102 @@ fn click_on_enemy_produces_a_shot_endtoend() {
         Some(shooter),
         "a FIRE edge leaves the selection untouched",
     );
+}
+
+/// GTW-505 C5 — the INPUT-LAYER zero-ranged-regression proof, ORDERING-INDEPENDENT: a shooter
+/// wielding BOTH a melee weapon (related FIRST) AND a ranged weapon still fires the RANGED
+/// weapon end-to-end. The input `can_fire` precheck (`fire_surface::try_fire_request`) resolves
+/// the gun via `Wields::ranged_weapon` (the `MeleeWeapon`-marker filter), NOT `Wields::weapon`
+/// (the FIRST related entity) — so the melee weapon being first never silences the fire.
+///
+/// PIN: with the OLD order-dependent `Wields::weapon()`, the FIRST related entity here is the
+/// magazine-less melee weapon; `try_fire_request`'s `(Magazine, Handedness)` read would miss
+/// it and fail closed → NO `FireRequested`, the shooter's TU UNCHANGED. Pinning the TU drop
+/// (the mode charge) AND the RANGED magazine decrement proves the gun was resolved despite the
+/// melee weapon sitting first in `Wields`.
+#[test]
+fn click_on_enemy_fires_the_ranged_weapon_even_with_a_melee_weapon_related_first() {
+    let mut app = endtoend_app();
+
+    let shooter_cell = hover_at(&mut app, SHOOTER_CURSOR_OFFSET);
+    let target_cell = hover_at(&mut app, TARGET_CURSOR_OFFSET);
+
+    let facing = Direction::from_cells(
+        Cell::new(shooter_cell.x, shooter_cell.y),
+        Cell::new(target_cell.x, target_cell.y),
+    )
+    .unwrap_or(Direction::East);
+    // The MELEE weapon is related FIRST (so it is first in `Wields`), the ranged gun second.
+    let shooter = spawn_armed_shooter_melee_first(&mut app, shooter_cell, facing);
+    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
+        grid.set_occupant(shooter_cell, Some(shooter));
+        grid.set_occupant_band(shooter_cell, Some(HeightBand::High));
+    }
+    let enemy = place_armed_enemy(&mut app, target_cell);
+    assert_ne!(shooter, enemy, "distinct shooter / enemy entities");
+
+    // The ranged weapon's magazine BEFORE firing — resolved the ranged way (excluding the melee
+    // weapon) so this reads the GUN's count, never the magazine-less melee entity.
+    let rounds_before = ranged_magazine_rounds(&app, shooter);
+    assert_eq!(
+        rounds_before,
+        Some(10),
+        "precondition: the RANGED weapon (resolved excluding the melee one) holds 10 rounds",
+    );
+
+    // SELECT the shooter.
+    let _ = hover_at(&mut app, SHOOTER_CURSOR_OFFSET);
+    press_left(&mut app);
+    app.update();
+    clear_mouse(&mut app);
+    assert_eq!(
+        app.world()
+            .get_resource::<SelectedShooter>()
+            .and_then(|s| **s),
+        Some(shooter),
+        "the player-faction shooter must be SELECTED before firing",
+    );
+
+    // FIRE on the enemy.
+    let _ = hover_at(&mut app, TARGET_CURSOR_OFFSET);
+    let tu_before = app.world().get::<Tu>(shooter).map(|t| **t);
+    press_left(&mut app);
+    app.update();
+
+    let tu_after = app.world().get::<Tu>(shooter).map(|t| **t);
+    let shot_ran = matches!((tu_before, tu_after), (Some(b), Some(a)) if a < b);
+    assert!(
+        shot_ran,
+        "with a melee weapon related FIRST, the input fire chain must STILL fire the ranged \
+         weapon (the shooter's TU must drop) — tu {tu_before:?} -> {tu_after:?}. If TU is \
+         UNCHANGED the input `can_fire` resolved the magazine-less melee weapon (the \
+         order-dependent `Wields::weapon()` regression GTW-505 C5 guards).",
+    );
+
+    // The RANGED magazine decremented — proof the GUN was the entity `fire()` resolved + spent,
+    // not the magazine-less melee weapon (a misresolution leaves rounds untouched).
+    let rounds_after = ranged_magazine_rounds(&app, shooter);
+    assert!(
+        matches!((rounds_before, rounds_after), (Some(b), Some(a)) if a < b),
+        "the RANGED magazine must drop (the burst spent it) — proof the gun, not the \
+         magazine-less melee weapon, was fired: {rounds_before:?} -> {rounds_after:?}",
+    );
+}
+
+/// The current round count of the shooter's RANGED weapon magazine, resolved the ranged way
+/// (`Wields::ranged_weapon`, excluding the `MeleeWeapon`-marked entity) so it reads the GUN's
+/// magazine even when a melee weapon is related first. `None` when unarmed / no ranged weapon.
+fn ranged_magazine_rounds(app: &App, shooter: Entity) -> Option<u16> {
+    use gdtf_battle_sim::{MeleeWeapon, Wields};
+    let melee_entities: bevy::platform::collections::HashSet<Entity> = {
+        let mut q = app
+            .world()
+            .try_query_filtered::<Entity, With<MeleeWeapon>>()?;
+        q.iter(app.world()).collect()
+    };
+    app.world()
+        .get::<Wields>(shooter)
+        .and_then(|w| w.ranged_weapon(|e| melee_entities.contains(&e)))
+        .and_then(|ranged| app.world().get::<Magazine>(ranged))
+        .map(|m| *m.rounds())
 }

@@ -29,7 +29,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::{
-    Aiming, FireMode, FireModeSpec, ModeKind, TuMax, WieldedBy, Wields, mode_tu_cost,
+    Aiming, FireMode, FireModeSpec, MeleeWeapon, ModeKind, TuMax, WieldedBy, Wields, mode_tu_cost,
     tuning::CombatTuning,
 };
 use gdtf_ui::{
@@ -266,13 +266,15 @@ type ModeControlChildren = (Entity, &'static Children);
     clippy::type_complexity,
     clippy::too_many_arguments,
     reason = "param tuple aliased where possible; the set_segment_visible call signature fixes the \
-    children/segments query shapes, and GTW-323 slice 3 adds the Wields relationship query so the \
-    offered modes resolve off the related weapon entity"
+    children/segments query shapes, GTW-323 slice 3 adds the Wields relationship query so the \
+    offered modes resolve off the related weapon entity, and GTW-505 C5 adds the MeleeWeapon marker \
+    probe so the RANGED weapon resolves excluding the melee one"
 )]
 pub(in crate::states::running::game::battlescape) fn rebuild_mode_segments(
     selected: Res<SelectedShooter>,
     wields: Query<&Wields>,
     weapons: Query<&FireMode, With<WieldedBy>>,
+    melee: Query<(), With<MeleeWeapon>>,
     added_controls: Query<(), Added<ModeControl>>,
     children: Query<&Children>,
     mut segments: Query<(&SegmentIndex, &mut Node), With<Segment>>,
@@ -287,13 +289,15 @@ pub(in crate::states::running::game::battlescape) fn rebuild_mode_segments(
     }
 
     // Which modes the SELECTED weapon offers (the closed `ModeKind` set). The FireMode
-    // selector lives on the wielded WEAPON entity (GTW-323 slice 3): resolve
-    // `ganger → Wields → the weapon entity → FireMode`. A cleared / no-selection /
-    // unarmed (no Wields / no weapon / no FireMode) selection offers nothing → every
-    // segment hidden.
+    // selector lives on the wielded RANGED WEAPON entity (GTW-323 slice 3): resolve
+    // `ganger → Wields → the ranged weapon entity → FireMode`. GTW-505 C5: a ganger wields
+    // BOTH a ranged AND a melee weapon, so resolve through `Wields::ranged_weapon` (excluding
+    // the `MeleeWeapon`-marked entity) — NOT `Wields::weapon` (the spawn-order fragile first
+    // entity). A cleared / no-selection / unarmed (no Wields / no ranged weapon / no FireMode)
+    // selection offers nothing → every segment hidden.
     let offered = (**selected)
         .and_then(|shooter| wields.get(shooter).ok())
-        .and_then(Wields::weapon)
+        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
         .and_then(|weapon| weapons.get(weapon).ok());
     let offers =
         |kind: ModeKind| offered.is_some_and(|weapon| weapon.iter().any(|m| m.kind == kind));
@@ -337,13 +341,21 @@ pub(in crate::states::running::game::battlescape) fn rebuild_mode_segments(
 /// (bevy-traps rule 4), the `ResMut<SelectedFireMode>` write, the `Res<SelectedShooter>`
 /// read, a read-only `Query<&Wields>` (the relationship) + a `Query<&FireMode,
 /// With<WieldedBy>>` weapon-entity query (the modes live on the related weapon entity since
-/// GTW-323 slice 3), and a read-only `Query<(), With<ModeControl>>` — no `&mut World`.
+/// GTW-323 slice 3) + a `Query<(), With<MeleeWeapon>>` marker probe (GTW-505 C5 — so the
+/// RANGED weapon resolves excluding the melee one), and a read-only
+/// `Query<(), With<ModeControl>>` — no `&mut World`.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "GTW-505 C5 adds the MeleeWeapon marker probe on top of the GTW-323 slice-3 Wields + \
+    weapon-entity queries so the RANGED weapon's mode resolves excluding the melee weapon"
+)]
 pub(in crate::states::running::game::battlescape) fn mode_segment_write(
     mut chosen: MessageReader<SegmentSelected>,
     mut fire_mode: ResMut<SelectedFireMode>,
     selected: Res<SelectedShooter>,
     wields: Query<&Wields>,
     weapons: Query<&FireMode, With<WieldedBy>>,
+    melee: Query<(), With<MeleeWeapon>>,
     mode_controls: Query<(), With<ModeControl>>,
 ) {
     for event in chosen.read() {
@@ -353,8 +365,8 @@ pub(in crate::states::running::game::battlescape) fn mode_segment_write(
         let Some(kind) = mode_for_index(*event.index) else {
             continue;
         };
-        // Read the selected weapon's spec for that kind — never a fabricated value.
-        let Some(spec) = mode_spec_for(*selected, &wields, &weapons, kind) else {
+        // Read the selected RANGED weapon's spec for that kind — never a fabricated value.
+        let Some(spec) = mode_spec_for(*selected, &wields, &weapons, &melee, kind) else {
             continue;
         };
         let next = SelectedFireMode::new(spec);
@@ -393,16 +405,23 @@ pub(in crate::states::running::game::battlescape) fn sync_mode_active_segment(
 ///
 /// The single read-back point so [`mode_segment_write`] never fabricates a spec (the
 /// GTW-265 "read-back, never fabricated" rule). Resolves the [`FireMode`] off the related
-/// WEAPON entity (`ganger → Wields → the weapon entity`, GTW-323 slice 3). Read-only over
-/// the selection + the [`Wields`] relationship + the weapon-entity query.
+/// RANGED WEAPON entity (`ganger → Wields → the ranged weapon entity`, GTW-323 slice 3).
+/// GTW-505 C5: a ganger wields BOTH a ranged AND a melee weapon, so it resolves through
+/// [`Wields::ranged_weapon`](gdtf_battle_sim::Wields::ranged_weapon) (excluding the
+/// [`MeleeWeapon`]-marked entity via the `melee` probe) — NOT `Wields::weapon`. Read-only over
+/// the selection + the [`Wields`] relationship + the weapon-entity query + the melee probe.
 fn mode_spec_for(
     selected: SelectedShooter,
     wields: &Query<&Wields>,
     weapons: &Query<&FireMode, With<WieldedBy>>,
+    melee: &Query<(), With<MeleeWeapon>>,
     kind: ModeKind,
 ) -> Option<FireModeSpec> {
     let shooter = (*selected)?;
-    let weapon = wields.get(shooter).ok().and_then(Wields::weapon)?;
+    let weapon = wields
+        .get(shooter)
+        .ok()
+        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))?;
     let fire_mode = weapons.get(weapon).ok()?;
     fire_mode.iter().find(|spec| spec.kind == kind).copied()
 }
@@ -448,6 +467,9 @@ pub(in crate::states::running::game::battlescape) struct ModeCostInputs<'w, 's> 
     wields:         Query<'w, 's, &'static Wields>,
     /// The wielded WEAPON entity's [`FireMode`] selector ([`CostWeapon`]) — the offered specs.
     weapons:        Query<'w, 's, CostWeapon, With<WieldedBy>>,
+    /// The [`MeleeWeapon`] marker probe (GTW-505 C5) — so the RANGED weapon's modes resolve
+    /// excluding the melee weapon the ganger also wields.
+    melee:          Query<'w, 's, (), With<MeleeWeapon>>,
     /// Detects an Aim flip (a [`Changed<Aiming>`](Changed) on any ganger) → recompute.
     aim_changed:    Query<'w, 's, (), Changed<Aiming>>,
     /// Detects the [`ModeControl`] freshly spawned (the GTW-255 auto-select ordering trap).
@@ -512,15 +534,17 @@ pub(in crate::states::running::game::battlescape) fn sync_mode_tu_cost_lines(
         return;
     }
 
-    // The selected ganger's cost inputs (TuMax/Aiming) + its wielded weapon's FireMode
-    // selector (resolved `ganger → Wields → the weapon entity`, GTW-323 slice 3). Absent /
-    // unarmed (no ganger inputs, no Wields, or no FireMode on the weapon) → every sub-line
-    // is cleared below.
+    // The selected ganger's cost inputs (TuMax/Aiming) + its wielded RANGED weapon's FireMode
+    // selector (resolved `ganger → Wields → the ranged weapon entity`, GTW-323 slice 3).
+    // GTW-505 C5: resolve through `Wields::ranged_weapon` (excluding the `MeleeWeapon`-marked
+    // entity) — NOT `Wields::weapon` (the spawn-order fragile first entity) — so the cost
+    // lines display the GUN's modes, never the melee weapon's. Absent / unarmed (no ganger
+    // inputs, no Wields, or no ranged FireMode) → every sub-line is cleared below.
     let ganger = **inputs.selected;
     let shooter_inputs = ganger.and_then(|shooter| inputs.shooters.get(shooter).ok());
     let weapon_mode = ganger
         .and_then(|shooter| inputs.wields.get(shooter).ok())
-        .and_then(Wields::weapon)
+        .and_then(|w| w.ranged_weapon(|entity| inputs.melee.get(entity).is_ok()))
         .and_then(|weapon| inputs.weapons.get(weapon).ok());
 
     for control in &mode_controls {

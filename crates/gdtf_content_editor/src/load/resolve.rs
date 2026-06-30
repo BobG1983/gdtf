@@ -43,7 +43,7 @@ pub(crate) struct EditorLoadCollections<'w> {
     theme_specs:  Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
     /// The loaded `LoadedFolder` collection — used to read each content folder's members.
     folders:      Option<Res<'w, Assets<LoadedFolder>>>,
-    /// The loaded per-weapon RON collection (`content/weapons/*.weapon.ron`).
+    /// The loaded per-weapon RON collection (`content/weapons/ranged/*.weapon.ron`).
     weapon_specs: Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
     /// The loaded per-armor RON collection (`content/armor/*.armor.ron`).
     armor_specs:  Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
@@ -212,7 +212,7 @@ fn resolve_theme(
     }
 }
 
-/// Resolve the loaded `content/weapons/` folder into the name-keyed [`WeaponRegistry`], or
+/// Resolve the loaded `content/weapons/ranged/` folder into the name-keyed [`WeaponRegistry`], or
 /// fall back to an empty registry on a failed folder — the editor mirror of the game's
 /// `resolve_weapons`.
 fn resolve_weapons(

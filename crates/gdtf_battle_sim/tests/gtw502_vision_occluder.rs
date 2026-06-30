@@ -43,8 +43,8 @@ use gdtf_battle_sim::{
     situation::{CoverSpawn, Situation},
     terrain::{entity::TerrainCell, occupancy::OccupancyGrid},
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_pieces,
-        test_terrain_registry, test_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
+        test_pieces, test_terrain_registry, test_weapon_registry,
     },
     tuning::{CombatTuning, ViewRange},
 };
@@ -88,6 +88,9 @@ fn battle_app() -> App {
         ..Default::default()
     });
     app.insert_resource(test_weapon_registry());
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
+    // weapon resolves at setup (fixture gangers author none -> `fists`).
+    app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
     // GTW-491: setup_battle_on_request resolves authored terrain UUIDs (walls / slabs /
     // scatter) against this registry — without it the cover/slab pieces fail TerrainNotFound

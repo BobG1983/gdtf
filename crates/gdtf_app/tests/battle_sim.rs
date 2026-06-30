@@ -32,7 +32,10 @@ use gdtf_battle_sim::{
     rng::{BattleSeed, ShotRng},
     situation::Situation,
     surface::SurfaceGrid,
-    test_support::{SituationBuilder, ganger_at, key, test_armor_registry, test_weapon_registry},
+    test_support::{
+        SituationBuilder, ganger_at, key, test_armor_registry, test_melee_weapon_registry,
+        test_weapon_registry,
+    },
     tuning::CombatTuning,
     vertical::{LinkKind, VerticalLink, VerticalLinkGraph},
 };
@@ -118,11 +121,13 @@ fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     // The Load-built WeaponRegistry (GTW-257): persistent `Load` state the real app
-    // resolves from assets/content/weapons/, injected here for the MinimalPlugins deep-walk
+    // resolves from assets/content/weapons/ranged/, injected here for the MinimalPlugins deep-walk
     // (no AssetServer) so the Generation setup arms each ganger from it — the canonical
     // `test_weapon_registry` (GTW-324), which holds the `test-weapon` key every fixture
     // ganger references.
     app.world_mut().insert_resource(test_weapon_registry());
+    app.world_mut()
+        .insert_resource(test_melee_weapon_registry());
     // The Load-built ArmorRegistry (GTW-269) so the Generation setup armors each
     // ganger: every fixture ganger references the central `test-armor` key, which the
     // canonical `test_armor_registry` (GTW-324) holds (it must be populated now that

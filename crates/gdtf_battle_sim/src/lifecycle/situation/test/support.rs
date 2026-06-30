@@ -18,7 +18,7 @@ pub(super) use super::super::*;
 // helper (consolidated out of this file's former local copies).
 pub(super) use crate::test_support::{
     GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, arbitrary_armor, ganger_at, key,
-    test_armor_registry, test_gang_registry, test_terrain_registry,
+    test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_terrain_registry,
     test_weapon_registry as test_registry,
 };
 pub(super) use crate::{
@@ -54,11 +54,11 @@ pub(super) use crate::{
 /// turns the shipped-setup test red.
 const SHIPPED_STUB_PISTOL_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/content/weapons/stub_pistol.weapon.ron"
+    "/../../assets/content/weapons/ranged/stub_pistol.weapon.ron"
 ));
 const SHIPPED_LAS_CARBINE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/content/weapons/las_carbine.weapon.ron"
+    "/../../assets/content/weapons/ranged/las_carbine.weapon.ron"
 ));
 
 /// Build a registry from the shipped weapon files, keyed by their filename stems —
@@ -185,6 +185,10 @@ pub(super) fn run_setup_with(
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
     let stat_tuning = GangerStatTuning::default();
+    // GTW-505: the melee weapon registry (holds the `fists` default + the test melee
+    // weapon), so each ganger's melee weapon resolves — `None`-authored fixture gangers
+    // fall to `fists`.
+    let melee = crate::test_support::test_melee_weapon_registry();
     // GTW-396: the fallback floor cost (when terrain is None or default_floor is empty).
     let fallback_floor_cost = crate::tuning::CombatTuning::default().move_costs.open;
     // Clone the registry so the closure can own it (if provided).
@@ -197,6 +201,7 @@ pub(super) fn run_setup_with(
                 BattleRegistries::new(
                     &gangs,
                     &registry,
+                    &melee,
                     &armor,
                     &stat_tuning,
                     terrain_clone.as_ref(),

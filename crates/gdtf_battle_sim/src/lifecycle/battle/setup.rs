@@ -24,7 +24,7 @@ use crate::{
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
     visibility::{OmniscientFog, SquadVisibility},
-    weapon::WeaponRegistry,
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 
 /// **Setup** the battle on [`SetupBattleRequested`] — seed the per-subsystem RNG
@@ -80,17 +80,18 @@ use crate::{
 /// GTW-482).
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-414: nine params is two over the clippy 7-param default; the extra params \
-              are `Option<Res<TerrainDefRegistry>>` (GTW-491 terrain UUID resolution) and \
-              `Option<Res<GangRegistry>>` (GTW-414 gang/member ref resolution) — the Bevy \
-              system injection model cannot be refactored to fewer params without \
-              introducing a wrapper resource that changes the API surface"
+    reason = "the params are the message reader + writer, the gang / weapon / MELEE-weapon \
+              (GTW-505) / armor / terrain registries, and the stat + combat tuning — each a \
+              distinct Bevy SystemParam (Option<Res<_>> for the Load-state registries); the \
+              injection model cannot be refactored to fewer without a wrapper resource that \
+              changes the API surface"
 )]
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,
     mut ready: MessageWriter<BattleReady>,
     gangs: Option<Res<GangRegistry>>,
     weapons: Option<Res<WeaponRegistry>>,
+    melee_weapons: Option<Res<MeleeWeaponRegistry>>,
     armor: Option<Res<ArmorRegistry>>,
     terrain: Option<Res<TerrainDefRegistry>>,
     stat_tuning: Option<Res<GangerStatTuning>>,
@@ -118,6 +119,18 @@ pub fn setup_battle_on_request(
             error!(
                 "battle setup requested but no WeaponRegistry is loaded; no BattleReady will be \
                  signalled (the weapons folder must load before a battle starts)"
+            );
+            continue;
+        };
+        // GTW-505: the MELEE weapon registry is the same PERSISTENT `Load` state, read as
+        // `Option<Res<_>>` so a setup somehow requested before the melee weapons folder
+        // loaded fails closed — no setup, no BattleReady (bevy-traps #1, mirroring the
+        // ranged weapon registry guard). Without it (and the shipped `fists` default) an
+        // un-authored ganger's melee weapon cannot resolve.
+        let Some(melee_weapons) = melee_weapons.as_deref() else {
+            error!(
+                "battle setup requested but no MeleeWeaponRegistry is loaded; no BattleReady will \
+                 be signalled (the melee weapons folder must load before a battle starts)"
             );
             continue;
         };
@@ -172,7 +185,14 @@ pub fn setup_battle_on_request(
         //    authored attributes (GTW-384).
         match setup_battle(
             &request.situation,
-            BattleRegistries::new(gangs, weapons, armor, stat_tuning, terrain_ref),
+            BattleRegistries::new(
+                gangs,
+                weapons,
+                melee_weapons,
+                armor,
+                stat_tuning,
+                terrain_ref,
+            ),
             fallback_floor_cost,
             &mut commands,
         ) {

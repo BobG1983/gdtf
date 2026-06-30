@@ -12,13 +12,16 @@ content authors and engineers extending weapon mechanics.
 
 ### 1a. Where the `.ron` file goes
 
-Weapons live under `assets/content/weapons/` — one file per weapon, flat
-(no subfolders). The file is named `<key>.weapon.ron`, where `<key>` is the
-weapon's registry key, the string a `GangerSpawn` references to load it.
+Ranged weapons live under `assets/content/weapons/ranged/` — one file per
+weapon. The file is named `<key>.weapon.ron`, where `<key>` is the weapon's
+registry key, the string a roster member references to load it. (GTW-505 split
+the weapons tree into `ranged/` + `melee/`; melee weapons — the
+`.melee_weapon.ron` sibling — are covered in
+[combat/weapons-and-armor.md](../combat/weapons-and-armor.md) §Melee weapons.)
 
 **Key convention:** the file stem minus the `.weapon` infix is the weapon's
-registry key. For example, `stub_pistol.weapon.ron` → key `"stub_pistol"`. The
-key must be unique across the folder.
+registry key. For example, `ranged/stub_pistol.weapon.ron` → key `"stub_pistol"`.
+The key must be unique across the folder.
 
 **`WeaponName`:** the weapon's human-facing display name is NOT authored as a
 field in the `.ron` file — it is the registry KEY (the file stem), supplied by
@@ -201,7 +204,7 @@ Add the new field to the field table and the RON example in this guide. Run
 ## Part 3 — Hot-reload
 
 The weapon system supports **live hot-reload** (GTW-374 pattern): editing any
-`assets/content/weapons/*.weapon.ron` file while the game is running triggers
+`assets/content/weapons/ranged/*.weapon.ron` file while the game is running triggers
 `redrive_weapons_on_asset_event` in
 `crates/gdtf_app/src/states/load/systems/resolve/weapons.rs`, which rebuilds
 the entire `WeaponRegistry` from the persistent `ActiveWeaponsFolderHandle`.
@@ -218,7 +221,7 @@ Loader: `crates/gdtf_app/src/states/load/systems/resolve/weapons.rs`
 
 The loader:
 
-1. Gates on `assets/content/weapons/` loading (`RecursiveDependencyLoadState::Loaded`).
+1. Gates on `assets/content/weapons/ranged/` loading (`RecursiveDependencyLoadState::Loaded`).
 2. Reads each member handle as `RonAsset<WeaponSpec>`.
 3. Keys it by the file stem with the `.weapon` infix stripped:
    `stub_pistol.weapon.ron` → key `"stub_pistol"`.

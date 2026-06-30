@@ -28,7 +28,7 @@
             grit:      18.0,             // Grit attribute — resilience (→ HP ~36)
             luck:      2.0,              // Luck attribute — luckier than gang 0 (severity-roll tail)
             armor:     "carapace_plate", // armor KEY — resolves to assets/content/armor/carapace_plate.armor.ron at setup
-            weapon:    "las_carbine",    // weapon KEY — resolves to assets/content/weapons/las_carbine.weapon.ron at setup
+            weapon:    "las_carbine",    // weapon KEY — resolves to assets/content/weapons/ranged/las_carbine.weapon.ron at setup
         ),
         // The second crouching defender — identical roster stats to Vex 1.
         (
@@ -42,7 +42,7 @@
             grit:      18.0,             // Grit attribute — resilience (→ HP ~36)
             luck:      2.0,              // Luck attribute — luckier than gang 0 (severity-roll tail)
             armor:     "carapace_plate", // armor KEY — resolves to assets/content/armor/carapace_plate.armor.ron at setup
-            weapon:    "las_carbine",    // weapon KEY — resolves to assets/content/weapons/las_carbine.weapon.ron at setup
+            weapon:    "las_carbine",    // weapon KEY — resolves to assets/content/weapons/ranged/las_carbine.weapon.ron at setup
         ),
     ],
 )

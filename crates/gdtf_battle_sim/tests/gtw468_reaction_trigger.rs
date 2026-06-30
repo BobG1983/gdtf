@@ -53,7 +53,8 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::Situation,
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
+        test_weapon_registry,
     },
     tuning::{
         CombatTuning, ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin,
@@ -106,6 +107,9 @@ fn battle_app(reaction: ReactionTuning) -> App {
         ..Default::default()
     });
     app.insert_resource(test_weapon_registry());
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
+    // weapon resolves at setup (fixture gangers author none -> `fists`).
+    app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
     app
 }

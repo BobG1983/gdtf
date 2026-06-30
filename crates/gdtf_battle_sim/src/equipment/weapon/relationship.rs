@@ -121,8 +121,52 @@ impl Wields {
     /// surface, never a `.0` field access). The collection holds one weapon this slice;
     /// the accessor takes the first so a future multi-weapon loadout (the ADR open
     /// question) can pick the active one without reshaping callers.
+    ///
+    /// **GTW-505**: with the melee-weapon model live (a ganger wields BOTH a ranged and a
+    /// melee weapon), the FIRST related entity is no longer guaranteed to be the ranged
+    /// one — the RANGED-firing path must resolve through
+    /// [`ranged_weapon`](Wields::ranged_weapon) (which excludes
+    /// [`MeleeWeapon`](super::MeleeWeapon)) instead. `weapon` is retained for callers that
+    /// genuinely want the first-related entity regardless of kind (e.g. a test asserting
+    /// any wielded entity exists).
     #[must_use]
     pub fn weapon(&self) -> Option<Entity> {
         self.iter().next()
+    }
+
+    /// The **ranged** weapon entity this ganger wields — the first related entity that is
+    /// NOT a [`MeleeWeapon`](super::MeleeWeapon), determined by the caller-supplied
+    /// `is_melee` predicate; or `None` when the ganger wields no ranged weapon (GTW-505 C5).
+    ///
+    /// This is the ranged-firing resolution after the melee model went live: a ganger
+    /// wields BOTH a ranged weapon entity (carrying [`Weapon`](super::Weapon)) AND a melee
+    /// weapon entity (carrying [`MeleeWeapon`](super::MeleeWeapon)), both in this collection
+    /// — so [`weapon`](Wields::weapon) (the FIRST entity) is no longer safe for the ranged
+    /// path. The caller backs `is_melee` with a `Query<(), With<MeleeWeapon>>` (`|e|
+    /// melee.get(e).is_ok()`), and this returns the first NON-melee related entity — the
+    /// ranged weapon `fire()` / `can_fire` / the reaction + AI paths read. So relating a
+    /// melee weapon NEVER regresses ranged firing (the zero-ranged-regression mechanism).
+    ///
+    /// `is_melee` is a `Fn(Entity) -> bool` (NOT a domain newtype) because it is a
+    /// caller-injected query CLOSURE — Bevy framework plumbing the no-bare-types rule's
+    /// trait-impl / system-param carve-out covers, not a wrapped domain scalar.
+    #[must_use]
+    pub fn ranged_weapon(&self, is_melee: impl Fn(Entity) -> bool) -> Option<Entity> {
+        self.iter().find(|&entity| !is_melee(entity))
+    }
+
+    /// The **melee** weapon entity this ganger wields — the first related entity that IS a
+    /// [`MeleeWeapon`](super::MeleeWeapon), determined by the caller-supplied `is_melee`
+    /// predicate; or `None` when the ganger wields no melee weapon (GTW-505). The
+    /// counterpart to [`ranged_weapon`](Wields::ranged_weapon): the GTW-506/507 melee
+    /// resolution reads its weapon through this. Since every spawned ganger relates a
+    /// melee weapon (an authored one OR the [`fists`](super::FISTS_KEY) default — the
+    /// GTW-37 D3 ruling), this resolves to `Some` for every fielded ganger.
+    ///
+    /// `is_melee` is the same caller-injected query CLOSURE
+    /// [`ranged_weapon`](Wields::ranged_weapon) takes (the framework carve-out).
+    #[must_use]
+    pub fn melee_weapon(&self, is_melee: impl Fn(Entity) -> bool) -> Option<Entity> {
+        self.iter().find(|&entity| is_melee(entity))
     }
 }

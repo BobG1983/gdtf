@@ -20,8 +20,8 @@ use crate::{
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback, Stable,
-        WeaponDamage, WeaponPunch, WeaponShred, WieldedBy, Wields,
+        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback,
+        MeleeWeapon, Stable, WeaponDamage, WeaponPunch, WeaponShred, WieldedBy, Wields,
     },
 };
 
@@ -83,6 +83,21 @@ pub type ShooterQuery<'world, 'state> = Query<
 /// [`WeaponQuery`] (a different entity — the weapon) — so all coexist with no `B0001`
 /// conflict.
 pub type WieldsQuery<'world, 'state> = Query<'world, 'state, &'static Wields>;
+
+/// The **melee-weapon marker probe** the ranged-firing path filters a wielded weapon
+/// against (GTW-505 C5) — read-only `With<`[`MeleeWeapon`]`>` access over the weapon
+/// entities, so `Wields::ranged_weapon(|e| melee.get(e).is_ok())` can EXCLUDE the
+/// melee weapon a ganger also wields.
+///
+/// A type alias for `Query<(), With<MeleeWeapon>>`: it carries NO component data (the
+/// unit `()` query item), only the archetype filter, so it is the cheapest possible
+/// "is this entity a melee weapon?" probe. Read-only and disjoint from the
+/// [`WeaponQuery`] (which filters `With<WieldedBy>` and reads the RANGED stat columns a
+/// melee weapon lacks) and the [`WieldsQuery`] — so all coexist with no `B0001`
+/// conflict. Without this filter, a ganger wielding BOTH a ranged and a melee weapon
+/// could resolve the melee entity as its "weapon" and fire nothing (the zero-ranged-
+/// regression mechanism).
+pub type MeleeQuery<'world, 'state> = Query<'world, 'state, (), With<MeleeWeapon>>;
 
 /// The **wielded-weapon query** [`fire`](super::fire) reads the GTW-200 weapon-stat
 /// components + decrements the [`Magazine`] through — the weapon entity's stat columns,

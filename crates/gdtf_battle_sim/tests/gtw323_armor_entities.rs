@@ -26,14 +26,15 @@ use bevy::{
 use gdtf_battle_sim::{
     Aim, Aiming, ArmorIntegrity, BattleGrids, BattleRegistries, BattleSeed, BattleSetup,
     BraceStairCells, Cell, CombatTuning, CoverLedger, Direction, Facing, Faction, FireModeSpec,
-    GangerStatTuning, InjuryRegistry, InjuryRng, InjuryTables, Level, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, SeverityRng, ShooterQuery, ShotKind,
-    ShotRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears,
-    WearsQuery, WieldsQuery,
+    GangerStatTuning, InjuryRegistry, InjuryRng, InjuryTables, Level, MeleeQuery, ModeConeMult,
+    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, SeverityRng, ShooterQuery,
+    ShotKind, ShotRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley,
+    WeaponQuery, Wears, WearsQuery, WieldsQuery,
     fire::FireOrder,
     setup_battle,
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, key, test_armor_registry, test_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, key, test_armor_registry, test_melee_weapon_registry,
+        test_weapon_registry,
     },
 };
 
@@ -89,6 +90,9 @@ fn battle_app() -> Option<(App, BattleSetup)> {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     let registry = test_weapon_registry();
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee weapon
+    // resolves at setup.
+    let melee = test_melee_weapon_registry();
     let armor = test_armor_registry();
     let terrain = gdtf_battle_sim::test_support::test_terrain_registry();
     // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
@@ -102,7 +106,14 @@ fn battle_app() -> Option<(App, BattleSetup)> {
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
                 &situation,
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, Some(&terrain)),
+                BattleRegistries::new(
+                    &gangs,
+                    &registry,
+                    &melee,
+                    &armor,
+                    &stat_tuning,
+                    Some(&terrain),
+                ),
                 fallback_floor_cost,
                 &mut commands,
             )
@@ -155,10 +166,11 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         PieceQuery,
         WieldsQuery,
         WeaponQuery,
+        MeleeQuery,
     )> = SystemState::new(app.world_mut());
     let volley = {
         let world = app.world_mut();
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee_q)) =
             state.get_mut(world)
         else {
             return Volley {
@@ -179,6 +191,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             &mut pieces,
             &wields,
             &mut weapons,
+            &melee_q,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,

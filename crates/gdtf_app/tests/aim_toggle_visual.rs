@@ -69,6 +69,10 @@ fn walk_app() -> App {
     // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
     // situation here, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());
+    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
+    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     // GTW-269: the Load->Intro gate also requires an ArmorRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());

@@ -12,7 +12,7 @@
 //! resource + its default-on-select sync ([`sync_fire_mode_on_select`]).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{FireMode, FireModeSpec, WieldedBy, Wields};
+use gdtf_battle_sim::{FireMode, FireModeSpec, MeleeWeapon, WieldedBy, Wields};
 
 use crate::SelectedShooter;
 
@@ -91,12 +91,15 @@ impl Default for SelectedFireMode {
 /// idempotent on a quiet update.
 ///
 /// Param-only (`bevy-traps.md` #7): a `Res<SelectedShooter>` read, a read-only
-/// `Query<&Wields>`, a `Query<&FireMode, With<WieldedBy>>` weapon-entity query, an
-/// [`Added<FireMode>`](Added) detector, and the `ResMut<SelectedFireMode>` write.
+/// `Query<&Wields>`, a `Query<&FireMode, With<WieldedBy>>` weapon-entity query, a
+/// `Query<(), With<MeleeWeapon>>` marker probe (GTW-505 C5 — so the RANGED weapon resolves
+/// excluding the melee weapon the ganger also wields), an [`Added<FireMode>`](Added)
+/// detector, and the `ResMut<SelectedFireMode>` write.
 pub fn sync_fire_mode_on_select(
     selected: Res<SelectedShooter>,
     wields: Query<&Wields>,
     weapons: Query<&FireMode, With<WieldedBy>>,
+    melee: Query<(), With<MeleeWeapon>>,
     weapon_just_armed: Query<(), Added<FireMode>>,
     mut fire_mode: ResMut<SelectedFireMode>,
 ) {
@@ -112,13 +115,16 @@ pub fn sync_fire_mode_on_select(
         // Selection cleared — leave the mode (it rides until the next armed select).
         return;
     };
-    // The FireMode selector lives on the wielded WEAPON entity (GTW-323 slice 3):
-    // resolve `ganger → Wields → the weapon entity → FireMode`. An unarmed shooter
-    // (no Wields, no weapon, or no FireMode on the weapon) leaves the mode untouched.
+    // The FireMode selector lives on the wielded RANGED WEAPON entity (GTW-323 slice 3):
+    // resolve `ganger → Wields → the ranged weapon entity → FireMode`. GTW-505 C5: a ganger
+    // wields BOTH a ranged AND a melee weapon, so resolve through `Wields::ranged_weapon`
+    // (which EXCLUDES the `MeleeWeapon`-marked entity) — NOT `Wields::weapon` (the spawn-order
+    // fragile first entity). An unarmed shooter (no Wields, no ranged weapon, or no FireMode on
+    // it) leaves the mode untouched.
     let Some(weapon) = wields
         .get(shooter)
         .ok()
-        .and_then(Wields::weapon)
+        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
         .and_then(|weapon| weapons.get(weapon).ok())
     else {
         return;

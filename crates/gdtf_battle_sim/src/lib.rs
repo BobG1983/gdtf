@@ -329,10 +329,12 @@ pub use equipment::{
     },
     weapon,
     weapon::{
-        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponRegistry, WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
+        Accuracy, BaseSpread, DamageProfile, DamageType, FISTS_KEY, FatalBias, FightMode,
+        FightModeKind, FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile,
+        Kickback, MagazineSize, MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle,
+        MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+        Reach, Stable, Strikes, TuCost, Weapon, WeaponBundle, WeaponDamage, WeaponName,
+        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
     },
 };
 pub use foundation::{
@@ -394,8 +396,8 @@ pub use shot_pipeline::{
     cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor},
     fire,
     fire::{
-        BattleGrids, PieceQuery, ShooterQuery, TargetQuery, Volley, WeaponQuery, WearsQuery,
-        WieldsQuery, fire,
+        BattleGrids, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, Volley, WeaponQuery,
+        WearsQuery, WieldsQuery, fire,
     },
     march,
     march::{MarchKind, MarchResult, march_vector},

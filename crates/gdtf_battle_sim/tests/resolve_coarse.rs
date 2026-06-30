@@ -46,6 +46,9 @@ fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
 
     let gangs = gdtf_battle_sim::test_support::test_gang_registry();
     let registry = test_weapon_registry();
+    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee weapon
+    // resolves at setup.
+    let melee = gdtf_battle_sim::test_support::test_melee_weapon_registry();
     let armor = test_armor_registry();
     let terrain = gdtf_battle_sim::test_support::test_terrain_registry();
     // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
@@ -59,7 +62,14 @@ fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
                 &situation,
-                BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, Some(&terrain)),
+                BattleRegistries::new(
+                    &gangs,
+                    &registry,
+                    &melee,
+                    &armor,
+                    &stat_tuning,
+                    Some(&terrain),
+                ),
                 fallback_floor_cost,
                 &mut commands,
             )

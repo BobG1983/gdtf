@@ -167,6 +167,9 @@ fn dangling_link_fixture_yields_the_typed_error() {
     let (situation, link) = dangling_link_situation();
     let gangs = test_gang_registry();
     let registry = weapon_registry();
+    // GTW-505: the melee registry (with the `fists` default) — this test aborts on the
+    // dangling link BEFORE any weapon resolution, but the signature requires the argument.
+    let melee = melee_weapon_registry();
     let armor = armor_registry();
     let stat_tuning = GangerStatTuning::default();
     // GTW-396: pass `terrain: None` and the fallback floor cost — the dangling-link
@@ -177,7 +180,7 @@ fn dangling_link_fixture_yields_the_typed_error() {
     let result = world.run_system_once(move |mut commands: Commands| {
         setup_battle(
             &situation,
-            BattleRegistries::new(&gangs, &registry, &armor, &stat_tuning, None),
+            BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
             fallback_floor_cost,
             &mut commands,
         )

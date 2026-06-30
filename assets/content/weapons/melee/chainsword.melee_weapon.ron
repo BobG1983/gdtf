@@ -1,0 +1,20 @@
+// Chainsword — the screaming chain-toothed blade. The archetypal HIGH-SHRED melee
+// weapon (weapons-and-armor.md §"Out of scope here": "chainsword = high shred"): it
+// chews through armor durability rather than punching clean through it. A ganger that
+// authors `melee_weapon: Some("chainsword")` wields one (GTW-505).
+(
+    // SHARED ranged damage model — resolves through the SAME per-hit formula. The
+    // signature is HIGH shred (it grinds armor integrity down) with solid base damage.
+    damage:        12,       // a heavy bite (tuning DATA, not pinned by tests)
+    punch:         3,        // some penetration, but penetration is not its game
+    shred:         8,        // HIGH shred — the chainsword's defining stat (chews durability)
+    damage_type:   Rend,     // chain / power edge — the Rend wheel node (matchup.md)
+    fatal_bias:    3.0,      // a vicious weapon — pushes the §6 wound-severity score up
+    handedness:    TwoHanded,// a roaring two-handed blade
+    // MELEE-ONLY mechanics (GTW-505):
+    reach:         1,        // a sword strikes the adjacent cell
+    fight_mode: [
+        // ONE fight mode this first slice (the GTW-37 first-slice ruling) — a heavy swing.
+        (kind: Swing, tu_cost: 30, strikes: 1),
+    ],
+)

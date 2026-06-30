@@ -42,9 +42,9 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec,
-    Handedness, Level, LifeState, LinkKind, Magazine, MagazineSize, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, Position, ReloadTu, SquadVisibility,
-    TerrainKind, Tu, TuMax, VerticalLink, VerticalLinkGraph, WieldedBy, Wields,
+    Handedness, Level, LifeState, LinkKind, Magazine, MagazineSize, MeleeWeapon, ModeConeMult,
+    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PlayerFaction, Position, ReloadTu,
+    SquadVisibility, TerrainKind, Tu, TuMax, VerticalLink, VerticalLinkGraph, WieldedBy, Wields,
     acts::{MoveRequested, SetFacingRequested},
     build_vertical_link_graph,
     test_support::SituationBuilder,
@@ -194,6 +194,7 @@ type DecideParams<'w, 's> = (
     Query<'w, 's, ShooterFireData<'static>>,
     Query<'w, 's, &'static Wields>,
     Query<'w, 's, WeaponMagazine<'static>, With<WieldedBy>>,
+    Query<'w, 's, (), With<MeleeWeapon>>,
     Res<'w, SelectedShooter>,
 );
 
@@ -201,14 +202,15 @@ type DecideParams<'w, 's> = (
 /// constructed in this helper's body (carve-out (a) — `app.world_mut()`, NOT a `&mut World`
 /// signature). Exercising the pub decision fn with `Query` params over the real app world.
 /// Since GTW-323 slice 3 the fire guard's magazine lives on the related weapon entity, so the
-/// decision also takes the `Wields` relationship + the weapon-magazine query.
+/// decision also takes the `Wields` relationship + the weapon-magazine query; GTW-505 C5 adds the
+/// `MeleeWeapon` marker probe so the ranged weapon resolves excluding the melee one.
 fn decide(app: &mut App) -> LeftClickOutcome {
     let world = app.world_mut();
     let mut state: SystemState<DecideParams> = SystemState::new(world);
     // `get` now returns a `Result` (Bevy 0.19); these params always validate, so
     // an `Err` is structurally impossible — fall back to the no-op outcome, which
     // would fail the calling assertion loudly rather than panic.
-    let Ok((reads, inspect, move_target, factions, shooters, wields, weapons, selected)) =
+    let Ok((reads, inspect, move_target, factions, shooters, wields, weapons, melee, selected)) =
         state.get(world)
     else {
         return LeftClickOutcome::NoOp;
@@ -221,6 +223,7 @@ fn decide(app: &mut App) -> LeftClickOutcome {
         &shooters,
         &wields,
         &weapons,
+        &melee,
         &selected,
     )
 }

@@ -20,8 +20,8 @@ pub(super) use crate::{
     },
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     fire::{
-        BattleGrids, FireOrder, PieceQuery, ShooterQuery, TargetQuery, Volley, WeaponQuery,
-        WearsQuery, WieldsQuery, fire,
+        BattleGrids, FireOrder, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, Volley,
+        WeaponQuery, WearsQuery, WieldsQuery, fire,
     },
     ganger::{
         Aiming, Direction, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, StanceKind,
@@ -39,10 +39,11 @@ pub(super) use crate::{
     surface::SurfaceGrid,
     tuning::CombatTuning,
     weapon::{
-        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
-        WieldedBy,
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FightMode, FightModeKind,
+        FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile, Kickback, MagazineSize,
+        MeleeDamageProfile, MeleeWeaponBundle, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+        Reach, Stable, Strikes, TuCost, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred, WieldedBy,
     },
 };
 
@@ -58,6 +59,8 @@ pub(super) type FireQueries = (
     PieceQuery<'static, 'static>,
     WieldsQuery<'static, 'static>,
     WeaponQuery<'static, 'static>,
+    // GTW-505 C5: the melee-weapon marker probe `fire()` filters the wielded weapon against.
+    MeleeQuery<'static, 'static>,
 );
 
 /// A fixed seed for the per-test RNG streams (an arbitrary value, not tuned).
@@ -175,6 +178,34 @@ pub(super) fn weapon_rounds(world: &World, ganger: Entity) -> Option<u16> {
 /// component set) is inserted on the weapon entity, NOT the ganger.
 pub(super) fn equip_weapon(world: &mut World, ganger: Entity, weapon: WeaponBundle) {
     world.spawn((WieldedBy::new(ganger), weapon));
+}
+
+/// Spawn + relate a MELEE weapon entity on `ganger` (GTW-505 C5) — the `World`-test
+/// equivalent of `setup_battle`'s second `queue_spawn_related_scenes::<Wields>` for the
+/// melee weapon. Spawns the `MeleeWeaponBundle` (carrying the `MeleeWeapon` marker) with
+/// [`WieldedBy`]`(ganger)` directly, so the ganger's [`Wields`](crate::weapon::Wields)
+/// collection holds BOTH a ranged and a melee weapon — the exact precondition the
+/// zero-ranged-regression test needs (`fire()` must still resolve the RANGED one).
+/// Arbitrary (not shipped) magnitudes.
+pub(super) fn equip_melee_weapon(world: &mut World, ganger: Entity) {
+    let melee = MeleeWeaponBundle::new(
+        WeaponName::new("test-melee".to_owned()),
+        MeleeDamageProfile::new(
+            WeaponDamage::new(9),
+            WeaponPunch::new(3),
+            WeaponShred::new(8),
+            DamageType::Rend,
+        ),
+        FatalBias::new(4.0),
+        Handedness::OneHanded,
+        Reach::new(1),
+        FightMode::new(vec![FightModeSpec::new(
+            FightModeKind::Swing,
+            TuCost::new(20),
+            Strikes::new(1),
+        )]),
+    );
+    world.spawn((WieldedBy::new(ganger), melee));
 }
 
 /// Build a test [`WeaponBundle`] from arbitrary (not-shipped) handling/spread numbers —

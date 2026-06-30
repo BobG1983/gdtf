@@ -12,6 +12,7 @@ use crate::states::load::{
         armor::resolve_armor,
         gangs::resolve_gangs,
         injuries::resolve_injuries,
+        melee_weapons::resolve_melee_weapons,
         params::{LoadAssetCollections, ResolvedResources},
         prefab_v2::resolve_prefabs_v2,
         situation::resolve_situation,
@@ -132,6 +133,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         tuning_present,
         stat_tuning_present,
         weapons_present,
+        melee_weapons_present,
         situation_present,
         armor_present,
         injuries_present,
@@ -144,6 +146,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.tuning.is_some(),
         resolved.stat_tuning.is_some(),
         resolved.weapons.is_some(),
+        resolved.melee_weapons.is_some(),
         resolved.situation.is_some(),
         resolved.armor.is_some(),
         resolved.injuries.is_some(),
@@ -160,6 +163,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(stat_tuning_assets),
         Some(folders),
         Some(weapon_specs),
+        Some(melee_specs),
         Some(armor_specs),
         Some(injury_defs),
         Some(weightings),
@@ -176,6 +180,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.stat_tuning,
         collections.folders,
         collections.weapon_specs,
+        collections.melee_specs,
         collections.armor_specs,
         collections.injury_defs,
         collections.weightings,
@@ -216,6 +221,21 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &weapon_specs,
+            &handles,
+        );
+    }
+
+    // GTW-505: resolve the MELEE weapons folder into the name-keyed MeleeWeaponRegistry on
+    // its OWN absence guard, independently of all other branches (the ranged-weapons-branch
+    // precedent). The setup resolves each ganger's melee weapon against it (an authored key
+    // or the `fists` default). On the failure path resolve_melee_weapons warn!s and inserts
+    // an empty registry, preserving the no-strand guarantee.
+    if !melee_weapons_present {
+        resolve_melee_weapons(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &melee_specs,
             &handles,
         );
     }

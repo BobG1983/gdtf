@@ -18,6 +18,7 @@ use bevy::{
 
 use crate::{
     acts::request::ReloadRequested,
+    fire::MeleeQuery,
     ganger::{LifeState, Tu},
     magazine::Magazine,
     tu::{can_spend_tu, spend_tu},
@@ -125,6 +126,10 @@ pub fn dispatch_reload(
     mut requests: MessageReader<ReloadRequested>,
     mut actors: Query<(&'static mut Tu, &'static LifeState, &'static Wields)>,
     mut weapons: Query<&'static mut Magazine, With<WieldedBy>>,
+    // GTW-505 C5: the melee-weapon marker probe — `Wields::ranged_weapon` filters out the
+    // melee weapon the actor also wields so the RELOAD targets the gun's magazine (a melee
+    // weapon has no Magazine), never the melee entity.
+    melee: MeleeQuery,
     mut results: MessageWriter<ReloadResult>,
 ) {
     for request in requests.read() {
@@ -143,7 +148,7 @@ pub fn dispatch_reload(
         // weapon entity`) and fetch its magazine. A ganger wielding no weapon (or whose
         // weapon entity is absent from the weapon query) is skipped silently — no
         // ReloadResult (it could not have issued a reload intent).
-        let Some(weapon_entity) = wields.weapon() else {
+        let Some(weapon_entity) = wields.ranged_weapon(|entity| melee.get(entity).is_ok()) else {
             continue;
         };
         let Ok(mut magazine) = weapons.get_mut(weapon_entity) else {
