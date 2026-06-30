@@ -141,6 +141,17 @@ pub struct Segment;
 #[derive(Component, Deref, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct SegmentIndex(usize);
 
+impl SegmentIndex {
+    /// Wraps a segment index — the producer-side constructor (symmetric with
+    /// [`ActiveSegment::new`] and the field commits' `new`), so a caller that drives a selection
+    /// (or a test exercising a [`SegmentSelected`] listener's real code path) can synthesize the
+    /// reported index without reaching the private inner.
+    #[must_use]
+    pub const fn new(index: usize) -> Self {
+        Self(index)
+    }
+}
+
 /// Marker on the LABEL text child of a [`Segment`].
 ///
 /// [`repaint_segments`] toggles its [`TextFont`](bevy::text::TextFont) weight

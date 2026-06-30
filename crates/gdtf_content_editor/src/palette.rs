@@ -28,11 +28,11 @@ use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDef, TerrainDefRegistry, TerrainSimKind, TerrainUuid},
 };
-use gdtf_ui::{ActiveButton, ScrollListArea, theme::GdtfTheme};
+use gdtf_ui::{ActiveButton, theme::GdtfTheme};
 
 use crate::{
-    LeftPaletteRegion, StatRegion, session::MapEditorSession, terrain_graphics::graphic_key,
-    tile_atlas::TileAtlas,
+    LeftPaletteRegion, StatRegion, mode::PrefabModeContent, mode_host::mode_host_under_region,
+    session::MapEditorSession, terrain_graphics::graphic_key, tile_atlas::TileAtlas,
 };
 
 /// One **palette row** — a clickable whole-tile entry (sprite + name) in the left palette
@@ -138,30 +138,19 @@ fn spawn_palette_rows(
         .collect();
 
     commands.queue(move |world: &mut World| {
-        let Some(area) = palette_scroll_area(world) else {
+        // Hang the rows on the left palette's PREFAB-mode content container (under the scrolling
+        // viewport) so they top-anchor + scroll AND track the prefab mode's visibility (GTW-474 +
+        // the GTW-421 parenting rule).
+        let Some(host) = mode_host_under_region::<LeftPaletteRegion, PrefabModeContent>(world)
+        else {
             return;
         };
-        if let Ok(mut area_entity) = world.get_entity_mut(area) {
+        if let Ok(mut host_entity) = world.get_entity_mut(host) {
             for row in rows {
-                area_entity.add_child(row);
+                host_entity.add_child(row);
             }
         }
     });
-}
-
-/// Find the [`LeftPaletteRegion`]'s [`ScrollListArea`] — the clipping, scrolling viewport child
-/// of the region's scroll-list grid root frame (the GTW-421 parenting rule).
-fn palette_scroll_area(world: &mut World) -> Option<Entity> {
-    let frame = world
-        .query_filtered::<Entity, With<LeftPaletteRegion>>()
-        .iter(world)
-        .next()?;
-    let children = world.get::<Children>(frame)?;
-    children.iter().find(|child| {
-        world
-            .get_entity(*child)
-            .is_ok_and(|entity| entity.contains::<ScrollListArea>())
-    })
 }
 
 /// Spawn one whole-tile palette row: a clickable [`Button`](bevy::ui::widget::Button) holding
@@ -286,15 +275,13 @@ pub(crate) fn spawn_stat_text(mut commands: Commands, theme: Res<GdtfTheme>) {
         ))
         .id();
     commands.queue(move |world: &mut World| {
-        let Some(region) = world
-            .query_filtered::<Entity, With<StatRegion>>()
-            .iter(world)
-            .next()
-        else {
+        // The stat text is PREFAB-mode content (the selected-tile stats); hang it on the stat
+        // region's PREFAB-mode container so it hides in TERRAIN mode (GTW-474).
+        let Some(host) = mode_host_under_region::<StatRegion, PrefabModeContent>(world) else {
             return;
         };
-        if let Ok(mut region_entity) = world.get_entity_mut(region) {
-            region_entity.add_child(text);
+        if let Ok(mut host_entity) = world.get_entity_mut(host) {
+            host_entity.add_child(text);
         }
     });
 }

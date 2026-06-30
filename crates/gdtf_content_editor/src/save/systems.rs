@@ -10,16 +10,16 @@ use std::path::PathBuf;
 
 use bevy::{prelude::*, ui::Interaction};
 use gdtf_battle_sim::{level::UuidThemeRegistry, terrain::def::TerrainDefRegistry};
-use gdtf_ui::{
-    ActiveButton, CommittedTextValue, FieldColors, ScrollListArea, spawn_text_field,
-    theme::GdtfTheme,
-};
+use gdtf_ui::{ActiveButton, CommittedTextValue, FieldColors, spawn_text_field, theme::GdtfTheme};
 
 use super::{
     project::{editor_map_to_prefab, prefab_save_path, sanitize_name, serialize_prefab},
     types::{PrefabNameField, SavePrefabButton, SavePrefabError},
 };
-use crate::{EditorMap, regions::RightPanelRegion, session::MapEditorSession};
+use crate::{
+    EditorMap, mode::PrefabModeContent, mode_host::mode_host_under_region,
+    regions::RightPanelRegion, session::MapEditorSession,
+};
 
 /// Build + serialize + WRITE the prefab to
 /// `assets/maps/<theme>/<size>/<stem>.prefab_v2.ron` (C1), or return the typed
@@ -112,26 +112,14 @@ pub(crate) fn spawn_save_controls(mut commands: Commands, theme: Res<GdtfTheme>)
         .id();
 
     commands.queue(move |world: &mut World| {
-        let Some(frame) = world
-            .query_filtered::<Entity, With<RightPanelRegion>>()
-            .iter(world)
-            .next()
+        // The save controls are PREFAB-mode content; hang them on the right panel's PREFAB-mode
+        // container so they hide in TERRAIN mode (GTW-474, the GTW-432 save trigger).
+        let Some(host) = mode_host_under_region::<RightPanelRegion, PrefabModeContent>(world)
         else {
             return;
         };
-        let Some(children) = world.get::<Children>(frame) else {
-            return;
-        };
-        let area = children.iter().find(|child| {
-            world
-                .get_entity(*child)
-                .is_ok_and(|entity| entity.contains::<ScrollListArea>())
-        });
-        let Some(area) = area else {
-            return;
-        };
-        if let Ok(mut area_entity) = world.get_entity_mut(area) {
-            area_entity.add_child(group);
+        if let Ok(mut host_entity) = world.get_entity_mut(host) {
+            host_entity.add_child(group);
         }
     });
 }

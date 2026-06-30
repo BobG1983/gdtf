@@ -18,6 +18,8 @@ use crate::{
     canvas::{follow_hover_ghost, paint_cell, spawn_canvas_scroll, spawn_hover_ghost, sync_canvas},
     editor_map::EditorMap,
     load::register_load,
+    mode::{EditorMode, apply_mode_switch, mode_hotkeys, sync_tabs_to_mode, toggle_mode_content},
+    mode_status::refresh_status_bar,
     palette::{refresh_stat_region, select_palette_tile, spawn_stat_text, sync_palette},
     regions::spawn_editor_shell,
     right_panel::{
@@ -25,6 +27,12 @@ use crate::{
         spawn_right_panel_controls,
     },
     session::MapEditorSession,
+    terrain_form::{
+        ArmorInput, FootfallChoice, HpInput, TerrainDraft, apply_terrain_band,
+        apply_terrain_footfall, apply_terrain_kind, commit_terrain_armor, commit_terrain_hp,
+        commit_terrain_name, gate_footfall_field, reflow_band_field, refresh_ron_preview,
+        select_terrain_graphic, spawn_terrain_form, toggle_terrain_tag,
+    },
     tile_atlas::load_tile_atlas,
 };
 
@@ -82,25 +90,47 @@ impl Plugin for MapEditorPlugin {
         // The editor's own dropdown / numeric-field per-type wiring (gate 4b). The numeric
         // field's register requires the one-time `register_text_field` seam to run first
         // (it initializes the handler registry `register_numeric_field` pushes into).
-        register_dropdown::<ThemeUuid>(app);
         register_text_field(app);
+        register_dropdown::<ThemeUuid>(app);
         register_numeric_field::<GridSpanInput>(app);
+        // GTW-474: the TERRAIN form's own dropdown / numeric-field per-type wiring — the footfall
+        // dropdown and the HP / armor numeric fields.
+        register_dropdown::<FootfallChoice>(app);
+        register_numeric_field::<HpInput>(app);
+        register_numeric_field::<ArmorInput>(app);
 
         app.add_systems(
             OnEnter(EditorState::Editing),
             (
+                // GTW-474: the Workbench mode resource + the TERRAIN draft inserted FIRST so the
+                // mode toggle + the form seed from them (the state-scoped-resource pattern).
+                insert_mode,
                 insert_session,
                 insert_map,
+                insert_terrain_draft,
                 load_tile_atlas,
+                // The shell spawns the four regions + the per-mode content containers + the top
+                // bar (mode tabs + the promoted theme dropdown) + the status bar.
                 spawn_editor_shell,
+                // PREFAB-mode content (parents into the regions' PrefabModeContent containers).
                 spawn_right_panel_controls,
                 spawn_stat_text,
                 spawn_canvas_scroll,
+                // TERRAIN-mode content (parents into the regions' TerrainModeContent containers).
+                spawn_terrain_form,
             )
                 .chain()
                 .run_if(resource_exists::<gdtf_ui::theme::GdtfTheme>),
         );
-        app.add_systems(OnExit(EditorState::Editing), (remove_session, remove_map));
+        app.add_systems(
+            OnExit(EditorState::Editing),
+            (
+                remove_mode,
+                remove_session,
+                remove_map,
+                remove_terrain_draft,
+            ),
+        );
 
         // GTW-432: the debug-only save-prefab controls (the prefab-name text field + the "Save
         // prefab" button, under the right panel) and the press trigger. Registered in their OWN
@@ -150,7 +180,93 @@ impl Plugin for MapEditorPlugin {
                 .chain()
                 .run_if(in_state(EditorState::Editing)),
         );
+
+        register_workbench_systems(app);
     }
+}
+
+/// Registers the GTW-474 Workbench `Update` systems: the MODE machine + the TERRAIN form drive
+/// (+ the debug-only terrain save). Factored out of [`MapEditorPlugin::build`] so it stays under
+/// the clippy line gate (the wiring is mechanical; the ordering rationale is at each block).
+fn register_workbench_systems(app: &mut App) {
+    // The Workbench MODE machine. `apply_mode_switch` (a tab click) + `mode_hotkeys` (the 1/2
+    // keys) both write `EditorMode`; `toggle_mode_content` then flips the per-mode containers'
+    // Visibility, `sync_tabs_to_mode` follows the tabs to a hotkey-driven change, and
+    // `refresh_status_bar` rewrites the status line — all AFTER the mode is written this frame
+    // (C1).
+    app.add_systems(
+        Update,
+        (
+            apply_mode_switch,
+            mode_hotkeys,
+            toggle_mode_content,
+            sync_tabs_to_mode,
+            refresh_status_bar,
+        )
+            .chain()
+            .run_if(in_state(EditorState::Editing)),
+    );
+
+    // The TERRAIN form's drive systems. The commits (name / kind / band / HP / armor / graphic /
+    // footfall / tags) run first, then the kind-driven reflow (the C2 footfall gate + the band
+    // field), then the live RON preview LAST so it reflects this frame's edits (C2).
+    app.add_systems(
+        Update,
+        (
+            commit_terrain_name,
+            apply_terrain_kind,
+            apply_terrain_band,
+            commit_terrain_hp,
+            commit_terrain_armor,
+            select_terrain_graphic,
+            apply_terrain_footfall,
+            toggle_terrain_tag,
+            gate_footfall_field,
+            reflow_band_field,
+            refresh_ron_preview,
+        )
+            .chain()
+            .run_if(in_state(EditorState::Editing)),
+    );
+
+    // The debug-only terrain SAVE trigger (the fs-write press) — its own `#[cfg(debug_assertions)]`
+    // block so the always-compiled tuples above stay release-buildable (the GTW-432 prefab-save
+    // precedent).
+    #[cfg(debug_assertions)]
+    {
+        use crate::terrain_form::save_terrain_on_press;
+
+        app.add_systems(
+            Update,
+            save_terrain_on_press.run_if(in_state(EditorState::Editing)),
+        );
+    }
+}
+
+/// `OnEnter(Editing)`: insert the [`EditorMode`] resource (the state-scoped Workbench mode —
+/// bevy-traps #1), seeded to the default [`Prefab`](EditorMode::Prefab) mode so the editor opens
+/// in the existing painter (GTW-474).
+fn insert_mode(mut commands: Commands) {
+    commands.insert_resource(EditorMode::default());
+}
+
+/// `OnExit(Editing)`: remove the [`EditorMode`] resource (the state-scoped-resource pattern —
+/// bevy-traps #1).
+fn remove_mode(mut commands: Commands) {
+    commands.remove_resource::<EditorMode>();
+}
+
+/// `OnEnter(Editing)`: insert the [`TerrainDraft`] (the state-scoped TERRAIN-mode authoring draft
+/// — bevy-traps #1), seeded to a fresh default the form's controls seed their initial values from
+/// (GTW-474).
+fn insert_terrain_draft(mut commands: Commands) {
+    commands.insert_resource(TerrainDraft::default());
+}
+
+/// `OnExit(Editing)`: remove the [`TerrainDraft`] (the state-scoped-resource pattern —
+/// bevy-traps #1).
+fn remove_terrain_draft(mut commands: Commands) {
+    commands.remove_resource::<TerrainDraft>();
 }
 
 /// `OnEnter(Editing)`: insert the shared [`MapEditorSession`] (the state-scoped selection

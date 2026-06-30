@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use gdtf_ui::{ScrollListColors, spawn_scroll_list, theme::GdtfTheme};
 
 use super::types::CanvasScroll;
-use crate::CanvasRegion;
+use crate::{CanvasRegion, mode::PrefabModeContent, mode_host::mode_host_under_region};
 
 /// `OnEnter(Editing)`: wrap the [`CanvasRegion`] panel in a `gdtf_ui`
 /// [`spawn_scroll_list`](gdtf_ui::spawn_scroll_list) so the (overflowing) cell grid SCROLLS
@@ -26,20 +26,18 @@ pub(crate) fn spawn_canvas_scroll(mut commands: Commands, theme: Res<GdtfTheme>)
     };
     let area = spawn_scroll_list(&mut commands, colors, CanvasScroll);
     commands.queue(move |world: &mut World| {
-        let Some(region) = world
-            .query_filtered::<Entity, With<CanvasRegion>>()
-            .iter(world)
-            .next()
-        else {
+        // The canvas is PREFAB-mode content; hang its scroll-list root on the canvas region's
+        // PREFAB-mode container so the whole paint canvas hides in TERRAIN mode (GTW-474).
+        let Some(host) = mode_host_under_region::<CanvasRegion, PrefabModeContent>(world) else {
             return;
         };
         // The scroll-list area's root frame is parented within the same buffer by
-        // `spawn_scroll_list`; move that root under the canvas region panel.
+        // `spawn_scroll_list`; move that root under the canvas region's prefab container.
         let Some(root) = world.get::<ChildOf>(area).map(ChildOf::parent) else {
             return;
         };
-        if let Ok(mut region_entity) = world.get_entity_mut(region) {
-            region_entity.add_child(root);
+        if let Ok(mut host_entity) = world.get_entity_mut(host) {
+            host_entity.add_child(root);
         }
     });
 }

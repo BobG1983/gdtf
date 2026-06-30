@@ -60,6 +60,11 @@ mod canvas;
 mod capture;
 mod editor_map;
 mod load;
+// GTW-474: the Workbench mode machine (the EditorMode resource + the top-bar tabs + the
+// per-mode content-subtree toggle) and the status-bar refresh.
+mod mode;
+mod mode_host;
+mod mode_status;
 mod palette;
 mod placement;
 mod plugin;
@@ -72,6 +77,9 @@ mod right_panel;
 mod save;
 mod session;
 mod state;
+// GTW-474: the TERRAIN authoring mode of the Workbench — the form that captures a TerrainDef and
+// saves it to a per-theme `.terrain_def.ron` the GTW-487 loader resolves.
+mod terrain_form;
 // GTW-495: resolve a TerrainDef's presenter_kind.graphic_name to a terrain atlas index THE WAY
 // THE PRESENTER DOES (via the presenter's TileRoles table) — shared by the palette + canvas.
 mod terrain_graphics;
@@ -81,13 +89,22 @@ pub use app::MapEditorApp;
 pub use canvas::{CanvasCell, CanvasExtent, CanvasGhost, CanvasRoot, CanvasScroll};
 pub use capture::EditorCapturePlugin;
 pub use editor_map::EditorMap;
+pub use mode::{EditorMode, EditorModeTabs, PrefabModeContent, TerrainModeContent};
 pub use palette::{PaletteRow, StatText};
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
     evaluate_placement, names_a_ladder,
 };
 pub use plugin::MapEditorPlugin;
-pub use regions::{CanvasRegion, EditorShellRoot, LeftPaletteRegion, RightPanelRegion, StatRegion};
+pub use regions::{
+    CanvasRegion, EditorShellRoot, EditorStatusBar, EditorTopBar, LeftPaletteRegion,
+    RightPanelRegion, StatRegion, StatusText,
+};
 pub use right_panel::{GridSpanInput, SizeFieldAxis, ThemeDropdown};
 pub use session::MapEditorSession;
 pub use state::EditorState;
+pub use terrain_form::{
+    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainFootfallPicker,
+    TerrainGraphicChoice, TerrainKindChoice, TerrainKindTabs, draft_to_terrain_def,
+    serialize_terrain_def,
+};

@@ -1,34 +1,36 @@
-//! The map-editor **right-panel controls** — the theme dropdown + the size selector that
-//! populate the GTW-417 [`RightPanelRegion`](crate::RightPanelRegion) (GTW-421; swept onto the
-//! UUID model in GTW-495).
+//! The map-editor **right-panel controls** — the prefab SIZE selector (GTW-421; swept onto the
+//! UUID model in GTW-495; the THEME dropdown was PROMOTED to the top bar in GTW-474).
 //!
-//! Spawns, under the right scroll panel, the two authoring controls that drive the shared
-//! [`MapEditorSession`]:
+//! Spawns, under the right scroll panel's PREFAB-mode content container, the prefab size
+//! selector that drives the shared [`MapEditorSession`]:
 //!
-//! - a THEME dropdown (the GTW-410 [`spawn_dropdown`] + [`register_dropdown::<ThemeUuid>`])
-//!   listing every theme the [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry)
-//!   holds, BY its [`UuidThemeDef`](gdtf_battle_sim::level::UuidThemeDef) `display_name`, with
-//!   the first theme (by display name) pre-selected (C1),
 //! - a SIZE selector of THREE numeric fields (the GTW-411 [`spawn_numeric_field`] +
 //!   [`register_numeric_field`]) — width / height / levels — each clamped to its sim ceiling
 //!   (`60` / `60` / `8`) and each committing into the session's [`GridSize`] (C3).
 //!
-//! The drive systems (`apply_theme_selection` / `apply_size_commit`) read the widgets' commit
-//! messages and write the [`MapEditorSession`]. [`seed_default_theme`] eagerly seeds the
-//! session's theme to the dropdown's pre-selected default once the registries resolve (the
-//! session is inserted via deferred `Commands` in the same `OnEnter` buffer, so the controls
-//! cannot seed it directly — the GTW-421 command-flush rule).
+//! The GLOBAL theme dropdown now lives in the top bar
+//! ([`spawn_editor_shell`](crate::regions::spawn_editor_shell)) so the active theme is visible
+//! in every mode (GTW-474); it still carries the [`ThemeDropdown`] marker, so this module's
+//! drive systems are unchanged. The drive systems (`apply_theme_selection` /
+//! `apply_size_commit`) read the widgets' commit messages and write the [`MapEditorSession`].
+//! [`seed_default_theme`] eagerly seeds the session's theme to the dropdown's pre-selected
+//! default once the registries resolve (the session is inserted via deferred `Commands` in the
+//! same `OnEnter` buffer, so the controls cannot seed it directly — the GTW-421 command-flush
+//! rule).
 
 use bevy::{prelude::*, ui::FlexDirection};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, MAX_GRID_SPAN, ThemeUuid, UuidThemeRegistry,
 };
 use gdtf_ui::{
-    DropdownColors, DropdownOption, DropdownSelectionChanged, FieldColors, NumericFieldCommitted,
-    NumericRange, ScrollListArea, spawn_dropdown, spawn_numeric_field, theme::GdtfTheme,
+    DropdownSelectionChanged, FieldColors, NumericFieldCommitted, NumericRange,
+    spawn_numeric_field, theme::GdtfTheme,
 };
 
-use crate::{RightPanelRegion, session::MapEditorSession};
+use crate::{
+    RightPanelRegion, mode::PrefabModeContent, mode_host::mode_host_under_region,
+    session::MapEditorSession,
+};
 
 /// The `MAX_LEVELS` storey ceiling (the sim's z bound) — `8` (`docs/combat/battle-space.md`).
 ///
@@ -95,46 +97,27 @@ pub enum SizeFieldAxis {
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ThemeDropdown;
 
-/// `OnEnter(Editing)`: spawn the theme dropdown + the three size fields under the right panel.
+/// `OnEnter(Editing)`: spawn the three prefab size fields under the right panel's PREFAB-mode
+/// content container (GTW-421; the theme dropdown was PROMOTED to the top bar in GTW-474).
 ///
 /// Runs after [`spawn_editor_shell`](crate::regions::spawn_editor_shell) (so the
-/// [`RightPanelRegion`] exists) and gated on the live [`GdtfTheme`] (for the control colors).
-/// Lists every theme the [`UuidThemeRegistry`] holds, sorted by display name for determinism,
-/// pre-selecting the first (C1); a registry with no themes yields an empty dropdown rather than
-/// panicking. Seeds each size field from the full `60×60×8` [`GridSize::default`] (C3). The
+/// [`RightPanelRegion`] + its per-mode containers exist) and gated on the live [`GdtfTheme`]
+/// (for the control colors). The GLOBAL theme dropdown now lives in the top bar
+/// ([`spawn_editor_shell`](crate::regions::spawn_editor_shell)) — this only spawns the prefab
+/// size selector. Seeds each size field from the full `60×60×8` [`GridSize::default`] (C3). The
 /// session theme is seeded separately by [`seed_default_theme`] (the session is inserted via a
 /// deferred command in the same `OnEnter` buffer, so reading it here would race — the GTW-421
 /// command-flush rule). The controls are parented under the [`RightPanelRegion`]'s
-/// [`ScrollListArea`] — the frame's CLIPPING, SCROLLING viewport child — via a deferred command
-/// so they top-anchor and scroll on overflow (the GTW-421 bottom-cramp fix).
-pub(crate) fn spawn_right_panel_controls(
-    mut commands: Commands,
-    theme: Res<GdtfTheme>,
-    themes: Option<Res<UuidThemeRegistry>>,
-) {
-    let dropdown_colors = DropdownColors {
-        control_bg:          *theme.panel.color,
-        text:                *theme.text.text_color,
-        popup_bg:            *theme.panel.color,
-        option_bg:           *theme.panel.border_color,
-        // The hovered / focused / selected option's highlight — the theme's hover fill, distinct
-        // from the resting `option_bg` so the active row reads as highlighted (GTW-499).
-        option_highlight_bg: *theme.button.hover,
-    };
+/// [`PrefabModeContent`] container (itself under the CLIPPING, SCROLLING
+/// [`ScrollListArea`](gdtf_ui::ScrollListArea) viewport child) via a deferred command so they
+/// top-anchor + scroll AND track the prefab mode's visibility (GTW-474).
+pub(crate) fn spawn_right_panel_controls(mut commands: Commands, theme: Res<GdtfTheme>) {
     let field_colors = FieldColors {
         background: *theme.panel.color,
         text:       *theme.text.text_color,
         caret:      *theme.text.text_color,
     };
     let label_color = *theme.text.text_color;
-
-    // C1: every theme the UuidThemeRegistry holds, listed by its display_name, sorted by label
-    // for a deterministic order, the first pre-selected. The dropdown keeps its OWN widget node
-    // (row layout + padding) — we do NOT pass a `Node` in the marker bundle, which would clobber
-    // it and collapse the label (the GTW-421 clip bug).
-    let options = theme_options(themes.as_deref());
-    let dropdown = spawn_dropdown(&mut commands, options, 0, dropdown_colors, ThemeDropdown);
-    let theme_group = spawn_field_group(&mut commands, "Theme", label_color, dropdown);
 
     // C3: three clamped size fields seeded from the full-extent default (matching the session
     // `insert_session` seeds to). Each field is wrapped in its OWN labeled group so width /
@@ -170,56 +153,21 @@ pub(crate) fn spawn_right_panel_controls(
     // so the groups breathe.
     let content = commands
         .spawn(content_column_node())
-        .add_children(&[theme_group, width_group, height_group, levels_group])
+        .add_children(&[width_group, height_group, levels_group])
         .id();
 
     commands.queue(move |world: &mut World| {
-        // The `RightPanelRegion` marker rides the scroll-list ROOT FRAME — a 2-column CSS grid
-        // (content column + scrollbar column). The controls must hang on the `ScrollListArea` —
-        // the frame's CLIPPING, SCROLLING viewport child — so they stack from the TOP and the
-        // panel scrolls them when they overflow (the GTW-421 bottom-cramp).
-        let Some(frame) = world
-            .query_filtered::<Entity, With<RightPanelRegion>>()
-            .iter(world)
-            .next()
+        // Hang the prefab size selector on the right panel's PREFAB-mode content container (under
+        // the CLIPPING, SCROLLING `ScrollListArea` viewport child) so it top-anchors + scrolls
+        // AND tracks the prefab mode's visibility (GTW-474 + the GTW-421 bottom-cramp fix).
+        let Some(host) = mode_host_under_region::<RightPanelRegion, PrefabModeContent>(world)
         else {
             return;
         };
-        let Some(children) = world.get::<Children>(frame) else {
-            return;
-        };
-        let area = children.iter().find(|child| {
-            world
-                .get_entity(*child)
-                .is_ok_and(|entity| entity.contains::<ScrollListArea>())
-        });
-        let Some(area) = area else {
-            return;
-        };
-        if let Ok(mut area_entity) = world.get_entity_mut(area) {
-            area_entity.add_child(content);
+        if let Ok(mut host_entity) = world.get_entity_mut(host) {
+            host_entity.add_child(content);
         }
     });
-}
-
-/// Build the theme dropdown's option list from the [`UuidThemeRegistry`] — one
-/// [`DropdownOption<ThemeUuid>`] per registered theme, labeled by its
-/// [`UuidThemeDef`](gdtf_battle_sim::level::UuidThemeDef) `display_name`, sorted by label so the
-/// order is deterministic (the registry is a `HashMap`). An absent / empty registry yields an
-/// empty list (the dropdown then offers nothing rather than panicking).
-fn theme_options(themes: Option<&UuidThemeRegistry>) -> Vec<DropdownOption<ThemeUuid>> {
-    let Some(themes) = themes else {
-        return Vec::new();
-    };
-    let mut options: Vec<(String, ThemeUuid)> = themes
-        .defs()
-        .map(|(key, def)| ((*def.display_name).clone(), *key))
-        .collect();
-    options.sort_by(|a, b| a.0.cmp(&b.0));
-    options
-        .into_iter()
-        .map(|(label, key)| DropdownOption::new(key, label))
-        .collect()
 }
 
 /// `Update` (in `Editing`): seed the session theme to the dropdown's pre-selected default once
