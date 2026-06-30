@@ -10,7 +10,9 @@ mod controls;
 mod draw;
 mod lifecycle;
 
-pub(in crate::states::running::procgen_viz) use build::{insert_viz_model, spawn_viz_screen};
+pub(in crate::states::running::procgen_viz) use build::{
+    insert_viz_model, respawn_quads_on_generate, spawn_viz_screen,
+};
 pub(in crate::states::running::procgen_viz) use controls::{auto_on_press, step_on_press};
 pub(in crate::states::running::procgen_viz) use draw::sync_revealed_quads;
 pub(in crate::states::running::procgen_viz) use lifecycle::remove_viz_model;

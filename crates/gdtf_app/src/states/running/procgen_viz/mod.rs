@@ -29,6 +29,7 @@
 #[cfg(all(debug_assertions, feature = "dev_capture"))]
 mod capture;
 mod components;
+mod config;
 mod model;
 mod plugin;
 mod systems;
@@ -45,4 +46,17 @@ crate::support_use! {
 #[cfg(feature = "test-support")]
 crate::support_use! {
     model::{ProcgenViz, QuadTint};
+}
+
+// Test-support-only re-export of the GTW-498 config resource + the input-control markers
+// (the headless C7 tests drive the inputs + Generate + assert the regenerated model).
+#[cfg(feature = "test-support")]
+crate::support_use! {
+    config::{
+        components::{
+            EnemyGangDropdown, GenerateButton, HeightField, LevelsField, PlayerGangDropdown,
+            SeedField, SizeStatusText, ThemeDropdown, WidthField,
+        },
+        resource::VizConfig,
+    };
 }

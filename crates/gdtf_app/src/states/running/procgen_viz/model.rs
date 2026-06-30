@@ -21,8 +21,9 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    FilledPlacement, GridSize, PlacedPrefab, PrefabName, PrefabRegistry2, ProcgenRng,
-    ProcgenTuning, SpawnRole, ThemeUuid, assemble_placement, fill_placement, rng::BattleSeed,
+    FilledPlacement, GangName, GangRegistry, GridSize, PlacedPrefab, PrefabName, PrefabRegistry2,
+    ProcgenRng, ProcgenTuning, SpawnRole, ThemeUuid, assemble_placement, fill_placement,
+    rng::BattleSeed,
 };
 
 /// The fixed default root seed the visualizer assembles a level from when no
@@ -81,6 +82,34 @@ impl QuadTint {
             SpawnRole::Enemy => Self::Enemy,
             SpawnRole::Fill => Self::Neutral,
         }
+    }
+}
+
+/// A gang ANNOTATION on a deployment quad — the occupying gang's name plus its roster member
+/// count, shown as the quad's label so the player/enemy deployment zones read as "who is here"
+/// (GTW-498 C4).
+///
+/// A named newtype over [`String`] (no-bare-types rule 1: a label is a domain value, not a bare
+/// `String`). Procgen is TERRAIN-ONLY — choosing a gang does NOT change the generated layout;
+/// the annotation only LABELS the already-placed player/enemy deployment quad (display, not
+/// geometry). Built through [`for_roster`](GangAnnotation::for_roster) from a resolved roster,
+/// read through the derived [`Deref`]; private inner.
+#[derive(Deref, Clone, PartialEq, Eq, Debug)]
+pub(in crate::states::running::procgen_viz) struct GangAnnotation(String);
+
+impl GangAnnotation {
+    /// Build a deployment-quad annotation from a gang's [`GangName`] and its roster's member
+    /// count — e.g. `goliaths (4)`. The count is resolved against the [`GangRegistry`]; an
+    /// absent / empty roster annotates with `(0)` (never panics — C4 no-gang fallback).
+    #[must_use]
+    pub(in crate::states::running::procgen_viz) fn for_roster(
+        name: &GangName,
+        registry: Option<&GangRegistry>,
+    ) -> Self {
+        let members = registry
+            .and_then(|registry| registry.roster(name))
+            .map_or(0, |roster| roster.members.len());
+        Self(format!("{} ({members})", name.as_str()))
     }
 }
 
@@ -251,7 +280,7 @@ crate::support_item! {
     /// [`ProcgenViz::quads`](ProcgenViz::quads) (which returns `&[VizQuad]`) under `test-support`.
     #[derive(Clone, PartialEq, Eq, Debug)]
     struct VizQuad {
-        /// The placed prefab's name (the label text).
+        /// The placed prefab's name (the base label text).
         name: PrefabName,
         /// The quad's footprint size in cells (the label reports `WxH`).
         size: QuadSize,
@@ -259,16 +288,14 @@ crate::support_item! {
         rect: QuadRect,
         /// The tint role this quad draws with (player = green, enemy = red, fill = neutral, C3).
         tint: QuadTint,
+        /// The OCCUPYING gang annotation (C4) — present only on the player / enemy deployment
+        /// quads when a gang is chosen, [`None`] on fill quads. When present it REPLACES the
+        /// prefab name in the quad's label so the deployment zone reads as the gang in it.
+        gang: Option<GangAnnotation>,
     }
 }
 
 impl VizQuad {
-    /// The placed prefab's name (the label text).
-    #[must_use]
-    pub(in crate::states::running::procgen_viz) const fn name(&self) -> &PrefabName {
-        &self.name
-    }
-
     /// The quad's footprint size in cells.
     #[must_use]
     pub(in crate::states::running::procgen_viz) const fn size(&self) -> QuadSize {
@@ -287,9 +314,21 @@ impl VizQuad {
         self.tint
     }
 
-    /// Project one placed prefab (with an explicit tint role) into a visualizer quad —
-    /// reading its name, footprint size, and region rectangle from the sim placement.
-    fn from_placed(placed: &PlacedPrefab, tint: QuadTint) -> Self {
+    /// The quad's DISPLAY label text — the occupying gang annotation (C4) when present
+    /// (player / enemy deployment quads), else the placed prefab's name (fill quads). The draw
+    /// layer renders this plus the `WxH` size.
+    #[must_use]
+    pub(in crate::states::running::procgen_viz) fn label_text(&self) -> String {
+        match &self.gang {
+            Some(gang) => (**gang).clone(),
+            None => self.name.as_str().to_owned(),
+        }
+    }
+
+    /// Project one placed prefab (with an explicit tint role + optional gang annotation, C4)
+    /// into a visualizer quad — reading its name, footprint size, and region rectangle from the
+    /// sim placement. A `gang` annotation REPLACES the prefab name in the quad's label.
+    fn from_placed(placed: &PlacedPrefab, tint: QuadTint, gang: Option<GangAnnotation>) -> Self {
         let prefab = placed.prefab();
         let region = placed.region();
         let footprint = region.footprint();
@@ -310,6 +349,7 @@ impl VizQuad {
             size,
             rect,
             tint,
+            gang,
         }
     }
 }
@@ -435,6 +475,45 @@ impl ProcgenViz {
         self.board
     }
 
+    /// The board's cell extent as a `(width, height)` pair — PURELY test-facing (the C7 size
+    /// assertion checks the regenerated board reflects the chosen grid-size width/height), so it
+    /// is `#[cfg(feature = "test-support")]`-gated: it exists only in the harness build, never in
+    /// the binary (where it would be dead code).
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub fn board_dimensions(&self) -> (u32, u32) {
+        let extent = self.board.size();
+        (*extent.width(), *extent.height())
+    }
+
+    /// The DISPLAY label of the quad at `index` (`0` = player, `1` = enemy, then fill), or
+    /// `None` if out of range — PURELY test-facing (the C4 assertion checks the player / enemy
+    /// quad carries its chosen-gang annotation after Generate). `#[cfg(feature =
+    /// "test-support")]`-gated (harness-only, never in the binary).
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub fn quad_label_at(&self, index: usize) -> Option<String> {
+        self.quads.get(index).map(VizQuad::label_text)
+    }
+
+    /// The quad at `index`'s board RECTANGLE as `(min_x, min_y, width, height)` cells, or `None`
+    /// if out of range — PURELY test-facing (the C3 determinism assertion fingerprints the
+    /// ordered placement RECTANGLES, which change with the seed, without naming a tunable
+    /// magnitude). `#[cfg(feature = "test-support")]`-gated (harness-only, never in the binary).
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub fn quad_rect_at(&self, index: usize) -> Option<(u32, u32, u32, u32)> {
+        self.quads.get(index).map(|quad| {
+            let rect = quad.rect();
+            (
+                *rect.min_x(),
+                *rect.min_y(),
+                *rect.extent().width(),
+                *rect.extent().height(),
+            )
+        })
+    }
+
     crate::support_item! {
         /// The ordered placement sequence (player, enemy, then fill). Used in-crate by the
         /// screen spawn AND test-facing (the headless assertions read `quads().len()` as the
@@ -476,6 +555,10 @@ impl ProcgenViz {
     /// registry + theme + grid-size + seed, projecting the result into the ordered quad
     /// sequence (player, enemy, then fill in placement order) — initially with ZERO revealed.
     ///
+    /// This is the no-gang-annotation form (the GTW-434 entry shape preserved for the initial
+    /// `OnEnter` build, C6): it delegates to [`build_with_gangs`](ProcgenViz::build_with_gangs)
+    /// with no chosen gangs, so the player/enemy quads label by prefab name.
+    ///
     /// On a procgen failure (e.g. an EMPTY registry — the no-content harness) OR no registry
     /// at all, it builds an EMPTY model (the board extent only, no quads): the visualizer is
     /// still reachable and tears down cleanly, it just has nothing to reveal. This mirrors the
@@ -486,6 +569,29 @@ impl ProcgenViz {
         theme: ThemeUuid,
         grid_size: GridSize,
         seed: BattleSeed,
+    ) -> Self {
+        Self::build_with_gangs(registry, theme, grid_size, seed, None, None, None)
+    }
+
+    /// Build the visualizer model from the sim space-packing pipeline AND apply chosen-gang
+    /// deployment-quad annotations (GTW-498 C4/C5).
+    ///
+    /// Identical to [`build`](ProcgenViz::build) for the geometry — procgen is TERRAIN-ONLY, so
+    /// the chosen `player_gang` / `enemy_gang` do NOT change the generated layout — but the
+    /// player quad (index 0) and the enemy quad (index 1) are LABELLED with the occupying gang's
+    /// name + member count (resolved against `gangs`). `None` gangs label by prefab name (the
+    /// initial / no-gang state). An absent / empty registry yields a `(0)` annotation; nothing
+    /// here panics (C4 no-gang fallback). Same seed → identical placement; a different seed →
+    /// a different placement (C3/C5 determinism), because the only RNG input is `seed`.
+    #[must_use]
+    pub(in crate::states::running::procgen_viz) fn build_with_gangs(
+        registry: Option<&PrefabRegistry2>,
+        theme: ThemeUuid,
+        grid_size: GridSize,
+        seed: BattleSeed,
+        gangs: Option<&GangRegistry>,
+        player_gang: Option<&GangName>,
+        enemy_gang: Option<&GangName>,
     ) -> Self {
         let board = board_extent(grid_size);
         let Some(filled) = assemble_filled(registry, theme, grid_size, seed) else {
@@ -500,13 +606,25 @@ impl ProcgenViz {
 
         let placement = filled.placement();
         let mut quads = Vec::with_capacity(2 + filled.fill().len());
-        // Fixed reveal order (C1/C2): player, enemy, then fill in placement order.
-        quads.push(VizQuad::from_placed(placement.player(), QuadTint::Player));
-        quads.push(VizQuad::from_placed(placement.enemy(), QuadTint::Enemy));
+        // Fixed reveal order (C1/C2): player, enemy, then fill in placement order. The player /
+        // enemy quads carry their chosen-gang annotation (C4) when a gang is selected.
+        let player_label = player_gang.map(|name| GangAnnotation::for_roster(name, gangs));
+        let enemy_label = enemy_gang.map(|name| GangAnnotation::for_roster(name, gangs));
+        quads.push(VizQuad::from_placed(
+            placement.player(),
+            QuadTint::Player,
+            player_label,
+        ));
+        quads.push(VizQuad::from_placed(
+            placement.enemy(),
+            QuadTint::Enemy,
+            enemy_label,
+        ));
         for placed in filled.fill() {
             quads.push(VizQuad::from_placed(
                 placed,
                 QuadTint::from_role(SpawnRole::Fill),
+                None,
             ));
         }
 

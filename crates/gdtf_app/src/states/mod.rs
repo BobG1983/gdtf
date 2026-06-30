@@ -138,5 +138,13 @@ crate::support_use! {
         AutoButton, BoardQuad, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, StepButton,
     };
 }
+// GTW-498: the configurable-inputs resource + input-control markers (the C7 tests drive them).
+#[cfg(all(feature = "test-support", debug_assertions))]
+crate::support_use! {
+    running::{
+        EnemyGangDropdown, GenerateButton, HeightField, LevelsField, PlayerGangDropdown,
+        SeedField, SizeStatusText, ThemeDropdown, VizConfig, WidthField,
+    };
+}
 mod teardown;
 pub(in crate::states) use teardown::TeardownScenePlugin;

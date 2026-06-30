@@ -7,7 +7,7 @@
 //! model. The whole module is `#[cfg(debug_assertions)]`-gated by its parent.
 
 use bevy::{prelude::*, ui::Val};
-use gdtf_battle_sim::{level::PrefabRegistry2, rng::BattleSeed};
+use gdtf_battle_sim::{GangRegistry, UuidThemeRegistry, level::PrefabRegistry2, rng::BattleSeed};
 use gdtf_ui::{
     ButtonLabel, spawn_button, spawn_panel,
     theme::GdtfTheme,
@@ -17,8 +17,11 @@ use gdtf_ui::{
 use crate::states::{
     LoadedSituation, RunningState,
     running::procgen_viz::{
-        components::{AutoButton, BoardQuad, ProcgenVizRoot, StepButton, prefab_quad_marker},
-        model::{BoardExtent, ProcgenViz, QuadRect, RevealIndex, VizQuad, default_viz_seed},
+        components::{
+            AutoButton, BoardQuad, PrefabQuad, ProcgenVizRoot, StepButton, prefab_quad_marker,
+        },
+        config::resource::VizConfig,
+        model::{BoardExtent, ProcgenViz, QuadRect, RevealIndex, VizQuad},
     },
 };
 
@@ -65,21 +68,32 @@ pub(in crate::states::running::procgen_viz) fn insert_viz_model(
     let (grid_size, theme) = situation
         .as_deref()
         .map_or_else(Default::default, |s| (s.grid_size, s.theme));
-    let seed = seed_override
-        .as_deref()
-        .copied()
-        .unwrap_or_else(default_viz_seed);
+
+    // GTW-498 C6: the SELECTED-INPUTS config seeds from the same situation theme + grid-size and
+    // the default seed — so the INITIAL state matches the prior GTW-434 build until the user
+    // edits an input + presses Generate. A test may inject a `BattleSeed` override; that seeds
+    // the config's seed too (and the initial model), preserving the reproducible-harness path.
+    let mut config = VizConfig::new(theme, grid_size);
+    if let Some(seed) = seed_override.as_deref().copied() {
+        config.set_seed(seed);
+    }
+    let seed = config.seed();
+
+    // The INITIAL model uses no chosen gangs (C6: prefab-name labels), matching GTW-434.
     let model = ProcgenViz::build(registry.as_deref(), theme, grid_size, seed);
     commands.insert_resource(model);
+    commands.insert_resource(config);
 }
 
 /// Spawn the visualizer screen `OnEnter(DebugProcgenVisualizer)` — the themed backdrop root,
 /// the dark board quad (C2), one light tinted quad per placement-sequence entry (initially
-/// hidden — the draw layer reveals them, C2/C3), each with a name + size label, plus the
-/// STEP / AUTO control bar (C1) and a status panel.
+/// hidden — the draw layer reveals them, C2/C3), each with a name + size label, the
+/// configurable INPUT PANEL (theme / size / seed / gangs + Generate, C1–C5), plus the
+/// STEP / AUTO control bar (C1).
 ///
-/// Reads the [`GdtfTheme`] + the just-inserted [`ProcgenViz`] model as `Option<Res<…>>`
-/// (`bevy-traps.md` #1); no-ops the themed parts if the theme is absent (the menu precedent),
+/// Reads the [`GdtfTheme`] + the just-inserted [`ProcgenViz`] model + the [`VizConfig`] as
+/// `Option<Res<…>>` (`bevy-traps.md` #1), and the [`UuidThemeRegistry`] / [`GangRegistry`] for
+/// the dropdown options; no-ops the themed parts if the theme is absent (the menu precedent),
 /// but always spawns the root + board so `OnExit` despawn + the test root-count hold. Every
 /// node carries [`DespawnOnExit(RunningState::DebugProcgenVisualizer)`]. Ordered AFTER
 /// [`insert_viz_model`].
@@ -87,6 +101,9 @@ pub(in crate::states::running::procgen_viz) fn spawn_viz_screen(
     mut commands: Commands,
     theme: Option<Res<GdtfTheme>>,
     model: Option<Res<ProcgenViz>>,
+    config: Option<Res<VizConfig>>,
+    themes: Option<Res<UuidThemeRegistry>>,
+    gangs: Option<Res<GangRegistry>>,
 ) {
     let Some(theme) = theme else {
         // No theme yet — spawn nothing (the menu precedent). The running app always has it.
@@ -158,7 +175,62 @@ pub(in crate::states::running::procgen_viz) fn spawn_viz_screen(
     // CONTROL BAR — the STEP / AUTO buttons (C1) + a status text, in a themed panel.
     let bar = spawn_control_bar(&mut commands, &theme);
 
+    // INPUT PANEL — the configurable theme / size / seed / gang inputs + Generate (C1–C5),
+    // left-anchored so it never occludes the centered board. Spawned from the just-inserted
+    // config (guaranteed present by the OnEnter order; fail-open to a default otherwise).
+    let panel = config.map(|config| {
+        super::super::config::panel::spawn_config_panel(
+            &mut commands,
+            &theme,
+            &config,
+            themes.as_deref(),
+            gangs.as_deref(),
+        )
+    });
+
     commands.entity(root).add_children(&[title, board, bar]);
+    if let Some(panel) = panel {
+        commands.entity(root).add_child(panel);
+    }
+}
+
+/// Re-spawn the per-prefab quads to match a freshly-regenerated model (GTW-498 C5).
+///
+/// Runs `.after` [`generate_on_press`](super::super::config::apply::generate_on_press): when the
+/// [`ProcgenViz`] model resource was REPLACED (changed but NOT freshly added — the `OnEnter`
+/// insert is skipped, since `spawn_viz_screen` already built those quads), it despawns every
+/// existing [`PrefabQuad`] entity and re-spawns one per quad of the NEW model into the existing
+/// [`BoardQuad`]. The reveal is reset to 0 by the rebuild, so the new quads start hidden and the
+/// STEP / AUTO controls step through the NEW result (C5). Guarded on the model + a single board;
+/// param-only (`bevy-traps.md` #7). MUTATE-in-place is not possible here (the quad COUNT changes
+/// across generations), so a despawn+respawn of just the quads is the honest minimal rebuild.
+pub(in crate::states::running::procgen_viz) fn respawn_quads_on_generate(
+    mut commands: Commands,
+    model: Res<ProcgenViz>,
+    boards: Query<Entity, With<BoardQuad>>,
+    quads: Query<Entity, With<PrefabQuad>>,
+) {
+    // Only on a REGENERATE (a replace), never on the initial OnEnter insert (already spawned).
+    if !model.is_changed() || model.is_added() {
+        return;
+    }
+    let Ok(board) = boards.single() else {
+        // No board (or duplicated) — nothing to re-parent into; leave the screen as-is.
+        return;
+    };
+    for quad in &quads {
+        commands.entity(quad).despawn();
+    }
+    let board_extent = model.board();
+    for (index, quad) in model.quads().iter().enumerate() {
+        spawn_prefab_quad(
+            &mut commands,
+            board,
+            RevealIndex::new(index),
+            quad,
+            board_extent,
+        );
+    }
 }
 
 /// Spawn one per-prefab light tinted quad (C2/C3) into the board quad, positioned + sized by
@@ -178,7 +250,7 @@ fn spawn_prefab_quad(
     let tint = quad.tint();
     let label = format!(
         "{} {}x{}",
-        quad.name().as_str(),
+        quad.label_text(),
         *quad.size().width(),
         *quad.size().height()
     );

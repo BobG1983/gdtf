@@ -19,7 +19,9 @@ pub use gdtf_ui::UiPlugin;
 // visualizer module compiles out of release (C4), so these items only exist in a debug build.
 #[cfg(debug_assertions)]
 pub use crate::states::{
-    AutoButton, BoardQuad, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, StepButton,
+    AutoButton, BoardQuad, EnemyGangDropdown, GenerateButton, HeightField, LevelsField,
+    PlayerGangDropdown, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, SeedField,
+    SizeStatusText, StepButton, ThemeDropdown, VizConfig, WidthField,
 };
 pub use crate::{
     app::auto_battle::{
