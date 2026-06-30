@@ -27,9 +27,12 @@
 //! - [`firing_arc`] — the GTW-242 firing arc.
 //! - [`visibility`] — the GTW-338 squad fog-of-war view range + explored dim.
 //! - [`slab`] — the GTW-365 slab-defaults (uniform HP + armor a struck slab seeds to).
-//! - [`reaction`] — the GTW-466 §8 reaction-fire tuning group
+//! - [`reaction`] — the §8 reaction-fire layer: the GTW-466 tuning group
 //!   ([`ReactionTuning`] + four leaves + pure functions [`reaction_cap`] /
-//!   [`clamp_probability`]).
+//!   [`clamp_probability`]) and the GTW-467 deterministic opposed-check core
+//!   (output newtypes [`ReactionScore`] / [`ReactionProbability`] /
+//!   [`ReactionsUsed`] + pure functions [`reaction_score`] /
+//!   [`interrupt_probability`] / [`rolls_interrupt`] / [`may_interrupt`]).
 //! - [`combat_tuning`] — the top-level [`CombatTuning`] resource composing them all.
 //! - [`stat_tuning`] — the GTW-384 [`GangerStatTuning`] resource: the attribute →
 //!   computed-stat derivation weights / divisors / TU params (a SEPARATE store from
@@ -69,8 +72,9 @@ pub use economy::{LinkTu, MoveCost, MoveCosts, StanceChangeTu, TurnTu};
 pub use firing_arc::FiringArc;
 pub use matchup::MatchupMultipliers;
 pub use reaction::{
-    ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin, ReactionTuning,
-    clamp_probability, reaction_cap,
+    ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin, ReactionProbability,
+    ReactionScore, ReactionTuning, ReactionsUsed, clamp_probability, interrupt_probability,
+    may_interrupt, reaction_cap, reaction_score, rolls_interrupt,
 };
 pub use severity::{
     DefenderLuckScale, PenDamageScale, RandomSpread, SeverityEdge, SeverityEdges, SeverityScaling,

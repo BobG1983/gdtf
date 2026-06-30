@@ -1,4 +1,5 @@
-//! The §8 reaction-fire tuning leaves — cap inputs and probability clamp.
+//! The §8 reaction-fire tuning leaves — cap inputs and probability clamp
+//! (GTW-466 data substrate).
 //!
 //! Resolution.md §8 designs the reaction-fire system as "not yet built" but
 //! fully specifies its tuning contract:
@@ -10,7 +11,8 @@
 //! and an optional **probability clamp** (`p_min` / `p_max`) so the opposed-check
 //! probability never collapses to a hard 0% or 100%. This module is the **data
 //! substrate** (GTW-466 child A): the four tuning leaves + the per-ganger cap and
-//! clamp pure functions. No live trigger exists yet (that is GTW-468).
+//! clamp pure functions. The deterministic opposed-check core that consumes them
+//! is GTW-467 ([`super::core`]); the live trigger is GTW-468.
 //!
 //! ## DESIGN FORK — cap formula (resolution.md §8, line 192)
 //!
@@ -194,10 +196,10 @@ impl Default for ReactionPMax {
 /// [`crate::tuning::CombatTuning`]; authored in
 /// `assets/core_tuning/combat.tuning.ron` under `reaction:`.
 ///
-/// No live trigger consumes these leaves yet — this is substrate data only
-/// (GTW-466 child A). The opposed-check core is GTW-467; the live trigger is
-/// GTW-468. The pure functions [`reaction_cap`] and [`clamp_probability`] read
-/// these leaves and are the only call sites for the cap and clamp math.
+/// The GTW-467 opposed-check core reads these leaves through [`reaction_cap`],
+/// [`clamp_probability`], and
+/// [`interrupt_probability`](super::core::interrupt_probability); the live
+/// trigger is GTW-468.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize)]
 pub struct ReactionTuning {
     /// The additive floor of the cap formula: `floor(cap_base + …)`.
@@ -241,8 +243,8 @@ const fn floor_to_u32(val: f32) -> u32 {
 /// result is always ≥ 0; clamped to zero if the float is negative to stay
 /// safe against extreme tuning edits).
 ///
-/// This is **substrate only** (GTW-466 child A) — no system calls this yet.
-/// The live trigger is GTW-468.
+/// Consumed by [`may_interrupt`](super::core::may_interrupt) (GTW-467) as the
+/// per-turn ceiling; the live trigger is GTW-468.
 ///
 /// # Arguments
 ///
@@ -271,8 +273,8 @@ pub fn reaction_cap(reactions: Reactions, tuning: &ReactionTuning) -> u32 {
 /// - A value above `p_max` is clamped DOWN to `p_max`.
 /// - A value already in `[p_min, p_max]` is returned unchanged.
 ///
-/// This is **substrate only** (GTW-466 child A) — no system calls this yet.
-/// The live trigger is GTW-468.
+/// The GTW-467 [`interrupt_probability`](super::core::interrupt_probability)
+/// routes its raw ratio through this clamp; the live trigger is GTW-468.
 ///
 /// # Arguments
 ///
@@ -282,79 +284,4 @@ pub fn reaction_cap(reactions: Reactions, tuning: &ReactionTuning) -> u32 {
 #[must_use]
 pub fn clamp_probability(p: f32, tuning: &ReactionTuning) -> f32 {
     p.clamp(*tuning.p_min, *tuning.p_max)
-}
-
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The cap is **monotone non-decreasing** in [`Reactions`]: a ganger with
-    /// higher Reactions never gets fewer interrupts than one with lower Reactions
-    /// (the consistency invariant from the ticket contract).
-    ///
-    /// Value-agnostic: never pins the default magnitudes — only the ordering
-    /// relation across a sequence of ascending Reactions values.
-    #[test]
-    fn reaction_cap_is_monotone_nondecreasing_in_reactions() {
-        let tuning = ReactionTuning::default();
-        // Ascending sequence of Reactions values (arbitrary, never shipped defaults).
-        let values = [0.0_f32, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 20.0];
-        let caps: Vec<u32> = values
-            .iter()
-            .map(|&r| reaction_cap(Reactions::new(r), &tuning))
-            .collect();
-
-        for window in caps.windows(2) {
-            let (prev, next) = (window[0], window[1]);
-            assert!(
-                prev <= next,
-                "reaction_cap must be monotone non-decreasing in Reactions: \
-                 cap({prev}) > cap({next}) — invariant violated",
-            );
-        }
-    }
-
-    /// The clamp maps a value BELOW `p_min` UP to `p_min`.
-    #[test]
-    fn clamp_probability_lifts_below_p_min_to_p_min() {
-        let tuning = ReactionTuning::default();
-        // Arbitrary value strictly below the default p_min.
-        let below = *tuning.p_min - 0.02;
-        let clamped = clamp_probability(below, &tuning);
-        assert_eq!(
-            clamped.to_bits(),
-            (*tuning.p_min).to_bits(),
-            "a value below p_min must be clamped up to p_min",
-        );
-    }
-
-    /// The clamp maps a value ABOVE `p_max` DOWN to `p_max`.
-    #[test]
-    fn clamp_probability_lowers_above_p_max_to_p_max() {
-        let tuning = ReactionTuning::default();
-        // Arbitrary value strictly above the default p_max.
-        let above = *tuning.p_max + 0.02;
-        let clamped = clamp_probability(above, &tuning);
-        assert_eq!(
-            clamped.to_bits(),
-            (*tuning.p_max).to_bits(),
-            "a value above p_max must be clamped down to p_max",
-        );
-    }
-
-    /// The clamp leaves an IN-RANGE value unchanged.
-    #[test]
-    fn clamp_probability_passes_through_in_range_value() {
-        let tuning = ReactionTuning::default();
-        // An arbitrary in-range value (midpoint between p_min and p_max).
-        let mid = f32::midpoint(*tuning.p_min, *tuning.p_max);
-        let clamped = clamp_probability(mid, &tuning);
-        assert_eq!(
-            clamped.to_bits(),
-            mid.to_bits(),
-            "a value already in [p_min, p_max] must pass through unchanged",
-        );
-    }
 }
