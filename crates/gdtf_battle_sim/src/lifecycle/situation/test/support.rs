@@ -37,9 +37,9 @@ pub(super) use crate::{
     terrain::{
         def::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainTag, TerrainUuid,
         },
-        entity::{TerrainCell, TerrainPieceKind},
+        entity::{BlocksPathfinding, TerrainCell, TerrainPieceKind},
         floor::FloorCostGrid,
         piece::{FootfallSound, TerrainGraphicKey},
     },

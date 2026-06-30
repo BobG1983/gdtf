@@ -228,10 +228,12 @@ fn unreachable_target_yields_empty_preview() {
                 if dx == 0 && dy == 0 {
                     continue;
                 }
-                grid.set_terrain(
-                    CellLevel::new(Cell::new(20 + dx, 20 + dy), Level::new(0)),
-                    TerrainKind::Wall,
-                );
+                let at = CellLevel::new(Cell::new(20 + dx, 20 + dy), Level::new(0));
+                grid.set_terrain(at, TerrainKind::Wall);
+                // GTW-501: find_path reads the TAG-derived path-blocking surface, so a
+                // hand-set wall must also mark that surface (mirroring the projection a
+                // spawned wall entity's BlocksPathfinding marker yields).
+                grid.set_path_blocking(at);
             }
         }
     }

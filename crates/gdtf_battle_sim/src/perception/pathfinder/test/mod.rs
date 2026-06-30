@@ -15,6 +15,10 @@
 //! - [`visibility_gated`] — GTW-353: UNSEEN cells are non-routable (route around them /
 //!   excluded from the flood), EXPLORED stays routable, and the visibility-aware
 //!   blocking predicate (own-squad always, enemy iff VISIBLE, scatter/walls always).
+//! - [`tag_blocking`] — GTW-501 (C6 a/b/c): the pathfinder reads the TAG-derived
+//!   path-blocking surface, not [`TerrainKind`](crate::occupancy::TerrainKind) — a tagged
+//!   cell blocks, the same cell untagged does not, and a kind-default `Wall` still blocks
+//!   (zero regression).
 
 mod bit_identity;
 mod blocked;
@@ -23,4 +27,5 @@ mod cross_storey;
 mod determinism;
 mod same_storey;
 mod support;
+mod tag_blocking;
 mod visibility_gated;

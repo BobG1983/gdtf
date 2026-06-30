@@ -302,10 +302,19 @@ fn later_occupant_placement_wins() {
 /// Build a fresh grid with the given `(cell, level, terrain)` placements set —
 /// a HAND-BUILT fixture (C6), NOT the real asset loader. Every other slot stays
 /// the default [`TerrainKind::Open`].
+///
+/// GTW-501: `pathable_neighbors` now reads the TAG-derived path-blocking surface
+/// ([`OccupancyGrid::is_path_blocked`]), not the kind-based [`TerrainKind`] marker, so a
+/// blocking placement is mirrored into that surface too — reproducing the projection a
+/// `Wall`/`Cover` def's `BlocksPathfinding` marker yields, so these pre-GTW-501 neighbour
+/// fixtures behave identically (the C5 zero-regression guarantee).
 fn grid_with(terrain: &[(CellLevel, TerrainKind)]) -> OccupancyGrid {
     let mut grid = OccupancyGrid::new();
     for &(at, kind) in terrain {
         grid.set_terrain(at, kind);
+        if kind.blocks() {
+            grid.set_path_blocking(at);
+        }
     }
     grid
 }

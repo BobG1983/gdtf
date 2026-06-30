@@ -22,7 +22,10 @@ use crate::{
     situation::BattleSetupError,
     slab::SlabHp,
     terrain::{
-        def::{TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainUuid},
+        def::{
+            TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainUuid,
+            derives_path_blocking,
+        },
         entity::TerrainPieceKind,
         piece::{FootfallSound, TerrainGraphicKey},
     },
@@ -54,6 +57,12 @@ pub(super) struct ResolvedCoverPiece {
     /// in the GTW-491 model: a wall entity now carries a graphic, which it did not on the old
     /// model; GTW-493 reads it).
     pub(super) graphic:          TerrainGraphicKey,
+    /// Whether this piece derives the
+    /// [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) marker (GTW-501 C1)
+    /// — `true` per [`derives_path_blocking`]: an explicit `BlocksPathfinding` tag OR a
+    /// `Wall`/`Cover` sim-kind default. Carried forward so the spawn loop attaches the marker
+    /// without re-reading the registry.
+    pub(super) blocks_path:      bool,
 }
 
 /// A pre-resolved slab piece — the structural stats and presentation hooks extracted
@@ -74,6 +83,12 @@ pub(super) struct ResolvedSlabPiece {
     /// The OPTIONAL footfall sound key — carried on the spawned entity when the def names one
     /// (slab-only in the GTW-491 model; `None` when the slab def authors no footfall).
     pub(super) footfall:         Option<FootfallSound>,
+    /// Whether this slab derives the
+    /// [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) marker (GTW-501 C1)
+    /// — a slab does NOT block path by default, so this is `true` ONLY when the def carries
+    /// an explicit `BlocksPathfinding` tag (the C1 opt-in, e.g. a barricade slab). Carried
+    /// forward so the spawn loop attaches the marker without re-reading the registry.
+    pub(super) blocks_path:      bool,
 }
 
 /// Resolve a [`TerrainDef`] as a **cover** piece (wall / cover) — extract the
@@ -132,6 +147,10 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
         // error; fall through to the def's own graphic regardless of which presenter variant
         // it is (every variant carries `graphic_name`).
         graphic: presenter_graphic(&def.presenter_kind),
+        // GTW-501 C1/D2: derive path-blocking from the def — for a Wall/Cover the kind
+        // default makes this `true` (existing walls/cover keep blocking, zero regression);
+        // an explicit BlocksPathfinding tag can only add to that.
+        blocks_path: derives_path_blocking(def),
     })
 }
 
@@ -166,6 +185,9 @@ pub(super) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<Re
             TerrainPresenterKind::Slab { footfall, .. } => footfall.clone(),
             TerrainPresenterKind::Wall { .. } | TerrainPresenterKind::Cover { .. } => None,
         },
+        // GTW-501 C1/D2: a slab does NOT block path by default, so this is `true` only when
+        // the def carries an explicit BlocksPathfinding tag (a barricade/lip slab).
+        blocks_path:      derives_path_blocking(def),
     })
 }
 

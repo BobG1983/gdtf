@@ -19,6 +19,7 @@
 //! *code-health-module-layout*): `mod.rs` is wiring-only; per-concern files carry the
 //! types; `test/` houses the unit tests.
 
+mod blocking;
 mod definition;
 mod kind;
 mod registry;
@@ -27,6 +28,7 @@ mod uuid;
 #[cfg(test)]
 mod test;
 
+pub use blocking::{derives_path_blocking, sim_kind_blocks_path};
 pub use definition::{TerrainDef, TerrainDisplayName};
 pub use kind::{TerrainPresenterKind, TerrainSimKind, TerrainTag};
 pub use registry::TerrainDefRegistry;

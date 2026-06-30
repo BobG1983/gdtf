@@ -22,6 +22,7 @@ use crate::{
     ai::enemy_ai_turn,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     move_acts::{ReactionShotFired, advance_walk},
+    occupancy::project_path_blocking,
     occupancy_sync::{
         CoverDestroyed, GroundAccrued, SimSystems, SlabDestroyed, sync_destroyed_cover,
     },
@@ -164,6 +165,11 @@ impl Plugin for SimActsPlugin {
                 Update,
                 dispatch_move
                     .after(sync_destroyed_cover)
+                    // GTW-501 C3: `find_path` here reads the tag-derived path-blocking
+                    // surface, so it must run AFTER `project_path_blocking` re-syncs it this
+                    // frame (a Res<OccupancyGrid> reader vs the projection's ResMut writer
+                    // must be ordered explicitly — bevy-traps.md #3).
+                    .after(project_path_blocking)
                     .in_set(SimSystems::Simulate),
             )
             // GTW-355 (C6): the committed-walk engine. It advances every WalkInProgress by
@@ -181,6 +187,13 @@ impl Plugin for SimActsPlugin {
                 advance_walk
                     .after(dispatch_move)
                     .after(sync_destroyed_cover)
+                    // GTW-501 C3/D2: the bump-stop reads the tag-derived path-blocking
+                    // surface (is_path_blocked) — the SAME source the planner reads — so this
+                    // ordering is LOAD-BEARING: it must run after the path-blocking re-sync so
+                    // the bump-stop sees this frame's marker changes (a `BlocksPathfinding`
+                    // added/removed on an in-progress walk's route is honoured the same tick),
+                    // keeping planner and executor in lock-step (bevy-traps.md #3).
+                    .after(project_path_blocking)
                     .in_set(SimSystems::Simulate),
             )
             // GTW-309: the turn-cycle engine joins the gated Simulate band, but takes the
@@ -208,6 +221,10 @@ impl Plugin for SimActsPlugin {
                 enemy_ai_turn
                     .run_if(resource_exists::<ActiveFaction>)
                     .after(dispatch_end_turn)
+                    // GTW-501 C3: `reachable_within` here reads the tag-derived path-blocking
+                    // surface, so it must run AFTER `project_path_blocking` re-syncs it this
+                    // frame (read-after-write ordering on OccupancyGrid — bevy-traps.md #3).
+                    .after(project_path_blocking)
                     .before(dispatch_fire)
                     .before(dispatch_move)
                     .in_set(SimSystems::Simulate),

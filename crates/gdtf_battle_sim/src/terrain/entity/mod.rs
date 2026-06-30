@@ -37,5 +37,5 @@ pub mod index;
 #[cfg(test)]
 pub(crate) mod test;
 
-pub use components::{TerrainBrace, TerrainCell, TerrainPieceKind};
+pub use components::{BlocksPathfinding, TerrainBrace, TerrainCell, TerrainPieceKind};
 pub use index::{TerrainIndex, TerrainIndexKey};

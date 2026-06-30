@@ -67,10 +67,41 @@ pub(super) fn fog(visible: &[CellLevel], explored_only: &[CellLevel]) -> SquadVi
 
 /// A fresh all-[`TerrainKind::Open`] grid with the given `(cell, terrain)`
 /// placements set — a HAND-BUILT fixture (C6), never the asset loader.
+///
+/// GTW-501: a [`TerrainKind`] placement here drives the kind-based occupancy marker
+/// (what VISION reads). Since GTW-501 split path-blocking out, every placement that should
+/// also block the PATH is mirrored into the tag-derived path-blocking surface — so the
+/// pre-existing geometry fixtures (walls block the route) keep behaving identically (the C5
+/// zero-regression guarantee): a `Wall`/`Cover` placement marks the cell path-blocking too,
+/// reproducing the projection a `Wall`/`Cover` def's `BlocksPathfinding` marker yields.
 pub(super) fn grid_with(terrain: &[(CellLevel, TerrainKind)]) -> OccupancyGrid {
     let mut grid = OccupancyGrid::new();
     for &(at, kind) in terrain {
         grid.set_terrain(at, kind);
+        // Mirror a kind-default-blocking placement into the path-blocking surface, so the
+        // geometry fixtures route exactly as before the GTW-501 path/vision split.
+        if kind.blocks() {
+            grid.set_path_blocking(at);
+        }
+    }
+    grid
+}
+
+/// A fresh grid with EXPLICIT tag-derived path-blocking cells (GTW-501) — the
+/// path-specific fixture the GTW-501 tests use to exercise the
+/// [`is_path_blocked`](OccupancyGrid::is_path_blocked) surface DIRECTLY, independent of the
+/// kind-based [`TerrainKind`] marker.
+///
+/// Each `cell` is marked path-blocking via
+/// [`set_path_blocking`](OccupancyGrid::set_path_blocking) — the same write the GTW-501
+/// projection (`project_path_blocking`) makes for an `Added<BlocksPathfinding>` marker. The
+/// grid's kind-based occupancy is left all-[`TerrainKind::Open`], so this isolates the
+/// PATH-blocking surface (e.g. a `Slab`-kind cell that is open to vision but blocks the
+/// path because it was explicitly tagged).
+pub(super) fn grid_with_path_blocking(cells: &[CellLevel]) -> OccupancyGrid {
+    let mut grid = OccupancyGrid::new();
+    for &cell in cells {
+        grid.set_path_blocking(cell);
     }
     grid
 }

@@ -220,11 +220,15 @@ fn ground_cell(cell: CellLevel) -> Cell {
 ///    (ordered before this system on the next tick) — so this read sees the fog as of
 ///    where the mover STOPPED (the §44 ambush invariant). The reveal IS detected from the
 ///    [`SquadVisibility`] output, never re-deriving FOV.
-/// 3. **Bump-stop on a live obstacle (C1)** — peek the next cell; if the LIVE
-///    [`OccupancyGrid`] now reports it blocked (a wall / standing cover) OR occupied (a
-///    ganger or blocking scatter that arrived since the route was planned — occupancy is
-///    re-synced every tick), halt at the last free step: remove the walk, take NO step
-///    onto the obstacle (no teleport, no co-location).
+/// 3. **Bump-stop on a live obstacle (C1; GTW-501 D2)** — peek the next cell; if the LIVE
+///    [`OccupancyGrid`] now reports it
+///    [`is_path_blocked`](crate::occupancy::OccupancyGrid::is_path_blocked) — the SAME
+///    tag-derived path-blocking surface the PLANNER reads, NOT the kind-based
+///    [`is_blocked`](crate::occupancy::OccupancyGrid::is_blocked) (so planner and executor
+///    agree on a cell that path-blocks via tag ONLY, e.g. a `BlocksPathfinding` marker added
+///    onto the route mid-walk) — OR occupied (a ganger or blocking scatter that arrived since
+///    the route was planned — occupancy is re-synced every tick), halt at the last free step:
+///    remove the walk, take NO step onto the obstacle (no teleport, no co-location).
 /// 4. **Take ONE step (C2 / C4)** — otherwise write the mover's [`Position`] to the next
 ///    cell (a single discrete write the presenter tweens), charge that step's planned
 ///    entry cost atomically via [`spend_tu`], announce a [`MovementOccurred`] from the
@@ -313,11 +317,23 @@ pub fn advance_walk(
             continue;
         };
 
-        // C1 (bump-stop): re-check LIVE model truth before ENTERING the next cell. A wall
-        // / standing cover now there is `is_blocked`; a ganger or blocking scatter that
+        // C1 (bump-stop): re-check LIVE model truth before ENTERING the next cell. A cell
+        // that path-blocks now there is `is_path_blocked`; a ganger or blocking scatter that
         // arrived since planning occupies the slot. Either halts at the last free step —
         // NO step onto the obstacle, NO teleport, NO co-location.
-        if grid.is_blocked(&next) || grid.occupant(&next).is_some() {
+        //
+        // GTW-501 D2: the bump-stop is a RUNTIME movement-impassability gate, so it MUST read
+        // the SAME tag-derived path-blocking surface the planner reads
+        // ([`is_path_blocked`](OccupancyGrid::is_path_blocked) — `pathable_neighbors` /
+        // `find_path` / `reachable_within`), NEVER the kind-based
+        // [`is_blocked`](OccupancyGrid::is_blocked) (that stays vision-only, C4). Otherwise a
+        // cell that path-blocks via tag ONLY (an explicitly-tagged Slab per D2, or a
+        // `BlocksPathfinding` marker added at runtime onto an in-progress walk's already-planned
+        // route per C3) — where `is_path_blocked == true` but `is_blocked == false` — would slip
+        // the bump-stop and the mover would walk THROUGH a cell the planner treats as
+        // impassable. Reading `is_path_blocked` keeps planner and executor in lock-step. The
+        // zero-regression Wall/Cover case is unaffected (both queries agree there, C5).
+        if grid.is_path_blocked(&next) || grid.occupant(&next).is_some() {
             commands.entity(mover).remove::<WalkInProgress>();
             continue;
         }

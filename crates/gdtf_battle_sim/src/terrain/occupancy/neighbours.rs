@@ -122,10 +122,12 @@ pub fn pathable_neighbors<'a>(
     let level = origin.z;
     PLANAR_OFFSETS.into_iter().filter_map(move |(dx, dy)| {
         let neighbour = planar_neighbour(origin, level, dx, dy);
-        // C4: in-bounds AND not blocked. `slot` is `None` for an out-of-bounds
-        // cell (so the cell is dropped); `is_blocked` excludes standing walls /
-        // cover while INCLUDING destroyed-cover cells.
-        if grid.slot(&neighbour).is_none() || grid.is_blocked(&neighbour) {
+        // C4: in-bounds AND not PATH-blocked (GTW-501 D1/C2). `slot` is `None` for an
+        // out-of-bounds cell (so the cell is dropped); `is_path_blocked` reads the
+        // TAG-DERIVED path-blocking surface — NOT the kind-based `is_blocked` vision reads
+        // — excluding cells with a `BlocksPathfinding` marker while still INCLUDING
+        // destroyed-cover cells (the surface mirrors the destroyed-cover exclusion, C5).
+        if grid.slot(&neighbour).is_none() || grid.is_path_blocked(&neighbour) {
             return None;
         }
         let diagonal = dx != 0 && dy != 0;
@@ -167,14 +169,16 @@ fn planar_neighbour(origin: CellLevel, level: i32, dx: i32, dy: i32) -> CellLeve
 ///
 /// The two cells a `(dx, dy)` diagonal shares an edge with are the orthogonal
 /// `(dx, 0)` and `(0, dy)` neighbours. The diagonal is a corner-cut (illegal) iff
-/// BOTH of those are [`is_blocked`](OccupancyGrid::is_blocked) — the unit would
-/// have to slip through the gap where two blocked cells meet at a corner. If at
-/// least one is walkable the diagonal is fine. Only called for true diagonals
+/// BOTH of those are [`is_path_blocked`](OccupancyGrid::is_path_blocked) — the unit would
+/// have to slip through the gap where two PATH-blocking cells meet at a corner. The
+/// corner test reads the SAME tag-derived path-blocking surface as the walkability gate
+/// above (GTW-501 D1/C2), not the kind-based `is_blocked` vision reads. If at least one is
+/// path-walkable the diagonal is fine. Only called for true diagonals
 /// (`dx != 0 && dy != 0`).
 fn corner_is_cut(origin: CellLevel, level: i32, dx: i32, dy: i32, grid: &OccupancyGrid) -> bool {
     let side_a = planar_neighbour(origin, level, dx, 0);
     let side_b = planar_neighbour(origin, level, 0, dy);
-    grid.is_blocked(&side_a) && grid.is_blocked(&side_b)
+    grid.is_path_blocked(&side_a) && grid.is_path_blocked(&side_b)
 }
 
 /// The [`Tu`] cost of stepping onto a cell with floor cost `floor_cost` — orthogonal

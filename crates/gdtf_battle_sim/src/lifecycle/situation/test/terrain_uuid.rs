@@ -191,3 +191,82 @@ fn wall_entity_carries_graphic_and_slab_carries_footfall() {
         "the spawned SLAB entity must carry the def's optional footfall when it names one",
     );
 }
+
+/// A slab [`TerrainDef`] carrying an EXPLICIT [`BlocksPathfinding`](TerrainTag) tag — the
+/// GTW-501 C1 opt-in that adds path-blocking to an otherwise-open slab (a barricade slab).
+fn blocking_slab_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
+    let mut def = slab_def(key, graphic, None);
+    def.tags = vec![TerrainTag::BlocksPathfinding];
+    def
+}
+
+/// GTW-501 C1/D2 (positive + discriminating) — `setup_battle` attaches the
+/// [`BlocksPathfinding`] marker derived from each piece's def: a `Wall` gets it (kind
+/// default → zero regression), a plain `Slab` does NOT, and a `Slab` whose def carries an
+/// explicit `BlocksPathfinding` tag DOES (the C1 opt-in). Drives the REAL spawn path
+/// end-to-end (`run_setup_with`); asserts marker PRESENCE/ABSENCE on the spawned entities.
+#[test]
+fn spawned_entities_carry_blocks_pathfinding_per_def() {
+    let wall_at = key(4, 5, 0);
+    let plain_slab_at = key(6, 7, 1);
+    let barricade_slab_at = key(8, 9, 1);
+    let wall_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0031));
+    let plain_slab_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0032));
+    let barricade_slab_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0033));
+
+    let registry = TerrainDefRegistry::new([
+        (wall_key, wall_def(wall_key, "w")),
+        (plain_slab_key, slab_def(plain_slab_key, "s", None)),
+        (
+            barricade_slab_key,
+            blocking_slab_def(barricade_slab_key, "b"),
+        ),
+    ]);
+
+    let (mut situation, gangs) = SituationBuilder::new()
+        .with_ganger(ganger_at(key(0, 0, 0), 0))
+        .build_with_gangs();
+    situation.walls.push(CoverSpawn::new(wall_at, wall_key));
+    situation
+        .slabs
+        .push(SlabSpawn::new(plain_slab_at, plain_slab_key));
+    situation
+        .slabs
+        .push(SlabSpawn::new(barricade_slab_at, barricade_slab_key));
+
+    let Some((mut app, _setup)) = run_setup_with(
+        situation,
+        gangs,
+        test_registry(),
+        test_armor_registry(),
+        Some(&registry),
+    ) else {
+        return;
+    };
+    let world: &mut World = app.world_mut();
+
+    // Whether the terrain entity at `at` carries the BlocksPathfinding marker — a fresh
+    // query per call so the closure does not hold a borrow across `world` uses.
+    let has_marker = |world: &mut World, at: CellLevel| -> Option<bool> {
+        let mut q = world.query::<(&TerrainCell, Option<&BlocksPathfinding>)>();
+        q.iter(world)
+            .find(|(cell, _)| ***cell == at)
+            .map(|(_, marker)| marker.is_some())
+    };
+
+    assert_eq!(
+        has_marker(world, wall_at),
+        Some(true),
+        "C1/D2: a Wall derives BlocksPathfinding by kind default (zero regression)",
+    );
+    assert_eq!(
+        has_marker(world, plain_slab_at),
+        Some(false),
+        "C1/D2: a plain Slab does NOT carry BlocksPathfinding",
+    );
+    assert_eq!(
+        has_marker(world, barricade_slab_at),
+        Some(true),
+        "C1: a Slab def with an explicit BlocksPathfinding tag DOES carry the marker",
+    );
+}

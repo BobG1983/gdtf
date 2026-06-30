@@ -35,7 +35,10 @@ use crate::{
     surface::{SlabState, SurfaceGrid},
     terrain::{
         def::TerrainDefRegistry,
-        entity::{TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
+        entity::{
+            BlocksPathfinding, TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey,
+            TerrainPieceKind,
+        },
         floor::FloorCostGrid,
     },
     tuning::{GangerStatTuning, MoveCost},
@@ -718,6 +721,14 @@ pub fn setup_battle(
                 resolved.graphic, // TerrainGraphicKey — presenter resolves to atlas entry (NET-NEW for Wall)
             ))
             .id();
+        // GTW-501 C1/D2: attach the BlocksPathfinding marker when the def derives
+        // path-blocking (a Wall/Cover blocks by default → `resolved.blocks_path` is true, so
+        // existing walls/cover keep blocking with no content migration). `Added` fires on
+        // this insert, so the GTW-501 projection picks it up the next time it runs (a unit
+        // struct is not a Bundle in 0.19, so insert it conditionally rather than tupling).
+        if resolved.blocks_path {
+            commands.entity(entity).insert(BlocksPathfinding);
+        }
         terrain_pairs.push((TerrainIndexKey::Cover(cover.at), entity));
     }
     commands.insert_resource(cover_ledger);
@@ -800,6 +811,14 @@ pub fn setup_battle(
         // rather than tupling). UNCONSUMED — no footfall-audio system is built yet (guns-only).
         if let Some(footfall) = resolved.footfall.clone() {
             commands.entity(slab_entity).insert(footfall);
+        }
+
+        // GTW-501 C1/D2: a slab does NOT block path by default — attach the
+        // BlocksPathfinding marker ONLY when the def carries an explicit BlocksPathfinding
+        // tag (`resolved.blocks_path`), the C1 opt-in for a barricade/lip slab. `Added`
+        // fires on insert so the GTW-501 projection blocks the cell.
+        if resolved.blocks_path {
+            commands.entity(slab_entity).insert(BlocksPathfinding);
         }
 
         // GTW-392: a slab is a stair-brace slab when the cell DIRECTLY BELOW it is a

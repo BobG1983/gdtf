@@ -48,6 +48,33 @@ impl TerrainCell {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct TerrainBrace;
 
+/// Marks a terrain ECS entity as **path-blocking** — the sim's pathfinding treats its
+/// `(cell, level)` as impassable (GTW-501, child 482a of the tag-driven-terrain epic).
+///
+/// A pure marker (a unit struct, no data — no-bare-types rule 4 carve-out: a marker
+/// component carries no domain value). It is the SOURCE OF TRUTH for path-blocking:
+/// attached at terrain-entity spawn, derived from the piece's
+/// [`TerrainDef`](crate::terrain::def::TerrainDef) by
+/// [`derives_path_blocking`](crate::terrain::def::derives_path_blocking) — present iff the
+/// def carries an explicit [`BlocksPathfinding`](crate::terrain::def::TerrainTag::BlocksPathfinding)
+/// tag OR its [`sim_kind`](crate::terrain::def::TerrainSimKind) defaults to path-blocking
+/// (`Wall` / `Cover` block by default; `Slab` does not). An explicit tag therefore ADDS
+/// path-blocking to an otherwise-open `Slab`, and existing walls/cover keep blocking with
+/// no content migration (the GTW-501 zero-regression rule, D2).
+///
+/// The [`OccupancyGrid`](crate::occupancy::OccupancyGrid)'s tag-derived path-blocking
+/// surface is the PROJECTED snapshot of these markers:
+/// [`project_path_blocking`](crate::occupancy::project_path_blocking) folds the markers
+/// into the grid at setup and keeps them in sync via
+/// `Added<BlocksPathfinding>` / `RemovedComponents<BlocksPathfinding>` change detection.
+/// The pathfinder reads that surface, NEVER branching on
+/// [`TerrainPieceKind`](TerrainPieceKind) directly — satisfying the epic criterion
+/// "queries read tags, not kind". This is PATH-blocking ONLY: vision still reads the
+/// kind-based [`OccupancyGrid::is_blocked`](crate::occupancy::OccupancyGrid::is_blocked)
+/// (the split is GTW-501 D1; vision's own occluder is GTW-502).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct BlocksPathfinding;
+
 /// The kind of terrain piece this entity represents — `Wall`, `Cover` (scatter prop),
 /// or `Slab` (floor / roof).
 ///

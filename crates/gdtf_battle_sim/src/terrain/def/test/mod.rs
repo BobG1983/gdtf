@@ -6,7 +6,10 @@
 //! - [`tags`] — sim-owned tags default-empty + round-trip, on the sim side (C2).
 //! - [`round_trip`] — `deserialize(serialize(def)) == def` per kind, identity only (C4).
 //! - [`registry`] — insert-by-key + lookup-by-`TerrainUuid` (C7).
+//! - [`derive_blocking`] — GTW-501: the path-blocking DERIVATION rule (Wall/Cover block by
+//!   default, Slab does not, an explicit `BlocksPathfinding` tag adds blocking).
 
+mod derive_blocking;
 mod parse;
 mod registry;
 mod round_trip;

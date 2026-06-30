@@ -178,8 +178,12 @@ where
     /// PURE: grid lookups + the resolver — no RNG, no world access.
     fn is_open(&self, cell: CellLevel, grid: &OccupancyGrid) -> bool {
         // C2 (true geometry): walls / floor / standing cover (blocking scatter/props)
-        // always block on a routable cell.
-        if grid.is_blocked(&cell) {
+        // always block on a routable cell. GTW-501 D1/C2: this is the PATHFINDER's gate,
+        // so it reads the TAG-DERIVED path-blocking surface (`is_path_blocked`) — the
+        // markers projected from `BlocksPathfinding`, NOT the kind-based `is_blocked` that
+        // vision reads. The surface mirrors the destroyed-cover exclusion (C5), so a
+        // destroyed wall/cover re-opens the route exactly as before.
+        if grid.is_path_blocked(&cell) {
             return false;
         }
         // C2 (visibility-aware occupant): an occupant blocks per its relation —

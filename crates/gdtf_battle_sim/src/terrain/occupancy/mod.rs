@@ -49,9 +49,13 @@ mod grid;
 mod input;
 mod kind;
 mod neighbours;
+mod path_blocking;
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod path_blocking_test;
 
 pub use grid::{
     DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancySlot, StairEyeOffset,
@@ -59,3 +63,4 @@ pub use grid::{
 pub use input::{OccupancyInput, OccupantPlacement, TerrainPlacement};
 pub use kind::TerrainKind;
 pub use neighbours::pathable_neighbors;
+pub use path_blocking::{PathBlocking, project_path_blocking};

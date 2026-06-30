@@ -4,9 +4,12 @@
 
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, SystemSet, Update};
 
-use crate::occupancy_sync::{
-    CoverDestroyed, GroundAccrued, SlabDestroyed, sync_accrued_ground, sync_dead_gangers,
-    sync_destroyed_cover, sync_destroyed_slab, sync_moved_gangers,
+use crate::{
+    occupancy::project_path_blocking,
+    occupancy_sync::{
+        CoverDestroyed, GroundAccrued, SlabDestroyed, sync_accrued_ground, sync_dead_gangers,
+        sync_destroyed_cover, sync_destroyed_slab, sync_moved_gangers,
+    },
 };
 
 /// The sim's public system-ordering anchor — the band every sim-mutation system runs in.
@@ -38,15 +41,18 @@ pub enum SimSystems {
 ///   [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground)'s
 ///   [`MessageReader`](bevy::prelude::MessageReader) would fail param validation; and
 /// - it adds [`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers),
-///   [`sync_dead_gangers`](crate::occupancy_sync::sync_dead_gangers), and
-///   [`sync_destroyed_cover`](crate::occupancy_sync::sync_destroyed_cover) to
+///   [`sync_dead_gangers`](crate::occupancy_sync::sync_dead_gangers),
+///   [`sync_destroyed_cover`](crate::occupancy_sync::sync_destroyed_cover), and
+///   [`project_path_blocking`](crate::occupancy::project_path_blocking) (GTW-501) to
 ///   [`Update`] in an **explicit
-///   [`chain`](bevy::prelude::IntoScheduleConfigs::chain) order** — the three
+///   [`chain`](bevy::prelude::IntoScheduleConfigs::chain) order** — all four
 ///   share `ResMut<`[`OccupancyGrid`](crate::occupancy::OccupancyGrid)`>`, so they
 ///   MUST be ordered deterministically
-///   (`bevy-traps.md` #3). The chain order (move → die → cover) is deliberate:
-///   moves settle each entity's slot first, deaths then free a settled slot, and
-///   cover folds into the independent destroyed-cover set last; and
+///   (`bevy-traps.md` #3). The chain order (move → die → cover → PROJECT) is deliberate:
+///   moves settle each entity's slot first, deaths then free a settled slot, cover folds
+///   into the independent destroyed-cover set, and the tag-derived path-blocking surface is
+///   re-synced LAST (so the pathfinding consumers, ordered `.after(project_path_blocking)`,
+///   read the up-to-date surface this frame); and
 /// - it adds [`sync_destroyed_slab`](crate::occupancy_sync::sync_destroyed_slab)
 ///   (GTW-365) to the same [`SimSystems::Simulate`] set. It writes a DIFFERENT resource
 ///   (`ResMut<`[`SurfaceGrid`](crate::surface::SurfaceGrid)`>`), so it needs no
@@ -91,9 +97,24 @@ impl Plugin for OccupancyMaintenancePlugin {
             // (here) and producer (dispatch_fire) plugins can name it.
             .add_message::<GroundAccrued>()
             .configure_sets(Update, SimSystems::Simulate)
+            // GTW-501 C3: `project_path_blocking` is APPENDED to the OccupancyGrid chain
+            // (move → die → cover → PROJECT). It also takes `ResMut<OccupancyGrid>`, so it
+            // MUST be ordered against the three that share it (`bevy-traps.md` #3); chaining
+            // it LAST means the tag-derived path-blocking surface is re-synced after the
+            // frame's occupant/destroyed-cover maintenance settles, and BEFORE the
+            // pathfinding consumers (`dispatch_move` / `advance_walk` / `enemy_ai_turn` are
+            // ordered `.after(project_path_blocking)` in SimActsPlugin). It drains
+            // `RemovedComponents<BlocksPathfinding>` every run (the special-SystemParam
+            // contract) and applies `Added` inserts (incl. the setup-spawn insert, visible
+            // this tick because setup runs `.before(SimSystems::Simulate)`).
             .add_systems(
                 Update,
-                (sync_moved_gangers, sync_dead_gangers, sync_destroyed_cover)
+                (
+                    sync_moved_gangers,
+                    sync_dead_gangers,
+                    sync_destroyed_cover,
+                    project_path_blocking,
+                )
                     .chain()
                     .in_set(SimSystems::Simulate),
             )

@@ -10,7 +10,7 @@ use bevy::{
 use crate::{
     cover::HeightBand,
     metric::{Cell, CellLevel, Level, MAX_LEVELS},
-    occupancy::{OccupancyInput, TerrainKind},
+    occupancy::{OccupancyInput, PathBlocking, TerrainKind},
 };
 
 /// The **eye z-lift** applied to an observer standing on an authored stair tile
@@ -167,6 +167,20 @@ pub struct OccupancyGrid {
     /// observer: a cell present here returns `StairEyeOffset(0.5)` (stance-gated to
     /// `0.0` for Prone at the call site); an absent cell returns `StairEyeOffset(0.0)`.
     stair_cells:     HashSet<CellLevel>,
+    /// The **tag-derived path-blocking** surface (GTW-501) — the projected snapshot of
+    /// the [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) markers that
+    /// the PATHFINDER reads via [`is_path_blocked`](OccupancyGrid::is_path_blocked).
+    ///
+    /// SEPARATE from the kind-based [`terrain`](OccupancySlot::terrain) /
+    /// [`is_blocked`](OccupancyGrid::is_blocked) surface VISION still reads (the GTW-501 D1
+    /// split): pathfinding decides impassability from THIS set (tags, not kind), vision is
+    /// untouched. Kept in sync by
+    /// [`project_path_blocking`](crate::occupancy::project_path_blocking) via
+    /// `Added`/`RemovedComponents` change detection. A lazily-populated side map (like
+    /// [`destroyed_cover`](OccupancyGrid::destroyed_cover)), so a grid built without the
+    /// projection (e.g. `OccupancyGrid::new()` in a unit test) simply reads every cell as
+    /// non-path-blocking.
+    path_blocking:   PathBlocking,
 }
 
 impl Default for OccupancyGrid {
@@ -179,6 +193,7 @@ impl Default for OccupancyGrid {
             destroyed_cover: DestroyedCover::new(),
             occupant_bands:  HashMap::default(),
             stair_cells:     HashSet::default(),
+            path_blocking:   PathBlocking::new(),
         }
     }
 }
@@ -531,6 +546,54 @@ impl OccupancyGrid {
     #[must_use]
     pub const fn destroyed_cover(&self) -> &DestroyedCover {
         &self.destroyed_cover
+    }
+
+    /// Whether `cell_level` blocks the **PATH** (GTW-501) — `true` iff its
+    /// tag-derived [`PathBlocking`] marker is present AND the cell is NOT in the
+    /// destroyed-cover set.
+    ///
+    /// This is the PATHFINDING-only blocking query the GTW-501 D1 split introduces — it
+    /// reads the tag-derived [`PathBlocking`] surface PROJECTED from the
+    /// [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) markers, NOT the
+    /// kind-based [`terrain`](OccupancyGrid::terrain) marker. So the pathfinder decides
+    /// impassability from the tags, never from [`TerrainKind`] (the epic criterion). VISION
+    /// keeps reading [`is_blocked`](OccupancyGrid::is_blocked) unchanged.
+    ///
+    /// The destroyed-cover exclusion MIRRORS [`is_blocked`](OccupancyGrid::is_blocked): a
+    /// `(cell, level)` in [`destroyed_cover`](OccupancyGrid::destroyed_cover) reads `false`
+    /// even if it carries a path-blocking marker — a smashed wall/prop no longer obstructs a
+    /// path, so a destroyed cover cell re-opens the route exactly as it does for vision
+    /// (the GTW-501 C5 zero-path-regression guarantee — no new destruction wiring needed).
+    /// An out-of-range or unmarked `cell_level` reads `false` (graceful — no panic).
+    #[must_use]
+    pub fn is_path_blocked(&self, cell_level: &CellLevel) -> bool {
+        if self.is_cover_destroyed(cell_level) {
+            return false;
+        }
+        self.path_blocking.contains(cell_level)
+    }
+
+    /// Mark `cell_level` as **path-blocking** — insert it into the tag-derived
+    /// [`PathBlocking`] surface read by [`is_path_blocked`](OccupancyGrid::is_path_blocked)
+    /// (GTW-501 C3).
+    ///
+    /// The write [`project_path_blocking`](crate::occupancy::project_path_blocking) makes
+    /// for an `Added<BlocksPathfinding>` marker (the setup-spawn insert AND a later runtime
+    /// add). Re-marking is a harmless no-op (set semantics). Edits the surface IN PLACE — it
+    /// never rebuilds the grid.
+    pub fn set_path_blocking(&mut self, cell_level: CellLevel) {
+        self.path_blocking.insert(cell_level);
+    }
+
+    /// Clear `cell_level`'s **path-blocking** flag — remove it from the tag-derived
+    /// [`PathBlocking`] surface read by [`is_path_blocked`](OccupancyGrid::is_path_blocked)
+    /// (GTW-501 C3).
+    ///
+    /// The write [`project_path_blocking`](crate::occupancy::project_path_blocking) makes
+    /// for a `RemovedComponents<BlocksPathfinding>` marker — re-opening the path the next
+    /// query reads. Clearing an unmarked cell is a harmless no-op. Edits IN PLACE.
+    pub fn clear_path_blocking(&mut self, cell_level: CellLevel) {
+        self.path_blocking.remove(&cell_level);
     }
 
     /// Iterate the grid's **authored / occupied** `(cell, level)` keys — every slot
