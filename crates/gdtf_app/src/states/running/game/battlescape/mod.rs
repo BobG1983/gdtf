@@ -154,6 +154,6 @@ pub(in crate::states::running::game::battlescape) use contextual_panel::Contextu
 #[cfg(feature = "test-support")]
 crate::support_use! {
     contextual_panel::{
-        ContextualPanelRoot, ExecuteButton, OpenDoorButton, StabilizeButton,
+        ContextualPanelRoot, ExecuteButton, MeleeButton, OpenDoorButton, StabilizeButton,
     };
 }

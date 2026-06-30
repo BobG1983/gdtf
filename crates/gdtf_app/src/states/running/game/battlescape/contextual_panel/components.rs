@@ -87,6 +87,20 @@ crate::support_item! {
     struct OpenDoorButton;
 }
 
+crate::support_item! {
+    /// Marks the **Melee** contextual button (GTW-507) — the close-combat strike act on an
+    /// 8-adjacent, alive, in-LOS ENEMY ganger (`docs/combat/resolution.md` §7).
+    ///
+    /// A DEDICATED action-bar button (the GTW-507 D1 ruling — NOT a left-click overload),
+    /// mirroring [`ExecuteButton`] / [`StabilizeButton`]. Spawned
+    /// [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by the
+    /// detection system (which also wires its press to the `MeleeRequested` act) when
+    /// [`ContextualTargets::melee`] names a target. A unit marker: presence on an entity is the
+    /// whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct MeleeButton;
+}
+
 /// The downed neighbours the contextual panel can act on; written each update by the detection
 /// system (GTW-294 live slice).
 ///
@@ -105,20 +119,29 @@ pub(in crate::states::running::game::battlescape) struct ContextualTargets {
     /// The downed neighbour the **Stabilize** act would target, or [`None`] when no
     /// not-yet-stabilized downed ALLY is in reach. Written each update by the detection system.
     pub(in crate::states::running::game::battlescape) stabilize: Option<Entity>,
+    /// The opposing ganger the **Melee** act would strike (GTW-507), or [`None`] when no
+    /// 8-adjacent, ALIVE, in-LOS ENEMY is in reach. A STRONGER gate than Execute's
+    /// downed-adjacency (alive + LOS, not downed). Written each update by the detection system.
+    pub(in crate::states::running::game::battlescape) melee:     Option<Entity>,
 }
 
 impl ContextualTargets {
-    /// Build the offer seam from the detected `execute` / `stabilize` targets.
+    /// Build the offer seam from the detected `execute` / `stabilize` / `melee` targets.
     ///
-    /// The single write-point the detection system uses each update; both arguments are the
-    /// downed-neighbour [`Entity`] each act would target (the framework carve-out), or [`None`]
-    /// when no such neighbour is in reach.
+    /// The single write-point the detection system uses each update; each argument is the
+    /// neighbour [`Entity`] that act would target (the framework carve-out), or [`None`] when
+    /// no such neighbour is in reach.
     #[must_use]
     pub(in crate::states::running::game::battlescape) const fn with(
         execute: Option<Entity>,
         stabilize: Option<Entity>,
+        melee: Option<Entity>,
     ) -> Self {
-        Self { execute, stabilize }
+        Self {
+            execute,
+            stabilize,
+            melee,
+        }
     }
 
     /// The **Execute** target — the downed ENEMY a press would execute, or [`None`].
@@ -139,6 +162,16 @@ impl ContextualTargets {
     #[must_use]
     pub(in crate::states::running::game::battlescape) const fn stabilize(&self) -> Option<Entity> {
         self.stabilize
+    }
+
+    /// The **Melee** target — the 8-adjacent, alive, in-LOS ENEMY a press would strike, or
+    /// [`None`] (GTW-507).
+    ///
+    /// Read by [`contextual_button_intents`](super::systems::contextual_button_intents) to
+    /// route a Melee press to the carried target (the `Some`-guard keeps a stale press safe).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn melee(&self) -> Option<Entity> {
+        self.melee
     }
 }
 

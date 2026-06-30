@@ -116,6 +116,10 @@ pub struct EffectRoles {
     pub armor_break:     TileIndex,
     /// The [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) debris/rubble-burst tile (the §3 cover-smashed signal).
     pub cover_destroyed: TileIndex,
+    /// The [`MeleeResolved`](gdtf_battle_sim::acts::MeleeResolved) close-combat STRIKE tile
+    /// (the §7 connecting-hit flash, GTW-507) — a one-frame strike glyph drawn at the struck
+    /// target cell when a melee blow lands.
+    pub melee_strike:    TileIndex,
     /// The ORANGE damage-type row (sheet row 0) — its 8-way projectile rose + 3-frame impact.
     pub orange:          DamageTypeFx,
     /// The BLUE damage-type row (sheet row 1) — its 8-way projectile rose + 3-frame impact.
@@ -437,6 +441,7 @@ mod test {
             bleed:           TileIndex::new(bleed),
             armor_break:     TileIndex::new(1),
             cover_destroyed: TileIndex::new(2),
+            melee_strike:    TileIndex::new(3),
             orange:          uniform_fx(10),
             blue:            uniform_fx(11),
             green:           uniform_fx(12),

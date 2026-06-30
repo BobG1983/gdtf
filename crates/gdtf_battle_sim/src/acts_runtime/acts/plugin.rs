@@ -10,13 +10,14 @@ use crate::{
         downed::{dispatch_execute_downed, dispatch_stabilize_downed},
         fire::{FireDeclaration, dispatch_fire},
         injury::{InjuryInflicted, apply_injury},
+        melee::dispatch_melee,
         movement::{MoveRejected, MovementOccurred, dispatch_move},
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
         reload::{ReloadResult, dispatch_reload},
         request::{
-            EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
-            ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-            StabilizeDownedRequested,
+            EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested, MeleeResolved,
+            MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+            SetStanceRequested, StabilizeDownedRequested,
         },
     },
     ai::enemy_ai_turn,
@@ -84,6 +85,14 @@ impl Plugin for SimActsPlugin {
             .add_message::<ExecuteDownedRequested>()
             .add_message::<MoveRequested>()
             .add_message::<ReloadRequested>()
+            // GTW-507: the LIVE melee act's input message (drained by dispatch_melee) + its
+            // presenter-facing output signal (the strike-glyph FX keys off it). Registering both
+            // buffers here makes dispatch_melee's MessageReader<MeleeRequested> +
+            // MessageWriter<MeleeResolved> params valid (bevy-traps.md #4 / #5) and creates the
+            // Messages<MeleeResolved> buffer the presenter's read_melee_resolved FX reader is
+            // gated on.
+            .add_message::<MeleeRequested>()
+            .add_message::<MeleeResolved>()
             // GTW-309: the fieldless end-turn signal the turn-cycle engine drains.
             .add_message::<EndTurnRequested>()
             // GTW-290: the output fire-trajectory signal dispatch_fire emits per round.
@@ -152,6 +161,17 @@ impl Plugin for SimActsPlugin {
                     dispatch_stabilize_downed,
                     dispatch_execute_downed,
                     dispatch_reload,
+                    // GTW-507: the LIVE melee act. It drains MeleeRequested, gates 8-adjacency +
+                    // LOS + alive + opposing faction, spends the wielded melee weapon's fight-mode
+                    // TU, runs the §7 opposed-Fight → §5 → §6 synthesis (REUSING the GTW-506 core +
+                    // the §4/§5/§6 pieces verbatim), and emits MeleeResolved on a connect. It joins
+                    // the BattleInProgress-gated Simulate band (its Res grids + tuning + the three
+                    // ResMut RNG streams are battle-lifetime — the band's run_if skips it outside a
+                    // live battle, bevy-traps.md #1). It has no ordering dependency on the other
+                    // per-act dispatchers (it reads its own message + folds onto the target's own
+                    // components), so it joins the unordered group (bevy-traps.md #3 — no shared
+                    // mutable state with the siblings).
+                    dispatch_melee,
                 )
                     .in_set(SimSystems::Simulate),
             )

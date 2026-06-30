@@ -6,7 +6,7 @@ use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
     InjuryInflicted, OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed, SquadVisibility,
-    SurfaceGrid, VerticalLinkGraph, occupancy_sync::SimSystems,
+    SurfaceGrid, VerticalLinkGraph, acts::MeleeResolved, occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -21,9 +21,10 @@ use crate::{
     load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
     load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
     present_fog, read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-    read_injury_fct, redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
-    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
-    redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
+    read_injury_fct, read_melee_resolved, redrive_character_roles_on_asset_event,
+    redrive_effect_roles_on_asset_event, redrive_fx_tuning_on_asset_event,
+    redrive_pan_tuning_on_asset_event, redrive_sheet_images_on_asset_event,
+    redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
     reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
     resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
     spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, swap_destroyed_slab,
@@ -615,6 +616,11 @@ fn register_fx_flash_systems(app: &mut App) {
     // off (`bevy-traps.md` #4 — a MessageWriter panics validation without its buffer); a downstream
     // consumer (the combat-log plugin in `gdtf_app`) also registers it idempotently.
     app.add_message::<ShotImpactResolved>();
+    // GTW-507: register the sim's MeleeResolved buffer idempotently so `read_melee_resolved`'s
+    // MessageReader param is valid in a presenter-only headless harness (the sim's SimActsPlugin
+    // also registers it in a real battle — `add_message` is IDEMPOTENT; the CoverDestroyed
+    // precedent, bevy-traps.md #4).
+    app.add_message::<MeleeResolved>();
     let render_gate = resource_exists::<BattleInProgress>
         .and_then(resource_exists::<EffectRoles>)
         .and_then(resource_exists::<TopDownAtlases>);
@@ -640,6 +646,19 @@ fn register_fx_flash_systems(app: &mut App) {
             render_gate
                 .clone()
                 .and_then(resource_exists::<Messages<CoverDestroyed>>),
+        ),
+    )
+    // GTW-507: the close-combat STRIKE flash. Drains the sim's MeleeResolved signal (one per
+    // connecting melee hit) and spawns a one-frame strike glyph at the struck target cell,
+    // data-driven via the EffectRoles `melee_strike` tile (the read_cover_destroyed precedent).
+    // Gated on the SAME render resources + the MeleeResolved buffer its MessageReader drains (a
+    // MessageReader param panics validation without its buffer — bevy-traps.md #1 / #4).
+    .add_systems(
+        Update,
+        read_melee_resolved.in_set(PresenterSystems::Draw).run_if(
+            render_gate
+                .clone()
+                .and_then(resource_exists::<Messages<MeleeResolved>>),
         ),
     )
     // GTW-306: the firing FX. spawn_shot_projectiles spawns the traveling DIRECTIONAL

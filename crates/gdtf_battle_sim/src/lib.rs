@@ -259,8 +259,9 @@ pub mod tuning;
 pub use acts_runtime::{
     acts,
     acts::{
-        FireArcDecision, FireDeclaration, InjuryInflicted, MoveRejected, MoveRejection,
-        MovementOccurred, ReloadOutcome, ReloadResult, apply_injury, can_engage, decide_fire_arc,
+        FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved,
+        MoveRejected, MoveRejection, MovementOccurred, ReloadOutcome, ReloadResult, apply_injury,
+        can_engage, decide_fire_arc, dispatch_melee,
     },
     ai,
     ai::{
@@ -379,8 +380,8 @@ pub use lifecycle::{
     },
 };
 pub use melee::{
-    FightMargin, FightOutcome, MeleeDamageMult, apply_melee_multiplier, melee_damage_mult,
-    opposed_fight,
+    Combatants, FightMargin, FightOutcome, MeleeDamageMult, MeleeStrike, MeleeWeaponHit,
+    apply_melee_multiplier, melee_damage_mult, opposed_fight, resolve_melee_strike,
 };
 pub use perception::{
     los,

@@ -41,7 +41,7 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel, CoverLedger, Direction,
-    Facing, Faction, FireMode, FireModeSpec, FloorCostGrid, Handedness, InjuryRng, Level,
+    Facing, Faction, FightRng, FireMode, FireModeSpec, FloorCostGrid, Handedness, InjuryRng, Level,
     LifeState, LinkKind, LootRng, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
     ModeTuPercent, OccupancyGrid, PlayerFaction, ProcgenRng, ReloadTu, SeverityRng, ShotRng,
     SlabLedger, SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink,
@@ -197,6 +197,11 @@ fn acts_app() -> App {
         .insert_resource(ShotRng::from_root(sim_seed));
     app.world_mut()
         .insert_resource(SeverityRng::from_root(sim_seed));
+    // GTW-507: the melee opposed-Fight stream `dispatch_melee` (in SimActsPlugin's Simulate
+    // band) takes as `ResMut<FightRng>`; insert it so the system's param validation passes in
+    // this BattleInProgress-gated harness (the other sim streams are inserted alongside).
+    app.world_mut()
+        .insert_resource(FightRng::from_root(sim_seed));
     app.world_mut()
         .insert_resource(LootRng::from_root(sim_seed));
     app.world_mut()

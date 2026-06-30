@@ -45,6 +45,7 @@
 mod fct;
 mod flash;
 mod impact;
+mod melee;
 mod projectile;
 mod readers;
 mod roles;
@@ -60,6 +61,7 @@ pub use fct::{
 };
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
 pub use impact::{ShotImpactResolved, animate_impact};
+pub use melee::read_melee_resolved;
 pub use projectile::{
     PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles, spawn_shot_projectiles,
 };

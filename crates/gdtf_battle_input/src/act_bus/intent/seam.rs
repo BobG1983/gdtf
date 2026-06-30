@@ -5,8 +5,8 @@ use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     Aiming, Facing, Faction, PlayerFaction, Position, Stance, StanceKind,
     acts::{
-        AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
-        ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
+        AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
+        MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
         StabilizeDownedRequested,
     },
 };
@@ -112,6 +112,16 @@ pub enum ActIntent {
     /// [`stabilize_downed`](gdtf_battle_sim::stabilize_downed) faction gate (an 8-adjacent
     /// alive ALLY) is the authoritative check, not this layer's.
     Stabilize(Entity),
+    /// MELEE-strike the carried `target` — drained to [`MeleeRequested`] for the
+    /// [`SelectedShooter`] as the attacker (GTW-507). The carried [`Entity`] is the opposing
+    /// TARGET ganger; the attacker is always the selection. The drain emits
+    /// [`MeleeRequested::new(attacker, target)`](MeleeRequested::new) ONLY when a shooter is
+    /// selected (a no-op with no selection); the sim's
+    /// [`dispatch_melee`](gdtf_battle_sim::dispatch_melee) gate (8-adjacent + clear LOS + an
+    /// alive opposing target) is the authoritative check, not this layer's. Bound to the
+    /// DEDICATED contextual MELEE button (NOT a left-click overload — the GTW-507 D1 ruling),
+    /// mirroring the [`Execute`](Self::Execute) / [`Stabilize`](Self::Stabilize) contextual acts.
+    Melee(Entity),
     /// CYCLE the [`SelectedShooter`] to the NEXT player ganger in `(z, y, x)` order, wrapping
     /// (GTW-458). A SELECTION-layer intent (no sim act), drained directly in
     /// [`dispatch_act_intents`] via [`cycle_player_selection`]: it collects the player-faction
@@ -204,6 +214,10 @@ pub struct ActWriters<'w> {
     /// The stabilize-downed writer — the downed-target Stabilize affordance's drained
     /// message (GTW-294). Emitted only for a selected actor over the carried downed target.
     stabilize: MessageWriter<'w, StabilizeDownedRequested>,
+    /// The melee writer — the contextual Melee button's drained message (GTW-507). Emitted
+    /// only for a selected attacker over the carried opposing target; the sim's `dispatch_melee`
+    /// gate (8-adjacent + LOS + alive + opposing) is the authoritative check.
+    melee:     MessageWriter<'w, MeleeRequested>,
 }
 
 /// The READ-ONLY world the [`ActIntent::SelectNext`] / [`ActIntent::SelectPrev`] cycle arms
@@ -291,6 +305,9 @@ impl SelectionCycleReads<'_, '_> {
 /// - [`ActIntent::Stabilize`] emits [`StabilizeDownedRequested`] with the [`SelectedShooter`]
 ///   as the actor and the carried downed target (GTW-294) — a no-op with no selection; the
 ///   sim's `stabilize_downed` faction gate (an 8-adjacent alive ALLY) is authoritative.
+/// - [`ActIntent::Melee`] emits [`MeleeRequested`] with the [`SelectedShooter`] as the
+///   attacker and the carried opposing target (GTW-507) — a no-op with no selection; the sim's
+///   `dispatch_melee` gate (8-adjacent + clear LOS + an alive opposing target) is authoritative.
 ///
 /// The GTW-458 SELECTION-CYCLE intents step the [`SelectedShooter`] through the player gang
 /// in the shared `(z, y, x)` order ([`cell_order_key`] — the exact order the auto-select
@@ -408,6 +425,13 @@ pub fn dispatch_act_intents(
                 let Some(actor) = **selected else { continue };
                 acts.stabilize
                     .write(StabilizeDownedRequested::new(actor, target));
+            }
+            ActIntent::Melee(target) => {
+                // Melee-strike the carried opposing target — attacker is the selection (GTW-507).
+                // Mirror the Execute arm: a no-op with no selection. The sim's dispatch_melee gate
+                // (8-adjacent + clear LOS + an alive opposing target) is the authoritative check.
+                let Some(attacker) = **selected else { continue };
+                acts.melee.write(MeleeRequested::new(attacker, target));
             }
             ActIntent::SelectNext => {
                 cycle_selection(&mut selected, &cycle_reads, CycleDirection::Next);

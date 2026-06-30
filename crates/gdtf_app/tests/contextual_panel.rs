@@ -21,13 +21,17 @@
 
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{
-    AppState, BattleScapeState, ContextualPanelRoot, ExecuteButton, OpenDoorButton, RunningState,
-    StabilizeButton,
+    AppState, BattleScapeState, ContextualPanelRoot, ExecuteButton, MeleeButton, OpenDoorButton,
+    RunningState, StabilizeButton,
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, Level, LifeState, Position, Stabilized, acts::ExecuteDownedRequested,
-    injuries::InjuryRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
+    Cell, CellLevel, Direction, Facing, Faction, Level, LifeState, Position, Stabilized, Stance,
+    StanceKind,
+    acts::{ExecuteDownedRequested, MeleeRequested},
+    injuries::InjuryRegistry,
+    tuning::CombatTuning,
+    weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -153,6 +157,10 @@ fn contextual_panel_spawns_hidden_in_battle() {
         "the Stabilize button exists exactly once in BattleRunning",
     );
     assert!(
+        single_with::<MeleeButton>(&mut app).is_some(),
+        "the Melee button exists exactly once in BattleRunning (GTW-507)",
+    );
+    assert!(
         single_with::<OpenDoorButton>(&mut app).is_some(),
         "the Open Door button exists exactly once in BattleRunning",
     );
@@ -192,6 +200,11 @@ fn contextual_panel_spawns_hidden_in_battle() {
         visibility::<StabilizeButton>(&mut app),
         Some(Visibility::Hidden),
         "the Stabilize button spawns Visibility::Hidden (scaffold: no detection yet)",
+    );
+    assert_eq!(
+        visibility::<MeleeButton>(&mut app),
+        Some(Visibility::Hidden),
+        "the Melee button spawns Visibility::Hidden (scaffold: no detection yet — GTW-507)",
     );
     assert_eq!(
         visibility::<OpenDoorButton>(&mut app),
@@ -241,6 +254,10 @@ fn contextual_panel_despawns_outside_battle() {
         "the Stabilize button must be despawned with the panel",
     );
     assert!(
+        single_with::<MeleeButton>(&mut app).is_none(),
+        "the Melee button must be despawned with the panel (GTW-507)",
+    );
+    assert!(
         single_with::<OpenDoorButton>(&mut app).is_none(),
         "the Open Door button must be despawned with the panel",
     );
@@ -279,6 +296,37 @@ fn spawn_downed(app: &mut App, x: i32, y: i32, gang: u8, stabilized: Option<bool
     entity.id()
 }
 
+/// Spawns the MELEE actor — a ganger carrying exactly the components the melee detection reads
+/// off the selection (its [`Position`] + [`Faction`] + [`Stance`] + [`Facing`], for the LOS
+/// observer eye) — at cell `(x, y)` in gang `gang`, and SELECTS it (GTW-507). Returns its entity.
+fn spawn_melee_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
+    let actor = app
+        .world_mut()
+        .spawn((
+            at(x, y),
+            Faction::new(gang),
+            Stance::new(StanceKind::Standing),
+            Facing::new(Direction::East),
+        ))
+        .id();
+    app.world_mut().insert_resource(SelectedShooter::new(actor));
+    actor
+}
+
+/// Spawns an ALIVE enemy at cell `(x, y)` in gang `gang` — [`LifeState::Alive`] plus its
+/// [`Position`] / [`Faction`] / [`Stance`] (the melee detection scan + the LOS aim silhouette
+/// read exactly these). Returns its entity (GTW-507).
+fn spawn_alive_enemy(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
+    app.world_mut()
+        .spawn((
+            at(x, y),
+            Faction::new(gang),
+            LifeState::Alive,
+            Stance::new(StanceKind::Standing),
+        ))
+        .id()
+}
+
 /// The current [`ContextualTargets`] offers via the END message they route to is not directly
 /// readable across the crate boundary (the seam's contents are private), so detection coverage
 /// reads the panel's observable effects — the per-button [`Visibility`] — and the press test
@@ -290,6 +338,11 @@ fn execute_visible(app: &mut App) -> bool {
 /// Reads whether the Stabilize button is visible.
 fn stabilize_visible(app: &mut App) -> bool {
     visibility::<StabilizeButton>(app) == Some(Visibility::Visible)
+}
+
+/// Reads whether the Melee button is visible (GTW-507).
+fn melee_visible(app: &mut App) -> bool {
+    visibility::<MeleeButton>(app) == Some(Visibility::Visible)
 }
 
 /// Reads whether the panel root is visible.
@@ -320,6 +373,33 @@ fn add_execute_probe(app: &mut App) {
 fn executes(app: &App) -> Vec<ExecuteDownedRequested> {
     app.world()
         .get_resource::<ExecuteProbe>()
+        .map(|p| p.0.clone())
+        .unwrap_or_default()
+}
+
+/// Collected [`MeleeRequested`] messages (the GTW-507 press-test probe).
+#[derive(Resource, Default)]
+struct MeleeProbe(Vec<MeleeRequested>);
+
+/// Adds the [`MeleeRequested`] probe, running AFTER the intent drain so it observes the SAME
+/// update's emitted message (the `add_execute_probe` idiom — its own `MessageReader` cursor is
+/// independent of the sim's `dispatch_melee`, so it reads every drained message even though the
+/// sim consumes it too).
+fn add_melee_probe(app: &mut App) {
+    app.world_mut().insert_resource(MeleeProbe::default());
+    app.add_systems(
+        Update,
+        (|mut r: MessageReader<MeleeRequested>, mut p: ResMut<MeleeProbe>| {
+            p.0.extend(r.read().copied());
+        })
+        .after(gdtf_battle_input::dispatch_act_intents),
+    );
+}
+
+/// The collected [`MeleeRequested`] messages.
+fn melees(app: &App) -> Vec<MeleeRequested> {
+    app.world()
+        .get_resource::<MeleeProbe>()
         .map(|p| p.0.clone())
         .unwrap_or_default()
 }
@@ -517,5 +597,119 @@ fn pressing_execute_emits_execute_downed_requested_for_target() {
     assert_eq!(
         emitted[0].target, target,
         "the target is the carried downed neighbour",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-507 — the MELEE button: detection (alive + 8-adjacent + LOS enemy reveals it) and
+// press → MeleeRequested through the REAL seam.
+// ---------------------------------------------------------------------------------
+
+/// MELEE detection: a selected actor with an 8-adjacent, ALIVE, in-LOS ENEMY offers Melee — the
+/// dedicated Melee button + the panel root become Visible (GTW-507). A STRONGER gate than
+/// Execute's downed-adjacency: the enemy is ALIVE (not downed), and the LOS gate (reusing the
+/// sim's `has_los` over the live battle grids) clears the open adjacent cell.
+#[test]
+fn adjacent_alive_enemy_in_los_offers_melee() {
+    let mut app = battle_running_app();
+    spawn_melee_actor(&mut app, 5, 5, 0);
+    // An ALIVE ENEMY (gang 1) one cell diagonally — 8-adjacent, clear LOS (no cover between).
+    spawn_alive_enemy(&mut app, 6, 6, 1);
+    app.update();
+
+    assert!(
+        melee_visible(&mut app),
+        "an 8-adjacent alive enemy in LOS must reveal the Melee button (GTW-507)",
+    );
+    assert!(
+        root_visible(&mut app),
+        "an offered Melee must reveal the panel root",
+    );
+    // The downed-only acts stay hidden — the enemy is ALIVE, not downed.
+    assert!(
+        !execute_visible(&mut app),
+        "an ALIVE enemy is no Execute target (Execute needs a DOWNED enemy) -> hidden",
+    );
+    assert!(
+        !stabilize_visible(&mut app),
+        "no downed ally in reach -> the Stabilize button stays hidden",
+    );
+}
+
+/// MELEE detection — the LIVE gate is stronger than mere adjacency: an alive enemy that is NOT
+/// 8-adjacent does NOT offer Melee (the button stays hidden), and an alive ALLY (same faction)
+/// never offers Melee. Discriminating: the same enemy moved INTO reach reveals it.
+#[test]
+fn non_adjacent_or_ally_does_not_offer_melee() {
+    let mut app = battle_running_app();
+    spawn_melee_actor(&mut app, 5, 5, 0);
+    // An alive ENEMY far away (Chebyshev > 1) — not a melee candidate.
+    let enemy = spawn_alive_enemy(&mut app, 20, 20, 1);
+    // An alive ALLY 8-adjacent — same faction, never a melee target.
+    spawn_alive_enemy(&mut app, 5, 6, 0);
+    app.update();
+
+    assert!(
+        !melee_visible(&mut app),
+        "a non-adjacent enemy + an adjacent ALLY offer NO melee (the button stays hidden)",
+    );
+
+    // Move the enemy INTO 8-adjacency — the SAME enemy now reveals the Melee button (the gate is
+    // adjacency + alive + opposing + LOS, not mere presence).
+    if let Some(mut pos) = app.world_mut().get_mut::<Position>(enemy) {
+        *pos = at(6, 6);
+    }
+    app.update();
+    assert!(
+        melee_visible(&mut app),
+        "moving the alive enemy into 8-adjacency reveals the Melee button (discriminating)",
+    );
+}
+
+/// PRESS → INTENT: with a Melee target offered (an 8-adjacent alive in-LOS enemy), pressing the
+/// Melee button drives the REAL stack (button -> `ActIntent::Melee(target)` -> the ONE
+/// `dispatch_act_intents` drain) to emit exactly one `MeleeRequested` for the `SelectedShooter`
+/// as attacker over the carried target (GTW-507) — driven THROUGH the button/intent path, NOT a
+/// synthetic `MeleeRequested` emit.
+///
+/// Pin-discriminating: dropping the Melee arm in `contextual_button_intents` (or the detection
+/// that fills the target) leaves the queue empty and emits zero messages, failing the asserts.
+#[test]
+fn pressing_melee_emits_melee_requested_for_target() {
+    let mut app = battle_running_app();
+    add_melee_probe(&mut app);
+    let attacker = spawn_melee_actor(&mut app, 5, 5, 0);
+    let target = spawn_alive_enemy(&mut app, 6, 6, 1);
+
+    // First update: detection reveals the Melee button + fills the target offer.
+    app.update();
+    assert!(
+        melee_visible(&mut app),
+        "sanity: the Melee button is offered before the press",
+    );
+    let Some(melee_btn) = single_with::<MeleeButton>(&mut app) else {
+        // The button must exist by construction; bail without a panic (restriction lints deny
+        // `panic!` even in tests). A missing button trips the `melee_visible` assert above.
+        return;
+    };
+
+    // Drive the press, then update: contextual_button_intents pushes Melee(target) and the ONE
+    // drain (ordered after it) emits MeleeRequested the SAME update.
+    press_button(&mut app, melee_btn);
+    app.update();
+
+    let emitted = melees(&app);
+    assert_eq!(
+        emitted.len(),
+        1,
+        "pressing Melee with a target offered must emit exactly one MeleeRequested",
+    );
+    assert_eq!(
+        emitted[0].attacker, attacker,
+        "the attacker is the SelectedShooter",
+    );
+    assert_eq!(
+        emitted[0].target, target,
+        "the target is the carried opposing neighbour",
     );
 }

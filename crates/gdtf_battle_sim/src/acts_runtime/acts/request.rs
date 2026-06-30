@@ -23,7 +23,7 @@ use bevy::prelude::{Deref, Entity, Message};
 use crate::{
     ganger::{Direction, StanceKind},
     metric::{Cell, CellLevel, Level},
-    weapon::FireModeSpec,
+    weapon::{DamageType, FireModeSpec},
 };
 
 /// The requested **aim flag** carried by a [`SetAimingRequested`] — `true` for aimed
@@ -204,6 +204,70 @@ impl ExecuteDownedRequested {
     #[must_use]
     pub const fn new(actor: Entity, target: Entity) -> Self {
         Self { actor, target }
+    }
+}
+
+/// A **melee** act was requested — `attacker` strikes `target` in close combat (GTW-507,
+/// child GTW-37c of the GTW-37 melee epic).
+///
+/// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying the two
+/// [`Entity`] refs the §7 opposed-Fight resolution needs — the attacking ganger and the
+/// opposing target ganger. The shape mirrors [`ExecuteDownedRequested`] (an actor + a target,
+/// no further payload): everything the melee verb reads (each ganger's [`Fight`](crate::ganger::Fight),
+/// the wielded melee weapon's stats, the defender's stance / armor) lives on the entities, so
+/// the message needs no extra fields. [`dispatch_melee`](super::melee::dispatch_melee) drains
+/// it, gates 8-adjacency + clear LOS + an alive opposing target, spends the wielded melee
+/// weapon's primary fight-mode TU, and runs the §7 opposed-Fight → §5 damage → §6 wound
+/// pipeline (`docs/combat/resolution.md` §7). The `attacker` / `target` are Bevy [`Entity`]
+/// handles — framework plumbing, the only bare type the no-bare-types rule permits in a payload.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MeleeRequested {
+    /// The attacking (striking) ganger — its [`Fight`](crate::ganger::Fight) + wielded melee
+    /// weapon resolve the blow.
+    pub attacker: Entity,
+    /// The opposing target ganger the strike lands on (an alive, 8-adjacent, in-LOS enemy).
+    pub target:   Entity,
+}
+
+impl MeleeRequested {
+    /// Build a melee request for `attacker` striking `target`.
+    #[must_use]
+    pub const fn new(attacker: Entity, target: Entity) -> Self {
+        Self { attacker, target }
+    }
+}
+
+/// A **melee** act RESOLVED — the presenter-facing output signal that a melee strike landed at
+/// `at`, carrying the weapon's `damage` type for the strike FX (GTW-507).
+///
+/// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) emitted by
+/// [`dispatch_melee`](super::melee::dispatch_melee) once per CONNECTING melee hit (a missed
+/// opposed roll deals no damage and emits nothing). It mirrors the structural output signals
+/// ([`crate::occupancy_sync::CoverDestroyed`] / [`ShotFired`](crate::shot_fired::ShotFired)):
+/// it carries ONLY what the presenter's strike-glyph FX needs — the target cell the strike
+/// landed at ([`CellLevel`]) and the wielded melee weapon's [`DamageType`] (the FX color/role
+/// selector) — never combat math. The presenter reads it through a
+/// [`MessageReader`](bevy::prelude::MessageReader) (the one-way sim → presenter dep; the sim
+/// never reads the presenter). The HP/wound mutations themselves are applied to the target's
+/// components and observed by the presenter via change-detection + the existing wound/injury
+/// signals; this signal is the dedicated *strike-landed* moment.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MeleeResolved {
+    /// The `(cell, level)` the strike landed at — the struck target's cell (where the strike
+    /// glyph draws). A [`CellLevel`] newtype, never a bare `IVec3`.
+    pub at:     CellLevel,
+    /// The wielded melee weapon's [`DamageType`] — the FX role/color selector (the strike
+    /// glyph picks its tint/tile from this, the way [`ShotFired`](crate::shot_fired::ShotFired)
+    /// does). A domain enum, never a bare label.
+    pub damage: DamageType,
+}
+
+impl MeleeResolved {
+    /// Build a melee-resolved signal for a connecting strike at `at` with the weapon's
+    /// `damage` type.
+    #[must_use]
+    pub const fn new(at: CellLevel, damage: DamageType) -> Self {
+        Self { at, damage }
     }
 }
 

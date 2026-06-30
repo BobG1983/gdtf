@@ -53,6 +53,7 @@
 mod downed;
 mod fire;
 mod injury;
+mod melee;
 mod movement;
 mod plugin;
 mod posture;
@@ -67,12 +68,13 @@ pub use fire::{
     BattleGridsParam, FireArcDecision, FireDeclaration, can_engage, decide_fire_arc, dispatch_fire,
 };
 pub use injury::{InjuryInflicted, apply_injury};
+pub use melee::dispatch_melee;
 pub use movement::{MoveRejected, MoveRejection, MovementOccurred, dispatch_move};
 pub use plugin::SimActsPlugin;
 pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance};
 pub use reload::{ReloadOutcome, ReloadResult, dispatch_reload};
 pub use request::{
-    AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
-    ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-    StabilizeDownedRequested,
+    AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
+    MeleeResolved, MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+    SetStanceRequested, StabilizeDownedRequested,
 };

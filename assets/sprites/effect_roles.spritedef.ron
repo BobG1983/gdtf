@@ -24,6 +24,7 @@
     bleed:           0,    // Bleeding -> a blood/hit drop — the §9 bleed-out flash
     armor_break:     3,    // ArmorBroken -> a spark/break burst — the worn-piece-shattered flash
     cover_destroyed: 112,  // CoverDestroyed -> a debris/rubble burst (row 7 col 0) — the §3 cover-smashed flash
+    melee_strike:    113,  // MeleeResolved -> a close-combat strike glyph (row 7 col 1, GTW-507) — the §7 connecting-hit flash
     // --- Per-damage-type projectile rose + 3-frame impact (sheet rows 0..4) ---
     // NOTE: `directions` is a fixed [TileIndex; 8] and `impact` a [TileIndex; 3]; RON
     // deserializes fixed arrays as TUPLES, so each is parenthesised `( .. )`, NOT `[ .. ]`.

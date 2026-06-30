@@ -41,7 +41,7 @@ use gdtf_battle_sim::{
     CoverDestroyed, DamageType, Direction, Facing, Faction, GainedInjury, HitReport, HitResult,
     HpDamage, InjuryInflicted, InjuryName, InspectText, IntegrityWear, Level, LifeState, LogText,
     Matchup, PenetratingDamage, PopupText, Position, Severity, ShotDir, ShotFired, ShotKind,
-    SimPos, Wounds,
+    SimPos, Wounds, acts::MeleeResolved,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -354,6 +354,54 @@ fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
         index,
         Some(*roles.cover_destroyed),
         "the cover-destroyed flash's index must equal the table's cover_destroyed role index",
+    );
+}
+
+/// GTW-507 — a `MeleeResolved { at, damage }` spawns exactly one `FxFlash` STRIKE glyph at
+/// `cell_to_world(at)` with the table's data-driven `melee_strike` index. This is the in-engine
+/// QA evidence (headless) that the close-combat strike FX renders end-to-end: the sim's
+/// connecting-hit signal drives a one-frame strike glyph at the struck cell, on the real
+/// `TopDownRendererPlugin` Draw band (the `read_melee_resolved` system gated on the live battle
+/// resources + the `Messages<MeleeResolved>` buffer the plugin registers).
+#[test]
+fn melee_resolved_spawns_one_strike_flash_at_the_melee_strike_index() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(7, 2);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+
+    // The sim's connecting-melee signal — the struck target cell + the weapon's damage type.
+    app.world_mut()
+        .resource_mut::<Messages<MeleeResolved>>()
+        .write(MeleeResolved::new(at, DamageType::Rend));
+    app.update();
+
+    let roles = effect_roles(&app);
+    assert!(roles.is_some(), "EffectRoles must be resident");
+    let Some(roles) = roles else { return };
+
+    assert_eq!(
+        fx_count(&mut app),
+        1,
+        "exactly one melee STRIKE flash must spawn for a MeleeResolved (GTW-507)",
+    );
+    let flash = single_flash(&mut app);
+    assert!(flash.is_some(), "exactly one FxFlash sprite must exist");
+    let Some((translation, index)) = flash else {
+        return;
+    };
+    assert_eq!(
+        translation,
+        cell_to_world(cell, level),
+        "the melee strike flash must sit at cell_to_world(at's cell, level)",
+    );
+    assert_eq!(
+        index,
+        Some(*roles.melee_strike),
+        "the strike flash's index must equal the table's melee_strike role index (data-driven)",
     );
 }
 

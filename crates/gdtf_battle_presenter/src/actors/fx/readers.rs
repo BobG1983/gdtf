@@ -105,7 +105,11 @@ pub(super) fn fx_sprite_scaled(
 /// the id NOW; the scene's components materialize on that frame's `SpawnScene` schedule
 /// (between `Update` and `PostUpdate`), so the reader's same-`update()` flash is fully present
 /// by `PostUpdate` — identical to the old immediate spawn for the readers' single-update tests.
-fn spawn_flash(commands: &mut Commands, sprite: Sprite, world: Vec3) {
+///
+/// `pub(super)` so the GTW-507 melee FX reader ([`super::melee::read_melee_resolved`]) spawns
+/// its one-frame strike glyph through the SAME shared flash recipe (the same [`FlashTtl`] +
+/// [`FxFlash`] one-shot lifecycle as the bleed / armor-break / cover-destroyed flashes).
+pub(super) fn spawn_flash(commands: &mut Commands, sprite: Sprite, world: Vec3) {
     let transform = Transform::from_translation(world);
     let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
     commands

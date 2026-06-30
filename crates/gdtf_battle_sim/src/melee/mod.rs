@@ -26,11 +26,18 @@
 //!
 //! The variance + curve coefficients live in [`MeleeTuning`](crate::tuning::MeleeTuning);
 //! the dedicated [`FightRng`](crate::rng::FightRng) stream isolates melee
-//! determinism from reaction fire. The live melee ACT (adjacency / LOS gate /
-//! input / presenter) is GTW-507 — it owns the `ResMut<FightRng>` and composes
-//! `opposed_fight → resolve_hit → apply_melee_multiplier → §6 wound`.
+//! determinism from reaction fire.
+//!
+//! GTW-507 adds the `strike` module: [`resolve_melee_strike`] is the pure
+//! connecting-hit synthesis the live melee ACT calls — it COMPOSES this core
+//! (`opposed_fight → melee_damage_mult → apply_melee_multiplier`) with the §4/§5/§6
+//! pieces (`roll_body_part → resolve_hit → roll_severity → apply_hit`), reimplementing
+//! none. The owning [`dispatch_melee`](crate::acts::dispatch_melee) system owns the
+//! `ResMut<FightRng>` / `ResMut<ShotRng>` / `ResMut<SeverityRng>` and gates adjacency +
+//! LOS + alive + opposing faction before calling the verb.
 
 mod fight;
+mod strike;
 
 #[cfg(test)]
 mod tests;
@@ -39,3 +46,4 @@ pub use fight::{
     FightMargin, FightOutcome, MeleeDamageMult, apply_melee_multiplier, melee_damage_mult,
     opposed_fight,
 };
+pub use strike::{Combatants, MeleeStrike, MeleeWeaponHit, resolve_melee_strike};
