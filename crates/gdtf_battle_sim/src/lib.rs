@@ -417,7 +417,7 @@ pub use terrain::{
     def,
     def::{
         TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
-        TerrainTag, TerrainUuid,
+        TerrainTag, TerrainUuid, closed_openable_vision_band, is_openable,
     },
     entity,
     entity::{
@@ -436,6 +436,10 @@ pub use terrain::{
         CoverDestroyed, GroundAccrued, OccupancyMaintenancePlugin, PrevSlot, SlabDestroyed,
         sync_accrued_ground, sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab,
         sync_moved_gangers,
+    },
+    openable,
+    openable::{
+        OpenState, OpenableBlocking, OpenableTogglePlugin, SetOpenable, apply_openable_toggle,
     },
     piece,
     piece::{FootfallSound, TerrainGraphicKey, TerrainName},

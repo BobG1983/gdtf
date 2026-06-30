@@ -149,3 +149,39 @@ const fn sim_kind_band_when_occludes(sim_kind: &TerrainSimKind) -> Option<Height
 const fn sim_kind_band(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
     sim_kind_band_when_occludes(sim_kind)
 }
+
+/// Whether a [`TerrainDef`] is **openable** — carries the
+/// [`TerrainTag::Openable`] tag (GTW-503 C1, child 482c of the tag-driven-terrain epic
+/// GTW-482).
+///
+/// The single authority for "is this a door / hatch?" — read by the setup spawn loop to
+/// decide whether to attach the [`OpenState`](crate::terrain::openable::OpenState) component
+/// (default [`Closed`](crate::terrain::openable::OpenState::Closed)) and force the closed
+/// blocking pair (C2). An openable piece's blocking lifecycle is OWNED by GTW-503 (the toggle
+/// drives the [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) +
+/// [`BlocksVision`](crate::terrain::entity::BlocksVision) add/remove), NOT by the
+/// kind-default [`derives_path_blocking`] / [`derives_vision_occlusion`] derivation — which
+/// continues to govern every NON-openable piece unchanged.
+///
+/// PURE: a read over the borrowed def — no world access, no RNG, no side effects.
+#[must_use]
+pub fn is_openable(def: &TerrainDef) -> bool {
+    def.tags.contains(&TerrainTag::Openable)
+}
+
+/// The [`HeightBand`] a **closed openable** piece occludes vision at (GTW-503 C2).
+///
+/// A CLOSED door blocks vision EVEN IF its `sim_kind` would not occlude by default (e.g. an
+/// openable [`Slab`](TerrainSimKind::Slab) hatch). So this is NOT
+/// [`derives_vision_occlusion`] (which returns `None` for an untagged slab): a closed
+/// openable ALWAYS occludes, at the `sim_kind`'s own band when it has one
+/// ([`Wall`](TerrainSimKind::Wall) / [`Cover`](TerrainSimKind::Cover)), else
+/// [`HeightBand::High`] (a slab spans the whole storey, so a closed slab hatch occludes the
+/// tallest band — nothing within the storey sees over it, mirroring the tagged-slab arm of
+/// [`derives_vision_occlusion`]).
+///
+/// PURE: a read over the borrowed def — no world access, no RNG, no side effects.
+#[must_use]
+pub fn closed_openable_vision_band(def: &TerrainDef) -> HeightBand {
+    sim_kind_band(&def.sim_kind).unwrap_or(HeightBand::High)
+}

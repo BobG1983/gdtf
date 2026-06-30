@@ -40,6 +40,7 @@ use crate::{
             TerrainIndexKey, TerrainPieceKind,
         },
         floor::FloorCostGrid,
+        openable::{OpenState, OpenableBlocking},
     },
     tuning::{GangerStatTuning, MoveCost},
     vertical::{LinkKind, build_vertical_link_graph},
@@ -739,6 +740,20 @@ pub fn setup_battle(
         if let Some(band) = resolved.occludes_vision {
             commands.entity(entity).insert(BlocksVision::new(band));
         }
+        // GTW-503 C1/C2: an Openable Wall/Cover (a door) is attached OpenState::Closed +
+        // OpenableBlocking(band) and FORCED to carry BOTH blocking components at the closed
+        // band — GTW-503 owns the openable's blocking lifecycle. For a Wall/Cover this is
+        // idempotent with the GTW-501/502 inserts above (blocks_path is already true and the
+        // band already matches), but it is asserted here so a closed door blocks both even if a
+        // future kind-default ever changed; the band is the same one its CoverLedger entry uses.
+        if let Some(band) = resolved.openable {
+            commands.entity(entity).insert((
+                OpenState::Closed,
+                OpenableBlocking::new(band),
+                BlocksPathfinding,
+                BlocksVision::new(band),
+            ));
+        }
         terrain_pairs.push((TerrainIndexKey::Cover(cover.at), entity));
     }
     commands.insert_resource(cover_ledger);
@@ -837,6 +852,20 @@ pub fn setup_battle(
         // occludes the cell at that band.
         if let Some(band) = resolved.occludes_vision {
             commands.entity(slab_entity).insert(BlocksVision::new(band));
+        }
+        // GTW-503 C1/C2: an Openable Slab (a hatch) blocks BOTH path AND vision WHEN CLOSED
+        // even though a slab does not block by default — attach OpenState::Closed +
+        // OpenableBlocking(High) and FORCE both BlocksPathfinding + BlocksVision(High). This is
+        // the C2 case the GTW-501/502 inserts above do NOT cover (an untagged slab gets
+        // neither): GTW-503 owns the closed-hatch blocking. The band is HeightBand::High (a
+        // slab spans the storey).
+        if let Some(band) = resolved.openable {
+            commands.entity(slab_entity).insert((
+                OpenState::Closed,
+                OpenableBlocking::new(band),
+                BlocksPathfinding,
+                BlocksVision::new(band),
+            ));
         }
 
         // GTW-392: a slab is a stair-brace slab when the cell DIRECTLY BELOW it is a

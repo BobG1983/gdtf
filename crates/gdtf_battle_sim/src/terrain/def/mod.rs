@@ -29,7 +29,8 @@ mod uuid;
 mod test;
 
 pub use blocking::{
-    derives_path_blocking, derives_vision_occlusion, sim_kind_blocks_path, sim_kind_occludes_vision,
+    closed_openable_vision_band, derives_path_blocking, derives_vision_occlusion, is_openable,
+    sim_kind_blocks_path, sim_kind_occludes_vision,
 };
 pub use definition::{TerrainDef, TerrainDisplayName};
 pub use kind::{TerrainPresenterKind, TerrainSimKind, TerrainTag};

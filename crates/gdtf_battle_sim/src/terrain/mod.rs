@@ -9,6 +9,7 @@ pub mod entity;
 pub mod floor;
 pub mod occupancy;
 pub mod occupancy_sync;
+pub mod openable;
 pub mod piece;
 pub mod slab;
 pub mod surface;

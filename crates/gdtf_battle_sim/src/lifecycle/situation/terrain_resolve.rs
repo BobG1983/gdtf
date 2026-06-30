@@ -24,7 +24,8 @@ use crate::{
     terrain::{
         def::{
             TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainUuid,
-            derives_path_blocking, derives_vision_occlusion,
+            closed_openable_vision_band, derives_path_blocking, derives_vision_occlusion,
+            is_openable,
         },
         entity::TerrainPieceKind,
         piece::{FootfallSound, TerrainGraphicKey},
@@ -70,6 +71,16 @@ pub(super) struct ResolvedCoverPiece {
     /// and an explicit `BlocksVision` tag can only add/retune it. Carried forward so the spawn
     /// loop attaches the component (at this band) without re-reading the registry.
     pub(super) occludes_vision:  Option<HeightBand>,
+    /// `Some(band)` if this piece is **openable** (a door / hatch — the def carries the
+    /// [`Openable`](crate::terrain::def::TerrainTag::Openable) tag), where `band` is the vision
+    /// [`HeightBand`] it occludes WHEN CLOSED (GTW-503 C1 / C2); `None` if it is not openable.
+    /// When openable, the spawn loop attaches an
+    /// [`OpenState::Closed`](crate::terrain::openable::OpenState) plus an
+    /// [`OpenableBlocking`](crate::terrain::openable::OpenableBlocking)`(band)` and FORCES the
+    /// closed blocking pair (both `BlocksPathfinding` and `BlocksVision(band)`), so GTW-503 owns
+    /// the openable's blocking lifecycle (C2). A `Wall`/`Cover` already carries that band by
+    /// default, so its open state will re-block at the SAME band on close.
+    pub(super) openable:         Option<HeightBand>,
 }
 
 /// A pre-resolved slab piece — the structural stats and presentation hooks extracted
@@ -103,6 +114,16 @@ pub(super) struct ResolvedSlabPiece {
     /// screen/blast-wall slab — banded HIGH because a slab spans the storey). Carried forward
     /// so the spawn loop attaches the component without re-reading the registry.
     pub(super) occludes_vision:  Option<HeightBand>,
+    /// `Some(band)` if this slab is **openable** (a hatch — the def carries the
+    /// [`Openable`](crate::terrain::def::TerrainTag::Openable) tag), where `band` is the vision
+    /// [`HeightBand`] it occludes WHEN CLOSED (GTW-503 C1 / C2); `None` otherwise. A slab does
+    /// NOT block path or occlude vision by default, but a CLOSED openable slab hatch blocks
+    /// BOTH (C2) — so when `Some`, the spawn loop attaches
+    /// [`OpenState::Closed`](crate::terrain::openable::OpenState) +
+    /// [`OpenableBlocking`](crate::terrain::openable::OpenableBlocking)`(band)` and FORCES both
+    /// `BlocksPathfinding` + `BlocksVision(band)` (the band is
+    /// [`HeightBand::High`](crate::cover::HeightBand::High) for a slab — it spans the storey).
+    pub(super) openable:         Option<HeightBand>,
 }
 
 /// Resolve a [`TerrainDef`] as a **cover** piece (wall / cover) — extract the
@@ -170,6 +191,10 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
         // sight at the SAME band their CoverLedger entry already does, zero regression /
         // idempotent); an explicit BlocksVision tag can only add/retune it.
         occludes_vision: derives_vision_occlusion(def),
+        // GTW-503 C1/C2: an Openable Wall/Cover (a door) carries OpenState + forces the closed
+        // blocking pair; the closed-vision band is the sim_kind's own band (Wall/Cover have
+        // one). None when the def is not Openable.
+        openable: is_openable(def).then(|| closed_openable_vision_band(def)),
     })
 }
 
@@ -211,6 +236,11 @@ pub(super) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<Re
         // stops sight at the z-boundary), so this is Some(HeightBand::High) only when the def
         // carries an explicit BlocksVision tag (an opaque screen/blast-wall slab).
         occludes_vision:  derives_vision_occlusion(def),
+        // GTW-503 C1/C2: an Openable Slab (a hatch) carries OpenState + forces the closed
+        // blocking pair EVEN THOUGH a slab does not block by default — a closed hatch bars
+        // footfall + sight (C2). The closed-vision band is HeightBand::High (a slab spans the
+        // storey). None when the def is not Openable.
+        openable:         is_openable(def).then(|| closed_openable_vision_band(def)),
     })
 }
 

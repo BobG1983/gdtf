@@ -19,6 +19,7 @@ use crate::{
     occupancy_sync::{
         OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover, sync_destroyed_slab,
     },
+    openable::OpenableTogglePlugin,
     peek_sync::{peek_population_needed, sync_peek_offsets},
     visibility::{SquadVisibility, recompute_visibility, should_recompute_visibility},
 };
@@ -85,6 +86,12 @@ impl Plugin for BattleSimPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(OccupancyMaintenancePlugin)
             .add_plugins(SimActsPlugin)
+            // GTW-503: the openable (door/hatch) toggle — registers the SetOpenable message +
+            // apply_openable_toggle (in the Simulate band, .before the GTW-501/502 projection).
+            // Toggling adds/removes the BlocksPathfinding + BlocksVision components, which the
+            // ALREADY-WIRED project_path_blocking / project_vision_blocking + recompute pick up
+            // (GTW-503 C4 — no new projection/recompute plumbing here).
+            .add_plugins(OpenableTogglePlugin)
             .add_message::<SetupBattleRequested>()
             .add_message::<TeardownBattleRequested>()
             .add_message::<BattleReady>()
