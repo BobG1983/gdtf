@@ -7,7 +7,9 @@
 //! model. The whole module is `#[cfg(debug_assertions)]`-gated by its parent.
 
 use bevy::{prelude::*, ui::Val};
-use gdtf_battle_sim::{GangRegistry, UuidThemeRegistry, level::PrefabRegistry2, rng::BattleSeed};
+use gdtf_battle_sim::{
+    GangRegistry, ProcgenTuning, UuidThemeRegistry, level::PrefabRegistry2, rng::BattleSeed,
+};
 use gdtf_ui::{
     ButtonLabel, spawn_button, spawn_panel,
     theme::GdtfTheme,
@@ -59,6 +61,9 @@ pub(in crate::states::running::procgen_viz) fn insert_viz_model(
     registry: Option<Res<PrefabRegistry2>>,
     situation: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
+    // GTW-533: the LIVE, hot-reloaded procgen fill tuning (the Load-resolved resident
+    // resource); absent on a no-content harness ⇒ the visualizer falls back to the default.
+    procgen_tuning: Option<Res<ProcgenTuning>>,
 ) {
     // Grid-size + theme come from the loaded situation; absent it, the default sim extent +
     // the nil theme (so the visualizer is still reachable on a no-content harness — the v2
@@ -80,7 +85,13 @@ pub(in crate::states::running::procgen_viz) fn insert_viz_model(
     let seed = config.seed();
 
     // The INITIAL model uses no chosen gangs (C6: prefab-name labels), matching GTW-434.
-    let model = ProcgenViz::build(registry.as_deref(), theme, grid_size, seed);
+    let model = ProcgenViz::build(
+        registry.as_deref(),
+        theme,
+        grid_size,
+        seed,
+        procgen_tuning.as_deref(),
+    );
     commands.insert_resource(model);
     commands.insert_resource(config);
 }

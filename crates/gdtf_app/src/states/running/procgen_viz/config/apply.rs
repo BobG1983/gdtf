@@ -17,8 +17,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    GangName, GangRegistry, GridHeight, GridLevels, GridWidth, PrefabRegistry2, ThemeUuid,
-    rng::BattleSeed,
+    GangName, GangRegistry, GridHeight, GridLevels, GridWidth, PrefabRegistry2, ProcgenTuning,
+    ThemeUuid, rng::BattleSeed,
 };
 use gdtf_ui::{DisabledButton, DropdownSelectionChanged, NumericFieldCommitted};
 
@@ -200,6 +200,9 @@ pub(in crate::states::running::procgen_viz) fn generate_on_press(
     config: Option<Res<VizConfig>>,
     prefabs: Option<Res<PrefabRegistry2>>,
     gangs: Option<Res<GangRegistry>>,
+    // GTW-533: the LIVE, hot-reloaded procgen fill tuning; a re-Generate after an edit to
+    // `core_tuning/procgen.tuning.ron` re-tunes the visualizer's fill (absent ⇒ default).
+    procgen_tuning: Option<Res<ProcgenTuning>>,
     mut model: ResMut<ProcgenViz>,
 ) {
     let Some(config) = config else {
@@ -224,5 +227,6 @@ pub(in crate::states::running::procgen_viz) fn generate_on_press(
         gangs.as_deref(),
         config.player_gang(),
         config.enemy_gang(),
+        procgen_tuning.as_deref(),
     );
 }

@@ -48,6 +48,19 @@ gdtf_test_utils = { path = "../gdtf_test_utils" }
 # gdtf_content_editor -> bevy/dynamic_linking), mirroring the grimdark_turfwar -> gdtf_app
 # chain. Keeps the dev/QA build+link loop fast.
 dynamic_linking = ["bevy/dynamic_linking"]
+# GTW-533: DEV / LOCAL-only asset hot-reload for the EDITOR — the editor half of the
+# "hot-reload in-app (game AND editor) with NO restart" contract. Enables Bevy's asset file
+# watcher (bevy -> bevy_internal -> bevy_asset/file_watcher -> bevy_asset/watch), exactly as
+# gdtf_app's `file_watcher` does for the game. Effect: saving a loose asset the editor hosts
+# (a theme / tile-role / weapon / armor / terrain-def / theme-def `.ron`) makes the
+# AssetServer reload it and emit AssetEvent::Modified, which the editor's `redrive_*` handlers
+# turn into a live registry rebuild — NO source change to the AssetPlugin is needed. NOT in
+# the default feature set and NEVER forced into CI / test / release builds (it pulls in
+# notify-debouncer-full + an OS filesystem-watch thread; the OS watcher is non-deterministic,
+# so the deterministic re-derive path is covered by injected-AssetEvent tests instead).
+# Propagated from the binary crate (binary -> gdtf_content_editor -> bevy/file_watcher),
+# mirroring the grimdark_turfwar -> gdtf_app chain.
+file_watcher = ["bevy/file_watcher"]
 
 [lints]
 workspace = true

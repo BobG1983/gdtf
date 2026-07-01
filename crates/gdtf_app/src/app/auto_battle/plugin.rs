@@ -50,6 +50,7 @@ use gdtf_battle_sim::{
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
     level::{PrefabRegistry2, UuidThemeRegistry},
+    procgen::ProcgenTuning,
     terrain::def::TerrainDefRegistry,
     tuning::CombatTuning,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
@@ -201,7 +202,8 @@ crate::support_item! {
     ///
     /// Inserts [`default_theme`] + [`CombatTuning::default`] unconditionally, and an empty
     /// [`WeaponRegistry`] + an empty [`ArmorRegistry`] + the empty UUID-keyed
-    /// [`TerrainDefRegistry`] / [`UuidThemeRegistry`] / [`PrefabRegistry2`] + a default (EMPTY)
+    /// [`TerrainDefRegistry`] / [`UuidThemeRegistry`] / [`PrefabRegistry2`] + the const
+    /// [`ProcgenTuning::default`] (GTW-533) + a default (EMPTY)
     /// [`LoadedSituation`] **only when no [`AssetServer`] is present** (a headless / asset-less
     /// build). Under the real GUI launch the `Load` scene later `insert_resource`-overwrites
     /// the theme / tuning with the shipped assets (the real theme + tuning), and — crucially —
@@ -301,6 +303,13 @@ crate::support_item! {
             // seeds were retired).
             commands.insert_resource(TerrainDefRegistry::default());
             commands.insert_resource(UuidThemeRegistry::default());
+            // GTW-533: the ProcgenTuning is a gate-blocking resource too; seed the const
+            // RULED default when there is no AssetServer so headless walks still reach Intro
+            // (the A1 / AC3b pattern). With an AssetServer present the real
+            // `core_tuning/procgen.tuning.ron` resolve must win — so this is gated on
+            // `is_none()` exactly like the registries (else the seed would shadow
+            // resolve_procgen_tuning, which only runs while ProcgenTuning is ABSENT).
+            commands.insert_resource(ProcgenTuning::default());
             commands.insert_resource(LoadedSituation::new(
                 gdtf_battle_sim::situation::Situation::default(),
             ));

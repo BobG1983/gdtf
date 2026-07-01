@@ -26,6 +26,7 @@ use bevy::state::state::State;
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
+    procgen::ProcgenTuning,
     situation::Situation,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
@@ -89,6 +90,9 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     app.world_mut().insert_resource(CombatTuning::default());
     // GTW-384: the GangerStatTuning is a gate-blocking resource too.
     app.world_mut().insert_resource(GangerStatTuning::default());
+    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
+    // reads it) — seed it alongside the others to reach Intro.
+    app.world_mut().insert_resource(ProcgenTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
@@ -255,6 +259,9 @@ fn load_does_not_leave_without_a_situation() {
     app.world_mut().insert_resource(CombatTuning::default());
     // GTW-384: the GangerStatTuning is a gate-blocking resource too.
     app.world_mut().insert_resource(GangerStatTuning::default());
+    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
+    // reads it) — seed it alongside the others to reach Intro.
+    app.world_mut().insert_resource(ProcgenTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).

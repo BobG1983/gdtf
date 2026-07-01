@@ -87,6 +87,11 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) struct
     pub themes:  Option<&'a UuidThemeRegistry>,
     /// The UUID-keyed terrain-definition registry (classifies each placed piece's sim-kind).
     pub terrain: Option<&'a TerrainDefRegistry>,
+    /// The LIVE procgen fill tuning (GTW-533) — the OQ-6 fill density / large-prefab
+    /// threshold / dead-rect scatter cap. Loaded + hot-reloaded from
+    /// `core_tuning/procgen.tuning.ron` by the Load resolve. `None` on a no-content headless
+    /// harness (no resource inserted) ⇒ the const RULED [`ProcgenTuning::default`] is used.
+    pub tuning:  Option<&'a ProcgenTuning>,
 }
 
 /// Build the battle's situation by running procgen terrain over the authored situation's
@@ -96,8 +101,10 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) struct
 /// Drives the sim-owned [`generate_level`] with the authored situation's `theme`
 /// ([`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid)) + `grid_size`, the UUID-keyed
 /// registries (`prefabs` / `themes` / `terrain`), a [`ProcgenRng`] derived from `seed`
-/// ([`ProcgenRng::from_root`] — the deterministic injected per-battle seed, C2), and the
-/// RULED-default [`ProcgenTuning`]. On `Ok` it MERGES the generated terrain with the authored
+/// ([`ProcgenRng::from_root`] — the deterministic injected per-battle seed, C2), and the LIVE
+/// [`ProcgenTuning`] from `registries.tuning` (GTW-533: the hot-reloaded resource, falling
+/// back to [`ProcgenTuning::default`] only on a no-content harness). On `Ok` it MERGES the
+/// generated terrain with the authored
 /// gangers via [`merge_procgen_terrain`]; on `Err` (or any registry `None`) it logs and
 /// returns `authored` unchanged.
 #[must_use]
@@ -117,9 +124,11 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn pro
     // The procgen RNG is derived from the SAME injected per-battle seed the rest of the
     // battle RNG uses (C2) — deterministic, reproducible, no wall-clock / thread_rng here.
     let mut rng = ProcgenRng::from_root(seed);
-    // The RULED-default procgen knobs (the live tuning hot-reload was deferred with its
-    // consumer; the defaults are the shipped values — see procgen `tuning.rs`).
-    let tuning = ProcgenTuning::default();
+    // GTW-533: the LIVE procgen fill knobs. Use the resident `ProcgenTuning` resource (loaded
+    // + hot-reloaded from `core_tuning/procgen.tuning.ron` by the Load resolve) when present,
+    // else the const RULED default (the no-content headless harness, which inserts no
+    // resource — same value the pass used before GTW-533 wired the load).
+    let tuning = registries.tuning.copied().unwrap_or_default();
 
     // GTW-492: generate against the authored situation's UUID-keyed theme DIRECTLY — no
     // theme-enum shim. The migrated v2 prefabs author this theme's ThemeUuid, so the

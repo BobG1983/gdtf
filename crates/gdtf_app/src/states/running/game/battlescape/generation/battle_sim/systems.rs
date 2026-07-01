@@ -29,6 +29,7 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{
     battle::{BattleReady, SetupBattleRequested, TeardownBattleRequested},
     level::{PrefabRegistry2, UuidThemeRegistry},
+    procgen::ProcgenTuning,
     rng::BattleSeed,
     situation::Situation,
     terrain::def::TerrainDefRegistry,
@@ -91,6 +92,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
     prefabs: Option<Res<PrefabRegistry2>>,
     themes: Option<Res<UuidThemeRegistry>>,
     def_registry: Option<Res<TerrainDefRegistry>>,
+    procgen_tuning: Option<Res<ProcgenTuning>>,
     mut setup: MessageWriter<SetupBattleRequested>,
 ) {
     // The loaded authored battlefield if the Load scene resolved one, else the empty
@@ -122,6 +124,10 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
         prefabs: prefabs.as_deref(),
         themes:  themes.as_deref(),
         terrain: def_registry.as_deref(),
+        // GTW-533: the LIVE, hot-reloaded procgen fill tuning (the resident resource the
+        // Load resolve inserts + re-reads on a `core_tuning/procgen.tuning.ron` edit); absent
+        // only on the no-content headless harness, where procgen falls back to the default.
+        tuning:  procgen_tuning.as_deref(),
     };
     let situation = procgen_battle_situation(authored, registries, seed);
     setup.write(SetupBattleRequested::new(situation, seed));

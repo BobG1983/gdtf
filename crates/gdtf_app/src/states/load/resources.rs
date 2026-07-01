@@ -11,6 +11,7 @@
 use bevy::{asset::LoadedFolder, prelude::*};
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
+    procgen::ProcgenTuning,
     situation::Situation,
     tuning::{CombatTuning, GangerStatTuning},
 };
@@ -274,11 +275,30 @@ impl StatTuningHandle {
     }
 }
 
+/// Typed handle to the in-flight procgen-tuning RON asset (`core_tuning/procgen.tuning.ron`).
+///
+/// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even for asset
+/// plumbing: a bare `Handle<RonAsset<ProcgenTuning>>` carries no domain meaning, this name says
+/// "the shipped procgen fill tuning being loaded" (GTW-533, the [`TuningHandle`] mirror). The
+/// poll/resolve system reads it to check the load's progress, then inserts the deserialized
+/// [`ProcgenTuning`] as the persistent runtime resource the procgen fill pass reads — closing
+/// the previously-documented-but-unwired hot-reload gap (the consumer had used
+/// `ProcgenTuning::default()`).
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct ProcgenTuningHandle(Handle<RonAsset<ProcgenTuning>>);
+
+impl ProcgenTuningHandle {
+    /// Wrap an in-flight procgen-tuning RON asset handle.
+    pub(in crate::states::load) const fn new(handle: Handle<RonAsset<ProcgenTuning>>) -> Self {
+        Self(handle)
+    }
+}
+
 /// The Load-scoped handles to the assets the [`AppState::Load`](crate::states::AppState::Load)
 /// kick-off started loading.
 ///
 /// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], [`SituationHandle`],
-/// [`TuningHandle`], [`StatTuningHandle`], [`WeaponsFolderHandle`],
+/// [`TuningHandle`], [`StatTuningHandle`], [`ProcgenTuningHandle`], [`WeaponsFolderHandle`],
 /// [`ArmorsFolderHandle`], [`InjuriesFolderHandle`], [`GangsFolderHandle`],
 /// [`PrefabsV2FolderHandle`], and [`TerrainModelFolderHandle`] the poll/resolve system
 /// reads each frame to check load progress. Inserted `OnEnter(Load)` and removed
@@ -295,6 +315,8 @@ pub(in crate::states::load) struct LoadHandles {
     pub tuning:        TuningHandle,
     /// The shipped ganger stat-tuning RON asset being loaded (GTW-384).
     pub stat_tuning:   StatTuningHandle,
+    /// The shipped procgen fill-tuning RON asset being loaded (GTW-533).
+    pub procgen:       ProcgenTuningHandle,
     /// The RANGED-weapons folder being preloaded (all `ranged/*.weapon.ron`s up front,
     /// GTW-257; GTW-505 moved them under `ranged/`).
     pub weapons:       WeaponsFolderHandle,
@@ -353,6 +375,29 @@ impl LoadedSituation {
     }
 }
 
+/// The PERSISTENT handle to the resolved situation RON asset (`situations/skirmish.ron`).
+///
+/// A named newtype over the bevy [`Handle`] (no-bare-types) that — unlike the
+/// Load-scoped [`SituationHandle`] inside [`LoadHandles`], which is dropped
+/// `OnExit(Load)` — **persists** past `Load` (GTW-533), mirroring
+/// [`ActiveTuningHandle`]. It is inserted alongside the resolved [`LoadedSituation`]
+/// resource and kept alive so the GTW-533 live hot-reload handler
+/// ([`redrive_situation_on_asset_event`](super::systems::resolve::situation::redrive_situation_on_asset_event))
+/// can (1) filter incoming [`AssetEvent`](bevy::asset::AssetEvent) ids against the
+/// active situation handle and (2) re-read the refreshed asset out of the `Assets`
+/// collection on a hot edit. Holding the handle also keeps a strong reference so the
+/// asset stays loaded for the file-watcher. Like [`LoadedSituation`], it is **not**
+/// removed in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveSituationHandle(Handle<RonAsset<Situation>>);
+
+impl ActiveSituationHandle {
+    /// Wrap the resolved situation RON handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<RonAsset<Situation>>) -> Self {
+        Self(handle)
+    }
+}
+
 /// The PERSISTENT handle to the resolved combat-tuning RON asset (`core_tuning/combat.tuning.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] (no-bare-types) that — unlike the
@@ -396,6 +441,29 @@ pub(in crate::states::load) struct ActiveStatTuningHandle(Handle<RonAsset<Ganger
 impl ActiveStatTuningHandle {
     /// Wrap the resolved ganger stat-tuning RON handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<RonAsset<GangerStatTuning>>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the resolved procgen-tuning RON asset
+/// (`core_tuning/procgen.tuning.ron`).
+///
+/// A named newtype over the bevy [`Handle`] (no-bare-types) that — unlike the Load-scoped
+/// [`ProcgenTuningHandle`] inside [`LoadHandles`], which is dropped `OnExit(Load)` —
+/// **persists** past `Load` (GTW-533), the procgen mirror of [`ActiveTuningHandle`]. It is
+/// inserted alongside the resolved [`ProcgenTuning`] resource and kept alive so the live
+/// hot-reload handler
+/// ([`redrive_procgen_tuning_on_asset_event`](super::systems::resolve::procgen_tuning::redrive_procgen_tuning_on_asset_event))
+/// can (1) filter incoming [`AssetEvent`](bevy::asset::AssetEvent) ids against the active
+/// procgen-tuning handle and (2) re-read the refreshed asset on a hot edit. Holding the handle
+/// also keeps a strong reference so the asset stays loaded for the file-watcher. Like
+/// [`ProcgenTuning`], it is **not** removed in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveProcgenTuningHandle(Handle<RonAsset<ProcgenTuning>>);
+
+impl ActiveProcgenTuningHandle {
+    /// Wrap the resolved procgen-tuning RON handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<RonAsset<ProcgenTuning>>) -> Self {
         Self(handle)
     }
 }

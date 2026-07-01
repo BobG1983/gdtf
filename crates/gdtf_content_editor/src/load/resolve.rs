@@ -14,12 +14,12 @@
 use core::any::TypeId;
 
 use bevy::{
-    asset::{AssetServer, Assets, LoadState, LoadedFolder, RecursiveDependencyLoadState},
+    asset::{AssetServer, Assets, Handle, LoadState, LoadedFolder, RecursiveDependencyLoadState},
     ecs::system::SystemParam,
     prelude::*,
 };
 use gdtf_assets::RonAsset;
-use gdtf_battle_presenter::TileRoles;
+use gdtf_battle_presenter::{TileRoles, TileRolesHandle};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry, ArmorSpec},
     level::{UuidThemeDef, UuidThemeRegistry},
@@ -234,30 +234,50 @@ fn resolve_weapons(
     }
 
     if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
-        let Some(folder) = folders.get(&*handles.weapons) else {
+        let Some(registry) =
+            build_weapon_registry(asset_server, folders, weapon_specs, &handles.weapons)
+        else {
+            // A member spec not yet in its collection: retry next frame (do NOT publish
+            // a partial registry).
             return;
         };
-        let mut registry = WeaponRegistry::default();
-        for untyped in &folder.handles {
-            let handle = untyped
-                .clone()
-                .typed_debug_checked::<RonAsset<WeaponSpec>>();
-            let Some(spec) = weapon_specs.get(&handle) else {
-                // A member spec not yet in its collection: retry next frame (do NOT publish
-                // a partial registry).
-                return;
-            };
-            let Some(key) = asset_server.get_path(untyped.id()).and_then(|path| {
-                path.path()
-                    .file_stem()
-                    .map(|stem| key_from_stem(&stem.to_string_lossy(), ".weapon"))
-            }) else {
-                continue;
-            };
-            registry.insert(WeaponName::new(key), (**spec).clone());
-        }
         commands.insert_resource(registry);
     }
+}
+
+/// Build the name-keyed [`WeaponRegistry`] from a loaded `content/weapons/ranged/`
+/// [`LoadedFolder`], or [`None`] if the folder (or any member spec) is not yet in its
+/// collection.
+///
+/// Shared by [`resolve_weapons`] (the one-time `Load`-state build) and
+/// [`redrive_weapons_on_asset_event`](crate::load::redrive::redrive_weapons_on_asset_event)
+/// (the GTW-533 live rebuild on a hot edit), so both build the registry IDENTICALLY — a
+/// live edit yields the same registry a restart would. Mirrors the game's
+/// `build_weapon_registry`.
+pub(crate) fn build_weapon_registry(
+    asset_server: &AssetServer,
+    folders: &Assets<LoadedFolder>,
+    weapon_specs: &Assets<RonAsset<WeaponSpec>>,
+    folder_handle: &Handle<LoadedFolder>,
+) -> Option<WeaponRegistry> {
+    let folder = folders.get(folder_handle)?;
+    let mut registry = WeaponRegistry::default();
+    for untyped in &folder.handles {
+        let handle = untyped
+            .clone()
+            .typed_debug_checked::<RonAsset<WeaponSpec>>();
+        // A member spec not yet in its collection — bail (do NOT publish a partial registry).
+        let spec = weapon_specs.get(&handle)?;
+        let Some(key) = asset_server.get_path(untyped.id()).and_then(|path| {
+            path.path()
+                .file_stem()
+                .map(|stem| key_from_stem(&stem.to_string_lossy(), ".weapon"))
+        }) else {
+            continue;
+        };
+        registry.insert(WeaponName::new(key), (**spec).clone());
+    }
+    Some(registry)
 }
 
 /// Resolve the loaded `content/armor/` folder into the name-keyed [`ArmorRegistry`], or
@@ -282,26 +302,44 @@ fn resolve_armor(
     }
 
     if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
-        let Some(folder) = folders.get(&*handles.armor) else {
+        let Some(registry) =
+            build_armor_registry(asset_server, folders, armor_specs, &handles.armor)
+        else {
             return;
         };
-        let mut registry = ArmorRegistry::default();
-        for untyped in &folder.handles {
-            let handle = untyped.clone().typed_debug_checked::<RonAsset<ArmorSpec>>();
-            let Some(spec) = armor_specs.get(&handle) else {
-                return;
-            };
-            let Some(key) = asset_server.get_path(untyped.id()).and_then(|path| {
-                path.path()
-                    .file_stem()
-                    .map(|stem| key_from_stem(&stem.to_string_lossy(), ".armor"))
-            }) else {
-                continue;
-            };
-            registry.insert(ArmorName::new(key), **spec);
-        }
         commands.insert_resource(registry);
     }
+}
+
+/// Build the name-keyed [`ArmorRegistry`] from a loaded `content/armor/` [`LoadedFolder`],
+/// or [`None`] if the folder (or any member spec) is not yet in its collection.
+///
+/// Shared by [`resolve_armor`] (the one-time `Load`-state build) and
+/// [`redrive_armor_on_asset_event`](crate::load::redrive::redrive_armor_on_asset_event)
+/// (the GTW-533 live rebuild on a hot edit), so both build the registry IDENTICALLY.
+/// Mirrors the game's `build_armor_registry`.
+pub(crate) fn build_armor_registry(
+    asset_server: &AssetServer,
+    folders: &Assets<LoadedFolder>,
+    armor_specs: &Assets<RonAsset<ArmorSpec>>,
+    folder_handle: &Handle<LoadedFolder>,
+) -> Option<ArmorRegistry> {
+    let folder = folders.get(folder_handle)?;
+    let mut registry = ArmorRegistry::default();
+    for untyped in &folder.handles {
+        let handle = untyped.clone().typed_debug_checked::<RonAsset<ArmorSpec>>();
+        // A member spec not yet in its collection — bail (do NOT publish a partial registry).
+        let spec = armor_specs.get(&handle)?;
+        let Some(key) = asset_server.get_path(untyped.id()).and_then(|path| {
+            path.path()
+                .file_stem()
+                .map(|stem| key_from_stem(&stem.to_string_lossy(), ".armor"))
+        }) else {
+            continue;
+        };
+        registry.insert(ArmorName::new(key), **spec);
+    }
+    Some(registry)
 }
 
 /// Resolve the loaded NEW per-theme `terrain/` folder into the UUID-keyed
@@ -329,29 +367,49 @@ fn resolve_terrain_defs(
     }
 
     if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
-        let Some(folder) = folders.get(&*handles.terrain_model) else {
+        let Some(registry) =
+            build_terrain_def_registry(folders, terrain_defs, &handles.terrain_model)
+        else {
+            // A terrain-def member mid-load — retry next frame (do NOT publish a partial).
             return;
         };
-        let mut registry = TerrainDefRegistry::default();
-        for untyped in &folder.handles {
-            // Skip non-terrain members (theme defs live in a different collection) — the TypeId
-            // filter FIRST avoids the debug-assert panic a blind typed_debug_checked on a theme
-            // member would trip (the mixed-folder hazard the game side shares).
-            if untyped.type_id() != TypeId::of::<RonAsset<TerrainDef>>() {
-                continue;
-            }
-            let handle = untyped
-                .clone()
-                .typed_debug_checked::<RonAsset<TerrainDef>>();
-            let Some(def) = terrain_defs.get(&handle) else {
-                // A terrain-def member mid-load — retry next frame (do NOT publish a partial).
-                return;
-            };
-            let def = (**def).clone();
-            registry.insert(def.key, def);
-        }
         commands.insert_resource(registry);
     }
+}
+
+/// Build the UUID-keyed [`TerrainDefRegistry`] from a loaded per-theme `terrain/`
+/// [`LoadedFolder`], or [`None`] if the folder (or any `RonAsset<TerrainDef>` member) is
+/// not yet in its collection.
+///
+/// Shared by [`resolve_terrain_defs`] (the one-time `Load`-state build) and
+/// [`redrive_terrain_defs_on_asset_event`](crate::load::redrive::redrive_terrain_defs_on_asset_event)
+/// (the GTW-533 live rebuild on a hot edit), so both build the registry IDENTICALLY.
+/// Mirrors the game's `build_terrain_def_registry` — the folder is MIXED (it also holds
+/// theme members), so each member is FIRST filtered by [`TypeId`] to avoid the debug-assert
+/// panic a blind `typed_debug_checked` on a theme member would trip.
+pub(crate) fn build_terrain_def_registry(
+    folders: &Assets<LoadedFolder>,
+    terrain_defs: &Assets<RonAsset<TerrainDef>>,
+    folder_handle: &Handle<LoadedFolder>,
+) -> Option<TerrainDefRegistry> {
+    let folder = folders.get(folder_handle)?;
+    let mut registry = TerrainDefRegistry::default();
+    for untyped in &folder.handles {
+        // Skip non-terrain members (theme defs live in a different collection) — the TypeId
+        // filter FIRST avoids the debug-assert panic a blind typed_debug_checked on a theme
+        // member would trip (the mixed-folder hazard the game side shares).
+        if untyped.type_id() != TypeId::of::<RonAsset<TerrainDef>>() {
+            continue;
+        }
+        let handle = untyped
+            .clone()
+            .typed_debug_checked::<RonAsset<TerrainDef>>();
+        // A terrain-def member mid-load — bail (do NOT publish a partial).
+        let def = terrain_defs.get(&handle)?;
+        let def = (**def).clone();
+        registry.insert(def.key, def);
+    }
+    Some(registry)
 }
 
 /// Resolve the loaded NEW per-theme `terrain/` folder into the UUID-keyed
@@ -378,34 +436,58 @@ fn resolve_theme_defs(
     }
 
     if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
-        let Some(folder) = folders.get(&*handles.terrain_model) else {
+        let Some(registry) = build_theme_def_registry(folders, theme_defs, &handles.terrain_model)
+        else {
+            // A theme member mid-load — retry next frame (do NOT publish a partial).
             return;
         };
-        let mut registry = UuidThemeRegistry::default();
-        for untyped in &folder.handles {
-            // Skip non-theme members (terrain defs live in a different collection) — TypeId
-            // filter FIRST to avoid the debug-assert panic on a wrong-type typed_debug_checked.
-            if untyped.type_id() != TypeId::of::<RonAsset<UuidThemeDef>>() {
-                continue;
-            }
-            let handle = untyped
-                .clone()
-                .typed_debug_checked::<RonAsset<UuidThemeDef>>();
-            let Some(def) = theme_defs.get(&handle) else {
-                // A theme member mid-load — retry next frame (do NOT publish a partial).
-                return;
-            };
-            let def = (**def).clone();
-            registry.insert(def.key, def);
-        }
         commands.insert_resource(registry);
     }
+}
+
+/// Build the UUID-keyed [`UuidThemeRegistry`] from a loaded per-theme `terrain/`
+/// [`LoadedFolder`], or [`None`] if the folder (or any `RonAsset<UuidThemeDef>` member) is
+/// not yet in its collection — the theme mirror of [`build_terrain_def_registry`].
+///
+/// Shared by [`resolve_theme_defs`] (the one-time `Load`-state build) and
+/// [`redrive_theme_defs_on_asset_event`](crate::load::redrive::redrive_theme_defs_on_asset_event)
+/// (the GTW-533 live rebuild on a hot edit), so both build the registry IDENTICALLY.
+pub(crate) fn build_theme_def_registry(
+    folders: &Assets<LoadedFolder>,
+    theme_defs: &Assets<RonAsset<UuidThemeDef>>,
+    folder_handle: &Handle<LoadedFolder>,
+) -> Option<UuidThemeRegistry> {
+    let folder = folders.get(folder_handle)?;
+    let mut registry = UuidThemeRegistry::default();
+    for untyped in &folder.handles {
+        // Skip non-theme members (terrain defs live in a different collection) — TypeId
+        // filter FIRST to avoid the debug-assert panic on a wrong-type typed_debug_checked.
+        if untyped.type_id() != TypeId::of::<RonAsset<UuidThemeDef>>() {
+            continue;
+        }
+        let handle = untyped
+            .clone()
+            .typed_debug_checked::<RonAsset<UuidThemeDef>>();
+        // A theme member mid-load — bail (do NOT publish a partial).
+        let def = theme_defs.get(&handle)?;
+        let def = (**def).clone();
+        registry.insert(def.key, def);
+    }
+    Some(registry)
 }
 
 /// Resolve the loaded tile-role RON into the presenter's [`TileRoles`] table, or fall back to
 /// the presenter's const default table on a failed load (GTW-495). The editor resolves a
 /// terrain def's `presenter_kind.graphic_name` to an atlas index through this table
 /// ([`TileRoles::index_for_key`]), so its palette / canvas sprites match the battlescape.
+///
+/// GTW-533: on success it also inserts the presenter's PERSISTENT [`TileRolesHandle`] (the
+/// SAME newtype the presenter's `resolve_tile_roles` inserts), so the presenter's
+/// [`redrive_tile_roles_on_asset_event`](gdtf_battle_presenter::redrive_tile_roles_on_asset_event)
+/// — REUSED verbatim in the editor's `Update` (no second mechanism) — can filter incoming
+/// `AssetEvent` ids against it and re-resolve the resident `TileRoles` on a live
+/// `sprites/tile_roles.spritedef.ron` edit. The handle persists past `Load` (nothing removes
+/// it) and keeps the tile-role asset loaded for the file-watcher.
 fn resolve_tile_roles(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -420,6 +502,10 @@ fn resolve_tile_roles(
              default TileRoles table",
         );
         commands.insert_resource(default_tile_roles());
+        // Insert the persistent handle even on the failure path so a later file-watcher
+        // reload of a fixed `tile_roles.ron` can still re-resolve (mirrors the theme
+        // failure-path handle insert).
+        commands.insert_resource(TileRolesHandle::new((*handles.tile_roles).clone()));
         return;
     }
 
@@ -429,6 +515,7 @@ fn resolve_tile_roles(
             return;
         };
         commands.insert_resource((**loaded).clone());
+        commands.insert_resource(TileRolesHandle::new((*handles.tile_roles).clone()));
     }
 }
 

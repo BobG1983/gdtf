@@ -563,14 +563,19 @@ impl ProcgenViz {
     /// at all, it builds an EMPTY model (the board extent only, no quads): the visualizer is
     /// still reachable and tears down cleanly, it just has nothing to reveal. This mirrors the
     /// GTW-433 live-trigger fallback (fail-open, never panic).
+    ///
+    /// GTW-533: takes the LIVE `tuning` (the hot-reloaded [`ProcgenTuning`] resource) so the
+    /// visualizer's fill re-tunes on a `core_tuning/procgen.tuning.ron` edit; `None` ⇒ the
+    /// const default.
     #[must_use]
     pub(in crate::states::running::procgen_viz) fn build(
         registry: Option<&PrefabRegistry2>,
         theme: ThemeUuid,
         grid_size: GridSize,
         seed: BattleSeed,
+        tuning: Option<&ProcgenTuning>,
     ) -> Self {
-        Self::build_with_gangs(registry, theme, grid_size, seed, None, None, None)
+        Self::build_with_gangs(registry, theme, grid_size, seed, None, None, None, tuning)
     }
 
     /// Build the visualizer model from the sim space-packing pipeline AND apply chosen-gang
@@ -583,7 +588,17 @@ impl ProcgenViz {
     /// initial / no-gang state). An absent / empty registry yields a `(0)` annotation; nothing
     /// here panics (C4 no-gang fallback). Same seed → identical placement; a different seed →
     /// a different placement (C3/C5 determinism), because the only RNG input is `seed`.
+    ///
+    /// GTW-533: takes the LIVE `tuning` (the hot-reloaded [`ProcgenTuning`] resource) so an edit
+    /// to `core_tuning/procgen.tuning.ron` re-tunes the visualizer's fill on the next Generate;
+    /// `None` ⇒ the const default.
     #[must_use]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "GTW-533 threads the live ProcgenTuning as the final arg alongside the GTW-498 \
+                  gang-annotation params; each is a distinct, independent procgen input — \
+                  bundling them would obscure more than it saves"
+    )]
     pub(in crate::states::running::procgen_viz) fn build_with_gangs(
         registry: Option<&PrefabRegistry2>,
         theme: ThemeUuid,
@@ -592,9 +607,10 @@ impl ProcgenViz {
         gangs: Option<&GangRegistry>,
         player_gang: Option<&GangName>,
         enemy_gang: Option<&GangName>,
+        tuning: Option<&ProcgenTuning>,
     ) -> Self {
         let board = board_extent(grid_size);
-        let Some(filled) = assemble_filled(registry, theme, grid_size, seed) else {
+        let Some(filled) = assemble_filled(registry, theme, grid_size, seed, tuning) else {
             // No registry, or procgen failed closed (empty registry, no fitting prefab) —
             // an empty reveal sequence over the board extent. Reachable + tears down cleanly.
             return Self {
@@ -648,15 +664,21 @@ fn board_extent(grid_size: GridSize) -> BoardExtent {
 /// Run the sim space-packing pipeline (assemble + fill) against the registry + theme +
 /// grid-size + seed, returning the [`FilledPlacement`] — or `None` on a missing registry /
 /// any procgen failure (fail-open, never panic; the visualizer then shows an empty board).
+///
+/// GTW-533: uses the LIVE `tuning` (the hot-reloaded [`ProcgenTuning`] resource, threaded from
+/// the caller) when present, else the const RULED [`ProcgenTuning::default`] — so an edit to
+/// `core_tuning/procgen.tuning.ron` re-tunes the visualizer's fill on the next Generate, matching
+/// the live battle path.
 fn assemble_filled(
     registry: Option<&PrefabRegistry2>,
     theme: ThemeUuid,
     grid_size: GridSize,
     seed: BattleSeed,
+    tuning: Option<&ProcgenTuning>,
 ) -> Option<FilledPlacement> {
     let registry = registry?;
     let mut rng = ProcgenRng::from_root(seed);
-    let tuning = ProcgenTuning::default();
+    let tuning = tuning.copied().unwrap_or_default();
     let placement = assemble_placement(registry, theme, grid_size, &mut rng).ok()?;
     fill_placement(placement, registry, theme, grid_size, &tuning, &mut rng).ok()
 }

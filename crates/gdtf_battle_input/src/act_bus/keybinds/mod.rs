@@ -26,4 +26,7 @@ mod table;
 #[cfg(test)]
 mod test;
 
-pub use table::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds};
+pub use table::{
+    BoundKey, Keybinds, KeybindsHandle, load_keybinds, redrive_keybinds_on_asset_event,
+    resolve_keybinds,
+};

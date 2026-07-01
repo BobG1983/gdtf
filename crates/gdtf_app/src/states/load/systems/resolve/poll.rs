@@ -15,6 +15,7 @@ use crate::states::load::{
         melee_weapons::resolve_melee_weapons,
         params::{LoadAssetCollections, ResolvedResources},
         prefab_v2::resolve_prefabs_v2,
+        procgen_tuning::resolve_procgen_tuning,
         situation::resolve_situation,
         stat_tuning::resolve_stat_tuning,
         terrain_model::{resolve_terrain_defs, resolve_theme_defs},
@@ -132,6 +133,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         theme_present,
         tuning_present,
         stat_tuning_present,
+        procgen_present,
         weapons_present,
         melee_weapons_present,
         situation_present,
@@ -145,6 +147,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.theme.is_some(),
         resolved.tuning.is_some(),
         resolved.stat_tuning.is_some(),
+        resolved.procgen.is_some(),
         resolved.weapons.is_some(),
         resolved.melee_weapons.is_some(),
         resolved.situation.is_some(),
@@ -161,6 +164,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(situation_assets),
         Some(tuning_assets),
         Some(stat_tuning_assets),
+        Some(procgen_assets),
         Some(folders),
         Some(weapon_specs),
         Some(melee_specs),
@@ -178,6 +182,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.situation,
         collections.tuning,
         collections.stat_tuning,
+        collections.procgen,
         collections.folders,
         collections.weapon_specs,
         collections.melee_specs,
@@ -210,6 +215,16 @@ pub(in crate::states::load) fn poll_and_resolve(
     // derivation tuning loads. On failure it falls back to the const default (no strand).
     if !stat_tuning_present {
         resolve_stat_tuning(&mut commands, &asset_server, &stat_tuning_assets, &handles);
+    }
+
+    // GTW-533: resolve the shipped procgen fill tuning on its OWN absence guard, the
+    // CombatTuning mirror — so no branch starves it and vice-versa. The Generation procgen
+    // trigger reads it (the fill density / large-prefab threshold / dead-rect scatter cap);
+    // it is a gate-blocking resource (see the plugin wiring) so a battle never generates
+    // before its fill tuning loads. On failure it falls back to the const default (the same
+    // RULED default the pass used before GTW-533 wired the load — no strand).
+    if !procgen_present {
+        resolve_procgen_tuning(&mut commands, &asset_server, &procgen_assets, &handles);
     }
 
     // GTW-257: resolve the weapons folder into the name-keyed WeaponRegistry on its

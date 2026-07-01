@@ -30,6 +30,7 @@ use gdtf_battle_sim::{
     armor::ArmorRegistry,
     injuries::InjuryRegistry,
     level::UuidThemeRegistry,
+    procgen::ProcgenTuning,
     situation::Situation,
     terrain::def::{TerrainDefRegistry, TerrainUuid},
     tuning::{CombatTuning, GangerStatTuning},
@@ -80,6 +81,9 @@ fn seed_gate_resources(app: &mut bevy::app::App, seed_terrain: bool) {
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(GangerStatTuning::default());
+    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
+    // reads it) — seed it alongside the others to reach Intro.
+    app.world_mut().insert_resource(ProcgenTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).

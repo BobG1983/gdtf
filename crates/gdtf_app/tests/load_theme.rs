@@ -25,6 +25,7 @@ use bevy::{asset::Handle, state::state::State, text::Font};
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
+    procgen::ProcgenTuning,
     situation::Situation,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
@@ -110,6 +111,9 @@ fn theme_present_transitions_to_intro_and_persists() {
     app.world_mut().insert_resource(CombatTuning::default());
     // GTW-384: the Load gate also requires a GangerStatTuning; default clears it.
     app.world_mut().insert_resource(GangerStatTuning::default());
+    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
+    // reads it) — seed it alongside the others to reach Intro.
+    app.world_mut().insert_resource(ProcgenTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).

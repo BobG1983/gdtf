@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
+    procgen::ProcgenTuning,
     situation::Situation,
     tuning::{CombatTuning, GangerStatTuning},
 };
@@ -10,8 +11,8 @@ use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
     ArmorsFolderHandle, FontFolderHandle, GangsFolderHandle, InjuriesFolderHandle, LoadHandles,
-    MeleeWeaponsFolderHandle, PrefabsV2FolderHandle, SituationHandle, StatTuningHandle,
-    TerrainModelFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
+    MeleeWeaponsFolderHandle, PrefabsV2FolderHandle, ProcgenTuningHandle, SituationHandle,
+    StatTuningHandle, TerrainModelFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -33,6 +34,13 @@ const TUNING_RON_PATH: &str = "core_tuning/combat.tuning.ron";
 /// (GTW-384 — the attribute → computed-stat derivation weights, a SEPARATE file from
 /// `core_tuning/combat.tuning.ron`).
 const STAT_TUNING_RON_PATH: &str = "core_tuning/stat.tuning.ron";
+
+/// Path of the loose procgen fill-tuning RON, relative to the asset source root
+/// (GTW-533 — the OQ-6 procgen fill knobs the space-packing fill pass reads; a SEPARATE
+/// file from `core_tuning/combat.tuning.ron`. Loaded so the shipped
+/// `core_tuning/procgen.tuning.ron` actually hot-reloads, rather than the consumer using
+/// `ProcgenTuning::default()`).
+const PROCGEN_TUNING_RON_PATH: &str = "core_tuning/procgen.tuning.ron";
 
 /// Path of the loose RANGED-weapons folder, relative to the asset source root (GTW-257;
 /// GTW-505 split it into `ranged/`) — the per-weapon
@@ -137,6 +145,11 @@ pub(in crate::states::load) fn kick_off_loads(
     let stat_tuning = StatTuningHandle::new(
         asset_server.load::<RonAsset<GangerStatTuning>>(STAT_TUNING_RON_PATH),
     );
+    // GTW-533: load the procgen fill tuning so its shipped knobs hot-reload (the
+    // CombatTuning single-asset precedent — the payload IS the runtime resource, no folder).
+    let procgen = ProcgenTuningHandle::new(
+        asset_server.load::<RonAsset<ProcgenTuning>>(PROCGEN_TUNING_RON_PATH),
+    );
     let weapons = WeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
     // GTW-505: the sibling melee-weapons folder loads through its OWN folder handle so the
     // `MeleeWeaponRegistry` builds from the `.melee_weapon.ron` members only.
@@ -157,6 +170,7 @@ pub(in crate::states::load) fn kick_off_loads(
         situation,
         tuning,
         stat_tuning,
+        procgen,
         weapons,
         melee_weapons,
         armor,

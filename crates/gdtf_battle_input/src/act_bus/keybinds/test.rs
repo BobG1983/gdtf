@@ -1,8 +1,13 @@
 //! Tests for the keybind table + its loader (relocated from `keybinds.rs`, GTW-201).
 
-use bevy::prelude::KeyCode;
+use bevy::{
+    MinimalPlugins,
+    asset::{AssetEvent, AssetPlugin, Assets, Handle},
+    prelude::*,
+};
+use gdtf_assets::{RonAsset, RonAssetAppExt};
 
-use crate::keybinds::table::{BoundKey, Keybinds};
+use crate::keybinds::table::{BoundKey, Keybinds, KeybindsHandle, redrive_keybinds_on_asset_event};
 
 /// AC7 — the shipped keybind RON deserializes through the generic
 /// `ron::from_str` path the loader uses, and every declared act name resolves
@@ -83,4 +88,111 @@ fn bound_key_resolves_to_its_key_code() {
     assert_eq!(BoundKey::KeyBracketLeft.key_code(), KeyCode::BracketLeft);
     assert_eq!(BoundKey::KeyBracketRight.key_code(), KeyCode::BracketRight);
     assert_eq!(BoundKey::KeyTab.key_code(), KeyCode::Tab);
+}
+
+/// A `Keybinds` with `select_clear` bound to `clear` (the rest arbitrary-but-fixed) — the
+/// distinguishing field the hot-reload test compares.
+fn keybinds_with_clear(clear: BoundKey) -> Keybinds {
+    Keybinds {
+        select_clear:     clear,
+        level_up:         BoundKey::KeyPageUp,
+        level_down:       BoundKey::KeyPageDown,
+        toggle_full_view: BoundKey::KeyV,
+        stance_cycle:     BoundKey::KeyC,
+        aim_toggle:       BoundKey::KeyF,
+        facing_cycle:     BoundKey::KeyR,
+        select_next:      BoundKey::KeyTab,
+        select_prev:      BoundKey::KeyTab,
+    }
+}
+
+/// A headless app with the REAL keybind hot-reload wiring: `MinimalPlugins` + `AssetPlugin`
+/// (so `Assets<RonAsset<Keybinds>>` and the `AssetEvent` message buffer exist), the
+/// `Keybinds` RON loader registered, and the redrive system in `Update`. Drives the ACTUAL
+/// production redrive (`redrive_keybinds_on_asset_event`, wired into the input plugin's
+/// build), not a copy — the combat-tuning hot-reload test shape.
+fn hot_reload_app() -> App {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default())
+        .init_ron_asset::<Keybinds>()
+        .add_systems(Update, redrive_keybinds_on_asset_event);
+    app
+}
+
+/// Add a `RonAsset<Keybinds>` to the collection and return its handle.
+fn add_asset(app: &mut App, keybinds: Keybinds) -> Handle<RonAsset<Keybinds>> {
+    app.world_mut()
+        .resource_mut::<Assets<RonAsset<Keybinds>>>()
+        .add(RonAsset::new(keybinds))
+}
+
+/// Overwrite the in-memory payload of an already-added keybind asset — exactly what the
+/// real file-watcher does when the loose `.ron` on disk is re-read.
+fn hot_edit(app: &mut App, handle: &Handle<RonAsset<Keybinds>>, keybinds: Keybinds) {
+    let mut assets = app.world_mut().resource_mut::<Assets<RonAsset<Keybinds>>>();
+    if let Some(mut asset) = assets.get_mut(handle) {
+        **asset = keybinds;
+    }
+}
+
+/// GTW-533 C3: a previously-non-reloading asset — the keybind table — now hot-reloads. On a
+/// matching `Modified` for the active keybind handle, the redrive overwrites the resident
+/// `Keybinds` from the UPDATED in-memory payload WITHOUT any restart — the real
+/// watcher+reload path, standing in the file-watcher with an in-memory edit + a `Modified`.
+///
+/// Pin-discriminating: dropping the redrive leaves `Keybinds` on the OLD clear key; a wrong
+/// id filter would reload on any handle.
+#[test]
+fn modified_event_reloads_keybinds() {
+    let mut app = hot_reload_app();
+
+    let baseline = keybinds_with_clear(BoundKey::KeyEscape);
+    let handle = add_asset(&mut app, baseline);
+    app.world_mut().insert_resource(baseline);
+    app.world_mut()
+        .insert_resource(KeybindsHandle::new(handle.clone()));
+
+    // First update: no event, the resource is untouched.
+    app.update();
+
+    // Hot-edit the asset to a DISTINCT clear key, then fire a Modified.
+    let edited = keybinds_with_clear(BoundKey::KeyQ);
+    assert_ne!(edited, baseline, "precondition: the edit must differ");
+    hot_edit(&mut app, &handle, edited);
+    app.world_mut()
+        .write_message(AssetEvent::Modified { id: handle.id() });
+    app.update();
+
+    assert_eq!(
+        app.world().get_resource::<Keybinds>(),
+        Some(&edited),
+        "a Modified for the active keybind handle must reload Keybinds to the edited value \
+         WITHOUT a restart",
+    );
+}
+
+/// GTW-533 C3: a `Modified` for a DIFFERENT asset id leaves `Keybinds` untouched — the
+/// filter is on the ACTIVE handle id only.
+#[test]
+fn modified_event_for_other_id_does_not_reload_keybinds() {
+    let mut app = hot_reload_app();
+
+    let baseline = keybinds_with_clear(BoundKey::KeyEscape);
+    let active = add_asset(&mut app, baseline);
+    let other = add_asset(&mut app, keybinds_with_clear(BoundKey::KeyQ));
+    app.world_mut().insert_resource(baseline);
+    app.world_mut().insert_resource(KeybindsHandle::new(active));
+
+    app.update();
+    hot_edit(&mut app, &other, keybinds_with_clear(BoundKey::KeyE));
+    app.world_mut()
+        .write_message(AssetEvent::Modified { id: other.id() });
+    app.update();
+
+    assert_eq!(
+        app.world().get_resource::<Keybinds>(),
+        Some(&baseline),
+        "a Modified for a non-active keybind id must NOT reload Keybinds",
+    );
 }

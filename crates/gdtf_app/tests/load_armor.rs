@@ -33,6 +33,7 @@ use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry},
     injuries::InjuryRegistry,
+    procgen::ProcgenTuning,
     situation::Situation,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
@@ -97,6 +98,9 @@ fn armor_loader_no_ops_cleanly_without_asset_server() {
     // GTW-384: the GangerStatTuning is a gate-blocking resource too (the sim derives
     // ganger stats from it), so seed it alongside the others to reach Intro.
     app.world_mut().insert_resource(GangerStatTuning::default());
+    // GTW-533: the ProcgenTuning is a gate-blocking resource too (the Generation procgen
+    // trigger reads it), so seed it alongside the others to reach Intro.
+    app.world_mut().insert_resource(ProcgenTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());
     // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).

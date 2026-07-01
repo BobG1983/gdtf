@@ -1,6 +1,6 @@
 //! The authored key vocabulary, the resolved keybind table, and its RON loader.
 
-use bevy::prelude::*;
+use bevy::{asset::AssetEvent, prelude::*};
 use gdtf_assets::RonAsset;
 use serde::Deserialize;
 
@@ -231,4 +231,64 @@ pub fn resolve_keybinds(
         return;
     };
     commands.insert_resource(**loaded);
+}
+
+/// `Update` (ungated): overwrite the resident [`Keybinds`] resource in place on a
+/// matching [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for
+/// `core_tuning/keybinds.tuning.ron` — the GTW-533 LIVE keybind hot-reload, modelled
+/// on the combat-tuning redrive (`redrive_combat_tuning_on_asset_event`) and the FX
+/// tuning redrive: [`Keybinds`] IS both the `Deserialize` payload AND the runtime
+/// `Resource`, so there is no `resolve()` step.
+///
+/// Reads the [`MessageReader`] of
+/// [`AssetEvent`](bevy::asset::AssetEvent)`<`[`RonAsset`]`<`[`Keybinds`]`>>` — asset
+/// events are MESSAGES in Bevy 0.19, so this is a [`MessageReader`], not an
+/// `EventReader` (`bevy-traps.md` #4) — and acts only on a
+/// [`Modified`](bevy::asset::AssetEvent::Modified) event whose `id` matches the
+/// persistent [`KeybindsHandle`] (inserted at [`load_keybinds`] and never removed, so
+/// it survives as the hot-reload filter). Events for any other handle are ignored. On
+/// a match it copies the refreshed [`Keybinds`] out of the `Assets` collection and
+/// overwrites the resident resource through [`ResMut`], so the keyboard systems read
+/// the new bindings the very next frame — WITHOUT a rebuild or restart.
+///
+/// Guarded so it never panics before the load chain has resolved (pre-resolve): it
+/// takes the handle / the `Assets` collection / the [`Keybinds`] resource as
+/// [`Option`]al borrows, draining the reader and returning early if any is missing
+/// (`bevy-traps.md` #1) so a pre-resolve event does not linger and re-fire later.
+///
+/// Param-only (`bevy-traps.md` #7): the [`MessageReader`], the optional handle /
+/// `Assets` / [`Keybinds`] borrows.
+pub fn redrive_keybinds_on_asset_event(
+    mut events: MessageReader<AssetEvent<RonAsset<Keybinds>>>,
+    handle: Option<Res<KeybindsHandle>>,
+    keybind_assets: Option<Res<Assets<RonAsset<Keybinds>>>>,
+    keybinds: Option<ResMut<Keybinds>>,
+) {
+    let (Some(handle), Some(keybind_assets), Some(mut keybinds)) =
+        (handle, keybind_assets, keybinds)
+    else {
+        // Drain the reader so a pre-resolve event does not linger and re-fire once the
+        // resources arrive; there is nothing to re-derive yet.
+        events.clear();
+        return;
+    };
+
+    let active_id = handle.id();
+    // Act once per frame even if several Modified events arrive: a single overwrite
+    // from the latest in-memory value covers them all.
+    let modified = events
+        .read()
+        .any(|event| matches!(event, AssetEvent::Modified { id } if *id == active_id));
+    if !modified {
+        return;
+    }
+
+    let Some(updated) = keybind_assets.get(&**handle) else {
+        // Modified but not currently in the collection (a transient reload state) —
+        // leave the existing bindings until it settles; the next event re-fires.
+        return;
+    };
+    *keybinds = **updated;
+    // GTW-374 Part C convention: log EVERY hot-reload path naming what reloaded.
+    info!("keybind hot-reload: reloaded Keybinds from `core_tuning/keybinds.tuning.ron`");
 }

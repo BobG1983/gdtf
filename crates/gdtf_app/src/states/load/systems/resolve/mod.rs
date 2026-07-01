@@ -19,7 +19,8 @@ pub(in crate::states::load) mod melee_weapons;
 mod params;
 mod poll;
 pub(in crate::states::load) mod prefab_v2;
-mod situation;
+pub(in crate::states::load) mod procgen_tuning;
+pub(in crate::states::load) mod situation;
 pub(in crate::states::load) mod stat_tuning;
 pub(in crate::states::load) mod terrain_model;
 pub(in crate::states::load) mod tuning;
@@ -31,6 +32,8 @@ pub(in crate::states::load) use injuries::redrive_injuries_on_asset_event;
 pub(in crate::states::load) use melee_weapons::redrive_melee_weapons_on_asset_event;
 pub(in crate::states::load) use poll::poll_and_resolve;
 pub(in crate::states::load) use prefab_v2::redrive_prefabs_v2_on_asset_event;
+pub(in crate::states::load) use procgen_tuning::redrive_procgen_tuning_on_asset_event;
+pub(in crate::states::load) use situation::redrive_situation_on_asset_event;
 pub(in crate::states::load) use stat_tuning::redrive_stat_tuning_on_asset_event;
 pub(in crate::states::load) use terrain_model::{
     redrive_terrain_defs_on_asset_event, redrive_theme_defs_on_asset_event,

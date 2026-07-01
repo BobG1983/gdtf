@@ -16,6 +16,12 @@ gdtf_content_editor = { path = "../../crates/gdtf_content_editor" }
 # leave off for `--release` so it never ships in release artifacts. Mirrors the
 # grimdark_turfwar binary's dynamic_linking feature wiring.
 dynamic_linking = ["gdtf_content_editor/dynamic_linking"]
+# GTW-533: DEV / LOCAL-only asset hot-reload; chains through to gdtf_content_editor -> bevy/file_watcher.
+# Enable locally (e.g. `cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher`)
+# to make an author's live edit of a theme / tile-role / weapon / armor / terrain / theme `.ron`
+# refresh the running editor with NO restart. Leave off for CI / test / release. Mirrors the
+# grimdark_turfwar binary's `file_watcher` feature wiring.
+file_watcher = ["gdtf_content_editor/file_watcher"]
 
 [lints]
 workspace = true

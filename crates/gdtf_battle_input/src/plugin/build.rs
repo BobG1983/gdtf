@@ -38,7 +38,9 @@ use crate::{
         mouse_reclaims_pointer, move_gamepad_cursor,
     },
     intent::{PendingActIntent, dispatch_act_intents},
-    keybinds::{Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds},
+    keybinds::{
+        Keybinds, KeybindsHandle, load_keybinds, redrive_keybinds_on_asset_event, resolve_keybinds,
+    },
     keyboard::{cycle_selection_keys, full_view_key, level_keys, posture_keys, select_clear_key},
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
@@ -339,7 +341,15 @@ impl Plugin for GdtfBattleInputPlugin {
                         resource_exists::<KeybindsHandle>
                             .and_then(not(resource_exists::<Keybinds>)),
                     ),
-                );
+                )
+                // GTW-533: the LIVE keybind hot-reload — overwrites the resident Keybinds
+                // resource on a `core_tuning/keybinds.tuning.ron` edit, mirroring the game's
+                // combat-tuning redrive. Ungated (it self-guards on its Optional borrows,
+                // `bevy-traps.md` #1), so a live `.ron` edit re-binds keys with NO restart. Its
+                // `Messages<AssetEvent<RonAsset<Keybinds>>>` buffer is registered by the
+                // `init_ron_asset::<Keybinds>()` above, so the MessageReader validates
+                // (`bevy-traps.md` #4).
+                .add_systems(Update, redrive_keybinds_on_asset_event);
         }
     }
 }

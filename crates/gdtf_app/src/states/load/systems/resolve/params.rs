@@ -14,6 +14,7 @@ use gdtf_battle_sim::{
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     level::{PrefabRegistry2, PrefabSpecV2, UuidThemeDef, UuidThemeRegistry},
+    procgen::ProcgenTuning,
     situation::Situation,
     terrain::def::{TerrainDef, TerrainDefRegistry},
     tuning::{CombatTuning, GangerStatTuning},
@@ -43,6 +44,9 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     pub(super) tuning:          Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
     /// The loaded ganger stat-tuning RON collection (`core_tuning/stat.tuning.ron`, GTW-384).
     pub(super) stat_tuning:     Option<Res<'w, Assets<RonAsset<GangerStatTuning>>>>,
+    /// The loaded procgen fill-tuning RON collection (`core_tuning/procgen.tuning.ron`,
+    /// GTW-533).
+    pub(super) procgen:         Option<Res<'w, Assets<RonAsset<ProcgenTuning>>>>,
     /// The loaded `LoadedFolder` collection — used to read the weapons folder's
     /// member handles when building the [`WeaponRegistry`] (GTW-257).
     pub(super) folders:         Option<Res<'w, Assets<LoadedFolder>>>,
@@ -86,6 +90,8 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
     pub(super) tuning:        Option<Res<'w, CombatTuning>>,
     /// Whether the resolved [`GangerStatTuning`] is already inserted (GTW-384).
     pub(super) stat_tuning:   Option<Res<'w, GangerStatTuning>>,
+    /// Whether the resolved [`ProcgenTuning`] is already inserted (GTW-533).
+    pub(super) procgen:       Option<Res<'w, ProcgenTuning>>,
     /// Whether the resolved [`WeaponRegistry`] is already inserted (GTW-257).
     pub(super) weapons:       Option<Res<'w, WeaponRegistry>>,
     /// Whether the resolved [`MeleeWeaponRegistry`] is already inserted (GTW-505).

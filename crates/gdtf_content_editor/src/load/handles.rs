@@ -5,8 +5,12 @@
 //! `terrain/` folder (GTW-487), and the presenter's tile-role RON (GTW-495 — the per-def
 //! graphic resolution the editor mirrors). Each is a named newtype over its Bevy handle
 //! (no-bare-types rule 5: private inner, derived [`Deref`], a `new` constructor). The
-//! resource lives only during [`EditorState::Load`](crate::EditorState) — it is removed
-//! `OnExit(Load)` once the registries are built (the registries hold their data BY VALUE).
+//! GTW-533: the resource PERSISTS for the whole session — `register_load` registers NO
+//! `OnExit(EditorState::Load)` cleanup — so the editor's LIVE hot-reload handlers
+//! ([`redrive`](crate::load::redrive)) can re-enumerate the folder members on a hot `.ron`
+//! edit, and holding the folder handles keeps every member asset loaded for the file-watcher
+//! (the editor analogue of the game's persistent `Active*FolderHandle` resources). The built
+//! registries hold their data BY VALUE, so they too survive independently.
 
 use bevy::{
     asset::{Handle, LoadedFolder},
@@ -94,8 +98,11 @@ impl EditorTileRolesHandle {
     }
 }
 
-/// The editor's `Load`-scoped asset handles, inserted by the kick-off system and read by
-/// the poll/resolve system. Removed `OnExit(EditorState::Load)`.
+/// The editor's asset handles, inserted by the kick-off system and read by the poll/resolve
+/// system. GTW-533: PERSISTS for the whole session (no `OnExit(Load)` cleanup is registered)
+/// so the [`redrive`](crate::load::redrive) hot-reload handlers can re-enumerate folder
+/// members on a live `.ron` edit, and holding the folder handles keeps every member asset
+/// loaded for the file-watcher.
 #[derive(Resource)]
 pub(crate) struct EditorLoadHandles {
     /// The theme-RON handle (resolves to [`GdtfTheme`](gdtf_ui::theme::GdtfTheme)).
