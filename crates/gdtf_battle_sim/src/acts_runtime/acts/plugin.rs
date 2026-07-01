@@ -32,6 +32,9 @@ use crate::{
     },
     reaction::{reaction_trigger, reset_reactions_used},
     shot_fired::ShotFired,
+    suppression::{
+        SuppressionApplied, apply_suppression, reset_suppression, suppression_auto_stance,
+    },
     terrain::openable::SetOpenable,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
 };
@@ -194,7 +197,14 @@ fn register_messages(app: &mut App) {
         // MessageReader<ReactionShotFired> param valid. NOTHING in the sim emits it yet —
         // the PRODUCER is GTW-38-future reaction fire / overwatch (the orchestrator will
         // log this); this slice builds the RECEIVING hook only (bevy-traps.md #4 / #5).
-        .add_message::<ReactionShotFired>();
+        .add_message::<ReactionShotFired>()
+        // GTW-526: the presenter-facing suppression signal `apply_suppression` emits once
+        // per ganger freshly suppressed this tick (an idempotent refresh emits nothing).
+        // Registering the buffer here makes `apply_suppression`'s
+        // MessageWriter<SuppressionApplied> param valid and creates the
+        // Messages<SuppressionApplied> buffer the presenter's suppression FCT reader will
+        // drain (bevy-traps.md #4 / #5).
+        .add_message::<SuppressionApplied>();
 }
 
 /// Wire every sim-acts dispatch system into the [`SimSystems::Simulate`] band with its
@@ -416,6 +426,51 @@ fn wire_systems(app: &mut App) {
     .add_systems(
         Update,
         reset_reactions_used
+            .after(dispatch_end_turn)
+            .in_set(SimSystems::Simulate),
+    )
+    // GTW-526 (C2): the SUPPRESSION producer. It reads every FireRequested this tick and
+    // marks each OPPOSING ganger within the tuning SuppressionRadius of the shot's target
+    // as Suppressed (anchored to the shooter's origin), emitting a SuppressionApplied on a
+    // fresh application. Ordered `.after(dispatch_fire)` so ALL of this frame's
+    // FireRequested are visible before it reads (bevy-traps.md #3): the input seam, the
+    // enemy AI (`.before(dispatch_fire)`), and the reaction trigger
+    // (`.before(dispatch_fire)`) all write FireRequested, and — because each MessageReader
+    // has its OWN cursor and messages persist the frame — dispatch_fire draining them does
+    // NOT hide them from this system. It joins the BattleInProgress-gated Simulate band;
+    // its Res<CombatTuning> read is taken Option<Res> so it fails closed outside a live
+    // battle (bevy-traps.md #1). Param-only, no &mut World (bevy-traps.md #7).
+    .add_systems(
+        Update,
+        apply_suppression
+            .after(dispatch_fire)
+            .in_set(SimSystems::Simulate),
+    )
+    // GTW-526 (C5): the AUTO-STANCE drop. On a fresh Added<Suppressed> it ducks the ganger
+    // behind the cover one step toward the suppressor, writing Stance DIRECTLY (no TU).
+    // Ordered `.after(apply_suppression)` (bevy-traps.md #3) so the producer's deferred
+    // Commands insert of Suppressed is FLUSHED (the explicit ordering forces a sync point)
+    // and this frame's Added<Suppressed> is detected the SAME tick the unit is suppressed.
+    // Param-only (Query + Res<CoverLedger>) — the ledger is battle-lifetime, so it joins
+    // the gated Simulate band (the run_if skips it outside a live battle, bevy-traps.md #1).
+    .add_systems(
+        Update,
+        suppression_auto_stance
+            .after(apply_suppression)
+            .in_set(SimSystems::Simulate),
+    )
+    // GTW-526 (C6): the CLEAR cadence. On a TurnStarted it removes Suppressed from every
+    // ganger of the now-active faction (faction-scoped, so a unit stays pinned through the
+    // opponent's turn and clears at its OWN turn-start — NOT the faction-agnostic
+    // reset_reactions_used cadence). Ordered `.after(dispatch_end_turn)` so the boundary's
+    // TurnStarted is buffered (its own independent reader, so it never steals the boundary
+    // from the combat-log / bleed / cap-reset readers — the reset_reactions_used
+    // precedent). It joins the gated Simulate band; its MessageReader + Query + Commands
+    // are always valid, so it needs no extra run_if. Param-only, no &mut World
+    // (bevy-traps.md #7).
+    .add_systems(
+        Update,
+        reset_suppression
             .after(dispatch_end_turn)
             .in_set(SimSystems::Simulate),
     );

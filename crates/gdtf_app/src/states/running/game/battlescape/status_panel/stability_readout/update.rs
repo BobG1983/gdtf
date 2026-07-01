@@ -2,7 +2,8 @@
 //!
 //! [`update_stability_readout`] reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter),
 //! resolves it to the selected [`Entity`], assembles the sim [`Shooter`] borrow-view from the
-//! ganger's [`Stance`] / [`Aiming`] / [`Position`] / [`Facing`], resolves the wielded RANGED
+//! ganger's [`Stance`] / [`Aiming`] / [`Position`] / [`Facing`] (plus its GTW-526 optional
+//! [`Suppressed`] state, so the preview widens under suppression), resolves the wielded RANGED
 //! weapon's [`Stable`] tag (`ganger → Wields → the ranged weapon entity → Stable`, the SAME
 //! ranged-filtered resolution the sim fire path uses — GTW-505 C5), reads the model
 //! [`CoverLedger`] + [`CombatTuning`] +
@@ -29,8 +30,8 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Aiming, BraceStairCells, CoverLedger, Facing, MeleeWeapon, Position, Shooter, Stable, Stance,
-    Weapon, Wields, stability::terrain_brace::terrain_braces, stability_for, surface::SurfaceGrid,
-    tuning::CombatTuning,
+    Suppressed, Weapon, Wields, stability::terrain_brace::terrain_braces, stability_for,
+    surface::SurfaceGrid, tuning::CombatTuning,
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar};
 
@@ -41,8 +42,16 @@ use crate::states::running::game::battlescape::status_panel::stability_readout::
 /// The selected shooter's stability-relevant ganger components, read in ONE query tuple
 /// (the `StatBlockData` wide-read precedent — keeps the read off clippy `type_complexity`).
 ///
-/// These are exactly the four borrows the sim [`Shooter`] view is assembled from.
-type ShooterView<'a> = (&'a Stance, &'a Aiming, &'a Position, &'a Facing);
+/// These are exactly the borrows the sim [`Shooter`] view is assembled from — the four
+/// core ganger components plus the GTW-526 optional [`Suppressed`] state, so the HUD
+/// preview widens the readout under suppression exactly as the fire path does.
+type ShooterView<'a> = (
+    &'a Stance,
+    &'a Aiming,
+    &'a Position,
+    &'a Facing,
+    Option<&'a Suppressed>,
+);
 
 /// The read-only queries the stability resolution touches, bundled as one [`SystemParam`]
 /// (the `StatBlockWidgets` / `RouteGrids` bundle precedent) so the system stays under clippy's
@@ -139,7 +148,7 @@ fn resolve_steadiness(
     reads: &ShooterReadQueries,
 ) -> Option<Steadiness> {
     let entity = (*selected)?;
-    let (stance, aiming, position, facing) = reads.shooters.get(entity).ok()?;
+    let (stance, aiming, position, facing, suppressed) = reads.shooters.get(entity).ok()?;
     // Resolve `ganger → Wields → the RANGED weapon entity → Stable` (GTW-323, the fire path's
     // resolution). GTW-505 C5: a ganger wields BOTH a ranged AND a melee weapon, so resolve
     // through `Wields::ranged_weapon` (excluding the `MeleeWeapon`-marked entity) — NOT
@@ -167,6 +176,9 @@ fn resolve_steadiness(
         aiming,
         position,
         facing,
+        // GTW-526: thread the shooter's Suppressed state so the HUD preview widens the
+        // readout under suppression, matching the fire path exactly.
+        suppressed,
     };
     let (cone_mult, _recoil_growth) =
         stability_for(&shooter, stable, terrain_braced, cover, tuning);

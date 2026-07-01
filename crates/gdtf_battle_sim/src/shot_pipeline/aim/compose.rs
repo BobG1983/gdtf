@@ -8,7 +8,10 @@ use crate::{
     cover::CoverLedger,
     faced_cell::faced_cell,
     metric::CellLevel,
-    stability::{ConeMult, EmplacementStability, RecoilGrowth, TerrainBraced, stability},
+    stability::{
+        ConeMult, EmplacementStability, RecoilGrowth, SuppressionStability, TerrainBraced,
+        stability,
+    },
     tuning::CombatTuning,
     weapon::{FireModeSpec, Stable, WeaponStats},
 };
@@ -24,9 +27,17 @@ use crate::{
 /// via [`CoverLedger::peek`](crate::cover::CoverLedger::peek), never rebuilt), and
 /// calls the landed [`stability`] verbatim with that cover, the shooter's
 /// [`crate::ganger::Stance`], the weapon's `stable` tag, the GTW-392
-/// [`TerrainBraced`] decision, and the emplacement seam
-/// ([`EmplacementStability::none`] — no emplacement entities exist yet). Returns
+/// [`TerrainBraced`] decision, the emplacement seam ([`EmplacementStability::none`] —
+/// no emplacement entities exist yet), and the GTW-526 suppression seam. Returns
 /// the `(cone_mult, recoil_growth)` pair the §1a cone chain reads.
+///
+/// GTW-526: the suppression term is resolved HERE from the shooter's
+/// [`Suppressed`](crate::ganger::Suppressed) state — a suppressed shooter passes the
+/// NEGATED tunable [`SuppressionStabilityPenalty`](crate::tuning::SuppressionStabilityPenalty)
+/// (a subtractive [`SuppressionStability`] term that LOWERS the score → a wider cone),
+/// an un-suppressed shooter passes [`SuppressionStability::none`] (the zero identity, so
+/// the score is byte-identical to before the seam). Both the HUD preview and E4.5
+/// `fire()` reach `stability` through THIS composer, so both reflect the penalty.
 ///
 /// This **wraps** [`stability`], re-deriving none of the §1a math: the brace gate
 /// engages when the faced cover's [`crate::cover::HeightBand`] satisfies the
@@ -56,6 +67,14 @@ pub fn stability_for(
     // (unless the weapon is `stable` or the shooter is terrain-braced, both of which
     // brace unconditionally inside `stability`).
     let faced = cover.peek(&CellLevel::new(cell, level));
+    // GTW-526: resolve the suppression term from the shooter's Suppressed state. A
+    // suppressed shooter loses the tunable penalty (NEGATED into a subtractive
+    // contribution — a pinned shooter shoots wider); an un-suppressed shooter passes the
+    // zero identity, so its score is byte-identical to a run without this seam.
+    let suppression = match shooter.suppressed {
+        Some(_) => SuppressionStability::new(-*tuning.reaction.suppression_penalty),
+        None => SuppressionStability::none(),
+    };
     // Wrap the landed verb verbatim — no emplacements exist yet, so pass the
     // identity emplacement seam.
     stability(
@@ -64,6 +83,7 @@ pub fn stability_for(
         *shooter.stance,
         faced,
         EmplacementStability::none(),
+        suppression,
         &tuning.cone_stability,
     )
 }
@@ -77,7 +97,9 @@ pub fn stability_for(
 /// of the math:
 ///
 /// 1. [`stability_for`] for the `(cone_mult, recoil_growth)` pair (which itself
-///    finds the faced cell and reads the model cover).
+///    finds the faced cell, reads the model cover, and — GTW-526 — folds in the
+///    suppression penalty when the shooter is
+///    [`Suppressed`](crate::ganger::Suppressed), widening the cone).
 /// 2. [`aim_cone_mult`] over the shooter's [`crate::ganger::Aiming`] flag for the
 ///    aim term (aimed ×0.6 / hip-fired ×1, read from `tuning`).
 /// 3. [`cone_angle`] over the five §1a factors: the weapon's [`BaseSpread`], the

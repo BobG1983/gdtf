@@ -266,10 +266,13 @@ fn stability_readout_shows_the_stability_for_value() {
     let position = Position::new(CellLevel::new(cell, Level::new(0)));
     let facing_c = Facing::new(facing);
     let shooter = Shooter {
-        stance:   &stance,
-        aiming:   &aiming,
-        position: &position,
-        facing:   &facing_c,
+        stance:     &stance,
+        aiming:     &aiming,
+        position:   &position,
+        facing:     &facing_c,
+        // GTW-526: this readout scenario has an un-suppressed shooter (no Suppressed
+        // component spawned), so the expected value uses the identity suppression term.
+        suppressed: None,
     };
     let ledger = {
         let mut l = CoverLedger::new();

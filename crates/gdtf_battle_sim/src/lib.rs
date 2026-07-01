@@ -282,6 +282,11 @@ pub use acts_runtime::{
     move_acts::{ReactionShotFired, WalkInProgress, advance_walk},
     reaction,
     reaction::{reaction_trigger, reset_reactions_used},
+    suppression,
+    suppression::{
+        SuppressionApplied, apply_suppression, reset_suppression, stance_for_cover_band,
+        suppression_auto_stance,
+    },
     turn,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu},
 };
@@ -293,7 +298,8 @@ pub use combatants::{
         Aim, Aiming, Bottle, Cool, DerivedStats, Direction, Facing, Faction, Fight, GangMember,
         GangName, GangRegistry, GangRoster, GangerAttributes, GangerName, Grit, Hp, HpMax,
         LifeState, Luck, Morale, Position, Reactions, Reflexes, Shooting, Speed, Stabilized,
-        Stance, StanceKind, Strength, Toughness, Tu, TuMax, Wounds, WoundsMax, derive_stats,
+        Stance, StanceKind, Strength, Suppressed, SuppressorCell, Toughness, Tu, TuMax, Wounds,
+        WoundsMax, derive_stats,
     },
     posture,
     posture::{set_aiming, set_facing, set_stance},
@@ -429,7 +435,8 @@ pub use shot_pipeline::{
     shot_fired::ShotFired,
     stability,
     stability::{
-        ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, TerrainBraced, stability,
+        ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, SuppressionStability,
+        TerrainBraced, stability,
     },
 };
 pub use terrain::{
@@ -491,7 +498,8 @@ pub use tuning::{
     ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
     ShootingWeights, ShoveTu, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults,
     StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu,
-    StanceChangeTu, StanceContribution, StanceStability, StatWeight, ToughnessMitigation, TuBase,
-    TuPerSpeed, TurnTu, WoundCost, WoundCosts, WoundsPerHp, clamp_probability,
-    interrupt_probability, may_interrupt, reaction_cap, reaction_score, rolls_interrupt,
+    StanceChangeTu, StanceContribution, StanceStability, StatWeight, SuppressionRadius,
+    SuppressionStabilityPenalty, ToughnessMitigation, TuBase, TuPerSpeed, TurnTu, WoundCost,
+    WoundCosts, WoundsPerHp, clamp_probability, interrupt_probability, may_interrupt, reaction_cap,
+    reaction_score, rolls_interrupt,
 };

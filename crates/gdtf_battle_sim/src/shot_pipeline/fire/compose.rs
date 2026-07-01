@@ -17,7 +17,10 @@ use crate::{
     aim::{Shooter, cone_for, stability_for},
     armor::BodyPart,
     cover::CoverLedger,
-    ganger::{Aiming, Facing, LifeState, Luck, Position, Shooting, Stance, StanceKind, Tu, TuMax},
+    ganger::{
+        Aiming, Facing, LifeState, Luck, Position, Shooting, Stance, StanceKind, Suppressed, Tu,
+        TuMax,
+    },
     injuries::{HandsAvailable, InflictedInjuries, InjuryRegistry, InjuryTables},
     magazine::Magazine,
     metric::{Cell, CellLevel, Level},
@@ -82,6 +85,11 @@ pub(super) struct ShooterSnapshot {
     shred:       WeaponShred,
     damage_type: DamageType,
     stable:      Stable,
+    // GTW-526: the shooter's Suppressed state, snapshotted so cone_for / stability_for
+    // widen the burst's dispersion cone while the shooter is pinned. `None` = un-suppressed
+    // = the zero-identity suppression term. `Suppressed` is `Copy`, so the snapshot owns it
+    // and `shooter_view` hands out an `Option<&Suppressed>` borrow.
+    suppressed:  Option<Suppressed>,
 }
 
 impl ShooterSnapshot {
@@ -107,10 +115,12 @@ impl ShooterSnapshot {
     /// — the read-shape [`cone_for`] / [`stability_for`] take.
     const fn shooter_view(&self) -> Shooter<'_> {
         Shooter {
-            stance:   &self.stance,
-            aiming:   &self.aiming,
-            position: &self.position,
-            facing:   &self.facing,
+            stance:     &self.stance,
+            aiming:     &self.aiming,
+            position:   &self.position,
+            facing:     &self.facing,
+            // GTW-526: borrow the snapshotted Suppressed state (None = un-suppressed).
+            suppressed: self.suppressed.as_ref(),
         }
     }
 }
@@ -232,7 +242,7 @@ pub(super) fn read_shooter(
     weapons: &WeaponQuery,
     melee: &MeleeQuery,
 ) -> Option<ShooterReads> {
-    let ((position, facing, stance, aiming, shooting, luck, tu_max), injuries, tu) =
+    let ((position, facing, stance, aiming, shooting, luck, tu_max, suppressed), injuries, tu) =
         shooters.get(shooter).ok()?;
     // GTW-436: read the shooter's Luck through the gate-enforced effective accessor over
     // its injury ledger (an absent ledger = the zero-delta identity), so a `Modify(Luck)`
@@ -283,6 +293,9 @@ pub(super) fn read_shooter(
         shred:       *shred,
         damage_type: *damage_type,
         stable:      *stable,
+        // GTW-526: copy the shooter's Suppressed state into the snapshot (None =
+        // un-suppressed = zero-identity suppression term).
+        suppressed:  suppressed.copied(),
     };
     Some(ShooterReads {
         snapshot,

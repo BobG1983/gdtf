@@ -11,7 +11,7 @@
 //!   each frame until its [`FctTtlSeconds`] lifetime finishes — the same spawn-then-TTL
 //!   shape as the transient FX flash, never respawned per frame.
 //! - [`palette`] — the VALENCE → color mapping: [`FctValence`] (the presenter's own
-//!   damage / wound / neutral / lethal category) → [`valence_color`], plus the
+//!   damage / wound / neutral / lethal / suppressed category) → [`valence_color`], plus the
 //!   [`Severity`](gdtf_battle_sim::Severity)-tier → amber-family ramp [`severity_color`].
 //!   The reader slices (3-4) classify a [`ShotFired`](gdtf_battle_sim::ShotFired)
 //!   consequence into a valence / severity and feed the resulting color to
@@ -47,6 +47,11 @@
 //!   `"Armor Broken"` (RED) from [`ArmorBroken`](gdtf_battle_sim::ArmorBroken). Reload pops
 //!   and the numeric `"Armor -N"` are DEFERRED — no backing sim signal (see `consequence`'s
 //!   module docs).
+//! - [`suppression`] — the GTW-526 C8 SUPPRESSION FCT READER ([`read_suppression_fct`]): the
+//!   transient `"SUPPRESSED"` pop for a ganger freshly pinned down, routed off the
+//!   [`SuppressionApplied`](gdtf_battle_sim::SuppressionApplied) message and drawn in the cowed
+//!   [`FctValence::Suppressed`] blue-grey. The persistent suppressed look is the desaturated
+//!   sprite tint (`reframe_ganger_sprites`), NOT this one-shot pop.
 //!
 //! Pure VIEW (ADR-0001): the primitive spawns + animates presenter entities only; it never
 //! reads or writes the sim. [`animate_floating_text`] and [`read_consequence_fct`] are
@@ -59,6 +64,7 @@ mod injury;
 mod log_event;
 mod palette;
 mod reader;
+mod suppression;
 mod text;
 
 #[cfg(test)]
@@ -69,6 +75,7 @@ pub use injury::read_injury_fct;
 pub use log_event::{CombatLogEvent, InjuryLogText, LogLine, LogName, classify_log_event};
 pub use palette::{FctValence, severity_color, valence_color};
 pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};
+pub use suppression::read_suppression_fct;
 pub use text::{
     CombatText, FctEmphasis, FctStackIndex, FloatingCombatText, animate_floating_text,
     spawn_floating_text,

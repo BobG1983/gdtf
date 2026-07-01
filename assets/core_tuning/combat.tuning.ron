@@ -237,6 +237,14 @@
         cap_per_reactions: 0.5,  // per-Reactions slope; each whole unit of Reactions adds 0.5 before floor
         p_min:             0.05, // probability floor: P(interrupt) is never below this (resolution.md §8)
         p_max:             0.95, // probability ceiling: P(interrupt) is never above this (resolution.md §8)
+        // GTW-526 suppression radius: Chebyshev cells out from a shot's target that an
+        // opposing ganger is suppressed by. 0 = the target cell only. STARTING POINT (tunable).
+        suppression_radius: 1,
+        // GTW-526 suppression stability penalty: stability-score points a SUPPRESSED shooter
+        // loses (negated by the composer into a subtractive stability term), so a pinned shooter
+        // shoots with a WIDER dispersion cone. ~40 ≈ the prone stance's steadiness, so heavy
+        // suppression undoes a careful posture. STARTING POINT (tunable).
+        suppression_penalty: 40.0,
     ),
 
     // §7 Melee opposed-Fight tuning (GTW-506; resolution.md §7 lines 146-150). The §7

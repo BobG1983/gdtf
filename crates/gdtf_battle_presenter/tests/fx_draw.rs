@@ -41,7 +41,7 @@ use gdtf_battle_sim::{
     CoverDestroyed, DamageType, Direction, Facing, Faction, FallOccurred, GainedInjury, HitReport,
     HitResult, HpDamage, InjuryInflicted, InjuryName, InspectText, IntegrityWear, Level, LifeState,
     LogText, Matchup, PenetratingDamage, PopupText, Position, Severity, ShotDir, ShotFired,
-    ShotKind, SimPos, StoreysFallen, Wounds, acts::MeleeResolved,
+    ShotKind, SimPos, StoreysFallen, SuppressionApplied, Wounds, acts::MeleeResolved,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -101,6 +101,11 @@ fn headless_renderer_app() -> App {
     .add_message::<ArmorBroken>()
     .add_message::<CoverDestroyed>()
     .add_message::<ShotFired>()
+    // GTW-526 C8: the suppression FCT reader drains this buffer; the sim's acts plugin
+    // registers it in a real battle, but this focused presenter-only harness adds it itself
+    // (matching the Bleeding / ArmorBroken buffers above — the reader is `run_if`-gated on the
+    // buffer's presence, so it would otherwise stay inert).
+    .add_message::<SuppressionApplied>()
     .add_plugins(TopDownRendererPlugin);
     // Bevy 0.19 routes a FAILED system-param validation to the global error handler
     // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the
@@ -1396,6 +1401,47 @@ fn armor_broken_pops_the_red_armor_broken_fct_tag() {
     assert!(
         !pops.iter().any(|(t, _)| t.starts_with("Armor -")),
         "no numeric \"Armor -N\" pop is built this slice (no integrity delta), got {pops:?}",
+    );
+}
+
+/// GTW-526 C8 — the REAL dispatch path: a `SuppressionApplied { at }` drives the registered
+/// `read_suppression_fct` system to spawn the cowed `"SUPPRESSED"` floating-combat-text pop
+/// over the pinned cell. Pins the pop's text + Suppressed valence + cell anchor on the
+/// registered-system path (deleting the reader FAILS this).
+#[test]
+fn suppression_applied_pops_the_suppressed_fct_tag_at_the_cell() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(11, 4);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+
+    app.world_mut()
+        .resource_mut::<Messages<SuppressionApplied>>()
+        .write(SuppressionApplied::new(at));
+    app.update();
+
+    // POSITIVE: the system spawned a FloatingCombatText pop reading "SUPPRESSED" in the cowed
+    // Suppressed valence (its OWN swatch, distinct from damage/wound/neutral/lethal).
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "SUPPRESSED", valence_color(FctValence::Suppressed)),
+        "a SuppressionApplied must pop a cowed \"SUPPRESSED\" tag, got {pops:?}",
+    );
+
+    // The pop is anchored at the pinned cell (planar x — the FCT z is the Highlight band,
+    // distinct from the cell z).
+    let anchor = cell_to_world(cell, level);
+    let mut q = app.world_mut().query::<(&FloatingCombatText, &Transform)>();
+    let any_at_cell = q
+        .iter(app.world())
+        .any(|(_, transform)| (transform.translation.x - anchor.x).abs() < 0.001);
+    assert!(
+        any_at_cell,
+        "the SUPPRESSED pop must anchor at the pinned cell x ({})",
+        anchor.x,
     );
 }
 

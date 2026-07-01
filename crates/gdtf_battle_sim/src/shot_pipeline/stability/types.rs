@@ -32,6 +32,48 @@ impl EmplacementStability {
     }
 }
 
+/// The **suppression stability contribution** — the points a
+/// [`Suppressed`](crate::ganger::Suppressed) shooter's shakiness *subtracts* from
+/// the score (GTW-526, child of GTW-41; `docs/combat/combat.md` "Suppression …
+/// makes the target … a worse shot").
+///
+/// A pinned shooter shoots worse: the tunable suppression penalty is a **negative**
+/// additive contribution lowering the stability score, so the cone-mult curve reads
+/// a *higher* [`ConeMult`] (a **wider** dispersion cone). The seam mirrors
+/// [`EmplacementStability`] EXACTLY — a fourth additive term summed by
+/// [`crate::stability::stability`] with an [`SuppressionStability::none`] zero/identity
+/// constructor callers pass when the shooter is un-suppressed, so an un-suppressed
+/// shooter's score is **byte-identical** to before the seam existed.
+///
+/// The magnitude is the tunable
+/// [`SuppressionStabilityPenalty`](crate::tuning::SuppressionStabilityPenalty) leaf,
+/// resolved to `-penalty` by the composer ([`crate::aim::stability_for`]) when the
+/// shooter carries [`Suppressed`](crate::ganger::Suppressed). An INPUT to
+/// [`crate::stability::stability`], distinct from the other four contributions.
+/// Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct SuppressionStability(f32);
+
+impl SuppressionStability {
+    /// Build a suppression stability contribution from its point magnitude.
+    ///
+    /// Callers pass a **negative** magnitude (the negated tuning penalty) so a
+    /// suppressed shooter's contribution *lowers* the score; a positive magnitude
+    /// would steady the shooter, the opposite of the design intent.
+    #[must_use]
+    pub const fn new(points: f32) -> Self {
+        Self(points)
+    }
+
+    /// The identity suppression contribution — **zero** points, the value every
+    /// un-suppressed shooter passes (so the additive term vanishes and the score is
+    /// byte-identical to a run without the seam).
+    #[must_use]
+    pub const fn none() -> Self {
+        Self(0.0)
+    }
+}
+
 /// The **normalised stability score** — the single 0–100 value the two curves
 /// read off (resolution.md §1a: "Normalised over 100"). Built by
 /// [`crate::stability::stability`] from the summed contributions, **clamped**

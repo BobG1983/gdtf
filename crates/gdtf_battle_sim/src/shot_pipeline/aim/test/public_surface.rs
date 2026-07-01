@@ -29,10 +29,12 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
     let position = state.position;
     let facing = state.facing;
     let shooter = PubShooter {
-        stance:   &stance,
-        aiming:   &aiming,
-        position: &position,
-        facing:   &facing,
+        stance:     &stance,
+        aiming:     &aiming,
+        position:   &position,
+        facing:     &facing,
+        // The public-surface probe uses an un-suppressed shooter (GTW-526 identity).
+        suppressed: None,
     };
     let wpn = weapon(0.2, 0.1);
     let mode = wpn.fire_mode.single();

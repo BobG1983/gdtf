@@ -12,14 +12,16 @@
 
 use bevy::{
     platform::collections::HashSet,
-    prelude::{Changed, Entity, MessageReader, MessageWriter, Query, Res, ResMut},
+    prelude::{Changed, Entity, MessageReader, MessageWriter, Query, Res, ResMut, With},
 };
 
 use crate::{
     acts::{FireDeclaration, FireRequested, can_engage},
     cover::CoverLedger,
     fire::{MeleeQuery, WieldsQuery},
-    ganger::{Aiming, Facing, Faction, LifeState, Position, Reactions, Stance, Tu, TuMax},
+    ganger::{
+        Aiming, Facing, Faction, LifeState, Position, Reactions, Stance, Suppressed, Tu, TuMax,
+    },
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
@@ -146,7 +148,10 @@ type ReactionGangers<'world, 'state> = Query<
 ///
 /// For each acting ganger, a candidate REACTOR is a ganger that is: ALIVE/conscious
 /// ([`LifeState::is_active`](crate::ganger::LifeState::is_active)); of the OPPOSING faction
-/// to the actor; with unspent TU (`Tu > 0`); with cap room
+/// to the actor; with unspent TU (`Tu > 0`); NOT
+/// [`Suppressed`](crate::ganger::Suppressed) (GTW-526 C3 — a pinned unit keeps its head
+/// down, skipped BEFORE the interrupt roll so it consumes zero
+/// [`ReactionRng`](crate::rng::ReactionRng) draws); with cap room
 /// ([`may_interrupt`](crate::tuning::may_interrupt) true). Each `(reactor, actor)` pair is
 /// then gated with the EXISTING faction-agnostic [`can_see`] (conscious-observer + range +
 /// LOS) and [`can_fire`] + [`can_engage`] (loaded + affordable + the shared arc verdict) so
@@ -196,11 +201,11 @@ type ReactionGangers<'world, 'state> = Query<
     reason = "the trigger reads the two act-in-LOS surfaces (Changed<Position> movers + the \
               FireDeclaration buffer), the full ganger snapshot, the wielded-weapon + \
               weapon-entity queries (to resolve the reactor's single-shot spec exactly as \
-              dispatch_fire does), the mutable ReactionsUsed counter, the four read grids + \
-              tuning the can_see/can_fire/can_engage gates need, the seeded ReactionRng, and \
-              the two act MessageWriters; each is a distinct Bevy SystemParam, mirroring \
-              dispatch_fire's own argument-count carve-out — bundling would only hide the \
-              reads"
+              dispatch_fire does), the melee-marker + GTW-526 suppressed-marker probes, the \
+              mutable ReactionsUsed counter, the four read grids + tuning the \
+              can_see/can_fire/can_engage gates need, the seeded ReactionRng, and the two act \
+              MessageWriters; each is a distinct Bevy SystemParam, mirroring dispatch_fire's \
+              own argument-count carve-out — bundling would only hide the reads"
 )]
 #[expect(
     clippy::too_many_lines,
@@ -230,6 +235,11 @@ pub fn reaction_trigger(
     // weapon (excluding the melee weapon the reactor also wields) so an interrupt fires the
     // reactor's GUN, never its melee weapon (a `Query<(), With<MeleeWeapon>>`, disjoint).
     melee: MeleeQuery,
+    // GTW-526 C3: the SUPPRESSED-reactor probe — a read-only marker query so the
+    // eligibility gate can skip a suppressed reactor BEFORE the interrupt roll, consuming
+    // ZERO ReactionRng draws (determinism-critical: a suppressed unit must not perturb the
+    // RNG stream). A `Query<(), With<Suppressed>>`, disjoint from every other param.
+    suppressed: Query<(), With<Suppressed>>,
     // C4: the per-turn interrupt counter, mutated through its own `increment` (a different
     // component than the read snapshot, so this &mut query is disjoint — no ParamSet).
     mut used: Query<&mut ReactionsUsed>,
@@ -337,6 +347,16 @@ pub fn reaction_trigger(
             // reactor's LIVE ReactionsUsed (mutated by an earlier successful interrupt this
             // same tick), so a reactor that already hit its cap this pass is refused.
             if !reactor.life.is_active() || *reactor.tu == 0 {
+                continue;
+            }
+            // GTW-526 C3: a SUPPRESSED reactor cannot interrupt — a pinned unit is a worse
+            // reactor (it keeps its head down). This skip happens in the ELIGIBILITY gate,
+            // BEFORE the opposed check's `rolls_interrupt` draw (below), so a suppressed
+            // reactor consumes ZERO `ReactionRng` draws — the RNG stream is IDENTICAL to a
+            // run where the reactor is simply absent. Determinism-critical: we never
+            // draw-then-discard (which would perturb every later reactor's roll); the
+            // suppression check gates purely on the marker, no RNG touched.
+            if suppressed.get(reactor.entity).is_ok() {
                 continue;
             }
             let used_now = used

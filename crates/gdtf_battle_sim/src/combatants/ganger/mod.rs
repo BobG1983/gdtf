@@ -38,6 +38,7 @@ mod life;
 mod position;
 pub(crate) mod rederive;
 mod stance;
+mod suppression;
 mod vitals;
 
 #[cfg(test)]
@@ -52,6 +53,7 @@ pub use life::{LifeState, Stabilized};
 pub use position::Position;
 pub use rederive::{rederive_stats_on_injury_change, rederive_stats_on_tuning_change};
 pub use stance::{Aiming, Faction, Stance, StanceKind};
+pub use suppression::{Suppressed, SuppressorCell};
 pub use vitals::{
     Bottle, Fight, GangerName, Hp, HpMax, Luck, Morale, Reactions, Shooting, Toughness, Tu, TuMax,
     Wounds, WoundsMax,

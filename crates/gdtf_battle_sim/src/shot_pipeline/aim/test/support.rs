@@ -6,7 +6,7 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     faced_cell::faced_cell,
-    ganger::{Aiming, Direction, Facing, Position, Stance, StanceKind},
+    ganger::{Aiming, Direction, Facing, Position, Stance, StanceKind, Suppressed, SuppressorCell},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     weapon::{
@@ -20,15 +20,20 @@ use crate::{
 /// Build a shooter read-state from owned components the test holds — the
 /// borrows the [`Shooter`] bundle wants are taken from these locals.
 pub(super) struct ShooterState {
-    pub(super) stance:   Stance,
-    pub(super) aiming:   Aiming,
-    pub(super) position: Position,
-    pub(super) facing:   Facing,
+    pub(super) stance:     Stance,
+    pub(super) aiming:     Aiming,
+    pub(super) position:   Position,
+    pub(super) facing:     Facing,
+    /// The GTW-526 optional suppression state; `None` (un-suppressed) by default so the
+    /// existing composer tests keep their pre-GTW-526 identity. Set via
+    /// [`ShooterState::suppressed_from`].
+    pub(super) suppressed: Option<Suppressed>,
 }
 
 impl ShooterState {
     /// An arbitrary shooter at `(x, y, storey)` with the given posture / aim /
-    /// facing — NOT shipped magnitudes; only its components matter.
+    /// facing — NOT shipped magnitudes; only its components matter. Un-suppressed by
+    /// default (GTW-526 identity).
     pub(super) fn new(
         x: i32,
         y: i32,
@@ -38,20 +43,31 @@ impl ShooterState {
         dir: Direction,
     ) -> Self {
         Self {
-            stance:   Stance::new(kind),
-            aiming:   Aiming::new(aiming),
-            position: Position::new(CellLevel::new(Cell::new(x, y), Level::new(storey))),
-            facing:   Facing::new(dir),
+            stance:     Stance::new(kind),
+            aiming:     Aiming::new(aiming),
+            position:   Position::new(CellLevel::new(Cell::new(x, y), Level::new(storey))),
+            facing:     Facing::new(dir),
+            suppressed: None,
         }
+    }
+
+    /// Mark this shooter [`Suppressed`] by fire from `(sx, sy, storey)` (GTW-526) — the
+    /// builder the suppression composer test uses to compare a pinned shooter against an
+    /// otherwise-identical un-suppressed one.
+    pub(super) fn suppressed_from(mut self, sx: i32, sy: i32, storey: u8) -> Self {
+        let origin = CellLevel::new(Cell::new(sx, sy), Level::new(storey));
+        self.suppressed = Some(Suppressed::new(SuppressorCell::new(origin)));
+        self
     }
 
     /// Borrow the owned components as a [`Shooter`] bundle.
     pub(super) fn as_shooter(&self) -> Shooter<'_> {
         Shooter {
-            stance:   &self.stance,
-            aiming:   &self.aiming,
-            position: &self.position,
-            facing:   &self.facing,
+            stance:     &self.stance,
+            aiming:     &self.aiming,
+            position:   &self.position,
+            facing:     &self.facing,
+            suppressed: self.suppressed.as_ref(),
         }
     }
 }

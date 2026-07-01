@@ -45,21 +45,31 @@ pub(super) fn ganger_tint(faction: Faction, life: LifeState) -> Color {
     }
 }
 
-/// The tint a ganger sprite draws with given its faction, life state, stance, and aiming
-/// flag — the combined re-tint [`reframe_ganger_sprites`](super::reframe_ganger_sprites) applies.
+/// The tint a ganger sprite draws with given its faction, life state, stance, aiming
+/// flag, and SUPPRESSED flag — the combined re-tint
+/// [`reframe_ganger_sprites`](super::reframe_ganger_sprites) applies.
 ///
 /// Starts from [`ganger_tint`] (the faction / Downed base), then layers the stance +
 /// aiming deltas: a [`Prone`](gdtf_battle_sim::StanceKind::Prone) ganger dims (a
 /// flattened, low silhouette), and an aiming ganger brightens (reads "ready to fire").
 /// The deltas only apply to a live ganger — a Downed body keeps its grey-out, undimmed
-/// by stance / aim. [`Color`] is framework plumbing; this fn is the CHOICE the AC
-/// asserts.
+/// by stance / aim.
+///
+/// A SUPPRESSED ganger (GTW-526 C8: it carries a [`Suppressed`](gdtf_battle_sim::Suppressed)
+/// component) is additionally DESATURATED toward grey AND darkened, so a pinned-down ganger
+/// reads distinctly at a glance — the colour drains from a suppressed unit (it has lost its
+/// nerve and cannot reaction-fire). This is applied LAST, on top of the stance/aim value shift,
+/// and pulls the faction hue toward the neutral grey rather than merely scaling it, so a
+/// suppressed ganger is discriminable from a merely-prone or Downed one. A ganger that is NO
+/// LONGER suppressed passes `suppressed = false` and returns to the ordinary faction tint.
+/// [`Color`] is framework plumbing; this fn is the CHOICE the AC asserts.
 #[must_use]
 pub(super) fn stance_aiming_tint(
     faction: Faction,
     life: LifeState,
     stance: Stance,
     aiming: Aiming,
+    suppressed: bool,
 ) -> Color {
     let base = ganger_tint(faction, life);
     // Downed keeps its grey-out — stance / aim do not modulate an out-of-fight body.
@@ -75,10 +85,50 @@ pub(super) fn stance_aiming_tint(
     let aim_scale = if *aiming { 1.2 } else { 1.0 };
     let factor = stance_scale * aim_scale;
     let linear = base.to_linear();
-    Color::linear_rgba(
+    let value_shifted = Color::linear_rgba(
         linear.red * factor,
         linear.green * factor,
         linear.blue * factor,
+        linear.alpha,
+    );
+    if suppressed {
+        suppressed_tint(value_shifted)
+    } else {
+        value_shifted
+    }
+}
+
+/// Drain the colour out of a suppressed ganger's tint — desaturate it toward grey and darken
+/// it (GTW-526 C8), so a pinned-down ganger reads as distinctly "washed out" from a live one.
+///
+/// Mixes the input tint toward its own grey (its unweighted mean value) by
+/// [`SUPPRESSED_DESATURATION`] and then scales the result by [`SUPPRESSED_DARKEN`]: the hue
+/// drains while the whole swatch dims, a combination no stance / aim / Downed state produces,
+/// so the suppressed look is discriminable. The alpha is preserved. [`Color`] is framework
+/// plumbing; this fn is the CHOICE.
+#[must_use]
+fn suppressed_tint(tint: Color) -> Color {
+    /// How far a suppressed ganger's tint is pulled toward neutral grey (0 = no change, 1 =
+    /// fully grey) — the colour-drain that reads as "lost its nerve".
+    const SUPPRESSED_DESATURATION: f32 = 0.6;
+    /// The value scale a suppressed ganger's (desaturated) tint is darkened by — a pinned
+    /// unit also dims, distinct from the aiming brighten / prone dim.
+    const SUPPRESSED_DARKEN: f32 = 0.75;
+
+    let linear = tint.to_linear();
+    // The grey the swatch desaturates toward: its own unweighted mean value, so a bright
+    // faction tint greys to a bright grey and a dim one to a dim grey (a proportional drain).
+    let grey = (linear.red + linear.green + linear.blue) / 3.0;
+    let mix = |channel: f32| {
+        channel.mul_add(
+            1.0 - SUPPRESSED_DESATURATION,
+            grey * SUPPRESSED_DESATURATION,
+        ) * SUPPRESSED_DARKEN
+    };
+    Color::linear_rgba(
+        mix(linear.red),
+        mix(linear.green),
+        mix(linear.blue),
         linear.alpha,
     )
 }

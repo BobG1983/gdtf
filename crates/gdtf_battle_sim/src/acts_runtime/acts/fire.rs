@@ -431,7 +431,10 @@ pub fn dispatch_fire(
         //     the ParamSet to lend p1 below). A shooter not in the query (despawned) fires
         //     nothing (fail-closed).
         let shooters = shooter_set.p0();
-        let Ok(((position, facing, _, aiming, _, _, tu_max), _, tu)) =
+        // The trailing `_` ignores the GTW-526 `Option<&Suppressed>` group member — the
+        // arc-check read needs only pos/facing/aiming/tu_max; suppression enters the shot
+        // math through the composer (`stability_for`), not this dispatch-arc gate.
+        let Ok(((position, facing, _, aiming, _, _, tu_max, _), _, tu)) =
             shooters.get(request.shooter)
         else {
             continue;

@@ -7,7 +7,9 @@ use crate::{
         curve::read_curve,
         gate::brace_engages,
         score::stability,
-        types::{ConeMult, EmplacementStability, RecoilGrowth, StabilityScore},
+        types::{
+            ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, SuppressionStability,
+        },
     },
     tuning::{ConeStabilityTuning, StabilityCurve},
     weapon::Stable,
@@ -42,6 +44,7 @@ fn stability_produces_both_named_outputs() {
         Stance::new(StanceKind::Prone),
         Some(&wall),
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     // Shakiest: standing, no cover faced (no brace), no emplacement help.
@@ -51,6 +54,7 @@ fn stability_produces_both_named_outputs() {
         Stance::new(StanceKind::Standing),
         None,
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
 
@@ -97,6 +101,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
             Stance::new(kind),
             Some(&sat),
             EmplacementStability::none(),
+            SuppressionStability::none(),
             &tuning,
         );
         let (unbraced, _) = stability(
@@ -105,6 +110,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
             Stance::new(kind),
             Some(&fail),
             EmplacementStability::none(),
+            SuppressionStability::none(),
             &tuning,
         );
         assert!(
@@ -121,6 +127,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
         Stance::new(StanceKind::Prone),
         Some(&low),
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     let (prone_unbraced, _) = stability(
@@ -129,6 +136,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
         Stance::new(StanceKind::Prone),
         None,
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     assert!(
@@ -151,6 +159,7 @@ fn steadier_stance_yields_narrower_cone() {
             Stance::new(kind),
             None,
             EmplacementStability::none(),
+            SuppressionStability::none(),
             &tuning,
         )
         .0
@@ -178,6 +187,7 @@ fn steadier_score_yields_strictly_less_recoil_growth() {
         Stance::new(StanceKind::Prone),
         Some(&wall),
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     let (_, standing_unbraced) = stability(
@@ -186,6 +196,7 @@ fn steadier_score_yields_strictly_less_recoil_growth() {
         Stance::new(StanceKind::Standing),
         None,
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     assert!(
@@ -212,6 +223,7 @@ fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
         Stance::new(StanceKind::Prone),
         Some(&wall),
         EmplacementStability::new(10_000.0),
+        SuppressionStability::none(),
         &tuning,
     );
     // A DIFFERENT over-100 raw sum (standing, no brace) — also driven over the
@@ -222,6 +234,7 @@ fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
         Stance::new(StanceKind::Standing),
         None,
         EmplacementStability::new(10_000.0),
+        SuppressionStability::none(),
         &tuning,
     );
 
@@ -293,6 +306,13 @@ fn output_newtypes_deref_to_inner() {
         8.0_f32.to_bits()
     );
     assert_eq!((*EmplacementStability::none()).to_bits(), 0.0_f32.to_bits());
+    // GTW-526: the suppression term derefs to its (negative-in-practice) inner, and its
+    // identity is 0.0 (the byte-identity term for an un-suppressed shooter).
+    assert_eq!(
+        (*SuppressionStability::new(-40.0)).to_bits(),
+        (-40.0_f32).to_bits()
+    );
+    assert_eq!((*SuppressionStability::none()).to_bits(), 0.0_f32.to_bits());
     assert_eq!(
         (*StabilityScore::clamped(50.0)).to_bits(),
         50.0_f32.to_bits()
@@ -377,6 +397,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         stance,
         None,
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     let (plain_empty, _) = stability(
@@ -385,6 +406,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         stance,
         None,
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     assert!(
@@ -404,6 +426,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         stance,
         Some(&wall),
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     let (plain_braced, _) = stability(
@@ -412,6 +435,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         stance,
         Some(&wall),
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     assert_eq!(
@@ -446,6 +470,7 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
         stance,
         None,
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     // stable=false, terrain_braced=true — every other input identical.
@@ -455,6 +480,7 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
         stance,
         None,
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
 
@@ -484,6 +510,7 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
         stance,
         None,
         EmplacementStability::none(),
+        SuppressionStability::none(),
         &tuning,
     );
     assert_ne!(

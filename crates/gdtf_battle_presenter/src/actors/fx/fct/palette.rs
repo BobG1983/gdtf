@@ -51,6 +51,15 @@ const WOUND_AMBER_DEEP: Color = Color::srgb(0.96, 0.42, 0.08);
 /// damage / wound pops — present, but not shouting.
 const NEUTRAL_GREY: Color = Color::srgb(0.72, 0.72, 0.74);
 
+/// COWED BLUE-GREY — a suppression pop (GTW-526 C8). A morale / status valence for a ganger
+/// pinned down by incoming fire, distinct from the damage RED, wound AMBER, and neutral GREY.
+///
+/// A muted, desaturated blue-grey that reads as "cowed / lost its nerve" — the same
+/// colour-drained family the suppressed sprite tint uses, so the transient `"SUPPRESSED"` pop
+/// and the persistent sprite desaturation read as one signal. Cool + dim (not a shouting
+/// saturated hue) because suppression is a state the unit is UNDER, not a hit it took.
+const SUPPRESSED_BLUE_GREY: Color = Color::srgb(0.45, 0.55, 0.72);
+
 /// The combat VALENCE a floating-combat-text pop signals — the presenter's own neutral
 /// category that decides the pop's color.
 ///
@@ -73,6 +82,10 @@ pub enum FctValence {
     /// it bold + larger via `FctEmphasis::Bold` so it reads as the heaviest pop in the blood
     /// family).
     Lethal,
+    /// A suppression event — a ganger was pinned down by incoming fire (GTW-526 C8). Drawn the
+    /// cowed [`SUPPRESSED_BLUE_GREY`], the colour-drained family the suppressed sprite tint
+    /// shares, so the `"SUPPRESSED"` pop and the desaturated sprite read as one signal.
+    Suppressed,
 }
 
 /// The FCT swatch for a combat [`FctValence`] — the one valence → color mapping.
@@ -81,7 +94,8 @@ pub enum FctValence {
 /// [`DAMAGE_RED`] blood family (lethal is drawn heavier by the caller via `FctEmphasis::Bold`,
 /// same hue);
 /// [`Wound`](FctValence::Wound) is the flat [`WOUND_AMBER`] base; [`Neutral`](FctValence::Neutral)
-/// is [`NEUTRAL_GREY`]. A severity-bearing wound should instead call [`severity_color`] to
+/// is [`NEUTRAL_GREY`]; [`Suppressed`](FctValence::Suppressed) is the cowed
+/// [`SUPPRESSED_BLUE_GREY`]. A severity-bearing wound should instead call [`severity_color`] to
 /// scale within the amber family.
 #[must_use]
 pub const fn valence_color(valence: FctValence) -> Color {
@@ -89,6 +103,7 @@ pub const fn valence_color(valence: FctValence) -> Color {
         FctValence::Damage | FctValence::Lethal => DAMAGE_RED,
         FctValence::Wound => WOUND_AMBER,
         FctValence::Neutral => NEUTRAL_GREY,
+        FctValence::Suppressed => SUPPRESSED_BLUE_GREY,
     }
 }
 

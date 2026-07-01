@@ -9,7 +9,7 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     Aiming, Cell, Facing, Faction, HitReport, Level, LifeState, Position, ShotFired, ShotKind,
-    Stance,
+    Stance, Suppressed,
 };
 
 use super::{
@@ -258,48 +258,107 @@ type ReframeData = (
     &'static Stance,
     &'static Aiming,
     &'static LifeState,
+    Option<&'static Suppressed>,
 );
 
-/// The "any of facing / stance / aiming changed" [`QueryFilter`] driving the
-/// reframe/re-tint, factored out for the same `type_complexity` reason as
-/// [`ReframeData`].
+/// The "any of facing / stance / aiming / suppressed changed" [`QueryFilter`] driving the
+/// reframe/re-tint, factored out for the same `type_complexity` reason as [`ReframeData`].
+///
+/// [`Changed<Suppressed>`](Suppressed) catches suppression being APPLIED (the sim inserts the
+/// component — GTW-526 C2); a suppressed ganger's auto-stance drop (C5) ALSO trips
+/// [`Changed<Stance>`], so the tint is doubly guaranteed to refresh on application. Suppression
+/// being CLEARED is a component REMOVAL (the sim `remove`s it — C6), which `Changed` does NOT
+/// observe, so [`reframe_ganger_sprites`] additionally drains
+/// [`RemovedComponents<Suppressed>`](RemovedComponents) to un-tint a no-longer-suppressed ganger.
 ///
 /// [`QueryFilter`]: bevy::ecs::query::QueryFilter
-type ReframeChanged = Or<(Changed<Facing>, Changed<Stance>, Changed<Aiming>)>;
+type ReframeChanged = Or<(
+    Changed<Facing>,
+    Changed<Stance>,
+    Changed<Aiming>,
+    Changed<Suppressed>,
+)>;
 
 /// `Update` (`PresenterSystems::Draw`): reframe / re-tint a ganger sprite whose
-/// [`Facing`], [`Stance`], or [`Aiming`] changed.
+/// [`Facing`], [`Stance`], [`Aiming`], or [`Suppressed`] state changed.
 ///
-/// For every ganger whose [`Facing`] / [`Stance`] / [`Aiming`] is [`Changed`], look the
-/// presenter sprite up through [`GangerSprites`] and recompute its texture-atlas index
-/// (facing reframe via the 8->4 map) and re-tint it (the stance / aiming delta) in
+/// For every ganger whose [`Facing`] / [`Stance`] / [`Aiming`] / [`Suppressed`] is [`Changed`],
+/// look the presenter sprite up through [`GangerSprites`] and recompute its texture-atlas index
+/// (facing reframe via the 8->4 map) and re-tint it (the stance / aiming / suppressed delta) in
 /// place. The reframe always recomputes from the CURRENT facing; the aiming delta
 /// brightens the sprite (an aimed ganger reads "ready"); the stance delta dims a prone
-/// ganger (a flattened silhouette). A [`Dead`](LifeState::Dead) ganger's sprite is
+/// ganger (a flattened silhouette); a [`Suppressed`] ganger is desaturated + darkened
+/// (GTW-526 C8 — it reads distinctly "pinned"). A [`Dead`](LifeState::Dead) ganger's sprite is
 /// already despawned, so its lookup misses and is skipped.
 ///
-/// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], the changed-state ganger
-/// query, and the presenter-sprite [`Sprite`] query.
+/// Suppression being CLEARED is a component REMOVAL, which `Changed` does not observe, so this
+/// system ALSO drains [`RemovedComponents<Suppressed>`](RemovedComponents) and re-tints each
+/// just-cleared ganger — its (now `Suppressed`-less) [`ReframeData`] is read back through the
+/// full-set `all` query, so `stance_aiming_tint` sees `suppressed = false` and the ganger
+/// returns to its ordinary faction tint.
+///
+/// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], the changed-state ganger query, the
+/// full-set ganger query (for the removal re-read), the [`RemovedComponents<Suppressed>`], and
+/// the presenter-sprite [`Sprite`] query.
 pub fn reframe_ganger_sprites(
     sprites: Res<GangerSprites>,
     roles: Res<CharacterRoles>,
     changed: Query<ReframeData, ReframeChanged>,
+    all: Query<ReframeData>,
+    mut removed: RemovedComponents<Suppressed>,
     mut presenters: Query<&mut Sprite, With<GangerSprite>>,
 ) {
-    for (entity, faction, facing, stance, aiming, life) in &changed {
-        let Some(presenter) = sprites.sprite_for(entity) else {
-            continue;
-        };
-        let Ok(mut sprite) = presenters.get_mut(presenter) else {
-            continue;
-        };
-        // Reframe to the facing-correct frame.
-        if let Some(atlas) = sprite.texture_atlas.as_mut() {
-            atlas.index = atlas_index(&roles, *faction, *facing);
-        }
-        // Re-tint: the faction/life base, modulated by the stance + aiming delta.
-        sprite.color = stance_aiming_tint(*faction, *life, *stance, *aiming);
+    // The APPLIED / stance / aim / facing path: every ganger whose reframe state Changed.
+    for data in &changed {
+        reframe_one(&sprites, &roles, &mut presenters, data);
     }
+    // The CLEARED path: a suppression REMOVAL is not a `Changed`, so drain the removals and
+    // re-tint each just-cleared ganger from its full-set data (now carrying no `Suppressed`,
+    // so the tint drops back to the ordinary faction colour). A ganger whose sprite is already
+    // gone (Dead) or whose entity despawned is skipped by the `all.get` / `sprite_for` misses.
+    for entity in removed.read() {
+        if let Ok(data) = all.get(entity) {
+            reframe_one(&sprites, &roles, &mut presenters, data);
+        }
+    }
+}
+
+/// Reframe + re-tint one ganger's presenter sprite from its [`ReframeData`] — the shared body
+/// of both [`reframe_ganger_sprites`] paths (the `Changed` loop and the suppression-removal
+/// loop).
+///
+/// Looks the presenter sprite up through [`GangerSprites`], recomputes its facing-correct
+/// atlas index, and re-tints it via [`stance_aiming_tint`] (the faction / life base modulated
+/// by stance, aim, and the SUPPRESSED flag, which is `true` iff the ganger currently carries a
+/// [`Suppressed`] component). A ganger with no mapped / present sprite (a Dead ganger's is
+/// despawned) is skipped.
+fn reframe_one(
+    sprites: &GangerSprites,
+    roles: &CharacterRoles,
+    presenters: &mut Query<&mut Sprite, With<GangerSprite>>,
+    data: (
+        Entity,
+        &Faction,
+        &Facing,
+        &Stance,
+        &Aiming,
+        &LifeState,
+        Option<&Suppressed>,
+    ),
+) {
+    let (entity, faction, facing, stance, aiming, life, suppressed) = data;
+    let Some(presenter) = sprites.sprite_for(entity) else {
+        return;
+    };
+    let Ok(mut sprite) = presenters.get_mut(presenter) else {
+        return;
+    };
+    // Reframe to the facing-correct frame.
+    if let Some(atlas) = sprite.texture_atlas.as_mut() {
+        atlas.index = atlas_index(roles, *faction, *facing);
+    }
+    // Re-tint: the faction/life base, modulated by the stance + aiming + suppressed delta.
+    sprite.color = stance_aiming_tint(*faction, *life, *stance, *aiming, suppressed.is_some());
 }
 
 /// `Update` (`PresenterSystems::Draw`): apply a [`Changed<LifeState>`] to a ganger

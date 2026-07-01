@@ -8,7 +8,7 @@ use crate::{
     faced_cell::faced_cell,
     ganger::{Direction, StanceKind},
     metric::CellLevel,
-    stability::{EmplacementStability, TerrainBraced, stability},
+    stability::{EmplacementStability, SuppressionStability, TerrainBraced, stability},
     tuning::CombatTuning,
     weapon::Stable,
 };
@@ -46,6 +46,9 @@ fn stability_for_bit_equals_a_direct_stability_call() {
         *shooter.stance,
         faced,
         EmplacementStability::none(),
+        // The shooter (via `ShooterState::new`) is un-suppressed, so the composer feeds the
+        // identity suppression term — match it here for the bit-equality.
+        SuppressionStability::none(),
         &tuning.cone_stability,
     );
 

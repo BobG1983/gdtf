@@ -58,7 +58,7 @@ use gdtf_battle_sim::{
     },
     tuning::{
         CombatTuning, ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin,
-        ReactionTuning, ReactionsUsed, ViewRange,
+        ReactionTuning, ReactionsUsed, SuppressionRadius, SuppressionStabilityPenalty, ViewRange,
     },
 };
 
@@ -87,10 +87,16 @@ fn ground(x: i32, y: i32) -> CellLevel {
 )]
 const fn forced_reaction_tuning(cap: u32) -> ReactionTuning {
     ReactionTuning {
-        cap_base:          ReactionCapBase::new(cap as f32),
-        cap_per_reactions: ReactionCapPerReactions::new(0.0),
-        p_min:             ReactionPMin::new(1.0),
-        p_max:             ReactionPMax::new(1.0),
+        cap_base:            ReactionCapBase::new(cap as f32),
+        cap_per_reactions:   ReactionCapPerReactions::new(0.0),
+        p_min:               ReactionPMin::new(1.0),
+        p_max:               ReactionPMax::new(1.0),
+        // GTW-526: the reaction tests are agnostic to suppression — radius 0 keeps this
+        // fixture's suppression to the directly-targeted cell only (irrelevant to the
+        // TU-debit / shot-fired / walk-halt assertions here). The stability penalty is
+        // likewise irrelevant here (no shot-cone read in these assertions).
+        suppression_radius:  SuppressionRadius::new(0),
+        suppression_penalty: SuppressionStabilityPenalty::new(0.0),
     }
 }
 

@@ -9,8 +9,8 @@ use crate::{
     armor::{PieceArmorMut, Wears, WornBy},
     cover::CoverLedger,
     ganger::{
-        Aiming, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, Toughness, Tu, TuMax,
-        Wounds,
+        Aiming, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, Suppressed, Toughness, Tu,
+        TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
     injuries::InflictedInjuries,
@@ -60,6 +60,13 @@ pub type ShooterQuery<'world, 'state> = Query<
             &'static Shooting,
             &'static Luck,
             &'static TuMax,
+            // GTW-526: the shooter's optional Suppressed state — `Some` when the shooter is
+            // pinned under opposing fire. Read into the ShooterSnapshot so cone_for /
+            // stability_for widen the shooter's dispersion cone by the tunable suppression
+            // penalty. `Option` because an un-suppressed shooter carries no such component
+            // (an absent component = the zero-identity suppression term, byte-identical to
+            // the pre-GTW-526 path).
+            Option<&'static Suppressed>,
         ),
         // The shooter's injury ledger (GTW-436), read OPTIONALLY: the shooter's Luck —
         // the §6 score's nasty-wound term — is read through

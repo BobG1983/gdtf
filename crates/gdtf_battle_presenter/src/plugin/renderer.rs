@@ -6,7 +6,7 @@ use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
     FallOccurred, InjuryInflicted, OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed,
-    SquadVisibility, SurfaceGrid, VerticalLinkGraph, acts::MeleeResolved,
+    SquadVisibility, SuppressionApplied, SurfaceGrid, VerticalLinkGraph, acts::MeleeResolved,
     occupancy_sync::SimSystems,
 };
 
@@ -22,7 +22,7 @@ use crate::{
     load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
     load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
     present_fog, read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-    read_fall_occurred, read_injury_fct, read_melee_resolved,
+    read_fall_occurred, read_injury_fct, read_melee_resolved, read_suppression_fct,
     redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
     redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
     redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
@@ -747,6 +747,24 @@ fn register_fx_flash_systems(app: &mut App) {
         read_injury_fct.in_set(PresenterSystems::Draw).run_if(
             resource_exists::<BattleInProgress>
                 .and_then(resource_exists::<Messages<InjuryInflicted>>)
+                .and_then(resource_exists::<FxTuning>),
+        ),
+    )
+    // GTW-526 (C8): the SUPPRESSION floating-combat-text reader. Drains the sim's
+    // SuppressionApplied message (registered by the acts plugin — one per freshly-pinned ganger)
+    // and spawns one rise/fade "SUPPRESSED" Text2d pop at the message's cell, drawn in the cowed
+    // Suppressed blue-grey valence (the moment-pop; the persistent suppressed look is the
+    // desaturated sprite tint in reframe_ganger_sprites). Spawns Text2d (no effects sprite), so it
+    // needs NO render resource. Gated on BattleInProgress (pops belong to a live battle), the
+    // SuppressionApplied buffer its MessageReader drains (a MessageReader param panics validation
+    // without its buffer — bevy-traps.md #1 / #4; the read_injury_fct precedent — a
+    // presenter-only harness that omits the buffer simply keeps this reader inert), AND the
+    // hot-reloadable FxTuning it reads for the pop lifetime + rise.
+    .add_systems(
+        Update,
+        read_suppression_fct.in_set(PresenterSystems::Draw).run_if(
+            resource_exists::<BattleInProgress>
+                .and_then(resource_exists::<Messages<SuppressionApplied>>)
                 .and_then(resource_exists::<FxTuning>),
         ),
     )

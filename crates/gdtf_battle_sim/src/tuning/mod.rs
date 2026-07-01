@@ -83,8 +83,9 @@ pub use matchup::MatchupMultipliers;
 pub use melee::{FightVariance, MeleeKMargin, MeleeMultMax, MeleeMultMin, MeleeTuning};
 pub use reaction::{
     ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin, ReactionProbability,
-    ReactionScore, ReactionTuning, ReactionsUsed, clamp_probability, interrupt_probability,
-    may_interrupt, reaction_cap, reaction_score, rolls_interrupt,
+    ReactionScore, ReactionTuning, ReactionsUsed, SuppressionRadius, SuppressionStabilityPenalty,
+    clamp_probability, interrupt_probability, may_interrupt, reaction_cap, reaction_score,
+    rolls_interrupt,
 };
 pub use severity::{
     DefenderLuckScale, PenDamageScale, RandomSpread, SeverityEdge, SeverityEdges, SeverityScaling,

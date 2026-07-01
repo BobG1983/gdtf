@@ -66,6 +66,30 @@ impl Direction {
         }
     }
 
+    /// This direction's **integer ground-plane cell step** — the `(±1, ±1, 0)`
+    /// [`Cell`] delta to the Moore-8 neighbour one cell this way.
+    ///
+    /// The discrete-grid companion to [`forward_step`](Self::forward_step) (which
+    /// returns the *normalised* sim-unit `Vec3`, its diagonals `±1/√2`): this returns
+    /// the WHOLE-cell integer delta, so `cell + dir.cell_step()` is the adjacent cell
+    /// the facing looks at. Signs match the variant's documented orientation (North is
+    /// −Y, East is +X; the same −Y-is-North convention as [`from_cells`](Self::from_cells)).
+    /// A [`Cell`] used as a delta (not a location), never a bare `IVec2`. Pure, total,
+    /// no panic.
+    #[must_use]
+    pub const fn cell_step(self) -> Cell {
+        match self {
+            Self::North => Cell::new(0, -1),
+            Self::NorthEast => Cell::new(1, -1),
+            Self::East => Cell::new(1, 0),
+            Self::SouthEast => Cell::new(1, 1),
+            Self::South => Cell::new(0, 1),
+            Self::SouthWest => Cell::new(-1, 1),
+            Self::West => Cell::new(-1, 0),
+            Self::NorthWest => Cell::new(-1, -1),
+        }
+    }
+
     /// This direction's **ordinal** on the 8-way ring — `North = 0`, advancing
     /// clockwise through the compass to `NorthWest = 7`.
     ///

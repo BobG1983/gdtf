@@ -44,5 +44,5 @@ pub use core::{
 
 pub use leaves::{
     ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin, ReactionTuning,
-    clamp_probability, reaction_cap,
+    SuppressionRadius, SuppressionStabilityPenalty, clamp_probability, reaction_cap,
 };
