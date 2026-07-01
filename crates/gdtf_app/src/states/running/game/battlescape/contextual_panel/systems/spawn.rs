@@ -4,9 +4,9 @@
 //! bottom-RIGHT contextual cluster (per the `docs/ui_mockups/battlescape_mockup.png`
 //! bottom-right corner — "Contextual Buttons go Here", to the right of the Stance column). It
 //! spawns a BARE themed [`spawn_panel`] box ([`ContextualPanelRoot`]) anchored to the window's
-//! bottom-right corner with responsive units, holding four themed [`spawn_button`] buttons
-//! stacked in a column — **Execute**, **Stabilize**, **Melee** (GTW-507), **Open Door** — each
-//! carrying its marker. The panel box AND every button spawn
+//! bottom-right corner with responsive units, holding themed [`spawn_button`] buttons stacked in
+//! a column — **Execute**, **Stabilize**, **Melee** (GTW-507), **Shove** (GTW-525), **Open Door**
+//! — each carrying its marker. The panel box AND every button spawn
 //! [`Visibility::Hidden`](bevy::render::view::Visibility): this system only builds the tree. The
 //! live `detect_contextual_targets` system (registered by the plugin) fills [`ContextualTargets`]
 //! each update and toggles the box + each button's `Visibility` IN PLACE when a valid neighbour
@@ -46,7 +46,7 @@ use gdtf_ui::{ButtonLabel, spawn_button, spawn_panel, theme::GdtfTheme};
 use crate::states::running::game::battlescape::contextual_panel::components::{
     CONTEXTUAL_PANEL_BOTTOM_VH, CONTEXTUAL_PANEL_RIGHT_VW, CONTEXTUAL_PANEL_ROW_GAP_VH,
     CONTEXTUAL_PANEL_WIDTH_VW, CONTEXTUAL_PANEL_Z, ContextualPanelRoot, ExecuteButton, MeleeButton,
-    OpenDoorButton, StabilizeButton,
+    OpenDoorButton, ShoveButton, StabilizeButton,
 };
 
 /// Builds the contextual-panel tree on `OnEnter(BattleScapeState::BattleRunning)`.
@@ -66,12 +66,12 @@ use crate::states::running::game::battlescape::contextual_panel::components::{
 ///    subtree stacks ABOVE the opaque bottom bar it overlaps (the GTW-294 occlusion fix — see the
 ///    module doc). It is spawned [`Visibility::Hidden`](bevy::render::view::Visibility) — the live
 ///    `detect_contextual_targets` system reveals it when a downed neighbour is in reach.
-/// 2. Spawns the three themed buttons — Execute / Stabilize / Open Door — each carrying its
-///    marker and each [`Visibility::Hidden`](bevy::render::view::Visibility). The live
-///    `detect_contextual_targets` system reveals Execute / Stabilize each only when its
-///    [`ContextualTargets`](super::super::components::ContextualTargets) field is `Some`; Open
+/// 2. Spawns the themed buttons — Execute / Stabilize / Melee / Shove / Open Door — each carrying
+///    its marker and each [`Visibility::Hidden`](bevy::render::view::Visibility). The live
+///    `detect_contextual_targets` system reveals Execute / Stabilize / Melee / Shove each only when
+///    its [`ContextualTargets`](super::super::components::ContextualTargets) field is `Some`; Open
 ///    Door stays hidden (no sim verb yet — see the in-line note).
-/// 3. Parents the three buttons under the panel box (the box is the root).
+/// 3. Parents the buttons under the panel box (the box is the root).
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the spawns + the theme read.
 pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
@@ -145,6 +145,16 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
         ButtonLabel::new("Melee"),
         (MeleeButton, Visibility::Hidden),
     );
+    // GTW-525: the DEDICATED, UNIVERSAL Shove button (any ganger can shove — NO weapon
+    // requirement), mirroring Melee / Execute / Stabilize. Spawned Visibility::Hidden;
+    // `detect_contextual_targets` reveals it when an 8-adjacent, alive, opposing ganger is offered
+    // on `ContextualTargets::shove` (a WEAKER gate than Melee's — no LOS required).
+    let shove = spawn_button(
+        &mut commands,
+        &theme,
+        ButtonLabel::new("Shove"),
+        (ShoveButton, Visibility::Hidden),
+    );
     // The Open-Door button is spawned but DELIBERATELY stays hidden and inert: the Open-Door
     // act has no sim verb yet because the model has no door / interactable-object concept (the
     // sim's `downed_acts` ships only Execute + Stabilize). `detect_contextual_targets` therefore
@@ -158,11 +168,11 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
         (OpenDoorButton, Visibility::Hidden),
     );
 
-    // Parent the four buttons under the panel BOX (the root) — they inherit its resolved
+    // Parent the buttons under the panel BOX (the root) — they inherit its resolved
     // UI-camera target and its `GlobalZIndex`, so the whole subtree draws above the bottom bar.
     commands
         .entity(panel)
-        .add_children(&[execute, stabilize, melee, open_door]);
+        .add_children(&[execute, stabilize, melee, shove, open_door]);
 }
 
 /// Despawns the contextual panel on `OnExit(BattleScapeState::BattleRunning)`.

@@ -41,12 +41,12 @@ pub use crate::{
         MemberWeaponDropdown, MenuTitle, ModeBurstButton, ModeControl, ModeFullButton,
         ModePanelRoot, ModeSingleButton, OpenDoorButton, OptionsButton, PipExpanded, QuitButton,
         ReloadButton, RunningState, ScenesPlugin, SelectCycleRoot, SelectNextButton,
-        SelectPrevButton, StabilityBar, StabilizeButton, StanceControl, StanceKneelingButton,
-        StancePanelRoot, StanceProneButton, StanceStandingButton, StatFaction, StatHpBar,
-        StatHpLabel, StatInjuryLine, StatInjuryList, StatName, StatPortrait, StatStance, StatTuBar,
-        StatTuLabel, StatWoundLine, StatWoundList, StatWoundsPips, WeaponContent, WeaponImage,
-        WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
-        portrait_index_for_name,
+        SelectPrevButton, ShoveButton, StabilityBar, StabilizeButton, StanceControl,
+        StanceKneelingButton, StancePanelRoot, StanceProneButton, StanceStandingButton,
+        StatFaction, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList, StatName,
+        StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
+        StatWoundsPips, WeaponContent, WeaponImage, WeaponItemButton, WeaponItemPanel,
+        WeaponMagazineText, WeaponNameText, WeaponPanelRoot, portrait_index_for_name,
     },
 };
 

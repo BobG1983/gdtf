@@ -46,7 +46,8 @@ use gdtf_battle_sim::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred,
     },
 };
 use gdtf_test_utils::BattleAppBuilder;
@@ -163,6 +164,7 @@ fn shooter_weapon_kit(mode: FireModeSpec) -> impl bevy::prelude::Bundle {
                 Magazine::new(10, mag_size, ReloadTu::new(12)),
                 FireMode::new(vec![mode]),
                 Stable::new(true),
+                Shove::new(false),
                 Handedness::OneHanded,
             ),
         ),

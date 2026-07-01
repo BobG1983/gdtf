@@ -30,8 +30,8 @@ use gdtf_battle_sim::{
     FireModeSpec, Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRng, Kickback, Level,
     LifeState, LootRng, Luck, Magazine, MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots,
     ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng,
-    ReloadTu, SeverityRng, Shooting, ShotRng, SimPos, SlabEntry, SlabHp, SlabLedger, SlabState,
-    SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
+    ReloadTu, SeverityRng, Shooting, ShotRng, Shove, SimPos, SlabEntry, SlabHp, SlabLedger,
+    SlabState, SquadVisibility, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
     VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
     Wounds,
     acts::{FireRequested, SimActsPlugin},
@@ -130,6 +130,7 @@ fn spawn_shooter(world: &mut World) -> Entity {
             Magazine::new(30, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     );

@@ -995,8 +995,8 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Handedness, Kickback,
-        MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
-        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Shove, Stable,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
 
@@ -1029,6 +1029,7 @@ fn real_flow_weapon_spec() -> WeaponSpec {
             ModeShots::new(1),
         )]),
         stable:      Stable::new(false),
+        shove:       Shove::new(false),
         handedness:  Handedness::OneHanded,
     }
 }

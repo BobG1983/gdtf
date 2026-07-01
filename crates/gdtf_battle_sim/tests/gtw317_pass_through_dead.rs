@@ -29,10 +29,10 @@ use gdtf_battle_sim::{
     Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryRng,
     InjuryTables, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, Position,
-    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance,
-    StanceKind, SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
-    fire::FireOrder,
+    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger, Stable,
+    Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
+    Wounds, fire::FireOrder,
 };
 
 /// The shooter cell — well to the West so the East-facing line of occupants lies
@@ -104,6 +104,7 @@ fn spawn_shooter(world: &mut World, mode: FireModeSpec) -> Entity {
             FireMode::new(vec![mode]),
             // Braced so recoil-climb does not walk later rounds off the line.
             Stable::new(true),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     );

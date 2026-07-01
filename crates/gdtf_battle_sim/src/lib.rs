@@ -262,7 +262,8 @@ pub use acts_runtime::{
     acts::{
         FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved,
         MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, ReloadOutcome, ReloadResult,
-        apply_injury, can_engage, decide_fire_arc, dispatch_melee,
+        ShoveOutcome, ShoveRequested, ShoveSource, apply_injury, can_engage, decide_fire_arc,
+        dispatch_melee, dispatch_shove, resolve_shove,
     },
     ai,
     ai::{
@@ -343,7 +344,7 @@ pub use equipment::{
         FightModeKind, FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile,
         Kickback, MagazineSize, MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle,
         MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Reach, Stable, Strikes, TuCost, Weapon, WeaponBundle, WeaponDamage, WeaponName,
+        Reach, Shove, Stable, Strikes, TuCost, Weapon, WeaponBundle, WeaponDamage, WeaponName,
         WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
     },
 };
@@ -487,9 +488,9 @@ pub use tuning::{
     ProjectileBandEdges, RandomSpread, ReactionCapBase, ReactionCapPerReactions, ReactionPMax,
     ReactionPMin, ReactionProbability, ReactionScore, ReactionTuning, ReactionsUsed,
     ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
-    ShootingWeights, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults, StabilityCurve,
-    StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu,
-    StanceContribution, StanceStability, StatWeight, ToughnessMitigation, TuBase, TuPerSpeed,
-    TurnTu, WoundCost, WoundCosts, WoundsPerHp, clamp_probability, interrupt_probability,
-    may_interrupt, reaction_cap, reaction_score, rolls_interrupt,
+    ShootingWeights, ShoveTu, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults,
+    StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu,
+    StanceChangeTu, StanceContribution, StanceStability, StatWeight, ToughnessMitigation, TuBase,
+    TuPerSpeed, TurnTu, WoundCost, WoundCosts, WoundsPerHp, clamp_probability,
+    interrupt_probability, may_interrupt, reaction_cap, reaction_score, rolls_interrupt,
 };

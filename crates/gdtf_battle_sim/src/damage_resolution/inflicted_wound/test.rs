@@ -26,7 +26,8 @@ use crate::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred,
     },
 };
 
@@ -67,6 +68,7 @@ fn a_weapon() -> WeaponBundle {
                 ModeShots::new(1),
             )]),
             Stable::new(false),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     )

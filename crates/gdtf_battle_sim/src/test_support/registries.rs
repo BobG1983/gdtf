@@ -27,8 +27,8 @@ use crate::{
         Accuracy, BaseSpread, DamageType, FISTS_KEY, FatalBias, FightMode, FightModeKind,
         FightModeSpec, FireMode, FireModeSpec, Handedness, Kickback, MagazineSize,
         MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Reach, Stable, Strikes, TuCost, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-        WeaponShred, WeaponSpec,
+        Reach, Shove, Stable, Strikes, TuCost, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
 
@@ -76,6 +76,9 @@ pub fn test_weapon_spec() -> WeaponSpec {
             ModeShots::new(1),
         )]),
         stable:      Stable::new(false),
+        // No knockback on the shared test weapon — a shove-tagged variant is built
+        // per-test (the GTW-525 auto-shove tests spawn their own tagged weapon).
+        shove:       Shove::new(false),
         handedness:  Handedness::OneHanded,
     }
 }
@@ -110,6 +113,9 @@ pub fn test_melee_weapon_spec() -> MeleeWeaponSpec {
             TuCost::new(20),
             Strikes::new(1),
         )]),
+        // The shared test melee weapon does not knock back; a shove-tagged melee
+        // weapon is built per-test where the auto-shove-on-connect is exercised.
+        shove:       Shove::new(false),
     }
 }
 

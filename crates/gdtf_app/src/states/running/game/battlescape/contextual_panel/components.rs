@@ -4,8 +4,10 @@
 //! The contextual panel is the bottom-RIGHT cluster of the HUD (per the
 //! `docs/ui_mockups/battlescape_mockup.png` bottom-right corner — "Contextual Buttons go
 //! Here", to the right of the Stance column). It hosts the situational acts a selected ganger
-//! can take on a DOWNED neighbour — **Execute** / **Stabilize** — plus a deferred **Open Door**
-//! act. The panel and all three buttons spawn [`Visibility::Hidden`](bevy::camera::visibility::Visibility):
+//! can take on a neighbour — **Execute** / **Stabilize** on a DOWNED neighbour, **Melee**
+//! (GTW-507) on an in-LOS alive enemy, **Shove** (GTW-525) on any alive opposing neighbour —
+//! plus a deferred **Open Door** act. The panel and its buttons spawn
+//! [`Visibility::Hidden`](bevy::camera::visibility::Visibility):
 //! the spawn system only builds the tree. The live detection system fills [`ContextualTargets`]
 //! each update and toggles the Execute / Stabilize buttons' `Visibility` IN PLACE when a valid
 //! downed neighbour is in reach, and the press router routes a press onto the shared act-intent
@@ -102,6 +104,22 @@ crate::support_item! {
     struct MeleeButton;
 }
 
+crate::support_item! {
+    /// Marks the **Shove** contextual button (GTW-525) — the deliberate knock-back act on an
+    /// 8-adjacent, ALIVE, opposing ganger.
+    ///
+    /// A UNIVERSAL act available to EVERY ganger (NO weapon requirement — a pure-displacement
+    /// shove, not a weapon strike), mirroring the DEDICATED [`MeleeButton`] (GTW-507) /
+    /// [`ExecuteButton`] / [`StabilizeButton`]. Spawned
+    /// [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by the
+    /// detection system (which also wires its press to the `ShoveRequested` act) when
+    /// [`ContextualTargets::shove`] names a target — a WEAKER gate than Melee's (no LOS required:
+    /// a shove is contact, not a sighted strike). A unit marker: presence on an entity is the whole
+    /// signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ShoveButton;
+}
+
 /// The downed neighbours the contextual panel can act on; written each update by the detection
 /// system (GTW-294 live slice).
 ///
@@ -130,11 +148,16 @@ pub(in crate::states::running::game::battlescape) struct ContextualTargets {
     /// ONE Melee button routes to a ganger strike or a cover-smash, never both. Written each
     /// update by the detection system.
     pub(in crate::states::running::game::battlescape) melee_structure: Option<CellLevel>,
+    /// The opposing ganger the **Shove** act would knock back (GTW-525), or [`None`] when no
+    /// 8-adjacent, ALIVE, opposing ganger is in reach. A WEAKER gate than Melee's — NO LOS
+    /// required (a shove is contact, not a sighted strike) and NO weapon required (any ganger can
+    /// shove). Written each update by the detection system.
+    pub(in crate::states::running::game::battlescape) shove:           Option<Entity>,
 }
 
 impl ContextualTargets {
     /// Build the offer seam from the detected `execute` / `stabilize` / `melee` /
-    /// `melee_structure` targets.
+    /// `melee_structure` / `shove` targets.
     ///
     /// The single write-point the detection system uses each update; each ganger argument is the
     /// neighbour [`Entity`] that act would target (the framework carve-out), `melee_structure`
@@ -146,12 +169,14 @@ impl ContextualTargets {
         stabilize: Option<Entity>,
         melee: Option<Entity>,
         melee_structure: Option<CellLevel>,
+        shove: Option<Entity>,
     ) -> Self {
         Self {
             execute,
             stabilize,
             melee,
             melee_structure,
+            shove,
         }
     }
 
@@ -196,6 +221,16 @@ impl ContextualTargets {
         &self,
     ) -> Option<CellLevel> {
         self.melee_structure
+    }
+
+    /// The **Shove** target — the 8-adjacent, alive, opposing ganger a press would knock back, or
+    /// [`None`] (GTW-525).
+    ///
+    /// Read by [`contextual_button_intents`](super::systems::contextual_button_intents) to route a
+    /// Shove press to the carried target (the `Some`-guard keeps a stale press safe).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn shove(&self) -> Option<Entity> {
+        self.shove
     }
 }
 

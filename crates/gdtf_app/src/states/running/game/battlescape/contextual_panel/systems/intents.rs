@@ -14,10 +14,11 @@
 //! Each per-act query is filtered [`PressedButton<M>`] (`= (Changed<Interaction>, With<M>,
 //! Without<DisabledButton>)`) and acts only on [`Interaction::Pressed`] ([`is_press`]) — the
 //! action-bar `action_bar_button_intents` mechanism, reused verbatim. Unlike a global act, each
-//! contextual press carries the downed TARGET the detection system named on the
+//! contextual press carries the TARGET the detection system named on the
 //! [`ContextualTargets`] seam: an Execute press pushes
 //! [`ActIntent::Execute(target)`](gdtf_battle_input::ActIntent::Execute), a Stabilize press
-//! pushes [`ActIntent::Stabilize(target)`](gdtf_battle_input::ActIntent::Stabilize). The
+//! pushes [`ActIntent::Stabilize(target)`](gdtf_battle_input::ActIntent::Stabilize), a Shove press
+//! pushes [`ActIntent::Shove(target)`](gdtf_battle_input::ActIntent::Shove) (GTW-525). The
 //! `Some`-guard on the seam keeps a stale press (the panel was just hidden) safe — with no
 //! target nothing is queued.
 
@@ -26,7 +27,7 @@ use gdtf_battle_input::{ActIntent, PendingActIntent};
 use gdtf_ui::DisabledButton;
 
 use crate::states::running::game::battlescape::contextual_panel::components::{
-    ContextualTargets, ExecuteButton, MeleeButton, StabilizeButton,
+    ContextualTargets, ExecuteButton, MeleeButton, ShoveButton, StabilizeButton,
 };
 
 /// Query filter selecting the ENABLED button carrying marker `M` whose [`Interaction`] became a
@@ -63,19 +64,22 @@ const fn is_press(interaction: Interaction) -> bool {
 ///   [`ActIntent::Stabilize(target)`](ActIntent::Stabilize)
 /// - [`MeleeButton`] + [`ContextualTargets::melee`] `== Some(target)` →
 ///   [`ActIntent::Melee(target)`](ActIntent::Melee) (GTW-507)
+/// - [`ShoveButton`] + [`ContextualTargets::shove`] `== Some(target)` →
+///   [`ActIntent::Shove(target)`](ActIntent::Shove) (GTW-525)
 ///
 /// The `Some`-guard is the safety: a press with no offered target (a stale press after the
 /// panel hid) queues nothing. The button writes NO `*Requested` directly — the ONE
 /// [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) drain emits
 /// [`ExecuteDownedRequested`](gdtf_battle_sim::acts::ExecuteDownedRequested) /
 /// [`StabilizeDownedRequested`](gdtf_battle_sim::acts::StabilizeDownedRequested) /
-/// [`MeleeRequested`](gdtf_battle_sim::acts::MeleeRequested) for the
+/// [`MeleeRequested`](gdtf_battle_sim::acts::MeleeRequested) /
+/// [`ShoveRequested`](gdtf_battle_sim::acts::ShoveRequested) for the
 /// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) as the actor (a no-op there with no
 /// selection), and the sim's faction + reach (+ LOS for melee) gates are the authoritative check.
 ///
 /// Registered `.before(dispatch_act_intents)` so a press queued this update is drained this
 /// update — the same-frame guarantee the keyboard writers + the action bar get (`bevy-traps.md`
-/// #3). Param-only (`bevy-traps.md` #7): the read-only [`ContextualTargets`] seam, three
+/// #3). Param-only (`bevy-traps.md` #7): the read-only [`ContextualTargets`] seam, four
 /// disjoint per-marker `Query<&Interaction, …>`s, and the `ResMut<PendingActIntent>` write.
 pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
     targets: Res<ContextualTargets>,
@@ -83,6 +87,7 @@ pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
     execute_btn: Query<&Interaction, PressedButton<ExecuteButton>>,
     stabilize_btn: Query<&Interaction, PressedButton<StabilizeButton>>,
     melee_btn: Query<&Interaction, PressedButton<MeleeButton>>,
+    shove_btn: Query<&Interaction, PressedButton<ShoveButton>>,
 ) {
     if execute_btn.iter().copied().any(is_press)
         && let Some(target) = targets.execute()
@@ -104,5 +109,12 @@ pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
         } else if let Some(at) = targets.melee_structure() {
             pending.push(ActIntent::MeleeStructure(at));
         }
+    }
+    // The dedicated Shove button (GTW-525) — a deliberate, universal knock-back on an 8-adjacent
+    // alive opposing ganger. The `Some`-guard keeps a stale press safe.
+    if shove_btn.iter().copied().any(is_press)
+        && let Some(target) = targets.shove()
+    {
+        pending.push(ActIntent::Shove(target));
     }
 }

@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use super::{
     Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, Handedness,
-    HandlingProfile, Kickback, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+    HandlingProfile, Kickback, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
     WeaponShred,
 };
 use crate::magazine::Magazine;
@@ -65,6 +65,14 @@ pub struct WeaponSpec {
     pub fire_mode:   FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
     pub stable:      Stable,
+    /// The `shove` tag (GTW-525) — `true` knocks the target back one cell on a
+    /// connecting shot (in addition to the shot's damage). `#[serde(default)]` so an
+    /// omitted `shove:` field falls back to `Shove(false)` (a non-shove weapon): the
+    /// tag is OPT-IN, so the many existing weapon `.ron`s that never author it keep
+    /// shoving OFF (the [`Reach`](super::Reach) `#[serde(default)]` precedent), unlike
+    /// the required `stable:` field.
+    #[serde(default)]
+    pub shove:       Shove,
     /// The weapon's [`Handedness`] (GTW-443) — `OneHanded` (a pistol) or `TwoHanded`
     /// (a long-arm / heavy piece); authored as the `handedness:` field of the
     /// `.weapon.ron`. The shared `can_fire` guard refuses a `TwoHanded` weapon below two
@@ -77,7 +85,7 @@ impl WeaponSpec {
     /// [`WeaponName`] from the registry KEY (the weapon file's filename stem).
     ///
     /// Groups the per-hit damage fields into a [`DamageProfile`] and the
-    /// magazine/fire-mode/`stable` fields into a [`HandlingProfile`], then calls
+    /// magazine/fire-mode/`stable`/`shove` fields into a [`HandlingProfile`], then calls
     /// [`WeaponBundle::new`] — the [`Weapon`](super::Weapon) marker is added there.
     /// The spawned [`Magazine`] is built FULL (loaded to `size`) from the authored
     /// `size` + `reload_tu` (the GTW-275 "full magazine at spawn" path, matching the
@@ -94,7 +102,13 @@ impl WeaponSpec {
             self.kickback,
             self.fatal_bias,
             DamageProfile::new(self.damage, self.punch, self.shred, self.damage_type),
-            HandlingProfile::new(magazine, self.fire_mode, self.stable, self.handedness),
+            HandlingProfile::new(
+                magazine,
+                self.fire_mode,
+                self.stable,
+                self.shove,
+                self.handedness,
+            ),
         )
     }
 }

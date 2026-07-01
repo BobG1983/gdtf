@@ -42,10 +42,10 @@ use gdtf_battle_sim::{
     Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
     Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind,
     ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position,
-    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance,
-    StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
-    Wounds, fire::FireOrder,
+    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger, Stable,
+    Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy,
+    WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
 /// The shooter's cell.
@@ -126,6 +126,7 @@ fn spawn_standing_shooter(app: &mut App, facing: Direction) -> Entity {
             // `stable` so the brace engages unconditionally — keeps the cone tight,
             // though the ZERO base spread already collapses it to the axis.
             Stable::new(true),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     );

@@ -8,7 +8,7 @@ use crate::tuning::{
     band::ProjectileBandEdges,
     body_part::BodyPartWeights,
     cone_groups::ConeStabilityTuning,
-    economy::{LinkTu, MoveCosts, StanceChangeTu, TurnTu},
+    economy::{LinkTu, MoveCosts, ShoveTu, StanceChangeTu, TurnTu},
     falls::PerStoreyDamage,
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
@@ -61,6 +61,14 @@ pub struct CombatTuning {
     /// [`crate::tu::spend_tu`] when a ganger's facing actually changes (combat.md
     /// L34 "turn" costs TUs; magnitude is tunable, mirroring `stance_change_tu`).
     pub turn_tu:               TurnTu,
+    /// The shove TU cost (GTW-525) — the flat Time Units the deliberate SHOVE act
+    /// ([`dispatch_shove`](crate::acts::dispatch_shove)) spends via
+    /// [`crate::tu::spend_tu`] when it resolves (an 8-adjacent opposing alive target).
+    /// The pure-displacement shove deals NO wound of its own (the fall, if any, does the
+    /// harm through the shared GTW-523 path); the WEAPON-TAG auto-shove is free (bundled
+    /// into the attack's own charge), so only the deliberate act reads this leaf.
+    /// Tunable, mirroring `stance_change_tu` / `turn_tu`.
+    pub shove_tu:              ShoveTu,
     /// The per-terrain move-cost table (movement) — the flat Time Units
     /// [`crate::move_acts::advance_walk`] spends via [`crate::tu::spend_tu`] to step onto
     /// a destination cell, keyed by that cell's

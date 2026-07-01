@@ -6,8 +6,8 @@
 use bevy::prelude::Bundle;
 
 use super::{
-    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Handedness, Kickback, Stable, Weapon,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Handedness, Kickback, Shove, Stable,
+    Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 use crate::magazine::Magazine;
 
@@ -92,6 +92,10 @@ pub struct WeaponBundle {
     pub fire_mode:   FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
     pub stable:      Stable,
+    /// The `shove` tag (GTW-525) — `true` KNOCKS BACK the target one cell on a
+    /// connecting ranged shot (in addition to the shot's damage). `false` is a
+    /// normal weapon (no knockback).
+    pub shove:       Shove,
     /// The weapon's [`Handedness`] (GTW-443) — `OneHanded` / `TwoHanded`; the shared
     /// `can_fire` guard refuses a `TwoHanded` weapon below two available hands.
     pub handedness:  Handedness,
@@ -159,24 +163,29 @@ pub struct HandlingProfile {
     pub fire_mode:  FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
     pub stable:     Stable,
+    /// The `shove` tag (GTW-525) — `true` knocks the target back one cell on a
+    /// connecting shot.
+    pub shove:      Shove,
     /// The weapon's [`Handedness`] (GTW-443).
     pub handedness: Handedness,
 }
 
 impl HandlingProfile {
     /// Build a handling block from a weapon's [`Magazine`] grouping, fire-mode
-    /// selector, `stable` tag, and [`Handedness`] (GTW-443).
+    /// selector, `stable` tag, `shove` tag (GTW-525), and [`Handedness`] (GTW-443).
     #[must_use]
     pub const fn new(
         magazine: Magazine,
         fire_mode: FireMode,
         stable: Stable,
+        shove: Shove,
         handedness: Handedness,
     ) -> Self {
         Self {
             magazine,
             fire_mode,
             stable,
+            shove,
             handedness,
         }
     }
@@ -216,6 +225,7 @@ impl WeaponBundle {
             magazine: handling.magazine,
             fire_mode: handling.fire_mode,
             stable: handling.stable,
+            shove: handling.shove,
             handedness: handling.handedness,
         }
     }

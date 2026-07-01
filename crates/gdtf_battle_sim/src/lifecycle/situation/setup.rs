@@ -46,8 +46,8 @@ use crate::{
     vertical::{LinkKind, build_vertical_link_graph},
     weapon::{
         Accuracy, BaseSpread, FISTS_KEY, FatalBias, FightMode, FireMode, Kickback, MeleeWeapon,
-        MeleeWeaponBundle, MeleeWeaponRegistry, Reach, Stable, Weapon, WeaponBundle, WeaponDamage,
-        WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, Wields,
+        MeleeWeaponBundle, MeleeWeaponRegistry, Reach, Shove, Stable, Weapon, WeaponBundle,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, Wields,
     },
 };
 
@@ -396,6 +396,10 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
     let weapon_shred = *weapon.shred;
     let fire_mode = (*weapon.fire_mode).clone();
     let stable = *weapon.stable;
+    // GTW-525: the `shove` knockback tag — WITHOUT seeding it the GTW-525 `WeaponQuery`-sibling
+    // `&Shove` read (the fire-connect auto-shove hook's `shove_tags`) would not match the
+    // spawned weapon entity, so a `shove`-tagged gun would never knock back in live play.
+    let shove = *weapon.shove;
     // The runtime-valued / value-typed leaves with no `bsn!` grammar form, owned for the
     // `template_value` tuple-composition tail (the GTW-322 runtime-value path). The GTW-443
     // `Handedness` is a runtime-valued enum (like `DamageType`), so it bridges the same way
@@ -417,6 +421,7 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
             WeaponShred::new(weapon_shred)
             FireMode::new(fire_mode)
             Stable::new(stable)
+            Shove::new(shove)
         },
         // The runtime-valued / value-typed components with no `bsn!` grammar form,
         // bridged via `template_value` and tuple-composed onto the SAME weapon entity.
@@ -468,6 +473,11 @@ fn wielded_melee_weapon_scene(weapon: &MeleeWeaponBundle) -> impl Scene {
     let fatal_bias = *weapon.fatal_bias;
     let reach = *weapon.reach;
     let fight_mode = (*weapon.fight_mode).clone();
+    // GTW-525: the `shove` knockback tag — WITHOUT seeding it the melee dispatch's
+    // `MeleeWeaponQuery` `&Shove` column would not match the spawned melee weapon entity, so
+    // `dispatch_melee` would fail closed (no strike) on EVERY ganger — the whole melee act would
+    // silently die in live play (the GTW-443 `Handedness` seeding-or-fail-closed lesson).
+    let shove = *weapon.shove;
     // The runtime-valued enums with no `bsn!` grammar form, owned for the
     // `template_value` tuple-composition tail (the GTW-322 runtime-value path).
     let damage_type = weapon.damage_type;
@@ -482,6 +492,7 @@ fn wielded_melee_weapon_scene(weapon: &MeleeWeaponBundle) -> impl Scene {
             FatalBias::new(fatal_bias)
             Reach::new(reach)
             FightMode::new(fight_mode)
+            Shove::new(shove)
         },
         // The runtime-valued components with no `bsn!` grammar form, bridged via
         // `template_value` and tuple-composed onto the SAME melee weapon entity.

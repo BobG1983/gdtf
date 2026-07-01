@@ -152,7 +152,7 @@ impl BattleGridsParam<'_> {
 /// consume to free the smashed cell / accrue the ground damage. A transparent system-param
 /// bundle of named output buffers — not itself a wrapped domain value.
 #[derive(SystemParam)]
-pub struct FireSignals<'w> {
+pub struct FireSignals<'w, 's> {
     /// The per-ROUND fire-trajectory signal (one per round resolved) — the presenter's
     /// muzzle / tracer / impact FX + the floating-combat-text verdict.
     shots:           MessageWriter<'w, ShotFired>,
@@ -189,6 +189,19 @@ pub struct FireSignals<'w> {
     /// reads for the FCT / log flash). The injury-table mirror of the cover/slab/ground
     /// bridges: a structural hit destroys/accrues, a ganger wound INJURES.
     injuries:        MessageWriter<'w, InjuryInflicted>,
+    /// The per-FIRE-ACT shove signal (GTW-525) — emitted ONCE when a `shove`-tagged weapon's
+    /// shot CONNECTS with a ganger (the first connecting-ganger round of the volley). It
+    /// writes an internal [`ShoveRequested`](crate::acts::request::ShoveRequested)
+    /// (`ShoveSource::Weapon`) `dispatch_shove` drains the same frame (`dispatch_shove` is
+    /// ordered `.after(dispatch_fire)`). A miss / a non-`shove` weapon writes nothing. Folded
+    /// into this bundle so `dispatch_fire` stays under Bevy's 16-param limit.
+    shoves:          MessageWriter<'w, crate::acts::request::ShoveRequested>,
+    /// The firing weapon's [`Shove`](crate::weapon::Shove) tag read (GTW-525) — read off the
+    /// resolved ranged-weapon entity to decide whether a connecting shot auto-shoves. A
+    /// read-only [`Query`] over the weapon entities, folded into this bundle (with the `shoves`
+    /// writer) so `dispatch_fire` stays under the 16-param limit; disjoint from the ganger /
+    /// magazine queries (a read on a different component set).
+    shove_tags:      Query<'w, 's, &'static crate::weapon::Shove>,
 }
 
 /// The query the GTW-242 fire dispatch turns the shooter through for an out-of-arc shot —
@@ -532,6 +545,28 @@ pub fn dispatch_fire(
         //     all PURE EXPOSURE of the volley the fire already produced (no recompute, no
         //     extra draw). Extracted to keep dispatch_fire under clippy's line gate.
         emit_round_signals(request.shooter, damage, &volley, &mut signals);
+
+        // (6) GTW-525 C3: the RANGED weapon-tag auto-shove. If the firing weapon carries the
+        //     `shove` tag AND a round CONNECTED with a ganger, knock that target back one cell
+        //     (in addition to the shot's damage above). Write ONE internal ShoveRequested
+        //     (ShoveSource::Weapon) for the FIRST connecting-ganger round — the connect already
+        //     gated + the fire TU was charged, so dispatch_shove resolves it un-gated / TU-free;
+        //     it is ordered `.after(dispatch_fire)`, so this same-frame message is consumed this
+        //     tick. A MISS (no ShotKind::Ganger round) shoves nothing; a non-`shove` weapon
+        //     shoves nothing. One shove per fire act (a burst does not multiply the knock-back).
+        let weapon_shoves = signals.shove_tags.get(weapon_entity).is_ok_and(|tag| **tag);
+        let struck_ganger = volley.shots.iter().find_map(|outcome| match outcome.kind {
+            ShotKind::Ganger(target) => Some(target),
+            _ => None,
+        });
+        if let (true, Some(struck)) = (weapon_shoves, struck_ganger) {
+            signals
+                .shoves
+                .write(crate::acts::request::ShoveRequested::new_weapon(
+                    request.shooter,
+                    struck,
+                ));
+        }
     }
 }
 

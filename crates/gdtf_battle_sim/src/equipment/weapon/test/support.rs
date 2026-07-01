@@ -57,6 +57,7 @@ pub(super) fn handling(mag: u16, stable: bool) -> HandlingProfile {
         Magazine::loaded(MagazineSize::new(mag), ReloadTu::new(12)),
         FireMode::new(vec![spec(1.0, 0.5, 1)]),
         Stable::new(stable),
+        Shove::new(false),
         Handedness::OneHanded,
     )
 }

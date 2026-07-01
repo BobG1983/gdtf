@@ -19,7 +19,7 @@ use gdtf_battle_sim::{
     acts::{
         EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested, MoveRequested,
         ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        StabilizeDownedRequested,
+        ShoveRequested, StabilizeDownedRequested,
     },
     occupancy_sync::SimSystems,
     setup_battle_on_request,
@@ -188,6 +188,10 @@ impl Plugin for GdtfBattleInputPlugin {
         // `MessageWriter<MeleeRequested>` passes param validation whether or not `SimActsPlugin`
         // is present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
         .add_message::<MeleeRequested>()
+        // GTW-525 — the shove buffer the Shove intent drains into, so the drain's
+        // `MessageWriter<ShoveRequested>` passes param validation whether or not `SimActsPlugin`
+        // is present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
+        .add_message::<ShoveRequested>()
         // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
         // emitter's `MessageWriter<HighlightRequest>` passes param validation even
         // headlessly (`bevy-traps.md` #4). `add_message` is IDEMPOTENT.

@@ -43,8 +43,8 @@ pub(super) use crate::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
-        WieldedBy, Wields,
+        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred, WieldedBy, Wields,
     },
 };
 
@@ -174,6 +174,7 @@ pub(super) fn spawn_shooter(
             Magazine::new(10, mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(true),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     );

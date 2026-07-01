@@ -19,12 +19,14 @@ mod systems;
 
 pub(in crate::states::running::game::battlescape) use plugin::ContextualPanelPlugin;
 
-// Test-support-only re-export of the contextual-panel's root + the three button markers (GTW-294),
-// gated so the binary build is `unused`/`unreachable_pub`-clean (the action-bar / bottom-bar
-// marker re-export chain precedent). Carries the markers up toward `crate::test_support`.
+// Test-support-only re-export of the contextual-panel's root + the button markers (GTW-294 /
+// GTW-507 / GTW-525), gated so the binary build is `unused`/`unreachable_pub`-clean (the
+// action-bar / bottom-bar marker re-export chain precedent). Carries the markers up toward
+// `crate::test_support`.
 #[cfg(feature = "test-support")]
 crate::support_use! {
     components::{
-        ContextualPanelRoot, ExecuteButton, MeleeButton, OpenDoorButton, StabilizeButton,
+        ContextualPanelRoot, ExecuteButton, MeleeButton, OpenDoorButton, ShoveButton,
+        StabilizeButton,
     };
 }

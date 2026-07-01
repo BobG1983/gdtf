@@ -85,6 +85,49 @@ impl Default for TurnTu {
     }
 }
 
+/// The **shove TU cost** — the flat number of Time Units a ganger spends to perform the
+/// deliberate SHOVE act (GTW-525): a pure-displacement melee shove that knocks an adjacent
+/// opposing ganger back one cell (the fall, if any, does the damage — the shove itself
+/// deals no wound).
+///
+/// The flat cost charged by the [`dispatch_shove`](crate::acts::dispatch_shove) act via
+/// [`crate::tu::spend_tu`] whenever the deliberate shove RESOLVES its gates (8-adjacency +
+/// opposing + alive). A shove costs TU whether or not the displacement lands a fall — the
+/// swing of a shove is spent regardless (the melee `fight-mode TU` / ranged `fire()`
+/// charge precedent). The WEAPON-TAG auto-shove (on a connecting attack) is FREE — it
+/// rides the attack's own TU charge (the tag adds a bundled effect, not a second act), so
+/// this leaf is read ONLY by the deliberate act. A small `u8` count, matching
+/// [`crate::ganger::Tu`]'s inner type so the economy subtracts it directly. The default is
+/// a **starting point**, tunable balance data — tests assert only the relation to this
+/// value (the drop equals it), never the magnitude. `#[serde(transparent)]` lets it parse a
+/// bare RON scalar; private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct ShoveTu(u8);
+
+impl ShoveTu {
+    /// Build a shove TU cost from its flat Time-Unit magnitude (a starting point, TBD
+    /// tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style) while
+    /// letting the shove-act tests and any programmatic tuning edit build a cost without a
+    /// bare `u8` escaping; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for ShoveTu {
+    fn default() -> Self {
+        // A flat 6 TU to shove — a STARTING POINT (tunable balance data): a real cost (a
+        // shove is a committed melee action) but cheaper than a full swing since it deals no
+        // wound of its own. Value-agnostic tests only, never a pinned magnitude.
+        Self(6)
+    }
+}
+
 /// One terrain's **move TU cost** — the flat number of Time Units a ganger spends to
 /// step ONTO a cell of a given [`TerrainKind`] (`docs/combat/combat.md` L34
 /// affirmatively lists "step" among the actions that "cost TUs").

@@ -40,7 +40,7 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, Handedness, HandlingProfile,
-        Kickback, Stable, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Kickback, Shove, Stable, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -173,6 +173,7 @@ fn weapon_kit(name: &str, magazine: Magazine) -> WeaponBundle {
                 ModeShots::new(1),
             )]),
             Stable::new(false),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     )

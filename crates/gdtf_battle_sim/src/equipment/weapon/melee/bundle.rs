@@ -14,7 +14,7 @@ use bevy::prelude::Bundle;
 
 use super::{FightMode, MeleeWeapon, Reach};
 use crate::weapon::{
-    DamageType, FatalBias, Handedness, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    DamageType, FatalBias, Handedness, Shove, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 
 /// The **spawn bundle for an armed melee-weapon entity** — the [`MeleeWeapon`] marker
@@ -56,6 +56,11 @@ pub struct MeleeWeaponBundle {
     pub reach:       Reach,
     /// The melee-only [`FightMode`] selector and its per-mode numbers (GTW-505).
     pub fight_mode:  FightMode,
+    /// The `shove` tag (GTW-525) — `true` KNOCKS BACK the target one cell on a
+    /// connecting melee strike (in addition to the strike's damage). The one ranged
+    /// handling field a melee weapon KEEPS (unlike `stable` / the cone fields it drops):
+    /// knockback applies to a melee strike exactly as it does to a shot.
+    pub shove:       Shove,
 }
 
 /// A melee weapon's **damage block** for spawning — the three per-hit damage numbers
@@ -100,7 +105,7 @@ impl MeleeWeaponBundle {
     /// Build an armed melee-weapon-entity bundle — the [`MeleeWeapon`] marker is
     /// supplied automatically; the stats are handed in as the weapon's [`WeaponName`],
     /// a [`MeleeDamageProfile`], the §6 [`FatalBias`], the [`Handedness`], the melee
-    /// [`Reach`], and the [`FightMode`] selector.
+    /// [`Reach`], the [`FightMode`] selector, and the GTW-525 [`Shove`] knockback tag.
     ///
     /// Takes the cohesive damage group (the [`DamageProfile`](super::super::DamageProfile)
     /// precedent) rather than a dozen loose params, keeping the ctor under clippy's
@@ -114,6 +119,7 @@ impl MeleeWeaponBundle {
         handedness: Handedness,
         reach: Reach,
         fight_mode: FightMode,
+        shove: Shove,
     ) -> Self {
         Self {
             marker: MeleeWeapon,
@@ -126,6 +132,7 @@ impl MeleeWeaponBundle {
             handedness,
             reach,
             fight_mode,
+            shove,
         }
     }
 }

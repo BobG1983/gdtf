@@ -59,6 +59,7 @@ mod plugin;
 mod posture;
 mod reload;
 mod request;
+mod shove;
 
 #[cfg(test)]
 mod test;
@@ -76,5 +77,6 @@ pub use reload::{ReloadOutcome, ReloadResult, dispatch_reload};
 pub use request::{
     AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
     MeleeResolved, MeleeTarget, MoveRequested, ReloadRequested, SetAimingRequested,
-    SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
+    SetFacingRequested, SetStanceRequested, ShoveRequested, ShoveSource, StabilizeDownedRequested,
 };
+pub use shove::{ShoveOutcome, dispatch_shove, resolve_shove};

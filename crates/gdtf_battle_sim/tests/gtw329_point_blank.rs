@@ -42,10 +42,10 @@ use gdtf_battle_sim::{
     InjuryTables, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MarchKind, MeleeQuery,
     ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin,
     PieceQuery, Position, PriorShots, RecoilClimb, RecoilGrowth, ReloadTu, SeverityRng,
-    ShooterQuery, Shooting, ShotKind, ShotRng, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid,
-    TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds, climb_aim_dir,
-    fire::FireOrder, march_vector, muzzle_position, target_aim_point,
+    ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger, Stable, Stance, StanceKind,
+    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
+    climb_aim_dir, fire::FireOrder, march_vector, muzzle_position, target_aim_point,
 };
 
 /// The shooter's cell (interior of the grid so every facing has an adjacent cell).
@@ -235,6 +235,7 @@ fn spawn_standing_shooter(app: &mut App) -> Entity {
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     );

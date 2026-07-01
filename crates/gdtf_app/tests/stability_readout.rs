@@ -25,7 +25,7 @@ use gdtf_battle_sim::{
     Aiming, ArmorHardness, ArmorProtection, Cell, CellLevel, ConeMult, CoverEntry, CoverHp,
     CoverLedger, Direction, Facing, Faction, FireMode, FireModeSpec, HeightBand, Level, LifeState,
     Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, ReloadTu,
-    Shooter, Stable, Stance, StanceKind, TerrainBraced, Tu, TuMax, WeaponBundle, WieldedBy,
+    Shooter, Shove, Stable, Stance, StanceKind, TerrainBraced, Tu, TuMax, WeaponBundle, WieldedBy,
     faced_cell,
     injuries::InjuryRegistry,
     stability_for,
@@ -184,6 +184,7 @@ fn weapon_kit(stable: bool) -> WeaponBundle {
                 ModeShots::new(1),
             )]),
             Stable::new(stable),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     )

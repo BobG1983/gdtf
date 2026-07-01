@@ -42,7 +42,7 @@ pub(super) use crate::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FightMode, FightModeKind,
         FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile, Kickback, MagazineSize,
         MeleeDamageProfile, MeleeWeaponBundle, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Reach, Stable, Strikes, TuCost, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        Reach, Shove, Stable, Strikes, TuCost, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
         WeaponShred, WieldedBy,
     },
 };
@@ -204,6 +204,7 @@ pub(super) fn equip_melee_weapon(world: &mut World, ganger: Entity) {
             TuCost::new(20),
             Strikes::new(1),
         )]),
+        Shove::new(false),
     );
     world.spawn((WieldedBy::new(ganger), melee));
 }
@@ -241,6 +242,7 @@ fn test_weapon(
             Magazine::new(ammo, mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(stable),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     )
@@ -268,6 +270,7 @@ pub(super) fn equip_handed_weapon(world: &mut World, ganger: Entity, handedness:
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![mode]),
             Stable::new(true),
+            Shove::new(false),
             handedness,
         ),
     );

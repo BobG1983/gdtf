@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use super::{FightMode, MeleeDamageProfile, MeleeWeaponBundle, Reach};
 use crate::weapon::{
-    DamageType, FatalBias, Handedness, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    DamageType, FatalBias, Handedness, Shove, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 
 /// The **authoring struct** an `assets/content/weapons/melee/*.melee_weapon.ron`
@@ -19,9 +19,10 @@ use crate::weapon::{
 ///
 /// It SHARES the ranged damage model verbatim (the [`WeaponDamage`] / [`WeaponPunch`] /
 /// [`WeaponShred`] / [`DamageType`] damage group + the [`FatalBias`] + the
-/// [`Handedness`]) and adds ONLY the melee-only fields — the [`Reach`] and the
-/// [`FightMode`] selector — DROPPING every ranged-only field (`base_spread` /
-/// `accuracy` / `kickback` / `magazine` / `stable`).
+/// [`Handedness`]) and adds the melee-only fields — the [`Reach`] and the
+/// [`FightMode`] selector — plus the shared GTW-525 [`Shove`] knockback tag, DROPPING
+/// every ranged-only cone/handling field (`base_spread` / `accuracy` / `kickback` /
+/// `magazine` / `stable`).
 ///
 /// Every shared field is its existing weapon-number newtype authored as its
 /// `#[serde(transparent)]` bare RON scalar (the [`crate::tuning`] / GTW-200 house
@@ -58,6 +59,13 @@ pub struct MeleeWeaponSpec {
     /// each a [`FightModeSpec`](super::FightModeSpec) carrying its
     /// [`FightModeKind`](super::FightModeKind) + flat TU cost + strike count.
     pub fight_mode:  FightMode,
+    /// The `shove` tag (GTW-525) — `true` knocks the target back one cell on a
+    /// connecting melee strike. `#[serde(default)]` so an omitted `shove:` field falls
+    /// back to `Shove(false)` (a non-shove weapon): the tag is OPT-IN (the [`Reach`]
+    /// `#[serde(default)]` precedent), so a melee weapon that never authors it keeps
+    /// knockback OFF.
+    #[serde(default)]
+    pub shove:       Shove,
 }
 
 impl MeleeWeaponSpec {
@@ -79,6 +87,7 @@ impl MeleeWeaponSpec {
             self.handedness,
             self.reach,
             self.fight_mode,
+            self.shove,
         )
     }
 }

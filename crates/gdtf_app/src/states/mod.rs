@@ -108,7 +108,7 @@ crate::support_use! {
 crate::support_use! {
     running::{
         ContextualPanelRoot, ExecuteButton, LoadingScreenRoot, MeleeButton, OpenDoorButton,
-        StabilizeButton,
+        ShoveButton, StabilizeButton,
     };
 }
 // Test-support-only re-export of the GTW-328 combat-log markers (the log root + per-line marker),

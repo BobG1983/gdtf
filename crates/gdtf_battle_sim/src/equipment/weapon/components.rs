@@ -297,6 +297,44 @@ impl Stable {
     }
 }
 
+/// A weapon's **`shove` tag** — whether the weapon KNOCKS BACK the target on a
+/// connecting attack (GTW-525). A `shove` weapon (a shock maul, a heavy bolter's
+/// muzzle-thump, a boarding shield) AUTO-shoves its target one cell directly away
+/// from the attacker on EVERY connecting hit — a MELEE strike connect OR a RANGED
+/// shot connect — in ADDITION to the attack's damage. A miss does not shove; a
+/// non-`shove` weapon never shoves.
+///
+/// The shove is PURE DISPLACEMENT: the tag adds no wound of its own (the attack's
+/// own damage stands; any FALL the displacement triggers does the extra harm,
+/// through the shared GTW-523 fall path). It mirrors the [`Stable`] tag exactly — a
+/// data-driven boolean MARKER set in the weapon `.ron`, present on only SOME
+/// weapons; unlike [`Stable`] it lives on BOTH the ranged AND the melee weapon
+/// model (any weapon can knock back).
+///
+/// A weapon NUMBER (a boolean flag, lives on the weapon, not in tuning). A named
+/// newtype (no-bare-types: a `bool` carrying domain meaning is wrapped). Private
+/// inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON `true` /
+/// `false`. A `#[derive(Component)]` (GTW-200) — a sibling component on the armed
+/// entity, the [`Stable`] precedent.
+/// `Default` (`Shove(false)`) is BOTH the spawn-seed sentinel (the `bsn!` spawn path
+/// seeds the slot via `Default` before an authored `Shove::new(..)` overwrites it,
+/// GTW-322) AND the defensible authored default: a weapon authored WITHOUT a `shove:`
+/// field is a NON-shove weapon (the field is `#[serde(default)]` on the spec, so the
+/// vast majority of existing weapons that never author it keep shoving off). Unlike
+/// [`Stable`] — a required RON field — `shove` is opt-in.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+#[serde(transparent)]
+pub struct Shove(bool);
+
+impl Shove {
+    /// Build a `shove` tag from its boolean value (`true` = knocks the target back
+    /// one cell on a connecting hit).
+    #[must_use]
+    pub const fn new(shove: bool) -> Self {
+        Self(shove)
+    }
+}
+
 /// A weapon's **name** — its human-facing identity (e.g. an authored weapon's
 /// display name). Carried on the armed entity for the weapon display / picker
 /// (GTW-254) and the loader (GTW-257); the §1/§6 cone/severity math NEVER reads it,

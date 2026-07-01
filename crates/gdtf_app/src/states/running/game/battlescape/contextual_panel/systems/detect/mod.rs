@@ -24,10 +24,13 @@
 //! - **Melee — cover-smash** (GTW-508) — with NO meleeable ganger in reach, the first 8-adjacent
 //!   intact Cover / Wall cell, so the ONE Melee button offers either a ganger strike or a
 //!   cover-smash (never both). Its `(cell, level)` rides the seam's melee-structure slot.
+//! - **Shove** (GTW-525) — the first 8-adjacent, ALIVE, OPPOSING ganger — the deliberate
+//!   knock-back. A WEAKER gate than Melee's: NO LOS required (a shove is contact) and NO weapon
+//!   required (any ganger can shove).
 //!
-//! The three offer scans live in the [`scan`] submodule (GTW-508 C6 — code-health size cap);
-//! this file (`mod.rs`) owns the [`detect_contextual_targets`] system, its query `type`
-//! aliases, and the [`LosGrids`] bundle.
+//! The offer scans live in the [`scan`] submodule (GTW-508 C6 — code-health size cap); this
+//! file (`mod.rs`) owns the [`detect_contextual_targets`] system, its query `type` aliases, and
+//! the [`LosGrids`] bundle.
 //!
 //! The actual sim gates ([`execute_downed`](gdtf_battle_sim::execute_downed) /
 //! [`stabilize_downed`](gdtf_battle_sim::stabilize_downed) /
@@ -46,7 +49,7 @@ use gdtf_battle_sim::{
 
 use crate::states::running::game::battlescape::contextual_panel::components::{
     ContextualPanelRoot, ContextualTargets, ExecuteButton, MeleeButton, OpenDoorButton,
-    StabilizeButton,
+    ShoveButton, StabilizeButton,
 };
 
 /// The actor (selection) reads the detection scan needs — its grid cell + its gang (required,
@@ -80,14 +83,15 @@ type CandidateReads = (
     Option<&'static Stance>,
 );
 
-/// Query filter selecting the contextual panel ROOT's [`Visibility`] disjointly from the four
-/// button markers (so the five `&mut Visibility` queries never alias) — a named alias to keep
+/// Query filter selecting the contextual panel ROOT's [`Visibility`] disjointly from the five
+/// button markers (so the six `&mut Visibility` queries never alias) — a named alias to keep
 /// [`detect_contextual_targets`]'s signature under clippy `type_complexity`.
 type RootVisFilter = (
     With<ContextualPanelRoot>,
     Without<ExecuteButton>,
     Without<StabilizeButton>,
     Without<MeleeButton>,
+    Without<ShoveButton>,
     Without<OpenDoorButton>,
 );
 
@@ -97,6 +101,7 @@ type ExecuteVisFilter = (
     With<ExecuteButton>,
     Without<StabilizeButton>,
     Without<MeleeButton>,
+    Without<ShoveButton>,
     Without<OpenDoorButton>,
 );
 
@@ -106,6 +111,7 @@ type StabilizeVisFilter = (
     With<StabilizeButton>,
     Without<ExecuteButton>,
     Without<MeleeButton>,
+    Without<ShoveButton>,
     Without<OpenDoorButton>,
 );
 
@@ -115,6 +121,17 @@ type MeleeVisFilter = (
     With<MeleeButton>,
     Without<ExecuteButton>,
     Without<StabilizeButton>,
+    Without<ShoveButton>,
+    Without<OpenDoorButton>,
+);
+
+/// Query filter selecting the **Shove** button's [`Visibility`] disjointly from the other
+/// contextual markers (GTW-525) — a named alias for clippy `type_complexity`.
+type ShoveVisFilter = (
+    With<ShoveButton>,
+    Without<ExecuteButton>,
+    Without<StabilizeButton>,
+    Without<MeleeButton>,
     Without<OpenDoorButton>,
 );
 
@@ -125,6 +142,7 @@ type OpenDoorVisFilter = (
     Without<ExecuteButton>,
     Without<StabilizeButton>,
     Without<MeleeButton>,
+    Without<ShoveButton>,
 );
 
 /// The change-driven world grids + tuning the GTW-507 melee LOS gate reads, bundled into one
@@ -159,12 +177,14 @@ pub(in crate::states::running::game::battlescape) struct LosGrids<'w> {
 /// ALIVE, ENEMY ganger with a clear LOS as the **Melee** target — a STRONGER gate than Execute's
 /// downed-adjacency (alive + LOS, not downed). It then:
 ///
-/// 1. Writes the three targets onto the [`ContextualTargets`] seam (so
+/// 1. Writes the targets onto the [`ContextualTargets`] seam (so
 ///    [`contextual_button_intents`](super::intents::contextual_button_intents) can route a press
 ///    to the carried target).
 /// 2. Sets each button's [`Visibility`](bevy::render::view::Visibility) in place — `Visible`
-///    iff its target is [`Some`], else `Hidden`; the **Open Door** button stays `Hidden` (a
-///    deferred act); and the panel ROOT is `Visible` iff ANY act has a target, else `Hidden`.
+///    iff its target is [`Some`], else `Hidden`; the **Shove** button (GTW-525) reveals on an
+///    8-adjacent alive opposing ganger (no LOS / weapon needed); the **Open Door** button stays
+///    `Hidden` (a deferred act); and the panel ROOT is `Visible` iff ANY act has a target, else
+///    `Hidden`.
 ///
 /// With NO [`SelectedShooter`] (or a selection whose entity lacks the read components) all
 /// targets are cleared to [`None`] and the panel + all buttons are hidden — fail-closed, no
@@ -181,11 +201,11 @@ pub(in crate::states::running::game::battlescape) struct LosGrids<'w> {
 ///
 /// Param-only (`bevy-traps.md` #7): the [`SelectedShooter`] + [`ContextualTargets`] resources,
 /// a read-only `actors` [`Query`], a read-only `candidates` [`Query`], the [`LosGrids`] bundle
-/// the melee LOS gate reads, and five disjoint per-marker `Query<&mut Visibility, …>`s for the
-/// root + four buttons.
+/// the melee LOS gate reads, and six disjoint per-marker `Query<&mut Visibility, …>`s for the
+/// root + five buttons.
 #[expect(
     clippy::too_many_arguments,
-    reason = "five disjoint per-marker Visibility queries (root + four buttons) are the \
+    reason = "six disjoint per-marker Visibility queries (root + five buttons) are the \
               mutate-in-place idiom (ui-mutate-not-respawn); folding them into a SystemParam \
               bundle would not reduce the disjoint-query count and only adds indirection — and \
               the GTW-507 melee LOS gate adds the read-only actors/candidates/LosGrids set"
@@ -200,6 +220,7 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
     mut execute_btn: Query<&mut Visibility, ExecuteVisFilter>,
     mut stabilize_btn: Query<&mut Visibility, StabilizeVisFilter>,
     mut melee_btn: Query<&mut Visibility, MeleeVisFilter>,
+    mut shove_btn: Query<&mut Visibility, ShoveVisFilter>,
     mut open_door_btn: Query<&mut Visibility, OpenDoorVisFilter>,
 ) {
     // Resolve the actor: a selection holding an entity that carries the read components. Any
@@ -207,7 +228,7 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
     // — fail-closed, no panic.
     let actor = (**selected).and_then(|entity| actors.get(entity).ok());
 
-    let (execute, stabilize, melee, melee_structure) = match actor {
+    let (execute, stabilize, melee, melee_structure, shove) = match actor {
         Some((actor_pos, actor_faction, actor_stance, actor_facing)) => {
             let (execute, stabilize) = scan_targets(*actor_pos, *actor_faction, &candidates);
             // GTW-507 — the melee target: an 8-adjacent, ALIVE, ENEMY ganger with a clear LOS.
@@ -233,13 +254,17 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
             } else {
                 scan_melee_structure(*actor_pos, &grids)
             };
-            (execute, stabilize, melee, melee_structure)
+            // GTW-525 — the SHOVE target: an 8-adjacent, ALIVE, OPPOSING ganger. A WEAKER gate
+            // than Melee's — NO LOS required (a shove is contact) and NO weapon required (any
+            // ganger can shove), so it needs neither the actor's stance/facing nor the LOS grids.
+            let shove = scan_shove_target(*actor_pos, *actor_faction, &candidates);
+            (execute, stabilize, melee, melee_structure, shove)
         }
-        None => (None, None, None, None),
+        None => (None, None, None, None, None),
     };
 
     // Write the offers onto the seam (the press router reads these).
-    *targets = ContextualTargets::with(execute, stabilize, melee, melee_structure);
+    *targets = ContextualTargets::with(execute, stabilize, melee, melee_structure, shove);
 
     // Toggle visibility IN PLACE — never despawn (ui-mutate-not-respawn). The Melee button shows
     // when EITHER a meleeable ganger OR an adjacent structure to smash is in reach (GTW-508).
@@ -247,12 +272,14 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
     set_visibility(&mut execute_btn, execute.is_some());
     set_visibility(&mut stabilize_btn, stabilize.is_some());
     set_visibility(&mut melee_btn, melee_offered);
+    // GTW-525 — the Shove button shows when an 8-adjacent alive opposing ganger is in reach.
+    set_visibility(&mut shove_btn, shove.is_some());
     // Open Door is a deferred act — it stays hidden regardless of detection.
     set_visibility(&mut open_door_btn, false);
     // The panel shows iff at least one contextual act is offered.
     set_visibility(
         &mut panel_root,
-        execute.is_some() || stabilize.is_some() || melee_offered,
+        execute.is_some() || stabilize.is_some() || melee_offered || shove.is_some(),
     );
 }
 
@@ -260,7 +287,7 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
 /// + the GTW-508 cover-smash scans, split into a submodule to keep each file under the size cap.
 mod scan;
 
-use scan::{scan_melee_structure, scan_melee_target, scan_targets};
+use scan::{scan_melee_structure, scan_melee_target, scan_shove_target, scan_targets};
 
 /// Sets the single matched [`Visibility`] to `Visible` (when `show`) or `Hidden`, in place.
 ///

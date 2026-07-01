@@ -69,6 +69,14 @@
     stance_change_tu: 8,  // TU a ganger spends to change posture (stand/kneel/prone), charged on a real change
     turn_tu:          1,  // TU a ganger spends PER 45deg step when turning in place (partial turn, charged per afforded step)
 
+    // Shove act TU cost (GTW-525; resolution.md §7 — a context-sensitive pure-displacement melee
+    // shove any ganger can take against an adjacent opposing alive target). The deliberate SHOVE
+    // act (dispatch_shove) spends this when it resolves — it deals NO wound of its own; the FALL
+    // it may trigger (via the shared GTW-523 fall path) does the harm. The weapon-tag auto-shove
+    // (on a connecting melee strike OR ranged shot) is FREE — bundled into the attack's own TU
+    // charge — so only the deliberate act reads this leaf. STARTING POINT (tunable).
+    shove_tu:         6,  // TU a ganger spends on a deliberate shove (pure displacement; the fall does the damage)
+
     // Per-terrain move cost (combat.md L34: "step" costs TUs): the flat Time Units a ganger
     // spends to step ONTO a destination cell — TERRAIN-DETERMINED (the floor tile crossed
     // determines the cost), looked up by the entered cell's TerrainKind (advance_walk reads

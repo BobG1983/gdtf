@@ -35,10 +35,10 @@ use gdtf_battle_sim::{
     Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
     Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind,
     ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position,
-    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotRng, SlabLedger, Stable, Stance, StanceKind,
-    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
-    fire::FireOrder,
+    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotRng, Shove, SlabLedger, Stable, Stance,
+    StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
+    Wounds, fire::FireOrder,
 };
 
 /// The faithful skirmish-style geometry the contract names: a shooter near (5,6).
@@ -115,6 +115,7 @@ fn spawn_shooter(app: &mut App, facing: Direction) -> Entity {
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     );

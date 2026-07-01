@@ -29,7 +29,7 @@ use bevy::{
 };
 
 use crate::{
-    acts::request::{MeleeRequested, MeleeResolved, MeleeTarget},
+    acts::request::{MeleeRequested, MeleeResolved, MeleeTarget, ShoveRequested},
     armor::{PieceArmorMut, Wears, WornBy},
     cover::CoverLedger,
     fire::{MeleeQuery, WieldsQuery},
@@ -45,7 +45,7 @@ use crate::{
     rng::{FightRng, SeverityRng, ShotRng},
     surface::SurfaceGrid,
     tuning::CombatTuning,
-    weapon::{DamageType, FatalBias, FightMode, WeaponDamage, WeaponPunch, WeaponShred},
+    weapon::{DamageType, FatalBias, FightMode, Shove, WeaponDamage, WeaponPunch, WeaponShred},
 };
 
 /// The read-only geometry/stat snapshot query — every `Copy` read the gates + the §7 opposed
@@ -114,6 +114,8 @@ type MeleeWeaponQuery<'world, 'state> = Query<
         &'static DamageType,
         &'static FatalBias,
         &'static FightMode,
+        // GTW-525: the `shove` knockback tag — a connecting strike with it auto-shoves the target.
+        &'static Shove,
     ),
 >;
 
@@ -256,8 +258,8 @@ fn ganger_level(position: &Position) -> Level {
               / target-surfaces ganger queries, the two armor relationship queries, the wields \
               + melee-marker + melee-weapon-stat relationship queries, the grouped grids+tuning \
               (MeleeGrids) + draw streams (MeleeRngs) bundles, and the MeleeResolved + \
-              CoverDestroyed writers — each a distinct Bevy SystemParam (the dispatch_fire \
-              argument-count carve-out)"
+              CoverDestroyed + ShoveRequested writers — each a distinct Bevy SystemParam (the \
+              dispatch_fire argument-count carve-out)"
 )]
 pub fn dispatch_melee(
     mut requests: MessageReader<MeleeRequested>,
@@ -281,6 +283,11 @@ pub fn dispatch_melee(
     // The GTW-508 cover-destroyed bridge — a lethal cover-smash writes the EXISTING signal the
     // presenter's `read_cover_destroyed` FX (GTW-386) already reacts to (`bevy-traps.md` #4).
     mut cover_destroyed: MessageWriter<CoverDestroyed>,
+    // GTW-525: the weapon-tag auto-shove bridge — a connecting ganger strike with a `shove`
+    // weapon writes an internal ShoveRequested (ShoveSource::Weapon) `dispatch_shove` drains
+    // this same frame (it is ordered `.after(dispatch_melee)`); a miss / non-`shove` weapon
+    // writes nothing (`bevy-traps.md` #4).
+    mut shoves: MessageWriter<ShoveRequested>,
 ) {
     // `bevy-traps.md` #1: without all three seeded streams no strike can resolve a draw — fail
     // closed (no panic) rather than reading an absent battle-lifetime resource. In the real app
@@ -313,7 +320,7 @@ pub fn dispatch_melee(
         else {
             continue;
         };
-        let Ok((damage, punch, shred, damage_type, fatal_bias, fight_mode)) =
+        let Ok((damage, punch, shred, damage_type, fatal_bias, fight_mode, shove)) =
             weapons.get(weapon_entity)
         else {
             continue;
@@ -343,6 +350,7 @@ pub fn dispatch_melee(
             weapon,
             tu_cost,
             strike_damage_type,
+            shove: *shove,
         };
         match request.target {
             // ── Ganger-vs-ganger (GTW-506/507) — the contested opposed-Fight path (unchanged). ──
@@ -361,6 +369,7 @@ pub fn dispatch_melee(
                     severity: &mut severity_rng,
                 },
                 &mut resolved,
+                &mut shoves,
             ),
 
             // ── Melee-vs-structure (GTW-508) — the UNCONTESTED cover-smash path. ──

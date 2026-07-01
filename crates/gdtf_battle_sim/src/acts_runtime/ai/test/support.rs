@@ -29,8 +29,8 @@ pub(super) use crate::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
-        WieldedBy,
+        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred, WieldedBy,
     },
 };
 
@@ -158,6 +158,7 @@ pub(super) fn spawn_combatant(
             Magazine::new(ammo, mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(true),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     );
@@ -217,6 +218,7 @@ pub(super) fn spawn_combatant_handed(
             Magazine::new(6, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![mode]),
             Stable::new(true),
+            Shove::new(false),
             handedness,
         ),
     );

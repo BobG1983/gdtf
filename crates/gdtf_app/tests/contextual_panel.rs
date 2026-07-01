@@ -22,13 +22,13 @@
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{
     AppState, BattleScapeState, ContextualPanelRoot, ExecuteButton, MeleeButton, OpenDoorButton,
-    RunningState, StabilizeButton,
+    RunningState, ShoveButton, StabilizeButton,
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Cell, CellLevel, Direction, Facing, Faction, Level, LifeState, Position, Stabilized, Stance,
     StanceKind,
-    acts::{ExecuteDownedRequested, MeleeRequested, MeleeTarget},
+    acts::{ExecuteDownedRequested, MeleeRequested, MeleeTarget, ShoveRequested},
     injuries::InjuryRegistry,
     tuning::CombatTuning,
     weapon::WeaponRegistry,
@@ -345,6 +345,11 @@ fn melee_visible(app: &mut App) -> bool {
     visibility::<MeleeButton>(app) == Some(Visibility::Visible)
 }
 
+/// Reads whether the Shove button is visible (GTW-525).
+fn shove_visible(app: &mut App) -> bool {
+    visibility::<ShoveButton>(app) == Some(Visibility::Visible)
+}
+
 /// Reads whether the panel root is visible.
 fn root_visible(app: &mut App) -> bool {
     visibility::<ContextualPanelRoot>(app) == Some(Visibility::Visible)
@@ -400,6 +405,33 @@ fn add_melee_probe(app: &mut App) {
 fn melees(app: &App) -> Vec<MeleeRequested> {
     app.world()
         .get_resource::<MeleeProbe>()
+        .map(|p| p.0.clone())
+        .unwrap_or_default()
+}
+
+/// Collected [`ShoveRequested`] messages (the GTW-525 press-test probe).
+#[derive(Resource, Default)]
+struct ShoveProbe(Vec<ShoveRequested>);
+
+/// Adds the [`ShoveRequested`] probe, running AFTER the intent drain so it observes the SAME
+/// update's emitted message (the `add_melee_probe` idiom — its own `MessageReader` cursor is
+/// independent of the sim's `dispatch_shove`, so it reads every drained message even though the
+/// sim consumes it too).
+fn add_shove_probe(app: &mut App) {
+    app.world_mut().insert_resource(ShoveProbe::default());
+    app.add_systems(
+        Update,
+        (|mut r: MessageReader<ShoveRequested>, mut p: ResMut<ShoveProbe>| {
+            p.0.extend(r.read().copied());
+        })
+        .after(gdtf_battle_input::dispatch_act_intents),
+    );
+}
+
+/// The collected [`ShoveRequested`] messages.
+fn shoves(app: &App) -> Vec<ShoveRequested> {
+    app.world()
+        .get_resource::<ShoveProbe>()
         .map(|p| p.0.clone())
         .unwrap_or_default()
 }
@@ -712,5 +744,129 @@ fn pressing_melee_emits_melee_requested_for_target() {
         emitted[0].target,
         MeleeTarget::Ganger(target),
         "the target is the carried opposing neighbour (the ganger melee form)",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-525 — the SHOVE button: detection (an 8-adjacent alive opposing ganger reveals it,
+// WEAKER than Melee — no LOS / no weapon) and press → ShoveRequested through the REAL seam.
+// ---------------------------------------------------------------------------------
+
+/// SHOVE detection: a selected actor (any ganger — the plain `spawn_actor`, which carries NO
+/// stance / facing, so NO melee is ever offered) with an 8-adjacent, ALIVE, OPPOSING ganger
+/// offers Shove — the dedicated Shove button + the panel root become Visible (GTW-525). The gate
+/// is WEAKER than Melee's: NO LOS and NO weapon are needed (any ganger can shove any alive
+/// opposing neighbour), which is why the LOS-less `spawn_actor` still reveals it.
+#[test]
+fn adjacent_alive_opposing_offers_shove() {
+    let mut app = battle_running_app();
+    spawn_actor(&mut app, 5, 5, 0);
+    // An ALIVE ENEMY (gang 1) one cell diagonally — 8-adjacent.
+    spawn_alive_enemy(&mut app, 6, 6, 1);
+    app.update();
+
+    assert!(
+        shove_visible(&mut app),
+        "an 8-adjacent alive opposing ganger must reveal the Shove button (GTW-525)",
+    );
+    assert!(
+        root_visible(&mut app),
+        "an offered Shove must reveal the panel root",
+    );
+    // Melee needs the actor's stance + facing (the LOS eye); a plain actor carries neither, so
+    // Melee is NOT offered even though an alive enemy is adjacent — Shove is the WEAKER gate.
+    assert!(
+        !melee_visible(&mut app),
+        "a stance/facing-less actor offers NO melee, yet Shove still reveals (weaker gate)",
+    );
+    // The downed-only acts stay hidden — the enemy is ALIVE, not downed.
+    assert!(
+        !execute_visible(&mut app),
+        "an ALIVE enemy is no Execute target (Execute needs a DOWNED enemy) -> hidden",
+    );
+    assert!(
+        !stabilize_visible(&mut app),
+        "no downed ally in reach -> the Stabilize button stays hidden",
+    );
+}
+
+/// SHOVE detection — the gate is adjacency + alive + opposing (NO downed / NO ally): a
+/// non-adjacent alive enemy, an adjacent ALLY, and an adjacent DOWNED enemy each offer NO shove
+/// (the button stays hidden). Discriminating: moving the alive enemy INTO 8-adjacency reveals it.
+#[test]
+fn non_adjacent_ally_or_downed_does_not_offer_shove() {
+    let mut app = battle_running_app();
+    spawn_actor(&mut app, 5, 5, 0);
+    // An alive ENEMY far away (Chebyshev > 1) — not a shove candidate.
+    let enemy = spawn_alive_enemy(&mut app, 20, 20, 1);
+    // An alive ALLY 8-adjacent — same faction, never a shove target.
+    spawn_alive_enemy(&mut app, 5, 6, 0);
+    // A DOWNED enemy 8-adjacent — not ALIVE, so no shove (the deliberate gate needs `is_active`).
+    spawn_downed(&mut app, 4, 4, 1, None);
+    app.update();
+
+    assert!(
+        !shove_visible(&mut app),
+        "a non-adjacent enemy + an adjacent ally + an adjacent DOWNED enemy offer NO shove",
+    );
+
+    // Move the alive enemy INTO 8-adjacency — the SAME enemy now reveals the Shove button (the
+    // gate is adjacency + alive + opposing, not mere presence).
+    if let Some(mut pos) = app.world_mut().get_mut::<Position>(enemy) {
+        *pos = at(6, 6);
+    }
+    app.update();
+    assert!(
+        shove_visible(&mut app),
+        "moving the alive opposing enemy into 8-adjacency reveals the Shove button (discriminating)",
+    );
+}
+
+/// PRESS → INTENT: with a Shove target offered (an 8-adjacent alive opposing ganger), pressing the
+/// Shove button drives the REAL stack (button -> `ActIntent::Shove(target)` -> the ONE
+/// `dispatch_act_intents` drain) to emit exactly one `ShoveRequested` for the `SelectedShooter`
+/// as shover over the carried target (GTW-525) — driven THROUGH the button/intent path, NOT a
+/// synthetic `ShoveRequested` emit. The emitted request is the DELIBERATE form
+/// (`ShoveSource::Deliberate`).
+///
+/// Pin-discriminating: dropping the Shove arm in `contextual_button_intents` (or the detection
+/// that fills the target) leaves the queue empty and emits zero messages, failing the asserts.
+#[test]
+fn pressing_shove_emits_shove_requested_for_target() {
+    let mut app = battle_running_app();
+    add_shove_probe(&mut app);
+    let shover = spawn_actor(&mut app, 5, 5, 0);
+    let target = spawn_alive_enemy(&mut app, 6, 6, 1);
+
+    // First update: detection reveals the Shove button + fills the target offer.
+    app.update();
+    assert!(
+        shove_visible(&mut app),
+        "sanity: the Shove button is offered before the press",
+    );
+    let Some(shove_btn) = single_with::<ShoveButton>(&mut app) else {
+        // The button must exist by construction; bail without a panic (restriction lints deny
+        // `panic!` even in tests). A missing button trips the `shove_visible` assert above.
+        return;
+    };
+
+    // Drive the press, then update: contextual_button_intents pushes Shove(target) and the ONE
+    // drain (ordered after it) emits ShoveRequested the SAME update.
+    press_button(&mut app, shove_btn);
+    app.update();
+
+    let emitted = shoves(&app);
+    assert_eq!(
+        emitted.len(),
+        1,
+        "pressing Shove with a target offered must emit exactly one ShoveRequested",
+    );
+    assert_eq!(
+        emitted[0].shover, shover,
+        "the shover is the SelectedShooter",
+    );
+    assert_eq!(
+        emitted[0].target, target,
+        "the target is the carried opposing neighbour",
     );
 }

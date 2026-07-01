@@ -7,7 +7,7 @@ use gdtf_battle_sim::{
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
         MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        StabilizeDownedRequested,
+        ShoveRequested, StabilizeDownedRequested,
     },
 };
 
@@ -145,6 +145,18 @@ pub enum ActIntent {
     /// offers a structure target when no meleeable ganger is in reach but an adjacent structure
     /// is.
     MeleeStructure(CellLevel),
+    /// SHOVE the carried `target` — drained to [`ShoveRequested`] for the [`SelectedShooter`] as
+    /// the shover (GTW-525). The carried [`Entity`] is the opposing TARGET ganger; the shover is
+    /// always the selection. The drain emits
+    /// [`ShoveRequested::new(shover, target)`](ShoveRequested::new) — the DELIBERATE, gated,
+    /// TU-costed form — ONLY when a shooter is selected (a no-op with no selection); the sim's
+    /// [`dispatch_shove`](gdtf_battle_sim::dispatch_shove) gate (8-adjacent + opposing + alive) is
+    /// the authoritative check, not this layer's. A DELIBERATE, PURE-DISPLACEMENT act available to
+    /// ANY ganger (NO weapon requirement) — it does not roll a strike / deal a wound; the fall, if
+    /// any, does the harm. Bound to the DEDICATED contextual SHOVE button (mirroring the
+    /// [`Melee`](Self::Melee) / [`Execute`](Self::Execute) / [`Stabilize`](Self::Stabilize)
+    /// contextual acts).
+    Shove(Entity),
     /// CYCLE the [`SelectedShooter`] to the NEXT player ganger in `(z, y, x)` order, wrapping
     /// (GTW-458). A SELECTION-layer intent (no sim act), drained directly in
     /// [`dispatch_act_intents`] via [`cycle_player_selection`]: it collects the player-faction
@@ -241,6 +253,10 @@ pub struct ActWriters<'w> {
     /// only for a selected attacker over the carried opposing target; the sim's `dispatch_melee`
     /// gate (8-adjacent + LOS + alive + opposing) is the authoritative check.
     melee:     MessageWriter<'w, MeleeRequested>,
+    /// The shove writer — the contextual Shove button's drained message (GTW-525). Emitted only
+    /// for a selected shover over the carried opposing target; the sim's `dispatch_shove` gate
+    /// (8-adjacent + opposing + alive) is the authoritative check.
+    shove:     MessageWriter<'w, ShoveRequested>,
 }
 
 /// The READ-ONLY world the [`ActIntent::SelectNext`] / [`ActIntent::SelectPrev`] cycle arms
@@ -339,6 +355,10 @@ impl SelectionCycleReads<'_, '_> {
 ///   [`SelectedShooter`] as the attacker and the carried adjacent structure cell (GTW-508) —
 ///   onto the SAME melee writer; a no-op with no selection; the sim's `dispatch_melee`
 ///   8-adjacency-to-the-cell gate is authoritative.
+/// - [`ActIntent::Shove`] emits [`ShoveRequested::new`] (the DELIBERATE form) with the
+///   [`SelectedShooter`] as the shover and the carried opposing target (GTW-525) — a no-op with
+///   no selection; the sim's `dispatch_shove` gate (8-adjacent + opposing + alive) is
+///   authoritative.
 ///
 /// The GTW-458 SELECTION-CYCLE intents step the [`SelectedShooter`] through the player gang
 /// in the shared `(z, y, x)` order ([`cell_order_key`] — the exact order the auto-select
@@ -486,6 +506,13 @@ pub fn dispatch_act_intents(
                 let Some(attacker) = **selected else { continue };
                 acts.melee
                     .write(MeleeRequested::new_structural(attacker, at));
+            }
+            ActIntent::Shove(target) => {
+                // Shove the carried opposing target — shover is the selection (GTW-525). Mirror
+                // the Melee arm: a no-op with no selection. The DELIBERATE form (gated + TU-costed);
+                // the sim's dispatch_shove gate (8-adjacent + opposing + alive) is authoritative.
+                let Some(shover) = **selected else { continue };
+                acts.shove.write(ShoveRequested::new(shover, target));
             }
             ActIntent::SelectNext => {
                 cycle_selection(&mut selected, &cycle_reads, CycleDirection::Next);

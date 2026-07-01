@@ -1,11 +1,12 @@
 //! The pure **offer scans** the contextual-panel brain
 //! ([`detect_contextual_targets`](super::detect_contextual_targets)) runs to decide what each
-//! contextual act should OFFER (GTW-294 / GTW-507 / GTW-508 — split out of `detect/mod.rs` to
-//! keep each concern under the code-health size cap):
+//! contextual act should OFFER (GTW-294 / GTW-507 / GTW-508 / GTW-525 — split out of `detect/mod.rs`
+//! to keep each concern under the code-health size cap):
 //!
 //! - [`scan_targets`] — the Execute / Stabilize downed-neighbour scan (GTW-294).
 //! - [`scan_melee_target`] — the GTW-507 melee-vs-ganger LOS scan.
 //! - [`scan_melee_structure`] — the GTW-508 melee-vs-adjacent-structure (cover-smash) scan.
+//! - [`scan_shove_target`] — the GTW-525 shove-vs-ganger scan (no LOS, no weapon).
 //!
 //! Every scan is PURE over the queried components + the read grids (no world mutation), so the
 //! offer logic is testable in isolation from the visibility toggling. The actual sim gates
@@ -168,6 +169,35 @@ pub(super) fn scan_melee_structure(actor_pos: Position, grids: &LosGrids) -> Opt
                 return Some(at);
             }
         }
+    }
+    None
+}
+
+/// Scans `candidates` for the actor's actionable SHOVE target — the first 8-adjacent, ALIVE,
+/// OPPOSING ganger (GTW-525).
+///
+/// The shove offer gate MIRRORS the sim's deliberate `dispatch_shove` gate exactly: the target
+/// must be [`LifeState::Alive`] (a fresh `is_active` — NOT Downed / Dead), of the OPPOSING
+/// faction, and 8-adjacent ([`is_8_adjacent`]). It is a WEAKER gate than Melee's: a shove is
+/// CONTACT, so it needs NO LOS check and NO weapon — ANY ganger can shove any alive opposing
+/// neighbour. Returns the first such candidate, or [`None`] when none qualifies.
+///
+/// Pure over the queried components (no world mutation, no grids), so it is testable in isolation.
+/// The sim's [`dispatch_shove`](gdtf_battle_sim::dispatch_shove) gate is the authoritative re-check
+/// when the act actually fires; this only decides what to OFFER.
+pub(super) fn scan_shove_target(
+    actor_pos: Position,
+    actor_faction: Faction,
+    candidates: &Query<CandidateReads>,
+) -> Option<Entity> {
+    for (entity, pos, life, faction, _stabilized, _stance) in candidates {
+        // An ALIVE (NOT Downed / Dead), OPPOSING ganger within the 8-adjacent reach — the exact
+        // deliberate-shove gate the sim re-checks authoritatively.
+        if *life != LifeState::Alive || *faction == actor_faction || !is_8_adjacent(actor_pos, *pos)
+        {
+            continue;
+        }
+        return Some(entity);
     }
     None
 }

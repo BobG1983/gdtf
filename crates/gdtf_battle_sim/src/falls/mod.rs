@@ -43,6 +43,11 @@ mod system;
 #[cfg(test)]
 mod tests;
 
+// GTW-525: the shove verb reuses the fall-damage synthesis for the unsupported=>fall branch
+// (the shared GTW-523 fall path — NO reimplemented drop damage). Re-exported `pub(crate)` so
+// `crate::acts::shove` can route a shoved-off-a-ledge faller through the SAME
+// `resolve_fall_hit` fork the slab-destroy `apply_falls` uses.
+pub(crate) use damage::{FallImpact, FallWoundEnv, resolve_fall_hit};
 pub use message::{FallOccurred, StoreysFallen};
 pub use plugin::FallsPlugin;
 pub use resolve::{DropLanding, resolve_drop};

@@ -48,7 +48,7 @@ use gdtf_battle_sim::{
     HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState,
     LootRng, Luck, Magazine, MagazineSize, MeleeDamageProfile, MeleeWeaponBundle, ModeConeMult,
     ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction,
-    Position, ProcgenRng, Reach, ReloadTu, SeverityRng, Shooting, ShotRng, SlabLedger,
+    Position, ProcgenRng, Reach, ReloadTu, SeverityRng, Shooting, ShotRng, Shove, SlabLedger,
     SquadVisibility, Stable, Stance, StanceKind, Strikes, SurfaceGrid, Toughness, Tu, TuCost,
     TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     WieldedBy, Wounds, acts::SimActsPlugin, tuning::CombatTuning,
@@ -216,6 +216,7 @@ fn spawn_armed_shooter_inner(
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
             FireMode::new(vec![single_mode()]),
             Stable::new(true),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     );
@@ -264,6 +265,7 @@ fn spawn_armed_shooter_inner(
                 TuCost::new(20),
                 Strikes::new(1),
             )]),
+            Shove::new(false),
         );
         app.world_mut().spawn((WieldedBy::new(shooter), melee));
     }

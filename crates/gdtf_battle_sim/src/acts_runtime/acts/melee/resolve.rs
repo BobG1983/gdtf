@@ -21,7 +21,7 @@ use bevy::prelude::{Entity, MessageWriter, Query, With};
 
 use super::{MeleeGeomQuery, MeleeGrids, MeleeTargetQuery, ganger_cell, ganger_level};
 use crate::{
-    acts::request::MeleeResolved,
+    acts::request::{MeleeResolved, ShoveRequested},
     armor::{PieceArmorMut, Wears, WornBy},
     cover::CoverEvent,
     downed_acts::is_8_adjacent,
@@ -75,6 +75,10 @@ pub(super) struct AttackerSnapshot<'a> {
     pub(super) tu_cost:            Tu,
     /// The weapon's [`DamageType`] — the presenter [`MeleeResolved`] strike-glyph role/color.
     pub(super) strike_damage_type: DamageType,
+    /// The wielded melee weapon's [`Shove`](crate::weapon::Shove) tag (GTW-525) — `true`
+    /// KNOCKS BACK the target one cell on a CONNECTING strike (the auto-shove hook writes a
+    /// `ShoveRequested` after the connect; a miss or a non-`shove` weapon writes nothing).
+    pub(super) shove:              crate::weapon::Shove,
 }
 
 /// The three seeded draw streams the §7 / §4 / §6 ganger synthesis advances, threaded by
@@ -104,8 +108,8 @@ pub(super) struct MeleeStreams<'a> {
     reason = "the ganger arm threads the attacker snapshot, the target entity, the disjoint \
               geometry / attacker-Tu / target-surfaces queries, the two armor relationship \
               queries, the grouped grids+tuning bundle, the three draw streams, and the \
-              MeleeResolved writer — the irreducible per-arm access set (the strike_with_target \
-              precedent); bundling further would only hide the access set"
+              MeleeResolved + ShoveRequested writers — the irreducible per-arm access set (the \
+              strike_with_target precedent); bundling further would only hide the access set"
 )]
 pub(super) fn resolve_ganger_melee(
     attacker: &AttackerSnapshot<'_>,
@@ -118,6 +122,7 @@ pub(super) fn resolve_ganger_melee(
     grids: &mut MeleeGrids,
     streams: MeleeStreams<'_>,
     resolved: &mut MessageWriter<MeleeResolved>,
+    shoves: &mut MessageWriter<ShoveRequested>,
 ) {
     let Ok((&tgt_pos, &tgt_stance, _, &tgt_fight, &tgt_faction, _)) = geom.get(target_entity)
     else {
@@ -224,6 +229,16 @@ pub(super) fn resolve_ganger_melee(
     if strike.connect {
         let at = CellLevel::new(ganger_cell(&tgt_pos), ganger_level(&tgt_pos));
         resolved.write(MeleeResolved::new(at, attacker.strike_damage_type));
+
+        // GTW-525 C3: a `shove`-tagged weapon KNOCKS BACK the target on a CONNECTING strike
+        // (in addition to the damage above). Write the internal weapon-tag ShoveRequested — the
+        // connect already gated + charged, so dispatch_shove resolves it un-gated / TU-free
+        // (ShoveSource::Weapon). A miss never reaches here (no shove); a non-`shove` weapon
+        // writes nothing. dispatch_shove is ordered `.after(dispatch_melee)`, so the same-frame
+        // message is consumed this tick.
+        if *attacker.shove {
+            shoves.write(ShoveRequested::new_weapon(attacker.entity, target_entity));
+        }
     }
 }
 

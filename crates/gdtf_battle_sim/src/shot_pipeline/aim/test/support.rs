@@ -12,7 +12,8 @@ use crate::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred,
     },
 };
 
@@ -93,6 +94,7 @@ pub(super) fn weapon_tagged(base: f32, kick: f32, stable: bool) -> WeaponBundle 
                 ModeShots::new(1),
             )]),
             Stable::new(stable),
+            Shove::new(false),
             Handedness::OneHanded,
         ),
     )
