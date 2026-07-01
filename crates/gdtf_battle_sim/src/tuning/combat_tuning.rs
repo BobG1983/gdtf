@@ -8,7 +8,7 @@ use crate::tuning::{
     band::ProjectileBandEdges,
     body_part::BodyPartWeights,
     cone_groups::ConeStabilityTuning,
-    economy::{LinkTu, MoveCosts, ShoveTu, StanceChangeTu, TurnTu},
+    economy::{LinkTu, MoveCosts, OpenDoorTu, ShoveTu, StanceChangeTu, TurnTu},
     falls::PerStoreyDamage,
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
@@ -69,6 +69,13 @@ pub struct CombatTuning {
     /// into the attack's own charge), so only the deliberate act reads this leaf.
     /// Tunable, mirroring `stance_change_tu` / `turn_tu`.
     pub shove_tu:              ShoveTu,
+    /// The open-door TU cost (GTW-315) — the flat Time Units the deliberate OPEN-DOOR act
+    /// ([`dispatch_open_door`](crate::acts::dispatch_open_door)) spends via
+    /// [`crate::tu::spend_tu`] when it resolves (an 8-adjacent CLOSED openable piece). Opening
+    /// a door is a quick, uncontested manual interaction — no roll, no wound — so it is cheaper
+    /// than a committed [`ShoveTu`](crate::tuning::ShoveTu) swing. Tunable, mirroring
+    /// `stance_change_tu` / `turn_tu`.
+    pub open_door_tu:          OpenDoorTu,
     /// The per-terrain move-cost table (movement) — the flat Time Units
     /// [`crate::move_acts::advance_walk`] spends via [`crate::tu::spend_tu`] to step onto
     /// a destination cell, keyed by that cell's

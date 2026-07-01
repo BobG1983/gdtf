@@ -76,7 +76,7 @@ pub use cone_groups::{
     AimMode, BraceMinHeight, ConcentrationCoeffs, ConeStabilityTuning, MuzzleHeights,
     SilhouetteTops, StabilityCurve, StabilityCurvePoint, StabilityCurves, StanceStability,
 };
-pub use economy::{LinkTu, MoveCost, MoveCosts, ShoveTu, StanceChangeTu, TurnTu};
+pub use economy::{LinkTu, MoveCost, MoveCosts, OpenDoorTu, ShoveTu, StanceChangeTu, TurnTu};
 pub use falls::PerStoreyDamage;
 pub use firing_arc::FiringArc;
 pub use matchup::MatchupMultipliers;

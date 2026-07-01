@@ -48,8 +48,8 @@ use gdtf_battle_sim::{
     VerticalLinkGraph, WieldedBy,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
-        ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
-        StabilizeDownedRequested,
+        OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+        SetStanceRequested, SimActsPlugin, StabilizeDownedRequested,
     },
     build_vertical_link_graph,
     test_support::SituationBuilder,
@@ -419,6 +419,9 @@ struct ExecuteProbe(Vec<ExecuteDownedRequested>);
 /// Collected `StabilizeDownedRequested` messages (probe, GTW-294).
 #[derive(Resource, Default)]
 struct StabilizeProbe(Vec<StabilizeDownedRequested>);
+/// Collected `OpenDoorRequested` messages (probe, GTW-315).
+#[derive(Resource, Default)]
+struct OpenDoorProbe(Vec<OpenDoorRequested>);
 
 /// Adds the message-collecting probe systems, each running AFTER the drain so it
 /// observes the same update's emitted messages. The probes have their own
@@ -433,7 +436,8 @@ fn add_probes(app: &mut App) {
         .insert_resource(ReloadProbe::default())
         .insert_resource(EndTurnProbe::default())
         .insert_resource(ExecuteProbe::default())
-        .insert_resource(StabilizeProbe::default());
+        .insert_resource(StabilizeProbe::default())
+        .insert_resource(OpenDoorProbe::default());
     app.add_systems(
         Update,
         (
@@ -463,6 +467,9 @@ fn add_probes(app: &mut App) {
                 p.0.extend(r.read().copied());
             },
             |mut r: MessageReader<StabilizeDownedRequested>, mut p: ResMut<StabilizeProbe>| {
+                p.0.extend(r.read().copied());
+            },
+            |mut r: MessageReader<OpenDoorRequested>, mut p: ResMut<OpenDoorProbe>| {
                 p.0.extend(r.read().copied());
             },
         )
@@ -964,6 +971,78 @@ fn downed_intents_emit_nothing_without_selection() {
             .get_resource::<StabilizeProbe>()
             .is_none_or(|p| p.0.is_empty()),
         "no StabilizeDownedRequested without a selection",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-315 — pushing ActIntent::OpenDoor emits exactly one OpenDoorRequested for the
+// SelectedShooter as the actor over the carried door; with no selection, nothing is
+// written (the drain resolves the actor from the selection).
+// ---------------------------------------------------------------------------------
+
+/// GTW-315 — pushing `ActIntent::OpenDoor(door)` with a selected player actor emits EXACTLY
+/// one `OpenDoorRequested { actor, door }` through the `dispatch_act_intents` drain, the actor
+/// being the `*SelectedShooter` and the door the carried openable entity (the Open-Door
+/// affordance surrogate, over the SAME seam the other contextual intents use). The sim's
+/// `dispatch_open_door` gate (CLOSED + 8-adjacent + affords `OpenDoorTu`) is the authoritative
+/// check, not this seam.
+#[test]
+fn open_door_intent_emits_request_for_selection_over_carried_door() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    let actor = spawn_ganger(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    select_ganger(&mut app, actor);
+    // The door target entity — only its identity matters at this seam (the sim's
+    // OpenState/adjacency/TU gate is the authoritative check, not this layer).
+    let door = app.world_mut().spawn_empty().id();
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::OpenDoor(door));
+    app.update();
+
+    let opens = app
+        .world()
+        .get_resource::<OpenDoorProbe>()
+        .map_or_else(Vec::new, |p| p.0.clone());
+    assert_eq!(
+        opens.len(),
+        1,
+        "one OpenDoorRequested via the open-door intent",
+    );
+    assert_eq!(
+        opens[0],
+        OpenDoorRequested::new(actor, door),
+        "OpenDoorRequested has actor = *SelectedShooter and door = carried",
+    );
+}
+
+/// GTW-315 — with the selection cleared (`SelectedShooter(None)`), pushing the open-door
+/// intent writes NOTHING (the drain resolves the actor from the selection and is a no-op
+/// without one — the same fail-closed shape as the Execute / Reload arms).
+#[test]
+fn open_door_intent_emits_nothing_without_selection() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    // A door target exists but there is NO selected actor.
+    let door = app.world_mut().spawn_empty().id();
+    app.world_mut().insert_resource(SelectedShooter::cleared());
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::OpenDoor(door));
+    app.update();
+
+    assert!(
+        app.world()
+            .get_resource::<OpenDoorProbe>()
+            .is_none_or(|p| p.0.is_empty()),
+        "no OpenDoorRequested without a selection",
     );
 }
 

@@ -7,6 +7,7 @@
 //! - [`scan_melee_target`] — the GTW-507 melee-vs-ganger LOS scan.
 //! - [`scan_melee_structure`] — the GTW-508 melee-vs-adjacent-structure (cover-smash) scan.
 //! - [`scan_shove_target`] — the GTW-525 shove-vs-ganger scan (no LOS, no weapon).
+//! - [`scan_open_door`] — the GTW-315 open-door-vs-adjacent-CLOSED-door scan.
 //!
 //! Every scan is PURE over the queried components + the read grids (no world mutation), so the
 //! offer logic is testable in isolation from the visibility toggling. The actual sim gates
@@ -24,7 +25,7 @@ use gdtf_battle_sim::{
     los::{Observer, PeekOffset, Target, has_los},
 };
 
-use super::{CandidateReads, LosGrids};
+use super::{CandidateReads, DoorReads, LosGrids};
 
 /// Scans `candidates` for the actor's actionable downed neighbours.
 ///
@@ -195,6 +196,37 @@ pub(super) fn scan_shove_target(
         // deliberate-shove gate the sim re-checks authoritatively.
         if *life != LifeState::Alive || *faction == actor_faction || !is_8_adjacent(actor_pos, *pos)
         {
+            continue;
+        }
+        return Some(entity);
+    }
+    None
+}
+
+/// Scans `doors` for the actor's actionable OPEN-DOOR target — the first 8-adjacent openable
+/// terrain entity in the [`OpenState::Closed`](gdtf_battle_sim::OpenState) state (GTW-315).
+///
+/// A DOOR is any terrain entity carrying an [`OpenState`](gdtf_battle_sim::OpenState) (the GTW-503
+/// openable mechanism attaches it only to openable pieces at spawn). The offer gate MIRRORS the
+/// sim's `dispatch_open_door` gate: the door must be CLOSED (an already-open door is NOT offered —
+/// the button only OPENS; closing is not a contextual act) and 8-adjacent to the actor
+/// ([`is_8_adjacent`] over the actor's [`Position`] vs a [`Position`] AT the door's
+/// [`TerrainCell`](gdtf_battle_sim::entity::TerrainCell) — the GTW-508 structural-melee
+/// actor-vs-cell idiom the sim uses). F4 is PLAYER-ONLY, which the caller enforces by running this
+/// only for a selected player-faction actor. Returns the first such door, or [`None`] when none
+/// qualifies.
+///
+/// Pure over the queried door components (no world mutation), so it is testable in isolation. The
+/// sim's [`dispatch_open_door`](gdtf_battle_sim::dispatch_open_door) gate (CLOSED `OpenState` +
+/// 8-adjacent + affords the [`OpenDoorTu`](gdtf_battle_sim::tuning::OpenDoorTu) leaf) is the
+/// authoritative re-check + the TU spend when the act fires (one-way `input -> sim` boundary); this
+/// only decides what to OFFER.
+pub(super) fn scan_open_door(actor_pos: Position, doors: &Query<DoorReads>) -> Option<Entity> {
+    for (entity, open_state, door_cell) in doors {
+        // Only a CLOSED door 8-adjacent to the actor is offered — the exact door gate the sim
+        // re-checks authoritatively. Build a Position AT the door's cell for the actor-vs-cell
+        // reach (the same idiom `dispatch_open_door` / the cover-smash scan use).
+        if open_state.is_open() || !is_8_adjacent(actor_pos, Position::new(**door_cell)) {
             continue;
         }
         return Some(entity);

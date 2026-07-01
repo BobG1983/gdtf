@@ -18,7 +18,8 @@
 //! [`ContextualTargets`] seam: an Execute press pushes
 //! [`ActIntent::Execute(target)`](gdtf_battle_input::ActIntent::Execute), a Stabilize press
 //! pushes [`ActIntent::Stabilize(target)`](gdtf_battle_input::ActIntent::Stabilize), a Shove press
-//! pushes [`ActIntent::Shove(target)`](gdtf_battle_input::ActIntent::Shove) (GTW-525). The
+//! pushes [`ActIntent::Shove(target)`](gdtf_battle_input::ActIntent::Shove) (GTW-525), an Open-Door
+//! press pushes [`ActIntent::OpenDoor(door)`](gdtf_battle_input::ActIntent::OpenDoor) (GTW-315). The
 //! `Some`-guard on the seam keeps a stale press (the panel was just hidden) safe — with no
 //! target nothing is queued.
 
@@ -27,7 +28,7 @@ use gdtf_battle_input::{ActIntent, PendingActIntent};
 use gdtf_ui::DisabledButton;
 
 use crate::states::running::game::battlescape::contextual_panel::components::{
-    ContextualTargets, ExecuteButton, MeleeButton, ShoveButton, StabilizeButton,
+    ContextualTargets, ExecuteButton, MeleeButton, OpenDoorButton, ShoveButton, StabilizeButton,
 };
 
 /// Query filter selecting the ENABLED button carrying marker `M` whose [`Interaction`] became a
@@ -66,6 +67,8 @@ const fn is_press(interaction: Interaction) -> bool {
 ///   [`ActIntent::Melee(target)`](ActIntent::Melee) (GTW-507)
 /// - [`ShoveButton`] + [`ContextualTargets::shove`] `== Some(target)` →
 ///   [`ActIntent::Shove(target)`](ActIntent::Shove) (GTW-525)
+/// - [`OpenDoorButton`] + [`ContextualTargets::open_door`] `== Some(door)` →
+///   [`ActIntent::OpenDoor(door)`](ActIntent::OpenDoor) (GTW-315)
 ///
 /// The `Some`-guard is the safety: a press with no offered target (a stale press after the
 /// panel hid) queues nothing. The button writes NO `*Requested` directly — the ONE
@@ -73,13 +76,15 @@ const fn is_press(interaction: Interaction) -> bool {
 /// [`ExecuteDownedRequested`](gdtf_battle_sim::acts::ExecuteDownedRequested) /
 /// [`StabilizeDownedRequested`](gdtf_battle_sim::acts::StabilizeDownedRequested) /
 /// [`MeleeRequested`](gdtf_battle_sim::acts::MeleeRequested) /
-/// [`ShoveRequested`](gdtf_battle_sim::acts::ShoveRequested) for the
+/// [`ShoveRequested`](gdtf_battle_sim::acts::ShoveRequested) /
+/// [`OpenDoorRequested`](gdtf_battle_sim::acts::OpenDoorRequested) for the
 /// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) as the actor (a no-op there with no
-/// selection), and the sim's faction + reach (+ LOS for melee) gates are the authoritative check.
+/// selection), and the sim's faction + reach (+ LOS for melee; + CLOSED-state for the door) gates
+/// are the authoritative check.
 ///
 /// Registered `.before(dispatch_act_intents)` so a press queued this update is drained this
 /// update — the same-frame guarantee the keyboard writers + the action bar get (`bevy-traps.md`
-/// #3). Param-only (`bevy-traps.md` #7): the read-only [`ContextualTargets`] seam, four
+/// #3). Param-only (`bevy-traps.md` #7): the read-only [`ContextualTargets`] seam, five
 /// disjoint per-marker `Query<&Interaction, …>`s, and the `ResMut<PendingActIntent>` write.
 pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
     targets: Res<ContextualTargets>,
@@ -88,6 +93,7 @@ pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
     stabilize_btn: Query<&Interaction, PressedButton<StabilizeButton>>,
     melee_btn: Query<&Interaction, PressedButton<MeleeButton>>,
     shove_btn: Query<&Interaction, PressedButton<ShoveButton>>,
+    open_door_btn: Query<&Interaction, PressedButton<OpenDoorButton>>,
 ) {
     if execute_btn.iter().copied().any(is_press)
         && let Some(target) = targets.execute()
@@ -116,5 +122,12 @@ pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
         && let Some(target) = targets.shove()
     {
         pending.push(ActIntent::Shove(target));
+    }
+    // The dedicated Open Door button (GTW-315) — opens an 8-adjacent CLOSED door. The `Some`-guard
+    // keeps a stale press safe (the sim's `dispatch_open_door` re-gate + TU spend are authoritative).
+    if open_door_btn.iter().copied().any(is_press)
+        && let Some(door) = targets.open_door()
+    {
+        pending.push(ActIntent::OpenDoor(door));
     }
 }

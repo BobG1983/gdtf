@@ -77,6 +77,13 @@
     // charge — so only the deliberate act reads this leaf. STARTING POINT (tunable).
     shove_tu:         6,  // TU a ganger spends on a deliberate shove (pure displacement; the fall does the damage)
 
+    // Open-door act TU cost (GTW-315): the flat Time Units the deliberate OPEN-DOOR act
+    // (dispatch_open_door) spends when it resolves — an 8-adjacent CLOSED openable piece (door /
+    // hatch) that the actor can afford. Opening a door is a quick, uncontested manual interaction
+    // (no roll, no wound), so it is cheaper than a committed shove; matched to the cheapest
+    // move / single-link "one simple action" baseline. STARTING POINT (tunable).
+    open_door_tu:     4,  // TU a ganger spends to open an adjacent closed door (quick uncontested interaction)
+
     // Per-terrain move cost (combat.md L34: "step" costs TUs): the flat Time Units a ganger
     // spends to step ONTO a destination cell — TERRAIN-DETERMINED (the floor tile crossed
     // determines the cost), looked up by the entered cell's TerrainKind (advance_walk reads

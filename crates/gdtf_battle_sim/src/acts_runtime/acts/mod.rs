@@ -55,6 +55,7 @@ mod fire;
 mod injury;
 mod melee;
 mod movement;
+mod open_door;
 mod plugin;
 mod posture;
 mod reload;
@@ -71,12 +72,14 @@ pub use fire::{
 pub use injury::{InjuryInflicted, apply_injury};
 pub use melee::dispatch_melee;
 pub use movement::{MoveRejected, MoveRejection, MovementOccurred, dispatch_move};
+pub use open_door::dispatch_open_door;
 pub use plugin::SimActsPlugin;
 pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance};
 pub use reload::{ReloadOutcome, ReloadResult, dispatch_reload};
 pub use request::{
     AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
-    MeleeResolved, MeleeTarget, MoveRequested, ReloadRequested, SetAimingRequested,
-    SetFacingRequested, SetStanceRequested, ShoveRequested, ShoveSource, StabilizeDownedRequested,
+    MeleeResolved, MeleeTarget, MoveRequested, OpenDoorRequested, ReloadRequested,
+    SetAimingRequested, SetFacingRequested, SetStanceRequested, ShoveRequested, ShoveSource,
+    StabilizeDownedRequested,
 };
 pub use shove::{ShoveOutcome, dispatch_shove, resolve_shove};

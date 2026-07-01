@@ -27,6 +27,10 @@
 //! - **Shove** (GTW-525) — the first 8-adjacent, ALIVE, OPPOSING ganger — the deliberate
 //!   knock-back. A WEAKER gate than Melee's: NO LOS required (a shove is contact) and NO weapon
 //!   required (any ganger can shove).
+//! - **Open Door** (GTW-315) — the first 8-adjacent openable terrain entity in the
+//!   [`OpenState::Closed`](gdtf_battle_sim::OpenState) state — the deliberate open act. The button
+//!   always OPENS (an already-open door is not offered; closing is not a contextual act), and F4 is
+//!   PLAYER-ONLY (this runs only for a selected player-faction actor).
 //!
 //! The offer scans live in the [`scan`] submodule (GTW-508 C6 — code-health size cap); this
 //! file (`mod.rs`) owns the [`detect_contextual_targets`] system, its query `type` aliases, and
@@ -42,7 +46,8 @@
 use bevy::prelude::*;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    CoverLedger, OccupancyGrid, SurfaceGrid,
+    CoverLedger, OccupancyGrid, OpenState, SurfaceGrid,
+    entity::TerrainCell,
     ganger::{Facing, Faction, LifeState, Position, Stabilized, Stance},
     tuning::CombatTuning,
 };
@@ -82,6 +87,17 @@ type CandidateReads = (
     Option<&'static Stabilized>,
     Option<&'static Stance>,
 );
+
+/// The candidate-DOOR reads the GTW-315 open-door scan needs — each openable terrain entity's
+/// handle, its [`OpenState`] (the scan offers only a CLOSED door), and its [`TerrainCell`] (the
+/// cell the actor must be 8-adjacent to). A named alias to keep
+/// [`detect_contextual_targets`]'s `doors` query legible under clippy `type_complexity`.
+///
+/// A DOOR is any terrain entity carrying an [`OpenState`] — the GTW-503 openable mechanism attaches
+/// it only to openable pieces (doors / hatches) at spawn, so `With<OpenState>` selects exactly the
+/// openable terrain and never a ganger (a ganger has no `OpenState`), keeping this query disjoint
+/// from the ganger `candidates` / `actors` queries.
+type DoorReads = (Entity, &'static OpenState, &'static TerrainCell);
 
 /// Query filter selecting the contextual panel ROOT's [`Visibility`] disjointly from the five
 /// button markers (so the six `&mut Visibility` queries never alias) — a named alias to keep
@@ -182,9 +198,9 @@ pub(in crate::states::running::game::battlescape) struct LosGrids<'w> {
 ///    to the carried target).
 /// 2. Sets each button's [`Visibility`](bevy::render::view::Visibility) in place — `Visible`
 ///    iff its target is [`Some`], else `Hidden`; the **Shove** button (GTW-525) reveals on an
-///    8-adjacent alive opposing ganger (no LOS / weapon needed); the **Open Door** button stays
-///    `Hidden` (a deferred act); and the panel ROOT is `Visible` iff ANY act has a target, else
-///    `Hidden`.
+///    8-adjacent alive opposing ganger (no LOS / weapon needed); the **Open Door** button
+///    (GTW-315) reveals on an 8-adjacent CLOSED door; and the panel ROOT is `Visible` iff ANY act
+///    has a target, else `Hidden`.
 ///
 /// With NO [`SelectedShooter`] (or a selection whose entity lacks the read components) all
 /// targets are cleared to [`None`] and the panel + all buttons are hidden — fail-closed, no
@@ -200,9 +216,10 @@ pub(in crate::states::running::game::battlescape) struct LosGrids<'w> {
 /// the offered shot matches the sim's geometry truth).
 ///
 /// Param-only (`bevy-traps.md` #7): the [`SelectedShooter`] + [`ContextualTargets`] resources,
-/// a read-only `actors` [`Query`], a read-only `candidates` [`Query`], the [`LosGrids`] bundle
-/// the melee LOS gate reads, and six disjoint per-marker `Query<&mut Visibility, …>`s for the
-/// root + five buttons.
+/// a read-only `actors` [`Query`], a read-only `candidates` [`Query`], a read-only `doors`
+/// [`Query`] (the GTW-315 open-door scan — disjoint from the ganger queries via `With<OpenState>`),
+/// the [`LosGrids`] bundle the melee LOS gate reads, and six disjoint per-marker
+/// `Query<&mut Visibility, …>`s for the root + five buttons.
 #[expect(
     clippy::too_many_arguments,
     reason = "six disjoint per-marker Visibility queries (root + five buttons) are the \
@@ -215,6 +232,7 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
     mut targets: ResMut<ContextualTargets>,
     actors: Query<ActorReads>,
     candidates: Query<CandidateReads>,
+    doors: Query<DoorReads>,
     grids: LosGrids,
     mut panel_root: Query<&mut Visibility, RootVisFilter>,
     mut execute_btn: Query<&mut Visibility, ExecuteVisFilter>,
@@ -228,7 +246,7 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
     // — fail-closed, no panic.
     let actor = (**selected).and_then(|entity| actors.get(entity).ok());
 
-    let (execute, stabilize, melee, melee_structure, shove) = match actor {
+    let (execute, stabilize, melee, melee_structure, shove, open_door) = match actor {
         Some((actor_pos, actor_faction, actor_stance, actor_facing)) => {
             let (execute, stabilize) = scan_targets(*actor_pos, *actor_faction, &candidates);
             // GTW-507 — the melee target: an 8-adjacent, ALIVE, ENEMY ganger with a clear LOS.
@@ -258,13 +276,19 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
             // than Melee's — NO LOS required (a shove is contact) and NO weapon required (any
             // ganger can shove), so it needs neither the actor's stance/facing nor the LOS grids.
             let shove = scan_shove_target(*actor_pos, *actor_faction, &candidates);
-            (execute, stabilize, melee, melee_structure, shove)
+            // GTW-315 — the OPEN-DOOR target: the first 8-adjacent openable terrain entity in the
+            // CLOSED state. The button always OPENS (an already-open door is not offered; closing
+            // is not a contextual act), and F4 is PLAYER-ONLY — this offer runs only for a selected
+            // PLAYER-faction actor, which the selection resolve already scopes to.
+            let open_door = scan_open_door(*actor_pos, &doors);
+            (execute, stabilize, melee, melee_structure, shove, open_door)
         }
-        None => (None, None, None, None, None),
+        None => (None, None, None, None, None, None),
     };
 
     // Write the offers onto the seam (the press router reads these).
-    *targets = ContextualTargets::with(execute, stabilize, melee, melee_structure, shove);
+    *targets =
+        ContextualTargets::with(execute, stabilize, melee, melee_structure, shove, open_door);
 
     // Toggle visibility IN PLACE — never despawn (ui-mutate-not-respawn). The Melee button shows
     // when EITHER a meleeable ganger OR an adjacent structure to smash is in reach (GTW-508).
@@ -274,12 +298,16 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
     set_visibility(&mut melee_btn, melee_offered);
     // GTW-525 — the Shove button shows when an 8-adjacent alive opposing ganger is in reach.
     set_visibility(&mut shove_btn, shove.is_some());
-    // Open Door is a deferred act — it stays hidden regardless of detection.
-    set_visibility(&mut open_door_btn, false);
+    // GTW-315 — the Open Door button shows when an 8-adjacent CLOSED door is in reach.
+    set_visibility(&mut open_door_btn, open_door.is_some());
     // The panel shows iff at least one contextual act is offered.
     set_visibility(
         &mut panel_root,
-        execute.is_some() || stabilize.is_some() || melee_offered || shove.is_some(),
+        execute.is_some()
+            || stabilize.is_some()
+            || melee_offered
+            || shove.is_some()
+            || open_door.is_some(),
     );
 }
 
@@ -287,7 +315,9 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
 /// + the GTW-508 cover-smash scans, split into a submodule to keep each file under the size cap.
 mod scan;
 
-use scan::{scan_melee_structure, scan_melee_target, scan_shove_target, scan_targets};
+use scan::{
+    scan_melee_structure, scan_melee_target, scan_open_door, scan_shove_target, scan_targets,
+};
 
 /// Sets the single matched [`Visibility`] to `Visible` (when `show`) or `Hidden`, in place.
 ///

@@ -12,12 +12,13 @@ use crate::{
         injury::{InjuryInflicted, apply_injury},
         melee::dispatch_melee,
         movement::{MoveRejected, MovementOccurred, dispatch_move},
+        open_door::dispatch_open_door,
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
         reload::{ReloadResult, dispatch_reload},
         request::{
             EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested, MeleeResolved,
-            MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-            SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
+            MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested,
+            SetFacingRequested, SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
         },
         shove::dispatch_shove,
     },
@@ -31,6 +32,7 @@ use crate::{
     },
     reaction::{reaction_trigger, reset_reactions_used},
     shot_fired::ShotFired,
+    terrain::openable::SetOpenable,
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
 };
 
@@ -102,6 +104,19 @@ fn register_messages(app: &mut App) {
         .add_message::<ExecuteDownedRequested>()
         .add_message::<MoveRequested>()
         .add_message::<ReloadRequested>()
+        // GTW-315: the OPEN-DOOR act's input message — drained by dispatch_open_door. The
+        // player-only contextual Open-Door button writes it (input seam -> ActIntent::OpenDoor).
+        // Registering the buffer here makes dispatch_open_door's MessageReader<OpenDoorRequested>
+        // param valid (bevy-traps.md #4 / #5).
+        .add_message::<OpenDoorRequested>()
+        // GTW-315: dispatch_open_door WRITES SetOpenable (the GTW-503 open mechanism it reuses).
+        // Registering the buffer here makes dispatch_open_door's MessageWriter<SetOpenable> param
+        // valid even when SimActsPlugin is wired WITHOUT OpenableTogglePlugin (the in-crate acts
+        // test harness). It is IDEMPOTENT with OpenableTogglePlugin's own add_message::<SetOpenable>
+        // (Bevy no-ops a second registration), so both the producer (here) and the consumer
+        // (apply_openable_toggle in OpenableTogglePlugin) name it — the CoverDestroyed / FallOccurred
+        // shared-registration precedent (bevy-traps.md #4 / #5).
+        .add_message::<SetOpenable>()
         // GTW-507: the LIVE melee act's input message (drained by dispatch_melee) + its
         // presenter-facing output signal (the strike-glyph FX keys off it). Registering both
         // buffers here makes dispatch_melee's MessageReader<MeleeRequested> +
@@ -220,6 +235,20 @@ fn wire_systems(app: &mut App) {
             // The presenter's swap_destroyed_cover / read_cover_destroyed react idempotently.
             // No `.before`/`.after` is needed for correctness.
             dispatch_melee,
+            // GTW-315: the LIVE open-door act. It drains OpenDoorRequested, re-gates the door
+            // (openable + CLOSED + 8-adjacent to the actor) and the actor (exists + affords the
+            // OpenDoorTu leaf), spends that TU off the actor, and WRITES a SetOpenable::toggle for
+            // the door — REUSING the GTW-503 open mechanism (it never flips OpenState directly).
+            // It joins the UNORDERED group: the only state it shares with a sibling is the
+            // SetOpenable message buffer it produces, which OpenableTogglePlugin's
+            // apply_openable_toggle CONSUMES — but buffered messages persist a frame
+            // (bevy-traps.md #4), so apply_openable_toggle reads it next tick regardless of the
+            // producer/consumer intra-frame order (the door's one-frame settle, already documented
+            // on the GTW-503 toggle). Its Res<CombatTuning> read is battle-lifetime — taken
+            // Option<Res> so it fails closed outside a live battle (bevy-traps.md #1). Its actor
+            // (&mut Tu) + door (&OpenState) queries touch disjoint entities, so no B0001 conflict.
+            // No .before/.after is needed for correctness.
+            dispatch_open_door,
         )
             .in_set(SimSystems::Simulate),
     )

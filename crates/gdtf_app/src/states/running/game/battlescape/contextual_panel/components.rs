@@ -81,11 +81,15 @@ crate::support_item! {
 }
 
 crate::support_item! {
-    /// Marks the **Open Door** contextual button (GTW-294) — a DEFERRED interactable act.
+    /// Marks the **Open Door** contextual button (GTW-294 scaffold; GTW-315 live) — the act that
+    /// opens an 8-adjacent CLOSED door.
     ///
-    /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by this scaffold slice and
-    /// kept hidden: the Open-Door act needs door / interactable objects, which the sim does not
-    /// model yet. A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by the
+    /// detection system (which also wires its press to the `OpenDoorRequested` act) when
+    /// [`ContextualTargets::open_door`] names a target — the first 8-adjacent openable terrain entity in
+    /// the [`OpenState::Closed`](gdtf_battle_sim::OpenState) state (the button always OPENS; closing is
+    /// not offered, and F4 is PLAYER-ONLY). A unit marker: presence on an entity is the whole signal
+    /// (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct OpenDoorButton;
 }
@@ -120,15 +124,17 @@ crate::support_item! {
     struct ShoveButton;
 }
 
-/// The downed neighbours the contextual panel can act on; written each update by the detection
-/// system (GTW-294 live slice).
+/// The neighbours the contextual panel can act on; written each update by the detection system
+/// (GTW-294 live slice; extended by GTW-507 / GTW-508 / GTW-525 / GTW-315).
 ///
-/// Both fields default to [`None`] (no downed neighbour in reach). The detection system
+/// Every field defaults to [`None`] (no target in reach). The detection system
 /// [`detect_contextual_targets`](super::systems::detect_contextual_targets) fills
-/// [`execute`](Self::execute) / [`stabilize`](Self::stabilize) with the downed neighbour each
-/// act targets, and reveals the matching button only when its field is [`Some`]; the press
-/// router [`contextual_button_intents`](super::systems::contextual_button_intents) reads these
-/// to route a press to the carried target. A [`Resource`] inserted by
+/// [`execute`](Self::execute) / [`stabilize`](Self::stabilize) / [`melee`](Self::melee) /
+/// [`melee_structure`](Self::melee_structure) / [`shove`](Self::shove) /
+/// [`open_door`](Self::open_door) with the neighbour each act targets, and reveals the matching
+/// button only when its field is [`Some`]; the press router
+/// [`contextual_button_intents`](super::systems::contextual_button_intents) reads these to route a
+/// press to the carried target. A [`Resource`] inserted by
 /// [`ContextualPanelPlugin`](super::plugin::ContextualPanelPlugin)'s `init_resource`.
 #[derive(Resource, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(in crate::states::running::game::battlescape) struct ContextualTargets {
@@ -153,16 +159,22 @@ pub(in crate::states::running::game::battlescape) struct ContextualTargets {
     /// required (a shove is contact, not a sighted strike) and NO weapon required (any ganger can
     /// shove). Written each update by the detection system.
     pub(in crate::states::running::game::battlescape) shove:           Option<Entity>,
+    /// The adjacent CLOSED door the **Open Door** act would open (GTW-315), or [`None`] when no
+    /// 8-adjacent openable terrain entity in the [`OpenState::Closed`](gdtf_battle_sim::OpenState)
+    /// state is in reach. The button always OPENS — an already-open door is NOT offered (closing is
+    /// not a contextual act), and F4 is PLAYER-ONLY. Written each update by the detection system.
+    pub(in crate::states::running::game::battlescape) open_door:       Option<Entity>,
 }
 
 impl ContextualTargets {
     /// Build the offer seam from the detected `execute` / `stabilize` / `melee` /
-    /// `melee_structure` / `shove` targets.
+    /// `melee_structure` / `shove` / `open_door` targets.
     ///
     /// The single write-point the detection system uses each update; each ganger argument is the
     /// neighbour [`Entity`] that act would target (the framework carve-out), `melee_structure`
-    /// is the adjacent structure [`CellLevel`] the cover-smash would hit, or [`None`] when no
-    /// such target is in reach.
+    /// is the adjacent structure [`CellLevel`] the cover-smash would hit, `open_door` is the
+    /// adjacent CLOSED door [`Entity`] the open act would open, or [`None`] when no such target is
+    /// in reach.
     #[must_use]
     pub(in crate::states::running::game::battlescape) const fn with(
         execute: Option<Entity>,
@@ -170,6 +182,7 @@ impl ContextualTargets {
         melee: Option<Entity>,
         melee_structure: Option<CellLevel>,
         shove: Option<Entity>,
+        open_door: Option<Entity>,
     ) -> Self {
         Self {
             execute,
@@ -177,6 +190,7 @@ impl ContextualTargets {
             melee,
             melee_structure,
             shove,
+            open_door,
         }
     }
 
@@ -231,6 +245,16 @@ impl ContextualTargets {
     #[must_use]
     pub(in crate::states::running::game::battlescape) const fn shove(&self) -> Option<Entity> {
         self.shove
+    }
+
+    /// The **Open Door** target — the 8-adjacent CLOSED door a press would open, or [`None`]
+    /// (GTW-315).
+    ///
+    /// Read by [`contextual_button_intents`](super::systems::contextual_button_intents) to route
+    /// an Open-Door press to the carried door (the `Some`-guard keeps a stale press safe).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn open_door(&self) -> Option<Entity> {
+        self.open_door
     }
 }
 

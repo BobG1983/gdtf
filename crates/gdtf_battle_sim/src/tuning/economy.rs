@@ -128,6 +128,48 @@ impl Default for ShoveTu {
     }
 }
 
+/// The **open-door TU cost** — the flat number of Time Units a ganger spends to perform the
+/// deliberate OPEN-DOOR act (GTW-315): a manual interaction that flips an adjacent CLOSED
+/// openable piece (a door / hatch) to open, clearing its path + vision block.
+///
+/// The flat cost charged by the [`dispatch_open_door`](crate::acts::dispatch_open_door) act via
+/// [`crate::tu::spend_tu`] whenever the open-door gates RESOLVE (an 8-adjacent CLOSED door +
+/// an actor that can afford it). Opening a door is a quick, uncontested action — no roll, no
+/// wound — so it is cheaper than a committed melee [`ShoveTu`] swing; the chosen default is a
+/// flat `4` TU, matched to the cheapest move / single-link "one simple action" baseline
+/// ([`MoveCosts`]'s `open` / [`LinkTu`]). A small `u8` count, matching [`crate::ganger::Tu`]'s
+/// inner type so the economy subtracts it directly. The default is a **starting point**,
+/// tunable balance data — tests assert only the relation to this value (the drop equals it),
+/// never the magnitude. `#[serde(transparent)]` lets it parse a bare RON scalar; private inner
+/// + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct OpenDoorTu(u8);
+
+impl OpenDoorTu {
+    /// Build an open-door TU cost from its flat Time-Unit magnitude (a starting point, TBD
+    /// tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style) while
+    /// letting the open-door-act tests and any programmatic tuning edit build a cost without a
+    /// bare `u8` escaping; shipped values come from the `.ron` via the derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for OpenDoorTu {
+    fn default() -> Self {
+        // A flat 4 TU to open an adjacent door — a STARTING POINT (tunable balance data): a real
+        // cost (a deliberate act) but cheaper than a shove (6) since opening a door is a quick,
+        // uncontested interaction that rolls nothing and wounds no one. Matched to the cheapest
+        // move-cost baseline / single link hop (one simple action's worth of effort).
+        // Value-agnostic tests only, never a pinned magnitude.
+        Self(4)
+    }
+}
+
 /// One terrain's **move TU cost** — the flat number of Time Units a ganger spends to
 /// step ONTO a cell of a given [`TerrainKind`] (`docs/combat/combat.md` L34
 /// affirmatively lists "step" among the actions that "cost TUs").

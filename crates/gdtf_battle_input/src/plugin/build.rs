@@ -18,8 +18,8 @@ use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
     acts::{
         EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested, MoveRequested,
-        ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        ShoveRequested, StabilizeDownedRequested,
+        OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+        SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
     },
     occupancy_sync::SimSystems,
     setup_battle_on_request,
@@ -194,6 +194,10 @@ impl Plugin for GdtfBattleInputPlugin {
         // `MessageWriter<ShoveRequested>` passes param validation whether or not `SimActsPlugin`
         // is present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
         .add_message::<ShoveRequested>()
+        // GTW-315 — the open-door buffer the OpenDoor intent drains into, so the drain's
+        // `MessageWriter<OpenDoorRequested>` passes param validation whether or not `SimActsPlugin`
+        // is present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
+        .add_message::<OpenDoorRequested>()
         // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
         // emitter's `MessageWriter<HighlightRequest>` passes param validation even
         // headlessly (`bevy-traps.md` #4). `add_message` is IDEMPOTENT.

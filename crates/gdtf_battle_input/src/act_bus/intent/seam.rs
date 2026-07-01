@@ -6,8 +6,8 @@ use gdtf_battle_sim::{
     Aiming, CellLevel, Facing, Faction, PlayerFaction, Position, Stance, StanceKind,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
-        MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        ShoveRequested, StabilizeDownedRequested,
+        MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+        SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
     },
 };
 
@@ -157,6 +157,22 @@ pub enum ActIntent {
     /// [`Melee`](Self::Melee) / [`Execute`](Self::Execute) / [`Stabilize`](Self::Stabilize)
     /// contextual acts).
     Shove(Entity),
+    /// OPEN the carried adjacent CLOSED `door` — drained to [`OpenDoorRequested`] for the
+    /// [`SelectedShooter`] as the actor (GTW-315). The carried [`Entity`] is the openable
+    /// TARGET door (a door / hatch entity, a raw Bevy handle — framework plumbing, the same
+    /// bare-`Entity` payload the [`Execute`](Self::Execute) / [`Stabilize`](Self::Stabilize) /
+    /// [`Melee`](Self::Melee) / [`Shove`](Self::Shove) contextual acts carry); the actor is
+    /// always the selection. The drain emits
+    /// [`OpenDoorRequested::new(actor, door)`](OpenDoorRequested::new) ONLY when a shooter is
+    /// selected (a no-op with no selection); the sim's
+    /// [`dispatch_open_door`](gdtf_battle_sim::dispatch_open_door) gate (door carries an
+    /// [`OpenState`](gdtf_battle_sim::OpenState) that is CLOSED + 8-adjacent to the actor +
+    /// affords the [`OpenDoorTu`](gdtf_battle_sim::tuning::OpenDoorTu) leaf) is the authoritative
+    /// check, not this layer's, and the SIM spends the TU (one-way `input -> sim` boundary).
+    /// F4 PLAYER-ONLY (no enemy door-open this ticket). Bound to the DEDICATED contextual
+    /// Open-Door button, which offers a CLOSED door only (the button always OPENS — closing is
+    /// not offered), mirroring the other contextual acts.
+    OpenDoor(Entity),
     /// CYCLE the [`SelectedShooter`] to the NEXT player ganger in `(z, y, x)` order, wrapping
     /// (GTW-458). A SELECTION-layer intent (no sim act), drained directly in
     /// [`dispatch_act_intents`] via [`cycle_player_selection`]: it collects the player-faction
@@ -257,6 +273,11 @@ pub struct ActWriters<'w> {
     /// for a selected shover over the carried opposing target; the sim's `dispatch_shove` gate
     /// (8-adjacent + opposing + alive) is the authoritative check.
     shove:     MessageWriter<'w, ShoveRequested>,
+    /// The open-door writer — the contextual Open-Door button's drained message (GTW-315).
+    /// Emitted only for a selected actor over the carried adjacent CLOSED door; the sim's
+    /// `dispatch_open_door` gate (CLOSED `OpenState` + 8-adjacent + affords `OpenDoorTu`) is
+    /// the authoritative check, and the SIM spends the TU (one-way `input -> sim` boundary).
+    open_door: MessageWriter<'w, OpenDoorRequested>,
 }
 
 /// The READ-ONLY world the [`ActIntent::SelectNext`] / [`ActIntent::SelectPrev`] cycle arms
@@ -359,6 +380,10 @@ impl SelectionCycleReads<'_, '_> {
 ///   [`SelectedShooter`] as the shover and the carried opposing target (GTW-525) — a no-op with
 ///   no selection; the sim's `dispatch_shove` gate (8-adjacent + opposing + alive) is
 ///   authoritative.
+/// - [`ActIntent::OpenDoor`] emits [`OpenDoorRequested::new`] with the [`SelectedShooter`] as
+///   the actor and the carried adjacent CLOSED door (GTW-315) — a no-op with no selection; the
+///   sim's `dispatch_open_door` gate (CLOSED `OpenState` + 8-adjacent + affords `OpenDoorTu`) is
+///   authoritative and the SIM spends the TU (F4 player-only; the button offers CLOSED doors only).
 ///
 /// The GTW-458 SELECTION-CYCLE intents step the [`SelectedShooter`] through the player gang
 /// in the shared `(z, y, x)` order ([`cell_order_key`] — the exact order the auto-select
@@ -475,44 +500,17 @@ pub fn dispatch_act_intents(
                 // is ending, so the drain just writes the unit message unconditionally.
                 acts.end_turn.write(EndTurnRequested);
             }
-            ActIntent::Execute(target) => {
-                // Execute the carried downed target — actor is the selection (GTW-294).
-                // Mirror the Reload arm: a no-op with no selection. The sim's execute_downed
-                // faction gate (an 8-adjacent alive ENEMY) is the authoritative check.
-                let Some(actor) = **selected else { continue };
-                acts.execute
-                    .write(ExecuteDownedRequested::new(actor, target));
-            }
-            ActIntent::Stabilize(target) => {
-                // Stabilize the carried downed target — actor is the selection (GTW-294).
-                // Mirror the Reload arm: a no-op with no selection. The sim's stabilize_downed
-                // faction gate (an 8-adjacent alive ALLY) is the authoritative check.
-                let Some(actor) = **selected else { continue };
-                acts.stabilize
-                    .write(StabilizeDownedRequested::new(actor, target));
-            }
-            ActIntent::Melee(target) => {
-                // Melee-strike the carried opposing target — attacker is the selection (GTW-507).
-                // Mirror the Execute arm: a no-op with no selection. The sim's dispatch_melee gate
-                // (8-adjacent + clear LOS + an alive opposing target) is the authoritative check.
-                let Some(attacker) = **selected else { continue };
-                acts.melee.write(MeleeRequested::new(attacker, target));
-            }
-            ActIntent::MeleeStructure(at) => {
-                // Melee-SMASH the carried adjacent structure cell — attacker is the selection
-                // (GTW-508). Mirror the Melee arm onto the SAME melee writer (one message type,
-                // one sim dispatch): a no-op with no selection. The sim's dispatch_melee gate
-                // (8-adjacency to the cell) is the authoritative check.
-                let Some(attacker) = **selected else { continue };
-                acts.melee
-                    .write(MeleeRequested::new_structural(attacker, at));
-            }
-            ActIntent::Shove(target) => {
-                // Shove the carried opposing target — shover is the selection (GTW-525). Mirror
-                // the Melee arm: a no-op with no selection. The DELIBERATE form (gated + TU-costed);
-                // the sim's dispatch_shove gate (8-adjacent + opposing + alive) is authoritative.
-                let Some(shover) = **selected else { continue };
-                acts.shove.write(ShoveRequested::new(shover, target));
+            ActIntent::Execute(_)
+            | ActIntent::Stabilize(_)
+            | ActIntent::Melee(_)
+            | ActIntent::MeleeStructure(_)
+            | ActIntent::Shove(_)
+            | ActIntent::OpenDoor(_) => {
+                // The target-carrying contextual acts share ONE shape — resolve the selected
+                // actor then write one `*Requested` (a no-op with no selection); each arm's doc
+                // records the sim gate that is the authoritative check. Factored into
+                // `emit_selected_act` so this drain stays under clippy's line gate.
+                emit_selected_act(&intent, **selected, &mut acts);
             }
             ActIntent::SelectNext => {
                 cycle_selection(&mut selected, &cycle_reads, CycleDirection::Next);
@@ -521,6 +519,51 @@ pub fn dispatch_act_intents(
                 cycle_selection(&mut selected, &cycle_reads, CycleDirection::Prev);
             }
         }
+    }
+}
+
+/// Emits the `*Requested` for a TARGET-carrying contextual act, using `selected` as the
+/// acting ganger — a no-op when there is no selection (the fail-closed shape shared by every
+/// contextual arm).
+///
+/// The one shape behind [`ActIntent::Execute`] / [`ActIntent::Stabilize`] /
+/// [`ActIntent::Melee`] / [`ActIntent::MeleeStructure`] / [`ActIntent::Shove`] /
+/// [`ActIntent::OpenDoor`]: resolve the actor from the `SelectedShooter`, then write ONE act
+/// message carrying `(actor, carried-target)`. Each arm's variant doc records the SIM gate that
+/// is the authoritative check (this layer's offer is advisory). Factored out of
+/// [`dispatch_act_intents`] so the drain stays under clippy's function-length gate; any
+/// non-target-carrying intent is unreachable here and left untouched.
+fn emit_selected_act(intent: &ActIntent, selected: Option<Entity>, acts: &mut ActWriters) {
+    let Some(actor) = selected else { return };
+    match *intent {
+        // GTW-294 — an 8-adjacent alive ENEMY faction gate is the sim's authoritative check.
+        ActIntent::Execute(target) => {
+            acts.execute
+                .write(ExecuteDownedRequested::new(actor, target));
+        }
+        // GTW-294 — an 8-adjacent alive ALLY faction gate is the sim's authoritative check.
+        ActIntent::Stabilize(target) => {
+            acts.stabilize
+                .write(StabilizeDownedRequested::new(actor, target));
+        }
+        // GTW-507 — 8-adjacent + clear LOS + an alive opposing target is the sim's check.
+        ActIntent::Melee(target) => {
+            acts.melee.write(MeleeRequested::new(actor, target));
+        }
+        // GTW-508 — the SAME melee writer for a structure cell; 8-adjacency-to-the-cell is the check.
+        ActIntent::MeleeStructure(at) => {
+            acts.melee.write(MeleeRequested::new_structural(actor, at));
+        }
+        // GTW-525 — the DELIBERATE, TU-costed form; 8-adjacent + opposing + alive is the sim's check.
+        ActIntent::Shove(target) => {
+            acts.shove.write(ShoveRequested::new(actor, target));
+        }
+        // GTW-315 — CLOSED `OpenState` + 8-adjacent + affords `OpenDoorTu` is the sim's check.
+        ActIntent::OpenDoor(door) => {
+            acts.open_door.write(OpenDoorRequested::new(actor, door));
+        }
+        // Not a target-carrying act — the caller only routes the six variants above here.
+        _ => {}
     }
 }
 

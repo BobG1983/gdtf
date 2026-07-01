@@ -261,9 +261,10 @@ pub use acts_runtime::{
     acts,
     acts::{
         FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved,
-        MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, ReloadOutcome, ReloadResult,
-        ShoveOutcome, ShoveRequested, ShoveSource, apply_injury, can_engage, decide_fire_arc,
-        dispatch_melee, dispatch_shove, resolve_shove,
+        MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, OpenDoorRequested,
+        ReloadOutcome, ReloadResult, ShoveOutcome, ShoveRequested, ShoveSource, apply_injury,
+        can_engage, decide_fire_arc, dispatch_melee, dispatch_open_door, dispatch_shove,
+        resolve_shove,
     },
     ai,
     ai::{
