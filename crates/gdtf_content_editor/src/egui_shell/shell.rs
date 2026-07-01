@@ -169,12 +169,13 @@ pub(crate) fn editor_egui_ui(
         ui.label(status_line(*mode, &session, themes.as_deref()));
     });
 
-    // 3. LEFT — the palette / stats region. In TERRAIN mode (C2) it hosts the graphic-role picker
-    //    (the 10 `TileRoles` keys, active highlighted); in THEME mode (C3) it shows the resolved
-    //    floor-terrain stats readout; other modes keep the palette placeholder.
+    // 3. LEFT — the palette / stats region. In TERRAIN mode it hosts the graphic-role picker — a
+    //    GRID of sprite THUMBNAILS (one per `TileRoles` role, active highlighted — GTW-516),
+    //    resolved + drawn via the same egui sprite path as the PREFAB palette; in THEME mode (C3)
+    //    it shows the resolved floor-terrain stats readout; other modes keep the palette placeholder.
     egui::Panel::left("editor_palette").show(&mut viewport_ui, |ui| match *mode {
         EditorMode::Terrain => {
-            terrain_form_ui::graphic_picker(ui, &mut terrain_draft, roles.as_deref());
+            terrain_form_ui::graphic_picker(ui, &mut terrain_draft, roles.as_deref(), sheet_id);
         }
         EditorMode::Theme => {
             theme_form_ui::stats_panel(ui, &theme_draft, terrain_registry.as_deref());

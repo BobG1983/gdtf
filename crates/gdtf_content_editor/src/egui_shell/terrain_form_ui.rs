@@ -17,8 +17,11 @@
 //! picker / CENTER kind+band controls / RIGHT field stack / STAT live preview), re-pointed onto the
 //! C1 shell's panels:
 //!
-//! - LEFT palette panel — the GRAPHIC-ROLE picker (the 10 [`TerrainGraphicChoice`] role keys, the
-//!   active one highlighted), resolved via the presenter's [`TileRoles`] vocabulary,
+//! - LEFT palette panel — the GRAPHIC-ROLE picker (the 10 [`TerrainGraphicChoice`] role keys), now
+//!   a GRID of SPRITE THUMBNAILS (GTW-516) — one clickable sprite per role, the active one
+//!   highlighted — resolved via the presenter's [`TileRoles`] vocabulary + the same egui
+//!   sprite-render path the GTW-515 prefab palette uses (the shared
+//!   [`sprite_thumb`](super::sprite_thumb) helper),
 //! - RIGHT mode-form panel — the field stack: display name, the kind segmented row, Max-HP, armor
 //!   protection + hardness, the (Wall/Cover-only) height band, the (Slab-only) footfall combo, the
 //!   four tag checkboxes, the read-only UUID, and the debug-only Save button,
@@ -35,6 +38,7 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
+    egui_shell::sprite_thumb::{self, THUMB_EDGE},
     session::MapEditorSession,
     terrain_form::{
         ArmorInput, FootfallChoice, HpInput, TerrainDraft, TerrainGraphicChoice, TerrainKindChoice,
@@ -62,6 +66,11 @@ const TAG_ORDER: [TerrainTag; 4] = [
 /// The placeholder UUID line shown before the first save mints a key.
 const UNMINTED_UUID: &str = "(minted on first save)";
 
+/// The number of sprite thumbnails per row in the graphic-role picker grid (GTW-516 C1). A
+/// framework layout const (a grid column count, not a domain quantity — `no-bare-types` clause-4
+/// plumbing carve-out); five keeps the ten roles a tidy two-row grid inside the LEFT palette panel.
+const PICKER_COLUMNS: usize = 5;
+
 /// The height-band order the band segmented row renders, left to right.
 const BAND_ORDER: [HeightBand; 3] = [HeightBand::Low, HeightBand::Mid, HeightBand::High];
 
@@ -84,36 +93,83 @@ const fn band_label(band: HeightBand) -> &'static str {
     }
 }
 
-/// Draw the TERRAIN-mode GRAPHIC-ROLE picker into the LEFT palette panel (C2.1) — a selectable list
-/// of the 10 [`TerrainGraphicChoice`] role keys with the draft's active role highlighted.
+/// Draw the TERRAIN-mode GRAPHIC-ROLE picker into the LEFT palette panel (GTW-516 C1/C2) — a GRID
+/// of SPRITE THUMBNAILS, one clickable sprite per [`TerrainGraphicChoice`] role, with the draft's
+/// active role highlighted, replacing the GTW-513 text role list.
 ///
-/// Each row's label is the role's `tile_roles.ron` KEY (the exact string the presenter's
-/// [`TileRoles::index_for_key`] resolves), and a row is shown ENABLED only when that key resolves in
-/// the loaded [`TileRoles`] table — so the picker mirrors the presenter's vocabulary rather than
-/// offering a role the battlescape can't draw. A click writes the choice through
-/// [`TerrainDraft::set_graphic`]. Reuses the draft model verbatim (C2.2).
+/// Each cell shows the ACTUAL sprite for its role: the role's `tile_roles.ron` KEY
+/// ([`TerrainGraphicChoice::key`]) is resolved to an atlas index through the presenter's
+/// [`TileRoles::index_for_key`] — the SAME resolution the GTW-515 prefab palette uses, drawn via
+/// the shared [`sprite_thumb`] helper over the egui-registered terrain sheet (no hardcoded index,
+/// no second sprite-loading path — C3). A cell is a clickable [`egui::Button`] that carries the
+/// sprite as its image and is `selected` when its role is the draft's active one (C2 highlight); a
+/// click writes the choice through [`TerrainDraft::set_graphic`] (C2), which the reactive RON
+/// preview then re-serializes. Cells whose role the loaded [`TileRoles`] cannot resolve are shown
+/// DISABLED so the picker mirrors the presenter's vocabulary (an absent table — registries not yet
+/// resolved — leaves every cell enabled, drawing a labeled placeholder until the sheet loads).
+/// Reuses the draft model verbatim (C2.2). `sheet_id` is the terrain sheet's egui texture id
+/// (registered by [`load_tile_atlas`](crate::tile_atlas::load_tile_atlas), resolved by the shell).
 pub(crate) fn graphic_picker(
     ui: &mut egui::Ui,
     draft: &mut TerrainDraft,
     roles: Option<&TileRoles>,
+    sheet_id: Option<egui::TextureId>,
 ) {
     ui.heading("Graphic role");
     ui.separator();
     let active = draft.graphic();
-    for choice in TerrainGraphicChoice::ALL {
-        // A role the loaded TileRoles can resolve is enabled; an absent table (registries not yet
-        // resolved) leaves every row enabled so the picker is never inert before load completes.
-        let resolvable = roles.is_none_or(|roles| roles.index_for_key(choice.key()).is_some());
-        let clicked = ui
-            .add_enabled_ui(resolvable, |ui| {
-                ui.selectable_label(choice == active, choice.key())
-                    .clicked()
-            })
-            .inner;
-        if clicked {
-            draft.set_graphic(choice);
-        }
+    // A grid lays the ten roles out as a tidy PICKER_COLUMNS-wide sprite grid inside the LEFT panel
+    // space the text list occupied (C1). Track the picked choice and apply it after the grid closure
+    // so the mutable draft is not borrowed across the row loop.
+    let mut picked: Option<TerrainGraphicChoice> = None;
+    egui::Grid::new("terrain_graphic_picker_grid")
+        .spacing(egui::vec2(4.0, 4.0))
+        .show(ui, |ui| {
+            for (slot, choice) in TerrainGraphicChoice::ALL.into_iter().enumerate() {
+                if graphic_cell(ui, choice, choice == active, roles, sheet_id) {
+                    picked = Some(choice);
+                }
+                if (slot + 1) % PICKER_COLUMNS == 0 {
+                    ui.end_row();
+                }
+            }
+        });
+    if let Some(choice) = picked {
+        draft.set_graphic(choice);
     }
+}
+
+/// Draw ONE graphic-role cell — a clickable sprite [`egui::Button`], `selected` (highlighted) when
+/// `selected`, returning whether it was clicked (GTW-516 C1/C2).
+///
+/// The sprite is the role's atlas index resolved via [`TileRoles::index_for_key`] over
+/// [`TerrainGraphicChoice::key`] and built by the shared [`sprite_thumb::thumb_image`] (C3). Until
+/// the sheet registers / for an out-of-vocabulary role the button falls back to the role key text,
+/// so the cell is never blank. A role the loaded [`TileRoles`] cannot resolve is DISABLED (an
+/// absent table leaves every cell enabled so the picker is not inert before load completes).
+fn graphic_cell(
+    ui: &mut egui::Ui,
+    choice: TerrainGraphicChoice,
+    selected: bool,
+    roles: Option<&TileRoles>,
+    sheet_id: Option<egui::TextureId>,
+) -> bool {
+    // A role the loaded TileRoles can resolve is enabled; an absent table (registries not yet
+    // resolved) leaves every cell enabled so the picker is never inert before load completes.
+    let resolvable = roles.is_none_or(|roles| roles.index_for_key(choice.key()).is_some());
+    let index = roles.and_then(|roles| roles.index_for_key(choice.key()));
+    let button = match sprite_thumb::thumb_image(index, sheet_id) {
+        // The sprite thumbnail as a selectable, framed image button (the resolved role tile).
+        Some(image) => egui::Button::image(image).selected(selected).frame(true),
+        // No sprite yet (sheet not registered / out of vocabulary): a labeled placeholder button of
+        // the same footprint keeps the grid layout stable until the sheet loads.
+        None => egui::Button::new(choice.key())
+            .selected(selected)
+            .min_size(egui::vec2(THUMB_EDGE, THUMB_EDGE)),
+    };
+    ui.add_enabled(resolvable, button)
+        .on_hover_text(choice.key())
+        .clicked()
 }
 
 /// Draw the TERRAIN-mode FIELD STACK into the RIGHT mode-form panel (C2.1) — display name, the kind

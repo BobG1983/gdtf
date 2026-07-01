@@ -32,6 +32,7 @@
 
 mod prefab;
 mod shell;
+mod sprite_thumb;
 mod terrain_form_ui;
 mod theme_combo;
 mod theme_form_ui;

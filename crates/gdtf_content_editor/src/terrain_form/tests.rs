@@ -19,6 +19,43 @@ fn key() -> TerrainUuid {
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0bcd_0001))
 }
 
+/// GTW-516 C1/C2 — the graphic-role picker's selection wiring: clicking a role's sprite cell calls
+/// `draft.set_graphic(choice)` (the picker's SOLE draft write), which the projection turns into the
+/// def's `presenter_kind.graphic_name`. This drives that EXACT setter for EVERY role the grid
+/// offers and asserts the projected def carries the matching role KEY — so a click on any cell
+/// updates the draft's `graphic_name` to the right role (the sprite grid's per-role identity).
+///
+/// A grid cell's index resolves through the SAME `TerrainGraphicChoice::key` → `index_for_key`
+/// path the sprite thumbnail draws with, so pinning the setter → projected key mapping pins the
+/// click → selection contract without a live egui context (the DRAW is Screenshot-QA-covered).
+#[test]
+fn graphic_picker_selection_updates_the_draft_graphic_name() {
+    for choice in TerrainGraphicChoice::ALL {
+        let mut draft = TerrainDraft::default();
+        // A Wall kind so the def projects a `Wall` presenter kind that carries the graphic role
+        // key (the kind does not change the graphic_name — every kind carries it).
+        draft.set_kind(TerrainKindChoice::Wall);
+        // The picker's click handler is exactly this call.
+        draft.set_graphic(choice);
+        assert_eq!(
+            draft.graphic(),
+            choice,
+            "set_graphic updates the draft's active graphic choice (the highlighted cell)",
+        );
+
+        let def = draft_to_terrain_def(&draft, key());
+        let TerrainPresenterKind::Wall { graphic_name } = &def.presenter_kind else {
+            unreachable!("a Wall draft projects to a Wall presenter kind");
+        };
+        assert_eq!(
+            &***graphic_name,
+            choice.key(),
+            "selecting the {choice:?} cell sets the def's graphic_name to that role's key ({})",
+            choice.key(),
+        );
+    }
+}
+
 /// C2 — the footfall field is OFFERED only for the Slab kind: a Slab draft keeps a set footfall,
 /// while a Wall / Cover draft forces it to `None` (the fail-closed gate in `set_kind`).
 #[test]

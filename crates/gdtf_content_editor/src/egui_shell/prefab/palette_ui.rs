@@ -17,11 +17,9 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
-    session::MapEditorSession, terrain_graphics::terrain_atlas_index, tile_atlas::TileAtlas,
+    egui_shell::sprite_thumb, session::MapEditorSession, terrain_graphics::terrain_atlas_index,
+    tile_atlas::TileAtlas,
 };
-
-/// The pixel edge of a palette row's sprite thumbnail. A framework layout const.
-const THUMB_EDGE: f32 = 24.0;
 
 /// Draw the PREFAB-mode palette into the LEFT panel (GTW-515 C4.2).
 ///
@@ -113,9 +111,11 @@ fn palette_row(
     response.clicked()
 }
 
-/// Draw the terrain's sprite thumbnail (GTW-515 C4.2) — an [`egui::Image`] over the sheet's UV
-/// sub-rect for the terrain's resolved atlas index. Falls back to a blank fixed-size spacer when
-/// the index / atlas / sheet id is unavailable, so the row layout stays stable.
+/// Draw the terrain's sprite thumbnail (GTW-515 C4.2) — resolves the terrain's atlas index THE WAY
+/// THE PRESENTER DOES ([`terrain_atlas_index`]) and hands it to the SHARED thumbnail draw
+/// ([`sprite_thumb::draw_thumb`], GTW-516 C3), which draws the [`egui::Image`] over the sheet's UV
+/// sub-rect (or a fixed-size spacer when the index / atlas / sheet id is unavailable, so the row
+/// layout stays stable).
 fn draw_thumb(
     ui: &mut egui::Ui,
     key: TerrainUuid,
@@ -124,46 +124,12 @@ fn draw_thumb(
     registry: &TerrainDefRegistry,
     sheet_id: Option<egui::TextureId>,
 ) {
-    let resolved = roles
+    // The atlas must be resolved for the sheet to be drawable; `roles` resolves the index. When
+    // either is absent the shared draw falls back to a blank spacer.
+    let index = roles
         .zip(atlas)
-        .zip(sheet_id)
-        .and_then(|((roles, _atlas), id)| {
-            terrain_atlas_index(registry, roles, &key).map(|index| (*index, id))
-        });
-    let Some((index, id)) = resolved else {
-        ui.allocate_space(egui::vec2(THUMB_EDGE, THUMB_EDGE));
-        return;
-    };
-    let uv = sheet_uv(index);
-    let image = egui::Image::new(egui::load::SizedTexture::new(
-        id,
-        egui::vec2(THUMB_EDGE, THUMB_EDGE),
-    ))
-    .uv(uv);
-    ui.add(image);
-}
-
-/// The UV sub-rect of a terrain sheet atlas `index` — the sheet is a
-/// [`SHEET_COLUMNS`](crate::tile_atlas::SHEET_COLUMNS) × [`SHEET_ROWS`](crate::tile_atlas::SHEET_ROWS)
-/// grid, so cell `index` sits at column `index % cols`, row `index / cols` and spans one cell in
-/// UV space.
-fn sheet_uv(index: usize) -> egui::Rect {
-    let cols = crate::tile_atlas::SHEET_COLUMNS as usize;
-    let rows = crate::tile_atlas::SHEET_ROWS as usize;
-    let col = index % cols;
-    let row = index / cols;
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "sheet grid indices are small (16x22); the f32 cast is exact within f32's 24-bit \
-                  integer range"
-    )]
-    let (u0, v0, uw, vh) = (
-        col as f32 / cols as f32,
-        row as f32 / rows as f32,
-        1.0 / cols as f32,
-        1.0 / rows as f32,
-    );
-    egui::Rect::from_min_max(egui::pos2(u0, v0), egui::pos2(u0 + uw, v0 + vh))
+        .and_then(|(roles, _atlas)| terrain_atlas_index(registry, roles, &key));
+    sprite_thumb::draw_thumb(ui, index, sheet_id);
 }
 
 /// Draw the stat summary for the currently-selected paint tile (GTW-515 C4.2) — its kind + HP +
