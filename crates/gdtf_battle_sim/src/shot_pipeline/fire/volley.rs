@@ -41,11 +41,22 @@ use crate::{
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Volley {
-    /// The per-round damage / wound reports, in fired order (the pre-GTW-290 result).
+    /// The per-round PRIMARY (direct-impact) damage / wound reports, in fired order (the
+    /// pre-GTW-290 result). `reports[i]` is the round that produced `shots[i]`.
     pub reports: Vec<HitReport>,
     /// The per-round [`ShotOutcome`] trajectory geometry, parallel to
     /// [`reports`](Volley::reports) — the GTW-290 FX source.
     pub shots:   Vec<ShotOutcome>,
+    /// The per-round `AoE` **splash** reports (GTW-541 — the CORE of GTW-41), parallel to
+    /// [`reports`](Volley::reports): `splash[i]` is the list of OTHER occupants the round
+    /// `i` template covered (its blast / cone / line), each already applied to the world
+    /// through the same [`resolve_and_apply`](crate::resolve_and_apply::resolve_and_apply)
+    /// path. EMPTY for every [`HitType::Single`](crate::weapon::HitType::Single) round, so
+    /// a non-`AoE` volley is byte-identical to the pre-GTW-541 result (the identity
+    /// property). The struck-target HP / wound mutations are already applied; this vector
+    /// EXPOSES the splash verdicts so the fire path can bridge each splashed ganger's
+    /// injury signal (mirroring the primary report bridge).
+    pub splash:  Vec<Vec<HitReport>>,
 }
 
 impl Volley {
@@ -56,6 +67,7 @@ impl Volley {
         Self {
             reports: Vec::new(),
             shots:   Vec::new(),
+            splash:  Vec::new(),
         }
     }
 }
@@ -229,10 +241,12 @@ pub fn fire(
     //     resets between fire() calls because i restarts at 0 every call.
     let mut reports = Vec::with_capacity(usize::from(rounds));
     let mut shots = Vec::with_capacity(usize::from(rounds));
+    let mut splash = Vec::with_capacity(usize::from(rounds));
     for i in 0..rounds {
-        // resolve_round returns BOTH the report AND the round's already-computed
-        // ShotOutcome geometry (the GTW-290 FX source — exposed, not recomputed).
-        let (report, outcome) = resolve_round(
+        // resolve_round returns the PRIMARY report, the `AoE` splash reports (GTW-541 —
+        // empty for a Single round), AND the round's already-computed ShotOutcome
+        // geometry (the GTW-290 FX source — exposed, not recomputed).
+        let (report, round_splash, outcome) = resolve_round(
             setup,
             crate::cone::PriorShots::new(i),
             &mut grids,
@@ -256,7 +270,12 @@ pub fn fire(
 
         reports.push(report);
         shots.push(outcome);
+        splash.push(round_splash);
     }
 
-    Volley { reports, shots }
+    Volley {
+        reports,
+        shots,
+        splash,
+    }
 }

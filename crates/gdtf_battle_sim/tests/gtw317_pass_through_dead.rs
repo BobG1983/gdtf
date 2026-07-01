@@ -228,6 +228,7 @@ fn fire_volley(
         Err(_) => Volley {
             reports: Vec::new(),
             shots:   Vec::new(),
+            splash:  Vec::new(),
         },
     };
     state.apply(world);

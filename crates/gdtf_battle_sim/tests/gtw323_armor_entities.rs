@@ -176,6 +176,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             return Volley {
                 reports: Vec::new(),
                 shots:   Vec::new(),
+                splash:  Vec::new(),
             };
         };
         gdtf_battle_sim::fire(

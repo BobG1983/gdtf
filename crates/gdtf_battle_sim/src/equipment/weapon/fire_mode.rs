@@ -107,17 +107,136 @@ impl Display for ModeKind {
     }
 }
 
-/// One fire mode's per-mode numbers — its kind, cone multiplier, TU%, and shot count.
+/// A **blast radius** — the Chebyshev cell distance a [`HitType::Blast`] template
+/// reaches out from its impact cell (`docs/combat/combat.md`'s blast-radii note —
+/// "blast radii ... assume square tiles"). Radius `0` = the impact cell only; radius
+/// `1` = the impact cell + its Moore-8 ring; and so on. The template geometry is
+/// defined in [`aoe`](crate::shot_pipeline::aoe), not in `docs/`.
+///
+/// A weapon NUMBER (per-mode, on the [`FireModeSpec`]), a small non-negative cell
+/// count. Private inner + derived [`Deref`]; `#[serde(transparent)]` so a weapon's
+/// authored RON writes the bare integer (`Blast(radius: 2)`).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BlastRadius(u8);
+
+impl BlastRadius {
+    /// Build a blast radius from its Chebyshev cell count.
+    #[must_use]
+    pub const fn new(radius: u8) -> Self {
+        Self(radius)
+    }
+}
+
+/// An `AoE` **range** — the cell depth a [`HitType::Cone`] wedge or a [`HitType::Line`]
+/// runs from its origin (`docs/combat/combat.md`'s blast-radii note; the wedge/beam
+/// geometry is defined in [`aoe`](crate::shot_pipeline::aoe)). Range `0` = no cells
+/// beyond the impact; range `n` = up to `n` cells deep along the shape.
+///
+/// A weapon NUMBER (per-mode), a small non-negative cell count. Distinct from
+/// [`BlastRadius`] (no-bare-types rule 3 — a directed range is a different concept
+/// than an omnidirectional radius). Private inner + derived [`Deref`];
+/// `#[serde(transparent)]`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct AoeRange(u8);
+
+impl AoeRange {
+    /// Build an `AoE` range from its cell depth.
+    #[must_use]
+    pub const fn new(range: u8) -> Self {
+        Self(range)
+    }
+}
+
+/// A **cone half-angle** — how wide a [`HitType::Cone`] wedge opens, in degrees off the
+/// firing direction on each side (the wedge geometry is defined in
+/// [`aoe`](crate::shot_pipeline::aoe), not in `docs/`). A cell is inside the wedge when
+/// the angle between (cell − origin) and the fire direction is ≤ this half-angle.
+///
+/// A weapon NUMBER (per-mode), an angular magnitude in DEGREES. Private inner + derived
+/// [`Deref`]; `#[serde(transparent)]` so a weapon's RON writes the bare float
+/// (`Cone(range: 3, angle: 30.0)`). Angular / dimensionless — **zero pixels**.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ConeHalfAngle(f32);
+
+impl ConeHalfAngle {
+    /// Build a cone half-angle from its magnitude in degrees.
+    #[must_use]
+    pub const fn new(degrees: f32) -> Self {
+        Self(degrees)
+    }
+}
+
+/// A fire mode's **hit type** — the `AoE` TEMPLATE a shot in this mode applies at its
+/// impact cell (`docs/combat/combat.md`'s blast-radii note; the template geometry is
+/// defined in [`aoe`](crate::shot_pipeline::aoe); GTW-41 CORE, GTW-541). A direct
+/// single-target shot, an omnidirectional [`Blast`](Self::Blast)
+/// disc, a directed [`Cone`](Self::Cone) wedge, or a [`Line`](Self::Line) beam.
+///
+/// A named domain enum (no-bare-types: a hit type is a domain value, not a bare `u8`),
+/// a FIELD value on a [`FireModeSpec`] (NOT a `#[derive(Component)]` — the [`FireMode`]
+/// selector that holds the specs is the component). Its fields are the `AoE` shape
+/// newtypes ([`BlastRadius`] / [`AoeRange`] / [`ConeHalfAngle`]). **Distinct from
+/// [`DamageType::Blast`](super::DamageType) — that is a damage FLAVOUR (the matchup-wheel
+/// node); this is a hit SHAPE.**
+///
+/// [`Single`](Self::Single) is the DEFAULT (`#[serde(default)]` on the
+/// [`FireModeSpec`] field) so every existing weapon `.ron` — which never authors a
+/// `hit_type` — deserializes byte-identically to a direct single-target shot, and the
+/// live fire path takes the unchanged single-target branch for it (the IDENTITY
+/// property, GTW-541 AC). `Copy`/`Eq` where the fields allow, so [`FireModeSpec`] stays
+/// `Copy` and the message payload owns it.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum HitType {
+    /// A **direct single-target** shot — the unchanged pre-GTW-541 path (the impact
+    /// cell's occupant, if any, is the sole struck entity). The DEFAULT.
+    Single,
+    /// An **omnidirectional blast** — every cell within `radius` (Chebyshev, same
+    /// storey) of the impact cell is affected. Radius `0` = the impact cell only.
+    Blast {
+        /// The Chebyshev cell reach of the blast disc out from the impact cell.
+        radius: BlastRadius,
+    },
+    /// A directed **cone** — a wedge opening from the shooter toward the impact,
+    /// `range` cells deep and `angle` degrees wide on each side of the fire direction.
+    Cone {
+        /// The cell depth the wedge runs.
+        range: AoeRange,
+        /// The half-angle (degrees off the fire direction) the wedge spans each side.
+        angle: ConeHalfAngle,
+    },
+    /// A **line / beam** — the cells along the shot line from the impact cell, `range`
+    /// cells deep in the fire direction.
+    Line {
+        /// The cell depth the line runs from the impact cell.
+        range: AoeRange,
+    },
+}
+
+impl Default for HitType {
+    /// The default hit type is [`Single`](Self::Single) — a direct single-target shot,
+    /// so an omitted `hit_type:` field leaves a weapon firing exactly as before GTW-541.
+    fn default() -> Self {
+        Self::Single
+    }
+}
+
+/// One fire mode's per-mode numbers — its kind, cone multiplier, TU%, shot count, and
+/// `AoE` hit type.
 ///
 /// The selector term carrier of `θ_cone` (resolution.md §1a) plus the mode's kind,
-/// TU cost, and round count. A named struct (not a bare tuple) so each per-mode
-/// number keeps its [`FireMode`] meaning; every field is a weapon NUMBER newtype or
-/// the closed [`ModeKind`]. The human-facing label comes from
-/// [`ModeKind`]'s [`Display`] (`kind.to_string()`), not a stored string.
+/// TU cost, round count, and the `AoE` [`HitType`] template (GTW-541). A named struct
+/// (not a bare tuple) so each per-mode number keeps its [`FireMode`] meaning; every
+/// field is a weapon NUMBER newtype or a closed domain enum. The human-facing label
+/// comes from [`ModeKind`]'s [`Display`] (`kind.to_string()`), not a stored string.
 ///
 /// Every field is `Copy`, so the spec is `Copy` (it regained the derive once the
 /// `String` mode name was dropped — GTW-260; it was only `Clone`-not-`Copy` because
-/// of the old owned name).
+/// of the old owned name). The [`hit_type`](FireModeSpec::hit_type) is
+/// `#[serde(default)]` = [`HitType::Single`], so every existing weapon `.ron` (which
+/// authors no `hit_type`) parses byte-identically (GTW-541 IDENTITY).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FireModeSpec {
     /// Which mode this is — its closed kind (`Single` / `Burst` / `Full`); the
@@ -129,10 +248,16 @@ pub struct FireModeSpec {
     pub tu_percent: ModeTuPercent,
     /// How many rounds this mode fires per shot action.
     pub shots:      ModeShots,
+    /// The `AoE` template a shot in this mode applies at its impact cell (GTW-541).
+    /// `#[serde(default)]` = [`HitType::Single`], so an omitted `hit_type:` field keeps
+    /// the mode a direct single-target shot — every existing weapon `.ron` is untouched.
+    #[serde(default)]
+    pub hit_type:   HitType,
 }
 
 impl FireModeSpec {
-    /// Build one fire mode's spec from its kind and its three per-mode numbers.
+    /// Build one fire mode's spec from its kind and its per-mode numbers, defaulting the
+    /// `AoE` [`HitType`] to [`HitType::Single`] (the direct single-target shot).
     #[must_use]
     pub const fn new(
         kind: ModeKind,
@@ -145,6 +270,27 @@ impl FireModeSpec {
             cone_mult,
             tu_percent,
             shots,
+            hit_type: HitType::Single,
+        }
+    }
+
+    /// Build one fire mode's spec with an explicit `AoE` [`HitType`] template — the
+    /// constructor a blast / cone / line mode uses (the direct single-target modes take
+    /// [`new`](Self::new), which defaults `hit_type` to [`HitType::Single`]).
+    #[must_use]
+    pub const fn with_hit_type(
+        kind: ModeKind,
+        cone_mult: ModeConeMult,
+        tu_percent: ModeTuPercent,
+        shots: ModeShots,
+        hit_type: HitType,
+    ) -> Self {
+        Self {
+            kind,
+            cone_mult,
+            tu_percent,
+            shots,
+            hit_type,
         }
     }
 }

@@ -630,6 +630,23 @@ fn emit_round_signals(
                 .write(GroundAccrued::new(accrual.cell, accrual.amount));
         }
     }
+    // (5e) GTW-541 (`AoE` CORE of GTW-41): the SPLASH injury bridge. A non-Single round's
+    //      template covers OTHER occupants (its blast / cone / line); each was applied to
+    //      the world through the SAME resolve_and_apply path in-fold (HP / wounds already
+    //      mutated). Bridge each splashed ganger's rolled named injury exactly as the
+    //      primary report is bridged above (mirroring 5a) so the splash victim's injury
+    //      lands too. `volley.splash` is EMPTY for a Single volley, so this loop is a no-op
+    //      on the unchanged single-target path (the identity property). No RNG draw / no
+    //      recompute — pure exposure of the frozen splash reports.
+    for round_splash in &volley.splash {
+        for report in round_splash {
+            if let (Some(rolled), ShotKind::Ganger(target)) = (&report.injury, report.kind) {
+                signals
+                    .injuries
+                    .write(InjuryInflicted::from_rolled(target, rolled.clone()));
+            }
+        }
+    }
 }
 
 /// The ground-plane [`Cell`] of a shooter's [`Position`] — its `(x, y)` (the `z` storey is

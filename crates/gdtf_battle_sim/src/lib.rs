@@ -347,12 +347,13 @@ pub use equipment::{
     },
     weapon,
     weapon::{
-        Accuracy, BaseSpread, DamageProfile, DamageType, FISTS_KEY, FatalBias, FightMode,
-        FightModeKind, FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile,
-        Kickback, MagazineSize, MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle,
-        MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Reach, Shove, Stable, Strikes, TuCost, Weapon, WeaponBundle, WeaponDamage, WeaponName,
-        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
+        Accuracy, AoeRange, BaseSpread, BlastRadius, ConeHalfAngle, DamageProfile, DamageType,
+        FISTS_KEY, FatalBias, FightMode, FightModeKind, FightModeSpec, FireMode, FireModeSpec,
+        Handedness, HandlingProfile, HitType, Kickback, MagazineSize, MeleeDamageProfile,
+        MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult,
+        ModeKind, ModeShots, ModeTuPercent, Reach, Shove, Stable, Strikes, TuCost, Weapon,
+        WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+        WeaponSpec, WeaponStats, WieldedBy, Wields,
     },
 };
 pub use falls::{DropLanding, FallOccurred, FallsPlugin, StoreysFallen, apply_falls, resolve_drop};
@@ -412,6 +413,8 @@ pub use perception::{
 pub use shot_pipeline::{
     aim,
     aim::{Shooter, cone_for, stability_for},
+    aoe,
+    aoe::aoe_affected,
     central_axis,
     central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point},
     clearance,

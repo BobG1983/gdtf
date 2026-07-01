@@ -341,12 +341,24 @@ pub(super) struct RoundSetup<'a> {
 /// [`HitReport::no_effect`]. Shot draws come from the injected [`ShotRng`](crate::rng::ShotRng);
 /// severity draws from the injected [`SeverityRng`](crate::rng::SeverityRng).
 ///
-/// Returns BOTH the frozen [`HitReport`] **and** the round's
+/// Returns the frozen primary [`HitReport`], the `AoE` **splash** reports (GTW-541 —
+/// EMPTY for a [`HitType::Single`](crate::weapon::HitType::Single) round, so the
+/// single-target path is byte-identical), **and** the round's
 /// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) — the already-computed E2
 /// trajectory geometry [`fire`](super::fire) collects so
 /// [`dispatch_fire`](crate::acts::dispatch_fire) can emit a per-round
 /// [`ShotFired`](crate::shot_fired::ShotFired) (GTW-290). The outcome is returned
 /// verbatim, NOT recomputed — the fold below already consumes it.
+///
+/// GTW-541 (`AoE` CORE of GTW-41): after the primary impact fold, if the fired mode's
+/// [`HitType`](crate::weapon::HitType) is not
+/// [`Single`](crate::weapon::HitType::Single), the template's affected cells are
+/// enumerated ([`aoe_affected`](crate::aoe::aoe_affected)) and EACH occupant (skipping
+/// the already-folded direct target and non-ganger cells) is routed through the EXISTING
+/// [`resolve_and_apply`] damage path EXACTLY ONCE, faction-blind (friendly fire hits all
+/// — `docs/combat/resolution.md` §2). The affected cells are resolved in the resolver's
+/// canonical sorted order, so the seeded RNG stream is deterministic. A `Single` round
+/// runs NEITHER the resolver nor any extra draw — the identity property.
 #[expect(
     clippy::too_many_arguments,
     reason = "the GTW-323 armor-relationship adds the disjoint wears/pieces queries to \
@@ -370,7 +382,11 @@ pub(super) fn resolve_round(
     tables: &InjuryTables,
     registry: &InjuryRegistry,
     injury_rng: &mut InjuryRng,
-) -> (HitReport, crate::resolve_coarse::ShotOutcome) {
+) -> (
+    HitReport,
+    Vec<HitReport>,
+    crate::resolve_coarse::ShotOutcome,
+) {
     let snapshot = setup.snapshot;
     let geometry = setup.geometry;
     let shooter_view = snapshot.shooter_view();
@@ -446,9 +462,86 @@ pub(super) fn resolve_round(
         is_dead,
     );
 
-    let report = match outcome.kind {
+    // Fold the PRIMARY impact — the direct-hit report (ganger / cover / slab / ground /
+    // miss), extracted to keep this per-round verb under clippy's line cap once the
+    // GTW-541 splash pass joined it.
+    let report = resolve_primary_report(
+        &outcome,
+        snapshot,
+        grids,
+        targets,
+        wears,
+        pieces,
+        tuning,
+        severity_rng,
+        tables,
+        registry,
+        injury_rng,
+    );
+
+    // GTW-541 (`AoE` CORE): if the fired mode carries a non-Single HitType, splash the
+    // template's other affected cells. `Single` short-circuits (empty splash, no
+    // resolver call, no extra draw) so the single-target path is byte-identical.
+    let splash = apply_aoe_splash(
+        &outcome,
+        setup.mode.hit_type,
+        snapshot.position,
+        &report,
+        snapshot,
+        grids,
+        targets,
+        wears,
+        pieces,
+        tuning,
+        shot_rng,
+        severity_rng,
+        tables,
+        registry,
+        injury_rng,
+    );
+
+    // Return the resolved primary report, the `AoE` splash reports (empty for Single),
+    // PLUS the already-computed outcome geometry (verbatim, not recomputed) so the
+    // volley can surface a per-round ShotFired (GTW-290).
+    (report, splash, outcome)
+}
+
+/// Fold the round's PRIMARY (direct-impact) outcome into its [`HitReport`] — the
+/// ganger / cover / slab / ground / miss dispatch [`resolve_round`] ran inline before
+/// GTW-541 (extracted so the per-round verb stays under clippy's line cap once the splash
+/// pass joined it). No behavior change — the same match, verbatim.
+///
+/// - [`ShotKind::Ganger`] → [`fold_ganger_round`] (the wound arm; the ONE severity +
+///   injury draw).
+/// - [`ShotKind::Cover`] / [`ShotKind::Slab`] / [`ShotKind::Ground`] → the shared
+///   [`resolve_and_apply`] structural path (GTW-364/365/366): a cover / slab hit spends its
+///   ledger HP (RNG-free), a ground hit records the accrual — the `None` target /
+///   [`Entity::PLACEHOLDER`] short-circuits the wound path (no severity / injury draw).
+/// - [`ShotKind::Miss`] → a no-effect report (no draw, no mutation).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "this is the exact irreducible fold set resolve_round passed inline before \
+              GTW-541 (outcome / snapshot / grids + the disjoint wears/pieces queries + \
+              tuning + the severity/injury RNG streams + the injury tables/registry); \
+              bundling the queries would obscure the GTW-323 disjointness the ParamSet-free \
+              coexistence relies on — the same reason fold_ganger_round documents"
+)]
+fn resolve_primary_report(
+    outcome: &crate::resolve_coarse::ShotOutcome,
+    snapshot: &ShooterSnapshot,
+    grids: &mut BattleGrids,
+    targets: &mut TargetQuery,
+    wears: &WearsQuery,
+    pieces: &mut PieceQuery,
+    tuning: &CombatTuning,
+    severity_rng: &mut SeverityRng,
+    tables: &InjuryTables,
+    registry: &InjuryRegistry,
+    injury_rng: &mut InjuryRng,
+) -> HitReport {
+    match outcome.kind {
         ShotKind::Ganger(struck) => fold_ganger_round(
-            &outcome,
+            outcome,
             struck,
             snapshot,
             grids,
@@ -477,7 +570,7 @@ pub(super) fn resolve_round(
         // Cover/Slab/Ground arms are RNG-free (no severity draw on a structural hit) so
         // we pass severity_rng but it will not advance the cursor for these arms.
         ShotKind::Cover(_) | ShotKind::Slab(_) | ShotKind::Ground(_) => resolve_and_apply(
-            &outcome,
+            outcome,
             snapshot.weapon_stats(),
             snapshot.luck,
             None,
@@ -497,10 +590,115 @@ pub(super) fn resolve_round(
         ),
         // A clean miss strikes nothing — no effect.
         ShotKind::Miss => HitReport::no_effect(outcome.kind),
+    }
+}
+
+/// Splash a non-[`Single`](crate::weapon::HitType::Single) round's `AoE` template onto the
+/// OTHER occupants the shape covers — the GTW-541 (`AoE` CORE of GTW-41) resolver-to-damage
+/// integration.
+///
+/// Returns an EMPTY `Vec` for a [`HitType::Single`](crate::weapon::HitType::Single) round
+/// WITHOUT calling the resolver or taking any RNG draw — so the single-target path is
+/// byte-identical (the GTW-541 identity property). Otherwise it enumerates the affected
+/// `(cell, level)` set ([`aoe_affected`](crate::aoe::aoe_affected), from the primary
+/// impact cell, the shooter origin, and the mode's [`HitType`](crate::weapon::HitType))
+/// and, in that CANONICAL sorted order (so the seeded RNG stream is deterministic), routes
+/// each cell's occupant through the EXISTING [`resolve_and_apply`] damage path EXACTLY
+/// ONCE — reusing [`fold_ganger_round`] verbatim (no duplicated damage math).
+///
+/// Faction-blind: the splash strikes EVERY occupant it finds, including the shooter's own
+/// gang if the geometry covers them (`docs/combat/resolution.md` §2 — "any other actor in
+/// the path — including your own gang — true friendly fire"; grenades do not discriminate).
+/// The DIRECT-impact target already folded above (`primary`) is skipped so it is never
+/// double-hit. A non-ganger occupancy slot (empty / cover only) contributes nothing.
+///
+/// Each splashed ganger takes one [`ShotRng`](crate::rng::ShotRng) draw (the §4 body-part
+/// roll — the splash has no march-computed part) plus the fold's one
+/// [`SeverityRng`](crate::rng::SeverityRng) + one [`InjuryRng`](crate::rng::InjuryRng) draw,
+/// EXACTLY the direct-target cost — so the streams stay content-independent and stable.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the splash pass needs the primary outcome / hit-type / shooter origin / the \
+              already-folded primary report (to skip the direct target) / the shooter \
+              snapshot / grids plus the disjoint wears+pieces queries + tuning + the three \
+              distinct RNG streams (shot / severity / injury) + the injury tables/registry; \
+              this is the same irreducible set fold_ganger_round documents, plus the \
+              `AoE`-specific outcome/hit-type/origin/primary inputs"
+)]
+fn apply_aoe_splash(
+    outcome: &crate::resolve_coarse::ShotOutcome,
+    hit_type: crate::weapon::HitType,
+    shooter_position: Position,
+    primary: &HitReport,
+    snapshot: &ShooterSnapshot,
+    grids: &mut BattleGrids,
+    targets: &mut TargetQuery,
+    wears: &WearsQuery,
+    pieces: &mut PieceQuery,
+    tuning: &CombatTuning,
+    shot_rng: &mut ShotRng,
+    severity_rng: &mut SeverityRng,
+    tables: &InjuryTables,
+    registry: &InjuryRegistry,
+    injury_rng: &mut InjuryRng,
+) -> Vec<HitReport> {
+    // The identity short-circuit: a Single round splashes nothing and takes NO draw.
+    if matches!(hit_type, crate::weapon::HitType::Single) {
+        return Vec::new();
+    }
+
+    // The DIRECT-impact target already folded (skip it so it is never double-hit).
+    let primary_struck = match primary.kind {
+        ShotKind::Ganger(e) => Some(e),
+        _ => None,
     };
-    // Return the resolved report PLUS the already-computed outcome geometry (verbatim,
-    // not recomputed) so the volley can surface a per-round ShotFired (GTW-290).
-    (report, outcome)
+
+    // The impact + shooter cells the resolver keys the template off (the storey is the
+    // impact's own — the 2D-on-level ruling). `Position` derefs to `CellLevel`.
+    let impact = CellLevel::new(outcome.cell, outcome.level);
+    let shooter_cell: CellLevel = *shooter_position;
+
+    let affected = crate::aoe::aoe_affected(impact, hit_type, shooter_cell);
+    let mut reports = Vec::new();
+    for cell in affected {
+        // Read the occupant — a faction-blind cell peek (friendly fire hits all).
+        let Some(occupant) = grids.occupancy.occupant(&cell) else {
+            continue; // empty / cover-only cell — nothing to strike
+        };
+        if Some(occupant) == primary_struck {
+            continue; // the direct target already took its hit
+        }
+        // Roll the §4 body part for the splashed ganger (its ONE ShotRng draw — the
+        // splash has no march-computed part), then synthesize a Ganger outcome AT the
+        // splashed cell and fold it through the SAME per-round ganger path.
+        let part = crate::hit_location::roll_body_part(&tuning.body_part_weights, shot_rng.rng());
+        let (splash_cell, splash_level) = (Cell::new(cell.x, cell.y), outcome.level);
+        let splash_outcome = crate::resolve_coarse::ShotOutcome {
+            kind:       ShotKind::Ganger(occupant),
+            cell:       splash_cell,
+            level:      splash_level,
+            body_part:  Some(part),
+            band:       outcome.band,
+            muzzle:     outcome.muzzle,
+            trajectory: outcome.trajectory,
+        };
+        let report = fold_ganger_round(
+            &splash_outcome,
+            occupant,
+            snapshot,
+            grids,
+            targets,
+            wears,
+            pieces,
+            tuning,
+            severity_rng,
+            tables,
+            registry,
+            injury_rng,
+        );
+        reports.push(report);
+    }
+    reports
 }
 
 /// Fold a [`ShotKind::Ganger`] round onto the struck target — the wound arm of

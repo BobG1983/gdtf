@@ -254,6 +254,7 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         Err(_) => Volley {
             reports: Vec::new(),
             shots:   Vec::new(),
+            splash:  Vec::new(),
         },
     };
     state.apply(app.world_mut());

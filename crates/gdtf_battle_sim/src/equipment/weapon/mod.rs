@@ -63,7 +63,10 @@ pub use components::{
     Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Shove, Stable,
     Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
-pub use fire_mode::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent};
+pub use fire_mode::{
+    AoeRange, BlastRadius, ConeHalfAngle, FireMode, FireModeSpec, HitType, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent,
+};
 // GTW-505 (child GTW-37a): the melee weapon model — the sibling to the ranged model
 // above, sharing the ranged damage newtypes (re-exported here) while adding the
 // melee-only Reach / FightMode + the MeleeWeapon marker. See the `melee` module doc.
