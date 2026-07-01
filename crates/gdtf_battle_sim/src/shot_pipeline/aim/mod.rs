@@ -45,5 +45,5 @@ mod shooter;
 #[cfg(test)]
 mod test;
 
-pub use compose::{cone_for, stability_for};
+pub use compose::{cone_for, sight_stability, stability_for};
 pub use shooter::Shooter;

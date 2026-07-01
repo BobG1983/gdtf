@@ -347,13 +347,14 @@ pub use equipment::{
     },
     weapon,
     weapon::{
-        Accuracy, AoeRange, BaseSpread, BlastRadius, ConeHalfAngle, DamageProfile, DamageType,
-        FISTS_KEY, FatalBias, FightMode, FightModeKind, FightModeSpec, FireMode, FireModeSpec,
-        Handedness, HandlingProfile, HitType, Kickback, MagazineSize, MeleeDamageProfile,
-        MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult,
-        ModeKind, ModeShots, ModeTuPercent, Reach, Shove, Stable, Strikes, TuCost, Weapon,
-        WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
-        WeaponSpec, WeaponStats, WieldedBy, Wields,
+        Accuracy, AoeRange, AttachTag, AttachmentEffects, BaseSpread, BlastRadius, ConeHalfAngle,
+        DamageProfile, DamageType, FISTS_KEY, FatalBias, FightMode, FightModeKind, FightModeSpec,
+        FireMode, FireModeSpec, Handedness, HandlingProfile, HitType, Kickback, MagazineSize,
+        MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec,
+        ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Reach, Scoped, Shove, Silenced, Stable,
+        Strikes, TuCost, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponShred, WeaponSightBonus, WeaponSpec, WeaponStats, WieldedBy, Wields,
+        shooter_weapon_silenced,
     },
 };
 pub use falls::{DropLanding, FallOccurred, FallsPlugin, StoreysFallen, apply_falls, resolve_drop};
@@ -412,7 +413,7 @@ pub use perception::{
 };
 pub use shot_pipeline::{
     aim,
-    aim::{Shooter, cone_for, stability_for},
+    aim::{Shooter, cone_for, sight_stability, stability_for},
     aoe,
     aoe::aoe_affected,
     central_axis,
@@ -438,8 +439,8 @@ pub use shot_pipeline::{
     shot_fired::ShotFired,
     stability,
     stability::{
-        ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, SuppressionStability,
-        TerrainBraced, stability,
+        ConeMult, EmplacementStability, RecoilGrowth, SightStability, StabilityScore,
+        SuppressionStability, TerrainBraced, stability,
     },
 };
 pub use terrain::{
@@ -490,19 +491,20 @@ pub use terrain::{
     },
 };
 pub use tuning::{
-    AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
-    BodyPartWeights, BottlePerMorale, BraceContribution, BraceMinHeight, CombatTuning,
-    ConcentrationCoeff, ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu,
-    FightVariance, FightWeights, GangerStatTuning, HpWeights, MatchupMultipliers, MeleeKMargin,
-    MeleeMultMax, MeleeMultMin, MeleeTuning, MoraleWeights, MoveCost, MoveCosts,
-    MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale, PerStoreyDamage,
-    ProjectileBandEdges, RandomSpread, ReactionCapBase, ReactionCapPerReactions, ReactionPMax,
-    ReactionPMin, ReactionProbability, ReactionScore, ReactionTuning, ReactionsUsed,
-    ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
-    ShootingWeights, ShoveTu, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults,
-    StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu,
-    StanceChangeTu, StanceContribution, StanceStability, StatWeight, SuppressionRadius,
-    SuppressionStabilityPenalty, ToughnessMitigation, TuBase, TuPerSpeed, TurnTu, WoundCost,
-    WoundCosts, WoundsPerHp, clamp_probability, interrupt_probability, may_interrupt, reaction_cap,
-    reaction_score, rolls_interrupt,
+    AimConeMult, AimHeightFrac, AimMode, AimTuPremium, AttachmentTuning, BandEdge, BleedRate,
+    BodyPartWeight, BodyPartWeights, BottlePerMorale, BraceBonus, BraceContribution,
+    BraceMinHeight, CombatTuning, ConcentrationCoeff, ConcentrationCoeffs, ConeMultDelta,
+    ConeStabilityTuning, DefenderLuckScale, ExecuteTu, FightVariance, FightWeights,
+    GangerStatTuning, HpWeights, MatchupMultipliers, MeleeKMargin, MeleeMultMax, MeleeMultMin,
+    MeleeTuning, MoraleWeights, MoveCost, MoveCosts, MuzzleForwardOffset, MuzzleHeight,
+    MuzzleHeights, PenDamageScale, PerStoreyDamage, ProjectileBandEdges, RandomSpread,
+    ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin, ReactionProbability,
+    ReactionScore, ReactionTuning, ReactionsUsed, ReactionsWeights, RecoilClimb, ReloadDelta,
+    ReloadFactor, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale, ShootingWeights,
+    ShoveTu, SightStabilityBonus, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults,
+    SpreadPenalty, StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves,
+    StabilizeTu, StanceChangeTu, StanceContribution, StanceStability, StatWeight,
+    SuppressionRadius, SuppressionStabilityPenalty, ToughnessMitigation, TuBase, TuPerSpeed,
+    TurnTu, WoundCost, WoundCosts, WoundsPerHp, clamp_probability, interrupt_probability,
+    may_interrupt, reaction_cap, reaction_score, rolls_interrupt,
 };

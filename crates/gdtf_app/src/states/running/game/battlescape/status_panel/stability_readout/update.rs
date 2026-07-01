@@ -30,8 +30,12 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Aiming, BraceStairCells, CoverLedger, Facing, MeleeWeapon, Position, Shooter, Stable, Stance,
-    Suppressed, Weapon, Wields, stability::terrain_brace::terrain_braces, stability_for,
-    surface::SurfaceGrid, tuning::CombatTuning,
+    Suppressed, Weapon, Wields, sight_stability,
+    stability::terrain_brace::terrain_braces,
+    stability_for,
+    surface::SurfaceGrid,
+    tuning::CombatTuning,
+    weapon::{Scoped, WeaponSightBonus},
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar};
 
@@ -53,6 +57,13 @@ type ShooterView<'a> = (
     Option<&'a Suppressed>,
 );
 
+/// The wielded RANGED weapon's stability-relevant components, read in ONE query tuple (the
+/// `ShooterView` precedent — keeps the `weapons` query off clippy `type_complexity`): the
+/// `stable` tag plus the GTW-542 optional [`Scoped`] attachment + per-weapon
+/// [`WeaponSightBonus`] override, so the HUD preview folds the sight-stability bonus exactly
+/// as the fire path does (each `Option` = absent when that attachment is not fitted).
+type WeaponStabilityRead<'a> = (&'a Stable, Option<&'a Scoped>, Option<&'a WeaponSightBonus>);
+
 /// The read-only queries the stability resolution touches, bundled as one [`SystemParam`]
 /// (the `StatBlockWidgets` / `RouteGrids` bundle precedent) so the system stays under clippy's
 /// argument-count gate.
@@ -66,8 +77,11 @@ pub(in crate::states::running::game::battlescape::status_panel) struct ShooterRe
     shooters: Query<'w, 's, ShooterView<'static>>,
     /// The ganger → weapon relationship (`ganger → Wields → the ranged weapon entity`).
     wields:   Query<'w, 's, &'static Wields>,
-    /// The wielded RANGED weapon's `stable` tag, read off the weapon entity.
-    weapons:  Query<'w, 's, &'static Stable, With<Weapon>>,
+    /// The wielded RANGED weapon's `stable` tag plus its optional GTW-542 [`Scoped`]
+    /// attachment and per-weapon [`WeaponSightBonus`] override, read off the weapon entity —
+    /// so the HUD preview folds the sight-stability bonus into the readout exactly as the
+    /// fire path does (each `Option` = absent when the respective attachment is not fitted).
+    weapons:  Query<'w, 's, WeaponStabilityRead<'static>, With<Weapon>>,
     /// The [`MeleeWeapon`] marker probe (GTW-505 C5) — so the RANGED weapon resolves excluding
     /// the melee weapon the ganger also wields, rather than relying on relate order.
     melee:    Query<'w, 's, (), With<MeleeWeapon>>,
@@ -159,7 +173,8 @@ fn resolve_steadiness(
         .get(entity)
         .ok()?
         .ranged_weapon(|e| reads.melee.get(e).is_ok())?;
-    let stable = *reads.weapons.get(weapon).ok()?;
+    let (stable, sighted, sight_bonus) = reads.weapons.get(weapon).ok()?;
+    let stable = *stable;
     let cover = cover?;
     let tuning = tuning?;
     let brace_cells = brace_cells?;
@@ -180,7 +195,12 @@ fn resolve_steadiness(
         // readout under suppression, matching the fire path exactly.
         suppressed,
     };
+    // GTW-542: resolve the additive sight term off the weapon's optional Scoped attachment
+    // + per-weapon override (the SAME `sight_stability` the fire path uses) so a sighted
+    // weapon previews a tighter steadiness; an un-sighted weapon resolves the zero identity
+    // (byte-identical readout).
+    let sight = sight_stability(sighted, sight_bonus, tuning);
     let (cone_mult, _recoil_growth) =
-        stability_for(&shooter, stable, terrain_braced, cover, tuning);
+        stability_for(&shooter, stable, terrain_braced, sight, cover, tuning);
     Some(Steadiness::from_cone_mult(cone_mult))
 }

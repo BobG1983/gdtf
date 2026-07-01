@@ -94,24 +94,25 @@ fn melee_spec(shove: bool) -> MeleeWeaponSpec {
 /// so the point-blank shot resolves ONE connecting round.
 fn ranged_spec(shove: bool) -> WeaponSpec {
     WeaponSpec {
-        base_spread: BaseSpread::new(0.01),
-        accuracy:    Accuracy::new(5.0),
-        kickback:    Kickback::new(0.0),
-        fatal_bias:  FatalBias::new(7.0),
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(20),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
+        base_spread:      BaseSpread::new(0.01),
+        accuracy:         Accuracy::new(5.0),
+        kickback:         Kickback::new(0.0),
+        fatal_bias:       FatalBias::new(7.0),
+        damage:           WeaponDamage::new(12),
+        punch:            WeaponPunch::new(20),
+        shred:            WeaponShred::new(3),
+        damage_type:      DamageType::Kinetic,
+        magazine:         Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        fire_mode:        FireMode::new(vec![FireModeSpec::new(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.2),
             ModeShots::new(1),
         )]),
-        stable:      gdtf_battle_sim::weapon::Stable::new(false),
-        shove:       Shove::new(shove),
-        handedness:  Handedness::OneHanded,
+        stable:           gdtf_battle_sim::weapon::Stable::new(false),
+        shove:            Shove::new(shove),
+        handedness:       Handedness::OneHanded,
+        attachment_slots: Vec::new(),
     }
 }
 

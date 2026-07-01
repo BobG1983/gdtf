@@ -47,6 +47,34 @@ impl BraceContribution {
     }
 }
 
+/// The **sight stability bonus** — the points a [`Scoped`](crate::weapon::Scoped)
+/// weapon (a fitted precision optic) adds to the 0–100 stability score (GTW-542, child
+/// of GTW-41). A scoped weapon aims steadier, narrowing the cone via the cone-mult
+/// curve.
+///
+/// A tuning COEFFICIENT (mirrors [`BraceContribution`] / the GTW-526
+/// [`SuppressionStabilityPenalty`](crate::tuning::SuppressionStabilityPenalty) — a §1a
+/// additive stability term). This **positive** magnitude is fed by the composer
+/// ([`stability_for`](crate::aim::stability_for)) as a
+/// [`SightStability`](crate::stability::SightStability) contribution when the weapon is
+/// [`Scoped`](crate::weapon::Scoped). Private inner + derived [`Deref`];
+/// `#[serde(transparent)]`. The magnitude is tunable balance DATA (a modest steadying,
+/// smaller than the +30 brace) — tests assert only the STEADIER / NARROWER-cone
+/// invariant, never this number.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct SightStabilityBonus(f32);
+
+impl SightStabilityBonus {
+    /// Build a sight stability bonus from its point magnitude — for tests and
+    /// programmatic tuning edits; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(points: f32) -> Self {
+        Self(points)
+    }
+}
+
 /// A point sampled on a **stability curve** — one `(score, output)` pair (the 0–100
 /// stability score on the x axis, the curve's multiplier/coefficient on the y
 /// axis). Two curves read off the same score (resolution.md §1a): the cone-mult

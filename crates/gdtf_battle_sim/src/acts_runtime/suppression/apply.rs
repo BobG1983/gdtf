@@ -12,13 +12,15 @@
 //! [`SuppressorCell`](crate::ganger::SuppressorCell) updates to the newest shooter, but
 //! no second signal fires and the suppression does not stack.
 
-use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query, Res};
+use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query, Res, With};
 
 use crate::{
     acts::FireRequested,
+    fire::{MeleeQuery, WieldsQuery},
     ganger::{Faction, Position, Suppressed, SuppressorCell},
     metric::{Cell, CellLevel, Level},
     tuning::CombatTuning,
+    weapon::{Silenced, shooter_weapon_silenced},
 };
 
 /// A ganger was **freshly suppressed** at `at` — the presenter-facing signal a
@@ -122,14 +124,32 @@ fn within_radius(
 /// suppresses enemies and an ENEMY shot suppresses players (BOTH factions can be
 /// suppressed).
 ///
+/// GTW-542: a SILENCED shooter's shot produces NO suppression. Before marking anyone, the
+/// producer resolves the shooter's RANGED weapon (`shooter → Wields → the weapon entity`,
+/// EXCLUDING the melee weapon via the `melee` probe — the `dispatch_fire` resolution) and
+/// SKIPS the whole fire request if that weapon carries the [`Silenced`] tag (a `silenced`
+/// probe). So a suppressor removes the shot's NOISE footprint entirely, faction-blind.
+///
 /// Param-only (`MessageReader` / `Query` / `Res` / `Commands` / `MessageWriter`) — no
 /// `&mut World` (`bevy-traps.md` #7). Reads [`CombatTuning`] as `Option<Res>` so a
 /// harness without it fails closed (no suppression) rather than panicking — mirroring the
 /// `dispatch_fire` / `dispatch_open_door` `Option<Res>` precedent (`bevy-traps.md` #1).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the producer reads the FireRequested buffer, the shooter position/faction \
+              query, the candidate-ganger query, the GTW-542 silenced-weapon resolution (the \
+              wield + melee-probe + Silenced-marker queries), the Option<CombatTuning>, and the \
+              Commands + SuppressionApplied writer; each is a distinct Bevy SystemParam \
+              (mirroring dispatch_fire's own carve-out) — bundling would only hide the reads"
+)]
 pub fn apply_suppression(
     mut fires: MessageReader<FireRequested>,
     positions: Query<(&Position, &Faction)>,
     gangers: Query<(Entity, &Position, &Faction, Option<&Suppressed>)>,
+    // GTW-542: resolve the shooter's RANGED weapon to gate on its `Silenced` tag.
+    wields: WieldsQuery,
+    melee: MeleeQuery,
+    silenced: Query<(), With<Silenced>>,
     tuning: Option<Res<CombatTuning>>,
     mut commands: Commands,
     mut applied: MessageWriter<SuppressionApplied>,
@@ -147,6 +167,13 @@ pub fn apply_suppression(
         bevy::platform::collections::HashSet::default();
 
     for fire in fires.read() {
+        // GTW-542: a SILENCED shot makes NO noise — skip the whole request before marking
+        // anyone. Resolve the shooter's RANGED weapon (excluding its melee weapon) and skip
+        // if it carries the Silenced tag. A shooter with no resolvable ranged weapon is
+        // treated as un-silenced (fall through — the shot came from somewhere loud).
+        if shooter_weapon_silenced(fire.shooter, &wields, &melee, &silenced) {
+            continue;
+        }
         // Resolve the shooter's origin + side; a shooter missing from the query (an
         // unexpected non-ganger) cannot suppress — skip it (fail closed).
         let Ok((shooter_position, shooter_faction)) = positions.get(fire.shooter) else {

@@ -34,7 +34,7 @@ use crate::{
         CombatTuning, ReactionsUsed, interrupt_probability, may_interrupt, reaction_score,
         rolls_interrupt,
     },
-    weapon::{FireMode, Handedness},
+    weapon::{FireMode, Handedness, Silenced, shooter_weapon_silenced},
 };
 
 /// One ganger's reaction-relevant snapshot — the Copy row [`reaction_trigger`] reads out of
@@ -203,9 +203,10 @@ type ReactionGangers<'world, 'state> = Query<
               weapon-entity queries (to resolve the reactor's single-shot spec exactly as \
               dispatch_fire does), the melee-marker + GTW-526 suppressed-marker probes, the \
               mutable ReactionsUsed counter, the four read grids + tuning the \
-              can_see/can_fire/can_engage gates need, the seeded ReactionRng, and the two act \
-              MessageWriters; each is a distinct Bevy SystemParam, mirroring dispatch_fire's \
-              own argument-count carve-out — bundling would only hide the reads"
+              can_see/can_fire/can_engage gates need, the seeded ReactionRng, the GTW-542 \
+              silenced-weapon probe, and the two act MessageWriters; each is a distinct Bevy \
+              SystemParam, mirroring dispatch_fire's own argument-count carve-out — bundling \
+              would only hide the reads"
 )]
 #[expect(
     clippy::too_many_lines,
@@ -240,6 +241,12 @@ pub fn reaction_trigger(
     // ZERO ReactionRng draws (determinism-critical: a suppressed unit must not perturb the
     // RNG stream). A `Query<(), With<Suppressed>>`, disjoint from every other param.
     suppressed: Query<(), With<Suppressed>>,
+    // GTW-542: the SILENCED-weapon probe — a read-only marker query so an ACT by a shooter
+    // wielding a silenced weapon does NOT trip a reaction (a suppressor removes the shot's
+    // reveal). Gated on the ACTOR (the declaration's shooter), resolved via
+    // `shooter → Wields → the weapon entity`, so a silenced INTERRUPT shot also stays silent.
+    // A `Query<(), With<Silenced>>`, disjoint from every other param.
+    silenced: Query<(), With<Silenced>>,
     // C4: the per-turn interrupt counter, mutated through its own `increment` (a different
     // component than the read snapshot, so this &mut query is disjoint — no ParamSet).
     mut used: Query<&mut ReactionsUsed>,
@@ -299,6 +306,14 @@ pub fn reaction_trigger(
     // order, NOT HashSet order, so determinism holds.)
     let mut actors: HashSet<Entity> = moved.iter().collect();
     for declaration in declarations.read() {
+        // GTW-542: a SILENCED shot does not reveal — a FireDeclaration whose shooter wields a
+        // silenced weapon is NOT an act-in-LOS event, so it never enters the actor set (no
+        // reactor rolls against it, no ReactionRng draws). A moving shooter still reveals via
+        // the Changed<Position> surface above; only the shot's noise is removed. A silenced
+        // INTERRUPT shot's own FireDeclaration is gated the same way (it stays silent too).
+        if shooter_weapon_silenced(declaration.shooter, &wields, &melee, &silenced) {
+            continue;
+        }
         actors.insert(declaration.shooter);
     }
     if actors.is_empty() {

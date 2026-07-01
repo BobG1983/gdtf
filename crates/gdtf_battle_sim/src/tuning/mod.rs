@@ -15,6 +15,8 @@
 //!
 //! ## Module map (split by tuning DOMAIN, GTW-201 code-health wave)
 //!
+//! - [`attachment`] — the GTW-542 weapon-attachment tuning group ([`AttachmentTuning`] +
+//!   the no-payload tag magnitudes + the payload-newtype leaves the tags carry).
 //! - [`band`] — the projectile clearance band edges (battle-space.md §"Banding").
 //! - [`severity`] — the resolution.md §6 wound-severity scaling + bucket edges.
 //! - [`body_part`] — the §4 body-part hit-location weights.
@@ -44,6 +46,7 @@
 //!   computed-stat derivation weights / divisors / TU params (a SEPARATE store from
 //!   `CombatTuning`, the user-directed split). Loaded from `assets/core_tuning/stat.tuning.ron`.
 
+mod attachment;
 mod band;
 mod body_part;
 mod combat_tuning;
@@ -64,13 +67,16 @@ mod wounds;
 #[cfg(test)]
 mod test;
 
+pub use attachment::{
+    AttachmentTuning, BraceBonus, ConeMultDelta, ReloadDelta, ReloadFactor, SpreadPenalty,
+};
 pub use band::{BandEdge, ProjectileBandEdges};
 pub use body_part::{BodyPartWeight, BodyPartWeights};
 pub use combat_tuning::CombatTuning;
 pub use cone::{
     AimConeMult, AimHeightFrac, AimTuPremium, BraceContribution, ConcentrationCoeff,
-    MuzzleForwardOffset, MuzzleHeight, RecoilClimb, SilhouetteTop, StabilityCurveCoord,
-    StanceContribution,
+    MuzzleForwardOffset, MuzzleHeight, RecoilClimb, SightStabilityBonus, SilhouetteTop,
+    StabilityCurveCoord, StanceContribution,
 };
 pub use cone_groups::{
     AimMode, BraceMinHeight, ConcentrationCoeffs, ConeStabilityTuning, MuzzleHeights,

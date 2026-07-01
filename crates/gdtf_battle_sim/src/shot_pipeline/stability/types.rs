@@ -74,6 +74,46 @@ impl SuppressionStability {
     }
 }
 
+/// The **sight stability contribution** — the points a
+/// [`Scoped`](crate::weapon::Scoped) weapon's precision optic *adds* to the score
+/// (GTW-542, child of GTW-41; a scoped weapon aims steadier → a tighter cone).
+///
+/// A scoped weapon shoots steadier: the tunable sight bonus is a **positive** additive
+/// contribution raising the stability score, so the cone-mult curve reads a *lower*
+/// [`ConeMult`] (a **narrower** dispersion cone). The seam mirrors
+/// [`SuppressionStability`] / [`EmplacementStability`] EXACTLY — an additive term summed
+/// by [`crate::stability::stability`] with a [`SightStability::none`] zero/identity
+/// constructor callers pass when the weapon carries no sight, so an un-sighted weapon's
+/// score is **byte-identical** to before the seam existed.
+///
+/// The magnitude is the tunable [`SightStabilityBonus`](crate::tuning::SightStabilityBonus)
+/// leaf, resolved to `+bonus` by the composer ([`crate::aim::stability_for`]) when the
+/// weapon carries [`Scoped`](crate::weapon::Scoped). An INPUT to
+/// [`crate::stability::stability`], distinct from the other four contributions. Private
+/// inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct SightStability(f32);
+
+impl SightStability {
+    /// Build a sight stability contribution from its point magnitude.
+    ///
+    /// Callers pass a **positive** magnitude (the sight bonus) so a scoped weapon's
+    /// contribution *raises* the score; a negative magnitude would shake the weapon,
+    /// the opposite of the design intent.
+    #[must_use]
+    pub const fn new(points: f32) -> Self {
+        Self(points)
+    }
+
+    /// The identity sight contribution — **zero** points, the value every un-sighted
+    /// weapon passes (so the additive term vanishes and the score is byte-identical to
+    /// a run without the seam).
+    #[must_use]
+    pub const fn none() -> Self {
+        Self(0.0)
+    }
+}
+
 /// The **normalised stability score** — the single 0–100 value the two curves
 /// read off (resolution.md §1a: "Normalised over 100"). Built by
 /// [`crate::stability::stability`] from the summed contributions, **clamped**

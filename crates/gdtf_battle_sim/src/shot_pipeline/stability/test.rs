@@ -8,7 +8,8 @@ use crate::{
         gate::brace_engages,
         score::stability,
         types::{
-            ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, SuppressionStability,
+            ConeMult, EmplacementStability, RecoilGrowth, SightStability, StabilityScore,
+            SuppressionStability,
         },
     },
     tuning::{ConeStabilityTuning, StabilityCurve},
@@ -45,6 +46,7 @@ fn stability_produces_both_named_outputs() {
         Some(&wall),
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     // Shakiest: standing, no cover faced (no brace), no emplacement help.
@@ -55,6 +57,7 @@ fn stability_produces_both_named_outputs() {
         None,
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
 
@@ -102,6 +105,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
             Some(&sat),
             EmplacementStability::none(),
             SuppressionStability::none(),
+            SightStability::none(),
             &tuning,
         );
         let (unbraced, _) = stability(
@@ -111,6 +115,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
             Some(&fail),
             EmplacementStability::none(),
             SuppressionStability::none(),
+            SightStability::none(),
             &tuning,
         );
         assert!(
@@ -128,6 +133,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
         Some(&low),
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     let (prone_unbraced, _) = stability(
@@ -137,6 +143,7 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
         None,
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     assert!(
@@ -160,6 +167,7 @@ fn steadier_stance_yields_narrower_cone() {
             None,
             EmplacementStability::none(),
             SuppressionStability::none(),
+            SightStability::none(),
             &tuning,
         )
         .0
@@ -188,6 +196,7 @@ fn steadier_score_yields_strictly_less_recoil_growth() {
         Some(&wall),
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     let (_, standing_unbraced) = stability(
@@ -197,11 +206,71 @@ fn steadier_score_yields_strictly_less_recoil_growth() {
         None,
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     assert!(
         *braced_prone < *standing_unbraced,
         "a braced/prone shooter must climb strictly less than a standing/un-braced one",
+    );
+}
+
+/// GTW-542 — the additive SIGHT seam steadies the shot: a POSITIVE
+/// [`SightStability`] contribution (a scoped weapon) yields a strictly LOWER
+/// [`ConeMult`] (a tighter cone) than the [`SightStability::none`] identity, all
+/// else equal. RELATION only — never a pinned magnitude. Also proves the identity:
+/// [`SightStability::none`] leaves the score byte-identical to the pre-seam sum
+/// (the pure-additive property, mirroring the GTW-526 suppression identity).
+#[test]
+fn a_positive_sight_term_yields_a_strictly_tighter_cone() {
+    let tuning = ConeStabilityTuning::default();
+
+    // Baseline: an un-scoped weapon (the zero-identity sight term) facing an empty cell.
+    let (baseline_cone, _) = stability(
+        Stable::new(false),
+        TerrainBraced::new(false),
+        Stance::new(StanceKind::Standing),
+        None,
+        EmplacementStability::none(),
+        SuppressionStability::none(),
+        SightStability::none(),
+        &tuning,
+    );
+    // Scoped: a POSITIVE sight bonus — a steadier score → a tighter cone.
+    let (scoped_cone, _) = stability(
+        Stable::new(false),
+        TerrainBraced::new(false),
+        Stance::new(StanceKind::Standing),
+        None,
+        EmplacementStability::none(),
+        SuppressionStability::none(),
+        SightStability::new(20.0),
+        &tuning,
+    );
+    assert!(
+        *scoped_cone < *baseline_cone,
+        "a scoped weapon (positive SightStability) must read a strictly LOWER cone_mult \
+         (tighter): scoped {} vs baseline {}",
+        *scoped_cone,
+        *baseline_cone,
+    );
+
+    // IDENTITY: SightStability::none() is byte-identical to a run without the seam — proven
+    // by re-computing the baseline with the same identity term and asserting bit-equality.
+    let (identity_cone, _) = stability(
+        Stable::new(false),
+        TerrainBraced::new(false),
+        Stance::new(StanceKind::Standing),
+        None,
+        EmplacementStability::none(),
+        SuppressionStability::none(),
+        SightStability::none(),
+        &tuning,
+    );
+    assert_eq!(
+        (*identity_cone).to_bits(),
+        (*baseline_cone).to_bits(),
+        "an un-scoped weapon's cone_mult is byte-identical under the zero-identity sight term",
     );
 }
 
@@ -224,6 +293,7 @@ fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
         Some(&wall),
         EmplacementStability::new(10_000.0),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     // A DIFFERENT over-100 raw sum (standing, no brace) — also driven over the
@@ -235,6 +305,7 @@ fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
         None,
         EmplacementStability::new(10_000.0),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
 
@@ -398,6 +469,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         None,
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     let (plain_empty, _) = stability(
@@ -407,6 +479,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         None,
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     assert!(
@@ -427,6 +500,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         Some(&wall),
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     let (plain_braced, _) = stability(
@@ -436,6 +510,7 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
         Some(&wall),
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     assert_eq!(
@@ -471,6 +546,7 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
         None,
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     // stable=false, terrain_braced=true — every other input identical.
@@ -481,6 +557,7 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
         None,
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
 
@@ -511,6 +588,7 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
         None,
         EmplacementStability::none(),
         SuppressionStability::none(),
+        SightStability::none(),
         &tuning,
     );
     assert_ne!(

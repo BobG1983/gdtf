@@ -47,6 +47,7 @@
 //! the registry ([`registry`]). This `mod.rs` is wiring-only; every public path is
 //! preserved via the re-exports below.
 
+mod attachment;
 mod bundle;
 mod components;
 mod fire_mode;
@@ -58,10 +59,11 @@ mod spec;
 #[cfg(test)]
 mod test;
 
+pub use attachment::{AttachTag, AttachmentEffects, shooter_weapon_silenced};
 pub use bundle::{DamageProfile, HandlingProfile, WeaponBundle, WeaponStats};
 pub use components::{
-    Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Shove, Stable,
-    Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Scoped, Shove,
+    Silenced, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSightBonus,
 };
 pub use fire_mode::{
     AoeRange, BlastRadius, ConeHalfAngle, FireMode, FireModeSpec, HitType, ModeConeMult, ModeKind,

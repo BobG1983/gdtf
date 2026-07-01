@@ -395,10 +395,14 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
     // (registry spec → into_bundle) — the expected value the template_value composition
     // must carry through (NOT the Default sentinel).
     let weapon_key = WeaponName::new(TEST_WEAPON_KEY.to_owned());
-    let expected_damage_type = test_registry()
-        .spec(&weapon_key)
-        .cloned()
-        .map(|spec| spec.into_bundle(weapon_key.clone()).damage_type);
+    let expected_damage_type = test_registry().spec(&weapon_key).cloned().map(|spec| {
+        spec.into_bundle(
+            weapon_key.clone(),
+            &crate::tuning::AttachmentTuning::default(),
+        )
+        .0
+        .damage_type
+    });
     let Some((mut app, setup)) = run_setup(situation) else {
         return;
     };

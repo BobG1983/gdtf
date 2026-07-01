@@ -8,7 +8,9 @@ use crate::{
     faced_cell::faced_cell,
     ganger::{Direction, StanceKind},
     metric::CellLevel,
-    stability::{EmplacementStability, SuppressionStability, TerrainBraced, stability},
+    stability::{
+        EmplacementStability, SightStability, SuppressionStability, TerrainBraced, stability,
+    },
     tuning::CombatTuning,
     weapon::Stable,
 };
@@ -33,6 +35,7 @@ fn stability_for_bit_equals_a_direct_stability_call() {
         &shooter,
         stable,
         TerrainBraced::new(false),
+        SightStability::none(),
         &ledger,
         &tuning,
     );
@@ -49,6 +52,9 @@ fn stability_for_bit_equals_a_direct_stability_call() {
         // The shooter (via `ShooterState::new`) is un-suppressed, so the composer feeds the
         // identity suppression term — match it here for the bit-equality.
         SuppressionStability::none(),
+        // The weapon carries no sight attachment (an un-scoped WeaponStats::stats view), so
+        // the composer feeds the identity sight term — match it here for the bit-equality.
+        SightStability::none(),
         &tuning.cone_stability,
     );
 
@@ -84,14 +90,21 @@ fn brace_at_faced_cell_is_steadier_than_an_empty_cell() {
         &shooter,
         stable,
         TerrainBraced::new(false),
+        SightStability::none(),
         &braced_ledger,
         &tuning,
     );
 
     // Unbraced: an empty ledger — no cover at the faced cell.
     let empty = CoverLedger::new();
-    let (empty_cone, _) =
-        stability_for(&shooter, stable, TerrainBraced::new(false), &empty, &tuning);
+    let (empty_cone, _) = stability_for(
+        &shooter,
+        stable,
+        TerrainBraced::new(false),
+        SightStability::none(),
+        &empty,
+        &tuning,
+    );
 
     assert!(
         *braced_cone < *empty_cone,

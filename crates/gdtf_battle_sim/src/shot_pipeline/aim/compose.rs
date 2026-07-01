@@ -9,11 +9,11 @@ use crate::{
     faced_cell::faced_cell,
     metric::CellLevel,
     stability::{
-        ConeMult, EmplacementStability, RecoilGrowth, SuppressionStability, TerrainBraced,
-        stability,
+        ConeMult, EmplacementStability, RecoilGrowth, SightStability, SuppressionStability,
+        TerrainBraced, stability,
     },
     tuning::CombatTuning,
-    weapon::{FireModeSpec, Stable, WeaponStats},
+    weapon::{FireModeSpec, Scoped, Stable, WeaponSightBonus, WeaponStats},
 };
 
 /// Compose a shooter's §1a stability read off its ganger state and the model
@@ -47,15 +47,20 @@ use crate::{
 /// `stable` is the weapon's [`Stable`] tag — a stable weapon braces
 /// unconditionally. `terrain_braced` is the GTW-392 [`TerrainBraced`] decision
 /// from the fire call site; the HUD passes the live value it computed from the
-/// grids. This composer receives no [`crate::weapon::Weapon`] (only the
-/// shooter's ganger state), so both tags are explicit params; [`cone_for`] sources
-/// `stable` off the weapon it holds. Every coefficient and both curves come from
-/// `tuning`'s `cone_stability` sub-field; nothing tunable is hardcoded.
+/// grids. `sight` is the GTW-542 additive sight term — the tunable
+/// [`SightStabilityBonus`](crate::tuning::SightStabilityBonus) when the weapon carries a
+/// [`Scoped`](crate::weapon::Scoped) optic, else [`SightStability::none`] (the zero
+/// identity, so the score is byte-identical to an un-sighted weapon). This composer
+/// receives no [`crate::weapon::Weapon`] (only the shooter's ganger state), so all three
+/// weapon terms are explicit params; [`cone_for`] sources them off the weapon it holds.
+/// Every coefficient and both curves come from `tuning`'s `cone_stability` sub-field;
+/// nothing tunable is hardcoded.
 #[must_use]
 pub fn stability_for(
     shooter: &Shooter,
     stable: Stable,
     terrain_braced: TerrainBraced,
+    sight: SightStability,
     cover: &CoverLedger,
     tuning: &CombatTuning,
 ) -> (ConeMult, RecoilGrowth) {
@@ -76,7 +81,9 @@ pub fn stability_for(
         None => SuppressionStability::none(),
     };
     // Wrap the landed verb verbatim — no emplacements exist yet, so pass the
-    // identity emplacement seam.
+    // identity emplacement seam. `sight` is the GTW-542 additive sight term, resolved by
+    // `cone_for` off the weapon's Scoped attachment (None = SightStability::none, so the
+    // score is byte-identical to an un-sighted weapon).
     stability(
         stable,
         terrain_braced,
@@ -84,6 +91,7 @@ pub fn stability_for(
         faced,
         EmplacementStability::none(),
         suppression,
+        sight,
         &tuning.cone_stability,
     )
 }
@@ -110,10 +118,13 @@ pub fn stability_for(
 /// Returns the named [`ConeAngle`] (radians — angular, **zero pixels**); every
 /// factor magnitude comes from weapon / fire-mode / tuning data, none hardcoded.
 ///
-/// The weapon's §1a stability contribution is its [`Stable`] tag, sourced off the
-/// `weapon` [`WeaponStats`] borrow-view here (GTW-200: the weapon is ECS components,
-/// read through the view) and threaded to [`stability_for`] (a stable weapon braces
-/// unconditionally) — there is no weapon-points value any more. `terrain_braced` is
+/// The weapon's §1a stability contribution is its [`Stable`] tag PLUS the GTW-542
+/// [`Scoped`](crate::weapon::Scoped) attachment, both sourced off the `weapon`
+/// [`WeaponStats`] borrow-view here (GTW-200: the weapon is ECS components, read through
+/// the view) and threaded to [`stability_for`] — a stable weapon braces unconditionally,
+/// and a sighted weapon adds the tunable [`SightStabilityBonus`](crate::tuning::SightStabilityBonus)
+/// (an un-sighted weapon resolves the zero-identity [`SightStability::none`], so the cone
+/// is byte-identical to before the attachment). `terrain_braced` is
 /// the GTW-392 [`TerrainBraced`] decision from the fire call site, threaded through
 /// so the cone reads the stair brace. `mode` is the selected fire mode's
 /// [`FireModeSpec`] (its [`crate::weapon::ModeConeMult`] is the firemode term);
@@ -133,11 +144,23 @@ pub fn cone_for(
     terrain_braced: TerrainBraced,
     tuning: &CombatTuning,
 ) -> ConeAngle {
+    // GTW-542: resolve the sight term off the weapon's optional Scoped attachment — a
+    // fitted sight (`Some`) feeds the positive bonus (the weapon's own per-fitting override
+    // if present, else the universal tuning leaf); an un-sighted weapon (`None`) resolves
+    // the zero identity, so its cone is byte-identical to before the attachment existed.
+    let sight = sight_stability(weapon.sight, weapon.sight_bonus, tuning);
     // Step 1 — the stability read (faced cell + model cover + terrain brace, inside
     // stability_for); the weapon's `stable` tag and terrain_braced are the two brace
-    // sources fed through the single OR-combined brace_engages gate.
-    let (cone_mult, recoil_growth) =
-        stability_for(shooter, *weapon.stable, terrain_braced, cover, tuning);
+    // sources fed through the single OR-combined brace_engages gate, and the GTW-542
+    // `sight` term is the additive sight-stability seam.
+    let (cone_mult, recoil_growth) = stability_for(
+        shooter,
+        *weapon.stable,
+        terrain_braced,
+        sight,
+        cover,
+        tuning,
+    );
     // Step 2 — the aim term off the shooter's Aiming flag (read from tuning).
     let aim = aim_cone_mult(*shooter.aiming, &tuning.cone_stability);
     // Step 3 — fold the five §1a factors into θ_cone via the landed cone_angle.
@@ -150,4 +173,39 @@ pub fn cone_for(
         cone_mult,
         aim,
     )
+}
+
+/// Resolve the GTW-542 additive **sight** stability term off a weapon's optional
+/// [`Scoped`](Scoped) attachment and optional per-weapon
+/// [`WeaponSightBonus`](WeaponSightBonus) override.
+///
+/// A weapon carrying a fitted sight (`Some(Scoped(true))`) contributes a positive
+/// [`SightStability`] — a steadier aim, so a *lower* [`ConeMult`] (a tighter cone). The
+/// bonus MAGNITUDE is the weapon's own per-fitting `bonus` when present (the whisper-bore
+/// / dead-man's-brace attachments carry their own points), else the universal
+/// [`SightStabilityBonus`](crate::tuning::SightStabilityBonus) tuning leaf (the NAMED
+/// sight attachment). An un-sighted weapon (`sighted == None` — or a defensive
+/// `Scoped(false)`) resolves [`SightStability::none`] (the zero identity), so its
+/// stability score — and thus its cone — is **byte-identical** to before the attachment
+/// existed (the pure-additive property).
+///
+/// `pub` so the E4.5 [`fire`](crate::fire::fire) burst loop can resolve the SAME sight
+/// term for its second [`stability_for`] read (the `recoil_growth`-only recompute) as
+/// `cone_for` used for the cone width, keeping cone + recoil damping consistent within a
+/// round.
+#[must_use]
+pub fn sight_stability(
+    sighted: Option<&Scoped>,
+    bonus: Option<&WeaponSightBonus>,
+    tuning: &CombatTuning,
+) -> SightStability {
+    match sighted {
+        Some(sight) if **sight => {
+            // A per-fitting override (whisper-bore / dead-man's-brace) supersedes the
+            // universal tuning bonus a plain NAMED sight reads.
+            let points = bonus.map_or(*tuning.cone_stability.sight_stability_bonus, |b| **b);
+            SightStability::new(points)
+        }
+        _ => SightStability::none(),
+    }
 }

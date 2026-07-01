@@ -74,25 +74,26 @@ fn ground(x: i32, y: i32) -> CellLevel {
 /// through the (armorless) test armor. Single-shot, so ONE round resolves the template.
 fn aoe_weapon_spec(hit_type: HitType) -> WeaponSpec {
     WeaponSpec {
-        base_spread: BaseSpread::new(0.0),
-        accuracy:    Accuracy::new(5.0),
-        kickback:    Kickback::new(0.0),
-        fatal_bias:  FatalBias::new(2.0),
-        damage:      WeaponDamage::new(20),
-        punch:       WeaponPunch::new(30),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Blast,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::with_hit_type(
+        base_spread:      BaseSpread::new(0.0),
+        accuracy:         Accuracy::new(5.0),
+        kickback:         Kickback::new(0.0),
+        fatal_bias:       FatalBias::new(2.0),
+        damage:           WeaponDamage::new(20),
+        punch:            WeaponPunch::new(30),
+        shred:            WeaponShred::new(3),
+        damage_type:      DamageType::Blast,
+        magazine:         Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        fire_mode:        FireMode::new(vec![FireModeSpec::with_hit_type(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.2),
             ModeShots::new(1),
             hit_type,
         )]),
-        stable:      Stable::new(true),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
+        stable:           Stable::new(true),
+        shove:            Shove::new(false),
+        handedness:       Handedness::OneHanded,
+        attachment_slots: Vec::new(),
     }
 }
 

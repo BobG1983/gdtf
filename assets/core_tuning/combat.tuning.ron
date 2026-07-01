@@ -131,6 +131,10 @@
         ),
         // Points added when the faced cell's cover suits the stance (automatic brace).
         brace_contribution: 30.0,  // +30 to the stability score when braced (resolution.md §1a)
+        // GTW-542 sight attachment: points a `Sighted` weapon (a fitted precision optic) adds
+        // to the stability score — a scoped weapon aims steadier -> a tighter cone. A modest
+        // steadying (half the brace). STARTING POINT (tunable).
+        sight_stability_bonus: 15.0,
         // The minimum faced-cover band each stance needs for its brace to engage:
         // prone braces on LOW+, kneeling on MID+, standing on HIGH (resolution.md §1a).
         brace_min_height: (
@@ -266,5 +270,14 @@
     // takes (armor honored). STARTING POINT (tunable balance data) — value-agnostic tests
     // only (monotone in storeys, a hot-edit shifts the blow), never a pinned magnitude.
     per_storey_damage: 6,  // base fall damage PER STOREY fallen (linear); a 2-storey drop deals ×2
+
+    // GTW-542 weapon attachments: the magnitudes the NO-PAYLOAD attachment tags read at the
+    // spawn-side folder-function seam. Every OTHER attachment tag carries its magnitude as a
+    // named payload on the tag itself (authored in the weapon .ron's attachment_slots list).
+    // STARTING POINTS (tunable balance data) — value-agnostic tests only.
+    attachment: (
+        fast_reload_factor: 0.5,  // FastReload: multiplies the weapon's reload_tu (< 1 = faster)
+        whisper_bore_sight: 8.0,  // WhisperBore: small stability-score bonus (a suppressor + modest steadying)
+    ),
 
 )

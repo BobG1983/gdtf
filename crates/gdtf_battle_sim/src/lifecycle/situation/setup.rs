@@ -42,12 +42,13 @@ use crate::{
         floor::FloorCostGrid,
         openable::{OpenState, OpenableBlocking},
     },
-    tuning::{GangerStatTuning, MoveCost, ReactionsUsed},
+    tuning::{AttachmentTuning, GangerStatTuning, MoveCost, ReactionsUsed},
     vertical::{LinkKind, build_vertical_link_graph},
     weapon::{
-        Accuracy, BaseSpread, FISTS_KEY, FatalBias, FightMode, FireMode, Kickback, MeleeWeapon,
-        MeleeWeaponBundle, MeleeWeaponRegistry, Reach, Shove, Stable, Weapon, WeaponBundle,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, Wields,
+        Accuracy, AttachmentEffects, BaseSpread, FISTS_KEY, FatalBias, FightMode, FireMode,
+        Kickback, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, Reach, Shove, Stable,
+        Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+        Wields,
     },
 };
 
@@ -111,13 +112,28 @@ pub struct BattleRegistries<'a> {
     /// (GTW-491); `None` skips terrain resolution (cover / slab keys then fail with
     /// `TerrainNotFound`, and the floor uses the [`fallback_floor_cost`](setup_battle)).
     pub terrain:       Option<&'a TerrainDefRegistry>,
+    /// The GTW-542 weapon-attachment tuning — the magnitudes the NO-PAYLOAD attachment tags
+    /// ([`FastReload`](crate::weapon::AttachTag::FastReload) /
+    /// [`WhisperBore`](crate::weapon::AttachTag::WhisperBore)) read as
+    /// [`into_bundle`](crate::weapon::WeaponSpec::into_bundle) folds each ganger's
+    /// `attachment_slots` list. An OWNED `Copy` value (not a registry ref); [`new`](Self::new)
+    /// defaults it to [`AttachmentTuning::default`], so a caller without loaded combat tuning
+    /// still resolves attachments with the doc defaults — combat is never blocked by missing
+    /// balance data (the `Option<Res<CombatTuning>>` fail-safe precedent). The real app path
+    /// passes the loaded value via [`with_attachment_tuning`](Self::with_attachment_tuning).
+    pub attachment:    AttachmentTuning,
 }
 
 impl<'a> BattleRegistries<'a> {
     /// Build the resolution borrow-bundle from its six registry / tuning refs — the shape
     /// every [`setup_battle`] caller assembles (GTW-505 added `melee_weapons`).
+    ///
+    /// The GTW-542 `attachment` tuning defaults to [`AttachmentTuning::default`] (the doc
+    /// magnitudes), so existing callers resolve attachments with defensible defaults; the
+    /// app path overrides it with the loaded value via
+    /// [`with_attachment_tuning`](Self::with_attachment_tuning).
     #[must_use]
-    pub const fn new(
+    pub fn new(
         gangs: &'a GangRegistry,
         weapons: &'a WeaponRegistry,
         melee_weapons: &'a MeleeWeaponRegistry,
@@ -132,7 +148,17 @@ impl<'a> BattleRegistries<'a> {
             armor,
             stat_tuning,
             terrain,
+            attachment: AttachmentTuning::default(),
         }
+    }
+
+    /// The same borrow-bundle carrying an explicit GTW-542 [`AttachmentTuning`] — the app
+    /// path passes the loaded combat tuning's `attachment` group so the `FastReload` /
+    /// `WhisperBore` folder-functions read the AUTHORED magnitudes, not the defaults.
+    #[must_use]
+    pub const fn with_attachment_tuning(mut self, attachment: AttachmentTuning) -> Self {
+        self.attachment = attachment;
+        self
     }
 }
 
@@ -364,8 +390,13 @@ fn worn_piece_scene(part: BodyPart, piece: crate::armor::ArmorPiece) -> impl Sce
 /// [`queue_spawn_related_scenes`](bevy::scene::EntityCommandsSceneExt::queue_spawn_related_scenes)
 /// surface takes a [`SceneList`], so the single weapon scene is wrapped in a one-element
 /// `bsn_list!` (the same shape the multi-weapon loadout the ADR anticipates would take).
-fn wielded_weapon_scenes(weapon: &WeaponBundle) -> impl SceneList {
-    bsn_list! { wielded_weapon_scene(weapon) }
+///
+/// GTW-542: `attachments` are the resolved sibling tags of the weapon's `attachment_slots`
+/// list (the leaf rewrites are already baked into `weapon` by
+/// [`into_bundle`](crate::weapon::WeaponSpec::into_bundle)); they compose onto the SAME
+/// weapon entity in [`wielded_weapon_scene`].
+fn wielded_weapon_scenes(weapon: &WeaponBundle, attachments: AttachmentEffects) -> impl SceneList {
+    bsn_list! { wielded_weapon_scene(weapon, attachments) }
 }
 
 /// Compose ONE wielded-weapon entity as a `bsn!` [`Scene`] — the [`Weapon`] marker plus
@@ -382,7 +413,15 @@ fn wielded_weapon_scenes(weapon: &WeaponBundle) -> impl SceneList {
 /// The [`WieldedBy`](crate::weapon::WieldedBy) back-reference is inserted by the
 /// framework's `queue_spawn_related_scenes::<Wields>` wiring, NOT here, so it is absent
 /// from this scene.
-fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
+///
+/// GTW-542: the resolved `attachments` add the OPTIONAL sibling tags —
+/// [`Scoped`](crate::weapon::Scoped) / [`Silenced`](crate::weapon::Silenced) /
+/// [`WeaponSightBonus`](crate::weapon::WeaponSightBonus) — each composed as an
+/// `Option<`[`template_value`]`>` (a `None` resolves to a no-op, per `bevy_scene`'s
+/// `impl Scene for Option<S>`), so a weapon with no attachment fits NONE of them and
+/// spawns byte-identical to before GTW-542. The weapon-number LEAF rewrites are already
+/// baked into `weapon`.
+fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -> impl Scene {
     // bsn! `Type::new(expr)` stores a DEFERRED constructor, so every captured value must
     // be OWNED (the GTW-322 `'static` finding). Read each stat by value out of the
     // bundle FIRST, then let the macro capture the owned locals (never the `&` param).
@@ -408,6 +447,14 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
     let damage_type = weapon.damage_type;
     let magazine = weapon.magazine;
     let handedness = weapon.handedness;
+    // GTW-542: the OPTIONAL attachment sibling tags — each `Some` produces a
+    // `template_value` scene, each `None` an Option-scene no-op (bevy_scene's
+    // `impl Scene for Option<S>`), so an un-attached weapon composes none and stays
+    // byte-identical. `Sighted` / `Silenced` / `WeaponSightBonus` all derive
+    // `Clone + Default + Unpin`, so `template_value` applies (the GTW-322 bound matrix).
+    let sighted = attachments.sighted().map(template_value);
+    let silenced = attachments.silenced().map(template_value);
+    let sight_bonus = attachments.sight_bonus().map(template_value);
     (
         bsn! {
             Weapon
@@ -428,6 +475,10 @@ fn wielded_weapon_scene(weapon: &WeaponBundle) -> impl Scene {
         template_value(damage_type),
         template_value(magazine),
         template_value(handedness),
+        // GTW-542: the optional attachment sibling tags (a `None` inserts nothing).
+        sighted,
+        silenced,
+        sight_bonus,
     )
 }
 
@@ -600,6 +651,7 @@ pub fn setup_battle(
         armor,
         stat_tuning,
         terrain,
+        attachment,
     } = registries;
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
     // setup before any entity is spawned or any resource inserted (no partial,
@@ -653,7 +705,10 @@ pub fn setup_battle(
                 weapon: member.weapon.clone(),
             });
         };
-        weapon_bundles.push(spec.clone().into_bundle(member.weapon.clone()));
+        // GTW-542: fold the weapon's attachment slots — the returned WeaponBundle already
+        // carries the leaf rewrites; the AttachmentEffects carries the sibling tags the
+        // spawn seam composes onto the weapon entity.
+        weapon_bundles.push(spec.clone().into_bundle(member.weapon.clone(), &attachment));
     }
 
     // GTW-505: resolve every ganger's MELEE weapon BEFORE the spawn loop too (abort-first,
@@ -737,12 +792,13 @@ pub fn setup_battle(
     //    `SpawnScene` schedule — so occupancy is keyed off the ganger's authored `at`
     //    value + the reserved id, never off the deferred `Position` component.
     let mut occupants = Vec::with_capacity(resolved_members.len());
-    for ((((placed, member), weapon_bundle), melee_bundle), armor_spec) in resolved_members
-        .iter()
-        .copied()
-        .zip(weapon_bundles)
-        .zip(melee_bundles)
-        .zip(armor_specs)
+    for ((((placed, member), (weapon_bundle, weapon_attachments)), melee_bundle), armor_spec) in
+        resolved_members
+            .iter()
+            .copied()
+            .zip(weapon_bundles)
+            .zip(melee_bundles)
+            .zip(armor_specs)
     {
         // The ganger carries its OWN state only — NO equipment stat data (GTW-323
         // slice 3, ADR-0004). The empty InflictedWounds record (GTW-279) and the
@@ -773,9 +829,15 @@ pub fn setup_battle(
         // cascade-despawns it). This weapon entity is the ONLY weapon storage — the
         // sim's `fire()` read+wear AND the presenter's weapon panel / fire-mode reads
         // both go through `ganger → Wields → the weapon entity` (no on-ganger copy).
+        // GTW-542: the resolved attachment SIBLING tags (Sighted / Silenced /
+        // WeaponSightBonus) ride onto the SAME weapon entity via the scene composition (the
+        // leaf rewrites are already baked into `weapon_bundle` by `into_bundle`).
         commands
             .entity(entity)
-            .queue_spawn_related_scenes::<Wields>(wielded_weapon_scenes(&weapon_bundle));
+            .queue_spawn_related_scenes::<Wields>(wielded_weapon_scenes(
+                &weapon_bundle,
+                weapon_attachments,
+            ));
         // GTW-505: spawn the wielded MELEE weapon entity from the resolved
         // `MeleeWeaponBundle` and relate it to this ganger via the SAME `Wields`
         // relationship (the ranged weapon spawn above). The framework inserts

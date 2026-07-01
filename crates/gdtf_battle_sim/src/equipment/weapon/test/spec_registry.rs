@@ -2,6 +2,7 @@
 //! (GTW-201; moved VERBATIM — was the `=== GTW-257 ===` block of the flat module).
 
 use super::support::*;
+use crate::tuning::AttachmentTuning;
 
 /// A shipped weapon `.ron`, read at compile time via the same `include_str!`
 /// pattern `tuning.rs` / `situation.rs` use — the REAL on-disk authored file
@@ -40,7 +41,7 @@ fn shipped_weapon_spec_parses_and_converts_to_a_bundle() {
     // The file does NOT author a name — the name is the FILE KEY, supplied here
     // (the loader supplies the filename stem). into_bundle carries it through.
     let key = WeaponName::new("stub_pistol".to_owned());
-    let bundle = spec.into_bundle(key);
+    let bundle = spec.into_bundle(key, &AttachmentTuning::default()).0;
     assert_eq!(
         &*bundle.name, "stub_pistol",
         "into_bundle must carry the supplied WeaponName (the file key) onto the bundle",
@@ -76,7 +77,12 @@ fn shipped_weapon_handedness_parses_onto_the_bundle() {
         "the shipped las_carbine.weapon.ron must parse into a WeaponSpec: {carbine:?}",
     );
     let Ok(carbine) = carbine else { return };
-    let carbine_bundle = carbine.into_bundle(WeaponName::new("las_carbine".to_owned()));
+    let carbine_bundle = carbine
+        .into_bundle(
+            WeaponName::new("las_carbine".to_owned()),
+            &AttachmentTuning::default(),
+        )
+        .0;
     assert_eq!(
         carbine_bundle.handedness,
         Handedness::TwoHanded,
@@ -90,7 +96,12 @@ fn shipped_weapon_handedness_parses_onto_the_bundle() {
         "the shipped stub_pistol.weapon.ron must parse into a WeaponSpec: {pistol:?}",
     );
     let Ok(pistol) = pistol else { return };
-    let pistol_bundle = pistol.into_bundle(WeaponName::new("stub_pistol".to_owned()));
+    let pistol_bundle = pistol
+        .into_bundle(
+            WeaponName::new("stub_pistol".to_owned()),
+            &AttachmentTuning::default(),
+        )
+        .0;
     assert_eq!(
         pistol_bundle.handedness,
         Handedness::OneHanded,
@@ -124,7 +135,12 @@ fn weapon_spec_round_trips_and_into_bundle_groups_faithfully() {
         return;
     };
 
-    let bundle = spec.into_bundle(WeaponName::new("test-gun".to_owned()));
+    let bundle = spec
+        .into_bundle(
+            WeaponName::new("test-gun".to_owned()),
+            &AttachmentTuning::default(),
+        )
+        .0;
     // Spot values flowed through the DamageProfile / HandlingProfile grouping
     // (distinct arbitrary literals so a field swap would surface).
     assert_eq!(*bundle.damage, 14i32, "damage flows through DamageProfile");

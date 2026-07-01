@@ -8,8 +8,8 @@ use crate::{
     cover::HeightBand,
     tuning::cone::{
         AimConeMult, AimHeightFrac, AimTuPremium, BraceContribution, ConcentrationCoeff,
-        MuzzleForwardOffset, MuzzleHeight, RecoilClimb, SilhouetteTop, StabilityCurveCoord,
-        StanceContribution,
+        MuzzleForwardOffset, MuzzleHeight, RecoilClimb, SightStabilityBonus, SilhouetteTop,
+        StabilityCurveCoord, StanceContribution,
     },
 };
 
@@ -256,6 +256,9 @@ pub struct ConeStabilityTuning {
     pub stance_stability:      StanceStability,
     /// The auto-brace contribution (+30) added when the faced cover suits the stance.
     pub brace_contribution:    BraceContribution,
+    /// The GTW-542 sight-attachment stability bonus — points a [`Scoped`](crate::weapon::Scoped)
+    /// weapon adds to the score (a scoped weapon aims steadier → a tighter cone).
+    pub sight_stability_bonus: SightStabilityBonus,
     /// The per-stance brace min-height gate (prone↔LOW+, kneel↔MID+, stand↔HIGH).
     pub brace_min_height:      BraceMinHeight,
     /// The two stability curves (cone-mult + recoil-growth) over the 0–100 score.
@@ -284,6 +287,10 @@ impl Default for ConeStabilityTuning {
         Self {
             stance_stability:      StanceStability::default(),
             brace_contribution:    BraceContribution::new(30.0),
+            // A modest steadying (+15, half the brace) — a defensible-but-arbitrary
+            // starting point; tests assert only the STEADIER / NARROWER-cone invariant,
+            // never this magnitude (the SuppressionStabilityPenalty precedent).
+            sight_stability_bonus: SightStabilityBonus::new(15.0),
             brace_min_height:      BraceMinHeight::default(),
             stability_curves:      StabilityCurves::default(),
             aim_mode:              AimMode::default(),

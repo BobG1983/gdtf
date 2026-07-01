@@ -25,8 +25,8 @@ use gdtf_battle_sim::{
     Aiming, ArmorHardness, ArmorProtection, Cell, CellLevel, ConeMult, CoverEntry, CoverHp,
     CoverLedger, Direction, Facing, Faction, FireMode, FireModeSpec, HeightBand, Level, LifeState,
     Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, ReloadTu,
-    Shooter, Shove, Stable, Stance, StanceKind, TerrainBraced, Tu, TuMax, WeaponBundle, WieldedBy,
-    faced_cell,
+    Shooter, Shove, SightStability, Stable, Stance, StanceKind, TerrainBraced, Tu, TuMax,
+    WeaponBundle, WieldedBy, faced_cell,
     injuries::InjuryRegistry,
     stability_for,
     tuning::CombatTuning,
@@ -286,6 +286,7 @@ fn stability_readout_shows_the_stability_for_value() {
         &shooter,
         Stable::new(false),
         TerrainBraced::new(false),
+        SightStability::none(),
         &ledger,
         &tuning,
     );

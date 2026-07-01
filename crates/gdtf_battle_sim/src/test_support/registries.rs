@@ -60,26 +60,29 @@ pub fn key(x: i32, y: i32, level: u8) -> CellLevel {
 #[must_use]
 pub fn test_weapon_spec() -> WeaponSpec {
     WeaponSpec {
-        base_spread: BaseSpread::new(0.25),
-        accuracy:    Accuracy::new(1.0),
-        kickback:    Kickback::new(0.4),
-        fatal_bias:  FatalBias::new(7.0),
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(5),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
+        base_spread:      BaseSpread::new(0.25),
+        accuracy:         Accuracy::new(1.0),
+        kickback:         Kickback::new(0.4),
+        fatal_bias:       FatalBias::new(7.0),
+        damage:           WeaponDamage::new(12),
+        punch:            WeaponPunch::new(5),
+        shred:            WeaponShred::new(3),
+        damage_type:      DamageType::Kinetic,
+        magazine:         Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        fire_mode:        FireMode::new(vec![FireModeSpec::new(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.5),
             ModeShots::new(1),
         )]),
-        stable:      Stable::new(false),
+        stable:           Stable::new(false),
         // No knockback on the shared test weapon — a shove-tagged variant is built
         // per-test (the GTW-525 auto-shove tests spawn their own tagged weapon).
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
+        shove:            Shove::new(false),
+        handedness:       Handedness::OneHanded,
+        // GTW-542: no attachments on the shared test weapon (an attachment-bearing variant
+        // is built per-test); the empty list folds to the identity.
+        attachment_slots: Vec::new(),
     }
 }
 

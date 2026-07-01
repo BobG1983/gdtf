@@ -133,24 +133,25 @@ fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
         },
     };
     let spec = WeaponSpec {
-        base_spread: BaseSpread::new(0.05),
-        accuracy:    Accuracy::new(2.0),
-        kickback:    Kickback::new(0.1),
-        fatal_bias:  FatalBias::new(0.0), // NOT Fatal-skewed → wounds stay tabled
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(20),
-        shred:       WeaponShred::new(10),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
+        base_spread:      BaseSpread::new(0.05),
+        accuracy:         Accuracy::new(2.0),
+        kickback:         Kickback::new(0.1),
+        fatal_bias:       FatalBias::new(0.0), // NOT Fatal-skewed → wounds stay tabled
+        damage:           WeaponDamage::new(12),
+        punch:            WeaponPunch::new(20),
+        shred:            WeaponShred::new(10),
+        damage_type:      DamageType::Kinetic,
+        magazine:         Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        fire_mode:        FireMode::new(vec![FireModeSpec::new(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.2),
             ModeShots::new(1),
         )]),
-        stable:      crate::weapon::Stable::new(true),
-        shove:       crate::weapon::Shove::new(false),
-        handedness:  crate::weapon::Handedness::OneHanded,
+        stable:           crate::weapon::Stable::new(true),
+        shove:            crate::weapon::Shove::new(false),
+        handedness:       crate::weapon::Handedness::OneHanded,
+        attachment_slots: Vec::new(),
     };
     WeaponRegistry::new([(WeaponName::new("test-weapon".to_owned()), spec)])
 }

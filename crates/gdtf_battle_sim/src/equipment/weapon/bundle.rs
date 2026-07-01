@@ -6,8 +6,8 @@
 use bevy::prelude::Bundle;
 
 use super::{
-    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Handedness, Kickback, Shove, Stable,
-    Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Handedness, Kickback, Scoped, Shove,
+    Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSightBonus,
 };
 use crate::magazine::Magazine;
 
@@ -46,6 +46,18 @@ pub struct WeaponStats<'a> {
     /// (regardless of faced cover / stance); `false` is a normal weapon (braces
     /// only when the faced cover suits the stance).
     pub stable:      &'a Stable,
+    /// The GTW-542 `sighted` attachment tag — `Some` when a precision optic is fitted
+    /// (the [`Scoped`] sibling component is present), feeding the additive
+    /// [`SightStability`](crate::stability::SightStability) bonus into the §1a stability
+    /// read; `None` for an un-sighted weapon (the zero-identity term, byte-identical to
+    /// before the attachment). An `Option` because the sight component is present only
+    /// when the attachment is fitted (unlike the always-present [`Stable`] tag).
+    pub sight:       Option<&'a Scoped>,
+    /// The GTW-542 optional PER-WEAPON sight-stability override — `Some` when a
+    /// per-fitting-bonus attachment (whisper-bore / dead-man's-brace) supplies its own
+    /// steadying points, `None` for a plain [`Scoped`] weapon (which reads the universal
+    /// tuning bonus). Read only when `sight` is `Some`.
+    pub sight_bonus: Option<&'a WeaponSightBonus>,
 }
 
 /// The **spawn bundle for an armed entity** — the [`Weapon`] marker plus the full
@@ -246,6 +258,11 @@ impl WeaponBundle {
             shred:       &self.shred,
             damage_type: &self.damage_type,
             stable:      &self.stable,
+            // A WeaponBundle carries no sight attachment (the Scoped sibling is spawned
+            // separately by the GTW-542 folder-fn), so a bundle-derived view is always
+            // un-sighted — the zero-identity SightStability term.
+            sight:       None,
+            sight_bonus: None,
         }
     }
 }

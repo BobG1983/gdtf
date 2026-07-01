@@ -6,11 +6,11 @@ use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use super::{
-    Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, Handedness,
-    HandlingProfile, Kickback, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponShred,
+    Accuracy, AttachTag, AttachmentEffects, BaseSpread, DamageProfile, DamageType, FatalBias,
+    FireMode, Handedness, HandlingProfile, Kickback, Shove, Stable, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred,
 };
-use crate::magazine::Magazine;
+use crate::{magazine::Magazine, tuning::AttachmentTuning};
 
 /// The **authoring struct** an `assets/content/weapons/ranged/*.ron` deserializes into — every
 /// weapon NUMBER the §1/§6 math reads, MINUS the [`WeaponName`] (the name is the
@@ -39,32 +39,32 @@ use crate::magazine::Magazine;
 #[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
 pub struct WeaponSpec {
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
-    pub base_spread: BaseSpread,
+    pub base_spread:      BaseSpread,
     /// The concentration weapon term (`accuracy`; may exceed 1.0).
-    pub accuracy:    Accuracy,
+    pub accuracy:         Accuracy,
     /// The per-round recoil added in a burst (`kickback`).
-    pub kickback:    Kickback,
+    pub kickback:         Kickback,
     /// The severity-score addend, consumed by E3 (`fatal_bias`).
-    pub fatal_bias:  FatalBias,
+    pub fatal_bias:       FatalBias,
     /// The base damage a hit deals before armor (`damage`).
-    pub damage:      WeaponDamage,
+    pub damage:           WeaponDamage,
     /// The armor protection a hit ignores — penetration (`punch`).
-    pub punch:       WeaponPunch,
+    pub punch:            WeaponPunch,
     /// The extra integrity damage a hit deals to armor durability (`shred`).
-    pub shred:       WeaponShred,
+    pub shred:            WeaponShred,
     /// The damage type the weapon emits — its matchup-wheel node.
-    pub damage_type: DamageType,
+    pub damage_type:      DamageType,
     /// The ammo state — the [`Magazine`] grouping authored as `(size: N, reload_tu: N)`
     /// (the per-weapon round capacity + reload TU cost). The live loaded-rounds count
     /// is NOT authored (it defaults to `0` on deserialize); [`into_bundle`](WeaponSpec::into_bundle)
     /// spawns the magazine FULL (`loaded == size`), the GTW-275 spawn-full path.
-    pub magazine:    Magazine,
+    pub magazine:         Magazine,
     /// The authored fire-mode selector — the list of offered modes, each a
     /// [`FireModeSpec`](super::FireModeSpec) carrying its [`ModeKind`](super::ModeKind)
     /// + cone/TU%/shots.
-    pub fire_mode:   FireMode,
+    pub fire_mode:        FireMode,
     /// The `stable` tag — `true` engages the §1a brace bonus unconditionally.
-    pub stable:      Stable,
+    pub stable:           Stable,
     /// The `shove` tag (GTW-525) — `true` knocks the target back one cell on a
     /// connecting shot (in addition to the shot's damage). `#[serde(default)]` so an
     /// omitted `shove:` field falls back to `Shove(false)` (a non-shove weapon): the
@@ -72,30 +72,54 @@ pub struct WeaponSpec {
     /// shoving OFF (the [`Reach`](super::Reach) `#[serde(default)]` precedent), unlike
     /// the required `stable:` field.
     #[serde(default)]
-    pub shove:       Shove,
+    pub shove:            Shove,
     /// The weapon's [`Handedness`] (GTW-443) — `OneHanded` (a pistol) or `TwoHanded`
     /// (a long-arm / heavy piece); authored as the `handedness:` field of the
     /// `.weapon.ron`. The shared `can_fire` guard refuses a `TwoHanded` weapon below two
     /// available hands.
-    pub handedness:  Handedness,
+    pub handedness:       Handedness,
+    /// The weapon's fitted **attachments** (GTW-542, child GTW-41b) — the list of
+    /// [`AttachTag`]s the weapon carries, authored as the `attachment_slots:` `.weapon.ron`
+    /// field. `#[serde(default)]` so an omitted field falls back to an EMPTY list (a weapon
+    /// with no attachments): the field is OPT-IN (the [`Shove`] `#[serde(default)]`
+    /// precedent), so EVERY existing weapon `.ron` — none of which author it — deserializes
+    /// and spawns BYTE-IDENTICAL. [`into_bundle`](WeaponSpec::into_bundle) FOLDS this list
+    /// through the per-tag folder-functions ([`AttachmentEffects`](super::AttachmentEffects));
+    /// the empty default folds to the identity (no leaf change, no sibling tags).
+    #[serde(default)]
+    pub attachment_slots: Vec<AttachTag>,
 }
 
 impl WeaponSpec {
-    /// Resolve this authored spec into a spawnable [`WeaponBundle`], supplying the
-    /// [`WeaponName`] from the registry KEY (the weapon file's filename stem).
+    /// Resolve this authored spec into a spawnable [`WeaponBundle`] plus its resolved
+    /// GTW-542 [`AttachmentEffects`], supplying the [`WeaponName`] from the registry KEY
+    /// (the weapon file's filename stem) and the [`AttachmentTuning`] the no-payload
+    /// attachment tags read.
     ///
     /// Groups the per-hit damage fields into a [`DamageProfile`] and the
-    /// magazine/fire-mode/`stable`/`shove` fields into a [`HandlingProfile`], then calls
-    /// [`WeaponBundle::new`] — the [`Weapon`](super::Weapon) marker is added there.
-    /// The spawned [`Magazine`] is built FULL (loaded to `size`) from the authored
-    /// `size` + `reload_tu` (the GTW-275 "full magazine at spawn" path, matching the
-    /// mockup's "30/30"), regardless of the spec's (unauthored, default-`0`) loaded
-    /// count. Consumes the spec by value (it owns the [`FireMode`]); a caller holding a
-    /// borrowed spec clones it first (the registry's specs are `Clone`).
+    /// magazine/fire-mode/`stable`/`shove` fields into a [`HandlingProfile`], calls
+    /// [`WeaponBundle::new`] (the [`Weapon`](super::Weapon) marker is added there), then
+    /// FOLDS this spec's [`attachment_slots`](WeaponSpec::attachment_slots) through the
+    /// per-tag folder-functions ([`AttachmentEffects::from_slots`], GTW-542): each slot
+    /// either rewrites a spawn-side LEAF on the bundle (damage / punch / magazine /
+    /// fire-mode / … ) or produces a SIBLING tag ([`Scoped`](super::Scoped) /
+    /// [`Silenced`](super::Silenced) / [`WeaponSightBonus`](super::WeaponSightBonus)) the
+    /// caller spawns onto the weapon entity. An EMPTY slot list folds to the identity, so a
+    /// weapon with no attachments resolves BYTE-IDENTICAL to before GTW-542.
+    ///
+    /// The spawned [`Magazine`] is built FULL (loaded to `size`) from the authored `size` +
+    /// `reload_tu` (the GTW-275 "full magazine at spawn" path), before any attachment
+    /// reload-time / capacity rewrite. Consumes the spec by value (it owns the
+    /// [`FireMode`] and the slot list); a caller holding a borrowed spec clones it first
+    /// (the registry's specs are `Clone`).
     #[must_use]
-    pub fn into_bundle(self, name: WeaponName) -> WeaponBundle {
+    pub fn into_bundle(
+        self,
+        name: WeaponName,
+        attachment_tuning: &AttachmentTuning,
+    ) -> (WeaponBundle, AttachmentEffects) {
         let magazine = Magazine::loaded(self.magazine.size(), self.magazine.reload_tu());
-        WeaponBundle::new(
+        let mut bundle = WeaponBundle::new(
             name,
             self.base_spread,
             self.accuracy,
@@ -109,6 +133,11 @@ impl WeaponSpec {
                 self.shove,
                 self.handedness,
             ),
-        )
+        );
+        // GTW-542: fold the attachment slots — mutating the bundle's leaves in place and
+        // collecting the sibling tags the spawn seam composes onto the weapon entity.
+        let effects =
+            AttachmentEffects::from_slots(&self.attachment_slots, &mut bundle, attachment_tuning);
+        (bundle, effects)
     }
 }
