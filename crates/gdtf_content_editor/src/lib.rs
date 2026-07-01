@@ -63,6 +63,10 @@ mod app;
 mod camera;
 mod canvas;
 mod capture;
+// GTW-531: the prefab-editor vertical-connector auto-pairing — placing an UP connector at (x,y,N)
+// also places its paired DOWN connector at (x,y,N+1). REUSES the shared placement predicate; a
+// prefab-editor placement rule ONLY (no sim/runtime change).
+mod connector_pairing;
 // GTW-512 C1: the egui Workbench shell — the CLEAN SWAP off the hand-rolled `bevy_ui` shell.
 mod editor_map;
 mod editor_resources;
@@ -107,6 +111,11 @@ pub use app::MapEditorApp;
 // model resources the editor's lifecycle inserts survive (the egui viewport reads them in C4).
 pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};
 pub use capture::EditorCapturePlugin;
+// GTW-531: the up→down connector auto-pairing surface — exported so the prefab viewport commit
+// (and the in-crate + integration round-trip tests) drive the real path.
+pub use connector_pairing::{
+    PairingOutcome, apply_placement_with_pairing, is_up_connector, resolve_down_counterpart,
+};
 pub use editor_map::EditorMap;
 pub use hovered_cell::HoveredCell;
 // GTW-512: only the `EditorMode` enum survives the egui swap (the `bevy_ui` tab / content markers

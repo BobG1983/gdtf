@@ -42,9 +42,10 @@ use gdtf_battle_sim::{
 
 use crate::{
     canvas::{CanvasZoom, CurrentEditLevel},
+    connector_pairing::apply_placement_with_pairing,
     editor_map::EditorMap,
     hovered_cell::HoveredCell,
-    placement::{ProposedPlacement, apply_placement},
+    placement::ProposedPlacement,
     preview::{
         coords::{PREVIEW_VIEW_SPAN, uv_to_cell, uv_to_world},
         view::{PreviewPan, cursor_anchored_zoom},
@@ -176,10 +177,12 @@ pub(crate) fn viewport_panel(
     }
 }
 
-/// Run the shared [`apply_placement`] for the cell under image-local UV `uv` on storey `level`
-/// (GTW-515 C4.4). No-ops when no paint tile is selected or the terrain registry is absent. The
-/// placement legality (ladder auto-clear, slab-seals-ladder reject, out-of-bounds) is the shared
-/// GTW-430 predicate — reused verbatim, not re-implemented (C4.10).
+/// Run the shared placement for the cell under image-local UV `uv` on storey `level` (GTW-515
+/// C4.4), auto-pairing a vertical connector (GTW-531). No-ops when no paint tile is selected or the
+/// terrain registry is absent. The placement legality (ladder auto-clear, slab-seals-ladder reject,
+/// out-of-bounds) is the shared GTW-430 predicate — reused verbatim, not re-implemented (C4.10);
+/// placing an UP connector at `(x, y, N)` ALSO places its paired DOWN connector at `(x, y, N+1)`
+/// via [`apply_placement_with_pairing`] (GTW-531 C2, fail-closed at the top storey).
 fn paint_at_uv(ctx: &mut ViewportCtx<'_>, uv: egui::Vec2, level: Level) {
     let Some(registry) = ctx.registry else {
         return;
@@ -190,7 +193,11 @@ fn paint_at_uv(ctx: &mut ViewportCtx<'_>, uv: egui::Vec2, level: Level) {
     let cell = uv_to_cell(bevy_uv(uv), **ctx.zoom, ctx.pan.offset());
     let slot = CellLevel::new(cell, level);
     let placement = ProposedPlacement::new(slot, tile);
-    apply_placement(
+    // GTW-531: reuse the shared predicate (C4.10) AND auto-place the paired DOWN connector above an
+    // UP connector. Idempotent under the egui multipass re-run: the map is a set keyed by slot and
+    // apply_placement repaint-overwrites the SAME slots with the SAME tiles (a double-apply is a
+    // no-op), so this is safe inside the immediate-mode closure (see the module docs).
+    apply_placement_with_pairing(
         ctx.map,
         registry,
         ctx.session.theme(),
