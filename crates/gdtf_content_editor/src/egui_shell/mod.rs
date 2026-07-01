@@ -3,9 +3,10 @@
 //!
 //! Wiring-only module. The single egui UI system + its panel layout live in
 //! [`shell`](self::shell); the global-theme `ComboBox` option builder lives in
-//! [`theme_combo`](self::theme_combo); the (still-stubbed) THEME / PREFAB per-mode forms live in
+//! [`theme_combo`](self::theme_combo); the PREFAB per-mode form is still stubbed in
 //! [`forms`](self::forms); the real TERRAIN-mode form (GTW-513 C2) lives in
-//! [`terrain_form_ui`](self::terrain_form_ui). The shell registers ONE UI system in the
+//! [`terrain_form_ui`](self::terrain_form_ui); the real THEME-mode form (GTW-514 C3) lives in
+//! [`theme_form_ui`](self::theme_form_ui). The shell registers ONE UI system in the
 //! [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule (NOT `Update` —
 //! bevy-traps: a `Update` system calling `ctx_mut()` fights the egui begin/end-pass plumbing),
 //! gated `run_if(in_state(EditorState::Editing))`.
@@ -32,5 +33,6 @@ mod forms;
 mod shell;
 mod terrain_form_ui;
 mod theme_combo;
+mod theme_form_ui;
 
 pub(crate) use shell::editor_egui_ui;
