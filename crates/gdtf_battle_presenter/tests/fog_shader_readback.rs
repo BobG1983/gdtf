@@ -54,6 +54,7 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{Brightness, TerrainFogMaterial};
+use gdtf_test_utils::gpu_adapter_probe;
 
 /// The workspace-root `assets/` directory as an absolute path.
 ///
@@ -309,6 +310,14 @@ fn render_and_read(source: [u8; 4], saturation: f32, brightness: Brightness) -> 
 /// preserved BT.709 luminance — the EXPLORED memory cue.
 #[test]
 fn explored_saturation_zero_renders_greyscale_at_preserved_luma() {
+    // GTW-527: probe for a usable wgpu adapter BEFORE building any render `App` — on a
+    // GPU-less runner `app.finish()` panics ("Unable to find a GPU!") before the in-build
+    // `get_sub_app(RenderApp)?` guard, so skip here ahead of the app build.
+    if gpu_adapter_probe().should_skip() {
+        eprintln!("SKIP: no usable GPU adapter in this environment — greyscale proof not run");
+        return;
+    }
+
     // Pure red: a strongly-saturated colour so greyscale collapse is unambiguous.
     let source = [255_u8, 0, 0, 255];
     // Full brightness so this proves the saturation axis in isolation (GTW-519 brightness ==
@@ -362,6 +371,13 @@ fn explored_saturation_zero_renders_greyscale_at_preserved_luma() {
 /// at saturation 1.0 the rendered output RETAINS the source hue — the VISIBLE cell.
 #[test]
 fn visible_saturation_one_retains_source_hue() {
+    // GTW-527: probe for a usable wgpu adapter BEFORE building any render `App` (see the
+    // greyscale test) — skip ahead of the app build on a GPU-less runner.
+    if gpu_adapter_probe().should_skip() {
+        eprintln!("SKIP: no usable GPU adapter in this environment — hue-retention proof not run");
+        return;
+    }
+
     // A mixed colour so "retains hue" is a real per-channel match, not a coincidence.
     let source = [200_u8, 60, 30, 255];
     // Full brightness so this proves the saturation axis in isolation.
@@ -409,6 +425,13 @@ fn visible_saturation_one_retains_source_hue() {
 /// halving of the sRGB byte) — decode each channel, compare the ratios.
 #[test]
 fn lower_storey_brightness_dims_the_rendered_tile() {
+    // GTW-527: probe for a usable wgpu adapter BEFORE building any render `App` (see the
+    // greyscale test) — skip ahead of the app build on a GPU-less runner.
+    if gpu_adapter_probe().should_skip() {
+        eprintln!("SKIP: no usable GPU adapter in this environment — brightness proof not run");
+        return;
+    }
+
     // A mixed opaque colour so per-channel dimming is unambiguous and hue is retained.
     let source = [200_u8, 120, 60, 255];
 

@@ -50,6 +50,7 @@ use gdtf_battle_presenter::{
     FireTargetHighlight, FireTargetTile, TopDownRendererPlugin, WORLD_RENDER_LAYER,
 };
 use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, Tu};
+use gdtf_test_utils::gpu_adapter_probe;
 
 /// The dark battlefield clear colour the non-target cells read as.
 const DARK_CLEAR: Color = Color::srgb(0.02, 0.02, 0.03);
@@ -229,6 +230,17 @@ fn render_centre(drawn: bool) -> Option<[u8; 4]> {
 /// pixel back.
 #[test]
 fn fire_target_cell_renders_red_cleared_cell_renders_dark() {
+    // GTW-527: probe for a usable wgpu adapter BEFORE building any render `App`. On a
+    // GPU-less runner (no adapter) `app.finish()` would `.expect("Unable to find a GPU!")`
+    // and PANIC before the in-`build_render_app` `get_sub_app(RenderApp)?` guard is
+    // reached — so skip here, ahead of the app build, keeping CI deterministic.
+    if gpu_adapter_probe().should_skip() {
+        eprintln!(
+            "SKIP: no usable GPU adapter in this environment — fire-target pixel proof not run"
+        );
+        return;
+    }
+
     let Some([lit_r, lit_g, lit_b, _lit_a]) = render_centre(true) else {
         eprintln!("SKIP: no GPU adapter in this environment — fire-target pixel proof not run");
         return;

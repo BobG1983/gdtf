@@ -38,6 +38,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use gdtf_test_utils::gpu_adapter_probe;
 
 /// The translucent warm-amber tint the route preview draws (mirrors the private `PREVIEW_TINT`).
 /// A readback proof of the SHIPPED look must use the SHIPPED colour; this is asserted against the
@@ -185,6 +186,16 @@ fn render_centre(drawn: bool) -> Option<[u8; 4]> {
 /// clear), and an off-route cell (no step) renders the DARK clear colour.
 #[test]
 fn route_cell_renders_nondark_offroute_cell_renders_dark() {
+    // GTW-527: probe for a usable wgpu adapter BEFORE building any render `App`. On a
+    // GPU-less runner `app.finish()` panics ("Unable to find a GPU!") before the in-build
+    // `get_sub_app(RenderApp)?` guard, so skip here ahead of the app build.
+    if gpu_adapter_probe().should_skip() {
+        eprintln!(
+            "SKIP: no usable GPU adapter in this environment — path-preview pixel proof not run"
+        );
+        return;
+    }
+
     let Some([lit_r, lit_g, lit_b, _lit_a]) = render_centre(true) else {
         eprintln!("SKIP: no GPU adapter in this environment — path-preview pixel proof not run");
         return;

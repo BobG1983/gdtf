@@ -46,7 +46,7 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::SheetRole;
-use gdtf_test_utils::advance_until_load_state;
+use gdtf_test_utils::{advance_until_load_state, gpu_adapter_probe};
 
 /// Generous safety-net cap for each PNG reaching `LoadState::Loaded`.
 ///
@@ -162,6 +162,17 @@ fn assert_loaded(app: &App, handle: &Handle<Image>, sheet_name: &str) {
 /// `fog_shader_readback.rs` / `vertical_link_readback.rs` skip pattern.
 #[test]
 fn all_sheet_role_pngs_load_from_sprites_folder() {
+    // GTW-527: probe for a usable wgpu adapter BEFORE building the render `App`. On a
+    // GPU-less runner `build_render_app`'s `app.finish()` panics ("Unable to find a
+    // GPU!") before its own `get_sub_app(RenderApp)?` guard is reached, so skip here
+    // ahead of the app build instead of relying on that (dead-on-GPU-less) guard.
+    if gpu_adapter_probe().should_skip() {
+        eprintln!(
+            "SKIP: no usable GPU adapter in this environment — sprite-sheet load proof not run",
+        );
+        return;
+    }
+
     let _gpu = lock_gpu();
 
     let Some(mut app) = build_render_app() else {

@@ -45,6 +45,7 @@ use gdtf_battle_presenter::{
     draw_highlight_on_request,
 };
 use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level};
+use gdtf_test_utils::gpu_adapter_probe;
 
 /// The offscreen render-target edge (square). The reticle quad covers most of it.
 const TARGET_PX: u32 = 64;
@@ -185,6 +186,16 @@ fn render_reticle(cell: CellLevel, verdict: CellVisibility) -> Option<[u8; 4]> {
 /// cold-grey unseen recolour (blue > red), not the warm normal tint (red > blue).
 #[test]
 fn reticle_recolours_on_the_gpu_for_a_non_visible_cell() {
+    // GTW-527: probe for a usable wgpu adapter BEFORE building any render `App`. On a
+    // GPU-less runner `app.finish()` panics ("Unable to find a GPU!") before the in-build
+    // `get_sub_app(RenderApp)?` guard, so skip here ahead of the app build.
+    if gpu_adapter_probe().should_skip() {
+        eprintln!(
+            "SKIP: no usable GPU adapter in this environment — reticle recolour proof not run"
+        );
+        return;
+    }
+
     let cell = CellLevel::new(Cell::new(8, 8), Level::new(0));
 
     let Some([vr, vg, vb, va]) = render_reticle(cell, CellVisibility::SquadVisible) else {

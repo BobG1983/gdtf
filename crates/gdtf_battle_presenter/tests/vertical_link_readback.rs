@@ -46,6 +46,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use gdtf_test_utils::gpu_adapter_probe;
 
 /// The stair-UP tile index (GTW-373, supersedes the OQ-3 single-stair 77 — drawn where you
 /// ascend) into the terrain sheet's atlas. Proving this tile renders covers the new split
@@ -267,6 +268,16 @@ fn render_tile(index: Option<usize>) -> Option<([u8; 4], u16)> {
 /// (their mean colours differ).
 #[test]
 fn stair_and_ladder_render_nonempty_and_distinct() {
+    // GTW-527: probe for a usable wgpu adapter BEFORE building any render `App`. On a
+    // GPU-less runner `app.finish()` panics ("Unable to find a GPU!") before the in-build
+    // `get_sub_app(RenderApp)?` guard, so skip here ahead of the app build.
+    if gpu_adapter_probe().should_skip() {
+        eprintln!(
+            "SKIP: no usable GPU adapter in this environment — vertical-link pixel proof not run"
+        );
+        return;
+    }
+
     let Some((baseline, base_max)) = render_tile(None) else {
         eprintln!("SKIP: no GPU adapter in this environment — vertical-link pixel proof not run");
         return;
