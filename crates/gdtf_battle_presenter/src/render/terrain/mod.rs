@@ -39,7 +39,7 @@ mod roles;
 #[cfg(test)]
 mod test;
 
-pub use active_level::{ActiveLevel, PresenterSystems};
+pub use active_level::{ActiveLevel, PresenterSystems, ViewMode};
 pub use draw::{
     StaticMap, TerrainSprite, draw_static_battlefield, swap_destroyed_cover, swap_destroyed_slab,
 };

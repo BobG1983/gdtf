@@ -31,7 +31,7 @@ use gdtf_battle_input::{
     ActIntent, BoundKey, GdtfBattleInputPlugin, Keybinds, PendingActIntent, SelectedShooter,
     SelectionHighlight,
 };
-use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
+use gdtf_battle_presenter::{ActiveLevel, CELL_PX, ViewMode, WORLD_RENDER_LAYER, cell_to_world};
 use gdtf_battle_sim::{
     BattleInProgress, BattleSimPlugin, Cell, CellLevel, Faction, Level, MAX_LEVELS, OccupancyGrid,
     PlayerFaction, Position, VerticalLinkGraph,
@@ -66,6 +66,8 @@ fn selection_app(active_level: Level) -> App {
         .add_plugins(GdtfBattleInputPlugin);
     app.world_mut()
         .insert_resource(ActiveLevel::new(active_level));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(CombatTuning::default());
@@ -111,15 +113,17 @@ fn keyboard_app(active_level: Level) -> App {
 /// `.ron`) so the keyboard tests do not depend on the editable file's chosen keys.
 const fn test_keybinds() -> Keybinds {
     Keybinds {
-        select_clear: BoundKey::KeyEscape,
-        level_up:     BoundKey::KeyPageUp,
-        level_down:   BoundKey::KeyPageDown,
-        stance_cycle: BoundKey::KeyC,
-        aim_toggle:   BoundKey::KeyF,
-        facing_cycle: BoundKey::KeyR,
+        select_clear:     BoundKey::KeyEscape,
+        level_up:         BoundKey::KeyPageUp,
+        level_down:       BoundKey::KeyPageDown,
+        // GTW-521 — the full-view toggle key.
+        toggle_full_view: BoundKey::KeyV,
+        stance_cycle:     BoundKey::KeyC,
+        aim_toggle:       BoundKey::KeyF,
+        facing_cycle:     BoundKey::KeyR,
         // GTW-458 — the Tab/Shift+Tab Prev/Next cycle chord (both bind to Tab).
-        select_next:  BoundKey::KeyTab,
-        select_prev:  BoundKey::KeyTab,
+        select_next:      BoundKey::KeyTab,
+        select_prev:      BoundKey::KeyTab,
     }
 }
 
@@ -694,6 +698,8 @@ fn inert_without_battle_in_progress() {
         .add_plugins(GdtfBattleInputPlugin);
     // NOTE: no BattleInProgress inserted.
     app.world_mut().insert_resource(ActiveLevel::new(level));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(OccupancyGrid::default());
 
     // Queue a level-up + a click on an occupant, then run several updates.
@@ -940,6 +946,8 @@ fn auto_select_inert_without_battle_in_progress() {
     // NOTE: no BattleInProgress inserted; PlayerFaction present so only the battle gate
     // is the witness under test.
     app.world_mut().insert_resource(ActiveLevel::new(level));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
 
@@ -1119,6 +1127,8 @@ fn real_flow_app() -> App {
         .add_plugins(BattleSimPlugin);
     app.world_mut()
         .insert_resource(ActiveLevel::new(Level::new(0)));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(real_flow_registry());
     // GTW-505: the MeleeWeaponRegistry (with the `fists` default) so the real setup arms

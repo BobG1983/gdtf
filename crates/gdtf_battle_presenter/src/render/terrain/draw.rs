@@ -14,12 +14,12 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     BattleReady, Cell, CellLevel, CoverDestroyed, CoverLedger, FootfallSound, GRID_HEIGHT,
-    GRID_WIDTH, Level, OccupancyGrid, SlabDestroyed, SlabState, SurfaceGrid, TerrainCell,
-    TerrainGraphicKey, TerrainKind,
+    GRID_WIDTH, Level, MAX_LEVELS, OccupancyGrid, SlabDestroyed, SlabState, SurfaceGrid,
+    TerrainCell, TerrainGraphicKey, TerrainKind,
 };
 
 use super::{
-    active_level::ActiveLevel,
+    active_level::{ActiveLevel, ViewMode},
     roles::{TileIndex, TileRoles},
 };
 use crate::{Brightness, CELL_PX, SheetRole, TerrainFogMaterial, TopDownAtlases, cell_to_world};
@@ -263,29 +263,53 @@ fn level_band(band: RangeInclusive<Level>) -> impl Iterator<Item = Level> {
     (**band.start()..=**band.end()).map(Level::new)
 }
 
-/// The inclusive band of storeys the terrain draw renders (GTW-519), given the current
-/// [`ActiveLevel`].
+/// The inclusive band of storeys the terrain draw renders (GTW-519 / GTW-521), given the
+/// current [`ActiveLevel`] and [`ViewMode`].
 ///
-/// The UFO:EU / `OpenXcom` multi-level display: draw every storey from the ground floor UP TO
-/// the active view level (`0..=active`) and CULL everything strictly above it — the
-/// painter's-algorithm occlusion falls out of the existing per-storey Z ([`z_for`], via
-/// [`cell_to_world`]). The band FLOOR is fixed at level 0 (the whole stack at/below active,
-/// not a windowed `[active-N..=active]`) — the logged fork (a).
+/// The UFO:EU / `OpenXcom` multi-level display: the band FLOOR is always the ground floor
+/// (level 0 — the whole stack at/below the ceiling, not a windowed `[ceiling-N..=ceiling]`,
+/// the GTW-519 logged fork (a)). The CEILING is the ONE thing the [`ViewMode`] chooses
+/// (GTW-521):
+///
+/// - [`ViewMode::DownToActive`] (the default) → `0..=active`: draw up to and including the
+///   active view level and CULL everything strictly above it — EXACTLY the GTW-519/520
+///   behaviour, unchanged.
+/// - [`ViewMode::FullView`] → `0..=MAX_LEVELS - 1`: draw the WHOLE storey stack regardless of
+///   the active level (the UFO full-stack view). The upper roofs / floors re-appear and hide
+///   the storeys / units beneath by per-storey Z; empty upper cells still emit nothing
+///   (peek-through), so it stays cheap.
+///
+/// The painter's-algorithm occlusion falls out of the existing per-storey Z ([`z_for`], via
+/// [`cell_to_world`]) either way — a higher storey's tile carries a strictly greater z, so it
+/// draws in front, with NO new Z math.
 ///
 /// The SINGLE readable definition of "which storeys are drawn", shared by the draw loop
 /// (C1) AND the two destroyed-swap reactions (C6, [`swap_destroyed_cover`] /
-/// [`swap_destroyed_slab`]) so they can never drift. GTW-521's full-view toggle extends
-/// this ONE helper (widen the band to the whole occupied stack) WITHOUT re-touching the loop
-/// body or the swap predicates.
-pub(super) fn drawn_band(active: ActiveLevel) -> RangeInclusive<Level> {
-    Level::new(0)..=*active
+/// [`swap_destroyed_slab`]) — and, through
+/// [`ActiveLevel::draws_storey`](super::active_level::ActiveLevel), the GTW-520 ganger
+/// visibility filter — so they can never drift. GTW-521's full-view toggle widens the band's
+/// CEILING here in this ONE helper WITHOUT re-touching the loop body or the swap predicates.
+///
+/// [`z_for`]: crate::cell_to_world
+pub(super) fn drawn_band(active: ActiveLevel, view: ViewMode) -> RangeInclusive<Level> {
+    // The band floor is always the ground plane; only the ceiling depends on the view mode.
+    let ceiling = match view {
+        // DEFAULT (GTW-519/520): cull above the active view level.
+        ViewMode::DownToActive => *active,
+        // FULL VIEW (GTW-521): the top valid storey (`MAX_LEVELS - 1` = 7). `saturating_sub`
+        // guards the impossible `MAX_LEVELS == 0`.
+        ViewMode::FullView => Level::new(MAX_LEVELS.saturating_sub(1)),
+    };
+    Level::new(0)..=ceiling
 }
 
 /// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): the
 /// static-battlefield ONE-SHOT draw + redraw-on-level-change.
 ///
 /// Fires when ANY of: a [`BattleReady`](gdtf_battle_sim::BattleReady) drained this update,
-/// [`ActiveLevel`] `is_changed()`, OR [`TileRoles`] `is_changed()` — the GTW-375 third
+/// [`ActiveLevel`] `is_changed()`, [`ViewMode`] `is_changed()` (GTW-521 — the full-view
+/// toggle widens/narrows the [`drawn_band`] ceiling, so the terrain must redraw for the new
+/// band), OR [`TileRoles`] `is_changed()` — the GTW-375 third
 /// trigger that re-renders the terrain on a tile hot-reload. A `tile_roles.ron` re-save
 /// MUTATES [`TileRoles`] (the indices swap) and an `alt_tileset_terrain.png` re-save
 /// `set_changed()`s it (same indices, fresh GPU texture); either way the rendered tiles
@@ -336,6 +360,7 @@ pub fn draw_static_battlefield(
     atlases: Res<TopDownAtlases>,
     roles: Res<TileRoles>,
     active: Res<ActiveLevel>,
+    view: Res<ViewMode>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut quad: Local<Option<Handle<Mesh>>>,
@@ -353,7 +378,9 @@ pub fn draw_static_battlefield(
     // Fully DRAIN the reader (`.count()`, not `.next()`) so a multi-message ready never
     // leaves an unread BattleReady to re-fire a redundant redraw next update.
     let ready_fired = ready.read().count() > 0;
-    if !ready_fired && !active.is_changed() && !roles.is_changed() {
+    // GTW-521: a ViewMode toggle changes the drawn_band ceiling, so it must redraw the terrain
+    // for the new band exactly as an ActiveLevel change does.
+    if !ready_fired && !active.is_changed() && !view.is_changed() && !roles.is_changed() {
         return;
     }
 
@@ -384,7 +411,7 @@ pub fn draw_static_battlefield(
     // cell_to_world), NOT new math — a higher storey's tile carries a strictly greater z, so
     // it draws in front. A storey strictly above active is never entered, so it emits nothing
     // (the hard cull). present_fog dims each lower storey's tiles per-tile afterward.
-    for level in level_band(drawn_band(*active)) {
+    for level in level_band(drawn_band(*active, *view)) {
         for y in 0..i32_extent(GRID_HEIGHT) {
             for x in 0..i32_extent(GRID_WIDTH) {
                 let cell = Cell::new(x, y);
@@ -472,12 +499,13 @@ pub fn draw_static_battlefield(
 /// [`Commands`] needed, the swap edits the material in place (no despawn / respawn).
 pub fn swap_destroyed_cover(
     active: Res<ActiveLevel>,
+    view: Res<ViewMode>,
     roles: Res<TileRoles>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut destroyed: MessageReader<CoverDestroyed>,
     tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
 ) {
-    let band = drawn_band(*active);
+    let band = drawn_band(*active, *view);
     let rubble = *roles.rubble;
     for event in destroyed.read() {
         // CoverDestroyed.at is a CellLevel; only act on cells WITHIN the drawn band
@@ -528,12 +556,13 @@ pub fn swap_destroyed_cover(
 /// [`TileRoles::slab_destroyed`]: super::roles::TileRoles::slab_destroyed
 pub fn swap_destroyed_slab(
     active: Res<ActiveLevel>,
+    view: Res<ViewMode>,
     roles: Res<TileRoles>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut destroyed: MessageReader<SlabDestroyed>,
     tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
 ) {
-    let band = drawn_band(*active);
+    let band = drawn_band(*active, *view);
     let slab_destroyed = *roles.slab_destroyed;
     for event in destroyed.read() {
         // SlabDestroyed.at is a CellLevel; only act on cells WITHIN the drawn band

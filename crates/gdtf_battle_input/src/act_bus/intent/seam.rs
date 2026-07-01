@@ -1,7 +1,7 @@
 //! The buffered intent queue + the ONE drain system both input surfaces feed.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
-use gdtf_battle_presenter::ActiveLevel;
+use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     Aiming, CellLevel, Facing, Faction, PlayerFaction, Position, Stance, StanceKind,
     acts::{
@@ -47,6 +47,16 @@ pub enum ActIntent {
     LevelUp,
     /// Lower the presenter's [`ActiveLevel`] by one storey (floored at 0).
     LevelDown,
+    /// Toggle the presenter's [`ViewMode`](gdtf_battle_presenter::ViewMode) between
+    /// `DownToActive` (draw `0..=active`, the default) and `FullView` (draw ALL storeys —
+    /// the UFO full-stack view) (GTW-521). A no-act, presenter-view intent like
+    /// [`LevelUp`](Self::LevelUp) / [`LevelDown`](Self::LevelDown): it does NOT touch
+    /// [`ActiveLevel`], only flips the view mode; the drain toggles the presenter-owned
+    /// [`ViewMode`](gdtf_battle_presenter::ViewMode) resource, honoring the one-way
+    /// `input -> presenter` edge (input never reads the presenter's internals). The bound
+    /// full-view key pushes it; the terrain draw + ganger visibility re-run on the resulting
+    /// [`ViewMode`](gdtf_battle_presenter::ViewMode) change.
+    ToggleFullView,
     /// Step the [`SelectedShooter`]'s stance through the authored cycle — drained to
     /// [`SetStanceRequested`] (GTW-227). The KEYBOARD stance-cycle key still pushes this
     /// (a blind step through the [`crate::cycle`] order); the GTW-267 action-bar replaced
@@ -285,6 +295,10 @@ impl SelectionCycleReads<'_, '_> {
 /// - [`ActIntent::LevelUp`] / [`ActIntent::LevelDown`] step [`ActiveLevel`], clamped
 ///   to `0..MAX_LEVELS` ([`step_level`]): up saturates at `MAX_LEVELS - 1`, down
 ///   floors at `0`.
+/// - [`ActIntent::ToggleFullView`] flips the presenter-owned
+///   [`ViewMode`](gdtf_battle_presenter::ViewMode) between `DownToActive` and `FullView`
+///   (GTW-521) — it does NOT touch [`ActiveLevel`]; the presenter's terrain draw + ganger
+///   visibility re-run on the [`ViewMode`](gdtf_battle_presenter::ViewMode) change.
 ///
 /// The act-bearing intents (GTW-227) emit the matching
 /// `gdtf_battle_sim::acts::*Requested` for the [`SelectedShooter`], reading the
@@ -343,15 +357,18 @@ impl SelectionCycleReads<'_, '_> {
 /// With NO [`SelectedShooter`] the posture cycle intents are no-ops (nothing to act on); a
 /// cycle intent for a selected entity that lacks the relevant component is skipped
 /// (fail-closed, no panic) via the query lookup. Param-only (`bevy-traps.md` #7):
-/// [`ResMut`] over the queue + the presenter [`ActiveLevel`], a read-only `actors`
-/// [`Query`], the [`ActWriters`] message-writer bundle (`bevy-traps.md` #4 — buffered
-/// messages), and the [`SelectionCycleReads`] read bundle for the Prev/Next cycle.
+/// [`ResMut`] over the queue + the presenter [`ActiveLevel`] +
+/// [`ViewMode`](gdtf_battle_presenter::ViewMode) (the GTW-521 full-view toggle target), a
+/// read-only `actors` [`Query`], the [`ActWriters`] message-writer bundle (`bevy-traps.md`
+/// #4 — buffered messages), and the [`SelectionCycleReads`] read bundle for the Prev/Next
+/// cycle.
 /// Registered `.after` the intent WRITERS (`bevy-traps.md` #3) so it drains the same
 /// update's pushes.
 pub fn dispatch_act_intents(
     mut pending: ResMut<PendingActIntent>,
     mut selected: ResMut<SelectedShooter>,
     mut active_level: ResMut<ActiveLevel>,
+    mut view_mode: ResMut<ViewMode>,
     actors: Query<(&Stance, &Facing, &Aiming)>,
     mut acts: ActWriters,
     cycle_reads: SelectionCycleReads,
@@ -374,6 +391,17 @@ pub fn dispatch_act_intents(
                 if next != **active_level {
                     *active_level = ActiveLevel::new(next);
                 }
+            }
+            ActIntent::ToggleFullView => {
+                // GTW-521: flip the presenter-owned ViewMode between DownToActive and FullView.
+                // A no-act presenter-view intent like LevelUp/LevelDown — it does NOT touch
+                // ActiveLevel (C5). Assigning through the ResMut marks it changed, so the
+                // presenter's terrain draw + ganger visibility re-run on the flip (C3). Always a
+                // real change (the two variants differ), so no change-guard is needed.
+                *view_mode = match *view_mode {
+                    ViewMode::DownToActive => ViewMode::FullView,
+                    ViewMode::FullView => ViewMode::DownToActive,
+                };
             }
             ActIntent::StanceCycle => {
                 let Some(actor) = **selected else { continue };

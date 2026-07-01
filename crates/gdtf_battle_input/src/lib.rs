@@ -61,7 +61,7 @@ pub use act_bus::{
         dispatch_act_intents, step_level,
     },
     keybinds::{BoundKey, Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds},
-    keyboard::{cycle_selection_keys, level_keys, posture_keys, select_clear_key},
+    keyboard::{cycle_selection_keys, full_view_key, level_keys, posture_keys, select_clear_key},
     sets::InputSystems,
 };
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};

@@ -40,7 +40,7 @@ use bevy::{
     window::{PrimaryWindow, Window, WindowResolution},
 };
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
-use gdtf_battle_presenter::{ActiveLevel, WorldCamera};
+use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel,
     CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FightMode,
@@ -116,6 +116,8 @@ fn endtoend_app() -> App {
         .add_plugins(OccupancyMaintenancePlugin);
     app.world_mut()
         .insert_resource(ActiveLevel::new(Level::new(0)));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(SurfaceGrid::new());

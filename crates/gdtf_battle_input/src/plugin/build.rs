@@ -39,7 +39,7 @@ use crate::{
     },
     intent::{PendingActIntent, dispatch_act_intents},
     keybinds::{Keybinds, KeybindsHandle, load_keybinds, resolve_keybinds},
-    keyboard::{cycle_selection_keys, level_keys, posture_keys, select_clear_key},
+    keyboard::{cycle_selection_keys, full_view_key, level_keys, posture_keys, select_clear_key},
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
         PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
@@ -262,6 +262,10 @@ impl Plugin for GdtfBattleInputPlugin {
             Update,
             (
                 level_keys,
+                // GTW-521 — the full-view toggle key. Like `level_keys` it is a GLOBAL
+                // presenter-view control (not gated on a selection); it reads `Keybinds` and
+                // pushes `ActIntent::ToggleFullView` onto the shared seam.
+                full_view_key,
                 select_clear_key,
                 posture_keys,
                 cycle_selection_keys,
@@ -277,6 +281,9 @@ impl Plugin for GdtfBattleInputPlugin {
             dispatch_act_intents
                 .in_set(InputSystems::Gather)
                 .after(level_keys)
+                // GTW-521 — after the full-view toggle key so a toggle queued this update is
+                // drained this update (the same-frame guarantee, `bevy-traps.md` #3).
+                .after(full_view_key)
                 .after(select_clear_key)
                 .after(posture_keys)
                 // GTW-458 — after the Tab/Shift+Tab cycle key so a cycle queued this update is

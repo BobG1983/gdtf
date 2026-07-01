@@ -28,6 +28,8 @@ pub enum BoundKey {
     KeyF,
     /// The `R` key.
     KeyR,
+    /// The `V` key.
+    KeyV,
     /// The `Tab` key.
     KeyTab,
     /// The `PageUp` key.
@@ -56,6 +58,7 @@ impl BoundKey {
             Self::KeyC => KeyCode::KeyC,
             Self::KeyF => KeyCode::KeyF,
             Self::KeyR => KeyCode::KeyR,
+            Self::KeyV => KeyCode::KeyV,
             Self::KeyTab => KeyCode::Tab,
             Self::KeyPageUp => KeyCode::PageUp,
             Self::KeyPageDown => KeyCode::PageDown,
@@ -81,28 +84,33 @@ impl BoundKey {
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Deserialize, TypePath)]
 pub struct Keybinds {
     /// Clear the current [`SelectedShooter`](crate::SelectedShooter) selection.
-    pub select_clear: BoundKey,
+    pub select_clear:     BoundKey,
     /// Raise the presenter's [`ActiveLevel`](gdtf_battle_presenter::ActiveLevel) by one storey.
-    pub level_up:     BoundKey,
+    pub level_up:         BoundKey,
     /// Lower the presenter's [`ActiveLevel`](gdtf_battle_presenter::ActiveLevel) by one storey.
-    pub level_down:   BoundKey,
+    pub level_down:       BoundKey,
+    /// Toggle the presenter's [`ViewMode`](gdtf_battle_presenter::ViewMode) between
+    /// `DownToActive` (draw `0..=active`) and `FullView` (draw ALL storeys — the UFO
+    /// full-stack view) (GTW-521). The keyboard [`full_view_key`](crate::keyboard::full_view_key)
+    /// reads this and pushes [`ActIntent::ToggleFullView`](crate::ActIntent::ToggleFullView).
+    pub toggle_full_view: BoundKey,
     /// Step the selected ganger's stance through the cyclic order (consumed in 222b).
-    pub stance_cycle: BoundKey,
+    pub stance_cycle:     BoundKey,
     /// Toggle the selected ganger's aim mode (consumed in 222b).
-    pub aim_toggle:   BoundKey,
+    pub aim_toggle:       BoundKey,
     /// Step the selected ganger's facing through the cyclic order (consumed in 222b).
-    pub facing_cycle: BoundKey,
+    pub facing_cycle:     BoundKey,
     /// Cycle the [`SelectedShooter`](crate::SelectedShooter) to the NEXT player ganger
     /// (GTW-458). The `Tab` key: `cycle_selection_keys` reads this and pushes
     /// [`ActIntent::SelectNext`](crate::ActIntent::SelectNext) (or
     /// [`SelectPrev`](crate::ActIntent::SelectPrev) when `Shift` is held).
-    pub select_next:  BoundKey,
+    pub select_next:      BoundKey,
     /// Cycle the [`SelectedShooter`](crate::SelectedShooter) to the PREVIOUS player ganger
     /// (GTW-458). The Prev half of the cycle chord — bound to the SAME key as
     /// [`select_next`](Self::select_next), differentiated by the held `Shift` modifier
     /// (`Tab` = Next, `Shift+Tab` = Prev). The on-bar Prev BUTTON pushes
     /// [`ActIntent::SelectPrev`](crate::ActIntent::SelectPrev) through the same seam.
-    pub select_prev:  BoundKey,
+    pub select_prev:      BoundKey,
 }
 
 impl Keybinds {
@@ -122,6 +130,12 @@ impl Keybinds {
     #[must_use]
     pub const fn level_down(&self) -> KeyCode {
         self.level_down.key_code()
+    }
+
+    /// The [`KeyCode`] bound to the full-view toggle (GTW-521).
+    #[must_use]
+    pub const fn toggle_full_view(&self) -> KeyCode {
+        self.toggle_full_view.key_code()
     }
 
     /// The [`KeyCode`] bound to stance-cycle (consumed in 222b).

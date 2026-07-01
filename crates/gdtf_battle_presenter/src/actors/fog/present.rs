@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
     SquadVisibility, is_ganger_visible,
 };
 
-use crate::{Brightness, GangerSprite, GangerSprites, TerrainFogMaterial, TerrainSprite};
+use crate::{Brightness, GangerSprite, GangerSprites, TerrainFogMaterial, TerrainSprite, ViewMode};
 
 /// The [`TerrainFogMaterial`] saturation for a squad-VISIBLE cell — full colour (the atlas
 /// tile's own pixels read through unchanged).
@@ -127,6 +127,7 @@ pub fn present_fog(
     player: Option<Res<PlayerFaction>>,
     sprites: Res<GangerSprites>,
     active: Res<crate::ActiveLevel>,
+    view: Res<ViewMode>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     terrain: Query<(
         &TerrainSprite,
@@ -137,10 +138,14 @@ pub fn present_fog(
     mut actors: Query<&mut Visibility, (With<GangerSprite>, Without<TerrainSprite>)>,
 ) {
     present_terrain_fog(&squad, **active, &mut materials, terrain);
+    // GTW-521: the actor arm is the SINGLE FINAL Visibility writer, so it must compose the
+    // ViewMode-widened storey band (else a player ganger on an upper storey re-appears via
+    // apply_active_level_filter but is re-hidden here in FullView). The fog fact is unchanged.
     present_actor_fog(
         &squad,
         player.as_deref().copied(),
         **active,
+        *view,
         &sprites,
         &gangers,
         &mut actors,
@@ -233,14 +238,15 @@ fn present_actor_fog(
     squad: &SquadVisibility,
     player: Option<PlayerFaction>,
     active: Level,
+    view: ViewMode,
     sprites: &GangerSprites,
     gangers: &Query<(Entity, &Position, &Faction, &LifeState)>,
     actors: &mut Query<&mut Visibility, (With<GangerSprite>, Without<TerrainSprite>)>,
 ) {
-    // GTW-520 C4: the SINGLE FINAL actor-Visibility writer consults the SAME drawn-band
-    // predicate (`0..=active`) the ganger spawn / move / level-filter sites use, so it cannot
-    // drift from them. Wrap the borrowed active [`Level`] back into an [`ActiveLevel`] to reach
-    // the shared [`ActiveLevel::draws_storey`] predicate.
+    // GTW-520 C4 / GTW-521: the SINGLE FINAL actor-Visibility writer consults the SAME
+    // ViewMode-aware drawn-band predicate the ganger spawn / move / level-filter sites use, so it
+    // cannot drift from them. Wrap the borrowed active [`Level`] back into an [`ActiveLevel`] to
+    // reach the shared [`ActiveLevel::draws_storey`] predicate.
     let active = crate::ActiveLevel::new(active);
     for (entity, pos, faction, life) in gangers {
         let Some(sprite) = sprites.sprite_for(entity) else {
@@ -255,7 +261,7 @@ fn present_actor_fog(
         // storey index is reconstructed from `pos.z` (the S4 idiom; the impossible negative /
         // over-`u8` case clamps rather than panics).
         let storey = Level::new(u8::try_from(pos.z).unwrap_or(0));
-        let in_drawn_band = active.draws_storey(storey);
+        let in_drawn_band = active.draws_storey(storey, view);
         let key: CellLevel = **pos;
         // GTW-520 C3: the FOG hard-cut is PRESERVED unchanged — an enemy / corpse is still shown
         // only on a squad-VISIBLE cell (a player ganger is always shown by `actor_relation`).

@@ -38,7 +38,7 @@ use gdtf_battle_input::{
     selection::LeftClickReads,
 };
 use gdtf_battle_presenter::{
-    ActiveLevel, CellVisibility, HighlightRequest, WorldCamera, cell_to_world,
+    ActiveLevel, CellVisibility, HighlightRequest, ViewMode, WorldCamera, cell_to_world,
 };
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec,
@@ -710,6 +710,8 @@ fn picking_app() -> App {
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin);
     app.world_mut().insert_resource(ActiveLevel::new(LEVEL));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().spawn((
         Camera2d,

@@ -21,7 +21,9 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_input::{GdtfBattleInputPlugin, PathPreviewTarget, SelectedShooter};
-use gdtf_battle_presenter::{ActiveLevel, PathPreview, ReachableCells, ReachableOverlayEnabled};
+use gdtf_battle_presenter::{
+    ActiveLevel, PathPreview, ReachableCells, ReachableOverlayEnabled, ViewMode,
+};
 use gdtf_battle_sim::{
     BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, FloorCostGrid,
     GRID_HEIGHT, GRID_WIDTH, Level, MAX_LEVELS, OccupancyGrid, PlanningView, PlayerFaction,
@@ -105,6 +107,8 @@ fn reachable_app(links: VerticalLinkGraph, overlay_enabled: bool) -> App {
     w.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     w.insert_resource(ButtonInput::<MouseButton>::default());
     w.insert_resource(ActiveLevel::new(Level::new(0)));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    w.insert_resource(ViewMode::default());
     w.insert_resource(ReachableCells::cleared());
     w.insert_resource(ReachableOverlayEnabled::new(overlay_enabled));
     // GTW-450 C5(b) — the click-to-target route preview is the ONLY move feedback by default

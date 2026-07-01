@@ -21,7 +21,7 @@ use bevy::{input::ButtonInput, prelude::*};
 use gdtf_battle_input::{
     ActIntent, BoundKey, GdtfBattleInputPlugin, Keybinds, PendingActIntent, SelectedShooter,
 };
-use gdtf_battle_presenter::ActiveLevel;
+use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, Position,
     VerticalLinkGraph,
@@ -39,14 +39,16 @@ const LEVEL: Level = Level::new(0);
 /// shipped `.ron`), the `acts.rs` `test_keybinds` precedent.
 const fn test_keybinds() -> Keybinds {
     Keybinds {
-        select_clear: BoundKey::KeyEscape,
-        level_up:     BoundKey::KeyPageUp,
-        level_down:   BoundKey::KeyPageDown,
-        stance_cycle: BoundKey::KeyC,
-        aim_toggle:   BoundKey::KeyF,
-        facing_cycle: BoundKey::KeyR,
-        select_next:  BoundKey::KeyTab,
-        select_prev:  BoundKey::KeyTab,
+        select_clear:     BoundKey::KeyEscape,
+        level_up:         BoundKey::KeyPageUp,
+        level_down:       BoundKey::KeyPageDown,
+        // GTW-521 — the full-view toggle key.
+        toggle_full_view: BoundKey::KeyV,
+        stance_cycle:     BoundKey::KeyC,
+        aim_toggle:       BoundKey::KeyF,
+        facing_cycle:     BoundKey::KeyR,
+        select_next:      BoundKey::KeyTab,
+        select_prev:      BoundKey::KeyTab,
     }
 }
 
@@ -66,6 +68,8 @@ fn cycle_app() -> App {
     ))
     .add_plugins(GdtfBattleInputPlugin);
     app.world_mut().insert_resource(ActiveLevel::new(LEVEL));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut()

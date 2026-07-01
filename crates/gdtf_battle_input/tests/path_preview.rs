@@ -33,7 +33,7 @@ use bevy::{
 use gdtf_battle_input::{
     GdtfBattleInputPlugin, PathPreviewTarget, SelectedFireMode, SelectedShooter,
 };
-use gdtf_battle_presenter::{ActiveLevel, PathPreview};
+use gdtf_battle_presenter::{ActiveLevel, PathPreview, ViewMode};
 use gdtf_battle_sim::{
     BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, FireModeSpec,
     FloorCostGrid, GRID_HEIGHT, GRID_WIDTH, Level, MAX_LEVELS, ModeConeMult, ModeKind, ModeShots,
@@ -101,6 +101,8 @@ fn preview_app() -> App {
     w.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     w.insert_resource(ButtonInput::<MouseButton>::default());
     w.insert_resource(ActiveLevel::new(Level::new(0)));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    w.insert_resource(ViewMode::default());
     w.insert_resource(PathPreview::cleared());
     app
 }

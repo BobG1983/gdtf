@@ -29,7 +29,7 @@ use gdtf_battle_input::{
     ActIntent, GdtfBattleInputPlugin, InspectTarget, PendingActIntent, SelectedFireMode,
     SelectedShooter,
 };
-use gdtf_battle_presenter::ActiveLevel;
+use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec,
     Handedness, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
@@ -68,6 +68,10 @@ fn control_app() -> App {
     ))
     .add_plugins(GdtfBattleInputPlugin);
     app.world_mut().insert_resource(ActiveLevel::new(LEVEL));
+    // GTW-521 — the `dispatch_act_intents` drain now also mutates the presenter-owned
+    // `ViewMode` (the full-view toggle target). The real app gets it from
+    // `TopDownRendererPlugin`; this input-only harness inserts the default (DownToActive).
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().insert_resource(CombatTuning::default());

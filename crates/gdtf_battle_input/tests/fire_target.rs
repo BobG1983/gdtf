@@ -21,7 +21,7 @@
 
 use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
-use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight};
+use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
     Aiming, BattleInProgress, Cell, CellLevel, Faction, FireMode, FireModeSpec, Handedness, Level,
     LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
@@ -66,6 +66,8 @@ fn fire_target_app() -> App {
     .add_plugins(GdtfBattleInputPlugin);
     let w = app.world_mut();
     w.insert_resource(ActiveLevel::new(LEVEL));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    w.insert_resource(ViewMode::default());
     w.insert_resource(BattleInProgress);
     w.insert_resource(OccupancyGrid::default());
     w.insert_resource(VerticalLinkGraph::default());

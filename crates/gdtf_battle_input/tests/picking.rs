@@ -46,7 +46,7 @@ use gdtf_battle_input::{
     GdtfBattleInputActive, GdtfBattleInputPlugin, InspectTarget, emit_highlight_request,
     world_to_cell,
 };
-use gdtf_battle_presenter::{ActiveLevel, CellVisibility, HighlightRequest, WorldCamera};
+use gdtf_battle_presenter::{ActiveLevel, CellVisibility, HighlightRequest, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
     BattleInProgress, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, SquadVisibility,
     TerrainKind, VerticalLinkGraph, acts::MoveRequested, tuning::CombatTuning,
@@ -184,6 +184,8 @@ fn picking_app(active_level: Level) -> App {
     // focused harness inserts it directly so picking has a level to band on.
     app.world_mut()
         .insert_resource(ActiveLevel::new(active_level));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
 
     // The synthetic world camera: a deterministic projection at the identity

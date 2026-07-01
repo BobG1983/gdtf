@@ -13,7 +13,7 @@ use crate::{
     ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle,
     FireTargetHighlight, FxTuning, FxTuningHandle, GamepadCursorMoved, GangerSprites,
     HighlightRequest, PanEdgeDwellState, PanTuning, PanTuningHandle, PathPreview, PresenterSystems,
-    ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases,
+    ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases, ViewMode,
     advance_projectiles, advance_sprite_tweens, animate_floating_text, animate_impact,
     apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
     despawn_removed_ganger_sprites, draw_fire_target, draw_highlight_on_request, draw_path_preview,
@@ -149,6 +149,11 @@ impl Plugin for TopDownRendererPlugin {
         }
         app.insert_resource(TopDownRendererActive)
             .init_resource::<ActiveLevel>()
+            // GTW-521 — the presenter-owned view mode (DownToActive default = the current
+            // GTW-519/520 behaviour). The input crate's ToggleFullView intent flips it; the
+            // terrain draw + ganger visibility filter read it through the shared `drawn_band`
+            // helper. Present for the whole battle span so the toggle always has a resource.
+            .init_resource::<ViewMode>()
             // GTW-358 — the route path-preview read-seam (the find_path route from the selected
             // ganger to the target + its §48 total cost). Present for the whole battle span: the
             // input crate POPULATES it (clearing it when there is no target or it is

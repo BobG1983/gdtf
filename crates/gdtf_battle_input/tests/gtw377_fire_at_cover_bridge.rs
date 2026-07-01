@@ -16,7 +16,7 @@
 
 use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*, scene::ScenePlugin};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
-use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight};
+use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, BraceStairCells,
     Cell, CellLevel, CombatTuning, CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType,
@@ -72,6 +72,8 @@ fn bridge_app() -> App {
     // The battle-live gate witness + the click-decision reads.
     app.insert_resource(gdtf_battle_sim::BattleInProgress);
     app.insert_resource(ActiveLevel::new(LEVEL));
+    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
+    app.insert_resource(ViewMode::default());
     app.insert_resource(CombatTuning::default());
     app.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     app.insert_resource(ButtonInput::<MouseButton>::default());

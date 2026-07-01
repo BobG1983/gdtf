@@ -46,6 +46,25 @@ pub fn level_keys(
     }
 }
 
+/// Reads the full-view toggle key and PUSHES [`ActIntent::ToggleFullView`] (GTW-521).
+///
+/// On a `just_pressed` of the [`Keybinds::toggle_full_view`] key, pushes
+/// [`ActIntent::ToggleFullView`] onto the [`PendingActIntent`] queue — the seam the
+/// [`dispatch_act_intents`](crate::dispatch_act_intents) drain flips the presenter-owned
+/// [`ViewMode`](gdtf_battle_presenter::ViewMode) with. Like [`level_keys`] it is a GLOBAL
+/// presenter-view control (NOT gated on a [`SelectedShooter`](crate::SelectedShooter) —
+/// the view mode is battlefield-wide, not per-ganger). No `KeyCode` literal: the bound
+/// code is read off the loaded [`Keybinds`] resource. Param-only (`bevy-traps.md` #7).
+pub fn full_view_key(
+    keys: Res<ButtonInput<KeyCode>>,
+    binds: Res<Keybinds>,
+    mut pending: ResMut<PendingActIntent>,
+) {
+    if keys.just_pressed(binds.toggle_full_view()) {
+        pending.push(ActIntent::ToggleFullView);
+    }
+}
+
 /// Reads the select-clear key and PUSHES [`ActIntent::SelectionClear`].
 ///
 /// On a `just_pressed` of the [`Keybinds::select_clear`] key, pushes
