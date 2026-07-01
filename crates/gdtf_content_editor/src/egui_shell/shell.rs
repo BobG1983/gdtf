@@ -16,7 +16,8 @@
 //! 4. right `Panel::right` — the active mode's form (THEME field stack, PREFAB controls; TERRAIN is
 //!    idle here since GTW-534 C1 moved its controls to the central primary region),
 //! 5. [`CentralPanel`](bevy_egui::egui::CentralPanel) — the primary region (TERRAIN's stat fields +
-//!    sprite-grid picker as the primary focus — GTW-534 C1, THEME RON preview, PREFAB the
+//!    sprite-grid picker as the primary focus — GTW-534 C1, THEME's terrain multi-select library
+//!    with per-row sprite thumbnails as the primary focus — GTW-530 C1/C2, PREFAB the
 //!    render-to-texture tile viewport — GTW-515 C4).
 //!
 //! The mode switch is an IN-UI branch inside the right panel (`if mode == Prefab {…} else if …`)
@@ -226,9 +227,10 @@ pub(crate) fn editor_egui_ui(
     //    TERRAIN mode (GTW-534 C1) it is now the PRIMARY focus: the sprite-grid graphic picker
     //    (GTW-516) + the terrain stat field stack, side by side — the two things authoring a terrain
     //    is about (the demoted `.terrain_def.ron` preview lives in the LEFT secondary strip). In
-    //    THEME mode (C3) it shows the live `.terrain_theme.ron` preview; in PREFAB mode (C4 /
-    //    GTW-515) it shows the render-to-texture viewport (click-to-paint + hover ghost + wheel-zoom
-    //    + right-drag pan).
+    //    THEME mode (GTW-530 C1/C2) it is now the PRIMARY focus: the terrain multi-select library
+    //    with per-row `[sprite] name [Kind]` thumbnails (the `.terrain_theme.ron` preview was
+    //    REMOVED — C1). In PREFAB mode (C4 / GTW-515) it shows the render-to-texture viewport
+    //    (click-to-paint + hover ghost + wheel-zoom + right-drag pan).
     egui::CentralPanel::default().show(&mut viewport_ui, |ui| match *mode {
         EditorMode::Terrain => {
             terrain_form_ui::primary_panel(
@@ -241,7 +243,13 @@ pub(crate) fn editor_egui_ui(
             );
         }
         EditorMode::Theme => {
-            theme_form_ui::ron_preview(ui, &theme_draft);
+            theme_form_ui::terrain_library_panel(
+                ui,
+                &mut theme_draft,
+                terrain_registry.as_deref(),
+                roles.as_deref(),
+                sheet_id,
+            );
         }
         EditorMode::Prefab => {
             if let (Some(map), Some(edit_level), Some(hovered), Some(zoom), Some(pan)) = (

@@ -11,17 +11,25 @@
 //! (no message round-trip — egui is immediate-mode), so the mutations are idempotent under the
 //! multipass re-run (bevy-traps #8 fact (b)).
 //!
-//! ## Layout across the C1 shell panels (C3.1)
+//! ## Layout across the shell panels (GTW-530 — reworked emphasis)
 //!
+//! GTW-530 REWORKS the GTW-514 THEME layout so the terrain LIBRARY is the primary focus and the
+//! `.terrain_theme.ron` preview is REMOVED entirely (unlike the TERRAIN tab's GTW-534 DEMOTION —
+//! here the author never wants the RON, so the central space it held is reclaimed for the library):
+//!
+//! - CENTRAL primary panel — the [`terrain_library_panel`]: the terrain multi-select library, now
+//!   the largest / most-prominent region. Each row renders `[sprite thumbnail] name [Kind]` — the
+//!   sprite resolved via the SHARED [`sprite_thumb`](crate::egui_shell::sprite_thumb) helper
+//!   (GTW-516) over the terrain's [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index),
+//!   NO hardcoded index. The check/uncheck multi-select (fail-closed default floor) is preserved.
 //! - LEFT palette panel — the resolved-stats readout for the current default-floor terrain (or a
 //!   placeholder when none is selected), reusing [`resolved_stats`](crate::theme_form::resolved_stats)
 //!   (the C3 stat proof) — a text summary + an [`egui::ProgressBar`] HP bar.
-//! - RIGHT mode-form panel — the field stack: display name, the terrain-UUID library multi-select
-//!   (a [`ScrollArea`](egui::ScrollArea) of checkboxes from [`TerrainDefRegistry`], sorted by
-//!   name, each `"name [Kind]"`), the default-floor [`ComboBox`] (Slab-first via
-//!   [`floor_candidates`](crate::theme_form::floor_candidates)), the read-only UUID, the New-theme
-//!   button, and the debug-only Save button.
-//! - CENTRAL panel — the live monospace RON preview (re-serialized on change).
+//! - RIGHT mode-form panel — the field stack: display name, the default-floor [`ComboBox`]
+//!   (SLAB-ONLY via [`slab_floor_candidates`](crate::theme_form::slab_floor_candidates) — GTW-530
+//!   C3), the read-only UUID, the New-theme button, and the debug-only Save button. The terrain
+//!   library is NO LONGER here (it is the central primary region — GTW-530 C2).
+//! - The `.terrain_theme.ron` preview is GONE (GTW-530 C1).
 //!
 //! ## Load-existing (C3.2)
 //!
@@ -30,13 +38,16 @@
 //! entering THEME mode with a theme already selected, the shell does the same check.
 
 use bevy_egui::egui;
+use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeDef, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainUuid},
 };
 
-use crate::theme_form::{
-    ThemeDraft, draft_to_theme_def, floor_candidates, resolved_stats, serialize_theme_def,
+use crate::{
+    egui_shell::sprite_thumb,
+    terrain_graphics::terrain_atlas_index,
+    theme_form::{ThemeDraft, resolved_stats, slab_floor_candidates},
 };
 
 /// The placeholder text shown in the left stats panel when no default-floor terrain is selected
@@ -72,16 +83,16 @@ pub(crate) fn stats_panel(
     }
 }
 
-/// Draw the THEME-mode FIELD STACK into the RIGHT mode-form panel (C3.1) — display name, the
-/// terrain library multi-select (a [`ScrollArea`] of checkboxes from the [`TerrainDefRegistry`],
-/// sorted by name, each `"name [Kind]"`), the default-floor [`ComboBox`] (Slab-kind FIRST via
-/// [`floor_candidates`]), the read-only UUID key, the New-theme button (mints a fresh draft), and
-/// the debug-only Save button.
+/// Draw the THEME-mode FIELD STACK into the RIGHT mode-form panel (GTW-530 C2/C3) — display name,
+/// the default-floor [`ComboBox`] (SLAB-ONLY via [`slab_floor_candidates`] — GTW-530 C3), the
+/// read-only UUID key, the New-theme button (mints a fresh draft), and the debug-only Save button.
+///
+/// The terrain library multi-select is NO LONGER drawn here (GTW-530 C2): it is the CENTRAL primary
+/// region ([`terrain_library_panel`]) so the largest space showcases the terrain + its sprites.
 ///
 /// Every control reads / writes the [`ThemeDraft`] through its existing accessors / setters
-/// (C3.3): the terrain checkboxes route through [`ThemeDraft::toggle_terrain`] (which fail-closes
-/// the default floor when a terrain is removed — the C6 rule), the floor combo routes through
-/// [`ThemeDraft::set_default_floor`] (which ignores a key not in the palette — fail-closed C6).
+/// (C3.3): the floor combo routes through [`ThemeDraft::set_default_floor`] (which ignores a key
+/// not in the palette — fail-closed C6).
 pub(crate) fn field_stack(
     ui: &mut egui::Ui,
     draft: &mut ThemeDraft,
@@ -91,7 +102,6 @@ pub(crate) fn field_stack(
     ui.separator();
 
     name_field(ui, draft);
-    terrain_library(ui, draft, terrain);
     floor_combo(ui, draft, terrain);
     uuid_text(ui, draft);
 
@@ -114,63 +124,105 @@ fn name_field(ui: &mut egui::Ui, draft: &mut ThemeDraft) {
     }
 }
 
-/// The terrain library multi-select (C3.1) — a [`ScrollArea`] of checkboxes, one per registered
-/// terrain, sorted by display name so the order is deterministic (the registry is a `HashMap`).
-/// Each row's label is `"name [Kind]"` where Kind is Wall / Cover / Slab. A check / uncheck
-/// routes through [`ThemeDraft::toggle_terrain`], which fail-closes the default floor if the
-/// toggled terrain was the chosen floor (the C6 rule).
+/// Draw the THEME-mode CENTRAL PRIMARY region (GTW-530 C2) — the terrain multi-select LIBRARY, now
+/// the largest / most-prominent region of the theme tab (formerly a strip inside the right-panel
+/// field stack; GTW-530 promotes it to the central primary space the removed RON preview vacated —
+/// C1).
 ///
-/// When no registry is present (registries not yet resolved), the area is empty rather than
-/// panicking. The sort is rebuilt from the raw `defs()` iterator every draw (deterministic — the
-/// registry count / key change drives a natural re-sort, matching the ticket's rebuild-on-change
-/// requirement).
-fn terrain_library(
+/// A [`ScrollArea`] of rows, one per registered terrain, sorted by display name so the order is
+/// deterministic (the registry is a `HashMap`). Each row renders `[sprite thumbnail] name [Kind]`:
+/// the SPRITE via the SHARED [`sprite_thumb`] helper (GTW-516) over the terrain's
+/// [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index) — the SAME resolution the
+/// battlescape + the TERRAIN picker use, NO hardcoded index — then a selectable multi-select
+/// checkbox carrying `"name [Kind]"` (Kind = Wall / Cover / Slab). A check / uncheck routes through
+/// [`ThemeDraft::toggle_terrain`], which fail-closes the default floor if the toggled terrain was
+/// the chosen floor (the C6 rule) — the multi-select behavior is PRESERVED across the relocation.
+///
+/// When no registry is present (registries not yet resolved), the area shows a loading marker
+/// rather than panicking. An absent [`TileRoles`] / unregistered sheet leaves the sprite unresolved
+/// and the shared helper draws a fixed-size blank spacer so the row layout stays stable. The sort
+/// is rebuilt from the raw `defs()` iterator every draw (deterministic — the registry count / key
+/// change drives a natural re-sort). `sheet_id` is the terrain sheet's egui texture id (resolved by
+/// the shell before the draw); `roles` is the presenter's role table.
+pub(crate) fn terrain_library_panel(
     ui: &mut egui::Ui,
     draft: &mut ThemeDraft,
     terrain: Option<&TerrainDefRegistry>,
+    roles: Option<&TileRoles>,
+    sheet_id: Option<egui::TextureId>,
 ) {
-    ui.label("Terrain library");
+    ui.heading("Terrain library");
+    ui.separator();
+    let Some(reg) = terrain else {
+        ui.label("(loading…)");
+        return;
+    };
+    // Sort by display name for a deterministic, reader-friendly list.
+    let mut entries: Vec<(TerrainUuid, String)> = reg
+        .defs()
+        .map(|(key, def)| {
+            let label = format!("{}  [{}]", *def.display_name, sim_kind_label(&def.sim_kind));
+            (*key, label)
+        })
+        .collect();
+    entries.sort_by(|(_, a), (_, b)| a.cmp(b));
+
     egui::ScrollArea::vertical()
         .id_salt("theme_terrain_library")
-        .max_height(200.0)
         .show(ui, |ui| {
-            let Some(reg) = terrain else {
-                ui.label("(loading…)");
-                return;
-            };
-            // Sort by display name for a deterministic, reader-friendly list.
-            let mut entries: Vec<(TerrainUuid, String)> = reg
-                .defs()
-                .map(|(key, def)| {
-                    let label =
-                        format!("{}  [{}]", *def.display_name, sim_kind_label(&def.sim_kind));
-                    (*key, label)
-                })
-                .collect();
-            entries.sort_by(|(_, a), (_, b)| a.cmp(b));
-
             for (key, label) in entries {
-                let mut checked = draft.has_terrain(key);
-                if ui.checkbox(&mut checked, &label).changed() {
-                    draft.toggle_terrain(key);
-                }
+                terrain_library_row(ui, draft, reg, roles, sheet_id, key, &label);
             }
         });
 }
 
-/// The default-floor [`ComboBox`] (C3.1) — offers the draft's own terrain as candidates (via
-/// [`floor_candidates`], Slab-kind FIRST), with the current default floor pre-selected. Choosing
-/// a row routes through [`ThemeDraft::set_default_floor`], which ignores it unless the terrain is
-/// in the palette (fail-closed C6). When the palette is empty the combo shows `"(none)"` and is
-/// disabled. Requires the terrain registry to resolve display names; falls back to a read-only
-/// label when absent.
+/// Draw ONE terrain-library row — `[sprite thumbnail] name [Kind]` on a single horizontal line
+/// (GTW-530 C2).
+///
+/// The sprite is the terrain's atlas index resolved via
+/// [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index) (the presenter's
+/// resolution — no hardcoded index) and drawn by the shared [`sprite_thumb::draw_thumb`] (which
+/// allocates a fixed-size blank spacer when the index / sheet is unavailable, keeping rows aligned
+/// — never a panic). The multi-select is a checkbox carrying the `"name [Kind]"` label; a toggle
+/// routes through [`ThemeDraft::toggle_terrain`] (fail-closed default floor — C6). Resolving the
+/// index needs both the registry + the role table; when [`TileRoles`] is absent the sprite is left
+/// unresolved (blank spacer) but the checkbox still works.
+fn terrain_library_row(
+    ui: &mut egui::Ui,
+    draft: &mut ThemeDraft,
+    reg: &TerrainDefRegistry,
+    roles: Option<&TileRoles>,
+    sheet_id: Option<egui::TextureId>,
+    key: TerrainUuid,
+    label: &str,
+) {
+    ui.horizontal(|ui| {
+        // Resolve the sprite the way the presenter + TERRAIN picker do (no hardcoded index): the
+        // terrain's graphic role → atlas index. `None` (absent role table / out-of-vocabulary role)
+        // draws a fixed-size blank spacer so the row still lines up.
+        let index = roles.and_then(|roles| terrain_atlas_index(reg, roles, &key));
+        sprite_thumb::draw_thumb(ui, index, sheet_id);
+        let mut checked = draft.has_terrain(key);
+        if ui.checkbox(&mut checked, label).changed() {
+            draft.toggle_terrain(key);
+        }
+    });
+}
+
+/// The default-floor [`ComboBox`] (GTW-530 C3) — offers ONLY the draft's own SLAB-kind terrain as
+/// candidates (via [`slab_floor_candidates`]), with the current default floor pre-selected. The
+/// walkable floor is always a slab, so no Wall / Cover terrain ever appears in this picker.
+/// Choosing a row routes through [`ThemeDraft::set_default_floor`], which ignores it unless the
+/// terrain is in the palette (fail-closed C6). When no slab is selected the combo shows `"(none)"`
+/// and is disabled. Requires the terrain registry to resolve display names; falls back to a
+/// read-only label when absent.
 fn floor_combo(ui: &mut egui::Ui, draft: &mut ThemeDraft, terrain: Option<&TerrainDefRegistry>) {
     ui.label("Default floor");
     let Some(reg) = terrain else {
         ui.label("(loading…)");
         return;
     };
-    let candidates = floor_candidates(draft, reg);
+    let candidates = slab_floor_candidates(draft, reg);
     if candidates.is_empty() {
         ui.add_enabled_ui(false, |ui| {
             egui::ComboBox::from_id_salt("theme_floor_combo")
@@ -233,26 +285,10 @@ fn save_button(ui: &mut egui::Ui, draft: &ThemeDraft) {
     }
 }
 
-/// Draw the live monospace `.terrain_theme.ron` PREVIEW into the CENTRAL panel (C3.1) — a
-/// [`ScrollArea`](egui::ScrollArea) of [`ui.monospace`](egui::Ui::monospace) text, re-serialized
-/// from the draft each frame so it tracks every edit.
-///
-/// Projects the draft with its current key via [`draft_to_theme_def`] + [`serialize_theme_def`]
-/// verbatim (C3.3); a serialize error renders as an inline marker rather than a panic. The default
-/// floor uses the [`TerrainUuid::nil`] sentinel if none is chosen yet (a defensible preview
-/// placeholder — the C6 validation rejects it on save).
-pub(crate) fn ron_preview(ui: &mut egui::Ui, draft: &ThemeDraft) {
-    ui.heading("Preview (.terrain_theme.ron)");
-    ui.separator();
-    let key = draft.key();
-    let def = draft_to_theme_def(draft, key);
-    let body = serialize_theme_def(&def).unwrap_or_else(|err| format!("<serialize error: {err}>"));
-    egui::ScrollArea::vertical()
-        .id_salt("theme_ron_preview")
-        .show(ui, |ui| {
-            ui.monospace(body);
-        });
-}
+// GTW-530 C1: the `.terrain_theme.ron` preview was REMOVED from the THEME tab entirely. Authors do
+// not read the raw RON here, so the central space it held is reclaimed for the terrain library
+// ([`terrain_library_panel`]) — the tab's primary focus (C2). (This is the deliberate difference
+// from the TERRAIN tab's GTW-534, which only DEMOTED its preview to a side strip.)
 
 /// Load an existing [`UuidThemeDef`] into the form — the C3.2 "load-existing" affordance. Called
 /// by the shell when the top-bar theme `ComboBox` selects a theme while in THEME mode (and on

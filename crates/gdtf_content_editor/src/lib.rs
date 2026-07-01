@@ -141,5 +141,5 @@ pub use terrain_form::{
 pub use theme_form::write_theme;
 pub use theme_form::{
     SaveThemeError, ThemeDraft, draft_to_theme_def, floor_candidates, resolved_stats,
-    serialize_theme_def, validate_for_save,
+    serialize_theme_def, slab_floor_candidates, validate_for_save,
 };

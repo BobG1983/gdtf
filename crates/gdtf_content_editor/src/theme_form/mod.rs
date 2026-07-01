@@ -27,7 +27,7 @@
 //! |-----------|---------|
 //! | [`types`]   | The [`ThemeDraft`](types::ThemeDraft), the field / identity markers, and [`SaveThemeError`](types::SaveThemeError) |
 //! | [`save`]    | The pure projection + serialization + the validation + the debug-only fs write |
-//! | [`resolve`] | Pure resolution helpers ([`resolved_stats`](resolve::resolved_stats) / [`floor_candidates`](resolve::floor_candidates) / `sim_kind_label`) the C3 form + the tests reuse |
+//! | [`resolve`] | Pure resolution helpers ([`resolved_stats`](resolve::resolved_stats) / [`floor_candidates`](resolve::floor_candidates) / [`slab_floor_candidates`](resolve::slab_floor_candidates) / `sim_kind_label`) the C3 form + the tests reuse |
 //! | [`tests`]   | In-crate tests (the projection + round-trip, the default-floor rule, the resolution) |
 
 mod resolve;
@@ -37,7 +37,7 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-pub use resolve::{floor_candidates, resolved_stats};
+pub use resolve::{floor_candidates, resolved_stats, slab_floor_candidates};
 // The debug-only fs write (validates + projects + serializes + writes the `.terrain_theme.ron`) —
 // kept for the C3 child's egui save-press re-point (GTW-512). Re-exporting it keeps its path helpers
 // reachable.

@@ -7,6 +7,7 @@
 //! - [`resolved_stats`] — a terrain def → `(human summary, HP fraction)` for the C3 resolved-stats
 //!   readout (proves the theme stores references, not inlined stats),
 //! - [`floor_candidates`] — the default-floor candidate list for a draft (Slab-kind FIRST — C6),
+//! - [`slab_floor_candidates`] — the Slab-ONLY default-floor candidate list (GTW-530 C3),
 //! - [`sim_kind_label`] — the short Wall / Cover / Slab label.
 //!
 //! All three are pure (sim types + std only), so the C7 tests pin them without an app.
@@ -98,6 +99,34 @@ pub fn floor_candidates(
     }
     slabs.extend(others);
     slabs
+}
+
+/// The default-floor candidate list RESTRICTED to Slab-kind terrain (GTW-530 C3) — the walkable
+/// floor is always a slab, so the default-floor picker offers ONLY the draft's selected terrain
+/// whose [`sim_kind`](TerrainDef::sim_kind) is [`TerrainSimKind::Slab`]; every Wall / Cover terrain
+/// is filtered OUT. Each surviving candidate is `(key, "display name [Slab]")`.
+///
+/// Where [`floor_candidates`] merely ORDERS slabs first (keeping non-slabs as trailing options),
+/// this DROPS non-slabs entirely so no Wall / Cover can ever be chosen as the default floor. Pure,
+/// so the C3 test pins the Slab-only filter against a mixed-kind registry fixture.
+#[must_use]
+pub fn slab_floor_candidates(
+    draft: &ThemeDraft,
+    terrain: &TerrainDefRegistry,
+) -> Vec<(TerrainUuid, String)> {
+    draft
+        .terrain()
+        .iter()
+        .filter_map(|key| {
+            let def = terrain.def(key)?;
+            if matches!(def.sim_kind, TerrainSimKind::Slab { .. }) {
+                let label = format!("{}  [{}]", *def.display_name, sim_kind_label(&def.sim_kind));
+                Some((*key, label))
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 /// The short human label for a terrain sim kind (Wall / Cover / Slab) — shown beside each library
