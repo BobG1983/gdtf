@@ -29,16 +29,17 @@ use bevy_egui::EguiPrimaryContextPass;
 
 use crate::{
     EditorState,
-    camera::spawn_editor_camera,
+    camera::{disable_egui_auto_context, spawn_editor_camera},
     editor_resources::{
         insert_canvas_zoom, insert_edit_level, insert_hovered_cell, insert_map, insert_mode,
-        insert_session, insert_terrain_draft, insert_theme_draft, remove_canvas_zoom,
-        remove_edit_level, remove_hovered_cell, remove_map, remove_mode, remove_session,
-        remove_terrain_draft, remove_theme_draft,
+        insert_preview_pan, insert_session, insert_terrain_draft, insert_theme_draft,
+        remove_canvas_zoom, remove_edit_level, remove_hovered_cell, remove_map, remove_mode,
+        remove_preview_pan, remove_session, remove_terrain_draft, remove_theme_draft,
     },
-    egui_shell::editor_egui_ui,
+    egui_shell::{editor_egui_ui, level_nav_hotkeys},
     load::register_load,
     mode::mode_hotkeys,
+    preview::register_preview,
     right_panel::seed_default_theme,
     tile_atlas::load_tile_atlas,
 };
@@ -73,6 +74,13 @@ impl Plugin for MapEditorPlugin {
         app.init_state::<EditorState>();
         register_load(app);
 
+        // GTW-515: disable bevy_egui's auto-attach of the primary context (the editor has TWO
+        // cameras now — the window camera + the offscreen prefab preview camera — so auto-attach to
+        // the ambiguously-first camera could land on the preview camera and blank the window). The
+        // primary context is attached EXPLICITLY to the window camera in `spawn_editor_camera`. Must
+        // run before any camera spawns (Startup, before the OnEnter(Editing) camera spawns).
+        app.add_systems(Startup, disable_egui_auto_context);
+
         app.add_systems(
             OnEnter(EditorState::Editing),
             (
@@ -86,6 +94,8 @@ impl Plugin for MapEditorPlugin {
                 insert_theme_draft,
                 // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture write.
                 insert_hovered_cell,
+                // GTW-515 C4.8: the owned pan-offset target (the zoom target is the kept CanvasZoom).
+                insert_preview_pan,
                 load_tile_atlas,
             ),
         );
@@ -100,8 +110,14 @@ impl Plugin for MapEditorPlugin {
                 remove_terrain_draft,
                 remove_theme_draft,
                 remove_hovered_cell,
+                remove_preview_pan,
             ),
         );
+
+        // GTW-515 C4.3: the prefab preview render machinery — the offscreen render-target image +
+        // the dedicated isolated-render-layer camera (OnEnter/OnExit), the change-driven tile
+        // redraw, and the once-per-frame set-to-target zoom/pan apply (Update, in Editing).
+        register_preview(app);
 
         // GTW-512 C1.3: the egui shell — ONE UI system in `EguiPrimaryContextPass` (NOT `Update`),
         // gated to `Editing`. It declares the panels outermost-first with the central panel LAST
@@ -117,7 +133,8 @@ impl Plugin for MapEditorPlugin {
         // drive is not wired.
         app.add_systems(
             Update,
-            (seed_default_theme, mode_hotkeys).run_if(in_state(EditorState::Editing)),
+            (seed_default_theme, mode_hotkeys, level_nav_hotkeys)
+                .run_if(in_state(EditorState::Editing)),
         );
     }
 }

@@ -68,7 +68,10 @@ mod types;
 mod tests;
 
 // The pure projection + serialization + path-resolution surface, re-exported for the crate root
-// (`lib.rs`) so the C4 save-control re-point + the in-crate save tests reach it (GTW-512). The
-// `bevy_ui` save controls themselves are the C4 child.
+// (`lib.rs`) so the egui save control (C4.9) + the in-crate save tests reach it (GTW-512 / GTW-515).
+// GTW-515 C4.9 / C4.10: the debug-only fs-write the egui "Save prefab" button calls — the deleted
+// `bevy_ui` `systems` writer, re-added on the egui path.
+#[cfg(debug_assertions)]
+pub use project::write_prefab;
 pub use project::{editor_map_to_prefab, prefab_save_path, sanitize_name, serialize_prefab};
 pub use types::SavePrefabError;

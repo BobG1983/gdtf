@@ -17,6 +17,19 @@
 //! value keeps the editor's default mode (the pre-C2.4 behavior). Example:
 //! `GDTF_EDITOR_SHOT=/abs/terrain.png GDTF_EDITOR_MODE=terrain cargo run -p gdtf_content_editor_bin`.
 //!
+//! ## GTW-515 C4.11: PREFAB capture + zoom-applied variant
+//!
+//! With `GDTF_EDITOR_MODE=prefab` the capture drives the PREFAB scenario deterministically: it
+//! shrinks the grid to [`SHOT_GRID_EDGE`]²×1, selects the first distinct palette tile, paints a
+//! `BLOCK × BLOCK` block, and hovers a legal cell beside it — so the render-to-texture viewport
+//! shows a painted block + the hover ghost. A THIRD optional env var — `GDTF_EDITOR_ZOOM` (a float
+//! in `[0.25, 4.0]`) — forces a non-`1.0` preview zoom before the shot, so a SECOND capture proves
+//! the PROJECTION-SCALE path renders (catches an empty/black viewport at a scaled projection).
+//! Examples:
+//! `GDTF_EDITOR_SHOT=/abs/prefab.png GDTF_EDITOR_MODE=prefab cargo run -p gdtf_content_editor_bin`
+//! and
+//! `GDTF_EDITOR_SHOT=/abs/pz.png GDTF_EDITOR_MODE=prefab GDTF_EDITOR_ZOOM=2.0 cargo run -p gdtf_content_editor_bin`.
+//!
 //! ## GTW-512 C1.5: re-pointed onto the model
 //!
 //! The capture CORE is Bevy-native + UI-agnostic — [`Screenshot::primary_window`] +
@@ -49,8 +62,8 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
-    EditorMap, EditorMode, EditorState, hovered_cell::HoveredCell, session::MapEditorSession,
-    terrain_graphics::terrain_atlas_index,
+    EditorMap, EditorMode, EditorState, canvas::CanvasZoom, hovered_cell::HoveredCell,
+    session::MapEditorSession, terrain_graphics::terrain_atlas_index,
 };
 
 /// The modest, legible grid edge the capture shrinks the canvas to before the shot — a `16 × 16`
@@ -69,9 +82,19 @@ const SHOT_ENV_VAR: &str = "GDTF_EDITOR_SHOT";
 /// capture affordance itself is enabled (`GDTF_EDITOR_SHOT` set).
 const MODE_ENV_VAR: &str = "GDTF_EDITOR_MODE";
 
+/// The env var that FORCES a non-`1.0` preview [`CanvasZoom`] scale before the capture (GTW-515
+/// C4.11) — so a SECOND capture proves the PROJECTION-SCALE path renders (a zoom-applied variant
+/// that catches an empty/black viewport at a non-identity scale). A float in `[0.25, 4.0]`; the
+/// value is clamped by [`CanvasZoom`] on apply. Unset keeps the identity `1.0` scale. Honored only
+/// when the capture affordance is enabled AND the mode is (forced to) PREFAB.
+const ZOOM_ENV_VAR: &str = "GDTF_EDITOR_ZOOM";
+
 /// Frames to wait after entering [`Editing`](crate::EditorState) before requesting the screenshot,
-/// so the egui shell has laid out + drawn first.
-const SETTLE_FRAMES: u32 = 12;
+/// so the egui shell has laid out + drawn AND the offscreen preview render target has a completed
+/// pass first (GTW-515: the render-to-texture viewport needs a couple of extra frames beyond the
+/// egui layout to composite its first offscreen pass — at 12 frames a fast launch could screenshot
+/// a pre-composite blank window; 30 comfortably clears that under the QA launch).
+const SETTLE_FRAMES: u32 = 30;
 
 /// Frames to poll for the PNG before giving up (a safety cap so a failed write never hangs the
 /// editor). At ~60 fps this is ~10 seconds.
@@ -110,6 +133,23 @@ impl ForcedMode {
             "prefab" => Some(Self(EditorMode::Prefab)),
             _ => None,
         }
+    }
+}
+
+/// The capture's FORCED preview zoom (C4.11 — from `GDTF_EDITOR_ZOOM`), inserted only when the env
+/// var parsed a finite float. A named wrapper (no-bare-types) so the forced scale reads as a domain
+/// value; the wrapped [`CanvasZoom`] clamps it into `[0.25, 4.0]` on construction.
+#[derive(Resource, Clone, Copy, Deref)]
+struct ForcedZoom(CanvasZoom);
+
+impl ForcedZoom {
+    /// Parse a `GDTF_EDITOR_ZOOM` value (a float) into a forced zoom, or [`None`] for an unset /
+    /// unparseable / non-finite value (the capture keeps the identity `1.0` scale). The parsed
+    /// factor is applied through [`CanvasZoom::scaled`] over the identity, so it is clamped into
+    /// `[0.25, 4.0]`.
+    fn from_env_value(value: &str) -> Option<Self> {
+        let factor = value.trim().parse::<f32>().ok().filter(|f| f.is_finite())?;
+        Some(Self(CanvasZoom::identity().scaled(factor)))
     }
 }
 
@@ -161,6 +201,9 @@ pub struct EditorCapturePlugin {
     /// The forced capture mode (C2.4 — from `GDTF_EDITOR_MODE`), or `None` to keep the editor's
     /// default mode. Read once at construction.
     forced_mode: Option<ForcedMode>,
+    /// The forced preview zoom (C4.11 — from `GDTF_EDITOR_ZOOM`), or `None` to keep the identity
+    /// `1.0` scale. Read once at construction.
+    forced_zoom: Option<ForcedZoom>,
 }
 
 impl EditorCapturePlugin {
@@ -176,6 +219,10 @@ impl EditorCapturePlugin {
                 .ok()
                 .as_deref()
                 .and_then(ForcedMode::from_env_value),
+            forced_zoom: env::var(ZOOM_ENV_VAR)
+                .ok()
+                .as_deref()
+                .and_then(ForcedZoom::from_env_value),
         }
     }
 }
@@ -194,10 +241,16 @@ impl Plugin for EditorCapturePlugin {
         if let Some(forced) = self.forced_mode {
             app.insert_resource(forced);
         }
+        // C4.11: insert the forced-zoom resource (the zoom-applied capture variant) only when
+        // GDTF_EDITOR_ZOOM parsed a finite float; unset keeps the identity 1.0 scale.
+        if let Some(forced) = self.forced_zoom {
+            app.insert_resource(forced);
+        }
         app.add_systems(
             Update,
             (
                 force_capture_mode,
+                force_capture_zoom,
                 drive_capture_grid_size,
                 drive_capture_selection,
                 drive_capture_paint_and_hover,
@@ -221,6 +274,20 @@ fn force_capture_mode(forced: Option<Res<ForcedMode>>, mode: Option<ResMut<Edito
         return;
     };
     mode.set_if_neq(**forced);
+}
+
+/// `Update` (in `Editing`, capture-only): FORCE the preview [`CanvasZoom`] to the C4.11
+/// [`ForcedZoom`] before the settle / screenshot — so a SECOND capture proves the projection-scale
+/// path renders at a non-identity zoom (catches an empty/black viewport at a scaled projection).
+/// No-ops when no zoom was forced (the resource is absent) or the zoom already matches. Both
+/// borrows are `Option` (state-scoped — bevy-traps #1); [`set_if_neq`](DetectChangesMut::set_if_neq)
+/// keeps an already-matching zoom a no-op (idempotent — set-to-target). The
+/// `apply_preview_view` system then drives the camera's `OrthographicProjection::scale` from it.
+fn force_capture_zoom(forced: Option<Res<ForcedZoom>>, zoom: Option<ResMut<CanvasZoom>>) {
+    let (Some(forced), Some(mut zoom)) = (forced, zoom) else {
+        return;
+    };
+    zoom.set_if_neq(**forced);
 }
 
 /// `OnEnter(Editing)`: reset the per-run capture counters so the settle window is measured from the

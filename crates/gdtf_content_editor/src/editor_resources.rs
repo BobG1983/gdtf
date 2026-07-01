@@ -13,6 +13,7 @@ use crate::{
     editor_map::EditorMap,
     hovered_cell::HoveredCell,
     mode::EditorMode,
+    preview::view::PreviewPan,
     session::MapEditorSession,
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
@@ -109,6 +110,20 @@ pub(crate) fn insert_canvas_zoom(mut commands: Commands) {
 /// bevy-traps #1).
 pub(crate) fn remove_canvas_zoom(mut commands: Commands) {
     commands.remove_resource::<CanvasZoom>();
+}
+
+/// `OnEnter(Editing)`: insert the [`PreviewPan`] offset (state-scoped — bevy-traps #1, GTW-515
+/// C4.8), seeded to the origin so the preview opens centred on the world origin. The viewport
+/// right-drag folds into it (set-to-target); `apply_preview_view` drives the camera from it. Its
+/// sibling zoom target is the kept [`CanvasZoom`] (inserted by [`insert_canvas_zoom`]).
+pub(crate) fn insert_preview_pan(mut commands: Commands) {
+    commands.insert_resource(PreviewPan::origin());
+}
+
+/// `OnExit(Editing)`: remove the [`PreviewPan`] offset (the state-scoped-resource pattern —
+/// bevy-traps #1).
+pub(crate) fn remove_preview_pan(mut commands: Commands) {
+    commands.remove_resource::<PreviewPan>();
 }
 
 /// `OnEnter(Editing)`: insert the [`HoveredCell`] model (state-scoped — bevy-traps #1, GTW-512

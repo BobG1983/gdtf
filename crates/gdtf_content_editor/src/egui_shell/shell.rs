@@ -11,9 +11,11 @@
 //!
 //! 1. top `Panel::top` — mode tabs + global theme `ComboBox`,
 //! 2. bottom `Panel::bottom` — the status line,
-//! 3. left `Panel::left` — the palette / stats placeholder,
-//! 4. right `Panel::right` — the active mode's form,
-//! 5. [`CentralPanel`](bevy_egui::egui::CentralPanel) — the viewport placeholder.
+//! 3. left `Panel::left` — the palette / stats (TERRAIN graphic picker, THEME floor stats, PREFAB
+//!    tile palette),
+//! 4. right `Panel::right` — the active mode's form (TERRAIN / THEME field stacks, PREFAB controls),
+//! 5. [`CentralPanel`](bevy_egui::egui::CentralPanel) — the viewport (TERRAIN/THEME RON preview,
+//!    PREFAB the render-to-texture tile viewport — GTW-515 C4).
 //!
 //! The mode switch is an IN-UI branch inside the right panel (`if mode == Prefab {…} else if …`)
 //! — there is no `bevy_ui` `mode_host` / `Visibility`-container machinery any more (C1.3 deleted
@@ -33,15 +35,21 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
+    canvas::{CanvasZoom, CurrentEditLevel},
+    editor_map::EditorMap,
     egui_shell::{
-        forms, terrain_form_ui,
+        prefab::{controls_ui, palette_ui, viewport_ui, viewport_ui::ViewportCtx},
+        terrain_form_ui,
         theme_combo::{ThemeOption, theme_options},
         theme_form_ui,
     },
+    hovered_cell::HoveredCell,
     mode::EditorMode,
+    preview::{target::PreviewTarget, view::PreviewPan},
     session::MapEditorSession,
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
+    tile_atlas::TileAtlas,
 };
 
 /// The placeholder label shown when no theme is selected (the [`ThemeUuid::nil`] sentinel) — the
@@ -49,9 +57,10 @@ use crate::{
 const NO_THEME: &str = "—";
 
 /// `EguiPrimaryContextPass` (in `Editing`): the WHOLE editor shell — mode tabs + global theme
-/// `ComboBox` (top), the status line (bottom), the palette/stats placeholder (left), the active
-/// mode's form (right), and the viewport placeholder (central), declared outermost-first with the
-/// central panel last (C1.3 — the load-bearing egui panel order).
+/// `ComboBox` (top), the status line (bottom), the per-mode palette/stats (left), the active mode's
+/// form (right), and the per-mode viewport (central — the PREFAB render-to-texture viewport for
+/// GTW-515 C4), declared outermost-first with the central panel last (C1.3 — the load-bearing egui
+/// panel order).
 ///
 /// Every editor resource is state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1), so the mode + session + the TERRAIN draft are taken as `Option<ResMut<…>>` and
@@ -64,12 +73,23 @@ const NO_THEME: &str = "—";
     clippy::too_many_arguments,
     reason = "the whole-editor egui system draws ALL panels in one pass (the EguiPrimaryContextPass \
               requirement — bevy-traps #8); each param is a distinct Bevy SystemParam (the egui \
-              context, the three state-scoped mutable drafts + mode + session, and the three \
-              read-only registries); Bevy's injection model cannot reduce this without a wrapper \
+              context, the state-scoped mutable drafts + mode + session + the PREFAB model borrows \
+              — map / edit-level / hovered / zoom / pan — and the read-only registries + tile atlas \
+              + preview target); Bevy's injection model cannot reduce this without a wrapper \
               resource that changes the crate's API surface"
+)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "egui panels CANNOT overlap and MUST be declared in one system, outermost-first with \
+              the central panel last (bevy-traps #8) — the whole editor shell (top/bottom/left/ \
+              right/central, each branching over the three Workbench modes) is one indivisible \
+              EguiPrimaryContextPass system; the per-mode DRAW bodies are already factored into the \
+              mode-specific `*_form_ui` / `prefab` modules, so what remains here is the irreducible \
+              panel-declaration skeleton"
 )]
 pub(crate) fn editor_egui_ui(
     mut contexts: EguiContexts,
+    mut prefab_save_name: Local<String>,
     mode: Option<ResMut<EditorMode>>,
     session: Option<ResMut<MapEditorSession>>,
     themes: Option<Res<UuidThemeRegistry>>,
@@ -77,12 +97,36 @@ pub(crate) fn editor_egui_ui(
     theme_draft: Option<ResMut<ThemeDraft>>,
     terrain_registry: Option<Res<TerrainDefRegistry>>,
     roles: Option<Res<TileRoles>>,
+    prefab: PrefabParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
         (mode, session, terrain_draft, theme_draft)
     else {
         return Ok(());
     };
+    // Unpack the PREFAB model borrows (all state-scoped — bevy-traps #1). PREFAB mode no-ops until
+    // they exist; TERRAIN / THEME modes never touch them, so a missing prefab resource does not
+    // block those modes.
+    let PrefabParams {
+        mut map,
+        mut edit_level,
+        mut hovered,
+        mut zoom,
+        mut pan,
+        atlas,
+        preview_target,
+    } = prefab;
+
+    // Resolve the egui texture ids the PREFAB panels draw (the palette sprite sheet + the preview
+    // render target) BEFORE borrowing `ctx_mut()` — `image_id` takes `&self`, so it must run before
+    // the exclusive `ctx_mut()` borrow (bevy_egui 0.41). `None` until the atlas / target register.
+    let sheet_id = atlas
+        .as_deref()
+        .and_then(|atlas| contexts.image_id(&atlas.image()));
+    let preview_id = preview_target
+        .as_deref()
+        .and_then(|target| contexts.image_id(&target.image_handle()));
+
     let ctx = contexts.ctx_mut()?;
     // egui 0.35 / bevy_egui 0.41 show panels INTO a root `Ui` (the panel `show` takes `&mut Ui`,
     // NOT a `&Context` — bevy-traps #8). Build the background-layer viewport `Ui` over the whole
@@ -136,14 +180,21 @@ pub(crate) fn editor_egui_ui(
             theme_form_ui::stats_panel(ui, &theme_draft, terrain_registry.as_deref());
         }
         EditorMode::Prefab => {
-            ui.heading("Palette");
-            ui.separator();
-            ui.label("Tile palette + selected-tile stats.");
+            palette_ui::palette_panel(
+                ui,
+                &mut session,
+                themes.as_deref(),
+                terrain_registry.as_deref(),
+                roles.as_deref(),
+                atlas.as_deref(),
+                sheet_id,
+            );
         }
     });
 
     // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN is the real form (C2 /
-    //    GTW-513); THEME is the real form (C3 / GTW-514); PREFAB is still stubbed (C4).
+    //    GTW-513); THEME is the real form (C3 / GTW-514); PREFAB is the real controls (C4 /
+    //    GTW-515) — the grid-size fields, the level nav, and the debug Save.
     egui::Panel::right("editor_mode_form").show(&mut viewport_ui, |ui| match *mode {
         EditorMode::Terrain => {
             terrain_form_ui::field_stack(ui, &mut terrain_draft, &session, themes.as_deref());
@@ -151,13 +202,25 @@ pub(crate) fn editor_egui_ui(
         EditorMode::Theme => {
             theme_form_ui::field_stack(ui, &mut theme_draft, terrain_registry.as_deref());
         }
-        EditorMode::Prefab => forms::prefab_form(ui),
+        EditorMode::Prefab => {
+            if let (Some(edit_level), Some(map)) = (edit_level.as_deref_mut(), map.as_deref()) {
+                controls_ui::controls_panel(
+                    ui,
+                    &mut session,
+                    edit_level,
+                    &mut prefab_save_name,
+                    map,
+                    terrain_registry.as_deref(),
+                    themes.as_deref(),
+                );
+            }
+        }
     });
 
     // 5. CENTRAL — the viewport / preview (LAST: egui fills the residual space with it). In TERRAIN
     //    mode (C2) it shows the live `.terrain_def.ron` preview; in THEME mode (C3) it shows the
-    //    live `.terrain_theme.ron` preview; other modes keep the viewport placeholder (the texture
-    //    viewport is C4 / GTW-515).
+    //    live `.terrain_theme.ron` preview; in PREFAB mode (C4 / GTW-515) it shows the
+    //    render-to-texture viewport (click-to-paint + hover ghost + wheel-zoom + right-drag pan).
     egui::CentralPanel::default().show(&mut viewport_ui, |ui| match *mode {
         EditorMode::Terrain => {
             terrain_form_ui::ron_preview(ui, &terrain_draft);
@@ -166,12 +229,58 @@ pub(crate) fn editor_egui_ui(
             theme_form_ui::ron_preview(ui, &theme_draft);
         }
         EditorMode::Prefab => {
-            ui.heading("Viewport");
-            ui.label("Canvas / texture viewport (C4 / GTW-515).");
+            if let (Some(map), Some(edit_level), Some(hovered), Some(zoom), Some(pan)) = (
+                map.as_deref_mut(),
+                edit_level.as_deref(),
+                hovered.as_deref_mut(),
+                zoom.as_deref_mut(),
+                pan.as_deref_mut(),
+            ) {
+                let mut vp = ViewportCtx {
+                    map,
+                    session: &session,
+                    edit_level,
+                    hovered,
+                    zoom,
+                    pan,
+                    registry: terrain_registry.as_deref(),
+                    themes: themes.as_deref(),
+                    roles: roles.as_deref(),
+                };
+                viewport_ui::viewport_panel(ui, &mut vp, preview_id);
+            } else {
+                ui.heading("Viewport");
+                ui.label("Preparing prefab preview…");
+            }
         }
     });
 
     Ok(())
+}
+
+/// The state-scoped PREFAB-mode model borrows the shell threads into the PREFAB panels (GTW-515) —
+/// grouped into one `#[derive(SystemParam)]` bundle so the shell system's argument list stays
+/// legible (the borrows are distinct `SystemParam`s; bundling them is the standard Bevy pattern for a
+/// system that would otherwise take too many). Every field is `Option` because each resource is
+/// state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` — bevy-traps #1), so
+/// TERRAIN / THEME modes (which never touch them) tolerate their absence and PREFAB mode no-ops
+/// until they exist.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct PrefabParams<'w> {
+    /// The paintable map model (mutated by click-to-paint).
+    map:            Option<ResMut<'w, EditorMap>>,
+    /// The current edit storey (stepped by the level nav; read by the viewport paint).
+    edit_level:     Option<ResMut<'w, CurrentEditLevel>>,
+    /// The hovered-cell model (written each frame from the viewport pointer).
+    hovered:        Option<ResMut<'w, HoveredCell>>,
+    /// The owned zoom target (folded from the viewport wheel — set-to-target).
+    zoom:           Option<ResMut<'w, CanvasZoom>>,
+    /// The owned pan target (folded from the viewport right-drag — set-to-target).
+    pan:            Option<ResMut<'w, PreviewPan>>,
+    /// The terrain tile atlas (the palette sprite thumbnails draw over it).
+    atlas:          Option<Res<'w, TileAtlas>>,
+    /// The offscreen preview render target (the viewport draws its egui-registered image).
+    preview_target: Option<Res<'w, PreviewTarget>>,
 }
 
 /// Draw the `[TERRAIN | THEME | PREFAB]` mode tabs as egui

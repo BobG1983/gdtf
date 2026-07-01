@@ -33,7 +33,15 @@
 //!   so the preview ghost is QA-able headlessly (GTW-512 C1.5).
 //! - The `canvas` module keeps the two MODEL resources the editor's lifecycle inserts —
 //!   [`CurrentEditLevel`] (the storey selector — GTW-500 C1) + [`CanvasZoom`] (the viewport zoom —
-//!   GTW-500 C3); the egui viewport (C4) reads them. The `bevy_ui` cell-grid render is gone.
+//!   GTW-500 C3, reused as the preview camera's `OrthographicProjection::scale`); the egui viewport
+//!   (GTW-515 C4) reads them. The `bevy_ui` cell-grid render is gone.
+//! - The GTW-515 `preview` module owns the render-to-texture VIEWPORT (C4.3): an offscreen render
+//!   target [`Image`](bevy::image::Image), a dedicated second [`Camera2d`](bevy::prelude::Camera2d)
+//!   rendering the prefab preview tiles into it on an ISOLATED
+//!   [`RenderLayers`](bevy::camera::visibility::RenderLayers), the change-driven tile redraw + hover
+//!   ghost, and the once-per-frame set-to-target zoom/pan apply. The egui PREFAB mode (the
+//!   `egui_shell::prefab` submodule) draws that registered image as its central-panel viewport,
+//!   folding click / wheel / drag input into the [`EditorMap`] + [`CanvasZoom`] + [`PreviewPan`].
 //! - The GTW-426 `editor_map` module owns [`EditorMap`] — the in-memory, state-scoped paintable map
 //!   model (a sparse `CellLevel → TerrainUuid` store of painted cells, level-aware since GTW-430,
 //!   UUID-keyed since GTW-495). The authoritative record the paint flow writes + the save path reads.
@@ -67,6 +75,11 @@ mod load;
 mod mode;
 mod placement;
 mod plugin;
+// GTW-515 C4.3: the prefab preview RENDER MACHINERY — an offscreen render-target image, a dedicated
+// second Camera2d on an isolated RenderLayers that renders the prefab preview tiles into it, and the
+// change-driven tile redraw + the set-to-target zoom/pan apply. The egui PREFAB mode draws this
+// registered image as its central-panel viewport.
+mod preview;
 // GTW-421 size-selector / theme-dropdown model TYPES + the `seed_default_theme` drive, kept across
 // the egui swap (GTW-512); the `bevy_ui` spawn + the gdtf_ui-widget commit drives were dropped.
 mod right_panel;
@@ -104,12 +117,16 @@ pub use placement::{
     evaluate_placement, names_a_ladder,
 };
 pub use plugin::MapEditorPlugin;
+// GTW-515: the prefab preview render-target resource + the owned pan-offset target (the zoom target
+// is the kept `CanvasZoom`). Exported so the headless test asserts the state-scoped lifecycle.
+pub use preview::{target::PreviewTarget, view::PreviewPan};
 pub use right_panel::{GridSpanInput, SizeFieldAxis, ThemeDropdown};
 // GTW-512: the save PROJECTION surface (debug-only, the v2 save path) — kept for the C4 save-control
 // re-point + the in-crate save tests. The `bevy_ui` save controls themselves are the C4 child.
 #[cfg(debug_assertions)]
 pub use save::{
     SavePrefabError, editor_map_to_prefab, prefab_save_path, sanitize_name, serialize_prefab,
+    write_prefab,
 };
 pub use session::MapEditorSession;
 pub use state::EditorState;

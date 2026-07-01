@@ -108,3 +108,46 @@ pub fn serialize_prefab(spec: &PrefabSpecV2) -> Result<String, SavePrefabError> 
     ron::ser::to_string_pretty(spec, ron::ser::PrettyConfig::default())
         .map_err(|err| SavePrefabError::Serialize(err.to_string()))
 }
+
+/// Project + serialize + WRITE the [`EditorMap`] to
+/// `assets/maps/<theme>/<size>/<stem>.prefab_v2.ron` (GTW-515 C4.9 / C4.10), or return the typed
+/// [`SavePrefabError`] (never a panic).
+///
+/// Sanitizes the entered prefab name to a file stem, projects the map to a [`PrefabSpecV2`] via
+/// [`editor_map_to_prefab`] (which re-checks every painted cell through the shared
+/// [`evaluate_placement`] — C3 illegal-cell guard, reused verbatim), serializes it via
+/// [`serialize_prefab`], resolves the themed/sized path via [`prefab_save_path`], creates the
+/// directory if absent, and writes the file. Returns the resolved [`PathBuf`] on success so the
+/// caller can log it. Debug-only — the whole save path is gated `#[cfg(debug_assertions)]` (the
+/// GTW-429 gang-save precedent), so it never compiles into a release binary.
+///
+/// The pure projection/serialize halves ([`editor_map_to_prefab`] / [`serialize_prefab`]) are the
+/// SAME ones the in-crate round-trip test exercises; this wraps them with the name-validation + the
+/// filesystem write.
+///
+/// # Errors
+///
+/// [`SavePrefabError::EmptyName`] if the sanitized name is empty; [`SavePrefabError::IllegalCell`]
+/// if a painted cell is illegal; [`SavePrefabError::Serialize`] / [`SavePrefabError::Write`] from
+/// serialization / the file write.
+#[cfg(debug_assertions)]
+pub fn write_prefab(
+    map: &EditorMap,
+    registry: &TerrainDefRegistry,
+    session: &MapEditorSession,
+    theme_display: &str,
+    raw_name: &str,
+) -> Result<PathBuf, SavePrefabError> {
+    let stem = sanitize_name(raw_name);
+    if stem.is_empty() {
+        return Err(SavePrefabError::EmptyName);
+    }
+    let spec = editor_map_to_prefab(map, registry, session)?;
+    let serialized = serialize_prefab(&spec)?;
+    let path = prefab_save_path(theme_display, session.grid_size(), &stem);
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|err| SavePrefabError::Write(err.to_string()))?;
+    }
+    std::fs::write(&path, serialized).map_err(|err| SavePrefabError::Write(err.to_string()))?;
+    Ok(path)
+}
