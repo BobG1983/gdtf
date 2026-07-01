@@ -23,7 +23,7 @@ pub(super) use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
-        Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
+        Stance, StanceKind, Suppressed, SuppressorCell, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
     injuries::{InjuryRegistry, InjuryTables},

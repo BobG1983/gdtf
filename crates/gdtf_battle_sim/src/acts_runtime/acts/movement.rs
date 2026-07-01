@@ -53,9 +53,10 @@ use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Que
 use crate::{
     acts::request::MoveRequested,
     battle::PlayerFaction,
-    ganger::{Faction, Position, Tu},
+    cover::CoverLedger,
+    ganger::{Direction, Faction, Position, Suppressed, Tu},
     injuries::{InflictedInjuries, MovementCostFactor},
-    metric::{Cell, CellLevel},
+    metric::{Cell, CellLevel, Level},
     move_acts::WalkInProgress,
     occupancy::OccupancyGrid,
     pathfinder::{PlanningView, find_path},
@@ -89,6 +90,17 @@ pub enum MoveRejection {
     /// stays put and spends nothing (GTW-355 owns the stepped walk; this is a CHECK, not a
     /// charge).
     Unaffordable,
+    /// The mover is [`Suppressed`] and the chosen destination is ILLEGAL for a pinned unit
+    /// (GTW-537, child GTW-41a of GTW-41; `docs/combat/combat.md` "Suppression … advanced
+    /// combat effects"). A suppressed mover may ONLY step to a destination that is BOTH (a)
+    /// STRICTLY FARTHER from the [`SuppressorCell`](crate::ganger::SuppressorCell) than its
+    /// start cell (measured with the sim's Chebyshev ground-plane metric), AND (b) BEHIND
+    /// COVER relative to the suppressor (the cell one step from the destination TOWARD the
+    /// suppressor holds registered cover in the [`CoverLedger`]). A destination failing
+    /// EITHER clause is a HARD REJECT (no clamp) — NO step. On a cover-sparse map this can
+    /// pin the unit hard; that is the intended "pinned" feel (GTW-537 R1). An UNSUPPRESSED
+    /// mover is never subject to this gate (identity).
+    Suppressed,
 }
 
 /// A **move was rejected** — the typed no-step signal that `actor`'s commit could not be
@@ -177,6 +189,79 @@ fn relation_to(
     }
 }
 
+/// The ground-plane Chebyshev distance between two `(cell, level)` keys — `max(|dx|, |dy|)`
+/// (GTW-537).
+///
+/// The sim's ESTABLISHED cell-distance metric (NOT a new one): the same `max(|dx|, |dy|)`
+/// the AI's `chebyshev_xy` (`acts_runtime/ai/decide.rs`), the LOS engagement range gate, the
+/// pathfinder heuristic, AND — decisively — the suppression producer's `within_radius`
+/// (`acts_runtime/suppression/apply.rs`) all use, so "farther from the suppressor" agrees
+/// with the disc suppression itself is measured on. The `z` storey is ignored (a ground
+/// plane distance; suppression is a same-level effect this slice) — the suppressor anchor
+/// and both the start and destination are on the mover's own storey by construction. A loop
+/// magnitude (a comparison scalar, not a stored domain quantity), never a bare domain type.
+fn chebyshev_xy(a: &CellLevel, b: &CellLevel) -> u32 {
+    let dx = (a.x - b.x).unsigned_abs();
+    let dy = (a.y - b.y).unsigned_abs();
+    dx.max(dy)
+}
+
+/// Whether the cell one Moore-8 step from `dest` TOWARD `suppressor` holds registered cover
+/// in the [`CoverLedger`] — the "ends behind cover relative to the suppressor" clause
+/// (GTW-537).
+///
+/// Mirrors the GTW-526 auto-stance `cover_cell_toward` idiom
+/// (`acts_runtime/suppression/stance.rs`): [`Direction::from_cells`] from `dest` toward the
+/// `suppressor` cell picks the facing, [`Direction::cell_step`] the whole-cell delta, and the
+/// stepped cell (kept on the destination's OWN storey — the cover a mover ducks behind is at
+/// its level, not the suppressor's) is [`peek`](CoverLedger::peek)ed WITHOUT lazy seeding, so
+/// a cell with no registered cover reads `None` = not behind cover. Returns `false` when the
+/// destination and the suppressor share a ground cell (no direction — `from_cells` is `None`),
+/// which is also not "farther", so such a destination is rejected on the distance clause too.
+fn ends_behind_cover(dest: &CellLevel, suppressor: &CellLevel, cover: &CoverLedger) -> bool {
+    let dest_cell = Cell::new(dest.x, dest.y);
+    let suppressor_cell = Cell::new(suppressor.x, suppressor.y);
+    let Some(dir) = Direction::from_cells(dest_cell, suppressor_cell) else {
+        return false;
+    };
+    let step = dir.cell_step();
+    let toward = Cell::new(dest_cell.x + step.x, dest_cell.y + step.y);
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the destination's z is a storey index in 0..MAX_LEVELS (8) by construction, so \
+                  the i32 -> u8 narrowing cannot truncate or sign-flip (the stance.rs pos_level \
+                  precedent)"
+    )]
+    let level = Level::new(dest.z as u8);
+    cover.peek(&CellLevel::new(toward, level)).is_some()
+}
+
+/// Whether a [`Suppressed`] mover may legally step from `start` to `dest` (GTW-537) — the
+/// HARD-REJECT movement-strictness gate.
+///
+/// A pinned unit's chosen destination is LEGAL only when BOTH clauses hold (F-movement
+/// strictness — a HARD reject of an illegal destination, never a clamp):
+///
+/// 1. `dest` is STRICTLY FARTHER from the [`SuppressorCell`](crate::ganger::SuppressorCell)
+///    than `start` — [`chebyshev_xy`]`(dest, suppressor) > `[`chebyshev_xy`]`(start,
+///    suppressor)` (the sim's existing Chebyshev metric, the same disc suppression is
+///    measured on); and
+/// 2. `dest` ENDS BEHIND COVER relative to the suppressor — [`ends_behind_cover`].
+///
+/// Failing EITHER clause is illegal (the caller rejects with [`MoveRejection::Suppressed`],
+/// no step). On a cover-sparse map both clauses can be unsatisfiable, pinning the unit — the
+/// intended "pinned" feel (GTW-537 R1), NOT softened.
+fn suppressed_move_legal(
+    start: &CellLevel,
+    dest: &CellLevel,
+    suppressor: &CellLevel,
+    cover: &CoverLedger,
+) -> bool {
+    let farther = chebyshev_xy(dest, suppressor) > chebyshev_xy(start, suppressor);
+    farther && ends_behind_cover(dest, suppressor, cover)
+}
+
 /// **Dispatch** buffered [`MoveRequested`] commits — for each, plan a reachable affordable
 /// route and (only then) START the committed step-by-step walk (E7 · GTW-12f / GTW-12g;
 /// GTW-354 added the route+affordability gate, GTW-355 made the accept start a walk
@@ -198,11 +283,17 @@ fn relation_to(
 /// 3. on [`PathBlocked`](crate::pathfinder::PathBlocked) emits a TYPED
 ///    [`MoveRejected`]`(`[`MoveRejection::Unreachable`]`)` and starts NOTHING (this kills the
 ///    pre-GTW-354 any-empty-cell teleport — C1);
-/// 4. performs ONE up-front full-route **affordability** gate
+/// 4. GTW-537 — if the mover is [`Suppressed`], gates the CHOSEN destination through
+///    [`suppressed_move_legal`] (strictly farther from the
+///    [`SuppressorCell`](crate::ganger::SuppressorCell) by the Chebyshev metric AND behind
+///    cover relative to the suppressor); an illegal destination is a HARD reject —
+///    [`MoveRejected`]`(`[`MoveRejection::Suppressed`]`)`, NO step, NO clamp. An UNSUPPRESSED
+///    mover skips this gate entirely (the identity path);
+/// 5. performs ONE up-front full-route **affordability** gate
 ///    (`docs/combat/visibility.md` §48) — [`can_spend_tu`] against the [`Path::total`](crate::pathfinder::Path::total)
 ///    — emitting [`MoveRejected`]`(`[`MoveRejection::Unaffordable`]`)` and starting NOTHING
 ///    when the mover cannot afford the whole route (C3, NO walk); and
-/// 5. ONLY on a reachable affordable route STARTS the walk (GTW-355, C6): it attaches a
+/// 6. ONLY on a reachable affordable route STARTS the walk (GTW-355, C6): it attaches a
 ///    [`WalkInProgress`](crate::move_acts::WalkInProgress) holding the route AHEAD
 ///    (`path.cells()[1..]`) and its planned per-step entry costs
 ///    ([`path.steps()`](crate::pathfinder::Path::steps), the §48 bit-identity source). The
@@ -226,8 +317,9 @@ fn relation_to(
 #[expect(
     clippy::too_many_arguments,
     reason = "the constrained move dispatch genuinely needs the actor query + the disjoint \
-              faction query + the route-gate resources (grid / links / squad fog / tuning / \
-              floor costs) + the GTW-70 faction-aware fog selection inputs (player faction + \
+              faction query + the disjoint suppression query (GTW-537 pinned-movement gate) + \
+              the route-gate resources (grid / links / squad fog / tuning / floor costs / \
+              cover ledger) + the GTW-70 faction-aware fog selection inputs (player faction + \
               omniscient fog) + the reject writer + Commands (to start the walk); bundling \
               them into an opaque SystemParam struct would hide the system's real reads (the \
               dispatch_fire BattleGridsParam precedent applies only when a bundle is reused \
@@ -242,11 +334,19 @@ pub fn dispatch_move(
         Option<&'static InflictedInjuries>,
     )>,
     factions: Query<&'static Faction>,
+    // GTW-537: the mover's suppression state (if any). A DISJOINT read-only query (the actor
+    // query never reads `Suppressed`), used to gate a PINNED mover's destination BEFORE the
+    // walk starts. An UNSUPPRESSED mover has no `Suppressed` component, so `get` errs and the
+    // gate is skipped — the identity path, byte-identical to the pre-GTW-537 dispatch.
+    suppressed: Query<&'static Suppressed>,
     grid: Res<OccupancyGrid>,
     links: Res<VerticalLinkGraph>,
     squad: Res<SquadVisibility>,
     tuning: Res<CombatTuning>,
     floor_costs: Res<FloorCostGrid>,
+    // GTW-537: the cover ledger — peeked at the cell one step from the destination toward the
+    // suppressor to decide whether a pinned mover ends BEHIND COVER (read-only).
+    cover: Res<CoverLedger>,
     // GTW-70: the faction-aware move-gate inputs. The player faction (to know if the mover
     // IS the player) and the AI's omniscient move fog, both battle-lifetime — taken as
     // `Option<Res<_>>` so a harness without them (no live battle) falls back to the player
@@ -319,6 +419,23 @@ pub fn dispatch_move(
             rejects.write(MoveRejected::new(request.actor, MoveRejection::Unreachable));
             continue;
         };
+
+        // GTW-537: the SUPPRESSED-movement strictness gate (F-movement, HARD reject). A pinned
+        // mover may step ONLY to a destination that is BOTH strictly farther from the
+        // SuppressorCell (the sim's Chebyshev metric) AND ends behind cover relative to the
+        // suppressor. An illegal destination is a HARD reject — no clamp, no partial step. An
+        // UNSUPPRESSED mover has no `Suppressed` component (the `get` errs), so this gate is
+        // skipped entirely: the identity path (byte-identical to the pre-GTW-537 dispatch). The
+        // check is against `request.dest` (the CHOSEN destination), applied BEFORE the walk is
+        // started, so a rejected suppressed mover never takes a step.
+        if let Ok(suppressed) = suppressed.get(request.actor) {
+            // `suppressed.from` is a `SuppressorCell`; deref through the newtype to the
+            // `&CellLevel` the gate helpers take (the crate's `Deref`-newtype read path).
+            if !suppressed_move_legal(&start, &request.dest, &suppressed.from, &cover) {
+                rejects.write(MoveRejected::new(request.actor, MoveRejection::Suppressed));
+                continue;
+            }
+        }
 
         // C3: ONE up-front full-route affordability gate (§48; GTW-354) — the planned
         // total vs the mover's Tu. Unaffordable → typed reject, NO walk started (the mover

@@ -31,7 +31,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Cell, Faction, GangerName, HitReport, ModeKind, PlayerFaction, ReloadOutcome, Severity,
+    Cell, Faction, GangerName, HitReport, ModeKind, MoveRejection, PlayerFaction, ReloadOutcome,
+    Severity,
 };
 
 use super::{
@@ -140,6 +141,20 @@ pub enum CombatLogEvent {
         /// The player's faction — so the classifier renders the boundary as `Player` (the
         /// player's own turn) vs `Enemy` (any other).
         player:     PlayerFaction,
+    },
+    /// A MOVE was REJECTED (GTW-537) — carries the mover's resolved name + the sim's
+    /// [`MoveRejection`] reason. Only a [`Suppressed`](MoveRejection::Suppressed) rejection
+    /// yields a log line (`"<actor> is pinned"`, in wound AMBER) so the player gets feedback
+    /// that a pinned unit's illegal step was refused; the
+    /// [`Unreachable`](MoveRejection::Unreachable) / [`Unaffordable`](MoveRejection::Unaffordable)
+    /// reasons yield NO line (they were never surfaced pre-GTW-537 and stay silent — no
+    /// behavior change to the existing reasons). From a
+    /// [`MoveRejected`](gdtf_battle_sim::MoveRejected).
+    MoveRejected {
+        /// The rejected mover's resolved name (the log clause's subject).
+        actor:  LogName,
+        /// Why the commit was rejected — only [`Suppressed`](MoveRejection::Suppressed) logs.
+        reason: MoveRejection,
     },
     /// An INJURY was inflicted (GTW-439) — `"<actor> <log_text>"` (e.g. `"Vex loses an eye"`),
     /// drawn in the severity-scaled wound AMBER ramp ([`severity_color`]). From a
@@ -295,11 +310,30 @@ pub fn classify_log_event(event: &CombatLogEvent) -> Vec<LogLine> {
         CombatLogEvent::TurnStarted { now_active, player } => {
             vec![turn_line(*now_active, *player)]
         }
+        CombatLogEvent::MoveRejected { actor, reason } => move_rejected_lines(actor, *reason),
         CombatLogEvent::InjuryInflicted {
             actor,
             log_text,
             severity,
         } => vec![injury_line(actor, log_text, *severity)],
+    }
+}
+
+/// The move-rejected lines (GTW-537) — a [`Suppressed`](MoveRejection::Suppressed) rejection
+/// reads `"<actor> is pinned"` in wound AMBER (a denied act, the `"no TU"` reload precedent),
+/// so the player sees WHY a pinned unit's step was refused. The
+/// [`Unreachable`](MoveRejection::Unreachable) / [`Unaffordable`](MoveRejection::Unaffordable)
+/// reasons yield NO line — they were never surfaced before GTW-537, so this slice leaves them
+/// silent (no behavior change to the existing reasons; the combat-log strip is not spammed with
+/// every mis-click).
+fn move_rejected_lines(actor: &LogName, reason: MoveRejection) -> Vec<LogLine> {
+    match reason {
+        MoveRejection::Suppressed => vec![LogLine::new(
+            CombatText::new(format!("{} is pinned", **actor)),
+            valence_color(FctValence::Wound),
+        )],
+        // The pre-existing reasons stay silent (unsurfaced today) — no line.
+        MoveRejection::Unreachable | MoveRejection::Unaffordable => Vec::new(),
     }
 }
 
@@ -414,8 +448,8 @@ mod test {
     use gdtf_battle_sim::{
         AppliedDamage, ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry,
         CoverHp, Faction, HeightBand, HitReport, HitResult, HpDamage, IntegrityWear, Level,
-        LifeState, Matchup, ModeKind, PenetratingDamage, PlayerFaction, ReloadOutcome, Severity,
-        ShotKind,
+        LifeState, Matchup, ModeKind, MoveRejection, PenetratingDamage, PlayerFaction,
+        ReloadOutcome, Severity, ShotKind,
     };
 
     use super::{
@@ -647,6 +681,42 @@ mod test {
             "a destroying slab hit must log a lethal-RED BOLD \"Slab Destroyed\" line, got {:?}",
             line_pairs(&event),
         );
+    }
+
+    /// GTW-537 — a SUPPRESSED move rejection logs ONE line `"<actor> is pinned"` in wound
+    /// AMBER, so the player sees why a pinned unit's step was refused. PIN-DISCRIMINATING: the
+    /// Unreachable / Unaffordable reasons log NOTHING (unsurfaced today — this slice keeps them
+    /// silent), so only the Suppressed reason produces a line.
+    #[test]
+    fn a_suppressed_move_rejection_logs_a_pinned_line_only() {
+        let suppressed = CombatLogEvent::MoveRejected {
+            actor:  LogName::new("Vex"),
+            reason: MoveRejection::Suppressed,
+        };
+        let lines = classify_log_event(&suppressed);
+        assert_eq!(
+            lines.len(),
+            1,
+            "a suppressed move rejection is exactly one log line",
+        );
+        assert_eq!(&**lines[0].text(), "Vex is pinned");
+        assert_eq!(
+            lines[0].color(),
+            valence_color(FctValence::Wound),
+            "the pinned line is drawn in the denied-act wound amber",
+        );
+
+        // The pre-existing reasons stay SILENT (no line) — no behavior change to them.
+        for reason in [MoveRejection::Unreachable, MoveRejection::Unaffordable] {
+            let event = CombatLogEvent::MoveRejected {
+                actor: LogName::new("Vex"),
+                reason,
+            };
+            assert!(
+                classify_log_event(&event).is_empty(),
+                "{reason:?} must stay unsurfaced (no log line) — pre-GTW-537 behavior preserved",
+            );
+        }
     }
 
     /// A successful reload reads `"<actor> reloaded"` (neutral); a no-TU reload reads

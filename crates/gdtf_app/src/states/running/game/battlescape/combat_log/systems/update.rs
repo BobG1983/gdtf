@@ -36,8 +36,8 @@ use gdtf_battle_presenter::{
     classify_log_event,
 };
 use gdtf_battle_sim::{
-    FireDeclaration, GangerName, InjuryInflicted, MovementOccurred, PlayerFaction, ReloadResult,
-    TurnStarted,
+    FireDeclaration, GangerName, InjuryInflicted, MoveRejected, MovementOccurred, PlayerFaction,
+    ReloadResult, TurnStarted,
 };
 use gdtf_ui::theme::GdtfTheme;
 
@@ -61,6 +61,9 @@ pub(in crate::states::running::game::battlescape) struct CombatLogReaders<'w, 's
     fire:     MessageReader<'w, 's, FireDeclaration>,
     /// The per-step movement ("<name> moved <from> -> <to>").
     movement: MessageReader<'w, 's, MovementOccurred>,
+    /// A rejected move (GTW-537) — a SUPPRESSED rejection logs "<name> is pinned"; the
+    /// Unreachable / Unaffordable reasons classify to no line (kept silent).
+    rejected: MessageReader<'w, 's, MoveRejected>,
     /// The turn boundary ("— Player/Enemy turn —").
     turn:     MessageReader<'w, 's, TurnStarted>,
     /// The reload resolution ("<name> reloaded" / "<name>: no TU").
@@ -120,6 +123,7 @@ pub(in crate::states::running::game::battlescape) fn update_combat_log(
         // once the log exists, then bail (the lines would have nowhere to go).
         readers.fire.clear();
         readers.movement.clear();
+        readers.rejected.clear();
         readers.turn.clear();
         readers.reload.clear();
         readers.impact.clear();
@@ -146,6 +150,15 @@ pub(in crate::states::running::game::battlescape) fn update_combat_log(
             actor: name_of(movement.actor, &names),
             from:  movement.from,
             to:    movement.to,
+        });
+    }
+    for rejected in readers.rejected.read() {
+        // GTW-537: resolve the rejected mover to a LogName and carry the reason; the shared
+        // classifier logs "<name> is pinned" for a Suppressed rejection and NOTHING for the
+        // Unreachable / Unaffordable reasons (kept silent, as they were pre-GTW-537).
+        events.push(CombatLogEvent::MoveRejected {
+            actor:  name_of(rejected.actor, &names),
+            reason: rejected.reason,
         });
     }
     for impact in readers.impact.read() {
