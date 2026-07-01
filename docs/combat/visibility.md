@@ -28,10 +28,21 @@ The LOS probe's anchors are **directional**: it launches at the **shooter's eye/
 
 Two visibility writers, two flags, never crossed (the same separation as [battle-space.md](battle-space.md) "the view slice"):
 
-- the **slice owns LAYER visibility** — every per-level layer above the active view level is hard-hidden;
+- the **slice owns LAYER visibility** — every per-level layer **strictly above** the active view level is hard-hidden. The active level and every storey **below** it are DRAWN (the multi-level display below), so the slice's terrain band is `[0..=active]`, culling only above — not a single-storey hard cut;
 - **fog owns per-cell presentation and actor flags** — per-cell fog modulate on the rendered terrain, plus each Ganger/ScatterProp **entity's own** visibility/modulate (an enemy hard-cuts: no fade, no last-known ghost; a corpse shows iff its cell is squad-visible).
 
 **TBD (Bevy):** the source composed these for free via the scene-tree parent-chain AND (`is_visible_in_tree`). In Bevy the equivalent is inherited `Visibility` over the entity hierarchy: a thing draws iff fog shows its entity/cell AND the slice shows its storey — confirmed when the presenter implements the two writers. The principle holds: the **rendered layer IS the fog mask** — only authored, still-standing terrain has a cell to modulate, so fog can never present over void (the model's visible/explored keys extend over open air by design) and destroyed terrain stays destroyed. The model keeps the visibility wire and a public `present_fog` seam for the presenter.
+
+### Multi-level display: the storey-DEPTH darken (a separate, composing axis)
+
+The presenter draws terrain **bottom-up from storey 0 up to the active view level** (the UFO:EU / OpenXcom multi-level display, user ruling 2026-06-23) — everything strictly above `active` is culled, and **open/empty upper cells emit nothing** so a floor-gap on storey *k* reveals the storey *k-1* cell beneath (peek-through: a sprite is emitted only where real terrain — a wall / cover / slab — exists on that storey; storey 0 keeps its full floor field). Per-storey Z gives the painter's-algorithm occlusion for free (a higher storey draws in front).
+
+Non-active drawn storeys are **DARKENED**; the active storey is **full-bright**. This **storey-depth darken is a brightness-loss axis, and it is DISTINCT from the fog EXPLORED greyscale (a colour-loss axis)** — the two are orthogonal treatments that **COMPOSE, never replace one another**:
+
+- **fog EXPLORED = colour-loss, NOT brightness-loss** (the memory cue, unchanged canon above and in [Tunables](#tunables-combat-tuning-authored-as-a-loaded-asset)): a remembered cell renders at *full brightness*, greyscale — this is deliberately **not dimmed**;
+- **storey depth = brightness-loss, NOT colour-loss** (GTW-519): a lower *drawn* storey renders *dimmer* than the active storey so the player reads which floor is "underneath", regardless of that storey's fog state.
+
+So a **lower-storey EXPLORED tile ends up BOTH greyscaled (fog) AND dimmed (depth)** — the shader mixes toward BT.709 grey by `(1 - saturation)`, **then** scales the result by a `brightness` multiplier (`1.0` active / `< 1.0` lower drawn storey). The presenter drives both knobs on the one `TerrainFogMaterial` (`saturation` for fog, `brightness` for depth). This surfaces — rather than silently resolves — the apparent tension with the "EXPLORED is not dimmed" rule: EXPLORED itself still never dims; the *depth* dim is a second, independent reason a tile may be darker, applied by storey, not by memory. The darken magnitude is a single flat tunable (no per-depth ramp yet — a later in-engine-discovery tune). Lower-storey **units** and a full-view **toggle** are separate follow-ons (GTW-520 / GTW-521); this axis covers terrain only.
 
 ## Rendered-only planning
 

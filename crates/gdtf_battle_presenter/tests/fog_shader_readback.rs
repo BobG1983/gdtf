@@ -53,7 +53,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_battle_presenter::TerrainFogMaterial;
+use gdtf_battle_presenter::{Brightness, TerrainFogMaterial};
 
 /// The workspace-root `assets/` directory as an absolute path.
 ///
@@ -191,10 +191,11 @@ fn lock_gpu() -> MutexGuard<'static, ()> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// Render one [`TerrainFogMaterial`] quad over `source` at `saturation`, read the
-/// rendered centre pixel back off the GPU, and return its sRGB bytes — or `None` if
-/// no GPU adapter exists in this environment.
-fn render_and_read(source: [u8; 4], saturation: f32) -> Option<[u8; 4]> {
+/// Render one [`TerrainFogMaterial`] quad over `source` at `saturation` + `brightness`, read
+/// the rendered centre pixel back off the GPU, and return its sRGB bytes — or `None` if no GPU
+/// adapter exists in this environment. `brightness` is the GTW-519 storey-depth scalar the
+/// shader multiplies the (grey-mixed) RGB by AFTER the saturation mix.
+fn render_and_read(source: [u8; 4], saturation: f32, brightness: Brightness) -> Option<[u8; 4]> {
     // Held for the whole GPU lifetime so the two GPU tests never init Metal at once.
     let _gpu = lock_gpu();
     let mut app = build_render_app()?;
@@ -213,7 +214,7 @@ fn render_and_read(source: [u8; 4], saturation: f32) -> Option<[u8; 4]> {
     let target_handle = app.world_mut().resource_mut::<Assets<Image>>().add(target);
 
     // The fog material: identity UV (no atlas layout = whole image), the colour the
-    // shader will desaturate, at the saturation under test.
+    // shader will desaturate, at the saturation + brightness under test.
     let material = TerrainFogMaterial {
         image: image_handle,
         atlas_layout: None,
@@ -222,6 +223,7 @@ fn render_and_read(source: [u8; 4], saturation: f32) -> Option<[u8; 4]> {
             u16::try_from(TARGET_PX).unwrap_or(16),
         ))),
         saturation,
+        brightness,
     };
     let mat_handle = app
         .world_mut()
@@ -309,7 +311,9 @@ fn render_and_read(source: [u8; 4], saturation: f32) -> Option<[u8; 4]> {
 fn explored_saturation_zero_renders_greyscale_at_preserved_luma() {
     // Pure red: a strongly-saturated colour so greyscale collapse is unambiguous.
     let source = [255_u8, 0, 0, 255];
-    let Some([r, g, b, a]) = render_and_read(source, 0.0) else {
+    // Full brightness so this proves the saturation axis in isolation (GTW-519 brightness ==
+    // 1.0 is a no-op multiply).
+    let Some([r, g, b, a]) = render_and_read(source, 0.0, Brightness::FULL) else {
         eprintln!("SKIP: no GPU adapter in this environment — greyscale proof not run");
         return;
     };
@@ -360,7 +364,8 @@ fn explored_saturation_zero_renders_greyscale_at_preserved_luma() {
 fn visible_saturation_one_retains_source_hue() {
     // A mixed colour so "retains hue" is a real per-channel match, not a coincidence.
     let source = [200_u8, 60, 30, 255];
-    let Some([r, g, b, a]) = render_and_read(source, 1.0) else {
+    // Full brightness so this proves the saturation axis in isolation.
+    let Some([r, g, b, a]) = render_and_read(source, 1.0, Brightness::FULL) else {
         eprintln!("SKIP: no GPU adapter in this environment — hue-retention proof not run");
         return;
     };
@@ -391,4 +396,51 @@ fn visible_saturation_one_retains_source_hue() {
         (i16::from(r) - i16::from(b)).abs() > 20,
         "sat=1 collapsed toward grey: R={r} G={g} B={b}; shader over-desaturated"
     );
+}
+
+/// GTW-519 C4 (in-engine WGSL evidence) — the `brightness` uniform DIMS the rendered tile: a
+/// full-colour (saturation 1.0) tile at `brightness = 0.5` renders at ~HALF the LINEAR
+/// channel values of the same tile at `brightness = 1.0`, and the two do NOT come out equal
+/// (a dropped brightness multiply would leave them identical, failing this test).
+///
+/// The shader multiplies the (grey-mixed) RGB by `clamp(brightness, 0, 1)` AFTER the
+/// saturation mix, so a lower-storey tile reads visibly darker than the active storey. The
+/// comparison is in LINEAR light (the framebuffer is sRGB, so a 0.5 LINEAR scale is NOT a
+/// halving of the sRGB byte) — decode each channel, compare the ratios.
+#[test]
+fn lower_storey_brightness_dims_the_rendered_tile() {
+    // A mixed opaque colour so per-channel dimming is unambiguous and hue is retained.
+    let source = [200_u8, 120, 60, 255];
+
+    let Some([fr, fg, fb, fa]) = render_and_read(source, 1.0, Brightness::FULL) else {
+        eprintln!("SKIP: no GPU adapter in this environment — brightness proof not run");
+        return;
+    };
+    let Some([dr, dg, db, da]) = render_and_read(source, 1.0, Brightness::new(0.5)) else {
+        eprintln!("SKIP: no GPU adapter in this environment — brightness proof not run");
+        return;
+    };
+
+    assert!(fa >= 128 && da >= 128, "pixel discarded by alpha mask");
+
+    // The dimmed tile must be STRICTLY darker on every channel — never equal (a no-op
+    // brightness would leave them identical and this fails).
+    assert!(
+        dr < fr && dg < fg && db < fb,
+        "brightness=0.5 did NOT darken the tile: full=({fr},{fg},{fb}) dim=({dr},{dg},{db}) — \
+         the brightness multiply is missing",
+    );
+
+    // In LINEAR light each dimmed channel is ~0.5x the full channel (the shader scales linear
+    // RGB by brightness). Allow generous slop for the sRGB encode round-trip near-black.
+    for (full_byte, dim_byte, chan) in [(fr, dr, 'R'), (fg, dg, 'G'), (fb, db, 'B')] {
+        let full_lin = srgb_decode(full_byte);
+        let dim_lin = srgb_decode(dim_byte);
+        let want = full_lin * 0.5;
+        assert!(
+            full_lin.mul_add(-0.5, dim_lin).abs() < 0.05,
+            "brightness=0.5 channel {chan} not ~half linear: full_lin={full_lin:.4} \
+             dim_lin={dim_lin:.4} (want ~{want:.4})",
+        );
+    }
 }

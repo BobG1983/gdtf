@@ -1,6 +1,8 @@
 //! The static-battlefield draw + cover-swap reaction, with the sim-grid bundle and the
 //! presenter-owned sim-fact → tile-role mapping.
 
+use std::ops::RangeInclusive;
+
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::{system::SystemParam, template::template},
@@ -12,7 +14,7 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     BattleReady, Cell, CellLevel, CoverDestroyed, CoverLedger, FootfallSound, GRID_HEIGHT,
-    GRID_WIDTH, OccupancyGrid, SlabDestroyed, SlabState, SurfaceGrid, TerrainCell,
+    GRID_WIDTH, Level, OccupancyGrid, SlabDestroyed, SlabState, SurfaceGrid, TerrainCell,
     TerrainGraphicKey, TerrainKind,
 };
 
@@ -20,7 +22,7 @@ use super::{
     active_level::ActiveLevel,
     roles::{TileIndex, TileRoles},
 };
-use crate::{CELL_PX, SheetRole, TerrainFogMaterial, TopDownAtlases, cell_to_world};
+use crate::{Brightness, CELL_PX, SheetRole, TerrainFogMaterial, TopDownAtlases, cell_to_world};
 
 /// Marker tagging every static-terrain sprite this slice spawns.
 ///
@@ -164,9 +166,10 @@ impl StaticMap<'_, '_> {
 /// [`Assets<TextureAtlasLayout>::get`](bevy::asset::Assets::get) — the material holds the
 /// layout STRUCT, not the handle, so its [`AsBindGroupShaderType`](bevy::render::render_resource::AsBindGroupShaderType)
 /// can bake the atlas UV). `custom_size = Some(Vec2::splat(CELL_PX))` (the S3 sizing
-/// recipe) and `saturation = 1.0` (seeded VISIBLE — the fog writer drives it per cell).
-/// Returns [`None`] if the terrain sheet OR its layout was not loaded (so the caller skips
-/// the spawn rather than panic).
+/// recipe), `saturation = 1.0` (seeded VISIBLE — the fog writer drives it per cell), and
+/// `brightness = `[`Brightness::FULL`] (seeded full-bright — the fog writer dims it on a
+/// lower drawn storey, GTW-519). Returns [`None`] if the terrain sheet OR its layout was not
+/// loaded (so the caller skips the spawn rather than panic).
 fn terrain_material(
     index: TileIndex,
     atlases: &TopDownAtlases,
@@ -181,6 +184,8 @@ fn terrain_material(
         custom_size:  Some(Vec2::splat(CELL_PX)),
         // Seed VISIBLE (full colour); present_fog drives it to 0.0 on EXPLORED cells.
         saturation:   1.0,
+        // GTW-519: seed full brightness; present_fog dims a lower drawn storey per-tile.
+        brightness:   Brightness::FULL,
     })
 }
 
@@ -214,6 +219,68 @@ fn resolve_index(
     map.role_at(key).index(roles)
 }
 
+/// Whether `key`'s storey has REAL terrain the multi-level draw emits a sprite for (GTW-519
+/// peek-through, C2) — as distinct from empty air a lower storey peeks through.
+///
+/// Real terrain is: a spawned terrain ENTITY (a per-def [`TerrainGraphicKey`] fact, i.e. an
+/// authored wall / cover / slab / door / stair), a [`SlabState::Present`] surface, or a
+/// non-[`TerrainKind::Open`] occupancy fact (a `Wall` / `Cover`). An [`Open`](TerrainKind::Open)
+/// cell with no present slab and no spawned entity is EMPTY AIR on an upper storey — it emits
+/// NOTHING, so the storey beneath peeks through (the floor-gap reveal). This is checked ONLY
+/// for storeys above the ground floor; storey 0 always draws its full floor field (the ground
+/// plane), matching the pre-GTW-519 single-storey behaviour.
+fn storey_has_terrain(
+    key: &CellLevel,
+    facts: &HashMap<CellLevel, (&TerrainGraphicKey, Option<&FootfallSound>)>,
+    map: &StaticMap,
+) -> bool {
+    facts.contains_key(key)
+        || matches!(map.surface.slab_state(key), SlabState::Present)
+        || !matches!(map.occupancy.terrain(key), TerrainKind::Open)
+}
+
+/// Whether a `(cell, level)` key's storey lies within the drawn [`drawn_band`] (GTW-519 C6).
+///
+/// The shared predicate the two destroyed-swap reactions ([`swap_destroyed_cover`] /
+/// [`swap_destroyed_slab`]) gate on so they act on any DRAWN storey (`0..=active`) and ignore
+/// one strictly above the active view level. A [`CellLevel`]'s `z` is the `i32` storey index
+/// ([`CellLevel`] wraps `IVec3`); the band's inclusive [`Level`] bounds read through
+/// [`Level`]'s `Deref<Target = u8>` and compare against it. A negative or over-`u8` `z` (a
+/// can't-happen malformed key) simply fails the bound rather than panicking.
+fn cell_level_in_band(at: CellLevel, band: &RangeInclusive<Level>) -> bool {
+    let start = i32::from(**band.start());
+    let end = i32::from(**band.end());
+    (start..=end).contains(&at.z)
+}
+
+/// Iterate the [`drawn_band`] as concrete [`Level`]s (BOTTOM-UP, `0..=active` inclusive).
+///
+/// A small adapter over the [`RangeInclusive<Level>`] the shared [`drawn_band`] returns:
+/// [`Level`] wraps a `u8` but is not itself `Step` (no `Iterator` for the range), so this
+/// walks the inclusive `u8` storey indices and re-wraps each through [`Level::new`], keeping
+/// the loop bottom-up so painter's-Z occlusion holds by draw order + the per-storey z.
+fn level_band(band: RangeInclusive<Level>) -> impl Iterator<Item = Level> {
+    (**band.start()..=**band.end()).map(Level::new)
+}
+
+/// The inclusive band of storeys the terrain draw renders (GTW-519), given the current
+/// [`ActiveLevel`].
+///
+/// The UFO:EU / `OpenXcom` multi-level display: draw every storey from the ground floor UP TO
+/// the active view level (`0..=active`) and CULL everything strictly above it — the
+/// painter's-algorithm occlusion falls out of the existing per-storey Z ([`z_for`], via
+/// [`cell_to_world`]). The band FLOOR is fixed at level 0 (the whole stack at/below active,
+/// not a windowed `[active-N..=active]`) — the logged fork (a).
+///
+/// The SINGLE readable definition of "which storeys are drawn", shared by the draw loop
+/// (C1) AND the two destroyed-swap reactions (C6, [`swap_destroyed_cover`] /
+/// [`swap_destroyed_slab`]) so they can never drift. GTW-521's full-view toggle extends
+/// this ONE helper (widen the band to the whole occupied stack) WITHOUT re-touching the loop
+/// body or the swap predicates.
+pub(super) fn drawn_band(active: ActiveLevel) -> RangeInclusive<Level> {
+    Level::new(0)..=*active
+}
+
 /// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): the
 /// static-battlefield ONE-SHOT draw + redraw-on-level-change.
 ///
@@ -223,14 +290,22 @@ fn resolve_index(
 /// MUTATES [`TileRoles`] (the indices swap) and an `alt_tileset_terrain.png` re-save
 /// `set_changed()`s it (same indices, fresh GPU texture); either way the rendered tiles
 /// SWAP, live, with no restart. It despawns ALL existing [`TerrainSprite`]
-/// entities, then for the [`ActiveLevel`] ONLY scans `0..GRID_WIDTH` × `0..GRID_HEIGHT`
-/// and spawns one terrain tile per non-empty cell (every in-range cell is at least floor)
-/// as a shared unit-rect [`Mesh2d`] + [`MeshMaterial2d<TerrainFogMaterial>`] (GTW-348 — the
-/// material path so EXPLORED can render greyscale; the `Sprite` pipeline cannot desaturate)
-/// at [`cell_to_world`](crate::cell_to_world), on the
-/// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`TerrainSprite`] marker.
+/// entities, then (GTW-519) for the whole DRAWN BAND [`drawn_band`] (`0..=active`,
+/// BOTTOM-UP) scans `0..GRID_WIDTH` × `0..GRID_HEIGHT` per storey and spawns one terrain
+/// tile per NON-EMPTY cell as a shared unit-rect [`Mesh2d`] +
+/// [`MeshMaterial2d<TerrainFogMaterial>`] (GTW-348 — the material path so EXPLORED can render
+/// greyscale; the `Sprite` pipeline cannot desaturate) at
+/// [`cell_to_world`](crate::cell_to_world), on the
+/// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`TerrainSprite`] marker. The
+/// ground floor (storey 0) draws its FULL floor field (the pre-GTW-519 single-storey
+/// behaviour); every UPPER storey in the band draws ONLY cells with a real terrain fact
+/// ([`storey_has_terrain`]) so an open/empty upper cell emits nothing and the storey beneath
+/// PEEKS THROUGH (C2). Everything strictly ABOVE `active` is culled (the band never enters
+/// it). The per-storey Z ([`z_for`](crate::cell_to_world) via [`cell_to_world`]) gives the
+/// painter's-algorithm occlusion (a higher storey draws in front) with NO new Z math (C3).
 /// The despawn-first step makes the first-ready double-fire (a `BattleReady` on the same
-/// update `ActiveLevel` first reads `is_changed`) idempotent.
+/// update `ActiveLevel` first reads `is_changed`) idempotent, and a level cycle redraws the
+/// whole `[0..=active]` band (C7).
 ///
 /// GTW-493 (T07c — the per-def presenter seam): each cell's atlas index is resolved from
 /// the SIM-SPAWNED terrain entity's per-def [`TerrainGraphicKey`] FIRST (via the private
@@ -302,58 +377,78 @@ pub fn draw_static_battlefield(
     // not solely from the TerrainKind-keyed TileRole default.
     let graphic_facts = map.graphic_facts();
 
-    let level = **active;
-    for y in 0..i32_extent(GRID_HEIGHT) {
-        for x in 0..i32_extent(GRID_WIDTH) {
-            let cell = Cell::new(x, y);
-            let key = CellLevel::new(cell, level);
-            // GTW-493: read the slab footfall from the def's presenter_kind for this cell.
-            // It is Slab-ONLY and OPTIONAL: a Wall/Cover entity carries no FootfallSound, and
-            // a Slab def may omit it. ABSENT footfall is handled here with NO panic and a
-            // DOCUMENTED default — there is NO footfall-audio system yet (the sim stays
-            // guns-only), so a present key is logged at `debug` (so a future footfall pass has
-            // a wired seam to consume) and an absent one is the SILENT default (no clip).
-            if let Some((_graphic, Some(footfall))) = graphic_facts.get(&key) {
-                let footfall_key: &str = footfall;
-                debug!(
-                    "terrain footfall present at {key:?}: `{footfall_key}` (no footfall-audio \
-                     system yet — default: silent)",
-                );
+    // GTW-519: draw the whole storey band 0..=active BOTTOM-UP (the UFO:EU multi-level
+    // display) rather than the single active storey — the band lives in ONE `drawn_band`
+    // helper the swap reactions share (C1/C6). Iterating ascending keeps the loop reading
+    // bottom-up; the painter's-algorithm occlusion is the existing per-storey Z (z_for via
+    // cell_to_world), NOT new math — a higher storey's tile carries a strictly greater z, so
+    // it draws in front. A storey strictly above active is never entered, so it emits nothing
+    // (the hard cull). present_fog dims each lower storey's tiles per-tile afterward.
+    for level in level_band(drawn_band(*active)) {
+        for y in 0..i32_extent(GRID_HEIGHT) {
+            for x in 0..i32_extent(GRID_WIDTH) {
+                let cell = Cell::new(x, y);
+                let key = CellLevel::new(cell, level);
+                // GTW-493: read the slab footfall from the def's presenter_kind for this
+                // cell. It is Slab-ONLY and OPTIONAL: a Wall/Cover entity carries no
+                // FootfallSound, and a Slab def may omit it. ABSENT footfall is handled here
+                // with NO panic and a DOCUMENTED default — there is NO footfall-audio system
+                // yet (the sim stays guns-only), so a present key is logged at `debug` (so a
+                // future footfall pass has a wired seam to consume) and an absent one is the
+                // SILENT default (no clip).
+                if let Some((_graphic, Some(footfall))) = graphic_facts.get(&key) {
+                    let footfall_key: &str = footfall;
+                    debug!(
+                        "terrain footfall present at {key:?}: `{footfall_key}` (no \
+                         footfall-audio system yet — default: silent)",
+                    );
+                }
+                // GTW-493: resolve the atlas index from this cell's per-def TerrainGraphicKey
+                // FIRST (so two same-TerrainKind defs with distinct graphic_names draw
+                // distinct sprites), falling back to the TerrainKind-keyed TileRole default
+                // for the floor field / an out-of-vocabulary key.
+                //
+                // GTW-519 PEEK-THROUGH (C2): a `resolve_index` on a cell with nothing on it
+                // still yields the FLOOR default — but the caller only spawns a tile where a
+                // sim FACT exists on THIS storey. An open/empty upper-storey cell (no
+                // terrain entity, no slab, occupancy `Open`) resolves to floor yet has no
+                // fact keying it here for a non-zero storey, so it emits NOTHING and the
+                // storey beneath peeks through. The floor field is authored on storey 0 (the
+                // ground plane); upper storeys draw only their real walls / cover / slabs.
+                if level != Level::new(0) && !storey_has_terrain(&key, &graphic_facts, &map) {
+                    continue;
+                }
+                let index = resolve_index(&key, &graphic_facts, &map, &roles);
+                let Some(material) = terrain_material(index, &atlases, &layouts) else {
+                    continue;
+                };
+                let mesh2d = Mesh2d(mesh.clone());
+                let material2d = MeshMaterial2d(materials.add(material));
+                let transform = Transform::from_translation(cell_to_world(cell, level));
+                let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+                // GTW-348 — terrain moved from the `Sprite` path to a `Mesh2d` +
+                // `MeshMaterial2d<TerrainFogMaterial>` so EXPLORED cells can render GREYSCALE
+                // (the sprite pipeline's per-channel multiply tint cannot desaturate).
+                // Authored via `spawn_scene` (GTW-322): `Mesh2d` / `MeshMaterial2d` each wrap
+                // a `Handle<_>`, which is NOT `Unpin` (so it has no `Template` impl) — exactly
+                // like the old atlas `Sprite` — so each rides the `template(move |_|
+                // Ok(value.clone()))` closure escape hatch (the `FnTemplate` output carries no
+                // `Unpin` bound), the same one the AREA-1 widget builders use. The runtime
+                // `Transform` / `RenderLayers` ARE `Clone + Default + Unpin`, so each rides
+                // `template_value` (a value-overwrite). The `TerrainSprite` marker carries the
+                // runtime source `CellLevel` (no `Default`), so it is `.insert`ed after the
+                // scene. The tile is never read back by id (the redraw / cover-swap / fog find
+                // it via the `TerrainSprite { at }` query, not a captured handle), so the
+                // deferred materialization is inert — the same entity + components result.
+                commands
+                    .spawn_scene((
+                        bsn! { template(move |_| Ok(mesh2d.clone())) },
+                        bsn! { template(move |_| Ok(material2d.clone())) },
+                        template_value(transform),
+                        template_value(layers),
+                    ))
+                    .insert(TerrainSprite { at: key });
             }
-            // GTW-493: resolve the atlas index from this cell's per-def TerrainGraphicKey
-            // FIRST (so two same-TerrainKind defs with distinct graphic_names draw distinct
-            // sprites), falling back to the TerrainKind-keyed TileRole default for the floor
-            // field / an out-of-vocabulary key.
-            let index = resolve_index(&key, &graphic_facts, &map, &roles);
-            let Some(material) = terrain_material(index, &atlases, &layouts) else {
-                continue;
-            };
-            let mesh2d = Mesh2d(mesh.clone());
-            let material2d = MeshMaterial2d(materials.add(material));
-            let transform = Transform::from_translation(cell_to_world(cell, level));
-            let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
-            // GTW-348 — terrain moved from the `Sprite` path to a `Mesh2d` +
-            // `MeshMaterial2d<TerrainFogMaterial>` so EXPLORED cells can render GREYSCALE
-            // (the sprite pipeline's per-channel multiply tint cannot desaturate). Authored
-            // via `spawn_scene` (GTW-322): `Mesh2d` / `MeshMaterial2d` each wrap a `Handle<_>`,
-            // which is NOT `Unpin` (so it has no `Template` impl) — exactly like the old atlas
-            // `Sprite` — so each rides the `template(move |_| Ok(value.clone()))` closure escape
-            // hatch (the `FnTemplate` output carries no `Unpin` bound), the same one the AREA-1
-            // widget builders use. The runtime `Transform` / `RenderLayers` ARE
-            // `Clone + Default + Unpin`, so each rides `template_value` (a value-overwrite). The
-            // `TerrainSprite` marker carries the runtime source `CellLevel` (no `Default`), so it
-            // is `.insert`ed after the scene. The tile is never read back by id (the redraw /
-            // cover-swap / fog find it via the `TerrainSprite { at }` query, not a captured
-            // handle), so the deferred materialization is inert — the same entity + components
-            // result.
-            commands
-                .spawn_scene((
-                    bsn! { template(move |_| Ok(mesh2d.clone())) },
-                    bsn! { template(move |_| Ok(material2d.clone())) },
-                    template_value(transform),
-                    template_value(layers),
-                ))
-                .insert(TerrainSprite { at: key });
         }
     }
 }
@@ -362,11 +457,13 @@ pub fn draw_static_battlefield(
 /// a destroyed cover cell's sprite to the RUBBLE tile.
 ///
 /// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::CoverDestroyed); for each
-/// `CoverDestroyed { at }` ON THE ACTIVE LEVEL it finds the [`TerrainSprite`] at `at` and
-/// swaps its texture-atlas index to the `rubble` [`TileIndex`] (read from [`TileRoles`],
-/// never a literal). Off-active-level destructions are ignored (that terrain is not
-/// drawn). Choice: SWAP (not despawn) so the cell still reads as terrain (rubble) rather
-/// than a hole — AC3 asserts the swap.
+/// `CoverDestroyed { at }` WITHIN THE DRAWN BAND `[0..=active]` (GTW-519 C6 — the shared
+/// [`drawn_band`] predicate, so a cover smashed on any drawn lower storey swaps too) it finds
+/// the [`TerrainSprite`] at `at` and swaps its texture-atlas index to the `rubble`
+/// [`TileIndex`] (read from [`TileRoles`], never a literal). A destruction on a storey
+/// strictly ABOVE the active view level is ignored (that terrain is not drawn). Choice: SWAP
+/// (not despawn) so the cell still reads as terrain (rubble) rather than a hole — AC3 asserts
+/// the swap.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Res<ActiveLevel>`], [`Res<TileRoles>`],
 /// [`ResMut<Assets<TerrainFogMaterial>>`] (GTW-348 — the swap re-indexes the tile's
@@ -380,11 +477,15 @@ pub fn swap_destroyed_cover(
     mut destroyed: MessageReader<CoverDestroyed>,
     tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
 ) {
-    let active_storey = **active;
+    let band = drawn_band(*active);
     let rubble = *roles.rubble;
     for event in destroyed.read() {
-        // CoverDestroyed.at is a CellLevel; only act on cells on the active storey.
-        if event.at.z != i32::from(*active_storey) {
+        // CoverDestroyed.at is a CellLevel; only act on cells WITHIN the drawn band
+        // [0..=active] (GTW-519 C6 — a cover smashed on a DRAWN lower storey still swaps to
+        // rubble; one strictly ABOVE the active view level is not drawn, so there is no tile
+        // to re-index). SHARES the `drawn_band` helper with the draw loop so the two cannot
+        // drift.
+        if !cell_level_in_band(event.at, &band) {
             continue;
         }
         for (terrain, mat_handle) in &tiles {
@@ -408,14 +509,15 @@ pub fn swap_destroyed_cover(
 ///
 /// The slab mirror of [`swap_destroyed_cover`] (GTW-367 C1/C3): it drains
 /// [`MessageReader<SlabDestroyed>`](gdtf_battle_sim::SlabDestroyed); for each
-/// `SlabDestroyed { at }` ON THE ACTIVE LEVEL it finds the [`TerrainSprite`] at `at` and
-/// swaps its texture-atlas index to the `slab_destroyed` [`TileIndex`] (read from
-/// [`TileRoles`], never a literal — the engineer's-choice destroyed-slab treatment, which
-/// the [`TileRoles::slab_destroyed`] doc-comment describes and flags for art review).
-/// Off-active-level destructions are ignored (that terrain is not drawn — the hard cut to
-/// [`ActiveLevel`], C4). Choice: SWAP (not despawn) so the cell still reads as terrain
-/// (rubble/debris) rather than a hole, and so the SAME sprite `Entity` persists across the
-/// swap (the UI mutate-not-respawn rule, C7) — exactly the cover path.
+/// `SlabDestroyed { at }` WITHIN THE DRAWN BAND `[0..=active]` (GTW-519 C6 — the shared
+/// [`drawn_band`] predicate) it finds the [`TerrainSprite`] at `at` and swaps its
+/// texture-atlas index to the `slab_destroyed` [`TileIndex`] (read from [`TileRoles`], never
+/// a literal — the engineer's-choice destroyed-slab treatment, which the
+/// [`TileRoles::slab_destroyed`] doc-comment describes and flags for art review). A
+/// destruction on a storey strictly ABOVE the active view level is ignored (that terrain is
+/// not drawn). Choice: SWAP (not despawn) so the cell still reads as terrain (rubble/debris)
+/// rather than a hole, and so the SAME sprite `Entity` persists across the swap (the UI
+/// mutate-not-respawn rule, C7) — exactly the cover path.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Res<ActiveLevel>`], [`Res<TileRoles>`],
 /// [`ResMut<Assets<TerrainFogMaterial>>`] (GTW-348 — the swap re-indexes the tile's material
@@ -431,12 +533,14 @@ pub fn swap_destroyed_slab(
     mut destroyed: MessageReader<SlabDestroyed>,
     tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
 ) {
-    let active_storey = **active;
+    let band = drawn_band(*active);
     let slab_destroyed = *roles.slab_destroyed;
     for event in destroyed.read() {
-        // SlabDestroyed.at is a CellLevel; only act on cells on the active storey (C4 hard
-        // cut — an off-active-level slab is not drawn, so nothing to re-index there).
-        if event.at.z != i32::from(*active_storey) {
+        // SlabDestroyed.at is a CellLevel; only act on cells WITHIN the drawn band
+        // [0..=active] (GTW-519 C6 — a slab smashed on a DRAWN lower storey swaps to its
+        // destroyed tile; one strictly ABOVE the active view level is not drawn, so nothing
+        // to re-index there). SHARES the `drawn_band` helper with the draw loop.
+        if !cell_level_in_band(event.at, &band) {
             continue;
         }
         for (terrain, mat_handle) in &tiles {

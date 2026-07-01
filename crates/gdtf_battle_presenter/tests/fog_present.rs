@@ -42,8 +42,8 @@ use gdtf_battle_presenter::{
 use gdtf_battle_sim::{
     Aiming, BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger, Direction, Facing, Faction,
     FovObserver, GangerName, GangerSpawn, Level, LifeState, OccupancyGrid, Position,
-    SetupBattleRequested, ShotRng, Situation, SquadVisibility, StairEyeOffset, Stance, StanceKind,
-    SurfaceGrid, setup_battle_on_request,
+    SetupBattleRequested, ShotRng, Situation, SlabState, SquadVisibility, StairEyeOffset, Stance,
+    StanceKind, SurfaceGrid, setup_battle_on_request,
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_gang_registry,
         test_melee_weapon_registry, test_weapon_registry,
@@ -522,8 +522,11 @@ fn fog_reapplies_after_level_cycle() {
 
     let l0 = Level::new(0);
     let l1 = Level::new(1);
-    // A cell that is UNSEEN on the level we cycle TO (so the freshly-drawn terrain there
-    // must be hidden by the re-applied fog).
+    // Two REAL level-1 terrain cells (Present slabs) — GTW-519: an UPPER storey draws only its
+    // authored terrain (peek-through, C2), so a plain floor cell on level 1 emits nothing; the
+    // ordering proof needs cells that actually respawn a tile on the level cycle. One is UNSEEN
+    // on the level we cycle TO (its freshly-drawn tile must be hidden by the re-applied fog),
+    // the other VISIBLE.
     let unseen_l1 = CellLevel::new(Cell::new(8, 8), l1);
     let visible_l1 = CellLevel::new(Cell::new(9, 9), l1);
 
@@ -540,6 +543,14 @@ fn fog_reapplies_after_level_cycle() {
         settle_terrain_at(&mut app, CellLevel::new(Cell::new(5, 5), l0)),
         "the level-0 terrain field must have drawn",
     );
+
+    // Author the two level-1 REAL terrain cells as Present slabs so the level-1 redraw has
+    // tiles to spawn (an upper storey draws only real terrain, GTW-519 C2).
+    {
+        let mut surface = app.world_mut().resource_mut::<SurfaceGrid>();
+        surface.set_slab(unseen_l1, SlabState::Present);
+        surface.set_slab(visible_l1, SlabState::Present);
+    }
 
     // Author the level-1 fog: visible_l1 VISIBLE, unseen_l1 neither.
     set_fog(&mut app, &[visible_l1], &[]);

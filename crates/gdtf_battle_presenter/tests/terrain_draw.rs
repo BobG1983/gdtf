@@ -1,7 +1,10 @@
 //! GTW-218 (GTW-48 S4): headless draw-LOGIC tests for the static-battlefield terrain
 //! draw — AC2 (one-shot draw of role-correct, cell-positioned, CELL_PX-sized sprites),
-//! AC3 (a `CoverDestroyed` swaps the cover cell to the rubble tile), AC4 (an
-//! `ActiveLevel` change redraws the new level and despawns off-level terrain).
+//! AC3 (a `CoverDestroyed` swaps the cover cell to the rubble tile), and (GTW-519) the
+//! multi-level draw core: raising `ActiveLevel` redraws the whole drawn band `[0..=active]`
+//! (C1/C7), an open upper-storey cell peeks through to the storey below (C2), a tile on
+//! storey `k+1` sorts strictly in front of the same `(x,y)` on storey `k` (per-storey Z, C3),
+//! and a cover / slab destroyed on a DRAWN lower storey still swaps its tile (C6).
 //!
 //! These prove the DRAW LOGIC headless; "the right tiles appear on screen" is AC6's
 //! in-engine QA evidence. The harness is a `DefaultPlugins`/`no_renderer` app (a live
@@ -20,6 +23,7 @@ use bevy::{
     asset::{AssetPlugin, Assets},
     ecs::{error::warn, message::Messages},
     math::Vec2,
+    platform::collections::HashSet,
     prelude::{MeshMaterial2d, default},
     render::{RenderPlugin, settings::WgpuSettings},
     transform::components::Transform,
@@ -31,10 +35,10 @@ use gdtf_battle_presenter::{
     TopDownRendererPlugin, cell_to_world,
 };
 use gdtf_battle_sim::{
-    ArmorHardness, ArmorProtection, BattleInProgress, BattleReady, Cell, CellLevel, CoverDestroyed,
-    CoverEntry, CoverHp, CoverLedger, FootfallSound, HeightBand, Level, OccupancyGrid,
-    OccupancyInput, SlabDestroyed, SlabState, SurfaceGrid, TerrainCell, TerrainGraphicKey,
-    TerrainKind, TerrainPlacement,
+    ArmorHardness, ArmorProtection, BattleInProgress, BattleReady, Cell, CellLevel, CombatTuning,
+    CoverDestroyed, CoverEntry, CoverHp, CoverLedger, FootfallSound, HeightBand, Level,
+    OccupancyGrid, OccupancyInput, SlabDestroyed, SlabState, SquadVisibility, SurfaceGrid,
+    TerrainCell, TerrainGraphicKey, TerrainKind, TerrainPlacement,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -434,15 +438,17 @@ fn slab_destroyed_swaps_the_slab_cell_to_destroyed_in_place() {
     );
 }
 
-/// AC4 — an `ActiveLevel` change redraws for the new level; off-active-level terrain is
-/// gone.
+/// GTW-519 C1/C7 — raising `ActiveLevel` redraws the WHOLE drawn band `[0..=active]`
+/// (multi-level, bottom-up), culling everything strictly above `active`; nothing above the
+/// band is drawn.
 ///
-/// Authors a `Present` slab on level 0 AND one on level 1 (mirroring skirmish's
-/// `(2,2,0)` + `(2,2,1)`). At `ActiveLevel` 0 only the level-0 slab sprite draws; after
-/// setting `ActiveLevel(Level::new(1))` and updating, only the level-1 slab sprite
-/// exists (the level-0 terrain was despawned).
+/// Authors a `Present` slab on level 0 AND one on level 1 (mirroring skirmish's `(2,2,0)` +
+/// `(2,2,1)`). At `ActiveLevel` 0 only the level-0 slab draws and the level-1 slab is CULLED
+/// (strictly above active); after raising `ActiveLevel` to 1, BOTH slabs draw (level 0 is a
+/// DRAWN lower storey now, not despawned — the pre-GTW-519 single-active-level behaviour is
+/// replaced by the UFO:EU band). Every drawn sprite lies WITHIN the band (`z <= active`).
 #[test]
-fn active_level_change_redraws_only_the_new_level() {
+fn raising_active_level_redraws_the_whole_drawn_band() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
 
@@ -452,10 +458,9 @@ fn active_level_change_redraws_only_the_new_level() {
     let slab0 = CellLevel::new(slab_cell, l0);
     let slab1 = CellLevel::new(slab_cell, l1);
 
-    // No walls/cover: an empty occupancy grid means every in-range cell is floor, so the
-    // slab cell is the only DISTINCT role on each level — but the floor field is drawn on
-    // BOTH levels, so the level-scoping is proven by the slab sprite's PRESENCE per level
-    // and by every drawn sprite carrying the active level's z.
+    // Empty occupancy: the ground plane (storey 0) draws its full floor field; the upper
+    // storey draws ONLY its authored slab (peek-through, C2). The band-scoping is proven by
+    // the slab sprites' PRESENCE per level and by every drawn sprite lying within the band.
     insert_occupancy(&mut app, Vec::new());
     app.world_mut().insert_resource(CoverLedger::new());
     let mut surface = SurfaceGrid::new();
@@ -473,7 +478,7 @@ fn active_level_change_redraws_only_the_new_level() {
     assert!(roles.is_some(), "TileRoles must be resident");
     let Some(roles) = roles else { return };
 
-    // At active level 0: the level-0 slab sprite draws, the level-1 one does not.
+    // At active level 0: the level-0 slab draws; the level-1 slab is CULLED (above active).
     assert_eq!(
         sprite_index_at(&mut app, slab0),
         Some(*roles.slab),
@@ -482,39 +487,44 @@ fn active_level_change_redraws_only_the_new_level() {
     assert_eq!(
         sprite_index_at(&mut app, slab1),
         None,
-        "the level-1 slab sprite must NOT be present at active level 0",
+        "the level-1 slab sprite (strictly ABOVE active) must be CULLED at active level 0",
     );
-    // Every drawn sprite is on level 0 (z == 0): no off-level terrain.
+    // Every drawn sprite is within the band [0..=0]: nothing above active.
     assert!(
-        all_sprites_on_level(&mut app, l0),
-        "every terrain sprite must be on the active level (0) before the change",
+        all_sprites_within_band(&mut app, l0),
+        "every terrain sprite must be within the drawn band [0..=0] before the change",
     );
 
-    // Change the active level to 1.
+    // Raise the active level to 1.
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
     app.update();
 
+    // BOTH slabs now draw: level 1 is the active storey, level 0 is a DRAWN lower storey
+    // (NOT despawned — the multi-level band redraw, C1/C7).
     assert_eq!(
         sprite_index_at(&mut app, slab1),
         Some(*roles.slab),
-        "after the level change, the level-1 slab sprite must be present",
+        "after raising to level 1, the level-1 (active) slab sprite must be present",
     );
     assert_eq!(
         sprite_index_at(&mut app, slab0),
-        None,
-        "after the level change, the level-0 slab sprite must be gone (despawned)",
+        Some(*roles.slab),
+        "after raising to level 1, the level-0 slab sprite must STILL be present (a drawn \
+         lower storey, not despawned)",
     );
+    // Every drawn sprite is within the band [0..=1]: nothing above active.
     assert!(
-        all_sprites_on_level(&mut app, l1),
-        "after the level change, every terrain sprite must be on the new level (1)",
+        all_sprites_within_band(&mut app, l1),
+        "after raising to level 1, every terrain sprite must be within the drawn band [0..=1]",
     );
 }
 
-/// Whether every `TerrainSprite` in the world carries `level` as its `at.z`.
-fn all_sprites_on_level(app: &mut App, level: Level) -> bool {
-    let z = i32::from(*level);
+/// Whether every `TerrainSprite` in the world lies WITHIN the drawn band `[0..=active]`
+/// (`at.z <= active`) — the GTW-519 multi-level cull check (nothing strictly above active).
+fn all_sprites_within_band(app: &mut App, active: Level) -> bool {
+    let ceiling = i32::from(*active);
     let mut q = app.world_mut().query::<&TerrainSprite>();
-    q.iter(app.world()).all(|t| t.at.z == z)
+    q.iter(app.world()).all(|t| t.at.z <= ceiling)
 }
 
 /// Spawns ONE sim-side terrain entity at `key` carrying its per-def
@@ -903,5 +913,403 @@ fn slab_footfall_optional_is_read_without_panic() {
         Some(*roles.slab),
         "the slab cell WITHOUT a footfall must STILL render the `slab` graphic (absent \
          footfall is the documented silent default, not a missing tile)",
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// GTW-519 — UFO:EU-style multi-level terrain draw
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+/// Counts the `TerrainSprite`s currently drawn on `level` (`at.z == level`).
+fn terrain_sprite_count_on_level(app: &mut App, level: Level) -> usize {
+    let z = i32::from(*level);
+    let mut q = app.world_mut().query::<&TerrainSprite>();
+    q.iter(app.world()).filter(|t| t.at.z == z).count()
+}
+
+/// The `Transform.translation.z` of the one `TerrainSprite` at `key`, if present — the C3
+/// per-storey Z probe.
+fn sprite_z_at(app: &mut App, key: CellLevel) -> Option<f32> {
+    let mut q = app.world_mut().query::<(&TerrainSprite, &Transform)>();
+    q.iter(app.world())
+        .find(|(t, _)| t.at == key)
+        .map(|(_, transform)| transform.translation.z)
+}
+
+/// The `TerrainFogMaterial.brightness` (as a bare `f32`) of the one `TerrainSprite` at `key`,
+/// if present — the C4 storey-darken probe. `Brightness` `Deref`s to its `f32`.
+fn sprite_brightness_at(app: &mut App, key: CellLevel) -> Option<f32> {
+    let mut q = app
+        .world_mut()
+        .query::<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>();
+    let handle = q
+        .iter(app.world())
+        .find(|(t, _)| t.at == key)
+        .map(|(_, mat)| mat.id())?;
+    let brightness = app
+        .world()
+        .get_resource::<Assets<TerrainFogMaterial>>()?
+        .get(handle)?
+        .brightness;
+    Some(*brightness)
+}
+
+/// The `TerrainFogMaterial.saturation` of the one `TerrainSprite` at `key`, if present — the
+/// C5 fog-composes probe.
+fn sprite_saturation_at(app: &mut App, key: CellLevel) -> Option<f32> {
+    let mut q = app
+        .world_mut()
+        .query::<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>();
+    let handle = q
+        .iter(app.world())
+        .find(|(t, _)| t.at == key)
+        .map(|(_, mat)| mat.id())?;
+    let saturation = app
+        .world()
+        .get_resource::<Assets<TerrainFogMaterial>>()?
+        .get(handle)?
+        .saturation;
+    Some(saturation)
+}
+
+/// Overwrite the `SquadVisibility` fog with the given VISIBLE / EXPLORED cells (VISIBLE is
+/// folded into EXPLORED to honour the `visible ⊆ explored` accrual invariant), so `present_fog`
+/// (which the draw harness now needs to run for the brightness/saturation drive) has real
+/// fog to modulate against.
+fn set_fog(app: &mut App, visible: &[CellLevel], explored: &[CellLevel]) {
+    let visible_set: HashSet<CellLevel> = visible.iter().copied().collect();
+    let mut explored_set: HashSet<CellLevel> = explored.iter().copied().collect();
+    explored_set.extend(visible_set.iter().copied());
+    app.world_mut()
+        .insert_resource(SquadVisibility::new(visible_set, explored_set));
+}
+
+/// GTW-519 C1 — the multi-level draw spawns terrain for EVERY storey in `[0..=active]`
+/// (bottom-up) and NONE strictly above `active`.
+///
+/// Authors a `Present` slab on storeys 0, 1, and 2, sets `ActiveLevel` to 1, fires the draw,
+/// and asserts: storey 0 (a lower drawn storey) draws its full floor field (`> 3` sprites),
+/// storey 1 (the active storey) draws its full floor field, and storey 2 (strictly above
+/// active) draws ZERO sprites (the hard cull). The multi-level presence proves the loop
+/// iterates the whole band, not a single active storey.
+#[test]
+fn multi_level_draws_the_band_below_and_at_active_and_none_above() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+
+    let cell = Cell::new(2, 2);
+    let l0 = Level::new(0);
+    let l1 = Level::new(1);
+    let l2 = Level::new(2);
+
+    // Empty occupancy: the ground floor draws a full floor field; upper storeys draw only the
+    // real terrain we author (a slab) — the peek-through invariant (C2, proven separately).
+    insert_occupancy(&mut app, Vec::new());
+    app.world_mut().insert_resource(CoverLedger::new());
+    let mut surface = SurfaceGrid::new();
+    surface.set_slab(CellLevel::new(cell, l0), SlabState::Present);
+    surface.set_slab(CellLevel::new(cell, l1), SlabState::Present);
+    surface.set_slab(CellLevel::new(cell, l2), SlabState::Present);
+    app.world_mut().insert_resource(surface);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    // Active view level = 1: draw storeys 0 and 1, cull 2.
+    *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    // The ground floor (storey 0) draws its FULL floor field (the ground plane) — proof the
+    // band extends below active, not a single storey.
+    let ground_count = terrain_sprite_count_on_level(&mut app, l0);
+    assert!(
+        ground_count > 3,
+        "storey 0 (the ground floor, below active) must draw its full floor field in the \
+         multi-level band; got {ground_count}",
+    );
+    // The active storey (an UPPER storey) draws ONLY its real terrain (the one authored slab),
+    // NOT a full floor field — the peek-through invariant (C2) applies to every storey above
+    // the ground plane, active or not. So it draws exactly 1 (the slab), far fewer than the
+    // ground floor's field.
+    let active_count = terrain_sprite_count_on_level(&mut app, l1);
+    assert_eq!(
+        active_count, 1,
+        "storey 1 (active, an upper storey) must draw ONLY its real terrain (the slab), not a \
+         floor field — peek-through applies to every non-ground storey; got {active_count}",
+    );
+    // Everything strictly ABOVE active is culled — ZERO sprites on storey 2.
+    assert_eq!(
+        terrain_sprite_count_on_level(&mut app, l2),
+        0,
+        "storey 2 (strictly above active) must draw NOTHING (the hard cull)",
+    );
+}
+
+/// GTW-519 C2 (peek-through) — an open/empty UPPER-storey cell emits NO sprite, while the
+/// same `(x, y)` on the storey BENEATH it DOES emit; a real terrain fact on the upper storey
+/// still emits.
+///
+/// At `ActiveLevel` 1: authors a slab at `(5,5,0)` (ground floor) with NOTHING at `(5,5,1)`
+/// (an empty upper cell — a floor gap), plus a wall at `(7,7,1)` (real upper terrain). Asserts
+/// `(5,5,1)` emits NONE (peek-through — the storey-0 cell reads through), `(5,5,0)` emits Some,
+/// and `(7,7,1)` emits Some (real terrain still draws on the upper storey).
+#[test]
+fn upper_storey_gap_peeks_through_to_the_storey_beneath() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+
+    let l0 = Level::new(0);
+    let l1 = Level::new(1);
+    let gap_lower = CellLevel::new(Cell::new(5, 5), l0);
+    let gap_upper = CellLevel::new(Cell::new(5, 5), l1);
+    let wall_upper = CellLevel::new(Cell::new(7, 7), l1);
+
+    insert_occupancy(
+        &mut app,
+        vec![TerrainPlacement::new(wall_upper, TerrainKind::Wall)],
+    );
+    app.world_mut().insert_resource(CoverLedger::new());
+    let mut surface = SurfaceGrid::new();
+    surface.set_slab(gap_lower, SlabState::Present);
+    app.world_mut().insert_resource(surface);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    let roles = tile_roles(&app);
+    assert!(roles.is_some(), "TileRoles must be resident after settle");
+    let Some(roles) = roles else { return };
+
+    // The empty upper cell emits NOTHING — the floor-gap reveals the storey beneath (C2).
+    assert_eq!(
+        sprite_index_at(&mut app, gap_upper),
+        None,
+        "an open/empty upper-storey cell must emit NO sprite (peek-through)",
+    );
+    // The same (x,y) on the storey BENEATH it DOES emit (its slab) — the revealed cell.
+    assert_eq!(
+        sprite_index_at(&mut app, gap_lower),
+        Some(*roles.slab),
+        "the storey-0 cell beneath the upper gap must still emit (peek-through reveals it)",
+    );
+    // Real terrain on the upper storey still draws.
+    assert_eq!(
+        sprite_index_at(&mut app, wall_upper),
+        Some(*roles.wall),
+        "a REAL upper-storey terrain cell (a wall) must still emit its sprite",
+    );
+}
+
+/// GTW-519 C3 (per-storey Z) — a tile on storey *k* sits at `z == cell_to_world(_, k).z`, and
+/// the same `(x, y)` on storey *k+1* draws at a STRICTLY GREATER z (painter's occlusion).
+///
+/// At `ActiveLevel` 1: authors a wall at `(4,4)` on BOTH storey 0 and storey 1, then reads the
+/// two tiles' `Transform.z`. Asserts each equals its storey's `cell_to_world` z and that the
+/// upper tile's z is strictly greater — the occlusion falls out of the existing per-storey Z.
+#[test]
+fn per_storey_z_orders_upper_over_lower() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+
+    let cell = Cell::new(4, 4);
+    let l0 = Level::new(0);
+    let l1 = Level::new(1);
+    let lower = CellLevel::new(cell, l0);
+    let upper = CellLevel::new(cell, l1);
+
+    insert_occupancy(
+        &mut app,
+        vec![
+            TerrainPlacement::new(lower, TerrainKind::Wall),
+            TerrainPlacement::new(upper, TerrainKind::Wall),
+        ],
+    );
+    app.world_mut().insert_resource(CoverLedger::new());
+    app.world_mut().insert_resource(SurfaceGrid::new());
+    app.world_mut().insert_resource(BattleInProgress);
+
+    *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    let lower_z = sprite_z_at(&mut app, lower);
+    let upper_z = sprite_z_at(&mut app, upper);
+    assert_eq!(
+        lower_z,
+        Some(cell_to_world(cell, l0).z),
+        "the storey-0 tile must sit at cell_to_world(cell, L0).z",
+    );
+    assert_eq!(
+        upper_z,
+        Some(cell_to_world(cell, l1).z),
+        "the storey-1 tile must sit at cell_to_world(cell, L1).z",
+    );
+    let (Some(lower_z), Some(upper_z)) = (lower_z, upper_z) else {
+        return;
+    };
+    assert!(
+        upper_z > lower_z,
+        "the upper storey's tile z ({upper_z}) must be STRICTLY greater than the lower's \
+         ({lower_z}) — painter's-algorithm occlusion from the per-storey Z",
+    );
+}
+
+/// GTW-519 C4/C5 — after `present_fog` runs, a tile on a LOWER drawn storey has `brightness <
+/// 1.0` (darkened) while a tile on the ACTIVE storey has `brightness == 1.0` (full-bright),
+/// AND a lower-storey EXPLORED cell still has its fog `saturation == 0.0` preserved
+/// (fog COMPOSES with the darken, is not replaced by it).
+///
+/// At `ActiveLevel` 1: authors a wall at `(4,4)` on storey 0 and on storey 1. The storey-1
+/// wall is squad-VISIBLE; the storey-0 wall is EXPLORED-only. Drives the REAL `present_fog`
+/// (requires `SquadVisibility` + `CombatTuning` — inserted here) and asserts the four facts.
+#[test]
+fn lower_storey_darkened_active_full_bright_and_explored_saturation_preserved() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+
+    let cell = Cell::new(4, 4);
+    let l0 = Level::new(0);
+    let l1 = Level::new(1);
+    let lower = CellLevel::new(cell, l0);
+    let active = CellLevel::new(cell, l1);
+
+    insert_occupancy(
+        &mut app,
+        vec![
+            TerrainPlacement::new(lower, TerrainKind::Wall),
+            TerrainPlacement::new(active, TerrainKind::Wall),
+        ],
+    );
+    app.world_mut().insert_resource(CoverLedger::new());
+    app.world_mut().insert_resource(SurfaceGrid::new());
+    app.world_mut().insert_resource(BattleInProgress);
+    // present_fog's gate needs CombatTuning present (the battle-configured witness).
+    app.world_mut().insert_resource(CombatTuning::default());
+
+    // The active-storey wall is VISIBLE; the lower-storey wall is EXPLORED-only (remembered).
+    set_fog(&mut app, &[active], &[lower]);
+
+    *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    // One update draws; present_fog runs the same update (.after the draw) — settle a second
+    // so the in-place material edit is observable (settle-before-read).
+    app.update();
+    app.update();
+
+    // C4: the active storey is full-bright.
+    assert_eq!(
+        sprite_brightness_at(&mut app, active),
+        Some(1.0),
+        "the ACTIVE-storey tile must render at full brightness (1.0)",
+    );
+    // C4: a lower drawn storey is darkened (< 1.0).
+    let lower_brightness = sprite_brightness_at(&mut app, lower);
+    assert!(
+        lower_brightness.is_some_and(|b| b < 1.0),
+        "a LOWER drawn-storey tile must render darkened (brightness < 1.0); got \
+         {lower_brightness:?}",
+    );
+    // C5: the lower-storey EXPLORED cell still desaturates (fog composes, not replaced) —
+    // saturation 0.0 is the EXPLORED greyscale, driven ALONGSIDE the darken.
+    assert_eq!(
+        sprite_saturation_at(&mut app, lower),
+        Some(0.0),
+        "a lower-storey EXPLORED cell must KEEP its fog greyscale (saturation 0.0) — the \
+         darken multiplies ON TOP of the saturation, never instead of it",
+    );
+    // And the VISIBLE active tile keeps full colour (saturation 1.0) — sanity that fog still
+    // drives the active storey too.
+    assert_eq!(
+        sprite_saturation_at(&mut app, active),
+        Some(1.0),
+        "the VISIBLE active-storey cell must be full colour (saturation 1.0)",
+    );
+}
+
+/// GTW-519 C6 — a `CoverDestroyed` on a DRAWN LOWER storey swaps that cover cell to rubble
+/// (the drawn-band predicate), while a `CoverDestroyed` STRICTLY ABOVE the active view level
+/// is ignored (that terrain is not drawn).
+///
+/// At `ActiveLevel` 1: authors cover at `(9,8)` on storey 0 (a lower drawn storey) and cover
+/// at `(9,8)` on storey 2 (above active — not drawn). Smashes both. Asserts the storey-0 cover
+/// swapped to rubble, and the storey-2 cell has no drawn sprite to swap (None) — the above-active
+/// destruction is a no-op.
+#[test]
+fn cover_destroyed_swaps_on_lower_storey_and_ignores_above_active() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+
+    let l0 = Level::new(0);
+    let l1 = Level::new(1);
+    let l2 = Level::new(2);
+    let lower_cover = CellLevel::new(Cell::new(9, 8), l0);
+    let above_cover = CellLevel::new(Cell::new(9, 8), l2);
+
+    insert_occupancy(
+        &mut app,
+        vec![
+            TerrainPlacement::new(lower_cover, TerrainKind::Cover),
+            TerrainPlacement::new(above_cover, TerrainKind::Cover),
+        ],
+    );
+    let mut cover_ledger = CoverLedger::new();
+    cover_ledger.insert(lower_cover, low_cover_entry());
+    cover_ledger.insert(above_cover, low_cover_entry());
+    app.world_mut().insert_resource(cover_ledger);
+    app.world_mut().insert_resource(SurfaceGrid::new());
+    app.world_mut().insert_resource(BattleInProgress);
+
+    *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    let roles = tile_roles(&app);
+    assert!(roles.is_some(), "TileRoles must be resident after settle");
+    let Some(roles) = roles else { return };
+
+    // Precondition: the lower cover is drawn (a real tile to swap); the above-active cover is
+    // NOT drawn (culled), so there is no tile there to begin with.
+    assert_eq!(
+        sprite_index_at(&mut app, lower_cover),
+        Some(*roles.cover),
+        "the lower-storey cover must be drawn before the smash",
+    );
+    assert_eq!(
+        sprite_index_at(&mut app, above_cover),
+        None,
+        "the above-active cover must NOT be drawn (culled)",
+    );
+
+    // Smash BOTH cover cells.
+    app.world_mut()
+        .resource_mut::<Messages<CoverDestroyed>>()
+        .write(CoverDestroyed::new(lower_cover));
+    app.world_mut()
+        .resource_mut::<Messages<CoverDestroyed>>()
+        .write(CoverDestroyed::new(above_cover));
+    app.update();
+
+    // C6: the DRAWN lower-storey cover swapped to rubble.
+    assert_eq!(
+        sprite_index_at(&mut app, lower_cover),
+        Some(*roles.rubble),
+        "a cover smashed on a DRAWN lower storey must swap to the rubble tile (C6)",
+    );
+    // The above-active destruction is ignored — still no drawn tile there.
+    assert_eq!(
+        sprite_index_at(&mut app, above_cover),
+        None,
+        "a cover smashed STRICTLY ABOVE the active view level must be ignored (not drawn)",
     );
 }

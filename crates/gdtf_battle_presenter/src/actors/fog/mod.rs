@@ -66,5 +66,5 @@ mod present;
 #[cfg(test)]
 mod test;
 
-pub use material::{TerrainFogMaterial, TerrainFogUniform};
+pub use material::{Brightness, TerrainFogMaterial, TerrainFogUniform};
 pub use present::present_fog;

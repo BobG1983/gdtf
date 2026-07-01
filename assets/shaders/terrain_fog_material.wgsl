@@ -1,10 +1,15 @@
-// Terrain fog-of-war material (GTW-348).
+// Terrain fog-of-war material (GTW-348) + multi-level storey darken (GTW-519).
 //
-// Renders one atlas terrain tile on a unit-rect Mesh2d, with a per-instance `saturation`
-// knob: 1.0 = full colour (a squad-VISIBLE cell), 0.0 = full greyscale at the SAME
-// luminance (a squad-EXPLORED / "was visible" cell — colour-loss as the memory cue). The
-// fragment samples the tile, computes its BT.709 luminance, and mixes toward grey by
-// (1 - saturation). UNSEEN cells are hidden by the presenter via Visibility, not here.
+// Renders one atlas terrain tile on a unit-rect Mesh2d, with two independent per-instance
+// knobs:
+//   `saturation` — 1.0 = full colour (a squad-VISIBLE cell), 0.0 = full greyscale at the
+//     SAME luminance (a squad-EXPLORED / "was visible" cell — colour-loss as the memory cue).
+//   `brightness` — 1.0 = full brightness (the active view storey), < 1.0 = dimmed (a lower,
+//     drawn-but-non-active storey in the UFO:EU / OpenXcom multi-level display, GTW-519).
+// The fragment samples the tile, computes its BT.709 luminance, mixes toward grey by
+// (1 - saturation), THEN scales the result by `brightness` — so the fog colour-loss and the
+// storey-depth darken COMPOSE (a lower EXPLORED tile is greyscaled AND dimmed). UNSEEN cells
+// are hidden by the presenter via Visibility, not here.
 //
 // Mirrors bevy_sprite_render's sprite_material.wgsl vertex shape (the same mesh2d
 // functions + VERTEX_* shader-defs the Mesh2d pipeline sets from the mesh attributes), so
@@ -22,10 +27,11 @@ struct TerrainFogMaterial {
     uv_transform: mat3x3<f32>,
     // The quad size in world units (scales the unit rect in the vertex stage).
     vertex_scale: vec2<f32>,
-    // 1.0 = full colour, 0.0 = full greyscale.
+    // 1.0 = full colour, 0.0 = full greyscale (the fog colour-loss axis).
     saturation: f32,
-    // Padding to the 16-byte boundary (matches the Rust ShaderType layout).
-    pad: f32,
+    // 1.0 = full brightness (active storey), < 1.0 = dimmed lower drawn storey (GTW-519).
+    // Fills the byte that was the GTW-348 `pad`; the trailing scalars pack exactly to 16 bytes.
+    brightness: f32,
 };
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material: TerrainFogMaterial;
@@ -94,8 +100,12 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     // BT.709 luminance — the perceptual grey at the SAME brightness as the tile.
     let luma = dot(sampled.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
     let grey = vec3<f32>(luma, luma, luma);
-    // saturation 1.0 -> full colour; 0.0 -> full greyscale.
-    let rgb = mix(grey, sampled.rgb, clamp(material.saturation, 0.0, 1.0));
+    // saturation 1.0 -> full colour; 0.0 -> full greyscale (the fog colour-loss axis).
+    let coloured = mix(grey, sampled.rgb, clamp(material.saturation, 0.0, 1.0));
+    // GTW-519: THEN scale by the storey-depth brightness (1.0 active / < 1.0 lower drawn
+    // storey) — a SEPARATE axis that COMPOSES on top of the saturation mix, never replacing
+    // it (a lower EXPLORED tile is both greyscaled and dimmed).
+    let rgb = coloured * clamp(material.brightness, 0.0, 1.0);
 
     return vec4<f32>(rgb, sampled.a);
 }

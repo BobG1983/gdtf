@@ -10,6 +10,13 @@
 //! tile, computes its BT.709 luminance, and `mix`es toward greyscale by `(1 - saturation)`
 //! (`saturation` `1.0` → full colour, `0.0` → full greyscale).
 //!
+//! GTW-519 adds a SECOND, orthogonal per-instance knob — `brightness` — for the UFO:EU /
+//! `OpenXcom` multi-level display: the active view storey draws full-bright ([`Brightness::FULL`]),
+//! a lower drawn storey is DIMMED (`< 1.0`). It plumbs through the SAME material-struct-field →
+//! uniform-field → WGSL-binding path as `saturation`, and the shader applies it AFTER the
+//! greyscale mix (grey-mix by `saturation`, THEN scale by `brightness`) so the fog colour-loss
+//! and the storey-depth darken COMPOSE rather than replace one another.
+//!
 //! The atlas tile is selected CPU-side: like Bevy's own `SpriteMaterial`, this material's
 //! [`AsBindGroupShaderType`] resolves the chosen `atlas_index` against the (resolved)
 //! [`TextureAtlasLayout`] into a `uv_transform` matrix, so the atlas index never reaches the
@@ -33,6 +40,41 @@ use bevy::{
 
 /// The shader-asset path for the terrain-fog [`Material2d`] (vertex + fragment in one file).
 const TERRAIN_FOG_SHADER: &str = "shaders/terrain_fog_material.wgsl";
+
+/// The per-tile STOREY-DEPTH brightness scalar the multi-level terrain draw drives
+/// (GTW-519).
+///
+/// A named view-domain newtype (no-bare-types) over the WGSL brightness multiplier: `1.0`
+/// draws the tile at its full painted brightness (the ACTIVE view storey), `< 1.0` DIMS it
+/// (a lower, drawn-but-non-active storey in the UFO:EU / `OpenXcom` multi-level display). This
+/// is a SEPARATE axis from the fog [`saturation`](TerrainFogMaterial::saturation): saturation
+/// expresses the squad-VISIBLE / EXPLORED memory cue (colour-loss, never dimmed —
+/// `docs/combat/visibility.md`), while brightness expresses the storey-depth of the drawn
+/// band. The two COMPOSE in the shader (grey-mix by saturation, THEN scale by brightness),
+/// never replace one another. Wraps `f32`; [`Deref`]s to it so the shader plumbing reads the
+/// raw multiplier, and it is minted only through [`Brightness::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct Brightness(f32);
+
+impl Brightness {
+    /// The full-brightness value — the active view storey draws at its painted brightness.
+    pub const FULL: Self = Self(1.0);
+
+    /// Build a storey-depth brightness multiplier (`1.0` = full, `< 1.0` = dimmed).
+    #[must_use]
+    pub const fn new(scale: f32) -> Self {
+        Self(scale)
+    }
+}
+
+impl Default for Brightness {
+    /// The seeded default: [`FULL`](Brightness::FULL) — a freshly-drawn tile is full-bright
+    /// until the fog writer drives it to a lower storey's dim (mirroring `saturation`'s
+    /// VISIBLE seed).
+    fn default() -> Self {
+        Self::FULL
+    }
+}
 
 /// A [`Material2d`] for one terrain tile, with a `saturation` knob the fog writer drives.
 ///
@@ -67,14 +109,22 @@ pub struct TerrainFogMaterial {
     /// `1.0` = full colour (VISIBLE), `0.0` = full greyscale (EXPLORED). Mutated by the fog
     /// writer in place each frame.
     pub saturation:   f32,
+    /// The GTW-519 storey-depth brightness: [`Brightness::FULL`] on the ACTIVE view storey,
+    /// a dimmed `< 1.0` on a lower drawn storey (the UFO:EU multi-level darken). A SEPARATE
+    /// axis from [`saturation`](Self::saturation) — it COMPOSES with it in the shader
+    /// (grey-mix by saturation, then scale by brightness), never replaces it. Mutated by the
+    /// fog writer in place each frame (per-storey), the same in-place path as `saturation`.
+    pub brightness:   Brightness,
 }
 
 /// The GPU uniform for [`TerrainFogMaterial`] (binding 0).
 ///
 /// Mirrors Bevy's `SpriteMaterialUniform` layout shape: the atlas UV transform plus the
-/// quad scale, with the GTW-348 `saturation` added. The `Mat3` field aligns to a 48-byte
-/// block (three `vec4` columns) under [`ShaderType`]; the trailing scalars pack into the
-/// next 16-byte boundary with an explicit `_pad` so the Rust and WGSL layouts agree.
+/// quad scale, with the GTW-348 `saturation` and the GTW-519 `brightness` added. The `Mat3`
+/// field aligns to a 48-byte block (three `vec4` columns) under [`ShaderType`]; the three
+/// trailing scalars pack EXACTLY into the next 16-byte boundary (`vertex_scale` 8 +
+/// `saturation` 4 + `brightness` 4 = 16 bytes), so no explicit pad is needed and the Rust
+/// and WGSL layouts agree. (GTW-519 folded the GTW-348 `pad` slot into `brightness`.)
 #[derive(ShaderType, Default)]
 pub struct TerrainFogUniform {
     /// Maps the unit-rect UV to the atlas tile's UV rect (baked from `atlas_index` +
@@ -82,12 +132,13 @@ pub struct TerrainFogUniform {
     pub uv_transform: Mat3,
     /// The quad size in world units (the vertex shader scales the unit rect by this).
     pub vertex_scale: Vec2,
-    /// `1.0` = full colour, `0.0` = full greyscale.
+    /// `1.0` = full colour, `0.0` = full greyscale (the fog EXPLORED colour-loss axis).
     pub saturation:   f32,
-    /// Explicit pad to the next 16-byte boundary after the two trailing scalars
-    /// (`vertex_scale` + `saturation` = 12 bytes; one `f32` pads to 16) so the Rust
-    /// [`ShaderType`] layout matches the WGSL struct. Never read on the GPU.
-    pub pad:          f32,
+    /// `1.0` = full brightness (active storey), `< 1.0` = dimmed (a lower drawn storey — the
+    /// GTW-519 UFO:EU multi-level darken). Fills the byte that was the GTW-348 `pad`; the
+    /// shader multiplies the (grey-mixed) RGB by this AFTER the saturation mix, so the two
+    /// axes compose.
+    pub brightness:   f32,
 }
 
 impl AsBindGroupShaderType<TerrainFogUniform> for TerrainFogMaterial {
@@ -130,7 +181,7 @@ impl AsBindGroupShaderType<TerrainFogUniform> for TerrainFogMaterial {
             uv_transform: uv_transform.into(),
             vertex_scale,
             saturation: self.saturation,
-            pad: 0.0,
+            brightness: *self.brightness,
         }
     }
 }
