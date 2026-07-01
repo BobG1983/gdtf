@@ -36,13 +36,26 @@ fn cell_and_level(pos: &Position) -> (Cell, Level) {
     (cell, Level::new(storey))
 }
 
-/// Whether a ganger at `pos` is on the presenter's `active` storey.
+/// Whether a ganger at `pos` is DRAWN — i.e. its storey lies within the drawn band
+/// `0..=active` (GTW-520 C4).
 ///
-/// The SAME active-level filter the S4 static draw uses: compare the ganger's
-/// `Position` `z` against the active [`Level`] (`bevy-traps.md` consistency with the
-/// terrain filter). `active` is the dereferenced [`ActiveLevel`]'s inner [`Level`].
-fn on_active_level(pos: &Position, active: Level) -> bool {
-    pos.z == i32::from(*active)
+/// Consults the ONE shared band predicate
+/// [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey), the successor to the
+/// pre-GTW-520 on-active-storey hard cut: a ganger on ANY storey at or below the active view
+/// level is drawn (it peeks through floor-gaps on the lower storeys GTW-519 already renders
+/// terrain for), and one strictly ABOVE the active level is culled. Every ganger-visibility
+/// site ([`spawn_ganger_sprites`] / [`move_ganger_sprites`] / [`apply_active_level_filter`]
+/// AND the fog writer's `present_actor_fog`) routes through this SAME predicate so they
+/// cannot drift.
+///
+/// It reconstructs the typed [`Level`] from the position's `z` (the S4 idiom — clamping the
+/// impossible negative / over-`u8` case keeps it panic-free) and asks the [`ActiveLevel`]
+/// whether that storey is drawn. The move / filter systems have the [`ActiveLevel`] as a
+/// [`Res`]; the actor fog arm holds the dereferenced [`ActiveLevel`] and rebuilds one via
+/// [`ActiveLevel::new`] — both reach the same predicate.
+fn ganger_in_drawn_band(pos: &Position, active: ActiveLevel) -> bool {
+    let (_cell, level) = cell_and_level(pos);
+    active.draws_storey(level)
 }
 
 /// Build one ganger [`Sprite`] on the character sheet at `index`, tinted `tint`, via the
@@ -67,19 +80,24 @@ fn ganger_sprite(index: usize, tint: Color, atlases: &TopDownAtlases) -> Option<
 }
 
 /// `Update` (`PresenterSystems::Draw`): spawn one presenter sprite per newly-added
-/// ganger on the active level.
+/// ganger within the drawn storey band.
 ///
-/// For every ganger whose [`Position`] was [`Added`] this update AND is on the
-/// [`ActiveLevel`], build a [`Sprite`] (atlas index `faction_base + facing_frame`, the
-/// faction tint) at the [`Layer::Actor`](crate::Layer) projection
-/// ([`cell_to_world_layered`](crate::cell_to_world_layered) — the cell's world position
-/// lifted by [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS) so it draws over its own floor tile,
-/// GTW-283), on the [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the
-/// [`GangerSprite`] marker;
-/// record `sim Entity -> presenter Entity` in [`GangerSprites`]. Off-`ActiveLevel`
-/// gangers are spawned HIDDEN (a [`Visibility::Hidden`] sprite is recorded too) so a
-/// later [`apply_active_level_filter`] can show it without a respawn — the level filter
-/// is uniform across spawn / move / level-change.
+/// For every ganger whose [`Position`] was [`Added`] this update, build a [`Sprite`] (atlas
+/// index `faction_base + facing_frame`, the faction tint) at the [`Layer::Actor`](crate::Layer)
+/// projection ([`cell_to_world_layered`](crate::cell_to_world_layered) — the cell's world
+/// position at the ganger's OWN [`Level`], lifted by [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS)
+/// so it draws over its own floor tile, GTW-283), on the
+/// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`GangerSprite`] marker; record
+/// `sim Entity -> presenter Entity` in [`GangerSprites`].
+///
+/// GTW-520 (C1/C2): the sprite is spawned SHOWN when the ganger's storey lies within the drawn
+/// band `0..=active` ([`ganger_in_drawn_band`], the shared
+/// [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate) — so a ganger on
+/// a LOWER storey is drawn at its own storey's Z and peeks through floor-gaps — and spawned
+/// HIDDEN when it is strictly ABOVE the active level. An off-band ganger's
+/// [`Visibility::Hidden`] sprite is recorded too so a later [`apply_active_level_filter`] can
+/// show it without a respawn — the band filter is uniform across spawn / move / level-change /
+/// the fog writer.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`ResMut<GangerSprites>`], the read
 /// resources, and the [`Added<Position>`] ganger query.
@@ -102,7 +120,12 @@ pub fn spawn_ganger_sprites(
             continue;
         };
         let (cell, level) = cell_and_level(pos);
-        let visibility = if on_active_level(pos, **active) {
+        // GTW-520 C1/C2: a ganger anywhere in the DRAWN band (`0..=active`) spawns shown so it
+        // peeks through floor-gaps on a lower storey; one strictly above the active level
+        // spawns HIDDEN (later shown without a respawn by `apply_active_level_filter`). The
+        // Actor-layer projection below uses the ganger's OWN `level`, so a lower-storey ganger
+        // draws at its own storey's Z and occludes correctly.
+        let visibility = if ganger_in_drawn_band(pos, *active) {
             Visibility::Inherited
         } else {
             Visibility::Hidden
@@ -169,10 +192,13 @@ pub fn spawn_ganger_sprites(
 ///   snaps and NEVER gates the sim (the sim's [`Position`] is authoritative; the tween
 ///   only smooths the view). Covers planar AND cross-storey moves (the GENERAL per-step
 ///   glide that subsumes GTW-361);
-/// - GTW-359 (C3, KEPT): flip its [`Visibility`] by whether the new `(cell, level)` is on
-///   the [`ActiveLevel`] — the cross-storey handoff (Hidden when the ganger leaves the
-///   active storey, Inherited when on it). The tween restructured the [`Transform`] write
-///   (now via the glide) but this hard-cut is unchanged.
+/// - GTW-520 (C4): flip its [`Visibility`] by whether the new `(cell, level)` is WITHIN the
+///   drawn band `0..=active` ([`ganger_in_drawn_band`], the shared
+///   [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate) — the
+///   cross-storey handoff (Hidden only when the ganger moves strictly ABOVE the active level,
+///   Inherited when it is at or below it, including onto a lower drawn storey where it peeks
+///   through the floor-gaps). The tween restructured the [`Transform`] write (now via the
+///   glide); this filter WIDENED from the old on-active-storey hard cut to band membership.
 ///
 /// It does NOT spawn a second sprite: it is idempotent via the map (a just-`Added` ganger
 /// handled by [`spawn_ganger_sprites`] this same update is already mapped —
@@ -204,7 +230,11 @@ pub fn move_ganger_sprites(
         // glide is seamless across a rapid sequence of Changed<Position> (the sim never
         // gated, the sprite never snapped).
         tween.retarget(transform.translation, target);
-        *visibility = if on_active_level(pos, **active) {
+        // GTW-520 C4: the cross-storey handoff now uses the shared DRAWN-BAND predicate
+        // (`0..=active`), not the old on-active-storey hard cut — so a ganger that moves DOWN
+        // onto a lower drawn storey stays shown (peeking through the floor-gaps) and only one
+        // that moves strictly ABOVE the active level is hidden.
+        *visibility = if ganger_in_drawn_band(pos, *active) {
             Visibility::Inherited
         } else {
             Visibility::Hidden
@@ -443,14 +473,16 @@ pub fn despawn_removed_ganger_sprites(
 }
 
 /// `Update` (`PresenterSystems::Draw`, runs only on an [`ActiveLevel`] change): show the
-/// ganger sprites on the new active level, hide the rest.
+/// ganger sprites within the new drawn storey band, hide the rest.
 ///
-/// On an [`ActiveLevel`](crate::ActiveLevel) change (`ActiveLevel::is_changed`) it walks every live ganger
-/// and sets its mapped presenter sprite's [`Visibility`] by whether the ganger's
-/// `Position` is on the new active level (the SAME `pos.z == **ActiveLevel` filter the
-/// S4 static draw uses). Off-level sprites are HIDDEN (not despawned — the move / reframe
-/// systems keep them current), on-level sprites are SHOWN. It is gated to only run when
-/// the resource changed so it does no per-frame work.
+/// On an [`ActiveLevel`](crate::ActiveLevel) change (`ActiveLevel::is_changed`) it walks every
+/// live ganger and sets its mapped presenter sprite's [`Visibility`] by whether the ganger's
+/// `Position` lies WITHIN the new drawn band `0..=active` ([`ganger_in_drawn_band`], the shared
+/// [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate — GTW-520 C4, the
+/// SAME band the S4/S5 terrain + spawn/move sites and the fog writer consult). Above-band
+/// sprites are HIDDEN (not despawned — the move / reframe systems keep them current), in-band
+/// sprites (the active storey AND every lower drawn storey) are SHOWN. It is gated to only run
+/// when the resource changed so it does no per-frame work.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], [`Res<ActiveLevel>`], the
 /// ganger [`Position`] query, and the presenter-sprite [`Visibility`] query.
@@ -470,7 +502,10 @@ pub fn apply_active_level_filter(
         let Ok(mut visibility) = presenters.get_mut(presenter) else {
             continue;
         };
-        *visibility = if on_active_level(pos, **active) {
+        // GTW-520 C4: show a ganger anywhere in the new DRAWN band (`0..=active`), hide only
+        // one strictly above the active level — the shared band predicate, so this on-level-
+        // change re-apply agrees with spawn / move (and the fog writer) exactly.
+        *visibility = if ganger_in_drawn_band(pos, *active) {
             Visibility::Inherited
         } else {
             Visibility::Hidden

@@ -47,6 +47,26 @@
 //! It draws ONLY ganger sprites — never the S4 [`TerrainSprite`](crate::TerrainSprite),
 //! never the S2 [`WorldCamera`](crate::WorldCamera) — and adds ZERO sim setup/teardown
 //! plumbing (S5 only READS the running battle's results).
+//!
+//! # GTW-520 — draw gangers on visible lower storeys
+//!
+//! The ganger-visibility model is a DRAWN-BAND decision, not a single-active-storey hard cut:
+//! a live ganger on ANY storey within `0..=active` is drawn at its OWN storey's Z (peeking
+//! through the floor-gaps GTW-519 already renders terrain for), and one strictly ABOVE the
+//! active level is culled. The four visibility sites — [`spawn_ganger_sprites`],
+//! [`move_ganger_sprites`], [`apply_active_level_filter`], AND the fog writer's
+//! `present_actor_fog` (the single final [`Visibility`](bevy::prelude::Visibility)
+//! writer) — all consult ONE shared predicate,
+//! [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey), so they cannot drift. The
+//! fog hard-cut is UNCHANGED (an unseen enemy on a lower drawn storey is still hidden); only
+//! the storey axis widened.
+//!
+//! FOLLOW-ON (GTW-522, NOT built here): cross-storey TARGETING — clicking / firing a ganger
+//! drawn on a LOWER storey. The cursor / selection / hover pick still binds the hovered cell to
+//! the ACTIVE storey only (locked design #4; the pick path in `gdtf_battle_input` is
+//! deliberately unchanged), so a drawn lower-storey ganger is VISIBLE but NOT pickable /
+//! fireable. Making a drawn lower-storey unit a valid click/fire target (and the reticle across
+//! storeys) is scoped to GTW-522.
 
 mod frame;
 mod roles;

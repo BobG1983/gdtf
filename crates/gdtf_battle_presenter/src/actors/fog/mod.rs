@@ -35,16 +35,18 @@
 //! # Composition with the view slice — never crossing writers
 //!
 //! Two visibility writers, never crossed (`docs/combat/visibility.md` §"Composition with
-//! the view slice"): the [`ActiveLevel`](crate::ActiveLevel) **slice** owns LAYER visibility (a ganger off the
-//! active storey is hard-hidden by [`apply_active_level_filter`](crate::apply_active_level_filter)
-//! / the spawn / move systems); **fog** owns the per-cell terrain modulate plus each
-//! actor entity's own fog flag. The design intent is "a thing draws iff fog shows its
-//! cell/entity AND the slice shows its storey". This codebase has no layer-parent
-//! hierarchy to inherit through, so the fog writer is the SINGLE FINAL writer of each
-//! actor sprite's `Visibility`: ordered `.after` the slice's storey-filter systems, it
-//! re-reads the same `pos.z == active` storey fact the slice uses and ANDs it with the
-//! fog fact — so plan and render can never disagree and the two facts are composed by one
-//! writer rather than two fighting over the same component.
+//! the view slice"): the [`ActiveLevel`](crate::ActiveLevel) **slice** owns LAYER visibility (a
+//! ganger strictly ABOVE the drawn band `0..=active` is hard-hidden by
+//! [`apply_active_level_filter`](crate::apply_active_level_filter) / the spawn / move systems);
+//! **fog** owns the per-cell terrain modulate plus each actor entity's own fog flag. The design
+//! intent is "a thing draws iff fog shows its cell/entity AND the slice draws its storey". This
+//! codebase has no layer-parent hierarchy to inherit through, so the fog writer is the SINGLE
+//! FINAL writer of each actor sprite's `Visibility`: ordered `.after` the slice's storey-filter
+//! systems, it re-reads the SAME drawn-band storey fact the slice uses (GTW-520 — the shared
+//! [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate, widened from the
+//! pre-GTW-520 on-active-storey hard cut so a ganger on a LOWER drawn storey is shown) and ANDs
+//! it with the fog fact — so plan and render can never disagree and the two facts are composed
+//! by one writer rather than two fighting over the same component.
 //!
 //! # Ordering (the CRITICAL clause)
 //!

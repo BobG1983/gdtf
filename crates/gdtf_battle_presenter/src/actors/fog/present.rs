@@ -95,15 +95,19 @@ impl CellFog {
 /// # Actors (per-entity hard-cut)
 ///
 /// For every mapped ganger sprite it sets the sprite's [`Visibility`] as the COMPOSITION
-/// of the slice's storey fact (`pos.z == active`) AND the fog fact — so it is the single
-/// final writer of the actor [`Visibility`] (it re-reads, never crosses, the slice's
-/// storey filter): a PLAYER-faction ganger is always shown (storey permitting); an ENEMY
-/// ganger is a HARD CUT — [`Visibility::Inherited`] iff its cell is squad-VISIBLE
+/// of the slice's DRAWN-BAND storey fact (GTW-520 — the storey lies within `0..=active`, via
+/// the shared [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate the
+/// spawn / move / level-filter sites also use) AND the fog fact — so it is the single final
+/// writer of the actor [`Visibility`] (it re-reads, never crosses, the slice's band filter): a
+/// PLAYER-faction ganger is always shown (band permitting — including on a LOWER drawn storey);
+/// an ENEMY ganger is a HARD CUT — [`Visibility::Inherited`] iff its cell is squad-VISIBLE
 /// ([`is_ganger_visible`]), no fade / no last-known ghost; a CORPSE (a
 /// [`Downed`](LifeState::Downed) / [`Dead`](LifeState::Dead) ganger) is shown iff its
-/// cell is squad-VISIBLE. The actor's COLOUR stays the ganger-tint writers' domain
-/// (`docs/combat/visibility.md` actor = Visibility hard-cut); fog only sets the actor
-/// flag.
+/// cell is squad-VISIBLE. GTW-520 widened ONLY the storey axis (active-storey hard cut →
+/// drawn-band membership); the FOG predicate is unchanged, so an UNSEEN enemy on a lower drawn
+/// storey is still HIDDEN even though its storey is drawn. The actor's COLOUR stays the
+/// ganger-tint writers' domain (`docs/combat/visibility.md` actor = Visibility hard-cut); fog
+/// only sets the actor flag.
 ///
 /// Param-only (`bevy-traps.md` #7): the read [`Res`]ources
 /// ([`SquadVisibility`] / the optional [`PlayerFaction`] / [`GangerSprites`] map /
@@ -208,12 +212,15 @@ fn present_terrain_fog(
     }
 }
 
-/// Hard-cut every mapped actor sprite by composing the slice storey fact AND the fog fact
-/// (the actor arm of [`present_fog`]).
+/// Hard-cut every mapped actor sprite by composing the slice DRAWN-BAND storey fact AND the
+/// fog fact (the actor arm of [`present_fog`]).
 ///
 /// For each live sim ganger, look its presenter sprite up through [`GangerSprites`] and
-/// set that sprite's [`Visibility`] to [`Visibility::Inherited`] iff it is on the active
-/// storey AND fog shows it, else [`Visibility::Hidden`]. The fog fact:
+/// set that sprite's [`Visibility`] to [`Visibility::Inherited`] iff its storey lies within
+/// the DRAWN band `0..=active` (GTW-520 — the shared
+/// [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate; so a lower drawn
+/// storey passes, one strictly above active is culled) AND fog shows it, else
+/// [`Visibility::Hidden`]. The fog fact (UNCHANGED by GTW-520 — only the storey axis widened):
 ///
 /// * a PLAYER-faction, [`Alive`](LifeState::Alive) ganger is always shown
 ///   ([`FactionRelation::OwnSquad`] is trivially visible);
@@ -230,6 +237,11 @@ fn present_actor_fog(
     gangers: &Query<(Entity, &Position, &Faction, &LifeState)>,
     actors: &mut Query<&mut Visibility, (With<GangerSprite>, Without<TerrainSprite>)>,
 ) {
+    // GTW-520 C4: the SINGLE FINAL actor-Visibility writer consults the SAME drawn-band
+    // predicate (`0..=active`) the ganger spawn / move / level-filter sites use, so it cannot
+    // drift from them. Wrap the borrowed active [`Level`] back into an [`ActiveLevel`] to reach
+    // the shared [`ActiveLevel::draws_storey`] predicate.
+    let active = crate::ActiveLevel::new(active);
     for (entity, pos, faction, life) in gangers {
         let Some(sprite) = sprites.sprite_for(entity) else {
             continue;
@@ -237,10 +249,19 @@ fn present_actor_fog(
         let Ok(mut visibility) = actors.get_mut(sprite) else {
             continue;
         };
-        let on_active_storey = pos.z == i32::from(*active);
+        // GTW-520 C1/C2: the STOREY axis widened from the on-active-storey hard cut to
+        // drawn-band membership — a ganger on a LOWER drawn storey passes the storey test (and,
+        // if shown by fog, is drawn), while one strictly ABOVE the active level is culled. The
+        // storey index is reconstructed from `pos.z` (the S4 idiom; the impossible negative /
+        // over-`u8` case clamps rather than panics).
+        let storey = Level::new(u8::try_from(pos.z).unwrap_or(0));
+        let in_drawn_band = active.draws_storey(storey);
         let key: CellLevel = **pos;
+        // GTW-520 C3: the FOG hard-cut is PRESERVED unchanged — an enemy / corpse is still shown
+        // only on a squad-VISIBLE cell (a player ganger is always shown by `actor_relation`).
+        // Only the STOREY axis widened; the visibility predicate did NOT.
         let shown_by_fog = is_ganger_visible(squad, &key, actor_relation(player, *faction, *life));
-        *visibility = if on_active_storey && shown_by_fog {
+        *visibility = if in_drawn_band && shown_by_fog {
             Visibility::Inherited
         } else {
             Visibility::Hidden
