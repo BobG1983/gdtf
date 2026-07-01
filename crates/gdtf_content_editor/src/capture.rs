@@ -53,11 +53,11 @@ use bevy::{
     render::view::window::screenshot::{Screenshot, save_to_disk},
     state::state::OnEnter,
 };
-use gdtf_battle_presenter::TileRoles;
+use gdtf_battle_presenter::{TileRoles, ViewMode};
 use gdtf_battle_sim::{
     Cell,
     level::{GridHeight, GridLevels, GridSize, GridWidth, UuidThemeRegistry},
-    metric::Level,
+    metric::{CellLevel, Level},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 
@@ -89,6 +89,14 @@ const MODE_ENV_VAR: &str = "GDTF_EDITOR_MODE";
 /// when the capture affordance is enabled AND the mode is (forced to) PREFAB.
 const ZOOM_ENV_VAR: &str = "GDTF_EDITOR_ZOOM";
 
+/// The env var that FORCES the prefab-viewport [`ViewMode`] before the capture (GTW-532) —
+/// `full` selects [`ViewMode::FullView`], anything else keeps the default
+/// [`ViewMode::DownToActive`] — so a SECOND capture proves the full-view toggle changes the drawn
+/// storey stack. Honored only when the capture affordance is enabled AND the mode is (forced to)
+/// PREFAB. When set to `full` the capture also drives a 2-storey grid with a distinct block painted
+/// on the UPPER storey, so the `FullView` capture visibly differs from the `DownToActive` one.
+const VIEW_ENV_VAR: &str = "GDTF_EDITOR_VIEW";
+
 /// Frames to wait after entering [`Editing`](crate::EditorState) before requesting the screenshot,
 /// so the egui shell has laid out + drawn AND the offscreen preview render target has a completed
 /// pass first (GTW-515: the render-to-texture viewport needs a couple of extra frames beyond the
@@ -103,6 +111,16 @@ const POLL_CAP: u32 = 600;
 /// The painted-block edge for the capture — a `BLOCK × BLOCK` square of painted cells near the
 /// canvas top-left, large enough to read clearly in the shot. A framework plumbing const.
 const BLOCK: i32 = 3;
+
+/// The storey count the FULL-VIEW capture variant (GTW-532) uses — a `SHOT_GRID_EDGE² × 2` volume
+/// so a distinct block on the UPPER storey (storey 1) reads in the `FullView` capture and is culled
+/// in a ground-storey `DownToActive` capture. A framework plumbing const.
+const SHOT_STOREYS_FULL: u8 = 2;
+
+/// The upper storey the FULL-VIEW capture paints its distinct block on (storey 1) — visible only in
+/// [`ViewMode::FullView`] (culled at the ground storey in the default view). A framework plumbing
+/// const.
+const UPPER_STOREY: u8 = 1;
 
 /// The resolved capture output path (from `GDTF_EDITOR_SHOT`). Present only when the affordance is
 /// enabled; the plugin inserts it iff the env var is set.
@@ -150,6 +168,24 @@ impl ForcedZoom {
     fn from_env_value(value: &str) -> Option<Self> {
         let factor = value.trim().parse::<f32>().ok().filter(|f| f.is_finite())?;
         Some(Self(CanvasZoom::identity().scaled(factor)))
+    }
+}
+
+/// The capture's FORCED prefab [`ViewMode`] (GTW-532 — from `GDTF_EDITOR_VIEW`), inserted only when
+/// the env var selected the non-default full view. A named wrapper (no-bare-types) so the forced
+/// view reads as a domain value rather than colliding with the editor's own [`ViewMode`] resource.
+#[derive(Resource, Clone, Copy, Deref)]
+struct ForcedView(ViewMode);
+
+impl ForcedView {
+    /// Parse a `GDTF_EDITOR_VIEW` value into a forced view, or [`None`] for an unset value / one
+    /// that is not `full` (the capture keeps the default [`ViewMode::DownToActive`]). Only `full`
+    /// (case-insensitive) selects [`ViewMode::FullView`] — the toggled state worth capturing.
+    fn from_env_value(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "full" | "fullview" | "full_view" => Some(Self(ViewMode::FullView)),
+            _ => None,
+        }
     }
 }
 
@@ -204,6 +240,9 @@ pub struct EditorCapturePlugin {
     /// The forced preview zoom (C4.11 — from `GDTF_EDITOR_ZOOM`), or `None` to keep the identity
     /// `1.0` scale. Read once at construction.
     forced_zoom: Option<ForcedZoom>,
+    /// The forced prefab view mode (GTW-532 — from `GDTF_EDITOR_VIEW`), or `None` to keep the
+    /// default down-to-active view. Read once at construction.
+    forced_view: Option<ForcedView>,
 }
 
 impl EditorCapturePlugin {
@@ -223,6 +262,10 @@ impl EditorCapturePlugin {
                 .ok()
                 .as_deref()
                 .and_then(ForcedZoom::from_env_value),
+            forced_view: env::var(VIEW_ENV_VAR)
+                .ok()
+                .as_deref()
+                .and_then(ForcedView::from_env_value),
         }
     }
 }
@@ -246,11 +289,17 @@ impl Plugin for EditorCapturePlugin {
         if let Some(forced) = self.forced_zoom {
             app.insert_resource(forced);
         }
+        // GTW-532: insert the forced-view resource (the full-view capture variant) only when
+        // GDTF_EDITOR_VIEW=full; unset keeps the default down-to-active view.
+        if let Some(forced) = self.forced_view {
+            app.insert_resource(forced);
+        }
         app.add_systems(
             Update,
             (
                 force_capture_mode,
                 force_capture_zoom,
+                force_capture_view,
                 drive_capture_grid_size,
                 drive_capture_selection,
                 drive_capture_paint_and_hover,
@@ -290,6 +339,20 @@ fn force_capture_zoom(forced: Option<Res<ForcedZoom>>, zoom: Option<ResMut<Canva
     zoom.set_if_neq(**forced);
 }
 
+/// `Update` (in `Editing`, capture-only): FORCE the prefab [`ViewMode`] to the GTW-532
+/// [`ForcedView`] before the settle / screenshot — so a SECOND capture proves the full-view toggle
+/// changes the drawn storey stack. No-ops when no view was forced (the resource is absent) or the
+/// view already matches. Both borrows are `Option` (state-scoped — bevy-traps #1);
+/// [`set_if_neq`](DetectChangesMut::set_if_neq) keeps an already-matching view a no-op (idempotent
+/// under the egui multipass re-run). The `redraw_preview_tiles` system then redraws the storey
+/// stack from it (its `ViewMode::is_changed` trigger).
+fn force_capture_view(forced: Option<Res<ForcedView>>, view: Option<ResMut<ViewMode>>) {
+    let (Some(forced), Some(mut view)) = (forced, view) else {
+        return;
+    };
+    view.set_if_neq(**forced);
+}
+
 /// `OnEnter(Editing)`: reset the per-run capture counters so the settle window is measured from the
 /// moment the editing scene comes up.
 fn reset_progress(mut progress: ResMut<CaptureProgress>) {
@@ -300,18 +363,33 @@ fn reset_progress(mut progress: ResMut<CaptureProgress>) {
 /// [`SHOT_GRID_EDGE`]-square before the shot (the full `60 × 60` is too dense). Drives the session
 /// directly (the SAME path the size selector commits through), so the shell / viewport re-extent.
 /// Idempotent: once the grid matches the shot size it no-ops.
-fn drive_capture_grid_size(session: Option<ResMut<MapEditorSession>>) {
+///
+/// GTW-532: when the full-view variant is forced ([`ForcedView`] present) the grid gets
+/// [`SHOT_STOREYS_FULL`] storeys instead of 1 so a distinct block painted on the UPPER storey is
+/// visible in the `FullView` capture (and culled in a `DownToActive` capture at the ground storey).
+fn drive_capture_grid_size(
+    forced_view: Option<Res<ForcedView>>,
+    session: Option<ResMut<MapEditorSession>>,
+) {
     let Some(mut session) = session else {
         return;
     };
+    let levels = if forced_view.is_some() {
+        SHOT_STOREYS_FULL
+    } else {
+        1
+    };
     let current = session.grid_size();
-    if *current.width() == SHOT_GRID_EDGE && *current.height() == SHOT_GRID_EDGE {
+    if *current.width() == SHOT_GRID_EDGE
+        && *current.height() == SHOT_GRID_EDGE
+        && *current.levels() == levels
+    {
         return;
     }
     if let Ok(size) = GridSize::new(
         GridWidth::new(SHOT_GRID_EDGE),
         GridHeight::new(SHOT_GRID_EDGE),
-        GridLevels::new(1),
+        GridLevels::new(levels),
     ) {
         session.set_grid_size(size);
     }
@@ -354,6 +432,7 @@ fn drive_capture_selection(
 ///    so the egui preview ghost (C4) renders over it. Written every frame for parity with the live
 ///    hover (a real cursor would re-assert it continuously).
 fn drive_capture_paint_and_hover(
+    forced_view: Option<Res<ForcedView>>,
     session: Option<Res<MapEditorSession>>,
     mut map: Option<ResMut<EditorMap>>,
     mut hovered: Option<ResMut<HoveredCell>>,
@@ -367,10 +446,19 @@ fn drive_capture_paint_and_hover(
     };
     let size = session.grid_size();
 
-    // PAINT a small block once (idempotent — skip if the model already holds paints).
+    // PAINT a small block once (idempotent — skip if the model already holds paints). In the
+    // GTW-532 FullView variant, ALSO paint a distinct block on the UPPER storey (storey 1) — visible
+    // only in FullView (culled at the ground storey in the default down-to-active view), so the two
+    // captures visibly differ.
     if map.painted_count() == 0 {
         for cell in block_cells() {
             map.paint(cell, paint_key, size);
+        }
+        if forced_view.is_some() {
+            let upper = Level::new(UPPER_STOREY);
+            for cell in upper_block_cells() {
+                map.paint_at(CellLevel::new(cell, upper), paint_key, size);
+            }
         }
     }
 
@@ -382,6 +470,15 @@ fn drive_capture_paint_and_hover(
 fn block_cells() -> Vec<Cell> {
     (0..BLOCK)
         .flat_map(|x| (0..BLOCK).map(move |y| Cell::new(x, y)))
+        .collect()
+}
+
+/// The `BLOCK × BLOCK` block the FULL-VIEW capture paints on the UPPER storey (GTW-532) — OFFSET
+/// from the ground block so both read in the `FullView` capture (the upper block draws in front by
+/// the per-storey z), and the upper block is culled in a ground-storey `DownToActive` capture.
+fn upper_block_cells() -> Vec<Cell> {
+    (0..BLOCK)
+        .flat_map(|x| (0..BLOCK).map(move |y| Cell::new(x + BLOCK + 1, y)))
         .collect()
 }
 

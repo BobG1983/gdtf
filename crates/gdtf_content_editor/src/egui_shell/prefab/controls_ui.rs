@@ -16,6 +16,14 @@
 //! A `Level n / m` readout + `[▲]` / `[▼]` buttons that step the [`CurrentEditLevel`] within
 //! `[1, levels]` (the kept clamp — [`CurrentEditLevel::stepped`]). The same clamp the hotkeys use.
 //!
+//! ## View toggle (GTW-532)
+//!
+//! A `[Down-to-active | Full view]` toggle button that flips the prefab viewport's [`ViewMode`]
+//! (REUSED from the presenter — the SAME type the GTW-521 battlescape toggle drives). In
+//! [`ViewMode::DownToActive`] the viewport draws `0..=CurrentEditLevel`; in [`ViewMode::FullView`]
+//! it draws the whole prefab storey stack at once. The `F` hotkey ([`view_mode_hotkey`](super::nav::view_mode_hotkey)) flips the
+//! same resource, so button + key agree (mirroring the mode / level-nav dual controls).
+//!
 //! ## Save (C4.9)
 //!
 //! A `#[cfg(debug_assertions)]` "Save prefab" button + name field → [`write_prefab`] (reused). In a
@@ -23,6 +31,7 @@
 //! function signature is uniform across profiles (the release arm consumes the save-only bindings).
 
 use bevy_egui::egui;
+use gdtf_battle_presenter::ViewMode;
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, MAX_GRID_SPAN, UuidThemeRegistry,
 };
@@ -57,17 +66,26 @@ pub(crate) fn clamp_to_grid_size(w: u8, h: u8, levels: u8, previous: GridSize) -
     GridSize::new(width, height, levels).unwrap_or(previous)
 }
 
-/// Draw the PREFAB-mode controls into the RIGHT panel (GTW-515 C4.5 / C4.6 / C4.9).
+/// Draw the PREFAB-mode controls into the RIGHT panel (GTW-515 C4.5 / C4.6 / C4.9; GTW-532 the
+/// view toggle).
 ///
 /// The size fields commit through [`clamp_to_grid_size`] → [`MapEditorSession::set_grid_size`] and
-/// re-clamp the edit level; the level-nav buttons step the [`CurrentEditLevel`]; the debug Save
-/// control writes the prefab. `save_name` is the in-UI prefab-name buffer the shell owns across
-/// frames (an [`egui::TextEdit`] needs a persistent `&mut String`); `themes` resolves the active
-/// theme's display name for the save path.
+/// re-clamp the edit level; the level-nav buttons step the [`CurrentEditLevel`]; the view toggle
+/// flips the [`ViewMode`]; the debug Save control writes the prefab. `save_name` is the in-UI
+/// prefab-name buffer the shell owns across frames (an [`egui::TextEdit`] needs a persistent
+/// `&mut String`); `themes` resolves the active theme's display name for the save path.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the controls panel drives every prefab RIGHT-panel control from the borrows the shell \
+              already holds (session + edit level + view mode + the debug save name/map/registries + \
+              themes); each is a distinct borrow threaded through the shell's panel closure and \
+              Bevy's injection cannot reduce them without a wrapper that changes the crate API"
+)]
 pub(crate) fn controls_panel(
     ui: &mut egui::Ui,
     session: &mut MapEditorSession,
     edit_level: &mut CurrentEditLevel,
+    view: &mut ViewMode,
     #[cfg_attr(
         not(debug_assertions),
         expect(unused_variables, reason = "save-only in debug")
@@ -91,6 +109,8 @@ pub(crate) fn controls_panel(
     size_fields(ui, session, edit_level);
     ui.separator();
     level_nav(ui, session, edit_level);
+    ui.separator();
+    view_toggle(ui, view);
 
     #[cfg(debug_assertions)]
     {
@@ -100,6 +120,40 @@ pub(crate) fn controls_panel(
     #[cfg(not(debug_assertions))]
     {
         let _ = themes;
+    }
+}
+
+/// The prefab-viewport VIEW toggle (GTW-532 C3) — a labelled button that flips the [`ViewMode`]
+/// between [`DownToActive`](ViewMode::DownToActive) (draw `0..=CurrentEditLevel`) and
+/// [`FullView`](ViewMode::FullView) (draw the whole storey stack). Set-to-target (an explicit
+/// assignment to the toggled mode), so it is idempotent under the egui multipass re-run
+/// (bevy-traps #8 (b)). The `F` hotkey ([`view_mode_hotkey`](super::nav::view_mode_hotkey)) flips the SAME resource.
+fn view_toggle(ui: &mut egui::Ui, view: &mut ViewMode) {
+    ui.label("Storey view");
+    ui.horizontal(|ui| {
+        // The button LABEL names the current mode; clicking it flips to the other (the standard
+        // two-state toggle affordance).
+        let label = match *view {
+            ViewMode::DownToActive => "Down-to-active ▸ Full view",
+            ViewMode::FullView => "Full view ▸ Down-to-active",
+        };
+        if ui.button(label).clicked() {
+            *view = toggled(*view);
+        }
+    });
+    ui.label(match *view {
+        ViewMode::DownToActive => "Drawing storeys 0..=active (F to toggle)",
+        ViewMode::FullView => "Drawing ALL storeys (F to toggle)",
+    });
+}
+
+/// The OTHER [`ViewMode`] — the pure flip the toggle button and the `F` hotkey both apply. Pure so
+/// the toggle is unit-tested on the real path (GTW-532 C4).
+#[must_use]
+pub(crate) const fn toggled(view: ViewMode) -> ViewMode {
+    match view {
+        ViewMode::DownToActive => ViewMode::FullView,
+        ViewMode::FullView => ViewMode::DownToActive,
     }
 }
 

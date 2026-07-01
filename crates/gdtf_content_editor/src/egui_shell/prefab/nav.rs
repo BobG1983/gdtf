@@ -7,9 +7,12 @@
 //! either end is a no-op and the selector never points past the drawable volume.
 
 use bevy::prelude::*;
+use gdtf_battle_presenter::ViewMode;
 
 use crate::{
     canvas::{CurrentEditLevel, LevelStep},
+    egui_shell::prefab::controls_ui::toggled,
+    mode::EditorMode,
     session::MapEditorSession,
 };
 
@@ -36,6 +39,33 @@ pub(crate) fn level_nav_hotkeys(
     if let Some(step) = step {
         let next = edit_level.stepped(step, session.grid_size());
         edit_level.set_if_neq(next);
+    }
+}
+
+/// `Update` (in `Editing`): the `F` key flips the prefab viewport's [`ViewMode`] (GTW-532 C3) —
+/// the keyboard sibling of the RIGHT-panel view toggle button, flipping the SAME resource.
+///
+/// UI-agnostic (a plain `Update` system reading [`ButtonInput`], NOT egui), mirroring
+/// [`level_nav_hotkeys`] and [`mode_hotkeys`](crate::mode::mode_hotkeys). Gated on the active
+/// [`EditorMode`] being [`Prefab`](EditorMode::Prefab) so the key only toggles the storey view
+/// while the prefab painter is up (it does not fire while authoring a TERRAIN / THEME def).
+/// Guarded on the optional [`ViewMode`] + [`EditorMode`] (state-scoped — bevy-traps #1); no-ops
+/// until they exist. Writes with [`set_if_neq`](DetectChangesMut::set_if_neq) so the change-detection
+/// only fires on a real flip (the preview redraw keys off `ViewMode::is_changed`).
+pub(crate) fn view_mode_hotkey(
+    keys: Res<ButtonInput<KeyCode>>,
+    mode: Option<Res<EditorMode>>,
+    view: Option<ResMut<ViewMode>>,
+) {
+    let (Some(mode), Some(mut view)) = (mode, view) else {
+        return;
+    };
+    if *mode != EditorMode::Prefab {
+        return;
+    }
+    if keys.just_pressed(KeyCode::KeyF) {
+        let next = toggled(*view);
+        view.set_if_neq(next);
     }
 }
 

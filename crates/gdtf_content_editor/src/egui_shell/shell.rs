@@ -31,7 +31,7 @@
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
-use gdtf_battle_presenter::TileRoles;
+use gdtf_battle_presenter::{TileRoles, ViewMode};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::TerrainDefRegistry,
@@ -116,6 +116,7 @@ pub(crate) fn editor_egui_ui(
         mut hovered,
         mut zoom,
         mut pan,
+        mut view,
         atlas,
         preview_target,
     } = prefab;
@@ -209,11 +210,16 @@ pub(crate) fn editor_egui_ui(
             theme_form_ui::field_stack(ui, &mut theme_draft, terrain_registry.as_deref());
         }
         EditorMode::Prefab => {
-            if let (Some(edit_level), Some(map)) = (edit_level.as_deref_mut(), map.as_deref()) {
+            if let (Some(edit_level), Some(view), Some(map)) = (
+                edit_level.as_deref_mut(),
+                view.as_deref_mut(),
+                map.as_deref(),
+            ) {
                 controls_ui::controls_panel(
                     ui,
                     &mut session,
                     edit_level,
+                    view,
                     &mut prefab_save_name,
                     map,
                     terrain_registry.as_deref(),
@@ -300,6 +306,9 @@ pub(crate) struct PrefabParams<'w> {
     zoom:           Option<ResMut<'w, CanvasZoom>>,
     /// The owned pan target (folded from the viewport right-drag — set-to-target).
     pan:            Option<ResMut<'w, PreviewPan>>,
+    /// The prefab-viewport view mode (GTW-532) — REUSED from the presenter (the SAME type the
+    /// GTW-521 battlescape full-view toggle drives); flipped by the RIGHT-panel view toggle.
+    view:           Option<ResMut<'w, ViewMode>>,
     /// The terrain tile atlas (the palette sprite thumbnails draw over it).
     atlas:          Option<Res<'w, TileAtlas>>,
     /// The offscreen preview render target (the viewport draws its egui-registered image).

@@ -7,6 +7,7 @@
 //! concern (the state-scoped-resource pattern), so they live together here.
 
 use bevy::prelude::*;
+use gdtf_battle_presenter::ViewMode;
 
 use crate::{
     canvas::{CanvasZoom, CurrentEditLevel},
@@ -137,4 +138,19 @@ pub(crate) fn insert_hovered_cell(mut commands: Commands) {
 /// bevy-traps #1).
 pub(crate) fn remove_hovered_cell(mut commands: Commands) {
     commands.remove_resource::<HoveredCell>();
+}
+
+/// `OnEnter(Editing)`: insert the prefab-viewport [`ViewMode`] (state-scoped — bevy-traps #1,
+/// GTW-532), seeded to the DEFAULT [`ViewMode::DownToActive`] (draw `0..=CurrentEditLevel`) so the
+/// preview opens with the GTW-515 down-to-active behaviour. REUSES the presenter's [`ViewMode`]
+/// TYPE verbatim (the SAME resource the battlescape's GTW-521 full-view toggle drives) — the prefab
+/// viewport reads it for its drawn storey upper-bound, and the prefab full-view toggle flips it.
+pub(crate) fn insert_view_mode(mut commands: Commands) {
+    commands.insert_resource(ViewMode::default());
+}
+
+/// `OnExit(Editing)`: remove the prefab-viewport [`ViewMode`] (the state-scoped-resource pattern —
+/// bevy-traps #1).
+pub(crate) fn remove_view_mode(mut commands: Commands) {
+    commands.remove_resource::<ViewMode>();
 }

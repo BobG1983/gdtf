@@ -33,10 +33,11 @@ use crate::{
     editor_resources::{
         insert_canvas_zoom, insert_edit_level, insert_hovered_cell, insert_map, insert_mode,
         insert_preview_pan, insert_session, insert_terrain_draft, insert_theme_draft,
-        remove_canvas_zoom, remove_edit_level, remove_hovered_cell, remove_map, remove_mode,
-        remove_preview_pan, remove_session, remove_terrain_draft, remove_theme_draft,
+        insert_view_mode, remove_canvas_zoom, remove_edit_level, remove_hovered_cell, remove_map,
+        remove_mode, remove_preview_pan, remove_session, remove_terrain_draft, remove_theme_draft,
+        remove_view_mode,
     },
-    egui_shell::{editor_egui_ui, level_nav_hotkeys},
+    egui_shell::{editor_egui_ui, level_nav_hotkeys, view_mode_hotkey},
     load::register_load,
     mode::mode_hotkeys,
     preview::register_preview,
@@ -96,6 +97,9 @@ impl Plugin for MapEditorPlugin {
                 insert_hovered_cell,
                 // GTW-515 C4.8: the owned pan-offset target (the zoom target is the kept CanvasZoom).
                 insert_preview_pan,
+                // GTW-532: the prefab-viewport ViewMode (REUSED from the presenter — the SAME type
+                // the GTW-521 battlescape full-view toggle drives), default DownToActive.
+                insert_view_mode,
                 load_tile_atlas,
             ),
         );
@@ -111,6 +115,7 @@ impl Plugin for MapEditorPlugin {
                 remove_theme_draft,
                 remove_hovered_cell,
                 remove_preview_pan,
+                remove_view_mode,
             ),
         );
 
@@ -133,7 +138,12 @@ impl Plugin for MapEditorPlugin {
         // drive is not wired.
         app.add_systems(
             Update,
-            (seed_default_theme, mode_hotkeys, level_nav_hotkeys)
+            (
+                seed_default_theme,
+                mode_hotkeys,
+                level_nav_hotkeys,
+                view_mode_hotkey,
+            )
                 .run_if(in_state(EditorState::Editing)),
         );
     }
