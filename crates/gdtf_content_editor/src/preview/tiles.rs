@@ -40,6 +40,12 @@ use crate::{
     tile_atlas::TileAtlas,
 };
 
+/// The GROUND storey index (z=0) — the base plane that always carries the theme default-floor fill
+/// on its unpainted cells (GTW-535). [`drawn_storeys`] includes it in BOTH view modes, so anchoring
+/// the fill here (not the active edit level) keeps the base plane reading at every edit cursor. A
+/// framework layout const (the loop iterates bare `u8` storey indices), not a domain value.
+const GROUND_STOREY: u8 = 0;
+
 /// The z-order of a base (floor / painted) tile sprite on the GROUND storey — below the hover
 /// ghost. Higher storeys are lifted by [`STOREY_Z_GAP`] per storey so an upper floor draws in
 /// FRONT of a lower one (the painter's-algorithm occlusion the presenter's per-storey Z gives).
@@ -100,8 +106,9 @@ pub(crate) fn drawn_storeys(active: Level, view: ViewMode, size: GridSize) -> Ra
 /// in the [`ViewMode`]-chosen band ([`drawn_storeys`]): in [`ViewMode::DownToActive`] that band is
 /// the single edit storey (`0..=active`, the GTW-515 behaviour); in [`ViewMode::FullView`] it is the
 /// whole prefab stack (`0..=levels-1`), each storey lifted a per-storey z so an upper floor draws in
-/// front. The active/ground storey's UNPAINTED cells draw the theme default-floor; a PAINTED cell
-/// (any storey) draws its own tile. Then, if a cell is hovered, draws the translucent HOVER GHOST
+/// front. Only the GROUND storey's UNPAINTED cells draw the theme default-floor (the base plane —
+/// GTW-535); a PAINTED cell (any storey) draws its own tile. Then, if a cell is hovered, draws the
+/// translucent HOVER GHOST
 /// over it — RED when [`evaluate_placement`] rejects the (hovered cell, selected tile) placement,
 /// faint-white when legal. Change-driven (guarded on `is_changed` of every input — INCLUDING the
 /// [`ViewMode`], so the toggle re-runs the draw) so a static frame does no work.
@@ -187,11 +194,14 @@ pub(crate) fn redraw_preview_tiles(
             for x in 0..width {
                 let cell = Cell::new(x, y);
                 let slot = CellLevel::new(cell, storey_level);
-                // In FullView, only PAINTED cells of an upper storey are drawn (an unpainted upper
-                // cell is empty air, not a floor — a full default-floor fill on every storey would
-                // opaquely hide the whole stack below). The active/ground storey keeps its
-                // default-floor fill so the base plane always reads.
-                let tile = if storey == *level {
+                // Only the GROUND storey (z=0 / storey 0) gets the theme default-floor fill on its
+                // UNPAINTED cells — and `drawn_storeys` always includes storey 0 in both view modes
+                // (DownToActive `0..=active`, FullView `0..=levels-1`), so that base plane always
+                // reads regardless of the edit cursor. UPPER storeys draw ONLY painted cells (an
+                // unpainted upper cell is empty air, not a floor — a full default-floor fill on
+                // every storey would opaquely hide the whole stack below, and the fill must NOT
+                // follow the active edit level up the stack — GTW-535).
+                let tile = if storey == GROUND_STOREY {
                     map.tile_at_level(slot).or(default_floor)
                 } else {
                     map.tile_at_level(slot)
