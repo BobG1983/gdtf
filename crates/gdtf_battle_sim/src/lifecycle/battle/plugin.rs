@@ -13,6 +13,7 @@ use crate::{
         resources::BattleInProgress,
         setup::{setup_battle_on_request, teardown_battle_on_request},
     },
+    falls::FallsPlugin,
     ganger::{rederive_stats_on_injury_change, rederive_stats_on_tuning_change},
     move_acts::advance_walk,
     occupancy::project_vision_blocking,
@@ -92,6 +93,12 @@ impl Plugin for BattleSimPlugin {
             // ALREADY-WIRED project_path_blocking / project_vision_blocking + recompute pick up
             // (GTW-503 C4 — no new projection/recompute plumbing here).
             .add_plugins(OpenableTogglePlugin)
+            // GTW-523: the fall mechanic — registers the FallOccurred output buffer + the
+            // apply_falls system (in the gated Simulate band, ordered .after(dispatch_fire)
+            // + .after(sync_destroyed_slab), C7). Added AFTER SimActsPlugin +
+            // OccupancyMaintenancePlugin so the systems it orders against are already
+            // registered in the schedule.
+            .add_plugins(FallsPlugin)
             .add_message::<SetupBattleRequested>()
             .add_message::<TeardownBattleRequested>()
             .add_message::<BattleReady>()

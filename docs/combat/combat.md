@@ -48,7 +48,7 @@ Designed — see [stats.md](stats.md): 7 direct attributes feeding computed comb
 
 ## Deferred
 
-- Destructible terrain, fall damage, blast radii (square grid is chosen partly to support these later), etc. (Z-levels / verticality is **in scope** — see Arena size above.)
+- Blast radii (square grid is chosen partly to support these later), etc. (Z-levels / verticality is **in scope** — see Arena size above.) Destructible terrain is **in scope** and built (destructible cover + floor/roof slabs — see [resolution.md](resolution.md) §3 / §3.1). **Fall damage is in scope** too: a ganger standing on a slab destroyed under it **falls** and takes damage — see [resolution.md](resolution.md) §3.1 (the *Falls* note).
 - Suppression and other advanced combat effects — **TBD (design)**, sequence after the core loop is proven.
 
 Note: reaction fire is **not** deferred — it's intrinsic to the Time Units economy (designed, not yet built). Morale/**Bottle** is designed (see [stats.md](stats.md) and [wounds-and-roster.md](wounds-and-roster.md)).

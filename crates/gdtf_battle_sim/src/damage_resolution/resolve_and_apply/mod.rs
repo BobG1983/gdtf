@@ -69,6 +69,7 @@
 
 mod fold;
 mod report;
+mod wound_core;
 
 #[cfg(test)]
 mod test;
@@ -82,3 +83,12 @@ pub(crate) use fold::{cover_armor_piece, cover_damage_from_hp};
 pub use report::{
     AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
 };
+/// The **attacker-agnostic wound-synthesis core** (GTW-523 remediation): the ONE shared
+/// §5 → §6 → §8 fold both [`resolve_and_apply`]'s ganger path and the no-attacker fall
+/// path ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) route through, plus its
+/// input bundle + blow value types. `pub(crate)` re-export (the private `wound_core` module
+/// owns them) so the falls fork imports the ONE definition instead of re-running the
+/// `resolve_hit` → `roll_severity` → `apply_hit` → `roll_injury` orchestration — the two
+/// paths therefore cannot drift. The core's [`WoundSynthesis`](wound_core::WoundSynthesis)
+/// verdict stays module-local (each caller consumes it in place), so it is not re-exported.
+pub(crate) use wound_core::{WoundBlow, WoundCoreInputs, synthesize_wound};

@@ -5,21 +5,22 @@
 use bevy::prelude::Entity;
 
 use crate::{
-    apply_hit::{GangerHitTarget, apply_hit},
     armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType},
     armor_wear::ArmorWearOutcome,
     cover::{CoverDamage, CoverEntry, CoverEvent, CoverLedger},
-    ganger::{LifeState, Luck},
-    injuries::{InjuryRegistry, InjuryTables, roll_injury},
+    ganger::Luck,
+    injuries::{InjuryRegistry, InjuryTables},
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel},
-    resolve_and_apply::report::{
-        AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
+    resolve_and_apply::{
+        report::{
+            AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
+        },
+        wound_core::{WoundBlow, WoundCoreInputs, synthesize_wound},
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::{HpDamage, resolve_hit},
     rng::{InjuryRng, SeverityRng},
-    severity::{SeverityInputs, part_severity_mod, roll_severity},
     slab::{SlabDamage, SlabEntry, SlabEvent, SlabLedger},
     surface::GroundDamage,
     tuning::CombatTuning,
@@ -276,9 +277,10 @@ fn apply_ground_hit(at: CellLevel, weapon: WeaponStats<'_>) -> GroundAccrual {
 /// Dispatches on what the round struck ([`ShotOutcome::kind`]):
 ///
 /// - **[`ShotKind::Ganger`]** — the wound path: composes the already-built E3 verbs
-///   (E3.2 [`matchup`] → E3.3 [`resolve_hit`] → E3.4 [`roll_severity`] → E3.6
-///   [`apply_hit`]) onto the [`TargetGanger`], taking the ONE severity draw. See
-///   [`fold_ganger`].
+///   (E3.2 [`matchup`] → E3.3 [`resolve_hit`] → E3.4
+///   [`roll_severity`](crate::severity::roll_severity) → E3.6
+///   [`apply_hit`](crate::apply_hit::apply_hit)) onto the [`TargetGanger`], taking the ONE
+///   severity draw. See [`fold_ganger`].
 /// - **[`ShotKind::Cover`]** — the cover-hit path (GTW-364, resolution.md §3): cover
 ///   uses the **same armor/damage model as a ganger**, so the SAME [`resolve_hit`]
 ///   formula resolves the hit damage against the struck cover's own armor stats, that
@@ -472,22 +474,30 @@ pub fn resolve_and_apply(
 /// one severity draw on a real hit; owns no mutation after return.
 ///
 /// GTW-438 — the injury roll. AFTER [`apply_hit`] (the wound's Wounds already spent),
-/// gated on the rolled [`Severity`](crate::severity::Severity), it calls
-/// [`roll_injury`] over the injected [`InjuryTables`] / [`InjuryRegistry`] / `&mut`
-/// [`InjuryRng`](crate::rng::InjuryRng): a [`None`](crate::severity::Severity::None)
-/// (graze) / [`Fatal`](crate::severity::Severity::Fatal) takes NO injury draw; a
-/// `Minor`/`Major`/`Critical` ALWAYS takes EXACTLY ONE [`InjuryRng`] draw (even on an
-/// empty/missing table — then discards it, for content-independent stream alignment).
-/// The corpse-skip short-circuits BEFORE any draw, so a corpse takes neither the
-/// severity nor the injury draw. The rolled `Option<RolledInjury>` freezes onto
-/// [`HitReport::injury`].
+/// gated on the rolled [`Severity`](crate::severity::Severity): a
+/// [`None`](crate::severity::Severity::None) (graze) / [`Fatal`](crate::severity::Severity::Fatal)
+/// takes NO injury draw; a `Minor`/`Major`/`Critical` ALWAYS takes EXACTLY ONE
+/// [`InjuryRng`](crate::rng::InjuryRng) draw (even on an empty/missing table — then
+/// discards it, for content-independent stream alignment). The corpse-skip
+/// short-circuits BEFORE any draw, so a corpse takes neither the severity nor the injury
+/// draw. The rolled `Option<RolledInjury>` freezes onto [`HitReport::injury`].
+///
+/// GTW-523 remediation — steps (1) corpse-skip → (2) damage → (3) severity (the ONE
+/// severity draw) → (4) apply → (5) injury (the ONE injury draw) are the SHARED
+/// [`synthesize_wound`] core, which the no-attacker fall path
+/// ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) also calls, so the §5 → §6 → §8
+/// orchestration lives in exactly ONE place and the two paths cannot drift. This fold
+/// only resolves the weapon-derived INPUTS (the struck piece + matchup + the real weapon
+/// damage / punch / shred / fatal-bias / shooter-Luck) and freezes the core's
+/// `WoundSynthesis` verdict into the ganger [`HitReport`].
 #[expect(
     clippy::too_many_arguments,
     reason = "GTW-438 threads the injury-roll inputs (the InjuryTables + InjuryRegistry \
               reads + the &mut InjuryRng draw stream) onto the wound fold alongside the \
               irreducible outcome / weapon / luck / target / entity / tuning / severity-rng \
               set; the target ganger surfaces are ALREADY grouped in the TargetGanger \
-              bundle"
+              bundle. The §5 → §6 → §8 wound math itself is the shared synthesize_wound core \
+              (GTW-523) — this is only the weapon-path input resolution + report freeze"
 )]
 fn fold_ganger(
     outcome: &ShotOutcome,
@@ -501,106 +511,78 @@ fn fold_ganger(
     registry: &InjuryRegistry,
     injury_rng: &mut InjuryRng,
 ) -> HitReport {
-    // (1) Corpse-skip BEFORE any draw: a dead target is final — no draw is taken
-    // (a corpse never consumes an RNG draw), nothing mutates.
-    if *target.life == LifeState::Dead {
-        return HitReport::no_effect(outcome.kind);
-    }
-
-    // (2) The struck part rode along on the §4 part roll (drawn upstream); a Ganger
-    // outcome carries Some. A defensive None folds to a no-effect report (no draw).
+    // The struck part rode along on the §4 part roll (drawn upstream); a Ganger outcome
+    // carries Some. A defensive None folds to a no-effect report (no draw). This gate is
+    // the weapon path's alone (the core takes a resolved BodyPart) — a dead target with a
+    // None part still folds to no-effect here with no draw, identically to before.
     let Some(part) = outcome.body_part else {
         return HitReport::no_effect(outcome.kind);
     };
 
-    // (3) Armored piece + matchup, or zeroed bare flesh under Neutral. The struck
-    // piece is resolved by the caller from `ganger → Wears → the BodyPart-tagged piece`
-    // (GTW-323 / ADR-0004); `struck_piece` reads its stats (the wear mutation comes
-    // later in `apply_hit`, via the same piece's `&mut ArmorIntegrity`).
+    // Armored piece + matchup, or zeroed bare flesh under Neutral — the weapon path's own
+    // input resolution. The struck piece is resolved by the caller from `ganger → Wears →
+    // the BodyPart-tagged piece` (GTW-323 / ADR-0004); `struck_piece` reads its stats (the
+    // wear mutation happens later, inside the shared core's `apply_hit`).
     let (piece, resolved_matchup) = struck_piece(target.piece.as_ref(), weapon);
 
-    // (4) The per-hit damage formula (E3.3) — pure, mutates nothing.
-    let hit = resolve_hit(
-        *weapon.damage,
-        *weapon.punch,
-        *weapon.shred,
-        &piece,
-        resolved_matchup,
-        tuning,
-    );
-
-    // (5) The ONE RNG draw: the wound-severity roll (E3.4). Both gangers' Luck, the
-    // defender's Toughness, the struck part's mod, and the weapon's fatal bias feed
-    // it; the injected SeverityRng is the draw point.
-    let inputs = SeverityInputs::new(
-        hit.penetrating,
-        target.toughness,
-        part_severity_mod(part),
-        *weapon.fatal_bias,
-        shooter_luck,
-        target.luck,
-    );
-    let severity = roll_severity(&inputs, &tuning.severity_scaling, rng);
-
-    // (6) Apply the resolved hit onto the target in place (E3.6) — HP loss +
-    // Wounds-by-tier + armor wear + the terminal gates; capture the per-hit
-    // ArmorWearOutcome (the break crossing / a non-breaking reduction / nothing).
-    let wear_outcome = apply_hit(
-        GangerHitTarget {
-            hp:        target.hp,
-            wounds:    target.wounds,
-            life:      target.life,
-            // The struck piece's `&mut ArmorIntegrity` (None on bare flesh / no piece)
-            // — `apply_hit`'s `wear_armor` degrades it in place (GTW-323 / ADR-0004).
-            integrity: target.piece.map(|p| p.integrity),
-            inflicted: target.inflicted,
+    // The SHARED wound-synthesis core (GTW-523 remediation): corpse-skip → resolve_hit →
+    // roll_severity (the ONE SeverityRng draw) → apply_hit → roll_injury (the ONE InjuryRng
+    // draw, gated on severity). Returns None on the corpse-skip (no draw, no mutation) — the
+    // ganger fold then yields a no-effect report, exactly as the old inline corpse-skip did.
+    let Some(synthesis) = synthesize_wound(WoundCoreInputs {
+        blow: WoundBlow {
+            part,
+            damage: *weapon.damage,
+            punch: *weapon.punch,
+            shred: *weapon.shred,
+            piece,
+            matchup: resolved_matchup,
+            fatal_bias: *weapon.fatal_bias,
+            shooter_luck,
         },
-        &hit,
-        severity,
-        part,
+        target,
         target_entity,
         tuning,
-    );
+        severity_rng: rng,
+        tables,
+        registry,
+        injury_rng,
+    }) else {
+        return HitReport::no_effect(outcome.kind);
+    };
 
-    // Map the mutually-exclusive outcome onto the report's two sibling armor fields:
-    // a Broke hit sets `broken` (worn None), a Worn hit sets `worn` (broken None),
-    // an Unaffected hit leaves BOTH None (GTW-313). At most one is ever Some.
-    let (broken, worn) = match wear_outcome {
+    // Map the mutually-exclusive wear outcome onto the report's two sibling armor fields:
+    // a Broke hit sets `broken` (worn None), a Worn hit sets `worn` (broken None), an
+    // Unaffected hit leaves BOTH None (GTW-313). At most one is ever Some.
+    let (broken, worn) = match synthesis.wear {
         ArmorWearOutcome::Broke(broken) => (Some(broken), None),
         ArmorWearOutcome::Worn(worn) => (None, Some(worn)),
         ArmorWearOutcome::Unaffected => (None, None),
     };
 
-    // (6b) GTW-438 — the injury roll, AFTER apply_hit (Wounds already spent) and gated
-    // on the rolled `severity` (the ticket's "after wounds-spend, before terminal
-    // gates"). `roll_injury` takes EXACTLY ONE InjuryRng draw for a Minor/Major/Critical
-    // wound (even on an empty/missing table — content-independent stream alignment) and
-    // ZERO for a None (graze) / Fatal. It is recorded even on a corpse-MAKING hit (the
-    // gate is on the rolled severity, not the post-gate life state); a hit on an already
-    // dead target short-circuited at step (1) BEFORE any draw.
-    let injury = roll_injury(part, severity, tables, registry, injury_rng);
-
-    // (7) Freeze the verdict — named newtypes + the rolled injury, no pixel.
+    // Freeze the verdict — named newtypes + the rolled injury, no pixel. Every field is
+    // read straight off the shared core's WoundSynthesis (the matchup, hit, severity,
+    // post-hit life, and injury), so there is no parallel wound math here.
     HitReport {
-        kind: outcome.kind,
-        part: Some(part),
-        applied: Some(AppliedDamage {
-            matchup: resolved_matchup,
-            hit,
-            severity,
-            life_after: *target.life,
+        kind:            outcome.kind,
+        part:            Some(part),
+        applied:         Some(AppliedDamage {
+            matchup: synthesis.matchup,
+            hit: synthesis.hit,
+            severity: synthesis.severity,
+            life_after: synthesis.life_after,
             broken,
             worn,
         }),
         cover_destroyed: None,
         // A ganger hit destroys no slab (a slab hit takes the slab arm in
         // `resolve_and_apply`, never this ganger fold).
-        slab_destroyed: None,
+        slab_destroyed:  None,
         // A ganger hit accrues no ground damage (a ground hit takes the ground arm in
         // `resolve_and_apply`, never this ganger fold).
-        ground_accrued: None,
+        ground_accrued:  None,
         // The GTW-438 injury verdict (Some only on a Minor/Major/Critical wound that
         // rolled a named injury; None on a graze / Fatal / empty-table).
-        injury,
+        injury:          synthesis.injury,
     }
 }

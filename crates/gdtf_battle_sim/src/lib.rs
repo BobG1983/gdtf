@@ -239,6 +239,7 @@ pub mod acts_runtime;
 pub mod combatants;
 pub mod damage_resolution;
 pub mod equipment;
+pub mod falls;
 pub mod foundation;
 pub mod level;
 pub mod lifecycle;
@@ -346,6 +347,7 @@ pub use equipment::{
         WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec, WeaponStats, WieldedBy, Wields,
     },
 };
+pub use falls::{DropLanding, FallOccurred, FallsPlugin, StoreysFallen, apply_falls, resolve_drop};
 pub use foundation::{
     metric,
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
@@ -481,11 +483,11 @@ pub use tuning::{
     ConcentrationCoeff, ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale, ExecuteTu,
     FightVariance, FightWeights, GangerStatTuning, HpWeights, MatchupMultipliers, MeleeKMargin,
     MeleeMultMax, MeleeMultMin, MeleeTuning, MoraleWeights, MoveCost, MoveCosts,
-    MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale, ProjectileBandEdges,
-    RandomSpread, ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin,
-    ReactionProbability, ReactionScore, ReactionTuning, ReactionsUsed, ReactionsWeights,
-    RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale, ShootingWeights,
-    SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults, StabilityCurve,
+    MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale, PerStoreyDamage,
+    ProjectileBandEdges, RandomSpread, ReactionCapBase, ReactionCapPerReactions, ReactionPMax,
+    ReactionPMin, ReactionProbability, ReactionScore, ReactionTuning, ReactionsUsed,
+    ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
+    ShootingWeights, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults, StabilityCurve,
     StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu, StanceChangeTu,
     StanceContribution, StanceStability, StatWeight, ToughnessMitigation, TuBase, TuPerSpeed,
     TurnTu, WoundCost, WoundCosts, WoundsPerHp, clamp_probability, interrupt_probability,

@@ -236,4 +236,12 @@
         variance: 0.2,  // the roll spread v: each side's roll is uniform in [1−v, 1+v] = [0.8, 1.2]
     ),
 
+    // Falls per-storey damage (GTW-523; resolution.md §Falls). When a slab is destroyed
+    // under a standing ganger it FALLS: magnitude = per_storey_damage × storeys_fallen,
+    // LINEAR (weight-free — GTW-452 owns weighting). The blow is routed as a Neutral kinetic
+    // hit through the SAME resolve_hit → roll_severity → apply_hit + injury pipeline a shot
+    // takes (armor honored). STARTING POINT (tunable balance data) — value-agnostic tests
+    // only (monotone in storeys, a hot-edit shifts the blow), never a pinned magnitude.
+    per_storey_damage: 6,  // base fall damage PER STOREY fallen (linear); a 2-storey drop deals ×2
+
 )

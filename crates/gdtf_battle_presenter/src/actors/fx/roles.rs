@@ -120,6 +120,10 @@ pub struct EffectRoles {
     /// (the §7 connecting-hit flash, GTW-507) — a one-frame strike glyph drawn at the struck
     /// target cell when a melee blow lands.
     pub melee_strike:    TileIndex,
+    /// The [`FallOccurred`](gdtf_battle_sim::FallOccurred) fall-IMPACT tile
+    /// (GTW-524) — a one-frame impact glyph drawn at the LANDING cell when a ganger drops
+    /// a storey (or more) after a slab is destroyed beneath it.
+    pub fall_impact:     TileIndex,
     /// The ORANGE damage-type row (sheet row 0) — its 8-way projectile rose + 3-frame impact.
     pub orange:          DamageTypeFx,
     /// The BLUE damage-type row (sheet row 1) — its 8-way projectile rose + 3-frame impact.
@@ -442,6 +446,7 @@ mod test {
             armor_break:     TileIndex::new(1),
             cover_destroyed: TileIndex::new(2),
             melee_strike:    TileIndex::new(3),
+            fall_impact:     TileIndex::new(4),
             orange:          uniform_fx(10),
             blue:            uniform_fx(11),
             green:           uniform_fx(12),

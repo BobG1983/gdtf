@@ -5,8 +5,9 @@ use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
-    InjuryInflicted, OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed, SquadVisibility,
-    SurfaceGrid, VerticalLinkGraph, acts::MeleeResolved, occupancy_sync::SimSystems,
+    FallOccurred, InjuryInflicted, OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed,
+    SquadVisibility, SurfaceGrid, VerticalLinkGraph, acts::MeleeResolved,
+    occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -21,10 +22,10 @@ use crate::{
     load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
     load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
     present_fog, read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-    read_injury_fct, read_melee_resolved, redrive_character_roles_on_asset_event,
-    redrive_effect_roles_on_asset_event, redrive_fx_tuning_on_asset_event,
-    redrive_pan_tuning_on_asset_event, redrive_sheet_images_on_asset_event,
-    redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
+    read_fall_occurred, read_injury_fct, read_melee_resolved,
+    redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
+    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
+    redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
     reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
     resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
     spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, swap_destroyed_slab,
@@ -626,6 +627,10 @@ fn register_fx_flash_systems(app: &mut App) {
     // also registers it in a real battle — `add_message` is IDEMPOTENT; the CoverDestroyed
     // precedent, bevy-traps.md #4).
     app.add_message::<MeleeResolved>();
+    // GTW-524: register the sim's FallOccurred buffer idempotently so `read_fall_occurred`'s
+    // MessageReader param is valid in a presenter-only headless harness (the sim's FallsPlugin
+    // registers it in a real battle — `add_message` is IDEMPOTENT; the MeleeResolved precedent).
+    app.add_message::<FallOccurred>();
     let render_gate = resource_exists::<BattleInProgress>
         .and_then(resource_exists::<EffectRoles>)
         .and_then(resource_exists::<TopDownAtlases>);
@@ -664,6 +669,24 @@ fn register_fx_flash_systems(app: &mut App) {
             render_gate
                 .clone()
                 .and_then(resource_exists::<Messages<MeleeResolved>>),
+        ),
+    )
+    // GTW-524: the fall-impact flash + FCT "Fell" pop. Drains the sim's FallOccurred signal
+    // (one per ganger that dropped a storey after a slab was destroyed beneath it) and spawns
+    // a one-frame impact glyph at the LANDING cell, data-driven via the EffectRoles
+    // `fall_impact` tile, plus a rise-and-fade "Fell" FCT pop. The tint scales with storeys
+    // fallen (a structural relation). ADDITIVE to the wound/bleed/injury flashes the fall
+    // damage drives (the existing signals handle those; this is ONLY the fall-event glyph).
+    // Gated on the render resources + FxTuning (for the FCT pop lifetime + rise) + the
+    // FallOccurred message buffer (MessageReader panics validation without its buffer —
+    // bevy-traps.md #1 / #4).
+    .add_systems(
+        Update,
+        read_fall_occurred.in_set(PresenterSystems::Draw).run_if(
+            render_gate
+                .clone()
+                .and_then(resource_exists::<FxTuning>)
+                .and_then(resource_exists::<Messages<FallOccurred>>),
         ),
     )
     // GTW-306: the firing FX. spawn_shot_projectiles spawns the traveling DIRECTIONAL

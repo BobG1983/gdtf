@@ -21,6 +21,7 @@
 //! - [`wounds`] — the per-tier Wounds-budget costs, bleed-out rate, and from-Downed
 //!   TU costs (E3.6 / E3.7 / E3.8).
 //! - [`economy`] — the E4 TU economy: stance-change / turn / per-terrain move / per-link costs.
+//! - [`falls`] — the GTW-523 per-storey fall-damage magnitude ([`PerStoreyDamage`]).
 //! - [`cone`] — the §1 cone/stability/recoil/aim leaf coefficient newtypes.
 //! - [`cone_groups`] — the §1 grouping structs + the [`ConeStabilityTuning`] bundle.
 //! - [`matchup`] — the 7-type matchup multipliers (E3.2).
@@ -49,6 +50,7 @@ mod combat_tuning;
 mod cone;
 mod cone_groups;
 mod economy;
+mod falls;
 mod firing_arc;
 mod matchup;
 mod melee;
@@ -75,6 +77,7 @@ pub use cone_groups::{
     SilhouetteTops, StabilityCurve, StabilityCurvePoint, StabilityCurves, StanceStability,
 };
 pub use economy::{LinkTu, MoveCost, MoveCosts, StanceChangeTu, TurnTu};
+pub use falls::PerStoreyDamage;
 pub use firing_arc::FiringArc;
 pub use matchup::MatchupMultipliers;
 pub use melee::{FightVariance, MeleeKMargin, MeleeMultMax, MeleeMultMin, MeleeTuning};

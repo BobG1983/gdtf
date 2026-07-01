@@ -12,6 +12,9 @@
 //!   at the ganger's cell ([`read_armor_broken`]).
 //! - [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) `{ at }` -> a debris/rubble burst at
 //!   `cell_to_world(at)` ([`read_cover_destroyed`]); ADDITIVE to the S4 rubble swap.
+//! - [`FallOccurred`](gdtf_battle_sim::FallOccurred) `{ ganger, to_level, storeys, … }` ->
+//!   a fall-impact flash at the landing cell + a `"Fell"` FCT pop (GTW-524;
+//!   [`read_fall_occurred`]); ADDITIVE to the wound/bleed/injury flashes the fall damage drives.
 //! - [`ShotFired`](gdtf_battle_sim::ShotFired) `{ muzzle, trajectory, impact, kind, damage }`
 //!   -> the GTW-306 FIRING FX (reshaped from GTW-290's smeared stretched tracer): a
 //!   **traveling directional projectile** that LERPS muzzle→impact then despawns
@@ -42,6 +45,7 @@
 //! ZERO sim setup/teardown. It mirrors, never owns, combat truth — the one-way
 //! `input -> presenter -> sim` edge (ADR-0001); the sim never reads the presenter.
 
+mod fall;
 mod fct;
 mod flash;
 mod impact;
@@ -54,6 +58,7 @@ mod tuning;
 #[cfg(test)]
 mod test;
 
+pub use fall::read_fall_occurred;
 pub use fct::{
     CombatLogEvent, CombatText, FctEmphasis, FctStackIndex, FctValence, FloatingCombatText,
     InjuryLogText, LogLine, LogName, animate_floating_text, classify_log_event,

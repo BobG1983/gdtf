@@ -9,6 +9,7 @@ use crate::tuning::{
     body_part::BodyPartWeights,
     cone_groups::ConeStabilityTuning,
     economy::{LinkTu, MoveCosts, StanceChangeTu, TurnTu},
+    falls::PerStoreyDamage,
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
     melee::MeleeTuning,
@@ -126,4 +127,13 @@ pub struct CombatTuning {
     /// [`melee_damage_mult`](crate::melee::melee_damage_mult) read these leaves; the live
     /// melee ACT is GTW-507. Authored in `assets/core_tuning/combat.tuning.ron` under `melee:`.
     pub melee:                 MeleeTuning,
+    /// The §Falls per-storey fall-damage magnitude (GTW-523) — the base damage a
+    /// slab-destroy fall deals **per storey fallen**, LINEAR: `magnitude =
+    /// per_storey_damage × storeys_fallen` (`docs/combat/resolution.md` §Falls). The falls
+    /// system ([`crate::falls::apply_falls`]) reads this leaf and routes the resulting
+    /// magnitude as a [`Matchup::Neutral`](crate::matchup::Matchup) kinetic hit through the
+    /// EXISTING resolve/apply + injury pipeline (armor honored; only weight deferred —
+    /// GTW-452 owns weighting). Authored in `assets/core_tuning/combat.tuning.ron` under
+    /// `per_storey_damage:`.
+    pub per_storey_damage:     PerStoreyDamage,
 }
