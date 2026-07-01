@@ -11,21 +11,22 @@
 //! (no message round-trip — egui is immediate-mode), so the mutations are idempotent under the
 //! multipass re-run (bevy-traps #8 fact (b)).
 //!
-//! ## Layout across the C1 shell panels (C2.1)
+//! ## Layout across the shell panels (GTW-534 C1/C2 — reworked emphasis)
 //!
-//! The form replicates the BEHAVIOR of the GTW-474 `bevy_ui` terrain form (the old LEFT graphic
-//! picker / CENTER kind+band controls / RIGHT field stack / STAT live preview), re-pointed onto the
-//! C1 shell's panels:
+//! GTW-534 INVERTS the GTW-513 emphasis: authoring a terrain is about SETTING STATS and PICKING A
+//! SPRITE, so those are now the CENTRAL / primary focus and the useful-but-secondary
+//! `.terrain_def.ron` preview is demoted to a side strip (kept + live, not dominating):
 //!
-//! - LEFT palette panel — the GRAPHIC-ROLE picker (the 10 [`TerrainGraphicChoice`] role keys), now
-//!   a GRID of SPRITE THUMBNAILS (GTW-516) — one clickable sprite per role, the active one
-//!   highlighted — resolved via the presenter's [`TileRoles`] vocabulary + the same egui
-//!   sprite-render path the GTW-515 prefab palette uses (the shared
-//!   [`sprite_thumb`](super::sprite_thumb) helper),
-//! - RIGHT mode-form panel — the field stack: display name, the kind segmented row, Max-HP, armor
-//!   protection + hardness, the (Wall/Cover-only) height band, the (Slab-only) footfall combo, the
-//!   four tag checkboxes, the read-only UUID, and the debug-only Save button,
-//! - CENTRAL panel — the live monospace RON preview (re-serialized from the draft each frame).
+//! - CENTRAL primary panel — the [`primary_panel`]: the sprite-grid graphic picker (the GTW-516
+//!   [`graphic_picker`]) + the terrain [`field_stack`] side by side, the two authoring foci filling
+//!   the largest / most-prominent region,
+//! - LEFT secondary strip — the live monospace `.terrain_def.ron` [`ron_preview`] (re-serialized
+//!   from the draft each frame — relocated OFF the central region but still present + live),
+//! - RIGHT mode-form panel — idle in TERRAIN mode (the shell only draws it for THEME / PREFAB).
+//!
+//! The reusable draw fns ([`graphic_picker`] = the GTW-516 sprite grid, [`field_stack`] = the stat
+//! fields, [`ron_preview`] = the preview) are UNCHANGED — GTW-534 only RE-PLACES them across the
+//! panels via the new [`primary_panel`] composition.
 
 use bevy_egui::egui;
 use gdtf_battle_presenter::TileRoles;
@@ -93,9 +94,41 @@ const fn band_label(band: HeightBand) -> &'static str {
     }
 }
 
-/// Draw the TERRAIN-mode GRAPHIC-ROLE picker into the LEFT palette panel (GTW-516 C1/C2) — a GRID
-/// of SPRITE THUMBNAILS, one clickable sprite per [`TerrainGraphicChoice`] role, with the draft's
-/// active role highlighted, replacing the GTW-513 text role list.
+/// Draw the TERRAIN-mode CENTRAL PRIMARY region (GTW-534 C1) — the two authoring foci, the sprite
+/// picker + the stat field stack, side by side in the largest / most-prominent panel.
+///
+/// This is the emphasis rework: rather than the `.terrain_def.ron` preview dominating the central
+/// region (the GTW-513 layout), the central region now hosts what authoring a terrain is actually
+/// about — SETTING STATS ([`field_stack`]) and PICKING A SPRITE (the GTW-516 [`graphic_picker`]).
+/// The preview is demoted to the LEFT secondary strip by the shell (C2). This fn is pure
+/// COMPOSITION: it lays the two existing draw fns into two columns (picker left, fields right) and
+/// does not reimplement either — every stat edit / sprite selection still routes through the same
+/// [`TerrainDraft`] setters, so nothing is broken by the relocation (C3). The columns split the
+/// central width evenly so both foci get generous, co-visible space.
+pub(crate) fn primary_panel(
+    ui: &mut egui::Ui,
+    draft: &mut TerrainDraft,
+    session: &MapEditorSession,
+    themes: Option<&UuidThemeRegistry>,
+    roles: Option<&TileRoles>,
+    sheet_id: Option<egui::TextureId>,
+) {
+    // Two evenly-split columns: the sprite-grid picker on the left, the stat field stack on the
+    // right. `columns` gives each a `&mut Ui`; the borrow checker requires we not borrow `draft`
+    // across both closures, and `columns` runs them sequentially, so passing `&mut *draft` into each
+    // in turn is sound (they do not overlap in time).
+    ui.columns(2, |columns| {
+        if let [picker_col, fields_col] = columns {
+            graphic_picker(picker_col, draft, roles, sheet_id);
+            field_stack(fields_col, draft, session, themes);
+        }
+    });
+}
+
+/// Draw the TERRAIN-mode GRAPHIC-ROLE picker (GTW-516 C1/C2) — a GRID of SPRITE THUMBNAILS, one
+/// clickable sprite per [`TerrainGraphicChoice`] role, with the draft's active role highlighted,
+/// replacing the GTW-513 text role list. Hosted in the CENTRAL primary region by [`primary_panel`]
+/// since GTW-534 C1 (formerly the LEFT palette panel).
 ///
 /// Each cell shows the ACTUAL sprite for its role: the role's `tile_roles.ron` KEY
 /// ([`TerrainGraphicChoice::key`]) is resolved to an atlas index through the presenter's
@@ -172,10 +205,10 @@ fn graphic_cell(
         .clicked()
 }
 
-/// Draw the TERRAIN-mode FIELD STACK into the RIGHT mode-form panel (C2.1) — display name, the kind
-/// segmented row, Max-HP, armor protection + hardness, the (Wall/Cover-only) height band, the
-/// (Slab-only) footfall combo, the four tag checkboxes, the read-only UUID, and the debug-only Save
-/// button.
+/// Draw the TERRAIN-mode FIELD STACK (C2.1) — display name, the kind segmented row, Max-HP, armor
+/// protection + hardness, the (Wall/Cover-only) height band, the (Slab-only) footfall combo, the
+/// four tag checkboxes, the read-only UUID, and the debug-only Save button. Hosted in the CENTRAL
+/// primary region by [`primary_panel`] since GTW-534 C1 (formerly the RIGHT mode-form panel).
 ///
 /// Every control reads / writes the [`TerrainDraft`] through its existing accessors / setters
 /// (C2.2): the kind segmented row routes through [`TerrainDraft::set_kind`] (which fail-closes the
@@ -371,9 +404,10 @@ fn save_button(
     }
 }
 
-/// Draw the live monospace `.terrain_def.ron` PREVIEW into the CENTRAL panel (C2.1) — a
+/// Draw the live monospace `.terrain_def.ron` PREVIEW (C2.1) — a
 /// [`ScrollArea`](egui::ScrollArea) of [`ui.monospace`](egui::Ui::monospace) text, re-serialized
-/// from the draft each frame so it tracks every edit.
+/// from the draft each frame so it tracks every edit. Hosted in the LEFT secondary strip since
+/// GTW-534 C2 (demoted off the central region — kept + live, no longer dominating).
 ///
 /// Projects the draft with its minted key if present, else the [`TerrainUuid::nil`] sentinel as a
 /// placeholder (the real key is minted on save) — exactly the old `bevy_ui` preview's behavior.

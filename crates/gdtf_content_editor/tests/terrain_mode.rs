@@ -20,11 +20,11 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
-    terrain::def::{TerrainDef, TerrainTag, TerrainUuid},
+    terrain::def::{TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid},
 };
 use gdtf_content_editor::{
     EditorMode, EditorState, MapEditorPlugin, MapEditorSession, TerrainDraft, TerrainGraphicChoice,
-    TerrainKindChoice, draft_to_terrain_def, write_terrain,
+    TerrainKindChoice, draft_to_terrain_def, serialize_terrain_def, write_terrain,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
@@ -145,6 +145,76 @@ fn resolve_theme_display(app: &App) -> String {
         .get_resource::<UuidThemeRegistry>()
         .and_then(|themes| themes.def(&theme).map(|def| (*def.display_name).clone()))
         .unwrap_or_default()
+}
+
+/// GTW-534 C1/C3: after the TERRAIN-tab rework (stat fields + sprite picker moved to the CENTRAL
+/// primary region, the `.terrain_def.ron` preview demoted to the LEFT secondary strip), the panel
+/// RELOCATION must not break any interaction — a stat-field edit, a sprite-picker selection, and the
+/// live-preview re-serialize must all still track the draft.
+///
+/// Drives the SAME `TerrainDraft` setters the relocated central `primary_panel` controls call (the
+/// picker's `set_graphic`, the field stack's `set_kind` / `set_cover_hp` / `set_display_name`), then
+/// projects + serializes exactly as the relocated `ron_preview` does each frame — asserting the
+/// preview text reflects each edit. Runs on the REAL editor app so the live state-scoped draft is the
+/// one the shell would draw, not a copy.
+#[test]
+fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
+    let mut app = editor_app();
+    advance_to_editing(&mut app);
+
+    if let Some(mut mode) = app.world_mut().get_resource_mut::<EditorMode>() {
+        *mode = EditorMode::Terrain;
+    }
+
+    // Drive the setters the CENTRAL primary panel's picker + field stack call — a sprite selection
+    // (the GTW-516 picker's `set_graphic`) and stat edits (the field stack's `set_kind` / HP / name).
+    let Some(mut draft) = app.world_mut().get_resource_mut::<TerrainDraft>() else {
+        unreachable!("the TerrainDraft must be inserted in Editing")
+    };
+    draft.set_display_name("GTW534 Rework Probe".to_owned());
+    draft.set_kind(TerrainKindChoice::Cover);
+    draft.set_graphic(TerrainGraphicChoice::Cover);
+    draft.set_cover_hp(gdtf_battle_sim::cover::CoverHp::new(77));
+
+    // Re-read the live draft and project + serialize it EXACTLY as the relocated `ron_preview` does
+    // each frame (nil placeholder key until save) — the demoted secondary-strip preview.
+    let Some(draft) = app.world().get_resource::<TerrainDraft>().cloned() else {
+        unreachable!("the TerrainDraft must be present after the edits")
+    };
+    let def = draft_to_terrain_def(&draft, TerrainUuid::nil());
+
+    // The sprite-picker selection reached the projected presenter kind (C3: picker still wired).
+    let TerrainPresenterKind::Cover { graphic_name } = &def.presenter_kind else {
+        unreachable!("a Cover kind must project a Cover presenter kind carrying the picked graphic")
+    };
+    assert_eq!(
+        &**graphic_name,
+        TerrainGraphicChoice::Cover.key(),
+        "the sprite-picker selection must reach the projected def's graphic_name (C3)",
+    );
+
+    // The stat edit reached the projected sim kind (C3: field stack still wired).
+    let TerrainSimKind::Cover { hp, .. } = &def.sim_kind else {
+        unreachable!("a Cover kind must project a Cover sim kind carrying the edited HP")
+    };
+    assert_eq!(
+        **hp, 77,
+        "the HP stat edit must reach the projected def's cover HP (C3)",
+    );
+
+    // The live preview re-serializes the draft and reflects each edit (C3: preview still wired, now
+    // in the demoted secondary strip). Assert the serialized RON carries the edited name + graphic.
+    let Ok(preview) = serialize_terrain_def(&def) else {
+        unreachable!("the preview projection must serialize without error")
+    };
+    assert!(
+        preview.contains("GTW534 Rework Probe"),
+        "the demoted RON preview must still re-serialize the edited display name (C3):\n{preview}",
+    );
+    assert!(
+        preview.contains(TerrainGraphicChoice::Cover.key()),
+        "the demoted RON preview must still re-serialize the picked graphic role (C3):\n{preview}",
+    );
 }
 
 /// C2.1: a fresh `TerrainDraft` projects with the `nil` placeholder key when no UUID is yet minted —

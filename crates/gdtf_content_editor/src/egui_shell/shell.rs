@@ -11,11 +11,13 @@
 //!
 //! 1. top `Panel::top` — mode tabs + global theme `ComboBox`,
 //! 2. bottom `Panel::bottom` — the status line,
-//! 3. left `Panel::left` — the palette / stats (TERRAIN graphic picker, THEME floor stats, PREFAB
-//!    tile palette),
-//! 4. right `Panel::right` — the active mode's form (TERRAIN / THEME field stacks, PREFAB controls),
-//! 5. [`CentralPanel`](bevy_egui::egui::CentralPanel) — the viewport (TERRAIN/THEME RON preview,
-//!    PREFAB the render-to-texture tile viewport — GTW-515 C4).
+//! 3. left `Panel::left` — the palette / stats (TERRAIN's DEMOTED `.terrain_def.ron` preview —
+//!    GTW-534 C2, THEME floor stats, PREFAB tile palette),
+//! 4. right `Panel::right` — the active mode's form (THEME field stack, PREFAB controls; TERRAIN is
+//!    idle here since GTW-534 C1 moved its controls to the central primary region),
+//! 5. [`CentralPanel`](bevy_egui::egui::CentralPanel) — the primary region (TERRAIN's stat fields +
+//!    sprite-grid picker as the primary focus — GTW-534 C1, THEME RON preview, PREFAB the
+//!    render-to-texture tile viewport — GTW-515 C4).
 //!
 //! The mode switch is an IN-UI branch inside the right panel (`if mode == Prefab {…} else if …`)
 //! — there is no `bevy_ui` `mode_host` / `Visibility`-container machinery any more (C1.3 deleted
@@ -169,13 +171,14 @@ pub(crate) fn editor_egui_ui(
         ui.label(status_line(*mode, &session, themes.as_deref()));
     });
 
-    // 3. LEFT — the palette / stats region. In TERRAIN mode it hosts the graphic-role picker — a
-    //    GRID of sprite THUMBNAILS (one per `TileRoles` role, active highlighted — GTW-516),
-    //    resolved + drawn via the same egui sprite path as the PREFAB palette; in THEME mode (C3)
-    //    it shows the resolved floor-terrain stats readout; other modes keep the palette placeholder.
+    // 3. LEFT — the palette / stats region. In TERRAIN mode (GTW-534 C2) it now hosts the DEMOTED
+    //    `.terrain_def.ron` live preview — relocated OFF the central region to this secondary side
+    //    strip: still present + live-updating, but no longer dominating (the stat fields + sprite
+    //    picker take the central primary space instead). In THEME mode (C3) it shows the resolved
+    //    floor-terrain stats readout; PREFAB keeps the tile palette.
     egui::Panel::left("editor_palette").show(&mut viewport_ui, |ui| match *mode {
         EditorMode::Terrain => {
-            terrain_form_ui::graphic_picker(ui, &mut terrain_draft, roles.as_deref(), sheet_id);
+            terrain_form_ui::ron_preview(ui, &terrain_draft);
         }
         EditorMode::Theme => {
             theme_form_ui::stats_panel(ui, &theme_draft, terrain_registry.as_deref());
@@ -193,13 +196,14 @@ pub(crate) fn editor_egui_ui(
         }
     });
 
-    // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN is the real form (C2 /
-    //    GTW-513); THEME is the real form (C3 / GTW-514); PREFAB is the real controls (C4 /
-    //    GTW-515) — the grid-size fields, the level nav, and the debug Save.
+    // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN no longer renders here (GTW-534
+    //    C1 folded its picker + field stack into the CENTRAL primary region below); THEME is the
+    //    real form (C3 / GTW-514); PREFAB is the real controls (C4 / GTW-515) — the grid-size
+    //    fields, the level nav, and the debug Save.
     egui::Panel::right("editor_mode_form").show(&mut viewport_ui, |ui| match *mode {
-        EditorMode::Terrain => {
-            terrain_form_ui::field_stack(ui, &mut terrain_draft, &session, themes.as_deref());
-        }
+        // TERRAIN's controls are central now (GTW-534 C1); the right panel is intentionally idle in
+        // TERRAIN mode so nothing competes with the central stats + sprite picker.
+        EditorMode::Terrain => {}
         EditorMode::Theme => {
             theme_form_ui::field_stack(ui, &mut theme_draft, terrain_registry.as_deref());
         }
@@ -218,13 +222,23 @@ pub(crate) fn editor_egui_ui(
         }
     });
 
-    // 5. CENTRAL — the viewport / preview (LAST: egui fills the residual space with it). In TERRAIN
-    //    mode (C2) it shows the live `.terrain_def.ron` preview; in THEME mode (C3) it shows the
-    //    live `.terrain_theme.ron` preview; in PREFAB mode (C4 / GTW-515) it shows the
-    //    render-to-texture viewport (click-to-paint + hover ghost + wheel-zoom + right-drag pan).
+    // 5. CENTRAL — the viewport / primary region (LAST: egui fills the residual space with it). In
+    //    TERRAIN mode (GTW-534 C1) it is now the PRIMARY focus: the sprite-grid graphic picker
+    //    (GTW-516) + the terrain stat field stack, side by side — the two things authoring a terrain
+    //    is about (the demoted `.terrain_def.ron` preview lives in the LEFT secondary strip). In
+    //    THEME mode (C3) it shows the live `.terrain_theme.ron` preview; in PREFAB mode (C4 /
+    //    GTW-515) it shows the render-to-texture viewport (click-to-paint + hover ghost + wheel-zoom
+    //    + right-drag pan).
     egui::CentralPanel::default().show(&mut viewport_ui, |ui| match *mode {
         EditorMode::Terrain => {
-            terrain_form_ui::ron_preview(ui, &terrain_draft);
+            terrain_form_ui::primary_panel(
+                ui,
+                &mut terrain_draft,
+                &session,
+                themes.as_deref(),
+                roles.as_deref(),
+                sheet_id,
+            );
         }
         EditorMode::Theme => {
             theme_form_ui::ron_preview(ui, &theme_draft);
