@@ -84,8 +84,8 @@ use bevy::{
 };
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::{
-    Cell, Faction, FireMode, FireModeSpec, Level, ModeKind, PlayerFaction, Position,
-    acts::FireRequested,
+    Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, ModeKind, PlayerFaction, Position,
+    SlabDestroyed, acts::FireRequested, apply_falls,
 };
 
 use crate::states::{BattleScapeState, RunningState};
@@ -113,6 +113,13 @@ const FIRE_AT_FRAME_ENV: &str = "GDTF_FIRE_AT_FRAME";
 /// trigger using the resident [`SelectedFireMode`]. Used by the GTW-306 FX capture to drive
 /// a multi-round (burst / full-auto) volley so the staggered projectiles are observable.
 const FIRE_MODE_ENV: &str = "GDTF_FIRE_MODE";
+
+/// The `GDTF_FALL_AT_FRAME` environment variable: the `BattleRunning` frame at which a
+/// determinate player ganger is forced to FALL via the real GTW-523 fall path (parsed into
+/// a [`FallAtFrame`]). Mirrors [`FIRE_AT_FRAME_ENV`] exactly — the fall counterpart of the
+/// fire trigger, added (GTW-529) so the GTW-524 fall FX has a scripted in-engine QA trigger
+/// (`GDTF_FIRE_AT_FRAME` only targets an enemy ganger, never a slab under a friendly).
+const FALL_AT_FRAME_ENV: &str = "GDTF_FALL_AT_FRAME";
 
 /// How many frames AFTER the battle is running to wait before capturing a single frame.
 ///
@@ -259,6 +266,45 @@ impl FireAtFrame {
     /// Parse a raw env-var value into an optional [`FireAtFrame`]: `Some` for a valid
     /// `u32`, `None` (trigger inert) for an absent / empty / non-numeric value. The pure
     /// core of [`FireAtFrame::from_env`]; never panics.
+    #[must_use]
+    pub(crate) fn parse(value: Option<&str>) -> Option<Self> {
+        value
+            .and_then(|raw| raw.trim().parse::<u32>().ok())
+            .map(Self)
+    }
+}
+
+/// The frame at which the dev FALL-trigger forces a determinate player ganger to fall.
+///
+/// A named newtype over `u32` (no-bare-types). Mirrors [`FireAtFrame`] exactly.
+/// `pub(crate)`: referenced only by the in-crate wiring + config tests + the
+/// [`trigger_fall_at_frame`] system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deref)]
+pub(crate) struct FallAtFrame(u32);
+
+impl FallAtFrame {
+    /// Build a fall-trigger frame from its raw frame index. Test-only inherent surface
+    /// (the production parse builds one through the tuple constructor in-module; the test
+    /// constructs through the newtype, not the private field). `#[cfg(test)]` so the binary
+    /// stays `dead_code`-clean.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) const fn new(frame: u32) -> Self {
+        Self(frame)
+    }
+
+    /// Read the optional [`FallAtFrame`] from the [`FALL_AT_FRAME_ENV`]
+    /// (`GDTF_FALL_AT_FRAME`) env var. `None` (the trigger stays inert) when the var is
+    /// unset, empty, or not a valid `u32`. Pure (no `World`); delegates to
+    /// [`FallAtFrame::parse`].
+    #[must_use]
+    pub(crate) fn from_env() -> Option<Self> {
+        Self::parse(std::env::var(FALL_AT_FRAME_ENV).ok().as_deref())
+    }
+
+    /// Parse a raw env-var value into an optional [`FallAtFrame`]: `Some` for a valid
+    /// `u32`, `None` (trigger inert) for an absent / empty / non-numeric value. The pure
+    /// core of [`FallAtFrame::from_env`]; never panics. Mirrors [`FireAtFrame::parse`].
     #[must_use]
     pub(crate) fn parse(value: Option<&str>) -> Option<Self> {
         value
@@ -415,6 +461,29 @@ impl FireConfig {
     }
 }
 
+/// The resolved fall-trigger configuration: the frame to force a fall on.
+///
+/// Held by [`DevCapturePlugin`] when the fall sub-affordance is enabled, inserted as a
+/// [`Resource`] so [`trigger_fall_at_frame`] can read it. `pub(crate)`: internal only.
+/// Mirrors [`FireConfig`].
+#[derive(Resource, Debug, Clone, Copy)]
+pub(crate) struct FallConfig {
+    /// The `BattleRunning` frame at which the chosen player ganger is forced to fall.
+    frame: FallAtFrame,
+}
+
+impl FallConfig {
+    /// Build a fall-trigger config from the frame to force a fall on. Test-only inherent
+    /// surface (the production path constructs it via struct literal in `from_env`; the
+    /// headless test seeds the REAL resource the [`trigger_fall_at_frame`] system reads
+    /// through this). `#[cfg(test)]` so the binary stays `dead_code`-clean.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) const fn new(frame: FallAtFrame) -> Self {
+        Self { frame }
+    }
+}
+
 /// The DEV-ONLY screenshot / visual-QA + fire-trigger affordance plugin (GTW-297 /
 /// GTW-306).
 ///
@@ -429,6 +498,8 @@ pub(crate) struct DevCapturePlugin {
     capture: Option<CaptureConfig>,
     /// The fire-trigger configuration. `None` = no dev fire trigger.
     fire:    Option<FireConfig>,
+    /// The fall-trigger configuration (GTW-529). `None` = no dev fall trigger.
+    fall:    Option<FallConfig>,
 }
 
 impl DevCapturePlugin {
@@ -451,6 +522,7 @@ impl DevCapturePlugin {
                 frame,
                 mode: FireModeOverride::from_env(),
             }),
+            fall:    FallAtFrame::from_env().map(|frame| FallConfig { frame }),
         }
     }
 
@@ -481,6 +553,14 @@ impl DevCapturePlugin {
     pub(crate) fn fire_frame(&self) -> Option<FireAtFrame> {
         self.fire.map(|config| config.frame)
     }
+
+    /// The configured [`FallAtFrame`], if the fall sub-affordance is enabled. Test-only
+    /// inherent surface (GTW-529). `#[cfg(test)]`.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn fall_frame(&self) -> Option<FallAtFrame> {
+        self.fall.map(|config| config.frame)
+    }
 }
 
 impl Default for DevCapturePlugin {
@@ -492,8 +572,8 @@ impl Default for DevCapturePlugin {
 
 impl Plugin for DevCapturePlugin {
     fn build(&self, app: &mut App) {
-        if self.capture.is_none() && self.fire.is_none() {
-            // Inert: register nothing. The app runs normally and never captures / fires.
+        if self.capture.is_none() && self.fire.is_none() && self.fall.is_none() {
+            // Inert: register nothing. The app runs normally and never captures / fires / falls.
             return;
         }
         info!("dev-capture: ON (dev)");
@@ -507,6 +587,21 @@ impl Plugin for DevCapturePlugin {
             app.insert_resource(config).add_systems(
                 Update,
                 trigger_fire_at_frame.run_if(in_state(BattleScapeState::BattleRunning)),
+            );
+        }
+        if let Some(config) = self.fall {
+            // GTW-529 C4 / `bevy-traps.md` #3: order the trigger `.before(apply_falls)` so the
+            // SAME-FRAME `SlabDestroyed` it writes is buffered AND its elevating `Position`
+            // rewrite is visible when the GTW-523 `apply_falls` reads the faller query — the fall
+            // resolves the very frame the slab is smashed, so the drop + the GTW-524 impact flash
+            // land in the captured frame (C3). `apply_falls` is only registered inside the battle
+            // window (its `BattleInProgress`-gated `SimSystems::Simulate` band), so the
+            // `.before` is a soft ordering constraint that binds whenever both run.
+            app.insert_resource(config).add_systems(
+                Update,
+                trigger_fall_at_frame
+                    .before(apply_falls)
+                    .run_if(in_state(BattleScapeState::BattleRunning)),
             );
         }
     }
@@ -666,6 +761,105 @@ pub(crate) fn trigger_fire_at_frame(
 /// mode (e.g. `Full`) rather than the resident [`SelectedFireMode`]. Pure read-only lookup.
 fn fire_mode_spec(modes: Option<&FireMode>, kind: ModeKind) -> Option<FireModeSpec> {
     modes?.iter().copied().find(|spec| spec.kind == kind)
+}
+
+/// The storey the dev fall-trigger elevates the chosen ganger to before smashing the slab
+/// under it — storey 1 (the lowest UPPER storey).
+///
+/// Dropping from storey 1 always lands on the ground (`k == 0` supports unconditionally in
+/// [`resolve_drop`](gdtf_battle_sim::resolve_drop)), so the forced fall is RELIABLE on any
+/// battlefield — it needs no procgen-placed intact slab below. A named newtype so the trigger
+/// never passes a bare storey index (no-bare-types).
+const FALL_TRIGGER_STOREY: Level = Level::new(1);
+
+/// At the configured [`FallAtFrame`] (counted in
+/// [`BattleRunning`](BattleScapeState::BattleRunning) frames), forces a determinate player
+/// ganger to FALL via the REAL GTW-523 fall path.
+///
+/// This is the GTW-529 dev fall-trigger — the fall counterpart of
+/// [`trigger_fire_at_frame`], added so the GTW-524 fall FX has a scripted in-engine QA
+/// trigger (`GDTF_FIRE_AT_FRAME` only targets an enemy ganger, never a slab under a
+/// friendly). It does NOT fake a fall: it drives the authoritative path end-to-end.
+///
+/// On the trigger frame, for a determinate player-faction ganger (the auto-selected
+/// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) when it is player-faction,
+/// otherwise the lowest-[`Entity`] player-faction ganger — a stable, deterministic pick):
+///
+/// 1. **Elevate.** Its [`Position`] is rewritten to `(same cell, `[`FALL_TRIGGER_STOREY`]`)`
+///    — the lowest upper storey — as ONE write. This stands the ganger on an upper storey so
+///    there is a floor beneath it to smash, RELIABLY on any battlefield (the default skirmish
+///    spawns everyone on the ground), keeping the fall deterministic (same frame ⇒ same fall).
+/// 2. **Smash.** It writes one [`SlabDestroyed`](gdtf_battle_sim::SlabDestroyed) at that SAME
+///    `(cell, level)` — the slab the ganger now stands on. Because this system is ordered
+///    `.before(`[`apply_falls`](gdtf_battle_sim::apply_falls)`)`, the same-frame
+///    `SlabDestroyed` is buffered AND the elevating `Position` write is visible when
+///    `apply_falls` reads its faller query, so the GTW-523 drop resolves THIS frame (down to
+///    the ground `k == 0`) and the GTW-524 impact flash fires at the landing — both captured
+///    in the same frame by the GTW-297 [`capture_when_ready`] path (no second capture
+///    mechanism).
+///
+/// Fires exactly once: it acts only while its [`Local<u32>`] counter equals the target frame.
+/// A frame with no player ganger is a no-op (best-effort dev tooling — the fall simply does
+/// not fire).
+///
+/// Param-only (`bevy-traps.md` #7): a [`MessageWriter<SlabDestroyed>`], the
+/// `Res<FallConfig>` / `Res<SelectedShooter>` / `Option<Res<PlayerFaction>>` reads, a
+/// `Query<(Entity, &Faction, &mut Position)>` (the `&mut Position` is the C2-style elevating
+/// write), and a [`Local<u32>`] — no `&mut World`. `Option<Res<PlayerFaction>>` because that
+/// resource exists only inside the battle window (`bevy-traps.md` #1).
+///
+/// `pub(crate)` so the headless test drives this REAL system directly (registered in `Update`
+/// minus the unrelated `BattleScapeState` sub-state gate — the same "drive the real system on
+/// its real schedule, minus unrelated state wiring" idiom the fire-trigger test uses),
+/// asserting the chosen ganger's `Position` drops via the real `apply_falls`.
+pub(crate) fn trigger_fall_at_frame(
+    mut destroyed: MessageWriter<SlabDestroyed>,
+    config: Res<FallConfig>,
+    selected: Res<SelectedShooter>,
+    player: Option<Res<PlayerFaction>>,
+    mut gangers: Query<(Entity, &Faction, &mut Position)>,
+    mut frames_in_battle: Local<u32>,
+) {
+    *frames_in_battle += 1;
+    if *frames_in_battle != *config.frame {
+        // Not the trigger frame (or already fired): wait. `!=` keeps the fall to the one
+        // target frame (the one-shot discipline the fire-trigger uses).
+        return;
+    }
+    let Some(player) = player else {
+        return;
+    };
+    let player_faction = **player;
+    // The determinate faller: the auto-selected SelectedShooter when it is player-faction,
+    // else the lowest-Entity player-faction ganger (a stable, deterministic tiebreak). Both
+    // reads go through the same query, so a single scan yields the pick.
+    let selected_player = (**selected).filter(|entity| {
+        gangers
+            .get(*entity)
+            .is_ok_and(|(_, faction, _)| *faction == player_faction)
+    });
+    let Some(faller) = selected_player.or_else(|| {
+        gangers
+            .iter()
+            .filter(|(_, faction, _)| **faction == player_faction)
+            .map(|(entity, ..)| entity)
+            .min()
+    }) else {
+        return;
+    };
+    let Ok((_, _, mut position)) = gangers.get_mut(faller) else {
+        return;
+    };
+    // 1. Elevate: stand the ganger on the lowest upper storey (same cell), so there is a floor
+    //    beneath it to smash. ONE involuntary write; `apply_falls` reads the live query this
+    //    frame (we run `.before` it), so it sees the elevated position.
+    let ground = ***position;
+    let elevated_cell = Cell::new(ground.x, ground.y);
+    let elevated = CellLevel::new(elevated_cell, FALL_TRIGGER_STOREY);
+    *position = Position::new(elevated);
+    // 2. Smash: destroy the slab the ganger now stands on. `apply_falls` (ordered after) reads
+    //    this same-frame message + the elevated position and drops the ganger to the ground.
+    destroyed.write(SlabDestroyed::new(elevated));
 }
 
 /// Narrow a `(cell, level)` key's storey-index `z` (an `i32` in the inner `IVec3`) to the
