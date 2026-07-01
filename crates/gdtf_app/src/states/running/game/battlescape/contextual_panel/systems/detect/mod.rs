@@ -13,27 +13,34 @@
 //!
 //! With a [`SelectedShooter`] holding an alive actor, the offered targets are:
 //!
-//! - **Execute** — the first [`LifeState::Downed`] ENEMY 8-adjacent ([`is_8_adjacent`]) to the
-//!   actor (faction differs) — the coup-de-grâce.
+//! - **Execute** — the first [`LifeState::Downed`] ENEMY 8-adjacent
+//!   ([`is_8_adjacent`](gdtf_battle_sim::downed_acts::is_8_adjacent)) to the actor (faction
+//!   differs) — the coup-de-grâce.
 //! - **Stabilize** — the first 8-adjacent downed ALLY (same faction) that is NOT already
 //!   [`Stabilized`] (its bleed clock still runs) — the dressing act.
 //! - **Melee** (GTW-507) — the first 8-adjacent, ALIVE, ENEMY ganger with a clear LOS
-//!   ([`has_los`]) — the close-combat strike. A STRONGER gate than Execute's downed-adjacency
-//!   (alive + LOS, not downed; `docs/combat/resolution.md` §7).
+//!   ([`has_los`](gdtf_battle_sim::los::has_los)) — the close-combat strike. A STRONGER gate
+//!   than Execute's downed-adjacency (alive + LOS, not downed; `docs/combat/resolution.md` §7).
+//! - **Melee — cover-smash** (GTW-508) — with NO meleeable ganger in reach, the first 8-adjacent
+//!   intact Cover / Wall cell, so the ONE Melee button offers either a ganger strike or a
+//!   cover-smash (never both). Its `(cell, level)` rides the seam's melee-structure slot.
+//!
+//! The three offer scans live in the [`scan`] submodule (GTW-508 C6 — code-health size cap);
+//! this file (`mod.rs`) owns the [`detect_contextual_targets`] system, its query `type`
+//! aliases, and the [`LosGrids`] bundle.
 //!
 //! The actual sim gates ([`execute_downed`](gdtf_battle_sim::execute_downed) /
 //! [`stabilize_downed`](gdtf_battle_sim::stabilize_downed) /
 //! [`dispatch_melee`](gdtf_battle_sim::dispatch_melee)) re-check faction + reach (+ LOS for
 //! melee) authoritatively when the act fires; this layer only decides what to OFFER (and reuses
-//! [`has_los`] verbatim so the melee offer matches the sim's geometry truth).
+//! [`has_los`](gdtf_battle_sim::los::has_los) verbatim so the melee offer matches the sim's
+//! geometry truth).
 
 use bevy::prelude::*;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     CoverLedger, OccupancyGrid, SurfaceGrid,
-    downed_acts::is_8_adjacent,
-    ganger::{Facing, Faction, LifeState, Position, Stabilized, Stance, StanceKind},
-    los::{Observer, PeekOffset, Target, has_los},
+    ganger::{Facing, Faction, LifeState, Position, Stabilized, Stance},
     tuning::CombatTuning,
 };
 
@@ -124,8 +131,9 @@ type OpenDoorVisFilter = (
 /// [`SystemParam`](bevy::ecs::system::SystemParam) so [`detect_contextual_targets`] stays under
 /// clippy's argument-count gate (the sim's `BattleGridsParam` precedent).
 ///
-/// The three grids [`has_los`] marches through (read-only — the detection layer never mutates
-/// the sim) plus the [`CombatTuning`] the LOS geometry reads. `Option` reads so the system
+/// The three grids [`has_los`](gdtf_battle_sim::los::has_los) marches through (read-only — the
+/// detection layer never mutates the sim) plus the [`CombatTuning`] the LOS geometry reads.
+/// `Option` reads so the system
 /// stays valid before a battle inserts them (the melee scan then offers no target —
 /// `bevy-traps.md` #1); in a live battle they are always present.
 #[derive(bevy::ecs::system::SystemParam)]
@@ -168,8 +176,8 @@ pub(in crate::states::running::game::battlescape) struct LosGrids<'w> {
 ///
 /// The actual sim gate ([`dispatch_melee`](gdtf_battle_sim::dispatch_melee)) re-checks
 /// adjacency + LOS + alive + opposing faction authoritatively when the act fires; this layer
-/// only decides what to OFFER (and reuses [`has_los`] verbatim so the offered shot matches the
-/// sim's geometry truth).
+/// only decides what to OFFER (and reuses [`has_los`](gdtf_battle_sim::los::has_los) verbatim so
+/// the offered shot matches the sim's geometry truth).
 ///
 /// Param-only (`bevy-traps.md` #7): the [`SelectedShooter`] + [`ContextualTargets`] resources,
 /// a read-only `actors` [`Query`], a read-only `candidates` [`Query`], the [`LosGrids`] bundle
@@ -199,7 +207,7 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
     // — fail-closed, no panic.
     let actor = (**selected).and_then(|entity| actors.get(entity).ok());
 
-    let (execute, stabilize, melee) = match actor {
+    let (execute, stabilize, melee, melee_structure) = match actor {
         Some((actor_pos, actor_faction, actor_stance, actor_facing)) => {
             let (execute, stabilize) = scan_targets(*actor_pos, *actor_faction, &candidates);
             // GTW-507 — the melee target: an 8-adjacent, ALIVE, ENEMY ganger with a clear LOS.
@@ -217,131 +225,42 @@ pub(in crate::states::running::game::battlescape) fn detect_contextual_targets(
                 ),
                 _ => None,
             };
-            (execute, stabilize, melee)
+            // GTW-508 — the melee-STRUCTURE target: an 8-adjacent intact Cover / Wall cell.
+            // Offered ONLY when NO meleeable ganger is in reach (a ganger strike takes priority),
+            // so the one Melee button routes to a ganger strike or a cover-smash, never both.
+            let melee_structure = if melee.is_some() {
+                None
+            } else {
+                scan_melee_structure(*actor_pos, &grids)
+            };
+            (execute, stabilize, melee, melee_structure)
         }
-        None => (None, None, None),
+        None => (None, None, None, None),
     };
 
     // Write the offers onto the seam (the press router reads these).
-    *targets = ContextualTargets::with(execute, stabilize, melee);
+    *targets = ContextualTargets::with(execute, stabilize, melee, melee_structure);
 
-    // Toggle visibility IN PLACE — never despawn (ui-mutate-not-respawn).
+    // Toggle visibility IN PLACE — never despawn (ui-mutate-not-respawn). The Melee button shows
+    // when EITHER a meleeable ganger OR an adjacent structure to smash is in reach (GTW-508).
+    let melee_offered = melee.is_some() || melee_structure.is_some();
     set_visibility(&mut execute_btn, execute.is_some());
     set_visibility(&mut stabilize_btn, stabilize.is_some());
-    set_visibility(&mut melee_btn, melee.is_some());
+    set_visibility(&mut melee_btn, melee_offered);
     // Open Door is a deferred act — it stays hidden regardless of detection.
     set_visibility(&mut open_door_btn, false);
     // The panel shows iff at least one contextual act is offered.
     set_visibility(
         &mut panel_root,
-        execute.is_some() || stabilize.is_some() || melee.is_some(),
+        execute.is_some() || stabilize.is_some() || melee_offered,
     );
 }
 
-/// Scans `candidates` for the actor's actionable downed neighbours.
-///
-/// Returns `(execute, stabilize)`: the first 8-adjacent downed ENEMY (different faction) and
-/// the first 8-adjacent downed ALLY (same faction) that is not already [`Stabilized`]. Pure
-/// over the queried components (no world mutation) so the offer logic is testable in isolation
-/// from the visibility toggling.
-fn scan_targets(
-    actor_pos: Position,
-    actor_faction: Faction,
-    candidates: &Query<CandidateReads>,
-) -> (Option<Entity>, Option<Entity>) {
-    let mut execute = None;
-    let mut stabilize = None;
+/// The pure offer scans the brain runs — the Execute/Stabilize downed scan + the GTW-507 melee
+/// + the GTW-508 cover-smash scans, split into a submodule to keep each file under the size cap.
+mod scan;
 
-    for (entity, pos, life, faction, stabilized, _stance) in candidates {
-        // Only DOWNED neighbours within the 8-adjacent reach are candidates.
-        if *life != LifeState::Downed || !is_8_adjacent(actor_pos, *pos) {
-            continue;
-        }
-        if *faction == actor_faction {
-            // A downed ALLY — stabilize, unless its bleed clock is already halted.
-            let already_stabilized = stabilized.is_some_and(|flag| **flag);
-            if stabilize.is_none() && !already_stabilized {
-                stabilize = Some(entity);
-            }
-        } else if execute.is_none() {
-            // A downed ENEMY — execute.
-            execute = Some(entity);
-        }
-    }
-
-    (execute, stabilize)
-}
-
-/// Scans `candidates` for the actor's actionable MELEE target — the first 8-adjacent, ALIVE,
-/// ENEMY ganger with a clear line of sight from the actor (GTW-507; `docs/combat/resolution.md`
-/// §7).
-///
-/// A STRONGER offer gate than Execute's downed-adjacency: the target must be ALIVE (incl.
-/// Downed — [`LifeState::is_active`]), of the OPPOSING faction, 8-adjacent ([`is_8_adjacent`]),
-/// AND in clear LOS ([`has_los`], REUSED verbatim so the offered shot matches the sim's geometry
-/// truth). Returns the first such candidate, or [`None`] when none qualifies — including when
-/// the battle grids are absent (a pre-battle frame), so the melee button stays hidden until a
-/// live battle. A corpse never blocks the LOS march (the `is_dead` pass-through reused).
-///
-/// Pure over the queried components + the read grids (no world mutation), so it is testable in
-/// isolation. The sim's [`dispatch_melee`](gdtf_battle_sim::dispatch_melee) gate is the
-/// authoritative re-check when the act actually fires; this only decides what to OFFER.
-fn scan_melee_target(
-    actor_pos: Position,
-    actor_faction: Faction,
-    actor_stance: Stance,
-    actor_facing: Facing,
-    candidates: &Query<CandidateReads>,
-    grids: &LosGrids,
-) -> Option<Entity> {
-    // The melee LOS gate needs the live battle grids; with any absent (pre-battle) offer nothing
-    // — fail-closed (bevy-traps.md #1: handle the Option, never unwrap).
-    let (Some(occupancy), Some(surface), Some(cover), Some(tuning)) = (
-        grids.occupancy.as_ref(),
-        grids.surface.as_ref(),
-        grids.cover.as_ref(),
-        grids.tuning.as_ref(),
-    ) else {
-        return None;
-    };
-
-    // A Dead ganger is a corpse the LOS march flies THROUGH (the same `is_dead` pass-through
-    // `has_los` takes). Read each candidate's CURRENT LifeState; an absent entity is no corpse.
-    let is_dead = |entity: Entity| {
-        candidates
-            .get(entity)
-            .is_ok_and(|(_, _, life, ..)| *life == LifeState::Dead)
-    };
-
-    // The fallback silhouette for a candidate carrying no stance (a real fielded ganger always
-    // has one; this keeps the LOS aim defined for a minimal test/edge entity).
-    let standing = Stance::new(StanceKind::Standing);
-    for (entity, pos, life, faction, _stabilized, stance) in candidates {
-        // An ALIVE (incl. Downed) OPPOSING ganger within the 8-adjacent reach.
-        if !life.is_active() || *faction == actor_faction || !is_8_adjacent(actor_pos, *pos) {
-            continue;
-        }
-        // The LOS gate — a clear sight line actor → target over the SAME voxel geometry the sim
-        // fires through (built exactly as the sim's `dispatch_melee` builds the observer/target).
-        let observer = Observer {
-            position:         &actor_pos,
-            stance:           &actor_stance,
-            facing:           &actor_facing,
-            stair_eye_offset: occupancy.stair_eye_offset_at(&actor_pos),
-            peek_offset:      PeekOffset::default(),
-        };
-        let target = Target {
-            position: pos,
-            stance:   stance.unwrap_or(&standing),
-        };
-        if *has_los(
-            &observer, &target, occupancy, surface, cover, tuning, is_dead,
-        ) {
-            return Some(entity);
-        }
-    }
-    None
-}
+use scan::{scan_melee_structure, scan_melee_target, scan_targets};
 
 /// Sets the single matched [`Visibility`] to `Visible` (when `show`) or `Hidden`, in place.
 ///

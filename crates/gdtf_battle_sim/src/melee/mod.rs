@@ -35,9 +35,18 @@
 //! none. The owning [`dispatch_melee`](crate::acts::dispatch_melee) system owns the
 //! `ResMut<FightRng>` / `ResMut<ShotRng>` / `ResMut<SeverityRng>` and gates adjacency +
 //! LOS + alive + opposing faction before calling the verb.
+//!
+//! GTW-508 adds the `structure` module: [`resolve_structural_melee`] is the pure
+//! UNCONTESTED cover-smash synthesis for a melee strike on an adjacent inert STRUCTURE
+//! (a Cover / Wall cell). A structure does not defend, so there is NO opposed roll and NO
+//! [`FightRng`](crate::rng::FightRng) draw; it composes `resolve_hit` (§5, against the
+//! cover's own armor) → `apply_melee_multiplier` (FORK 4a's [`StructuralMult`] = `mult_max`)
+//! → the EXISTING [`CoverLedger::deplete_cover`](crate::cover::CoverLedger::deplete_cover),
+//! reimplementing no structural-damage bookkeeping.
 
 mod fight;
 mod strike;
+mod structure;
 
 #[cfg(test)]
 mod tests;
@@ -47,3 +56,4 @@ pub use fight::{
     opposed_fight,
 };
 pub use strike::{Combatants, MeleeStrike, MeleeWeaponHit, resolve_melee_strike};
+pub use structure::{StructuralMult, resolve_structural_melee};

@@ -161,16 +161,29 @@ impl Plugin for SimActsPlugin {
                     dispatch_stabilize_downed,
                     dispatch_execute_downed,
                     dispatch_reload,
-                    // GTW-507: the LIVE melee act. It drains MeleeRequested, gates 8-adjacency +
-                    // LOS + alive + opposing faction, spends the wielded melee weapon's fight-mode
-                    // TU, runs the §7 opposed-Fight → §5 → §6 synthesis (REUSING the GTW-506 core +
-                    // the §4/§5/§6 pieces verbatim), and emits MeleeResolved on a connect. It joins
-                    // the BattleInProgress-gated Simulate band (its Res grids + tuning + the three
-                    // ResMut RNG streams are battle-lifetime — the band's run_if skips it outside a
-                    // live battle, bevy-traps.md #1). It has no ordering dependency on the other
-                    // per-act dispatchers (it reads its own message + folds onto the target's own
-                    // components), so it joins the unordered group (bevy-traps.md #3 — no shared
-                    // mutable state with the siblings).
+                    // GTW-507/508: the LIVE melee act. It drains MeleeRequested, gates 8-adjacency
+                    // (+ LOS/alive/opposing faction on the ganger arm), spends the wielded melee
+                    // weapon's fight-mode TU, and either runs the §7 opposed-Fight → §5 → §6
+                    // synthesis onto a ganger (GTW-507, REUSING the GTW-506 core + §4/§5/§6 pieces
+                    // verbatim) or the GTW-508 UNCONTESTED cover-smash onto an adjacent structure —
+                    // multiplied (mult_max) weapon damage through CoverLedger::deplete_cover, firing
+                    // the EXISTING CoverDestroyed signal on a lethal smash. It joins the
+                    // BattleInProgress-gated Simulate band (its Res grids + tuning + the three ResMut
+                    // RNG streams are battle-lifetime — the band's run_if skips it outside a live
+                    // battle, bevy-traps.md #1).
+                    //
+                    // Ordering (bevy-traps.md #3): GTW-508 promoted its `cover` param to
+                    // ResMut<CoverLedger> (the cover-smash arm SPENDS it), so it now DOES share
+                    // mutable state with sibling `dispatch_fire` (which also holds
+                    // ResMut<CoverLedger> for the shoot-the-cover depletion). It still joins the
+                    // UNORDERED group because the shared write is order-INDEPENDENT: Bevy
+                    // auto-serializes two ResMut on the same resource (never a data race), and the
+                    // only shared op — `deplete_cover`'s saturating HP decrement — commutes (two
+                    // decrements on the same cell reach the same remaining HP in either order) and
+                    // its `destroyed` flag is monotonic (set-once), so whichever dispatcher runs
+                    // first, the ledger and any emitted CoverDestroyed converge to the same state.
+                    // The presenter's swap_destroyed_cover / read_cover_destroyed react idempotently.
+                    // No `.before`/`.after` is needed for correctness.
                     dispatch_melee,
                 )
                     .in_set(SimSystems::Simulate),

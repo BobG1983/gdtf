@@ -28,7 +28,7 @@ use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Cell, CellLevel, Direction, Facing, Faction, Level, LifeState, Position, Stabilized, Stance,
     StanceKind,
-    acts::{ExecuteDownedRequested, MeleeRequested},
+    acts::{ExecuteDownedRequested, MeleeRequested, MeleeTarget},
     injuries::InjuryRegistry,
     tuning::CombatTuning,
     weapon::WeaponRegistry,
@@ -709,7 +709,8 @@ fn pressing_melee_emits_melee_requested_for_target() {
         "the attacker is the SelectedShooter",
     );
     assert_eq!(
-        emitted[0].target, target,
-        "the target is the carried opposing neighbour",
+        emitted[0].target,
+        MeleeTarget::Ganger(target),
+        "the target is the carried opposing neighbour (the ganger melee form)",
     );
 }

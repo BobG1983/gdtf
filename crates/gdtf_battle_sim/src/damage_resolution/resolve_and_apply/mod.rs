@@ -74,6 +74,11 @@ mod report;
 mod test;
 
 pub use fold::resolve_and_apply;
+/// The two shared cover-hit primitives the §7 melee cover-smash path reuses (GTW-508 C1):
+/// the cover armor-piece shape and the HP-loss → cover-HP conversion. `pub(crate)` re-export
+/// (the private `fold` module owns them) so [`resolve_structural_melee`](crate::melee::resolve_structural_melee)
+/// imports the ONE definition instead of copying the ranged `apply_cover_hit` glue.
+pub(crate) use fold::{cover_armor_piece, cover_damage_from_hp};
 pub use report::{
     AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
 };

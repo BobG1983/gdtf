@@ -17,7 +17,7 @@ use crate::{
         AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
     },
     resolve_coarse::{ShotKind, ShotOutcome},
-    resolve_hit::resolve_hit,
+    resolve_hit::{HpDamage, resolve_hit},
     rng::{InjuryRng, SeverityRng},
     severity::{SeverityInputs, part_severity_mod, roll_severity},
     slab::{SlabDamage, SlabEntry, SlabEvent, SlabLedger},
@@ -88,7 +88,12 @@ fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (Ar
 /// §3), so the cover hit runs the EXACT same [`resolve_hit`] formula the ganger path
 /// runs — only the armor stats it resolves against come from the struck
 /// [`CoverEntry`] instead of a worn piece.
-const fn cover_armor_piece(entry: &CoverEntry) -> ArmorPiece {
+///
+/// `pub(crate)` so the §7 melee cover-smash path
+/// ([`resolve_structural_melee`](crate::melee::resolve_structural_melee), GTW-508)
+/// resolves against the SAME shared armor-piece shape — it is imported there, never
+/// re-defined, so the two cover-hit paths cannot drift.
+pub(crate) const fn cover_armor_piece(entry: &CoverEntry) -> ArmorPiece {
     ArmorPiece::new(
         ArmorFloor::new(0),
         entry.armor_protection,
@@ -96,6 +101,20 @@ const fn cover_armor_piece(entry: &CoverEntry) -> ArmorPiece {
         entry.armor_hardness,
         ArmorType::DEFAULT,
     )
+}
+
+/// Convert a resolved [`HpDamage`] into the [`CoverDamage`] the cover ledger spends —
+/// the shared HP-loss → cover-HP conversion both the ranged cover hit ([`apply_cover_hit`])
+/// and the §7 melee cover-smash ([`resolve_structural_melee`](crate::melee::resolve_structural_melee),
+/// GTW-508) route through.
+///
+/// [`HpDamage`] is a signed `i32` (it can read negative pre-floor, though the cover
+/// formula's floor `0` keeps it `≥ 0` here); a fully-soaked hit removes no HP, so the
+/// conversion clamps at zero — cover HP is a non-negative pool. `pub(crate)` so the melee
+/// path reuses this ONE conversion instead of copying the `u32::try_from(... .max(0))`
+/// glue (GTW-508 C1 — shared, not duplicated).
+pub(crate) fn cover_damage_from_hp(hp_damage: HpDamage) -> CoverDamage {
+    CoverDamage::new(u32::try_from((*hp_damage).max(0)).unwrap_or(0))
 }
 
 /// Spend a shot's damage against the struck cover and return the [`CoverEvent`]
@@ -137,10 +156,10 @@ fn apply_cover_hit(
         tuning,
     );
 
-    // The resolved HP-loss damage → a CoverDamage. HpDamage is a signed i32 (it can be
-    // negative pre-floor, though floor 0 keeps it ≥ 0 here); a fully-soaked hit removes
-    // no HP, so clamp the conversion at zero (cover HP is a non-negative pool).
-    let removed = CoverDamage::new(u32::try_from((*hit.hp_damage).max(0)).unwrap_or(0));
+    // The resolved HP-loss damage → a CoverDamage via the SHARED conversion (clamped at
+    // zero — cover HP is a non-negative pool); the melee cover-smash routes through the
+    // SAME helper (GTW-508 C1 — one conversion, not two).
+    let removed = cover_damage_from_hp(hit.hp_damage);
 
     // (2) C2 — spend it through the EXISTING ledger API (HP bookkeeping + destruction
     //     detection owned there). The prototype is the struck entry, so a never-hit

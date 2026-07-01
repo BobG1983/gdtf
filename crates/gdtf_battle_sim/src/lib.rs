@@ -260,8 +260,8 @@ pub use acts_runtime::{
     acts,
     acts::{
         FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved,
-        MoveRejected, MoveRejection, MovementOccurred, ReloadOutcome, ReloadResult, apply_injury,
-        can_engage, decide_fire_arc, dispatch_melee,
+        MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, ReloadOutcome, ReloadResult,
+        apply_injury, can_engage, decide_fire_arc, dispatch_melee,
     },
     ai,
     ai::{
@@ -381,7 +381,8 @@ pub use lifecycle::{
 };
 pub use melee::{
     Combatants, FightMargin, FightOutcome, MeleeDamageMult, MeleeStrike, MeleeWeaponHit,
-    apply_melee_multiplier, melee_damage_mult, opposed_fight, resolve_melee_strike,
+    StructuralMult, apply_melee_multiplier, melee_damage_mult, opposed_fight, resolve_melee_strike,
+    resolve_structural_melee,
 };
 pub use perception::{
     los,

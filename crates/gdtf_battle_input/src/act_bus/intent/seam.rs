@@ -3,7 +3,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
-    Aiming, Facing, Faction, PlayerFaction, Position, Stance, StanceKind,
+    Aiming, CellLevel, Facing, Faction, PlayerFaction, Position, Stance, StanceKind,
     acts::{
         AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
         MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
@@ -122,6 +122,19 @@ pub enum ActIntent {
     /// DEDICATED contextual MELEE button (NOT a left-click overload — the GTW-507 D1 ruling),
     /// mirroring the [`Execute`](Self::Execute) / [`Stabilize`](Self::Stabilize) contextual acts.
     Melee(Entity),
+    /// MELEE-SMASH the carried adjacent STRUCTURE cell — drained to
+    /// [`MeleeRequested::new_structural`] for the [`SelectedShooter`] as the attacker (GTW-508,
+    /// child GTW-37d). The carried [`CellLevel`] is the adjacent Cover / Wall cell the player
+    /// aimed the strike at; the attacker is always the selection. The drain emits
+    /// [`MeleeRequested::new_structural(attacker, at)`](MeleeRequested::new_structural) ONLY when
+    /// a shooter is selected (a no-op with no selection); the sim's
+    /// [`dispatch_melee`](gdtf_battle_sim::dispatch_melee) gate (8-adjacency to the cell) is the
+    /// authoritative check. The shared act-intent seam routes this structural target the SAME
+    /// way it routes a ganger [`Melee`](Self::Melee) target — one melee button, two target kinds.
+    /// Bound to the SAME dedicated contextual MELEE button (the GTW-508 C3 extension), which
+    /// offers a structure target when no meleeable ganger is in reach but an adjacent structure
+    /// is.
+    MeleeStructure(CellLevel),
     /// CYCLE the [`SelectedShooter`] to the NEXT player ganger in `(z, y, x)` order, wrapping
     /// (GTW-458). A SELECTION-layer intent (no sim act), drained directly in
     /// [`dispatch_act_intents`] via [`cycle_player_selection`]: it collects the player-faction
@@ -308,6 +321,10 @@ impl SelectionCycleReads<'_, '_> {
 /// - [`ActIntent::Melee`] emits [`MeleeRequested`] with the [`SelectedShooter`] as the
 ///   attacker and the carried opposing target (GTW-507) — a no-op with no selection; the sim's
 ///   `dispatch_melee` gate (8-adjacent + clear LOS + an alive opposing target) is authoritative.
+/// - [`ActIntent::MeleeStructure`] emits [`MeleeRequested::new_structural`] with the
+///   [`SelectedShooter`] as the attacker and the carried adjacent structure cell (GTW-508) —
+///   onto the SAME melee writer; a no-op with no selection; the sim's `dispatch_melee`
+///   8-adjacency-to-the-cell gate is authoritative.
 ///
 /// The GTW-458 SELECTION-CYCLE intents step the [`SelectedShooter`] through the player gang
 /// in the shared `(z, y, x)` order ([`cell_order_key`] — the exact order the auto-select
@@ -432,6 +449,15 @@ pub fn dispatch_act_intents(
                 // (8-adjacent + clear LOS + an alive opposing target) is the authoritative check.
                 let Some(attacker) = **selected else { continue };
                 acts.melee.write(MeleeRequested::new(attacker, target));
+            }
+            ActIntent::MeleeStructure(at) => {
+                // Melee-SMASH the carried adjacent structure cell — attacker is the selection
+                // (GTW-508). Mirror the Melee arm onto the SAME melee writer (one message type,
+                // one sim dispatch): a no-op with no selection. The sim's dispatch_melee gate
+                // (8-adjacency to the cell) is the authoritative check.
+                let Some(attacker) = **selected else { continue };
+                acts.melee
+                    .write(MeleeRequested::new_structural(attacker, at));
             }
             ActIntent::SelectNext => {
                 cycle_selection(&mut selected, &cycle_reads, CycleDirection::Next);

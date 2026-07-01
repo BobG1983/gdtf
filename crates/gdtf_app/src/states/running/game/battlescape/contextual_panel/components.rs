@@ -20,6 +20,7 @@
 //! satisfies `unreachable_pub`. This mirrors the action-bar / bottom-bar marker shape.
 
 use bevy::prelude::*;
+use gdtf_battle_sim::CellLevel;
 
 crate::support_item! {
     /// Marks the **root** node of the contextual panel box (the bottom-right cluster holding the
@@ -115,32 +116,42 @@ crate::support_item! {
 pub(in crate::states::running::game::battlescape) struct ContextualTargets {
     /// The downed neighbour the **Execute** act would target, or [`None`] when no downed ENEMY
     /// is in reach. Written each update by the detection system.
-    pub(in crate::states::running::game::battlescape) execute:   Option<Entity>,
+    pub(in crate::states::running::game::battlescape) execute:         Option<Entity>,
     /// The downed neighbour the **Stabilize** act would target, or [`None`] when no
     /// not-yet-stabilized downed ALLY is in reach. Written each update by the detection system.
-    pub(in crate::states::running::game::battlescape) stabilize: Option<Entity>,
+    pub(in crate::states::running::game::battlescape) stabilize:       Option<Entity>,
     /// The opposing ganger the **Melee** act would strike (GTW-507), or [`None`] when no
     /// 8-adjacent, ALIVE, in-LOS ENEMY is in reach. A STRONGER gate than Execute's
     /// downed-adjacency (alive + LOS, not downed). Written each update by the detection system.
-    pub(in crate::states::running::game::battlescape) melee:     Option<Entity>,
+    pub(in crate::states::running::game::battlescape) melee:           Option<Entity>,
+    /// The adjacent inert STRUCTURE cell the **Melee** act would SMASH (GTW-508), or [`None`]
+    /// when no 8-adjacent intact Cover / Wall cell is in reach. Offered ONLY when no meleeable
+    /// ganger [`melee`](Self::melee) target is in reach (a ganger target takes priority), so the
+    /// ONE Melee button routes to a ganger strike or a cover-smash, never both. Written each
+    /// update by the detection system.
+    pub(in crate::states::running::game::battlescape) melee_structure: Option<CellLevel>,
 }
 
 impl ContextualTargets {
-    /// Build the offer seam from the detected `execute` / `stabilize` / `melee` targets.
+    /// Build the offer seam from the detected `execute` / `stabilize` / `melee` /
+    /// `melee_structure` targets.
     ///
-    /// The single write-point the detection system uses each update; each argument is the
-    /// neighbour [`Entity`] that act would target (the framework carve-out), or [`None`] when
-    /// no such neighbour is in reach.
+    /// The single write-point the detection system uses each update; each ganger argument is the
+    /// neighbour [`Entity`] that act would target (the framework carve-out), `melee_structure`
+    /// is the adjacent structure [`CellLevel`] the cover-smash would hit, or [`None`] when no
+    /// such target is in reach.
     #[must_use]
     pub(in crate::states::running::game::battlescape) const fn with(
         execute: Option<Entity>,
         stabilize: Option<Entity>,
         melee: Option<Entity>,
+        melee_structure: Option<CellLevel>,
     ) -> Self {
         Self {
             execute,
             stabilize,
             melee,
+            melee_structure,
         }
     }
 
@@ -172,6 +183,19 @@ impl ContextualTargets {
     #[must_use]
     pub(in crate::states::running::game::battlescape) const fn melee(&self) -> Option<Entity> {
         self.melee
+    }
+
+    /// The **Melee-structure** target — the 8-adjacent intact Cover / Wall cell a press would
+    /// SMASH, or [`None`] (GTW-508).
+    ///
+    /// Read by [`contextual_button_intents`](super::systems::contextual_button_intents) to route
+    /// a Melee press to a cover-smash when no ganger [`melee`](Self::melee) target is in reach
+    /// (the ganger target takes priority — the router checks it first).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn melee_structure(
+        &self,
+    ) -> Option<CellLevel> {
+        self.melee_structure
     }
 }
 

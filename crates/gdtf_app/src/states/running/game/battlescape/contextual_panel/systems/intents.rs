@@ -94,11 +94,15 @@ pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
     {
         pending.push(ActIntent::Stabilize(target));
     }
-    // GTW-507: the dedicated Melee button — push ActIntent::Melee(target) for the carried
-    // offered opposing ganger (the `Some`-guard keeps a stale press safe).
-    if melee_btn.iter().copied().any(is_press)
-        && let Some(target) = targets.melee()
-    {
-        pending.push(ActIntent::Melee(target));
+    // The dedicated Melee button routes to a GANGER strike (GTW-507) or, when no meleeable
+    // ganger is offered, an adjacent-structure SMASH (GTW-508) — the ONE button, two target
+    // kinds. The ganger target takes priority (checked first); the `Some`-guards keep a stale
+    // press safe.
+    if melee_btn.iter().copied().any(is_press) {
+        if let Some(target) = targets.melee() {
+            pending.push(ActIntent::Melee(target));
+        } else if let Some(at) = targets.melee_structure() {
+            pending.push(ActIntent::MeleeStructure(at));
+        }
     }
 }

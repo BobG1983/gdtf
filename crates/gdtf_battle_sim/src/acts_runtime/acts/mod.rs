@@ -75,6 +75,6 @@ pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance}
 pub use reload::{ReloadOutcome, ReloadResult, dispatch_reload};
 pub use request::{
     AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
-    MeleeResolved, MoveRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-    SetStanceRequested, StabilizeDownedRequested,
+    MeleeResolved, MeleeTarget, MoveRequested, ReloadRequested, SetAimingRequested,
+    SetFacingRequested, SetStanceRequested, StabilizeDownedRequested,
 };
