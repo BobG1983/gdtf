@@ -20,9 +20,11 @@ use crate::{
             EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
             ExitEmplacementRequested, FireRequested, MeleeRequested, MeleeResolved, MoveRequested,
             OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-            SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
+            SetStanceRequested, ShoveRequested, StabilizeDownedRequested, ThrowGrenadeRequested,
+            ThrowResolved,
         },
         shove::dispatch_shove,
+        throw_grenade::dispatch_throw_grenade,
     },
     ai::enemy_ai_turn,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
@@ -91,6 +93,7 @@ impl Plugin for SimActsPlugin {
     fn build(&self, app: &mut App) {
         register_messages(app);
         wire_systems(app);
+        wire_throw(app); // GTW-546: the blind throw-grenade act (line-cap split)
     }
 }
 
@@ -131,6 +134,16 @@ fn register_messages(app: &mut App) {
         // dispatchers' MessageReader params valid (bevy-traps.md #4 / #5).
         .add_message::<EnterEmplacementRequested>()
         .add_message::<ExitEmplacementRequested>()
+        // GTW-546: the THROW-GRENADE act's input message — drained by dispatch_throw_grenade.
+        // The player-only contextual Throw button writes it (input seam -> ActIntent::ThrowGrenade,
+        // the SeamApp phase). Registering the buffer here makes dispatch_throw_grenade's
+        // MessageReader<ThrowGrenadeRequested> param valid (bevy-traps.md #4 / #5).
+        .add_message::<ThrowGrenadeRequested>()
+        // GTW-546: dispatch_throw_grenade emits ThrowResolved per resolved throw (the presenter's
+        // impact / blast FX keys off it). Registering the buffer here makes its
+        // MessageWriter<ThrowResolved> param valid + creates the Messages<ThrowResolved> buffer the
+        // presenter's throw-FX reader (SeamApp phase) gates on (the MeleeResolved precedent).
+        .add_message::<ThrowResolved>()
         // GTW-543: the enter/exit dispatchers WRITE SetEmplacement (the GTW-543 toggle mechanism
         // they reuse). Registering the buffer here makes their MessageWriter<SetEmplacement> valid
         // even when SimActsPlugin is wired WITHOUT EmplacementTogglePlugin (the in-crate acts test
@@ -308,13 +321,11 @@ fn wire_systems(app: &mut App) {
             // Enter/Exit-EmplacementTu leaf), spend that TU off the actor, and WRITE a
             // SetEmplacement::occupy / ::vacate — REUSING the GTW-543 toggle mechanism (they never
             // flip EmplacementState directly). Like dispatch_open_door they join the UNORDERED
-            // group: the only state they share with a sibling is the SetEmplacement message buffer
-            // they produce, which EmplacementTogglePlugin's apply_emplacement_toggle CONSUMES — but
-            // buffered messages persist a frame (bevy-traps.md #4), so it reads them next tick
-            // regardless of intra-frame order (the emplacement's one-frame settle). Their
-            // Res<CombatTuning> read is battle-lifetime — taken Option<Res> so they fail closed
-            // outside a live battle (bevy-traps.md #1). Their actor (&mut Tu) + emplacement
-            // (&EmplacementState) queries touch disjoint entities, so no B0001 conflict.
+            // group: their only shared state is the SetEmplacement message buffer they produce,
+            // which EmplacementTogglePlugin's apply_emplacement_toggle CONSUMES next tick (buffered
+            // messages persist a frame, bevy-traps.md #4 — the emplacement's one-frame settle).
+            // Res<CombatTuning> is Option<Res> (fail-closed, bevy-traps.md #1); their actor
+            // (&mut Tu) + emplacement (&EmplacementState) queries are disjoint (no B0001).
             dispatch_enter_emplacement,
             dispatch_exit_emplacement,
         )
@@ -533,6 +544,21 @@ fn wire_systems(app: &mut App) {
             .in_set(SimSystems::Simulate),
     );
     wire_clocks(app); // GTW-544/547: the DOT+field clocks + on-death resolver (line-cap split)
+}
+
+/// Wire the GTW-546 throw-grenade act into the [`SimSystems::Simulate`] band — the
+/// [`dispatch_throw_grenade`] dispatcher. Split out of [`wire_systems`] so that function stays
+/// under clippy's line-count gate (the [`wire_clocks`] precedent).
+///
+/// The dispatcher drains [`ThrowGrenadeRequested`], re-gates a blind lob (an `Arc` weapon with a
+/// loaded round + affordable [`ThrowTu`](crate::tuning::ThrowTu); NO line-of-sight / facing gate),
+/// marches the deterministic arc + fans the GTW-541 blast at the landing, and emits
+/// [`ThrowResolved`]. It joins the same gated Simulate band as the other acts; UNORDERED — its
+/// `ResMut<CoverLedger>` / `ResMut<SlabLedger>` writes commute with `dispatch_fire`'s (the
+/// shared-ledger rationale documented on `dispatch_fire`), and its thrower (`&mut Tu`) + weapon
+/// (`&mut Magazine`) + target queries touch disjoint entities (no B0001 conflict).
+fn wire_throw(app: &mut App) {
+    app.add_systems(Update, dispatch_throw_grenade.in_set(SimSystems::Simulate));
 }
 
 /// Wire the per-round-clock + on-death systems into the [`SimSystems::Simulate`] band — the

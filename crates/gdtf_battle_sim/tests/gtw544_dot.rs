@@ -51,8 +51,8 @@ use gdtf_battle_sim::{
     weapon::{
         Accuracy, BaseSpread, DamageType, Dot, DotDamage, DotProfile, DotTurns, FatalBias,
         FireMode, FireModeSpec, Handedness, Kickback, MagazineSize, ModeConeMult, ModeKind,
-        ModeShots, ModeTuPercent, Shove, Stable, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponRegistry, WeaponShred, WeaponSpec,
+        ModeShots, ModeTuPercent, Shove, Stable, TrajectoryStyle, WeaponDamage, WeaponName,
+        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
 
@@ -109,6 +109,7 @@ fn dot_weapon_spec(dot: Option<DotProfile>) -> WeaponSpec {
         stable: Stable::new(true),
         shove: Shove::new(false),
         handedness: Handedness::OneHanded,
+        trajectory: TrajectoryStyle::Straight,
         attachment_slots: Vec::new(),
         dot,
         on_death: None,

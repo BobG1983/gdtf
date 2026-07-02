@@ -7,8 +7,8 @@ use serde::Deserialize;
 
 use super::{
     Accuracy, AttachTag, AttachmentEffects, BaseSpread, DamageProfile, DamageType, DotProfile,
-    FatalBias, FireMode, Handedness, HandlingProfile, Kickback, Shove, Stable, WeaponBundle,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    FatalBias, FireMode, Handedness, HandlingProfile, Kickback, Shove, Stable, TrajectoryStyle,
+    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 use crate::{magazine::Magazine, tuning::AttachmentTuning};
 
@@ -78,6 +78,16 @@ pub struct WeaponSpec {
     /// `.weapon.ron`. The shared `can_fire` guard refuses a `TwoHanded` weapon below two
     /// available hands.
     pub handedness:       Handedness,
+    /// The weapon's **trajectory style** (GTW-546, child GTW-41d) — `Straight` (a flat ray)
+    /// or `Arc` (a lobbed grenade parabola), authored as the `trajectory:` `.weapon.ron`
+    /// field. `#[serde(default)]` (defaulting to [`TrajectoryStyle::Straight`]) so an omitted
+    /// field is a flat-firing weapon: the field is OPT-IN (the `shove` / `attachment_slots`
+    /// `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which author
+    /// it — deserializes and spawns BYTE-IDENTICAL. A grenade / grenade launcher authors
+    /// `trajectory: Arc`, spawning a [`TrajectoryStyle::Arc`] component the throw path reads to
+    /// lob the round via [`march_arc`](crate::march::march_arc) with no LOS gate.
+    #[serde(default)]
+    pub trajectory:       TrajectoryStyle,
     /// The weapon's fitted **attachments** (GTW-542, child GTW-41b) — the list of
     /// [`AttachTag`]s the weapon carries, authored as the `attachment_slots:` `.weapon.ron`
     /// field. `#[serde(default)]` so an omitted field falls back to an EMPTY list (a weapon
@@ -158,7 +168,8 @@ impl WeaponSpec {
                 self.stable,
                 self.shove,
                 self.handedness,
-            ),
+            )
+            .with_trajectory(self.trajectory),
         );
         // GTW-542: fold the attachment slots — mutating the bundle's leaves in place and
         // collecting the sibling tags the spawn seam composes onto the weapon entity.

@@ -48,6 +48,7 @@
 //! leaves the grid immediately, a zero direction) are graceful — a [`MarchKind::Miss`],
 //! never a panic.
 
+mod arc;
 mod dda;
 mod geom;
 mod result;
@@ -56,5 +57,9 @@ mod vector;
 #[cfg(test)]
 mod test;
 
+// GTW-546 (child GTW-41d): the lobbed-grenade arc march — the `TrajectoryStyle::Arc`
+// counterpart to `march_vector`. A deterministic parabola blocked only by intact roofs
+// (holes / windows pass); its landing feeds the GTW-541 blast resolver.
+pub use arc::march_arc;
 pub use result::{MarchKind, MarchResult};
 pub use vector::march_vector;

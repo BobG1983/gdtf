@@ -66,7 +66,8 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Shove,
-        Stable, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
+        WeaponShred, WeaponSpec,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -1687,6 +1688,7 @@ fn armed_registry() -> WeaponRegistry {
             stable:           Stable::new(false),
             shove:            Shove::new(false),
             handedness:       Handedness::OneHanded,
+            trajectory:       TrajectoryStyle::Straight,
             attachment_slots: Vec::new(),
             dot:              None,
             on_death:         None,

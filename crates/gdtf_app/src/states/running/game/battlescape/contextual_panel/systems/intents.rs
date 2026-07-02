@@ -33,7 +33,7 @@ use gdtf_ui::DisabledButton;
 
 use crate::states::running::game::battlescape::contextual_panel::components::{
     ContextualTargets, EnterEmplacementButton, ExecuteButton, ExitEmplacementButton, MeleeButton,
-    OpenDoorButton, ShoveButton, StabilizeButton,
+    OpenDoorButton, ShoveButton, StabilizeButton, ThrowGrenadeButton,
 };
 
 /// Query filter selecting the ENABLED button carrying marker `M` whose [`Interaction`] became a
@@ -56,7 +56,7 @@ const fn is_press(interaction: Interaction) -> bool {
     matches!(interaction, Interaction::Pressed)
 }
 
-/// The seven disjoint per-marker press queries, grouped into ONE
+/// The eight disjoint per-marker press queries, grouped into ONE
 /// [`SystemParam`](bevy::ecs::system::SystemParam) so [`contextual_button_intents`] stays under
 /// clippy's argument-count gate (the input seam's `ActWriters` / detect's `LosGrids` precedent).
 ///
@@ -80,6 +80,8 @@ pub(in crate::states::running::game::battlescape) struct ContextualButtonPresses
     enter_emplacement: Query<'w, 's, &'static Interaction, PressedButton<EnterEmplacementButton>>,
     /// The **Exit Emplacement** button's this-frame press query (GTW-543).
     exit_emplacement:  Query<'w, 's, &'static Interaction, PressedButton<ExitEmplacementButton>>,
+    /// The **Throw** button's this-frame press query (GTW-546).
+    throw_grenade:     Query<'w, 's, &'static Interaction, PressedButton<ThrowGrenadeButton>>,
 }
 
 impl ContextualButtonPresses<'_, '_> {
@@ -112,6 +114,8 @@ impl ContextualButtonPresses<'_, '_> {
 ///   [`ActIntent::EnterEmplacement(emplacement)`](ActIntent::EnterEmplacement) (GTW-543)
 /// - [`ExitEmplacementButton`] + [`ContextualTargets::exit_emplacement`] `== Some(emplacement)` →
 ///   [`ActIntent::ExitEmplacement(emplacement)`](ActIntent::ExitEmplacement) (GTW-543)
+/// - [`ThrowGrenadeButton`] + [`ContextualTargets::throw_grenade`] `== Some(at)` →
+///   [`ActIntent::ThrowGrenade(at)`](ActIntent::ThrowGrenade) (GTW-546)
 ///
 /// The `Some`-guard is the safety: a press with no offered target (a stale press after the
 /// panel hid) queues nothing. The button writes NO `*Requested` directly — the ONE
@@ -131,7 +135,8 @@ impl ContextualButtonPresses<'_, '_> {
 /// update — the same-frame guarantee the keyboard writers + the action bar get (`bevy-traps.md`
 /// #3). Param-only (`bevy-traps.md` #7): the read-only [`ContextualTargets`] seam, the
 /// [`ContextualButtonPresses`] bundle of seven disjoint per-marker `Query<&Interaction, …>`s, and
-/// the `ResMut<PendingActIntent>` write.
+/// the `ResMut<PendingActIntent>` write. (The [`ContextualButtonPresses`] bundle now holds eight
+/// disjoint per-marker `Query<&Interaction, …>`s — the GTW-546 Throw button included.)
 pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
     targets: Res<ContextualTargets>,
     mut pending: ResMut<PendingActIntent>,
@@ -187,5 +192,13 @@ pub(in crate::states::running::game::battlescape) fn contextual_button_intents(
         && let Some(emplacement) = targets.exit_emplacement()
     {
         pending.push(ActIntent::ExitEmplacement(emplacement));
+    }
+    // The dedicated Throw button (GTW-546) — lobs a grenade at the hovered target cell (a BLIND
+    // lob, offered when the selection wields an `Arc` weapon). The `Some`-guard keeps a stale press
+    // safe (the sim's `dispatch_throw_grenade` re-gate + TU / magazine spend are authoritative).
+    if ContextualButtonPresses::pressed(&presses.throw_grenade)
+        && let Some(at) = targets.throw_grenade()
+    {
+        pending.push(ActIntent::ThrowGrenade(at));
     }
 }

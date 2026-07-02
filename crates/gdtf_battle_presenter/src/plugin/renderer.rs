@@ -7,7 +7,9 @@ use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger, DotTicked,
     FallOccurred, FieldRegistry, FieldTicked, InjuryInflicted, OccupancyGrid, OnDeathOccurred,
     PlayerFaction, ShotFired, SlabDestroyed, SquadVisibility, SuppressionApplied, SurfaceGrid,
-    VerticalLinkGraph, acts::MeleeResolved, occupancy_sync::SimSystems,
+    VerticalLinkGraph,
+    acts::{MeleeResolved, ThrowResolved},
+    occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -24,7 +26,7 @@ use crate::{
     move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
     read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed, read_dot_fct,
     read_fall_occurred, read_field_fct, read_injury_fct, read_melee_resolved, read_on_death_fct,
-    read_suppression_fct, redrive_character_roles_on_asset_event,
+    read_suppression_fct, read_throw_resolved, redrive_character_roles_on_asset_event,
     redrive_effect_roles_on_asset_event, redrive_fx_tuning_on_asset_event,
     redrive_pan_tuning_on_asset_event, redrive_sheet_images_on_asset_event,
     redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
@@ -343,6 +345,10 @@ impl Plugin for TopDownRendererPlugin {
         // SAME `PresenterSystems::Draw` band (extracted to keep `build` under the
         // `too_many_lines` lint).
         register_fx_flash_systems(app);
+
+        // GTW-546: the grenade BLAST FX reader (extracted to its own fn to keep
+        // `register_fx_flash_systems` under the `too_many_lines` lint — the on-death precedent).
+        register_throw_blast_systems(app);
 
         // GTW-249: the battle-start frame-on-units + the bounds clamp (extracted for the
         // same `too_many_lines` reason).
@@ -841,6 +847,38 @@ fn register_fx_flash_systems(app: &mut App) {
     // generic animator the primitive owns.
     .add_systems(Update, animate_floating_text.in_set(PresenterSystems::Draw))
     .add_systems(Update, expire_flashes.in_set(PresenterSystems::Draw));
+}
+
+/// Register the GTW-546 grenade-BLAST FX reader on the `PresenterSystems::Draw` band —
+/// extracted from [`register_fx_flash_systems`] to keep that fn under the `too_many_lines` lint
+/// (the [`register_on_death_systems`] precedent).
+///
+/// [`read_throw_resolved`] drains the sim's [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved)
+/// signal (one per resolved throw) and SEEDS a [`PendingImpact`](crate::PendingImpact) at the
+/// arc's LANDING cell so the EXISTING [`animate_impact`] plays the grenade's damage-type
+/// expanding-shockwave impact strip there — the SAME `AoE` hit FX the fire path renders, reused
+/// (the throw's sim blast fold emits no [`ShotFired`], so it would otherwise be an invisible HP
+/// drain). The seed is spawned via `spawn_scene`, so it materializes on the frame's `SpawnScene`
+/// schedule and [`animate_impact`] picks it up the NEXT update — the SAME one-update handoff a
+/// shot's arrived projectile uses ([`advance_projectiles`] also seeds its `PendingImpact` via
+/// `spawn_scene`), so no explicit ordering is needed.
+///
+/// Registers the sim's [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved) buffer idempotently
+/// (`add_message` is IDEMPOTENT; the `MeleeResolved` precedent — the sim's `SimActsPlugin`
+/// registers it in a real battle, this presenter-only harness adds it so the `MessageReader` param
+/// validates, `bevy-traps.md` #4). Gated on the SAME render resources + the `ThrowResolved` buffer
+/// its `MessageReader` drains.
+fn register_throw_blast_systems(app: &mut App) {
+    app.add_message::<ThrowResolved>();
+    let render_gate = resource_exists::<BattleInProgress>
+        .and_then(resource_exists::<EffectRoles>)
+        .and_then(resource_exists::<TopDownAtlases>);
+    app.add_systems(
+        Update,
+        read_throw_resolved
+            .in_set(PresenterSystems::Draw)
+            .run_if(render_gate.and_then(resource_exists::<Messages<ThrowResolved>>)),
+    );
 }
 
 /// Registers the GTW-251 message-driven hover-highlight draw into the already-defined

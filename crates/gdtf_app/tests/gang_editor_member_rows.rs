@@ -49,8 +49,8 @@ use gdtf_battle_sim::{
     Accuracy, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
     ArmorRegistry, ArmorSpec, ArmorType, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec,
     Kickback, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, ReloadTu,
-    Shove, Stable, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
-    weapon::Handedness,
+    Shove, Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
+    WeaponShred, WeaponSpec, weapon::Handedness,
 };
 use gdtf_test_utils::GdtfTestAppBuilder;
 use gdtf_ui::{
@@ -91,6 +91,7 @@ fn arbitrary_weapon() -> WeaponSpec {
         stable:           Stable::new(false),
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
+        trajectory:       TrajectoryStyle::Straight,
         attachment_slots: Vec::new(),
         dot:              None,
         on_death:         None,

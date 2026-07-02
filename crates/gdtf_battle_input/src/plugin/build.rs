@@ -20,7 +20,7 @@ use gdtf_battle_sim::{
         EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
         ExitEmplacementRequested, FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested,
         ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        ShoveRequested, StabilizeDownedRequested,
+        ShoveRequested, StabilizeDownedRequested, ThrowGrenadeRequested,
     },
     occupancy_sync::SimSystems,
     setup_battle_on_request,
@@ -205,6 +205,11 @@ impl Plugin for GdtfBattleInputPlugin {
         // present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
         .add_message::<EnterEmplacementRequested>()
         .add_message::<ExitEmplacementRequested>()
+        // GTW-546 — the throw-grenade buffer the ThrowGrenade intent drains into, so the drain's
+        // `MessageWriter<ThrowGrenadeRequested>` passes param validation whether or not
+        // `SimActsPlugin` is present (`add_message` is IDEMPOTENT, so this coexists with the sim's
+        // registration).
+        .add_message::<ThrowGrenadeRequested>()
         // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
         // emitter's `MessageWriter<HighlightRequest>` passes param validation even
         // headlessly (`bevy-traps.md` #4). `add_message` is IDEMPOTENT.

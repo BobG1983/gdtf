@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
         AimRequest, EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
         ExitEmplacementRequested, FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested,
         ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        ShoveRequested, StabilizeDownedRequested,
+        ShoveRequested, StabilizeDownedRequested, ThrowGrenadeRequested,
     },
 };
 
@@ -203,6 +203,22 @@ pub enum ActIntent {
     /// check. Exit is a SEPARATE TU-costed context action — there is NO force-eject. Bound to the
     /// DEDICATED contextual Exit button, which offers ONLY the emplacement the selection occupies.
     ExitEmplacement(Entity),
+    /// THROW (lob) a grenade at the carried `target` CELL — drained to [`ThrowGrenadeRequested`]
+    /// for the [`SelectedShooter`] as the thrower (GTW-546, child GTW-41d). The carried
+    /// [`CellLevel`] is the cell the grenade is LOBBED at — a cell AT RANGE, not an 8-adjacent
+    /// entity, so it mirrors the [`MeleeStructure`](Self::MeleeStructure) `CellLevel` payload
+    /// rather than the bare-`Entity` contextual acts. The thrower is always the selection. The
+    /// drain emits [`ThrowGrenadeRequested::new(thrower, at)`](ThrowGrenadeRequested::new) ONLY
+    /// when a shooter is selected (a no-op with no selection); the sim's
+    /// [`dispatch_throw_grenade`](gdtf_battle_sim::acts::dispatch_throw_grenade) gate (the thrower
+    /// wields a [`TrajectoryStyle::Arc`](gdtf_battle_sim::TrajectoryStyle) weapon with a loaded
+    /// round + affords the [`ThrowTu`](gdtf_battle_sim::tuning::ThrowTu) leaf) is the authoritative
+    /// check, not this layer's, and the SIM spends the TU + magazine round (one-way
+    /// `input -> sim` boundary). The throw is BLIND — there is NO line-of-sight / facing / arc
+    /// gate (a lob need not see its target), so no arc / turn-to-fire runs. Bound to the DEDICATED
+    /// contextual Throw button, which is offered when the selection wields an `Arc` weapon and a
+    /// target cell is hovered, mirroring the other contextual acts.
+    ThrowGrenade(CellLevel),
     /// CYCLE the [`SelectedShooter`] to the NEXT player ganger in `(z, y, x)` order, wrapping
     /// (GTW-458). A SELECTION-layer intent (no sim act), drained directly in
     /// [`dispatch_act_intents`] via [`cycle_player_selection`]: it collects the player-faction
@@ -320,6 +336,12 @@ pub struct ActWriters<'w> {
     /// actor + affords `ExitEmplacementTu`) is the authoritative check, and the SIM spends the TU
     /// (one-way `input -> sim` boundary). Exit is a SEPARATE TU-costed action (NO force-eject).
     exit_emplacement:  MessageWriter<'w, ExitEmplacementRequested>,
+    /// The throw-grenade writer — the contextual Throw button's drained message (GTW-546). Emitted
+    /// only for a selected thrower over the carried target CELL; the sim's `dispatch_throw_grenade`
+    /// gate (wields a `TrajectoryStyle::Arc` weapon + a loaded round + affords `ThrowTu`) is the
+    /// authoritative check, and the SIM spends the TU + magazine round (one-way `input -> sim`
+    /// boundary). The throw is BLIND — no LOS / facing / arc gate (a lob need not see its target).
+    throw:             MessageWriter<'w, ThrowGrenadeRequested>,
 }
 
 /// The READ-ONLY world the [`ActIntent::SelectNext`] / [`ActIntent::SelectPrev`] cycle arms
@@ -436,6 +458,11 @@ impl SelectionCycleReads<'_, '_> {
 ///   no selection; the sim's `dispatch_exit_emplacement` gate (the recorded `EmplacementOccupant` IS
 ///   the actor + affords `ExitEmplacementTu`) is authoritative and the SIM spends the TU (a SEPARATE
 ///   TU-costed action — NO force-eject).
+/// - [`ActIntent::ThrowGrenade`] emits [`ThrowGrenadeRequested::new`] with the [`SelectedShooter`]
+///   as the thrower and the carried target CELL (GTW-546) — a no-op with no selection; the sim's
+///   `dispatch_throw_grenade` gate (the thrower wields a `TrajectoryStyle::Arc` weapon with a loaded
+///   round + affords `ThrowTu`) is authoritative and the SIM spends the TU + magazine round. The
+///   throw is BLIND — no LOS / facing / arc gate.
 ///
 /// The GTW-458 SELECTION-CYCLE intents step the [`SelectedShooter`] through the player gang
 /// in the shared `(z, y, x)` order ([`cell_order_key`] — the exact order the auto-select
@@ -559,7 +586,8 @@ pub fn dispatch_act_intents(
             | ActIntent::Shove(_)
             | ActIntent::OpenDoor(_)
             | ActIntent::EnterEmplacement(_)
-            | ActIntent::ExitEmplacement(_) => {
+            | ActIntent::ExitEmplacement(_)
+            | ActIntent::ThrowGrenade(_) => {
                 // The target-carrying contextual acts share ONE shape — resolve the selected
                 // actor then write one `*Requested` (a no-op with no selection); each arm's doc
                 // records the sim gate that is the authoritative check. Factored into
@@ -582,7 +610,8 @@ pub fn dispatch_act_intents(
 ///
 /// The one shape behind [`ActIntent::Execute`] / [`ActIntent::Stabilize`] /
 /// [`ActIntent::Melee`] / [`ActIntent::MeleeStructure`] / [`ActIntent::Shove`] /
-/// [`ActIntent::OpenDoor`] / [`ActIntent::EnterEmplacement`] / [`ActIntent::ExitEmplacement`]:
+/// [`ActIntent::OpenDoor`] / [`ActIntent::EnterEmplacement`] / [`ActIntent::ExitEmplacement`] /
+/// [`ActIntent::ThrowGrenade`]:
 /// resolve the actor from the `SelectedShooter`, then write ONE act
 /// message carrying `(actor, carried-target)`. Each arm's variant doc records the SIM gate that
 /// is the authoritative check (this layer's offer is advisory). Factored out of
@@ -627,7 +656,12 @@ fn emit_selected_act(intent: &ActIntent, selected: Option<Entity>, acts: &mut Ac
             acts.exit_emplacement
                 .write(ExitEmplacementRequested::new(actor, emplacement));
         }
-        // Not a target-carrying act — the caller only routes the eight variants above here.
+        // GTW-546 — wields a `TrajectoryStyle::Arc` weapon + a loaded round + affords `ThrowTu`;
+        // BLIND (no LOS / facing / arc gate) — the sim re-gates authoritatively.
+        ActIntent::ThrowGrenade(at) => {
+            acts.throw.write(ThrowGrenadeRequested::new(actor, at));
+        }
+        // Not a target-carrying act — the caller only routes the nine variants above here.
         _ => {}
     }
 }

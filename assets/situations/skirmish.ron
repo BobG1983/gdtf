@@ -51,6 +51,20 @@
             aiming:     false,        // aim-mode flag — hip-firing, not aimed
             life_state: Alive,        // terminal life state — up and fighting
         ),
+        // --- Gang 0: a grenadier beside Alex, facing east — carries the ARC grenade launcher, so
+        // the contextual THROW act is LIVE in the shipped playable skirmish (GTW-546). Player
+        // faction (0): the AI never acts for the player, so this does NOT perturb the seeded
+        // autobattle enemy path. ---
+        (
+            gang:       "gang_0",      // gang ROSTER ref — resolves to assets/content/gangs/gang_0.gang.ron
+            member:     "Kira Vann",   // the grenadier member within gang_0 — wields the grenade_launcher (TrajectoryStyle::Arc)
+            at:         (cell: (x: 5, y: 8), level: 0),  // (cell, level) it spawns at — beside Alex on the player side
+            faction:    0,            // SIDE assignment for this battle — gang 0 (the player side)
+            facing:     East,         // faces toward the enemy deployment
+            stance:     Standing,     // posture — upright
+            aiming:     false,        // aim-mode flag — hip-firing (the blind arc throw ignores aim anyway)
+            life_state: Alive,        // terminal life state — up and fighting
+        ),
         // --- Gang 1: a crouching, aimed defender across the floor, facing west. ---
         (
             gang:       "gang_1",      // gang ROSTER ref — resolves to assets/content/gangs/gang_1.gang.ron

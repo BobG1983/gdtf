@@ -38,8 +38,8 @@ use gdtf_battle_sim::{
     ArmorProtection, ArmorRegistry, ArmorSpec, ArmorType, BaseSpread, Cool, DamageType,
     DerivedStats, FatalBias, FireMode, FireModeSpec, GangerAttributes, GangerStatTuning, Grit,
     Kickback, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Reflexes,
-    ReloadTu, Shove, Speed, Stable, Strength, Toughness, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponShred, WeaponSpec, derive_stats, ganger::Luck, weapon::Handedness,
+    ReloadTu, Shove, Speed, Stable, Strength, Toughness, TrajectoryStyle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponShred, WeaponSpec, derive_stats, ganger::Luck, weapon::Handedness,
 };
 use gdtf_test_utils::GdtfTestAppBuilder;
 use gdtf_ui::{
@@ -73,6 +73,7 @@ fn arbitrary_weapon() -> WeaponSpec {
         stable:           Stable::new(false),
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
+        trajectory:       TrajectoryStyle::Straight,
         attachment_slots: Vec::new(),
         dot:              None,
         on_death:         None,

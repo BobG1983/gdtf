@@ -306,9 +306,11 @@ fn run_real_setup(
     Some(battle)
 }
 
-/// The expected pre-migration ganger set (the inline list `skirmish.ron` used to carry,
-/// now sourced from the migrated gang rosters + situation placements).
-fn expected_set() -> [Expected; 3] {
+/// The expected shipped ganger set (the migrated gang rosters + situation placements): the
+/// three original gangers plus the GTW-546 grenadier "Kira Vann" (a player-faction member of
+/// `gang_0` wielding the ARC `grenade_launcher`, so the contextual Throw act is live in the shipped
+/// skirmish).
+fn expected_set() -> [Expected; 4] {
     [
         Expected {
             name:       "Alex Mercer",
@@ -319,6 +321,22 @@ fn expected_set() -> [Expected; 3] {
             armor:      "flak_vest",
             gang:       "gang_0",
             position:   cell(5, 6, 0),
+            faction:    0,
+            facing:     Direction::East,
+            stance:     StanceKind::Standing,
+            aiming:     false,
+            life_state: LifeState::Alive,
+        },
+        // GTW-546: the grenadier — a player-faction (gang_0) member wielding the ARC
+        // grenade_launcher, placed beside Alex, so the contextual THROW act is live in the shipped
+        // skirmish. Same attributes / flak_vest as Alex (a survivable grenadier).
+        Expected {
+            name:       "Kira Vann",
+            attributes: [3.0, 3.0, 4.0, 12.0, 3.0, 6.0, 19.0, 1.0],
+            weapon:     "grenade_launcher",
+            armor:      "flak_vest",
+            gang:       "gang_0",
+            position:   cell(5, 8, 0),
             faction:    0,
             facing:     Direction::East,
             stance:     StanceKind::Standing,

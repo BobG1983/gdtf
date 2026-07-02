@@ -45,9 +45,9 @@ pub use crate::{
         StabilityBar, StabilizeButton, StanceControl, StanceKneelingButton, StancePanelRoot,
         StanceProneButton, StanceStandingButton, StatFaction, StatHpBar, StatHpLabel,
         StatInjuryLine, StatInjuryList, StatName, StatPortrait, StatStance, StatTuBar, StatTuLabel,
-        StatWoundLine, StatWoundList, StatWoundsPips, WeaponContent, WeaponImage, WeaponItemButton,
-        WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
-        portrait_index_for_name,
+        StatWoundLine, StatWoundList, StatWoundsPips, ThrowGrenadeButton, WeaponContent,
+        WeaponImage, WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText,
+        WeaponPanelRoot, portrait_index_for_name,
     },
 };
 

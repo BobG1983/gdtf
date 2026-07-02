@@ -15,6 +15,11 @@
 //! - [`FallOccurred`](gdtf_battle_sim::FallOccurred) `{ ganger, to_level, storeys, … }` ->
 //!   a fall-impact flash at the landing cell + a `"Fell"` FCT pop (GTW-524;
 //!   [`read_fall_occurred`]); ADDITIVE to the wound/bleed/injury flashes the fall damage drives.
+//! - [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved) `{ at, damage }` -> the GTW-546
+//!   grenade BLAST FX: [`read_throw_resolved`] seeds a [`PendingImpact`] at the arc's LANDING
+//!   cell so the SAME [`animate_impact`] plays the grenade's damage-type expanding-shockwave
+//!   impact strip there — the existing `AoE` hit FX, reused (the throw's sim blast fold emits no
+//!   [`ShotFired`](gdtf_battle_sim::ShotFired), so it would otherwise be an invisible HP drain).
 //! - [`ShotFired`](gdtf_battle_sim::ShotFired) `{ muzzle, trajectory, impact, kind, damage }`
 //!   -> the GTW-306 FIRING FX (reshaped from GTW-290's smeared stretched tracer): a
 //!   **traveling directional projectile** that LERPS muzzle→impact then despawns
@@ -45,6 +50,7 @@
 //! ZERO sim setup/teardown. It mirrors, never owns, combat truth — the one-way
 //! `input -> presenter -> sim` edge (ADR-0001); the sim never reads the presenter.
 
+mod blast;
 mod fall;
 mod fct;
 mod flash;
@@ -58,6 +64,7 @@ mod tuning;
 #[cfg(test)]
 mod test;
 
+pub use blast::read_throw_resolved;
 pub use fall::read_fall_occurred;
 pub use fct::{
     CombatLogEvent, CombatText, FctEmphasis, FctStackIndex, FctValence, FloatingCombatText,

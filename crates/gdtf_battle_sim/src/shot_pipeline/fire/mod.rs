@@ -67,10 +67,15 @@
 //! **Zero pixels** — the reports carry only damage / wound math, never a screen
 //! coordinate.
 
+mod blast;
 mod compose;
 mod query;
 mod volley;
 
+// GTW-546 (child GTW-41d): the throw's blast-at-a-landing resolver — fans a HitType::Blast
+// at a lobbed grenade's landing cell onto every covered ganger through the SAME GTW-541
+// resolve_and_apply fold the fire path uses (no parallel damage math).
+pub use blast::resolve_blast;
 pub use query::{
     BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
     WeaponQuery, WearsQuery, WieldsQuery,

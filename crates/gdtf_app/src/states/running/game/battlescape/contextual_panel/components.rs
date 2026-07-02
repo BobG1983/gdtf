@@ -153,6 +153,21 @@ crate::support_item! {
     struct ExitEmplacementButton;
 }
 
+crate::support_item! {
+    /// Marks the **Throw** contextual button (GTW-546) — the act that LOBS a grenade at a target
+    /// cell at range.
+    ///
+    /// A DEDICATED contextual button, mirroring [`EnterEmplacementButton`] / [`OpenDoorButton`].
+    /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by
+    /// the detection system (which also wires its press to the `ThrowGrenadeRequested` act) when
+    /// [`ContextualTargets::throw_grenade`] names a target cell — offered when the selected PLAYER
+    /// actor wields a [`TrajectoryStyle::Arc`](gdtf_battle_sim::TrajectoryStyle) weapon and a target
+    /// cell is hovered (a BLIND lob needs no adjacency / LOS gate — F4 player-only). A unit marker:
+    /// presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ThrowGrenadeButton;
+}
+
 /// The neighbours the contextual panel can act on; written each update by the detection system
 /// (GTW-294 live slice; extended by GTW-507 / GTW-508 / GTW-525 / GTW-315).
 ///
@@ -207,6 +222,13 @@ pub(in crate::states::running::game::battlescape) struct ContextualTargets {
     /// Offered ONLY to the occupant (there is NO force-eject). Written each update by the detection
     /// system.
     pub(in crate::states::running::game::battlescape) exit_emplacement:  Option<Entity>,
+    /// The target CELL the **Throw** act would lob a grenade at (GTW-546), or [`None`] when the
+    /// selection wields no [`TrajectoryStyle::Arc`](gdtf_battle_sim::TrajectoryStyle) weapon or no
+    /// target cell is hovered. A [`CellLevel`] (a cell AT RANGE — the throw is BLIND, needing no
+    /// adjacency / LOS gate), mirroring [`melee_structure`](Self::melee_structure). F4 is
+    /// PLAYER-ONLY (this offer runs only for a selected player-faction actor). Written each update
+    /// by the detection system.
+    pub(in crate::states::running::game::battlescape) throw_grenade:     Option<CellLevel>,
 }
 
 impl ContextualTargets {
@@ -295,6 +317,17 @@ impl ContextualTargets {
         &self,
     ) -> Option<Entity> {
         self.exit_emplacement
+    }
+
+    /// The **Throw** target — the target CELL a press would lob a grenade at, or [`None`] (GTW-546).
+    ///
+    /// Read by [`contextual_button_intents`](super::systems::contextual_button_intents) to route a
+    /// Throw press to the carried target cell (the `Some`-guard keeps a stale press safe).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn throw_grenade(
+        &self,
+    ) -> Option<CellLevel> {
+        self.throw_grenade
     }
 }
 

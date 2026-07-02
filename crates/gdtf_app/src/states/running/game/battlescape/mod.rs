@@ -155,6 +155,6 @@ pub(in crate::states::running::game::battlescape) use contextual_panel::Contextu
 crate::support_use! {
     contextual_panel::{
         ContextualPanelRoot, EnterEmplacementButton, ExecuteButton, ExitEmplacementButton,
-        MeleeButton, OpenDoorButton, ShoveButton, StabilizeButton,
+        MeleeButton, OpenDoorButton, ShoveButton, StabilizeButton, ThrowGrenadeButton,
     };
 }

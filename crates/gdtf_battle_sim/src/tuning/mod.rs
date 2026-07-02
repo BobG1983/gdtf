@@ -84,7 +84,7 @@ pub use cone_groups::{
 };
 pub use economy::{
     EnterEmplacementTu, ExitEmplacementTu, LinkTu, MoveCost, MoveCosts, OpenDoorTu, ShoveTu,
-    StanceChangeTu, TurnTu,
+    StanceChangeTu, ThrowTu, TurnTu,
 };
 pub use falls::PerStoreyDamage;
 pub use firing_arc::FiringArc;

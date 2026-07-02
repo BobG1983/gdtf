@@ -57,8 +57,8 @@ use gdtf_battle_sim::{
         Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FightMode, FightModeKind,
         FightModeSpec, FireMode, FireModeSpec, Handedness, HitType, Kickback, MagazineSize,
         MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Reach, Shove, Stable, Strikes, TuCost, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponRegistry, WeaponShred, WeaponSpec,
+        Reach, Shove, Stable, Strikes, TrajectoryStyle, TuCost, WeaponDamage, WeaponName,
+        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
 
@@ -99,6 +99,7 @@ fn explode_weapon_spec() -> WeaponSpec {
         stable:           Stable::new(true),
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
+        trajectory:       TrajectoryStyle::Straight,
         attachment_slots: Vec::new(),
         dot:              None,
         // GTW-547: the killed ganger detonates a radius-1 blast dealing a flat 50 HP per cell.

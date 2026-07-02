@@ -62,7 +62,7 @@ use gdtf_battle_sim::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
     },
     tuning::{CombatTuning, ViewRange},
-    weapon::{MountedWeapon, WeaponName, WeaponRegistry, WeaponSpec, WieldedBy},
+    weapon::{MountedWeapon, TrajectoryStyle, WeaponName, WeaponRegistry, WeaponSpec, WieldedBy},
 };
 
 /// Gang `0` is the player.
@@ -113,6 +113,7 @@ fn gun_spec(damage_type: DamageType) -> WeaponSpec {
         stable: Stable::new(false),
         shove: Shove::new(false),
         handedness: Handedness::OneHanded,
+        trajectory: TrajectoryStyle::Straight,
         attachment_slots: Vec::new(),
         dot: None,
         on_death: None,

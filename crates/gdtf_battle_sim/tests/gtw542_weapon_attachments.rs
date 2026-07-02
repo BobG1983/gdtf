@@ -39,8 +39,9 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WeaponDamage,
-        WeaponName, WeaponRegistry, WeaponShred, WeaponSpec, Wields, shooter_weapon_silenced,
+        FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, TrajectoryStyle,
+        WeaponDamage, WeaponName, WeaponRegistry, WeaponShred, WeaponSpec, Wields,
+        shooter_weapon_silenced,
     },
 };
 
@@ -83,6 +84,7 @@ fn ranged_spec(slots: Vec<AttachTag>) -> WeaponSpec {
         stable:           Stable::new(false),
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
+        trajectory:       TrajectoryStyle::Straight,
         attachment_slots: slots,
         dot:              None,
         on_death:         None,

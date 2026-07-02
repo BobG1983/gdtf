@@ -67,6 +67,13 @@ const SHIPPED_VOLATILE_CHARGE_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/content/weapons/ranged/volatile_charge.weapon.ron"
 ));
+// GTW-546: Kira Vann's roster weapon is the ARC-trajectory grenade launcher (making the contextual
+// THROW act LIVE in the shipped skirmish), so the shipped-setup test's registry must resolve it too
+// — the shipped `.weapon.ron` read at compile time.
+const SHIPPED_GRENADE_LAUNCHER_RON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/content/weapons/ranged/grenade_launcher.weapon.ron"
+));
 
 /// Build a registry from the shipped weapon files, keyed by their filename stems —
 /// the real-asset registry the shipped `skirmish.ron` setup resolves against (AC5).
@@ -75,13 +82,18 @@ pub(super) fn shipped_registry() -> Option<WeaponRegistry> {
     let stub_pistol = ron::de::from_str::<WeaponSpec>(SHIPPED_STUB_PISTOL_RON);
     let las_carbine = ron::de::from_str::<WeaponSpec>(SHIPPED_LAS_CARBINE_RON);
     let volatile_charge = ron::de::from_str::<WeaponSpec>(SHIPPED_VOLATILE_CHARGE_RON);
+    let grenade_launcher = ron::de::from_str::<WeaponSpec>(SHIPPED_GRENADE_LAUNCHER_RON);
     assert!(
-        stub_pistol.is_ok() && las_carbine.is_ok() && volatile_charge.is_ok(),
+        stub_pistol.is_ok()
+            && las_carbine.is_ok()
+            && volatile_charge.is_ok()
+            && grenade_launcher.is_ok(),
         "all shipped weapon files must parse: stub_pistol={stub_pistol:?} \
-         las_carbine={las_carbine:?} volatile_charge={volatile_charge:?}",
+         las_carbine={las_carbine:?} volatile_charge={volatile_charge:?} \
+         grenade_launcher={grenade_launcher:?}",
     );
-    let (Ok(stub_pistol), Ok(las_carbine), Ok(volatile_charge)) =
-        (stub_pistol, las_carbine, volatile_charge)
+    let (Ok(stub_pistol), Ok(las_carbine), Ok(volatile_charge), Ok(grenade_launcher)) =
+        (stub_pistol, las_carbine, volatile_charge, grenade_launcher)
     else {
         return None;
     };
@@ -91,6 +103,10 @@ pub(super) fn shipped_registry() -> Option<WeaponRegistry> {
         (
             WeaponName::new("volatile_charge".to_owned()),
             volatile_charge,
+        ),
+        (
+            WeaponName::new("grenade_launcher".to_owned()),
+            grenade_launcher,
         ),
     ]))
 }

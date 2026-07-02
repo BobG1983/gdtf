@@ -262,9 +262,9 @@ pub use acts_runtime::{
     acts::{
         FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved,
         MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, OpenDoorRequested,
-        ReloadOutcome, ReloadResult, ShoveOutcome, ShoveRequested, ShoveSource, apply_injury,
-        can_engage, decide_fire_arc, dispatch_melee, dispatch_open_door, dispatch_shove,
-        resolve_shove,
+        ReloadOutcome, ReloadResult, ShoveOutcome, ShoveRequested, ShoveSource,
+        ThrowGrenadeRequested, ThrowResolved, apply_injury, can_engage, decide_fire_arc,
+        dispatch_melee, dispatch_open_door, dispatch_shove, dispatch_throw_grenade, resolve_shove,
     },
     ai,
     ai::{
@@ -364,9 +364,10 @@ pub use equipment::{
         FightMode, FightModeKind, FightModeSpec, FireMode, FireModeSpec, Handedness,
         HandlingProfile, HitType, Kickback, MagazineSize, MeleeDamageProfile, MeleeWeapon,
         MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, MountedWeapon, Reach, Scoped, Shove, Silenced, Stable, Strikes, TuCost,
-        Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
-        WeaponSightBonus, WeaponSpec, WeaponStats, WieldedBy, Wields, shooter_weapon_silenced,
+        ModeTuPercent, MountedWeapon, Reach, Scoped, Shove, Silenced, Stable, Strikes,
+        TrajectoryStyle, TuCost, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponShred, WeaponSightBonus, WeaponSpec, WeaponStats, WieldedBy, Wields,
+        shooter_weapon_silenced,
     },
 };
 pub use falls::{DropLanding, FallOccurred, FallsPlugin, StoreysFallen, apply_falls, resolve_drop};
@@ -440,10 +441,10 @@ pub use shot_pipeline::{
     fire,
     fire::{
         BattleGrids, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery, Volley,
-        WeaponQuery, WearsQuery, WieldsQuery, fire,
+        WeaponQuery, WearsQuery, WieldsQuery, fire, resolve_blast,
     },
     march,
-    march::{MarchKind, MarchResult, march_vector},
+    march::{MarchKind, MarchResult, march_arc, march_vector},
     resolve_coarse,
     resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse},
     sample_cone,

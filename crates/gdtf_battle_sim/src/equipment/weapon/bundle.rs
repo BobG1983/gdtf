@@ -7,8 +7,8 @@ use bevy::prelude::Bundle;
 
 use super::{
     Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireMode, Handedness, Kickback,
-    Scoped, Shove, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
-    WeaponSightBonus,
+    Scoped, Shove, Stable, TrajectoryStyle, Weapon, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponShred, WeaponSightBonus,
 };
 use crate::magazine::Magazine;
 
@@ -119,6 +119,12 @@ pub struct WeaponBundle {
     /// The weapon's [`Handedness`] (GTW-443) — `OneHanded` / `TwoHanded`; the shared
     /// `can_fire` guard refuses a `TwoHanded` weapon below two available hands.
     pub handedness:  Handedness,
+    /// The weapon's [`TrajectoryStyle`] (GTW-546) — `Straight` (the default, a flat ray) or
+    /// `Arc` (a lobbed grenade parabola). The throw / fire path reads it to pick the straight
+    /// [`march_vector`](crate::march::march_vector) or the parabolic
+    /// [`march_arc`](crate::march::march_arc). Spawned from the spec's `#[serde(default)]`
+    /// `trajectory` field, so every existing weapon carries `Straight`.
+    pub trajectory:  TrajectoryStyle,
 }
 
 /// A weapon's **damage block** for spawning — the three per-hit damage numbers plus
@@ -188,11 +194,19 @@ pub struct HandlingProfile {
     pub shove:      Shove,
     /// The weapon's [`Handedness`] (GTW-443).
     pub handedness: Handedness,
+    /// The weapon's [`TrajectoryStyle`] (GTW-546) — `Straight` (the default) or `Arc` (a
+    /// lobbed grenade).
+    pub trajectory: TrajectoryStyle,
 }
 
 impl HandlingProfile {
     /// Build a handling block from a weapon's [`Magazine`] grouping, fire-mode
     /// selector, `stable` tag, `shove` tag (GTW-525), and [`Handedness`] (GTW-443).
+    ///
+    /// The [`TrajectoryStyle`] (GTW-546) defaults to [`TrajectoryStyle::Straight`] (a flat
+    /// ray — every existing weapon), OVERRIDDEN by [`with_trajectory`](HandlingProfile::with_trajectory)
+    /// for a lobbed grenade. Keeping the base ctor's arity unchanged means the many existing
+    /// callers (tests + the spawn seam) spawn byte-identical `Straight` weapons untouched.
     #[must_use]
     pub const fn new(
         magazine: Magazine,
@@ -207,7 +221,18 @@ impl HandlingProfile {
             stable,
             shove,
             handedness,
+            trajectory: TrajectoryStyle::Straight,
         }
+    }
+
+    /// Set this handling block's [`TrajectoryStyle`] (GTW-546) — the builder a grenade /
+    /// grenade-launcher spec calls to lob its charge (`Arc`), leaving the default `Straight`
+    /// weapons untouched. Consumes and returns `self` (the builder idiom), so it chains off
+    /// [`new`](HandlingProfile::new) without rippling that ctor's arity into every call site.
+    #[must_use]
+    pub const fn with_trajectory(mut self, trajectory: TrajectoryStyle) -> Self {
+        self.trajectory = trajectory;
+        self
     }
 }
 
@@ -247,6 +272,7 @@ impl WeaponBundle {
             stable: handling.stable,
             shove: handling.shove,
             handedness: handling.handedness,
+            trajectory: handling.trajectory,
         }
     }
 

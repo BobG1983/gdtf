@@ -334,6 +334,34 @@ pub struct PendingImpact {
     pub(in crate::actors::fx) report:  Option<HitReport>,
 }
 
+impl PendingImpact {
+    /// Seed a BLAST impact at a lobbed grenade's landing world point `at` carrying `damage`
+    /// (GTW-546) — the seam [`animate_impact`](super::impact::animate_impact) reads to play the
+    /// grenade's damage-type 3-frame expanding-shockwave strip at the detonation point.
+    ///
+    /// Unlike a shot's arrival seed (which carries this shot's classified pops + the shooter +
+    /// verdict for the GTW-328 [`ShotImpactResolved`](super::impact::ShotImpactResolved) line), a
+    /// blast is a MULTI-ganger fan with no single per-shot verdict: its numbers / downs ride the
+    /// per-ganger wound / injury / bleed FCT signals the sim's blast fold already drives. So this
+    /// seed carries an EMPTY pop list, a [`None`] report, and a
+    /// [`PLACEHOLDER`](bevy::ecs::entity::Entity::PLACEHOLDER) shooter — [`animate_impact`]'s
+    /// emitted `ShotImpactResolved` then classifies as a miss (no phantom shot line). Kept
+    /// `pub(in crate::actors::fx)` so only the sibling blast reader
+    /// ([`read_throw_resolved`](super::blast::read_throw_resolved)) constructs it (the FX layer
+    /// owns the seam).
+    #[must_use]
+    pub(in crate::actors::fx) const fn for_blast(at: Vec3, damage: DamageType) -> Self {
+        Self {
+            at,
+            damage,
+            pops: Vec::new(),
+            anchor: (Cell::new(0, 0), Level::new(0)),
+            shooter: Entity::PLACEHOLDER,
+            report: None,
+        }
+    }
+}
+
 /// `Update` (`PresenterSystems::Draw`): spawn the traveling DIRECTIONAL projectile per
 /// [`ShotFired`] round.
 ///

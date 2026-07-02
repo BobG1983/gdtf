@@ -49,8 +49,8 @@ use gdtf_battle_sim::{
     weapon::{
         Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HitType, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Shove, Stable, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-        WeaponShred, WeaponSpec,
+        ModeTuPercent, Shove, Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
 
@@ -93,6 +93,7 @@ fn aoe_weapon_spec(hit_type: HitType) -> WeaponSpec {
         stable:           Stable::new(true),
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
+        trajectory:       TrajectoryStyle::Straight,
         attachment_slots: Vec::new(),
         dot:              None,
         on_death:         None,

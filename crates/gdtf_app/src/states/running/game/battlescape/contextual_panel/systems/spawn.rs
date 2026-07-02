@@ -47,7 +47,7 @@ use crate::states::running::game::battlescape::contextual_panel::components::{
     CONTEXTUAL_PANEL_BOTTOM_VH, CONTEXTUAL_PANEL_RIGHT_VW, CONTEXTUAL_PANEL_ROW_GAP_VH,
     CONTEXTUAL_PANEL_WIDTH_VW, CONTEXTUAL_PANEL_Z, ContextualPanelRoot, EnterEmplacementButton,
     ExecuteButton, ExitEmplacementButton, MeleeButton, OpenDoorButton, ShoveButton,
-    StabilizeButton,
+    StabilizeButton, ThrowGrenadeButton,
 };
 
 /// Builds the contextual-panel tree on `OnEnter(BattleScapeState::BattleRunning)`.
@@ -184,6 +184,16 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
         ButtonLabel::new("Exit"),
         (ExitEmplacementButton, Visibility::Hidden),
     );
+    // GTW-546: the DEDICATED Throw button, mirroring the Enter / Exit buttons. Spawned
+    // Visibility::Hidden; `detect_contextual_targets` reveals it when the selection wields a
+    // `TrajectoryStyle::Arc` weapon and a target cell is hovered (a BLIND lob — no adjacency / LOS
+    // gate) on `ContextualTargets::throw_grenade`.
+    let throw_grenade = spawn_button(
+        &mut commands,
+        &theme,
+        ButtonLabel::new("Throw"),
+        (ThrowGrenadeButton, Visibility::Hidden),
+    );
 
     // Parent the buttons under the panel BOX (the root) — they inherit its resolved
     // UI-camera target and its `GlobalZIndex`, so the whole subtree draws above the bottom bar.
@@ -195,6 +205,7 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
         open_door,
         enter_emplacement,
         exit_emplacement,
+        throw_grenade,
     ]);
 }
 

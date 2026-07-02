@@ -56,6 +56,7 @@ mod melee;
 mod registry;
 mod relationship;
 mod spec;
+mod trajectory;
 
 #[cfg(test)]
 mod test;
@@ -85,3 +86,7 @@ pub use melee::{
 pub use registry::WeaponRegistry;
 pub use relationship::{WieldedBy, Wields};
 pub use spec::WeaponSpec;
+// GTW-546 (child GTW-41d): the per-weapon trajectory style — a `Straight` ray (the
+// default, every existing weapon) or a lobbed `Arc` (a grenade / grenade launcher). The
+// fire path reads it to pick the straight `march_vector` or the parabolic `march_arc`.
+pub use trajectory::TrajectoryStyle;

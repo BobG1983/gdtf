@@ -31,5 +31,25 @@
             armor:     "flak_vest",    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
             weapon:    "volatile_charge",  // GTW-547: a volatile satchel-charge weapon — its `on_death` Explode effect detonates a radius-1 blast at Alex's body when Alex dies (resolves to assets/content/weapons/ranged/volatile_charge.weapon.ron at setup), making the on-death Explode LIVE in the shipped skirmish
         ),
+        // GTW-546: a grenadier — carries the ARC-trajectory grenade launcher, so the contextual
+        // THROW button is LIVE in the shipped playable skirmish (a player ganger that wields a
+        // TrajectoryStyle::Arc weapon reveals the Throw button when a cell is hovered, lobbing a
+        // Blast at range over cover / through roof holes). Player-faction only — the AI never acts
+        // for the player faction (ai/brain.rs no-ops when active == player), and ThrowGrenade is a
+        // separate message the AI never emits, so this addition does NOT perturb the deterministic
+        // seeded autobattle (the enemy path is unchanged).
+        (
+            name:      "Kira Vann",    // member identity — the situation references this name to field this grenadier
+            speed:     3.0,            // Speed attribute — quickness; drives the derived TU budget
+            aim:       3.0,            // Aim attribute — marksmanship (unused by the blind arc throw, authored for parity)
+            strength:  4.0,            // Strength attribute — physical power
+            toughness: 12.0,           // Toughness attribute — damage resistance
+            reflexes:  3.0,            // Reflexes attribute — reaction speed
+            cool:      6.0,            // Cool attribute — nerves
+            grit:      19.0,           // Grit attribute — resilience (→ HP ~34, a survivable grenadier)
+            luck:      1.0,            // Luck attribute — the severity-roll tail
+            armor:     "flak_vest",    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
+            weapon:    "grenade_launcher",  // GTW-546: the ARC-trajectory, magazine-fed grenade launcher (resolves to assets/content/weapons/ranged/grenade_launcher.weapon.ron) — makes the contextual THROW act LIVE in the shipped skirmish
+        ),
     ],
 )

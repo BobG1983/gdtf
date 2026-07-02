@@ -251,6 +251,45 @@ impl Default for ExitEmplacementTu {
     }
 }
 
+/// The **throw-grenade TU cost** — the flat number of Time Units a ganger spends to LOB a
+/// grenade / grenade-launcher charge at a target cell (GTW-546, child GTW-41d): the deliberate
+/// blind-throw context action, resolving the arc march + the GTW-541 blast at the landing.
+///
+/// The flat cost the throw act charges via [`crate::tu::spend_tu`] when its gates resolve (the
+/// thrower wields a [`TrajectoryStyle::Arc`](crate::weapon::TrajectoryStyle) weapon with a
+/// loaded round + can afford it). Priming and lobbing a grenade is a committed one-action
+/// throw, so the chosen default is a flat `6` TU (matched to the committed-setup
+/// [`EnterEmplacementTu`] / [`ShoveTu`] baseline). A small `u8` count, matching
+/// [`crate::ganger::Tu`]'s inner type so the economy subtracts it directly. The default is a
+/// **starting point**, tunable balance data — tests assert only the relation to this value
+/// (the drop equals it), never the magnitude. `#[serde(transparent)]` lets it parse a bare RON
+/// scalar; private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct ThrowTu(u8);
+
+impl ThrowTu {
+    /// Build a throw-grenade TU cost from its flat Time-Unit magnitude (a starting point, TBD
+    /// tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style) while
+    /// letting the throw-act tests and any programmatic tuning edit build a cost without a bare
+    /// `u8` escaping; shipped values come from the `.ron` via the derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for ThrowTu {
+    fn default() -> Self {
+        // A flat 6 TU to lob a grenade — a STARTING POINT (tunable balance data): a committed
+        // one-action throw (prime + lob), matched to the committed-setup enter-emplacement (6)
+        // and shove (6) baselines. Value-agnostic tests only, never a pinned magnitude.
+        Self(6)
+    }
+}
+
 /// One terrain's **move TU cost** — the flat number of Time Units a ganger spends to
 /// step ONTO a cell of a given [`TerrainKind`] (`docs/combat/combat.md` L34
 /// affirmatively lists "step" among the actions that "cost TUs").

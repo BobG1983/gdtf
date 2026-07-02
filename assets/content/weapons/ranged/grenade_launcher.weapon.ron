@@ -1,0 +1,31 @@
+// Grenade launcher — a shoulder-slung, magazine-fed launcher that LOBS its charge in an arc
+// (GTW-546, child GTW-41d). Unlike the flat-firing frag_launcher, `trajectory: Arc` sends the
+// round over a parabola: over walls / cover onto a target cell, blocked only by an intact roof
+// (a hole / window lets it drop through). On landing it fans a radius-1 Blast — everyone in the
+// ring is torn (true friendly fire — resolution.md §2). A 6-round magazine feeds repeated lobs.
+//
+// The single `Single` fire mode carries the AoE template (`hit_type: Blast(radius: 1)`) the
+// throw dispatch reads at the arc's landing (GTW-541 resolver). `trajectory: Arc` makes it a
+// blind lob — no line-of-sight gate. Its cone/accuracy fields satisfy serde but are UNUSED by
+// the deterministic arc throw (no cone sample).
+(
+    base_spread:   0.18,
+    accuracy:      0.9,
+    kickback:      0.10,
+    fatal_bias:    0.0,
+    damage:        9,
+    punch:         3,
+    shred:         1,
+    damage_type:   Blast, // explosives / concussion — the matchup-wheel node (a DAMAGE flavour)
+    magazine: (
+        size:      6,
+        reload_tu: 16,
+    ),
+    trajectory: Arc, // GTW-546: the launcher LOBS its charge — parabola blocked by roofs, passes holes/windows
+    fire_mode: [
+        // The lobbed detonation — a radius-1 Blast at the arc's landing cell.
+        (kind: Single, cone_mult: 1.0, tu_percent: 0.40, shots: 1, hit_type: Blast(radius: 1)),
+    ],
+    stable: false,
+    handedness:    TwoHanded, // GTW-443: a two-handed launcher — refused below two working hands
+)

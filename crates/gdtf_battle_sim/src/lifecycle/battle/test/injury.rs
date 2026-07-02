@@ -128,8 +128,8 @@ fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
         magazine::{Magazine, ReloadTu},
         weapon::{
             Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
-            MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WeaponDamage,
-            WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+            MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, TrajectoryStyle,
+            WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
         },
     };
     let spec = WeaponSpec {
@@ -151,6 +151,7 @@ fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
         stable:           crate::weapon::Stable::new(true),
         shove:            crate::weapon::Shove::new(false),
         handedness:       crate::weapon::Handedness::OneHanded,
+        trajectory:       TrajectoryStyle::Straight,
         attachment_slots: Vec::new(),
         dot:              None,
         on_death:         None,

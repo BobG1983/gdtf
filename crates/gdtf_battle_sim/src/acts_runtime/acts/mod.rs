@@ -62,6 +62,7 @@ mod posture;
 mod reload;
 mod request;
 mod shove;
+mod throw_grenade;
 
 #[cfg(test)]
 mod test;
@@ -83,5 +84,7 @@ pub use request::{
     ExitEmplacementRequested, FireRequested, MeleeRequested, MeleeResolved, MeleeTarget,
     MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
     SetStanceRequested, ShoveRequested, ShoveSource, StabilizeDownedRequested,
+    ThrowGrenadeRequested, ThrowResolved,
 };
 pub use shove::{ShoveOutcome, dispatch_shove, resolve_shove};
+pub use throw_grenade::dispatch_throw_grenade;

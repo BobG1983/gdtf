@@ -11,7 +11,7 @@ use crate::tuning::{
     cone_groups::ConeStabilityTuning,
     economy::{
         EnterEmplacementTu, ExitEmplacementTu, LinkTu, MoveCosts, OpenDoorTu, ShoveTu,
-        StanceChangeTu, TurnTu,
+        StanceChangeTu, ThrowTu, TurnTu,
     },
     falls::PerStoreyDamage,
     firing_arc::FiringArc,
@@ -92,6 +92,14 @@ pub struct CombatTuning {
     /// than manning, so it is cheaper than `enter_emplacement_tu`. Tunable, mirroring
     /// `stance_change_tu` / `turn_tu`.
     pub exit_emplacement_tu:   ExitEmplacementTu,
+    /// The throw-grenade TU cost (GTW-546) — the flat Time Units the deliberate THROW act
+    /// ([`dispatch_throw_grenade`](crate::acts::dispatch_throw_grenade)) spends via
+    /// [`crate::tu::spend_tu`] when a ganger lobs an
+    /// [`TrajectoryStyle::Arc`](crate::weapon::TrajectoryStyle) grenade at a target cell
+    /// (resolving the arc march + the GTW-541 blast at the landing). Priming and lobbing is a
+    /// committed one-action throw, matched to the committed-setup `enter_emplacement_tu` /
+    /// `shove_tu` baseline. Tunable, mirroring `stance_change_tu` / `turn_tu`.
+    pub throw_tu:              ThrowTu,
     /// The per-terrain move-cost table (movement) — the flat Time Units
     /// [`crate::move_acts::advance_walk`] spends via [`crate::tu::spend_tu`] to step onto
     /// a destination cell, keyed by that cell's

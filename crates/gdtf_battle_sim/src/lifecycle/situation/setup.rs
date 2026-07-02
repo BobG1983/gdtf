@@ -471,6 +471,11 @@ fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -
     let damage_type = weapon.damage_type;
     let magazine = weapon.magazine;
     let handedness = weapon.handedness;
+    // GTW-546: the TrajectoryStyle — a runtime-valued enum (like `DamageType` / `Handedness`),
+    // so it bridges via `template_value`. WITHOUT it the throw dispatch's `&TrajectoryStyle`
+    // read would not match the spawned weapon entity, so a grenade's `trajectory: Arc` would
+    // never register and the throw would fail closed (no lob).
+    let trajectory = weapon.trajectory;
     // GTW-542: the OPTIONAL attachment sibling tags — each `Some` produces a
     // `template_value` scene, each `None` an Option-scene no-op (bevy_scene's
     // `impl Scene for Option<S>`), so an un-attached weapon composes none and stays
@@ -512,6 +517,8 @@ fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -
         template_value(damage_type),
         template_value(magazine),
         template_value(handedness),
+        // GTW-546: the per-weapon trajectory style (a grenade's `Arc` vs the default `Straight`).
+        template_value(trajectory),
         // GTW-542: the optional attachment sibling tags (a `None` inserts nothing).
         sighted,
         silenced,

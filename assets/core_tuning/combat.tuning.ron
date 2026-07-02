@@ -93,6 +93,11 @@
     enter_emplacement_tu: 6,  // TU a ganger spends to man an adjacent vacant emplacement
     exit_emplacement_tu:  4,  // TU a ganger spends to dismount the emplacement it is manning
 
+    // GTW-546: the throw-grenade TU cost — TU a ganger spends to LOB an Arc grenade / launcher
+    // charge at a target cell (a committed one-action blind throw, matched to the committed-setup
+    // enter_emplacement_tu / shove_tu baseline of 6). STARTING POINT (tunable balance data).
+    throw_tu:             6,  // TU a ganger spends to throw a grenade (arc march + blast at landing)
+
     // Per-terrain move cost (combat.md L34: "step" costs TUs): the flat Time Units a ganger
     // spends to step ONTO a destination cell — TERRAIN-DETERMINED (the floor tile crossed
     // determines the cost), looked up by the entered cell's TerrainKind (advance_walk reads

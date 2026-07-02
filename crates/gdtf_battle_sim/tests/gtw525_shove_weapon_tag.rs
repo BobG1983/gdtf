@@ -48,7 +48,8 @@ use gdtf_battle_sim::{
     weapon::{
         Accuracy, BaseSpread, FISTS_KEY, FireMode, FireModeSpec, Kickback, MagazineSize,
         MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+        WeaponSpec,
     },
 };
 
@@ -112,6 +113,7 @@ fn ranged_spec(shove: bool) -> WeaponSpec {
         stable:           gdtf_battle_sim::weapon::Stable::new(false),
         shove:            Shove::new(shove),
         handedness:       Handedness::OneHanded,
+        trajectory:       TrajectoryStyle::Straight,
         attachment_slots: Vec::new(),
         dot:              None,
         on_death:         None,
