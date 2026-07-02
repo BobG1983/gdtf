@@ -147,4 +147,11 @@ pub enum TerrainPieceKind {
     /// [`SurfaceGrid`](crate::surface::SurfaceGrid) and HP by the
     /// [`SlabLedger`](crate::slab::SlabLedger)).
     Slab,
+    /// A weapon emplacement (GTW-543) — a cover-like smashable structure a ganger can
+    /// ENTER to operate a mounted gun (authored in `situation.walls`, seeded into the
+    /// [`CoverLedger`](crate::cover::CoverLedger) like a wall/cover). It additionally
+    /// carries the enter/exit
+    /// [`EmplacementState`](crate::terrain::emplacement::EmplacementState) + a
+    /// [`MountedWeaponKey`](crate::terrain::emplacement::MountedWeaponKey).
+    Emplacement,
 }

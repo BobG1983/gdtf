@@ -124,6 +124,35 @@ crate::support_item! {
     struct ShoveButton;
 }
 
+crate::support_item! {
+    /// Marks the **Enter Emplacement** contextual button (GTW-543) — the act that mans an
+    /// 8-adjacent VACANT weapon emplacement.
+    ///
+    /// A DEDICATED contextual button, mirroring [`OpenDoorButton`] / [`MeleeButton`]. Spawned
+    /// [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by the
+    /// detection system (which also wires its press to the `EnterEmplacementRequested` act) when
+    /// [`ContextualTargets::enter_emplacement`] names a VACANT emplacement the selected PLAYER actor
+    /// is 8-adjacent to (F4 player-only). A unit marker: presence on an entity is the whole signal
+    /// (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct EnterEmplacementButton;
+}
+
+crate::support_item! {
+    /// Marks the **Exit Emplacement** contextual button (GTW-543) — the act that dismounts the
+    /// emplacement the selection is manning.
+    ///
+    /// A DEDICATED contextual button, mirroring [`EnterEmplacementButton`]. Spawned
+    /// [`Visibility::Hidden`](bevy::camera::visibility::Visibility) and revealed IN PLACE by the
+    /// detection system (which also wires its press to the `ExitEmplacementRequested` act) when
+    /// [`ContextualTargets::exit_emplacement`] names the emplacement whose
+    /// [`EmplacementOccupant`](gdtf_battle_sim::EmplacementOccupant) IS the current selection — so
+    /// Exit is offered ONLY to the occupant (there is NO force-eject; exit is a SEPARATE TU-costed
+    /// act). A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ExitEmplacementButton;
+}
+
 /// The neighbours the contextual panel can act on; written each update by the detection system
 /// (GTW-294 live slice; extended by GTW-507 / GTW-508 / GTW-525 / GTW-315).
 ///
@@ -131,8 +160,10 @@ crate::support_item! {
 /// [`detect_contextual_targets`](super::systems::detect_contextual_targets) fills
 /// [`execute`](Self::execute) / [`stabilize`](Self::stabilize) / [`melee`](Self::melee) /
 /// [`melee_structure`](Self::melee_structure) / [`shove`](Self::shove) /
-/// [`open_door`](Self::open_door) with the neighbour each act targets, and reveals the matching
-/// button only when its field is [`Some`]; the press router
+/// [`open_door`](Self::open_door) / [`enter_emplacement`](Self::enter_emplacement) /
+/// [`exit_emplacement`](Self::exit_emplacement) with the neighbour each act targets (via a direct
+/// struct literal), and reveals the matching button only when its field is [`Some`]; the press
+/// router
 /// [`contextual_button_intents`](super::systems::contextual_button_intents) reads these to route a
 /// press to the carried target. A [`Resource`] inserted by
 /// [`ContextualPanelPlugin`](super::plugin::ContextualPanelPlugin)'s `init_resource`.
@@ -140,60 +171,45 @@ crate::support_item! {
 pub(in crate::states::running::game::battlescape) struct ContextualTargets {
     /// The downed neighbour the **Execute** act would target, or [`None`] when no downed ENEMY
     /// is in reach. Written each update by the detection system.
-    pub(in crate::states::running::game::battlescape) execute:         Option<Entity>,
+    pub(in crate::states::running::game::battlescape) execute:           Option<Entity>,
     /// The downed neighbour the **Stabilize** act would target, or [`None`] when no
     /// not-yet-stabilized downed ALLY is in reach. Written each update by the detection system.
-    pub(in crate::states::running::game::battlescape) stabilize:       Option<Entity>,
+    pub(in crate::states::running::game::battlescape) stabilize:         Option<Entity>,
     /// The opposing ganger the **Melee** act would strike (GTW-507), or [`None`] when no
     /// 8-adjacent, ALIVE, in-LOS ENEMY is in reach. A STRONGER gate than Execute's
     /// downed-adjacency (alive + LOS, not downed). Written each update by the detection system.
-    pub(in crate::states::running::game::battlescape) melee:           Option<Entity>,
+    pub(in crate::states::running::game::battlescape) melee:             Option<Entity>,
     /// The adjacent inert STRUCTURE cell the **Melee** act would SMASH (GTW-508), or [`None`]
     /// when no 8-adjacent intact Cover / Wall cell is in reach. Offered ONLY when no meleeable
     /// ganger [`melee`](Self::melee) target is in reach (a ganger target takes priority), so the
     /// ONE Melee button routes to a ganger strike or a cover-smash, never both. Written each
     /// update by the detection system.
-    pub(in crate::states::running::game::battlescape) melee_structure: Option<CellLevel>,
+    pub(in crate::states::running::game::battlescape) melee_structure:   Option<CellLevel>,
     /// The opposing ganger the **Shove** act would knock back (GTW-525), or [`None`] when no
     /// 8-adjacent, ALIVE, opposing ganger is in reach. A WEAKER gate than Melee's — NO LOS
     /// required (a shove is contact, not a sighted strike) and NO weapon required (any ganger can
     /// shove). Written each update by the detection system.
-    pub(in crate::states::running::game::battlescape) shove:           Option<Entity>,
+    pub(in crate::states::running::game::battlescape) shove:             Option<Entity>,
     /// The adjacent CLOSED door the **Open Door** act would open (GTW-315), or [`None`] when no
     /// 8-adjacent openable terrain entity in the [`OpenState::Closed`](gdtf_battle_sim::OpenState)
     /// state is in reach. The button always OPENS — an already-open door is NOT offered (closing is
     /// not a contextual act), and F4 is PLAYER-ONLY. Written each update by the detection system.
-    pub(in crate::states::running::game::battlescape) open_door:       Option<Entity>,
+    pub(in crate::states::running::game::battlescape) open_door:         Option<Entity>,
+    /// The adjacent VACANT emplacement the **Enter Emplacement** act would man (GTW-543), or
+    /// [`None`] when no 8-adjacent
+    /// [`EmplacementState::Vacant`](gdtf_battle_sim::EmplacementState) emplacement is in reach. F4 is
+    /// PLAYER-ONLY (this offer runs only for a selected player-faction actor). Written each update by
+    /// the detection system.
+    pub(in crate::states::running::game::battlescape) enter_emplacement: Option<Entity>,
+    /// The emplacement the **Exit Emplacement** act would dismount (GTW-543), or [`None`] when the
+    /// selection is not manning any emplacement — the emplacement whose
+    /// [`EmplacementOccupant`](gdtf_battle_sim::EmplacementOccupant) IS the current selection.
+    /// Offered ONLY to the occupant (there is NO force-eject). Written each update by the detection
+    /// system.
+    pub(in crate::states::running::game::battlescape) exit_emplacement:  Option<Entity>,
 }
 
 impl ContextualTargets {
-    /// Build the offer seam from the detected `execute` / `stabilize` / `melee` /
-    /// `melee_structure` / `shove` / `open_door` targets.
-    ///
-    /// The single write-point the detection system uses each update; each ganger argument is the
-    /// neighbour [`Entity`] that act would target (the framework carve-out), `melee_structure`
-    /// is the adjacent structure [`CellLevel`] the cover-smash would hit, `open_door` is the
-    /// adjacent CLOSED door [`Entity`] the open act would open, or [`None`] when no such target is
-    /// in reach.
-    #[must_use]
-    pub(in crate::states::running::game::battlescape) const fn with(
-        execute: Option<Entity>,
-        stabilize: Option<Entity>,
-        melee: Option<Entity>,
-        melee_structure: Option<CellLevel>,
-        shove: Option<Entity>,
-        open_door: Option<Entity>,
-    ) -> Self {
-        Self {
-            execute,
-            stabilize,
-            melee,
-            melee_structure,
-            shove,
-            open_door,
-        }
-    }
-
     /// The **Execute** target — the downed ENEMY a press would execute, or [`None`].
     ///
     /// Read by [`contextual_button_intents`](super::systems::contextual_button_intents) to
@@ -255,6 +271,30 @@ impl ContextualTargets {
     #[must_use]
     pub(in crate::states::running::game::battlescape) const fn open_door(&self) -> Option<Entity> {
         self.open_door
+    }
+
+    /// The **Enter Emplacement** target — the 8-adjacent VACANT emplacement a press would man, or
+    /// [`None`] (GTW-543).
+    ///
+    /// Read by [`contextual_button_intents`](super::systems::contextual_button_intents) to route an
+    /// Enter press to the carried emplacement (the `Some`-guard keeps a stale press safe).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn enter_emplacement(
+        &self,
+    ) -> Option<Entity> {
+        self.enter_emplacement
+    }
+
+    /// The **Exit Emplacement** target — the emplacement the selection is manning that a press would
+    /// dismount, or [`None`] (GTW-543).
+    ///
+    /// Read by [`contextual_button_intents`](super::systems::contextual_button_intents) to route an
+    /// Exit press to the carried emplacement (the `Some`-guard keeps a stale press safe).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn exit_emplacement(
+        &self,
+    ) -> Option<Entity> {
+        self.exit_emplacement
     }
 }
 

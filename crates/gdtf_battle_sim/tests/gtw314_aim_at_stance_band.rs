@@ -41,11 +41,11 @@ use gdtf_battle_sim::{
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
     Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position,
-    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger, Stable,
-    Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy,
-    WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    ModeShots, ModeTuPercent, MountedQuery, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery,
+    Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger,
+    Stable, Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley,
+    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery,
+    WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
 /// The shooter's cell.
@@ -180,6 +180,19 @@ fn spawn_target(app: &mut App, stance: StanceKind) -> Entity {
 /// the two disjoint fire queries can borrow the world mutably without aliasing the
 /// resources).
 fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
+    /// The `fire()` query tuple, aliased so the `SystemState` type stays under clippy's
+    /// `type_complexity` gate (the GTW-543 mounted-weapon `MountedQuery` addition tipped it over).
+    /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
+    type FireQueries<'w, 's> = (
+        ShooterQuery<'w, 's>,
+        TargetQuery<'w, 's>,
+        WearsQuery<'w, 's>,
+        PieceQuery<'w, 's>,
+        WieldsQuery<'w, 's>,
+        WeaponQuery<'w, 's>,
+        MeleeQuery<'w, 's>,
+        MountedQuery<'w, 's>,
+    );
     let tuning = CombatTuning::default();
     let mut rng = ShotRng::from_root(BattleSeed::new(seed));
     let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
@@ -207,21 +220,13 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .cloned()
         .unwrap_or_default();
 
-    let mut state: SystemState<(
-        ShooterQuery,
-        TargetQuery,
-        WearsQuery,
-        PieceQuery,
-        WieldsQuery,
-        WeaponQuery,
-        MeleeQuery,
-    )> = SystemState::new(app.world_mut());
+    let mut state: SystemState<FireQueries> = SystemState::new(app.world_mut());
     // `get_mut` now returns a `Result` (Bevy 0.19); the params always validate, so
     // an `Err` is structurally impossible — assert loudly rather than firing nothing.
     let access = state.get_mut(app.world_mut());
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
-        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) => {
+        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) => {
             gdtf_battle_sim::fire(
                 shooter,
                 FireOrder {
@@ -236,6 +241,7 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 &wields,
                 &mut weapons,
                 &melee,
+                &mounted,
                 BattleGrids {
                     occupancy:   &occupancy,
                     surface:     &surface,

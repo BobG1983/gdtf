@@ -51,6 +51,7 @@
 //! `ResMut<ShotRng> + ResMut<SeverityRng>`); no renderer, no window, no presenter, no pixel.
 
 mod downed;
+mod enter_emplacement;
 mod fire;
 mod injury;
 mod melee;
@@ -66,6 +67,7 @@ mod shove;
 mod test;
 
 pub use downed::{dispatch_execute_downed, dispatch_stabilize_downed};
+pub use enter_emplacement::{dispatch_enter_emplacement, dispatch_exit_emplacement};
 pub use fire::{
     BattleGridsParam, FireArcDecision, FireDeclaration, can_engage, decide_fire_arc, dispatch_fire,
 };
@@ -77,9 +79,9 @@ pub use plugin::SimActsPlugin;
 pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance};
 pub use reload::{ReloadOutcome, ReloadResult, dispatch_reload};
 pub use request::{
-    AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
-    MeleeResolved, MeleeTarget, MoveRequested, OpenDoorRequested, ReloadRequested,
-    SetAimingRequested, SetFacingRequested, SetStanceRequested, ShoveRequested, ShoveSource,
-    StabilizeDownedRequested,
+    AimRequest, EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
+    ExitEmplacementRequested, FireRequested, MeleeRequested, MeleeResolved, MeleeTarget,
+    MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+    SetStanceRequested, ShoveRequested, ShoveSource, StabilizeDownedRequested,
 };
 pub use shove::{ShoveOutcome, dispatch_shove, resolve_shove};

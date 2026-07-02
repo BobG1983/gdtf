@@ -47,9 +47,10 @@ use gdtf_battle_sim::{
     SlabLedger, SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink,
     VerticalLinkGraph, WieldedBy,
     acts::{
-        AimRequest, EndTurnRequested, ExecuteDownedRequested, FireRequested, MoveRequested,
-        OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-        SetStanceRequested, SimActsPlugin, StabilizeDownedRequested,
+        AimRequest, EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
+        ExitEmplacementRequested, FireRequested, MoveRequested, OpenDoorRequested, ReloadRequested,
+        SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
+        StabilizeDownedRequested,
     },
     build_vertical_link_graph,
     test_support::SituationBuilder,
@@ -422,6 +423,12 @@ struct StabilizeProbe(Vec<StabilizeDownedRequested>);
 /// Collected `OpenDoorRequested` messages (probe, GTW-315).
 #[derive(Resource, Default)]
 struct OpenDoorProbe(Vec<OpenDoorRequested>);
+/// Collected `EnterEmplacementRequested` messages (probe, GTW-543).
+#[derive(Resource, Default)]
+struct EnterEmplacementProbe(Vec<EnterEmplacementRequested>);
+/// Collected `ExitEmplacementRequested` messages (probe, GTW-543).
+#[derive(Resource, Default)]
+struct ExitEmplacementProbe(Vec<ExitEmplacementRequested>);
 
 /// Adds the message-collecting probe systems, each running AFTER the drain so it
 /// observes the same update's emitted messages. The probes have their own
@@ -437,7 +444,9 @@ fn add_probes(app: &mut App) {
         .insert_resource(EndTurnProbe::default())
         .insert_resource(ExecuteProbe::default())
         .insert_resource(StabilizeProbe::default())
-        .insert_resource(OpenDoorProbe::default());
+        .insert_resource(OpenDoorProbe::default())
+        .insert_resource(EnterEmplacementProbe::default())
+        .insert_resource(ExitEmplacementProbe::default());
     app.add_systems(
         Update,
         (
@@ -470,6 +479,14 @@ fn add_probes(app: &mut App) {
                 p.0.extend(r.read().copied());
             },
             |mut r: MessageReader<OpenDoorRequested>, mut p: ResMut<OpenDoorProbe>| {
+                p.0.extend(r.read().copied());
+            },
+            |mut r: MessageReader<EnterEmplacementRequested>,
+             mut p: ResMut<EnterEmplacementProbe>| {
+                p.0.extend(r.read().copied());
+            },
+            |mut r: MessageReader<ExitEmplacementRequested>,
+             mut p: ResMut<ExitEmplacementProbe>| {
                 p.0.extend(r.read().copied());
             },
         )
@@ -1043,6 +1060,141 @@ fn open_door_intent_emits_nothing_without_selection() {
             .get_resource::<OpenDoorProbe>()
             .is_none_or(|p| p.0.is_empty()),
         "no OpenDoorRequested without a selection",
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// GTW-543 — pushing ActIntent::EnterEmplacement / ActIntent::ExitEmplacement emits
+// exactly one EnterEmplacementRequested / ExitEmplacementRequested for the
+// SelectedShooter as the actor over the carried emplacement; with no selection nothing
+// is written (the drain resolves the actor from the selection).
+// ---------------------------------------------------------------------------------
+
+/// GTW-543 — pushing `ActIntent::EnterEmplacement(emplacement)` with a selected player actor emits
+/// EXACTLY one `EnterEmplacementRequested { actor, emplacement }` through the `dispatch_act_intents`
+/// drain, the actor being the `*SelectedShooter` and the emplacement the carried terrain entity (the
+/// Enter affordance surrogate, over the SAME seam the other contextual intents use). The sim's
+/// `dispatch_enter_emplacement` gate (VACANT + 8-adjacent + affords `EnterEmplacementTu`) is the
+/// authoritative check, not this seam.
+#[test]
+fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    let actor = spawn_ganger(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    select_ganger(&mut app, actor);
+    // The emplacement target entity — only its identity matters at this seam (the sim's
+    // EmplacementState/adjacency/TU gate is the authoritative check, not this layer).
+    let emplacement = app.world_mut().spawn_empty().id();
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::EnterEmplacement(emplacement));
+    app.update();
+
+    let enters = app
+        .world()
+        .get_resource::<EnterEmplacementProbe>()
+        .map_or_else(Vec::new, |p| p.0.clone());
+    assert_eq!(
+        enters.len(),
+        1,
+        "one EnterEmplacementRequested via the enter-emplacement intent",
+    );
+    assert_eq!(
+        enters[0],
+        EnterEmplacementRequested::new(actor, emplacement),
+        "EnterEmplacementRequested has actor = *SelectedShooter and emplacement = carried",
+    );
+}
+
+/// GTW-543 — with the selection cleared (`SelectedShooter(None)`), pushing the enter-emplacement
+/// intent writes NOTHING (the drain resolves the actor from the selection and is a no-op without
+/// one — the same fail-closed shape as the `OpenDoor` / `Execute` arms).
+#[test]
+fn enter_emplacement_intent_emits_nothing_without_selection() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    // An emplacement target exists but there is NO selected actor.
+    let emplacement = app.world_mut().spawn_empty().id();
+    app.world_mut().insert_resource(SelectedShooter::cleared());
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::EnterEmplacement(emplacement));
+    app.update();
+
+    assert!(
+        app.world()
+            .get_resource::<EnterEmplacementProbe>()
+            .is_none_or(|p| p.0.is_empty()),
+        "no EnterEmplacementRequested without a selection",
+    );
+}
+
+/// GTW-543 — pushing `ActIntent::ExitEmplacement(emplacement)` with a selected player actor emits
+/// EXACTLY one `ExitEmplacementRequested { actor, emplacement }` through the `dispatch_act_intents`
+/// drain, the actor being the `*SelectedShooter` and the emplacement the carried terrain entity (the
+/// Exit affordance surrogate, over the SAME seam). The sim's `dispatch_exit_emplacement` gate (the
+/// recorded occupant IS the actor + affords `ExitEmplacementTu`) is the authoritative check, not
+/// this seam.
+#[test]
+fn exit_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    let actor = spawn_ganger(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    select_ganger(&mut app, actor);
+    let emplacement = app.world_mut().spawn_empty().id();
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::ExitEmplacement(emplacement));
+    app.update();
+
+    let exits = app
+        .world()
+        .get_resource::<ExitEmplacementProbe>()
+        .map_or_else(Vec::new, |p| p.0.clone());
+    assert_eq!(
+        exits.len(),
+        1,
+        "one ExitEmplacementRequested via the exit-emplacement intent",
+    );
+    assert_eq!(
+        exits[0],
+        ExitEmplacementRequested::new(actor, emplacement),
+        "ExitEmplacementRequested has actor = *SelectedShooter and emplacement = carried",
+    );
+}
+
+/// GTW-543 — with the selection cleared, pushing the exit-emplacement intent writes NOTHING (the
+/// drain resolves the actor from the selection and is a no-op without one).
+#[test]
+fn exit_emplacement_intent_emits_nothing_without_selection() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    let emplacement = app.world_mut().spawn_empty().id();
+    app.world_mut().insert_resource(SelectedShooter::cleared());
+
+    app.world_mut()
+        .resource_mut::<PendingActIntent>()
+        .push(ActIntent::ExitEmplacement(emplacement));
+    app.update();
+
+    assert!(
+        app.world()
+            .get_resource::<ExitEmplacementProbe>()
+            .is_none_or(|p| p.0.is_empty()),
+        "no ExitEmplacementRequested without a selection",
     );
 }
 

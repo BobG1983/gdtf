@@ -196,7 +196,11 @@ pub fn classify(
     }
     match def.sim_kind {
         TerrainSimKind::Slab { .. } => EditorTileClass::Slab,
-        TerrainSimKind::Wall { .. } | TerrainSimKind::Cover { .. } => EditorTileClass::Other,
+        // GTW-543: an emplacement is a same-level structure (like Wall/Cover) placed on the
+        // canvas, not a slab z-boundary — it classifies as Other.
+        TerrainSimKind::Wall { .. }
+        | TerrainSimKind::Cover { .. }
+        | TerrainSimKind::Emplacement { .. } => EditorTileClass::Other,
     }
 }
 

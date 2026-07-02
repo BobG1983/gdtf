@@ -68,6 +68,21 @@ pub fn resolved_stats(def: &TerrainDef) -> (String, f32) {
             **armor_hardness,
             None,
         ),
+        // GTW-543: an emplacement is a cover-like structure with a band, plus a mounted-weapon
+        // key. The readout shows its structural stats + band exactly like a Wall/Cover.
+        TerrainSimKind::Emplacement {
+            hp,
+            armor_protection,
+            armor_hardness,
+            height_band,
+            ..
+        } => (
+            "Emplacement",
+            **hp as f32,
+            **armor_protection,
+            **armor_hardness,
+            Some(format!("{height_band:?}")),
+        ),
     };
     let name = (*def.display_name).clone();
     let band_line = band.map_or_else(String::new, |b| format!("\nBand: {b}"));
@@ -129,13 +144,14 @@ pub fn slab_floor_candidates(
         .collect()
 }
 
-/// The short human label for a terrain sim kind (Wall / Cover / Slab) — shown beside each library
-/// row's name so the author sees the structural kind at a glance (C2).
+/// The short human label for a terrain sim kind (Wall / Cover / Slab / Emplacement) — shown
+/// beside each library row's name so the author sees the structural kind at a glance (C2).
 #[must_use]
 pub(crate) const fn sim_kind_label(kind: &TerrainSimKind) -> &'static str {
     match kind {
         TerrainSimKind::Wall { .. } => "Wall",
         TerrainSimKind::Cover { .. } => "Cover",
         TerrainSimKind::Slab { .. } => "Slab",
+        TerrainSimKind::Emplacement { .. } => "Emplacement",
     }
 }

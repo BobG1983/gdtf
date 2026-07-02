@@ -8,8 +8,8 @@ use bevy::prelude::Entity;
 use super::{
     compose::{RoundSetup, ShooterReads, TargetGeometry, read_shooter, resolve_round},
     query::{
-        BattleGrids, FireOrder, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery,
-        WearsQuery, WieldsQuery,
+        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
+        WeaponQuery, WearsQuery, WieldsQuery,
     },
 };
 use crate::{
@@ -149,6 +149,10 @@ pub fn fire(
     // GTW-505 C5: the melee-weapon marker probe — `read_shooter` filters the wielded
     // weapon against it so a ganger's melee weapon is never resolved as its gun.
     melee: &MeleeQuery,
+    // GTW-543: the mounted-weapon marker probe — `read_shooter` PREFERS a mounted-marked
+    // wielded weapon (the ganger manning an emplacement) over its own carried gun, and engages
+    // the emplacement stability seam for the resulting shot.
+    mounted: &MountedQuery,
     mut grids: BattleGrids,
     tuning: &CombatTuning,
     shot_rng: &mut ShotRng,
@@ -173,7 +177,7 @@ pub fn fire(
         magazine: magazine_now,
         handedness: shooter_handedness,
         hands_available: shooter_hands,
-    }) = read_shooter(shooter, shooters, wields, weapons, melee)
+    }) = read_shooter(shooter, shooters, wields, weapons, melee, mounted)
     else {
         return Volley::empty();
     };

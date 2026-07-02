@@ -1,0 +1,46 @@
+// GTW-543 MOUNTED heavy bolter — the gun bolted to a weapon emplacement (a heavy_bolter_emplacement
+// TerrainDef references this file's stem `heavy_bolter` as its mounted_weapon key). A deliberately
+// INACCURATE, heavy-hitting piece: high damage + high punch/shred, a wide base spread and LOW base
+// accuracy — untenable to fire from the hip. The EMPLACEMENT steadies it: while a ganger mans the
+// mount, the EmplacementStability seam feeds a large stability term that damps the recoil cone,
+// turning the flailing spray into a controlled, punishing stream (Phase 2 engages that seam).
+//
+// This is an ordinary ranged WeaponSpec (same schema as every other content/weapons/ranged/
+// *.weapon.ron), so it loads into the WeaponRegistry through the normal ranged-folder load. The
+// enter act resolves this stem (`heavy_bolter`) against the WeaponRegistry and spawns it on the
+// occupant via WieldedBy + a MountedWeapon marker; the ranged-firing read prefers the MountedWeapon
+// entity while occupied, and the EmplacementStability seam steadies its deliberately-wide cone.
+//
+// FORK-DEFAULT #2 DEVIATION — SURFACED, PENDING SIGN-OFF (per design-fidelity rule 2 / the
+// descoping protocol). GTW-543 fork-default #2 logged this file's location as
+// `assets/content/weapons/mounted/`. That default is UNBUILDABLE-AS-STATED: the single
+// WeaponRegistry the MountedWeaponKey resolves against is built ONLY from `content/weapons/ranged`
+// (the sole loader, kick_off.rs `WEAPONS_DIR`); there is NO loader for a `mounted/` folder, in the
+// editor or the game. Under the logged default the `heavy_bolter` key would never load, so the
+// mount would fail-closed (silently not spawn) in live play — the feature's trigger would be dead.
+// A mounted weapon is schema-identical to any other ranged WeaponSpec, so `ranged/` is the only
+// location that keeps the feature alive with zero loader ripple. This file sits in `ranged/` so the
+// feature works; the deviation is NOT self-authorized — it is flagged for the orchestrator to route
+// through sign-off and to reconcile fork-default #2 (update it to `ranged/`, or approve here).
+(
+    base_spread:   0.35,  // deliberately WIDE — a hip-fired heavy bolter flails; the mount tames it
+    accuracy:      0.6,   // LOW base accuracy — the mount (EmplacementStability, Phase 2) steadies it
+    kickback:      0.25,  // heavy recoil per shot — punishing without the brace of a mount
+    fatal_bias:    0.1,   // a heavy round pushes wound severity up a touch
+    damage:        14,    // HIGH damage — a heavy bolter tears through the unarmored
+    punch:         5,     // shreds cover / armor — the mount's role is area denial
+    shred:         3,     // chews armor durability
+    damage_type:   Kinetic, // mass-reactive bolt rounds — the Kinetic matchup node
+    magazine: (
+        size:      30,    // a belt-fed drum — sustained fire before a long reload
+        reload_tu: 24,    // slow to re-belt
+    ),
+    fire_mode: [
+        // A raking full-auto stream — HIGH tu_percent (a committed, expensive burst of the round's TU).
+        (kind: Full,  cone_mult: 1.8, tu_percent: 0.70, shots: 8),
+        // A shorter controlled burst for a lighter TU spend.
+        (kind: Burst, cone_mult: 1.4, tu_percent: 0.50, shots: 4),
+    ],
+    stable:        false,     // NOT intrinsically stable — the EMPLACEMENT provides the steadying (Phase 2)
+    handedness:    TwoHanded, // a heavy piece — both hands on the grips
+)

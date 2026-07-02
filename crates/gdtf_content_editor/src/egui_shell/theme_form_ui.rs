@@ -303,15 +303,17 @@ pub(crate) fn load_theme_into_form(draft: &mut ThemeDraft, def: &UuidThemeDef) {
     );
 }
 
-/// The short human label for a terrain sim kind (Wall / Cover / Slab) — shown beside each library
-/// row's name so the author sees the structural kind at a glance (C3.1). Mirrors the private
-/// [`sim_kind_label`](crate::theme_form::resolve::sim_kind_label) in `resolve.rs` (used here
-/// in the library renderer; this copy avoids reaching into the private submodule).
+/// The short human label for a terrain sim kind (Wall / Cover / Slab / Emplacement) — shown
+/// beside each library row's name so the author sees the structural kind at a glance (C3.1).
+/// Mirrors the private [`sim_kind_label`](crate::theme_form::resolve::sim_kind_label) in
+/// `resolve.rs` (used here in the library renderer; this copy avoids reaching into the private
+/// submodule).
 const fn sim_kind_label(kind: &TerrainSimKind) -> &'static str {
     match kind {
         TerrainSimKind::Wall { .. } => "Wall",
         TerrainSimKind::Cover { .. } => "Cover",
         TerrainSimKind::Slab { .. } => "Slab",
+        TerrainSimKind::Emplacement { .. } => "Emplacement",
     }
 }
 

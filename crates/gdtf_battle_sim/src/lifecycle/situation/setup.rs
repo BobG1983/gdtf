@@ -35,6 +35,7 @@ use crate::{
     surface::{SlabState, SurfaceGrid},
     terrain::{
         def::TerrainDefRegistry,
+        emplacement::{EmplacementState, MountedWeaponKey},
         entity::{
             BlocksPathfinding, BlocksVision, TerrainBrace, TerrainCell, TerrainIndex,
             TerrainIndexKey, TerrainPieceKind,
@@ -939,6 +940,19 @@ pub fn setup_battle(
                 OpenableBlocking::new(band),
                 BlocksPathfinding,
                 BlocksVision::new(band),
+            ));
+        }
+        // GTW-543: an Emplacement (a cover-like smashable structure resolved through the cover
+        // path) is attached EmplacementState::Vacant + the MountedWeaponKey recorded from the
+        // def, so the enter/exit toggle (apply_emplacement_toggle) can flip its state + Phase 2
+        // can spawn the mounted gun WITHOUT re-reading the registry. Its BlocksPathfinding +
+        // BlocksVision(band) + CoverLedger entry are ALREADY attached above (blocks_path /
+        // occludes_vision derive true for Emplacement, and the entry was seeded like a cover)
+        // — an empty emplacement is still a cover-like structure.
+        if let Some(mounted_weapon) = &resolved.emplacement {
+            commands.entity(entity).insert((
+                EmplacementState::Vacant,
+                MountedWeaponKey::new(mounted_weapon.clone()),
             ));
         }
         terrain_pairs.push((TerrainIndexKey::Cover(cover.at), entity));

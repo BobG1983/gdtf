@@ -173,17 +173,19 @@ fn slab_presenter_footfall_is_optional() {
 }
 
 /// C5 — variant inventory. An EXHAUSTIVE match over [`TerrainSimKind`] compiles with
-/// exactly the `Wall` / `Cover` / `Slab` arms — proving there is NO `Floor` and NO
-/// `Scatter` variant (a missing/extra arm would not compile). [`TerrainTag`] is the
-/// closed 4-variant enum, asserted exhaustively the same way.
+/// exactly the `Wall` / `Cover` / `Slab` / `Emplacement` (GTW-543) arms — proving there is
+/// NO `Floor` and NO `Scatter` variant (a missing/extra arm would not compile). [`TerrainTag`]
+/// is the closed 4-variant enum, asserted exhaustively the same way.
 #[test]
 fn sim_kind_and_tag_inventory_is_closed() {
-    // Exhaustive over TerrainSimKind: Wall / Cover / Slab ONLY (no Floor, no Scatter).
+    // Exhaustive over TerrainSimKind: Wall / Cover / Slab / Emplacement ONLY (no Floor, no
+    // Scatter).
     fn assert_sim_kind_inventory(kind: &TerrainSimKind) {
         match kind {
             TerrainSimKind::Wall { .. }
             | TerrainSimKind::Cover { .. }
-            | TerrainSimKind::Slab { .. } => {}
+            | TerrainSimKind::Slab { .. }
+            | TerrainSimKind::Emplacement { .. } => {}
         }
     }
 

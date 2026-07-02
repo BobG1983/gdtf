@@ -239,6 +239,7 @@ fn graphic_key_str(def: &gdtf_battle_sim::terrain::def::TerrainDef) -> &str {
     match &def.presenter_kind {
         TerrainPresenterKind::Wall { graphic_name }
         | TerrainPresenterKind::Cover { graphic_name }
+        | TerrainPresenterKind::Emplacement { graphic_name }
         | TerrainPresenterKind::Slab { graphic_name, .. } => graphic_name,
     }
 }

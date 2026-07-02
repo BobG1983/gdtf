@@ -112,8 +112,9 @@ pub use render::{
     terrain::{
         ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles,
         TileRolesHandle, VerticalLinkSprite, ViewMode, draw_static_battlefield,
-        draw_vertical_links, load_tile_roles, redrive_tile_roles_on_asset_event,
-        resolve_tile_roles, swap_destroyed_cover, swap_destroyed_slab,
+        draw_vertical_links, indicate_emplacement_occupied, load_tile_roles,
+        redrive_tile_roles_on_asset_event, resolve_tile_roles, swap_destroyed_cover,
+        swap_destroyed_slab,
     },
     topdown::{
         CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,

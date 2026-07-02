@@ -19,13 +19,14 @@ use crate::{
     apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
     despawn_removed_ganger_sprites, draw_fire_target, draw_highlight_on_request, draw_path_preview,
     draw_static_battlefield, draw_vertical_links, expire_flashes, frame_camera_on_units,
-    load_character_roles, load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles,
-    load_topdown_atlases, move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge,
-    present_fog, read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-    read_fall_occurred, read_injury_fct, read_melee_resolved, read_suppression_fct,
-    redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
-    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
-    redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
+    indicate_emplacement_occupied, load_character_roles, load_effect_roles, load_fx_tuning,
+    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
+    pan_camera_on_gamepad_cursor_edge, present_fog, read_armor_broken, read_bleeding,
+    read_consequence_fct, read_cover_destroyed, read_fall_occurred, read_injury_fct,
+    read_melee_resolved, read_suppression_fct, redrive_character_roles_on_asset_event,
+    redrive_effect_roles_on_asset_event, redrive_fx_tuning_on_asset_event,
+    redrive_pan_tuning_on_asset_event, redrive_sheet_images_on_asset_event,
+    redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
     reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
     resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
     spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, swap_destroyed_slab,
@@ -523,6 +524,20 @@ fn register_destruction_swaps(app: &mut App) {
                     .and_then(resource_exists::<TileRoles>)
                     .and_then(resource_exists::<Messages<SlabDestroyed>>),
             ),
+        )
+        // GTW-543: the weapon-emplacement OCCUPIED-state visual indicator — the state analogue of
+        // the two destruction swaps. Rather than a one-shot destruction MESSAGE it reacts to the
+        // sim's per-entity `Changed<EmplacementState>` (the enter/exit toggle flips it) and swaps
+        // the drawn tile's material in place between the VACANT `emplacement` tile and the
+        // OCCUPIED `emplacement_occupied` tile — mutate-not-respawn, the same in-place material
+        // re-index the destruction swaps do. It reads no message buffer (a `Changed` query, not a
+        // `MessageReader`), so it is gated on `BattleInProgress` (the live-battle witness) AND
+        // `TileRoles` (read for the two emplacement tile indices) — the swap_destroyed_cover gate.
+        .add_systems(
+            Update,
+            indicate_emplacement_occupied
+                .in_set(PresenterSystems::Draw)
+                .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>)),
         );
 }
 
@@ -879,6 +894,10 @@ fn register_fog_systems(app: &mut App) {
             .after(draw_static_battlefield)
             .after(swap_destroyed_cover)
             .after(swap_destroyed_slab)
+            // GTW-543: run after the emplacement OCCUPIED-state swap so fog modulates the
+            // freshly re-indexed tile's material (present_fog must be the FINAL material writer
+            // per tile — the same rationale as the .after(swap_destroyed_*) ordering).
+            .after(indicate_emplacement_occupied)
             .after(spawn_ganger_sprites)
             .after(move_ganger_sprites)
             .after(apply_active_level_filter)

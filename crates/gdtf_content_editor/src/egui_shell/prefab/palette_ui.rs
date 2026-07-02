@@ -163,6 +163,14 @@ fn selected_tile_stats(
             armor_protection,
             armor_hardness,
         } => ("Slab", **hp, **armor_protection, **armor_hardness),
+        // GTW-543: an emplacement shows its structural stats like a Wall/Cover (the
+        // mounted-weapon key is not shown in this compact readout).
+        TerrainSimKind::Emplacement {
+            hp,
+            armor_protection,
+            armor_hardness,
+            ..
+        } => ("Emplacement", **hp, **armor_protection, **armor_hardness),
     };
     ui.label(format!("Kind: {kind}"));
     ui.label(format!("HP: {hp}"));

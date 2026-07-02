@@ -170,6 +170,87 @@ impl Default for OpenDoorTu {
     }
 }
 
+/// The **enter-emplacement TU cost** — the flat number of Time Units a ganger spends to ENTER
+/// (man) an adjacent weapon emplacement (GTW-543): a deliberate context action that seats the
+/// ganger at the mounted gun (setting the emplacement
+/// [`Occupied`](crate::terrain::emplacement::EmplacementState::Occupied) and forcing the
+/// occupant to read as HIGH cover).
+///
+/// The flat cost the enter act charges via [`crate::tu::spend_tu`] when its gates resolve (an
+/// 8-adjacent VACANT emplacement + an actor that can afford it). Entering a mounted position —
+/// swinging into the seat, gripping the gun — is a deliberate committed setup, so it is
+/// pricier than the quick uncontested [`OpenDoorTu`] door interaction; the chosen default is a
+/// flat `6` TU (matched to the committed-melee [`ShoveTu`] baseline). A small `u8` count,
+/// matching [`crate::ganger::Tu`]'s inner type so the economy subtracts it directly. The
+/// default is a **starting point**, tunable balance data — tests assert only the relation to
+/// this value (the drop equals it), never the magnitude. `#[serde(transparent)]` lets it parse
+/// a bare RON scalar; private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct EnterEmplacementTu(u8);
+
+impl EnterEmplacementTu {
+    /// Build an enter-emplacement TU cost from its flat Time-Unit magnitude (a starting point,
+    /// TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style) while
+    /// letting the enter-act tests and any programmatic tuning edit build a cost without a bare
+    /// `u8` escaping; shipped values come from the `.ron` via the derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for EnterEmplacementTu {
+    fn default() -> Self {
+        // A flat 6 TU to man an adjacent emplacement — a STARTING POINT (tunable balance data):
+        // a deliberate committed setup (swing into the seat, grip the gun), pricier than a quick
+        // door open (4) and matched to the committed-melee shove (6). Value-agnostic tests only,
+        // never a pinned magnitude.
+        Self(6)
+    }
+}
+
+/// The **exit-emplacement TU cost** — the flat number of Time Units a ganger spends to EXIT
+/// (dismount) the weapon emplacement it is manning (GTW-543): a SEPARATE deliberate context
+/// action (there is NO force-eject — a ganger leaves the mount only by spending this cost),
+/// setting the emplacement [`Vacant`](crate::terrain::emplacement::EmplacementState::Vacant)
+/// and restoring the occupant's stance-derived cover band.
+///
+/// The flat cost the exit act charges via [`crate::tu::spend_tu`] when it resolves (the actor
+/// is the current occupant that can afford it). Dismounting — unclamping, stepping clear — is a
+/// quicker action than the committed enter, so the chosen default is a flat `4` TU (matched to
+/// the cheapest one-simple-action baseline, like [`OpenDoorTu`]). A small `u8` count, matching
+/// [`crate::ganger::Tu`]'s inner type. The default is a **starting point**, tunable balance
+/// data — tests assert only the relation to this value, never the magnitude.
+/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(transparent)]
+pub struct ExitEmplacementTu(u8);
+
+impl ExitEmplacementTu {
+    /// Build an exit-emplacement TU cost from its flat Time-Unit magnitude (a starting point,
+    /// TBD tuning).
+    ///
+    /// The constructor for the newtype — keeps the inner `u8` private (house style) while
+    /// letting the exit-act tests and any programmatic tuning edit build a cost without a bare
+    /// `u8` escaping; shipped values come from the `.ron` via the derived [`Deserialize`].
+    #[must_use]
+    pub const fn new(tu: u8) -> Self {
+        Self(tu)
+    }
+}
+
+impl Default for ExitEmplacementTu {
+    fn default() -> Self {
+        // A flat 4 TU to dismount an emplacement — a STARTING POINT (tunable balance data):
+        // quicker than manning it (6), matched to the cheapest one-simple-action baseline (like
+        // OpenDoorTu). Value-agnostic tests only, never a pinned magnitude.
+        Self(4)
+    }
+}
+
 /// One terrain's **move TU cost** — the flat number of Time Units a ganger spends to
 /// step ONTO a cell of a given [`TerrainKind`] (`docs/combat/combat.md` L34
 /// affirmatively lists "step" among the actions that "cost TUs").
@@ -252,12 +333,18 @@ impl MoveCosts {
     /// calls. Exhaustive over the
     /// three [`TerrainKind`] variants — no fallback, so a new variant is a compile error
     /// here (forcing the table to grow with the terrain model).
+    ///
+    /// [`Emplacement`](TerrainKind::Emplacement) reuses the `wall` cost (GTW-543): an
+    /// emplacement is impassable blocking geometry a move can never step ONTO (a ganger
+    /// ENTERS it via the dedicated `EnterEmplacementTu`-costed act, never by walking into
+    /// its cell), so this lookup is never charged for an emplacement cell; it maps to the
+    /// impassable `wall` cost rather than growing the RON table with an unreachable field.
     #[must_use]
     pub const fn cost(&self, terrain: TerrainKind) -> MoveCost {
         match terrain {
             TerrainKind::Open => self.open,
             TerrainKind::Cover => self.cover,
-            TerrainKind::Wall => self.wall,
+            TerrainKind::Wall | TerrainKind::Emplacement => self.wall,
         }
     }
 }

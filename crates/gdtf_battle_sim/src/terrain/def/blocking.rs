@@ -40,8 +40,9 @@ pub fn derives_path_blocking(def: &TerrainDef) -> bool {
 }
 
 /// Whether a [`TerrainSimKind`] blocks the path **by default** — `true` for
-/// [`Wall`](TerrainSimKind::Wall) and [`Cover`](TerrainSimKind::Cover), `false` for
-/// [`Slab`](TerrainSimKind::Slab) (GTW-501 D2).
+/// [`Wall`](TerrainSimKind::Wall), [`Cover`](TerrainSimKind::Cover), and
+/// [`Emplacement`](TerrainSimKind::Emplacement) (a cover-like smashable structure that
+/// fills its cell); `false` for [`Slab`](TerrainSimKind::Slab) (GTW-501 D2 / GTW-543).
 ///
 /// The per-kind half of [`derives_path_blocking`]. A wall fills the cell and standing
 /// cover obstructs it, so both bar a path step by default — the same kinds the kind-based
@@ -55,7 +56,9 @@ pub fn derives_path_blocking(def: &TerrainDef) -> bool {
 pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> bool {
     matches!(
         sim_kind,
-        TerrainSimKind::Wall { .. } | TerrainSimKind::Cover { .. }
+        TerrainSimKind::Wall { .. }
+            | TerrainSimKind::Cover { .. }
+            | TerrainSimKind::Emplacement { .. }
     )
 }
 
@@ -112,8 +115,9 @@ pub fn derives_vision_occlusion(def: &TerrainDef) -> Option<HeightBand> {
 }
 
 /// Whether a [`TerrainSimKind`] occludes vision **by default** — `true` for
-/// [`Wall`](TerrainSimKind::Wall) and [`Cover`](TerrainSimKind::Cover), `false` for
-/// [`Slab`](TerrainSimKind::Slab) (GTW-502 C1).
+/// [`Wall`](TerrainSimKind::Wall), [`Cover`](TerrainSimKind::Cover), and
+/// [`Emplacement`](TerrainSimKind::Emplacement) (occluding at its authored band);
+/// `false` for [`Slab`](TerrainSimKind::Slab) (GTW-502 C1 / GTW-543).
 ///
 /// The per-kind half of [`derives_vision_occlusion`], exposed as a `bool` predicate (the
 /// [`sim_kind_blocks_path`] mirror) for readers/tests that want the kind-default flag without
@@ -127,7 +131,9 @@ pub fn derives_vision_occlusion(def: &TerrainDef) -> Option<HeightBand> {
 pub const fn sim_kind_occludes_vision(sim_kind: &TerrainSimKind) -> bool {
     matches!(
         sim_kind,
-        TerrainSimKind::Wall { .. } | TerrainSimKind::Cover { .. }
+        TerrainSimKind::Wall { .. }
+            | TerrainSimKind::Cover { .. }
+            | TerrainSimKind::Emplacement { .. }
     )
 }
 
@@ -135,9 +141,9 @@ pub const fn sim_kind_occludes_vision(sim_kind: &TerrainSimKind) -> bool {
 /// per-kind-default arm of [`derives_vision_occlusion`].
 const fn sim_kind_band_when_occludes(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
     match sim_kind {
-        TerrainSimKind::Wall { height_band, .. } | TerrainSimKind::Cover { height_band, .. } => {
-            Some(*height_band)
-        }
+        TerrainSimKind::Wall { height_band, .. }
+        | TerrainSimKind::Cover { height_band, .. }
+        | TerrainSimKind::Emplacement { height_band, .. } => Some(*height_band),
         TerrainSimKind::Slab { .. } => None,
     }
 }

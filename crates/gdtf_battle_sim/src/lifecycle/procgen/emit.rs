@@ -266,9 +266,14 @@ enum PlacedKind {
 fn classify(piece: TerrainUuid, terrain_defs: &TerrainDefRegistry) -> PlacedKind {
     match terrain_defs.def(&piece).map(|def| &def.sim_kind) {
         Some(TerrainSimKind::Slab { .. }) => PlacedKind::Slab,
-        Some(TerrainSimKind::Wall { .. } | TerrainSimKind::Cover { .. }) | None => {
-            PlacedKind::Cover
-        }
+        // Wall / Cover / Emplacement (a cover-like smashable structure resolved via the
+        // cover path) — and the fail-open unresolved fallback — route to the walls list.
+        Some(
+            TerrainSimKind::Wall { .. }
+            | TerrainSimKind::Cover { .. }
+            | TerrainSimKind::Emplacement { .. },
+        )
+        | None => PlacedKind::Cover,
     }
 }
 

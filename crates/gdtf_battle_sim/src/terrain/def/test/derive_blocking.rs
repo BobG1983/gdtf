@@ -13,6 +13,7 @@ use crate::{
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
     terrain::piece::TerrainGraphicKey,
+    weapon::WeaponName,
 };
 
 /// A `Wall` def with the given tags — the high-cover blocking kind.
@@ -46,6 +47,26 @@ fn cover_def(tags: Vec<TerrainTag>) -> TerrainDef {
         },
         presenter_kind: TerrainPresenterKind::Cover {
             graphic_name: TerrainGraphicKey::new("crate".to_owned()),
+        },
+        tags,
+    }
+}
+
+/// An `Emplacement` def with the given tags — the cover-like mounted-gun kind (GTW-543;
+/// path-blocking + vision-occluding by kind default, like a `Wall`/`Cover`).
+fn emplacement_def(tags: Vec<TerrainTag>) -> TerrainDef {
+    TerrainDef {
+        key: TerrainUuid::generate(),
+        display_name: TerrainDisplayName::new("Emplacement".to_owned()),
+        sim_kind: TerrainSimKind::Emplacement {
+            hp:               CoverHp::new(45),
+            armor_protection: ArmorProtection::new(5),
+            armor_hardness:   ArmorHardness::new(2),
+            height_band:      HeightBand::High,
+            mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+        },
+        presenter_kind: TerrainPresenterKind::Emplacement {
+            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags,
     }
@@ -85,6 +106,16 @@ fn cover_blocks_path_by_kind_default() {
     assert!(
         derives_path_blocking(&cover_def(vec![])),
         "a Cover blocks the path by kind default (zero regression)",
+    );
+}
+
+/// GTW-543 — an `Emplacement` with NO tags derives path-blocking (the kind default: a
+/// cover-like structure fills its cell like a wall/cover).
+#[test]
+fn emplacement_blocks_path_by_kind_default() {
+    assert!(
+        derives_path_blocking(&emplacement_def(vec![])),
+        "an Emplacement blocks the path by kind default (a cover-like structure)",
     );
 }
 
@@ -152,8 +183,19 @@ fn sim_kind_default_blocks_wall_and_cover_only() {
         armor_protection: ArmorProtection::new(0),
         armor_hardness:   ArmorHardness::new(0),
     };
+    let emplacement = TerrainSimKind::Emplacement {
+        hp:               CoverHp::new(1),
+        armor_protection: ArmorProtection::new(0),
+        armor_hardness:   ArmorHardness::new(0),
+        height_band:      HeightBand::High,
+        mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+    };
     assert!(sim_kind_blocks_path(&wall), "Wall blocks by default");
     assert!(sim_kind_blocks_path(&cover), "Cover blocks by default");
+    assert!(
+        sim_kind_blocks_path(&emplacement),
+        "Emplacement blocks by default (a cover-like structure)"
+    );
     assert!(
         !sim_kind_blocks_path(&slab),
         "Slab does not block by default"

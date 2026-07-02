@@ -5,6 +5,7 @@
 
 pub mod cover;
 pub mod def;
+pub mod emplacement;
 pub mod entity;
 pub mod floor;
 pub mod occupancy;

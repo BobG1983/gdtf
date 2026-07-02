@@ -62,8 +62,9 @@ mod test;
 pub use attachment::{AttachTag, AttachmentEffects, shooter_weapon_silenced};
 pub use bundle::{DamageProfile, HandlingProfile, WeaponBundle, WeaponStats};
 pub use components::{
-    Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Scoped, Shove,
-    Silenced, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSightBonus,
+    Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, MountedWeapon,
+    Scoped, Shove, Silenced, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    WeaponSightBonus,
 };
 pub use fire_mode::{
     AoeRange, BlastRadius, ConeHalfAngle, FireMode, FireModeSpec, HitType, ModeConeMult, ModeKind,

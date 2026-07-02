@@ -30,11 +30,15 @@ pub enum TerrainKind {
     /// A piece of cover present in this slot — **blocking** until the cell is marked
     /// destroyed (then excluded from the blocking query).
     Cover,
+    /// A weapon emplacement present in this slot (GTW-543) — a cover-like smashable
+    /// structure a ganger can enter; **blocking** while it stands (like
+    /// [`Cover`](TerrainKind::Cover)), excluded once the cell is marked destroyed.
+    Emplacement,
 }
 
 impl TerrainKind {
-    /// Whether this terrain kind blocks **on its own** — `true` for [`Wall`] and
-    /// [`Cover`], `false` for [`Open`].
+    /// Whether this terrain kind blocks **on its own** — `true` for [`Wall`],
+    /// [`Cover`], and [`Emplacement`](TerrainKind::Emplacement); `false` for [`Open`].
     ///
     /// This is the *static* blocking-ness of the terrain marker alone; it does NOT
     /// account for the destroyed-cover exclusion (a destroyed [`Cover`] cell still
@@ -48,7 +52,7 @@ impl TerrainKind {
     /// [`Open`]: TerrainKind::Open
     #[must_use]
     pub const fn blocks(self) -> bool {
-        matches!(self, Self::Wall | Self::Cover)
+        matches!(self, Self::Wall | Self::Cover | Self::Emplacement)
     }
 }
 
@@ -65,6 +69,9 @@ impl From<TerrainPieceKind> for TerrainKind {
     ///
     /// - [`Wall`](TerrainPieceKind::Wall) → [`Wall`](TerrainKind::Wall).
     /// - [`Cover`](TerrainPieceKind::Cover) → [`Cover`](TerrainKind::Cover).
+    /// - [`Emplacement`](TerrainPieceKind::Emplacement) →
+    ///   [`Emplacement`](TerrainKind::Emplacement): a cover-like smashable structure that
+    ///   blocks its slot until destroyed (GTW-543).
     /// - [`Slab`](TerrainPieceKind::Slab) → [`Open`](TerrainKind::Open): a slab is a
     ///   floor / roof z-boundary tracked by the [`SurfaceGrid`](crate::surface::SurfaceGrid),
     ///   not a blocking marker in the `(cell, level)` occupancy slot, so it leaves the
@@ -73,6 +80,7 @@ impl From<TerrainPieceKind> for TerrainKind {
         match kind {
             TerrainPieceKind::Wall => Self::Wall,
             TerrainPieceKind::Cover => Self::Cover,
+            TerrainPieceKind::Emplacement => Self::Emplacement,
             TerrainPieceKind::Slab => Self::Open,
         }
     }

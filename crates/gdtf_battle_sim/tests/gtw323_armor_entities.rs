@@ -27,9 +27,9 @@ use gdtf_battle_sim::{
     Aim, Aiming, ArmorIntegrity, BattleGrids, BattleRegistries, BattleSeed, BattleSetup,
     BraceStairCells, Cell, CombatTuning, CoverLedger, Direction, Facing, Faction, FireModeSpec,
     GangerStatTuning, InjuryRegistry, InjuryRng, InjuryTables, Level, MeleeQuery, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, SeverityRng, ShooterQuery,
-    ShotKind, ShotRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley,
-    WeaponQuery, Wears, WearsQuery, WieldsQuery,
+    ModeKind, ModeShots, ModeTuPercent, MountedQuery, OccupancyGrid, PieceQuery, SeverityRng,
+    ShooterQuery, ShotKind, ShotRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery,
+    Volley, WeaponQuery, Wears, WearsQuery, WieldsQuery,
     fire::FireOrder,
     setup_battle,
     test_support::{
@@ -133,6 +133,19 @@ fn battle_app() -> Option<(App, BattleSetup)> {
 /// Drive ONE seeded `fire()` volley from `shooter` at the enemy cell, reading the
 /// grids `setup_battle` inserted as resources. Returns the frozen `Volley`.
 fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
+    /// The `fire()` query tuple, aliased so the `SystemState` type stays under clippy's
+    /// `type_complexity` gate (the GTW-543 mounted-weapon `MountedQuery` addition tipped it over).
+    /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
+    type FireQueries<'w, 's> = (
+        ShooterQuery<'w, 's>,
+        TargetQuery<'w, 's>,
+        WearsQuery<'w, 's>,
+        PieceQuery<'w, 's>,
+        WieldsQuery<'w, 's>,
+        WeaponQuery<'w, 's>,
+        MeleeQuery<'w, 's>,
+        MountedQuery<'w, 's>,
+    );
     let tuning = CombatTuning::default();
     let mut rng = ShotRng::from_root(BattleSeed::new(seed));
     let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
@@ -159,19 +172,19 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .unwrap_or_default();
     let mode = single_mode();
 
-    let mut state: SystemState<(
-        ShooterQuery,
-        TargetQuery,
-        WearsQuery,
-        PieceQuery,
-        WieldsQuery,
-        WeaponQuery,
-        MeleeQuery,
-    )> = SystemState::new(app.world_mut());
+    let mut state: SystemState<FireQueries> = SystemState::new(app.world_mut());
     let volley = {
         let world = app.world_mut();
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee_q)) =
-            state.get_mut(world)
+        let Ok((
+            mut shooters,
+            mut targets,
+            wears,
+            mut pieces,
+            wields,
+            mut weapons,
+            melee_q,
+            mounted_q,
+        )) = state.get_mut(world)
         else {
             return Volley {
                 reports: Vec::new(),
@@ -193,6 +206,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             &wields,
             &mut weapons,
             &melee_q,
+            &mounted_q,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,

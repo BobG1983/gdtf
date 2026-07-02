@@ -1,0 +1,31 @@
+// GTW-543 weapon EMPLACEMENT — a heavy mounted-gun position a ganger ENTERS to operate a
+// bolted-down heavy bolter. A distinct sim_kind (Emplacement), NOT a tagged Cover: it carries
+// the mounted-weapon registry key AND a stateful enter/exit lifecycle no cover has. But
+// STRUCTURALLY it is cover-like — a destructible, smashable structure that blocks the path and
+// occludes vision at its band (it seeds a CoverLedger entry, exactly like a wall/cover, so a shot
+// can chew it down). While OCCUPIED the occupant reads as HIGH cover (its silhouette band is
+// forced to High) and the mounted gun is steadied via the EmplacementStability seam.
+(
+    // Stable authored key — the industrial_hive `heavy_bolter_emplacement` TerrainUuid
+    // (next free suffix after the GTW-470 stair tiles at ...010).
+    key: "00000000-0000-0000-0000-01840a910011",
+    display_name: "Heavy Bolter Emplacement",
+    sim_kind: Emplacement(
+        hp:               45,    // sturdy structural HP — a bolted mount is tough but smashable
+        armor_protection: 5,     // damage soak (heavy plate, near the bulkhead material)
+        armor_hardness:   2,     // penetration shrugged off
+        height_band:      High,  // a manned position fills the cell; nothing flies over it within a storey
+        // The gun bolted to this emplacement — resolved against the WeaponRegistry (keyed by
+        // weapon file stem) by the enter act. This must match the mounted weapon spec's file
+        // stem: assets/content/weapons/ranged/heavy_bolter.weapon.ron.
+        mounted_weapon:   "heavy_bolter",
+    ),
+    presenter_kind: Emplacement(
+        graphic_name: "emplacement",   // TileRoles `emplacement` key (GTW-543) — the dedicated VACANT weapon-mount tile, drawn distinctly from generic cover. While OCCUPIED the presenter swaps this tile in place to the `emplacement_occupied` tile (a Changed<EmplacementState> signal), so occupancy reads distinctly.
+    ),
+    // SIM-OWNED tags: none. Emplacement's Wall/Cover-like blocking (path + vision at its band) is
+    // the kind DEFAULT (sim_kind_blocks_path / sim_kind_occludes_vision are true for Emplacement),
+    // so no explicit BlocksPathfinding/BlocksVision tag is needed. It is NOT Openable (enter/exit
+    // is the emplacement toggle, not the door toggle).
+    tags: [],
+)

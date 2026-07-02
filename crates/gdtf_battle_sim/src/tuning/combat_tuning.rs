@@ -9,7 +9,10 @@ use crate::tuning::{
     band::ProjectileBandEdges,
     body_part::BodyPartWeights,
     cone_groups::ConeStabilityTuning,
-    economy::{LinkTu, MoveCosts, OpenDoorTu, ShoveTu, StanceChangeTu, TurnTu},
+    economy::{
+        EnterEmplacementTu, ExitEmplacementTu, LinkTu, MoveCosts, OpenDoorTu, ShoveTu,
+        StanceChangeTu, TurnTu,
+    },
     falls::PerStoreyDamage,
     firing_arc::FiringArc,
     matchup::MatchupMultipliers,
@@ -77,6 +80,18 @@ pub struct CombatTuning {
     /// than a committed [`ShoveTu`](crate::tuning::ShoveTu) swing. Tunable, mirroring
     /// `stance_change_tu` / `turn_tu`.
     pub open_door_tu:          OpenDoorTu,
+    /// The enter-emplacement TU cost (GTW-543) — the flat Time Units the deliberate ENTER
+    /// act spends via [`crate::tu::spend_tu`] when a ganger mans an 8-adjacent VACANT
+    /// weapon emplacement (seating the occupant + forcing it to read as HIGH cover).
+    /// Entering a mounted position is a committed setup, so it is pricier than a quick
+    /// [`OpenDoorTu`] interaction. Tunable, mirroring `stance_change_tu` / `turn_tu`.
+    pub enter_emplacement_tu:  EnterEmplacementTu,
+    /// The exit-emplacement TU cost (GTW-543) — the flat Time Units the SEPARATE deliberate
+    /// EXIT act spends via [`crate::tu::spend_tu`] when the occupant dismounts (there is NO
+    /// force-eject; a ganger leaves the mount only by spending this). Dismounting is quicker
+    /// than manning, so it is cheaper than `enter_emplacement_tu`. Tunable, mirroring
+    /// `stance_change_tu` / `turn_tu`.
+    pub exit_emplacement_tu:   ExitEmplacementTu,
     /// The per-terrain move-cost table (movement) — the flat Time Units
     /// [`crate::move_acts::advance_walk`] spends via [`crate::tu::spend_tu`] to step onto
     /// a destination cell, keyed by that cell's

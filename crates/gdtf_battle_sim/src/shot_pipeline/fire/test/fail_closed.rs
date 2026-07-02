@@ -33,7 +33,7 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
             state.get_mut(&mut world)
         else {
             return;
@@ -52,6 +52,7 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
             &wields,
             &mut weapons,
             &melee,
+            &mounted,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
@@ -120,7 +121,7 @@ fn dead_shooter_fires_nothing() {
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
             state.get_mut(&mut world)
         else {
             return;
@@ -139,6 +140,7 @@ fn dead_shooter_fires_nothing() {
             &wields,
             &mut weapons,
             &melee,
+            &mounted,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,

@@ -26,7 +26,7 @@ pub(in crate::states::running::game::battlescape) use plugin::ContextualPanelPlu
 #[cfg(feature = "test-support")]
 crate::support_use! {
     components::{
-        ContextualPanelRoot, ExecuteButton, MeleeButton, OpenDoorButton, ShoveButton,
-        StabilizeButton,
+        ContextualPanelRoot, EnterEmplacementButton, ExecuteButton, ExitEmplacementButton,
+        MeleeButton, OpenDoorButton, ShoveButton, StabilizeButton,
     };
 }

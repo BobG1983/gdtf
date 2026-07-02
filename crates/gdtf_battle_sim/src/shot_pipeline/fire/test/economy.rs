@@ -42,8 +42,16 @@ fn charge_is_taken_once_and_reflects_aiming() {
 
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         {
-            let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
-                state.get_mut(&mut world)
+            let Ok((
+                mut shooters,
+                mut targets,
+                wears,
+                mut pieces,
+                wields,
+                mut weapons,
+                melee,
+                mounted,
+            )) = state.get_mut(&mut world)
             else {
                 return;
             };
@@ -62,6 +70,7 @@ fn charge_is_taken_once_and_reflects_aiming() {
                 &wields,
                 &mut weapons,
                 &melee,
+                &mounted,
                 BattleGrids {
                     occupancy:   &occupancy,
                     surface:     &surface,
@@ -123,7 +132,7 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
             state.get_mut(&mut world)
         else {
             return;
@@ -142,6 +151,7 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
             &wields,
             &mut weapons,
             &melee,
+            &mounted,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,

@@ -18,7 +18,7 @@ use gdtf_battle_sim::terrain::{
 
 /// The graphic-role KEY a terrain definition draws with — the
 /// [`graphic_name`](TerrainGraphicKey) carried on every [`TerrainPresenterKind`] variant
-/// (`Wall` / `Cover` / `Slab`), uniformly extracted (GTW-495).
+/// (`Wall` / `Cover` / `Slab` / `Emplacement`), uniformly extracted (GTW-495 / GTW-543).
 ///
 /// The presenter half names the role key for ALL kinds; this returns it so the editor can hand
 /// it to [`TileRoles::index_for_key`] the way the presenter's draw does.
@@ -27,6 +27,7 @@ pub(crate) const fn graphic_key(def: &TerrainDef) -> &TerrainGraphicKey {
     match &def.presenter_kind {
         TerrainPresenterKind::Wall { graphic_name }
         | TerrainPresenterKind::Cover { graphic_name }
+        | TerrainPresenterKind::Emplacement { graphic_name }
         | TerrainPresenterKind::Slab { graphic_name, .. } => graphic_name,
     }
 }

@@ -17,9 +17,10 @@ use gdtf_battle_sim::FloorCostGrid;
 use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
     acts::{
-        EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested, MoveRequested,
-        OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-        SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
+        EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
+        ExitEmplacementRequested, FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested,
+        ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
+        ShoveRequested, StabilizeDownedRequested,
     },
     occupancy_sync::SimSystems,
     setup_battle_on_request,
@@ -198,6 +199,12 @@ impl Plugin for GdtfBattleInputPlugin {
         // `MessageWriter<OpenDoorRequested>` passes param validation whether or not `SimActsPlugin`
         // is present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
         .add_message::<OpenDoorRequested>()
+        // GTW-543 — the enter/exit-emplacement buffers the EnterEmplacement / ExitEmplacement
+        // intents drain into, so the drain's `MessageWriter<EnterEmplacementRequested>` /
+        // `<ExitEmplacementRequested>` pass param validation whether or not `SimActsPlugin` is
+        // present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
+        .add_message::<EnterEmplacementRequested>()
+        .add_message::<ExitEmplacementRequested>()
         // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
         // emitter's `MessageWriter<HighlightRequest>` passes param validation even
         // headlessly (`bevy-traps.md` #4). `add_message` is IDEMPOTENT.

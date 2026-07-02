@@ -8,7 +8,7 @@ use crate::{
     cone::PriorShots,
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, StanceKind},
-    stability::{SightStability, TerrainBraced},
+    stability::{EmplacementStability, SightStability, TerrainBraced},
     tuning::CombatTuning,
 };
 
@@ -45,6 +45,7 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
         wpn.stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &ledger,
         &tuning,
     );
@@ -55,6 +56,7 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
         PriorShots::first(),
         &ledger,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
 
@@ -95,6 +97,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
             stable,
             TerrainBraced::new(false),
             SightStability::none(),
+            EmplacementStability::none(),
             cover,
             &tuning,
         )
@@ -120,6 +123,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         prior,
         &empty,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
     let plain_theta = cone_for(
@@ -129,6 +133,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         prior,
         &empty,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
     assert!(
@@ -157,6 +162,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         prior,
         &under_cover,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
     let plain_under = cone_for(
@@ -166,6 +172,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         prior,
         &under_cover,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
     assert_eq!(

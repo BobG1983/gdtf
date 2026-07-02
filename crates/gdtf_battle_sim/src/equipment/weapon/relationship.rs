@@ -169,4 +169,26 @@ impl Wields {
     pub fn melee_weapon(&self, is_melee: impl Fn(Entity) -> bool) -> Option<Entity> {
         self.iter().find(|&entity| is_melee(entity))
     }
+
+    /// The **mounted** weapon entity this ganger wields — the first related entity that IS a
+    /// [`MountedWeapon`](super::MountedWeapon), determined by the caller-supplied `is_mounted`
+    /// predicate; or `None` when the ganger wields no mounted weapon (GTW-543, child GTW-41c).
+    ///
+    /// A mounted weapon exists only while the ganger MANS a weapon emplacement — the enter act
+    /// spawns the emplacement's bolted-down gun onto the occupant (related via
+    /// [`WieldedBy`](super::WieldedBy) + the [`MountedWeapon`](super::MountedWeapon) marker), and
+    /// the exit act despawns it. So this resolves to `Some` ONLY while the ganger is seated. The
+    /// ranged-firing path PREFERS this over [`ranged_weapon`](Wields::ranged_weapon)
+    /// (`wields.mounted_weapon(..).or_else(|| wields.ranged_weapon(..))`), so a manning ganger
+    /// fires the heavy mount and reverts to its own carried gun on exit — the counterpart to
+    /// [`melee_weapon`](Wields::melee_weapon), keyed on the mounted marker instead of the melee
+    /// one.
+    ///
+    /// `is_mounted` is the same caller-injected query CLOSURE
+    /// [`ranged_weapon`](Wields::ranged_weapon) takes (backed by a
+    /// `Query<(), With<MountedWeapon>>`) — the framework carve-out, not a wrapped domain scalar.
+    #[must_use]
+    pub fn mounted_weapon(&self, is_mounted: impl Fn(Entity) -> bool) -> Option<Entity> {
+        self.iter().find(|&entity| is_mounted(entity))
+    }
 }

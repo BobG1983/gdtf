@@ -84,6 +84,15 @@
     // move / single-link "one simple action" baseline. STARTING POINT (tunable).
     open_door_tu:     4,  // TU a ganger spends to open an adjacent closed door (quick uncontested interaction)
 
+    // Emplacement enter/exit TU costs (GTW-543): the deliberate context acts that man / dismount an
+    // adjacent weapon emplacement. Entering is a committed setup (swing into the seat, grip the gun),
+    // so it is pricier (matched to the committed-melee shove, 6); exiting is a quicker dismount,
+    // matched to the cheapest one-simple-action baseline (like open_door_tu, 4). There is NO
+    // force-eject — a ganger leaves the mount only by spending exit_emplacement_tu. STARTING POINTS
+    // (tunable).
+    enter_emplacement_tu: 6,  // TU a ganger spends to man an adjacent vacant emplacement
+    exit_emplacement_tu:  4,  // TU a ganger spends to dismount the emplacement it is manning
+
     // Per-terrain move cost (combat.md L34: "step" costs TUs): the flat Time Units a ganger
     // spends to step ONTO a destination cell — TERRAIN-DETERMINED (the floor tile crossed
     // determines the cost), looked up by the entered cell's TerrainKind (advance_walk reads
@@ -135,6 +144,11 @@
         // to the stability score — a scoped weapon aims steadier -> a tighter cone. A modest
         // steadying (half the brace). STARTING POINT (tunable).
         sight_stability_bonus: 15.0,
+        // GTW-543 emplacement: points a ganger MANNING a weapon emplacement (firing the
+        // bolted-down mounted gun) adds to the stability score — a fixed mount is the steadiest
+        // firing position, offsetting the mounted gun's low base accuracy. A substantial
+        // steadying (tops the brace). STARTING POINT (tunable).
+        emplacement_stability_bonus: 40.0,
         // The minimum faced-cover band each stance needs for its brace to engage:
         // prone braces on LOW+, kneeling on MID+, standing on HIGH (resolution.md §1a).
         brace_min_height: (

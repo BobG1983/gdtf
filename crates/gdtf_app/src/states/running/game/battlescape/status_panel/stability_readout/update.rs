@@ -31,7 +31,7 @@ use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Aiming, BraceStairCells, CoverLedger, Facing, MeleeWeapon, Position, Shooter, Stable, Stance,
     Suppressed, Weapon, Wields, sight_stability,
-    stability::terrain_brace::terrain_braces,
+    stability::{EmplacementStability, terrain_brace::terrain_braces},
     stability_for,
     surface::SurfaceGrid,
     tuning::CombatTuning,
@@ -200,7 +200,18 @@ fn resolve_steadiness(
     // weapon previews a tighter steadiness; an un-sighted weapon resolves the zero identity
     // (byte-identical readout).
     let sight = sight_stability(sighted, sight_bonus, tuning);
-    let (cone_mult, _recoil_growth) =
-        stability_for(&shooter, stable, terrain_braced, sight, cover, tuning);
+    // GTW-543: the readout previews the shooter's OWN carried weapon (it resolves the ranged
+    // weapon, not the emplacement mount), so it passes the zero-identity emplacement term — the
+    // preview is byte-identical to before the seam. The AUTHORITATIVE mounted-shot steadiness is
+    // applied by the sim `fire()` path; a mounted-weapon HUD preview is out of this slice's scope.
+    let (cone_mult, _recoil_growth) = stability_for(
+        &shooter,
+        stable,
+        terrain_braced,
+        sight,
+        EmplacementStability::none(),
+        cover,
+        tuning,
+    );
     Some(Steadiness::from_cone_mult(cone_mult))
 }

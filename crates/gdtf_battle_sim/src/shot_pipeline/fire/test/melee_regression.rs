@@ -52,7 +52,7 @@ fn ganger_wielding_both_a_ranged_and_a_melee_weapon_still_fires_the_ranged_weapo
 
     let report_count = {
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
             state.get_mut(&mut world)
         else {
             return;
@@ -72,6 +72,7 @@ fn ganger_wielding_both_a_ranged_and_a_melee_weapon_still_fires_the_ranged_weapo
             &wields,
             &mut weapons,
             &melee,
+            &mounted,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,

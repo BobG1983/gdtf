@@ -11,13 +11,16 @@ use crate::{
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
     terrain::piece::{FootfallSound, TerrainGraphicKey},
+    weapon::WeaponName,
 };
 
 /// The **SIM half** of a terrain definition — which structural kind a piece is and
 /// the combat stats the sim reads from it (HP / armor / clearance band).
 ///
-/// Three variants only — `Wall` / `Cover` / `Slab` — the structural kinds the combat
-/// path resolves. Per the GTW-476 redesign:
+/// `Wall` / `Cover` / `Slab` are the base structural kinds the combat path resolves; a
+/// fourth `Emplacement` kind (GTW-543) is a cover-like smashable structure that also
+/// carries a mounted-weapon key + a stateful enter/exit lifecycle. Per the GTW-476
+/// redesign:
 /// - **Scatter folds into `Cover`** (there is no `Scatter` variant; loose debris is a
 ///   low cover prop, same structural model).
 /// - The legacy **`Floor` kind is RETIRED** (there is no `Floor` variant): a floor's
@@ -32,7 +35,10 @@ use crate::{
 /// for the armor model (terrain reuses the ganger armor model), and [`HeightBand`]
 /// for the clearance band a round must fly higher than to clear. A slab carries **no**
 /// height band — it spans the whole z-boundary (`docs/combat/resolution.md` §2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
+// NOT `Copy` (GTW-543): the `Emplacement` variant carries a `WeaponName` (a `String`
+// newtype), which is not `Copy`. Every by-value reader clones or borrows; the resolve path
+// (`resolve_cover_def`) `.clone()`s the mounted-weapon key out of a borrowed match arm.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 pub enum TerrainSimKind {
     /// Solid blocking geometry — a destructible wall that fills the cell; nothing
     /// flies over it within a storey. Carries structural HP, armor, and a clearance
@@ -71,6 +77,38 @@ pub enum TerrainSimKind {
         armor_protection: ArmorProtection,
         /// The penetration the slab shrugs off (REUSE [`ArmorHardness`]).
         armor_hardness:   ArmorHardness,
+    },
+    /// A **weapon emplacement** — a heavy mounted-weapon position a ganger can ENTER to
+    /// operate a bolted-down gun (GTW-543 / GTW-41c). It is a distinct sim kind (NOT a
+    /// tagged [`Cover`](TerrainSimKind::Cover)) because it carries a mounted-weapon key AND
+    /// a stateful enter/exit lifecycle no cover has — but structurally it is cover-like: a
+    /// destructible, smashable structure that blocks the path and occludes vision at its
+    /// authored band (it seeds a [`CoverLedger`](crate::cover::CoverLedger) entry, exactly
+    /// like a `Wall`/`Cover`, so a shot can chew it down).
+    ///
+    /// While OCCUPIED, the occupant reads as HIGH cover (its published silhouette band is
+    /// forced to [`HeightBand::High`](crate::cover::HeightBand::High)) and the mounted gun is
+    /// steadied by the [`EmplacementStability`](crate::stability::EmplacementStability) seam.
+    /// Enter/exit is modelled on the door precedent (GTW-315/503) as a stateful toggle, not
+    /// on the terrain-def side; this variant carries the STATIC stats + the mounted-weapon
+    /// key the enter act resolves.
+    Emplacement {
+        /// The full structural HP the emplacement seeds to (REUSE [`CoverHp`], same pool a
+        /// cover uses — the emplacement is a smashable structure).
+        hp:               CoverHp,
+        /// The emplacement's damage-reduction stat (REUSE [`ArmorProtection`]).
+        armor_protection: ArmorProtection,
+        /// The penetration the emplacement shrugs off (REUSE [`ArmorHardness`]).
+        armor_hardness:   ArmorHardness,
+        /// The clearance band the emplacement occupies while UNOCCUPIED (REUSE
+        /// [`HeightBand`]) — the band its `BlocksVision` occluder + `CoverLedger` entry
+        /// carry, exactly like a `Wall`/`Cover`.
+        height_band:      HeightBand,
+        /// The registry KEY of the gun bolted to this emplacement (REUSE [`WeaponName`], the
+        /// weapon-identity newtype — no bare `String`). The enter act resolves it against the
+        /// [`WeaponRegistry`](crate::weapon::WeaponRegistry) (keyed by weapon file stem) to
+        /// spawn the mounted weapon on the occupant (Phase 2).
+        mounted_weapon:   WeaponName,
     },
 }
 
@@ -112,6 +150,14 @@ pub enum TerrainPresenterKind {
         /// slab (REUSE [`FootfallSound`]); `None` when the slab has no authored
         /// footfall.
         footfall:     Option<FootfallSound>,
+    },
+    /// Presentation for a weapon emplacement — the graphic role key (no footfall; an
+    /// emplacement is entered/operated, not stepped over). The symmetric presenter half of
+    /// [`TerrainSimKind::Emplacement`] the presenter phase draws.
+    Emplacement {
+        /// The graphic role key the presenter resolves to a tile atlas entry
+        /// (REUSE [`TerrainGraphicKey`]).
+        graphic_name: TerrainGraphicKey,
     },
 }
 

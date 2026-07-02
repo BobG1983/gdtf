@@ -20,8 +20,8 @@ pub(super) use crate::{
     },
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     fire::{
-        BattleGrids, FireOrder, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, Volley,
-        WeaponQuery, WearsQuery, WieldsQuery, fire,
+        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
+        Volley, WeaponQuery, WearsQuery, WieldsQuery, fire,
     },
     ganger::{
         Aiming, Direction, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, StanceKind,
@@ -61,6 +61,8 @@ pub(super) type FireQueries = (
     WeaponQuery<'static, 'static>,
     // GTW-505 C5: the melee-weapon marker probe `fire()` filters the wielded weapon against.
     MeleeQuery<'static, 'static>,
+    // GTW-543: the mounted-weapon marker probe `fire()` PREFERS the wielded weapon against.
+    MountedQuery<'static, 'static>,
 );
 
 /// A fixed seed for the per-test RNG streams (an arbitrary value, not tuned).

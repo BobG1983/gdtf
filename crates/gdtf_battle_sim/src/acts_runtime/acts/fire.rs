@@ -15,8 +15,8 @@ use crate::{
     acts::{injury::InjuryInflicted, request::FireRequested},
     cover::CoverLedger,
     fire::{
-        BattleGrids, FireOrder, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery,
-        WearsQuery, WieldsQuery, fire,
+        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
+        WeaponQuery, WearsQuery, WieldsQuery, fire,
     },
     firing_arc::target_in_arc,
     ganger::{Aiming, Direction, Facing, Position, Tu, TuMax},
@@ -204,6 +204,24 @@ pub struct FireSignals<'w, 's> {
     shove_tags:      Query<'w, 's, &'static crate::weapon::Shove>,
 }
 
+/// The two wielded-weapon MARKER probes [`dispatch_fire`] resolves a shooter's PREFERRED ranged
+/// weapon through, bundled into one [`SystemParam`] so the system stays under Bevy's 16-param
+/// limit (the [`BattleGridsParam`] grouping precedent).
+///
+/// Both are cheap unit-item archetype-filter probes over the weapon entities: [`MeleeQuery`]
+/// (GTW-505 — EXCLUDES the ganger's melee weapon from the ranged resolution) and [`MountedQuery`]
+/// (GTW-543 — the emplacement's bolted-down gun the manning ganger PREFERS). Disjoint from the
+/// stat-reading [`WeaponQuery`] and each other, so no `ParamSet` is needed. `dispatch_fire`
+/// resolves the weapon as `mounted → ranged` (prefer the mount, else the carried gun) and threads
+/// both borrows into [`fire`] (which does the same internally).
+#[derive(SystemParam)]
+pub struct WeaponProbes<'w, 's> {
+    /// The melee-weapon marker probe (GTW-505 C5) — the ranged resolution EXCLUDES a match.
+    melee:   MeleeQuery<'w, 's>,
+    /// The mounted-weapon marker probe (GTW-543) — the ranged resolution PREFERS a match.
+    mounted: MountedQuery<'w, 's>,
+}
+
 /// The query the GTW-242 fire dispatch turns the shooter through for an out-of-arc shot —
 /// the actor's `(&mut `[`Facing`]`, &mut `[`Tu`]`)`, the two components a turn-to-fire
 /// mutates (set the new facing + debit the turn TU).
@@ -387,12 +405,12 @@ pub fn dispatch_fire(
     // (a different entity set) — so neither conflicts with the shooter/turn/target access.
     wields: WieldsQuery,
     mut weapons: WeaponQuery,
-    // GTW-505 C5: the melee-weapon marker probe — used to EXCLUDE the melee weapon the
-    // shooter also wields from the ranged weapon resolution (`Wields::ranged_weapon`), so
-    // a melee weapon is never fired as a gun. A `Query<(), With<MeleeWeapon>>` over the
-    // weapon entities — disjoint from `weapons` (which filters `With<WieldedBy>` and reads
-    // the ranged stat columns), so no ParamSet needed.
-    melee: MeleeQuery,
+    // GTW-505 C5 + GTW-543: the two wielded-weapon marker probes, grouped (WeaponProbes) so the
+    // system stays under Bevy's 16-param limit. `melee` (GTW-505) EXCLUDES the ganger's melee
+    // weapon from the ranged resolution; `mounted` (GTW-543) PREFERS the emplacement's bolted-down
+    // gun the manning ganger fires. Both cheap unit-item probes over the weapon entities, disjoint
+    // from `weapons` (which filters `With<WieldedBy>` and reads the stat columns), so no ParamSet.
+    probes: WeaponProbes,
     mut grids: BattleGridsParam,
     tuning: Res<CombatTuning>,
     // GTW-14: disjoint per-subsystem RNG resources. ShotRng drives cone-sample +
@@ -453,11 +471,13 @@ pub fn dispatch_fire(
         // GTW-505 C5: resolve the RANGED weapon (excluding the melee weapon the ganger
         // also wields) so the ShotFired carries the GUN's DamageType, never the melee
         // weapon's — the same ranged-filtered resolution `fire()` does internally.
-        let Some(weapon_entity) = wields
-            .get(request.shooter)
-            .ok()
-            .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
-        else {
+        // GTW-543: PREFER the emplacement's mounted gun (the ganger is manning it) over its own
+        // carried gun, so the ShotFired carries the MOUNTED gun's DamageType while occupied — the
+        // same mounted-preferring resolution `fire()` does internally.
+        let Some(weapon_entity) = wields.get(request.shooter).ok().and_then(|w| {
+            w.mounted_weapon(|entity| probes.mounted.get(entity).is_ok())
+                .or_else(|| w.ranged_weapon(|entity| probes.melee.get(entity).is_ok()))
+        }) else {
             continue;
         };
         // The WeaponQuery row is (base_spread, accuracy, kickback, fatal_bias, damage,
@@ -533,7 +553,8 @@ pub fn dispatch_fire(
             &mut pieces,
             &wields,
             &mut weapons,
-            &melee,
+            &probes.melee,
+            &probes.mounted,
             grids.grids(),
             &tuning,
             &mut shot_rng,

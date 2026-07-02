@@ -28,11 +28,11 @@ use gdtf_battle_sim::{
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryRng,
     InjuryTables, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery,
-    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, PieceQuery, Position,
-    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger, Stable,
-    Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
-    Wounds, fire::FireOrder,
+    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, MountedQuery, OccupancyGrid, PieceQuery,
+    Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger,
+    Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy,
+    WieldsQuery, WornBy, Wounds, fire::FireOrder,
 };
 
 /// The shooter cell — well to the West so the East-facing line of occupants lies
@@ -172,6 +172,19 @@ fn fire_volley(
     occupancy: &OccupancyGrid,
     seed: u64,
 ) -> Volley {
+    /// The `fire()` query tuple, aliased so the `SystemState` type stays under clippy's
+    /// `type_complexity` gate (the GTW-543 mounted-weapon `MountedQuery` addition tipped it over).
+    /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
+    type FireQueries<'w, 's> = (
+        ShooterQuery<'w, 's>,
+        gdtf_battle_sim::TargetQuery<'w, 's>,
+        WearsQuery<'w, 's>,
+        PieceQuery<'w, 's>,
+        WieldsQuery<'w, 's>,
+        WeaponQuery<'w, 's>,
+        MeleeQuery<'w, 's>,
+        MountedQuery<'w, 's>,
+    );
     let tuning = CombatTuning::default();
     let mut rng = ShotRng::from_root(BattleSeed::new(seed));
     let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
@@ -180,22 +193,14 @@ fn fire_volley(
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();
 
-    let mut state: SystemState<(
-        ShooterQuery,
-        gdtf_battle_sim::TargetQuery,
-        WearsQuery,
-        PieceQuery,
-        WieldsQuery,
-        WeaponQuery,
-        MeleeQuery,
-    )> = SystemState::new(world);
+    let mut state: SystemState<FireQueries> = SystemState::new(world);
     // `get_mut` now returns a `Result` (Bevy 0.19); the params always validate
     // here, so an `Err` is a structural impossibility — assert it loudly rather
     // than silently producing an empty volley.
     let access = state.get_mut(world);
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
-        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) => {
+        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) => {
             gdtf_battle_sim::fire(
                 shooter,
                 FireOrder {
@@ -210,6 +215,7 @@ fn fire_volley(
                 &wields,
                 &mut weapons,
                 &melee,
+                &mounted,
                 BattleGrids {
                     occupancy,
                     surface: &surface,

@@ -14,6 +14,7 @@ use crate::{
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
     terrain::piece::TerrainGraphicKey,
+    weapon::WeaponName,
 };
 
 /// A `Wall` def at `band` with the given tags — the high-cover blocking kind.
@@ -47,6 +48,26 @@ fn cover_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
         },
         presenter_kind: TerrainPresenterKind::Cover {
             graphic_name: TerrainGraphicKey::new("crate".to_owned()),
+        },
+        tags,
+    }
+}
+
+/// An `Emplacement` def at `band` with the given tags — the cover-like mounted-gun kind
+/// (GTW-543; occludes vision at its own band by default, like a `Wall`/`Cover`).
+fn emplacement_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
+    TerrainDef {
+        key: TerrainUuid::generate(),
+        display_name: TerrainDisplayName::new("Emplacement".to_owned()),
+        sim_kind: TerrainSimKind::Emplacement {
+            hp:               CoverHp::new(45),
+            armor_protection: ArmorProtection::new(5),
+            armor_hardness:   ArmorHardness::new(2),
+            height_band:      band,
+            mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+        },
+        presenter_kind: TerrainPresenterKind::Emplacement {
+            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags,
     }
@@ -95,6 +116,22 @@ fn cover_occludes_at_its_band_by_default() {
         derives_vision_occlusion(&cover_def(HeightBand::Low, vec![])),
         Some(HeightBand::Low),
         "a Low-band Cover occludes at Low — the band is the def's, not a constant",
+    );
+}
+
+/// GTW-543 — an `Emplacement` with NO tags occludes vision at its OWN band (the kind default,
+/// like a `Wall`/`Cover`), and the band is read from the def, not hardcoded.
+#[test]
+fn emplacement_occludes_at_its_band_by_default() {
+    assert_eq!(
+        derives_vision_occlusion(&emplacement_def(HeightBand::High, vec![])),
+        Some(HeightBand::High),
+        "an Emplacement occludes vision at its authored band (High here — read from the def)",
+    );
+    assert_eq!(
+        derives_vision_occlusion(&emplacement_def(HeightBand::Mid, vec![])),
+        Some(HeightBand::Mid),
+        "a Mid-band Emplacement occludes at Mid — the band is the def's, not a constant",
     );
 }
 

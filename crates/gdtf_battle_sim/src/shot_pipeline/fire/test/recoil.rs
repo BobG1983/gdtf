@@ -84,7 +84,16 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
         let reports = match state.get_mut(&mut world) {
-            Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) => fire(
+            Ok((
+                mut shooters,
+                mut targets,
+                wears,
+                mut pieces,
+                wields,
+                mut weapons,
+                melee,
+                mounted,
+            )) => fire(
                 shooter,
                 FireOrder {
                     mode:         &mode,
@@ -98,6 +107,7 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
                 &wields,
                 &mut weapons,
                 &melee,
+                &mounted,
                 BattleGrids {
                     occupancy:   &occupancy,
                     surface:     &surface,

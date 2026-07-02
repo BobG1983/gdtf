@@ -51,6 +51,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
         wpn.stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &empty,
         &tuning,
     );
@@ -59,6 +60,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
         wpn.stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &empty,
         &tuning,
     );
@@ -86,6 +88,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
         prior,
         &empty,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
     let pinned_theta = cone_for(
@@ -95,6 +98,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
         prior,
         &empty,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
     assert!(
@@ -127,6 +131,7 @@ fn unsuppressed_shooter_is_byte_identical_to_the_no_seam_path() {
         stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &ledger,
         &tuning,
     );
@@ -188,6 +193,7 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
         wpn.stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &empty,
         &tuning,
     );
@@ -196,6 +202,7 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
         wpn.stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &empty,
         &tuning,
     );
@@ -207,6 +214,7 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
         round0,
         &empty,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
     let pinned_theta = cone_for(
@@ -216,6 +224,7 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
         round0,
         &empty,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
 

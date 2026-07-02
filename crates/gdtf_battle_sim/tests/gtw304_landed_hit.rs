@@ -34,9 +34,9 @@ use gdtf_battle_sim::{
     CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
     Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
     Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery, Position,
-    ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotRng, Shove, SlabLedger, Stable, Stance,
-    StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage,
+    ModeShots, ModeTuPercent, MountedQuery, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery,
+    Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotRng, Shove, SlabLedger, Stable,
+    Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage,
     WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
     Wounds, fire::FireOrder,
 };
@@ -168,6 +168,19 @@ fn spawn_enemy(app: &mut App) -> Entity {
 /// the enemy took an effect (Hp dropped from its pre-fire value OR an
 /// `InflictedWound` was recorded). Reads the maintained grids straight off the world.
 fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) -> bool {
+    /// The `fire()` query tuple, aliased so the `SystemState` type stays under clippy's
+    /// `type_complexity` gate (the GTW-543 mounted-weapon `MountedQuery` addition tipped it over).
+    /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
+    type FireQueries<'w, 's> = (
+        ShooterQuery<'w, 's>,
+        TargetQuery<'w, 's>,
+        WearsQuery<'w, 's>,
+        PieceQuery<'w, 's>,
+        WieldsQuery<'w, 's>,
+        WeaponQuery<'w, 's>,
+        MeleeQuery<'w, 's>,
+        MountedQuery<'w, 's>,
+    );
     let hp_before = app.world().get::<Hp>(enemy).map_or(0, |h| **h);
     let wounds_before = app
         .world()
@@ -203,21 +216,13 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
         .cloned()
         .unwrap_or_default();
 
-    let mut state: SystemState<(
-        ShooterQuery,
-        TargetQuery,
-        WearsQuery,
-        PieceQuery,
-        WieldsQuery,
-        WeaponQuery,
-        MeleeQuery,
-    )> = SystemState::new(app.world_mut());
+    let mut state: SystemState<FireQueries> = SystemState::new(app.world_mut());
     {
         let world = app.world_mut();
         // `get_mut` returns a `Result` (Bevy 0.19); the params always validate, so
         // `Err` is structurally impossible — returning `false` would fail the
         // calling assertion loudly rather than silently skip the fire.
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
             state.get_mut(world)
         else {
             return false;
@@ -236,6 +241,7 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
             &wields,
             &mut weapons,
             &melee,
+            &mounted,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,

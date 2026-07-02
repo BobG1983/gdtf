@@ -75,6 +75,34 @@ impl SightStabilityBonus {
     }
 }
 
+/// The **emplacement stability bonus** — the points a ganger MANNING a weapon emplacement
+/// (firing the bolted-down mounted gun on a fixed tripod/pintle) adds to the 0–100 stability
+/// score (GTW-543, child of GTW-41). A steady mount aims steadier, narrowing the cone via the
+/// cone-mult curve — offsetting the deliberately-inaccurate mounted weapon's low base accuracy.
+///
+/// A tuning COEFFICIENT (mirrors [`SightStabilityBonus`] / the GTW-526
+/// [`SuppressionStabilityPenalty`](crate::tuning::SuppressionStabilityPenalty) — a §1a additive
+/// stability term). This **positive** magnitude is fed by the composer
+/// ([`stability_for`](crate::aim::stability_for)) as an
+/// [`EmplacementStability`](crate::stability::EmplacementStability) contribution when the
+/// shooter's resolved ranged weapon is a [`MountedWeapon`](crate::weapon::MountedWeapon). Private
+/// inner + derived [`Deref`]; `#[serde(transparent)]`. The magnitude is tunable balance DATA (a
+/// substantial steadying — a fixed mount is the steadiest firing position) — tests assert only
+/// the STEADIER / NARROWER-cone invariant, never this number.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct EmplacementStabilityBonus(f32);
+
+impl EmplacementStabilityBonus {
+    /// Build an emplacement stability bonus from its point magnitude — for tests and
+    /// programmatic tuning edits; shipped values come from the `.ron` via the derived
+    /// [`Deserialize`]. Private inner (house style).
+    #[must_use]
+    pub const fn new(points: f32) -> Self {
+        Self(points)
+    }
+}
+
 /// A point sampled on a **stability curve** — one `(score, output)` pair (the 0–100
 /// stability score on the x axis, the curve's multiplier/coefficient on the y
 /// axis). Two curves read off the same score (resolution.md §1a): the cone-mult

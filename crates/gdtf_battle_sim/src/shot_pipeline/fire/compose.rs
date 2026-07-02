@@ -10,8 +10,8 @@
 use bevy::prelude::Entity;
 
 use super::query::{
-    BattleGrids, MeleeQuery, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery,
-    WieldsQuery,
+    BattleGrids, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery,
+    WearsQuery, WieldsQuery,
 };
 use crate::{
     aim::{Shooter, cone_for, sight_stability, stability_for},
@@ -29,7 +29,7 @@ use crate::{
     resolve_coarse::{ShotInputs, ShotKind, resolve_coarse},
     rng::{InjuryRng, SeverityRng, ShotRng},
     sample_cone::concentration_p,
-    stability::terrain_brace::terrain_braces,
+    stability::{EmplacementStability, terrain_brace::terrain_braces},
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback, Scoped,
@@ -99,6 +99,12 @@ pub(super) struct ShooterSnapshot {
     // = the zero-identity suppression term. `Suppressed` is `Copy`, so the snapshot owns it
     // and `shooter_view` hands out an `Option<&Suppressed>` borrow.
     suppressed:  Option<Suppressed>,
+    // GTW-543: whether the shooter's RESOLVED ranged weapon is a MountedWeapon — `true` when the
+    // ganger is MANNING an emplacement and firing its bolted-down gun. Feeds the emplacement
+    // stability seam (cone_for / the recoil-recompute stability_for), steadying the deliberately
+    // inaccurate mount. `false` (an un-mounted / normal shot) resolves the zero-identity
+    // EmplacementStability, so the shot is byte-identical to before the seam engaged.
+    mounted:     bool,
 }
 
 impl ShooterSnapshot {
@@ -135,6 +141,24 @@ impl ShooterSnapshot {
             facing:     &self.facing,
             // GTW-526: borrow the snapshotted Suppressed state (None = un-suppressed).
             suppressed: self.suppressed.as_ref(),
+        }
+    }
+
+    /// The GTW-543 emplacement stability term for this shot — the tunable
+    /// [`EmplacementStabilityBonus`](crate::tuning::EmplacementStabilityBonus) when the shooter's
+    /// resolved ranged weapon is a [`MountedWeapon`](crate::weapon::MountedWeapon) (the ganger is
+    /// MANNING an emplacement), else [`EmplacementStability::none`] (the zero identity).
+    ///
+    /// Resolved ONCE here so the two burst-round reads — [`cone_for`] (cone width) and the
+    /// recoil-recompute [`stability_for`] — feed the SAME emplacement term, keeping the cone and
+    /// its recoil damping consistent within a round (the GTW-542 `sight_stability` shared-term
+    /// precedent). An un-mounted shot resolves the zero identity, so its stability score — and
+    /// thus its cone — is byte-identical to before the seam engaged (the pure-additive property).
+    fn emplacement_stability(&self, tuning: &CombatTuning) -> EmplacementStability {
+        if self.mounted {
+            EmplacementStability::new(*tuning.cone_stability.emplacement_stability_bonus)
+        } else {
+            EmplacementStability::none()
         }
     }
 }
@@ -249,12 +273,22 @@ pub(super) struct ShooterReads {
 /// [`Wields::ranged_weapon`](crate::weapon::Wields::ranged_weapon) over the `melee`
 /// [`MeleeQuery`] probe — EXCLUDING the melee weapon the same ganger also wields — so
 /// relating a melee weapon never regresses ranged firing.
+///
+/// GTW-543: the resolution PREFERS a [`MountedWeapon`](crate::weapon::MountedWeapon)-marked
+/// wielded entity (the `mounted` [`MountedQuery`] probe) when present —
+/// `wields.mounted_weapon(..).or_else(|| wields.ranged_weapon(..))` — so a ganger MANNING an
+/// emplacement fires its bolted-down gun, and reverts to its own carried weapon when it exits
+/// (the mount edge despawned). A ganger with no mounted weapon (the common case) falls straight
+/// through to the GTW-505 ranged resolution, byte-identical to before. The
+/// [`mounted`](ShooterSnapshot::mounted) flag on the snapshot records which was resolved so the
+/// emplacement stability seam engages for a mounted shot only.
 pub(super) fn read_shooter(
     shooter: Entity,
     shooters: &ShooterQuery,
     wields: &WieldsQuery,
     weapons: &WeaponQuery,
     melee: &MeleeQuery,
+    mounted: &MountedQuery,
 ) -> Option<ShooterReads> {
     let ((position, facing, stance, aiming, shooting, luck, tu_max, suppressed), injuries, tu) =
         shooters.get(shooter).ok()?;
@@ -273,11 +307,14 @@ pub(super) fn read_shooter(
     // C5), then read the GTW-200 weapon stats + magazine off that weapon entity (a
     // different entity than the ganger, so the borrow is disjoint). `ranged_weapon`
     // EXCLUDES the melee weapon the ganger also wields (the `melee` marker probe) so the
-    // melee entity is never mistaken for the gun.
-    let weapon = wields
-        .get(shooter)
-        .ok()?
-        .ranged_weapon(|entity| melee.get(entity).is_ok())?;
+    // melee entity is never mistaken for the gun. GTW-543: PREFER a MountedWeapon-marked
+    // wielded entity (the ganger is manning an emplacement) over its own carried gun; a ganger
+    // with no mounted weapon falls straight through to the ranged resolution.
+    let wielded = wields.get(shooter).ok()?;
+    let mounted_weapon = wielded.mounted_weapon(|entity| mounted.get(entity).is_ok());
+    let is_mounted = mounted_weapon.is_some();
+    let weapon =
+        mounted_weapon.or_else(|| wielded.ranged_weapon(|entity| melee.get(entity).is_ok()))?;
     let (
         base_spread,
         accuracy,
@@ -318,6 +355,9 @@ pub(super) fn read_shooter(
         // GTW-526: copy the shooter's Suppressed state into the snapshot (None =
         // un-suppressed = zero-identity suppression term).
         suppressed:  suppressed.copied(),
+        // GTW-543: whether the resolved ranged weapon is the emplacement's mounted gun (the
+        // ganger is manning it) — engages the emplacement stability seam for this shot.
+        mounted:     is_mounted,
     };
     Some(ShooterReads {
         snapshot,
@@ -423,6 +463,9 @@ pub(super) fn resolve_round(
         grids.brace_cells,
         grids.surface,
     );
+    // GTW-543: resolve the emplacement stability term ONCE (mounted → the tunable bonus, else the
+    // zero identity) so cone_for AND the recoil-recompute stability_for below feed the SAME term.
+    let emplacement = snapshot.emplacement_stability(tuning);
     let cone = cone_for(
         &shooter_view,
         snapshot.weapon_stats(),
@@ -430,6 +473,7 @@ pub(super) fn resolve_round(
         prior_shots,
         grids.cover,
         terrain_braced,
+        emplacement,
         tuning,
     );
     // GTW-542: resolve the SAME sight term cone_for used above (off the snapshot's Scoped
@@ -445,6 +489,7 @@ pub(super) fn resolve_round(
         snapshot.stable,
         terrain_braced,
         sight,
+        emplacement,
         grids.cover,
         tuning,
     );

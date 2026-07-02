@@ -45,8 +45,9 @@ use gdtf_ui::{ButtonLabel, spawn_button, spawn_panel, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::contextual_panel::components::{
     CONTEXTUAL_PANEL_BOTTOM_VH, CONTEXTUAL_PANEL_RIGHT_VW, CONTEXTUAL_PANEL_ROW_GAP_VH,
-    CONTEXTUAL_PANEL_WIDTH_VW, CONTEXTUAL_PANEL_Z, ContextualPanelRoot, ExecuteButton, MeleeButton,
-    OpenDoorButton, ShoveButton, StabilizeButton,
+    CONTEXTUAL_PANEL_WIDTH_VW, CONTEXTUAL_PANEL_Z, ContextualPanelRoot, EnterEmplacementButton,
+    ExecuteButton, ExitEmplacementButton, MeleeButton, OpenDoorButton, ShoveButton,
+    StabilizeButton,
 };
 
 /// Builds the contextual-panel tree on `OnEnter(BattleScapeState::BattleRunning)`.
@@ -167,12 +168,34 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
         ButtonLabel::new("Open Door"),
         (OpenDoorButton, Visibility::Hidden),
     );
+    // GTW-543: the DEDICATED Enter / Exit Emplacement buttons, mirroring Open Door. Spawned
+    // Visibility::Hidden; `detect_contextual_targets` reveals Enter when an 8-adjacent VACANT
+    // emplacement is offered on `ContextualTargets::enter_emplacement`, and Exit ONLY when the
+    // selection is the occupant of an emplacement (`ContextualTargets::exit_emplacement`).
+    let enter_emplacement = spawn_button(
+        &mut commands,
+        &theme,
+        ButtonLabel::new("Enter"),
+        (EnterEmplacementButton, Visibility::Hidden),
+    );
+    let exit_emplacement = spawn_button(
+        &mut commands,
+        &theme,
+        ButtonLabel::new("Exit"),
+        (ExitEmplacementButton, Visibility::Hidden),
+    );
 
     // Parent the buttons under the panel BOX (the root) — they inherit its resolved
     // UI-camera target and its `GlobalZIndex`, so the whole subtree draws above the bottom bar.
-    commands
-        .entity(panel)
-        .add_children(&[execute, stabilize, melee, shove, open_door]);
+    commands.entity(panel).add_children(&[
+        execute,
+        stabilize,
+        melee,
+        shove,
+        open_door,
+        enter_emplacement,
+        exit_emplacement,
+    ]);
 }
 
 /// Despawns the contextual panel on `OnExit(BattleScapeState::BattleRunning)`.

@@ -21,8 +21,8 @@ use crate::{
     surface::SurfaceGrid,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback,
-        MeleeWeapon, Scoped, Stable, WeaponDamage, WeaponPunch, WeaponShred, WeaponSightBonus,
-        WieldedBy, Wields,
+        MeleeWeapon, MountedWeapon, Scoped, Stable, WeaponDamage, WeaponPunch, WeaponShred,
+        WeaponSightBonus, WieldedBy, Wields,
     },
 };
 
@@ -106,6 +106,23 @@ pub type WieldsQuery<'world, 'state> = Query<'world, 'state, &'static Wields>;
 /// could resolve the melee entity as its "weapon" and fire nothing (the zero-ranged-
 /// regression mechanism).
 pub type MeleeQuery<'world, 'state> = Query<'world, 'state, (), With<MeleeWeapon>>;
+
+/// The **mounted-weapon marker probe** the ranged-firing path resolves a shooter's PREFERRED
+/// weapon against (GTW-543, child GTW-41c) — read-only `With<`[`MountedWeapon`]`>` access over
+/// the weapon entities, so `Wields::mounted_weapon(|e| mounted.get(e).is_ok())` can select the
+/// bolted-down gun a ganger fires WHILE MANNING an emplacement.
+///
+/// A type alias for `Query<(), With<MountedWeapon>>`: it carries NO component data (the unit `()`
+/// query item), only the archetype filter, so it is the cheapest possible "is this entity a
+/// mounted weapon?" probe (the [`MeleeQuery`] shape). Read-only and disjoint from the
+/// [`WeaponQuery`] / [`WieldsQuery`] / [`MeleeQuery`] — so all coexist with no `B0001` conflict.
+/// The fire path prefers a mounted-marked entity over the ganger's own carried gun
+/// (`wields.mounted_weapon(..).or_else(|| wields.ranged_weapon(..))`), so a manning ganger fires
+/// the mount and reverts to its own weapon when it exits (the mount edge despawned). A ganger
+/// with no mounted weapon (the common case) resolves nothing here and falls back to
+/// [`ranged_weapon`](crate::weapon::Wields::ranged_weapon) — byte-identical to the pre-GTW-543
+/// path.
+pub type MountedQuery<'world, 'state> = Query<'world, 'state, (), With<MountedWeapon>>;
 
 /// The **wielded-weapon query** [`fire`](super::fire) reads the GTW-200 weapon-stat
 /// components + decrements the [`Magazine`] through — the weapon entity's stat columns,

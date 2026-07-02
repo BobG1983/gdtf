@@ -7,7 +7,7 @@ use crate::{
     cone::{PriorShots, aim_cone_mult, cone_angle},
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, StanceKind},
-    stability::{SightStability, TerrainBraced},
+    stability::{EmplacementStability, SightStability, TerrainBraced},
     tuning::CombatTuning,
 };
 
@@ -36,6 +36,7 @@ fn cone_for_bit_equals_a_hand_composed_cone_angle() {
         prior,
         &ledger,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
 
@@ -46,6 +47,7 @@ fn cone_for_bit_equals_a_hand_composed_cone_angle() {
         wpn.stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &ledger,
         &tuning,
     );
@@ -94,6 +96,7 @@ fn aimed_cone_for_is_strictly_narrower_than_hip_fire() {
         prior,
         &ledger,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
     let hip_cone = cone_for(
@@ -103,6 +106,7 @@ fn aimed_cone_for_is_strictly_narrower_than_hip_fire() {
         prior,
         &ledger,
         TerrainBraced::new(false),
+        EmplacementStability::none(),
         &tuning,
     );
 
@@ -136,6 +140,7 @@ fn each_prior_shot_widens_cone_for_monotonically() {
             PriorShots::new(shots),
             &ledger,
             TerrainBraced::new(false),
+            EmplacementStability::none(),
             &tuning,
         );
         assert!(

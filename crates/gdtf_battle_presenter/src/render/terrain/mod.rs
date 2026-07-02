@@ -41,7 +41,8 @@ mod test;
 
 pub use active_level::{ActiveLevel, PresenterSystems, ViewMode};
 pub use draw::{
-    StaticMap, TerrainSprite, draw_static_battlefield, swap_destroyed_cover, swap_destroyed_slab,
+    StaticMap, TerrainSprite, draw_static_battlefield, indicate_emplacement_occupied,
+    swap_destroyed_cover, swap_destroyed_slab,
 };
 pub use link_draw::{VerticalLinkSprite, draw_vertical_links};
 pub use roles::{

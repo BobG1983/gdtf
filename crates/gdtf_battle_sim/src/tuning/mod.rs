@@ -75,14 +75,17 @@ pub use body_part::{BodyPartWeight, BodyPartWeights};
 pub use combat_tuning::CombatTuning;
 pub use cone::{
     AimConeMult, AimHeightFrac, AimTuPremium, BraceContribution, ConcentrationCoeff,
-    MuzzleForwardOffset, MuzzleHeight, RecoilClimb, SightStabilityBonus, SilhouetteTop,
-    StabilityCurveCoord, StanceContribution,
+    EmplacementStabilityBonus, MuzzleForwardOffset, MuzzleHeight, RecoilClimb, SightStabilityBonus,
+    SilhouetteTop, StabilityCurveCoord, StanceContribution,
 };
 pub use cone_groups::{
     AimMode, BraceMinHeight, ConcentrationCoeffs, ConeStabilityTuning, MuzzleHeights,
     SilhouetteTops, StabilityCurve, StabilityCurvePoint, StabilityCurves, StanceStability,
 };
-pub use economy::{LinkTu, MoveCost, MoveCosts, OpenDoorTu, ShoveTu, StanceChangeTu, TurnTu};
+pub use economy::{
+    EnterEmplacementTu, ExitEmplacementTu, LinkTu, MoveCost, MoveCosts, OpenDoorTu, ShoveTu,
+    StanceChangeTu, TurnTu,
+};
 pub use falls::PerStoreyDamage;
 pub use firing_arc::FiringArc;
 pub use matchup::MatchupMultipliers;

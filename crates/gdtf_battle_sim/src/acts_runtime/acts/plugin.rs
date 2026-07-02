@@ -8,6 +8,7 @@ use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update, resource_exists};
 use crate::{
     acts::{
         downed::{dispatch_execute_downed, dispatch_stabilize_downed},
+        enter_emplacement::{dispatch_enter_emplacement, dispatch_exit_emplacement},
         fire::{FireDeclaration, dispatch_fire},
         injury::{InjuryInflicted, apply_injury},
         melee::dispatch_melee,
@@ -16,9 +17,10 @@ use crate::{
         posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance},
         reload::{ReloadResult, dispatch_reload},
         request::{
-            EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested, MeleeResolved,
-            MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested,
-            SetFacingRequested, SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
+            EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
+            ExitEmplacementRequested, FireRequested, MeleeRequested, MeleeResolved, MoveRequested,
+            OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
+            SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
         },
         shove::dispatch_shove,
     },
@@ -35,7 +37,7 @@ use crate::{
     suppression::{
         SuppressionApplied, apply_suppression, reset_suppression, suppression_auto_stance,
     },
-    terrain::openable::SetOpenable,
+    terrain::{emplacement::SetEmplacement, openable::SetOpenable},
     turn::{ActiveFaction, TurnStarted, dispatch_end_turn},
 };
 
@@ -120,6 +122,20 @@ fn register_messages(app: &mut App) {
         // (apply_openable_toggle in OpenableTogglePlugin) name it — the CoverDestroyed / FallOccurred
         // shared-registration precedent (bevy-traps.md #4 / #5).
         .add_message::<SetOpenable>()
+        // GTW-543: the ENTER/EXIT-EMPLACEMENT acts' input messages — drained by
+        // dispatch_enter_emplacement / dispatch_exit_emplacement. The player-only contextual
+        // Enter/Exit buttons write them (input seam). Registering the buffers here makes those
+        // dispatchers' MessageReader params valid (bevy-traps.md #4 / #5).
+        .add_message::<EnterEmplacementRequested>()
+        .add_message::<ExitEmplacementRequested>()
+        // GTW-543: the enter/exit dispatchers WRITE SetEmplacement (the GTW-543 toggle mechanism
+        // they reuse). Registering the buffer here makes their MessageWriter<SetEmplacement> valid
+        // even when SimActsPlugin is wired WITHOUT EmplacementTogglePlugin (the in-crate acts test
+        // harness). It is IDEMPOTENT with EmplacementTogglePlugin's own add_message::<SetEmplacement>
+        // (Bevy no-ops a second registration), so both the producer (here) and the consumer
+        // (apply_emplacement_toggle in EmplacementTogglePlugin) name it — the SetOpenable /
+        // CoverDestroyed / FallOccurred shared-registration precedent (bevy-traps.md #4 / #5).
+        .add_message::<SetEmplacement>()
         // GTW-507: the LIVE melee act's input message (drained by dispatch_melee) + its
         // presenter-facing output signal (the strike-glyph FX keys off it). Registering both
         // buffers here makes dispatch_melee's MessageReader<MeleeRequested> +
@@ -259,6 +275,21 @@ fn wire_systems(app: &mut App) {
             // (&mut Tu) + door (&OpenState) queries touch disjoint entities, so no B0001 conflict.
             // No .before/.after is needed for correctness.
             dispatch_open_door,
+            // GTW-543: the LIVE enter/exit-emplacement acts. They drain EnterEmplacementRequested /
+            // ExitEmplacementRequested, re-gate (the emplacement is Vacant + 8-adjacent for enter,
+            // or its occupant IS the actor for exit) + the actor (exists + affords the
+            // Enter/Exit-EmplacementTu leaf), spend that TU off the actor, and WRITE a
+            // SetEmplacement::occupy / ::vacate — REUSING the GTW-543 toggle mechanism (they never
+            // flip EmplacementState directly). Like dispatch_open_door they join the UNORDERED
+            // group: the only state they share with a sibling is the SetEmplacement message buffer
+            // they produce, which EmplacementTogglePlugin's apply_emplacement_toggle CONSUMES — but
+            // buffered messages persist a frame (bevy-traps.md #4), so it reads them next tick
+            // regardless of intra-frame order (the emplacement's one-frame settle). Their
+            // Res<CombatTuning> read is battle-lifetime — taken Option<Res> so they fail closed
+            // outside a live battle (bevy-traps.md #1). Their actor (&mut Tu) + emplacement
+            // (&EmplacementState) queries touch disjoint entities, so no B0001 conflict.
+            dispatch_enter_emplacement,
+            dispatch_exit_emplacement,
         )
             .in_set(SimSystems::Simulate),
     )

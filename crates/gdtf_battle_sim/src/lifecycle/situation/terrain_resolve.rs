@@ -30,6 +30,7 @@ use crate::{
         entity::TerrainPieceKind,
         piece::{FootfallSound, TerrainGraphicKey},
     },
+    weapon::WeaponName,
 };
 
 /// A pre-resolved cover piece — the structural stats and presentation hooks extracted
@@ -81,6 +82,17 @@ pub(super) struct ResolvedCoverPiece {
     /// the openable's blocking lifecycle (C2). A `Wall`/`Cover` already carries that band by
     /// default, so its open state will re-block at the SAME band on close.
     pub(super) openable:         Option<HeightBand>,
+    /// `Some(key)` if this piece is a **weapon emplacement** (GTW-543) — the def's
+    /// [`TerrainSimKind::Emplacement`](crate::terrain::def::TerrainSimKind::Emplacement)
+    /// variant, where `key` is the mounted-weapon [`WeaponName`] registry key bolted to it;
+    /// `None` for a plain `Wall`/`Cover`. When `Some`, the spawn loop tags the entity
+    /// [`TerrainPieceKind::Emplacement`], attaches an
+    /// [`EmplacementState::Vacant`](crate::terrain::emplacement::EmplacementState) +
+    /// [`MountedWeaponKey`](crate::terrain::emplacement::MountedWeaponKey)`(key)`, and seeds
+    /// its [`CoverLedger`](crate::cover::CoverLedger) entry (a smashable structure) — the
+    /// emplacement blocks path + occludes vision at its `height_band` exactly like a
+    /// `Wall`/`Cover`.
+    pub(super) emplacement:      Option<WeaponName>,
 }
 
 /// A pre-resolved slab piece — the structural stats and presentation hooks extracted
@@ -126,56 +138,78 @@ pub(super) struct ResolvedSlabPiece {
     pub(super) openable:         Option<HeightBand>,
 }
 
-/// Resolve a [`TerrainDef`] as a **cover** piece (wall / cover) — extract the
-/// [`TerrainSimKind`] `Wall`/`Cover` structural stats + the [`TerrainPieceKind`] + the
-/// presenter graphic.
+/// Resolve a [`TerrainDef`] as a **cover** piece (wall / cover / emplacement) — extract the
+/// [`TerrainSimKind`] `Wall`/`Cover`/`Emplacement` structural stats + the [`TerrainPieceKind`]
+/// + the presenter graphic (and, for an emplacement, the mounted-weapon key — GTW-543).
 ///
-/// Returns `None` if the def is not a `Wall`/`Cover` sim-kind (e.g. a slab def was authored
-/// in a cover list), which is treated as an authoring error at the call site (the piece is
-/// re-validated as the correct kind there).
+/// Returns `None` if the def is not a `Wall`/`Cover`/`Emplacement` sim-kind (e.g. a slab def
+/// was authored in a cover list), which is treated as an authoring error at the call site (the
+/// piece is re-validated as the correct kind there).
 pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedCoverPiece> {
-    let (max_hp, armor_protection, armor_hardness, height_band, piece_kind) = match &def.sim_kind {
-        TerrainSimKind::Wall {
-            hp,
-            armor_protection,
-            armor_hardness,
-            height_band,
-        } => (
-            *hp,
-            *armor_protection,
-            *armor_hardness,
-            *height_band,
-            TerrainPieceKind::Wall,
-        ),
-        TerrainSimKind::Cover {
-            hp,
-            armor_protection,
-            armor_hardness,
-            height_band,
-        } => (
-            *hp,
-            *armor_protection,
-            *armor_hardness,
-            *height_band,
-            TerrainPieceKind::Cover,
-        ),
-        TerrainSimKind::Slab { .. } => {
-            // A slab def was named in a cover list — wrong kind.
-            bevy::log::error!(
-                "terrain def {:?} is not a Wall/Cover sim-kind (found {:?}); \
-                 it cannot be used in walls/scatter — check the situation authoring",
-                key,
-                def.sim_kind,
-            );
-            return None;
-        }
-    };
+    let (max_hp, armor_protection, armor_hardness, height_band, piece_kind, mounted_weapon) =
+        match &def.sim_kind {
+            TerrainSimKind::Wall {
+                hp,
+                armor_protection,
+                armor_hardness,
+                height_band,
+            } => (
+                *hp,
+                *armor_protection,
+                *armor_hardness,
+                *height_band,
+                TerrainPieceKind::Wall,
+                None,
+            ),
+            TerrainSimKind::Cover {
+                hp,
+                armor_protection,
+                armor_hardness,
+                height_band,
+            } => (
+                *hp,
+                *armor_protection,
+                *armor_hardness,
+                *height_band,
+                TerrainPieceKind::Cover,
+                None,
+            ),
+            // GTW-543: an emplacement is a cover-like smashable structure resolved through this
+            // same cover path — same CoverHp pool, same armor model, same band-carrying
+            // occluder. It differs only in carrying the mounted-weapon key + the enter/exit
+            // lifecycle the spawn loop attaches (via TerrainPieceKind::Emplacement).
+            TerrainSimKind::Emplacement {
+                hp,
+                armor_protection,
+                armor_hardness,
+                height_band,
+                mounted_weapon,
+            } => (
+                *hp,
+                *armor_protection,
+                *armor_hardness,
+                *height_band,
+                TerrainPieceKind::Emplacement,
+                Some(mounted_weapon.clone()),
+            ),
+            TerrainSimKind::Slab { .. } => {
+                // A slab def was named in a cover list — wrong kind.
+                bevy::log::error!(
+                    "terrain def {:?} is not a Wall/Cover/Emplacement sim-kind (found {:?}); \
+                     it cannot be used in walls/scatter — check the situation authoring",
+                    key,
+                    def.sim_kind,
+                );
+                return None;
+            }
+        };
     Some(ResolvedCoverPiece {
         max_hp,
         height_band,
         armor_protection,
         armor_hardness,
         piece_kind,
+        emplacement: mounted_weapon,
         // NET-NEW (GTW-491): the graphic comes from the def's presenter_kind for ALL kinds,
         // INCLUDING Wall — a wall entity now carries a TerrainGraphicKey (the fact GTW-493
         // reads). A presenter-kind variant that disagrees with the sim-kind is an authoring
@@ -227,7 +261,9 @@ pub(super) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<Re
         // mismatch and yields None (no footfall).
         footfall:         match &def.presenter_kind {
             TerrainPresenterKind::Slab { footfall, .. } => footfall.clone(),
-            TerrainPresenterKind::Wall { .. } | TerrainPresenterKind::Cover { .. } => None,
+            TerrainPresenterKind::Wall { .. }
+            | TerrainPresenterKind::Cover { .. }
+            | TerrainPresenterKind::Emplacement { .. } => None,
         },
         // GTW-501 C1/D2: a slab does NOT block path by default, so this is `true` only when
         // the def carries an explicit BlocksPathfinding tag (a barricade/lip slab).
@@ -251,6 +287,7 @@ fn presenter_graphic(presenter_kind: &TerrainPresenterKind) -> TerrainGraphicKey
     match presenter_kind {
         TerrainPresenterKind::Wall { graphic_name }
         | TerrainPresenterKind::Cover { graphic_name }
+        | TerrainPresenterKind::Emplacement { graphic_name }
         | TerrainPresenterKind::Slab { graphic_name, .. } => graphic_name.clone(),
     }
 }

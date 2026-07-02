@@ -76,8 +76,8 @@ crate::support_use! {
 #[cfg(feature = "test-support")]
 crate::support_use! {
     game::{
-        ContextualPanelRoot, ExecuteButton, LoadingScreenRoot, MeleeButton, OpenDoorButton,
-        ShoveButton, StabilizeButton,
+        ContextualPanelRoot, EnterEmplacementButton, ExecuteButton, ExitEmplacementButton,
+        LoadingScreenRoot, MeleeButton, OpenDoorButton, ShoveButton, StabilizeButton,
     };
 }
 // Test-support-only re-export of the GTW-328 combat-log markers, gated so the binary build is

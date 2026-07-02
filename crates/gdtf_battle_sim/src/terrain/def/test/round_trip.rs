@@ -9,6 +9,7 @@ use crate::{
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
     terrain::piece::{FootfallSound, TerrainGraphicKey},
+    weapon::WeaponName,
 };
 
 /// Serialize `def` to RON and parse it back, asserting the round-trip is the
@@ -92,6 +93,28 @@ fn slab_def_round_trips() {
         presenter_kind: TerrainPresenterKind::Slab {
             graphic_name: TerrainGraphicKey::new("slab".to_owned()),
             footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
+        },
+        tags:           Vec::new(),
+    };
+    assert_round_trips(&def);
+}
+
+/// GTW-543 — an `Emplacement` definition round-trips to itself (identity), including the
+/// mounted-weapon key on the sim side.
+#[test]
+fn emplacement_def_round_trips() {
+    let def = TerrainDef {
+        key:            TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0004)),
+        display_name:   TerrainDisplayName::new("Heavy Bolter Emplacement".to_owned()),
+        sim_kind:       TerrainSimKind::Emplacement {
+            hp:               CoverHp::new(45),
+            armor_protection: ArmorProtection::new(5),
+            armor_hardness:   ArmorHardness::new(2),
+            height_band:      HeightBand::High,
+            mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+        },
+        presenter_kind: TerrainPresenterKind::Emplacement {
+            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags:           Vec::new(),
     };

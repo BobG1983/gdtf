@@ -8,8 +8,8 @@ use crate::{
     cover::HeightBand,
     tuning::cone::{
         AimConeMult, AimHeightFrac, AimTuPremium, BraceContribution, ConcentrationCoeff,
-        MuzzleForwardOffset, MuzzleHeight, RecoilClimb, SightStabilityBonus, SilhouetteTop,
-        StabilityCurveCoord, StanceContribution,
+        EmplacementStabilityBonus, MuzzleForwardOffset, MuzzleHeight, RecoilClimb,
+        SightStabilityBonus, SilhouetteTop, StabilityCurveCoord, StanceContribution,
     },
 };
 
@@ -253,30 +253,34 @@ impl Default for SilhouetteTops {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct ConeStabilityTuning {
     /// Per-stance stability contributions (prone 40 / kneel 25 / stand 10).
-    pub stance_stability:      StanceStability,
+    pub stance_stability:            StanceStability,
     /// The auto-brace contribution (+30) added when the faced cover suits the stance.
-    pub brace_contribution:    BraceContribution,
+    pub brace_contribution:          BraceContribution,
     /// The GTW-542 sight-attachment stability bonus — points a [`Scoped`](crate::weapon::Scoped)
     /// weapon adds to the score (a scoped weapon aims steadier → a tighter cone).
-    pub sight_stability_bonus: SightStabilityBonus,
+    pub sight_stability_bonus:       SightStabilityBonus,
+    /// The GTW-543 emplacement stability bonus — points a ganger MANNING a weapon emplacement
+    /// (firing the bolted-down [`MountedWeapon`](crate::weapon::MountedWeapon)) adds to the score
+    /// (a fixed mount aims steadier → a tighter cone, offsetting the mounted gun's low accuracy).
+    pub emplacement_stability_bonus: EmplacementStabilityBonus,
     /// The per-stance brace min-height gate (prone↔LOW+, kneel↔MID+, stand↔HIGH).
-    pub brace_min_height:      BraceMinHeight,
+    pub brace_min_height:            BraceMinHeight,
     /// The two stability curves (cone-mult + recoil-growth) over the 0–100 score.
-    pub stability_curves:      StabilityCurves,
+    pub stability_curves:            StabilityCurves,
     /// The aim-mode cone multiplier (×0.6) and TU premium (×1.5).
-    pub aim_mode:              AimMode,
+    pub aim_mode:                    AimMode,
     /// The recoil-climb coefficient (the per-prior-shot upward axis tilt).
-    pub recoil_climb:          RecoilClimb,
+    pub recoil_climb:                RecoilClimb,
     /// The concentration-p coefficients (so `concentration_p` is data-driven).
-    pub concentration:         ConcentrationCoeffs,
+    pub concentration:               ConcentrationCoeffs,
     /// The aim-height fraction of the target's silhouette top (a level-fraction).
-    pub aim_height_frac:       AimHeightFrac,
+    pub aim_height_frac:             AimHeightFrac,
     /// The muzzle forward offset along the facing (a cell-fraction).
-    pub muzzle_forward_offset: MuzzleForwardOffset,
+    pub muzzle_forward_offset:       MuzzleForwardOffset,
     /// The per-stance muzzle height level-fractions (de-pxed `shot_z_by_stance`).
-    pub muzzle_heights:        MuzzleHeights,
+    pub muzzle_heights:              MuzzleHeights,
     /// The per-stance silhouette-top level-fractions (the aim-point source).
-    pub silhouette_tops:       SilhouetteTops,
+    pub silhouette_tops:             SilhouetteTops,
 }
 
 impl Default for ConeStabilityTuning {
@@ -285,21 +289,26 @@ impl Default for ConeStabilityTuning {
         // resolution.md §1a — tunable, value-agnostic tests only. The sub-structs
         // carry their own doc-default impls.
         Self {
-            stance_stability:      StanceStability::default(),
-            brace_contribution:    BraceContribution::new(30.0),
+            stance_stability:            StanceStability::default(),
+            brace_contribution:          BraceContribution::new(30.0),
             // A modest steadying (+15, half the brace) — a defensible-but-arbitrary
             // starting point; tests assert only the STEADIER / NARROWER-cone invariant,
             // never this magnitude (the SuppressionStabilityPenalty precedent).
-            sight_stability_bonus: SightStabilityBonus::new(15.0),
-            brace_min_height:      BraceMinHeight::default(),
-            stability_curves:      StabilityCurves::default(),
-            aim_mode:              AimMode::default(),
-            recoil_climb:          RecoilClimb::new(0.01),
-            concentration:         ConcentrationCoeffs::default(),
-            aim_height_frac:       AimHeightFrac::new(1.0),
-            muzzle_forward_offset: MuzzleForwardOffset::new(0.3),
-            muzzle_heights:        MuzzleHeights::default(),
-            silhouette_tops:       SilhouetteTops::default(),
+            sight_stability_bonus:       SightStabilityBonus::new(15.0),
+            // A substantial steadying (+40 — a fixed mount is the steadiest firing position,
+            // topping the +30 brace) offsetting the mounted gun's low base accuracy. A
+            // defensible-but-arbitrary starting point; tests assert only the STEADIER /
+            // NARROWER-cone invariant, never this magnitude.
+            emplacement_stability_bonus: EmplacementStabilityBonus::new(40.0),
+            brace_min_height:            BraceMinHeight::default(),
+            stability_curves:            StabilityCurves::default(),
+            aim_mode:                    AimMode::default(),
+            recoil_climb:                RecoilClimb::new(0.01),
+            concentration:               ConcentrationCoeffs::default(),
+            aim_height_frac:             AimHeightFrac::new(1.0),
+            muzzle_forward_offset:       MuzzleForwardOffset::new(0.3),
+            muzzle_heights:              MuzzleHeights::default(),
+            silhouette_tops:             SilhouetteTops::default(),
         }
     }
 }

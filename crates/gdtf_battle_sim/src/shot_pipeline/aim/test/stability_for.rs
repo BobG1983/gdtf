@@ -36,6 +36,7 @@ fn stability_for_bit_equals_a_direct_stability_call() {
         stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &ledger,
         &tuning,
     );
@@ -91,6 +92,7 @@ fn brace_at_faced_cell_is_steadier_than_an_empty_cell() {
         stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &braced_ledger,
         &tuning,
     );
@@ -102,6 +104,7 @@ fn brace_at_faced_cell_is_steadier_than_an_empty_cell() {
         stable,
         TerrainBraced::new(false),
         SightStability::none(),
+        EmplacementStability::none(),
         &empty,
         &tuning,
     );

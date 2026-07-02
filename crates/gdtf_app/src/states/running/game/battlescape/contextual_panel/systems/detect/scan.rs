@@ -8,6 +8,8 @@
 //! - [`scan_melee_structure`] — the GTW-508 melee-vs-adjacent-structure (cover-smash) scan.
 //! - [`scan_shove_target`] — the GTW-525 shove-vs-ganger scan (no LOS, no weapon).
 //! - [`scan_open_door`] — the GTW-315 open-door-vs-adjacent-CLOSED-door scan.
+//! - [`scan_enter_emplacement`] — the GTW-543 enter-vs-adjacent-VACANT-emplacement scan.
+//! - [`scan_exit_emplacement`] — the GTW-543 exit-vs-occupied-by-the-selection scan.
 //!
 //! Every scan is PURE over the queried components + the read grids (no world mutation), so the
 //! offer logic is testable in isolation from the visibility toggling. The actual sim gates
@@ -25,7 +27,7 @@ use gdtf_battle_sim::{
     los::{Observer, PeekOffset, Target, has_los},
 };
 
-use super::{CandidateReads, DoorReads, LosGrids};
+use super::{CandidateReads, DoorReads, EmplacementReads, LosGrids};
 
 /// Scans `candidates` for the actor's actionable downed neighbours.
 ///
@@ -230,6 +232,71 @@ pub(super) fn scan_open_door(actor_pos: Position, doors: &Query<DoorReads>) -> O
             continue;
         }
         return Some(entity);
+    }
+    None
+}
+
+/// Scans `emplacements` for the actor's actionable ENTER target — the first 8-adjacent VACANT
+/// weapon emplacement (GTW-543).
+///
+/// An EMPLACEMENT is any terrain entity carrying an
+/// [`EmplacementState`](gdtf_battle_sim::EmplacementState) (the GTW-543 mechanism attaches it only
+/// to emplacement pieces at spawn). The offer gate MIRRORS the sim's `dispatch_enter_emplacement`
+/// gate: the emplacement must be [`EmplacementState::Vacant`](gdtf_battle_sim::EmplacementState)
+/// (an occupied emplacement is NOT offered — it already has an operator) and 8-adjacent to the
+/// actor ([`is_8_adjacent`] over the actor's [`Position`] vs a [`Position`] AT the emplacement's
+/// [`TerrainCell`](gdtf_battle_sim::entity::TerrainCell) — the actor-vs-cell idiom the sim uses).
+/// F4 is PLAYER-ONLY, which the caller enforces by running this only for a selected player-faction
+/// actor. Returns the first such emplacement, or [`None`] when none qualifies.
+///
+/// Pure over the queried emplacement components (no world mutation), so it is testable in
+/// isolation. The sim's
+/// [`dispatch_enter_emplacement`](gdtf_battle_sim::acts::dispatch_enter_emplacement) gate (VACANT
+/// `EmplacementState` + 8-adjacent + affords the
+/// [`EnterEmplacementTu`](gdtf_battle_sim::tuning::EnterEmplacementTu) leaf) is the authoritative
+/// re-check + the TU spend when the act fires (one-way `input -> sim` boundary); this only decides
+/// what to OFFER.
+pub(super) fn scan_enter_emplacement(
+    actor_pos: Position,
+    emplacements: &Query<EmplacementReads>,
+) -> Option<Entity> {
+    for (entity, state, emplacement_cell, _occupant) in emplacements {
+        // Only a VACANT emplacement 8-adjacent to the actor is offered — the exact enter gate the
+        // sim re-checks authoritatively. Build a Position AT the emplacement's cell for the
+        // actor-vs-cell reach (the same idiom `dispatch_enter_emplacement` / the open-door scan use).
+        if state.is_occupied() || !is_8_adjacent(actor_pos, Position::new(**emplacement_cell)) {
+            continue;
+        }
+        return Some(entity);
+    }
+    None
+}
+
+/// Scans `emplacements` for the actor's actionable EXIT target — the emplacement whose recorded
+/// [`EmplacementOccupant`](gdtf_battle_sim::EmplacementOccupant) IS the `actor` (GTW-543).
+///
+/// The offer gate MIRRORS the sim's `dispatch_exit_emplacement` gate: the emplacement's recorded
+/// occupant must BE the acting selection — exit is offered ONLY to the ganger currently manning
+/// it (there is NO force-eject; a ganger leaves the mount only by spending the exit TU). No
+/// adjacency check is needed — the occupant is by definition on / at the mount. Returns the first
+/// emplacement the actor occupies, or [`None`] when the selection is not manning any emplacement.
+///
+/// Pure over the queried emplacement components (no world mutation), so it is testable in
+/// isolation. The sim's
+/// [`dispatch_exit_emplacement`](gdtf_battle_sim::acts::dispatch_exit_emplacement) gate (the
+/// recorded occupant IS the actor + affords the
+/// [`ExitEmplacementTu`](gdtf_battle_sim::tuning::ExitEmplacementTu) leaf) is the authoritative
+/// re-check + the TU spend when the act fires; this only decides what to OFFER.
+pub(super) fn scan_exit_emplacement(
+    actor: Entity,
+    emplacements: &Query<EmplacementReads>,
+) -> Option<Entity> {
+    for (entity, _state, _cell, occupant) in emplacements {
+        // Offer the emplacement whose recorded occupant IS this selection — the exact exit gate the
+        // sim re-checks authoritatively (offered ONLY to the occupant, no force-eject).
+        if occupant.is_some_and(|occupant| **occupant == actor) {
+            return Some(entity);
+        }
     }
     None
 }

@@ -55,7 +55,7 @@ fn fire_at_in_line_target_applies_damage() {
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
             state.get_mut(&mut world)
         else {
             return;
@@ -74,6 +74,7 @@ fn fire_at_in_line_target_applies_damage() {
             &wields,
             &mut weapons,
             &melee,
+            &mounted,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
@@ -167,7 +168,7 @@ fn fire_into_empty_space_is_a_clean_miss() {
     let mut sev_r = severity_rng();
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee)) =
+        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
             state.get_mut(&mut world)
         else {
             return;
@@ -186,6 +187,7 @@ fn fire_into_empty_space_is_a_clean_miss() {
             &wields,
             &mut weapons,
             &melee,
+            &mounted,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
