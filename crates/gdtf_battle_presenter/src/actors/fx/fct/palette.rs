@@ -60,6 +60,16 @@ const NEUTRAL_GREY: Color = Color::srgb(0.72, 0.72, 0.74);
 /// saturated hue) because suppression is a state the unit is UNDER, not a hit it took.
 const SUPPRESSED_BLUE_GREY: Color = Color::srgb(0.45, 0.55, 0.72);
 
+/// TOXIC GREEN — a damage-over-time tick pop (GTW-544). A per-turn attrition valence for the
+/// flat HP a burning / caustic DOT drains each round, distinct from the raw-hit damage RED,
+/// the wound AMBER, the neutral GREY, the lethal RED, and the cowed suppression blue-grey.
+///
+/// A saturated sickly green — the genre "poison / acid / plasma-burn" hue — so a DOT tick reads
+/// as its own recurring attrition signal rather than being mistaken for a fresh weapon hit
+/// (RED) or a bleed status tag (AMBER). It rides its own valence because a DOT tick is a
+/// deterministic per-round drain, not a shot's impact number.
+const DOT_TOXIC_GREEN: Color = Color::srgb(0.35, 0.82, 0.20);
+
 /// The combat VALENCE a floating-combat-text pop signals — the presenter's own neutral
 /// category that decides the pop's color.
 ///
@@ -86,6 +96,10 @@ pub enum FctValence {
     /// cowed [`SUPPRESSED_BLUE_GREY`], the colour-drained family the suppressed sprite tint
     /// shares, so the `"SUPPRESSED"` pop and the desaturated sprite read as one signal.
     Suppressed,
+    /// A damage-over-time tick — a burning / caustic affliction drained flat HP this round
+    /// (GTW-544). Drawn the toxic [`DOT_TOXIC_GREEN`] so the recurring attrition reads as its
+    /// own signal, distinct from a fresh weapon hit (RED) or a bleed status tag (AMBER).
+    Dot,
 }
 
 /// The FCT swatch for a combat [`FctValence`] — the one valence → color mapping.
@@ -95,8 +109,8 @@ pub enum FctValence {
 /// same hue);
 /// [`Wound`](FctValence::Wound) is the flat [`WOUND_AMBER`] base; [`Neutral`](FctValence::Neutral)
 /// is [`NEUTRAL_GREY`]; [`Suppressed`](FctValence::Suppressed) is the cowed
-/// [`SUPPRESSED_BLUE_GREY`]. A severity-bearing wound should instead call [`severity_color`] to
-/// scale within the amber family.
+/// [`SUPPRESSED_BLUE_GREY`]; [`Dot`](FctValence::Dot) is the toxic [`DOT_TOXIC_GREEN`]. A
+/// severity-bearing wound should instead call [`severity_color`] to scale within the amber family.
 #[must_use]
 pub const fn valence_color(valence: FctValence) -> Color {
     match valence {
@@ -104,6 +118,7 @@ pub const fn valence_color(valence: FctValence) -> Color {
         FctValence::Wound => WOUND_AMBER,
         FctValence::Neutral => NEUTRAL_GREY,
         FctValence::Suppressed => SUPPRESSED_BLUE_GREY,
+        FctValence::Dot => DOT_TOXIC_GREEN,
     }
 }
 

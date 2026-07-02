@@ -267,8 +267,10 @@ pub fn fire(
 
         // Decrement the magazine one round per fired iteration (saturating, AC4) —
         // re-borrow the WEAPON entity mutably (GTW-323 slice 2: the Magazine lives on
-        // the weapon now, disjoint from the ganger entities of the other queries).
-        if let Ok((.., mut mag_mut)) = weapons.get_mut(weapon_entity) {
+        // the weapon now, disjoint from the ganger entities of the other queries). The
+        // Magazine is the SECOND-TO-LAST column now (GTW-544 appended an
+        // `Option<&DotProfile>` after it), so bind it explicitly and ignore the trailing DOT.
+        if let Ok((.., mut mag_mut, _dot)) = weapons.get_mut(weapon_entity) {
             mag_mut.spend_round();
         }
 

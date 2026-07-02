@@ -1032,6 +1032,7 @@ fn real_flow_weapon_spec() -> WeaponSpec {
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
         attachment_slots: Vec::new(),
+        dot:              None,
     }
 }
 

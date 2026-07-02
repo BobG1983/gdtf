@@ -16,6 +16,7 @@ use crate::{
     severity::Severity,
     slab::SlabLedger,
     surface::GroundDamage,
+    weapon::Dot,
 };
 
 /// The **bundle of one target ganger's battle state** [`resolve_and_apply`](super::resolve_and_apply)
@@ -274,12 +275,25 @@ pub struct HitReport {
     /// roll still took its one [`InjuryRng`](crate::rng::InjuryRng) draw, then discarded
     /// it — the content-independent stream-alignment property).
     pub injury:          Option<RolledInjury>,
+    /// The DOT this round attached (GTW-544) — `Some(`[`Dot`]`)` ONLY when this round wounded
+    /// a ganger, the firing weapon carries a [`DotProfile`](crate::weapon::DotProfile), AND
+    /// the hit PENETRATED armor
+    /// ([`PenetratingDamage`](crate::resolve_hit::PenetratingDamage) `> 0`). The fire path
+    /// bridges it to an [`DotApplied`](crate::acts_runtime::dot::DotApplied) message the
+    /// [`apply_dot`](crate::acts_runtime::dot::apply_dot) boundary attaches (or REFRESHES —
+    /// DOTs do not stack) onto the struck ganger. `None` for a fully-soaked hit
+    /// (penetrating `0`, even though HP may still bruise), a non-DOT weapon, a graze that did
+    /// not penetrate, a corpse-skip, or a non-ganger outcome. Threaded from the weapon's
+    /// [`DotProfile`](crate::weapon::DotProfile) the same way the injury verdict rides — it is
+    /// a frozen decision, not a live mutation (the fold owns no component attach; the boundary
+    /// system does).
+    pub dot_applied:     Option<Dot>,
 }
 
 impl HitReport {
     /// Build a **no-effect** report for `kind` — no part struck, no damage applied,
-    /// no cover / slab destroyed, no ground accrued, and no injury rolled (the
-    /// non-ganger non-cover non-slab non-ground, corpse-skip, and defensive-no-part
+    /// no cover / slab destroyed, no ground accrued, no injury rolled, and no DOT attached
+    /// (the non-ganger non-cover non-slab non-ground, corpse-skip, and defensive-no-part
     /// folds).
     ///
     /// `pub` so the E4.5 `fire()` act (GTW-198) can fold a non-ganger / corpse-skip
@@ -296,6 +310,7 @@ impl HitReport {
             slab_destroyed: None,
             ground_accrued: None,
             injury: None,
+            dot_applied: None,
         }
     }
 }

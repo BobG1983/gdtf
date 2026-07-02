@@ -38,10 +38,11 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::{
     AppliedDamage, ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel,
-    CoverDestroyed, DamageType, Direction, Facing, Faction, FallOccurred, GainedInjury, HitReport,
-    HitResult, HpDamage, InjuryInflicted, InjuryName, InspectText, IntegrityWear, Level, LifeState,
-    LogText, Matchup, PenetratingDamage, PopupText, Position, Severity, ShotDir, ShotFired,
-    ShotKind, SimPos, StoreysFallen, SuppressionApplied, Wounds, acts::MeleeResolved,
+    CoverDestroyed, DamageType, Direction, DotDamage, DotTicked, Facing, Faction, FallOccurred,
+    GainedInjury, HitReport, HitResult, HpDamage, InjuryInflicted, InjuryName, InspectText,
+    IntegrityWear, Level, LifeState, LogText, Matchup, PenetratingDamage, PopupText, Position,
+    Severity, ShotDir, ShotFired, ShotKind, SimPos, StoreysFallen, SuppressionApplied, Wounds,
+    acts::MeleeResolved,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -106,6 +107,10 @@ fn headless_renderer_app() -> App {
     // (matching the Bleeding / ArmorBroken buffers above — the reader is `run_if`-gated on the
     // buffer's presence, so it would otherwise stay inert).
     .add_message::<SuppressionApplied>()
+    // GTW-544: the DOT FCT reader drains this buffer; the sim's acts plugin registers it in a real
+    // battle, but this focused presenter-only harness adds it itself (matching the buffers above —
+    // the reader is `run_if`-gated on the buffer's presence, so it would otherwise stay inert).
+    .add_message::<DotTicked>()
     .add_plugins(TopDownRendererPlugin);
     // Bevy 0.19 routes a FAILED system-param validation to the global error handler
     // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the
@@ -782,6 +787,7 @@ const fn ganger_hit_report(
         slab_destroyed:  None,
         ground_accrued:  None,
         injury:          None,
+        dot_applied:     None,
     }
 }
 
@@ -1441,6 +1447,48 @@ fn suppression_applied_pops_the_suppressed_fct_tag_at_the_cell() {
     assert!(
         any_at_cell,
         "the SUPPRESSED pop must anchor at the pinned cell x ({})",
+        anchor.x,
+    );
+}
+
+/// GTW-544 — the REAL dispatch path: a `DotTicked { ganger, at, amount }` drives the registered
+/// `read_dot_fct` system to spawn the toxic `"-N"` floating-combat-text pop over the afflicted
+/// ganger's cell. Pins the pop's `-{amount}` text + Dot valence + cell anchor on the
+/// registered-system path (deleting the reader FAILS this).
+#[test]
+fn dot_ticked_pops_the_toxic_minus_amount_fct_tag_at_the_cell() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(7, 9);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+    let ganger = spawn_ganger(&mut app, cell, level, 3);
+
+    app.world_mut()
+        .resource_mut::<Messages<DotTicked>>()
+        .write(DotTicked::new(ganger, at, DotDamage::new(4)));
+    app.update();
+
+    // POSITIVE: the system spawned a FloatingCombatText pop reading "-4" (the drained HP) in the
+    // toxic Dot valence (its OWN swatch, distinct from damage/wound/neutral/lethal/suppressed).
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "-4", valence_color(FctValence::Dot)),
+        "a DotTicked must pop a toxic \"-4\" tag in the Dot valence, got {pops:?}",
+    );
+
+    // The pop is anchored at the afflicted ganger's cell (planar x — the FCT z is the Highlight
+    // band, distinct from the cell z).
+    let anchor = cell_to_world(cell, level);
+    let mut q = app.world_mut().query::<(&FloatingCombatText, &Transform)>();
+    let any_at_cell = q
+        .iter(app.world())
+        .any(|(_, transform)| (transform.translation.x - anchor.x).abs() < 0.001);
+    assert!(
+        any_at_cell,
+        "the DOT tick pop must anchor at the afflicted ganger's cell x ({})",
         anchor.x,
     );
 }

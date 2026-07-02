@@ -273,6 +273,8 @@ pub use acts_runtime::{
     },
     bleed,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
+    dot,
+    dot::{DotApplied, DotTicked, apply_dot, tick_dot},
     downed_acts,
     downed_acts::{
         Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
@@ -348,13 +350,13 @@ pub use equipment::{
     weapon,
     weapon::{
         Accuracy, AoeRange, AttachTag, AttachmentEffects, BaseSpread, BlastRadius, ConeHalfAngle,
-        DamageProfile, DamageType, FISTS_KEY, FatalBias, FightMode, FightModeKind, FightModeSpec,
-        FireMode, FireModeSpec, Handedness, HandlingProfile, HitType, Kickback, MagazineSize,
-        MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec,
-        ModeConeMult, ModeKind, ModeShots, ModeTuPercent, MountedWeapon, Reach, Scoped, Shove,
-        Silenced, Stable, Strikes, TuCost, Weapon, WeaponBundle, WeaponDamage, WeaponName,
-        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSightBonus, WeaponSpec, WeaponStats,
-        WieldedBy, Wields, shooter_weapon_silenced,
+        DamageProfile, DamageType, Dot, DotDamage, DotProfile, DotTurns, FISTS_KEY, FatalBias,
+        FightMode, FightModeKind, FightModeSpec, FireMode, FireModeSpec, Handedness,
+        HandlingProfile, HitType, Kickback, MagazineSize, MeleeDamageProfile, MeleeWeapon,
+        MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, MountedWeapon, Reach, Scoped, Shove, Silenced, Stable, Strikes, TuCost,
+        Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+        WeaponSightBonus, WeaponSpec, WeaponStats, WieldedBy, Wields, shooter_weapon_silenced,
     },
 };
 pub use falls::{DropLanding, FallOccurred, FallsPlugin, StoreysFallen, apply_falls, resolve_drop};

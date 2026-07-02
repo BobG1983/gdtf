@@ -74,6 +74,7 @@ fn arbitrary_weapon() -> WeaponSpec {
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
         attachment_slots: Vec::new(),
+        dot:              None,
     }
 }
 

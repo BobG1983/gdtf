@@ -84,6 +84,7 @@ fn ranged_spec(slots: Vec<AttachTag>) -> WeaponSpec {
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
         attachment_slots: slots,
+        dot:              None,
     }
 }
 

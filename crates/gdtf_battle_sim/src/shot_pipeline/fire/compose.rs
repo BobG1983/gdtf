@@ -105,6 +105,11 @@ pub(super) struct ShooterSnapshot {
     // inaccurate mount. `false` (an un-mounted / normal shot) resolves the zero-identity
     // EmplacementStability, so the shot is byte-identical to before the seam engaged.
     mounted:     bool,
+    // GTW-544: the weapon's optional DamageProfile-over-time (`DotProfile`), snapshotted so
+    // `weapon_stats` hands out its `Option<&DotProfile>` borrow to the fold — a penetrating hit
+    // from a DOT weapon attaches a `Dot` on the struck ganger. `None` = a non-DOT weapon (no
+    // attach, byte-identical). `DotProfile` is `Copy`, so the snapshot owns it.
+    dot:         Option<crate::weapon::DotProfile>,
 }
 
 impl ShooterSnapshot {
@@ -128,6 +133,8 @@ impl ShooterSnapshot {
             // GTW-542: borrow the snapshotted per-weapon sight-bonus override (None = the
             // universal tuning bonus).
             sight_bonus: self.sight_bonus.as_ref(),
+            // GTW-544: borrow the snapshotted DOT profile (None = a non-DOT weapon).
+            dot:         self.dot.as_ref(),
         }
     }
 
@@ -329,6 +336,7 @@ pub(super) fn read_shooter(
         sight_bonus,
         handedness,
         magazine,
+        dot,
     ) = weapons.get(weapon).ok()?;
     let snapshot = ShooterSnapshot {
         position:    *position,
@@ -358,6 +366,9 @@ pub(super) fn read_shooter(
         // GTW-543: whether the resolved ranged weapon is the emplacement's mounted gun (the
         // ganger is manning it) — engages the emplacement stability seam for this shot.
         mounted:     is_mounted,
+        // GTW-544: copy the resolved weapon's DOT profile into the snapshot (None = a non-DOT
+        // weapon = no attach). Rides through `weapon_stats` to the fold's DOT-attach decision.
+        dot:         dot.copied(),
     };
     Some(ShooterReads {
         snapshot,

@@ -456,6 +456,13 @@ fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -
     let sighted = attachments.sighted().map(template_value);
     let silenced = attachments.silenced().map(template_value);
     let sight_bonus = attachments.sight_bonus().map(template_value);
+    // GTW-544: the OPTIONAL DotProfile sibling — a DOT weapon spawns its `{ damage,
+    // DamageType, turns }` profile as a sibling component the fire path reads to attach a
+    // `Dot` on a penetrating hit. A `None` (a non-DOT weapon) resolves to an Option-scene
+    // no-op, so a non-DOT weapon spawns byte-identical. `DotProfile` derives Clone + Default
+    // (from_profile is never called here — the PROFILE is spawned, not a live Dot) so
+    // `template_value` applies (the GTW-542 sibling precedent).
+    let dot = attachments.dot().map(template_value);
     (
         bsn! {
             Weapon
@@ -480,6 +487,8 @@ fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -
         sighted,
         silenced,
         sight_bonus,
+        // GTW-544: the optional DOT profile sibling (a `None` inserts nothing).
+        dot,
     )
 }
 

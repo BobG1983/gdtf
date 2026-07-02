@@ -83,6 +83,9 @@ pub fn test_weapon_spec() -> WeaponSpec {
         // GTW-542: no attachments on the shared test weapon (an attachment-bearing variant
         // is built per-test); the empty list folds to the identity.
         attachment_slots: Vec::new(),
+        // GTW-544: no DOT profile on the shared test weapon (a DOT-bearing variant is built
+        // per-test); `None` is a non-DOT weapon, byte-identical to before this slice.
+        dot:              None,
     }
 }
 

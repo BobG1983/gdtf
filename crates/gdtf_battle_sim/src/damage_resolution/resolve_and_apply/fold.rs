@@ -24,7 +24,7 @@ use crate::{
     slab::{SlabDamage, SlabEntry, SlabEvent, SlabLedger},
     surface::GroundDamage,
     tuning::CombatTuning,
-    weapon::WeaponStats,
+    weapon::{Dot, WeaponStats},
 };
 
 /// The **bare-flesh** armor piece — a zeroed soak used when the struck location no
@@ -394,6 +394,8 @@ pub fn resolve_and_apply(
                 ground_accrued: None,
                 // A cover hit never wounds a ganger, so it rolls no injury (no draw).
                 injury: None,
+                // A cover hit never wounds a ganger, so it attaches no DOT (GTW-544).
+                dot_applied: None,
             }
         }
         // The slab-hit path (GTW-365/396): a slab has its OWN HP + armor; reuse the
@@ -426,6 +428,8 @@ pub fn resolve_and_apply(
                 ground_accrued: None,
                 // A slab hit never wounds a ganger, so it rolls no injury (no draw).
                 injury: None,
+                // A slab hit never wounds a ganger, so it attaches no DOT (GTW-544).
+                dot_applied: None,
             }
         }
         // The ground-accrual path (GTW-366): a round that exits the bottom of the voxel
@@ -443,6 +447,8 @@ pub fn resolve_and_apply(
             ground_accrued:  Some(apply_ground_hit(at, weapon)),
             // A ground hit never wounds a ganger, so it rolls no injury (no draw).
             injury:          None,
+            // A ground hit never wounds a ganger, so it attaches no DOT (GTW-544).
+            dot_applied:     None,
         },
         // A clean miss strikes nothing — no draw, no mutation, no accrual.
         ShotKind::Miss => HitReport::no_effect(outcome.kind),
@@ -560,13 +566,26 @@ fn fold_ganger(
         ArmorWearOutcome::Unaffected => (None, None),
     };
 
+    // GTW-544: the DOT-attach decision. The firing weapon carries a `DotProfile` AND this
+    // hit PENETRATED armor (the pre-floor `PenetratingDamage > 0`, the SAME value that gates
+    // §6 severity) ⇒ freeze a `Dot` built from the profile onto the report; the fire path's
+    // `apply_dot` boundary attaches (or REFRESHES) it on the struck ganger. A fully-soaked
+    // hit (penetrating `0`, HP may still bruise) attaches nothing, and a non-DOT weapon
+    // (`weapon.dot == None`) attaches nothing — both leave `dot_applied` None. The fold owns
+    // NO component attach (the boundary system does); this is a frozen decision only, taking
+    // no RNG draw (the DOT tick is deterministic — no armor matchup, no injury roll, no RNG).
+    let dot_applied = weapon
+        .dot
+        .filter(|_| *synthesis.hit.penetrating > 0)
+        .map(|profile| Dot::from_profile(*profile));
+
     // Freeze the verdict — named newtypes + the rolled injury, no pixel. Every field is
     // read straight off the shared core's WoundSynthesis (the matchup, hit, severity,
     // post-hit life, and injury), so there is no parallel wound math here.
     HitReport {
-        kind:            outcome.kind,
-        part:            Some(part),
-        applied:         Some(AppliedDamage {
+        kind: outcome.kind,
+        part: Some(part),
+        applied: Some(AppliedDamage {
             matchup: synthesis.matchup,
             hit: synthesis.hit,
             severity: synthesis.severity,
@@ -577,12 +596,14 @@ fn fold_ganger(
         cover_destroyed: None,
         // A ganger hit destroys no slab (a slab hit takes the slab arm in
         // `resolve_and_apply`, never this ganger fold).
-        slab_destroyed:  None,
+        slab_destroyed: None,
         // A ganger hit accrues no ground damage (a ground hit takes the ground arm in
         // `resolve_and_apply`, never this ganger fold).
-        ground_accrued:  None,
+        ground_accrued: None,
         // The GTW-438 injury verdict (Some only on a Minor/Major/Critical wound that
         // rolled a named injury; None on a graze / Fatal / empty-table).
-        injury:          synthesis.injury,
+        injury: synthesis.injury,
+        // The GTW-544 DOT-attach verdict (Some only on a penetrating hit from a DOT weapon).
+        dot_applied,
     }
 }

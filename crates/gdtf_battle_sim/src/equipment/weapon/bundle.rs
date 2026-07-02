@@ -6,8 +6,9 @@
 use bevy::prelude::Bundle;
 
 use super::{
-    Accuracy, BaseSpread, DamageType, FatalBias, FireMode, Handedness, Kickback, Scoped, Shove,
-    Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSightBonus,
+    Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireMode, Handedness, Kickback,
+    Scoped, Shove, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    WeaponSightBonus,
 };
 use crate::magazine::Magazine;
 
@@ -58,6 +59,13 @@ pub struct WeaponStats<'a> {
     /// steadying points, `None` for a plain [`Scoped`] weapon (which reads the universal
     /// tuning bonus). Read only when `sight` is `Some`.
     pub sight_bonus: Option<&'a WeaponSightBonus>,
+    /// The GTW-544 optional **damage-over-time profile** — `Some` when the weapon carries a
+    /// [`DotProfile`] sibling (a DOT weapon), feeding the fold's DOT-attach decision: a hit
+    /// that PENETRATES armor attaches (or REFRESHES) a [`Dot`](super::Dot) on the struck
+    /// ganger built from this profile. `None` for a non-DOT weapon (no attach, byte-identical
+    /// to before this slice). An `Option` because the [`DotProfile`] sibling is present only
+    /// on a DOT weapon (like the [`Scoped`] sight attachment).
+    pub dot:         Option<&'a DotProfile>,
 }
 
 /// The **spawn bundle for an armed entity** — the [`Weapon`] marker plus the full
@@ -263,6 +271,10 @@ impl WeaponBundle {
             // un-sighted — the zero-identity SightStability term.
             sight:       None,
             sight_bonus: None,
+            // A WeaponBundle carries no DOT profile (the DotProfile sibling is spawned
+            // separately from the spec's `dot` field, GTW-544), so a bundle-derived view
+            // never attaches a Dot — a non-DOT read, byte-identical to before the slice.
+            dot:         None,
         }
     }
 }

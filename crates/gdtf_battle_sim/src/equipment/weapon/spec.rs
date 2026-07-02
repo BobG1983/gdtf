@@ -6,9 +6,9 @@ use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use super::{
-    Accuracy, AttachTag, AttachmentEffects, BaseSpread, DamageProfile, DamageType, FatalBias,
-    FireMode, Handedness, HandlingProfile, Kickback, Shove, Stable, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, AttachTag, AttachmentEffects, BaseSpread, DamageProfile, DamageType, DotProfile,
+    FatalBias, FireMode, Handedness, HandlingProfile, Kickback, Shove, Stable, WeaponBundle,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 use crate::{magazine::Magazine, tuning::AttachmentTuning};
 
@@ -88,6 +88,18 @@ pub struct WeaponSpec {
     /// the empty default folds to the identity (no leaf change, no sibling tags).
     #[serde(default)]
     pub attachment_slots: Vec<AttachTag>,
+    /// The weapon's optional **damage-over-time profile** (GTW-544, child GTW-41e) — the
+    /// `{ damage, DamageType, turns }` a DOT weapon (a chem sprayer, a plasma torch) carries,
+    /// authored as the `dot:` `.weapon.ron` field. `#[serde(default)]` (defaulting to `None`)
+    /// so an omitted field is a NON-DOT weapon: the field is OPT-IN (the `attachment_slots` /
+    /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of
+    /// which author it — deserializes and spawns BYTE-IDENTICAL. When present,
+    /// [`into_bundle`](WeaponSpec::into_bundle) carries it into the resolved
+    /// [`AttachmentEffects`](super::AttachmentEffects) as the `dot` sibling the wielded-weapon
+    /// scene seam composes onto the weapon entity, so a penetrating hit from this weapon
+    /// attaches a [`Dot`](super::Dot) on the struck ganger.
+    #[serde(default)]
+    pub dot:              Option<DotProfile>,
 }
 
 impl WeaponSpec {
@@ -136,8 +148,14 @@ impl WeaponSpec {
         );
         // GTW-542: fold the attachment slots — mutating the bundle's leaves in place and
         // collecting the sibling tags the spawn seam composes onto the weapon entity.
+        // GTW-544: carry the authored `dot` profile into the SAME effects accumulator (as its
+        // `dot` sibling), AFTER the slot fold — a DOT profile is a spawn-side sibling component
+        // the wielded-weapon scene seam composes exactly like the Scoped / Silenced tags. A
+        // `None` (a non-DOT weapon) leaves the accumulator identity, so the weapon spawns
+        // byte-identical to before this slice.
         let effects =
-            AttachmentEffects::from_slots(&self.attachment_slots, &mut bundle, attachment_tuning);
+            AttachmentEffects::from_slots(&self.attachment_slots, &mut bundle, attachment_tuning)
+                .with_dot(self.dot);
         (bundle, effects)
     }
 }

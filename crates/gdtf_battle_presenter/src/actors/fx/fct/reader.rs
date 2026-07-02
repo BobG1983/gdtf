@@ -481,6 +481,7 @@ mod test {
             slab_destroyed:  None,
             ground_accrued:  None,
             injury:          None,
+            dot_applied:     None,
         }
     }
 

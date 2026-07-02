@@ -31,8 +31,8 @@ use bevy::prelude::{Entity, Query, With};
 use serde::Deserialize;
 
 use super::{
-    DamageType, FireMode, MagazineSize, Scoped, Silenced, WeaponBundle, WeaponDamage, WeaponPunch,
-    WeaponSightBonus,
+    DamageType, DotProfile, FireMode, MagazineSize, Scoped, Silenced, WeaponBundle, WeaponDamage,
+    WeaponPunch, WeaponSightBonus,
 };
 use crate::{
     fire::{MeleeQuery, WieldsQuery},
@@ -168,6 +168,16 @@ pub struct AttachmentEffects {
     /// `None` when the fitted sight (if any) uses the universal tuning bonus. Only
     /// meaningful when [`sighted`](AttachmentEffects::sighted) is also `Some`.
     sight_bonus: Option<WeaponSightBonus>,
+    /// The weapon's [`DotProfile`](super::DotProfile) sibling to add (GTW-544), or `None`
+    /// when the weapon authors no `dot:` profile. This is NOT an attachment tag — it is the
+    /// authored [`WeaponSpec::dot`](super::WeaponSpec::dot) field, carried through this same
+    /// effects accumulator because a `DotProfile` is likewise a spawn-side SIBLING component
+    /// the wielded-weapon scene seam composes onto the weapon entity (the natural home for
+    /// "the optional sibling components a weapon spawns with"). Set by
+    /// [`into_bundle`](super::WeaponSpec::into_bundle) from the spec's `dot` field, AFTER
+    /// the attachment slots fold, so a `RotgutCoating` re-key still applies (a DOT profile
+    /// carries its own `damage_type`, unaffected by the coating).
+    dot:         Option<DotProfile>,
 }
 
 impl AttachmentEffects {
@@ -280,6 +290,25 @@ impl AttachmentEffects {
     #[must_use]
     pub const fn sight_bonus(&self) -> Option<WeaponSightBonus> {
         self.sight_bonus
+    }
+
+    /// Set the weapon's authored [`DotProfile`](super::DotProfile) sibling (GTW-544),
+    /// consuming `self` and returning it — the builder form
+    /// [`into_bundle`](super::WeaponSpec::into_bundle) calls with the spec's `dot` field
+    /// after the slot fold. A `None` leaves the accumulator unchanged (a non-DOT weapon).
+    #[must_use]
+    pub const fn with_dot(mut self, dot: Option<DotProfile>) -> Self {
+        self.dot = dot;
+        self
+    }
+
+    /// The weapon's [`DotProfile`](super::DotProfile) sibling to spawn on the weapon entity
+    /// (GTW-544), or `None` when the weapon authors no DOT. The wielded-weapon scene seam
+    /// composes it exactly like the [`sighted`](AttachmentEffects::sighted) /
+    /// [`silenced`](AttachmentEffects::silenced) siblings.
+    #[must_use]
+    pub const fn dot(&self) -> Option<DotProfile> {
+        self.dot
     }
 }
 

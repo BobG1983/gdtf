@@ -26,6 +26,7 @@ use crate::{
     },
     ai::enemy_ai_turn,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
+    dot::{DotApplied, DotTicked, apply_dot, tick_dot},
     falls::FallOccurred,
     move_acts::{ReactionShotFired, advance_walk},
     occupancy::project_path_blocking,
@@ -208,6 +209,18 @@ fn register_messages(app: &mut App) {
         // creates the Messages<InjuryInflicted> buffer the presenter's GTW-439 FCT/log
         // reader will drain (bevy-traps.md #4 / #5).
         .add_message::<InjuryInflicted>()
+        // GTW-544: the DOT-applied boundary signal `dispatch_fire` emits per round whose
+        // penetrating hit from a DOT weapon attached a Dot (the in-fold decision froze it
+        // onto the report's `dot_applied`). Registering the buffer here makes
+        // `dispatch_fire`'s MessageWriter<DotApplied> + `apply_dot`'s MessageReader valid
+        // (bevy-traps.md #4 / #5).
+        .add_message::<DotApplied>()
+        // GTW-544: the per-round DOT-tick signal `tick_dot` emits per afflicted ganger that
+        // took a DOT tick this round (the presenter's DOT FCT pop drains it, the Bleeding
+        // precedent). Registering the buffer here makes `tick_dot`'s MessageWriter<DotTicked>
+        // param valid and creates the Messages<DotTicked> buffer the presenter reads
+        // (bevy-traps.md #4 / #5).
+        .add_message::<DotTicked>()
         // GTW-355: the typed reaction-shot interrupt the committed walk (`advance_walk`)
         // stops on (C5(b)). Registering the buffer here makes `advance_walk`'s
         // MessageReader<ReactionShotFired> param valid. NOTHING in the sim emits it yet —
@@ -503,6 +516,42 @@ fn wire_systems(app: &mut App) {
         Update,
         reset_suppression
             .after(dispatch_end_turn)
+            .in_set(SimSystems::Simulate),
+    );
+    // GTW-544: the DOT applier + per-round clock — split into its own helper so `wire_systems`
+    // stays under clippy's line-count gate (the `register_messages` / `wire_systems` split
+    // precedent).
+    wire_dot(app);
+}
+
+/// Wire the GTW-544 damage-over-time systems into the [`SimSystems::Simulate`] band — the
+/// [`apply_dot`] boundary applier + the per-round [`tick_dot`] clock. Split out of
+/// [`wire_systems`] so that function stays under clippy's line-count gate.
+fn wire_dot(app: &mut App) {
+    app.add_systems(
+        Update,
+        // GTW-544: the DOT applier — drains the DotApplied buffer and attaches (or REFRESHES,
+        // refresh-not-stack) a Dot on each struck ganger. Ordered `.after(dispatch_fire)` so a
+        // SAME-FRAME penetrating DOT hit (the fire act emitted it this frame) is applied this
+        // tick (the `apply_injury` precedent). No resource it reads is battle-lifetime (the
+        // Query + Commands + MessageReader are always valid), so it needs no extra run_if.
+        // Param-only, no &mut World (bevy-traps.md #7).
+        apply_dot.after(dispatch_fire).in_set(SimSystems::Simulate),
+    )
+    // GTW-544: wire the DOT clock into the live runtime — the EXACT `tick_bleed` cadence.
+    // `tick_dot` drains each afflicted ganger's Hp DIRECTLY by its Dot's per-turn damage (no
+    // armor matchup / injury roll / RNG) ONCE PER FULL ROUND, AT THE ENEMY-PHASE START (the
+    // SAME `enemy_phase_started` run condition the §9 bleed-out clock uses, so both fire once
+    // per full round). Ordered `.after(dispatch_end_turn)` (so the frame's TurnStarted is
+    // buffered) and `.run_if(enemy_phase_started)` (its own independent reader, so it never
+    // steals the boundary from the combat-log / bleed readers). It joins the
+    // BattleInProgress-gated Simulate band, so its Query is exercised only in a live battle
+    // (bevy-traps.md #1).
+    .add_systems(
+        Update,
+        tick_dot
+            .after(dispatch_end_turn)
+            .run_if(enemy_phase_started)
             .in_set(SimSystems::Simulate),
     );
 }

@@ -113,6 +113,7 @@ fn ranged_spec(shove: bool) -> WeaponSpec {
         shove:            Shove::new(shove),
         handedness:       Handedness::OneHanded,
         attachment_slots: Vec::new(),
+        dot:              None,
     }
 }
 

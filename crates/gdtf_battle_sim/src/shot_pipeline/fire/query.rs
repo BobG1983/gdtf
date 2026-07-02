@@ -20,9 +20,9 @@ use crate::{
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback,
-        MeleeWeapon, MountedWeapon, Scoped, Stable, WeaponDamage, WeaponPunch, WeaponShred,
-        WeaponSightBonus, WieldedBy, Wields,
+        Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireModeSpec, Handedness,
+        Kickback, MeleeWeapon, MountedWeapon, Scoped, Stable, WeaponDamage, WeaponPunch,
+        WeaponShred, WeaponSightBonus, WieldedBy, Wields,
     },
 };
 
@@ -164,6 +164,11 @@ pub type WeaponQuery<'world, 'state> = Query<
         // (a TwoHanded weapon is refused below two available hands).
         &'static Handedness,
         &'static mut Magazine,
+        // GTW-544: the weapon's optional DotProfile — read into the WeaponStats borrow-view
+        // so the fold can attach a Dot on a penetrating hit. `Option` because the DotProfile
+        // sibling is present only on a DOT weapon (an absent component = a non-DOT weapon, no
+        // attach — byte-identical to before this slice, the Scoped `Option` precedent).
+        Option<&'static DotProfile>,
     ),
     With<WieldedBy>,
 >;

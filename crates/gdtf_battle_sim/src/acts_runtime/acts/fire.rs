@@ -189,6 +189,14 @@ pub struct FireSignals<'w, 's> {
     /// reads for the FCT / log flash). The injury-table mirror of the cover/slab/ground
     /// bridges: a structural hit destroys/accrues, a ganger wound INJURES.
     injuries:        MessageWriter<'w, InjuryInflicted>,
+    /// The per-ROUND DOT-applied signal (GTW-544) — emitted for each round whose
+    /// [`HitReport::dot_applied`](crate::resolve_and_apply::HitReport::dot_applied) is
+    /// `Some` (a penetrating hit from a DOT weapon), bridging the in-fold attach decision
+    /// into the buffered [`DotApplied`](crate::acts_runtime::dot::DotApplied) message
+    /// [`apply_dot`](crate::acts_runtime::dot::apply_dot) drains (attaching or REFRESHING the
+    /// [`Dot`](crate::weapon::Dot) on the struck ganger). The DOT mirror of the injury
+    /// bridge: a ganger wound that penetrated from a DOT weapon AFFLICTS.
+    dots:            MessageWriter<'w, crate::acts_runtime::dot::DotApplied>,
     /// The per-FIRE-ACT shove signal (GTW-525) — emitted ONCE when a `shove`-tagged weapon's
     /// shot CONNECTS with a ganger (the first connecting-ganger round of the volley). It
     /// writes an internal [`ShoveRequested`](crate::acts::request::ShoveRequested)
@@ -623,6 +631,16 @@ fn emit_round_signals(
                 .injuries
                 .write(InjuryInflicted::from_rolled(target, rolled.clone()));
         }
+        // (5a2) GTW-544: the DOT bridge — a round that PENETRATED armor from a DOT weapon
+        //       carries the Dot to attach on `report.dot_applied`; emit ONE DotApplied per
+        //       such round, addressed to the struck ganger on `report.kind`. `apply_dot`
+        //       attaches (or REFRESHES — refresh-not-stack) it. A fully-soaked hit / non-DOT
+        //       weapon carries None → no message (the identity property).
+        if let (Some(dot), ShotKind::Ganger(target)) = (report.dot_applied, report.kind) {
+            signals
+                .dots
+                .write(crate::acts_runtime::dot::DotApplied::new(target, dot));
+        }
         // The HitReport is non-`Copy` (it carries the rolled injury); clone it into the
         // per-round ShotFired (the FCT presenter reads the damage/wound/severity verdict —
         // the injury rides the separate InjuryInflicted).
@@ -665,6 +683,14 @@ fn emit_round_signals(
                 signals
                     .injuries
                     .write(InjuryInflicted::from_rolled(target, rolled.clone()));
+            }
+            // GTW-544: bridge each splashed ganger's DOT attach exactly as the primary
+            // report is bridged above — a penetrating AoE splash from a DOT weapon afflicts
+            // its splash victims too. Empty for a Single volley (the identity property).
+            if let (Some(dot), ShotKind::Ganger(target)) = (report.dot_applied, report.kind) {
+                signals
+                    .dots
+                    .write(crate::acts_runtime::dot::DotApplied::new(target, dot));
             }
         }
     }

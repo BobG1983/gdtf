@@ -152,6 +152,7 @@ fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
         shove:            crate::weapon::Shove::new(false),
         handedness:       crate::weapon::Handedness::OneHanded,
         attachment_slots: Vec::new(),
+        dot:              None,
     };
     WeaponRegistry::new([(WeaponName::new("test-weapon".to_owned()), spec)])
 }

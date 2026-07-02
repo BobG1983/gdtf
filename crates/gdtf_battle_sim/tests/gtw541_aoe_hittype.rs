@@ -94,6 +94,7 @@ fn aoe_weapon_spec(hit_type: HitType) -> WeaponSpec {
         shove:            Shove::new(false),
         handedness:       Handedness::OneHanded,
         attachment_slots: Vec::new(),
+        dot:              None,
     }
 }
 

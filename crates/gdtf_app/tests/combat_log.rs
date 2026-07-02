@@ -196,6 +196,7 @@ const fn connecting_report(struck: Entity, hp: i32) -> HitReport {
         slab_destroyed:  None,
         ground_accrued:  None,
         injury:          None,
+        dot_applied:     None,
     }
 }
 
