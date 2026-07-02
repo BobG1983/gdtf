@@ -159,6 +159,10 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
     advance_until_resource_exists::<ArmorRegistry>(&mut app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<TerrainDefRegistry>(&mut app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<GangerStatTuning>(&mut app, LOAD_SAFETY_NET);
+    // GTW-545: the FieldDefRegistry catalog too — the shipped skirmish.ron now authors a
+    // `fields:` toxic-pool placement, so setup_battle must resolve its key against the loaded
+    // catalog (else FieldNotFound).
+    advance_until_resource_exists::<gdtf_battle_sim::FieldDefRegistry>(&mut app, LOAD_SAFETY_NET);
 
     // 2. Read the resolved-from-disk resources out of the loaded world (all Clone), so a
     //    FRESH headless app can run setup_battle against the REAL data. Every one must be
@@ -172,12 +176,16 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
     let armor = world.get_resource::<ArmorRegistry>().cloned();
     let terrain = world.get_resource::<TerrainDefRegistry>().cloned();
     let stat_tuning = world.get_resource::<GangerStatTuning>().cloned();
+    let field_defs = world
+        .get_resource::<gdtf_battle_sim::FieldDefRegistry>()
+        .cloned();
     let all_present = situation.is_some()
         && gangs.is_some()
         && weapons.is_some()
         && armor.is_some()
         && terrain.is_some()
-        && stat_tuning.is_some();
+        && stat_tuning.is_some()
+        && field_defs.is_some();
     assert!(
         all_present,
         "every real Load resource setup_battle needs must be present",
@@ -189,7 +197,16 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
         Some(armor),
         Some(terrain),
         Some(stat_tuning),
-    ) = (situation, gangs, weapons, armor, terrain, stat_tuning)
+        Some(field_defs),
+    ) = (
+        situation,
+        gangs,
+        weapons,
+        armor,
+        terrain,
+        stat_tuning,
+        field_defs,
+    )
     else {
         return;
     };
@@ -197,8 +214,15 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
     // 3. Run the authoritative setup_battle on a fresh MinimalPlugins+Scene app against the
     //    REAL skirmish + REAL gang/weapon/armor/terrain registries, then drive SpawnScene.
     let expected = expected_set();
-    let Some(mut battle) = run_real_setup(situation, &gangs, weapons, armor, terrain, stat_tuning)
-    else {
+    let Some(mut battle) = run_real_setup(
+        situation,
+        &gangs,
+        weapons,
+        armor,
+        terrain,
+        stat_tuning,
+        &field_defs,
+    ) else {
         return;
     };
 
@@ -238,6 +262,7 @@ fn run_real_setup(
     armor: ArmorRegistry,
     terrain: TerrainDefRegistry,
     stat_tuning: GangerStatTuning,
+    field_defs: &gdtf_battle_sim::FieldDefRegistry,
 ) -> Option<App> {
     let fallback_floor_cost = CombatTuning::default().move_costs.open;
     let mut battle = App::new();
@@ -246,6 +271,9 @@ fn run_real_setup(
     // GTW-505: the melee registry (with the `fists` default) so each ganger's melee weapon
     // resolves at setup (these gangers author none → `fists`).
     let melee = gdtf_battle_sim::test_support::test_melee_weapon_registry();
+    // GTW-545: the loaded field catalog so the shipped skirmish's authored toxic-pool field
+    // resolves its key (else FieldNotFound).
+    let field_defs = field_defs.clone();
     let outcome = battle
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -258,7 +286,8 @@ fn run_real_setup(
                     &armor,
                     &stat_tuning,
                     Some(&terrain),
-                ),
+                )
+                .with_field_defs(&field_defs),
                 fallback_floor_cost,
                 &mut commands,
             )

@@ -46,6 +46,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
+    FieldDefRegistry,
     armor::ArmorRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
@@ -267,6 +268,13 @@ crate::support_item! {
             // shadow `resolve_melee_weapons`, which only runs while the registry is ABSENT).
             commands.insert_resource(MeleeWeaponRegistry::default());
             commands.insert_resource(ArmorRegistry::default());
+            // GTW-545: the FieldDefRegistry (area-damage-field catalog) is a gate-blocking
+            // resource too; seed the empty fallback when there is no AssetServer so headless
+            // walks still reach Intro (the A1 / AC3b pattern). With an AssetServer present the
+            // real `assets/content/fields/*.field.ron` resolve must win — so this is gated on
+            // `is_none()` exactly like the other registries (else the empty seed would shadow
+            // `resolve_fields`, which only runs while the registry is ABSENT).
+            commands.insert_resource(FieldDefRegistry::default());
             // GTW-437: the InjuryRegistry is a gate-blocking resource too; seed the empty
             // fallback when there is no AssetServer so headless walks still reach Intro
             // (the A1 / AC3b pattern for the injury registry).

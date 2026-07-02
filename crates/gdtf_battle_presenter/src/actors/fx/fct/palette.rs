@@ -70,6 +70,19 @@ const SUPPRESSED_BLUE_GREY: Color = Color::srgb(0.45, 0.55, 0.72);
 /// deterministic per-round drain, not a shot's impact number.
 const DOT_TOXIC_GREEN: Color = Color::srgb(0.35, 0.82, 0.20);
 
+/// HAZARD ORANGE — an area-damage-field tick pop (GTW-545). A per-turn attrition valence for the
+/// flat HP a persistent damage ZONE (a toxic-waste pool, an electrified floor, a patch of burning
+/// ground) drains off the ganger standing in it each round, distinct from the raw-hit damage RED,
+/// the wound AMBER, the neutral GREY, the lethal RED, the cowed suppression blue-grey, and the
+/// DOT toxic green.
+///
+/// A saturated hazard orange — the genre "industrial hazard / danger zone" hue — so a field tick
+/// reads as its own recurring environmental-attrition signal, distinct from a fresh weapon hit
+/// (RED) and from the DOT's toxic green (a field is a ZONE you stand in, not an affliction you
+/// carry). It rides its own valence because a field tick is a deterministic per-round zone drain,
+/// not a shot's impact number nor a carried affliction's tick.
+const FIELD_HAZARD_ORANGE: Color = Color::srgb(0.95, 0.50, 0.10);
+
 /// The combat VALENCE a floating-combat-text pop signals — the presenter's own neutral
 /// category that decides the pop's color.
 ///
@@ -100,6 +113,11 @@ pub enum FctValence {
     /// (GTW-544). Drawn the toxic [`DOT_TOXIC_GREEN`] so the recurring attrition reads as its
     /// own signal, distinct from a fresh weapon hit (RED) or a bleed status tag (AMBER).
     Dot,
+    /// An area-damage-field tick — a persistent damage ZONE (toxic pool / electrified floor /
+    /// burning ground) drained flat HP off the ganger standing in it this round (GTW-545). Drawn
+    /// the hazard [`FIELD_HAZARD_ORANGE`] so the recurring environmental attrition reads as its
+    /// own signal, distinct from a fresh weapon hit (RED) and from the DOT toxic green.
+    Field,
 }
 
 /// The FCT swatch for a combat [`FctValence`] — the one valence → color mapping.
@@ -109,8 +127,9 @@ pub enum FctValence {
 /// same hue);
 /// [`Wound`](FctValence::Wound) is the flat [`WOUND_AMBER`] base; [`Neutral`](FctValence::Neutral)
 /// is [`NEUTRAL_GREY`]; [`Suppressed`](FctValence::Suppressed) is the cowed
-/// [`SUPPRESSED_BLUE_GREY`]; [`Dot`](FctValence::Dot) is the toxic [`DOT_TOXIC_GREEN`]. A
-/// severity-bearing wound should instead call [`severity_color`] to scale within the amber family.
+/// [`SUPPRESSED_BLUE_GREY`]; [`Dot`](FctValence::Dot) is the toxic [`DOT_TOXIC_GREEN`];
+/// [`Field`](FctValence::Field) is the hazard [`FIELD_HAZARD_ORANGE`]. A severity-bearing wound
+/// should instead call [`severity_color`] to scale within the amber family.
 #[must_use]
 pub const fn valence_color(valence: FctValence) -> Color {
     match valence {
@@ -119,6 +138,7 @@ pub const fn valence_color(valence: FctValence) -> Color {
         FctValence::Neutral => NEUTRAL_GREY,
         FctValence::Suppressed => SUPPRESSED_BLUE_GREY,
         FctValence::Dot => DOT_TOXIC_GREEN,
+        FctValence::Field => FIELD_HAZARD_ORANGE,
     }
 }
 

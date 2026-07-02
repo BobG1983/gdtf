@@ -114,6 +114,33 @@ pub(super) fn shipped_armor_registry() -> Option<ArmorRegistry> {
     ]))
 }
 
+/// The shipped `toxic_waste_pool.field.ron` catalog entry, read at compile time via the same
+/// `include_str!` pattern the shipped armor uses — the REAL on-disk authored field type the
+/// shipped `skirmish.ron` seeds (GTW-545), so a regression in the field file (or the skirmish
+/// `fields:` reference) turns the shipped-setup test red.
+const SHIPPED_TOXIC_POOL_RON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../assets/content/fields/toxic_waste_pool.field.ron"
+));
+
+/// Build a field-def catalog from the shipped `assets/content/fields/*.field.ron` files, keyed
+/// by their filename stems (minus the `.field` infix) — the real-asset catalog the shipped
+/// `skirmish.ron` setup resolves its authored `fields:` placements against (GTW-545, the field
+/// mirror of [`shipped_armor_registry`]). Returns `None` (assert-fail) if the file fails to
+/// parse (no panic in tests).
+pub(super) fn shipped_field_registry() -> Option<crate::fields::FieldDefRegistry> {
+    let toxic_pool = ron::de::from_str::<crate::fields::FieldDef>(SHIPPED_TOXIC_POOL_RON);
+    assert!(
+        toxic_pool.is_ok(),
+        "the shipped toxic_waste_pool field file must parse: {toxic_pool:?}",
+    );
+    let toxic_pool = toxic_pool.ok()?;
+    Some(crate::fields::FieldDefRegistry::new([(
+        crate::fields::FieldKey::new("toxic_waste_pool".to_owned()),
+        toxic_pool,
+    )]))
+}
+
 /// The three shipped terrain `.terrain.ron` files for the migrated
 /// `skirmish.ron` (GTW-396) — the REAL on-disk authored terrain pieces, so a
 /// regression in any of these files turns the shipped-setup test red.
@@ -193,6 +220,11 @@ pub(super) fn run_setup_with(
     let fallback_floor_cost = crate::tuning::CombatTuning::default().move_costs.open;
     // Clone the registry so the closure can own it (if provided).
     let terrain_clone = terrain.cloned();
+    // GTW-545: attach the shipped field-def catalog so a situation authoring a `fields:`
+    // placement (the shipped skirmish.ron seeds a toxic pool) resolves it; a situation with no
+    // fields is unaffected (an empty FieldRegistry is seeded). Fall back to an empty catalog if
+    // the shipped field file failed to parse (fixture-only situations never reference a field).
+    let field_defs = shipped_field_registry().unwrap_or_default();
     let outcome = app
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
@@ -205,7 +237,8 @@ pub(super) fn run_setup_with(
                     &armor,
                     &stat_tuning,
                     terrain_clone.as_ref(),
-                ),
+                )
+                .with_field_defs(&field_defs),
                 fallback_floor_cost,
                 &mut commands,
             )

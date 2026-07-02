@@ -116,6 +116,27 @@ impl ArmorsFolderHandle {
     }
 }
 
+/// Typed handle to the in-flight **area-damage-fields folder** load (`fields/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule), mirroring
+/// [`ArmorsFolderHandle`] (GTW-545). The `Load` scene preloads the whole
+/// `assets/content/fields/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the poll/resolve
+/// system gates on its recursive load state, then builds the
+/// [`FieldDefRegistry`](gdtf_battle_sim::FieldDefRegistry) from the loaded
+/// `RonAsset<FieldDef>` files (keyed by filename stem). Holding this handle keeps a strong
+/// reference to every field asset while the registry is built; the registry then holds the
+/// defs BY VALUE, so they survive the handle being dropped on `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct FieldsFolderHandle(Handle<LoadedFolder>);
+
+impl FieldsFolderHandle {
+    /// Wrap an in-flight fields-folder load handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// Typed handle to the in-flight **injuries folder** load (`injuries/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
@@ -325,6 +346,9 @@ pub(in crate::states::load) struct LoadHandles {
     pub melee_weapons: MeleeWeaponsFolderHandle,
     /// The armor folder being preloaded (all armor `.ron`s up front, GTW-269).
     pub armor:         ArmorsFolderHandle,
+    /// The area-damage-fields folder being preloaded (all `*.field.ron` catalog entries up
+    /// front, GTW-545).
+    pub fields:        FieldsFolderHandle,
     /// The injuries folder being preloaded (all `*.injury.ron` + `*.weighting.ron`
     /// up front, GTW-437).
     pub injuries:      InjuriesFolderHandle,
@@ -530,6 +554,27 @@ pub(in crate::states::load) struct ActiveArmorFolderHandle(Handle<LoadedFolder>)
 
 impl ActiveArmorFolderHandle {
     /// Wrap the loaded armor-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **area-damage-fields folder** (`fields/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
+/// Load-scoped [`FieldsFolderHandle`] inside [`LoadHandles`], which is dropped
+/// `OnExit(Load)` — **persists** past `Load` (GTW-545), the field mirror of
+/// [`ActiveArmorFolderHandle`]. It is inserted alongside the resolved
+/// [`FieldDefRegistry`](gdtf_battle_sim::FieldDefRegistry) and kept alive so the live
+/// hot-reload handler (`redrive_fields_on_asset_event`) can re-enumerate the folder's member
+/// handles to rebuild the catalog on a hot edit to ANY `assets/content/fields/*.field.ron`.
+/// Holding the folder handle keeps every member field asset loaded for the file-watcher. Like
+/// the registry, it is **not** removed in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveFieldsFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveFieldsFolderHandle {
+    /// Wrap the loaded fields-folder handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

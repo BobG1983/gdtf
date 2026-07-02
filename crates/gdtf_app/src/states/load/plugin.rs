@@ -1,6 +1,7 @@
 use bevy::{asset::AssetServer, prelude::*};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
+    FieldDef, FieldDefRegistry,
     armor::{ArmorRegistry, ArmorSpec},
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
@@ -85,6 +86,13 @@ impl Plugin for LoadScenePlugin {
             // the weapon loader does. Registered here in `build` BEFORE the kick-off's
             // `load_folder("armor")` runs.
             app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
+            // GTW-545: the area-damage-field catalog files mirror the armor scheme — each loads
+            // as a `RonAsset<FieldDef>` via `load_folder`, so it claims its OWN dedicated
+            // `field.ron` compound extension (files are `assets/content/fields/*.field.ron`) to
+            // keep the folder dispatch unambiguous among GDTF's many `.ron` loaders, exactly as
+            // the armor loader does. Registered here in `build` BEFORE the kick-off's
+            // `load_folder("content/fields")` runs.
+            app.init_ron_asset_with_extensions::<FieldDef>(vec!["field.ron"]);
             // GTW-494 (child T08 of GTW-476): the OLD flat-dir per-file `terrain.ron`
             // and `theme.ron` loaders are RETIRED (and GTW-496 deleted their types). The
             // UUID-model successors — the GTW-487 `TerrainDef` (`terrain_def.ron`) +
@@ -175,6 +183,11 @@ fn add_systems(app: &mut App) {
                             .or_else(not(resource_exists::<MeleeWeaponRegistry>))
                             .or_else(not(resource_exists::<LoadedSituation>))
                             .or_else(not(resource_exists::<ArmorRegistry>))
+                            // GTW-545: the FieldDefRegistry (area-damage-field catalog) is a
+                            // gate-blocking resource too — the setup seeds a situation's fields
+                            // against it; the `content/fields/` folder must be verified loaded
+                            // before Load exits (inserted on success OR failure — no strand).
+                            .or_else(not(resource_exists::<FieldDefRegistry>))
                             // GTW-437: the InjuryRegistry is a gate-blocking resource too
                             // (the GTW-438 roll uses it + the InjuryTables; the injuries
                             // folder must be verified loaded before Load exits).
@@ -229,6 +242,10 @@ fn add_systems(app: &mut App) {
                     .and_then(resource_exists::<MeleeWeaponRegistry>)
                     .and_then(resource_exists::<LoadedSituation>)
                     .and_then(resource_exists::<ArmorRegistry>)
+                    // GTW-545: the FieldDefRegistry must be present before Load exits, so the
+                    // `content/fields/` catalog is verified loaded before any battle seeds a
+                    // field.
+                    .and_then(resource_exists::<FieldDefRegistry>)
                     // GTW-437: the InjuryRegistry must be present before Load exits, so the
                     // injuries folder is verified loaded before the GTW-438 roll uses it.
                     .and_then(resource_exists::<InjuryRegistry>)
@@ -290,6 +307,10 @@ fn add_hot_reload_systems(app: &mut App) {
             // `weapons/melee/*.melee_weapon.ron` edit, mirroring the ranged hot-reload.
             redrive_melee_weapons_on_asset_event,
             redrive_armor_on_asset_event,
+            // GTW-545: the area-damage-field hot-reload — rebuilds the FieldDefRegistry catalog
+            // on a `content/fields/*.field.ron` edit, mirroring the weapon/armor hot-reload
+            // pattern (one folder, one registry).
+            redrive_fields_on_asset_event,
             // GTW-437: the injury hot-reload — rebuilds BOTH the InjuryRegistry and the
             // InjuryTables on an edit to ANY `injuries/**/*.injury.ron` OR `*.weighting.ron`,
             // mirroring the weapon/armor hot-reload pattern (one folder, two resources).

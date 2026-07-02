@@ -1,0 +1,18 @@
+// GDTF authored area-damage FIELD type — "electrified floor" / live wire (GTW-545, child
+// GTW-41f). AUTHORED CONTENT (a field-type catalog entry), loaded as a loose `.ron` through
+// the RonAsset<FieldDef> loader, keyed by its filename stem `electrified_floor`.
+//
+// A temporary hazard: a live-wired stretch of decking that arcs into whoever stands on it for
+// a few turns, then shorts out. A FLAT per-turn HP drain gated only by whole-source immunity.
+//
+// CATALOG PROPOSAL (REVIEW-FLAG — defensible interim defaults):
+//   - damage_type Shock (wheel node 0 — arc / EMP).
+//   - immune { Plated } — Plated is the Shock-mirror armor node (an insulated / grounded plate).
+//   - Turns(3) — the arc shorts out after three turns (a dissipating hazard, not permanent).
+// Magnitudes ARBITRARY interim values; never pinned by a test.
+(
+    damage:             4,             // FieldDamage — flat HP drained per turn
+    damage_type:        Shock,         // wheel-node flavour (presentation only)
+    immune_armor_types: [Plated],      // whole-source immunity: a Plated piece grounds the arc
+    duration:           Turns(3),      // dissipates after 3 turns
+)

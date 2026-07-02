@@ -61,5 +61,5 @@ mod test;
 pub use error::BattleSetupError;
 pub use setup::{BattleRegistries, BattleSetup, has_stacked_gangers, setup_battle};
 pub use spawn::{
-    CoverSpawn, FloorSpawn, GangerSpawn, PlacedGanger, Placement, Situation, SlabSpawn,
+    CoverSpawn, FieldSpawn, FloorSpawn, GangerSpawn, PlacedGanger, Placement, Situation, SlabSpawn,
 };

@@ -28,6 +28,7 @@ use crate::{
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     dot::{DotApplied, DotTicked, apply_dot, tick_dot},
     falls::FallOccurred,
+    fields::{FieldTicked, tick_fields},
     move_acts::{ReactionShotFired, advance_walk},
     occupancy::project_path_blocking,
     occupancy_sync::{
@@ -221,6 +222,12 @@ fn register_messages(app: &mut App) {
         // param valid and creates the Messages<DotTicked> buffer the presenter reads
         // (bevy-traps.md #4 / #5).
         .add_message::<DotTicked>()
+        // GTW-545: the per-round area-damage-field-tick signal `tick_fields` emits per occupant
+        // that took a field tick this round (the presenter's field FCT pop drains it, the
+        // DotTicked precedent). Registering the buffer here makes `tick_fields`'s
+        // MessageWriter<FieldTicked> param valid and creates the Messages<FieldTicked> buffer the
+        // presenter reads (bevy-traps.md #4 / #5).
+        .add_message::<FieldTicked>()
         // GTW-355: the typed reaction-shot interrupt the committed walk (`advance_walk`)
         // stops on (C5(b)). Registering the buffer here makes `advance_walk`'s
         // MessageReader<ReactionShotFired> param valid. NOTHING in the sim emits it yet —
@@ -552,6 +559,29 @@ fn wire_dot(app: &mut App) {
         tick_dot
             .after(dispatch_end_turn)
             .run_if(enemy_phase_started)
+            .in_set(SimSystems::Simulate),
+    )
+    // GTW-545: wire the area-damage-field clock into the live runtime — the EXACT `tick_dot` /
+    // `tick_bleed` cadence. `tick_fields` reads each fielded cell's occupant off the
+    // OccupancyGrid and drains its Hp DIRECTLY by the field's per-turn damage (no armor
+    // matchup / injury roll / RNG; gated ONLY by whole-source armor-type immunity) ONCE PER
+    // FULL ROUND, AT THE ENEMY-PHASE START (the SAME `enemy_phase_started` run condition), then
+    // counts every Turns field down + removes the expired ones. Ordered `.after(dispatch_end_turn)`
+    // (so the frame's TurnStarted is buffered) and `.run_if(enemy_phase_started)` (its own
+    // independent reader, so it never steals the boundary from the combat-log / bleed / DOT
+    // readers), AND explicitly `.after(tick_dot)` (bevy-traps.md #3): both drains share the
+    // enemy-phase cadence and can empty one occupant's Hp the same frame, so pinning tick_fields
+    // after tick_dot makes a two-source lethal frame's Dead-flip + emit order deterministic
+    // (the Dead-flip is idempotent, but the order is pinned). It joins the BattleInProgress-gated
+    // Simulate band, so its Res<OccupancyGrid> / ResMut<FieldRegistry> reads are exercised only
+    // in a live battle (bevy-traps.md #1).
+    .add_systems(
+        Update,
+        tick_fields
+            .after(dispatch_end_turn)
+            .after(tick_dot)
+            .run_if(enemy_phase_started)
+            .run_if(resource_exists::<crate::fields::FieldRegistry>)
             .in_set(SimSystems::Simulate),
     );
 }

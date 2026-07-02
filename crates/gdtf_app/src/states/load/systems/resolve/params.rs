@@ -10,6 +10,7 @@ use bevy::{
 };
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
+    FieldDef, FieldDefRegistry,
     armor::{ArmorRegistry, ArmorSpec},
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
@@ -57,6 +58,8 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     pub(super) melee_specs:     Option<Res<'w, Assets<RonAsset<MeleeWeaponSpec>>>>,
     /// The loaded per-armor RON collection (`armor/*.ron`, GTW-269).
     pub(super) armor_specs:     Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
+    /// The loaded per-field-type RON collection (`fields/*.field.ron`, GTW-545).
+    pub(super) field_defs:      Option<Res<'w, Assets<RonAsset<FieldDef>>>>,
     /// The loaded per-injury RON collection (`injuries/**/*.injury.ron`, GTW-437).
     pub(super) injury_defs:     Option<Res<'w, Assets<RonAsset<InjuryDef>>>>,
     /// The loaded per-part injury-weighting RON collection
@@ -100,6 +103,8 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
     pub(super) situation:     Option<Res<'w, LoadedSituation>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).
     pub(super) armor:         Option<Res<'w, ArmorRegistry>>,
+    /// Whether the resolved [`FieldDefRegistry`] is already inserted (GTW-545).
+    pub(super) fields:        Option<Res<'w, FieldDefRegistry>>,
     /// Whether the resolved [`InjuryRegistry`] is already inserted (GTW-437). The
     /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) is built and inserted
     /// in the SAME branch, so the registry's presence is the branch's done-probe.

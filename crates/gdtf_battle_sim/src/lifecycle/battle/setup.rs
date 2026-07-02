@@ -81,10 +81,10 @@ use crate::{
 #[expect(
     clippy::too_many_arguments,
     reason = "the params are the message reader + writer, the gang / weapon / MELEE-weapon \
-              (GTW-505) / armor / terrain registries, and the stat + combat tuning — each a \
-              distinct Bevy SystemParam (Option<Res<_>> for the Load-state registries); the \
-              injection model cannot be refactored to fewer without a wrapper resource that \
-              changes the API surface"
+              (GTW-505) / armor / terrain / area-damage-field (GTW-545) registries, and the \
+              stat + combat tuning — each a distinct Bevy SystemParam (Option<Res<_>> for the \
+              Load-state registries); the injection model cannot be refactored to fewer without \
+              a wrapper resource that changes the API surface"
 )]
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,
@@ -96,6 +96,7 @@ pub fn setup_battle_on_request(
     terrain: Option<Res<TerrainDefRegistry>>,
     stat_tuning: Option<Res<GangerStatTuning>>,
     combat_tuning: Option<Res<CombatTuning>>,
+    field_defs: Option<Res<crate::fields::FieldDefRegistry>>,
     mut commands: Commands,
 ) {
     for request in requests.read() {
@@ -177,22 +178,34 @@ pub fn setup_battle_on_request(
         // terrain UUIDs.
         let terrain_ref = terrain.as_deref();
 
+        // GTW-545: the FieldDefRegistry is PERSISTENT `Load` state (the area-damage-field
+        // catalog), read as `Option<Res<_>>`. When absent, `setup_battle` is called with
+        // `fields: None` — a situation authoring a `fields:` placement then fails closed with
+        // FieldNotFound, and a situation with no fields seeds an empty FieldRegistry. The real
+        // app always has the catalog loaded before a battle starts.
+        let field_defs_ref = field_defs.as_deref();
+
         // Pour the situation into the world via the authoritative setup. A bad
         //    vertical link, a missing weapon/armor/terrain key, or a below-minimum
         //    floor cost returns the typed error — log it (NEVER panic / unwrap) and
         //    write NO BattleReady, so the app's gate never fires (fail-closed). The
         //    GangerStatTuning derives each ganger's computed stats from its eight
         //    authored attributes (GTW-384).
+        let mut battle_registries = BattleRegistries::new(
+            gangs,
+            weapons,
+            melee_weapons,
+            armor,
+            stat_tuning,
+            terrain_ref,
+        );
+        // GTW-545: attach the area-damage-field catalog when it is loaded (the app path).
+        if let Some(field_defs) = field_defs_ref {
+            battle_registries = battle_registries.with_field_defs(field_defs);
+        }
         match setup_battle(
             &request.situation,
-            BattleRegistries::new(
-                gangs,
-                weapons,
-                melee_weapons,
-                armor,
-                stat_tuning,
-                terrain_ref,
-            ),
+            battle_registries,
             fallback_floor_cost,
             &mut commands,
         ) {
@@ -376,6 +389,10 @@ pub fn teardown_battle_on_request(
         // setup_battle rather than by setup_battle_on_request; same lifetime as the
         // other battle-lifetime resources — removed alongside BattleInProgress).
         commands.remove_resource::<FloorCostGrid>();
+        // GTW-545: remove the battle-lifetime FieldRegistry (the live area-damage-field
+        // placements, inserted by setup_battle; same lifetime as the other battle grids —
+        // removed alongside BattleInProgress so a fresh battle starts field-free).
+        commands.remove_resource::<crate::fields::FieldRegistry>();
         // GTW-395: despawn all terrain entities (one per authored cover / slab piece).
         // Commands::despawn (bevy-traps #7 form — never world.spawn/despawn inside a
         // registered system): each entity is queued for despawn at the end of this frame.

@@ -76,7 +76,7 @@ pub use actors::{
         ShotProjectile, advance_projectiles, animate_floating_text, animate_impact,
         classify_log_event, expire_flashes, load_effect_roles, load_fx_tuning,
         nearest_direction_index, read_armor_broken, read_bleeding, read_consequence_fct,
-        read_cover_destroyed, read_dot_fct, read_fall_occurred, read_injury_fct,
+        read_cover_destroyed, read_dot_fct, read_fall_occurred, read_field_fct, read_injury_fct,
         read_melee_resolved, read_suppression_fct, redrive_effect_roles_on_asset_event,
         redrive_fx_tuning_on_asset_event, resolve_effect_roles, resolve_fx_tuning, severity_color,
         spawn_shot_projectiles, valence_color,
@@ -99,6 +99,7 @@ pub use overlays::reachable::{
     draw_reachable_overlay,
 };
 pub use overlays::{
+    field::{FieldCellSprite, draw_field_overlay},
     fire_target::{FireTargetHighlight, FireTargetLabel, FireTargetTile, draw_fire_target},
     highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request},
     path_preview::{PathPreview, PathStepSprite, PathTargetLabel, draw_path_preview},

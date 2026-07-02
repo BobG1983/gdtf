@@ -58,6 +58,14 @@
 //!   [`FctValence::Dot`] green (its own recurring-attrition valence, distinct from a fresh
 //!   weapon hit or a bleed status tag). The persistent DOT state is the sim's
 //!   [`Dot`](gdtf_battle_sim::Dot) affliction, NOT this one-shot pop.
+//! - [`field`] — the GTW-545 AREA-DAMAGE-FIELD FCT READER ([`read_field_fct`]): the transient
+//!   `"-N"` attrition pop for a ganger a persistent damage ZONE (toxic pool / electrified floor /
+//!   burning ground) drained this round, routed off the
+//!   [`FieldTicked`](gdtf_battle_sim::FieldTicked) message and drawn in the hazard
+//!   [`FctValence::Field`] orange (its own recurring environmental-attrition valence, distinct
+//!   from a fresh weapon hit or a carried DOT tick). The persistent field zone is the sim's
+//!   [`FieldRegistry`](gdtf_battle_sim::FieldRegistry), drawn as the persistent per-cell overlay,
+//!   NOT this one-shot pop.
 //!
 //! Pure VIEW (ADR-0001): the primitive spawns + animates presenter entities only; it never
 //! reads or writes the sim. [`animate_floating_text`] and [`read_consequence_fct`] are
@@ -67,6 +75,7 @@
 
 mod consequence;
 mod dot;
+mod field;
 mod injury;
 mod log_event;
 mod palette;
@@ -79,6 +88,7 @@ mod test;
 
 pub use consequence::read_consequence_fct;
 pub use dot::read_dot_fct;
+pub use field::read_field_fct;
 pub use injury::read_injury_fct;
 pub use log_event::{CombatLogEvent, InjuryLogText, LogLine, LogName, classify_log_event};
 pub use palette::{FctValence, severity_color, valence_color};

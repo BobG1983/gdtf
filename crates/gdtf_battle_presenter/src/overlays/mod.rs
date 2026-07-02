@@ -1,5 +1,11 @@
-//! Input-bridge overlay seam: highlight, path preview, fire target, reachable-range, and the shared targeting gate.
+//! Input-bridge overlay seam: highlight, path preview, fire target, reachable-range, the
+//! area-damage-field zone, and the shared targeting gate.
 
+/// The GTW-545 area-damage-field overlay — the persistent per-cell VIEW of the sim's live
+/// [`FieldRegistry`](gdtf_battle_sim::FieldRegistry) so a seeded field (toxic pool / electrified
+/// floor / burning ground) is VISIBLE on the battlefield. A SHIPPING view (the playability rule),
+/// so NOT debug-gated, unlike the `reachable` debug overlay.
+pub mod field;
 pub mod fire_target;
 pub mod highlight;
 pub mod path_preview;

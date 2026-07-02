@@ -21,6 +21,7 @@ use crate::{
     },
     clearance::silhouette_band,
     cover::{CoverEntry, CoverLedger},
+    fields::{FieldDefRegistry, FieldRegistry},
     ganger::{
         Aim, Aiming, Bottle, Cool, Facing, Faction, Fight, GangMember, GangRegistry, GangerName,
         Grit, Hp, HpMax, Luck, Morale, Position, Reactions, Reflexes, Shooting, Speed, Stance,
@@ -113,6 +114,15 @@ pub struct BattleRegistries<'a> {
     /// (GTW-491); `None` skips terrain resolution (cover / slab keys then fail with
     /// `TerrainNotFound`, and the floor uses the [`fallback_floor_cost`](setup_battle)).
     pub terrain:       Option<&'a TerrainDefRegistry>,
+    /// The area-damage-field catalog a situation's authored
+    /// [`fields`](crate::situation::Situation::fields) placements resolve their
+    /// [`FieldKey`](crate::fields::FieldKey) against (GTW-545); `None` skips field seeding — a
+    /// situation with an authored field then fails with
+    /// [`FieldNotFound`](BattleSetupError::FieldNotFound), and a situation with NO fields
+    /// (every test fixture that omits the list) seeds an empty
+    /// [`FieldRegistry`](crate::fields::FieldRegistry). The real app always has the catalog
+    /// loaded before a battle starts.
+    pub fields:        Option<&'a FieldDefRegistry>,
     /// The GTW-542 weapon-attachment tuning — the magnitudes the NO-PAYLOAD attachment tags
     /// ([`FastReload`](crate::weapon::AttachTag::FastReload) /
     /// [`WhisperBore`](crate::weapon::AttachTag::WhisperBore)) read as
@@ -150,6 +160,7 @@ impl<'a> BattleRegistries<'a> {
             stat_tuning,
             terrain,
             attachment: AttachmentTuning::default(),
+            fields: None,
         }
     }
 
@@ -159,6 +170,18 @@ impl<'a> BattleRegistries<'a> {
     #[must_use]
     pub const fn with_attachment_tuning(mut self, attachment: AttachmentTuning) -> Self {
         self.attachment = attachment;
+        self
+    }
+
+    /// The same borrow-bundle carrying the GTW-545 area-damage-field catalog — the app path
+    /// passes the loaded [`FieldDefRegistry`] so a situation's authored
+    /// [`fields`](crate::situation::Situation::fields) placements resolve their
+    /// [`FieldKey`](crate::fields::FieldKey) against the catalog. Defaults to `None`
+    /// ([`new`](Self::new)), so existing callers (every test fixture without authored fields)
+    /// seed an empty [`FieldRegistry`] and never fail on the field-seed phase.
+    #[must_use]
+    pub const fn with_field_defs(mut self, fields: &'a FieldDefRegistry) -> Self {
+        self.fields = Some(fields);
         self
     }
 }
@@ -662,6 +685,7 @@ pub fn setup_battle(
         stat_tuning,
         terrain,
         attachment,
+        fields,
     } = registries;
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
     // setup before any entity is spawned or any resource inserted (no partial,
@@ -784,6 +808,12 @@ pub fn setup_battle(
         };
         resolved_slabs.push(resolved);
     }
+
+    // GTW-545: pre-resolve every authored area-damage-field placement against the
+    // FieldDefRegistry BEFORE any resource is inserted — abort-first, mirroring the terrain
+    // pre-resolve above. A missing field key aborts with FieldNotFound (no panic, no partial
+    // world). The built live FieldRegistry is inserted alongside the other battle grids below.
+    let field_registry = build_field_registry(situation, fields)?;
 
     // GTW-491: the new `TerrainSimKind` model has no `Floor` variant (a walkable floor is a
     // `Slab` def) and `TerrainDef` carries no move cost this slice — the per-cell
@@ -1144,7 +1174,41 @@ pub fn setup_battle(
     // 7. The validated vertical-link graph (validation already ran above).
     commands.insert_resource(vertical_graph);
 
+    // GTW-545: insert the live area-damage-field registry (seeded from the situation's
+    // authored `fields:` list, resolved abort-first above). Battle-lifetime — removed at
+    // teardown alongside the other battle grids. Empty when the situation authored no fields.
+    commands.insert_resource(field_registry);
+
     Ok(setup)
+}
+
+/// Build the live [`FieldRegistry`] from a situation's authored
+/// [`fields`](crate::situation::Situation::fields) placements, resolving each
+/// [`FieldKey`](crate::fields::FieldKey) against the [`FieldDefRegistry`] catalog (GTW-545).
+///
+/// A private [`setup_battle`] helper (mirroring the existing pre-resolve helpers) so the field
+/// seed phase is a single named call rather than a seventh inline phase body — keeping
+/// `setup_battle` under clippy's line-count gate. Abort-first: a placement whose field key is
+/// absent from the catalog (or a placement authored with NO catalog loaded) returns
+/// [`BattleSetupError::FieldNotFound`] BEFORE any resource is inserted, so a bad field
+/// reference leaves no partial world behind. A situation with NO authored fields returns an
+/// empty registry regardless of whether a catalog is present (every test fixture path).
+fn build_field_registry(
+    situation: &Situation,
+    catalog: Option<&FieldDefRegistry>,
+) -> Result<FieldRegistry, BattleSetupError> {
+    let mut registry = FieldRegistry::new();
+    for spawn in &situation.fields {
+        // Resolve the field key against the catalog. A missing catalog OR a missing key both
+        // fail closed with FieldNotFound (no panic) — the app always loads the catalog first.
+        let Some(def) = catalog.and_then(|c| c.def(&spawn.field)) else {
+            return Err(BattleSetupError::FieldNotFound {
+                field: spawn.field.clone(),
+            });
+        };
+        registry.spawn(spawn.at, def.clone());
+    }
+    Ok(registry)
 }
 
 /// Whether `situation`'s authored ganger cells contain a duplicate — two gangers

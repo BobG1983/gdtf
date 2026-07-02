@@ -32,17 +32,18 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    CharacterRoles, EffectRoles, FctValence, FloatingCombatText, FxFlash, FxTuning, GangerSprite,
-    GangerSprites, ProjectileTravel, ShotImpactResolved, ShotProjectile, TopDownAtlases,
-    TopDownRendererPlugin, cell_to_world, severity_color, sim_pos_to_world, valence_color,
+    CharacterRoles, EffectRoles, FctValence, FieldCellSprite, FloatingCombatText, FxFlash,
+    FxTuning, GangerSprite, GangerSprites, ProjectileTravel, ShotImpactResolved, ShotProjectile,
+    TopDownAtlases, TopDownRendererPlugin, cell_to_world, severity_color, sim_pos_to_world,
+    valence_color,
 };
 use gdtf_battle_sim::{
     AppliedDamage, ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel,
     CoverDestroyed, DamageType, Direction, DotDamage, DotTicked, Facing, Faction, FallOccurred,
-    GainedInjury, HitReport, HitResult, HpDamage, InjuryInflicted, InjuryName, InspectText,
-    IntegrityWear, Level, LifeState, LogText, Matchup, PenetratingDamage, PopupText, Position,
-    Severity, ShotDir, ShotFired, ShotKind, SimPos, StoreysFallen, SuppressionApplied, Wounds,
-    acts::MeleeResolved,
+    FieldDamage, FieldDef, FieldDuration, FieldRegistry, FieldTicked, GainedInjury, HitReport,
+    HitResult, HpDamage, ImmuneArmorTypes, InjuryInflicted, InjuryName, InspectText, IntegrityWear,
+    Level, LifeState, LogText, Matchup, PenetratingDamage, PopupText, Position, Severity, ShotDir,
+    ShotFired, ShotKind, SimPos, StoreysFallen, SuppressionApplied, Wounds, acts::MeleeResolved,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -1489,6 +1490,110 @@ fn dot_ticked_pops_the_toxic_minus_amount_fct_tag_at_the_cell() {
     assert!(
         any_at_cell,
         "the DOT tick pop must anchor at the afflicted ganger's cell x ({})",
+        anchor.x,
+    );
+}
+
+/// GTW-545 — the REAL dispatch path: a `FieldTicked { occupant, at, amount }` drives the registered
+/// `read_field_fct` system to spawn the hazard `"-N"` floating-combat-text pop over the field cell.
+/// Pins the pop's `-{amount}` text + Field valence + cell anchor on the registered-system path
+/// (deleting the reader FAILS this).
+#[test]
+fn field_ticked_pops_the_hazard_minus_amount_fct_tag_at_the_cell() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(8, 5);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+    let occupant = spawn_ganger(&mut app, cell, level, 2);
+
+    app.world_mut()
+        .resource_mut::<Messages<FieldTicked>>()
+        .write(FieldTicked::new(occupant, at, FieldDamage::new(3)));
+    app.update();
+
+    // POSITIVE: the system spawned a FloatingCombatText pop reading "-3" (the drained HP) in the
+    // hazard Field valence (its OWN swatch, distinct from damage/wound/neutral/lethal/suppressed/DOT).
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "-3", valence_color(FctValence::Field)),
+        "a FieldTicked must pop a hazard \"-3\" tag in the Field valence, got {pops:?}",
+    );
+
+    // The pop is anchored at the field cell (planar x — the FCT z is the Highlight band, distinct
+    // from the cell z).
+    let anchor = cell_to_world(cell, level);
+    let mut q = app.world_mut().query::<(&FloatingCombatText, &Transform)>();
+    let any_at_cell = q
+        .iter(app.world())
+        .any(|(_, transform)| (transform.translation.x - anchor.x).abs() < 0.001);
+    assert!(
+        any_at_cell,
+        "the field tick pop must anchor at the field cell x ({})",
+        anchor.x,
+    );
+}
+
+/// A permanent `Chem` field def (the toxic-waste-pool catalog shape) — the fixture the overlay
+/// test seeds a live field from.
+fn toxic_pool_def() -> FieldDef {
+    FieldDef::new(
+        FieldDamage::new(3),
+        DamageType::Chem,
+        ImmuneArmorTypes::new([]),
+        FieldDuration::Permanent,
+    )
+}
+
+/// The number of live `FieldCellSprite` overlay sprites currently VISIBLE (shown, not hidden) in
+/// the world — the pooled hazard tiles the overlay draws for the active storey.
+fn visible_field_sprites(app: &mut App) -> usize {
+    let mut q = app
+        .world_mut()
+        .query::<(&FieldCellSprite, &bevy::prelude::Visibility)>();
+    q.iter(app.world())
+        .filter(|(_, visibility)| matches!(visibility, bevy::prelude::Visibility::Visible))
+        .count()
+}
+
+/// GTW-545 — the REAL draw path: a seeded `FieldRegistry` (a toxic pool on the active storey)
+/// drives the registered `draw_field_overlay` system to spawn ONE persistent, visible
+/// `FieldCellSprite` hazard-wash tile at the field cell — so a seeded field is VISIBLE on the map.
+/// Pin-discriminates on the registered-system path (deleting the overlay draw leaves zero sprites).
+#[test]
+fn a_seeded_field_registry_draws_a_visible_hazard_cell_sprite() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    // Seed the sim's live field registry with one toxic pool on the active (L0) storey — the
+    // presenter reads this AUTHORITATIVE resource one-way.
+    let cell = Cell::new(10, 7);
+    let level = Level::new(0);
+    let mut registry = FieldRegistry::new();
+    registry.spawn(CellLevel::new(cell, level), toxic_pool_def());
+    app.world_mut().insert_resource(registry);
+    app.update();
+
+    // POSITIVE: the overlay drew exactly one visible hazard-wash sprite for the one fielded cell.
+    assert_eq!(
+        visible_field_sprites(&mut app),
+        1,
+        "a single seeded field must draw exactly one visible FieldCellSprite hazard tile",
+    );
+
+    // The hazard tile is anchored at the field cell (planar x — the field z is the Field band,
+    // distinct from the cell z, so compare the planar position).
+    let anchor = cell_to_world(cell, level);
+    let mut q = app.world_mut().query::<(&FieldCellSprite, &Transform)>();
+    let any_at_cell = q
+        .iter(app.world())
+        .any(|(_, transform)| (transform.translation.x - anchor.x).abs() < 0.001);
+    assert!(
+        any_at_cell,
+        "the field hazard tile must anchor at the field cell x ({})",
         anchor.x,
     );
 }

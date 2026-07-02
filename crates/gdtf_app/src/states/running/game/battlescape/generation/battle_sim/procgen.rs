@@ -174,6 +174,9 @@ fn merge_procgen_terrain(authored: Situation, generated: Situation) -> Situation
         // Authored placement data — the rosters + spawn the situation file owns.
         gangers:        authored.gangers,
         player_faction: authored.player_faction,
+        // GTW-545: authored area-damage-field placements are situation-owned placement data
+        // (a seeded hazard, like a ganger), so they carry through the procgen merge unchanged.
+        fields:         authored.fields,
         // GTW-492: `theme` is the UUID-keyed `ThemeUuid` authored metadata carried through
         // from the authored situation (it equals `generated.theme` now — procgen generated
         // against it directly — so either choice is identical; keep the authored source).

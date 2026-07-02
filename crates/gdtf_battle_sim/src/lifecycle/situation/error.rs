@@ -2,6 +2,7 @@
 
 use crate::{
     armor::ArmorName,
+    fields::FieldKey,
     ganger::{GangName, GangerName},
     metric::CellLevel,
     terrain::def::TerrainUuid,
@@ -140,6 +141,17 @@ pub enum BattleSetupError {
         /// first duplicate detected).
         at: CellLevel,
     },
+    /// A [`FieldSpawn`](crate::situation::FieldSpawn)'s field-type KEY was not in the
+    /// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) — no
+    /// `assets/content/fields/*.field.ron` with that filename stem loaded (GTW-545, the
+    /// area-damage-field mirror of [`ArmorNotFound`](BattleSetupError::ArmorNotFound)).
+    ///
+    /// Validated BEFORE any entity is spawned or any resource inserted (abort-first
+    /// invariant), so a missing field key aborts the whole setup with no partial world behind.
+    FieldNotFound {
+        /// The unresolved field-type KEY (the missing field file's stem).
+        field: FieldKey,
+    },
 }
 
 impl From<InvalidVerticalLink> for BattleSetupError {
@@ -193,6 +205,9 @@ impl std::fmt::Display for BattleSetupError {
                  (each ganger needs a distinct (cell, level))",
                 **at
             ),
+            Self::FieldNotFound { field } => {
+                write!(f, "no area-damage field `{}` is loaded", **field)
+            }
         }
     }
 }

@@ -1,0 +1,19 @@
+// GDTF authored area-damage FIELD type — "incendiary fire" / burning ground (GTW-545, child
+// GTW-41f). AUTHORED CONTENT (a field-type catalog entry), loaded as a loose `.ron` through
+// the RonAsset<FieldDef> loader, keyed by its filename stem `incendiary_fire`.
+//
+// A temporary hazard: a patch of burning ground (a spilled promethium fire) that sears whoever
+// stands on it for a couple of turns, then burns out. A FLAT per-turn HP drain gated only by
+// whole-source immunity.
+//
+// CATALOG PROPOSAL (REVIEW-FLAG — defensible interim defaults):
+//   - damage_type Plasma (wheel node 4 — superheated).
+//   - immune { Hazard } — Hazard is the Plasma-mirror armor node (a heat-sealed hazmat suit).
+//   - Turns(2) — burns out after two turns.
+// Magnitudes ARBITRARY interim values; never pinned by a test.
+(
+    damage:             5,             // FieldDamage — flat HP drained per turn
+    damage_type:        Plasma,        // wheel-node flavour (presentation only)
+    immune_armor_types: [Hazard],      // whole-source immunity: a Hazard suit seals against the heat
+    duration:           Turns(2),      // burns out after 2 turns
+)

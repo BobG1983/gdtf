@@ -13,6 +13,7 @@
 //! the new registries as of GTW-491/492/493).
 
 pub(in crate::states::load) mod armor;
+pub(in crate::states::load) mod fields;
 pub(in crate::states::load) mod gangs;
 pub(in crate::states::load) mod injuries;
 pub(in crate::states::load) mod melee_weapons;
@@ -27,6 +28,7 @@ pub(in crate::states::load) mod tuning;
 pub(in crate::states::load) mod weapons;
 
 pub(in crate::states::load) use armor::redrive_armor_on_asset_event;
+pub(in crate::states::load) use fields::redrive_fields_on_asset_event;
 pub(in crate::states::load) use gangs::redrive_gangs_on_asset_event;
 pub(in crate::states::load) use injuries::redrive_injuries_on_asset_event;
 pub(in crate::states::load) use melee_weapons::redrive_melee_weapons_on_asset_event;

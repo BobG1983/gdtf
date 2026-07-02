@@ -8,6 +8,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, LoadedSituation, RunningState};
 use gdtf_battle_sim::{
+    FieldDefRegistry,
     rng::BattleSeed,
     situation::Situation,
     test_support::{
@@ -113,6 +114,11 @@ impl BattleAppBuilder {
         app.world_mut()
             .insert_resource(test_melee_weapon_registry());
         app.world_mut().insert_resource(test_armor_registry());
+        // GTW-545: the area-damage-field catalog. Empty by default — the standard fixtures
+        // author no `fields:`, so an empty catalog seeds an empty FieldRegistry at setup; a
+        // fixture that DID author a field would resolve its key against this. Present so
+        // `setup_battle_on_request`'s `Option<Res<FieldDefRegistry>>` reads it.
+        app.world_mut().insert_resource(FieldDefRegistry::default());
         // GTW-414/415: the canonical test gang registry every standard fixture's placed
         // gangers resolve their (gang, member) refs against. Built from the SAME
         // `build_with_gangs` split the fixtures use, so it can never drift from what

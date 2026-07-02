@@ -10,9 +10,10 @@ use gdtf_battle_sim::{
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
-    ArmorsFolderHandle, FontFolderHandle, GangsFolderHandle, InjuriesFolderHandle, LoadHandles,
-    MeleeWeaponsFolderHandle, PrefabsV2FolderHandle, ProcgenTuningHandle, SituationHandle,
-    StatTuningHandle, TerrainModelFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
+    ArmorsFolderHandle, FieldsFolderHandle, FontFolderHandle, GangsFolderHandle,
+    InjuriesFolderHandle, LoadHandles, MeleeWeaponsFolderHandle, PrefabsV2FolderHandle,
+    ProcgenTuningHandle, SituationHandle, StatTuningHandle, TerrainModelFolderHandle, ThemeHandle,
+    TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -60,6 +61,13 @@ const MELEE_WEAPONS_DIR: &str = "content/weapons/melee";
 /// the per-armor `assets/content/armor/*.ron` files the registry is built from). Its OWN
 /// folder so the `.ron` loader dispatch is unambiguous (armor only, no weapons).
 const ARMOR_DIR: &str = "content/armor";
+
+/// Path of the loose area-damage-fields folder, relative to the asset source root (GTW-545 —
+/// the per-field-type `assets/content/fields/*.field.ron` catalog entries the
+/// [`FieldDefRegistry`](gdtf_battle_sim::FieldDefRegistry) is built from). Its OWN folder + the
+/// dedicated `field.ron` compound extension keep the `.ron` loader dispatch unambiguous (fields
+/// only) — the armor precedent.
+const FIELDS_DIR: &str = "content/fields";
 
 /// Path of the loose injuries folder, relative to the asset source root (GTW-437 —
 /// the per-injury `assets/content/injuries/**/*.injury.ron` files + the per-part
@@ -155,6 +163,9 @@ pub(in crate::states::load) fn kick_off_loads(
     // `MeleeWeaponRegistry` builds from the `.melee_weapon.ron` members only.
     let melee_weapons = MeleeWeaponsFolderHandle::new(asset_server.load_folder(MELEE_WEAPONS_DIR));
     let armor = ArmorsFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
+    // GTW-545: the area-damage-fields catalog folder loads through its OWN folder handle so
+    // the FieldDefRegistry builds from the `.field.ron` members only.
+    let fields = FieldsFolderHandle::new(asset_server.load_folder(FIELDS_DIR));
     let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
     let gangs = GangsFolderHandle::new(asset_server.load_folder(GANGS_DIR));
     // GTW-489 / GTW-494: the UUID-keyed v2 prefab fragments live under the `maps/` root. One
@@ -174,6 +185,7 @@ pub(in crate::states::load) fn kick_off_loads(
         weapons,
         melee_weapons,
         armor,
+        fields,
         injuries,
         gangs,
         prefabs_v2,

@@ -280,6 +280,11 @@ pub use acts_runtime::{
         Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
         stabilize_downed,
     },
+    fields,
+    fields::{
+        FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
+        FieldTicked, FieldTurns, ImmuneArmorTypes, PlacedField, tick_fields,
+    },
     firing_arc, move_acts,
     move_acts::{ReactionShotFired, WalkInProgress, advance_walk},
     reaction,
@@ -389,8 +394,9 @@ pub use lifecycle::{
     },
     situation,
     situation::{
-        BattleRegistries, BattleSetup, BattleSetupError, CoverSpawn, FloorSpawn, GangerSpawn,
-        PlacedGanger, Placement, Situation, SlabSpawn, has_stacked_gangers, setup_battle,
+        BattleRegistries, BattleSetup, BattleSetupError, CoverSpawn, FieldSpawn, FloorSpawn,
+        GangerSpawn, PlacedGanger, Placement, Situation, SlabSpawn, has_stacked_gangers,
+        setup_battle,
     },
 };
 pub use melee::{

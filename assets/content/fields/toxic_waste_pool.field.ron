@@ -1,0 +1,24 @@
+// GDTF authored area-damage FIELD type — "toxic waste pool" (GTW-545, child GTW-41f of
+// GTW-41). This is AUTHORED CONTENT (a field-type catalog entry), not balance tuning. It
+// loads as a loose `.ron` through the RonAsset<FieldDef> loader (folder-loaded +
+// hot-reloadable), keyed by its filename stem `toxic_waste_pool` — the FieldKey a situation's
+// authored `fields:` placement (and the GTW-547 on-death spawn effect) references.
+//
+// A persistent per-tile damage zone: any ganger standing on a fielded cell loses `damage` HP
+// per turn (a FLAT drain — no armor matchup, no injury roll, no RNG), UNLESS ANY worn armor
+// piece's ArmorType is in `immune_armor_types` (whole-source immunity — the sealed suit
+// protects you). This is the ticket's "toxic waste pool as initial terrain" example.
+//
+// CATALOG PROPOSAL (REVIEW-FLAG — the field-type <-> immune-armor pairing is a design
+// vocabulary choice; these are defensible interim defaults, surfaced for user review):
+//   - damage_type Chem (wheel node 2 — toxin / acid / gas).
+//   - immune { Flak, Hazard } — Flak is the Chem-mirror armor node (a sealed toxin vest),
+//     Hazard is the hazmat suit; both plausibly seal you against a chemical pool.
+//   - Permanent — a fixed terrain hazard that never dissipates.
+// The magnitudes are ARBITRARY interim values; tune later (never pinned by a test).
+(
+    damage:             3,                 // FieldDamage — flat HP drained per turn (bypasses armor)
+    damage_type:        Chem,              // wheel-node flavour (presentation only — the tick bypasses the matchup)
+    immune_armor_types: [Flak, Hazard],    // whole-source immunity: ANY worn piece of these skips ALL damage
+    duration:           Permanent,         // never expires (fixed terrain hazard)
+)

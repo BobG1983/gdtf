@@ -6,6 +6,7 @@ use bevy::reflect::TypePath;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    fields::FieldKey,
     ganger::{
         Aim, Aiming, Cool, Facing, Faction, GangMember, GangName, GangerName, Grit, LifeState,
         Luck, Reflexes, Speed, Stance, Strength, Toughness,
@@ -431,6 +432,44 @@ impl FloorSpawn {
     }
 }
 
+/// One authored area-damage **field placement** — a `(cell, level)` paired with a field-type
+/// KEY (GTW-545, child GTW-41f).
+///
+/// The seeding half of the field model: a situation `.ron` seeds a persistent hazard (a toxic
+/// waste pool as initial terrain, an electrified floor) by listing a
+/// [`FieldSpawn`] in [`Situation::fields`]. At [`setup_battle`](crate::situation::setup_battle)
+/// the [`field`](FieldSpawn::field) KEY is resolved against the
+/// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) (abort-first, like the terrain /
+/// weapon / armor keys) and placed into the live
+/// [`FieldRegistry`](crate::fields::FieldRegistry) via
+/// [`FieldRegistry::spawn`](crate::fields::FieldRegistry::spawn).
+///
+/// A named struct (`at` + `field`) so the authored shape is self-describing, mirroring
+/// [`CoverSpawn`]. Derives [`Deserialize`] so an authored situation `.ron` names each field's
+/// `(cell, level)` + its field-type KEY (round-trips through the landed newtype serde derives —
+/// render-free, pixel-free).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct FieldSpawn {
+    /// The `(cell, level)` this field occupies.
+    pub at:    CellLevel,
+    /// The field-type KEY — the [`FieldKey`] of a catalog
+    /// [`FieldDef`](crate::fields::FieldDef), resolved against the
+    /// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle). A key absent from the catalog is a
+    /// handled
+    /// [`BattleSetupError::FieldNotFound`](crate::situation::BattleSetupError::FieldNotFound)
+    /// error (no panic).
+    pub field: FieldKey,
+}
+
+impl FieldSpawn {
+    /// Build an authored field placement from its `(cell, level)` and field-type KEY.
+    #[must_use]
+    pub const fn new(at: CellLevel, field: FieldKey) -> Self {
+        Self { at, field }
+    }
+}
+
 /// The canonical authored **situation** — the full generated / authored
 /// battlefield the battle is built from: gangers, walls, scatter, upper-floor
 /// slabs, stair/ladder vertical links, and the floor cost surface (this
@@ -552,6 +591,14 @@ pub struct Situation {
     /// [`default_floor`](Situation::default_floor).
     /// `#[serde(default)]` gives an empty list (the common case: uniform floor).
     pub floors:         Vec<FloorSpawn>,
+    /// The authored area-damage **field placements** (GTW-545) — each a [`FieldSpawn`]: a
+    /// `(cell, level)` paired with a field-type KEY resolved against the
+    /// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) and seeded into the live
+    /// [`FieldRegistry`](crate::fields::FieldRegistry) at
+    /// [`setup_battle`](crate::situation::setup_battle) (e.g. a toxic-waste pool as initial
+    /// terrain). `#[serde(default)]` gives an empty list, so every EXISTING situation `.ron`
+    /// deserializes byte-identical (a battlefield with no hazards omits the field entirely).
+    pub fields:         Vec<FieldSpawn>,
 }
 
 impl Situation {

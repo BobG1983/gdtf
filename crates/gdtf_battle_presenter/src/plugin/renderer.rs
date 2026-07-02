@@ -5,9 +5,9 @@ use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger, DotTicked,
-    FallOccurred, InjuryInflicted, OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed,
-    SquadVisibility, SuppressionApplied, SurfaceGrid, VerticalLinkGraph, acts::MeleeResolved,
-    occupancy_sync::SimSystems,
+    FallOccurred, FieldRegistry, FieldTicked, InjuryInflicted, OccupancyGrid, PlayerFaction,
+    ShotFired, SlabDestroyed, SquadVisibility, SuppressionApplied, SurfaceGrid, VerticalLinkGraph,
+    acts::MeleeResolved, occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -17,16 +17,16 @@ use crate::{
     ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases, ViewMode,
     advance_projectiles, advance_sprite_tweens, animate_floating_text, animate_impact,
     apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
-    despawn_removed_ganger_sprites, draw_fire_target, draw_highlight_on_request, draw_path_preview,
-    draw_static_battlefield, draw_vertical_links, expire_flashes, frame_camera_on_units,
-    indicate_emplacement_occupied, load_character_roles, load_effect_roles, load_fx_tuning,
-    load_pan_tuning, load_tile_roles, load_topdown_atlases, move_ganger_sprites, pan_camera,
-    pan_camera_on_gamepad_cursor_edge, present_fog, read_armor_broken, read_bleeding,
-    read_consequence_fct, read_cover_destroyed, read_dot_fct, read_fall_occurred, read_injury_fct,
-    read_melee_resolved, read_suppression_fct, redrive_character_roles_on_asset_event,
-    redrive_effect_roles_on_asset_event, redrive_fx_tuning_on_asset_event,
-    redrive_pan_tuning_on_asset_event, redrive_sheet_images_on_asset_event,
-    redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
+    despawn_removed_ganger_sprites, draw_field_overlay, draw_fire_target,
+    draw_highlight_on_request, draw_path_preview, draw_static_battlefield, draw_vertical_links,
+    expire_flashes, frame_camera_on_units, indicate_emplacement_occupied, load_character_roles,
+    load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
+    move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
+    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed, read_dot_fct,
+    read_fall_occurred, read_field_fct, read_injury_fct, read_melee_resolved, read_suppression_fct,
+    redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
+    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
+    redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
     reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
     resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
     spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, swap_destroyed_slab,
@@ -363,6 +363,13 @@ impl Plugin for TopDownRendererPlugin {
         // `SquadVisibility` (the §53 VISIBLE-vs-EXPLORED dim) and hard-cuts to the active storey
         // (extracted to keep `build` under the `too_many_lines` lint).
         register_path_preview_systems(app);
+
+        // GTW-545: the area-damage-field overlay DRAW (the persistent per-cell hazard wash). It
+        // reads the AUTHORITATIVE sim `FieldRegistry` (seeded by `setup_battle`) one-way and draws
+        // one translucent tile per fielded cell on the active storey, so a seeded field (a toxic
+        // pool) is VISIBLE. A SHIPPING view (the playability rule), NOT debug-gated. Extracted to
+        // keep `build` under the `too_many_lines` lint.
+        register_field_overlay_systems(app);
 
         // GTW-450: the reachable-range overlay is the DEBUG-only overlay (visual noise in
         // normal play). EVERY overlay-render-only item — the `ReachableCells` read-seam, the
@@ -1000,6 +1007,60 @@ fn register_fire_target_systems(app: &mut App) {
             .after(present_fog)
             .run_if(resource_exists::<BattleInProgress>),
     );
+}
+
+/// Registers the GTW-545 area-damage-field VIEW: the transient per-tick FCT `"-N"` reader and the
+/// persistent per-cell hazard-wash overlay DRAW system, both into the already-defined
+/// [`PresenterSystems::Draw`] band.
+///
+/// The presenter reads the AUTHORITATIVE sim [`FieldRegistry`](gdtf_battle_sim::FieldRegistry)
+/// resource DIRECTLY (a battle-lifetime resource `setup_battle` seeds from the situation's
+/// authored `fields:` list and the GTW-547 spawn API grows) and DRAWS one translucent hazard
+/// tile per fielded cell — the one-way `input → presenter → sim` direction (the presenter reads
+/// sim truth and draws it; it never writes the sim). This is the SAME one-way sim-read shape as
+/// the terrain draw reading the cover ledger.
+///
+/// Unlike the DEBUG-only reachable overlay, this is a SHIPPING view (the playability rule: a
+/// damage zone MUST be visible AND its per-turn drain MUST show), so it is NOT
+/// `#[cfg(debug_assertions)]`-gated.
+///
+/// It wires two systems:
+///
+/// - [`read_field_fct`] — the transient `"-N"` floating-combat-text pop for each ganger a live
+///   field drained this round (off the sim's [`FieldTicked`](gdtf_battle_sim::FieldTicked)
+///   message, drawn the hazard Field orange). Its `FieldTicked` buffer is registered idempotently
+///   here (the sim's acts plugin also registers it in a real battle — `add_message` is IDEMPOTENT;
+///   a `MessageReader` param panics validation without its buffer, `bevy-traps.md` #1 / #4; the
+///   `DotTicked` reader precedent). Gated on `BattleInProgress`, its buffer, and the
+///   hot-reloadable `FxTuning` it reads for the pop lifetime + rise.
+/// - [`draw_field_overlay`] — the persistent per-cell hazard wash. It draws each fielded cell on
+///   the active storey with a pooled, mutated-in-place [`Sprite`] (never despawn-respawned), tinted
+///   per the field's [`DamageType`](gdtf_battle_sim::DamageType), hard-cut to the active storey.
+///   The overlay follows `PageUp` with NO extra wiring: it reads `Res<ActiveLevel>` live every
+///   frame. Gated `run_if(resource_exists::<FieldRegistry>)` — the sim's live-field witness
+///   (`setup_battle` inserts it, teardown removes it), so it stays inert when no battle has seeded
+///   a field registry (a `Res<FieldRegistry>` param panics validation without the resource,
+///   `bevy-traps.md` #1). It needs NO render resource (solid-tint sprites, not atlas tiles) and the
+///   always-present `init_resource`-d [`ActiveLevel`]. Ordered `.after(present_fog)` so the hazard
+///   wash composites OVER the fogged battlefield, consistent with the reachable / path-preview
+///   placement.
+fn register_field_overlay_systems(app: &mut App) {
+    app.add_message::<FieldTicked>()
+        .add_systems(
+            Update,
+            read_field_fct.in_set(PresenterSystems::Draw).run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<Messages<FieldTicked>>)
+                    .and_then(resource_exists::<FxTuning>),
+            ),
+        )
+        .add_systems(
+            Update,
+            draw_field_overlay
+                .in_set(PresenterSystems::Draw)
+                .after(present_fog)
+                .run_if(resource_exists::<FieldRegistry>),
+        );
 }
 
 /// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay: the [`ReachableCells`]

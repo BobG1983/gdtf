@@ -10,6 +10,7 @@ use crate::states::load::{
     resources::{FailedAssetPath, LoadFailed, LoadHandles},
     systems::resolve::{
         armor::resolve_armor,
+        fields::resolve_fields,
         gangs::resolve_gangs,
         injuries::resolve_injuries,
         melee_weapons::resolve_melee_weapons,
@@ -138,6 +139,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         melee_weapons_present,
         situation_present,
         armor_present,
+        fields_present,
         injuries_present,
         gangs_present,
         prefabs_v2_present,
@@ -152,6 +154,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.melee_weapons.is_some(),
         resolved.situation.is_some(),
         resolved.armor.is_some(),
+        resolved.fields.is_some(),
         resolved.injuries.is_some(),
         resolved.gangs.is_some(),
         resolved.prefabs_v2.is_some(),
@@ -169,6 +172,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(weapon_specs),
         Some(melee_specs),
         Some(armor_specs),
+        Some(field_defs),
         Some(injury_defs),
         Some(weightings),
         Some(gang_rosters),
@@ -187,6 +191,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.weapon_specs,
         collections.melee_specs,
         collections.armor_specs,
+        collections.field_defs,
         collections.injury_defs,
         collections.weightings,
         collections.gang_rosters,
@@ -266,6 +271,21 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &armor_specs,
+            &handles,
+        );
+    }
+
+    // GTW-545: resolve the area-damage-fields folder into the stem-keyed FieldDefRegistry on
+    // its OWN absence guard, independently of all other branches (the armor-branch precedent).
+    // The battle setup resolves each situation's authored `fields:` placement against it. On
+    // the failure path resolve_fields warn!s and inserts an empty registry, preserving the
+    // no-strand guarantee.
+    if !fields_present {
+        resolve_fields(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &field_defs,
             &handles,
         );
     }
