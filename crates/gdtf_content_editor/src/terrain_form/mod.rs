@@ -35,11 +35,13 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-// The debug-only fs write (projects + serializes + writes the `.terrain_def.ron`) — kept for the C2
-// child's egui save-press re-point (GTW-512). Re-exporting it keeps its path helpers reachable.
-#[cfg(debug_assertions)]
-pub use save::write_terrain;
 pub use save::{draft_to_terrain_def, serialize_terrain_def};
+// The debug-only fs write (projects + serializes + writes the `.terrain_def.ron`) — kept for the C2
+// child's egui save-press re-point (GTW-512). Re-exporting both the root-parameterized core
+// (`write_terrain_in`) and the production wrapper (`write_terrain`) keeps the test isolation path
+// reachable without exposing the workspace root const to callers.
+#[cfg(debug_assertions)]
+pub use save::{write_terrain, write_terrain_in};
 pub use types::{
     ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainGraphicChoice,
     TerrainKindChoice,

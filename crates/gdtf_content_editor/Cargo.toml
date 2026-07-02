@@ -48,6 +48,10 @@ gdtf_screenshot = { path = "../gdtf_screenshot" }
 # DefaultPlugins app with a live AssetServer (the gdtf_test_utils UI-harness config),
 # so the test exercises the editor's actual Load pass + region spawn, not a copy.
 gdtf_test_utils = { path = "../gdtf_test_utils" }
+# GTW-555: the terrain save round-trip test writes into a unique TempDir (NOT into
+# the version-controlled assets/ tree) so concurrent `cargo test --workspace` runs
+# don't race with tests that glob-scan assets/terrain/**. TempDir auto-cleans on drop.
+tempfile = "3"
 
 [features]
 # Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled for

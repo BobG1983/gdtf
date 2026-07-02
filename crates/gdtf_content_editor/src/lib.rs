@@ -139,13 +139,16 @@ pub use save::{
 };
 pub use session::MapEditorSession;
 pub use state::EditorState;
-// The debug-only TERRAIN / THEME fs-write surface — kept for the C2 / C3 egui save-press re-point.
-#[cfg(debug_assertions)]
-pub use terrain_form::write_terrain;
 pub use terrain_form::{
     ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainGraphicChoice,
     TerrainKindChoice, draft_to_terrain_def, serialize_terrain_def,
 };
+// The debug-only TERRAIN / THEME fs-write surface — kept for the C2 / C3 egui save-press re-point.
+// `write_terrain_in` is the root-parameterized core: tests call it with a `tempfile::TempDir` root
+// so they never write into the version-controlled `assets/` tree. `write_terrain` is the production
+// thin wrapper (WORKSPACE_ASSETS_ROOT). Both are `cfg(debug_assertions)`-only.
+#[cfg(debug_assertions)]
+pub use terrain_form::{write_terrain, write_terrain_in};
 #[cfg(debug_assertions)]
 pub use theme_form::write_theme;
 pub use theme_form::{

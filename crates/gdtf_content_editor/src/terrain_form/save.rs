@@ -3,10 +3,11 @@
 //! to the active theme's terrain folder so the GTW-487 terrain loader resolves it into the
 //! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry).
 //!
-//! [`draft_to_terrain_def`] + [`serialize_terrain_def`] + [`terrain_save_path`] are PURE (no IO)
-//! so a test can round-trip them without touching the assets tree (the C3/C4 round-trip). The
-//! filesystem write lives in [`write_terrain`] (debug-only — the whole `terrain_form` module is
-//! gated, the GTW-432 save precedent).
+//! [`draft_to_terrain_def`] + [`serialize_terrain_def`] are PURE (no IO) so a test can round-trip
+//! them without touching the assets tree (the C3/C4 round-trip). The filesystem write lives in
+//! [`write_terrain_in`] (root-parameterized core, debug-only) and its thin [`write_terrain`] wrapper
+//! (the GTW-432 save precedent). Tests call `write_terrain_in` with a unique `tempfile::TempDir` root
+//! so they never pollute the version-controlled `assets/` tree.
 
 #[cfg(debug_assertions)]
 use std::path::{Path, PathBuf};
@@ -71,20 +72,6 @@ pub(crate) fn theme_dir(display_name: &str) -> String {
     } else {
         slug
     }
-}
-
-/// The full on-disk PATH a saved terrain def is written to:
-/// `<workspace assets>/terrain/<theme>/<stem>.terrain_def.ron` (GTW-474).
-///
-/// Pure (no IO) so a test can assert the resolved location without writing. `theme_display` is the
-/// active theme's display name (slugified to the theme dir), `stem` is the sanitized def name.
-#[cfg(debug_assertions)]
-#[must_use]
-pub(crate) fn terrain_save_path(theme_display: &str, stem: &str) -> PathBuf {
-    Path::new(WORKSPACE_ASSETS_ROOT)
-        .join(TERRAIN_SUBDIR)
-        .join(theme_dir(theme_display))
-        .join(format!("{stem}.{TERRAIN_DEF_EXTENSION}"))
 }
 
 /// Project the in-progress [`TerrainDraft`] into a real [`TerrainDef`] keyed by `uuid` (GTW-474
@@ -159,18 +146,24 @@ pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainErro
         .map_err(|err| SaveTerrainError::Serialize(err.to_string()))
 }
 
-/// Build + serialize + WRITE a terrain def to `assets/terrain/<theme>/<stem>.terrain_def.ron`
-/// (GTW-474 C3), or return the typed [`SaveTerrainError`] (never a panic).
+/// Build + serialize + WRITE a terrain def to `<assets_root>/terrain/<theme>/<stem>.terrain_def.ron`,
+/// or return the typed [`SaveTerrainError`] (never a panic).
+///
+/// This is the **root-parameterized core** — all path-building, serialization, and `fs` writes go
+/// through here. `assets_root` is the on-disk parent of the `terrain/` subtree: production passes
+/// [`WORKSPACE_ASSETS_ROOT`] (via [`write_terrain`]); tests pass a unique `tempfile::TempDir` root
+/// so no test ever writes into the version-controlled `assets/` tree.
 ///
 /// Sanitizes the entered name to a file stem, projects the draft to a [`TerrainDef`] keyed by
 /// `uuid`, serializes it, creates the themed directory if absent, and writes the file. Returns the
-/// resolved [`PathBuf`] on success so the caller can log it; a test reuses the pure halves.
+/// resolved [`PathBuf`] on success so the caller can log it or read it back.
 ///
 /// # Errors
 ///
 /// Any [`SaveTerrainError`] from name validation, serialization, or the file write.
 #[cfg(debug_assertions)]
-pub fn write_terrain(
+pub fn write_terrain_in(
+    assets_root: &Path,
     draft: &TerrainDraft,
     uuid: TerrainUuid,
     theme_display: &str,
@@ -181,10 +174,32 @@ pub fn write_terrain(
     }
     let def = draft_to_terrain_def(draft, uuid);
     let serialized = serialize_terrain_def(&def)?;
-    let path = terrain_save_path(theme_display, &stem);
+    let path = assets_root
+        .join(TERRAIN_SUBDIR)
+        .join(theme_dir(theme_display))
+        .join(format!("{stem}.{TERRAIN_DEF_EXTENSION}"));
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|err| SaveTerrainError::Write(err.to_string()))?;
     }
     std::fs::write(&path, serialized).map_err(|err| SaveTerrainError::Write(err.to_string()))?;
     Ok(path)
+}
+
+/// Build + serialize + WRITE a terrain def to `assets/terrain/<theme>/<stem>.terrain_def.ron`
+/// (GTW-474 C3), or return the typed [`SaveTerrainError`] (never a panic).
+///
+/// Thin wrapper around [`write_terrain_in`] that supplies the workspace `assets/` root
+/// ([`WORKSPACE_ASSETS_ROOT`]). This is the function the egui Save button calls; the production
+/// write path is UNCHANGED — the file lands exactly where the GTW-487 terrain loader reads from.
+///
+/// # Errors
+///
+/// Any [`SaveTerrainError`] from name validation, serialization, or the file write.
+#[cfg(debug_assertions)]
+pub fn write_terrain(
+    draft: &TerrainDraft,
+    uuid: TerrainUuid,
+    theme_display: &str,
+) -> Result<PathBuf, SaveTerrainError> {
+    write_terrain_in(Path::new(WORKSPACE_ASSETS_ROOT), draft, uuid, theme_display)
 }

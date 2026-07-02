@@ -7,13 +7,15 @@
 //!
 //! Per `verification.md` Rule 3 + the C2.5 contract, this asserts the SAVE + ROUND-TRIP contract:
 //! with [`EditorMode::Terrain`] active and a populated [`TerrainDraft`], it drives the SAME save
-//! path the egui Save button runs (mint the UUID → [`write_terrain`], which projects via
-//! [`draft_to_terrain_def`] + serializes), reads the written `.terrain_def.ron` back off disk, and
-//! parses it through the GTW-487 loader's `TerrainDef` deserializer — asserting the reloaded def
-//! EQUALS the projected one (every field survives — no pinned magnitudes). The egui DRAW itself is
-//! covered by the gate's Screenshot-QA phase (the egui closure never runs headlessly without a
-//! primary egui context). `assert!` + `let … else` keep the test panic-free per the workspace
-//! lints (no `unwrap` / `expect` / `panic!`).
+//! path the egui Save button runs (mint the UUID → [`write_terrain_in`] with a unique
+//! [`tempfile::TempDir`] root, which projects via [`draft_to_terrain_def`] + serializes), reads the
+//! written `.terrain_def.ron` back off disk, and parses it through the GTW-487 loader's `TerrainDef`
+//! deserializer — asserting the reloaded def EQUALS the projected one (every field survives — no
+//! pinned magnitudes). Writing into a `TempDir` (NOT into `assets/`) means the test never pollutes
+//! the version-controlled workspace tree and cannot race with other tests that glob-scan `assets/`.
+//! The `TempDir` auto-cleans on drop. The egui DRAW itself is covered by the gate's Screenshot-QA
+//! phase (the egui closure never runs headlessly without a primary egui context). `assert!` +
+//! `let … else` keep the test panic-free per the workspace lints (no `unwrap` / `expect` / `panic!`).
 
 #![cfg(debug_assertions)]
 
@@ -24,7 +26,7 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_editor::{
     EditorMode, EditorState, MapEditorPlugin, MapEditorSession, TerrainDraft, TerrainGraphicChoice,
-    TerrainKindChoice, draft_to_terrain_def, serialize_terrain_def, write_terrain,
+    TerrainKindChoice, draft_to_terrain_def, serialize_terrain_def, write_terrain_in,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
@@ -64,9 +66,10 @@ fn advance_to_editing(app: &mut App) {
 }
 
 /// C2.5: with `EditorMode::Terrain` + a populated `TerrainDraft`, the egui Save path
-/// (`draft_to_terrain_def` → `write_terrain`) writes a `.terrain_def.ron` that round-trips through
-/// the GTW-487 loader's parser BYTE-FOR-BYTE — the written file parses back to a def EQUAL to the
-/// projected one. Self-cleaning: the test removes the file it wrote.
+/// (`draft_to_terrain_def` → `write_terrain_in`) writes a `.terrain_def.ron` that round-trips
+/// through the GTW-487 loader's parser — the written file parses back to a def EQUAL to the
+/// projected one. Writes into an isolated `tempfile::TempDir` root so no test ever touches the
+/// version-controlled `assets/` tree; the `TempDir` auto-cleans on drop.
 #[test]
 fn terrain_save_round_trips_through_the_loader() {
     let mut app = editor_app();
@@ -100,28 +103,26 @@ fn terrain_save_round_trips_through_the_loader() {
         unreachable!("ensure_uuid must have minted a key")
     };
 
-    // The projected def — the SAME projection write_terrain serializes.
+    // The projected def — the SAME projection write_terrain_in serializes.
     let projected: TerrainDef = draft_to_terrain_def(&draft, uuid);
 
-    // Drive the real fs write (the egui Save button's call).
-    let Ok(path) = write_terrain(&draft, uuid, &theme_display) else {
-        unreachable!("write_terrain must succeed for a named draft")
+    // Write into an isolated TempDir so the test never touches assets/. The TempDir auto-cleans on
+    // drop — no manual cleanup is needed, and a mid-test failure still leaves the workspace clean.
+    let Ok(temp_dir) = tempfile::TempDir::new() else {
+        unreachable!("tempfile::TempDir::new must succeed in a standard test environment")
+    };
+
+    // Drive the real fs write via the root-parameterized core (the SAME logic the egui Save button's
+    // `write_terrain` wrapper calls, just pointing at the temp root instead of `assets/`).
+    let Ok(path) = write_terrain_in(temp_dir.path(), &draft, uuid, &theme_display) else {
+        unreachable!("write_terrain_in must succeed for a named draft into a writable TempDir")
     };
 
     // Read the written RON back off disk and parse it through the loader's deserializer.
-    let written = std::fs::read_to_string(&path);
-    // Clean up the file we wrote regardless of outcome, so a failure still leaves the tree clean.
-    let cleanup = || {
-        let _removed = std::fs::remove_file(&path);
+    let Ok(written) = std::fs::read_to_string(&path) else {
+        unreachable!("the written terrain def must be readable off disk inside the TempDir")
     };
-    let Ok(written) = written else {
-        cleanup();
-        unreachable!("the written terrain def must be readable off disk")
-    };
-    let reloaded = ron::de::from_str::<TerrainDef>(&written);
-    cleanup();
-
-    let Ok(reloaded) = reloaded else {
+    let Ok(reloaded) = ron::de::from_str::<TerrainDef>(&written) else {
         unreachable!(
             "the written terrain def must round-trip through the TerrainDef deserializer (the \
              GTW-487 loader's parser)",
