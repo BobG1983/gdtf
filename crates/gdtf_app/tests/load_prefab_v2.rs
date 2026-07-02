@@ -1,18 +1,16 @@
 //! GTW-489 (child T05c of the GTW-476 refactor) C1: with a REAL `AssetServer` rooted at a
 //! TEST fixture folder, entering `AppState::Load` loads the NEW UUID-keyed v2 prefab
-//! fragments from the NEW `maps/<theme>/<size>/*.prefab_v2.ron` root THROUGH the actual
+//! fragments from the NEW `content/maps/<theme>/<size>/*.prefab_v2.ron` root THROUGH the actual
 //! `resolve_prefabs_v2` branch (not a hand-inserted resource) and builds the
 //! [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2), bucketed by each spec's
 //! `(theme, size, role)` — keyed on the stable [`ThemeUuid`].
 //!
 //! GTW-494 (T08) RETIRED the legacy game-side `resolve_prefabs` from the app Load flow, so the
 //! `resolve_prefabs_v2` branch this test drives is now the ONLY live prefab resolver in the app.
-//! The v2 fragments live under their OWN `maps/` root, SEPARATE from the legacy `content/maps/`
-//! tree, and the shipped game carries NO `maps/` root yet, so the registry resolves EMPTY there
-//! (the designed fail-closed state until the T06 content migration). This test therefore points
-//! a real `AssetServer` at a TEST fixture root (`tests/fixtures/prefab_v2_root/`) whose NEW
-//! top-level `maps/industrial_hive/3x3/` holds one `*.prefab_v2.ron`, with the shipped
-//! `content/` and the other dirs symlinked to the real `assets/` — so the rest of the Load gate
+//! The v2 fragments live under `content/maps/`. This test therefore points
+//! a real `AssetServer` at a TEST fixture root (`tests/fixtures/prefab_v2_root/`) whose
+//! `content/maps/industrial_hive/3x3/` holds one `*.prefab_v2.ron`, with the other shipped
+//! `content/` subdirs symlinked to the real `assets/content/` — so the rest of the Load gate
 //! clears and the new resolve branch actually runs end-to-end.
 //!
 //! VALUE-AGNOSTIC (gate 4a): asserts the registry POPULATES and buckets under the expected

@@ -1,13 +1,14 @@
 //! GTW-489 (child T05c of the GTW-476 data-model refactor): builds the UUID-keyed
-//! [`PrefabRegistry2`] from the loaded `assets/maps/` folder, plus the LIVE hot-reload that
-//! rebuilds it on a `*.prefab_v2.ron` edit.
+//! [`PrefabRegistry2`] from the loaded `assets/content/maps/` folder, plus the LIVE hot-reload
+//! that rebuilds it on a `*.prefab_v2.ron` edit.
 //!
 //! **GTW-494 (child T08): the SOLE prefab loader.** This loader was introduced beside the
 //! legacy flat-dir `resolve_prefabs` (the GTW-418 per-file prefab model); GTW-494 RETIRED
 //! that legacy loader (GTW-496 deleted its types), so this is now the ONLY prefab resolver
 //! in the Load flow (the procgen pipeline consumes [`PrefabRegistry2`] as of GTW-492). The
 //! v2 fragments live under the
-//! `maps/` root: a recursive `load_folder` of `maps/` fans every `*.prefab_v2.ron` member to
+//! `content/maps/` root: a recursive `load_folder` of `content/maps/` fans every
+//! `*.prefab_v2.ron` member to
 //! the dedicated-extension [`RonAsset<PrefabSpecV2>`](gdtf_assets::RonAsset) loader, and a
 //! [`PrefabsV2FolderHandle`](crate::states::load::resources::PrefabsV2FolderHandle) feeds
 //! this resolve + redrive.
@@ -16,8 +17,8 @@
 //! `load_folder` member PURELY by extension
 //! (`bevy_asset::server::loaders::get_by_path` → last loader registered for that extension,
 //! directory-agnostic). The `prefab_v2.ron` extension keeps this dispatch unambiguous. The
-//! [`TypeId`] filter in [`build_prefab_v2_registry`] is DEFENSIVE only now (the `maps/` folder
-//! is single-type after GTW-494), guarding against any future mixed-type member.
+//! [`TypeId`] filter in [`build_prefab_v2_registry`] is DEFENSIVE only now (the `content/maps/`
+//! folder is single-type after GTW-494), guarding against any future mixed-type member.
 //!
 //! **No opening validation:** this loader builds through the INFALLIBLE [`Prefab2::new`] —
 //! the v2 schema carries no authored-opening field and no rejection path, because
@@ -38,7 +39,7 @@ use gdtf_battle_sim::level::{Prefab2, PrefabName, PrefabRegistry2, PrefabSpecV2}
 use crate::states::load::resources::{ActivePrefabsV2FolderHandle, LoadHandles};
 
 /// GTW-489: builds the per-`(theme, size, role)` [`PrefabRegistry2`] from the loaded
-/// `assets/maps/` folder, bucketing UUID-keyed [`PrefabSpecV2`] fragments through the
+/// `assets/content/maps/` folder, bucketing UUID-keyed [`PrefabSpecV2`] fragments through the
 /// INFALLIBLE [`Prefab2::new`] (NO C6 edge-opening validation). GTW-494: the SOLE prefab
 /// resolve (the legacy flat-dir `resolve_prefabs` was retired).
 ///
@@ -179,7 +180,7 @@ fn build_prefab_v2_registry(
 
 /// `Update`: rebuild the [`PrefabRegistry2`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
-/// `assets/maps/**/*.prefab_v2.ron` — the GTW-489 LIVE v2 prefab hot-reload, mirroring the
+/// `assets/content/maps/**/*.prefab_v2.ron` — the GTW-489 LIVE v2 prefab hot-reload, mirroring the
 /// gang hot-reload pattern ([`redrive_gangs_on_asset_event`](super::gangs::redrive_gangs_on_asset_event)).
 ///
 /// A folder load fans out into one `RonAsset<PrefabSpecV2>` asset PER v2 file, and a hot edit
@@ -236,7 +237,7 @@ pub(in crate::states::load) fn redrive_prefabs_v2_on_asset_event(
     };
     *registry = rebuilt;
     info!(
-        "prefab-v2 hot-reload: rebuilt PrefabRegistry2 from `assets/maps/` ({} prefabs)",
+        "prefab-v2 hot-reload: rebuilt PrefabRegistry2 from `assets/content/maps/` ({} prefabs)",
         registry.len(),
     );
 }

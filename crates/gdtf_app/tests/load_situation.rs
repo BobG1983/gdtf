@@ -14,7 +14,7 @@
 //!   app then advances past `Load` without ever resolving one from disk.
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   `GdtfLoadTestAppBuilder`: a real `AssetServer` pointed at the workspace
-//!   `assets/`. The good path resolves `situations/skirmish.ron` into a
+//!   `assets/`. The good path resolves `content/situations/skirmish.ron` into a
 //!   persistent `LoadedSituation` that survives `OnExit(Load)`.
 //!
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance
@@ -143,7 +143,7 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
 }
 
 /// AC7 / AC9 — tier (b): with a real `AssetServer` rooted at the workspace
-/// `assets/`, entering `Load` loads and resolves `situations/skirmish.ron` into a
+/// `assets/`, entering `Load` loads and resolves `content/situations/skirmish.ron` into a
 /// PERSISTENT [`LoadedSituation`] that survives `OnExit(Load)` — proving the
 /// loaded handle was resolved into a persistent `Situation` source available to
 /// the Generation consumer (E10.5), and that the gap between 'handle held' and
@@ -326,7 +326,7 @@ fn load_does_not_leave_without_a_situation() {
     );
 }
 
-/// The fixtures root whose `situations/skirmish.ron` is deliberately malformed
+/// The fixtures root whose `content/situations/skirmish.ron` is deliberately malformed
 /// (`tests/fixtures/bad_situation_root`), while its `theme` / `combat` / `weapons` /
 /// `fonts` dirs symlink the real `assets/` — so ONLY the situation branch reaches
 /// [`Failed`](bevy::asset::LoadState::Failed) and the empty-default fallback runs.
@@ -339,7 +339,7 @@ fn bad_situation_root() -> PathBuf {
 
 /// AC3 / GTW-261 — a FAILED situation falls back to the empty default and `Load`
 /// still advances (no strand). With a real `AssetServer` rooted at a fixtures dir
-/// whose `situations/skirmish.ron` is malformed (but valid theme/tuning/weapons/fonts,
+/// whose `content/situations/skirmish.ron` is malformed (but valid theme/tuning/weapons/fonts,
 /// so ONLY the situation branch fails), the situation load reaches `Failed`. The app
 /// must NOT hang — the resolve `warn!`s, falls back to an empty `Situation::default()`
 /// `LoadedSituation`, and `Load` still transitions to `Intro` within the bounded

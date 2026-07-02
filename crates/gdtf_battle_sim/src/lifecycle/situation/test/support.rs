@@ -373,21 +373,21 @@ pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
 
 /// The shipped authored situation file, read at compile time via the same
 /// `include_str!` pattern `tuning.rs` uses for the shipped `tuning.ron` — the
-/// REAL on-disk path (`assets/situations/skirmish.ron`), so a regression in the
+/// REAL on-disk path (`assets/content/situations/skirmish.ron`), so a regression in the
 /// authored file turns these tests red.
 pub(super) const SHIPPED_SITUATION_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../assets/situations/skirmish.ron"
+    "/../../assets/content/situations/skirmish.ron"
 ));
 
-/// Parse the shipped `assets/situations/skirmish.ron` into a `Situation`, once,
+/// Parse the shipped `assets/content/situations/skirmish.ron` into a `Situation`, once,
 /// for the AC3/AC4 tests — or assert-fail and return `None` (keeping the tests
 /// free of `unwrap`/`expect`/`panic`, all denied in tests too).
 pub(super) fn shipped_situation() -> Option<Situation> {
     let parsed = ron::de::from_str::<Situation>(SHIPPED_SITUATION_RON);
     assert!(
         parsed.is_ok(),
-        "shipped assets/situations/skirmish.ron must deserialize into Situation: {parsed:?}",
+        "shipped assets/content/situations/skirmish.ron must deserialize into Situation: {parsed:?}",
     );
     parsed.ok()
 }

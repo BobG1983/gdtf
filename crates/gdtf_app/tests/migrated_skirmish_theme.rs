@@ -1,5 +1,5 @@
 //! GTW-490 C5: with a REAL `AssetServer` rooted at the SHIPPED workspace `assets/`, entering
-//! `AppState::Load` resolves `situations/skirmish.ron` through the actual GTW-205/261 situation
+//! `AppState::Load` resolves `content/situations/skirmish.ron` through the actual GTW-205/261 situation
 //! loader into the persistent [`LoadedSituation`], and that situation NAMES a migrated
 //! [`ThemeUuid`] (its `theme_uuid` field) that RESOLVES in the migrated
 //! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry).

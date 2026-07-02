@@ -11,13 +11,13 @@ use gdtf_battle_sim::{
 /// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
 /// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time relative to THIS
 /// crate's manifest. So a prefab the editor SAVES lands exactly where the running game (and the
-/// GTW-489 v2 folder loader) READS v2 prefabs from — `assets/maps/<theme>/<size>/`.
+/// GTW-489 v2 folder loader) READS v2 prefabs from — `assets/content/maps/<theme>/<size>/`.
 pub(super) const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
 
 /// The folder under the assets root the GTW-489 v2 loader scans for `*.prefab_v2.ron` fragments
-/// — the `<theme>/<size>/` subfolders are nested under this. The NEW `maps/` root (SEPARATE from
-/// the legacy `content/maps/` tree), the SOLE prefab root after GTW-494.
-pub(super) const MAPS_SUBDIR: &str = "maps";
+/// — the `<theme>/<size>/` subfolders are nested under this. Lives under `content/maps/`,
+/// the SOLE prefab root after GTW-494 (GTW-556 moved it from the top-level `maps/`).
+pub(super) const MAPS_SUBDIR: &str = "content/maps";
 
 /// The compound file extension the GTW-489 v2 prefab loader keys on
 /// (`init_ron_asset_with_extensions::<PrefabSpecV2>(vec!["prefab_v2.ron"])`) — a saved prefab MUST
@@ -79,7 +79,7 @@ impl std::error::Error for SavePrefabError {}
 
 /// The `snake_case` directory name for a theme, derived from its human label (GTW-495).
 ///
-/// The v2 maps tree is `assets/maps/<theme>/<size>/`; the `<theme>` segment is the slugified
+/// The v2 maps tree is `assets/content/maps/<theme>/<size>/`; the `<theme>` segment is the slugified
 /// theme DISPLAY NAME (e.g. `"Industrial Hive"` → `industrial_hive`), matching the shipped
 /// per-theme layout. The save path resolves the theme's display name from the
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry); this folds it to the
@@ -104,7 +104,7 @@ pub(super) fn theme_dir(display_name: &str) -> String {
 }
 
 /// The `<width>x<height>` directory name for a [`GridSize`] — e.g. a `3 × 3 × 1` footprint →
-/// `3x3`, matching the shipped `assets/maps/<theme>/<size>/` layout (GTW-432).
+/// `3x3`, matching the shipped `assets/content/maps/<theme>/<size>/` layout (GTW-432).
 #[must_use]
 pub(super) fn size_dir(size: GridSize) -> String {
     format!("{}x{}", *size.width(), *size.height())

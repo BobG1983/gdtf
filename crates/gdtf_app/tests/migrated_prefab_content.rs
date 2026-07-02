@@ -1,12 +1,12 @@
 //! GTW-490 C3 / GTW-492: with a REAL `AssetServer` rooted at the SHIPPED workspace `assets/`,
 //! entering `AppState::Load` loads the MIGRATED v2 prefab fragments from the NEW
-//! `assets/maps/<theme>/<size>/*.prefab_v2.ron` root THROUGH the actual GTW-489
+//! `assets/content/maps/<theme>/<size>/*.prefab_v2.ron` root THROUGH the actual GTW-489
 //! `resolve_prefabs_v2` loader (not a hand-inserted resource) and builds the
 //! [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2), bucketed by each spec's
 //! `(theme, size, role)` keyed on the stable [`ThemeUuid`].
 //!
-//! Unlike the GTW-489 C1 test (which pointed at a TEST fixture because the shipped `maps/`
-//! root was empty), THIS migration ticket fills the real `assets/maps/` tree, so the test
+//! Unlike the GTW-489 C1 test (which pointed at a TEST fixture because the shipped `content/maps/`
+//! root was empty), THIS migration ticket fills the real `assets/content/maps/` tree, so the test
 //! loads the SHIPPED v2 prefabs directly via [`GdtfLoadTestAppBuilder::new`].
 //!
 //! C3: the [`PrefabRegistry2`] is non-empty and every migrated prefab yields `>= 1`

@@ -29,7 +29,7 @@
 //!   ONLY when there is no `AssetServer`). Under the real GUI launch the `Load` scene
 //!   resolves the shipped theme / tuning from assets and `insert_resource`-overwrites
 //!   those seeds, and — because its `poll_and_resolve` only RESOLVES the weapon /
-//!   armor registries / `situations/skirmish.ron` while those resources are ABSENT —
+//!   armor registries / `content/situations/skirmish.ron` while those resources are ABSENT —
 //!   the registry + situation seeds are deliberately withheld when an `AssetServer` is
 //!   present so the real `assets/content/weapons/ranged/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
 //!   skirmish win (the asset versions are the QA battlefield). With no `AssetServer` /
@@ -210,7 +210,7 @@ crate::support_item! {
     /// the theme / tuning with the shipped assets (the real theme + tuning), and — crucially —
     /// its `poll_and_resolve` only RESOLVES the registries / situation from
     /// `assets/content/weapons/ranged/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
-    /// `assets/terrain/<theme>/*.terrain_def.ron` + `situations/skirmish.ron` while those
+    /// `assets/terrain/<theme>/*.terrain_def.ron` + `content/situations/skirmish.ron` while those
     /// resources are still ABSENT, so the empty seeds must NOT be present for the real assets
     /// to win.
     /// Runs once in `Startup` (before the first `Update`, hence before `Load` resolves), so
@@ -254,7 +254,7 @@ crate::support_item! {
         commands.insert_resource(CombatTuning::default());
         // A1 / AC3b — only seed the empty fallback registries + situation when there is NO
         // AssetServer. With one present the real `assets/content/weapons/ranged/*.weapon.ron` +
-        // `assets/content/armor/*.armor.ron` registries and `situations/skirmish.ron` must win:
+        // `assets/content/armor/*.armor.ron` registries and `content/situations/skirmish.ron` must win:
         // `poll_and_resolve` only resolves them while ABSENT, so a pre-seeded empty resource
         // would shadow the real load (the registry shadow is the AC3b WeaponNotFound bug).
         // The three seeds are SYMMETRIC (GTW-269 adds the armor registry to the set).
@@ -303,7 +303,7 @@ crate::support_item! {
             // GTW-489: the UUID-keyed PrefabRegistry2 is a gate-blocking resource; seed the
             // empty fallback when there is no AssetServer so headless walks still reach Intro
             // (the A1 / AC3b pattern). With an AssetServer present the real
-            // `assets/maps/**/*.prefab_v2.ron` resolve must win — so this is gated on
+            // `assets/content/maps/**/*.prefab_v2.ron` resolve must win — so this is gated on
             // `is_none()` exactly like the other registries (else the empty seed would shadow
             // resolve_prefabs_v2, which only runs while the registry is ABSENT). GTW-494: this
             // is the ONLY prefab registry (the legacy prefab-registry seed was retired).

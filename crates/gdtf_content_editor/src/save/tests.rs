@@ -134,7 +134,7 @@ fn sanitize_name_folds_to_stem() {
     );
 }
 
-/// The save path is `assets/maps/<theme>/<size>/<stem>.prefab_v2.ron` — the layout the GTW-489
+/// The save path is `assets/content/maps/<theme>/<size>/<stem>.prefab_v2.ron` — the layout the GTW-489
 /// v2 loader scans (the `.prefab_v2` infix is required so the loader keys it). The theme dir is
 /// the slugified theme display name (NOT a closed-enum match).
 #[test]

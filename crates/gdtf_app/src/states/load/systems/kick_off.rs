@@ -24,7 +24,7 @@ const FONTS_FOLDER_PATH: &str = "fonts";
 
 /// Path of the loose authored-situation RON, relative to the asset source root
 /// (GTW-205 / E10.3 — the canonical authored battlefield the Generation slice reads).
-const SITUATION_RON_PATH: &str = "situations/skirmish.ron";
+const SITUATION_RON_PATH: &str = "content/situations/skirmish.ron";
 
 /// Path of the loose combat-tuning RON, relative to the asset source root
 /// (GTW-206 / E10.4 — the shipped balance coefficients the sim marches with;
@@ -91,12 +91,12 @@ const GANGS_DIR: &str = "content/gangs";
 
 /// Path of the loose v2 maps (prefab) folder, relative to the asset source root (GTW-489 —
 /// child T05c of the GTW-476 data-model refactor; the per-prefab
-/// `assets/maps/<theme>/<size>/*.prefab_v2.ron` fragments the `PrefabRegistry2` is built
+/// `assets/content/maps/<theme>/<size>/*.prefab_v2.ron` fragments the `PrefabRegistry2` is built
 /// from). One recursive `load_folder` walks the whole `<theme>/<size>/` tree, and the
 /// dedicated `prefab_v2.ron` compound extension keeps the `.ron` loader dispatch
 /// unambiguous (v2 prefabs only). GTW-494 retired the legacy `content/maps/*.prefab.ron`
 /// loader, so this is the ONLY prefab load in the Load flow.
-const MAPS_V2_DIR: &str = "maps";
+const MAPS_V2_DIR: &str = "content/maps";
 
 /// Path of the loose per-theme terrain-model folder, relative to the asset source root
 /// (GTW-487 — the GTW-484/485 UUID-keyed terrain + theme defs under the per-theme layout
@@ -114,7 +114,7 @@ const TERRAIN_MODEL_DIR: &str = "terrain";
 /// the GTW-136 loader) and preloads the entire `fonts` folder via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) (GTW-149 —
 /// loads ALL fonts up front so any font a sub-theme selects, override or default,
-/// is resident), AND loads `situations/skirmish.ron` as a `RonAsset<Situation>`
+/// is resident), AND loads `content/situations/skirmish.ron` as a `RonAsset<Situation>`
 /// (GTW-205 / E10.3 — through the same generic loader) AND
 /// `core_tuning/combat.tuning.ron` as a `RonAsset<CombatTuning>` (GTW-206 / E10.4
 /// — through the same generic loader)
@@ -130,8 +130,8 @@ const TERRAIN_MODEL_DIR: &str = "terrain";
 /// `terrain/<theme>/*.terrain_def.ron` + `*.terrain_theme.ron`, the UUID-keyed
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) the sim + procgen +
-/// presenter consume) AND preloads the `maps` folder via `load_folder` (GTW-489 — every
-/// `maps/<theme>/<size>/*.prefab_v2.ron`, the UUID-keyed
+/// presenter consume) AND preloads the `content/maps` folder via `load_folder` (GTW-489 — every
+/// `content/maps/<theme>/<size>/*.prefab_v2.ron`, the UUID-keyed
 /// [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2) the procgen pipeline packs),
 /// then inserts the Load-scoped [`LoadHandles`] resource the poll/resolve system
 /// reads.

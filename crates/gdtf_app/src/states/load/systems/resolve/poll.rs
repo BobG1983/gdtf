@@ -345,9 +345,9 @@ pub(in crate::states::load) fn poll_and_resolve(
         );
     }
 
-    // GTW-489: resolve the nested `assets/maps/` folder into the bucketed PrefabRegistry2 on
-    // its OWN absence guard, independently of all other branches (the gangs-branch precedent).
-    // The v2 fragments load from the `maps/<theme>/<size>/` tree via the dedicated
+    // GTW-489: resolve the nested `assets/content/maps/` folder into the bucketed PrefabRegistry2
+    // on its OWN absence guard, independently of all other branches (the gangs-branch precedent).
+    // The v2 fragments load from the `content/maps/<theme>/<size>/` tree via the dedicated
     // `prefab_v2.ron` extension. UNLIKE the retired flat-dir prefab resolve, the v2 build runs
     // NO C6 edge-opening validation — an openingless (zero-placement) v2 prefab is INCLUDED
     // (the GTW-488 design). The procgen pipeline consumes the registry (GTW-492); it is

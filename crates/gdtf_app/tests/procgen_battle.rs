@@ -2,12 +2,12 @@
 //! procgen-generates its terrain at `BattleScapeState::Generation` and reaches
 //! `BattleScapeState::BattleRunning` with a PLAYABLE (terrain-populated) level — driven by the
 //! REAL Load flow so the v2 prefab + theme + terrain registries are POPULATED from shipped
-//! content (the GTW-489 resolve over the GTW-490 migrated `maps/` + `terrain/`), NOT
+//! content (the GTW-489 resolve over the GTW-490 migrated `content/maps/` + `terrain/`), NOT
 //! hand-seeded.
 //!
 //! Two tests:
 //!
-//! 1. [`skirmish_ron_authors_no_terrain`] — the SHIPPED `assets/situations/skirmish.ron`
+//! 1. [`skirmish_ron_authors_no_terrain`] — the SHIPPED `assets/content/situations/skirmish.ron`
 //!    authors theme + `grid_size` + gangers and NO inline terrain (GTW-433 C1: the migration
 //!    removed walls / scatter / slabs / `default_floor` / floors / `vertical_links`). Parses the
 //!    real asset file directly (no app).
@@ -61,7 +61,7 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
 /// Pin: re-authoring any terrain entry into `skirmish.ron` (un-migrating it) turns this red.
 #[test]
 fn skirmish_ron_authors_no_terrain() {
-    let ron = include_str!("../../../assets/situations/skirmish.ron");
+    let ron = include_str!("../../../assets/content/situations/skirmish.ron");
     let parsed = ron::from_str::<Situation>(ron);
     assert!(
         parsed.is_ok(),

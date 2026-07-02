@@ -99,7 +99,7 @@ pub fn editor_map_to_prefab(
 
 /// Serialize a built [`PrefabSpecV2`] to its `.prefab_v2.ron`-shaped RON text — the SAME schema
 /// the GTW-489 loader deserializes (C2). A pretty-printed record so a saved prefab stays
-/// human-editable like the shipped `assets/maps/**/*.prefab_v2.ron`.
+/// human-editable like the shipped `assets/content/maps/**/*.prefab_v2.ron`.
 ///
 /// # Errors
 ///
@@ -110,7 +110,7 @@ pub fn serialize_prefab(spec: &PrefabSpecV2) -> Result<String, SavePrefabError> 
 }
 
 /// Project + serialize + WRITE the [`EditorMap`] to
-/// `assets/maps/<theme>/<size>/<stem>.prefab_v2.ron` (GTW-515 C4.9 / C4.10), or return the typed
+/// `assets/content/maps/<theme>/<size>/<stem>.prefab_v2.ron` (GTW-515 C4.9 / C4.10), or return the typed
 /// [`SavePrefabError`] (never a panic).
 ///
 /// Sanitizes the entered prefab name to a file stem, projects the map to a [`PrefabSpecV2`] via

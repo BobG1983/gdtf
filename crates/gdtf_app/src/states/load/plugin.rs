@@ -127,14 +127,14 @@ impl Plugin for LoadScenePlugin {
             // Registered here in `build` BEFORE the kick-off's `load_folder("gangs")` runs.
             app.init_ron_asset_with_extensions::<GangRoster>(vec!["gang.ron"]);
             // GTW-489 (child T05c of GTW-476): the UUID-keyed v2 prefab fragments load through
-            // the SAME generic RON loader via `load_folder` of the NEW `maps/<theme>/<size>/`
+            // the SAME generic RON loader via `load_folder` of the NEW `content/maps/<theme>/<size>/`
             // tree, claiming the dedicated `prefab_v2.ron` compound extension (files are
-            // `assets/maps/<theme>/<size>/*.prefab_v2.ron`). GTW-494 (child T08): the OLD
+            // `assets/content/maps/<theme>/<size>/*.prefab_v2.ron`). GTW-494 (child T08): the OLD
             // flat-dir per-file `prefab.ron` loader over `content/maps/` is RETIRED (and GTW-496
             // deleted its types) — the v2 loader registered here is now the ONLY prefab resolver
             // in the Load flow (the procgen pipeline consumes `PrefabRegistry2` as of GTW-492).
             // Registered here in
-            // `build` BEFORE the kick-off's `load_folder("maps")` runs.
+            // `build` BEFORE the kick-off's `load_folder("content/maps")` runs.
             app.init_ron_asset_with_extensions::<PrefabSpecV2>(vec!["prefab_v2.ron"]);
             // GTW-487 (child T05a of GTW-476): the NEW UUID-keyed terrain + theme models load
             // through the SAME generic RON loader via `load_folder` of the per-theme `terrain/`
@@ -353,7 +353,7 @@ fn add_hot_reload_systems(app: &mut App) {
             redrive_terrain_defs_on_asset_event,
             redrive_theme_defs_on_asset_event,
             // GTW-533: the situation hot-reload — overwrites the LoadedSituation resource on a
-            // `situations/skirmish.ron` edit, so the next battle GENERATION reads the edited
+            // `content/situations/skirmish.ron` edit, so the next battle GENERATION reads the edited
             // battlefield with NO restart. Mirrors the combat-tuning redrive.
             redrive_situation_on_asset_event,
         ),

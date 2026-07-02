@@ -42,7 +42,7 @@ use crate::states::load::resources::LoadedSituation;
 pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded theme-spec RON collection (`core_tuning/ui_theme.tuning.ron`).
     pub(super) theme:            Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
-    /// The loaded authored-situation RON collection (`situations/skirmish.ron`).
+    /// The loaded authored-situation RON collection (`content/situations/skirmish.ron`).
     pub(super) situation:        Option<Res<'w, Assets<RonAsset<Situation>>>>,
     /// The loaded combat-tuning RON collection (`core_tuning/combat.tuning.ron`, GTW-206).
     pub(super) tuning:           Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
@@ -73,7 +73,7 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     pub(super) weightings:       Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
     /// The loaded per-gang roster RON collection (`gangs/*.gang.ron`, GTW-415).
     pub(super) gang_rosters:     Option<Res<'w, Assets<RonAsset<GangRoster>>>>,
-    /// The loaded per-prefab v2 RON collection (`maps/**/*.prefab_v2.ron`, GTW-489).
+    /// The loaded per-prefab v2 RON collection (`content/maps/**/*.prefab_v2.ron`, GTW-489).
     pub(super) prefab_v2_specs:  Option<Res<'w, Assets<RonAsset<PrefabSpecV2>>>>,
     /// The loaded NEW per-theme terrain-def RON collection
     /// (`terrain/<theme>/*.terrain_def.ron`, GTW-487).

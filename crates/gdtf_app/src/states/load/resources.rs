@@ -241,7 +241,7 @@ impl TerrainModelFolderHandle {
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
 /// mirroring [`GangsFolderHandle`] (GTW-489 — child T05c of the GTW-476 data-model
 /// refactor). The UUID-keyed [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2)
-/// fragments (GTW-486) live under the nested `assets/maps/<theme>/<size>/` tree. Each v2
+/// fragments (GTW-486) live under the nested `assets/content/maps/<theme>/<size>/` tree. Each v2
 /// fragment carries the dedicated `prefab_v2.ron` compound extension so the recursive
 /// `load_folder` dispatches it to the
 /// [`RonAsset<PrefabSpecV2>`](gdtf_assets::RonAsset) loader. The poll/resolve system gates
@@ -265,7 +265,7 @@ impl PrefabsV2FolderHandle {
     }
 }
 
-/// Typed handle to the in-flight situation RON asset (`situations/skirmish.ron`).
+/// Typed handle to the in-flight situation RON asset (`content/situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] so the no-bare-types rule holds even
 /// for asset plumbing: a bare `Handle<RonAsset<Situation>>` carries no domain
@@ -423,7 +423,7 @@ impl LoadedSituation {
     }
 }
 
-/// The PERSISTENT handle to the resolved situation RON asset (`situations/skirmish.ron`).
+/// The PERSISTENT handle to the resolved situation RON asset (`content/situations/skirmish.ron`).
 ///
 /// A named newtype over the bevy [`Handle`] (no-bare-types) that — unlike the
 /// Load-scoped [`SituationHandle`] inside [`LoadHandles`], which is dropped
@@ -682,7 +682,7 @@ impl ActiveGangsFolderHandle {
 /// [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2) and kept alive so the GTW-489
 /// live hot-reload handler (`redrive_prefabs_v2_on_asset_event`) can re-enumerate the
 /// folder's member handles to rebuild the registry on a hot edit to ANY
-/// `assets/maps/**/*.prefab_v2.ron`. Holding the folder handle keeps every member v2 prefab
+/// `assets/content/maps/**/*.prefab_v2.ron`. Holding the folder handle keeps every member v2 prefab
 /// asset loaded for the file-watcher. Like the registry, it is **not** removed in `cleanup`.
 #[derive(Resource, Deref, Clone, Debug)]
 pub(in crate::states::load) struct ActivePrefabsV2FolderHandle(Handle<LoadedFolder>);

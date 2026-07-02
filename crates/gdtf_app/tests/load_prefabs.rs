@@ -1,5 +1,5 @@
 //! GTW-494 (child T08 of the GTW-476 refactor): `AppState::Load` loads the v2 prefab
-//! fragments from `assets/maps/<theme>/<size>/*.prefab_v2.ron` through the GTW-489
+//! fragments from `assets/content/maps/<theme>/<size>/*.prefab_v2.ron` through the GTW-489
 //! `resolve_prefabs_v2` loader, builds the UUID-keyed [`PrefabRegistry2`] from them, and
 //! gates the Load→Intro transition on it.
 //!
@@ -8,7 +8,7 @@
 //! UUID v2 model: GTW-494 removed the old game-side loader, so the `PrefabRegistry2` is now
 //! the ONLY prefab resolver in the Load flow (the procgen pipeline consumes it, GTW-492). It
 //! does NOT seed the registry — it drives the REAL Load branch over the shipped
-//! `assets/maps/` content and asserts the registry POPULATES (not-empty) and a KNOWN
+//! `assets/content/maps/` content and asserts the registry POPULATES (not-empty) and a KNOWN
 //! `(theme, size, role)` bucket resolves (the C2 contract: not-empty + a known key resolves,
 //! via the real Load branch, not a seeded default).
 //!
@@ -43,7 +43,7 @@ fn app_state(app: &bevy::app::App) -> AppState {
 }
 
 /// GTW-494 C2 — with a real `AssetServer` rooted at the workspace `assets/`, entering `Load`
-/// loads `assets/maps/<theme>/<size>/*.prefab_v2.ron` and builds the UUID-keyed
+/// loads `assets/content/maps/<theme>/<size>/*.prefab_v2.ron` and builds the UUID-keyed
 /// [`PrefabRegistry2`] bucketed by each fragment's `(theme, size, role)` through the ACTUAL
 /// `resolve_prefabs_v2` branch. Proves:
 ///
@@ -65,7 +65,7 @@ fn real_asset_resolves_v2_prefab_registry() {
     // Signal-poll the async maps folder load: wait until resolve_prefabs_v2 inserts the
     // PrefabRegistry2, not a fixed frame count. Cap is a safety net (GTW-305). DELIBERATELY
     // do NOT seed PrefabRegistry2::default() — existence here proves the REAL
-    // resolve_prefabs_v2 published it from the assets/maps/ folder.
+    // resolve_prefabs_v2 published it from the assets/content/maps/ folder.
     advance_until_resource_exists::<PrefabRegistry2>(&mut app, LOAD_SAFETY_NET);
 
     if let Some(registry) = app.world().get_resource::<PrefabRegistry2>() {

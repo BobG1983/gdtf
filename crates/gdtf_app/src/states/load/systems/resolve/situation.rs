@@ -26,7 +26,7 @@ use crate::states::load::resources::{ActiveSituationHandle, LoadHandles, LoadedS
 /// own-absence guard), independently of the theme / tuning / weapons branches:
 ///
 /// - If the situation RON reached [`LoadState::Failed`], `warn!`s naming
-///   `situations/skirmish.ron` and inserts an empty [`Situation::default`] — the
+///   `content/situations/skirmish.ron` and inserts an empty [`Situation::default`] — the
 ///   ADR-0003 sanctioned error-path safety-net — so `Load` always exits with a
 ///   situation present and never hangs on a bad situation file. CRITICAL: the empty
 ///   default is inserted ONLY on a genuine `Failed`, NEVER while the situation is
@@ -53,7 +53,7 @@ pub(super) fn resolve_situation(
     // stranding the machine). Only on a genuine Failed — never while still loading.
     if situation_state.is_failed() {
         warn!(
-            "GDTF Load: asset `situations/skirmish.ron` failed to load; falling back to the empty \
+            "GDTF Load: asset `content/situations/skirmish.ron` failed to load; falling back to the empty \
              default situation (the battle will have no gangers)",
         );
         commands.insert_resource(LoadedSituation::new(Situation::default()));
@@ -75,14 +75,14 @@ pub(super) fn resolve_situation(
         // GTW-533: insert the PERSISTENT situation handle alongside the resource — like
         // the tuning's ActiveTuningHandle it survives OnExit(Load), so the live
         // hot-reload handler can filter AssetEvents against it AND re-read the refreshed
-        // asset on a `situations/skirmish.ron` edit.
+        // asset on a `content/situations/skirmish.ron` edit.
         commands.insert_resource(ActiveSituationHandle::new((*handles.situation).clone()));
     }
 }
 
 /// `Update` (ungated): overwrite the resident [`LoadedSituation`] resource in place on a
 /// matching [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for
-/// `situations/skirmish.ron` — the GTW-533 LIVE situation hot-reload, modelled on the
+/// `content/situations/skirmish.ron` — the GTW-533 LIVE situation hot-reload, modelled on the
 /// combat-tuning redrive
 /// ([`redrive_combat_tuning_on_asset_event`](super::tuning::redrive_combat_tuning_on_asset_event)).
 ///
@@ -135,7 +135,7 @@ pub(in crate::states::load) fn redrive_situation_on_asset_event(
     };
     *situation = LoadedSituation::new((**updated).clone());
     // GTW-374 Part C convention: log EVERY hot-reload path naming what reloaded.
-    info!("situation hot-reload: reloaded LoadedSituation from `situations/skirmish.ron`");
+    info!("situation hot-reload: reloaded LoadedSituation from `content/situations/skirmish.ron`");
 }
 
 #[cfg(test)]

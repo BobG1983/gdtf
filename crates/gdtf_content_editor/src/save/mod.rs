@@ -1,7 +1,7 @@
 //! The editor **SAVE-PREFAB path** (GTW-432; swept onto the v2 UUID schema in GTW-495): project
 //! the in-memory [`EditorMap`](crate::EditorMap) into the v2
 //! [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2) schema, serialize it to RON, and WRITE
-//! it to `assets/maps/<theme>/<size>/<prefab_name>.prefab_v2.ron`.
+//! it to `assets/content/maps/<theme>/<size>/<prefab_name>.prefab_v2.ron`.
 //!
 //! ## The schema the saver writes (C2)
 //!
