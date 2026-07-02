@@ -8,8 +8,9 @@ use crate::{
     cone::PriorShots,
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, StanceKind},
-    stability::{EmplacementStability, SightStability, TerrainBraced},
+    stability::{EmplacementStability, TerrainBraced},
     tuning::CombatTuning,
+    weapon::WeaponBraceBonus,
 };
 
 /// AC6 — both composers are the public model methods (the HUD-shared callable
@@ -44,7 +45,7 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
         &shooter,
         wpn.stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &ledger,
         &tuning,
@@ -96,7 +97,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
             &shooter,
             stable,
             TerrainBraced::new(false),
-            SightStability::none(),
+            WeaponBraceBonus::none(),
             EmplacementStability::none(),
             cover,
             &tuning,

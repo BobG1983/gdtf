@@ -40,7 +40,7 @@ use crate::{
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireMode, HitType, Kickback,
-        Scoped, Stable, TrajectoryStyle, WeaponDamage, WeaponPunch, WeaponShred, WeaponSightBonus,
+        Stable, TrajectoryStyle, WeaponBraceBonus, WeaponDamage, WeaponPunch, WeaponShred,
         WeaponStats, WieldedBy, Wields,
     },
 };
@@ -67,8 +67,9 @@ type ThrowWeaponQuery<'world, 'state> = Query<
         &'static WeaponShred,
         &'static DamageType,
         &'static Stable,
-        Option<&'static Scoped>,
-        Option<&'static WeaponSightBonus>,
+        // GTW-549: the weapon's optional per-item WeaponBraceBonus attachment (SUPERSEDES the
+        // GTW-542 Scoped / WeaponSightBonus columns — a sight now boosts AIM, not stability).
+        Option<&'static WeaponBraceBonus>,
         Option<&'static DotProfile>,
         &'static TrajectoryStyle,
         &'static FireMode,
@@ -148,8 +149,7 @@ struct GrenadeStats {
     shred:       WeaponShred,
     damage_type: DamageType,
     stable:      Stable,
-    scoped:      Option<Scoped>,
-    sight_bonus: Option<WeaponSightBonus>,
+    brace_bonus: Option<WeaponBraceBonus>,
     dot:         Option<DotProfile>,
     hit_type:    HitType,
 }
@@ -168,8 +168,7 @@ impl GrenadeStats {
             shred:       &self.shred,
             damage_type: &self.damage_type,
             stable:      &self.stable,
-            sight:       self.scoped.as_ref(),
-            sight_bonus: self.sight_bonus.as_ref(),
+            brace_bonus: self.brace_bonus.as_ref(),
             dot:         self.dot.as_ref(),
         }
     }
@@ -268,8 +267,7 @@ pub fn dispatch_throw_grenade(
             shred,
             damage_type,
             stable,
-            scoped,
-            sight_bonus,
+            brace_bonus,
             dot,
             trajectory,
             fire_mode,
@@ -306,8 +304,7 @@ pub fn dispatch_throw_grenade(
             shred:       *shred,
             damage_type: *damage_type,
             stable:      *stable,
-            scoped:      scoped.copied(),
-            sight_bonus: sight_bonus.copied(),
+            brace_bonus: brace_bonus.copied(),
             dot:         dot.copied(),
             hit_type:    fire_mode.single().hit_type,
         };

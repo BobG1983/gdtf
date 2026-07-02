@@ -66,8 +66,7 @@ use crate::{
     occupancy::OccupancyGrid,
     occupancy_sync::{SimSystems, sync_moved_gangers},
     terrain::entity::TerrainCell,
-    tuning::AttachmentTuning,
-    weapon::{MountedWeapon, WeaponRegistry, WieldedBy},
+    weapon::{AttachmentRegistry, MountedWeapon, PendingAttachments, WeaponRegistry, WieldedBy},
 };
 
 /// A request to set a **weapon emplacement**'s [`EmplacementState`] — the toggle message the
@@ -178,6 +177,7 @@ pub fn apply_emplacement_toggle(
     )>,
     stances: Query<&Stance, With<Stance>>,
     weapons: Option<Res<WeaponRegistry>>,
+    attachments: Option<Res<AttachmentRegistry>>,
     mut grid: ResMut<OccupancyGrid>,
     mut commands: Commands,
 ) {
@@ -206,9 +206,13 @@ pub fn apply_emplacement_toggle(
             // resolving MountedWeaponKey against the WeaponRegistry, and record its entity so the
             // vacate branch can despawn exactly it. A missing registry / unresolved key spawns no
             // mount (fail-closed — the band-force + occupant record still stand).
-            if let Some(mount) =
-                spawn_mounted_weapon(&mut commands, ganger, mounted_key, weapons.as_deref())
-            {
+            if let Some(mount) = spawn_mounted_weapon(
+                &mut commands,
+                ganger,
+                mounted_key,
+                weapons.as_deref(),
+                attachments.as_deref(),
+            ) {
                 commands
                     .entity(request.emplacement())
                     .insert(MountedWeaponEntity::new(mount));
@@ -245,26 +249,42 @@ pub fn apply_emplacement_toggle(
 /// [`WeaponRegistry`] is absent (a focused harness with no Load flow), or the key resolves to no
 /// spec (fail-closed; the occupy path still applies the band-force + occupant record). The weapon
 /// carries the [`MountedWeapon`](crate::weapon::MountedWeapon) marker so the ranged-firing read
-/// PREFERS it while the ganger mans the mount. The mounted weapon authors no attachment slots, so
-/// [`into_bundle`](crate::weapon::WeaponSpec::into_bundle)'s empty-slot fold is the identity — the
-/// [`AttachmentTuning`] passed is the default (its value is unread for an empty slot list).
+/// PREFERS it while the ganger mans the mount.
+///
+/// GTW-549: the mounted weapon's authored `attachments` keys are resolved against the
+/// [`AttachmentRegistry`] into a [`PendingAttachments`] marker spawned onto the weapon (an EMPTY
+/// marker when it authors none / the registry is absent), which the post-spawn
+/// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) system applies via
+/// the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension — the
+/// SAME path the `setup_battle` spawn uses.
 fn spawn_mounted_weapon(
     commands: &mut Commands,
     occupant: Entity,
     mounted_key: Option<&MountedWeaponKey>,
     weapons: Option<&WeaponRegistry>,
+    attachments: Option<&AttachmentRegistry>,
 ) -> Option<Entity> {
     let key = mounted_key?;
     let spec = weapons?.spec(key)?;
-    // The empty-slot fold is the identity, so the AttachmentTuning value is irrelevant here.
-    let (bundle, _effects) = spec
-        .clone()
-        .into_bundle((**key).clone(), &AttachmentTuning::default());
+    // GTW-549: resolve the mounted weapon's authored attachment keys into a PendingAttachments
+    // marker (empty when it authors none / the registry is absent — the fail-safe). The
+    // WeaponSpawnSiblings (dot / on_death) are carried into the scene by setup_battle only; a
+    // directly-spawned mount composes just the bundle + relationship + pending marker.
+    let effects = attachments.map_or_else(Vec::new, |registry| {
+        spec.attachments
+            .iter()
+            .filter_map(|k| registry.spec(k))
+            .flat_map(|item| item.effects.iter().cloned())
+            .collect()
+    });
+    let pending = PendingAttachments::new(effects);
+    let (bundle, _siblings) = spec.clone().into_bundle((**key).clone());
     // Spawn the mounted weapon related to the occupant (the WieldedBy hook adds it to the
-    // occupant's Wields collection) + the MountedWeapon marker the ranged-firing read prefers.
+    // occupant's Wields collection) + the MountedWeapon marker the ranged-firing read prefers +
+    // the PendingAttachments marker the post-spawn applier reads.
     Some(
         commands
-            .spawn((bundle, WieldedBy::new(occupant), MountedWeapon))
+            .spawn((bundle, WieldedBy::new(occupant), MountedWeapon, pending))
             .id(),
     )
 }

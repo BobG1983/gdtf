@@ -10,10 +10,10 @@ use gdtf_battle_sim::{
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
-    ArmorsFolderHandle, FieldsFolderHandle, FontFolderHandle, GangsFolderHandle,
-    InjuriesFolderHandle, LoadHandles, MeleeWeaponsFolderHandle, PrefabsV2FolderHandle,
-    ProcgenTuningHandle, SituationHandle, StatTuningHandle, TerrainModelFolderHandle, ThemeHandle,
-    TuningHandle, WeaponsFolderHandle,
+    ArmorsFolderHandle, AttachmentsFolderHandle, FieldsFolderHandle, FontFolderHandle,
+    GangsFolderHandle, InjuriesFolderHandle, LoadHandles, MeleeWeaponsFolderHandle,
+    PrefabsV2FolderHandle, ProcgenTuningHandle, SituationHandle, StatTuningHandle,
+    TerrainModelFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -56,6 +56,13 @@ const WEAPONS_DIR: &str = "content/weapons/ranged";
 /// OWN leaf folder (sibling of `ranged/`) so a recursive `load_folder` walks ONLY
 /// `.melee_weapon.ron` members, the ranged-folder precedent.
 const MELEE_WEAPONS_DIR: &str = "content/weapons/melee";
+
+/// Path of the loose attachments folder, relative to the asset source root (GTW-549 PHASE 1
+/// — the per-attachment `assets/content/attachments/*.attachment.ron` items the
+/// [`AttachmentRegistry`](gdtf_battle_sim::weapon::AttachmentRegistry) is built from). Its
+/// OWN folder + the dedicated `attachment.ron` compound extension keep the `.ron` loader
+/// dispatch unambiguous (attachments only) — the weapon/armor/gang precedent.
+const ATTACHMENTS_DIR: &str = "content/attachments";
 
 /// Path of the loose armor folder, relative to the asset source root (GTW-269 —
 /// the per-armor `assets/content/armor/*.ron` files the registry is built from). Its OWN
@@ -162,6 +169,9 @@ pub(in crate::states::load) fn kick_off_loads(
     // GTW-505: the sibling melee-weapons folder loads through its OWN folder handle so the
     // `MeleeWeaponRegistry` builds from the `.melee_weapon.ron` members only.
     let melee_weapons = MeleeWeaponsFolderHandle::new(asset_server.load_folder(MELEE_WEAPONS_DIR));
+    // GTW-549 PHASE 1: the data-driven attachment items load through their OWN folder handle
+    // so the AttachmentRegistry builds from the `.attachment.ron` members only.
+    let attachments = AttachmentsFolderHandle::new(asset_server.load_folder(ATTACHMENTS_DIR));
     let armor = ArmorsFolderHandle::new(asset_server.load_folder(ARMOR_DIR));
     // GTW-545: the area-damage-fields catalog folder loads through its OWN folder handle so
     // the FieldDefRegistry builds from the `.field.ron` members only.
@@ -184,6 +194,7 @@ pub(in crate::states::load) fn kick_off_loads(
         procgen,
         weapons,
         melee_weapons,
+        attachments,
         armor,
         fields,
         injuries,

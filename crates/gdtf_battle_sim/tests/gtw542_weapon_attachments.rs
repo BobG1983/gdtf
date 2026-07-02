@@ -1,21 +1,22 @@
-//! GTW-542 (child GTW-41b) — WEAPON ATTACHMENTS, proven on the REAL
-//! `setup_battle_on_request` → `BattleSimPlugin` spawn path (the gtw525/gtw526 idiom):
+//! GTW-549 (child GTW-551) — DATA-DRIVEN WEAPON ATTACHMENTS, proven on the REAL
+//! `setup_battle_on_request` → `BattleSimPlugin` spawn + `apply_pending_attachments` path
+//! (SUPERSEDES the GTW-542 `AttachTag`-enum model):
 //!
-//! - **RON round-trip** — a `WeaponSpec` parses an `attachment_slots:` list from RON; an
-//!   omitted field defaults to an EMPTY list.
-//! - **Each tag applies its component / leaf on the REAL spawn** — a ganger wielding an
-//!   attachment-bearing weapon spawns the sibling tag (`Silenced` present, `Stable(true)`,
-//!   `Scoped` present) OR the rewritten spawn-side leaf (`Magazine.reload_tu` reduced by
-//!   `FastReload`, `WeaponPunch` raised by `HexgrindRounds`, `MagazineSize` grown by
-//!   `GoreSumpDrum`, `DamageType` overridden by `RotgutCoating`).
-//! - **The 4 NAMED observable** — a `Sighted` weapon reads a TIGHTER `cone_for` than an
-//!   un-scoped baseline; `FastReload` yields a lower `reload_tu`; a `Silenced` shot
-//!   produces NO `SuppressionApplied` where an identical un-silenced shot does; `Stable`
-//!   engages the §1a brace (steadier facing an empty cell).
-//! - **IDENTITY** — an empty `attachment_slots` list spawns a component set byte-identical
-//!   to a weapon authored without the field (no sibling tags, un-rewritten leaves).
-//!
-//! Magnitudes are NEVER pinned — the asserts are presence / relative direction only.
+//! - **RON round-trip** — an `AttachmentSpec` parses an `effects:` list from RON (each effect
+//!   keyed by variant name with its per-item magnitude); a weapon references items BY KEY in
+//!   its `attachments:` list (an omitted field defaults to an EMPTY list).
+//! - **Each effect applies to the CORRECT stat on the REAL spawn** — a ganger wielding an
+//!   attachment-bearing weapon has, after the post-spawn application: `Silenced` present
+//!   (`Silence`), `Accuracy` RAISED (`Aim` → the HEADLINE fix, a sight boosts AIM not
+//!   stability), `WeaponBraceBonus` present (`Stability` → the brace seam), `Magazine.size`
+//!   grown (`ExtraAmmo`), `Magazine.reload_tu` lowered (`FastReload`).
+//! - **The Silenced dual-producer gate** — a `Silence` attachment yields NO `SuppressionApplied`
+//!   where an identical un-silenced shot does; the shared `shooter_weapon_silenced` gate reads
+//!   the wielded ranged weapon's tag.
+//! - **IDENTITY** — an empty `attachments` list spawns a weapon with no attachment effects
+//!   (no `Silenced`, no `WeaponBraceBonus`, un-rewritten stats).
+//! - **Loader tests do NOT pin shipped magnitudes** — every assert checks presence / relative
+//!   direction against a distinctive inline baseline, never a shipped number.
 
 use bevy::{
     app::App,
@@ -25,9 +26,9 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Accuracy, AttachTag, BaseSpread, Cell, CellLevel, Cool, DamageType, Faction, FatalBias, Grit,
-    Handedness, Kickback, MagazineSize, Scoped, Shove, Silenced, Speed, Stable, Stance, StanceKind,
-    Strength, SuppressionApplied, Toughness, WeaponPunch,
+    Accuracy, BaseSpread, Cell, CellLevel, Cool, DamageType, Faction, FatalBias, Grit, Handedness,
+    Kickback, MagazineSize, Shove, Silenced, Speed, Stable, Stance, StanceKind, Strength,
+    SuppressionApplied, Toughness, WeaponPunch,
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Direction, Facing, GangRegistry},
     magazine::{Magazine, ReloadTu},
@@ -39,9 +40,10 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, TrajectoryStyle,
-        WeaponDamage, WeaponName, WeaponRegistry, WeaponShred, WeaponSpec, Wields,
-        shooter_weapon_silenced,
+        AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSpec, FireMode,
+        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, ReloadScale,
+        TrajectoryStyle, WeaponBraceBonus, WeaponDamage, WeaponName, WeaponRegistry, WeaponShred,
+        WeaponSpec, shooter_weapon_silenced,
     },
 };
 
@@ -53,6 +55,8 @@ const ENEMY: u8 = 1;
 const TEST_VIEW_RANGE: u16 = 12;
 /// The weapon key every fixture ganger resolves (the shared test-weapon key).
 const WEAPON_KEY: &str = "test-weapon";
+/// The attachment item key the fixture weapon references.
+const ATTACHMENT_KEY: &str = "test-attachment";
 
 const fn level0() -> gdtf_battle_sim::Level {
     gdtf_battle_sim::Level::new(0)
@@ -62,42 +66,62 @@ fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), level0())
 }
 
-/// A ranged weapon spec carrying the chosen attachment slots — arbitrary (not shipped)
+/// A ranged weapon spec referencing the chosen attachment KEYS — arbitrary (not shipped)
 /// magnitudes; a tight-cone single-shot mode so a point-blank shot connects.
-fn ranged_spec(slots: Vec<AttachTag>) -> WeaponSpec {
+fn ranged_spec(attachment_keys: Vec<AttachmentName>) -> WeaponSpec {
     WeaponSpec {
-        base_spread:      BaseSpread::new(0.05),
-        accuracy:         Accuracy::new(5.0),
-        kickback:         Kickback::new(0.0),
-        fatal_bias:       FatalBias::new(3.0),
-        damage:           WeaponDamage::new(12),
-        punch:            WeaponPunch::new(10),
-        shred:            WeaponShred::new(3),
-        damage_type:      DamageType::Kinetic,
-        magazine:         Magazine::loaded(MagazineSize::new(20), ReloadTu::new(20)),
-        fire_mode:        FireMode::new(vec![FireModeSpec::new(
+        base_spread: BaseSpread::new(0.05),
+        accuracy:    Accuracy::new(5.0),
+        kickback:    Kickback::new(0.0),
+        fatal_bias:  FatalBias::new(3.0),
+        damage:      WeaponDamage::new(12),
+        punch:       WeaponPunch::new(10),
+        shred:       WeaponShred::new(3),
+        damage_type: DamageType::Kinetic,
+        magazine:    Magazine::loaded(MagazineSize::new(20), ReloadTu::new(20)),
+        fire_mode:   FireMode::new(vec![FireModeSpec::new(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.2),
             ModeShots::new(1),
         )]),
-        stable:           Stable::new(false),
-        shove:            Shove::new(false),
-        handedness:       Handedness::OneHanded,
-        trajectory:       TrajectoryStyle::Straight,
-        attachment_slots: slots,
-        dot:              None,
-        on_death:         None,
+        stable:      Stable::new(false),
+        shove:       Shove::new(false),
+        handedness:  Handedness::OneHanded,
+        trajectory:  TrajectoryStyle::Straight,
+        attachments: attachment_keys,
+        dot:         None,
+        on_death:    None,
     }
 }
 
-/// A weapon registry whose shared `test-weapon` key carries the chosen attachment slots.
-fn ranged_registry(slots: Vec<AttachTag>) -> WeaponRegistry {
-    WeaponRegistry::new([(WeaponName::new(WEAPON_KEY.to_owned()), ranged_spec(slots))])
+/// A weapon registry whose shared `test-weapon` key references the chosen attachment keys.
+fn ranged_registry(attachment_keys: Vec<AttachmentName>) -> WeaponRegistry {
+    WeaponRegistry::new([(
+        WeaponName::new(WEAPON_KEY.to_owned()),
+        ranged_spec(attachment_keys),
+    )])
 }
 
-/// Build the live-runtime harness with the chosen attachment slots on the shared weapon.
-fn battle_app(slots: Vec<AttachTag>) -> App {
+/// An attachment registry with the shared `test-attachment` key carrying `effects`.
+fn attachment_registry(effects: Vec<AttachmentEffect>) -> AttachmentRegistry {
+    AttachmentRegistry::new([(
+        AttachmentName::new(ATTACHMENT_KEY.to_owned()),
+        AttachmentSpec {
+            display_name: WeaponName::new("Test Attachment".to_owned()),
+            effects,
+        },
+    )])
+}
+
+/// Build the live-runtime harness. The shared weapon references the `test-attachment` key iff
+/// `effects` is non-empty; the attachment registry carries `effects` under that key.
+fn battle_app(effects: Vec<AttachmentEffect>) -> App {
+    let keys = if effects.is_empty() {
+        Vec::new()
+    } else {
+        vec![AttachmentName::new(ATTACHMENT_KEY.to_owned())]
+    };
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     app.add_plugins(BattleSimPlugin);
@@ -105,20 +129,25 @@ fn battle_app(slots: Vec<AttachTag>) -> App {
         view_range: ViewRange::new(TEST_VIEW_RANGE),
         ..Default::default()
     });
-    app.insert_resource(ranged_registry(slots));
+    app.insert_resource(ranged_registry(keys));
+    app.insert_resource(attachment_registry(effects));
     app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
     app.insert_resource(test_terrain_registry());
     app
 }
 
-/// Drive a setup through the REAL Ok path and settle it.
+/// Drive a setup through the REAL Ok path and settle it — enough updates for the weapon scene
+/// to materialize AND the post-spawn `apply_pending_attachments` system to apply its effects.
 fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
     let (situation, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
     app.world_mut()
         .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
-    for _ in 0..4 {
+    // Setup(Update) → weapon scene(SpawnScene) → apply_pending_attachments(next Update) →
+    // its queued attach_to_weapon commands flush + the effect's own reinsert settles: a
+    // generous settle window covers the multi-tick deferred cascade.
+    for _ in 0..8 {
         app.update();
     }
 }
@@ -133,9 +162,17 @@ fn ganger_of(app: &mut App, faction: u8) -> Option<Entity> {
         .map(|(entity, _)| entity)
 }
 
-/// The (single) wielded weapon entity of `ganger` — the first related `Wields` entity.
-fn weapon_entity_of(app: &App, ganger: Entity) -> Option<Entity> {
-    app.world().get::<Wields>(ganger).and_then(Wields::weapon)
+/// The (single) wielded RANGED weapon entity of `ganger` — the wielded entity carrying an
+/// `Accuracy` stat (the melee weapon / fists does not), scanned over the world's weapon
+/// entities related to `ganger` via `WieldedBy`.
+fn weapon_entity_of(app: &mut App, ganger: Entity) -> Option<Entity> {
+    use bevy::ecs::relationship::Relationship;
+    let world = app.world_mut();
+    let mut query = world.query::<(Entity, &gdtf_battle_sim::weapon::WieldedBy, &Accuracy)>();
+    query
+        .iter(world)
+        .find(|(_, wielded, _)| wielded.get() == ganger)
+        .map(|(entity, ..)| entity)
 }
 
 /// A standing player ganger at `at` facing `dir` (the shooter).
@@ -167,9 +204,10 @@ fn enemy_at(at: CellLevel) -> GangerSpawn {
         .build()
 }
 
-/// Spawn a lone player wielding the attachment-bearing weapon; return its weapon entity.
-fn spawn_lone_player_weapon(slots: Vec<AttachTag>) -> (App, Entity) {
-    let mut app = battle_app(slots);
+/// Spawn a lone player wielding the attachment-bearing weapon; return its weapon entity (after
+/// the post-spawn application has settled).
+fn spawn_lone_player_weapon(effects: Vec<AttachmentEffect>) -> (App, Entity) {
+    let mut app = battle_app(effects);
     // A lone player + a distant enemy so setup's win/loss census stays two-sided.
     let situation = SituationBuilder::new()
         .with_gangers([
@@ -181,7 +219,7 @@ fn spawn_lone_player_weapon(slots: Vec<AttachTag>) -> (App, Entity) {
     let Some(player) = ganger_of(&mut app, PLAYER) else {
         unreachable!("setup spawns one player");
     };
-    let Some(weapon) = weapon_entity_of(&app, player) else {
+    let Some(weapon) = weapon_entity_of(&mut app, player) else {
         unreachable!("the player wields a ranged weapon entity");
     };
     (app, weapon)
@@ -190,141 +228,132 @@ fn spawn_lone_player_weapon(slots: Vec<AttachTag>) -> (App, Entity) {
 // ── RON round-trip ─────────────────────────────────────────────────────────────
 
 #[test]
-fn attachment_slots_parse_from_ron() {
-    // A slot list with a NAMED tag and a payload-bearing GRIMDARK tag round-trips by name.
-    let ron = r"(
-        base_spread: 0.05, accuracy: 5.0, kickback: 0.0, fatal_bias: 3.0,
-        damage: 12, punch: 10, shred: 3, damage_type: Kinetic,
-        magazine: (size: 20, reload_tu: 20),
-        fire_mode: [(kind: Single, cone_mult: 1.0, tu_percent: 0.2, shots: 1)],
-        stable: false, handedness: OneHanded,
-        attachment_slots: [Silenced, HexgrindRounds(punch_bonus: 6)],
-    )";
-    let Ok(spec) = ron::from_str::<WeaponSpec>(ron) else {
-        unreachable!("attachment_slots must parse from RON");
+fn attachment_spec_parses_effects_from_ron() {
+    // An attachment item's `effects:` list round-trips by variant name, each with its payload.
+    let ron = r#"(
+        display_name: "Bionic Sight",
+        effects: [ Aim(0.4), Silence, Penetration(6) ],
+    )"#;
+    let Ok(spec) = ron::from_str::<AttachmentSpec>(ron) else {
+        unreachable!("an AttachmentSpec must parse its effects list from RON");
     };
     assert_eq!(
-        spec.attachment_slots.len(),
-        2,
-        "the authored two-slot list round-trips",
+        spec.effects.len(),
+        3,
+        "the authored three-effect list round-trips"
     );
     assert_eq!(
-        spec.attachment_slots[0],
-        AttachTag::Silenced,
-        "the first slot parses as the named Silenced tag",
+        spec.effects[0],
+        AttachmentEffect::Aim(AimDelta::new(0.4)),
+        "the first effect parses as Aim with its per-item AimDelta payload",
     );
     assert_eq!(
-        spec.attachment_slots[1],
-        AttachTag::HexgrindRounds {
-            punch_bonus: WeaponPunch::new(6),
-        },
-        "the second slot parses its named-newtype payload",
+        spec.effects[1],
+        AttachmentEffect::Silence,
+        "the second effect parses as the no-payload Silence variant",
     );
 }
 
 #[test]
-fn omitted_attachment_slots_default_to_empty() {
-    // No `attachment_slots:` field — the `#[serde(default)]` opt-in yields an EMPTY list.
-    let ron = r"(
+fn weapon_attachments_and_omitted_field_parse_from_ron() {
+    // A weapon references attachment items BY KEY in its `attachments:` list.
+    let with = r#"(
+        base_spread: 0.05, accuracy: 5.0, kickback: 0.0, fatal_bias: 3.0,
+        damage: 12, punch: 10, shred: 3, damage_type: Kinetic,
+        magazine: (size: 20, reload_tu: 20),
+        fire_mode: [(kind: Single, cone_mult: 1.0, tu_percent: 0.2, shots: 1)],
+        stable: false, handedness: OneHanded,
+        attachments: ["bionic_sight", "suppressor"],
+    )"#;
+    let Ok(spec) = ron::from_str::<WeaponSpec>(with) else {
+        unreachable!("a weapon's attachments key list must parse from RON");
+    };
+    assert_eq!(
+        spec.attachments.len(),
+        2,
+        "the authored two-key list round-trips"
+    );
+    assert_eq!(
+        spec.attachments[0],
+        AttachmentName::new("bionic_sight".to_owned()),
+        "the first key parses as a bare RON string",
+    );
+
+    // No `attachments:` field — the `#[serde(default)]` opt-in yields an EMPTY list.
+    let without = r"(
         base_spread: 0.05, accuracy: 5.0, kickback: 0.0, fatal_bias: 3.0,
         damage: 12, punch: 10, shred: 3, damage_type: Kinetic,
         magazine: (size: 20, reload_tu: 20),
         fire_mode: [(kind: Single, cone_mult: 1.0, tu_percent: 0.2, shots: 1)],
         stable: false, handedness: OneHanded,
     )";
-    let Ok(spec) = ron::from_str::<WeaponSpec>(ron) else {
-        unreachable!("a weapon with no attachment_slots parses");
+    let Ok(spec) = ron::from_str::<WeaponSpec>(without) else {
+        unreachable!("a weapon with no attachments field parses");
     };
     assert!(
-        spec.attachment_slots.is_empty(),
-        "an omitted attachment_slots field defaults to an empty list (the opt-in default)",
+        spec.attachments.is_empty(),
+        "an omitted attachments field defaults to an empty list (the opt-in default)",
     );
 }
 
-// ── Each tag applies its component / leaf on the REAL spawn ──────────────────────
+// ── Each effect applies to the CORRECT stat on the REAL spawn ────────────────────
 
 #[test]
-fn silenced_tag_spawns_the_silenced_component() {
-    let (app, weapon) = spawn_lone_player_weapon(vec![AttachTag::Silenced]);
+fn silence_effect_spawns_the_silenced_component() {
+    let (app, weapon) = spawn_lone_player_weapon(vec![AttachmentEffect::Silence]);
     assert!(
         app.world().get::<Silenced>(weapon).is_some(),
-        "a Silenced attachment spawns the Silenced sibling on the weapon entity",
+        "a Silence attachment fits the Silenced tag on the weapon entity (post-spawn apply)",
     );
 }
 
 #[test]
-fn stable_tag_sets_stable_true_on_the_weapon() {
-    let (app, weapon) = spawn_lone_player_weapon(vec![AttachTag::Stable]);
-    let stable = app.world().get::<Stable>(weapon).copied();
-    assert_eq!(
-        stable,
-        Some(Stable::new(true)),
-        "a Stable attachment sets Stable(true) on the weapon (the spec authored `stable: false`)",
-    );
-}
-
-#[test]
-fn sighted_tag_spawns_the_scoped_component() {
-    let (app, weapon) = spawn_lone_player_weapon(vec![AttachTag::Sighted]);
-    assert!(
-        app.world().get::<Scoped>(weapon).is_some(),
-        "a Sighted attachment spawns the Scoped (precision-optic) sibling on the weapon entity",
-    );
-}
-
-#[test]
-fn fast_reload_tag_lowers_the_magazine_reload_tu() {
-    // Baseline: the same weapon with NO attachments — its authored reload_tu.
+fn aim_effect_raises_accuracy() {
+    // The HEADLINE fix: a sight boosts AIM (Accuracy), not stability. Baseline authored 5.0.
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
-    let base = base_app
-        .world()
-        .get::<Magazine>(base_weapon)
-        .map(|m| *m.reload_tu());
-    // With FastReload fitted — the reload cost must be strictly LOWER.
-    let (fast_app, fast_weapon) = spawn_lone_player_weapon(vec![AttachTag::FastReload]);
-    let fast = fast_app
-        .world()
-        .get::<Magazine>(fast_weapon)
-        .map(|m| *m.reload_tu());
-    let (Some(base), Some(fast)) = (base, fast) else {
-        unreachable!("both weapons carry a Magazine");
+    let base = base_app.world().get::<Accuracy>(base_weapon).map(|a| **a);
+    let (aim_app, aim_weapon) =
+        spawn_lone_player_weapon(vec![AttachmentEffect::Aim(AimDelta::new(0.5))]);
+    let aimed = aim_app.world().get::<Accuracy>(aim_weapon).map(|a| **a);
+    let (Some(base), Some(aimed)) = (base, aimed) else {
+        unreachable!("both weapons carry Accuracy");
     };
     assert!(
-        fast < base,
-        "FastReload must lower the weapon's reload_tu (fast {fast} < baseline {base})",
+        aimed > base,
+        "an Aim attachment raises the weapon's Accuracy (aimed {aimed} > baseline {base})",
     );
 }
 
 #[test]
-fn hexgrind_rounds_tag_raises_weapon_punch() {
-    let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
-    let base = base_app.world().get::<WeaponPunch>(base_weapon).copied();
-    let (hex_app, hex_weapon) = spawn_lone_player_weapon(vec![AttachTag::HexgrindRounds {
-        punch_bonus: WeaponPunch::new(7),
-    }]);
-    let hex = hex_app.world().get::<WeaponPunch>(hex_weapon).copied();
-    let (Some(base), Some(hex)) = (base, hex) else {
-        unreachable!("both weapons carry a WeaponPunch");
-    };
+fn stability_effect_inserts_a_weapon_brace_bonus() {
+    // Stability maps to the brace seam — a graduated WeaponBraceBonus component.
+    let (app, weapon) = spawn_lone_player_weapon(vec![AttachmentEffect::Stability(
+        WeaponBraceBonus::new(12.0),
+    )]);
     assert!(
-        *hex > *base,
-        "HexgrindRounds must raise the weapon's punch (hex {} > baseline {})",
-        *hex,
-        *base,
+        app.world().get::<WeaponBraceBonus>(weapon).is_some(),
+        "a Stability attachment inserts a WeaponBraceBonus (the §1a brace seam) on the weapon",
+    );
+    // The un-braced baseline carries NO such component.
+    let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
+    assert!(
+        base_app
+            .world()
+            .get::<WeaponBraceBonus>(base_weapon)
+            .is_none(),
+        "an un-braced weapon carries no WeaponBraceBonus",
     );
 }
 
 #[test]
-fn gore_sump_drum_tag_grows_the_magazine_size() {
+fn extra_ammo_effect_grows_the_magazine_size() {
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
     let base = base_app
         .world()
         .get::<Magazine>(base_weapon)
         .map(|m| m.size().get());
-    let (drum_app, drum_weapon) = spawn_lone_player_weapon(vec![AttachTag::GoreSumpDrum {
-        size_bonus:   MagazineSize::new(10),
-        reload_delta: gdtf_battle_sim::tuning::ReloadDelta::new(5),
-    }]);
+    let (drum_app, drum_weapon) =
+        spawn_lone_player_weapon(vec![AttachmentEffect::ExtraAmmo(MagazineSize::new(10))]);
     let drum = drum_app
         .world()
         .get::<Magazine>(drum_weapon)
@@ -334,55 +363,61 @@ fn gore_sump_drum_tag_grows_the_magazine_size() {
     };
     assert!(
         drum > base,
-        "GoreSumpDrum must grow the magazine capacity (drum {drum} > baseline {base})",
+        "an ExtraAmmo attachment grows the magazine capacity (drum {drum} > baseline {base})",
     );
 }
 
 #[test]
-fn rotgut_coating_tag_overrides_the_damage_type() {
-    // The base weapon emits Kinetic; RotgutCoating(Chem) must override it to Chem.
-    let (app, weapon) = spawn_lone_player_weapon(vec![AttachTag::RotgutCoating {
-        damage_type: DamageType::Chem,
-    }]);
-    let dtype = app.world().get::<DamageType>(weapon).copied();
-    assert_eq!(
-        dtype,
-        Some(DamageType::Chem),
-        "RotgutCoating must override the weapon's emitted DamageType",
+fn fast_reload_effect_lowers_the_magazine_reload_tu() {
+    let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
+    let base = base_app
+        .world()
+        .get::<Magazine>(base_weapon)
+        .map(|m| *m.reload_tu());
+    let (fast_app, fast_weapon) =
+        spawn_lone_player_weapon(vec![AttachmentEffect::FastReload(ReloadScale::new(0.5))]);
+    let fast = fast_app
+        .world()
+        .get::<Magazine>(fast_weapon)
+        .map(|m| *m.reload_tu());
+    let (Some(base), Some(fast)) = (base, fast) else {
+        unreachable!("both weapons carry a Magazine");
+    };
+    assert!(
+        fast < base,
+        "a FastReload attachment lowers the weapon's reload_tu (fast {fast} < baseline {base})",
     );
 }
 
-// ── IDENTITY: an empty slot list spawns byte-identical to no field ───────────────
+// ── IDENTITY: an empty attachments list spawns with no attachment effects ─────────
 
 #[test]
-fn empty_attachment_slots_spawn_byte_identical() {
+fn empty_attachments_spawn_with_no_effects() {
     let (app, weapon) = spawn_lone_player_weapon(Vec::new());
     let world = app.world();
-    // No sibling attachment tags exist on an un-attached weapon.
     assert!(
         world.get::<Silenced>(weapon).is_none(),
         "an un-attached weapon has NO Silenced sibling",
     );
     assert!(
-        world.get::<Scoped>(weapon).is_none(),
-        "an un-attached weapon has NO Scoped sibling",
+        world.get::<WeaponBraceBonus>(weapon).is_none(),
+        "an un-attached weapon has NO WeaponBraceBonus",
     );
-    // The authored `stable: false` is preserved (no Stable attachment flipped it).
+    // The authored `stable: false` + DamageType + Accuracy are un-rewritten.
     assert_eq!(
         world.get::<Stable>(weapon).copied(),
         Some(Stable::new(false)),
-        "an un-attached weapon keeps its authored `stable: false` (no rewrite)",
+        "an un-attached weapon keeps its authored `stable: false`",
     );
-    // The authored damage type / punch / magazine are un-rewritten.
     assert_eq!(
         world.get::<DamageType>(weapon).copied(),
         Some(DamageType::Kinetic),
         "an un-attached weapon keeps its authored DamageType",
     );
     assert_eq!(
-        world.get::<WeaponPunch>(weapon).copied(),
-        Some(WeaponPunch::new(10)),
-        "an un-attached weapon keeps its authored punch",
+        world.get::<Accuracy>(weapon).map(|a| **a),
+        Some(5.0),
+        "an un-attached weapon keeps its authored Accuracy (no Aim effect applied)",
     );
 }
 
@@ -406,9 +441,9 @@ fn record_applied(
 }
 
 /// Build a two-ganger app where a PLAYER point-blank-fires at an ADJACENT enemy, recording
-/// `SuppressionApplied`. The player's weapon carries `slots`.
-fn suppression_probe_app(slots: Vec<AttachTag>) -> (App, Entity) {
-    let mut app = battle_app(slots);
+/// `SuppressionApplied`. The player's weapon carries `effects`.
+fn suppression_probe_app(effects: Vec<AttachmentEffect>) -> (App, Entity) {
+    let mut app = battle_app(effects);
     app.init_resource::<AppliedLog>();
     app.add_systems(bevy::app::Update, record_applied);
     // A radius-1 suppression disc reaches the adjacent enemy at (6,5).
@@ -446,7 +481,7 @@ fn silenced_shot_produces_no_suppression_where_an_unsilenced_shot_does() {
     );
 
     // Silenced: the SAME point-blank shot produces NO SuppressionApplied.
-    let (mut quiet, quiet_shooter) = suppression_probe_app(vec![AttachTag::Silenced]);
+    let (mut quiet, quiet_shooter) = suppression_probe_app(vec![AttachmentEffect::Silence]);
     quiet
         .world_mut()
         .write_message(gdtf_battle_sim::acts::FireRequested::new(
@@ -483,7 +518,8 @@ fn shooter_weapon_silenced_reads_the_wielded_ranged_weapon_tag() {
     // A silenced-wielding shooter reads `true`; an un-silenced one reads `false` — proving
     // the shared `shooter → Wields → the ranged weapon → Silenced` resolution the two
     // producers gate on.
-    let (mut silenced_app, silenced_shooter) = suppression_probe_app(vec![AttachTag::Silenced]);
+    let (mut silenced_app, silenced_shooter) =
+        suppression_probe_app(vec![AttachmentEffect::Silence]);
     let is_silenced = silenced_app
         .world_mut()
         .run_system_once_with(silenced_probe, silenced_shooter)

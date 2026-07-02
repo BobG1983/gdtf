@@ -1,0 +1,12 @@
+// Whisper bore — a machined bore that quiets the shot AND sharpens the aim: fits the Silenced
+// tag PLUS a small Aim (Accuracy) bonus. GTW-549 FIXES the GTW-542 design error — the old
+// WhisperBore steadied via a stability seam; a bore that helps you aim boosts AIM (the
+// in-cone concentration), not recoil stability. Data-driven attachment ITEM; applied
+// post-spawn. Referenced by a weapon BY KEY in its `attachments:` list.
+(
+    display_name: "Whisper Bore",
+    effects: [
+        Silence,    // the shot propagates neither suppression nor reaction/reveal
+        Aim(0.2),   // a modest Accuracy bump (smaller than a full Scoped Sight) — tunable
+    ],
+)

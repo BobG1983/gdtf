@@ -10,6 +10,7 @@ use crate::states::load::{
     resources::{FailedAssetPath, LoadFailed, LoadHandles},
     systems::resolve::{
         armor::resolve_armor,
+        attachments::resolve_attachments,
         fields::resolve_fields,
         gangs::resolve_gangs,
         injuries::resolve_injuries,
@@ -137,6 +138,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         procgen_present,
         weapons_present,
         melee_weapons_present,
+        attachments_present,
         situation_present,
         armor_present,
         fields_present,
@@ -152,6 +154,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.procgen.is_some(),
         resolved.weapons.is_some(),
         resolved.melee_weapons.is_some(),
+        resolved.attachments.is_some(),
         resolved.situation.is_some(),
         resolved.armor.is_some(),
         resolved.fields.is_some(),
@@ -171,6 +174,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(folders),
         Some(weapon_specs),
         Some(melee_specs),
+        Some(attachment_specs),
         Some(armor_specs),
         Some(field_defs),
         Some(injury_defs),
@@ -190,6 +194,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.folders,
         collections.weapon_specs,
         collections.melee_specs,
+        collections.attachment_specs,
         collections.armor_specs,
         collections.field_defs,
         collections.injury_defs,
@@ -256,6 +261,21 @@ pub(in crate::states::load) fn poll_and_resolve(
             &asset_server,
             &folders,
             &melee_specs,
+            &handles,
+        );
+    }
+
+    // GTW-549 PHASE 1: resolve the attachments folder into the name-keyed AttachmentRegistry on
+    // its OWN absence guard, independently of all other branches (the melee-weapons-branch
+    // precedent). PHASE 2 resolves each weapon's `attachment_slots` keys against it. On the
+    // failure path resolve_attachments warn!s and inserts an empty registry, preserving the
+    // no-strand guarantee.
+    if !attachments_present {
+        resolve_attachments(
+            &mut commands,
+            &asset_server,
+            &folders,
+            &attachment_specs,
             &handles,
         );
     }

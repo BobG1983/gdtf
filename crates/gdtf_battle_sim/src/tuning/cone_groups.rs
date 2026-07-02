@@ -8,8 +8,8 @@ use crate::{
     cover::HeightBand,
     tuning::cone::{
         AimConeMult, AimHeightFrac, AimTuPremium, BraceContribution, ConcentrationCoeff,
-        EmplacementStabilityBonus, MuzzleForwardOffset, MuzzleHeight, RecoilClimb,
-        SightStabilityBonus, SilhouetteTop, StabilityCurveCoord, StanceContribution,
+        EmplacementStabilityBonus, MuzzleForwardOffset, MuzzleHeight, RecoilClimb, SilhouetteTop,
+        StabilityCurveCoord, StanceContribution,
     },
 };
 
@@ -256,9 +256,6 @@ pub struct ConeStabilityTuning {
     pub stance_stability:            StanceStability,
     /// The auto-brace contribution (+30) added when the faced cover suits the stance.
     pub brace_contribution:          BraceContribution,
-    /// The GTW-542 sight-attachment stability bonus — points a [`Scoped`](crate::weapon::Scoped)
-    /// weapon adds to the score (a scoped weapon aims steadier → a tighter cone).
-    pub sight_stability_bonus:       SightStabilityBonus,
     /// The GTW-543 emplacement stability bonus — points a ganger MANNING a weapon emplacement
     /// (firing the bolted-down [`MountedWeapon`](crate::weapon::MountedWeapon)) adds to the score
     /// (a fixed mount aims steadier → a tighter cone, offsetting the mounted gun's low accuracy).
@@ -291,10 +288,6 @@ impl Default for ConeStabilityTuning {
         Self {
             stance_stability:            StanceStability::default(),
             brace_contribution:          BraceContribution::new(30.0),
-            // A modest steadying (+15, half the brace) — a defensible-but-arbitrary
-            // starting point; tests assert only the STEADIER / NARROWER-cone invariant,
-            // never this magnitude (the SuppressionStabilityPenalty precedent).
-            sight_stability_bonus:       SightStabilityBonus::new(15.0),
             // A substantial steadying (+40 — a fixed mount is the steadiest firing position,
             // topping the +30 brace) offsetting the mounted gun's low base accuracy. A
             // defensible-but-arbitrary starting point; tests assert only the STEADIER /

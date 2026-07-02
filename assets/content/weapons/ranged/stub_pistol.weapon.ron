@@ -21,4 +21,9 @@
     ],
     stable: false,
     handedness:    OneHanded,  // GTW-443: a one-handed sidearm - usable with a single working hand
+    // GTW-549: a threaded suppressor — references the `suppressor` attachment ITEM BY KEY. Its
+    // effect (fit the Silenced tag so the shot propagates no suppression / reaction-reveal) is
+    // applied to the spawned weapon post-spawn. Authored once in
+    // assets/content/attachments/suppressor.attachment.ron, referenced here.
+    attachments:   ["suppressor"],
 )

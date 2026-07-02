@@ -14,7 +14,7 @@ use super::query::{
     WearsQuery, WieldsQuery,
 };
 use crate::{
-    aim::{Shooter, cone_for, sight_stability, stability_for},
+    aim::{Shooter, cone_for, stability_for},
     armor::BodyPart,
     cover::CoverLedger,
     ganger::{
@@ -32,8 +32,8 @@ use crate::{
     stability::{EmplacementStability, terrain_brace::terrain_braces},
     tuning::CombatTuning,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback, Scoped,
-        Stable, WeaponDamage, WeaponPunch, WeaponShred, WeaponSightBonus, WeaponStats,
+        Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback, Stable,
+        WeaponBraceBonus, WeaponDamage, WeaponPunch, WeaponShred, WeaponStats,
     },
 };
 
@@ -85,15 +85,12 @@ pub(super) struct ShooterSnapshot {
     shred:       WeaponShred,
     damage_type: DamageType,
     stable:      Stable,
-    // GTW-542: the weapon's optional Scoped attachment, snapshotted so cone_for /
-    // stability_for fold the additive sight-stability bonus into the burst's dispersion
-    // cone. `None` = un-sighted = the zero-identity sight term. `Scoped` is `Copy`, so the
-    // snapshot owns it and `weapon_stats` hands out an `Option<&Scoped>` borrow.
-    sighted:     Option<Scoped>,
-    // GTW-542: the weapon's optional PER-WEAPON sight-stability override (whisper-bore /
-    // dead-man's-brace), snapshotted so `weapon_stats` hands out its borrow. `None` = a
-    // plain Scoped weapon reads the universal tuning bonus.
-    sight_bonus: Option<WeaponSightBonus>,
+    // GTW-549: the weapon's optional per-item WeaponBraceBonus attachment, snapshotted so
+    // cone_for / stability_for fold the additive graduated brace bonus into the burst's
+    // dispersion cone. `None` = no brace attachment = the zero-identity brace term.
+    // `WeaponBraceBonus` is `Copy`, so the snapshot owns it and `weapon_stats` hands out an
+    // `Option<&WeaponBraceBonus>` borrow. SUPERSEDES the GTW-542 Scoped / sight_bonus fields.
+    brace_bonus: Option<WeaponBraceBonus>,
     // GTW-526: the shooter's Suppressed state, snapshotted so cone_for / stability_for
     // widen the burst's dispersion cone while the shooter is pinned. `None` = un-suppressed
     // = the zero-identity suppression term. `Suppressed` is `Copy`, so the snapshot owns it
@@ -128,11 +125,8 @@ impl ShooterSnapshot {
             shred:       &self.shred,
             damage_type: &self.damage_type,
             stable:      &self.stable,
-            // GTW-542: borrow the snapshotted Scoped attachment (None = un-sighted).
-            sight:       self.sighted.as_ref(),
-            // GTW-542: borrow the snapshotted per-weapon sight-bonus override (None = the
-            // universal tuning bonus).
-            sight_bonus: self.sight_bonus.as_ref(),
+            // GTW-549: borrow the snapshotted per-item brace bonus (None = no brace attachment).
+            brace_bonus: self.brace_bonus.as_ref(),
             // GTW-544: borrow the snapshotted DOT profile (None = a non-DOT weapon).
             dot:         self.dot.as_ref(),
         }
@@ -332,8 +326,7 @@ pub(super) fn read_shooter(
         shred,
         damage_type,
         stable,
-        sighted,
-        sight_bonus,
+        brace_bonus,
         handedness,
         magazine,
         dot,
@@ -354,12 +347,9 @@ pub(super) fn read_shooter(
         shred:       *shred,
         damage_type: *damage_type,
         stable:      *stable,
-        // GTW-542: copy the weapon's Scoped attachment into the snapshot (None =
-        // un-sighted = zero-identity sight term).
-        sighted:     sighted.copied(),
-        // GTW-542: copy the weapon's per-weapon sight-bonus override (None = the universal
-        // tuning bonus).
-        sight_bonus: sight_bonus.copied(),
+        // GTW-549: copy the weapon's per-item WeaponBraceBonus attachment into the snapshot
+        // (None = no brace attachment = zero-identity brace term).
+        brace_bonus: brace_bonus.copied(),
         // GTW-526: copy the shooter's Suppressed state into the snapshot (None =
         // un-suppressed = zero-identity suppression term).
         suppressed:  suppressed.copied(),
@@ -487,19 +477,15 @@ pub(super) fn resolve_round(
         emplacement,
         tuning,
     );
-    // GTW-542: resolve the SAME sight term cone_for used above (off the snapshot's Scoped
-    // attachment + optional per-weapon override) so this recoil-growth-only recompute stays
-    // consistent with the cone width.
-    let sight = sight_stability(
-        snapshot.sighted.as_ref(),
-        snapshot.sight_bonus.as_ref(),
-        tuning,
-    );
+    // GTW-549: resolve the SAME per-item brace term cone_for used above (off the snapshot's
+    // WeaponBraceBonus attachment) so this recoil-growth-only recompute stays consistent with
+    // the cone width. `None` (no brace attachment) resolves the zero identity.
+    let brace_bonus = snapshot.brace_bonus.unwrap_or_else(WeaponBraceBonus::none);
     let (_cone_mult, recoil_growth) = stability_for(
         &shooter_view,
         snapshot.stable,
         terrain_braced,
-        sight,
+        brace_bonus,
         emplacement,
         grids.cover,
         tuning,

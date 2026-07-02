@@ -1,0 +1,11 @@
+// Red-dot sight — a simple reflex optic that clusters the in-cone draw toward centre (raises
+// the weapon's Accuracy). GTW-549's headline lever in its plainest form: a sight boosts AIM,
+// NOT stability (a smaller bump than the `scoped_sight` precision optic). The magnitude lives
+// HERE on the item, never in global tuning. Referenced by a weapon BY KEY (`red_dot_sight`) in
+// its `attachments:` list; the effect is applied to the spawned weapon post-spawn.
+(
+    display_name: "Red-Dot Sight",
+    effects: [
+        Aim(0.25),  // +0.25 to the weapon's Accuracy concentration exponent (tunable)
+    ],
+)

@@ -24,7 +24,7 @@ use crate::{
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
     visibility::{OmniscientFog, SquadVisibility},
-    weapon::{MeleeWeaponRegistry, WeaponRegistry},
+    weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry},
 };
 
 /// **Setup** the battle on [`SetupBattleRequested`] — seed the per-subsystem RNG
@@ -81,10 +81,11 @@ use crate::{
 #[expect(
     clippy::too_many_arguments,
     reason = "the params are the message reader + writer, the gang / weapon / MELEE-weapon \
-              (GTW-505) / armor / terrain / area-damage-field (GTW-545) registries, and the \
-              stat + combat tuning — each a distinct Bevy SystemParam (Option<Res<_>> for the \
-              Load-state registries); the injection model cannot be refactored to fewer without \
-              a wrapper resource that changes the API surface"
+              (GTW-505) / armor / terrain / area-damage-field (GTW-545) / attachment \
+              (GTW-549) registries, and the stat + combat tuning — each a distinct Bevy \
+              SystemParam (Option<Res<_>> for the Load-state registries); the injection model \
+              cannot be refactored to fewer without a wrapper resource that changes the API \
+              surface"
 )]
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,
@@ -97,6 +98,7 @@ pub fn setup_battle_on_request(
     stat_tuning: Option<Res<GangerStatTuning>>,
     combat_tuning: Option<Res<CombatTuning>>,
     field_defs: Option<Res<crate::fields::FieldDefRegistry>>,
+    attachments: Option<Res<AttachmentRegistry>>,
     mut commands: Commands,
 ) {
     for request in requests.read() {
@@ -185,6 +187,15 @@ pub fn setup_battle_on_request(
         // app always has the catalog loaded before a battle starts.
         let field_defs_ref = field_defs.as_deref();
 
+        // GTW-549 PHASE 1: the AttachmentRegistry is PERSISTENT `Load` state (the data-driven
+        // attachment catalog), read as `Option<Res<_>>`. When absent, `setup_battle` is called
+        // with `attachments: None` — a weapon's authored `attachments` keys then resolve to
+        // nothing (the fail-safe). When present, each resolved item's effects ride onto the
+        // spawned weapon as a PendingAttachments marker applied post-spawn by
+        // `apply_pending_attachments`. The real app always has the catalog loaded before a
+        // battle starts.
+        let attachments_ref = attachments.as_deref();
+
         // Pour the situation into the world via the authoritative setup. A bad
         //    vertical link, a missing weapon/armor/terrain key, or a below-minimum
         //    floor cost returns the typed error — log it (NEVER panic / unwrap) and
@@ -202,6 +213,11 @@ pub fn setup_battle_on_request(
         // GTW-545: attach the area-damage-field catalog when it is loaded (the app path).
         if let Some(field_defs) = field_defs_ref {
             battle_registries = battle_registries.with_field_defs(field_defs);
+        }
+        // GTW-549: attach the data-driven attachment registry when it is loaded (the app
+        // path) so each weapon's authored `attachments` keys resolve to their items' effects.
+        if let Some(attachments) = attachments_ref {
+            battle_registries = battle_registries.with_attachments(attachments);
         }
         match setup_battle(
             &request.situation,

@@ -19,4 +19,9 @@
     ],
     stable: false,
     handedness:    TwoHanded,  // GTW-443: a two-handed long-arm - refused below two working hands
+    // GTW-549: a fitted precision optic — references the `scoped_sight` attachment ITEM BY KEY.
+    // Its effect (raise the weapon's Accuracy — a sight boosts AIM, not stability) is applied
+    // to the spawned weapon post-spawn. Authored once in
+    // assets/content/attachments/scoped_sight.attachment.ron, referenced here.
+    attachments:   ["scoped_sight"],
 )

@@ -7,8 +7,9 @@ use crate::{
     cone::{PriorShots, aim_cone_mult, cone_angle},
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, StanceKind},
-    stability::{EmplacementStability, SightStability, TerrainBraced},
+    stability::{EmplacementStability, TerrainBraced},
     tuning::CombatTuning,
+    weapon::WeaponBraceBonus,
 };
 
 /// AC3 — `cone_for` returns a `ConeAngle` bit-equal to a hand-composed
@@ -46,7 +47,7 @@ fn cone_for_bit_equals_a_hand_composed_cone_angle() {
         &shooter,
         wpn.stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &ledger,
         &tuning,

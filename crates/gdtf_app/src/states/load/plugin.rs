@@ -10,7 +10,10 @@ use gdtf_battle_sim::{
     situation::Situation,
     terrain::def::{TerrainDef, TerrainDefRegistry},
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry, WeaponSpec},
+    weapon::{
+        AttachmentRegistry, AttachmentSpec, MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry,
+        WeaponSpec,
+    },
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -79,6 +82,13 @@ impl Plugin for LoadScenePlugin {
             // unambiguous among GDTF's many `.ron` loaders. Registered here in `build` BEFORE the
             // kick-off's `load_folder("content/weapons/melee")` runs.
             app.init_ron_asset_with_extensions::<MeleeWeaponSpec>(vec!["melee_weapon.ron"]);
+            // GTW-549 PHASE 1: the data-driven attachment items mirror the weapon scheme —
+            // each loads as a `RonAsset<AttachmentSpec>` via `load_folder`, so it claims its
+            // OWN dedicated `attachment.ron` compound extension (files are
+            // `assets/content/attachments/*.attachment.ron`), keeping the folder dispatch
+            // unambiguous among GDTF's many `.ron` loaders. Registered here in `build` BEFORE
+            // the kick-off's `load_folder("content/attachments")` runs.
+            app.init_ron_asset_with_extensions::<AttachmentSpec>(vec!["attachment.ron"]);
             // GTW-269: armor files mirror the weapon scheme — each loads as a
             // `RonAsset<ArmorSpec>` via `load_folder`, so it claims its OWN dedicated
             // `armor.ron` extension (files are `assets/content/armor/*.armor.ron`) to keep the
@@ -181,6 +191,12 @@ fn add_systems(app: &mut App) {
                             // (every ganger gets a melee weapon; the melee folder must be
                             // verified loaded before Load exits, or a battle fails closed).
                             .or_else(not(resource_exists::<MeleeWeaponRegistry>))
+                            // GTW-549 PHASE 1: the AttachmentRegistry is a gate-blocking
+                            // resource too — the `content/attachments/` folder must be verified
+                            // loaded before Load exits (inserted on success OR failure — no
+                            // strand). PHASE 2 resolves each weapon's `attachment_slots` keys
+                            // against it.
+                            .or_else(not(resource_exists::<AttachmentRegistry>))
                             .or_else(not(resource_exists::<LoadedSituation>))
                             .or_else(not(resource_exists::<ArmorRegistry>))
                             // GTW-545: the FieldDefRegistry (area-damage-field catalog) is a
@@ -240,6 +256,10 @@ fn add_systems(app: &mut App) {
                     // GTW-505: the MeleeWeaponRegistry must be present before Load exits, so the
                     // melee weapons folder is verified loaded before any battle arms melee.
                     .and_then(resource_exists::<MeleeWeaponRegistry>)
+                    // GTW-549 PHASE 1: the AttachmentRegistry must be present before Load
+                    // exits, so the `content/attachments/` folder is verified loaded before
+                    // any battle resolves a weapon's attachment keys.
+                    .and_then(resource_exists::<AttachmentRegistry>)
                     .and_then(resource_exists::<LoadedSituation>)
                     .and_then(resource_exists::<ArmorRegistry>)
                     // GTW-545: the FieldDefRegistry must be present before Load exits, so the
@@ -306,6 +326,10 @@ fn add_hot_reload_systems(app: &mut App) {
             // GTW-505: the melee weapon hot-reload — rebuilds the MeleeWeaponRegistry on a
             // `weapons/melee/*.melee_weapon.ron` edit, mirroring the ranged hot-reload.
             redrive_melee_weapons_on_asset_event,
+            // GTW-549 PHASE 1: the attachment hot-reload — rebuilds the AttachmentRegistry on a
+            // `content/attachments/*.attachment.ron` edit, mirroring the melee/weapon
+            // hot-reload pattern (one folder, one registry).
+            redrive_attachments_on_asset_event,
             redrive_armor_on_asset_event,
             // GTW-545: the area-damage-field hot-reload — rebuilds the FieldDefRegistry catalog
             // on a `content/fields/*.field.ron` edit, mirroring the weapon/armor hot-reload

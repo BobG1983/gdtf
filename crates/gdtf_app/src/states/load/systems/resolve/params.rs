@@ -19,7 +19,10 @@ use gdtf_battle_sim::{
     situation::Situation,
     terrain::def::{TerrainDef, TerrainDefRegistry},
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry, WeaponSpec},
+    weapon::{
+        AttachmentRegistry, AttachmentSpec, MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry,
+        WeaponSpec,
+    },
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -38,43 +41,46 @@ use crate::states::load::resources::LoadedSituation;
 #[derive(SystemParam)]
 pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded theme-spec RON collection (`core_tuning/ui_theme.tuning.ron`).
-    pub(super) theme:           Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
+    pub(super) theme:            Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
     /// The loaded authored-situation RON collection (`situations/skirmish.ron`).
-    pub(super) situation:       Option<Res<'w, Assets<RonAsset<Situation>>>>,
+    pub(super) situation:        Option<Res<'w, Assets<RonAsset<Situation>>>>,
     /// The loaded combat-tuning RON collection (`core_tuning/combat.tuning.ron`, GTW-206).
-    pub(super) tuning:          Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
+    pub(super) tuning:           Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
     /// The loaded ganger stat-tuning RON collection (`core_tuning/stat.tuning.ron`, GTW-384).
-    pub(super) stat_tuning:     Option<Res<'w, Assets<RonAsset<GangerStatTuning>>>>,
+    pub(super) stat_tuning:      Option<Res<'w, Assets<RonAsset<GangerStatTuning>>>>,
     /// The loaded procgen fill-tuning RON collection (`core_tuning/procgen.tuning.ron`,
     /// GTW-533).
-    pub(super) procgen:         Option<Res<'w, Assets<RonAsset<ProcgenTuning>>>>,
+    pub(super) procgen:          Option<Res<'w, Assets<RonAsset<ProcgenTuning>>>>,
     /// The loaded `LoadedFolder` collection — used to read the weapons folder's
     /// member handles when building the [`WeaponRegistry`] (GTW-257).
-    pub(super) folders:         Option<Res<'w, Assets<LoadedFolder>>>,
+    pub(super) folders:          Option<Res<'w, Assets<LoadedFolder>>>,
     /// The loaded per-RANGED-weapon RON collection (`weapons/ranged/*.weapon.ron`, GTW-257).
-    pub(super) weapon_specs:    Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
+    pub(super) weapon_specs:     Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
     /// The loaded per-MELEE-weapon RON collection (`weapons/melee/*.melee_weapon.ron`,
     /// GTW-505).
-    pub(super) melee_specs:     Option<Res<'w, Assets<RonAsset<MeleeWeaponSpec>>>>,
+    pub(super) melee_specs:      Option<Res<'w, Assets<RonAsset<MeleeWeaponSpec>>>>,
+    /// The loaded per-attachment RON collection (`content/attachments/*.attachment.ron`,
+    /// GTW-549 PHASE 1).
+    pub(super) attachment_specs: Option<Res<'w, Assets<RonAsset<AttachmentSpec>>>>,
     /// The loaded per-armor RON collection (`armor/*.ron`, GTW-269).
-    pub(super) armor_specs:     Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
+    pub(super) armor_specs:      Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
     /// The loaded per-field-type RON collection (`fields/*.field.ron`, GTW-545).
-    pub(super) field_defs:      Option<Res<'w, Assets<RonAsset<FieldDef>>>>,
+    pub(super) field_defs:       Option<Res<'w, Assets<RonAsset<FieldDef>>>>,
     /// The loaded per-injury RON collection (`injuries/**/*.injury.ron`, GTW-437).
-    pub(super) injury_defs:     Option<Res<'w, Assets<RonAsset<InjuryDef>>>>,
+    pub(super) injury_defs:      Option<Res<'w, Assets<RonAsset<InjuryDef>>>>,
     /// The loaded per-part injury-weighting RON collection
     /// (`injuries/weighting/*.weighting.ron`, GTW-437).
-    pub(super) weightings:      Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
+    pub(super) weightings:       Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
     /// The loaded per-gang roster RON collection (`gangs/*.gang.ron`, GTW-415).
-    pub(super) gang_rosters:    Option<Res<'w, Assets<RonAsset<GangRoster>>>>,
+    pub(super) gang_rosters:     Option<Res<'w, Assets<RonAsset<GangRoster>>>>,
     /// The loaded per-prefab v2 RON collection (`maps/**/*.prefab_v2.ron`, GTW-489).
-    pub(super) prefab_v2_specs: Option<Res<'w, Assets<RonAsset<PrefabSpecV2>>>>,
+    pub(super) prefab_v2_specs:  Option<Res<'w, Assets<RonAsset<PrefabSpecV2>>>>,
     /// The loaded NEW per-theme terrain-def RON collection
     /// (`terrain/<theme>/*.terrain_def.ron`, GTW-487).
-    pub(super) terrain_defs:    Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
+    pub(super) terrain_defs:     Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
     /// The loaded NEW per-theme theme-def RON collection
     /// (`terrain/<theme>/*.terrain_theme.ron`, GTW-487).
-    pub(super) theme_defs:      Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
+    pub(super) theme_defs:       Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
 }
 
 /// The four persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -99,6 +105,8 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
     pub(super) weapons:       Option<Res<'w, WeaponRegistry>>,
     /// Whether the resolved [`MeleeWeaponRegistry`] is already inserted (GTW-505).
     pub(super) melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+    /// Whether the resolved [`AttachmentRegistry`] is already inserted (GTW-549 PHASE 1).
+    pub(super) attachments:   Option<Res<'w, AttachmentRegistry>>,
     /// Whether the resolved [`LoadedSituation`] is already inserted (GTW-261).
     pub(super) situation:     Option<Res<'w, LoadedSituation>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).

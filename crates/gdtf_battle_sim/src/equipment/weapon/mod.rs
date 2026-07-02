@@ -47,7 +47,7 @@
 //! the registry ([`registry`]). This `mod.rs` is wiring-only; every public path is
 //! preserved via the re-exports below.
 
-mod attachment;
+mod attachment_item;
 mod bundle;
 mod components;
 mod dot;
@@ -55,18 +55,28 @@ mod fire_mode;
 mod melee;
 mod registry;
 mod relationship;
+mod silenced;
 mod spec;
 mod trajectory;
 
 #[cfg(test)]
 mod test;
 
-pub use attachment::{AttachTag, AttachmentEffects, shooter_weapon_silenced};
+// GTW-549 (child of GTW-551): the DATA-DRIVEN attachment ITEM model — a folder-loaded RON
+// item carrying a typed `AttachmentEffect` list with per-item magnitudes, applied to a
+// weapon entity via the `attach_to_weapon` commands extension. SUPERSEDES the GTW-542
+// `AttachTag` enum + folder-fn + global-tuning model (ripped out in PHASE 3+4). See the
+// `attachment_item` module doc.
+pub use attachment_item::{
+    AimDelta, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage, ApplyDamageTypeOverride,
+    ApplyExtraAmmo, ApplyFastReload, ApplyFatalBias, ApplyGainFireMode, ApplyPenetration,
+    ApplyShove, ApplyShred, ApplySilence, ApplyStability, AttachToWeaponExt, AttachmentEffect,
+    AttachmentName, AttachmentRegistry, AttachmentSpec, ReloadScale, WeaponBraceBonus,
+};
 pub use bundle::{DamageProfile, HandlingProfile, WeaponBundle, WeaponStats};
 pub use components::{
     Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, MountedWeapon,
-    Scoped, Shove, Silenced, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
-    WeaponSightBonus,
+    Shove, Silenced, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 // GTW-544 (child GTW-41e): the damage-over-time model — the weapon-side `DotProfile` a DOT
 // weapon authors + the per-ganger `Dot` affliction a penetrating hit attaches. The runtime
@@ -85,7 +95,11 @@ pub use melee::{
 };
 pub use registry::WeaponRegistry;
 pub use relationship::{WieldedBy, Wields};
-pub use spec::WeaponSpec;
+// GTW-549: the shared silenced-weapon gate — relocated out of the ripped-out GTW-542
+// `attachment` module; the `Silenced` component (above) is fitted by the `Silence`
+// attachment effect, and BOTH loud-signal producers key off this predicate.
+pub use silenced::shooter_weapon_silenced;
+pub use spec::{PendingAttachments, WeaponSpawnSiblings, WeaponSpec};
 // GTW-546 (child GTW-41d): the per-weapon trajectory style — a `Straight` ray (the
 // default, every existing weapon) or a lobbed `Arc` (a grenade / grenade launcher). The
 // fire path reads it to pick the straight `march_vector` or the parabolic `march_arc`.

@@ -218,7 +218,6 @@ fn cone_stability_parses_from_ron_with_bare_scalar_leaves() {
     let ron = r"(
         stance_stability: ( prone: 40.0, kneel: 25.0, stand: 10.0 ),
         brace_contribution: 30.0,
-        sight_stability_bonus: 15.0,
         emplacement_stability_bonus: 40.0,
         brace_min_height: ( prone: Low, kneel: Mid, stand: High ),
         stability_curves: (

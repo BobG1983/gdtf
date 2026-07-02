@@ -114,7 +114,7 @@ fn gun_spec(damage_type: DamageType) -> WeaponSpec {
         shove: Shove::new(false),
         handedness: Handedness::OneHanded,
         trajectory: TrajectoryStyle::Straight,
-        attachment_slots: Vec::new(),
+        attachments: Vec::new(),
         dot: None,
         on_death: None,
     }

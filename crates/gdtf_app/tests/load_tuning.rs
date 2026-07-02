@@ -119,6 +119,8 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());

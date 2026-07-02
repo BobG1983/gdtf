@@ -80,6 +80,8 @@ fn battle_running_app() -> App {
     // seed for this ganger-free / hand-seeded harness, mirroring the WeaponRegistry seed).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     // GTW-269: setup_battle_on_request now reads an ArmorRegistry to armor each ganger,
     // failing closed (no BattleReady) without one. This panel harness builds a
     // ganger-free default battle, so an empty registry suffices — it just must be

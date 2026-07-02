@@ -106,6 +106,8 @@ fn armor_loader_no_ops_cleanly_without_asset_server() {
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     // GTW-545: the FieldDefRegistry is a gate-blocking resource too; empty clears it.
     app.world_mut()
@@ -162,6 +164,8 @@ fn load_does_not_leave_without_an_armor_registry() {
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()

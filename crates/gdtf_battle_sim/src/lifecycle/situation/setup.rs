@@ -44,13 +44,13 @@ use crate::{
         floor::FloorCostGrid,
         openable::{OpenState, OpenableBlocking},
     },
-    tuning::{AttachmentTuning, GangerStatTuning, MoveCost, ReactionsUsed},
+    tuning::{GangerStatTuning, MoveCost, ReactionsUsed},
     vertical::{LinkKind, build_vertical_link_graph},
     weapon::{
-        Accuracy, AttachmentEffects, BaseSpread, FISTS_KEY, FatalBias, FightMode, FireMode,
-        Kickback, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, Reach, Shove, Stable,
-        Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
-        Wields,
+        Accuracy, AttachmentRegistry, BaseSpread, FISTS_KEY, FatalBias, FightMode, FireMode,
+        Kickback, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, PendingAttachments, Reach,
+        Shove, Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
+        WeaponShred, WeaponSpawnSiblings, Wields,
     },
 };
 
@@ -123,28 +123,28 @@ pub struct BattleRegistries<'a> {
     /// [`FieldRegistry`](crate::fields::FieldRegistry). The real app always has the catalog
     /// loaded before a battle starts.
     pub fields:        Option<&'a FieldDefRegistry>,
-    /// The GTW-542 weapon-attachment tuning — the magnitudes the NO-PAYLOAD attachment tags
-    /// ([`FastReload`](crate::weapon::AttachTag::FastReload) /
-    /// [`WhisperBore`](crate::weapon::AttachTag::WhisperBore)) read as
-    /// [`into_bundle`](crate::weapon::WeaponSpec::into_bundle) folds each ganger's
-    /// `attachment_slots` list. An OWNED `Copy` value (not a registry ref); [`new`](Self::new)
-    /// defaults it to [`AttachmentTuning::default`], so a caller without loaded combat tuning
-    /// still resolves attachments with the doc defaults — combat is never blocked by missing
-    /// balance data (the `Option<Res<CombatTuning>>` fail-safe precedent). The real app path
-    /// passes the loaded value via [`with_attachment_tuning`](Self::with_attachment_tuning).
-    pub attachment:    AttachmentTuning,
+    /// The GTW-549 DATA-DRIVEN attachment registry — the key→spec map a weapon's
+    /// [`attachments`](crate::weapon::WeaponSpec::attachments) keys resolve against; each
+    /// resolved item's [`AttachmentEffect`](crate::weapon::AttachmentEffect)s ride onto the
+    /// spawned weapon as its [`PendingAttachments`] marker and are applied post-spawn by
+    /// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments). `None`
+    /// ([`new`](Self::new)) skips attachment resolution — the fail-safe every content
+    /// registry ref shares (a missing registry applies nothing, never fails a battle). The
+    /// real app path passes the loaded value via [`with_attachments`](Self::with_attachments).
+    /// SUPERSEDES the GTW-542 global-tuning attachment model (removed).
+    pub attachments:   Option<&'a AttachmentRegistry>,
 }
 
 impl<'a> BattleRegistries<'a> {
     /// Build the resolution borrow-bundle from its six registry / tuning refs — the shape
     /// every [`setup_battle`] caller assembles (GTW-505 added `melee_weapons`).
     ///
-    /// The GTW-542 `attachment` tuning defaults to [`AttachmentTuning::default`] (the doc
-    /// magnitudes), so existing callers resolve attachments with defensible defaults; the
-    /// app path overrides it with the loaded value via
-    /// [`with_attachment_tuning`](Self::with_attachment_tuning).
+    /// The GTW-545 field catalog + the GTW-549 attachment registry default to `None`, so
+    /// existing callers (test fixtures without authored fields / attachments) skip those
+    /// resolution phases; the app path attaches each via
+    /// [`with_field_defs`](Self::with_field_defs) / [`with_attachments`](Self::with_attachments).
     #[must_use]
-    pub fn new(
+    pub const fn new(
         gangs: &'a GangRegistry,
         weapons: &'a WeaponRegistry,
         melee_weapons: &'a MeleeWeaponRegistry,
@@ -159,18 +159,9 @@ impl<'a> BattleRegistries<'a> {
             armor,
             stat_tuning,
             terrain,
-            attachment: AttachmentTuning::default(),
             fields: None,
+            attachments: None,
         }
-    }
-
-    /// The same borrow-bundle carrying an explicit GTW-542 [`AttachmentTuning`] — the app
-    /// path passes the loaded combat tuning's `attachment` group so the `FastReload` /
-    /// `WhisperBore` folder-functions read the AUTHORED magnitudes, not the defaults.
-    #[must_use]
-    pub const fn with_attachment_tuning(mut self, attachment: AttachmentTuning) -> Self {
-        self.attachment = attachment;
-        self
     }
 
     /// The same borrow-bundle carrying the GTW-545 area-damage-field catalog — the app path
@@ -184,6 +175,47 @@ impl<'a> BattleRegistries<'a> {
         self.fields = Some(fields);
         self
     }
+
+    /// The same borrow-bundle carrying the GTW-549 DATA-DRIVEN
+    /// [`AttachmentRegistry`](crate::weapon::AttachmentRegistry) — the app path passes the
+    /// loaded registry so a weapon's authored `attachments` keys resolve to their items and
+    /// each item's effects ride onto the spawned weapon (applied post-spawn). Defaults to
+    /// `None` ([`new`](Self::new)), so existing callers (every test fixture without authored
+    /// attachments) skip attachment resolution and never fail.
+    #[must_use]
+    pub const fn with_attachments(mut self, attachments: &'a AttachmentRegistry) -> Self {
+        self.attachments = Some(attachments);
+        self
+    }
+}
+
+/// Resolve a weapon's authored attachment KEYS against the
+/// [`AttachmentRegistry`](crate::weapon::AttachmentRegistry) into the flat list of
+/// [`AttachmentEffect`](crate::weapon::AttachmentEffect)s to apply, wrapped in a
+/// [`PendingAttachments`] marker for the spawned weapon entity (GTW-549).
+///
+/// Each key is looked up; a resolved item contributes its `effects` list (cloned, in authored
+/// slot order). A missing registry (`registry == None` — a test fixture without the loaded
+/// catalog) OR an unresolved key contributes NO effects: the fail-safe every content-registry
+/// resolution shares (a missing attachment applies nothing, never fails a battle). An empty
+/// result is the identity — the post-spawn application system no-ops. The returned marker rides
+/// onto the weapon entity via the scene, and
+/// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) applies each
+/// effect via the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon)
+/// commands extension once the weapon materializes.
+fn resolve_pending_attachments(
+    keys: &[crate::weapon::AttachmentName],
+    registry: Option<&AttachmentRegistry>,
+) -> PendingAttachments {
+    let Some(registry) = registry else {
+        return PendingAttachments::default();
+    };
+    let effects = keys
+        .iter()
+        .filter_map(|key| registry.spec(key))
+        .flat_map(|spec| spec.effects.iter().cloned())
+        .collect();
+    PendingAttachments::new(effects)
 }
 
 /// Compose ONE ganger as a Bevy `bsn!` [`Scene`] — the per-field component tree
@@ -415,12 +447,18 @@ fn worn_piece_scene(part: BodyPart, piece: crate::armor::ArmorPiece) -> impl Sce
 /// surface takes a [`SceneList`], so the single weapon scene is wrapped in a one-element
 /// `bsn_list!` (the same shape the multi-weapon loadout the ADR anticipates would take).
 ///
-/// GTW-542: `attachments` are the resolved sibling tags of the weapon's `attachment_slots`
-/// list (the leaf rewrites are already baked into `weapon` by
-/// [`into_bundle`](crate::weapon::WeaponSpec::into_bundle)); they compose onto the SAME
-/// weapon entity in [`wielded_weapon_scene`].
-fn wielded_weapon_scenes(weapon: &WeaponBundle, attachments: AttachmentEffects) -> impl SceneList {
-    bsn_list! { wielded_weapon_scene(weapon, attachments) }
+/// GTW-544/547: `siblings` are the weapon's optional `dot` / `on_death` sibling components
+/// ([`WeaponSpawnSiblings`]). GTW-549: `pending` carries the resolved
+/// [`AttachmentEffect`](crate::weapon::AttachmentEffect)s of the weapon's fitted attachment
+/// items, composed onto the weapon entity as a [`PendingAttachments`] marker the post-spawn
+/// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) system applies
+/// via the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension.
+fn wielded_weapon_scenes(
+    weapon: &WeaponBundle,
+    siblings: WeaponSpawnSiblings,
+    pending: PendingAttachments,
+) -> impl SceneList {
+    bsn_list! { wielded_weapon_scene(weapon, siblings, pending) }
 }
 
 /// Compose ONE wielded-weapon entity as a `bsn!` [`Scene`] — the [`Weapon`] marker plus
@@ -438,14 +476,21 @@ fn wielded_weapon_scenes(weapon: &WeaponBundle, attachments: AttachmentEffects) 
 /// framework's `queue_spawn_related_scenes::<Wields>` wiring, NOT here, so it is absent
 /// from this scene.
 ///
-/// GTW-542: the resolved `attachments` add the OPTIONAL sibling tags —
-/// [`Scoped`](crate::weapon::Scoped) / [`Silenced`](crate::weapon::Silenced) /
-/// [`WeaponSightBonus`](crate::weapon::WeaponSightBonus) — each composed as an
-/// `Option<`[`template_value`]`>` (a `None` resolves to a no-op, per `bevy_scene`'s
-/// `impl Scene for Option<S>`), so a weapon with no attachment fits NONE of them and
-/// spawns byte-identical to before GTW-542. The weapon-number LEAF rewrites are already
-/// baked into `weapon`.
-fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -> impl Scene {
+/// GTW-544/547: the resolved `siblings` add the OPTIONAL `dot` / `on_death` sibling
+/// components, each composed as an `Option<`[`template_value`]`>` (a `None` resolves to a
+/// no-op, per `bevy_scene`'s `impl Scene for Option<S>`). GTW-549: `pending` is composed as a
+/// [`PendingAttachments`] component (an EMPTY marker for a weapon with no attachments — the
+/// application system then no-ops), which the post-spawn
+/// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) system reads
+/// to apply each attachment effect via the
+/// [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension — the
+/// mandated post-spawn `EntityCommand` path (the weapon entity's stat components exist once the
+/// scene materializes).
+fn wielded_weapon_scene(
+    weapon: &WeaponBundle,
+    siblings: WeaponSpawnSiblings,
+    pending: PendingAttachments,
+) -> impl Scene {
     // bsn! `Type::new(expr)` stores a DEFERRED constructor, so every captured value must
     // be OWNED (the GTW-322 `'static` finding). Read each stat by value out of the
     // bundle FIRST, then let the macro capture the owned locals (never the `&` param).
@@ -476,27 +521,27 @@ fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -
     // read would not match the spawned weapon entity, so a grenade's `trajectory: Arc` would
     // never register and the throw would fail closed (no lob).
     let trajectory = weapon.trajectory;
-    // GTW-542: the OPTIONAL attachment sibling tags — each `Some` produces a
-    // `template_value` scene, each `None` an Option-scene no-op (bevy_scene's
-    // `impl Scene for Option<S>`), so an un-attached weapon composes none and stays
-    // byte-identical. `Sighted` / `Silenced` / `WeaponSightBonus` all derive
-    // `Clone + Default + Unpin`, so `template_value` applies (the GTW-322 bound matrix).
-    let sighted = attachments.sighted().map(template_value);
-    let silenced = attachments.silenced().map(template_value);
-    let sight_bonus = attachments.sight_bonus().map(template_value);
     // GTW-544: the OPTIONAL DotProfile sibling — a DOT weapon spawns its `{ damage,
     // DamageType, turns }` profile as a sibling component the fire path reads to attach a
     // `Dot` on a penetrating hit. A `None` (a non-DOT weapon) resolves to an Option-scene
     // no-op, so a non-DOT weapon spawns byte-identical. `DotProfile` derives Clone + Default
     // (from_profile is never called here — the PROFILE is spawned, not a live Dot) so
-    // `template_value` applies (the GTW-542 sibling precedent).
-    let dot = attachments.dot().map(template_value);
+    // `template_value` applies (the sibling precedent).
+    let dot = siblings.dot().map(template_value);
     // GTW-547: the OPTIONAL OnDeath sibling — a weapon authoring an `on_death` effect spawns its
     // OnDeath component so `resolve_on_death` fans it when the wielding ganger dies. A `None` (a
     // weapon with no death effect) resolves to an Option-scene no-op, so it spawns
     // byte-identical. `OnDeath` derives Clone + Default so `template_value` applies (the GTW-544
-    // DotProfile sibling precedent); it is cloned out of the borrowed accumulator (not `Copy`).
-    let on_death = attachments.on_death().cloned().map(template_value);
+    // DotProfile sibling precedent); it is cloned out of the borrowed record (not `Copy`).
+    let on_death = siblings.on_death().cloned().map(template_value);
+    // GTW-549: the PendingAttachments marker — the resolved effects of the weapon's fitted
+    // attachment items ride onto the weapon entity as this component (an EMPTY marker for a
+    // weapon with no attachments), which the post-spawn `apply_pending_attachments` system reads
+    // to apply each effect via `attach_to_weapon` (the mandated post-spawn EntityCommand — the
+    // weapon entity's stat components exist once the scene materializes). `PendingAttachments`
+    // derives Clone + Default so `template_value` applies (the sibling precedent); it is moved in
+    // (not `Copy`).
+    let pending = template_value(pending);
     (
         bsn! {
             Weapon
@@ -519,14 +564,13 @@ fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -
         template_value(handedness),
         // GTW-546: the per-weapon trajectory style (a grenade's `Arc` vs the default `Straight`).
         template_value(trajectory),
-        // GTW-542: the optional attachment sibling tags (a `None` inserts nothing).
-        sighted,
-        silenced,
-        sight_bonus,
         // GTW-544: the optional DOT profile sibling (a `None` inserts nothing).
         dot,
         // GTW-547: the optional OnDeath effect sibling (a `None` inserts nothing).
         on_death,
+        // GTW-549: the pending-attachments marker (empty for a weapon with no attachments — the
+        // application system then no-ops), applied post-spawn via `attach_to_weapon`.
+        pending,
     )
 }
 
@@ -699,8 +743,12 @@ pub fn setup_battle(
         armor,
         stat_tuning,
         terrain,
-        attachment,
         fields,
+        // GTW-549: the DATA-DRIVEN attachment registry — a weapon's authored `attachments` keys
+        // resolve against it into a PendingAttachments marker applied post-spawn. `None` (a test
+        // fixture without the registry) skips resolution: an authored key resolves to nothing
+        // (the fail-safe every content registry ref shares).
+        attachments,
     } = registries;
     // Validate the vertical links FIRST, so a bad authored link aborts the whole
     // setup before any entity is spawned or any resource inserted (no partial,
@@ -754,10 +802,17 @@ pub fn setup_battle(
                 weapon: member.weapon.clone(),
             });
         };
-        // GTW-542: fold the weapon's attachment slots — the returned WeaponBundle already
-        // carries the leaf rewrites; the AttachmentEffects carries the sibling tags the
-        // spawn seam composes onto the weapon entity.
-        weapon_bundles.push(spec.clone().into_bundle(member.weapon.clone(), &attachment));
+        // GTW-549: resolve the weapon's authored attachment KEYS against the registry into the
+        // flat list of AttachmentEffects to apply. A missing registry (`None`) or an unresolved
+        // key contributes NO effects (the fail-safe — a missing attachment applies nothing,
+        // never fails a battle). The effects ride onto the spawned weapon as a
+        // PendingAttachments marker the post-spawn `apply_pending_attachments` system applies.
+        let pending = resolve_pending_attachments(&spec.attachments, attachments);
+        // GTW-544/547: `into_bundle` returns the resolved WeaponBundle + the optional `dot` /
+        // `on_death` siblings; attachment effects are NO LONGER folded here (they apply
+        // post-spawn via the commands extension).
+        let (bundle, siblings) = spec.clone().into_bundle(member.weapon.clone());
+        weapon_bundles.push((bundle, siblings, pending));
     }
 
     // GTW-505: resolve every ganger's MELEE weapon BEFORE the spawn loop too (abort-first,
@@ -857,13 +912,15 @@ pub fn setup_battle(
     //    `SpawnScene` schedule — so occupancy is keyed off the ganger's authored `at`
     //    value + the reserved id, never off the deferred `Position` component.
     let mut occupants = Vec::with_capacity(resolved_members.len());
-    for ((((placed, member), (weapon_bundle, weapon_attachments)), melee_bundle), armor_spec) in
-        resolved_members
-            .iter()
-            .copied()
-            .zip(weapon_bundles)
-            .zip(melee_bundles)
-            .zip(armor_specs)
+    for (
+        (((placed, member), (weapon_bundle, weapon_siblings, weapon_pending)), melee_bundle),
+        armor_spec,
+    ) in resolved_members
+        .iter()
+        .copied()
+        .zip(weapon_bundles)
+        .zip(melee_bundles)
+        .zip(armor_specs)
     {
         // The ganger carries its OWN state only — NO equipment stat data (GTW-323
         // slice 3, ADR-0004). The empty InflictedWounds record (GTW-279) and the
@@ -894,14 +951,17 @@ pub fn setup_battle(
         // cascade-despawns it). This weapon entity is the ONLY weapon storage — the
         // sim's `fire()` read+wear AND the presenter's weapon panel / fire-mode reads
         // both go through `ganger → Wields → the weapon entity` (no on-ganger copy).
-        // GTW-542: the resolved attachment SIBLING tags (Sighted / Silenced /
-        // WeaponSightBonus) ride onto the SAME weapon entity via the scene composition (the
-        // leaf rewrites are already baked into `weapon_bundle` by `into_bundle`).
+        // GTW-544/547: the optional `dot` / `on_death` siblings ride onto the SAME weapon
+        // entity via the scene composition. GTW-549: the resolved attachment effects ride as a
+        // PendingAttachments marker the post-spawn `apply_pending_attachments` system applies via
+        // the `attach_to_weapon` extension (the deferred-spawn bridge — the weapon entity's stat
+        // components exist once the scene materializes).
         commands
             .entity(entity)
             .queue_spawn_related_scenes::<Wields>(wielded_weapon_scenes(
                 &weapon_bundle,
-                weapon_attachments,
+                weapon_siblings,
+                weapon_pending,
             ));
         // GTW-505: spawn the wielded MELEE weapon entity from the resolved
         // `MeleeWeaponBundle` and relate it to this ganger via the SAME `Wields`

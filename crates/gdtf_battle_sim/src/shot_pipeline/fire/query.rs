@@ -21,8 +21,8 @@ use crate::{
     surface::SurfaceGrid,
     weapon::{
         Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireModeSpec, Handedness,
-        Kickback, MeleeWeapon, MountedWeapon, Scoped, Stable, WeaponDamage, WeaponPunch,
-        WeaponShred, WeaponSightBonus, WieldedBy, Wields,
+        Kickback, MeleeWeapon, MountedWeapon, Stable, WeaponBraceBonus, WeaponDamage, WeaponPunch,
+        WeaponShred, WieldedBy, Wields,
     },
 };
 
@@ -149,17 +149,14 @@ pub type WeaponQuery<'world, 'state> = Query<
         &'static WeaponShred,
         &'static DamageType,
         &'static Stable,
-        // GTW-542: the weapon's optional Scoped attachment — read into the WeaponStats
-        // borrow-view so cone_for / stability_for fold the additive sight-stability bonus
-        // into the burst's dispersion cone. `Option` because the Scoped sibling component
-        // is present only when a sight is fitted (an absent component = the zero-identity
-        // SightStability term, byte-identical to an un-sighted weapon).
-        Option<&'static Scoped>,
-        // GTW-542: the weapon's optional PER-WEAPON sight-stability override — `Some` when a
-        // whisper-bore / dead-man's-brace attachment supplies its own steadying points (else
-        // a plain Scoped weapon reads the universal tuning bonus). Read only when Scoped is
-        // present.
-        Option<&'static WeaponSightBonus>,
+        // GTW-549: the weapon's optional per-item WeaponBraceBonus attachment — read into the
+        // WeaponStats borrow-view so cone_for / stability_for fold the additive graduated brace
+        // bonus into the burst's dispersion cone. `Option` because the component is present only
+        // when a data-driven `Stability` attachment is fitted (an absent component = the
+        // zero-identity brace term, byte-identical to a weapon with no brace). SUPERSEDES the
+        // GTW-542 Scoped / WeaponSightBonus columns — a sight now boosts AIM (Accuracy), not
+        // stability.
+        Option<&'static WeaponBraceBonus>,
         // GTW-443: the weapon's Handedness — read into the FireActor's can_fire gate
         // (a TwoHanded weapon is refused below two available hands).
         &'static Handedness,

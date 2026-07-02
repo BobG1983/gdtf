@@ -68,6 +68,8 @@ fn presenter_app() -> bevy::app::App {
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it (the
     // registry is dormant this slice — the setup does not read it yet).
     app.world_mut()

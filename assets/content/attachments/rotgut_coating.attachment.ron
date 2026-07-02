@@ -1,0 +1,9 @@
+// Rotgut coating — a toxic coating that OVERRIDES the weapon's emitted damage type to Chem
+// (a matchup-wheel re-key). GTW-549 data-driven attachment ITEM (the grimdark "RotgutCoating"
+// tag). Referenced by a weapon BY KEY in its `attachments:` list; applied post-spawn.
+(
+    display_name: "Rotgut Coating",
+    effects: [
+        DamageTypeOverride(Chem),  // re-key the weapon's emitted damage type to Chem
+    ],
+)

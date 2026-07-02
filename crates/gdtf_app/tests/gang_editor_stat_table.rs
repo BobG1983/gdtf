@@ -55,28 +55,28 @@ const ARMOR_A: &str = "Flak";
 /// An arbitrary weapon spec (NOT shipped tuning) — the editor only reads the KEY.
 fn arbitrary_weapon() -> WeaponSpec {
     WeaponSpec {
-        base_spread:      BaseSpread::new(0.25),
-        accuracy:         Accuracy::new(1.0),
-        kickback:         Kickback::new(0.4),
-        fatal_bias:       FatalBias::new(0.0),
-        damage:           WeaponDamage::new(12),
-        punch:            WeaponPunch::new(5),
-        shred:            WeaponShred::new(3),
-        damage_type:      DamageType::Kinetic,
-        magazine:         Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:        FireMode::new(vec![FireModeSpec::new(
+        base_spread: BaseSpread::new(0.25),
+        accuracy:    Accuracy::new(1.0),
+        kickback:    Kickback::new(0.4),
+        fatal_bias:  FatalBias::new(0.0),
+        damage:      WeaponDamage::new(12),
+        punch:       WeaponPunch::new(5),
+        shred:       WeaponShred::new(3),
+        damage_type: DamageType::Kinetic,
+        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        fire_mode:   FireMode::new(vec![FireModeSpec::new(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.5),
             ModeShots::new(1),
         )]),
-        stable:           Stable::new(false),
-        shove:            Shove::new(false),
-        handedness:       Handedness::OneHanded,
-        trajectory:       TrajectoryStyle::Straight,
-        attachment_slots: Vec::new(),
-        dot:              None,
-        on_death:         None,
+        stable:      Stable::new(false),
+        shove:       Shove::new(false),
+        handedness:  Handedness::OneHanded,
+        trajectory:  TrajectoryStyle::Straight,
+        attachments: Vec::new(),
+        dot:         None,
+        on_death:    None,
     }
 }
 

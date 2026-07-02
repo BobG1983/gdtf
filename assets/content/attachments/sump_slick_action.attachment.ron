@@ -1,0 +1,12 @@
+// Sump-slick action — a jury-rigged fast action: scales the reload cost down (a faster, if
+// smaller, speed-up than a dedicated speed-loader). GTW-549 data-driven attachment ITEM (the
+// grimdark "SumpSlickAction" tag). The magnitude lives HERE on the item (GTW-542 read a
+// GLOBAL tuning factor — the exact defect this rework fixes). Applied post-spawn. (The GTW-542
+// tag also added base spread; that sloppier-cone coupling is USER-REVIEW — the shipped default
+// is the reload speed-up alone.)
+(
+    display_name: "Sump-Slick Action",
+    effects: [
+        FastReload(0.7),  // ×0.7 the weapon's reload_tu (< 1 = faster) — tunable
+    ],
+)

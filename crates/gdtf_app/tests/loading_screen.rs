@@ -77,6 +77,8 @@ fn app_driven_into_game() -> App {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
+    app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut()

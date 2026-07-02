@@ -110,7 +110,7 @@ fn dot_weapon_spec(dot: Option<DotProfile>) -> WeaponSpec {
         shove: Shove::new(false),
         handedness: Handedness::OneHanded,
         trajectory: TrajectoryStyle::Straight,
-        attachment_slots: Vec::new(),
+        attachments: Vec::new(),
         dot,
         on_death: None,
     }

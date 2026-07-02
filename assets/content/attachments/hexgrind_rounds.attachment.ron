@@ -1,0 +1,10 @@
+// Hexgrind rounds — cursed ammunition that bites deeper: adds penetration (the weapon's
+// WeaponPunch), so the shot ignores more armour. GTW-549 data-driven attachment ITEM (the
+// grimdark "HexgrindRounds" tag, now an item). Magnitude lives HERE on the item. Referenced
+// by a weapon BY KEY in its `attachments:` list; applied to the weapon post-spawn.
+(
+    display_name: "Hexgrind Rounds",
+    effects: [
+        Penetration(6),  // +6 to the weapon's punch (armour ignored) — tunable
+    ],
+)

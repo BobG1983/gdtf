@@ -1,0 +1,10 @@
+// Suppressor — a threaded muzzle can that muffles the shot: fits the Silenced tag so the
+// weapon's fire propagates neither SUPPRESSION nor REACTION/REVEAL (both producer gates read
+// the tag). GTW-549 data-driven attachment ITEM. No payload — the tag carries its own meaning.
+// Referenced by a weapon BY KEY (`suppressor`) in its `attachments:` list; applied post-spawn.
+(
+    display_name: "Suppressor",
+    effects: [
+        Silence,  // the shot propagates neither suppression nor reaction/reveal
+    ],
+)

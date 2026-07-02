@@ -81,29 +81,29 @@ fn ground(x: i32, y: i32) -> CellLevel {
 /// damage/punch KILLS the struck ganger, whose death then fans the radius-1 blast.
 fn explode_weapon_spec() -> WeaponSpec {
     WeaponSpec {
-        base_spread:      BaseSpread::new(0.0),
-        accuracy:         Accuracy::new(5.0),
-        kickback:         Kickback::new(0.0),
-        fatal_bias:       FatalBias::new(50.0),
-        damage:           WeaponDamage::new(500),
-        punch:            WeaponPunch::new(500),
-        shred:            WeaponShred::new(3),
-        damage_type:      DamageType::Kinetic,
-        magazine:         Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:        FireMode::new(vec![FireModeSpec::new(
+        base_spread: BaseSpread::new(0.0),
+        accuracy:    Accuracy::new(5.0),
+        kickback:    Kickback::new(0.0),
+        fatal_bias:  FatalBias::new(50.0),
+        damage:      WeaponDamage::new(500),
+        punch:       WeaponPunch::new(500),
+        shred:       WeaponShred::new(3),
+        damage_type: DamageType::Kinetic,
+        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        fire_mode:   FireMode::new(vec![FireModeSpec::new(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.2),
             ModeShots::new(1),
         )]),
-        stable:           Stable::new(true),
-        shove:            Shove::new(false),
-        handedness:       Handedness::OneHanded,
-        trajectory:       TrajectoryStyle::Straight,
-        attachment_slots: Vec::new(),
-        dot:              None,
+        stable:      Stable::new(true),
+        shove:       Shove::new(false),
+        handedness:  Handedness::OneHanded,
+        trajectory:  TrajectoryStyle::Straight,
+        attachments: Vec::new(),
+        dot:         None,
         // GTW-547: the killed ganger detonates a radius-1 blast dealing a flat 50 HP per cell.
-        on_death:         Some(OnDeathEffect::Explode {
+        on_death:    Some(OnDeathEffect::Explode {
             hit_type:    HitType::Blast {
                 radius: BlastRadius::new(1),
             },

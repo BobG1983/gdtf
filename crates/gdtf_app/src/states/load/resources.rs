@@ -94,6 +94,27 @@ impl MeleeWeaponsFolderHandle {
     }
 }
 
+/// Typed handle to the in-flight **attachments folder** load (`content/attachments/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule), mirroring
+/// [`MeleeWeaponsFolderHandle`] (GTW-549, PHASE 1). The `Load` scene preloads the whole
+/// `assets/content/attachments/` folder up front via
+/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the poll/resolve
+/// system gates on its recursive load state, then builds the
+/// [`AttachmentRegistry`](gdtf_battle_sim::weapon::AttachmentRegistry) from the loaded
+/// `RonAsset<AttachmentSpec>` files (keyed by filename stem). Holding this handle keeps a
+/// strong reference to every attachment asset while the registry is built; the registry then
+/// holds the specs BY VALUE, so they survive the handle being dropped on `OnExit(Load)`.
+#[derive(Deref, Clone, Debug)]
+pub(in crate::states::load) struct AttachmentsFolderHandle(Handle<LoadedFolder>);
+
+impl AttachmentsFolderHandle {
+    /// Wrap an in-flight attachments-folder load handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
 /// Typed handle to the in-flight **armor folder** load (`armor/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
@@ -344,6 +365,9 @@ pub(in crate::states::load) struct LoadHandles {
     /// The MELEE-weapons folder being preloaded (all `melee/*.melee_weapon.ron`s up front,
     /// GTW-505).
     pub melee_weapons: MeleeWeaponsFolderHandle,
+    /// The attachments folder being preloaded (all `content/attachments/*.attachment.ron`s up
+    /// front, GTW-549 PHASE 1).
+    pub attachments:   AttachmentsFolderHandle,
     /// The armor folder being preloaded (all armor `.ron`s up front, GTW-269).
     pub armor:         ArmorsFolderHandle,
     /// The area-damage-fields folder being preloaded (all `*.field.ron` catalog entries up
@@ -531,6 +555,28 @@ pub(in crate::states::load) struct ActiveMeleeWeaponsFolderHandle(Handle<LoadedF
 
 impl ActiveMeleeWeaponsFolderHandle {
     /// Wrap the loaded melee-weapons-folder handle as the persistent hot-reload handle.
+    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
+        Self(handle)
+    }
+}
+
+/// The PERSISTENT handle to the loaded **attachments folder** (`content/attachments/`).
+///
+/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
+/// Load-scoped [`AttachmentsFolderHandle`] inside [`LoadHandles`], which is dropped
+/// `OnExit(Load)` — **persists** past `Load` (GTW-549, PHASE 1), the attachment mirror of
+/// [`ActiveMeleeWeaponsFolderHandle`]. It is inserted alongside the resolved
+/// [`AttachmentRegistry`](gdtf_battle_sim::weapon::AttachmentRegistry) and kept alive so the
+/// live hot-reload handler (`redrive_attachments_on_asset_event`) can re-enumerate the
+/// folder's member handles to rebuild the registry on a hot edit to ANY
+/// `assets/content/attachments/*.attachment.ron`. Holding the folder handle keeps every
+/// member attachment asset loaded for the file-watcher. Like the registry, it is **not**
+/// removed in `cleanup`.
+#[derive(Resource, Deref, Clone, Debug)]
+pub(in crate::states::load) struct ActiveAttachmentsFolderHandle(Handle<LoadedFolder>);
+
+impl ActiveAttachmentsFolderHandle {
+    /// Wrap the loaded attachments-folder handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

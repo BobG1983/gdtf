@@ -67,6 +67,8 @@ fn seed_gate_except_fields(app: &mut bevy::app::App) {
     app.world_mut().insert_resource(WeaponRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut()

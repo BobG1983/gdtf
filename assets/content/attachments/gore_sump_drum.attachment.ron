@@ -1,0 +1,12 @@
+// Gore-sump drum — an oversized magazine: adds capacity (more rounds before a reload) at the
+// cost of a SLOWER reload (the bulk takes longer to swap). GTW-549 data-driven attachment ITEM
+// (the grimdark "GoreSumpDrum" tag). Magnitudes live HERE on the item; applied post-spawn.
+// The slow reload is authored as a FastReload > 1.0 (the reload-cost scale is a multiplier, so
+// > 1.0 makes the swap slower — the drum's bulk).
+(
+    display_name: "Gore-Sump Drum",
+    effects: [
+        ExtraAmmo(15),      // +15 magazine capacity — tunable
+        FastReload(1.5),    // ×1.5 the reload_tu (> 1 = slower swap, the drum's bulk) — tunable
+    ],
+)

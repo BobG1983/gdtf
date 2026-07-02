@@ -25,14 +25,14 @@ use gdtf_battle_sim::{
     Aiming, ArmorHardness, ArmorProtection, Cell, CellLevel, ConeMult, CoverEntry, CoverHp,
     CoverLedger, Direction, EmplacementStability, Facing, Faction, FireMode, FireModeSpec,
     HeightBand, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, Position, ReloadTu, Shooter, Shove, SightStability, Stable, Stance, StanceKind,
-    TerrainBraced, Tu, TuMax, WeaponBundle, WieldedBy, faced_cell,
+    ModeTuPercent, Position, ReloadTu, Shooter, Shove, Stable, Stance, StanceKind, TerrainBraced,
+    Tu, TuMax, WeaponBundle, WieldedBy, faced_cell,
     injuries::InjuryRegistry,
     stability_for,
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, Handedness, HandlingProfile,
-        Kickback, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Kickback, WeaponBraceBonus, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -71,6 +71,8 @@ fn battle_running_app() -> App {
     // seed for this ganger-free / hand-seeded harness, mirroring the WeaponRegistry seed).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
@@ -286,7 +288,7 @@ fn stability_readout_shows_the_stability_for_value() {
         &shooter,
         Stable::new(false),
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &ledger,
         &tuning,

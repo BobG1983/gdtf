@@ -5,7 +5,6 @@ use bevy::{prelude::Resource, reflect::TypePath};
 use serde::Deserialize;
 
 use crate::tuning::{
-    attachment::AttachmentTuning,
     band::ProjectileBandEdges,
     body_part::BodyPartWeights,
     cone_groups::ConeStabilityTuning,
@@ -175,11 +174,4 @@ pub struct CombatTuning {
     /// GTW-452 owns weighting). Authored in `assets/core_tuning/combat.tuning.ron` under
     /// `per_storey_damage:`.
     pub per_storey_damage:     PerStoreyDamage,
-    /// The GTW-542 weapon-attachment tuning group — the magnitudes the NO-PAYLOAD
-    /// attachment tags ([`FastReload`](crate::weapon::AttachTag::FastReload) /
-    /// [`WhisperBore`](crate::weapon::AttachTag::WhisperBore)) read at the spawn-side
-    /// folder-function seam. Every other GTW-542 tag carries its magnitude as a named
-    /// payload on the variant. Authored in `assets/core_tuning/combat.tuning.ron` under
-    /// `attachment:`.
-    pub attachment:            AttachmentTuning,
 }

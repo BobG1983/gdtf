@@ -30,12 +30,12 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Aiming, BraceStairCells, CoverLedger, Facing, MeleeWeapon, Position, Shooter, Stable, Stance,
-    Suppressed, Weapon, Wields, sight_stability,
+    Suppressed, Weapon, Wields,
     stability::{EmplacementStability, terrain_brace::terrain_braces},
     stability_for,
     surface::SurfaceGrid,
     tuning::CombatTuning,
-    weapon::{Scoped, WeaponSightBonus},
+    weapon::WeaponBraceBonus,
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar};
 
@@ -59,10 +59,11 @@ type ShooterView<'a> = (
 
 /// The wielded RANGED weapon's stability-relevant components, read in ONE query tuple (the
 /// `ShooterView` precedent — keeps the `weapons` query off clippy `type_complexity`): the
-/// `stable` tag plus the GTW-542 optional [`Scoped`] attachment + per-weapon
-/// [`WeaponSightBonus`] override, so the HUD preview folds the sight-stability bonus exactly
-/// as the fire path does (each `Option` = absent when that attachment is not fitted).
-type WeaponStabilityRead<'a> = (&'a Stable, Option<&'a Scoped>, Option<&'a WeaponSightBonus>);
+/// `stable` tag plus the GTW-549 optional per-item [`WeaponBraceBonus`] attachment, so the HUD
+/// preview folds the graduated brace bonus exactly as the fire path does (the `Option` =
+/// absent when no brace attachment is fitted). SUPERSEDES the GTW-542 sight-stability read — a
+/// sight now boosts AIM (Accuracy), not stability.
+type WeaponStabilityRead<'a> = (&'a Stable, Option<&'a WeaponBraceBonus>);
 
 /// The read-only queries the stability resolution touches, bundled as one [`SystemParam`]
 /// (the `StatBlockWidgets` / `RouteGrids` bundle precedent) so the system stays under clippy's
@@ -77,10 +78,10 @@ pub(in crate::states::running::game::battlescape::status_panel) struct ShooterRe
     shooters: Query<'w, 's, ShooterView<'static>>,
     /// The ganger → weapon relationship (`ganger → Wields → the ranged weapon entity`).
     wields:   Query<'w, 's, &'static Wields>,
-    /// The wielded RANGED weapon's `stable` tag plus its optional GTW-542 [`Scoped`]
-    /// attachment and per-weapon [`WeaponSightBonus`] override, read off the weapon entity —
-    /// so the HUD preview folds the sight-stability bonus into the readout exactly as the
-    /// fire path does (each `Option` = absent when the respective attachment is not fitted).
+    /// The wielded RANGED weapon's `stable` tag plus its optional GTW-549 per-item
+    /// [`WeaponBraceBonus`] attachment, read off the weapon entity — so the HUD preview folds
+    /// the graduated brace bonus into the readout exactly as the fire path does (the `Option` =
+    /// absent when no brace attachment is fitted).
     weapons:  Query<'w, 's, WeaponStabilityRead<'static>, With<Weapon>>,
     /// The [`MeleeWeapon`] marker probe (GTW-505 C5) — so the RANGED weapon resolves excluding
     /// the melee weapon the ganger also wields, rather than relying on relate order.
@@ -173,8 +174,13 @@ fn resolve_steadiness(
         .get(entity)
         .ok()?
         .ranged_weapon(|e| reads.melee.get(e).is_ok())?;
-    let (stable, sighted, sight_bonus) = reads.weapons.get(weapon).ok()?;
+    let (stable, brace_bonus) = reads.weapons.get(weapon).ok()?;
     let stable = *stable;
+    // GTW-549: resolve the additive per-item brace term off the weapon's optional
+    // WeaponBraceBonus attachment (the SAME term the fire path reads) so a braced weapon
+    // previews a tighter steadiness; a weapon with no brace resolves the zero identity
+    // (byte-identical readout).
+    let brace_bonus = brace_bonus.copied().unwrap_or_else(WeaponBraceBonus::none);
     let cover = cover?;
     let tuning = tuning?;
     let brace_cells = brace_cells?;
@@ -195,11 +201,6 @@ fn resolve_steadiness(
         // readout under suppression, matching the fire path exactly.
         suppressed,
     };
-    // GTW-542: resolve the additive sight term off the weapon's optional Scoped attachment
-    // + per-weapon override (the SAME `sight_stability` the fire path uses) so a sighted
-    // weapon previews a tighter steadiness; an un-sighted weapon resolves the zero identity
-    // (byte-identical readout).
-    let sight = sight_stability(sighted, sight_bonus, tuning);
     // GTW-543: the readout previews the shooter's OWN carried weapon (it resolves the ranged
     // weapon, not the emplacement mount), so it passes the zero-identity emplacement term — the
     // preview is byte-identical to before the seam. The AUTHORITATIVE mounted-shot steadiness is
@@ -208,7 +209,7 @@ fn resolve_steadiness(
         &shooter,
         stable,
         terrain_braced,
-        sight,
+        brace_bonus,
         EmplacementStability::none(),
         cover,
         tuning,

@@ -1,0 +1,11 @@
+// Butcher's weight — a brutal counterweight: adds base damage (heavier hits). GTW-549
+// data-driven attachment ITEM (the grimdark "ButchersWeight" tag). Referenced by a weapon BY
+// KEY in its `attachments:` list; applied post-spawn. (The GTW-542 tag also slowed the
+// weapon's fire modes; that slower-fire coupling is a USER-REVIEW composite — the shipped
+// default is the damage bump alone.)
+(
+    display_name: "Butcher's Weight",
+    effects: [
+        Damage(4),  // +4 to the weapon's base damage — tunable
+    ],
+)

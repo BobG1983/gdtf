@@ -27,6 +27,7 @@ use crate::{
         throw_grenade::dispatch_throw_grenade,
     },
     ai::enemy_ai_turn,
+    attachments::apply_pending_attachments,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     dot::{DotApplied, DotTicked, apply_dot, tick_dot},
     falls::{FallOccurred, apply_falls},
@@ -94,6 +95,7 @@ impl Plugin for SimActsPlugin {
         register_messages(app);
         wire_systems(app);
         wire_throw(app); // GTW-546: the blind throw-grenade act (line-cap split)
+        wire_attachments(app); // GTW-549: the weapon-attachment application system (line-cap split)
     }
 }
 
@@ -544,6 +546,32 @@ fn wire_systems(app: &mut App) {
             .in_set(SimSystems::Simulate),
     );
     wire_clocks(app); // GTW-544/547: the DOT+field clocks + on-death resolver (line-cap split)
+}
+
+/// Wire the GTW-549 weapon-attachment application system into the [`SimSystems::Simulate`]
+/// band — [`apply_pending_attachments`]. Split out of [`wire_systems`] so that function stays
+/// under clippy's line-count gate (the [`wire_clocks`] precedent).
+///
+/// The wielded-weapon scene spawned by `setup_battle` materializes DEFERRED (on the
+/// `SpawnScene` schedule), so the resolved attachment effects ride onto the weapon as a
+/// [`PendingAttachments`](crate::weapon::PendingAttachments) component (composed into the
+/// scene) rather than being `attach_to_weapon`'d inline (no live entity exists at setup). This
+/// system runs on a later tick — once the weapon's stat components + the `PendingAttachments`
+/// marker have materialized — reads the marker, and applies each effect via the mandated
+/// post-spawn [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon)
+/// `EntityCommand`, then removes the marker (one-shot). Ordered `.before(dispatch_fire)` so a
+/// weapon's attachment stat changes are in place before any shot could read them
+/// (bevy-traps.md #3; realistically the marker materializes turns before the player fires). It
+/// joins the `BattleInProgress`-gated Simulate band; its Query + Commands are always valid, so
+/// it needs no extra `run_if`. Param-only, no `&mut World` (bevy-traps.md #7 — the effect
+/// closures' `EntityWorldMut` access is the ticket's sanctioned carve-out).
+fn wire_attachments(app: &mut App) {
+    app.add_systems(
+        Update,
+        apply_pending_attachments
+            .before(dispatch_fire)
+            .in_set(SimSystems::Simulate),
+    );
 }
 
 /// Wire the GTW-546 throw-grenade act into the [`SimSystems::Simulate`] band — the

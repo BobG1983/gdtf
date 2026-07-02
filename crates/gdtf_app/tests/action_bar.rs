@@ -121,6 +121,8 @@ fn walk_app() -> App {
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     // GTW-269: the Load->Intro gate also requires an ArmorRegistry; the empty-default
     // situation has zero gangers, so an empty registry clears the gate and the setup
     // resolves no armor keys.
@@ -1675,23 +1677,23 @@ fn armed_registry() -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(PLAYER_WEAPON_KEY.to_owned()),
         WeaponSpec {
-            base_spread:      BaseSpread::new(0.25),
-            accuracy:         Accuracy::new(1.0),
-            kickback:         Kickback::new(0.4),
-            fatal_bias:       FatalBias::new(0.0),
-            damage:           WeaponDamage::new(12),
-            punch:            WeaponPunch::new(5),
-            shred:            WeaponShred::new(3),
-            damage_type:      DamageType::Kinetic,
-            magazine:         Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-            fire_mode:        FireMode::new(vec![spec(ModeKind::Single, 0.5, 1)]),
-            stable:           Stable::new(false),
-            shove:            Shove::new(false),
-            handedness:       Handedness::OneHanded,
-            trajectory:       TrajectoryStyle::Straight,
-            attachment_slots: Vec::new(),
-            dot:              None,
-            on_death:         None,
+            base_spread: BaseSpread::new(0.25),
+            accuracy:    Accuracy::new(1.0),
+            kickback:    Kickback::new(0.4),
+            fatal_bias:  FatalBias::new(0.0),
+            damage:      WeaponDamage::new(12),
+            punch:       WeaponPunch::new(5),
+            shred:       WeaponShred::new(3),
+            damage_type: DamageType::Kinetic,
+            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+            fire_mode:   FireMode::new(vec![spec(ModeKind::Single, 0.5, 1)]),
+            stable:      Stable::new(false),
+            shove:       Shove::new(false),
+            handedness:  Handedness::OneHanded,
+            trajectory:  TrajectoryStyle::Straight,
+            attachments: Vec::new(),
+            dot:         None,
+            on_death:    None,
         },
     )])
 }

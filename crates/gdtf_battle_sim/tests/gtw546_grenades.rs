@@ -214,16 +214,16 @@ fn authored_arc_trajectory_parses() {
 /// blast the throw reads.
 fn grenade_spec(radius: u8) -> WeaponSpec {
     WeaponSpec {
-        base_spread:      BaseSpread::new(0.2),
-        accuracy:         Accuracy::new(0.8),
-        kickback:         Kickback::new(0.0),
-        fatal_bias:       FatalBias::new(2.0),
-        damage:           WeaponDamage::new(20),
-        punch:            WeaponPunch::new(30),
-        shred:            WeaponShred::new(3),
-        damage_type:      DamageType::Blast,
-        magazine:         Magazine::loaded(MagazineSize::new(4), ReloadTu::new(18)),
-        fire_mode:        FireMode::new(vec![FireModeSpec::with_hit_type(
+        base_spread: BaseSpread::new(0.2),
+        accuracy:    Accuracy::new(0.8),
+        kickback:    Kickback::new(0.0),
+        fatal_bias:  FatalBias::new(2.0),
+        damage:      WeaponDamage::new(20),
+        punch:       WeaponPunch::new(30),
+        shred:       WeaponShred::new(3),
+        damage_type: DamageType::Blast,
+        magazine:    Magazine::loaded(MagazineSize::new(4), ReloadTu::new(18)),
+        fire_mode:   FireMode::new(vec![FireModeSpec::with_hit_type(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.35),
@@ -232,13 +232,13 @@ fn grenade_spec(radius: u8) -> WeaponSpec {
                 radius: BlastRadius::new(radius),
             },
         )]),
-        stable:           Stable::new(false),
-        shove:            Shove::new(false),
-        handedness:       Handedness::OneHanded,
-        trajectory:       TrajectoryStyle::Arc,
-        attachment_slots: Vec::new(),
-        dot:              None,
-        on_death:         None,
+        stable:      Stable::new(false),
+        shove:       Shove::new(false),
+        handedness:  Handedness::OneHanded,
+        trajectory:  TrajectoryStyle::Arc,
+        attachments: Vec::new(),
+        dot:         None,
+        on_death:    None,
     }
 }
 

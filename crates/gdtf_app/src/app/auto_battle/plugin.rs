@@ -54,7 +54,7 @@ use gdtf_battle_sim::{
     procgen::ProcgenTuning,
     terrain::def::TerrainDefRegistry,
     tuning::CombatTuning,
-    weapon::{MeleeWeaponRegistry, WeaponRegistry},
+    weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry},
 };
 use gdtf_ui::theme::default_theme;
 
@@ -267,6 +267,13 @@ crate::support_item! {
             // `is_none()` exactly like the ranged weapon registry (else the empty seed would
             // shadow `resolve_melee_weapons`, which only runs while the registry is ABSENT).
             commands.insert_resource(MeleeWeaponRegistry::default());
+            // GTW-549 PHASE 1: the AttachmentRegistry is a gate-blocking resource too; seed
+            // the empty fallback when there is no AssetServer so headless walks still reach
+            // Intro (the A1 / AC3b pattern). With an AssetServer present the real
+            // `assets/content/attachments/*.attachment.ron` resolve must win — gated on
+            // `is_none()` exactly like the other registries (else the empty seed would shadow
+            // `resolve_attachments`, which only runs while the registry is ABSENT).
+            commands.insert_resource(AttachmentRegistry::default());
             commands.insert_resource(ArmorRegistry::default());
             // GTW-545: the FieldDefRegistry (area-damage-field catalog) is a gate-blocking
             // resource too; seed the empty fallback when there is no AssetServer so headless

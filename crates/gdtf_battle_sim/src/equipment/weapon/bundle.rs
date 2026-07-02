@@ -6,9 +6,9 @@
 use bevy::prelude::Bundle;
 
 use super::{
-    Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireMode, Handedness, Kickback,
-    Scoped, Shove, Stable, TrajectoryStyle, Weapon, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponShred, WeaponSightBonus,
+    Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireMode, Handedness, Kickback, Shove,
+    Stable, TrajectoryStyle, Weapon, WeaponBraceBonus, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponShred,
 };
 use crate::magazine::Magazine;
 
@@ -47,24 +47,21 @@ pub struct WeaponStats<'a> {
     /// (regardless of faced cover / stance); `false` is a normal weapon (braces
     /// only when the faced cover suits the stance).
     pub stable:      &'a Stable,
-    /// The GTW-542 `sighted` attachment tag — `Some` when a precision optic is fitted
-    /// (the [`Scoped`] sibling component is present), feeding the additive
-    /// [`SightStability`](crate::stability::SightStability) bonus into the §1a stability
-    /// read; `None` for an un-sighted weapon (the zero-identity term, byte-identical to
-    /// before the attachment). An `Option` because the sight component is present only
-    /// when the attachment is fitted (unlike the always-present [`Stable`] tag).
-    pub sight:       Option<&'a Scoped>,
-    /// The GTW-542 optional PER-WEAPON sight-stability override — `Some` when a
-    /// per-fitting-bonus attachment (whisper-bore / dead-man's-brace) supplies its own
-    /// steadying points, `None` for a plain [`Scoped`] weapon (which reads the universal
-    /// tuning bonus). Read only when `sight` is `Some`.
-    pub sight_bonus: Option<&'a WeaponSightBonus>,
+    /// The GTW-549 per-item **brace bonus** attachment — `Some` when a data-driven
+    /// [`Stability`](super::AttachmentEffect::Stability) attachment fitted a
+    /// [`WeaponBraceBonus`] component, feeding its graduated additive §1a stability
+    /// contribution into the cone read; `None` for a weapon with no brace attachment (the
+    /// zero-identity term, byte-identical to before the attachment). An `Option` because the
+    /// component is present only when a brace attachment is fitted (unlike the always-present
+    /// [`Stable`] tag). SUPERSEDES the GTW-542 sight-stability seam — a sight now boosts AIM
+    /// (the [`Accuracy`] stat), not stability.
+    pub brace_bonus: Option<&'a WeaponBraceBonus>,
     /// The GTW-544 optional **damage-over-time profile** — `Some` when the weapon carries a
     /// [`DotProfile`] sibling (a DOT weapon), feeding the fold's DOT-attach decision: a hit
     /// that PENETRATES armor attaches (or REFRESHES) a [`Dot`](super::Dot) on the struck
     /// ganger built from this profile. `None` for a non-DOT weapon (no attach, byte-identical
     /// to before this slice). An `Option` because the [`DotProfile`] sibling is present only
-    /// on a DOT weapon (like the [`Scoped`] sight attachment).
+    /// on a DOT weapon (like the optional `Silenced` attachment tag).
     pub dot:         Option<&'a DotProfile>,
 }
 
@@ -292,11 +289,10 @@ impl WeaponBundle {
             shred:       &self.shred,
             damage_type: &self.damage_type,
             stable:      &self.stable,
-            // A WeaponBundle carries no sight attachment (the Scoped sibling is spawned
-            // separately by the GTW-542 folder-fn), so a bundle-derived view is always
-            // un-sighted — the zero-identity SightStability term.
-            sight:       None,
-            sight_bonus: None,
+            // A WeaponBundle carries no brace attachment (the WeaponBraceBonus component is
+            // applied post-spawn by the GTW-549 attachment extension), so a bundle-derived
+            // view is always un-braced — the zero-identity brace term.
+            brace_bonus: None,
             // A WeaponBundle carries no DOT profile (the DotProfile sibling is spawned
             // separately from the spec's `dot` field, GTW-544), so a bundle-derived view
             // never attaches a Dot — a non-DOT read, byte-identical to before the slice.

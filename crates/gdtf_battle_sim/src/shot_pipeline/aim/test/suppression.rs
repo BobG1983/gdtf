@@ -17,11 +17,9 @@ use crate::{
     faced_cell::faced_cell,
     ganger::{Direction, StanceKind},
     metric::CellLevel,
-    stability::{
-        EmplacementStability, SightStability, SuppressionStability, TerrainBraced, stability,
-    },
+    stability::{EmplacementStability, SuppressionStability, TerrainBraced, stability},
     tuning::CombatTuning,
-    weapon::Stable,
+    weapon::{Stable, WeaponBraceBonus},
 };
 
 /// C4a — a SUPPRESSED shooter's `stability_for` yields a LOWER stability (a strictly
@@ -50,7 +48,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
         &plain,
         wpn.stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &empty,
         &tuning,
@@ -59,7 +57,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
         &pinned,
         wpn.stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &empty,
         &tuning,
@@ -130,7 +128,7 @@ fn unsuppressed_shooter_is_byte_identical_to_the_no_seam_path() {
         &shooter,
         stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &ledger,
         &tuning,
@@ -148,7 +146,7 @@ fn unsuppressed_shooter_is_byte_identical_to_the_no_seam_path() {
         EmplacementStability::none(),
         SuppressionStability::none(),
         // Un-scoped weapon — the identity sight term, matching the composer's zero-addend path.
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         &tuning.cone_stability,
     );
 
@@ -192,7 +190,7 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
         &plain,
         wpn.stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &empty,
         &tuning,
@@ -201,7 +199,7 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
         &pinned,
         wpn.stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &empty,
         &tuning,

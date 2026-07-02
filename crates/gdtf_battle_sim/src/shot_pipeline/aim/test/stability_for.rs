@@ -8,11 +8,9 @@ use crate::{
     faced_cell::faced_cell,
     ganger::{Direction, StanceKind},
     metric::CellLevel,
-    stability::{
-        EmplacementStability, SightStability, SuppressionStability, TerrainBraced, stability,
-    },
+    stability::{EmplacementStability, SuppressionStability, TerrainBraced, stability},
     tuning::CombatTuning,
-    weapon::Stable,
+    weapon::{Stable, WeaponBraceBonus},
 };
 
 /// AC1 — `stability_for` returns the SAME `(ConeMult, RecoilGrowth)` as a
@@ -35,7 +33,7 @@ fn stability_for_bit_equals_a_direct_stability_call() {
         &shooter,
         stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &ledger,
         &tuning,
@@ -55,7 +53,7 @@ fn stability_for_bit_equals_a_direct_stability_call() {
         SuppressionStability::none(),
         // The weapon carries no sight attachment (an un-scoped WeaponStats::stats view), so
         // the composer feeds the identity sight term — match it here for the bit-equality.
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         &tuning.cone_stability,
     );
 
@@ -91,7 +89,7 @@ fn brace_at_faced_cell_is_steadier_than_an_empty_cell() {
         &shooter,
         stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &braced_ledger,
         &tuning,
@@ -103,7 +101,7 @@ fn brace_at_faced_cell_is_steadier_than_an_empty_cell() {
         &shooter,
         stable,
         TerrainBraced::new(false),
-        SightStability::none(),
+        WeaponBraceBonus::none(),
         EmplacementStability::none(),
         &empty,
         &tuning,

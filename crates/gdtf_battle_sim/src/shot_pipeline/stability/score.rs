@@ -10,12 +10,11 @@ use crate::{
         curve::read_curve,
         gate::{brace_engages, stance_contribution},
         types::{
-            ConeMult, EmplacementStability, RecoilGrowth, SightStability, StabilityScore,
-            SuppressionStability,
+            ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, SuppressionStability,
         },
     },
     tuning::ConeStabilityTuning,
-    weapon::Stable,
+    weapon::{Stable, WeaponBraceBonus},
 };
 
 /// Compute the §1a stability score and its two-curve read for a shooter facing a
@@ -27,9 +26,9 @@ use crate::{
 /// satisfies `stance`'s min-height gate **OR** the weapon is `stable` **OR** the
 /// shooter has a [`TerrainBraced`] stair brace, GTW-392), the `emplacement` seam,
 /// the GTW-526 `suppression` seam (a **negative** term when the shooter is
-/// [`Suppressed`](crate::ganger::Suppressed), zero otherwise), and the GTW-542 `sight`
-/// seam (a **positive** term when the weapon is [`Scoped`](crate::weapon::Scoped),
-/// zero otherwise) — then
+/// [`Suppressed`](crate::ganger::Suppressed), zero otherwise), and the GTW-549 `brace`
+/// seam (a **positive** term when the weapon carries a data-driven
+/// [`WeaponBraceBonus`](crate::weapon::WeaponBraceBonus) attachment, zero otherwise) — then
 /// **clamps/normalises** the sum into the `0..=100` [`StabilityScore`] domain and
 /// reads **both** tuning curves at that score, returning the named
 /// `(cone_mult, recoil_growth)` pair. A steadier situation yields a higher score,
@@ -50,10 +49,10 @@ use crate::{
 /// shooter, or the negated tunable penalty when the shooter is
 /// [`Suppressed`](crate::ganger::Suppressed); it is pure-additive, so an
 /// un-suppressed shooter's score is byte-identical to before the seam existed.
-/// `sight` is the GTW-542 additive sight term — [`SightStability::none`] (zero, the
-/// identity) for an un-sighted weapon, or the tunable sight bonus when the weapon is
-/// [`Scoped`](crate::weapon::Scoped); like `suppression` it is pure-additive, so an
-/// un-sighted weapon's score is byte-identical to before that seam existed.
+/// `brace` is the GTW-549 additive per-item brace term — [`WeaponBraceBonus::none`] (zero,
+/// the identity) for a weapon with no data-driven [`Stability`](crate::weapon::AttachmentEffect::Stability)
+/// attachment, or the graduated per-item points when one is fitted; like `suppression` it is
+/// pure-additive, so a weapon with no brace attachment scores byte-identical to before the seam.
 /// Every coefficient and both curves come from `tuning`; nothing tunable is
 /// hardcoded. Angular / dimensionless — zero pixels.
 #[must_use]
@@ -62,8 +61,8 @@ use crate::{
     reason = "the §1a stability verb sums the FIVE distinct additive contributions the design \
               specifies — the weapon `stable` tag, the GTW-392 terrain brace, the shooter \
               stance, the faced cover, the emplacement seam, the GTW-526 suppression seam, and \
-              the GTW-542 sight seam — plus the tuning; each is a distinct named domain input \
-              (no-bare-types), and bundling them would hide which contribution feeds the sum"
+              the GTW-549 per-item brace seam — plus the tuning; each is a distinct named domain \
+              input (no-bare-types), and bundling them would hide which contribution feeds the sum"
 )]
 pub fn stability(
     stable: Stable,
@@ -72,7 +71,7 @@ pub fn stability(
     faced: Option<&CoverEntry>,
     emplacement: EmplacementStability,
     suppression: SuppressionStability,
-    sight: SightStability,
+    brace_bonus: WeaponBraceBonus,
     tuning: &ConeStabilityTuning,
 ) -> (ConeMult, RecoilGrowth) {
     let posture = *stance;
@@ -80,18 +79,21 @@ pub fn stability(
     // Sum the §1a contributions: per-stance + brace (when the faced cover
     // satisfies the per-stance gate OR the weapon is stable OR terrain-braced) +
     // the emplacement seam + the GTW-526 suppression seam (a negative term when the
-    // shooter is Suppressed, zero otherwise) + the GTW-542 sight seam (a positive term
-    // when the weapon is Scoped, zero otherwise). The brace_engages bool is OR-combined
-    // so all three brace sources produce exactly ONE brace_contribution quantum — never a
-    // sum. suppression and sight are BOTH pure-additive identity (0.0) when absent, so an
-    // un-suppressed + un-sighted shot's raw sum — and thus its clamped score and both
-    // curve reads — is byte-identical to before either seam landed.
+    // shooter is Suppressed, zero otherwise) + the GTW-549 per-item brace seam (a positive
+    // term carried by a data-driven `Stability` attachment's `WeaponBraceBonus`, zero
+    // otherwise). The brace_engages bool is OR-combined so all three UNCONDITIONAL brace
+    // sources produce exactly ONE brace_contribution quantum — never a sum; the per-item
+    // `brace_bonus` is a SEPARATE graduated additive term (a magnitude, not a boolean gate).
+    // suppression and brace_bonus are BOTH pure-additive identity (0.0) when absent, so an
+    // un-suppressed weapon with no brace attachment has a raw sum — and thus its clamped
+    // score and both curve reads — byte-identical to before either seam landed.
     let brace = if brace_engages(stable, terrain_braced, posture, faced, tuning) {
         *tuning.brace_contribution
     } else {
         0.0
     };
-    let raw = *stance_contribution(posture, tuning) + brace + *emplacement + *suppression + *sight;
+    let raw =
+        *stance_contribution(posture, tuning) + brace + *emplacement + *suppression + *brace_bonus;
 
     // Normalise/clamp into the 0..=100 score domain BEFORE the curve read, then
     // read BOTH curves at that one score, wrapping each axis-agnostic CurveOutput

@@ -89,6 +89,8 @@ fn seed_gate_resources(app: &mut bevy::app::App, seed_terrain: bool) {
     // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
     app.world_mut().insert_resource(ArmorRegistry::default());
     // GTW-545: the FieldDefRegistry is a gate-blocking resource too; empty clears it.
     app.world_mut()

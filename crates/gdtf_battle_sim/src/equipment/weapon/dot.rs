@@ -11,8 +11,8 @@
 //! - [`DotProfile`] is the **weapon authoring** side — the `{ damage, DamageType, turns }`
 //!   an `assets/content/weapons/ranged/*.weapon.ron` optionally authors (the `dot:` field
 //!   on [`WeaponSpec`](super::WeaponSpec)). It rides on the armed entity as an
-//!   `Option<DotProfile>` sibling component (like the GTW-542 [`Scoped`](super::Scoped)
-//!   attachment), so a weapon without a DOT profile is byte-identical to before this slice.
+//!   `Option<DotProfile>` sibling component (like the [`Silenced`](super::Silenced)
+//!   attachment tag), so a weapon without a DOT profile is byte-identical to before this slice.
 //! - [`Dot`] is the **battle-state** side — the `{ remaining_turns, per_turn_damage,
 //!   damage_type }` component the fire path attaches (or REFRESHES) onto a struck ganger
 //!   when a penetrating hit lands. The per-turn drain + terminal gate is
