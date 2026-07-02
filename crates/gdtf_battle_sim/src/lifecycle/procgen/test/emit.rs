@@ -552,6 +552,7 @@ fn orientation_wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
         },
         tags: Vec::new(),
+        on_death: None,
     }
 }
 
@@ -570,6 +571,7 @@ fn orientation_terrain_defs() -> TerrainDefRegistry {
             footfall:     None,
         },
         tags:           Vec::new(),
+        on_death:       None,
     };
     TerrainDefRegistry::new([
         (WALL_NS_EW_NS, orientation_wall_def(WALL_NS_EW_NS, "wall")),
@@ -722,6 +724,7 @@ fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
         },
         tags: vec![crate::terrain::def::TerrainTag::Openable],
+        on_death: None,
     }
 }
 
@@ -740,6 +743,7 @@ fn stair_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             footfall:     None,
         },
         tags: Vec::new(),
+        on_death: None,
     }
 }
 
@@ -758,6 +762,7 @@ fn door_stair_terrain_defs() -> TerrainDefRegistry {
             footfall:     None,
         },
         tags:           Vec::new(),
+        on_death:       None,
     };
     TerrainDefRegistry::new([
         (DOOR_NS, door_def(DOOR_NS, "door_ns")),

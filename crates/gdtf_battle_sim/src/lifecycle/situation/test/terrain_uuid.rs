@@ -29,6 +29,7 @@ fn wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
         },
         tags: Vec::new(),
+        on_death: None,
     }
 }
 
@@ -48,6 +49,7 @@ fn slab_def(key: TerrainUuid, graphic: &str, footfall: Option<&str>) -> TerrainD
             footfall:     footfall.map(|s| FootfallSound::new(s.to_owned())),
         },
         tags: Vec::new(),
+        on_death: None,
     }
 }
 

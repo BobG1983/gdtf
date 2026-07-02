@@ -6,6 +6,7 @@ use bevy::prelude::{Entity, Message, MessageWriter, Query};
 use crate::{
     ganger::{Hp, LifeState, Position},
     metric::CellLevel,
+    on_death::OnDeathOccurred,
     weapon::{Dot, DotDamage, DotTurns},
 };
 
@@ -83,6 +84,10 @@ impl DotTicked {
 pub fn tick_dot(
     mut q: Query<DotRow>,
     mut writer: MessageWriter<DotTicked>,
+    // GTW-547: the terminal-death signal — a DOT tick that KILLS (Hp → 0 → Dead) emits one
+    // OnDeathOccurred at the dead ganger's cell so `resolve_on_death` fans its on-death effect
+    // (a DOT-kill must not silently skip the effect — the ticket's scope-completeness rule).
+    mut deaths: MessageWriter<OnDeathOccurred>,
     mut commands: bevy::prelude::Commands,
 ) {
     for (entity, mut hp, mut life, mut dot, position) in &mut q {
@@ -110,6 +115,9 @@ pub fn tick_dot(
         // Hp→0-downs gate: the ticket's locked spec says the DOT's HP depletion is lethal.
         if *hp == Hp::new(0) {
             *life = LifeState::Dead;
+            // GTW-547: emit the terminal-death signal at the dead ganger's cell so its authored
+            // on-death effect fans (the FieldTicked FCT anchor is the same `**position`).
+            deaths.write(OnDeathOccurred::new(entity, **position));
         }
 
         // (5) Remove the exhausted affliction — when the profile turn count runs out, drop the

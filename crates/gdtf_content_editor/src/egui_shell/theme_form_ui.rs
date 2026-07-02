@@ -382,6 +382,7 @@ mod tests {
                 footfall:     None,
             },
             tags: Vec::new(),
+            on_death: None,
         }
     }
 
@@ -400,6 +401,7 @@ mod tests {
                 graphic_name: TerrainGraphicKey::new("wall".to_owned()),
             },
             tags: Vec::new(),
+            on_death: None,
         }
     }
 

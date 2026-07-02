@@ -9,6 +9,7 @@ use crate::{
     ganger::{Hp, LifeState},
     metric::CellLevel,
     occupancy::OccupancyGrid,
+    on_death::OnDeathOccurred,
 };
 
 /// A ganger **took an area-damage-field tick** this round — a field it stood in drained a flat
@@ -86,6 +87,10 @@ pub fn tick_fields(
     mut occupants: Query<(&mut Hp, &mut LifeState, &Wears)>,
     worn: Query<&ArmorType, With<WornBy>>,
     mut writer: MessageWriter<FieldTicked>,
+    // GTW-547: the terminal-death signal — a field tick that KILLS (Hp → 0 → Dead) emits one
+    // OnDeathOccurred at the field cell so `resolve_on_death` fans the dead ganger's on-death
+    // effect (a field-kill must not silently skip it — the ticket's scope-completeness rule).
+    mut deaths: MessageWriter<OnDeathOccurred>,
 ) {
     // Drain each fielded cell's occupant. Read the placements into an owned buffer first (the
     // cell, its per-turn damage, and its immune set) so the `&FieldRegistry` borrow is released
@@ -134,6 +139,9 @@ pub fn tick_fields(
         // DOT-kills precedent for a persistent-zone drain).
         if *hp == Hp::new(0) {
             *life = LifeState::Dead;
+            // GTW-547: emit the terminal-death signal at the field cell (the occupant stood
+            // here) so the dead ganger's authored on-death effect fans.
+            deaths.write(OnDeathOccurred::new(occupant, cell));
         }
     }
 

@@ -49,7 +49,13 @@ impl TerrainDisplayName {
 /// **Not `Copy`** — [`TerrainDisplayName`], [`TerrainPresenterKind`] (its graphic
 /// keys), and the `tags` [`Vec`] own heap data; it is `Clone` so the registry can hold
 /// definitions by value.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
+///
+/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-547): the optional
+/// [`on_death`](TerrainDef::on_death) [`OnDeathEffect`](crate::on_death::OnDeathEffect) may carry
+/// an [`Explode`](crate::on_death::OnDeathEffect::Explode) whose
+/// [`HitType`](crate::weapon::HitType) `Cone` half-angle is an `f32` (not `Eq`). A definition is
+/// compared with `==` in tests, never keyed in a set.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub struct TerrainDef {
     /// The stable UUID key the registry / themes / prefabs reference this definition by.
     pub key:            TerrainUuid,
@@ -65,4 +71,17 @@ pub struct TerrainDef {
     /// (`#[serde(default)]`). Consumption is GTW-482, not this slice.
     #[serde(default)]
     pub tags:           Vec<TerrainTag>,
+    /// The optional **on-death effect** a piece of this terrain fans when it is DESTROYED
+    /// (GTW-547, child GTW-41g) — an [`OnDeathEffect`](crate::on_death::OnDeathEffect)
+    /// (`Explode` / `LeaveField`), e.g. a fuel barrel that leaves a burning field when smashed.
+    /// `#[serde(default)]` (defaulting to `None`) so an omitted field is a piece with no death
+    /// effect: the field is OPT-IN (the `tags` `#[serde(default)]` precedent), so EVERY existing
+    /// terrain `.ron` — none of which author it — deserializes BYTE-IDENTICAL. Only a
+    /// destructible cover-like kind (`Cover` / `Wall` / `Emplacement`) meaningfully fires it;
+    /// [`setup_battle`](crate::situation::setup_battle) seeds each cover piece's effect (keyed by
+    /// cell) into the [`CoverOnDeathRegistry`](crate::on_death::CoverOnDeathRegistry) that
+    /// [`resolve_on_death`](crate::on_death::resolve_on_death) reads on a
+    /// [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed).
+    #[serde(default)]
+    pub on_death:       Option<crate::on_death::OnDeathEffect>,
 }

@@ -86,6 +86,7 @@ pub fn test_weapon_spec() -> WeaponSpec {
         // GTW-544: no DOT profile on the shared test weapon (a DOT-bearing variant is built
         // per-test); `None` is a non-DOT weapon, byte-identical to before this slice.
         dot:              None,
+        on_death:         None,
     }
 }
 
@@ -222,6 +223,7 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                     graphic_name: graphic("wall"),
                 },
                 tags:           Vec::new(),
+                on_death:       None,
             },
         ),
         (
@@ -241,6 +243,7 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                     footfall:     Some(FootfallSound::new("test-step".to_owned())),
                 },
                 tags:           Vec::new(),
+                on_death:       None,
             },
         ),
         (
@@ -258,6 +261,7 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                     graphic_name: graphic("cover"),
                 },
                 tags:           Vec::new(),
+                on_death:       None,
             },
         ),
         (
@@ -276,6 +280,7 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                     footfall:     None,
                 },
                 tags:           Vec::new(),
+                on_death:       None,
             },
         ),
         (
@@ -295,6 +300,7 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                     footfall:     None,
                 },
                 tags:           vec![TerrainTag::BlocksVision],
+                on_death:       None,
             },
         ),
         (
@@ -314,6 +320,7 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                     footfall:     None,
                 },
                 tags:           vec![TerrainTag::BlocksPathfinding],
+                on_death:       None,
             },
         ),
         (
@@ -333,6 +340,7 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                     graphic_name: graphic("low-cover"),
                 },
                 tags:           Vec::new(),
+                on_death:       None,
             },
         ),
     ])

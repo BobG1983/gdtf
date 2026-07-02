@@ -100,6 +100,20 @@ pub struct WeaponSpec {
     /// attaches a [`Dot`](super::Dot) on the struck ganger.
     #[serde(default)]
     pub dot:              Option<DotProfile>,
+    /// The weapon's optional **on-death effect** (GTW-547, child GTW-41g) — the
+    /// [`OnDeathEffect`](crate::on_death::OnDeathEffect) (`Explode` / `LeaveField`) the WIELDING
+    /// ganger's death fans (a live grenade, an unstable power cell), authored as the `on_death:`
+    /// `.weapon.ron` field. `#[serde(default)]` (defaulting to `None`) so an omitted field is a
+    /// weapon with no death effect: the field is OPT-IN (the `dot` / `attachment_slots` /
+    /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which
+    /// author it — deserializes and spawns BYTE-IDENTICAL. When present,
+    /// [`into_bundle`](WeaponSpec::into_bundle) carries it into the resolved
+    /// [`AttachmentEffects`](super::AttachmentEffects) as the `on_death` sibling the
+    /// wielded-weapon scene seam composes onto the weapon entity (as an
+    /// [`OnDeath`](crate::on_death::OnDeath) component), so
+    /// [`resolve_on_death`](crate::on_death::resolve_on_death) fans it when the ganger dies.
+    #[serde(default)]
+    pub on_death:         Option<crate::on_death::OnDeathEffect>,
 }
 
 impl WeaponSpec {
@@ -153,9 +167,14 @@ impl WeaponSpec {
         // the wielded-weapon scene seam composes exactly like the Scoped / Silenced tags. A
         // `None` (a non-DOT weapon) leaves the accumulator identity, so the weapon spawns
         // byte-identical to before this slice.
+        // GTW-547: carry the authored `on_death` effect into the SAME effects accumulator (its
+        // `on_death` sibling), so the wielded-weapon scene seam composes an `OnDeath` component
+        // exactly like the `dot` / attachment siblings. A `None` leaves the accumulator
+        // identity, so a weapon with no death effect spawns byte-identical.
         let effects =
             AttachmentEffects::from_slots(&self.attachment_slots, &mut bundle, attachment_tuning)
-                .with_dot(self.dot);
+                .with_dot(self.dot)
+                .with_on_death(self.on_death);
         (bundle, effects)
     }
 }

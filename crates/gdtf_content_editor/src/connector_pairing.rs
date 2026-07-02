@@ -323,6 +323,7 @@ mod tests {
                 footfall:     None,
             },
             tags: Vec::new(),
+            on_death: None,
         }
     }
 

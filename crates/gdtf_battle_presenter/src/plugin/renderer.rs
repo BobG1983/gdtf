@@ -5,9 +5,9 @@ use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
 use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger, DotTicked,
-    FallOccurred, FieldRegistry, FieldTicked, InjuryInflicted, OccupancyGrid, PlayerFaction,
-    ShotFired, SlabDestroyed, SquadVisibility, SuppressionApplied, SurfaceGrid, VerticalLinkGraph,
-    acts::MeleeResolved, occupancy_sync::SimSystems,
+    FallOccurred, FieldRegistry, FieldTicked, InjuryInflicted, OccupancyGrid, OnDeathOccurred,
+    PlayerFaction, ShotFired, SlabDestroyed, SquadVisibility, SuppressionApplied, SurfaceGrid,
+    VerticalLinkGraph, acts::MeleeResolved, occupancy_sync::SimSystems,
 };
 
 use crate::{
@@ -23,10 +23,11 @@ use crate::{
     load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
     move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
     read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed, read_dot_fct,
-    read_fall_occurred, read_field_fct, read_injury_fct, read_melee_resolved, read_suppression_fct,
-    redrive_character_roles_on_asset_event, redrive_effect_roles_on_asset_event,
-    redrive_fx_tuning_on_asset_event, redrive_pan_tuning_on_asset_event,
-    redrive_sheet_images_on_asset_event, redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
+    read_fall_occurred, read_field_fct, read_injury_fct, read_melee_resolved, read_on_death_fct,
+    read_suppression_fct, redrive_character_roles_on_asset_event,
+    redrive_effect_roles_on_asset_event, redrive_fx_tuning_on_asset_event,
+    redrive_pan_tuning_on_asset_event, redrive_sheet_images_on_asset_event,
+    redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
     reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
     resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
     spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, swap_destroyed_slab,
@@ -370,6 +371,13 @@ impl Plugin for TopDownRendererPlugin {
         // pool) is VISIBLE. A SHIPPING view (the playability rule), NOT debug-gated. Extracted to
         // keep `build` under the `too_many_lines` lint.
         register_field_overlay_systems(app);
+
+        // GTW-547: the ON-DEATH blast marker (the transient "an on-death effect fired HERE"
+        // flash). It drains the sim's `OnDeathOccurred` and pops a bold "BOOM" marker at each
+        // death cell, closing the Explode VISIBILITY gap (the sim's direct RNG-free blast drain
+        // rides no shot-impact FX nor attrition pop). Extracted to keep `build` — and
+        // `register_fx_flash_systems` — under the `too_many_lines` lint.
+        register_on_death_systems(app);
 
         // GTW-450: the reachable-range overlay is the DEBUG-only overlay (visual noise in
         // normal play). EVERY overlay-render-only item — the `ReachableCells` read-seam, the
@@ -1061,6 +1069,47 @@ fn register_field_overlay_systems(app: &mut App) {
                 .after(present_fog)
                 .run_if(resource_exists::<FieldRegistry>),
         );
+}
+
+/// Registers the GTW-547 ON-DEATH blast-marker reader: the transient bold `"BOOM"` FCT pop at
+/// every cell where an on-death effect fanned (`read_on_death_fct`), into the shared
+/// [`PresenterSystems::Draw`] band.
+///
+/// Extracted into its own tiny fn (mirroring [`register_field_overlay_systems`] /
+/// [`register_path_preview_systems`]) so neither [`register_fx_flash_systems`] nor `build`
+/// overruns the `too_many_lines` lint.
+///
+/// # Why this reader exists — the Explode visibility gap
+///
+/// A GTW-547 [`OnDeathEffect::LeaveField`](gdtf_battle_sim::OnDeathEffect::LeaveField) spawns a
+/// GTW-545 field into the sim's [`FieldRegistry`](gdtf_battle_sim::FieldRegistry), which
+/// [`draw_field_overlay`] draws automatically (it polls the registry) — no marker needed for the
+/// field itself. But an [`OnDeathEffect::Explode`](gdtf_battle_sim::OnDeathEffect::Explode) applies
+/// its blast as a DIRECT, RNG-free [`Hp`](gdtf_battle_sim::Hp) drain inside the sim's
+/// [`resolve_on_death`](gdtf_battle_sim::resolve_on_death) (to keep the seeded auto-battle stream
+/// byte-stable), which emits NO [`ShotFired`](gdtf_battle_sim::ShotFired) and NO
+/// [`FieldTicked`](gdtf_battle_sim::FieldTicked) — so the blast rides NEITHER the AoE-shot impact FX
+/// NOR an attrition pop and would otherwise be invisible. This marker closes that gap.
+///
+/// It wires:
+///
+/// - the [`OnDeathOccurred`](gdtf_battle_sim::OnDeathOccurred) message buffer, registered
+///   idempotently (the sim's `SimActsPlugin` also registers it in a real battle — `add_message` is
+///   IDEMPOTENT; a `MessageReader` param panics validation without its buffer, `bevy-traps.md`
+///   #1 / #4; the [`FallOccurred`](gdtf_battle_sim::FallOccurred) reader precedent);
+/// - [`read_on_death_fct`], gated on `BattleInProgress` (the pop belongs to a live battle), the
+///   hot-reloadable `FxTuning` it reads for the pop lifetime + rise, and that message buffer. It
+///   spawns [`Text2d`](bevy::prelude::Text2d) (no effects sprite), so — like `read_consequence_fct`
+///   — it needs NO render resource.
+fn register_on_death_systems(app: &mut App) {
+    app.add_message::<OnDeathOccurred>().add_systems(
+        Update,
+        read_on_death_fct.in_set(PresenterSystems::Draw).run_if(
+            resource_exists::<BattleInProgress>
+                .and_then(resource_exists::<FxTuning>)
+                .and_then(resource_exists::<Messages<OnDeathOccurred>>),
+        ),
+    );
 }
 
 /// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay: the [`ReachableCells`]

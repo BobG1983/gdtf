@@ -143,6 +143,7 @@ pub fn draft_to_terrain_def(draft: &TerrainDraft, uuid: TerrainUuid) -> TerrainD
         sim_kind,
         presenter_kind,
         tags: draft.tags().to_vec(),
+        on_death: None,
     }
 }
 

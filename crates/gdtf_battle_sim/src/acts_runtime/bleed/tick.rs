@@ -4,8 +4,9 @@
 use bevy::prelude::{Entity, Message, MessageWriter, Query, Res};
 
 use crate::{
-    ganger::{Hp, LifeState, Stabilized, Wounds},
+    ganger::{Hp, LifeState, Position, Stabilized, Wounds},
     injuries::BleedAfflicted,
+    on_death::OnDeathOccurred,
     tuning::CombatTuning,
 };
 
@@ -22,6 +23,11 @@ type BleedRow = (
     &'static mut LifeState,
     Option<&'static Stabilized>,
     Option<&'static BleedAfflicted>,
+    // GTW-547: the ganger's cell — the (cell, level) the terminal-death OnDeathOccurred signal
+    // carries when a Wounds bleed-out empties the pool (the tick otherwise has no cell in scope).
+    // `Option` so a minimal test ganger with no Position still matches the query (the emit is
+    // simply skipped when absent — a live battle ganger always has one).
+    Option<&'static Position>,
 );
 
 /// A [`LifeState::Downed`] ganger **bled** this round — a "Bleeding Out" stack
@@ -95,9 +101,13 @@ pub fn tick_bleed(
     mut q: Query<BleedRow>,
     tuning: Res<CombatTuning>,
     mut writer: MessageWriter<Bleeding>,
+    // GTW-547: the terminal-death signal — a Wounds bleed-out that KILLS (Wounds → 0 → Dead)
+    // emits one OnDeathOccurred at the dead ganger's cell so `resolve_on_death` fans its
+    // on-death effect (a bleed-out death must not silently skip it — the ticket's every-gate AC).
+    mut deaths: MessageWriter<OnDeathOccurred>,
 ) {
     let rate = *tuning.bleed_rate;
-    for (entity, hp, mut wounds, mut life, stabilized, bleed) in &mut q {
+    for (entity, hp, mut wounds, mut life, stabilized, bleed, position) in &mut q {
         // A Dead ganger is a corpse — neither bleed source touches it (the once-only
         // property: once Dead, the next tick skips it).
         if *life == LifeState::Dead {
@@ -150,6 +160,12 @@ pub fn tick_bleed(
         // E3.6's apply_hit runs; "≤ 0" is "== 0 after the saturating drain").
         if *wounds == Wounds::new(0) {
             *life = LifeState::Dead;
+            // GTW-547: emit the terminal-death signal at the dead ganger's cell so its authored
+            // on-death effect fans (`**position` derefs Position → CellLevel). A minimal test
+            // ganger with no Position simply emits nothing (a live battle ganger always has one).
+            if let Some(position) = position {
+                deaths.write(OnDeathOccurred::new(entity, **position));
+            }
         }
     }
 }

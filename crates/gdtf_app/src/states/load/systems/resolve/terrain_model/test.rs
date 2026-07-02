@@ -57,6 +57,7 @@ fn cover_def(key: TerrainUuid, display: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags: Vec::new(),
+        on_death: None,
     }
 }
 

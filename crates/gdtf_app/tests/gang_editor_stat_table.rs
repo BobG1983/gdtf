@@ -75,6 +75,7 @@ fn arbitrary_weapon() -> WeaponSpec {
         handedness:       Handedness::OneHanded,
         attachment_slots: Vec::new(),
         dot:              None,
+        on_death:         None,
     }
 }
 

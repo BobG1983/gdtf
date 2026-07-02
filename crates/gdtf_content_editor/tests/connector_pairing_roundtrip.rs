@@ -71,6 +71,7 @@ fn stair_def(key: TerrainUuid, label: &str, graphic: &str) -> TerrainDef {
             footfall:     None,
         },
         tags: Vec::new(),
+        on_death: None,
     }
 }
 

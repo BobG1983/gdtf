@@ -1689,6 +1689,7 @@ fn armed_registry() -> WeaponRegistry {
             handedness:       Handedness::OneHanded,
             attachment_slots: Vec::new(),
             dot:              None,
+            on_death:         None,
         },
     )])
 }

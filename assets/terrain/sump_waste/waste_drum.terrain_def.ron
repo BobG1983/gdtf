@@ -16,4 +16,10 @@
         graphic_name: "cover",   // old atlas_index 248 -> matching TileRoles key
     ),
     tags: [],
+    // GTW-547 (on-death effects, child GTW-41g): the drum is full of toxic sludge — SMASHING it
+    // (a shot / melee strike that depletes its HP to zero) leaves a persistent toxic-waste field
+    // (the shipped `toxic_waste_pool` GTW-545 field) at its cell, so the barrel's contents pool
+    // out into a hazard the survivors must route around. `on_death` defaults to `None` when
+    // omitted, so every other terrain def reads as having no death effect.
+    on_death: Some(LeaveField(field: "toxic_waste_pool")),
 )

@@ -199,7 +199,7 @@ impl WeaponShred {
 /// `bsn!` spawn path seeds the slot via `Default` before the authored
 /// `DamageType::<Variant>` patch overwrites it (GTW-322). `Kinetic` is chosen as
 /// the most ordinary node; it carries no special meaning as the default.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub enum DamageType {
     /// Wheel node 0 — arc / EMP (mirror of [`crate::armor::ArmorType::Plated`]).
     Shock,

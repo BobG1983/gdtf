@@ -16,4 +16,12 @@
         graphic_name: "cover",   // flat file's `graphic` TileRoles key
     ),
     tags: [],
+    // GTW-547 (on-death effects, child GTW-41g): the crate is packed with volatile munitions —
+    // DESTROYING it (a shot / melee smash that depletes its HP to zero) leaves a persistent
+    // incendiary field (the shipped `incendiary_fire` GTW-545 field) at its cell, so blowing the
+    // crate turns its cell into a burning hazard the survivors must route around. This is LIVE in
+    // the IndustrialHive theme the shipped skirmish generates from — any supply_crate procgen
+    // places carries it. `on_death` defaults to `None` when omitted, so every other def is
+    // unaffected.
+    on_death: Some(LeaveField(field: "incendiary_fire")),
 )

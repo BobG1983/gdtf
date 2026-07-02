@@ -156,7 +156,10 @@ pub enum AttachTag {
 /// [`from_slots`](AttachmentEffects::from_slots) folds into the bundle's own
 /// numbers. An EMPTY slot list produces the identity (`sighted`/`silenced` both `None`,
 /// no leaf change), so a weapon with no attachments spawns byte-identical.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+// NOT `Copy` (GTW-547): the `on_death` field carries an `OnDeath` component whose
+// `OnDeathEffect::LeaveField` owns a `FieldKey` (`String`) — not `Copy`. It is `Clone`; the
+// spawn seam MOVES it through `wielded_weapon_scenes → wielded_weapon_scene` once.
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct AttachmentEffects {
     /// The [`Scoped`](super::Scoped) sibling to add, or `None` when no sight-bearing
     /// attachment is fitted.
@@ -178,6 +181,15 @@ pub struct AttachmentEffects {
     /// the attachment slots fold, so a `RotgutCoating` re-key still applies (a DOT profile
     /// carries its own `damage_type`, unaffected by the coating).
     dot:         Option<DotProfile>,
+    /// The weapon's [`OnDeath`](crate::on_death::OnDeath) sibling to add (GTW-547), or `None`
+    /// when the weapon authors no `on_death:` effect. Like [`dot`](AttachmentEffects::dot) this
+    /// is NOT an attachment tag — it is the authored
+    /// [`WeaponSpec::on_death`](super::WeaponSpec) field, carried through this same accumulator
+    /// because it is likewise a spawn-side SIBLING component the wielded-weapon scene seam
+    /// composes onto the weapon entity (so [`resolve_on_death`](crate::on_death::resolve_on_death)
+    /// fans it when the wielding ganger dies). Set by
+    /// [`with_on_death`](AttachmentEffects::with_on_death) from the spec's `on_death` field.
+    on_death:    Option<crate::on_death::OnDeath>,
 }
 
 impl AttachmentEffects {
@@ -309,6 +321,27 @@ impl AttachmentEffects {
     #[must_use]
     pub const fn dot(&self) -> Option<DotProfile> {
         self.dot
+    }
+
+    /// Set the weapon's authored [`OnDeath`](crate::on_death::OnDeath) sibling (GTW-547) from
+    /// its [`OnDeathEffect`](crate::on_death::OnDeathEffect), consuming `self` and returning it
+    /// — the builder form [`into_bundle`](super::WeaponSpec::into_bundle) calls with the spec's
+    /// `on_death` field after the slot fold. A `None` (a weapon with no death effect) leaves the
+    /// accumulator unchanged.
+    #[must_use]
+    pub fn with_on_death(mut self, on_death: Option<crate::on_death::OnDeathEffect>) -> Self {
+        self.on_death = on_death.map(crate::on_death::OnDeath::new);
+        self
+    }
+
+    /// The weapon's [`OnDeath`](crate::on_death::OnDeath) sibling to spawn on the weapon entity
+    /// (GTW-547), or `None` when the weapon authors no death effect. The wielded-weapon scene
+    /// seam composes it exactly like the [`dot`](AttachmentEffects::dot) /
+    /// [`sighted`](AttachmentEffects::sighted) siblings (cloned into a `template_value`, since
+    /// [`OnDeath`](crate::on_death::OnDeath) is not `Copy`).
+    #[must_use]
+    pub const fn on_death(&self) -> Option<&crate::on_death::OnDeath> {
+        self.on_death.as_ref()
     }
 }
 
@@ -527,7 +560,7 @@ mod tests {
     fn fast_reload_lowers_reload_tu_relative_to_baseline() {
         let mut bundle = base_bundle();
         let base = *bundle.magazine.reload_tu();
-        let _ = AttachmentEffects::from_slots(
+        let _effects = AttachmentEffects::from_slots(
             &[AttachTag::FastReload],
             &mut bundle,
             &AttachmentTuning::default(),
@@ -543,7 +576,7 @@ mod tests {
     fn hexgrind_raises_punch_relative_to_baseline() {
         let mut bundle = base_bundle();
         let base = *bundle.punch;
-        let _ = AttachmentEffects::from_slots(
+        let _effects = AttachmentEffects::from_slots(
             &[AttachTag::HexgrindRounds {
                 punch_bonus: WeaponPunch::new(5),
             }],

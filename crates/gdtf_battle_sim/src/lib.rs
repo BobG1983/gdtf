@@ -287,6 +287,11 @@ pub use acts_runtime::{
     },
     firing_arc, move_acts,
     move_acts::{ReactionShotFired, WalkInProgress, advance_walk},
+    on_death,
+    on_death::{
+        CoverOnDeathRegistry, ExplodeDamage, OnDeath, OnDeathEffect, OnDeathOccurred,
+        resolve_on_death,
+    },
     reaction,
     reaction::{reaction_trigger, reset_reactions_used},
     suppression,

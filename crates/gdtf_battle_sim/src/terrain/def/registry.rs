@@ -17,7 +17,10 @@ use super::{TerrainDef, TerrainUuid};
 /// Private inner with small accessors (a registry answers a terrain LOOKUP, not a
 /// raw-map question — so no derived [`Deref`](bevy::prelude::Deref), the
 /// `WeaponRegistry` / `ArmorRegistry` pattern).
-#[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
+// NOT `Eq` (GTW-547): its `TerrainDef` values carry an optional `on_death` effect whose
+// `Explode` `HitType::Cone` half-angle is an `f32` (not `Eq`). `PartialEq` is enough — the
+// registry is compared with `==` in tests, never keyed in a set.
+#[derive(Resource, Debug, Clone, Default, PartialEq)]
 pub struct TerrainDefRegistry(HashMap<TerrainUuid, TerrainDef>);
 
 impl TerrainDefRegistry {

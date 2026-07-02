@@ -27,13 +27,14 @@ use crate::{
     ai::enemy_ai_turn,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     dot::{DotApplied, DotTicked, apply_dot, tick_dot},
-    falls::FallOccurred,
+    falls::{FallOccurred, apply_falls},
     fields::{FieldTicked, tick_fields},
     move_acts::{ReactionShotFired, advance_walk},
     occupancy::project_path_blocking,
     occupancy_sync::{
         CoverDestroyed, GroundAccrued, SimSystems, SlabDestroyed, sync_destroyed_cover,
     },
+    on_death::{OnDeathOccurred, resolve_on_death},
     reaction::{reaction_trigger, reset_reactions_used},
     shot_fired::ShotFired,
     suppression::{
@@ -228,6 +229,12 @@ fn register_messages(app: &mut App) {
         // MessageWriter<FieldTicked> param valid and creates the Messages<FieldTicked> buffer the
         // presenter reads (bevy-traps.md #4 / #5).
         .add_message::<FieldTicked>()
+        // GTW-547: the terminal-death signal emitted from EVERY death / cover-destroyed gate
+        // (the ranged/melee/falls ganger kills, the bleed/DOT/field clocks, both cover-destroy
+        // sites). `resolve_on_death` drains it to fan each source's authored on-death effect.
+        // Registering the buffer here makes every producer's MessageWriter<OnDeathOccurred> +
+        // `resolve_on_death`'s MessageReader param valid (bevy-traps.md #4 / #5).
+        .add_message::<OnDeathOccurred>()
         // GTW-355: the typed reaction-shot interrupt the committed walk (`advance_walk`)
         // stops on (C5(b)). Registering the buffer here makes `advance_walk`'s
         // MessageReader<ReactionShotFired> param valid. NOTHING in the sim emits it yet —
@@ -525,10 +532,49 @@ fn wire_systems(app: &mut App) {
             .after(dispatch_end_turn)
             .in_set(SimSystems::Simulate),
     );
-    // GTW-544: the DOT applier + per-round clock — split into its own helper so `wire_systems`
-    // stays under clippy's line-count gate (the `register_messages` / `wire_systems` split
-    // precedent).
+    wire_clocks(app); // GTW-544/547: the DOT+field clocks + on-death resolver (line-cap split)
+}
+
+/// Wire the per-round-clock + on-death systems into the [`SimSystems::Simulate`] band — the
+/// GTW-544 [`tick_dot`] / GTW-545 [`tick_fields`] clocks + applier and the GTW-547
+/// [`resolve_on_death`] resolver. One combined split out of [`wire_systems`] so that function
+/// stays under clippy's line-count gate (the `register_messages` / `wire_systems` split
+/// precedent).
+fn wire_clocks(app: &mut App) {
     wire_dot(app);
+    wire_on_death(app);
+}
+
+/// Wire the GTW-547 on-death-effect resolver into the [`SimSystems::Simulate`] band — the
+/// [`resolve_on_death`] applier. Split out of [`wire_clocks`] so that helper stays focused.
+fn wire_on_death(app: &mut App) {
+    app.add_systems(
+        Update,
+        // GTW-547: `resolve_on_death` drains the OnDeathOccurred buffer and fans each dying
+        // source's authored on-death effect (Explode fans a GTW-541 AoE blast; LeaveField spawns
+        // a GTW-545 field), resolving cascading explosions to a same-frame fixpoint. Ordered
+        // (bevy-traps.md #3) `.after` EVERY death producer so THIS frame's deaths are all
+        // buffered before it reads: the ranged/melee kills (dispatch_fire / dispatch_melee) + the
+        // per-round bleed/DOT/field clocks (tick_bleed / tick_dot / tick_fields) + the falls kill
+        // (apply_falls, wired in the sibling FallsPlugin — the ordering is a no-op if that plugin
+        // is absent, and messages persist a frame regardless). It joins the BattleInProgress-gated
+        // Simulate band; its Res<OccupancyGrid> / ResMut<FieldRegistry> / Res<CoverOnDeathRegistry>
+        // reads are sim-`setup_battle`-inserted battle-lifetime resources, so it carries explicit
+        // `resource_exists` run-ifs to stay panic-free if the band runs without them. The field
+        // CATALOG (FieldDefRegistry) is app/Load-owned (NOT sim-set), so it is taken Option<Res>
+        // INSIDE the system rather than gated on (bevy-traps.md #1).
+        resolve_on_death
+            .after(dispatch_fire)
+            .after(dispatch_melee)
+            .after(tick_bleed)
+            .after(tick_dot)
+            .after(tick_fields)
+            .after(apply_falls)
+            .run_if(resource_exists::<crate::occupancy::OccupancyGrid>)
+            .run_if(resource_exists::<crate::fields::FieldRegistry>)
+            .run_if(resource_exists::<crate::on_death::CoverOnDeathRegistry>)
+            .in_set(SimSystems::Simulate),
+    );
 }
 
 /// Wire the GTW-544 damage-over-time systems into the [`SimSystems::Simulate`] band — the

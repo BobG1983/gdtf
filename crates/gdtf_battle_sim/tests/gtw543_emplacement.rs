@@ -115,6 +115,7 @@ fn gun_spec(damage_type: DamageType) -> WeaponSpec {
         handedness: Handedness::OneHanded,
         attachment_slots: Vec::new(),
         dot: None,
+        on_death: None,
     }
 }
 

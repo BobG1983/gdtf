@@ -95,6 +95,7 @@ fn aoe_weapon_spec(hit_type: HitType) -> WeaponSpec {
         handedness:       Handedness::OneHanded,
         attachment_slots: Vec::new(),
         dot:              None,
+        on_death:         None,
     }
 }
 

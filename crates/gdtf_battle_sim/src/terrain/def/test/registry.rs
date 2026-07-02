@@ -32,6 +32,7 @@ fn registry_inserts_and_looks_up_by_uuid() {
             footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
         },
         tags: Vec::new(),
+        on_death: None,
     };
 
     let mut registry = TerrainDefRegistry::default();
@@ -81,6 +82,7 @@ fn registry_new_keys_by_uuid() {
             footfall:     None,
         },
         tags: Vec::new(),
+        on_death: None,
     };
 
     let registry = TerrainDefRegistry::new([(key, def.clone())]);

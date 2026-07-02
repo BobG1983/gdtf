@@ -1033,6 +1033,7 @@ fn real_flow_weapon_spec() -> WeaponSpec {
         handedness:       Handedness::OneHanded,
         attachment_slots: Vec::new(),
         dot:              None,
+        on_death:         None,
     }
 }
 

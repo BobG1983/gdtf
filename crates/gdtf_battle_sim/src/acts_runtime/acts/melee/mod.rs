@@ -288,6 +288,10 @@ pub fn dispatch_melee(
     // this same frame (it is ordered `.after(dispatch_melee)`); a miss / non-`shove` weapon
     // writes nothing (`bevy-traps.md` #4).
     mut shoves: MessageWriter<ShoveRequested>,
+    // GTW-547: the terminal-death bridge — a melee strike that KILLS a ganger, or a lethal
+    // cover-smash, writes an OnDeathOccurred so `resolve_on_death` fans the dead source's
+    // on-death effect (`bevy-traps.md` #4). Threaded into both per-target resolvers.
+    mut deaths: MessageWriter<crate::on_death::OnDeathOccurred>,
 ) {
     // `bevy-traps.md` #1: without all three seeded streams no strike can resolve a draw — fail
     // closed (no panic) rather than reading an absent battle-lifetime resource. In the real app
@@ -370,6 +374,7 @@ pub fn dispatch_melee(
                 },
                 &mut resolved,
                 &mut shoves,
+                &mut deaths,
             ),
 
             // ── Melee-vs-structure (GTW-508) — the UNCONTESTED cover-smash path. ──
@@ -380,6 +385,7 @@ pub fn dispatch_melee(
                 &mut grids,
                 &mut resolved,
                 &mut cover_destroyed,
+                &mut deaths,
             ),
         }
     }

@@ -123,6 +123,7 @@ pub(super) fn resolve_ganger_melee(
     streams: MeleeStreams<'_>,
     resolved: &mut MessageWriter<MeleeResolved>,
     shoves: &mut MessageWriter<ShoveRequested>,
+    deaths: &mut MessageWriter<crate::on_death::OnDeathOccurred>,
 ) {
     let Ok((&tgt_pos, &tgt_stance, _, &tgt_fight, &tgt_faction, _)) = geom.get(target_entity)
     else {
@@ -230,6 +231,18 @@ pub(super) fn resolve_ganger_melee(
         let at = CellLevel::new(ganger_cell(&tgt_pos), ganger_level(&tgt_pos));
         resolved.write(MeleeResolved::new(at, attacker.strike_damage_type));
 
+        // GTW-547: a CONNECTING strike that KILLED the target (its post-fold LifeState is Dead)
+        // emits the terminal-death signal at the target's cell so `resolve_on_death` fans the
+        // dead ganger's on-death effect. Re-read the target's LifeState off the query AFTER the
+        // in-place fold (the SINGLE LifeState read path); a strike that wounded-but-did-not-kill
+        // emits nothing.
+        if targets
+            .get(target_entity)
+            .is_ok_and(|(_, _, &life, ..)| life == LifeState::Dead)
+        {
+            deaths.write(crate::on_death::OnDeathOccurred::new(target_entity, at));
+        }
+
         // GTW-525 C3: a `shove`-tagged weapon KNOCKS BACK the target on a CONNECTING strike
         // (in addition to the damage above). Write the internal weapon-tag ShoveRequested — the
         // connect already gated + charged, so dispatch_shove resolves it un-gated / TU-free
@@ -261,6 +274,7 @@ pub(super) fn resolve_structure_melee(
     grids: &mut MeleeGrids,
     resolved: &mut MessageWriter<MeleeResolved>,
     cover_destroyed: &mut MessageWriter<CoverDestroyed>,
+    deaths: &mut MessageWriter<crate::on_death::OnDeathOccurred>,
 ) {
     // Gate — 8-adjacency to the struck STRUCTURE cell (reuse `is_8_adjacent` over the attacker's
     // Position vs a Position at the target cell). LOS to an immediately-adjacent structure is
@@ -302,6 +316,10 @@ pub(super) fn resolve_structure_melee(
     // rubble-burst FX reacts to it verbatim).
     if let CoverEvent::Destroyed(cell) = event {
         cover_destroyed.write(CoverDestroyed::new(cell));
+        // GTW-547: a destroyed piece of cover ALSO emits the terminal-death signal (keyed by
+        // its cell — cover is not an entity, so Entity::PLACEHOLDER) so `resolve_on_death` fans
+        // the cover tile's authored on-death effect (the ranged cover-destroy bridge mirror).
+        deaths.write(crate::on_death::OnDeathOccurred::cover(cell));
     }
     // Emit the strike-glyph at the struck structure cell (a structural smash always lands — a
     // structure never dodges — so unlike the ganger path there is no connect gate here).

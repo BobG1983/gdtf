@@ -53,6 +53,7 @@ fn wall_def_round_trips() {
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
         tags:           vec![TerrainTag::BlocksVision, TerrainTag::BlocksPathfinding],
+        on_death:       None,
     };
     assert_round_trips(&def);
 }
@@ -74,6 +75,7 @@ fn cover_def_round_trips() {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags:           Vec::new(),
+        on_death:       None,
     };
     assert_round_trips(&def);
 }
@@ -95,6 +97,7 @@ fn slab_def_round_trips() {
             footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
         },
         tags:           Vec::new(),
+        on_death:       None,
     };
     assert_round_trips(&def);
 }
@@ -117,6 +120,7 @@ fn emplacement_def_round_trips() {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags:           Vec::new(),
+        on_death:       None,
     };
     assert_round_trips(&def);
 }

@@ -111,6 +111,7 @@ fn dot_weapon_spec(dot: Option<DotProfile>) -> WeaponSpec {
         handedness: Handedness::OneHanded,
         attachment_slots: Vec::new(),
         dot,
+        on_death: None,
     }
 }
 

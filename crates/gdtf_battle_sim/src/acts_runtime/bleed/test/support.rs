@@ -44,6 +44,9 @@ pub(super) fn bleed_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_message::<Bleeding>();
+    // GTW-547: tick_bleed now also writes OnDeathOccurred on a bleed-out kill — register the
+    // buffer so its MessageWriter param validates (an unregistered buffer panics the system).
+    app.add_message::<crate::on_death::OnDeathOccurred>();
     app.init_resource::<CombatTuning>();
     app.init_resource::<Captured>();
     app.add_systems(Update, (tick_bleed, consume).chain());

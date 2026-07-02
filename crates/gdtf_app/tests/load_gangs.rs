@@ -313,7 +313,9 @@ fn expected_set() -> [Expected; 3] {
         Expected {
             name:       "Alex Mercer",
             attributes: [3.0, 3.0, 4.0, 12.0, 3.0, 6.0, 19.0, 1.0],
-            weapon:     "stub_pistol",
+            // GTW-547: Alex now wields the `volatile_charge` (an on-death Explode weapon) so the
+            // on-death Explode effect is LIVE in the shipped skirmish (see gang_0.gang.ron).
+            weapon:     "volatile_charge",
             armor:      "flak_vest",
             gang:       "gang_0",
             position:   cell(5, 6, 0),

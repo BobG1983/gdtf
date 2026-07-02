@@ -66,6 +66,14 @@
 //!   from a fresh weapon hit or a carried DOT tick). The persistent field zone is the sim's
 //!   [`FieldRegistry`](gdtf_battle_sim::FieldRegistry), drawn as the persistent per-cell overlay,
 //!   NOT this one-shot pop.
+//! - [`on_death`] — the GTW-547 ON-DEATH FCT READER ([`read_on_death_fct`]): the transient bold
+//!   `"BOOM"` blast marker at every cell where an on-death effect fanned, routed off the
+//!   [`OnDeathOccurred`](gdtf_battle_sim::OnDeathOccurred) message and drawn in the lethal
+//!   [`FctValence::Lethal`] blood-red. It closes the Explode VISIBILITY gap: the sim's
+//!   [`Explode`](gdtf_battle_sim::OnDeathEffect::Explode) applies its blast as a direct RNG-free HP
+//!   drain that rides NO shot-impact FX nor attrition pop, so without this marker the detonation
+//!   would be invisible. A [`LeaveField`](gdtf_battle_sim::OnDeathEffect::LeaveField)'s field
+//!   itself still rides the persistent [`draw_field_overlay`](crate::draw_field_overlay).
 //!
 //! Pure VIEW (ADR-0001): the primitive spawns + animates presenter entities only; it never
 //! reads or writes the sim. [`animate_floating_text`] and [`read_consequence_fct`] are
@@ -78,6 +86,7 @@ mod dot;
 mod field;
 mod injury;
 mod log_event;
+mod on_death;
 mod palette;
 mod reader;
 mod suppression;
@@ -91,6 +100,7 @@ pub use dot::read_dot_fct;
 pub use field::read_field_fct;
 pub use injury::read_injury_fct;
 pub use log_event::{CombatLogEvent, InjuryLogText, LogLine, LogName, classify_log_event};
+pub use on_death::read_on_death_fct;
 pub use palette::{FctValence, severity_color, valence_color};
 pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};
 pub use suppression::read_suppression_fct;

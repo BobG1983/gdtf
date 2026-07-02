@@ -42,8 +42,9 @@ use gdtf_battle_sim::{
     CoverDestroyed, DamageType, Direction, DotDamage, DotTicked, Facing, Faction, FallOccurred,
     FieldDamage, FieldDef, FieldDuration, FieldRegistry, FieldTicked, GainedInjury, HitReport,
     HitResult, HpDamage, ImmuneArmorTypes, InjuryInflicted, InjuryName, InspectText, IntegrityWear,
-    Level, LifeState, LogText, Matchup, PenetratingDamage, PopupText, Position, Severity, ShotDir,
-    ShotFired, ShotKind, SimPos, StoreysFallen, SuppressionApplied, Wounds, acts::MeleeResolved,
+    Level, LifeState, LogText, Matchup, OnDeathOccurred, PenetratingDamage, PopupText, Position,
+    Severity, ShotDir, ShotFired, ShotKind, SimPos, StoreysFallen, SuppressionApplied, Wounds,
+    acts::MeleeResolved,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -1595,6 +1596,118 @@ fn a_seeded_field_registry_draws_a_visible_hazard_cell_sprite() {
         any_at_cell,
         "the field hazard tile must anchor at the field cell x ({})",
         anchor.x,
+    );
+}
+
+/// GTW-547 — the REAL dispatch path: an `OnDeathOccurred { entity, at }` drives the registered
+/// `read_on_death_fct` system to spawn the bold `"BOOM"` blast marker over the death cell — the
+/// presenter FLOURISH that closes the Explode visibility gap (the sim's direct RNG-free blast drain
+/// rides no shot-impact FX nor attrition pop). Pins the marker's text + lethal valence + cell anchor
+/// on the registered-system path (deleting the reader FAILS this). The `OnDeathOccurred` buffer is
+/// registered idempotently by `TopDownRendererPlugin` (like `MeleeResolved` / `FallOccurred`), so a
+/// presenter-only harness can write it.
+#[test]
+fn on_death_occurred_pops_the_lethal_boom_marker_at_the_cell() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(11, 4);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+    let ganger = spawn_ganger(&mut app, cell, level, 0);
+
+    app.world_mut()
+        .resource_mut::<Messages<OnDeathOccurred>>()
+        .write(OnDeathOccurred::new(ganger, at));
+    app.update();
+
+    // POSITIVE: the system spawned a FloatingCombatText marker reading "BOOM" in the LETHAL
+    // blood-red valence (a terminal-death signal, NOT an attrition tick).
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "BOOM", valence_color(FctValence::Lethal)),
+        "an OnDeathOccurred must pop a \"BOOM\" marker in the Lethal valence, got {pops:?}",
+    );
+
+    // The marker is anchored at the death cell (planar x — the FCT z is the Highlight band).
+    let anchor = cell_to_world(cell, level);
+    let mut q = app.world_mut().query::<(&FloatingCombatText, &Transform)>();
+    let any_at_cell = q
+        .iter(app.world())
+        .any(|(_, transform)| (transform.translation.x - anchor.x).abs() < 0.001);
+    assert!(
+        any_at_cell,
+        "the on-death marker must anchor at the death cell x ({})",
+        anchor.x,
+    );
+}
+
+/// GTW-547 — a COVER death carries `Entity::PLACEHOLDER` (cover is not an entity) but still a valid
+/// cell: `read_on_death_fct` must still pop the `"BOOM"` marker at that cell (a smashed volatile
+/// crate's detonation is visible), never fail on the placeholder entity.
+#[test]
+fn a_cover_on_death_still_pops_the_marker_at_the_cover_cell() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(3, 12);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+
+    // A cover death: OnDeathOccurred::cover uses Entity::PLACEHOLDER — no ganger entity needed.
+    app.world_mut()
+        .resource_mut::<Messages<OnDeathOccurred>>()
+        .write(OnDeathOccurred::cover(at));
+    app.update();
+
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "BOOM", valence_color(FctValence::Lethal)),
+        "a cover on-death (placeholder entity) must still pop a \"BOOM\" marker, got {pops:?}",
+    );
+}
+
+/// GTW-547 — the `LeaveField` END-TO-END render confirmation: a `LeaveField` on-death effect fires
+/// by (1) spawning its referenced field into the sim's live `FieldRegistry` (exactly what the sim's
+/// `resolve_on_death` → `leave_field` does via `FieldRegistry::spawn`) and (2) emitting an
+/// `OnDeathOccurred` at that cell. In ONE presenter update this drives BOTH existing systems with
+/// ZERO new field-render infra: `draw_field_overlay` draws the persistent hazard tile (the field
+/// rides the existing GTW-545 overlay), and `read_on_death_fct` pops the transient blast marker
+/// over it. This is the "on-death effects ride existing rendering" proof for `LeaveField`.
+#[test]
+fn a_leave_field_on_death_draws_the_field_overlay_and_the_marker() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(6, 9);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+
+    // (1) The LeaveField result: the referenced field is now live in the sim registry (the presenter
+    //     reads this AUTHORITATIVE resource one-way — the same state the sim's leave_field spawns).
+    let mut registry = FieldRegistry::new();
+    registry.spawn(at, toxic_pool_def());
+    app.world_mut().insert_resource(registry);
+    // (2) The on-death occurrence at the same (cover) cell — a smashed crate that left the field.
+    app.world_mut()
+        .resource_mut::<Messages<OnDeathOccurred>>()
+        .write(OnDeathOccurred::cover(at));
+    app.update();
+
+    // The field rides the EXISTING overlay with no new infra: exactly one visible hazard tile.
+    assert_eq!(
+        visible_field_sprites(&mut app),
+        1,
+        "a LeaveField's field must draw via the existing GTW-545 overlay (one visible tile)",
+    );
+    // And the transient on-death marker pops over it.
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "BOOM", valence_color(FctValence::Lethal)),
+        "the LeaveField on-death must also pop the \"BOOM\" marker, got {pops:?}",
     );
 }
 

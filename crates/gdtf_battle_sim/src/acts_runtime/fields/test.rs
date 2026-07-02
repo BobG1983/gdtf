@@ -51,6 +51,9 @@ fn tick_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_message::<FieldTicked>();
+    // GTW-547: tick_fields now also writes OnDeathOccurred on a field-kill — register the buffer
+    // so its MessageWriter param validates (an unregistered buffer panics the system).
+    app.add_message::<crate::on_death::OnDeathOccurred>();
     app.init_resource::<Captured>();
     app.add_systems(Update, (tick_fields, consume).chain());
     app

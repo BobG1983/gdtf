@@ -155,16 +155,16 @@ impl BattleGridsParam<'_> {
 pub struct FireSignals<'w, 's> {
     /// The per-ROUND fire-trajectory signal (one per round resolved) — the presenter's
     /// muzzle / tracer / impact FX + the floating-combat-text verdict.
-    shots:           MessageWriter<'w, ShotFired>,
+    shots:            MessageWriter<'w, ShotFired>,
     /// The per-REQUEST combat-log declaration (one per proceeding shot) — "<name> fired
     /// <mode> at <target>".
-    declarations:    MessageWriter<'w, FireDeclaration>,
+    declarations:     MessageWriter<'w, FireDeclaration>,
     /// The per-ROUND cover-destroyed signal (GTW-364) — emitted for each round whose
     /// [`HitReport::cover_destroyed`](crate::resolve_and_apply::HitReport::cover_destroyed)
     /// is `Some`, bridging the ledger's `deplete_cover` destruction into the buffered
     /// [`CoverDestroyed`] message that `sync_destroyed_cover` + `should_recompute_visibility`
     /// consume to free the cell + reopen LOS.
-    cover_destroyed: MessageWriter<'w, CoverDestroyed>,
+    cover_destroyed:  MessageWriter<'w, CoverDestroyed>,
     /// The per-ROUND slab-destroyed signal (GTW-365) — emitted for each round whose
     /// [`HitReport::slab_destroyed`](crate::resolve_and_apply::HitReport::slab_destroyed)
     /// is `Some`, bridging the ledger's `deplete_slab` destruction into the buffered
@@ -172,7 +172,7 @@ pub struct FireSignals<'w, 's> {
     /// [`SlabState::Destroyed`](crate::surface::SlabState) on the surface grid) +
     /// `should_recompute_visibility` consume to stop blocking rounds + reopen LOS
     /// through the hole. The slab mirror of `cover_destroyed`.
-    slab_destroyed:  MessageWriter<'w, SlabDestroyed>,
+    slab_destroyed:   MessageWriter<'w, SlabDestroyed>,
     /// The per-ROUND ground-accrued signal (GTW-366) — emitted for each round whose
     /// [`HitReport::ground_accrued`](crate::resolve_and_apply::HitReport::ground_accrued)
     /// is `Some`, bridging the round's `weapon_damage` into the buffered
@@ -181,14 +181,14 @@ pub struct FireSignals<'w, 's> {
     /// ground-accrual mirror of `slab_destroyed`: the ground is damaged-never-destroyed, so
     /// this signal carries an accrual, not a destruction (purely cosmetic — crater FX is a
     /// later ticket).
-    ground_accrued:  MessageWriter<'w, GroundAccrued>,
+    ground_accrued:   MessageWriter<'w, GroundAccrued>,
     /// The per-ROUND injury signal (GTW-438) — emitted for each round whose
     /// [`HitReport::injury`](crate::resolve_and_apply::HitReport::injury) is `Some`,
     /// bridging the in-fold injury roll into the buffered [`InjuryInflicted`] message
     /// [`apply_injury`](crate::acts::apply_injury) drains (and the presenter — GTW-439 —
     /// reads for the FCT / log flash). The injury-table mirror of the cover/slab/ground
     /// bridges: a structural hit destroys/accrues, a ganger wound INJURES.
-    injuries:        MessageWriter<'w, InjuryInflicted>,
+    injuries:         MessageWriter<'w, InjuryInflicted>,
     /// The per-ROUND DOT-applied signal (GTW-544) — emitted for each round whose
     /// [`HitReport::dot_applied`](crate::resolve_and_apply::HitReport::dot_applied) is
     /// `Some` (a penetrating hit from a DOT weapon), bridging the in-fold attach decision
@@ -196,20 +196,29 @@ pub struct FireSignals<'w, 's> {
     /// [`apply_dot`](crate::acts_runtime::dot::apply_dot) drains (attaching or REFRESHING the
     /// [`Dot`](crate::weapon::Dot) on the struck ganger). The DOT mirror of the injury
     /// bridge: a ganger wound that penetrated from a DOT weapon AFFLICTS.
-    dots:            MessageWriter<'w, crate::acts_runtime::dot::DotApplied>,
+    dots:             MessageWriter<'w, crate::acts_runtime::dot::DotApplied>,
     /// The per-FIRE-ACT shove signal (GTW-525) — emitted ONCE when a `shove`-tagged weapon's
     /// shot CONNECTS with a ganger (the first connecting-ganger round of the volley). It
     /// writes an internal [`ShoveRequested`](crate::acts::request::ShoveRequested)
     /// (`ShoveSource::Weapon`) `dispatch_shove` drains the same frame (`dispatch_shove` is
     /// ordered `.after(dispatch_fire)`). A miss / a non-`shove` weapon writes nothing. Folded
     /// into this bundle so `dispatch_fire` stays under Bevy's 16-param limit.
-    shoves:          MessageWriter<'w, crate::acts::request::ShoveRequested>,
+    shoves:           MessageWriter<'w, crate::acts::request::ShoveRequested>,
     /// The firing weapon's [`Shove`](crate::weapon::Shove) tag read (GTW-525) — read off the
     /// resolved ranged-weapon entity to decide whether a connecting shot auto-shoves. A
     /// read-only [`Query`] over the weapon entities, folded into this bundle (with the `shoves`
     /// writer) so `dispatch_fire` stays under the 16-param limit; disjoint from the ganger /
     /// magazine queries (a read on a different component set).
-    shove_tags:      Query<'w, 's, &'static crate::weapon::Shove>,
+    shove_tags:       Query<'w, 's, &'static crate::weapon::Shove>,
+    /// The GTW-547 terminal-death signal (`resolve_on_death` drains it) — emitted per ROUND
+    /// (primary or splash) that KILLED a ganger (`report.applied.life_after == Dead`), at the
+    /// struck ganger's own cell (read via [`ganger_positions`](FireSignals::ganger_positions)).
+    deaths:           MessageWriter<'w, crate::on_death::OnDeathOccurred>,
+    /// The struck gangers' [`Position`] read (GTW-547) — the on-death signal needs the DEAD
+    /// ganger's own `(cell, level)`, which a splash round's [`HitReport`] does not carry
+    /// (only the primary round has the outcome cell). A read-only [`Query`] over the ganger
+    /// entities, disjoint from the weapon [`Query`]s, folded into this bundle.
+    ganger_positions: Query<'w, 's, &'static Position>,
 }
 
 /// The two wielded-weapon MARKER probes [`dispatch_fire`] resolves a shooter's PREFERRED ranged
@@ -641,6 +650,13 @@ fn emit_round_signals(
                 .dots
                 .write(crate::acts_runtime::dot::DotApplied::new(target, dot));
         }
+        // (5a3) GTW-547: the on-death bridge — a round that KILLED a ganger (its applied
+        //       LifeState is Dead) emits ONE OnDeathOccurred so `resolve_on_death` fans the
+        //       dead ganger's authored on-death effect. Keyed off the FROZEN post-fold verdict
+        //       (report.applied.life_after == Dead), addressed to the struck ganger, at the
+        //       ganger's OWN cell (read off its Position — a splash round's report carries no
+        //       cell). No RNG draw, no recompute — pure exposure of the fold's kill verdict.
+        emit_on_death(report, signals);
         // The HitReport is non-`Copy` (it carries the rolled injury); clone it into the
         // per-round ShotFired (the FCT presenter reads the damage/wound/severity verdict —
         // the injury rides the separate InjuryInflicted).
@@ -654,6 +670,12 @@ fn emit_round_signals(
         //      to zero carries the destroyed (cell, level); emit one CoverDestroyed.
         if let Some(at) = report.cover_destroyed {
             signals.cover_destroyed.write(CoverDestroyed::new(at));
+            // GTW-547: a destroyed piece of cover ALSO emits a terminal-death signal (keyed by
+            // its cell — cover is not an entity, so Entity::PLACEHOLDER) so `resolve_on_death`
+            // fans the cover tile's authored on-death effect (a fuel barrel leaving a field).
+            signals
+                .deaths
+                .write(crate::on_death::OnDeathOccurred::cover(at));
         }
         // (5c) GTW-365: the slab mirror — a round that depleted a slab to zero carries the
         //      destroyed (cell, level); emit one SlabDestroyed.
@@ -692,8 +714,38 @@ fn emit_round_signals(
                     .dots
                     .write(crate::acts_runtime::dot::DotApplied::new(target, dot));
             }
+            // GTW-547: bridge each splashed ganger's KILL exactly as the primary report is
+            // bridged above — a blast splash that kills a splash victim fans ITS on-death
+            // effect too (the friendly-fire / chain-reaction property). Empty for a Single
+            // volley (the identity property).
+            emit_on_death(report, signals);
         }
     }
+}
+
+/// Bridge ONE resolved [`HitReport`](crate::resolve_and_apply::HitReport) that KILLED a ganger
+/// into a [`OnDeathOccurred`](crate::on_death::OnDeathOccurred) signal (GTW-547) — the shared
+/// primary/splash emit the two loops in [`emit_round_signals`] both call.
+///
+/// Emits ONLY when the round struck a ganger AND the frozen post-fold verdict is
+/// [`LifeState::Dead`] (`report.applied.life_after`). Addressed to the struck ganger, at the
+/// ganger's OWN `(cell, level)` (read off its [`Position`]); a splash report carries no cell,
+/// so the ganger's live position is the death anchor. A round that missed, wounded-but-did-not-
+/// kill, or downed (Hp → 0) emits nothing. No RNG draw, no recompute — pure exposure of the
+/// fold's kill verdict.
+fn emit_on_death(report: &crate::resolve_and_apply::HitReport, signals: &mut FireSignals) {
+    let (Some(applied), ShotKind::Ganger(target)) = (report.applied.as_ref(), report.kind) else {
+        return;
+    };
+    if applied.life_after != crate::ganger::LifeState::Dead {
+        return;
+    }
+    let Ok(position) = signals.ganger_positions.get(target) else {
+        return;
+    };
+    signals
+        .deaths
+        .write(crate::on_death::OnDeathOccurred::new(target, **position));
 }
 
 /// The ground-plane [`Cell`] of a shooter's [`Position`] — its `(x, y)` (the `z` storey is

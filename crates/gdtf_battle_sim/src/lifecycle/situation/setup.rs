@@ -486,6 +486,12 @@ fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -
     // (from_profile is never called here — the PROFILE is spawned, not a live Dot) so
     // `template_value` applies (the GTW-542 sibling precedent).
     let dot = attachments.dot().map(template_value);
+    // GTW-547: the OPTIONAL OnDeath sibling — a weapon authoring an `on_death` effect spawns its
+    // OnDeath component so `resolve_on_death` fans it when the wielding ganger dies. A `None` (a
+    // weapon with no death effect) resolves to an Option-scene no-op, so it spawns
+    // byte-identical. `OnDeath` derives Clone + Default so `template_value` applies (the GTW-544
+    // DotProfile sibling precedent); it is cloned out of the borrowed accumulator (not `Copy`).
+    let on_death = attachments.on_death().cloned().map(template_value);
     (
         bsn! {
             Weapon
@@ -512,6 +518,8 @@ fn wielded_weapon_scene(weapon: &WeaponBundle, attachments: AttachmentEffects) -
         sight_bonus,
         // GTW-544: the optional DOT profile sibling (a `None` inserts nothing).
         dot,
+        // GTW-547: the optional OnDeath effect sibling (a `None` inserts nothing).
+        on_death,
     )
 }
 
@@ -789,8 +797,18 @@ pub fn setup_battle(
 
     // Resolve cover pieces (walls + scatter):
     let mut resolved_covers: Vec<ResolvedCoverPiece> = Vec::new();
+    // GTW-547: capture each cover piece's authored on-death effect (keyed by its cell) as we
+    // resolve — a destroyed cover cell fans it via `resolve_on_death` (cover is not an entity,
+    // so the effect lives in the CoverOnDeathRegistry keyed by cell, not on a component).
+    let mut cover_on_death_entries: Vec<(
+        crate::metric::CellLevel,
+        crate::on_death::OnDeathEffect,
+    )> = Vec::new();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
         let def = resolve_terrain_or_err(terrain, &cover.piece)?;
+        if let Some(effect) = &def.on_death {
+            cover_on_death_entries.push((cover.at, effect.clone()));
+        }
         let Some(resolved) = resolve_cover_def(&cover.piece, def) else {
             return Err(BattleSetupError::TerrainNotFound { piece: cover.piece });
         };
@@ -1178,6 +1196,14 @@ pub fn setup_battle(
     // authored `fields:` list, resolved abort-first above). Battle-lifetime — removed at
     // teardown alongside the other battle grids. Empty when the situation authored no fields.
     commands.insert_resource(field_registry);
+
+    // GTW-547: insert the cover-cell on-death registry (seeded from each cover piece's authored
+    // `on_death` field above). Battle-lifetime — removed at teardown alongside the other battle
+    // grids. Empty when no cover piece authored an on-death effect. `resolve_on_death` reads it
+    // for a COVER death (an OnDeathOccurred carrying Entity::PLACEHOLDER, keyed by cell).
+    commands.insert_resource(crate::on_death::CoverOnDeathRegistry::new(
+        cover_on_death_entries,
+    ));
 
     Ok(setup)
 }

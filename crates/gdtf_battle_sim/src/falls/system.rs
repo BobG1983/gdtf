@@ -23,6 +23,7 @@ use crate::{
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::SlabDestroyed,
+    on_death::OnDeathOccurred,
     resolve_and_apply::{StruckPiece, TargetGanger},
     rng::{InjuryRng, SeverityRng},
     surface::SurfaceGrid,
@@ -118,6 +119,26 @@ pub struct FallArmor<'w, 's> {
     pieces: Query<'w, 's, PieceArmorMut, bevy::prelude::With<WornBy>>,
 }
 
+/// The three buffered output signals [`apply_falls`] emits per fall, bundled into one
+/// [`SystemParam`] so the system stays under clippy's argument-count gate (the sibling
+/// [`FallGrids`] / [`FallRngs`] / [`FallArmor`] grouping precedent).
+///
+/// A fall emits: the presenter-facing [`FallOccurred`] (once per fall, C6); the EXISTING
+/// [`InjuryInflicted`] bridge (a rolled injury, C5); and — because a fall CAN kill — the
+/// GTW-547 [`OnDeathOccurred`] terminal-death signal (a fall-killed faller, at its landing
+/// cell) so `resolve_on_death` fans its authored on-death effect. A transparent bundle of the
+/// three independent `MessageWriter`s (framework plumbing — no bare domain type).
+#[derive(SystemParam)]
+pub struct FallSignals<'w> {
+    /// The presenter-facing fall signal — one per resolved fall (C6).
+    fell:     MessageWriter<'w, FallOccurred>,
+    /// The EXISTING injury bridge — a rolled fall injury addressed to the faller (C5).
+    injuries: MessageWriter<'w, InjuryInflicted>,
+    /// The GTW-547 terminal-death signal — a fall-KILLED faller, at its landing cell, so
+    /// `resolve_on_death` fans its authored on-death effect (the falls terminal-death gate).
+    deaths:   MessageWriter<'w, OnDeathOccurred>,
+}
+
 /// The ground-plane [`Cell`] of a [`Position`] — its `(x, y)` (the
 /// [`dispatch_melee`](crate::acts::dispatch_melee) `ganger_cell` precedent).
 fn faller_cell(position: &Position) -> Cell {
@@ -166,8 +187,12 @@ fn faller_level(position: &Position) -> Level {
 ///    pipeline `fold_ganger` runs — armor honored, only weight deferred. The struck part is
 ///    [`BodyPart::Torso`] (the body lands as a whole — deterministic, NO body-part draw, so
 ///    the draw discipline is exactly one severity + one injury per faller).
-/// 5. **Emit (C5 / C6).** A rolled injury is bridged to the EXISTING [`InjuryInflicted`]
-///    message (the `dispatch_fire` bridge precedent); a [`FallOccurred`] is emitted per fall.
+/// 5. **Emit (C5 / C6 / GTW-547).** A rolled injury is bridged to the EXISTING
+///    [`InjuryInflicted`] message (the `dispatch_fire` bridge precedent); a [`FallOccurred`]
+///    is emitted per fall; and — because a fall CAN kill (the shared wound core flips
+///    [`LifeState::Dead`] on `Wounds -> 0`) — a fall-killed faller ALSO emits an
+///    [`OnDeathOccurred`] at its landing cell, so `resolve_on_death` fans its authored
+///    on-death effect (the falls terminal-death gate, GTW-547).
 ///
 /// # Determinism / ordering (C7)
 ///
@@ -183,16 +208,16 @@ fn faller_level(position: &Position) -> Level {
 /// Param-only (`bevy-traps.md` #7 — no `&mut World`). Fail-closed: a missing stream, a
 /// braced faller, or a `start == 0` ganger simply does not fall (never a panic). The
 /// per-concern grids / tuning / injury content ([`FallGrids`]) + the two draw streams
-/// ([`FallRngs`]) + the armor relationship queries ([`FallArmor`]) are grouped into
-/// [`SystemParam`] bundles, keeping the system's own param count under clippy's gate.
+/// ([`FallRngs`]) + the armor relationship queries ([`FallArmor`]) + the three output signals
+/// ([`FallSignals`]) are grouped into [`SystemParam`] bundles, keeping the system's own param
+/// count under clippy's gate.
 pub fn apply_falls(
     mut destroyed: MessageReader<SlabDestroyed>,
     mut fallers: FallerQuery,
     mut armor: FallArmor,
     grids: FallGrids,
     rngs: FallRngs,
-    mut fell: MessageWriter<FallOccurred>,
-    mut injuries: MessageWriter<InjuryInflicted>,
+    mut signals: FallSignals,
 ) {
     // `bevy-traps.md` #1: without both seeded streams no fall can resolve a draw — fail closed
     // (no panic) rather than reading an absent battle-lifetime resource. In the real app both
@@ -319,19 +344,59 @@ pub fn apply_falls(
                 },
             );
 
-            // C5: bridge a rolled injury into the EXISTING InjuryInflicted message (the
-            // dispatch_fire bridge precedent), addressed to the faller entity.
-            if let Some(rolled) = rolled {
-                injuries.write(InjuryInflicted::from_rolled(entity, rolled));
-            }
-
-            // C6: emit the FallOccurred signal per fall.
-            fell.write(FallOccurred::new(
+            // C5 / C6 / GTW-547: emit the three per-fall output signals (the rolled injury
+            // bridge, the fall-killed OnDeathOccurred, the FallOccurred) off the post-fold
+            // verdict, factored out so the loop body stays under clippy's line gate.
+            emit_fall_signals(
+                &mut signals,
                 entity,
+                *life,
+                &position,
                 start,
-                landing.landing,
-                landing.storeys,
-            ));
+                landing,
+                rolled,
+            );
         }
     }
+}
+
+/// Emit the three output signals one resolved fall produces — the rolled injury bridge (C5),
+/// the fall-killed [`OnDeathOccurred`] (GTW-547), and the [`FallOccurred`] (C6) — off the
+/// post-fold faller state. Factored out of the [`apply_falls`] loop body so it stays under
+/// clippy's per-function line gate; every write mirrors its inlined precedent verbatim.
+///
+/// - **C5.** A rolled injury bridges to the EXISTING [`InjuryInflicted`] message (the
+///   `dispatch_fire` bridge precedent), addressed to the faller entity.
+/// - **GTW-547.** A FALL can KILL (the shared wound core flips [`LifeState::Dead`] on
+///   `Wounds -> 0`), so falls is a terminal death gate like the fire / melee / bleed / DOT /
+///   field kills: a fall-killed faller emits [`OnDeathOccurred`] at its LANDING cell (the same
+///   `(cell, level)` the fire / melee ganger-kill bridge uses) so `resolve_on_death` fans its
+///   authored on-death effect. Read off the frozen post-fold `life` (the `emit_on_death`
+///   precedent) — a fall that wounded-but-did-not-kill emits nothing here.
+/// - **C6.** A [`FallOccurred`] is emitted once per fall.
+fn emit_fall_signals(
+    signals: &mut FallSignals,
+    entity: Entity,
+    life: LifeState,
+    position: &Position,
+    start: Level,
+    landing: crate::falls::DropLanding,
+    rolled: Option<crate::injuries::RolledInjury>,
+) {
+    if let Some(rolled) = rolled {
+        signals
+            .injuries
+            .write(InjuryInflicted::from_rolled(entity, rolled));
+    }
+    if life == LifeState::Dead {
+        signals
+            .deaths
+            .write(OnDeathOccurred::new(entity, **position));
+    }
+    signals.fell.write(FallOccurred::new(
+        entity,
+        start,
+        landing.landing,
+        landing.storeys,
+    ));
 }

@@ -1,0 +1,36 @@
+// Volatile satchel charge — a jury-rigged explosive a ganger lugs into the fight. It shoots
+// like a crude short-range slug thrower, but the real danger is the unstable payload: if the
+// ganger carrying it DIES, the charge cooks off, detonating a fragmentation blast at their body
+// that tears everyone in the radius (true friendly fire — resolution.md §2).
+//
+// GTW-547 (on-death effects, child GTW-41g): the `on_death` field authors an `Explode` effect —
+// a GTW-541 radius-1 Blast dealing a flat 8 HP per cell (armor-bypassing, RNG-free), fanned at
+// the dead wielder's cell by `resolve_on_death`. `on_death` defaults to `None` when omitted, so
+// every existing weapon reads as having no death effect.
+(
+    base_spread:   0.30,
+    accuracy:      0.7,
+    kickback:      0.15,
+    fatal_bias:    0.0,
+    damage:        6,
+    punch:         2,
+    shred:         1,
+    damage_type:   Kinetic,
+    magazine: (
+        size:      4,
+        reload_tu: 18,
+    ),
+    fire_mode: [
+        (kind: Single, cone_mult: 1.0, tu_percent: 0.50, shots: 1),
+    ],
+    stable: false,
+    handedness:    TwoHanded,
+    // GTW-547: the unstable payload — the wielder's death detonates a radius-1 fragmentation
+    // blast at their body (flat 8 HP per cell, Blast wheel node). A `LeaveField` variant is the
+    // alternative (a burning / toxic zone); this weapon carries the explosive one.
+    on_death: Some(Explode(
+        hit_type:    Blast(radius: 1),
+        damage:      8,
+        damage_type: Blast,
+    )),
+)
