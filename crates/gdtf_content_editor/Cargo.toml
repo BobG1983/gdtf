@@ -35,6 +35,13 @@ gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 # to assets/maps/. The serialize is non-test code, so ron is a normal dependency
 # (the GTW-429 gang-save precedent moved ron from a dev-dependency to a normal one).
 ron = { workspace = true }
+# GTW-510: the reusable in-engine self-capture crate. The editor's QA screenshot hook
+# (`capture.rs`) delegates its settle-frame counter + `Screenshot`-spawn + PNG-path gate + poll-exit
+# boilerplate to this crate's primitives (its editor-specific DRIVE logic stays local), and the
+# binary adds the crate's F10 debug keybind under `cfg!(debug_assertions)`. Dev / debug
+# infrastructure — the whole affordance is inert until `GDTF_EDITOR_SHOT` is set / F10 pressed, and
+# the keybind is compiled out of release by its cfg gate.
+gdtf_screenshot = { path = "../gdtf_screenshot" }
 
 [dev-dependencies]
 # The headless integration test drives the REAL editor plugin on a no-renderer

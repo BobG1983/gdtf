@@ -33,6 +33,12 @@ serde = { workspace = true }
 # GTW-429 round-trip test use, via `ron::de::from_str`.) The save fs-write itself is
 # `cfg(debug_assertions)`-gated (C3); the serialize helper compiles in any build.
 ron = { workspace = true }
+# GTW-510: the reusable in-engine self-capture crate. OPTIONAL — pulled in ONLY by the `dev_capture`
+# feature (below), matching the existing `crate::app::capture` gating discipline: the game's capture
+# hooks delegate their PNG-path gate to `gdtf_screenshot::parse_shot_path` and the game adds the
+# crate's F10 debug keybind, all under `cfg!(all(debug_assertions, feature = "dev_capture"))`, so a
+# release binary never links it.
+gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
 
 [dev-dependencies]
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo
@@ -65,7 +71,11 @@ test-support = []
 # NOT in the default feature set and NEVER forced into CI / test / release builds. The
 # capture code is NOT compiled by the default green suite — it is built + linted
 # separately with this feature on (see GTW-297's verification note).
-dev_capture = []
+#
+# GTW-510: this feature ALSO pulls in the reusable `gdtf_screenshot` crate, so the game's capture
+# hooks delegate their path gate to it and the game gains the F10 debug keybind — all still
+# double-gated on `cfg!(debug_assertions)` at their wiring sites.
+dev_capture = ["dep:gdtf_screenshot"]
 # DEV / LOCAL-only asset hot-reload. Enables Bevy's asset file watcher: with the
 # default `AssetPlugin { watch_for_changes_override: None, .. }`, Bevy starts the
 # watcher iff its internal `watch` cfg is set, which `bevy/file_watcher` activates

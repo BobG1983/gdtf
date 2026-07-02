@@ -30,11 +30,22 @@
 //! and
 //! `GDTF_EDITOR_SHOT=/abs/pz.png GDTF_EDITOR_MODE=prefab GDTF_EDITOR_ZOOM=2.0 cargo run -p gdtf_content_editor_bin`.
 //!
+//! ## GTW-510: capture CORE delegated to `gdtf_screenshot`
+//!
+//! The capture CORE — the settle-frame counter, the `Screenshot::primary_window` +
+//! [`save_to_disk`](gdtf_screenshot::settle_then_capture) spawn, and the poll-then-exit
+//! [`AppExit`](gdtf_screenshot::poll_then_exit) write — is now the reusable `gdtf_screenshot` crate
+//! (GTW-510), shared with the game. This module DELEGATES those steps to
+//! [`settle_then_capture`](gdtf_screenshot::settle_then_capture) /
+//! [`poll_then_exit`](gdtf_screenshot::poll_then_exit) keyed off the crate's
+//! [`CapturePath`](gdtf_screenshot::CapturePath) /
+//! [`CaptureProgress`](gdtf_screenshot::CaptureProgress) /
+//! [`SettleFrames`](gdtf_screenshot::SettleFrames) / [`PollCap`](gdtf_screenshot::PollCap)
+//! resources — the editor keeps ONLY its editor-specific DRIVE below.
+//!
 //! ## GTW-512 C1.5: re-pointed onto the model
 //!
-//! The capture CORE is Bevy-native + UI-agnostic — [`Screenshot::primary_window`] +
-//! [`save_to_disk`] + the settle-frames + the poll-then-exit [`AppExit`] write — so it is KEPT
-//! verbatim. Its DRIVE was re-pointed: the pre-egui drive read/wrote `bevy_ui`
+//! Its DRIVE was re-pointed: the pre-egui drive read/wrote `bevy_ui`
 //! `Interaction`/`ImageNode`/`ActiveButton`/`PaletteRow`/`CanvasCell` entities (which no longer exist
 //! under egui) to populate the palette / paint cells / hover a cell. The egui shell has no such
 //! entities, so the drive now mutates the MODEL resources directly — exactly the state a real click
@@ -46,19 +57,19 @@
 //! - a cell beside the block is HOVERED via the new [`HoveredCell`] model (C1.5) — so the preview
 //!   ghost is QA-able headlessly without any `bevy_ui` plumbing.
 
-use std::{env, path::PathBuf};
+use std::env;
 
-use bevy::{
-    prelude::*,
-    render::view::window::screenshot::{Screenshot, save_to_disk},
-    state::state::OnEnter,
-};
+use bevy::{prelude::*, state::state::OnEnter};
 use gdtf_battle_presenter::{TileRoles, ViewMode};
 use gdtf_battle_sim::{
     Cell,
     level::{GridHeight, GridLevels, GridSize, GridWidth, UuidThemeRegistry},
     metric::{CellLevel, Level},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
+};
+use gdtf_screenshot::{
+    CapturePath, CaptureProgress, PollCap, SettleFrames, parse_shot_path, poll_then_exit,
+    reset_progress, settle_then_capture,
 };
 
 use crate::{
@@ -97,17 +108,6 @@ const ZOOM_ENV_VAR: &str = "GDTF_EDITOR_ZOOM";
 /// on the UPPER storey, so the `FullView` capture visibly differs from the `DownToActive` one.
 const VIEW_ENV_VAR: &str = "GDTF_EDITOR_VIEW";
 
-/// Frames to wait after entering [`Editing`](crate::EditorState) before requesting the screenshot,
-/// so the egui shell has laid out + drawn AND the offscreen preview render target has a completed
-/// pass first (GTW-515: the render-to-texture viewport needs a couple of extra frames beyond the
-/// egui layout to composite its first offscreen pass — at 12 frames a fast launch could screenshot
-/// a pre-composite blank window; 30 comfortably clears that under the QA launch).
-const SETTLE_FRAMES: u32 = 30;
-
-/// Frames to poll for the PNG before giving up (a safety cap so a failed write never hangs the
-/// editor). At ~60 fps this is ~10 seconds.
-const POLL_CAP: u32 = 600;
-
 /// The painted-block edge for the capture — a `BLOCK × BLOCK` square of painted cells near the
 /// canvas top-left, large enough to read clearly in the shot. A framework plumbing const.
 const BLOCK: i32 = 3;
@@ -121,18 +121,6 @@ const SHOT_STOREYS_FULL: u8 = 2;
 /// [`ViewMode::FullView`] (culled at the ground storey in the default view). A framework plumbing
 /// const.
 const UPPER_STOREY: u8 = 1;
-
-/// The resolved capture output path (from `GDTF_EDITOR_SHOT`). Present only when the affordance is
-/// enabled; the plugin inserts it iff the env var is set.
-#[derive(Resource, Deref)]
-struct ShotPath(PathBuf);
-
-impl ShotPath {
-    /// Wrap the resolved capture path.
-    const fn new(path: PathBuf) -> Self {
-        Self(path)
-    }
-}
 
 /// The capture's FORCED [`EditorMode`] (C2.4 — from `GDTF_EDITOR_MODE`), inserted only when the
 /// env var named a recognized mode. A named wrapper (no-bare-types) so the forced mode reads as a
@@ -189,51 +177,20 @@ impl ForcedView {
     }
 }
 
-/// A count of frames elapsed since entering [`Editing`](crate::EditorState). Wrapping the raw
-/// counter (no-bare-types rule 1) keeps the elapsed-frame value a named domain type rather than a
-/// bare `u32`.
-#[derive(Clone, Copy, Default, Deref)]
-struct FrameCount(u32);
-
-impl FrameCount {
-    /// Advances the counter by one frame.
-    const fn tick(&mut self) {
-        self.0 += 1;
-    }
-}
-
-/// Whether this run's screenshot has already been requested. A named flag type (no-bare-types rule
-/// 1) so the "request fired" state reads as a domain value, not a bare `bool`.
-#[derive(Clone, Copy, Default, Deref)]
-struct ShotRequested(bool);
-
-impl ShotRequested {
-    /// Marks the screenshot as requested.
-    const fn mark() -> Self {
-        Self(true)
-    }
-}
-
-/// Per-run capture progress: counts frames since entering `Editing`, and tracks whether the
-/// screenshot has been requested. Both leaves are named newtypes ([`FrameCount`] /
-/// [`ShotRequested`]) over their raw counters (no-bare-types).
-#[derive(Resource, Default)]
-struct CaptureProgress {
-    /// Frames elapsed since entering `Editing` (reset on enter).
-    frames:    FrameCount,
-    /// Whether the screenshot has already been requested this run.
-    requested: ShotRequested,
-}
-
 /// QA / debug-only screenshot-then-exit plugin for the editor.
 ///
 /// Construct it via [`from_env`](EditorCapturePlugin::from_env): it reads `GDTF_EDITOR_SHOT` ONCE
 /// and, when unset, [`build`](EditorCapturePlugin::build) registers NOTHING — the affordance is
-/// indistinguishable from absent (inert by default). When set, it wires the model-drive → settle →
-/// capture → poll-then-exit systems and inserts the [`ShotPath`].
+/// indistinguishable from absent (inert by default). When set, it wires the model-drive systems
+/// (its editor-specific DRIVE) then DELEGATES the settle → capture → poll-then-exit steps to the
+/// reusable `gdtf_screenshot` primitives (GTW-510):
+/// [`settle_then_capture`](gdtf_screenshot::settle_then_capture) /
+/// [`poll_then_exit`](gdtf_screenshot::poll_then_exit), keyed off the crate's
+/// [`CapturePath`] / [`CaptureProgress`] / [`SettleFrames`] / [`PollCap`] resources.
 pub struct EditorCapturePlugin {
-    /// The resolved capture path, or `None` when the env var was unset (plugin inert).
-    path:        Option<PathBuf>,
+    /// The resolved capture path, or `None` when the env var was unset (plugin inert). Typed as the
+    /// shared [`CapturePath`] (GTW-510) so the crate's `settle_then_capture` reads it directly.
+    path:        Option<CapturePath>,
     /// The forced capture mode (C2.4 — from `GDTF_EDITOR_MODE`), or `None` to keep the editor's
     /// default mode. Read once at construction.
     forced_mode: Option<ForcedMode>,
@@ -253,7 +210,7 @@ impl EditorCapturePlugin {
     #[must_use]
     pub fn from_env() -> Self {
         Self {
-            path:        env::var(SHOT_ENV_VAR).ok().map(PathBuf::from),
+            path:        parse_shot_path(env::var(SHOT_ENV_VAR).ok().as_deref()),
             forced_mode: env::var(MODE_ENV_VAR)
                 .ok()
                 .as_deref()
@@ -276,7 +233,12 @@ impl Plugin for EditorCapturePlugin {
             // Inert by default: no env var -> no systems, no resources, normal launch.
             return;
         };
-        app.insert_resource(ShotPath::new(path))
+        // GTW-510: seed the shared capture resources the delegated `gdtf_screenshot` primitives
+        // read — the resolved path, the egui-safe settle window (30 frames, calibrated for the
+        // render-to-texture viewport's first offscreen composite), and the poll cap.
+        app.insert_resource(path)
+            .insert_resource(SettleFrames::DEFAULT_EGUI)
+            .insert_resource(PollCap::DEFAULT)
             .init_resource::<CaptureProgress>()
             .add_systems(OnEnter(EditorState::Editing), reset_progress);
         // C2.4: insert the forced-mode resource (so a QA run can capture a SPECIFIC mode) only when
@@ -351,12 +313,6 @@ fn force_capture_view(forced: Option<Res<ForcedView>>, view: Option<ResMut<ViewM
         return;
     };
     view.set_if_neq(**forced);
-}
-
-/// `OnEnter(Editing)`: reset the per-run capture counters so the settle window is measured from the
-/// moment the editing scene comes up.
-fn reset_progress(mut progress: ResMut<CaptureProgress>) {
-    *progress = CaptureProgress::default();
 }
 
 /// `Update` (in `Editing`, capture-only): shrink the [`MapEditorSession`] grid to a legible
@@ -503,55 +459,4 @@ fn distinct_paint_tile(
             .filter(|index| *index != default_index)
             .map(|_| *key)
     })
-}
-
-/// `Update` (in `Editing`): after [`SETTLE_FRAMES`], requests one primary-window screenshot with a
-/// [`save_to_disk`] observer (once). The readback is async, so this does NOT exit here —
-/// [`poll_then_exit`] waits for the file.
-fn settle_then_capture(
-    shot: Res<ShotPath>,
-    mut progress: ResMut<CaptureProgress>,
-    mut commands: Commands,
-) {
-    if *progress.requested {
-        return;
-    }
-    progress.frames.tick();
-    if *progress.frames < SETTLE_FRAMES {
-        return;
-    }
-    commands
-        .spawn(Screenshot::primary_window())
-        .observe(save_to_disk((**shot).clone()));
-    progress.requested = ShotRequested::mark();
-}
-
-/// `Update` (in `Editing`): once the screenshot has been requested, polls each frame until the PNG
-/// appears on disk, then writes [`AppExit::Success`]. A [`POLL_CAP`] safety net prevents a failed
-/// write from hanging the editor.
-fn poll_then_exit(
-    shot: Res<ShotPath>,
-    progress: Res<CaptureProgress>,
-    mut poll_frames: Local<u32>,
-    mut exit: MessageWriter<AppExit>,
-) {
-    if !*progress.requested {
-        return;
-    }
-    *poll_frames += 1;
-    if std::path::Path::new(&**shot).exists() {
-        info!(
-            "gdtf_content_editor: editor screenshot written to {}",
-            shot.display()
-        );
-        exit.write(AppExit::Success);
-        return;
-    }
-    if *poll_frames >= POLL_CAP {
-        warn!(
-            "gdtf_content_editor: screenshot PNG not found after {POLL_CAP} poll frames; giving up. Was \
-             GDTF_EDITOR_SHOT set to a writable path?",
-        );
-        exit.write(AppExit::Success);
-    }
 }

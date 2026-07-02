@@ -387,12 +387,14 @@ pub(crate) fn capture_path() -> Option<PathBuf> {
 /// non-empty (trimmed) value, `None` (affordance inert) when absent, empty, or all
 /// whitespace. The pure core of [`capture_path`], factored out so the config tests drive
 /// the REAL gate with injected values (no env mutation). `pub(crate)`.
+///
+/// GTW-510: delegates the trim/empty gate to the shared
+/// [`gdtf_screenshot::parse_shot_path`] primitive (so the editor and the game share ONE
+/// path-parse), then unwraps the returned [`CapturePath`](gdtf_screenshot::CapturePath)
+/// back into the [`PathBuf`] the game's multi-frame [`CaptureConfig`] threads through.
 #[must_use]
 pub(crate) fn parse_capture_path(value: Option<&str>) -> Option<PathBuf> {
-    value
-        .map(|raw| raw.trim().to_owned())
-        .filter(|trimmed| !trimmed.is_empty())
-        .map(PathBuf::from)
+    gdtf_screenshot::parse_shot_path(value).map(|path| (*path).clone())
 }
 
 /// Insert a `.fNN` frame tag before a capture path's extension, e.g. `out.png` at frame

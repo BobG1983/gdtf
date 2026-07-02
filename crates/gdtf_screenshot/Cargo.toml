@@ -1,0 +1,28 @@
+[package]
+name = "gdtf_screenshot"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# The crate wraps Bevy 0.19's built-in screenshot render path
+# (`bevy::render::view::window::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk}`) plus the
+# ordinary ECS surface (App/Plugin, Commands, Res/ResMut, Local, systems). No render feature is
+# needed beyond `DefaultPlugins` (which registers Bevy's `ScreenshotPlugin`), so the workspace bevy
+# profile is sufficient.
+bevy = { workspace = true }
+
+[dev-dependencies]
+# GTW-527: the NON-panicking GPU-adapter probe. The real-PNG integration test builds a render `App`
+# and spawns a `Screenshot` entity, which panics inside `app.finish()` on a GPU-less runner; the
+# probe lets that test skip gracefully (log + return) where no wgpu adapter exists, while a GPU
+# machine still produces + inspects a real captured frame.
+gdtf_test_utils = { path = "../gdtf_test_utils" }
+
+[features]
+# Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled for release
+# artifacts. Propagated from the consuming crates (which are themselves dev-gated), mirroring the
+# grimdark_turfwar -> gdtf_app chain.
+dynamic_linking = ["bevy/dynamic_linking"]
+
+[lints]
+workspace = true

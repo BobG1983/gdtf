@@ -102,6 +102,12 @@ fn add_dev_affordances(app: &mut App) {
     app.add_plugins(crate::app::auto_battle::AutoBattlePlugin::from_env());
     #[cfg(all(debug_assertions, feature = "dev_capture"))]
     app.add_plugins(crate::app::capture::DevCapturePlugin::from_env());
+    // GTW-510: the interactive F10 screenshot keybind (captures the primary window to a
+    // timestamped `target/screenshots/game-<secs>.png` without exiting). Double-gated on
+    // `dev_capture` + debug — the reusable `gdtf_screenshot` crate is pulled in only by the
+    // `dev_capture` feature, so a release binary never links it.
+    #[cfg(all(debug_assertions, feature = "dev_capture"))]
+    app.add_plugins(gdtf_screenshot::KeyboardCapturePlugin::new("game"));
     #[cfg(not(debug_assertions))]
     let _ = app;
 }

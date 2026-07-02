@@ -43,6 +43,7 @@ impl MapEditorApp {
         // QA / debug-only screenshot-then-exit (AC4). Inert by default — wires nothing
         // unless GDTF_EDITOR_SHOT is set (the env read happens in `from_env`).
         app.add_plugins(EditorCapturePlugin::from_env());
+        add_dev_keybind(&mut app);
         Self(app)
     }
 
@@ -50,6 +51,22 @@ impl MapEditorApp {
     pub fn run(mut self) {
         self.0.run();
     }
+}
+
+/// Wire the GTW-510 interactive F10 screenshot keybind, DEV-only.
+///
+/// Gated on `cfg!(debug_assertions)` (the procgen-viz keybind precedent), so a release editor never
+/// compiles it in. On F10 the `gdtf_screenshot` crate captures the primary window to a timestamped
+/// PNG under `target/screenshots/editor-<secs>.png` WITHOUT exiting — an interactive dev capture,
+/// distinct from the env-gated `EditorCapturePlugin` capture-then-exit QA path.
+///
+/// Takes `&mut App` (the ordinary app-builder handle, like [`App::add_plugins`]); not a registered
+/// system or a `&mut World` helper, so `bevy-traps.md` #7 does not apply.
+fn add_dev_keybind(app: &mut App) {
+    #[cfg(debug_assertions)]
+    app.add_plugins(gdtf_screenshot::KeyboardCapturePlugin::new("editor"));
+    #[cfg(not(debug_assertions))]
+    let _ = app;
 }
 
 impl Default for MapEditorApp {
