@@ -2,14 +2,13 @@
 //! fields, the LEVEL navigation (chrome buttons + readout; the `]`/`[`/PageUp/PageDown hotkeys live
 //! in a `Update` system), and the debug-only Save-prefab control.
 //!
-//! ## Size fields (C4.6)
+//! ## Size fields (C4.6 / GTW-464)
 //!
-//! W / H / levels [`egui::DragValue`]s clamped to the sim's fixed system-constant bands
-//! (`1..=`[`MAX_GRID_SPAN`] on x/y, `1..=`[`MAX_LEVELS`] on z) via [`clamp_to_grid_size`], driving
-//! [`GridSize::new`] / [`MapEditorSession::set_grid_size`]. No bare numeric — the value flows
-//! through the [`GridWidth`] / [`GridHeight`] / [`GridLevels`] newtypes into the validated
-//! [`GridSize`]. A size change re-clamps the current edit level so it never points past a shrunk
-//! volume (the kept level-nav clamp — [`CurrentEditLevel::clamped`]).
+//! The W / H / levels size fields moved to the sibling [`size_fields`](super::size_fields) module
+//! (GTW-464), which models the displayed spans explicitly
+//! ([`SizeFieldSpans`](super::size_fields::SizeFieldSpans)): derived FRESH from the session every
+//! pass (the session → fields reverse sync) and committed back through the kept clamp on a real
+//! edit. This panel just draws them ([`size_fields::size_fields`](super::size_fields::size_fields)).
 //!
 //! ## Level nav (C4.5)
 //!
@@ -32,45 +31,20 @@
 
 use bevy_egui::egui;
 use gdtf_battle_presenter::ViewMode;
-use gdtf_battle_sim::level::{
-    GridHeight, GridLevels, GridSize, GridWidth, MAX_GRID_SPAN, UuidThemeRegistry,
-};
+use gdtf_battle_sim::level::UuidThemeRegistry;
 
 use crate::{
     canvas::{CurrentEditLevel, LevelStep},
+    egui_shell::prefab::size_fields,
     session::MapEditorSession,
 };
-
-/// The inclusive width/height [`DragValue`](egui::DragValue) range — the sim's fixed
-/// `1..=`[`MAX_GRID_SPAN`] system
-/// constant (the ticket fixes this bound, so it is a system constant, not a tunable).
-const SPAN_RANGE: core::ops::RangeInclusive<u8> = 1..=MAX_GRID_SPAN;
-
-/// The inclusive levels [`DragValue`](egui::DragValue) range — the sim's fixed `1..=`[`MAX_LEVELS`]
-/// system constant.
-const LEVELS_RANGE: core::ops::RangeInclusive<u8> = 1..=gdtf_battle_sim::metric::MAX_LEVELS;
-
-/// Clamp three raw axis spans into a validated [`GridSize`] (GTW-515 C4.6) — the PURE size-field
-/// clamp the unit test exercises on the real path (C4.13).
-///
-/// Each axis is clamped to its fixed system-constant band (`1..=`[`MAX_GRID_SPAN`] on x/y,
-/// `1..=`[`MAX_LEVELS`] on z), wrapped in its [`GridWidth`] / [`GridHeight`] / [`GridLevels`]
-/// newtype (no bare numeric), and validated through [`GridSize::new`]. Because every axis is
-/// pre-clamped into range, `GridSize::new` never rejects — but a defensive fall-back to `previous`
-/// keeps the function total + panic-free if the sim's bounds ever tighten below the clamp.
-#[must_use]
-pub(crate) fn clamp_to_grid_size(w: u8, h: u8, levels: u8, previous: GridSize) -> GridSize {
-    let width = GridWidth::new(w.clamp(*SPAN_RANGE.start(), *SPAN_RANGE.end()));
-    let height = GridHeight::new(h.clamp(*SPAN_RANGE.start(), *SPAN_RANGE.end()));
-    let levels = GridLevels::new(levels.clamp(*LEVELS_RANGE.start(), *LEVELS_RANGE.end()));
-    GridSize::new(width, height, levels).unwrap_or(previous)
-}
 
 /// Draw the PREFAB-mode controls into the RIGHT panel (GTW-515 C4.5 / C4.6 / C4.9; GTW-532 the
 /// view toggle).
 ///
-/// The size fields commit through [`clamp_to_grid_size`] → [`MapEditorSession::set_grid_size`] and
-/// re-clamp the edit level; the level-nav buttons step the [`CurrentEditLevel`]; the view toggle
+/// The size fields display + commit through the [`size_fields`] view model (session → fields
+/// reverse sync + the kept clamp commit — GTW-464) and re-clamp the edit level on a size change;
+/// the level-nav buttons step the [`CurrentEditLevel`]; the view toggle
 /// flips the [`ViewMode`]; the debug Save control writes the prefab. `save_name` is the in-UI
 /// prefab-name buffer the shell owns across frames (an [`egui::TextEdit`] needs a persistent
 /// `&mut String`); `themes` resolves the active theme's display name for the save path.
@@ -106,7 +80,7 @@ pub(crate) fn controls_panel(
     ui.heading("Prefab");
     ui.separator();
 
-    size_fields(ui, session, edit_level);
+    size_fields::size_fields(ui, session, edit_level);
     ui.separator();
     level_nav(ui, session, edit_level);
     ui.separator();
@@ -157,44 +131,6 @@ pub(crate) const fn toggled(view: ViewMode) -> ViewMode {
     }
 }
 
-/// The W / H / levels size fields (C4.6) — three [`egui::DragValue`]s clamped to the sim bands,
-/// committed through [`clamp_to_grid_size`] into the session's [`GridSize`], with the edit level
-/// re-clamped on change (the kept clamp).
-fn size_fields(
-    ui: &mut egui::Ui,
-    session: &mut MapEditorSession,
-    edit_level: &mut CurrentEditLevel,
-) {
-    let size = session.grid_size();
-    let mut w = *size.width();
-    let mut h = *size.height();
-    let mut levels = *size.levels();
-    let mut changed = false;
-
-    ui.label("Grid size (cells)");
-    ui.horizontal(|ui| {
-        ui.label("W");
-        changed |= ui
-            .add(egui::DragValue::new(&mut w).range(SPAN_RANGE))
-            .changed();
-        ui.label("H");
-        changed |= ui
-            .add(egui::DragValue::new(&mut h).range(SPAN_RANGE))
-            .changed();
-        ui.label("Levels");
-        changed |= ui
-            .add(egui::DragValue::new(&mut levels).range(LEVELS_RANGE))
-            .changed();
-    });
-
-    if changed {
-        let new_size = clamp_to_grid_size(w, h, levels, size);
-        session.set_grid_size(new_size);
-        // Re-clamp the edit level so a shrunk volume never leaves it pointing past the new extent.
-        *edit_level = edit_level.clamped(new_size);
-    }
-}
-
 /// The level-nav readout + step buttons (C4.5) — a `Level n / m` readout (1-based for the reader)
 /// and `[▲]` / `[▼]` buttons stepping the [`CurrentEditLevel`] within `[1, levels]` (the kept
 /// clamp — [`CurrentEditLevel::stepped`], the SAME clamp the hotkeys use).
@@ -242,52 +178,5 @@ fn save_control(
     match crate::save::write_prefab(map, registry, session, &theme_display, save_name) {
         Ok(path) => bevy::log::info!("prefab save: wrote prefab to `{}`", path.display()),
         Err(err) => bevy::log::error!("prefab save: {err}"),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use gdtf_battle_sim::level::{GridSize, MAX_GRID_SPAN};
-
-    use super::clamp_to_grid_size;
-
-    /// C4.13 — the size-field clamp folds an over-max width/height to `MAX_GRID_SPAN` and an
-    /// over-max level count to `MAX_LEVELS` (the ticket fixes these bounds, so pinning THEM is
-    /// allowed — C4.13). A zero span clamps UP to 1 (never the empty grid `GridSize::new` rejects).
-    #[test]
-    fn clamp_folds_into_the_system_constant_bands() {
-        let previous = GridSize::default();
-        // Over-max on every axis → each axis saturates at its ceiling.
-        let clamped = clamp_to_grid_size(200, 200, 99, previous);
-        assert_eq!(
-            *clamped.width(),
-            MAX_GRID_SPAN,
-            "width clamps to MAX_GRID_SPAN (60)"
-        );
-        assert_eq!(
-            *clamped.height(),
-            MAX_GRID_SPAN,
-            "height clamps to MAX_GRID_SPAN (60)"
-        );
-        assert_eq!(
-            *clamped.levels(),
-            gdtf_battle_sim::metric::MAX_LEVELS,
-            "levels clamps to MAX_LEVELS (8)",
-        );
-        // Zero span → clamps UP to 1 on every axis (a valid 1x1x1, not the rejected empty grid).
-        let floored = clamp_to_grid_size(0, 0, 0, previous);
-        assert_eq!(*floored.width(), 1, "zero width clamps up to 1");
-        assert_eq!(*floored.height(), 1, "zero height clamps up to 1");
-        assert_eq!(*floored.levels(), 1, "zero levels clamps up to 1");
-    }
-
-    /// C4.13 — an in-range size passes through unchanged (the clamp only bites at the bounds).
-    #[test]
-    fn clamp_passes_in_range_sizes_through() {
-        let previous = GridSize::default();
-        let clamped = clamp_to_grid_size(16, 24, 3, previous);
-        assert_eq!(*clamped.width(), 16);
-        assert_eq!(*clamped.height(), 24);
-        assert_eq!(*clamped.levels(), 3);
     }
 }

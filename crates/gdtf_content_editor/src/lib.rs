@@ -117,6 +117,10 @@ pub use connector_pairing::{
     PairingOutcome, apply_placement_with_pairing, is_up_connector, resolve_down_counterpart,
 };
 pub use editor_map::EditorMap;
+// GTW-464: the PREFAB size fields' view model — displayed spans derived FRESH from the session
+// every egui pass (the session → fields reverse sync) + the kept clamp commit. Exported so the
+// headless test asserts the exact model the panel renders from (the GTW-512 pattern).
+pub use egui_shell::prefab::size_fields::SizeFieldSpans;
 pub use hovered_cell::HoveredCell;
 // GTW-512: only the `EditorMode` enum survives the egui swap (the `bevy_ui` tab / content markers
 // are gone — the egui shell draws the tabs + branches the right panel in-UI).

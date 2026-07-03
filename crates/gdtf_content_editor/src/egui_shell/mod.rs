@@ -30,7 +30,9 @@
 //! central panel last), so [`editor_egui_ui`](self::shell::editor_egui_ui) declares them in that
 //! exact order.
 
-mod prefab;
+// `pub(crate)` (not private): lib.rs re-exports `prefab::size_fields::SizeFieldSpans` (GTW-464) so
+// the headless integration test asserts the exact size-field view model the panel renders from.
+pub(crate) mod prefab;
 mod shell;
 mod sprite_thumb;
 mod terrain_form_ui;
