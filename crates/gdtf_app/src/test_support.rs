@@ -7,6 +7,31 @@
 //! and [`ScenesPlugin`] so an out-of-crate harness can name them, and provides
 //! [`register_headless`] to wire the full headless state stack in the correct
 //! parent-before-child order.
+//!
+//! # The one-hop panel ledger (GTW-569)
+//!
+//! Every UI panel/scene that exposes test-only markers owns ONE
+//! `#[cfg(feature = "test-support")] pub(crate) mod test_support` submodule in
+//! its `mod.rs`, and THIS ledger re-exports those items directly from that
+//! submodule — no re-export climb through the intermediate `mod.rs` files.
+//! Exporting a new panel marker is exactly **2 edits**:
+//!
+//! 1. add the marker to the panel's own `test_support` submodule (or add that
+//!    submodule, plus a `pub(crate)` widening of the module path if the panel
+//!    is new — see `crate::support`);
+//! 2. add the marker, by explicit name, to the `pub use` ledger below.
+//!
+//! The ledger names every item EXPLICITLY — never a glob (`::*`) — so a
+//! duplicate marker name across two panels fails to compile HERE (E0252)
+//! instead of silently shadowing.
+//!
+//! The state enums ([`AppState`] / [`RunningState`] / [`GameState`] /
+//! [`BattleScapeState`] / [`AfterMathState`]), [`ScenesPlugin`],
+//! [`LoadedSituation`], `BottomBarRoot`, and the `app::auto_battle` items are
+//! deliberately NOT part of the panel ledger: they keep their `support_use!`
+//! climbs because the GTW-321 co-location contract keeps `crate::states::<Enum>`
+//! nameable at the states root and/or the production binary reads the same
+//! re-export (see `crate::support`).
 
 use bevy::{
     app::App,
@@ -15,10 +40,11 @@ use bevy::{
 };
 pub use gdtf_ui::UiPlugin;
 
-// The GTW-434 procgen-visualizer model + markers — `debug_assertions`-gated because the whole
-// visualizer module compiles out of release (C4), so these items only exist in a debug build.
+// The GTW-434/GTW-498 procgen-visualizer model + markers — `debug_assertions`-gated because
+// the whole visualizer module compiles out of release (C4), so these items only exist in a
+// debug build.
 #[cfg(debug_assertions)]
-pub use crate::states::{
+pub use crate::states::running::procgen_viz::test_support::{
     AutoButton, BoardQuad, EnemyGangDropdown, GenerateButton, HeightField, LevelsField,
     PlayerGangDropdown, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, SeedField,
     SizeStatusText, StepButton, ThemeDropdown, VizConfig, WidthField,
@@ -28,26 +54,54 @@ pub use crate::{
         AutoBattleActive, AutoBattlePlugin, auto_battle_enabled, seed_load_fallbacks,
     },
     states::{
-        AddMemberButton, AfterMathState, AimLabel, AimPanel, AimToggleButton, AppState,
-        AttributeField, BaseAttribute, BattleRunningComplete, BattleScapeState, BattlescapeButton,
-        BottomBarRoot, CombatLogLine, CombatLogRoot, CombinedWeaponPanel, ContextualPanelRoot,
-        DeleteMemberButton, DerivedStat, DerivedStatText, EditableGang, EditableMember,
-        EditorScreenRoot, EndTurnButton, EnterEmplacementButton, ExecuteButton,
-        ExitEmplacementButton, ExpandPip, FleeButton, GameState, GangNameField, HiveScapeButton,
-        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
-        InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
-        LevelDownButton, LevelUpButton, LoadedSituation, LoadingScreenRoot, MeleeButton,
-        MemberArmorDropdown, MemberListHost, MemberNameField, MemberPortrait, MemberRow,
-        MemberRowIndex, MemberRowRef, MemberStatPanel, MemberWeaponDropdown, MenuTitle,
-        ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
-        OpenDoorButton, OptionsButton, PipExpanded, QuitButton, ReloadButton, RunningState,
-        ScenesPlugin, SelectCycleRoot, SelectNextButton, SelectPrevButton, ShoveButton,
-        StabilityBar, StabilizeButton, StanceControl, StanceKneelingButton, StancePanelRoot,
-        StanceProneButton, StanceStandingButton, StatFaction, StatHpBar, StatHpLabel,
-        StatInjuryLine, StatInjuryList, StatName, StatPortrait, StatStance, StatTuBar, StatTuLabel,
-        StatWoundLine, StatWoundList, StatWoundsPips, ThrowGrenadeButton, WeaponContent,
-        WeaponImage, WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText,
-        WeaponPanelRoot, portrait_index_for_name,
+        AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
+        ScenesPlugin,
+        running::{
+            editor::test_support::{
+                AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
+                DerivedStatText, EditableGang, EditableMember, EditorScreenRoot, ExpandPip,
+                GangNameField, MemberArmorDropdown, MemberListHost, MemberNameField,
+                MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef, MemberStatPanel,
+                MemberWeaponDropdown, PipExpanded,
+            },
+            game::battlescape::{
+                BottomBarRoot,
+                action_bar::test_support::{
+                    AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
+                    ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
+                    StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
+                    StanceStandingButton,
+                },
+                battle_running::test_support::BattleRunningComplete,
+                combat_log::test_support::{CombatLogLine, CombatLogRoot},
+                contextual_panel::test_support::{
+                    ContextualPanelRoot, EnterEmplacementButton, ExecuteButton,
+                    ExitEmplacementButton, MeleeButton, OpenDoorButton, ShoveButton,
+                    StabilizeButton, ThrowGrenadeButton,
+                },
+                generation::loading_screen::test_support::LoadingScreenRoot,
+                inspect_panel::test_support::{
+                    InspectObjectBar, InspectObjectBlock, InspectObjectHardness,
+                    InspectObjectHeight, InspectObjectProtection, InspectObjectText,
+                    InspectPanelRoot, InspectStatBlockHost,
+                },
+                select_cycle::test_support::{SelectCycleRoot, SelectNextButton, SelectPrevButton},
+                stat_block::test_support::{
+                    StatFaction, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList, StatName,
+                    StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
+                    StatWoundsPips, portrait_index_for_name,
+                },
+                status_panel::stability_readout::test_support::StabilityBar,
+                weapon_panel::test_support::{
+                    AimLabel, AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent,
+                    WeaponImage, WeaponItemButton, WeaponItemPanel, WeaponMagazineText,
+                    WeaponNameText, WeaponPanelRoot,
+                },
+            },
+            menu::test_support::{
+                BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton,
+            },
+        },
     },
 };
 

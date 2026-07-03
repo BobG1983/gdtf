@@ -21,11 +21,13 @@ mod tuning;
 
 pub(in crate::states::running::game::battlescape) use plugin::GameBattleScapeCombatLogScenePlugin;
 
-// Test-support-only re-export of the log ROOT + per-LINE markers (GTW-328), gated so the binary
-// build stays `unused`/`unreachable_pub`-clean (the weapon-panel marker re-export chain
-// precedent). The AC test names these through `crate::test_support` to assert the log gains the
-// expected line children + FIFO overflow.
+/// Test-support re-exports for this panel (GTW-569 one-hop ledger): the log ROOT +
+/// per-LINE markers (GTW-328) the AC test names through `crate::test_support` to assert
+/// the log gains the expected line children + FIFO overflow. The crate-root ledger
+/// (`src/test_support.rs`) re-exports these by explicit name directly from here — no
+/// intermediate `mod.rs` climb. `pub(crate)` on the module (not `pub`) because the parent
+/// chain is `pub(crate)`, so a `pub mod` here trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use! {
-    components::{CombatLogLine, CombatLogRoot};
+pub(crate) mod test_support {
+    pub use super::components::{CombatLogLine, CombatLogRoot};
 }

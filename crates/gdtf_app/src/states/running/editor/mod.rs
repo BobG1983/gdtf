@@ -12,21 +12,24 @@ mod systems;
 pub(in crate::states::running) use plugin::EditorScenePlugin;
 
 mod model;
-// The editable model + member types are named by the headless integration tests through
-// `crate::test_support`; carry them up the chain under the `test-support` feature (gated so the
-// binary build, compiled WITHOUT test-support, stays `unreachable_pub`-clean — the menu-marker
-// precedent).
-#[cfg(feature = "test-support")]
-crate::support_use!(model::{EditableGang, EditableMember};);
 
 mod components;
+/// Test-support re-exports for this scene (GTW-569 one-hop ledger): the editable
+/// gang/member model (GTW-420) plus the editor screen / row / field markers the headless
+/// integration tests name through `crate::test_support`. The crate-root ledger
+/// (`src/test_support.rs`) re-exports these by explicit name directly from here — no
+/// intermediate `mod.rs` climb. `pub(crate)` on the module (not `pub`) because the parent
+/// chain is `pub(crate)`, so a `pub mod` here trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use! {
-    components::{
-        AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
-        DerivedStatText, EditorScreenRoot, ExpandPip, GangNameField, MemberArmorDropdown,
-        MemberListHost, MemberNameField, MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef,
-        MemberStatPanel, MemberWeaponDropdown, PipExpanded,
+pub(crate) mod test_support {
+    pub use super::{
+        components::{
+            AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
+            DerivedStatText, EditorScreenRoot, ExpandPip, GangNameField, MemberArmorDropdown,
+            MemberListHost, MemberNameField, MemberPortrait, MemberRow, MemberRowIndex,
+            MemberRowRef, MemberStatPanel, MemberWeaponDropdown, PipExpanded,
+        },
+        model::{EditableGang, EditableMember},
     };
 }
 

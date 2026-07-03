@@ -36,27 +36,25 @@ mod systems;
 
 pub(in crate::states::running) use plugin::ProcgenVizScenePlugin;
 
-// Test-support-only re-export of the GTW-434 visualizer model + markers, gated so the binary
-// build is `unreachable_pub`-clean. Carries them up toward `crate::test_support` so the
-// headless integration test can drive the STEP / AUTO controls + assert on the revealed quads.
+/// Test-support re-exports for this scene (GTW-569 one-hop ledger): the GTW-434
+/// visualizer model + markers (the headless integration test drives the STEP / AUTO
+/// controls + asserts on the revealed quads) and the GTW-498 config resource +
+/// input-control markers (the headless C7 tests drive the inputs + Generate + assert the
+/// regenerated model), named through `crate::test_support`. The crate-root ledger
+/// (`src/test_support.rs`) re-exports these by explicit name directly from here — no
+/// intermediate `mod.rs` climb. `pub(crate)` on the module (not `pub`) because the parent
+/// chain is `pub(crate)`, so a `pub mod` here trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use! {
-    components::{AutoButton, BoardQuad, PrefabQuad, ProcgenVizRoot, StepButton};
-}
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    model::{ProcgenViz, QuadTint};
-}
-
-// Test-support-only re-export of the GTW-498 config resource + the input-control markers
-// (the headless C7 tests drive the inputs + Generate + assert the regenerated model).
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    config::{
-        components::{
-            EnemyGangDropdown, GenerateButton, HeightField, LevelsField, PlayerGangDropdown,
-            SeedField, SizeStatusText, ThemeDropdown, WidthField,
+pub(crate) mod test_support {
+    pub use super::{
+        components::{AutoButton, BoardQuad, PrefabQuad, ProcgenVizRoot, StepButton},
+        config::{
+            components::{
+                EnemyGangDropdown, GenerateButton, HeightField, LevelsField, PlayerGangDropdown,
+                SeedField, SizeStatusText, ThemeDropdown, WidthField,
+            },
+            resource::VizConfig,
         },
-        resource::VizConfig,
+        model::{ProcgenViz, QuadTint},
     };
 }

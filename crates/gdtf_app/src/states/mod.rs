@@ -36,117 +36,21 @@ pub(in crate::states) use load::LoadScenePlugin;
 // so it tracks `support_item` visibility in lockstep (the re-export chain caveat).
 crate::support_use!(load::LoadedSituation;);
 
-mod running;
+// `pub(crate)` so the crate-root test-support ledger can name the panel `test_support`
+// submodules under it (GTW-569 one-hop ledger — markers no longer climb through here).
+pub(crate) mod running;
 pub(in crate::states) use running::RunningScenePlugin;
 // The four sub-state enums are co-located with the modules they govern (GTW-321);
 // each climbs through its scene `mod.rs` to `running`, and these unconditional
 // `support_use!`s carry them the last hop to `crate::states::<Enum>` — the same
 // import depth they had in the old flat `states/` folder, so `test_support` and
-// every `use crate::states::…` keeps compiling unchanged.
+// every `use crate::states::…` keeps compiling unchanged. Panel/test markers do NOT
+// climb through here — the crate-root test-support ledger names each panel's own
+// `test_support` submodule directly (GTW-569 one-hop ledger).
 crate::support_use!(running::RunningState;);
 crate::support_use!(running::GameState;);
 crate::support_use!(running::BattleScapeState;);
 crate::support_use!(running::AfterMathState;);
-// Test-support-only re-export of the explicit end-signal marker (GTW-236), gated so the
-// binary build stays `unused`/`unreachable_pub`-clean. The reworked `state_walk` /
-// `battle_running_driver` tests name it through `crate::test_support` to insert it (standing
-// in for the not-yet-wired victory/flee end condition). The final hop before
-// `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use!(running::BattleRunningComplete;);
-// Test-support-only re-export (see menu/mod.rs); gated so the binary build is
-// warning-clean. (GTW-145)
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::{BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton};
-}
-// Test-support-only re-export of the action-bar's per-act button markers (GTW-228),
-// gated so the binary build is `unused`/`unreachable_pub`-clean (the menu-marker
-// re-export chain precedent). The final hop before `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::{
-        AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-        ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
-        StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
-        StanceStandingButton,
-    };
-}
-// Test-support-only re-export of the GTW-278 stat-block markers + the GTW-274 inspect-panel
-// markers, gated so the binary build is `unused`/`unreachable_pub`-clean (the action-bar
-// per-act-marker re-export chain precedent). The final hop before `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::{
-        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
-        InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
-        StabilityBar, StatFaction, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList,
-        StatName, StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
-        StatWoundsPips, portrait_index_for_name,
-    };
-}
-// Test-support-only re-export of the GTW-275 weapon-panel markers + the layout-overhaul
-// bottom-bar root, gated so the binary build is `unused`/`unreachable_pub`-clean. The final
-// hop before `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::{
-        AimLabel, AimPanel, BottomBarRoot, CombinedWeaponPanel, ReloadButton, WeaponContent,
-        WeaponImage, WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText,
-        WeaponPanelRoot,
-    };
-}
-// Test-support-only re-export of the GTW-458 selection-cycle markers, gated so the binary build
-// is `unused`/`unreachable_pub`-clean. The final hop before `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::{SelectCycleRoot, SelectNextButton, SelectPrevButton};
-}
-// Test-support-only re-export of the GTW-294 contextual-panel markers, gated so the binary build
-// is `unused`/`unreachable_pub`-clean. The final hop before `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::{
-        ContextualPanelRoot, EnterEmplacementButton, ExecuteButton, ExitEmplacementButton,
-        LoadingScreenRoot, MeleeButton, OpenDoorButton, ShoveButton, StabilizeButton,
-        ThrowGrenadeButton,
-    };
-}
-// Test-support-only re-export of the GTW-328 combat-log markers (the log root + per-line marker),
-// gated so the binary build is `unused`/`unreachable_pub`-clean. The final hop before
-// `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::{CombatLogLine, CombatLogRoot};
-}
-// Test-support-only re-export of the GTW-420 gang-editor model + screen markers, gated so the
-// binary build is `unused`/`unreachable_pub`-clean. The final hop before `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use! {
-    running::{
-        AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
-        DerivedStatText, EditableGang, EditableMember, EditorScreenRoot, ExpandPip, GangNameField,
-        MemberArmorDropdown, MemberListHost, MemberNameField, MemberPortrait, MemberRow,
-        MemberRowIndex, MemberRowRef, MemberStatPanel, MemberWeaponDropdown, PipExpanded,
-    };
-}
-// Test-support-only re-export of the GTW-434 procgen-visualizer model + markers, gated so the
-// binary build is `unused`/`unreachable_pub`-clean. ALSO `debug_assertions`-gated — the whole
-// visualizer module compiles out of release (C4), so these items only exist in a debug build.
-// The final hop before `crate::test_support`.
-#[cfg(all(feature = "test-support", debug_assertions))]
-crate::support_use! {
-    running::{
-        AutoButton, BoardQuad, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, StepButton,
-    };
-}
-// GTW-498: the configurable-inputs resource + input-control markers (the C7 tests drive them).
-#[cfg(all(feature = "test-support", debug_assertions))]
-crate::support_use! {
-    running::{
-        EnemyGangDropdown, GenerateButton, HeightField, LevelsField, PlayerGangDropdown,
-        SeedField, SizeStatusText, ThemeDropdown, VizConfig, WidthField,
-    };
-}
+
 mod teardown;
 pub(in crate::states) use teardown::TeardownScenePlugin;

@@ -9,14 +9,11 @@
 
 mod components;
 mod plugin;
-mod stability_readout;
+// `pub(crate)` so the crate-root test-support ledger can name the readout's own
+// `test_support` submodule directly (GTW-569 one-hop ledger — the `StabilityBar` marker
+// no longer climbs through here).
+pub(crate) mod stability_readout;
 mod systems;
-
-// Test-support-only re-export of the stability-readout bar marker (GTW-345), gated so the
-// binary build stays `unreachable_pub`-clean (the stat-block marker re-export chain
-// precedent). The AC test names it through `crate::test_support`.
-#[cfg(feature = "test-support")]
-crate::support_use!(stability_readout::StabilityBar;);
 
 // As of GTW-275 the status panel is an absolute fixed-% overlay that does NOT feed the
 // world-map viewport inset (only the bottom bar reduces the map), so the `StatusPanelRoot`

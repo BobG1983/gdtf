@@ -19,13 +19,15 @@ mod systems;
 
 pub(in crate::states::running::game::battlescape) use plugin::ContextualPanelPlugin;
 
-// Test-support-only re-export of the contextual-panel's root + the button markers (GTW-294 /
-// GTW-507 / GTW-525), gated so the binary build is `unused`/`unreachable_pub`-clean (the
-// action-bar / bottom-bar marker re-export chain precedent). Carries the markers up toward
-// `crate::test_support`.
+/// Test-support re-exports for this panel (GTW-569 one-hop ledger): the contextual-panel's
+/// root + button markers (GTW-294 / GTW-507 / GTW-525) the AC tests name through
+/// `crate::test_support`. The crate-root ledger (`src/test_support.rs`) re-exports these
+/// by explicit name directly from here — no intermediate `mod.rs` climb. `pub(crate)` on
+/// the module (not `pub`) because the parent chain is `pub(crate)`, so a `pub mod` here
+/// trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use! {
-    components::{
+pub(crate) mod test_support {
+    pub use super::components::{
         ContextualPanelRoot, EnterEmplacementButton, ExecuteButton, ExitEmplacementButton,
         MeleeButton, OpenDoorButton, ShoveButton, StabilizeButton, ThrowGrenadeButton,
     };

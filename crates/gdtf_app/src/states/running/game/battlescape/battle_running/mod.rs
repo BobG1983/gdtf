@@ -8,9 +8,13 @@ mod resources;
 // its sole hold on the name. Re-exported UNCONDITIONALLY (it is real production wiring, not
 // a test surface) at `pub(in ...battlescape)` so only the battlescape neighborhood reaches it.
 pub(in crate::states::running::game::battlescape) use resources::insert_battle_running_complete;
-// Test-support-only re-export of the explicit end-signal marker (GTW-236), gated so the
-// binary build stays `unused`/`unreachable_pub`-clean (the action-bar marker re-export chain
-// precedent). Carries `BattleRunningComplete` up toward `crate::test_support` so the reworked
-// `state_walk` / `battle_running_driver` tests can insert it to stand in for victory/flee.
+/// Test-support re-exports for this scene (GTW-569 one-hop ledger): the explicit
+/// end-signal marker (GTW-236) the reworked `state_walk` / `battle_running_driver` tests
+/// insert through `crate::test_support` to stand in for victory/flee. The crate-root
+/// ledger (`src/test_support.rs`) re-exports it by explicit name directly from here — no
+/// intermediate `mod.rs` climb. `pub(crate)` on the module (not `pub`) because the parent
+/// chain is `pub(crate)`, so a `pub mod` here trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use!(resources::BattleRunningComplete;);
+pub(crate) mod test_support {
+    pub use super::resources::BattleRunningComplete;
+}

@@ -18,11 +18,13 @@ mod systems;
 
 pub(in crate::states::running::game::battlescape) use plugin::GameBattleScapeSelectCycleScenePlugin;
 
-// Test-support-only re-export of the cluster ROOT + the Next / Prev button markers, carried
-// toward `crate::test_support` so the AC tests can name them and assert the cluster's presence
-// + width; gated so the binary build stays `unused`/`unreachable_pub`-clean (the weapon-panel
-// marker re-export precedent).
+/// Test-support re-exports for this panel (GTW-569 one-hop ledger): the cluster ROOT +
+/// the Next / Prev button markers (GTW-458) the AC tests name through
+/// `crate::test_support` to assert the cluster's presence + width. The crate-root ledger
+/// (`src/test_support.rs`) re-exports these by explicit name directly from here — no
+/// intermediate `mod.rs` climb. `pub(crate)` on the module (not `pub`) because the parent
+/// chain is `pub(crate)`, so a `pub mod` here trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use! {
-    components::{SelectCycleRoot, SelectNextButton, SelectPrevButton};
+pub(crate) mod test_support {
+    pub use super::components::{SelectCycleRoot, SelectNextButton, SelectPrevButton};
 }

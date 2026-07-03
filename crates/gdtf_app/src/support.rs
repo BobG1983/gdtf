@@ -5,6 +5,24 @@
 //! so the state enums, [`ScenesPlugin`](crate::states::ScenesPlugin), and the GTW-223
 //! auto-battle affordance can widen to `pub` for the external test harness while
 //! staying `pub(crate)` (and `unreachable_pub`-clean) in the production binary.
+//!
+//! # Where `support_use!` still climbs — and where it must NOT (GTW-569)
+//!
+//! Since GTW-569, panel/scene TEST-ONLY markers do **not** ride `support_use!` climbs
+//! through the intermediate `mod.rs` files. Each panel owns ONE
+//! `#[cfg(feature = "test-support")] pub(crate) mod test_support` submodule in its
+//! `mod.rs`, and the crate-root ledger (`src/test_support.rs`) re-exports those items
+//! directly by explicit name — exporting a new panel marker is exactly **2 edits**
+//! (the panel's `test_support` submodule + one ledger entry; see the ledger's module
+//! docs for the walk-through). The surviving `support_use!` call sites are exactly:
+//!
+//! - the unconditional state-enum climbs (the GTW-321 co-location contract keeps
+//!   `crate::states::<Enum>` nameable at the states root), plus
+//!   [`ScenesPlugin`](crate::states::ScenesPlugin) /
+//!   [`LoadedSituation`](crate::states::LoadedSituation) at the states root;
+//! - the dual-use re-exports the production binary also reads: the bottom-bar root
+//!   (`set_world_viewport` measures it) and the auto-battle plugin
+//!   (`crate::app::auto_battle`).
 
 /// Declares an item with `pub` visibility when the `test-support` feature is
 /// enabled, and `pub(crate)` visibility otherwise.

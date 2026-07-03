@@ -22,13 +22,15 @@ pub(in crate::states::running::game::battlescape) use systems::{
     spawn_aim_button, spawn_mode_panel, spawn_stance_panel,
 };
 
-// Test-support-only re-export of the per-act button markers (the GTW-145 convention,
-// the menu-button-marker precedent): widened to `pub` under `test-support` so the
-// external integration tests can name them through `crate::test_support`, and gated so
-// the production binary build stays `unused`/`unreachable_pub`-clean.
+/// Test-support re-exports for this panel (GTW-569 one-hop ledger): the per-act button
+/// markers (GTW-228) the external integration tests name through `crate::test_support`.
+/// The crate-root ledger (`src/test_support.rs`) re-exports these by explicit name
+/// directly from here — no intermediate `mod.rs` climb. `pub(crate)` on the module (not
+/// `pub`) because the parent chain is `pub(crate)`, so a `pub mod` here trips the
+/// workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use! {
-    components::{
+pub(crate) mod test_support {
+    pub use super::components::{
         AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
         ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
         StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,

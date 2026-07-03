@@ -23,18 +23,20 @@ mod systems;
 
 pub(in crate::states::running::game::battlescape) use plugin::GameBattleScapeWeaponPanelScenePlugin;
 
-// Test-support-only re-export of the cluster ROOT marker + the weapon-text / name / magazine /
-// reload markers + the GTW-298 rework structural markers (the Combined / Item / Aim grid cells,
-// the image placeholder, the disabled item buttons), carried toward `crate::test_support` so the
-// AC tests can name them and assert the authoritative hierarchy; gated so the binary build stays
-// `unused`/`unreachable_pub`-clean.
-//
-// `WeaponPanelRoot` is test-support-ONLY: after the GTW-275 layout overhaul the viewport insets
-// the map by the bottom bar (NOT the weapon panel), so no binary code reads this re-export — the
-// panel spawn/despawn reach the marker via the internal `components::` path.
+/// Test-support re-exports for this panel (GTW-569 one-hop ledger): the cluster ROOT
+/// marker + the weapon-text / name / magazine / reload markers + the GTW-298 rework
+/// structural markers (the Combined / Item / Aim grid cells, the image placeholder, the
+/// disabled item buttons) the AC tests name through `crate::test_support` to assert the
+/// authoritative hierarchy. `WeaponPanelRoot` is test-support-ONLY: after the GTW-275
+/// layout overhaul the viewport insets the map by the bottom bar (NOT the weapon panel),
+/// so no binary code reads it — the panel spawn/despawn reach the marker via the internal
+/// `components::` path. The crate-root ledger (`src/test_support.rs`) re-exports these by
+/// explicit name directly from here — no intermediate `mod.rs` climb. `pub(crate)` on the
+/// module (not `pub`) because the parent chain is `pub(crate)`, so a `pub mod` here trips
+/// the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use! {
-    components::{
+pub(crate) mod test_support {
+    pub use super::components::{
         AimLabel, AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage,
         WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
     };

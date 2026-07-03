@@ -25,18 +25,17 @@ mod test;
 
 pub(in crate::states::running::game::battlescape) use plugin::GameBattleScapeInspectPanelScenePlugin;
 
-// Test-support-only re-export of the inspect-panel's root + host + object markers, widened to
-// `pub` under `test-support` so the external integration tests (`status_panel`,
-// `real_battle_panel`) can name them through `crate::test_support`. Gated `test-support` so
-// the production binary build stays `unused_imports`/`unreachable_pub`-clean: as of the
-// GTW-275 overlay overhaul nothing in the binary reads `InspectPanelRoot` through this
-// re-export (the panel's own spawn / despawn / update systems and the in-crate `test` module
-// reach it via the internal `components::` path), so an UNCONDITIONAL re-export would be an
-// unused import in the binary (caught by `dbuild`, masked by the `--workspace` clippy's
-// feature unification).
+/// Test-support re-exports for this panel (GTW-569 one-hop ledger): the inspect-panel's
+/// root + host + object markers (GTW-274) the external integration tests (`status_panel`,
+/// `real_battle_panel`) name through `crate::test_support`. Nothing in the binary reads
+/// these re-exports (the panel's own systems reach the markers via the internal
+/// `components::` path), so the module is `test-support`-gated. The crate-root ledger
+/// (`src/test_support.rs`) re-exports these by explicit name directly from here — no
+/// intermediate `mod.rs` climb. `pub(crate)` on the module (not `pub`) because the parent
+/// chain is `pub(crate)`, so a `pub mod` here trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use! {
-    components::{
+pub(crate) mod test_support {
+    pub use super::components::{
         InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
         InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
     };

@@ -17,13 +17,17 @@ mod spawn;
 
 pub(in crate::states::running::game::battlescape::generation) use plugin::LoadingScreenPlugin;
 
-// Test-support-only re-export of the loading-screen root marker (GTW-419), so the headless
-// `GdtfTestAppBuilder` AC tests can name it through `crate::test_support`. `support_use!` widens
-// it to `pub` under the `test-support` feature and keeps it `pub(crate)` (and
-// `unreachable_pub`-clean) otherwise (the contextual-panel marker re-export chain precedent). It
-// climbs level by level up to `crate::test_support`.
+/// Test-support re-exports for this panel (GTW-569 one-hop ledger): the loading-screen
+/// root marker (GTW-419) the headless `GdtfTestAppBuilder` AC tests name through
+/// `crate::test_support`. The crate-root ledger (`src/test_support.rs`) re-exports these
+/// by explicit name directly from here — no intermediate `mod.rs` climb. `pub(crate)` on
+/// the module (not `pub`) because the parent chain is `pub(crate)`, so a `pub mod` here
+/// trips the workspace `unreachable_pub = deny`; the `pub use` items inside still widen
+/// to crate-external through the ledger's own `pub use`.
 #[cfg(feature = "test-support")]
-crate::support_use!(components::LoadingScreenRoot;);
+pub(crate) mod test_support {
+    pub use super::components::LoadingScreenRoot;
+}
 
 // The DEV-ONLY loading-screen self-screenshot QA hook (the GTW-297 capture discipline): compiled
 // in ONLY under a debug build with the opt-in `dev_capture` feature, and inert unless its env var

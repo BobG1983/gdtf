@@ -21,9 +21,13 @@ mod update;
 pub(in crate::states::running::game::battlescape::status_panel) use spawn::spawn_stability_readout;
 pub(in crate::states::running::game::battlescape::status_panel) use update::update_stability_readout;
 
-// Test-support-only re-export of the stability bar marker (GTW-345), widened to `pub` under
-// `test-support` so the external integration test can name it through `crate::test_support`
-// to assert the readout's fill (the stat-block per-widget marker precedent). Gated so the
-// production binary build stays `unreachable_pub`-clean.
+/// Test-support re-exports for this panel (GTW-569 one-hop ledger): the stability bar
+/// marker (GTW-345) the external integration test names through `crate::test_support` to
+/// assert the readout's fill. The crate-root ledger (`src/test_support.rs`) re-exports it
+/// by explicit name directly from here — no intermediate `mod.rs` climb. `pub(crate)` on
+/// the module (not `pub`) because the parent chain is `pub(crate)`, so a `pub mod` here
+/// trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
-crate::support_use!(components::StabilityBar;);
+pub(crate) mod test_support {
+    pub use super::components::StabilityBar;
+}
